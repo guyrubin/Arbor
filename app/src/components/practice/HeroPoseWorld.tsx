@@ -4,6 +4,8 @@ import { PlayHeader, MascotSay, ProgressPips, PlayButton, Celebrate } from "../u
 import { HeroAvatar } from "../ui/HeroAvatar";
 import { useArcadeLogger } from "../../practice/useArcadeLogger";
 import { POSE_CARDS } from "../../practice/newGames";
+import { SpeakButton } from "../ui/SpeakButton";
+import { useLanguage } from "../../context/LanguageContext";
 
 /* Hero Pose — copy the hero's action pose. A gross-motor / body-imitation game:
    the hero shows a pose, the child strikes it, the grown-up confirms. Logs a
@@ -12,6 +14,7 @@ import { POSE_CARDS } from "../../practice/newGames";
 
 export default function HeroPoseWorld() {
   const { first, log } = useArcadeLogger();
+  const { t, uiLang } = useLanguage();
   const [idx, setIdx] = useState(0);
   const [cheer, setCheer] = useState(false);
 
@@ -25,6 +28,9 @@ export default function HeroPoseWorld() {
   }
 
   const pose = POSE_CARDS[idx];
+  // KID-09: the read-aloud control speaks the invitation AND this pose's cue,
+  // so a pre-reader can play without a grown-up reading the card out.
+  const poseSay = "I'll show a pose — can you copy it? Hold it while I count!";
   const didIt = () => {
     log("pose", "social", { correct: true, meta: pose.id });
     setCheer(true);
@@ -33,7 +39,12 @@ export default function HeroPoseWorld() {
 
   return (
     <div className="space-y-6">
-      <PlayHeader title="Hero Pose" say="I'll show a pose — can you copy it? Hold it while I count!" mood="cheer" />
+      <PlayHeader
+        title="Hero Pose"
+        say={poseSay}
+        mood="cheer"
+        action={<SpeakButton text={`${poseSay} ${pose.cue}`} lang={uiLang} label={t("elev.play.speak.label")} size="md" className="min-w-[44px] min-h-[44px] justify-center" />}
+      />
       <ProgressPips total={POSE_CARDS.length} current={idx} tone="sky" />
 
       <div className="rounded-[var(--play-radius)] p-6 text-center comic-panel" style={{ background: "var(--arbor-sky-soft)" }}>

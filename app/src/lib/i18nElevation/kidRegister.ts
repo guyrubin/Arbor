@@ -127,6 +127,23 @@ export const en: Record<string, string> = {
   //    a percentage or an unearned-badge wall on a parent door.
   "elev.practice.feelings.named": "Feelings named",
   "elev.practice.journey.badgesEarned": "{n} of {total} effort badges earned",
+
+  // ── Builder H (object backlog wave 1, §3d) ────────────────────────────
+  // KID-09: the one read-aloud control, in the child's words. Every kid world
+  // now carries it next to the thing the child is asked to understand.
+  "elev.play.speak.label": "Hear it",
+  // KID-07/08: Pattern Power ends instead of looping the same six puzzles.
+  "elev.play.pattern.title": "Pattern Power",
+  "elev.play.pattern.say": "What comes next? Tap the shape that finishes the pattern.",
+  "elev.play.pattern.done.title": "You finished every pattern, {name}!",
+  "elev.play.pattern.done.sub": "That is the whole set. A new set of shapes is waiting whenever you come back.",
+  "elev.play.pattern.done.again": "Play this set again",
+  // KID-27: Beat Keeper now makes a sound, so the invitation says so.
+  "elev.play.beat.say": "Listen for the click, then tap the big button right on the beat!",
+  // KID-23: a control the child cannot use is replaced by a line, never left
+  // as a dead button. Never names a permission, a setting, or a grown-up task.
+  "elev.play.mic.unavailable": "This device is not listening right now — say it out loud together instead!",
+  "elev.play.mirror.unavailable": "No mirror on this device right now — play it face to face!",
 };
 
 export const he: Record<string, string> = {
@@ -224,4 +241,15 @@ export const he: Record<string, string> = {
   // ── Builder B (object backlog wave 1)
   "elev.practice.feelings.named": "רגשות שזוהו",
   "elev.practice.journey.badgesEarned": "{n} מתוך {total} תגי מאמץ הושגו",
+
+  // ── Builder H (object backlog wave 1, §3d)
+  "elev.play.speak.label": "לשמוע",
+  "elev.play.pattern.title": "כוח התבניות",
+  "elev.play.pattern.say": "מה בא עכשיו? הקישו על הצורה שמשלימה את התבנית.",
+  "elev.play.pattern.done.title": "סיימתם את כל התבניות, {name}!",
+  "elev.play.pattern.done.sub": "זו כל הערכה. ערכה חדשה של צורות מחכה לכם כשתחזרו.",
+  "elev.play.pattern.done.again": "לשחק שוב בערכה הזו",
+  "elev.play.beat.say": "הקשיבו לנקישה, ואז הקישו על הכפתור הגדול בדיוק בקצב!",
+  "elev.play.mic.unavailable": "המכשיר לא מקשיב עכשיו — תגידו בקול רם יחד!",
+  "elev.play.mirror.unavailable": "אין מראה במכשיר עכשיו — שחקו פנים מול פנים!",
 };

@@ -71,6 +71,26 @@ export function dateSeedKey(d: Date = new Date()): string {
 }
 
 /**
+ * KID-21: a per-SESSION nonce mixed into the challenge seed.
+ *
+ * `dateSeedKey()` alone made the question sequence a function of the calendar
+ * date: the same first question, the same second question after a wrong
+ * answer, for every device on that day, all day. A child who watches the
+ * grown-up answer once in the morning can answer it themselves in the
+ * afternoon — and the seed being global means the sequence is guessable
+ * without ever seeing this device. The nonce is minted once per mounted
+ * challenge, so the sums are fresh every time the gate is summoned and fresh
+ * again on every wrong answer, while a re-render inside one attempt still
+ * shows the SAME question (which is why it is a nonce and not Math.random()
+ * inline in the render).
+ *
+ * `rand` is injectable so the guard can prove the nonce actually varies.
+ */
+export function newGateNonce(rand: () => number = Math.random): string {
+  return Math.floor(rand() * 0xffffffff).toString(36);
+}
+
+/**
  * Deterministic 2-digit addition question from (seedKey, attempt).
  * Same day + same attempt → same question; a wrong answer bumps `attempt`
  * so the question regenerates. Both operands are always 2-digit (10–99).
@@ -141,6 +161,9 @@ export function saveParentPin(pin: string): boolean {
 /** sessionStorage key marking a math-fallback exit (this browsing session). */
 export const MATH_EXIT_KEY = "arbor.gate.mathExit";
 
+/** sessionStorage key: the one PIN nudge for this session has been shown. */
+export const PIN_NUDGE_KEY = "arbor.gate.pinNudgeShown";
+
 export interface GateSessionStorage {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
@@ -199,4 +222,37 @@ export function verifyParentPin(
   if (stored === null || input !== stored) return false;
   clearMathExit(storage);
   return true;
+}
+
+/* ── KID-21: one nudge, once, after a math exit ────────────────────────────
+ *
+ * The math question is kid-exit UX, not a boundary — parentGate has said so
+ * since STORE-3, and a math exit already restricts commerce for the session.
+ * What never happened is the obvious next step: telling the PARENT, once, that
+ * a PIN exists and where to set it. Not a modal, not a repeated banner, and
+ * never in front of the child — one line on the parent door.
+ *
+ * Conditions, all three: this session was reached through the math question,
+ * no PIN is set on this device (with a PIN there is no math path at all), and
+ * the nudge has not already been shown this session.
+ */
+
+/** Should the parent door show the one-time "set a PIN" line right now? */
+export function shouldNudgeForPin(storage: GateSessionStorage | null = sessionStore()): boolean {
+  if (!isMathExitSession(storage)) return false;
+  if (readParentPin() !== null) return false;
+  try {
+    return storage?.getItem(PIN_NUDGE_KEY) !== "1";
+  } catch {
+    return false;
+  }
+}
+
+/** Record that the nudge has been shown; it does not come back this session. */
+export function markPinNudgeShown(storage: GateSessionStorage | null = sessionStore()): void {
+  try {
+    storage?.setItem(PIN_NUDGE_KEY, "1");
+  } catch {
+    /* storage unavailable — the nudge simply shows again next mount */
+  }
 }

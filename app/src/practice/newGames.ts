@@ -31,6 +31,41 @@ export const PATTERN_PUZZLES: PatternPuzzle[] = [
  * completion signal separately. Pure — the guard in
  * components/practice/patternPower.test.ts plays every round through it.
  */
+/**
+ * KID-08: the SAME six puzzles in the SAME order, every session, forever —
+ * a child who plays twice has already memorised the answers, and the game
+ * stops being a game. The order is now seeded from the LOCAL day key, so it is
+ * stable for the whole day (a mid-session re-render never reshuffles the board
+ * under the child) and different tomorrow. Pure: the caller passes the day.
+ *
+ * A seeded Fisher-Yates with a small LCG — no crypto, no dependency, and
+ * deterministic for a given (day, puzzles) pair, which is what the guard tests.
+ */
+export function puzzleOrderForDay(dayKey: string, puzzles: PatternPuzzle[] = PATTERN_PUZZLES): PatternPuzzle[] {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < dayKey.length; i++) {
+    h ^= dayKey.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  const out = [...puzzles];
+  for (let i = out.length - 1; i > 0; i--) {
+    h = (Math.imul(h, 1664525) + 1013904223) >>> 0;
+    const j = h % (i + 1);
+    const tmp = out[i];
+    out[i] = out[j];
+    out[j] = tmp;
+  }
+  return out;
+}
+
+/**
+ * KID-07: how many rounds one sitting is. The world used to hand the child a
+ * "Play again" that restarted puzzle 1 of the same six — an endless loop with
+ * no ending, which is the shape of a pressure mechanic even when nothing is
+ * counted. Six rounds IS the set; after that the world says so and stops.
+ */
+export const PATTERN_ROUNDS_PER_DAY = 6;
+
 export function patternRound(idx: number, puzzles: PatternPuzzle[] = PATTERN_PUZZLES): { done: boolean; puzzle: PatternPuzzle } {
   const last = Math.max(0, puzzles.length - 1);
   const clamped = Math.min(Math.max(0, Math.floor(idx)), last);

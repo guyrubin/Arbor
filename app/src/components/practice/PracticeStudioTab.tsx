@@ -18,6 +18,7 @@ import { PASTEL } from "../../lib/tokens";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useKidMode } from "../kidmode/KidModeContext";
+import { markPinNudgeShown, shouldNudgeForPin } from "../kidmode/parentGate";
 import { usePracticeData, type PracticeData } from "../../practice/usePracticeData";
 import { track } from "../../lib/analytics";
 import type { ActiveTab } from "../../lib/routes";
@@ -59,6 +60,14 @@ export default function PracticeStudioTab() {
   const isRtl = uiLang === "he";
   const firstName = (childProfile.name || "").split(" ")[0];
   const data = usePracticeData(childProfile.id);
+
+  // KID-21: this session's parent area was reached by answering the math
+  // question, and no PIN is set. Say so ONCE, here on the parent door next to
+  // the Kid Mode entrance — never in front of the child, never twice.
+  const [nudgePin] = React.useState(() => shouldNudgeForPin());
+  React.useEffect(() => {
+    if (nudgePin) markPinNudgeShown();
+  }, [nudgePin]);
 
   const openWorld = (world: StudioWorld) => {
     try { track("practice_studio_open", { world: world.id, via: world.tab ? "direct" : "kidmode" }); } catch { /* noop */ }
@@ -127,6 +136,17 @@ export default function PracticeStudioTab() {
           {t("practice.studio.kidmode.cta")}
         </button>
       </section>
+
+      {nudgePin && (
+        <p
+          data-testid="gate-pin-nudge"
+          className="rounded-2xl px-4 py-3 text-[12.5px] leading-relaxed"
+          style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink-soft)", border: "1px solid var(--arbor-rule)" }}
+        >
+          <b style={{ color: "var(--arbor-ink)" }}>{t("elev.gate.set.title")}</b>{" "}
+          {t("elev.gate.set.sub")} {t("elev.gate.set.cta")} · {t("nav.settings")}
+        </p>
+      )}
 
       {/* World grid */}
       <section data-module="practice-worlds" aria-label={t("practice.studio.worlds")}>

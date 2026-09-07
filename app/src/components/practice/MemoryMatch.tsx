@@ -1,11 +1,17 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { PlayPanel, PlayButton, Celebrate } from "../ui/playkit";
+import { SpeakButton } from "../ui/SpeakButton";
+import { useLanguage } from "../../context/LanguageContext";
 import { MEMORY_EMOJI_SETS } from "../../practice/playContent";
 import { memoryGridSize, memoryMaxCards, memorySetIndexForAge } from "../../practice/signals";
 import type { PracticeData } from "../../practice/usePracticeData";
 import type { PracticeEvent } from "../../types";
 import { track } from "../../lib/analytics";
+
+/** KID-09: the one sentence this world asks the child to understand, so the
+ *  read-aloud control and the printed line can never drift apart. */
+const MEMORY_SAY = "Find the matching pairs — the board grows as you get stronger.";
 
 interface Card {
   uid: number;
@@ -34,6 +40,7 @@ function buildDeck(size: 6 | 8 | 12, setIdx: number): Card[] {
  * `memory` practiceEvent scored on efficiency, feeding the cognition band.
  */
 export default function MemoryMatch({ data, childAge }: { data: PracticeData; childAge?: number }) {
+  const { t, uiLang } = useLanguage();
   // Past round scores drive the adaptive grid size, bounded by an age-appropriate ceiling.
   const pastScores = useMemo(
     () => data.events.items.filter((e) => e.kind === "memory" && e.score !== undefined).map((e) => e.score as number).reverse(),
@@ -133,7 +140,12 @@ export default function MemoryMatch({ data, childAge }: { data: PracticeData; ch
         </span>
         <div className="flex-1 min-w-0">
           <h2 className="text-xl font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Memory Match</h2>
-          <p className="text-[12px] font-semibold" style={{ color: "var(--arbor-muted)" }}>Find the matching pairs — the board grows as you get stronger.</p>
+          <p className="text-[12px] font-semibold" style={{ color: "var(--arbor-muted)" }}>{MEMORY_SAY}</p>
+        </div>
+        {/* KID-09: the world's own read-aloud control — a pre-reader can start
+            without a grown-up reading the card out first. */}
+        <div className="ms-auto">
+          <SpeakButton text={MEMORY_SAY} lang={uiLang} label={t("elev.play.speak.label")} size="md" className="min-w-[44px] min-h-[44px] justify-center" />
         </div>
       </div>
 
@@ -141,11 +153,13 @@ export default function MemoryMatch({ data, childAge }: { data: PracticeData; ch
         {MEMORY_EMOJI_SETS.map((s, i) => {
           const on = i === setIdx;
           return (
-            <button key={s.id} onClick={() => { setSetIdx(i); reset(size, i); }}
-              className="play-pressable rounded-full px-4 py-2 text-[13px] font-extrabold"
-              style={on ? { background: "var(--arbor-lav-ink)", color: "#fff" } : { background: "#fff", color: "var(--arbor-muted)", border: "1.5px solid var(--arbor-rule)" }}>
+            /* KID-14: these measured 36-38 px — under the 44 px floor, on a
+               control a four-year-old is meant to hit. PlayButton size="md"
+               is the kid-register control with a 46 px minimum. */
+            <PlayButton key={s.id} size="md" tone="lav" variant={on ? "primary" : "soft"}
+              onClick={() => { setSetIdx(i); reset(size, i); }}>
               {s.title}
-            </button>
+            </PlayButton>
           );
         })}
         <span className="text-[13px] font-bold ms-auto" style={{ color: "var(--arbor-muted)" }}>Moves: <b style={{ color: "var(--arbor-ink)" }}>{moves}</b> · Found {matchedCount}/{pairs}</span>

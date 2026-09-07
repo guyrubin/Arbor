@@ -10,6 +10,7 @@ import { EmotionAvatar } from "../ui/EmotionAvatar";
 import type { PracticeEvent } from "../../types";
 import { track } from "../../lib/analytics";
 import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
+import { SpeakButton } from "../ui/SpeakButton";
 
 const eventId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
@@ -25,7 +26,7 @@ const EMOTION_TONE: Record<string, string> = {
 
 export default function FeelingsLabTab() {
   const { childProfile } = useArbor();
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
   const data = usePracticeData(childProfile.id);
   const first = childProfile.name.split(" ")[0];
 
@@ -340,6 +341,14 @@ export default function FeelingsLabTab() {
           <p className="text-[1.35rem] font-extrabold leading-snug" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
             {scenario.text}
           </p>
+          {/* KID-09: a child who cannot yet read the scenario can hear it. */}
+          <SpeakButton
+            text={scenario.text}
+            lang={uiLang}
+            label={t("elev.play.speak.label")}
+            size="md"
+            className="min-w-[44px] min-h-[44px] justify-center mt-3"
+          />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {emotionTiles}

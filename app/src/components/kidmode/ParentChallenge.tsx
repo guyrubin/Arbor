@@ -24,6 +24,7 @@ import { PASTEL } from "../../lib/tokens";
 import {
   challengeFor,
   dateSeedKey,
+  newGateNonce,
   isChallengeAnswer,
   markMathExit,
   readParentPin,
@@ -60,7 +61,10 @@ export function ParentChallenge({ onSuccess, onDismiss }: ParentChallengeProps) 
   const [input, setInput] = useState("");
   const [wrong, setWrong] = useState(false);
 
-  const seed = useMemo(() => dateSeedKey(), []);
+  // KID-21: the seed is the day PLUS a nonce minted once per mounted
+  // challenge, so the sums are not a function of the calendar date that every
+  // device (and every child who watched yesterday) shares.
+  const seed = useMemo(() => `${dateSeedKey()}#${newGateNonce()}`, []);
   const challenge = useMemo(() => challengeFor(seed, attempt), [seed, attempt]);
 
   const cardRef = useRef<HTMLDivElement>(null);

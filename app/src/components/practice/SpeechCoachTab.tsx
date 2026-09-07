@@ -15,6 +15,8 @@ import type { PracticeEvent, SpeechAttempt, SpeechLevel } from "../../types";
 import { track } from "../../lib/analytics";
 import { api } from "../../lib/api";
 import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
+import { SpeakButton } from "../ui/SpeakButton";
+import { mediaControlHidden, resolveMediaPermission, type MediaPermission } from "../../practice/mediaPermission";
 import { platformAsrAllowed, voiceConsentState, VOICE_CONSENT_PURPOSE, type VoiceConsentState } from "./speechConsentGate";
 import EarlyReadingTrack from "./EarlyReadingTrack";
 
@@ -43,7 +45,7 @@ const LADDER: { level: SpeechLevel; labelKey: string; hintKey: string }[] = [
 
 export default function SpeechCoachTab() {
   const { childProfile, setActiveTab, seedCoach } = useArbor();
-  const { t, aiLang } = useLanguage();
+  const { t, aiLang, uiLang } = useLanguage();
   // AIX-S2: the auto-listen verdict path (on-device recognition + cloud scoring)
   // is honest ONLY for English sessions — SOUND_LIBRARY targets are English.
   // For HE, autoResult stays null and the parent-scoring floor takes over.
@@ -104,6 +106,21 @@ export default function SpeechCoachTab() {
   const chunksRef = useRef<Blob[]>([]);
   const recogRef = useRef<SpeechRecognitionLike | null>(null);
   const recognitionAvailable = useMemo(() => getRecognitionCtor() !== null, []);
+
+  // KID-23: the record button used to render whatever the device said. On an
+  // origin the parent had already blocked, the tap called getUserMedia, the
+  // browser refused WITHOUT a prompt, and the child got an error line about
+  // machinery they cannot change. Resolve the permission first; a control the
+  // child cannot use is not put in front of the child.
+  const [micPermission, setMicPermission] = useState<MediaPermission>("available");
+  useEffect(() => {
+    let live = true;
+    void resolveMediaPermission("microphone", navigator).then((state) => {
+      if (live) setMicPermission(state);
+    });
+    return () => { live = false; };
+  }, []);
+  const micHidden = mediaControlHidden(micPermission);
 
   // ---- STORE-K2: voice_processing consent gate for the PLATFORM recognizer ----
   // The browser SpeechRecognition API is not on-device (Android WebView routes
@@ -722,6 +739,17 @@ export default function SpeechCoachTab() {
       title={t("elev.play.soundlab.title")}
       say={t("elev.play.soundlab.say", { name: first })}
       mood="happy"
+      action={
+        /* KID-09: the read-aloud control, on the line the child is asked to
+           act on. Zero kid worlds carried one before this pass. */
+        <SpeakButton
+          text={t("elev.play.soundlab.say", { name: first })}
+          lang={uiLang}
+          label={t("elev.play.speak.label")}
+          size="md"
+          className="min-w-[44px] min-h-[44px] justify-center"
+        />
+      }
     >
 
       <div className="flex flex-wrap gap-2" role="group" aria-label={t("elev.play.soundlab.pickSound")}>
@@ -762,7 +790,13 @@ export default function SpeechCoachTab() {
       </div>
 
       <div className="flex flex-wrap items-center justify-center gap-3">
-        {recState !== "recording" ? (
+        {/* KID-23: with the microphone blocked or absent there is nothing to
+            tap — the child gets a line in their own register instead of a
+            button that does nothing. The parent floor (the three result tiles
+            below) still records the round, so the world keeps working. */}
+        {micHidden ? (
+          <MascotSay mood="happy" tone="sky">{t("elev.play.mic.unavailable")}</MascotSay>
+        ) : recState !== "recording" ? (
           <PlayButton onClick={() => void startRecording()} tone="peach">
             <Icon name="mic" size={22} /> {t("elev.play.soundlab.record")}
           </PlayButton>

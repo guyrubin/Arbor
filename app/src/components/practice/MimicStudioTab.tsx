@@ -6,6 +6,8 @@ import { useLanguage } from "../../context/LanguageContext";
 import { cardCls } from "../ui/kit";
 import { RegisterShell, PlayButton, ProgressPips, Celebrate, PlayPanel } from "../ui/playkit";
 import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
+import { SpeakButton } from "../ui/SpeakButton";
+import { mediaControlHidden, resolveMediaPermission, type MediaPermission } from "../../practice/mediaPermission";
 import { useHeroAvatar } from "../ui/HeroAvatar";
 import { T } from "../../lib/tokens";
 import { MIMIC_PACKS, type MimicPack } from "../../practice/content";
@@ -24,7 +26,7 @@ import { downloadPracticeStampCanvas } from "../../lib/heroAvatarCanvas";
  */
 export default function MimicStudioTab() {
   const { childProfile } = useArbor();
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
   const data = usePracticeData(childProfile.id);
   const first = childProfile.name.split(" ")[0];
   // AP-050: hero avatar URL for the practice_stamp canvas (data URL only; raw photo
@@ -45,6 +47,20 @@ export default function MimicStudioTab() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [mirrorOn, setMirrorOn] = useState(false);
+
+  // KID-23: "Turn on mirror" rendered even where the camera was blocked or
+  // absent, so a child's tap fired getUserMedia into an instant refusal. The
+  // permission is resolved first; with no camera to offer, the invite becomes
+  // a kid-register line and the face-to-face game continues.
+  const [camPermission, setCamPermission] = useState<MediaPermission>("available");
+  useEffect(() => {
+    let live = true;
+    void resolveMediaPermission("camera", navigator).then((state) => {
+      if (live) setCamPermission(state);
+    });
+    return () => { live = false; };
+  }, []);
+  const camHidden = mediaControlHidden(camPermission);
   const [camError, setCamError] = useState<string | null>(null);
 
   const stopMirror = () => {
@@ -193,6 +209,14 @@ export default function MimicStudioTab() {
             </motion.span>
             <p className="text-lg font-extrabold mt-3" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{prompt.title}</p>
             <p className="text-sm mt-2 max-w-xs leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{prompt.instruction}</p>
+            {/* KID-09: the round's own instruction, read aloud on request. */}
+            <SpeakButton
+              text={`${prompt.title}. ${prompt.instruction}`}
+              lang={uiLang}
+              label={t("elev.play.speak.label")}
+              size="md"
+              className="min-w-[44px] min-h-[44px] justify-center mt-2"
+            />
             <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-extrabold mt-2" style={{ background: "var(--arbor-peach-soft)", color: "var(--arbor-peach-ink)" }}>
               <Icon name="mood" size={12} /> {prompt.focus}
             </span>
@@ -219,9 +243,15 @@ export default function MimicStudioTab() {
                 <p className="text-xs mb-4 max-w-[260px] mx-auto" style={{ color: T.onDarkMuted }}>
                   {mirrorInvite}
                 </p>
-                <PlayButton onClick={() => void startMirror()} tone="clay" size="md">
-                  <Icon name={mirrorGlyph} size={16} /> Turn on mirror
-                </PlayButton>
+                {camHidden ? (
+                  <p className="text-[13px] font-extrabold max-w-[260px] mx-auto" style={{ color: T.onDarkMuted }}>
+                    {t("elev.play.mirror.unavailable")}
+                  </p>
+                ) : (
+                  <PlayButton onClick={() => void startMirror()} tone="clay" size="md">
+                    <Icon name={mirrorGlyph} size={16} /> Turn on mirror
+                  </PlayButton>
+                )}
                 {camError && <p className="text-[11px] mt-3" style={{ color: "var(--arbor-pink)" }}>{camError}</p>}
               </div>
             )}

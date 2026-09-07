@@ -11,6 +11,7 @@ import { track } from "../../lib/analytics";
 import { useAsyncAction } from "../../hooks/useAsyncAction";
 import { isolate } from "../../lib/i18n";
 import { RegisterShell, PlayButton, PlayPanel, ChoiceTile, ProgressPips, MascotSay, Celebrate } from "../ui/playkit";
+import { SpeakButton } from "../ui/SpeakButton";
 import { useKidSafeNav } from "../kidmode/useKidSafeNav";
 import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
 
@@ -30,7 +31,8 @@ const SKILL_LABEL: Record<string, string> = {
  */
 export default function AdventuresTab() {
   const { childProfile, openPaywall } = useArbor();
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
+  const isRtl = uiLang === "he";
   // KID-05: the comic CTA on the win screen needs the parent shell; null in Kid Mode → not rendered.
   const nav = useKidSafeNav();
   // OBJ-KID-04 / OBJ-KID-03: the child sees a kid-register answer; the parent
@@ -206,7 +208,15 @@ export default function AdventuresTab() {
               <span className="text-3xl">{scenario.emoji}</span>
               <p className="text-lg font-extrabold truncate" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{scenario.title}</p>
             </div>
-            <button onClick={() => setActiveId(null)} className="text-[13px] font-bold flex-shrink-0" style={{ color: "var(--arbor-muted)" }}>← All</button>
+            {/* KID-14: this measured 20 px tall — the only way back out of an
+                open adventure, under the touch floor. */}
+            <button
+              onClick={() => setActiveId(null)}
+              className="inline-flex items-center gap-1 text-[13px] font-bold flex-shrink-0 px-3 min-h-[44px] rounded-xl"
+              style={{ color: "var(--arbor-muted)" }}
+            >
+              <Icon name="arrow_back" size={16} style={isRtl ? { transform: "scaleX(-1)" } : undefined} /> {t("elev.play.arcade.allWorlds")}
+            </button>
           </div>
 
           <div className="flex items-center gap-3 mb-6">
@@ -216,9 +226,19 @@ export default function AdventuresTab() {
 
           <AnimatePresence mode="wait">
             <motion.div key={scene.id} initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.2 }}>
-              <p className="text-[1.4rem] font-extrabold leading-snug mb-5 max-w-2xl" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-                {fillTemplate(scene.prompt, vars)}
-              </p>
+              <div className="flex items-start gap-2 mb-5">
+                <p className="text-[1.4rem] font-extrabold leading-snug max-w-2xl" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+                  {fillTemplate(scene.prompt, vars)}
+                </p>
+                {/* KID-09: every scenario prompt gets the read-aloud control. */}
+                <SpeakButton
+                  text={fillTemplate(scene.prompt, vars)}
+                  lang={uiLang}
+                  label={t("elev.play.speak.label")}
+                  size="md"
+                  className="min-w-[44px] min-h-[44px] justify-center flex-shrink-0"
+                />
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
                 {scene.choices.map((c) => {

@@ -3,6 +3,10 @@ import { Icon } from "../ui/Icon";
 import { PlayHeader, MascotSay, ProgressPips, PlayButton, Celebrate } from "../ui/playkit";
 import { useArcadeLogger } from "../../practice/useArcadeLogger";
 import { BEAT_ROUNDS, scoreBeatTaps, gradeStars } from "../../practice/newGames";
+import { SpeakButton } from "../ui/SpeakButton";
+import { useLanguage } from "../../context/LanguageContext";
+import { selectionHaptic } from "../../lib/native";
+import { beatClick, closeBeatAudio } from "../../practice/beatAudio";
 
 /* Beat Keeper — tap on the beat. A rhythm/timing game (regulation): a pulse
    flashes at a steady tempo, the child taps along, and tap timing is scored
@@ -11,6 +15,7 @@ import { BEAT_ROUNDS, scoreBeatTaps, gradeStars } from "../../practice/newGames"
 
 export default function BeatKeeperWorld() {
   const { first, log } = useArcadeLogger();
+  const { t, uiLang } = useLanguage();
   const [roundIdx, setRoundIdx] = useState(0);
   const [phase, setPhase] = useState<"ready" | "playing" | "scored">("ready");
   const [pulse, setPulse] = useState(-1);
@@ -22,7 +27,12 @@ export default function BeatKeeperWorld() {
   const expRef = useRef<number[]>([]);
   const timerRef = useRef<number | null>(null);
 
-  useEffect(() => () => { if (timerRef.current) window.clearInterval(timerRef.current); }, []);
+  useEffect(() => () => {
+    if (timerRef.current) window.clearInterval(timerRef.current);
+    // KID-27: the AudioContext is created on the first START (a user gesture,
+    // which is what browsers require) and released with the world.
+    closeBeatAudio();
+  }, []);
 
   const done = roundIdx >= BEAT_ROUNDS.length;
   if (done) {
@@ -51,9 +61,14 @@ export default function BeatKeeperWorld() {
     setPhase("playing");
     setPulse(-1);
     let k = 0;
+    // KID-27: the pulse was VISUAL ONLY — a rhythm game the child could not
+    // hear. Every beat now makes a short click through the shared Web Audio
+    // node, so a child looking away can still keep time.
+    beatClick();
     timerRef.current = window.setInterval(() => {
       k++;
       setPulse(k - 1);
+      beatClick();
       if (k >= round.beats) {
         if (timerRef.current) window.clearInterval(timerRef.current);
         window.setTimeout(finish, round.intervalMs);
@@ -64,11 +79,18 @@ export default function BeatKeeperWorld() {
   const tap = () => {
     if (phase !== "playing") return;
     tapsRef.current.push(Date.now() - startRef.current);
+    // KID-27: the tap answers back in the body as well as on screen.
+    void selectionHaptic();
   };
 
   return (
     <div className="space-y-6">
-      <PlayHeader title="Beat Keeper" say="Watch the pulse, then tap the big button right on the beat!" mood="happy" />
+      <PlayHeader
+        title="Beat Keeper"
+        say={t("elev.play.beat.say")}
+        mood="happy"
+        action={<SpeakButton text={t("elev.play.beat.say")} lang={uiLang} label={t("elev.play.speak.label")} size="md" className="min-w-[44px] min-h-[44px] justify-center" />}
+      />
       <ProgressPips total={BEAT_ROUNDS.length} current={roundIdx} tone="clay" />
 
       <div className="rounded-[var(--play-radius)] p-6 grid place-items-center comic-panel" style={{ background: "var(--arbor-green-soft)", minHeight: 220 }}>

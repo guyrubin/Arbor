@@ -85,6 +85,34 @@ const STORY_ART: Record<string, { emoji: string; sfx: string; sfxHe: string }> =
   "the-friendly-monster": { emoji: "👾", sfx: "GRRAH!", sfxHe: "גראח!" },
 };
 
+/**
+ * KID-25 — the same story, twice in one evening, cost two generations.
+ *
+ * Tapping Play always POSTed to /generate-hero-journey. A child who backs out
+ * of a story and opens it again waits for a model round-trip a second time,
+ * gets DIFFERENT text for the story they had just started, and the family pays
+ * twice. The render is deterministic per (child, story, day) by intent — that
+ * is exactly what a memo key is.
+ *
+ * Module-scoped so it survives a tab unmount inside one session (which is what
+ * "back out and open it again" does); the day key is part of the key, so it
+ * self-expires overnight without a timer. Never persisted: a render is model
+ * output about a child, and this cache is a within-session cost guard, not
+ * storage. Completed runs are already persisted properly, in `heroRuns`.
+ */
+const journeyMemo = new Map<string, HeroJourneyRender>();
+
+/** `childId|storyId|lang|YYYY-MM-DD` — language is in the key because the same
+ *  story in Hebrew is a different render, not the same one. */
+export function journeyMemoKey(childId: string, storyId: string, lang: string, day: string): string {
+  return `${childId}|${storyId}|${lang}|${day}`;
+}
+
+/** Test seam — the map is module state by design. */
+export function clearJourneyMemo(): void {
+  journeyMemo.clear();
+}
+
 const METRIC_COLORS: Record<DevelopmentMetricId, string> = METRIC_VARS;
 
 const METRIC_EMOJI: Record<DevelopmentMetricId, string> = {
@@ -188,12 +216,16 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
     setLoadingId(story.id);
     setStoryResting(false);
     try {
-      const r = await api.generateHeroJourney({
+      // KID-25: a second Play of tonight's story makes NO network call.
+      const memoKey = journeyMemoKey(childProfile.id, story.id, aiLang, dayKey(new Date()));
+      const memoed = journeyMemo.get(memoKey);
+      const r = memoed ?? await api.generateHeroJourney({
         storyId: story.id,
         childName: childProfile.name,
         age: childProfile.age,
         language: aiLang,
       });
+      if (!memoed) journeyMemo.set(memoKey, r);
       startedAtRef.current = new Date().toISOString();
       setActiveStory(story);
       setRender(r);

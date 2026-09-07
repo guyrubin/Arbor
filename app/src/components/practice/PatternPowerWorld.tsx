@@ -2,7 +2,9 @@ import React, { useMemo, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { PlayHeader, MascotSay, ChoiceTile, ProgressPips, PlayButton, Celebrate } from "../ui/playkit";
 import { useArcadeLogger } from "../../practice/useArcadeLogger";
-import { PATTERN_PUZZLES, gradeStars, patternRound, type PatternPuzzle } from "../../practice/newGames";
+import { PATTERN_PUZZLES, PATTERN_ROUNDS_PER_DAY, gradeStars, patternRound, puzzleOrderForDay, type PatternPuzzle } from "../../practice/newGames";
+import { dayKey } from "../../practice/signals";
+import { SpeakButton } from "../ui/SpeakButton";
 import { useLanguage } from "../../context/LanguageContext";
 
 /* Pattern Power — continue the sequence. A logic/cognition game: read a
@@ -24,11 +26,30 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-/** The win screen — rendered once `idx` walks past the last puzzle. */
-export function PatternDoneView({ first, stars, onReplay }: { first: string; stars: number; onReplay: () => void }) {
+/** KID-07: the ENDING. The old screen said "Play again" and restarted puzzle
+ *  1 of the same six — a loop with no finish line, which is the shape of a
+ *  pressure mechanic even when nothing is counted. This one says the set is
+ *  complete and names what is waiting; the replay is an offer, not the only
+ *  way out, and it is honestly labelled as the same set. No "tomorrow", no
+ *  streak, no missed-day framing (law 3). */
+export function PatternDoneView({
+  first,
+  stars,
+  onReplay,
+  title,
+  subtitle,
+  againLabel,
+}: {
+  first: string;
+  stars: number;
+  onReplay: () => void;
+  title: string;
+  subtitle: string;
+  againLabel: string;
+}) {
   return (
-    <Celebrate title={`Pattern master, ${first}!`} subtitle="You read the pattern and saw what comes next." stars={stars} starsTotal={3}>
-      <PlayButton onClick={onReplay}>Play again</PlayButton>
+    <Celebrate title={title} subtitle={subtitle} stars={stars} starsTotal={3}>
+      <PlayButton onClick={onReplay}>{againLabel}</PlayButton>
     </Celebrate>
   );
 }
@@ -41,6 +62,11 @@ export function PatternRoundView({
   picked,
   onChoose,
   patternAria,
+  title,
+  say,
+  speakLabel,
+  lang,
+  total,
 }: {
   puzzle: PatternPuzzle;
   idx: number;
@@ -48,11 +74,21 @@ export function PatternRoundView({
   picked: string | null;
   onChoose: (opt: string) => void;
   patternAria: string;
+  title: string;
+  say: string;
+  speakLabel: string;
+  lang: string;
+  total: number;
 }) {
   return (
     <div className="space-y-6">
-      <PlayHeader title="Pattern Power" say="What comes next? Tap the shape that finishes the pattern." mood="think" />
-      <ProgressPips total={PATTERN_PUZZLES.length} current={idx} tone="lav" />
+      <PlayHeader
+        title={title}
+        say={say}
+        mood="think"
+        action={<SpeakButton text={say} lang={lang} label={speakLabel} size="md" className="min-w-[44px] min-h-[44px] justify-center" />}
+      />
+      <ProgressPips total={total} current={idx} tone="lav" />
 
       <div className="flex flex-wrap items-center justify-center gap-3 py-2" role="img" aria-label={patternAria}>
         {puzzle.shown.map((g, i) => (
@@ -87,13 +123,21 @@ export function PatternRoundView({
 
 export default function PatternPowerWorld() {
   const { first, log } = useArcadeLogger();
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
   const [idx, setIdx] = useState(0);
   const [picked, setPicked] = useState<string | null>(null);
   const [scores, setScores] = useState<number[]>([]);
 
+  // KID-08: the day's order, resolved ONCE per mount so a re-render never
+  // reshuffles the board under the child's finger. Same order all day, a
+  // different one the next day — no copy anywhere says "tomorrow".
+  const puzzles = useMemo(
+    () => puzzleOrderForDay(dayKey(new Date())).slice(0, PATTERN_ROUNDS_PER_DAY),
+    [],
+  );
+
   // KID-01: clamped read — `puzzle` is always real, `done` is the separate signal.
-  const { done, puzzle } = patternRound(idx);
+  const { done, puzzle } = patternRound(idx, puzzles);
   const options = useMemo(() => shuffle(puzzle.options), [puzzle.id]);
 
   if (done) {
@@ -102,6 +146,9 @@ export default function PatternPowerWorld() {
       <PatternDoneView
         first={first}
         stars={gradeStars(avg)}
+        title={t("elev.play.pattern.done.title", { name: first })}
+        subtitle={t("elev.play.pattern.done.sub")}
+        againLabel={t("elev.play.pattern.done.again")}
         onReplay={() => { setIdx(0); setScores([]); setPicked(null); }}
       />
     );
@@ -128,6 +175,11 @@ export default function PatternPowerWorld() {
       picked={picked}
       onChoose={choose}
       patternAria={t("aria.patternToContinue")}
+      title={t("elev.play.pattern.title")}
+      say={t("elev.play.pattern.say")}
+      speakLabel={t("elev.play.speak.label")}
+      lang={uiLang}
+      total={puzzles.length}
     />
   );
 }
