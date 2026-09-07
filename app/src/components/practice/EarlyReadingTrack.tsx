@@ -1,5 +1,6 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Icon } from "../ui/Icon";
+import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
 import { useLanguage } from "../../context/LanguageContext";
 import { SectionCard, cardCls, Chip } from "../ui/kit";
 import { ProgressPips, celebrateBurst } from "../ui/playkit";
@@ -23,10 +24,18 @@ import type { PracticeEvent } from "../../types";
 /* ════════════════════════════════════════════════════════════════════════════
    Early Reading track + Letter Trace mini-game (Mission M7).
    Layers an articulation → phonics → sight words → reading ladder, plus a
-   finger letter-tracing game, into the child register. The returned tree is
-   wrapped in an `.arbor-play` container so the child play register (background
-   wash, larger --play-radius scale) resolves; play vars also carry literal
-   fallbacks. No dark patterns: short, self-paced, effort-celebrated rounds.
+   finger letter-tracing game, into the child register.
+
+   IA-08 residue (law 2 — registers are never crossed): this track has TWO
+   mounts. `SpellForgeWorld` opens it inside the Hero Arcade (Kid Mode), and the
+   demoted disclosure on the PARENT `#/speech` door renders it too. The
+   `.arbor-play` wrapper was unconditional, so the comic register (background
+   wash, larger --play-radius scale) sat inside a parent surface — collapsed but
+   present. It now hangs off the same Kid Mode gate `RegisterShell`
+   (`ui/playkit.tsx`) reads; the parent branch returns kit chrome only
+   (`SectionCard`, tokens, the host's own `space-y-6`). Play vars keep their
+   literal fallbacks. No dark patterns: short, self-paced, effort-celebrated
+   rounds.
    ════════════════════════════════════════════════════════════════════════════ */
 
 type LogEvent = (kind: PracticeEvent["kind"], correct?: boolean, meta?: string, score?: number) => void;
@@ -229,6 +238,9 @@ const STAGE_HINT_KEY: Record<ReadingStage, string> = {
 
 export default function EarlyReadingTrack({ age, first, onLog }: { age: number; first: string; onLog: LogEvent }) {
   const { t } = useLanguage();
+  // Same module-singleton gate SpeechCoachTab and RegisterShell read, so the
+  // register follows the mount without the two hosts having to pass a prop.
+  const kidMode = useSyncExternalStore(subscribeKidMode, isKidModeActive);
   const available = useMemo<ReadingStage[]>(
     () => READING_STAGES.map((s) => s.stage).filter((s) => isReadingStageAppropriate(s, age)),
     [age]
@@ -264,8 +276,7 @@ export default function EarlyReadingTrack({ age, first, onLog }: { age: number; 
     setReadIdx((i) => (i + 1) % READING_LINES.length);
   };
 
-  return (
-    <div className="arbor-play">
+  const body = (
     <SectionCard title={t("prac.read.title")} icon={<Icon name="menu_book" size={20} />} tone="lav"
       action={<Chip tone="lav">{t("prac.read.tag")}</Chip>}>
       <p className="text-xs rounded-xl p-3 mb-4" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}>
@@ -357,6 +368,12 @@ export default function EarlyReadingTrack({ age, first, onLog }: { age: number; 
         {t("prac.read.footer", { first })}
       </p>
     </SectionCard>
-    </div>
+  );
+
+  // The comic wash mounts for the child only; the parent door gets kit chrome.
+  return kidMode ? (
+    <div className="arbor-play">{body}</div>
+  ) : (
+    body
   );
 }

@@ -19,13 +19,23 @@
  * Bracket matching mirrors `kidRegisterScan.test.ts`'s `matchBracket` (copied
  * rather than imported: importing a `.test.ts` re-runs that whole suite here).
  *
- * Negative controls (all three must FAIL the rule, proving the scan can see a
+ * Negative controls (all four must FAIL the rule, proving the scan can see a
  * violation): the pre-fix unconditional `<PlayShell>` return; a play wash
- * mounted in an explicitly PARENT-only branch (`!kidMode &&`); and a bare
- * `className="arbor-play"` with no branch at all.
+ * mounted in an explicitly PARENT-only branch (`!kidMode &&`); a bare
+ * `className="arbor-play"` with no branch at all; and the pre-fix
+ * `EarlyReadingTrack` wrapper (IA-08 residue, below).
+ *
+ * IA-08 RESIDUE (this extension): the six-route scan reads each ROUTE file and
+ * nothing it imports, so a child component with an unconditional wrapper stayed
+ * invisible — `EarlyReadingTrack` wrapped itself in `.arbor-play`, and once the
+ * parent `#/speech` door mounted it behind a disclosure the comic register was
+ * rendering (collapsed) on a parent surface. The named-file list could not see
+ * it. So the rule below WALKS `src/`: every non-test file carrying an
+ * `.arbor-play` class literal must either keep it inside a `kidMode` branch or
+ * appear in `KID_ONLY_SURFACES` with a reason. New files fail closed.
  */
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { SECTIONS, TAB_SECTION_FALLBACK } from "./navigation";
@@ -47,7 +57,12 @@ const SHARED_ROUTE_FILES: Record<string, string> = {
 /**
  * Files allowed to carry `.arbor-play` OUTSIDE a `kidMode` branch, with the
  * reason each is unreachable from parent chrome. A new entry here is a design
- * decision, not a formality.
+ * decision, not a formality: it asserts that NO parent route can mount the file.
+ *
+ * `components/practice/EarlyReadingTrack.tsx` was listed here as "a Spell Forge
+ * world panel, reached only from the arcade". That stopped being true when the
+ * parent `#/speech` door started rendering it behind its disclosure — two hosts,
+ * one of them parent. It is off the list and now branches on `kidMode` itself.
  */
 const KID_ONLY_SURFACES: Record<string, string> = {
   "components/ui/playkit.tsx":
@@ -55,8 +70,22 @@ const KID_ONLY_SURFACES: Record<string, string> = {
   "components/kidmode/KidModeOverlay.tsx": "the Kid Mode shell; it IS the kid register",
   "components/practice/HeroArcade.tsx":
     "mounted only by PracticeHubTab, which only KidModeOverlay renders (#/practice is PracticeStudioTab)",
-  "components/practice/EarlyReadingTrack.tsx": "a Spell Forge world panel, reached only from the arcade",
 };
+
+/** Every non-test source file under `src/`, as a path relative to `src/`. */
+function sourceFiles(dir = SRC, out: string[] = []): string[] {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const abs = path.join(dir, entry.name);
+    if (entry.isDirectory()) sourceFiles(abs, out);
+    else if (/\.tsx?$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name)) {
+      out.push(path.relative(SRC, abs).split(path.sep).join("/"));
+    }
+  }
+  return out;
+}
+
+/** `.arbor-play` class literals, as `playShellHits` sees them. */
+const PLAY_CLASS = /className=\{?\s*[`"'][^`"'\n]*\barbor-play\b/;
 
 /** Index of the bracket closing the one at `openIdx`, skipping strings/templates. */
 function matchBracket(src: string, openIdx: number): number {
@@ -158,6 +187,41 @@ describe("IA-08 / RUN-12 — the play register never renders on a parent door", 
     }
   });
 
+  /* ── IA-08 residue: the rule walks the tree, not a list ─────────────────
+     A named-file guard cannot see a shared child component. This scan starts
+     from `src/` itself, so any file that grows an `.arbor-play` wrapper is
+     covered the day it is written. */
+
+  const PLAY_CLASS_FILES = sourceFiles().filter((rel) => PLAY_CLASS.test(stripComments(read(rel))));
+
+  it("the tree walk reads a real corpus and finds the known play surfaces", () => {
+    expect(sourceFiles().length).toBeGreaterThan(150);
+    for (const rel of Object.keys(KID_ONLY_SURFACES)) expect(PLAY_CLASS_FILES, rel).toContain(rel);
+    expect(PLAY_CLASS_FILES).toContain("components/practice/EarlyReadingTrack.tsx");
+  });
+
+  it("EVERY file with an `.arbor-play` class literal branches on kidMode (or is an allow-listed kid surface)", () => {
+    const offenders: string[] = [];
+    for (const rel of PLAY_CLASS_FILES) {
+      if (rel in KID_ONLY_SURFACES) continue;
+      if (playShellHits(parentReachable(rel)).length > 0) offenders.push(rel);
+    }
+    expect(
+      offenders,
+      `these render the comic register where a parent can reach it — put the wrapper inside a \`kidMode\` branch, ` +
+        `or add the file to KID_ONLY_SURFACES with the reason no parent route mounts it: ${offenders.join(", ")}`
+    ).toEqual([]);
+  });
+
+  it("EarlyReadingTrack is off the allow-list: the parent #/speech door mounts it too", () => {
+    expect(Object.keys(KID_ONLY_SURFACES)).not.toContain("components/practice/EarlyReadingTrack.tsx");
+    // Both hosts still mount it — law 6, no capability lost by the register split.
+    expect(read("components/practice/SpellForgeWorld.tsx")).toContain("<EarlyReadingTrack");
+    expect(read("components/practice/SpeechCoachTab.tsx")).toContain("<EarlyReadingTrack");
+    // …and it reads the same Kid Mode gate RegisterShell reads.
+    expect(read("components/practice/EarlyReadingTrack.tsx")).toContain("subscribeKidMode");
+  });
+
   /* ── Negative controls: the scan must SEE a violation ─────────────────── */
 
   it("NEGATIVE CONTROL: the pre-fix unconditional wrapper is a hit", () => {
@@ -185,6 +249,23 @@ describe("IA-08 / RUN-12 — the play register never renders on a parent door", 
     expect(playShellHits(stripKidOnly(`<div className="arbor-play space-y-6">x</div>`))).toEqual([
       "arbor-play class",
     ]);
+  });
+
+  it("NEGATIVE CONTROL: the pre-fix EarlyReadingTrack wrapper is a hit", () => {
+    // Verbatim shape of EarlyReadingTrack.tsx before this fixup: the wrapper
+    // sat outside the returned SectionCard with no branch of any kind, which is
+    // why a collapsed `.arbor-play` DIV measured on the parent #/speech route.
+    const preFix = `
+      export default function EarlyReadingTrack({ age, first, onLog }) {
+        return (
+          <div className="arbor-play">
+          <SectionCard title={t("prac.read.title")} tone="lav">
+            <LetterTrace onLog={onLog} />
+          </SectionCard>
+          </div>
+        );
+      }`;
+    expect(playShellHits(stripKidOnly(stripComments(preFix)))).toEqual(["arbor-play class"]);
   });
 
   it("POSITIVE CONTROL: the same wash inside a kidMode branch passes", () => {
