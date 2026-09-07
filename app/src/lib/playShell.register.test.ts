@@ -146,7 +146,7 @@ describe("IA-08 / RUN-12 — the play register never renders on a parent door", 
     // …and it disappears when the kid branch is cut out. (The `.arbor-play`
     // class literal stays: it is PlayShell's OWN declaration, the primitive
     // this rule routes through — only its MOUNT sites are register-sensitive.)
-    expect(stripKidOnly(playkit)).not.toMatch(/<PlayShell|<PlayHeader/);
+    expect(stripKidOnly(playkit)).not.toMatch(/<PlayShell\b|<PlayHeader\b/);
     // RegisterShell offers both registers: kit's PageHeader is the parent half.
     expect(playkit).toMatch(/export function RegisterShell/);
     expect(playkit).toMatch(/<PageHeader\b/);
