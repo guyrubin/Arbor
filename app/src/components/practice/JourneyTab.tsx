@@ -67,7 +67,8 @@ export default function JourneyTab() {
     }),
     [data.speech.items, data.mimic.items, data.missions.items, data.adventures.items, data.events.items, data.stats, data.daysPracticed, copilot.heroRunCount]
   );
-  const earnedCount = achievements.filter((a) => a.earned).length;
+  const earnedAchievements = useMemo(() => achievements.filter((a) => a.earned), [achievements]);
+  const earnedCount = earnedAchievements.length;
 
   const startObjectives = () => {
     suggestedObjectives.forEach((o) => void objectivesCol.upsert(o));
@@ -198,21 +199,29 @@ export default function JourneyTab() {
       </SectionCard>
 
       <SectionCard title="Achievements" icon={<Icon name="trophy" size={20} />} tone="yellow">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {achievements.map((a) => (
-            <div key={a.id} className={`${cardCls} p-4`} style={{ opacity: a.earned ? 1 : 0.58 }}>
-              <div className="flex items-start gap-3">
-                <span className="text-3xl">{a.emoji}</span>
-                <div>
-                  <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{a.title}</p>
-                  <p className="text-[11px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{a.detail}</p>
-                  {/* KID-17: no dangling verdict on an unearned badge — the chip appears when earned. */}
-                  {a.earned && <Chip tone="mint">{t("elev.practice.journey.earned")}</Chip>}
+        {/* OBJ-KID-02 (law 3): the twelve unearned badges used to render at
+            opacity 0.58 — a greyed silhouette wall with its requirement showing,
+            i.e. pressure mechanics on the parent door. Earned badges render at
+            full opacity; the rest are a COUNT, not a wall. */}
+        <p className="text-[11px] mb-3" style={{ color: "var(--arbor-muted)" }}>
+          {t("elev.practice.journey.badgesEarned", { n: earnedCount, total: achievements.length })}
+        </p>
+        {earnedAchievements.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {earnedAchievements.map((a) => (
+              <div key={a.id} className={`${cardCls} p-4`}>
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">{a.emoji}</span>
+                  <div>
+                    <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{a.title}</p>
+                    <p className="text-[11px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{a.detail}</p>
+                    <Chip tone="mint">{t("elev.practice.journey.earned")}</Chip>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </SectionCard>
 
       <SectionCard title="Historical progression" icon={<Icon name="history" size={20} />} tone="sky">
