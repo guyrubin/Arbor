@@ -7,7 +7,7 @@ import { statesText } from "../../lib/i18nElevation/states";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import {
-  groupByDay, SIGNAL_PROVENANCE, signalDetail, signalTitle, weekWindow,
+  groupByDay, SIGNAL_PROVENANCE, signalDetail, signalTitle, weekMomentCount,
   type SignalKind, type SignalProvenance, type TimelineSignal,
 } from "../../lib/signalTimeline";
 import { withChildSignals } from "../../lib/i18nElevation/childsignals";
@@ -362,22 +362,23 @@ export default function JournalTab() {
     [signals, locale, t],
   );
 
-  // JRNL-7 + F-09: ONE counting source of truth — the shared weekWindow
-  // selector. The header stat ("This week in the story") AND the story-copy
-  // slice both derive from the SAME trailing-7-day list, so "connecting N
-  // moments" can never exceed the adjacent week count (previously the slice
-  // came from the all-time stream while the stat counted the week).
-  const weekSignals = useMemo(() => weekWindow(signals, Date.now()), [signals]);
-  const weekCount = weekSignals.length;
+  // JRNL-7 + F-09 + RUN-08/TJB-27: ONE counting source of truth. The header
+  // stat ("This week in the story") and the story copy now read the SAME
+  // `weekMomentCount` selector (lib/signalTimeline) that the Story density's
+  // stat grid reads — one phrase, one definition, one number per screen. The
+  // selector is the only week read this surface needs.
+  const weekCount = useMemo(() => weekMomentCount(signals, Date.now()), [signals]);
 
   const autoLabel = t("journal.auto");
   const manualLabel = t("journal.manual");
-  const recentSignals = weekSignals.slice(0, 3);
   // JRNL-2: all header/compose copy lives in lib/i18n.ts (journal.* keys) so the
   // EN/HE parity guard covers it — no inline he-ternary strings on this surface.
   // Empty week → journal.story.empty ("One small moment is enough to begin…").
-  const storyCopy = recentSignals.length
-    ? t("journal.story.body", { count: recentSignals.length })
+  // RUN-08: the count here is the SAME weekCount the stat beside it shows; it
+  // used to be `recentSignals.length` (capped at 3), which is how one screen
+  // came to carry "0 · 3 · 5 · 10".
+  const storyCopy = weekCount
+    ? t("journal.story.body", { count: weekCount })
     : t("journal.story.empty");
 
   return (
@@ -395,10 +396,25 @@ export default function JournalTab() {
           </div>
           <div className="border-t pt-4 md:border-s md:border-t-0 md:ps-5 md:pt-0" style={{ borderColor: "var(--arbor-rule-strong)" }}>
             <p className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("journal.week.title")}</p>
-            <div className="mt-3 flex items-center gap-3">
-              <span className="text-3xl font-black" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-lav-ink)" }}>{weekCount}</span>
-              <span className="text-xs leading-snug" style={{ color: "var(--arbor-muted)" }}>{t("journal.week.sub")}</span>
-            </div>
+            {/* RUN-08 zero wall: at day 0 this printed a 3xl black "0" beside
+                "moments and insights kept in one calm place" — the loudest
+                object on the screen, saying nothing. Same rule as HubHero:
+                below one moment the teach line replaces the numeral. */}
+            {weekCount === 0 ? (
+              <p
+                data-testid="journal-week-zero-line"
+                className="mt-3 text-[13px] font-bold leading-snug"
+                style={{ color: "var(--arbor-lav-ink)" }}
+                dir="auto"
+              >
+                {t("elev.journal.week.zero")}
+              </p>
+            ) : (
+              <div className="mt-3 flex items-center gap-3">
+                <span className="text-3xl font-black" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-lav-ink)" }}>{weekCount}</span>
+                <span className="text-xs leading-snug" style={{ color: "var(--arbor-muted)" }}>{t("journal.week.sub")}</span>
+              </div>
+            )}
           </div>
         </div>
       </header>

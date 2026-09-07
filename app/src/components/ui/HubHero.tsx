@@ -17,6 +17,29 @@ import { prefersReducedMotion } from "../../lib/devscore";
    All strings arrive pre-translated (callers use t()); no literals here.
    ════════════════════════════════════════════════════════════════════════════ */
 
+/**
+ * RUN-08 — is this stat a zero the parent cannot act on?
+ *
+ * The rule used to be `Number(s.value) === 0`, which is NaN for every RATIO
+ * shape a hub passes: "0/0" on Behaviors, "0 of 7" elsewhere. NaN !== 0, so
+ * the zero-line never fired and a day-0 parent met "0 Events · 0 Contexts ·
+ * 0/0 Resolved". A ratio is zero when its NUMERATOR is zero — that is also the
+ * rule "never a denominator before numerator >= 1": with nothing counted yet
+ * the total is trivia, not information.
+ *
+ * A non-numeric string ("3 min") is NOT zero: it carries a real value.
+ */
+export function statIsZero(value: number | string): boolean {
+  if (typeof value === "number") return value === 0;
+  const s = String(value).trim();
+  if (s === "") return true;
+  // "0/0", "0 / 7", "0 of 39", "0 מתוך 39" — the numerator decides.
+  const ratio = s.match(/^(-?\d+(?:[.,]\d+)?)\s*(?:\/|of|out of|מתוך)\s*-?\d+(?:[.,]\d+)?$/i);
+  if (ratio) return Number(ratio[1].replace(",", ".")) === 0;
+  const n = Number(s);
+  return Number.isFinite(n) && n === 0;
+}
+
 export interface HubHeroStat {
   /** A COUNT or plain activity number — never a %, score, or delta. */
   value: number | string;
@@ -71,8 +94,9 @@ export function HubHero({
 
   const trio = (stats ?? []).slice(0, 3);
   // RUN-08 "zero wall": a trio whose every value is 0 is not information — the
-  // first non-zero stat brings the numerals back.
-  const allZero = trio.length > 0 && trio.every((s) => Number(s.value) === 0);
+  // first non-zero stat brings the numerals back. Ratio strings included
+  // (see statIsZero): "0/0" defeated the old Number() test on Behaviors.
+  const allZero = trio.length > 0 && trio.every((s) => statIsZero(s.value));
 
   return (
     <section

@@ -47,6 +47,15 @@ export const en: Record<string, string> = {
   "elev.childsignals.months.by": "By {month}: {count} moments in the story",
   "elev.childsignals.months.showEarlier": "Show earlier months ({n})",
   "elev.childsignals.months.hideEarlier": "Show recent months only",
+
+  // ── Builder E2 · RUN-08 — the Story density's stat grid. One count per
+  //    phrase (weekMomentCount), age-windowed milestone totals, and a teach
+  //    line instead of "0 · 3/7 · 0/133" on a day-0 screen.
+  "elev.childsignals.stat.moments": "Moments this week",
+  "elev.childsignals.stat.planSteps": "Plan steps done",
+  "elev.childsignals.stat.wins": "{count} closed this week",
+  "elev.childsignals.stat.milestones": "Milestones noticed",
+  "elev.childsignals.stat.zero": "Nothing in the story yet — capture one moment and it starts here.",
 };
 
 export const he: Record<string, string> = {
@@ -72,6 +81,13 @@ export const he: Record<string, string> = {
   "elev.childsignals.months.by": "עד {month}: {count} רגעים בסיפור",
   "elev.childsignals.months.showEarlier": "להציג חודשים מוקדמים ({n})",
   "elev.childsignals.months.hideEarlier": "להציג רק את החודשים האחרונים",
+
+  // ── Builder E2 · RUN-08
+  "elev.childsignals.stat.moments": "רגעים השבוע",
+  "elev.childsignals.stat.planSteps": "צעדים שהושלמו",
+  "elev.childsignals.stat.wins": "{count} נסגרו השבוע",
+  "elev.childsignals.stat.milestones": "אבני דרך שנצפו",
+  "elev.childsignals.stat.zero": "עוד אין מה לספר — תיעוד של רגע אחד מתחיל את הסיפור.",
 };
 
 /** Structural mirror of the app's t() — kept local so this module depends

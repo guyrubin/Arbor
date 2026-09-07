@@ -453,7 +453,11 @@ export default function BehaviorsTab() {
     return {
       events: last7.length,
       contexts,
-      resolved: `${resolvedWeek}/${last7.length}`,
+      // RUN-08: a ratio only once there is a numerator. `${0}/${0}` is the
+      // string that defeated HubHero's zero test and printed "0/0 Resolved"
+      // on a day-0 hub; below one resolved moment the stat is the plain
+      // count, so the whole trio can read as zero and the teach line fires.
+      resolved: resolvedWeek === 0 ? 0 : `${resolvedWeek}/${last7.length}`,
     };
   }, [behaviorLogs]);
 

@@ -159,6 +159,11 @@ export const en: Record<string, string> = {
   "elev.prompt.early-school.28": "What was the best part of the day — by their account?",
   "elev.prompt.early-school.29": "What did they wonder about out loud today?",
   "elev.prompt.early-school.30": "What from today belongs in the story?",
+
+  // ── Builder E2 · RUN-08: the Journal week stat at day 0. A 3xl black "0"
+  //    beside "moments and insights kept in one calm place" was the loudest
+  //    object on a new parent's screen and said nothing.
+  "elev.journal.week.zero": "Nothing kept this week yet — the first moment you catch lands here.",
 };
 
 export const he: Record<string, string> = {
@@ -310,4 +315,7 @@ export const he: Record<string, string> = {
   "elev.prompt.early-school.28": "מה היה החלק הכי טוב של היום — לפי הדיווח מהשטח?",
   "elev.prompt.early-school.29": "על מה תהו היום בקול רם?",
   "elev.prompt.early-school.30": "מה מהיום שייך לסיפור?",
+
+  // ── Builder E2 · RUN-08
+  "elev.journal.week.zero": "השבוע עוד לא נשמר כלום — הרגע הראשון שתתפסו יופיע כאן.",
 };

@@ -480,6 +480,22 @@ export const weekWindow = (signals: TimelineSignal[], now: number = Date.now()):
     return Number.isFinite(t) && t > now - 7 * DAY && t <= now;
   });
 
+/**
+ * TJB-27 / RUN-09 — THE count of "moments this week", for every surface that
+ * says those words.
+ *
+ * Three screens carried three definitions of one phrase: the Journal header
+ * counted every signal in the trailing week (milestones and play included),
+ * the Journal story copy counted a slice of at most three, and the Story
+ * density counted raw behaviorLogs. A parent reading "3" beside "5" beside
+ * "10" on one screen learns only that Arbor cannot count.
+ *
+ * The definition: signals of kind "moment" — what the parent CAPTURED — whose
+ * timestamp falls in the trailing seven days. One selector, one number.
+ */
+export const weekMomentCount = (signals: TimelineSignal[], now: number = Date.now()): number =>
+  weekWindow(signals, now).filter((s) => s.kind === "moment").length;
+
 export type Trend = "up" | "down" | "flat";
 
 export interface Momentum {

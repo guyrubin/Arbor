@@ -5,12 +5,13 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import {
   buildMonthsLayer, computeMomentum, deriveNextStep, groupByDay,
-  SIGNAL_PROVENANCE, signalDetail, signalMeta, signalTitle,
+  SIGNAL_PROVENANCE, signalDetail, signalMeta, signalTitle, weekMomentCount,
   type MonthNode, type SignalKind, type SignalTone, type TimelineSignal, type TranslateFn,
 } from "../../lib/signalTimeline";
 import { withChildSignals } from "../../lib/i18nElevation/childsignals";
 import { useTimeline } from "../../hooks/useTimeline";
 import { PageHeader, PASTEL, IconBadge, Chip, SectionCard, cardCls, type PastelKey } from "../ui/kit";
+import { statIsZero } from "../ui/HubHero";
 import { MemoryRow } from "../sections/ChildMemory";
 import ScreeningSheet from "../sections/ScreeningSheet";
 import { composeChildStory, childStoryToText } from "../../lib/childStory";
@@ -199,7 +200,7 @@ export default function StoryTimelineTab() {
     behaviorLogs, milestones, actionPlans, memoryReviewItems,
     childProfile, setActiveTab, seedCoach,
     pendingMemoryItems, handleMemoryDecision, isMemoryUpdating,
-    playLogs,
+    playLogs, checkedMilestones, totalMilestones,
   } = useArbor();
   const { t, uiLang } = useLanguage();
   const locale = uiLang === "he" ? "he" : "en";
@@ -256,6 +257,20 @@ export default function StoryTimelineTab() {
       /* export is best-effort; never break the page */
     }
   };
+
+  /* RUN-08 — the three stats, derived in one place so the "no denominator
+     before a numerator" rule is stated once rather than three times. Values
+     are numbers until a numerator exists; `statIsZero` (ui/HubHero) is the
+     shared zero test, so the grid and every hub hero agree on what a zero is. */
+  const statGrid = useMemo(() => {
+    const moments = weekMomentCount(signals, Date.now());
+    const planSteps = momentum.planSteps.done === 0 ? 0 : `${momentum.planSteps.done}/${momentum.planSteps.total}`;
+    const milestones = checkedMilestones === 0 ? 0 : `${checkedMilestones}/${totalMilestones}`;
+    return {
+      moments, planSteps, milestones,
+      allZero: [moments, planSteps, milestones].every(statIsZero),
+    };
+  }, [signals, momentum.planSteps.done, momentum.planSteps.total, checkedMilestones, totalMilestones]);
 
   const shown = filter === "all" ? signals : signals.filter((s) => s.kind === filter);
   // JRNL-3: day-group labels localize via Intl; "Ongoing" comes from i18n.
@@ -342,29 +357,52 @@ export default function StoryTimelineTab() {
           verdict on a child metric. Removed. The flat parent-log moment count +
           the plan-steps + milestones counts stay (all are flat parent-owned
           counts, no verdict). */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-        <StatTile
-          tone="coral" icon={<Icon name="bolt" size={20} fill={1} />}
-          value={momentum.momentsThisWeek} label="Moments this week"
-          // CLINICAL FIREWALL: this foot used to render `vs {n} last week` — two
-          // week counts side by side is a trend delta on a child-data parent
-          // surface, which §2 bans (it also shipped hard-coded in English on an
-          // otherwise fully translated screen). The tile's own value already
-          // carries the week's count; no prior window is shown.
-          foot={undefined}
-        />
-        <StatTile
-          tone="sky" icon={<Icon name="eco" size={20} fill={1} />}
-          value={`${momentum.planSteps.done}/${momentum.planSteps.total || 0}`}
-          label="Plan steps done"
-          foot={<span style={{ color: "var(--arbor-muted)" }}>{momentum.winsThisWeek} win{momentum.winsThisWeek === 1 ? "" : "s"} this week</span>}
-        />
-        <StatTile
-          tone="lav" icon={<Icon name="check_circle" size={20} fill={1} />}
-          value={`${momentum.milestones.observed}/${momentum.milestones.total || 0}`}
-          label="Milestones observed"
-        />
-      </div>
+      {/* RUN-08 — the zero wall. At day 0 this grid read "0 · 3/7 · 0/133": a
+          plan denominator with no numerator, and an ALL-AGES milestone total
+          beside Today's age-windowed "0 of 39" for the same child. Now:
+          · one `weekMomentCount` (lib/signalTimeline) — the same selector the
+            Journal header and its story copy read, so one phrase = one number;
+          · `checkedMilestones`/`totalMilestones` from ArborContext, already
+            windowed through ageWindowMilestones — the count Today uses;
+          · never a denominator before its numerator reaches 1;
+          · every stat zero → one teach line, no numerals (the HubHero rule,
+            shared through statIsZero rather than re-derived here). */}
+      {statGrid.allZero ? (
+        <p
+          data-testid="story-stats-zero-line"
+          className={`${cardCls} p-4 text-[13.5px] font-bold`}
+          style={{ color: PASTEL.lav.ink }}
+          dir="auto"
+        >
+          {tt("elev.childsignals.stat.zero")}
+        </p>
+      ) : (
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+          <StatTile
+            tone="coral" icon={<Icon name="bolt" size={20} fill={1} />}
+            value={statGrid.moments} label={tt("elev.childsignals.stat.moments")}
+            // CLINICAL FIREWALL: this foot used to render `vs {n} last week` — two
+            // week counts side by side is a trend delta on a child-data parent
+            // surface, which §2 bans (it also shipped hard-coded in English on an
+            // otherwise fully translated screen). The tile's own value already
+            // carries the week's count; no prior window is shown.
+            foot={undefined}
+          />
+          <StatTile
+            tone="sky" icon={<Icon name="eco" size={20} fill={1} />}
+            value={statGrid.planSteps}
+            label={tt("elev.childsignals.stat.planSteps")}
+            foot={momentum.winsThisWeek > 0
+              ? <span style={{ color: "var(--arbor-muted)" }}>{tt("elev.childsignals.stat.wins", { count: momentum.winsThisWeek })}</span>
+              : undefined}
+          />
+          <StatTile
+            tone="lav" icon={<Icon name="check_circle" size={20} fill={1} />}
+            value={statGrid.milestones}
+            label={tt("elev.childsignals.stat.milestones")}
+          />
+        </div>
+      )}
 
       {/* Masterplan 1.8 — the months spine: milestone crossings + cumulative
           moments-captured totals, collapsed beyond the last 3 months. */}
