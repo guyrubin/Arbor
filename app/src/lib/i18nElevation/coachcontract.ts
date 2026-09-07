@@ -86,6 +86,9 @@ export const en: Record<string, string> = {
   "elev.coachcontract.lens.concept.piaget": "Stage-Aware Expectations",
   "elev.coachcontract.lens.concept.erikson": "Developmental Arc",
 
+  // ── Builder F · OBJ-ASK-01 · the composer's accessible name
+  "elev.coachcontract.composer.aria": "Ask about your child",
+
 };
 
 export const he: Record<string, string> = {
@@ -127,6 +130,9 @@ export const he: Record<string, string> = {
   "elev.coachcontract.lens.concept.bronfenbrenner": "הסביבה סביב הילד",
   "elev.coachcontract.lens.concept.piaget": "ציפיות לפי שלב",
   "elev.coachcontract.lens.concept.erikson": "הקשת ההתפתחותית",
+
+  // ── Builder F · OBJ-ASK-01 · the composer's accessible name
+  "elev.coachcontract.composer.aria": "לשאול על הילד שלכם",
 
 };
 

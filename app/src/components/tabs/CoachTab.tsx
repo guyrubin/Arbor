@@ -101,12 +101,12 @@ const FOLLOW_UPS: { labelKey: string; prompt: string }[] = [
 // IA-2: fast-start scenarios — the most common hard moments, one tap away.
 // `labelKey` is translated UI chrome; `prompt` is an AI-input string kept English
 // (the model localizes its reply via getAiLanguage()) — do not translate prompts.
-const SCENARIOS: { emoji: string; labelKey: string; prompt: string }[] = [
-  { emoji: "🌅", labelKey: "coach.scenario.morning", prompt: "My child refuses to get dressed and leave the house in the morning. What may be happening and what do I do today?" },
-  { emoji: "📱", labelKey: "coach.scenario.ipad", prompt: "Turning off the iPad ends in a meltdown. Give me what may be happening, an exact script, and what to avoid." },
-  { emoji: "🧒", labelKey: "coach.scenario.sibling", prompt: "My children keep fighting over toys. Help me understand it and give me a calm script to use in the moment." },
-  { emoji: "🌙", labelKey: "coach.scenario.bedtime", prompt: "Bedtime takes over an hour with lots of resistance. What's a calm wind-down plan and script?" },
-  { emoji: "🏫", labelKey: "coach.scenario.dropoff", prompt: "My child cries and clings at school dropoff. What may be happening and exactly what do I say?" },
+const SCENARIOS: { icon: string; labelKey: string; prompt: string }[] = [
+  { icon: "light_mode", labelKey: "coach.scenario.morning", prompt: "My child refuses to get dressed and leave the house in the morning. What may be happening and what do I do today?" },
+  { icon: "devices", labelKey: "coach.scenario.ipad", prompt: "Turning off the iPad ends in a meltdown. Give me what may be happening, an exact script, and what to avoid." },
+  { icon: "diversity_3", labelKey: "coach.scenario.sibling", prompt: "My children keep fighting over toys. Help me understand it and give me a calm script to use in the moment." },
+  { icon: "bedtime", labelKey: "coach.scenario.bedtime", prompt: "Bedtime takes over an hour with lots of resistance. What's a calm wind-down plan and script?" },
+  { icon: "school", labelKey: "coach.scenario.dropoff", prompt: "My child cries and clings at school dropoff. What may be happening and exactly what do I say?" },
 ];
 
 export default function CoachTab() {
@@ -823,6 +823,10 @@ export default function CoachTab() {
               disabled={isChatLoading}
               rows={2}
               placeholder={t("coach.placeholder", { name: childFirst })}
+              // OBJ-ASK-01: a placeholder is not an accessible name (it
+              // disappears on first keystroke, and axe reports the field as
+              // unlabelled). The label says what the field is FOR.
+              aria-label={tcc("elev.coachcontract.composer.aria")}
               className="flex-1 bg-transparent resize-none px-2.5 py-2 text-sm leading-relaxed focus:outline-none min-h-[58px]"
               style={{ color: "var(--arbor-ink)" }}
             />
@@ -853,14 +857,14 @@ export default function CoachTab() {
               instances on the surface (COACH-4 firewall condition: they survive
               the composer consolidation). */}
           <div className="mt-3 flex items-center gap-2 flex-wrap">
-            <button type="button" onClick={() => setVisionMode("observe")} className="inline-flex items-center gap-1.5 min-h-[36px] px-3 rounded-full text-[11px] font-bold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}><Icon name="photo_camera" size={14} /> {t("coach.photo")}</button>
-            <button type="button" onClick={() => setVisionMode("document")} className="inline-flex items-center gap-1.5 min-h-[36px] px-3 rounded-full text-[11px] font-bold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}><Icon name="description" size={14} /> {t("coach.document")}</button>
+            <button type="button" onClick={() => setVisionMode("observe")} className="inline-flex items-center gap-1.5 min-h-11 px-3 rounded-full text-[11px] font-bold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}><Icon name="photo_camera" size={14} /> {t("coach.photo")}</button>
+            <button type="button" onClick={() => setVisionMode("document")} className="inline-flex items-center gap-1.5 min-h-11 px-3 rounded-full text-[11px] font-bold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}><Icon name="description" size={14} /> {t("coach.document")}</button>
             <button
               type="button"
               onClick={toggleVoice}
               aria-pressed={voicePhase !== "off"}
               aria-label={voiceLabel}
-              className="inline-flex items-center gap-1.5 min-h-[36px] px-3 rounded-full text-[11px] font-bold"
+              className="inline-flex items-center gap-1.5 min-h-11 px-3 rounded-full text-[11px] font-bold"
               style={voicePhase !== "off"
                 ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }
                 : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
@@ -922,7 +926,10 @@ export default function CoachTab() {
                 className="inline-flex items-center gap-2 rounded-2xl px-4 py-3 min-h-[48px] text-start text-sm font-bold bg-white transition motion-safe:hover:-translate-y-0.5 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
                 style={{ color: T.ink, border: "1px solid var(--arbor-rule)" }}
               >
-                <span aria-hidden>{s.emoji}</span> {t(s.labelKey)}
+                {/* OBJ-ASK-04: an emoji is a different register from every
+                    other parent surface (and reads differently per platform).
+                    Same Material Symbols set the rest of the app uses. */}
+                <Icon name={s.icon} size={16} style={{ color: "var(--arbor-green-ink)" }} /> {t(s.labelKey)}
               </button>
             ))}
           </div>
@@ -1053,7 +1060,7 @@ export default function CoachTab() {
       <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
         <button
           onClick={newConversation}
-          className="flex-shrink-0 flex items-center gap-1.5 text-[11px] font-extrabold px-3 py-1.5 rounded-full transition"
+          className="flex-shrink-0 flex min-h-11 items-center gap-1.5 text-[11px] font-extrabold px-3 py-1.5 rounded-full transition"
           style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
         >
           <Icon name="add" size={14} /> {t("coach.new")}
@@ -1066,10 +1073,10 @@ export default function CoachTab() {
               className="flex-shrink-0 flex items-center gap-1.5 rounded-full ps-3 pe-1.5 py-1 transition"
               style={on ? { background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.30)" } : { background: T.paperElevated, border: "1px solid var(--arbor-rule)" }}
             >
-              <button onClick={() => openConversation(c.id)} className="flex items-center gap-1.5 text-[11px] font-bold max-w-[160px] truncate" style={{ color: on ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>
+              <button onClick={() => openConversation(c.id)} className="flex min-h-11 items-center gap-1.5 text-[11px] font-bold max-w-[160px] truncate" style={{ color: on ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>
                 <Icon name="chat" size={12} className="flex-shrink-0" /> <span className="truncate">{c.title}</span>
               </button>
-              <button onClick={() => deleteConversation(c.id)} aria-label={t("aria.deleteConversation")} className="transition" style={{ color: "var(--arbor-muted)" }}>
+              <button onClick={() => deleteConversation(c.id)} aria-label={t("aria.deleteConversation")} className="touch-target transition" style={{ color: "var(--arbor-muted)" }}>
                 <Icon name="delete" size={12} />
               </button>
             </div>
