@@ -10,14 +10,25 @@
  * link entry, a search-index route, or a hash alias), or is it a retired door
  * whose registry entry is an alias of another route's component?
  *
- * Negative control: the scanner run over the pre-fix ChildProfile source (no
- * strengths link) does not find "strengths".
+ * ONE ROUTE IS DELIBERATELY DOORLESS. `#/strengths` was retired in GP-26: the
+ * leaf duplicated Profile chapter 4 and its only entrance was a 16 px link
+ * inside that same chapter, so Builder F deleted the door and pointed the hash
+ * at Profile through `RETIRED_ROUTES`. This guard then went red — it was
+ * asking "does a component navigate here?" of a route whose whole point is
+ * that none does. The retired-route contract below makes that explicit: a
+ * retired route counts as reachable when its hash RESOLVES to a live route
+ * that is itself reachable, and a retirement with no target, a self-redirect,
+ * or a target that is not a route fails.
+ *
+ * Negative controls: `retiredRouteIsReachable` run over four maps that do not
+ * satisfy the contract returns false, and rewriting one real `setActiveTab`
+ * out of ChildProfile makes the scanner stop seeing that route.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { ROUTE_IDS, HASH_ALIASES } from "./routes";
+import { ROUTE_IDS, HASH_ALIASES, RETIRED_ROUTES, resolveRouteId } from "./routes";
 import { SECTIONS, hubTabsForSection } from "./navigation";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -46,6 +57,35 @@ export function navigationTargets(code: string): Set<string> {
     for (const m of src.matchAll(re)) out.add(m[1]);
   }
   return out;
+}
+
+/**
+ * THE RETIRED-ROUTE CONTRACT.
+ *
+ * GP-26 retired `#/strengths` (0a4239f2 / c5a22c21): its whole content is
+ * Profile chapter 4, and its only door was a 16 px link inside that same
+ * chapter. The id keeps its seat in ROUTE_IDS — it is persisted in
+ * `arbor.activeTab`, baked into shared deep links, and it drives Shell's
+ * registry type and the module-budget floors — so this guard's original
+ * question ("does a component navigate here?") is the WRONG question for it,
+ * and asking it turned a deliberate retirement into a red gate.
+ *
+ * A retired route is reachable when its hash RESOLVES to a live route. Not
+ * when it is merely listed: a retirement with no redirect target, or one that
+ * points at itself or at something that is not a route, is a dead door and
+ * must fail. That is what this predicate is for — it takes the map and the
+ * live-route set as arguments precisely so it can be run against a map that
+ * does NOT satisfy it (the negative control below).
+ */
+export function retiredRouteIsReachable(
+  key: string,
+  map: Readonly<Record<string, string>>,
+  liveRoutes: ReadonlySet<string>,
+): boolean {
+  const target = map[key];
+  if (!target) return false;        // retired with nowhere to land
+  if (target === key) return false; // a self-redirect is not a redirect
+  return liveRoutes.has(target);
 }
 
 /** Routes whose Shell registry component is ALSO registered under another id
@@ -81,11 +121,14 @@ describe("IA-09 — every non-pill route has a real entry point", () => {
     expect(callSites.size).toBeGreaterThan(20);
   });
 
-  it("NEGATIVE CONTROL: the pre-fix ChildProfile (no strengths link) does not reach 'strengths'", () => {
+  it("NEGATIVE CONTROL: the scanner really does read call sites", () => {
+    // Rewrite one real navigation out of a real component and the scanner
+    // stops seeing it — so an empty result above means "nothing navigates
+    // here", not "the regexes matched nothing at all".
     const current = read("components/sections/ChildProfile.tsx");
-    const preFix = current.replace(/setActiveTab\("strengths"\)/g, 'setActiveTab("profile")');
-    expect(navigationTargets(preFix).has("strengths")).toBe(false);
-    expect(navigationTargets(current).has("strengths")).toBe(true);
+    expect(navigationTargets(current).has("memory")).toBe(true);
+    const preFix = current.replace(/setActiveTab\("memory"\)/g, 'setActiveTab("profile")');
+    expect(navigationTargets(preFix).has("memory")).toBe(false);
   });
 
   it("the registry alias detector finds the known retired doors and nothing bogus", () => {
@@ -93,15 +136,60 @@ describe("IA-09 — every non-pill route has a real entry point", () => {
     expect(aliased.has("strengths")).toBe(false);
   });
 
+  const live = new Set<string>(ROUTE_IDS);
+  const retired = new Set(Object.keys(RETIRED_ROUTES));
+
   for (const route of ROUTE_IDS) {
     if (pills.has(route)) continue;
-    it(`#/${route} is navigated to by a component, indexed for search, aliased, or a retired door`, () => {
-      const ok = callSites.has(route) || extra.has(route) || aliased.has(route) || aliasTargets.has(route);
+    it(`#/${route} is navigated to by a component, indexed for search, aliased, or redirected`, () => {
+      const ok =
+        callSites.has(route) ||
+        extra.has(route) ||
+        aliased.has(route) ||
+        aliasTargets.has(route) ||
+        retiredRouteIsReachable(route, RETIRED_ROUTES, live);
       expect(ok, `route "${route}" is declared but nothing navigates to it`).toBe(true);
     });
   }
 
-  it("#/strengths specifically is reached from the Development Profile's strengths chapter", () => {
-    expect(navigationTargets(read("components/sections/ChildProfile.tsx")).has("strengths")).toBe(true);
+  it("every retired route redirects to a LIVE route, and that route is itself reachable", () => {
+    expect(retired.size, "the retired map is empty — this contract is not being exercised").toBeGreaterThan(0);
+    for (const key of retired) {
+      const target = RETIRED_ROUTES[key];
+      // The id keeps its seat: retiring a route must not delete it, or every
+      // stored activeTab and shared deep link carrying it breaks.
+      expect(live.has(key), `retired route "${key}" was deleted from ROUTE_IDS`).toBe(true);
+      expect(retiredRouteIsReachable(key, RETIRED_ROUTES, live)).toBe(true);
+      // The hash actually lands there — the contract is the router's behaviour,
+      // not a comment in a map.
+      expect(resolveRouteId(`#/${key}`)).toBe(target);
+      expect(resolveRouteId(key)).toBe(target);
+      // …and the destination is a place a parent can otherwise get to, so the
+      // redirect is not one dead door forwarding to another.
+      const targetReachable = pills.has(target) || callSites.has(target) || extra.has(target) || aliasTargets.has(target);
+      expect(targetReachable, `retired "${key}" lands on "${target}", which nothing else reaches`).toBe(true);
+      // A retired route must not also be an alias key — two maps answering for
+      // one hash is how the drift this file exists to catch starts.
+      expect(Object.keys(HASH_ALIASES)).not.toContain(key);
+    }
+  });
+
+  it("NEGATIVE CONTROL: a retired route with no live redirect target FAILS", () => {
+    // Same predicate, four maps that do not satisfy the contract.
+    expect(retiredRouteIsReachable("ghost", {}, live)).toBe(false);                    // retired, no target
+    expect(retiredRouteIsReachable("ghost", { ghost: "" }, live)).toBe(false);         // empty target
+    expect(retiredRouteIsReachable("ghost", { ghost: "ghost" }, live)).toBe(false);    // points at itself
+    expect(retiredRouteIsReachable("ghost", { ghost: "nowhere" }, live)).toBe(false);  // target is not a route
+    // …and one that does.
+    expect(retiredRouteIsReachable("ghost", { ghost: "profile" }, live)).toBe(true);
+  });
+
+  it("#/strengths is retired: no visible door, and the hash lands on the hub that owns the content", () => {
+    // Builder F removed the 16 px JumpLink. Re-introducing a Strengths door is
+    // the regression this asserts against — the route stays valid for old deep
+    // links, and it stays doorless.
+    expect(callSites.has("strengths"), "a component navigates to #/strengths again").toBe(false);
+    expect(navigationTargets(read("components/sections/ChildProfile.tsx")).has("strengths")).toBe(false);
+    expect(resolveRouteId("#/strengths")).toBe("profile");
   });
 });
