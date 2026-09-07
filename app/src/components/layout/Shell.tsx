@@ -21,7 +21,7 @@ import SearchModal, { SEARCH_OPEN_EVENT, requestOpenSearch, type SearchOpenSurfa
 import { track } from "../../lib/analytics";
 import SettingsModal from "./SettingsModal";
 import PaywallModal from "../billing/PaywallModal";
-import { refreshEntitlement, takeBillingReturn, startBillingReturnPoll } from "../../hooks/useEntitlement";
+import { refreshEntitlement, takeBillingReturn, startBillingReturnPoll, BILLING_PENDING_KEY } from "../../hooks/useEntitlement";
 import { selectionHaptic } from "../../lib/native";
 // AP-048: Kid Mode overlay + context provider
 import { KidModeProvider } from "../kidmode/KidModeContext";
@@ -243,7 +243,14 @@ export default function Shell() {
       try { window.history.replaceState(null, "", clean); } catch { /* noop */ }
     }
     if (!takeBillingReturn() && !fromParam) return;
-    return startBillingReturnPoll({ toast, t, refresh: refreshEntitlement });
+    // CR-09: the pending ("still confirming") toast is the one dead end in this
+    // sequence — it told the parent to wait with nothing to press. It now carries
+    // the ToastContext action slot so Retry re-reads the entitlement in place.
+    const withRetry: typeof toast = (message, type, action) =>
+      toast(message, type, action ?? (message === t(BILLING_PENDING_KEY)
+        ? { label: t("elev.billing.retry"), onClick: () => { void refreshEntitlement(); } }
+        : undefined));
+    return startBillingReturnPoll({ toast: withRetry, t, refresh: refreshEntitlement });
   }, [toast, t]);
 
   return (

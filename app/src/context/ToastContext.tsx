@@ -6,10 +6,15 @@ import { useLanguage } from "./LanguageContext";
 import { isKidModeActive, subscribeKidMode } from "../lib/kidModeGate";
 
 type ToastType = "success" | "error" | "info";
-type Toast = { id: number; type: ToastType; message: string };
+/** CR-09: an optional single action a toast can offer (e.g. "Retry" on the
+ *  billing-return pending toast). A toast that carries an action is NOT
+ *  auto-dismissed — a 4 s window is not long enough to read a message and
+ *  decide to act on it, so the parent dismisses it themselves. */
+export type ToastAction = { label: string; onClick: () => void };
+type Toast = { id: number; type: ToastType; message: string; action?: ToastAction };
 
 type ToastContextValue = {
-  toast: (message: string, type?: ToastType) => void;
+  toast: (message: string, type?: ToastType, action?: ToastAction) => void;
 };
 
 const ToastContext = createContext<ToastContextValue | null>(null);
@@ -41,14 +46,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const remove = useCallback((id: number) => setToasts((t) => t.filter((x) => x.id !== id)), []);
 
   const toast = useCallback(
-    (message: string, type: ToastType = "info") => {
+    (message: string, type: ToastType = "info", action?: ToastAction) => {
       const id = Date.now() + Math.random();
       if (isKidModeActive()) {
-        queueRef.current.push({ id, type, message });
+        queueRef.current.push({ id, type, message, action });
         return;
       }
-      setToasts((t) => [...t, { id, type, message }]);
-      setTimeout(() => remove(id), 4000);
+      setToasts((t) => [...t, { id, type, message, action }]);
+      if (!action) setTimeout(() => remove(id), 4000);
     },
     [remove]
   );
@@ -59,7 +64,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     const queued = queueRef.current;
     queueRef.current = [];
     setToasts((t) => [...t, ...queued]);
-    for (const q of queued) setTimeout(() => remove(q.id), 4000);
+    for (const q of queued) if (!q.action) setTimeout(() => remove(q.id), 4000);
   }, [kidLocked, remove]);
 
   return (
@@ -72,7 +77,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {!kidLocked && (
       typeof document === "undefined" ? null : createPortal(
       <div role="status" aria-live="polite" data-dialog-shield-exempt
-        className="fixed top-4 end-4 z-[80] arbor-app flex flex-col gap-2 w-[min(92vw,340px)]">
+        className="fixed end-4 z-[80] arbor-app flex flex-col gap-2 w-[min(92vw,340px)]"
+        // CR-09: `top-4` put the layer under the notch/status bar on a phone.
+        style={{ top: "calc(env(safe-area-inset-top) + 1rem)" }}>
         <AnimatePresence>
           {toasts.map((tc) => (
             <motion.div
@@ -88,7 +95,18 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               }}
             >
               {STYLES[tc.type].icon}
-              <span className="flex-1 leading-snug" style={{ color: "var(--arbor-ink)" }}>{tc.message}</span>
+              <div className="flex-1 min-w-0">
+                <span className="block leading-snug" style={{ color: "var(--arbor-ink)" }}>{tc.message}</span>
+                {tc.action && (
+                  <button
+                    onClick={() => { tc.action?.onClick(); remove(tc.id); }}
+                    className="touch-target inline-flex items-center mt-1 -ms-1 px-1 text-[13px] font-bold underline"
+                    style={{ color: "var(--arbor-clay-deep)" }}
+                  >
+                    {tc.action.label}
+                  </button>
+                )}
+              </div>
               {/* touch-target gives the real 44px box: the icon alone is 14px.
                   The `arbor-app` class on the layer above scopes this button's
                   dismiss colour and focus ring, which never matched before
