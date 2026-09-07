@@ -432,3 +432,35 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
     threadWrite: "none",
   },
 ];
+
+/* ════════════════════════════════════════════════════════════════════════════
+   Item 11 (IA-02, re-evidenced) — the contract becomes measurable.
+
+   `SURFACE_CONTRACTS` declared budgets for 43 routes and exactly ONE of them
+   was enforced. The declaration was not the problem; the missing half was a
+   lookup the render tree could reach, so the numbers below can be compared
+   against what a route actually paints. `contractFor` is that lookup, and
+   Shell's <SurfaceFrame> stamps its two enforceable fields onto the DOM
+   (`data-route`, `data-module-budget`) so a measurement — rendered or scripted
+   — never has to re-derive which contract governs the surface it is looking at.
+
+   Nothing here interprets the budget: counting is the job of the leaf stamps
+   (`data-module` on top-level sibling sections, `data-primary-move` on the one
+   declared control) and of scripts/framework-check.mjs, which walks the leaves.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+const CONTRACT_BY_ROUTE: ReadonlyMap<ActiveTab, SurfaceContract> = new Map(
+  SURFACE_CONTRACTS.map((c) => [c.route, c] as const),
+);
+
+/**
+ * The contract governing `route`, or `undefined` when the route has none.
+ *
+ * Undefined is a real answer, not an error: SC-1 pins completeness against
+ * ROUTE_IDS, so a caller that reads `undefined` here is looking at a route
+ * that was added without a contract — the frame degrades to an unbudgeted
+ * surface rather than inventing a number.
+ */
+export function contractFor(route: ActiveTab): SurfaceContract | undefined {
+  return CONTRACT_BY_ROUTE.get(route);
+}

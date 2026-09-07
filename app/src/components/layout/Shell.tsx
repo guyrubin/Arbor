@@ -5,6 +5,7 @@ import { useArbor, ActiveTab } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { sectionForTab, hubTabsForSection } from "../../lib/navigation";
+import { contractFor } from "../../lib/surfaceContract";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import KidModeButton from "./KidModeButton";
@@ -162,6 +163,29 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   "bedtime-stories": BedtimeStoriesTab, // AP-057: Bedtime Stories (day-rooted, generate-and-discard, escalation-gated)
   routines: RoutinesTab, // Wireframe: Ready-made Routines library (Growth › Routines)
 };
+
+/**
+ * Item 11 — the one place a route's declared contract meets its rendered tree.
+ *
+ * `display: contents` keeps the frame out of layout entirely: it adds no box,
+ * no margin and no stacking context, so every hub renders byte-identically and
+ * the only observable change is two data attributes a measurement can read.
+ * `data-module-budget` is omitted (not zeroed) when the route has no contract,
+ * so an unbudgeted surface is distinguishable from a budget of nothing.
+ */
+function SurfaceFrame({ route, children }: { route: ActiveTab; children: React.ReactNode }) {
+  const contract = contractFor(route);
+  return (
+    <div
+      data-route={route}
+      data-module-budget={contract ? String(contract.moduleBudget) : undefined}
+      data-primary-move-declared={contract ? contract.primaryMove : undefined}
+      style={{ display: "contents" }}
+    >
+      {children}
+    </div>
+  );
+}
 
 export default function Shell() {
   const { activeTab, setActiveTab, showAiRail, setShowAiRail, showSandboxBanner, childProfile } = useArbor();
@@ -431,7 +455,17 @@ export default function Shell() {
                 transition={{ duration: 0.22, ease: "easeOut" }}
               >
                 <ErrorBoundary>
-                  <ActiveTabComponent />
+                  {/* Item 11 (IA-02): the surface contract reaches the DOM.
+                      `surfaceContract.moduleBudget` was enforced on 1 of 43
+                      routes because nothing rendering could say WHICH contract
+                      governed the tree it was in. SurfaceFrame stamps the two
+                      enforceable fields on the tab's own wrapper, so a rendered
+                      or scripted measurement reads the budget off the node it
+                      is counting inside instead of re-deriving it. Presentation
+                      is untouched: display:contents, no box, no style. */}
+                  <SurfaceFrame route={activeTab}>
+                    <ActiveTabComponent />
+                  </SurfaceFrame>
                 </ErrorBoundary>
               </motion.div>
             </AnimatePresence>
