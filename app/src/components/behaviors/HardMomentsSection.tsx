@@ -6,8 +6,8 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { cardCls } from "../ui/kit";
 import { renderSayThis, type HardMomentCard, type HardMomentCategory } from "../../content/hardMomentCards";
-import { HARD_MOMENT_CATEGORIES, buildHardMomentSeedPrompt, escalationText, locText } from "../../content/hardMomentSurface";
-import { availableHardMomentCards } from "../../content/selectCards";
+import { HARD_MOMENT_CATEGORIES, buildHardMomentSeedPrompt, escalationText, locText, recentBehaviorTypes } from "../../content/hardMomentSurface";
+import { availableHardMomentCards, matchToRecentBehaviors } from "../../content/selectCards";
 import { hardMomentPublication, type HardMomentContext } from "../../content/pilotRelease";
 import { hardMomentAgeFit, explainsEmptyHardMoments } from "../../content/hardMomentAgeFit";
 import HardMomentAgeNotice from "./HardMomentAgeNotice";
@@ -70,12 +70,34 @@ export function HardMomentGuideContent({ card, context, childName, t }: {
   );
 }
 
+/**
+ * TJB-21 — how many guides the shelf shows at rest. The catalogue (22 cards at
+ * 2,025 px) used to render whole between the capture bar and the parent's own
+ * logs; it now rests at three and the rest live behind the "All guides" door.
+ */
+export const RESTING_GUIDES = 3;
+
+/**
+ * The three tiles the shelf rests on: the parent's own logged types matched
+ * against the guide concerns (matchToRecentBehaviors), and — for a parent with
+ * nothing logged yet — the first three available cards, never an empty shelf.
+ * Pure so the count is a testable rule rather than a hand-counted render.
+ */
+export function restingGuides<T>(available: T[], matched: T[]): T[] {
+  return (matched.length ? matched : available).slice(0, RESTING_GUIDES);
+}
+
 /** Contextual catalog: select by ID again when a sheet or action is used. */
 export default function HardMomentsSection() {
-  const { childProfile, seedCoach, requestLearnRead } = useArbor();
+  const { childProfile, seedCoach, requestLearnRead, behaviorLogs } = useArbor();
   const { t, uiLang, aiLang } = useLanguage();
   const [category, setCategory] = useState<HardMomentCategory | "all">("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // TJB-21: the shelf opened as the whole catalogue — 22 tiles, 2,025 px between
+  // the capture bar and the parent's own logs. It now rests as THREE tiles
+  // matched to what this parent actually logged, behind an "All guides" door
+  // that restores the filter row and every card (law 6: nothing is dropped).
+  const [expanded, setExpanded] = useState(false);
   const locale = uiLang === "he" ? "he" : "en";
   const contextFor = (lang: "en" | "he" = locale): HardMomentContext => {
     const now = new Date();
@@ -88,7 +110,20 @@ export default function HardMomentsSection() {
   const copy = hardMomentPilotText(locale);
   const categories = HARD_MOMENT_CATEGORIES.filter((value) => cards.some((card) => card.category === value));
   const activeCategory = category === "all" || categories.includes(category) ? category : "all";
-  const visible = activeCategory === "all" ? cards : cards.filter((card) => card.category === activeCategory);
+  const all = activeCategory === "all" ? cards : cards.filter((card) => card.category === activeCategory);
+
+  /* TJB-21 — the resting three. `matchToRecentBehaviors` (content/selectCards)
+     already scored cards against the parent's own logged types and was mounted
+     nowhere; `recentBehaviorTypes` is the same 14-day read LearnLibrary and
+     Masterclasses use. Deterministic concern matching, never a clinical
+     inference. A parent with no logs yet gets the first three in catalogue
+     order rather than an empty shelf. */
+  const matched = matchToRecentBehaviors(
+    recentBehaviorTypes(behaviorLogs || [], context.now),
+    cards, context.now, context.ageMonths, locale,
+  );
+  const featured = restingGuides(cards, matched);
+  const visible = expanded ? all : featured;
 
   // WAVE-G · THE AGE GAP — an empty list caused by the child's AGE explains
   // itself; the guides are written for a bounded range and the gate is
@@ -114,6 +149,9 @@ export default function HardMomentsSection() {
       <p role="status" aria-live="polite" className="text-sm" style={{ color: "var(--arbor-ink)" }}>
         {selectedId && !openCard ? copy.unavailable : ""}
       </p>
+      {/* The category filter belongs to the OPEN catalogue: filtering three
+          matched tiles is a control with nothing to control. */}
+      {expanded && (
       <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t("hm.categoriesAria")}>
         {(["all", ...categories] as (HardMomentCategory | "all")[]).map((value) => (
           <button key={value} type="button" onClick={() => setCategory(value)} aria-pressed={value === activeCategory}
@@ -127,7 +165,11 @@ export default function HardMomentsSection() {
           </button>
         ))}
       </div>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      )}
+      {!expanded && matched.length > 0 && (
+        <p className="text-xs font-bold" style={{ color: "var(--arbor-green-ink)" }}>{t("elev.closeloop.hm.matched")}</p>
+      )}
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2" data-testid="hard-moment-tiles">
         {visible.map((card) => (
           <button key={card.id} type="button" onClick={() => setSelectedId(card.id)}
             className="flex min-h-[52px] min-w-0 items-center justify-between gap-2 rounded-xl px-3.5 py-3 text-start transition"
@@ -140,6 +182,21 @@ export default function HardMomentsSection() {
           </button>
         ))}
       </div>
+      {/* The door. Every guide stays one tap away in BOTH directions — this is
+          a disclosure, never a filter that can hide a card for good. */}
+      {cards.length > featured.length && (
+        <button
+          type="button"
+          data-testid="hard-moments-door"
+          onClick={() => { setExpanded((v) => !v); if (expanded) setCategory("all"); }}
+          aria-expanded={expanded}
+          className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold transition"
+          style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)", background: "var(--arbor-paper-elevated)" }}
+        >
+          <Icon name={expanded ? "expand_less" : "expand_more"} size={16} />
+          {expanded ? t("elev.closeloop.hm.fewer") : t("elev.closeloop.hm.allGuides", { n: cards.length })}
+        </button>
+      )}
       <Modal open={!!openCard} onClose={() => setSelectedId(null)} title={openCard ? locText(openCard.title, locale) : undefined}>
         {openCard && (
           <div className="min-w-0 space-y-3" lang={locale} dir={locale === "he" ? "rtl" : "ltr"}>

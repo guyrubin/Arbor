@@ -642,19 +642,14 @@ export default function BehaviorsTab() {
         testId="behaviors-hub-hero"
       />
 
-      <section className="flex min-w-0 flex-col gap-4 border-y py-5 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: "var(--arbor-rule)" }} aria-labelledby="behavior-next-step">
-        <div className="flex min-w-0 items-start gap-3">
-          <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}><Icon name="lightbulb" size={19} /></span>
-          <div className="min-w-0">
-            <span className="text-[10px] font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-green-ink)" }}>{t("beh.next.eyebrow")}</span>
-            <h2 id="behavior-next-step" className="mt-0.5 break-words text-lg font-semibold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("beh.next.title")}</h2>
-            <p className="mt-1 max-w-2xl text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("beh.next.body")}</p>
-          </div>
-        </div>
-        <button type="button" onClick={() => setActiveTab("plans")} className="inline-flex min-h-11 w-full flex-shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition sm:w-auto" style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule-strong)" }}>
-          {t("beh.next.plan")} <Icon name="arrow_forward" size={16} className="rtl:rotate-180" />
-        </button>
-      </section>
+      {/* TJB-21 — the static "YOUR NEXT STEP" banner that stood here (213 px of
+          `beh.next.*` copy rendered regardless of data) pushed the declared
+          primary move, the capture input, to y898 on a 390 px screen. It said
+          the same three sentences on a day-0 hub and on a hub with 40 logs, and
+          its one route (Plans) is exactly the route the DATA-DRIVEN pattern
+          echo below already offers after a save (TJB-06, verified). Deleted:
+          capture now sits directly under the hero, echo directly under capture,
+          the guide shelf and the log list below both. */}
 
       {/* Row 1 — QuickLog tiles (full width under the hero) */}
       <section className="min-w-0" aria-label={t("beh.captureTitle")}>

@@ -76,6 +76,12 @@ export const en: Record<string, string> = {
   // ── ENG-18: cold-start progress.
   "elev.closeloop.coldstart.one": "One more day of moments and Arbor can start reading {name}'s daily rhythm.",
   "elev.closeloop.coldstart.many": "{n} more days of moments and Arbor can start reading {name}'s daily rhythm.",
+
+  // ── Builder E2 · TJB-21: the hard-moment shelf rests at three matched tiles
+  //    behind a door that still opens on every guide.
+  "elev.closeloop.hm.matched": "Closest to what you have been noting",
+  "elev.closeloop.hm.allGuides": "All guides ({n})",
+  "elev.closeloop.hm.fewer": "Show fewer",
 };
 
 export const he: Record<string, string> = {
@@ -117,4 +123,9 @@ export const he: Record<string, string> = {
 
   "elev.closeloop.coldstart.one": "עוד יום אחד של רגעים וארבור יוכל להתחיל לקרוא את הקצב היומי של {name}.",
   "elev.closeloop.coldstart.many": "עוד {n} ימים של רגעים וארבור יוכל להתחיל לקרוא את הקצב היומי של {name}.",
+
+  // ── Builder E2 · TJB-21
+  "elev.closeloop.hm.matched": "הכי קרוב למה שתיעדתם לאחרונה",
+  "elev.closeloop.hm.allGuides": "כל המדריכים ({n})",
+  "elev.closeloop.hm.fewer": "להציג פחות",
 };
