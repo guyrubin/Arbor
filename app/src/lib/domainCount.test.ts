@@ -65,4 +65,35 @@ describe("OBJ-GROWTH-01 — one domain count, derived once", () => {
     // and the two literals disagreed with each other and with DOMAIN_META
     expect(7).not.toBe(Object.keys(DOMAIN_META).length);
   });
+
+  /* RUN-08 / item 19 (Copilot half) — the Full Picture printed a row per
+     PracticeDomain whether or not the child's age window held any milestone
+     for it, so "Speech sounds — 0 of 0 milestones noticed" taught a parent
+     that a zero meant something. Same rule as the HubHero zero-line: never a
+     denominator before the numerator can exist. */
+  it("the Full Picture hides domains with nothing to count", () => {
+    const copilot = stripComments(read("components", "practice", "DevelopmentCopilot.tsx"));
+    expect(copilot).toMatch(/visibleDomains = useMemo\(\s*\(\) => bands\.filter\(\(b\) => \(domainCounts\.get\(b\.domain\)\?\.total \?\? 0\) > 0\)/);
+    // the live list, the weekly snapshots and the clinician export all obey it
+    expect(copilot).toContain("{visibleDomains.map((b) => {");
+    expect(copilot).toContain("...visibleDomains.map((b) => {");
+    expect(copilot).toContain("if (total === 0) return null;");
+    // …and an all-empty window gets the teach line, not a wall of zeros
+    expect(copilot).toContain('data-testid="copilot-domains-empty"');
+    expect(copilot).toContain('t("elev.growthTruth.hero.empty")');
+    // nothing iterates the unfiltered band list into a "x of y" row any more
+    expect(copilot).not.toContain("{bands.map((b) => {");
+  });
+
+  it("NEGATIVE CONTROL — the pre-fix Copilot list is unfiltered", () => {
+    const preFix = `
+        <ul className="space-y-2.5">
+          {bands.map((b) => {
+            const c = domainCounts.get(b.domain) ?? { reached: 0, total: 0 };
+            return <li>{c.reached} of {c.total} milestones noticed</li>;
+          })}
+        </ul>`;
+    expect(preFix).toContain("{bands.map((b) => {");
+    expect(preFix).not.toContain("visibleDomains");
+  });
 });

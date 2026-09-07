@@ -105,6 +105,13 @@ export default function DevelopmentCopilot() {
   }, [childProfile]);
   const windowMilestones = useMemo(() => ageWindowMilestones(milestones, comparisonMonths), [milestones, comparisonMonths]);
   const domainCounts = useMemo(() => domainMilestoneCounts(windowMilestones), [windowMilestones]);
+  // RUN-08 / item 19: only domains that HAVE something to count in this age
+  // window get a row. `bands` always carries all five, so an age window with no
+  // speech milestone rendered "Speech sounds — 0 of 0 milestones noticed".
+  const visibleDomains = useMemo(
+    () => bands.filter((b) => (domainCounts.get(b.domain)?.total ?? 0) > 0),
+    [bands, domainCounts]
+  );
 
   const advCount = data.adventures.items.length;
   const advCorrect = data.adventures.items.filter((a) => a.correct).length;
@@ -179,7 +186,9 @@ export default function DevelopmentCopilot() {
         `Generated ${data.today} · Parent-collected observational data · NOT a diagnostic assessment`,
         ``,
         `Domain picture (milestone checklist + home practice signal):`,
-        ...bands.map((b) => {
+        // Same rule as the rendered list: a domain with no milestone in this
+        // age window has no denominator to report (item 19).
+        ...visibleDomains.map((b) => {
           const c = domainCounts.get(b.domain);
           const reached = c?.reached ?? 0;
           const total = c?.total ?? 0;
@@ -220,7 +229,7 @@ export default function DevelopmentCopilot() {
       return text;
     };
     return { clinicianSummary: build(true), previewSummary: build(false) };
-  }, [bands, domainCounts, childProfile, data.today, data.week, data.streak, data.stats, advCount, advCorrect, watch, recommendation]);
+  }, [visibleDomains, domainCounts, childProfile, data.today, data.week, data.streak, data.stats, advCount, advCorrect, watch, recommendation]);
 
   const copySummary = async () => {
     if (!clinicianSummary) return;
@@ -273,8 +282,20 @@ export default function DevelopmentCopilot() {
           DevScoreCard: count / mechanism / route-to-pro. Emits nothing about
           the child as a verdict. */}
       <SectionCard title={`Domain picture — age ${ageLabel(childProfile, t)}`} icon={<Icon name="monitoring" size={20} />} tone="mint">
+        {/* RUN-08 / item 19 — a domain with no milestone in this age window has
+            nothing to count, and printing "Speech sounds — 0 of 0 milestones
+            noticed" taught the parent that the number means something bad. The
+            rule is the HubHero zero-line rule: never a denominator before the
+            numerator can exist. Rows with `total === 0` are hidden; when EVERY
+            row is empty the section carries the teach line instead of a wall
+            of zeros. */}
+        {visibleDomains.length === 0 ? (
+          <p className="text-xs" style={{ color: "var(--arbor-muted)" }} data-testid="copilot-domains-empty">
+            {t("elev.growthTruth.hero.empty")}
+          </p>
+        ) : (
         <ul className="space-y-2.5">
-          {bands.map((b) => {
+          {visibleDomains.map((b) => {
             const meta = DOMAIN_META[b.domain];
             const c = domainCounts.get(b.domain) ?? { reached: 0, total: 0 };
             return (
@@ -287,6 +308,7 @@ export default function DevelopmentCopilot() {
             );
           })}
         </ul>
+        )}
         {/* The sr-only mirror of this same list was removed (2026-08-12): the
             visible <ul> above is already plain text in the accessibility tree,
             so the duplicate made every domain row announce twice and made
@@ -400,6 +422,9 @@ export default function DevelopmentCopilot() {
                     const fallback = domainCounts.get(b.domain);
                     const reached = b.reached ?? fallback?.reached ?? 0;
                     const total = b.total ?? fallback?.total ?? 0;
+                    // item 19: no denominator before there is one (same rule as
+                    // the live domain list above).
+                    if (total === 0) return null;
                     return (
                       <li key={b.domain} className="flex items-baseline justify-between gap-2 text-[11px]">
                         <span className="font-bold" style={{ color: meta.color }}>{meta.label}</span>
