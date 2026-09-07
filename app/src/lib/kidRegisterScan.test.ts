@@ -80,12 +80,14 @@ const KID_SURFACE_GRAPH = [
   "components/practice/JourneyTab.tsx",
 ];
 
-/** In the WORLDS table but unreachable from Kid Mode: `isNew` filters it out
- *  of the arcade grid and no KidDashboard tile pre-selects it. It is a
- *  parent-register surface by its own header. Listed so the exclusion is a
- *  conscious decision, not an omission. */
+/** In the WORLDS table but unreachable from Kid Mode: its entry is flagged
+ *  `parentOnly`, so the arcade grid skips it and no KidDashboard tile
+ *  pre-selects it. It is a parent-register surface by its own header. Listed so
+ *  the exclusion is a conscious decision, not an omission. (Until KID-06 the
+ *  exclusion rode on the `isNew` filter, which hid three real kid worlds with
+ *  it — the flag now says what is actually meant.) */
 const EXCLUDED: Record<string, string> = {
-  "components/practice/WordWorldTab.tsx": "parent-register by design; not reachable from any Kid Mode tile (KID-06 sequencing)",
+  "components/practice/WordWorldTab.tsx": "parent-register by design; its WORLDS entry carries parentOnly, so no Kid Mode tile or arcade cell reaches it",
 };
 
 type RuleId = "pct" | "kitShell" | "nav" | "download" | "clinical" | "confetti" | "smallBtn" | "lockGlyph" | "adultWords";

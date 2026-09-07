@@ -51,7 +51,12 @@ interface World {
   imagePrompt: string;
   Comp?: React.ComponentType;
   count?: (d: ReturnType<typeof usePracticeData>) => number;
+  /** Shows the NEW ribbon on the tile. KID-06: it no longer hides the world —
+   *  the arcade grid and the kid home must list the SAME set of games. */
   isNew?: boolean;
+  /** Parent-register surface by its own header: reachable from the parent
+   *  Practice hub, never from a kid tile or the Kid Mode arcade grid (law 2). */
+  parentOnly?: boolean;
 }
 
 const COLOR: Record<WorldColor, { bg: string; ink: string }> = {
@@ -73,8 +78,12 @@ const WORLDS: World[] = [
   { id: "beat", name: "Beat Keeper", tag: "Rhythm", icon: "music_note", color: "clay", imagePrompt: "a colorful music stage with drums, rhythm bars and bouncing musical notes", isNew: true, Comp: BeatKeeperWorld, count: (d) => d.events.items.filter((e) => e.kind === "rhythm").length },
   { id: "pose", name: "Hero Pose", tag: "Move", icon: "accessibility_new", color: "sky", imagePrompt: "a dynamic superhero action pose with bold motion lines", isNew: true, Comp: HeroPoseWorld, count: (d) => d.events.items.filter((e) => e.kind === "pose").length },
   { id: "pattern", name: "Pattern Power", tag: "Logic", icon: "category", color: "lav", imagePrompt: "a puzzle world of glowing shapes arranged in patterns", isNew: true, Comp: PatternPowerWorld, count: (d) => d.events.items.filter((e) => e.kind === "pattern").length },
-  { id: "word-world", name: "Word World", tag: "Language", icon: "menu_book", color: "sky", imagePrompt: "a warm cozy reading nook with open books, speech bubbles, and colorful letters floating gently", isNew: true, Comp: WordWorldTab, count: (d) => d.events.items.filter((e) => e.kind === "lang-strategy").length },
+  { id: "word-world", name: "Word World", tag: "Language", icon: "menu_book", color: "sky", imagePrompt: "a warm cozy reading nook with open books, speech bubbles, and colorful letters floating gently", isNew: true, parentOnly: true, Comp: WordWorldTab, count: (d) => d.events.items.filter((e) => e.kind === "lang-strategy").length },
 ];
+
+/** The worlds a child can reach: everything except the parent-register one.
+ *  Exported so the guard counts the same list the grid renders. */
+export const KID_WORLDS: World[] = WORLDS.filter((w) => !w.parentOnly);
 
 /** Sessions per level — the level is monotonic; the pips fill toward the next. */
 const SESSIONS_PER_LEVEL = 5;
@@ -223,7 +232,13 @@ export default function HeroArcade({ initialWorldId }: { initialWorldId?: string
       <div>
         <h2 className="font-black mb-3" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(18px,3.4vw,24px)" }}>{t("elev.play.arcade.chooseWorld")}</h2>
         <div className="grid gap-3 sm:gap-4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))" }}>
-          {WORLDS.filter((w) => !w.isNew).map((w) => {
+          {/* KID-06: the arcade grid listed 6 worlds while the kid home listed 8
+              — Beat Keeper, Hero Pose and Pattern Power were hidden by an
+              `isNew` filter, so "See all games" showed FEWER games than the
+              screen the child came from, and the NEW ribbon was unreachable.
+              The grid now lists every world except the one that is
+              parent-register by its own header (Word World). */}
+          {KID_WORLDS.map((w) => {
             const glyph = w.icon;
             const live = !!w.Comp;
             const stars = w.count ? Math.min(3, Math.floor(w.count(data) / 3)) : 0;

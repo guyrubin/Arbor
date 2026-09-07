@@ -118,6 +118,39 @@ const GAMES: GameDef[] = [
   { id: "mimic-studio", worldId: "mimic", accent: "clay", Icon: Smile, art: "/visuals/cards/sm/game-mimic.webp", imagePrompt: "a playful mirror studio copying silly happy poses, sparkles all around" },
 ];
 
+/* ── OBJ-KID-06: the fold ────────────────────────────────────────────────
+   At 390 px the kid home put 0 of 8 game tiles above the fold — the first sat
+   at 931 px, behind the greeting, the quest banner and three stacked 150 px
+   adventure tiles, on 135x97 tiles whose 15 px titles were the PARENT type
+   scale. Two changes, no new component: the games section moves directly under
+   the quest banner, and each game tile grows to the arcade `world-tile`'s
+   proportions (HeroArcade.tsx:227-250 — the bigger, richer tile the app already
+   ships) with a display-scale title.
+
+   These constants are the single source for the block sizes below AND for
+   kidDashboard.fold.test.ts, which adds them up against the 844 px viewport —
+   the repo has no jsdom, so the fold is proved arithmetically from the numbers
+   the component actually renders with. */
+/** Greeting header: the 56 px hero avatar sets the row height. */
+export const KID_HOME_HEADER_BLOCK = 56;
+/** Vertical gap between the home's top-level sections. */
+export const KID_HOME_SECTION_GAP = 20;
+/** "Today's adventure" banner. */
+export const KID_HOME_BANNER_BLOCK = 190;
+/** Section heading row — its "See all games" control carries the 44 px floor. */
+export const KID_HOME_SECTION_HEAD_BLOCK = 44;
+/** Gap under a section heading (marginBlockEnd below). */
+export const KID_HOME_HEAD_GAP = 10;
+/** Game tile, at the arcade world-tile's scale (was 97 px). */
+export const KID_HOME_GAME_TILE_BLOCK = 200;
+/** Growth-adventure tile (unchanged). */
+export const KID_HOME_ADVENTURE_TILE_BLOCK = 150;
+/** Grid gap between tiles. */
+export const KID_HOME_TILE_GAP = 12;
+/** Game tile title: --t-xl = 1.4375rem ≈ 21.6 px at the product root of 15 px,
+ *  clearing the 20 px kid-scale floor (was --t-base ≈ 14 px). */
+export const KID_HOME_GAME_TITLE_TOKEN = "var(--t-xl)";
+
 /** A calm, one-shot count-up of an already-earned number. Reveals on mount only —
  *  never a live ticker. Respects prefers-reduced-motion (snaps to the total). */
 function StarMeter({ value }: { value: number }) {
@@ -210,7 +243,7 @@ function SceneTile({
         cursor: "pointer",
         padding: 0,
         background: ACCENT_BG[accent],
-        minBlockSize: big ? "150px" : "118px",
+        minBlockSize: big ? `${KID_HOME_ADVENTURE_TILE_BLOCK}px` : `${KID_HOME_GAME_TILE_BLOCK}px`,
         animationDelay: `${index * 40}ms`,
       }}
     >
@@ -221,7 +254,7 @@ function SceneTile({
       <WorldScene worldId={worldId} imagePrompt={imagePrompt} heroUrl={heroUrl}>
         <span className="relative block w-full h-full">
           <span aria-hidden="true" className="absolute inset-0 grid place-items-center" style={{ color: ACCENT_INK[accent], opacity: 0.9 }}>
-            <Icon className={big ? "w-10 h-10" : "w-8 h-8"} />
+            <Icon className="w-10 h-10" />
           </span>
           {art && <img src={art} alt="" aria-hidden="true" loading="lazy" className="absolute inset-0 w-full h-full object-cover" />}
         </span>
@@ -237,7 +270,7 @@ function SceneTile({
       />
       {/* Title block. */}
       <span style={{ position: "absolute", insetInline: 0, insetBlockEnd: 0, padding: big ? "14px" : "11px" }}>
-        <span style={{ display: "block", fontWeight: 900, fontSize: big ? "var(--t-lg)" : "var(--t-base)", color: "var(--arbor-on-accent)", lineHeight: 1.12 }}>
+        <span style={{ display: "block", fontFamily: "var(--font-display)", fontWeight: 900, fontSize: big ? "var(--t-lg)" : KID_HOME_GAME_TITLE_TOKEN, color: "var(--arbor-on-accent)", lineHeight: 1.12 }}>
           {title}
         </span>
         <span style={{ display: "block", fontSize: "var(--t-sm)", color: "var(--arbor-on-accent)", opacity: 0.88, marginBlockStart: "1px" }}>{sub}</span>
@@ -286,10 +319,10 @@ export default function KidDashboard({
   );
 
   return (
-    <div style={{ maxInlineSize: "1100px", marginInline: "auto", display: "flex", flexDirection: "column", gap: "20px" }}>
+    <div style={{ maxInlineSize: "1100px", marginInline: "auto", display: "flex", flexDirection: "column", gap: `${KID_HOME_SECTION_GAP}px` }}>
       {/* ── Greeting header ─────────────────────────────────────────────── */}
       <header style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-        <HeroAvatar size={56} mood="wave" ring decorative />
+        <HeroAvatar size={KID_HOME_HEADER_BLOCK} mood="wave" ring decorative />
         <div style={{ minInlineSize: 0 }}>
           <div style={{ fontFamily: "var(--font-display)", fontWeight: 900, fontSize: "var(--t-2xl)", color: "var(--arbor-sky-ink)", lineHeight: 1.05 }}>
             {kt("kid.greeting", { name: hero.name })}
@@ -319,7 +352,7 @@ export default function KidDashboard({
           cursor: "pointer",
           padding: 0,
           background: "var(--arbor-clay-soft)",
-          minBlockSize: "190px",
+          minBlockSize: `${KID_HOME_BANNER_BLOCK}px`,
         }}
       >
         {/* KID-7: banner copy ("Start a hero story") + prompt + art depict the
@@ -351,39 +384,39 @@ export default function KidDashboard({
         </span>
       </button>
 
-      {/* ── My growth adventures ────────────────────────────────────────── */}
-      <section aria-label={t("kid.adventures.title")}>
-        <h2 style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "var(--t-base)", fontWeight: 900, color: "var(--arbor-ink)", marginBlockEnd: "10px" }}>
-          <Sparkles className="w-4 h-4" aria-hidden="true" style={{ color: "var(--arbor-green-ink)" }} />
-          {kt("kid.adventures.title")}
-        </h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "12px" }}>
-          {ADVENTURES.map((a, i) => (
-            <SceneTile key={a.id} worldId={a.worldId} accent={a.accent} Icon={a.Icon} title={kt(`kid.adv.${a.id}.title`)} sub={kt(`kid.adv.${a.id}.sub`)} imagePrompt={a.imagePrompt} art={a.art} heroUrl={hero.url ?? undefined} big index={i} onClick={() => onOpenSurface(a.surface)} />
-          ))}
-        </div>
-      </section>
-
       {/* ── Games ───────────────────────────────────────────────────────── */}
       <section aria-label={t("kid.games.title")}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBlockEnd: "10px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBlockEnd: `${KID_HOME_HEAD_GAP}px` }}>
           <h2 style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "var(--t-base)", fontWeight: 900, color: "var(--arbor-ink)" }}>
             <Gamepad2 className="w-4 h-4" aria-hidden="true" style={{ color: "var(--arbor-lav-ink)" }} />
             {kt("kid.games.title")}
           </h2>
           <button
             onClick={() => onOpenSurface("arcade")}
-            style={{ appearance: "none", background: "transparent", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "4px", minHeight: "44px", fontSize: "var(--t-sm)", fontWeight: 700, color: "var(--arbor-muted)" }}
+            style={{ appearance: "none", background: "transparent", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "4px", minHeight: `${KID_HOME_SECTION_HEAD_BLOCK}px`, fontSize: "var(--t-sm)", fontWeight: 700, color: "var(--arbor-muted)" }}
           >
             {kt("kid.games.seeAll")} <ChevronRight className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: "12px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: `${KID_HOME_TILE_GAP}px` }}>
           {GAMES.map((g, i) => (
             <SceneTile key={g.id} worldId={g.worldId} accent={g.accent} Icon={g.Icon} title={kt(`kid.game.${g.id}.title`)} sub={kt(`kid.game.${g.id}.sub`)} imagePrompt={g.imagePrompt} art={g.art} heroUrl={hero.url ?? undefined} index={i} onClick={() => onOpenSurface("arcade", g.worldId)} />
           ))}
         </div>
       </section>
+      {/* ── My growth adventures ────────────────────────────────────────── */}
+      <section aria-label={t("kid.adventures.title")}>
+        <h2 style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "var(--t-base)", fontWeight: 900, color: "var(--arbor-ink)", marginBlockEnd: `${KID_HOME_HEAD_GAP}px` }}>
+          <Sparkles className="w-4 h-4" aria-hidden="true" style={{ color: "var(--arbor-green-ink)" }} />
+          {kt("kid.adventures.title")}
+        </h2>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: `${KID_HOME_TILE_GAP}px` }}>
+          {ADVENTURES.map((a, i) => (
+            <SceneTile key={a.id} worldId={a.worldId} accent={a.accent} Icon={a.Icon} title={kt(`kid.adv.${a.id}.title`)} sub={kt(`kid.adv.${a.id}.sub`)} imagePrompt={a.imagePrompt} art={a.art} heroUrl={hero.url ?? undefined} big index={i} onClick={() => onOpenSurface(a.surface)} />
+          ))}
+        </div>
+      </section>
+
     </div>
   );
 }
