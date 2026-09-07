@@ -710,7 +710,7 @@ export default function BehaviorsTab() {
                   key={m.key}
                   type="button"
                   onClick={m.onClick}
-                  className={`inline-flex min-h-10 items-center gap-2 rounded-xl px-3 text-xs font-bold transition ${active ? "animate-pulse" : ""}`}
+                  className={`inline-flex min-h-11 min-w-11 items-center gap-2 rounded-xl px-3 text-xs font-bold transition ${active ? "animate-pulse" : ""}`}
                   style={{ color: p.ink }}
                 >
                   <span className="flex h-7 w-7 items-center justify-center rounded-full" style={{ background: p.soft }}><Icon name={m.icon} size={15} /></span>
@@ -718,7 +718,7 @@ export default function BehaviorsTab() {
                 </button>
               );
             })}
-            <button type="button" onClick={() => focusForm()} aria-label={captureCopy.open} className="ms-auto flex h-10 w-10 items-center justify-center rounded-full text-white transition active:scale-95" style={{ background: T.gradientCta }}><Icon name="arrow_forward" size={18} className="rtl:rotate-180" /></button>
+            <button type="button" onClick={() => focusForm()} aria-label={captureCopy.open} className="ms-auto flex h-11 w-11 items-center justify-center rounded-full text-white transition active:scale-95" style={{ background: T.gradientCta }}><Icon name="arrow_forward" size={18} className="rtl:rotate-180" /></button>
           </div>
         </div>
 

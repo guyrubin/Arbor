@@ -467,7 +467,7 @@ export default function JournalTab() {
                   onClick={() => onPromptTap(key)}
                   aria-pressed={active}
                   dir="auto"
-                  className="min-h-[36px] rounded-full px-3.5 py-1.5 text-[12.5px] font-bold text-start transition active:scale-[0.98]"
+                  className="min-h-[44px] rounded-full px-3.5 py-1.5 text-[12.5px] font-bold text-start transition active:scale-[0.98]"
                   style={
                     active
                       ? { background: PASTEL.lav.soft, color: PASTEL.lav.ink, border: `1px solid ${PASTEL.lav.ink}` }

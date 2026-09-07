@@ -80,7 +80,7 @@ export default function PlansTab() {
               key={tpl}
               type="button"
               onClick={() => setPlanChallengeTopic(tpl)}
-              className="px-3 py-1.5 rounded-lg text-[11px] font-bold transition"
+              className="inline-flex min-h-11 items-center px-3 py-1.5 rounded-lg text-[11px] font-bold transition"
               style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
             >
               {tpl.split(" ").slice(0, 3).join(" ")}…
@@ -98,7 +98,7 @@ export default function PlansTab() {
                 type="button"
                 onClick={() => setPlanChallengeTopic(s.topic)}
                 title={s.reason}
-                className="px-3 py-1.5 rounded-lg text-[11px] font-bold transition inline-flex items-center gap-1.5"
+                className="min-h-11 px-3 py-1.5 rounded-lg text-[11px] font-bold transition inline-flex items-center gap-1.5"
                 style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}
               >
                 <Icon name="auto_awesome" size={12} /> {s.topic.split("—")[0].trim()}
@@ -231,7 +231,7 @@ export default function PlansTab() {
                     onClick={() => {
                       seedCoach({ prompt: t("seed.planCoreg", { title: plan.title }), lens: "Bowlby's Attachment Model", source: "plans-coreg" });
                     }}
-                    className="text-[10px] font-extrabold uppercase tracking-wider px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+                    className="min-h-11 text-[10px] font-extrabold uppercase tracking-wider px-3 py-1.5 rounded-xl transition inline-flex items-center gap-1.5 cursor-pointer"
                     style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
                   >
                     <Icon name="auto_awesome" size={12} /> {t("plan.refine")}

@@ -56,7 +56,7 @@ export default function TimelineTab() {
               role="tab"
               aria-selected={active}
               onClick={() => setActiveTab(d.tab)}
-              className="inline-flex items-center gap-1.5 rounded-full px-4 min-h-[36px] text-[12.5px] font-extrabold transition"
+              className="inline-flex items-center gap-1.5 rounded-full px-4 min-h-[44px] text-[12.5px] font-extrabold transition"
               style={
                 active
                   ? { background: "var(--arbor-paper)", color: "var(--arbor-ink)", boxShadow: "var(--shadow-sm)" }
