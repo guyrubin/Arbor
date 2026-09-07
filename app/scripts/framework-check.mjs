@@ -79,21 +79,13 @@ try {
    punish exactly the work it is meant to pull forward.
    ════════════════════════════════════════════════════════════════════════════ */
 
-const KNOWN_UNSTAMPED = new Set([
-  // Object backlog wave 1, batch 3 (§3f + §3d): the nine practice/stories
-  // routes came OFF this list when their leaves were stamped —
-  //   practice, speech, mimic, feelings, journey, adventures,
-  //   stories, bedtime-stories, comics
-  // 43 -> 34. The list only ever shrinks (surfaceContract.render.test.ts).
-  "overview", "coach", "behaviors", "milestones", "plans",
-  "weekly", "scholar", "language", "handoff",
-  "safety", "profile", "memory", "strengths", "screening",
-  "timeline", "journal", "find-pro", "care-team", "appointments",
-  "sharing", "reports", "masterclasses", "learn", "family",
-  "copilot", "development", "daily-play",
-  "consult", "attribution", "day-windows", "smart-reminders", "science",
-  "school-brief", "routines"
-]);
+// EMPTY — the ratchet reached zero on 2026-09-07. Every ROUTE_IDS leaf now
+// stamps its own modules and its one declared move, so the rule below is
+// enforced on all 43 routes with no exemptions. The seed it shrank from is
+// frozen in surfaceContract.render.test.ts; the subset test there means this
+// list can never grow again, so an unstamped leaf is a build failure and not a
+// line somebody adds here.
+const KNOWN_UNSTAMPED = new Set([]);
 
 const layoutDir = path.join(appRoot, "src", "components", "layout");
 const shellSource = fs.readFileSync(path.join(layoutDir, "Shell.tsx"), "utf8");

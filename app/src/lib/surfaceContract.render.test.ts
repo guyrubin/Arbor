@@ -112,9 +112,26 @@ function knownUnstamped(source: string): string[] {
 describe("KNOWN_UNSTAMPED is a shrink-only ratchet", () => {
   const current = knownUnstamped(CHECK);
 
-  it("the parser really reads the list (guard stays honest)", () => {
-    expect(current.length).toBeGreaterThan(0);
+  /**
+   * The ratchet reached ZERO on 2026-09-07 — all 43 leaves are stamped and the
+   * shipped list is empty. An empty read is therefore the CORRECT answer, which
+   * is exactly the answer a broken parser also gives, so honesty can no longer
+   * be shown by a non-empty result. It is shown instead against a seeded copy of
+   * the same source: the parser must find an entry that is really there, and
+   * find nothing in the file that really has none.
+   */
+  it("the parser really reads the list (guard stays honest at zero)", () => {
     expect(new Set(current).size).toBe(current.length);
+    expect(current).toEqual([]);
+    const seeded = knownUnstamped(
+      CHECK.replace("const KNOWN_UNSTAMPED = new Set([", 'const KNOWN_UNSTAMPED = new Set([\n  "overview",'),
+    );
+    expect(seeded).toEqual(["overview"]);
+  });
+
+  it("every route is enforced — the exempt set is empty, not merely small", () => {
+    expect(current.length).toBe(0);
+    expect(SEEDED_UNSTAMPED.length).toBe(43);
   });
 
   it("every exemption is a real route", () => {
