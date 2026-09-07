@@ -49,6 +49,10 @@ export const en: Record<string, string> = {
   "elev.pulse.care.briefReady": "A brief is ready to share",
   "elev.pulse.care.empty": "Bring in the people who help",
 
+  // ── OBJ-PROFILE-04 · a rate-limited ledger read is OUR queue, not the
+  //    parent's connection. Never "something interrupted the connection".
+  "elev.memory.catchingUp": "Arbor is catching up — try again in a minute.",
+
   // ── IA-13 · an unknown hash lands on Today and says so, once.
   "elev.nav.linkMoved": "That link has moved — here's Today.",
 
@@ -102,6 +106,7 @@ export const he: Record<string, string> = {
   "elev.pulse.care.briefReady": "סיכום מוכן לשיתוף",
   "elev.pulse.care.empty": "צרפו את האנשים שעוזרים בדרך",
 
+  "elev.memory.catchingUp": "ארבור משלימה פער — נסו שוב בעוד רגע.",
   "elev.nav.linkMoved": "הקישור הזה עבר — הנה מסך היום.",
 
   "elev.band.0-12m": "עד גיל שנה",

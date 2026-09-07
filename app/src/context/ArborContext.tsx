@@ -96,6 +96,58 @@ export type CaptureMode = "voice" | "photo" | "text" | "ai-draft";
  *  array is derived from VALID_TABS and is never read by any render path. */
 export const ALL_TABS: ActiveTab[] = [...VALID_TABS] as ActiveTab[];
 
+/* ── OBJ-PROFILE-04 · the memory ledger read, with a back-off ────────────────
+ *
+ * `GET /api/memory/<child>` was re-fired on every mount with no back-off and no
+ * ceiling; one lane produced 65 console errors in a session, and the surface
+ * reported every failure as "Something interrupted the connection" — including
+ * HTTP 429, which is not a connection problem and is not the parent's to fix.
+ *
+ * The retry policy is deliberately short and finite: three reads at most,
+ * spaced 2 s / 4 s / 8 s, then stop and say so once. A ledger that is rate
+ * limited will still be rate limited on read four; hammering it is how four
+ * lanes sharing one limiter turned a slow response into a wall of errors.
+ * Injectable `sleep` and `alive` so the policy is testable without a clock. */
+
+/** Why a ledger read failed. Distinguished because the COPY differs. */
+export type MemoryReadFailure = "rate_limited" | "error";
+
+/** 2 s, 4 s, 8 s. Three reads total, ~14 s, then quiet. */
+export const MEMORY_RETRY_DELAYS_MS: readonly number[] = [2000, 4000, 8000];
+
+export type MemoryReadAttempt = { status: number; items?: unknown[] };
+
+export async function pollMemoryReview(deps: {
+  attempt: () => Promise<MemoryReadAttempt>;
+  sleep?: (ms: number) => Promise<void>;
+  alive?: () => boolean;
+  delays?: readonly number[];
+}): Promise<{ tries: number; waited: number[]; failure: MemoryReadFailure | null; items: unknown[] }> {
+  const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  const alive = deps.alive ?? (() => true);
+  const delays = deps.delays ?? MEMORY_RETRY_DELAYS_MS;
+  const waited: number[] = [];
+  let tries = 0;
+  let failure: MemoryReadFailure = "error";
+  while (tries < delays.length) {
+    tries += 1;
+    let res: MemoryReadAttempt | null = null;
+    try {
+      res = await deps.attempt();
+    } catch {
+      failure = "error";
+    }
+    if (!alive()) return { tries, waited, failure, items: [] };
+    if (res) {
+      if (res.status >= 200 && res.status < 300) return { tries, waited, failure: null, items: res.items ?? [] };
+      failure = res.status === 429 ? "rate_limited" : "error";
+    }
+    // The LAST attempt is not followed by a wait — the loop is over.
+    if (tries < delays.length) { waited.push(delays[tries - 1]); await sleep(delays[tries - 1]); }
+  }
+  return { tries, waited, failure, items: [] };
+}
+
 export type ChatMessage = {
   sender: "user" | "ai";
   text: string;
@@ -459,6 +511,10 @@ function useArborState() {
   // review invite degrades) instead of the old console.warn swallow, which
   // left the surface silently empty — indistinguishable from "no memory yet".
   const [memoryReviewError, setMemoryReviewError] = useState<boolean>(false);
+  // OBJ-PROFILE-04: WHY the ledger is unreadable, not just that it is. A 429 is
+  // a rate limit, and telling a parent "something interrupted the connection"
+  // sends them to check their wifi over a problem on our side.
+  const [memoryReviewErrorKind, setMemoryReviewErrorKind] = useState<MemoryReadFailure | null>(null);
 
   // Embedded Interactive AI States and Helpers
   const [milestoneAnalysisOfGaps, setMilestoneAnalysisOfGaps] = useState<ExplainAnswer | null>(null);
@@ -703,18 +759,26 @@ function useArborState() {
   // --- HANDLERS: SERVER API CALLS ---
 
   const refreshMemoryReview = async () => {
-    try {
-      const res = await fetch(`/api/memory/${encodeURIComponent(childProfile.id)}`, {
-        headers: await authHeaders(),
-      });
-      if (!res.ok) throw new Error("Memory review fetch failed");
-      const data = await res.json();
-      setMemoryReviewItems(data.items || []);
+    const outcome = await pollMemoryReview({
+      attempt: async () => {
+        const res = await fetch(`/api/memory/${encodeURIComponent(childProfile.id)}`, {
+          headers: await authHeaders(),
+        });
+        if (!res.ok) return { status: res.status };
+        return { status: res.status, items: (await res.json()).items || [] };
+      },
+    });
+    if (!outcome.failure) {
+      setMemoryReviewItems(outcome.items as MemoryReviewItem[]);
       setMemoryReviewError(false);
-    } catch (err) {
-      console.warn("Could not load memory review items", err);
-      setMemoryReviewError(true);
+      setMemoryReviewErrorKind(null);
+      return;
     }
+    // ONE line per give-up, not one per attempt: the 65-error lane was the
+    // absence of a ceiling, and a wall of identical warnings hides the rest.
+    console.warn(`Could not load memory review items (${outcome.failure}, ${outcome.tries} tries)`);
+    setMemoryReviewError(true);
+    setMemoryReviewErrorKind(outcome.failure);
   };
   // OWN-1: parent-visible retry for a failed ledger read (Child Memory error card).
   const retryMemoryReview = () => {
@@ -1504,6 +1568,7 @@ function useArborState() {
     memoryReviewItems,
     isMemoryUpdating,
     memoryReviewError,
+    memoryReviewErrorKind,
     retryMemoryReview,
     milestoneAnalysisOfGaps,
     isAnalyzingMilestones,

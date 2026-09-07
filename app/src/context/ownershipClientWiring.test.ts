@@ -73,14 +73,18 @@ describe("OWN-1 — a failed memory review read is surfaced, retryable, honest",
     expect(refresh).not.toBe("");
     expect(refresh).toContain("setMemoryReviewError(false)");
     expect(refresh).toContain("setMemoryReviewError(true)");
-    // The error set lives in the catch — after the warn, never instead of it.
-    expect(refresh.indexOf("setMemoryReviewError(true)")).toBeGreaterThan(refresh.indexOf("catch"));
+    // OBJ-PROFILE-04 rewrote the body around pollMemoryReview: the success
+    // branch returns early, so the error set is what is left after it, and it
+    // still follows the warn rather than replacing it.
+    expect(refresh.indexOf("setMemoryReviewError(true)")).toBeGreaterThan(refresh.indexOf("setMemoryReviewError(false)"));
+    expect(refresh.indexOf("setMemoryReviewError(true)")).toBeGreaterThan(refresh.indexOf("console.warn"));
   });
 
   it("retryMemoryReview refetches through refreshMemoryReview and both are exposed on the context", () => {
     const retry = /const retryMemoryReview = [\s\S]*?\n  \};/.exec(arbor)?.[0] ?? "";
     expect(retry).toContain("refreshMemoryReview()");
-    expect(arbor).toMatch(/memoryReviewError,\s*retryMemoryReview,/);
+    // OBJ-PROFILE-04 added memoryReviewErrorKind between the two.
+    expect(arbor).toMatch(/memoryReviewError,\s*(memoryReviewErrorKind,\s*)?retryMemoryReview,/);
   });
 
   it("ChildMemory renders the ErrorState retry card wired to retryMemoryReview when the ledger read failed", () => {
