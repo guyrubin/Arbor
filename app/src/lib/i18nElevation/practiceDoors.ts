@@ -68,6 +68,19 @@ export const en: Record<string, string> = {
   "elev.practice.feelings.toolkit.sub": "Why each feeling happens, and calm-down practice to run on a good day.",
   // The quiet counts line that replaced three stat bubbles above the drill.
   "elev.practice.feelings.counts": "{rounds} feeling rounds · {calm} calm practices",
+
+  /* ── Stories door (#/stories parent branch, §3f rows 3–4) ───────────────── */
+  // Lives here rather than in a module of its own: this file is the "parent
+  // doors" dictionary, and #/stories is the last of them. One evening, one
+  // story — the shelf is what you browse AFTER tonight is settled.
+  "elev.stories.tonight.eyebrow": "Tonight's story",
+  "elev.stories.tonight.cta": "Read it together",
+  "elev.stories.sub": "One story for tonight, starring {name}. The whole shelf is below when you want it.",
+  "elev.stories.counts.stories": "{n} stories read together",
+  "elev.stories.catalogue.title": "Choose a different story",
+  "elev.stories.library.title": "Your library",
+  "elev.stories.reader.back": "All journeys",
+  "elev.stories.reader.immersive": "Immersive",
 };
 
 export const he: Record<string, string> = {
@@ -110,4 +123,13 @@ export const he: Record<string, string> = {
   "elev.practice.feelings.toolkit": "ארגז הכלים הרגשי",
   "elev.practice.feelings.toolkit.sub": "למה כל רגש מופיע, ותרגולי הרגעה לתרגל ביום טוב.",
   "elev.practice.feelings.counts": "{rounds} סבבי רגשות · {calm} תרגולי הרגעה",
+
+  "elev.stories.tonight.eyebrow": "הסיפור של הערב",
+  "elev.stories.tonight.cta": "קוראים יחד",
+  "elev.stories.sub": "סיפור אחד לערב, בכיכוב {name}. כל המדף מחכה מתחת כשתרצו.",
+  "elev.stories.counts.stories": "{n} סיפורים שקראתם יחד",
+  "elev.stories.catalogue.title": "בחירת סיפור אחר",
+  "elev.stories.library.title": "הספרייה שלכם",
+  "elev.stories.reader.back": "כל המסעות",
+  "elev.stories.reader.immersive": "מסך מלא",
 };

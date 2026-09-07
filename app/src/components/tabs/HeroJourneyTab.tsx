@@ -46,6 +46,9 @@ import { HeroAvatar } from "../ui/HeroAvatar";
 import HeroCrest from "../ui/HeroCrest";
 import { ArborMascot } from "../ui/ArborMascot";
 import WorldScene from "../practice/WorldScene";
+import { chooseTonightsStory } from "../kidmode/tonightsStory";
+import { dayKey } from "../../practice/signals";
+import { PageHeader, cardCls } from "../ui/kit";
 import { T, METRIC_VARS } from "../../lib/tokens";
 import { fmtDay } from "../../lib/formatDate";
 
@@ -339,6 +342,14 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
     // rather than a story meant for someone else (W0.7 is not bypassed).
     const pinned = initialStoryId ? ageCandidates.find((s) => s.id === initialStoryId) : undefined;
     const displayStories = pinned ? [pinned] : ageCandidates;
+    // §3f row 3 — tonight's ONE story for the parent door. Same helper, same
+    // local day key and same per-child seed the kid home uses (KidDashboard),
+    // so both surfaces name the same story all day. A pinned request (the kid
+    // banner deep-link) wins; otherwise the day pick, and only if it survives
+    // this surface's own age view — never a story written for another age.
+    const tonightId = pinned?.id ?? chooseTonightsStory(dayKey(new Date()), childProfile.id);
+    const tonightStory = ageCandidates.find((x) => x.id === tonightId) ?? ageCandidates[0];
+    const tonightArt = (tonightStory && STORY_ART[tonightStory.id]) ?? { emoji: "⭐", sfx: "POW!", sfxHe: "פאו!" };
     const hiddenAgeMin = ageHiddenStories.length
       ? Math.min(...ageHiddenStories.map((s) => s.ageRange[0]))
       : null;
@@ -349,20 +360,27 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
     // comic wash (`.arbor-play`) is the child's register and mounts only while
     // Kid Mode is on; the parent standing at the door gets the parent register
     // — kit spacing, no play wash. The catalogue body itself is shared.
-    const catalogBody = (
-      <>
-        {/* HERO BANNER — the child fronts their own story academy */}
+    // §3f rows 3–4 / IA-08: the two registers now differ in CONTENT, not only
+    // in the wrapper. Kid Mode keeps the comic academy (crest, mascot, world
+    // grid). The parent door opens on ONE cover for tonight, with the shelf and
+    // the library below it as their own modules (moduleBudget 3).
+    return kidMode ? (
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="arbor-play space-y-6"
+      >
+        {/* HERO BANNER — the child fronts their own story academy. KID-29
+            residue: the "N stories done" chip and the six virtue counters used
+            to sit here, on the CHILD's banner — a running tally is a
+            measurement of the child rendered in front of them (laws 1 + 3).
+            They are counts a PARENT reads, so they moved to the parent door's
+            counts line. The kid banner is the crest and the name. */}
         <section className="comic-panel p-5 sm:p-6 flex items-center gap-4 sm:gap-5" aria-label={he ? "הגיבור שלך" : "Your hero"}>
           <HeroCrest size={92}>
             <HeroAvatar size={92} mood="cheer" />
           </HeroCrest>
           <div className="flex-1 min-w-0">
-            <span
-              className="inline-block text-[12px] font-black rounded-full px-2.5 py-0.5 mb-1.5"
-              style={{ background: "var(--arbor-yellow-soft)", color: "var(--arbor-yellow-ink)", border: "var(--comic-line)" }}
-            >
-              {he ? `${runs.length} סיפורים הושלמו` : `${runs.length} stories done`}
-            </span>
             <h1 className="font-black leading-none truncate" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(22px,5vw,38px)" }} dir="auto">
               {he ? `מסעות הגיבור של ${isolate(name)}` : `${isolate(name)}'s Story Quests`}
             </h1>
@@ -371,19 +389,6 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                 {he ? `מגדלים את ${isolate(name)} לקראת: ${charter.join(" · ")}` : `Raising ${isolate(name)} toward: ${charter.join(" · ")}`}
               </p>
             )}
-            <div className="flex flex-wrap gap-1.5 mt-3">
-              {METRIC_IDS.map((m) => (
-                <span
-                  key={m}
-                  title={METRIC_LABELS[m]}
-                  className="inline-flex items-center gap-1 text-[12px] font-black rounded-full px-2.5 py-1"
-                  style={{ background: "#fff", border: "var(--comic-line)" }}
-                >
-                  <span aria-hidden="true">{METRIC_EMOJI[m]}</span>
-                  <b style={{ color: METRIC_COLORS[m] }}>{totalMetrics[m]}</b>
-                </span>
-              ))}
-            </div>
           </div>
         </section>
 
@@ -395,50 +400,14 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
           </div>
         </div>
 
-        {/* IN-HUB TILES (UC-4) — Hero Comics + Family Formation live inside the
-            Academy / Story Journeys surface, not as their own sidebar doors. */}
-        <div className="grid gap-3 sm:gap-4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
-          {kidNav && (
-          <button
-            className="world-tile text-start"
-            onClick={() => kidNav("comics")}
-            aria-label={he ? "קומיקס גיבור" : "Hero Comics"}
-          >
-            <div className="comic-halftone relative grid place-items-center" style={{ height: 96, background: "var(--arbor-peach)", borderBottom: "var(--comic-line)" }}>
-              <Icon name="auto_stories" size={44} style={{ color: "#fff", filter: "drop-shadow(2px 2px 0 rgba(23,27,34,.3))" }} />
-              <span className="comic-sfx absolute bottom-1 z-[3] text-[20px] -rotate-6" style={{ insetInlineStart: 8 }} aria-hidden="true">{he ? "פאו!" : "POW!"}</span>
-            </div>
-            <div className="p-3.5">
-              <p className="font-black text-[16.5px] leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
-                {he ? "קומיקס גיבור" : "Hero Comics"}
-              </p>
-              <p className="text-[12.5px] font-bold mt-1" style={{ color: "var(--arbor-ink-soft)" }} dir="auto">
-                {he ? `${isolate(name)} כוכב הקומיקס של כל סיפור` : `${isolate(name)} stars in every story's comic`}
-              </p>
-            </div>
-          </button>
-          )}
-
-          {kidNav && (
-          <button
-            className="world-tile text-start"
-            onClick={() => kidNav("family")}
-            aria-label={he ? "מגילת המשפחה" : "Family Formation"}
-          >
-            <div className="comic-halftone relative grid place-items-center" style={{ height: 96, background: "var(--arbor-yellow)", borderBottom: "var(--comic-line)" }}>
-              <Icon name="history_edu" size={44} style={{ color: "#fff", filter: "drop-shadow(2px 2px 0 rgba(23,27,34,.3))" }} />
-            </div>
-            <div className="p-3.5">
-              <p className="font-black text-[16.5px] leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
-                {he ? "מגילת המשפחה" : "Family Formation"}
-              </p>
-              <p className="text-[12.5px] font-bold mt-1" style={{ color: "var(--arbor-ink-soft)" }} dir="auto">
-                {he ? "הערכים שמכוונים את הסיפורים שלכם" : "The values that steer your stories"}
-              </p>
-            </div>
-          </button>
-          )}
-        </div>
+        {/* §3f row 3: the Hero Comics and Family Formation tiles used to sit
+            here. Both were wrapped in `{kidNav && …}` — and `useKidSafeNav()`
+            returns null INSIDE Kid Mode — so they only ever rendered on the
+            PARENT door, where Hero Comics duplicated the hub's own pill (it is
+            `stories.tools`) and Family Formation duplicates the Learn hub's.
+            Two extra doors above the first story card, neither of them this
+            surface's job. Deleted; both routes keep their own hub pill, so
+            nothing became unreachable (routeReachability.test.ts). */}
 
         {/* PACK FILTER — comic chips. Absent while the catalog is pinned to
             tonight's single story: there is nothing to filter. */}
@@ -470,8 +439,8 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
         {/* STORY WORLDS — each card is an illustrated world starring the hero */}
         <div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mb-3">
-            <h2 className="font-black" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(18px,3.4vw,24px)" }}>
-              {he ? "בחרו את הסיפור שלכם" : "Choose your story"}
+            <h2 className="font-black" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(18px,3.4vw,24px)" }} dir="auto">
+              {kidMode ? (he ? "בחרו את הסיפור שלכם" : "Choose your story") : t("elev.stories.catalogue.title")}
             </h2>
             {/* W0.7 — "Show all ages" toggle (comic register), shown only when
                 the child's-age view actually hides stories or it's already on. */}
@@ -613,7 +582,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
         {/* JOURNEY LIBRARY */}
         <div>
           <h2 className="font-black mb-3 inline-flex items-center gap-2" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(18px,3.4vw,24px)" }}>
-            <Icon name="auto_stories" size={20} /> {he ? `הספרייה (${runs.length})` : `Library (${runs.length})`}
+            <Icon name="auto_stories" size={20} /> {kidMode ? (he ? `הספרייה (${runs.length})` : `Library (${runs.length})`) : `${t("elev.stories.library.title")} (${runs.length})`}
           </h2>
           {!runsCol.loaded ? (
             /* Masterplan 4.3 — per-section skeleton mimicking the library tile
@@ -650,18 +619,296 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
             </div>
           )}
         </div>
-      </>
-    );
-    return kidMode ? (
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="arbor-play space-y-6"
-      >
-        {catalogBody}
       </motion.div>
     ) : (
-      <div className="space-y-6 max-w-[1100px]">{catalogBody}</div>
+      <div className="space-y-6 max-w-[1100px]">
+        <PageHeader
+          title={t("nav.tab.stories")}
+          subtitle={t("elev.stories.sub", { name })}
+        />
+        {/* §3f row 3 — ONE dominant cover, above the fold. The parent door used
+            to open on a comic hero banner, a mascot bubble in the kid's voice,
+            two in-hub tiles and a filter row, so the FIRST story card rendered
+            at 1,151 px: an evening surface that made you scroll past four
+            things before it offered a story. chooseTonightsStory() (built for
+            the kid home in 02e04b42, reused verbatim) already picks ONE story
+            per local day, so the kid banner and this cover name the same one. */}
+        <section data-module="stories-tonight">
+          <button
+            type="button"
+            data-primary-move="read-tonights-story"
+            onClick={() => { if (!loadingId && tonightStory) void startJourney(tonightStory); }}
+            disabled={!tonightStory || !!loadingId}
+            aria-label={tonightStory ? (he ? tonightStory.titleHe : tonightStory.title) : undefined}
+            className={`${cardCls} w-full text-start overflow-hidden p-0 transition motion-safe:hover:-translate-y-0.5 disabled:opacity-60`}
+          >
+            <span
+              className="grid place-items-center w-full"
+              style={{ height: 168, background: tonightStory ? PACK_WORLD[tonightStory.pack].bg : "var(--arbor-paper-deep)" }}
+            >
+              <span className="flex items-center gap-3">
+                <HeroAvatar size={92} ring animate={false} />
+                <span style={{ fontSize: 56 }} aria-hidden="true">{tonightArt.emoji}</span>
+              </span>
+            </span>
+            <span className="block p-5">
+              <span className="block text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--arbor-muted)" }}>
+                {t("elev.stories.tonight.eyebrow")}
+              </span>
+              <span className="block text-[1.35rem] font-extrabold leading-tight mt-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
+                {tonightStory ? (he ? tonightStory.titleHe : tonightStory.title) : t("elev.stories.catalogue.title")}
+              </span>
+              <span className="flex flex-wrap items-center gap-2 mt-3">
+                {tonightStory && (
+                  <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[11.5px] font-bold" style={{ background: "var(--arbor-paper-deep)", color: PACK_WORLD[tonightStory.pack].ink }}>
+                    {he ? PACK_WORLD[tonightStory.pack].labelHe : PACK_WORLD[tonightStory.pack].label}
+                  </span>
+                )}
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-xl px-4 min-h-[44px] text-[13px] font-extrabold ms-auto"
+                  style={{ background: "var(--gradient-cta, var(--arbor-clay))", color: "var(--arbor-subtab-on-ink)" }}
+                >
+                  {tonightStory && loadingId === tonightStory.id
+                    ? <><Icon name="autorenew" size={16} className="motion-safe:animate-spin" /> {statesText("elev.states.hero.opening", he)}</>
+                    : <><Icon name="play_arrow" size={16} fill={1} /> {t("elev.stories.tonight.cta")}</>}
+                </span>
+              </span>
+            </span>
+          </button>
+        </section>
+
+        {/* RUN-08 — the counts that used to be a chip reading "0 stories done"
+            plus six virtue counters all showing 0 on day 0: a wall of zeros on
+            the first evening. One quiet line, rendered only once there IS
+            something to count. Counts, never verdicts (law 1). */}
+        {(runs.length > 0 || METRIC_IDS.some((m) => totalMetrics[m] > 0)) && (
+          <p className="text-[11.5px] px-1 flex flex-wrap items-center gap-x-3 gap-y-1" style={{ color: "var(--arbor-muted)" }}>
+            {runs.length > 0 && <span>{t("elev.stories.counts.stories", { n: runs.length })}</span>}
+            {METRIC_IDS.filter((m) => totalMetrics[m] > 0).map((m) => (
+              <span key={m} className="inline-flex items-center gap-1">
+                <span aria-hidden="true">{METRIC_EMOJI[m]}</span>
+                {METRIC_LABELS[m]} {totalMetrics[m]}
+              </span>
+            ))}
+          </p>
+        )}
+
+        <section data-module="stories-catalogue" className="space-y-6">
+        {/* PACK FILTER — comic chips. Absent while the catalog is pinned to
+            tonight's single story: there is nothing to filter. */}
+        {!pinned && (
+        <div className="flex flex-wrap gap-2" role="tablist" aria-label={he ? "סינון לפי כוח" : "Filter by power"}>
+          {[{ id: "all" as const, label: he ? "הכול" : "All" }, ...PACKS.map((p) => ({ id: p.id, label: he ? p.titleHe : p.title }))].map((p) => {
+            const active = packFilter === p.id;
+            const w = p.id === "all" ? null : PACK_WORLD[p.id as HeroPackId];
+            return (
+              <button
+                key={p.id}
+                role="tab"
+                aria-selected={active}
+                onClick={() => setPackFilter(p.id as HeroPackId | "all")}
+                className="px-3.5 py-2.5 min-h-[44px] rounded-full text-[13px] font-black transition"
+                style={
+                  active
+                    ? { background: w ? w.bg : "var(--arbor-clay)", color: "#fff", border: "var(--comic-line)", boxShadow: "var(--comic-pop)" }
+                    : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink-soft)", border: "var(--comic-line)" }
+                }
+              >
+                {p.label}
+              </button>
+            );
+          })}
+        </div>
+        )}
+
+        {/* STORY WORLDS — each card is an illustrated world starring the hero */}
+        <div>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mb-3">
+            <h2 className="font-black" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(18px,3.4vw,24px)" }} dir="auto">
+              {kidMode ? (he ? "בחרו את הסיפור שלכם" : "Choose your story") : t("elev.stories.catalogue.title")}
+            </h2>
+            {/* W0.7 — "Show all ages" toggle (comic register), shown only when
+                the child's-age view actually hides stories or it's already on. */}
+            {(ageHiddenStories.length > 0 || showAllAges) && (
+              <span className="ms-auto inline-flex items-center gap-2">
+                {!showAllAges && ageHiddenStories.length > 0 && (
+                  <span className="text-[11.5px] font-black" style={{ color: "var(--arbor-muted)" }} dir="auto">
+                    {agefilterText("elev.agefilter.hiddenCount", he, { n: ageHiddenStories.length })}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={showAllAges}
+                  onClick={toggleShowAllAges}
+                  data-testid="agefilter-toggle-hero-journeys"
+                  className="inline-flex items-center gap-1 rounded-full px-3 py-2.5 min-h-[44px] text-[11.5px] font-black"
+                  style={{
+                    background: showAllAges ? "var(--arbor-yellow)" : "#fff",
+                    border: "2px solid var(--comic-ink)",
+                    color: "var(--arbor-ink)",
+                  }}
+                >
+                  <Icon name={showAllAges ? "check" : "unfold_more"} size={14} />
+                  {agefilterText("elev.agefilter.showAll", he)}
+                </button>
+              </span>
+            )}
+          </div>
+          {/* OBJ-KID-04 — a failed generate ANSWERS the child, inside
+              `.arbor-play`, in the kid register. role=status so the line is
+              announced; the tapped card is already back in its idle state
+              (setLoadingId(null) in the finally), so a second tap retries. */}
+          {storyResting && (
+            <div role="status" aria-live="polite" className="mb-3">
+              <MascotSay mood="think" tone="yellow">{t("elev.play.hero.rest")}</MascotSay>
+            </div>
+          )}
+          {/* W0.7 — honest empty state: the catalog is written for older ages. */}
+          {displayStories.length === 0 && ageHiddenStories.length > 0 && (
+            <div className="comic-panel p-5 text-center" data-testid="agefilter-empty-hero-journeys">
+              <p className="text-[14px] font-black" dir="auto" style={{ color: "var(--arbor-ink)" }}>
+                {agefilterText("elev.agefilter.empty", he, {
+                  min: hiddenAgeMin ?? "",
+                  max: hiddenAgeMax ?? "",
+                  name,
+                })}
+              </p>
+              <button
+                type="button"
+                onClick={toggleShowAllAges}
+                className="mt-3 inline-flex items-center gap-1 rounded-full px-3.5 py-2.5 min-h-[44px] text-[12.5px] font-black"
+                style={{ background: "var(--arbor-yellow)", border: "2px solid var(--comic-ink)", color: "var(--arbor-ink)" }}
+              >
+                <Icon name="unfold_more" size={15} /> {agefilterText("elev.agefilter.showAll", he)}
+              </button>
+            </div>
+          )}
+          <div className="grid gap-3 sm:gap-4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
+            {displayStories.map((story) => {
+              const w = PACK_WORLD[story.pack];
+              const art = STORY_ART[story.id] ?? { emoji: "⭐", sfx: "POW!", sfxHe: "פאו!" };
+              const isLoading = loadingId === story.id;
+              return (
+                <button
+                  key={story.id}
+                  className="world-tile text-start relative"
+                  aria-disabled={!!loadingId}
+                  aria-label={`${he ? story.titleHe : story.title} — ${he ? w.labelHe : w.label}`}
+                  onClick={() => !loadingId && startJourney(story)}
+                >
+                  {isAimed(story) ? (
+                    <span
+                      className="absolute top-0 z-[2] text-[10.5px] font-black px-2.5 py-1 inline-flex items-center gap-1"
+                      style={{ background: "var(--arbor-yellow)", color: "var(--arbor-ink)", border: "var(--comic-line)", insetInlineStart: 0, borderStartStartRadius: "var(--play-radius)", borderEndEndRadius: "12px" }}
+                    >
+                      ★ {he ? "המטרה שלכם" : "Your aim"}
+                    </span>
+                  ) : story.origin === "original" ? (
+                    <span
+                      className="absolute top-0 z-[2] text-[11px] font-black text-white px-2.5 py-1"
+                      style={{ background: "var(--arbor-pink-ink)", border: "var(--comic-line)", insetInlineStart: 0, borderStartStartRadius: "var(--play-radius)", borderEndEndRadius: "12px" }}
+                    >
+                      {he ? "מקורי" : "ORIGINAL"}
+                    </span>
+                  ) : null}
+                  {/* Scene: the hero standing in this story's world */}
+                  <div className="comic-halftone relative overflow-hidden" style={{ height: 150, background: w.bg, borderBottom: "var(--comic-line)" }}>
+                    {/* The story's world, with the child's hero generated into the scene
+                        (same pipeline as the Practice world-cards). Falls back to the
+                        hero + emoji motif while loading / with no hero / on error. */}
+                    <WorldScene worldId={`story-${story.id}`} imagePrompt={`${story.title} — ${story.theme}`} heroUrl={photoUrl}>
+                      <div className="flex items-center gap-1.5">
+                        <HeroAvatar size={80} ring animate={false} />
+                        <span style={{ fontSize: 46, filter: "drop-shadow(2px 2px 0 rgba(23,27,34,.3))" }} aria-hidden="true">
+                          {art.emoji}
+                        </span>
+                      </div>
+                    </WorldScene>
+                    <span
+                      className="absolute top-2 z-[3] text-[10.5px] font-black rounded-full px-2 py-0.5"
+                      style={{ insetInlineEnd: 8, background: "#fff", border: "2px solid var(--comic-ink)", color: "var(--arbor-ink)" }}
+                    >
+                      {he ? "גיל" : "Age"} {story.ageRange[0]}–{story.ageRange[1]}
+                    </span>
+                    <span className="comic-sfx absolute bottom-1 z-[3] text-[24px] -rotate-6" style={{ insetInlineStart: 8 }} aria-hidden="true">
+                      {he ? art.sfxHe : art.sfx}
+                    </span>
+                  </div>
+                  {/* Caption */}
+                  <div className="p-3.5">
+                    <p className="font-black text-[16.5px] leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
+                      {he ? story.titleHe : story.title}
+                    </p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <span
+                        className="inline-block text-[10.5px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full"
+                        style={{ border: "2px solid var(--comic-ink)", color: w.ink }}
+                      >
+                        {he ? w.labelHe : w.label}
+                      </span>
+                      <span className="ms-auto inline-flex items-center gap-1 text-[13px] font-black" style={{ color: w.ink }}>
+                        {isLoading ? (
+                          /* Press feedback while the story generates — label
+                             via i18n (masterplan 4.3: no hardcoded literals). */
+                          <><Icon name="autorenew" size={16} className="motion-safe:animate-spin" /> {statesText("elev.states.hero.opening", he)}</>
+                        ) : (
+                          <>{he ? "שחקו" : "Play"} <Icon name="play_arrow" size={16} fill={1} /></>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        </section>
+
+        <section data-module="stories-library">
+        {/* JOURNEY LIBRARY */}
+        <div>
+          <h2 className="font-black mb-3 inline-flex items-center gap-2" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(18px,3.4vw,24px)" }}>
+            <Icon name="auto_stories" size={20} /> {kidMode ? (he ? `הספרייה (${runs.length})` : `Library (${runs.length})`) : `${t("elev.stories.library.title")} (${runs.length})`}
+          </h2>
+          {!runsCol.loaded ? (
+            /* Masterplan 4.3 — per-section skeleton mimicking the library tile
+               grid (reserves real dimensions; ~10s → inline retry wired to the
+               W0 syncStore, which re-mounts this runsCol listener). */
+            <SectionSkeleton title={false} rows={2} rowClassName="h-[120px]" loaded={runsCol.loaded} testId="hero-library-skeleton" />
+          ) : runs.length === 0 ? (
+            <div className="comic-panel p-5">
+              <EmptyState
+                headline={he ? "עדיין אין מסעות" : "No quests yet"}
+                body={he ? "בחרו סיפור למעלה והתחילו את המסע הראשון. כל מסע שהושלם נשמר כאן." : "Pick a story above and start your first quest. Completed quests are saved here."}
+              />
+            </div>
+          ) : (
+            <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))" }}>
+              {runs.map((run) => {
+                const spec = getStorySpec(run.storyId);
+                const w = spec ? PACK_WORLD[spec.pack] : PACK_WORLD.courage;
+                const art = STORY_ART[run.storyId] ?? { emoji: "⭐", sfx: "POW!", sfxHe: "פאו!" };
+                return (
+                  <button key={run.id} onClick={() => replay(run)} className="world-tile text-start" aria-label={run.title}>
+                    <div className="comic-halftone grid place-items-center" style={{ height: 72, background: w.bg, borderBottom: "var(--comic-line)" }}>
+                      <span style={{ fontSize: 34 }} aria-hidden="true">{art.emoji}</span>
+                    </div>
+                    <div className="p-2.5">
+                      <span className="text-[12.5px] font-black block leading-tight line-clamp-2" style={{ color: "var(--arbor-ink)" }} dir="auto">{run.title}</span>
+                      <span className="text-[10.5px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+                        {run.completedAt ? fmtDay(run.completedAt, uiLang) : he ? "בתהליך" : "In progress"}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        </section>
+      </div>
     );
   }
 
@@ -776,17 +1023,25 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
       <div className="flex items-center justify-between">
-        <button onClick={exitJourney} className="flex items-center gap-1.5 text-sm font-bold" style={{ color: "var(--arbor-muted)" }}>
-          <Icon name="arrow_back" size={16} /> All journeys
+        {/* §3f row 4 — these two measured 20 px and 16 px tall: the way out of a
+            story and the way into full screen, both under the touch floor. Both
+            now clear 44 px, and both are keyed (they were English literals). */}
+        <button
+          onClick={exitJourney}
+          className="inline-flex items-center gap-1.5 text-sm font-bold px-2 min-h-[44px]"
+          style={{ color: "var(--arbor-muted)" }}
+        >
+          <Icon name="arrow_back" size={16} style={uiLang === "he" ? { transform: "scaleX(-1)" } : undefined} /> {t("elev.stories.reader.back")}
         </button>
         <span className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{render.title}</span>
         <button
           ref={immersiveTriggerRef}
           onClick={() => setImmersive(true)}
-          className="flex items-center gap-1.5 text-sm font-bold"
+          className="inline-flex items-center gap-1.5 text-sm font-bold px-2 min-h-[44px]"
           style={{ color: "var(--arbor-muted)" }}
+          aria-label={t("elev.stories.reader.immersive")}
         >
-          <Icon name="fullscreen" size={16} /> <span className="hidden sm:inline">Immersive</span>
+          <Icon name="fullscreen" size={16} /> <span className="hidden sm:inline">{t("elev.stories.reader.immersive")}</span>
         </button>
       </div>
 
