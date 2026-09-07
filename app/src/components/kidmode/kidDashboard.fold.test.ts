@@ -28,7 +28,8 @@ import {
   KID_HOME_GAME_TILE_BLOCK,
   KID_HOME_ADVENTURE_TILE_BLOCK,
   KID_HOME_TILE_GAP,
-  KID_HOME_GAME_TITLE_TOKEN,
+  KID_HOME_GAME_TITLE_SIZE,
+  KID_HOME_GAME_TITLE_MIN_PX,
 } from "./KidDashboard";
 import { KID_WORLDS } from "../practice/HeroArcade";
 
@@ -92,19 +93,53 @@ describe("OBJ-KID-06 — the games are above the fold at 390x844", () => {
 });
 
 describe("OBJ-KID-06 — the game tile title is on the kid scale", () => {
-  it("titles render at --t-xl, which resolves above the 20 px floor", () => {
-    expect(KID_HOME_GAME_TITLE_TOKEN).toBe("var(--t-xl)");
-    expect(dash).toContain("fontSize: big ? \"var(--t-lg)\" : KID_HOME_GAME_TITLE_TOKEN");
-    // The token's own definition, read from the stylesheet, at the product root
-    // of 15 px: 1.4375rem = 21.56 px.
-    const decl = /--t-xl:\s*([\d.]+)rem/.exec(css);
-    expect(decl, "--t-xl is not declared in rem any more").toBeTruthy();
-    expect(Number(decl![1]) * 15).toBeGreaterThanOrEqual(20);
+  /** The measured viewport. 5vw = 19.5 px here, so the clamp sits on its floor. */
+  const VIEWPORT_W = 390;
+  /** Resolve a `clamp(min, preferred, max)` of absolute px + vw at one width. */
+  function resolveClamp(value: string, viewportPx: number): number {
+    const m = /^clamp\(\s*([\d.]+)px\s*,\s*([\d.]+)vw\s*,\s*([\d.]+)px\s*\)$/.exec(value);
+    expect(m, `not an absolute px/vw clamp: ${value}`).toBeTruthy();
+    const [min, vw, max] = [Number(m![1]), Number(m![2]), Number(m![3])];
+    return Math.min(max, Math.max(min, (vw / 100) * viewportPx));
+  }
+
+  it("the title size is absolute, so its floor does not depend on the root font-size", () => {
+    // The rendered check measured 15 px while the constant said var(--t-xl).
+    // 15 px is exactly what --t-base (0.9375rem) inherits at a 16 px root, so a
+    // rem step cannot distinguish "the token did not resolve on the overlay"
+    // from "the checker read a neighbouring node" — an absolute length can.
+    expect(KID_HOME_GAME_TITLE_SIZE).not.toMatch(/rem|var\(/);
+    expect(resolveClamp(KID_HOME_GAME_TITLE_SIZE, VIEWPORT_W)).toBeGreaterThanOrEqual(KID_HOME_GAME_TITLE_MIN_PX);
+    expect(KID_HOME_GAME_TITLE_MIN_PX).toBeGreaterThanOrEqual(20);
+    // …and it is the size the component actually renders the title with.
+    expect(dash).toContain("fontSize: big ? \"var(--t-lg)\" : KID_HOME_GAME_TITLE_SIZE");
   });
 
-  it("negative control — the pre-fix --t-base title was under the floor", () => {
+  it("the title carries a measurement hook, so the rendered check reads the title node", () => {
+    expect(dash).toContain("data-kid-tile-title");
+    // The hook sits on the same span as the font-size — one node, not two.
+    const hook = dash.indexOf("data-kid-tile-title");
+    const size = dash.indexOf("KID_HOME_GAME_TITLE_SIZE", hook);
+    expect(hook, "the hook must precede the size on the same element").toBeGreaterThan(-1);
+    expect(dash.slice(hook, size)).not.toContain("</span>");
+  });
+
+  it("one action per tile, imagery-first: a single button, art before the title block", () => {
+    const tile = dash.slice(dash.indexOf("function SceneTile"), dash.indexOf("export default function KidDashboard"));
+    expect((tile.match(/<button\b/g) ?? []).length, "a tile is exactly one action").toBe(1);
+    expect(tile.indexOf("<WorldScene"), "the scene must render before the title block").toBeLessThan(tile.indexOf("data-kid-tile-title"));
+  });
+
+  it("negative control — both pre-fix sizes fall under the floor at 390 px", () => {
+    // The original --t-base title, and the --t-xl replacement that the rendered
+    // check still measured at 15 px. The stylesheet numbers are read here so the
+    // control moves if the scale is ever re-cut.
     const base = /--t-base:\s*([\d.]+)rem/.exec(css);
-    expect(Number(base![1]) * 15).toBeLessThan(20);
+    expect(Number(base![1]) * 16).toBeLessThan(20);
+    // 15 px measured — whatever produced it, it was under the floor, and an
+    // absolute clamp is the only form of this constant that cannot produce it.
+    expect(15).toBeLessThan(KID_HOME_GAME_TITLE_MIN_PX);
+    expect(() => resolveClamp("var(--t-xl)", VIEWPORT_W)).toThrow();
   });
 });
 

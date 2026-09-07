@@ -150,7 +150,8 @@ export function kidDestinations(bannerStoryId: string): KidDestination[] {
    scale. Two changes, no new component: the games section moves directly under
    the quest banner, and each game tile grows to the arcade `world-tile`'s
    proportions (HeroArcade.tsx:227-250 — the bigger, richer tile the app already
-   ships) with a display-scale title.
+   ships) with a display-scale title. The title size is an absolute clamp, not a
+   rem token — see KID_HOME_GAME_TITLE_SIZE.
 
    These constants are the single source for the block sizes below AND for
    kidDashboard.fold.test.ts, which adds them up against the 844 px viewport —
@@ -172,9 +173,20 @@ export const KID_HOME_GAME_TILE_BLOCK = 200;
 export const KID_HOME_ADVENTURE_TILE_BLOCK = 150;
 /** Grid gap between tiles. */
 export const KID_HOME_TILE_GAP = 12;
-/** Game tile title: --t-xl = 1.4375rem ≈ 21.6 px at the product root of 15 px,
- *  clearing the 20 px kid-scale floor (was --t-base ≈ 14 px). */
-export const KID_HOME_GAME_TITLE_TOKEN = "var(--t-xl)";
+/** Game tile title. OBJ-KID-06 fixup: `var(--t-xl)` was a rem step, and the
+ *  floor it clears depends on a root font-size the product never pins — the
+ *  rendered check at 390 px measured 15 px on this surface, the SAME number the
+ *  --t-base body inherit produces, so the token was either not resolving on the
+ *  overlay or the checker read the inherited size off a neighbouring node. A rem
+ *  step cannot tell those two apart. An absolute clamp can: 5vw is 19.5 px at
+ *  390, so the minimum pins the title at exactly the 20 px kid floor on the
+ *  measured viewport and lets it grow to 24 px on a wide one. The tile's own
+ *  block size is unchanged, so the fold (Sound Lab @524, Mood Mountain @736)
+ *  does not move — the title block is absolutely positioned inside the tile.
+ *  HeroArcade.tsx:309 sets its comic heading the same way. */
+export const KID_HOME_GAME_TITLE_SIZE = "clamp(20px, 5vw, 24px)";
+/** The 390 px floor the clamp guarantees, asserted by kidDashboard.fold.test.ts. */
+export const KID_HOME_GAME_TITLE_MIN_PX = 20;
 
 /** A calm, one-shot count-up of an already-earned number. Reveals on mount only —
  *  never a live ticker. Respects prefers-reduced-motion (snaps to the total). */
@@ -295,7 +307,11 @@ function SceneTile({
       />
       {/* Title block. */}
       <span style={{ position: "absolute", insetInline: 0, insetBlockEnd: 0, padding: big ? "14px" : "11px" }}>
-        <span style={{ display: "block", fontFamily: "var(--font-display)", fontWeight: 900, fontSize: big ? "var(--t-lg)" : KID_HOME_GAME_TITLE_TOKEN, color: "var(--arbor-on-accent)", lineHeight: 1.12 }}>
+        {/* OBJ-KID-06 fixup: `data-kid-tile-title` names the node the >= 20 px
+            acceptance is about, so a rendered check measures the title itself
+            and never the section heading or the inherited button size beside
+            it. It is a measurement hook, not a style hook. */}
+        <span data-kid-tile-title="" style={{ display: "block", fontFamily: "var(--font-display)", fontWeight: 900, fontSize: big ? "var(--t-lg)" : KID_HOME_GAME_TITLE_SIZE, color: "var(--arbor-on-accent)", lineHeight: 1.12 }}>
           {title}
         </span>
         <span style={{ display: "block", fontSize: "var(--t-sm)", color: "var(--arbor-on-accent)", opacity: 0.88, marginBlockStart: "1px" }}>{sub}</span>
