@@ -290,7 +290,7 @@ body {
   backdrop-filter: none !important;
 }
 .arbor-app aside:first-of-type { border-inline-end: 1px solid var(--arbor-rule) !important; }
-.arbor-app aside:last-of-type  { border-inline-start: 1px solid var(--arbor-rule) !important; }
+.arbor-app aside:last-of-type:not(:first-of-type) { border-inline-start: 1px solid var(--arbor-rule) !important; }
 
 /* ─── Nav as soft sapphire pills ─────────────────────────────────────────── */
 .arbor-app nav button {
