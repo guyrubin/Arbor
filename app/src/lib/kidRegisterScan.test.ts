@@ -104,7 +104,15 @@ const FROZEN: Partial<Record<string, Partial<Record<RuleId, { count: number; rea
     adultWords: { count: 2, reason: "the same two hold-to-exit labels, rendered in the kid home header" },
   },
   "components/practice/MimicMatch.tsx": {
-    adultWords: { count: 4, reason: "OBJ-KID-03 Face Match half (prac.mimic.face.sub/privacy/warming/unavailable) — another builder's file in this wave" },
+    // OBJ-KID-03 fixup: MimicStudioTab now renders this block on the parent door
+    // only ({!kidMode && <MimicMatch …>}), so no child reaches these five. The file
+    // stays in the graph — and frozen — so removing that gate turns CI red instead
+    // of silently re-crossing the register. The fifth hit is the photo_camera
+    // ligature the extended rule can now see; kid-register rewrite = OBJ-KID-03-a.
+    adultWords: { count: 5, reason: "Face Match is parent-register (gated in MimicStudioTab): 4 prac.mimic.face.* keys + the photo_camera ligature — MimicMatch.tsx is another builder's file" },
+  },
+  "components/practice/HeroArcade.tsx": {
+    adultWords: { count: 1, reason: "the Comic Studio CTA's photo_camera ligature, surfaced by the OBJ-KID-03 fixup rule extension — HeroArcade.tsx is another builder's file; the swap is filed as OBJ-KID-03-b in FOLLOW-UPS" },
   },
   "components/practice/JourneyTab.tsx": {
     kitShell: { count: 4, reason: "parent-register surface (#/journey) — SectionCard is its legitimate chrome; scanned for pct/nav/verdict copy" },
@@ -233,6 +241,17 @@ const RULES: Record<RuleId, (src: string) => string[]> = {
       const value = ALL_EN[m[1]];
       if (value && ADULT_WORDS.test(value)) hits.push(`${m[1]}: ${value}`);
     }
+    // Third source (OBJ-KID-03 fixup): a Material Symbols LIGATURE is the icon
+    // span's own text content. The font paints a glyph, but innerText — and any
+    // check that reads the page as text — returns "photo_camera". The rendered
+    // acceptance run counted five camera words on the kid Mimic surface; the two
+    // this scan could not see were icons, because a rule that reads only prose
+    // and t() keys never looks at the `name` attribute. Ligature parts are matched
+    // word-by-word (split on `_`) so "photo_camera" is a hit and "face" /
+    // "no_photography" are not.
+    for (const m of src.matchAll(/<Icon\s[^>]*name="([a-z0-9_]+)"/g)) {
+      if (m[1].split("_").some((part) => ADULT_WORDS.test(part))) hits.push(`<Icon name="${m[1]}">`);
+    }
     return hits;
   },
 };
@@ -252,6 +271,11 @@ function scanFile(rel: string): Record<RuleId, string[]> {
 describe("kid-register scanner — positive controls (planted violations are seen)", () => {
   const PLANTED: [RuleId, string][] = [
     ["adultWords", '<span>Camera privacy</span>'],
+    // OBJ-KID-03 fixup: the ligature IS the rendered text, so the icon that stood
+    // here as a negative control ("identifier, not prose") was in fact two of the
+    // five camera words the rendered check counted on the kid Mimic surface.
+    ["adultWords", '<Icon name="photo_camera" size={16} /> Turn on mirror'],
+    ["adultWords", '<Icon name="photo_camera" size={32} className="mx-auto mb-3" />'],
     ["adultWords", '<p>use the mirror game above and you be the judge!</p>'],
     ["adultWords", 'say={t("prac.adventures.sub", { name: first })}'], // the KEY resolves to "…never feels like a test."
     ["lockGlyph", '<Icon name="lock" size={14} /> {cosmeticLabel(next.cosmetic.id)}'],
@@ -279,7 +303,8 @@ describe("kid-register scanner — positive controls (planted violations are see
 
 describe("kid-register scanner — negative controls (legitimate code passes)", () => {
   const LEGAL: [RuleId, string][] = [
-    ["adultWords", '<Icon name="photo_camera" size={16} /> {t("elev.play.mimic.mirrorSay")}'], // identifier, not prose
+    ["adultWords", '<Icon name="face" size={16} /> {t("elev.play.mimic.mirrorSay")}'], // a clean ligature beside a kid line
+    ["adultWords", '<Icon name={mirrorGlyph} size={16} /> Turn on mirror'], // an expression: the !kidMode split above it decides the glyph
     ["adultWords", 'className="arbor-app arbor-parent flex items-center"'], // a class list is not copy
     ["adultWords", 'const s = scoreFaceMatch(blendshapesToMap(cats), target);'], // code, not copy
     ["adultWords", 'say={t("elev.play.adventures.say", { name: first })}'], // the kid line

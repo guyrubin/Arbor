@@ -128,6 +128,15 @@ export default function MimicStudioTab() {
   if (!kidMode) { mirrorInvite = `Turn on the mirror so ${first} can watch their own mouth while copying you. Local-only — never recorded.`; }
   let rateAsk = t("elev.play.mimic.rateAsk");
   if (!kidMode) { rateAsk = `How did ${isolate(first)}'s copy go?`; }
+  // OBJ-KID-03 fixup (law 2): a Material Symbols LIGATURE is the span's own text
+  // content — the font paints a glyph, but innerText (and anything that reads the
+  // page as text) returns "photo_camera". The rendered check found five camera
+  // words on this surface in Kid Mode and two of them were these icons. The child
+  // gets face/visibility glyphs; the parent door keeps the device icons, in an
+  // `if (!kidMode)` block so the split stays visible to the kid-register scanner.
+  let mirrorGlyph = "face";
+  let mirrorOffGlyph = "visibility_off";
+  if (!kidMode) { mirrorGlyph = "photo_camera"; mirrorOffGlyph = "no_photography"; }
 
   return (
     <PlayShell>
@@ -203,19 +212,19 @@ export default function MimicStudioTab() {
             <video ref={videoRef} muted playsInline className="w-full h-full object-cover absolute inset-0" style={{ transform: "scaleX(-1)", display: mirrorOn ? "block" : "none" }} />
             {!mirrorOn && (
               <div className="text-center p-6 relative z-10">
-                <Icon name="photo_camera" size={32} className="mx-auto mb-3" style={{ color: T.onDarkMuted }} />
+                <Icon name={mirrorGlyph} size={32} className="mx-auto mb-3" style={{ color: T.onDarkMuted }} />
                 <p className="text-xs mb-4 max-w-[260px] mx-auto" style={{ color: T.onDarkMuted }}>
                   {mirrorInvite}
                 </p>
                 <PlayButton onClick={() => void startMirror()} tone="clay" size="md">
-                  <Icon name="photo_camera" size={16} /> Turn on mirror
+                  <Icon name={mirrorGlyph} size={16} /> Turn on mirror
                 </PlayButton>
                 {camError && <p className="text-[11px] mt-3" style={{ color: "var(--arbor-pink)" }}>{camError}</p>}
               </div>
             )}
             {mirrorOn && (
               <button onClick={stopMirror} className="absolute top-3 end-3 z-10 inline-flex items-center gap-1.5 text-[12px] font-extrabold px-3.5 py-2.5 min-h-[44px] rounded-xl text-white" style={{ background: "rgba(28,34,43,0.75)" }}>
-                <Icon name="no_photography" size={14} /> Mirror off
+                <Icon name={mirrorOffGlyph} size={14} /> Mirror off
               </button>
             )}
           </div>
@@ -289,8 +298,15 @@ export default function MimicStudioTab() {
         );
       })()}
 
-      {/* On-device MediaPipe expression mimicry (geometry only, nothing leaves the device) */}
-      <MimicMatch childId={childProfile.id} name={first} />
+      {/* On-device MediaPipe expression mimicry (geometry only, nothing leaves
+          the device). OBJ-KID-03 fixup: every line of this block is written for
+          the grown-up in the room — the header says the device "scores the
+          shape", the strip explains what happens to the frames, and the live
+          match meter is a running score the child can read (laws 1 + 2). It is
+          the parent-led half of Mimic Studio, so it renders on the parent door
+          only. A kid-register Face Match needs kid lines inside MimicMatch.tsx
+          (another builder's file) — filed as OBJ-KID-03-a in FOLLOW-UPS.md. */}
+      {!kidMode && <MimicMatch childId={childProfile.id} name={first} />}
     </PlayShell>
   );
 }
