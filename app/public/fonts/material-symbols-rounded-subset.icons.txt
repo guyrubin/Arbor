@@ -43,6 +43,7 @@ bubble
 cake
 calendar_month
 call
+camera
 campaign
 capture
 category
