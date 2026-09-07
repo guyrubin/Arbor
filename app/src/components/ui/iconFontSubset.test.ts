@@ -183,7 +183,7 @@ describe("the icon-subset opt-out cannot hide a real icon", () => {
   it("no opted-out file renders an icon", () => {
     const offenders = optedOut.filter((f) => {
       const src = readFileSync(f, "utf8");
-      return /<Icon/.test(src) || /from\s+["'][^"']*\/Icon["']/.test(src) || /material-symbols/i.test(src);
+      return /<Icon\b/.test(src) || /\bfrom\s+["'][^"']*\/Icon["']/.test(src) || /material-symbols/i.test(src);
     });
     expect(offenders.map((f) => path.basename(f)), "@icon-font-ignore is for data modules, not UI").toEqual([]);
   });

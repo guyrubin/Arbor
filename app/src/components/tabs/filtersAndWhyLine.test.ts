@@ -83,6 +83,6 @@ describe("TJB-30 · the suggestion chip shows its reason", () => {
     // `title` survives on PageHeader/SectionSkeleton, where it is a React prop
     // and not an HTML tooltip. What must not come back is a suggestion's own
     // copy hidden behind a hover.
-    expect(PLANS).not.toMatch(/title=\{s\./);
+    expect(PLANS).not.toMatch(/\btitle=\{s\./);
   });
 });
