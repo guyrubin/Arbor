@@ -8,6 +8,7 @@ import { EmptyState, GhostBlock } from "../ui/EmptyState";
 import { statesText } from "../../lib/i18nElevation/states";
 import { track } from "../../lib/analytics";
 import { PageHeader, cardCls } from "../ui/kit";
+import { ContentWhyLine } from "../ui/ContentActionBar";
 import PlanKanban from "../plans/PlanKanban";
 import RoutinesCard from "../plans/RoutinesCard";
 import { planProgress, suggestedChallenges } from "../../lib/plans";
@@ -90,19 +91,26 @@ export default function PlansTab() {
 
         {/* Data-driven: suggestions from {name}'s recent logged behavior */}
         {suggestions.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            <span className="text-[10px] font-bold self-center me-1" style={{ color: "var(--arbor-green-ink)" }}>{t("plan.suggestedFor", { name: first })}</span>
+          /* TJB-30: the reason this topic was suggested lived in `title` — a
+             tooltip, which does not exist on touch. The parent saw a chip
+             proposing a plan for their child with no way to learn where it
+             came from. It is a visible ContentWhyLine now (the same
+             why-line primitive the growth cards use), so each suggestion
+             carries its own evidence: a COUNT of the parent's own logs. */
+          <div className="flex flex-col gap-2">
+            <span className="text-[10px] font-bold" style={{ color: "var(--arbor-green-ink)" }}>{t("plan.suggestedFor", { name: first })}</span>
             {suggestions.map((s) => (
-              <button
-                key={s.topic}
-                type="button"
-                onClick={() => setPlanChallengeTopic(s.topic)}
-                title={s.reason}
-                className="min-h-11 px-3 py-1.5 rounded-lg text-[11px] font-bold transition inline-flex items-center gap-1.5"
-                style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}
-              >
-                <Icon name="auto_awesome" size={12} /> {s.topic.split("—")[0].trim()}
-              </button>
+              <div key={s.topic} className="flex flex-col items-start gap-1">
+                <button
+                  type="button"
+                  onClick={() => setPlanChallengeTopic(s.topic)}
+                  className="min-h-11 px-3 py-1.5 rounded-lg text-[11px] font-bold transition inline-flex items-center gap-1.5 text-start"
+                  style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)" }}
+                >
+                  <Icon name="auto_awesome" size={12} /> <span dir="auto">{s.topic.split("—")[0].trim()}</span>
+                </button>
+                <ContentWhyLine why={s.reason} />
+              </div>
             ))}
           </div>
         )}

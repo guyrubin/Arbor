@@ -464,8 +464,14 @@ export default function StoryTimelineTab() {
 
       {/* Filters */}
       {signals.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1">
-          {FILTERS.map((f) => {
+        /* OBJ-JOURNAL-04: five of the eight chips read zero on a real ledger.
+           A filter whose count is zero is not a filter — it is a dead end that
+           empties the timeline and tells the parent nothing. Only kinds the
+           stream actually holds get a chip; "all" always stays. The active
+           filter also stays even if its count drops to zero mid-session, so a
+           chip never vanishes under the parent's own finger. */
+        <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1" data-testid="timeline-filter-chips">
+          {FILTERS.filter((f) => f.key === "all" || filter === f.key || signals.some((s) => s.kind === f.key)).map((f) => {
             const on = filter === f.key;
             const n = f.key === "all" ? signals.length : signals.filter((s) => s.kind === f.key).length;
             return (
