@@ -75,7 +75,11 @@ export default function ChildProfile() {
     // GP-17: MILESTONE_AGE_BANDS labels are English catalogue strings ("5
     // years"), so the Hebrew app read "בחלון הגיל 5 years". The band is an AGE,
     // and the app already has one localized age label — render through it.
-    const band = ageLabelForMonths(milestoneAgeWindow(comparisonMonths).months, t);
+    // R8: read the window's REAL month field. `MilestoneAgeWindow` carries
+    // `currentBandMonths` / `earlierBandMonths` / `label`, never `.months`, so
+    // the previous `.months` access fed `undefined` into ageLabelForMonths()
+    // and the chapter read "in the NaN years NaN months window".
+    const band = ageLabelForMonths(milestoneAgeWindow(comparisonMonths).currentBandMonths, t);
     return { checked, total, share: total > 0 ? (checked / total) * 100 : 0, band };
   }, [milestones, comparisonMonths, t]);
   const nextMilestones = useMemo(() => selectNextMilestones(milestones, comparisonMonths, 3), [milestones, comparisonMonths]);

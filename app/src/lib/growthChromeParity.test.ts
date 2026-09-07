@@ -123,9 +123,12 @@ describe("the sites render through the keys", () => {
   });
 
   it("the Profile age window renders a localized age, not a catalogue label", () => {
-    expect(profile).toContain("ageLabelForMonths(milestoneAgeWindow(comparisonMonths).months, t)");
-    // NEGATIVE CONTROL: the pre-fix derivation read the English band label.
+    expect(profile).toContain("ageLabelForMonths(milestoneAgeWindow(comparisonMonths).currentBandMonths, t)");
+    // NEGATIVE CONTROL: the pre-fix derivation read the English band label…
     expect(profile).not.toContain("band: milestoneAgeWindow(comparisonMonths).label");
+    // …and its replacement read a field the window does not carry (R8): the
+    // `.months` access resolved to undefined and printed "NaN years NaN months".
+    expect(profile).not.toContain("milestoneAgeWindow(comparisonMonths).months");
   });
 
   it("Daily Play, Language Lab, the course toggle and the lens picker are keyed", () => {
