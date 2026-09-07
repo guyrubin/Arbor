@@ -317,8 +317,27 @@ export default function ChildProfile() {
       </SectionCard>
       </div>
 
+      {/* R25 (item 11) — #/profile rendered 9 top-level modules against a declared
+          moduleBudget of 3. The tail below is DEMOTED, never removed: one
+          collapsed disclosure on the pattern components/practice/SpeechCoachTab.tsx
+          `speech-more` already ships, so every capability keeps its door (law 6)
+          while the fold belongs to the primary move. Demoted modules keep their
+          own `data-module` stamp and add `data-module-demoted`, which is what
+          makes the budget rule countable: top-level = stamps minus demoted. */}
+      <details data-module-disclosure="profile-more" className={`${cardCls} p-0 overflow-hidden`}>
+        <summary className="cursor-pointer list-none px-6 py-4 min-h-[44px] flex items-center gap-3">
+          <span className="grid place-items-center w-9 h-9 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-yellow-soft)", color: "var(--arbor-yellow-ink)" }}>
+            <Icon name="route" size={18} />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.growthTruth.profile.more.title")}</span>
+            <span className="block text-[12px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.growthTruth.profile.more.sub")}</span>
+          </span>
+          <Icon name="expand_more" size={20} className="ms-auto" style={{ color: "var(--arbor-muted)" }} />
+        </summary>
+        <div className="px-4 pb-4 space-y-4">
       {/* Chapter 3 — milestones */}
-      <div data-module="profile-milestones" style={{ display: "contents" }}>
+      <div data-module="profile-milestones" data-module-demoted style={{ display: "contents" }}>
       <SectionCard title={t("cp.ch.milestones")} icon={<Icon name="check_circle" size={20} fill={1} />} tone="mint">
         <div className="flex items-center gap-4">
           <div className="flex-1">
@@ -351,7 +370,7 @@ export default function ChildProfile() {
       </div>
 
       {/* Chapter 4 — strengths & where to support */}
-      <div data-module="profile-strengths" className="grid min-w-0 gap-4 lg:grid-cols-2">
+      <div data-module="profile-strengths" data-module-demoted className="grid min-w-0 gap-4 lg:grid-cols-2">
         <SectionCard title={t("cp.ch.strengths")} icon={<Icon name="diamond" size={20} fill={1} />} tone="mint">
           <ul className="space-y-3">
             {childProfile.strengths.map((s) => (
@@ -383,7 +402,7 @@ export default function ChildProfile() {
       </div>
 
       {/* Chapter 5 — language & communication */}
-      <div data-module="profile-language" style={{ display: "contents" }}>
+      <div data-module="profile-language" data-module-demoted style={{ display: "contents" }}>
       <SectionCard title={t("cp.ch.language")} icon={<Icon name="translate" size={20} />} tone="sky">
         <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-ink)" }}>
           {childProfile.languages.length > 1
@@ -395,7 +414,7 @@ export default function ChildProfile() {
       </div>
 
       {/* Chapter 6 — what Arbor remembers (the parent-approved memory) */}
-      <div data-module="profile-memory" style={{ display: "contents" }}>
+      <div data-module="profile-memory" data-module-demoted style={{ display: "contents" }}>
       <SectionCard title={t("cp.ch.memory")} icon={<Icon name="bookmark" size={20} />} tone="lav">
         {approvedMemoryItems.length > 0 ? (
           <ul className="space-y-1.5 text-sm" style={{ color: "var(--arbor-ink)" }}>
@@ -418,7 +437,7 @@ export default function ChildProfile() {
       </div>
 
       {/* Chapter 7 — the next step */}
-      <div data-module="profile-next" style={{ display: "contents" }}>
+      <div data-module="profile-next" data-module-demoted style={{ display: "contents" }}>
       <SectionCard title={t("cp.ch.next")} icon={activePlan ? <Icon name="tune" size={20} /> : <Icon name="fact_check" size={20} />} tone="yellow">
         {activePlan && planProgress ? (
           <>
@@ -439,7 +458,7 @@ export default function ChildProfile() {
       </div>
 
       {/* Footer jump strip — the deep tools, one tap away */}
-      <div data-module="profile-jump-strip" className="grid min-w-0 gap-3 sm:grid-cols-3">
+      <div data-module="profile-jump-strip" data-module-demoted className="grid min-w-0 gap-3 sm:grid-cols-3">
         {([
           { tab: "timeline" as const, tone: "sky" as const, icon: <Icon name="route" size={18} />, label: t("cp.footer.story", { name: first }) },
           { tab: "behaviors" as const, tone: "coral" as const, icon: <Icon name="monitoring" size={18} />, label: t("cp.footer.moments") },
@@ -455,6 +474,9 @@ export default function ChildProfile() {
           </button>
         ))}
       </div>
+        </div>
+      </details>
+
       <ProfileEditDrawer open={editingProfile} onClose={() => setEditingProfile(false)} />
     </motion.div>
   );

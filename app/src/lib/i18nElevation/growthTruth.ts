@@ -111,6 +111,10 @@ export const en: Record<string, string> = {
   "elev.growthTruth.copilot.more.title": "The fuller picture",
   "elev.growthTruth.copilot.more.sub": "Areas to keep watching, weekly history, practice moments and the clinician summary.",
   "elev.growthTruth.copilot.more.door": "Open Development",
+
+  // Builder M — R25 — #/profile demotion disclosure (chapters 3-7 and the jump strip).
+  "elev.growthTruth.profile.more.title": "The rest of the story",
+  "elev.growthTruth.profile.more.sub": "Milestones, strengths, language, what Arbor remembers, and the next step.",
 };
 
 export const he: Record<string, string> = {
@@ -193,4 +197,8 @@ export const he: Record<string, string> = {
   "elev.growthTruth.copilot.more.title": "התמונה הרחבה",
   "elev.growthTruth.copilot.more.sub": "תחומים להמשך מעקב, היסטוריה שבועית, רגעי תרגול והסיכום לאיש המקצוע.",
   "elev.growthTruth.copilot.more.door": "פתחו את מרחב ההתפתחות",
+
+  // Builder M — R25 — #/profile demotion disclosure (chapters 3-7 and the jump strip).
+  "elev.growthTruth.profile.more.title": "המשך הסיפור",
+  "elev.growthTruth.profile.more.sub": "אבני דרך, חוזקות, שפה, מה ארבור זוכר והצעד הבא.",
 };

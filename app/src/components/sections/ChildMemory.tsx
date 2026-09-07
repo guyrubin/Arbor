@@ -36,7 +36,7 @@ const pick = (he: boolean, txt: { en: string; he: string }) => (he ? txt.he : tx
  *  append-only memory service (/api/memory). A core moat: source-linked,
  *  time-stamped, editable via approve/forget, time-boxed when sensitive. */
 export default function ChildMemory() {
-  const { childProfile, approvedMemoryItems, pendingMemoryItems, handleMemoryDecision, isMemoryUpdating, memoryReviewError, memoryReviewErrorKind, retryMemoryReview, savedLearnIds, requestLearnRead } = useArbor();
+  const { childProfile, approvedMemoryItems, pendingMemoryItems, handleMemoryDecision, isMemoryUpdating, memoryReviewError, memoryReviewErrorKind, retryMemoryReview, savedLearnIds, requestLearnRead, setActiveTab } = useArbor();
   const { t, aiLang } = useLanguage();
   const he = aiLang === "he";
   const first = childProfile.name.split(" ")[0];
@@ -102,18 +102,45 @@ export default function ChildMemory() {
         </div>
       )}
 
+      {/* R25 (item 11) — #/memory rendered 6 top-level modules against a declared
+          moduleBudget of 3. The tail below is DEMOTED, never removed: one
+          collapsed disclosure on the pattern components/practice/SpeechCoachTab.tsx
+          `speech-more` already ships, so every capability keeps its door (law 6)
+          while the fold belongs to the primary move. Demoted modules keep their
+          own `data-module` stamp and add `data-module-demoted`, which is what
+          makes the budget rule countable: top-level = stamps minus demoted. */}
+      <details data-module-disclosure="memory-more" className={`${cardCls} p-0 overflow-hidden`}>
+        <summary className="cursor-pointer list-none px-6 py-4 min-h-[44px] flex items-center gap-3">
+          <span className="grid place-items-center w-9 h-9 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
+            <Icon name="bookmark" size={18} />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.childmem.more.title")}</span>
+            <span className="block text-[12px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.childmem.more.sub")}</span>
+          </span>
+          <Icon name="expand_more" size={20} className="ms-auto" style={{ color: "var(--arbor-muted)" }} />
+        </summary>
+        <div className="px-4 pb-4 space-y-4">
+        {/* demotionTarget: "profile" — the hub the contract sends these to. */}
+        <button onClick={() => setActiveTab("profile")} className="inline-flex min-h-11 w-full items-center justify-between gap-2 rounded-xl px-4 py-2.5 text-sm font-bold" style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}>
+          <span>{t("elev.childmem.more.door")}</span>
+          <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
+        </button>
       {/* ENG-13 · the week-1 "first", at a threshold of ONE. Renders at most
           once ever per kind and returns null the rest of the time. */}
-      <div data-module="memory-firsts" style={{ display: "contents" }}><FirstsMoment /></div>
+      <div data-module="memory-firsts" data-module-demoted style={{ display: "contents" }}><FirstsMoment /></div>
 
       {/* ENG-14(a) · what Arbor knows, as a COUNT — answerable on day 0 from
           the profile alone, which is exactly what nothing else in the app
           could do. Never a completeness score: see lib/keepsakeCounts. */}
-      <div data-module="memory-knows" style={{ display: "contents" }}><ArborKnowsTile /></div>
+      <div data-module="memory-knows" data-module-demoted style={{ display: "contents" }}><ArborKnowsTile /></div>
 
       {/* ENG-14(b) · the month keepsake, offered once on the first open of a
           new month and never for a month the family is still living in. */}
-      <div data-module="memory-keepsake" style={{ display: "contents" }}><MonthKeepsake /></div>
+      <div data-module="memory-keepsake" data-module-demoted style={{ display: "contents" }}><MonthKeepsake /></div>
+
+        </div>
+      </details>
 
       {!memoryReviewError && (
       <div data-module="memory-approved" style={{ display: "contents" }}>

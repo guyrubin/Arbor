@@ -30,6 +30,11 @@ export const en: Record<string, string> = {
   "elev.childmem.action.approve": "Approve",
   "elev.childmem.action.dismiss": "Dismiss",
   "elev.childmem.action.forget": "Forget",
+
+  // Builder M — R25 — #/memory demotion disclosure and its door to #/profile.
+  "elev.childmem.more.title": "Moments and keepsakes",
+  "elev.childmem.more.sub": "Firsts, what Arbor knows so far, and the keepsake for the month.",
+  "elev.childmem.more.door": "Open the profile",
 };
 
 export const he: Record<string, string> = {
@@ -46,4 +51,9 @@ export const he: Record<string, string> = {
   "elev.childmem.action.approve": "אישור",
   "elev.childmem.action.dismiss": "לא רלוונטי",
   "elev.childmem.action.forget": "לשכוח",
+
+  // Builder M — R25 — #/memory demotion disclosure and its door to #/profile.
+  "elev.childmem.more.title": "רגעים ומזכרות",
+  "elev.childmem.more.sub": "פעמים ראשונות, מה ארבור יודע עד כה והמזכרת של החודש.",
+  "elev.childmem.more.door": "פתחו את הפרופיל",
 };
