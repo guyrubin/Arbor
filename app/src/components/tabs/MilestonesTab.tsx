@@ -734,7 +734,7 @@ export default function MilestonesTab() {
                   <button
                     type="button"
                     onClick={() => { setGestationDraft(gestationalWeeks ? String(gestationalWeeks) : ""); setShowGestation(true); }}
-                    className="text-xs font-bold px-3 py-2 rounded-xl transition self-start whitespace-nowrap"
+                    className="text-xs font-bold px-3 py-2 min-h-11 rounded-xl transition self-start whitespace-nowrap"
                     style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.30)" }}
                   >
                     {gestationalWeeks ? `${gestationalWeeks}w · ${t("ms.gestationSave")}` : t("ms.gestationLabel")}
@@ -757,7 +757,7 @@ export default function MilestonesTab() {
                       value={gestationDraft}
                       onChange={(e) => setGestationDraft(e.target.value)}
                       placeholder="40"
-                      className="w-24 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                      className="w-24 min-h-11 rounded-xl px-3 py-2 text-sm focus:outline-none"
                       style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
                     />
                   </label>
@@ -864,7 +864,7 @@ export default function MilestonesTab() {
       {/* Add custom milestone */}
       <div className={`${cardCls} p-5`}>
         {!showAdd ? (
-          <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 text-sm font-bold transition" style={{ color: "var(--arbor-green-ink)" }}>
+          <button onClick={() => setShowAdd(true)} className="touch-target -mx-2 gap-2 px-2 text-sm font-bold transition" style={{ color: "var(--arbor-green-ink)" }}>
             <Icon name="add" size={16} /> {t("ms.addMilestone")}
           </button>
         ) : (
@@ -873,8 +873,8 @@ export default function MilestonesTab() {
             <select value={newDomain} onChange={(e) => setNewDomain(e.target.value as DevelopmentalDomainId)} className="rounded-xl px-3 py-2 text-xs" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}>
               {domainOptions.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
             </select>
-            <button type="submit" className="text-white font-extrabold text-xs px-4 py-2 rounded-xl transition" style={{ background: "var(--arbor-clay)" }}>{t("ms.add")}</button>
-            <button type="button" onClick={() => setShowAdd(false)} className="text-xs px-2" style={{ color: "var(--arbor-muted)" }}>{t("ms.cancel")}</button>
+            <button type="submit" className="text-white font-extrabold text-xs px-4 py-2 min-h-11 rounded-xl transition" style={{ background: "var(--arbor-clay)" }}>{t("ms.add")}</button>
+            <button type="button" onClick={() => setShowAdd(false)} className="touch-target px-2 text-xs" style={{ color: "var(--arbor-muted)" }}>{t("ms.cancel")}</button>
           </form>
         )}
       </div>
@@ -888,7 +888,7 @@ export default function MilestonesTab() {
             </h4>
             <p className="text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>{t("ms.nurtureDesc")}</p>
           </div>
-          <button type="button" onClick={handleGenerateMilestoneScaffold} disabled={isAnalyzingMilestones} className="text-white text-xs font-extrabold px-4 py-2.5 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer ms-auto sm:ms-0 disabled:opacity-60" style={{ background: "var(--arbor-gradient-primary)" }}>
+          <button type="button" onClick={handleGenerateMilestoneScaffold} disabled={isAnalyzingMilestones} className="text-white text-xs font-extrabold px-4 py-2.5 min-h-11 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer ms-auto sm:ms-0 disabled:opacity-60" style={{ background: "var(--arbor-gradient-primary)" }}>
             {isAnalyzingMilestones ? (<><Icon name="progress_activity" size={14} className="animate-spin" /> {t("ms.findingSteps")}</>) : (<><Icon name="psychology" size={15} /> {t("ms.findSteps")}</>)}
           </button>
         </div>

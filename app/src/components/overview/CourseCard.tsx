@@ -91,20 +91,28 @@ export default function CourseCard({
             const open = openId === a.id;
             return (
               <li key={a.id} className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${isNext ? "rgba(88,166,255,0.4)" : RULE}`, background: isNext ? GREEN_SOFT : "var(--arbor-paper-deep)" }}>
-                <div className="w-full flex items-center gap-3 p-3">
+                {/* Item 9 (touch floor): the done-toggle rendered as a 24 px
+                    circle and the disclosure row as 246×22. The circle and the
+                    row type are unchanged — the hit boxes grow to --touch-min
+                    and the row padding absorbs the extra height. */}
+                <div className="w-full flex items-center gap-2 px-2 py-1">
                   <button
                     onClick={() => onToggle(a.id)}
                     aria-pressed={done}
                     aria-label={done ? "Mark not done" : "Mark done"}
-                    className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center transition"
-                    style={done ? { background: CLAY, color: "#fff" } : { background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}
+                    className="flex-shrink-0 w-11 h-11 flex items-center justify-center transition"
                   >
-                    {done ? <Icon name="check" size={14} /> : <span className="text-[11px] font-extrabold" style={{ color: MUTED }}>{i + 1}</span>}
+                    <span
+                      className="w-6 h-6 rounded-full flex items-center justify-center"
+                      style={done ? { background: CLAY, color: "#fff" } : { background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}
+                    >
+                      {done ? <Icon name="check" size={14} /> : <span className="text-[11px] font-extrabold" style={{ color: MUTED }}>{i + 1}</span>}
+                    </span>
                   </button>
                   <button
                     onClick={() => setOpenId(open ? null : a.id)}
                     aria-expanded={open}
-                    className="flex-1 min-w-0 flex items-center gap-3 text-start"
+                    className="flex-1 min-h-11 min-w-0 flex items-center gap-3 text-start"
                   >
                     <span className="flex-1 min-w-0">
                       <span className="block text-[14px] font-bold" style={{ color: INK, textDecoration: done ? "line-through" : "none" }}>{a.title}</span>

@@ -181,7 +181,7 @@ export default function ChildMemory() {
           {savedLearnCards.length > 6 && (
             <button
               onClick={() => requestLearnRead({ source: "child-memory" })}
-              className="w-full mt-1 min-h-[40px] rounded-xl text-xs font-bold transition hover:bg-[var(--arbor-paper-deep)]"
+              className="w-full mt-1 min-h-11 rounded-xl text-xs font-bold transition hover:bg-[var(--arbor-paper-deep)]"
               style={{ color: "var(--arbor-lav-ink)" }}
             >
               {t("learn.trailAll")}
@@ -192,6 +192,14 @@ export default function ChildMemory() {
     </motion.div>
   );
 }
+
+/** Item 9 (touch floor): Edit / Approve / Dismiss / Forget are the Profile
+ *  hub's declared primary move and rendered at 17 px — the smallest control on
+ *  a primary-move path in the parent app. The glyph and the 11 px type are
+ *  unchanged; only the hit box grows to `--touch-min` via `.touch-target`
+ *  (index.css:436). Row gaps tighten so the visual rhythm survives the taller
+ *  boxes. */
+const ROW_ACTION_CLS = "touch-target gap-1 px-2 font-bold";
 
 export function MemoryRow({ m, busy, onApprove, onReject, onForget, onEdited }: {
   m: MemoryReviewItem;
@@ -356,7 +364,7 @@ export function MemoryRow({ m, busy, onApprove, onReject, onForget, onEdited }: 
       ) : (
         <p className="text-sm" dir="auto" style={{ color: "var(--arbor-ink)" }}>{m.fact}</p>
       )}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-2.5 text-[11px]" style={{ color: "var(--arbor-muted)" }}>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1.5 text-[11px]" style={{ color: "var(--arbor-muted)" }}>
         {m.source && <span className="inline-flex items-center gap-1"><Icon name="link" size={12} /> {m.source}</span>}
         {dated && <span className="inline-flex items-center gap-1"><Icon name="schedule" size={12} /> {dated}</span>}
         {showsExpiry && (
@@ -375,24 +383,24 @@ export function MemoryRow({ m, busy, onApprove, onReject, onForget, onEdited }: 
             onClick={openEdit}
             aria-label={t("elev.waveR.mem.edit.aria")}
             data-testid="memory-edit-open"
-            className="inline-flex items-center gap-1 font-bold"
+            className={ROW_ACTION_CLS}
             style={{ color: "var(--arbor-lav-ink)" }}
           >
             <Icon name="edit" size={14} /> {t("elev.waveR.mem.edit")}
           </button>
         )}
         {onApprove && !busy && (
-          <button onClick={onApprove} className="inline-flex items-center gap-1 font-bold" style={{ color: "var(--arbor-green-ink)" }}>
+          <button onClick={onApprove} className={ROW_ACTION_CLS} style={{ color: "var(--arbor-green-ink)" }}>
             <Icon name="check" size={14} /> {t("elev.childmem.action.approve")}
           </button>
         )}
         {onReject && !busy && (
-          <button onClick={onReject} className="inline-flex items-center gap-1 font-bold" style={{ color: "var(--arbor-muted)" }}>
+          <button onClick={onReject} className={ROW_ACTION_CLS} style={{ color: "var(--arbor-muted)" }}>
             <Icon name="close" size={14} /> {t("elev.childmem.action.dismiss")}
           </button>
         )}
         {onForget && !busy && (
-          <button onClick={onForget} className="inline-flex items-center gap-1 font-bold" style={{ color: "var(--arbor-pink-ink)" }}>
+          <button onClick={onForget} className={ROW_ACTION_CLS} style={{ color: "var(--arbor-pink-ink)" }}>
             <Icon name="delete" size={14} /> {t("elev.childmem.action.forget")}
           </button>
         )}

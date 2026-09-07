@@ -333,7 +333,7 @@ export default function DailyPlayTab() {
                 role="tab"
                 aria-selected={on}
                 onClick={() => setReadinessId(rc.id)}
-                className="rounded-full px-3.5 py-2 text-[12.5px] font-bold whitespace-nowrap transition"
+                className="rounded-full px-3.5 py-2 min-h-11 text-[12.5px] font-bold whitespace-nowrap transition"
                 style={on
                   ? { background: "var(--arbor-clay)", color: "var(--arbor-on-accent)", boxShadow: "var(--shadow-sm)" }
                   : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}

@@ -160,7 +160,10 @@ function PhraseLogForm({
         <button
           onClick={handleAdd}
           disabled={!phrase.trim()}
-          className="inline-flex items-center gap-1 text-xs font-bold px-4 rounded-xl min-h-[44px] transition disabled:opacity-40"
+          // Item 9: the row's flex-1 input squeezed this to 32 px wide even
+          // though min-h-[44px] was already set — a height floor is not a hit
+          // box. shrink-0 + the width floor keep the primary move tappable.
+          className="inline-flex shrink-0 items-center justify-center gap-1 text-xs font-bold px-4 min-w-11 rounded-xl min-h-[44px] transition disabled:opacity-40"
           style={{ background: T.greenInk, color: T.onAccent }}
           aria-label={t("vl.logSave")}
         >

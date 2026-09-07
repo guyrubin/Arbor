@@ -79,7 +79,9 @@ export default function SessionLengthChips({
               key={id}
               aria-pressed={active}
               onClick={() => onChange(id)}
-              className="rounded-full px-3.5 py-3 text-[12.5px] font-bold whitespace-nowrap transition active:scale-[0.98]"
+              // Item 9: py-3 on 12.5 px type measured 37 px, not 44. The pill
+              // keeps its padding; the floor is stated, not inferred.
+              className="rounded-full px-3.5 py-3 min-h-11 text-[12.5px] font-bold whitespace-nowrap transition active:scale-[0.98]"
               style={
                 active
                   ? {

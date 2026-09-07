@@ -97,7 +97,7 @@ export default function LanguageLabTab() {
         title={t("lang.title")}
         subtitle={t("lang.subtitle", { first })}
         action={
-          <button onClick={() => setActiveTab("speech")} className="inline-flex items-center gap-1.5 text-xs font-bold transition" style={{ color: "var(--arbor-green-ink)" }}>
+          <button onClick={() => setActiveTab("speech")} className="touch-target gap-1.5 px-2 text-xs font-bold transition" style={{ color: "var(--arbor-green-ink)" }}>
             <Icon name="mic" size={14} /> {t("lang.soundPractice")}
           </button>
         }
@@ -110,7 +110,7 @@ export default function LanguageLabTab() {
           </p>
           <button
             onClick={() => setActiveTab("profile")}
-            className="inline-flex items-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl transition"
+            className="inline-flex min-h-11 items-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl transition"
             style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
           >
             {t("lang.editProfile", { first })}
@@ -129,7 +129,7 @@ export default function LanguageLabTab() {
                   // AIX-S4: seed via i18n — HE parents see a Hebrew prompt in the chat box.
                   askCoach(t("seed.langWeekPlan", { name, age, target, home: home || t("lang.theHomeLang") }))
                 }
-                className="inline-flex items-center justify-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl transition"
+                className="inline-flex min-h-11 items-center justify-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl transition"
                 style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
               >
                 <Icon name="auto_awesome" size={14} /> {t("lang.weekPlanCta")}
@@ -154,7 +154,9 @@ export default function LanguageLabTab() {
                       onClick={() =>
                         askCoach(t("seed.langActivity", { title: item.title, target, name, age }))
                       }
-                      className="inline-flex items-center gap-1 text-[10px] font-bold transition"
+                      // Item 9: "Coach me" rendered 58×13 px × 4 cards. Type and
+                      // glyph unchanged; the hit box grows to --touch-min.
+                      className="touch-target gap-1 px-2 text-[10px] font-bold transition"
                       style={{ color: "var(--arbor-muted)" }}
                     >
                       <Icon name="chat" size={12} /> {t("lang.coachMe")}

@@ -107,7 +107,8 @@ export default function DailyPlanCard({
           </p>
           <button
             onClick={onSetGoal}
-            className="inline-flex items-center gap-1.5 rounded-2xl px-4 py-2.5 text-[13px] font-bold transition"
+            // Item 9 / OBJ-GROWTH-08: the no-goal card's only move measured 40 px.
+            className="inline-flex items-center gap-1.5 rounded-2xl px-4 py-2.5 min-h-11 text-[13px] font-bold transition"
             style={{
               background: GREEN_SOFT,
               color: GREEN,
@@ -349,7 +350,7 @@ export default function DailyPlanCard({
         <button
           onClick={() => setStepsOpen((o) => !o)}
           aria-expanded={stepsOpen}
-          className="inline-flex items-center gap-1 text-[13px] font-bold mt-4 transition"
+          className="inline-flex items-center gap-1 min-h-11 text-[13px] font-bold mt-4 transition"
           style={{ color: GREEN }}
         >
           {stepsOpen ? t("play.hide") : t("play.how")}

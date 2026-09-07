@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useDialog } from "../../hooks/useDialog";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
@@ -20,6 +20,10 @@ import { fmtDay } from "../../lib/formatDate";
 import { ageLabelForMonths, ageMonthsFromProfile, agePatchFromMonths } from "../../lib/childAge";
 import AvatarCreator from "./AvatarCreator";
 import RewardsCard from "./RewardsCard";
+// GP-18: a Level-5 delete confirms in the app own dialog, never window.confirm.
+// Same primitive and the same typed-name pattern as the Care delete modal
+// (components/sections/TrustedSharing.tsx:570), including its i18n keys.
+import { Modal } from "../ui/Modal";
 
 // CI-29: The 12 curated interest suggestion keys (i18n-resolved at render).
 // Banned clinical/behavioral strings are never in this list (FIX 1 compliance).
@@ -64,6 +68,13 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
   const [photoBusy, setPhotoBusy] = useState(false);
   const [showCreator, setShowCreator] = useState(false);
   const [saving, setSaving] = useState(false);
+  // GP-18: opening the drawer left focus on the trigger behind the overlay.
+  const nameInputRef = useRef<HTMLInputElement | null>(null);
+  // GP-18: typed-name confirmation state for the Level-5 delete.
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [confirmName, setConfirmName] = useState("");
+  const firstName = activeChild.name.split(" ")[0];
+  const nameMatches = confirmName.trim().toLowerCase() === firstName.trim().toLowerCase();
 
   // CI-29: Interests state — suggestion toggles + custom additions.
   // Resolved suggestion labels (EN/HE) mapped from their i18n keys.
@@ -89,7 +100,14 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
     }
   };
 
-  const { ref: dialogRef, requestClose, onBackdropClick } = useDialog({ open, onClose });
+  const { ref: dialogRef, requestClose, onBackdropClick } = useDialog({
+    open,
+    onClose,
+    // GP-18: move focus INTO the drawer — the first editable field, not the
+    // dialog shell, so a keyboard or screen-reader parent starts where the
+    // work is. useDialog/dialogStack already support it; it was never passed.
+    initialFocusRef: nameInputRef,
+  });
 
   // Re-sync the form whenever the drawer opens or the active child changes.
   useEffect(() => {
@@ -118,18 +136,26 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
     }
   };
 
-  const handleDelete = async () => {
+  // GP-18: a Level-5, irreversible delete was gated by window.confirm — a
+  // browser chrome dialog outside the app language, tokens and focus trap,
+  // and dismissible with a stray Enter. It now runs the same typed-name
+  // confirmation the Care surface requires before erasure.
+  const openDelete = () => {
     if (profiles.length <= 1) {
       toast("Can't delete your only child profile", "error");
       return;
     }
-    // GP-18: translated — an irreversible deletion must never be confirmed
-    // in a language the parent did not choose.
-    if (!window.confirm(t("confirm.deleteChild", { name: activeChild.name }))) return;
+    setConfirmName("");
+    setDeleteOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!nameMatches || busy) return;
     setBusy(true);
     try {
       await deleteChild(activeChild.id);
       toast(`${isolate(activeChild.name)}'s data was deleted`, "success");
+      setDeleteOpen(false);
       onClose();
     } finally {
       setBusy(false);
@@ -227,18 +253,18 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                   <button
                     type="button"
                     onClick={() => setShowCreator(true)}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl transition"
+                    className="inline-flex min-h-11 items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl transition"
                     style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-clay-border)" }}
                   >
                     <Sparkles className="w-3.5 h-3.5" /> {photoUrl ? "New avatar" : "Create avatar"}
                   </button>
                   <div className="flex items-center gap-3">
-                    <label className="inline-flex items-center gap-1.5 text-[11px] font-bold cursor-pointer" style={{ color: "var(--arbor-muted)" }}>
+                    <label className="inline-flex min-h-11 items-center gap-1.5 text-[11px] font-bold cursor-pointer" style={{ color: "var(--arbor-muted)" }}>
                       <Camera className="w-3 h-3" /> {photoBusy ? "Uploading…" : "Upload a photo instead"}
                       <input type="file" accept="image/*" className="hidden" disabled={photoBusy} onChange={(e) => onPickPhoto(e.target.files?.[0])} />
                     </label>
                     {photoUrl && (
-                      <button type="button" onClick={() => { setPhotoUrl(undefined); setAvatarMeta(undefined); }} className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>Remove</button>
+                      <button type="button" onClick={() => { setPhotoUrl(undefined); setAvatarMeta(undefined); }} className="touch-target px-2 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>Remove</button>
                     )}
                   </div>
                 </div>
@@ -246,7 +272,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
 
               <div className="space-y-1.5">
                 <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Name</label>
-                <input value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-xl px-4 py-2.5 focus:outline-none" style={inputStyle} />
+                <input ref={nameInputRef} value={name} onChange={(e) => setName(e.target.value)} className="w-full min-h-11 rounded-xl px-4 py-2.5 focus:outline-none" style={inputStyle} />
               </div>
 
               {/* GP-03 / MOB-04 — months-precise age editor (years + months). The
@@ -317,7 +343,8 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                         onClick={() => toggleSuggestion(label)}
                         aria-pressed={isActive}
                         aria-label={isActive ? `${label}, selected` : `${label}, not selected`}
-                        className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold transition"
+                        // Item 9: the interest chips measured 31 px. Pill and type unchanged.
+                        className="inline-flex min-h-11 items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold transition"
                         style={isActive
                           ? { background: "var(--arbor-green-soft)", border: "1px solid var(--arbor-clay-border)", color: "var(--arbor-green-ink)" }
                           : { background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-muted)" }}
@@ -333,7 +360,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                     .map((label) => (
                       <span
                         key={label}
-                        className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold"
+                        className="inline-flex min-h-11 items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold"
                         style={{ background: "var(--arbor-green-soft)", border: "1px solid var(--arbor-clay-border)", color: "var(--arbor-green-ink)" }}
                       >
                         {label}
@@ -341,7 +368,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                           type="button"
                           onClick={() => removeInterest(label)}
                           aria-label={`Remove ${label}`}
-                          className="ms-0.5 inline-flex items-center justify-center rounded-full -my-3 -me-3 p-3 transition"
+                          className="ms-0.5 inline-flex min-h-11 min-w-11 items-center justify-center rounded-full -my-3 -me-3 transition"
                           style={{ color: "var(--arbor-green-ink)" }}
                         >
                           <X className="w-3 h-3" />
@@ -407,15 +434,62 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
               {/* Data & privacy (GDPR) */}
               <div className="pt-4 mt-2 space-y-2" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
                 <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>Data & privacy</span>
-                <button onClick={handleExport} disabled={busy} className="w-full py-2.5 font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 disabled:opacity-60 bg-white" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}>
+                <button onClick={handleExport} disabled={busy} className="w-full py-2.5 min-h-11 font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 disabled:opacity-60 bg-white" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}>
                   <Download className="w-3.5 h-3.5" style={{ color: "var(--arbor-green-ink)" }} /> Export {isolate(activeChild.name)}&apos;s data (JSON)
                 </button>
-                <button onClick={handleDelete} disabled={busy} className="w-full py-2.5 font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 disabled:opacity-60" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}>
+                <button onClick={openDelete} disabled={busy} data-testid="profile-delete-open" className="w-full py-2.5 min-h-11 font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 disabled:opacity-60" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}>
                   <Trash2 className="w-3.5 h-3.5" /> Delete this child & all data
                 </button>
               </div>
             </div>
           </motion.div>
+          {/* GP-18: typed-name confirmation for the Level-5 delete. Reuses the
+              Care surface keys, so no new copy and no new HE transcreation. */}
+          <Modal
+            open={deleteOpen}
+            onClose={() => { if (!busy) setDeleteOpen(false); }}
+            title={t("sec.sharing.delete.title", { name: firstName })}
+          >
+            <div className="space-y-4">
+              <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-ink)" }}>
+                {t("sec.sharing.delete.body", { name: firstName })}
+              </p>
+              <div className="space-y-1.5">
+                <label htmlFor="profile-delete-confirm-input" className="block text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>
+                  {t("sec.sharing.delete.typeToConfirm", { name: firstName })}
+                </label>
+                <input
+                  id="profile-delete-confirm-input"
+                  data-testid="profile-delete-confirm-input"
+                  dir="auto"
+                  value={confirmName}
+                  onChange={(e) => setConfirmName(e.target.value)}
+                  autoComplete="off"
+                  className="w-full min-h-11 rounded-xl px-3 py-2.5 text-sm"
+                  style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
+                />
+              </div>
+              <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
+                <button
+                  onClick={() => { if (!busy) setDeleteOpen(false); }}
+                  disabled={busy}
+                  className="rounded-xl px-4 py-2.5 min-h-11 text-sm font-bold disabled:opacity-50"
+                  style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
+                >
+                  {t("sec.sharing.delete.cancel")}
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={!nameMatches || busy}
+                  data-testid="profile-delete-confirm-btn"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 min-h-11 text-sm font-bold disabled:opacity-40"
+                  style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}
+                >
+                  {busy ? t("sec.sharing.delete.working") : t("sec.sharing.delete.confirm")}
+                </button>
+              </div>
+            </div>
+          </Modal>
           <AvatarCreator
             parentDialogRef={dialogRef}
             open={showCreator}

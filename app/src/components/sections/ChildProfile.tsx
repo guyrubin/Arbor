@@ -170,7 +170,7 @@ export default function ChildProfile() {
                 <Icon name="edit" size={16} /> Edit what Arbor knows
               </button>
               {!hasHero && (
-                <button onClick={() => setActiveTab("profile")} className="mt-3 text-start block">
+                <button onClick={() => setActiveTab("profile")} className="mt-3 min-h-11 text-start block">
                   <span className="block text-sm font-extrabold" style={{ color: "var(--arbor-green-ink)" }}>
                     <Icon name="auto_awesome" size={16} className="inline-block me-1 -mt-0.5" style={{ verticalAlign: "middle" }} /> {t("cp.hero.create", { name: heroName })}
                   </span>
@@ -204,7 +204,7 @@ export default function ChildProfile() {
               )}
               <button
                 onClick={() => setActiveTab("sharing")}
-                className="w-full flex items-center gap-3 rounded-2xl p-2 text-start transition motion-safe:hover:-translate-y-0.5"
+                className="w-full min-h-11 flex items-center gap-3 rounded-2xl p-2 text-start transition motion-safe:hover:-translate-y-0.5"
               >
                 <span className="inline-flex items-center justify-center flex-shrink-0 rounded-[15px]" style={{ width: 42, height: 42, background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
                   <Icon name="person_add" size={20} />
@@ -371,7 +371,7 @@ export default function ChildProfile() {
             {childProfile.challenges.map((c) => (
               <li key={c} className={`${cardCls} p-3.5 flex items-start justify-between gap-3`}>
                 <span className="text-sm" style={{ color: "var(--arbor-ink)" }}>{c}</span>
-                <button onClick={() => setActiveTab("plans")} className="flex-shrink-0 inline-flex items-center gap-1 text-xs font-bold" style={{ color: "var(--arbor-peach-ink)" }}>
+                <button onClick={() => setActiveTab("plans")} className="touch-target flex-shrink-0 gap-1 px-2 text-xs font-bold" style={{ color: "var(--arbor-peach-ink)" }}>
                   {t("cp.buildPlan")} <Icon name="arrow_forward" size={14} className="rtl:-scale-x-100" />
                 </button>
               </li>
@@ -438,7 +438,7 @@ export default function ChildProfile() {
           { tab: "behaviors" as const, tone: "coral" as const, icon: <Icon name="monitoring" size={18} />, label: t("cp.footer.moments") },
           { tab: "memory" as const, tone: "lav" as const, icon: <Icon name="bookmark" size={18} />, label: t("cp.footer.memory") },
         ]).map((l) => (
-          <button key={l.tab} onClick={() => setActiveTab(l.tab)} className={`${cardCls} p-4 text-start flex items-center gap-3 transition motion-safe:hover:-translate-y-0.5`}>
+          <button key={l.tab} onClick={() => setActiveTab(l.tab)} className={`${cardCls} min-h-11 p-4 text-start flex items-center gap-3 transition motion-safe:hover:-translate-y-0.5`}>
             <IconBadge tone={l.tone}>{l.icon}</IconBadge>
             <span className="text-sm font-extrabold flex items-center gap-1.5" style={{ color: "var(--arbor-ink)" }}>
               {l.label} <Icon name="arrow_forward" size={14} className="rtl:-scale-x-100" style={{ color: PASTEL[l.tone].ink }} />
@@ -474,9 +474,18 @@ function MemberRow({ name, roleLine, tone }: { name: string; roleLine: string; t
   );
 }
 
+/** The chapter-to-chapter link on Profile. One primitive, every site: the glyph
+ *  and the type size are unchanged — only the hit box grows to the 44 px floor
+ *  (`--touch-min`, DESIGN.md), which it reached by 16 px before. `.touch-target`
+ *  (index.css:436) sets both minimums; the negative inline margin keeps the
+ *  visual row spacing the smaller box used to give. */
 function JumpLink({ onClick, color, children }: { onClick: () => void; color: string; children: React.ReactNode }) {
   return (
-    <button onClick={onClick} className="inline-flex items-center gap-1 text-xs font-bold" style={{ color }}>
+    <button
+      onClick={onClick}
+      className="touch-target -mx-2 gap-1 px-2 text-xs font-bold"
+      style={{ color }}
+    >
       {children} <Icon name="arrow_forward" size={14} className="rtl:-scale-x-100" />
     </button>
   );
