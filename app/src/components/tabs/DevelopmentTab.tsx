@@ -446,7 +446,11 @@ export default function DevelopmentTab() {
                 {tFP(uiLang, "elev.fullpicture.title")}
               </h2>
               <span className="inline-flex flex-shrink-0 items-center rounded-full px-2.5 py-1 text-[11px] font-extrabold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
-                {tFP(uiLang, "elev.fullpicture.card.teaser", { n: DOMAIN_COUNT })}
+                {/* OBJ-GROWTH-01 / R1: through the SHARED `t`, not the local
+                    tFP — tFP interpolates {var} but cannot resolve {plural},
+                    so the teaser was the one surface whose count could not
+                    agree with its own noun. Same DOMAIN_COUNT as the hero. */}
+                {t("elev.fullpicture.card.teaser", { n: DOMAIN_COUNT })}
               </span>
             </div>
             <p className="mt-1 max-w-2xl break-words text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>

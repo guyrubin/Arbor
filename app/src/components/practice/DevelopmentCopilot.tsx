@@ -41,6 +41,14 @@ function tFP(uiLang: string, key: string, vars?: Record<string, string | number>
 // track / strong" label is rendered against a child anymore (mirrors DevScoreCard).
 // The band is still computed by signals.ts (drives the route-to-pro escalation
 // internally) but is never surfaced as a verdict. One mechanism-only message.
+/** OBJ-GROWTH-01 / R1 — the ONE answer to "how many areas does Arbor
+ *  track", derived from DOMAIN_META exactly as DevelopmentTab and
+ *  SciencePage derive it. Nothing on this screen names a total any other
+ *  way: the pulse tiles printed a bare "0 domains" and the professional
+ *  preview printed "0 domain(s)." — a count with no basis and an
+ *  unresolved plural, on the same screen as the hub's "5 areas covered". */
+const DOMAIN_COUNT = Object.keys(DOMAIN_META).length;
+
 const MECHANISM_NOTE = "More play and observation will add to the picture.";
 
 /** Masterplan 1.7 / GD-10 — presentation guard on evidence lines: a couple of
@@ -178,8 +186,10 @@ export default function DevelopmentCopilot() {
      Both go through assertClinicianExportCeiling independently and both fail
      closed. Every other line is shared, so preview and export can never drift. */
   const { clinicianSummary, previewSummary } = useMemo(() => {
-    const homePractice = `Home practice, last 7 days: ${data.week.sessions} interactions on ${data.week.activeDays} day(s) across ${data.week.domainsTouched.length} domain(s).`;
-    const streakClause = ` Streak: ${data.streak} day(s).`;
+    // R1: the parent reads this <pre> too (previewSummary), so no "(s)".
+    const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+    const homePractice = `Home practice, last 7 days: ${data.week.sessions} interactions on ${plural(data.week.activeDays, "day")} across ${data.week.domainsTouched.length} of ${DOMAIN_COUNT} domains.`;
+    const streakClause = ` Streak: ${plural(data.streak, "day")}.`;
     const build = (withStreak: boolean): string | null => {
       const lines: string[] = [
         `ARBOR PRACTICE SUMMARY — ${childProfile.name}, age ${ageLabel(childProfile)}`,
@@ -452,12 +462,14 @@ export default function DevelopmentCopilot() {
         <div className={`${cardCls} p-5`}>
           <p className="text-2xl font-extrabold" style={{ color: "var(--arbor-ink)" }}>{practiceMoments}</p>
           <p className="text-[10.5px] mt-0.5" style={{ color: "var(--arbor-muted)" }}>
-            {tFP(uiLang, "elev.fullpicture.pulse.moments", { k: skillAreas, kPlural: skillAreas === 1 ? "" : "s" })}
+            {t("elev.fullpicture.pulse.moments", { n: skillAreas, total: DOMAIN_COUNT })}
           </p>
         </div>
         <div className={`${cardCls} p-5`}>
           <p className="text-2xl font-extrabold" style={{ color: "var(--arbor-ink)" }}>{data.week.sessions}</p>
-          <p className="text-[10.5px] mt-0.5" style={{ color: "var(--arbor-muted)" }}>Practice interactions in 7 days, across {data.week.domainsTouched.length} domain{data.week.domainsTouched.length === 1 ? "" : "s"}</p>
+          <p className="text-[10.5px] mt-0.5" style={{ color: "var(--arbor-muted)" }}>
+            {t("elev.fullpicture.pulse.week", { n: data.week.domainsTouched.length, total: DOMAIN_COUNT })}
+          </p>
         </div>
       </div>
 

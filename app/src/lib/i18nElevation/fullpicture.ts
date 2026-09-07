@@ -32,14 +32,20 @@ export const en: Record<string, string> = {
   "elev.fullpicture.watch.empty.body":
     "Arbor needs enough recent practice, logged moments, or a Development Check before a pattern is worth a conversation. Quiet here means \"not enough signal yet\" — not a clinical all-clear.",
 
-  // ── Cumulative practice tile (GD-10: never a score or band value)
+  // ── Cumulative practice tiles (GD-10: never a score or band value).
+  // OBJ-GROWTH-01 / R1: both tiles report the child's touched areas against the
+  // SAME derived total the hub hero and #/science print (DOMAIN_COUNT =
+  // Object.keys(DOMAIN_META).length) — never a second literal, never a bare
+  // "0 domains" with no basis. `{plural}` is resolved by LanguageContext's
+  // resolvePlural off `n`, so the "(s)" fallback never reaches a parent.
   "elev.fullpicture.pulse.moments":
-    "Practice moments logged so far, across {k} skill area{kPlural} — a running tally of activity, never a score.",
+    "Practice moments logged so far, across {n} of {total} skill areas — a running tally of activity, never a score.",
+  "elev.fullpicture.pulse.week": "Practice interactions in 7 days, across {n} of {total} areas",
 
   // ── Development-hub entry card (IA canon: a CARD on the hub's Now region)
   "elev.fullpicture.card.promise": "Everything Arbor sees about {name}, in one calm place",
   "elev.fullpicture.card.promise.generic": "Everything Arbor sees about your child, in one calm place",
-  "elev.fullpicture.card.teaser": "{n} areas covered",
+  "elev.fullpicture.card.teaser": "{n} area{plural} covered",
   "elev.fullpicture.card.cta": "Open the full picture",
 };
 
@@ -56,7 +62,8 @@ export const he: Record<string, string> = {
     "ארבור צריך מספיק תרגול עדכני, רגעים מתועדים או בדיקת התפתחות לפני שדפוס שווה שיחה. שקט כאן אומר \"אין עדיין מספיק סימן\" — לא אישור קליני.",
 
   "elev.fullpicture.pulse.moments":
-    "רגעי תרגול שנרשמו עד כה, ב־{k} תחומי מיומנות — ספירה מצטברת של פעילות, אף פעם לא ציון.",
+    "רגעי תרגול שנרשמו עד כה, ב־{n} מתוך {total} תחומי מיומנות — ספירה מצטברת של פעילות, אף פעם לא ציון.",
+  "elev.fullpicture.pulse.week": "מפגשי תרגול ב־7 ימים, ב־{n} מתוך {total} תחומים",
 
   "elev.fullpicture.card.promise": "כל מה שארבור רואה על {name}, במקום רגוע אחד",
   "elev.fullpicture.card.promise.generic": "כל מה שארבור רואה על הילד או הילדה שלכם, במקום רגוע אחד",
