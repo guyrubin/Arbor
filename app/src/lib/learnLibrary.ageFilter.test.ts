@@ -153,7 +153,13 @@ describe("R12 · the default shelf is short, and every control says what it does
     (c) => windowFromYears(c.ageMin, c.ageMax),
     FIVE_YEARS_MONTHS,
   );
-  const ranked = rankLearnCards(ageVisible, { ageYears: 5 });
+  // `focusDomain: null` is the no-focus form learnLibrary itself uses
+  // (todaysPick, learnLibrary.ts:277); omitting the key left the file failing
+  // `tsc` while vitest ran it happily, so the branch was red on a test whose
+  // assertions all passed. Null and absent score identically — learnCardScore
+  // reads focusDomain for truthiness only — so the shelf under test is
+  // unchanged: this is the age-only ranking it was always meant to be.
+  const ranked = rankLearnCards(ageVisible, { ageYears: 5, focusDomain: null });
   const featured = ranked.slice(0, 2);
   const gridAll = ranked.filter((c) => !featured.some((f) => f.id === c.id));
   const firstPage = gridAll.slice(0, SHELF_PAGE - featured.length);

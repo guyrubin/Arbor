@@ -224,14 +224,25 @@ describe("LEAK 3: ArborContext.setActiveTab ignores navigation while the gate is
 describe("LEAK 4: parent-register toasts never paint over the kid surface", () => {
   const src = readSrc("context", "ToastContext.tsx");
 
+  // Both pins below were transcriptions of one rendering of the source, not of
+  // the shield. CR-09 gave a toast an optional `action` and moved `top-4` into
+  // a safe-area `style`, so `setToasts((t) => [...t, { id, type, message }])`
+  // and `className="fixed top-4 end-4 z-[80]` both stopped existing — the pins
+  // went red while the shield itself never moved. Re-pinned on the ORDER of the
+  // guard, the queue push, the early return and the render, and on the gate
+  // wrapping the portal call — the things that would actually have to break for
+  // a parent-register toast to paint over the kid surface.
   it("toast() queues instead of rendering while the gate is active", () => {
-    const toastFn = src.slice(src.indexOf("const toast = useCallback"));
+    const toastFn = src.slice(src.indexOf("const toast = useCallback"), src.indexOf("// Flush the queued toasts"));
+    expect(toastFn.length).toBeGreaterThan(100); // the slice found both ends
     const guardAt = toastFn.indexOf("if (isKidModeActive())");
-    const pushAt = toastFn.indexOf("queueRef.current.push");
-    const renderAt = toastFn.indexOf("setToasts((t) => [...t, { id, type, message }])");
+    const pushAt = toastFn.indexOf("queueRef.current.push", guardAt);
+    const returnAt = toastFn.indexOf("return;", pushAt);
+    const renderAt = toastFn.indexOf("setToasts((t) => [...t,");
     expect(guardAt).toBeGreaterThan(-1);
     expect(pushAt).toBeGreaterThan(guardAt);
-    expect(renderAt).toBeGreaterThan(pushAt); // queue path returns before render path
+    expect(returnAt).toBeGreaterThan(pushAt); // the queue path RETURNS …
+    expect(renderAt).toBeGreaterThan(returnAt); // … before the render path
   });
 
   it("subscribes to the gate and flushes the queue on exit", () => {
@@ -241,10 +252,22 @@ describe("LEAK 4: parent-register toasts never paint over the kid surface", () =
   });
 
   it("the z-[80] container is not mounted at all while locked", () => {
-    const containerAt = src.indexOf('className="fixed top-4 end-4 z-[80]');
-    expect(containerAt).toBeGreaterThan(-1);
+    // z-[80] is the number that matters — it is what puts this layer ABOVE the
+    // Kid Mode overlay at z-70. Tailwind class order and the safe-area style
+    // are free to change; the stacking claim is not.
+    // …and it must be the className, not the prose: the file's own header
+    // comment says "z-[80]" too, and a bare indexOf lands there — before the
+    // gate — which is how this pin would report a leak that does not exist.
+    const container = /className="[^"]*\bz-\[80\]/.exec(src);
+    const containerAt = container?.index ?? -1;
+    expect(containerAt, "the toast layer no longer declares z-[80]").toBeGreaterThan(-1);
     const gateAt = src.lastIndexOf("{!kidLocked && (", containerAt);
     expect(gateAt, "toast container must be wrapped in {!kidLocked && (").toBeGreaterThan(-1);
+    // The gate must wrap the MOUNT, not just the class: createPortal has to sit
+    // inside it, or the layer is in the body and merely styled differently.
+    const portalAt = src.indexOf("createPortal(", gateAt);
+    expect(portalAt).toBeGreaterThan(gateAt);
+    expect(portalAt).toBeLessThan(containerAt);
   });
 });
 
