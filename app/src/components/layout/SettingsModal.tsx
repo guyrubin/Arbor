@@ -125,6 +125,14 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
                     <Skeleton className="h-4 w-36" />
                     <Skeleton className="h-3 w-52" />
                   </div>
+                ) : entitlementUnverified ? (
+                  /* MOB-07: the fetch FINISHED and failed. The fallback plan is
+                     "free", and printing it here reads as a verdict on a parent
+                     who may have paid ninety seconds ago. Name the state
+                     instead; the line below carries the reason and the Retry. */
+                  <p className="font-bold" data-testid="plan-unknown" style={{ color: "var(--arbor-ink)" }}>
+                    {t("elev.storeshell.plan.verifying")}
+                  </p>
                 ) : (
                   <>
                     <p className="font-bold flex items-center gap-2 flex-wrap" style={{ color: "var(--arbor-ink)" }}>
@@ -170,8 +178,12 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
             </>
           )}
 
-          {/* Free: usage + cadence toggle + upgrade to Plus / Family */}
-          {!isPaid && (
+          {/* Free: usage + cadence toggle + upgrade to Plus / Family.
+              MOB-07/MOB-08: only when the plan is actually KNOWN to be free.
+              Selling an upgrade to somebody whose just-completed checkout has
+              not been confirmed yet is the worst moment in the product to get
+              wrong — and the usage counter under it is fallback data too. */}
+          {!isPaid && !entitlementUnverified && (
             <>
               {coachLimit !== null && (
                 <p className="text-xs mt-2" style={{ color: "var(--arbor-muted)" }}>

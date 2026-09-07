@@ -1258,6 +1258,10 @@ export const en: Dict = {
   "pw.maybeLater": "Maybe later",
   "pw.activating": "Activating your subscription…",
   "pw.activated": "You're all set — welcome to Arbor.",
+  // MOB-07: the losing branch. Said once, when the poll gives up — it points at
+  // the one place that carries the live answer and a Retry (Settings › Plan),
+  // and it never calls the parent "Free" while nothing has been verified.
+  "pw.stillConfirming": "Still confirming your plan — check Settings › Plan in a minute.",
   "set.aiLang.title": "Arbor's response language",
   "set.aiLang.sub": "The language Arbor writes guidance, stories and reports in.",
   "set.aiLang.toggle": "Use a different language for Arbor's responses",
@@ -3560,6 +3564,7 @@ export const he: Dict = {
   "pw.bodyPlans": "תוכניות צמיחה מתקדמות הן תכונת ארבור פלוס. שדרגו כדי שארבור יבנה אותן עבורכם.",
   "pw.maybeLater": "אולי מאוחר יותר",
   "pw.activating": "מפעילים את המנוי שלכם…",
+  "pw.stillConfirming": "עדיין מאמתים את המנוי — בדקו בעוד רגע בהגדרות › תוכנית.",
   "pw.activated": "הכול מוכן — ברוכים הבאים לארבור.",
   "set.aiLang.title": "השפה שבה ארבור עונה",
   "set.aiLang.sub": "השפה שבה ארבור כותב הנחיות, סיפורים ודוחות.",

@@ -136,12 +136,29 @@ export type BillingReturnDeps = {
   cancel?: (handle: unknown) => void;
   maxTries?: number;
   intervalMs?: number;
+  /** MOB-07: called ONCE when the poll gives up — exhausted or throwing.
+   *  Shell uses it to say so; a missing callback still raises the toast. */
+  onTimeout?: () => void;
 };
+
+/** The key of the message a parent gets when activation did not confirm in
+ *  time. Exported so the Shell wiring and the guard test name the same string. */
+export const BILLING_PENDING_KEY = "pw.stillConfirming";
 
 /**
  * MON-2 activation sequence: ONE "activating" toast, then poll the
  * entitlement until the plan flips (the RevenueCat webhook writes it async),
  * then ONE "activated" toast. Returns a cancel function for the effect cleanup.
+ *
+ * MOB-07 / IA-15: the sequence used to have no LOSING branch. `refresh()`
+ * rejecting produced an unhandled rejection and stopped the poll dead, and a
+ * plan that stayed free simply ran out of tries — in both cases the parent, who
+ * had just paid, got one 4-second "Activating…" toast and then silence. Now a
+ * failed refresh is caught and counted like any other unconfirmed try, and
+ * exhausting the tries raises exactly one honest message that points at the
+ * place the answer lives (Settings › Plan, where MOB-08's unverified line and
+ * its Retry already are). maxTries × intervalMs stays inside the 15 s the item
+ * allows before the parent must be told something.
  */
 export function startBillingReturnPoll(deps: BillingReturnDeps): () => void {
   const schedule = deps.schedule ?? ((fn, ms) => setTimeout(fn, ms));
@@ -151,13 +168,28 @@ export function startBillingReturnPoll(deps: BillingReturnDeps): () => void {
   let tries = 0;
   let handle: unknown;
   let alive = true;
+  let settled = false;
   deps.toast(deps.t("pw.activating"), "info");
+  const giveUp = () => {
+    if (settled || !alive) return;
+    settled = true;
+    deps.toast(deps.t(BILLING_PENDING_KEY), "info");
+    deps.onTimeout?.();
+  };
   const poll = async () => {
     tries += 1;
-    const ent = await deps.refresh();
-    if (!alive) return;
-    if (ent.plan !== "free") { deps.toast(deps.t("pw.activated"), "success"); return; }
+    let confirmed = false;
+    try {
+      const ent = await deps.refresh();
+      if (!alive) return;
+      confirmed = ent.plan !== "free";
+    } catch {
+      // A failed read is an unconfirmed try, never a reason to stop silently.
+      if (!alive) return;
+    }
+    if (confirmed) { settled = true; deps.toast(deps.t("pw.activated"), "success"); return; }
     if (tries < maxTries) handle = schedule(() => void poll(), intervalMs);
+    else giveUp();
   };
   void poll();
   return () => { alive = false; if (handle !== undefined) cancel(handle); };
