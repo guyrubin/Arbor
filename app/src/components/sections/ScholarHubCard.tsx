@@ -2,11 +2,15 @@
  * Scholar Hub Card (AP-055) — weekly developmental-concept feed for Academy.
  *
  * Reads the EXISTING dev-score/domain data from useArbor() (milestones),
- * runs the same computeDevScore used by DevScoreCard, picks the lowest-scoring
- * domain via focusDomain, and surfaces ONE curated editorial article.
+ * runs the same computeDevScore used by DevScoreCard, and surfaces ONE curated
+ * editorial article.
  *
- * FRAMING GATE: the lowest domain is presented as "a great area to nurture
- * this week" — NEVER as a deficit, weakness, delay, problem, or concern.
+ * FRAMING GATE (OBJ-GROWTH-05, 2026-09-07): the 2026-06 framing ("a great area
+ * to nurture this week: <lowest domain>") was still a weakest-domain pointer —
+ * law 1 — and it rendered against 0 noticed milestones and 0 logs, where there
+ * was nothing to rank at all. The internal ordering may still CHOOSE the
+ * article; it is never NAMED to the parent, and with nothing noticed the card
+ * shows the age-only teach line instead.
  *
  * No new child-data write. No AI call. Pure frontend + static catalogue.
  * TOKEN-DRIVEN styling only (var(--arbor-*)). HE/RTL via logical CSS props.
@@ -19,15 +23,8 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useDevScore } from "../../hooks/useDevScore";
 import { selectWeeklyArticle } from "../../growth/scholarHub";
 import { LEARN_CATEGORIES } from "../../learn/learnLibrary";
-import framework from "../../framework.json";
 import { cardCls } from "../ui/kit";
 import { TrustLink } from "../trust/TrustLink";
-
-// Domain id → human label (same lookup used in DevScoreCard)
-const DOMAIN_LABEL: Record<string, string> = Object.fromEntries(
-  (framework.domains as { id: string; label: string }[]).map((d) => [d.id, d.label])
-);
-const labelFor = (id: string) => DOMAIN_LABEL[id] ?? id;
 
 export default function ScholarHubCard() {
   const { childProfile, requestLearnRead } = useArbor();
@@ -53,7 +50,10 @@ export default function ScholarHubCard() {
   const topic = he ? article.topicHe : article.topicEn;
 
   // ── Graceful empty/no-data state ────────────────────────────────────────
-  if (score.confidence === "none") {
+  // Nothing noticed yet = nothing to rank. `confidence` only measures how big
+  // the age-band catalogue is, so it stayed "high" on a day-0 account.
+  const noticed = score.domains.reduce((n, d) => n + d.reached, 0);
+  if (score.confidence === "none" || noticed === 0) {
     return (
       <div
         className={`${cardCls} p-5`}
@@ -181,14 +181,10 @@ export default function ScholarHubCard() {
       </div>
 
       {/* Domain framing — strengths-based, invitational (FRAMING GATE) */}
-      {!isDefault && score.focusDomain && (
-        <div
-          className="rounded-2xl px-4 py-2.5 mb-4 text-sm font-bold"
-          style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
-        >
-          {t("hub.scholar.domainLabel", { domain: labelFor(score.focusDomain) })}
-        </div>
-      )}
+      {/* OBJ-GROWTH-05: the domain pointer line ("A great area to nurture this
+          week: <lowest-share domain>") is gone. The weekly read still comes
+          from the same internal selection; what the parent reads is the
+          article, not a ranking of their child. */}
       {isDefault && (
         <div
           className="rounded-2xl px-4 py-2.5 mb-4 text-sm font-bold"

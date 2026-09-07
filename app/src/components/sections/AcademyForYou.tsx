@@ -4,9 +4,13 @@
  * Joins the EXISTING copilot focus recommendation (computeDevScore → focusDomain)
  * with Academy course progress by domain (masterclasses explored vs available).
  *
- * SAFETY GATE (board-cleared 2026-06-22):
- *  - The recommended domain is ALWAYS framed as "least-explored" / "a good place
- *    to explore next", NEVER as "lowest-scoring", "weak", or a deficit.
+ * SAFETY GATE (board-cleared 2026-06-22, TIGHTENED by OBJ-GROWTH-05 2026-09-07):
+ *  - The 2026-06 framing ("a good place to explore next") was still a pointer at
+ *    a ranking of the child's areas, and it rendered against 0 noticed
+ *    milestones and 0 logs. Law 1 bans weakest-domain pointers outright, so the
+ *    ranking may order the card internally but is never NAMED, and at day-0 the
+ *    card falls back to the age-only why-line (learn.whyAge) the Learn lane
+ *    already uses.
  *  - No warning/amber/red token on the recommended-domain card (neutral/positive only).
  *  - Domains are NOT rendered as a ranked deficit list.
  *  - Verbatim cleared copy is used verbatim — no paraphrase.
@@ -108,8 +112,9 @@ function buildDomainRows(explored: Record<string, boolean>): DomainCourseRow[] {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function AcademyForYou({ onNavigateToMasterclasses }: { onNavigateToMasterclasses?: () => void }) {
-  const { milestones } = useArbor();
+  const { milestones, childProfile } = useArbor();
   const { t, aiLang } = useLanguage();
+  const firstName = (childProfile.name || "").split(" ")[0];
   const he = aiLang === "he";
 
   // "Why" expansion state
@@ -129,8 +134,15 @@ export default function AcademyForYou({ onNavigateToMasterclasses }: { onNavigat
   const focusDomain = score.focusDomain;
   const focusLabel = focusDomain ? labelFor(focusDomain) : null;
 
-  // ── No-data state (not enough milestones to derive a focus) ─────────────
-  if (score.confidence === "none" || !focusDomain || !focusLabel) {
+  // OBJ-GROWTH-05: `confidence` measures how big the milestone CATALOGUE is for
+  // this age, not how much the parent has noticed — so the ranked card used to
+  // render a "good place to explore next" with 0 milestones noticed and 0 logs.
+  // Nothing noticed = nothing to rank; the card falls back to the age-only
+  // teach line the Learn lane already ships (learn.whyAge).
+  const noticed = score.domains.reduce((n, d) => n + d.reached, 0);
+
+  // ── No-data state (nothing noticed yet, or no focus derivable) ──────────
+  if (score.confidence === "none" || noticed === 0 || !focusDomain || !focusLabel) {
     return (
       <div
         className={`${cardCls} p-5`}
@@ -157,6 +169,9 @@ export default function AcademyForYou({ onNavigateToMasterclasses }: { onNavigat
         </div>
         <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
           {t("foryou.nodata")}
+        </p>
+        <p className="text-[12px] leading-relaxed mt-2" style={{ color: "var(--arbor-muted)" }} data-testid="academy-foryou-why-age">
+          {t("learn.whyAge", { name: firstName })}
         </p>
       </div>
     );
@@ -200,8 +215,8 @@ export default function AcademyForYou({ onNavigateToMasterclasses }: { onNavigat
             className="text-[15px] font-extrabold leading-snug"
             style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}
           >
-            {/* Section header: VERBATIM "A good place to explore next" (EN) */}
-            {t("foryou.header")}
+            {/* OBJ-GROWTH-05: no "explore next" ranking language. */}
+            {t("elev.growthTruth.learn.header")}
           </h2>
         </div>
 
@@ -275,8 +290,10 @@ export default function AcademyForYou({ onNavigateToMasterclasses }: { onNavigat
                   data-testid="academy-foryou-why-body"
                   dir="auto"
                 >
-                  {/* LOAD-BEARING verbatim copy (board-cleared 2026-06-22) */}
-                  {t("foryou.whyBody")}
+                  {/* OBJ-GROWTH-05: the reason is about what the FAMILY has
+                      opened, never "the area you've logged least about". At
+                      day-0 the card never reaches here (age-only branch above). */}
+                  {t("elev.growthTruth.learn.why.explored", { name: firstName })}
                 </p>
               </motion.div>
             )}

@@ -16,6 +16,10 @@ export interface JourneyDay {
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+/** The canonical, signal-free domain order. Every pick in this module walks it;
+ *  nothing here ever sorts the child's domains by band. */
+const ROTATION: PracticeDomain[] = ["language", "speech", "cognition", "social", "emotional"];
+
 const EXTRA_BY_DOMAIN: Record<PracticeDomain, { title: string; detail: string; tab: JourneyDay["extra"]["tab"] }[]> = {
   speech: [
     { title: "Speech Coach: today's sound", detail: "5 minutes on the current target sound — words first, then one silly sentence.", tab: "speech" },
@@ -47,15 +51,23 @@ const EXTRA_BY_DOMAIN: Record<PracticeDomain, { title: string; detail: string; t
 export function composeWeek(
   bands: DomainBand[],
   recommendation: CopilotRecommendation,
-  today: string
+  today: string,
+  preferred: PracticeDomain[] = []
 ): JourneyDay[] {
+  void bands;
   const start = new Date(`${today}T12:00:00`);
   start.setDate(start.getDate() - start.getDay()); // back to Sunday
   const focus = recommendation.domain;
-  const others = (["language", "speech", "cognition", "social", "emotional"] as PracticeDomain[])
-    .filter((d) => d !== focus)
-    .sort((a, b) => (bands.find((x) => x.domain === a)?.signal ?? 50) - (bands.find((x) => x.domain === b)?.signal ?? 50));
-  // Day-domain layout: focus on Mon/Wed/Sat; others fill the rest, weakest first.
+  // OBJ-GROWTH-05 / KID-17: the aimed extras used to be ordered WEAKEST BAND
+  // FIRST, which made the plan a ranked list of the child's areas dressed as
+  // play. Order now comes from the family's charter aims (when the caller
+  // passes them) and then the canonical rotation - the same signal-free
+  // selector suggestObjectives() uses. `bands` is kept for call-site
+  // compatibility only and never influences the pick.
+  const others: PracticeDomain[] = [];
+  for (const d of [...preferred, ...ROTATION]) if (d !== focus && !others.includes(d)) others.push(d);
+  // Day-domain layout: focus on Mon/Wed/Sat; the others fill the rest in
+  // charter-then-rotation order.
   const layout: PracticeDomain[] = [others[0], focus, others[1], focus, others[2], others[3], focus];
 
   return Array.from({ length: 7 }, (_, i) => {
@@ -84,8 +96,10 @@ const OBJECTIVE_TEMPLATES: Record<PracticeDomain, string[]> = {
   social: ["Complete 4 story journeys and talk about the choice", "Practice losing gracefully 6 times"],
 };
 
-/** The canonical, signal-free domain rotation used when the charter names no aim. */
-const DOMAIN_ROTATION: PracticeDomain[] = ["language", "speech", "cognition", "social", "emotional"];
+/** The canonical, signal-free domain rotation used when the charter names no aim.
+ *  OBJ-GROWTH-05: exported so signals.recommend() picks from the SAME order —
+ *  one selector, no band ranking anywhere near a rendered pick. */
+export const DOMAIN_ROTATION: PracticeDomain[] = ROTATION;
 
 /**
  * KID-17: the family's charter virtues (lib/becoming.aimVirtues) mapped to the
@@ -120,7 +134,7 @@ export function aimDomains(virtues: DevelopmentMetricId[]): PracticeDomain[] {
 export function suggestObjectives(bands: DomainBand[], month: string, preferred: PracticeDomain[] = []): JourneyObjective[] {
   void bands;
   const order: PracticeDomain[] = [];
-  for (const d of [...preferred, ...DOMAIN_ROTATION]) if (!order.includes(d)) order.push(d);
+  for (const d of [...preferred, ...ROTATION]) if (!order.includes(d)) order.push(d);
   const picks: { domain: PracticeDomain; idx: number }[] = [
     { domain: order[0], idx: 0 },
     { domain: order[1], idx: 0 },

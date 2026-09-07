@@ -181,12 +181,15 @@ describe("domainBands + recommend", () => {
     expect(lifted.basis).toContain("Letter tracing");
   });
 
-  it("recommends the weakest domain with a matching mission", () => {
+  // OBJ-GROWTH-05: this used to assert "recommends the WEAKEST domain" — the
+  // law-1 breach itself. The pick is now charter-then-practice, band-blind.
+  it("recommends a domain with a matching mission, whatever the bands say", () => {
     const bands = domainBands([ms("attachment_regulation", false), ms("language_communication", true)], [], [], []);
     const rec = recommend(bands, []);
-    expect(["emotional", "social", "speech", "cognition"]).toContain(rec.domain);
+    expect(["language", "emotional", "social", "speech", "cognition"]).toContain(rec.domain);
     expect(rec.missionId).toBeTruthy();
     expect(rec.headline).toMatch(/Increase/);
+    expect(rec.whyKey).toMatch(/^elev\./);
   });
 });
 

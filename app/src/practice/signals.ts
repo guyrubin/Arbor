@@ -10,6 +10,7 @@ import type {
   SpeechAttempt,
   SpeechLevel,
 } from "../types";
+import { DOMAIN_ROTATION } from "./journey";
 
 /* Pure scoring engine for the Practice Studio + Development Copilot.
    No I/O, no Date.now() inside the math (callers pass `today`) — unit-testable. */
@@ -507,7 +508,11 @@ export interface CopilotRecommendation {
   domain: PracticeDomain;
   missionId: string;
   headline: string;
-  why: string;
+  /** i18n key of the why-line. OBJ-GROWTH-05: the reason is resolved by the
+   *  rendering surface (which knows the child's name and the reader's
+   *  language); this module never ships a parent-facing English sentence, and
+   *  above all never one that names a ranking of the child's areas. */
+  whyKey: string;
 }
 
 const DOMAIN_MISSION: Record<PracticeDomain, string> = {
@@ -618,19 +623,38 @@ export function weeklyMissionPlan(
   return { weekKey: wk, focus };
 }
 
-/** One concrete weekly recommendation: lowest band wins; ties → least-practiced domain. */
-export function recommend(bands: DomainBand[], missions: MissionRecord[]): CopilotRecommendation {
+/**
+ * One concrete weekly recommendation.
+ *
+ * OBJ-GROWTH-05 (law 1, weakest-domain pointers): this used to be "lowest band
+ * wins", and it SAID so — "This is currently the area with the least practice
+ * signal" rendered on #/copilot, identical at day-0 where there was no signal
+ * at all. A ranking of a child's areas is a verdict however gently it is
+ * phrased, so the band no longer takes any part in the pick.
+ *
+ * What decides it now is the FAMILY's own behaviour, in this order: the
+ * charter aims the caller passes (journey.aimDomains — the same selector
+ * suggestObjectives uses), then the domains they have actually practised most,
+ * then the canonical signal-free rotation. Every input is something the parent
+ * did; none is a reading of the child.
+ */
+export function recommend(
+  bands: DomainBand[],
+  missions: MissionRecord[],
+  preferred: PracticeDomain[] = []
+): CopilotRecommendation {
+  void bands; // never ranks the child — kept for call-site compatibility
   const practiced = (domain: PracticeDomain) => missions.filter((m) => m.completed && m.domain === domain).length;
-  const sorted = [...bands].sort((a, b) => a.signal - b.signal || practiced(a.domain) - practiced(b.domain));
-  const target = sorted[0];
+  const byPractice = [...DOMAIN_ROTATION].sort((a, b) => practiced(b) - practiced(a));
+  const order: PracticeDomain[] = [];
+  for (const d of [...preferred, ...byPractice, ...DOMAIN_ROTATION]) if (!order.includes(d)) order.push(d);
+  const target = order[0];
+  const hasPractice = missions.some((m) => m.completed);
   return {
-    domain: target.domain,
-    missionId: DOMAIN_MISSION[target.domain],
-    headline: `Increase ${DOMAIN_ACTIVITY[target.domain]} this week`,
-    // Presentation string (renders on the Full Picture) — CLINICAL FIREWALL /
-    // GD-10: never interpolate the band VALUE here; the band stays an internal
-    // ranking input only.
-    why: `This is currently the area with the least practice signal. Small daily reps move it fastest — tomorrow's mission is aimed there.`,
+    domain: target,
+    missionId: DOMAIN_MISSION[target],
+    headline: `Increase ${DOMAIN_ACTIVITY[target]} this week`,
+    whyKey: hasPractice ? "elev.growthTruth.focus.why.practised" : "elev.growthTruth.focus.why.day0",
   };
 }
 

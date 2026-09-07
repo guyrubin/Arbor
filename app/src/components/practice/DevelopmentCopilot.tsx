@@ -76,9 +76,18 @@ export default function DevelopmentCopilot() {
   const { childProfile, milestones, behaviorLogs, setActiveTab } = useArbor();
   const { t, uiLang } = useLanguage();
   const data = usePracticeData(childProfile.id);
-  const { bands, recommendation, snapshots } = useCopilot(milestones, data, childProfile.id);
+  const { bands, recommendation: rawRecommendation, snapshots } = useCopilot(milestones, data, childProfile.id);
   const screeningsCol = useChildCollection<SavedScreening>(childProfile.id, "screenings");
   const first = childProfile.name.split(" ")[0];
+  // OBJ-GROWTH-05: signals.recommend() now returns the why-line as an i18n KEY
+  // instead of the English sentence "This is currently the area with the least
+  // practice signal" (a weakest-domain pointer, law 1, which rendered
+  // unchanged at day-0 where there was no signal to be least of). The reason
+  // is resolved here, where the child's name and the reader's language live.
+  const recommendation = useMemo(
+    () => ({ ...rawRecommendation, why: t(rawRecommendation.whyKey, { name: first }) }),
+    [rawRecommendation, t, first]
+  );
   const [copied, setCopied] = useState(false);
 
   // Wave-3 (2026-06-27): the domain picture is now a flat COUNT of parent-
@@ -408,7 +417,7 @@ export default function DevelopmentCopilot() {
       {/* Practice pulse — GD-10: the first tile is a CUMULATIVE COUNT of
           practice moments (a running activity tally), never the 0–100
           developmentScore value or any band/trend. */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className={`${cardCls} p-5`}>
           <p className="text-2xl font-extrabold" style={{ color: "var(--arbor-ink)" }}>{practiceMoments}</p>
           <p className="text-[10.5px] mt-0.5" style={{ color: "var(--arbor-muted)" }}>
@@ -418,10 +427,6 @@ export default function DevelopmentCopilot() {
         <div className={`${cardCls} p-5`}>
           <p className="text-2xl font-extrabold" style={{ color: "var(--arbor-ink)" }}>{data.week.sessions}</p>
           <p className="text-[10.5px] mt-0.5" style={{ color: "var(--arbor-muted)" }}>Practice interactions in 7 days, across {data.week.domainsTouched.length} domain{data.week.domainsTouched.length === 1 ? "" : "s"}</p>
-        </div>
-        <div className={`${cardCls} p-5`}>
-          <p className="text-2xl font-extrabold" style={{ color: "var(--arbor-ink)" }}>{advCount > 0 ? `${advCorrect}/${advCount}` : "—"}</p>
-          <p className="text-[10.5px] mt-0.5" style={{ color: "var(--arbor-muted)" }}>Adventure scenes solved on the first try</p>
         </div>
       </div>
 

@@ -46,6 +46,14 @@ export const en: Record<string, string> = {
   "elev.growthTruth.watch.fromCheck": "From your latest Development Check",
   "elev.growthTruth.watch.soundsTypical": "Some sounds usually arrive later than this age — a speech-language professional is the right person to look",
 
+  // ── OBJ-GROWTH-05 · the weekly focus and the Academy cards say WHY without
+  //    ever naming a ranking of the child's areas (law 1, weakest-domain
+  //    pointers). Every reason below is about what the FAMILY has done.
+  "elev.growthTruth.focus.why.practised": "Picked from what you have practised with {name} lately. Small daily reps are what move it.",
+  "elev.growthTruth.focus.why.day0": "Picked for {name}'s age — practise anything and this gets sharper.",
+  "elev.growthTruth.learn.header": "Where to put your energy this week",
+  "elev.growthTruth.learn.why.explored": "Picked from the courses you have opened so far — an editorial suggestion, not a reading of {name}.",
+
   // ── GP-15 / RUN-20 · Profile hub CTA = the contract's primary move
   "elev.growthTruth.profile.cta.review": "Review what Arbor remembers",
   "elev.growthTruth.profile.cta.addFact": "Add a fact about {name}",
@@ -83,6 +91,11 @@ export const he: Record<string, string> = {
 
   "elev.growthTruth.watch.fromCheck": "מבדיקת ההתפתחות האחרונה שלכם",
   "elev.growthTruth.watch.soundsTypical": "חלק מהצלילים מגיעים בדרך כלל מאוחר יותר מהגיל הזה — קלינאי/ת תקשורת היא הכתובת לבדוק",
+
+  "elev.growthTruth.focus.why.practised": "נבחר לפי מה שתרגלתם עם {name} לאחרונה. חזרות קטנות ויומיומיות הן מה שמזיז את זה.",
+  "elev.growthTruth.focus.why.day0": "נבחר לפי הגיל של {name} — תרגלו משהו, וזה יתחדד.",
+  "elev.growthTruth.learn.header": "לאן להפנות אנרגיה השבוע",
+  "elev.growthTruth.learn.why.explored": "נבחר לפי הקורסים שפתחתם עד כה — המלצה עורכת, לא קריאה של {name}.",
 
   "elev.growthTruth.profile.cta.review": "לסקור מה ארבור זוכרת",
   "elev.growthTruth.profile.cta.addFact": "להוסיף עובדה על {name}",
