@@ -99,3 +99,127 @@ describe("R14 · NEGATIVE CONTROL — the pre-fix shapes are what this rejects",
     expect(CONSULT).not.toContain("<HubHero\n        zeroLine=");
   });
 });
+
+/* ══════════════════════════════════════════════════════════════════════════
+   R18 — the R14 residue. Round 2c re-measured "Your summary" at 1,014 px on a
+   390 px viewport; the target is < 900.
+
+   What was still above it, in order: the hub hero, the section header, a
+   ~190 px reason composer (a label, a two-line hint, an empty textarea and a
+   "you have not written one yet" line), and the folded contract disclosure.
+   Two of those four blocks are not what the parent opened `#/consult` to see:
+   the composer ASKS for input, and the contract REASSURES about input already
+   given. The summary is the read they came for.
+
+   So under md the column is reordered, not shortened: the composer and the
+   contract disclosure render after the summary, and the sticky export bar
+   takes the last order so it still ends the column (and so the parent still
+   meets the reason before Copy / Download / Send). Nothing is hidden,
+   nothing is collapsed, no capability moves (law 6), and the DOM order — which
+   is what the heading outline and a screen reader follow — is untouched.
+
+   `space-y-5` had to become `gap-5` for this: Tailwind's space-y is a margin
+   on `:not(:last-child)`, keyed to DOM order, so the reordered blocks would
+   have butted against the export bar. Flex `gap` is keyed to visual order.
+
+   SOURCE guard (no jsdom in this repo). The rendered "< 900 px" measurement
+   stays the orchestrator's.
+   ══════════════════════════════════════════════════════════════════════════ */
+describe("R18 · under md the summary comes before the blocks that are not it", () => {
+  it("the column is a flex column whose gap survives reordering", () => {
+    expect(ASK).toContain('className="flex flex-col gap-5 max-w-[1180px]"');
+    // space-y would have keyed the gaps to DOM order and collapsed one of them.
+    expect(ASK).not.toContain('className="space-y-5 max-w-[1180px]"');
+  });
+
+  it("the reason composer and the contract disclosure take an order below md", () => {
+    expect(ASK).toContain('data-testid="consult-reason-section" className="max-md:order-2');
+    expect(ASK).toContain('data-testid="consult-contract" className="max-md:order-3"');
+  });
+
+  it("the sticky export bar still ends the column, so the reason precedes the verbs", () => {
+    expect(ASK).toContain('className="sticky bottom-2 max-md:order-4 rounded-2xl p-4 flex flex-col gap-3"');
+    // The required first step of the bar is unmoved and still the CTA's target.
+    expect(ASK).toContain('id="consult-audience-row"');
+    expect(CONSULT).toContain('document.getElementById("consult-audience-row")');
+  });
+
+  it("the summary card takes no order at all — it is what the default order is for", () => {
+    const at = ASK.indexOf('{t("care.packet.title")}');
+    expect(at).toBeGreaterThan(-1);
+    const card = ASK.slice(ASK.lastIndexOf("<section", at), at);
+    expect(card).not.toContain("order-");
+  });
+
+  it("nothing was removed to buy the height (law 6)", () => {
+    // The composer, its hint, its missing-line nudge and the three contract
+    // promises are all still rendered — they moved, they did not go.
+    for (const key of [
+      "elev.learnCare.reason.label",
+      "elev.learnCare.reason.hint",
+      "elev.learnCare.reason.placeholder",
+      "elev.learnCare.reason.missing",
+      "consult.contract.reviewBody",
+      "consult.contract.controlBody",
+      "consult.contract.shareBody",
+    ]) {
+      expect(ASK, key).toContain(key);
+    }
+    expect(ASK).toContain('id="consult-reason"');
+    expect(ASK).toContain('data-testid="consult-reason-input"');
+  });
+
+  it("the DOM order — the heading outline and the reading order — is unchanged", () => {
+    const order = ["consult-section-header", "consult-reason-section", "consult-contract", "care.packet.title"];
+    let cursor = -1;
+    for (const marker of order) {
+      const at = ASK.indexOf(marker, cursor + 1);
+      expect(at, `${marker} out of DOM order`).toBeGreaterThan(cursor);
+      cursor = at;
+    }
+    // Still exactly one h1 on the route (CR-21) and it is the hub's, not this.
+    expect((ASK.match(/<h1[\s>]/g) ?? []).length).toBe(1);
+  });
+
+  it("the reason still leads the PACKET, wherever the composer sits on screen", () => {
+    // The move is presentational. What the clinician receives is built by
+    // buildPacketInput, which is untouched and still carries `reason`.
+    expect(ASK).toContain("reason,");
+    expect(ASK).toContain("buildPacketInput");
+  });
+});
+
+describe("R18 · NEGATIVE CONTROL — the round-2c column is what this rejects", () => {
+  it("none of the four shipped 1,014 px shapes could have moved a block", () => {
+    const preRoot = 'className="space-y-5 max-w-[1180px]"';
+    const preContract = "<section data-testid=\"consult-contract\">";
+    const preBar = 'className="sticky bottom-2 rounded-2xl p-4 flex flex-col gap-3"';
+    // The reason composer's pre-fix tag carried no test id at all, which is
+    // why it could not be pinned before this item.
+    const preReason = "<section className=\"rounded-[18px] p-4\" style={{ background: \"var(--arbor-paper-elevated)\"";
+    for (const shape of [preRoot, preContract, preBar, preReason]) {
+      expect(shape, shape).not.toContain("order-");
+    }
+    expect(preRoot).not.toContain("flex flex-col");
+    // Three of the four are gone outright.
+    for (const shape of [preRoot, preContract, preBar]) expect(ASK, shape).not.toContain(shape);
+  });
+
+  it("the reason composer specifically no longer renders in the pre-fix shape", () => {
+    // That tag is still the vision-note section's shape, so the needle here is
+    // the composer itself: the section that owns `id="consult-reason"`.
+    const at = ASK.indexOf('id="consult-reason"');
+    expect(at).toBeGreaterThan(-1);
+    const openTag = ASK.slice(ASK.lastIndexOf("<section", at), at);
+    expect(openTag).toContain("max-md:order-2");
+    expect(openTag).toContain('data-testid="consult-reason-section"');
+  });
+
+  it("the guard is not vacuous — an unmoved block is reported as unmoved", () => {
+    // The vision-note section deliberately keeps the default order: it only
+    // renders when a note arrived, and then it IS what the parent came to see.
+    const at = ASK.indexOf('t("consult.visionNote.title")');
+    const openTag = ASK.slice(ASK.lastIndexOf("<section", at), at);
+    expect(openTag).not.toContain("order-");
+  });
+});

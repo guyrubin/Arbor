@@ -354,7 +354,13 @@ export default function AskSpecialist() {
   ] as const;
 
   return (
-    <motion.div {...motionProps} className="space-y-5 max-w-[1180px]">
+    /* R18: a flex column, so the two blocks below can take an `order` under
+       md. `gap-5` replaces `space-y-5` deliberately: Tailwind's space-y is a
+       margin on `:not(:last-child)` and therefore keyed to DOM order, which
+       would have left the reordered blocks touching the sticky export bar.
+       Flex gap is keyed to the VISUAL order, so every gap stays 20 px at every
+       width. From md up no `order` applies and the DOM order is the layout. */
+    <motion.div {...motionProps} className="flex flex-col gap-5 max-w-[1180px]">
       {/* R14 (LC-28): at 390 the column above the summary carried the hub
           eyebrow twice — once in the HubHero, again here, one block apart.
           Below md this copy of it stands down; the h2 and the child-specific
@@ -375,10 +381,22 @@ export default function AskSpecialist() {
         </p>
       </header>
 
-      {/* LC-20 — the first thing the clinician reads, and the first thing the
-          parent writes. Always shown: a summary that never says why the parent
-          came makes the professional open by asking it. */}
-      <section className="rounded-[18px] p-4" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
+      {/* LC-20 — the first thing the clinician READS, and the thing the parent
+          writes. Always shown: a summary that never says why the parent came
+          makes the professional open by asking it. It stays first in the
+          PACKET — buildConsultPacket pushes the "What I'd like help with"
+          section as section 0 for every clinician audience — and first in the
+          DOM, which is what the heading outline and a screen reader follow.
+
+          R18: what it stopped being is first on a 390 px SCREEN. It is ~190 px
+          of empty textarea standing between the hub hero and "Your summary" —
+          the thing the parent opened this route to read — and it is the one
+          block here that asks for input rather than giving any. Under md it
+          renders after the summary; that section of the packet updates live
+          above as the parent types, and the export bar is
+          `sticky bottom-2`, so Copy / Download / Send are on screen the whole
+          time either way. Nothing is hidden and nothing is collapsed. */}
+      <section data-testid="consult-reason-section" className="max-md:order-2 rounded-[18px] p-4" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
         <label htmlFor="consult-reason" className="inline-flex items-center gap-2 text-[12px] font-extrabold" style={{ color: GREEN }}>
           <Icon name="help" size={16} /> {t("elev.learnCare.reason.label")}
         </label>
@@ -412,7 +430,7 @@ export default function AskSpecialist() {
           tiles. Nothing is dropped — the disclosure is the whole capability
           (law 6) — and the summary label is built from the tile titles the
           parent would read anyway, so no new string is invented. */}
-      <section data-testid="consult-contract">
+      <section data-testid="consult-contract" className="max-md:order-3">
         <details className="md:hidden rounded-[18px]" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
           <summary
             data-testid="consult-contract-summary"
@@ -582,8 +600,15 @@ export default function AskSpecialist() {
 
           {/* Export & send bar (sticky) — the single transactional control.
               LC-08: the audience selector is the REQUIRED first step; every verb
-              below builds through the same guarded text for that audience. */}
-          <div className="sticky bottom-2 rounded-2xl p-4 flex flex-col gap-3" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-md)" }}>
+              below builds through the same guarded text for that audience.
+
+              R18: it takes the LAST order under md so the reordered blocks
+              above cannot come after it. That keeps two things true at once —
+              the parent still writes the reason before reaching Copy /
+              Download / Send, and the bar is still the final element, so it
+              stays stuck to the bottom of the viewport for the whole column
+              instead of un-sticking part-way down. */}
+          <div className="sticky bottom-2 max-md:order-4 rounded-2xl p-4 flex flex-col gap-3" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-md)" }}>
             <div className="flex flex-wrap items-center gap-2">
               <span id="consult-audience-label" className="text-[12px] font-extrabold me-1" style={{ color: INK }}>
                 {t("elev.carehonesty.consult.audience.label")}
