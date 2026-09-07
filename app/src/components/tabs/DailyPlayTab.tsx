@@ -273,7 +273,11 @@ export default function DailyPlayTab() {
             }}
           >
             <Icon name="target" size={14} />
-            {activeGoals.length > 0 ? `${activeGoals.length} goal${activeGoals.length !== 1 ? "s" : ""} active` : "Set a focus"}
+            {activeGoals.length === 0
+              ? t("elev.growth.play.setFocus")
+              : activeGoals.length === 1
+                ? t("elev.growth.play.goalsOne")
+                : t("elev.growth.play.goalsMany", { n: activeGoals.length })}
           </button>
         </div>
       </header>

@@ -99,7 +99,7 @@ export default function CourseCard({
                   <button
                     onClick={() => onToggle(a.id)}
                     aria-pressed={done}
-                    aria-label={done ? "Mark not done" : "Mark done"}
+                    aria-label={done ? t("elev.growth.course.markNotDone") : t("elev.growth.course.markDone")}
                     className="flex-shrink-0 w-11 h-11 flex items-center justify-center transition"
                   >
                     <span

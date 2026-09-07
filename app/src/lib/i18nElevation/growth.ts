@@ -34,6 +34,18 @@ export const en: Record<string, string> = {
   "elev.growth.link.journey.sub": "The month-by-month development timeline",
   "elev.growth.link.copilot.label": "This week's focus",
   "elev.growth.link.copilot.sub": "One clear next step from milestones and daily practice",
+
+  // ── Builder F · GP-17 / item 8 (chrome half) · Growth chrome that stayed
+  // English inside the Hebrew app. Plural forms are explicit KEYS, never a
+  // {plural} suffix token (the translator does not resolve those).
+  "elev.growth.play.setFocus": "Set a focus",
+  "elev.growth.play.goalsOne": "1 goal active",
+  "elev.growth.play.goalsMany": "{n} goals active",
+  "elev.growth.lang.duration.minutes": "{n} min",
+  "elev.growth.lang.duration.daily": "Daily",
+  "elev.growth.course.markDone": "Mark done",
+  "elev.growth.course.markNotDone": "Mark not done",
+
 };
 
 export const he: Record<string, string> = {
@@ -57,4 +69,14 @@ export const he: Record<string, string> = {
   "elev.growth.link.journey.sub": "ציר ההתפתחות חודש אחר חודש",
   "elev.growth.link.copilot.label": "המיקוד של השבוע",
   "elev.growth.link.copilot.sub": "צעד הבא ברור אחד מאבני דרך ותרגול יומי",
+
+  // ── Builder F · GP-17 / item 8 (chrome half)
+  "elev.growth.play.setFocus": "לבחור מוקד",
+  "elev.growth.play.goalsOne": "מוקד אחד פעיל",
+  "elev.growth.play.goalsMany": "{n} מוקדים פעילים",
+  "elev.growth.lang.duration.minutes": "{n} דק׳",
+  "elev.growth.lang.duration.daily": "כל יום",
+  "elev.growth.course.markDone": "לסמן שנעשה",
+  "elev.growth.course.markNotDone": "לבטל את הסימון",
+
 };

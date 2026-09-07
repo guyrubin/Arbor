@@ -15,7 +15,7 @@ import ProfileEditDrawer from "../profile/ProfileEditDrawer";
 import { useProfile } from "../../context/ProfileContext";
 // GP-01 / GP-08 / RUN-02: months-precise age label + the shared age window and
 // the ONE "worth watching next" derivation.
-import { ageLabel, ageMonthsFromProfile } from "../../lib/childAge";
+import { ageLabel, ageLabelForMonths, ageMonthsFromProfile } from "../../lib/childAge";
 import { ageWindowMilestones, comparisonAgeMonths, milestoneAgeWindow, selectNextMilestones } from "../../lib/milestoneData";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -72,8 +72,12 @@ export default function ChildProfile() {
     const inWindow = ageWindowMilestones(milestones, comparisonMonths);
     const checked = inWindow.filter((m) => m.checked).length;
     const total = inWindow.length;
-    return { checked, total, share: total > 0 ? (checked / total) * 100 : 0, band: milestoneAgeWindow(comparisonMonths).label };
-  }, [milestones, comparisonMonths]);
+    // GP-17: MILESTONE_AGE_BANDS labels are English catalogue strings ("5
+    // years"), so the Hebrew app read "בחלון הגיל 5 years". The band is an AGE,
+    // and the app already has one localized age label — render through it.
+    const band = ageLabelForMonths(milestoneAgeWindow(comparisonMonths).months, t);
+    return { checked, total, share: total > 0 ? (checked / total) * 100 : 0, band };
+  }, [milestones, comparisonMonths, t]);
   const nextMilestones = useMemo(() => selectNextMilestones(milestones, comparisonMonths, 3), [milestones, comparisonMonths]);
 
   // Chapter 7 — the live plan, if one exists.

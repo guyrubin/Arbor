@@ -60,6 +60,11 @@ export const en: Record<string, string> = {
 
   // ── GP-26 / IA-09 · the strengths leaf gets one live door
   "elev.growthTruth.profile.openStrengths": "Open strengths & challenges",
+
+  // ── Builder F · GP-17 / item 8 (chrome half) · the Strengths leaf
+  "elev.growthTruth.strengths.ctaTitle": "Turn a challenge into a calm next step",
+  "elev.growthTruth.strengths.ctaBody": "Arbor reads {name}'s profile and proposes an age-aware plan or script.",
+
 };
 
 export const he: Record<string, string> = {
@@ -101,4 +106,9 @@ export const he: Record<string, string> = {
   "elev.growthTruth.profile.cta.addFact": "להוסיף עובדה על {name}",
 
   "elev.growthTruth.profile.openStrengths": "לפתוח חוזקות ואתגרים",
+
+  // ── Builder F · GP-17 / item 8 (chrome half) · the Strengths leaf
+  "elev.growthTruth.strengths.ctaTitle": "להפוך אתגר לצעד הבא רגוע",
+  "elev.growthTruth.strengths.ctaBody": "ארבור קוראת את הפרופיל של {name} ומציעה תוכנית או תסריט שמתאימים לגיל.",
+
 };

@@ -1016,7 +1016,9 @@ export default function CoachTab() {
                           {scholar.initial}
                         </span>
                       )}
-                      {scholar ? `${scholar.name} (${scholar.concept})` : t("coach.lens.integrated")}
+                      {/* OBJ-ASK-03: the scholar NAME is a proper name and stays
+                          as written; the concept beside it is chrome, keyed by slug. */}
+                      {scholar ? `${scholar.name} (${tcc(`elev.coachcontract.lens.concept.${scholar.slug}`)})` : t("coach.lens.integrated")}
                     </button>
                   );
                 })}

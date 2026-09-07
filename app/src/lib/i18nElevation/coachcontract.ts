@@ -72,6 +72,20 @@ export const en: Record<string, string> = {
   "elev.coachcontract.toggle": "Let the coach see this week's moments",
   "elev.coachcontract.toggleHint":
     'Off by default. When on, the coach sees counts only — for example "4 moments this week, 2 milestones observed" — never your notes.',
+
+  // ── Builder F · OBJ-ASK-03 (chrome half) · the lens picker rendered
+  // "Lev Vygotsky (Next Best Challenge Engine)" in the Hebrew app. The
+  // scholar's NAME is a proper name and stays Latin (isolate() handles the
+  // bidi); the concept beside it is chrome and is transcreated. Keyed by the
+  // scholar slug in initialData.ts so no content file has to change.
+  "elev.coachcontract.lens.concept.vygotsky": "Next Best Challenge Engine",
+  "elev.coachcontract.lens.concept.bowlby": "Attachment & Repair Coach",
+  "elev.coachcontract.lens.concept.winnicott": "Good Enough Parent Guide",
+  "elev.coachcontract.lens.concept.montessori": "Independence Planner",
+  "elev.coachcontract.lens.concept.bronfenbrenner": "Child Ecosystem Builder",
+  "elev.coachcontract.lens.concept.piaget": "Stage-Aware Expectations",
+  "elev.coachcontract.lens.concept.erikson": "Developmental Arc",
+
 };
 
 export const he: Record<string, string> = {
@@ -104,6 +118,16 @@ export const he: Record<string, string> = {
   "elev.coachcontract.toggle": "לאפשר למאמן לראות את הרגעים מהשבוע",
   "elev.coachcontract.toggleHint":
     'כבוי כברירת מחדל. כשהוא פועל, המאמן רואה מספרים בלבד — למשל "4 רגעים השבוע, 2 אבני דרך שנצפו" — אף פעם לא את ההערות שלכם.',
+
+  // ── Builder F · OBJ-ASK-03 (chrome half) · lens concept labels
+  "elev.coachcontract.lens.concept.vygotsky": "האתגר הבא בגובה העיניים",
+  "elev.coachcontract.lens.concept.bowlby": "קשר ותיקון",
+  "elev.coachcontract.lens.concept.winnicott": "הורות טובה דיה",
+  "elev.coachcontract.lens.concept.montessori": "עצמאות בשלבים",
+  "elev.coachcontract.lens.concept.bronfenbrenner": "הסביבה סביב הילד",
+  "elev.coachcontract.lens.concept.piaget": "ציפיות לפי שלב",
+  "elev.coachcontract.lens.concept.erikson": "הקשת ההתפתחותית",
+
 };
 
 /**

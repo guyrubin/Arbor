@@ -62,28 +62,28 @@ export default function LanguageLabTab() {
   const activities = [
     {
       title: t("lang.act.phrase.title"),
-      time: "2 min",
+      time: t("elev.growth.lang.duration.minutes", { n: 2 }),
       desc: t("lang.act.phrase.desc", { target, first }),
       example: t("lang.act.phrase.example"),
       lens: t("lang.act.phrase.lens"),
     },
     {
       title: t("lang.act.translate.title"),
-      time: "5 min",
+      time: t("elev.growth.lang.duration.minutes", { n: 5 }),
       desc: t("lang.act.translate.desc", { home: home || t("lang.theHomeLang"), first, target }),
       example: t("lang.act.translate.example"),
       lens: t("lang.act.translate.lens"),
     },
     {
       title: t("lang.act.story.title", { target }),
-      time: "10 min",
+      time: t("elev.growth.lang.duration.minutes", { n: 10 }),
       desc: t("lang.act.story.desc", { target }),
       example: t("lang.act.story.example"),
       lens: t("lang.act.story.lens"),
     },
     {
       title: t("lang.act.serve.title"),
-      time: "Daily",
+      time: t("elev.growth.lang.duration.daily"),
       desc: t("lang.act.serve.desc", { first, target }),
       example: t("lang.act.serve.example", { name: first }),
       lens: t("lang.act.serve.lens"),
