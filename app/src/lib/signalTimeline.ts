@@ -585,16 +585,20 @@ export interface NextStep {
  * best step that routes the parent into the right capability. No AI call — this
  * is the timeline visibly feeding the coach.
  */
-export const deriveNextStep = (momentum: Momentum, childName: string): NextStep | null => {
+export const deriveNextStep = (momentum: Momentum, childName: string, t: TranslateFn): NextStep | null => {
   // E8/F-10: the messages below are display-time copy (message + chat seed) —
   // each interpolation of the name is bidi-isolated so a Hebrew name can't
-  // reorder the surrounding English sentence.
-  const name = childName || "your child";
+  // reorder the surrounding sentence.
+  // TJB-23: the sentences themselves used to be English template literals, so
+  // the "Arbor noticed" card was the one block of English left on a Hebrew
+  // timeline. They are elev.childsignals.next.* now; this function still owns
+  // the RULE (which case fires), i18n owns the words.
+  const name = isolate(childName || t("elev.childsignals.prov.fallback"));
 
   if (momentum.momentsThisWeek === 0 && momentum.planSteps.total === 0) {
     return {
-      message: `${isolate(name)}'s story starts with a single moment. Capture what happened today and Arbor takes it from there.`,
-      cta: { label: "Capture a moment", prompt: "" },
+      message: t("elev.childsignals.next.first", { name }),
+      cta: { label: t("elev.childsignals.next.firstCta"), prompt: "" },
     };
   }
 
@@ -604,21 +608,27 @@ export const deriveNextStep = (momentum: Momentum, childName: string): NextStep 
     // closer look") was a behavior-intensity trend on a child metric = a verdict.
     // Removed. The flat moment count + top pattern + route-to-coach (mechanism)
     // remain — they emit nothing about the child as a verdict.
-    const where = momentum.topContext ? `, usually at ${momentum.topContext.toLowerCase()}` : "";
+    const type = momentum.topPattern;
+    const where = momentum.topContext ? momentum.topContext.toLowerCase() : "";
+    const vars = { count: momentum.momentsThisWeek, name, type, where };
     return {
-      message: `You logged ${momentum.momentsThisWeek} moments for ${isolate(name)} this week — most often "${momentum.topPattern}"${where}.`,
+      message: where
+        ? t("elev.childsignals.next.patternWhere", vars)
+        : t("elev.childsignals.next.pattern", vars),
       cta: {
-        label: `Ask Arbor about ${momentum.topPattern.toLowerCase()}`,
-        prompt: `This week ${isolate(name)} had several "${momentum.topPattern}" moments${
-          momentum.topContext ? ` (mostly at ${momentum.topContext.toLowerCase()})` : ""
-        }. What may be happening and what's one thing to try this week?`,
+        label: t("elev.childsignals.next.patternCta"),
+        prompt: t("elev.childsignals.next.patternPrompt", {
+          name, type, where: where ? ` (${where})` : "",
+        }),
       },
     };
   }
 
   if (momentum.milestones.total > 0 && momentum.milestones.observed > 0) {
     return {
-      message: `You've observed ${momentum.milestones.observed} of ${momentum.milestones.total} milestones for ${isolate(name)}. Keep noticing — small wins compound.`,
+      message: t("elev.childsignals.next.milestones", {
+        count: momentum.milestones.observed, total: momentum.milestones.total, name,
+      }),
     };
   }
 

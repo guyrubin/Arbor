@@ -56,6 +56,38 @@ export const en: Record<string, string> = {
   "elev.childsignals.stat.wins": "{count} closed this week",
   "elev.childsignals.stat.milestones": "Milestones noticed",
   "elev.childsignals.stat.zero": "Nothing in the story yet — capture one moment and it starts here.",
+
+  // ── Builder E2 · TJB-23 — the Story density (#/timeline), whole. This screen
+  //    ran on English literals: the page header, the story card and its
+  //    provenance note, "Arbor noticed", the next-step sentences derived in
+  //    signalTimeline, the memory queue (with "1 new facts"), the filters'
+  //    empty state and the intensity aria-label. Law 7: both locales.
+  "elev.childsignals.story.eyebrow": "My child",
+  "elev.childsignals.story.title": "{name}'s story",
+  "elev.childsignals.story.sub": "Every moment, milestone and plan in one place. Each entry feeds the next step Arbor suggests.",
+  "elev.childsignals.story.weeklyCta": "This week's read",
+  "elev.childsignals.story.cardTitle": "The story of {name}",
+  "elev.childsignals.story.save": "Save the story",
+  "elev.childsignals.story.builtFrom.one": "Built from 1 approved memory — only what you chose to keep.",
+  "elev.childsignals.story.builtFrom.many": "Built from {count} approved memories — only what you chose to keep.",
+  "elev.childsignals.story.noticed": "Arbor noticed",
+  "elev.childsignals.story.intensityAria": "Intensity {n} of 5",
+  "elev.childsignals.story.memory.title.one": "1 new fact to review",
+  "elev.childsignals.story.memory.title.many": "{count} new facts to review",
+  "elev.childsignals.story.memory.all": "Review all ({count})",
+  "elev.childsignals.story.empty.head": "{name}'s story starts here",
+  "elev.childsignals.story.empty.body": "Capture a moment, note a milestone, or start a plan — everything you keep flows into one timeline.",
+  "elev.childsignals.story.empty.cta": "Capture the first moment",
+
+  // ── The next-best-step sentences (lib/signalTimeline deriveNextStep). Counts
+  //    of what the PARENT noticed, and a route — never a read on the child.
+  "elev.childsignals.next.first": "{name}'s story starts with a single moment. Capture what happened today and Arbor takes it from there.",
+  "elev.childsignals.next.firstCta": "Capture a moment",
+  "elev.childsignals.next.pattern": "You logged {count} moments for {name} this week — most often “{type}”.",
+  "elev.childsignals.next.patternWhere": "You logged {count} moments for {name} this week — most often “{type}”, usually at {where}.",
+  "elev.childsignals.next.patternCta": "Ask Arbor about this",
+  "elev.childsignals.next.patternPrompt": "This week {name} had several “{type}” moments{where}. What may be happening and what is one thing to try this week?",
+  "elev.childsignals.next.milestones": "You have noticed {count} of {total} milestones for {name}. Keep noticing — small wins compound.",
 };
 
 export const he: Record<string, string> = {
@@ -88,6 +120,32 @@ export const he: Record<string, string> = {
   "elev.childsignals.stat.wins": "{count} נסגרו השבוע",
   "elev.childsignals.stat.milestones": "אבני דרך שנצפו",
   "elev.childsignals.stat.zero": "עוד אין מה לספר — תיעוד של רגע אחד מתחיל את הסיפור.",
+
+  // ── Builder E2 · TJB-23
+  "elev.childsignals.story.eyebrow": "הילד/ה שלי",
+  "elev.childsignals.story.title": "הסיפור של {name}",
+  "elev.childsignals.story.sub": "כל רגע, אבן דרך ותוכנית במקום אחד. כל רשומה מזינה את הצעד הבא שארבור מציע.",
+  "elev.childsignals.story.weeklyCta": "הקריאה של השבוע",
+  "elev.childsignals.story.cardTitle": "הסיפור של {name}",
+  "elev.childsignals.story.save": "לשמור את הסיפור",
+  "elev.childsignals.story.builtFrom.one": "נבנה מתוך זיכרון אחד שאישרתם — רק מה שבחרתם לשמור.",
+  "elev.childsignals.story.builtFrom.many": "נבנה מתוך {count} זיכרונות שאישרתם — רק מה שבחרתם לשמור.",
+  "elev.childsignals.story.noticed": "ארבור שם לב",
+  "elev.childsignals.story.intensityAria": "עוצמה {n} מתוך 5",
+  "elev.childsignals.story.memory.title.one": "עובדה חדשה אחת לבדיקה",
+  "elev.childsignals.story.memory.title.many": "{count} עובדות חדשות לבדיקה",
+  "elev.childsignals.story.memory.all": "לבדוק הכל ({count})",
+  "elev.childsignals.story.empty.head": "כאן מתחיל הסיפור של {name}",
+  "elev.childsignals.story.empty.body": "תעדו רגע, סמנו אבן דרך או התחילו תוכנית — כל מה שתשמרו זורם לציר זמן אחד.",
+  "elev.childsignals.story.empty.cta": "לתעד את הרגע הראשון",
+
+  "elev.childsignals.next.first": "הסיפור של {name} מתחיל ברגע אחד. תעדו מה קרה היום וארבור ימשיך מכאן.",
+  "elev.childsignals.next.firstCta": "לתעד רגע",
+  "elev.childsignals.next.pattern": "תיעדתם {count} רגעים של {name} השבוע — לרוב “{type}”.",
+  "elev.childsignals.next.patternWhere": "תיעדתם {count} רגעים של {name} השבוע — לרוב “{type}”, בדרך כלל ב{where}.",
+  "elev.childsignals.next.patternCta": "לשאול את ארבור על זה",
+  "elev.childsignals.next.patternPrompt": "השבוע היו ל{name} כמה רגעים של “{type}”{where}. מה אולי קורה ומה דבר אחד שכדאי לנסות השבוע?",
+  "elev.childsignals.next.milestones": "שמתם לב ל-{count} מתוך {total} אבני דרך של {name}. המשיכו לשים לב — צעדים קטנים מצטברים.",
 };
 
 /** Structural mirror of the app's t() — kept local so this module depends

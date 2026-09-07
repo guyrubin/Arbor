@@ -72,9 +72,9 @@ function StatTile({ tone, icon, value, label, foot }: {
   );
 }
 
-function IntensityDots({ value }: { value: number }) {
+function IntensityDots({ value, label }: { value: number; label: string }) {
   return (
-    <span className="inline-flex items-center gap-0.5" aria-label={`Intensity ${value} of 5`}>
+    <span className="inline-flex items-center gap-0.5" aria-label={label}>
       {[1, 2, 3, 4, 5].map((n) => (
         <span key={n} className="w-1.5 h-1.5 rounded-full" style={{ background: n <= value ? PASTEL.coral.ink : "var(--arbor-rule-strong)" }} />
       ))}
@@ -114,7 +114,7 @@ function SignalRow({ signal, childName }: { signal: TimelineSignal; childName?: 
                   {childName || tt("elev.childsignals.prov.fallback")}
                 </span>
               )}
-              {typeof signal.intensity === "number" && <IntensityDots value={signal.intensity} />}
+              {typeof signal.intensity === "number" && <IntensityDots value={signal.intensity} label={tt("elev.childsignals.story.intensityAria", { n: signal.intensity })} />}
               {signal.at && <span className="text-[10.5px] font-semibold ms-auto" style={{ color: "var(--arbor-muted)" }}>{new Date(signal.at).toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" })}</span>}
             </div>
             <p className="text-sm font-extrabold mt-0.5" style={{ color: "var(--arbor-ink)" }} dir="auto">{signalTitle(signal, tt)}</p>
@@ -216,7 +216,7 @@ export default function StoryTimelineTab() {
     () => computeMomentum(behaviorLogs, actionPlans, milestones),
     [behaviorLogs, actionPlans, milestones],
   );
-  const nextStep = useMemo(() => deriveNextStep(momentum, childProfile.name), [momentum, childProfile.name]);
+  const nextStep = useMemo(() => deriveNextStep(momentum, childProfile.name, tt), [momentum, childProfile.name, tt]);
 
   // T4: narrate the moat into "The Story of {child}" — deterministic + grounded
   // only in parent-approved facts + the momentum signals (no model call, G2-safe).
@@ -279,7 +279,7 @@ export default function StoryTimelineTab() {
     [shown, locale, t],
   );
 
-  const firstName = childProfile.name?.split(" ")[0] || "Your child";
+  const firstName = childProfile.name?.split(" ")[0] || tt("elev.childsignals.prov.fallback");
 
   // Wave-3 clinical subtraction: the prior momentTrend arrow was color-coded
   // (coral = "more moments this week = bad", mint = "fewer = good") — a behavior
@@ -293,24 +293,24 @@ export default function StoryTimelineTab() {
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
       <PageHeader
-        eyebrow="My Child"
-        title={`${isolate(firstName)}'s Story`}
-        subtitle="Every moment, milestone, plan and insight — one living timeline. Each entry feeds the next step Arbor suggests."
+        eyebrow={tt("elev.childsignals.story.eyebrow")}
+        title={tt("elev.childsignals.story.title", { name: isolate(firstName) })}
+        subtitle={tt("elev.childsignals.story.sub")}
         action={
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setCheckOpen(true)}
               className="inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-bold transition bg-white"
-              style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}
+              style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)" }}
             >
               <Icon name="fact_check" size={18} /> {t("mychild.quickcheck.short")}
             </button>
             <button
               onClick={() => setActiveTab("weekly")}
               className="inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-bold transition bg-white"
-              style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}
+              style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)" }}
             >
-              <Icon name="monitoring" size={18} /> Weekly insight
+              <Icon name="monitoring" size={18} /> {tt("elev.childsignals.story.weeklyCta")}
             </button>
           </div>
         }
@@ -319,7 +319,7 @@ export default function StoryTimelineTab() {
       {/* T4 — "The Story of {child}": the moat, narrated. Reads only approved
           facts + momentum; parent-owned, exportable as plain text. */}
       <SectionCard
-        title={story.title}
+        title={tt("elev.childsignals.story.cardTitle", { name: isolate(firstName) })}
         icon={<Icon name="edit_note" size={20} fill={1} />}
         tone="lav"
         action={!story.empty && (
@@ -328,7 +328,7 @@ export default function StoryTimelineTab() {
             className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[13px] font-bold transition bg-white"
             style={{ color: "var(--arbor-lav-ink)", border: "1px solid var(--arbor-rule)" }}
           >
-            <Icon name="download" size={18} /> Save story
+            <Icon name="download" size={18} /> {tt("elev.childsignals.story.save")}
           </button>
         )}
       >
@@ -344,8 +344,8 @@ export default function StoryTimelineTab() {
             </p>
           ))}
           {!story.empty && (
-            <p className="text-[11px] font-semibold pt-1" style={{ color: "var(--arbor-muted)" }}>
-              Built from {story.factCount} approved {story.factCount === 1 ? "memory" : "memories"} — only what you chose to keep.
+            <p className="text-[11px] font-semibold pt-1" style={{ color: "var(--arbor-muted)" }} dir="auto">
+              {tt(`elev.childsignals.story.builtFrom.${story.factCount === 1 ? "one" : "many"}`, { count: story.factCount })}
             </p>
           )}
         </div>
@@ -413,16 +413,17 @@ export default function StoryTimelineTab() {
         <div className="rounded-[22px] p-5 flex flex-col sm:flex-row sm:items-center gap-4" style={{ background: PASTEL.coral.soft }}>
           <IconBadge tone="coral" size={44}><Icon name="auto_awesome" size={20} fill={1} /></IconBadge>
           <div className="flex-1 min-w-0">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider" style={{ color: PASTEL.coral.ink }}>Arbor noticed</span>
-            <p className="text-sm font-bold mt-0.5" style={{ color: "var(--arbor-ink)" }}>{nextStep.message}</p>
+            <span className="text-[10px] font-extrabold uppercase tracking-wider" style={{ color: PASTEL.coral.ink }}>{tt("elev.childsignals.story.noticed")}</span>
+            <p className="text-sm font-bold mt-0.5" style={{ color: "var(--arbor-ink)" }} dir="auto">{nextStep.message}</p>
           </div>
           {nextStep.cta && (
             <button
               onClick={() => (nextStep.cta!.prompt ? handleCoach(nextStep.cta!.prompt) : setActiveTab("behaviors"))}
               className="inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-extrabold flex-shrink-0 transition motion-safe:hover:-translate-y-0.5"
-              style={{ background: PASTEL.coral.ink, color: "#fff" }}
+              style={{ background: PASTEL.coral.ink, color: "var(--arbor-on-accent)" }}
             >
-              {nextStep.cta.label} →
+              <span dir="auto">{nextStep.cta.label}</span>
+              <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
             </button>
           )}
         </div>
@@ -434,7 +435,7 @@ export default function StoryTimelineTab() {
           Reads + writes the memory moat: provenance chips are preserved. */}
       {pendingMemoryItems.length > 0 && (
         <SectionCard
-          title={t("mychild.memoryreview.title", { count: pendingMemoryItems.length })}
+          title={tt(`elev.childsignals.story.memory.title.${pendingMemoryItems.length === 1 ? "one" : "many"}`, { count: pendingMemoryItems.length })}
           icon={<Icon name="verified_user" size={20} fill={1} />}
           tone="yellow"
         >
@@ -455,7 +456,7 @@ export default function StoryTimelineTab() {
               className="mt-3 text-xs font-bold"
               style={{ color: "var(--arbor-green-ink)" }}
             >
-              {t("mychild.memoryreview.all", { count: pendingMemoryItems.length })}
+              {tt("elev.childsignals.story.memory.all", { count: pendingMemoryItems.length })}
             </button>
           )}
         </SectionCard>
@@ -472,7 +473,7 @@ export default function StoryTimelineTab() {
                 key={f.key}
                 onClick={() => setFilter(f.key)}
                 className="touch-target inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12.5px] font-bold whitespace-nowrap transition flex-shrink-0"
-                style={on ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+                style={on ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
               >
                 {tt(f.labelKey)} <span>{n}</span>
               </button>
@@ -486,17 +487,17 @@ export default function StoryTimelineTab() {
         <div className={`${cardCls} p-10 text-center`}>
           <IconBadge tone="coral" size={52}><Icon name="photo_camera" size={24} fill={1} /></IconBadge>
           <h3 className="text-lg font-extrabold mt-3" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-            {`${isolate(firstName)}'s story starts here`}
+            {tt("elev.childsignals.story.empty.head", { name: isolate(firstName) })}
           </h3>
-          <p className="text-sm mt-1.5 max-w-md mx-auto" style={{ color: "var(--arbor-muted)" }}>
-            Capture a moment, ask Arbor a question, or track a milestone — everything you do flows into one living timeline.
+          <p className="text-sm mt-1.5 max-w-md mx-auto" style={{ color: "var(--arbor-muted)" }} dir="auto">
+            {tt("elev.childsignals.story.empty.body")}
           </p>
           <button
             onClick={() => setActiveTab("behaviors")}
             className="inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-extrabold mt-4 transition motion-safe:hover:-translate-y-0.5"
-            style={{ background: PASTEL.coral.ink, color: "#fff" }}
+            style={{ background: PASTEL.coral.ink, color: "var(--arbor-on-accent)" }}
           >
-            <Icon name="photo_camera" size={18} /> Capture the first moment
+            <Icon name="photo_camera" size={18} /> {tt("elev.childsignals.story.empty.cta")}
           </button>
         </div>
       ) : (

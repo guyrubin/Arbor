@@ -286,10 +286,17 @@ describe("computeMomentum", () => {
   });
 });
 
+/* TJB-23: deriveNextStep owns the RULE (which case fires) and i18n owns the
+   words — the sentences were English template literals rendering inside the
+   Hebrew app. The stub below echoes the key, so these cases now assert the
+   BRANCH and the interpolated values rather than a hard-coded sentence. */
 describe("deriveNextStep", () => {
+  const key: TranslateFn = (k, vars) => `[${k}${vars ? "|" + Object.entries(vars).map(([a, b]) => `${a}=${b}`).join(",") : ""}]`;
+
   it("guides a brand-new parent to capture the first moment", () => {
-    const step = deriveNextStep(computeMomentum([], [], [], NOW), "Dylan");
-    expect(step?.cta?.label).toBe("Capture a moment");
+    const step = deriveNextStep(computeMomentum([], [], [], NOW), "Dylan", key);
+    expect(step?.message).toContain("elev.childsignals.next.first");
+    expect(step?.cta?.label).toBe("[elev.childsignals.next.firstCta]");
   });
 
   it("routes a recurring pattern into a coach prompt", () => {
@@ -297,9 +304,28 @@ describe("deriveNextStep", () => {
       log({ timestamp: daysAgo(1), behaviorType: "Screen shutoff", context: "Home" }),
       log({ timestamp: daysAgo(2), behaviorType: "Screen shutoff", context: "Home" }),
     ];
-    const step = deriveNextStep(computeMomentum(logs, [], [], NOW), "Dylan");
-    expect(step?.cta?.label.toLowerCase()).toContain("screen shutoff");
+    const step = deriveNextStep(computeMomentum(logs, [], [], NOW), "Dylan", key);
+    expect(step?.cta?.label).toBe("[elev.childsignals.next.patternCta]");
+    expect(step?.cta?.prompt).toContain("type=Screen shutoff");
     expect(step?.cta?.prompt).toContain("Dylan");
+    // The context rides its own variable, so the sentence can be reordered
+    // by a transcreation instead of being glued on in English.
+    expect(step?.message).toContain("elev.childsignals.next.patternWhere");
+    expect(step?.message).toContain("where=home");
+  });
+
+  it("NEGATIVE CONTROL: no branch emits a bare English sentence any more", () => {
+    const steps = [
+      deriveNextStep(computeMomentum([], [], [], NOW), "Dylan", key),
+      deriveNextStep(computeMomentum([log({ timestamp: daysAgo(1) }), log({ timestamp: daysAgo(2) })], [], [], NOW), "Dylan", key),
+      // One log this week (so the first branch cannot fire) + an observed
+      // milestone: the third branch.
+      deriveNextStep(computeMomentum([log({ timestamp: daysAgo(1) })], [], [milestone({ id: "m", checked: true })], NOW), "Dylan", key),
+    ].filter(Boolean);
+    expect(steps.length).toBeGreaterThanOrEqual(3);
+    for (const step of steps) {
+      expect(step!.message).toMatch(/^\[elev\.childsignals\.next\./);
+    }
   });
 });
 
