@@ -416,9 +416,11 @@ export default function LanguageLabVocabView() {
         action={
           <button
             onClick={() => setShowActivities((v) => !v)}
-            /* R10: the chevron was 44 tall but only 16 WIDE — a 44 px floor is
-               both axes. min-w-11 + centering fixes the box; the glyph stays 16. */
-            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 text-xs"
+            /* R10 → R19: 44 tall, 16 WIDE. `min-w-11` measured 16 again —
+               index.css resets min-width on every button/anchor UNLAYERED, so
+               the layered utility loses; `.touch-target` is the floor that
+               survives (see touchFloor.todayBehaviorsCoach.test.ts). */
+            className="touch-target gap-1 text-xs"
             style={{ color: T.muted }}
             aria-expanded={showActivities}
             aria-label={t("vl.activitiesTitle")}
