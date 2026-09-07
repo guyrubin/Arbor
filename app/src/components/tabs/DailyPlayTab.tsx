@@ -12,6 +12,7 @@ import SessionLengthChips from "../practice/SessionLengthChips";
 import { selectDailyPlay, concernDomainsFromLogs, daySeedFor, type ScoredActivity, type SessionLength } from "../../playbank/select";
 import { recommendCourse, READINESS_COURSES, localizeCourse } from "../../playbank/courses";
 import { type PlayActivity, bandForAge, playDomainLabel } from "../../playbank/content";
+import { ageYearsFromProfile } from "../../lib/childAge";
 import { activeGoalDomains, type ActiveGoal } from "../../practice/goalBuilder";
 import { buildDailyPlan, buildGoalObservation, estimateLoggedDayCount, type DailyPlan } from "../../practice/dailyPlan";
 import { useChildCollection } from "../../hooks/useChildCollection";
@@ -78,7 +79,10 @@ export default function DailyPlayTab() {
   // E6: the child's band — the SAME derivation selectDailyPlay applies to
   // childProfile.age; used only to gate the age chip on course cards so the
   // chip is never rendered on a course outside the child's band (truthful fact).
-  const childBand = useMemo(() => bandForAge(childProfile.age), [childProfile.age]);
+  // Through the age seam: the legacy whole-year `age` field never moves for a
+  // profile whose age was entered as months without a DOB, so the play band
+  // stayed on the age the child was at onboarding.
+  const childBand = useMemo(() => bandForAge(ageYearsFromProfile(childProfile)), [childProfile]);
 
   const concernDomains = useMemo(
     () => concernDomainsFromLogs(

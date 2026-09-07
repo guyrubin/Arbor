@@ -78,6 +78,16 @@ export interface ChildProfile {
   birthDate?: string;
   ageMonths?: number;
   /**
+   * MOB-11 follow-through — the anchor date `ageMonths` was true on (ISO
+   * YYYY-MM-DD). Onboarding stopped inventing a `birthDate` from an entered
+   * age, which fixed the fabricated birthday but froze the child: a stored
+   * "14 months" stayed 14 months for ever. Readers add the elapsed months
+   * since this anchor, so an age entered without a DOB still moves.
+   * Written wherever `ageMonths` is written without a parent-entered DOB.
+   * Absent on legacy profiles — `lib/childAge.ts` migrates those on read.
+   */
+  ageMonthsAsOf?: string;
+  /**
    * W1 1.1 — two-slot per-child visit tracking for the Today "Since your last
    * visit" strip (hooks/useLastVisit). Two slots so the open that stamps the
    * CURRENT visit never overwrites the timestamp the strip needs to read.

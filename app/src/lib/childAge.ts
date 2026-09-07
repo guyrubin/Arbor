@@ -21,12 +21,53 @@ import type { ChildProfile } from "../types";
 
 /** Age helpers also accept privacy-minimal export profiles. They do not need
  * identity, language, or internal assessment fields to format an age. */
-export type ChildAgeProfile = Pick<ChildProfile, "age" | "birthDate" | "ageMonths">;
+export type ChildAgeProfile = Pick<
+  ChildProfile,
+  "age" | "birthDate" | "ageMonths" | "ageMonthsAsOf" | "onboardingCompletedAt"
+>;
 
 /** AAP: stop correcting for prematurity at 24 months chronological age. */
 const CORRECTION_CEILING_MONTHS = 24;
 /** Weeks in a gestational term. */
 const TERM_WEEKS = 40;
+
+// ── The ageMonths anchor (MOB-11 follow-through) ─────────────────────────
+
+/** ISO calendar date (YYYY-MM-DD) for a Date, in the device's own timezone. */
+export function isoDateOf(now?: Date): string {
+  const ref = now ?? new Date();
+  const mm = String(ref.getMonth() + 1).padStart(2, "0");
+  const dd = String(ref.getDate()).padStart(2, "0");
+  return `${ref.getFullYear()}-${mm}-${dd}`;
+}
+
+/**
+ * Whole months elapsed since `anchor` (ISO date or timestamp), floored, never
+ * negative. Same day-of-month rule as `chronologicalAgeMonths` so an age
+ * anchored on the 20th only gains a month on the 20th.
+ */
+export function monthsSince(anchor: string | undefined, now?: Date): number {
+  if (!anchor) return 0;
+  const from = new Date(anchor);
+  if (isNaN(from.getTime())) return 0;
+  const ref = now ?? new Date();
+  let months = (ref.getFullYear() - from.getFullYear()) * 12 + (ref.getMonth() - from.getMonth());
+  if (ref.getDate() < from.getDate()) months -= 1;
+  return Math.max(0, months);
+}
+
+/**
+ * The date a profile's stored `ageMonths` was true on.
+ *
+ * Migration for profiles written before the anchor existed: `ChildProfile`
+ * carries no `createdAt`, so the nearest creation stamp is
+ * `onboardingCompletedAt`; failing that the anchor is today, which makes the
+ * reader behave exactly as it did before (no invented ageing). Every profile
+ * written from now on carries `ageMonthsAsOf` explicitly.
+ */
+export function ageAnchorOf(profile: ChildAgeProfile, now?: Date): string {
+  return profile.ageMonthsAsOf ?? profile.onboardingCompletedAt ?? isoDateOf(now);
+}
 
 // ── Core arithmetic ──────────────────────────────────────────────────────────
 
@@ -95,9 +136,11 @@ export function ageMonthsFromProfile(profile: ChildAgeProfile, now?: Date): numb
   if (profile.birthDate) {
     return chronologicalAgeMonths(profile.birthDate, now);
   }
-  // Explicit months fallback.
+  // Explicit months fallback — aged forward from the date it was true on.
+  // Without the anchor a child entered as "14 months" would still read 14
+  // months a year later (the cost of dropping the fabricated birthDate).
   if (typeof profile.ageMonths === "number" && Number.isFinite(profile.ageMonths)) {
-    return Math.max(0, profile.ageMonths);
+    return Math.max(0, profile.ageMonths + monthsSince(ageAnchorOf(profile, now), now));
   }
   // Legacy year fallback — always present on existing profiles.
   if (typeof profile.age === "number" && Number.isFinite(profile.age)) {
@@ -197,6 +240,8 @@ export interface AgePatch {
   ageMonths: number;
   /** Approximate ISO birth date — the gold source `ageMonthsFromProfile` prefers. */
   birthDate: string;
+  /** The date `ageMonths` is true on, so a DOB-less profile still ages. */
+  ageMonthsAsOf: string;
 }
 
 /**
@@ -212,6 +257,7 @@ export function agePatchFromMonths(ageMonths: number, now?: Date): AgePatch {
     age: Math.floor(months / 12),
     ageMonths: months,
     birthDate: birthDateFromAgeMonths(months, now),
+    ageMonthsAsOf: isoDateOf(now),
   };
 }
 

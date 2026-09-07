@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { useProfile } from "../../context/ProfileContext";
 import { findIncompleteOnboardingChild } from "../../lib/onboardingGate";
+import { ageMonthsFromProfile, isoDateOf } from "../../lib/childAge";
 import { markWowPending, setCoachSeed, markAvatarSkipped, clearAvatarSkipped } from "../../lib/onboardingJourney";
 import { useEntitlement } from "../../hooks/useEntitlement"; // MOB-12: admin gate for the replay affordance
 import { LegalLinks } from "../billing/LegalLinks"; // MOB-01: policy links beside the consent checkbox
@@ -810,7 +811,9 @@ export default function OnboardingFlow() {
   // creating a duplicate child. Computed once at mount (the gate only renders this
   // flow when profiles is loaded).
   const resumeChild = findIncompleteOnboardingChild(profiles);
-  const resumeMonths = resumeChild ? (resumeChild.ageMonths ?? resumeChild.age * 12) : 0;
+  // Through the one age seam, so a resumed profile shows the age it is today
+  // (birthDate first, then the anchored ageMonths), not the raw stored number.
+  const resumeMonths = resumeChild ? (ageMonthsFromProfile(resumeChild) ?? 0) : 0;
 
   // Navigation — resume past the create step (Step 3) when continuing an in-flight setup.
   const [step, setStep] = useState<Step>(resumeChild ? 3 : 1);
@@ -912,6 +915,10 @@ export default function OnboardingFlow() {
         // carries the months it was given and nothing more.
         ...(birthDate ? { birthDate } : {}),
         ageMonths: totalAgeMonths,
+        // ...and the date that months value is true on, so a profile without a
+        // DOB still ages. Without the anchor, dropping the invented birthDate
+        // froze the child at the age they were entered at.
+        ageMonthsAsOf: isoDateOf(),
         languages: languages.length ? languages : ["English"],
         schoolContext: "",
         strengths: [],
