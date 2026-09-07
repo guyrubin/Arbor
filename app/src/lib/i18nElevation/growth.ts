@@ -50,6 +50,10 @@ export const en: Record<string, string> = {
   "elev.growth.journey.zeroTeach": "Nothing to count yet. Mark one day's practice below and this row starts keeping your record — days practised, objectives, effort badges.",
   "elev.growth.journey.aim": "Your aim: {domain}",
 
+
+  // Builder M — R25 — #/language demotion disclosure (vocabulary log).
+  "elev.growth.lang.more.title": "Vocabulary log",
+  "elev.growth.lang.more.sub": "Optional — count the words you hear, whenever you want to.",
 };
 
 export const he: Record<string, string> = {
@@ -87,4 +91,8 @@ export const he: Record<string, string> = {
   "elev.growth.journey.zeroTeach": "אין עדיין מה לספור. סמנו תרגול של יום אחד למטה והשורה הזו תתחיל לשמור את הרישום שלכם — ימי תרגול, יעדים ותגי מאמץ.",
   "elev.growth.journey.aim": "היעד שלכם: {domain}",
 
+
+  // Builder M — R25 — #/language demotion disclosure (vocabulary log).
+  "elev.growth.lang.more.title": "יומן אוצר מילים",
+  "elev.growth.lang.more.sub": "רשות — סופרים את המילים שאתם שומעים, מתי שמתאים לכם.",
 };

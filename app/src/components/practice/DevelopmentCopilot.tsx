@@ -376,7 +376,31 @@ export default function DevelopmentCopilot() {
           area and for the section itself (no discuss-vs-monitor flip); each
           row reports the COUNT of contributing observations, mirroring the
           Screening result screen's calm reframe. */}
-      <div data-module="copilot-watch" style={{ display: "contents" }}>
+      {/* R25 (item 11) — #/copilot rendered 6 top-level modules against a declared
+          moduleBudget of 2. The tail below is DEMOTED, never removed: one
+          collapsed disclosure on the pattern components/practice/SpeechCoachTab.tsx
+          `speech-more` already ships, so every capability keeps its door (law 6)
+          while the fold belongs to the primary move. Demoted modules keep their
+          own `data-module` stamp and add `data-module-demoted`, which is what
+          makes the budget rule countable: top-level = stamps minus demoted. */}
+      <details data-module-disclosure="copilot-more" className={`${cardCls} p-0 overflow-hidden`}>
+        <summary className="cursor-pointer list-none px-6 py-4 min-h-[44px] flex items-center gap-3">
+          <span className="grid place-items-center w-9 h-9 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
+            <Icon name="explore" size={18} />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.growthTruth.copilot.more.title")}</span>
+            <span className="block text-[12px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.growthTruth.copilot.more.sub")}</span>
+          </span>
+          <Icon name="expand_more" size={20} className="ms-auto" style={{ color: "var(--arbor-muted)" }} />
+        </summary>
+        <div className="px-4 pb-4 space-y-4">
+          {/* demotionTarget: "development" — the hub the contract sends these to. */}
+          <button onClick={() => setActiveTab("development")} className="inline-flex min-h-11 w-full items-center justify-between gap-2 rounded-xl px-4 py-2.5 text-sm font-bold" style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}>
+            <span>{t("elev.growthTruth.copilot.more.door")}</span>
+            <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
+          </button>
+      <div data-module="copilot-watch" data-module-demoted style={{ display: "contents" }}>
       <SectionCard title={tFP(uiLang, "elev.fullpicture.watch.title")} icon={<Icon name="forum" size={20} />} tone="lav">
         {watch.length === 0 ? (
           <div className="rounded-2xl p-4" style={{ background: "var(--arbor-paper-deep)" }}>
@@ -424,7 +448,7 @@ export default function DevelopmentCopilot() {
       </SectionCard>
       </div>
 
-      <div data-module="copilot-history" style={{ display: "contents" }}>
+      <div data-module="copilot-history" data-module-demoted style={{ display: "contents" }}>
       <SectionCard title={t("elev.growthTruth.copilot.history.title")} icon={<Icon name="history" size={20} />} tone="sky">
         {/* AP-CF-snapshots (Wave-3, 2026-06-27): the weekly snapshots now render in
             the COUNT register — parent-noticed milestones per domain over time —
@@ -482,7 +506,7 @@ export default function DevelopmentCopilot() {
       {/* Practice pulse — GD-10: the first tile is a CUMULATIVE COUNT of
           practice moments (a running activity tally), never the 0–100
           developmentScore value or any band/trend. */}
-      <div data-module="copilot-practice-pulse" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div data-module="copilot-practice-pulse" data-module-demoted className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className={`${cardCls} p-5`}>
           <p className="text-2xl font-extrabold" style={{ color: "var(--arbor-ink)" }}>{practiceMoments}</p>
           <p className="text-[10.5px] mt-0.5" style={{ color: "var(--arbor-muted)" }}>
@@ -498,7 +522,7 @@ export default function DevelopmentCopilot() {
       </div>
 
       {/* Feature 10b: clinician summary */}
-      <div data-module="copilot-clinician-summary" style={{ display: "contents" }}>
+      <div data-module="copilot-clinician-summary" data-module-demoted style={{ display: "contents" }}>
       <SectionCard title={t("elev.growthTruth.copilot.share.title")} icon={<Icon name="description" size={20} />} tone="sky"
         action={
           <div className="flex gap-2">
@@ -528,6 +552,8 @@ export default function DevelopmentCopilot() {
         </pre>
       </SectionCard>
       </div>
+        </div>
+      </details>
     </motion.div>
   );
 }

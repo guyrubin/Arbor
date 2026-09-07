@@ -106,6 +106,11 @@ export const en: Record<string, string> = {
   // ── Builder L · R22 · the Milestones map's celebrate affordance
   "elev.growthTruth.ms.celebrate": "Celebrate",
 
+
+  // Builder M — R25 — #/copilot demotion disclosure and its door to #/development.
+  "elev.growthTruth.copilot.more.title": "The fuller picture",
+  "elev.growthTruth.copilot.more.sub": "Areas to keep watching, weekly history, practice moments and the clinician summary.",
+  "elev.growthTruth.copilot.more.door": "Open Development",
 };
 
 export const he: Record<string, string> = {
@@ -183,4 +188,9 @@ export const he: Record<string, string> = {
 
   "elev.growthTruth.ms.celebrate": "לחגוג",
 
+
+  // Builder M — R25 — #/copilot demotion disclosure and its door to #/development.
+  "elev.growthTruth.copilot.more.title": "התמונה הרחבה",
+  "elev.growthTruth.copilot.more.sub": "תחומים להמשך מעקב, היסטוריה שבועית, רגעי תרגול והסיכום לאיש המקצוע.",
+  "elev.growthTruth.copilot.more.door": "פתחו את מרחב ההתפתחות",
 };

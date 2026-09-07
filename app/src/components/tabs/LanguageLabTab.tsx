@@ -203,10 +203,31 @@ export default function LanguageLabTab() {
           </SectionCard>
           </div>
 
+          {/* R25 (item 11) — #/language rendered 4 top-level modules against a declared
+          moduleBudget of 3. The tail below is DEMOTED, never removed: one
+          collapsed disclosure on the pattern components/practice/SpeechCoachTab.tsx
+          `speech-more` already ships, so every capability keeps its door (law 6)
+          while the fold belongs to the primary move. Demoted modules keep their
+          own `data-module` stamp and add `data-module-demoted`, which is what
+          makes the budget rule countable: top-level = stamps minus demoted. */}
+          <details data-module-disclosure="language-more" className={`${cardCls} p-0 overflow-hidden`}>
+            <summary className="cursor-pointer list-none px-6 py-4 min-h-[44px] flex items-center gap-3">
+              <span className="grid place-items-center w-9 h-9 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" }}>
+                <Icon name="translate" size={18} />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.growth.lang.more.title")}</span>
+                <span className="block text-[12px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.growth.lang.more.sub")}</span>
+              </span>
+              <Icon name="expand_more" size={20} className="ms-auto" style={{ color: "var(--arbor-muted)" }} />
+            </summary>
+            <div className="px-4 pb-4 space-y-4">
           {/* AP-054 — Vocabulary log, now SECONDARY & optional. It sits below the
               daily practice and profile so an empty counter is never the hero;
               logging still works exactly as before. */}
-          <div data-module="language-vocab" style={{ display: "contents" }}><LanguageLabVocabView /></div>
+          <div data-module="language-vocab" data-module-demoted style={{ display: "contents" }}><LanguageLabVocabView /></div>
+            </div>
+          </details>
         </>
       )}
     </motion.div>
