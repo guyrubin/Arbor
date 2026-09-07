@@ -200,7 +200,6 @@ const HEX_ALLOWLIST: Record<string, readonly string[]> = {
   "components/profile/AvatarCreator.tsx": ["#fff"],
   "components/sections/AskSpecialist.tsx": ["#fff"],
   "components/sections/FindProfessional.tsx": ["#fff"],
-  "components/sections/PhysicalGrowthCard.tsx": ["#2a9c66", "#34b277", "#d9763f", "#fff"], // growth-chart SVG marks
   "components/sections/Strengths.tsx": ["#eef6f1"],
   "components/stories/StoryIllustration.tsx": [
     // SVG illustration palette — allowlisted art file
@@ -210,7 +209,6 @@ const HEX_ALLOWLIST: Record<string, readonly string[]> = {
   ],
   "components/tabs/BehaviorsTab.tsx": ["#14160f", "#ccc", "#f0ece0"], // print-CSS template string
   "components/tabs/ComicsTab.tsx": ["#fff"],
-  "components/tabs/DailyPlayTab.tsx": ["#fff"],
   "components/tabs/HeroJourneyTab.tsx": ["#fff"],
   "components/tabs/LanguageLabVocabView.tsx": ["#ffffff"],
   "components/tabs/MilestonesTab.tsx": ["#fff"], // Wave T: confetti brand literals moved to lib/celebrate (BRAND_CONFETTI)
@@ -648,7 +646,6 @@ const RGBA_BASELINE: Record<string, number> = {
   "components/practice/EarlyReadingTrack.tsx": 2,
   "components/practice/FeelingsLabTab.tsx": 1,
   "components/practice/HeroArcade.tsx": 1,
-  "components/practice/JourneyTab.tsx": 1,
   "components/practice/MemoryMatch.tsx": 1,
   "components/practice/MimicMatch.tsx": 5,
   "components/practice/MimicStudioTab.tsx": 1,
@@ -790,6 +787,73 @@ describe("hex-creep guard — src/lib + src/practice stay on the token allowlist
     expect(
       stale,
       `LIB_PRACTICE_HEX_ALLOWLIST entries no longer present — delete them so the ratchet only tightens:\n${stale.join("\n")}`,
+    ).toEqual([]);
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   OBJ-GROWTH-02 + TJB-16 + journey rgba (law 4) — a ZERO pin, not a ratchet.
+
+   The two guards above are growth-preventers: a file already carrying a
+   literal keeps carrying it, and the cleanup never has to happen. These four
+   parent surfaces were the item's evidence — PhysicalGrowthCard's three
+   HEX_* consts (behind a comment claiming an SVG stroke cannot take a CSS
+   variable), its focus:ring-[#34b277] and three "#fff" fills; JourneyTab's
+   today-card rgba(52,178,119,0.55); PlanKanban's "#fff" card, "#69747f"
+   column tint and two rgba borders; DailyPlayTab's inline "#fff" CTA ink —
+   and they are pinned at zero so nothing creeps back in behind a decrease.
+
+   `rgb(` is included: neither guard above catches it (the rgba ratchet
+   matches "rgba(" only), which is how the PhysicalGrowthCard CTA shipped one.
+   ═════════════════════════════════════════════════════════════════════════ */
+const RAW_COLOUR_ZERO = [
+  "components/sections/PhysicalGrowthCard.tsx",
+  "components/practice/JourneyTab.tsx",
+  "components/plans/PlanKanban.tsx",
+  "components/tabs/DailyPlayTab.tsx",
+] as const;
+
+const RAW_COLOUR = /#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})\b|rgba?\(/g;
+
+/** Comments name the literals that were removed; only live code is scanned. */
+const stripComments = (s: string): string =>
+  s
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, "")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/.*$/gm, "");
+
+describe("law 4 zero-pin — four parent surfaces carry no raw colour at all", () => {
+  it("negative control: every literal these four files shipped is caught", () => {
+    const shipped = [
+      'const HEX_GREEN = "#34b277";',
+      '"w-full rounded-xl px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-[#34b277]"',
+      'style={{ background: "rgb(52,178,119)" }}',
+      'border: "1px solid rgba(52,178,119,0.55)"',
+      '{ status: "todo", label: "Not Started", tint: "text-[#69747f]" }',
+      'color: "#fff"',
+    ];
+    for (const line of shipped) {
+      expect([...line.matchAll(RAW_COLOUR)].length, line).toBeGreaterThan(0);
+    }
+    // …and a token reference is not a false positive.
+    expect([...'color: "var(--arbor-on-accent)"'.matchAll(RAW_COLOUR)].length).toBe(0);
+  });
+
+  it("all four files are readable (a rename must fail loudly, not silently pass)", () => {
+    for (const rel of RAW_COLOUR_ZERO) {
+      expect(readFileSync(path.join(srcRoot, rel), "utf8").length).toBeGreaterThan(500);
+    }
+  });
+
+  it("no raw hex, rgb() or rgba() in live code", () => {
+    const violations: string[] = [];
+    for (const rel of RAW_COLOUR_ZERO) {
+      const live = stripComments(readFileSync(path.join(srcRoot, rel), "utf8"));
+      for (const m of live.matchAll(RAW_COLOUR)) violations.push(`${rel}: ${m[0]}`);
+    }
+    expect(
+      violations,
+      `raw colour on a pinned parent surface — use a var(--arbor-*) token:\n${violations.join("\n")}`,
     ).toEqual([]);
   });
 });

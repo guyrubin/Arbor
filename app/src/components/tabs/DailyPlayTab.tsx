@@ -331,7 +331,7 @@ export default function DailyPlayTab() {
                 onClick={() => setReadinessId(rc.id)}
                 className="rounded-full px-3.5 py-2 text-[12.5px] font-bold whitespace-nowrap transition"
                 style={on
-                  ? { background: "var(--arbor-clay)", color: "#fff", boxShadow: "var(--shadow-sm)" }
+                  ? { background: "var(--arbor-clay)", color: "var(--arbor-on-accent)", boxShadow: "var(--shadow-sm)" }
                   : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
               >
                 {localizeCourse(rc, uiLang).title}
@@ -387,7 +387,7 @@ export default function DailyPlayTab() {
       <button
         onClick={() => setActiveTab("comics")}
         className="inline-flex items-center gap-2 text-[13px] font-bold rounded-full px-4 py-2.5"
-        style={{ background: "var(--arbor-clay)", color: "#fff", minHeight: 44 }}
+        style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)", minHeight: 44 }}
       >
         <Icon name="menu_book" size={16} /> Turn today&apos;s practice into a comic →
       </button>

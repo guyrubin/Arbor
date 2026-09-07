@@ -133,7 +133,7 @@ export default function JourneyTab() {
             const done = data.missions.items.some((r) => r.date === day.date && r.missionId === day.mission.id && r.completed);
             const extraTab = TAB_BY_EXTRA[day.extra.tab];
             return (
-              <div key={day.date} className={`${cardCls} p-4 flex flex-col gap-3`} style={day.isToday ? { border: "1px solid rgba(52,178,119,0.55)" } : undefined}>
+              <div key={day.date} className={`${cardCls} p-4 flex flex-col gap-3`} style={day.isToday ? { border: "1px solid var(--arbor-green-ink)" } : undefined}>
                 <div>
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-xs font-extrabold" style={{ color: day.isToday ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>{day.weekday}</p>

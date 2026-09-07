@@ -22,10 +22,15 @@ import {
  *
  * Framing: calm, non-diagnostic, parent-initiated. */
 
-// Literal hex values — SVG polyline stroke must use literals, not CSS vars.
-const HEX_GREEN = "#34b277";
-const HEX_CLAY_DEEP = "#2a9c66";
-const HEX_PEACH = "#d9763f";
+// OBJ-GROWTH-02 (law 4): these were three raw hex literals behind a comment
+// claiming an SVG stroke cannot take a CSS variable. It can — `stroke` and
+// `fill` resolve var() like any other property — so the chart accents, the
+// solid CTAs and the delete confirm all run on the shipped tokens now, and the
+// card can no longer drift from the palette.
+const CHART_PRIMARY = "var(--arbor-clay)";
+const CHART_SECONDARY = "var(--arbor-green-ink)";
+const PEACH_INK = "var(--arbor-peach-ink)";
+const ON_ACCENT = "var(--arbor-on-accent)";
 
 // CSS var tokens (fine for non-chart SVG text / rect / fill)
 const INK = "var(--arbor-ink)";
@@ -51,7 +56,7 @@ function TrajectoryChart({
   unit,
 }: {
   data: TrajectoryPoint[];
-  color: string; // must be literal hex
+  color: string; // a var(--arbor-*) token
   label: string;
   unit: string;
 }) {
@@ -220,7 +225,7 @@ function AddForm({
   };
 
   const inputCls =
-    "w-full rounded-xl px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-[#34b277]";
+    "w-full rounded-xl px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-[color:var(--arbor-clay)]";
   const inputStyle: React.CSSProperties = {
     background: PAPER_SUNK,
     color: INK,
@@ -332,8 +337,8 @@ function AddForm({
           onClick={handleSave}
           className="touch-target flex-1 rounded-xl text-[13px] font-bold transition active:scale-[0.98]"
           style={{
-            background: HEX_GREEN,
-            color: "#fff",
+            background: CHART_PRIMARY,
+            color: ON_ACCENT,
             border: "none",
             minHeight: 44,
           }}
@@ -484,8 +489,8 @@ export default function PhysicalGrowthCard() {
             <button
               className="touch-target mt-4 inline-flex items-center gap-1.5 rounded-2xl px-5 text-[13px] font-bold transition active:scale-[0.98]"
               style={{
-                background: HEX_GREEN,
-                color: "#fff",
+                background: CHART_PRIMARY,
+                color: ON_ACCENT,
                 border: "none",
                 minHeight: 44,
               }}
@@ -514,7 +519,7 @@ export default function PhysicalGrowthCard() {
             {heightData.length >= 2 && (
               <TrajectoryChart
                 data={heightData}
-                color={HEX_GREEN}
+                color={CHART_PRIMARY}
                 label={t("growth.chart.height")}
                 unit="cm"
               />
@@ -524,7 +529,7 @@ export default function PhysicalGrowthCard() {
             {weightData.length >= 2 && (
               <TrajectoryChart
                 data={weightData}
-                color={HEX_CLAY_DEEP}
+                color={CHART_SECONDARY}
                 label={t("growth.chart.weight")}
                 unit="kg"
               />
@@ -596,7 +601,7 @@ export default function PhysicalGrowthCard() {
                 </span>
                 <button
                   className="text-[12px] font-bold px-3 py-1 rounded-lg"
-                  style={{ background: HEX_PEACH, color: "#fff", border: "none" }}
+                  style={{ background: PEACH_INK, color: ON_ACCENT, border: "none" }}
                   onClick={() => handleDelete(confirmDeleteId)}
                 >
                   {t("growth.add.save")}
