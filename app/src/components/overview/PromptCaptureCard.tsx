@@ -23,12 +23,22 @@ export default function PromptCaptureCard({
   promptKey,
   childName,
   onCapture,
+  whyLine,
 }: {
   /** Today's promptBank i18n key (elev.prompt.<band>.<n>), or null for the bare floor. */
   promptKey: string | null;
   childName: string;
   /** Opens the existing QuickLogModal (no new capture path). */
   onCapture: () => void;
+  /**
+   * OBJ-TODAY-02 / ENG-07: the DERIVED why-line — `whyLineFor()` resolved by
+   * the hub, the same function the focus hero already uses. The card used to
+   * print the authored `today.intent.whySimple` ("Chosen from age, goals,
+   * interests, and what you've captured so far") on a screen that was showing
+   * zero goals and zero interests. Optional so a provider-less harness can
+   * mount the card bare; absent, the card says nothing rather than a claim.
+   */
+  whyLine?: string;
 }) {
   const { t } = useLanguage();
 
@@ -73,10 +83,12 @@ export default function PromptCaptureCard({
         className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px] leading-relaxed"
         style={{ color: "var(--arbor-faint)" }}
       >
-        <span dir="auto">
-          <span className="font-extrabold" style={{ color: "var(--arbor-muted)" }}>{t("today.intent.why")}</span>{" "}
-          {t("today.intent.whySimple")}
-        </span>
+        {whyLine && (
+          <span dir="auto">
+            <span className="font-extrabold" style={{ color: "var(--arbor-muted)" }}>{t("today.intent.why")}</span>{" "}
+            {whyLine}
+          </span>
+        )}
         <TrustLink surface="today-prompt" />
       </div>
     </section>

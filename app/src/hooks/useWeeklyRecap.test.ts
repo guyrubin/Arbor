@@ -193,7 +193,10 @@ describe("cold-load race — language comes from the render's own source", () =>
   it("both read the LanguageContext value the render uses", () => {
     for (const rel of ["hooks/useWeeklyRecap.ts", "hooks/useTodaysFocus.ts"]) {
       expect(read(rel)).toContain("useLanguage(");
-      expect(read(rel)).toMatch(/language:\s*aiLang/);
+      // OBJ-TODAY-02: the Today focus renamed its language to `focusLang` when
+      // the cache moved from aiLang to uiLang. The shared rule is unchanged —
+      // the language comes from LanguageContext, never lib/api's module getter.
+      expect(read(rel)).toMatch(/language:\s*(?:ai|focus)Lang/);
     }
   });
 

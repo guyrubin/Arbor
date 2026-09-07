@@ -94,11 +94,20 @@ export type WhyLineInputs = {
  * KEYS + vars so the render site resolves them in the active language.
  */
 export function whyLineParts(inp: WhyLineInputs): { key: string; vars: Record<string, string | number> } {
-  const momentCount = inp.inputsUsed?.momentCount ?? inp.recentCount;
+  // OBJ-TODAY-02: `inputsUsed` DESCRIBES what the model saw; it can never
+  // outrank the live ledger. A cached record (another day, another language)
+  // reported momentCount 3 while this Today held 0 logs, and the why-line then
+  // claimed "recent moments" over an empty feed. Live count decides whether
+  // there are any moments at all; the server report only refines the number.
+  const momentCount = inp.recentCount > 0 ? (inp.inputsUsed?.momentCount ?? inp.recentCount) : 0;
   if (momentCount <= 0) return { key: "today.intent.why.day0", vars: { name: inp.name } };
   const parts: string[] = [];
   parts.push("today.intent.why.recent");
-  if (inp.confidence !== "none") parts.push("today.intent.why.rhythm");
+  // OBJ-TODAY-02: "today's rhythm" is a claim about a read the app has. At
+  // `low` the same screen says "7 more days of moments and Arbor can start
+  // reading Dylan's daily rhythm" — naming rhythm as an input there is the
+  // page contradicting itself. Only a medium/high read earns the word.
+  if (inp.confidence === "medium" || inp.confidence === "high") parts.push("today.intent.why.rhythm");
   parts.push("today.intent.why.age");
   if (inp.goals > 0) parts.push("today.intent.why.goals");
   if (inp.interests > 0) parts.push("today.intent.why.interests");

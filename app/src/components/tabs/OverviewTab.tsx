@@ -704,6 +704,11 @@ export default function OverviewTab() {
               promptKey={todayChoice.kind === "prompt" ? todayChoice.promptKey : null}
               childName={firstName}
               onCapture={() => setQuickLogOpen(true)}
+              /* OBJ-TODAY-02: the SAME derived why-line the focus hero mounts,
+                 not the authored `whySimple` claim. This card is the day-0
+                 surface, so it was the one asserting goals and interests on
+                 the screen that displayed neither. */
+              whyLine={focusWhy}
             />
           )}
           {/* ENG-12: a step accepted yesterday and never reported on used to

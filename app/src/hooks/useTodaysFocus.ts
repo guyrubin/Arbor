@@ -73,10 +73,18 @@ export function isFocusStale(
  */
 export function useTodaysFocus(child: ChildProfile, signals: FocusSignals) {
   const { user } = useAuth();
-  const { aiLang } = useLanguage();
+  // OBJ-TODAY-02: the focus language is the language the parent is READING.
+  // Gating the cache on `aiLang` let a `.he` record survive a session whose
+  // document is `lang=en` — the audit found a Hebrew hero inside the English
+  // Today. `setUiLang` already drives `setAiLang` (LanguageContext, the one
+  // language canon of OBJ-SHELL-02), so this only repairs a legacy divergence;
+  // it also keeps write and read on ONE key, so no regeneration loop is
+  // possible (generate stamps the same language the reader tests).
+  const { uiLang } = useLanguage();
+  const focusLang = uiLang as AiLang;
   const remote = firebaseEnabled && !!user && user.uid !== "local-sandbox" && !!db;
   const uid = user?.uid;
-  const lsKey = `arbor.todaysFocus.${child.id}.${aiLang}`;
+  const lsKey = `arbor.todaysFocus.${child.id}.${focusLang}`;
 
   const [focus, setFocus] = useState<Focus | null>(null);
   const [loading, setLoading] = useState(false);
@@ -114,7 +122,7 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals) {
             lastActionRecommendation: signals.lastActionRecommendation,
             lastActionOutcome: signals.lastActionOutcome,
           },
-          language: aiLang,
+          language: focusLang,
         }),
       });
       if (!res.ok) throw new Error("focus generation failed");
@@ -146,7 +154,7 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals) {
         ...(inputsUsed ? { inputsUsed: JSON.parse(JSON.stringify(inputsUsed)) as FocusInputsUsed } : {}),
         generatedAt: new Date().toISOString(),
         dateKey: todayKey(),
-        lang: aiLang,
+        lang: focusLang,
       };
       setFocus(next);
       const r = ref();
@@ -166,7 +174,7 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals) {
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [child, signals, remote, uid, aiLang]);
+  }, [child, signals, remote, uid, focusLang]);
 
   // Load cache when the active child — or the language — changes.
   useEffect(() => {
@@ -194,24 +202,55 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals) {
       }
       // A cached record from another language is NOT a cache hit: drop it so
       // the card never renders cross-language text while the rewrite runs.
-      if (!cancelled) setFocus(isFocusStale(cached, todayKey(), aiLang) ? null : cached);
+      if (!cancelled) setFocus(isFocusStale(cached, todayKey(), focusLang) ? null : cached);
     })();
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [child.id, remote, uid, aiLang]);
+  }, [child.id, remote, uid, focusLang]);
 
   // Auto-generate once per child/day/language when stale and there is data.
   useEffect(() => {
     if (triedAuto.current || loading) return;
-    const stale = isFocusStale(focus, todayKey(), aiLang);
+    const stale = isFocusStale(focus, todayKey(), focusLang);
     if (stale && signals.count > 0) {
       triedAuto.current = true;
       void generate();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focus, signals.count, loading, aiLang]);
+  }, [focus, signals.count, loading, focusLang]);
 
-  return { focus, loading, error, regenerate: generate };
+  // OBJ-TODAY-02: `inputsUsed` is a PROVENANCE report, and provenance is only
+  // worth printing while it still matches the ledger the parent can see. The
+  // stored `momentCount` is what the model was handed at generation time; the
+  // live count is what Today is showing right now. Reconcile on the way out —
+  // `liveInputsUsed` is what every consumer (the why-line) reads, so no caller
+  // can accidentally print a count the ledger contradicts.
+  const liveFocus = focus
+    ? { ...focus, inputsUsed: liveInputsUsed(focus.inputsUsed, signals.count) }
+    : focus;
+
+  return { focus: liveFocus, loading, error, regenerate: generate };
+}
+
+/**
+ * Reconcile a stored provenance report against the live moment count (pure,
+ * unit-tested). The live ledger is authoritative about whether there are any
+ * moments at all: at 0 the report is dropped entirely, so the why-line falls
+ * to its day-0 variant instead of naming "recent moments" over an empty feed.
+ * Above 0 the reported count is capped by the live one — a report may describe
+ * fewer moments than exist (the model saw a window), never more.
+ */
+export function liveInputsUsed(
+  stored: FocusInputsUsed | undefined,
+  liveCount: number,
+): FocusInputsUsed | undefined {
+  if (!(liveCount > 0)) return undefined;
+  if (!stored) return undefined;
+  const reported = stored.momentCount;
+  return {
+    ...stored,
+    momentCount: Number.isFinite(Number(reported)) ? Math.min(Number(reported), liveCount) : undefined,
+  };
 }

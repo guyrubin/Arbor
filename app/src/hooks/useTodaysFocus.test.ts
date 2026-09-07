@@ -46,22 +46,22 @@ describe("useTodaysFocus source — language in the key, the record, and the req
   const src = read("hooks/useTodaysFocus.ts");
 
   it("the localStorage key is language-scoped", () => {
-    expect(src).toContain("`arbor.todaysFocus.${child.id}.${aiLang}`");
+    expect(src).toContain("`arbor.todaysFocus.${child.id}.${focusLang}`");
   });
 
   it("the stored record carries the generation language", () => {
-    expect(src).toMatch(/lang:\s*aiLang/);
+    expect(src).toMatch(/lang:\s*focusLang/);
   });
 
   it("the request language comes from LanguageContext, not the module getter", () => {
     expect(src).toContain("useLanguage(");
-    expect(src).toMatch(/language:\s*aiLang/);
+    expect(src).toMatch(/language:\s*focusLang/);
     expect(src).not.toContain("getAiLanguage(");
   });
 
   it("cache-load and auto-generate both re-run on a language switch", () => {
-    expect(src).toMatch(/\[child\.id, remote, uid, aiLang\]/);
-    expect(src).toMatch(/\[focus, signals\.count, loading, aiLang\]/);
+    expect(src).toMatch(/\[child\.id, remote, uid, focusLang\]/);
+    expect(src).toMatch(/\[focus, signals\.count, loading, focusLang\]/);
   });
 
   it("the verdict-strip firewall payload is untouched (CODEX-2 condition)", () => {
@@ -84,7 +84,7 @@ describe("N2-errfocus — focus fetch failure surfaces an inline error + retry",
   const i18nSrc = read("lib/i18n.ts");
 
   it("the hook exposes the error flag and the retry alongside the focus", () => {
-    expect(hookSrc).toContain("return { focus, loading, error, regenerate: generate }");
+    expect(hookSrc).toContain("return { focus: liveFocus, loading, error, regenerate: generate }");
   });
 
   it("a generation failure SETS the flag; a new attempt clears it first", () => {

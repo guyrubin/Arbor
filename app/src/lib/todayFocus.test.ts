@@ -201,9 +201,15 @@ describe("ENG-07 — whyLineFor is built from real inputs", () => {
     expect(line).toBe("Chosen from recent moments, today's rhythm, age, your goals, interests.");
   });
 
-  it("server-reported inputsUsed wins over the client estimate", () => {
+  it("server-reported inputsUsed refines the count, but the LIVE ledger decides day-0 (OBJ-TODAY-02)", () => {
+    // A report of zero still demotes a client estimate — the model looked and
+    // found nothing usable.
     expect(whyLineParts({ name: "Maya", recentCount: 5, confidence: "none", goals: 0, interests: 0, inputsUsed: { momentCount: 0 } }).key).toBe("today.intent.why.day0");
-    expect(whyLineParts({ name: "Maya", recentCount: 0, confidence: "none", goals: 0, interests: 0, inputsUsed: { momentCount: 4 } }).key).toBe("today.intent.why.list");
+    // …but the reverse no longer holds. This case used to expect the list line:
+    // a cached report (another day, another language) claimed 4 moments while
+    // the live ledger held none, and Today then said "chosen from recent
+    // moments" over an empty feed. Provenance describes; it never outranks.
+    expect(whyLineParts({ name: "Maya", recentCount: 0, confidence: "none", goals: 0, interests: 0, inputsUsed: { momentCount: 4 } }).key).toBe("today.intent.why.day0");
   });
 
   it("renders in Hebrew through the same keys (no English leak)", () => {
