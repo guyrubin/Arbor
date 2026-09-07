@@ -898,7 +898,9 @@ export default function OverviewTab() {
         <section className="pt-1">
           <button
             onClick={() => setShowTools((v) => !v)}
-            className="w-full flex items-center justify-between mb-3"
+            /* OBJ-TODAY-04: the drawer toggle was 358x18 — the whole disclosure
+               for Today's secondary tools, under half the 44 px floor. */
+            className="w-full flex items-center justify-between mb-3 min-h-11"
             aria-expanded={showTools}
           >
             <h2 className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-faint)" }}>{t("ov.dailyTools")}</h2>

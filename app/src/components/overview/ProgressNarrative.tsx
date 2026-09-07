@@ -128,14 +128,14 @@ export default function ProgressNarrative({
                 type="button"
                 onClick={() => onOpenEvidence(item.id)}
                 aria-label={t("today.narrative.openItem", { label: item.label })}
-                className="flex w-full min-h-10 items-start gap-1.5 rounded-lg py-1.5 text-start"
+                className="flex w-full min-h-11 items-start gap-1.5 rounded-lg py-1.5 text-start"
               >
                 <span className="line-clamp-2 flex-1 text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{item.label}</span>
                 <Icon name="arrow_forward" size={14} className="mt-0.5 flex-shrink-0 rtl:-scale-x-100" style={{ color: "var(--arbor-green-ink)" }} />
               </button>
             </li>
           ))}</ul> : <p className="mt-3 text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{copy.evidenceEmpty}</p>}
-          <button type="button" onClick={() => onOpenEvidence()} className="mt-3 min-h-10 text-xs font-extrabold" style={{ color: "var(--arbor-green-ink)" }}>{copy.open}</button>
+          <button type="button" onClick={() => onOpenEvidence()} className="touch-target !justify-start mt-3 text-xs font-extrabold" style={{ color: "var(--arbor-green-ink)" }}>{copy.open}</button>
         </div>
         <NarrativeCell icon="arrow_forward" title={copy.next} body={copy.nextBody} />
       </div>

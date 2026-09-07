@@ -46,7 +46,7 @@ export default function DailyCheckinCard() {
               key={i}
               onClick={() => save({ mood: i + 1 })}
               aria-label={t("elev.checkin.moodAria", { n: i + 1 })}
-              className="flex-1 py-2 rounded-xl text-xl transition"
+              className="flex-1 min-h-11 py-2 rounded-xl text-xl transition"
               style={cur.mood === i + 1 ? { background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.40)" } : { background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}
             >
               {m}
@@ -81,7 +81,7 @@ export default function DailyCheckinCard() {
                 key={a}
                 onClick={() => save({ appetite: a })}
                 aria-pressed={cur.appetite === a}
-                className="flex-1 py-1.5 rounded-lg text-[10px] font-bold transition"
+                className="flex-1 min-h-11 py-1.5 rounded-lg text-[10px] font-bold transition"
                 style={cur.appetite === a ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.40)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
               >
                 {t(`elev.checkin.appetite.${a}`)}

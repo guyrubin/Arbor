@@ -80,6 +80,18 @@ const RATCHET: Record<string, number> = {
   "components/practice/SessionLengthChips.tsx": 0,
   "components/overview/CourseCard.tsx": 0,
   "components/profile/ProfileEditDrawer.tsx": 0,
+  // ── OBJ-TODAY-04 (Builder E1) · the Today half of the same floor. Measured
+  //    on #/overview: the daily-tools drawer toggle at 358×18 — the whole
+  //    disclosure for Today's secondary tools — the trust chips at 30–31, the
+  //    "Open source moments" link at 40, and the action-loop Remove at 36.
+  //    The check-in card's mood and appetite chips came with them: they live
+  //    inside that same drawer and were 30 px.
+  "components/tabs/OverviewTab.tsx": 0,
+  "components/overview/ProgressNarrative.tsx": 0,
+  "components/overview/TodayActionLoop.tsx": 0,
+  "components/overview/DailyCheckinCard.tsx": 0,
+  "components/trust/TrustLink.tsx": 0,
+  "components/ui/EvidenceChip.tsx": 0,
 };
 
 describe("item 9 · the primary-move controls state a 44 px hit box", () => {
@@ -140,6 +152,18 @@ describe("item 9 · the primary-move controls state a 44 px hit box", () => {
       '"inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold transition"',
       // Drawer Export
       '"w-full py-2.5 font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 disabled:opacity-60 bg-white"',
+      // ── OBJ-TODAY-04, verbatim pre-fix markup ──
+      // Today's daily-tools drawer toggle (358×18)
+      '"w-full flex items-center justify-between mb-3"',
+      // TrustLink / EvidenceChip chip (30–31 px; the ::before hit area is a
+      // pseudo-element the floor scan cannot see, and the rendered rect the
+      // audit measured was 31)
+      '"relative inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[var(--t-xs)] font-bold transition active:scale-[0.97]"',
+      // "Open source moments" (40 px) and the action-loop Remove (36 px)
+      '"mt-3 min-h-10 text-xs font-extrabold"',
+      '"min-h-9 px-2 text-xs font-bold"',
+      // the check-in card's appetite chip (30 px)
+      '"flex-1 py-1.5 rounded-lg text-[10px] font-bold capitalize transition"',
     ];
     for (const markup of preFix) expect(hasFloor(markup), markup).toBe(false);
     // ...and the predicate is not simply always false.
