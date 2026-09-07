@@ -223,34 +223,11 @@ export default function ChildProfile() {
           </section>
       </div>
 
-      <section
-        className="rounded-[22px] p-4 flex flex-col sm:flex-row sm:items-center gap-3"
-        style={{ background: "var(--arbor-lav-soft)", border: "1px solid var(--arbor-rule)" }}
-      >
-        <span
-          className="inline-flex items-center justify-center flex-shrink-0 rounded-2xl"
-          style={{ width: 46, height: 46, background: "var(--arbor-paper-elevated)", color: "var(--arbor-lav-ink)" }}
-        >
-          <Icon name="bookmark" size={22} />
-        </span>
-        <div className="flex-1 min-w-0">
-          <h2 className="text-[15px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-            {t("cp.ch.memory")}
-          </h2>
-          <p className="text-xs leading-relaxed mt-0.5" style={{ color: "var(--arbor-muted)" }}>
-            <strong style={{ color: "var(--arbor-ink)" }}>{approvedMemoryItems.length}</strong> {t("coach.approved")} ·{" "}
-            <strong style={{ color: "var(--arbor-ink)" }}>{pendingMemoryItems.length}</strong> {t("coach.pending")}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setActiveTab("memory")}
-          className="inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 min-h-[44px] text-[12px] font-extrabold"
-          style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-lav-ink)", border: "1px solid var(--arbor-rule)" }}
-        >
-          {t("cp.reviewMemory", { name: first })} <Icon name="arrow_forward" size={14} className="rtl:-scale-x-100" />
-        </button>
-      </section>
+      {/* R9 / OBJ-PROFILE-03 — the memory tile that stood here rendered
+          "What Arbor remembers" a SECOND time on this screen, above a chapter
+          of the same name that already carries the same counts and the same
+          review link. One door per room: chapter 6 is the door. The hero CTA
+          still routes a parent with pending proposals straight to the queue. */}
 
       <PageHeader
         eyebrow={t("cp.eyebrow")}

@@ -78,6 +78,33 @@ describe("Profile · one door per room", () => {
     expect(footer).toContain('tab: "behaviors"');
   });
 
+  /* R9 — the footer tile went in the first pass, but the SECOND door was never
+     the footer: a lavender summary tile above the page header carried the same
+     `cp.ch.memory` heading, the same approved/pending counts and the same
+     review button, so `#/profile` still printed "What Arbor remembers" twice.
+     The chapter is the door; the tile is gone. */
+  it("R9 — the memory heading is rendered exactly once on the page", () => {
+    expect(profile.match(/t\("cp\.ch\.memory"\)/g) ?? []).toHaveLength(1);
+    // …and it is the chapter's own SectionCard title, not a bare tile heading.
+    expect(profile).toMatch(/<SectionCard title=\{t\("cp\.ch\.memory"\)\}/);
+    // The chapter keeps the ONE review link; nothing else routes to memory
+    // except the hero CTA, which is a call to action rather than a second door.
+    expect(profile.match(/setActiveTab\("memory"\)/g) ?? []).toHaveLength(2);
+    expect(profile).toContain('t("elev.growthTruth.profile.cta.review")');
+  });
+
+  it("NEGATIVE CONTROL: the pre-fix tile is a second heading of the same name", () => {
+    const preFixTile = `        <div className="flex-1 min-w-0">
+          <h2 className="text-[15px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+            {t("cp.ch.memory")}
+          </h2>`;
+    // Two renders of the heading in one file is exactly what R9 rejected.
+    expect((preFixTile + profile).match(/t\("cp\.ch\.memory"\)/g) ?? []).toHaveLength(2);
+    expect(profile).not.toContain(preFixTile);
+    // and its counts row, which duplicated the chapter's own pending line
+    expect(profile).not.toContain('{approvedMemoryItems.length}</strong> {t("coach.approved")}');
+  });
+
   it("GP-26 — the strengths leaf's only door is gone with the leaf", () => {
     expect(profile).not.toContain('setActiveTab("strengths")');
     // The chapter that absorbed it still renders both of its lists.
