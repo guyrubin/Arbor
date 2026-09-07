@@ -322,8 +322,27 @@ export default function SmartRemindersPanel() {
       </Section>
       </div>
 
+      {/* R25 (item 11) — #/smart-reminders rendered 5 top-level modules against a declared
+          moduleBudget of 3. The tail below is DEMOTED, never removed: one
+          collapsed disclosure on the pattern components/practice/SpeechCoachTab.tsx
+          `speech-more` already ships, so every capability keeps its door (law 6)
+          while the fold belongs to the primary move. Demoted modules keep their
+          own `data-module` stamp and add `data-module-demoted`, which is what
+          makes the budget rule countable: top-level = stamps minus demoted. */}
+      <details data-module-disclosure="smart-reminders-more" className="rounded-2xl overflow-hidden" style={{ background: PAPER, border: `1px solid ${RULE}` }}>
+        <summary className="cursor-pointer list-none px-6 py-4 min-h-[44px] flex items-center gap-3">
+          <span className="grid place-items-center w-9 h-9 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
+            <Icon name="schedule" size={18} />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.sr.more.title")}</span>
+            <span className="block text-[12px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.sr.more.sub")}</span>
+          </span>
+          <Icon name="expand_more" size={20} className="ms-auto" style={{ color: "var(--arbor-muted)" }} />
+        </summary>
+        <div className="px-4 pb-4 space-y-4">
       {/* QUIET HOURS (AC-3) */}
-      <div data-module="reminders-quiet" style={{ display: "contents" }}>
+      <div data-module="reminders-quiet" data-module-demoted style={{ display: "contents" }}>
       <Section title={t("sr.quiet.heading")} icon={<Icon name="schedule" size={16} />}>
         <div
           className="rounded-2xl p-4 space-y-4"
@@ -411,7 +430,7 @@ export default function SmartRemindersPanel() {
       </div>
 
       {/* CALM-WINDOW SCHEDULING (AC-4) */}
-      <div data-module="reminders-calm" style={{ display: "contents" }}>
+      <div data-module="reminders-calm" data-module-demoted style={{ display: "contents" }}>
       <Section title={t("sr.calm.heading")} icon={<Icon name="bolt" size={16} />}>
         <div
           className="rounded-2xl p-4 flex items-center justify-between gap-4"
@@ -439,6 +458,9 @@ export default function SmartRemindersPanel() {
         </div>
       </Section>
       </div>
+
+        </div>
+      </details>
 
       {/* Saved confirmation */}
       {savedFlash && (

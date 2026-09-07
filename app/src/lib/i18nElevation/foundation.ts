@@ -138,6 +138,13 @@ export const en: Record<string, string> = {
   // It is a PRESENCE fact about the family (more than one language at home),
   // never a finding about the child.
   "elev.shell.focus.multilingual": "Growing up multilingual",
+
+  // Builder M — R25 — #/weekly and #/smart-reminders demotion disclosures.
+  "elev.wk.rest.title": "The rest of the week",
+  "elev.wk.rest.sub": "Wins and moments, the weekly email, and the brief you can share.",
+  "elev.wk.rest.door": "Back to Today",
+  "elev.sr.more.title": "When Arbor may reach you",
+  "elev.sr.more.sub": "Quiet hours, and holding nudges for a calm moment.",
 };
 
 export const he: Record<string, string> = {
@@ -224,4 +231,11 @@ export const he: Record<string, string> = {
 
   // ── Builder I · shell chrome (object backlog, 2026-09-07) ────────────────
   "elev.shell.focus.multilingual": "גדל/ה עם יותר משפה אחת",
+
+  // Builder M — R25 — #/weekly and #/smart-reminders demotion disclosures.
+  "elev.wk.rest.title": "שאר השבוע",
+  "elev.wk.rest.sub": "הישגים ורגעים, המייל השבועי והתקציר שאפשר לשתף.",
+  "elev.wk.rest.door": "חזרה להיום",
+  "elev.sr.more.title": "מתי מותר לארבור לפנות אליכם",
+  "elev.sr.more.sub": "שעות שקט, ושמירת התזכורות לרגע רגוע.",
 };

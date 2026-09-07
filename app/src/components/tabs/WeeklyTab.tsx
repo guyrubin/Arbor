@@ -360,7 +360,31 @@ export default function WeeklyTab() {
           </div>
           )}
 
-          <div data-module="weekly-detail" className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {/* R25 (item 11) — #/weekly rendered 6 top-level modules against a declared
+          moduleBudget of 3. The tail below is DEMOTED, never removed: one
+          collapsed disclosure on the pattern components/practice/SpeechCoachTab.tsx
+          `speech-more` already ships, so every capability keeps its door (law 6)
+          while the fold belongs to the primary move. Demoted modules keep their
+          own `data-module` stamp and add `data-module-demoted`, which is what
+          makes the budget rule countable: top-level = stamps minus demoted. */}
+          <details data-module-disclosure="weekly-more" className={`${cardCls} p-0 overflow-hidden`}>
+            <summary className="cursor-pointer list-none px-6 py-4 min-h-[44px] flex items-center gap-3">
+              <span className="grid place-items-center w-9 h-9 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" }}>
+                <Icon name="trophy" size={18} />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.wk.rest.title")}</span>
+                <span className="block text-[12px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.wk.rest.sub")}</span>
+              </span>
+              <Icon name="expand_more" size={20} className="ms-auto" style={{ color: "var(--arbor-muted)" }} />
+            </summary>
+            <div className="px-4 pb-4 space-y-4">
+            {/* demotionTarget: "overview" — the hub the contract sends these to. */}
+            <button onClick={() => setActiveTab("overview")} className="inline-flex min-h-11 w-full items-center justify-between gap-2 rounded-xl px-4 py-2.5 text-sm font-bold" style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}>
+              <span>{t("elev.wk.rest.door")}</span>
+              <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
+            </button>
+          <div data-module="weekly-detail" data-module-demoted className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <SectionCard title={t("wk.milestoneWins", { n: selected.milestoneWins.length })} icon={<Icon name="trophy" size={20} />} tone="mint">
               {selected.milestoneWins.length ? (
                 <ul className="space-y-1.5 text-sm" style={{ color: "var(--arbor-ink)" }}>
@@ -441,7 +465,7 @@ export default function WeeklyTab() {
           {/* ── W2 2.2: weekly email opt-in — settings row. The channel is
                  FAIL-CLOSED until a provider is configured server-side; the
                  opt-in is stored per account and honored the day it ships. ── */}
-          <div data-module="weekly-email" className={`${cardCls} p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4`}>
+          <div data-module="weekly-email" data-module-demoted className={`${cardCls} p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4`}>
             <div className="flex items-center gap-3 min-w-0">
               <IconBadge tone="lav"><Icon name="mail" size={20} /></IconBadge>
               <div className="min-w-0">
@@ -471,7 +495,7 @@ export default function WeeklyTab() {
             </button>
           </div>
 
-          <div data-module="weekly-share" className={`${cardCls} p-6 flex flex-col sm:flex-row items-center justify-between gap-4`}>
+          <div data-module="weekly-share" data-module-demoted className={`${cardCls} p-6 flex flex-col sm:flex-row items-center justify-between gap-4`}>
             <div className="flex items-center gap-3">
               <IconBadge tone="sky"><Icon name="send" size={20} /></IconBadge>
               <div>
@@ -490,6 +514,8 @@ export default function WeeklyTab() {
               <Icon name="send" size={16} /> {t("wk.brief", { first })}
             </button>
           </div>
+            </div>
+          </details>
         </>
       )}
       <QuickLogModal open={logOpen} onClose={() => setLogOpen(false)} />
