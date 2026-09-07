@@ -22,6 +22,7 @@ import { dailyPromptKeys } from "../../lib/promptBank";
 import { track } from "../../lib/analytics";
 import { setCaptureCue } from "../../lib/captureCue";
 import JournalEntrySheet from "../journal/JournalEntrySheet";
+import QuickLogModal from "../overview/QuickLogModal";
 // AI-04 — the typed-turn proposals tray, and the ledger that records where a
 // kept row came from. The tray is the ONLY new capture affordance here; both
 // of its actions run existing seams (commitConversationProposal for the
@@ -278,11 +279,27 @@ export default function JournalTab() {
     return () => clearTimeout(timer);
   }, [focusId, logsLoaded]);
 
+  // TJB-08: the Journal's own text capture, in place. Tapping "Text" used to
+  // run setActiveTab("behaviors") — the parent asked to write a moment on the
+  // Journal and was moved to a different hub, losing the feed they were
+  // reading and changing the route under them. QuickLogModal is the EXISTING
+  // text-capture surface (Today mounts it the same way) and it portals to
+  // document.body, so it opens over the Journal with the hash untouched.
+  const [quickLogOpen, setQuickLogOpen] = useState(false);
+
   /** Open the real capture flow in the requested modality. Previously these
    *  tiles were decoys: all three ran a bare setActiveTab("behaviors"), so
    *  "Voice" and "Photo" promised a mode they never opened. `requestCapture`
    *  hands the mode to the capture surface, which acts on it and clears it. */
   const startCapture = (mode: CaptureMode) => {
+    if (mode === "text") {
+      setQuickLogOpen(true);
+      return;
+    }
+    // Voice and photo still hand off: their affordances (the mic seam, the
+    // file input) live on the Behaviors capture form and QuickLogModal has no
+    // mode parameter to receive them. The cross-file edit that would bring
+    // them in place too is in FOLLOW-UPS.
     // TJB-12: carry the tapped writing prompt onto the capture form. It rides
     // its OWN channel, never the capture call — the sanctioned W1 rule is that
     // the question is a visible cue and never draft content, so the mode
@@ -614,6 +631,11 @@ export default function JournalTab() {
           ))}
         </section>
       )}
+
+      {/* TJB-08 — the Journal's text capture, in place. Rendered once; it
+          portals to document.body, so it sits over the feed rather than
+          replacing it, and the route never changes. */}
+      <QuickLogModal open={quickLogOpen} onClose={() => setQuickLogOpen(false)} />
 
       {/* TJB-13 — the row's detail sheet. Rendered once for the whole feed;
           `signal === null` keeps it closed. */}
