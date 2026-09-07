@@ -128,7 +128,6 @@ export default function JourneyTab() {
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
       <PageHeader
-        eyebrow="Practice Studio"
         title={t("prac.journey.title")}
         subtitle={t("prac.journey.sub", { name: first })}
       />
@@ -152,20 +151,20 @@ export default function JourneyTab() {
         </div>
         <div className={`${cardCls} p-5`}>
           <p className="text-2xl font-extrabold" style={{ color: "var(--arbor-ink)" }}>{data.week.activeDays}</p>
-          <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>Active practice days this week</p>
+          <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>{t("elev.practice.journey.activeDays")}</p>
         </div>
         <div className={`${cardCls} p-5`}>
           <p className="text-2xl font-extrabold" style={{ color: "var(--arbor-ink)" }}>{objectivesDone}/{objectives.length}</p>
-          <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>Monthly objectives done</p>
+          <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>{t("elev.practice.journey.objectivesDone")}</p>
         </div>
         <div className={`${cardCls} p-5`}>
           <p className="text-2xl font-extrabold" style={{ color: "var(--arbor-ink)" }}>{earnedCount}/{achievements.length}</p>
-          <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>Effort badges earned</p>
+          <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>{t("elev.practice.journey.badgesLabel")}</p>
         </div>
       </div>
       )}
 
-      <SectionCard title="This week" icon={<Icon name="calendar_month" size={20} />} tone="mint"
+      <SectionCard title={t("elev.practice.journey.week.title")} icon={<Icon name="calendar_month" size={20} />} tone="mint"
         action={aims.length > 0
           ? <Chip tone="mint">{t("elev.growth.journey.aim", { domain: DOMAIN_META[aims[0]].label })}</Chip>
           : undefined}>
@@ -178,7 +177,7 @@ export default function JourneyTab() {
                 <div>
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-xs font-extrabold" style={{ color: day.isToday ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>{day.weekday}</p>
-                    {day.isToday && <Chip tone="mint">Today</Chip>}
+                    {day.isToday && <Chip tone="mint">{t("elev.practice.journey.week.today")}</Chip>}
                   </div>
                   <p className="text-[10px] mt-0.5" style={{ color: "var(--arbor-muted)" }}>{day.date.slice(5)}</p>
                 </div>
@@ -192,14 +191,14 @@ export default function JourneyTab() {
                   className="mt-auto inline-flex min-h-11 items-center justify-center gap-1.5 text-[11px] font-extrabold px-3 py-2 rounded-xl"
                   style={done ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
                 >
-                  <Icon name="check_circle" size={14} /> {done ? "Done" : "Mark done"}
+                  <Icon name="check_circle" size={14} /> {done ? t("elev.practice.journey.mission.done") : t("elev.practice.journey.mission.markDone")}
                 </button>
                 <button
                   onClick={() => setActiveTab(extraTab)}
                   className="text-start min-h-11 rounded-xl p-3 transition"
                   style={{ background: DOMAIN_META[day.mission.domain].soft }}
                 >
-                  <span className="block text-[10px] font-extrabold uppercase tracking-wide" style={{ color: DOMAIN_META[day.mission.domain].color }}>Aimed extra</span>
+                  <span className="block text-[10px] font-extrabold uppercase tracking-wide" style={{ color: DOMAIN_META[day.mission.domain].color }}>{t("elev.practice.journey.extra")}</span>
                   <span className="block text-[11px] font-extrabold mt-1" style={{ color: "var(--arbor-ink)" }}>{day.extra.title}</span>
                   <span className="block text-[10px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{day.extra.detail}</span>
                 </button>
@@ -209,14 +208,14 @@ export default function JourneyTab() {
         </div>
       </SectionCard>
 
-      <SectionCard title={`${month} objectives`} icon={<Icon name="target" size={20} />} tone="coral"
+      <SectionCard title={t("elev.practice.journey.objectives.title", { month })} icon={<Icon name="target" size={20} />} tone="coral"
         action={!startedObjectives && (
           <button onClick={startObjectives} className="inline-flex min-h-11 items-center gap-2 text-xs font-extrabold px-4 py-2.5 rounded-xl text-white" style={{ background: "var(--arbor-peach-ink)" }}>
-            <Icon name="auto_awesome" size={14} /> Start these
+            <Icon name="auto_awesome" size={14} /> {t("elev.practice.journey.objectives.start")}
           </button>
         )}>
         <p className="text-[11px] mb-4" style={{ color: "var(--arbor-muted)" }}>
-          Objectives focus on the areas your current goals point to — coaching targets, not clinical goals.
+          {t("elev.practice.journey.objectives.note")}
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {objectives.map((obj) => {
@@ -232,14 +231,14 @@ export default function JourneyTab() {
                   </Chip>
                 </span>
                 <span className="block text-sm font-extrabold mt-3" style={{ color: "var(--arbor-ink)" }}>{obj.title}</span>
-                <span className="block text-[11px] mt-2" style={{ color: obj.done ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>{obj.done ? "Completed" : "Tap to mark complete"}</span>
+                <span className="block text-[11px] mt-2" style={{ color: obj.done ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>{obj.done ? t("elev.practice.journey.objectives.completed") : t("elev.practice.journey.objectives.tap")}</span>
               </button>
             );
           })}
         </div>
       </SectionCard>
 
-      <SectionCard title="Achievements" icon={<Icon name="trophy" size={20} />} tone="yellow">
+      <SectionCard title={t("elev.practice.journey.achievements.title")} icon={<Icon name="trophy" size={20} />} tone="yellow">
         {/* OBJ-KID-02 (law 3): the twelve unearned badges used to render at
             opacity 0.58 — a greyed silhouette wall with its requirement showing,
             i.e. pressure mechanics on the parent door. Earned badges render at
@@ -265,10 +264,10 @@ export default function JourneyTab() {
         )}
       </SectionCard>
 
-      <SectionCard title="Historical progression" icon={<Icon name="history" size={20} />} tone="sky">
+      <SectionCard title={t("elev.practice.journey.history.title")} icon={<Icon name="history" size={20} />} tone="sky">
         {snapshots.length === 0 ? (
           <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>
-            Arbor will keep one weekly snapshot once practice data loads — a count of how many milestones you&apos;ve noticed in each domain. It&apos;s historical context and a conversation starter, never a diagnostic chart.
+            {t("elev.practice.journey.history.empty")}
           </p>
         ) : (
           <div className="space-y-3">
@@ -292,7 +291,7 @@ export default function JourneyTab() {
                       <div key={b.domain}>
                         <p className="text-[10px] font-bold mb-1" style={{ color: meta.color }}>{meta.label}</p>
                         <p className="text-[11px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{reached} of {total}</p>
-                        <p className="text-[10px]" style={{ color: "var(--arbor-muted)" }}>noticed</p>
+                        <p className="text-[10px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.practice.journey.history.noticed")}</p>
                       </div>
                     );
                   })}

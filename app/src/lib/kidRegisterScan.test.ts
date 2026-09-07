@@ -117,7 +117,9 @@ const FROZEN: Partial<Record<string, Partial<Record<RuleId, { count: number; rea
   "components/practice/JourneyTab.tsx": {
     kitShell: { count: 4, reason: "parent-register surface (#/journey) — SectionCard is its legitimate chrome; scanned for pct/nav/verdict copy" },
     nav: { count: 1, reason: "parent-register surface — the 'Aimed extra' link is a legitimate parent navigation" },
-    clinical: { count: 1, reason: "parent-register disclaimer ('never a diagnostic chart') — legitimate honesty copy for the parent, not kid-facing" },
+    // OBJ-PRACTICE-02 ratchet-down: the "never a diagnostic chart" disclaimer
+    // moved into lib/i18nElevation/practiceDoors.ts with the rest of this
+    // door's copy, so the file itself now carries zero clinical spans.
   },
 };
 

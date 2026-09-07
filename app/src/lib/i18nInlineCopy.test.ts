@@ -244,3 +244,85 @@ describe("item 8 — no hardcoded English on the Learn·Care export surfaces", (
     expect(family).toContain("initialCharterValues(undefined, uiLang)");
   });
 });
+
+/* ── OBJ-PRACTICE-02 (§3f) — the practice suite and the two story tabs ───────
+ *
+ * item 8 scoped the hardcoded-English scan to the Learn·Care export surfaces.
+ * The practice suite was never in scope, and it was where the defect actually
+ * lived: JourneyTab was ~90 % English literals ("This week", "Mark done",
+ * "Historical progression"), and the Practice Studio launcher printed the ten
+ * Kid-Mode world names as literals on a right-to-left page.
+ *
+ * The doors are keyed now. The rest of the suite (kid worlds, the Copilot,
+ * Word World) still carries literals this wave did not touch, so the scan is a
+ * SHRINK-ONLY ratchet with an exact per-file count, measured 2026-09-07 — the
+ * same contract as tokens.test.ts's HEX_ALLOWLIST and kidRegisterScan's FROZEN.
+ * Fixing a literal must LOWER a number; adding one turns CI red.
+ */
+const PRACTICE_SCOPE_DIRS = ["components/practice"];
+const PRACTICE_SCOPE_FILES = ["components/tabs/ComicsTab.tsx", "components/tabs/HeroJourneyTab.tsx"];
+
+/** EXACT remaining English-literal lines per file. Shrink-only. */
+const PRACTICE_ENGLISH_FROZEN: Record<string, number> = {
+  "components/practice/BeatKeeperWorld.tsx": 3,
+  "components/practice/DevelopmentCopilot.tsx": 4,
+  "components/practice/HeroPoseWorld.tsx": 3,
+  "components/practice/MemoryMatch.tsx": 2,
+  "components/practice/PatternPowerWorld.tsx": 3,
+  "components/practice/WordWorldTab.tsx": 2,
+  "components/tabs/HeroJourneyTab.tsx": 1,
+};
+
+function practiceScopeFiles(): string[] {
+  const out: string[] = [...PRACTICE_SCOPE_FILES];
+  for (const dir of PRACTICE_SCOPE_DIRS) {
+    for (const full of walk(path.join(SRC_ROOT, dir))) {
+      out.push(path.relative(SRC_ROOT, full).split(path.sep).join("/"));
+    }
+  }
+  return out.sort();
+}
+
+/** Lines carrying a user-visible English literal (attribute or JSX text). */
+function englishLines(rel: string): string[] {
+  const code = stripComments(fs.readFileSync(path.join(SRC_ROOT, rel), "utf8"));
+  return code
+    .split("\n")
+    .map((line, i) => ({ line, i }))
+    .filter(({ line }) => ENGLISH_ATTR.test(line) || ENGLISH_TEXT.test(line))
+    .map(({ line, i }) => `${rel}:${i + 1} → ${line.trim().slice(0, 110)}`);
+}
+
+describe("OBJ-PRACTICE-02 — hardcoded English on the practice doors is a shrink-only ratchet", () => {
+  const files = practiceScopeFiles();
+
+  it("the scanner sees a real corpus", () => {
+    expect(files.length).toBeGreaterThan(15);
+    for (const rel of Object.keys(PRACTICE_ENGLISH_FROZEN)) {
+      expect(files, `${rel} frozen but not in scope`).toContain(rel);
+    }
+  });
+
+  it.each(files.map((f) => [f]))("%s", (rel) => {
+    const hits = englishLines(rel);
+    const frozen = PRACTICE_ENGLISH_FROZEN[rel] ?? 0;
+    expect(
+      hits.length,
+      `${rel}: ${hits.length} English literal line(s), frozen at ${frozen} — route new copy through t() and LOWER the number:\n${hits.join("\n")}`,
+    ).toBeLessThanOrEqual(frozen);
+  });
+
+  it("JourneyTab and the launcher are CLEAN — the two doors this item keyed", () => {
+    expect(englishLines("components/practice/JourneyTab.tsx")).toEqual([]);
+    expect(englishLines("components/practice/PracticeStudioTab.tsx")).toEqual([]);
+  });
+
+  it("NEGATIVE CONTROL: the pre-fix JourneyTab literals are what the scan rejects", () => {
+    const preFix = [
+      '          <p className="text-[11px]">Active practice days this week</p>',
+      '        <SectionCard title="Achievements" tone="yellow">',
+    ].join("\n");
+    const caught = preFix.split("\n").filter((l) => ENGLISH_ATTR.test(l) || ENGLISH_TEXT.test(l));
+    expect(caught.length).toBeGreaterThan(0);
+  });
+});

@@ -170,3 +170,61 @@ describe("practiceDoors — EN and HE land together (law 7)", () => {
     expect(offenders.map(([k]) => k)).toEqual([]);
   });
 });
+
+/* ── 3 · the doors actually use the keys ──────────────────────────────────── */
+
+describe("OBJ-PRACTICE-02 — the practice doors speak both languages", () => {
+  it("JourneyTab routes its own scaffolding through t()", () => {
+    for (const key of [
+      "elev.practice.journey.activeDays",
+      "elev.practice.journey.objectivesDone",
+      "elev.practice.journey.badgesLabel",
+      "elev.practice.journey.week.title",
+      "elev.practice.journey.week.today",
+      "elev.practice.journey.mission.done",
+      "elev.practice.journey.mission.markDone",
+      "elev.practice.journey.extra",
+      "elev.practice.journey.objectives.title",
+      "elev.practice.journey.objectives.start",
+      "elev.practice.journey.objectives.note",
+      "elev.practice.journey.objectives.completed",
+      "elev.practice.journey.objectives.tap",
+      "elev.practice.journey.achievements.title",
+      "elev.practice.journey.history.title",
+      "elev.practice.journey.history.empty",
+      "elev.practice.journey.history.noticed",
+    ]) {
+      expect(JOURNEY, `JourneyTab never calls t("${key}")`).toContain(`"${key}"`);
+    }
+  });
+
+  it("NEGATIVE CONTROL: the pre-fix literals are gone from JourneyTab", () => {
+    for (const literal of [
+      '"This week"',
+      '"Achievements"',
+      '"Historical progression"',
+      '"Mark done"',
+      '"Aimed extra"',
+      '"Start these"',
+      '"Tap to mark complete"',
+      "Active practice days this week",
+      "Monthly objectives done",
+      "Effort badges earned",
+    ]) {
+      expect(JOURNEY, `JourneyTab still hardcodes ${literal}`).not.toContain(literal);
+    }
+  });
+
+  it("the launcher names its Kid-Mode worlds from the dictionary, not literals", () => {
+    expect(STUDIO).toContain("elev.practice.world.kid.");
+    for (const literal of ['"Sound Lab"', '"Mind Vault"', '"Spell Forge"', '"Beat Keeper"', '"Story Quest"']) {
+      expect(STUDIO, `PracticeStudioTab still hardcodes ${literal}`).not.toContain(literal);
+    }
+  });
+
+  it("Comics titles its own door from nav.tab.comics, not an English literal", () => {
+    const comics = stripComments(read("components/tabs/ComicsTab.tsx"));
+    expect(comics).toContain('t("nav.tab.comics")');
+    expect(comics).not.toContain('title="Hero Comics"');
+  });
+});

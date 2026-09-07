@@ -28,8 +28,10 @@ interface StudioWorld {
   id: string;
   /** i18n key prefix: `practice.world.<id>.name` / `.skill` */
   key: string;
-  /** Kid Mode world name — shared vocabulary between parent and child. */
-  kidName: string;
+  /** i18n key for the Kid-Mode world name — shared vocabulary between parent
+   *  and child. OBJ-PRACTICE-02: these were English literals, so a Hebrew
+   *  parent read "Sound Lab" on a right-to-left page. */
+  kidNameKey: string;
   msIcon: string;
   tone: keyof typeof PASTEL;
   /** Standalone parent-shell route, when one exists; else Kid Mode only. */
@@ -38,16 +40,16 @@ interface StudioWorld {
 }
 
 const STUDIO_WORLDS: StudioWorld[] = [
-  { id: "speech", key: "speech", kidName: "Sound Lab", msIcon: "mic", tone: "sky", tab: "speech", count: (d) => d.speech.items.length },
-  { id: "word-world", key: "words", kidName: "Word World", msIcon: "menu_book", tone: "sky", count: (d) => d.events.items.filter((e) => e.kind === "lang-strategy").length },
-  { id: "feelings", key: "feelings", kidName: "Mood Mountain", msIcon: "favorite", tone: "pink", tab: "feelings", count: (d) => d.events.items.length },
-  { id: "mimic", key: "mimic", kidName: "Mimic Studio", msIcon: "mood", tone: "coral", tab: "mimic", count: (d) => d.mimic.items.length },
-  { id: "adventures", key: "adventures", kidName: "Story Quest", msIcon: "map", tone: "yellow", tab: "adventures", count: (d) => d.adventures.items.length },
-  { id: "memory", key: "memory", kidName: "Mind Vault", msIcon: "psychology", tone: "lav", count: (d) => d.events.items.filter((e) => e.kind === "memory").length },
-  { id: "reading", key: "reading", kidName: "Spell Forge", msIcon: "auto_stories", tone: "yellow", count: (d) => d.events.items.filter((e) => READING_KINDS.has(e.kind)).length },
-  { id: "beat", key: "rhythm", kidName: "Beat Keeper", msIcon: "music_note", tone: "coral", count: (d) => d.events.items.filter((e) => e.kind === "rhythm").length },
-  { id: "pose", key: "movement", kidName: "Hero Pose", msIcon: "accessibility_new", tone: "mint", count: (d) => d.events.items.filter((e) => e.kind === "pose").length },
-  { id: "pattern", key: "logic", kidName: "Pattern Power", msIcon: "category", tone: "lav", count: (d) => d.events.items.filter((e) => e.kind === "pattern").length },
+  { id: "speech", key: "speech", kidNameKey: "elev.practice.world.kid.speech", msIcon: "mic", tone: "sky", tab: "speech", count: (d) => d.speech.items.length },
+  { id: "word-world", key: "words", kidNameKey: "elev.practice.world.kid.words", msIcon: "menu_book", tone: "sky", count: (d) => d.events.items.filter((e) => e.kind === "lang-strategy").length },
+  { id: "feelings", key: "feelings", kidNameKey: "elev.practice.world.kid.feelings", msIcon: "favorite", tone: "pink", tab: "feelings", count: (d) => d.events.items.length },
+  { id: "mimic", key: "mimic", kidNameKey: "elev.practice.world.kid.mimic", msIcon: "mood", tone: "coral", tab: "mimic", count: (d) => d.mimic.items.length },
+  { id: "adventures", key: "adventures", kidNameKey: "elev.practice.world.kid.adventures", msIcon: "map", tone: "yellow", tab: "adventures", count: (d) => d.adventures.items.length },
+  { id: "memory", key: "memory", kidNameKey: "elev.practice.world.kid.memory", msIcon: "psychology", tone: "lav", count: (d) => d.events.items.filter((e) => e.kind === "memory").length },
+  { id: "reading", key: "reading", kidNameKey: "elev.practice.world.kid.reading", msIcon: "auto_stories", tone: "yellow", count: (d) => d.events.items.filter((e) => READING_KINDS.has(e.kind)).length },
+  { id: "beat", key: "rhythm", kidNameKey: "elev.practice.world.kid.rhythm", msIcon: "music_note", tone: "coral", count: (d) => d.events.items.filter((e) => e.kind === "rhythm").length },
+  { id: "pose", key: "movement", kidNameKey: "elev.practice.world.kid.movement", msIcon: "accessibility_new", tone: "mint", count: (d) => d.events.items.filter((e) => e.kind === "pose").length },
+  { id: "pattern", key: "logic", kidNameKey: "elev.practice.world.kid.logic", msIcon: "category", tone: "lav", count: (d) => d.events.items.filter((e) => e.kind === "pattern").length },
 ];
 
 export default function PracticeStudioTab() {
@@ -78,6 +80,7 @@ export default function PracticeStudioTab() {
 
       {/* Kid Mode — the safe play space, one clear primary action */}
       <section
+        data-module="practice-kidmode-door"
         className="rounded-[22px] p-5 flex flex-wrap items-center justify-between gap-4"
         style={{ background: "var(--arbor-coach-grad, var(--arbor-paper-deep))", border: "1px solid var(--arbor-rule)" }}
         aria-label={t("practice.studio.kidmode.title")}
@@ -126,7 +129,7 @@ export default function PracticeStudioTab() {
       </section>
 
       {/* World grid */}
-      <section aria-label={t("practice.studio.worlds")}>
+      <section data-module="practice-worlds" aria-label={t("practice.studio.worlds")}>
         <div className="flex items-baseline justify-between mb-2.5">
           <h2 className="text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>
             {t("practice.studio.worlds")}
@@ -135,7 +138,9 @@ export default function PracticeStudioTab() {
             {t("practice.studio.count", { n: STUDIO_WORLDS.length })}
           </span>
         </div>
-        <div className="grid sm:grid-cols-2 gap-4">
+        {/* The declared primaryMove for #/practice ("start-world"): the grid of
+            world tiles. Stamped once, on the control group. */}
+        <div className="grid sm:grid-cols-2 gap-4" data-primary-move="start-world">
           {STUDIO_WORLDS.map((world, i) => {
             const tone = PASTEL[world.tone];
             const sessions = world.count(data);
@@ -172,10 +177,19 @@ export default function PracticeStudioTab() {
                     {t(`practice.world.${world.key}.skill`)}
                   </span>
                   <span className="mt-1.5 flex items-center gap-1 text-[11.5px] font-bold" style={{ color: world.tab ? "var(--arbor-clay-deep)" : "var(--arbor-lav-ink)" }}>
-                    <Icon name={world.tab ? "arrow_forward" : "sports_esports"} size={13} className="rtl:-scale-x-100" />
+                    {/* CR-13: the arrow used `rtl:-scale-x-100`, a variant this
+                        build never emitted — the glyph pointed right on a
+                        right-to-left page, i.e. backwards. `isRtl` is already
+                        resolved above from the UI language, so mirror inline
+                        where nothing can drop the rule. */}
+                    <Icon
+                      name={world.tab ? "arrow_forward" : "sports_esports"}
+                      size={13}
+                      style={world.tab && isRtl ? { transform: "scaleX(-1)" } : undefined}
+                    />
                     {world.tab
                       ? t("practice.studio.openDirect")
-                      : t("practice.studio.openKidmode", { world: world.kidName })}
+                      : t("practice.studio.openKidmode", { world: t(world.kidNameKey) })}
                   </span>
                 </span>
               </motion.button>
@@ -184,34 +198,13 @@ export default function PracticeStudioTab() {
         </div>
       </section>
 
-      {/* Related parent spines — practice feeds the clinical picture */}
-      <div className="flex gap-2 flex-wrap">
-        <button
-          onClick={() => setActiveTab("language")}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 min-h-[38px] text-[12px] font-bold transition active:scale-[0.98] focus:outline-none focus-visible:ring-2"
-          style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink-soft)", border: "1px solid var(--arbor-rule)" }}
-        >
-          <Icon name="forum" size={15} />
-          {t("nav.tab.language")}
-        </button>
-        <button
-          onClick={() => setActiveTab("daily-play")}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 min-h-[38px] text-[12px] font-bold transition active:scale-[0.98] focus:outline-none focus-visible:ring-2"
-          style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink-soft)", border: "1px solid var(--arbor-rule)" }}
-        >
-          <Icon name="playing_cards" size={15} />
-          {t("nav.tab.daily-play")}
-        </button>
-        <button
-          onClick={() => setActiveTab("copilot")}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 min-h-[38px] text-[12px] font-bold transition active:scale-[0.98] focus:outline-none focus-visible:ring-2"
-          style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink-soft)", border: "1px solid var(--arbor-rule)" }}
-        >
-          <Icon name="monitoring" size={15} />
-          {t("nav.tab.copilot")}
-        </button>
-      </div>
-
+      {/* OBJ-PRACTICE-01: a three-pill "related parent spines" row (Language,
+          Daily Play, Development Check) used to sit here. #/practice declares a
+          moduleBudget of 2 and a single primary move ("start-world"); a row of
+          three sideways doors under the world grid is a third module and three
+          competing moves, and every one of those destinations already has its
+          own hub door in the sidebar and the More sheet. Deleted, not hidden —
+          nothing became unreachable (routeReachability.test.ts). */}
       {/* Register note — what practice is and is not */}
       <p className="text-[11px]" style={{ color: "var(--arbor-faint)" }}>
         {t("practice.studio.note")}
