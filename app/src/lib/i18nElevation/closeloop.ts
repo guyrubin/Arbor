@@ -82,6 +82,15 @@ export const en: Record<string, string> = {
   "elev.closeloop.hm.matched": "Closest to what you have been noting",
   "elev.closeloop.hm.allGuides": "All guides ({n})",
   "elev.closeloop.hm.fewer": "Show fewer",
+
+  // ── Builder E2 · OBJ-BEH-09: the Routines card on Plans. A reusable
+  //    co-regulation checklist is part of running a plan, so its strings live
+  //    with the rest of the close-the-loop seam rather than in a new module.
+  "elev.closeloop.routines.title": "Routines",
+  "elev.closeloop.routines.empty": "Build reusable routines like Morning or Bedtime — calm, predictable steps you can reset each day.",
+  "elev.closeloop.routines.newName": "New routine name…",
+  "elev.closeloop.routines.addStep": "Add a step…",
+  "elev.closeloop.routines.stepsDone": "{done} of {total} done",
 };
 
 export const he: Record<string, string> = {
@@ -128,4 +137,11 @@ export const he: Record<string, string> = {
   "elev.closeloop.hm.matched": "הכי קרוב למה שתיעדתם לאחרונה",
   "elev.closeloop.hm.allGuides": "כל המדריכים ({n})",
   "elev.closeloop.hm.fewer": "להציג פחות",
+
+  // ── Builder E2 · OBJ-BEH-09
+  "elev.closeloop.routines.title": "שגרות",
+  "elev.closeloop.routines.empty": "בנו שגרות חוזרות כמו בוקר או שעת שינה — צעדים רגועים וצפויים שאפשר לאפס כל יום.",
+  "elev.closeloop.routines.newName": "שם השגרה החדשה…",
+  "elev.closeloop.routines.addStep": "להוסיף צעד…",
+  "elev.closeloop.routines.stepsDone": "{done} מתוך {total} הושלמו",
 };

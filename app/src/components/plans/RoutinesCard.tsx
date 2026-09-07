@@ -39,10 +39,10 @@ export default function RoutinesCard() {
   return (
     <div className={`${cardCls} p-6 space-y-4`}>
       <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}>
-        <ListChecks className="w-3.5 h-3.5" /> Routines
+        <ListChecks className="w-3.5 h-3.5" /> {t("elev.closeloop.routines.title")}
       </span>
 
-      {routines.length === 0 && <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>Build reusable routines like “Morning” or “Bedtime” with calm, predictable steps.</p>}
+      {routines.length === 0 && <p className="text-xs" style={{ color: "var(--arbor-muted)" }} dir="auto">{t("elev.closeloop.routines.empty")}</p>}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {routines.map((r) => {
@@ -52,7 +52,7 @@ export default function RoutinesCard() {
               <div className="flex items-center justify-between">
                 <strong className="text-sm" style={{ color: "var(--arbor-ink)" }}>{r.name}</strong>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px]" style={{ color: "var(--arbor-muted)" }}>{done}/{r.steps.length}</span>
+                  <span className="text-[10px]" style={{ color: "var(--arbor-muted)" }} dir="auto">{t("elev.closeloop.routines.stepsDone", { done, total: r.steps.length })}</span>
                   <button onClick={() => reset(r)} aria-label={t("aria.resetRoutine")} style={{ color: "var(--arbor-muted)" }}><RotateCcw className="w-3 h-3" /></button>
                   <button onClick={() => void col.remove(r.id)} aria-label={t("aria.deleteRoutine")} style={{ color: "var(--arbor-muted)" }}><Trash2 className="w-3 h-3" /></button>
                 </div>
@@ -72,7 +72,7 @@ export default function RoutinesCard() {
                   value={stepText[r.id] || ""}
                   onChange={(e) => setStepText((s) => ({ ...s, [r.id]: e.target.value }))}
                   onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addStep(r))}
-                  placeholder="Add a step…"
+                  placeholder={t("elev.closeloop.routines.addStep")}
                   className="flex-1 rounded-lg px-2 py-1 text-[11px] focus:outline-none bg-white"
                   style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
                 />
@@ -84,7 +84,7 @@ export default function RoutinesCard() {
       </div>
 
       <form onSubmit={addRoutine} className="flex gap-2">
-        <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="New routine name…" className="flex-1 rounded-xl px-3 py-2 text-sm focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
+        <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder={t("elev.closeloop.routines.newName")} className="flex-1 rounded-xl px-3 py-2 text-sm focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
         <button type="submit" className="text-white font-extrabold px-3 rounded-xl flex items-center" style={{ background: "var(--arbor-clay)" }}><Plus className="w-4 h-4" /></button>
       </form>
     </div>
