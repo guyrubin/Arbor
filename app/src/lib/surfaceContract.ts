@@ -283,10 +283,11 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
     route: "bedtime-stories", hub: "stories", depth: 1,
     job: "A tonight-only story grown from her real day, read aloud together.",
     primaryMove: "generate-bedtime-story", moduleBudget: 2, demotionTarget: "stories",
-    // AP-057: day-rooted, generate-and-discard. The plan wants "co-read
-    // logged" — no bedtime/co-read source exists in buildTimeline; "none"
-    // until one is added.
-    threadWrite: "none",
+    // KID-10: "Good night" now writes ONE parent-provenance moment through
+    // ArborContext's addMoment seam, so the ritual lands in `behaviorLogs` and
+    // buildTimeline ingests it. Generate-and-discard is unchanged — the STORY
+    // is still never persisted; only the parent's own line that they read one.
+    threadWrite: "behaviorLogs",
   },
   {
     route: "comics", hub: "stories", depth: 1,

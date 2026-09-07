@@ -32,6 +32,7 @@ import { isolate } from "../../lib/i18n";
 import type { BedtimeStory } from "../../types";
 import { cardCls } from "../ui/kit";
 import { ShareButton } from "../ui/ShareButton";
+import { SpeakButton } from "../ui/SpeakButton";
 import type { ShareCardOpts } from "../../lib/shareCard";
 
 // ── Day event input ────────────────────────────────────────────────────────────
@@ -49,7 +50,7 @@ const emptyEvent = (): LocalDayEvent => ({
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function BedtimeStoriesTab() {
-  const { childProfile, behaviorLogs } = useArbor();
+  const { childProfile, behaviorLogs, addMoment } = useArbor();
   const { aiLang, t } = useLanguage();
   const { toast } = useToast();
   const he = aiLang === "he";
@@ -132,6 +133,26 @@ export default function BedtimeStoriesTab() {
     setStory(null);
     setEscalated(false);
     setPageIndex(0);
+  };
+
+  /**
+   * KID-10: "Good night" used to be a bare reset — the one surface whose whole
+   * point is a shared ritual left no trace of the ritual, and the surface
+   * contract said so (`threadWrite: "none"`). It now writes ONE parent-
+   * provenance moment through the existing `addMoment` seam (ArborContext),
+   * the same seam Today's quick capture uses, so the row lands in
+   * `behaviorLogs` and the timeline ingests it with no new store and no new
+   * GDPR surface. Generate-and-discard is untouched: the STORY is still not
+   * persisted — only the parent's own line that they read one tonight.
+   */
+  const goodNight = () => {
+    const title = story?.title?.trim();
+    const line = title
+      ? t("elev.bedtime.goodnight.moment.titled").replace("{title}", title)
+      : t("elev.bedtime.goodnight.moment");
+    const written = addMoment(line);
+    if (written) toast(t("elev.bedtime.goodnight.saved"), "success");
+    reset();
   };
 
   // E8/F-10: display copy below bidi-isolates each interpolation of the name
@@ -250,6 +271,14 @@ export default function BedtimeStoriesTab() {
             >
               {currentPage}
             </p>
+            {/* KID-10: the surface contract's job sentence says "read aloud
+                together" and the reader had no read-aloud control, while
+                #/stories has carried one per beat for months. Same component,
+                same engine, same interrupt model (HeroScenePlayer:119). One per
+                PAGE, so the control follows what is actually on screen. */}
+            <div className="pt-3" data-testid="bedtime-page-speak">
+              <SpeakButton text={currentPage} lang={aiLang} size="md" className="touch-target" />
+            </div>
           </motion.div>
         </AnimatePresence>
 
@@ -270,7 +299,7 @@ export default function BedtimeStoriesTab() {
           </button>
           {isLast ? (
             <button
-              onClick={reset}
+              onClick={goodNight}
               className="inline-flex items-center gap-1.5 text-[13px] font-bold rounded-xl px-4 py-2.5 min-h-[44px] transition"
               style={{
                 background: "var(--arbor-green-soft)",
