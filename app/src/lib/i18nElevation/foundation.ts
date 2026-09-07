@@ -127,6 +127,13 @@ export const en: Record<string, string> = {
 
   // TJB-08 · the in-place dictation strip inside QuickLogModal.
   "elev.ql.voice.stop": "Stop",
+
+  // ── Builder I · shell chrome (object backlog, 2026-09-07) ────────────────
+  // OBJ-SHELL-01: the mobile strip's focus label was the English literal
+  // "Language transition" — the one word in that row that never translated.
+  // It is a PRESENCE fact about the family (more than one language at home),
+  // never a finding about the child.
+  "elev.shell.focus.multilingual": "Growing up multilingual",
 };
 
 export const he: Record<string, string> = {
@@ -209,4 +216,7 @@ export const he: Record<string, string> = {
   "elev.today.receipt.notToday": "אמרתם שלא היום. זה נכנס לצעד שארבור תציע בפעם הבאה — ולא נדרש מכם דבר נוסף.",
 
   "elev.ql.voice.stop": "עצירה",
+
+  // ── Builder I · shell chrome (object backlog, 2026-09-07) ────────────────
+  "elev.shell.focus.multilingual": "גדל/ה עם יותר משפה אחת",
 };

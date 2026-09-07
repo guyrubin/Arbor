@@ -19,7 +19,7 @@ import { ageLabel } from "../../lib/childAge";
  * RTL: all directional layout uses logical CSS properties so the chip and
  * popover render correctly under dir=rtl (Hebrew). No raw hex values.
  */
-export default function TopbarKidSwitcher() {
+export default function TopbarKidSwitcher({ maxWidth = "180px" }: { maxWidth?: string } = {}) {
   const { profiles, activeChild, setActiveChild } = useProfile();
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
@@ -73,7 +73,7 @@ export default function TopbarKidSwitcher() {
           color: "var(--arbor-muted)",
           minWidth: "44px",      /* WCAG AA touch target */
           minHeight: "44px",
-          maxWidth: "180px",
+          maxWidth,
           boxSizing: "border-box",
         }}
       >

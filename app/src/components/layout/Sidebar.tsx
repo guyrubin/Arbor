@@ -12,7 +12,7 @@ import { SECTIONS, sectionForTab, primaryTabOf, type NavBadge } from "../../lib/
 /** Resolve the generalized sidebar badge to its display string from app state.
  *  Returns "" when the badge should not render. Clinical firewall: the milestone
  *  badge is a COUNT of parent-noticed milestones, never a percentage/score. */
-function badgeText(
+export function badgeText(
   badge: NavBadge | undefined,
   state: { milestonesNoticed: number; plansCount: number; unreadCoachCount: number }
 ): string {

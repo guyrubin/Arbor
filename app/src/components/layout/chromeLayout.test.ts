@@ -33,6 +33,8 @@ const topbar = readFileSync(path.join(here, "Topbar.tsx"), "utf8");
 const shell = readFileSync(path.join(here, "Shell.tsx"), "utf8");
 const mobileNav = readFileSync(path.join(here, "MobileNav.tsx"), "utf8");
 const safetyRing = readFileSync(path.join(here, "SafetyRing.tsx"), "utf8");
+const childContextHeader = readFileSync(path.join(here, "ChildContextHeader.tsx"), "utf8");
+const profileSwitcher = readFileSync(path.join(here, "..", "profile", "ProfileSwitcher.tsx"), "utf8");
 const indexCss = readFileSync(path.join(here, "..", "..", "index.css"), "utf8");
 // Drop comments so prose about a banned pattern cannot trip (or satisfy) a scan.
 const stripComments = (code: string) => code.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
@@ -177,5 +179,139 @@ describe("UC-8b — the sticky sub-tab row is flush with the scrollport", () => 
     expect(declared[1]).toBeCloseTo(Number(md) * 0.25, 5);
     // the md override must sit in a min-width:768px media query (Tailwind's md)
     expect(indexCss).toMatch(/@media \(min-width: 768px\)[\s\S]{0,160}--arbor-main-pt/);
+  });
+});
+
+/* ── IA-03 / IA-16 / MOB-26 · the mobile chrome stack fits its budget ────── */
+
+/**
+ * Measured at 390 (ledger-SHELL Screen A): 260 px of chrome stood between the
+ * top of the scrollport and the hub's own h1 — a 34 px brand row, a 72 px
+ * identity/accessory strip and an 80 px sticky pill row — on a 844 px screen.
+ * The budget is 200. Two of the three rows were structural: the brand row said
+ * "Arbor" to somebody already inside Arbor, and the strip stacked into two
+ * boxes below `sm` because ChildContextHeader was `flex-col sm:flex-row`.
+ *
+ * This is a source guard on the STRUCTURE that produced the 260 (one row, no
+ * brand row, mark folded in). The pixel re-measure is the orchestrator's.
+ */
+describe("IA-03 / MOB-26 — the mobile chrome is one strip, not three rows", () => {
+  it("the standalone lg:hidden brand row is gone from Shell", () => {
+    const src = stripComments(shell);
+    expect(src).not.toMatch(/<div className="flex lg:hidden items-center gap-2\.5 mb-5">/);
+    // …and the wordmark it carried does not reappear anywhere in the shell.
+    expect(src).not.toMatch(/>Arbor</);
+    // negative control: the scan does fire on the shipped markup.
+    const preFix = '<div className="flex lg:hidden items-center gap-2.5 mb-5">\n <ArborMark size={34} />\n <span>Arbor</span>';
+    expect(preFix).toMatch(/<div className="flex lg:hidden items-center gap-2\.5 mb-5">/);
+  });
+
+  it("the 28 px mark folds into the strip's identity slot instead", () => {
+    const src = stripComments(shell);
+    const identity = src.slice(src.indexOf("identity={"), src.indexOf("actions={"));
+    expect(identity).toContain("<ArborMark size={28} />");
+    expect(src.match(/<ArborMark/g) ?? []).toHaveLength(1);
+  });
+
+  it("ChildContextHeader renders ONE row at every width (it stacked below sm)", () => {
+    const src = stripComments(childContextHeader);
+    expect(src).toContain("flex flex-row items-center justify-between");
+    expect(src).not.toContain("flex-col sm:flex-row");
+    // negative control: the retired shape is what the scan is looking for.
+    expect("flex flex-col sm:flex-row sm:items-center").toContain("flex-col sm:flex-row");
+  });
+
+  it("the strip keeps exactly its two accessories — Settings left for the sheet", () => {
+    const src = stripComments(shell);
+    const actions = src.slice(src.indexOf("actions={"), src.indexOf("}/>"));
+    expect(actions).toContain("<SafetyRing />");
+    expect(actions).toContain("<KidModeButton compact />");
+    expect(actions).toContain('requestOpenSearch("mobile")');
+    expect(actions).not.toContain("setSettingsOpen(true)");
+  });
+
+  it("the sticky pill row no longer spends a whole extra row of margin", () => {
+    const bare = stripComments(shell);
+    const stickyRow = bare.slice(bare.indexOf('role="tablist"') - 400, bare.indexOf('role="tablist"') + 600);
+    expect(stickyRow).toContain("mb-4");
+    expect(stickyRow).not.toContain("mb-6");
+  });
+});
+
+/* ── IA-04 / IA-17 · one child switcher per viewport ─────────────────────── */
+
+describe("IA-04 / IA-17 — exactly one child switcher at every width", () => {
+  it("the mobile strip's identity slot IS the switcher (mobile had none)", () => {
+    const src = stripComments(shell);
+    expect(src).toContain('import TopbarKidSwitcher from "./TopbarKidSwitcher";');
+    const identity = src.slice(src.indexOf("identity={"), src.indexOf("actions={"));
+    expect(identity).toContain('<TopbarKidSwitcher maxWidth="128px" />');
+    // the read-only "Caring for {name}" line it replaces is gone
+    expect(src).not.toContain('t("top.caringFor")');
+  });
+
+  it("the mobile mount is lg:hidden and the topbar mount is lg-only — never both", () => {
+    const src = stripComments(shell);
+    const header = src.slice(src.indexOf("<ChildContextHeader"), src.indexOf("}/>"));
+    expect(header).toContain('className="lg:hidden"');
+    expect(stripComments(topbar)).toMatch(/className="hidden lg:flex/);
+    expect(stripComments(topbar)).toContain("<TopbarKidSwitcher />");
+  });
+
+  it("the sidebar card is identity now — no second popover over the same context", () => {
+    const src = stripComments(profileSwitcher);
+    expect(src).not.toContain("setActiveChild");
+    expect(src).not.toContain("AddChildModal");
+    expect(src).not.toContain("ChevronDown");
+    // …while the capabilities that were NOT duplicated stay put (law 6).
+    expect(src).toContain("<ProfileEditDrawer");
+    expect(src).toContain("<FamilyGlanceCard />");
+    // negative control: switching and add-child live in the surviving switcher.
+    const chip = stripComments(readFileSync(path.join(here, "TopbarKidSwitcher.tsx"), "utf8"));
+    expect(chip).toContain("setActiveChild(p.id)");
+    expect(chip).toContain("<AddChildModal");
+  });
+});
+
+/* ── IA-21 · the hub one-liner reaches the phone ─────────────────────────── */
+
+describe("IA-21 — hub one-liners are no longer desktop-only", () => {
+  it("Shell renders nav.sub.<hub> below lg, where there is no topbar to carry it", () => {
+    const src = stripComments(shell);
+    expect(src).toMatch(/<p className="lg:hidden[^"]*"[\s\S]{0,200}t\("nav\.sub\." \+ section\.id, \{ name: childProfile\.name \}\)/);
+  });
+
+  it("it is the SAME key the topbar uses — one sentence per hub, not two", () => {
+    expect(stripComments(topbar)).toContain('t("nav.sub." + section.id, { name: childProfile.name })');
+  });
+
+  it("EN and HE exist for all ten hubs, so nothing falls back to a raw key", () => {
+    const i18n = readFileSync(path.join(here, "..", "..", "lib", "i18n.ts"), "utf8");
+    const nav = readFileSync(path.join(here, "..", "..", "lib", "navigation.ts"), "utf8");
+    const hubs = [...nav.matchAll(/^\s{4}id: "([a-z-]+)",$/gm)].map((m) => m[1]);
+    expect(hubs).toHaveLength(10);
+    for (const hub of hubs) {
+      expect((i18n.match(new RegExp('"nav\\.sub\\.' + hub + '":', "g")) ?? []).length, hub).toBe(2);
+    }
+  });
+});
+
+/* ── OBJ-SHELL-01 · the last English literal in the strip ────────────────── */
+
+describe("OBJ-SHELL-01 — the focus label is a key, not an English literal", () => {
+  it("Shell reads elev.shell.focus.multilingual", () => {
+    const src = stripComments(shell);
+    expect(src).not.toContain('"Language transition"');
+    expect(src).toContain('t("elev.shell.focus.multilingual")');
+  });
+
+  it("the key lands in BOTH locales", () => {
+    const foundation = readFileSync(path.join(here, "..", "..", "lib", "i18nElevation", "foundation.ts"), "utf8");
+    expect((foundation.match(/"elev\.shell\.focus\.multilingual":/g) ?? []).length).toBe(2);
+    const he = foundation.slice(foundation.indexOf("export const he"));
+    expect(he).toContain('"elev.shell.focus.multilingual":');
+    // the Hebrew is transcreated, not the English string in Hebrew quotes
+    expect(he.slice(he.indexOf('"elev.shell.focus.multilingual":'), he.indexOf('"elev.shell.focus.multilingual":') + 120))
+      .toMatch(/[\u0590-\u05FF]/);
   });
 });

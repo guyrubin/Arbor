@@ -44,6 +44,10 @@ import PostCaptureCoachStrip from "../overview/PostCaptureCoachStrip";
 import SyncStatusBanner from "../ui/SyncStatusBanner";
 // GP-01: the months-precise age label is THE parent-facing age render.
 import { ageLabel } from "../../lib/childAge";
+// IA-04 / IA-17: ONE child switcher per viewport — the topbar chip on lg+,
+// the same component in the mobile strip identity slot below lg.
+import TopbarKidSwitcher from "./TopbarKidSwitcher";
+import { SETTINGS_OPEN_EVENT } from "./settingsBus";
 
 // Existing leaf views (preserved).
 const OverviewTab = lazy(() => import("../tabs/OverviewTab"));
@@ -194,7 +198,10 @@ export default function Shell() {
   const ActiveTabComponent = tabRegistry[activeTab];
   const section = sectionForTab(activeTab);
   const focusLabel = childProfile.languages.length > 1
-    ? "Language transition"
+    // OBJ-SHELL-01: this was the English literal "Language transition" — the
+    // one string in the strip that stayed English in Hebrew, and a phrase that
+    // framed a multilingual home as a problem being managed. Keyed, EN + HE.
+    ? t("elev.shell.focus.multilingual")
     : (childProfile.challenges?.[0]?.replace(/\s*\(.*\)/, "").trim() || "");
 
   const [searchOpen, setSearchOpen] = useState(false);
@@ -234,11 +241,20 @@ export default function Shell() {
       if (!searchOpenRef.current) track("search_open", { surface });
       setSearchOpen(true);
     };
+    // IA-03: the mobile Settings door lives in the More sheet now, which
+    // cannot reach this state directly (Shell renders MobileNav). Same seam as
+    // search, same kid gate — a settings panel is parent-only chrome.
+    const onSettingsRequest = () => {
+      if (isKidModeActive()) return;
+      setSettingsOpen(true);
+    };
     window.addEventListener("keydown", onKey);
     window.addEventListener(SEARCH_OPEN_EVENT, onOpenRequest);
+    window.addEventListener(SETTINGS_OPEN_EVENT, onSettingsRequest);
     return () => {
       window.removeEventListener("keydown", onKey);
       window.removeEventListener(SEARCH_OPEN_EVENT, onOpenRequest);
+      window.removeEventListener(SETTINGS_OPEN_EVENT, onSettingsRequest);
     };
   }, []);
 
@@ -300,25 +316,40 @@ export default function Shell() {
             as a sibling of the grid — it carries its own .arbor-play scope and does
             NOT inherit from this <main>. See index.css .arbor-parent block. */}
         <main ref={mainRef} className="arbor-parent w-full min-w-0 px-4 py-5 pb-24 sm:px-5 md:px-6 md:py-8 lg:pb-10 xl:px-8 2xl:px-10 overflow-y-auto overflow-x-hidden flex-1 min-h-0">
-          {/* Compact header (sidebar is hidden below lg, so the logo lives here) */}
-          <div className="flex lg:hidden items-center gap-2.5 mb-5">
-            <ArborMark size={34} />
-            <span className="text-xl font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Arbor</span>
-          </div>
+          {/* IA-03 / IA-16 / MOB-26 — ONE mobile chrome strip, not three rows.
+              The separate 34 px brand row is GONE: the 28 px mark folds into
+              the strip below, which is where the eye already goes. The strip
+              itself is one 44 px row (the accessory buttons' own height), so
+              the whole stack above the hub's h1 fits the ≤ 200 px budget it
+              blew by 60 px. Settings moved into the More-sheet header, which
+              already hosts Safety and Search — the sheet is reachable from
+              every scroll position, the strip is not (IA-24, same defect).
 
-          {/* Mobile/tablet workspace accessories strip. On lg+ the topbar is the
-              self-sufficient control band (search · Kid Mode · rail toggle · bell ·
-              child switcher), so this row would duplicate it — it is hidden there.
-              On mobile/tablet (topbar starts at lg) this remains the control surface. */}
+              IA-04 / IA-17 — the identity slot IS the child switcher now.
+              Mobile had no way to switch child at all while desktop had two;
+              TopbarKidSwitcher already renders avatar + name + the whole
+              ProfileContext popover, so mounting it here removes a read-only
+              "Caring for {name}" line and adds the missing capability in the
+              same width. Capped at 128 px so a long name cannot push the
+              accessories past 390. */}
           <ChildContextHeader
             className="lg:hidden"
-            identity={<span className="text-xs font-medium flex items-center gap-1.5 min-w-0" style={{ color: "var(--arbor-muted)" }}>
+            identity={<>
+              <ArborMark size={28} />
               {/* IA-25: no pulsing "live" dot — nothing here is live, and a
                   pulse reads as presence (law 4). The child avatar is the mark. */}
-              <span className="truncate">{t("top.caringFor")} <strong style={{ color: "var(--arbor-ink)" }}>{childProfile.name} · {ageLabel(childProfile, t)}</strong>
-              {focusLabel && <span className="hidden sm:inline"> · {t("top.focus")}: <strong style={{ color: "var(--arbor-clay-deep)" }}>{focusLabel}</strong></span>}</span>
-            </span>}
-            actions={<div className="flex w-full sm:w-auto items-center gap-2 overflow-x-auto no-scrollbar">
+              <TopbarKidSwitcher maxWidth="128px" />
+              {/* GP-01: the months-precise age label, still on the strip — but
+                  only from `sm` up. At 390 the row is mark + switcher + three
+                  44 px accessories and there is no width left for it; the age
+                  is one tap away in the switcher's own popover (profile.ageLine)
+                  and on the Profile hub, so nothing is lost on a phone. */}
+              <span className="hidden sm:inline truncate text-xs font-medium min-w-0" style={{ color: "var(--arbor-muted)" }}>
+                {ageLabel(childProfile, t)}
+                {focusLabel && <> · {t("top.focus")}: <strong style={{ color: "var(--arbor-clay-deep)" }}>{focusLabel}</strong></>}
+              </span>
+            </>}
+            actions={<div className="flex items-center gap-2">
               {/* IA-01: Safety life-ring — first accessory, one tap from every hub. */}
               <SafetyRing />
               {/* Capture ("log a moment") is NOT a global chrome button — it has
@@ -328,28 +359,19 @@ export default function Shell() {
               {/* UC-1 + main consolidation: the whole-app language switch is canonical
                   inside Settings ONLY (see languageSettingsCanonical guard test). On
                   desktop it lives in the sidebar account-row popover; on mobile the
-                  lg:hidden Settings button below opens the same SettingsModal language
-                  panel — so the mobile language path is preserved without a duplicate
+                  More-sheet Settings row opens the same SettingsModal language panel
+                  — so the mobile language path is preserved without a duplicate
                   in-content toggle. */}
               <button
                 onClick={() => requestOpenSearch("mobile")}
                 aria-label={t("top.search")}
                 title="Search (Ctrl/Cmd+K)"
-                className="flex flex-shrink-0 items-center justify-center gap-1.5 px-3 py-2 min-h-[44px] min-w-[44px] rounded-xl text-[11px] font-bold transition bg-white"
+                className="flex flex-shrink-0 items-center justify-center w-11 h-11 rounded-xl transition bg-white"
                 style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
               >
-                <Icon name="search" size={16} /> <span className="hidden sm:inline">{t("top.search")}</span>
+                <Icon name="search" size={18} />
               </button>
               <KidModeButton compact />
-              <button
-                onClick={() => setSettingsOpen(true)}
-                aria-label={t("aria.settings")}
-                title="Settings"
-                className="lg:hidden flex flex-shrink-0 items-center justify-center w-11 h-11 rounded-xl transition bg-white"
-                style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
-              >
-                <Icon name="settings" size={18} />
-              </button>
             </div>
           }/>
 
@@ -363,7 +385,7 @@ export default function Shell() {
             <div
               role="tablist"
               aria-label={`${section.label} sections`}
-              className="sticky z-20 flex gap-2 overflow-x-auto mb-6 -mx-1 px-1 pb-2 no-scrollbar"
+              className="sticky z-20 flex gap-2 overflow-x-auto mb-4 -mx-1 px-1 pb-2 no-scrollbar"
               style={{
                 background: "var(--arbor-paper)",
                 /* <main> is the scrollport and carries a top padding, so a plain
@@ -399,6 +421,17 @@ export default function Shell() {
               })}
             </div>
           )}
+
+          {/* IA-21 — the hub one-liner was desktop-only. Topbar renders
+              `nav.sub.<hub>` in the control band on lg+, and below lg there is
+              no topbar at all, so a phone got the hub's pills and its h1 with
+              nothing saying what the hub is FOR. Same key, same sentence, same
+              position relative to the content (immediately above it), rendered
+              only where the topbar cannot. EN + HE already exist for all ten
+              hubs in lib/i18n.ts — no new string, and none invented. */}
+          <p className="lg:hidden text-[11px] leading-snug mb-3 min-w-0" style={{ color: "var(--arbor-muted)" }}>
+            {t("nav.sub." + section.id, { name: childProfile.name })}
+          </p>
 
           {/* W0.5+W0.6: global freshness banner — offline / sync-error, mounted
               ONCE here so 18 useChildCollection screens don't each grow one.

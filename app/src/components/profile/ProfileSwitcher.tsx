@@ -1,33 +1,43 @@
 import React, { useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { ChevronDown, Plus, Check, Pencil } from "lucide-react";
+import { Pencil } from "lucide-react";
 import { useProfile } from "../../context/ProfileContext";
 import { useLanguage } from "../../context/LanguageContext";
-import AddChildModal from "./AddChildModal";
 import ProfileEditDrawer from "./ProfileEditDrawer";
 import { Avatar } from "../ui/Avatar";
 import FamilyGlanceCard from "./FamilyGlanceCard";
 // GP-01: the months-precise age label is THE parent-facing age render.
 import { ageLabel } from "../../lib/childAge";
 
+/**
+ * IA-04 / IA-17 — the sidebar card is IDENTITY, not a second switcher.
+ *
+ * At 1280 the app offered two child switchers eight centimetres apart: this
+ * card and the Topbar chip (TopbarKidSwitcher), each with its own popover,
+ * its own "Add child" row and its own open state, over the same
+ * ProfileContext. Two controls for one job is the defect; the chip wins
+ * because it is the one the mobile strip mounts too, so ONE component is
+ * the switcher at every width.
+ *
+ * Nothing is lost. Switching and "Add child" both live in the chip, one row
+ * up and always visible; editing the profile is a different capability and
+ * keeps its button here; the family glance is unchanged. What goes away is
+ * the duplicate popover, not a door.
+ */
 export default function ProfileSwitcher() {
-  const { profiles, activeChild, setActiveChild } = useProfile();
+  const { activeChild } = useProfile();
   const { t } = useLanguage();
-  const [open, setOpen] = useState(false);
-  const [showAdd, setShowAdd] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
 
   return (
     <div className="relative">
       <div className="rounded-2xl p-3 flex items-center justify-between gap-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-        <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-3 flex-1 min-w-0 text-start group">
+        <div className="flex items-center gap-3 flex-1 min-w-0 text-start">
           <span className="flex-shrink-0"><Avatar name={activeChild.name} photoURL={activeChild.photoUrl} size={36} ring /></span>
           <div className="min-w-0">
             <h4 className="text-sm font-bold leading-tight truncate" dir="auto" style={{ color: "var(--arbor-ink)" }}>{activeChild.name}</h4>
             <p className="text-[11px] whitespace-nowrap" dir="auto" style={{ color: "var(--arbor-muted)" }}>{t("profile.ageLine", { age: ageLabel(activeChild, t) })}</p>
           </div>
-          <ChevronDown className={`w-4 h-4 flex-shrink-0 transition-transform ${open ? "rotate-180" : ""}`} style={{ color: "var(--arbor-muted)" }} />
-        </button>
+        </div>
         {/* VIS-2/VIS-3: icon-only → min 44×44 hit area + explicit aria-label */}
         <button
           onClick={() => setShowEdit(true)}
@@ -46,58 +56,10 @@ export default function ProfileSwitcher() {
         {t("elev.growthTruth.agechip.switcher", { age: ageLabel(activeChild, t) })}
       </p>
 
-      <AnimatePresence>
-        {open && (
-          <>
-            <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-            <motion.div
-              initial={{ opacity: 0, y: -6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              className="absolute left-0 right-0 top-full mt-2 z-20 rounded-2xl p-1.5 bg-white"
-              style={{ border: "1px solid var(--arbor-rule)", boxShadow: "0 12px 32px rgba(41,51,63,0.12)" }}
-            >
-              {profiles.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => {
-                    setActiveChild(p.id);
-                    setOpen(false);
-                  }}
-                  className="w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-start transition"
-                  style={{ background: p.id === activeChild.id ? "var(--arbor-paper-deep)" : "transparent" }}
-                >
-                  <span className="flex-shrink-0"><Avatar name={p.name} photoURL={p.photoUrl} size={28} /></span>
-                  <div className="flex-1 min-w-0">
-                    <span className="text-sm font-bold truncate block" dir="auto" style={{ color: "var(--arbor-ink)" }}>{p.name}</span>
-                    <span className="text-[10px] whitespace-nowrap" dir="auto" style={{ color: "var(--arbor-muted)" }}>{t("profile.ageLine", { age: ageLabel(p, t) })}</span>
-                  </div>
-                  {p.id === activeChild.id && <Check className="w-4 h-4" style={{ color: "var(--arbor-clay)" }} />}
-                </button>
-              ))}
-              <button
-                onClick={() => {
-                  setOpen(false);
-                  setShowAdd(true);
-                }}
-                className="w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-start transition mt-1"
-                style={{ color: "var(--arbor-green-ink)", borderTop: "1px solid var(--arbor-rule)" }}
-              >
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "var(--arbor-green-soft)" }}>
-                  <Plus className="w-4 h-4" />
-                </div>
-                <span className="text-sm font-bold">{t("ac.add")}</span>
-              </button>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-
       {/* C3 — Family glance: shown below the switcher for 2+ child households.
           Reads only the existing DevScore snapshot per child — no new data. */}
       <FamilyGlanceCard />
 
-      <AddChildModal open={showAdd} onClose={() => setShowAdd(false)} />
       <ProfileEditDrawer open={showEdit} onClose={() => setShowEdit(false)} />
     </div>
   );
