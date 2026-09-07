@@ -173,15 +173,21 @@ export default function SmartRemindersPanel() {
       transition={{ duration: 0.2 }}
       className="space-y-6 max-w-[680px]"
     >
-      {/* Back navigation */}
+      {/* Back navigation.
+          OBJ-SHELL-07: the button said "Back to Settings" and went to #/coach —
+          Ask Arbor, which is neither where the parent came from nor what the
+          label promised. There is no Settings ROUTE to go back to (Settings is
+          a modal), so the honest target is the hub that owns this surface:
+          Smart Reminders is one of Today's tools (navigation.ts SECTIONS
+          today.tools), and the label now says so. */}
       <button
-        onClick={() => setActiveTab("coach")}
+        onClick={() => setActiveTab("overview")}
         className="inline-flex items-center gap-2 font-bold text-sm rounded-full px-4"
-        style={{ minHeight: 44, color: GREEN, background: GREEN_SOFT }}
-        aria-label={t("sr.back")}
+        style={{ minHeight: 44, minWidth: 44, color: GREEN, background: GREEN_SOFT }}
+        aria-label={t("elev.sr.back")}
       >
         <Icon name="arrow_back" size={16} />
-        {t("sr.back")}
+        {t("elev.sr.back")}
       </button>
 
       {/* Header */}

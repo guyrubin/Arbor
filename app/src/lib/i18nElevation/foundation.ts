@@ -49,6 +49,11 @@ export const en: Record<string, string> = {
   "elev.pulse.care.briefReady": "A brief is ready to share",
   "elev.pulse.care.empty": "Bring in the people who help",
 
+  // ── OBJ-SHELL-07 · Smart Reminders: its own back label and its own
+  //    Settings-row verb. "Back to Settings" pointed at Ask Arbor.
+  "elev.sr.back": "Back to Today",
+  "elev.sr.open": "Open reminders",
+
   // ── OBJ-PROFILE-04 · a rate-limited ledger read is OUR queue, not the
   //    parent's connection. Never "something interrupted the connection".
   "elev.memory.catchingUp": "Arbor is catching up — try again in a minute.",
@@ -106,6 +111,8 @@ export const he: Record<string, string> = {
   "elev.pulse.care.briefReady": "סיכום מוכן לשיתוף",
   "elev.pulse.care.empty": "צרפו את האנשים שעוזרים בדרך",
 
+  "elev.sr.back": "חזרה למסך היום",
+  "elev.sr.open": "פתחו תזכורות",
   "elev.memory.catchingUp": "ארבור משלימה פער — נסו שוב בעוד רגע.",
   "elev.nav.linkMoved": "הקישור הזה עבר — הנה מסך היום.",
 
