@@ -109,7 +109,13 @@ function unmirroredDirectionalSites(): string[] {
 
 /** Post-fix count at OBJ-SHELL-03. RATCHET: lower it when you fix more; an
  *  increase is a new unmirrored glyph and must fail. */
-const UNMIRRORED_CEILING = 22;
+/* OBJ-TODAY-08 (Builder E1): the Day Windows and Smart Reminders back arrows
+   both carried `msr` only — computed transform `none` under dir=rtl, so "Back
+   to Today" pointed forward for a Hebrew parent on two of the three Today
+   tools. Both are mirrored now, so the ceiling drops 22 -> 20. The tree
+   measured 19 when this landed, but a concurrent builder's RTL work was
+   uncommitted in it, so 20 is the number this commit can actually vouch for. */
+const UNMIRRORED_CEILING = 20;
 
 describe("CR-13 · directional glyph ratchet", () => {
   it("negative control: an unmirrored chevron is what the scan counts", () => {

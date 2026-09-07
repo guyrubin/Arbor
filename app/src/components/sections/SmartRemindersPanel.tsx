@@ -190,7 +190,8 @@ export default function SmartRemindersPanel() {
         style={{ minHeight: 44, minWidth: 44, color: GREEN, background: GREEN_SOFT }}
         aria-label={t("elev.sr.back")}
       >
-        <Icon name="arrow_back" size={16} />
+        {/* OBJ-TODAY-08: mirrored like the Day Windows and WeeklyTab backs. */}
+        <Icon name="arrow_back" size={16} className="rtl:-scale-x-100" />
         {t("elev.sr.back")}
       </button>
 

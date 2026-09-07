@@ -80,7 +80,10 @@ export default function DayWindowsPanel() {
         style={{ minHeight: 44, color: GREEN, background: GREEN_SOFT }}
         aria-label={t("dw.back")}
       >
-        <Icon name="arrow_back" size={16} />
+        {/* OBJ-TODAY-08: `msr` alone left the glyph unmirrored — computed
+            transform was `none` in dir=rtl, so back pointed forward in
+            Hebrew. Same recipe as the WeeklyTab back icon. */}
+        <Icon name="arrow_back" size={16} className="rtl:-scale-x-100" />
         {t("dw.back")}
       </button>
 
