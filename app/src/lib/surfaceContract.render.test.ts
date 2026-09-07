@@ -181,3 +181,70 @@ describe("the check itself enforces what it claims", () => {
     expect(CHECK).toContain("which is not a route in Shell's tabRegistry");
   });
 });
+
+/* ── 4 · R24 · a stamp inside one branch is not a stamp ───────────────────── */
+
+/**
+ * #/coach declared `primaryMove: "ask"` and stamped it — inside `composerDocked
+ * &&`, the branch that only renders once the thread already HAS a user turn. On
+ * a fresh thread, which is the state a parent lands in, the page carried no
+ * primary-move stamp at all: the source count said 1, the DOM said 0, and the
+ * one route whose move is literally "ask" was unmeasurable at the moment it
+ * mattered. A source-counting gate cannot see that on its own, so the shape is
+ * pinned here instead.
+ *
+ * The fix is not a second stamp. ASK-2/COACH-4 already guarantee ONE composer
+ * element (`composerSection`) rendered in exactly one of two positions, so the
+ * stamps belong on that element: one occurrence in source, exactly one
+ * `data-primary-move` in the DOM in either state, and nothing to keep in sync.
+ */
+describe("R24 — the coach composer is stamped in BOTH of its positions", () => {
+  const COACH = read("src/components/tabs/CoachTab.tsx");
+  const composerSection = COACH.slice(
+    COACH.indexOf("const composerSection = ("),
+    COACH.indexOf("const composerDocked") >= 0 ? COACH.indexOf("return (\n    <motion.div") : COACH.length,
+  );
+
+  it("the stamps sit on the shared composer element, not on the docked wrapper", () => {
+    expect(composerSection, "the composerSection slice must really contain the composer").toContain("<textarea");
+    expect(composerSection).toContain('data-module="coach-composer"');
+    expect(composerSection).toContain('data-primary-move="ask"');
+  });
+
+  it("that element renders in the hero position AND in the docked position", () => {
+    expect(COACH).toContain("{!composerDocked && composerSection}");
+    expect(COACH).toMatch(/composerDocked && \(\s*\n\s*<div\s*\n\s*data-testid="coach-docked-composer"/);
+    expect(COACH).toMatch(/data-testid="coach-docked-composer"[\s\S]*?\{composerSection\}/);
+  });
+
+  it("exactly one of each stamp exists in the file, so the DOM can only ever hold one", () => {
+    expect((COACH.match(/data-primary-move="ask"/g) || []).length).toBe(1);
+    expect((COACH.match(/data-module="coach-composer"/g) || []).length).toBe(1);
+  });
+
+  it("negative control: the pre-fix shape — the stamp on the docked branch only", () => {
+    const PRE_FIX = [
+      "  const composerSection = (",
+      '        <section className={composerDocked ? "py-2.5" : "border-y py-5"}>',
+      "          <textarea />",
+      "        </section>",
+      "  );",
+      "      {!composerDocked && composerSection}",
+      "      {composerDocked && (",
+      "        <div",
+      '          data-module="coach-composer"',
+      '          data-primary-move="ask"',
+      '          data-testid="coach-docked-composer"',
+      "        >",
+      "          {composerSection}",
+      "        </div>",
+      "      )}",
+    ].join("\n");
+    // The file-wide count is 1 — which is why framework-check.mjs passed on it.
+    expect((PRE_FIX.match(/data-primary-move="ask"/g) || []).length).toBe(1);
+    // The shape check is what catches it: the stamp is not on the shared element.
+    const slice = PRE_FIX.slice(PRE_FIX.indexOf("const composerSection = ("), PRE_FIX.indexOf("{!composerDocked"));
+    expect(slice).toContain("<textarea");
+    expect(slice).not.toContain('data-primary-move="ask"');
+  });
+});

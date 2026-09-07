@@ -800,8 +800,17 @@ export default function CoachTab() {
   // the two positions, so there is always exactly one textarea in the DOM,
   // and the voice/photo capture chips travel with it.
   const composerDocked = userTurnExists;
+  // R24: the contract stamps live on THIS element, not on the docked wrapper.
+  // They were on the `composerDocked &&` branch only, so on a fresh thread —
+  // the state a parent actually lands in — #/coach rendered no
+  // primary-move stamp at all and the declared move was unmeasurable
+  // exactly when it mattered. composerSection is the ONE composer (COACH-4
+  // single-input invariant, ASK-2 two positions), so stamping it puts exactly
+  // one stamp in the DOM in either state, with one occurrence in source.
   const composerSection = (
         <section
+          data-module="coach-composer"
+          data-primary-move="ask"
           className={composerDocked ? "py-2.5" : "border-y py-5 sm:py-6"}
           aria-label={t("elev.hero.ask.cta")}
           style={composerDocked ? undefined : { borderColor: "var(--arbor-rule)" }}
@@ -1627,8 +1636,6 @@ export default function CoachTab() {
           sidebar layout has no bottom bar. */}
       {composerDocked && (
         <div
-          data-module="coach-composer"
-          data-primary-move="ask"
           data-testid="coach-docked-composer"
           className="sticky bottom-[calc(var(--mobile-nav-h)+env(safe-area-inset-bottom)+8px)] lg:bottom-0 z-30"
           style={{ background: "var(--arbor-paper)", borderTop: "1px solid var(--arbor-rule)", boxShadow: "0 -6px 16px rgba(41,51,63,0.05)" }}
