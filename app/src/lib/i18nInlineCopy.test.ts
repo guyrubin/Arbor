@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { en as careNetEn, he as careNetHe } from "./i18nElevation/careNetwork";
 
 /**
  * TODAY-5 / PLAT-4 / CODEX-6 — anti-regression guard for the i18n registry
@@ -130,10 +131,16 @@ const ITEM8_SCOPE = [
   "consult/packet.ts",
 ];
 
-/** A user-visible attribute written as an English literal. */
-const ENGLISH_ATTR = /(?:placeholder|aria-label|title)="[A-Za-z]/;
-/** A JSX text node of two or more English words. */
+/** A user-visible attribute written as an English literal.
+ *  R15: `eyebrow` and `label` join the list — PageHeader takes its kicker as
+ *  `eyebrow=`, and #/appointments shipped `eyebrow="Care Network"` in Hebrew. */
+const ENGLISH_ATTR = /(?:placeholder|aria-label|title|eyebrow|label)="[A-Za-z]/;
+/** A JSX text node of two or more English words, closed on the SAME line. */
 const ENGLISH_TEXT = />[A-Z][a-z]+(?: [A-Za-z’']+)+\s*</;
+/** R15: the same text node when the closing tag sits on the NEXT line — the
+ *  shape that let `<Icon … /> Add appointment` survive the scan for a whole
+ *  wave. A line-scoped scan needs both ends of the node spelled out. */
+const ENGLISH_TRAILING_TEXT = /\/>\s+[A-Z][a-z]+(?: [A-Za-z’']+)+\s*$/;
 
 describe("item 8 — no hardcoded English on the Learn·Care export surfaces", () => {
   it("negative control: the pre-fix Reports.tsx card literal is what the scan rejects", () => {
@@ -165,10 +172,42 @@ describe("item 8 — no hardcoded English on the Learn·Care export surfaces", (
     for (const rel of ITEM8_SCOPE) {
       const code = stripComments(fs.readFileSync(path.join(SRC_ROOT, rel), "utf8"));
       for (const [i, line] of code.split("\n").entries()) {
-        if (ENGLISH_TEXT.test(line)) offenders.push(`${rel}:${i + 1} → ${line.trim().slice(0, 110)}`);
+        if (ENGLISH_TEXT.test(line) || ENGLISH_TRAILING_TEXT.test(line.trimEnd())) {
+          offenders.push(`${rel}:${i + 1} → ${line.trim().slice(0, 110)}`);
+        }
       }
     }
     expect(offenders, `hardcoded English copy — route it through t():\n${offenders.join("\n")}`).toEqual([]);
+  });
+
+  /* ── R15 — the #/appointments primary action ──────────────────────────────
+   * Item 8 keyed the Appointments FORM, and the HE page still carried two
+   * Latin strings in its header: the PageHeader eyebrow (an attribute the
+   * scan did not name) and the "Add appointment" button label (a text node
+   * whose closing tag sat on the next line, so the line-scoped scan missed
+   * it). Both holes are widened above; these pin the two strings themselves. */
+  it("R15 · the appointments header speaks the parent's language", () => {
+    const appt = fs.readFileSync(path.join(SRC_ROOT, "components/sections/Appointments.tsx"), "utf8");
+    expect(appt).toContain('eyebrow={t("elev.careNet.eyebrow")}');
+    expect(appt).toContain('{t("elev.careNet.appt.add")}');
+    expect(appt).not.toContain('eyebrow="Care Network"');
+    expect(appt).not.toContain("/> Add appointment");
+  });
+
+  it("R15 · the key lands in both locales, transcreated (law 7)", () => {
+    expect(careNetEn["elev.careNet.appt.add"]).toBe("Add appointment");
+    expect(careNetHe["elev.careNet.appt.add"]).toMatch(/^[֐-׿\s]+$/);
+  });
+
+  it("R15 · NEGATIVE CONTROL: the two pre-fix lines are what the scan now rejects", () => {
+    const preFixButton = '            <Icon name="add" size={18} /> Add appointment';
+    const preFixEyebrow = '        eyebrow="Care Network"';
+    // The scans as item 8 left them passed both lines…
+    expect(ENGLISH_TEXT.test(preFixButton)).toBe(false);
+    expect(/(?:placeholder|aria-label|title)="[A-Za-z]/.test(preFixEyebrow)).toBe(false);
+    // …the widened ones do not.
+    expect(ENGLISH_TRAILING_TEXT.test(preFixButton.trimEnd())).toBe(true);
+    expect(ENGLISH_ATTR.test(preFixEyebrow)).toBe(true);
   });
 
   it("the consult packet's serializers take a language", () => {

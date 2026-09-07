@@ -164,12 +164,12 @@ export default function Appointments() {
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[980px]">
       <PageHeader
-        eyebrow="Care Network"
+        eyebrow={t("elev.careNet.eyebrow")}
         title={t("sec.appt.title")}
         subtitle={t("sec.appt.sub")}
         action={
           <button onClick={() => setAdding((a) => !a)} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3 min-h-[44px]" style={{ background: "var(--arbor-gradient-primary)" }}>
-            <Icon name="add" size={18} /> Add appointment
+            <Icon name="add" size={18} /> {t("elev.careNet.appt.add")}
           </button>
         }
       />

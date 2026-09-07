@@ -43,6 +43,9 @@
 export const en: Record<string, string> = {
   // ── Header ─────────────────────────────────────────────────────────────────
   "elev.careNet.eyebrow": "Care Network",
+  // R15: the #/appointments primary action was an English literal in the JSX,
+  // so the Hebrew page shipped one Latin button on an otherwise Hebrew header.
+  "elev.careNet.appt.add": "Add appointment",
   "elev.careNet.search.placeholder": "Search by specialty, concern, or name",
 
   // ── Filter chips (display labels for the stable FilterIds) ────────────────
@@ -112,6 +115,7 @@ export const he: Record<string, string> = {
   // ── Header ─────────────────────────────────────────────────────────────────
   // "רשת הטיפול" matches nav.title.care — the label the parent just tapped.
   "elev.careNet.eyebrow": "רשת הטיפול",
+  "elev.careNet.appt.add": "הוספת תור",
   "elev.careNet.search.placeholder": "חיפוש לפי תחום, נושא או שם",
 
   // ── Filter chips ──────────────────────────────────────────────────────────
