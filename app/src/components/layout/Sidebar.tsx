@@ -46,7 +46,21 @@ export default function Sidebar() {
   }, [popoverOpen]);
 
   return (
-    <aside className="hidden lg:flex flex-col gap-5 px-4 py-6 h-screen sticky top-0 overflow-y-auto bg-white" style={{ borderInlineEnd: "1px solid var(--arbor-rule)" }}>
+    /* OBJ-SHELL-03 / R16 — the seam between the sidebar and the content column
+       is the logical inline-end border, never a physical right one: under
+       `dir="rtl"` the sidebar moves to the right of the viewport, so a physical
+       right border draws against the window edge and the seam the parent
+       actually reads — the one against the content — disappears. The logical
+       property follows the direction for free. `data-arbor-seam` stamps the
+       node the rendered
+       acceptance measures, so a validator reads THIS element's computed
+       border-inline-end rather than guessing which <aside> it found. */
+    <aside
+      data-testid="app-sidebar"
+      data-arbor-seam="inline-end"
+      className="hidden lg:flex flex-col gap-5 px-4 py-6 h-screen sticky top-0 overflow-y-auto bg-white"
+      style={{ borderInlineEnd: "1px solid var(--arbor-rule)" }}
+    >
       {/* Brand lockup — softer 38px rounded mark + wordmark (UC-1 density) */}
       <div className="flex items-center gap-2.5 px-1">
         <ArborMark size={38} />

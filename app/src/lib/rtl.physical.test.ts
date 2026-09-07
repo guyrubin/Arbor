@@ -77,6 +77,51 @@ describe("CR-13 · no physical inline offsets on layout seams", () => {
     expect(rail).not.toContain("borderLeft:");
   });
 
+  /**
+   * R16 — the whole CHROME, with no allowlist at all.
+   *
+   * The scan above carries a frozen allowlist, and an allowlist is exactly how
+   * a seam comes back: the sidebar border was fixed once (b41d0acb), the layout
+   * was then restructured twice, and the rendered 1280 HE check still measured
+   * a physical right border with nothing on the content side. `components/layout`
+   * is the shell every route renders inside — one physical offset there is
+   * wrong on every screen in Hebrew — so this directory gets a HARD zero that
+   * no entry may ever be added to.
+   */
+  it("components/layout/** has ZERO physical inline offsets — no allowlist", () => {
+    const LAYOUT = path.join(COMPONENTS, "layout");
+    const offenders: string[] = [];
+    for (const file of walk(LAYOUT)) {
+      const code = stripComments(fs.readFileSync(file, "utf8"));
+      for (const [i, line] of code.split("\n").entries()) {
+        if (PHYSICAL.test(line)) offenders.push(`${rel(file)}:${i + 1} → ${line.trim().slice(0, 110)}`);
+      }
+    }
+    expect(offenders, `the shell must be direction-agnostic:\n${offenders.join("\n")}`).toEqual([]);
+    // The allowlist may never be used to excuse a layout file.
+    for (const r of PHYSICAL_ALLOWLIST) expect(r.startsWith("components/layout/")).toBe(false);
+  });
+
+  it("negative control: the pre-fix Sidebar line fails the layout scan", () => {
+    // The exact line b41d0acb replaced. Run through the same predicate the
+    // scan uses, it is an offender; run the shipped line through, it is not.
+    const preFix = `    <aside className="hidden lg:flex" style={{ borderRight: "1px solid var(--arbor-rule)" }}>`;
+    const shipped = fs
+      .readFileSync(path.join(COMPONENTS, "layout", "Sidebar.tsx"), "utf8")
+      .split("\n")
+      .find((l) => l.includes("borderInlineEnd:"))!;
+    expect(PHYSICAL.test(preFix)).toBe(true);
+    expect(PHYSICAL.test(shipped)).toBe(false);
+  });
+
+  it("the sidebar stamps the node the rendered acceptance measures", () => {
+    // A 1280 HE validator reads the computed border of THIS element rather
+    // than whichever <aside> it happened to hit-test at x=1000.
+    const sidebar = fs.readFileSync(path.join(COMPONENTS, "layout", "Sidebar.tsx"), "utf8");
+    expect(sidebar).toContain('data-testid="app-sidebar"');
+    expect(sidebar).toContain('data-arbor-seam="inline-end"');
+  });
+
   it("the allowlist only shrinks (each entry still exists and still needs it)", () => {
     for (const r of PHYSICAL_ALLOWLIST) {
       const full = path.join(SRC, r);
