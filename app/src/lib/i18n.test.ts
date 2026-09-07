@@ -9,7 +9,12 @@ describe("bidi isolation of interpolated names", () => {
     const out = translate("en", "nudge.log.headline", { name: "נועה" });
     expect(out).toContain("⁨נועה⁩");
   });
-  it("leaves a plain LTR value unwrapped", () => {
+  // STILL A REAL INVARIANT after R22g, and now for a stated reason rather than
+  // by accident: a Latin value in an ENGLISH template is same-script, so it is
+  // laid out correctly by the paragraph it is already in and must not be
+  // wrapped. What changed is that "unwrapped" is now a judgement about the
+  // template's language, not a property of the value alone.
+  it("leaves a plain LTR value unwrapped in an LTR template (same script)", () => {
     const out = translate("en", "nudge.log.headline", { name: "Dylan" });
     expect(out).not.toContain("⁨");
     expect(out).toContain("Dylan");
@@ -18,6 +23,41 @@ describe("bidi isolation of interpolated names", () => {
     const out = translate("en", "rhythm.daysToGo", { n: 8 });
     expect(out).not.toContain("⁨");
     expect(out).toContain("8");
+  });
+
+  /* R22g (Builder M) — the mirror case. isolate() wrapped RTL-bearing values
+     only, so a LATIN value dropped into a HEBREW template was laid out by the
+     RTL paragraph and glued to the preposition before it: `plan.phaseProgress`
+     rendered "אתם בPhase 1" on #/plans and "על Dylan" on #/consult. translate()
+     now passes its own `lang` to isolate(), so the foreign script is decided by
+     the reader's paragraph direction in BOTH directions. */
+  it("wraps a Latin value dropped into a Hebrew template (the אתם בPhase 1 bug)", () => {
+    const out = translate("he", "plan.phaseProgress", { phase: "Phase 1", current: 1, total: 3 });
+    expect(out).toContain("⁨Phase 1⁩");
+  });
+
+  it("leaves a Hebrew value unwrapped in a Hebrew template (same script)", () => {
+    const out = translate("he", "nudge.log.headline", { name: "נועה" });
+    expect(out).not.toContain("⁨");
+    expect(out).toContain("נועה");
+  });
+
+  it("leaves a numeric value unwrapped in a Hebrew template too", () => {
+    const out = translate("he", "rhythm.daysToGo", { n: 8 });
+    expect(out).not.toContain("⁨");
+  });
+
+  /* NEGATIVE CONTROL — the pre-fix function, pasted. It is the one-directional
+     `RTL_CHARS.test(value)` rule with no `lang`, and it FAILS the assertion
+     above: proof the new case is really guarded and not passing for some other
+     reason. */
+  it("negative control: the pre-fix one-directional isolate leaves the Latin phase glued", () => {
+    const RTL_CHARS = /[֐-׿؀-ۿ܀-ݏ]/;
+    const preFixIsolate = (value: string) => (RTL_CHARS.test(value) ? `⁨${value}⁩` : value);
+    const template = he["plan.phaseProgress"];
+    expect(template, "the template this bug was measured on must still exist").toContain("{phase}");
+    const preFix = template.replace("{phase}", preFixIsolate("Phase 1"));
+    expect(preFix).not.toContain("⁨Phase 1⁩");
   });
 });
 

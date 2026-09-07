@@ -4650,8 +4650,13 @@ const DICTS: Record<UiLang, Dict> = {
 // DISPLAY-TIME ONLY: never persist an isolated name.
 export { isolate } from "./bidi";
 
+// R22g: `lang` is passed THROUGH to isolate(). The paragraph a value lands in
+// is this call's own language, so the mirror case — a Latin plan/phase/child
+// name inside a Hebrew template ("אתם בPhase 1") — is isolated by the same seam
+// that has always isolated a Hebrew name inside an English one. Every t() in
+// the app inherits the fix; no call site opts in.
 export function translate(lang: UiLang, key: string, vars?: Record<string, string | number>): string {
   let s = DICTS[lang][key] ?? DICTS.en[key] ?? key;
-  if (vars) for (const k of Object.keys(vars)) s = s.replace(new RegExp(`\\{${k}\\}`, "g"), isolate(String(vars[k])));
+  if (vars) for (const k of Object.keys(vars)) s = s.replace(new RegExp(`\\{${k}\\}`, "g"), isolate(String(vars[k]), lang));
   return s;
 }

@@ -13,20 +13,15 @@ import PlanKanban from "../plans/PlanKanban";
 import RoutinesCard from "../plans/RoutinesCard";
 import { planProgress, suggestedChallenges } from "../../lib/plans";
 import { HeroAvatar } from "../ui/HeroAvatar";
-import { isolate } from "../../lib/bidi";
 
-/* R22 (Builder L) — the phase LABEL is keyed in both languages already
-   (`plan.phaseProgress` / `plan.phaseFallback`), but the value dropped into it
-   is plan DATA and is English. `translate()` runs every interpolated value
-   through `isolate()`, and `isolate()` (lib/bidi.ts) wraps RTL-bearing values
-   ONLY — it exists for "Hebrew name inside an English template". The mirror
-   case has the identical hazard and no cover: HE "אתם ב{phase}" glued straight onto
-   a Latin run and rendered "אתם בPhase 1". FSI…PDI isolates a run in either
-   direction, so a value `isolate()` declines is wrapped here instead; a value
-   it accepts is left to it, so nothing is ever wrapped twice. */
-const FSI = "⁨";
-const PDI = "⁩";
-const isolateLatin = (value: string): string => (isolate(value) === value ? `${FSI}${value}${PDI}` : value);
+/* R22g (Builder M) — Builder L's local isolate-Latin workaround is GONE, not moved.
+   Builder L wrapped the phase name here because isolate() (lib/bidi.ts) was
+   one-directional: it wrapped RTL-bearing values only, so a Latin phase name
+   dropped into the Hebrew `plan.phaseProgress` template glued to the
+   preposition and rendered "אתם בPhase 1". isolate() now takes the reader's
+   paragraph direction and translate() passes it, so EVERY interpolated value
+   in the app is isolated when its script is the foreign one — this call site
+   included, with no local helper and nothing to fan out. */
 
 export default function PlansTab() {
   const {
@@ -215,7 +210,7 @@ export default function PlansTab() {
                   <>
                     <p className="text-[11px] mb-2" style={{ color: "var(--arbor-muted)" }}>
                       {t("plan.phaseProgress", {
-                        phase: isolateLatin(prog.currentPhaseName || t("plan.phaseFallback", { n: prog.currentPhaseIndex + 1 })),
+                        phase: prog.currentPhaseName || t("plan.phaseFallback", { n: prog.currentPhaseIndex + 1 }),
                         current: prog.currentPhaseIndex + 1,
                         total: prog.totalPhases,
                       })}

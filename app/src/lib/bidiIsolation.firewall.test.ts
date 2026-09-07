@@ -117,10 +117,25 @@ describe("bidi isolation firewall — no raw `${...name...}'s` possessive templa
     expect(dict, "un-stripped dictionary token should match (proves stripping is load-bearing)").toMatch(JSX_RAW_POSSESSIVE);
   });
 
-  it("isolate() FSI/PDI-wraps RTL names and leaves LTR names byte-identical", () => {
+  /* R22g (Builder M) — this assertion KEPT, re-read. It pinned
+     `isolate("Maya") === "Maya"` as a property of the VALUE; that reading was
+     the bug (it made the function one-directional and left "אתם בPhase 1"
+     unguarded). It survives as a property of the CONTEXT: the default `lang`
+     is "en", an LTR paragraph, where a Latin name is same-script and must stay
+     byte-identical — which is exactly what the ~40 direct `isolate(name)` call
+     sites composing English possessives depend on. The mirror half is the new
+     case below; the reader-language contract is documented in lib/bidi.ts. */
+  it("isolate() wraps the FOREIGN script for the paragraph and leaves same-script names byte-identical", () => {
+    // LTR paragraph (default): Hebrew is foreign, Latin is not.
     expect(isolate("נועה")).toBe("⁨נועה⁩");
     expect(isolate("Maya")).toBe("Maya");
     expect(`${isolate("נועה")}'s week`).toBe("⁨נועה⁩'s week");
+    // RTL paragraph: the mirror. Latin is foreign, Hebrew is not.
+    expect(isolate("Maya", "he")).toBe("⁨Maya⁩");
+    expect(isolate("נועה", "he")).toBe("נועה");
+    // Script-less values are never wrapped in either paragraph.
+    expect(isolate("8", "he")).toBe("8");
+    expect(isolate("8")).toBe("8");
   });
 
   it("no source file composes a possessive on a raw interpolated name (template or JSX form)", () => {

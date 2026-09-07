@@ -6,6 +6,7 @@ import { en as doorsEn, he as doorsHe } from "./i18nElevation/practiceDoors";
 import { en as growthTruthEn, he as growthTruthHe } from "./i18nElevation/growthTruth";
 import { MISSION_CYCLE, DOMAIN_META } from "../practice/content";
 import { JOURNEY_EXTRAS, MISSION_COPY_KEYS, OBJECTIVE_TITLE_KEYS } from "../practice/journey";
+import { translate } from "./i18n";
 
 /**
  * TODAY-5 / PLAT-4 / CODEX-6 — anti-regression guard for the i18n registry
@@ -527,11 +528,25 @@ describe("R22 — the practice domain names and the Full Picture body carry both
     expect(play).not.toMatch(/^\s+Based on\s*$/m);
   });
 
-  it("R22g — the plan phase name is bidi-isolated in BOTH directions", () => {
+  /* R22g (Builder M) — this guard REPOINTED, deliberately. It pinned Builder L's
+     PlansTab-local `isolateLatin()` helper by name, which pinned the WORKAROUND
+     rather than the property: as long as that assertion stood, the correct fix
+     (make isolate() reader-language-aware in lib/bidi.ts so every t() inherits
+     it) could not land without failing a guard, and the named-file shape meant
+     the other ~2,000 interpolated HE strings were never covered anyway. The
+     helper is gone; what is pinned now is the lib-level contract plus the ONE
+     call site the bug was measured on, asserted through translate() rather than
+     through a substring of a component. */
+  it("R22g — the plan phase name is bidi-isolated in BOTH directions, by the lib and not a local helper", () => {
     const plans = stripComments(readSrc("components/tabs/PlansTab.tsx"));
-    expect(plans).toContain("isolateLatin(prog.currentPhaseName");
-    // isolate() from lib/bidi is the RTL half and is reused, not reimplemented.
-    expect(plans).toContain('import { isolate } from "../../lib/bidi";');
-    expect(plans).toContain("isolate(value) === value");
+    // No local re-implementation survives anywhere on this surface.
+    expect(plans).not.toContain("isolateLatin");
+    expect(plans).toContain('t("plan.phaseProgress"');
+
+    // The property itself, measured through the seam every translated string
+    // uses: a Latin phase in the Hebrew template is isolated…
+    expect(translate("he", "plan.phaseProgress", { phase: "Phase 1", current: 1, total: 3 })).toContain("⁨Phase 1⁩");
+    // …and the English template is untouched, because there it is same-script.
+    expect(translate("en", "plan.phaseProgress", { phase: "Phase 1", current: 1, total: 3 })).not.toContain("⁨");
   });
 });
