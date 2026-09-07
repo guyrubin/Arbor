@@ -8,7 +8,6 @@ import { PASTEL } from "../../lib/tokens";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
-import { useKidMode } from "../kidmode/KidModeContext";
 import { ROUTINES, routineById, localized } from "../../lib/routines";
 import { isolate } from "../../lib/i18n";
 
@@ -65,7 +64,6 @@ export default function RoutinesTab() {
   const { childProfile } = useArbor();
   const { t, uiLang } = useLanguage();
   const { toast } = useToast();
-  const { openKidMode } = useKidMode();
 
   const firstName = (childProfile.name || "your child").split(" ")[0];
 
@@ -113,12 +111,6 @@ export default function RoutinesTab() {
     delete next[selected.id];
     persist(next);
   }, [doneMap, selected.id, persist]);
-
-  const assignRoutine = useCallback(() => {
-    toast(t("routines.assigned", { name: firstName }), "success");
-    // Kid Mode has a trivial entry — hand the routine off to the child's world.
-    openKidMode();
-  }, [toast, t, firstName, openKidMode]);
 
   // Per-tile completed counts for the library grid's progress bars.
   const tileDone = useCallback(
@@ -290,13 +282,23 @@ export default function RoutinesTab() {
           )}
         </AnimatePresence>
 
-        {/* Footer — Reset · Assign.
+        {/* Footer — Reset.
             ENG-07: a "Feeds the Development Map" chip stood here. Routines
             declare `threadWrite: "none"` in surfaceContract and there is no
             write path from a routine to the map — the chip asserted a
             mechanism the code does not have, on the exact surface a parent
             would trust it on. Removed rather than reworded: there is no true
-            shorter version of a claim about a thing that does not happen. */}
+            shorter version of a claim about a thing that does not happen.
+
+            GP-29: "Assign to {name}" stood beside it and was the same defect
+            one step further on — it toasted "✓ Routine assigned to {name}"
+            and opened Kid Mode. Nothing was assigned: no routine reaches the
+            child's quest list, and reopening Kid Mode shows the same worlds it
+            always did. The claim was in the confirmation itself, so there was
+            nothing to reword. Removed, with its two dictionary entries, on the
+            ENG-07 precedent. The routine steps a parent runs WITH the child are
+            untouched, and Kid Mode keeps its real doors (the shell's
+            KidModeButton, MobileNav, Practice Studio). */}
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <button
             type="button"
@@ -306,15 +308,6 @@ export default function RoutinesTab() {
             style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", minHeight: 44 }}
           >
             <Icon name="restart_alt" size={18} /> {t("routines.reset")}
-          </button>
-          <button
-            type="button"
-            onClick={assignRoutine}
-            data-testid="routines-assign"
-            className="inline-flex items-center gap-1.5 rounded-2xl px-5 py-2.5 text-[13px] font-extrabold transition active:scale-[0.97]"
-            style={{ background: "var(--arbor-ink)", color: "var(--arbor-on-accent)", boxShadow: "var(--shadow-sm)", minHeight: 44 }}
-          >
-            <Icon name="child_care" size={18} /> {t("routines.assign", { name: firstName })}
           </button>
         </div>
       </section>
