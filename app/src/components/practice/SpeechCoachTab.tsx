@@ -319,9 +319,10 @@ export default function SpeechCoachTab() {
       }
     >
 
-      <TrustSafetyBar
-        note={t("prac.speech.safetyNote", { name: first })}
-      />
+      {/* §3f row 2 / item 11 — MODULE 1 of 2: the sound drill and the two rows
+          that belong to it (today's dose, the sound picker). One module, one
+          job: "practice sounds and words". */}
+      <section data-module="speech-practice" className="space-y-6">
 
       {/* ASHA dosage: practice little and often (≈50 reps/session, 2–3×/week) */}
       <div className={`${cardCls} p-5`}>
@@ -508,8 +509,10 @@ export default function SpeechCoachTab() {
           </div>
         )}
 
-        {/* Parent scoring — the universal floor */}
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Parent scoring — the universal floor, and the declared primaryMove
+            for #/speech ("complete-speech-round"): the tap that records the
+            round. Stamped once, on the control group. */}
+        <div className="flex flex-wrap items-center gap-2" data-primary-move="complete-speech-round">
           <span className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>{t("prac.speech.howDidItSound")}</span>
           {RESULT_BTN.map((b) => (
             <button key={b.result} onClick={() => saveAttempt(b.result, "parent")}
@@ -525,8 +528,28 @@ export default function SpeechCoachTab() {
           )}
         </div>
       </SectionCard>
+      </section>
 
-      {/* Vocabulary expansion + expressive language (Epic 3) */}
+      {/* §3f row 2 — MODULE 2 of 2. Words & Express (vocabulary + expressive
+          language) and Early reading (phonics, sight words, letter tracing) are
+          SEPARATE capabilities that happened to share this route; with the
+          progress tracker they made #/speech an eight-module page whose budget
+          is two. All three keep their door (law 6) — one disclosure, closed by
+          default, so the sound drill owns the fold. The parent-register home for
+          vocabulary work is #/language, one tap away in the header. */}
+      <details data-module="speech-more" className={`${cardCls} p-0 overflow-hidden`}>
+        <summary className="cursor-pointer list-none px-6 py-4 min-h-[44px] flex items-center gap-3">
+          <span className="grid place-items-center w-9 h-9 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
+            <Icon name="menu_book" size={18} />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.practice.speech.more")}</span>
+            <span className="block text-[12px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.practice.speech.more.sub")}</span>
+          </span>
+          <Icon name="expand_more" size={20} className="ms-auto" style={{ color: "var(--arbor-muted)" }} />
+        </summary>
+        <div className="px-4 pb-4 space-y-6">
+
       <SectionCard title={t("prac.lang.title")} icon={<Icon name="menu_book" size={20} />} tone="mint"
         action={<Chip tone="mint">{t("prac.lang.chip")}</Chip>}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -676,6 +699,13 @@ export default function SpeechCoachTab() {
           {t("prac.speech.progress.footer")}
         </p>
       </SectionCard>
+        </div>
+      </details>
+
+      {/* Page-level honesty note, not a module — what this surface IS. */}
+      <TrustSafetyBar
+        note={t("prac.speech.safetyNote", { name: first })}
+      />
     </RegisterShell>
   );
   }

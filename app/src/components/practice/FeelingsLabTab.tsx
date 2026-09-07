@@ -3,7 +3,7 @@ import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { SectionCard, TrustSafetyBar, cardCls } from "../ui/kit";
-import { RegisterShell, StatBubble, ChoiceTile, MascotSay, PlayButton, PlayPanel, ProgressPips } from "../ui/playkit";
+import { RegisterShell, ChoiceTile, MascotSay, PlayButton, PlayPanel, ProgressPips } from "../ui/playkit";
 import { BREATHING_PATTERNS, CALM_TOOLS, EMOTION_SCENARIOS, EMOTIONS } from "../../practice/playContent";
 import { usePracticeData } from "../../practice/usePracticeData";
 import { EmotionAvatar } from "../ui/EmotionAvatar";
@@ -126,28 +126,46 @@ export default function FeelingsLabTab() {
       subtitle={t("prac.feelings.sub", { name: first })}
     >
 
-      <TrustSafetyBar
-        note="This is coaching and practice, not mental-health diagnosis. Patterns worth discussing are surfaced gently in the Development Dashboard."
-      />
-
-      <div className="grid grid-cols-3 gap-3">
-        <StatBubble tone="yellow" value={emotionRounds} label="Emotion rounds" />
-        <StatBubble tone="clay" value={feelingsNamed} label={t("elev.practice.feelings.named")} />
-        <StatBubble tone="sky" value={calmRounds} label="Calm practices" />
-      </div>
-
-      <PlayPanel tone="yellow">
-        <div className="flex items-center justify-between mb-4 gap-3">
-          <div className="flex items-center gap-3">
-            <span className="grid place-items-center w-11 h-11 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-yellow-soft)", color: "var(--arbor-yellow-ink)" }}>
-              <Icon name="mood" size={24} />
-            </span>
-            <h2 className="text-xl font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Emotion match</h2>
-          </div>
-          <span className="rounded-full px-3 py-1.5 text-[12px] font-extrabold" style={{ background: "#fff", color: "var(--arbor-yellow-ink)" }}>{scenarioIdx + 1} of {EMOTION_SCENARIOS.length}</span>
+      {/* §3f row 2 — MODULE 1 of 2, and the surface's whole job: the scenario
+          and its answer tiles, first. The three stat bubbles and the safety bar
+          used to sit above them, so the first choice tile rendered at ~980 px
+          on a 390 phone; the counts are now one quiet line UNDER the drill and
+          the note is a page footer. */}
+      <section data-module="feelings-practice" className="space-y-3">
+      <SectionCard
+        title={t("elev.practice.feelings.match.title")}
+        icon={<Icon name="mood" size={20} />}
+        tone="yellow"
+        action={
+          <span className="rounded-full px-3 py-1.5 text-[12px] font-extrabold" style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-yellow-ink)" }}>{scenarioIdx + 1} of {EMOTION_SCENARIOS.length}</span>
+        }
+      >
+        <div className="rounded-[var(--play-radius)] p-6 mb-4 bg-white shadow-[0_2px_12px_rgba(41,51,63,0.05)]">
+          <p className="text-5xl mb-3">{scenario.emoji}</p>
+          <p className="text-[1.35rem] font-extrabold leading-snug" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+            {scenario.text}
+          </p>
         </div>
+        {/* The declared primaryMove for #/feelings ("complete-feelings-scenario"):
+            the answer tiles. Stamped once, on the control group the acceptance
+            measures. */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3" data-primary-move="complete-feelings-scenario">
+          {emotionTiles}
+        </div>
+        {pickedEmotion && (
+          <div className="mt-5">
+            <MascotSay mood={pickedEmotion === scenario.answer ? "proud" : "think"} tone={pickedEmotion === scenario.answer ? "clay" : "yellow"}>
+              {pickedEmotion === scenario.answer
+                ? `Yes. This sounds like ${answer.label.toLowerCase()}. Ask: where do you feel that in your body?`
+                : `Warm retry: it might look more like ${answer.label.toLowerCase()}. Try making that face together.`}
+            </MascotSay>
+            <div className="mt-4">
+              <PlayButton tone="yellow" onClick={nextScenario}>Next feeling →</PlayButton>
+            </div>
+          </div>
+        )}
         {/* A4: the child's own avatar mirrors how they feel right now */}
-        <div className="flex items-center gap-4 rounded-2xl p-4 mb-4" style={{ background: "var(--arbor-paper-deep)" }}>
+        <div className="flex items-center gap-4 rounded-2xl p-4 mt-5" style={{ background: "var(--arbor-paper-deep)" }}>
           <EmotionAvatar
             name={first}
             photoURL={childProfile.photoUrl}
@@ -178,30 +196,36 @@ export default function FeelingsLabTab() {
           </div>
         </div>
 
-        <div className="rounded-[var(--play-radius)] p-6 mb-4 bg-white shadow-[0_2px_12px_rgba(41,51,63,0.05)]">
-          <p className="text-5xl mb-3">{scenario.emoji}</p>
-          <p className="text-[1.35rem] font-extrabold leading-snug" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-            {scenario.text}
-          </p>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {emotionTiles}
-        </div>
-        {pickedEmotion && (
-          <div className="mt-5">
-            <MascotSay mood={pickedEmotion === scenario.answer ? "proud" : "think"} tone={pickedEmotion === scenario.answer ? "clay" : "yellow"}>
-              {pickedEmotion === scenario.answer
-                ? `Yes. This sounds like ${answer.label.toLowerCase()}. Ask: where do you feel that in your body?`
-                : `Warm retry: it might look more like ${answer.label.toLowerCase()}. Try making that face together.`}
-            </MascotSay>
-            <div className="mt-4">
-              <PlayButton tone="yellow" onClick={nextScenario}>Next feeling →</PlayButton>
-            </div>
-          </div>
-        )}
-      </PlayPanel>
+      </SectionCard>
 
-      <SectionCard title="Why feelings happen" icon={<Icon name="favorite" size={20} />} tone="pink">
+      {/* The counts that were three stat bubbles at the top of the page. A
+          quiet line: counts, never verdicts (law 1), and never before the move. */}
+      <p className="text-[11.5px] px-1" style={{ color: "var(--arbor-muted)" }}>
+        {t("elev.practice.feelings.counts", { rounds: emotionRounds, calm: calmRounds })}
+        {feelingsNamed > 0 && <> · {feelingsNamed} {t("elev.practice.feelings.named")}</>}
+      </p>
+      </section>
+
+      {/* §3f row 2 — MODULE 2 of 2. "Why feelings happen" (six explainer cards)
+          and "Calm-down practice" (three breathing patterns + the calm tools)
+          are separate capabilities, and reference material: you read them on a
+          calm day, you do not do them mid-scenario. Demoted behind ONE
+          disclosure — every card is still reachable (law 6), none of them
+          competes with the move. */}
+      <details data-module="feelings-toolkit" className={`${cardCls} p-0 overflow-hidden`}>
+        <summary className="cursor-pointer list-none px-6 py-4 min-h-[44px] flex items-center gap-3">
+          <span className="grid place-items-center w-9 h-9 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}>
+            <Icon name="favorite" size={18} />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.practice.feelings.toolkit")}</span>
+            <span className="block text-[12px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.practice.feelings.toolkit.sub")}</span>
+          </span>
+          <Icon name="expand_more" size={20} className="ms-auto" style={{ color: "var(--arbor-muted)" }} />
+        </summary>
+        <div className="px-4 pb-4 space-y-4">
+
+      <SectionCard title={t("elev.practice.feelings.why.title")} icon={<Icon name="favorite" size={20} />} tone="pink">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {EMOTIONS.map((emotion) => (
             <div key={emotion.id} className={`${cardCls} p-4`}>
@@ -223,7 +247,7 @@ export default function FeelingsLabTab() {
         </div>
       </SectionCard>
 
-      <SectionCard title="Calm-down practice" icon={<Icon name="air" size={20} />} tone="sky">
+      <SectionCard title={t("elev.practice.feelings.calm.title")} icon={<Icon name="air" size={20} />} tone="sky">
         <p className="text-xs mb-4" style={{ color: "var(--arbor-muted)" }}>
           Practice these during calm moments. That is when the body learns the route back.
         </p>
@@ -253,6 +277,14 @@ export default function FeelingsLabTab() {
           ))}
         </div>
       </SectionCard>
+        </div>
+      </details>
+
+      {/* Page-level honesty note, not a module: it says what this surface IS,
+          the way PracticeStudioTab's register note does. Last, and quiet. */}
+      <TrustSafetyBar
+        note="This is coaching and practice, not mental-health diagnosis. Patterns worth discussing are surfaced gently in the Development Dashboard."
+      />
     </RegisterShell>
   );
   }
