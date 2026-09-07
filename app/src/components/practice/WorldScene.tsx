@@ -3,12 +3,11 @@ import { api, type AvatarStyle } from "../../lib/api";
 import { dedupeScene, getScene } from "../../lib/sceneCache";
 import { runInstrumented } from "../../hooks/useAsyncAction";
 
-/* WorldScene (backlog I1) — the illustrated scene for a Hero-Arcade world card.
-   When the child has a generated hero, we generate a themed scene that STARS
-   their hero (the avatar is the consistency reference) and cache it persistently
-   (sceneCache → cost guard). No hero yet, still loading, or a failure → the icon
-   fallback (children) keeps the card alive. Generation is lazy: it only fires
-   once the card scrolls into view, so off-screen worlds never spend on an image. */
+/* WorldScene — one visual identity for every child world.
+   The generated comic hero is the consistency reference: the same child identity
+   travels through stories, feelings and every Playbank world. Generation stays
+   lazy + persistently cached; static comic art supplied by the caller remains the
+   first-paint fallback, so a world is never blank and unseen cards cost nothing. */
 
 const shortHash = (s: string): string => {
   let h = 0;
@@ -36,6 +35,17 @@ function toAvatarDataUrl(url: string): Promise<string> {
   return p;
 }
 
+const ARBOR_COMIC_BIBLE = [
+  "premium contemporary children's graphic-novel illustration",
+  "keep the supplied child unmistakably the same comic hero — preserve face, hair, age and defining features",
+  "expressive clean ink linework with softly painted detail, not 3D animation and not flat vector art",
+  "rich storybook environment with clear foreground, midground and background depth",
+  "warm cinematic child-safe lighting, sophisticated saturated color and subtle paper-and-ink texture",
+  "the hero is actively interacting with this world rather than posing for a portrait",
+  "composition must still read clearly as a game or story card crop at small size",
+  "no text, no UI, no logos, no photorealism",
+].join("; ");
+
 export default function WorldScene({
   worldId,
   imagePrompt,
@@ -47,16 +57,18 @@ export default function WorldScene({
   imagePrompt: string;
   heroUrl?: string;
   heroStyle?: AvatarStyle;
-  children: React.ReactNode; // icon fallback
+  children: React.ReactNode;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [art, setArt] = useState<string | undefined>(() =>
-    heroUrl ? getScene(`world|${worldId}|${shortHash(heroUrl)}`) : undefined,
+    heroUrl ? getScene(`world-v2|${worldId}|${shortHash(heroUrl)}`) : undefined,
   );
 
   useEffect(() => {
     if (!heroUrl || art) return;
-    const key = `world|${worldId}|${shortHash(heroUrl)}`;
+    // v2 intentionally invalidates the older mixed-style cache once. From here
+    // on, each child/world pair remains stable and cost-guarded.
+    const key = `world-v2|${worldId}|${shortHash(heroUrl)}`;
     const cached = getScene(key);
     if (cached) { setArt(cached); return; }
 
@@ -69,7 +81,7 @@ export default function WorldScene({
         toAvatarDataUrl(heroUrl).then((ref) =>
           runInstrumented("world_scene", () =>
             api.generateScene({
-              imagePrompt: `${imagePrompt} — bright, bold kids' comic-book illustration, the child as the cheerful hero`,
+              imagePrompt: `${imagePrompt}. Art direction: ${ARBOR_COMIC_BIBLE}`,
               avatar: { dataUrl: ref },
               style: heroStyle ?? "comichero",
             }),
@@ -77,14 +89,13 @@ export default function WorldScene({
         ),
       )
         .then((url) => { if (active) setArt(url); })
-        .catch(() => { /* graceful: keep the icon fallback */ });
+        .catch(() => { /* graceful: keep the supplied static comic fallback */ });
     };
 
-    // Lazy: only generate when the card is on screen (cost guard for unseen worlds).
     if (typeof IntersectionObserver === "undefined") { generate(); return () => { active = false; }; }
     const obs = new IntersectionObserver((entries) => {
       if (entries.some((e) => e.isIntersecting)) { obs.disconnect(); generate(); }
-    }, { rootMargin: "120px" });
+    }, { rootMargin: "160px" });
     obs.observe(el);
     return () => { active = false; obs.disconnect(); };
   }, [worldId, imagePrompt, heroUrl, heroStyle, art]);
