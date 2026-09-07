@@ -127,3 +127,33 @@ export function todaysLearnPick(
     fromSaved: continuesSaved(card, topics),
   };
 }
+
+/**
+ * ENG-07 / AI-19 — when a "your Development Map" claim is allowed at all.
+ *
+ * `devScore.focusDomain` is the lowest-scoring domain with room to grow, and
+ * "room to grow" is measured against the CATALOGUE, not against what the parent
+ * has noticed. So a brand-new profile with zero milestones and zero logs still
+ * gets a focusDomain — and the Learn why-lines read it raw and told the parent
+ * their reading list came from "your Development Map" and "the area you have
+ * been exploring". Neither existed. This is `fromFocus`'s standard (a claim is
+ * re-derived, never asserted from the mere presence of a signal) applied to the
+ * one caller that read the signal off its own state instead.
+ */
+export function devMapHasSignal(
+  score: { domains?: { reached?: number }[] } | null | undefined,
+): boolean {
+  return !!score?.domains?.some((d) => (d.reached ?? 0) > 0);
+}
+
+/** True only when the map has an observation AND the focus domain carries at
+ *  least one of the cards the parent is being shown. */
+export function focusDomainContributed(
+  score: { focusDomain?: string | null; domains?: { reached?: number }[] } | null | undefined,
+  featured: { domains: string[] }[],
+): boolean {
+  if (!devMapHasSignal(score)) return false;
+  const focus = score?.focusDomain;
+  if (!focus) return false;
+  return featured.some((c) => c.domains.includes(focus));
+}

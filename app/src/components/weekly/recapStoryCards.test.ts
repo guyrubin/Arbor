@@ -243,7 +243,9 @@ describe("WeeklyTab integration — recap as the current week's primary view + e
   it("F-06: chips come from weeklyChipIds (current week leads) + honest empty state", () => {
     expect(code).toContain("weeklyChipIds(");
     expect(code).toContain("isEmptyCurrentWeek(");
-    expect(code).toContain('t("wk.emptyThisWeek")');
+    // ENG-07 retired `wk.emptyThisWeek` (it promised a report that "will build
+    // itself"); the honest replacement key carries the same empty state.
+    expect(code).toContain('t("elev.wk.emptyThisWeek")');
   });
 
   it("F-06: the raw week id (a storage key) never renders in the header subtitle", () => {

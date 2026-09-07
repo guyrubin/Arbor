@@ -290,19 +290,19 @@ export default function RoutinesTab() {
           )}
         </AnimatePresence>
 
-        {/* Footer — feeds chip · Reset · Assign. */}
+        {/* Footer — Reset · Assign.
+            ENG-07: a "Feeds the Development Map" chip stood here. Routines
+            declare `threadWrite: "none"` in surfaceContract and there is no
+            write path from a routine to the map — the chip asserted a
+            mechanism the code does not have, on the exact surface a parent
+            would trust it on. Removed rather than reworded: there is no true
+            shorter version of a claim about a thing that does not happen. */}
         <div className="mt-5 flex flex-wrap items-center gap-3">
-          <span
-            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-bold"
-            style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-green-ink)" }}
-          >
-            <Icon name="insights" size={16} /> {t("routines.feeds")}
-          </span>
           <button
             type="button"
             onClick={resetRoutine}
             data-testid="routines-reset"
-            className="ms-auto inline-flex items-center gap-1.5 rounded-2xl px-4 py-2.5 text-[13px] font-extrabold transition active:scale-[0.97]"
+            className="inline-flex items-center gap-1.5 rounded-2xl px-4 py-2.5 text-[13px] font-extrabold transition active:scale-[0.97]"
             style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", minHeight: 44 }}
           >
             <Icon name="restart_alt" size={18} /> {t("routines.reset")}

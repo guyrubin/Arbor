@@ -61,7 +61,10 @@ export const en: Record<string, string> = {
   // Email opt-in row (2.2 — honest fail-closed copy, Guy decision).
   "elev.recap.email.title": "Get this as a weekly email",
   "elev.recap.email.desc": "One short email when {name}'s week is ready.",
-  "elev.recap.email.soon": "Coming soon — you're on the list.",
+  // ENG-04/ENG-07: "you're on the list" — there is no list. The opt-in is
+  // stored per account and honored the day a provider exists; nothing is
+  // POSTed anywhere today, and the copy now says exactly that.
+  "elev.recap.email.soon": "Weekly email isn't available yet. Your choice is saved and will apply as soon as it is.",
   "elev.recap.email.aria": "Weekly recap email opt-in",
 };
 
@@ -98,6 +101,6 @@ export const he: Record<string, string> = {
 
   "elev.recap.email.title": "לקבל את הסיכום גם במייל שבועי",
   "elev.recap.email.desc": "מייל קצר אחד כשהשבוע של {name} מוכן.",
-  "elev.recap.email.soon": "בקרוב — שמרנו לך מקום ברשימה.",
+  "elev.recap.email.soon": "המייל השבועי עדיין לא זמין. הבחירה שלכם נשמרה ותיכנס לתוקף ברגע שיהיה.",
   "elev.recap.email.aria": "הרשמה למייל הסיכום השבועי",
 };

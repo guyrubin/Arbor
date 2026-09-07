@@ -879,7 +879,9 @@ export const en: Dict = {
   "sec.findpro.sub": "A curated, Arbor-verified network of child-development specialists, coordinated around {name}, with your context ready to share.",
   "sec.master.eyebrow": "Parent learning",
   "sec.master.title": "Parent masterclasses",
-  "sec.master.sub": "Short, premium lessons that turn hard moments into confident parenting. Our first lessons are in production; here's what's coming.",
+  // ENG-07: "Our first lessons are in production; here's what's coming."
+  // stood beside ten live courses. Deleted, not softened.
+  "sec.master.sub": "Short, premium lessons that turn hard moments into confident parenting.",
   // Design wave-7 — Masterclasses UI-chrome sweep (finishes the parent-surface localization).
   "master.rec": "Recommended for your family",
   "master.min": "min",
@@ -1567,7 +1569,6 @@ export const en: Dict = {
   "wk.regenerate": "Retell this week",
   "wk.generate": "Create this week's story",
   "wk.noReports": "No reports yet. Log a few moments this week, then create your first report.",
-  "wk.emptyThisWeek": "Nothing captured yet this week — log a moment and this week's report will build itself.",
   "wk.behaviorEvents": "Behavior events",
   "wk.topTrigger": "Top trigger",
   // F-11: parent free-typed trigger words render QUOTED — visibly the
@@ -1868,7 +1869,7 @@ export const en: Dict = {
   "plan.suggestedFor": "Suggested for {name}",
   "plan.complete": "Plan complete",
   "plan.focusThisWeek": "Focus this week",
-  "plan.stepsCount": "{done}/{total} steps · {pct}%",
+  "plan.stepsCount": "{done}/{total} steps done",
   "plan.completeHint": "Every step is done — nice work. Watch for the success signs below; if the challenge has shifted, start a fresh plan above.",
   "plan.phaseProgress": "You're in {phase} (phase {current} of {total}). Next small steps:",
   "plan.phaseFallback": "phase {n}",
@@ -2127,7 +2128,6 @@ export const en: Dict = {
   "routines.stepCount": "{count} steps",
   "routines.done": "done",
   "routines.doneMsg": "{name} nailed the whole routine!",
-  "routines.feeds": "Feeds the Development Map",
   "routines.reset": "Reset",
   "routines.assign": "Assign to {name}",
   "routines.starEarned": "⭐ {name} earned a star in their world!",
@@ -2210,7 +2210,9 @@ export const en: Dict = {
   "journal.empty": "No moments yet. Log one above — and Arbor will remember the rest for you, right here.",
   // JRNL-2 — Journal header/compose strings, moved out of inline HE/EN ternaries
   // (one shipped double-encoded) into the registry so the parity guard sees them.
-  "journal.eyebrow": "The journal that writes itself",
+  // ENG-07: "The journal that writes itself" — it does not; the parent
+  // writes it. The surface contract's own job sentence is the honest line.
+  "journal.eyebrow": "Catch the moment before it's gone",
   "journal.title": "Your family story, in order.",
   "journal.story.body": "Arbor is connecting {count} recent moments into a living story — without asking you to write it all yourself.",
   "journal.story.empty": "One small moment is enough to begin. Arbor will help shape it into a story that grows over time.",
@@ -3207,7 +3209,7 @@ export const he: Dict = {
   "sec.findpro.sub": "רשת אנשי מקצוע מובחרת ומאומתת בידי ארבור בתחום התפתחות הילד, מתואמת סביב {name}, עם ההקשר שלכם מוכן לשיתוף.",
   "sec.master.eyebrow": "למידה להורים",
   "sec.master.title": "מאסטרקלאס להורים",
-  "sec.master.sub": "שיעורים קצרים ואיכותיים שהופכים רגעים קשים להורות בטוחה. השיעורים הראשונים בהפקה; הנה מה שמגיע.",
+  "sec.master.sub": "שיעורים קצרים ואיכותיים שהופכים רגעים קשים להורות בטוחה.",
   // Design wave-7 — Masterclasses UI-chrome sweep (finishes the parent-surface localization).
   "master.rec": "מומלץ למשפחה שלכם",
   "master.min": "דק'",
@@ -3828,7 +3830,6 @@ export const he: Dict = {
   "wk.regenerate": "לספר את השבוע מחדש",
   "wk.generate": "צרו את סיפור השבוע",
   "wk.noReports": "אין דוחות עדיין. תעדו כמה רגעים השבוע, ואז צרו את הדוח הראשון.",
-  "wk.emptyThisWeek": "עוד לא נקלט כלום השבוע — תעדו רגע אחד, והדוח של השבוע ייבנה מעצמו.",
   "wk.behaviorEvents": "אירועי התנהגות",
   "wk.topTrigger": "טריגר מוביל",
   // F-11: מילים שההורה הקליד מוצגות במירכאות — מילות ההורה נראות כמילות
@@ -4145,7 +4146,7 @@ export const he: Dict = {
   "plan.suggestedFor": "הצעות עבור {name}",
   "plan.complete": "התוכנית הושלמה",
   "plan.focusThisWeek": "התמקדו השבוע",
-  "plan.stepsCount": "{done}/{total} צעדים · {pct}%",
+  "plan.stepsCount": "{done}/{total} צעדים הושלמו",
   "plan.completeHint": "כל הצעדים הושלמו — כל הכבוד. צפו לסימני ההצלחה למטה; אם האתגר השתנה, פתחו תוכנית חדשה למעלה.",
   "plan.phaseProgress": "אתם ב{phase} (שלב {current} מתוך {total}). הצעדים הקטנים הבאים:",
   "plan.phaseFallback": "שלב {n}",
@@ -4383,7 +4384,6 @@ export const he: Dict = {
   "routines.stepCount": "{count} שלבים",
   "routines.done": "הושלמו",
   "routines.doneMsg": "{name} השלים את כל השגרה!",
-  "routines.feeds": "מזין את מפת ההתפתחות",
   "routines.reset": "איפוס",
   "routines.assign": "שיוך ל{name}",
   "routines.starEarned": "⭐ {name} זכה בכוכב בעולם שלו!",
@@ -4465,7 +4465,7 @@ export const he: Dict = {
   "journal.domain.ecosystem_stressors": "הקשר",
   "journal.empty": "עדיין אין רגעים. תעדו אחד למעלה — וארבור כבר תזכור בשבילכם את השאר, ממש כאן.",
   // JRNL-2 — Journal header/compose strings (see the en dict note).
-  "journal.eyebrow": "היומן שכותב את עצמו",
+  "journal.eyebrow": "לתפוס את הרגע לפני שהוא נעלם",
   "journal.title": "כל הרגעים של המשפחה, לפי הסדר.",
   "journal.story.body": "ארבור מחבר {count} רגעים אחרונים לסיפור מתמשך — בלי שתצטרכו לכתוב הכול בעצמכם.",
   "journal.story.empty": "רגע קטן אחד מספיק כדי להתחיל. ארבור יעזור להפוך אותו לסיפור שנבנה עם הזמן.",

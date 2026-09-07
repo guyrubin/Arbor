@@ -16,6 +16,7 @@ import { LEARN_CARDS } from "../../learn/learnCards";
 import { ageYearsFromProfile } from "../../lib/childAge";
 import { track } from "../../lib/analytics";
 import RecapStoryCards from "../weekly/RecapStoryCards";
+import QuickLogModal from "../overview/QuickLogModal";
 import { rcString } from "../weekly/recapStrings";
 import { weeklyChipIds, isEmptyCurrentWeek } from "../weekly/weeklySelection";
 import { fetchDigestEmailStatus, readEmailOptIn, writeEmailOptIn, type DigestEmailStatus } from "../weekly/recapEmail";
@@ -36,6 +37,10 @@ export default function WeeklyTab() {
   const { user } = useAuth();
   const { t, uiLang, aiLang } = useLanguage();
   const he = aiLang === "he";
+  // ENG-07: the empty week offers the move that fills it, in place. QuickLogModal
+  // is the existing "openable from anywhere" capture (its own doc comment) and
+  // portals through Modal, so no new capture path is invented here.
+  const [logOpen, setLogOpen] = useState(false);
   const rc = (key: string, vars?: Record<string, string | number>) => rcString(t, uiLang, key, vars);
 
   const recap = useWeeklyRecap();
@@ -63,6 +68,11 @@ export default function WeeklyTab() {
   const emptyCurrentWeek = isEmptyCurrentWeek(selectedId, currentId, hasStoredCurrentWeek);
   // Chip strip: the current week always leads (synthetic when unstored).
   const chipIds = weeklyChipIds(reports.map((r) => r.id), currentId);
+  // TJB-19: chip id → the label a parent reads. Every non-current chip comes
+  // from a stored report, so labelFor always has its date anchor; the current
+  // week may be synthetic, and names itself.
+  const reportById = useMemo(() => new Map(reports.map((r) => [r.id, r])), [reports]);
+  const chipLabel = (id: string) => (id === currentId ? t("elev.wk.thisWeek") : labelFor(reportById.get(id)));
   // Counts only under the moments stat (clinical firewall — never a derived
   // score). Legacy reports without a resolved count fall back to the digest's
   // resolvedCount; when neither exists the line is simply omitted.
@@ -109,8 +119,15 @@ export default function WeeklyTab() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
-      <button onClick={() => setActiveTab("timeline")} className="inline-flex items-center gap-1.5 text-sm font-bold" style={{ color: "var(--arbor-muted)" }}>
-        <Icon name="arrow_back" size={16} className="rtl:-scale-x-100" /> {t("wk.backStory", { first })}
+      {/* TJB-10: back went to #/timeline — a route the parent did not come from
+          and which is not this surface's hub. Weekly is a Today tool
+          (navigation.ts SECTIONS today.tools), so back is Today, at 44 px. */}
+      <button
+        onClick={() => setActiveTab("overview")}
+        className="inline-flex items-center gap-1.5 text-sm font-bold"
+        style={{ color: "var(--arbor-muted)", minHeight: 44, minWidth: 44 }}
+      >
+        <Icon name="arrow_back" size={16} className="rtl:-scale-x-100" /> {t("elev.wk.back")}
       </button>
       {/* E6a — the child fronts their own week: small portrait through the ONE
           shared HeroAvatar engine (identity resolution + Sprout fallback live
@@ -131,11 +148,19 @@ export default function WeeklyTab() {
                F-06: the raw week id (a storage key) never renders here. */
             subtitle={selected ? labelFor(selected) : currentLabel}
             action={
+              /* TJB-10 / principle 3: ONE gradient per screen, and it belongs to
+                 the surface's primaryMove — "accept-recap-recommendation"
+                 (surfaceContract weekly). Retelling a week the parent already
+                 has is a secondary move and now reads as one; only "Create this
+                 week's story", when there is nothing to accept yet, keeps the
+                 gradient, because then it IS the only move on the screen. */
               <button
                 onClick={() => void generate()}
                 disabled={generating}
-                className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3 disabled:opacity-60"
-                style={{ background: "var(--arbor-gradient-primary)" }}
+                className="inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 disabled:opacity-60"
+                style={hasStoredCurrentWeek
+                  ? { background: "transparent", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)", minHeight: 44 }
+                  : { background: "var(--arbor-gradient-primary)", color: "var(--arbor-on-accent)", minHeight: 44 }}
               >
                 {generating ? (<><Icon name="refresh" size={16} className="animate-spin" /> {t("wk.generating")}</>) : (<><Icon name="auto_awesome" size={16} /> {hasStoredCurrentWeek ? t("wk.regenerate") : t("wk.generate")}</>)}
               </button>
@@ -157,9 +182,14 @@ export default function WeeklyTab() {
                 key={id}
                 onClick={() => setSelectedId(id)}
                 className="text-[11px] font-bold px-3 py-1.5 rounded-full whitespace-nowrap transition flex-shrink-0"
-                style={on ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+                style={on ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", minHeight: 44 } : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)", minHeight: 44 }}
               >
-                {id}
+                {/* TJB-19: the chip printed the raw week id — "2026-W37" is a
+                    storage key, and F-06 already established that it never
+                    renders. labelFor is the same resolver the page subtitle
+                    uses, so a chip and the header agree in both languages; the
+                    current week names itself rather than a date. */}
+                {chipLabel(id)}
               </button>
             );
           })}
@@ -174,7 +204,21 @@ export default function WeeklyTab() {
         /* F-06: the current week with nothing stored yet says so honestly —
            it never falls back to rendering a past week as if it were now. */
         <div className={`${cardCls} p-8 text-center text-sm`} style={{ color: "var(--arbor-muted)" }}>
-          {emptyCurrentWeek ? t("wk.emptyThisWeek") : t("wk.noReports")}
+          {/* ENG-07: the copy promised "log a moment and this week's report will
+              build itself". Nothing builds itself — the report is generated when
+              a parent taps the header button — so the sentence is now what
+              actually happens, and the move it asks for is on the screen instead
+              of being described. */}
+          <p>{emptyCurrentWeek ? t("elev.wk.emptyThisWeek") : t("wk.noReports")}</p>
+          <button
+            type="button"
+            onClick={() => setLogOpen(true)}
+            data-testid="weekly-log-a-moment"
+            className="mt-4 inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 transition active:scale-[0.98]"
+            style={{ background: "transparent", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)", minHeight: 44, minWidth: 44 }}
+          >
+            <Icon name="add" size={16} /> {t("elev.wk.logMoment")}
+          </button>
         </div>
       ) : (
         <>
@@ -259,8 +303,12 @@ export default function WeeklyTab() {
                     ))}
                   </ul>
                 )}
+                {/* TJB-20: "Worth watching" was set in peach ink, the app's
+                    caution colour, which turns an observation into a chromatic
+                    verdict about the child on a parent surface. The words carry
+                    the emphasis; the ink is the body ink. */}
                 {selected.digest.watchFor.length > 0 && (
-                  <p className="text-xs leading-relaxed" style={{ color: "var(--arbor-peach-ink)" }}>
+                  <p className="text-xs leading-relaxed" style={{ color: "var(--arbor-ink)" }}>
                     <strong>{t("wk.watchFor")}</strong> {selected.digest.watchFor.join(" ")}
                   </p>
                 )}
@@ -279,11 +327,15 @@ export default function WeeklyTab() {
                           <Icon name="check_circle" size={15} /> {t("wk.todayStepSet")}
                         </span>
                       ) : (
+                        /* TJB-10: this IS the surface's primaryMove
+                           (accept-recap-recommendation). On a history week the
+                           recap ritual does not render, so this is where the one
+                           gradient belongs; the header Retell is outline. */
                         <button
                           type="button"
                           onClick={() => acceptTodayAction(selected.digest!.tryThisWeek, "standard", "digest")}
-                          className="mt-2.5 flex items-center gap-1.5 min-h-[44px] text-[12px] font-extrabold rounded-lg transition active:scale-[0.98]"
-                          style={{ color: "var(--arbor-green-ink)" }}
+                          className="mt-2.5 inline-flex items-center gap-1.5 min-h-[44px] px-4 text-[12px] font-extrabold rounded-xl transition active:scale-[0.98]"
+                          style={{ background: "var(--arbor-gradient-primary)", color: "var(--arbor-on-accent)" }}
                         >
                           <Icon name="task_alt" size={15} /> {t("today.action.make")}
                           <Icon name="arrow_forward" size={14} className="rtl:-scale-x-100" />
@@ -389,16 +441,20 @@ export default function WeeklyTab() {
                 <p className="text-sm mt-0.5" style={{ color: "var(--arbor-muted)" }}>{t("wk.compileBrief")}</p>
               </div>
             </div>
+            {/* Principle 3: compiling a brief is a real capability and a
+                SECONDARY move on this screen — outline, not a second gradient
+                competing with the recommendation the week is for. */}
             <button
               onClick={() => setActiveTab("consult")}
-              className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3 transition active:scale-[0.98] flex-shrink-0"
-              style={{ background: "var(--arbor-gradient-primary)" }}
+              className="inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 transition active:scale-[0.98] flex-shrink-0"
+              style={{ background: "transparent", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)", minHeight: 44 }}
             >
               <Icon name="send" size={16} /> {t("wk.brief", { first })}
             </button>
           </div>
         </>
       )}
+      <QuickLogModal open={logOpen} onClose={() => setLogOpen(false)} />
     </motion.div>
   );
 }

@@ -18,7 +18,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { LearnCard, LearnRankSignals } from "./learnLibrary";
-import { todaysLearnPick } from "./todaysPick";
+import { todaysLearnPick, devMapHasSignal, focusDomainContributed } from "./todaysPick";
 
 const CHILD = "child-why";
 const DAY = "2026-09-04";
@@ -139,5 +139,41 @@ describe("Masterclasses gates the focus why-line on the re-derived flag", () => 
 
   it("devScore.focusDomain is still fed to the RANKER (only the claim moved)", () => {
     expect(HUB).toMatch(/focusDomain:\s*devScore\.focusDomain/);
+  });
+});
+
+/**
+ * ENG-07 (item 20) — the SAME standard, applied to the Learn Library's rail.
+ *
+ * `todaysPickWhy` fixed the Masterclasses hero. The Library's why-line
+ * (LearnLibrary.tsx:249-260) was still reading `devScore.focusDomain` raw, and
+ * that signal is set for a day-0 profile: `focusDomain` is the lowest-scoring
+ * domain with room to grow, and "room to grow" is measured against the
+ * catalogue, not against what the parent has actually noticed. So a parent with
+ * zero milestones and zero logs was told their reading list came from "your
+ * Development Map".
+ */
+describe("ENG-07 · the Library why-line falls to the age variant at zero data", () => {
+  const featured = [{ domains: ["language_communication"] }, { domains: ["sleep"] }];
+
+  it("zero milestones → no map claim, even though focusDomain is set", () => {
+    const dayZero = { focusDomain: "language_communication", domains: [{ reached: 0 }, { reached: 0 }] };
+    expect(dayZero.focusDomain).toBeTruthy();
+    expect(devMapHasSignal(dayZero)).toBe(false);
+    expect(focusDomainContributed(dayZero, featured)).toBe(false);
+  });
+
+  it("one noticed milestone plus a matching shown card → the claim is true and allowed", () => {
+    const seeded = { focusDomain: "language_communication", domains: [{ reached: 1 }] };
+    expect(focusDomainContributed(seeded, featured)).toBe(true);
+  });
+
+  it("negative control: the shipped condition was truthiness of focusDomain alone", () => {
+    const dayZero = { focusDomain: "language_communication", domains: [{ reached: 0 }] };
+    expect(Boolean(dayZero.focusDomain)).toBe(true);
+    expect(focusDomainContributed(dayZero, featured)).toBe(false);
+    const lib = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "../components/sections/LearnLibrary.tsx"), "utf8");
+    expect(lib).toContain("focusDomainContributed(score, featured)");
+    expect(lib).not.toMatch(/:\s*score\.focusDomain \? t\("learn\.whyFull"/);
   });
 });

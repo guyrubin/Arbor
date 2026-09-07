@@ -49,6 +49,14 @@ export const en: Record<string, string> = {
   "elev.pulse.care.briefReady": "A brief is ready to share",
   "elev.pulse.care.empty": "Bring in the people who help",
 
+  // ── TJB-10/19 + ENG-07 · Weekly: back label, week chips, honest empty
+  //    state. "this week's report will build itself" described a thing the
+  //    code does not do — the report is generated when the parent asks.
+  "elev.wk.back": "Back to Today",
+  "elev.wk.thisWeek": "This week",
+  "elev.wk.emptyThisWeek": "Nothing captured yet this week. Log a moment, then create this week's story.",
+  "elev.wk.logMoment": "Log a moment",
+
   // ── MOB-11 · the birthday is OFFERED, never inferred from an age.
   "elev.ob.birthday.add": "Add exact birthday (optional)",
   "elev.ob.birthday.label": "Birthday",
@@ -115,6 +123,10 @@ export const he: Record<string, string> = {
   "elev.pulse.care.briefReady": "סיכום מוכן לשיתוף",
   "elev.pulse.care.empty": "צרפו את האנשים שעוזרים בדרך",
 
+  "elev.wk.back": "חזרה למסך היום",
+  "elev.wk.thisWeek": "השבוע",
+  "elev.wk.emptyThisWeek": "עוד לא נקלט כלום השבוע. תעדו רגע, ואז צרו את סיפור השבוע.",
+  "elev.wk.logMoment": "לתעד רגע",
   "elev.ob.birthday.add": "להוסיף תאריך לידה מדויק (לא חובה)",
   "elev.ob.birthday.label": "תאריך לידה",
   "elev.sr.back": "חזרה למסך היום",

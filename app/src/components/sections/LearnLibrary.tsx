@@ -43,6 +43,7 @@ import {
 import { continueText } from "../../lib/i18nElevation/continue";
 import { LEARN_CARDS, learnCardById } from "../../learn/learnCards";
 import { isLearnPilotCard, learnPilotText } from "../../learn/learnPilotRelease";
+import { focusDomainContributed } from "../../learn/todaysPick";
 import { ContentActionBar, ContentWhyLine } from "../ui/ContentActionBar";
 import { TrustLink } from "../trust/TrustLink";
 
@@ -249,9 +250,19 @@ export default function LearnLibrary() {
                 // Honest why-line: claim only the signals that actually contributed.
                 const name = firstName || t("learn.yourChild");
                 const logsContributed = featured.some((c) => concernsContributed(c, recentConcerns));
+                // ENG-07: `score.focusDomain` alone is NOT evidence of a
+                // Development Map. It is set for a day-0 profile too (the
+                // lowest-scoring domain with catalogue room to grow), so this
+                // line told parents with zero milestones and zero logs that
+                // their reading came from a map they had never filled in.
+                // focusDomainContributed applies fromFocus's standard: the map
+                // must hold an observation AND the domain must carry one of the
+                // cards actually being shown. At zero data the line falls to the
+                // age-only variant, which is true.
+                const focusContributed = focusDomainContributed(score, featured);
                 const base =
-                  score.focusDomain && logsContributed ? t("learn.whyFullLogs", { name })
-                  : score.focusDomain ? t("learn.whyFull", { name })
+                  focusContributed && logsContributed ? t("learn.whyFullLogs", { name })
+                  : focusContributed ? t("learn.whyFull", { name })
                   : logsContributed ? t("learn.whyAgeLogs", { name })
                   : t("learn.whyAge", { name });
                 // W2 2.5: append the continuation variant ONLY when a saved
