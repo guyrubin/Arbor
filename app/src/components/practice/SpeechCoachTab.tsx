@@ -377,8 +377,8 @@ export default function SpeechCoachTab() {
                       title={appropriate ? t("prac.speech.sound.tip", { label: s.label, age: s.typicalAge }) : t("prac.speech.sound.tipLate", { label: s.label, age: s.typicalAge, name: first })}
                     >
                       {s.id.toUpperCase()}
+                      {/* KID-03/GP-20: a COUNT of tries, never an accuracy percentage. */}
                       {st && st.attempts > 0 && (
-                        {/* KID-03/GP-20: a COUNT of tries, never an accuracy percentage. */}
                         <span className="text-[11px] font-bold" style={{ color: on ? "#fff" : "var(--arbor-clay)" }}>{st.attempts}</span>
                       )}
                     </button>
