@@ -189,6 +189,13 @@ export const en: Dict = {
   "aria.cancel": "Cancel",
   "aria.settings": "Settings",
   "aria.notifications": "Notifications",
+  // OBJ-SHELL-05: the bell panel printed "bell.title" / "bell.empty" at the
+  // parent — translate() returns the key when it is missing, so the `|| "…"`
+  // fallbacks in TopbarBell were dead code. The keys are the fix.
+  "bell.title": "Notifications",
+  "bell.empty": "Nothing new right now.",
+  "bell.unreadOne": "1 unread notification",
+  "bell.unread": "{count} unread notifications",
   "aria.switchChild": "Switch child",
   "aria.activeChildSwitch": "Active child: {name}. Switch child",
   "aria.applicationTopbar": "Application topbar",
@@ -2562,6 +2569,10 @@ export const he: Dict = {
   "aria.cancel": "ביטול",
   "aria.settings": "הגדרות",
   "aria.notifications": "התראות",
+  "bell.title": "התראות",
+  "bell.empty": "אין חדש כרגע.",
+  "bell.unreadOne": "התראה אחת שלא נקראה",
+  "bell.unread": "{count} התראות שלא נקראו",
   "aria.switchChild": "החלפת ילד/ה",
   "aria.activeChildSwitch": "ילד/ה פעיל/ה: {name}. החלפת ילד/ה",
   "aria.applicationTopbar": "סרגל עליון של האפליקציה",

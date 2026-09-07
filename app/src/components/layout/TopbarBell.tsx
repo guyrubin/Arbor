@@ -240,10 +240,12 @@ export default function TopbarBell() {
   const displayCount = items.filter((n) => !readIds.has(n.id)).length || unreadCount;
 
   // AC-6: badge aria-label — neutral count framing, never "alerts/problems/issues".
+  // OBJ-SHELL-05: localized. A Hebrew parent was read an English aria string by
+  // their screen reader; the count framing is unchanged in both languages.
   const badgeAriaLabel =
     displayCount === 1
-      ? "1 unread notification"
-      : `${displayCount} unread notifications`;
+      ? t("bell.unreadOne")
+      : t("bell.unread", { count: displayCount });
 
   return (
     <div
@@ -253,14 +255,19 @@ export default function TopbarBell() {
       {/* Bell button */}
       <button
         ref={buttonRef}
-        aria-label={displayCount > 0 ? badgeAriaLabel : "Notifications"}
+        aria-label={displayCount > 0 ? badgeAriaLabel : t("aria.notifications")}
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={toggle}
         style={{
           position: "relative",
-          width: "40px",
-          height: "40px",
+          // OBJ-SHELL-05 / item 9 floor: the comment below used to claim a
+          // padded 44px hit area that no wrapper provided — the button WAS the
+          // target and it measured 40×40. The box is now the floor itself.
+          width: "44px",
+          height: "44px",
+          minWidth: "44px",
+          minHeight: "44px",
           borderRadius: "12px",
           background: open ? T.greenSoft : T.surface,
           border: `1px solid ${open ? T.clay : T.rule}`,
@@ -271,8 +278,6 @@ export default function TopbarBell() {
           flexShrink: 0,
           transition: "background 0.15s, border-color 0.15s",
           outline: "none",
-          // Minimum 44×44 touch target (the 40px button is inside a div that
-          // expands the hit area via padding to reach 44px equivalent).
         }}
         onFocus={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 0 2px var(--arbor-clay)"; }}
         onBlur={(e)  => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "none"; }}
@@ -342,7 +347,7 @@ export default function TopbarBell() {
                 color: T.faint,
               }}
             >
-              {t("bell.title", {}) || "Notifications"}
+              {t("bell.title")}
             </span>
           </div>
 
@@ -356,7 +361,7 @@ export default function TopbarBell() {
                 color: T.muted,
               }}
             >
-              {t("bell.empty", {}) || "Nothing new right now."}
+              {t("bell.empty")}
             </div>
           ) : (
             items.map((item) => (

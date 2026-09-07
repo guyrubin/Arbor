@@ -152,7 +152,11 @@ function buildIndex(): readonly SearchEntry[] {
         `route:${it.tab}`,
         "route",
         pair(translate("en", "nav.tab." + it.tab), translate("he", "nav.tab." + it.tab)),
-        pair(translate("en", "nav." + sec.id), translate("he", "nav." + sec.id)),
+        // OBJ-SHELL-04: the hub eyebrow. `nav.<sec.id>` was never a key, so
+        // translate() fell back to the key and every search row printed
+        // "nav.journal" / "nav.behaviors" at the parent. `nav.cat.*` is the
+        // real hub-name namespace and exists in EN and HE for all ten hubs.
+        pair(translate("en", "nav.cat." + sec.id), translate("he", "nav.cat." + sec.id)),
         { en: [], he: [] },
         it.tab,
       ));

@@ -49,6 +49,17 @@ export const en: Record<string, string> = {
   "elev.pulse.care.briefReady": "A brief is ready to share",
   "elev.pulse.care.empty": "Bring in the people who help",
 
+  // ── OBJ-ASK-02 · age-band labels for the KNOWLEDGE_AGE_BANDS vocabulary
+  //    (knowledge/retrievalKeys). The coach contract carries the band id and
+  //    the attribution chip printed it raw ("3-5y"). These are the sentences.
+  "elev.band.0-12m": "Under 1 year",
+  "elev.band.12-36m": "1–3 years",
+  "elev.band.3-5y": "3–5 years",
+  "elev.band.6-8y": "6–8 years",
+  "elev.band.9-12y": "9–12 years",
+  "elev.band.rangeYears": "{from}–{to} years",
+  "elev.band.rangeMonths": "{from}–{to} months",
+
   // ── Profile (the album motif — total captured moments, a count)
   "elev.pulse.profile.album": "The album is growing: {count} moments",
   "elev.pulse.profile.albumOne": "The album is growing: first moment saved",
@@ -87,6 +98,14 @@ export const he: Record<string, string> = {
 
   "elev.pulse.care.briefReady": "סיכום מוכן לשיתוף",
   "elev.pulse.care.empty": "צרפו את האנשים שעוזרים בדרך",
+
+  "elev.band.0-12m": "עד גיל שנה",
+  "elev.band.12-36m": "גילאי 1–3",
+  "elev.band.3-5y": "גילאי 3–5",
+  "elev.band.6-8y": "גילאי 6–8",
+  "elev.band.9-12y": "גילאי 9–12",
+  "elev.band.rangeYears": "גילאי {from}–{to}",
+  "elev.band.rangeMonths": "גילאי {from}–{to} חודשים",
 
   "elev.pulse.profile.album": "האלבום גדל: {count} רגעים",
   "elev.pulse.profile.albumOne": "האלבום גדל: הרגע הראשון נשמר",

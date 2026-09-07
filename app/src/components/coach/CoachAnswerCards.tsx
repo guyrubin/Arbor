@@ -68,6 +68,45 @@ export function escalationTier(riskLevel?: string): "quiet" | "prominent" {
   return (riskLevel || "low").toLowerCase() === "low" ? "quiet" : "prominent";
 }
 
+/**
+ * OBJ-ASK-02 — the attribution chips printed the model's own identifiers.
+ * `domains` are framework ids (`independence_adaptive_skills`) and the chip
+ * rendered `d.replace(/_/g, " ")`, so a parent read "independence adaptive
+ * skills"; `ageBand` is the retrieval vocabulary ("3-5y") and was printed raw.
+ *
+ * Both now resolve through dictionaries that already exist: `journal.domain.*`
+ * (the seven framework domains, EN + HE, used by the Journal chips) and
+ * `elev.band.*` (the five KNOWLEDGE_AGE_BANDS). A value outside either
+ * vocabulary — the model can emit one — is de-identified into words rather
+ * than rendered as an id, and never as a raw key: translate() falls back to
+ * the key, so the fallback is taken on key-identity, not on emptiness.
+ * Exported so tests cover them without mounting the component.
+ */
+export function domainChipLabel(domain: string, lang: UiLang = "en"): string {
+  const key = "journal.domain." + domain;
+  const label = translate(lang, key);
+  if (label !== key) return label;
+  const words = domain.replace(/[_-]+/g, " ").trim();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+export function ageBandChipLabel(band: string, lang: UiLang = "en"): string {
+  const key = "elev.band." + band;
+  const label = translate(lang, key);
+  if (label !== key) return label;
+  // A band outside the vocabulary ("3-4y" is emitted by stubs and by the model)
+  // still reads as a range, not as a token. The hyphen is MEANINGFUL here, so
+  // it is parsed rather than blanked — blanking it turns "3-4y" into "3 4y".
+  const range = /^(\d{1,2})\s*-\s*(\d{1,3})\s*([ym])$/i.exec(band.trim());
+  if (range) {
+    return translate(lang, range[3].toLowerCase() === "y" ? "elev.band.rangeYears" : "elev.band.rangeMonths", {
+      from: range[1],
+      to: range[2],
+    });
+  }
+  return band.trim();
+}
+
 /* ══ AI-10 — in-product quality signal on a coach answer ═════════════════════
    Before this, answer quality was unmeasured in production: a parent who got a
    bad answer had no way to tell us, so nothing about answer quality reached us
@@ -308,9 +347,9 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
         {showLens && (
           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>{t("coach.alignedWith", { lens: lens! })}</span>
         )}
-        {contract.ageBand && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{contract.ageBand}</span>}
+        {contract.ageBand && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{ageBandChipLabel(contract.ageBand, lang)}</span>}
         {contract.domains?.slice(0, 3).map((d) => (
-          <span key={d} className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{d.replace(/_/g, " ")}</span>
+          <span key={d} className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{domainChipLabel(d, lang)}</span>
         ))}
         {/* Masterplan 3.1: the why → Trust Center chain on the highest-trust
             surface — the fixed "How Arbor decides →" chip rides the attribution
