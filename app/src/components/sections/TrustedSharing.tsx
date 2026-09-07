@@ -624,6 +624,12 @@ export default function TrustedSharing() {
                 <span style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.receipt.consents")}</span>
                 <span className="font-extrabold" style={{ color: "var(--arbor-ink)" }}>{receipt.counts.consents ?? 0}</span>
               </div>
+              {/* LC-18: the receipt counted only what the SERVER erased. The
+                  device the parent is holding was absent from their proof. */}
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <span style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.receipt.clientDocs")}</span>
+                <span className="font-extrabold" style={{ color: "var(--arbor-ink)" }}>{receipt.counts.clientDocs ?? 0}</span>
+              </div>
             </div>
             <div className="flex sm:justify-end">
               <button onClick={closeDeleteModal} className="w-full sm:w-auto rounded-xl px-4 py-2.5 text-sm font-bold text-white" style={{ background: "var(--arbor-gradient-primary)" }}>{t("sec.sharing.receipt.done")}</button>

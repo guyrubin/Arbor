@@ -2,6 +2,7 @@ import { collection, deleteDoc, doc, getDocs } from "firebase/firestore";
 import { db, firebaseEnabled } from "./firebase";
 import { api } from "./api";
 import { purgeComicPages } from "./comicPageStore";
+import { clearChildLocalState } from "./childLocalState";
 import { ChildProfile, DeletionReceipt } from "../types";
 
 /** Per-child subcollections that hold parent-generated data. */
@@ -107,7 +108,7 @@ export async function exportChildData(uid: string | undefined, child: ChildProfi
 
 /** Client-side wipe only: all subcollections + the child doc (Firestore or
  *  localStorage). Server erasure is handled separately by `api.privacyErase`. */
-async function wipeClientChildData(uid: string | undefined, childId: string) {
+async function wipeClientChildData(uid: string | undefined, childId: string): Promise<number> {
   // AIX-S5 firewall condition: the device-local IndexedDB comic-page store is
   // purged in the SAME erase flow as the registered subcollections — a
   // GDPR-erased child leaves no comic pages on this device. Runs in both the
@@ -140,6 +141,15 @@ async function wipeClientChildData(uid: string | undefined, childId: string) {
       }
     }
   }
+  // LC-18: the loop above only reaches the keys named in CHILD_SUBCOLLECTIONS,
+  // so every OTHER per-child device key survived a delete — the safety
+  // checklist (`arbor.safetyChecklist.<id>`), the consult export history
+  // (`arbor.consultExports.<id>`) and anything a future surface writes. The
+  // sweep that already knows the whole shape is `clearChildLocalState`
+  // (lib/childLocalState.ts, guarded by childLocalStateSweep.guard.test.ts):
+  // it walks BOTH localStorage and sessionStorage for `arbor.*.<childId>`.
+  // It runs in the remote branch too — those keys are device-local either way.
+  return clearChildLocalState(childId);
 }
 
 /** Permanently delete one child's data (all subcollections) and the child doc. */
@@ -165,8 +175,11 @@ export async function eraseEverything(uid: string | undefined, childId: string):
   } catch {
     /* best effort: client wipe still proceeds, receipt reports zeros */
   }
-  await wipeClientChildData(uid, childId);
-  return { childId, erasedAt: new Date().toISOString(), counts };
+  // LC-18: the receipt is the parent's PROOF of deletion, and it counted only
+  // what the server erased — the device the parent is holding was absent from
+  // it. `clientDocs` is what the local sweep actually removed.
+  const clientDocs = await wipeClientChildData(uid, childId);
+  return { childId, erasedAt: new Date().toISOString(), counts: { ...counts, clientDocs } };
 }
 
 /** Trigger a browser download of a JSON object. */

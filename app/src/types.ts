@@ -167,7 +167,8 @@ export interface SharedPacketView {
 export interface DeletionReceipt {
   childId: string;
   erasedAt: string;
-  counts: { memoryEvents: number; shares: number; consents?: number };
+  /** LC-18: `clientDocs` = device-local keys the sweep removed on THIS device. */
+  counts: { memoryEvents: number; shares: number; consents?: number; clientDocs?: number };
 }
 
 /** COPPA-2026 consent purposes + grant record (client mirror of sharing/consent.ts). */

@@ -57,7 +57,10 @@ describe("eraseEverything network contract (CARE-1)", () => {
     expect(JSON.parse(String(calls[0].init?.body))).toEqual({ childId: "child-42" });
 
     expect(receipt.childId).toBe("child-42");
-    expect(receipt.counts).toEqual({ memoryEvents: 4, shares: 2, consents: 1 });
+    // LC-18: the receipt now also reports what the DEVICE sweep removed, so
+    // the parent's proof of deletion covers the copy they are holding. Zero
+    // here because this test's storage stub holds no child-scoped keys.
+    expect(receipt.counts).toEqual({ memoryEvents: 4, shares: 2, consents: 1, clientDocs: 0 });
     // erasedAt is a valid ISO timestamp the parent can keep as proof.
     expect(Number.isFinite(new Date(receipt.erasedAt).getTime())).toBe(true);
   });
