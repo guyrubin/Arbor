@@ -178,12 +178,19 @@ export const MISSION_CYCLE: MissionTemplate[] = [
   },
 ];
 
-export const DOMAIN_META: Record<PracticeDomain, { label: string; color: string; soft: string }> = {
-  language:  { label: "Language",             color: "#2f7bbf", soft: "#e5f0fb" },
-  speech:    { label: "Speech sounds",        color: "#1f8a5a", soft: "#e4f4ec" },
-  cognition: { label: "Thinking & logic",     color: "#6354c4", soft: "#ece9fb" },
-  social:    { label: "Social skills",        color: "#a9780f", soft: "#fbf1d4" },
-  emotional: { label: "Emotional regulation", color: "#bd4f74", soft: "#fce2ec" },
+/** R22 (Builder L) — `label` is the ENGLISH name and stays: the clinician
+ *  export reads one stable language, and non-rendering callers (watch.ts's
+ *  `area`/`domainLabel`, signals.ts) compose with it. `labelKey` is what a
+ *  RENDERED surface must use — `t(DOMAIN_META[d].labelKey)` — so a Hebrew
+ *  parent stops reading "Speech sounds" inside their own app. Values live in
+ *  `lib/i18nElevation/growthTruth.ts` (EN + HE), the same recipe
+ *  `framework.json`'s six monitored domains already have in `screen.domain.*`. */
+export const DOMAIN_META: Record<PracticeDomain, { label: string; labelKey: string; color: string; soft: string }> = {
+  language:  { label: "Language",             labelKey: "elev.growthTruth.domain.language",  color: "#2f7bbf", soft: "#e5f0fb" },
+  speech:    { label: "Speech sounds",        labelKey: "elev.growthTruth.domain.speech",    color: "#1f8a5a", soft: "#e4f4ec" },
+  cognition: { label: "Thinking & logic",     labelKey: "elev.growthTruth.domain.cognition", color: "#6354c4", soft: "#ece9fb" },
+  social:    { label: "Social skills",        labelKey: "elev.growthTruth.domain.social",    color: "#a9780f", soft: "#fbf1d4" },
+  emotional: { label: "Emotional regulation", labelKey: "elev.growthTruth.domain.emotional", color: "#bd4f74", soft: "#fce2ec" },
 };
 
 /* ---------------- Module D · Cognitive Adventures (MITA port) ---------------- */

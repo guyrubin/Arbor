@@ -84,7 +84,9 @@ describe("3c — the domain row renders once per domain on this screen", () => {
     expect(src.match(/milestones noticed by you/g) ?? []).toHaveLength(0);
   });
   it("keeps the visible per-domain count row (positive control)", () => {
-    expect(src).toMatch(/\{c\.reached\} of \{c\.total\} milestones noticed/);
+    // R22 (Builder L): the visible row is keyed now (growthTruth, EN + HE);
+    // the ENGLISH sentence survives only in the clinician export below.
+    expect(src).toMatch(/elev\.growthTruth\.copilot\.domains\.count", \{ reached: c\.reached, total: c\.total \}/);
   });
   it("the clinician export's domain block is a separate artifact, not a third copy", () => {
     expect(src.match(/milestones noticed by parent/g) ?? []).toHaveLength(1);

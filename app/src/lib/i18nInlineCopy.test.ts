@@ -265,7 +265,9 @@ const PRACTICE_SCOPE_FILES = ["components/tabs/ComicsTab.tsx", "components/tabs/
 /** EXACT remaining English-literal lines per file. Shrink-only. */
 const PRACTICE_ENGLISH_FROZEN: Record<string, number> = {
   "components/practice/BeatKeeperWorld.tsx": 3,
-  "components/practice/DevelopmentCopilot.tsx": 4,
+  // R22 (Builder L): DevelopmentCopilot was 4 and is 0 — the whole Full
+  // Picture body is keyed. The entry LEAVES the freeze rather than sitting at
+  // zero, and the file joins the CLEAN assertion below.
   "components/practice/HeroPoseWorld.tsx": 3,
   "components/practice/MemoryMatch.tsx": 2,
   "components/practice/PatternPowerWorld.tsx": 3,
@@ -312,9 +314,12 @@ describe("OBJ-PRACTICE-02 — hardcoded English on the practice doors is a shrin
     ).toBeLessThanOrEqual(frozen);
   });
 
-  it("JourneyTab and the launcher are CLEAN — the two doors this item keyed", () => {
+  it("JourneyTab, the launcher and the Full Picture are CLEAN", () => {
     expect(englishLines("components/practice/JourneyTab.tsx")).toEqual([]);
     expect(englishLines("components/practice/PracticeStudioTab.tsx")).toEqual([]);
+    // R22 (Builder L) — the ratchet reached zero on this file; pinned so a
+    // future edit cannot re-add a literal under a restored freeze entry.
+    expect(englishLines("components/practice/DevelopmentCopilot.tsx")).toEqual([]);
   });
 
   it("NEGATIVE CONTROL: the pre-fix JourneyTab literals are what the scan rejects", () => {

@@ -118,11 +118,14 @@ describe("1.7 zero-regression — every capability stays reachable, reframed", (
     expect(copilotSrc).toContain("escalationSignal");
   });
   it("keeps all sections: domain picture, weekly focus, conversation rows, history, pulse, clinician summary", () => {
-    expect(copilotSrc).toContain("Domain picture");
-    expect(copilotSrc).toContain("This week's focus");
+    // R22 (Builder L): the four section headings moved from English literals
+    // to keys (growthTruth, EN + HE) — the capability claim is the same, and
+    // it is now made against the mechanism that renders in both languages.
+    expect(copilotSrc).toContain("elev.growthTruth.copilot.domains.title");
+    expect(copilotSrc).toContain("elev.growthTruth.copilot.focus.title");
     expect(copilotSrc).toContain("elev.fullpicture.watch.title");
-    expect(copilotSrc).toContain("Weekly history");
-    expect(copilotSrc).toContain("Share with a professional");
+    expect(copilotSrc).toContain("elev.growthTruth.copilot.history.title");
+    expect(copilotSrc).toContain("elev.growthTruth.copilot.share.title");
     expect(copilotSrc).toContain('setActiveTab("reports")');
     expect(copilotSrc).toContain("copilot_summary_copied");
   });

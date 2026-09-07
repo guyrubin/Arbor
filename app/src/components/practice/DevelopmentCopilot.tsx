@@ -49,7 +49,9 @@ function tFP(uiLang: string, key: string, vars?: Record<string, string | number>
  *  unresolved plural, on the same screen as the hub's "5 areas covered". */
 const DOMAIN_COUNT = Object.keys(DOMAIN_META).length;
 
-const MECHANISM_NOTE = "More play and observation will add to the picture.";
+/** R22 (Builder L): the mechanism note was a module literal, so it printed
+ *  English on a Hebrew page. Same sentence, now a key (growthTruth, EN + HE). */
+const MECHANISM_NOTE_KEY = "elev.growthTruth.copilot.domains.mechanism";
 
 /** Masterplan 1.7 / GD-10 — presentation guard on evidence lines: a couple of
  *  watch-signal evidence strings interpolate the internal band VALUE
@@ -97,6 +99,16 @@ export default function DevelopmentCopilot() {
     [rawRecommendation, t, first]
   );
   const [copied, setCopied] = useState(false);
+  /* R22 (Builder L) — `watch.ts` is a data module with no reader language, so
+     it composes `area`/`domainLabel` from DOMAIN_META's ENGLISH `label` and a
+     Hebrew parent read "Speech sounds" on the row. Where the string IS that
+     label, render the keyed one; screening-derived areas already arrive
+     translated (`screen.domain.*`, resolved in screeningWatchLabels above) and
+     pass through untouched. */
+  const domainText = (text: string, domain: PracticeDomain | null | undefined) => {
+    const meta = domain ? DOMAIN_META[domain] : null;
+    return meta && text === meta.label ? t(meta.labelKey) : text;
+  };
 
   // Wave-3 (2026-06-27): the domain picture is now a flat COUNT of parent-
   // noticed milestones per domain (a parent-owned log), never the 0–100 band
@@ -256,7 +268,7 @@ export default function DevelopmentCopilot() {
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
       <PageHeader
-        eyebrow="Growth"
+        eyebrow={t("elev.growthTruth.copilot.eyebrow")}
         title={tFP(uiLang, "elev.fullpicture.title")}
         subtitle={tFP(uiLang, "elev.fullpicture.sub", { name: first })}
       />
@@ -265,7 +277,7 @@ export default function DevelopmentCopilot() {
           the child (no risk prop → one calm register for everyone). Escalation
           stays available below, gated on the internal signal only. */}
       <TrustSafetyBar
-        note="Counts reflect parent-observed data only. They are a conversation starter for professionals — never a diagnosis."
+        note={t("elev.growthTruth.copilot.trustNote")}
       />
       {escalationSignal && (
         <button
@@ -296,7 +308,7 @@ export default function DevelopmentCopilot() {
           `data-primary-move` marks the ONE control that performs the move
           surfaceContract.ts declares for this route. */}
       <div data-module="copilot-domains" data-primary-move="open-full-picture" style={{ display: "contents" }}>
-      <SectionCard title={`Domain picture — age ${ageLabel(childProfile, t)}`} icon={<Icon name="monitoring" size={20} />} tone="mint">
+      <SectionCard title={t("elev.growthTruth.copilot.domains.title", { age: ageLabel(childProfile, t) })} icon={<Icon name="monitoring" size={20} />} tone="mint">
         {/* RUN-08 / item 19 — a domain with no milestone in this age window has
             nothing to count, and printing "Speech sounds — 0 of 0 milestones
             noticed" taught the parent that the number means something bad. The
@@ -315,9 +327,9 @@ export default function DevelopmentCopilot() {
             const c = domainCounts.get(b.domain) ?? { reached: 0, total: 0 };
             return (
               <li key={b.domain} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                <span className="text-xs font-extrabold" style={{ color: "var(--arbor-ink)" }}>{meta.label}</span>
+                <span className="text-xs font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t(meta.labelKey)}</span>
                 <span className="text-[11.5px]" style={{ color: "var(--arbor-muted)" }}>
-                  {c.reached} of {c.total} milestones noticed · {MECHANISM_NOTE}
+                  {t("elev.growthTruth.copilot.domains.count", { reached: c.reached, total: c.total })} · {t(MECHANISM_NOTE_KEY)}
                 </span>
               </li>
             );
@@ -331,17 +343,17 @@ export default function DevelopmentCopilot() {
             one screen. One rendered row per domain; the clinician export below
             is a separate artifact, not a third copy of this list. */}
         <p className="text-[11px] mt-4 rounded-xl p-3 leading-relaxed" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
-          We show counts of what you&apos;ve noticed — not a score or a &ldquo;developmental age.&rdquo; Home observation can&apos;t honestly support either. A professional assessment is what turns this into conclusions.
+          {t("elev.growthTruth.copilot.domains.limits")}
         </p>
       </SectionCard>
       </div>
 
       {/* Feature 10a: the weekly recommendation */}
       <div data-module="copilot-focus" style={{ display: "contents" }}>
-      <SectionCard title="This week's focus" icon={<Icon name="explore" size={20} />} tone="coral"
+      <SectionCard title={t("elev.growthTruth.copilot.focus.title")} icon={<Icon name="explore" size={20} />} tone="coral"
         action={
           <button onClick={() => setActiveTab("overview")} className="inline-flex items-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl text-white transition" style={{ background: "var(--arbor-peach-ink)" }}>
-            Today&apos;s mission →
+            {t("elev.growthTruth.copilot.focus.cta")}
           </button>
         }>
         <div className="flex items-start gap-4">
@@ -385,24 +397,24 @@ export default function DevelopmentCopilot() {
               return (
                 <div key={w.id} className={`${cardCls} p-4`}>
                   <div className="flex items-center justify-between gap-2 mb-2">
-                    <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{w.area}</p>
+                    <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{domainText(w.area, w.domain)}</p>
                     <Chip tone="lav">
                       {tFP(uiLang, n === 1 ? "elev.fullpicture.watch.row.one" : "elev.fullpicture.watch.row.many", { n })}
                     </Chip>
                   </div>
                   {subLabel && (
-                    <p className="text-[11px] font-bold mb-1" style={{ color: meta?.color ?? "var(--arbor-muted)" }}>{subLabel}</p>
+                    <p className="text-[11px] font-bold mb-1" style={{ color: meta?.color ?? "var(--arbor-muted)" }}>{domainText(subLabel, w.domain)}</p>
                   )}
                   <div className="space-y-1.5">
                     {evidence.map((e, i) => (
-                      <p key={i} className="text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>Evidence: {e}</p>
+                      <p key={i} className="text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.growthTruth.copilot.watch.evidence", { text: e })}</p>
                     ))}
                   </div>
                   <div className="mt-2">
                     <ContentWhyLine why={t("elev.waveR.why.copilotWatch")} trustLink surface="copilot-watch" />
                   </div>
                   <button onClick={() => setActiveTab("reports")} className="mt-3 text-[11px] font-extrabold" style={{ color: "var(--arbor-green-ink)" }}>
-                    Prepare a professional summary →
+                    {t("elev.growthTruth.copilot.watch.prepare")}
                   </button>
                 </div>
               );
@@ -413,7 +425,7 @@ export default function DevelopmentCopilot() {
       </div>
 
       <div data-module="copilot-history" style={{ display: "contents" }}>
-      <SectionCard title="Weekly history" icon={<Icon name="history" size={20} />} tone="sky">
+      <SectionCard title={t("elev.growthTruth.copilot.history.title")} icon={<Icon name="history" size={20} />} tone="sky">
         {/* AP-CF-snapshots (Wave-3, 2026-06-27): the weekly snapshots now render in
             the COUNT register — parent-noticed milestones per domain over time —
             never the 0–100 `signal` fill bars they used to. (The longitudinal
@@ -425,7 +437,7 @@ export default function DevelopmentCopilot() {
             you've noticed — never a diagnosis. */}
         {snapshots.length === 0 ? (
           <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>
-            The first weekly snapshot will appear here once the dashboard has loaded practice data. It records how many milestones you&apos;ve noticed in each domain — a log, not a score.
+            {t("elev.growthTruth.copilot.history.empty")}
           </p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -454,8 +466,8 @@ export default function DevelopmentCopilot() {
                     const reached = Math.min(b.reached ?? windowed?.reached ?? 0, total);
                     return (
                       <li key={b.domain} className="flex items-baseline justify-between gap-2 text-[11px]">
-                        <span className="font-bold" style={{ color: meta.color }}>{meta.label}</span>
-                        <span style={{ color: "var(--arbor-muted)" }}>{reached} of {total} noticed</span>
+                        <span className="font-bold" style={{ color: meta.color }}>{t(meta.labelKey)}</span>
+                        <span style={{ color: "var(--arbor-muted)" }}>{t("elev.growthTruth.copilot.history.count", { reached, total })}</span>
                       </li>
                     );
                   })}
@@ -487,25 +499,32 @@ export default function DevelopmentCopilot() {
 
       {/* Feature 10b: clinician summary */}
       <div data-module="copilot-clinician-summary" style={{ display: "contents" }}>
-      <SectionCard title="Share with a professional" icon={<Icon name="description" size={20} />} tone="sky"
+      <SectionCard title={t("elev.growthTruth.copilot.share.title")} icon={<Icon name="description" size={20} />} tone="sky"
         action={
           <div className="flex gap-2">
             <button onClick={() => void copySummary()} className="inline-flex items-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl transition" style={{ background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" }}>
-              {copied ? <Icon name="check" size={14} /> : <Icon name="content_copy" size={14} />} {copied ? "Copied" : "Copy summary"}
+              {copied ? <Icon name="check" size={14} /> : <Icon name="content_copy" size={14} />} {copied ? t("elev.growthTruth.copilot.share.copied") : t("elev.growthTruth.copilot.share.copy")}
             </button>
             <button onClick={() => setActiveTab("reports")} className="inline-flex items-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl transition" style={{ background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
-              Full reports →
+              {t("elev.growthTruth.copilot.share.reports")}
             </button>
           </div>
         }>
         <p className="text-[11px] mb-3" style={{ color: "var(--arbor-muted)" }}>
-          A speech-language professional, psychologist or pediatrician gets months of between-session data in one paragraph — the thing the single-skill practice apps never close the loop on.
+          {t("elev.growthTruth.copilot.share.body")}
+        </p>
+        {/* R22 (Builder L): the <pre> below is the clinician EXPORT — one
+            stable language for whoever reads it (the rule exportEvidence
+            already follows). It stayed English; what was missing was telling
+            the parent WHY, so a Hebrew reader met an unexplained English wall. */}
+        <p className="text-[11px] mb-3" style={{ color: "var(--arbor-muted)" }}>
+          {t("elev.growthTruth.copilot.share.lang")}
         </p>
         {/* Masterplan 2.3: the PARENT-facing preview renders previewSummary —
             the streak clause is stripped here and lives only in the copied
             export. Never swap this back to clinicianSummary. */}
         <pre className="text-[11px] leading-relaxed whitespace-pre-wrap rounded-xl p-4 select-text" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", fontFamily: "ui-monospace, monospace" }}>
-          {previewSummary ?? "This summary did not pass Arbor's export safety check, so nothing was exported. Please try again after your next practice session."}
+          {previewSummary ?? t("elev.growthTruth.copilot.share.blocked")}
         </pre>
       </SectionCard>
       </div>
