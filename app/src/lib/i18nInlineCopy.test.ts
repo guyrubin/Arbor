@@ -110,3 +110,98 @@ describe("i18n registry migration stays migrated (TODAY-5/PLAT-4/CODEX-6)", () =
     expect(src).not.toContain("`Step ${step} of ${total}`");
   });
 });
+
+/* ── item 8 (LC-13) — the Learn·Care export surfaces ─────────────────────────
+ *
+ * The scans above catch inline HE ternaries. They do not catch the OTHER half
+ * of the same defect: user-visible English written straight into JSX with no
+ * `t()` at all, which is what the Reports catalogue, the Appointments form and
+ * the consult packet's own scaffold were made of. This block scopes a
+ * hardcoded-English scan to the files item 8 names, so the surfaces that were
+ * migrated cannot drift back one literal at a time.
+ */
+const ITEM8_SCOPE = [
+  "components/sections/Reports.tsx",
+  "components/sections/Appointments.tsx",
+  "components/sections/AskSpecialist.tsx",
+  "components/sections/SchoolBrief.tsx",
+  "components/sections/AcademyForYou.tsx",
+  "components/sections/ScholarHubCard.tsx",
+  "consult/packet.ts",
+];
+
+/** A user-visible attribute written as an English literal. */
+const ENGLISH_ATTR = /(?:placeholder|aria-label|title)="[A-Za-z]/;
+/** A JSX text node of two or more English words. */
+const ENGLISH_TEXT = />[A-Z][a-z]+(?: [A-Za-z’']+)+\s*</;
+
+describe("item 8 — no hardcoded English on the Learn·Care export surfaces", () => {
+  it("negative control: the pre-fix Reports.tsx card literal is what the scan rejects", () => {
+    const PRE_FIX = `  { title: "Weekly Insight", desc: "This week's summary for your records or to share.", tone: "mint", type: "weekly" },`;
+    // The catalogue row itself is data, so the scan that catches it is the
+    // rendered one below — the row now carries titleKey/descKey and the JSX
+    // renders t(r.titleKey). Both halves are asserted.
+    expect(PRE_FIX).not.toContain("titleKey");
+    const reports = fs.readFileSync(path.join(SRC_ROOT, "components/sections/Reports.tsx"), "utf8");
+    expect(reports).toContain("titleKey: \"elev.reports.weekly.title\"");
+    expect(reports).toContain("{t(r.titleKey)}");
+    expect(reports).toContain("{t(r.descKey)}");
+    expect(reports).not.toMatch(/>\{r\.title\}</);
+  });
+
+  it("no English placeholder / aria-label / title attributes remain", () => {
+    const offenders: string[] = [];
+    for (const rel of ITEM8_SCOPE) {
+      const code = stripComments(fs.readFileSync(path.join(SRC_ROOT, rel), "utf8"));
+      for (const [i, line] of code.split("\n").entries()) {
+        if (ENGLISH_ATTR.test(line)) offenders.push(`${rel}:${i + 1} → ${line.trim().slice(0, 110)}`);
+      }
+    }
+    expect(offenders, `hardcoded English attributes — route them through t():\n${offenders.join("\n")}`).toEqual([]);
+  });
+
+  it("no multi-word English JSX text nodes remain", () => {
+    const offenders: string[] = [];
+    for (const rel of ITEM8_SCOPE) {
+      const code = stripComments(fs.readFileSync(path.join(SRC_ROOT, rel), "utf8"));
+      for (const [i, line] of code.split("\n").entries()) {
+        if (ENGLISH_TEXT.test(line)) offenders.push(`${rel}:${i + 1} → ${line.trim().slice(0, 110)}`);
+      }
+    }
+    expect(offenders, `hardcoded English copy — route it through t():\n${offenders.join("\n")}`).toEqual([]);
+  });
+
+  it("the consult packet's serializers take a language", () => {
+    const packet = fs.readFileSync(path.join(SRC_ROOT, "consult/packet.ts"), "utf8");
+    for (const fn of ["serializePacket", "serializePresetPacket", "presetPacketToPrintSections", "serializeForExport"]) {
+      const at = packet.indexOf(`export function ${fn}(`);
+      expect(at, `${fn} not found`).toBeGreaterThan(-1);
+      expect(packet.slice(at, at + 400), `${fn} takes no lang`).toContain("lang: UiLang");
+    }
+    // …and the two header lines are keyed, not literals.
+    expect(packet).toContain('translate(lang, "elev.packet.header"');
+    expect(packet).toContain('translate(lang, "elev.packet.prepared"');
+    expect(packet).not.toContain("— context for our conversation`");
+  });
+
+  it("the printable report shell carries lang and dir", () => {
+    const rep = fs.readFileSync(path.join(SRC_ROOT, "lib/reportExport.ts"), "utf8");
+    expect(rep).toContain('<html lang="${lang}" dir="${dir}">');
+    expect(rep).toContain('const dir = lang === "he" ? "rtl" : "ltr";');
+    expect(rep).toContain("padding-inline-start");
+  });
+
+  it("the Learning Map domain labels resolve through the shared screen.domain dictionary", () => {
+    const academy = fs.readFileSync(path.join(SRC_ROOT, "components/sections/AcademyForYou.tsx"), "utf8");
+    expect(academy).toContain("const key = `screen.domain.${id}`;");
+    expect(academy).not.toMatch(/const labelFor = \(id: string\) => DOMAIN_LABEL\[id\]/);
+  });
+
+  it("the charter starter set is offered in the family's language", () => {
+    const charter = fs.readFileSync(path.join(SRC_ROOT, "lib/familyCharter.ts"), "utf8");
+    expect(charter).toContain("DEFAULT_CHARTER_VALUE_KEYS");
+    expect(charter).toContain("export function defaultCharterValues(lang: UiLang");
+    const family = fs.readFileSync(path.join(SRC_ROOT, "components/sections/FamilyFormation.tsx"), "utf8");
+    expect(family).toContain("initialCharterValues(undefined, uiLang)");
+  });
+});

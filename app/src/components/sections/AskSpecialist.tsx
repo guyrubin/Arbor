@@ -74,7 +74,7 @@ type ExportBuild = { text: string; error: null } | { text: null; error: string }
 export default function AskSpecialist() {
   const { childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems, setActiveTab, pendingConsultNote, consumeConsultPrefill } = useArbor();
   const { toast } = useToast();
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
   const reduceMotion = useReducedMotion();
   const exportReport = useReportExport();
   const firstName = (childProfile.name || "your child").split(" ")[0];
@@ -187,14 +187,17 @@ export default function AskSpecialist() {
   // parent-readable reason; every verb disables until the parent fixes it.
   const exportBuild = useMemo<ExportBuild>(() => {
     try {
-      return { text: serializeForExport(audience, packet, excluded, visionNote, t("consult.visionNote.heading")), error: null };
+      // LC-13 / item 8: `uiLang` renders the packet SCAFFOLD (headings, the
+      // prepared line) in the parent's language — a gan teacher receives a
+      // Hebrew packet, not an English skeleton around Hebrew items.
+      return { text: serializeForExport(audience, packet, excluded, visionNote, t("consult.visionNote.heading"), uiLang), error: null };
     } catch (err) {
       const reason = err instanceof ClinicalLanguageError && audience === "teacher"
         ? t("elev.carehonesty.consult.blocked.teacher", { term: err.term })
         : t("elev.carehonesty.consult.blocked.generic");
       return { text: null, error: reason };
     }
-  }, [audience, packet, excluded, visionNote, t]);
+  }, [audience, packet, excluded, visionNote, t, uiLang]);
   const exportText = exportBuild.text;
   const noneSelected = includedCount === 0 || !reviewed || exportText == null;
 
@@ -208,9 +211,9 @@ export default function AskSpecialist() {
     try {
       await navigator.clipboard.writeText(exportText);
       trackShareCompleted("story", "clipboard");
-      toast("Packet copied. Paste it to your professional.", "success");
+      toast(t("elev.packet.copied"), "success");
     }
-    catch { toast("Could not copy. Try Download instead.", "error"); }
+    catch { toast(t("elev.packet.copyFailed"), "error"); }
   };
   const download = () => {
     if (exportText == null) return;
@@ -220,7 +223,7 @@ export default function AskSpecialist() {
     a.href = url; a.download = `${firstName}-arbor-handoff-${audience}-${packet.generatedAt}.md`;
     document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
-    toast("Downloaded. Bring it to your appointment.", "success");
+    toast(t("elev.packet.downloaded"), "success");
   };
 
   const runExport = (type: typeof REPORTS[number]["type"]) => {
@@ -288,7 +291,7 @@ export default function AskSpecialist() {
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
                 <span className="text-[15px] font-extrabold truncate" style={{ color: INK }}>{p.name}</span>
-                {p.verified && <Icon name="verified" size={16} fill={1} style={{ color: GREEN }} aria-label="Verified by Arbor" />}
+                {p.verified && <Icon name="verified" size={16} fill={1} style={{ color: GREEN }} aria-label={t("elev.carehonesty.pro.verified")} />}
               </div>
               <div className="text-[12px] font-bold mt-px" style={{ color: GREEN }}>{p.role}</div>
               <div className="text-[11px] font-semibold mt-0.5 inline-flex items-center gap-1.5" style={{ color: MUTED }}>
@@ -329,9 +332,11 @@ export default function AskSpecialist() {
         <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: GREEN }}>
           <Icon name="stethoscope" size={15} /> {t("consult.eyebrow")}
         </span>
-        <h1 className="text-[1.6rem] font-extrabold leading-tight mt-0.5" style={{ fontFamily: "var(--font-display)", color: INK, textWrap: "balance" } as React.CSSProperties}>
+        {/* LC-28 / CR-21: this was a second <h1> on the route. The page's one
+            h1 belongs to the hub header; the consult section is a level down. */}
+        <h2 className="text-[1.6rem] font-extrabold leading-tight mt-0.5" style={{ fontFamily: "var(--font-display)", color: INK, textWrap: "balance" } as React.CSSProperties}>
           {t("consult.title")}
-        </h1>
+        </h2>
         <p className="text-sm mt-1.5 leading-relaxed" style={{ color: MUTED, textWrap: "pretty" } as React.CSSProperties}>
           {t("consult.subtitle", { name: firstName })}
         </p>

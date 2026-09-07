@@ -36,19 +36,32 @@
  *    cannot quietly survive an account the parent deleted.
  */
 
+import { translate, type UiLang } from "./i18n";
+
 /** The one true key. `becoming.ts` holds the same literal; the test pins them. */
 export const FAMILY_CHARTER_KEY = "arbor.familyCharter";
 
 /**
  * The starter set offered when a family has never saved a charter. These are a
  * SUGGESTION, not a saved charter — see `hasSavedFamilyCharter`.
+ *
+ * LC-13 / item 8: the suggestion is the first thing a Hebrew-reading family
+ * sees on this surface, and it was four English nouns they were then invited
+ * to save as their own charter. The words are keyed; `DEFAULT_CHARTER_VALUES`
+ * stays the English resolution so existing callers and tests are unchanged.
  */
-export const DEFAULT_CHARTER_VALUES: readonly string[] = Object.freeze([
-  "Courage",
-  "Honesty",
-  "Responsibility",
-  "Kindness",
+export const DEFAULT_CHARTER_VALUE_KEYS: readonly string[] = Object.freeze([
+  "elev.charter.default.courage",
+  "elev.charter.default.honesty",
+  "elev.charter.default.responsibility",
+  "elev.charter.default.kindness",
 ]);
+
+export function defaultCharterValues(lang: UiLang = "en"): string[] {
+  return DEFAULT_CHARTER_VALUE_KEYS.map((key) => translate(lang, key));
+}
+
+export const DEFAULT_CHARTER_VALUES: readonly string[] = Object.freeze(defaultCharterValues("en"));
 
 /** Bounds — a charter is a short list of words, not a document. */
 export const MAX_CHARTER_VALUES = 12;
@@ -144,6 +157,6 @@ export function saveFamilyCharter(
  * charter, or the starter set when they have never saved one. An emptied
  * charter stays empty — it is a choice, not an absence.
  */
-export function initialCharterValues(store: CharterStore | null = getStore()): string[] {
-  return hasSavedFamilyCharter(store) ? loadFamilyCharter(store) : [...DEFAULT_CHARTER_VALUES];
+export function initialCharterValues(store: CharterStore | null = getStore(), lang: UiLang = "en"): string[] {
+  return hasSavedFamilyCharter(store) ? loadFamilyCharter(store) : defaultCharterValues(lang);
 }

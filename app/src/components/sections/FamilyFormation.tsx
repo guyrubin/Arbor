@@ -34,9 +34,9 @@ const FRAME_TONE: Record<FrameId, PastelKey> = {
  *     throw and killed the only screen that could have repaired the charter.
  *     `initialCharterValues` always returns an array. */
 export default function FamilyFormation() {
-  const { t, aiLang } = useLanguage();
+  const { t, aiLang, uiLang } = useLanguage();
   const he = aiLang === "he";
-  const [values, setValues] = useState<string[]>(() => initialCharterValues());
+  const [values, setValues] = useState<string[]>(() => initialCharterValues(undefined, uiLang));
   const [input, setInput] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -60,7 +60,7 @@ export default function FamilyFormation() {
           {values.map((v) => (
             <span key={v} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold" dir="auto" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
               {v}
-              <button onClick={() => remove(v)} aria-label={`Remove ${v}`}><Icon name="close" size={14} /></button>
+              <button onClick={() => remove(v)} aria-label={t("elev.charter.remove", { value: v })}><Icon name="close" size={14} /></button>
             </span>
           ))}
           {values.length === 0 && <span className="text-sm" style={{ color: "var(--arbor-muted)" }}>{he ? "הוסיפו ערך כדי להתחיל." : "Add a value to begin your charter."}</span>}

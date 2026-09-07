@@ -43,7 +43,19 @@ import { TrustLink } from "../trust/TrustLink";
 const DOMAIN_LABEL: Record<string, string> = Object.fromEntries(
   (framework.domains as { id: string; label: string }[]).map((d) => [d.id, d.label])
 );
-const labelFor = (id: string) => DOMAIN_LABEL[id] ?? id;
+/**
+ * LC-13 / item 8: framework.json's `label` is English-only, so the Learning
+ * Map printed English domain names inside the Hebrew app. The six monitored
+ * domains already have a bilingual dictionary — `screen.domain.<id>`, used by
+ * the screening surfaces — so this reuses it rather than minting a second
+ * canon. `translate` returns the key itself when it is missing, which is the
+ * signal to fall back to framework.json (today only `ecosystem_stressors`).
+ */
+const labelFor = (id: string, t: (key: string) => string) => {
+  const key = `screen.domain.${id}`;
+  const translated = t(key);
+  return translated === key ? DOMAIN_LABEL[id] ?? id : translated;
+};
 
 // ── Course-progress read ───────────────────────────────────────────────────────
 
@@ -132,7 +144,7 @@ export default function AcademyForYou({ onNavigateToMasterclasses }: { onNavigat
 
   // The recommended domain label
   const focusDomain = score.focusDomain;
-  const focusLabel = focusDomain ? labelFor(focusDomain) : null;
+  const focusLabel = focusDomain ? labelFor(focusDomain, t) : null;
 
   // OBJ-GROWTH-05: `confidence` measures how big the milestone CATALOGUE is for
   // this age, not how much the parent has noticed — so the ranked card used to
@@ -410,9 +422,9 @@ export default function AcademyForYou({ onNavigateToMasterclasses }: { onNavigat
                       <span
                         className="text-[13px] font-bold truncate flex-1 min-w-0"
                         style={{ color: "var(--arbor-ink)" }}
-                        title={labelFor(row.domainId)}
+                        title={labelFor(row.domainId, t)}
                       >
-                        {labelFor(row.domainId)}
+                        {labelFor(row.domainId, t)}
                       </span>
                       {/* "[X] of [Y] explored" — VERBATIM cleared label, kept in ADDITION to the bar */}
                       <span

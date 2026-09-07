@@ -8,6 +8,7 @@ import { ageLabel } from "./childAge";
 import type { ChildProfile, BehaviorLog, ActionPlan } from "../types";
 import type { LangObservation } from "../growth/vocabAgg";
 import { fmtDay } from "./formatDate";
+import { translate, type UiLang } from "./i18n";
 import { topMomentDisplay } from "../hooks/useWeeklyRecap";
 
 export type ReportSection = { heading: string; body: string | string[] };
@@ -196,8 +197,8 @@ const isNativeRuntime = (): boolean => {
  * when the print window is blocked — no alert, no dead end, nothing to
  * translate. Never rejects; callers may fire-and-forget as before.
  */
-export async function openPrintableReport(doc: ReportDoc, childName: string): Promise<void> {
-  const html = renderPrintableHtml(doc, childName);
+export async function openPrintableReport(doc: ReportDoc, childName: string, lang: UiLang = "en"): Promise<void> {
+  const html = renderPrintableHtml(doc, childName, lang);
   const filename = `${slugForFile(doc.title)}-${slugForFile(childName)}.html`;
 
   if (isNativeRuntime()) {
@@ -238,7 +239,10 @@ export async function openPrintableReport(doc: ReportDoc, childName: string): Pr
 const slugForFile = (value: string) =>
   (value || "arbor-report").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "arbor-report";
 
-function renderPrintableHtml(doc: ReportDoc, childName: string): string {
+/** LC-13 / item 8: the printable shell carries `lang` and `dir`, so a Hebrew
+ *  report actually renders right-to-left instead of a Hebrew document laid out
+ *  left-to-right with its list bullets on the wrong side. */
+function renderPrintableHtml(doc: ReportDoc, childName: string, lang: UiLang = "en"): string {
   const sectionsHtml = doc.sections.map((s) => {
     const items = Array.isArray(s.body) ? s.body.filter(Boolean) : [s.body];
     const body = items.length
@@ -249,7 +253,8 @@ function renderPrintableHtml(doc: ReportDoc, childName: string): string {
     return `<section><h2>${esc(s.heading)}</h2>${body}</section>`;
   }).join("");
 
-  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(doc.title)} — ${esc(childName)}</title>
+  const dir = lang === "he" ? "rtl" : "ltr";
+  return `<!doctype html><html lang="${lang}" dir="${dir}"><head><meta charset="utf-8"><title>${esc(doc.title)} — ${esc(childName)}</title>
   <style>
     @page { margin: 24mm 18mm; }
     * { box-sizing: border-box; }
@@ -264,7 +269,7 @@ function renderPrintableHtml(doc: ReportDoc, childName: string): string {
     section { margin-bottom: 18px; }
     h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color:#1f8a5a; margin: 0 0 6px; }
     p, li { font-size: 14px; line-height: 1.55; }
-    ul { margin: 0; padding-left: 18px; }
+    ul { margin: 0; padding-inline-start: 18px; }
     .muted { color:#9aa0a8; }
     .footer { margin-top: 28px; padding-top: 14px; border-top: 1px solid #e8edea; color:#69747f; font-size: 11px; }
     @media print { .noprint { display:none; } }
@@ -274,9 +279,9 @@ function renderPrintableHtml(doc: ReportDoc, childName: string): string {
     : `<span class="dot">A</span>`}<b>Arbor — Development Fieldbook</b></div>
   <h1>${esc(doc.title)}</h1>
   ${doc.subtitle ? `<p class="sub">${esc(doc.subtitle)}</p>` : ""}
-  <p class="meta">Generated ${fmtDay(new Date(), "en")} · Parent-prepared · Non-diagnostic</p>
+  <p class="meta">${esc(translate(lang, "elev.reports.printMeta", { date: fmtDay(new Date(), lang) }))}</p>
   ${sectionsHtml}
-  <div class="footer">Arbor is non-diagnostic and does not replace professional advice. This report reflects parent observations and is shared with the parent's consent.</div>
+  <div class="footer">${esc(translate(lang, "elev.reports.printFooter"))}</div>
   <script>window.onload=function(){setTimeout(function(){window.print();},250);}</script>
   </body></html>`;
 }

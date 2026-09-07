@@ -195,12 +195,18 @@ export default function Appointments() {
       {adding && (
         <div className={`${cardCls} p-5`}>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>New appointment</h3>
+            <h3 className="text-sm font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("elev.learnCare.appt.new")}</h3>
             <button onClick={() => setAdding(false)} aria-label={t("aria.cancel")}><Icon name="close" size={17} style={{ color: "var(--arbor-muted)" }} /></button>
           </div>
           <div className="grid sm:grid-cols-3 gap-2">
-            <input value={form.who} onChange={(e) => setForm({ ...form, who: e.target.value })} placeholder="Professional name" className="rounded-xl px-3 py-2.5 text-sm min-h-[44px]" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} />
-            <input value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} placeholder="Role (e.g. Speech Therapist)" className="rounded-xl px-3 py-2.5 text-sm min-h-[44px]" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} />
+            <label className="flex flex-col gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+              {t("elev.learnCare.appt.who.label")}
+              <input value={form.who} onChange={(e) => setForm({ ...form, who: e.target.value })} placeholder={t("elev.learnCare.appt.who.placeholder")} className="rounded-xl px-3 py-2.5 text-sm min-h-[44px]" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
+            </label>
+            <label className="flex flex-col gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+              {t("elev.learnCare.appt.role.label")}
+              <input value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} placeholder={t("elev.learnCare.appt.role.placeholder")} className="rounded-xl px-3 py-2.5 text-sm min-h-[44px]" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
+            </label>
             {/* LC-12: a real date, not prose — this is what makes ordering,
                 reminders and the calendar file possible at all. */}
             <label className="flex flex-col gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
@@ -215,7 +221,7 @@ export default function Appointments() {
               />
             </label>
           </div>
-          <button onClick={addAppt} className="mt-3 inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-2.5 min-h-[44px]" style={{ background: "var(--arbor-clay)" }}>Save</button>
+          <button onClick={addAppt} className="mt-3 inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-2.5 min-h-[44px]" style={{ background: "var(--arbor-clay)" }}>{t("elev.learnCare.appt.save")}</button>
         </div>
       )}
 
@@ -223,7 +229,7 @@ export default function Appointments() {
         {upcoming.length ? (
           <div className="space-y-3">{upcoming.map(row)}</div>
         ) : (
-          <p className="text-sm" style={{ color: "var(--arbor-muted)" }}>No appointments scheduled.</p>
+          <p className="text-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.appt.none")}</p>
         )}
       </SectionCard>
 
@@ -233,9 +239,9 @@ export default function Appointments() {
         </SectionCard>
       )}
 
-      <SectionCard title="Prepare your questions" icon={<Icon name="help" size={20} />} tone="mint">
+      <SectionCard title={t("elev.learnCare.appt.prepare")} icon={<Icon name="help" size={20} />} tone="mint">
         <ul className="space-y-2 mb-3">
-          {questions.length === 0 && <li className="text-sm" style={{ color: "var(--arbor-muted)" }}>Add a question you want to ask at the next session.</li>}
+          {questions.length === 0 && <li className="text-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.appt.questions.empty")}</li>}
           {questions.map((qq) => (
             <li key={qq.id} className="flex items-start gap-2.5 text-sm" style={{ color: "var(--arbor-ink)" }}>
               <Icon name="check_circle" size={16} fill={1} className="mt-0.5" style={{ color: "var(--arbor-green-ink)" }} /> <span className="flex-1">{qq.text}</span>
@@ -244,8 +250,8 @@ export default function Appointments() {
           ))}
         </ul>
         <div className="flex gap-2">
-          <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addQ()} placeholder="Add a question to ask…" className="flex-1 rounded-xl px-3 py-2.5 text-sm min-h-[44px]" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} />
-          <button onClick={addQ} className="inline-flex items-center gap-1 font-bold text-sm rounded-xl px-4 min-h-[44px]" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-green-ink)" }}><Icon name="add" size={18} /> Add</button>
+          <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addQ()} placeholder={t("elev.learnCare.appt.questions.placeholder")} aria-label={t("elev.learnCare.appt.questions.placeholder")} className="flex-1 rounded-xl px-3 py-2.5 text-sm min-h-[44px]" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} />
+          <button onClick={addQ} className="inline-flex items-center gap-1 font-bold text-sm rounded-xl px-4 min-h-[44px]" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-green-ink)" }}><Icon name="add" size={18} /> {t("elev.learnCare.appt.questions.add")}</button>
         </div>
         {/* LC-12 + LC-20: the prepared questions ride into the consult summary. */}
         <p className="text-[11.5px] mt-2.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
@@ -255,7 +261,7 @@ export default function Appointments() {
             to route to `reports`, the deep link, contradicting Reports.tsx's own
             comment that Consult is the primary surface. */}
         <button onClick={() => setActiveTab("consult")} className="mt-3 inline-flex items-center gap-2 text-sm font-bold rounded-xl px-4 py-2.5 min-h-[44px]" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
-          <Icon name="description" size={18} /> Share an Arbor summary
+          <Icon name="description" size={18} /> {t("elev.learnCare.appt.shareSummary")}
         </button>
       </SectionCard>
     </motion.div>

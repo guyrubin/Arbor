@@ -9,6 +9,7 @@
  */
 
 import { ClinicalLanguageError, findClinicalDiagnosisTerm } from "../lib/clinicalScan";
+import { translate, type UiLang } from "../lib/i18n";
 import { DOMAIN_LABEL } from "../lib/screening";
 import { bandForAgeMonths, milestoneAgeWindow } from "../lib/milestoneData";
 import { ageLabel, ageMonthsFromProfile } from "../lib/childAge";
@@ -72,7 +73,19 @@ export interface PacketInputGrowthEntry {
 }
 
 export interface PacketItem { id: string; text: string }
-export interface PacketSection { id: string; title: string; note?: string; items: PacketItem[] }
+/** LC-13 / item 8: `title`/`note` stay the English default so every existing
+ *  caller keeps working; `titleKey`/`noteKey` (+ `titleVars`) are what
+ *  `serializePacket` renders when a language is passed. A gan teacher receives
+ *  a Hebrew packet, not an English scaffold with Hebrew items inside it. */
+export interface PacketSection {
+  id: string;
+  title: string;
+  note?: string;
+  titleKey?: string;
+  titleVars?: Record<string, string | number>;
+  noteKey?: string;
+  items: PacketItem[];
+}
 export interface ConsultPacket {
   childLabel: string;
   generatedAt: string;
@@ -326,6 +339,7 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
       id: "reason",
       title: "What I'd like help with",
       note: "In the parent's own words.",
+      titleKey: "elev.packet.section.reason", noteKey: "elev.packet.note.reason",
       items: [{ id: "reason-line", text: reason }],
     });
   }
@@ -337,7 +351,7 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
   if (profile.schoolContext) aboutItems.push({ id: "about-school", text: `Setting: ${profile.schoolContext}.` });
   if (profile.strengths?.length) aboutItems.push({ id: "about-strengths", text: `Strengths: ${profile.strengths.join(", ")}.` });
   if (profile.challenges?.length) aboutItems.push({ id: "about-focus", text: `Current focus: ${profile.challenges.join(", ")}.` });
-  sections.push({ id: "about", title: `About ${profile.name}`, items: aboutItems });
+  sections.push({ id: "about", title: `About ${profile.name}`, titleKey: "elev.packet.section.about", titleVars: { name: profile.name }, items: aboutItems });
 
   // 2) What's been happening — top recent concerns by frequency.
   if (recent.length) {
@@ -355,6 +369,8 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
     sections.push({
       id: "patterns",
       title: `What we've been seeing (last ${windowDays} days)`,
+      titleKey: "elev.packet.section.patterns", titleVars: { days: windowDays },
+      noteKey: "elev.packet.note.patterns",
       // Deliberately scan-clean wording (CARE-2): the fail-closed clinical-term
       // scan runs on non-clinician egress, so the reassurance note itself must
       // not contain a scanned term.
@@ -410,7 +426,7 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
         .filter(([, d]) => d.total > 0)
         .map(([domain, d], i) => ({ id: `dev-${i}`, text: `${humanDomainLabel(domain)}: ${d.done} of ${d.total} noticed.` })),
     ];
-    sections.push({ id: "development", title: "Development snapshot", items });
+    sections.push({ id: "development", title: "Development snapshot", titleKey: "elev.packet.section.development", items });
   }
 
   // 4) What's been tried — active plans (shows the family is already working on it).
@@ -419,7 +435,7 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
       id: `tried-${i}`,
       text: p.issue ? `${p.title} — for ${p.issue}.` : p.title,
     }));
-    sections.push({ id: "tried", title: "What we've already tried", items });
+    sections.push({ id: "tried", title: "What we've already tried", titleKey: "elev.packet.section.tried", items });
   }
 
   // 5) What Arbor remembers — approved longitudinal facts (the moat).
@@ -430,6 +446,7 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
       id: "memory",
       title: "Context worth knowing",
       note: "Approved notes from your history with Arbor.",
+      titleKey: "elev.packet.section.memory", noteKey: "elev.packet.note.memory",
       items,
     });
   }
@@ -448,6 +465,7 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
       id: "language-observations",
       title: "Phrases we have heard",
       note: "Parent-recorded phrases, as heard at home.",
+      titleKey: "elev.packet.section.language", noteKey: "elev.packet.note.language",
       items,
     });
   }
@@ -472,6 +490,7 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
         id: "growth-measurements",
         title: "Measurements we have taken",
         note: "Parent-recorded measurements, as entered at home.",
+        titleKey: "elev.packet.section.measurements", noteKey: "elev.packet.note.measurements",
         items,
       });
     }
@@ -497,6 +516,7 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
       id: "triggers",
       title: "What we noticed came first",
       note: "The parent's own words for what preceded a hard moment — counts, not causes.",
+      titleKey: "elev.packet.section.triggers", noteKey: "elev.packet.note.triggers",
       items,
     });
   }
@@ -509,6 +529,7 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
     sections.push({
       id: "questions",
       title: "Questions I want to ask",
+      titleKey: "elev.packet.section.questions",
       items: questions.slice(0, 10).map((q, i) => ({ id: `question-${i}`, text: q })),
     });
   }
@@ -539,6 +560,8 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
         id: "since-last-visit",
         title: `Since the last export (${isoDay(lastMs)})`,
         note: "What was added since this summary was last prepared for this audience — counts only.",
+        titleKey: "elev.packet.section.sinceLast", titleVars: { date: isoDay(lastMs) },
+        noteKey: "elev.packet.note.sinceLast",
         items: [
           { id: "delta-logs", text: `${newLogs} new moment${s(newLogs)} logged.` },
           { id: "delta-plans", text: `${newPlans} action plan${s(newPlans)} added.` },
@@ -555,19 +578,36 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
   };
 }
 
+/** LC-13 / item 8: the packet's own SCAFFOLD in the reader's language. Section
+ *  titles and the two header lines resolve through `titleKey`/`noteKey` (set at
+ *  build time) when `lang` is given; a section without a key falls back to the
+ *  English `title`, so an un-migrated caller is never left with a blank
+ *  heading. Item TEXT is parent- and log-derived and is not translated here. */
+export function sectionTitle(section: PacketSection, lang: UiLang = "en"): string {
+  return section.titleKey ? translate(lang, section.titleKey, section.titleVars) : section.title;
+}
+
+/** As above, for the italic note line under a heading. */
+export function sectionNote(section: PacketSection, lang: UiLang = "en"): string | undefined {
+  if (section.noteKey) return translate(lang, section.noteKey);
+  return section.note;
+}
+
 /** Render the packet to shareable Markdown, omitting any redacted item ids and
- *  any section the parent emptied. */
-export function serializePacket(packet: ConsultPacket, excludedIds: Set<string> = new Set()): string {
+ *  any section the parent emptied. `lang` renders the scaffold — headings and
+ *  the prepared line — in the parent's language (default English). */
+export function serializePacket(packet: ConsultPacket, excludedIds: Set<string> = new Set(), lang: UiLang = "en"): string {
   const lines: string[] = [
-    `# ${packet.childLabel} — context for our conversation`,
-    `_Prepared ${packet.generatedAt} via Arbor. Parent-selected; non-diagnostic._`,
+    `# ${translate(lang, "elev.packet.header", { name: packet.childLabel })}`,
+    `_${translate(lang, "elev.packet.prepared", { date: packet.generatedAt })}_`,
     "",
   ];
   for (const section of packet.sections) {
     const items = section.items.filter((it) => !excludedIds.has(it.id));
     if (items.length === 0) continue;
-    lines.push(`## ${section.title}`);
-    if (section.note) lines.push(`_${section.note}_`);
+    lines.push(`## ${sectionTitle(section, lang)}`);
+    const note = sectionNote(section, lang);
+    if (note) lines.push(`_${note}_`);
     for (const it of items) lines.push(`- ${it.text}`);
     lines.push("");
   }
@@ -749,10 +789,11 @@ export function buildPresetPacket(audience: ConsultAudience, input: BuildPacketI
 export function serializePresetPacket(
   audience: ConsultAudience,
   packet: ConsultPacket,
-  excludedIds: Set<string> = new Set()
+  excludedIds: Set<string> = new Set(),
+  lang: UiLang = "en"
 ): string {
   const preset = CONSULT_PRESETS[audience];
-  const md = serializePacket(capToPreset(preset, packet), excludedIds);
+  const md = serializePacket(capToPreset(preset, packet), excludedIds, lang);
   assertWithinCeiling(preset, md);
   return md;
 }
@@ -822,16 +863,18 @@ export interface PresetPrintSection { heading: string; body: string[] }
 export function presetPacketToPrintSections(
   audience: ConsultAudience,
   packet: ConsultPacket,
-  excludedIds: Set<string> = new Set()
+  excludedIds: Set<string> = new Set(),
+  lang: UiLang = "en"
 ): PresetPrintSection[] {
   const preset = CONSULT_PRESETS[audience];
   const sections: PresetPrintSection[] = [];
   for (const section of capToPreset(preset, packet).sections) {
     const items = section.items.filter((it) => !excludedIds.has(it.id));
     if (items.length === 0) continue;
+    const note = sectionNote(section, lang);
     sections.push({
-      heading: section.title,
-      body: [...(section.note ? [section.note] : []), ...items.map((it) => it.text)],
+      heading: sectionTitle(section, lang),
+      body: [...(note ? [note] : []), ...items.map((it) => it.text)],
     });
   }
   assertWithinCeiling(preset, sections.flatMap((s) => [s.heading, ...s.body]).join("\n"));
@@ -872,10 +915,11 @@ export function serializeForExport(
   packet: ConsultPacket,
   excludedIds: Set<string> = new Set(),
   note: string = "",
-  noteHeading: string = "Parent note"
+  noteHeading: string = "Parent note",
+  lang: UiLang = "en"
 ): string {
   if (audience === "self") {
-    const md = appendParentNote(serializePacket(packet, excludedIds), note, noteHeading);
+    const md = appendParentNote(serializePacket(packet, excludedIds, lang), note, noteHeading);
     assertClinicianExportCeiling(md);
     return md;
   }
@@ -889,7 +933,7 @@ export function serializeForExport(
       );
     }
   }
-  const md = appendParentNote(serializePresetPacket(preset.audience, packet, excludedIds), note, noteHeading);
+  const md = appendParentNote(serializePresetPacket(preset.audience, packet, excludedIds, lang), note, noteHeading);
   assertWithinCeiling(preset, md);
   assertClinicianExportCeiling(md);
   return md;

@@ -16,17 +16,17 @@ import type { GrowthEntry } from "../../growth/growthEntries";
 
 /** The 8 clinical PDF report types. Exported so the single Consult export menu
  *  (b3) consumes the same list — there is exactly one report definition source. */
-export const REPORTS: { title: string; desc: string; tone: PastelKey; type: ReportType }[] = [
-  { title: "Weekly Insight", desc: "This week's summary for your records or to share.", tone: "mint", type: "weekly" },
-  { title: "Teacher Handoff", desc: "Classroom-ready context, what helps and what escalates.", tone: "sky", type: "teacher" },
-  { title: "Therapist Summary", desc: "Concern, timeline, patterns and tried interventions.", tone: "lav", type: "therapist" },
-  { title: "Pediatrician Summary", desc: "Duration, frequency, milestones — no-diagnosis framing.", tone: "coral", type: "pediatrician" },
-  { title: "SLP Summary", desc: "Speech-language context: communication patterns and what's been tried.", tone: "lav", type: "slp" },
-  { title: "Behavioral Health Summary", desc: "Behavior patterns, supports and context — no-diagnosis framing.", tone: "sky", type: "behavioral_health" },
-  { title: "Development Snapshot", desc: "A point-in-time picture of your child's development.", tone: "yellow", type: "snapshot" },
-  { title: "Behavior Pattern Report", desc: "Triggers, intensity and recovery over time.", tone: "pink", type: "behavior" },
-  { title: "Language Transition Note", desc: "Home/school languages, comfort and useful phrases.", tone: "sky", type: "language" },
-  { title: "Growth Plan Progress", desc: "Plan steps completed and what's next.", tone: "mint", type: "growth" },
+export const REPORTS: { title: string; desc: string; titleKey: string; descKey: string; tone: PastelKey; type: ReportType }[] = [
+  { title: "Weekly Insight", desc: "This week's summary for your records or to share.", titleKey: "elev.reports.weekly.title", descKey: "elev.reports.weekly.desc", tone: "mint", type: "weekly" },
+  { title: "Teacher Handoff", desc: "Classroom-ready context, what helps and what escalates.", titleKey: "elev.reports.teacher.title", descKey: "elev.reports.teacher.desc", tone: "sky", type: "teacher" },
+  { title: "Therapist Summary", desc: "Concern, timeline, patterns and tried interventions.", titleKey: "elev.reports.therapist.title", descKey: "elev.reports.therapist.desc", tone: "lav", type: "therapist" },
+  { title: "Pediatrician Summary", desc: "Duration, frequency, milestones — no-diagnosis framing.", titleKey: "elev.reports.pediatrician.title", descKey: "elev.reports.pediatrician.desc", tone: "coral", type: "pediatrician" },
+  { title: "SLP Summary", desc: "Speech-language context: communication patterns and what's been tried.", titleKey: "elev.reports.slp.title", descKey: "elev.reports.slp.desc", tone: "lav", type: "slp" },
+  { title: "Behavioral Health Summary", desc: "Behavior patterns, supports and context — no-diagnosis framing.", titleKey: "elev.reports.behavioral_health.title", descKey: "elev.reports.behavioral_health.desc", tone: "sky", type: "behavioral_health" },
+  { title: "Development Snapshot", desc: "A point-in-time picture of your child's development.", titleKey: "elev.reports.snapshot.title", descKey: "elev.reports.snapshot.desc", tone: "yellow", type: "snapshot" },
+  { title: "Behavior Pattern Report", desc: "Triggers, intensity and recovery over time.", titleKey: "elev.reports.behavior.title", descKey: "elev.reports.behavior.desc", tone: "pink", type: "behavior" },
+  { title: "Language Transition Note", desc: "Home/school languages, comfort and useful phrases.", titleKey: "elev.reports.language.title", descKey: "elev.reports.language.desc", tone: "sky", type: "language" },
+  { title: "Growth Plan Progress", desc: "Plan steps completed and what's next.", titleKey: "elev.reports.growth.title", descKey: "elev.reports.growth.desc", tone: "mint", type: "growth" },
 ];
 
 /** Single clinical-PDF export seam: build a report doc from real child state and
@@ -43,6 +43,9 @@ export function useReportExport() {
     childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems,
     checkedMilestones, totalMilestones, setActiveTab,
   } = useArbor();
+  // LC-13 / item 8: the PDF a Hebrew family hands a gan teacher used to carry
+  // an English title and English section headings around Hebrew items.
+  const { t, uiLang } = useLanguage();
   // The child's hero anchors the printed handoff to *this* child. Privacy gate:
   // embed ONLY the stylized descriptor hero (isGenerated) — never a real photo —
   // into a document the parent may forward to a clinician.
@@ -106,12 +109,12 @@ export function useReportExport() {
         growthEntries: growthCol.items.map((g) => ({ date: g.date, heightCm: g.heightCm, weightKg: g.weightKg })),
       });
       const doc: ReportDoc = {
-        title: REPORTS.find((r) => r.type === type)!.title,
+        title: t(REPORTS.find((r) => r.type === type)!.titleKey),
         subtitle: `${childProfile.name}, ${ageLabel(childProfile)}`,
-        sections: presetPacketToPrintSections(type, packet, excludedIds),
+        sections: presetPacketToPrintSections(type, packet, excludedIds, uiLang),
         heroImageUrl,
       };
-      openPrintableReport(doc, childProfile.name);
+      openPrintableReport(doc, childProfile.name, uiLang);
       // Only a build that survived the fail-closed guards reaches this line —
       // a blocked packet throws above and records nothing.
       recordExport(childProfile.id, type);
@@ -126,7 +129,7 @@ export function useReportExport() {
       heroImageUrl,
       langObs: langObsCol.items,
     });
-    openPrintableReport(doc, childProfile.name);
+    openPrintableReport(doc, childProfile.name, uiLang);
   };
 }
 
@@ -152,22 +155,22 @@ export default function Reports() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
-      <PageHeader eyebrow="Care Network" title={t("sec.reports.title")} subtitle={t("sec.reports.sub", { name: childProfile.name.split(" ")[0] })} />
+      <PageHeader eyebrow={t("elev.reports.eyebrow")} title={t("sec.reports.title")} subtitle={t("sec.reports.sub", { name: childProfile.name.split(" ")[0] })} />
 
-      <SectionCard title="Exportable reports" icon={<Icon name="assessment" size={20} />} tone="mint">
+      <SectionCard title={t("elev.reports.section")} icon={<Icon name="assessment" size={20} />} tone="mint">
         <div className="grid sm:grid-cols-2 gap-3">
           {REPORTS.map((r) => (
             <div key={r.title} className={`${cardCls} p-4 flex items-start gap-3`}>
               <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0" style={{ background: PASTEL[r.tone].soft, color: PASTEL[r.tone].ink }}><Icon name="description" size={18} /></span>
               <div className="min-w-0 flex-1">
-                <h3 className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{r.title}</h3>
-                <p className="text-xs mt-0.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{r.desc}</p>
+                <h3 className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t(r.titleKey)}</h3>
+                <p className="text-xs mt-0.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t(r.descKey)}</p>
               </div>
               {r.type === "teacher" ? (
                 <button
                   onClick={openTeacherDoor}
                   data-testid="reports-teacher-one-door"
-                  className="flex-shrink-0 inline-flex items-center gap-1 text-xs font-bold rounded-lg px-2.5 py-1.5 transition hover:brightness-95"
+                  className="flex-shrink-0 inline-flex items-center justify-center gap-1 text-xs font-bold rounded-lg px-3 min-h-11 min-w-11 transition hover:brightness-95"
                   style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-green-ink)" }}
                   aria-label={t("elev.learnCare.brief.oneDoor")}
                 >
@@ -176,9 +179,9 @@ export default function Reports() {
               ) : (
                 <button
                   onClick={() => exportReport(r.type)}
-                  className="flex-shrink-0 inline-flex items-center gap-1 text-xs font-bold rounded-lg px-2.5 py-1.5 transition hover:brightness-95"
+                  className="flex-shrink-0 inline-flex items-center justify-center gap-1 text-xs font-bold rounded-lg px-3 min-h-11 min-w-11 transition hover:brightness-95"
                   style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-green-ink)" }}
-                  aria-label={`Export ${r.title} as PDF`}
+                  aria-label={t("elev.reports.exportAria", { title: t(r.titleKey) })}
                 >
                   <Icon name="download" size={14} /> PDF
                 </button>
@@ -187,7 +190,7 @@ export default function Reports() {
           ))}
         </div>
       </SectionCard>
-      <p className="text-xs text-center" style={{ color: "var(--arbor-muted)" }}>Reports open in a new tab — use your browser's “Save as PDF”. Every report carries Arbor's non-diagnostic framing.</p>
+      <p className="text-xs text-center" style={{ color: "var(--arbor-muted)" }}>{t("elev.reports.printHint")}</p>
     </motion.div>
   );
 }

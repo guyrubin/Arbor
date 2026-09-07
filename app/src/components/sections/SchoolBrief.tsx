@@ -156,7 +156,7 @@ export default function SchoolBrief() {
     } catch (err: any) {
       if (err instanceof PaywallError) toast(err.message, "info");
       else if (err?.message?.includes("Professional support")) toast(err.message, "error");
-      else toast("Couldn't build the note — please try again.", "error");
+      else toast(t("elev.learnCare.brief.buildFailed"), "error");
     } finally {
       setGenerating(false);
     }
@@ -183,14 +183,15 @@ export default function SchoolBrief() {
       );
       void openPrintableReport(
         { title: ex.title, subtitle: `${firstName} · ${ex.date}`, sections },
-        childProfile.name
+        childProfile.name,
+        uiLang
       );
       setReviewOpen(false);
       toast(t("elev.learnCare.brief.printed"), "success");
     } catch (err) {
       // Condition 3 fail-closed: a diagnosis term (incl. one edited in) means we DO NOT export.
       if (err instanceof ClinicalLanguageError) toast(t("schoolBrief.nonDiagnostic", { name: firstName }), "error");
-      else toast("Couldn't build the note — please try again.", "error");
+      else toast(t("elev.learnCare.brief.buildFailed"), "error");
     }
   };
 

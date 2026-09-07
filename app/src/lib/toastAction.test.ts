@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { en, he } from "./i18nElevation/accountSettings";
+import { en, he } from "./i18nElevation/storeShell";
 
 /**
  * CR-09 — the toast layer had two defects the billing return exposed:
@@ -62,13 +62,13 @@ describe("CR-09 · toast action slot", () => {
 describe("CR-09 · the billing pending toast uses the slot", () => {
   it("Shell attaches Retry to the BILLING_PENDING_KEY toast and re-reads the entitlement", () => {
     expect(shellSrc).toContain("BILLING_PENDING_KEY");
-    expect(shellSrc).toMatch(/label: t\("elev\.billing\.retry"\), onClick: \(\) => \{ void refreshEntitlement\(\); \}/);
+    expect(shellSrc).toMatch(/label: t\("elev\.storeshell\.plan\.retry"\), onClick: \(\) => \{ void refreshEntitlement\(\); \}/);
     expect(shellSrc).toContain("startBillingReturnPoll({ toast: withRetry");
   });
 
   it("the Retry label ships in both locales (law 7)", () => {
-    expect(en["elev.billing.retry"]).toBeTruthy();
-    expect(he["elev.billing.retry"]).toBeTruthy();
-    expect(he["elev.billing.retry"]).toMatch(/[֐-׿]/);
+    expect(en["elev.storeshell.plan.retry"]).toBeTruthy();
+    expect(he["elev.storeshell.plan.retry"]).toBeTruthy();
+    expect(he["elev.storeshell.plan.retry"]).toMatch(/[֐-׿]/);
   });
 });

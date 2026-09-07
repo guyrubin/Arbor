@@ -248,7 +248,7 @@ export default function Shell() {
     // the ToastContext action slot so Retry re-reads the entitlement in place.
     const withRetry: typeof toast = (message, type, action) =>
       toast(message, type, action ?? (message === t(BILLING_PENDING_KEY)
-        ? { label: t("elev.billing.retry"), onClick: () => { void refreshEntitlement(); } }
+        ? { label: t("elev.storeshell.plan.retry"), onClick: () => { void refreshEntitlement(); } }
         : undefined));
     return startBillingReturnPoll({ toast: withRetry, t, refresh: refreshEntitlement });
   }, [toast, t]);
