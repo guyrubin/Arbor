@@ -27,7 +27,7 @@ export default function Sidebar() {
   const { activeTab, setActiveTab, milestones, actionPlans, unreadCoachCount } = useArbor();
   const milestonesNoticed = milestones.filter((m) => m.checked).length;
   const { user, signOut, firebaseEnabled } = useAuth();
-  const { t, uiLang, setUiLang } = useLanguage();
+  const { t } = useLanguage();
   const activeSectionId = sectionForTab(activeTab).id;
   const [showSettings, setShowSettings] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
@@ -108,26 +108,13 @@ export default function Sidebar() {
             className="absolute bottom-full mb-2 inset-inline-start-0 w-full rounded-2xl p-2 z-30"
             style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "0 12px 32px color-mix(in srgb, var(--arbor-ink) 12%, transparent)" }}
           >
-            {/* Language toggle */}
-            <div className="flex items-center justify-between gap-2 px-2.5 py-2">
-              <span className="inline-flex items-center gap-2 text-[12px] font-bold" style={{ color: "var(--arbor-ink)" }}>
-                <Icon name="language" size={16} /> {t("nav.popover.language")}
-              </span>
-              <div className="flex items-center rounded-xl p-0.5" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-                {(["en", "he"] as const).map((l) => (
-                  <button
-                    key={l}
-                    onClick={() => setUiLang(l)}
-                    aria-label={l === "en" ? "Switch to English" : "Switch to Hebrew"}
-                    aria-pressed={uiLang === l}
-                    className="px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition inline-flex items-center justify-center"
-                    style={uiLang === l ? { background: "var(--arbor-clay)", color: "#fff" } : { color: "var(--arbor-muted)" }}
-                  >
-                    {l === "en" ? "EN" : "עב"}
-                  </button>
-                ))}
-              </div>
-            </div>
+            {/* OBJ-SHELL-02: the language toggles that lived here are GONE.
+                Two canons ran side by side — these 35×25 buttons flipped the
+                whole app on touch, while Settings asks for a draft and a Save.
+                Settings is the canon (UC-1: one system-control panel with an
+                explicit save/cancel), so the popover keeps only the door to it.
+                Pinned by languageSettingsCanonical.test.ts, which now fails on
+                any setUiLang call outside SettingsModal. */}
             {/* Settings entry */}
             <button
               role="menuitem"

@@ -17,7 +17,7 @@ import { useEntitlement } from "../../hooks/useEntitlement";
 import { useCheckout } from "../../hooks/useCheckout";
 import { T } from "../../lib/tokens";
 import { ACCENT_THEMES, getSavedTheme, setTheme, type AccentTheme } from "../../lib/theme";
-import type { UiLang } from "../../lib/i18n";
+import { translate, type UiLang } from "../../lib/i18n";
 import { fmtDay } from "../../lib/formatDate";
 
 /** Lightweight app settings — wired to real app state (app language, trust panels,
@@ -65,7 +65,11 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
   const handleSaveLanguage = () => {
     setUiLang(draftUiLang); // sets uiLang AND aiLang := draftUiLang (whole-app cascade)
     if (effectiveAiLang !== draftUiLang) setAiLang(effectiveAiLang); // override AI only when it should differ
-    toast(t("set.language.saved"), "success");
+    // OBJ-SHELL-02: `t` is bound to the OUTGOING language for this render, so
+    // the confirmation of a switch to Hebrew arrived in English — the one
+    // string in the app whose language IS the thing being confirmed. Translated
+    // against the incoming language explicitly.
+    toast(translate(draftUiLang, "set.language.saved"), "success");
   };
 
   const handleCancelLanguage = () => {
