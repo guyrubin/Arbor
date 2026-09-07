@@ -20,7 +20,7 @@ import {
 import { useToastOptional } from "./ToastContext";
 import { validateLogDraft, momentLogFields, isIncidentType } from "../content/behaviorTaxonomy";
 import type { ScoredActivity } from "../playbank/select";
-import { ROUTE_IDS, resolveRouteId, type ActiveTab } from "../lib/routes";
+import { ROUTE_IDS, resolveHash, FALLBACK_ROUTE, type ActiveTab } from "../lib/routes";
 import {
   sampleBehaviorLogs,
   initialMilestones,
@@ -95,19 +95,6 @@ export type CaptureMode = "voice" | "photo" | "text" | "ai-draft";
  *  canonical tab list without re-deriving it. Zero behavior change: this
  *  array is derived from VALID_TABS and is never read by any render path. */
 export const ALL_TABS: ActiveTab[] = [...VALID_TABS] as ActiveTab[];
-/** Resolve the current hash to a route id. Real route ids match exactly (as they
- *  always have); label/hub ALIASES (`#/today` → overview, `#/growth` →
- *  development…) resolve through lib/routes HASH_ALIASES so a link that follows
- *  the visible nav label is no longer a dead deep link that silently falls back
- *  to the stored tab. Unknown hashes still return null → unchanged fallback. */
-function tabFromHash(): ActiveTab | null {
-  try {
-    const h = window.location.hash.replace(/^#\/?/, "").trim();
-    return resolveRouteId(h);
-  } catch {
-    return null;
-  }
-}
 
 export type ChatMessage = {
   sender: "user" | "ai";
@@ -162,7 +149,15 @@ function useArborState() {
 
   // Navigation State (persisted preferences). Initial tab: URL hash wins (deep
   // link), then last-used (localStorage), then Home.
-  const [activeTab, setActiveTabState] = useState<ActiveTab>(() => tabFromHash() || (readLS("arbor.activeTab") as ActiveTab) || "overview");
+  //
+  // IA-13: an UNKNOWN hash is not the same as no hash. `#/nonexistent` used to
+  // fall through to the stored tab, so a stale link rendered Reports under a
+  // URL that said something else. resolveHash separates the two: an unknown
+  // hash lands on Today, and the flag below turns into one replaceState + one
+  // quiet sentence in the effect that runs after mount.
+  const initialHash = resolveHash(typeof window === "undefined" ? "" : window.location.hash, readLS("arbor.activeTab"));
+  const [activeTab, setActiveTabState] = useState<ActiveTab>(initialHash.tab);
+  const unknownHashRef = useRef<boolean>(initialHash.unknown);
   const setActiveTab = (t: ActiveTab) => {
     // KID-LOCK (W0.9, LEAK 3): while Kid Mode is open, parent navigation is
     // frozen at the root. Kid surfaces reuse parent tabs (HeroJourneyTab,
@@ -653,9 +648,22 @@ function useArborState() {
   useEffect(() => {
     // LEAK-3 companion: browser back/forward must not rotate parent tab state
     // while the kid overlay is up (same wall as the gated setActiveTab).
-    const onHash = () => { if (isKidModeActive()) return; const t = tabFromHash(); if (t) setActiveTabState(t); };
+    const landOnFallback = () => {
+      setActiveTabState(FALLBACK_ROUTE);
+      try { window.history.replaceState(null, "", `#/${FALLBACK_ROUTE}`); } catch { /* noop */ }
+      toast(t("elev.nav.linkMoved"), "info");
+    };
+    const onHash = () => {
+      if (isKidModeActive()) return;
+      const res = resolveHash(window.location.hash, null);
+      if (res.unknown) { landOnFallback(); return; }
+      if (window.location.hash) setActiveTabState(res.tab);
+    };
     if (typeof window !== "undefined") {
       if (!window.location.hash) { try { window.history.replaceState(null, "", `#/${activeTab}`); } catch { /* noop */ } }
+      // IA-13: the first load carried an unknown hash. The URL is corrected in
+      // place (replaceState, so Back still leaves the app) and said once.
+      else if (unknownHashRef.current) { unknownHashRef.current = false; landOnFallback(); }
       window.addEventListener("hashchange", onHash);
     }
     return () => { if (typeof window !== "undefined") window.removeEventListener("hashchange", onHash); };

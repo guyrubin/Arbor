@@ -49,6 +49,9 @@ export const en: Record<string, string> = {
   "elev.pulse.care.briefReady": "A brief is ready to share",
   "elev.pulse.care.empty": "Bring in the people who help",
 
+  // ── IA-13 · an unknown hash lands on Today and says so, once.
+  "elev.nav.linkMoved": "That link has moved — here's Today.",
+
   // ── OBJ-ASK-02 · age-band labels for the KNOWLEDGE_AGE_BANDS vocabulary
   //    (knowledge/retrievalKeys). The coach contract carries the band id and
   //    the attribution chip printed it raw ("3-5y"). These are the sentences.
@@ -98,6 +101,8 @@ export const he: Record<string, string> = {
 
   "elev.pulse.care.briefReady": "סיכום מוכן לשיתוף",
   "elev.pulse.care.empty": "צרפו את האנשים שעוזרים בדרך",
+
+  "elev.nav.linkMoved": "הקישור הזה עבר — הנה מסך היום.",
 
   "elev.band.0-12m": "עד גיל שנה",
   "elev.band.12-36m": "גילאי 1–3",

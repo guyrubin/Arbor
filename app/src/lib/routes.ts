@@ -112,3 +112,40 @@ export function resolveRouteId(raw: string): ActiveTab | null {
   if (ROUTE_ID_SET.has(key)) return key as ActiveTab;
   return HASH_ALIASES[key.toLowerCase()] ?? null;
 }
+
+/**
+ * IA-13 — what a hash that is not a route should DO.
+ *
+ * `resolveRouteId` answers "is this a route?", and every caller treated `null`
+ * as "then keep whatever was on screen". So `#/nonexistent-route` rendered the
+ * last stored `arbor.activeTab` — Reports, for the lane that found this — with
+ * More highlighted in the sidebar and the wrong URL still in the address bar.
+ * A stale nudge, an old share link or a typo'd deep link therefore landed a
+ * parent on an unrelated screen with no sign that anything had gone wrong, and
+ * the URL they would copy and send on was still the broken one.
+ *
+ * This separates the three cases the callers were collapsing into two:
+ *
+ *   empty hash   → `stored` (or Today). First load: nothing was asked for.
+ *   known hash   → that route. Unchanged.
+ *   unknown hash → Today, `unknown: true`. The caller rewrites the URL with
+ *                  replaceState (so back still works) and says so once.
+ *
+ * A 404 screen is deliberately not the answer: the parent asked for something
+ * that no longer exists, and the useful reply is the app's front door plus one
+ * quiet sentence, not a dead end.
+ */
+export type HashResolution = { tab: ActiveTab; unknown: boolean };
+
+export const FALLBACK_ROUTE: ActiveTab = "overview";
+
+export function resolveHash(raw: string, stored?: string | null): HashResolution {
+  const key = raw.replace(/^#\/?/, "").replace(/\/+$/, "").trim();
+  if (!key) {
+    const kept = stored && ROUTE_ID_SET.has(stored) ? (stored as ActiveTab) : FALLBACK_ROUTE;
+    return { tab: kept, unknown: false };
+  }
+  const resolved = resolveRouteId(key);
+  if (resolved) return { tab: resolved, unknown: false };
+  return { tab: FALLBACK_ROUTE, unknown: true };
+}

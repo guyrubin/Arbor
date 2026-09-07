@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
 import { SECTIONS, sectionForTab, primaryTabOf, subTabsForSection, hubTabsForSection } from "./navigation";
+import { resolveHash, FALLBACK_ROUTE } from "./routes";
 import { ALL_TABS } from "../context/ArborContext";
 
 /** Structural guard for the Heartwood D2+D3 TEN-hub information architecture —
@@ -219,5 +222,56 @@ describe("navigation IA", () => {
       expect(sec, `tab "${tab}" did not resolve to a section`).toBeTruthy();
       expect(SECTIONS.map((s) => s.id)).toContain(sec.id);
     }
+  });
+});
+
+/**
+ * IA-13 (item 16) — an unknown hash is not "no hash".
+ *
+ * `#/nonexistent-route` used to render the last stored `arbor.activeTab` with
+ * the wrong URL still showing, because every caller of resolveRouteId read
+ * `null` as "keep what's on screen". A stale nudge or an old share link
+ * therefore dropped a parent on an unrelated screen, silently, and the URL they
+ * would forward was still broken.
+ */
+describe("IA-13 · hash resolution has three cases, not two", () => {
+  it("an unknown hash resolves to Today and is FLAGGED", () => {
+    for (const raw of ["#/nonexistent-route", "#/reports-2024", "#/Journall", "#/%20"]) {
+      expect(resolveHash(raw, "reports")).toEqual({ tab: FALLBACK_ROUTE, unknown: true });
+    }
+  });
+
+  it("an empty hash keeps the stored tab and is NOT flagged (first load)", () => {
+    expect(resolveHash("", "reports")).toEqual({ tab: "reports", unknown: false });
+    expect(resolveHash("#/", "reports")).toEqual({ tab: "reports", unknown: false });
+    expect(resolveHash("", null)).toEqual({ tab: FALLBACK_ROUTE, unknown: false });
+    // A stored value that is no longer a route cannot resurrect itself.
+    expect(resolveHash("", "a-route-we-deleted")).toEqual({ tab: FALLBACK_ROUTE, unknown: false });
+  });
+
+  it("every real route and every alias still resolves unflagged", () => {
+    for (const tab of ALL_TABS) expect(resolveHash(`#/${tab}`, "reports")).toEqual({ tab, unknown: false });
+    expect(resolveHash("#/today", "reports")).toEqual({ tab: "overview", unknown: false });
+    expect(resolveHash("#/Growth", "reports")).toEqual({ tab: "development", unknown: false });
+  });
+
+  it("negative control: the shipped fallback answered the unknown hash with the stored tab", () => {
+    // ArborContext as shipped: `tabFromHash() || readLS("arbor.activeTab")`.
+    const shipped = (raw: string, stored: string) => {
+      const key = raw.replace(/^#\/?/, "").trim();
+      const known = (ALL_TABS as string[]).includes(key);
+      return known ? key : stored;
+    };
+    expect(shipped("#/nonexistent-route", "reports")).toBe("reports");
+    expect(resolveHash("#/nonexistent-route", "reports").tab).not.toBe("reports");
+  });
+
+  it("ArborContext acts on the flag: replaceState onto Today plus one message", () => {
+    const src = fs.readFileSync(path.resolve(__dirname, "../context/ArborContext.tsx"), "utf8");
+    expect(src).toContain("resolveHash(");
+    expect(src).toMatch(/window\.history\.replaceState\(null, "", `#\/\$\{FALLBACK_ROUTE\}`\)/);
+    expect(src).toContain('toast(t("elev.nav.linkMoved"), "info")');
+    // The old unconditional fallback is gone.
+    expect(src).not.toContain("tabFromHash()");
   });
 });
