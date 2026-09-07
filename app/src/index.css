@@ -216,10 +216,6 @@ html[lang="he"] .title,
 html[lang="he"] .arbor-app h1,
 html[lang="he"] .arbor-app h2,
 html[lang="he"] .arbor-app h3 { letter-spacing: 0; }
-html[dir="rtl"] .arbor-app aside:first-of-type {
-  border-inline-end: none !important;
-  border-inline-start: 1px solid var(--arbor-rule) !important;
-}
 html[dir="rtl"] .arbor-app .no-scrollbar { direction: rtl; }
 
 body {
