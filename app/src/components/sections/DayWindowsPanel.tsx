@@ -22,7 +22,9 @@ import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { predictRhythm, hourLabel } from "../../rhythm/predict";
+import type { UiLang } from "../../lib/i18n";
+import { predictRhythm } from "../../rhythm/predict";
+import { formatHour } from "../../lib/pulse";
 import { buildDayWindowsSummary } from "../../growth/dayWindowsAgg";
 import { cardCls } from "../ui/kit";
 
@@ -43,7 +45,7 @@ const TRICKIER_INK = "var(--arbor-peach-ink)";
 
 export default function DayWindowsPanel() {
   const { behaviorLogs, childProfile, setActiveTab } = useArbor();
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
 
   // ── Derive rhythm from existing engine (read-only, no new data path) ────
   const rhythm = useMemo(
@@ -104,7 +106,7 @@ export default function DayWindowsPanel() {
         {summary.hasEnoughData ? (
           <>
             {/* 24-hour bar visualization */}
-            <HourBar bands={vizBands} />
+            <HourBar bands={vizBands} uiLang={uiLang} />
 
             {/* Named windows */}
             <div
@@ -119,8 +121,8 @@ export default function DayWindowsPanel() {
                 const label = isCalmer ? t("dw.label.calmer") : t("dw.label.trickier");
                 const ariaLabel = t("dw.window.aria", {
                   label,
-                  startHour: hourLabel(w.startHour),
-                  endHour: hourLabel(w.endHour),
+                  startHour: formatHour(w.startHour, uiLang),
+                  endHour: formatHour(w.endHour, uiLang),
                 });
 
                 return (
@@ -151,7 +153,7 @@ export default function DayWindowsPanel() {
                         className="text-[17px] font-extrabold leading-tight"
                         style={{ fontFamily: "var(--font-display)", color: INK }}
                       >
-                        {hourLabel(w.startHour)}–{hourLabel(w.endHour)}
+                        {formatHour(w.startHour, uiLang)}–{formatHour(w.endHour, uiLang)}
                       </p>
                     </div>
                   </div>
@@ -188,36 +190,48 @@ export default function DayWindowsPanel() {
           </>
         ) : (
           /* Low-data state */
-          <div className="p-6 md:p-8 flex items-start gap-4">
-            <span
-              className="rounded-2xl flex items-center justify-center flex-shrink-0"
-              style={{
-                width: 44,
-                height: 44,
-                background: "var(--arbor-yellow-soft)",
-                color: "var(--arbor-yellow-ink)",
-              }}
-              aria-hidden="true"
-            >
-              <Icon name="error" size={20} />
-            </span>
-            <div>
-              <p
-                className="text-[15px] font-bold leading-snug"
-                style={{ color: INK }}
-                data-testid="dw-low-data"
+          <>
+            {/* TJB-14: the learning strip. `predictRhythm` FLATTENS every band
+                to tone "calm" / score 0 below the usable bar (predict.ts:127),
+                so this renders a uniform strip with the hour ticks — the shape
+                of the surface filling in, never a pattern claim. Mounting it
+                here is what makes the route legible at 3 of 7 days; the
+                determinism guard below it is unchanged and always visible. */}
+            <HourBar bands={vizBands} uiLang={uiLang} />
+            <div className="px-5 md:px-6 pb-6 flex items-start gap-4">
+              <span
+                className="rounded-2xl flex items-center justify-center flex-shrink-0"
+                style={{
+                  width: 44,
+                  height: 44,
+                  background: "var(--arbor-yellow-soft)",
+                  color: "var(--arbor-yellow-ink)",
+                }}
+                aria-hidden="true"
               >
-                {t("dw.lowData")}
-              </p>
-              {summary.daysNeeded > 0 && (
-                <p className="text-[13px] mt-1" style={{ color: MUTED }}>
-                  {/* Uses the existing rhythm engine string — no new copy needed */}
-                  {/* e.g. "About 4 more days of logging to go." */}
-                  {`${summary.daysLogged} of ${summary.daysLogged + summary.daysNeeded} days logged so far.`}
+                {/* TJB-14: `error` announced a fault. Nothing is wrong — the
+                    week is simply still in progress. */}
+                <Icon name="hourglass_top" size={20} />
+              </span>
+              <div>
+                <p
+                  className="text-[15px] font-bold leading-snug"
+                  style={{ color: INK }}
+                  data-testid="dw-low-data"
+                >
+                  {t("dw.lowData")}
                 </p>
-              )}
+                {summary.daysNeeded > 0 && (
+                  <p className="text-[13px] mt-1" style={{ color: MUTED }} data-testid="dw-days-progress">
+                    {t("elev.dw.daysLoggedOf", {
+                      n: summary.daysLogged,
+                      total: summary.daysLogged + summary.daysNeeded,
+                    })}
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
+          </>
         )}
 
         {/* ── Determinism guard (ALWAYS visible) ─────────────────────── */}
@@ -244,8 +258,8 @@ export default function DayWindowsPanel() {
       </div>
 
       {/* Context line about firstName (non-diagnostic, plain language) */}
-      <p className="text-[13px] text-center" style={{ color: MUTED }}>
-        {`Patterns for ${firstName}, based on what you've logged.`}
+      <p className="text-[13px] text-center" style={{ color: MUTED }} data-testid="dw-context-line">
+        {t("elev.dw.context", { name: firstName })}
       </p>
     </motion.div>
   );
@@ -255,9 +269,11 @@ export default function DayWindowsPanel() {
 
 interface HourBarProps {
   bands: Array<{ hour: number; tone: "calm" | "watch" | "friction"; score: number }>;
+  /** TJB-14: tick labels are TIME, and time is written differently in Hebrew. */
+  uiLang: UiLang;
 }
 
-function HourBar({ bands }: HourBarProps) {
+function HourBar({ bands, uiLang }: HourBarProps) {
   if (!bands.length) return null;
 
   return (
@@ -292,7 +308,7 @@ function HourBar({ bands }: HourBarProps) {
                 border,
                 opacity: 0.85,
               }}
-              title={`${hourLabel(b.hour)}`}
+              title={formatHour(b.hour, uiLang)}
             />
           );
         })}
@@ -303,7 +319,7 @@ function HourBar({ bands }: HourBarProps) {
           <div key={b.hour} className="flex-1 text-center">
             {i % 3 === 0 ? (
               <span className="text-[10px]" style={{ color: MUTED }}>
-                {hourLabel(b.hour)}
+                {formatHour(b.hour, uiLang)}
               </span>
             ) : null}
           </div>

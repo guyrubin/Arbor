@@ -41,6 +41,9 @@ export default function WeeklyTab() {
   // is the existing "openable from anywhere" capture (its own doc comment) and
   // portals through Modal, so no new capture path is invented here.
   const [logOpen, setLogOpen] = useState(false);
+  // OBJ-TODAY-06: the two demoted secondary modules, collapsed by default so
+  // the generated week reads at its declared budget.
+  const [showWeeklyMore, setShowWeeklyMore] = useState(false);
   const rc = (key: string, vars?: Record<string, string | number>) => rcString(t, uiLang, key, vars);
 
   const recap = useWeeklyRecap();
@@ -362,41 +365,70 @@ export default function WeeklyTab() {
               ) : (
                 <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>{t("wk.noMilestones")}</p>
               )}
-              <button onClick={() => setActiveTab("milestones")} className="text-[11px] font-bold flex items-center gap-1 mt-3" style={{ color: "var(--arbor-green-ink)" }}>
+              <button onClick={() => setActiveTab("milestones")} className="touch-target text-[11px] font-bold !inline-flex !justify-start gap-1 mt-3" style={{ color: "var(--arbor-green-ink)" }}>
                 <Icon name="checklist" size={12} /> {t("wk.reviewMilestones")}
               </button>
             </SectionCard>
+          </div>
 
-            <SectionCard title={t("wk.scholarSpotlight")} icon={<Icon name="school" size={20} />} tone="lav">
-              <div className="flex items-baseline gap-2">
-                <strong className="text-sm" style={{ color: "var(--arbor-ink)" }}>{selected.spotlight.name}</strong>
-                <span className="text-[10px] uppercase font-bold" style={{ color: "var(--arbor-muted)" }}>{selected.spotlight.concept}</span>
+          {/* ── OBJ-TODAY-06 · secondary modules, demoted ────────────────────
+              `surfaceContract.weekly.moduleBudget` is 3 and the generated week
+              rendered 8. The Scholar spotlight and the weekly read are the two
+              that neither carry the week's story nor its move — and the Scholar
+              body is catalogue copy that exists only in English (GD-6), so on
+              the Hebrew route it was three Latin sentences inside an RTL page.
+              Demoting them to the hub's own disclosure keeps both reachable and
+              takes them off the default read. Same idiom as Today's tools
+              drawer (OverviewTab `showTools`); every link inside clears 44 px. */}
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowWeeklyMore((v) => !v)}
+              className="w-full flex items-center justify-between min-h-11"
+              aria-expanded={showWeeklyMore}
+              data-testid="weekly-more-toggle"
+            >
+              <h2 className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-faint)" }}>{t("elev.wk.more.title")}</h2>
+              <span className="inline-flex items-center gap-1 text-xs font-bold" style={{ color: "var(--arbor-green-ink)" }}>
+                {/* Reuses Today's drawer verbs — one Show/Hide vocabulary app-wide. */}
+                {showWeeklyMore ? t("ov.tools.hide") : t("ov.tools.show")}
+                <Icon name="chevron_right" size={18} className={`transition-transform rtl:-scale-x-100 ${showWeeklyMore ? "rotate-90" : ""}`} />
+              </span>
+            </button>
+            {showWeeklyMore && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-3">
+                <SectionCard title={t("wk.scholarSpotlight")} icon={<Icon name="school" size={20} />} tone="lav">
+                  <div className="flex items-baseline gap-2">
+                    <strong className="text-sm" dir="auto" style={{ color: "var(--arbor-ink)" }}>{selected.spotlight.name}</strong>
+                    <span className="text-[10px] uppercase font-bold" dir="auto" style={{ color: "var(--arbor-muted)" }}>{selected.spotlight.concept}</span>
+                  </div>
+                  <p className="text-xs leading-relaxed mt-2" dir="auto" style={{ color: "var(--arbor-muted)" }}>{selected.spotlight.value}</p>
+                  <button onClick={() => setActiveTab("scholar")} className="touch-target text-[11px] font-bold !inline-flex !justify-start mt-3" style={{ color: "var(--arbor-lav-ink)" }}>{t("wk.scholarExplore")}</button>
+                </SectionCard>
+
+                {/* LL-A4: this week's read — one Library pick ranked by age window +
+                    focus domain (opportunity framing; the Library door explains why). */}
+                {weeklyRead && (
+                  <SectionCard title={t("learn.weeklyRead")} icon={<Icon name="local_library" size={20} />} tone="sky">
+                    <h4 className="text-sm font-extrabold leading-snug" dir="auto" style={{ color: "var(--arbor-ink)" }}>
+                      {he ? weeklyRead.title.he : weeklyRead.title.en}
+                    </h4>
+                    <p className="text-xs leading-relaxed line-clamp-2 mt-1.5" dir="auto" style={{ color: "var(--arbor-muted)" }}>
+                      {he ? weeklyRead.hook.he : weeklyRead.hook.en}
+                    </p>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold mt-2" style={{ color: "var(--arbor-muted)" }}>
+                      <Icon name="schedule" size={13} /> {t("learn.minutes", { n: weeklyRead.minutes })}
+                    </span>
+                    <button
+                      onClick={() => requestLearnRead({ cardId: weeklyRead.id, source: "weekly-report" })}
+                      className="touch-target text-[11px] font-bold !inline-flex !justify-start gap-1 mt-3"
+                      style={{ color: "var(--arbor-sky-ink)" }}
+                    >
+                      <Icon name="menu_book" size={12} /> {t("learn.readCard")}
+                    </button>
+                  </SectionCard>
+                )}
               </div>
-              <p className="text-xs leading-relaxed mt-2" style={{ color: "var(--arbor-muted)" }}>{selected.spotlight.value}</p>
-              <button onClick={() => setActiveTab("scholar")} className="text-[11px] font-bold mt-3" style={{ color: "var(--arbor-lav-ink)" }}>{t("wk.scholarExplore")}</button>
-            </SectionCard>
-
-            {/* LL-A4: this week's read — one Library pick ranked by age window +
-                focus domain (opportunity framing; the Library door explains why). */}
-            {weeklyRead && (
-              <SectionCard title={t("learn.weeklyRead")} icon={<Icon name="local_library" size={20} />} tone="sky">
-                <h4 className="text-sm font-extrabold leading-snug" dir="auto" style={{ color: "var(--arbor-ink)" }}>
-                  {he ? weeklyRead.title.he : weeklyRead.title.en}
-                </h4>
-                <p className="text-xs leading-relaxed line-clamp-2 mt-1.5" dir="auto" style={{ color: "var(--arbor-muted)" }}>
-                  {he ? weeklyRead.hook.he : weeklyRead.hook.en}
-                </p>
-                <span className="inline-flex items-center gap-1 text-[11px] font-bold mt-2" style={{ color: "var(--arbor-muted)" }}>
-                  <Icon name="schedule" size={13} /> {t("learn.minutes", { n: weeklyRead.minutes })}
-                </span>
-                <button
-                  onClick={() => requestLearnRead({ cardId: weeklyRead.id, source: "weekly-report" })}
-                  className="text-[11px] font-bold flex items-center gap-1 mt-3"
-                  style={{ color: "var(--arbor-sky-ink)" }}
-                >
-                  <Icon name="menu_book" size={12} /> {t("learn.readCard")}
-                </button>
-              </SectionCard>
             )}
           </div>
 

@@ -88,6 +88,35 @@ export const en: Record<string, string> = {
   "elev.pulse.profile.album": "The album is growing: {count} moments",
   "elev.pulse.profile.albumOne": "The album is growing: first moment saved",
   "elev.pulse.profile.empty": "{name}'s album starts here",
+
+  // ── Builder E1 · Today hub + Weekly (object backlog, 2026-09-07) ──────────
+  // TJB-14 · Day Windows: both of these were bare template literals, so the
+  // Hebrew route printed English. `dw.daysLogged` ("{n} days logged") is the
+  // badge on the data-rich branch; the low-data branch needs the progress
+  // shape, which is why this is a second key rather than a reuse.
+  "elev.dw.daysLoggedOf": "{n} of {total} days logged so far.",
+  "elev.dw.context": "Patterns for {name}, based on what you've logged.",
+
+  // OBJ-TODAY-06 · the weekly disclosure heading. Its Show/Hide verbs reuse
+  // ov.tools.show / ov.tools.hide — one drawer vocabulary across the app.
+  "elev.wk.more.title": "More from this week",
+
+  // TJB-23 · the Today tools drawer's daily check-in, which carried no
+  // translator at all. `hint` deliberately does NOT promise pattern insights:
+  // nothing in src/ reads the `wellness` collection this card writes, so
+  // transcreating that claim would have shipped it into a second language.
+  "elev.checkin.title": "Today's check-in",
+  "elev.checkin.mood": "Mood",
+  "elev.checkin.moodAria": "Mood {n} of 5",
+  "elev.checkin.sleep": "Sleep:",
+  "elev.checkin.sleepValue": "{n}h",
+  "elev.checkin.sleepAria": "Hours of sleep: {n}",
+  "elev.checkin.appetite": "Appetite",
+  "elev.checkin.appetite.good": "Good",
+  "elev.checkin.appetite.ok": "Ok",
+  "elev.checkin.appetite.poor": "Low",
+  "elev.checkin.saved": "Saved for today.",
+  "elev.checkin.hint": "Tap to log — kept with today's date.",
 };
 
 export const he: Record<string, string> = {
@@ -145,4 +174,23 @@ export const he: Record<string, string> = {
   "elev.pulse.profile.album": "האלבום גדל: {count} רגעים",
   "elev.pulse.profile.albumOne": "האלבום גדל: הרגע הראשון נשמר",
   "elev.pulse.profile.empty": "האלבום של {name} מתחיל כאן",
+
+  // ── Builder E1 · Today hub + Weekly (object backlog, 2026-09-07) ──────────
+  "elev.dw.daysLoggedOf": "תיעדתם {n} מתוך {total} ימים עד כה.",
+  "elev.dw.context": "דפוסים של {name}, לפי מה שתיעדתם.",
+
+  "elev.wk.more.title": "עוד מהשבוע",
+
+  "elev.checkin.title": "העדכון היומי",
+  "elev.checkin.mood": "מצב רוח",
+  "elev.checkin.moodAria": "מצב רוח {n} מתוך 5",
+  "elev.checkin.sleep": "שינה:",
+  "elev.checkin.sleepValue": "{n} שעות",
+  "elev.checkin.sleepAria": "שעות שינה: {n}",
+  "elev.checkin.appetite": "תיאבון",
+  "elev.checkin.appetite.good": "טוב",
+  "elev.checkin.appetite.ok": "בסדר",
+  "elev.checkin.appetite.poor": "מועט",
+  "elev.checkin.saved": "נשמר להיום.",
+  "elev.checkin.hint": "הקישו כדי לתעד — נשמר עם התאריך של היום.",
 };

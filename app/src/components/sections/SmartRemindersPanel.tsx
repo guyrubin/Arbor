@@ -33,10 +33,14 @@ import { ageMonthsFromProfile } from "../../lib/childAge";
 import {
   loadPrefs,
   savePrefs,
-  formatHour,
   type JitaiPrefs,
   type NudgeTypeKey,
 } from "../../growth/jitaiPrefs";
+/* TJB-14: `jitaiPrefs.formatHour` is English-only ("9:00 pm"), so the Hebrew
+   quiet-hours picker and its summary line printed am/pm inside an RTL page.
+   `lib/pulse.formatHour` is the language-aware sibling already used by the
+   Today pulse (he → 24h "21:00") — one formatter, both locales. */
+import { formatHour } from "../../lib/pulse";
 
 // ── Token shorthands (all via var(--arbor-*), zero raw hex) ──────────────────
 const INK         = "var(--arbor-ink)";
@@ -81,7 +85,7 @@ const NUDGE_TYPES: Array<{
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function SmartRemindersPanel() {
   const { setActiveTab, childProfile, behaviorLogs } = useArbor();
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
 
   // Load prefs from localStorage on first render — no Firestore, no child data.
   const [prefs, setPrefs] = useState<JitaiPrefs>(loadPrefs);
@@ -340,10 +344,10 @@ export default function SmartRemindersPanel() {
                   outline: "none",
                 }}
                 data-testid="sr-quiet-start"
-                aria-label={`${t("sr.quiet.start")}: ${formatHour(prefs.quietStart)}`}
+                aria-label={`${t("sr.quiet.start")}: ${formatHour(prefs.quietStart, uiLang)}`}
               >
                 {HOUR_OPTIONS.map((h) => (
-                  <option key={h} value={h}>{formatHour(h)}</option>
+                  <option key={h} value={h}>{formatHour(h, uiLang)}</option>
                 ))}
               </select>
             </div>
@@ -370,10 +374,10 @@ export default function SmartRemindersPanel() {
                   outline: "none",
                 }}
                 data-testid="sr-quiet-end"
-                aria-label={`${t("sr.quiet.end")}: ${formatHour(prefs.quietEnd)}`}
+                aria-label={`${t("sr.quiet.end")}: ${formatHour(prefs.quietEnd, uiLang)}`}
               >
                 {HOUR_OPTIONS.map((h) => (
-                  <option key={h} value={h}>{formatHour(h)}</option>
+                  <option key={h} value={h}>{formatHour(h, uiLang)}</option>
                 ))}
               </select>
             </div>
@@ -386,8 +390,8 @@ export default function SmartRemindersPanel() {
             data-testid="sr-quiet-summary"
           >
             {t("sr.quiet.summary", {
-              start: formatHour(prefs.quietStart),
-              end: formatHour(prefs.quietEnd),
+              start: formatHour(prefs.quietStart, uiLang),
+              end: formatHour(prefs.quietEnd, uiLang),
             })}
           </p>
         </div>
