@@ -104,8 +104,16 @@ export interface WeeklyActivity {
   domainsTouched: PracticeDomain[];
 }
 
+/* OBJ-KID-01 / OBJ-TODAY-03 — every day key in this module is LOCAL.
+   `iso.slice(0, 10)` reads the UTC date off a stored timestamp and compared it
+   with `today`, which callers derive from the local clock. Nine minutes after
+   a 22:26 Z session an Israeli family's 00:35 local play fell into "yesterday":
+   the arcade panel read "0 days practiced" and weeklyActivity lost the day.
+   Stored timestamps stay ISO UTC — only the KEY derivation is local. */
+const localDay = (iso: string): string => dayKey(new Date(iso));
+
 const inLastDays = (iso: string, today: string, n: number): boolean => {
-  const t = iso.slice(0, 10);
+  const t = localDay(iso);
   return t > daysAgo(today, n) && t <= today;
 };
 
@@ -118,11 +126,11 @@ export function weeklyActivity(
   practiceEvents: PracticeEvent[] = []
 ): WeeklyActivity {
   const events: { day: string; domain: PracticeDomain }[] = [
-    ...speech.filter((x) => inLastDays(x.timestamp, today, 7)).map((x) => ({ day: x.timestamp.slice(0, 10), domain: "speech" as const })),
-    ...mimic.filter((x) => inLastDays(x.timestamp, today, 7)).map((x) => ({ day: x.timestamp.slice(0, 10), domain: "speech" as const })),
+    ...speech.filter((x) => inLastDays(x.timestamp, today, 7)).map((x) => ({ day: localDay(x.timestamp), domain: "speech" as const })),
+    ...mimic.filter((x) => inLastDays(x.timestamp, today, 7)).map((x) => ({ day: localDay(x.timestamp), domain: "speech" as const })),
     ...missions.filter((x) => x.completed && inLastDays(x.timestamp, today, 7)).map((x) => ({ day: x.date, domain: x.domain })),
-    ...adventures.filter((x) => inLastDays(x.timestamp, today, 7)).map((x) => ({ day: x.timestamp.slice(0, 10), domain: "cognition" as const })),
-    ...practiceEvents.filter((x) => inLastDays(x.timestamp, today, 7)).map((x) => ({ day: x.timestamp.slice(0, 10), domain: x.domain })),
+    ...adventures.filter((x) => inLastDays(x.timestamp, today, 7)).map((x) => ({ day: localDay(x.timestamp), domain: "cognition" as const })),
+    ...practiceEvents.filter((x) => inLastDays(x.timestamp, today, 7)).map((x) => ({ day: localDay(x.timestamp), domain: x.domain })),
   ];
   return {
     sessions: events.length,
@@ -699,10 +707,10 @@ export function speechDose(
   weeklySessionTarget = 3
 ): SpeechDose {
   const weekStart = daysAgo(today, 7);
-  const trialsToday = attempts.filter((a) => a.timestamp.slice(0, 10) === today).length;
+  const trialsToday = attempts.filter((a) => localDay(a.timestamp) === today).length;
   const days = new Set(
     attempts
-      .map((a) => a.timestamp.slice(0, 10))
+      .map((a) => localDay(a.timestamp))
       .filter((d) => d > weekStart && d <= today)
   );
   const sessionsThisWeek = days.size;
