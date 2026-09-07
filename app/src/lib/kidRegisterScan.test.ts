@@ -16,6 +16,9 @@
  *                in a string literal or JSX text, KID-29
  *   confetti   — a direct `confetti(` call (only lib/celebrate may), KID-15
  *   smallBtn   — a <button> styled py-1 / py-1.5 / p-2 (< 44 px), KID-14
+ *   lockGlyph  — a padlock (<Icon name="lock">, the emoji) reachable by the
+ *                child: a greyed silhouette with its unlock requirement is the
+ *                pressure mechanic law 3 forbids, OBJ-KID-02
  *
  * Mechanics follow lib/cosmeticsFirewall.test.ts. Every class has a positive
  * (planted-violation) and a negative control, and the parent-only stripper is
@@ -80,7 +83,7 @@ const EXCLUDED: Record<string, string> = {
   "components/practice/WordWorldTab.tsx": "parent-register by design; not reachable from any Kid Mode tile (KID-06 sequencing)",
 };
 
-type RuleId = "pct" | "kitShell" | "nav" | "download" | "clinical" | "confetti" | "smallBtn";
+type RuleId = "pct" | "kitShell" | "nav" | "download" | "clinical" | "confetti" | "smallBtn" | "lockGlyph";
 
 /** Shrink-only baseline: EXACT counts. Fixing a hit must lower the number. */
 const FROZEN: Partial<Record<string, Partial<Record<RuleId, { count: number; reason: string }>>>> = {
@@ -182,6 +185,11 @@ const RULES: Record<RuleId, (src: string) => string[]> = {
     [...src.matchAll(/<button\b(?:[^>]|(?<==)>)*>/g)]
       .map((m) => m[0])
       .filter((tag) => /\b(?:py-1|py-1\.5|p-2)(?=["'\s])/.test(tag)),
+  // OBJ-KID-02: `name="lock"` (the Icon glyph) or the padlock emoji anywhere the
+  // child can reach. Parent-only branches are already stripped before the rule
+  // runs, so the arcade's parent-side "next gear" hint passes and the same chip
+  // rendered unguarded fails.
+  lockGlyph: (src) => [...src.matchAll(/name="lock(?:_\w+)?"|\u{1F512}/gu)].map((m) => m[0]),
 };
 
 const RULE_IDS = Object.keys(RULES) as RuleId[];
@@ -198,6 +206,8 @@ function scanFile(rel: string): Record<RuleId, string[]> {
 
 describe("kid-register scanner — positive controls (planted violations are seen)", () => {
   const PLANTED: [RuleId, string][] = [
+    ["lockGlyph", '<Icon name="lock" size={14} /> {cosmeticLabel(next.cosmetic.id)}'],
+    ["lockGlyph", "<span>🔒 All-rounder - Play in all 5 areas</span>"],
     ["pct", "<span>{powerPct}%</span>"],
     ["pct", "value={`${emotionAccuracy}%`}"],
     ["pct", "{copy} ({score}%)"],
@@ -221,6 +231,8 @@ describe("kid-register scanner — positive controls (planted violations are see
 
 describe("kid-register scanner — negative controls (legitimate code passes)", () => {
   const LEGAL: [RuleId, string][] = [
+    ["lockGlyph", "const locked = useKidLock(); const lockRef = 1; // identifiers are not glyphs"],
+    ["lockGlyph", '<Icon name="check" size={14} /> <span>Earned</span>'], // an earned chip has no padlock
     ["pct", "style={{ width: `${Math.round(coverage * 100)}%` }}"], // CSS length, not a numeral render
     ["pct", 'background: "linear-gradient(135deg, var(--a), #fff 75%)"'],
     ["kitShell", 'import { SectionCard, cardCls } from "../ui/kit";'], // an import is not a render
@@ -256,6 +268,13 @@ describe("kid-register scanner — parent-only branches are excluded, everything
     expect(out.match(/PARENT_ONLY_BRANCH/g)?.length).toBe(2);
     // the kid-reachable violation after the branches is STILL visible
     expect(RULES.pct(out)).toEqual(["<span>{kidValue}%</span>"]);
+  });
+
+  it("OBJ-KID-02: a !kidMode-guarded padlock is stripped; the same chip unguarded is not", () => {
+    const guarded = '{next && !kidMode && (<span><Icon name="lock" size={14} /> {label}</span>)}';
+    const unguarded = '{next && (<span><Icon name="lock" size={14} /> {label}</span>)}';
+    expect(RULES.lockGlyph(stripParentOnly(guarded))).toEqual([]);
+    expect(RULES.lockGlyph(stripParentOnly(unguarded))).toEqual(['name="lock"']);
   });
 
   it("a kidMode-positive branch is NOT stripped (only the parent side is)", () => {

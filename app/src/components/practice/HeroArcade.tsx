@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useMemo, useState } from "react";
+import React, { lazy, Suspense, useMemo, useState, useSyncExternalStore } from "react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -10,6 +10,7 @@ import HeroCrest from "../ui/HeroCrest";
 import { ArborMascot } from "../ui/ArborMascot";
 import { TabSkeleton } from "../ui/Skeleton";
 import { useKidSafeNav } from "../kidmode/useKidSafeNav";
+import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
 
 /* HeroArcade — the comic-book Playbank home. The child's generated hero is the
    protagonist; each skill is a themed "world". Replaces the flat tab strip with
@@ -110,6 +111,10 @@ export default function HeroArcade({ initialWorldId }: { initialWorldId?: string
   // KID-05: the comics CTA needs the parent shell; while Kid Mode is active the
   // navigator is null and the CTA is not rendered at all (never a dead button).
   const nav = useKidSafeNav();
+  // OBJ-KID-02 (law 3): the locked-NEXT gear chip is a greyed silhouette with
+  // its requirement printed on it — a pressure mechanic. It stays on the parent
+  // door, never in front of the child.
+  const kidMode = useSyncExternalStore(subscribeKidMode, isKidModeActive, isKidModeActive);
   const hasName = hero.name !== "your child";
   // E8/F-10: hero.name itself stays raw (it is compared against the "your
   // child" sentinel); display copy isolates it through t()'s interpolation.
@@ -240,11 +245,11 @@ export default function HeroArcade({ initialWorldId }: { initialWorldId?: string
                   <p className="font-black text-[16px] leading-none mb-2" style={{ fontFamily: "var(--font-display)" }}>{w.name}</p>
                   <span className="inline-block text-[10.5px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full"
                     style={{ border: "2px solid var(--comic-ink)", color: c.ink }}>{w.tag}</span>
-                  {live ? <Stars n={stars} aria={t("elev.play.arcade.starsAria", { n: stars })} /> : (
-                    <span className="flex items-center gap-1 mt-2 text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }}>
-                      <Icon name="lock" size={14} /> {t("elev.play.arcade.soon")}
-                    </span>
-                  )}
+                  {/* OBJ-KID-02: no padlock ever renders inside `.arbor-play`.
+                      Every WORLDS entry declares a Comp (kidMode.test.ts pins
+                      that for every pre-selectable world), so the old "🔒 Soon"
+                      fallback was unreachable code carrying a law-3 mechanic. */}
+                  {live && <Stars n={stars} aria={t("elev.play.arcade.starsAria", { n: stars })} />}
                 </div>
               </button>
             );
@@ -264,7 +269,10 @@ export default function HeroArcade({ initialWorldId }: { initialWorldId?: string
                 <span aria-hidden="true">{c.emoji}</span> {cosmeticLabel(c.id)}
               </span>
             ))}
-            {next && (
+            {/* The next cosmetic is a PARENT-side hint. In Kid Mode it is a
+                dashed, muted silhouette with its unlock requirement — exactly
+                the mechanic law 3 forbids — so it is not rendered at all. */}
+            {next && !kidMode && (
               <span className="inline-flex items-center gap-1.5 text-[13px] font-bold px-3 py-2 rounded-2xl"
                 style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "3px dashed var(--comic-ink)" }}>
                 <Icon name="lock" size={14} /> {cosmeticLabel(next.cosmetic.id)} · {cosmeticReq(next.cosmetic.id)}
