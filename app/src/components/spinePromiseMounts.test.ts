@@ -57,9 +57,16 @@ describe("masterplan 1.5 — SpineRibbon mounts", () => {
   });
 
   it("Academy ribbon sits BELOW the hero + catalog header (never above)", () => {
-    const mount = academy.indexOf("academy-spine-ribbon");
+    // R17: the ribbon is now DECLARED above the return (`const spineRibbon`)
+    // so one definition can serve two mutually exclusive slots — the wide
+    // layout and the phone's disclosure. What this rule is about is where it
+    // RENDERS, so the index to compare is the render site, not the JSX literal.
+    const mount = academy.indexOf("{!phone && spineRibbon}");
+    expect(mount, "the academy ribbon render site was not found").toBeGreaterThan(-1);
     expect(mount).toBeGreaterThan(academy.indexOf('testId="academy-hub-hero"'));
     expect(mount).toBeGreaterThan(academy.indexOf('t("sec.master.sub")'));
+    // On a phone it is demoted further still — below the course gallery.
+    expect(academy.indexOf("{spineRibbon}")).toBeGreaterThan(academy.indexOf('data-testid="academy-courses"'));
   });
 
   it("Rule A — SpineRibbon never mounts on Today (OverviewTab)", () => {

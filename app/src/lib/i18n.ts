@@ -2257,6 +2257,10 @@ export const en: Dict = {
   "academy.learnMap.title": "Learning Map",
   "academy.learnMap.sub": "Courses matched to where {name} is growing.",
   "academy.courses.title": "All courses",
+  // R17: on a phone the Learning Map rail is one collapsed disclosure below
+  // the gallery. The summary names what is inside it, so nothing is hidden
+  // behind a vague "more".
+  "academy.rail.more": "Learning Map, this week’s concept and progress",
   "care.packet.title": "Your summary",
   "care.pros.title": "Verified professionals",
   "care.lead": "Built from {name}'s record. Uncheck anything you'd rather keep private.",
@@ -4504,6 +4508,7 @@ export const he: Dict = {
   "academy.learnMap.title": "מפת הלמידה",
   "academy.learnMap.sub": "קורסים מותאמים לאן ש{name} מתפתח.",
   "academy.courses.title": "כל הקורסים",
+  "academy.rail.more": "מפת הלמידה, מושג השבוע וההתקדמות",
   "care.packet.title": "הסיכום שלכם",
   "care.pros.title": "אנשי מקצוע מאומתים",
   "care.lead": "נבנה מהנתונים של {name}. בטלו סימון של כל מה שתעדיפו לשמור פרטי.",

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useSyncExternalStore } from "react";
 import { motion } from "motion/react";
 import { celebrate } from "../../lib/celebrate";
 import { GraduationCap } from "lucide-react";
@@ -53,6 +53,28 @@ const loadDone = (): Record<string, boolean> => {
   try { return JSON.parse(localStorage.getItem(DONE_KEY) || "{}"); } catch { return {}; }
 };
 
+/**
+ * R17 — true below Tailwind's `md` (768 px), i.e. on a phone.
+ *
+ * The same seam ui/Sheet.tsx uses for `useCompactSurface`: a media QUERY read
+ * through `useSyncExternalStore`, not a device sniff, so rotating the phone
+ * re-renders. SSR and any environment without matchMedia read false — the
+ * desktop two-column layout that shipped — so a missing matchMedia degrades to
+ * the old behaviour rather than to nothing.
+ */
+const PHONE_QUERY = "(max-width: 767.98px)";
+const subscribePhone = (onChange: () => void) => {
+  if (typeof window === "undefined" || !window.matchMedia) return () => {};
+  const mq = window.matchMedia(PHONE_QUERY);
+  mq.addEventListener("change", onChange);
+  return () => mq.removeEventListener("change", onChange);
+};
+const readPhone = () =>
+  typeof window !== "undefined" && !!window.matchMedia && window.matchMedia(PHONE_QUERY).matches;
+export function usePhoneLayout(): boolean {
+  return useSyncExternalStore(subscribePhone, readPhone, () => false);
+}
+
 // Wave-8: private parent reflection — client-only localStorage, never sent/stored server-side.
 const REFLECT_KEY = "arbor.masterclasses.reflection";
 const loadReflection = (): Record<string, string> => {
@@ -70,6 +92,8 @@ export default function Masterclasses() {
   const [reflection, setReflection] = useState<Record<string, string>>({});
   // LC-04: the same shared dev-score derivation the Learn Library ranks on.
   const devScore = useDevScore();
+  // R17: where the Learning Map rail renders — left column, or the disclosure.
+  const phone = usePhoneLayout();
 
   // W0.7 — default the catalog to the child's age band; "Show all ages"
   // (persisted per surface) keeps every course reachable (UC-1 rule).
@@ -191,6 +215,80 @@ export default function Masterclasses() {
         : []),
   ];
 
+  // ── The Learning Map rail ───────────────────────────────────────
+  // Declared ONCE and placed in exactly one of two mutually exclusive slots:
+  // the left column of the desktop shell, or the collapsed disclosure a phone
+  // gets below the gallery (R17). One definition, so the two layouts cannot
+  // drift into two different rails.
+  const railStack = (
+    <>
+      <p className="text-[11px] uppercase tracking-widest font-bold px-1" style={{ color: "var(--arbor-green-ink)" }}>
+        {t("academy.learnMap.title")}
+        <span className="block normal-case tracking-normal text-[12px] font-medium mt-1" style={{ color: "var(--arbor-muted)" }} dir="auto">
+          {t("academy.learnMap.sub", { name: childName })}
+        </span>
+      </p>
+
+      {/* AP-053: Academy "For You" — copilot focus recommendation + per-domain
+          Learning Map roll-up (ring + count bars). Pure frontend join; no new
+          AI call; no new Firestore read. Least-explored framing (board-cleared). */}
+      <AcademyForYou />
+
+      {/* AP-055: Scholar Hub — one developmental concept per week, auto-matched
+          to the child's least-explored domain. Non-diagnostic, editorial. */}
+      <ScholarHubCard />
+
+      {/* Recommended-by-Family-Charter strip — relocated into the rail. */}
+      {recommended.length > 0 && (
+        <div className="rounded-2xl p-4" style={{ background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.25)" }}>
+          <p className="text-[11px] uppercase tracking-widest font-bold mb-2.5" style={{ color: "var(--arbor-green-ink)" }}>
+            {t("master.rec")}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {recommended.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => setOpenId(c.id)}
+                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-bold transition motion-safe:hover:-translate-y-0.5"
+                dir="auto"
+                style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
+              >
+                {he ? c.titleHe : c.title}
+                {done[c.id] && <Icon name="check" size={15} fill={1} style={{ color: "var(--arbor-green-ink)" }} />}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Catalog-wide progress — relocated beneath the Learning Map. Gentle
+          continuity, never gamified pressure. */}
+      {doneCount > 0 && (
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--arbor-paper-deep)" }}>
+            <div className="h-full rounded-full transition-all" style={{ width: `${(doneCount / total) * 100}%`, background: "var(--arbor-green-ink)" }} />
+          </div>
+          <span className="text-[12px] font-bold whitespace-nowrap" style={{ color: allDone ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>
+            {allDone ? t("master.progress.all") : t("master.progress.count", { done: doneCount, total })}
+          </span>
+        </div>
+      )}
+    </>
+  );
+
+  // The spine ribbon travels with the rail: it is the same "what tunes this
+  // catalogue" material, and on a phone it was three more modules of it
+  // standing between the hero and the first course.
+  const spineRibbon = (
+      <SpineRibbon
+        tone="sky"
+        icon="account_tree"
+        text={t("elev.spine.academy")}
+        onFollow={() => setActiveTab("development")}
+        testId="academy-spine-ribbon"
+      />
+  );
+
   return (
     <>
       {/* E2 — Academy hub hero: sits ABOVE the existing page (outside the
@@ -257,79 +355,25 @@ export default function Masterclasses() {
         <p className="mt-1.5 max-w-2xl text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("sec.master.sub")}</p>
       </header>
 
-      {/* Masterplan 1.5 — spine ribbon: what tunes this catalog (ONE direction:
-          → the Development Map). Quiet strip below the hero + catalog header,
-          never above the primary content. Plain activity fact — no %, verdicts,
-          or deltas (clinical firewall). */}
-      <SpineRibbon
-        tone="sky"
-        icon="account_tree"
-        text={t("elev.spine.academy")}
-        onFollow={() => setActiveTab("development")}
-        testId="academy-spine-ribbon"
-      />
+      {/* R17 — a phone meets a COURSE right after the hero and the pick line.
+          MEASURED at 390 (round 2b): the first course card sat at 1,675 px, because
+          the single-column collapse stacked the whole Learning Map rail — spine
+          ribbon, For You, Scholar Hub, the charter strip, the catalogue progress
+          bar — between the hero and the catalogue. Five modules that are not
+          courses, on the surface whose ONE job is courses. Nothing is removed
+          (law 6): below `md` the rail becomes one collapsed disclosure BELOW the
+          gallery, and from `md` up it is the left column exactly as designed. */}
+      {!phone && spineRibbon}
 
       {/* Design's two-column shell: left = the Learning Map rail (the explicit
           development-map spine — courses matched to where the child is growing),
-          right = the "All courses" gallery. Collapses to one column below xl. */}
+          right = the "All courses" gallery. Collapses to one column below xl, and
+          there the gallery comes FIRST — which is what the order-* pair encodes.
+          DOM order is gallery-then-rail so a screen reader and a keyboard meet the
+          courses first too, not only the eye. */}
       <div className="grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.7fr)]">
-        {/* ── Left rail: Learning Map ─────────────────────────────────────── */}
-        <div className="space-y-5">
-          <p className="text-[11px] uppercase tracking-widest font-bold px-1" style={{ color: "var(--arbor-green-ink)" }}>
-            {t("academy.learnMap.title")}
-            <span className="block normal-case tracking-normal text-[12px] font-medium mt-1" style={{ color: "var(--arbor-muted)" }} dir="auto">
-              {t("academy.learnMap.sub", { name: childName })}
-            </span>
-          </p>
-
-          {/* AP-053: Academy "For You" — copilot focus recommendation + per-domain
-              Learning Map roll-up (ring + count bars). Pure frontend join; no new
-              AI call; no new Firestore read. Least-explored framing (board-cleared). */}
-          <AcademyForYou />
-
-          {/* AP-055: Scholar Hub — one developmental concept per week, auto-matched
-              to the child's least-explored domain. Non-diagnostic, editorial. */}
-          <ScholarHubCard />
-
-          {/* Recommended-by-Family-Charter strip — relocated into the rail. */}
-          {recommended.length > 0 && (
-            <div className="rounded-2xl p-4" style={{ background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.25)" }}>
-              <p className="text-[11px] uppercase tracking-widest font-bold mb-2.5" style={{ color: "var(--arbor-green-ink)" }}>
-                {t("master.rec")}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {recommended.map((c) => (
-                  <button
-                    key={c.id}
-                    onClick={() => setOpenId(c.id)}
-                    className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-bold transition motion-safe:hover:-translate-y-0.5"
-                    dir="auto"
-                    style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
-                  >
-                    {he ? c.titleHe : c.title}
-                    {done[c.id] && <Icon name="check" size={15} fill={1} style={{ color: "var(--arbor-green-ink)" }} />}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Catalog-wide progress — relocated beneath the Learning Map. Gentle
-              continuity, never gamified pressure. */}
-          {doneCount > 0 && (
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--arbor-paper-deep)" }}>
-                <div className="h-full rounded-full transition-all" style={{ width: `${(doneCount / total) * 100}%`, background: "var(--arbor-green-ink)" }} />
-              </div>
-              <span className="text-[12px] font-bold whitespace-nowrap" style={{ color: allDone ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>
-                {allDone ? t("master.progress.all") : t("master.progress.count", { done: doneCount, total })}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* ── Right column: All courses gallery ───────────────────────────── */}
-        <div className="space-y-4 min-w-0">
+        {/* ── All courses gallery — first in the document, right column at xl ─ */}
+        <div className="space-y-4 min-w-0 order-1 xl:order-2" data-testid="academy-courses">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-1">
             <h2 className="text-[15px] font-extrabold uppercase tracking-widest" style={{ color: "var(--arbor-muted)" }}>
               {t("academy.courses.title")}
@@ -448,7 +492,32 @@ export default function Masterclasses() {
             })}
           </div>
         </div>
+
+        {/* ── Learning Map rail — left column at xl; on a phone it moves into
+            the disclosure below the gallery, so it is never rendered twice. */}
+        {!phone && (
+          <div className="space-y-5 order-2 xl:order-1" data-testid="academy-rail">
+            {railStack}
+          </div>
+        )}
       </div>
+
+      {phone && (
+        <details data-testid="academy-rail-disclosure" className={`${cardCls} px-4 py-2`}>
+          <summary
+            className="flex items-center gap-2 text-[13px] font-extrabold cursor-pointer"
+            style={{ color: "var(--arbor-green-ink)", minHeight: 44 }}
+            dir="auto"
+          >
+            <Icon name="unfold_more" size={18} />
+            {t("academy.rail.more")}
+          </summary>
+          <div className="space-y-5 pb-3 pt-4">
+            {spineRibbon}
+            {railStack}
+          </div>
+        </details>
+      )}
     </motion.div>
     </>
   );
