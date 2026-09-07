@@ -97,7 +97,7 @@ export default function ParentalGatePanel() {
             aria-invalid={wrong || undefined}
             style={fieldStyle}
           />
-          <button onClick={unlock} className="text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}>
+          <button onClick={unlock} className="text-xs font-bold rounded-xl px-3 min-h-11" style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}>
             {t("elev.gate.unlock")}
           </button>
         </div>
@@ -133,7 +133,7 @@ export default function ParentalGatePanel() {
           aria-label={t("elev.gate.setPinAria")}
           style={fieldStyle}
         />
-        <button onClick={save} className="text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}>
+        <button onClick={save} className="text-xs font-bold rounded-xl px-3 min-h-11" style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}>
           {t(pinSet ? "elev.gate.set.change" : "elev.gate.set.cta")}
         </button>
       </div>

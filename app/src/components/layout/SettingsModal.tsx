@@ -182,7 +182,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
                   {t("set.plan.viaStore", { provider: entitlement.provider })}
                 </p>
               )}
-              <button onClick={() => void openPortal()} disabled={busy} className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}>
+              <button onClick={() => void openPortal()} disabled={busy} className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 min-h-11 disabled:opacity-50" style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}>
                 {t("set.plan.manage")}
               </button>
             </>
@@ -205,7 +205,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
               </p>
               <div className="flex items-center gap-1 rounded-xl p-1 mt-3 w-fit" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
                 {(["monthly", "annual"] as const).map((c) => (
-                  <button key={c} onClick={() => setCadence(c)} className="px-3 py-1 rounded-lg text-xs font-bold transition"
+                  <button key={c} onClick={() => setCadence(c)} className="px-3 min-h-11 rounded-lg text-xs font-bold transition"
                     style={cadence === c ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}>
                     {t(c === "monthly" ? "set.plan.monthly" : "set.plan.annual")}
                   </button>
@@ -219,13 +219,13 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
                   labeled BEFORE any tap toward checkout. */}
               <div className="flex flex-wrap items-center gap-2 mt-2.5">
                 <span className="inline-flex items-center gap-1.5">
-                  <button onClick={() => void startCheckout("plus", cadence)} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-clay)", color: T.onAccent }}>
+                  <button onClick={() => void startCheckout("plus", cadence)} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 min-h-11 disabled:opacity-50" style={{ background: "var(--arbor-clay)", color: T.onAccent }}>
                     {t("set.plan.upgradePlus")}
                   </button>
                   <PlanBadge plan="plus" />
                 </span>
                 <span className="inline-flex items-center gap-1.5">
-                  <button onClick={() => void startCheckout("family", cadence)} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-clay-deep)", color: T.onAccent }}>
+                  <button onClick={() => void startCheckout("family", cadence)} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 min-h-11 disabled:opacity-50" style={{ background: "var(--arbor-clay-deep)", color: T.onAccent }}>
                     {t("set.plan.upgradeFamily")}
                   </button>
                   <PlanBadge plan="family" />
@@ -237,7 +237,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
           {/* STORE-2: Apple-required Restore Purchases — native builds ONLY
               (StoreKit/Play re-links past purchases to this account). */}
           {isNative && (
-            <button onClick={() => void restorePurchases()} disabled={busy} className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}>
+            <button onClick={() => void restorePurchases()} disabled={busy} className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 min-h-11 disabled:opacity-50" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}>
               {t("set.plan.restore")}
             </button>
           )}
@@ -273,7 +273,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
               <button
                 onClick={handleCancelLanguage}
                 disabled={!languageDirty}
-                className="text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-40"
+                className="text-xs font-bold rounded-xl px-3 min-h-11 disabled:opacity-40"
                 style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
               >
                 {t("set.language.cancel")}
@@ -281,7 +281,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
               <button
                 onClick={handleSaveLanguage}
                 disabled={!languageDirty}
-                className="text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-40"
+                className="text-xs font-bold rounded-xl px-3 min-h-11 disabled:opacity-40"
                 style={{ background: "var(--arbor-clay)", color: T.onAccent }}
               >
                 {t("set.language.save")}
@@ -293,14 +293,17 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
         {/* LANG-ADV-OVERRIDE: advanced — let the AI answer in a different language than the UI */}
         <Row icon={<Icon name="language" size={18} />} title={t("set.aiLang.title")} sub={t("set.aiLang.sub")}>
           <div className="flex flex-col items-end gap-2">
+            {/* R5: the switch measured 42x23. The TRACK stays 44x24 — that is
+                the right visual — and the button around it is the 44 px target
+                the finger needs. */}
             <button
               onClick={() => setDraftAiDifferent((v) => !v)}
               aria-pressed={draftAiDifferent}
               aria-label={t("set.aiLang.toggle")}
-              className="w-11 h-6 rounded-full transition relative"
-              style={{ background: draftAiDifferent ? "var(--arbor-clay)" : "var(--arbor-rule-strong)" }}
+              className="w-11 min-h-11 h-11 flex items-center justify-center relative"
             >
-              <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${draftAiDifferent ? "end-[22px]" : "start-0.5"}`} />
+              <span className="w-11 h-6 rounded-full transition block" style={{ background: draftAiDifferent ? "var(--arbor-clay)" : "var(--arbor-rule-strong)" }} />
+              <span className={`absolute top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white transition-all ${draftAiDifferent ? "end-[2px]" : "start-[2px]"}`} />
             </button>
             {draftAiDifferent && (
               <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
@@ -332,7 +335,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
                 key={theme}
                 onClick={() => handleThemeChange(theme)}
                 aria-pressed={accentTheme === theme}
-                className="px-3 py-1 rounded-lg text-xs font-bold transition"
+                className="px-3 min-h-11 rounded-lg text-xs font-bold transition"
                 style={accentTheme === theme ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}
               >
                 {t(`set.theme.${theme}`)}
@@ -353,8 +356,9 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
             is the whole of PLAT-3 applied to the one surface it missed. */}
         <div className="hidden 2xl:block" data-testid="settings-rail-row">
         <Row icon={<Icon name="auto_awesome" size={18} />} title={t("set.rail.title")} sub={t("set.rail.sub")}>
-          <button onClick={() => setShowAiRail(!showAiRail)} aria-pressed={showAiRail} className="w-11 h-6 rounded-full transition relative" style={{ background: showAiRail ? "var(--arbor-clay)" : "var(--arbor-rule-strong)" }}>
-            <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${showAiRail ? "end-[22px]" : "start-0.5"}`} />
+          <button onClick={() => setShowAiRail(!showAiRail)} aria-pressed={showAiRail} className="w-11 min-h-11 h-11 flex items-center justify-center relative">
+            <span className="w-11 h-6 rounded-full transition block" style={{ background: showAiRail ? "var(--arbor-clay)" : "var(--arbor-rule-strong)" }} />
+            <span className={`absolute top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white transition-all ${showAiRail ? "end-[2px]" : "start-[2px]"}`} />
           </button>
         </Row>
         </div>
@@ -374,7 +378,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
         <Row icon={<Icon name="notifications" size={18} />} title={t("sr.title")} sub={t("sr.subtitle")}>
           <button
             onClick={() => { onClose(); setActiveTab("smart-reminders"); }}
-            className="text-xs font-bold rounded-xl px-3 py-2"
+            className="text-xs font-bold rounded-xl px-3 min-h-11"
             style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}
             data-testid="settings-open-smart-reminders"
           >
@@ -408,7 +412,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
         <Row icon={<Icon name="science" size={18} />} title={t("sci.settings.title")} sub={t("sci.settings.sub")}>
           <button
             onClick={() => { onClose(); setActiveTab("science"); }}
-            className="text-xs font-bold rounded-xl px-3 py-2"
+            className="text-xs font-bold rounded-xl px-3 min-h-11"
             style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}
             data-testid="settings-open-science"
           >
@@ -434,7 +438,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
 
         {/* Data & privacy → profile editor (export / delete live there) */}
         <Row icon={<Icon name="verified_user" size={18} />} title={t("set.data.title")} sub={t("set.data.sub")}>
-          <button onClick={() => { onClose(); setActiveTab("profile"); }} className="text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}>
+          <button onClick={() => { onClose(); setActiveTab("profile"); }} className="text-xs font-bold rounded-xl px-3 min-h-11" style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}>
             {t("set.data.open")}
           </button>
         </Row>
@@ -445,13 +449,13 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
           <Section title={t("set.section.admin")} sub={t("set.section.adminSub")}>
             {/* ADM-1: founder-only single-pane dashboard (users, paying, token spend) */}
             <Row icon={<Icon name="bar_chart" size={18} />} title={t("set.admin.founder.title")} sub={t("set.admin.founder.sub")}>
-              <button onClick={() => setAdminOpen(true)} className="text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-clay)", color: T.onAccent }}>
+              <button onClick={() => setAdminOpen(true)} className="text-xs font-bold rounded-xl px-3 min-h-11" style={{ background: "var(--arbor-clay)", color: T.onAccent }}>
                 {t("set.admin.open")}
               </button>
             </Row>
             {/* P0-5: attribution + UTM funnel dashboard (operator-only) */}
             <Row icon={<Icon name="bar_chart" size={18} />} title={t("set.admin.attribution.title")} sub={t("set.admin.attribution.sub")}>
-              <button onClick={() => { onClose(); setActiveTab("attribution"); }} className="text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-clay)", color: T.onAccent }}>
+              <button onClick={() => { onClose(); setActiveTab("attribution"); }} className="text-xs font-bold rounded-xl px-3 min-h-11" style={{ background: "var(--arbor-clay)", color: T.onAccent }}>
                 {t("set.admin.open")}
               </button>
             </Row>

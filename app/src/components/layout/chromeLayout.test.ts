@@ -409,3 +409,91 @@ describe("TJB-25 — Today collapses to the Weekly Report below md", () => {
     expect(settings).toContain('t("dw.cta")');
   });
 });
+
+/* ── R5 (item 9 subset) · the Settings panel meets the 44 px floor ───────── */
+
+/**
+ * MEASURED at 1280 (ledger-SHELL Screen D): Cancel 60×32, Save language 99×30,
+ * Set PIN 62×30, Open reminders 106×30, Read it 59×30, Open profile 88×30, the
+ * AI-language switch 42×23, the monthly/annual toggle 24 px tall and the two
+ * upgrade buttons 32. DESIGN.md sets `--touch-min` at 44 px. Settings is where
+ * a parent goes to change their language, set the PIN that gates Kid Mode, and
+ * buy the product — every one of those was a sub-floor target.
+ *
+ * Source ratchet, like touchFloor.journalPlans and touchFloor.learnCare: there
+ * is no jsdom here, so this pins the DECLARED floor per control and the rendered
+ * sweep stays the orchestrator's. Adding a control to this file means adding it
+ * to this list — the list may grow, the floor may not fall.
+ */
+describe("R5 — every Settings control declares the 44 px floor", () => {
+  const FLOOR = /min-h-11\b|min-h-\[4[4-9]px\]|touch-target|var\(--touch-min\)/;
+  const settings = readFileSync(path.join(here, "SettingsModal.tsx"), "utf8");
+  const gate = readFileSync(path.join(here, "ParentalGatePanel.tsx"), "utf8");
+
+  /** The element opening-tag that contains `near`. */
+  const shellAround = (source: string, near: string) => {
+    const at = source.indexOf(near);
+    expect(at, `anchor not found: ${near}`).toBeGreaterThan(-1);
+    const open = source.lastIndexOf("<", at);
+    return source.slice(open, at + 400);
+  };
+
+  const CONTROLS: [string, () => string, string][] = [
+    ["Cancel language", () => settings, 't("set.language.cancel")'],
+    ["Save language", () => settings, 't("set.language.save")'],
+    ["Open reminders", () => settings, 'data-testid="settings-open-smart-reminders"'],
+    ["Day Windows", () => settings, 'data-testid="settings-open-day-windows"'],
+    ["Read it (The Science)", () => settings, 'data-testid="settings-open-science"'],
+    ["Open profile", () => settings, 't("set.data.open")'],
+    ["Support link", () => settings, 'data-testid="settings-support-link"'],
+    ["AI-language switch", () => settings, 't("set.aiLang.toggle")'],
+    ["AI rail switch", () => settings, "setShowAiRail(!showAiRail)"],
+    ["cadence toggle", () => settings, "onClick={() => setCadence(c)}"],
+    ["upgrade to Plus", () => settings, 'startCheckout("plus", cadence)'],
+    ["upgrade to Family", () => settings, 'startCheckout("family", cadence)'],
+    ["manage plan", () => settings, "void openPortal()"],
+    ["restore purchases", () => settings, "void restorePurchases()"],
+    ["retry entitlement", () => settings, "void retryEntitlement()"],
+    ["sign out", () => settings, "void signOut()"],
+    ["delete account", () => settings, "setDeleteOpen(true)"],
+    ["open admin", () => settings, "setAdminOpen(true)"],
+    ["Set PIN — unlock", () => gate, "onClick={unlock}"],
+    ["Set PIN — save", () => gate, "onClick={save}"],
+  ];
+
+  for (const [id, source, near] of CONTROLS) {
+    it(`${id} declares a 44 px floor`, () => {
+      expect(shellAround(source(), near)).toMatch(FLOOR);
+    });
+  }
+
+  it("the theme picker too, when a second theme brings the row back", () => {
+    expect(shellAround(settings, "handleThemeChange(theme)")).toMatch(FLOOR);
+  });
+
+  it("negative control: the shipped shapes fail the same matcher", () => {
+    for (const preFix of [
+      'className="text-xs font-bold rounded-xl px-3 py-2"',
+      'className="px-3 py-1 rounded-lg text-xs font-bold transition"',
+      'className="w-11 h-6 rounded-full transition relative"',
+    ]) {
+      expect(FLOOR.test(preFix), preFix).toBe(false);
+    }
+  });
+
+  it("the retired sub-44 shapes stay out of both files", () => {
+    for (const [name, source] of [["SettingsModal", settings], ["ParentalGatePanel", gate]] as const) {
+      expect(stripComments(source), `${name}: a sub-44 pill returned`).not.toContain('rounded-xl px-3 py-2"');
+      expect(stripComments(source), `${name}: a 24 px switch returned`).not.toContain("w-11 h-6 rounded-full transition relative");
+    }
+  });
+
+  it("the switches keep their 24 px TRACK — the floor is the target, not the look", () => {
+    expect((settings.match(/w-11 h-6 rounded-full transition block/g) ?? [])).toHaveLength(2);
+    // …and the thumb now actually travels end-to-end (it read end-[22px] on a
+    // 44 px track, which lands 2 px from the START — the same place as "off").
+    expect(settings).not.toContain("end-[22px]");
+    expect((settings.match(/end-\[2px\]/g) ?? [])).toHaveLength(2);
+    expect((settings.match(/start-\[2px\]/g) ?? [])).toHaveLength(2);
+  });
+});
