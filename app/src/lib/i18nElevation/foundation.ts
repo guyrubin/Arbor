@@ -10,6 +10,10 @@ export const en: Record<string, string> = {
   // ── E8 · Evidence chip (research-anchored ONLY — never professional review)
   "elev.evidence.label": "Research-based · CDC/AAP",
   "elev.evidence.aria": "About the research behind Arbor",
+  // Builder L · R22 — the daily-play attribution line. The organisation name
+  // that follows is a proper noun and a live link, so only the lead-in is
+  // keyed; it was a bare JSX text node and printed English on the Hebrew hub.
+  "elev.evidence.basedOn": "Based on",
 
   // ── E1 · Hub live pulses — Today (Day Windows via the rhythm engine)
   "elev.pulse.today.calmUntil": "Calm window until {time}",
@@ -139,6 +143,7 @@ export const en: Record<string, string> = {
 export const he: Record<string, string> = {
   "elev.evidence.label": "מבוסס מחקר · CDC/AAP",
   "elev.evidence.aria": "על המחקר שמאחורי ארבור",
+  "elev.evidence.basedOn": "מבוסס על",
 
   "elev.pulse.today.calmUntil": "חלון רגוע עד {time}",
   "elev.pulse.today.windDown": "ההרגעה מתחילה בסביבות {time}",

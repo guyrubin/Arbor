@@ -140,7 +140,7 @@ export default function DailyPlayCard({
             Parent-facing; calm-clinical register; mechanism/attribution only (no outcome claims). */}
         {activity.source && (
           <p className="mt-1.5 flex flex-wrap items-center gap-x-1" style={{ fontSize: "var(--t-xs)", color: "var(--arbor-muted)", lineHeight: 1.4 }}>
-            Based on
+            {t("elev.evidence.basedOn")}
             {/* R10: the citation was a bare inline <a> measuring 34x16 — under
                 the 44 px floor DESIGN.md sets. Same recipe as EvidenceChip /
                 TrustLink: `.touch-target` grows the hit box; the label text

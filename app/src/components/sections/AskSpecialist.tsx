@@ -9,6 +9,7 @@ import {
   buildPacketInput,
   countIncluded,
   isConsultPacketEmpty,
+  sectionTitle,
   serializeForExport,
   EXPORT_AUDIENCES,
   DEFAULT_EXPORT_AUDIENCE,
@@ -534,7 +535,7 @@ export default function AskSpecialist() {
                       return (
                         <InsetRow
                           key={it.id}
-                          label={section.title}
+                          label={sectionTitle(section, uiLang)}
                           value={it.text}
                           excluded={!on}
                           multiline

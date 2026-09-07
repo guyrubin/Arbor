@@ -325,6 +325,13 @@ export default function CoachTab() {
   // the full radiogroup (all lenses, arrow-key nav). Selection persistence and
   // seedCoach lens steering are untouched.
   const [lensOpen, setLensOpen] = useState(false);
+  /* R22 (Builder L) — the lens VALUE is a stored English identifier
+     ("Integrated Balanced"), not display copy. One place resolved it
+     (`coach.lens.integrated`) and the identity strip and the attribution chip
+     printed the identifier verbatim, so #/coach kept two Latin lines under
+     lang=he. One helper, every render site. Scholar names are proper nouns and
+     pass through — they are the same word in both languages. */
+  const lensDisplay = (name: string) => (name === "Integrated Balanced" ? t("coach.lens.integrated") : name);
 
   // Realtime voice coach: prefers Gemini Live (true bidirectional audio) when the
   // server reports it's available, and falls back to a hands-free browser loop —
@@ -984,7 +991,7 @@ export default function CoachTab() {
             style={{ color: "var(--arbor-muted)" }}
           >
             <span>
-              {t("coach.perspective")}: <span style={{ color: "var(--arbor-green-ink)" }}>{selectedLens === "Integrated Balanced" ? t("coach.lens.integrated") : selectedLens}</span> · {t("coach.perspective.change")}
+              {t("coach.perspective")}: <span style={{ color: "var(--arbor-green-ink)" }}>{lensDisplay(selectedLens)}</span> · {t("coach.perspective.change")}
             </span>
             <Icon name={lensOpen ? "expand_less" : "expand_more"} size={14} />
           </button>
@@ -1110,7 +1117,7 @@ export default function CoachTab() {
           </div>
           <span className="text-[11px] font-bold flex items-center gap-1.5 flex-shrink-0" style={{ color: "var(--arbor-muted)" }}>
             {isChatLoading && <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--arbor-clay)" }} aria-hidden />}
-            <span className="truncate max-w-[160px]">{t("coach.lensLabel")}: {selectedLens}</span>
+            <span className="truncate max-w-[160px]">{t("coach.lensLabel")}: {lensDisplay(selectedLens)}</span>
           </span>
           {/* Masterplan 1.3: "What the coach sees" disclosure — opens the data
               contract panel below this strip. Parent register only. */}
@@ -1246,7 +1253,7 @@ export default function CoachTab() {
                   : { background: T.paperElevated, color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)", borderEndStartRadius: 6, boxShadow: "var(--shadow-sm)" }}>
                 {msg.sender === "ai" && !msg.contract && msg.lens && msg.lens !== "Integrated Balanced" && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full mb-3 inline-block" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
-                    {t("coach.alignedWith", { lens: msg.lens })}
+                    {t("coach.alignedWith", { lens: lensDisplay(msg.lens) })}
                   </span>
                 )}
                 {msg.sender === "ai" ? (

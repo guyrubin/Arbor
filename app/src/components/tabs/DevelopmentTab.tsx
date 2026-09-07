@@ -33,6 +33,11 @@ import { readPushPermission, type PushPermission } from "../../lib/pushPriming";
 import { readRitualRecord, ritualOfTheMoment } from "../../lib/familyRitualsCadence";
 import { ADVENTURES, type SavedComicMeta } from "../../lib/heroComics";
 import { fmtDay } from "../../lib/formatDate";
+// R22 (Builder L) — the recent-observation row printed `log.behaviorType`, the
+// stored English identifier ("Transition Refusal"), so a Hebrew parent read a
+// Latin title in their own record. `behaviorTypeLabel` is the shared resolver
+// every other log surface already uses (Behaviors, Journal, Weekly, QuickLog).
+import { behaviorTypeLabel } from "../../content/behaviorTaxonomy";
 // GP-06 — the hub's declared primaryMove is "notice-milestone"; until now the
 // hero opened the SCREENER and marking a milestone took four taps through the
 // Milestones map. The observe row below puts the move on the hub.
@@ -160,7 +165,7 @@ export default function DevelopmentTab() {
         id: `behavior-${log.id}`,
         at: new Date(log.timestamp).getTime(),
         icon: "chat_bubble",
-        title: log.behaviorType,
+        title: behaviorTypeLabel(log.behaviorType, t),
         meta: [log.context, fmtDay(log.timestamp, uiLang)].filter(Boolean).join(" · "),
       })),
       ...playLogs.map((log) => ({
@@ -175,7 +180,7 @@ export default function DevelopmentTab() {
       .filter((m) => Number.isFinite(m.at))
       .sort((a, b) => b.at - a.at)
       .slice(0, 3);
-  }, [milestones, behaviorLogs, playLogs, uiLang]);
+  }, [milestones, behaviorLogs, playLogs, uiLang, t]);
 
   // E2 hero stat trio — CLINICAL FIREWALL: counts and plain activity facts
   // only ("x of y noticed", active-domain count, moments-this-week count).

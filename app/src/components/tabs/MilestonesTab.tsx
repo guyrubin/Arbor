@@ -86,6 +86,18 @@ export default function MilestonesTab() {
   const { t, uiLang } = useLanguage();
   const isRtl = uiLang === "he";
   const domainOptions = framework.domains;
+  /* R22 (Builder L) — `framework.json`'s `label` is English-only, so the domain
+     Map printed "Attachment and regulation" inside the Hebrew app. The six
+     monitored domains already have a bilingual dictionary (`screen.domain.<id>`,
+     used by the screening surfaces); this is the same resolver AcademyForYou's
+     Learning Map uses (components/sections/AcademyForYou.tsx `labelFor`).
+     `translate()` returns the key itself when it is missing, which is the signal
+     to fall back to framework.json (today only `ecosystem_stressors`). */
+  const domainLabel = (id: string, fallback: string) => {
+    const key = `screen.domain.${id}`;
+    const translated = t(key);
+    return translated === key ? fallback : translated;
+  };
   // openDomain === null → the "all domains" master list (the closed Map);
   // set → the single-domain drill-in detail pane.
   const [openDomain, setOpenDomain] = useState<string | null>(null);
@@ -486,7 +498,7 @@ export default function MilestonesTab() {
           <div className="flex items-center gap-2 flex-shrink-0">
             {/* Memory portrait — a quiet reminder this is a moment in the child's record. */}
             <HeroAvatar size={28} animate={false} ring={false} className="flex-shrink-0" />
-            <button type="button" onClick={(e) => { e.preventDefault(); celebrate(); }} title="Celebrate" className="transition" style={{ color: "var(--arbor-peach-ink)" }}>
+            <button type="button" onClick={(e) => { e.preventDefault(); celebrate(); }} title={t("elev.growthTruth.ms.celebrate")} className="transition" style={{ color: "var(--arbor-peach-ink)" }}>
               <Icon name="celebration" size={16} />
             </button>
           </div>
@@ -798,7 +810,7 @@ export default function MilestonesTab() {
                     >
                       <div className="flex items-center gap-2.5 mb-2">
                         <Icon className="w-[18px] h-[18px] flex-shrink-0" style={{ color: PASTEL[dv.tone].ink }} />
-                        <span className="flex-1 text-[13.5px] font-bold" style={{ color: "var(--arbor-ink)" }}>{dom.label}</span>
+                        <span className="flex-1 text-[13.5px] font-bold" style={{ color: "var(--arbor-ink)" }}>{domainLabel(dom.id, dom.label)}</span>
                         <span className="text-[11px] font-extrabold" style={{ color: "var(--arbor-muted)" }}>{s.checked}/{s.total} {t("ms.domainOf")}</span>
                         <ChevEnd className="w-4 h-4 flex-shrink-0" style={{ color: "var(--arbor-muted)" }} />
                       </div>
@@ -831,7 +843,7 @@ export default function MilestonesTab() {
                       <Icon className="w-6 h-6" style={{ color: PASTEL[dv.tone].ink }} />
                     </span>
                     <div className="flex-1">
-                      <div className="text-[17px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{dom.label}</div>
+                      <div className="text-[17px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{domainLabel(dom.id, dom.label)}</div>
                       <div className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>{s.checked}/{s.total} {t("ms.domainOf")}</div>
                     </div>
                   </div>
@@ -878,7 +890,7 @@ export default function MilestonesTab() {
           <form onSubmit={submitCustom} className="flex flex-col sm:flex-row gap-2 items-stretch">
             <input autoFocus value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder={t("ms.newPlaceholder")} className="flex-1 rounded-xl px-3 py-2 text-sm focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
             <select value={newDomain} onChange={(e) => setNewDomain(e.target.value as DevelopmentalDomainId)} className="rounded-xl px-3 py-2 text-xs" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}>
-              {domainOptions.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
+              {domainOptions.map((d) => <option key={d.id} value={d.id}>{domainLabel(d.id, d.label)}</option>)}
             </select>
             <button type="submit" className="text-white font-extrabold text-xs px-4 py-2 min-h-11 rounded-xl transition" style={{ background: "var(--arbor-clay)" }}>{t("ms.add")}</button>
             <button type="button" onClick={() => setShowAdd(false)} className="touch-target px-2 text-xs" style={{ color: "var(--arbor-muted)" }}>{t("ms.cancel")}</button>
