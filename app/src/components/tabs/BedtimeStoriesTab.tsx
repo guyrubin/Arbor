@@ -431,8 +431,14 @@ export default function BedtimeStoriesTab() {
         </p>
       </div>
 
+      {/* item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (counted against the route's
+          moduleBudget); `data-primary-move` marks the ONE control the
+          contract declares — here, generating tonight's story. Stamps only:
+          this surface's own findings belong to another item. */}
       {/* Day event inputs */}
       <div
+        data-module="bedtime-day-events"
         className={`${cardCls} p-5 space-y-4`}
         style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}
       >
@@ -491,6 +497,8 @@ export default function BedtimeStoriesTab() {
 
       {/* Generate CTA */}
       <button
+        data-module="bedtime-generate"
+        data-primary-move="generate-bedtime-story"
         onClick={generate}
         disabled={loading || validEvents.length === 0}
         className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-extrabold text-[15px] text-white disabled:opacity-50 transition active:scale-[0.98] min-h-[52px]"

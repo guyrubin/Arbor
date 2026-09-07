@@ -80,15 +80,19 @@ try {
    ════════════════════════════════════════════════════════════════════════════ */
 
 const KNOWN_UNSTAMPED = new Set([
+  // Object backlog wave 1, batch 3 (§3f + §3d): the nine practice/stories
+  // routes came OFF this list when their leaves were stamped —
+  //   practice, speech, mimic, feelings, journey, adventures,
+  //   stories, bedtime-stories, comics
+  // 43 -> 34. The list only ever shrinks (surfaceContract.render.test.ts).
   "overview", "coach", "behaviors", "milestones", "plans",
-  "stories", "weekly", "scholar", "language", "handoff",
+  "weekly", "scholar", "language", "handoff",
   "safety", "profile", "memory", "strengths", "screening",
   "timeline", "journal", "find-pro", "care-team", "appointments",
   "sharing", "reports", "masterclasses", "learn", "family",
-  "comics", "speech", "mimic", "feelings", "journey",
-  "adventures", "copilot", "development", "daily-play", "practice",
+  "copilot", "development", "daily-play",
   "consult", "attribution", "day-windows", "smart-reminders", "science",
-  "school-brief", "bedtime-stories", "routines"
+  "school-brief", "routines"
 ]);
 
 const layoutDir = path.join(appRoot, "src", "components", "layout");

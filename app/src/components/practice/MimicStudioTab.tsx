@@ -175,8 +175,13 @@ export default function MimicStudioTab() {
       </div>
       )}
 
+      {/* item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (counted against the route's
+          moduleBudget); `data-primary-move` marks the ONE control the
+          contract declares. Playkit primitives take no data-* props, so the
+          stamp goes on a wrapping <section> that adds no box of its own. */}
       {/* Sound packs (feature 5) */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div data-module="mimic-packs" className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {MIMIC_PACKS.map((p) => {
           const on = p.id === packId;
           const done = packDone(p);
@@ -197,6 +202,7 @@ export default function MimicStudioTab() {
       </div>
 
       {/* The round: model card + mirror */}
+      <section data-module="mimic-round">
       <PlayPanel tone="peach">
         <h2 className="text-xl font-extrabold mb-4 flex items-center gap-2" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
           <Icon name="mood" size={20} /> {`${pack.emoji} ${pack.title} — round ${promptIdx + 1} of ${pack.prompts.length}`}
@@ -264,7 +270,7 @@ export default function MimicStudioTab() {
         </div>
 
         {/* Rating */}
-        <div className="flex flex-wrap items-center gap-2.5 mt-5">
+        <div className="flex flex-wrap items-center gap-2.5 mt-5" data-primary-move="complete-mimic-round">
           <span className="text-[13px] font-bold w-full sm:w-auto" style={{ color: "var(--arbor-muted)" }}>{rateAsk}</span>
           {([
             { r: 1 as const, label: "Tried it!", tone: "pink" as const },
@@ -286,6 +292,7 @@ export default function MimicStudioTab() {
           {t("elev.play.mimic.effortNote")}
         </p>
       </PlayPanel>
+      </section>
 
       {/* Pack-complete win beat — fires once per pack per mount. */}
       {wonPackId && (() => {

@@ -228,3 +228,56 @@ describe("OBJ-PRACTICE-02 — the practice doors speak both languages", () => {
     expect(comics).not.toContain('title="Hero Comics"');
   });
 });
+
+/* ── 4 · item 6 / IA-02: the routes this batch owns are stamped ───────────── */
+
+/**
+ * `data-module` and `data-primary-move` occurred ZERO times in src/components
+ * before this wave, so `surfaceContract`'s moduleBudget and primaryMove were
+ * declarations nothing could measure. Every route in this batch now stamps its
+ * top-level sibling modules and exactly one declared control.
+ *
+ * Counting in source, not in a DOM: there is no jsdom here, and a stamp that
+ * is not in the file cannot be in the page. The rendered sweep (module count at
+ * 390 px, the move above the fold) stays the orchestrator's, against these
+ * same attributes. Note the count is a CEILING check — a module inside a
+ * conditional branch renders sometimes and never raises the total.
+ */
+const STAMPED_ROUTES: { route: string; file: string; move: string }[] = [
+  { route: "practice", file: "components/practice/PracticeStudioTab.tsx", move: "start-world" },
+  { route: "speech", file: "components/practice/SpeechCoachTab.tsx", move: "complete-speech-round" },
+  { route: "mimic", file: "components/practice/MimicStudioTab.tsx", move: "complete-mimic-round" },
+  { route: "feelings", file: "components/practice/FeelingsLabTab.tsx", move: "complete-feelings-scenario" },
+  { route: "journey", file: "components/practice/JourneyTab.tsx", move: "complete-mission" },
+  { route: "adventures", file: "components/practice/AdventuresTab.tsx", move: "complete-adventure-scene" },
+  { route: "stories", file: "components/tabs/HeroJourneyTab.tsx", move: "read-tonights-story" },
+  { route: "bedtime-stories", file: "components/tabs/BedtimeStoriesTab.tsx", move: "generate-bedtime-story" },
+  { route: "comics", file: "components/tabs/ComicsTab.tsx", move: "open-comic" },
+];
+
+describe("item 6 (IA-02) — every route in this batch stamps its contract", () => {
+  for (const { route, file, move } of STAMPED_ROUTES) {
+    const src = stripComments(read(file));
+
+    it(`#/${route} stamps at least one data-module, and no more than its budget`, () => {
+      const contract = contractFor(route as Parameters<typeof contractFor>[0])!;
+      const modules = countOf(src, MODULE);
+      expect(modules, `${file} stamps no module`).toBeGreaterThan(0);
+      expect(
+        modules,
+        `${file} stamps ${modules} modules; #/${route} declares a budget of ${contract.moduleBudget}`,
+      ).toBeLessThanOrEqual(contract.moduleBudget);
+    });
+
+    it(`#/${route} stamps exactly one data-primary-move, and it is "${move}"`, () => {
+      expect(countOf(src, MOVE), `${file} must carry exactly one primary-move stamp`).toBe(1);
+      expect(src).toContain(`"${move}"`);
+      expect(contractFor(route as Parameters<typeof contractFor>[0])!.primaryMove).toBe(move);
+    });
+  }
+
+  it("NEGATIVE CONTROL: an unstamped leaf and a double-stamped leaf both fail", () => {
+    expect(countOf("<div className='x' />", MODULE)).toBe(0);
+    expect(countOf('<a data-primary-move="x" /><b data-primary-move="y" />', MOVE)).toBe(2);
+  });
+});

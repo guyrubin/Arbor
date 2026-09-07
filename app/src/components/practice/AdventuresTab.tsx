@@ -168,9 +168,14 @@ export default function AdventuresTab() {
         </PlayPanel>
       )}
 
+      {/* item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (counted against the route's
+          moduleBudget); `data-primary-move` marks the ONE control the
+          contract declares. Playkit primitives take no data-* props, so the
+          stamp goes on a wrapping <section> that adds no box of its own. */}
       {/* Scenario picker */}
       {!scenario && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div data-module="adventures-picker" className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {scenarios.map((s) => {
             const played = playedCount(s) > 0;
             return (
@@ -202,6 +207,7 @@ export default function AdventuresTab() {
 
       {/* Active scene */}
       {scenario && !finished && scene && (
+        <section data-module="adventures-scene">
         <PlayPanel>
           <div className="flex items-center justify-between mb-5 gap-3">
             <div className="flex items-center gap-3 min-w-0">
@@ -240,7 +246,7 @@ export default function AdventuresTab() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4" data-primary-move="complete-adventure-scene">
                 {scene.choices.map((c) => {
                   const isPicked = picked === c.id;
                   const reveal = picked !== null;
@@ -277,6 +283,7 @@ export default function AdventuresTab() {
             </motion.div>
           </AnimatePresence>
         </PlayPanel>
+        </section>
       )}
 
       {/* Finished */}

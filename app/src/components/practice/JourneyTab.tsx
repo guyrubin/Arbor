@@ -164,6 +164,12 @@ export default function JourneyTab() {
       </div>
       )}
 
+      {/* item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (counted against the route's
+          moduleBudget); `data-primary-move` marks the ONE control the
+          contract declares. Playkit primitives take no data-* props, so the
+          stamp goes on a wrapping <section> that adds no box of its own. */}
+      <section data-module="journey-week">
       <SectionCard title={t("elev.practice.journey.week.title")} icon={<Icon name="calendar_month" size={20} />} tone="mint"
         action={aims.length > 0
           ? <Chip tone="mint">{t("elev.growth.journey.aim", { domain: DOMAIN_META[aims[0]].label })}</Chip>
@@ -187,6 +193,7 @@ export default function JourneyTab() {
                   <p className="text-[10.5px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{fillTemplate(day.mission.steps[0], vars)}</p>
                 </div>
                 <button
+                  data-primary-move={day.isToday ? "complete-mission" : undefined}
                   onClick={() => toggleMission(day.mission.id, day.mission.domain, day.date)}
                   className="mt-auto inline-flex min-h-11 items-center justify-center gap-1.5 text-[11px] font-extrabold px-3 py-2 rounded-xl"
                   style={done ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
@@ -208,6 +215,9 @@ export default function JourneyTab() {
         </div>
       </SectionCard>
 
+      </section>
+
+      <section data-module="journey-more" className="space-y-6">
       <SectionCard title={t("elev.practice.journey.objectives.title", { month })} icon={<Icon name="target" size={20} />} tone="coral"
         action={!startedObjectives && (
           <button onClick={startObjectives} className="inline-flex min-h-11 items-center gap-2 text-xs font-extrabold px-4 py-2.5 rounded-xl text-white" style={{ background: "var(--arbor-peach-ink)" }}>
@@ -301,6 +311,7 @@ export default function JourneyTab() {
           </div>
         )}
       </SectionCard>
+      </section>
     </motion.div>
   );
 }

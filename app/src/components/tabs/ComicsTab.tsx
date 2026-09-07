@@ -268,7 +268,13 @@ export default function ComicsTab() {
       subtitle={he ? `כל הרפתקה היא ספר קומיקס שלם — בכיכוב ${name}!` : `Every adventure is a whole comic book — starring ${name}!`}
     >
 
+      {/* item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (counted against the route's
+          moduleBudget); `data-primary-move` marks the ONE control the
+          contract declares. Playkit primitives take no data-* props, so the
+          stamp goes on a wrapping <section> that adds no box of its own. */}
       {/* Shelf summary */}
+      <section data-module="comics-shelf-summary">
       <PlayPanel tone="clay">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
           <div className="min-w-0">
@@ -308,6 +314,7 @@ export default function ComicsTab() {
           )}
         </div>
       </PlayPanel>
+      </section>
 
       {/* Masterplan 4.3 — teach-empty for the untouched shelf: a ghost
           bookshelf shows what saved books will look like lined up, with ONE
@@ -358,8 +365,10 @@ export default function ComicsTab() {
         </PlayPanel>
       )}
 
-      {/* Book grid — every canon adventure as a multi-page comic book */}
-      <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))" }}>
+      {/* Book grid — every canon adventure as a multi-page comic book. The
+          declared primaryMove for #/comics is "open-comic": opening a book off
+          the shelf. Stamped once, on the shelf itself. */}
+      <div data-module="comics-shelf" data-primary-move="open-comic" className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))" }}>
         {shelfAdventures.map((a) => {
           const w = PACK_WORLD[a.pack];
           const emoji = STORY_EMOJI[a.id] ?? "⭐";
