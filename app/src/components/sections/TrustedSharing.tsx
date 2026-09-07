@@ -329,7 +329,7 @@ export default function TrustedSharing() {
           >
             <Icon name="mail" size={16} /> {t("elev.learnCare.share.invite.cta")}
           </a>
-          <button onClick={() => setInvite(null)} aria-label={t("aria.cancel")} className="inline-flex items-center justify-center min-w-[44px] min-h-[44px]">
+          <button onClick={() => setInvite(null)} aria-label={t("aria.cancel")} className="touch-target flex-shrink-0">
             <Icon name="close" size={17} style={{ color: "var(--arbor-muted)" }} />
           </button>
           <p className="text-[11.5px] leading-relaxed basis-full" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.share.invite.hint")}</p>
@@ -340,7 +340,7 @@ export default function TrustedSharing() {
         <div className="space-y-4 border-y py-5" style={{ borderColor: "var(--arbor-rule)" }}>
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("sec.sharing.form.title", { name: first })}</h3>
-            <button onClick={() => { setAdding(false); setReviewing(false); }} aria-label={t("aria.cancel")} className="inline-flex items-center justify-center min-h-11 min-w-11"><Icon name="close" size={17} style={{ color: "var(--arbor-muted)" }} /></button>
+            <button onClick={() => { setAdding(false); setReviewing(false); }} aria-label={t("aria.cancel")} data-testid="sharing-wizard-close" className="touch-target flex-shrink-0"><Icon name="close" size={17} style={{ color: "var(--arbor-muted)" }} /></button>
           </div>
           {!reviewing && <>
           <input ref={recipientRef} value={draft.recipientEmail} onChange={(e) => setDraft({ ...draft, recipientEmail: e.target.value })} placeholder={t("sec.sharing.form.emailPlaceholder")} aria-label={t("sec.sharing.form.emailPlaceholder")} type="email" inputMode="email" autoComplete="email" className="w-full rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} />

@@ -110,3 +110,57 @@ describe("touch floor · the sub-44 shapes stay out of these files", () => {
     expect(read(FILES.safety)).toContain('className="mt-0.5 w-5 h-5 flex-shrink-0"');
   });
 });
+
+/* ── R13 — the Care residues round 2b measured in the running app ──────────
+ *
+ * Item 9 raised the checklist ROW to 44 and the wizard's own chips, but three
+ * controls kept a sub-44 box because none of them was on the named list:
+ * the four emergency-contact fields (308x38 — the floor was missing from the
+ * SHARED `inputCls` recipe, so every field inherited the miss), the icon-only
+ * "remove contact" button (no class at all), and the add-contact submit.
+ * The two sharing-wizard Close buttons are re-pinned on `.touch-target`
+ * (plain CSS in index.css) rather than a utility pair, so neither axis can be
+ * lost to a class that fails to generate.
+ */
+describe("touch floor · R13 · the Care residues", () => {
+  const R13: { id: string; file: keyof typeof FILES; near: string }[] = [
+    { id: "remove a saved contact", file: "safety", near: "void contactsCol.remove(c.id)" },
+    { id: "add a saved contact", file: "safety", near: 'aria-label={t("aria.addContact")}' },
+    { id: "sharing wizard close", file: "sharing", near: 'data-testid="sharing-wizard-close"' },
+    { id: "sharing invite close", file: "sharing", near: "setInvite(null)" },
+  ];
+
+  for (const c of R13) {
+    it(`${c.id} declares a 44 px floor`, () => {
+      expect(shellAround(read(FILES[c.file]), c.near)).toMatch(FLOOR);
+    });
+  }
+
+  it("the floor sits on the shared input recipe, not on the call sites", () => {
+    const safety = read(FILES.safety);
+    expect(safety).toContain('const inputCls = "rounded-lg px-3 py-2 min-h-11 text-sm focus:outline-none";');
+    expect(safety).not.toContain('const inputCls = "rounded-lg px-3 py-2 text-sm focus:outline-none";');
+  });
+
+  it("the checklist row is the node the 44 px acceptance measures", () => {
+    // The checkbox itself stays a 20 px glyph on purpose; the <label> is the
+    // control, and it now says so to whoever is measuring.
+    const safety = read(FILES.safety);
+    expect(safety).toContain('data-touch-shell="checklist-row"');
+    expect(shellAround(safety, 'data-touch-shell="checklist-row"')).toMatch(FLOOR);
+    expect(safety).toContain('className="mt-0.5 w-5 h-5 flex-shrink-0"');
+  });
+
+  it("NEGATIVE CONTROL: each pre-fix shape fails the floor it now has to pass", () => {
+    expect('const inputCls = "rounded-lg px-3 py-2 text-sm focus:outline-none";').not.toMatch(FLOOR);
+    expect('<button onClick={() => void contactsCol.remove(c.id)} className="transition">').not.toMatch(FLOOR);
+    expect('<button type="submit" className="text-white font-extrabold px-3 rounded-lg flex items-center">').not.toMatch(FLOOR);
+  });
+
+  it("the two sharing Close buttons no longer depend on a utility pair", () => {
+    const sharing = read(FILES.sharing);
+    expect(sharing).not.toContain('className="inline-flex items-center justify-center min-h-11 min-w-11"');
+    expect(sharing).not.toContain('className="inline-flex items-center justify-center min-w-[44px] min-h-[44px]"');
+    expect((sharing.match(/touch-target flex-shrink-0/g) ?? []).length).toBe(2);
+  });
+});

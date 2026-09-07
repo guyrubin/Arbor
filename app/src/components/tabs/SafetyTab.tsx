@@ -30,7 +30,9 @@ const HELPLINE_GROUPS: readonly HelplineRegion[] = ["il", "eu", "nl", "be", "us"
 /** Reduce a free-typed phone to a dialable tel: target (digits and + only). */
 const dialable = (phone: string) => phone.replace(/[^\d+]/g, "");
 
-const inputCls = "rounded-lg px-3 py-2 text-sm focus:outline-none";
+// R13: every contact field measured 308x38 at 390. The floor belongs on the
+// SHARED recipe, not on four call sites, so a fifth field cannot miss it.
+const inputCls = "rounded-lg px-3 py-2 min-h-11 text-sm focus:outline-none";
 const inputStyle: React.CSSProperties = { background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" };
 
 export default function SafetyTab() {
@@ -182,7 +184,7 @@ export default function SafetyTab() {
         <SectionCard title={t("elev.safety.checklist.title")} icon={<Icon name="warning" size={20} />} tone="coral">
           <div className="space-y-2">
             {WARNING_SIGN_KEYS.map((n, i) => (
-              <label key={n} className={`${cardCls} flex items-start gap-3 p-2.5 min-h-11 transition cursor-pointer text-xs`}>
+              <label key={n} data-touch-shell="checklist-row" className={`${cardCls} flex items-start gap-3 p-2.5 min-h-11 transition cursor-pointer text-xs`}>
                 <input type="checkbox" checked={!!checked[i]} onChange={() => toggleSign(i)} className="mt-0.5 w-5 h-5 flex-shrink-0" style={{ accentColor: "var(--arbor-pink-ink)" }} />
                 <span style={{ color: checked[i] ? "var(--arbor-pink-ink)" : "var(--arbor-ink)", fontWeight: checked[i] ? 700 : 400 }}>{t(`elev.safety.sign.${n}`)}</span>
               </label>
@@ -233,7 +235,7 @@ export default function SafetyTab() {
                   )}
                   {c.notes && <p className="text-[10px] mt-1" style={{ color: "var(--arbor-muted)" }}>{c.notes}</p>}
                 </div>
-                <button onClick={() => void contactsCol.remove(c.id)} className="transition" style={{ color: "var(--arbor-muted)" }} aria-label={t("aria.removeContact")}>
+                <button onClick={() => void contactsCol.remove(c.id)} className="touch-target flex-shrink-0 transition" style={{ color: "var(--arbor-muted)" }} aria-label={t("aria.removeContact")}>
                   <Icon name="delete" size={14} />
                 </button>
               </div>
@@ -247,7 +249,7 @@ export default function SafetyTab() {
           <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder={t("elev.safety.contacts.phone")} className={inputCls} style={inputStyle} />
           <div className="flex gap-2">
             <input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder={t("elev.safety.contacts.notes")} className={`flex-1 ${inputCls}`} style={inputStyle} />
-            <button type="submit" aria-label={t("aria.addContact")} className="text-white font-extrabold px-3 rounded-lg flex items-center" style={{ background: "var(--arbor-clay)" }}><Icon name="add" size={16} /></button>
+            <button type="submit" aria-label={t("aria.addContact")} className="touch-target text-white font-extrabold px-3 rounded-lg" style={{ background: "var(--arbor-clay)" }}><Icon name="add" size={16} /></button>
           </div>
         </form>
       </SectionCard>
