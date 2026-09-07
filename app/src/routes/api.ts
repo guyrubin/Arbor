@@ -30,6 +30,7 @@ import { screenModelOutput, screenModelOutputLexical, renderBlockedOutputMarkdow
 import { SENTENCE_BOUNDARY_SCAN } from "../lib/sentenceStream.js";
 import { createJsonTextFieldExtractor } from "../server/jsonTextStream.js";
 import { mintTtsToken, verifyTtsToken } from "../server/ttsToken.js";
+import { scrubMemoryProposals, toParentWords, PLAIN_PARENT_WORDS_CLAUSE } from "../server/parentWordsScrub.js";
 import { assembleHeroJourneyScreenable } from "../safety/heroJourneyScreenable.js";
 import { logger, requestIdOf } from "../server/logger.js";
 import { requireChildOwnership } from "../server/requireChildOwnership.js";
@@ -790,7 +791,11 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         return;
       }
 
-      const memoryReviewItems = await appendMemoryProposals(memoryStore, childId, structured.memoryProposals, {
+      // OBJ-JOURNAL-05: the memory queue is a parent surface — a proposal
+      // arrives as a fact the parent is asked to approve, so it must be in
+      // their words. scrubMemoryProposals rewrites the assessment register and
+      // DROPS any fact that cannot be stated plainly (server/parentWordsScrub).
+      const memoryReviewItems = await appendMemoryProposals(memoryStore, childId, scrubMemoryProposals(structured.memoryProposals), {
         familyId,
         prompt: message,
         frameRouting: structured.frameRouting
@@ -1040,7 +1045,11 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         return;
       }
 
-      const memoryReviewItems = await appendMemoryProposals(memoryStore, childId, structured.memoryProposals, {
+      // OBJ-JOURNAL-05: the memory queue is a parent surface — a proposal
+      // arrives as a fact the parent is asked to approve, so it must be in
+      // their words. scrubMemoryProposals rewrites the assessment register and
+      // DROPS any fact that cannot be stated plainly (server/parentWordsScrub).
+      const memoryReviewItems = await appendMemoryProposals(memoryStore, childId, scrubMemoryProposals(structured.memoryProposals), {
         familyId,
         prompt: message,
         frameRouting: structured.frameRouting
@@ -2728,7 +2737,10 @@ ${languageDirective}`;
       });
 
       // Prepend NON_DIAGNOSTIC_CONTRACT (same as /generate-story and /generate-hero-journey).
-      const fullPrompt = `${NON_DIAGNOSTIC_CONTRACT}\n\n${rawPrompt}`;
+      // OBJ-STORIES-01: the story's `summary` is the parent-facing "For the
+      // family" line. Ask for plain parent words in the prompt AND enforce
+      // them on the way out (below) — a clause is a request, not a guarantee.
+      const fullPrompt = `${NON_DIAGNOSTIC_CONTRACT}\n\n${PLAIN_PARENT_WORDS_CLAUSE}\n\n${rawPrompt}`;
 
       // Redact child PII, call model, restore PII in output.
       const result = privacy.restoreDeep(await modelProvider.generateJson({
@@ -2747,6 +2759,13 @@ ${languageDirective}`;
         },
         temperature: 0.7
       }));
+
+      // OBJ-STORIES-01: enforce the parent register on the one field the
+      // parent reads. An empty result means there is nothing to show, never a
+      // reason to fall back to the raw assessment sentence.
+      if (result && typeof (result as Record<string, unknown>).summary === "string") {
+        (result as Record<string, unknown>).summary = toParentWords((result as Record<string, unknown>).summary as string);
+      }
 
       // ── SAFETY CONDITION 3: GENERATE-AND-DISCARD ──
       // The result is returned directly to the client and NOT persisted anywhere.
