@@ -144,7 +144,11 @@ export default function RoutinesTab() {
       {/* Library grid — 7 routine tiles (~4 cols desktop). Each: colored icon
           tile, title, a COUNT meta line, and a count-based progress bar. The
           selected tile gets a 2px tone-colored border. */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (what moduleBudget counts);
+          `data-primary-move` marks the ONE control that performs the move
+          surfaceContract.ts declares for this route. */}
+      <div data-module="routines-library" className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         {ROUTINES.map((r) => {
           const p = PASTEL[r.tone];
           const done = tileDone(r.id);
@@ -188,6 +192,8 @@ export default function RoutinesTab() {
 
       {/* Selected routine's board. */}
       <section
+        data-module="routines-board"
+        data-primary-move="complete-routine-step"
         className="rounded-[22px] p-5 md:p-6"
         style={{ background: "var(--arbor-paper-elevated)", boxShadow: "var(--shadow-sm)", border: "1px solid var(--arbor-rule)" }}
       >

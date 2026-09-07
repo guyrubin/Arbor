@@ -321,7 +321,11 @@ export default function DevelopmentTab() {
           and returns null the rest of the time. */}
       <MonthInReview />
       {/* One action first, then the neutral development picture. */}
-      <section className="overflow-hidden rounded-[24px]" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }} aria-labelledby="growth-weekly-focus">
+      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (what moduleBudget counts);
+          `data-primary-move` marks the ONE control that performs the move
+          surfaceContract.ts declares for this route. */}
+      <section data-module="growth-weekly-focus" data-primary-move="notice-milestone" className="overflow-hidden rounded-[24px]" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }} aria-labelledby="growth-weekly-focus">
         <div className="grid min-w-0 xl:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.75fr)]">
           <div className="min-w-0 p-4 sm:p-6 lg:p-7">
             <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[0.16em]" style={{ color: "var(--arbor-green-ink)" }} data-testid="growth-focus-eyebrow">
@@ -472,7 +476,7 @@ export default function DevelopmentTab() {
         </div>
       </section>
       {/* The Map — the record's home (counts only). */}
-      <DevScoreCard />
+      <div data-module="growth-map" style={{ display: "contents" }}><DevScoreCard /></div>
       {/* GP-33 — the first-words ledger. The Language Lab has been writing to
           `langObs` for months and the record never showed it; the words are a
           keepsake, not an aggregate. Counts and dates only. */}
@@ -532,7 +536,7 @@ export default function DevelopmentTab() {
           real route (also reachable from the Growth pill row / fallbacks).
           Masterplan 1.7: the copilot tile moved UP into the Full Picture card
           on the Now region — one home, no duplicate link. */}
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div data-module="growth-deep-dives" className="grid gap-3 sm:grid-cols-2">
         {([
           { tab: "milestones", glyph: "check_circle", label: t("hub.milestones"), sub: t("elev.growth.link.milestones.sub") },
           // GP-07: this door was labelled "the month-by-month development

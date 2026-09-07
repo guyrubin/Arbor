@@ -16,7 +16,13 @@ export default function Strengths() {
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
       <PageHeader eyebrow={t("cp.eyebrow")} title={t("sec.strengths.title")} subtitle={t("sec.strengths.sub", { name: first })} />
 
-      <div className="grid lg:grid-cols-2 gap-5">
+      {/* Item 11 (IA-02): the surface contract reaches the DOM. Two top-level
+          sibling modules against a budget of 2 — the strengths/support pair the
+          surface exists to show, and the Ask hand-off band below it. The pair
+          IS the declared move (review-strengths): this is a reading surface,
+          so the move is stamped on the container of what gets reviewed, the
+          same shape ComicsTab and PracticeStudioTab already use. */}
+      <div data-module="strengths-pair" data-primary-move="review-strengths" className="grid lg:grid-cols-2 gap-5">
         <SectionCard title={t("cp.ch.strengths")} icon={<Icon name="diamond" size={20} />} tone="mint">
           <ul className="space-y-3">
             {childProfile.strengths.map((s) => (
@@ -42,7 +48,7 @@ export default function Strengths() {
         </SectionCard>
       </div>
 
-      <div className="rounded-[22px] p-6 flex flex-col sm:flex-row items-center gap-5" style={{ background: "linear-gradient(120deg,#eef6f1,var(--arbor-lav-soft))", border: "1px solid var(--arbor-rule)" }}>
+      <div data-module="strengths-ask" className="rounded-[22px] p-6 flex flex-col sm:flex-row items-center gap-5" style={{ background: "linear-gradient(120deg,#eef6f1,var(--arbor-lav-soft))", border: "1px solid var(--arbor-rule)" }}>
         <div className="flex-1 text-center sm:text-start">
           <h3 className="text-2xl" style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink)", lineHeight: 1.15 }}>{t("elev.growthTruth.strengths.ctaTitle")}</h3>
           <p className="text-sm mt-1" style={{ color: "var(--arbor-muted)" }}>{t("elev.growthTruth.strengths.ctaBody", { name: isolate(first) })}</p>

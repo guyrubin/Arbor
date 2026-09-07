@@ -120,9 +120,16 @@ export default function LanguageLabTab() {
         <>
           {/* The primary move, under the header. Nothing above it but the page
               title, so a parent who opened this hub to log a phrase can. */}
-          <PhraseLogForm childId={childProfile.id} languages={langs} onAdded={() => {}} t={t} />
+          {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (what moduleBudget counts);
+          `data-primary-move` marks the ONE control that performs the move
+          surfaceContract.ts declares for this route. */}
+          <div data-module="language-capture" data-primary-move="log-language-moment" style={{ display: "contents" }}>
+            <PhraseLogForm childId={childProfile.id} languages={langs} onAdded={() => {}} t={t} />
+          </div>
 
           {/* Daily practice — the hero: real, usable value every day */}
+          <div data-module="language-practice" style={{ display: "contents" }}>
           <SectionCard
             title={t("lang.routinesTitle", { target })}
             icon={<Icon name="auto_awesome" size={20} />}
@@ -170,9 +177,11 @@ export default function LanguageLabTab() {
               ))}
             </div>
           </SectionCard>
+          </div>
 
           {/* Language profile — roles in the home + moments logged. One tone,
               no status chip, nothing graded (GP-02). */}
+          <div data-module="language-profile" style={{ display: "contents" }}>
           <SectionCard title={t("lang.profileTitle", { first, age })} icon={<Icon name="translate" size={20} />} tone="sky">
             <ul className="divide-y" style={{ borderColor: "var(--arbor-rule)" }} data-testid="lang-role-rows">
               {languageRows.map((row) => (
@@ -192,11 +201,12 @@ export default function LanguageLabTab() {
               </p>
             )}
           </SectionCard>
+          </div>
 
           {/* AP-054 — Vocabulary log, now SECONDARY & optional. It sits below the
               daily practice and profile so an empty counter is never the hero;
               logging still works exactly as before. */}
-          <LanguageLabVocabView />
+          <div data-module="language-vocab" style={{ display: "contents" }}><LanguageLabVocabView /></div>
         </>
       )}
     </motion.div>

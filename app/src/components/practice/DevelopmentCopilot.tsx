@@ -291,6 +291,11 @@ export default function DevelopmentCopilot() {
           the per-domain trend glyphs — all verdicts on a child. Now mirrors
           DevScoreCard: count / mechanism / route-to-pro. Emits nothing about
           the child as a verdict. */}
+      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (what moduleBudget counts);
+          `data-primary-move` marks the ONE control that performs the move
+          surfaceContract.ts declares for this route. */}
+      <div data-module="copilot-domains" data-primary-move="open-full-picture" style={{ display: "contents" }}>
       <SectionCard title={`Domain picture — age ${ageLabel(childProfile, t)}`} icon={<Icon name="monitoring" size={20} />} tone="mint">
         {/* RUN-08 / item 19 — a domain with no milestone in this age window has
             nothing to count, and printing "Speech sounds — 0 of 0 milestones
@@ -329,8 +334,10 @@ export default function DevelopmentCopilot() {
           We show counts of what you&apos;ve noticed — not a score or a &ldquo;developmental age.&rdquo; Home observation can&apos;t honestly support either. A professional assessment is what turns this into conclusions.
         </p>
       </SectionCard>
+      </div>
 
       {/* Feature 10a: the weekly recommendation */}
+      <div data-module="copilot-focus" style={{ display: "contents" }}>
       <SectionCard title="This week's focus" icon={<Icon name="explore" size={20} />} tone="coral"
         action={
           <button onClick={() => setActiveTab("overview")} className="inline-flex items-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl text-white transition" style={{ background: "var(--arbor-peach-ink)" }}>
@@ -350,12 +357,14 @@ export default function DevelopmentCopilot() {
           </div>
         </div>
       </SectionCard>
+      </div>
 
       {/* Masterplan 1.7: "Worth a conversation" — the former Watch signals
           section in the observational register. ONE neutral tone for every
           area and for the section itself (no discuss-vs-monitor flip); each
           row reports the COUNT of contributing observations, mirroring the
           Screening result screen's calm reframe. */}
+      <div data-module="copilot-watch" style={{ display: "contents" }}>
       <SectionCard title={tFP(uiLang, "elev.fullpicture.watch.title")} icon={<Icon name="forum" size={20} />} tone="lav">
         {watch.length === 0 ? (
           <div className="rounded-2xl p-4" style={{ background: "var(--arbor-paper-deep)" }}>
@@ -401,7 +410,9 @@ export default function DevelopmentCopilot() {
           </div>
         )}
       </SectionCard>
+      </div>
 
+      <div data-module="copilot-history" style={{ display: "contents" }}>
       <SectionCard title="Weekly history" icon={<Icon name="history" size={20} />} tone="sky">
         {/* AP-CF-snapshots (Wave-3, 2026-06-27): the weekly snapshots now render in
             the COUNT register — parent-noticed milestones per domain over time —
@@ -454,11 +465,12 @@ export default function DevelopmentCopilot() {
           </div>
         )}
       </SectionCard>
+      </div>
 
       {/* Practice pulse — GD-10: the first tile is a CUMULATIVE COUNT of
           practice moments (a running activity tally), never the 0–100
           developmentScore value or any band/trend. */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div data-module="copilot-practice-pulse" className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className={`${cardCls} p-5`}>
           <p className="text-2xl font-extrabold" style={{ color: "var(--arbor-ink)" }}>{practiceMoments}</p>
           <p className="text-[10.5px] mt-0.5" style={{ color: "var(--arbor-muted)" }}>
@@ -474,6 +486,7 @@ export default function DevelopmentCopilot() {
       </div>
 
       {/* Feature 10b: clinician summary */}
+      <div data-module="copilot-clinician-summary" style={{ display: "contents" }}>
       <SectionCard title="Share with a professional" icon={<Icon name="description" size={20} />} tone="sky"
         action={
           <div className="flex gap-2">
@@ -495,6 +508,7 @@ export default function DevelopmentCopilot() {
           {previewSummary ?? "This summary did not pass Arbor's export safety check, so nothing was exported. Please try again after your next practice session."}
         </pre>
       </SectionCard>
+      </div>
     </motion.div>
   );
 }

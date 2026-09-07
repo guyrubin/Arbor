@@ -285,7 +285,11 @@ export default function DailyPlayTab() {
       {/* CI-30: DailyPlanCard hero — goal-linked daily plan, mounts above existing CourseCard.
           No new tab, no new sidebar item, no new tab registration.
           Post-activity observation writes to goalObservations sub-collection (COPPA-reviewed path). */}
-      <div className="max-w-[640px]">
+      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (what moduleBudget counts);
+          `data-primary-move` marks the ONE control that performs the move
+          surfaceContract.ts declares for this route. */}
+      <div data-module="play-daily-plan" className="max-w-[640px]">
         {/* E6: plan comes from the band-matched picks — render the age fact. */}
         {dailyPlan && <div className="mb-1.5"><AgeChip profile={childProfile} /></div>}
         <DailyPlanCard
@@ -323,7 +327,7 @@ export default function DailyPlayTab() {
       </div>
 
       {/* Readiness tracks — goal courses the parent chooses (school / sibling / sleep) */}
-      <section className="max-w-[640px]">
+      <section data-module="play-readiness" className="max-w-[640px]">
         <div className="mb-3">
           <h2 className="text-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("play.readinessTitle")}</h2>
           <p className="text-[13px] mt-0.5" style={{ color: "var(--arbor-muted)" }}>{t("play.readinessSubtitle")}</p>
@@ -368,7 +372,7 @@ export default function DailyPlayTab() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+      <div data-module="play-picks" data-primary-move="log-play" className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
         {picks.map((p) => (
           <div key={p.activity.id}>
             {/* E6: each pick was selected with childProfile.age — render the fact. */}

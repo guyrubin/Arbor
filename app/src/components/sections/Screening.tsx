@@ -97,7 +97,12 @@ export default function Screening() {
 
       <TrustSafetyBar note={t("screen.trustNote")} />
 
+      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (what moduleBudget counts);
+          `data-primary-move` marks the ONE control that performs the move
+          surfaceContract.ts declares for this route. */}
       {/* Passive developmental-monitoring layer — surveillance, never a test or diagnosis. */}
+      <div data-module="screening-monitoring" style={{ display: "contents" }}>
       <SectionCard
         title={t("monitor.title")}
         icon={<Icon name="visibility" size={20} />}
@@ -144,8 +149,11 @@ export default function Screening() {
           </div>
         )}
       </SectionCard>
+      </div>
 
-      <ScreeningFlow />
+      <div data-module="screening-check" data-primary-move="complete-check" style={{ display: "contents" }}>
+        <ScreeningFlow />
+      </div>
     </motion.div>
   );
 }

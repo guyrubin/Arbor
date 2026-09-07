@@ -670,6 +670,11 @@ export default function MilestonesTab() {
       {/* Master/detail spine: left rail = the persistent Development Map summary
           (firewall-safe COUNT headline — never a 0–100 gauge or trend delta);
           right pane = the seven-domain master list, or a single-domain drill-in. */}
+      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (what moduleBudget counts);
+          `data-primary-move` marks the ONE control that performs the move
+          surfaceContract.ts declares for this route. */}
+      <div data-module="milestones-spine" data-primary-move="mark-milestone" style={{ display: "contents" }}>
       <Split
         ratio="minmax(300px,1fr) minmax(0,1.4fr)"
         className="md:[&>div]:!contents xl:[&>div]:!grid"
@@ -861,8 +866,10 @@ export default function MilestonesTab() {
         }
       />
 
+      </div>
+
       {/* Add custom milestone */}
-      <div className={`${cardCls} p-5`}>
+      <div data-module="milestones-custom" className={`${cardCls} p-5`}>
         {!showAdd ? (
           <button onClick={() => setShowAdd(true)} className="touch-target -mx-2 gap-2 px-2 text-sm font-bold transition" style={{ color: "var(--arbor-green-ink)" }}>
             <Icon name="add" size={16} /> {t("ms.addMilestone")}
