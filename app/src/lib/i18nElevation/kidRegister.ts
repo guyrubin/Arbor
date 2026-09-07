@@ -249,7 +249,7 @@ export const he: Record<string, string> = {
   "elev.play.pattern.done.title": "סיימתם את כל התבניות, {name}!",
   "elev.play.pattern.done.sub": "זו כל הערכה. ערכה חדשה של צורות מחכה לכם כשתחזרו.",
   "elev.play.pattern.done.again": "לשחק שוב בערכה הזו",
-  "elev.play.beat.say": "הקשיבו לנקישה, ואז הקישו על הכפתור הגדול בדיוק בקצב!",
+  "elev.play.beat.say": "הקשיבו לנקישה, ואז הקישו על הכפתור הגדול בדיוק לפי המקצב!",
   "elev.play.mic.unavailable": "המכשיר לא מקשיב עכשיו — תגידו בקול רם יחד!",
   "elev.play.mirror.unavailable": "אין מראה במכשיר עכשיו — שחקו פנים מול פנים!",
 };
