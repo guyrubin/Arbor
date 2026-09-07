@@ -77,6 +77,10 @@ export const en: Record<string, string> = {
   "elev.safety.guard.gdpr.body": "Arbor is designed for GDPR-aligned children’s data minimization. No unsupervised AI interaction for children; details are stored as parent-approved observations.",
   "elev.safety.guard.handoff.title": "Multi-professional handoff",
   "elev.safety.guard.handoff.body": "The printable summary bridges home observations with specialized care profiles, giving teachers and clinics non-diagnosing observational context instantly.",
+
+  // Builder M — R25 — #/safety demotion disclosure. The one-tap call and the crisis script stay above it.
+  "elev.safety.more.title": "All helplines, warning signs and your contacts",
+  "elev.safety.more.sub": "Every number by country, the review checklist, your saved contacts and how Arbor handles this.",
 };
 
 export const he: Record<string, string> = {
@@ -145,6 +149,10 @@ export const he: Record<string, string> = {
   "elev.safety.guard.gdpr.body": "ארבור בנויה למזעור נתוני ילדים בהתאם ל־GDPR. אין אינטראקציה של ילדים עם AI ללא ליווי; פרטים נשמרים רק כתצפיות שאושרו על ידי ההורים.",
   "elev.safety.guard.handoff.title": "העברה בין אנשי מקצוע",
   "elev.safety.guard.handoff.body": "הסיכום להדפסה מחבר בין תצפיות מהבית לפרופילי טיפול מקצועיים, ומעניק לגננות, למורים ולמרפאות הקשר תצפיתי — לא אבחנתי — באופן מיידי.",
+
+  // Builder M — R25 — #/safety demotion disclosure. The one-tap call and the crisis script stay above it.
+  "elev.safety.more.title": "כל קווי הסיוע, סימני אזהרה ואנשי הקשר שלכם",
+  "elev.safety.more.sub": "כל המספרים לפי מדינה, רשימת הבדיקה, אנשי הקשר ששמרתם ואיך ארבור מטפל בזה.",
 };
 
 // The masterplan names these records safetyEn/safetyHe; the index registry

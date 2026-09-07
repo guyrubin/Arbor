@@ -101,6 +101,16 @@ export const en: Record<string, string> = {
   // ── KID-12 · The parent strip on Kid Mode exit ─────────────────────────────
   "elev.learnCare.kidExit.strip": "While you were away, {name}: {summary}",
   "elev.learnCare.kidExit.join": " · ",
+
+  // Builder M — R25 — #/sharing (and #/care-team, same leaf) demotion disclosure and its door to #/consult.
+  "elev.learnCare.share.more.title": "Shared with you, your data and the record",
+  "elev.learnCare.share.more.sub": "Children shared with you, export and deletion, and the full history of every grant.",
+  "elev.learnCare.share.more.door": "Open the consult flow",
+
+  // Builder M — R25 - #/appointments demotion disclosure and its door to #/consult. Keyed in learnCare, the module that already owns every other elev.*.appt.* string on this screen; careNetwork.ts is guarded to FindProfessional's own keys only.
+  "elev.learnCare.appt.more.title": "Past visits and what to ask",
+  "elev.learnCare.appt.more.sub": "Your appointment history, and the questions you are preparing to bring.",
+  "elev.learnCare.appt.more.door": "Open the consult flow",
 };
 
 export const he: Record<string, string> = {
@@ -175,4 +185,14 @@ export const he: Record<string, string> = {
   // ── KID-12 ─────────────────────────────────────────────────────────────────
   "elev.learnCare.kidExit.strip": "בזמן שלא הייתם, {name}: {summary}",
   "elev.learnCare.kidExit.join": " · ",
+
+  // Builder M — R25 — #/sharing (and #/care-team, same leaf) demotion disclosure and its door to #/consult.
+  "elev.learnCare.share.more.title": "מה שותף אתכם, הנתונים והרשומה",
+  "elev.learnCare.share.more.sub": "ילדים ששותפו אתכם, ייצוא ומחיקה, וההיסטוריה המלאה של כל הרשאה.",
+  "elev.learnCare.share.more.door": "פתחו את מסלול ההתייעצות",
+
+  // Builder M — R25 - #/appointments demotion disclosure and its door to #/consult. Keyed in learnCare, the module that already owns every other elev.*.appt.* string on this screen; careNetwork.ts is guarded to FindProfessional's own keys only.
+  "elev.learnCare.appt.more.title": "ביקורים קודמים ומה לשאול",
+  "elev.learnCare.appt.more.sub": "היסטוריית הפגישות, והשאלות שאתם מכינים לקחת אתכם.",
+  "elev.learnCare.appt.more.door": "פתחו את מסלול ההתייעצות",
 };

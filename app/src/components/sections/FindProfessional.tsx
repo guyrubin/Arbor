@@ -246,15 +246,20 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
       )}
 
       {/* Curated results */}
+      {/* R25: the empty state and the result grid are the SAME module in two
+          mutually exclusive branches. Stamping each one counted 3 against a
+          budget of 2 for a page that never renders more than 2 — the stamp
+          belongs on the wrapper, where it says what actually renders. */}
+      <div data-module="findpro-results" style={{ display: "contents" }}>
       {results.length === 0 ? (
-        <div data-module="findpro-results" className={`${cardCls} p-10 text-center`}>
+        <div className={`${cardCls} p-10 text-center`}>
           <Icon name="shield_person" size={34} style={{ color: "var(--arbor-green-ink)" }} />
           <p className="mt-3 text-base font-bold" style={{ color: "var(--arbor-ink)" }}>{t("elev.careNet.empty.title")}</p>
           <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.careNet.empty.body")}</p>
           {!embedded && <button onClick={() => setActiveTab("consult")} className="mt-4 rounded-xl px-4 py-2.5 text-xs font-bold text-white" style={{ background: "var(--arbor-gradient-primary)" }}>{t("elev.careNet.empty.cta")}</button>}
         </div>
       ) : (
-        <div data-module="findpro-results" className="grid lg:grid-cols-2 gap-5">
+        <div className="grid lg:grid-cols-2 gap-5">
           {results.map((p) => (
             <div key={p.name} className={`${cardCls} p-5`}>
               <div className="flex items-start gap-4">
@@ -301,6 +306,7 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
           ))}
         </div>
       )}
+      </div>
       <p className="text-xs text-center" style={{ color: "var(--arbor-muted)" }}>{t("elev.careNet.footer.verification")}</p>
 
       {/* MON-3 v1: consultation request modal */}

@@ -323,8 +323,12 @@ export default function TrustedSharing() {
           marks a top-level sibling module (what moduleBudget counts);
           `data-primary-move` marks the ONE control that performs the move
           surfaceContract.ts declares for this route. */}
+      {/* R25: ONE module for the grant flow — the wizard and the invite
+          hand-off it produces (LC-17) are two steps of one capability, so
+          they carry one stamp between them rather than competing as two. */}
+      <div data-module="sharing-grant" style={{ display: "contents" }}>
       {invite && (
-        <div data-module="sharing-invite" data-testid="share-invite" className="border-y py-4 flex flex-wrap items-center gap-3" style={{ borderColor: "var(--arbor-rule)" }}>
+        <div data-testid="share-invite" className="border-y py-4 flex flex-wrap items-center gap-3" style={{ borderColor: "var(--arbor-rule)" }}>
           <span className="text-sm font-bold break-all" dir="auto" style={{ color: "var(--arbor-ink)" }}>{invite.email}</span>
           <a
             href={inviteHref(invite.email)}
@@ -341,7 +345,7 @@ export default function TrustedSharing() {
       )}
 
       {adding && (
-        <div data-module="sharing-grant" className="space-y-4 border-y py-5" style={{ borderColor: "var(--arbor-rule)" }}>
+        <div className="space-y-4 border-y py-5" style={{ borderColor: "var(--arbor-rule)" }}>
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("sec.sharing.form.title", { name: first })}</h3>
             <button onClick={() => { setAdding(false); setReviewing(false); }} aria-label={t("aria.cancel")} data-testid="sharing-wizard-close" className="touch-target flex-shrink-0"><Icon name="close" size={17} style={{ color: "var(--arbor-muted)" }} /></button>
@@ -420,6 +424,8 @@ export default function TrustedSharing() {
           one card per live grant (the richer InitialsTile visual, W4.4 intent)
           with the revoke action folded in. The former duplicate "Active shares"
           list is gone. */}
+      </div>
+
       {!error && (
         <div data-module="sharing-roster" style={{ display: "contents" }}>
         <SectionCard title={t("sec.sharing.team.title", { name: first })} icon={<Icon name="diversity_3" size={20} fill={1} />} tone="mint">
@@ -456,8 +462,32 @@ export default function TrustedSharing() {
         </div>
       )}
 
+      {/* R25 (item 11) — #/sharing rendered 5 top-level modules against a declared
+          moduleBudget of 2. The tail below is DEMOTED, never removed: one
+          collapsed disclosure on the pattern components/practice/SpeechCoachTab.tsx
+          `speech-more` already ships, so every capability keeps its door (law 6)
+          while the fold belongs to the primary move. Demoted modules keep their
+          own `data-module` stamp and add `data-module-demoted`, which is what
+          makes the budget rule countable: top-level = stamps minus demoted. */}
+      <details data-module-disclosure="sharing-more" className={`${cardCls} p-0 overflow-hidden`}>
+        <summary className="cursor-pointer list-none px-6 py-4 min-h-[44px] flex items-center gap-3">
+          <span className="grid place-items-center w-9 h-9 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
+            <Icon name="history" size={18} />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.learnCare.share.more.title")}</span>
+            <span className="block text-[12px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.share.more.sub")}</span>
+          </span>
+          <Icon name="expand_more" size={20} className="ms-auto" style={{ color: "var(--arbor-muted)" }} />
+        </summary>
+        <div className="px-4 pb-4 space-y-4">
+        {/* demotionTarget: "consult" — the hub the contract sends these to. */}
+        <button onClick={() => setActiveTab("consult")} className="inline-flex min-h-11 w-full items-center justify-between gap-2 rounded-xl px-4 py-2.5 text-sm font-bold" style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}>
+          <span>{t("elev.learnCare.share.more.door")}</span>
+          <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
+        </button>
       {!error && inbound.length > 0 && (
-        <div data-module="sharing-inbound" style={{ display: "contents" }}>
+        <div data-module="sharing-inbound" data-module-demoted style={{ display: "contents" }}>
         <SectionCard title={t("sec.sharing.inbound.title")} icon={<Icon name="inbox" size={20} />} tone="lav">
           <div className="space-y-3">
             {inbound.map((s) => (
@@ -489,7 +519,7 @@ export default function TrustedSharing() {
         </div>
       )}
 
-      <div data-module="sharing-data-and-history" className="grid min-w-0 gap-4 sm:grid-cols-2">
+      <div data-module="sharing-data-and-history" data-module-demoted className="grid min-w-0 gap-4 sm:grid-cols-2">
         <SectionCard title={t("sec.sharing.data.title")} icon={<Icon name="download" size={20} />} tone="lav">
           <div className="space-y-2">
             <button onClick={exportData} className="w-full inline-flex items-center gap-2 text-sm font-bold rounded-xl px-4 py-3" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}><Icon name="download" size={18} /> {t("sec.sharing.data.export")}</button>
@@ -521,6 +551,9 @@ export default function TrustedSharing() {
           )}
         </SectionCard>
       </div>
+
+        </div>
+      </details>
 
       {/* CARE-2: read-only recipient viewer — exactly the granted scopes,
           server-assembled and guard-checked. No capture paths, no writes. */}

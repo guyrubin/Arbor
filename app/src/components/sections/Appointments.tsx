@@ -174,24 +174,6 @@ export default function Appointments() {
         }
       />
 
-      {/* LC-12 — the in-app "Coming up" strip. It renders when the parent opens
-          Arbor; it is not a scheduled alert, and the honesty line says so. */}
-      {reminders.length > 0 && (
-        <div data-module="appt-reminders" data-testid="appt-reminder-strip" className={`${cardCls} p-4 space-y-1.5`} style={{ background: "var(--arbor-sky-soft)" }}>
-          <p className="text-[12px] font-extrabold inline-flex items-center gap-1.5" style={{ color: "var(--arbor-sky-ink)" }}>
-            <Icon name="schedule" size={16} /> {t("elev.learnCare.appt.reminder.title")}
-          </p>
-          {reminders.map((a) => (
-            <p key={a.id} className="text-[13px] font-bold" dir="auto" style={{ color: "var(--arbor-ink)" }}>
-              {t("elev.learnCare.appt.reminder.line", { who: a.who, date: whenLabel(a) })}
-            </p>
-          ))}
-          <p className="text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
-            {t("elev.learnCare.appt.reminder.honesty")}
-          </p>
-        </div>
-      )}
-
       {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
           marks a top-level sibling module (what moduleBudget counts);
           `data-primary-move` marks the ONE control that performs the move
@@ -230,6 +212,23 @@ export default function Appointments() {
       )}
 
       <div data-module="appt-upcoming" style={{ display: "contents" }}>
+      {/* LC-12 — the in-app "Coming up" strip. It renders when the parent opens
+          Arbor; it is not a scheduled alert, and the honesty line says so. */}
+      {reminders.length > 0 && (
+        <div data-testid="appt-reminder-strip" className={`${cardCls} p-4 space-y-1.5`} style={{ background: "var(--arbor-sky-soft)" }}>
+          <p className="text-[12px] font-extrabold inline-flex items-center gap-1.5" style={{ color: "var(--arbor-sky-ink)" }}>
+            <Icon name="schedule" size={16} /> {t("elev.learnCare.appt.reminder.title")}
+          </p>
+          {reminders.map((a) => (
+            <p key={a.id} className="text-[13px] font-bold" dir="auto" style={{ color: "var(--arbor-ink)" }}>
+              {t("elev.learnCare.appt.reminder.line", { who: a.who, date: whenLabel(a) })}
+            </p>
+          ))}
+          <p className="text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+            {t("elev.learnCare.appt.reminder.honesty")}
+          </p>
+        </div>
+      )}
       <SectionCard title={t("elev.learnCare.appt.section.upcoming")} icon={<Icon name="calendar_month" size={20} />} tone="sky">
         {upcoming.length ? (
           <div className="space-y-3">{upcoming.map(row)}</div>
@@ -239,15 +238,39 @@ export default function Appointments() {
       </SectionCard>
       </div>
 
+      {/* R25 (item 11) — #/appointments rendered 5 top-level modules against a declared
+          moduleBudget of 2. The tail below is DEMOTED, never removed: one
+          collapsed disclosure on the pattern components/practice/SpeechCoachTab.tsx
+          `speech-more` already ships, so every capability keeps its door (law 6)
+          while the fold belongs to the primary move. Demoted modules keep their
+          own `data-module` stamp and add `data-module-demoted`, which is what
+          makes the budget rule countable: top-level = stamps minus demoted. */}
+      <details data-module-disclosure="appointments-more" className={`${cardCls} p-0 overflow-hidden`}>
+        <summary className="cursor-pointer list-none px-6 py-4 min-h-[44px] flex items-center gap-3">
+          <span className="grid place-items-center w-9 h-9 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
+            <Icon name="history" size={18} />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.learnCare.appt.more.title")}</span>
+            <span className="block text-[12px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.appt.more.sub")}</span>
+          </span>
+          <Icon name="expand_more" size={20} className="ms-auto" style={{ color: "var(--arbor-muted)" }} />
+        </summary>
+        <div className="px-4 pb-4 space-y-4">
+        {/* demotionTarget: "consult" — the hub the contract sends these to. */}
+        <button onClick={() => setActiveTab("consult")} className="inline-flex min-h-11 w-full items-center justify-between gap-2 rounded-xl px-4 py-2.5 text-sm font-bold" style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}>
+          <span>{t("elev.learnCare.appt.more.door")}</span>
+          <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
+        </button>
       {past.length > 0 && (
-        <div data-module="appt-past" style={{ display: "contents" }}>
+        <div data-module="appt-past" data-module-demoted style={{ display: "contents" }}>
         <SectionCard title={t("elev.learnCare.appt.section.past")} icon={<Icon name="history" size={20} />} tone="lav">
           <div className="space-y-3">{past.map(row)}</div>
         </SectionCard>
         </div>
       )}
 
-      <div data-module="appt-prepare" style={{ display: "contents" }}>
+      <div data-module="appt-prepare" data-module-demoted style={{ display: "contents" }}>
       <SectionCard title={t("elev.learnCare.appt.prepare")} icon={<Icon name="help" size={20} />} tone="mint">
         <ul className="space-y-2 mb-3">
           {questions.length === 0 && <li className="text-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.appt.questions.empty")}</li>}
@@ -274,6 +297,8 @@ export default function Appointments() {
         </button>
       </SectionCard>
       </div>
+        </div>
+      </details>
     </motion.div>
   );
 }

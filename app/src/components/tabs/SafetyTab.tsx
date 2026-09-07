@@ -157,9 +157,28 @@ export default function SafetyTab() {
         <p className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.safety.crisis.danger")}</p>
       </div>
 
+      {/* R25 (item 11) — #/safety rendered 7 top-level modules against a declared
+          moduleBudget of 2. The tail below is DEMOTED, never removed: one
+          collapsed disclosure on the pattern components/practice/SpeechCoachTab.tsx
+          `speech-more` already ships, so every capability keeps its door (law 6)
+          while the fold belongs to the primary move. Demoted modules keep their
+          own `data-module` stamp and add `data-module-demoted`, which is what
+          makes the budget rule countable: top-level = stamps minus demoted. */}
+      <details data-module-disclosure="safety-more" className={`${cardCls} p-0 overflow-hidden`}>
+        <summary className="cursor-pointer list-none px-6 py-4 min-h-[44px] flex items-center gap-3">
+          <span className="grid place-items-center w-9 h-9 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}>
+            <Icon name="call" size={18} />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.safety.more.title")}</span>
+            <span className="block text-[12px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.safety.more.sub")}</span>
+          </span>
+          <Icon name="expand_more" size={20} className="ms-auto" style={{ color: "var(--arbor-muted)" }} />
+        </summary>
+        <div className="px-4 pb-4 space-y-4">
       {/* Crisis helplines — real numbers, one tap to call. LC-14: market group
           first, EU second; the remaining regions fold under "Other countries". */}
-      <div data-module="safety-helplines" style={{ display: "contents" }}>
+      <div data-module="safety-helplines" data-module-demoted style={{ display: "contents" }}>
       <SectionCard title={t("elev.safety.helplines.title")} icon={<Icon name="call" size={20} />} tone="pink">
         <p className="text-xs mb-4" style={{ color: "var(--arbor-muted)" }}>{t("elev.safety.helplines.sub")}</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-5">
@@ -188,7 +207,7 @@ export default function SafetyTab() {
       </div>
 
       {/* Warning-sign checklist + review cadence */}
-      <div data-module="safety-checklist" className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <div data-module="safety-checklist" data-module-demoted className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <SectionCard title={t("elev.safety.checklist.title")} icon={<Icon name="warning" size={20} />} tone="coral">
           <div className="space-y-2">
             {WARNING_SIGN_KEYS.map((n, i) => (
@@ -218,7 +237,7 @@ export default function SafetyTab() {
       </div>
 
       {/* Saved contacts (per-child, Firestore) */}
-      <div data-module="safety-contacts" style={{ display: "contents" }}>
+      <div data-module="safety-contacts" data-module-demoted style={{ display: "contents" }}>
       <SectionCard title={t("elev.safety.contacts.title")} icon={<Icon name="call" size={20} />} tone="mint">
         {!contactsCol.loaded ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
@@ -265,7 +284,7 @@ export default function SafetyTab() {
       </div>
 
       {/* Approved memory */}
-      <div data-module="safety-memory" style={{ display: "contents" }}>
+      <div data-module="safety-memory" data-module-demoted style={{ display: "contents" }}>
       <SectionCard title={t("elev.safety.memory.title", { name: first })} icon={<Icon name="neurology" size={20} />} tone="lav">
         <p className="text-xs mb-3" style={{ color: "var(--arbor-muted)" }}>{t("elev.safety.memory.sub")}</p>
         {approvedMemoryItems.length === 0 ? (
@@ -291,7 +310,7 @@ export default function SafetyTab() {
       </div>
 
       {/* Static safeguards */}
-      <div data-module="safety-safeguards" className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+      <div data-module="safety-safeguards" data-module-demoted className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
         {[
           { icon: <Icon name="stethoscope" size={20} />, tone: "yellow" as PastelKey, key: "medical" },
           { icon: <Icon name="lock" size={20} />, tone: "sky" as PastelKey, key: "gdpr" },
@@ -304,6 +323,8 @@ export default function SafetyTab() {
           </div>
         ))}
       </div>
+        </div>
+      </details>
     </motion.div>
   );
 }
