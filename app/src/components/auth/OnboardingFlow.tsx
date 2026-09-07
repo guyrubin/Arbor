@@ -15,7 +15,6 @@ import { ArborMark as ArborMarkIcon } from "../ui/ArborMark";
 import { api } from "../../lib/api";
 // MOB-22 — pre-generate the first comic while the parent picks domains.
 import { heroFirstName, prewarmFirstComic } from "../../lib/firstComic";
-import { birthDateFromAgeMonths } from "../../lib/childAge";
 import { promiseText } from "../../lib/i18nElevation/promise";
 import { track } from "../../lib/analytics";
 import { trackOnboardingCompleted } from "../../lib/kpiEvents";
@@ -150,6 +149,14 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
 
 // ── Step 2 — Child name + age ──────────────────────────────────────────────
 
+/** Clamp a number-input value; an emptied field reads as the low bound rather
+ *  than NaN, which is what a slider could never produce and a text field can. */
+function clampInt(raw: string, lo: number, hi: number): number {
+  const n = parseInt(raw, 10);
+  if (!Number.isFinite(n)) return lo;
+  return Math.max(lo, Math.min(hi, n));
+}
+
 interface StepChildProps {
   name: string;
   setName: (v: string) => void;
@@ -157,6 +164,9 @@ interface StepChildProps {
   setAgeYears: (v: number) => void;
   ageMonthsPart: number;
   setAgeMonthsPart: (v: number) => void;
+  /** MOB-11: "" until the parent chooses to give one. Never derived. */
+  birthDate: string;
+  setBirthDate: (v: string) => void;
   languages: string[];
   setLanguages: (v: string[]) => void;
   controllerConsent: boolean;
@@ -167,12 +177,15 @@ interface StepChildProps {
 
 const LANGUAGES = ["Hebrew", "English", "Arabic", "Russian", "French", "Other"];
 
-function StepChild({
+/** Exported for the guard test, as StepReady is (MOB-12 precedent). */
+export function StepChild({
   name, setName, ageYears, setAgeYears, ageMonthsPart, setAgeMonthsPart,
+  birthDate, setBirthDate,
   languages, setLanguages, controllerConsent, setControllerConsent, creating, onNext,
 }: StepChildProps) {
   const { t } = useLanguage();
   const [showLangs, setShowLangs] = useState(false);
+  const [showBirthday, setShowBirthday] = useState(false);
 
   // Anti-trap: the continue button stays enabled; a tap with a missing field
   // moves focus to that field and marks it, instead of silently doing nothing.
@@ -256,43 +269,70 @@ function StepChild({
           />
         </div>
 
-        {/* B0 — months-precise age picker (preserved exactly from original stub) */}
-        <div className="space-y-1.5 sm:w-[170px]">
+        {/* MOB-11 · one ChildAgeField, the drawer's shape.
+            Two range sliders used to stand here, and what they wrote was a
+            BIRTHDAY: "3 years" became birthDate "2023-09-01", a day nobody
+            entered, which then drove bands, screening windows and monitoring.
+            The profile drawer (GP-03) already asks Years + Months as two number
+            inputs; this is that field, so the two places a parent states an age
+            now agree, and an exact birthday is an OPTIONAL disclosure rather
+            than something inferred from a slider. */}
+        <div className="space-y-1.5 sm:w-[190px]" data-testid="child-age-field">
           <label className="text-xs font-bold flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}>
             {t("ob.ageMonths.label")}
             <span className="font-extrabold" style={{ color: "var(--arbor-green-ink)" }}>{ageDisplayLabel}</span>
           </label>
 
-          {/* Years slider — 0–18, always visible */}
-          <div className="space-y-0.5">
-            <span className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>{t("ob.ageMonths.years")}</span>
-            <input
-              type="range"
-              min={0}
-              max={18}
-              value={ageYears}
-              onChange={(e) => handleYearsChange(parseInt(e.target.value))}
-              className="w-full"
-              style={{ accentColor: "var(--arbor-clay)", minHeight: 44 }}
-              aria-label={t("ob.ageMonths.years")}
-            />
-          </div>
-
-          {/* Months slider — 0–11, under-3 only */}
-          {isUnder3 && (
-            <div className="space-y-0.5 mt-1">
-              <span className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>{t("ob.ageMonths.months")}</span>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="flex flex-col gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+              {t("ob.ageMonths.years")}
               <input
-                type="range"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={18}
+                value={ageYears}
+                onChange={(e) => handleYearsChange(clampInt(e.target.value, 0, 18))}
+                className="w-full rounded-xl px-3 py-2.5 min-h-[44px] focus:outline-none"
+                style={inputStyle}
+                aria-label={t("ob.ageMonths.years")}
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-[11px] font-bold" style={{ color: isUnder3 ? "var(--arbor-muted)" : "var(--arbor-faint)" }}>
+              {t("ob.ageMonths.months")}
+              <input
+                type="number"
+                inputMode="numeric"
                 min={0}
                 max={11}
+                disabled={!isUnder3}
                 value={ageMonthsPart}
-                onChange={(e) => setAgeMonthsPart(parseInt(e.target.value))}
-                className="w-full"
-                style={{ accentColor: "var(--arbor-clay)", minHeight: 44 }}
+                onChange={(e) => setAgeMonthsPart(clampInt(e.target.value, 0, 11))}
+                className="w-full rounded-xl px-3 py-2.5 min-h-[44px] focus:outline-none disabled:opacity-50"
+                style={inputStyle}
                 aria-label={t("ob.ageMonths.months")}
               />
-            </div>
+            </label>
+          </div>
+
+          {/* Optional, never required: a parent who wants the exact date can
+              give it, and nobody is asked for a child's birthday to proceed. */}
+          {!showBirthday ? (
+            <button type="button" onClick={() => setShowBirthday(true)} className="text-[11px] font-bold" style={{ color: "var(--arbor-green-ink)", minHeight: 44 }}>
+              {t("elev.ob.birthday.add")}
+            </button>
+          ) : (
+            <label className="flex flex-col gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+              {t("elev.ob.birthday.label")}
+              <input
+                type="date"
+                value={birthDate}
+                onChange={(e) => setBirthDate(e.target.value)}
+                data-testid="ob-birthdate"
+                className="w-full rounded-xl px-3 py-2.5 min-h-[44px] focus:outline-none"
+                style={inputStyle}
+              />
+            </label>
           )}
         </div>
       </div>
@@ -347,10 +387,13 @@ function StepChild({
               if (missing === "consent" && e.target.checked) setMissing(null);
             }}
             aria-invalid={missing === "consent"}
-            className="mt-0.5"
-            style={{ accentColor: "var(--arbor-green-ink)", width: 18, height: 18 }}
+            className="mt-0.5 flex-shrink-0"
+            /* MOB-11: the control that records controller consent for a child's
+               data measured 13x18 on a phone. 24px is the floor for a control
+               this consequential, and the label reads at 14px beside it. */
+            style={{ accentColor: "var(--arbor-green-ink)", width: 24, height: 24, minWidth: 24, minHeight: 24 }}
           />
-          <span className="text-[12px] leading-snug" style={{ color: "var(--arbor-ink)" }}>{t("ob.consent.controller")}</span>
+          <span className="text-[14px] leading-snug" style={{ color: "var(--arbor-ink)" }}>{t("ob.consent.controller")}</span>
         </label>
         {/* MOB-01: a parent giving controller consent for child data can read
             what they are consenting to — Privacy · Terms · Support, in-app. */}
@@ -374,7 +417,8 @@ function StepChild({
 
 // ── Step 3 — Focus domain picker ───────────────────────────────────────────
 
-function StepDomains({
+/** Exported for the guard test, as StepReady is (MOB-12 precedent). */
+export function StepDomains({
   selectedDomains,
   setSelectedDomains,
   onNext,
@@ -456,26 +500,39 @@ function StepDomains({
         {t("ob.step.domains.footer")}
       </p>
 
-      {/* Anti-trap: continue is never disabled. With zero picks it takes the skip
-          path (all areas stay in view), matching the "choose as many as you like"
-          copy instead of contradicting it with a dead button. */}
-      <button
-        type="button"
-        onClick={selectedDomains.length === 0 ? onSkip : onNext}
-        className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98]"
-        style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
-      >
-        {t("ob.step.continue")}
-      </button>
+      {/* OBJ-ONB-01 · sticky footer.
+          Seven tiles push Continue to y960 and Skip to y1020 at 390 × 844: both
+          ways out of the step sat below the fold, on the last screen before a
+          parent reaches the product. The pair now rides the bottom of the step
+          container, so scrolling the tiles never hides the exit. The reassurance
+          line above scrolls with the tiles — it is content, not an exit.
 
-      <button
-        type="button"
-        onClick={onSkip}
-        className="w-full text-xs font-bold py-2"
-        style={{ color: "var(--arbor-muted)", minHeight: 44 }}
+          Anti-trap (kept): continue is never disabled. With zero picks it takes
+          the skip path (all areas stay in view), matching the "choose as many as
+          you like" copy instead of contradicting it with a dead button. */}
+      <div
+        className="sticky bottom-0 -mx-1 px-1 pt-3 pb-2 space-y-2"
+        data-testid="onboarding-domains-footer"
+        style={{ background: "var(--arbor-paper-elevated)", borderTop: "1px solid var(--arbor-rule)" }}
       >
-        {t("ob.step.domains.skip")}
-      </button>
+        <button
+          type="button"
+          onClick={selectedDomains.length === 0 ? onSkip : onNext}
+          className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98]"
+          style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)", minHeight: 44 }}
+        >
+          {t("ob.step.continue")}
+        </button>
+
+        <button
+          type="button"
+          onClick={onSkip}
+          className="w-full text-xs font-bold py-2"
+          style={{ color: "var(--arbor-muted)", minHeight: 44 }}
+        >
+          {t("ob.step.domains.skip")}
+        </button>
+      </div>
     </div>
   );
 }
@@ -773,6 +830,9 @@ export default function OnboardingFlow() {
   const [name, setName] = useState(resumeChild?.name ?? "");
   const [ageYears, setAgeYears] = useState(resumeChild ? Math.floor(resumeMonths / 12) : 0);
   const [ageMonthsPart, setAgeMonthsPart] = useState(resumeChild ? resumeMonths % 12 : 0);
+  // MOB-11: EMPTY unless the parent chooses to give an exact date. Onboarding
+  // never derives one from an age.
+  const [birthDate, setBirthDate] = useState<string>(resumeChild?.birthDate ?? "");
   const [languages, setLanguages] = useState<string[]>(
     resumeChild?.languages?.length ? resumeChild.languages : ["English"],
   );
@@ -838,13 +898,19 @@ export default function OnboardingFlow() {
     // Create the child profile now so step 4 (AvatarCreator) has a real childId.
     // `creating` holds the button in a visible busy state for the duration of the
     // write and blocks the re-tap that would otherwise create a duplicate child.
-    const birthDate = birthDateFromAgeMonths(totalAgeMonths);
     setCreating(true);
     try {
       const child = await addChild({
         name: name.trim(),
         age: ageLegacyYears,
-        birthDate,
+        // MOB-11: a birthDate was DERIVED from the months value right here, so
+        // "3 years" was written as a day-01 birthday nobody entered — and
+        // ageMonthsFromProfile PREFERS birthDate, so that invented date, not the
+        // months the parent actually stated, is what drove bands, screening
+        // windows and monitoring from then on. The field is now written only
+        // when the parent filled the optional date input; otherwise the profile
+        // carries the months it was given and nothing more.
+        ...(birthDate ? { birthDate } : {}),
         ageMonths: totalAgeMonths,
         languages: languages.length ? languages : ["English"],
         schoolContext: "",
@@ -995,6 +1061,7 @@ export default function OnboardingFlow() {
                 name={name} setName={setName}
                 ageYears={ageYears} setAgeYears={setAgeYears}
                 ageMonthsPart={ageMonthsPart} setAgeMonthsPart={setAgeMonthsPart}
+                birthDate={birthDate} setBirthDate={setBirthDate}
                 languages={languages} setLanguages={setLanguages}
                 controllerConsent={controllerConsent} setControllerConsent={setControllerConsent}
                 creating={creating}

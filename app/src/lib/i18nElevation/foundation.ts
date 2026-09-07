@@ -49,6 +49,10 @@ export const en: Record<string, string> = {
   "elev.pulse.care.briefReady": "A brief is ready to share",
   "elev.pulse.care.empty": "Bring in the people who help",
 
+  // ── MOB-11 · the birthday is OFFERED, never inferred from an age.
+  "elev.ob.birthday.add": "Add exact birthday (optional)",
+  "elev.ob.birthday.label": "Birthday",
+
   // ── OBJ-SHELL-07 · Smart Reminders: its own back label and its own
   //    Settings-row verb. "Back to Settings" pointed at Ask Arbor.
   "elev.sr.back": "Back to Today",
@@ -111,6 +115,8 @@ export const he: Record<string, string> = {
   "elev.pulse.care.briefReady": "סיכום מוכן לשיתוף",
   "elev.pulse.care.empty": "צרפו את האנשים שעוזרים בדרך",
 
+  "elev.ob.birthday.add": "להוסיף תאריך לידה מדויק (לא חובה)",
+  "elev.ob.birthday.label": "תאריך לידה",
   "elev.sr.back": "חזרה למסך היום",
   "elev.sr.open": "פתחו תזכורות",
   "elev.memory.catchingUp": "ארבור משלימה פער — נסו שוב בעוד רגע.",
