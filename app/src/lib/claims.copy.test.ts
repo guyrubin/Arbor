@@ -1,6 +1,6 @@
 /**
- * ENG-07 / AI-19 · OBJ-GROWTH-07 · RUN-10 · OBJ-TODAY-07 · RUN-18 (item 20) —
- * six sentences the app could not back.
+ * ENG-07 / AI-19 · OBJ-GROWTH-07 · RUN-10 · OBJ-TODAY-07 · RUN-18 (item 20) ·
+ * ENG-03 — seven sentences the app could not back.
  *
  * Each named a mechanism that does not exist:
  *   1. Learn why-lines claimed "your Development Map" at zero milestones —
@@ -14,6 +14,10 @@
  *      the parent taps the header button.
  *   5. Journal's eyebrow said "The journal that writes itself".
  *   6. The weekly-email opt-in said "you're on the list"; nothing is POSTed.
+ *   7. The paywall + Settings sold Arbor Family as "a seat for a co-parent" /
+ *      "a co-parent seat to share the account". The only family-over-plus gate
+ *      is `coParentSeats: 1`, and all it buys is ONE share grant — a read-only,
+ *      scope-exact, revocable packet. No second adult ever enters the account.
  *
  * Retired strings are asserted absent from BOTH dictionaries — a claim removed
  * in English and left standing in Hebrew is still shipped.
@@ -23,6 +27,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { en, he, translate, type UiLang } from "./i18n";
 import { en as recapEn, he as recapHe } from "./i18nElevation/recap";
+import { en as planEn, he as planHe } from "./i18nElevation/planclarity";
+import { PLAN_LIMITS } from "../server/entitlements";
 import { devMapHasSignal, focusDomainContributed } from "../learn/todaysPick";
 import { SURFACE_CONTRACTS } from "./surfaceContract";
 
@@ -35,6 +41,10 @@ const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf8");
 const allCopy = (): string[] => [
   ...Object.values(en), ...Object.values(he),
   ...Object.values(recapEn), ...Object.values(recapHe),
+  // ENG-03: the paywall's plan bullets live in their own module (PaywallModal
+  // and PlanBadge import it directly), so a claim could sit there and never be
+  // seen by this scan. It is in the corpus now.
+  ...Object.values(planEn), ...Object.values(planHe),
 ];
 
 const RETIRED = [
@@ -42,10 +52,16 @@ const RETIRED = [
   "will build itself",       // weekly empty state
   "writes itself",           // journal eyebrow
   "on the list",             // weekly email opt-in
+  // ENG-03 — the Family "seat". Family grants ONE co-parent share grant, and
+  // that grant is a read-only, scope-exact, revocable packet. Nobody gets a
+  // seat in the account: no second sign-in, no writing, no shared session.
+  "a seat for a co-parent",
+  "seat to share the account",
   "בהפקה",
   "ייבנה מעצמו",
   "שכותב את עצמו",
   "ברשימה",
+  "מושב להורה שותף",
 ];
 
 describe("1 · the retired claims are gone from BOTH dictionaries", () => {
@@ -73,6 +89,57 @@ describe("1 · the retired claims are gone from BOTH dictionaries", () => {
     expect("The journal that writes itself").toContain("writes itself");
     expect("Coming soon — you're on the list.").toContain("on the list");
     expect("השיעורים הראשונים בהפקה").toContain("בהפקה");
+    expect("Everything in Plus, plus a seat for a co-parent").toContain("a seat for a co-parent");
+    expect("Everything in Plus, plus a co-parent seat to share the account.").toContain("seat to share the account");
+    expect("כל מה שבפלוס, בתוספת מושב להורה שותף").toContain("מושב להורה שותף");
+  });
+});
+
+/**
+ * ENG-03 — the Family plan describes the thing the server actually grants.
+ *
+ * `PLAN_LIMITS.family.coParentSeats = 1` is the ONLY family-over-plus gate, and
+ * all it unlocks is `POST /shares` with `role: "co_parent"`. What the invited
+ * adult then receives is `GET /shared/:grantId/packet`: a read-only, scope-exact
+ * packet, server-enforced expiry, revocable by the owner. "A seat for a
+ * co-parent" and "a co-parent seat to share the account" both promise a second
+ * adult inside the account — a sign-in, a session, the ability to write. No such
+ * thing exists, at either price.
+ */
+describe("5 · the Family plan promises one co-parent invite, not a seat", () => {
+  it("the seat is the only thing Family adds — and it is a share grant", () => {
+    expect(PLAN_LIMITS.family.coParentSeats).toBe(1);
+    expect(PLAN_LIMITS.plus.coParentSeats).toBe(0);
+    // Everything else Family "adds" is already in Plus, which is exactly why
+    // this one bullet had to carry the difference honestly.
+    expect(PLAN_LIMITS.family.maxChildren).toBe(PLAN_LIMITS.plus.maxChildren);
+    expect(PLAN_LIMITS.family.coachMessagesPerDay).toBe(PLAN_LIMITS.plus.coachMessagesPerDay);
+  });
+
+  it("both surfaces name the invite and its limits, in both languages", () => {
+    for (const s of [planEn["elev.plan.family.1"], en["set.plan.familyDesc"]]) {
+      expect(s).toMatch(/co-parent invite/);
+      expect(s).toMatch(/read-only/);
+      expect(s).toMatch(/revoke|revocable/);
+      expect(s).not.toMatch(/\bseat\b/);
+    }
+    for (const s of [planHe["elev.plan.family.1"], he["set.plan.familyDesc"]]) {
+      expect(s).toContain("הזמנה אחת");
+      expect(s).toContain("צפייה בלבד");
+      expect(s).toContain("לבטל");
+      expect(s).not.toContain("מושב");
+    }
+  });
+
+  it("no future tense: the copy never sells what has not shipped", () => {
+    // The rejected alternative was "the family plan when it launches". A plan
+    // a parent is being charged for today may not be described in the future.
+    for (const s of [planEn["elev.plan.family.1"], en["set.plan.familyDesc"]]) {
+      expect(s).not.toMatch(/when it launches|coming soon|will be|soon\b/i);
+    }
+    for (const s of [planHe["elev.plan.family.1"], he["set.plan.familyDesc"]]) {
+      expect(s).not.toMatch(/בקרוב|כשי|יושק/);
+    }
   });
 });
 

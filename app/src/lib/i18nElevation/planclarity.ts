@@ -32,7 +32,12 @@ export const en: Record<string, string> = {
   "elev.plan.plus.3": "Advanced growth plans",
   "elev.plan.plus.4": "Up to six children",
   "elev.plan.familyTitle": "Arbor Family adds",
-  "elev.plan.family.1": "Everything in Plus, plus a seat for a co-parent",
+  // ENG-03: what Family ACTUALLY unlocks is one co-parent share grant
+  // (server/entitlements.ts coParentSeats: 1, the only family-over-plus gate),
+  // and what that grant gives the other adult is the read-only, scope-exact,
+  // revocable packet at GET /shared/:grantId/packet. Not "a seat" — nobody
+  // gets to use the account. The bullet now says the thing that exists.
+  "elev.plan.family.1": "Everything in Plus, plus one co-parent invite: a read-only view of what you choose to share, revocable any time",
 };
 
 export const he: Record<string, string> = {
@@ -53,5 +58,5 @@ export const he: Record<string, string> = {
   "elev.plan.plus.3": "תוכניות צמיחה מתקדמות",
   "elev.plan.plus.4": "עד שישה ילדים",
   "elev.plan.familyTitle": "ארבור משפחה מוסיף",
-  "elev.plan.family.1": "כל מה שבפלוס, בתוספת מושב להורה שותף",
+  "elev.plan.family.1": "כל מה שבפלוס, ובנוסף הזמנה אחת להורה שותף: צפייה בלבד במה שתבחרו לשתף, וניתן לבטל בכל רגע",
 };
