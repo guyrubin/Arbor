@@ -185,3 +185,95 @@ describe("CR-13 · directional glyph ratchet", () => {
     }
   });
 });
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   OBJ-SHELL-03 fix-up (Builder M) — the sidebar seam stays logical in CSS too.
+
+   The scan above covers inline styles in components/**. The defect that
+   actually reached a Hebrew parent lived in index.css and was invisible to it:
+   the aside borders were ALREADY logical (`border-inline-end`), and a
+   `html[dir="rtl"]`-keyed override then re-flipped them by hand, so at 1280 HE
+   the sidebar drew its rule on the window edge and NO seam faced the content
+   (rendered probe: borderInlineStartWidth 1px / borderInlineEndWidth 0).
+
+   The lesson generalises: a logical border plus a dir-keyed override of it is
+   always a physical fix wearing logical clothes, and it is exactly the edit a
+   later reader makes when the seam "looks wrong" in one language. So the rule
+   is absolute — no `[dir=…]`-keyed rule may set ANY border on `aside`. The
+   removed override is pasted below as the negative control.
+
+   Second rule, from the follow-through commit: `aside:last-of-type` targets the
+   AI rail, but a lone sidebar is BOTH first- and last-of-type, so the selector
+   matched it too and drew a border on both inline edges. Any `:last-of-type`
+   aside rule must carry `:not(:first-of-type)`.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const INDEX_CSS = fs.readFileSync(path.join(SRC, "index.css"), "utf8");
+
+/** Flat (selector, body) pairs — index.css has no nested at-rule blocks. */
+function cssRules(css: string): { selector: string; body: string }[] {
+  const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, "");
+  const out: { selector: string; body: string }[] = [];
+  for (const m of withoutComments.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    out.push({ selector: m[1].trim().replace(/\s+/g, " "), body: m[2] });
+  }
+  return out;
+}
+
+/** Any border declaration — shorthand, physical or logical. */
+const SETS_BORDER = /(?:^|;|\s)border(?:-[a-z-]+)?\s*:/;
+const DIR_KEYED = /\[dir\s*=/;
+
+/** The exact override removed in OBJ-SHELL-03, as a fixture. */
+const REMOVED_OVERRIDE = `html[dir="rtl"] .arbor-app aside:first-of-type {
+  border-inline-end: none !important;
+  border-inline-start: 1px solid var(--arbor-rule) !important;
+}`;
+
+describe("OBJ-SHELL-03 · no dir-keyed border override on the shell asides", () => {
+  it("the CSS parser really reads index.css (it finds the aside rules that ARE there)", () => {
+    const rules = cssRules(INDEX_CSS);
+    expect(rules.length).toBeGreaterThan(100);
+    const asideBorders = rules.filter((r) => /\baside\b/.test(r.selector) && SETS_BORDER.test(r.body));
+    expect(asideBorders.length, "the two logical aside seam rules must still be found").toBeGreaterThanOrEqual(2);
+  });
+
+  it("negative control: the removed RTL override is exactly what this rule rejects", () => {
+    const rules = cssRules(REMOVED_OVERRIDE);
+    expect(rules).toHaveLength(1);
+    expect(DIR_KEYED.test(rules[0].selector)).toBe(true);
+    expect(/\baside\b/.test(rules[0].selector)).toBe(true);
+    expect(SETS_BORDER.test(rules[0].body)).toBe(true);
+    // …and the same parser sees no offence in the logical rule that replaced it.
+    const kept = cssRules(`.arbor-app aside:first-of-type { border-inline-end: 1px solid var(--arbor-rule) !important; }`);
+    expect(DIR_KEYED.test(kept[0].selector)).toBe(false);
+  });
+
+  it("no [dir=…]-keyed rule in index.css sets a border on an aside", () => {
+    const offenders = cssRules(INDEX_CSS)
+      .filter((r) => DIR_KEYED.test(r.selector) && /\baside\b/.test(r.selector) && SETS_BORDER.test(r.body))
+      .map((r) => r.selector);
+    expect(
+      offenders,
+      `a dir-keyed aside border override is back — the aside borders are logical and flip on their own:\n${offenders.join("\n")}`,
+    ).toEqual([]);
+  });
+
+  it("every aside:last-of-type rule excludes the lone sidebar (:not(:first-of-type))", () => {
+    const offenders = cssRules(INDEX_CSS)
+      .filter((r) => /aside:last-of-type/.test(r.selector) && !/aside:last-of-type[^,{]*:not\(:first-of-type\)/.test(r.selector))
+      .map((r) => r.selector);
+    expect(
+      offenders,
+      `a lone sidebar is BOTH first- and last-of-type, so this rule double-borders it:\n${offenders.join("\n")}`,
+    ).toEqual([]);
+  });
+
+  it("negative control: the pre-fix :last-of-type selector fails that same rule", () => {
+    const preFix = cssRules(`.arbor-app aside:last-of-type { border-inline-start: 1px solid var(--arbor-rule) !important; }`);
+    expect(/aside:last-of-type[^,{]*:not\(:first-of-type\)/.test(preFix[0].selector)).toBe(false);
+    const fixed = cssRules(`.arbor-app aside:last-of-type:not(:first-of-type) { border-inline-start: 1px solid var(--arbor-rule) !important; }`);
+    expect(/aside:last-of-type[^,{]*:not\(:first-of-type\)/.test(fixed[0].selector)).toBe(true);
+  });
+});
