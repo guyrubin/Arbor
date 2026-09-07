@@ -2,6 +2,10 @@ import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { en as careNetEn, he as careNetHe } from "./i18nElevation/careNetwork";
+import { en as doorsEn, he as doorsHe } from "./i18nElevation/practiceDoors";
+import { en as growthTruthEn, he as growthTruthHe } from "./i18nElevation/growthTruth";
+import { MISSION_CYCLE, DOMAIN_META } from "../practice/content";
+import { JOURNEY_EXTRAS, MISSION_COPY_KEYS, OBJECTIVE_TITLE_KEYS } from "../practice/journey";
 
 /**
  * TODAY-5 / PLAT-4 / CODEX-6 — anti-regression guard for the i18n registry
@@ -329,5 +333,205 @@ describe("OBJ-PRACTICE-02 — hardcoded English on the practice doors is a shrin
     ].join("\n");
     const caught = preFix.split("\n").filter((l) => ENGLISH_ATTR.test(l) || ENGLISH_TEXT.test(l));
     expect(caught.length).toBeGreaterThan(0);
+  });
+});
+
+/* ── R22 / R23 (Builder L) — the Hebrew-parity residues ──────────────────────
+ *
+ * Round 3b loaded every route at 390 under `lang=he` and counted the Latin
+ * lines left in <main>. Eleven routes were at zero. These eight files held the
+ * rest, and none of them was in a scan's scope:
+ *
+ *   copilot 35 · journey 32 · plans 17 · consult 10 · development 6 ·
+ *   milestones 6 · coach 2 · overview 1
+ *
+ * The practice ratchet above is a per-file COUNT and it caught none of this:
+ * its two regexes see a single-line JSX text node and an English attribute,
+ * and every string below was either a multi-line paragraph, a module-level
+ * const, a DATA record in `practice/`, or a stored identifier printed raw.
+ * A count is the wrong instrument for "did this specific literal go away", so
+ * these pin the MECHANISM at each site — the key or the resolver that replaced
+ * the literal — and prove, per group, that the pre-fix line is what they reject.
+ */
+const HEBREW_SCRIPT = /[֐-׿]/;
+const readSrc = (rel: string) => fs.readFileSync(path.join(SRC_ROOT, rel), "utf8");
+
+/** Every key must land in BOTH dictionaries, and the HE value must actually be
+ *  Hebrew — a copy-pasted English value passes i18n.test.ts's parity check
+ *  (the key exists) and still ships an English string to a Hebrew parent. */
+function expectBilingual(
+  keys: string[],
+  en: Record<string, string>,
+  he: Record<string, string>,
+  label: string,
+) {
+  const missingEn = keys.filter((k) => !en[k]);
+  const missingHe = keys.filter((k) => !he[k]);
+  const notHebrew = keys.filter((k) => he[k] && !HEBREW_SCRIPT.test(he[k]));
+  expect(missingEn, `${label}: keys with no EN value:\n${missingEn.join("\n")}`).toEqual([]);
+  expect(missingHe, `${label}: keys with no HE value (law 7 — both locales land together):\n${missingHe.join("\n")}`).toEqual([]);
+  expect(notHebrew, `${label}: HE values carrying no Hebrew script (untranscreated copy-paste):\n${notHebrew.join("\n")}`).toEqual([]);
+}
+
+describe("R23 — every Development Journey string a parent reads has both languages", () => {
+  it("the five cycle missions: title + first step, keyed by mission id", () => {
+    const ids = MISSION_CYCLE.map((m) => m.id);
+    expect(ids.length).toBeGreaterThan(0);
+    const missing = ids.filter((id) => !MISSION_COPY_KEYS[id]);
+    expect(missing, `mission ids with no key entry — #/journey renders them in English:\n${missing.join("\n")}`).toEqual([]);
+    expectBilingual(
+      ids.flatMap((id) => [MISSION_COPY_KEYS[id].title, MISSION_COPY_KEYS[id].step]),
+      doorsEn, doorsHe, "mission copy",
+    );
+  });
+
+  it("the mission step keeps its {name} hole in both languages", () => {
+    // fillTemplate() runs over the RESOLVED string, so a translation that drops
+    // the placeholder silently drops the child's name from the day card.
+    for (const m of MISSION_CYCLE) {
+      const key = MISSION_COPY_KEYS[m.id].step;
+      if (!m.steps[0].includes("{name}")) continue;
+      expect(doorsEn[key], `${key} (en) lost the name hole`).toContain("{name}");
+      expect(doorsHe[key], `${key} (he) lost the name hole`).toContain("{name}");
+    }
+  });
+
+  it("the ten aimed extras carry a title and a detail key", () => {
+    expect(JOURNEY_EXTRAS.length).toBe(10);
+    expectBilingual(
+      JOURNEY_EXTRAS.flatMap((x) => [x.titleKey, x.detailKey]),
+      doorsEn, doorsHe, "journey extras",
+    );
+    // The English data stays as the fallback and as this suite's fixture.
+    for (const x of JOURNEY_EXTRAS) expect(doorsEn[x.titleKey]).toBe(x.title);
+  });
+
+  it("every monthly objective template resolves by its stored English title", () => {
+    const keys = Object.values(OBJECTIVE_TITLE_KEYS);
+    expect(keys.length).toBe(10);
+    expectBilingual(keys, doorsEn, doorsHe, "journey objectives");
+    for (const [title, key] of Object.entries(OBJECTIVE_TITLE_KEYS)) expect(doorsEn[key]).toBe(title);
+  });
+
+  it("JourneyTab resolves all four through the fallback-safe helper", () => {
+    const src = readSrc("components/practice/JourneyTab.tsx");
+    expect(src).toContain("keyed(MISSION_COPY_KEYS[day.mission.id]?.title, day.mission.title)");
+    expect(src).toContain("keyed(MISSION_COPY_KEYS[day.mission.id]?.step, day.mission.steps[0])");
+    expect(src).toContain("keyed(day.extra.titleKey, day.extra.title)");
+    expect(src).toContain("keyed(OBJECTIVE_TITLE_KEYS[obj.title], obj.title)");
+    expect(src).toContain('t("elev.practice.journey.history.count"');
+  });
+
+  it("NEGATIVE CONTROL: the pre-fix render lines are what these assertions reject", () => {
+    const src = readSrc("components/practice/JourneyTab.tsx");
+    for (const preFix of [
+      "{day.mission.title}</p>",
+      "{fillTemplate(day.mission.steps[0], vars)}",
+      "{day.extra.title}</span>",
+      "{day.extra.detail}</span>",
+      "{obj.title}</span>",
+      "{reached} of {total}",
+    ]) {
+      expect(src, `pre-fix literal still rendered: ${preFix}`).not.toContain(preFix);
+    }
+    // …and the checks are non-vacuous: the same predicate over the pre-fix body.
+    const PRE_FIX_BODY = '<span className="block text-[11px]">{day.extra.title}</span>';
+    expect(PRE_FIX_BODY).toContain("{day.extra.title}</span>");
+    expect(PRE_FIX_BODY).not.toContain("keyed(day.extra.titleKey");
+  });
+});
+
+describe("R22 — the practice domain names and the Full Picture body carry both languages", () => {
+  it("DOMAIN_META carries a labelKey for every domain, bilingual", () => {
+    const entries = Object.entries(DOMAIN_META);
+    expect(entries.length).toBe(5);
+    expectBilingual(entries.map(([, m]) => m.labelKey), growthTruthEn, growthTruthHe, "DOMAIN_META labels");
+    // The ENGLISH label stays: the clinician export reads one stable language.
+    for (const [, m] of entries) expect(growthTruthEn[m.labelKey]).toBe(m.label);
+  });
+
+  it("the Full Picture chrome is keyed in both languages at every render site", () => {
+    const src = stripComments(readSrc("components/practice/DevelopmentCopilot.tsx"));
+    for (const key of [
+      "elev.growthTruth.copilot.eyebrow",
+      "elev.growthTruth.copilot.trustNote",
+      "elev.growthTruth.copilot.domains.title",
+      "elev.growthTruth.copilot.domains.count",
+      "elev.growthTruth.copilot.domains.mechanism",
+      "elev.growthTruth.copilot.domains.limits",
+      "elev.growthTruth.copilot.focus.title",
+      "elev.growthTruth.copilot.focus.cta",
+      "elev.growthTruth.copilot.watch.evidence",
+      "elev.growthTruth.copilot.watch.prepare",
+      "elev.growthTruth.copilot.history.title",
+      "elev.growthTruth.copilot.history.empty",
+      "elev.growthTruth.copilot.history.count",
+      "elev.growthTruth.copilot.share.title",
+      "elev.growthTruth.copilot.share.body",
+      "elev.growthTruth.copilot.share.copy",
+      "elev.growthTruth.copilot.share.copied",
+      "elev.growthTruth.copilot.share.reports",
+      "elev.growthTruth.copilot.share.blocked",
+    ]) {
+      expect(src, `Full Picture: ${key} not resolved at render`).toContain(key);
+      expect(growthTruthEn[key], `${key} has no EN value`).toBeTruthy();
+      expect(HEBREW_SCRIPT.test(growthTruthHe[key] ?? ""), `${key} has no Hebrew value`).toBe(true);
+    }
+    // The rendered domain row and the watch row take the KEYED label.
+    expect(src).toContain("t(meta.labelKey)");
+    expect(src).toContain("domainText(w.area, w.domain)");
+  });
+
+  it("NEGATIVE CONTROL: the Full Picture's own pre-fix literals are gone", () => {
+    const src = stripComments(readSrc("components/practice/DevelopmentCopilot.tsx"));
+    for (const preFix of [
+      'eyebrow="Growth"',
+      "Counts reflect parent-observed data only",
+      'title="This week',
+      'title="Weekly history"',
+      'title="Share with a professional"',
+      "Prepare a professional summary",
+      "Full reports",
+      "const MECHANISM_NOTE =",
+    ]) {
+      expect(src, `pre-fix literal survives: ${preFix}`).not.toContain(preFix);
+    }
+    // The clinician EXPORT keeps its English on purpose — one stable language
+    // for the professional reading it — and the parent is now told so.
+    expect(src).toContain("milestones noticed by parent");
+    expect(src).toContain("elev.growthTruth.copilot.share.lang");
+  });
+
+  it("the four other chrome residues resolve through a resolver that already shipped", () => {
+    const coach = stripComments(readSrc("components/tabs/CoachTab.tsx"));
+    expect(coach).toContain("const lensDisplay = ");
+    expect(coach).toContain("{lensDisplay(selectedLens)}");
+    expect(coach).not.toContain('{t("coach.lensLabel")}: {selectedLens}');
+
+    const ask = stripComments(readSrc("components/sections/AskSpecialist.tsx"));
+    expect(ask).toContain("label={sectionTitle(section, uiLang)}");
+    expect(ask).not.toContain("label={section.title}");
+
+    const ms = stripComments(readSrc("components/tabs/MilestonesTab.tsx"));
+    expect(ms).toContain("const key = `screen.domain.${id}`;");
+    expect(ms).toContain("{domainLabel(dom.id, dom.label)}");
+    expect(ms).not.toMatch(/>\{dom\.label\}</);
+    expect(ms).not.toContain('title="Celebrate"');
+
+    const dev = stripComments(readSrc("components/tabs/DevelopmentTab.tsx"));
+    expect(dev).toContain("title: behaviorTypeLabel(log.behaviorType, t),");
+    expect(dev).not.toContain("title: log.behaviorType,");
+
+    const play = stripComments(readSrc("components/overview/DailyPlayCard.tsx"));
+    expect(play).toContain('t("elev.evidence.basedOn")');
+    expect(play).not.toMatch(/^\s+Based on\s*$/m);
+  });
+
+  it("R22g — the plan phase name is bidi-isolated in BOTH directions", () => {
+    const plans = stripComments(readSrc("components/tabs/PlansTab.tsx"));
+    expect(plans).toContain("isolateLatin(prog.currentPhaseName");
+    // isolate() from lib/bidi is the RTL half and is reused, not reimplemented.
+    expect(plans).toContain('import { isolate } from "../../lib/bidi";');
+    expect(plans).toContain("isolate(value) === value");
   });
 });

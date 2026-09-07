@@ -5,14 +5,43 @@ import type { CopilotRecommendation, DomainBand } from "./signals";
 /* Journey composer (Epic 9 + Epic 4's weekly action plan output).
    Deterministic for a given week + bands: same plan all week for the family. */
 
+/** R23 (Builder L) — every string this module composes is DATA that a parent
+ *  reads on #/journey, and it was English-only, so a Hebrew family met 32 Latin
+ *  lines on the door of their own practice week. The English stays (it is the
+ *  fixture every test in this suite asserts against, and it is the fallback
+ *  when a key is missing); `*Key` is what a rendered surface must use.
+ *  Values live in `lib/i18nElevation/practiceDoors.ts` (EN + HE) — the module
+ *  that already owns the JourneyTab chrome and the kid-world names. */
+export interface JourneyExtra {
+  title: string;
+  detail: string;
+  /** i18n keys for the two strings above; resolved by JourneyTab at render. */
+  titleKey: string;
+  detailKey: string;
+  tab: "speech" | "feelings" | "adventures" | "stories" | "mimic";
+}
+
 export interface JourneyDay {
   date: string;              // YYYY-MM-DD
   weekday: string;           // "Mon"
   mission: MissionTemplate;
   /** The day's aimed extra — one concrete activity beyond the mission. */
-  extra: { title: string; detail: string; tab: "speech" | "feelings" | "adventures" | "stories" | "mimic" };
+  extra: JourneyExtra;
   isToday: boolean;
 }
+
+/** R23 — `MISSION_CYCLE` lives in practice/content.ts and carries the English
+ *  title plus the 3-step parent script. JourneyTab renders the title and the
+ *  FIRST step; both are keyed here, by mission id, so the data module keeps its
+ *  shape and the rendering surface gets a language. `{name}` survives the
+ *  translation in both locales — the caller still runs fillTemplate() over it. */
+export const MISSION_COPY_KEYS: Record<string, { title: string; step: string }> = {
+  "new-words":        { title: "elev.practice.journey.mission.new-words.title",        step: "elev.practice.journey.mission.new-words.step" },
+  "emotion-spotting": { title: "elev.practice.journey.mission.emotion-spotting.title", step: "elev.practice.journey.mission.emotion-spotting.step" },
+  "story-retell":     { title: "elev.practice.journey.mission.story-retell.title",     step: "elev.practice.journey.mission.story-retell.step" },
+  "sound-safari":     { title: "elev.practice.journey.mission.sound-safari.title",     step: "elev.practice.journey.mission.sound-safari.step" },
+  "social-play":      { title: "elev.practice.journey.mission.social-play.title",      step: "elev.practice.journey.mission.social-play.step" },
+};
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -20,28 +49,36 @@ const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
  *  nothing here ever sorts the child's domains by band. */
 const ROTATION: PracticeDomain[] = ["language", "speech", "cognition", "social", "emotional"];
 
-const EXTRA_BY_DOMAIN: Record<PracticeDomain, { title: string; detail: string; tab: JourneyDay["extra"]["tab"] }[]> = {
+const xk = (slug: string) => ({
+  titleKey: `elev.practice.journey.extra.${slug}.title`,
+  detailKey: `elev.practice.journey.extra.${slug}.detail`,
+});
+
+const EXTRA_BY_DOMAIN: Record<PracticeDomain, JourneyExtra[]> = {
   speech: [
-    { title: "Speech Coach: today's sound", detail: "5 minutes on the current target sound — words first, then one silly sentence.", tab: "speech" },
-    { title: "Mimic Studio round", detail: "Two imitation rounds — mouth gymnastics count as speech practice.", tab: "mimic" },
+    { title: "Speech Coach: today's sound", detail: "5 minutes on the current target sound — words first, then one silly sentence.", tab: "speech", ...xk("speech-sound") },
+    { title: "Mimic Studio round", detail: "Two imitation rounds — mouth gymnastics count as speech practice.", tab: "mimic", ...xk("mimic-round") },
   ],
   language: [
-    { title: "Words mode: naming hunt", detail: "Name 5 objects in one category (kitchen things, animals, clothes).", tab: "speech" },
-    { title: "Express mode: question of the day", detail: "One open question at dinner — wait, then expand their answer back.", tab: "speech" },
+    { title: "Words mode: naming hunt", detail: "Name 5 objects in one category (kitchen things, animals, clothes).", tab: "speech", ...xk("naming-hunt") },
+    { title: "Express mode: question of the day", detail: "One open question at dinner — wait, then expand their answer back.", tab: "speech", ...xk("question-of-the-day") },
   ],
   emotional: [
-    { title: "Feelings Lab: emotion match", detail: "One round of matching faces to feelings, then make the faces together.", tab: "feelings" },
-    { title: "Calm-down practice", detail: "One guided breathing exercise during a calm moment — that's when it sticks.", tab: "feelings" },
+    { title: "Feelings Lab: emotion match", detail: "One round of matching faces to feelings, then make the faces together.", tab: "feelings", ...xk("emotion-match") },
+    { title: "Calm-down practice", detail: "One guided breathing exercise during a calm moment — that's when it sticks.", tab: "feelings", ...xk("calm-down") },
   ],
   cognition: [
-    { title: "Adventure scene", detail: "One story scene with choices — thinking practice disguised as play.", tab: "adventures" },
-    { title: "Memory Match round", detail: "One pairs round; the grid grows as they get stronger.", tab: "adventures" },
+    { title: "Adventure scene", detail: "One story scene with choices — thinking practice disguised as play.", tab: "adventures", ...xk("adventure-scene") },
+    { title: "Memory Match round", detail: "One pairs round; the grid grows as they get stronger.", tab: "adventures", ...xk("memory-match") },
   ],
   social: [
-    { title: "Story Journey", detail: "One hero story with a real choice — talk about what the hero felt after.", tab: "stories" },
-    { title: "Turn-taking game", detail: "Any turn-based game; narrate the waiting and lose at least once.", tab: "adventures" },
+    { title: "Story Journey", detail: "One hero story with a real choice — talk about what the hero felt after.", tab: "stories", ...xk("story-journey") },
+    { title: "Turn-taking game", detail: "Any turn-based game; narrate the waiting and lose at least once.", tab: "adventures", ...xk("turn-taking") },
   ],
 };
+
+/** R23 — every extra this module can compose, for the coverage guard. */
+export const JOURNEY_EXTRAS: JourneyExtra[] = Object.values(EXTRA_BY_DOMAIN).flat();
 
 /**
  * Compose the 7-day plan: every day carries its rotation mission plus one
@@ -95,6 +132,17 @@ const OBJECTIVE_TEMPLATES: Record<PracticeDomain, string[]> = {
   cognition: ["Finish 4 adventures together", "Play the bigger Memory Match grid"],
   social: ["Complete 4 story journeys and talk about the choice", "Practice losing gracefully 6 times"],
 };
+
+/** R23 — an objective is PERSISTED with its English `title` (the Firestore
+ *  record predates this fix and a migration is not worth a display bug), so the
+ *  key is looked up BY that title rather than by an index the record never
+ *  kept. A row written before this change resolves exactly like a fresh one; a
+ *  parent-authored objective has no entry and renders as the parent typed it. */
+export const OBJECTIVE_TITLE_KEYS: Record<string, string> = Object.fromEntries(
+  (Object.entries(OBJECTIVE_TEMPLATES) as [PracticeDomain, string[]][]).flatMap(([domain, titles]) =>
+    titles.map((title, i) => [title, `elev.practice.journey.objective.${domain}.${i}`] as const),
+  ),
+);
 
 /** The canonical, signal-free domain rotation used when the charter names no aim.
  *  OBJ-GROWTH-05: exported so signals.recommend() picks from the SAME order —

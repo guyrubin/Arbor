@@ -81,6 +81,64 @@ export const en: Record<string, string> = {
   "elev.stories.library.title": "Your library",
   "elev.stories.reader.back": "All journeys",
   "elev.stories.reader.immersive": "Immersive",
+
+  /* ── Builder L · R23 · the Development Journey's own CONTENT ──────────────
+   * OBJ-PRACTICE-02 keyed JourneyTab's chrome and left the strings the page is
+   * actually made of — the day missions, the aimed extras and the monthly
+   * objectives — as English data in `practice/journey.ts` and
+   * `practice/content.ts`. #/journey measured 32 Latin lines under lang=he.
+   * Register: parent, effort targets only (KID-17) — days, rounds, moments;
+   * never an accuracy threshold or a verdict on the child. */
+
+  // The five cycle missions (practice/content.ts MISSION_CYCLE), by id: the
+  // card title and the first step, which is the line the day card shows.
+  "elev.practice.journey.mission.new-words.title": "Five new words",
+  "elev.practice.journey.mission.new-words.step": "Pick 5 things around the house {name} doesn't name yet (whisk, hinge, shadow…).",
+  "elev.practice.journey.mission.emotion-spotting.title": "Emotion detective",
+  "elev.practice.journey.mission.emotion-spotting.step": "During a book or show, pause on a face and ask: \"How does she feel? How do you know?\"",
+  "elev.practice.journey.mission.story-retell.title": "Story retell",
+  "elev.practice.journey.mission.story-retell.step": "Read or tell a short story {name} knows well.",
+  "elev.practice.journey.mission.sound-safari.title": "Sound safari",
+  "elev.practice.journey.mission.sound-safari.step": "Pick one sound {name} is working on (or open Speech Coach for today's sound).",
+  "elev.practice.journey.mission.social-play.title": "Turn-taking game",
+  "elev.practice.journey.mission.social-play.step": "Pick any turn-based game (rolling a ball counts). You go, {name} goes.",
+
+  // The ten aimed extras (practice/journey.ts EXTRA_BY_DOMAIN).
+  "elev.practice.journey.extra.speech-sound.title": "Speech Coach: today's sound",
+  "elev.practice.journey.extra.speech-sound.detail": "5 minutes on the current target sound — words first, then one silly sentence.",
+  "elev.practice.journey.extra.mimic-round.title": "Mimic Studio round",
+  "elev.practice.journey.extra.mimic-round.detail": "Two imitation rounds — mouth gymnastics count as speech practice.",
+  "elev.practice.journey.extra.naming-hunt.title": "Words mode: naming hunt",
+  "elev.practice.journey.extra.naming-hunt.detail": "Name 5 objects in one category (kitchen things, animals, clothes).",
+  "elev.practice.journey.extra.question-of-the-day.title": "Express mode: question of the day",
+  "elev.practice.journey.extra.question-of-the-day.detail": "One open question at dinner — wait, then expand their answer back.",
+  "elev.practice.journey.extra.emotion-match.title": "Feelings Lab: emotion match",
+  "elev.practice.journey.extra.emotion-match.detail": "One round of matching faces to feelings, then make the faces together.",
+  "elev.practice.journey.extra.calm-down.title": "Calm-down practice",
+  "elev.practice.journey.extra.calm-down.detail": "One guided breathing exercise during a calm moment — that's when it sticks.",
+  "elev.practice.journey.extra.adventure-scene.title": "Adventure scene",
+  "elev.practice.journey.extra.adventure-scene.detail": "One story scene with choices — thinking practice disguised as play.",
+  "elev.practice.journey.extra.memory-match.title": "Memory Match round",
+  "elev.practice.journey.extra.memory-match.detail": "One pairs round; the grid grows as they get stronger.",
+  "elev.practice.journey.extra.story-journey.title": "Story Journey",
+  "elev.practice.journey.extra.story-journey.detail": "One hero story with a real choice — talk about what the hero felt after.",
+  "elev.practice.journey.extra.turn-taking.title": "Turn-taking game",
+  "elev.practice.journey.extra.turn-taking.detail": "Any turn-based game; narrate the waiting and lose at least once.",
+
+  // The ten monthly objectives (practice/journey.ts OBJECTIVE_TEMPLATES).
+  "elev.practice.journey.objective.speech.0": "Practice one target sound on 8 different days",
+  "elev.practice.journey.objective.speech.1": "Practice speech sounds on 12 different days",
+  "elev.practice.journey.objective.language.0": "Play with 15 new words",
+  "elev.practice.journey.objective.language.1": "Complete 8 Words/Express rounds",
+  "elev.practice.journey.objective.emotional.0": "Name feelings in 10 real moments",
+  "elev.practice.journey.objective.emotional.1": "Do 8 calm-down practices in calm times",
+  "elev.practice.journey.objective.cognition.0": "Finish 4 adventures together",
+  "elev.practice.journey.objective.cognition.1": "Play the bigger Memory Match grid",
+  "elev.practice.journey.objective.social.0": "Complete 4 story journeys and talk about the choice",
+  "elev.practice.journey.objective.social.1": "Practice losing gracefully 6 times",
+
+  // The weekly-history count row — a count, never a share (law 1).
+  "elev.practice.journey.history.count": "{reached} of {total}",
 };
 
 export const he: Record<string, string> = {
@@ -132,4 +190,50 @@ export const he: Record<string, string> = {
   "elev.stories.library.title": "הספרייה שלכם",
   "elev.stories.reader.back": "כל המסעות",
   "elev.stories.reader.immersive": "מסך מלא",
+
+  // ── Builder L · R23 · תוכן מסע ההתפתחות (משימות, תוספות, יעדים חודשיים)
+  "elev.practice.journey.mission.new-words.title": "חמש מילים חדשות",
+  "elev.practice.journey.mission.new-words.step": "בחרו 5 דברים בבית ש{name} עדיין לא קורא/ת להם בשם (מטרפה, ציר, צל…).",
+  "elev.practice.journey.mission.emotion-spotting.title": "בלשי רגשות",
+  "elev.practice.journey.mission.emotion-spotting.step": "בספר או בסרטון, עצרו על פנים ושאלו: ״מה היא מרגישה? איך אתם יודעים?״",
+  "elev.practice.journey.mission.story-retell.title": "לספר את הסיפור שוב",
+  "elev.practice.journey.mission.story-retell.step": "קראו או ספרו סיפור קצר ש{name} מכיר/ה היטב.",
+  "elev.practice.journey.mission.sound-safari.title": "ספארי צלילים",
+  "elev.practice.journey.mission.sound-safari.step": "בחרו צליל אחד ש{name} מתאמן/ת עליו (או פתחו את מאמן הדיבור לצליל של היום).",
+  "elev.practice.journey.mission.social-play.title": "משחק תורות",
+  "elev.practice.journey.mission.social-play.step": "בחרו משחק תורות כלשהו (גם גלגול כדור נחשב). אתם, ואז {name}.",
+
+  "elev.practice.journey.extra.speech-sound.title": "מאמן הדיבור: הצליל של היום",
+  "elev.practice.journey.extra.speech-sound.detail": "חמש דקות על הצליל הנוכחי — קודם מילים, ואז משפט אחד מצחיק.",
+  "elev.practice.journey.extra.mimic-round.title": "סבב באולפן החיקוי",
+  "elev.practice.journey.extra.mimic-round.detail": "שני סבבי חיקוי — התעמלות פה נחשבת תרגול דיבור לכל דבר.",
+  "elev.practice.journey.extra.naming-hunt.title": "מצב מילים: ציד שמות",
+  "elev.practice.journey.extra.naming-hunt.detail": "תנו שם ל-5 חפצים מאותה קטגוריה (דברים במטבח, חיות, בגדים).",
+  "elev.practice.journey.extra.question-of-the-day.title": "מצב הבעה: שאלת היום",
+  "elev.practice.journey.extra.question-of-the-day.detail": "שאלה פתוחה אחת בארוחת הערב — חכו, ואז הרחיבו את התשובה בחזרה.",
+  "elev.practice.journey.extra.emotion-match.title": "מעבדת הרגשות: התאמת רגשות",
+  "elev.practice.journey.extra.emotion-match.detail": "סבב אחד של התאמת פנים לרגשות, ואז עשו את הפרצופים יחד.",
+  "elev.practice.journey.extra.calm-down.title": "תרגול הרגעה",
+  "elev.practice.journey.extra.calm-down.detail": "תרגיל נשימה מודרך אחד ברגע רגוע — אז זה נקלט.",
+  "elev.practice.journey.extra.adventure-scene.title": "סצנת הרפתקה",
+  "elev.practice.journey.extra.adventure-scene.detail": "סצנת סיפור אחת עם בחירות — תרגול חשיבה בתחפושת של משחק.",
+  "elev.practice.journey.extra.memory-match.title": "סבב כספת הזיכרון",
+  "elev.practice.journey.extra.memory-match.detail": "סבב זוגות אחד; הלוח גדל ככל שנעשה קל יותר.",
+  "elev.practice.journey.extra.story-journey.title": "מסע סיפור",
+  "elev.practice.journey.extra.story-journey.detail": "סיפור גיבור אחד עם בחירה אמיתית — דברו על מה שהגיבור הרגיש אחר כך.",
+  "elev.practice.journey.extra.turn-taking.title": "משחק תורות",
+  "elev.practice.journey.extra.turn-taking.detail": "כל משחק תורות; ספרו בקול על ההמתנה, והפסידו לפחות פעם אחת.",
+
+  "elev.practice.journey.objective.speech.0": "לתרגל צליל מטרה אחד ב-8 ימים שונים",
+  "elev.practice.journey.objective.speech.1": "לתרגל צלילי דיבור ב-12 ימים שונים",
+  "elev.practice.journey.objective.language.0": "לשחק עם 15 מילים חדשות",
+  "elev.practice.journey.objective.language.1": "להשלים 8 סבבי מילים או הבעה",
+  "elev.practice.journey.objective.emotional.0": "לתת שם לרגשות ב-10 רגעים אמיתיים",
+  "elev.practice.journey.objective.emotional.1": "לעשות 8 תרגולי הרגעה ברגעים רגועים",
+  "elev.practice.journey.objective.cognition.0": "לסיים 4 הרפתקאות יחד",
+  "elev.practice.journey.objective.cognition.1": "לשחק בלוח הזיכרון הגדול יותר",
+  "elev.practice.journey.objective.social.0": "להשלים 4 מסעות סיפור ולדבר על הבחירה",
+  "elev.practice.journey.objective.social.1": "לתרגל הפסד בכיף 6 פעמים",
+
+  "elev.practice.journey.history.count": "{reached} מתוך {total}",
 };

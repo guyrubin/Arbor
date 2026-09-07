@@ -98,7 +98,10 @@ describe("law 1 · the week chip names the family's aim, or says nothing", () =>
   it("the bare Focus pointer is gone; the chip reads the charter aim", () => {
     expect(journey).not.toContain("Focus: {DOMAIN_META[copilot.recommendation.domain].label}");
     expect(journey).toContain("aims.length > 0");
-    expect(journey).toContain('t("elev.growth.journey.aim", { domain: DOMAIN_META[aims[0]].label })');
+    // R22/R23 (Builder L): the aim chip's domain name resolves through
+    // DOMAIN_META.labelKey now (EN + HE) instead of the English-only `label`.
+    // Same selector, same chip — the name is just readable in both languages.
+    expect(journey).toContain('t("elev.growth.journey.aim", { domain: t(DOMAIN_META[aims[0]].labelKey) })');
     // The aim comes from the charter selector, not from a reading of the child.
     expect(journey).toContain("aimDomains(aimVirtues(loadCharter()))");
     expect(growth.en["elev.growth.journey.aim"]).toContain("{domain}");

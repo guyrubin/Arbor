@@ -7,7 +7,7 @@ import { useChildCollection } from "../../hooks/useChildCollection";
 import { PageHeader, SectionCard, cardCls, Chip } from "../ui/kit";
 import { DOMAIN_META, fillTemplate } from "../../practice/content";
 import { computeAchievements } from "../../practice/achievements";
-import { aimDomains, composeWeek, suggestObjectives } from "../../practice/journey";
+import { aimDomains, composeWeek, suggestObjectives, MISSION_COPY_KEYS, OBJECTIVE_TITLE_KEYS } from "../../practice/journey";
 import { aimVirtues, loadCharter } from "../../lib/becoming";
 import { useCopilot, usePracticeData } from "../../practice/usePracticeData";
 import { domainMilestoneCounts } from "../../practice/signals";
@@ -38,6 +38,18 @@ export default function JourneyTab() {
   const first = childProfile.name.split(" ")[0];
   const month = data.today.slice(0, 7);
   const vars = { name: first, age: childProfile.age, lang: childProfile.languages?.[1] };
+  /* R23 (Builder L) — the missions, the aimed extras and the monthly
+     objectives are DATA composed in practice/journey.ts and practice/content.ts,
+     and they were English-only, so #/journey printed 32 Latin lines under
+     lang=he. Each carries its key now; these resolve it at render and fall back
+     to the English the data still holds, so an id this build has never seen
+     (or an objective the parent wrote themselves) renders rather than showing
+     a key. Same recipe as MilestonesTab's screen.domain.<id> resolver. */
+  const keyed = (key: string | undefined, fallback: string) => {
+    if (!key) return fallback;
+    const out = t(key);
+    return out === key ? fallback : out;
+  };
 
   const week = useMemo(
     () => composeWeek(copilot.bands, copilot.recommendation, data.today),
@@ -172,7 +184,7 @@ export default function JourneyTab() {
       <section data-module="journey-week">
       <SectionCard title={t("elev.practice.journey.week.title")} icon={<Icon name="calendar_month" size={20} />} tone="mint"
         action={aims.length > 0
-          ? <Chip tone="mint">{t("elev.growth.journey.aim", { domain: DOMAIN_META[aims[0]].label })}</Chip>
+          ? <Chip tone="mint">{t("elev.growth.journey.aim", { domain: t(DOMAIN_META[aims[0]].labelKey) })}</Chip>
           : undefined}>
         <div className="grid grid-cols-1 lg:grid-cols-7 gap-3">
           {week.map((day) => {
@@ -189,8 +201,8 @@ export default function JourneyTab() {
                 </div>
                 <div>
                   <p className="text-xl">{day.mission.emoji}</p>
-                  <p className="text-sm font-extrabold leading-snug mt-1" style={{ color: "var(--arbor-ink)" }}>{day.mission.title}</p>
-                  <p className="text-[10.5px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{fillTemplate(day.mission.steps[0], vars)}</p>
+                  <p className="text-sm font-extrabold leading-snug mt-1" style={{ color: "var(--arbor-ink)" }}>{keyed(MISSION_COPY_KEYS[day.mission.id]?.title, day.mission.title)}</p>
+                  <p className="text-[10.5px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{fillTemplate(keyed(MISSION_COPY_KEYS[day.mission.id]?.step, day.mission.steps[0]), vars)}</p>
                 </div>
                 <button
                   data-primary-move={day.isToday ? "complete-mission" : undefined}
@@ -206,8 +218,8 @@ export default function JourneyTab() {
                   style={{ background: DOMAIN_META[day.mission.domain].soft }}
                 >
                   <span className="block text-[10px] font-extrabold uppercase tracking-wide" style={{ color: DOMAIN_META[day.mission.domain].color }}>{t("elev.practice.journey.extra")}</span>
-                  <span className="block text-[11px] font-extrabold mt-1" style={{ color: "var(--arbor-ink)" }}>{day.extra.title}</span>
-                  <span className="block text-[10px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{day.extra.detail}</span>
+                  <span className="block text-[11px] font-extrabold mt-1" style={{ color: "var(--arbor-ink)" }}>{keyed(day.extra.titleKey, day.extra.title)}</span>
+                  <span className="block text-[10px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{keyed(day.extra.detailKey, day.extra.detail)}</span>
                 </button>
               </div>
             );
@@ -237,10 +249,10 @@ export default function JourneyTab() {
                     <Icon name="check_circle" size={16} />
                   </span>
                   <Chip tone={obj.domain === "speech" ? "mint" : obj.domain === "language" ? "sky" : obj.domain === "cognition" ? "lav" : obj.domain === "social" ? "yellow" : "pink"}>
-                    {meta.label}
+                    {t(meta.labelKey)}
                   </Chip>
                 </span>
-                <span className="block text-sm font-extrabold mt-3" style={{ color: "var(--arbor-ink)" }}>{obj.title}</span>
+                <span className="block text-sm font-extrabold mt-3" style={{ color: "var(--arbor-ink)" }}>{keyed(OBJECTIVE_TITLE_KEYS[obj.title], obj.title)}</span>
                 <span className="block text-[11px] mt-2" style={{ color: obj.done ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>{obj.done ? t("elev.practice.journey.objectives.completed") : t("elev.practice.journey.objectives.tap")}</span>
               </button>
             );
@@ -299,8 +311,8 @@ export default function JourneyTab() {
                     const reached = Math.min(b.reached ?? windowed?.reached ?? 0, total);
                     return (
                       <div key={b.domain}>
-                        <p className="text-[10px] font-bold mb-1" style={{ color: meta.color }}>{meta.label}</p>
-                        <p className="text-[11px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{reached} of {total}</p>
+                        <p className="text-[10px] font-bold mb-1" style={{ color: meta.color }}>{t(meta.labelKey)}</p>
+                        <p className="text-[11px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.practice.journey.history.count", { reached, total })}</p>
                         <p className="text-[10px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.practice.journey.history.noticed")}</p>
                       </div>
                     );
