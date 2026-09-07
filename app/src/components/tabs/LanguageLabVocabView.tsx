@@ -416,9 +416,12 @@ export default function LanguageLabVocabView() {
         action={
           <button
             onClick={() => setShowActivities((v) => !v)}
-            className="inline-flex items-center gap-1 text-xs min-h-[44px]"
+            /* R10: the chevron was 44 tall but only 16 WIDE — a 44 px floor is
+               both axes. min-w-11 + centering fixes the box; the glyph stays 16. */
+            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 text-xs"
             style={{ color: T.muted }}
             aria-expanded={showActivities}
+            aria-label={t("vl.activitiesTitle")}
           >
             {showActivities ? <Icon name="expand_less" size={16} /> : <Icon name="expand_more" size={16} />}
           </button>

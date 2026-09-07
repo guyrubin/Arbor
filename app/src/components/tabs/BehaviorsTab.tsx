@@ -880,7 +880,7 @@ export default function BehaviorsTab() {
                 <option value="open">{t("beh.open")}</option>
                 <option value="resolved">{t("beh.resolved")}</option>
               </select>
-              <button onClick={resetFilters} className="flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}><Icon name="restart_alt" size={13} /> {t("beh.reset")}</button>
+              <button onClick={resetFilters} className="touch-target flex items-center gap-1 px-2" style={{ color: "var(--arbor-muted)" }}><Icon name="restart_alt" size={13} /> {t("beh.reset")}</button>
             </div>
 
             {behaviorAnalysis && (
@@ -948,7 +948,7 @@ export default function BehaviorsTab() {
                   <div key={weekKey} className="space-y-2">
                     <button
                       onClick={() => setCollapsedWeeks((p) => ({ ...p, [weekKey]: !p[weekKey] }))}
-                      className="w-full flex items-center justify-between text-[11px] font-bold rounded-lg px-3 py-2"
+                      className="w-full flex min-h-11 items-center justify-between text-[11px] font-bold rounded-lg px-3 py-2"
                       style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}
                     >
                       <span>{t("beh.weekOf")} {weekLabel(weekKey, uiLang)} · {logs.length} {logs.length === 1 ? t("beh.entry") : t("beh.entries")}</span>

@@ -1116,7 +1116,7 @@ export default function CoachTab() {
             aria-expanded={contractOpen}
             aria-label={tcc("elev.coachcontract.title")}
             data-testid="coach-contract-toggle"
-            className="flex-shrink-0 inline-flex items-center gap-1 text-[11px] font-bold min-h-[36px] px-2 rounded-lg transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+            className="flex-shrink-0 inline-flex min-h-11 min-w-11 items-center justify-center gap-1 text-[11px] font-bold px-2 rounded-lg transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
             style={{ color: contractOpen ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}
           >
             <Icon name="shield" size={13} />
