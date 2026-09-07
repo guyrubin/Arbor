@@ -344,10 +344,25 @@ export default function AskSpecialist() {
     </aside>
   );
 
+  /** The three data-contract promises. Declared once so the mobile disclosure
+   *  and the md+ row cannot drift apart, and so the disclosure's one-line
+   *  label is built from the same titles rather than a fourth string. */
+  const CONTRACT_TILES = [
+    { icon: "visibility", title: t("consult.contract.review"), body: t("consult.contract.reviewBody") },
+    { icon: "tune", title: t("consult.contract.control"), body: t("consult.contract.controlBody") },
+    { icon: "verified_user", title: t("consult.contract.share"), body: t("consult.contract.shareBody") },
+  ] as const;
+
   return (
     <motion.div {...motionProps} className="space-y-5 max-w-[1180px]">
-      <header>
-        <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: GREEN }}>
+      {/* R14 (LC-28): at 390 the column above the summary carried the hub
+          eyebrow twice — once in the HubHero, again here, one block apart.
+          Below md this copy of it stands down; the h2 and the child-specific
+          sub (the more useful of the two subs on this route — the hero's
+          generic one is the one that yields at this width) both stay. From md
+          up the full header returns, so the heading outline never changes. */}
+      <header data-testid="consult-section-header">
+        <span className="hidden md:inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: GREEN }}>
           <Icon name="stethoscope" size={15} /> {t("consult.eyebrow")}
         </span>
         {/* LC-28 / CR-21: this was a second <h1> on the route. The page's one
@@ -389,19 +404,48 @@ export default function AskSpecialist() {
         )}
       </section>
 
-      <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {([
-          { icon: "visibility", title: t("consult.contract.review"), body: t("consult.contract.reviewBody") },
-          { icon: "tune", title: t("consult.contract.control"), body: t("consult.contract.controlBody") },
-          { icon: "verified_user", title: t("consult.contract.share"), body: t("consult.contract.shareBody") },
-        ] as const).map((item) => (
-          <div key={item.icon} className="rounded-[18px] p-4" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
-            <span className="inline-flex items-center gap-2 text-[12px] font-extrabold" style={{ color: GREEN }}>
-              <Icon name={item.icon} size={16} /> {item.title}
+      {/* R14 (LC-28): the data-contract tiles are a reassurance the parent
+          reads once, and at 390 they stacked into ~310 px between the reason
+          box and the summary the parent came for. From md up they stay the
+          three-column row they have always been; below md they fold into one
+          line that names all three promises and opens to the same three
+          tiles. Nothing is dropped — the disclosure is the whole capability
+          (law 6) — and the summary label is built from the tile titles the
+          parent would read anyway, so no new string is invented. */}
+      <section data-testid="consult-contract">
+        <details className="md:hidden rounded-[18px]" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
+          <summary
+            data-testid="consult-contract-summary"
+            className="touch-target !justify-start w-full cursor-pointer list-none gap-2 px-4 text-[12px] font-extrabold"
+            style={{ color: GREEN }}
+          >
+            <Icon name="verified_user" size={16} />
+            <span className="min-w-0 flex-1 truncate">
+              {CONTRACT_TILES.map((item) => item.title).join(" · ")}
             </span>
-            <p className="text-[11.5px] leading-relaxed mt-1.5" style={{ color: MUTED }}>{item.body}</p>
+            <Icon name="expand_more" size={16} />
+          </summary>
+          <div className="grid grid-cols-1 gap-3 px-4 pb-4">
+            {CONTRACT_TILES.map((item) => (
+              <div key={item.icon}>
+                <span className="inline-flex items-center gap-2 text-[12px] font-extrabold" style={{ color: GREEN }}>
+                  <Icon name={item.icon} size={16} /> {item.title}
+                </span>
+                <p className="text-[11.5px] leading-relaxed mt-1.5" style={{ color: MUTED }}>{item.body}</p>
+              </div>
+            ))}
           </div>
-        ))}
+        </details>
+        <div className="hidden md:grid md:grid-cols-3 gap-3">
+          {CONTRACT_TILES.map((item) => (
+            <div key={item.icon} className="rounded-[18px] p-4" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
+              <span className="inline-flex items-center gap-2 text-[12px] font-extrabold" style={{ color: GREEN }}>
+                <Icon name={item.icon} size={16} /> {item.title}
+              </span>
+              <p className="text-[11.5px] leading-relaxed mt-1.5" style={{ color: MUTED }}>{item.body}</p>
+            </div>
+          ))}
+        </div>
       </section>
 
       {/* AIX-S3(a): the Vision handoff note — parent-editable BEFORE anything is
