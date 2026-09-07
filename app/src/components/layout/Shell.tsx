@@ -4,7 +4,7 @@ import { Icon } from "../ui/Icon";
 import { useArbor, ActiveTab } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { sectionForTab, hubTabsForSection } from "../../lib/navigation";
+import { sectionForTab, hubTabsForSection, isCompactHiddenTool } from "../../lib/navigation";
 import { contractFor } from "../../lib/surfaceContract";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
@@ -169,6 +169,14 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
 };
 
 /**
+ * IA-07 — the hub pill row's edge affordance. Colour keywords only: this is a
+ * MASK, so only its alpha is read, and a token here would be meaningless (and
+ * a raw hex would fail the palette ratchet).
+ */
+const PILL_EDGE_FADE =
+  "linear-gradient(to right, transparent 0, black 14px, black calc(100% - 14px), transparent 100%)";
+
+/**
  * Item 11 — the one place a route's declared contract meets its rendered tree.
  *
  * `display: contents` keeps the frame out of layout entirely: it adds no box,
@@ -214,6 +222,11 @@ export default function Shell() {
   // NOT in ArborContext.setActiveTab (which would also fire for non-visual
   // state churn and would scroll-jump under the still-visible outgoing tab).
   const mainRef = useRef<HTMLElement>(null);
+  // IA-07: the ACTIVE pill must be on screen after every navigation — arriving
+  // on a hub by deep link, by sidebar or by MobileNav all land on a tab whose
+  // pill may sit past either edge of the band. Scrolled to nearest, not
+  // centred: a pill already in view must not jump.
+  const activePillRef = useRef<HTMLButtonElement>(null);
   // W2.4 analytics: mirror of searchOpen for the deps-free hotkey listener,
   // so search_open fires only on the closed→open transition.
   const searchOpenRef = useRef(false);
@@ -257,6 +270,15 @@ export default function Shell() {
       window.removeEventListener(SETTINGS_OPEN_EVENT, onSettingsRequest);
     };
   }, []);
+
+  useEffect(() => {
+    const pill = activePillRef.current;
+    if (!pill || typeof pill.scrollIntoView !== "function") return;
+    // `block: nearest` keeps the page's own vertical scroll where it is — the
+    // row is sticky, and scrolling the document to reveal a pill would undo
+    // the tab-swap scroll reset three lines above.
+    pill.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [activeTab]);
 
   // KID-LOCK (W0.9, LEAK 5): a modal left open when Kid Mode engages must not
   // reappear beneath/over the kid surface — drop the local open flags.
@@ -388,6 +410,16 @@ export default function Shell() {
               className="sticky z-20 flex gap-2 overflow-x-auto mb-4 -mx-1 px-1 pb-2 no-scrollbar"
               style={{
                 background: "var(--arbor-paper)",
+                /* IA-07: the row scrolled silently. A pill past either edge
+                   looked like the end of the row, so the fourth Today pill was
+                   invisible in both directions. The mask fades the first and
+                   last 14 px of the band, which is the affordance — no overlay
+                   element, so the sticky box above is untouched, and it is
+                   symmetric, so it reads the same under dir=rtl. Snapping
+                   makes the scroll land ON a pill instead of between two. */
+                maskImage: PILL_EDGE_FADE,
+                WebkitMaskImage: PILL_EDGE_FADE,
+                scrollSnapType: "x mandatory",
                 /* <main> is the scrollport and carries a top padding, so a plain
                    `top: 0` parked this band one padding-height below the
                    scrollport edge — leaving a live 32px sliver where content
@@ -409,11 +441,15 @@ export default function Shell() {
                     key={it.tab}
                     role="tab"
                     aria-selected={on}
+                    ref={on ? activePillRef : undefined}
                     onClick={() => { void selectionHaptic(); setActiveTab(it.tab); }}
-                    className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 min-h-[44px] text-[var(--t-sm)] font-bold whitespace-nowrap transition flex-shrink-0"
-                    style={on
-                      ? { background: "var(--arbor-subtab-active)", color: "var(--arbor-subtab-on-ink)" }
-                      : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+                    className={`${!on && isCompactHiddenTool(section, it.tab) ? "hidden md:inline-flex" : "inline-flex"} items-center gap-1.5 rounded-full px-3.5 py-2 min-h-[44px] text-[var(--t-sm)] font-bold whitespace-nowrap transition flex-shrink-0`}
+                    style={{
+                      scrollSnapAlign: "start",
+                      ...(on
+                        ? { background: "var(--arbor-subtab-active)", color: "var(--arbor-subtab-on-ink)" }
+                        : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }),
+                    }}
                   >
                     <PillIcon className="w-3.5 h-3.5" /> {t("nav.tab." + it.tab)}
                   </button>

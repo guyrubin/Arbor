@@ -151,7 +151,9 @@ describe("UC-8a — the topbar title always gets usable width", () => {
 });
 
 describe("UC-8b — the sticky sub-tab row is flush with the scrollport", () => {
-  const stickyRow = shell.slice(shell.indexOf('role="tablist"') - 400, shell.indexOf('role="tablist"') + 1400);
+  // IA-07 widened this band with a mask + snap declaration, so the window has
+  // to reach past them to the sticky-inset lines this guard is about.
+  const stickyRow = shell.slice(shell.indexOf('role="tablist"') - 400, shell.indexOf('role="tablist"') + 2600);
 
   it("cancels the scrollport top inset instead of using a bare top-0", () => {
     expect(stickyRow).toContain("sticky");
@@ -313,5 +315,97 @@ describe("OBJ-SHELL-01 — the focus label is a key, not an English literal", ()
     // the Hebrew is transcreated, not the English string in Hebrew quotes
     expect(he.slice(he.indexOf('"elev.shell.focus.multilingual":'), he.indexOf('"elev.shell.focus.multilingual":') + 120))
       .toMatch(/[\u0590-\u05FF]/);
+  });
+});
+
+/* ── TJB-25 / RUN-07 / IA-07 · no pill is unreachable ────────────────────── */
+
+/**
+ * MEASURED at 390 (ledger-TJB Screen 1): Today's four pills sat in an 80 px
+ * sticky band and the fourth was off-screen in BOTH scroll directions — with
+ * no fade, no snap and no shadow saying anything was there. A parent could not
+ * discover the Weekly Report from Today at all.
+ *
+ * Three separate fixes, one row: the band fades at both edges (the affordance),
+ * it snaps so a scroll lands ON a pill, and the ACTIVE pill is scrolled into
+ * view after every navigation — arriving by deep link, sidebar or bottom nav.
+ * Guy default #16 additionally collapses Today to Overview + Weekly Report
+ * below `md`; the two settings-grade panels keep their routes and their doors.
+ */
+describe("IA-07 — the hub pill row tells you it scrolls, and lands on a pill", () => {
+  const bare = stripComments(shell);
+  const row = bare.slice(bare.indexOf('role="tablist"') - 200, bare.indexOf("</div>", bare.indexOf('role="tablist"')));
+
+  it("both edges fade, symmetrically (so RTL reads the same)", () => {
+    expect(bare).toContain("const PILL_EDGE_FADE =");
+    expect(bare).toMatch(/maskImage: PILL_EDGE_FADE/);
+    expect(bare).toMatch(/WebkitMaskImage: PILL_EDGE_FADE/);
+    const fade = bare.slice(bare.indexOf("const PILL_EDGE_FADE ="), bare.indexOf("const PILL_EDGE_FADE =") + 240);
+    expect(fade).toContain("transparent 0");
+    expect(fade).toContain("transparent 100%");
+    // a mask reads alpha only — no raw hex may creep in behind that fact
+    expect(fade).not.toMatch(/#[0-9a-fA-F]{3,6}\b/);
+  });
+
+  it("the band snaps on the inline axis and every pill declares an anchor", () => {
+    expect(row).toContain('scrollSnapType: "x mandatory"');
+    expect(row).toContain('scrollSnapAlign: "start"');
+  });
+
+  it("the active pill is scrolled into view on every tab change", () => {
+    expect(bare).toContain("const activePillRef = useRef<HTMLButtonElement>(null);");
+    expect(row).toContain("ref={on ? activePillRef : undefined}");
+    expect(bare).toMatch(/pill\.scrollIntoView\(\{ block: "nearest", inline: "nearest" \}\);/);
+    // …keyed on the route, not on every render
+    expect(bare).toMatch(/pill\.scrollIntoView[\s\S]{0,80}\}, \[activeTab\]\);/);
+    // …and it must not fight the tab-swap scroll reset (vertical stays put)
+    expect(bare).not.toMatch(/scrollIntoView\(\{ block: "start"/);
+  });
+
+  it("negative control: the shipped row had no fade, no snap and no ref", () => {
+    const preFix = 'className="sticky z-20 flex gap-2 overflow-x-auto mb-6 -mx-1 px-1 pb-2 no-scrollbar"';
+    expect(preFix).not.toContain("scrollSnap");
+    expect(preFix).not.toContain("maskImage");
+    expect(preFix).not.toContain("activePillRef");
+  });
+});
+
+describe("TJB-25 — Today collapses to the Weekly Report below md", () => {
+  const bare = stripComments(shell);
+
+  it("the compact set is declared in navigation.ts, for Today only", () => {
+    const nav = readFileSync(path.join(here, "..", "..", "lib", "navigation.ts"), "utf8");
+    const map = nav.slice(nav.indexOf("export const COMPACT_HIDDEN_TOOLS"), nav.indexOf("export function isCompactHiddenTool"));
+    expect(map).toContain('today: ["day-windows", "smart-reminders"],');
+    expect(map.match(/^\s{2}[a-z-]+: \[/gm) ?? []).toHaveLength(1);
+  });
+
+  it("Today's remaining mobile pills are exactly Overview and Weekly Report", () => {
+    const nav = readFileSync(path.join(here, "..", "..", "lib", "navigation.ts"), "utf8");
+    const today = nav.slice(nav.indexOf('id: "today"'), nav.indexOf('id: "journal"'));
+    const pills = [...today.matchAll(/\{ tab: "([a-z-]+)"/g)].map((m) => m[1]);
+    const hidden = new Set(["day-windows", "smart-reminders"]);
+    expect([...new Set(pills)].filter((p) => !hidden.has(p))).toEqual(["overview", "weekly"]);
+  });
+
+  it("Shell hides the pill with a CLASS — the route is never filtered out", () => {
+    expect(bare).toContain("isCompactHiddenTool");
+    expect(bare).toContain('"hidden md:inline-flex" : "inline-flex"');
+    // hubTabsForSection is still called unfiltered: the pill returns at md
+    expect(bare).toContain("hubTabsForSection(section).map((it) =>");
+  });
+
+  it("a parent who IS on a collapsed tool still sees its pill (no orphan state)", () => {
+    expect(bare).toContain("!on && isCompactHiddenTool(section, it.tab)");
+  });
+
+  it("law 6 — both collapsed routes keep a door that is NOT the pill", () => {
+    const settings = stripComments(readFileSync(path.join(here, "SettingsModal.tsx"), "utf8"));
+    expect(settings).toContain('setActiveTab("smart-reminders")');
+    expect(settings).toContain('setActiveTab("day-windows")');
+    // Day Windows had exactly ONE door in the whole app before this commit.
+    expect(settings).toContain('data-testid="settings-open-day-windows"');
+    // …opened with its own shipped keys, not a minted string
+    expect(settings).toContain('t("dw.cta")');
   });
 });

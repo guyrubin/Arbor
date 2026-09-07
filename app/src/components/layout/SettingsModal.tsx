@@ -378,6 +378,23 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
             {t("elev.sr.open")}
           </button>
         </Row>
+
+        {/* TJB-25 / IA-07: Today's pill row collapses below `md`, and the Day
+            Windows pill was the ONLY door to #/day-windows in the whole app —
+            grep it. Same rhythm engine as the reminders row above it, same
+            open pattern, its own shipped keys (dw.title / dw.subtitle /
+            dw.cta, EN + HE). Law 6: the pill is hidden on phones, the route is
+            not. */}
+        <Row icon={<Icon name="schedule" size={18} />} title={t("dw.title")} sub={t("dw.subtitle")}>
+          <button
+            onClick={() => { onClose(); setActiveTab("day-windows"); }}
+            className="text-xs font-bold rounded-xl px-3 min-h-11"
+            style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}
+            data-testid="settings-open-day-windows"
+          >
+            {t("dw.cta")}
+          </button>
+        </Row>
         </Section>
 
         <Section title={t("set.section.childData")} sub={t("set.section.childDataSub")}>

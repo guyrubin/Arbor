@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
-import { SECTIONS, sectionForTab, primaryTabOf, subTabsForSection, hubTabsForSection } from "./navigation";
+import { SECTIONS, sectionForTab, primaryTabOf, subTabsForSection, hubTabsForSection, COMPACT_HIDDEN_TOOLS, isCompactHiddenTool } from "./navigation";
 import { resolveHash, FALLBACK_ROUTE, RETIRED_ROUTES } from "./routes";
 import { ALL_TABS } from "../context/ArborContext";
 
@@ -284,5 +284,57 @@ describe("IA-13 · hash resolution has three cases, not two", () => {
     expect(src).toContain('toast(t("elev.nav.linkMoved"), "info")');
     // The old unconditional fallback is gone.
     expect(src).not.toContain("tabFromHash()");
+  });
+});
+
+/**
+ * TJB-25 / RUN-07 / IA-07 (Guy default #16) — Today's compact pill set.
+ *
+ * MEASURED at 390 (ledger-TJB Screen 1): four pills in an 80 px sticky band,
+ * the fourth off-screen in both directions. Below `md` the row is Overview +
+ * Weekly Report; Day Windows and Reminders are settings-grade panels and keep
+ * their doors in Settings.
+ *
+ * The compact set is a HIDE, never a filter: hubTabsForSection still returns
+ * every capability, so the pills are in the DOM and return at md with no
+ * second render path — and no route leaves the 43-route floor.
+ */
+describe("TJB-25 — the Today mobile pill set", () => {
+  const today = SECTIONS.find((s) => s.id === "today")!;
+
+  it("Today's full pill row is unchanged — four capabilities, in order", () => {
+    expect(hubTabsForSection(today).map((i) => i.tab)).toEqual([
+      "overview", "day-windows", "smart-reminders", "weekly",
+    ]);
+  });
+
+  it("below md exactly two survive: the hub and the Weekly Report", () => {
+    const shown = hubTabsForSection(today).map((i) => i.tab).filter((tab) => !isCompactHiddenTool(today, tab));
+    expect(shown).toEqual(["overview", "weekly"]);
+  });
+
+  it("Today is the ONLY hub with a compact set — no other row silently loses a pill", () => {
+    expect(Object.keys(COMPACT_HIDDEN_TOOLS)).toEqual(["today"]);
+    for (const section of SECTIONS) {
+      if (section.id === "today") continue;
+      const shown = hubTabsForSection(section).map((i) => i.tab).filter((tab) => !isCompactHiddenTool(section, tab));
+      expect(shown, section.id).toEqual(hubTabsForSection(section).map((i) => i.tab));
+    }
+  });
+
+  it("every compact-hidden tab is still a real capability of the hub that hides it", () => {
+    for (const [hub, tabs] of Object.entries(COMPACT_HIDDEN_TOOLS)) {
+      const section = SECTIONS.find((s) => s.id === hub)!;
+      const all = hubTabsForSection(section).map((i) => i.tab);
+      for (const tab of tabs ?? []) expect(all, `${hub} does not host ${tab}`).toContain(tab);
+    }
+  });
+
+  it("negative control: the pre-change row had no compact set at all", () => {
+    // Before Guy #16 the mobile set WAS the full set — which is the defect.
+    const preChange = (_section: typeof today, _tab: string) => false;
+    const shown = hubTabsForSection(today).map((i) => i.tab).filter((tab) => !preChange(today, tab));
+    expect(shown).toHaveLength(4);
+    expect(shown).not.toEqual(["overview", "weekly"]);
   });
 });

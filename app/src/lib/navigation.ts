@@ -411,3 +411,29 @@ export function hubTabsForSection(section: NavSection): NavItem[] {
   }
   return out;
 }
+
+/**
+ * TJB-25 / RUN-07 / IA-07 — Today's compact pill set (Guy default #16).
+ *
+ * MEASURED at 390 (ledger-TJB Screen 1): Today's row is four pills — Overview,
+ * Day Windows, Reminders, Weekly Report — in an 80 px sticky band, and the
+ * fourth sat off-screen in BOTH scroll directions with no affordance saying it
+ * was there. Two of the four are settings-grade panels a parent opens rarely
+ * and deliberately (Day Windows is a read-only rhythm view; Reminders is a
+ * preferences dashboard); the Weekly Report is the one Today pill that is a
+ * destination in the day's own rhythm. So below `md` the row collapses to
+ * Overview + Weekly Report, and the two panels keep their doors elsewhere —
+ * Reminders and Day Windows are both rows in Settings, and both routes stay
+ * valid deep links (law 6: nothing here removes a route, only a pill).
+ *
+ * The hiding is a CLASS, not a filtered list: the pills stay in the DOM and
+ * return at `md` with no JS, no media-query hook and no second render path.
+ */
+export const COMPACT_HIDDEN_TOOLS: Readonly<Partial<Record<HubId, readonly ActiveTab[]>>> = {
+  today: ["day-windows", "smart-reminders"],
+};
+
+/** True when `tab`'s pill is hidden below `md` inside `section`. */
+export function isCompactHiddenTool(section: NavSection, tab: ActiveTab): boolean {
+  return (COMPACT_HIDDEN_TOOLS[section.id] ?? []).includes(tab);
+}
