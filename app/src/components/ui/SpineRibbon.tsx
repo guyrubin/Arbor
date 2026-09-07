@@ -24,7 +24,13 @@ export interface SpineRibbonProps {
   className?: string;
 }
 
-export function SpineRibbon({ text, tone = "mint", icon = "hub", onFollow, testId, className = "" }: SpineRibbonProps) {
+/* OBJ-JOURNAL-03: the default tone is `lav`, not `mint`. Mint/clay is the
+   primary-CTA register; a ribbon that inherits it reads as the loudest control
+   on its screen — exactly what the Journal ribbon did at 358×52 while the
+   compose card owns the primary move. The ribbon stays a quiet lav-soft strip
+   and NEVER carries `--arbor-gradient-primary` (guard:
+   components/primaryMove.gradient.test.ts). */
+export function SpineRibbon({ text, tone = "lav", icon = "hub", onFollow, testId, className = "" }: SpineRibbonProps) {
   const p = PASTEL[tone];
   const base = "w-full flex items-center gap-3 rounded-2xl px-4 py-2.5 min-h-[44px]";
   const style: React.CSSProperties = { background: p.soft, border: "1px solid var(--arbor-rule)" };

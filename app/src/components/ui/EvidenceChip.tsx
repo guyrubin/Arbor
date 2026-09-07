@@ -32,7 +32,10 @@ export function EvidenceChip({ className = "" }: { className?: string }) {
       data-testid="evidence-chip"
       // before:-inset-y-2 grows the touch target to ~44px without inflating the chip.
       className={`relative inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[var(--t-xs)] font-bold transition active:scale-[0.97] before:absolute before:content-[''] before:-inset-y-2 before:inset-x-0 ${className}`.trim()}
-      style={{ background: p.soft, color: p.ink }}
+      // OBJ-TODAY-01: outline, not a wash — `--arbor-sky-soft` is itself a
+      // linear-gradient token, so a filled chip competed with the one primary
+      // CTA. Sibling recipe: TrustLink. The sky register survives in the ink.
+      style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", color: p.ink }}
     >
       <BookOpenCheck aria-hidden="true" size={13} strokeWidth={2.4} />
       {t("elev.evidence.label")}

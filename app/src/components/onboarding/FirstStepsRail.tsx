@@ -196,8 +196,13 @@ export function FirstStepsRail() {
               onClick={() => openStep(s.id, s.tab)}
               aria-label={isDone ? `${label} — ${t("elev.rail.stepDone")}` : label}
               className="flex items-center gap-2.5 min-h-[44px] rounded-2xl px-3 py-2.5 text-start transition cursor-pointer"
+              /* OBJ-TODAY-01: a finished step is a check row, not a CTA. The
+                 tone wash (`PASTEL[*].soft`, itself a linear-gradient token)
+                 made "Capture a moment — Done" read as the loudest filled
+                 button on Today. The tone survives in the check disc's ink; the
+                 row itself recedes to paper-deep. */
               style={{
-                background: isDone ? p.soft : "var(--arbor-paper)",
+                background: isDone ? "var(--arbor-paper-deep)" : "var(--arbor-paper)",
                 border: "1px solid var(--arbor-rule)",
               }}
             >

@@ -60,7 +60,11 @@ export function TrustLink({
       data-testid="trust-link"
       // before:-inset-y-2 grows the touch target to ~44px without inflating the chip.
       className={`relative inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[var(--t-xs)] font-bold transition active:scale-[0.97] motion-reduce:transition-none motion-reduce:transform-none before:absolute before:content-[''] before:-inset-y-2 before:inset-x-0 ${className}`.trim()}
-      style={{ background: p.soft, color: p.ink }}
+      // OBJ-TODAY-01: outline, not a wash. Every `--arbor-*-soft` token is a
+      // linear-gradient, so a filled chip read as a second gradient CTA beside
+      // Today's one primary move. Secondary = outline; the lav register
+      // survives in the ink and the arrow.
+      style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", color: p.ink }}
     >
       {trustText(uiLang, "elev.trust.link")}
       <Icon name="arrow_forward" size={13} className="flex-shrink-0 rtl:rotate-180" />

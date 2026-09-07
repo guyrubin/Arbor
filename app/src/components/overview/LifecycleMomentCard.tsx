@@ -473,13 +473,19 @@ export default function LifecycleMomentCard({
               {t("elev.lifecycle.loves.add")}
             </button>
           </div>
+          {/* OBJ-TODAY-01: this card is an unbudgeted sibling on Today, never
+              the declared primary move (do-today-action). It used to be the
+              ONLY gradient CTA on a day-0 Today while the anchor was outline —
+              the loudest object pointing away from the one job. Secondary =
+              outline (the TodayRecommendation "Begin" recipe), never a second
+              accent colour. */}
           <button
             type="button"
             onClick={() => void save()}
             disabled={picked.length === 0 || saving}
             data-testid="lifecycle-loves-save"
-            className="mt-3 inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 text-[13px] font-extrabold text-white transition active:scale-[0.98] disabled:opacity-50"
-            style={{ background: "var(--arbor-gradient-primary)" }}
+            className="mt-3 inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 text-[13px] font-extrabold transition active:scale-[0.98] disabled:opacity-50"
+            style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-green-ink)", background: "transparent" }}
           >
             {t("elev.lifecycle.loves.save")}
             <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />

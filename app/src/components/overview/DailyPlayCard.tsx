@@ -255,9 +255,13 @@ export default function DailyPlayCard({
             disabled={done}
             aria-label={done ? t("play.added", { name: childName }) : t("play.did")}
             className="inline-flex items-center justify-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 transition active:scale-[0.98] disabled:cursor-default"
+            /* OBJ-TODAY-01: `play` is a demotable module (todayModules.ts), never
+               Today's declared primary move (do-today-action) — so "We did this"
+               is outline, not the second gradient beside the anchor. Dropping the
+               fill also drops the raw `#fff` this surface had no licence to use. */
             style={done
               ? { background: GREEN_SOFT, color: GREEN }
-              : { background: "var(--arbor-gradient-primary)", color: "#fff", boxShadow: "var(--shadow-green)" }}
+              : { background: "transparent", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)" }}
           >
             <Icon name="check" size={18} /> {done ? t("play.added", { name: childName }) : t("play.did")}
           </button>

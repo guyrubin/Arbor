@@ -35,8 +35,11 @@ export default function PostCaptureCoachStrip() {
       <button
         type="button"
         onClick={acceptPostCaptureCoach}
-        className="min-h-9 flex-shrink-0 rounded-xl px-3 py-2 text-xs font-extrabold text-white transition active:scale-[0.98]"
-        style={{ background: "var(--arbor-gradient-primary)" }}
+        className="min-h-9 flex-shrink-0 rounded-xl px-3 py-2 text-xs font-extrabold transition active:scale-[0.98]"
+        /* OBJ-TODAY-01: mounted globally from Shell, so this strip can appear
+           over any hub — including Today, where the anchor already owns the one
+           gradient. An offer to keep talking is secondary: outline. */
+        style={{ background: "transparent", border: "1px solid var(--arbor-green-ink)", color: "var(--arbor-green-ink)" }}
       >
         {t("beh.postCapture.cta")}
       </button>
