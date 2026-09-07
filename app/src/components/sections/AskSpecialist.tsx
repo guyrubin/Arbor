@@ -148,6 +148,22 @@ export default function AskSpecialist() {
     return () => { alive = false; };
   }, []);
   const railPros = useMemo(() => pros.filter((p) => p.verified).slice(0, 3), [pros]);
+  /** LC-16 — Guy #6. There is no directory: `ARBOR_PROFESSIONALS` is `[]` and
+   *  the API adds nothing, so "Send to a professional" opened a modal onto an
+   *  empty list and the rail's "Find a professional" door led to the same. The
+   *  verb and the rail are withheld while the directory is empty; they return
+   *  the moment it has one entry. What a parent CAN do — hand the packet to
+   *  someone they already trust — takes their place, through the same
+   *  audience-capped export text (no second egress path). */
+  const hasDirectory = pros.length > 0;
+  const sendToTrusted = () => {
+    if (exportText == null) return;
+    trackShareInitiated("story", "ask_specialist");
+    const subject = t("elev.learnCare.trusted.subject", { name: firstName });
+    const href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(exportText)}`;
+    try { window.location.href = href; trackShareCompleted("story", "email"); }
+    catch { toast(t("elev.packet.copyFailed"), "error"); }
+  };
   // Pro `tone` is a free string from the directory; clamp it to a valid layout-kit
   // pastel so InitialsTile never renders blank on an unexpected value.
   const proTone = (tone: string): PastelKey => (tone in PASTEL ? (tone as PastelKey) : "sky");
@@ -316,13 +332,15 @@ export default function AskSpecialist() {
           </div>
         ))}
       </div>
-      <button
-        onClick={() => setActiveTab("find-pro")}
-        className="w-full inline-flex items-center justify-center text-center text-[12px] font-bold rounded-[13px] min-h-11 transition hover:brightness-95"
-        style={{ background: "var(--arbor-paper-deep)", color: GREEN }}
-      >
-        {t("sec.findpro.title")}
-      </button>
+      {hasDirectory && (
+        <button
+          onClick={() => setActiveTab("find-pro")}
+          className="w-full inline-flex items-center justify-center text-center text-[12px] font-bold rounded-[13px] min-h-11 transition hover:brightness-95"
+          style={{ background: "var(--arbor-paper-deep)", color: GREEN }}
+        >
+          {t("sec.findpro.title")}
+        </button>
+      )}
     </aside>
   );
 
@@ -526,7 +544,19 @@ export default function AskSpecialist() {
               <span id="consult-audience-label" className="text-[12px] font-extrabold me-1" style={{ color: INK }}>
                 {t("elev.carehonesty.consult.audience.label")}
               </span>
-              <div role="radiogroup" aria-labelledby="consult-audience-label" className="flex flex-wrap items-center gap-1.5">
+              {/* LC-28 / OBJ-CARE-02: the hub hero pushed the packet to 1,320 px
+                  at 390. The hero CTA now scrolls to and focuses THIS row — the
+                  export bar's required first step — rather than the top of a
+                  long flow, so the packet is the first thing on screen. */}
+              <div
+                id="consult-audience-row"
+                data-testid="consult-audience-row"
+                tabIndex={-1}
+                role="radiogroup"
+                aria-labelledby="consult-audience-label"
+                className="flex flex-wrap items-center gap-1.5 focus:outline-none"
+                style={{ scrollMarginBlockStart: "0.75rem" }}
+              >
                 {EXPORT_AUDIENCES.map((a) => {
                   const on = a === audience;
                   return (
@@ -622,14 +652,18 @@ export default function AskSpecialist() {
                 </AnimatePresence>
               </div>
 
-              {/* Send to a professional — the real directory + consult request,
-                  prefilled from the selected packet. Replaces the dead "soon" stub. */}
+              {/* LC-16 — the professional verb only exists while a directory
+                  does. Otherwise the parent gets the move they can actually
+                  make: hand the same audience-capped packet to someone they
+                  already trust. */}
               <button
-                onClick={() => setSendOpen(true)}
+                onClick={hasDirectory ? () => setSendOpen(true) : sendToTrusted}
                 disabled={noneSelected}
+                data-testid={hasDirectory ? "consult-send-pro" : "consult-send-trusted"}
                 className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-4 py-3 transition disabled:opacity-50 min-h-[44px]"
                 style={{ background: "var(--arbor-paper-sunk)", color: GREEN, border: "1px solid rgba(52,178,119,0.30)" }}>
-                <Icon name="send" size={17} /> {t("consult.send")}
+                <Icon name={hasDirectory ? "send" : "mail"} size={17} />
+                {hasDirectory ? t("consult.send") : t("elev.learnCare.trusted.send")}
               </button>
             </div>
           </div>

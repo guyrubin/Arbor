@@ -42,11 +42,18 @@ export default function ConsultTab() {
         cta={{
           label: t("elev.hero.care.cta"),
           icon: <ListChecks aria-hidden="true" size={16} strokeWidth={2.4} />,
-          onClick: () =>
-            flowRef.current?.scrollIntoView({
-              behavior: reduceMotion ? "auto" : "smooth",
-              block: "start",
-            }),
+          // LC-28 / OBJ-CARE-02: the CTA used to scroll to the TOP of the flow,
+          // which at 390 still left the packet at ~1,320 px and the day-0 empty
+          // state at ~1,480. It now targets the export bar's audience row — the
+          // required first step — and moves focus there, so the packet and its
+          // one decision land together. Falls back to the flow when the row is
+          // not mounted (day-0 renders the empty state instead of the bar).
+          onClick: () => {
+            const target =
+              (document.getElementById("consult-audience-row") as HTMLElement | null) ?? flowRef.current;
+            target?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+            target?.focus?.({ preventScroll: true });
+          },
           testId: "care-hero-cta",
         }}
         testId="care-hub-hero"

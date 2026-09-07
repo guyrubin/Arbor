@@ -7,7 +7,10 @@ export type ActionOutcome = "helped" | "somewhat" | "not_today";
  *  from the weekly digest's AI-generated tryThisWeek text — only `generated:
  *  "ai"` digests may reach the accept seam (TODAY-1: actionLoops carry only
  *  model-generated focus text, never fallback copy). */
-export type ActionSource = "today-guidance" | "digest" | "learn-read";
+/** LC-22 adds `family-ritual`: the first step of a Family Formation ritual,
+ *  accepted by the parent from that surface. Same class as `learn-read` —
+ *  authored curriculum the parent chose, not fallback copy TODAY-1 bans. */
+export type ActionSource = "today-guidance" | "digest" | "learn-read" | "family-ritual";
 
 export interface ActionLoopEntry {
   id: string;

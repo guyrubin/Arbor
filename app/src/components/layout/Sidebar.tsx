@@ -50,7 +50,9 @@ export default function Sidebar() {
       {/* Brand lockup — softer 38px rounded mark + wordmark (UC-1 density) */}
       <div className="flex items-center gap-2.5 px-1">
         <ArborMark size={38} />
-        <h1 className="text-[21px] font-extrabold leading-none" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Arbor</h1>
+        {/* CR-21: this was a second <h1> on every desktop route — the page's one
+            heading belongs to the hub, not to the chrome's wordmark. */}
+        <p className="text-[21px] font-extrabold leading-none" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Arbor</p>
       </div>
 
       {/* Child profile card */}

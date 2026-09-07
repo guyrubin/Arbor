@@ -1,6 +1,9 @@
 {
   "name": "Arbor",
+  "version": "0.0.0",
   "description": "An AI-powered longitudinal child-development and parent-support platform from birth to age 12.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

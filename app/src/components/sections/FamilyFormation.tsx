@@ -3,6 +3,8 @@ import { motion } from "motion/react";
 import Icon from "../ui/Icon";
 import { PageHeader, SectionCard, cardCls, IconBadge, type PastelKey } from "../ui/kit";
 import { useLanguage } from "../../context/LanguageContext";
+import { useArbor } from "../../context/ArborContext";
+import { useToast } from "../../context/ToastContext";
 import { FAMILY_RITUALS, type FamilyRitual } from "../../lib/familyRituals";
 import { initialCharterValues, saveFamilyCharter } from "../../lib/familyCharter";
 import type { FrameId } from "../../lib/masterclasses";
@@ -35,6 +37,12 @@ const FRAME_TONE: Record<FrameId, PastelKey> = {
  *     `initialCharterValues` always returns an array. */
 export default function FamilyFormation() {
   const { t, aiLang, uiLang } = useLanguage();
+  // LC-22: the rituals were read-only prose — four repeatable practices with
+  // no way to actually start one. "Start" accepts the ritual's FIRST step
+  // into today through the existing action loop (the same seam the Learn
+  // reader's "Add to today" uses), so the practice reaches the day.
+  const { acceptTodayAction, actionLoop } = useArbor();
+  const { toast } = useToast();
   const he = aiLang === "he";
   const [values, setValues] = useState<string[]>(() => initialCharterValues(undefined, uiLang));
   const [input, setInput] = useState("");
@@ -44,6 +52,17 @@ export default function FamilyFormation() {
   const commit = (next: string[]) => setValues(saveFamilyCharter(next));
   const add = () => { const v = input.trim(); if (v && !values.includes(v)) { commit([...values, v]); setInput(""); } };
   const remove = (v: string) => commit(values.filter((x) => x !== v));
+
+  /** The ritual's first step, in the family's language — the thing to do next. */
+  const firstStep = (r: FamilyRitual) => ((he ? r.stepsHe : r.steps)[0] ?? "").trim();
+  const ritualStarted = (r: FamilyRitual) =>
+    actionLoop.some((a) => a.source === "family-ritual" && a.recommendation === firstStep(r));
+  const startRitual = (r: FamilyRitual) => {
+    const step = firstStep(r);
+    if (!step || ritualStarted(r)) return;
+    acceptTodayAction(step, "tiny", "family-ritual");
+    toast(t("elev.learnCare.ritual.added"), "success");
+  };
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
@@ -80,7 +99,12 @@ export default function FamilyFormation() {
             const isOpen = openId === r.id;
             return (
               <div key={r.id} className={`${cardCls} p-5`}>
-                <button onClick={() => setOpenId(isOpen ? null : r.id)} className="w-full flex items-start gap-4 text-start">
+                <button
+                  onClick={() => setOpenId(isOpen ? null : r.id)}
+                  aria-expanded={isOpen}
+                  aria-controls={`ritual-${r.id}`}
+                  className="w-full flex items-start gap-4 text-start"
+                >
                   <IconBadge tone={FRAME_TONE[r.frame]}><Icon name={glyph} size={20} /></IconBadge>
                   <div className="min-w-0 flex-1">
                     <h3 className="text-[15px] font-extrabold flex items-center justify-between gap-2" dir="auto" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
@@ -93,7 +117,7 @@ export default function FamilyFormation() {
                 </button>
 
                 {isOpen && (
-                  <div className="mt-4 pt-4 space-y-3" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
+                  <div id={`ritual-${r.id}`} className="mt-4 pt-4 space-y-3" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
                     <ol className="space-y-2">
                       {(he ? r.stepsHe : r.steps).map((s, i) => (
                         <li key={i} className="flex items-start gap-2.5 text-[13px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink-soft)" }}>
@@ -106,6 +130,18 @@ export default function FamilyFormation() {
                       <p className="text-[10.5px] uppercase tracking-widest font-bold mb-1" style={{ color: "var(--arbor-green-ink)" }}>{he ? "למה זה חשוב" : "Why it matters"}</p>
                       <p className="text-[12.5px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}>{he ? r.whyHe : r.why}</p>
                     </div>
+                    {/* LC-22 — the one move this surface was missing. Capacity
+                        "tiny": a first step is meant to be doable tonight. */}
+                    <button
+                      onClick={() => startRitual(r)}
+                      disabled={ritualStarted(r)}
+                      data-testid={`ritual-start-${r.id}`}
+                      className="inline-flex items-center gap-1.5 font-bold text-[13px] rounded-xl px-4 min-h-11 transition active:scale-[0.98] focus:outline-none focus-visible:ring-2 disabled:opacity-70"
+                      style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}
+                    >
+                      <Icon name={ritualStarted(r) ? "check_circle" : "add_task"} size={16} fill={ritualStarted(r) ? 1 : 0} />
+                      {ritualStarted(r) ? t("elev.learnCare.ritual.started") : t("elev.learnCare.ritual.start")}
+                    </button>
                   </div>
                 )}
               </div>

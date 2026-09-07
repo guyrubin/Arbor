@@ -202,7 +202,12 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
         <PageHeader eyebrow={t("elev.careNet.eyebrow")} title={t("sec.findpro.title")} subtitle={t("sec.findpro.sub", { name: childProfile.name.split(" ")[0] })} />
       )}
 
-      {/* Search + filters */}
+      {/* LC-16 — Guy #6: the directory is empty (`ARBOR_PROFESSIONALS = []`
+          and the API returns nothing), and a search box plus twenty filter
+          controls over nothing is a promise the product cannot keep. The whole
+          search card is withheld until there is something to search; it returns
+          the moment the directory has a single entry. */}
+      {pros.length > 0 && (
       <div className={`${cardCls} p-5 space-y-4`}>
         <div className="flex items-center gap-3 rounded-2xl px-4 py-3" style={{ background: "var(--arbor-paper-deep)" }}>
           <Icon name="search" size={18} style={{ color: "var(--arbor-muted)" }} />
@@ -234,6 +239,7 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
           ))}
         </div>
       </div>
+      )}
 
       {/* Curated results */}
       {results.length === 0 ? (

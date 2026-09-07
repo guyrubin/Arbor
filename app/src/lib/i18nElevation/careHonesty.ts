@@ -44,6 +44,11 @@ export const en: Record<string, string> = {
   "elev.carehonesty.pro.verified": "Verified by Arbor",
   "elev.learnCare.receipt.clientDocs": "Records removed from this device",
   "elev.learnCare.saved.browse": "Browse picks for {name}",
+  "elev.learnCare.ritual.start": "Start tonight",
+  "elev.learnCare.ritual.started": "On today’s list",
+  "elev.learnCare.ritual.added": "Added to today — the first step only.",
+  "elev.learnCare.trusted.send": "Send to someone you trust",
+  "elev.learnCare.trusted.subject": "About {name} — context for our conversation",
   // ── Builder G · item 8 — the consult PACKET's own scaffold ────────────────
   // serializePacket used to hardcode English headings, so a gan teacher opened
   // a Hebrew family's packet and read an English skeleton.
@@ -136,6 +141,11 @@ export const he: Record<string, string> = {
   "elev.carehonesty.pro.verified": "מאומת על ידי ארבור",
   "elev.learnCare.receipt.clientDocs": "רשומות שנמחקו מהמכשיר הזה",
   "elev.learnCare.saved.browse": "לעיין בהמלצות עבור {name}",
+  "elev.learnCare.ritual.start": "להתחיל הערב",
+  "elev.learnCare.ritual.started": "ברשימה של היום",
+  "elev.learnCare.ritual.added": "נוסף להיום — הצעד הראשון בלבד.",
+  "elev.learnCare.trusted.send": "לשלוח למישהו שאתם סומכים עליו",
+  "elev.learnCare.trusted.subject": "על {name} — הקשר לשיחה שלנו",
   // ── Builder G · item 8 — the consult PACKET's own scaffold ────────────────
   "elev.packet.header": "{name} — הקשר לשיחה שלנו",
   "elev.packet.prepared": "הוכן ב-{date} דרך ארבור. ההורים בחרו מה נכלל; זהו תיאור, לא הערכה מקצועית.",

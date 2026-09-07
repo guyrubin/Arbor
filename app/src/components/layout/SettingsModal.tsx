@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Icon } from "../ui/Icon";
+import metadata from "../../../metadata.json";
 import { Modal } from "../ui/Modal";
 import AdminDashboard from "./AdminDashboard";
 import ParentalGatePanel from "./ParentalGatePanel";
@@ -391,6 +392,22 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
           >
             {t("sci.settings.open")}
           </button>
+        </Row>
+
+        {/* MOB-20: Settings had no version and no way to reach a human — the
+            two things a parent needs when something is wrong and they are
+            about to write to us. `hello@arbor.app` is the address the app
+            already gives (auth.accessFail, EN+HE); the version is declared once
+            in metadata.json. */}
+        <Row icon={<Icon name="info" size={18} />} title={t("elev.accountSettings.about.title")} sub={t("elev.accountSettings.about.sub", { version: metadata.version })}>
+          <a
+            href="mailto:hello@arbor.app"
+            data-testid="settings-support-link"
+            className="inline-flex items-center text-xs font-bold rounded-xl px-3 min-h-11"
+            style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}
+          >
+            {t("elev.accountSettings.about.contact")}
+          </a>
         </Row>
 
         {/* Data & privacy → profile editor (export / delete live there) */}
