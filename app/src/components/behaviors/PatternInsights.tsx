@@ -4,6 +4,7 @@ import { BehaviorLog } from "../../types";
 import { timeBand } from "../../lib/behaviorUtils";
 import { useLanguage } from "../../context/LanguageContext";
 import { PASTEL, type PastelKey } from "../ui/kit";
+import { contextLabel } from "./contextLabel";
 
 // Canonical day-of-week keys (getDay() index → i18n key). Grouping stays on the
 // stable key; the visible label is threaded through t() for He/En + RTL.
@@ -52,13 +53,21 @@ export default function PatternInsights({ logs }: { logs: BehaviorLog[] }) {
   // Threaded through t(): day key → localized weekday, time-band key → localized band.
   const dayLabel = insights.day ? t(`beh.day.${insights.day.label}`) : "";
   const timeLabel = insights.time ? t(`beh.time.${insights.time.label}`) : "";
+  // OBJ-BEH-04: the place is a stored English enum. It used to be lowercased
+  // and dropped into the sentence raw, so a Hebrew screen read "…מתרכזים
+  // ב-home". contextLabel localizes the four known values and bidi-isolates
+  // anything else, so a legacy free-text place cannot reorder the sentence.
+  const placeLabel = insights.context ? contextLabel(insights.context.label, t) : "";
+  // OBJ-BEH-04: "{count} moments noted" printed "1 moments". One/many key
+  // pairs — Hebrew has no suffix rule an English default could supply.
+  const noted = (count: number) =>
+    t(`elev.closeloop.pattern.noted.${count === 1 ? "one" : "many"}`, { count });
 
   const headline =
     insights.context && insights.day
-      ? t("beh.pattern.headline", {
-          place: insights.context.label.toLowerCase(),
-          day: dayLabel,
-        })
+      // OBJ-BEH-04: "Hard moments cluster at {place} on {day}" reads as a
+      // verdict on the child's week. This states what the PARENT logged.
+      ? t("elev.closeloop.pattern.headline", { place: placeLabel, day: dayLabel })
       : t("beh.pattern.empty");
 
   const Row = ({
@@ -86,8 +95,8 @@ export default function PatternInsights({ logs }: { logs: BehaviorLog[] }) {
           <Icon name={iconName} size={20} fill={fill} />
         </span>
         <div className="min-w-0 flex-1 text-start">
-          <div className="text-sm font-bold truncate" style={{ color: "var(--arbor-ink)" }}>{value}</div>
-          <div className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>{label} · {sub}</div>
+          <div className="text-sm font-bold truncate" style={{ color: "var(--arbor-ink)" }} dir="auto">{value}</div>
+          <div className="text-[11px]" style={{ color: "var(--arbor-muted)" }} dir="auto">{label} · {sub}</div>
         </div>
       </div>
     );
@@ -99,18 +108,18 @@ export default function PatternInsights({ logs }: { logs: BehaviorLog[] }) {
         <Icon name="monitoring" size={18} style={{ color: "var(--arbor-green-ink)" }} />
         <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("beh.pattern.title")}</span>
       </div>
-      <p className="text-base leading-snug" style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink)" }}>{headline}</p>
+      <p className="text-base leading-snug" style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink)" }} dir="auto">{headline}</p>
       <div className="space-y-3">
         {insights.context && (
-          <Row iconName="place" tone="sky" label={t("beh.pattern.place")} value={insights.context.label} sub={t("beh.pattern.placeSub", { count: insights.context.n })} />
+          <Row iconName="place" tone="sky" label={t("elev.closeloop.pattern.place")} value={placeLabel} sub={noted(insights.context.n)} />
         )}
         {insights.day && (
-          <Row iconName="calendar_month" tone="lav" label={t("beh.pattern.day")} value={dayLabel} sub={t("beh.pattern.daySub", { count: insights.day.n })} />
+          <Row iconName="calendar_month" tone="lav" label={t("elev.closeloop.pattern.day")} value={dayLabel} sub={noted(insights.day.n)} />
         )}
         {insights.time && (
-          <Row iconName="schedule" tone="yellow" label={t("beh.pattern.time")} value={timeLabel} sub={t("beh.pattern.timeSub", { count: insights.time.n })} />
+          <Row iconName="schedule" tone="yellow" label={t("elev.closeloop.pattern.time")} value={timeLabel} sub={noted(insights.time.n)} />
         )}
-        <Row iconName="check_circle" fill={1} tone="mint" label={t("beh.pattern.resolved")} value={`${insights.resolved}/${insights.total}`} sub={t("beh.pattern.resolvedSub", { count: insights.resolved, total: insights.total })} />
+        <Row iconName="check_circle" fill={1} tone="mint" label={t("beh.pattern.resolved")} value={`${insights.resolved}/${insights.total}`} sub={t(`elev.closeloop.pattern.resolvedSub.${insights.resolved === 1 ? "one" : "many"}`, { count: insights.resolved, total: insights.total })} />
       </div>
     </div>
   );

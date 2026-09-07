@@ -97,6 +97,26 @@ export const en: Record<string, string> = {
   //    it can never again name a field that is not on the screen.
   "elev.closeloop.validate.one": "Add “{happened}” to save this.",
   "elev.closeloop.validate.both": "Add “{happened}” and “{tried}” to save this.",
+
+  // ── Builder E2 · OBJ-BEH-04 / TJB-22: where a moment happened. The stored
+  //    enum stays English (it is the filter key); only the display localizes.
+  "elev.closeloop.ctx.home": "Home",
+  "elev.closeloop.ctx.school": "School",
+  "elev.closeloop.ctx.transit": "Out and about",
+  "elev.closeloop.ctx.public": "In public",
+
+  // ── OBJ-BEH-04: the patterns card. "Toughest day / place / time" grades the
+  //    child's week; these are counts of what the PARENT logged, so the label
+  //    says what it counts. Singular and plural are separate keys ("1 moments"
+  //    was the defect).
+  "elev.closeloop.pattern.place": "Most-logged place",
+  "elev.closeloop.pattern.day": "Most-logged day",
+  "elev.closeloop.pattern.time": "Most-logged time",
+  "elev.closeloop.pattern.headline": "Most of what you logged happened at {place}, on {day}.",
+  "elev.closeloop.pattern.noted.one": "1 moment noted",
+  "elev.closeloop.pattern.noted.many": "{count} moments noted",
+  "elev.closeloop.pattern.resolvedSub.one": "1 of {total} moments",
+  "elev.closeloop.pattern.resolvedSub.many": "{count} of {total} moments",
 };
 
 export const he: Record<string, string> = {
@@ -154,4 +174,19 @@ export const he: Record<string, string> = {
   // ── Builder E2 · OBJ-BEH-02
   "elev.closeloop.validate.one": "מלאו את “{happened}” כדי לשמור.",
   "elev.closeloop.validate.both": "מלאו את “{happened}” וגם את “{tried}” כדי לשמור.",
+
+  // ── Builder E2 · OBJ-BEH-04 / TJB-22
+  "elev.closeloop.ctx.home": "בבית",
+  "elev.closeloop.ctx.school": "בגן או בבית הספר",
+  "elev.closeloop.ctx.transit": "בדרכים",
+  "elev.closeloop.ctx.public": "במקום ציבורי",
+
+  "elev.closeloop.pattern.place": "המקום שתיעדתם הכי הרבה",
+  "elev.closeloop.pattern.day": "היום שתיעדתם הכי הרבה",
+  "elev.closeloop.pattern.time": "השעה שתיעדתם הכי הרבה",
+  "elev.closeloop.pattern.headline": "רוב מה שתיעדתם קרה {place}, בימי {day}.",
+  "elev.closeloop.pattern.noted.one": "רגע אחד תועד",
+  "elev.closeloop.pattern.noted.many": "{count} רגעים תועדו",
+  "elev.closeloop.pattern.resolvedSub.one": "רגע אחד מתוך {total}",
+  "elev.closeloop.pattern.resolvedSub.many": "{count} מתוך {total} רגעים",
 };

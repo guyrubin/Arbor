@@ -30,6 +30,9 @@ import { useAuth } from "../../context/AuthContext";
 import { weekStartKey, escapeHtml } from "../../lib/behaviorUtils";
 import { BehaviorContext, BehaviorLog } from "../../types";
 import { clearCaptureCue, useCaptureCue } from "../../lib/captureCue";
+import { fmtDay, fmtDayShort, fmtDayTime } from "../../lib/formatDate";
+import { contextLabel } from "../behaviors/contextLabel";
+import type { UiLang } from "../../lib/i18n";
 import { patternEchoFor } from "../../lib/patternEcho";
 
 const CONTEXTS: BehaviorContext[] = ["Home", "School", "Transit", "Public"];
@@ -68,12 +71,15 @@ function domainKeyOf(type: string): string {
   return TYPE_DOMAIN_KEY[type] ?? "beh.domain.regulation";
 }
 
-function weekLabel(key: string): string {
+/** TJB-22: the week header used a bare `toLocaleDateString(undefined, …)`, so
+ *  it followed the BROWSER's locale — a Hebrew app on an English machine
+ *  printed "Sep 1 – Sep 7" above Hebrew rows. Driven by the app's language
+ *  now, through the one date seam (lib/formatDate). */
+function weekLabel(key: string, lang: UiLang): string {
   const start = new Date(key);
   const end = new Date(start);
   end.setDate(end.getDate() + 6);
-  const fmt = (d: Date) => d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-  return `${fmt(start)} – ${fmt(end)}`;
+  return `${fmtDayShort(start, lang)} – ${fmtDayShort(end, lang)}`;
 }
 
 /** 5-dot intensity meter — dots filled by the type tone up to `intensity`,
@@ -144,7 +150,7 @@ export default function BehaviorsTab() {
   // moments it read and the day it was generated. Never a score.
   const analysisWhy = t("beh.analysis.why", {
     n: behaviorAnalysisRecord?.inputs?.logCount ?? behaviorLogs.length,
-    date: new Date(behaviorAnalysisRecord?.createdAt ?? Date.now()).toLocaleDateString(uiLang === "he" ? "he-IL" : undefined, { month: "short", day: "numeric" }),
+    date: fmtDay(behaviorAnalysisRecord?.createdAt ?? Date.now(), uiLang),
   });
   // COACH-5: quick-capture copy lives in i18n.ts (beh.capture.*), never an
   // inline per-language ternary table — keys stay visible to i18n tooling.
@@ -494,7 +500,7 @@ export default function BehaviorsTab() {
     const rows = filtered
       .map(
         (l) =>
-          `<tr><td>${new Date(l.timestamp).toLocaleString()}</td><td>${escapeHtml(l.behaviorType)}</td><td>${l.context || ""}</td><td>${l.intensity}/5</td><td>${l.durationMinutes}m</td><td>${l.resolved ? t("beh.resolved") : t("beh.open")}</td><td>${escapeHtml(l.trigger)}</td><td>${escapeHtml(l.response ?? "")}</td></tr>`
+          `<tr><td>${escapeHtml(fmtDayTime(l.timestamp, uiLang))}</td><td>${escapeHtml(l.behaviorType)}</td><td>${l.context || ""}</td><td>${l.intensity}/5</td><td>${l.durationMinutes}m</td><td>${l.resolved ? t("beh.resolved") : t("beh.open")}</td><td>${escapeHtml(l.trigger)}</td><td>${escapeHtml(l.response ?? "")}</td></tr>`
       )
       .join("");
     // print stylesheet — intentional literals (printed report has its own static
@@ -503,7 +509,7 @@ export default function BehaviorsTab() {
       <style>body{font-family:Georgia,serif;color:#14160f;padding:32px} h1{font-size:20px} table{width:100%;border-collapse:collapse;font-size:11px;margin-top:16px} th,td{border:1px solid #ccc;padding:6px;text-align:left;vertical-align:top} th{background:#f0ece0}</style>
       </head><body>
       <h1>${t("beh.pdf.heading")}</h1>
-      <p>${t("beh.pdf.generated", { date: new Date().toLocaleString(), n: filtered.length })}</p>
+      <p>${t("beh.pdf.generated", { date: fmtDayTime(Date.now(), uiLang), n: filtered.length })}</p>
       <table><thead><tr><th>${t("beh.pdf.col.when")}</th><th>${t("beh.pdf.col.type")}</th><th>${t("beh.pdf.col.where")}</th><th>${t("beh.pdf.col.intensity")}</th><th>${t("beh.pdf.col.duration")}</th><th>${t("beh.pdf.col.status")}</th><th>${t("beh.triggerField")}</th><th>${t("beh.parentAction")}</th></tr></thead><tbody>${rows}</tbody></table>
       </body></html>`;
     const w = window.open("", "_blank");
@@ -945,7 +951,7 @@ export default function BehaviorsTab() {
                       className="w-full flex items-center justify-between text-[11px] font-bold rounded-lg px-3 py-2"
                       style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}
                     >
-                      <span>{t("beh.weekOf")} {weekLabel(weekKey)} · {logs.length} {logs.length === 1 ? t("beh.entry") : t("beh.entries")}</span>
+                      <span>{t("beh.weekOf")} {weekLabel(weekKey, uiLang)} · {logs.length} {logs.length === 1 ? t("beh.entry") : t("beh.entries")}</span>
                       <Icon name="expand_more" size={18} className={`transition-transform ${collapsed ? "-rotate-90" : ""}`} />
                     </button>
 
@@ -973,7 +979,7 @@ export default function BehaviorsTab() {
                                         legacy free labels render as-is so old logs never blank out. */}
                                     <div className="font-bold text-sm truncate" style={{ color: "var(--arbor-ink)" }}>{behaviorTypeLabel(log.behaviorType, t)}</div>
                                     <div className="text-[10px] mt-0.5 flex items-center gap-2" style={{ color: "var(--arbor-muted)" }}>
-                                      <span className="truncate">{log.context ? `${log.context} · ` : ""}{new Date(log.timestamp).toLocaleString()}</span>
+                                      <span className="truncate">{log.context ? `${contextLabel(log.context, t)} · ` : ""}{fmtDayTime(log.timestamp, uiLang)}</span>
                                     </div>
                                   </div>
                                   {isIncidentType(log.behaviorType) && <span className="hidden min-[520px]:inline-flex"><IntensityMeter intensity={log.intensity} tone={tv.tone} /></span>}
@@ -992,7 +998,7 @@ export default function BehaviorsTab() {
                                         {/* domain + trigger chips */}
                                         <div className="flex flex-wrap items-center gap-1.5">
                                           <span className="inline-flex items-center px-2.5 py-1 rounded-full font-bold text-[10px]" style={{ background: tonePal.soft, color: tonePal.ink }}>{t(domainKeyOf(log.behaviorType))}</span>
-                                          {log.context && <span className="inline-flex items-center px-2.5 py-1 rounded-full font-bold text-[10px]" style={{ background: T.paperElevated, color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>{log.context}</span>}
+                                          {log.context && <span className="inline-flex items-center px-2.5 py-1 rounded-full font-bold text-[10px]" style={{ background: T.paperElevated, color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }} dir="auto">{contextLabel(log.context, t)}</span>}
                                           <span className="inline-flex items-center px-2.5 py-1 rounded-full font-bold text-[10px]" style={{ background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" }}>{log.durationMinutes}m</span>
                                           {isIncidentType(log.behaviorType) && <span className="inline-flex items-center px-2.5 py-1 rounded-full font-extrabold text-[10px]" style={{ background: "var(--arbor-yellow-soft)", color: "var(--arbor-yellow-ink)" }}>{t("beh.level", { n: log.intensity })}</span>}
                                         </div>

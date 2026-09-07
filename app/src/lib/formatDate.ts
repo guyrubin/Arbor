@@ -54,3 +54,30 @@ export const fmtDayLong = (input: DateInput, lang: UiLang): string =>
 /** Month + year — "July 2026" / "יולי 2026". */
 export const fmtMonthYear = (input: DateInput, lang: UiLang): string =>
   fmt(input, lang, { month: "long", year: "numeric" });
+
+/**
+ * TJB-22 — day + time in one string ("Jul 9, 2026, 4:15 PM" / "9 ביול׳ 2026,
+ * 16:15"). The Behaviors list, its PDF export and the week headers rendered
+ * bare `toLocaleString()` / `toLocaleDateString(undefined, …)`, so the SAME
+ * screen showed the app's language and the machine's date format side by side
+ * — and an ambiguous numeric date at that.
+ */
+export const fmtDayTime = (input: DateInput, lang: UiLang): string => {
+  const d = toDate(input);
+  if (!d) return "";
+  const options: Intl.DateTimeFormatOptions = {
+    day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit",
+  };
+  let s: string;
+  try {
+    s = d.toLocaleString(LOCALES[lang] ?? LOCALES.en, options);
+  } catch {
+    s = d.toLocaleString(undefined, options);
+  }
+  return isolate(s);
+};
+
+/** Compact day WITHOUT a year — "Jul 9" / "9 ביול׳". For a within-range label
+ *  (a week header) where the year is carried by the surrounding context. */
+export const fmtDayShort = (input: DateInput, lang: UiLang): string =>
+  fmt(input, lang, { day: "numeric", month: "short" });
