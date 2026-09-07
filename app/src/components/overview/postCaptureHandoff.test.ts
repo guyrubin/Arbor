@@ -114,10 +114,16 @@ describe("AI-CAP-7 — the strip itself: one global render, dismissible, calm re
     expect(count(shell, /<PostCaptureCoachStrip \/>/g)).toBe(1);
   });
 
-  it("CTA accepts (prefill via seam), X dismisses — and the primary CTA is the green gradient token", () => {
+  it("CTA accepts (prefill via seam), X dismisses — and the CTA is a token outline, never the primary gradient", () => {
     expect(strip).toMatch(/onClick=\{acceptPostCaptureCoach\}/);
     expect(strip).toMatch(/onClick=\{dismissPostCaptureCoach\}/);
-    expect(strip).toMatch(/--arbor-gradient-primary/);
+    // OBJ-TODAY-01: this strip is mounted GLOBALLY from Shell, so it can
+    // appear over any hub — including Today, whose anchor already owns the one
+    // gradient-primary CTA (Product principle 3). An offer to keep talking is
+    // secondary, so it is outline. The allow-list guard that enforces this
+    // repo-wide is components/primaryMove.gradient.test.ts.
+    expect(strip).not.toMatch(/--arbor-gradient-primary/);
+    expect(strip).toMatch(/border: "1px solid var\(--arbor-green-ink\)"/);
     // tokens only — no hex literals in the strip
     expect(strip).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
     // non-blocking: fixed strip under MobileNav (z-30 < nav z-40), RTL-safe via dir=auto
