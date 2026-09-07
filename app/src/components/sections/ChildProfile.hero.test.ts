@@ -56,9 +56,17 @@ describe("GP-15 — the child count is the family's real count", () => {
   });
 });
 
-describe("GP-26 / IA-09 — the strengths leaf has one live door from the Development Profile", () => {
-  it("chapter 4 links to #/strengths", () => {
-    expect(src).toMatch(/setActiveTab\("strengths"\)/);
-    expect(src).toContain('t("elev.growthTruth.profile.openStrengths")');
+describe("GP-26 / IA-09 — the strengths leaf is retired into Profile chapter 4", () => {
+  // This block previously asserted the interim fix: give the orphaned
+  // `#/strengths` leaf its one missing door. The item's actual decision is the
+  // opposite and supersedes it — the leaf WAS chapter 4, and its only entry
+  // point was a link inside that same chapter, so the door led out of a room
+  // and back into it. The hash now resolves to this hub
+  // (lib/routes.ts RETIRED_ROUTES, covered by routes.test.ts), and the content
+  // assertions live in components/sections/profileMemoryOrder.test.ts.
+  it("chapter 4 owns the content, and no longer links away to a copy of itself", () => {
+    expect(src).not.toMatch(/setActiveTab\("strengths"\)/);
+    expect(src).toContain('t("cp.ch.strengths")');
+    expect(src).toContain('t("cp.ch.support")');
   });
 });

@@ -106,9 +106,36 @@ export const HASH_ALIASES: Readonly<Record<string, ActiveTab>> = {
  * stays unknown. Only the alias lookup is case-insensitive, so `#/Today` and
  * `#/today` behave the same for a human-typed label.
  */
+/**
+ * GP-26 / IA-09 — RETIRED ROUTES.
+ *
+ * `#/strengths` was a declared route whose whole content is Profile chapter 4
+ * ("Strengths" + "Where to support"), and its ONLY entry point was a 16 px
+ * link inside that same chapter — a door out of a room that led back into it.
+ * The leaf also carried its own hard-coded English titles, so the duplicate
+ * was drifting as well as redundant.
+ *
+ * A retired route is NOT deleted from ROUTE_IDS. The id is persisted in
+ * `arbor.activeTab` and baked into every deep link ever shared, and the route
+ * table is the type that drives Shell's registry, the module-budget floors and
+ * the navigation guard — removing the id would rewrite all four for a leaf
+ * nobody can reach. Instead the HASH stops resolving to it: the id keeps its
+ * seat in the table, and `#/strengths` lands on the hub that owns the content.
+ *
+ * Checked BEFORE the exact-id match, which is the one place an alias may
+ * outrank a route id — hence its own map rather than an entry in HASH_ALIASES
+ * (whose invariant is that a real route always wins).
+ */
+export const RETIRED_ROUTES: Readonly<Record<string, ActiveTab>> = {
+  strengths: "profile",
+};
+
 export function resolveRouteId(raw: string): ActiveTab | null {
   const key = raw.replace(/^#\/?/, "").replace(/\/+$/, "").trim();
   if (!key) return null;
+  // A retired hash outranks its own (still-typed) route id — see above.
+  const retired = RETIRED_ROUTES[key.toLowerCase()];
+  if (retired) return retired;
   if (ROUTE_ID_SET.has(key)) return key as ActiveTab;
   return HASH_ALIASES[key.toLowerCase()] ?? null;
 }
@@ -142,7 +169,10 @@ export const FALLBACK_ROUTE: ActiveTab = "overview";
 export function resolveHash(raw: string, stored?: string | null): HashResolution {
   const key = raw.replace(/^#\/?/, "").replace(/\/+$/, "").trim();
   if (!key) {
-    const kept = stored && ROUTE_ID_SET.has(stored) ? (stored as ActiveTab) : FALLBACK_ROUTE;
+    // A parent whose last session ended on a retired leaf is returned to the
+    // hub that absorbed it, not to a screen that no longer has a door.
+    const retiredStore = stored ? RETIRED_ROUTES[stored.toLowerCase()] : undefined;
+    const kept = retiredStore ?? (stored && ROUTE_ID_SET.has(stored) ? (stored as ActiveTab) : FALLBACK_ROUTE);
     return { tab: kept, unknown: false };
   }
   const resolved = resolveRouteId(key);

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ROUTE_IDS, HASH_ALIASES, resolveRouteId } from "./routes";
+import { ROUTE_IDS, HASH_ALIASES, RETIRED_ROUTES, resolveRouteId } from "./routes";
 import { SECTIONS, TAB_SECTION_FALLBACK, primaryTabOf } from "./navigation";
 import { ALL_TABS } from "../context/ArborContext";
 
@@ -82,7 +82,27 @@ describe("hash aliases", () => {
   });
 
   it("real route ids still resolve to themselves, unchanged", () => {
-    for (const id of ROUTE_IDS) expect(resolveRouteId(`#/${id}`)).toBe(id);
+    // GP-26: a RETIRED route keeps its seat in ROUTE_IDS (the id is persisted
+    // and typed) but its hash deliberately no longer resolves to itself. The
+    // exception is the data in RETIRED_ROUTES, never a hole in the loop.
+    for (const id of ROUTE_IDS) {
+      expect(resolveRouteId(`#/${id}`)).toBe(RETIRED_ROUTES[id] ?? id);
+    }
+  });
+
+  it("a retired route's hash lands on the hub that absorbed it", () => {
+    expect(Object.keys(RETIRED_ROUTES).length).toBeGreaterThan(0);
+    for (const [retired, target] of Object.entries(RETIRED_ROUTES)) {
+      // The id is STILL in the table — floors, the Shell registry and the nav
+      // guard all keep working; only the hash moved.
+      expect(ROUTE_IDS as readonly string[]).toContain(retired);
+      expect(ROUTE_IDS as readonly string[]).toContain(target);
+      expect(resolveRouteId(`#/${retired}`)).toBe(target);
+      expect(resolveRouteId(retired.toUpperCase())).toBe(target);
+      // A retired key never shadows a DIFFERENT live route.
+      expect(HASH_ALIASES[retired]).toBeUndefined();
+    }
+    expect(resolveRouteId("#/strengths")).toBe("profile");
   });
 
   it("unknown hashes still fall back exactly as before (null)", () => {

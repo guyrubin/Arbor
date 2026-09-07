@@ -366,9 +366,10 @@ export default function ChildProfile() {
             ))}
             {childProfile.strengths.length === 0 && <li className="text-sm" style={{ color: "var(--arbor-muted)" }}>{t("cp.strengths.empty")}</li>}
           </ul>
-          {/* GP-26 / IA-09: the strengths leaf's ONE live door (it was a
-              declared route with zero entry points). */}
-          <div className="mt-3"><JumpLink onClick={() => setActiveTab("strengths")} color="var(--arbor-green-ink)">{t("elev.growthTruth.profile.openStrengths")}</JumpLink></div>
+          {/* GP-26 / IA-09: the door is gone with the leaf. #/strengths was a
+              duplicate of THIS chapter reachable only from inside it, so the
+              link led out of the content and back to the same content. The
+              hash now resolves to this hub (lib/routes.ts RETIRED_ROUTES). */}
         </SectionCard>
         <SectionCard title={t("cp.ch.support")} icon={<Icon name="eco" size={20} />} tone="coral">
           <ul className="space-y-3">
@@ -440,7 +441,9 @@ export default function ChildProfile() {
         {([
           { tab: "timeline" as const, tone: "sky" as const, icon: <Icon name="route" size={18} />, label: t("cp.footer.story", { name: first }) },
           { tab: "behaviors" as const, tone: "coral" as const, icon: <Icon name="monitoring" size={18} />, label: t("cp.footer.moments") },
-          { tab: "memory" as const, tone: "lav" as const, icon: <Icon name="bookmark" size={18} />, label: t("cp.footer.memory") },
+          // OBJ-PROFILE-03: the memory door was rendered twice on one screen —
+          // chapter 6 IS "what Arbor remembers" and carries its own review
+          // link, so this footer tile was a second door to the same room.
         ]).map((l) => (
           <button key={l.tab} onClick={() => setActiveTab(l.tab)} className={`${cardCls} min-h-11 p-4 text-start flex items-center gap-3 transition motion-safe:hover:-translate-y-0.5`}>
             <IconBadge tone={l.tone}>{l.icon}</IconBadge>

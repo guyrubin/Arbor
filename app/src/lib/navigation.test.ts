@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import { SECTIONS, sectionForTab, primaryTabOf, subTabsForSection, hubTabsForSection } from "./navigation";
-import { resolveHash, FALLBACK_ROUTE } from "./routes";
+import { resolveHash, FALLBACK_ROUTE, RETIRED_ROUTES } from "./routes";
 import { ALL_TABS } from "../context/ArborContext";
 
 /** Structural guard for the Heartwood D2+D3 TEN-hub information architecture —
@@ -250,7 +250,15 @@ describe("IA-13 · hash resolution has three cases, not two", () => {
   });
 
   it("every real route and every alias still resolves unflagged", () => {
-    for (const tab of ALL_TABS) expect(resolveHash(`#/${tab}`, "reports")).toEqual({ tab, unknown: false });
+    for (const tab of ALL_TABS) {
+      // GP-26: a retired route resolves to its successor, never to `unknown`.
+      const expected = RETIRED_ROUTES[tab] ?? tab;
+      expect(resolveHash(`#/${tab}`, "reports")).toEqual({ tab: expected, unknown: false });
+    }
+    expect(resolveHash("#/strengths", "reports")).toEqual({ tab: "profile", unknown: false });
+    // ...and a parent whose last session ended on the retired leaf is returned
+    // to the hub that absorbed it, not to a screen with no door.
+    expect(resolveHash("", "strengths")).toEqual({ tab: "profile", unknown: false });
     expect(resolveHash("#/today", "reports")).toEqual({ tab: "overview", unknown: false });
     expect(resolveHash("#/Growth", "reports")).toEqual({ tab: "development", unknown: false });
   });

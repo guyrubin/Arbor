@@ -36,7 +36,7 @@ const pick = (he: boolean, txt: { en: string; he: string }) => (he ? txt.he : tx
  *  append-only memory service (/api/memory). A core moat: source-linked,
  *  time-stamped, editable via approve/forget, time-boxed when sensitive. */
 export default function ChildMemory() {
-  const { childProfile, approvedMemoryItems, pendingMemoryItems, handleMemoryDecision, isMemoryUpdating, memoryReviewError, retryMemoryReview, savedLearnIds, requestLearnRead } = useArbor();
+  const { childProfile, approvedMemoryItems, pendingMemoryItems, handleMemoryDecision, isMemoryUpdating, memoryReviewError, memoryReviewErrorKind, retryMemoryReview, savedLearnIds, requestLearnRead } = useArbor();
   const { t, aiLang } = useLanguage();
   const he = aiLang === "he";
   const first = childProfile.name.split(" ")[0];
@@ -57,19 +57,6 @@ export default function ChildMemory() {
       <TrustSafetyBar note={t("elev.childmem.trustNote")} />
       <ContentWhyLine why={t("elev.waveR.why.memory")} trustLink surface="child-memory" />
 
-      {/* ENG-13 · the week-1 "first", at a threshold of ONE. Renders at most
-          once ever per kind and returns null the rest of the time. */}
-      <FirstsMoment />
-
-      {/* ENG-14(a) · what Arbor knows, as a COUNT — answerable on day 0 from
-          the profile alone, which is exactly what nothing else in the app
-          could do. Never a completeness score: see lib/keepsakeCounts. */}
-      <ArborKnowsTile />
-
-      {/* ENG-14(b) · the month keepsake, offered once on the first open of a
-          new month and never for a month the family is still living in. */}
-      <MonthKeepsake />
-
       {/* OWN-1: a failed ledger read renders an honest error + retry card (the
           TrustedSharing twin) INSTEAD of the pending/approved lists — an
           unreadable ledger must never masquerade as "No memory yet". */}
@@ -77,13 +64,21 @@ export default function ChildMemory() {
         <ErrorState
           surface="child-memory"
           headline={t("err.memory.title", { name: first })}
-          body={t("err.memory.body")}
+          // OBJ-PROFILE-04 residue: a 429 is a queue on our side, not the
+          // parent's wifi, and "Something interrupted the connection" blamed
+          // them for it. The back-off + classification landed in ff5bebaf and
+          // exposed memoryReviewErrorKind; this is the surface reading it.
+          body={memoryReviewErrorKind === "rate_limited" ? t("elev.memory.catchingUp") : t("err.memory.body")}
           onRetry={retryMemoryReview}
           retryLabel={t("err.retry")}
         />
       )}
 
-      {/* Pending review first — this is the parent's action queue */}
+      {/* The parent's action queue, and this hub's primary move. It used to
+          sit BELOW the firsts moment, the knows-count tile and the month
+          keepsake, which put Approve at roughly y 1100 on a phone — three
+          celebrations ahead of the decision the parent came to make. The
+          celebrations still render; they render after. */}
       {!memoryReviewError && pendingMemoryItems.length > 0 && (
         <SectionCard title={t("elev.childmem.pending.title", { count: pendingMemoryItems.length })} icon={<Icon name="verified_user" size={20} />} tone="yellow">
           <div className="space-y-3">
@@ -100,6 +95,19 @@ export default function ChildMemory() {
           </div>
         </SectionCard>
       )}
+
+      {/* ENG-13 · the week-1 "first", at a threshold of ONE. Renders at most
+          once ever per kind and returns null the rest of the time. */}
+      <FirstsMoment />
+
+      {/* ENG-14(a) · what Arbor knows, as a COUNT — answerable on day 0 from
+          the profile alone, which is exactly what nothing else in the app
+          could do. Never a completeness score: see lib/keepsakeCounts. */}
+      <ArborKnowsTile />
+
+      {/* ENG-14(b) · the month keepsake, offered once on the first open of a
+          new month and never for a month the family is still living in. */}
+      <MonthKeepsake />
 
       {!memoryReviewError && (
       <SectionCard title={t("elev.childmem.approved.title")} icon={<Icon name="bookmark" size={20} />} tone="lav">
