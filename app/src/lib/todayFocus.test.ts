@@ -296,10 +296,25 @@ describe("Today hero asset budget (CODEX-3)", () => {
     expect(fs.statSync(webp).size).toBeLessThanOrEqual(120 * 1024);
   });
 
-  it("is what TodayRecommendation references", () => {
+  it("TJB-29: the hero fronts THIS child, not the stock photo", () => {
     const src = read("components/overview/TodayRecommendation.tsx");
-    expect(src).toContain("/assets/today/calm-transition-activity.webp");
+    // The asset stays shipped (CODEX-3's size budget above still applies to
+    // it), but the hero no longer renders it: the same picture of somebody
+    // else's child sat on every account, every day, above a step written for
+    // this one. The shared HeroAvatar engine owns identity resolution and the
+    // Sprout fallback, so there is nothing to re-composite here.
+    expect(src).not.toContain("/assets/today/calm-transition-activity.webp");
     expect(src).not.toContain("calm-transition-activity.png");
+    expect(src).toContain('import { HeroAvatar } from "../ui/HeroAvatar"');
+    expect(src).toMatch(/<HeroAvatar[^>]*decorative/);
+    // Parent register: no idle bob on this surface.
+    expect(src).toMatch(/<HeroAvatar[^>]*animate=\{false\}/);
+  });
+
+  it("negative control: the shipped background-image markup fails the new check", () => {
+    const shipped = `<div aria-hidden="true" className="min-h-[132px] bg-cover bg-center" style={{ backgroundImage: "url('/assets/today/calm-transition-activity.webp')" }} />`;
+    expect(shipped).toContain("/assets/today/calm-transition-activity.webp");
+    expect(/<HeroAvatar/.test(shipped)).toBe(false);
   });
 });
 

@@ -117,6 +117,16 @@ export const en: Record<string, string> = {
   "elev.checkin.appetite.poor": "Low",
   "elev.checkin.saved": "Saved for today.",
   "elev.checkin.hint": "Tap to log — kept with today's date.",
+
+  // TJB-28 · the Today receipt's second line, read back from the outcome the
+  // parent just recorded. The claim is backed: `outcome` is written to the
+  // action entry and sent to /api/todays-focus as `lastActionOutcome`.
+  "elev.today.receipt.helped": "You said it helped. That goes into the step Arbor suggests next.",
+  "elev.today.receipt.somewhat": "You said it helped a little. That goes into the step Arbor suggests next.",
+  "elev.today.receipt.notToday": "You said not today. That goes into the step Arbor suggests next — nothing more is asked of you.",
+
+  // TJB-08 · the in-place dictation strip inside QuickLogModal.
+  "elev.ql.voice.stop": "Stop",
 };
 
 export const he: Record<string, string> = {
@@ -193,4 +203,10 @@ export const he: Record<string, string> = {
   "elev.checkin.appetite.poor": "מועט",
   "elev.checkin.saved": "נשמר להיום.",
   "elev.checkin.hint": "הקישו כדי לתעד — נשמר עם התאריך של היום.",
+
+  "elev.today.receipt.helped": "אמרתם שזה עזר. זה נכנס לצעד שארבור תציע בפעם הבאה.",
+  "elev.today.receipt.somewhat": "אמרתם שזה עזר קצת. זה נכנס לצעד שארבור תציע בפעם הבאה.",
+  "elev.today.receipt.notToday": "אמרתם שלא היום. זה נכנס לצעד שארבור תציע בפעם הבאה — ולא נדרש מכם דבר נוסף.",
+
+  "elev.ql.voice.stop": "עצירה",
 };

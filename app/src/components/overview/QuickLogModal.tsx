@@ -1,19 +1,31 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Modal } from "../ui/Modal";
 import ConfirmCaptureReview from "./ConfirmCaptureReview";
 import type { CaptureSource } from "./ConfirmCaptureReview";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
+import type { CaptureMode } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { api, EscalationRequiredError, getAiLanguage } from "../../lib/api";
 import { escalationCategories, renderEscalationMarkdown } from "../../safety/escalation";
 import { BEHAVIOR_TYPES, DEFAULT_BEHAVIOR_TYPE, EXTRACT_CONTEXTS, behaviorTypeLabel, isIncidentType, normalizeExtractedLog, validateLogDraft } from "../../content/behaviorTaxonomy";
 import type { BehaviorContext } from "../../types";
+import { speechSupported, startDictation } from "../../lib/speech";
 
-/** Lightweight behavior log capture that can be opened from anywhere (e.g. Overview). */
-export default function QuickLogModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+/** Lightweight behavior log capture that can be opened from anywhere (e.g. Overview).
+ *
+ *  TJB-08: `mode` lets a caller open the modal ALREADY dictating. Today's mic
+ *  tile used to call `setActiveTab("behaviors")` — the capture executed on a
+ *  different hub, so a parent who tapped "voice" on Today landed on Behaviors
+ *  with the URL changed under them. The dictation seam (lib/speech) and the
+ *  extraction seam (api.extractLog, already used by the typed path below) are
+ *  both reusable here, so voice needs no new capture path and no new screen.
+ *  The photo tile still hands off — see FOLLOW-UPS: `addMoment` in
+ *  ArborContext does not carry `photoAttachment`, so a photo captured through
+ *  the one-field moment form would be silently dropped. */
+export default function QuickLogModal({ open, onClose, mode = "text" }: { open: boolean; onClose: () => void; mode?: CaptureMode }) {
   const {
     newLogType,
     setNewLogType,
@@ -35,7 +47,7 @@ export default function QuickLogModal({ open, onClose }: { open: boolean; onClos
     offerPostCaptureCoach,
   } = useArbor();
   const { toast } = useToast();
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
   const [reviewing, setReviewing] = useState(false);
   // AI-CAP-3: factual provenance of the current draft — 'ai-draft' whenever
   // the extraction seam filled the fields (the review line must never claim
@@ -55,12 +67,20 @@ export default function QuickLogModal({ open, onClose }: { open: boolean; onClos
   // crisis-resources surface (never a toast) and writes ZERO draft fields —
   // the ApiError must not fall through to sentence-into-trigger.
   const [escalationMarkdown, setEscalationMarkdown] = useState<string | null>(null);
+  // TJB-08: dictation state, mirroring BehaviorsTab's contract exactly —
+  // continuous with generous endpointing (AI-CAP-6), live interim caption
+  // (AI-V7), and the parent's UI language (AI-CAP-2), so a Hebrew parent's
+  // speech is never transcribed as English garbage.
+  const [listening, setListening] = useState(false);
+  const [voiceInterim, setVoiceInterim] = useState("");
+  const stopRef = useRef<(() => void) | null>(null);
   useEffect(() => {
     if (!open) {
       setReviewing(false);
       setSource("text");
       setEscalationMarkdown(null);
       setHardMoment(false);
+      stopRef.current?.();
     }
   }, [open]);
   // TODAY-3: the review step is the SHARED ConfirmCaptureReview contract
@@ -109,6 +129,67 @@ export default function QuickLogModal({ open, onClose }: { open: boolean; onClos
       setDrafting(false);
     }
   };
+
+  /* TJB-08 — voice capture, in place.
+     The finalized transcript lands in the ONE moment field, exactly where a
+     typed sentence lands, and then takes the SAME hardened path: long enough
+     and it goes through api.extractLog into the shared ConfirmCaptureReview;
+     too short and it simply sits in the field for the parent to finish. So the
+     escalation screen, the taxonomy clamp and the explicit-confirm gate all
+     apply unchanged — there is no second capture path, only a second way of
+     filling the same field. Provenance is honest on both branches: "voice"
+     for a transcript the parent finishes themselves, and "ai-draft" the moment
+     extraction fills the fields — the review line must never claim the parent
+     wrote what the model drafted (CODEX-7). */
+  const startVoice = () => {
+    if (listening) {
+      stopRef.current?.();
+      return;
+    }
+    if (!speechSupported()) {
+      // Not an error to recover from — the modal stays open on the typed form,
+      // which is a strictly better outcome than the old hub switch.
+      toast(t("beh.toast.voiceUnsupported"), "error");
+      return;
+    }
+    setListening(true);
+    setVoiceInterim("");
+    stopRef.current = startDictation(
+      {
+        onResult: (text) => {
+          const said = text.trim();
+          if (!said) return;
+          setNewLogTrigger(said);
+          setSource("voice");
+          if (said.length >= TYPED_EXTRACT_MIN_CHARS) void extractFromTyped(said);
+        },
+        onInterim: (text) => setVoiceInterim(text),
+        onError: () => toast(t("beh.toast.voiceError"), "error"),
+        onEnd: () => {
+          setListening(false);
+          setVoiceInterim("");
+          stopRef.current = null;
+        },
+      },
+      uiLang === "he" ? "he-IL" : "en-US",
+      { continuous: true },
+    );
+  };
+
+  // Opening the modal in voice mode starts dictating immediately — the tap on
+  // Today's mic tile IS the consent, and asking for a second tap inside the
+  // modal would make the in-place path slower than the hub switch it replaces.
+  const armedRef = useRef(false);
+  useEffect(() => {
+    if (!open) {
+      armedRef.current = false;
+      return;
+    }
+    if (mode !== "voice" || armedRef.current) return;
+    armedRef.current = true;
+    startVoice();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, mode]);
 
   // TJB-01: the plain-moment save — one field, one tap, no review step (there
   // is nothing drafted to review; the parent wrote every word).
@@ -205,6 +286,20 @@ export default function QuickLogModal({ open, onClose }: { open: boolean; onClos
         onDiscard={discard}
         onConfirm={confirm}
       /> : !hardMoment ? <form onSubmit={saveMoment} className="space-y-4 text-sm" data-testid="quicklog-moment-form">
+        {/* TJB-08: the live dictation strip. Present only while listening, so
+            the typed path is byte-identical to what it was. */}
+        {listening && (
+          <div className="flex items-start gap-3 rounded-xl p-3" role="status" data-testid="quicklog-listening"
+            style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+            <Icon name="mic" size={18} style={{ color: "var(--arbor-green-ink)" }} />
+            <p dir="auto" className="min-w-0 flex-1 text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+              {voiceInterim || t("beh.mode.voice")}
+            </p>
+            <button type="button" onClick={() => stopRef.current?.()} className="touch-target px-2 text-xs font-bold" style={{ color: "var(--arbor-green-ink)" }}>
+              {t("elev.ql.voice.stop")}
+            </button>
+          </div>
+        )}
         <div className="space-y-1.5">
           <label htmlFor="quick-log-moment" className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ql.moment.label")}</label>
           <input

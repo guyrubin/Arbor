@@ -34,6 +34,7 @@ import { usePrideMoment } from "../../hooks/usePrideMoment";
 import { focusHeadlineFor, focusBodyFor, whyLineFor } from "../../lib/todayFocus";
 import { isIncidentType } from "../../content/behaviorTaxonomy";
 import { dailyPromptKeys } from "../../lib/promptBank";
+import { fmtDay } from "../../lib/formatDate";
 import { buildSinceVisitRows, type SinceVisitRow } from "../overview/sinceVisitEvents";
 import { chooseTodayAction } from "../overview/chooseTodayAction";
 import { resolveTodayModules } from "../overview/todayModules";
@@ -120,6 +121,8 @@ export default function OverviewTab() {
   // requestCapture() seam JournalTab's compose tiles use (BehaviorsTab consumes
   // it once and opens the real mic/photo flow). No new capture path.
   const [quickLogOpen, setQuickLogOpen] = useState(false);
+  // TJB-08: which modality the modal opens in ("text" unless a tile says voice).
+  const [quickLogMode, setQuickLogMode] = useState<CaptureMode>("text");
   // ENG-01: the JITAI LOG nudge lands on Today with a pending "text" capture
   // request (the same requestCapture seam Journal's tiles use) — consume it
   // once and open the quick-log here, so the nudge's promise "Log a moment"
@@ -128,10 +131,25 @@ export default function OverviewTab() {
   useEffect(() => {
     if (pendingCaptureMode !== "text") return;
     consumeCaptureRequest();
+    setQuickLogMode("text");
     setQuickLogOpen(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingCaptureMode]);
+  /* TJB-08: voice captures IN PLACE. The mic tile used to hand the mode to
+     requestCapture() and switch hubs, so tapping "voice" on Today changed the
+     route under the parent and executed the capture on Behaviors. QuickLogModal
+     portals to body and now accepts a `mode`, and both seams it needs already
+     exist (lib/speech for dictation, api.extractLog for the draft), so nothing
+     new is built and the shared ConfirmCaptureReview gate still applies.
+     PHOTO still hands off, deliberately: ArborContext's `addMoment` writes no
+     `photoAttachment`, so routing a photo through the one-field moment form
+     would drop the picture silently. That cross-file edit is in FOLLOW-UPS. */
   const startCapture = (mode: CaptureMode) => {
+    if (mode === "voice") {
+      setQuickLogMode("voice");
+      setQuickLogOpen(true);
+      return;
+    }
     requestCapture(mode);
     setActiveTab("behaviors");
   };
@@ -371,8 +389,22 @@ export default function OverviewTab() {
 
   const activityFeed: FeedRow[] = useMemo(() => {
     const rows: FeedRow[] = [];
+    /* OBJ-TODAY-05: the feed stamped time only, so a May log read "Log a
+       moment · 10:15 AM" — indistinguishable from this morning in a feed that
+       shows the whole ledger. Rows from TODAY keep the bare time (a date there
+       would be noise); anything older leads with its date through the ONE
+       date seam, lib/formatDate (explicit month name, never an ambiguous
+       DD/MM). "Today" is the LOCAL day, the same rule OBJ-TODAY-03 pinned for
+       the action id. */
     const fmtTime = (ms: number) =>
       new Date(ms).toLocaleTimeString(uiLang === "he" ? "he-IL" : "en-US", { hour: "numeric", minute: "2-digit" });
+    const isSameLocalDay = (a: Date, b: Date) =>
+      a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+    const fmtWhen = (ms: number) => {
+      const d = new Date(ms);
+      const time = fmtTime(ms);
+      return isSameLocalDay(d, new Date()) ? time : `${fmtDay(d, uiLang)} · ${time}`;
+    };
 
     // Kid-side quest / play completions (Loop 3 — stars/streak window)
     for (const p of playLogs) {
@@ -395,7 +427,7 @@ export default function OverviewTab() {
         icon: <Icon name="edit_note" size={21} />,
         tone: { soft: PASTEL.lav.soft, ink: PASTEL.lav.ink },
         title: t("today.feed.logged"),
-        sub: t("today.feed.loggedSub", { context: l.context ?? t("ov.logMoment"), time: fmtTime(at) }),
+        sub: t("today.feed.loggedSub", { context: l.context ?? t("ov.logMoment"), time: fmtWhen(at) }),
       });
     }
     // A freshly-noticed milestone (Loop 5 — growth story). No timestamp on
@@ -637,7 +669,7 @@ export default function OverviewTab() {
         <QuickCaptureBar
           key="today-primary-capture"
           childName={firstName}
-          onText={() => setQuickLogOpen(true)}
+          onText={() => { setQuickLogMode("text"); setQuickLogOpen(true); }}
           onMode={startCapture}
         />
       </div>
@@ -672,7 +704,7 @@ export default function OverviewTab() {
               weekId={weekOpen.weekId}
               childId={childProfile.id}
               childName={firstName}
-              onCapture={() => setQuickLogOpen(true)}
+              onCapture={() => { setQuickLogMode("text"); setQuickLogOpen(true); }}
               onDismiss={() => setWeekOpen((prev) => ({ ...prev, dismissed: true }))}
             />
           ) : activeTodayAction ? (
@@ -703,7 +735,7 @@ export default function OverviewTab() {
             <PromptCaptureCard
               promptKey={todayChoice.kind === "prompt" ? todayChoice.promptKey : null}
               childName={firstName}
-              onCapture={() => setQuickLogOpen(true)}
+              onCapture={() => { setQuickLogMode("text"); setQuickLogOpen(true); }}
               /* OBJ-TODAY-02: the SAME derived why-line the focus hero mounts,
                  not the authored `whySimple` claim. This card is the day-0
                  surface, so it was the one asserting goals and interests on
@@ -820,7 +852,7 @@ export default function OverviewTab() {
           childName={firstName}
           onDismiss={lifecycle.dismiss}
           onSaveInterests={lifecycle.saveInterests}
-          onCapture={() => setQuickLogOpen(true)}
+          onCapture={() => { setQuickLogMode("text"); setQuickLogOpen(true); }}
         />
       )}
 
@@ -939,7 +971,7 @@ export default function OverviewTab() {
 
       {/* Text-mode quick capture — the orphaned-but-working QuickLogModal, revived.
           Portals to document.body, so it contributes no box to the flex column. */}
-      <QuickLogModal open={quickLogOpen} onClose={() => setQuickLogOpen(false)} />
+      <QuickLogModal open={quickLogOpen} mode={quickLogMode} onClose={() => setQuickLogOpen(false)} />
     </motion.div>
   );
 }

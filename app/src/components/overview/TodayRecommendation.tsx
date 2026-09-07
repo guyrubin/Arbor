@@ -5,6 +5,7 @@ import { capacityMinutes, type ActionCapacity } from "../../actionLoop/model";
 import { trackActionOffered } from "../../lib/loopEvents";
 import { ContentWhyLine } from "../ui/ContentActionBar";
 import { TrustLink } from "../trust/TrustLink";
+import { HeroAvatar } from "../ui/HeroAvatar";
 
 /**
  * TODAY-2/CODEX-1 consolidation: the pre-accept half of the old TodayActionLoop
@@ -56,9 +57,17 @@ export default function TodayRecommendation({ eyebrow, headline, body, meta, act
   return (
     <section className="overflow-hidden rounded-[20px]" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}>
       <div className="grid min-h-[164px] grid-cols-1 sm:grid-cols-[180px_minmax(0,1fr)]">
-        {/* CODEX-3: decorative hero art re-encoded 2.6MB PNG → ~56KB 800px WebP
-            (crisp at 2x in the 180px column; ffmpeg libwebp q82). */}
-        <div aria-hidden="true" className="min-h-[132px] bg-cover bg-center" style={{ backgroundImage: "url('/assets/today/calm-transition-activity.webp')" }} />
+        {/* TJB-29: the hero art was a fixed stock WebP of somebody else's
+            child — the same image on every account, every day, above a step
+            written FOR this child. It is now the one shared HeroAvatar engine
+            (identity resolution + Sprout fallback live inside the engine; we
+            never re-composite), the same portrait the weekly report and the
+            kid surfaces already front. `decorative` because the headline
+            beside it is already the accessible content, and `animate={false}`
+            because this is the parent register — no idle bob. */}
+        <div aria-hidden="true" className="flex min-h-[132px] items-center justify-center" style={{ background: "var(--arbor-paper-deep)" }}>
+          <HeroAvatar size={96} mood="calm" animate={false} decorative />
+        </div>
         <div className="flex min-w-0 flex-col justify-center p-5 sm:px-6">
           <span className="text-[10px] font-extrabold uppercase tracking-[0.13em]" style={{ color: "var(--arbor-green-ink)" }}>{eyebrow}</span>
           {loading ? <div className="mt-2 space-y-2"><Skeleton className="h-6 w-4/5" /><Skeleton className="h-5 w-1/2" /></div> : <h2 className="mt-1.5 text-[21px] font-extrabold leading-[1.12] sm:text-[23px]" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)", textWrap: "balance" } as React.CSSProperties}>{headline}</h2>}
