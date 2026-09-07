@@ -177,10 +177,9 @@ export default function PlansTab() {
                       ? <><Icon name="check_circle" size={16} style={{ color: "var(--arbor-green-ink)" }} /> {t("plan.complete")}</>
                       : <><Icon name="checklist" size={16} style={{ color: "var(--arbor-green-ink)" }} /> {t("plan.focusThisWeek")}</>}
                   </p>
-                  <span className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>{t("plan.stepsCount", { done: prog.doneSteps, total: prog.totalSteps, pct: prog.pct })}</span>
-                </div>
-                <div className="h-2 rounded-full overflow-hidden mb-3" style={{ background: "var(--arbor-paper-deep)" }}>
-                  <div className="h-full rounded-full" style={{ width: `${prog.pct}%`, background: "var(--arbor-clay)" }} />
+                  {/* TJB-16: a count, not a completion share. The 43 % bar that
+                      stood here graded the parent's own plan. */}
+                  <span className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>{t("plan.stepsCount", { done: prog.doneSteps, total: prog.totalSteps })}</span>
                 </div>
                 {prog.planComplete ? (
                   <p className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>
