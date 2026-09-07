@@ -373,13 +373,19 @@ export default function LearnLibrary() {
       {gridCards.length > 0 ? (
         <section aria-label={t("learn.allReads")}>
           {browsing && (
-            /* R12: this row did not wrap, so at 390 the "Show all ages" switch
-               sat outside the viewport and the age control read as absent. */
+            /* R12 → R20: this row did not wrap, so at 390 the "Show all ages"
+               switch sat outside the viewport and the age control read as
+               absent. `flex-wrap` alone left the outcome to how wide the
+               heading and the count happened to render, which is why the
+               re-measure was ambiguous. Below sm the meta group now claims a
+               full row of its own (`w-full`), so the switch is on-screen at
+               any phone width regardless of string length — EN or HE. From sm
+               up `sm:w-auto` restores the single justified line. */
             <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1.5 mb-2.5">
               <h2 className="text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>
                 {t("learn.allReads")}
               </h2>
-              <span className="inline-flex flex-wrap items-center gap-2">
+              <span className="inline-flex w-full flex-wrap items-center gap-2 sm:w-auto">
                 <span className="text-[11.5px] font-bold" style={{ color: "var(--arbor-muted)" }}>
                   {t("learn.count", { n: inScope.length })}
                   {readCount > 0 && ` · ${t("elev.learnCare.read.count", { n: readCount })}`}

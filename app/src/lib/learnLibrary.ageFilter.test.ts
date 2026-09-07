@@ -207,6 +207,45 @@ describe("R12 · the default shelf is short, and every control says what it does
     // so the switch rendered off the right edge of a 390 px viewport.
     expect(LEARN).not.toContain('<div className="flex items-baseline justify-between mb-2.5">');
     expect(LEARN).toContain('<div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1.5 mb-2.5">');
-    expect(LEARN).toContain('<span className="inline-flex flex-wrap items-center gap-2">');
+  });
+});
+
+describe("R20 · the age switch is on its own row below sm, not a wrap that might", () => {
+  /* Round 2c re-measured the switch at x=1119 — a desktop coordinate, so the
+     reading could not settle whether 390 was fixed. `flex-wrap` only wraps
+     when the line actually overflows, which depends on the rendered width of
+     "All reads", the "N reads · M read" count and the "N more for other ages"
+     line — all translated strings. The source now states the outcome instead
+     of leaving it to measurement: below sm the meta group is a full-width row. */
+  const HEADER = LEARN.slice(LEARN.indexOf('t("learn.allReads")}'), LEARN.indexOf('data-testid="agefilter-toggle-learn"'));
+
+  it("the meta group takes a full row below sm and rejoins the line at sm", () => {
+    expect(LEARN).toContain('<span className="inline-flex w-full flex-wrap items-center gap-2 sm:w-auto">');
+    // The count, the hidden-count line and the switch all live in THAT group,
+    // so the switch cannot be pushed off-screen by the two strings before it.
+    expect(HEADER).toContain('t("learn.count", { n: inScope.length })');
+    expect(HEADER).toContain('agefilterText("elev.agefilter.hiddenCount", he, { n: ageHidden.length })');
+  });
+
+  it("the row itself still wraps, so the heading never collides with the group", () => {
+    expect(LEARN).toContain('className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1.5 mb-2.5"');
+  });
+
+  it("the switch clears the 44 px floor and keeps its label", () => {
+    const at = LEARN.indexOf('data-testid="agefilter-toggle-learn"');
+    const shell = LEARN.slice(at, at + 400);
+    expect(shell).toMatch(/min-h-11|touch-target|min-h-\[4[4-9]px\]/);
+    expect(LEARN).toContain('agefilterText("elev.agefilter.showAll", he)');
+  });
+
+  it("NEGATIVE CONTROL: both pre-fix shapes fail the rule this pins", () => {
+    // R12's shape: wrap allowed, but the group could still share the line and
+    // overflow it. Round 2b's shape: no wrap at all.
+    const r12 = '<span className="inline-flex flex-wrap items-center gap-2">';
+    const r2b = '<div className="flex items-baseline justify-between mb-2.5">';
+    expect(r12).not.toContain("w-full");
+    expect(r2b).not.toContain("flex-wrap");
+    expect(LEARN).not.toContain(r12);
+    expect(LEARN).not.toContain(r2b);
   });
 });
