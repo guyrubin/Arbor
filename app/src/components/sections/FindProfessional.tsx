@@ -211,7 +211,7 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t("elev.careNet.search.placeholder")}
             dir="auto"
-            className="flex-1 bg-transparent outline-none text-sm"
+            className="flex-1 bg-transparent outline-none text-sm min-h-11"
             style={{ color: "var(--arbor-ink)" }}
           />
         </div>
@@ -219,7 +219,7 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
           {CARE_FILTERS.map((f) => {
             const on = active.includes(f.id);
             return (
-              <button key={f.id} onClick={() => toggle(f.id)} className="rounded-full px-3 py-1.5 text-xs font-bold transition inline-flex items-center gap-1"
+              <button key={f.id} onClick={() => toggle(f.id)} className="rounded-full px-3.5 min-h-11 text-xs font-bold transition inline-flex items-center gap-1"
                 style={on ? { background: "var(--arbor-clay)", color: "#fff" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
                 {f.id === "verified" && <Icon name="verified_user" size={15} fill={on ? 1 : 0} />}{t(f.labelKey)}
               </button>
@@ -228,7 +228,7 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
         </div>
         <div className="flex flex-wrap gap-1.5 pt-1">
           {SPECIALTIES.map((s, i) => (
-            <button key={s.query} onClick={() => setQuery(s.query)} className="cursor-pointer">
+            <button key={s.query} onClick={() => setQuery(s.query)} className="cursor-pointer inline-flex items-center min-h-11">
               <Chip tone={(["mint","sky","lav","coral","yellow","pink"] as const)[i % 6]}>{t(s.labelKey)}</Chip>
             </button>
           ))}

@@ -318,7 +318,7 @@ export default function AskSpecialist() {
       </div>
       <button
         onClick={() => setActiveTab("find-pro")}
-        className="w-full text-center text-[12px] font-bold rounded-[13px] py-2.5 transition hover:brightness-95"
+        className="w-full inline-flex items-center justify-center text-center text-[12px] font-bold rounded-[13px] min-h-11 transition hover:brightness-95"
         style={{ background: "var(--arbor-paper-deep)", color: GREEN }}
       >
         {t("sec.findpro.title")}

@@ -364,7 +364,7 @@ function FilterPill({
     <button
       onClick={onClick}
       aria-pressed={active}
-      className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 min-h-[38px] text-[12px] font-bold whitespace-nowrap transition active:scale-[0.98] focus:outline-none focus-visible:ring-2"
+      className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 min-h-11 text-[12px] font-bold whitespace-nowrap transition active:scale-[0.98] focus:outline-none focus-visible:ring-2"
       style={
         active
           ? { background: "var(--arbor-subtab-active)", color: "var(--arbor-subtab-on-ink)" }
@@ -767,7 +767,7 @@ function LearnReader({
         <button
           onClick={() => onPulse(1)}
           aria-pressed={pulse === 1}
-          className="inline-flex items-center gap-1.5 rounded-full px-3 min-h-[38px] text-[12px] font-bold transition active:scale-[0.96] focus:outline-none focus-visible:ring-2"
+          className="inline-flex items-center gap-1.5 rounded-full px-3 min-h-11 text-[12px] font-bold transition active:scale-[0.96] focus:outline-none focus-visible:ring-2"
           style={
             pulse === 1
               ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid transparent" }
@@ -780,7 +780,7 @@ function LearnReader({
         <button
           onClick={() => onPulse(-1)}
           aria-pressed={pulse === -1}
-          className="inline-flex items-center gap-1.5 rounded-full px-3 min-h-[38px] text-[12px] font-bold transition active:scale-[0.96] focus:outline-none focus-visible:ring-2"
+          className="inline-flex items-center gap-1.5 rounded-full px-3 min-h-11 text-[12px] font-bold transition active:scale-[0.96] focus:outline-none focus-visible:ring-2"
           style={
             pulse === -1
               ? { background: "var(--arbor-paper-deep)", color: "var(--arbor-ink-soft)", border: "1px solid transparent" }

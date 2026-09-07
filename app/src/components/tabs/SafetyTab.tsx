@@ -182,8 +182,8 @@ export default function SafetyTab() {
         <SectionCard title={t("elev.safety.checklist.title")} icon={<Icon name="warning" size={20} />} tone="coral">
           <div className="space-y-2">
             {WARNING_SIGN_KEYS.map((n, i) => (
-              <label key={n} className={`${cardCls} flex items-start gap-3 p-2.5 transition cursor-pointer text-xs`}>
-                <input type="checkbox" checked={!!checked[i]} onChange={() => toggleSign(i)} className="mt-0.5" style={{ accentColor: "var(--arbor-pink-ink)" }} />
+              <label key={n} className={`${cardCls} flex items-start gap-3 p-2.5 min-h-11 transition cursor-pointer text-xs`}>
+                <input type="checkbox" checked={!!checked[i]} onChange={() => toggleSign(i)} className="mt-0.5 w-5 h-5 flex-shrink-0" style={{ accentColor: "var(--arbor-pink-ink)" }} />
                 <span style={{ color: checked[i] ? "var(--arbor-pink-ink)" : "var(--arbor-ink)", fontWeight: checked[i] ? 700 : 400 }}>{t(`elev.safety.sign.${n}`)}</span>
               </label>
             ))}
@@ -193,7 +193,7 @@ export default function SafetyTab() {
 
         <SectionCard title={t("elev.safety.review.title")} icon={<Icon name="event_available" size={20} />} tone="sky"
           action={
-            <button onClick={markReviewed} className="font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>{t("elev.safety.review.mark")}</button>
+            <button onClick={markReviewed} className="inline-flex items-center font-extrabold text-[11px] px-3 min-h-11 rounded-lg transition" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>{t("elev.safety.review.mark")}</button>
           }
         >
           <p className="text-sm" style={{ color: "var(--arbor-ink)" }}>
@@ -265,7 +265,7 @@ export default function SafetyTab() {
                 <button
                   onClick={() => handleMemoryDecision(item.memoryId, "deleted")}
                   disabled={isMemoryUpdating === item.memoryId}
-                  className="text-[10px] font-bold flex-shrink-0 disabled:opacity-50"
+                  className="inline-flex items-center text-[10px] font-bold flex-shrink-0 min-h-11 px-1 disabled:opacity-50"
                   style={{ color: "var(--arbor-pink-ink)" }}
                 >
                   {t("elev.safety.memory.forget")}

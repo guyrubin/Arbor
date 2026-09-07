@@ -335,7 +335,7 @@ export default function TrustedSharing() {
         <div className="space-y-4 border-y py-5" style={{ borderColor: "var(--arbor-rule)" }}>
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("sec.sharing.form.title", { name: first })}</h3>
-            <button onClick={() => { setAdding(false); setReviewing(false); }} aria-label={t("aria.cancel")}><Icon name="close" size={17} style={{ color: "var(--arbor-muted)" }} /></button>
+            <button onClick={() => { setAdding(false); setReviewing(false); }} aria-label={t("aria.cancel")} className="inline-flex items-center justify-center min-h-11 min-w-11"><Icon name="close" size={17} style={{ color: "var(--arbor-muted)" }} /></button>
           </div>
           {!reviewing && <>
           <input value={draft.recipientEmail} onChange={(e) => setDraft({ ...draft, recipientEmail: e.target.value })} placeholder={t("sec.sharing.form.emailPlaceholder")} type="email" inputMode="email" autoComplete="email" className="w-full rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} />
@@ -343,7 +343,7 @@ export default function TrustedSharing() {
             <p className="text-xs font-bold mb-1.5" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.form.role")}</p>
             <div className="flex flex-wrap gap-1.5">
               {ROLES.map((r) => (
-                <button key={r} onClick={() => setDraft({ ...draft, role: r })} aria-pressed={draft.role === r} className="rounded-full px-3 py-1 text-xs font-bold" style={draft.role === r ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{roleLabel(r)}</button>
+                <button key={r} onClick={() => setDraft({ ...draft, role: r })} aria-pressed={draft.role === r} className="inline-flex items-center rounded-full px-3.5 min-h-11 text-xs font-bold" style={draft.role === r ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{roleLabel(r)}</button>
               ))}
             </div>
             <p className="text-[11px] mt-2 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.form.nothingDefault")}</p>
@@ -353,7 +353,7 @@ export default function TrustedSharing() {
             <div className="flex flex-wrap gap-1.5">
               {SCOPE_OPTIONS.map((f) => {
                 const on = draft.scopes.includes(f);
-                return <button key={f} onClick={() => setScope(f)} aria-pressed={on} className="rounded-full px-3 py-1 text-xs font-bold" style={on ? { background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{t(shareScopeLabelKey(f))}</button>;
+                return <button key={f} onClick={() => setScope(f)} aria-pressed={on} className="inline-flex items-center rounded-full px-3.5 min-h-11 text-xs font-bold" style={on ? { background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{t(shareScopeLabelKey(f))}</button>;
               })}
             </div>
           </div>
@@ -361,11 +361,11 @@ export default function TrustedSharing() {
             <p className="text-xs font-bold mb-1.5" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.form.duration")}</p>
             <div className="flex flex-wrap gap-1.5">
               {DURATIONS.map((d) => (
-                <button key={d} onClick={() => setDraft({ ...draft, duration: d })} aria-pressed={draft.duration === d} className="rounded-full px-3 py-1 text-xs font-bold" style={draft.duration === d ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{t(`share.duration.${d}`)}</button>
+                <button key={d} onClick={() => setDraft({ ...draft, duration: d })} aria-pressed={draft.duration === d} className="inline-flex items-center rounded-full px-3.5 min-h-11 text-xs font-bold" style={draft.duration === d ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{t(`share.duration.${d}`)}</button>
               ))}
             </div>
           </div>
-          <button onClick={() => setReviewing(true)} disabled={!/^\S+@\S+\.\S+$/.test(draft.recipientEmail.trim()) || draft.scopes.length === 0} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-2.5 disabled:opacity-40" style={{ background: "var(--arbor-clay)" }}>
+          <button onClick={() => setReviewing(true)} disabled={!/^\S+@\S+\.\S+$/.test(draft.recipientEmail.trim()) || draft.scopes.length === 0} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 min-h-11 disabled:opacity-40" style={{ background: "var(--arbor-clay)" }}>
             {t("sec.sharing.form.review")} <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
           </button>
           </>}
@@ -402,7 +402,7 @@ export default function TrustedSharing() {
               <div className="flex items-center gap-2 text-xs" style={{ color: "var(--arbor-muted)" }}><Icon name="schedule" size={16} /> {t(`share.duration.${draft.duration}`)}</div>
             </div>
             <div className="rounded-2xl p-4 flex items-start gap-3" style={{ background: "var(--arbor-yellow-soft)", border: "1px solid var(--arbor-rule)" }}><Icon name="verified_user" size={19} style={{ color: "var(--arbor-yellow-ink)" }} /><p className="text-xs leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{t("sec.sharing.review.note")}</p></div>
-            <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end"><button onClick={() => setReviewing(false)} className="rounded-xl px-4 py-2.5 text-sm font-bold" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}>{t("sec.sharing.review.back")}</button><button onClick={createShare} disabled={busy === "create"} className="inline-flex items-center justify-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-2.5 disabled:opacity-60" style={{ background: "var(--arbor-clay)" }}>{busy === "create" ? <><Icon name="progress_activity" size={16} className="animate-spin" /> {t("sec.sharing.review.working")}</> : t("sec.sharing.review.approve")}</button></div>
+            <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end"><button onClick={() => setReviewing(false)} className="inline-flex items-center justify-center rounded-xl px-4 min-h-11 text-sm font-bold" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}>{t("sec.sharing.review.back")}</button><button onClick={createShare} disabled={busy === "create"} className="inline-flex items-center justify-center gap-2 text-white font-bold text-sm rounded-xl px-4 min-h-11 disabled:opacity-60" style={{ background: "var(--arbor-clay)" }}>{busy === "create" ? <><Icon name="progress_activity" size={16} className="animate-spin" /> {t("sec.sharing.review.working")}</> : t("sec.sharing.review.approve")}</button></div>
           </div>}
         </div>
       )}
@@ -592,12 +592,12 @@ export default function TrustedSharing() {
               <p role="alert" className="text-xs font-bold" style={{ color: "var(--arbor-pink-ink)" }}>{t("sec.sharing.delete.error")}</p>
             )}
             <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
-              <button onClick={closeDeleteModal} disabled={erasing} className="rounded-xl px-4 py-2.5 text-sm font-bold disabled:opacity-50" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}>{t("sec.sharing.delete.cancel")}</button>
+              <button onClick={closeDeleteModal} disabled={erasing} className="inline-flex items-center justify-center rounded-xl px-4 min-h-11 text-sm font-bold disabled:opacity-50" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}>{t("sec.sharing.delete.cancel")}</button>
               <button
                 onClick={confirmDelete}
                 disabled={!nameMatches || erasing}
                 data-testid="delete-confirm-btn"
-                className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold disabled:opacity-40"
+                className="inline-flex items-center justify-center gap-2 rounded-xl px-4 min-h-11 text-sm font-bold disabled:opacity-40"
                 style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}
               >
                 {erasing
