@@ -93,7 +93,7 @@ const METRIC_EMOJI: Record<DevelopmentMetricId, string> = {
   truth: "🕯️",
 };
 
-export default function HeroJourneyTab() {
+export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: string } = {}) {
   const { childProfile } = useArbor();
   // KID-05: hub tiles navigate the PARENT shell — rendered only while the
   // shell is reachable (null inside Kid Mode, where the call would be a
@@ -332,7 +332,13 @@ export default function HeroJourneyTab() {
       (s) => windowFromRange(s.ageRange),
       childMonths,
     );
-    const displayStories = showAllAges ? orderedStories : ageVisibleStories;
+    const ageCandidates = showAllAges ? orderedStories : ageVisibleStories;
+    // OBJ-KID-05 / KID-25: the kid home's "Today's adventure" banner names ONE
+    // story. Pin the catalog to it — but only after the age view has run, so a
+    // child the canon is not written for still gets the honest empty state
+    // rather than a story meant for someone else (W0.7 is not bypassed).
+    const pinned = initialStoryId ? ageCandidates.find((s) => s.id === initialStoryId) : undefined;
+    const displayStories = pinned ? [pinned] : ageCandidates;
     const hiddenAgeMin = ageHiddenStories.length
       ? Math.min(...ageHiddenStories.map((s) => s.ageRange[0]))
       : null;
@@ -434,7 +440,9 @@ export default function HeroJourneyTab() {
           )}
         </div>
 
-        {/* PACK FILTER — comic chips */}
+        {/* PACK FILTER — comic chips. Absent while the catalog is pinned to
+            tonight's single story: there is nothing to filter. */}
+        {!pinned && (
         <div className="flex flex-wrap gap-2" role="tablist" aria-label={he ? "סינון לפי כוח" : "Filter by power"}>
           {[{ id: "all" as const, label: he ? "הכול" : "All" }, ...PACKS.map((p) => ({ id: p.id, label: he ? p.titleHe : p.title }))].map((p) => {
             const active = packFilter === p.id;
@@ -457,6 +465,7 @@ export default function HeroJourneyTab() {
             );
           })}
         </div>
+        )}
 
         {/* STORY WORLDS — each card is an illustrated world starring the hero */}
         <div>

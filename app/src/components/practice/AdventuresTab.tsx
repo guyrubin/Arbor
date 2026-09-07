@@ -5,7 +5,6 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { fillTemplate, scenariosForAge, type AdventureScenario } from "../../practice/content";
 import { usePracticeData } from "../../practice/usePracticeData";
-import MemoryMatch from "./MemoryMatch";
 import type { AdventureResult } from "../../types";
 import { api } from "../../lib/api";
 import { track } from "../../lib/analytics";
@@ -191,7 +190,10 @@ export default function AdventuresTab() {
         </div>
       )}
 
-      {!scenario && <MemoryMatch data={data} childAge={childProfile.age} />}
+      {/* OBJ-KID-05: a full MemoryMatch board used to sit here, below the story
+          cards — the SAME game Mind Vault is, mounted a second time inside a
+          world that is about stories. Mind Vault keeps it; Story Quest is only
+          stories now. */}
 
       {/* Active scene */}
       {scenario && !finished && scene && (

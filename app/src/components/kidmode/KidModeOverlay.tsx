@@ -57,6 +57,9 @@ export default function KidModeOverlay() {
   });
   // KID-4: when a dashboard game tile opens the arcade, it names the HeroArcade
   // world to pre-select so the tile's title appears verbatim on arrival.
+  // OBJ-KID-05: the same channel carries the quest banner's story id into the
+  // journeys surface, so "Today's adventure" opens ONE story, not the catalogue.
+  // It is persisted under the existing `worldId` field (device-local UI state).
   const [arcadeWorldId, setArcadeWorldId] = useState<string | null>(() => {
     const p = readKidModeState();
     return p.open ? p.worldId ?? null : null;
@@ -279,6 +282,10 @@ export default function KidModeOverlay() {
                   ) : view === "arcade" ? (
                     <Suspense fallback={<TabSkeleton />}>
                       <PracticeHubTab initialWorldId={arcadeWorldId ?? undefined} />
+                    </Suspense>
+                  ) : view === "journeys" ? (
+                    <Suspense fallback={<TabSkeleton />}>
+                      <HeroJourneyTab initialStoryId={arcadeWorldId ?? undefined} />
                     </Suspense>
                   ) : (
                     <Suspense fallback={<TabSkeleton />}>{surface && <surface.Comp />}</Suspense>

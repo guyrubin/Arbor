@@ -334,7 +334,11 @@ describe("KID-1: kid.* i18n keys exist in BOTH language maps", () => {
     // without keys fails here instead of rendering a raw key string.
     const src = stripComments(readSelf("KidDashboard.tsx"));
     const ids = [...src.matchAll(/\{ id: "([a-z-]+)"/g)].map((m) => m[1]);
-    expect(ids.length, "expected the 3 adventure + 8 game tile defs").toBeGreaterThanOrEqual(11);
+    // OBJ-KID-05 dropped the duplicate "Feelings" adventure tile (it opened the
+    // same FeelingsLabTab as the Mood Mountain game tile), so the home declares
+    // 2 adventure + 8 game defs. Exact, not a floor: a silently vanished tile
+    // is as much a defect as a keyless one.
+    expect(ids.length, "expected the 2 adventure + 8 game tile defs").toBe(10);
     for (const id of ids) {
       const base = `kid.adv.${id}.title` in en ? `kid.adv.${id}` : `kid.game.${id}`;
       for (const suffix of [".title", ".sub"]) {

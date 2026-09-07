@@ -39,6 +39,7 @@ import WorldScene from "../practice/WorldScene";
 import { HoldExitButton } from "./HoldExitButton";
 import { kidIsolate } from "./kidText";
 import { lastPlayedWorldYesterday } from "./kidGreeting";
+import { chooseTonightsStory } from "./tonightsStory";
 
 export type KidSurface = "journeys" | "arcade" | "feelings";
 
@@ -88,8 +89,11 @@ interface AdventureDef {
 const ADVENTURES: AdventureDef[] = [
   { id: "playbank", worldId: "kid-playbank", accent: "green", Icon: Gamepad2, surface: "arcade", art: "/visuals/cards/sm/game-order-builder.webp", imagePrompt: "a joyful playroom full of colorful building blocks, learning toys and a friendly little dinosaur" },
   { id: "hero", worldId: "kid-hero", accent: "clay", Icon: BookOpen, surface: "journeys", art: "/visuals/cards/sm/game-adventures.webp", imagePrompt: "an epic storybook castle on a hill with a glowing open magic book and a brave flowing cape" },
-  { id: "feelings", worldId: "kid-feelings", accent: "lav", Icon: HeartPulse, surface: "feelings", art: "/visuals/cards/sm/game-feelings.webp", imagePrompt: "a gentle dreamy landscape of friendly emotion characters under a warm glowing sky" },
-];
+]; // OBJ-KID-05: the "Feelings" adventure tile opened the SAME FeelingsLabTab as
+   // the "Mood Mountain" game tile below (the arcade world `feelings` is that
+   // component). Two tiles, one destination, and the child pays for the
+   // duplicate twice: once choosing, once discovering they are in the same
+   // place. The game tile keeps the door; the adventure tile is gone.
 
 // Games grid — KID-4 honest navigation. Every tile is named EXACTLY after the
 // live HeroArcade world it opens (`worldId` = the arcade world id) and reuses
@@ -117,6 +121,27 @@ const GAMES: GameDef[] = [
   { id: "story-quest", worldId: "adventures", accent: "peach", Icon: Map, imagePrompt: "an adventurous storybook landscape, holding a treasure map with a compass on a cliff" },
   { id: "mimic-studio", worldId: "mimic", accent: "clay", Icon: Smile, art: "/visuals/cards/sm/game-mimic.webp", imagePrompt: "a playful mirror studio copying silly happy poses, sparkles all around" },
 ];
+
+/** OBJ-KID-05: every tile on the kid home, with the destination it opens.
+ *  `surface` plus `arg` IS the destination — the overlay renders a surface and
+ *  passes the arg through (arcade world id, or tonight's story id). Exported so
+ *  the guard can prove the map is injective: one tile, one place. */
+export interface KidDestination {
+  tile: string;
+  surface: KidSurface;
+  /** The second openSurface argument, or null when the surface has no argument. */
+  arg: string | null;
+}
+
+/** The static half of the destination map: the banner's arg is tonight's story,
+ *  which is a function of the day, so it is supplied by the caller. */
+export function kidDestinations(bannerStoryId: string): KidDestination[] {
+  return [
+    { tile: "quest-banner", surface: "journeys", arg: bannerStoryId },
+    ...ADVENTURES.map((a) => ({ tile: `adv:${a.id}`, surface: a.surface, arg: null })),
+    ...GAMES.map((g) => ({ tile: `game:${g.id}`, surface: "arcade" as KidSurface, arg: g.worldId })),
+  ];
+}
 
 /* ── OBJ-KID-06: the fold ────────────────────────────────────────────────
    At 390 px the kid home put 0 of 8 game tiles above the fold — the first sat
@@ -303,6 +328,13 @@ export default function KidDashboard({
     () => lastPlayedWorldYesterday({ speech: data.speech.items, mimic: data.mimic.items, adventures: data.adventures.items, events: data.events.items }, data.today),
     [data.speech.items, data.mimic.items, data.adventures.items, data.events.items, data.today],
   );
+  // OBJ-KID-05 / KID-25: "Today's adventure" opens ONE story, chosen from the
+  // local day so the banner and the surface it opens name the same one all day.
+  // HeroJourneyTab still applies its own age view to the request (W0.7).
+  const tonightsStoryId = useMemo(
+    () => chooseTonightsStory(data.today, childProfile.id),
+    [data.today, childProfile.id],
+  );
   const greetingSub = yesterdayWorld
     ? kt("elev.kid.greeting.playedYesterday", { world: t(`kid.game.${yesterdayWorld}.title`) })
     : kt("elev.kid.greeting.ready");
@@ -343,7 +375,7 @@ export default function KidDashboard({
           fabricated progress numerals. */}
       <button
         className="world-tile play-pop-in"
-        onClick={() => onOpenSurface("journeys")}
+        onClick={() => onOpenSurface("journeys", tonightsStoryId)}
         style={{
           appearance: "none",
           position: "relative",
