@@ -50,19 +50,29 @@ export const en: Dict = {
   "nav.signout": "Sign out",
   "nav.parent": "Parent",
   // sub-nav leaf tabs (keyed by ActiveTab id)
+  // GP-19 — SEVEN surfaces were called "Development ...": the hub, Milestones,
+  // the Check, the Profile, the picture, the snapshot and the Journey. One word
+  // doing seven jobs is not a naming system, and "Development Profile" in
+  // particular reads as a clinical document rather than the place a parent keeps
+  // their child. Names now: the hub is Growth, the milestones page is Milestones
+  // (nav label and page title, one name per surface), the Profile hub is My
+  // Child, and the screening keeps "Development Check" because that is exactly
+  // what it is. Route IDS ARE UNCHANGED — they are persisted in arbor.activeTab
+  // and baked into shared deep links; only the words a parent reads changed, and
+  // routes.ts carries an alias for each new label's slug.
   "nav.tab.overview": "Overview",
   "nav.tab.coach": "Ask Arbor",
   "nav.tab.timeline": "Story",
   "nav.tab.journal": "Journal",
   "nav.tab.day-windows": "Day Windows",
   "nav.tab.school-brief": "School Brief",
-  "nav.tab.development": "Development",
+  "nav.tab.development": "Growth",
   "nav.tab.daily-play": "Daily Play",
   "nav.tab.practice": "Practice Studio",
   "nav.tab.consult": "Consult",
   "nav.tab.copilot": "Development Dashboard",
-  "nav.tab.profile": "Development Profile",
-  "nav.tab.milestones": "Development Milestones",
+  "nav.tab.profile": "My Child",
+  "nav.tab.milestones": "Milestones",
   "nav.tab.screening": "Development Check",
   // IA-20: every route needs a searchable name. These two had none, so a
   // parent could reach them from a hub but never find them by name.
@@ -72,7 +82,7 @@ export const en: Dict = {
   "nav.tab.language": "Language & Communication",
   "nav.tab.memory": "Child Memory",
   "nav.tab.missions": "Daily Missions",
-  "nav.tab.journey": "Development Journey",
+  "nav.tab.journey": "Growth Journey",
   "nav.tab.speech": "Speech Coach",
   "nav.tab.mimic": "Mimic Studio",
   "nav.tab.feelings": "Feelings Lab",
@@ -306,7 +316,7 @@ export const en: Dict = {
   // Development Score (C4) — Wave-3 clinical subtraction (2026-06-26): verdict-
   // shaped keys (0–100 score, ring, trend glyph, radar, "strong domain" dot,
   // focusDomain deficit pointer) removed. Replaced by flat-count + mechanism.
-  "devscore.eyebrow": "Development picture",
+  "devscore.eyebrow": "Growth picture",
   "devscore.empty": "Check off a few milestones and Arbor will show {name}'s development picture across domains.",
   "devscore.coach": "Get ideas",
   "devscore.coach.headline": "Want a few simple ideas for this week?",
@@ -753,7 +763,7 @@ export const en: Dict = {
   "vl.logSave": "Add phrase",
   "vl.noLangs": "Add at least two languages to {first}'s profile to see the mix view.",
   // milestones
-  "ms.title": "Development snapshot",
+  "ms.title": "Milestones",
   "ms.subtitle": "Notice what you've seen so far across developmental domains. This is a parent observation tracker, not a diagnostic score, and children develop at their own pace.",
   "ms.observedSoFar": "Observed so far",
   "ms.snapshotNotScore": "A snapshot, not a score",
@@ -829,7 +839,7 @@ export const en: Dict = {
   "cp.askAbout": "Ask Arbor about {name}",
   "cp.ch.who": "{name}, age {age}",
   "cp.ch.now": "Right now",
-  "cp.ch.milestones": "Development milestones",
+  "cp.ch.milestones": "Milestones",
   "cp.ch.strengths": "Strengths",
   "cp.ch.support": "Where to support",
   "cp.ch.language": "Language & communication",
@@ -1094,7 +1104,7 @@ export const en: Dict = {
   // practice studio headers
   "prac.missions.title": "Daily Missions",
   "prac.missions.sub": "One small mission a day for {name} — language, feelings, stories, sounds and social play, on a steady 5-day rotation.",
-  "prac.journey.title": "Development Journey",
+  "prac.journey.title": "Growth Journey",
   "prac.journey.sub": "A weekly roadmap for {name}: daily missions, aimed extras, monthly objectives, and effort-based achievements in one place.",
   "prac.speech.title": "Speech Coach",
   "prac.speech.sub": "Playful articulation practice for {name}: how single sounds and words are formed, one sound at a time. For building more than one language, that's Language & Communication.",
@@ -2002,7 +2012,7 @@ export const en: Dict = {
   "nav.title.academy": "Academy",
   "nav.title.ask": "Ask Arbor",
   "nav.title.care": "Care Network",
-  "nav.title.profile": "Profile",
+  "nav.title.profile": "My Child",
   // Heartwood D2/D3 hubs: Practice (promoted) + the Academy split (Stories/Learn).
   "nav.title.practice": "Practice",
   "nav.title.stories": "Stories",
@@ -2031,7 +2041,7 @@ export const en: Dict = {
   "nav.cat.academy": "Academy",
   "nav.cat.ask": "Ask Arbor",
   "nav.cat.care": "Care Network",
-  "nav.cat.profile": "Profile",
+  "nav.cat.profile": "My Child",
   "nav.cat.practice": "Practice",
   "nav.cat.stories": "Stories",
   "nav.cat.learn": "Learn",
@@ -2451,8 +2461,8 @@ export const he: Dict = {
   "nav.tab.practice": "סטודיו תרגול",
   "nav.tab.consult": "התייעצות",
   "nav.tab.copilot": "לוח התפתחות",
-  "nav.tab.profile": "פרופיל התפתחותי",
-  "nav.tab.milestones": "אבני דרך התפתחותיות",
+  "nav.tab.profile": "הילד שלי",
+  "nav.tab.milestones": "אבני דרך",
   "nav.tab.screening": "בדיקת התפתחות",
   "nav.tab.strengths": "חוזקות ואתגרים",
   "nav.tab.care-team": "צוות הטיפול",
@@ -3077,7 +3087,7 @@ export const he: Dict = {
   "vl.logLangLabel": "שפה",
   "vl.logSave": "הוספת ביטוי",
   "vl.noLangs": "הוסיפו לפחות שתי שפות לפרופיל של {first} כדי לראות את תמהיל השפות.",
-  "ms.title": "תמונת מצב התפתחותית",
+  "ms.title": "אבני דרך",
   "ms.subtitle": "שימו לב למה שראיתם עד כה על פני תחומי ההתפתחות. זהו כלי תיעוד הורי, לא ציון אבחנתי, וילדים מתפתחים בקצב שלהם.",
   "ms.observedSoFar": "נצפו עד כה",
   "ms.snapshotNotScore": "תמונת מצב, לא ציון",
@@ -3149,7 +3159,7 @@ export const he: Dict = {
   "cp.askAbout": "שאל את ארבור על {name}",
   "cp.ch.who": "{name}, גיל {age}",
   "cp.ch.now": "ממש עכשיו",
-  "cp.ch.milestones": "אבני דרך התפתחותיות",
+  "cp.ch.milestones": "אבני דרך",
   "cp.ch.strengths": "חוזקות",
   "cp.ch.support": "היכן לתמוך",
   "cp.ch.language": "שפה ותקשורת",
@@ -4268,7 +4278,7 @@ export const he: Dict = {
   "nav.title.academy": "אקדמיה",
   "nav.title.ask": "שאלו את ארבור",
   "nav.title.care": "רשת הטיפול",
-  "nav.title.profile": "פרופיל",
+  "nav.title.profile": "הילד שלי",
   // Heartwood D2/D3 hubs: Practice (promoted) + the Academy split (Stories/Learn).
   "nav.title.practice": "תרגול",
   "nav.title.stories": "סיפורים",
@@ -4297,7 +4307,7 @@ export const he: Dict = {
   "nav.cat.academy": "אקדמיה",
   "nav.cat.ask": "שאלו את ארבור",
   "nav.cat.care": "רשת הטיפול",
-  "nav.cat.profile": "פרופיל",
+  "nav.cat.profile": "הילד שלי",
   "nav.cat.practice": "תרגול",
   "nav.cat.stories": "סיפורים",
   "nav.cat.learn": "למידה",

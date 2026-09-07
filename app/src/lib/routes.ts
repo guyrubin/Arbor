@@ -77,6 +77,16 @@ export const HASH_ALIASES: Readonly<Record<string, ActiveTab>> = {
   // themselves route ids, so they need no alias.
   academy: "masterclasses",
   // Slugified nav LABELS that differ from their route id.
+  //
+  // GP-19 renamed four of these labels ("Development Profile" → "My Child",
+  // "Development Milestones" → "Milestones", "Development" → "Growth",
+  // "Development Journey" → "Growth Journey"). Both slugs stay: the OLD ones
+  // because they are in shared links, emails and plan docs already, and the NEW
+  // ones because the invariant this map exists for is that the name a parent
+  // reads on screen is a name they can type. Aliases are cheap; a dead deep
+  // link is not.
+  "my-child": "profile",
+  "growth-journey": "journey",
   home: "overview",
   "ask-arbor": "coach",
   "care-network": "consult",
