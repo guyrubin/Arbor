@@ -16,6 +16,10 @@
  *                in a string literal or JSX text, KID-29
  *   confetti   — a direct `confetti(` call (only lib/celebrate may), KID-15
  *   smallBtn   — a <button> styled py-1 / py-1.5 / p-2 (< 44 px), KID-14
+ *   adultWords — copy (a literal, a JSX text node, or the RESOLVED value of an
+ *                i18n key referenced in kid-reachable code) carrying a word
+ *                written for the grown-up in the room — test / score / assess /
+ *                privacy / judge / parent / camera, OBJ-KID-03
  *   lockGlyph  — a padlock (<Icon name="lock">, the emoji) reachable by the
  *                child: a greyed silhouette with its unlock requirement is the
  *                pressure mechanic law 3 forbids, OBJ-KID-02
@@ -35,6 +39,7 @@ import { readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { en as kidEn, he as kidHe } from "./i18nElevation/kidRegister";
+import { en as baseEn, he as baseHe } from "./i18n";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.join(__dirname, "..");
@@ -83,12 +88,24 @@ const EXCLUDED: Record<string, string> = {
   "components/practice/WordWorldTab.tsx": "parent-register by design; not reachable from any Kid Mode tile (KID-06 sequencing)",
 };
 
-type RuleId = "pct" | "kitShell" | "nav" | "download" | "clinical" | "confetti" | "smallBtn" | "lockGlyph";
+type RuleId = "pct" | "kitShell" | "nav" | "download" | "clinical" | "confetti" | "smallBtn" | "lockGlyph" | "adultWords";
 
 /** Shrink-only baseline: EXACT counts. Fixing a hit must lower the number. */
 const FROZEN: Partial<Record<string, Partial<Record<RuleId, { count: number; reason: string }>>>> = {
   "components/practice/EarlyReadingTrack.tsx": {
     kitShell: { count: 1, reason: "lane K deferred: the parent SectionCard shell inside Spell Forge → PlayPanel swap is a separate slice" },
+  },
+  "components/kidmode/KidModeOverlay.tsx": {
+    adultWords: { count: 2, reason: "kid.exit.backToParent(.Aria) — the hold-to-exit control is the PARENT's own affordance (3 s gate); the word names its owner, not the child's game" },
+  },
+  "components/kidmode/KidDashboard.tsx": {
+    adultWords: { count: 2, reason: "the same two hold-to-exit labels, rendered in the kid home header" },
+  },
+  "components/practice/SpeechCoachTab.tsx": {
+    adultWords: { count: 1, reason: "OBJ-KID-03 Speech half (prac.speech.micError 'score it yourself below') — another builder's file in this wave" },
+  },
+  "components/practice/MimicMatch.tsx": {
+    adultWords: { count: 4, reason: "OBJ-KID-03 Face Match half (prac.mimic.face.sub/privacy/warming/unavailable) — another builder's file in this wave" },
   },
   "components/practice/JourneyTab.tsx": {
     kitShell: { count: 4, reason: "parent-register surface (#/journey) — SectionCard is its legitimate chrome; scanned for pct/nav/verdict copy" },
@@ -163,6 +180,14 @@ function copySpans(src: string): string[] {
   return out;
 }
 
+/** Words written for the grown-up in the room. `\b` keeps them out of
+ *  identifiers (`photo_camera`, `scoreFaceMatch`) — only prose is scanned. */
+const ADULT_WORDS = /\b(?:tests?|scor(?:e|es|ed|ing)|assess\w*|privacy|judge|judges|parent|parents|camera)\b/i;
+
+/** The full EN dictionary a kid surface can resolve: base keys + the kid
+ *  register elevation module (base keys win on merge, as at runtime). */
+const ALL_EN: Record<string, string> = { ...kidEn, ...baseEn };
+
 const CLINICAL = /\b(?:development|diagnos\w*|assess\w*|accuracy|video-modeling)\b/i;
 const CSS_LENGTH_CONTEXT = /(?:width|height|left|right|top|bottom|inset|translate|flex|basis)[A-Za-z]*\s*:\s*`[^`\n]*\}%`/;
 
@@ -190,6 +215,27 @@ const RULES: Record<RuleId, (src: string) => string[]> = {
   // runs, so the arcade's parent-side "next gear" hint passes and the same chip
   // rendered unguarded fails.
   lockGlyph: (src) => [...src.matchAll(/name="lock(?:_\w+)?"|\u{1F512}/gu)].map((m) => m[0]),
+  // OBJ-KID-03 (law 2). Two halves, because the copy a child reads arrives two
+  // ways: as a literal in the file, and as an i18n KEY whose value lives in the
+  // dictionary. A key written for the parent door leaking into a kid branch is
+  // the exact defect this item found ("prac.adventures.sub" → "…It never feels
+  // like a test."), and a literal-only scan cannot see it.
+  adultWords: (src) => {
+    const hits: string[] = [];
+    for (const span of copySpans(src)) {
+      // Prose only: a phrase (has a space), on one line, that is not a
+      // statement (no `;`) and reads like a sentence (a capital or punctuation)
+      // — so class lists, ids and code caught by the span regexes drop out.
+      if (!/ /.test(span) || /[\n;]/.test(span)) continue;
+      if (!/[A-Z]|['’.,!?…]/.test(span)) continue;
+      if (ADULT_WORDS.test(span)) hits.push(span.trim());
+    }
+    for (const m of src.matchAll(/\bt\(\s*"([\w.]+)"/g)) {
+      const value = ALL_EN[m[1]];
+      if (value && ADULT_WORDS.test(value)) hits.push(`${m[1]}: ${value}`);
+    }
+    return hits;
+  },
 };
 
 const RULE_IDS = Object.keys(RULES) as RuleId[];
@@ -206,6 +252,9 @@ function scanFile(rel: string): Record<RuleId, string[]> {
 
 describe("kid-register scanner — positive controls (planted violations are seen)", () => {
   const PLANTED: [RuleId, string][] = [
+    ["adultWords", '<span>Camera privacy</span>'],
+    ["adultWords", '<p>use the mirror game above and you be the judge!</p>'],
+    ["adultWords", 'say={t("prac.adventures.sub", { name: first })}'], // the KEY resolves to "…never feels like a test."
     ["lockGlyph", '<Icon name="lock" size={14} /> {cosmeticLabel(next.cosmetic.id)}'],
     ["lockGlyph", "<span>🔒 All-rounder - Play in all 5 areas</span>"],
     ["pct", "<span>{powerPct}%</span>"],
@@ -231,6 +280,10 @@ describe("kid-register scanner — positive controls (planted violations are see
 
 describe("kid-register scanner — negative controls (legitimate code passes)", () => {
   const LEGAL: [RuleId, string][] = [
+    ["adultWords", '<Icon name="photo_camera" size={16} /> {t("elev.play.mimic.mirrorSay")}'], // identifier, not prose
+    ["adultWords", 'className="arbor-app arbor-parent flex items-center"'], // a class list is not copy
+    ["adultWords", 'const s = scoreFaceMatch(blendshapesToMap(cats), target);'], // code, not copy
+    ["adultWords", 'say={t("elev.play.adventures.say", { name: first })}'], // the kid line
     ["lockGlyph", "const locked = useKidLock(); const lockRef = 1; // identifiers are not glyphs"],
     ["lockGlyph", '<Icon name="check" size={14} /> <span>Earned</span>'], // an earned chip has no padlock
     ["pct", "style={{ width: `${Math.round(coverage * 100)}%` }}"], // CSS length, not a numeral render
@@ -378,6 +431,67 @@ describe("kid dictionary (lib/i18nElevation/kidRegister.ts) — counts never ver
       "Play across 3 areas in a week",
     ]) {
       expect(CLINICAL.test(old) || /in a week/.test(old)).toBe(true);
+    }
+  });
+});
+
+/* ── OBJ-KID-03: the kid namespaces carry no adult vocabulary ──────────── */
+
+/** Kid-namespace keys that legitimately name a grown-up thing, each with the
+ *  reason. Kept exact: a key that gets fixed must LEAVE this list (proved
+ *  below), so the list can never grow a tail of already-clean entries. */
+const DICT_ADULT_ALLOWED: Record<string, string> = {
+  "kid.exit.backToParent":
+    "the hold-to-exit control belongs to the parent (3 s parent gate) — the label names its owner, and the child is not its reader",
+  "kid.exit.backToParentAria": "the aria half of the same control",
+  "kid.safety.aria":
+    "retired from the kid home by KID-20/RUN-04 — the parent-side door renders elev.practice.door.* instead; key kept for dictionary parity",
+  "kid.safety.locked": "the second retired reassurance chip, same reason",
+  "elev.play.beat.scoredAria":
+    "Beat Keeper round aria-label ('Round scored') — a screen-reading child hears it, so it is filed for retirement in FOLLOW-UPS rather than silently allowed forever",
+};
+
+describe("OBJ-KID-03: kid-namespace copy is written for the child, in both locales", () => {
+  const KID_NS = /^(?:kid\.|elev\.(?:kid|play)\.)/;
+  const flagged = (dict: Record<string, string>) =>
+    Object.entries(dict)
+      .filter(([k, v]) => KID_NS.test(k) && typeof v === "string" && ADULT_WORDS.test(v))
+      .map(([k]) => k);
+
+  it.each([
+    ["i18n en", baseEn as Record<string, string>],
+    ["i18n he", baseHe as Record<string, string>],
+    ["kidRegister en", kidEn],
+    ["kidRegister he", kidHe],
+  ])("%s carries no undocumented adult word", (_label, dict) => {
+    const undocumented = flagged(dict).filter((k) => !(k in DICT_ADULT_ALLOWED));
+    expect(undocumented, `undocumented adult copy: ${undocumented.join(", ")}`).toEqual([]);
+  });
+
+  it("every allow-listed key is still a real hit (a fixed key must leave the list)", () => {
+    const live = new Set([
+      ...flagged(baseEn as Record<string, string>),
+      ...flagged(baseHe as Record<string, string>),
+      ...flagged(kidEn),
+      ...flagged(kidHe),
+    ]);
+    for (const key of Object.keys(DICT_ADULT_ALLOWED)) {
+      expect(live.has(key), `${key} is clean now — remove it from DICT_ADULT_ALLOWED`).toBe(true);
+    }
+  });
+
+  it("negative control — the copy this item replaced would have failed", () => {
+    for (const old of [
+      "Little stories with big thinking inside — it never feels like a test.",
+      "Camera privacy",
+      "Copy the face — Dylan's camera scores the shape, right on the device.",
+      "use the mirror game above and you be the judge!",
+    ]) {
+      expect(ADULT_WORDS.test(old), old).toBe(true);
+    }
+    // …and the kid lines that replaced them pass.
+    for (const key of ["elev.play.adventures.say", "elev.play.mimic.say", "elev.play.mimic.mirrorSay", "elev.play.mimic.mirrorRest", "elev.play.mimic.rateAsk"]) {
+      for (const dict of [kidEn, kidHe]) expect(ADULT_WORDS.test(dict[key]), `${key}: ${dict[key]}`).toBe(false);
     }
   });
 });

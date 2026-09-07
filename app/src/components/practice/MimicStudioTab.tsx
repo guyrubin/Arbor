@@ -66,7 +66,11 @@ export default function MimicStudioTab() {
       setMirrorOn(true);
       track("mimic_mirror_on", {});
     } catch {
-      setCamError("Camera unavailable — the game works just as well face-to-face. You be the mirror!");
+      // OBJ-KID-03: the parent gets the diagnosis, the child gets a kid line.
+      // No "camera", no instruction written for the grown-up in the room.
+      let msg = t("elev.play.mimic.mirrorRest");
+      if (!kidMode) { msg = "Camera unavailable — the game works just as well face-to-face. You be the mirror!"; }
+      setCamError(msg);
     }
   };
 
@@ -114,18 +118,34 @@ export default function MimicStudioTab() {
     return p.prompts.filter((x) => ids.has(x.id)).length;
   };
 
+  // OBJ-KID-03 (law 2): the sub ("You model it, {name} mirrors it.") instructs
+  // the PARENT. The child gets a kid `say` line instead; the parent door keeps
+  // its copy. `if (!kidMode)` rather than a ternary so the register split is
+  // visible to the kid-register scanner.
+  let headerSay = t("elev.play.mimic.say", { name: first });
+  if (!kidMode) { headerSay = t("prac.mimic.sub", { name: first }); }
+  let mirrorInvite = t("elev.play.mimic.mirrorSay");
+  if (!kidMode) { mirrorInvite = `Turn on the mirror so ${first} can watch their own mouth while copying you. Local-only — never recorded.`; }
+  let rateAsk = t("elev.play.mimic.rateAsk");
+  if (!kidMode) { rateAsk = `How did ${isolate(first)}'s copy go?`; }
+
   return (
     <PlayShell>
       <PlayHeader
         title={t("prac.mimic.title")}
-        say={t("prac.mimic.sub", { name: first })}
+        say={headerSay}
         mood="cheer"
       />
 
+      {/* The privacy strip is a PARENT assurance about how the mirror handles
+          the camera — the one reader who can act on it. Inside Kid Mode it is
+          an explainer about machinery in front of a child, so it is absent. */}
+      {!kidMode && (
       <div className="rounded-2xl p-3.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12px]" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-ink)" }}>
         <span className="font-extrabold inline-flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}><Icon name="verified_user" size={16} /> Camera privacy</span>
         <span style={{ color: "var(--arbor-muted)" }}>The mirror is local-only: nothing is recorded, stored, or uploaded — ever. Only your star rating is saved.</span>
       </div>
+      )}
 
       {/* Sound packs (feature 5) */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -185,7 +205,7 @@ export default function MimicStudioTab() {
               <div className="text-center p-6 relative z-10">
                 <Icon name="photo_camera" size={32} className="mx-auto mb-3" style={{ color: T.onDarkMuted }} />
                 <p className="text-xs mb-4 max-w-[260px] mx-auto" style={{ color: T.onDarkMuted }}>
-                  Turn on the mirror so {first} can watch their own mouth while copying you. Local-only — never recorded.
+                  {mirrorInvite}
                 </p>
                 <PlayButton onClick={() => void startMirror()} tone="clay" size="md">
                   <Icon name="photo_camera" size={16} /> Turn on mirror
@@ -203,7 +223,7 @@ export default function MimicStudioTab() {
 
         {/* Rating */}
         <div className="flex flex-wrap items-center gap-2.5 mt-5">
-          <span className="text-[13px] font-bold w-full sm:w-auto" style={{ color: "var(--arbor-muted)" }}>How did {isolate(first)}&apos;s copy go?</span>
+          <span className="text-[13px] font-bold w-full sm:w-auto" style={{ color: "var(--arbor-muted)" }}>{rateAsk}</span>
           {([
             { r: 1 as const, label: "Tried it!", tone: "pink" as const },
             { r: 2 as const, label: "So close", tone: "yellow" as const },

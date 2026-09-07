@@ -120,11 +120,20 @@ export default function AdventuresTab() {
   const playedCount = (s: AdventureScenario) =>
     new Set(data.adventures.items.filter((r) => r.scenarioId === s.id).map((r) => r.sceneId)).size;
 
+  // OBJ-KID-03 (law 2): the sub is a PARENT explainer — "…quietly practices
+  // logic, sequencing and word power. It never feels like a test." A child does
+  // not need to be told what the game is measuring. Kid register gets its own
+  // `say` line (the elev.play.soundlab.say pattern); the parent door is
+  // unchanged. Assigned in an `if (!kidMode)` block, not a ternary, so the
+  // kid-register scanner can see that the parent copy is parent-only.
+  let headerSay = t("elev.play.adventures.say", { name: first });
+  if (!kidMode) { headerSay = t("prac.adventures.sub", { name: first }); }
+
   return (
     <PlayShell>
       <PlayHeader
         title={t("prac.adventures.title")}
-        say={t("prac.adventures.sub", { name: first })}
+        say={headerSay}
         mood="wave"
       />
 

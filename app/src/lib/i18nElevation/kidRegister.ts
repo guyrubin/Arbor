@@ -105,6 +105,14 @@ export const en: Record<string, string> = {
   // `.arbor-play`. Pairs with the existing `elev.states.hero.opening` label.
   "elev.play.hero.rest": "The story is resting — let's pick another one!",
   "elev.play.adventures.napping": "The adventure is napping. Try one of these!",
+  // OBJ-KID-03: one kid `say` line per world (the elev.play.soundlab.say /
+  // elev.play.feelings.say pattern) so the explainer written FOR THE PARENT
+  // renders only on the parent door.
+  "elev.play.adventures.say": "Big stories, {name} — you choose what happens next!",
+  "elev.play.mimic.say": "Can you do what I do, {name}?",
+  "elev.play.mimic.mirrorSay": "Turn on the mirror and watch yourself make the face!",
+  "elev.play.mimic.mirrorRest": "The mirror is having a nap — let's play it face to face!",
+  "elev.play.mimic.rateAsk": "How did that one go?",
 
   // ── elev.practice — PARENT register (moved out of the kid register)
   "elev.practice.door.aria": "What Kid Mode promises",
@@ -117,6 +125,7 @@ export const en: Record<string, string> = {
   // ── Builder B (object backlog wave 1) — parent-register counts that replaced
   //    a percentage or an unearned-badge wall on a parent door.
   "elev.practice.feelings.named": "Feelings named",
+  "elev.practice.journey.badgesEarned": "{n} of {total} effort badges earned",
 };
 
 export const he: Record<string, string> = {
@@ -197,6 +206,11 @@ export const he: Record<string, string> = {
   // ── Builder C ─────────────────────────────────────────────────────────
   "elev.play.hero.rest": "הסיפור נח עכשיו — בואו נבחר סיפור אחר!",
   "elev.play.adventures.napping": "ההרפתקה נמנמת עכשיו — בואו ננסה אחת מאלה!",
+  "elev.play.adventures.say": "סיפורים גדולים, {name} — אתם בוחרים מה קורה עכשיו!",
+  "elev.play.mimic.say": "אפשר לעשות כמוני, {name}?",
+  "elev.play.mimic.mirrorSay": "הדליקו את המראה ותראו את עצמכם עושים את הפרצוף!",
+  "elev.play.mimic.mirrorRest": "המראה נחה עכשיו — בואו נשחק פנים מול פנים!",
+  "elev.play.mimic.rateAsk": "איך הלך הפעם?",
 
   "elev.practice.door.aria": "מה מצב ילדים מבטיח",
   "elev.practice.door.locked": "נעול להורים",
@@ -207,4 +221,5 @@ export const he: Record<string, string> = {
 
   // ── Builder B (object backlog wave 1)
   "elev.practice.feelings.named": "רגשות שזוהו",
+  "elev.practice.journey.badgesEarned": "{n} מתוך {total} תגי מאמץ הושגו",
 };
