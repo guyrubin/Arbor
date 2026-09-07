@@ -5,7 +5,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { SectionCard, TrustSafetyBar, cardCls, Chip, type PastelKey } from "../ui/kit";
 import { TrustPanel } from "../ui/TrustPanel";
-import { PlayShell, PlayHeader, PlayButton, ChoiceTile, ProgressPips, Celebrate, MascotSay } from "../ui/playkit";
+import { RegisterShell, PlayButton, ChoiceTile, ProgressPips, Celebrate, MascotSay } from "../ui/playkit";
 import { BAND_LABEL, SOUND_LIBRARY, type SoundEntry } from "../../practice/content";
 import { CATEGORY_ROUNDS, EXPRESS_PROMPTS, VOCAB_SETS } from "../../practice/playContent";
 import { matchResult, speechDose, ageAppropriateSoundIds, isSoundAgeAppropriate } from "../../practice/signals";
@@ -308,17 +308,16 @@ export default function SpeechCoachTab() {
   // this branch is parent-only; the kid subset below renders in Kid Mode.
   if (!kidMode) {
   return (
-    <PlayShell>
-      <PlayHeader
-        title={t("prac.speech.title")}
-        say={t("prac.speech.sub", { name: first })}
-        mood="happy"
-        action={
-          <button onClick={() => setActiveTab("language")} className="inline-flex items-center gap-1.5 text-xs font-bold transition" style={{ color: "var(--arbor-green-ink)" }}>
-            <Icon name="translate" size={14} /> {t("prac.speech.switchLangCta")}
-          </button>
-        }
-      />
+    <RegisterShell
+      kidMode={false}
+      title={t("prac.speech.title")}
+      subtitle={t("prac.speech.sub", { name: first })}
+      action={
+        <button onClick={() => setActiveTab("language")} className="inline-flex items-center gap-1.5 text-xs font-bold transition min-h-[44px] px-1" style={{ color: "var(--arbor-green-ink)" }}>
+          <Icon name="translate" size={14} /> {t("prac.speech.switchLangCta")}
+        </button>
+      }
+    >
 
       <TrustSafetyBar
         note={t("prac.speech.safetyNote", { name: first })}
@@ -677,7 +676,7 @@ export default function SpeechCoachTab() {
           {t("prac.speech.progress.footer")}
         </p>
       </SectionCard>
-    </PlayShell>
+    </RegisterShell>
   );
   }
 
@@ -688,12 +687,12 @@ export default function SpeechCoachTab() {
   const kidSounds = SOUND_LIBRARY.filter((s) => isSoundAgeAppropriate(s.band, childProfile.age));
   const RESULT_EMOJI: Record<SpeechAttempt["result"], string> = { got: "🌟", almost: "👍", missed: "🔁" };
   return (
-    <PlayShell>
-      <PlayHeader
-        title={t("elev.play.soundlab.title")}
-        say={t("elev.play.soundlab.say", { name: first })}
-        mood="happy"
-      />
+    <RegisterShell
+      kidMode
+      title={t("elev.play.soundlab.title")}
+      say={t("elev.play.soundlab.say", { name: first })}
+      mood="happy"
+    >
 
       <div className="flex flex-wrap gap-2" role="group" aria-label={t("elev.play.soundlab.pickSound")}>
         {(kidSounds.length ? kidSounds : SOUND_LIBRARY).map((s) => {
@@ -761,6 +760,6 @@ export default function SpeechCoachTab() {
         ))}
       </div>
       {lastSaved && <MascotSay mood="proud" tone="clay">{t("elev.play.soundlab.saved")}</MascotSay>}
-    </PlayShell>
+    </RegisterShell>
   );
 }

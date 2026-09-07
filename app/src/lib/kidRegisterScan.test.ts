@@ -374,7 +374,11 @@ describe("kid-register scan scope", () => {
     for (const rel of ["components/practice/SpeechCoachTab.tsx", "components/practice/FeelingsLabTab.tsx"]) {
       const src = stripParentOnly(stripComments(readFileSync(path.join(SRC, rel), "utf8")));
       expect(src, `${rel} lost its if (!kidMode) branch`).toContain("PARENT_ONLY_BRANCH");
-      expect(src, `${rel} kid remainder must still render a PlayHeader`).toContain("<PlayHeader");
+      // IA-08 / RUN-12: the kid remainder now renders through `RegisterShell`
+      // (playkit), which mounts PlayShell + PlayHeader under `kidMode` and the
+      // parent register otherwise. The header itself lives one file away;
+      // `playShell.register.test.ts` owns the register rule.
+      expect(src, `${rel} kid remainder must still render its own shell`).toContain("<RegisterShell");
     }
   });
 });

@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { celebrate } from "../../lib/celebrate";
 import { ArborMascot, type MascotMood } from "./ArborMascot";
 import { HeroAvatar } from "./HeroAvatar";
+import { PageHeader } from "./kit";
 import { TONE_INK, TONE_SOFT, T, type PlayTone } from "../../lib/tokens";
 
 /* ════════════════════════════════════════════════════════════════════════════
@@ -38,6 +39,59 @@ export function PlayShell({ children, className = "" }: { children: React.ReactN
     >
       {children}
     </motion.div>
+  );
+}
+
+/**
+ * RegisterShell — the register gate for the six SHARED drill routes
+ * (`#/speech`, `#/mimic`, `#/feelings`, `#/adventures`, `#/comics`, `#/stories`).
+ *
+ * IA-08 / RUN-12: each of those routes has two audiences behind one URL — the
+ * child inside Kid Mode, and the parent standing at the door. Both used to get
+ * `PlayShell`, so the comic register (`.arbor-play`, mascot bubble, display
+ * title) rendered inside parent chrome. Law 2 says registers are never crossed.
+ *
+ * Under Kid Mode this IS the old surface: `PlayShell` + `PlayHeader`, unchanged.
+ * On the parent door it is the parent register — kit's `PageHeader`, kit
+ * spacing, tokens only, and no `.arbor-play` anywhere in the subtree. Every
+ * `PlayShell` mount in the app now sits inside this one `kidMode` branch, which
+ * is what `lib/playShell.register.test.ts` scans for.
+ */
+export function RegisterShell({
+  kidMode,
+  title,
+  say,
+  subtitle,
+  mood = "wave",
+  action,
+  className = "",
+  children,
+}: {
+  kidMode: boolean;
+  /** Kid-register title (display type, next to the hero). */
+  title: string;
+  /** Kid-register one-liner in the mascot bubble. */
+  say?: string;
+  /** Parent-register sub-line under the h1 (calm, explanatory, never kid voice). */
+  subtitle?: string;
+  mood?: MascotMood;
+  action?: React.ReactNode;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  if (kidMode) {
+    return (
+      <PlayShell className={className}>
+        <PlayHeader title={title} say={say} mood={mood} action={action} />
+        {children}
+      </PlayShell>
+    );
+  }
+  return (
+    <div className={`space-y-6 max-w-[1100px] ${className}`}>
+      <PageHeader title={title} subtitle={subtitle} action={action} />
+      {children}
+    </div>
   );
 }
 

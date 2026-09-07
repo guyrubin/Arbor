@@ -8,7 +8,6 @@ import {
   MessageCircle, NotebookPen, UserCircle,
   Clock, ListChecks, BarChart3, Bell, BadgeCheck,
   Sparkles, Heart, Library,
-  Mic, Camera, Smile, Footprints, Compass,
 } from "lucide-react";
 import type { ActiveTab } from "../context/ArborContext";
 import type { HubId } from "./surfaceContract";
@@ -203,21 +202,19 @@ export const SECTIONS: NavSection[] = [
     // (hubTabsForSection) IN ADDITION to the launcher's tiles — they were
     // already reachable as deep links pre-D3, but the pill row widens the
     // register seam (kid-register worlds one click from parent chrome).
-    // OPEN DESIGN CALL (Guy): keep the pills, or empty `tools` so entry is
-    // launcher-mediated only (routes stay valid via TAB_SECTION_FALLBACK).
+    // RESOLVED (IA-08 / RUN-12, Guy default ratified 2026-09-07): `tools` is
+    // EMPTY. The six drill routes are reached through the launcher's own tiles
+    // (PracticeStudioTab), which say what each world nurtures and how many
+    // sessions the child has had — a parent door. The pill row put the same six
+    // one click from parent chrome with no such framing, and the routes stay
+    // valid deep links via TAB_SECTION_FALLBACK (`check:floors` walks them).
     items: [
       { tab: "practice", label: "Practice Studio", icon: Target },
     ],
     primaryTabs: [
       { tab: "practice", label: "Practice Studio", icon: Target },
     ],
-    tools: [
-      { tab: "speech", label: "Speech Coach", icon: Mic, msIcon: "mic" },
-      { tab: "mimic", label: "Mimic Studio", icon: Camera, msIcon: "photo_camera" },
-      { tab: "feelings", label: "Feelings Lab", icon: Smile, msIcon: "mood" },
-      { tab: "journey", label: "Development Journey", icon: Footprints, msIcon: "route" },
-      { tab: "adventures", label: "Adventures", icon: Compass, msIcon: "explore" },
-    ],
+    tools: [],
   },
   {
     id: "stories",

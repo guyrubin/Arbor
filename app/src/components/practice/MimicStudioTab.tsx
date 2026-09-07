@@ -4,7 +4,7 @@ import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { cardCls } from "../ui/kit";
-import { PlayShell, PlayHeader, PlayButton, ProgressPips, Celebrate, PlayPanel } from "../ui/playkit";
+import { RegisterShell, PlayButton, ProgressPips, Celebrate, PlayPanel } from "../ui/playkit";
 import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
 import { useHeroAvatar } from "../ui/HeroAvatar";
 import { T } from "../../lib/tokens";
@@ -138,13 +138,16 @@ export default function MimicStudioTab() {
   let mirrorOffGlyph = "visibility_off";
   if (!kidMode) { mirrorGlyph = "photo_camera"; mirrorOffGlyph = "no_photography"; }
 
+  // IA-08 / RUN-12: one route, two registers. `RegisterShell` mounts `PlayShell`
+  // (`.arbor-play`) under Kid Mode and the parent-register PageHeader on the door.
   return (
-    <PlayShell>
-      <PlayHeader
-        title={t("prac.mimic.title")}
-        say={headerSay}
-        mood="cheer"
-      />
+    <RegisterShell
+      kidMode={kidMode}
+      title={t("prac.mimic.title")}
+      say={headerSay}
+      subtitle={headerSay}
+      mood="cheer"
+    >
 
       {/* The privacy strip is a PARENT assurance about how the mirror handles
           the camera — the one reader who can act on it. Inside Kid Mode it is
@@ -307,6 +310,6 @@ export default function MimicStudioTab() {
           only. A kid-register Face Match needs kid lines inside MimicMatch.tsx
           (another builder's file) — filed as OBJ-KID-03-a in FOLLOW-UPS.md. */}
       {!kidMode && <MimicMatch childId={childProfile.id} name={first} />}
-    </PlayShell>
+    </RegisterShell>
   );
 }

@@ -10,7 +10,7 @@ import { api } from "../../lib/api";
 import { track } from "../../lib/analytics";
 import { useAsyncAction } from "../../hooks/useAsyncAction";
 import { isolate } from "../../lib/i18n";
-import { PlayShell, PlayHeader, PlayButton, PlayPanel, ChoiceTile, ProgressPips, MascotSay, Celebrate } from "../ui/playkit";
+import { RegisterShell, PlayButton, PlayPanel, ChoiceTile, ProgressPips, MascotSay, Celebrate } from "../ui/playkit";
 import { useKidSafeNav } from "../kidmode/useKidSafeNav";
 import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
 
@@ -128,13 +128,16 @@ export default function AdventuresTab() {
   let headerSay = t("elev.play.adventures.say", { name: first });
   if (!kidMode) { headerSay = t("prac.adventures.sub", { name: first }); }
 
+  // IA-08 / RUN-12: one route, two registers — the play wash mounts under Kid
+  // Mode only; the parent door is kit chrome (PageHeader + tokens).
   return (
-    <PlayShell>
-      <PlayHeader
-        title={t("prac.adventures.title")}
-        say={headerSay}
-        mood="wave"
-      />
+    <RegisterShell
+      kidMode={kidMode}
+      title={t("prac.adventures.title")}
+      say={headerSay}
+      subtitle={headerSay}
+      mood="wave"
+    >
 
       {/* Make-a-new-adventure CTA */}
       {!scenario && (
@@ -280,7 +283,7 @@ export default function AdventuresTab() {
           </Celebrate>
         </PlayPanel>
       )}
-    </PlayShell>
+    </RegisterShell>
   );
 }
 

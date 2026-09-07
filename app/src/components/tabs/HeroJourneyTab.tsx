@@ -345,12 +345,12 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
     const hiddenAgeMax = ageHiddenStories.length
       ? Math.max(...ageHiddenStories.map((s) => s.ageRange[1]))
       : null;
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="arbor-play space-y-6"
-      >
+    // IA-08 / RUN-12 (law 2): #/stories is ONE route with two audiences. The
+    // comic wash (`.arbor-play`) is the child's register and mounts only while
+    // Kid Mode is on; the parent standing at the door gets the parent register
+    // — kit spacing, no play wash. The catalogue body itself is shared.
+    const catalogBody = (
+      <>
         {/* HERO BANNER — the child fronts their own story academy */}
         <section className="comic-panel p-5 sm:p-6 flex items-center gap-4 sm:gap-5" aria-label={he ? "הגיבור שלך" : "Your hero"}>
           <HeroCrest size={92}>
@@ -650,7 +650,18 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
             </div>
           )}
         </div>
+      </>
+    );
+    return kidMode ? (
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="arbor-play space-y-6"
+      >
+        {catalogBody}
       </motion.div>
+    ) : (
+      <div className="space-y-6 max-w-[1100px]">{catalogBody}</div>
     );
   }
 

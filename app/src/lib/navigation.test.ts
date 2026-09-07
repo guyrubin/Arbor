@@ -26,15 +26,18 @@ describe("navigation IA", () => {
     expect(tabs).toEqual(["development", "milestones", "language", "daily-play"]);
   });
 
-  // Heartwood D3: Practice is its own depth-0 hub — the launcher leads and the
-  // five standalone drill routes are its tools. The Practice pill must be GONE
-  // from Growth's tools (promoted, not duplicated); Copilot stays Growth canon.
-  it("Practice is a depth-0 hub owning the drill suite; Growth no longer carries the pill", () => {
+  // Heartwood D3: Practice is its own depth-0 hub — the launcher leads. IA-08 /
+  // RUN-12: its `tools` are now EMPTY. The six drill routes are reached through
+  // the launcher's own tiles, which frame each world for a parent; the pill row
+  // put them one click from parent chrome with no framing at all. The routes
+  // stay live deep links (TAB_SECTION_FALLBACK) and stay reachable from
+  // PracticeStudioTab's `tab:` entries (routeReachability.test.ts).
+  // The Practice pill must be GONE from Growth's tools (promoted, not
+  // duplicated); Copilot stays Growth canon.
+  it("Practice is a depth-0 hub whose drill routes are launcher-mediated, not pills", () => {
     const practice = SECTIONS.find((s) => s.id === "practice");
     expect(practice?.items.map((i) => i.tab)).toEqual(["practice"]);
-    expect(practice?.tools.map((i) => i.tab)).toEqual(
-      ["speech", "mimic", "feelings", "journey", "adventures"],
-    );
+    expect(practice?.tools).toEqual([]);
     const growth = SECTIONS.find((s) => s.id === "growth");
     expect(growth?.tools.some((i) => i.tab === "practice")).toBe(false);
     expect(sectionForTab("copilot").id).toBe("growth"); // canon: copilot stays Growth

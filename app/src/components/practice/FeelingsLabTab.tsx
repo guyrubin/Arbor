@@ -3,7 +3,7 @@ import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { SectionCard, TrustSafetyBar, cardCls } from "../ui/kit";
-import { PlayShell, PlayHeader, StatBubble, ChoiceTile, MascotSay, PlayButton, PlayPanel, ProgressPips } from "../ui/playkit";
+import { RegisterShell, StatBubble, ChoiceTile, MascotSay, PlayButton, PlayPanel, ProgressPips } from "../ui/playkit";
 import { BREATHING_PATTERNS, CALM_TOOLS, EMOTION_SCENARIOS, EMOTIONS } from "../../practice/playContent";
 import { usePracticeData } from "../../practice/usePracticeData";
 import { EmotionAvatar } from "../ui/EmotionAvatar";
@@ -120,12 +120,11 @@ export default function FeelingsLabTab() {
 
   if (!kidMode) {
   return (
-    <PlayShell>
-      <PlayHeader
-        title={t("prac.feelings.title")}
-        say={t("prac.feelings.sub", { name: first })}
-        mood="happy"
-      />
+    <RegisterShell
+      kidMode={false}
+      title={t("prac.feelings.title")}
+      subtitle={t("prac.feelings.sub", { name: first })}
+    >
 
       <TrustSafetyBar
         note="This is coaching and practice, not mental-health diagnosis. Patterns worth discussing are surfaced gently in the Development Dashboard."
@@ -254,19 +253,19 @@ export default function FeelingsLabTab() {
           ))}
         </div>
       </SectionCard>
-    </PlayShell>
+    </RegisterShell>
   );
   }
 
   // KID-04: the KID register — Mood Mountain. Self-check → scenario → tiles →
   // next. Counts never verdicts: progress is pips, feedback is words.
   return (
-    <PlayShell>
-      <PlayHeader
-        title={t("elev.play.feelings.title")}
-        say={t("elev.play.feelings.say", { name: first })}
-        mood="happy"
-      />
+    <RegisterShell
+      kidMode
+      title={t("elev.play.feelings.title")}
+      say={t("elev.play.feelings.say", { name: first })}
+      mood="happy"
+    >
 
       <PlayPanel tone="yellow">
         <div className="flex items-center gap-4 rounded-2xl p-4 mb-4" style={{ background: "var(--arbor-paper-deep)" }}>
@@ -326,6 +325,6 @@ export default function FeelingsLabTab() {
           </div>
         )}
       </PlayPanel>
-    </PlayShell>
+    </RegisterShell>
   );
 }

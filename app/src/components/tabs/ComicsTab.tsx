@@ -3,7 +3,7 @@ import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
-import { PlayShell, PlayHeader, PlayButton, PlayPanel } from "../ui/playkit";
+import { RegisterShell, PlayButton, PlayPanel } from "../ui/playkit";
 import { EmptyState, GhostBlock } from "../ui/EmptyState";
 import { statesText } from "../../lib/i18nElevation/states";
 import { HeroAvatar, useHeroAvatar } from "../ui/HeroAvatar";
@@ -87,7 +87,7 @@ const STORY_EMOJI: Record<string, string> = {
 
 export default function ComicsTab() {
   const { childProfile, setActiveTab, openPaywall, milestones, behaviorLogs, playLogs } = useArbor();
-  const { aiLang } = useLanguage();
+  const { aiLang, t } = useLanguage();
   const { url: heroUrl, hasHero, name } = useHeroAvatar();
 
   // The durable shelf: one metadata doc per saved adventure (doc id = adventureId).
@@ -178,12 +178,11 @@ export default function ComicsTab() {
   // families must not hit English exactly where register matters most.
   if (!hasHero) {
     return (
-      <PlayShell>
-        <PlayHeader
-          title="Hero Comics"
-          say={he ? `הפכו את ${name} לכוכב של ספר קומיקס משלו.` : `Turn ${name} into the star of their own comic book.`}
-          mood="cheer"
-        />
+      <RegisterShell
+        kidMode={false}
+        title={t("nav.tab.comics")}
+        subtitle={he ? `הפכו את ${name} לכוכב של ספר קומיקס משלו.` : `Turn ${name} into the star of their own comic book.`}
+      >
         <PlayPanel tone="lav" className="text-center">
           <p className="text-[1.3rem] font-extrabold mb-2" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
             {he ? `קודם כול, צרו את הגיבור של ${isolate(name)}` : `First, create ${isolate(name)}'s hero`}
@@ -197,7 +196,7 @@ export default function ComicsTab() {
             <Icon name="auto_awesome" size={16} /> {he ? `צרו את הגיבור של ${isolate(name)}` : `Create ${isolate(name)}'s hero`}
           </PlayButton>
         </PlayPanel>
-      </PlayShell>
+      </RegisterShell>
     );
   }
 
@@ -222,7 +221,7 @@ export default function ComicsTab() {
         }
       : undefined;
     return (
-      <PlayShell>
+      <RegisterShell kidMode={false} title={adventureTitle(openAdventure, aiLang)}>
         <ComicReader
           adventure={openAdventure}
           lang={aiLang}
@@ -239,7 +238,7 @@ export default function ComicsTab() {
             openPaywall(err.feature || "heroComic", err.plan);
           }}
         />
-      </PlayShell>
+      </RegisterShell>
     );
   }
 
@@ -258,13 +257,16 @@ export default function ComicsTab() {
     .map((a) => getStorySpec(a.id))
     .filter((s): s is NonNullable<typeof s> => !!s);
 
+  // IA-08 / RUN-12: `#/comics` is a PARENT door — no Kid-Mode surface mounts
+  // ComicsTab (KidModeOverlay maps only `arcade` and `journeys`, and the
+  // in-hub Hero Comics tile is behind `kidNav`, which is null while kid-locked).
+  // So the register is fixed at parent: kit chrome, no `.arbor-play` wash.
   return (
-    <PlayShell>
-      <PlayHeader
-        title="Hero Comics"
-        say={he ? `כל הרפתקה היא ספר קומיקס שלם — בכיכוב ${name}!` : `Every adventure is a whole comic book — starring ${name}!`}
-        mood="cheer"
-      />
+    <RegisterShell
+      kidMode={false}
+      title={t("nav.tab.comics")}
+      subtitle={he ? `כל הרפתקה היא ספר קומיקס שלם — בכיכוב ${name}!` : `Every adventure is a whole comic book — starring ${name}!`}
+    >
 
       {/* Shelf summary */}
       <PlayPanel tone="clay">
@@ -457,6 +459,6 @@ export default function ComicsTab() {
             : `Comics use ${isolate(name)}'s saved cartoon hero — never a real photo. Images are AI-made and provenance-watermarked.`}
         </span>
       </div>
-    </PlayShell>
+    </RegisterShell>
   );
 }
