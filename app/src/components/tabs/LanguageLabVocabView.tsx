@@ -87,7 +87,15 @@ function DisclaimerPanel({ t, onClose }: { t: (k: string, v?: Record<string, str
 // Parents log phrases explicitly; this component writes to the "langObs"
 // collection. Zero ASR, zero automated detection.
 
-function PhraseLogForm({
+/**
+ * The Language Lab's primary move. It used to render at the BOTTOM of this
+ * view, which itself renders last on the hub — the input sat at y 2431 on a
+ * phone, so the one thing a parent comes here to do was two and a half screens
+ * below the fold. It is exported and mounted directly under the hub header
+ * (LanguageLabTab) instead. The vocabulary COUNTER stays demoted where AP-054
+ * put it: an empty counter is still never the hero. The form is not a counter.
+ */
+export function PhraseLogForm({
   childId,
   languages,
   onAdded,
@@ -463,13 +471,8 @@ export default function LanguageLabVocabView() {
         </div>
       </SectionCard>
 
-      {/* ── Inline phrase log form ── */}
-      <PhraseLogForm
-        childId={childId}
-        languages={languages}
-        onAdded={() => {}}
-        t={t}
-      />
+      {/* The phrase log form used to close this view; it is now mounted under
+          the hub header (LanguageLabTab) so the primary move is above the fold. */}
     </div>
   );
 }

@@ -417,14 +417,20 @@ export default function DevelopmentCopilot() {
                 <ul className="space-y-1.5">
                   {snap.bands.map((b) => {
                     const meta = DOMAIN_META[b.domain];
-                    // Count register: prefer the snapshot's persisted parent-noticed
-                    // counts; fall back to the current tally for legacy snapshots.
-                    const fallback = domainCounts.get(b.domain);
-                    const reached = b.reached ?? fallback?.reached ?? 0;
-                    const total = b.total ?? fallback?.total ?? 0;
+                    // GP-08: `domainCounts` is already the AGE WINDOW (line 107),
+                    // and it owns the denominator here too — the persisted
+                    // `total` was written against the whole 0–6y catalogue, so
+                    // this block printed "0 of 38" beside live cards that were
+                    // counting a different, correct population. The snapshot's
+                    // own `reached` stays (it is the historical part) and is
+                    // clamped to the window it is now counted against; a domain
+                    // with nothing in the window is not rendered.
+                    const windowed = domainCounts.get(b.domain);
+                    const total = windowed?.total ?? 0;
                     // item 19: no denominator before there is one (same rule as
                     // the live domain list above).
                     if (total === 0) return null;
+                    const reached = Math.min(b.reached ?? windowed?.reached ?? 0, total);
                     return (
                       <li key={b.domain} className="flex items-baseline justify-between gap-2 text-[11px]">
                         <span className="font-bold" style={{ color: meta.color }}>{meta.label}</span>

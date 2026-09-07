@@ -46,6 +46,10 @@ export const en: Record<string, string> = {
   "elev.growth.course.markDone": "Mark done",
   "elev.growth.course.markNotDone": "Mark not done",
 
+  // ── Builder F · RUN-08 (Journey zero wall) + the charter-aim chip
+  "elev.growth.journey.zeroTeach": "Nothing to count yet. Mark one day's practice below and this row starts keeping your record — days practised, objectives, effort badges.",
+  "elev.growth.journey.aim": "Your aim: {domain}",
+
 };
 
 export const he: Record<string, string> = {
@@ -78,5 +82,9 @@ export const he: Record<string, string> = {
   "elev.growth.lang.duration.daily": "כל יום",
   "elev.growth.course.markDone": "לסמן שנעשה",
   "elev.growth.course.markNotDone": "לבטל את הסימון",
+
+  // ── Builder F · RUN-08 (Journey zero wall) + the charter-aim chip
+  "elev.growth.journey.zeroTeach": "אין עדיין מה לספור. סמנו תרגול של יום אחד למטה והשורה הזו תתחיל לשמור את הרישום שלכם — ימי תרגול, יעדים ותגי מאמץ.",
+  "elev.growth.journey.aim": "היעד שלכם: {domain}",
 
 };

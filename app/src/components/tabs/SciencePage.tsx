@@ -320,10 +320,13 @@ export default function SciencePage() {
       <div id="trust-data" data-testid="trust-section-data" className="scroll-mt-4">
         <SectionCard title={tt("elev.trust.data.title")} icon={<Icon name={SECTION_ICON.data} size={18} />} tone="lav">
           <ul role="list">
-            {(["profile", "moments", "play", "screening", "coach"] as const).map((row) => (
+            {/* GP-25: the list is what the app actually collects. The approved
+                memory ledger was missing entirely, and the profile row named
+                three of the nine fields the edit drawer writes. */}
+            {(["profile", "moments", "play", "screening", "coach", "memory"] as const).map((row) => (
               <LegendRow
                 key={row}
-                chip={<IconBadge tone="lav" size={32}><Icon name={{ profile: "person", moments: "edit_note", play: "sports_esports", screening: "checklist", coach: "forum" }[row]} size={16} /></IconBadge>}
+                chip={<IconBadge tone="lav" size={32}><Icon name={{ profile: "person", moments: "edit_note", play: "sports_esports", screening: "checklist", coach: "forum", memory: "bookmark" }[row]} size={16} /></IconBadge>}
                 label={tt(`elev.trust.data.${row}.label`)}
                 desc={tt(`elev.trust.data.${row}.desc`)}
               />
@@ -406,7 +409,9 @@ export default function SciencePage() {
                 rendered 6 rows, and the Full Picture covered 5. One count,
                 from DOMAIN_META. */}
             <StatTile value={String(Object.keys(DOMAIN_META).length)} label={t("sci.stat.domains")} />
-            <StatTile value="40+" label={t("sci.stat.sources")} />
+            {/* GP-25 / law 8: "40+" was a claim; six rows render below it.
+                The number is the list. */}
+            <StatTile value={String(CITATIONS.length)} label={t("sci.stat.sources")} />
           </div>
 
           <div className="rounded-2xl p-4 mt-4" style={{ background: "var(--arbor-paper-deep)" }}>

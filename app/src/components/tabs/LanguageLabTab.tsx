@@ -7,7 +7,7 @@ import { useChildCollection } from "../../hooks/useChildCollection";
 import { PageHeader, SectionCard, cardCls, Chip } from "../ui/kit";
 import { ageLabel } from "../../lib/childAge";
 import { aggregateLangCounts, type LangObservation } from "../../growth/vocabAgg";
-import LanguageLabVocabView from "./LanguageLabVocabView";
+import LanguageLabVocabView, { PhraseLogForm } from "./LanguageLabVocabView";
 
 /**
  * Language Lab — multilingual development support, driven by the child's own
@@ -118,6 +118,10 @@ export default function LanguageLabTab() {
         </div>
       ) : (
         <>
+          {/* The primary move, under the header. Nothing above it but the page
+              title, so a parent who opened this hub to log a phrase can. */}
+          <PhraseLogForm childId={childProfile.id} languages={langs} onAdded={() => {}} t={t} />
+
           {/* Daily practice — the hero: real, usable value every day */}
           <SectionCard
             title={t("lang.routinesTitle", { target })}

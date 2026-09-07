@@ -581,7 +581,9 @@ function StepAvatar({
         className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98]"
         style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
       >
-        {t("ob.step.continue")}
+        {/* MOB-21: "Continue" promised the next step and opened a modal. The
+            label names the tap. */}
+        {t("elev.auth.avatar.cta", { name: childName })}
       </button>
 
       <button

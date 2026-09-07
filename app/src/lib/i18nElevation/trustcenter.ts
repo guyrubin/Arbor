@@ -58,7 +58,11 @@ export const en: Record<string, string> = {
   // ── Section 2 — What data Arbor collects and uses
   "elev.trust.data.title": "What data Arbor collects and uses",
   "elev.trust.data.profile.label": "Child profile",
-  "elev.trust.data.profile.desc": "Name, birth date, and the interests you add.",
+  // Builder F · GP-25: the row named three fields while the profile drawer
+  // writes nine. A data-collection notice that under-reports is worse than
+  // none: it is a promise the app is already breaking on the next screen.
+  "elev.trust.data.profile.desc":
+    "Name, age, languages, school context, the strengths and challenges you write, the interests you add, and a photo or generated avatar if you make one.",
   "elev.trust.data.moments.label": "Moments and journal notes",
   "elev.trust.data.moments.desc": "What you write stays in your family's space.",
   "elev.trust.data.play.label": "Activity history",
@@ -70,6 +74,11 @@ export const en: Record<string, string> = {
   "elev.trust.data.coach.label": "Coach conversations",
   "elev.trust.data.coach.desc":
     "Saved so you can return to them; the coach uses only what you approve.",
+  // Builder F · GP-25: the approved-memory ledger was collected and used
+  // and never appeared in the list of what is collected and used.
+  "elev.trust.data.memory.label": "What Arbor remembers",
+  "elev.trust.data.memory.desc":
+    "Facts you approved one at a time in Child Memory. Nothing is remembered until you approve it, and you can forget any of it.",
   "elev.trust.data.manage": "Everything can be exported or deleted, any time.",
   "elev.trust.data.manageCta": "Manage your data in Profile",
 
@@ -155,7 +164,9 @@ export const he: Record<string, string> = {
 
   "elev.trust.data.title": "איזה מידע Arbor אוסף ואיך הוא משמש",
   "elev.trust.data.profile.label": "פרופיל הילד",
-  "elev.trust.data.profile.desc": "שם, תאריך לידה ותחומי העניין שהוספתם.",
+  // Builder F · GP-25
+  "elev.trust.data.profile.desc":
+    "שם, גיל, שפות, הקשר הגן או בית הספר, החוזקות והאתגרים שאתם כותבים, תחומי העניין שהוספתם, ותמונה או דמות מאויירת אם יצרתם.",
   "elev.trust.data.moments.label": "רגעים ורשומות ביומן",
   "elev.trust.data.moments.desc": "מה שאתם כותבים נשאר במרחב המשפחתי שלכם.",
   "elev.trust.data.play.label": "היסטוריית פעילויות",
@@ -164,6 +175,10 @@ export const he: Record<string, string> = {
   "elev.trust.data.screening.desc": "משמשות רק כדי להאיר מה ששווה שיחה.",
   "elev.trust.data.coach.label": "שיחות עם Arbor",
   "elev.trust.data.coach.desc": "נשמרות כדי שתוכלו לחזור אליהן; Arbor משתמש רק במה שאישרתם.",
+  // Builder F · GP-25
+  "elev.trust.data.memory.label": "מה ארבור זוכרת",
+  "elev.trust.data.memory.desc":
+    "עובדות שאישרתם אחת־אחת במסך הזיכרון. שום דבר לא נשמר לפני אישור שלכם, ואפשר לשכוח כל אחת מהן.",
   "elev.trust.data.manage": "אפשר לייצא או למחוק את הכול, בכל רגע.",
   "elev.trust.data.manageCta": "ניהול המידע בפרופיל",
 

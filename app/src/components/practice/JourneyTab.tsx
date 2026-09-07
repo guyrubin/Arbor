@@ -11,6 +11,9 @@ import { aimDomains, composeWeek, suggestObjectives } from "../../practice/journ
 import { aimVirtues, loadCharter } from "../../lib/becoming";
 import { useCopilot, usePracticeData } from "../../practice/usePracticeData";
 import { domainMilestoneCounts } from "../../practice/signals";
+// GP-08: the age window every other count on the parent side uses.
+import { ageWindowMilestones, comparisonAgeMonths } from "../../lib/milestoneData";
+import { ageMonthsFromProfile } from "../../lib/childAge";
 import type { JourneyObjective, MissionRecord } from "../../types";
 import { track } from "../../lib/analytics";
 
@@ -70,6 +73,11 @@ export default function JourneyTab() {
   const earnedAchievements = useMemo(() => achievements.filter((a) => a.earned), [achievements]);
   const earnedCount = earnedAchievements.length;
 
+  const missionsDone = data.missions.items.filter((m) => m.completed).length;
+  const objectivesDone = objectives.filter((o) => o.done).length;
+  // Every number in the stat row is zero — nothing has happened yet.
+  const statsAreEmpty = missionsDone === 0 && data.week.activeDays === 0 && objectivesDone === 0 && earnedCount === 0;
+
   const startObjectives = () => {
     suggestedObjectives.forEach((o) => void objectivesCol.upsert(o));
     track("journey_objectives_started", { month });
@@ -95,8 +103,27 @@ export default function JourneyTab() {
 
   const snapshots = [...copilot.snapshots].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 6);
   // AP-CF-snapshots: count register for the historical progression — parent-noticed
-  // milestones per domain, never the 0–100 `signal`. Fallback for legacy snapshots.
-  const domainCounts = useMemo(() => domainMilestoneCounts(milestones), [milestones]);
+  // milestones per domain, never the 0–100 `signal`.
+  //
+  // GP-08 residue: the denominator came from the WHOLE 0–6y catalogue, so a
+  // three-year-old's parent read "0 of 38" — 38 milestones most of which are
+  // not this child's age to reach. The window (current CDC band + one earlier)
+  // is the same one Growth, Milestones, the Full Picture and the Copilot's own
+  // live cards already use. The snapshot's own `reached` is kept — it is the
+  // parent's noticed count on that date and the only genuinely historical part
+  // of the row — and clamped to the window it is now counted against.
+  const domainCounts = useMemo(() => {
+    const chronoMonths = ageMonthsFromProfile(childProfile) ?? Math.round((childProfile.age || 0) * 12);
+    const inWindow = ageWindowMilestones(milestones, comparisonAgeMonths(chronoMonths, childProfile.preterm?.gestationalWeeks));
+    return domainMilestoneCounts(inWindow);
+  }, [milestones, childProfile]);
+
+  // KID-17 / law 1: the family's OWN charter aims — never a reading of the
+  // child. `recommend()` is charter-aimed since Builder A, but a bare
+  // "Focus: {domain}" chip with no why-line reads as a pointer at a weakest
+  // area whatever produced it. The chip now names the aim the family chose,
+  // and renders only when they have chosen one.
+  const aims = useMemo(() => aimDomains(aimVirtues(loadCharter())), []);
 
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
@@ -106,10 +133,21 @@ export default function JourneyTab() {
         subtitle={t("prac.journey.sub", { name: first })}
       />
 
+      {/* RUN-08: on day 0 all four cards read 0 — a wall of zeros that teaches
+          nothing and reads as a report card the family has already failed. One
+          teach line instead, naming the single move that starts the record.
+          The cards return the moment any of them has something to count. */}
+      {statsAreEmpty ? (
+        <div className={`${cardCls} p-5`} data-testid="journey-zero-teach">
+          <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+            {t("elev.growth.journey.zeroTeach")}
+          </p>
+        </div>
+      ) : (
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* KID-17: counts, never a 0–100 score that grades the parent. */}
         <div className={`${cardCls} p-5`}>
-          <p className="text-2xl font-extrabold" style={{ color: "var(--arbor-ink)" }}>{data.missions.items.filter((m) => m.completed).length}</p>
+          <p className="text-2xl font-extrabold" style={{ color: "var(--arbor-ink)" }}>{missionsDone}</p>
           <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>{t("elev.practice.journey.missionsDone")}</p>
         </div>
         <div className={`${cardCls} p-5`}>
@@ -117,7 +155,7 @@ export default function JourneyTab() {
           <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>Active practice days this week</p>
         </div>
         <div className={`${cardCls} p-5`}>
-          <p className="text-2xl font-extrabold" style={{ color: "var(--arbor-ink)" }}>{objectives.filter((o) => o.done).length}/{objectives.length}</p>
+          <p className="text-2xl font-extrabold" style={{ color: "var(--arbor-ink)" }}>{objectivesDone}/{objectives.length}</p>
           <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>Monthly objectives done</p>
         </div>
         <div className={`${cardCls} p-5`}>
@@ -125,9 +163,12 @@ export default function JourneyTab() {
           <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>Effort badges earned</p>
         </div>
       </div>
+      )}
 
       <SectionCard title="This week" icon={<Icon name="calendar_month" size={20} />} tone="mint"
-        action={<Chip tone="mint">Focus: {DOMAIN_META[copilot.recommendation.domain].label}</Chip>}>
+        action={aims.length > 0
+          ? <Chip tone="mint">{t("elev.growth.journey.aim", { domain: DOMAIN_META[aims[0]].label })}</Chip>
+          : undefined}>
         <div className="grid grid-cols-1 lg:grid-cols-7 gap-3">
           {week.map((day) => {
             const done = data.missions.items.some((r) => r.date === day.date && r.missionId === day.mission.id && r.completed);
@@ -148,14 +189,14 @@ export default function JourneyTab() {
                 </div>
                 <button
                   onClick={() => toggleMission(day.mission.id, day.mission.domain, day.date)}
-                  className="mt-auto inline-flex items-center justify-center gap-1.5 text-[11px] font-extrabold px-3 py-2 rounded-xl"
+                  className="mt-auto inline-flex min-h-11 items-center justify-center gap-1.5 text-[11px] font-extrabold px-3 py-2 rounded-xl"
                   style={done ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
                 >
                   <Icon name="check_circle" size={14} /> {done ? "Done" : "Mark done"}
                 </button>
                 <button
                   onClick={() => setActiveTab(extraTab)}
-                  className="text-start rounded-xl p-3 transition"
+                  className="text-start min-h-11 rounded-xl p-3 transition"
                   style={{ background: DOMAIN_META[day.mission.domain].soft }}
                 >
                   <span className="block text-[10px] font-extrabold uppercase tracking-wide" style={{ color: DOMAIN_META[day.mission.domain].color }}>Aimed extra</span>
@@ -170,7 +211,7 @@ export default function JourneyTab() {
 
       <SectionCard title={`${month} objectives`} icon={<Icon name="target" size={20} />} tone="coral"
         action={!startedObjectives && (
-          <button onClick={startObjectives} className="inline-flex items-center gap-2 text-xs font-extrabold px-4 py-2.5 rounded-xl text-white" style={{ background: "var(--arbor-peach-ink)" }}>
+          <button onClick={startObjectives} className="inline-flex min-h-11 items-center gap-2 text-xs font-extrabold px-4 py-2.5 rounded-xl text-white" style={{ background: "var(--arbor-peach-ink)" }}>
             <Icon name="auto_awesome" size={14} /> Start these
           </button>
         )}>
@@ -181,7 +222,7 @@ export default function JourneyTab() {
           {objectives.map((obj) => {
             const meta = DOMAIN_META[obj.domain];
             return (
-              <button key={obj.id} onClick={() => toggleObjective(obj)} className={`${cardCls} p-4 text-start transition hover:shadow-md`}>
+              <button key={obj.id} onClick={() => toggleObjective(obj)} className={`${cardCls} min-h-11 p-4 text-start transition hover:shadow-md`}>
                 <span className="inline-flex items-center gap-2">
                   <span className="w-8 h-8 rounded-xl inline-flex items-center justify-center" style={{ background: meta.soft, color: meta.color }}>
                     <Icon name="check_circle" size={16} />
@@ -240,11 +281,13 @@ export default function JourneyTab() {
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
                   {snap.bands.map((b) => {
                     const meta = DOMAIN_META[b.domain];
-                    // Count register: persisted parent-noticed counts, with a
-                    // current-tally fallback for snapshots written before counts existed.
-                    const fallback = domainCounts.get(b.domain);
-                    const reached = b.reached ?? fallback?.reached ?? 0;
-                    const total = b.total ?? fallback?.total ?? 0;
+                    // GP-08: the denominator is the child's age window, never the
+                    // whole catalogue. A domain with nothing in the window is not
+                    // rendered at all — "0 of 0" is not a fact about a child.
+                    const windowed = domainCounts.get(b.domain);
+                    const total = windowed?.total ?? 0;
+                    if (total === 0) return null;
+                    const reached = Math.min(b.reached ?? windowed?.reached ?? 0, total);
                     return (
                       <div key={b.domain}>
                         <p className="text-[10px] font-bold mb-1" style={{ color: meta.color }}>{meta.label}</p>
