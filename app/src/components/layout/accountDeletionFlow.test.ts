@@ -167,6 +167,7 @@ function settings(source = settingsSource) {
     "../../lib/tokens": { T: {} },
     "../../lib/theme": { ACCENT_THEMES: ["green", "teal", "blue"], getSavedTheme: () => "green", setTheme: vi.fn() },
     "../../lib/formatDate": { fmtDay: () => "" },
+    "../../lib/i18n": { translate: (_lang: string, key: string) => key },
   };
   const r = renderer(source, imports);
   const onClose = vi.fn();
