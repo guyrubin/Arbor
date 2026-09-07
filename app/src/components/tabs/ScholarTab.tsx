@@ -27,7 +27,11 @@ export default function ScholarTab() {
         subtitle={t("scholar.subtitle")}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 text-xs">
+      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (counted against the route's
+          moduleBudget); `data-primary-move` marks the ONE control performing
+          the move surfaceContract.ts declares for this route. */}
+      <div data-module="scholar-lenses" className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 text-xs">
         {scholarsInfo.map((sch, idx) => {
           const tone = TONES[idx % TONES.length];
           const p = PASTEL[tone];
@@ -57,6 +61,11 @@ export default function ScholarTab() {
 
               <div className="space-y-2">
                 <button
+                  // The declared move is "open-lens" — applying a scholar's
+                  // lens to this child. Stamped on the first card only, so the
+                  // surface renders exactly ONE primary move and it is the one
+                  // above the fold, not six identical claims down the grid.
+                  data-primary-move={idx === 0 ? "open-lens" : undefined}
                   onClick={() => seedCoach({
                     // AI-input seed (sent to the model in aiLang) — intentionally English; the
                     // model localizes its reply via getAiLanguage(). Do not translate.

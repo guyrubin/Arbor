@@ -60,7 +60,11 @@ export default function PlansTab() {
         </div>
       </div>
 
-      <div className={`${cardCls} p-6 space-y-4`}>
+      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (what moduleBudget counts);
+          `data-primary-move` marks the ONE control that performs the move
+          surfaceContract.ts declares for this route. */}
+      <div data-module="plans-create" className={`${cardCls} p-6 space-y-4`}>
         <span className="text-xs font-extrabold tracking-wider uppercase block" style={{ color: "var(--arbor-green-ink)" }}>{t("plan.create")}</span>
 
         {/* Templates — start from a common challenge */}
@@ -136,7 +140,7 @@ export default function PlansTab() {
         </div>
       </div>
 
-      <RoutinesCard />
+      <div data-module="plans-routines" style={{ display: "contents" }}><RoutinesCard /></div>
 
       {!plansLoaded && (
         /* Masterplan 4.3 — per-section skeleton reserving the plan cards'
@@ -171,7 +175,7 @@ export default function PlansTab() {
         />
       )}
 
-      <div className="space-y-8">
+      <div data-module="plans-active" data-primary-move="advance-plan-step" className="space-y-8">
         {actionPlans.map((plan) => {
           const prog = planProgress(plan);
           return (

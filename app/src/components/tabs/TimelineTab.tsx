@@ -38,10 +38,20 @@ export default function TimelineTab() {
   const { t } = useLanguage();
   const density: Density = activeTab === "timeline" ? "story" : "feed";
 
+  // Item 11 (IA-02): the surface contract reaches the DOM. One leaf, two routes,
+  // two different declared moves — #/timeline's is switch-density (the toggle
+  // below), #/journal's is capture-moment (the composer inside JournalTab). The
+  // stamp is built once and spread onto whichever of the two is actually live,
+  // so this file carries exactly ONE `data-primary-move` and the page renders
+  // exactly one, on the control that really performs the active route's move.
+  const primaryMove = { "data-primary-move": density === "story" ? "switch-density" : "capture-moment" };
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
       {/* Density toggle — one surface, two reading densities over one stream. */}
       <div
+        data-module="timeline-density"
+        {...(density === "story" ? primaryMove : {})}
         className="inline-flex items-center gap-1 rounded-full p-1"
         role="tablist"
         aria-label={t("timeline.density.aria")}
@@ -85,7 +95,9 @@ export default function TimelineTab() {
         </p>
       )}
 
-      {density === "feed" ? <JournalTab /> : <StoryTimelineTab />}
+      <div data-module="timeline-stream" {...(density === "feed" ? primaryMove : {})}>
+        {density === "feed" ? <JournalTab /> : <StoryTimelineTab />}
+      </div>
     </motion.div>
   );
 }

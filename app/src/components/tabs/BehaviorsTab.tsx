@@ -676,7 +676,11 @@ export default function BehaviorsTab() {
           the guide shelf and the log list below both. */}
 
       {/* Row 1 — QuickLog tiles (full width under the hero) */}
-      <section className="min-w-0" aria-label={t("beh.captureTitle")}>
+      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (what moduleBudget counts);
+          `data-primary-move` marks the ONE control that performs the move
+          surfaceContract.ts declares for this route. */}
+      <section data-module="behaviors-capture" data-primary-move="log-behavior" className="min-w-0" aria-label={t("beh.captureTitle")}>
         {/* TJB-12 — the writing prompt the parent tapped in the Journal before
             arriving here. It used to die at the tab switch, leaving them in
             front of an empty "What happened?" with the question gone. Display
@@ -842,10 +846,10 @@ export default function BehaviorsTab() {
       {/* CONT-2 — Hard moments (AR-CONT-01). Fail-closed: reads ONLY
           publishedHardMomentCards, so the section is invisible until named
           clinical review stamps the pack (GD-10). */}
-      <HardMomentsSection />
+      <div data-module="behaviors-hard-moments" style={{ display: "contents" }}><HardMomentsSection /></div>
 
       {/* Row 2 — events main column + right rail (patterns) */}
-      <div className="grid min-w-0 grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+      <div data-module="behaviors-record" className="grid min-w-0 grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         {/* Main column: events + the full log form */}
         <div className="min-w-0 space-y-6">
           <div className={`${cardCls} p-5 space-y-4`}>

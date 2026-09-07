@@ -884,8 +884,12 @@ export default function CoachTab() {
 
   return (
     <motion.div initial={reducedMotion ? false : { opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1040px] space-y-6">
+      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (what moduleBudget counts);
+          `data-primary-move` marks the ONE control that performs the move
+          surfaceContract.ts declares for this route. */}
       {/* One coaching workspace: orientation, conversation, composer. */}
-      <div className="space-y-4">
+      <div data-module="coach-orientation" className="space-y-4">
         <header className="border-b pb-5" style={{ borderColor: "var(--arbor-rule)" }}>
           <div className="max-w-2xl">
             <p className="text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-green-ink)" }}>{t("elev.hero.ask.eyebrow")}</p>
@@ -1088,7 +1092,7 @@ export default function CoachTab() {
           with the page (ArborContext auto-scrolls the viewport to the streaming
           answer via chatBottomRef). The min-height keeps the conversation canvas
           from shrinking below the previous min(70dvh,560px) viewport. */}
-      <div className={`${cardCls} flex min-h-[min(70dvh,560px)] min-w-0 flex-col overflow-hidden`}>
+      <div data-module="coach-thread" className={`${cardCls} flex min-h-[min(70dvh,560px)] min-w-0 flex-col overflow-hidden`}>
         {/* Persistent named-coach identity strip. The lens/context frame is kept but
             visually subordinate so the conversation is the hero. Green primary —
             never the design's sapphire — per the parent color lock. */}
@@ -1616,6 +1620,8 @@ export default function CoachTab() {
           sidebar layout has no bottom bar. */}
       {composerDocked && (
         <div
+          data-module="coach-composer"
+          data-primary-move="ask"
           data-testid="coach-docked-composer"
           className="sticky bottom-[calc(var(--mobile-nav-h)+env(safe-area-inset-bottom)+8px)] lg:bottom-0 z-30"
           style={{ background: "var(--arbor-paper)", borderTop: "1px solid var(--arbor-rule)", boxShadow: "0 -6px 16px rgba(41,51,63,0.05)" }}

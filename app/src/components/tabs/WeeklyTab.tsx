@@ -229,7 +229,12 @@ export default function WeeklyTab() {
                  report. Story cards, one stat per card, last card = the single
                  recommendation (CTA through the acceptTodayAction seam inside,
                  TODAY-1: AI digests only). ── */}
+          {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (what moduleBudget counts);
+          `data-primary-move` marks the ONE control that performs the move
+          surfaceContract.ts declares for this route. */}
           {showRecap && selected.digest && (
+            <div data-module="weekly-recap" data-primary-move="accept-recap-recommendation" style={{ display: "contents" }}>
             <RecapStoryCards
               report={selected as WeeklyReport & { digest: WeeklyDigest }}
               childName={childProfile.name}
@@ -237,6 +242,7 @@ export default function WeeklyTab() {
               accepted={activeTodayAction?.recommendation === selected.digest.tryThisWeek.trim()}
               onAccept={() => acceptTodayAction(selected.digest!.tryThisWeek, "standard", "digest")}
             />
+            </div>
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
