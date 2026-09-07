@@ -130,7 +130,11 @@ export default function AttributionTab() {
       />
 
       {/* Controls */}
-      <div className="flex flex-wrap items-center gap-3 mb-6">
+      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (what moduleBudget counts);
+          `data-primary-move` marks the ONE control that performs the move
+          surfaceContract.ts declares for this route. */}
+      <div data-module="attribution-controls" className="flex flex-wrap items-center gap-3 mb-6">
         <label className="inline-flex items-center gap-2 text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>
           {t("attr.groupBy") || "Group by"}
           <select
@@ -194,7 +198,7 @@ export default function AttributionTab() {
       )}
 
       {!error && rows.length > 0 && (
-        <div className="rounded-2xl overflow-x-auto" style={{ border: "1px solid var(--arbor-rule)" }}>
+        <div data-module="attribution-funnel" data-primary-move="view-attribution" className="rounded-2xl overflow-x-auto" style={{ border: "1px solid var(--arbor-rule)" }}>
           <table className="w-full text-sm border-collapse">
             <caption className="sr-only">{t("attr.title") || "Attribution funnel"}</caption>
             <thead>

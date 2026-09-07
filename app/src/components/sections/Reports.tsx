@@ -157,6 +157,11 @@ export default function Reports() {
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
       <PageHeader eyebrow={t("elev.reports.eyebrow")} title={t("sec.reports.title")} subtitle={t("sec.reports.sub", { name: childProfile.name.split(" ")[0] })} />
 
+      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (what moduleBudget counts);
+          `data-primary-move` marks the ONE control that performs the move
+          surfaceContract.ts declares for this route. */}
+      <div data-module="reports-catalogue" data-primary-move="export-report" style={{ display: "contents" }}>
       <SectionCard title={t("elev.reports.section")} icon={<Icon name="assessment" size={20} />} tone="mint">
         <div className="grid sm:grid-cols-2 gap-3">
           {REPORTS.map((r) => (
@@ -190,6 +195,8 @@ export default function Reports() {
           ))}
         </div>
       </SectionCard>
+      </div>
+
       <p className="text-xs text-center" style={{ color: "var(--arbor-muted)" }}>{t("elev.reports.printHint")}</p>
     </motion.div>
   );

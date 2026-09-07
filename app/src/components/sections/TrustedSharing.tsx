@@ -319,8 +319,12 @@ export default function TrustedSharing() {
       {/* LC-17 — the recipient is never notified: there is no server email on
           POST /shares and no client invite path existed. The parent gets a
           prefilled message to send themselves, and the copy says so. */}
+      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (what moduleBudget counts);
+          `data-primary-move` marks the ONE control that performs the move
+          surfaceContract.ts declares for this route. */}
       {invite && (
-        <div data-testid="share-invite" className="border-y py-4 flex flex-wrap items-center gap-3" style={{ borderColor: "var(--arbor-rule)" }}>
+        <div data-module="sharing-invite" data-testid="share-invite" className="border-y py-4 flex flex-wrap items-center gap-3" style={{ borderColor: "var(--arbor-rule)" }}>
           <span className="text-sm font-bold break-all" dir="auto" style={{ color: "var(--arbor-ink)" }}>{invite.email}</span>
           <a
             href={inviteHref(invite.email)}
@@ -337,7 +341,7 @@ export default function TrustedSharing() {
       )}
 
       {adding && (
-        <div className="space-y-4 border-y py-5" style={{ borderColor: "var(--arbor-rule)" }}>
+        <div data-module="sharing-grant" className="space-y-4 border-y py-5" style={{ borderColor: "var(--arbor-rule)" }}>
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("sec.sharing.form.title", { name: first })}</h3>
             <button onClick={() => { setAdding(false); setReviewing(false); }} aria-label={t("aria.cancel")} data-testid="sharing-wizard-close" className="touch-target flex-shrink-0"><Icon name="close" size={17} style={{ color: "var(--arbor-muted)" }} /></button>
@@ -407,7 +411,7 @@ export default function TrustedSharing() {
               <div className="flex items-center gap-2 text-xs" style={{ color: "var(--arbor-muted)" }}><Icon name="schedule" size={16} /> {t(`share.duration.${draft.duration}`)}</div>
             </div>
             <div className="rounded-2xl p-4 flex items-start gap-3" style={{ background: "var(--arbor-yellow-soft)", border: "1px solid var(--arbor-rule)" }}><Icon name="verified_user" size={19} style={{ color: "var(--arbor-yellow-ink)" }} /><p className="text-xs leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{t("sec.sharing.review.note")}</p></div>
-            <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end"><button onClick={() => setReviewing(false)} className="inline-flex items-center justify-center rounded-xl px-4 min-h-11 text-sm font-bold" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}>{t("sec.sharing.review.back")}</button><button onClick={createShare} disabled={busy === "create"} className="inline-flex items-center justify-center gap-2 text-white font-bold text-sm rounded-xl px-4 min-h-11 disabled:opacity-60" style={{ background: "var(--arbor-clay)" }}>{busy === "create" ? <><Icon name="progress_activity" size={16} className="animate-spin" /> {t("sec.sharing.review.working")}</> : t("sec.sharing.review.approve")}</button></div>
+            <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end"><button onClick={() => setReviewing(false)} className="inline-flex items-center justify-center rounded-xl px-4 min-h-11 text-sm font-bold" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}>{t("sec.sharing.review.back")}</button><button data-primary-move="grant-share" onClick={createShare} disabled={busy === "create"} className="inline-flex items-center justify-center gap-2 text-white font-bold text-sm rounded-xl px-4 min-h-11 disabled:opacity-60" style={{ background: "var(--arbor-clay)" }}>{busy === "create" ? <><Icon name="progress_activity" size={16} className="animate-spin" /> {t("sec.sharing.review.working")}</> : t("sec.sharing.review.approve")}</button></div>
           </div>}
         </div>
       )}
@@ -417,6 +421,7 @@ export default function TrustedSharing() {
           with the revoke action folded in. The former duplicate "Active shares"
           list is gone. */}
       {!error && (
+        <div data-module="sharing-roster" style={{ display: "contents" }}>
         <SectionCard title={t("sec.sharing.team.title", { name: first })} icon={<Icon name="diversity_3" size={20} fill={1} />} tone="mint">
           {loading ? (
             <p className="text-sm flex items-center gap-2" style={{ color: "var(--arbor-muted)" }}><Icon name="progress_activity" size={16} className="animate-spin" /> {t("sec.sharing.active.loading")}</p>
@@ -448,9 +453,11 @@ export default function TrustedSharing() {
             </div>
           )}
         </SectionCard>
+        </div>
       )}
 
       {!error && inbound.length > 0 && (
+        <div data-module="sharing-inbound" style={{ display: "contents" }}>
         <SectionCard title={t("sec.sharing.inbound.title")} icon={<Icon name="inbox" size={20} />} tone="lav">
           <div className="space-y-3">
             {inbound.map((s) => (
@@ -479,9 +486,10 @@ export default function TrustedSharing() {
             ))}
           </div>
         </SectionCard>
+        </div>
       )}
 
-      <div className="grid min-w-0 gap-4 sm:grid-cols-2">
+      <div data-module="sharing-data-and-history" className="grid min-w-0 gap-4 sm:grid-cols-2">
         <SectionCard title={t("sec.sharing.data.title")} icon={<Icon name="download" size={20} />} tone="lav">
           <div className="space-y-2">
             <button onClick={exportData} className="w-full inline-flex items-center gap-2 text-sm font-bold rounded-xl px-4 py-3" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}><Icon name="download" size={18} /> {t("sec.sharing.data.export")}</button>

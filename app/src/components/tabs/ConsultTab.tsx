@@ -21,7 +21,7 @@ import { useLanguage } from "../../context/LanguageContext";
    history, and we show fewer pills rather than invent counts (firewall). */
 
 export default function ConsultTab() {
-  const { childProfile } = useArbor();
+  const { childProfile, activeTab } = useArbor();
   const { t } = useLanguage();
   const reduceMotion = useReducedMotion();
   const firstName = (childProfile.name || "").split(" ")[0];
@@ -67,7 +67,18 @@ export default function ConsultTab() {
         }}
         testId="care-hub-hero"
       />
-      <div ref={flowRef} style={{ scrollMarginBlockStart: "0.75rem" }}>
+      {/* Item 11 (IA-02): the surface contract reaches the DOM. TWO routes
+          render this one leaf — #/consult (build-share-packet) and #/handoff
+          (copy-handoff-brief) — and both moves are performed by the same
+          control, the packet's action bar inside AskSpecialist. So the stamp
+          is one attribute whose VALUE follows the route, not two attributes:
+          the leaf declares exactly one primary move whichever door was used. */}
+      <div
+        ref={flowRef}
+        data-module="consult-packet"
+        data-primary-move={activeTab === "handoff" ? "copy-handoff-brief" : "build-share-packet"}
+        style={{ scrollMarginBlockStart: "0.75rem" }}
+      >
         <AskSpecialist />
       </div>
     </div>

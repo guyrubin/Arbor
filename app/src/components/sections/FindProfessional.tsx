@@ -207,8 +207,12 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
           controls over nothing is a promise the product cannot keep. The whole
           search card is withheld until there is something to search; it returns
           the moment the directory has a single entry. */}
+      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (what moduleBudget counts);
+          `data-primary-move` marks the ONE control that performs the move
+          surfaceContract.ts declares for this route. */}
       {pros.length > 0 && (
-      <div className={`${cardCls} p-5 space-y-4`}>
+      <div data-module="findpro-search" className={`${cardCls} p-5 space-y-4`}>
         <div className="flex items-center gap-3 rounded-2xl px-4 py-3" style={{ background: "var(--arbor-paper-deep)" }}>
           <Icon name="search" size={18} style={{ color: "var(--arbor-muted)" }} />
           <input
@@ -243,14 +247,14 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
 
       {/* Curated results */}
       {results.length === 0 ? (
-        <div className={`${cardCls} p-10 text-center`}>
+        <div data-module="findpro-results" className={`${cardCls} p-10 text-center`}>
           <Icon name="shield_person" size={34} style={{ color: "var(--arbor-green-ink)" }} />
           <p className="mt-3 text-base font-bold" style={{ color: "var(--arbor-ink)" }}>{t("elev.careNet.empty.title")}</p>
           <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.careNet.empty.body")}</p>
           {!embedded && <button onClick={() => setActiveTab("consult")} className="mt-4 rounded-xl px-4 py-2.5 text-xs font-bold text-white" style={{ background: "var(--arbor-gradient-primary)" }}>{t("elev.careNet.empty.cta")}</button>}
         </div>
       ) : (
-        <div className="grid lg:grid-cols-2 gap-5">
+        <div data-module="findpro-results" className="grid lg:grid-cols-2 gap-5">
           {results.map((p) => (
             <div key={p.name} className={`${cardCls} p-5`}>
               <div className="flex items-start gap-4">
@@ -357,7 +361,7 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
             <p className="text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
               {t("elev.careNet.privacy", { name: first })}
             </p>
-            <button onClick={() => void submitConsult()} disabled={consultBusy} className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-60" style={{ background: "var(--arbor-gradient-primary)" }}>
+            <button data-primary-move="contact-pro" onClick={() => void submitConsult()} disabled={consultBusy} className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-60" style={{ background: "var(--arbor-gradient-primary)" }}>
               {consultBusy ? (<><Icon name="progress_activity" size={16} className="animate-spin" /> {t("elev.careNet.sending")}</>) : (<><Icon name="send" size={18} /> {t("elev.careNet.send")}</>)}
             </button>
           </div>

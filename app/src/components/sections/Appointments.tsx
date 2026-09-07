@@ -177,7 +177,7 @@ export default function Appointments() {
       {/* LC-12 — the in-app "Coming up" strip. It renders when the parent opens
           Arbor; it is not a scheduled alert, and the honesty line says so. */}
       {reminders.length > 0 && (
-        <div data-testid="appt-reminder-strip" className={`${cardCls} p-4 space-y-1.5`} style={{ background: "var(--arbor-sky-soft)" }}>
+        <div data-module="appt-reminders" data-testid="appt-reminder-strip" className={`${cardCls} p-4 space-y-1.5`} style={{ background: "var(--arbor-sky-soft)" }}>
           <p className="text-[12px] font-extrabold inline-flex items-center gap-1.5" style={{ color: "var(--arbor-sky-ink)" }}>
             <Icon name="schedule" size={16} /> {t("elev.learnCare.appt.reminder.title")}
           </p>
@@ -192,8 +192,12 @@ export default function Appointments() {
         </div>
       )}
 
+      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (what moduleBudget counts);
+          `data-primary-move` marks the ONE control that performs the move
+          surfaceContract.ts declares for this route. */}
       {adding && (
-        <div className={`${cardCls} p-5`}>
+        <div data-module="appt-new" className={`${cardCls} p-5`}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("elev.learnCare.appt.new")}</h3>
             <button onClick={() => setAdding(false)} aria-label={t("aria.cancel")}><Icon name="close" size={17} style={{ color: "var(--arbor-muted)" }} /></button>
@@ -221,10 +225,11 @@ export default function Appointments() {
               />
             </label>
           </div>
-          <button onClick={addAppt} className="mt-3 inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-2.5 min-h-[44px]" style={{ background: "var(--arbor-clay)" }}>{t("elev.learnCare.appt.save")}</button>
+          <button data-primary-move="add-appointment" onClick={addAppt} className="mt-3 inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-2.5 min-h-[44px]" style={{ background: "var(--arbor-clay)" }}>{t("elev.learnCare.appt.save")}</button>
         </div>
       )}
 
+      <div data-module="appt-upcoming" style={{ display: "contents" }}>
       <SectionCard title={t("elev.learnCare.appt.section.upcoming")} icon={<Icon name="calendar_month" size={20} />} tone="sky">
         {upcoming.length ? (
           <div className="space-y-3">{upcoming.map(row)}</div>
@@ -232,13 +237,17 @@ export default function Appointments() {
           <p className="text-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.appt.none")}</p>
         )}
       </SectionCard>
+      </div>
 
       {past.length > 0 && (
+        <div data-module="appt-past" style={{ display: "contents" }}>
         <SectionCard title={t("elev.learnCare.appt.section.past")} icon={<Icon name="history" size={20} />} tone="lav">
           <div className="space-y-3">{past.map(row)}</div>
         </SectionCard>
+        </div>
       )}
 
+      <div data-module="appt-prepare" style={{ display: "contents" }}>
       <SectionCard title={t("elev.learnCare.appt.prepare")} icon={<Icon name="help" size={20} />} tone="mint">
         <ul className="space-y-2 mb-3">
           {questions.length === 0 && <li className="text-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.appt.questions.empty")}</li>}
@@ -264,6 +273,7 @@ export default function Appointments() {
           <Icon name="description" size={18} /> {t("elev.learnCare.appt.shareSummary")}
         </button>
       </SectionCard>
+      </div>
     </motion.div>
   );
 }

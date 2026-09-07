@@ -202,6 +202,12 @@ export default function SchoolBrief() {
     ? { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 0 } }
     : { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.2 } };
 
+  // Item 11 (IA-02): ONE declared move, two mutually exclusive controls that
+  // perform it — "Write the brief" on the empty state and "Regenerate" once a
+  // draft exists. Built once and spread onto both, so this file carries exactly
+  // one `data-primary-move` and the page renders exactly one.
+  const primaryMove = { "data-primary-move": "build-school-brief" };
+
   return (
     <motion.div {...motionProps} className="space-y-5 max-w-[760px]">
       <header>
@@ -229,14 +235,19 @@ export default function SchoolBrief() {
         </p>
       </div>
 
+      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (what moduleBudget counts);
+          `data-primary-move` marks the ONE control that performs the move
+          surfaceContract.ts declares for this route. */}
       {!draft ? (
-        <div className="rounded-2xl p-8 text-center" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
+        <div data-module="brief-start" className="rounded-2xl p-8 text-center" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
           <span className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mx-auto" style={{ background: GREEN_SOFT, color: GREEN }}>
             <Icon name="school" size={26} />
           </span>
           <h2 className="text-[17px] font-extrabold mt-3" style={{ color: INK }}>{t("schoolBrief.empty.title")}</h2>
           <p className="text-sm mt-1.5 leading-relaxed max-w-[440px] mx-auto" style={{ color: MUTED }}>{t("schoolBrief.empty.body", { name: firstName })}</p>
           <button
+            {...primaryMove}
             onClick={generate}
             disabled={generating}
             className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-5 py-3 mt-4 min-h-[44px] disabled:opacity-60"
@@ -254,7 +265,7 @@ export default function SchoolBrief() {
           )}
 
           {/* The rendered brief — curated sections only (editable when `editing`). */}
-          <div className="rounded-2xl p-5 md:p-6 space-y-5" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
+          <div data-module="brief-draft" className="rounded-2xl p-5 md:p-6 space-y-5" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
             <Section icon={<Icon name="assignment" size={16} />} title={sectionLabels.overview}>
               {editing ? (
                 <textarea
@@ -317,6 +328,7 @@ export default function SchoolBrief() {
 
           <div className="flex flex-wrap items-center gap-3">
             <button
+              {...primaryMove}
               onClick={generate}
               disabled={generating}
               className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-4 py-3 min-h-[44px] disabled:opacity-50"

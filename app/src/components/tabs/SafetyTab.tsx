@@ -129,7 +129,13 @@ export default function SafetyTab() {
 
       {/* LC-14: ONE tap reaches a human — the family-market primary number as a
           full-width call button, above everything else on the screen. */}
+      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (what moduleBudget counts);
+          `data-primary-move` marks the ONE control that performs the move
+          surfaceContract.ts declares for this route. */}
       <a
+        data-module="safety-one-tap"
+        data-primary-move="call-helpline"
         href={`tel:${primaryHelpline.tel}`}
         onClick={() => track("safety_helpline_tel_tap", { code: primaryHelpline.tel, primary: true })}
         className="w-full flex items-center justify-center gap-3 rounded-2xl min-h-[56px] px-5 py-3 text-base font-extrabold transition hover:brightness-95"
@@ -141,7 +147,7 @@ export default function SafetyTab() {
       </a>
 
       {/* Pinned crisis-language card */}
-      <div className="rounded-2xl p-6 space-y-2" style={{ background: "var(--arbor-pink-soft)" }}>
+      <div data-module="safety-crisis-language" className="rounded-2xl p-6 space-y-2" style={{ background: "var(--arbor-pink-soft)" }}>
         <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "var(--arbor-pink-ink)" }}>
           <Icon name="warning" size={16} /> {t("elev.safety.crisis.kicker")}
         </span>
@@ -153,6 +159,7 @@ export default function SafetyTab() {
 
       {/* Crisis helplines — real numbers, one tap to call. LC-14: market group
           first, EU second; the remaining regions fold under "Other countries". */}
+      <div data-module="safety-helplines" style={{ display: "contents" }}>
       <SectionCard title={t("elev.safety.helplines.title")} icon={<Icon name="call" size={20} />} tone="pink">
         <p className="text-xs mb-4" style={{ color: "var(--arbor-muted)" }}>{t("elev.safety.helplines.sub")}</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-5">
@@ -178,9 +185,10 @@ export default function SafetyTab() {
           <Icon name="public" size={15} /> {t("elev.safety.helplines.findLocal")}
         </a>
       </SectionCard>
+      </div>
 
       {/* Warning-sign checklist + review cadence */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <div data-module="safety-checklist" className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <SectionCard title={t("elev.safety.checklist.title")} icon={<Icon name="warning" size={20} />} tone="coral">
           <div className="space-y-2">
             {WARNING_SIGN_KEYS.map((n, i) => (
@@ -210,6 +218,7 @@ export default function SafetyTab() {
       </div>
 
       {/* Saved contacts (per-child, Firestore) */}
+      <div data-module="safety-contacts" style={{ display: "contents" }}>
       <SectionCard title={t("elev.safety.contacts.title")} icon={<Icon name="call" size={20} />} tone="mint">
         {!contactsCol.loaded ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
@@ -253,8 +262,10 @@ export default function SafetyTab() {
           </div>
         </form>
       </SectionCard>
+      </div>
 
       {/* Approved memory */}
+      <div data-module="safety-memory" style={{ display: "contents" }}>
       <SectionCard title={t("elev.safety.memory.title", { name: first })} icon={<Icon name="neurology" size={20} />} tone="lav">
         <p className="text-xs mb-3" style={{ color: "var(--arbor-muted)" }}>{t("elev.safety.memory.sub")}</p>
         {approvedMemoryItems.length === 0 ? (
@@ -277,9 +288,10 @@ export default function SafetyTab() {
           </div>
         )}
       </SectionCard>
+      </div>
 
       {/* Static safeguards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+      <div data-module="safety-safeguards" className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
         {[
           { icon: <Icon name="stethoscope" size={20} />, tone: "yellow" as PastelKey, key: "medical" },
           { icon: <Icon name="lock" size={20} />, tone: "sky" as PastelKey, key: "gdpr" },
