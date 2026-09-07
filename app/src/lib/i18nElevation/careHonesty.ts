@@ -44,6 +44,12 @@ export const en: Record<string, string> = {
   "elev.carehonesty.pro.verified": "Verified by Arbor",
   "elev.learnCare.receipt.clientDocs": "Records removed from this device",
   "elev.learnCare.saved.browse": "Browse picks for {name}",
+  // R12: the shelf pages at 30 reads. This is a LENGTH control, not an age
+  // one — "Show all ages" next to it is the age control, and the two must
+  // never borrow each other's words: 79 of 93 cards genuinely name a
+  // five-year-old in their band, so calling them "hidden by age" would lie.
+  "elev.learnCare.shelf.more": "Show more reads ({n})",
+  "elev.learnCare.shelf.fewer": "Show fewer reads",
   "elev.learnCare.ritual.start": "Start tonight",
   "elev.learnCare.ritual.started": "On today’s list",
   "elev.learnCare.ritual.added": "Added to today — the first step only.",
@@ -141,6 +147,8 @@ export const he: Record<string, string> = {
   "elev.carehonesty.pro.verified": "מאומת על ידי ארבור",
   "elev.learnCare.receipt.clientDocs": "רשומות שנמחקו מהמכשיר הזה",
   "elev.learnCare.saved.browse": "לעיין בהמלצות עבור {name}",
+  "elev.learnCare.shelf.more": "להציג עוד קריאות ({n})",
+  "elev.learnCare.shelf.fewer": "להציג פחות קריאות",
   "elev.learnCare.ritual.start": "להתחיל הערב",
   "elev.learnCare.ritual.started": "ברשימה של היום",
   "elev.learnCare.ritual.added": "נוסף להיום — הצעד הראשון בלבד.",

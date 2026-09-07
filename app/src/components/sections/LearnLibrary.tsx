@@ -51,6 +51,19 @@ import { TrustLink } from "../trust/TrustLink";
 
 type Filter = "all" | "saved" | LearnCategoryId;
 
+/**
+ * R12 — how many reads the browse shelf shows before the parent asks for more.
+ *
+ * The age filter is ON and IS applied (filterByAge below); it removes 14 of 93
+ * cards for a five-year-old, because 79 of the 93 declare a band that really
+ * does contain age 5 (0–12, 1–10, 2–8 …). So age alone cannot make this shelf
+ * short, and pushing in-band cards behind the "hidden by age" toggle would put
+ * a false sentence on screen. The LENGTH problem gets its own, truthfully
+ * labelled control: the shelf pages, the age toggle filters, and each says
+ * only what it does. Every card stays one tap away (law 6).
+ */
+const SHELF_PAGE = 30;
+
 const pick = (he: boolean, t: { en: string; he: string }) => (he ? t.he : t.en);
 
 export default function LearnLibrary() {
@@ -158,7 +171,15 @@ export default function LearnLibrary() {
   const featured = inScope.slice(0, 2);
   const browsing = filter === "all" && query.trim() === "";
   // The featured rail already shows these two; don't repeat them in the grid.
-  const gridCards = browsing ? visible.filter((c) => !featured.some((f) => f.id === c.id)) : visible;
+  const gridAll = browsing ? visible.filter((c) => !featured.some((f) => f.id === c.id)) : visible;
+  // R12: page the BROWSE shelf only. Once the parent has filtered or searched
+  // they have narrowed it themselves, and every match should land. Order is
+  // rankLearnCards' — the first page is the best-ranked page, not a slice of
+  // the catalogue file. featured + grid together stay within SHELF_PAGE.
+  const [showAllShelf, setShowAllShelf] = useState(false);
+  const shelfCapped = browsing && !showAllShelf && gridAll.length > SHELF_PAGE - featured.length;
+  const gridCards = shelfCapped ? gridAll.slice(0, SHELF_PAGE - featured.length) : gridAll;
+  const shelfRest = gridAll.length - (SHELF_PAGE - featured.length);
 
   // OBJ-LEARN-02 — a read used to open in place: focus stayed on the card the
   // parent had just left, and the browser Back button left the library
@@ -352,11 +373,13 @@ export default function LearnLibrary() {
       {gridCards.length > 0 ? (
         <section aria-label={t("learn.allReads")}>
           {browsing && (
-            <div className="flex items-baseline justify-between mb-2.5">
+            /* R12: this row did not wrap, so at 390 the "Show all ages" switch
+               sat outside the viewport and the age control read as absent. */
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1.5 mb-2.5">
               <h2 className="text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>
                 {t("learn.allReads")}
               </h2>
-              <span className="inline-flex items-center gap-2">
+              <span className="inline-flex flex-wrap items-center gap-2">
                 <span className="text-[11.5px] font-bold" style={{ color: "var(--arbor-muted)" }}>
                   {t("learn.count", { n: inScope.length })}
                   {readCount > 0 && ` · ${t("elev.learnCare.read.count", { n: readCount })}`}
@@ -407,6 +430,29 @@ export default function LearnLibrary() {
               />
             ))}
           </div>
+          {/* R12: the shelf's own length control. Separate from the age switch
+              above, and worded so neither one borrows the other's claim. */}
+          {browsing && (shelfCapped || showAllShelf) && (
+            <button
+              type="button"
+              onClick={() => {
+                setShowAllShelf((prev) => {
+                  const next = !prev;
+                  try { track("learn_shelf_page", { showAll: next }); } catch { /* noop */ }
+                  return next;
+                });
+              }}
+              data-testid="learn-shelf-more"
+              aria-expanded={showAllShelf}
+              className="mt-4 w-full inline-flex min-h-11 items-center justify-center gap-1.5 rounded-2xl px-4 text-[12.5px] font-extrabold transition"
+              style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+            >
+              <Icon name={showAllShelf ? "expand_less" : "expand_more"} size={15} />
+              {showAllShelf
+                ? t("elev.learnCare.shelf.fewer")
+                : t("elev.learnCare.shelf.more", { n: shelfRest })}
+            </button>
+          )}
         </section>
       ) : (
         <EmptyState

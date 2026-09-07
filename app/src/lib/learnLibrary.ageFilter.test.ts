@@ -15,6 +15,7 @@ import { fileURLToPath } from "node:url";
 import { filterByAge, windowFromYears } from "./ageFilter";
 import { LEARN_CARDS } from "../learn/learnCards";
 import { en, he } from "./i18nElevation/careHonesty";
+import { rankLearnCards } from "../learn/learnLibrary";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const read = (rel: string) => readFileSync(path.join(here, "..", rel), "utf8");
@@ -141,5 +142,71 @@ describe("LC-33 · the saved shelf's empty state offers a way forward", () => {
     expect(en["elev.learnCare.saved.browse"]).toContain("{name}");
     expect(he["elev.learnCare.saved.browse"]).toContain("{name}");
     expect(he["elev.learnCare.saved.browse"]).toMatch(/[֐-׿]/);
+  });
+});
+
+describe("R12 · the default shelf is short, and every control says what it does", () => {
+  /** Exactly what LearnLibrary computes for the run's seeded five-year-old. */
+  const SHELF_PAGE = 30;
+  const { visible: ageVisible, hidden: ageHidden } = filterByAge(
+    LEARN_CARDS,
+    (c) => windowFromYears(c.ageMin, c.ageMax),
+    FIVE_YEARS_MONTHS,
+  );
+  const ranked = rankLearnCards(ageVisible, { ageYears: 5 });
+  const featured = ranked.slice(0, 2);
+  const gridAll = ranked.filter((c) => !featured.some((f) => f.id === c.id));
+  const firstPage = gridAll.slice(0, SHELF_PAGE - featured.length);
+
+  it("NEGATIVE CONTROL: the age filter alone cannot make this shelf short", () => {
+    // The rejection read as "the filter is off". It is not — it is applied and
+    // it removes 14 cards. 79 of the 93 name a five-year-old in their own band
+    // (0-12, 1-10, 2-8 ...), so the uncapped shelf is still far past 30.
+    expect(ageHidden.length).toBeGreaterThan(0);
+    expect(ageVisible.length).toBeGreaterThan(SHELF_PAGE);
+    expect(gridAll.length + featured.length).toBe(ageVisible.length);
+  });
+
+  it("the shelf a five-year-old lands on is 30 reads or fewer", () => {
+    expect(featured.length + firstPage.length).toBeLessThanOrEqual(SHELF_PAGE);
+  });
+
+  it("the page is the best-ranked page, not a slice of the catalogue file", () => {
+    // Ranking is applied BEFORE the cut, so the first page is what ranking chose.
+    expect(firstPage[0]).toBe(gridAll[0]);
+    expect(firstPage.every((c) => ageVisible.includes(c))).toBe(true);
+  });
+
+  it("the surface caps the browse shelf, and only the browse shelf (law 6)", () => {
+    expect(LEARN).toContain("const SHELF_PAGE = 30;");
+    expect(LEARN).toContain("browsing && !showAllShelf && gridAll.length > SHELF_PAGE - featured.length");
+    expect(LEARN).toContain("gridCards = shelfCapped ? gridAll.slice(0, SHELF_PAGE - featured.length) : gridAll");
+    // Filtered/searched views are never capped.
+    expect(LEARN).toContain("const gridAll = browsing ? visible.filter");
+  });
+
+  it("every capped card stays one tap away behind a control of its own", () => {
+    expect(LEARN).toContain('data-testid="learn-shelf-more"');
+    expect(LEARN).toContain("aria-expanded={showAllShelf}");
+    expect(LEARN).toContain('t("elev.learnCare.shelf.more", { n: shelfRest })');
+    expect(LEARN).toContain('t("elev.learnCare.shelf.fewer")');
+  });
+
+  it("the length control never borrows the age control's sentence", () => {
+    // "N more for other ages" is the AGE toggle's line and stays only there:
+    // 79 in-band cards are not hidden by age, and must not be labelled so.
+    expect(en["elev.learnCare.shelf.more"]).not.toMatch(/age/i);
+    expect(en["elev.learnCare.shelf.more"]).toContain("{n}");
+    expect(he["elev.learnCare.shelf.more"]).toContain("{n}");
+    expect(he["elev.learnCare.shelf.more"]).toMatch(/[֐-׿]/);
+    expect(he["elev.learnCare.shelf.fewer"]).toMatch(/[֐-׿]/);
+  });
+
+  it("the age switch can actually be reached at 390 (the row wraps)", () => {
+    // It was `flex items-baseline justify-between` with a non-wrapping span,
+    // so the switch rendered off the right edge of a 390 px viewport.
+    expect(LEARN).not.toContain('<div className="flex items-baseline justify-between mb-2.5">');
+    expect(LEARN).toContain('<div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1.5 mb-2.5">');
+    expect(LEARN).toContain('<span className="inline-flex flex-wrap items-center gap-2">');
   });
 });
