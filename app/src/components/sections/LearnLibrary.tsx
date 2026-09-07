@@ -287,8 +287,12 @@ export default function LearnLibrary() {
         </label>
       </div>
 
+      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (what moduleBudget counts);
+          `data-primary-move` marks the ONE control that performs the move
+          surfaceContract.ts declares for this route. */}
       {/* Category pills */}
-      <div className="flex gap-2 overflow-x-auto pb-1 -mb-1" role="tablist" aria-label={t("learn.title")}>
+      <div data-module="learn-filters" className="flex gap-2 overflow-x-auto pb-1 -mb-1" role="tablist" aria-label={t("learn.title")}>
         <FilterPill active={filter === "all"} onClick={() => setFilter("all")} label={t("learn.all")} />
         <FilterPill
           active={filter === "saved"}
@@ -309,7 +313,7 @@ export default function LearnLibrary() {
 
       {/* Picked-for-you rail — explainable personalization, opportunity framing */}
       {browsing && featured.length > 0 && (
-        <section aria-label={t("learn.pickedTitle", { name: firstName || t("learn.yourChild") })}>
+        <section data-module="learn-picked" aria-label={t("learn.pickedTitle", { name: firstName || t("learn.yourChild") })}>
           <div className="flex items-baseline gap-2 flex-wrap mb-2.5">
             <h2 className="text-[15px] font-extrabold inline-flex items-center gap-1.5" style={{ color: "var(--arbor-ink)" }}>
               <Icon name="auto_awesome" size={16} className="opacity-80" />
@@ -371,7 +375,7 @@ export default function LearnLibrary() {
 
       {/* Grid */}
       {gridCards.length > 0 ? (
-        <section aria-label={t("learn.allReads")}>
+        <section data-module="learn-shelf" data-primary-move="open-learn-card" aria-label={t("learn.allReads")}>
           {browsing && (
             /* R12 → R20: this row did not wrap, so at 390 the "Show all ages"
                switch sat outside the viewport and the age control read as

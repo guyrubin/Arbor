@@ -294,7 +294,12 @@ export default function Masterclasses() {
       {/* E2 — Academy hub hero: sits ABOVE the existing page (outside the
           page's motion wrapper — HubHero runs its own reduced-motion-gated
           entrance). E8: EvidenceChip on the hero's meta row. */}
-      <div className="mx-auto w-full min-w-0 max-w-[1180px]">
+      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (what moduleBudget counts);
+          `data-primary-move` marks the ONE control that performs the move
+          surfaceContract.ts declares for this route — here the hero's pick CTA,
+          passed to HubHero as a prop, so the stamp rides its wrapper. */}
+      <div data-primary-move="open-todays-pick" className="mx-auto w-full min-w-0 max-w-[1180px]">
         <HubHero
           zeroLine={t("elev.growthTruth.hero.empty")}
           tone="sky"
@@ -363,7 +368,7 @@ export default function Masterclasses() {
           courses, on the surface whose ONE job is courses. Nothing is removed
           (law 6): below `md` the rail becomes one collapsed disclosure BELOW the
           gallery, and from `md` up it is the left column exactly as designed. */}
-      {!phone && spineRibbon}
+      {!phone && <div data-module="academy-spine" style={{ display: "contents" }}>{spineRibbon}</div>}
 
       {/* Design's two-column shell: left = the Learning Map rail (the explicit
           development-map spine — courses matched to where the child is growing),
@@ -371,7 +376,7 @@ export default function Masterclasses() {
           there the gallery comes FIRST — which is what the order-* pair encodes.
           DOM order is gallery-then-rail so a screen reader and a keyboard meet the
           courses first too, not only the eye. */}
-      <div className="grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.7fr)]">
+      <div data-module="academy-catalogue" className="grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.7fr)]">
         {/* ── All courses gallery — first in the document, right column at xl ─ */}
         <div className="space-y-4 min-w-0 order-1 xl:order-2" data-testid="academy-courses">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-1">

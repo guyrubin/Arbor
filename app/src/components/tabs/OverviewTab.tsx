@@ -678,7 +678,17 @@ export default function OverviewTab() {
              P1-A: this row is FIRST in the column — the day's action clears the
              fold before anything else competes for the viewport. ── */}
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1.85fr_0.85fr] gap-5">
+      {/* Item 11 (IA-02): the surface contract reaches the DOM. Seven slots
+             carry `data-module` — one per TodayModuleId — and `modulePlan`
+             already lets at most five of them render, so the count on screen
+             is the Rule-A budget (5) that todayModules.ts computes, never the
+             number of stamps in this file. Deliberately UNSTAMPED: the header
+             and the QuickCapture bar (chrome, per todayModules.ts), the More
+             drawer (it RECEIVES demoted modules, so counting it would make the
+             overflow container compete with its own overflow), and playSection
+             itself — it is one JSX instance placed in three positions, and only
+             the top-level one is a sibling module. */}
+      <div data-module="today-anchor" className="grid grid-cols-1 lg:grid-cols-[1.85fr_0.85fr] gap-5">
         {/* ── Day anchor (left slot) — W1 1.2 guaranteed action. ONE slot, one
                primary: an accepted action owns it (TodayActionLoop); else the
                chooseTodayAction chain renders the AI focus hero, the promptBank
@@ -687,7 +697,7 @@ export default function OverviewTab() {
                headline — day-0/fallback copy can never reach acceptTodayAction,
                so it can never be persisted into actionLoops nor injected into
                the next focus prompt. */}
-        <div className="min-w-0">
+        <div data-primary-move="do-today-action" className="min-w-0">
           {showSinceStrip && (
             /* Mockup frame 1: "ממשיכים מאיפה שהפסקנו" — the resume framing sits
                directly above the guaranteed-action card for returning parents. */
@@ -847,6 +857,7 @@ export default function OverviewTab() {
              one renders, each occurrence once, and it counts against the ≤5
              Rule-A budget like any other module. ── */}
       {showLifecycle && lifecycleMoment && (
+        <div data-module="today-lifecycle" style={{ display: "contents" }}>
         <LifecycleMomentCard
           moment={lifecycleMoment}
           childName={firstName}
@@ -854,6 +865,7 @@ export default function OverviewTab() {
           onSaveInterests={lifecycle.saveInterests}
           onCapture={() => { setQuickLogMode("text"); setQuickLogOpen(true); }}
         />
+        </div>
       )}
 
       {/* ── W1 1.1: "Since your last visit" — returning parents only. It sits
@@ -863,6 +875,7 @@ export default function OverviewTab() {
              anchor itself, so the narrative order still reads greeting → resume
              → what's new. ── */}
       {showSinceStrip && (
+        <div data-module="today-since" style={{ display: "contents" }}>
         <SinceLastVisit
           rows={sinceVisit.rows}
           hiddenCount={sinceVisit.hiddenCount}
@@ -872,12 +885,13 @@ export default function OverviewTab() {
           onRowTap={onSinceRowTap}
           onMore={() => setActiveTab("journal")}
         />
+        </div>
       )}
 
       {/* ── E11 first-steps rail — a Today module now, not Shell chrome. It is
              the day-0 start path, so it renders in every state where it still
              has steps left, but it can never outrank the day's action again. ── */}
-      {modulePlan.visible.has("rail") && <FirstStepsRail />}
+      {modulePlan.visible.has("rail") && <div data-module="today-rail" style={{ display: "contents" }}><FirstStepsRail /></div>}
 
       {/* ── "Arbor Noticed" (DUX-011) — the single highest watch signal from the
              child's own logged data, below the anchor row. Renders NOTHING with
@@ -888,7 +902,7 @@ export default function OverviewTab() {
              on a brand-new account would be manufactured from ABSENT data.
              Rule A: when the budget is spent it FOLDS into a SinceLastVisit row
              instead of rendering as a sibling card (foldNoticed above). ── */}
-      {modulePlan.visible.has("noticed") && <ArborNoticedCard />}
+      {modulePlan.visible.has("noticed") && <div data-module="today-noticed" style={{ display: "contents" }}><ArborNoticedCard /></div>}
 
       {/* ── Progress narrative — retrospective picture. Its "Your evidence" cell
              is the ONE recent-moments surface on Today (CODEX-1). Skipped on
@@ -898,6 +912,7 @@ export default function OverviewTab() {
              deep-links to exactly that entry via the requestJournalFocus seam.
              The deep-link carries only the id — never a derived score. */}
       {modulePlan.visible.has("narrative") && (
+        <div data-module="today-narrative" style={{ display: "contents" }}>
         <ProgressNarrative
           childName={firstName}
           behaviorLogs={behaviorLogs.map((item) => ({ id: `moment-${item.id}`, timestamp: item.timestamp, label: item.context || item.notes || t("today.feed.logged") }))}
@@ -913,12 +928,13 @@ export default function OverviewTab() {
             if (evidenceId) requestJournalFocus(evidenceId); setActiveTab("journal");
           }}
         />
+        </div>
       )}
 
       {/* ── Daily Play "Try together" — visible only while it holds a budget
              slot; the primary-slot chain renders it when it IS the action;
              otherwise the budget displaces it into the disclosure below. ── */}
-      {showPlayInline && playSection}
+      {showPlayInline && <div data-module="today-play" style={{ display: "contents" }}>{playSection}</div>}
 
       {/* ── More (secondary, collapsed — Rule A): the activity feed, the Daily
              Play section when displaced, and the wellness check-in. This

@@ -101,7 +101,13 @@ export default function DayWindowsPanel() {
       </div>
 
       {/* ── Main card ──────────────────────────────────────────────────── */}
+      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (what moduleBudget counts);
+          `data-primary-move` marks the ONE control that performs the move
+          surfaceContract.ts declares for this route. */}
       <div
+        data-module="day-windows-chart"
+        data-primary-move="view-day-windows"
         className={cardCls + " overflow-hidden"}
         role="region"
         aria-label={t("dw.title")}

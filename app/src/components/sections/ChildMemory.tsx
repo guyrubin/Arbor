@@ -79,7 +79,12 @@ export default function ChildMemory() {
           keepsake, which put Approve at roughly y 1100 on a phone — three
           celebrations ahead of the decision the parent came to make. The
           celebrations still render; they render after. */}
+      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (what moduleBudget counts);
+          `data-primary-move` marks the ONE control that performs the move
+          surfaceContract.ts declares for this route. */}
       {!memoryReviewError && pendingMemoryItems.length > 0 && (
+        <div data-module="memory-pending" data-primary-move="approve-memory-fact" style={{ display: "contents" }}>
         <SectionCard title={t("elev.childmem.pending.title", { count: pendingMemoryItems.length })} icon={<Icon name="verified_user" size={20} />} tone="yellow">
           <div className="space-y-3">
             {pendingMemoryItems.map((m: MemoryReviewItem) => (
@@ -94,22 +99,24 @@ export default function ChildMemory() {
             ))}
           </div>
         </SectionCard>
+        </div>
       )}
 
       {/* ENG-13 · the week-1 "first", at a threshold of ONE. Renders at most
           once ever per kind and returns null the rest of the time. */}
-      <FirstsMoment />
+      <div data-module="memory-firsts" style={{ display: "contents" }}><FirstsMoment /></div>
 
       {/* ENG-14(a) · what Arbor knows, as a COUNT — answerable on day 0 from
           the profile alone, which is exactly what nothing else in the app
           could do. Never a completeness score: see lib/keepsakeCounts. */}
-      <ArborKnowsTile />
+      <div data-module="memory-knows" style={{ display: "contents" }}><ArborKnowsTile /></div>
 
       {/* ENG-14(b) · the month keepsake, offered once on the first open of a
           new month and never for a month the family is still living in. */}
-      <MonthKeepsake />
+      <div data-module="memory-keepsake" style={{ display: "contents" }}><MonthKeepsake /></div>
 
       {!memoryReviewError && (
+      <div data-module="memory-approved" style={{ display: "contents" }}>
       <SectionCard title={t("elev.childmem.approved.title")} icon={<Icon name="bookmark" size={20} />} tone="lav">
         {approvedMemoryItems.length > 0 ? (
           <div className="space-y-3">
@@ -135,13 +142,14 @@ export default function ChildMemory() {
           </div>
         )}
       </SectionCard>
+      </div>
       )}
 
       {/* Learning trail — the parent's saved Learn Library reads, part of the
           child's longitudinal picture. Renders only when something is saved;
           the Library's own Saved tab teaches the empty state. */}
       {savedLearnCards.length > 0 && (
-        <div className={`${cardCls} p-5`}>
+        <div data-module="memory-learning-trail" className={`${cardCls} p-5`}>
           <div className="flex items-center gap-3">
             <span
               className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"

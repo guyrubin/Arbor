@@ -208,8 +208,13 @@ export default function SmartRemindersPanel() {
         </p>
       </div>
 
+      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (what moduleBudget counts);
+          `data-primary-move` marks the ONE control that performs the move
+          surfaceContract.ts declares for this route. */}
       {/* MAX-2 CONTRACT CARD — always visible (AC-5) */}
       <div
+        data-module="reminders-contract"
         data-testid="sr-max2-contract"
         className="rounded-2xl p-4 flex items-start gap-3"
         style={{ background: LAV_SOFT, border: `1px solid ${RULE_STRONG}` }}
@@ -235,6 +240,7 @@ export default function SmartRemindersPanel() {
       </div>
 
       {/* NEXT NUDGE CARD (AC-1) */}
+      <div data-module="reminders-next" style={{ display: "contents" }}>
       <Section title={t("sr.nextNudge.label")} icon={<Icon name="bolt" size={16} />}>
         <div
           className="rounded-2xl p-4"
@@ -275,8 +281,11 @@ export default function SmartRemindersPanel() {
           )}
         </div>
       </Section>
+      </div>
 
-      {/* PER-TYPE TOGGLES (AC-2) */}
+      {/* PER-TYPE TOGGLES (AC-2). The declared move is set-reminder-prefs: this
+          is the block where the parent decides what Arbor may send. */}
+      <div data-module="reminders-prefs" data-primary-move="set-reminder-prefs" style={{ display: "contents" }}>
       <Section title={t("sr.types.heading")} icon={<Icon name="notifications" size={16} />}>
         <div className="space-y-3">
           {NUDGE_TYPES.map(({ key, labelKey, descKey, tone, toneSoft }) => {
@@ -311,8 +320,10 @@ export default function SmartRemindersPanel() {
           })}
         </div>
       </Section>
+      </div>
 
       {/* QUIET HOURS (AC-3) */}
+      <div data-module="reminders-quiet" style={{ display: "contents" }}>
       <Section title={t("sr.quiet.heading")} icon={<Icon name="schedule" size={16} />}>
         <div
           className="rounded-2xl p-4 space-y-4"
@@ -397,8 +408,10 @@ export default function SmartRemindersPanel() {
           </p>
         </div>
       </Section>
+      </div>
 
       {/* CALM-WINDOW SCHEDULING (AC-4) */}
+      <div data-module="reminders-calm" style={{ display: "contents" }}>
       <Section title={t("sr.calm.heading")} icon={<Icon name="bolt" size={16} />}>
         <div
           className="rounded-2xl p-4 flex items-center justify-between gap-4"
@@ -425,6 +438,7 @@ export default function SmartRemindersPanel() {
           />
         </div>
       </Section>
+      </div>
 
       {/* Saved confirmation */}
       {savedFlash && (

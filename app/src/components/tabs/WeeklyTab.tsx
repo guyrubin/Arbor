@@ -245,7 +245,7 @@ export default function WeeklyTab() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div data-module="weekly-stats" className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className={`${cardCls} p-5`}>
               <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("wk.behaviorEvents")}</span>
               <div className="text-3xl font-extrabold mt-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{selected.summary.count}</div>
@@ -298,7 +298,7 @@ export default function WeeklyTab() {
           {/* Classic insight card — history weeks (and digest-less reports);
               the current week's digest already leads as the story cards. */}
           {!showRecap && !awaitingLanguage && (
-          <div className="rounded-[22px] p-6 space-y-3" style={{ background: "var(--arbor-green-soft)" }}>
+          <div data-module="weekly-insight" className="rounded-[22px] p-6 space-y-3" style={{ background: "var(--arbor-green-soft)" }}>
             <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}>
               <Icon name="auto_awesome" size={14} /> {selected.digest ? selected.digest.title : t("wk.aiInsight")}
             </span>
@@ -360,7 +360,7 @@ export default function WeeklyTab() {
           </div>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <div data-module="weekly-detail" className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <SectionCard title={t("wk.milestoneWins", { n: selected.milestoneWins.length })} icon={<Icon name="trophy" size={20} />} tone="mint">
               {selected.milestoneWins.length ? (
                 <ul className="space-y-1.5 text-sm" style={{ color: "var(--arbor-ink)" }}>
@@ -441,7 +441,7 @@ export default function WeeklyTab() {
           {/* ── W2 2.2: weekly email opt-in — settings row. The channel is
                  FAIL-CLOSED until a provider is configured server-side; the
                  opt-in is stored per account and honored the day it ships. ── */}
-          <div className={`${cardCls} p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4`}>
+          <div data-module="weekly-email" className={`${cardCls} p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4`}>
             <div className="flex items-center gap-3 min-w-0">
               <IconBadge tone="lav"><Icon name="mail" size={20} /></IconBadge>
               <div className="min-w-0">
@@ -471,7 +471,7 @@ export default function WeeklyTab() {
             </button>
           </div>
 
-          <div className={`${cardCls} p-6 flex flex-col sm:flex-row items-center justify-between gap-4`}>
+          <div data-module="weekly-share" className={`${cardCls} p-6 flex flex-col sm:flex-row items-center justify-between gap-4`}>
             <div className="flex items-center gap-3">
               <IconBadge tone="sky"><Icon name="send" size={20} /></IconBadge>
               <div>

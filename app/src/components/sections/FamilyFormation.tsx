@@ -69,6 +69,11 @@ export default function FamilyFormation() {
       <PageHeader title={t("sec.family.title")} subtitle={t("sec.family.sub")} />
 
       {/* Family Charter — the real, editable tool (names the family's aim) */}
+      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (what moduleBudget counts);
+          `data-primary-move` marks the ONE control that performs the move
+          surfaceContract.ts declares for this route. */}
+      <div data-module="family-charter" style={{ display: "contents" }}>
       <SectionCard title={he ? "מגילת המשפחה" : "Family Charter"} icon={<Icon name="history_edu" size={20} />} tone="mint">
         <p className="text-sm mb-4" dir="auto" style={{ color: "var(--arbor-muted)" }}>
           {he
@@ -91,7 +96,9 @@ export default function FamilyFormation() {
       </SectionCard>
 
       {/* Family rituals — real, repeatable practices */}
-      <div>
+      </div>
+
+      <div data-module="family-rituals" data-primary-move="start-family-ritual">
         <h2 className="text-[15px] font-extrabold mb-3" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{he ? "טקסי משפחה" : "Family rituals"}</h2>
         <div className="grid sm:grid-cols-2 gap-4">
           {FAMILY_RITUALS.map((r) => {

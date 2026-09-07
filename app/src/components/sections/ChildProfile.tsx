@@ -118,6 +118,13 @@ export default function ChildProfile() {
           FIREWALL: counts only — the children in this family, people in the
           circle (account holder + live ShareGrants), and total captured moments
           (behavior + play logs, the album motif). ───────────────────────────── */}
+      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (what moduleBudget counts);
+          `data-primary-move` marks the ONE control that performs the declared
+          move — here the hero CTA that was ALREADY annotated
+          "primaryMove: approve-memory" in both of its branches, so the stamp
+          records what the code says rather than adding a second claim. */}
+      <div data-primary-move="approve-memory" style={{ display: "contents" }}>
       <HubHero
         tone="yellow"
         icon={Album}
@@ -151,10 +158,12 @@ export default function ChildProfile() {
         testId="profile-hub-hero"
       />
 
+      </div>
+
       {/* ── Identity masthead (UC-1) — the child identity card and the live Family
           Circle sit side by side ABOVE the full developmental narrative below.
           Additive: every chapter is preserved beneath it. ──────────────────── */}
-      <div className="grid min-w-0 grid-cols-1 items-start gap-4 lg:grid-cols-2">
+      <div data-module="profile-identity" className="grid min-w-0 grid-cols-1 items-start gap-4 lg:grid-cols-2">
         {/* Child card — the framed identity hero. Avatar renders THROUGH the shared
             HeroAvatar engine (Loop 4); we never re-composite the portrait. */}
         <div className={`${cardCls} overflow-hidden min-w-0`}>
@@ -241,6 +250,7 @@ export default function ChildProfile() {
       />
 
       {/* Chapter 1 — who {first} is */}
+      <div data-module="profile-who" style={{ display: "contents" }}>
       <SectionCard title={t("cp.ch.who", { name: first, age: ageLabel(childProfile, t) })} icon={<Icon name="person" size={20} />} tone="mint">
         <div className="grid sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
           <Field label={t("cp.f.languages")} value={childProfile.languages.join(" · ") || "—"} />
@@ -276,8 +286,10 @@ export default function ChildProfile() {
           </div>
         </div>
       </SectionCard>
+      </div>
 
       {/* Chapter 2 — right now: this week's real moments */}
+      <div data-module="profile-now" style={{ display: "contents" }}>
       <SectionCard title={t("cp.ch.now")} icon={<Icon name="monitoring" size={20} />} tone="coral">
         {week.count > 0 ? (
           <div className="space-y-3">
@@ -303,8 +315,10 @@ export default function ChildProfile() {
           <JumpLink onClick={() => setActiveTab("timeline")} color="var(--arbor-peach-ink)">{t("cp.seeStory", { name: first })}</JumpLink>
         </div>
       </SectionCard>
+      </div>
 
       {/* Chapter 3 — milestones */}
+      <div data-module="profile-milestones" style={{ display: "contents" }}>
       <SectionCard title={t("cp.ch.milestones")} icon={<Icon name="check_circle" size={20} fill={1} />} tone="mint">
         <div className="flex items-center gap-4">
           <div className="flex-1">
@@ -334,9 +348,10 @@ export default function ChildProfile() {
           <JumpLink onClick={() => setActiveTab("screening")} color="var(--arbor-green-ink)">{t("cp.runCheck")}</JumpLink>
         </div>
       </SectionCard>
+      </div>
 
       {/* Chapter 4 — strengths & where to support */}
-      <div className="grid min-w-0 gap-4 lg:grid-cols-2">
+      <div data-module="profile-strengths" className="grid min-w-0 gap-4 lg:grid-cols-2">
         <SectionCard title={t("cp.ch.strengths")} icon={<Icon name="diamond" size={20} fill={1} />} tone="mint">
           <ul className="space-y-3">
             {childProfile.strengths.map((s) => (
@@ -368,6 +383,7 @@ export default function ChildProfile() {
       </div>
 
       {/* Chapter 5 — language & communication */}
+      <div data-module="profile-language" style={{ display: "contents" }}>
       <SectionCard title={t("cp.ch.language")} icon={<Icon name="translate" size={20} />} tone="sky">
         <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-ink)" }}>
           {childProfile.languages.length > 1
@@ -376,8 +392,10 @@ export default function ChildProfile() {
         </p>
         <div className="mt-3"><JumpLink onClick={() => setActiveTab("language")} color="var(--arbor-sky-ink)">{t("cp.openLang")}</JumpLink></div>
       </SectionCard>
+      </div>
 
       {/* Chapter 6 — what Arbor remembers (the parent-approved memory) */}
+      <div data-module="profile-memory" style={{ display: "contents" }}>
       <SectionCard title={t("cp.ch.memory")} icon={<Icon name="bookmark" size={20} />} tone="lav">
         {approvedMemoryItems.length > 0 ? (
           <ul className="space-y-1.5 text-sm" style={{ color: "var(--arbor-ink)" }}>
@@ -397,8 +415,10 @@ export default function ChildProfile() {
         )}
         <div className="mt-3"><JumpLink onClick={() => setActiveTab("memory")} color="var(--arbor-lav-ink)">{t("cp.reviewMemory", { name: first })}</JumpLink></div>
       </SectionCard>
+      </div>
 
       {/* Chapter 7 — the next step */}
+      <div data-module="profile-next" style={{ display: "contents" }}>
       <SectionCard title={t("cp.ch.next")} icon={activePlan ? <Icon name="tune" size={20} /> : <Icon name="fact_check" size={20} />} tone="yellow">
         {activePlan && planProgress ? (
           <>
@@ -416,9 +436,10 @@ export default function ChildProfile() {
           </>
         )}
       </SectionCard>
+      </div>
 
       {/* Footer jump strip — the deep tools, one tap away */}
-      <div className="grid min-w-0 gap-3 sm:grid-cols-3">
+      <div data-module="profile-jump-strip" className="grid min-w-0 gap-3 sm:grid-cols-3">
         {([
           { tab: "timeline" as const, tone: "sky" as const, icon: <Icon name="route" size={18} />, label: t("cp.footer.story", { name: first }) },
           { tab: "behaviors" as const, tone: "coral" as const, icon: <Icon name="monitoring" size={18} />, label: t("cp.footer.moments") },

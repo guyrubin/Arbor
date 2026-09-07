@@ -270,7 +270,11 @@ export default function SciencePage() {
       </div>
 
       {/* ── Hub quick-nav (Maytal frame 6: one listing, each row → section) ── */}
-      <nav aria-label={tt("elev.trust.title")} className="flex flex-wrap gap-2" data-testid="trust-hub-nav">
+      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (what moduleBudget counts);
+          `data-primary-move` marks the ONE control that performs the move
+          surfaceContract.ts declares for this route. */}
+      <nav data-module="science-nav" data-primary-move="open-evidence" aria-label={tt("elev.trust.title")} className="flex flex-wrap gap-2" data-testid="trust-hub-nav">
         {SECTION_IDS.map((id) => (
           <button
             key={id}
@@ -287,6 +291,7 @@ export default function SciencePage() {
       </nav>
 
       {/* ── 1 · How Arbor works (Maytal frame 2) ────────────────────────────── */}
+      <div data-module="science-document" style={{ display: "contents" }}>
       <div id="trust-how" data-testid="trust-section-how" className="scroll-mt-4">
         <SectionCard title={tt("elev.trust.how.title")} icon={<Icon name={SECTION_ICON.how} size={18} />} tone="lav">
           <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-ink)" }}>
@@ -450,6 +455,8 @@ export default function SciencePage() {
             </p>
           </div>
         </SectionCard>
+      </div>
+
       </div>
 
       {/* ── 6 · Questions & contact ─────────────────────────────────────────── */}
