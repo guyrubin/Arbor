@@ -1,4 +1,5 @@
 import { capacityMinutes, type ActionLoopEntry } from "../actionLoop/model";
+import { behaviorTypeLabel } from "../content/behaviorTaxonomy";
 import type {
   ActionPlan,
   AdventureResult,
@@ -133,7 +134,11 @@ export type TranslateFn = (key: string, vars?: Record<string, string | number>) 
 export const signalTitle = (s: TimelineSignal, t: TranslateFn): string => {
   switch (s.kind) {
     case "moment":
-      return s.refTitle || t("timeline.title.moment");
+      // OBJ-JOURNAL-01: the Journal and Story rows rendered the RAW stored
+      // behaviorType while Behaviors rendered `behaviorTypeLabel` of the same
+      // field — one log, two names, and English inside the Hebrew app. One
+      // label per type on every hub, through the one taxonomy seam.
+      return s.refTitle ? behaviorTypeLabel(s.refTitle, t) : t("timeline.title.moment");
     case "milestone":
       return t("timeline.title.observed", { title: s.refTitle ?? "" });
     case "plan":

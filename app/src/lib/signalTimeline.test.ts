@@ -226,7 +226,11 @@ describe("signal render labels", () => {
     });
     const byId = (id: string) => signals.find((s) => s.id === id)!;
 
-    expect(signalTitle(byId("moment-b1"), t)).toBe("Sensory Meltdown");
+    // OBJ-JOURNAL-01: this line used to assert the DEFECT — the raw stored
+    // label rendered verbatim on the Journal and Story rows while Behaviors
+    // showed the localized one. A legacy label now resolves through the
+    // taxonomy's own keyword map to its i18n key, like any canonical type.
+    expect(signalTitle(byId("moment-b1"), t)).toBe("[ql.type.sensory]");
     expect(signalTitle(byId("moment-b2"), t)).toBe("[timeline.title.moment]");
     expect(signalTitle(byId("milestone-m1"), t)).toBe("[timeline.title.observed|title=First words]");
     expect(signalTitle(byId("plan-p1"), t)).toBe("[timeline.title.plan]");

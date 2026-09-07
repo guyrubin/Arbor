@@ -186,14 +186,30 @@ export function normalizeExtractedLog(d: ExtractedLogDraft, fallbackTrigger = ""
   };
 }
 
-/** Localized display label for a stored behaviorType — canonical types render
- *  their i18n label (HE labels in an HE UI), legacy free labels render as-is
- *  so old logs never blank out. */
+/**
+ * Localized display label for a stored behaviorType.
+ *
+ * Canonical types render their i18n label (HE labels in an HE UI). OBJ-JOURNAL-01:
+ * a LEGACY free label used to fall straight through, so "Sensory Meltdown" and
+ * "Sibling Dispute" — both present in seeded ledgers — printed raw English on a
+ * Hebrew screen, and the same log read one way on Behaviors and another on the
+ * Journal. A free label is now run through `mapLabelToType`, the same keyword
+ * map every extraction already uses, so a recognisable one gets its localized
+ * label; only a genuinely unmappable label ("Old Free Label") still renders
+ * verbatim, because blanking a parent's own words is worse than English.
+ */
 export function behaviorTypeLabel(
   type: string,
   t: (key: string) => string,
   variant: "full" | "short" = "short",
 ): string {
-  const entry = BEHAVIOR_TYPES.find((b) => b.value === type);
-  return entry ? t(variant === "short" ? entry.shortLabelKey : entry.labelKey) : type;
+  const raw = String(type ?? "").trim();
+  if (!raw) return raw;
+  const keyOf = (b: (typeof BEHAVIOR_TYPES)[number]) => (variant === "short" ? b.shortLabelKey : b.labelKey);
+  const entry = BEHAVIOR_TYPES.find((b) => b.value === raw);
+  if (entry) return t(keyOf(entry));
+  const { type: mapped, matched } = mapLabelToType(raw);
+  if (!matched) return raw;
+  const legacy = BEHAVIOR_TYPES.find((b) => b.value === mapped);
+  return legacy ? t(keyOf(legacy)) : raw;
 }
