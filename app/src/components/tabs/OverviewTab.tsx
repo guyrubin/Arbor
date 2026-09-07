@@ -975,6 +975,31 @@ export default function OverviewTab() {
               ) : (
                 <p className="px-1 text-[12px]" style={{ color: "var(--arbor-faint)" }}>{t("today.feed.empty", { name: firstName })}</p>
               )}
+              {/* Task 4 — #/day-windows gets its CANONICAL door, here.
+                     TJB-25/IA-07 left the route with two: Today's pill row,
+                     which is HIDDEN below md, and a Settings row two levels
+                     deep. Neither is where a parent looks for "when is today
+                     calm" — Today is, and this drawer is literally "your daily
+                     tools". Reuses the route's own shipped keys (dw.title /
+                     dw.cta, EN + HE already in lib/i18n.ts) and the feed row's
+                     anatomy above it; the Settings row stays exactly where it
+                     is, so the phone guard in chromeLayout.test.ts still holds.
+                     44 px floor via min-h-11 on the row itself. */}
+              <button
+                type="button"
+                onClick={() => setActiveTab("day-windows")}
+                data-testid="today-open-day-windows"
+                className="flex w-full min-h-11 items-center gap-3 px-1 text-start"
+              >
+                <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full" style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}>
+                  <Icon name="schedule" size={18} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("dw.title")}</span>
+                  <span className="block truncate text-[11px]" style={{ color: "var(--arbor-faint)" }}>{t("dw.cta")}</span>
+                </span>
+                <Icon name="chevron_right" size={18} className="rtl:-scale-x-100" style={{ color: GREEN }} />
+              </button>
               {/* Daily Play displaced here by the hard-moment offer (budget). */}
               {!showPlayInline && todayChoice.kind !== "play" && playSection}
               <div className="max-w-[520px]">
