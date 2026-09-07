@@ -54,6 +54,25 @@ const readLang = (key: string): UiLang => {
   }
 };
 
+/* GP-01 residue / OBJ-GROWTH-01 — `{plural}` reached the screen unresolved
+   ("Grounded in 3 source{plural}") because translate() only substitutes tokens
+   the caller named, and no caller named this one. It is a SUFFIX token, so the
+   count `n` is enough to resolve it in English; Hebrew pluralisation is not a
+   suffix rule that generalises across words (מקור → מקורות but ילד → ילדים),
+   so Hebrew strips it and any Hebrew string that needs both forms takes the
+   explicit one/many KEY pair lib/childAge.ts:132 documents. A caller may still
+   pass `plural` itself, and that always wins.
+
+   Resolving here rather than inside translate() keeps this to one file: the
+   `t` every component holds is this callback. */
+export function resolvePlural(lang: UiLang, text: string, vars?: Record<string, string | number>): string {
+  if (!text.includes("{plural}")) return text;
+  if (vars && vars.plural !== undefined) return text;
+  const n = vars ? Number(vars.n) : NaN;
+  const suffix = lang === "en" && Number.isFinite(n) && n !== 1 ? "s" : "";
+  return text.split("{plural}").join(suffix);
+}
+
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [uiLang, setUiLangState] = useState<UiLang>(() => readLang(LS_UI));
   const [aiLang, setAiLangState] = useState<AiLang>(() => readLang(LS_AI) || uiLang);
@@ -77,7 +96,10 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const setAiLang = useCallback((l: AiLang) => setAiLangState(l), []);
   // Choosing a UI language localizes content too — one switch for the whole app.
   const setUiLang = useCallback((l: UiLang) => { setUiLangState(l); setAiLangState(l); }, []);
-  const t = useCallback((key: string, vars?: Record<string, string | number>) => translate(uiLang, key, vars), [uiLang]);
+  const t = useCallback(
+    (key: string, vars?: Record<string, string | number>) => resolvePlural(uiLang, translate(uiLang, key, vars), vars),
+    [uiLang]
+  );
 
   return (
     <LanguageContext.Provider value={{ aiLang, setAiLang, uiLang, setUiLang, t }}>

@@ -13,7 +13,11 @@ export const en: Record<string, string> = {
   "elev.hero.growth.sub": "Every milestone you notice is kept — Arbor remembers it for you.",
   "elev.hero.growth.cta": "Quick development check",
   "elev.hero.growth.stat.noticed": "of {total} noticed",
-  "elev.hero.growth.stat.domains": "areas (of 7)",
+  // OBJ-GROWTH-01: the "7" was a hard-coded literal beside 6 rendered rows,
+  // a "5 areas covered" teaser and Science's "7 developmental domains". The
+  // total is interpolated from DOMAIN_META now; `{plural}` is resolved by
+  // LanguageContext from `n`, so "1 area" reads singular.
+  "elev.hero.growth.stat.domains": "area{plural} of {total}",
   "elev.hero.growth.stat.week": "logged this week",
 
   // ── E2 · Academy hub hero
@@ -38,7 +42,7 @@ export const he: Record<string, string> = {
   "elev.hero.growth.sub": "כל אבן דרך ששמתם לב אליה נשמרת — ארבור זוכרת בשבילכם.",
   "elev.hero.growth.cta": "בדיקת התפתחות מהירה",
   "elev.hero.growth.stat.noticed": "מתוך {total} אבני דרך",
-  "elev.hero.growth.stat.domains": "תחומים (מ-7)",
+  "elev.hero.growth.stat.domains": "מתוך {total} תחומים",
   "elev.hero.growth.stat.week": "תועד השבוע",
 
   "elev.hero.academy.eyebrow": "אקדמיה",

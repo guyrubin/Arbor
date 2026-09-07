@@ -15,6 +15,10 @@ import PhysicalGrowthCard from "../sections/PhysicalGrowthCard";
 import ScreeningSheet from "../sections/ScreeningSheet";
 import { SpineRibbon } from "../ui/SpineRibbon";
 import { DOMAIN_META } from "../../practice/content";
+
+/** OBJ-GROWTH-01 — the ONE domain count. Every surface that names "how many
+ *  areas Arbor tracks" derives it from DOMAIN_META; nothing hard-codes it. */
+const DOMAIN_COUNT = Object.keys(DOMAIN_META).length;
 import { en as fullPictureEn, he as fullPictureHe } from "../../lib/i18nElevation/fullpicture";
 import { tGCare } from "../../lib/growthCareText";
 // GP-34 — the thing the parent chose to watch for after a Development Check.
@@ -293,7 +297,10 @@ export default function DevelopmentTab() {
           }}
           stats={[
             { value: heroStats.noticed, label: t("elev.hero.growth.stat.noticed", { total: heroStats.total }) },
-            { value: heroStats.domainsActive, label: t("elev.hero.growth.stat.domains") },
+            // OBJ-GROWTH-01: one count, derived from DOMAIN_META — the same
+            // source the Full Picture teaser below already reads. The literal
+            // "(of 7)" that used to sit in the dictionary was true nowhere.
+            { value: heroStats.domainsActive, label: t("elev.hero.growth.stat.domains", { n: heroStats.domainsActive, total: DOMAIN_COUNT }) },
             { value: heroStats.momentsWeek, label: t("elev.hero.growth.stat.week") },
           ]}
           // RUN-08: day-0 teach line instead of "0 · 0 · 0".
@@ -439,7 +446,7 @@ export default function DevelopmentTab() {
                 {tFP(uiLang, "elev.fullpicture.title")}
               </h2>
               <span className="inline-flex flex-shrink-0 items-center rounded-full px-2.5 py-1 text-[11px] font-extrabold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
-                {tFP(uiLang, "elev.fullpicture.card.teaser", { n: Object.keys(DOMAIN_META).length })}
+                {tFP(uiLang, "elev.fullpicture.card.teaser", { n: DOMAIN_COUNT })}
               </span>
             </div>
             <p className="mt-1 max-w-2xl break-words text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
