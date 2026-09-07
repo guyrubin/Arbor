@@ -129,6 +129,10 @@ function boundaries() {
   const leases = createAccountDeletionLeases();
   const imports: Record<string, any> = {
     "../ui/Modal": { Modal: "Modal" },
+    // MOB-28: SettingsModal picks its surface at render (Sheet below lg, Modal
+    // above). Compact reads FALSE here, so this harness keeps exercising the
+    // Modal branch it always did — the boundary is stubbed, not the behaviour.
+    "../ui/Sheet": { Sheet: "Sheet", useCompactSurface: () => false },
     "../../context/LanguageContext": { useLanguage: () => language },
     "../../context/AuthContext": { useAuth: () => auth },
     "../../context/ToastContext": { useToast: () => ({ toast }) },

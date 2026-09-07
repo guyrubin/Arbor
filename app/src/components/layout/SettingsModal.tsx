@@ -2,6 +2,9 @@ import React, { useEffect, useState } from "react";
 import { Icon } from "../ui/Icon";
 import metadata from "../../../metadata.json";
 import { Modal } from "../ui/Modal";
+// MOB-28 / CR-22: below `lg` this dialog is a bottom SHEET, not a centred
+// card. Same contract, same dialogStack ownership — only the box moves.
+import { Sheet, useCompactSurface } from "../ui/Sheet";
 import AdminDashboard from "./AdminDashboard";
 import ParentalGatePanel from "./ParentalGatePanel";
 import DeleteAccountModal from "./DeleteAccountModal";
@@ -110,9 +113,11 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
     setAccentTheme(theme);
   };
 
+  const Surface = useCompactSurface() ? Sheet : Modal;
+
   return (
     <>
-    <Modal open={open && !deleteOpen} onClose={onClose} title={t("set.title")}>
+    <Surface open={open && !deleteOpen} onClose={onClose} title={t("set.title")}>
       <div className="space-y-5 text-sm">
         <Section title={t("set.section.billing")} sub={t("set.section.billingSub")}>
         {/* Plan — read from the real entitlement endpoint (MON-1 / MON-2 billing) */}
@@ -478,7 +483,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
           <LegalLinks />
         </div>
       </div>
-    </Modal>
+    </Surface>
     {entitlement.isAdmin && <AdminDashboard open={adminOpen} onClose={() => setAdminOpen(false)} />}
     <DeleteAccountModal open={open && deleteOpen && firebaseEnabled && Boolean(user)} onClose={() => setDeleteOpen(false)} />
     </>

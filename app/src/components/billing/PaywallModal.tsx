@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { Modal } from "../ui/Modal";
+// MOB-28 / CR-22: below `lg` this dialog is a bottom SHEET, not a centred
+// card. Same contract, same dialogStack ownership — only the box moves.
+import { Sheet, useCompactSurface } from "../ui/Sheet";
 import { Skeleton } from "../ui/Skeleton";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -54,8 +57,10 @@ export default function PaywallModal() {
         : paywall.feature === "coach_unlimited" ? t("pw.bodyCoach")
           : t("pw.body");
 
+  const Surface = useCompactSurface() ? Sheet : Modal;
+
   return (
-    <Modal open={paywall.open} onClose={closePaywall} title={t("pw.title")}>
+    <Surface open={paywall.open} onClose={closePaywall} title={t("pw.title")}>
       <div className="space-y-4 text-sm">
         <div className="flex items-start gap-3">
           <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
@@ -178,6 +183,6 @@ export default function PaywallModal() {
           <LegalLinks />
         </div>
       </div>
-    </Modal>
+    </Surface>
   );
 }

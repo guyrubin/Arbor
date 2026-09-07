@@ -6,6 +6,9 @@ import * as ts from "typescript";
 const root = path.resolve(__dirname, "..");
 const TARGETS = {
   "ui/Modal.tsx": "open",
+  // MOB-28 / CR-22: the bottom sheet is a dialog owner like any other — it
+  // joins the explicit list rather than being exempted from it.
+  "ui/Sheet.tsx": "open",
   "layout/MobileNav.tsx": "moreOpen",
   "practice/GoalBuilderModal.tsx": "open",
   "profile/AvatarCreator.tsx": "open",
@@ -137,4 +140,66 @@ it("new raw dialogs cannot evade the explicit owner list", () => {
     .map(file => path.relative(root, file).replace(/\\/g, "/"))
     .filter(file => !(file in TARGETS) && !LEGACY.has(file));
   expect(unmanaged).toEqual([]);
+});
+
+/**
+ * MOB-28 / CR-22 — Settings and the Paywall are SHEETS on a phone.
+ *
+ * MEASURED at 390 (ledger-SHELL Screens D and E): both rendered as a centred
+ * 358×760 card — a desktop dialog scaled down, floating over a page it had
+ * scrolled away from, with its only close control in the far top-right corner.
+ * The one correct phone dialog in the app was MobileNav's More sheet, and its
+ * presentation lived inline in that component. It is now `ui/Sheet`, on the
+ * same useDialog/dialogStack contract as `ui/Modal` (asserted above, in the
+ * CR-03 consumer sweep, because Sheet is in TARGETS), so the swap changes
+ * where the box sits and nothing else.
+ */
+describe("MOB-28 — the bottom sheet is the phone presentation, Modal keeps lg+", () => {
+  const sheet = read("ui/Sheet.tsx");
+
+  it("it is anchored to the bottom edge, not centred", () => {
+    expect(sheet).toContain("fixed inset-0 z-50 flex flex-col justify-end");
+    expect(sheet).toContain("rounded-t-3xl");
+    // negative control: Modal's own layer is the centred shape it replaces.
+    expect(read("ui/Modal.tsx")).toContain("flex items-center justify-center");
+    expect(sheet).not.toContain("flex items-center justify-center p-4");
+  });
+
+  it("it clears the home indicator (safe-area, not a plain padding)", () => {
+    expect(sheet).toContain('paddingBottom: "calc(env(safe-area-inset-bottom) + 1.5rem)"');
+  });
+
+  it("its close control holds the 44 px floor", () => {
+    const close = sheet.slice(sheet.indexOf("onClick={requestClose}"), sheet.indexOf('aria-label={t("aria.close")}'));
+    expect(close).toContain("touch-target");
+    expect(close).toContain('minWidth: "var(--touch-min)"');
+    expect(close).toContain('minHeight: "var(--touch-min)"');
+  });
+
+  it("the breakpoint is a media QUERY at lg, not a device sniff", () => {
+    expect(sheet).toContain('const COMPACT_QUERY = "(max-width: 1023.98px)";');
+    expect(sheet).toContain("useSyncExternalStore(subscribeCompact, readCompact, () => false)");
+    expect(sheet).not.toMatch(/userAgent|ontouchstart|isNativePlatform/);
+    // no matchMedia (SSR, some test envs) falls back to the centred Modal —
+    // i.e. to what shipped, never to a broken dialog.
+    expect(sheet).toContain('typeof window !== "undefined" && !!window.matchMedia');
+  });
+
+  it("Settings and the Paywall pick the surface; Modal is still the lg+ answer", () => {
+    for (const file of ["layout/SettingsModal.tsx", "billing/PaywallModal.tsx"]) {
+      const source = read(file);
+      expect(source, file).toContain('import { Sheet, useCompactSurface } from "../ui/Sheet";');
+      expect(source, file).toContain("const Surface = useCompactSurface() ? Sheet : Modal;");
+      expect(source, file).toContain("<Surface open=");
+      expect(source, file).toContain("</Surface>");
+      // exactly one surface element pair — not a Modal left behind beside it
+      expect((source.match(/<Modal /g) ?? []), file).toEqual([]);
+    }
+  });
+
+  it("negative control: the shipped callers mounted Modal at every width", () => {
+    const preFix = '  return (\n    <Modal open={paywall.open} onClose={closePaywall} title={t("pw.title")}>';
+    expect(preFix).toContain("<Modal open=");
+    expect(preFix).not.toContain("useCompactSurface");
+  });
 });
