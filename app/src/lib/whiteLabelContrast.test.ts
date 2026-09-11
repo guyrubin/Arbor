@@ -36,6 +36,16 @@ const SAFE_FILLS = new Set([
   // Contrast is symmetric for these opaque colours: white-on-ink has the
   // same ratio. This approval does NOT extend to peach/pink accent fills.
   "--arbor-peach-ink", "--arbor-pink-ink",
+  // Same family, same proof, same loop: tokens.contrast.test.ts's FUNCTIONAL
+  // list is ["green","peach","lav","yellow","pink","sky"] and it adds every
+  // `--arbor-<tone>-ink` against the paper surfaces in every scope at AA.
+  // MEASURED against #ffffff from index.css (identical in both scopes):
+  //   --arbor-sky-ink   #075985 → 7.56:1
+  //   --arbor-green-ink #066446 → 7.19:1
+  // both above the already-approved --arbor-peach-ink (#92400e, 7.09:1).
+  // Still NOT approved: the -soft accent fills and --arbor-lav-ink, which has
+  // no such measurement recorded here.
+  "--arbor-sky-ink", "--arbor-green-ink",
 ]);
 // --arbor-subtab-active is scope-dependent; it has no global white-label proof.
 const WHITE = /\btext-white\b/;
@@ -81,6 +91,21 @@ function strings(input: ts.Node | undefined): string[] | undefined {
   return undefined;
 }
 
+/** `import { T } from "lib/tokens"` — the style-alias object. Its members are
+ *  plain string literals, so `T.gradientCta` is as static as the literal it
+ *  stands for; it only looked dynamic because this guard stops at the module
+ *  boundary. Same discipline as CARD_CLASSES: the values are declared here and
+ *  mutation-tested against lib/tokens.ts's real declaration below. */
+const TOKEN_ALIASES: Record<string, string> = { gradientCta: "var(--gradient-cta)" };
+function tokenAliasValue(input: ts.Node | undefined): string[] | undefined {
+  if (!input) return undefined;
+  const node = unwrap(input);
+  if (!ts.isPropertyAccessExpression(node) || !ts.isIdentifier(node.expression)) return undefined;
+  if (!imported(node.expression, "T", "lib/tokens.ts")) return undefined;
+  const value = TOKEN_ALIASES[node.name.text];
+  return value ? [value] : undefined;
+}
+
 function attr(node: Opening, name: string): ts.JsxAttribute | undefined {
   return node.attributes.properties.find((a): a is ts.JsxAttribute =>
     ts.isJsxAttribute(a) && a.name.getText() === name);
@@ -91,7 +116,30 @@ function staticNames(name: ts.PropertyName): string[] | undefined {
   return [ts.isStringLiteral(name) ? name.text : name.getText()];
 }
 
+/** A literal `linear-gradient(...)` whose EVERY colour stop is an approved
+ *  fill token. White over a gradient is proved exactly when it is proved over
+ *  every stop the gradient interpolates between — there is no position at
+ *  which the fill is outside that set. A stop that is not a bare
+ *  `var(--approved-token)` (a raw hex, an rgba, a nested function, a bare
+ *  colour keyword) leaves the fill unproved, as does a non-linear gradient. */
+function safeGradientStops(value: string): boolean {
+  const body = value.trim().match(/^linear-gradient\(([^()]*(?:var\(--[\w-]+\)[^()]*)*)\)$/)?.[1];
+  if (!body) return false;
+  const parts = body.split(",").map(part => part.trim()).filter(Boolean);
+  if (parts.length < 2) return false;
+  let stops = 0;
+  for (const part of parts) {
+    // The first part may be a direction/angle; everything else must be a stop.
+    if (stops === 0 && /^(?:to\s+[a-z\s]+|-?[\d.]+(?:deg|rad|grad|turn))$/.test(part)) continue;
+    const token = part.match(/^var\((--[\w-]+)\)(?:\s+-?[\d.]+(?:%|px|rem|em))?$/)?.[1];
+    if (!token || !SAFE_FILLS.has(token) || token === "--arbor-gradient-primary" || token === "--gradient-cta") return false;
+    stops += 1;
+  }
+  return stops >= 2;
+}
+
 function safeFill(value: string, property = "background"): boolean {
+  if (property !== "backgroundColor" && safeGradientStops(value)) return true;
   const token = value.trim().match(/^var\((--[\w-]+)\)$/)?.[1];
   if (!token || !SAFE_FILLS.has(token)) return false;
   const gradient = token === "--arbor-gradient-primary" || token === "--gradient-cta";
@@ -188,8 +236,18 @@ function properties(input: ts.Node): { name: string; value: ts.Node }[] | undefi
 const WRAPPERS = [
   { name: "SectionCard", file: "components/ui/kit.tsx", slots: ["children", "action"], params: ["title", "icon", "tone", "children", "action"] },
   { name: "Modal", file: "components/ui/Modal.tsx", slots: ["children"], params: ["open", "onClose", "title", "children", "maxWidth"] },
+  // MOB-28/CR-22 (0cdf210f): the phone half of the dialog seam. Settings and
+  // the paywall now pick `useCompactSurface() ? Sheet : Modal`, so Sheet holds
+  // the same white-label children Modal does and is audited on the same terms.
+  // It declares `maxWidth?` in its type but deliberately does not destructure
+  // it (a sheet is always full-bleed), so it has no class input of its own.
+  { name: "Sheet", file: "components/ui/Sheet.tsx", slots: ["children"], params: ["open", "onClose", "title", "children"] },
   { name: "PlayShell", file: "components/ui/playkit.tsx", slots: ["children"], params: ["children", "className"] },
   { name: "KidModeProvider", file: "components/kidmode/KidModeContext.tsx", slots: ["children"], params: ["children"] },
+  // IA-08/RUN-12 (71ad7e5f): the register gate the six shared drill routes now
+  // mount instead of PlayShell. Every white label on those routes sits inside
+  // it, so its presentation is audited here rather than treated as unverified.
+  { name: "RegisterShell", file: "components/ui/playkit.tsx", slots: ["children"], params: ["kidMode", "title", "say", "subtitle", "mood", "action", "className", "children"] },
 ] as const;
 function importsModule(source: ts.SourceFile, statement: ts.ImportDeclaration, module: string): boolean {
   if (!ts.isStringLiteral(statement.moduleSpecifier)) return false;
@@ -260,6 +318,12 @@ function classValues(input: ts.Node, depth = 0): string[] | undefined {
 const CLASS_INPUTS = [
   { file: "components/ui/HeroAvatar.tsx", name: "HeroAvatar", prop: "className", defaultExport: true },
   { file: "components/ui/playkit.tsx", name: "PlayShell", prop: "className", defaultExport: false },
+  // IA-08/RUN-12 (71ad7e5f) made `RegisterShell` the ONLY mount of PlayShell
+  // (lib/playShell.register.test.ts pins that), so the className that reaches
+  // PlayShell now enters the module through RegisterShell instead of through
+  // five route files. Auditing it is where PlayShell's remaining caller proof
+  // comes from — the in-module mount is proved against these values below.
+  { file: "components/ui/playkit.tsx", name: "RegisterShell", prop: "className", defaultExport: false },
   { file: "components/ui/Modal.tsx", name: "Modal", prop: "maxWidth", defaultExport: true },
 ] as const;
 type ClassInput = typeof CLASS_INPUTS[number];
@@ -284,12 +348,32 @@ function auditClassInputs(inputs: Iterable<SourceInput>): ClassInputProof {
     if (union.length > 16) fail(spec, site, "class branch bound exceeded");
     else proof.values.set(key, union);
   };
+  /** The per-call-site audit, shared by direct, aliased and in-module mounts:
+   *  one more proven caller, no spread that could replace the class input, no
+   *  duplicate argument, and the argument itself resolved to literal values. */
+  const auditSite = (spec: ClassInput, node: Opening, file: ts.SourceFile, rel: string) => {
+    const key = inputKey(spec), site = rel + ":" + (file.getLineAndCharacterOfPosition(node.getStart()).line + 1);
+    proof.callers.set(key, (proof.callers.get(key) ?? 0) + 1);
+    if (node.attributes.properties.some(ts.isJsxSpreadAttribute)) fail(spec, site, "spread may replace class input");
+    const args = node.attributes.properties.filter((attribute): attribute is ts.JsxAttribute => ts.isJsxAttribute(attribute) && attribute.name.getText() === spec.prop);
+    if (args.length > 1) fail(spec, site, "duplicate class argument");
+    if (args.length) accept(spec, site, args[0].initializer && classValues(args[0].initializer));
+  };
+  /* An audited component mounted inside its OWN module has no import to hang a
+   * caller proof on, and its class argument is usually a prop of the enclosing
+   * component — whose value is only known once every external caller has been
+   * read. These sites are therefore collected and settled after the loop. */
+  const inModuleSites: { spec: ClassInput; site: string; source: ts.SourceFile; node: Opening }[] = [];
   for (const input of inputs) {
     const source = ts.createSourceFile(input.file, input.text, ts.ScriptTarget.Latest, true, /\.[jt]sx$/.test(input.file) ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
     const imports = new Map<string, ClassInput>();
+    /** Audited components DECLARED in this file, so an in-module `<X …>` mount
+     *  is a call site rather than an invisible one. */
+    const declared = new Map<string, { spec: ClassInput; fn: ts.FunctionDeclaration }>();
     for (const spec of CLASS_INPUTS) {
       if (spec.file === input.file) {
         const fn = source.statements.find((node): node is ts.FunctionDeclaration => ts.isFunctionDeclaration(node) && node.name?.text === spec.name);
+        if (fn) declared.set(spec.name, { spec, fn });
         if (spec.defaultExport) {
           const exports = source.statements.filter(ts.isExportAssignment);
           if (exports.length !== 1 || exports[0].isExportEquals || !ts.isIdentifier(exports[0].expression) ||
@@ -324,20 +408,60 @@ function auditClassInputs(inputs: Iterable<SourceInput>): ClassInputProof {
             path.resolve(SRC, path.dirname(input.file), statement.moduleSpecifier.text).replace(/\.[jt]sx?$/, "") === path.resolve(SRC, spec.file).replace(/\.[jt]sx?$/, "")) fail(spec, input.file, "namespace component reference requires explicit audit");
       }
     }
+    /* MOB-28/CR-22 — the dialog-surface alias. `const Surface = compact ? Sheet
+     * : Modal` is a const, single-file, statically enumerable indirection, so
+     * the caller set stays bounded and `<Surface …>` can be audited exactly
+     * like `<Modal …>`. It is admitted ONLY under those terms: `const`, an
+     * identifier name, and every branch an identifier resolving to an audited
+     * wrapper (WRAPPERS) — anything else still trips "escapes direct JSX". */
+    const aliases = new Map<string, { specs: ClassInput[]; decl: ts.VariableDeclaration }>();
+    const aliasBranches = new Set<ts.Node>();
+    const collectAliases = (node: ts.Node) => {
+      if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer &&
+          ts.isVariableDeclarationList(node.parent) && (node.parent.flags & ts.NodeFlags.Const)) {
+        const branches = alternatives(node.initializer);
+        const bounded = branches.length > 0 && branches.every(branch => ts.isIdentifier(branch) &&
+          WRAPPERS.some(wrapper => imported(branch, wrapper.name, wrapper.file)));
+        if (bounded) {
+          const specs = branches.filter((branch): branch is ts.Identifier => ts.isIdentifier(branch))
+            .map(branch => CLASS_INPUTS.find(spec => imported(branch, spec.name, spec.file)))
+            .filter((spec): spec is ClassInput => !!spec);
+          if (specs.length) {
+            aliases.set(node.name.text, { specs, decl: node });
+            for (const branch of branches) aliasBranches.add(branch);
+          }
+        }
+      }
+      ts.forEachChild(node, collectAliases);
+    };
+    collectAliases(source);
     const visit = (node: ts.Node) => {
       if (ts.isIdentifier(node) && imports.has(node.text)) {
         const spec = imports.get(node.text)!;
         const isReference = imported(node, spec.name, spec.file);
         const parent = node.parent;
         const tag = (opening(parent) || ts.isJsxClosingElement(parent)) && parent.tagName === node;
-        if (isReference && !tag && !ts.isImportSpecifier(parent) && !ts.isImportClause(parent)) fail(spec, input.file, "component reference escapes direct JSX");
-        if (isReference && tag && opening(parent)) {
-          const key = inputKey(spec), site = input.file + ":" + (source.getLineAndCharacterOfPosition(parent.getStart()).line + 1);
-          proof.callers.set(key, (proof.callers.get(key) ?? 0) + 1);
-          if (parent.attributes.properties.some(ts.isJsxSpreadAttribute)) fail(spec, site, "spread may replace class input");
-          const args = parent.attributes.properties.filter((attribute): attribute is ts.JsxAttribute => ts.isJsxAttribute(attribute) && attribute.name.getText() === spec.prop);
-          if (args.length > 1) fail(spec, site, "duplicate class argument");
-          if (args.length) accept(spec, site, args[0].initializer && classValues(args[0].initializer));
+        if (isReference && !tag && !aliasBranches.has(node) && !ts.isImportSpecifier(parent) && !ts.isImportClause(parent)) fail(spec, input.file, "component reference escapes direct JSX");
+        if (isReference && tag && opening(parent)) auditSite(spec, parent, source, input.file);
+      }
+      // An alias binding: JSX tag → a proven call site of every branch it can
+      // resolve to; anything else → the caller set is no longer bounded.
+      if (ts.isIdentifier(node) && aliases.has(node.text)) {
+        const alias = aliases.get(node.text)!;
+        const parent = node.parent;
+        const tag = (opening(parent) || ts.isJsxClosingElement(parent)) && parent.tagName === node;
+        if (lexicalBinding(node) === alias.decl) {
+          if (tag && opening(parent)) for (const spec of alias.specs) auditSite(spec, parent, source, input.file);
+          else if (!tag && parent !== alias.decl) for (const spec of alias.specs) fail(spec, input.file, "aliased component reference escapes direct JSX");
+        }
+      }
+      // A mount of an audited component inside its own module: a real call site
+      // the import graph cannot see. Settled after every external caller.
+      if (ts.isIdentifier(node) && declared.has(node.text) && !imports.has(node.text)) {
+        const { spec, fn } = declared.get(node.text)!;
+        const parent = node.parent;
+        if (opening(parent) && parent.tagName === node && lexicalBinding(node) === fn) {
+          inModuleSites.push({ spec, site: input.file, source, node: parent });
         }
       }
       // Re-exports would introduce callers outside this bounded import graph.
@@ -351,6 +475,12 @@ function auditClassInputs(inputs: Iterable<SourceInput>): ClassInputProof {
       ts.forEachChild(node, visit);
     };
     visit(source);
+  }
+  // Every external caller has now been read, so a forwarded prop inside the
+  // declaring module resolves against the proof the external callers built.
+  for (const entry of inModuleSites) {
+    classProofs.set(entry.source, proof);
+    auditSite(entry.spec, entry.node, entry.source, entry.site);
   }
   for (const spec of CLASS_INPUTS) {
     const key = inputKey(spec);
@@ -417,7 +547,16 @@ function motionReason(entries: { name: string; value: ts.Node }[]): string {
 function ancestorPresentationReason(node: Opening): string {
   const tag = node.tagName.getText(), source = node.getSourceFile();
   const isMotion = /^\w+\.[a-z]+$/.test(tag) && ts.isPropertyAccessExpression(node.tagName) && imported(node.tagName.expression, "motion", "motion/react");
-  const wrapper = WRAPPERS.find(item => imported(node.tagName, item.name, item.file));
+  // A wrapper reached by import, or one declared in the very file being
+  // audited — RegisterShell mounts PlayShell from inside playkit.tsx, and a
+  // same-module reference has no import specifier to match on. The identifier
+  // must still bind to that file's own function declaration.
+  const localWrapper = (item: typeof WRAPPERS[number]): boolean => {
+    if (item.file !== source.fileName || !ts.isIdentifier(node.tagName) || node.tagName.text !== item.name) return false;
+    const binding = lexicalBinding(node.tagName);
+    return !!binding && ts.isFunctionDeclaration(binding) && binding.name?.text === item.name;
+  };
+  const wrapper = WRAPPERS.find(item => imported(node.tagName, item.name, item.file) || localWrapper(item));
   const presence = imported(node.tagName, "AnimatePresence", "motion/react");
   const contextProvider = tag === "KidModeContext.Provider" && source.fileName === "components/kidmode/KidModeContext.tsx";
   if (!/^[a-z][a-z0-9-]*$/.test(tag) && !isMotion && !wrapper && !presence && !contextProvider) return "component presentation is unverified";
@@ -468,7 +607,17 @@ function ancestorReason(node: ts.Node): string {
 function classify(node: ts.Node): string {
   if (!opening(node)) return "standalone literal/template: consuming background not proved";
   if (!/^[a-z][a-z0-9-]*$/.test(node.tagName.getText())) return "component-owned/inherited background";
-  if (node.attributes.properties.some(ts.isJsxSpreadAttribute)) return "JSX spread may override presentation";
+  // A spread is opaque UNLESS it resolves to a static object literal carrying
+  // nothing presentational. The `data-primary-move` stamps spread onto CTAs
+  // are exactly that; anything unresolved, or any spread that could reach
+  // className/style/background/opacity, is still unproved.
+  for (const attribute of node.attributes.properties) {
+    if (!ts.isJsxSpreadAttribute(attribute)) continue;
+    const spread = properties(attribute.expression);
+    if (!spread || spread.some(prop => !/^(?:data|aria)-[\w-]+$|^(?:id|role|type|tabIndex|title)$/.test(prop.name))) {
+      return "JSX spread may override presentation";
+    }
+  }
   const classes = strings(attr(node, "className")?.initializer);
   if (!classes) return "dynamic className/template";
   if (node.attributes.properties.filter(a => ts.isJsxAttribute(a) && a.name.getText() === "className").length !== 1) {
@@ -492,7 +641,7 @@ function classify(node: ts.Node): string {
           return "opacity/filter/compositing requires rendered verification";
         }
         if (["background", "backgroundColor", "backgroundImage"].includes(name)) {
-          const values = strings(prop.initializer);
+          const values = strings(prop.initializer) ?? tokenAliasValue(prop.initializer);
           if (!values) return "dynamic background value";
           fills.push(...values.map(value => ({ property: name, value })));
         }
@@ -551,8 +700,10 @@ function wrapperProblems(text: string, spec: typeof WRAPPERS[number], proof?: Cl
     for (const node of alternatives(input)) {
       if (ts.isIdentifier(node)) {
         if (imported(node, "cardCls", "lib/tokens.ts")) continue;
-        if (spec.name === "Modal" && node.text === "maxWidth") continue;
-        if (spec.name === "PlayShell" && node.text === "className") continue;
+        // THIS wrapper's own audited class input — Modal.maxWidth,
+        // PlayShell.className, RegisterShell.className — and nothing else: the
+        // value is proved at every call site by auditClassInputs.
+        if (CLASS_INPUTS.some(input => input.file === spec.file && input.name === spec.name && input.prop === node.text)) continue;
         return false;
       }
       let valid = true;
@@ -956,6 +1107,30 @@ const RETIRED_DEBT: readonly string[] = [
   "components/practice/JourneyTab.tsx#72eccb627b4fabd4d8372482875af04e75183706048ba317a3686155aabf8b82",
   "components/practice/SpeechCoachTab.tsx#9fe1a33dbc88aef910aa8a9a4fe0f649dd7c692bf0aa99e924e121e324cefe9d",
   "components/tabs/BehaviorsTab.tsx#ad487194a455b193ab089a9df6abb7e88ecc187012882afdf8eea61acf994c7b",
+  // RESOLVED 2026-09-11 (N10). Three proofs were extended, no case re-frozen:
+  //
+  // 1. --arbor-sky-ink and --arbor-green-ink joined SAFE_FILLS on exactly the
+  //    evidence that admitted peach-ink and pink-ink: tokens.contrast.test.ts
+  //    runs every `--arbor-<tone>-ink` (FUNCTIONAL includes "sky" and "green")
+  //    against the paper surfaces in every scope at AA, and white-on-ink is the
+  //    same ratio — 7.56:1 and 7.19:1, both above approved peach-ink's 7.09:1.
+  "components/practice/EarlyReadingTrack.tsx#fdd0195af37357fb31860dcd0f7a18ee6c7a796dcc65177912f10ecb27152f8a",
+  "components/practice/SpeechCoachTab.tsx#2c80687e6ffee2abfc63797c7c99e7e4c768e6d06a6c24e9bee913d20ab78ef6",
+  "components/practice/SpeechCoachTab.tsx#dee171a8915221d21a04170bff8fe8feb4d0365e1408829fb179942e3c22581a",
+  "components/practice/SpeechCoachTab.tsx#be61a9b94915f387dc6ac9a27559c77e75e8d6c16354ac2c5bc473f430faa3b6",
+  // 2. A literal linear-gradient whose EVERY colour stop is an approved fill is
+  //    itself approved: there is no position along it at which white is not
+  //    proved. The bedtime CTA is clay 0% → green-ink 100%, now both approved.
+  "components/tabs/BedtimeStoriesTab.tsx#8920128b8d23cf5e9323cc1faf8a5c9b5c9b0dbb5ee51375bcb27ee9677d4c6d",
+  // 3. `T.gradientCta` is the string literal "var(--gradient-cta)" in
+  //    lib/tokens.ts — an approved fill that only looked dynamic because the
+  //    guard stopped at the module boundary. TOKEN_ALIASES resolves it and is
+  //    mutation-tested against the real declaration, as CARD_CLASSES is.
+  "components/tabs/BehaviorsTab.tsx#8b452571960310c432957976d7376fa0523d0e3ae9f79481aa533f6f919d4973",
+  "components/tabs/BehaviorsTab.tsx#9310d04be3f5fee2724fc8f0010827ce17ea1d626659f05d943f3e90facc40c4",
+  "components/tabs/BehaviorsTab.tsx#1ebb89eab19856a7e0493ce2d36e3ee9f57b5f8f8700889da80e4a98d089396d",
+  "components/tabs/CoachTab.tsx#73a2721b6eb29afc6471ceb14d34b66a4869efe758e18562221d3a4871b3c980",
+  "components/tabs/HeroJourneyTab.tsx#4fbbb9b7bbfd18809289404c121d1e3e4836a79c98f24af23b41c500209dc919",
 ];
 
 export function ratchet(cases: Case[], allowed: readonly Case[]): { introduced: Case[]; stale: string[] } {
@@ -1165,8 +1340,8 @@ describe("CR-01 white-label negative controls", () => {
   });
 
   it("proves known class props from their actual defaults and every import-proven caller", () => {
-    const declarations = CLASS_INPUTS.map(spec => ({ file: spec.file, text: readFileSync(path.join(SRC, spec.file), "utf8") }));
-    const prefix = 'import {HeroAvatar} from "./components/ui/HeroAvatar"; import {PlayShell} from "./components/ui/playkit"; import {Modal} from "./components/ui/Modal"; <><HeroAvatar/><PlayShell/><Modal/></>; ';
+    const declarations = [...new Set(CLASS_INPUTS.map(spec => spec.file))].map(file => ({ file, text: readFileSync(path.join(SRC, file), "utf8") }));
+    const prefix = 'import {HeroAvatar} from "./components/ui/HeroAvatar"; import {PlayShell, RegisterShell} from "./components/ui/playkit"; import {Modal} from "./components/ui/Modal"; <><HeroAvatar/><PlayShell/><RegisterShell/><Modal/></>; ';
     const audit = (text: string) => auditClassInputs([...declarations, {file: "fixture.tsx", text: prefix + text}]);
     const neutral = audit('<HeroAvatar className={wide ? "p-4" : "p-6"}/>; <PlayShell className="p-4"/>; <Modal maxWidth="max-w-lg max-sm:h-full max-sm:max-h-none"/>;');
     expect(neutral.failures).toEqual([]);
@@ -1192,8 +1367,8 @@ describe("CR-01 white-label negative controls", () => {
   });
 
   it("audits actual default component aliases instead of skipping their class inputs", () => {
-    const declarations = CLASS_INPUTS.map(spec => ({ file: spec.file, text: readFileSync(path.join(SRC, spec.file), "utf8") }));
-    const prefix = 'import {HeroAvatar} from "./components/ui/HeroAvatar"; import {PlayShell} from "./components/ui/playkit"; import {Modal} from "./components/ui/Modal"; <><HeroAvatar/><PlayShell/><Modal/></>; ';
+    const declarations = [...new Set(CLASS_INPUTS.map(spec => spec.file))].map(file => ({ file, text: readFileSync(path.join(SRC, file), "utf8") }));
+    const prefix = 'import {HeroAvatar} from "./components/ui/HeroAvatar"; import {PlayShell, RegisterShell} from "./components/ui/playkit"; import {Modal} from "./components/ui/Modal"; <><HeroAvatar/><PlayShell/><RegisterShell/><Modal/></>; ';
     const audit = (caller: string) => auditClassInputs([...declarations, { file: "fixture.tsx", text: prefix + caller }]);
     const hero = declarations.find(input => input.file === "components/ui/HeroAvatar.tsx")!;
     const baselineCallers = audit("").callers.get(inputKey(CLASS_INPUTS[0])) ?? 0;
@@ -1217,8 +1392,8 @@ describe("CR-01 white-label negative controls", () => {
   });
 
   it("fails unsupported defaults, changed default declarations and default re-exports", () => {
-    const declarations = CLASS_INPUTS.map(spec => ({ file: spec.file, text: readFileSync(path.join(SRC, spec.file), "utf8") }));
-    const prefix = 'import {HeroAvatar} from "./components/ui/HeroAvatar"; import {PlayShell} from "./components/ui/playkit"; import {Modal} from "./components/ui/Modal"; <><HeroAvatar/><PlayShell/><Modal/></>; ';
+    const declarations = [...new Set(CLASS_INPUTS.map(spec => spec.file))].map(file => ({ file, text: readFileSync(path.join(SRC, file), "utf8") }));
+    const prefix = 'import {HeroAvatar} from "./components/ui/HeroAvatar"; import {PlayShell, RegisterShell} from "./components/ui/playkit"; import {Modal} from "./components/ui/Modal"; <><HeroAvatar/><PlayShell/><RegisterShell/><Modal/></>; ';
     const audit = (inputs: SourceInput[], caller: string) => auditClassInputs([...inputs, { file: "fixture.tsx", text: prefix + caller }]);
     for (const declaration of ['import Play from "./components/ui/playkit"; <Play/>;', 'import {default as Play} from "./components/ui/playkit"; <Play/>;']) {
       expect(audit(declarations, declaration).failures).toContainEqual(expect.stringContaining("unsupported default component import"));
@@ -1322,5 +1497,143 @@ describe("CR-01 white-label negative controls", () => {
     expect(ratchet(escaped, []).introduced).toHaveLength(1);
     const conditional = '<button className={active ? "text-white" : ""} style={{ background: active ? "var(--arbor-clay)" : "var(--arbor-paper)" }}>Save</button>';
     expect(ratchet(scan(conditional), []).introduced).toHaveLength(1);
+  });
+});
+
+/**
+ * N10 — the three proofs that retired ten frozen cases on 2026-09-11, each with
+ * the negative control that keeps it a proof rather than an exemption. If any
+ * of these fails, the corresponding RETIRED_DEBT keys are no longer justified.
+ */
+describe("CR-01 — the proofs behind the 2026-09-11 retirements", () => {
+  const scan = (source: string) => scanWhiteLabels("fixture.tsx", source).cases;
+  const label = (fill: string) => '<button className="text-white" style={{ background: "' + fill + '" }}>Save</button>';
+  const channel = (value: number) => (value <= 0.03928 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4));
+  const luminance = (hex: string) => {
+    const [r, g, b] = [1, 3, 5].map(index => channel(parseInt(hex.slice(index, index + 2), 16) / 255));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const ratio = (a: string, b: string) => {
+    const [high, low] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+    return (high + 0.05) / (low + 0.05);
+  };
+
+  it("every newly approved ink is AA white-on-ink in EVERY scope index.css declares it", () => {
+    const css = readFileSync(path.join(SRC, "index.css"), "utf8");
+    for (const token of ["--arbor-sky-ink", "--arbor-green-ink"]) {
+      const declared = [...css.matchAll(new RegExp(token + ":\\s*(#[0-9a-fA-F]{6})", "g"))].map(match => match[1]);
+      expect(declared.length, token + " is not declared in index.css").toBeGreaterThan(0);
+      for (const hex of declared) expect(ratio("#ffffff", hex), token + " " + hex).toBeGreaterThanOrEqual(4.5);
+      expect(SAFE_FILLS.has(token)).toBe(true);
+    }
+    // NEGATIVE CONTROL: the approval is per-token and measured, not a family
+    // pass. The `-soft` accent fills and the ink with no measurement here stay
+    // out, and a white label on one is still an unresolved case.
+    for (const token of ["--arbor-sky-soft", "--arbor-green-soft", "--arbor-lav-ink"]) {
+      expect(SAFE_FILLS.has(token), token).toBe(false);
+      expect(scan(label("var(" + token + ")"))[0].reason).toBe("unapproved background: var(" + token + ")");
+    }
+  });
+
+  it("TOKEN_ALIASES restates lib/tokens.ts's real declaration, member for member", () => {
+    const tokens = readFileSync(path.join(SRC, "lib/tokens.ts"), "utf8");
+    for (const [member, value] of Object.entries(TOKEN_ALIASES)) {
+      expect(tokens, member).toContain(member + ': "' + value + '"');
+      expect(SAFE_FILLS.has(value.replace(/^var\(|\)$/g, "")), value).toBe(true);
+    }
+    // NEGATIVE CONTROL: only a member listed here resolves; every other `T.*`
+    // background is still a dynamic value this bounded guard will not accept.
+    const fixture = 'import { T } from "./lib/tokens"; <button className="text-white" style={{ background: T.';
+    expect(scan(fixture + 'gradientCta }}>Save</button>')[0].reason).toBe("");
+    expect(scan(fixture + 'paperDeep }}>Save</button>')[0].reason).toBe("dynamic background value");
+    // …and the alias only resolves through an import of lib/tokens.
+    expect(scan('const T = { gradientCta: "var(--gradient-cta)" }; <button className="text-white" style={{ background: T.gradientCta }}>Save</button>')[0].reason).toBe("dynamic background value");
+  });
+
+  it("a literal gradient is approved only when EVERY colour stop is", () => {
+    expect(safeFill("linear-gradient(135deg, var(--arbor-clay) 0%, var(--arbor-green-ink) 100%)")).toBe(true);
+    expect(safeFill("linear-gradient(to right, var(--arbor-ink), var(--arbor-clay))")).toBe(true);
+    // NEGATIVE CONTROLS: one unapproved stop, a raw colour, a translucent stop,
+    // a non-linear gradient, a nested function, and a colour-only slot.
+    expect(safeFill("linear-gradient(135deg, var(--arbor-clay) 0%, var(--arbor-lav-ink) 100%)")).toBe(false);
+    expect(safeFill("linear-gradient(135deg, var(--arbor-clay) 0%, #ffffff 100%)")).toBe(false);
+    expect(safeFill("linear-gradient(135deg, var(--arbor-clay) 0%, rgba(0,0,0,0.4) 100%)")).toBe(false);
+    expect(safeFill("radial-gradient(var(--arbor-clay), var(--arbor-ink))")).toBe(false);
+    expect(safeFill("linear-gradient(135deg, color-mix(in srgb, var(--arbor-ink) 50%, transparent) 0%, var(--arbor-clay) 100%)")).toBe(false);
+    expect(safeFill("linear-gradient(135deg, var(--arbor-clay) 0%, var(--arbor-green-ink) 100%)", "backgroundColor")).toBe(false);
+    expect(scan(label("linear-gradient(135deg, var(--arbor-clay) 0%, var(--arbor-lav-ink) 100%)"))[0].reason)
+      .toContain("unapproved background");
+  });
+
+  it("a JSX spread passes only as a static, non-presentational stamp", () => {
+    const stamp = 'const primaryMove = { "data-primary-move": "build-school-brief" }; ';
+    expect(scan(stamp + '<button {...primaryMove} className="text-white" style={{ background: "var(--arbor-clay)" }}>Save</button>')[0].reason).toBe("");
+    // NEGATIVE CONTROLS: an unresolved spread, and a resolvable one that can
+    // reach presentation, are both still opaque.
+    for (const source of [
+      '<button {...runtimeProps} className="text-white" style={{ background: "var(--arbor-clay)" }}>Save</button>',
+      'const p = { className: "opacity-50" }; <button {...p} className="text-white" style={{ background: "var(--arbor-clay)" }}>Save</button>',
+      'const p = { style: { opacity: 0.5 } }; <button {...p} className="text-white" style={{ background: "var(--arbor-clay)" }}>Save</button>',
+      'const p = { ...other }; <button {...p} className="text-white" style={{ background: "var(--arbor-clay)" }}>Save</button>',
+    ]) expect(scan(source)[0].reason, source).toBe("JSX spread may override presentation");
+  });
+});
+
+/**
+ * N10 — the two caller-proof extensions that keep CLASS_INPUTS complete after
+ * MOB-28/CR-22 (the dialog-surface alias) and IA-08/RUN-12 (PlayShell's only
+ * mount moving inside its own module). Both admit a bounded indirection; the
+ * negative controls are what stop them becoming a hole.
+ */
+describe("CR-01 — bounded component indirections keep their caller proofs", () => {
+  const declarations = [...new Set(CLASS_INPUTS.map(spec => spec.file))]
+    .map(file => ({ file, text: readFileSync(path.join(SRC, file), "utf8") }));
+  const preamble = 'import {HeroAvatar} from "./components/ui/HeroAvatar";'
+    + ' import {PlayShell, RegisterShell} from "./components/ui/playkit";'
+    + ' import {Modal} from "./components/ui/Modal"; import {Sheet} from "./components/ui/Sheet";'
+    + ' <><HeroAvatar/><PlayShell/><RegisterShell/></>; ';
+  const audit = (body: string) => auditClassInputs([...declarations, { file: "fixture.tsx", text: preamble + body }]);
+  const modalKey = inputKey(CLASS_INPUTS.find(spec => spec.name === "Modal")!);
+  const playKey = inputKey(CLASS_INPUTS.find(spec => spec.name === "PlayShell")!);
+
+  it("`const Surface = compact ? Sheet : Modal` is a proven Modal call site", () => {
+    const proof = audit('const Surface = compact ? Sheet : Modal; <Surface open={o} onClose={c} maxWidth="max-w-lg"/>;');
+    expect(proof.failures).toEqual([]);
+    expect(proof.callers.get(modalKey) ?? 0).toBeGreaterThan(0);
+    expect(proof.values.get(modalKey)).toContain("max-w-lg");
+  });
+
+  it("NEGATIVE CONTROLS: the alias is admitted only on its exact terms", () => {
+    for (const body of [
+      // not a const — the binding could be rebound to anything
+      'let Surface = compact ? Sheet : Modal; <Surface open={o} onClose={c}/>;',
+      // a branch that is not an audited wrapper leaves the caller set open
+      'const Surface = compact ? Anything : Modal; <Surface open={o} onClose={c}/>;',
+      // the alias itself escaping JSX is the original hazard, one level up
+      'const Surface = Modal; render(Surface);',
+      // and an aliased call site is audited exactly like a direct one
+      'const Surface = compact ? Sheet : Modal; <Surface maxWidth={runtimeWidth}/>;',
+      'const Surface = compact ? Sheet : Modal; <Surface {...rest}/>;',
+      'const Surface = compact ? Sheet : Modal; <Surface maxWidth="max-w-lg opacity-50"/>;',
+    ]) expect(audit(body).failures, body).not.toEqual([]);
+  });
+
+  it("PlayShell's caller proof is RegisterShell's in-module mount", () => {
+    const proof = productionClassInputs();
+    expect(proof.failures).toEqual([]);
+    expect(proof.callers.get(playKey) ?? 0).toBeGreaterThan(0);
+  });
+
+  it("NEGATIVE CONTROL: remove that mount and PlayShell has no proven caller", () => {
+    const playkit = declarations.find(input => input.file === "components/ui/playkit.tsx")!;
+    const without = playkit.text
+      .replace("<PlayShell className={className}>", "<div>")
+      .replace("</PlayShell>", "</div>");
+    expect(without).not.toContain("<PlayShell");
+    const proof = auditClassInputs([
+      ...declarations.filter(input => input.file !== playkit.file),
+      { file: playkit.file, text: without },
+    ]);
+    expect(proof.failures).toContainEqual(expect.stringContaining("PlayShell.className: no proven JSX callers"));
   });
 });
