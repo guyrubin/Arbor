@@ -24,6 +24,7 @@ const APPROVED_MARKETING_FILES = new Set<string>([
   "arbor-fr.md",
   "arbor-he.md",
   "arbor-il.html",
+  "arbor-imagery-v4.css",
   "arbor-immersive-v3.css",
   "arbor-immersive-v3.js",
   "arbor-marketing-landing-page-de.html",
