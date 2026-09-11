@@ -49,6 +49,13 @@ const packet = buildConsultPacket(input);
  *  excluding the child's own name, which is the family's spelling of it and is
  *  bidi-isolated by `translate`, not copy to transcreate. */
 const LATIN_HEADING = /^#+ [A-Za-z]/m;
+/** R22g (lib/bidi) — a Latin value inside a Hebrew paragraph is wrapped
+ *  FSI…PDI so the heading's dash and prepositions stay on the Hebrew edge.
+ *  The child's name is therefore `⁨Dylan⁩` in every Hebrew heading, and the
+ *  bare `על Dylan` is the pre-R22g shape. */
+const FSI = "⁨";
+const PDI = "⁩";
+const ISO_NAME = `${FSI}Dylan${PDI}`;
 const stripName = (md: string) => md.replace(/Dylan/g, "").replace(/[⁦-⁩‎‏]/g, "").replace(/^(#+) +/gm, "$1 ");
 const hasLatinHeading = (md: string) => LATIN_HEADING.test(stripName(md));
 
@@ -73,7 +80,13 @@ describe('serializePacket({ lang: "he" }) renders a Hebrew scaffold', () => {
 
   it("carries the transcreated headings the item names", () => {
     expect(md).toContain("הקשר לשיחה שלנו");
-    expect(md).toContain("על Dylan");
+    // The scaffold word is Hebrew and the family's Latin spelling of the name
+    // rides inside it, bidi-isolated (R22g).
+    expect(md).toContain(`## על ${ISO_NAME}`);
+    expect(md).toContain(`# ${ISO_NAME} — הקשר לשיחה שלנו`);
+    // Negative control: the unisolated form is the pre-R22g heading, which laid
+    // the em dash out on the wrong edge for an RTL reader.
+    expect(md).not.toContain("## על Dylan");
     expect(md).toContain("מה כבר ניסינו");
     expect(md).toContain("שאלות");
   });
@@ -93,7 +106,8 @@ describe("the language reaches every export door", () => {
     const teacher = buildPresetPacket("teacher", input);
     const md = serializePresetPacket("teacher", teacher, new Set(), "he");
     expect(hasLatinHeading(md)).toBe(false);
-    expect(md).toContain("על Dylan");
+    expect(md).toContain(`## על ${ISO_NAME}`);
+    expect(md).not.toContain("## על Dylan");
   });
 
   it("serializeForExport — the ONE Copy/Download/Send seam — passes it through", () => {
