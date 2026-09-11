@@ -167,7 +167,20 @@ describe("5 · App.tsx leaves the flag BEFORE stripping; Shell keys off it (sour
   it("Shell's MON-2 effect takes the flag and runs the shared poll", () => {
     const shell = readSrc("components/layout/Shell.tsx");
     expect(shell).toContain("if (!takeBillingReturn() && !fromParam) return;");
-    expect(shell).toMatch(/return startBillingReturnPoll\(\{ toast, t, refresh: refreshEntitlement \}\);/);
+    // CR-09 (Builder G, 224fa3af) wrapped the toast so the "still confirming"
+    // message carries a Retry action; the invariant is unchanged — Shell runs
+    // the SHARED poll from hooks/useEntitlement, keyed off the flag.
+    expect(shell).toMatch(
+      /return startBillingReturnPoll\(\{ toast: withRetry, t, refresh: refreshEntitlement \}\);/,
+    );
+    // The wrapper is a decorator over the same `toast`, not a second toast
+    // channel, and Retry re-reads the entitlement rather than re-polling.
+    expect(shell).toMatch(/const withRetry: typeof toast = \(message, type, action\) =>/);
+    expect(shell).toContain("onClick: () => { void refreshEntitlement(); }");
+    // Negative control: exactly ONE poll start in Shell, and no bare-toast
+    // variant of the call left behind beside the decorated one.
+    expect(shell.match(/startBillingReturnPoll\(/g)).toHaveLength(1);
+    expect(shell).not.toMatch(/startBillingReturnPoll\(\{ toast,/);
   });
 
   it("Settings shows the skeleton while loading and the unverified + Retry line on fallback", () => {
