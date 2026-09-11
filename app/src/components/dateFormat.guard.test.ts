@@ -42,14 +42,21 @@ describe("F-09 — no zero-arg toLocaleDateString in src/components", () => {
     ).toEqual([]);
   });
 
-  it("JournalTab derives BOTH the week stat and the story slice from weekWindow", () => {
+  it("JournalTab derives BOTH the week stat and the story copy from ONE selector", () => {
     const journal = readFileSync(path.join(componentsDir, "tabs", "JournalTab.tsx"), "utf8");
-    // One shared list…
-    expect(journal).toMatch(/const weekSignals = useMemo\(\(\) => weekWindow\(signals/);
-    // …feeds the stat…
-    expect(journal).toContain("const weekCount = weekSignals.length");
-    // …and the story copy's slice — never the all-time stream.
-    expect(journal).toContain("const recentSignals = weekSignals.slice(0, 3)");
-    expect(journal).not.toContain("signals.slice(0, 3)");
+    // RUN-08/TJB-27: the shared week definition is the `weekMomentCount`
+    // selector in lib/signalTimeline — imported, not re-derived here.
+    expect(journal).toContain("weekMomentCount");
+    expect(journal).toContain('from "../../lib/signalTimeline"');
+    expect(journal).toMatch(/const weekCount = useMemo\(\(\) => weekMomentCount\(signals/);
+    // …feeds the header stat AND the story copy — one number per screen.
+    expect(journal).toMatch(
+      /const storyCopy = weekCount\s+\? t\("journal\.story\.body", \{ count: weekCount \}\)/,
+    );
+    // Negative control — the pre-fix shape: a second, capped week list feeding
+    // the story copy ("0 · 3 · 5 · 10" on one screen) must not come back.
+    expect(journal).not.toContain("slice(0, 3)");
+    expect(journal).not.toMatch(/const weekSignals/);
+    expect(journal).not.toMatch(/const recentSignals\b/);
   });
 });
