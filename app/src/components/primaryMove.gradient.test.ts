@@ -181,12 +181,78 @@ describe("OBJ-TODAY-01 — repo-wide ratchet", () => {
   /* Outside the Today/Journal/Weekly scope the gradient is still spread across
      surfaces this item does not own. Pin the file count so it can only shrink;
      a new file reaching for the primary gradient has to justify itself here. */
-  const KNOWN_GRADIENT_FILES = 27;
+  /* The ratchet is a NAMED list, not a count: a bare number lets one surface
+     drop the gradient and another pick it up with the gate still green, which
+     is exactly how an unlicensed CTA would enter. Removing a file here is a
+     ratchet-down and must shrink this list in the same commit. */
+  const KNOWN_GRADIENT_FILES: readonly string[] = [
+    "auth/LoginScreen.tsx",
+    "auth/OnboardingFlow.tsx",
+    "journal/JournalEntrySheet.tsx",
+    "layout/AiRail.tsx",
+    "overview/ConfirmCaptureReview.tsx",
+    "overview/DailyPlanCard.tsx",
+    "overview/PromptCaptureCard.tsx",
+    "overview/QuickLogModal.tsx",
+    "overview/TodayRecommendation.tsx",
+    "practice/GoalBuilderModal.tsx",
+    "practice/PracticeStudioTab.tsx",
+    "profile/AvatarCreator.tsx",
+    "profile/ProfileEditDrawer.tsx",
+    "sections/Appointments.tsx",
+    "sections/AskSpecialist.tsx",
+    "sections/ChildProfile.tsx",
+    "sections/FindProfessional.tsx",
+    "sections/Masterclasses.tsx",
+    "sections/SchoolBrief.tsx",
+    "sections/Screening.tsx",
+    "sections/Strengths.tsx",
+    "sections/TrustedSharing.tsx",
+    // H3b/R17 — the #/stories cover button. Licensed, not tolerated: it carries
+    // `data-primary-move="read-tonights-story"`, which surfaceContract.ts:276
+    // declares as that route's ONE primary move, and it is the only gradient in
+    // the file. storiesCover.test.ts pins the stamp and its position.
+    "tabs/HeroJourneyTab.tsx",
+    "tabs/MilestonesTab.tsx",
+    "tabs/PlansTab.tsx",
+    "tabs/WeeklyTab.tsx",
+    "ui/HubHero.tsx",
+    "weekly/RecapStoryCards.tsx",
+  ];
 
-  it("no new surface reaches for the primary gradient", () => {
+  const repoWideHits = (): string[] => {
     const all: ScanFile[] = [];
     walk(COMPONENTS, "", all);
-    const hits = all.filter((f) => GRADIENT.test(stripComments(f.src))).map((f) => f.rel);
-    expect(hits.length).toBeLessThanOrEqual(KNOWN_GRADIENT_FILES);
+    return all.filter((f) => GRADIENT.test(stripComments(f.src))).map((f) => f.rel);
+  };
+
+  it("no new surface reaches for the primary gradient", () => {
+    const known = new Set(KNOWN_GRADIENT_FILES);
+    const hits = repoWideHits();
+    expect(
+      hits.filter((rel) => !known.has(rel)),
+      "a file outside the recorded ratchet wears --arbor-gradient-primary/--gradient-cta — demote it to outline, or add it here WITH the surfaceContract primaryMove it spells",
+    ).toEqual([]);
+    // …and the list itself may only shrink.
+    expect(hits.length).toBeLessThanOrEqual(KNOWN_GRADIENT_FILES.length);
+  });
+
+  it("negative control: an unrecorded file wearing the gradient is reported", () => {
+    const known = new Set(KNOWN_GRADIENT_FILES);
+    const fabricated: ScanFile[] = [
+      ...repoWideHits().map((rel) => ({ rel, src: "" })),
+      { rel: "sections/NewShinyPanel.tsx", src: `style={{ background: "var(--gradient-cta)" }}` },
+    ];
+    expect(
+      fabricated
+        .filter((f) => f.src === "" || GRADIENT.test(stripComments(f.src)))
+        .map((f) => f.rel)
+        .filter((rel) => !known.has(rel)),
+    ).toEqual(["sections/NewShinyPanel.tsx"]);
+  });
+
+  it("the ratchet has no stale entries — every recorded file still spells it", () => {
+    const hits = new Set(repoWideHits());
+    expect(KNOWN_GRADIENT_FILES.filter((rel) => !hits.has(rel))).toEqual([]);
   });
 });
