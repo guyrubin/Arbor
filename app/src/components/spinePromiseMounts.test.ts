@@ -61,12 +61,23 @@ describe("masterplan 1.5 — SpineRibbon mounts", () => {
     // so one definition can serve two mutually exclusive slots — the wide
     // layout and the phone's disclosure. What this rule is about is where it
     // RENDERS, so the index to compare is the render site, not the JSX literal.
-    const mount = academy.indexOf("{!phone && spineRibbon}");
+    // H3b/R17 additionally wrapped that render site in the leaf's budget stamp
+    // (`data-module="academy-spine"`), so the literal to find is the stamped
+    // div. The `!phone` gate and the placement it guards are unchanged.
+    const mount = academy.indexOf('{!phone && <div data-module="academy-spine"');
     expect(mount, "the academy ribbon render site was not found").toBeGreaterThan(-1);
     expect(mount).toBeGreaterThan(academy.indexOf('testId="academy-hub-hero"'));
     expect(mount).toBeGreaterThan(academy.indexOf('t("sec.master.sub")'));
-    // On a phone it is demoted further still — below the course gallery.
-    expect(academy.indexOf("{spineRibbon}")).toBeGreaterThan(academy.indexOf('data-testid="academy-courses"'));
+    // NEGATIVE CONTROL for that gate: exactly one ribbon mount stands above the
+    // course gallery, and it is the phone-gated one. A second, ungated mount
+    // here is the 1,675 px phone regression R17 measured.
+    const gallery = academy.indexOf('data-testid="academy-courses"');
+    expect([...academy.slice(0, gallery).matchAll(/\{spineRibbon\}/g)]).toHaveLength(1);
+    // On a phone it is demoted further still — inside the disclosure that sits
+    // below the course gallery.
+    const disclosure = academy.indexOf('data-testid="academy-rail-disclosure"');
+    expect(disclosure).toBeGreaterThan(gallery);
+    expect(academy.lastIndexOf("{spineRibbon}")).toBeGreaterThan(disclosure);
   });
 
   it("Rule A — SpineRibbon never mounts on Today (OverviewTab)", () => {

@@ -79,9 +79,26 @@ describe("R17 · the Academy hub opens on courses", () => {
     for (const module of ["<AcademyForYou", "<ScholarHubCard", "{railStack}", "master.progress.count"]) {
       expect(between, `${module} is still above the gallery`).not.toContain(module);
     }
-    // The spine ribbon is above the gallery only on a wide viewport.
-    expect(between).toContain("{!phone && spineRibbon}");
+    // The spine ribbon is above the gallery only on a wide viewport. H3b/R17
+    // wrapped it in its budget stamp, so the render site is the stamped div —
+    // the `!phone` gate is unchanged and is what this rule is about.
+    expect(between).toContain(
+      '{!phone && <div data-module="academy-spine" style={{ display: "contents" }}>{spineRibbon}</div>}',
+    );
+    // …and it is the ONLY ribbon mount above the gallery, so the gate cannot be
+    // sidestepped by a second, ungated one.
+    expect([...between.matchAll(/\{spineRibbon\}/g)]).toHaveLength(1);
     expect(between).not.toContain("<SpineRibbon");
+  });
+
+  it("NEGATIVE CONTROL: an ungated ribbon above the gallery fails the same rule", () => {
+    // What R17 measured at 1,675 px: the ribbon stacked into the phone's single
+    // column between the hero and the catalogue.
+    const body = hubBody(source);
+    const gallery = body.indexOf('data-testid="academy-courses"');
+    const between =
+      body.slice(body.indexOf('testId="academy-hub-hero"'), gallery) + "{spineRibbon}";
+    expect([...between.matchAll(/\{spineRibbon\}/g)].length).toBeGreaterThan(1);
   });
 
   it("the desktop two-column shell is unchanged: rail left, gallery right at xl", () => {
