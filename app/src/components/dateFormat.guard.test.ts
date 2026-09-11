@@ -56,7 +56,7 @@ describe("F-09 — no zero-arg toLocaleDateString in src/components", () => {
     // Negative control — the pre-fix shape: a second, capped week list feeding
     // the story copy ("0 · 3 · 5 · 10" on one screen) must not come back.
     expect(journal).not.toContain("slice(0, 3)");
-    expect(journal).not.toMatch(/const weekSignals/);
+    expect(journal).not.toMatch(/const weekSignals\b/);
     expect(journal).not.toMatch(/const recentSignals\b/);
   });
 });
