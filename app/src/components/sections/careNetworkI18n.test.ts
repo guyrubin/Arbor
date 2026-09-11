@@ -42,6 +42,17 @@ import { CARE_FILTERS, matchesFilter, type CareFilterId } from "./FindProfession
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SOURCE = readFileSync(path.join(here, "FindProfessional.tsx"), "utf8").replace(/\r\n/g, "\n");
 
+/* The `elev.careNet.*` namespace serves the two Care Network screens, not one:
+ * Appointments.tsx renders the header eyebrow, the mode labels and — since
+ * H2/R15 — the "Add appointment" button off the same module. Scanning
+ * FindProfessional alone reported R15's live button label as dead copy. The
+ * dead-key and asked-for checks below read BOTH render sites; every other
+ * assertion in this file stays pinned to FindProfessional (SOURCE). */
+const CARE_NET_SCREENS = ["FindProfessional.tsx", "Appointments.tsx"] as const;
+const RENDER_SITES = CARE_NET_SCREENS.map((f) =>
+  readFileSync(path.join(here, f), "utf8").replace(/\r\n/g, "\n"),
+).join("\n");
+
 /* ═══════════════════════════════════════════════════════════════════════════
    Synthetic matcher fixtures. NOT people, NOT seed data, NOT reachable from
    the app — three records shaped like the API contract so each filter has
@@ -402,13 +413,24 @@ describe("no hard-coded user-visible English remains on the screen", () => {
     }
   });
 
-  it("every careNetwork key the module defines is actually used by the screen", () => {
-    const unused = Object.keys(en).filter((k) => !SOURCE.includes(k));
+  it("every careNetwork key the module defines is actually used by a Care Network screen", () => {
+    const unused = Object.keys(en).filter((k) => !RENDER_SITES.includes(k));
     expect(unused, "dead copy — delete it or wire it").toEqual([]);
   });
 
-  it("every elev.careNet.* key the screen asks for exists in the dictionary", () => {
-    const asked = [...SOURCE.matchAll(/"(elev\.careNet\.[a-zA-Z0-9.]+)"/g)].map((m) => m[1]);
+  it("negative control: a key no Care Network screen renders is reported dead", () => {
+    const withGhost = [...Object.keys(en), "elev.careNet.ghost.neverRendered"];
+    expect(withGhost.filter((k) => !RENDER_SITES.includes(k))).toEqual([
+      "elev.careNet.ghost.neverRendered",
+    ]);
+    // …and the widened scan is still two named files, not the whole tree: the
+    // R15 button label is dead if Appointments stops rendering it.
+    expect(RENDER_SITES).toContain('{t("elev.careNet.appt.add")}');
+    expect(CARE_NET_SCREENS).toHaveLength(2);
+  });
+
+  it("every elev.careNet.* key the screens ask for exists in the dictionary", () => {
+    const asked = [...RENDER_SITES.matchAll(/"(elev\.careNet\.[a-zA-Z0-9.]+)"/g)].map((m) => m[1]);
     expect(asked.length).toBeGreaterThan(30);
     for (const key of asked) {
       expect(en[key], `${key} is asked for but undefined`).toBeTruthy();
