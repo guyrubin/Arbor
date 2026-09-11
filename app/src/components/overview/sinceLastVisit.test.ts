@@ -197,12 +197,22 @@ describe("OverviewTab wiring — the primary action precedes the strip (Rule A f
     expect(overview).toMatch(/dayZero\s*=/);
     // The narrative and the watch card render off the budget plan, whose
     // `narrative`/`noticed` wants are themselves `!dayZero &&` …
-    expect(overview).toMatch(/modulePlan\.visible\.has\("narrative"\)\s*&&\s*\(\s*<ProgressNarrative/);
+    // E1/J wrapped every budgeted module in its `data-module` stamp, so the
+    // gate now sits outside that wrapper — the gate itself is unchanged.
+    expect(overview).toMatch(
+      /modulePlan\.visible\.has\("narrative"\)\s*&&\s*\(\s*<div data-module="today-narrative"[^>]*>\s*<ProgressNarrative/,
+    );
     expect(overview).toMatch(/narrative:\s*!dayZero/);
     // P1-C: the watch card is inside the day-0 guard too — a parent who has
     // answered nothing has produced nothing for Arbor to have "noticed".
     expect(overview).toMatch(/noticed:\s*!dayZero\s*&&\s*noticedWould/);
-    expect(overview).toMatch(/modulePlan\.visible\.has\("noticed"\)\s*&&\s*<ArborNoticedCard/);
+    expect(overview).toMatch(
+      /modulePlan\.visible\.has\("noticed"\)\s*&&\s*<div data-module="today-noticed"[^>]*>\s*<ArborNoticedCard/,
+    );
+    // Negative control — ONE render site each. A second, ungated mount of
+    // either component would put day-0 back where P1-C found it.
+    expect(overview.match(/<ProgressNarrative\b/g)).toHaveLength(1);
+    expect(overview.match(/<ArborNoticedCard\b/g)).toHaveLength(1);
     // …and the More disclosure stays dayZero-gated directly.
     expect(overview).toMatch(/\{!dayZero\s*&&\s*\(\s*<section/);
   });
