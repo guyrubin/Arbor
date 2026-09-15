@@ -42,6 +42,33 @@ export const KpiEvent = {
   PushPrompted: "push_prompted",
   PushGranted: "push_granted",
   PushDenied: "push_denied",
+  /* ── Wave N1 (see the section at the foot of this file) ─────────────── */
+  /** A model-proposed row was COMMITTED to the record (not a bar press). */
+  KeepThis: "keep_this",
+  /** A committed row was reversed from the frame it was kept in. */
+  KeepUndone: "keep_undone",
+  /** A coach answer became an actionPlans row. */
+  PlanFromAnswer: "plan_from_answer",
+  /** Kid Mode closed — two integers, child-generated. */
+  KidSessionEnd: "kid_session_end",
+  /** The browser session ended — session_open's closing partner. */
+  SessionClose: "session_close",
+  /** The paywall opened (once per open). */
+  PaywallView: "paywall_view",
+  /** Checkout was launched on web or native. */
+  CheckoutStart: "checkout_start",
+  /** An entitlement transitioned into an active paid tier. */
+  EntitlementActive: "entitlement_active",
+  /** The family returned and completed a loop on a later day. */
+  Activated: "activated",
+  /** A nudge passed the one scheduling choke point. */
+  NudgeScheduled: "nudge_scheduled",
+  /** The choke point declined to deliver, with the reason. */
+  NudgeSuppressed: "nudge_suppressed",
+  /** The weekly-digest email opt-in was toggled. */
+  DigestEmailOptIn: "digest_email_optin",
+  /** A digest send was attempted, with its fail-closed axis. */
+  DigestEmailSend: "digest_email_send",
 } as const;
 
 /** The capture entry modes (mirrors ArborContext's CaptureMode union). */
@@ -121,4 +148,204 @@ export function trackPushPrompted(): void {
  *  "unavailable" outcomes never reach here (see lib/push.ts). */
 export function trackPushOutcome(granted: boolean): void {
   track(granted ? KpiEvent.PushGranted : KpiEvent.PushDenied);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   WAVE N1 — the loop, billing, activation, return-loop and undo families.
+   ══════════════════════════════════════════════════════════════════════════
+
+   WHY THESE ARE HERE AND NOT AT THE CALL SITES (same law as above)
+   ────────────────────────────────────────────────────────────────
+   Wave N1 adds thirteen event families across four builders. If each builder
+   called `track()` directly, the ALLOW-LIST discipline would be re-derived
+   thirteen times and would be wrong at least once — the wave's own §0 found
+   that every nudge already carries a child's first name in its `vars`. So the
+   projection lives here, once, and the builders import a NAME.
+
+   THE SANITISER LAW
+   ─────────────────
+   Every id below passes through `shortId()` or an explicit allow-list. An
+   unrecognised value becomes the sentinel `"other"` — it is NEVER emitted
+   verbatim. That is what makes "free text cannot reach the sink" a property of
+   the code rather than a promise in a comment: a child's name, a kept line or
+   a monitoring note fails `SHORT_ID` (spaces, capitals, punctuation, length)
+   and degrades to `"other"`. The guard in kpiEvents.test.ts proves it with a
+   child-name fixture as the negative control.
+*/
+
+/** The sentinel an unrecognised id degrades to. Never a real id. */
+export const UNKNOWN_ID = "other";
+
+/** A short literal id: lowercase, no spaces, no punctuation beyond -_ , <= 32. */
+const SHORT_ID = /^[a-z0-9][a-z0-9_-]{0,31}$/;
+
+/** Projects a caller's id to a safe short id, or to the sentinel. */
+export function shortId(value: unknown): string {
+  return typeof value === "string" && SHORT_ID.test(value) ? value : UNKNOWN_ID;
+}
+
+/** Projects a caller's value to a member of an allow-list, or to the sentinel. */
+function oneOf<T extends string>(allowed: readonly T[], value: unknown): T | typeof UNKNOWN_ID {
+  return typeof value === "string" && (allowed as readonly string[]).includes(value)
+    ? (value as T)
+    : UNKNOWN_ID;
+}
+
+/** Non-negative whole number. NaN/Infinity/junk degrade to 0, never to NaN. */
+function count(n: unknown): number {
+  const v = typeof n === "number" && Number.isFinite(n) ? Math.trunc(n) : 0;
+  return Math.max(0, v);
+}
+
+/* ── Loop events (N1-01) ───────────────────────────────────────────────── */
+
+/** The fields a Keep can commit. The first three mirror KeepableField. */
+export const KEEP_FIELDS = [
+  "todayPlan",
+  "parentScript",
+  "observe",
+  "journal",
+  "milestone",
+  "observation",
+] as const;
+export type KeepFieldId = (typeof KEEP_FIELDS)[number];
+
+/** Delivery channels a nudge can take. */
+export const NUDGE_CHANNELS = ["bell", "local"] as const;
+export type NudgeChannel = (typeof NUDGE_CHANNELS)[number];
+
+/** Why planNudge declined to deliver (N1-06's four reasons). */
+export const NUDGE_SUPPRESS_REASONS = [
+  "quiet_hours",
+  "ceiling",
+  "type_off",
+  "no_candidate",
+] as const;
+export type NudgeSuppressReason = (typeof NUDGE_SUPPRESS_REASONS)[number];
+
+/** Checkout launch channels. */
+export const CHECKOUT_CHANNELS = ["web", "native"] as const;
+export type CheckoutChannel = (typeof CHECKOUT_CHANNELS)[number];
+
+/** The fail-closed axes of the digest send route (N1-07), plus success. */
+export const DIGEST_SEND_RESULTS = [
+  "sent",
+  "provider_disabled",
+  "not_opted_in",
+  "unverified_address",
+  "already_sent_this_week",
+  "send_failed",
+] as const;
+export type DigestSendResult = (typeof DIGEST_SEND_RESULTS)[number];
+
+/**
+ * A row was COMMITTED to the record from a model proposal (N1-01, critic C8).
+ * `field` is which contract line landed; `surface` is a short id of where the
+ * keep happened. The kept TEXT never appears — that is the whole point of the
+ * event living here: contentaction { verb: "save" } measures a press, this
+ * measures the record.
+ */
+export function trackKeepThis(args: { field: string; surface: string }): void {
+  track(KpiEvent.KeepThis, {
+    field: oneOf(KEEP_FIELDS, args.field),
+    surface: shortId(args.surface),
+  });
+}
+
+/** A Keep was reversed (N1-08). Pairs 1:1 with a preceding `keep_this`. */
+export function trackKeepUndone(surface: string): void {
+  track(KpiEvent.KeepUndone, { surface: shortId(surface) });
+}
+
+/**
+ * A coach answer became an `actionPlans` row (N1-01). Fires ONLY on that
+ * conversion — not on every save, or the rate means nothing.
+ */
+export function trackPlanFromAnswer(surface: string): void {
+  track(KpiEvent.PlanFromAnswer, { surface: shortId(surface) });
+}
+
+/**
+ * Kid Mode closed (N1-01). TWO INTEGERS, by construction (critic C9): a child
+ * generated this event, so there is nothing here that could carry a child's
+ * content even if a call site wanted it to. `KID_MODE_PROP` in lib/analytics
+ * tags and strips at the one choke point; this wave does not touch it.
+ */
+export function trackKidSessionEnd(args: { seconds: number; activities: number }): void {
+  track(KpiEvent.KidSessionEnd, {
+    seconds: count(args.seconds),
+    activities: count(args.activities),
+  });
+}
+
+/** The browser session ended (N1-01). The closing partner of `session_open`. */
+export function trackSessionClose(seconds: number): void {
+  track(KpiEvent.SessionClose, { seconds: count(seconds) });
+}
+
+/* ── Billing funnel (N1-02) ────────────────────────────────────────────── */
+
+/**
+ * The paywall opened (N1-02). Once per OPEN, never per render. `reason` is the
+ * 402 capability id — never its message, never a price, never an email.
+ */
+export function trackPaywallView(args: { plan: string; reason: string }): void {
+  track(KpiEvent.PaywallView, { plan: shortId(args.plan), reason: shortId(args.reason) });
+}
+
+/** Checkout was launched (N1-02). No amount, no currency, no customer id. */
+export function trackCheckoutStart(args: { plan: string; channel: string }): void {
+  track(KpiEvent.CheckoutStart, {
+    plan: shortId(args.plan),
+    channel: oneOf(CHECKOUT_CHANNELS, args.channel),
+  });
+}
+
+/**
+ * An entitlement became active (N1-02). Fired from `recordBillingTransition`
+ * on a TIER CHANGE only — firing it on every read of the entitlement would
+ * inflate the funnel's last stage and make the one real purchase unreadable
+ * (critic C13). `from` is the previous tier id.
+ */
+export function trackEntitlementActive(args: { plan: string; from: string }): void {
+  track(KpiEvent.EntitlementActive, { plan: shortId(args.plan), from: shortId(args.from) });
+}
+
+/* ── Activation (N1-03) ────────────────────────────────────────────────── */
+
+/**
+ * The family activated (N1-03). `via` is the qualifying event NAME, `day_offset`
+ * the whole-day gap from the onboarding day. Fires at most once per family.
+ * Never rendered back to a parent: a parent who has not returned is not failing.
+ */
+export function trackActivated(args: { dayOffset: number; via: string }): void {
+  track(KpiEvent.Activated, { day_offset: count(args.dayOffset), via: shortId(args.via) });
+}
+
+/* ── Return loop (N1-06, N1-07) ────────────────────────────────────────── */
+
+/** A nudge passed planNudge and was delivered on a channel (N1-06). */
+export function trackNudgeScheduled(args: { kind: string; channel: string }): void {
+  track(KpiEvent.NudgeScheduled, {
+    kind: shortId(args.kind),
+    channel: oneOf(NUDGE_CHANNELS, args.channel),
+  });
+}
+
+/** planNudge declined to deliver (N1-06). The contract's audit trail. */
+export function trackNudgeSuppressed(args: { kind: string; reason: string }): void {
+  track(KpiEvent.NudgeSuppressed, {
+    kind: shortId(args.kind),
+    reason: oneOf(NUDGE_SUPPRESS_REASONS, args.reason),
+  });
+}
+
+/** The weekly-digest email opt-in was toggled (N1-07). A boolean, nothing else. */
+export function trackDigestEmailOptIn(on: boolean): void {
+  track(KpiEvent.DigestEmailOptIn, { on: !!on });
+}
+
+/** A digest send was attempted (N1-07). `result` is a fail-closed axis or "sent". */
+export function trackDigestEmailSend(result: string): void {
+  track(KpiEvent.DigestEmailSend, { result: oneOf(DIGEST_SEND_RESULTS, result) });
 }

@@ -259,3 +259,221 @@ describe("ENG-22 — the new call sites are LIVE (source pins + negative control
     expect(push).toContain("trackPushOutcome(true)");
   });
 });
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   WAVE N1 (N1-00) — the key-set table.
+
+   Thirteen helpers, four builders, one sink. The contract every one of them
+   must keep is the same and it is testable as a TABLE: the event name, and the
+   EXACT set of prop keys. A helper that grows a key is a privacy change and
+   fails here; a helper that is handed free text degrades it to the sentinel
+   and fails nothing, which is what the negative controls at the bottom prove.
+
+   Ids / counts / enums only. No child name, no kept line, no note, no price,
+   no email, no customer id, no free text of any kind.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+import {
+  UNKNOWN_ID,
+  trackActivated,
+  trackCheckoutStart,
+  trackDigestEmailOptIn,
+  trackDigestEmailSend,
+  trackEntitlementActive,
+  trackKeepThis,
+  trackKeepUndone,
+  trackKidSessionEnd,
+  trackNudgeScheduled,
+  trackNudgeSuppressed,
+  trackPaywallView,
+  trackPlanFromAnswer,
+  trackSessionClose,
+} from "./kpiEvents";
+
+/** A child's first name and a verbatim kept line — the two things that must
+ *  never reach the sink. Used as the negative control for every id prop. */
+const CHILD_NAME = "Maya";
+const KEPT_TEXT = "Maya bit her brother at the park again this afternoon";
+
+describe("N1-00 — the thirteen wave-N1 helpers: event name + exact key set", () => {
+  beforeEach(() => trackSpy.mockClear());
+
+  const table: { name: string; fire: () => void; event: string; keys: string[] }[] = [
+    {
+      name: "keep_this",
+      fire: () => trackKeepThis({ field: "todayPlan", surface: "coach" }),
+      event: "keep_this",
+      keys: ["field", "surface"],
+    },
+    {
+      name: "keep_undone",
+      fire: () => trackKeepUndone("coach"),
+      event: "keep_undone",
+      keys: ["surface"],
+    },
+    {
+      name: "plan_from_answer",
+      fire: () => trackPlanFromAnswer("coach"),
+      event: "plan_from_answer",
+      keys: ["surface"],
+    },
+    {
+      name: "kid_session_end",
+      fire: () => trackKidSessionEnd({ seconds: 312, activities: 3 }),
+      event: "kid_session_end",
+      keys: ["activities", "seconds"],
+    },
+    {
+      name: "session_close",
+      fire: () => trackSessionClose(884),
+      event: "session_close",
+      keys: ["seconds"],
+    },
+    {
+      name: "paywall_view",
+      fire: () => trackPaywallView({ plan: "plus", reason: "coach_limit" }),
+      event: "paywall_view",
+      keys: ["plan", "reason"],
+    },
+    {
+      name: "checkout_start",
+      fire: () => trackCheckoutStart({ plan: "plus", channel: "web" }),
+      event: "checkout_start",
+      keys: ["channel", "plan"],
+    },
+    {
+      name: "entitlement_active",
+      fire: () => trackEntitlementActive({ plan: "plus", from: "free" }),
+      event: "entitlement_active",
+      keys: ["from", "plan"],
+    },
+    {
+      name: "activated",
+      fire: () => trackActivated({ dayOffset: 2, via: "capture_saved" }),
+      event: "activated",
+      keys: ["day_offset", "via"],
+    },
+    {
+      name: "nudge_scheduled",
+      fire: () => trackNudgeScheduled({ kind: "rhythm", channel: "bell" }),
+      event: "nudge_scheduled",
+      keys: ["channel", "kind"],
+    },
+    {
+      name: "nudge_suppressed",
+      fire: () => trackNudgeSuppressed({ kind: "rhythm", reason: "quiet_hours" }),
+      event: "nudge_suppressed",
+      keys: ["kind", "reason"],
+    },
+    {
+      name: "digest_email_optin",
+      fire: () => trackDigestEmailOptIn(true),
+      event: "digest_email_optin",
+      keys: ["on"],
+    },
+    {
+      name: "digest_email_send",
+      fire: () => trackDigestEmailSend("provider_disabled"),
+      event: "digest_email_send",
+      keys: ["result"],
+    },
+  ];
+
+  it("the table covers every wave-N1 name declared in KpiEvent", () => {
+    const declared = [
+      "keep_this",
+      "keep_undone",
+      "plan_from_answer",
+      "kid_session_end",
+      "session_close",
+      "paywall_view",
+      "checkout_start",
+      "entitlement_active",
+      "activated",
+      "nudge_scheduled",
+      "nudge_suppressed",
+      "digest_email_optin",
+      "digest_email_send",
+    ];
+    for (const name of declared) {
+      expect(Object.values(KpiEvent)).toContain(name);
+    }
+    expect(table.map((r) => r.event).sort()).toEqual([...declared].sort());
+  });
+
+  for (const row of table) {
+    it(`${row.name} emits its name and EXACTLY ${JSON.stringify(row.keys)}`, () => {
+      row.fire();
+      const [event, props] = lastCall();
+      expect(event).toBe(row.event);
+      expect(Object.keys(props ?? {}).sort()).toEqual([...row.keys].sort());
+      // Every value is a primitive id / count / boolean — never an object.
+      for (const value of Object.values(props ?? {})) {
+        expect(["string", "number", "boolean"]).toContain(typeof value);
+      }
+    });
+  }
+
+  it("the whole table emits exactly thirteen calls and no stray event", () => {
+    for (const row of table) row.fire();
+    expect(trackSpy.mock.calls).toHaveLength(table.length);
+    expect(trackSpy.mock.calls.map((c) => c[0]).sort()).toEqual(table.map((r) => r.event).sort());
+  });
+});
+
+describe("N1-00 — NEGATIVE CONTROLS: free text cannot reach the sink", () => {
+  beforeEach(() => trackSpy.mockClear());
+
+  /* Every one of these passes a child's name or a verbatim kept line where an
+     id belongs. Before the sanitiser existed they would have been emitted
+     as-is (a raw `{ field, surface }` projection) — that is the pre-fix shape
+     and it is what these cases fail against. */
+  const smuggles: { name: string; fire: () => void }[] = [
+    { name: "keep_this.field", fire: () => trackKeepThis({ field: KEPT_TEXT, surface: "coach" }) },
+    { name: "keep_this.surface", fire: () => trackKeepThis({ field: "journal", surface: KEPT_TEXT }) },
+    { name: "keep_undone.surface", fire: () => trackKeepUndone(CHILD_NAME) },
+    { name: "plan_from_answer.surface", fire: () => trackPlanFromAnswer(KEPT_TEXT) },
+    { name: "paywall_view.reason", fire: () => trackPaywallView({ plan: "plus", reason: KEPT_TEXT }) },
+    { name: "checkout_start.plan", fire: () => trackCheckoutStart({ plan: CHILD_NAME, channel: "web" }) },
+    { name: "entitlement_active.from", fire: () => trackEntitlementActive({ plan: "plus", from: KEPT_TEXT }) },
+    { name: "activated.via", fire: () => trackActivated({ dayOffset: 1, via: CHILD_NAME }) },
+    { name: "nudge_scheduled.kind", fire: () => trackNudgeScheduled({ kind: KEPT_TEXT, channel: "bell" }) },
+    { name: "nudge_suppressed.kind", fire: () => trackNudgeSuppressed({ kind: CHILD_NAME, reason: "ceiling" }) },
+  ];
+
+  for (const smuggle of smuggles) {
+    it(`${smuggle.name}: free text degrades to "${UNKNOWN_ID}", never emitted verbatim`, () => {
+      smuggle.fire();
+      const serialized = JSON.stringify(lastCall()[1] ?? {});
+      expect(serialized).not.toContain(CHILD_NAME);
+      expect(serialized).not.toContain(KEPT_TEXT);
+      // ...and it did not just vanish: the key is still there, as the sentinel.
+      expect(serialized).toContain(UNKNOWN_ID);
+    });
+  }
+
+  it("an enum prop outside its allow-list never reaches the sink verbatim", () => {
+    trackCheckoutStart({ plan: "plus", channel: "carrier_billing" });
+    expect(lastCall()[1]).toEqual({ plan: "plus", channel: UNKNOWN_ID });
+    trackNudgeSuppressed({ kind: "rhythm", reason: "because the child was asleep" });
+    expect(lastCall()[1]).toEqual({ kind: "rhythm", reason: UNKNOWN_ID });
+    trackDigestEmailSend("sent_to_grandma@example.com");
+    expect(lastCall()[1]).toEqual({ result: UNKNOWN_ID });
+  });
+
+  it("counts are non-negative integers — junk degrades to 0, never NaN", () => {
+    trackKidSessionEnd({ seconds: Number.NaN, activities: -4 });
+    expect(lastCall()[1]).toEqual({ seconds: 0, activities: 0 });
+    trackSessionClose(884.7);
+    expect(lastCall()[1]).toEqual({ seconds: 884 });
+    trackActivated({ dayOffset: Number.POSITIVE_INFINITY, via: "keep_this" });
+    expect(lastCall()[1]).toEqual({ day_offset: 0, via: "keep_this" });
+  });
+
+  it("the sentinel is not a usable id, so a degraded prop is visible in the data", () => {
+    // If UNKNOWN_ID were "" or undefined the degradation would be silent and a
+    // dashboard would read a sanitiser failure as an absent event.
+    expect(UNKNOWN_ID).toBe("other");
+  });
+});
