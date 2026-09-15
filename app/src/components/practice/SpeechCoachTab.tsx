@@ -14,7 +14,7 @@ import { usePracticeData } from "../../practice/usePracticeData";
 import type { PracticeEvent, SpeechAttempt, SpeechLevel } from "../../types";
 import { track } from "../../lib/analytics";
 import { api } from "../../lib/api";
-import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
+import { isKidModeActive, noteKidActivity, subscribeKidMode } from "../../lib/kidModeGate";
 import { SpeakButton } from "../ui/SpeakButton";
 import { mediaControlHidden, resolveMediaPermission, type MediaPermission } from "../../practice/mediaPermission";
 import { platformAsrAllowed, voiceConsentState, VOICE_CONSENT_PURPOSE, type VoiceConsentState } from "./speechConsentGate";
@@ -265,6 +265,9 @@ export default function SpeechCoachTab() {
     setAutoResult(null);
     cleanupAudio();
     track("speech_attempt", { sound: sound.id, level, result, method });
+    // N1-01-R5: one completed kid activity. A COUNT and nothing else —
+    // a no-op outside Kid Mode, so a parent using this screen cannot inflate it.
+    noteKidActivity();
     if (result === "got" && itemIdx < items.length - 1) setItemIdx((i) => i + 1);
   };
 

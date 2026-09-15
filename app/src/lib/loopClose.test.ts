@@ -250,3 +250,91 @@ describe("N1-01 — kid_session_end: two integers, emitted inside the kid gate",
     expect(JSON.stringify(props).replace(/"(seconds|activities)"/g, "")).not.toMatch(/[A-Za-z]/);
   });
 });
+
+/* ══════════════════════════════════════════════════════════════════════════
+   N1-01-R5 — `kid_session_end.activities` has callers.
+
+   The counter above is wired end-to-end and, on the branch it shipped on, read
+   ZERO in every session: no kid surface ever called `noteKidActivity()`. An
+   integer that is always 0 is worse than an absent one — it reads as "the
+   child did nothing", which is a statement about a child, and it would have
+   been quoted as one at T+7.
+
+   The scan is over SOURCE because there is no other way to prove a call site
+   exists: each seam sits inside a component's own completion handler, and a
+   runtime test of eight components is a test of jsdom, not of the wiring.
+   ══════════════════════════════════════════════════════════════════════════ */
+import * as fs from "node:fs";
+import * as path from "node:path";
+
+const SRC_ROOT = path.resolve(__dirname, "..");
+
+const stripComments = (source: string): string =>
+  source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+
+/** Live (comment-stripped) `noteKidActivity()` calls in a source text. */
+const activityCalls = (source: string): number =>
+  (stripComments(source).match(/\bnoteKidActivity\(\)/g) ?? []).length;
+
+describe("N1-01-R5 — every kid-world completion seam counts one activity", () => {
+  /** file → the completion seam it must count, for the failure message. */
+  const SEAMS: { file: string; seam: string }[] = [
+    { file: "components/practice/PatternPowerWorld.tsx", seam: "a Pattern Power round resolved" },
+    { file: "components/practice/BeatKeeperWorld.tsx", seam: "a Beat Keeper round scored" },
+    { file: "components/practice/MemoryMatch.tsx", seam: "a Mind Vault board solved" },
+    { file: "components/practice/MimicMatch.tsx", seam: "a Mimic face rated" },
+    { file: "components/practice/SpeechCoachTab.tsx", seam: "a Sound Lab attempt saved" },
+    { file: "components/practice/FeelingsLabTab.tsx", seam: "a feeling named correctly" },
+    { file: "components/practice/HeroPoseWorld.tsx", seam: "a Hero Pose confirmed" },
+    { file: "components/tabs/HeroJourneyTab.tsx", seam: "a Hero Journey story finished" },
+  ];
+
+  const sources = SEAMS.map((entry) => ({
+    ...entry,
+    text: fs.readFileSync(path.join(SRC_ROOT, entry.file), "utf8"),
+  }));
+
+  it("at least seven kid surfaces call noteKidActivity() (the item's floor)", () => {
+    const wired = sources.filter((s) => activityCalls(s.text) > 0);
+    expect(wired.length).toBeGreaterThanOrEqual(7);
+  });
+
+  it("each named seam has exactly one call — a double count is as wrong as none", () => {
+    const counts = Object.fromEntries(sources.map((s) => [s.file, activityCalls(s.text)]));
+    expect(counts).toEqual(Object.fromEntries(SEAMS.map((s) => [s.file, 1])));
+  });
+
+  it("each call site imports the counter from the gate, not a local re-declaration", () => {
+    for (const source of sources) {
+      expect(stripComments(source.text)).toMatch(
+        /import \{[^}]*noteKidActivity[^}]*\} from "[^"]*lib\/kidModeGate"/,
+      );
+    }
+  });
+
+  it("NEGATIVE CONTROL: a file with the seam and no call is not wired", () => {
+    // The pre-fix Hero Pose handler, verbatim: the completion is right there
+    // and nothing counts it. Both the scan and the import pin must read false.
+    const preFix = [
+      "  const didIt = () => {",
+      '    log("pose", "social", { correct: true, meta: pose.id });',
+      "    setCheer(true);",
+      "    window.setTimeout(() => { setCheer(false); setIdx((i) => i + 1); }, 1000);",
+      "  };",
+    ].join("\n");
+    expect(activityCalls(preFix)).toBe(0);
+    expect(preFix).not.toMatch(/import \{[^}]*noteKidActivity/);
+  });
+
+  it("NEGATIVE CONTROL: a call named only in a comment does not count as wiring", () => {
+    expect(activityCalls("// TODO: call noteKidActivity() here one day\nsetCheer(true);")).toBe(0);
+    expect(activityCalls("/* noteKidActivity() belongs at the seam */")).toBe(0);
+  });
+
+  it("no child content rides along: the counter takes no arguments at any seam", () => {
+    for (const source of sources) {
+      // `noteKidActivity(deps)` is the TEST seam; production calls pass nothing.
+      expect(stripComments(source.text)).not.toMatch(/noteKidActivity\(\s*[^)\s]/);
+    }
+  });
+});

@@ -37,7 +37,7 @@ import { ageMonthsFromProfile } from "../../lib/childAge";
 import { track } from "../../lib/analytics";
 import { HeroScenePlayer } from "../stories/HeroScenePlayer";
 import { useKidSafeNav } from "../kidmode/useKidSafeNav";
-import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
+import { isKidModeActive, noteKidActivity, subscribeKidMode } from "../../lib/kidModeGate";
 import { MascotSay } from "../ui/playkit";
 import { EmptyState } from "../ui/EmptyState";
 import { SectionSkeleton } from "../ui/Skeleton";
@@ -265,6 +265,10 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
       render,
     };
     await runsCol.upsert(run);
+    // N1-01-R5: a finished story is one completed kid activity. A COUNT — the
+    // story, its title and the child's choice never leave this function.
+    // A no-op outside Kid Mode.
+    noteKidActivity();
     setSaved(true);
     celebrate({ kind: "complete" });
     toast(aiLang === "he" ? "המסע הושלם — הסיפור נשמר" : "Journey complete — story saved", "success");

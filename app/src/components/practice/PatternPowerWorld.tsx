@@ -4,6 +4,7 @@ import { PlayHeader, MascotSay, ChoiceTile, ProgressPips, PlayButton, Celebrate 
 import { useArcadeLogger } from "../../practice/useArcadeLogger";
 import { PATTERN_PUZZLES, PATTERN_ROUNDS_PER_DAY, gradeStars, patternRound, puzzleOrderForDay, type PatternPuzzle } from "../../practice/newGames";
 import { dayKey } from "../../practice/signals";
+import { noteKidActivity } from "../../lib/kidModeGate";
 import { SpeakButton } from "../ui/SpeakButton";
 import { useLanguage } from "../../context/LanguageContext";
 
@@ -160,6 +161,9 @@ export default function PatternPowerWorld() {
     const score = correct ? 100 : 0;
     setPicked(opt);
     log("pattern", "cognition", { correct, score, meta: puzzle.id });
+    // N1-01-R5: one completed kid activity. A COUNT and nothing else —
+    // a no-op outside Kid Mode, so a parent using this screen cannot inflate it.
+    noteKidActivity();
     window.setTimeout(() => {
       setScores((s) => [...s, score]);
       setPicked(null);

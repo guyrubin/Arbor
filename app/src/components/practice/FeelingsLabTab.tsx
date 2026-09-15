@@ -9,7 +9,7 @@ import { usePracticeData } from "../../practice/usePracticeData";
 import { EmotionAvatar } from "../ui/EmotionAvatar";
 import type { PracticeEvent } from "../../types";
 import { track } from "../../lib/analytics";
-import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
+import { isKidModeActive, noteKidActivity, subscribeKidMode } from "../../lib/kidModeGate";
 import { SpeakButton } from "../ui/SpeakButton";
 
 const eventId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -67,6 +67,10 @@ export default function FeelingsLabTab() {
     if (pickedEmotion) return;
     setPickedEmotion(id);
     record("emotion-id", id === scenario.answer, scenario.id);
+    // N1-01-R5: one completed kid activity, counted on the naming that landed.
+    // A COUNT and nothing else — the emotion, the scenario and the child's
+    // answer stay here. A no-op outside Kid Mode.
+    if (id === scenario.answer) noteKidActivity();
   };
 
   // Self-check: the child says how THEY feel; their avatar mirrors it (A4).

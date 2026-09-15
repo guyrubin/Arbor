@@ -8,6 +8,7 @@ import { memoryGridSize, memoryMaxCards, memorySetIndexForAge } from "../../prac
 import type { PracticeData } from "../../practice/usePracticeData";
 import type { PracticeEvent } from "../../types";
 import { track } from "../../lib/analytics";
+import { noteKidActivity } from "../../lib/kidModeGate";
 
 /** KID-09: the one sentence this world asks the child to understand, so the
  *  read-aloud control and the printed line can never drift apart. */
@@ -126,6 +127,9 @@ export default function MemoryMatch({ data, childAge }: { data: PracticeData; ch
       };
       void data.events.upsert(event);
       track("memory_round", { size, moves, score });
+      // N1-01-R5: one completed kid activity. A COUNT and nothing else —
+    // a no-op outside Kid Mode, so a parent using this screen cannot inflate it.
+      noteKidActivity();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deck]);

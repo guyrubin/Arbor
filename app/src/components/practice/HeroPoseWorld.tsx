@@ -6,6 +6,7 @@ import { useArcadeLogger } from "../../practice/useArcadeLogger";
 import { POSE_CARDS } from "../../practice/newGames";
 import { SpeakButton } from "../ui/SpeakButton";
 import { useLanguage } from "../../context/LanguageContext";
+import { noteKidActivity } from "../../lib/kidModeGate";
 
 /* Hero Pose — copy the hero's action pose. A gross-motor / body-imitation game:
    the hero shows a pose, the child strikes it, the grown-up confirms. Logs a
@@ -33,6 +34,9 @@ export default function HeroPoseWorld() {
   const poseSay = "I'll show a pose — can you copy it? Hold it while I count!";
   const didIt = () => {
     log("pose", "social", { correct: true, meta: pose.id });
+    // N1-01-R5: one completed kid activity. A COUNT and nothing else —
+    // a no-op outside Kid Mode, so a parent using this screen cannot inflate it.
+    noteKidActivity();
     setCheer(true);
     window.setTimeout(() => { setCheer(false); setIdx((i) => i + 1); }, 1000);
   };

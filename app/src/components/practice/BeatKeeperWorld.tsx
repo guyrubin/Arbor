@@ -6,6 +6,7 @@ import { BEAT_ROUNDS, scoreBeatTaps, gradeStars } from "../../practice/newGames"
 import { SpeakButton } from "../ui/SpeakButton";
 import { useLanguage } from "../../context/LanguageContext";
 import { selectionHaptic } from "../../lib/native";
+import { noteKidActivity } from "../../lib/kidModeGate";
 import { beatClick, closeBeatAudio } from "../../practice/beatAudio";
 
 /* Beat Keeper — tap on the beat. A rhythm/timing game (regulation): a pulse
@@ -52,6 +53,9 @@ export default function BeatKeeperWorld() {
     setScores((p) => [...p, s]);
     setPhase("scored");
     log("rhythm", "emotional", { correct: s >= 50, score: s, meta: `${round.beats}@${round.intervalMs}` });
+    // N1-01-R5: one completed kid activity. A COUNT and nothing else —
+    // a no-op outside Kid Mode, so a parent using this screen cannot inflate it.
+    noteKidActivity();
   };
 
   const start = () => {

@@ -6,6 +6,7 @@ import { getFaceLandmarker } from "../../lib/faceLandmarker";
 import { useLanguage } from "../../context/LanguageContext";
 import type { MimicSession } from "../../types";
 import { track } from "../../lib/analytics";
+import { noteKidActivity } from "../../lib/kidModeGate";
 
 /**
  * Face Match — on-device MediaPipe expression mimicry. The child copies a target
@@ -58,6 +59,9 @@ export default function MimicMatch({ childId, name }: { childId: string; name: s
     };
     void data.mimic.upsert(session);
     track("mimic_face_match", { face: session.promptId, rating });
+    // N1-01-R5: one completed kid activity. A COUNT and nothing else —
+    // a no-op outside Kid Mode, so a parent using this screen cannot inflate it.
+    noteKidActivity();
     setWon(rating);
     window.setTimeout(() => {
       setWon(null);
