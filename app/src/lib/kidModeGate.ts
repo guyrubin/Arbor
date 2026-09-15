@@ -20,8 +20,23 @@
  * on this gate is an `if (isKidModeActive())` early-return.
  */
 
+import { trackKidSessionEnd } from "./kpiEvents";
+
 /** localStorage key for the persisted Kid Mode state (arbor.* convention). */
 export const KIDMODE_LS_KEY = "arbor.kidmode.active";
+
+/**
+ * N1-01: the kid SESSION stamp, deliberately BESIDE the persisted state and
+ * never inside `KidModeState` — that shape is read by the overlay on every
+ * rehydrate and a timestamp in it would be a new persisted field about a
+ * child's behaviour. This is sessionStorage: it dies with the tab, which is
+ * exactly the life of the session it measures.
+ *
+ * Shape: `{ at, n }` — a start time and an activity COUNT. Two numbers. There
+ * is nothing here that could carry a child's content even if a caller wanted
+ * it to (critic C9).
+ */
+export const KIDMODE_SESSION_SS_KEY = "arbor.kidmode.session";
 
 /** Persisted shape: open flag + the kid surface in view (validated by the overlay). */
 export interface KidModeState {
@@ -47,6 +62,72 @@ function defaultStorage(): KidModeStorage | null {
   } catch {
     return null;
   }
+}
+
+/** Session-scoped sibling of defaultStorage() — same guards, same contract. */
+function defaultSessionStorage(): KidModeStorage | null {
+  try {
+    if (typeof window === "undefined" || !window.sessionStorage) return null;
+    return window.sessionStorage;
+  } catch {
+    return null;
+  }
+}
+
+/** Injected clock + storage for the session stamp (tests pass a Map fake). */
+export interface KidSessionDeps {
+  storage?: KidModeStorage | null;
+  now?: number;
+}
+
+/** In-memory mirror, so a blocked sessionStorage still measures the session. */
+let kidSessionMemory: { at: number; n: number } | null = null;
+
+function sessionStore(deps: KidSessionDeps): KidModeStorage | null {
+  return deps.storage !== undefined ? deps.storage : defaultSessionStorage();
+}
+
+function readKidSession(deps: KidSessionDeps): { at: number; n: number } | null {
+  const store = sessionStore(deps);
+  if (store) {
+    try {
+      const raw = store.getItem(KIDMODE_SESSION_SS_KEY);
+      if (raw) {
+        const v = JSON.parse(raw) as Record<string, unknown>;
+        const at = typeof v.at === "number" && Number.isFinite(v.at) ? v.at : Number.NaN;
+        const n = typeof v.n === "number" && Number.isFinite(v.n) ? Math.max(0, Math.trunc(v.n)) : 0;
+        // A reload INSIDE Kid Mode (LEAK 1) rehydrates the real start time.
+        if (Number.isFinite(at)) return { at, n };
+      }
+    } catch {
+      /* unreadable / garbage → fall back to the in-memory mirror */
+    }
+  }
+  return kidSessionMemory;
+}
+
+function writeKidSession(value: { at: number; n: number } | null, deps: KidSessionDeps): void {
+  kidSessionMemory = value;
+  const store = sessionStore(deps);
+  if (!store) return;
+  try {
+    if (value) store.setItem(KIDMODE_SESSION_SS_KEY, JSON.stringify(value));
+    else store.removeItem(KIDMODE_SESSION_SS_KEY);
+  } catch {
+    /* storage unavailable — the in-memory mirror still carries the session */
+  }
+}
+
+/**
+ * A kid activity finished. A COUNT, incremented by the kid surfaces; no id, no
+ * title, no domain — `kid_session_end` carries two integers and this is one of
+ * them. A no-op outside Kid Mode, so a parent surface can never inflate it.
+ */
+export function noteKidActivity(deps: KidSessionDeps = {}): void {
+  if (!active) return;
+  const session = readKidSession(deps);
+  if (!session) return;
+  writeKidSession({ at: session.at, n: session.n + 1 }, deps);
 }
 
 const CLOSED: KidModeState = { open: false };
@@ -117,8 +198,16 @@ export function isKidModeActive(): boolean {
  * Sets the gate (KidModeContext is the only intended writer) and notifies
  * subscribers. Idempotent — setting the current value notifies no one.
  */
-export function setKidModeActive(next: boolean): void {
+export function setKidModeActive(next: boolean, deps: KidSessionDeps = {}): void {
   if (next === active) return;
+  // N1-01: the session boundary is measured HERE because this gate is the one
+  // place Kid Mode can open or close from. ORDER IS LOAD-BEARING: the end event
+  // is emitted while `active` is still true, so lib/analytics tags it
+  // `kid_mode: true` and strips marketing attribution at its own choke point.
+  // Flipping first would ship a child-generated event carrying the parent's
+  // utm_* props. This module never re-implements that gate; it only respects it.
+  if (next) writeKidSession({ at: deps.now ?? Date.now(), n: 0 }, deps);
+  else endKidSession(deps);
   active = next;
   for (const listener of [...listeners]) {
     try {
@@ -127,6 +216,18 @@ export function setKidModeActive(next: boolean): void {
       /* one bad listener never blocks the rest */
     }
   }
+}
+
+/** Closes the measured session and emits it. Called only on a true→false flip. */
+function endKidSession(deps: KidSessionDeps): void {
+  const session = readKidSession(deps);
+  writeKidSession(null, deps);
+  const now = deps.now ?? Date.now();
+  // No stamp (storage blocked before the open, or a pre-N1-01 session still in
+  // flight at deploy) still reports the exit — seconds 0 is honest, a missing
+  // event is not.
+  const seconds = session ? Math.max(0, Math.round((now - session.at) / 1000)) : 0;
+  trackKidSessionEnd({ seconds, activities: session ? session.n : 0 });
 }
 
 /** Subscribe to gate changes; returns the unsubscribe function. */

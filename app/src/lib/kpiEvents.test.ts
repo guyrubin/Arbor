@@ -477,3 +477,212 @@ describe("N1-00 — NEGATIVE CONTROLS: free text cannot reach the sink", () => {
     expect(UNKNOWN_ID).toBe("other");
   });
 });
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   N1-01 — the two COMMIT-side loop events, at their seams.
+
+   keep_this and plan_from_answer are the two the vision's §6 table cares about
+   and the two that are easiest to fake: both have an obvious button nearby and
+   firing on the button would be free. The tests below are written so that a
+   press-shaped implementation FAILS — a draft proposal, a proposal with no
+   commitRef, and a plan generated with no answer behind it all emit nothing.
+
+   The closing pair (session_close, kid_session_end) is proven in
+   lib/loopClose.test.ts, which can drive a fake window and a fake storage.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+import {
+  KEEP_FIELD_BY_TARGET,
+  noteKeepCommitted,
+} from "./conversationProposals";
+import {
+  COACH_KEEP_SURFACE,
+  markPlanSeededFromAnswer,
+  noteTypedKeepCommitted,
+  notePlanCreatedFromAnswer,
+  resetPlanFromAnswer,
+} from "./captureProposals";
+
+/** The shape ArborContext.commitConversationProposal returns, minimally. */
+const committed = (target: "journal" | "milestone" | "observation" | "report_fact" = "journal") => ({
+  status: "committed" as const,
+  target,
+  commitRef: { collection: "behaviorLogs" as const, id: "typed-abc-0" },
+});
+
+const KEPT_LINE = "Maya settles faster when the light is low";
+
+describe("N1-01 — keep_this fires at the COMMIT, never at the press (critic C8)", () => {
+  beforeEach(() => trackSpy.mockClear());
+
+  it("a committed journal keep emits one keep_this with its field + surface", () => {
+    expect(noteKeepCommitted(committed("journal"), "capture-tray")).toBe(true);
+    expect(lastCall()).toEqual(["keep_this", { field: "journal", surface: "capture-tray" }]);
+  });
+
+  it("every proposal target maps to a keep field — no target is unmeasured", () => {
+    expect(Object.keys(KEEP_FIELD_BY_TARGET).sort()).toEqual([
+      "journal",
+      "milestone",
+      "observation",
+      "report_fact",
+    ]);
+    for (const target of Object.keys(KEEP_FIELD_BY_TARGET) as (keyof typeof KEEP_FIELD_BY_TARGET)[]) {
+      trackSpy.mockClear();
+      noteKeepCommitted(committed(target), "capture-tray");
+      expect(lastCall()[1]).toEqual({ field: KEEP_FIELD_BY_TARGET[target], surface: "capture-tray" });
+    }
+  });
+
+  it("the typed coach path reports the CONTRACT line, not the journal target", () => {
+    expect(noteTypedKeepCommitted(committed("journal"), { field: "parentScript" })).toBe(true);
+    expect(lastCall()).toEqual([
+      "keep_this",
+      { field: "parentScript", surface: COACH_KEEP_SURFACE },
+    ]);
+  });
+
+  it("NEGATIVE CONTROL: a DRAFT proposal — the press, not the commit — emits nothing", () => {
+    const draft = { ...committed(), status: "draft" as unknown as "committed" };
+    expect(noteKeepCommitted(draft, "capture-tray")).toBe(false);
+    expect(trackSpy).not.toHaveBeenCalled();
+  });
+
+  it("NEGATIVE CONTROL: a discarded or undone record emits nothing", () => {
+    for (const status of ["discarded", "undone"] as unknown as "committed"[]) {
+      expect(noteKeepCommitted({ ...committed(), status }, "capture-tray")).toBe(false);
+    }
+    expect(trackSpy).not.toHaveBeenCalled();
+  });
+
+  it("NEGATIVE CONTROL: committed with NO commitRef (no row written) emits nothing", () => {
+    expect(
+      noteKeepCommitted({ status: "committed", target: "journal", commitRef: undefined }, "capture-tray"),
+    ).toBe(false);
+    expect(trackSpy).not.toHaveBeenCalled();
+  });
+
+  it("NEGATIVE CONTROL: the kept TEXT cannot ride along even if a caller tries", () => {
+    // The summary is on the record in front of the reporter and is never read;
+    // a caller passing it as the surface gets the sentinel, not the line.
+    noteKeepCommitted(committed("journal"), KEPT_LINE);
+    const serialized = JSON.stringify(lastCall()[1]);
+    expect(serialized).not.toContain("Maya");
+    expect(serialized).toContain("other");
+  });
+});
+
+describe("N1-01 — plan_from_answer measures the CONVERSION, not every plan", () => {
+  beforeEach(() => {
+    trackSpy.mockClear();
+    resetPlanFromAnswer();
+  });
+
+  it("an answer-seeded plan emits exactly one plan_from_answer", () => {
+    markPlanSeededFromAnswer("coach");
+    expect(notePlanCreatedFromAnswer()).toBe(true);
+    expect(lastCall()).toEqual(["plan_from_answer", { surface: "coach" }]);
+  });
+
+  it("NEGATIVE CONTROL: a plan typed from scratch (no answer) emits nothing", () => {
+    expect(notePlanCreatedFromAnswer()).toBe(false);
+    expect(trackSpy).not.toHaveBeenCalled();
+  });
+
+  it("NEGATIVE CONTROL: a second plan does not re-use the first answer's latch", () => {
+    markPlanSeededFromAnswer("coach");
+    notePlanCreatedFromAnswer();
+    trackSpy.mockClear();
+    expect(notePlanCreatedFromAnswer()).toBe(false);
+    expect(trackSpy).not.toHaveBeenCalled();
+  });
+
+  it("NEGATIVE CONTROL: an abandoned answer (armed, never generated) emits nothing", () => {
+    markPlanSeededFromAnswer("coach");
+    resetPlanFromAnswer(); // the tab died / the parent moved on
+    expect(notePlanCreatedFromAnswer()).toBe(false);
+    expect(trackSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("N1-01 — the seams are LIVE (source pins + pre-fix negative controls)", () => {
+  const gate = read("lib/kidModeGate.ts");
+  const loop = read("lib/loopEvents.ts");
+  const convo = read("lib/conversationProposals.ts");
+  const capture = read("lib/captureProposals.ts");
+
+  it("the scanned files are non-empty (a vacuous pass is not a pass)", () => {
+    for (const src of [gate, loop, convo, capture]) {
+      expect(src).toBeTruthy();
+      expect(src.length).toBeGreaterThan(200);
+    }
+  });
+
+  it("kid gate: the exit emits kid_session_end BEFORE the gate flips", () => {
+    expect(gate).toContain("trackKidSessionEnd({ seconds, activities:");
+    // Order pin: the emit call must come before `active = next` in the setter.
+    const setter = gate.slice(gate.indexOf("export function setKidModeActive"));
+    expect(setter.indexOf("endKidSession(deps)")).toBeGreaterThan(-1);
+    expect(setter.indexOf("endKidSession(deps)")).toBeLessThan(setter.indexOf("active = next"));
+    // NEGATIVE CONTROL — the pre-fix setter body had no session boundary at all.
+    const preFix = [
+      "export function setKidModeActive(next: boolean): void {",
+      "  if (next === active) return;",
+      "  active = next;",
+    ].join("\n");
+    expect(gate).not.toContain(preFix);
+  });
+
+  it("kid gate: the session stamp lives BESIDE the persisted state, not in it", () => {
+    expect(gate).toContain('export const KIDMODE_SESSION_SS_KEY = "arbor.kidmode.session"');
+    // KidModeState is the persisted shape — it must not have grown a timestamp.
+    const state = gate.slice(gate.indexOf("export interface KidModeState"), gate.indexOf("export interface KidModeStorage"));
+    expect(state).not.toMatch(/at\??:|startedAt|timestamp|seconds/);
+  });
+
+  it("session close: bound from app start, fires once, reads the open stamp", () => {
+    expect(loop).toContain("bindSessionClose();");
+    expect(loop).toContain("trackSessionClose(");
+    expect(loop).toContain("sessionStorage.getItem(SS_SESSION_OPEN)");
+    expect(loop).toMatch(/win\.addEventListener\("pagehide"/);
+    expect(loop).toMatch(/win\.addEventListener\("visibilitychange"/);
+    // NEGATIVE CONTROL — the pre-fix trackAppStart bound nothing.
+    const preFix = [
+      "export function trackAppStart(): void {",
+      "  if (once(LS_INSTALLED)) track(LoopEvent.Install);",
+      "  track(LoopEvent.AppOpen);",
+      "}",
+    ].join("\n");
+    expect(loop).not.toContain(preFix);
+  });
+
+  it("keep_this: emitted from the record's status, never from a handler", () => {
+    expect(convo).toContain("trackKeepThis({");
+    expect(convo).toMatch(/if \(record\.status !== "committed" \|\| !record\.commitRef\) return false;/);
+    // NEGATIVE CONTROL — a file with no commit guard must fail the pin above.
+    const preFix = 'export function noteKeepCommitted(record, surface) {\n  trackKeepThis({ field: record.target, surface });\n}';
+    expect(convo).not.toContain(preFix);
+    // The reporter must never read the kept text off the record.
+    const fn = convo.slice(convo.indexOf("export function noteKeepCommitted"));
+    expect(fn.slice(0, fn.indexOf("\n}"))).not.toMatch(/summary|sourceExcerpt/);
+  });
+
+  it("plan_from_answer: a latch consumed by the write, not a button handler", () => {
+    expect(capture).toContain("trackPlanFromAnswer(surface)");
+    expect(capture).toContain("export function markPlanSeededFromAnswer");
+    expect(capture).toContain("export function notePlanCreatedFromAnswer");
+    // The emit is guarded by the latch: no arm, no event.
+    const fn = capture.slice(capture.indexOf("export function notePlanCreatedFromAnswer"));
+    expect(fn.slice(0, fn.indexOf("\n}"))).toContain("if (!surface) return false;");
+  });
+
+  it("no second analytics logger was introduced: all four go through kpiEvents", () => {
+    for (const src of [gate, convo, capture]) {
+      expect(src).not.toMatch(/from "\.\/analytics"/);
+    }
+    // loopEvents legitimately uses track() for its own families and the new
+    // helper for this one — but it must not open-code the close event's name.
+    expect(loop).not.toContain('track("session_close"');
+  });
+});

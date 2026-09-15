@@ -8,6 +8,7 @@
  * See PAI/projects/parenting-os-plugin/marketing/arbor-loop-eng-spec.md.
  */
 import { track } from "./analytics";
+import { trackSessionClose } from "./kpiEvents";
 
 export const LoopEvent = {
   Install: "install",
@@ -43,6 +44,10 @@ function once(key: string): boolean {
 export function trackAppStart(): void {
   if (once(LS_INSTALLED)) track(LoopEvent.Install);
   track(LoopEvent.AppOpen);
+  // N1-01: bind the session's closing partner from the one place the app is
+  // already guaranteed to run at boot (main.tsx), so `session_close` needs no
+  // new call site and cannot be forgotten by a future entry point.
+  bindSessionClose();
 }
 
 export function trackProfileCreated(childCount: number, band?: string): void {
@@ -115,6 +120,81 @@ export function trackSessionOpen(): void {
     /* storage blocked → don't suppress the event */
   }
   track("session_open");
+}
+
+/* ── N1-01: session_close ──────────────────────────────────────────────────
+ * `session_open` had no closing partner, so session LENGTH — the denominator
+ * of every "did they actually use it" question — was not computable. The pair
+ * is guarded by the SAME sessionStorage stamp, so open and close are counted
+ * over the same unit: one browser session.
+ *
+ * `pagehide` is the reliable one (it fires on bfcache eviction too);
+ * `visibilitychange`→hidden is the Safari/iOS fallback, where pagehide is not
+ * dependable. Both route through emitSessionClose(), which fires AT MOST ONCE
+ * — a second pagehide, a bfcache restore-then-hide, or both listeners racing
+ * on the same close all emit nothing. */
+
+const SS_SESSION_CLOSE = "arbor.sessionClose";
+
+let sessionCloseBound = false;
+let sessionClosed = false;
+let sessionStartFallbackMs = 0;
+
+/** Structural subset of window we bind to (a plain object in tests). */
+export interface SessionCloseTarget {
+  addEventListener(type: string, listener: () => void): void;
+  document?: { visibilityState?: string };
+}
+
+function sessionStartedAtMs(): number {
+  try {
+    const raw = sessionStorage.getItem(SS_SESSION_OPEN);
+    const parsed = raw ? Date.parse(raw) : Number.NaN;
+    if (Number.isFinite(parsed)) return parsed;
+  } catch {
+    /* storage blocked → the in-memory bind time is the honest start */
+  }
+  return sessionStartFallbackMs;
+}
+
+/** Emits `session_close` once per browser session. Returns whether it fired. */
+export function emitSessionClose(nowMs: number = Date.now()): boolean {
+  if (sessionClosed) return false;
+  sessionClosed = true;
+  try {
+    sessionStorage.setItem(SS_SESSION_CLOSE, new Date(nowMs).toISOString());
+  } catch {
+    /* storage blocked → the module-level flag is still the fire-once guard */
+  }
+  const startedAt = sessionStartedAtMs();
+  trackSessionClose(Math.max(0, Math.round((nowMs - startedAt) / 1000)));
+  return true;
+}
+
+/** Binds the two close signals exactly once. Idempotent; no-op without a window. */
+export function bindSessionClose(target?: SessionCloseTarget): void {
+  const win = target ?? (typeof window === "undefined" ? undefined : (window as unknown as SessionCloseTarget));
+  if (sessionCloseBound || !win || typeof win.addEventListener !== "function") return;
+  sessionCloseBound = true;
+  sessionStartFallbackMs = Date.now();
+  try {
+    if (sessionStorage.getItem(SS_SESSION_CLOSE)) sessionClosed = true;
+  } catch {
+    /* ignore */
+  }
+  win.addEventListener("pagehide", () => {
+    emitSessionClose();
+  });
+  win.addEventListener("visibilitychange", () => {
+    if (win.document?.visibilityState === "hidden") emitSessionClose();
+  });
+}
+
+/** Test seam — forgets the binding and the fire-once flag. */
+export function resetSessionClose(): void {
+  sessionCloseBound = false;
+  sessionClosed = false;
+  sessionStartFallbackMs = 0;
 }
 
 // wired by: TodayRecommendation — fires once per mount when the accept row is

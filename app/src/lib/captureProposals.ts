@@ -66,7 +66,9 @@
    Pure, clock-injected, framework-free.
    ════════════════════════════════════════════════════════════════════════════ */
 import type { ChatMessage } from "../context/ArborContext";
-import type { ConversationProposal } from "./conversationProposals";
+import type { ConversationChangeRecord, ConversationProposal } from "./conversationProposals";
+import { noteKeepCommitted } from "./conversationProposals";
+import { trackPlanFromAnswer } from "./kpiEvents";
 import type { CoachContract } from "../types";
 
 /**
@@ -88,6 +90,58 @@ export const NEVER_KEEPABLE_FIELDS = [
 
 /** Flooding a tray is not one-tap save — at most this many rows per answer. */
 export const MAX_TYPED_PROPOSALS = 4;
+
+/* ── N1-01: the two coach-answer loop events ───────────────────────────────
+ * Both are reported from this module because this is the typed-answer path
+ * itself; a component that happens to render the answer is not the seam. */
+
+/** The surface id the typed coach tray reports keeps under. */
+export const COACH_KEEP_SURFACE = "coach-typed";
+
+/**
+ * A typed-coach proposal was COMMITTED. Delegates to the one keep reporter and
+ * supplies the contract line as the field class, which is more truthful than
+ * the proposal target (every typed proposal targets "journal").
+ */
+export function noteTypedKeepCommitted(
+  record: Pick<ConversationChangeRecord, "status" | "target" | "commitRef">,
+  entry: Pick<CaptureProposal, "field">,
+  surface: string = COACH_KEEP_SURFACE,
+): boolean {
+  return noteKeepCommitted(record, surface, entry.field);
+}
+
+/**
+ * plan_from_answer — a LATCH, not a button.
+ *
+ * The conversion is two-step in this app: a coach answer seeds the plan topic
+ * (CoachTab), and the actionPlans row is written later by the plan generator.
+ * Firing on the first step would measure intent; firing on the second alone
+ * would count every plan, including the ones typed from scratch in PlansTab.
+ * So the answer arms a latch and the WRITE consumes it — the same shape
+ * lib/kpiEvents uses for capture_started → capture_saved, and it dies with the
+ * tab if the parent never generates the plan.
+ */
+let planSeededFromAnswer: string | null = null;
+
+/** A coach answer seeded the plan topic. `surface` is a short id. */
+export function markPlanSeededFromAnswer(surface: string): void {
+  planSeededFromAnswer = surface;
+}
+
+/** An actionPlans row was written. Emits only if an answer armed the latch. */
+export function notePlanCreatedFromAnswer(): boolean {
+  const surface = planSeededFromAnswer;
+  planSeededFromAnswer = null;
+  if (!surface) return false;
+  trackPlanFromAnswer(surface);
+  return true;
+}
+
+/** Test seam — disarms the latch. */
+export function resetPlanFromAnswer(): void {
+  planSeededFromAnswer = null;
+}
 
 /** A draft the parent can keep, plus the field it was quoted from. */
 export interface CaptureProposal {

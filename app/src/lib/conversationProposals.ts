@@ -1,4 +1,5 @@
 import type { BehaviorLog, Milestone } from "../types";
+import { trackKeepThis, type KeepFieldId } from "./kpiEvents";
 
 export type ConversationProposalTarget = "observation" | "milestone" | "journal" | "report_fact";
 export type ConversationProposalStatus = "draft" | "confirmed" | "discarded" | "committed" | "undone";
@@ -96,6 +97,49 @@ export function attachProposalConflicts(
       ? { ...proposal, conflict: { code: "duplicate", existing: proposal.summary } }
       : proposal;
   });
+}
+
+/* ── N1-01: keep_this ──────────────────────────────────────────────────────
+ * WHY THIS IS NOT A BUTTON HANDLER (critic C8). `ContentActionBar` already
+ * fires `contentaction { verb: "save" }` and reusing it would have been free —
+ * but it measures a PRESS. The vision's §6 row is about the RECORD: how often
+ * a model-proposed line actually becomes something the family keeps. A press
+ * that throws, hits a conflict, or is undone before it lands is not a keep.
+ *
+ * So the event is emitted from a COMMITTED record and the function refuses
+ * anything else: `status === "committed"` plus a `commitRef` is structural
+ * proof that a row exists in behaviorLogs or milestones. There is no way to
+ * call this from a press handler and have it fire.
+ *
+ * The kept TEXT never travels: `summary` and `sourceExcerpt` are on the record
+ * in front of us and neither is passed on. Only the field class and a surface
+ * id reach lib/kpiEvents, which sanitises both again. */
+
+/** Which keep class a committed proposal target belongs to. */
+export const KEEP_FIELD_BY_TARGET: Record<ConversationProposalTarget, KeepFieldId> = {
+  journal: "journal",
+  milestone: "milestone",
+  observation: "observation",
+  // A report fact lands as a behaviorLogs row exactly as an observation does;
+  // the wave's field union has no `report_fact` member, so it is counted as the
+  // row it becomes rather than invented (FOLLOW-UPS-N1 N1-01-R4).
+  report_fact: "observation",
+};
+
+/**
+ * Report a COMMITTED keep. Returns whether it counted, so a caller can be
+ * source-pinned on the result. `field` overrides the target mapping for the
+ * typed-coach path, where the contract line (todayPlan/parentScript/observe) is
+ * the more truthful class.
+ */
+export function noteKeepCommitted(
+  record: Pick<ConversationChangeRecord, "status" | "target" | "commitRef">,
+  surface: string,
+  field?: KeepFieldId,
+): boolean {
+  if (record.status !== "committed" || !record.commitRef) return false;
+  trackKeepThis({ field: field ?? KEEP_FIELD_BY_TARGET[record.target], surface });
+  return true;
 }
 
 export function proposalConfidenceLabel(confidence: number): "clear" | "check" | "uncertain" {
