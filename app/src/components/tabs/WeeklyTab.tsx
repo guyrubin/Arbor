@@ -206,7 +206,7 @@ export default function WeeklyTab() {
       ) : !selected ? (
         /* F-06: the current week with nothing stored yet says so honestly —
            it never falls back to rendering a past week as if it were now. */
-        <div className={`${cardCls} p-8 text-center text-sm`} style={{ color: "var(--arbor-muted)" }}>
+        <div data-module="weekly-empty" className={`${cardCls} p-8 text-center text-sm`} style={{ color: "var(--arbor-muted)" }}>
           {/* ENG-07: the copy promised "log a moment and this week's report will
               build itself". Nothing builds itself — the report is generated when
               a parent taps the header button — so the sentence is now what
