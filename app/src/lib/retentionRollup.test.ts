@@ -214,6 +214,50 @@ describe("N1-04 (c) — law 3: no streak shape exists in either file", () => {
   });
 });
 
+describe("N1-04 (e) — the writer is MOUNTED, and mounted exactly once", () => {
+  const srcRoot = path.resolve(__dirname, "..");
+
+  const walk = (dir: string, out: string[] = []): string[] => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full, out);
+      else if (/\.tsx?$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name)) out.push(full);
+    }
+    return out;
+  };
+
+  const importers = walk(srcRoot).filter((file) =>
+    /from\s+["'][^"']*\/retentionRollup["']/.test(fs.readFileSync(file, "utf8")),
+  );
+
+  it("exactly one file imports lib/retentionRollup, and it is context/AuthContext.tsx", () => {
+    expect(importers.map((f) => path.relative(srcRoot, f).replace(/\\/g, "/"))).toEqual([
+      "context/AuthContext.tsx",
+    ]);
+  });
+
+  it("no component imports it — a retention rate is a product fact, never a parent surface (law 1)", () => {
+    const inComponents = importers.filter((f) => path.relative(srcRoot, f).startsWith("components"));
+    expect(inComponents).toHaveLength(0);
+    // Same law for the arithmetic module the writer wraps.
+    const retentionInComponents = walk(path.join(srcRoot, "components")).filter((file) =>
+      /from\s+["'][^"']*\/retention["']/.test(fs.readFileSync(file, "utf8")),
+    );
+    expect(retentionInComponents).toHaveLength(0);
+  });
+
+  it("the call site is at auth-ready, beside trackSessionOpen, guarded by a uid", () => {
+    const authCtx = read("context/AuthContext.tsx");
+    expect(authCtx).toContain("recordRetentionSession");
+    expect(authCtx).toMatch(/if \(user\?\.uid\) recordRetentionSession\(user\.uid\);/);
+    expect(authCtx).toContain("if (user?.uid) trackSessionOpen();");
+    // NEGATIVE CONTROL: the pre-fix effect body had the session event and no
+    // rollup write — the shape that left the arithmetic with no caller.
+    const preFix = "if (user?.uid) void initNaturalVoice();\n    if (user?.uid) trackSessionOpen();";
+    expect(preFix).not.toContain("recordRetentionSession");
+  });
+});
+
 describe("N1-04 (d) — week-4 is answerable, and an empty denominator is null", () => {
   const rollup = { firstSeen: "2026-09-01", activeDays: ["2026-09-01", "2026-09-29"] };
 

@@ -15,6 +15,7 @@ import { authErrorKey } from "../lib/i18nElevation/storeShell";
 import { initNaturalVoice } from "../lib/naturalVoice";
 import { setAnalyticsUser } from "../lib/analytics";
 import { trackSessionOpen } from "../lib/loopEvents";
+import { recordRetentionSession } from "../lib/retentionRollup";
 import { purgeAllComicPages } from "../lib/comicPageStore";
 import { clearPrewarmedComic } from "../lib/comicPrewarm";
 import { clearMathExit } from "../components/kidmode/parentGate";
@@ -161,6 +162,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // resolve a uid, so this event actually lands in prod (unlike the boot-time
     // app_open). Once per browser session, guarded inside the helper.
     if (user?.uid) trackSessionOpen();
+    // N1-04: the same auth-ready moment is the one write cadence for the
+    // per-family retention rollup (retentionRollups/{uid}) — once per browser
+    // session, merging today into the stored day set. Fire-and-forget and
+    // never throws; a retention fact is never worth degrading a session.
+    if (user?.uid) recordRetentionSession(user.uid);
   }, [user?.uid]);
 
   const value: AuthContextValue = {
