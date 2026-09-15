@@ -15,14 +15,16 @@
  *  - Monitoring note text is character-for-character from DomainSignal.note.
  *  - Read state is local (localStorage), not synced — no backend call.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMonitoring } from "./useMonitoring";
 import { nextNudge } from "../lib/jitai";
 import { ageMonthsFromProfile } from "../lib/childAge";
 import { useArbor } from "../context/ArborContext";
 import { predictRhythm } from "../rhythm/predict";
 import type { ActiveTab } from "../context/ArborContext";
-import { loadPrefs, isInQuietHours, shownNudgesToday, recordNudgeShown } from "../growth/jitaiPrefs";
+import { loadPrefs, shownNudgesToday, recordNudgeShown } from "../growth/jitaiPrefs";
+import { planNudge } from "../growth/nudgeSchedule";
+import { trackNudgeScheduled, trackNudgeSuppressed } from "../lib/kpiEvents";
 
 export type NotificationKind = "monitoring" | "nudge";
 
@@ -78,13 +80,14 @@ export function useNotifications(): {
 
   const firstName = (childProfile.name || "your child").split(" ")[0];
 
-  // TJB-03 / ENG-02: the parent's Smart Reminders preferences gate this ONE
-  // choke point. Read once per mount (the panel saves to localStorage and the
-  // bell re-mounts on open), plus today's shown-kinds list for the max-2
-  // contract.
+  // TJB-03 / ENG-02 / N1-06: the parent's Smart Reminders preferences gate this
+  // ONE choke point. Read once per mount (the panel saves to localStorage and
+  // the bell re-mounts on open), plus today's shown-kinds list for the max-2
+  // contract. Quiet hours and the ceiling are NOT open-coded here any more:
+  // growth/nudgeSchedule `planNudge` is the single delivery contract every
+  // channel passes through, and it calls growth/jitaiPrefs for both.
   const prefs = useMemo(() => loadPrefs(), []);
   const [shownToday, setShownToday] = useState<string[]>(() => shownNudgesToday());
-  const quiet = isInQuietHours(prefs, Date.now());
 
   // Derive monitoring signals via the ONE shared derivation (hooks/useMonitoring),
   // which owns the months-precise age conversion this hook used to duplicate.
@@ -116,25 +119,57 @@ export function useNotifications(): {
       .length;
   }, [behaviorLogs]);
 
-  const nudge = useMemo(
+  // The candidate — jitai stays the generator ("which nudge, if any").
+  const candidate = useMemo(
     () =>
-      quiet
-        ? null
-        : nextNudge(
-            {
-              nowMs: Date.now(),
-              rhythm,
-              loggedToday: loggedTodayCount,
-              recent7d,
-              childName: firstName,
-              shownToday,
-            },
-            prefs,
-          ),
-    [rhythm, loggedTodayCount, recent7d, firstName, prefs, quiet, shownToday],
+      nextNudge(
+        {
+          nowMs: Date.now(),
+          rhythm,
+          loggedToday: loggedTodayCount,
+          recent7d,
+          childName: firstName,
+          shownToday,
+        },
+        prefs,
+      ),
+    [rhythm, loggedTodayCount, recent7d, firstName, prefs, shownToday],
   );
 
+  // N1-06: the delivery decision. The bell is the FIRST consumer of the choke
+  // point, not a second implementation of it.
+  const plan = useMemo(
+    () => planNudge({ prefs, shownToday, now: Date.now(), candidate, channel: "bell" }),
+    [prefs, shownToday, candidate],
+  );
+
+  // The bell is IN-APP and behind auth, so it renders the candidate's own copy
+  // (which interpolates the child's first name) exactly as it did before —
+  // `plan.template` is the name-free payload reserved for channels that leave
+  // the device, and the bell must not use it.
+  const nudge = plan.deliver ? plan.candidate : null;
+
+  // The contract's audit trail. Emitted once per distinct outcome per mount —
+  // a re-render with the same decision is not a second decision. `no_candidate`
+  // is deliberately NOT logged: having nothing to say is the day-0 answer, not
+  // a suppression, and logging it would drown the real signal.
+  const lastOutcome = useRef<string | null>(null);
+  useEffect(() => {
+    const key = plan.deliver
+      ? `deliver:${plan.kind}`
+      : `suppress:${plan.reason}:${plan.kind ?? ""}`;
+    if (lastOutcome.current === key) return;
+    lastOutcome.current = key;
+    if (plan.deliver) {
+      trackNudgeScheduled({ kind: plan.kind, channel: plan.channel });
+    } else if (plan.reason !== "no_candidate") {
+      trackNudgeSuppressed({ kind: plan.kind ?? "none", reason: plan.reason });
+    }
+  }, [plan]);
+
   // Count the surfaced nudge against today's ceiling (idempotent per kind).
+  // The ledger lives in growth/jitaiPrefs; planNudge reads it, the caller
+  // spends it — exactly as before.
   useEffect(() => {
     if (!nudge) return;
     const next = recordNudgeShown(nudge.kind);

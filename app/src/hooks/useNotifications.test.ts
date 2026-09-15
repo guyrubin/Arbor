@@ -159,7 +159,7 @@ describe("AP-046: badge count framing", () => {
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-describe("TJB-03 — useNotifications enforces the Smart Reminders preferences", () => {
+describe("TJB-03 / N1-06 — useNotifications enforces the contract through the ONE choke point", () => {
   const src = readFileSync(path.join(process.cwd(), "src/hooks/useNotifications.ts"), "utf8")
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .replace(/^\s*\/\/.*$/gm, "");
@@ -176,25 +176,116 @@ describe("TJB-03 — useNotifications enforces the Smart Reminders preferences",
         childName: firstName,
       }),`;
     expect(preFix).not.toMatch(/import \{[^}]*\bloadPrefs\b[^}]*\} from "\.\.\/growth\/jitaiPrefs"/);
-    expect(preFix).not.toMatch(/isInQuietHours\(prefs/);
+    expect(preFix).not.toMatch(/planNudge/);
   });
 
-  it("imports loadPrefs + isInQuietHours (+ the shown counter) from growth/jitaiPrefs", () => {
+  it("NEGATIVE CONTROL — the TJB-03 hook (quiet hours open-coded in the hook) fails the N1-06 pins", () => {
+    // This is what the hook looked like immediately before N1-06: correct, but
+    // a SECOND implementation site of the contract. The law is that there is
+    // exactly one, and it is growth/nudgeSchedule.
+    const tjb03 = `import { loadPrefs, isInQuietHours, shownNudgesToday, recordNudgeShown } from "../growth/jitaiPrefs";
+  const quiet = isInQuietHours(prefs, Date.now());
+  const nudge = useMemo(() => (quiet ? null : nextNudge({ ... }, prefs)), [quiet]);`;
+    expect(tjb03).not.toMatch(/import \{[^}]*\bplanNudge\b[^}]*\} from "\.\.\/growth\/nudgeSchedule"/);
+    expect(tjb03).toMatch(/isInQuietHours\(prefs/); // the open-coded gate …
+    expect(src).not.toMatch(/isInQuietHours\(/); // … which the current hook no longer has.
+  });
+
+  it("imports loadPrefs + the shown counter from growth/jitaiPrefs, and planNudge from the choke point", () => {
     expect(src).toMatch(/import \{[^}]*\bloadPrefs\b[^}]*\} from "\.\.\/growth\/jitaiPrefs"/);
-    expect(src).toMatch(/import \{[^}]*\bisInQuietHours\b[^}]*\} from "\.\.\/growth\/jitaiPrefs"/);
     expect(src).toMatch(/import \{[^}]*\brecordNudgeShown\b[^}]*\} from "\.\.\/growth\/jitaiPrefs"/);
+    expect(src).toMatch(/import \{[^}]*\bplanNudge\b[^}]*\} from "\.\.\/growth\/nudgeSchedule"/);
   });
 
-  it("gates the nudge on quiet hours and passes prefs + today's shown kinds into nextNudge", () => {
-    expect(src).toMatch(/isInQuietHours\(prefs, Date\.now\(\)\)/);
-    expect(src).toMatch(/quiet\s*\?\s*null\s*:\s*nextNudge\(/);
+  it("routes the delivery decision through planNudge on the bell channel", () => {
+    expect(src).toMatch(/planNudge\(\{[\s\S]*?channel: "bell"[\s\S]*?\}\)/);
+    expect(src).toMatch(/const nudge = plan\.deliver \? plan\.candidate : null/);
     expect(src).toMatch(/shownToday,\s*\},\s*prefs,\s*\)/);
     expect(src).toMatch(/recordNudgeShown\(nudge\.kind\)/);
+  });
+
+  it("emits the two audit events, and never logs no_candidate as a suppression", () => {
+    expect(src).toMatch(/import \{[^}]*\btrackNudgeScheduled\b[^}]*\} from "\.\.\/lib\/kpiEvents"/);
+    expect(src).toMatch(/trackNudgeScheduled\(\{ kind: plan\.kind, channel: plan\.channel \}\)/);
+    expect(src).toMatch(/plan\.reason !== "no_candidate"/);
+  });
+
+  it("the bell renders the CANDIDATE's copy, never the name-free template", () => {
+    // The bell is in-app and behind auth: its rows are unchanged by N1-06.
+    // `plan.template` is reserved for channels that leave the device, and the
+    // hook must not put it on an AppNotification.
+    expect(src).toContain("headlineKey: nudge.headlineKey");
+    expect(src).toContain("vars: nudge.vars");
+    expect(src).not.toMatch(/plan\.template/);
+    expect(src).not.toMatch(/titleKey/);
   });
 
   it("the parent's Milestone toggle governs the monitoring items; the item carries the real route + capture flag", () => {
     expect(src).toMatch(/prefs\.types\.milestone \? monitoring\.watchAreas : \[\]/);
     expect(src).toContain("capture: nudge.capture");
     expect(src).not.toContain("nudge.action as ActiveTab");
+  });
+});
+
+// ── N1-06 — the bell's rows and badge are UNCHANGED for identical prefs ──────
+import { planNudge } from "../growth/nudgeSchedule";
+import { DEFAULT_PREFS, isInQuietHours, type JitaiPrefs } from "../growth/jitaiPrefs";
+
+describe("N1-06 — routing the bell through planNudge changes no row and no badge", () => {
+  /** Exactly what the hook did BEFORE N1-06: quiet gate, then nextNudge. */
+  const preN106 = (prefs: JitaiPrefs, shownToday: string[], nowMs: number) =>
+    isInQuietHours(prefs, nowMs)
+      ? null
+      : nextNudge(
+          { nowMs, rhythm: baseRhythm(), loggedToday: 0, recent7d: 1, childName: "Dylan", shownToday },
+          prefs,
+        );
+
+  /** Exactly what the hook does now. */
+  const postN106 = (prefs: JitaiPrefs, shownToday: string[], nowMs: number) => {
+    const candidate = nextNudge(
+      { nowMs, rhythm: baseRhythm(), loggedToday: 0, recent7d: 1, childName: "Dylan", shownToday },
+      prefs,
+    );
+    const plan = planNudge({ prefs, shownToday, now: nowMs, candidate, channel: "bell" });
+    return plan.deliver ? plan.candidate : null;
+  };
+
+  const prefsWith = (over: Partial<JitaiPrefs> = {}): JitaiPrefs => ({
+    ...DEFAULT_PREFS,
+    types: { ...DEFAULT_PREFS.types, ...(over.types ?? {}) },
+    ...over,
+  });
+
+  const matrix: Array<[string, JitaiPrefs, string[]]> = [
+    ["defaults, nothing shown", prefsWith(), []],
+    ["defaults, one kind shown", prefsWith(), ["log"]],
+    ["defaults, at the ceiling", prefsWith(), ["log", "calm"]],
+    ["guidance off", prefsWith({ types: { guidance: false } }), []],
+    ["milestone off", prefsWith({ types: { milestone: false } }), []],
+    ["narrow quiet window", prefsWith({ quietStart: 1, quietEnd: 6 }), []],
+    ["calm-window only", prefsWith({ calmWindowOnly: true }), []],
+  ];
+
+  for (const [label, prefs, shown] of matrix) {
+    it(`identical nudge row for every hour of the day — ${label}`, () => {
+      for (let h = 0; h < 24; h++) {
+        const nowMs = new Date(2026, 5, 17, h, 30, 0).getTime();
+        const before = preN106(prefs, shown, nowMs);
+        const after = postN106(prefs, shown, nowMs);
+        expect(after, `hour ${h} — ${label}`).toEqual(before);
+      }
+    });
+  }
+
+  it("badge arithmetic is unchanged: the nudge contributes 0 or 1 row, exactly as before", () => {
+    for (const [label, prefs, shown] of matrix) {
+      for (let h = 0; h < 24; h++) {
+        const nowMs = new Date(2026, 5, 17, h, 30, 0).getTime();
+        const beforeRows = preN106(prefs, shown, nowMs) ? 1 : 0;
+        const afterRows = postN106(prefs, shown, nowMs) ? 1 : 0;
+        expect(afterRows, `hour ${h} — ${label}`).toBe(beforeRows);
+      }
+    }
   });
 });

@@ -74,6 +74,25 @@ export const en: Record<string, string> = {
   "elev.rh.tomorrow.moment.cta": "Write it down",
   "elev.rh.tomorrow.dismiss": "Not today",
   "elev.rh.tomorrow.dismissAria": "Put this away for now",
+
+  // ── N1-06 — the name-free nudge templates (growth/nudgeTemplates.ts) ─────
+  // LOAD-BEARING: these are the strings an OUT-OF-APP channel may send. They
+  // carry NO placeholder of any kind — no {name}, no {{, no ${ — because a
+  // lock-screen payload may never name or describe a child (critic-vision
+  // BLOCK #3). growth/nudgeTemplates.test.ts scans every one of them in both
+  // locales and fails on any interpolation token. Do not add a placeholder
+  // here, and do not reuse the `nudge.*` keys (those carry {name} by design
+  // for the in-app bell, which is behind auth).
+  "elev.rh.nudge.prep.title": "A good moment to get ahead of it",
+  "elev.rh.nudge.prep.body": "Two minutes now can change how the next hour goes.",
+  "elev.rh.nudge.calm.title": "Time to slow the house down",
+  "elev.rh.nudge.calm.body": "A settling routine is ready in Arbor.",
+  "elev.rh.nudge.bedtime.title": "The evening is open",
+  "elev.rh.nudge.bedtime.body": "A story is waiting on the shelf.",
+  "elev.rh.nudge.log.title": "There's a moment worth writing down",
+  "elev.rh.nudge.log.body": "One line is the whole ask.",
+  "elev.rh.nudge.practice.title": "Something small to do together",
+  "elev.rh.nudge.practice.body": "A short activity is ready in Arbor.",
 };
 
 export const he: Record<string, string> = {
@@ -123,4 +142,17 @@ export const he: Record<string, string> = {
   "elev.rh.tomorrow.moment.cta": "כתבו את זה",
   "elev.rh.tomorrow.dismiss": "לא היום",
   "elev.rh.tomorrow.dismissAria": "הסתירו את זה לעכשיו",
+
+  // ── N1-06 — התבניות נטולות-השם ─────────────────────────────────────────
+  // אין כאן שום מציין להחלפה. ראו את ההערה בגרסה האנגלית.
+  "elev.rh.nudge.prep.title": "רגע טוב להקדים",
+  "elev.rh.nudge.prep.body": "שתי דקות עכשיו יכולות לשנות את השעה הקרובה.",
+  "elev.rh.nudge.calm.title": "הזמן להוריד הילוך בבית",
+  "elev.rh.nudge.calm.body": "שגרת הרגעה מחכה בארבור.",
+  "elev.rh.nudge.bedtime.title": "הערב פתוח",
+  "elev.rh.nudge.bedtime.body": "סיפור ממתין על המדף.",
+  "elev.rh.nudge.log.title": "יש רגע ששווה לכתוב",
+  "elev.rh.nudge.log.body": "שורה אחת, וזה הכול.",
+  "elev.rh.nudge.practice.title": "משהו קטן לעשות ביחד",
+  "elev.rh.nudge.practice.body": "פעילות קצרה מחכה בארבור.",
 };
