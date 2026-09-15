@@ -687,6 +687,74 @@ describe("N1-01 — the seams are LIVE (source pins + pre-fix negative controls)
     expect(fn.slice(0, fn.indexOf("\n}"))).toContain("if (!surface) return false;");
   });
 
+  /* ── N1-01-R2 / R3: the three call sites that were left unwired ──────────
+     The helpers above shipped with no callers, so keep_this had zero docs on
+     the voice keep path and plan_from_answer had zero docs anywhere. These
+     pins fail if a caller is removed OR if it reverts to the pre-fix shape. */
+
+  const coachTab = read("components/tabs/CoachTab.tsx");
+
+  /* The pins are written as PREDICATES so the negative control is a real
+     red→green: each predicate is asserted true against the live file and false
+     against the verbatim pre-fix block. A bare `not.toContain(preFix)` would
+     pass vacuously the moment the pre-fix snippet's indentation drifted. */
+
+  /** R2 — the commit's RECORD is captured and reported. */
+  const wiresVoiceKeep = (src: string): boolean =>
+    /const record = await commitConversationProposal\(proposal\);/.test(src) &&
+    /noteKeepCommitted\(record, "coach-voice"\);/.test(src) &&
+    src.indexOf("await commitConversationProposal(proposal);") <
+      src.indexOf('noteKeepCommitted(record, "coach-voice");');
+
+  /** R3 step one — the answer arms the latch beside the topic it seeds. */
+  const armsPlanLatch = (src: string): boolean =>
+    /setPlanChallengeTopic\(/.test(src) && /markPlanSeededFromAnswer\("coach"\);/.test(src);
+
+  /** R3 step two — the actionPlans WRITE consumes it. */
+  const consumesPlanLatch = (src: string): boolean =>
+    /await plansCol\.upsert\(planData\);/.test(src) &&
+    /notePlanCreatedFromAnswer\(\);/.test(src) &&
+    src.indexOf("await plansCol.upsert(planData);") < src.indexOf("notePlanCreatedFromAnswer();");
+
+  const PRE_FIX_VOICE_KEEP = [
+    "onConfirm={async (proposal) => {",
+    "  setProposalBusyId(proposal.id);",
+    "  try {",
+    "    await commitConversationProposal(proposal);",
+    "    setConversationProposals((items) => items.filter((item) => item.id !== proposal.id));",
+  ].join("\n");
+
+  const PRE_FIX_PLAN_SEED = [
+    "onSaveToPlan={(topic) => {",
+    '  setPlanChallengeTopic((topic || msg.text).replace(/[#*]/g, "").slice(0, 140));',
+    '  setActiveTab("plans");',
+  ].join("\n");
+
+  const PRE_FIX_PLAN_WRITE = [
+    "await plansCol.upsert(planData);",
+    'track("plan_generated", { title: planData.title });',
+  ].join("\n");
+
+  it("R2 — the voice tray keeps the RECORD and reports it (coach-voice)", () => {
+    expect(wiresVoiceKeep(coachTab)).toBe(true);
+    expect(coachTab).toMatch(
+      /import \{[^}]*noteKeepCommitted[^}]*\} from "\.\.\/\.\.\/lib\/conversationProposals"/,
+    );
+    // NEGATIVE CONTROL — the pre-fix handler discarded the record entirely.
+    expect(wiresVoiceKeep(PRE_FIX_VOICE_KEEP)).toBe(false);
+  });
+
+  it("R3 — both ends of the two-step conversion are wired", () => {
+    expect(armsPlanLatch(coachTab)).toBe(true);
+    expect(coachTab).toContain('from "../../lib/captureProposals"');
+    expect(consumesPlanLatch(arborCtx)).toBe(true);
+    expect(arborCtx).toContain('from "../lib/captureProposals"');
+    // NEGATIVE CONTROLS — the pre-fix seed armed nothing; the pre-fix write
+    // emitted plan_generated (with the title) and consumed no latch.
+    expect(armsPlanLatch(PRE_FIX_PLAN_SEED)).toBe(false);
+    expect(consumesPlanLatch(PRE_FIX_PLAN_WRITE)).toBe(false);
+  });
+
   it("no second analytics logger was introduced: all four go through kpiEvents", () => {
     for (const src of [gate, convo, capture]) {
       expect(src).not.toMatch(/from "\.\/analytics"/);

@@ -36,6 +36,7 @@ import { isKidModeActive } from "../lib/kidModeGate";
 import { runInstrumented } from "../hooks/useAsyncAction";
 import { trackFirstPlan, trackInviteActivated, trackPlayCompleted } from "../lib/loopEvents";
 import { trackCaptureStarted, trackCaptureSaved, trackPlanGenerated } from "../lib/kpiEvents";
+import { notePlanCreatedFromAnswer } from "../lib/captureProposals";
 import { consumeReferralCode } from "../lib/attribution";
 import { refreshEntitlement } from "../hooks/useEntitlement";
 import { takeCoachSeed } from "../lib/onboardingJourney";
@@ -1279,6 +1280,10 @@ function useArborState() {
       );
       planData.id = `plan-${Date.now()}`;
       await plansCol.upsert(planData);
+      // N1-01-R3: step two — the actionPlans row is written, so a coach answer
+      // that armed the latch becomes one plan_from_answer. A plan typed from
+      // scratch in PlansTab finds no latch and emits nothing.
+      notePlanCreatedFromAnswer();
       // N1-01-R6 (privacy): the plan TITLE is model-generated free text and
       // routinely names the child's difficulty — it never reaches the sink.
       // Counts and a surface id only, projected once in lib/kpiEvents and

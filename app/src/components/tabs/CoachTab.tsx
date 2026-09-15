@@ -54,7 +54,8 @@ import { browserOnline, classifyAiFailure, type AiFailureCopy } from "../../lib/
 // GP-14: the disclosure names WHICH approved facts and WHICH profile fields
 // travel with a question, not just how many.
 import { coachDisclosure } from "../../lib/coachDisclosure";
-import { attachProposalConflicts, normalizeConversationProposals, type ConversationProposal } from "../../lib/conversationProposals";
+import { attachProposalConflicts, noteKeepCommitted, normalizeConversationProposals, type ConversationProposal } from "../../lib/conversationProposals";
+import { markPlanSeededFromAnswer } from "../../lib/captureProposals";
 // AI-V3: recognition restart with backoff + circuit breaker lives in the pure
 // dictation loop, so the phase label is always truthful (see lib/dictationLoop).
 import { createDictationLoop, type DictationLoop } from "../../lib/dictationLoop";
@@ -1283,6 +1284,10 @@ export default function CoachTab() {
                       reviewUnavailable={memoryReviewError}
                       onSaveToPlan={(topic) => {
                         setPlanChallengeTopic((topic || msg.text).replace(/[#*]/g, "").slice(0, 140));
+                        // N1-01-R3: step one of a two-step conversion. This ARMS
+                        // the latch; ArborContext's actionPlans write consumes it.
+                        // Emitting here would measure intent, not a plan.
+                        markPlanSeededFromAnswer("coach");
                         setActiveTab("plans");
                         toast(t("coach.toast.planSeeded"), "info");
                       }}
@@ -1659,7 +1664,11 @@ export default function CoachTab() {
         onConfirm={async (proposal) => {
           setProposalBusyId(proposal.id);
           try {
-            await commitConversationProposal(proposal);
+            // N1-01-R2: the voice tray's commit is a real keep_this seam. The
+            // record's own status + commitRef decide whether it counts, so a
+            // throw above this line emits nothing (critic C8).
+            const record = await commitConversationProposal(proposal);
+            noteKeepCommitted(record, "coach-voice");
             setConversationProposals((items) => items.filter((item) => item.id !== proposal.id));
             toast(t("coach.voice.proposalSaved"), "success");
           } catch {
