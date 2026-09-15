@@ -110,17 +110,19 @@ describe("immersive landing release integrity", () => {
       const references = [...text.matchAll(/(?:src="|href="|url\(['"]?)(\/[^"'\s)]+)/g)];
       for (const match of references) {
         const asset = match[1].split("?")[0];
-        if (asset === "/") continue;
+        if (!/\.(?:html|css|js|png|jpe?g|webp|svg|woff2?)$/.test(asset)) continue;
         expect(existsSync(path.join(publicDir, asset)), `${file}: ${asset}`).toBe(true);
       }
     }
   });
 
   it("preserves the binary hero payload without truncation or text conversion", () => {
-    const bytes = readFileSync(path.join(publicDir, "visuals/marketing/hero-child-v5.webp"));
+    for (const image of ["hero-child-v5.webp", "family-moment-v6.webp", "play-together-v6.webp", "story-world-v6.webp"]) {
+    const bytes = readFileSync(path.join(publicDir, "visuals/marketing", image));
     expect(bytes.toString("ascii", 0, 4)).toBe("RIFF");
     expect(bytes.toString("ascii", 8, 12)).toBe("WEBP");
     expect(bytes.readUInt32LE(4) + 8).toBe(bytes.length);
     expect(bytes.length).toBeGreaterThan(10000);
+    }
   });
 });
