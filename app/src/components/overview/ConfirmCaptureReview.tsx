@@ -132,6 +132,20 @@ export default function ConfirmCaptureReview({
       <div className="rounded-2xl p-4" style={{ background: "var(--arbor-green-soft)", border: "1px solid var(--arbor-rule)" }} role="status">
         <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("ql.review.title")}</p>
         <p className="mt-1 text-[11px]" style={{ color: "var(--arbor-muted)" }}>{t(SOURCE_KEY[source])}</p>
+        {/* N1-08 — the provenance chip, at keep time. It states the SAME plain
+            fact the Keep toast states afterwards ("proposed by Arbor, confirmed
+            by you"), so the parent gets one consistent account of where a row
+            came from in the frame where they decide, not only after. Factual
+            provenance only — never a certainty or confidence claim (CODEX-7). */}
+        {source === "ai-draft" && (
+          <span
+            data-testid="keep-provenance-chip"
+            className="mt-2 inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold"
+            style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
+          >
+            {t("elev.keep.provenance")}
+          </span>
+        )}
         <p className="mt-3 text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("ql.review.notSaved")}</p>
       </div>
       {rows.filter((r) => r.value.trim()).map((r) => (

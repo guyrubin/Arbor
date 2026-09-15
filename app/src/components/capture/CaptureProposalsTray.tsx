@@ -1,13 +1,16 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToastOptional } from "../../context/ToastContext";
+import type { ToastAction } from "../../context/ToastContext";
 import { PASTEL } from "../ui/kit";
 import { attachProposalConflicts } from "../../lib/conversationProposals";
 import { buildTypedCaptureProposals, TYPED_TURN_PROMPT } from "../../lib/captureProposals";
 import { recordCaptureProvenance } from "../../lib/captureProvenance";
+import { undoKeptCapture, undoRefusalOf } from "../../lib/captureUndo";
 import { track } from "../../lib/analytics";
+import { trackKeepUndone } from "../../lib/kpiEvents";
 
 /**
  * AI-04 — the proposals tray for TYPED coach turns.
@@ -43,12 +46,19 @@ import { track } from "../../lib/analytics";
 export default function CaptureProposalsTray({ surface }: { surface: string }) {
   const {
     chatMessages, childProfile, behaviorLogs, milestones,
-    conversationChanges, commitConversationProposal,
+    conversationChanges, commitConversationProposal, undoConversationChange,
     requestCapture, setActiveTab, setNewLogNotes,
   } = useArbor();
   const { t, uiLang } = useLanguage();
   const toastCtx = useToastOptional();
-  const toast = (message: string, type?: "success" | "error" | "info") => toastCtx?.toast(message, type);
+  const toast = (message: string, type?: "success" | "error" | "info", action?: ToastAction) =>
+    toastCtx?.toast(message, type, action);
+
+  // N1-08: the Undo is pressed from a toast whose closure was built BEFORE the
+  // commit landed, so the audit collection must be read through a live ref —
+  // a captured array would always be one render stale.
+  const changesRef = useRef(conversationChanges);
+  useEffect(() => { changesRef.current = conversationChanges; }, [conversationChanges]);
 
   // Session-local: a proposal the parent waved away must not come back on the
   // next render. Kept out of storage on purpose — a dismissed suggestion is
@@ -79,6 +89,37 @@ export default function CaptureProposalsTray({ surface }: { surface: string }) {
 
   const summaryOf = (id: string, fallback: string) => edits[id] ?? fallback;
 
+  /**
+   * N1-08 — the single toast action. Reverses through lib/captureUndo, which
+   * transitions the audit record to "undone" (never deletes it) and is
+   * idempotent, so a double press is a no-op rather than a second audit row.
+   * The reversed proposal comes BACK into the tray, because the parent undid a
+   * keep, not the suggestion.
+   */
+  const undoActionFor = (changeId: string): ToastAction => ({
+    label: t("elev.keep.undo"),
+    onClick: () => {
+      void (async () => {
+        const outcome = await undoKeptCapture(changeId, {
+          readChanges: () => changesRef.current,
+          undoChange: undoConversationChange,
+        });
+        const refusal = undoRefusalOf(outcome);
+        if (refusal) {
+          if (refusal !== "already_undone") toast(t("elev.keep.undoFailed"), "error");
+          return;
+        }
+        setDismissed((prev) => {
+          const next = new Set(prev);
+          next.delete(changeId);
+          return next;
+        });
+        try { trackKeepUndone(surface); } catch { /* noop */ }
+        toast(t("elev.keep.undone"), "info");
+      })();
+    },
+  });
+
   const keep = async (entry: (typeof visible)[number]) => {
     const id = entry.proposal.id;
     const summary = summaryOf(id, entry.proposal.summary).trim();
@@ -108,7 +149,16 @@ export default function CaptureProposalsTray({ surface }: { surface: string }) {
       }
       setDismissed((prev) => new Set([...prev, id]));
       try { track("capture_proposal_kept", { surface, field: entry.field, turnKind: "typed" }); } catch { /* noop */ }
-      toast(t("elev.waveR.capture.kept"), "success");
+      // N1-08: the Keep toast carries its own reversal. `record.id` is the
+      // ConversationChangeRecord's id (the record spreads the proposal), which
+      // is what ArborContext.undoConversationChange looks up.
+      // BLOCK #1: a milestone confirmation is NEVER offered an undo here — its
+      // reversal path is the milestone surface's own.
+      toast(
+        t("elev.keep.kept"),
+        "success",
+        entry.proposal.target === "milestone" ? undefined : undoActionFor(record.id),
+      );
     } catch {
       toast(t("elev.waveR.capture.keepFailed"), "error");
     } finally {

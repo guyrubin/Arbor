@@ -164,6 +164,19 @@ export const en: Record<string, string> = {
   //    beside "moments and insights kept in one calm place" was the loudest
   //    object on a new parent's screen and said nothing.
   "elev.journal.week.zero": "Nothing kept this week yet — the first moment you catch lands here.",
+
+  // ── N1-08 · Undo on Keep, and the provenance wording it shares ────────────
+  //    The toast states who proposed the line and who confirmed it, then offers
+  //    the reversal in the same frame. A toast carrying an action is never
+  //    auto-dismissed (ToastContext CR-09), so this window does not silently
+  //    expire. No verdict, no count, no praise — a plain fact and a way back.
+  "elev.keep.kept": "Kept · proposed by Arbor, confirmed by you",
+  "elev.keep.undo": "Undo",
+  "elev.keep.undoAria": "Undo this keep",
+  "elev.keep.undone": "Put back. Nothing was kept.",
+  "elev.keep.undoFailed": "That could not be undone. It is still in your journal.",
+  /** The same provenance sentence as a chip at keep time (ConfirmCaptureReview). */
+  "elev.keep.provenance": "Proposed by Arbor · confirmed by you",
 };
 
 export const he: Record<string, string> = {
@@ -318,4 +331,12 @@ export const he: Record<string, string> = {
 
   // ── Builder E2 · RUN-08
   "elev.journal.week.zero": "השבוע עוד לא נשמר כלום — הרגע הראשון שתתפסו יופיע כאן.",
+
+  // ── N1-08 · ביטול שמירה
+  "elev.keep.kept": "נשמר · ארבור הציעה, אתם אישרתם",
+  "elev.keep.undo": "ביטול",
+  "elev.keep.undoAria": "ביטול השמירה הזאת",
+  "elev.keep.undone": "הוחזר. שום דבר לא נשמר.",
+  "elev.keep.undoFailed": "לא הצלחנו לבטל. הרשומה עדיין ביומן שלכם.",
+  "elev.keep.provenance": "ארבור הציעה · אתם אישרתם",
 };
