@@ -1,4 +1,4 @@
-import { readdirSync, statSync } from "node:fs";
+import { readdirSync, statSync, readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -92,5 +92,35 @@ describe("marketing deploy-path guard (CODEX-8)", () => {
       seniorish,
       "Third Age is plan-only; its pages live in docs/third-age/ as drafts and must not enter the deploy path.",
     ).toEqual([]);
+  });
+});
+
+
+describe("immersive landing release integrity", () => {
+  it("ships the current experience at the marketing entry point", () => {
+    const entry = readFileSync(path.join(marketingDir, "index.html"), "utf8");
+    const hebrew = readFileSync(path.join(marketingDir, "arbor-marketing-landing-page-he.html"), "utf8");
+    expect(entry).toBe(hebrew);
+  });
+
+  it("ships every local image, stylesheet and script referenced by the immersive pages", () => {
+    const files = ["arbor-marketing-landing-page-en.html", "arbor-marketing-landing-page-he.html", "arbor-immersive-v3.css", "arbor-imagery-v4.css"];
+    for (const file of files) {
+      const text = readFileSync(path.join(marketingDir, file), "utf8");
+      const references = [...text.matchAll(/(?:src="|href="|url\(['"]?)(\/[^"'\s)]+)/g)];
+      for (const match of references) {
+        const asset = match[1].split("?")[0];
+        if (asset === "/") continue;
+        expect(existsSync(path.join(publicDir, asset)), `${file}: ${asset}`).toBe(true);
+      }
+    }
+  });
+
+  it("preserves the binary hero payload without truncation or text conversion", () => {
+    const bytes = readFileSync(path.join(publicDir, "visuals/marketing/hero-child-v5.webp"));
+    expect(bytes.toString("ascii", 0, 4)).toBe("RIFF");
+    expect(bytes.toString("ascii", 8, 12)).toBe("WEBP");
+    expect(bytes.readUInt32LE(4) + 8).toBe(bytes.length);
+    expect(bytes.length).toBeGreaterThan(10000);
   });
 });
