@@ -288,6 +288,7 @@ import {
   trackNudgeSuppressed,
   trackPaywallView,
   trackPlanFromAnswer,
+  trackPlanGenerated,
   trackSessionClose,
 } from "./kpiEvents";
 
@@ -317,6 +318,14 @@ describe("N1-00 — the thirteen wave-N1 helpers: event name + exact key set", (
       fire: () => trackPlanFromAnswer("coach"),
       event: "plan_from_answer",
       keys: ["surface"],
+    },
+    {
+      // N1-01-R6: the pre-existing name, re-homed here so it cannot ship a
+      // model-generated plan title again. A count and a surface id.
+      name: "plan_generated",
+      fire: () => trackPlanGenerated({ steps: 9, source: "plans" }),
+      event: "plan_generated",
+      keys: ["source", "steps"],
     },
     {
       name: "kid_session_end",
@@ -385,6 +394,7 @@ describe("N1-00 — the thirteen wave-N1 helpers: event name + exact key set", (
       "keep_this",
       "keep_undone",
       "plan_from_answer",
+      "plan_generated",
       "kid_session_end",
       "session_close",
       "paywall_view",

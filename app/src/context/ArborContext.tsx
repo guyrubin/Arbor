@@ -35,7 +35,7 @@ import { track } from "../lib/analytics";
 import { isKidModeActive } from "../lib/kidModeGate";
 import { runInstrumented } from "../hooks/useAsyncAction";
 import { trackFirstPlan, trackInviteActivated, trackPlayCompleted } from "../lib/loopEvents";
-import { trackCaptureStarted, trackCaptureSaved } from "../lib/kpiEvents";
+import { trackCaptureStarted, trackCaptureSaved, trackPlanGenerated } from "../lib/kpiEvents";
 import { consumeReferralCode } from "../lib/attribution";
 import { refreshEntitlement } from "../hooks/useEntitlement";
 import { takeCoachSeed } from "../lib/onboardingJourney";
@@ -1279,8 +1279,16 @@ function useArborState() {
       );
       planData.id = `plan-${Date.now()}`;
       await plansCol.upsert(planData);
-      track("plan_generated", { title: planData.title });
-      trackFirstPlan({ title: planData.title }); // activation: only the family's first plan
+      // N1-01-R6 (privacy): the plan TITLE is model-generated free text and
+      // routinely names the child's difficulty — it never reaches the sink.
+      // Counts and a surface id only, projected once in lib/kpiEvents and
+      // reused by first_plan so the two events cannot drift apart.
+      const planSteps = (planData.phases ?? []).reduce(
+        (total, phase) => total + (phase?.steps?.length ?? 0),
+        0,
+      );
+      const planProps = trackPlanGenerated({ steps: planSteps, source: "plans" });
+      trackFirstPlan(planProps); // activation: only the family's first plan
       void maybeActivateReferral(); // mk-p0-2: a referred parent's activation closes the loop
       toast(t("ctx.toast.planWoven", { title: planData.title }), "success");
     } catch (err: any) {

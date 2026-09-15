@@ -49,6 +49,8 @@ export const KpiEvent = {
   KeepUndone: "keep_undone",
   /** A coach answer became an actionPlans row. */
   PlanFromAnswer: "plan_from_answer",
+  /** An actionPlans row was generated. PRE-EXISTING NAME — never rename. */
+  PlanGenerated: "plan_generated",
   /** Kid Mode closed — two integers, child-generated. */
   KidSessionEnd: "kid_session_end",
   /** The browser session ended — session_open's closing partner. */
@@ -279,6 +281,30 @@ export function trackKeepUndone(surface: string): void {
  */
 export function trackPlanFromAnswer(surface: string): void {
   track(KpiEvent.PlanFromAnswer, { surface: shortId(surface) });
+}
+
+/**
+ * An actionPlans row was generated (N1-01-R6 — PRIVACY).
+ *
+ * `plan_generated` predates this file and shipped with `{ title: planData.title }`:
+ * a MODEL-GENERATED plan title, free text, which routinely names the child's
+ * difficulty ("Calming Maya's bedtime meltdowns"). That is the exact class of
+ * prop this module exists to prevent, and it reached the sink twice — the same
+ * object was handed to `trackFirstPlan` one line below.
+ *
+ * The replacement is a COUNT and a surface id. The steps count says how much
+ * plan the model produced (the only thing the title was ever read for at a
+ * dashboard); `source` says which surface generated it. The sanitised props are
+ * RETURNED so the `first_plan` loop event reports the identical allow-listed
+ * object rather than re-deriving one — one projection, two events.
+ */
+export function trackPlanGenerated(args: { steps: number; source: string }): {
+  steps: number;
+  source: string;
+} {
+  const props = { steps: count(args.steps), source: shortId(args.source) };
+  track(KpiEvent.PlanGenerated, props);
+  return props;
 }
 
 /**
