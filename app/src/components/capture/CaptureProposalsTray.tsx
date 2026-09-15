@@ -6,7 +6,7 @@ import { useToastOptional } from "../../context/ToastContext";
 import type { ToastAction } from "../../context/ToastContext";
 import { PASTEL } from "../ui/kit";
 import { attachProposalConflicts } from "../../lib/conversationProposals";
-import { buildTypedCaptureProposals, TYPED_TURN_PROMPT } from "../../lib/captureProposals";
+import { buildTypedCaptureProposals, noteTypedKeepCommitted, TYPED_TURN_PROMPT } from "../../lib/captureProposals";
 import { recordCaptureProvenance } from "../../lib/captureProvenance";
 import { undoKeptCapture, undoRefusalOf } from "../../lib/captureUndo";
 import { track } from "../../lib/analytics";
@@ -133,6 +133,12 @@ export default function CaptureProposalsTray({ surface }: { surface: string }) {
       // printed into reports. Committing a typed keep without it would tell them
       // they said this out loud.
       const record = await commitConversationProposal({ ...entry.proposal, summary }, "typed");
+      // N1-01 (declared cross-builder residue, WAVE-N1 §3): `keep_this` fires
+      // where the row is COMMITTED TO THE RECORD, never on a bar press (critic
+      // C8). The SAME `surface` id is passed here and to `trackKeepUndone`
+      // below, so the T+7 read can pair every `keep_undone` with its
+      // `keep_this` in one uid's stream.
+      noteTypedKeepCommitted(record, entry, surface);
       const logId = record.commitRef?.id;
       if (logId) {
         recordCaptureProvenance(childProfile.id, {

@@ -208,6 +208,14 @@ describe("N1-08 — the Keep toast carries the reversal, in both trays", () => {
     expect(voiceTray).toContain("confirmThenOfferUndo");
   });
 
+  it("keep_this and keep_undone carry the SAME surface id, so the pair is readable", () => {
+    // N1-01 x N1-08: the T+7 read is "every keep_undone has a preceding
+    // keep_this in the same uid's stream". That only works if both name the
+    // same surface — the typed tray's `surface` prop, passed to both.
+    expect(typedTray).toMatch(/noteTypedKeepCommitted\(record, entry, surface\)/);
+    expect(typedTray).toMatch(/trackKeepUndone\(surface\)/);
+  });
+
   it("the reversal emits keep_undone through the ONE analytics seam (A's kpiEvents helper)", () => {
     for (const tray of [typedTray, voiceTray]) {
       expect(tray).toMatch(/import \{ trackKeepUndone \} from "\.\.\/\.\.\/lib\/kpiEvents"/);
