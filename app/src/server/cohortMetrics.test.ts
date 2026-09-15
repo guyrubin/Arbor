@@ -38,7 +38,7 @@ import {
 // The lead's command. Imported so its printing laws are pinned by the same
 // suite that pins the route's — a report whose script and server disagree is
 // two dashboards, which is the failure mode this item exists to close.
-// @ts-expect-error — a plain .mjs script with no type declarations.
+// A plain .mjs script with no type declarations; `allowJs` resolves it.
 import * as reportScript from "../../scripts/cohort-report.mjs";
 
 /**

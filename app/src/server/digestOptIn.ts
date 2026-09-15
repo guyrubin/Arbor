@@ -205,6 +205,25 @@ export type DigestSendDecision =
   | { send: true; to: string; language: DigestLanguage }
   | { send: false; reason: DigestSendRefusal };
 
+/* ── narrowing the boolean-discriminated unions (N1-06-F2) ────────────────
+ * `app/tsconfig.json` does not set `strict`, so `strictNullChecks` is OFF and
+ * TypeScript will NOT narrow a union on a BOOLEAN-literal discriminant:
+ * `if (!decision.send) … decision.reason` compiles as a TS2339 error even
+ * though the union is exhaustive. The fix is a user-defined type guard, which
+ * narrows in BOTH branches regardless of the strictness flags — the same shape
+ * N1-06 used in `da61743d`. Turning `strictNullChecks` on project-wide is a
+ * large diff and deliberately not this wave's business (FOLLOW-UPS-N1 N1-06-F2).
+ *
+ * These are exported because the route and the guard suite must narrow the
+ * SAME way; a second, local predicate is how the two drift apart. */
+
+/** True when the decision is a refusal — narrows to the `{ send: false }` arm. */
+export function isDigestSendRefused(
+  decision: DigestSendDecision,
+): decision is Extract<DigestSendDecision, { send: false }> {
+  return decision.send === false;
+}
+
 const DAY_MS = 86_400_000;
 
 /**
@@ -250,6 +269,14 @@ export function decideDigestSend(input: {
 export type DigestOptInResult =
   | { optedIn: true; row: DigestOptInRow }
   | { optedIn: false; reason: "unverified_address" };
+
+/** True when the opt-in was refused — narrows to the `{ optedIn: false }` arm.
+ *  Same reason as `isDigestSendRefused` above (N1-06-F2). */
+export function isDigestOptInRefused(
+  result: DigestOptInResult,
+): result is Extract<DigestOptInResult, { optedIn: false }> {
+  return result.optedIn === false;
+}
 
 /**
  * Build the row for an opt-in. The address argument is a RESOLVED verified

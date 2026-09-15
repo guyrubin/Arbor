@@ -23,6 +23,7 @@ import {
   DIGEST_SEND_MIN_INTERVAL_DAYS,
   buildDigestOptIn,
   decideDigestSend,
+  isDigestSendRefused,
   NullDigestOptInStore,
   type DigestOptInRow,
   type DigestOptInStore,
@@ -64,7 +65,9 @@ const spySender = () => {
 /** Drive the decision exactly as the route does, then only send if allowed. */
 const attemptSend = async (input: Parameters<typeof decideDigestSend>[0], sender: ReturnType<typeof spySender>) => {
   const decision = decideDigestSend(input);
-  if (!decision.send) return { sent: false, reason: decision.reason };
+  // N1-06-F2: narrow through the module's own exported guard, so the suite and
+  // the route cannot disagree about what a refusal is.
+  if (isDigestSendRefused(decision)) return { sent: false, reason: decision.reason };
   await sender.send({ to: decision.to });
   return { sent: true };
 };
@@ -289,7 +292,10 @@ describe("buildDigestOptIn — a row only ever holds a verified address", () => 
 
 describe("NullDigestOptInStore — local/sandbox never 500s and never remembers", () => {
   it("reads as no consent and swallows writes", async () => {
-    const store = new NullDigestOptInStore();
+    // Held at the INTERFACE, which is how the route holds it: the null store
+    // declares its unused parameters away (house style, cf. NullEntitlementStore),
+    // so the concrete class type would refuse the arguments the route passes.
+    const store: DigestOptInStore = new NullDigestOptInStore();
     await store.put("u1", row());
     expect(await store.get("u1")).toBeNull();
     await expect(store.markSent("u1", iso(NOW))).resolves.toBeUndefined();

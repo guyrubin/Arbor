@@ -50,6 +50,8 @@ import {
   createDigestOptInStore,
   decideDigestSend,
   firebaseVerifiedEmailResolver,
+  isDigestOptInRefused,
+  isDigestSendRefused,
   type DigestOptInStore,
   type VerifiedEmailResolver,
 } from "../server/digestOptIn.js";
@@ -3265,7 +3267,9 @@ tryThisWeek (ONE concrete, doable suggestion grounded in the stats). Return only
         now: new Date(),
         previous,
       });
-      if (!result.optedIn) {
+      // N1-06-F2: a boolean-literal discriminant does not narrow without
+      // strictNullChecks — the exported type guard does, in both branches.
+      if (isDigestOptInRefused(result)) {
         res.json({ optedIn: false, reason: result.reason });
         return;
       }
@@ -3313,7 +3317,9 @@ tryThisWeek (ONE concrete, doable suggestion grounded in the stats). Return only
         providerEnabled: resolveEmailProvider().enabled,
         now: Date.now(),
       });
-      if (!decision.send) {
+      // N1-06-F2: same narrowing guard; below this line the decision is the
+      // send arm, so decision.to and decision.language are typed.
+      if (isDigestSendRefused(decision)) {
         res.json({ sent: false, reason: decision.reason });
         return;
       }
