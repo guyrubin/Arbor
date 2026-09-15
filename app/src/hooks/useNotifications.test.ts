@@ -199,7 +199,7 @@ describe("TJB-03 / N1-06 — useNotifications enforces the contract through the 
 
   it("routes the delivery decision through planNudge on the bell channel", () => {
     expect(src).toMatch(/planNudge\(\{[\s\S]*?channel: "bell"[\s\S]*?\}\)/);
-    expect(src).toMatch(/const nudge = plan\.deliver \? plan\.candidate : null/);
+    expect(src).toMatch(/const nudge = isDeliveredNudge\(plan\) \? plan\.candidate : null/);
     expect(src).toMatch(/shownToday,\s*\},\s*prefs,\s*\)/);
     expect(src).toMatch(/recordNudgeShown\(nudge\.kind\)/);
   });
@@ -251,10 +251,13 @@ describe("N1-06 — routing the bell through planNudge changes no row and no bad
     return plan.deliver ? plan.candidate : null;
   };
 
-  const prefsWith = (over: Partial<JitaiPrefs> = {}): JitaiPrefs => ({
+  const prefsWith = ({
+    types,
+    ...rest
+  }: Partial<Omit<JitaiPrefs, "types">> & { types?: Partial<JitaiPrefs["types"]> } = {}): JitaiPrefs => ({
     ...DEFAULT_PREFS,
-    types: { ...DEFAULT_PREFS.types, ...(over.types ?? {}) },
-    ...over,
+    ...rest,
+    types: { ...DEFAULT_PREFS.types, ...(types ?? {}) },
   });
 
   const matrix: Array<[string, JitaiPrefs, string[]]> = [

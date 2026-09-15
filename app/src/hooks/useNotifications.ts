@@ -23,7 +23,7 @@ import { useArbor } from "../context/ArborContext";
 import { predictRhythm } from "../rhythm/predict";
 import type { ActiveTab } from "../context/ArborContext";
 import { loadPrefs, shownNudgesToday, recordNudgeShown } from "../growth/jitaiPrefs";
-import { planNudge } from "../growth/nudgeSchedule";
+import { planNudge, isDeliveredNudge, isSuppressedNudge } from "../growth/nudgeSchedule";
 import { trackNudgeScheduled, trackNudgeSuppressed } from "../lib/kpiEvents";
 
 export type NotificationKind = "monitoring" | "nudge";
@@ -147,7 +147,7 @@ export function useNotifications(): {
   // (which interpolates the child's first name) exactly as it did before —
   // `plan.template` is the name-free payload reserved for channels that leave
   // the device, and the bell must not use it.
-  const nudge = plan.deliver ? plan.candidate : null;
+  const nudge = isDeliveredNudge(plan) ? plan.candidate : null;
 
   // The contract's audit trail. Emitted once per distinct outcome per mount —
   // a re-render with the same decision is not a second decision. `no_candidate`
@@ -155,14 +155,14 @@ export function useNotifications(): {
   // a suppression, and logging it would drown the real signal.
   const lastOutcome = useRef<string | null>(null);
   useEffect(() => {
-    const key = plan.deliver
-      ? `deliver:${plan.kind}`
-      : `suppress:${plan.reason}:${plan.kind ?? ""}`;
+    const key = isSuppressedNudge(plan)
+      ? `suppress:${plan.reason}:${plan.kind ?? ""}`
+      : `deliver:${plan.kind}`;
     if (lastOutcome.current === key) return;
     lastOutcome.current = key;
-    if (plan.deliver) {
+    if (isDeliveredNudge(plan)) {
       trackNudgeScheduled({ kind: plan.kind, channel: plan.channel });
-    } else if (plan.reason !== "no_candidate") {
+    } else if (isSuppressedNudge(plan) && plan.reason !== "no_candidate") {
       trackNudgeSuppressed({ kind: plan.kind ?? "none", reason: plan.reason });
     }
   }, [plan]);

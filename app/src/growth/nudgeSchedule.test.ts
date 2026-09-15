@@ -14,7 +14,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { planNudge, NUDGE_DAILY_CEILING } from "./nudgeSchedule";
+import { planNudge, isDeliveredNudge, NUDGE_DAILY_CEILING } from "./nudgeSchedule";
 import { DEFAULT_PREFS, type JitaiPrefs } from "./jitaiPrefs";
 import { NUDGE_TEMPLATES } from "./nudgeTemplates";
 import type { Nudge } from "../lib/jitai";
@@ -26,10 +26,13 @@ import {
   LOCAL_NOTIFICATIONS_PLUGIN_ID,
 } from "../lib/localNotifications";
 
-const prefsWith = (over: Partial<JitaiPrefs> = {}): JitaiPrefs => ({
+const prefsWith = ({
+  types,
+  ...rest
+}: Partial<Omit<JitaiPrefs, "types">> & { types?: Partial<JitaiPrefs["types"]> } = {}): JitaiPrefs => ({
   ...DEFAULT_PREFS,
-  types: { ...DEFAULT_PREFS.types, ...(over.types ?? {}) },
-  ...over,
+  ...rest,
+  types: { ...DEFAULT_PREFS.types, ...(types ?? {}) },
 });
 
 /** A candidate of a given kind. Built by hand so the contract is tested, not
@@ -242,7 +245,7 @@ describe("N1-06 — a delivered plan carries the name-free template alongside th
       channel: "local",
     });
     expect(plan.deliver).toBe(true);
-    if (!plan.deliver) return;
+    if (!isDeliveredNudge(plan)) return;
     expect(plan.template).toBe(NUDGE_TEMPLATES.log);
     expect("vars" in plan.template).toBe(false);
     expect(plan.channel).toBe("local");
@@ -334,7 +337,7 @@ describe("N1-06 — the local-notification adapter fails closed and imports noth
   });
 
   it("native WITH a loader schedules exactly the strings it was handed — and nothing else", async () => {
-    const schedule = vi.fn(async () => undefined);
+    const schedule = vi.fn(async (_options: { notifications: Array<Record<string, unknown>> }) => undefined);
     configureLocalNotifications({
       isNative: () => true,
       loader: async () => ({
@@ -355,7 +358,7 @@ describe("N1-06 — the local-notification adapter fails closed and imports noth
   });
 
   it("a denied permission does not schedule, and a throwing plugin is caught", async () => {
-    const schedule = vi.fn(async () => undefined);
+    const schedule = vi.fn(async (_options: { notifications: Array<Record<string, unknown>> }) => undefined);
     configureLocalNotifications({
       isNative: () => true,
       loader: async () => ({

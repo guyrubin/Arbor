@@ -89,6 +89,22 @@ export interface NudgeSuppression {
 export type NudgePlan = NudgeDelivery | NudgeSuppression;
 
 /**
+ * Narrowing helpers — NOT ceremony. `app/tsconfig.json` does not set `strict`,
+ * so `strictNullChecks` is off, and without it TypeScript will not narrow a
+ * union on a BOOLEAN-literal discriminant: `plan.deliver ? plan.template :
+ * plan.reason` is a compile error (TS2339) even though the union is written
+ * correctly. A user-defined type guard narrows in every mode, so every consumer
+ * uses these instead of testing `.deliver` inline.
+ */
+export function isDeliveredNudge(plan: NudgePlan): plan is NudgeDelivery {
+  return plan.deliver === true;
+}
+
+export function isSuppressedNudge(plan: NudgePlan): plan is NudgeSuppression {
+  return plan.deliver === false;
+}
+
+/**
  * The ONE delivery decision. Every channel — the in-app bell today, a local
  * notification tomorrow, a server push after that — passes through here.
  *
