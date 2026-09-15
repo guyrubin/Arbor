@@ -10,6 +10,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useCheckout } from "../../hooks/useCheckout";
 import { useNativePrices } from "../../hooks/useNativePrices";
 import { isNativePlatform, nativePlatform } from "../../lib/runtime";
+import { trackCheckoutStart, trackPaywallView } from "../../lib/kpiEvents";
 import type { PaidPlan } from "../../lib/pricing";
 import { fmtStoreCurrency } from "./PlanPrices";
 import { LegalLinks } from "./LegalLinks";
@@ -45,6 +46,18 @@ export default function PaywallModal() {
   useEffect(() => {
     if (paywall.open) setSelected(paywall.suggestedPlan ?? "plus");
   }, [paywall.open, paywall.suggestedPlan]);
+
+  /* N1-02 — the conversion moment reported that it happened nowhere. ONE event
+   * per OPEN, not per render: the dep array is `[paywall.open]` alone, so a
+   * price arriving from the store, a cadence toggle or a re-select cannot
+   * re-fire it (the ErrorState mount-once pattern, pinned in kpiEvents.test).
+   * `reason` is the 402's capability id — never its message, and never a price
+   * or an email, which is why the props are built here and not spread. */
+  useEffect(() => {
+    if (!paywall.open) return;
+    trackPaywallView({ plan: paywall.suggestedPlan ?? "plus", reason: paywall.feature ?? "unknown" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paywall.open]);
 
   const rows = buildPlanRows({ isNative: isNativePlatform, nativePrices, cadence, fmtCurrency: fmtStoreCurrency });
   const cta = paywallCta({ rows, selected, cadence, isNative: isNativePlatform, platform: nativePlatform, t });
@@ -154,7 +167,13 @@ export default function PaywallModal() {
             the store answered with a price (loading line shown in its place). */}
         <button
           type="button"
-          onClick={() => void startCheckout(selected, cadence)}
+          onClick={() => {
+            // The launch, reported before the platform gate runs: a parent who
+            // reaches the store sheet and cancels is still a started checkout,
+            // and a funnel that drops them reads better than it performed.
+            trackCheckoutStart({ plan: selected, channel: isNativePlatform ? "native" : "web" });
+            void startCheckout(selected, cadence);
+          }}
           disabled={busy || cta.disabled}
           aria-busy={cta.loading || busy}
           data-testid="paywall-cta"

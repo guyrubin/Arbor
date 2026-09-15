@@ -184,6 +184,22 @@ export function shortId(value: unknown): string {
   return typeof value === "string" && SHORT_ID.test(value) ? value : UNKNOWN_ID;
 }
 
+/**
+ * A server-issued CAPABILITY id (`advancedPlans`, `coach_unlimited`,
+ * `maxChildren`, …). Same law as shortId, one character class wider, because
+ * these ids are camelCase and the set is open — the server can name a new
+ * capability without a client release, and degrading every new one to "other"
+ * would make the paywall's reason column useless within a month.
+ *
+ * What it still refuses is the thing the item forbids: the 402's MESSAGE. Copy
+ * carries spaces and punctuation and cannot pass, in any language.
+ */
+export function capabilityId(value: unknown): string {
+  return typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9_.-]{0,31}$/.test(value)
+    ? value
+    : UNKNOWN_ID;
+}
+
 /** Projects a caller's value to a member of an allow-list, or to the sentinel. */
 function oneOf<T extends string>(allowed: readonly T[], value: unknown): T | typeof UNKNOWN_ID {
   return typeof value === "string" && (allowed as readonly string[]).includes(value)
@@ -290,7 +306,7 @@ export function trackSessionClose(seconds: number): void {
  * 402 capability id — never its message, never a price, never an email.
  */
 export function trackPaywallView(args: { plan: string; reason: string }): void {
-  track(KpiEvent.PaywallView, { plan: shortId(args.plan), reason: shortId(args.reason) });
+  track(KpiEvent.PaywallView, { plan: shortId(args.plan), reason: capabilityId(args.reason) });
 }
 
 /** Checkout was launched (N1-02). No amount, no currency, no customer id. */

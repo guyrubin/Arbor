@@ -11,12 +11,20 @@
  */
 import type { EntitlementInfo } from "./api";
 import { trackTrialStart, trackPaid } from "./loopEvents";
+import { trackEntitlementActive } from "./kpiEvents";
 
 const LS_LAST_BILLED = "arbor.lastBilledPlan";
 
 /** Stable signature of the billing state we dedup against. */
 function stateKey(plan: string, status: string): string {
   return `${plan}:${status}`;
+}
+
+/** The plan half of a persisted state key. "unknown" before the first read. */
+function planOf(key: string | null): string {
+  if (!key) return "unknown";
+  const plan = key.split(":")[0];
+  return plan || "unknown";
 }
 
 /**
@@ -62,6 +70,22 @@ export function recordBillingTransition(e: EntitlementInfo): void {
     trackTrialStart(e.plan);
   } else if (real && status === "active") {
     trackPaid(e.plan);
+  }
+
+  /* N1-02 — the funnel's last stage, and the one that is easiest to inflate.
+   *
+   * Critic C13: firing on every READ of the entitlement would make the one real
+   * purchase unreadable, so this fires on a TIER CHANGE only — the state-key
+   * dedup above already refuses an unchanged state, and the plan comparison
+   * below refuses an in_trial → active move on the SAME plan, which is one
+   * subscription maturing rather than a second family paying.
+   *
+   * `from` is the previous tier id, which is what makes the stage answerable:
+   * free → plus is an acquisition, plus → family is an expansion, and they are
+   * not the same number. No price, no currency, no customer id. */
+  const previousPlan = planOf(prev);
+  if (real && (status === "active" || status === "in_trial") && previousPlan !== e.plan) {
+    trackEntitlementActive({ plan: e.plan, from: previousPlan });
   }
 
   // Always persist the latest state (even non-paid) so a later upgrade is seen

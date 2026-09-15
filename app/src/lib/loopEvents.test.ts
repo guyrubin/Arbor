@@ -61,6 +61,10 @@ describe("invite funnel (export-only, frozen contract)", () => {
   });
 });
 
+/** Calls for ONE event name — the pay funnel now shares its transitions with
+ *  N1-02's `entitlement_active`, so a blanket call count is not the assertion. */
+const callsFor = (name: string) => track.mock.calls.filter((c) => c[0] === name);
+
 describe("recordBillingTransition (pay funnel)", () => {
   const base: EntitlementInfo = {
     plan: "free",
@@ -75,19 +79,20 @@ describe("recordBillingTransition (pay funnel)", () => {
     const { recordBillingTransition } = await import("./billingTransition");
     const paid: EntitlementInfo = { ...base, plan: "plus", status: "active", provider: "stripe" };
     recordBillingTransition(paid);
-    expect(track).toHaveBeenCalledTimes(1);
+    expect(callsFor("paid")).toHaveLength(1);
     expect(track).toHaveBeenCalledWith("paid", { tier: "plus" });
 
     // Re-evaluating the same state (e.g. reload of ?billing=success) must not re-fire.
     recordBillingTransition(paid);
-    expect(track).toHaveBeenCalledTimes(1);
+    expect(callsFor("paid")).toHaveLength(1);
+    expect(callsFor("entitlement_active")).toHaveLength(1);
   });
 
   it("fires `trial_start` once when crossing into in_trial on a real paid plan", async () => {
     const { recordBillingTransition } = await import("./billingTransition");
     const trial: EntitlementInfo = { ...base, plan: "plus", status: "in_trial", provider: "stripe" };
     recordBillingTransition(trial);
-    expect(track).toHaveBeenCalledTimes(1);
+    expect(callsFor("trial_start")).toHaveLength(1);
     expect(track).toHaveBeenCalledWith("trial_start", { tier: "plus" });
   });
 
@@ -115,6 +120,10 @@ describe("recordBillingTransition (pay funnel)", () => {
     expect(track).toHaveBeenCalledWith("trial_start", { tier: "plus" });
     recordBillingTransition({ ...base, plan: "plus", status: "active", provider: "stripe" });
     expect(track).toHaveBeenCalledWith("paid", { tier: "plus" });
-    expect(track).toHaveBeenCalledTimes(2);
+    expect(callsFor("trial_start")).toHaveLength(1);
+    expect(callsFor("paid")).toHaveLength(1);
+    // One subscription, one family: the trial and its maturation are not two
+    // entitlements becoming active (critic C13).
+    expect(callsFor("entitlement_active")).toHaveLength(1);
   });
 });
