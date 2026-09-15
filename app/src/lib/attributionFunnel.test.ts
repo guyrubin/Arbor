@@ -11,6 +11,7 @@ const SAMPLE: FunnelEventDoc[] = [
   ev("paid", { source: "instagram", market: "il", utm_campaign: "launch_il" }),
   ev("install", { source: "tiktok", market: "intl", utm_campaign: "evergreen" }),
   ev("first_plan", { source: "tiktok", market: "intl", utm_campaign: "evergreen" }),
+  ev("activated", { source: "instagram", market: "il", utm_campaign: "launch_il" }),
   ev("app_open", { source: "instagram", market: "il" }), // non-funnel — ignored
   ev("install", {}), // missing props → "unknown" group
 ];
@@ -19,16 +20,16 @@ describe("aggregateFunnel", () => {
   it("counts install/activation/paid per source", () => {
     const rows = aggregateFunnel(SAMPLE, "source", "__all__");
     const ig = rows.find((r) => r.key === "instagram");
-    expect(ig).toEqual({ key: "instagram", install: 2, first_plan: 1, paid: 1 });
+    expect(ig).toEqual({ key: "instagram", install: 2, first_plan: 1, activated: 1, paid: 1 });
     const tk = rows.find((r) => r.key === "tiktok");
-    expect(tk).toEqual({ key: "tiktok", install: 1, first_plan: 1, paid: 0 });
+    expect(tk).toEqual({ key: "tiktok", install: 1, first_plan: 1, activated: 0, paid: 0 });
   });
 
   it("ignores non-funnel events", () => {
     const rows = aggregateFunnel(SAMPLE, "source", "__all__");
-    const total = rows.reduce((n, r) => n + r.install + r.first_plan + r.paid, 0);
-    // 7 funnel rows in SAMPLE (app_open excluded)
-    expect(total).toBe(7);
+    const total = rows.reduce((n, r) => n + r.install + r.first_plan + r.activated + r.paid, 0);
+    // 8 funnel rows in SAMPLE (app_open excluded)
+    expect(total).toBe(8);
   });
 
   it("buckets missing group props under 'unknown'", () => {
@@ -38,14 +39,14 @@ describe("aggregateFunnel", () => {
 
   it("groups by market", () => {
     const rows = aggregateFunnel(SAMPLE, "market", "__all__");
-    expect(rows.find((r) => r.key === "il")).toEqual({ key: "il", install: 2, first_plan: 1, paid: 1 });
+    expect(rows.find((r) => r.key === "il")).toEqual({ key: "il", install: 2, first_plan: 1, activated: 1, paid: 1 });
     expect(rows.find((r) => r.key === "intl")?.install).toBe(1);
   });
 
   it("filters by campaign", () => {
     const rows = aggregateFunnel(SAMPLE, "source", "launch_il");
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toEqual({ key: "instagram", install: 2, first_plan: 1, paid: 1 });
+    expect(rows[0]).toEqual({ key: "instagram", install: 2, first_plan: 1, activated: 1, paid: 1 });
   });
 
   it("sorts by install descending", () => {
@@ -75,6 +76,8 @@ describe("UTM scheme constants", () => {
     expect(UTM_KEYS).toEqual(["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"]);
   });
   it("FUNNEL_EVENTS match the loop event names the dashboard reads", () => {
-    expect(FUNNEL_EVENTS).toEqual(["install", "first_plan", "paid"]);
+    // N1-03: `activated` is a real stage now — the funnel could not tell a
+    // family that came BACK from one that finished setup (lib/activation.ts).
+    expect(FUNNEL_EVENTS).toEqual(["install", "first_plan", "activated", "paid"]);
   });
 });

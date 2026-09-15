@@ -6,8 +6,12 @@
  * (install → activation → paid), filterable by campaign. No I/O, no React.
  */
 
-/** Funnel stages we measure, in order. Names must match lib/loopEvents. */
-export const FUNNEL_EVENTS = ["install", "first_plan", "paid"] as const;
+/** Funnel stages we measure, in order. Names must match lib/loopEvents.
+ *  N1-03: `activated` is the stage this funnel never had — install and
+ *  first_plan can both happen inside the onboarding session, so the funnel
+ *  could not distinguish a family that came BACK from one that finished setup.
+ *  Its definition lives in lib/activation.ts and nowhere else. */
+export const FUNNEL_EVENTS = ["install", "first_plan", "activated", "paid"] as const;
 export type FunnelEvent = (typeof FUNNEL_EVENTS)[number];
 
 export type FunnelEventDoc = { event: string; props?: Record<string, unknown> };
@@ -18,7 +22,7 @@ const isFunnelEvent = (e: string): e is FunnelEvent =>
   (FUNNEL_EVENTS as readonly string[]).includes(e);
 
 function emptyCounts(): Record<FunnelEvent, number> {
-  return { install: 0, first_plan: 0, paid: 0 };
+  return { install: 0, first_plan: 0, activated: 0, paid: 0 };
 }
 
 /** Group → funnel counts, grouped by `source` or `market`, filtered by campaign. */
