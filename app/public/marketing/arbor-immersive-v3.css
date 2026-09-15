@@ -6,3 +6,7 @@
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{animation:none!important;transition:none!important}.hero-app{transform:none!important}.gallery-card:hover>img{transform:none}.button:hover{transform:none}}
 /* Keep checklist controls aligned and reviewed summaries readable. */
 .demo-panel label.demo-row{display:flex}.demo-status{white-space:pre-line}.demo-panel input:focus-visible{outline:3px solid #049de0;outline-offset:3px}
+/* Visual QA: preserve the headline phrase and keep faces clear of the preview. */
+.hero-copy h1 em{display:block}
+[dir=rtl] .hero-photo img{transform:scaleX(-1)}
+@media(min-width:851px){.hero-photo{inset:0 105px 0 13%;mask-image:linear-gradient(to right,transparent,#000 22%,#000 89%,transparent)}[dir=rtl] .hero-photo{inset:0 13% 0 105px;mask-image:linear-gradient(to left,transparent,#000 22%,#000 89%,transparent)}}
