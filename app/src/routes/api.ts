@@ -40,6 +40,12 @@ import { buildConsent, type ConsentPurpose, type ConsentStore } from "../sharing
 import { computeWeeklyDigestStats, fallbackDigestNarrative, buildDigestEmail } from "../server/digest.js";
 import { resolveEmailProvider, sendWeeklyDigestEmail, type DigestEmailMessage } from "../server/emailProvider.js";
 import {
+  FUNNEL_CHAINS,
+  buildCohortReport,
+  createCohortMetricsStore,
+  type CohortMetricsStore,
+} from "../server/cohortMetrics.js";
+import {
   buildDigestOptIn,
   createDigestOptInStore,
   decideDigestSend,
@@ -81,6 +87,9 @@ type ApiDeps = {
   /** CARE-2: read seam for the recipient shared view (injectable for tests);
    *  defaults to the Firestore/local source derived from config. */
   sharedChildSource?: SharedChildRecordSource;
+  /** N1-05: the founder-side cohort reader (injectable for tests); defaults
+   *  to the Firestore/null store derived from config. */
+  cohortMetricsStore?: CohortMetricsStore;
   /** N1-07: server-side weekly-digest opt-in rows (injectable for tests);
    *  defaults to the Firestore/null store derived from config. */
   digestOptInStore?: DigestOptInStore;
@@ -288,12 +297,13 @@ const voiceSafetyFallback = (language: unknown) =>
 /** Spoken when the model produced an empty reply on /voice (pre-cadence literal, unchanged). */
 const VOICE_EMPTY_REPLY_FALLBACK = "Let's take this one step at a time — tell me a little more about what's happening.";
 
-export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, sharedChildSource, digestOptInStore, verifiedEmailResolver, digestEmailSender, aiCapabilityRegistry }: ApiDeps) => {
+export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, sharedChildSource, cohortMetricsStore, digestOptInStore, verifiedEmailResolver, digestEmailSender, aiCapabilityRegistry }: ApiDeps) => {
   const router = express.Router();
   // CARE-2: the recipient shared-view read seam (Firestore in prod, null locally).
   const sharedSource = sharedChildSource ?? createSharedChildRecordSource(config, memoryStore);
   // N1-07: the weekly-digest mail wire. Defaults here rather than in createApp
   // so the seams stay injectable for the guard without a second wiring site.
+  const cohortMetrics = cohortMetricsStore ?? createCohortMetricsStore(config);
   const digestOptIns = digestOptInStore ?? createDigestOptInStore(config);
   const resolveVerifiedEmail = verifiedEmailResolver ?? firebaseVerifiedEmailResolver;
   const sendDigestEmail = digestEmailSender ?? ((msg: DigestEmailMessage) => sendWeeklyDigestEmail(msg));
@@ -3112,6 +3122,31 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
     } catch (error: any) {
       logger.error("Arbor Admin Overview Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to load admin overview", details: error.message });
+    }
+  });
+
+  // N1-05: the cohort read lane. The founder dashboard could report users /
+  // paying / usageToday and nothing about whether a family came back, because
+  // no cross-user reader existed at all. Same gate as /admin/overview: 403 for
+  // everyone else, and a non-admin request reads NOTHING (the store is not
+  // touched before isAdmin). Inputs are retentionRollups documents and event
+  // NAMES — never users/{uid}/children/**.
+  router.get("/admin/cohorts", async (req, res) => {
+    const actor = actorOf(req);
+    if (!isAdmin(actor)) {
+      res.status(403).json({ error: "Not authorized" });
+      return;
+    }
+    try {
+      const sinceParam = typeof req.query.since === "string" ? req.query.since : "";
+      const since = Number.isFinite(Date.parse(sinceParam))
+        ? sinceParam
+        : new Date(Date.now() - 7 * 86_400_000).toISOString();
+      const groupBy = req.query.groupBy === "market" ? "market" : "source";
+      res.json(await buildCohortReport(cohortMetrics, { since, groupBy, funnels: Object.keys(FUNNEL_CHAINS) }));
+    } catch (error: any) {
+      logger.error("Arbor Cohort Report Error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Failed to build the cohort report", details: error.message });
     }
   });
 
