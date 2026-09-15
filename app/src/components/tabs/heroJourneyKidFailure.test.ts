@@ -54,7 +54,9 @@ describe("OBJ-KID-04 — the Hero Story Play failure answers the child", () => {
   });
 
   it("reads Kid Mode from the gate, not from a prop or a guess", () => {
-    expect(hero).toContain('import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";');
+    // N1-01-R5 added `noteKidActivity` to the same import; the invariant is that
+    // both gate readers come from lib/kidModeGate, whatever else rides along.
+    expect(hero).toMatch(/import \{[^}]*isKidModeActive[^}]*subscribeKidMode[^}]*\} from "\.\.\/\.\.\/lib\/kidModeGate";/);
     expect(hero).toContain("useSyncExternalStore(subscribeKidMode, isKidModeActive, isKidModeActive)");
   });
 
