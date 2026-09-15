@@ -38,7 +38,15 @@ import { requireConsent } from "../server/requireConsent.js";
 import { CANONICAL_BEHAVIOR_TYPES } from "../content/behaviorTaxonomy.js";
 import { buildConsent, type ConsentPurpose, type ConsentStore } from "../sharing/consent.js";
 import { computeWeeklyDigestStats, fallbackDigestNarrative, buildDigestEmail } from "../server/digest.js";
-import { resolveEmailProvider } from "../server/emailProvider.js";
+import { resolveEmailProvider, sendWeeklyDigestEmail, type DigestEmailMessage } from "../server/emailProvider.js";
+import {
+  buildDigestOptIn,
+  createDigestOptInStore,
+  decideDigestSend,
+  firebaseVerifiedEmailResolver,
+  type DigestOptInStore,
+  type VerifiedEmailResolver,
+} from "../server/digestOptIn.js";
 import { buildConsultRequest, type ConsultStore } from "../server/consultRequests.js";
 import { resolveEntitlement, COACH_METER, type EntitlementStore } from "../server/entitlements.js";
 import type { ReferralStore } from "../server/referral.js";
@@ -73,6 +81,15 @@ type ApiDeps = {
   /** CARE-2: read seam for the recipient shared view (injectable for tests);
    *  defaults to the Firestore/local source derived from config. */
   sharedChildSource?: SharedChildRecordSource;
+  /** N1-07: server-side weekly-digest opt-in rows (injectable for tests);
+   *  defaults to the Firestore/null store derived from config. */
+  digestOptInStore?: DigestOptInStore;
+  /** N1-07: the authenticated+verified address seam. Injectable so the guard
+   *  can drive every branch; NEVER reads a request body. */
+  verifiedEmailResolver?: VerifiedEmailResolver;
+  /** N1-07: the digest email sender (injectable test double). Defaults to
+   *  server/emailProvider's fail-closed sendWeeklyDigestEmail. */
+  digestEmailSender?: (msg: DigestEmailMessage) => Promise<{ sent: true; id?: string } | { sent: false; reason: string }>;
   /** AIR-8: the boot-time CapabilityRegistry. When present (production wiring
    *  via createApp), /api/tts resolves synthesis through
    *  registry.get("speech_synthesis", ...) — the live dispatch seam. */
@@ -87,6 +104,11 @@ const redactProfile = <T,>(privacy: RedactionContext, profile: T): T =>
 const actorOf = (req: express.Request) => ({
   uid: (req as any).user?.uid || "local-sandbox",
   email: ((req as any).user?.email as string | null) || null,
+  // N1-07: the verified-address claim, when the auth middleware propagates it.
+  // Today it does not (it attaches uid + email only), so this is `undefined`
+  // and the resolver falls back to an Admin SDK lookup — correct either way,
+  // and the absence can only ever make the lane MORE fail-closed.
+  emailVerified: (req as any).user?.emailVerified === true ? true : undefined,
 });
 
 const wantsSse = (req: express.Request) => req.headers.accept?.includes("text/event-stream") ?? false;
@@ -266,10 +288,15 @@ const voiceSafetyFallback = (language: unknown) =>
 /** Spoken when the model produced an empty reply on /voice (pre-cadence literal, unchanged). */
 const VOICE_EMPTY_REPLY_FALLBACK = "Let's take this one step at a time — tell me a little more about what's happening.";
 
-export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, sharedChildSource, aiCapabilityRegistry }: ApiDeps) => {
+export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, sharedChildSource, digestOptInStore, verifiedEmailResolver, digestEmailSender, aiCapabilityRegistry }: ApiDeps) => {
   const router = express.Router();
   // CARE-2: the recipient shared-view read seam (Firestore in prod, null locally).
   const sharedSource = sharedChildSource ?? createSharedChildRecordSource(config, memoryStore);
+  // N1-07: the weekly-digest mail wire. Defaults here rather than in createApp
+  // so the seams stay injectable for the guard without a second wiring site.
+  const digestOptIns = digestOptInStore ?? createDigestOptInStore(config);
+  const resolveVerifiedEmail = verifiedEmailResolver ?? firebaseVerifiedEmailResolver;
+  const sendDigestEmail = digestEmailSender ?? ((msg: DigestEmailMessage) => sendWeeklyDigestEmail(msg));
   const developmentalFramework = buildDevelopmentalFrameworkPrompt(framework);
   const coachResponseSchema = createCoachResponseGeminiSchema(framework);
   // Per-child authorization (closes the IDOR on child-scoped reads/erasure).
@@ -3182,6 +3209,97 @@ tryThisWeek (ONE concrete, doable suggestion grounded in the stats). Return only
     });
     const provider = resolveEmailProvider();
     res.json({ enabled: provider.enabled, provider: provider.provider, ...email });
+  });
+
+  // N1-07: the server-side opt-in row. Until this existed the server knew
+  // neither who had opted in (the list was localStorage) nor what address to
+  // send to, so EMAIL_PROVIDER=resend delivered nothing to nobody.
+  //
+  // THE ADDRESS IS NEVER READ FROM THE BODY. It is resolved from the
+  // authenticated identity's VERIFIED Firebase email; an unverified or absent
+  // address writes no row at all. `language` is the only body field consulted,
+  // and it is coerced to en|he inside buildDigestOptIn.
+  router.post("/digest/email-optin", async (req, res) => {
+    const actor = actorOf(req);
+    try {
+      const verified = await resolveVerifiedEmail(actor);
+      const previous = await digestOptIns.get(actor.uid);
+      const result = buildDigestOptIn({
+        verified,
+        language: req.body?.language,
+        now: new Date(),
+        previous,
+      });
+      if (!result.optedIn) {
+        res.json({ optedIn: false, reason: result.reason });
+        return;
+      }
+      await digestOptIns.put(actor.uid, result.row);
+      res.json({ optedIn: true });
+    } catch (error: any) {
+      logger.error("Digest opt-in write failed", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Failed to record the weekly-email opt-in" });
+    }
+  });
+
+  // N1-07: withdrawing consent removes the row outright — there is no
+  // "opted out" state to reason about later, and no address left at rest.
+  router.delete("/digest/email-optin", async (req, res) => {
+    const actor = actorOf(req);
+    try {
+      await digestOptIns.remove(actor.uid);
+      res.json({ optedIn: false });
+    } catch (error: any) {
+      logger.error("Digest opt-out failed", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Failed to remove the weekly-email opt-in" });
+    }
+  });
+
+  // N1-07: the only path in the product that can put a message in a parent's
+  // inbox. Admin-gated (the lead triggers the first real sends by hand — NO
+  // scheduler is built in this wave) and fail-closed on four axes, evaluated
+  // in server/digestOptIn.ts so every refusal is provable without a provider:
+  //   not_opted_in · unverified_address · provider_disabled · already_sent_this_week
+  // The digest body comes from server/digest.ts (the one sanctioned renderer,
+  // counts only) and the recipient from the stored, re-verified address —
+  // never from req.body. A body is never logged.
+  router.post("/digest/email-send", async (req, res) => {
+    const actor = actorOf(req);
+    if (!isAdmin(actor)) {
+      res.status(403).json({ error: "Not authorized" });
+      return;
+    }
+    try {
+      const row = await digestOptIns.get(actor.uid);
+      const verified = await resolveVerifiedEmail(actor);
+      const decision = decideDigestSend({
+        row,
+        verified,
+        providerEnabled: resolveEmailProvider().enabled,
+        now: Date.now(),
+      });
+      if (!decision.send) {
+        res.json({ sent: false, reason: decision.reason });
+        return;
+      }
+      const { childProfile, logs, milestones } = req.body ?? {};
+      const childName = (childProfile?.name && String(childProfile.name)) || "Your child";
+      const stats = computeWeeklyDigestStats(Array.isArray(logs) ? logs : [], Array.isArray(milestones) ? milestones : []);
+      const narrative = fallbackDigestNarrative(childName, stats);
+      const email = buildDigestEmail({ childName, language: decision.language, narrative, stats });
+      const result = await sendDigestEmail({ to: decision.to, ...email });
+      if (!result.sent) {
+        // The provider refused after the gate said go (a race on the env).
+        res.json({ sent: false, reason: "provider_disabled" });
+        return;
+      }
+      await digestOptIns.markSent(actor.uid, new Date().toISOString());
+      res.json({ sent: true });
+    } catch (error: any) {
+      // Status only — the body summarises a real child's week and is never logged.
+      logger.error("Digest email send failed", undefined, { requestId: requestIdOf(req), errorMessage: error?.message });
+      res.json({ sent: false, reason: "send_failed" });
+    }
   });
 
   // CMP-2 (GDPR Art. 15/20): server-side data export for one child. The client

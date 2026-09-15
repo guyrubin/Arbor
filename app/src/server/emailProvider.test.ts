@@ -139,7 +139,12 @@ describe("buildDigestEmail — digest-field reuse under the clinical firewall", 
 
 describe("routes/api.ts — digest email endpoints", () => {
   const src = fs.readFileSync(path.resolve(__dirname, "..", "routes", "api.ts"), "utf8");
-  const previewRoute = src.slice(src.indexOf('router.post("/digest/email-preview"'), src.indexOf('router.get("/privacy/export'));
+  // N1-07 inserted the opt-in/send routes between the preview and
+  // /privacy/export, so the preview's slice now ends at the opt-in route.
+  // Left at /privacy/export it would have swallowed the send route and the
+  // "never sends" assertions below would have been asserting about the wrong
+  // code — silently, and in the green.
+  const previewRoute = src.slice(src.indexOf('router.post("/digest/email-preview"'), src.indexOf('router.post("/digest/email-optin"'));
 
   it("exposes email-status and email-preview next to /digest", () => {
     expect(src).toContain('router.get("/digest/email-status"');
@@ -151,6 +156,72 @@ describe("routes/api.ts — digest email endpoints", () => {
     expect(previewRoute).toContain("fallbackDigestNarrative");
     expect(previewRoute).toContain("buildDigestEmail");
     expect(previewRoute).not.toContain("sendWeeklyDigestEmail");
+    expect(previewRoute).not.toContain("sendDigestEmail");
     expect(previewRoute).not.toMatch(/\.send\(/);
+  });
+
+  // N1-07: the send route is the one path that reaches an inbox. Its gate and
+  // its renderer are pinned here; the four refusal axes are pinned in
+  // server/digestOptIn.test.ts.
+  it("the send route is admin-gated and fail-closed before it renders anything", () => {
+    const sendRoute = src.slice(src.indexOf('router.post("/digest/email-send"'), src.indexOf('router.get("/privacy/export'));
+    expect(sendRoute).toContain("isAdmin(actor)");
+    expect(sendRoute).toContain("decideDigestSend");
+    expect(sendRoute.indexOf("decideDigestSend")).toBeLessThan(sendRoute.indexOf("buildDigestEmail"));
+  });
+});
+
+/* ── N1-07: the firewall scan on the body that actually leaves the building ─ */
+
+describe("buildDigestEmail — the SENT body, scanned in both languages", () => {
+  /**
+   * The preview was already scanned; the SEND was not, because there was no
+   * send. A digest body that reaches a parent's inbox is the least
+   * recoverable surface Arbor has — no re-render, no rollback, no context —
+   * so the firewall is re-asserted on exactly the render the sender receives.
+   *
+   * Banned: any percentage, any trend verdict in EN or HE, and the previous
+   * week's count (two week-counts side by side ARE a trend delta, whatever the
+   * words around them say).
+   */
+  const PREV_SENTINEL = 999;
+  const stats = {
+    ...computeWeeklyDigestStats([log(1), log(2, true), log(3)], [{ title: "m", checked: true }], NOW),
+    previousWeekMoments: PREV_SENTINEL,
+  };
+
+  const EN_TREND = /\b(easing|steady|worsening|improving|declining|better than|worse than)\b/i;
+  // The same verdicts a Hebrew body could carry: משתפר / מחמיר / יציב / ירידה / עלייה.
+  const HE_TREND = /(משתפר|מחמיר|יציב|ירידה|עלייה|לעומת שבוע)/;
+
+  for (const [language, childName] of [["en", "Maya"], ["he", "מאיה"]] as const) {
+    it(`${language}: no percentage, no trend verdict, no previous-week count`, () => {
+      const narrative = fallbackDigestNarrative(childName, stats);
+      const out = buildDigestEmail({ childName, language, narrative, stats });
+      const all = `${out.subject}\n${out.preheader}\n${out.bodyText}`;
+      expect(all).not.toMatch(/\d+\s*%/u);
+      expect(all).not.toMatch(EN_TREND);
+      expect(all).not.toMatch(HE_TREND);
+      expect(all).not.toContain(String(PREV_SENTINEL));
+      // …and it is not empty: an empty body would pass every ban above.
+      expect(out.bodyText.length).toBeGreaterThan(80);
+      expect(out.subject.length).toBeGreaterThan(5);
+    });
+  }
+
+  it("NEGATIVE CONTROL — a narrative carrying a trend verdict or a % fails the scan", () => {
+    const narrative = {
+      ...fallbackDigestNarrative("Maya", stats),
+      summary: "Things are improving — 40% fewer moments than last week.",
+    };
+    const { bodyText } = buildDigestEmail({ childName: "Maya", language: "en", narrative, stats });
+    expect(bodyText).toMatch(EN_TREND);
+    expect(bodyText).toMatch(/\d+\s*%/u);
+  });
+
+  it("NEGATIVE CONTROL — the same in Hebrew", () => {
+    const narrative = { ...fallbackDigestNarrative("מאיה", stats), summary: "המצב משתפר החודש." };
+    const { bodyText } = buildDigestEmail({ childName: "מאיה", language: "he", narrative, stats });
+    expect(bodyText).toMatch(HE_TREND);
   });
 });

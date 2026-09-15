@@ -70,5 +70,26 @@ service cloud.firestore {
     match /usageRollup/{day} {
       allow read, write: if false;
     }
+
+    // N1-04 / N1-05: the per-family retention rollup. Written by the family's
+    // OWN client (lib/retentionRollup.ts) once per session and read only by the
+    // founder-side cohort report through ADC, which bypasses these rules.
+    // Owner-only: no client may read another family's rollup, which is the
+    // whole reason the collection is top-level rather than a collection-group
+    // scan over every family's event history.
+    match /retentionRollups/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    // N1-07: the weekly-digest mailing consent. The address inside it is taken
+    // from the authenticated user's VERIFIED Firebase email by the server, so
+    // client writes are denied outright (a self-written row is how an arbitrary
+    // address would otherwise reach the sender — the send path re-verifies too,
+    // but the cheapest place to stop it is here). Reads stay owner-only so a
+    // parent can always see what Arbor holds about their own mailing consent.
+    match /digestOptIn/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
   }
 }
