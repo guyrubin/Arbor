@@ -27,3 +27,8 @@ Source 934 × 1685 px; implementation viewport 1363 × 936 CSS px, density 1. He
 - Fixed singular step count (1 step).
 Browser interactions passed: selected plan checklist and result count; guidance-to-plan transition; story continuation; editable memory review and confirmation; growth example; selected professional summary excludes unchecked item; three-image gallery navigation and demo transition; plans modal and close; English/Hebrew language link; gallery focus returns to its trigger. All nine initial image elements loaded and 31 icons rendered. No application-origin console errors; extension metadata warnings only. Desktop document width equals viewport width.
 Second visual capture is pending the refinement deployment.
+
+## Second live comparison
+Refined hero evidence: /workspace/scratch/arbor-v6-refined-hero.jpg and /workspace/scratch/arbor-v6-refined-hebrew.jpg. Headline phrase and family/preview separation are corrected. The Hebrew composition now mirrors the photograph correctly.
+- P2: moving the photo left introduced insufficient contrast behind the English introduction. Sampled background contrast against #526586 was 2.78–4.06:1 in several text areas. Fix: add a white-to-transparent veil behind the desktop copy, keeping its text area white independently of the image. RTL uses the mirrored veil. Post-fix capture pending.
+- Mobile source review: reduce the app overlay by hiding its duplicate thumbnail and shift the photo crop to leave both faces above/beside the preview. Phone emulation is unavailable in the supported browser; mobile visual verification is an explicit residual gap.
