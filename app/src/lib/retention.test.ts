@@ -1,5 +1,7 @@
 /**
  * retention.test.ts — ENG-22 exit criterion clause 1: D1/D7/D30 is computable.
+ * N1-04 extends it: week-4 (d28) — the IL gate and the kill/pivot trigger are
+ * both written in week-4 — plus the MAX_ACTIVE_DAYS cap on the merge.
  *
  * These are BEHAVIOUR tests over the pure module, not source scans. Before
  * lib/retention.ts existed there was no code anywhere in the repo that turned
@@ -13,6 +15,7 @@
  */
 import { describe, it, expect } from "vitest";
 import {
+  MAX_ACTIVE_DAYS,
   RETENTION_ACTIVITY_EVENTS,
   RETENTION_DAYS,
   activeDayOffsets,
@@ -106,9 +109,25 @@ describe("merge (upsert semantics)", () => {
     expect(mergeRollup(stored, null)).toEqual(stored);
     expect(mergeRollup(null, null)).toBeNull();
   });
+
+  it("N1-04: the union is capped, so a long-lived family's document cannot grow forever", () => {
+    const day0 = Date.parse("2023-01-01T00:00:00Z");
+    const many = Array.from({ length: MAX_ACTIVE_DAYS + 250 }, (_, i) =>
+      new Date(day0 + i * 86_400_000).toISOString().slice(0, 10),
+    );
+    const merged = mergeRollup({ firstSeen: many[0], activeDays: many }, { firstSeen: many[0], activeDays: many });
+    // NEGATIVE CONTROL: the pre-fix union was the raw set — 650 strings
+    // re-serialised on every session.
+    expect(new Set(many).size).toBeGreaterThan(MAX_ACTIVE_DAYS);
+    expect(merged?.activeDays).toHaveLength(MAX_ACTIVE_DAYS);
+    // Trimmed from the TAIL: every offset d1/d7/d28/d30 is measured from
+    // firstSeen, so the earliest days are the ones that must survive.
+    expect(merged?.activeDays[0]).toBe(many[0]);
+    expect(merged?.firstSeen).toBe(many[0]);
+  });
 });
 
-describe("per-user D1/D7/D30", () => {
+describe("per-user D1/D7/D28/D30", () => {
   // Active on day 0, day 1 and day 7 — the classic returning first-week parent.
   const rollup: RetentionRollup = {
     firstSeen: "2026-09-01",
@@ -138,9 +157,19 @@ describe("per-user D1/D7/D30", () => {
     expect(flags.d30).toBe(false);
   });
 
-  it("reports exactly the three product offsets", () => {
-    expect([...RETENTION_DAYS]).toEqual([1, 7, 30]);
-    expect(Object.keys(retentionFlags(rollup, "2026-10-05")).sort()).toEqual(["d1", "d30", "d7"]);
+  it("reports exactly the four product offsets — week-4 included", () => {
+    expect([...RETENTION_DAYS]).toEqual([1, 7, 28, 30]);
+    expect(Object.keys(retentionFlags(rollup, "2026-10-05")).sort()).toEqual(["d1", "d28", "d30", "d7"]);
+  });
+
+  it("N1-04: week-4 is answerable at all — the IL gate and the kill trigger are both d28", () => {
+    // NEGATIVE CONTROL: the pre-fix offsets could not produce a d28 key, which
+    // is why the gate number was unaskable rather than merely unanswered.
+    const preFix = [1, 7, 30] as const;
+    expect(preFix.map((d) => `d${d}`)).not.toContain("d28");
+    expect(Object.keys(retentionFlags(rollup, "2026-10-05"))).toContain("d28");
+    // Day 28 is its own question: this family returned on day 7, not day 28.
+    expect(retentionFlags(rollup, "2026-10-05").d28).toBe(false);
   });
 });
 

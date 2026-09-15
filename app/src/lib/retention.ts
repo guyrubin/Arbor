@@ -1,4 +1,4 @@
-/* retention — ENG-22: D1/D7/D30, finally computable.
+/* retention — ENG-22: D1/D7/D28/D30, finally computable.
  *
  * THE DEFECT THIS CLOSES
  * ──────────────────────
@@ -45,9 +45,22 @@ export const RETENTION_ACTIVITY_EVENTS = [
 
 export type RetentionActivityEvent = (typeof RETENTION_ACTIVITY_EVENTS)[number];
 
-/** The retention day-offsets the product reports on. */
-export const RETENTION_DAYS = [1, 7, 30] as const;
+/** The retention day-offsets the product reports on.
+ *  `28` is week-4 and it is the load-bearing one: the IL gate in
+ *  bd/ARBOR-GTM-PLAN.md §2.1 (week-4 >= 50% on >= 2 cohorts by 30 Nov) and the
+ *  kill/pivot trigger (<40%) are BOTH written in week-4. `30` is a calendar
+ *  month and answers a different question; it is kept, not substituted. */
+export const RETENTION_DAYS = [1, 7, 28, 30] as const;
 export type RetentionDay = (typeof RETENTION_DAYS)[number];
+
+/** Hard ceiling on the day keys one rollup carries.
+ *  `activeDays` is written back on every session, so an unbounded array is one
+ *  string per active day re-serialised forever (~1,100 at three years). The cap
+ *  trims the TAIL, never the head: every reported offset is measured from
+ *  `firstSeen`, so the EARLIEST 400 distinct active days are exactly the ones
+ *  d1/d7/d28/d30 are computed from. Dropping the oldest instead would silently
+ *  turn a long-lived family into a d1 miss. */
+export const MAX_ACTIVE_DAYS = 400;
 
 /** An analytics row, reduced to the only two fields retention needs. */
 export interface ActivityEvent {
@@ -114,7 +127,8 @@ export function buildRollup(events: readonly ActivityEvent[], tzOffsetMinutes = 
 /**
  * Upsert semantics: merge a freshly observed rollup into the stored one.
  * `firstSeen` only ever moves EARLIER (a late-syncing device must not reset a
- * cohort), and active days union. Pure — neither input is mutated.
+ * cohort), and active days union, capped at MAX_ACTIVE_DAYS. Pure — neither
+ * input is mutated.
  */
 export function mergeRollup(
   prev: RetentionRollup | null,
@@ -122,7 +136,9 @@ export function mergeRollup(
 ): RetentionRollup | null {
   if (!prev) return incoming ? { firstSeen: incoming.firstSeen, activeDays: [...incoming.activeDays].sort() } : null;
   if (!incoming) return { firstSeen: prev.firstSeen, activeDays: [...prev.activeDays].sort() };
-  const activeDays = [...new Set([...prev.activeDays, ...incoming.activeDays])].sort();
+  const activeDays = [...new Set([...prev.activeDays, ...incoming.activeDays])]
+    .sort()
+    .slice(0, MAX_ACTIVE_DAYS);
   const firstSeen = prev.firstSeen <= incoming.firstSeen ? prev.firstSeen : incoming.firstSeen;
   return { firstSeen, activeDays };
 }
@@ -161,7 +177,7 @@ export interface RetentionBucket {
 
 export type RetentionReport = Record<`d${RetentionDay}`, RetentionBucket>;
 
-/** Per-user answer for the three reported offsets, as of a given day.
+/** Per-user answer for each reported offset, as of a given day.
  *  `null` means "not answerable yet", which is not the same as "no". */
 export function retentionFlags(
   rollup: RetentionRollup,
