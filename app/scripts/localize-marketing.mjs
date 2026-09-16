@@ -17,7 +17,7 @@ function shell(html,lang){
  html=html.replace(/<link rel="canonical"[^>]*>/,`<link rel="canonical" href="${url(lang)}">`);
  html=html.replace(/<link rel="alternate"[^>]*>/g,'').replace('</head>',alternatives+'</head>');
  html=html.replace(/<a class="language"[^>]*>.*?<\/a>|<details class="language-menu">[\s\S]*?<\/details>/,menu(lang));
- return html.replace(/arbor-immersive-v3\.(css|js)\?v=[\d.]+/g,'arbor-immersive-v3.$1?v=7');
+ return html.replace(/arbor-immersive-v3\.(css|js)\?v=[\d.]+/g,'arbor-immersive-v3.$1?v=8');
 }
 const source=fs.readFileSync(path.join(dir,page('en')),'utf8');
 for(const lang of ['de','fr','nl']){
