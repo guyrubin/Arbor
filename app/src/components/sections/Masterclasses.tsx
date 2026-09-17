@@ -249,7 +249,7 @@ export default function Masterclasses() {
               <button
                 key={c.id}
                 onClick={() => setOpenId(c.id)}
-                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-bold transition motion-safe:hover:-translate-y-0.5"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-bold transition motion-safe:hover:-translate-y-0.5"
                 dir="auto"
                 style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
               >
@@ -301,6 +301,7 @@ export default function Masterclasses() {
           passed to HubHero as a prop, so the stamp rides its wrapper. */}
       <div data-primary-move="open-todays-pick" className="mx-auto w-full min-w-0 max-w-[1180px]">
         <HubHero
+          compact
           zeroLine={t("elev.growthTruth.hero.empty")}
           tone="sky"
           icon={GraduationCap}
@@ -386,7 +387,7 @@ export default function Masterclasses() {
             {/* W0.7 — "Show all ages" toggle: only rendered when the child's-age
                 view actually hides something (or the parent already opted in). */}
             {(ageHidden.length > 0 || showAllAges) && (
-              <span className="ms-auto inline-flex items-center gap-2">
+              <span className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:ms-auto sm:w-auto">
                 {!showAllAges && ageHidden.length > 0 && (
                   <span className="text-[11px] font-bold" style={{ color: "var(--arbor-faint)" }} dir="auto">
                     {agefilterText("elev.agefilter.hiddenCount", he, { n: ageHidden.length })}
@@ -398,7 +399,7 @@ export default function Masterclasses() {
                   aria-checked={showAllAges}
                   onClick={toggleShowAllAges}
                   data-testid="agefilter-toggle-masterclasses"
-                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11.5px] font-extrabold transition"
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 py-1 text-[11.5px] font-extrabold transition"
                   style={
                     showAllAges
                       ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.25)" }

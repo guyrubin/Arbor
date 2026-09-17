@@ -13,20 +13,21 @@ import { useLanguage } from "../../context/LanguageContext";
  * (active nav was green while the brand is sapphire). Must live inside
  * <KidModeProvider> (Topbar + the in-content accessories row both qualify).
  */
-export default function KidModeButton({ compact = false }: { compact?: boolean }) {
+export default function KidModeButton({ compact = false, onBeforeOpen }: { compact?: boolean; onBeforeOpen?: () => void }) {
   const { openKidMode } = useKidMode();
   const { t } = useLanguage();
 
   // E10: the parent-lock safety line — ships true because kid-mode exit is
   // gated by the parent challenge (hold → question/PIN → exit).
   const lockedLine = t("elev.kidmode.locked");
+  const handleOpen = () => { onBeforeOpen?.(); openKidMode(); };
 
   if (compact) {
     return (
       <button
-        onClick={openKidMode}
+        onClick={handleOpen}
         aria-label={`${t("aria.kidMode")} — ${lockedLine}`}
-        title="Kid Mode — hand the device to your child"
+        title={`${t("aria.kidMode")} — ${lockedLine}`}
         className="lg:hidden flex items-center justify-center w-11 h-11 rounded-xl transition bg-white"
         style={{ color: "var(--arbor-clay-deep)", border: "1px solid var(--arbor-rule)" }}
       >
@@ -37,9 +38,9 @@ export default function KidModeButton({ compact = false }: { compact?: boolean }
 
   return (
     <button
-      onClick={openKidMode}
+      onClick={handleOpen}
       aria-label={`${t("aria.launchKidMode")} — ${lockedLine}`}
-      title="Kid Mode — hand the device to your child"
+      title={`${t("aria.launchKidMode")} — ${lockedLine}`}
       style={{
         display: "inline-flex",
         alignItems: "center",
@@ -62,7 +63,7 @@ export default function KidModeButton({ compact = false }: { compact?: boolean }
     >
       <Icon name="sports_esports" size={16} />
       <span style={{ display: "flex", flexDirection: "column", lineHeight: 1.25 }}>
-        <span>Kid Mode</span>
+        <span>{t("aria.kidMode")}</span>
         {/* Safety line — visible on wide topbars; always in the aria-label. */}
         <span
           className="hidden xl:block"

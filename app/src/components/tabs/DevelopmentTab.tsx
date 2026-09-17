@@ -287,6 +287,7 @@ export default function DevelopmentTab() {
           below are untouched. E8: EvidenceChip on the hero's meta row. */}
       <div>
         <HubHero
+          compact
           tone="mint"
           icon={Sprout}
           eyebrow={t("elev.hero.growth.eyebrow")}

@@ -40,7 +40,8 @@ describe("W1.9: mobile search entry points", () => {
   it("MobileNav More sheet carries a search row via requestOpenSearch('more')", () => {
     expect(mobileNav).toContain('requestOpenSearch("more")');
     // The row lives inside the More sheet (after the sheet dialog opens).
-    const sheetAt = mobileNav.indexOf('role="dialog"');
+    expect(mobileNav).toContain('import { Sheet } from "../ui/Sheet";');
+    const sheetAt = mobileNav.indexOf("<Sheet");
     expect(sheetAt).toBeGreaterThan(-1);
     expect(mobileNav.indexOf('requestOpenSearch("more")')).toBeGreaterThan(sheetAt);
     // 44px touch target on the row.

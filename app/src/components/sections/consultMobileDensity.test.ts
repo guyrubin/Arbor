@@ -74,7 +74,9 @@ describe("R14 · the duplicated header copy stands down below md", () => {
   });
 
   it("the hero gives back what it can without editing the shared primitive", () => {
-    expect(CONSULT).toContain('className="max-md:p-4 max-md:mb-3 max-md:[&_p]:hidden"');
+    const hero = CONSULT.match(/<HubHero\b[\s\S]{0,1200}?\/>/)?.[0] ?? "";
+    expect(hero).toMatch(/\bcompact\b/);
+    expect(hero.replace(/\bcompact\b/, "")).not.toMatch(/\bcompact\b/);
     // This hub passes no stats on purpose, so there was never a trio to drop.
     expect(CONSULT).not.toContain("stats={");
   });

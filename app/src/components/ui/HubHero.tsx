@@ -67,6 +67,8 @@ export interface HubHeroProps {
   icon?: LucideIcon;
   testId?: string;
   className?: string;
+  /** Compact hub treatment for dense destination pages. Opt-in keeps legacy callers unchanged. */
+  compact?: boolean;
 }
 
 export function HubHero({
@@ -80,6 +82,7 @@ export function HubHero({
   icon: GhostIcon,
   testId,
   className = "",
+  compact = false,
 }: HubHeroProps) {
   const p = PASTEL[tone];
 
@@ -101,17 +104,17 @@ export function HubHero({
   return (
     <section
       data-testid={testId}
-      className={`relative max-w-full overflow-hidden rounded-[20px] p-5 md:px-7 md:py-6 mb-5 text-start ${className}`.trim()}
+      className={`relative max-w-full overflow-hidden ${compact ? "rounded-2xl p-4 md:p-5 mb-4" : "rounded-[20px] p-5 md:px-7 md:py-6 mb-5"} text-start ${className}`.trim()}
       style={{
-        background: p.soft,
+        background: compact ? "var(--arbor-paper-elevated)" : p.soft,
         border: "1px solid var(--arbor-rule)",
-        boxShadow: "var(--shadow-xs)",
+        boxShadow: compact ? "none" : "var(--shadow-xs)",
         opacity: entered ? 1 : 0,
         transform: entered ? "none" : "translateY(10px)",
         transition: "opacity 0.45s ease, transform 0.45s ease",
       }}
     >
-      {GhostIcon && (
+      {!compact && GhostIcon && (
         <GhostIcon
           aria-hidden="true"
           size={112}
@@ -122,15 +125,17 @@ export function HubHero({
       )}
 
       <div className="relative max-w-3xl min-w-0" style={{ zIndex: 1 }}>
-        <div
-          className="text-[11px] font-extrabold uppercase"
-          style={{ color: p.ink, letterSpacing: "0.14em" }}
-        >
-          {eyebrow}
-        </div>
+        {!compact && (
+          <div
+            className="text-[11px] font-extrabold uppercase"
+            style={{ color: p.ink, letterSpacing: "0.14em" }}
+          >
+            {eyebrow}
+          </div>
+        )}
 
         <h1
-          className="mt-1.5 text-2xl md:text-[28px] leading-[1.1] break-words"
+          className={`${compact ? "text-xl md:text-2xl" : "mt-1.5 text-2xl md:text-[28px]"} leading-[1.1] break-words`}
           style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}
         >
           {title}
@@ -147,8 +152,8 @@ export function HubHero({
             type="button"
             onClick={cta.onClick}
             data-testid={cta.testId}
-            className="mt-5 inline-flex max-w-full min-h-[48px] items-center justify-center gap-2 rounded-2xl px-6 py-3 text-[var(--t-base)] font-extrabold transition motion-safe:hover:-translate-y-0.5 active:scale-[0.98] whitespace-normal text-center"
-            style={{ background: "var(--arbor-gradient-primary)", color: "var(--arbor-on-accent)", boxShadow: "var(--arbor-clay-glow)" }}
+            className={`${compact ? "mt-4" : "mt-5"} inline-flex max-w-full min-h-[48px] items-center justify-center gap-2 rounded-2xl px-6 py-3 text-[var(--t-base)] font-extrabold transition motion-safe:hover:-translate-y-0.5 active:scale-[0.98] whitespace-normal text-center`}
+            style={{ background: compact ? "var(--arbor-clay)" : "var(--arbor-gradient-primary)", color: "var(--arbor-on-accent)", boxShadow: compact ? "none" : "var(--arbor-clay-glow)" }}
           >
             {cta.icon}
             {cta.label}
@@ -166,11 +171,13 @@ export function HubHero({
         )}
 
         {trio.length > 0 && !allZero && (
-          <div className="mt-4 grid grid-cols-1 min-[420px]:grid-cols-3 gap-0 min-[420px]:gap-2.5">
+          <div className={compact ? "mt-4 flex flex-wrap gap-2" : "mt-4 grid grid-cols-1 min-[420px]:grid-cols-3 gap-0 min-[420px]:gap-2.5"}>
             {trio.map((s, i) => (
               <div
                 key={i}
-                className={`min-w-0 py-3 min-[420px]:px-4 min-[420px]:py-2.5 first:min-[420px]:ps-0 ${i > 0 ? "border-t min-[420px]:border-t-0 min-[420px]:border-s" : ""}`}
+                className={compact
+                  ? "min-w-[7rem] flex-1 rounded-xl px-3 py-2"
+                  : `min-w-0 py-3 min-[420px]:px-4 min-[420px]:py-2.5 first:min-[420px]:ps-0 ${i > 0 ? "border-t min-[420px]:border-t-0 min-[420px]:border-s" : ""}`}
                 style={{ borderColor: "var(--arbor-rule)" }}
               >
                 <div

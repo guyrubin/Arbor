@@ -652,6 +652,7 @@ export default function BehaviorsTab() {
           coral hero; same job, one kit). Warm tone; stat trio = this-week flat
           counts only — no averages, no trends (clinical firewall). */}
       <HubHero
+        compact
         zeroLine={t("elev.growthTruth.hero.empty")}
         tone="coral"
         icon={HeartHandshake}

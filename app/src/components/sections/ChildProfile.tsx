@@ -126,6 +126,7 @@ export default function ChildProfile() {
           records what the code says rather than adding a second claim. */}
       <div data-primary-move="approve-memory" style={{ display: "contents" }}>
       <HubHero
+        compact
         tone="yellow"
         icon={Album}
         eyebrow={t("elev.hero.profile.eyebrow")}
