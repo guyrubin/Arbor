@@ -318,23 +318,15 @@ export default function DevelopmentTab() {
           <EvidenceChip />
         </div>
       </div>
-      {/* TJB-28 — the one thing this parent left themselves at the close of a
-          previous day. Renders null on the day it was written and once acted on. */}
-      <TomorrowReasonCard signals={returnSignals} childName={firstName} />
-      {/* GP-32 — the month the family just finished, as COUNTS of what the
-          PARENT noticed and kept. Never a progress report on the child: no
-          scores, no deltas, no "areas needing work". Renders once per month
-          and returns null the rest of the time. */}
-      <MonthInReview />
       {/* One action first, then the neutral development picture. */}
       {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
           marks a top-level sibling module (what moduleBudget counts);
           `data-primary-move` marks the ONE control that performs the move
           surfaceContract.ts declares for this route. */}
-      <section data-module="growth-weekly-focus" data-primary-move="notice-milestone" className="overflow-hidden rounded-[24px]" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }} aria-labelledby="growth-weekly-focus">
+      <section data-module="growth-weekly-focus" data-primary-move="notice-milestone" className="border-y" style={{ borderColor: "var(--arbor-rule)" }} aria-labelledby="growth-weekly-focus">
         <div className="grid min-w-0 xl:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.75fr)]">
-          <div className="min-w-0 p-4 sm:p-6 lg:p-7">
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[0.16em]" style={{ color: "var(--arbor-green-ink)" }} data-testid="growth-focus-eyebrow">
+          <div className="min-w-0 py-5 xl:pe-6">
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold" style={{ color: "var(--arbor-green-ink)" }} data-testid="growth-focus-eyebrow">
               <Icon name={weeklyFocus.chosen ? "visibility" : "explore"} size={16} />
               {weeklyFocus.chosen ? tGCare(uiLang, "elev.gcare.growth.watch.eyebrow") : t("growth.focus.eyebrow")}
             </span>
@@ -372,7 +364,7 @@ export default function DevelopmentTab() {
                         data-testid={`growth-observe-${status}`}
                         aria-pressed={selected}
                         onClick={() => observeFocusMilestone(weeklyFocus.milestoneId as string, status, weeklyFocus.observationStatus === "yes")}
-                        className="min-h-11 rounded-lg px-1.5 text-[11px] font-bold transition active:scale-[0.98]"
+                        className="min-h-11 rounded-lg px-1.5 text-xs font-bold transition active:scale-[0.98]"
                         style={{
                           background: selected ? "var(--arbor-green-soft)" : "var(--arbor-paper-deep)",
                           color: selected ? "var(--arbor-green-ink)" : "var(--arbor-muted)",
@@ -384,7 +376,7 @@ export default function DevelopmentTab() {
                     );
                   })}
                 </div>
-                <p className="mt-1.5 text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+                <p className="mt-1.5 text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
                   {justNoticedId === weeklyFocus.milestoneId
                     ? t("elev.waveR.growth.observe.noticed", { date: fmtDay(new Date().toISOString(), uiLang) })
                     : t("elev.waveR.growth.observe.hint")}
@@ -414,20 +406,20 @@ export default function DevelopmentTab() {
               <ContentWhyLine why={t("elev.waveR.why.focus")} trustLink surface="growth-focus" />
             </div>
           </div>
-          <div className="min-w-0 border-t p-4 sm:p-6 xl:border-s xl:border-t-0" style={{ background: "var(--arbor-paper-deep)", borderColor: "var(--arbor-rule)" }}>
+          <div className="min-w-0 border-t py-5 xl:border-s xl:border-t-0 xl:ps-6" style={{ borderColor: "var(--arbor-rule)" }}>
             <h3 className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("growth.recent.title")}</h3>
             <p className="mt-1 text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("growth.recent.body")}</p>
             {recentMoments.length > 0 ? (
               <ul className="mt-4 space-y-2.5">
                 {recentMoments.map((moment) => (
-                  <li key={moment.id} className="flex items-start gap-3 rounded-xl bg-white p-3" style={{ border: "1px solid var(--arbor-rule)" }}>
+                  <li key={moment.id} className="flex items-start gap-3 border-b py-3" style={{ borderColor: "var(--arbor-rule)" }}>
                     <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}><Icon name={moment.icon} size={16} /></span>
-                    <span className="min-w-0 flex-1"><span className="block break-words text-xs font-bold leading-snug" style={{ color: "var(--arbor-ink)" }}>{moment.title}</span><span className="mt-0.5 block break-words text-[11px] leading-snug" style={{ color: "var(--arbor-muted)" }}>{moment.meta}</span></span>
+                    <span className="min-w-0 flex-1"><span className="block break-words text-sm font-bold leading-snug" style={{ color: "var(--arbor-ink)" }}>{moment.title}</span><span className="mt-0.5 block break-words text-xs leading-snug" style={{ color: "var(--arbor-muted)" }}>{moment.meta}</span></span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <button type="button" onClick={() => setActiveTab("daily-play")} className="mt-4 flex w-full items-center gap-3 rounded-xl bg-white p-3 text-start" style={{ border: "1px dashed var(--arbor-rule-strong)" }}>
+              <button type="button" onClick={() => setActiveTab("daily-play")} className="mt-4 flex min-h-11 w-full items-center gap-3 rounded-xl p-3 text-start" style={{ border: "1px dashed var(--arbor-rule-strong)" }}>
                 <Icon name="add_circle" size={18} style={{ color: "var(--arbor-green-ink)" }} />
                 <span className="text-xs font-bold" style={{ color: "var(--arbor-ink)" }}>{t("growth.recent.empty")}</span>
               </button>
@@ -435,6 +427,14 @@ export default function DevelopmentTab() {
           </div>
         </div>
       </section>
+      {/* TJB-28 — the one thing this parent left themselves at the close of a
+          previous day. Renders null on the day it was written and once acted on. */}
+      <TomorrowReasonCard signals={returnSignals} childName={firstName} />
+      {/* GP-32 — the month the family just finished, as COUNTS of what the
+          PARENT noticed and kept. Never a progress report on the child: no
+          scores, no deltas, no "areas needing work". Renders once per month
+          and returns null the rest of the time. */}
+      <MonthInReview />
       {/* Masterplan 1.7 / IA canon (L3): the Full Picture (route id "copilot")
           is homed HERE, as a card on the hub's Now region — never a hub pill.
           This is the upgraded form of the old deep-dive link tile (one home,
@@ -442,8 +442,8 @@ export default function DevelopmentTab() {
           no score, verdict, or risk framing (CLINICAL FIREWALL). */}
       <section
         data-testid="full-picture-card"
-        className="overflow-hidden rounded-[24px] p-4 sm:p-6"
-        style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }}
+        className="border-b py-5"
+        style={{ borderColor: "var(--arbor-rule)" }}
         aria-labelledby="full-picture-title"
       >
         <div className="flex flex-wrap items-center gap-4">
@@ -455,7 +455,7 @@ export default function DevelopmentTab() {
               <h2 id="full-picture-title" className="break-words text-lg font-semibold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
                 {tFP(uiLang, "elev.fullpicture.title")}
               </h2>
-              <span className="inline-flex flex-shrink-0 items-center rounded-full px-2.5 py-1 text-[11px] font-extrabold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
+              <span className="inline-flex flex-shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-extrabold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
                 {/* OBJ-GROWTH-01 / R1: through the SHARED `t`, not the local
                     tFP — tFP interpolates {var} but cannot resolve {plural},
                     so the teaser was the one surface whose count could not
@@ -527,7 +527,7 @@ export default function DevelopmentTab() {
         {recheckDue && (
           <span
             data-testid="dev-recheck-due"
-            className="inline-flex flex-shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-extrabold"
+            className="inline-flex flex-shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs font-extrabold"
             style={{ background: "var(--arbor-yellow-soft)", color: "var(--arbor-ink)" }}
           >
             <Icon name="notifications" size={12} /> {t("dev.watching.recheckDue")}

@@ -39,8 +39,8 @@ export default function BeatKeeperWorld() {
   if (done) {
     const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
     return (
-      <Celebrate title={`Right on beat, ${first}!`} subtitle="Steady taps build focus and self-control." stars={gradeStars(avg)} starsTotal={3}>
-        <PlayButton onClick={() => { setRoundIdx(0); setScores([]); setPhase("ready"); setPulse(-1); }}>Play again</PlayButton>
+      <Celebrate title={t("elev.play.beat.complete.title", { name: first })} subtitle={t("elev.play.beat.complete.sub")} stars={gradeStars(avg)} starsTotal={3}>
+        <PlayButton onClick={() => { setRoundIdx(0); setScores([]); setPhase("ready"); setPulse(-1); }}>{t("elev.play.beat.replay")}</PlayButton>
       </Celebrate>
     );
   }
@@ -90,7 +90,7 @@ export default function BeatKeeperWorld() {
   return (
     <div className="space-y-6">
       <PlayHeader
-        title="Beat Keeper"
+        title={t("elev.play.beat.title")}
         say={t("elev.play.beat.say")}
         mood="happy"
         action={<SpeakButton text={t("elev.play.beat.say")} lang={uiLang} label={t("elev.play.speak.label")} size="md" className="min-w-[44px] min-h-[44px] justify-center" />}
@@ -100,7 +100,7 @@ export default function BeatKeeperWorld() {
       <div className="rounded-[var(--play-radius)] p-6 grid place-items-center comic-panel" style={{ background: "var(--arbor-green-soft)", minHeight: 220 }}>
         <button
           onClick={phase === "playing" ? tap : start}
-          aria-label={phase === "playing" ? "Tap on the beat" : "Start the beat"}
+          aria-label={phase === "playing" ? t("elev.play.beat.tapAria") : phase === "scored" ? t("elev.play.beat.scoredAria") : t("elev.play.beat.startAria")}
           className="play-pressable grid place-items-center rounded-full font-black text-white select-none"
           style={{
             width: 168, height: 168, border: "var(--comic-line)", fontFamily: "var(--font-display)", fontSize: 28,
@@ -110,7 +110,7 @@ export default function BeatKeeperWorld() {
             boxShadow: phase === "playing" && pulse >= 0 ? "0 0 0 12px color-mix(in oklab, var(--arbor-clay) 35%, transparent)" : "var(--comic-pop)",
           }}
         >
-          {phase === "playing" ? "TAP!" : phase === "scored" ? "✔" : "START"}
+          {phase === "playing" ? t("elev.play.beat.tap") : phase === "scored" ? "✔" : t("elev.play.beat.start")}
         </button>
       </div>
 
@@ -118,18 +118,18 @@ export default function BeatKeeperWorld() {
         <>
           <MascotSay mood="proud" tone="clay">
             {/* KID-27 / kid register: the child hears the beat verdict as words + stars, never a percentage. */}
-            {score >= 80 ? `Wow, ${first}, you nailed the beat!` : score >= 50 ? "Nice rhythm! Try the next tempo." : "Keep feeling the beat — you've got this!"}
+            {score >= 80 ? t("elev.play.beat.feedback.nailed", { name: first }) : score >= 50 ? t("elev.play.beat.feedback.next") : t("elev.play.beat.feedback.keep")}
           </MascotSay>
           <div className="flex justify-center">
             <PlayButton onClick={() => { setPhase("ready"); setPulse(-1); setRoundIdx((i) => i + 1); }}>
-              {roundIdx + 1 < BEAT_ROUNDS.length ? "Next tempo" : "Finish"}
+              {roundIdx + 1 < BEAT_ROUNDS.length ? t("elev.play.beat.next") : t("elev.play.beat.finish")}
             </PlayButton>
           </div>
         </>
       )}
 
       <p className="flex items-center justify-center gap-1.5 text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }}>
-        <Icon name="music_note" size={14} /> Timing, focus &amp; self-regulation
+        <Icon name="music_note" size={14} /> {t("elev.play.beat.support")}
       </p>
     </div>
   );

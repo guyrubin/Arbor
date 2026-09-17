@@ -125,3 +125,46 @@ describe("CODEX-7 — capture review carries no static confidence verdict (firew
     }
   });
 });
+
+
+describe("W2 Today working density", () => {
+  it("keeps all three fixed capture doors visibly labeled and the action illustration compact", () => {
+    const capture = stripComments(read("components/overview/QuickCaptureBar.tsx"));
+    const compactHero = stripComments(read("components/overview/TodayRecommendation.tsx"));
+    expect(capture).toContain('<span>{t("today.capture.text")}</span>');
+    expect(capture).toContain('shortLabel: "elev.wave2Daily.capture.voice"');
+    expect(capture).toContain('shortLabel: "elev.wave2Daily.capture.photo"');
+    expect(capture).toContain('aria-label={t(label)}');
+    expect(capture).toContain('<span className="text-[12px] font-bold"');
+    expect(capture).not.toContain("hidden sm:inline");
+    expect(capture).not.toContain("hidden lg:inline");
+    expect(compactHero).toContain("HeroAvatar size={40}");
+    expect(compactHero).not.toContain("min-h-[132px]");
+    expect(compactHero).toContain("min-h-11 rounded-lg");
+  });
+});
+
+
+describe("W2 Today supporting presentation", () => {
+  it("keeps prompt capture, rhythm, and first steps compact without removing their working doors", () => {
+    const prompt = stripComments(read("components/overview/PromptCaptureCard.tsx"));
+    const cue = stripComments(read("components/coach/RhythmCue.tsx"));
+    const rail = stripComments(read("components/onboarding/FirstStepsRail.tsx"));
+    expect(prompt).toContain('{t("today.intent.captureTitle")}');
+    expect(prompt).not.toContain('t("today.intent.doNow")');
+    expect(prompt).toContain('promptKey ? t(promptKey) : t("elev.prompt.lead")');
+    expect(cue).not.toContain('elev.evening.card.eyebrow');
+    expect(cue).toContain('rounded-xl px-3 py-3');
+    expect(cue).toContain('setActiveTab(visible.action)');
+    expect(rail).toContain('min-h-11 w-full');
+    expect(rail).not.toContain('grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4');
+    expect(rail).not.toContain('truncate');
+    expect(rail).toContain('onClick={() => openStep(s.id, s.tab)}');
+  });
+
+  it("makes the Growth summary a genuine keyboard-operable door", () => {
+    const overview = stripComments(read("components/tabs/OverviewTab.tsx"));
+    expect(overview).toMatch(/<button\s+type="button"\s+onClick=\{\(\) => setActiveTab\("development"\)\}/);
+    expect(overview).not.toMatch(/<section\s+onClick=\{\(\) => setActiveTab\("development"\)\}/);
+  });
+});

@@ -60,8 +60,9 @@ describe("OBJ-ASK-01 · the composer has an accessible name", () => {
     // The three capture chips (photo / document / voice).
     expect(coach).not.toContain("min-h-[36px] px-3 rounded-full");
     expect((coach.match(/min-h-11 px-3 rounded-full text-\[11px\] font-bold/g) ?? []).length).toBe(3);
-    // "New", the thread chip and the 12x23 delete.
-    expect(coach).toContain('className="flex-shrink-0 flex min-h-11 items-center gap-1.5 text-[11px] font-extrabold');
+    // New and delete retain real target floors inside the compact history region.
+    expect(coach).toContain('onClick={newConversation}');
+    expect(coach).toContain('className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-[12px] font-extrabold');
     expect(coach).toContain('aria-label={t("aria.deleteConversation")} className="touch-target transition"');
   });
 });

@@ -31,7 +31,7 @@ export const en: Record<string, string> = {
   // ── Offline (AI-24).
   "elev.aierrors.offline.title": "No connection",
   "elev.aierrors.offline.body": "Arbor answers online. What you typed stays here — send it when you are back.",
-  "elev.aierrors.offline.composer": "You are offline — Arbor will send this once the connection is back.",
+  "elev.aierrors.offline.composer": "You are offline — your draft stays here. Send it when you are back.",
 
   // ── Everything else: unchanged meaning, but still never the server's words.
   "elev.aierrors.generic.title": "That did not go through",
@@ -50,7 +50,7 @@ export const he: Record<string, string> = {
 
   "elev.aierrors.offline.title": "אין חיבור",
   "elev.aierrors.offline.body": "ארבור עונה כשיש חיבור לאינטרנט. מה שכתבתם נשאר כאן — שלחו כשהחיבור חוזר.",
-  "elev.aierrors.offline.composer": "אתם לא מחוברים — ארבור ישלח את זה ברגע שהחיבור יחזור.",
+  "elev.aierrors.offline.composer": "אין חיבור — הטיוטה שלכם נשארת כאן. שלחו אותה כשהחיבור חוזר.",
 
   "elev.aierrors.generic.title": "זה לא עבר",
   "elev.aierrors.generic.body": "משהו אצלנו לא ענה. השאלה שלכם עדיין כאן — נסו שוב.",

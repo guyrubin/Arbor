@@ -66,6 +66,8 @@ import * as storeShell from "./storeShell";
 import * as syncstatus from "./syncstatus";
 import * as today from "./today";
 import * as trustcenter from "./trustcenter";
+import * as wave2Daily from "./wave2Daily";
+import * as wave2Knowledge from "./wave2Knowledge";
 import * as waveE from "./waveE";
 import * as waveR from "./waveR";
 import * as wow from "./wow";
@@ -120,6 +122,8 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   syncstatus,
   today,
   trustcenter,
+  wave2Daily,
+  wave2Knowledge,
   waveE,
   waveR,
   wow,

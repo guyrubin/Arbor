@@ -157,3 +157,23 @@ describe("ASK-3 â€” frames stay out of the parent render (source guard)", () => 
     expect(cards).not.toContain("FRAME_LABEL_KEYS");
   });
 });
+
+
+describe("W2 fresh Ask density — examples and history stay available without an empty transcript", () => {
+  it("shows three deterministic scenarios first and reveals the remaining existing prompts", () => {
+    expect(coach).toContain("SCENARIOS.slice(0, 3)");
+    expect(coach).toContain("setShowAllScenarios((shown) => !shown)");
+    expect(coach).toContain("elev.wave2Daily.ask.examples.more");
+    expect(coach).toContain("elev.wave2Daily.ask.examples.less");
+    expect(coach).toContain('aria-controls="coach-scenarios"');
+    expect(coach).toContain("handleChatSend(s.prompt, { displayText: t(s.labelKey) })");
+  });
+
+  it("keeps New and all persisted conversations in a labeled quiet history region", () => {
+    expect(coach).toContain('aria-label={t("elev.wave2Daily.ask.history")}');
+    expect(coach).toContain("onClick={newConversation}");
+    expect(coach).toContain("openConversation(c.id)");
+    expect(coach).toContain("deleteConversation(c.id)");
+    expect(coach).not.toContain("elev.wave2Daily.ask.history.empty");
+  });
+});

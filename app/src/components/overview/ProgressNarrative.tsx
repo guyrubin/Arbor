@@ -115,30 +115,43 @@ export default function ProgressNarrative({
         </div>
         <span className="flex h-10 w-10 items-center justify-center rounded-full" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}><Icon name="timeline" size={19} /></span>
       </div>
-      <div className="mt-5 grid gap-3 lg:grid-cols-3">
-        <NarrativeCell icon="moving" title={copy.changed} body={hasEvidence ? `${copy.changedBody} ${weekCount}` : copy.noChange} />
-        <div className="rounded-2xl p-4" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}>
-          <div className="flex items-center gap-2"><Icon name="fact_check" size={17} style={{ color: "var(--arbor-green-ink)" }} /><h3 className="text-xs font-extrabold" style={{ color: "var(--arbor-ink)" }}>{copy.evidence}</h3></div>
-          {/* TODAY-6 / AR-CAP-03: every cited row is TAPPABLE and deep-links to
-              that exact journal entry via onOpenEvidence(item.id) — the section
-              earns its card by connecting inference to source signal. */}
-          {evidence.length ? <ul className="mt-3 space-y-1">{evidence.map((item) => (
-            <li key={item.id}>
-              <button
-                type="button"
-                onClick={() => onOpenEvidence(item.id)}
-                aria-label={t("today.narrative.openItem", { label: item.label })}
-                className="flex w-full min-h-11 items-start gap-1.5 rounded-lg py-1.5 text-start"
-              >
-                <span className="line-clamp-2 flex-1 text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{item.label}</span>
-                <Icon name="arrow_forward" size={14} className="mt-0.5 flex-shrink-0 rtl:-scale-x-100" style={{ color: "var(--arbor-green-ink)" }} />
-              </button>
-            </li>
-          ))}</ul> : <p className="mt-3 text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{copy.evidenceEmpty}</p>}
-          <button type="button" onClick={() => onOpenEvidence()} className="touch-target !justify-start mt-3 text-xs font-extrabold" style={{ color: "var(--arbor-green-ink)" }}>{copy.open}</button>
+      {hasEvidence ? (
+        <div className="mt-5 grid gap-3 lg:grid-cols-3">
+          <NarrativeCell icon="moving" title={copy.changed} body={`${copy.changedBody} ${weekCount}`} />
+          <div className="rounded-2xl p-4" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}>
+            <div className="flex items-center gap-2"><Icon name="fact_check" size={17} style={{ color: "var(--arbor-green-ink)" }} /><h3 className="text-xs font-extrabold" style={{ color: "var(--arbor-ink)" }}>{copy.evidence}</h3></div>
+            {/* TODAY-6 / AR-CAP-03: every cited row is TAPPABLE and deep-links to
+                that exact journal entry via onOpenEvidence(item.id) — the section
+                earns its card by connecting inference to source signal. */}
+            {evidence.length ? <ul className="mt-3 space-y-1">{evidence.map((item) => (
+              <li key={item.id}>
+                <button
+                  type="button"
+                  onClick={() => onOpenEvidence(item.id)}
+                  aria-label={t("today.narrative.openItem", { label: item.label })}
+                  className="flex w-full min-h-11 items-start gap-1.5 rounded-lg py-1.5 text-start"
+                >
+                  <span className="line-clamp-2 flex-1 text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{item.label}</span>
+                  <Icon name="arrow_forward" size={14} className="mt-0.5 flex-shrink-0 rtl:-scale-x-100" style={{ color: "var(--arbor-green-ink)" }} />
+                </button>
+              </li>
+            ))}</ul> : <p className="mt-3 text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{copy.evidenceEmpty}</p>}
+            <button type="button" onClick={() => onOpenEvidence()} className="touch-target !justify-start mt-3 text-xs font-extrabold" style={{ color: "var(--arbor-green-ink)" }}>{copy.open}</button>
+          </div>
+          <NarrativeCell icon="arrow_forward" title={copy.next} body={copy.nextBody} />
         </div>
-        <NarrativeCell icon="arrow_forward" title={copy.next} body={copy.nextBody} />
-      </div>
+      ) : (
+        <div className="mt-4 flex items-start gap-3 rounded-xl px-4 py-3" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+          <Icon name="timeline" size={18} className="mt-0.5 flex-shrink-0" style={{ color: "var(--arbor-green-ink)" }} />
+          <div className="min-w-0">
+            <p className="text-[13px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{copy.noChange}</p>
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <button type="button" onClick={() => onOpenEvidence()} className="touch-target !justify-start text-xs font-extrabold" style={{ color: "var(--arbor-green-ink)" }}>{copy.open}</button>
+              <span className="text-[12px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}><span className="font-bold" style={{ color: "var(--arbor-ink)" }}>{copy.next}:</span> {copy.nextBody}</span>
+            </div>
+          </div>
+        </div>
+      )}
       {/* ENG-18 cold-start: what Arbor still needs before it can read the
           daily rhythm. A quiet footer LINE (Rule A: never a sixth module),
           and it disappears the moment the rhythm reads. */}

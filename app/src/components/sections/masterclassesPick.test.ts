@@ -40,7 +40,7 @@ const PRE_CHANGE = `
 
 const RANKED_PICK = /todaysLearnPick\(\s*LEARN_CARDS/;
 const SEEDED_DAY = /dayKey:\s*pickDayKey\(/;
-const CTA_OPENS_PICK = /onClick:\s*\(\)\s*=>\s*requestLearnRead\(\{\s*cardId:\s*todaysRead\.card\.id/;
+const CTA_OPENS_PICK = /onClick=\{\(\) => todaysRead \? requestLearnRead\(\{ cardId: todaysRead\.card\.id/;
 const PICK_MINUTES = /value:\s*todaysRead\.card\.minutes/;
 const WHY_LINE = /data-testid="academy-pick-why"/;
 

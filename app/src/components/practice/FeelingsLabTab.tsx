@@ -305,39 +305,6 @@ export default function FeelingsLabTab() {
     >
 
       <PlayPanel tone="yellow">
-        <div className="flex items-center gap-4 rounded-2xl p-4 mb-4" style={{ background: "var(--arbor-paper-deep)" }}>
-          <EmotionAvatar
-            name={first}
-            photoURL={childProfile.photoUrl}
-            emotionEmoji={activeEmotion?.emoji}
-            emotionLabel={activeEmotion?.label}
-            color={activeColor}
-            size={64}
-          />
-          <div className="flex-1 min-w-0">
-            <p className="text-[15px] font-extrabold mb-2" style={{ color: "var(--arbor-ink)" }}>{t("elev.play.feelings.selfCheck", { name: first })}</p>
-            <div className="flex flex-wrap gap-2">
-              {EMOTIONS.map((e) => {
-                const on = feltEmotion === e.id;
-                return (
-                  <button
-                    key={e.id}
-                    onClick={() => feel(e.id)}
-                    aria-pressed={on}
-                    aria-label={e.label}
-                    className="play-pressable rounded-full min-w-[48px] min-h-[48px] px-3 text-2xl transition"
-                    style={on
-                      ? { background: "var(--arbor-paper-elevated)", boxShadow: `0 0 0 3px ${EMOTION_TONE[e.id] ?? "var(--arbor-clay)"}` }
-                      : { background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}
-                  >
-                    {e.emoji}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
         <ProgressPips total={EMOTION_SCENARIOS.length} current={scenarioIdx % EMOTION_SCENARIOS.length} tone="yellow" />
 
         <div className="rounded-[var(--play-radius)] p-6 my-4" style={{ background: "var(--arbor-paper-elevated)", boxShadow: "var(--shadow-sm)" }}>
@@ -369,6 +336,42 @@ export default function FeelingsLabTab() {
             </div>
           </div>
         )}
+
+        {/* The child can first notice the scene, listen, and choose. Their own
+            feelings stay visible below as a separate self-check, not a clue or
+            a result from the scenario. */}
+        <div className="mt-5 flex items-center gap-4 rounded-2xl p-4" style={{ background: "var(--arbor-paper-deep)" }}>
+          <EmotionAvatar
+            name={first}
+            photoURL={childProfile.photoUrl}
+            emotionEmoji={activeEmotion?.emoji}
+            emotionLabel={activeEmotion?.label}
+            color={activeColor}
+            size={64}
+          />
+          <div className="flex-1 min-w-0">
+            <p className="text-[15px] font-extrabold mb-2" style={{ color: "var(--arbor-ink)" }}>{t("elev.play.feelings.selfCheck", { name: first })}</p>
+            <div className="flex flex-wrap gap-2">
+              {EMOTIONS.map((e) => {
+                const on = feltEmotion === e.id;
+                return (
+                  <button
+                    key={e.id}
+                    onClick={() => feel(e.id)}
+                    aria-pressed={on}
+                    aria-label={e.label}
+                    className="play-pressable rounded-full min-w-[48px] min-h-[48px] px-3 text-2xl transition"
+                    style={on
+                      ? { background: "var(--arbor-paper-elevated)", boxShadow: `0 0 0 3px ${EMOTION_TONE[e.id] ?? "var(--arbor-clay)"}` }
+                      : { background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}
+                  >
+                    {e.emoji}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       </PlayPanel>
     </RegisterShell>
   );

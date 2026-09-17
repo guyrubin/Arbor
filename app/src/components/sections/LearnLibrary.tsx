@@ -292,7 +292,7 @@ export default function LearnLibrary() {
           `data-primary-move` marks the ONE control that performs the move
           surfaceContract.ts declares for this route. */}
       {/* Category pills */}
-      <div data-module="learn-filters" className="flex gap-2 overflow-x-auto pb-1 -mb-1" role="tablist" aria-label={t("learn.title")}>
+      <div data-module="learn-filters" className="flex flex-wrap gap-2" role="tablist" aria-label={t("learn.title")}>
         <FilterPill active={filter === "all"} onClick={() => setFilter("all")} label={t("learn.all")} />
         <FilterPill
           active={filter === "saved"}
@@ -315,7 +315,7 @@ export default function LearnLibrary() {
       {browsing && featured.length > 0 && (
         <section data-module="learn-picked" aria-label={t("learn.pickedTitle", { name: firstName || t("learn.yourChild") })}>
           <div className="flex items-baseline gap-2 flex-wrap mb-2.5">
-            <h2 className="text-[15px] font-extrabold inline-flex items-center gap-1.5" style={{ color: "var(--arbor-ink)" }}>
+            <h2 className="text-lg font-bold inline-flex items-center gap-1.5" style={{ color: "var(--arbor-ink)" }}>
               <Icon name="auto_awesome" size={16} className="opacity-80" />
               {t("learn.pickedTitle", { name: firstName || t("learn.yourChild") })}
             </h2>
@@ -386,11 +386,11 @@ export default function LearnLibrary() {
                any phone width regardless of string length — EN or HE. From sm
                up `sm:w-auto` restores the single justified line. */
             <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1.5 mb-2.5">
-              <h2 className="text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>
+              <h2 className="text-lg font-bold" style={{ color: "var(--arbor-ink)" }}>
                 {t("learn.allReads")}
               </h2>
               <span className="inline-flex w-full flex-wrap items-center gap-2 sm:w-auto">
-                <span className="text-[11.5px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+                <span className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>
                   {t("learn.count", { n: inScope.length })}
                   {readCount > 0 && ` · ${t("elev.learnCare.read.count", { n: readCount })}`}
                 </span>
@@ -400,7 +400,7 @@ export default function LearnLibrary() {
                 {(ageHidden.length > 0 || showAllAges) && (
                   <>
                     {!showAllAges && ageHidden.length > 0 && (
-                      <span className="text-[11px] font-bold" style={{ color: "var(--arbor-faint)" }} dir="auto">
+                      <span className="text-xs font-semibold" style={{ color: "var(--arbor-faint)" }} dir="auto">
                         {agefilterText("elev.agefilter.hiddenCount", he, { n: ageHidden.length })}
                       </span>
                     )}
@@ -410,7 +410,7 @@ export default function LearnLibrary() {
                       aria-checked={showAllAges}
                       onClick={toggleShowAllAges}
                       data-testid="agefilter-toggle-learn"
-                      className="inline-flex items-center gap-1.5 rounded-full px-3 min-h-11 text-[11.5px] font-extrabold transition"
+                      className="inline-flex items-center gap-1.5 rounded-full px-3 min-h-11 text-xs font-extrabold transition"
                       style={
                         showAllAges
                           ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid color-mix(in srgb, var(--arbor-green-ink) 25%, transparent)" }
@@ -483,7 +483,7 @@ export default function LearnLibrary() {
       )}
 
       {/* Provenance — editorial stance, no assessment */}
-      <p className="text-[11px] pt-1" style={{ color: "var(--arbor-faint)" }}>
+      <p className="text-xs pt-1" style={{ color: "var(--arbor-faint)" }}>
         {t("learn.provenance")}
       </p>
     </div>
@@ -507,7 +507,7 @@ function FilterPill({
     <button
       onClick={onClick}
       aria-pressed={active}
-      className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 min-h-11 text-[12px] font-bold whitespace-nowrap transition active:scale-[0.98] focus:outline-none focus-visible:ring-2"
+      className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 min-h-11 text-[12px] font-bold text-start transition active:scale-[0.98] focus:outline-none focus-visible:ring-2"
       style={
         active
           ? { background: "var(--arbor-subtab-active)", color: "var(--arbor-subtab-on-ink)" }
@@ -561,39 +561,20 @@ function LearnGridCard({
         onClick={onOpen}
         className={`${cardCls} w-full h-full flex flex-col text-start overflow-hidden transition motion-safe:hover:-translate-y-0.5 active:scale-[0.99] focus:outline-none focus-visible:ring-2`}
       >
-        {/* Tone band */}
-        <div
-          className={`w-full flex items-center ps-4 ${featured ? "h-[84px]" : "h-[64px]"}`}
-          style={{ background: `linear-gradient(135deg, ${tone.soft}, var(--arbor-paper-elevated))` }}
-          aria-hidden
-        >
-          <span
-            className="inline-flex items-center justify-center rounded-2xl"
-            style={{
-              background: "var(--arbor-paper-elevated)",
-              color: tone.ink,
-              width: featured ? 48 : 40,
-              height: featured ? 48 : 40,
-              boxShadow: "var(--shadow-xs)",
-            }}
-          >
-            <Icon name={cat.msIcon} size={featured ? 24 : 20} />
-          </span>
-        </div>
         {/* Body */}
-        <div className="p-4 pt-3 flex flex-col gap-1.5 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
+        <div className="p-4 flex flex-col gap-2 flex-1">
+          <div className="flex items-center gap-2 flex-wrap pe-12">
             <span
-              className="rounded-full px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-wide"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold"
               style={{ background: tone.soft, color: tone.ink }}
             >
-              {pick(he, cat.label)}
+              <Icon name={cat.msIcon} size={16} />{pick(he, cat.label)}
             </span>
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+            <span className="inline-flex items-center gap-1 text-xs font-semibold" style={{ color: "var(--arbor-muted)" }}>
               <Icon name="schedule" size={13} />
               {t("learn.minutes", { n: card.minutes })}
             </span>
-            <span className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+            <span className="text-xs font-semibold" style={{ color: "var(--arbor-muted)" }}>
               {t("learn.ages", { min: card.ageMin, max: card.ageMax })}
             </span>
             {/* LC-21 — a quiet marker for a read the PARENT already opened.
@@ -601,7 +582,7 @@ function LearnGridCard({
                 is exactly the unmarked library this surface shipped with. */}
             {read && (
               <span
-                className="inline-flex items-center gap-1 text-[11px] font-bold"
+                className="inline-flex items-center gap-1 text-xs font-semibold"
                 style={{ color: "var(--arbor-muted)" }}
               >
                 <Icon name="check" size={13} />
@@ -609,11 +590,11 @@ function LearnGridCard({
               </span>
             )}
           </div>
-          <h3 className="text-[15px] font-extrabold leading-snug" dir="auto" style={{ color: "var(--arbor-ink)" }}>
+          <h3 className="text-lg font-bold leading-snug" dir="auto" style={{ color: "var(--arbor-ink)" }}>
             {pick(he, card.title)}
           </h3>
           <p
-            className={`text-[12.5px] leading-relaxed ${featured ? "line-clamp-3" : "line-clamp-2"}`}
+            className="text-sm leading-relaxed"
             dir="auto"
             style={{ color: "var(--arbor-muted)" }}
           >
@@ -744,16 +725,16 @@ function LearnReader({
           </span>
           <div className="flex items-center gap-2 flex-wrap">
             <span
-              className="rounded-full px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-wide"
+              className="rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-wide"
               style={{ background: "var(--arbor-paper-elevated)", color: tone.ink }}
             >
               {pick(he, cat.label)}
             </span>
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold" style={{ color: tone.ink }}>
+            <span className="inline-flex items-center gap-1 text-xs font-semibold" style={{ color: tone.ink }}>
               <Icon name="schedule" size={13} />
               {t("learn.minutes", { n: card.minutes })}
             </span>
-            <span className="text-[11px] font-bold" style={{ color: tone.ink }}>
+            <span className="text-xs font-semibold" style={{ color: tone.ink }}>
               {t("learn.ages", { min: card.ageMin, max: card.ageMax })}
             </span>
           </div>
@@ -843,14 +824,14 @@ function LearnReader({
 
       {/* Key points */}
       <section aria-label={t("learn.keyPoints")}>
-        <h3 className="text-[15px] font-extrabold mb-3" style={{ color: "var(--arbor-ink)" }}>
+        <h3 className="text-lg font-bold mb-3" style={{ color: "var(--arbor-ink)" }}>
           {t("learn.keyPoints")}
         </h3>
         <ol className="space-y-3">
           {card.keyPoints.map((point, i) => (
             <li key={i} className="flex gap-3">
               <span
-                className="inline-flex items-center justify-center rounded-full flex-shrink-0 w-6 h-6 text-[11px] font-extrabold mt-0.5"
+                className="inline-flex items-center justify-center rounded-full flex-shrink-0 w-6 h-6 text-xs font-extrabold mt-0.5"
                 style={{ background: tone.soft, color: tone.ink }}
                 aria-hidden
               >
@@ -866,7 +847,7 @@ function LearnReader({
 
       {/* Full read */}
       <section aria-label={t("learn.fullRead")}>
-        <h3 className="text-[15px] font-extrabold mb-3" style={{ color: "var(--arbor-ink)" }}>
+        <h3 className="text-lg font-bold mb-3" style={{ color: "var(--arbor-ink)" }}>
           {t("learn.fullRead")}
         </h3>
         <div className="space-y-3.5">
@@ -948,7 +929,7 @@ function LearnReader({
           TrustLink chip closes the why → Trust Center chain, after the
           provenance text on the same wrapping row (scholar-hub-reader parity;
           UI-WIRE 2026-08-20 inventory gap). */}
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]" style={{ color: "var(--arbor-faint)" }}>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs" style={{ color: "var(--arbor-faint)" }}>
         <span dir="auto">{t("learn.provenance")}</span>
         <TrustLink surface="learn-reader" />
       </div>

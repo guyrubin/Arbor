@@ -165,7 +165,11 @@ function JournalRow({
         <Icon name={glyph} size={22} fill={1} />
       </span>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* W2: the parent-visible entry meaning leads; provenance/time remain readable metadata. */}
+        <p className="text-[14px] font-bold leading-relaxed" style={{ color: "var(--arbor-ink)" }} dir="auto">
+          {title}
+        </p>
+        <div className="mt-1.5 flex items-center gap-2 flex-wrap">
           {/* Provenance badge — AUTO gets the accent "Arbor" mark, CHILD a soft
               lav chip with the child's name, MANUAL a neutral "You" one. */}
           <span
@@ -189,7 +193,7 @@ function JournalRow({
           {originLabel && (
             <span
               data-testid="journal-row-origin"
-              className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wide rounded-md px-1.5 py-0.5"
+              className="inline-flex items-center gap-1 text-[12px] font-extrabold uppercase tracking-wide rounded-md px-1.5 py-0.5"
               dir="auto"
               style={{ background: PASTEL.mint.soft, color: PASTEL.mint.ink }}
             >
@@ -202,12 +206,9 @@ function JournalRow({
             <Chip tone={tone} icon={<Icon name={DOMAIN_MS[domain]} size={13} fill={1} />}>{domainLabel}</Chip>
           )}
           {when && (
-            <span className="text-[11px] font-bold ms-auto" style={{ color: "var(--arbor-muted)" }}>{when}</span>
+            <span className="text-[12px] font-bold ms-auto" style={{ color: "var(--arbor-muted)" }}>{when}</span>
           )}
         </div>
-        <p className="text-[13.5px] font-semibold mt-2 leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }} dir="auto">
-          {title}
-        </p>
         {detail && (
           <p className="text-[12.5px] mt-1 leading-snug line-clamp-2" style={{ color: "var(--arbor-muted)" }} dir="auto">
             {detail}

@@ -112,7 +112,7 @@ describe("OBJ-KID-06 — the game tile title is on the kid scale", () => {
     expect(resolveClamp(KID_HOME_GAME_TITLE_SIZE, VIEWPORT_W)).toBeGreaterThanOrEqual(KID_HOME_GAME_TITLE_MIN_PX);
     expect(KID_HOME_GAME_TITLE_MIN_PX).toBeGreaterThanOrEqual(20);
     // …and it is the size the component actually renders the title with.
-    expect(dash).toContain("fontSize: big ? \"var(--t-lg)\" : KID_HOME_GAME_TITLE_SIZE");
+    expect(dash).toContain("fontSize: KID_HOME_GAME_TITLE_SIZE");
   });
 
   it("the title carries a measurement hook, so the rendered check reads the title node", () => {

@@ -10,10 +10,8 @@
  * production component HeroArcade ships — to generate a themed scene STARRING the
  * child's hero (the avatar is the consistency reference). Generation is lazy
  * (IntersectionObserver) + cached (sceneCache cost-guard).
- * DEFAULT (no custom avatar): the tile shows the pre-made comic-hero art from the
- * image repository (public/visuals/cards, served as ~70KB WebP thumbnails in
- * /sm/) — so the grid is rich comic art out of the box. A custom avatar then
- * personalizes each tile via generation. The themed icon is the ultimate
+ * DEFAULT: reviewed neutral illustrations from the shared worldArtwork map.
+ * A custom avatar personalizes each tile via generation. The themed icon is the ultimate
  * fallback if the image fails. Never a blank or a blocked first paint.
  *
  * Still deferred: the unified theme registry (P2), the bounded daily quest +
@@ -63,12 +61,7 @@ const ACCENT_INK: Record<Accent, string> = {
   pink: "var(--arbor-pink-ink)",
 };
 
-// `art` = the pre-made comic-hero card image (the existing image repository in
-// public/visuals/cards). It is the DEFAULT tile art shown when the child has no
-// custom avatar yet — so the grid is rich comic art out of the box. A custom
-// avatar then personalizes each tile via WorldScene generation. KID-7: art files
-// are UNIQUE per visible tile — a tile with no distinct asset omits `art` and
-// shows its accent icon fallback instead of a wrong recycled image.
+// Neutral artwork is presentation-only, shared with the arcade by current world ID.
 // KID-1: tile copy lives in lib/i18n.ts under `kid.adv.<id>.*` / `kid.game.<id>.*`
 // — the defs here carry only ids, art and routing. kidMode.test.ts asserts every
 // id below has its title/sub key pair in BOTH language maps.
@@ -77,7 +70,6 @@ interface AdventureDef {
   worldId: string;
   accent: Accent;
   imagePrompt: string;
-  art?: string;
   Icon: React.ComponentType<{ className?: string }>;
   surface: KidSurface;
 }
@@ -87,8 +79,8 @@ interface AdventureDef {
 // Studio is a named game tile below; a distinct creative studio stays gated on
 // the games↔worlds decision, plan §9.5).
 const ADVENTURES: AdventureDef[] = [
-  { id: "playbank", worldId: "kid-playbank", accent: "green", Icon: Gamepad2, surface: "arcade", art: "/visuals/cards/sm/game-order-builder.webp", imagePrompt: "a joyful playroom full of colorful building blocks, learning toys and a friendly little dinosaur" },
-  { id: "hero", worldId: "kid-hero", accent: "clay", Icon: BookOpen, surface: "journeys", art: "/visuals/cards/sm/game-adventures.webp", imagePrompt: "an epic storybook castle on a hill with a glowing open magic book and a brave flowing cape" },
+  { id: "playbank", worldId: "kid-playbank", accent: "green", Icon: Gamepad2, surface: "arcade", imagePrompt: "a joyful playroom full of colorful building blocks, learning toys and a friendly little dinosaur" },
+  { id: "hero", worldId: "kid-hero", accent: "clay", Icon: BookOpen, surface: "journeys", imagePrompt: "an epic storybook castle on a hill with a glowing open magic book and a brave flowing cape" },
 ]; // OBJ-KID-05: the "Feelings" adventure tile opened the SAME FeelingsLabTab as
    // the "Mood Mountain" game tile below (the arcade world `feelings` is that
    // component). Two tiles, one destination, and the child pays for the
@@ -109,17 +101,16 @@ interface GameDef {
   accent: Accent;
   Icon: React.ComponentType<{ className?: string }>;
   imagePrompt: string;
-  art?: string;
 }
 const GAMES: GameDef[] = [
-  { id: "sound-lab", worldId: "speech", accent: "sky", Icon: Mic, art: "/visuals/cards/sm/game-speech.webp", imagePrompt: "a bright sound-and-music studio with a big microphone, floating letters and musical notes" },
+  { id: "sound-lab", worldId: "speech", accent: "sky", Icon: Mic, imagePrompt: "a bright sound-and-music studio with a big microphone, floating letters and musical notes" },
   { id: "mood-mountain", worldId: "feelings", accent: "lav", Icon: Heart, imagePrompt: "a friendly mountain landscape with cheerful emotion characters (happy, sad, calm) and a warm sky" },
-  { id: "mind-vault", worldId: "memory", accent: "pink", Icon: Brain, art: "/visuals/cards/sm/game-memory.webp", imagePrompt: "opening a glowing memory vault full of colorful matching cards" },
-  { id: "beat-keeper", worldId: "beat", accent: "clay", Icon: Music, art: "/visuals/cards/sm/game-beat.webp", imagePrompt: "a colorful music stage with drums, rhythm bars and bouncing musical notes" },
+  { id: "mind-vault", worldId: "memory", accent: "pink", Icon: Brain, imagePrompt: "opening a glowing memory vault full of colorful matching cards" },
+  { id: "beat-keeper", worldId: "beat", accent: "clay", Icon: Music, imagePrompt: "a colorful music stage with drums, rhythm bars and bouncing musical notes" },
   { id: "hero-pose", worldId: "pose", accent: "sky", Icon: PersonStanding, imagePrompt: "a dynamic superhero action pose with bold motion lines" },
   { id: "pattern-power", worldId: "pattern", accent: "lav", Icon: Shapes, imagePrompt: "a puzzle world of glowing shapes arranged in patterns" },
   { id: "story-quest", worldId: "adventures", accent: "peach", Icon: Map, imagePrompt: "an adventurous storybook landscape, holding a treasure map with a compass on a cliff" },
-  { id: "mimic-studio", worldId: "mimic", accent: "clay", Icon: Smile, art: "/visuals/cards/sm/game-mimic.webp", imagePrompt: "a playful mirror studio copying silly happy poses, sparkles all around" },
+  { id: "mimic-studio", worldId: "mimic", accent: "clay", Icon: Smile, imagePrompt: "a playful mirror studio copying silly happy poses, sparkles all around" },
 ];
 
 /** OBJ-KID-05: every tile on the kid home, with the destination it opens.
@@ -248,7 +239,6 @@ function SceneTile({
   title,
   sub,
   imagePrompt,
-  art,
   heroUrl,
   onClick,
   big,
@@ -260,9 +250,6 @@ function SceneTile({
   title: string;
   sub: string;
   imagePrompt: string;
-  /** KID-7: omitted when no distinct asset exists — the accent icon fallback
-   *  renders instead of a recycled image from another tile. */
-  art?: string;
   heroUrl?: string;
   onClick: () => void;
   big?: boolean;
@@ -275,6 +262,8 @@ function SceneTile({
       style={{
         appearance: "none",
         position: "relative",
+        display: "grid",
+        gridTemplateRows: big ? "minmax(60px, 1fr) auto" : "minmax(100px, 1fr) auto",
         overflow: "hidden",
         textAlign: "start",
         cursor: "pointer",
@@ -284,37 +273,21 @@ function SceneTile({
         animationDelay: `${index * 40}ms`,
       }}
     >
-      {/* Default = the pre-made comic-hero art (image repository). It shows when
-          there's no custom avatar, and as the loading/fallback under a generated
-          avatar scene. The themed icon sits behind it as the ultimate fallback if
-          the image fails to load. */}
-      <WorldScene worldId={worldId} imagePrompt={imagePrompt} heroUrl={heroUrl}>
-        <span className="relative block w-full h-full">
-          <span aria-hidden="true" className="absolute inset-0 grid place-items-center" style={{ color: ACCENT_INK[accent], opacity: 0.9 }}>
-            <Icon className="w-10 h-10" />
-          </span>
-          {art && <img src={art} alt="" aria-hidden="true" loading="lazy" className="absolute inset-0 w-full h-full object-cover" />}
-        </span>
-      </WorldScene>
-      {/* Legibility scrim — dark at the bottom so white text reads over art OR icon. */}
-      <span
-        aria-hidden="true"
-        style={{
-          position: "absolute",
-          inset: 0,
-          background: `linear-gradient(to top, color-mix(in oklab, ${ACCENT_INK[accent]} 90%, transparent), color-mix(in oklab, ${ACCENT_INK[accent]} 30%, transparent) 38%, transparent 64%)`,
-        }}
-      />
+      <div className="relative" style={{ minBlockSize: big ? 60 : 100 }}>
+        <WorldScene worldId={worldId} imagePrompt={imagePrompt} heroUrl={heroUrl} sizes={big ? "(max-width: 639px) 100vw, 33vw" : "(max-width: 359px) 100vw, (max-width: 639px) 50vw, 25vw"}>
+          <span aria-hidden="true" className="grid h-full w-full place-items-center" style={{ color: ACCENT_INK[accent] }}><Icon className="w-10 h-10" /></span>
+        </WorldScene>
+      </div>
       {/* Title block. */}
-      <span style={{ position: "absolute", insetInline: 0, insetBlockEnd: 0, padding: big ? "14px" : "11px" }}>
+      <span style={{ padding: big ? "14px" : "11px", background: "var(--arbor-paper-elevated)" }}>
         {/* OBJ-KID-06 fixup: `data-kid-tile-title` names the node the >= 20 px
             acceptance is about, so a rendered check measures the title itself
             and never the section heading or the inherited button size beside
             it. It is a measurement hook, not a style hook. */}
-        <span data-kid-tile-title="" style={{ display: "block", fontFamily: "var(--font-display)", fontWeight: 900, fontSize: big ? "var(--t-lg)" : KID_HOME_GAME_TITLE_SIZE, color: "var(--arbor-on-accent)", lineHeight: 1.12 }}>
+        <span data-kid-tile-title="" style={{ display: "block", fontFamily: "var(--font-display)", fontWeight: 900, fontSize: KID_HOME_GAME_TITLE_SIZE, color: "var(--arbor-ink)", lineHeight: 1.12 }}>
           {title}
         </span>
-        <span style={{ display: "block", fontSize: "var(--t-sm)", color: "var(--arbor-on-accent)", opacity: 0.88, marginBlockStart: "1px" }}>{sub}</span>
+        <span style={{ display: "block", fontSize: "var(--t-sm)", color: "var(--arbor-ink)", opacity: 0.88, marginBlockStart: "1px" }}>{sub}</span>
       </span>
     </button>
   );
@@ -393,6 +366,7 @@ export default function KidDashboard({
         className="world-tile play-pop-in"
         onClick={() => onOpenSurface("journeys", tonightsStoryId)}
         style={{
+          display: "flex",
           appearance: "none",
           position: "relative",
           overflow: "hidden",
@@ -403,39 +377,23 @@ export default function KidDashboard({
           minBlockSize: `${KID_HOME_BANNER_BLOCK}px`,
         }}
       >
-        {/* KID-7: banner copy ("Start a hero story") + prompt + art depict the
-            SAME scene — an epic storybook hero moment, never a recycled tile. */}
-        <WorldScene worldId="kid-quest" imagePrompt="an epic storybook hero scene — a castle on a hill, a glowing open magic book and a brave cape mid-adventure" heroUrl={hero.url ?? undefined}>
-          <span className="relative block w-full h-full">
-            <span aria-hidden="true" className="absolute inset-0 grid place-items-center" style={{ color: "var(--arbor-sky-ink)", opacity: 0.9 }}>
-              <Sparkles className="w-10 h-10" />
-            </span>
-            <img src="/visuals/cards/sm/game-courage-steps.webp" alt="" aria-hidden="true" loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
-          </span>
-        </WorldScene>
-        <span
-          aria-hidden="true"
-          style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, color-mix(in oklab, var(--arbor-sky-ink) 92%, transparent), color-mix(in oklab, var(--arbor-sky-ink) 35%, transparent) 42%, transparent 70%)" }}
-        />
-        <span style={{ position: "absolute", insetInline: 0, insetBlockEnd: 0, padding: "18px", display: "flex", alignItems: "flex-end", gap: "14px" }}>
-          <span style={{ flex: 1, minInlineSize: 0 }}>
-            {/* Uppercase via CSS (a no-op in Hebrew) so the key stays sentence-case. */}
-            <span style={{ display: "block", fontSize: "var(--t-xs)", letterSpacing: "0.08em", fontWeight: 800, color: "var(--arbor-on-accent)", opacity: 0.9, textTransform: "uppercase" }}>{kt("kid.quest.eyebrow")}</span>
-            <span style={{ display: "block", fontFamily: "var(--font-display)", fontWeight: 900, fontSize: "var(--t-2xl)", color: "var(--arbor-on-accent)", lineHeight: 1.08 }}>{kt("kid.quest.title")}</span>
-            <span style={{ display: "block", fontSize: "var(--t-sm)", color: "var(--arbor-on-accent)", opacity: 0.88 }}>{kt("kid.quest.sub")}</span>
-          </span>
-          <span
-            style={{ display: "inline-flex", alignItems: "center", gap: "6px", paddingInline: "16px", paddingBlock: "10px", borderRadius: "999px", background: "var(--arbor-peach)", color: "var(--arbor-on-accent)", fontWeight: 800, whiteSpace: "nowrap", flexShrink: 0 }}
-          >
-            {kt("kid.quest.cta")} <ChevronRight className="w-4 h-4" aria-hidden="true" />
-          </span>
+        <div className="relative flex-shrink-0" style={{ inlineSize: "45%", maxInlineSize: 300, minBlockSize: KID_HOME_BANNER_BLOCK }}>
+          <WorldScene worldId="kid-quest" imagePrompt="an epic storybook hero scene — a castle on a hill, a glowing open magic book and a brave cape mid-adventure" heroUrl={hero.url ?? undefined} sizes="(max-width: 639px) 45vw, 300px">
+            <Sparkles aria-hidden="true" className="w-10 h-10" style={{ color: "var(--arbor-sky-ink)" }} />
+          </WorldScene>
+        </div>
+        <span style={{ flex: 1, minInlineSize: 0, padding: 14, alignSelf: "center" }}>
+          <span style={{ display: "block", fontSize: 12, fontWeight: 800, color: "var(--arbor-sky-ink)" }}>{kt("kid.quest.eyebrow")}</span>
+          <span style={{ display: "block", fontFamily: "var(--font-display)", fontWeight: 900, fontSize: "clamp(20px, 5vw, 26px)", color: "var(--arbor-ink)", lineHeight: 1.12 }}>{kt("kid.quest.title")}</span>
+          <span style={{ display: "block", fontSize: 13, color: "var(--arbor-ink)", marginBlockStart: 4 }}>{kt("kid.quest.sub")}</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, minBlockSize: 44, fontWeight: 800, color: "var(--arbor-sky-ink)" }}>{kt("kid.quest.cta")} <ChevronRight className="w-4 h-4" aria-hidden="true" /></span>
         </span>
       </button>
 
       {/* ── Games ───────────────────────────────────────────────────────── */}
       <section aria-label={t("kid.games.title")}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBlockEnd: `${KID_HOME_HEAD_GAP}px` }}>
-          <h2 style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "var(--t-base)", fontWeight: 900, color: "var(--arbor-ink)" }}>
+          <h2 style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: KID_HOME_GAME_TITLE_SIZE, fontWeight: 900, color: "var(--arbor-ink)" }}>
             <Gamepad2 className="w-4 h-4" aria-hidden="true" style={{ color: "var(--arbor-lav-ink)" }} />
             {kt("kid.games.title")}
           </h2>
@@ -446,21 +404,21 @@ export default function KidDashboard({
             {kt("kid.games.seeAll")} <ChevronRight className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: `${KID_HOME_TILE_GAP}px` }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(160px, 100%), 1fr))", gap: `${KID_HOME_TILE_GAP}px` }}>
           {GAMES.map((g, i) => (
-            <SceneTile key={g.id} worldId={g.worldId} accent={g.accent} Icon={g.Icon} title={kt(`kid.game.${g.id}.title`)} sub={kt(`kid.game.${g.id}.sub`)} imagePrompt={g.imagePrompt} art={g.art} heroUrl={hero.url ?? undefined} index={i} onClick={() => onOpenSurface("arcade", g.worldId)} />
+            <SceneTile key={g.id} worldId={g.worldId} accent={g.accent} Icon={g.Icon} title={kt(`kid.game.${g.id}.title`)} sub={kt(`kid.game.${g.id}.sub`)} imagePrompt={g.imagePrompt} heroUrl={hero.url ?? undefined} index={i} onClick={() => onOpenSurface("arcade", g.worldId)} />
           ))}
         </div>
       </section>
       {/* ── My growth adventures ────────────────────────────────────────── */}
       <section aria-label={t("kid.adventures.title")}>
-        <h2 style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "var(--t-base)", fontWeight: 900, color: "var(--arbor-ink)", marginBlockEnd: `${KID_HOME_HEAD_GAP}px` }}>
+        <h2 style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: KID_HOME_GAME_TITLE_SIZE, fontWeight: 900, color: "var(--arbor-ink)", marginBlockEnd: `${KID_HOME_HEAD_GAP}px` }}>
           <Sparkles className="w-4 h-4" aria-hidden="true" style={{ color: "var(--arbor-green-ink)" }} />
           {kt("kid.adventures.title")}
         </h2>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: `${KID_HOME_TILE_GAP}px` }}>
           {ADVENTURES.map((a, i) => (
-            <SceneTile key={a.id} worldId={a.worldId} accent={a.accent} Icon={a.Icon} title={kt(`kid.adv.${a.id}.title`)} sub={kt(`kid.adv.${a.id}.sub`)} imagePrompt={a.imagePrompt} art={a.art} heroUrl={hero.url ?? undefined} big index={i} onClick={() => onOpenSurface(a.surface)} />
+            <SceneTile key={a.id} worldId={a.worldId} accent={a.accent} Icon={a.Icon} title={kt(`kid.adv.${a.id}.title`)} sub={kt(`kid.adv.${a.id}.sub`)} imagePrompt={a.imagePrompt} heroUrl={hero.url ?? undefined} big index={i} onClick={() => onOpenSurface(a.surface)} />
           ))}
         </div>
       </section>

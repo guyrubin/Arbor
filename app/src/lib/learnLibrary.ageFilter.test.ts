@@ -117,7 +117,7 @@ describe("LC-05 / RUN-11 · the parent-learning hub carries no kid-register door
   });
 
   it("the hero, the pick card and the courses gallery all remain (law 6)", () => {
-    expect(MASTER).toContain('testId="academy-hub-hero"');
+    expect(MASTER).toContain('data-testid="academy-hub-hero"');
     expect(MASTER).toContain('data-testid="academy-pick-why"');
     expect(MASTER).toContain('t("academy.courses.title")');
   });

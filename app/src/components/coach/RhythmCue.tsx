@@ -132,8 +132,8 @@ export default function RhythmCue({ surface = "coach" }: { surface?: NudgeSurfac
     <div
       data-testid="rhythm-cue"
       data-nudge-kind={visible.kind}
-      className="rounded-2xl p-4 flex items-start gap-3"
-      style={{ background: tone.soft, border: "1px solid var(--arbor-rule)" }}
+      className="flex items-start gap-3 rounded-xl px-3 py-3"
+      style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}
     >
       <span
         aria-hidden
@@ -143,16 +143,13 @@ export default function RhythmCue({ surface = "coach" }: { surface?: NudgeSurfac
         <Icon name={visible.kind === "bedtime" ? "bedtime" : "auto_awesome"} size={20} />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: tone.ink }}>
-          {t("elev.evening.card.eyebrow")}
-        </p>
-        <p dir="auto" className="mt-1 text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>
+        <p dir="auto" className="text-[14px] font-extrabold leading-snug" style={{ color: "var(--arbor-ink)" }}>
           {t(visible.headlineKey, visible.vars)}
         </p>
-        <p dir="auto" className="mt-1 text-[12.5px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+        <p dir="auto" className="mt-0.5 text-[12.5px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
           {t(visible.bodyKey, visible.vars)}
         </p>
-        <div className="mt-2.5 flex flex-wrap items-center gap-2">
+        <div className="mt-2 flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => {

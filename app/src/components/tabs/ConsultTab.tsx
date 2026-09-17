@@ -39,7 +39,7 @@ export default function ConsultTab() {
         icon={Stethoscope}
         eyebrow={t("elev.hero.care.eyebrow")}
         title={t("elev.hero.care.title", { name: firstName })}
-        subtitle={t("elev.hero.care.sub")}
+        subtitle={t("elev.wave2Knowledge.care.sub")}
         cta={{
           label: t("elev.hero.care.cta"),
           icon: <ListChecks aria-hidden="true" size={16} strokeWidth={2.4} />,

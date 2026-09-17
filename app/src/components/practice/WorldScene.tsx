@@ -1,13 +1,16 @@
 import React, { useEffect, useRef, useState } from "react";
 import { api, type AvatarStyle } from "../../lib/api";
 import { dedupeScene, getScene } from "../../lib/sceneCache";
+import { worldArtwork } from "./worldArtwork";
 import { runInstrumented } from "../../hooks/useAsyncAction";
 
 /* WorldScene — one visual identity for every child world.
    The generated comic hero is the consistency reference: the same child identity
    travels through stories, feelings and every Playbank world. Generation stays
-   lazy + persistently cached; static comic art supplied by the caller remains the
-   first-paint fallback, so a world is never blank and unseen cards cost nothing. */
+   lazy + memory-only cached; static comic art supplied by the caller remains the
+   first-paint fallback, so a world is never blank and unseen cards cost nothing.
+   All callers use noninteractive decorative art slots; the surrounding destination
+   label supplies meaning, so covered fallback avatars are also hidden from AT. */
 
 const shortHash = (s: string): string => {
   let h = 0;
@@ -52,31 +55,43 @@ export default function WorldScene({
   heroUrl,
   heroStyle,
   children,
+  sizes = "(max-width: 639px) 50vw, (max-width: 1023px) 33vw, 240px",
 }: {
   worldId: string;
   imagePrompt: string;
   heroUrl?: string;
   heroStyle?: AvatarStyle;
   children: React.ReactNode;
+  sizes?: string;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
-  const [art, setArt] = useState<string | undefined>(() =>
-    heroUrl ? getScene(`world-v2|${worldId}|${shortHash(heroUrl)}`) : undefined,
-  );
+  const key = heroUrl ? `world-v2|${worldId}|${shortHash(heroUrl)}` : null;
+  const [resolved, setResolved] = useState<{ key: string; url: string } | null>(() => {
+    const url = key ? getScene(key) : undefined;
+    return key && url ? { key, url } : null;
+  });
+  const [failedGenerated, setFailedGenerated] = useState<{ key: string | null; url: string } | null>(null);
+  const [failedStatic, setFailedStatic] = useState<string | null>(null);
+  // A previous key's result is never displayed, even before effect cleanup runs.
+  const art = key ? (resolved?.key === key ? resolved.url : getScene(key)) : undefined;
+  const generated = art && !(failedGenerated?.key === key && failedGenerated.url === art) ? art : undefined;
+  const fallback = worldArtwork(worldId);
 
   useEffect(() => {
-    if (!heroUrl || art) return;
+    if (!heroUrl || !key) return;
     // v2 intentionally invalidates the older mixed-style cache once. From here
     // on, each child/world pair remains stable and cost-guarded.
-    const key = `world-v2|${worldId}|${shortHash(heroUrl)}`;
     const cached = getScene(key);
-    if (cached) { setArt(cached); return; }
+    if (cached) { setResolved({ key, url: cached }); return; }
 
     const el = ref.current;
     if (!el) return;
     let active = true;
 
+    let started = false;
     const generate = () => {
+      if (started || !active) return;
+      started = true;
       dedupeScene(key, () =>
         toAvatarDataUrl(heroUrl).then((ref) =>
           runInstrumented("world_scene", () =>
@@ -88,7 +103,7 @@ export default function WorldScene({
           ).then((r) => r.dataUrl),
         ),
       )
-        .then((url) => { if (active) setArt(url); })
+        .then((url) => { if (active) setResolved({ key, url }); })
         .catch(() => { /* graceful: keep the supplied static comic fallback */ });
     };
 
@@ -98,15 +113,16 @@ export default function WorldScene({
     }, { rootMargin: "160px" });
     obs.observe(el);
     return () => { active = false; obs.disconnect(); };
-  }, [worldId, imagePrompt, heroUrl, heroStyle, art]);
+  }, [key, imagePrompt, heroUrl, heroStyle]);
 
   return (
-    <div ref={ref} className="absolute inset-0">
-      {art ? (
-        <img src={art} alt="" aria-hidden="true" className="w-full h-full object-cover" />
-      ) : (
-        <div className="w-full h-full grid place-items-center">{children}</div>
-      )}
+    <div ref={ref} aria-hidden="true" className="absolute inset-0">
+      <div className="w-full h-full grid place-items-center">{children}</div>
+      {generated ? (
+        <img key={generated} src={generated} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover" onError={() => setFailedGenerated({ key, url: generated })} />
+      ) : fallback && failedStatic !== fallback.src ? (
+        <img key={fallback.src} src={fallback.src} srcSet={fallback.srcSet} sizes={sizes} width={960} height={640} alt="" aria-hidden="true" loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: fallback.objectPosition }} onError={() => setFailedStatic(fallback.src)} />
+      ) : null}
     </div>
   );
 }

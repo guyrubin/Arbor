@@ -110,8 +110,8 @@ describe("LC-28 / OBJ-CARE-02 · the packet, not the hero", () => {
     expect(CONSULT).toContain('scrollMarginBlockStart: "0.75rem"');
   });
 
-  it("the route carries ONE h1 (CR-21): the consult section heading is an h2", () => {
-    expect(CONSULT).toContain('{t("consult.title")}');
+  it("the route carries ONE h1 (CR-21): the packet section uses a subordinate heading", () => {
+    expect(CONSULT).toContain('{t("care.packet.title")}');
     expect(CONSULT).not.toMatch(/<h1[\s>]/);
   });
 });

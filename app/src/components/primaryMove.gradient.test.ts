@@ -201,7 +201,6 @@ describe("OBJ-TODAY-01 — repo-wide ratchet", () => {
     "profile/ProfileEditDrawer.tsx",
     "sections/Appointments.tsx",
     "sections/AskSpecialist.tsx",
-    "sections/ChildProfile.tsx",
     "sections/FindProfessional.tsx",
     "sections/Masterclasses.tsx",
     "sections/SchoolBrief.tsx",

@@ -56,49 +56,42 @@ export default function TodayRecommendation({ eyebrow, headline, body, meta, act
 
   return (
     <section className="overflow-hidden rounded-[20px]" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}>
-      <div className="grid min-h-[164px] grid-cols-1 sm:grid-cols-[180px_minmax(0,1fr)]">
-        {/* TJB-29: the hero art was a fixed stock WebP of somebody else's
-            child — the same image on every account, every day, above a step
-            written FOR this child. It is now the one shared HeroAvatar engine
-            (identity resolution + Sprout fallback live inside the engine; we
-            never re-composite), the same portrait the weekly report and the
-            kid surfaces already front. `decorative` because the headline
-            beside it is already the accessible content, and `animate={false}`
-            because this is the parent register — no idle bob. */}
-        <div aria-hidden="true" className="flex min-h-[132px] items-center justify-center" style={{ background: "var(--arbor-paper-deep)" }}>
-          <HeroAvatar size={96} mood="calm" animate={false} decorative />
+      <div className="p-4 sm:p-5">
+        <div className="flex min-w-0 items-start gap-3">
+          {/* Decorative only: this small cue accompanies the heading and never
+              reserves a rail beside the working copy or controls on a phone. */}
+          <div aria-hidden="true" className="flex h-11 w-11 flex-none items-center justify-center rounded-full" style={{ background: "var(--arbor-paper-deep)" }}>
+            <HeroAvatar size={40} mood="calm" animate={false} decorative />
+          </div>
+          <div className="min-w-0 flex-1">
+            <span className="text-[10px] font-extrabold uppercase tracking-[0.13em]" style={{ color: "var(--arbor-green-ink)" }}>{eyebrow}</span>
+            {loading ? <div className="mt-2 space-y-2"><Skeleton className="h-6 w-4/5" /><Skeleton className="h-5 w-1/2" /></div> : <h2 className="mt-1.5 text-[21px] font-extrabold leading-[1.12] sm:text-[23px]" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)", textWrap: "balance" } as React.CSSProperties}>{headline}</h2>}
+          </div>
         </div>
-        <div className="flex min-w-0 flex-col justify-center p-5 sm:px-6">
-          <span className="text-[10px] font-extrabold uppercase tracking-[0.13em]" style={{ color: "var(--arbor-green-ink)" }}>{eyebrow}</span>
-          {loading ? <div className="mt-2 space-y-2"><Skeleton className="h-6 w-4/5" /><Skeleton className="h-5 w-1/2" /></div> : <h2 className="mt-1.5 text-[21px] font-extrabold leading-[1.12] sm:text-[23px]" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)", textWrap: "balance" } as React.CSSProperties}>{headline}</h2>}
-          {!loading && body && (
-            <p dir="auto" data-testid="today-focus-observation" className="mt-2 text-[13px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{body}</p>
-          )}
+        {!loading && body && (
+          <p dir="auto" data-testid="today-focus-observation" className="mt-3 text-[14px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{body}</p>
+        )}
+        {accept && (
+          <div className="mt-3 inline-flex rounded-xl p-1" style={{ background: "var(--arbor-paper-deep)" }} role="group" aria-label={accept.lengthAria}>
+            {(["tiny", "standard", "roomy"] as ActionCapacity[]).map((value) => (
+              <button key={value} type="button" onClick={() => setCapacity(value)} aria-pressed={capacity === value} className="min-h-11 rounded-lg px-3 text-xs font-bold transition" style={{ background: capacity === value ? "var(--arbor-paper)" : "transparent", color: capacity === value ? "var(--arbor-ink)" : "var(--arbor-muted)", boxShadow: capacity === value ? "var(--shadow-xs)" : "none" }}>
+                {capacityMinutes[value]} {accept.minUnit}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <button onClick={primary.onClick} data-testid={primary.testid} className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 py-2.5 text-[13px] font-extrabold text-white transition active:scale-[0.98]" style={{ background: "var(--arbor-gradient-primary)" }}>{primary.label}<Icon name="arrow_forward" size={17} className="rtl:-scale-x-100" /></button>
           {accept && (
-            <div className="mt-3 inline-flex self-start rounded-xl p-1" style={{ background: "var(--arbor-paper-deep)" }} role="group" aria-label={accept.lengthAria}>
-              {(["tiny", "standard", "roomy"] as ActionCapacity[]).map((value) => (
-                <button key={value} type="button" onClick={() => setCapacity(value)} aria-pressed={capacity === value} className="min-h-10 rounded-lg px-3 text-xs font-bold transition" style={{ background: capacity === value ? "var(--arbor-paper)" : "transparent", color: capacity === value ? "var(--arbor-ink)" : "var(--arbor-muted)", boxShadow: capacity === value ? "var(--shadow-xs)" : "none" }}>
-                  {capacityMinutes[value]} {accept.minUnit}
-                </button>
-              ))}
-            </div>
+            <button onClick={onBegin} data-testid="today-guidance-cta" className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 py-2.5 text-[13px] font-extrabold transition active:scale-[0.98]" style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-green-ink)", background: "transparent" }}>{action}</button>
           )}
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <button onClick={primary.onClick} data-testid={primary.testid} className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 py-2.5 text-[13px] font-extrabold text-white transition active:scale-[0.98]" style={{ background: "var(--arbor-gradient-primary)" }}>{primary.label}<Icon name="arrow_forward" size={17} className="rtl:-scale-x-100" /></button>
-            {accept && (
-              <button onClick={onBegin} data-testid="today-guidance-cta" className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 py-2.5 text-[13px] font-extrabold transition active:scale-[0.98]" style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-green-ink)", background: "transparent" }}>{action}</button>
-            )}
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold" style={{ color: "var(--arbor-faint)" }}><Icon name="schedule" size={15} />{meta}</span>
-          </div>
-          {/* Masterplan 3.1: the why-line's Trust-Center chain. Deliberately its
-              OWN row BELOW the action row — a quiet lav chip that never sits
-              beside (and so never competes with) Today's single gradient
-              primary CTA (Rule A: one primary action above the fold). */}
-          <div className="mt-3">
-            {why
-              ? <ContentWhyLine why={why} trustLink surface="today-focus" />
-              : <TrustLink surface="today-focus" />}
-          </div>
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold" style={{ color: "var(--arbor-faint)" }}><Icon name="schedule" size={15} />{meta}</span>
+        </div>
+        {/* Masterplan 3.1: the why-line's Trust-Center chain remains below the action row. */}
+        <div className="mt-3">
+          {why
+            ? <ContentWhyLine why={why} trustLink surface="today-focus" />
+            : <TrustLink surface="today-focus" />}
         </div>
       </div>
     </section>

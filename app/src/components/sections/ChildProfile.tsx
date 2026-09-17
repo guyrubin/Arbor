@@ -1,12 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { Album } from "lucide-react";
 import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useAuth } from "../../context/AuthContext";
-import { PageHeader, SectionCard, Chip, IconBadge, InitialsTile, cardCls, PASTEL, type PastelKey } from "../ui/kit";
-import { HubHero } from "../ui/HubHero";
+import { SectionCard, Chip, IconBadge, InitialsTile, cardCls, PASTEL, type PastelKey } from "../ui/kit";
 import { HeroAvatar, useHeroAvatar } from "../ui/HeroAvatar";
 import { api } from "../../lib/api";
 import { scopeDisplayLabels } from "../../lib/shareScopes";
@@ -110,100 +108,73 @@ export default function ChildProfile() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1180px] space-y-6">
-      {/* ── E2 hub hero — the family-album job sentence + ONE CTA + a living
-          count trio. GP-15 / RUN-20: the CTA is the surface contract's primary
-          move (`approve-memory`): review the pending proposals when there are
-          any, else add a fact about the child (the same "what Arbor knows"
-          drawer). Adding a family member stays on the Family Circle card.
-          FIREWALL: counts only — the children in this family, people in the
-          circle (account holder + live ShareGrants), and total captured moments
-          (behavior + play logs, the album motif). ───────────────────────────── */}
-      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
-          marks a top-level sibling module (what moduleBudget counts);
-          `data-primary-move` marks the ONE control that performs the declared
-          move — here the hero CTA that was ALREADY annotated
-          "primaryMove: approve-memory" in both of its branches, so the stamp
-          records what the code says rather than adding a second claim. */}
-      <div data-primary-move="approve-memory" style={{ display: "contents" }}>
-      <HubHero
-        compact
-        tone="yellow"
-        icon={Album}
-        eyebrow={t("elev.hero.profile.eyebrow")}
-        title={t("elev.hero.profile.title")}
-        subtitle={t("elev.hero.profile.sub", { name: first })}
-        cta={
-          pendingMemoryItems.length > 0
-            ? {
-                // primaryMove: approve-memory
-                label: t("elev.growthTruth.profile.cta.review"),
-                icon: <Icon name="bookmark" size={16} />,
-                onClick: () => setActiveTab("memory"),
-                testId: "profile-hero-cta",
-              }
-            : {
-                // primaryMove: approve-memory (nothing pending → add a fact)
-                label: t("elev.growthTruth.profile.cta.addFact", { name: first }),
-                icon: <Icon name="edit" size={16} />,
-                onClick: () => setEditingProfile(true),
-                testId: "profile-hero-cta",
-              }
-        }
-        stats={[
-          { value: profiles.length, label: t("elev.stat.children") },
-          { value: shares.length + 1, label: t("elev.stat.family") },
-          { value: behaviorLogs.length + playLogs.length, label: t("elev.stat.moments") },
-        ]}
-        // RUN-08: day-0 teach line instead of a wall of zeros.
-        zeroLine={t("elev.growthTruth.hero.empty")}
-        testId="profile-hub-hero"
-      />
+      <header data-module="profile-identity" data-testid="profile-hub-hero" className="border-b pb-5" style={{ borderColor: "var(--arbor-rule)" }}>
+        <div className="flex items-center gap-4">
+          <HeroAvatar size={56} mood="wave" decorative />
+          <div className="min-w-0">
+            <h1 className="text-2xl sm:text-3xl leading-tight" dir="auto" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{childProfile.name || t("cp.title", { name: first })}</h1>
+            <p className="mt-1 text-sm leading-relaxed" dir="auto" style={{ color: "var(--arbor-muted)" }}>{ageLabel(childProfile, t)} · {cardSubtitle}</p>
+          </div>
+        </div>
+        <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+          <li>{t(profiles.length === 1 ? "elev.wave2Knowledge.profile.childOne" : "elev.wave2Knowledge.profile.childMany", { n: profiles.length })}</li>
+          <li>{t(shares.length + 1 === 1 ? "elev.wave2Knowledge.profile.memberOne" : "elev.wave2Knowledge.profile.memberMany", { n: shares.length + 1 })}</li>
+          <li>{t(behaviorLogs.length + playLogs.length === 1 ? "elev.wave2Knowledge.profile.momentOne" : "elev.wave2Knowledge.profile.momentMany", { n: behaviorLogs.length + playLogs.length })}</li>
+        </ul>
+        <div className="mt-4 flex flex-wrap items-center gap-2" data-primary-move="approve-memory">
+          <button data-testid="profile-hero-cta" onClick={pendingMemoryItems.length > 0 ? () => setActiveTab("memory") : () => setEditingProfile(true)} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold" style={{ background: "var(--arbor-green-ink)", color: "var(--arbor-paper-elevated)" }}>
+            <Icon name={pendingMemoryItems.length > 0 ? "bookmark" : "edit"} size={16} />
+            {pendingMemoryItems.length > 0 ? t("elev.growthTruth.profile.cta.review") : t("elev.growthTruth.profile.cta.addFact", { name: first })}
+          </button>
+          <button onClick={() => setActiveTab("coach")} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold" style={{ color: "var(--arbor-green-ink)" }}><Icon name="auto_awesome" size={16} /> {t("cp.askAbout", { name: first })}</button>
+        </div>
+        {!hasHero && <button onClick={() => setEditingProfile(true)} className="mt-2 block min-h-11 text-start text-sm font-bold" style={{ color: "var(--arbor-green-ink)" }}><Icon name="auto_awesome" size={16} className="inline-block me-1" />{t("cp.hero.create", { name: heroName })}<span className="block text-xs font-normal" style={{ color: "var(--arbor-muted)" }}>{t("cp.hero.subline")}</span></button>}
+      </header>
 
-      </div>
-
-      {/* ── Identity masthead (UC-1) — the child identity card and the live Family
-          Circle sit side by side ABOVE the full developmental narrative below.
-          Additive: every chapter is preserved beneath it. ──────────────────── */}
-      <div data-module="profile-identity" className="grid min-w-0 grid-cols-1 items-start gap-4 lg:grid-cols-2">
-        {/* Child card — the framed identity hero. Avatar renders THROUGH the shared
-            HeroAvatar engine (Loop 4); we never re-composite the portrait. */}
-        <div className={`${cardCls} overflow-hidden min-w-0`}>
-            <div className="h-[90px]" style={{ background: "var(--arbor-gradient-primary)" }} aria-hidden />
-            <div className="px-5 pb-5">
-              <div className="-mt-[38px] mb-3">
-                {/* `decorative`: the child's name is the h2 right below, so the
-                    portrait must not double-announce (engine-documented pattern). */}
-                <HeroAvatar size={72} mood="wave" ring decorative />
-              </div>
-              <h2 className="text-xl font-extrabold leading-tight" dir="auto" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-                {childProfile.name}
-              </h2>
-              <p className="text-xs mt-1" style={{ color: "var(--arbor-muted)" }}>{cardSubtitle}</p>
-              <button
-                type="button"
-                onClick={() => setEditingProfile(true)}
-                className="mt-4 inline-flex items-center gap-2 min-h-[44px] rounded-xl px-4 py-2.5 text-xs font-extrabold"
-                style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}
-              >
-                <Icon name="edit" size={16} /> Edit what Arbor knows
-              </button>
-              {!hasHero && (
-                <button onClick={() => setActiveTab("profile")} className="mt-3 min-h-11 text-start block">
-                  <span className="block text-sm font-extrabold" style={{ color: "var(--arbor-green-ink)" }}>
-                    <Icon name="auto_awesome" size={16} className="inline-block me-1 -mt-0.5" style={{ verticalAlign: "middle" }} /> {t("cp.hero.create", { name: heroName })}
-                  </span>
-                  <span className="block text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>{t("cp.hero.subline")}</span>
-                </button>
-              )}
+      {/* Chapter 1 — who {first} is */}
+      <section data-module="profile-who" aria-label={t("elev.wave2Knowledge.profile.facts")}>
+      <SectionCard title={t("cp.ch.who", { name: first, age: ageLabel(childProfile, t) })} icon={<Icon name="person" size={20} />} tone="mint">
+        <p className="mb-4 text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.wave2Knowledge.profile.facts")}</p>
+        <div className="grid sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
+          <Field label={t("cp.f.languages")} value={childProfile.languages.join(" · ") || "—"} />
+          <Field label={t("cp.f.school")} value={childProfile.schoolContext || "—"} />
+          <div>
+            <p className="text-xs font-bold mb-2" style={{ color: "var(--arbor-muted)" }}>{t("cp.f.focus")}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {focus.length > 0 ? focus.map((f) => <Chip key={f.labelKey} tone={f.tone}>{t(`cp.focus.${f.labelKey}`)}</Chip>) : <span className="text-sm" style={{ color: "var(--arbor-muted)" }}>{t("cp.focus.empty")}</span>}
             </div>
           </div>
-
-          {/* Family Circle — reads live ShareGrants (the SAME source Trusted Sharing
+          {/* CI-29: Interests field — parent-logged preferences, never interpreted.
+              Displayed as read-only lav chips; edit opens ProfileEditDrawer. */}
+          <div>
+            <p className="text-xs font-bold mb-2" style={{ color: "var(--arbor-muted)" }}>
+              {t("cp.f.interests", { name: first })}
+            </p>
+            {childProfile.interests && childProfile.interests.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {childProfile.interests.slice(0, 3).map((interest) => (
+                  <Chip key={interest} tone="lav">{interest}</Chip>
+                ))}
+                {childProfile.interests.length > 3 && (
+                  <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
+                    +{childProfile.interests.length - 3}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <span className="text-sm" style={{ color: "var(--arbor-muted)" }}>
+                {t("cp.interests.empty")}
+              </span>
+            )}
+          </div>
+        </div>
+        <button onClick={() => setEditingProfile(true)} className="mt-3 min-h-11 text-sm font-bold" style={{ color: "var(--arbor-green-ink)" }}><Icon name="edit" size={16} className="inline-block me-1" />{t("elev.wave2Knowledge.profile.edit")}</button>
+        {/* Family Circle — reads live ShareGrants (the SAME source Trusted Sharing
               uses); "Add a member" routes there rather than duplicating its form. */}
-          <section className="border-y px-1 py-5" style={{ borderColor: "var(--arbor-rule)" }}>
+          <section aria-labelledby="profile-family-title" className="mt-5 border-t pt-5" style={{ borderColor: "var(--arbor-rule)" }}>
             <div className="mb-4 flex items-center gap-2.5">
               <IconBadge tone="mint" size={36}><Icon name="group" size={20} /></IconBadge>
-              <h2 className="text-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("cp.family.title")}</h2>
+              <h3 id="profile-family-title" className="text-lg font-bold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("cp.family.title")}</h3>
             </div>
             <p className="text-xs -mt-2 mb-3" style={{ color: "var(--arbor-muted)" }}>{t("cp.family.sub", { name: first })}</p>
             <div className="space-y-2">
@@ -231,63 +202,8 @@ export default function ChildProfile() {
               </button>
             </div>
           </section>
-      </div>
-
-      {/* R9 / OBJ-PROFILE-03 — the memory tile that stood here rendered
-          "What Arbor remembers" a SECOND time on this screen, above a chapter
-          of the same name that already carries the same counts and the same
-          review link. One door per room: chapter 6 is the door. The hero CTA
-          still routes a parent with pending proposals straight to the queue. */}
-
-      <PageHeader
-        eyebrow={t("cp.eyebrow")}
-        title={t("cp.title", { name: first })}
-        subtitle={t("cp.subtitle", { name: first })}
-        action={
-          <button onClick={() => setActiveTab("coach")} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold" style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}>
-            <Icon name="auto_awesome" size={16} /> {t("cp.askAbout", { name: first })}
-          </button>
-        }
-      />
-
-      {/* Chapter 1 — who {first} is */}
-      <div data-module="profile-who" style={{ display: "contents" }}>
-      <SectionCard title={t("cp.ch.who", { name: first, age: ageLabel(childProfile, t) })} icon={<Icon name="person" size={20} />} tone="mint">
-        <div className="grid sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
-          <Field label={t("cp.f.languages")} value={childProfile.languages.join(" · ") || "—"} />
-          <Field label={t("cp.f.school")} value={childProfile.schoolContext || "—"} />
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: "var(--arbor-muted)" }}>{t("cp.f.focus")}</p>
-            <div className="flex flex-wrap gap-1.5">
-              {focus.length > 0 ? focus.map((f) => <Chip key={f.labelKey} tone={f.tone}>{t(`cp.focus.${f.labelKey}`)}</Chip>) : <span className="text-sm" style={{ color: "var(--arbor-muted)" }}>{t("cp.focus.empty")}</span>}
-            </div>
-          </div>
-          {/* CI-29: Interests field — parent-logged preferences, never interpreted.
-              Displayed as read-only lav chips; edit opens ProfileEditDrawer. */}
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: "var(--arbor-muted)" }}>
-              {t("cp.f.interests", { name: first })}
-            </p>
-            {childProfile.interests && childProfile.interests.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5">
-                {childProfile.interests.slice(0, 3).map((interest) => (
-                  <Chip key={interest} tone="lav">{interest}</Chip>
-                ))}
-                {childProfile.interests.length > 3 && (
-                  <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
-                    +{childProfile.interests.length - 3}
-                  </span>
-                )}
-              </div>
-            ) : (
-              <span className="text-sm" style={{ color: "var(--arbor-muted)" }}>
-                {t("cp.interests.empty")}
-              </span>
-            )}
-          </div>
-        </div>
       </SectionCard>
-      </div>
+      </section>
 
       {/* Chapter 2 — right now: this week's real moments */}
       <div data-module="profile-now" style={{ display: "contents" }}>
@@ -302,7 +218,7 @@ export default function ChildProfile() {
             </p>
             {week.latest && (
               <div className={`${cardCls} p-3.5 text-sm`}>
-                <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("cp.now.mostRecent")}</span>
+                <span className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("cp.now.mostRecent")}</span>
                 <p className="mt-1 font-semibold" style={{ color: "var(--arbor-ink)" }}>{week.latest.behaviorType}</p>
                 {week.latest.trigger && <p className="text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>{t("cp.now.trigger", { trigger: week.latest.trigger })}</p>}
               </div>
@@ -353,7 +269,7 @@ export default function ChildProfile() {
         </div>
         {nextMilestones.length > 0 && (
           <div className="mt-3 space-y-2">
-            <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("cp.ms.worthWatching")}</span>
+            <span className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("cp.ms.worthWatching")}</span>
             <ul className="space-y-1.5 text-sm" style={{ color: "var(--arbor-ink)" }}>
               {nextMilestones.map((m) => (
                 <li key={m.id} className="flex items-start gap-2">
@@ -417,6 +333,7 @@ export default function ChildProfile() {
       {/* Chapter 6 — what Arbor remembers (the parent-approved memory) */}
       <div data-module="profile-memory" data-module-demoted style={{ display: "contents" }}>
       <SectionCard title={t("cp.ch.memory")} icon={<Icon name="bookmark" size={20} />} tone="lav">
+        <p className="mb-2 text-xs" style={{ color: "var(--arbor-muted)" }}>{t("elev.wave2Knowledge.profile.approved")}</p>
         {approvedMemoryItems.length > 0 ? (
           <ul className="space-y-1.5 text-sm" style={{ color: "var(--arbor-ink)" }}>
             {approvedMemoryItems.slice(0, 5).map((m) => (
@@ -431,7 +348,7 @@ export default function ChildProfile() {
           </p>
         )}
         {pendingMemoryItems.length > 0 && (
-          <p className="text-xs mt-2 font-bold" style={{ color: "var(--arbor-lav-ink)" }}>{pendingMemoryItems.length === 1 ? t("cp.memory.pendingOne", { count: pendingMemoryItems.length }) : t("cp.memory.pendingMany", { count: pendingMemoryItems.length })}</p>
+          <p className="text-xs mt-2 font-bold" style={{ color: "var(--arbor-lav-ink)" }}><span className="block">{t("elev.wave2Knowledge.profile.proposed")}</span>{pendingMemoryItems.length === 1 ? t("cp.memory.pendingOne", { count: pendingMemoryItems.length }) : t("cp.memory.pendingMany", { count: pendingMemoryItems.length })}</p>
         )}
         <div className="mt-3"><JumpLink onClick={() => setActiveTab("memory")} color="var(--arbor-lav-ink)">{t("cp.reviewMemory", { name: first })}</JumpLink></div>
       </SectionCard>
@@ -486,7 +403,7 @@ export default function ChildProfile() {
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--arbor-muted)" }}>{label}</p>
+      <p className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{label}</p>
       <p className="text-sm font-semibold mt-0.5" style={{ color: "var(--arbor-ink)" }}>{value}</p>
     </div>
   );
@@ -499,8 +416,8 @@ function MemberRow({ name, roleLine, tone }: { name: string; roleLine: string; t
     <div className="flex items-center gap-3 rounded-2xl p-2">
       <InitialsTile name={name} tone={tone} size={42} radius={14} />
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-extrabold truncate" dir="auto" style={{ color: "var(--arbor-ink)" }}>{name}</p>
-        <p className="text-xs truncate" style={{ color: "var(--arbor-muted)" }}>{roleLine}</p>
+        <p className="text-sm font-extrabold break-words" dir="auto" style={{ color: "var(--arbor-ink)" }}>{name}</p>
+        <p className="text-xs break-words" style={{ color: "var(--arbor-muted)" }}>{roleLine}</p>
       </div>
     </div>
   );

@@ -798,9 +798,10 @@ export default function OverviewTab() {
           const score = devScore;
           if (score.confidence === "none") return null;
           return (
-            <section
+            <button
+              type="button"
               onClick={() => setActiveTab("development")}
-              className="rounded-[22px] p-5 flex flex-col transition motion-safe:hover:-translate-y-0.5 cursor-pointer"
+              className="w-full min-h-11 rounded-[22px] p-5 flex flex-col text-start transition motion-safe:hover:-translate-y-0.5"
               style={{ background: "var(--arbor-paper-elevated)", boxShadow: "var(--shadow-sm)" }}
             >
               <div className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-clay)" }}>
@@ -845,7 +846,7 @@ export default function OverviewTab() {
                   ))}
                 </div>
               )}
-            </section>
+            </button>
           );
         })()}
       </div>

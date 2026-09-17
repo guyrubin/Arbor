@@ -1,0 +1,332 @@
+{
+  "created": "2026-09-17",
+  "method": "Built-in imagegen; original illustrations; mechanical WebP exports from preserved originals",
+  "review": "W3-SPEC.md in ROS Arbor design upgrade execution folder",
+  "totalBytes": 1910726,
+  "assets": [
+    {
+      "id": "mood-mountain",
+      "prompt": "Use case: illustration-story.\nCreate one production-quality landscape illustration for Arbor, a child development companion's playful game area: the static fallback background for \"Mood Mountain\". This is a new original raster illustration, no reference image. Output a single full-bleed 3:2 landscape image.\nScene: a welcoming rounded mountain landscape with a gently winding path, soft cloud shapes, little wildflowers, a small still pond and cozy trees. A warm sun and a soft rainy cloud coexist naturally, suggesting all feelings belong without ranking feelings or portraying sadness as failure. An inviting place to explore, not a competition or summit achievement.\nStyle: contemporary children's graphic novel for roughly ages 5–10, confident clean dark-navy ink outlines, painterly gouache color areas, charming hand-drawn texture, expressive environmental forms, sophisticated editorial finish. Coherent restrained sage/mint, powder blue, warm cream, ochre and small terracotta accents. Clearly illustrated, not photorealistic or 3D plastic. Interesting enough for a child without busy sparkles.\nComposition: broad clear central landscape, landmarks in the upper middle 65%; lower 30% is quiet landscape with low detail so the app can overlay white labels. Keep essential landmarks away from the outer 15% on every side for responsive center-cropping into a 4:3 or square card. No tall narrow portrait composition.\nText: none. No letters, numbers, UI, panels, border, logo, watermark, stars earned, badges or rewards. No human, child's face, real child likeness, superhero, mascot, animal character or facial emoji. The family's own generated hero image is a separate app layer; this background should belong to any family.",
+      "mode": "built-in imagegen, new original",
+      "date": "2026-09-17",
+      "status": "Astra candidate approved; in-product crop/failure checks pending",
+      "originalSha256": "d63668b267fbbbebcdddee2fa055a1b3bb52a847fc4b9195bc70ca2c5688a560",
+      "exports": [
+        {
+          "file": "mood-mountain-v2.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 96294,
+          "quality": 82,
+          "sha256": "045c208f3266e176a131f4d78ab98930756da02150cbc1cce0e035271d85855a"
+        },
+        {
+          "file": "mood-mountain-v2-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 32314,
+          "quality": 82,
+          "sha256": "4dbeafb241b0b066d6340d7cb216a776943b7df377520ef9594728f7d61b73c1"
+        }
+      ],
+      "originalFile": "exec-fb9bbd30-d267-4acd-bfa5-5ba3dc2b0126.png"
+    },
+    {
+      "id": "sound-lab",
+      "prompt": "Create one production-quality landscape illustration for Arbor, a child development companion's playful game area. Original art, single full-bleed 3:2 landscape. Style: contemporary children's graphic novel for ages 5–10, confident clean dark-navy ink outlines, painterly gouache color areas, charming hand-drawn texture, sophisticated editorial finish. Restrained sage/mint, powder blue, warm cream, ochre and small terracotta accents. Clearly illustrated, not photorealistic or 3D plastic. Inviting exploration, no competitions. Composition: main landmarks in upper middle 65%; lower 30% quiet low-detail landscape for app labels. Essential landmarks within central 70% for responsive square/4:3 center-crop. No text, letters, numbers, UI, panels, border, logo, watermark, badges, reward stars, scores, humans, real child likeness, superhero, mascot, animal character or facial emoji. The family's own generated hero is a separate app layer; background belongs to any family.\nWorld: Sound Lab. A delightful open-air sound workshop in a sunny garden clearing. A sculptural wooden listening horn, rounded acoustic tubes, three colorful wind chimes and a small wooden xylophone arranged as an inviting exploratory space; a few stylized concentric sound ripples gently emanate from the horn. Powder blue and ochre accents. The sound-making objects are unmistakable and grouped centrally, no lab chemistry or computers.",
+      "mode": "built-in imagegen, new original",
+      "date": "2026-09-17",
+      "status": "Astra candidate approved; in-product crop/failure checks pending",
+      "originalSha256": "3ee56ceb9b7d60ac161f4ff124b69b653ac758f95ef39fca784667f0eb48d2be",
+      "exports": [
+        {
+          "file": "sound-lab-v2.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 147066,
+          "quality": 82,
+          "sha256": "5df062cf747a49429b8b38ec0965acd0bc0b5619d2d1f197f0ec18213cdf4ed0"
+        },
+        {
+          "file": "sound-lab-v2-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 46414,
+          "quality": 82,
+          "sha256": "c91cd8f1d81097ae60c3014a0e12a4118f9c4b3e3362f9d26437cc9558700328"
+        }
+      ],
+      "originalFile": "exec-67b4b1c4-d62f-44e0-87d4-01079a239eb4.png"
+    },
+    {
+      "id": "mind-vault",
+      "prompt": "Create one production-quality landscape illustration for Arbor, a child development companion's playful game area. Original art, single full-bleed 3:2 landscape. Style: contemporary children's graphic novel for ages 5–10, confident clean dark-navy ink outlines, painterly gouache color areas, charming hand-drawn texture, sophisticated editorial finish. Restrained sage/mint, powder blue, warm cream, ochre and small terracotta accents. Clearly illustrated, not photorealistic or 3D plastic. Inviting exploration, no competitions. Composition: main landmarks in upper middle 65%; lower 30% quiet low-detail landscape for app labels. Essential landmarks within central 70% for responsive square/4:3 center-crop. No text, letters, numbers, UI, panels, border, logo, watermark, badges, reward stars, scores, humans, real child likeness, superhero, mascot, animal character or facial emoji. The family's own generated hero is a separate app layer; background belongs to any family.\nWorld: Mind Vault. A cozy rounded treehouse memory workshop in a peaceful forest clearing, with a small open wooden cabinet containing several pairs of distinct colorful simple objects: two blue seashells, two ochre leaves, two terracotta smooth pebbles. A circular window, soft lamplight, and a gentle stepping-stone path welcome exploration. No lock, security vault, treasure gold or achievement imagery. Cabinet and paired objects central and large enough to recognize at small card size; emphasize memory and discovery. Sage, warm cream, lavender-blue accents.",
+      "mode": "built-in imagegen, new original",
+      "date": "2026-09-17",
+      "status": "Astra candidate approved; in-product crop/failure checks pending",
+      "originalSha256": "770c84f6f3cca0e0d02e56b2fadd28bcb5a931d6d215620f0238f95acfec7654",
+      "exports": [
+        {
+          "file": "mind-vault-v2.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 134394,
+          "quality": 82,
+          "sha256": "40698cc81928e09a7e8c3cb025c9d5bcde0670b1151c582e022659a5544489b3"
+        },
+        {
+          "file": "mind-vault-v2-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 46978,
+          "quality": 82,
+          "sha256": "74843395193b2f0e3d53ddf076a26e63d2da431b35779fdfef056c019589f741"
+        }
+      ],
+      "originalFile": "exec-f691c2bf-7e8c-4b20-9920-7b1a4ea42aa4.png"
+    },
+    {
+      "id": "beat-keeper",
+      "prompt": "Create one production-quality landscape illustration for Arbor, a child development companion's playful game area. Original art, single full-bleed 3:2 landscape. Style: contemporary children's graphic novel for ages 5–10, confident clean dark-navy ink outlines, painterly gouache color areas, charming hand-drawn texture, sophisticated editorial finish. Restrained sage/mint, powder blue, warm cream, ochre and small terracotta accents. Clearly illustrated, not photorealistic or 3D plastic. Inviting exploration, no competitions. Composition: main landmarks in upper middle 65%; lower 30% quiet low-detail landscape for app labels. Essential landmarks within central 70% for responsive square/4:3 center-crop. No text, letters, numbers, UI, panels, border, logo, watermark, badges, reward stars, scores, humans, real child likeness, superhero, mascot, animal character or facial emoji. The family's own generated hero is a separate app layer; background belongs to any family.\nWorld: Beat Keeper. An inviting circular outdoor music grove at late afternoon, three friendly hand drums of different sizes, two wooden clapping blocks and gently curving rhythmic paths made from alternating broad terracotta and ochre stepping stones. A few stylized simple curved motion marks suggest steady rhythm, no musical notation. Instruments central and recognizable. Warm terracotta and ochre with sage trees and cream sky. Keep visually different from a sound workshop: no horns, chimes, pipes or xylophone.",
+      "mode": "built-in imagegen, new original",
+      "date": "2026-09-17",
+      "status": "Astra candidate approved; in-product crop/failure checks pending",
+      "originalSha256": "5260a07f1d23fd67a956e775babf8b6f54c3fe362bc89a44ec6eb4526c22e492",
+      "exports": [
+        {
+          "file": "beat-keeper-v2.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 114074,
+          "quality": 82,
+          "sha256": "a06afb10705ea163be7ab0ecb911c593f80e0b5f6f9b1c58f68513dfd12cb1bb"
+        },
+        {
+          "file": "beat-keeper-v2-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 38640,
+          "quality": 82,
+          "sha256": "902e4d1ba3baafadba58648dcfed9af9606cf82fd55ccf39866cdfa2fc34fc4d"
+        }
+      ],
+      "originalFile": "exec-5776f757-7ba0-4d89-ac97-1959f86ec5f6.png"
+    },
+    {
+      "id": "hero-pose",
+      "prompt": "Create one production-quality landscape illustration for Arbor, a child development companion's playful game area. Original art, single full-bleed 3:2 landscape. Style: contemporary children's graphic novel for ages 5–10, confident clean dark-navy ink outlines, painterly gouache color areas, charming hand-drawn texture, sophisticated editorial finish. Restrained sage/mint, powder blue, warm cream, ochre and small terracotta accents. Clearly illustrated, not photorealistic or 3D plastic. Inviting exploration, no competitions. Composition: main landmarks in upper middle 65%; lower 30% quiet low-detail landscape for app labels. Essential landmarks within central 70% for responsive square/4:3 center-crop. No text, letters, numbers, UI, panels, border, logo, watermark, badges, reward stars, scores, humans, real child likeness, superhero, mascot, animal character or facial emoji. The family's own generated hero is a separate app layer; background belongs to any family.\nWorld: Hero Pose. A peaceful movement garden with a broad smooth circular wooden platform, two soft woven exercise mats laid flat, a low curved balance beam and a tall flowing fabric ribbon suspended from a rounded branch, suggesting stretching, balance and playful movement. No trophies, no gym machines, no high dangerous structures. A clear powder-blue sky, mint foliage and soft terracotta/ochre mats. Central open movement space must be instantly readable. No human figures or silhouettes.",
+      "mode": "built-in imagegen, new original",
+      "date": "2026-09-17",
+      "status": "Astra candidate approved; in-product crop/failure checks pending",
+      "originalSha256": "008134c0d1ed3230c353aa8eb36181c5f3535b0767e5246dafa9a3daaf93ce78",
+      "exports": [
+        {
+          "file": "hero-pose-v2.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 147862,
+          "quality": 82,
+          "sha256": "c04e99a54eaa8a4eec1cc30bdb1feda434085d821beb7336667a1cb4e7f0bb94"
+        },
+        {
+          "file": "hero-pose-v2-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 46314,
+          "quality": 82,
+          "sha256": "7da61f591c47c22d2d7abdf70958f301df0df0056af603fa52e96e5dec11b2dd"
+        }
+      ],
+      "originalFile": "exec-5b69089e-b82d-4888-8615-2c8b94308e06.png"
+    },
+    {
+      "id": "pattern-power",
+      "prompt": "Create one production-quality landscape illustration for Arbor, a child development companion's playful game area. Original art, single full-bleed 3:2 landscape. Style: contemporary children's graphic novel for ages 5–10, confident clean dark-navy ink outlines, painterly gouache color areas, charming hand-drawn texture, sophisticated editorial finish. Restrained sage/mint, powder blue, warm cream, ochre and small terracotta accents. Clearly illustrated, not photorealistic or 3D plastic. Inviting exploration, no competitions. Composition: main landmarks in upper middle 65%; lower 30% quiet low-detail landscape for app labels. Essential landmarks within central 70% for responsive square/4:3 center-crop. No text, letters, numbers, UI, panels, border, logo, watermark, badges, reward stars, scores, humans, real child likeness, superhero, mascot, animal character or facial emoji. The family's own generated hero is a separate app layer; background belongs to any family.\nWorld: Pattern Power. A magical but tactile pattern garden, with a central friendly sculptural arrangement of oversized wooden geometric blocks: repeating sage circle, ochre triangle, terracotta square, then the same sequence again. A low gently curved walkway echoes the repeating sequence, a few rounded bushes and distant rolling hills. Geometric blocks are the unmistakable main landmark at upper-middle, not a tiny table object. No numbers, mathematical equations, puzzles written on screen or raised competitive podium. Crisp distinct shapes, visually calmer than a cluttered toy room.",
+      "mode": "built-in imagegen, new original",
+      "date": "2026-09-17",
+      "status": "Astra candidate approved; in-product crop/failure checks pending",
+      "originalSha256": "420d93706a3c29cb914f8cdceccf13c85b1eba7f27130b51bac5223528e56bab",
+      "exports": [
+        {
+          "file": "pattern-power-v2.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 83072,
+          "quality": 82,
+          "sha256": "a83157e134ce62361ab09026b178052b88de7f9c3dfca3b9739cdc22c9e8bdb3"
+        },
+        {
+          "file": "pattern-power-v2-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 29456,
+          "quality": 82,
+          "sha256": "a69b7841d21f43bf63c243f396679fb5d0d57ccd549aae3578a44ac40ba8a3cd"
+        }
+      ],
+      "originalFile": "exec-82ab8e8b-a1de-491b-bfc2-01031dec08ab.png"
+    },
+    {
+      "id": "story-quest",
+      "prompt": "Create one production-quality landscape illustration for Arbor, a child development companion's playful game area. Original art, single full-bleed 3:2 landscape. Style: contemporary children's graphic novel for ages 5–10, confident clean dark-navy ink outlines, painterly gouache color areas, charming hand-drawn texture, sophisticated editorial finish. Restrained sage/mint, powder blue, warm cream, ochre and small terracotta accents. Clearly illustrated, not photorealistic or 3D plastic. Inviting exploration, no competitions. Composition: main landmarks in upper middle 65%; lower 30% quiet low-detail landscape for app labels. Essential landmarks within central 70% for responsive square/4:3 center-crop. No text, letters, numbers, UI, panels, border, logo, watermark, badges, reward stars, scores, humans, real child likeness, superhero, mascot, animal character or facial emoji. The family's own generated hero is a separate app layer; background belongs to any family.\nWorld: Story Quest, interactive map exploration. A folded illustrated map and small round compass resting on a low flat stone in the central foreground, a gently winding path crossing a distinctive arched wooden bridge into distant rounded hills with a friendly lookout tower. Map shows only simple winding paths and land shapes, absolutely no writing or symbols that read as text. No castle, no open book, no treasure chest. Clear visual identity of exploring a map and choosing a path. Powder blue river, mint foliage and small terracotta flag without emblem. Place key map/compass/bridge upper-middle enough to survive bottom label overlay.",
+      "mode": "built-in imagegen, new original",
+      "date": "2026-09-17",
+      "status": "Astra candidate approved; in-product crop/failure checks pending",
+      "originalSha256": "3b189b9fbc4f16e999daa5f2395042d63dcf2bc8387b41b6969cf56c95548ad5",
+      "exports": [
+        {
+          "file": "story-quest-v2.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 138500,
+          "quality": 82,
+          "sha256": "ec51ed3d585d75d31bc7967ae1c0bcbb1f75f42a324d70c3aad44e49fdc5a00c"
+        },
+        {
+          "file": "story-quest-v2-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 46380,
+          "quality": 82,
+          "sha256": "914d35c3d4155e4dab7ac2006a00eb0b5c73c8fd0c0aa71410b8e7c624de3f5a"
+        }
+      ],
+      "originalFile": "exec-878479fe-b85c-4d43-83ea-9c11de50ce1a.png"
+    },
+    {
+      "id": "mimic-studio",
+      "prompt": "Create one production-quality landscape illustration for Arbor, a child development companion's playful game area. Original art, single full-bleed 3:2 landscape. Style: contemporary children's graphic novel for ages 5–10, confident clean dark-navy ink outlines, painterly gouache color areas, charming hand-drawn texture, sophisticated editorial finish. Restrained sage/mint, powder blue, warm cream, ochre and small terracotta accents. Clearly illustrated, not photorealistic or 3D plastic. Inviting exploration, no competitions. Composition: main landmarks in upper middle 65%; lower 30% quiet low-detail landscape for app labels. Essential landmarks within central 70% for responsive square/4:3 center-crop. No text, letters, numbers, UI, panels, border, logo, watermark, badges, reward stars, scores, humans, real child likeness, superhero, mascot, animal character or facial emoji. The family's own generated hero is a separate app layer; background belongs to any family.\nWorld: Mimic Studio. A welcoming open-sided art and expression studio in a garden. Main landmark is a large friendly rounded standing mirror with a chunky light wood frame; it reflects only a soft sunlit window and the leafy room, no people or faces. Beside it are two pairs of matching simple colorful ribbons and a pair of small painted wooden props on a low shelf, suggesting copying a shape or movement. Soft fabric drapes at the sides, powder-blue rug, warm terracotta accents. The mirror's round frame must be clear at small size. No medical or beauty-assessment equipment, no eerie reflections, no camera, no facial emoji.",
+      "mode": "built-in imagegen, new original",
+      "date": "2026-09-17",
+      "status": "Astra candidate approved; in-product crop/failure checks pending",
+      "originalSha256": "1626fdd2dca21d4a7b96fcc00f50dc05640cea7d9c84d47c8e4b80d7a59f64f9",
+      "exports": [
+        {
+          "file": "mimic-studio-v2.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 117268,
+          "quality": 82,
+          "sha256": "93d6d8ca03a2302248f28d2096e5c78975835efc8f7243626dac0f0c2b9b4841"
+        },
+        {
+          "file": "mimic-studio-v2-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 41258,
+          "quality": 82,
+          "sha256": "073736fa1fe54fb2e01ce44cf5f13e5d565191f36722d0267955861b45dbfaae"
+        }
+      ],
+      "originalFile": "exec-9b3e7605-d772-41a2-b66c-0299f1b9afa1.png"
+    },
+    {
+      "id": "spell-forge",
+      "prompt": "Create one production-quality landscape illustration for Arbor, a child development companion's playful game area. Original art, single full-bleed 3:2 landscape. Style: contemporary children's graphic novel for ages 5–10, confident clean dark-navy ink outlines, painterly gouache color areas, charming hand-drawn texture, sophisticated editorial finish. Restrained sage/mint, powder blue, warm cream, ochre and small terracotta accents. Clearly illustrated, not photorealistic or 3D plastic. Inviting exploration, no competitions. Composition: main landmarks in upper middle 65%; lower 30% quiet low-detail landscape for app labels. Essential landmarks within central 70% for responsive square/4:3 center-crop. No text, letters, numbers, UI, panels, border, logo, watermark, badges, reward stars, scores, humans, real child likeness, superhero, mascot, animal character or facial emoji. The family's own generated hero is a separate app layer; background belongs to any family.\nWorld: Spell Forge, a cozy reading and word-building workshop, no furnace. A beautiful open illustrated book on a low curved wooden desk, several large rounded wooden tiles arranged in a gentle arc with simple abstract ink strokes and shapes rather than readable letters, a small warm lantern and pencil cup, airy rounded window with garden view. Soft cream walls, powder-blue shelves and ochre/terracotta accents. Book and tactile tiles dominate center upper-middle. Never generate a readable word, fake alphabet exercise, random typography or teacher's answer. Distinct from a castle library or geometric pattern garden.",
+      "mode": "built-in imagegen, new original",
+      "date": "2026-09-17",
+      "status": "Astra candidate approved; in-product crop/failure checks pending",
+      "originalSha256": "45ea3dcd132f40195e87cab1e9eb2a2653d7da35940be2c4e6bbc53b1b4c2917",
+      "exports": [
+        {
+          "file": "spell-forge-v2.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 114650,
+          "quality": 82,
+          "sha256": "5926e7c64b9ca845ed124440694a163bc62a0fc4e711bc9e04b72ef861e99aba"
+        },
+        {
+          "file": "spell-forge-v2-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 40542,
+          "quality": 82,
+          "sha256": "96fedb84721bcfd3288c22f186508eb3a6878f2f7efc8abdcfdfb1deebdbba82"
+        }
+      ],
+      "originalFile": "exec-516d80a9-fc75-4bee-b1ed-a33b1a39ca12.png"
+    },
+    {
+      "id": "play-together",
+      "prompt": "Create one production-quality landscape illustration for Arbor, a child development companion's playful game area. Original art, single full-bleed 3:2 landscape. Style: contemporary children's graphic novel for ages 5–10, confident clean dark-navy ink outlines, painterly gouache color areas, charming hand-drawn texture, sophisticated editorial finish. Restrained sage/mint, powder blue, warm cream, ochre and small terracotta accents. Clearly illustrated, not photorealistic or 3D plastic. Inviting exploration, no competitions. Composition: main landmarks in upper middle 65%; lower 30% quiet low-detail landscape for app labels. Essential landmarks within central 70% for responsive square/4:3 center-crop. No text, letters, numbers, UI, panels, border, logo, watermark, badges, reward stars, scores, humans, real child likeness, superhero, mascot, animal character or facial emoji. The family's own generated hero is a separate app layer; background belongs to any family.\nRole: Play Together adventure card, a welcoming imaginative play garden. A low wooden play table with chunky building blocks loosely forming a little bridge, a toy sailboat in a shallow blue basin, two small stools arranged for cooperative play, soft woven blankets and baskets under a leafy canopy. Distinct from a repeating pattern puzzle: free open-ended building and pretend play, no geometric sequence. No dolls, characters or people. Main tabletop objects central, sage/mint and ochre with terracotta highlights, enough quiet lower foreground for two-line app title. A warm child-sized place inviting shared discovery.",
+      "mode": "built-in imagegen, new original",
+      "date": "2026-09-17",
+      "status": "Astra candidate approved; in-product crop/failure checks pending",
+      "originalSha256": "7c1a31633b23004e3acc6dff98aaf680e5cb57b8e4f995df5fa7053053ee3f68",
+      "exports": [
+        {
+          "file": "play-together-v2.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 140168,
+          "quality": 76,
+          "sha256": "1381412ce91d35e320a4938d546de1e0be0420c744f58276c9dbc94cffdecfe2"
+        },
+        {
+          "file": "play-together-v2-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 55354,
+          "quality": 82,
+          "sha256": "862c0ab0542687e2b98c47a8a968d12fb4707c29fdc31b72ca1efa5e02f64298"
+        }
+      ],
+      "originalFile": "exec-443610e2-3dd5-4e75-b86c-06c7ed7c480d.png"
+    },
+    {
+      "id": "hero-stories",
+      "prompt": "Create one production-quality landscape illustration for Arbor, a child development companion's playful game area. Original art, single full-bleed 3:2 landscape. Style: contemporary children's graphic novel for ages 5–10, confident clean dark-navy ink outlines, painterly gouache color areas, charming hand-drawn texture, sophisticated editorial finish. Restrained sage/mint, powder blue, warm cream, ochre and small terracotta accents. Clearly illustrated, not photorealistic or 3D plastic. Inviting exploration, no competitions. Composition: main landmarks in upper middle 65%; lower 30% quiet low-detail landscape for app labels. Essential landmarks within central 70% for responsive square/4:3 center-crop. No text, letters, numbers, UI, panels, border, logo, watermark, badges, reward stars, scores, humans, real child likeness, superhero, mascot, animal character or facial emoji. The family's own generated hero is a separate app layer; background belongs to any family.\nRole: Hero Stories adventure tile, a magical library of stories. A cozy rounded library alcove inside a small storybook castle, a large open book on a reading cushion in the center, low curved bookshelves, an arched window revealing a friendly little castle among hills, warm lantern glow and a folded terracotta blanket. The book contains a simple landscape illustration with no writing. Book/library identity must read at a glance. Distinct from Story Quest: no map, compass, river bridge or exploration trail. Distinct from Spell Forge: no letter tiles or desk workshop. No people, capes or heroic achievement imagery.",
+      "mode": "built-in imagegen, new original",
+      "date": "2026-09-17",
+      "status": "Astra candidate approved; in-product crop/failure checks pending",
+      "originalSha256": "f270997361a90f1b2616a421abba61297291aefef6026a6e7fdb4cc5e80f5062",
+      "exports": [
+        {
+          "file": "hero-stories-v2.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 100306,
+          "quality": 82,
+          "sha256": "bcae1aeaa60c22c420be1b0e861acba0e9f6172a041765390f3a04b543075fdd"
+        },
+        {
+          "file": "hero-stories-v2-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 35488,
+          "quality": 82,
+          "sha256": "66163ede98675116c2fc0e5c32b8cb19f3bb8f5d6ffac0d3ace040e259b9d28a"
+        }
+      ],
+      "originalFile": "exec-359d39eb-9045-4b11-a613-9248a5ea7beb.png"
+    },
+    {
+      "id": "tonight-story",
+      "prompt": "Create one production-quality landscape illustration for Arbor, a child development companion's playful game area. Original art, single full-bleed 3:2 landscape. Style: contemporary children's graphic novel for ages 5–10, confident clean dark-navy ink outlines, painterly gouache color areas, charming hand-drawn texture, sophisticated editorial finish. Restrained sage/mint, powder blue, warm cream, ochre and small terracotta accents. Clearly illustrated, not photorealistic or 3D plastic. Inviting exploration, no competitions. Composition: main landmarks in upper middle 65%; lower 30% quiet low-detail landscape for app labels. Essential landmarks within central 70% for responsive square/4:3 center-crop. No text, letters, numbers, UI, panels, border, logo, watermark, badges, reward stars, scores, humans, real child likeness, superhero, mascot, animal character or facial emoji. The family's own generated hero is a separate app layer; background belongs to any family.\nRole: Tonight's Story quest banner. Special panoramic composition within a single 3:2 landscape image, designed to crop to an extremely wide 3.5:1 banner: keep all essential landmarks in a HORIZONTAL CENTRAL BAND from 32% to 65% of image height. A luminous but gentle dusk story landscape, a welcoming small castle on a rounded hill near center-right, a winding path and oversized open storybook near center-left. Soft lavender-blue dusk sky, warm ochre windows, mint valley, restrained terracotta turrets. Main castle and open book both fit comfortably inside the center70% width. Background must remain recognizable when cropped to 390x190 and desktop wide banner. Lower and side areas quiet for app overlay; no characters, child, face, animals, words, rewards, sparkles or text. Distinct from library adventure image: outdoors under an open sky, no shelves or room. Calm bedtime invitation, not an epic battle.",
+      "mode": "built-in imagegen, new original",
+      "date": "2026-09-17",
+      "status": "Astra candidate approved; in-product crop/failure checks pending",
+      "originalSha256": "f082b42757dff0d38b8557269a5b86d3eb6287135d97ae21020ade4347a77085",
+      "exports": [
+        {
+          "file": "tonight-story-v2.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 90280,
+          "quality": 82,
+          "sha256": "970a9cee5279b85b8d559a56e4048f3eed8e3f6c627d2bd6089a2090df16e83a"
+        },
+        {
+          "file": "tonight-story-v2-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 27654,
+          "quality": 82,
+          "sha256": "f22b6895e7c965df1dc75a6de18a23fb8aba3e396953c3a20e592cb1c539018d"
+        }
+      ],
+      "originalFile": "exec-7ba993d8-6df8-4705-8d08-319d54c93fd4.png"
+    }
+  ]
+}

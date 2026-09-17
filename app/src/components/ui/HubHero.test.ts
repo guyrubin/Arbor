@@ -128,10 +128,18 @@ describe("HubHero compact mode", () => {
   });
 });
 describe("HubHero — lane G hubs pass the translated teach line", () => {
-  it("Development and Profile heroes wire elev.growthTruth.hero.empty", () => {
-    for (const rel of ["components/tabs/DevelopmentTab.tsx", "components/sections/ChildProfile.tsx"]) {
-      expect(read(rel), `${rel} has no zeroLine`).toMatch(/zeroLine=\{t\("elev\.growthTruth\.hero\.empty"\)\}/);
-    }
+  it("Development's statistical hero wires the translated zero-state teach line", () => {
+    expect(read("components/tabs/DevelopmentTab.tsx")).toMatch(/zeroLine=\{t\("elev\.growthTruth\.hero\.empty"\)\}/);
+  });
+
+  it("Profile retains real family counts in its consolidated identity header", () => {
+    const profile = read("components/sections/ChildProfile.tsx");
+    expect(profile).toContain('data-testid="profile-hub-hero"');
+    expect(profile).toContain('profiles.length === 1');
+    expect(profile).toContain('shares.length + 1 === 1');
+    expect(profile).toContain('behaviorLogs.length + playLogs.length === 1');
+    expect(profile).not.toContain('<HubHero');
+    // ChildProfile.layout.test.tsx renders singular/plural and consent branches.
   });
 
   it("the teach line exists in EN + HE and carries no digit or verdict", () => {

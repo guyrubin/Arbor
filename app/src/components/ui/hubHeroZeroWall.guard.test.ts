@@ -1,77 +1,85 @@
-/**
- * RUN-08 "zero wall", held open for every hub — including the ones not written yet.
- *
- * A day-0 parent has done nothing yet, so every hub's stat trio reads
- * "0 · 0 · 0". That is not information; it is a wall of zeroes greeting someone
- * on their first session. HubHero takes a `zeroLine` — a translated teach line
- * shown INSTEAD of the trio while every stat is zero.
- *
- * All six mounts pass it today. That is exactly the shape of guard that has
- * failed this codebase repeatedly: every leak we have found lived just off a
- * list of named files, and a fix that is true of the six files someone checked
- * is not a property of the app. So this walks the tree instead — any future
- * hub that renders a trio without a zeroLine fails here, on the day it is
- * written rather than on a parent's first morning.
- */
+/** RUN-08: every statistical HubHero needs a translated day-0 teach line.
+ * Profile/Learn use explicitly anchored semantic headers with real record facts.
+ * TSX parsing follows actual attributes, including JSX after CTA arrow functions. */
 import { describe, expect, it } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
-
-const SRC = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1")), "..", "..");
-
-const listTsx = (dir: string): string[] =>
-  fs.readdirSync(dir).flatMap((entry) => {
-    const full = path.join(dir, entry);
-    if (fs.statSync(full).isDirectory()) return listTsx(full);
-    return /\.tsx$/.test(entry) && !/\.test\.tsx$/.test(entry) ? [full] : [];
-  });
-
-/** Every `<HubHero ... />` or `<HubHero ...>` opening tag in the tree. */
-const mounts = listTsx(SRC).flatMap((file) => {
-  const src = fs.readFileSync(file, "utf8").replace(/\r\n/g, "\n");
-  return [...src.matchAll(/<HubHero\b[\s\S]{0,1200}?\/?>/g)].map((m) => ({
-    file: path.relative(SRC, file).split(path.sep).join("/"),
-    tag: m[0],
-  }));
+import { fileURLToPath } from "node:url";
+import * as ts from "typescript";
+const SRC=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..","..");
+const listTsx=(dir:string):string[]=>fs.readdirSync(dir).flatMap(entry=>{
+ const full=path.join(dir,entry);
+ return fs.statSync(full).isDirectory()?listTsx(full):/\.tsx$/.test(entry)&&!/\.test\.tsx$/.test(entry)?[full]:[];
 });
-
-describe("RUN-08 · no hub greets a day-0 parent with a wall of zeroes", () => {
-  it("the scan is real and actually finds the hubs (a vacuous scan is not a pass)", () => {
-    const files = new Set(mounts.map((m) => m.file));
-    expect(mounts.length).toBeGreaterThanOrEqual(6);
-    // Named anchors: if the component is renamed or moved, this fails loudly
-    // rather than silently scanning nothing and reporting success.
-    expect(files.has("components/tabs/DevelopmentTab.tsx")).toBe(true);
-    expect(files.has("components/tabs/BehaviorsTab.tsx")).toBe(true);
-  });
-
-  it("every hub that renders a stat trio also supplies a zeroLine", () => {
-    const offenders = mounts
-      .filter(({ tag }) => /\btrio=/.test(tag) && !/\bzeroLine=/.test(tag))
-      .map(({ file }) => file);
-    expect(
-      offenders,
-      "a HubHero with a trio and no zeroLine shows a day-0 parent 0 · 0 · 0 — pass the translated teach line",
-    ).toEqual([]);
-  });
-
-  it("the zeroLine is translated, never a hard-coded English string", () => {
-    // A literal would ship English to a Hebrew-reading parent on the one screen
-    // that is meant to be welcoming.
-    const literals = mounts
-      .filter(({ tag }) => /\bzeroLine=["'][^"']/.test(tag))
-      .map(({ file }) => file);
-    expect(literals, "zeroLine must resolve through t()/an elevation dictionary").toEqual([]);
-  });
-
-  it("NEGATIVE CONTROL: the checks fire on a hub written the wrong way", () => {
-    const bad = `<HubHero title={x} trio={stats} icon={Icon} />`;
-    expect(/\btrio=/.test(bad) && !/\bzeroLine=/.test(bad)).toBe(true);
-    const hardCoded = `<HubHero trio={stats} zeroLine="Nothing here yet" />`;
-    expect(/\bzeroLine=["'][^"']/.test(hardCoded)).toBe(true);
-    // ...and pass on a correctly written one.
-    const good = `<HubHero trio={stats} zeroLine={t("elev.growthTruth.hub.zero")} />`;
-    expect(/\btrio=/.test(good) && !/\bzeroLine=/.test(good)).toBe(false);
-    expect(/\bzeroLine=["'][^"']/.test(good)).toBe(false);
-  });
+interface Mount { file:string; attributes:Map<string,ts.JsxAttribute>; spreads:ts.JsxSpreadAttribute[] }
+function scan(src:string,file="fixture.tsx"):Mount[]{
+ const parsed=ts.createSourceFile(file,src,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+ const found:Mount[]=[];
+ const visit=(node:ts.Node)=>{
+  if((ts.isJsxSelfClosingElement(node)||ts.isJsxOpeningElement(node))&&node.tagName.getText(parsed)==="HubHero"){
+   const attributes=new Map<string,ts.JsxAttribute>();const spreads:ts.JsxSpreadAttribute[]=[];
+   for(const attribute of node.attributes.properties){
+    if(ts.isJsxAttribute(attribute))attributes.set(attribute.name.getText(parsed),attribute);
+    else spreads.push(attribute);
+   }
+   found.push({file,attributes,spreads});
+  }
+  ts.forEachChild(node,visit);
+ };
+ visit(parsed);return found;
+}
+const hasStats=(mount:Mount)=>mount.attributes.has("stats");
+const missingZero=(mount:Mount)=>hasStats(mount)&&!mount.attributes.has("zeroLine");
+function translatedZero(mount:Mount):boolean{
+ const initializer=mount.attributes.get("zeroLine")?.initializer;
+ // Actual mounts use t(key); literals, bare attributes and arbitrary expressions
+ // cannot silently pass as translations. A different seam needs explicit proof.
+ return !!initializer&&ts.isJsxExpression(initializer)&&!!initializer.expression&&
+  ts.isCallExpression(initializer.expression)&&ts.isIdentifier(initializer.expression.expression)&&
+  initializer.expression.expression.text==="t";
+}
+const mounts=listTsx(SRC).flatMap(file=>scan(fs.readFileSync(file,"utf8"),path.relative(SRC,file).split(path.sep).join("/")));
+const fixture=(jsx:string)=>{const result=scan("const element = ("+jsx+");");expect(result).toHaveLength(1);return result[0];};
+describe("RUN-08 — no statistical hub mounts an untranslated zero wall",()=>{
+ it("finds four remaining mounts plus both real custom-header destinations",()=>{
+  expect(mounts.length).toBeGreaterThanOrEqual(4);
+  const files=new Set(mounts.map(m=>m.file));
+  for(const file of ["DevelopmentTab","BehaviorsTab","RoutinesTab","ConsultTab"])expect(files.has("components/tabs/"+file+".tsx"),file).toBe(true);
+  const profile=fs.readFileSync(path.join(SRC,"components/sections/ChildProfile.tsx"),"utf8");
+  const academy=fs.readFileSync(path.join(SRC,"components/sections/Masterclasses.tsx"),"utf8");
+  expect(profile).toContain('data-testid="profile-hub-hero"');expect(profile).toContain('profiles.length === 1');
+  expect(academy).toContain('data-testid="academy-hub-hero"');expect(academy).toContain('heroStats.map');
+ });
+ it("actually extracts stats-bearing Development and Behaviors mounts, including stats after CTA",()=>{
+  const statistical=mounts.filter(hasStats);
+  expect(statistical.length).toBeGreaterThanOrEqual(2);
+  for(const file of ["components/tabs/DevelopmentTab.tsx","components/tabs/BehaviorsTab.tsx"]){
+   const found=statistical.filter(m=>m.file===file);expect(found,file).toHaveLength(1);
+   expect(found[0].attributes.has("zeroLine"),file).toBe(true);
+  }
+ });
+ it("every real stats mount supplies its day-0 teach line",()=>{
+  expect(mounts.filter(missingZero).map(m=>m.file),"HubHero stats without zeroLine greet day-0 parents with zeros").toEqual([]);
+ });
+ it("every supplied teach line resolves through the current translation seam",()=>{
+  expect(mounts.filter(m=>m.attributes.has("zeroLine")&&!translatedZero(m)).map(m=>m.file),"zeroLine must use t(key), including expression-wrapped strings").toEqual([]);
+ });
+ it("opaque spread props cannot bypass the attribute law",()=>{
+  expect(mounts.filter(m=>m.spreads.length).map(m=>m.file),"HubHero props must be explicit so stats/zeroLine are enforceable").toEqual([]);
+  expect(fixture('<HubHero {...props} />').spreads).toHaveLength(1);
+ });
+ it("NEGATIVE CONTROL: real stats without zeroLine fail even after arrows/comparisons/long CTA objects",()=>{
+  const bad=fixture('<HubHero cta={{ label: ">", onClick: () => count > 0 ? run() : stop(), detail: "'+"x".repeat(1400)+'" }} stats={stats} />');
+  expect(hasStats(bad)).toBe(true);expect(missingZero(bad)).toBe(true);
+  // The obsolete trio spelling must not pretend to cover the actual prop.
+  expect(hasStats(fixture('<HubHero trio={stats} />'))).toBe(false);
+ });
+ it("NEGATIVE CONTROL: quoted, expression-wrapped and missing translation lines are rejected",()=>{
+  for(const jsx of ['<HubHero stats={stats} zeroLine="Nothing here yet" />','<HubHero stats={stats} zeroLine={"Nothing here yet"} />','<HubHero stats={stats} zeroLine />'])expect(translatedZero(fixture(jsx))).toBe(false);
+ });
+ it("a real translated stats mount passes, including non-self-closing JSX",()=>{
+  for(const jsx of ['<HubHero cta={{onClick: () => run()}} stats={stats} zeroLine={t("elev.growthTruth.hero.empty")} />','<HubHero stats={stats} zeroLine={t("elev.growthTruth.hero.empty")}></HubHero>']){
+   const good=fixture(jsx);expect(hasStats(good)).toBe(true);expect(missingZero(good)).toBe(false);expect(translatedZero(good)).toBe(true);
+  }
+ });
 });
