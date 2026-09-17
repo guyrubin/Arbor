@@ -56,7 +56,7 @@ describe("masterplan 1.5 — SpineRibbon mounts", () => {
     expect(academy).toMatch(/onFollow=\{\(\) => setActiveTab\("development"\)\}/);
   });
 
-  it("Academy ribbon sits BELOW the hero + catalog header (never above)", () => {
+  it("Academy ribbon follows the featured-read header and precedes the wide catalogue", () => {
     // R17: the ribbon is now DECLARED above the return (`const spineRibbon`)
     // so one definition can serve two mutually exclusive slots — the wide
     // layout and the phone's disclosure. What this rule is about is where it
@@ -66,8 +66,8 @@ describe("masterplan 1.5 — SpineRibbon mounts", () => {
     // div. The `!phone` gate and the placement it guards are unchanged.
     const mount = academy.indexOf('{!phone && <div data-module="academy-spine"');
     expect(mount, "the academy ribbon render site was not found").toBeGreaterThan(-1);
-    expect(mount).toBeGreaterThan(academy.indexOf('testId="academy-hub-hero"'));
-    expect(mount).toBeGreaterThan(academy.indexOf('t("sec.master.sub")'));
+    expect(mount).toBeGreaterThan(academy.indexOf('data-testid="academy-hub-hero"'));
+    expect(mount).toBeLessThan(academy.indexOf('data-module="academy-catalogue"'));
     // NEGATIVE CONTROL for that gate: exactly one ribbon mount stands above the
     // course gallery, and it is the phone-gated one. A second, ungated mount
     // here is the 1,675 px phone regression R17 measured.

@@ -33,21 +33,13 @@ export default function ConsultTab() {
   return (
     <div>
       <HubHero
-        // R14 (LC-28): the packet heading sat at 1,440 px at 390. The hero is
-        // the first block of that column, so it gives back what it can WITHOUT
-        // touching the shared primitive (ui/HubHero.tsx is not this item's to
-        // edit): tighter padding and margin below md, and the generic hero sub
-        // stands down at the same breakpoint — the child-specific sub in the
-        // section header below is the one worth the height at 390.
-        // There is no stat trio to drop: this hub passes no `stats` on
-        // purpose (see the note above), so `zeroLine` never renders either.
-        className="max-md:p-4 max-md:mb-3 max-md:[&_p]:hidden"
+        compact
         zeroLine={t("elev.growthTruth.hero.empty")}
         tone="sky"
         icon={Stethoscope}
         eyebrow={t("elev.hero.care.eyebrow")}
         title={t("elev.hero.care.title", { name: firstName })}
-        subtitle={t("elev.hero.care.sub")}
+        subtitle={t("elev.wave2Knowledge.care.sub")}
         cta={{
           label: t("elev.hero.care.cta"),
           icon: <ListChecks aria-hidden="true" size={16} strokeWidth={2.4} />,

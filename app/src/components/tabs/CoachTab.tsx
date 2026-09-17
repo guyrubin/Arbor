@@ -326,6 +326,7 @@ export default function CoachTab() {
   // the full radiogroup (all lenses, arrow-key nav). Selection persistence and
   // seedCoach lens steering are untouched.
   const [lensOpen, setLensOpen] = useState(false);
+  const [showAllScenarios, setShowAllScenarios] = useState(false);
   /* R22 (Builder L) — the lens VALUE is a stored English identifier
      ("Integrated Balanced"), not display copy. One place resolved it
      (`coach.lens.integrated`) and the identity strip and the attribution chip
@@ -801,6 +802,9 @@ export default function CoachTab() {
   // the two positions, so there is always exactly one textarea in the DOM,
   // and the voice/photo capture chips travel with it.
   const composerDocked = userTurnExists;
+  // Fresh state has no transcript messages, status, or failure card. Keep the
+  // coach header and footer reachable without reserving a blank message canvas.
+  const hasThreadContent = chatMessages.length > 0 || isChatLoading || !!failureCopy;
   // R24: the contract stamps live on THIS element, not on the docked wrapper.
   // They were on the `composerDocked &&` branch only, so on a fresh thread —
   // the state a parent actually lands in — #/coach rendered no
@@ -812,25 +816,18 @@ export default function CoachTab() {
         <section
           data-module="coach-composer"
           data-primary-move="ask"
-          className={composerDocked ? "py-2.5" : "border-y py-5 sm:py-6"}
+          className={composerDocked ? "py-2.5" : "pt-3 pb-4 sm:pt-4 sm:pb-5"}
           aria-label={t("elev.hero.ask.cta")}
-          style={composerDocked ? undefined : { borderColor: "var(--arbor-rule)" }}
         >
           {!composerDocked && (
-          <div className="flex items-center gap-3 mb-3">
-            <span className="inline-flex items-center justify-center w-10 h-10 rounded-2xl" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}><Icon name="auto_awesome" size={21} fill={1} /></span>
-            <div className="min-w-0">
-              <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("coach.empty.title", { name: childFirst })}</p>
-              <p className="text-[11px] leading-relaxed truncate" style={{ color: "var(--arbor-muted)" }}>
-                {/* AI-23: count-aware — never promise memory use before a fact exists. */}
-                {approvedMemoryItems.length === 0
-                  ? t("elev.aihonesty.memory.none", { name: childFirst })
-                  : approvedMemoryItems.length === 1
-                    ? t("elev.aihonesty.memory.one", { name: childFirst })
-                    : t("elev.aihonesty.memory.some", { name: childFirst, n: approvedMemoryItems.length })}
-              </p>
-            </div>
-          </div>
+            <p className="mb-2 text-[12px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+              {/* AI-23: count-aware context stays reachable before the first question. */}
+              {approvedMemoryItems.length === 0
+                ? t("elev.aihonesty.memory.none", { name: childFirst })
+                : approvedMemoryItems.length === 1
+                  ? t("elev.aihonesty.memory.one", { name: childFirst })
+                  : t("elev.aihonesty.memory.some", { name: childFirst, n: approvedMemoryItems.length })}
+            </p>
           )}
           <div className="flex items-end gap-2 rounded-[20px] p-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }}>
             <textarea
@@ -864,7 +861,7 @@ export default function CoachTab() {
             <p
               data-testid="coach-offline-note"
               role="status"
-              className="mt-2 flex items-center gap-1.5 text-[11px] font-bold"
+              className="mt-2 flex items-center gap-1.5 text-[12px] font-bold"
               style={{ color: "var(--arbor-muted)" }}
             >
               <Icon name="cloud_off" size={13} /> {t("elev.aierrors.offline.composer")}
@@ -936,23 +933,32 @@ export default function CoachTab() {
       {!userTurnExists && (
         <div className="space-y-2">
           <span className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("coach.fastStart")}</span>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {SCENARIOS.map((s) => (
+          <div id="coach-scenarios" className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {(showAllScenarios ? SCENARIOS : SCENARIOS.slice(0, 3)).map((s) => (
               <button
                 key={s.labelKey}
                 // ASK-5: the parent's bubble shows the localized label they
                 // actually tapped; the canonical EN prompt goes to the model.
                 onClick={() => handleChatSend(s.prompt, { displayText: t(s.labelKey) })}
                 disabled={isChatLoading}
-                className="inline-flex items-center gap-2 rounded-2xl px-4 py-3 min-h-[48px] text-start text-sm font-bold bg-white transition motion-safe:hover:-translate-y-0.5 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-                style={{ color: T.ink, border: "1px solid var(--arbor-rule)" }}
+                className="inline-flex items-center gap-2 rounded-xl px-3 py-2.5 min-h-11 text-start text-[13px] font-bold transition disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                style={{ color: T.ink, border: "1px solid var(--arbor-rule)", background: "var(--arbor-paper-elevated)" }}
               >
-                {/* OBJ-ASK-04: an emoji is a different register from every
-                    other parent surface (and reads differently per platform).
-                    Same Material Symbols set the rest of the app uses. */}
                 <Icon name={s.icon} size={16} style={{ color: "var(--arbor-green-ink)" }} /> {t(s.labelKey)}
               </button>
             ))}
+            <button
+              type="button"
+              onClick={() => setShowAllScenarios((shown) => !shown)}
+              aria-expanded={showAllScenarios}
+              aria-controls="coach-scenarios"
+              className="inline-flex min-h-11 items-center justify-center rounded-xl px-3 text-[12px] font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+              style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}
+            >
+              {showAllScenarios
+                ? t("elev.wave2Daily.ask.examples.less")
+                : t("elev.wave2Daily.ask.examples.more", { count: SCENARIOS.length - 3 })}
+            </button>
           </div>
         </div>
       )}
@@ -1077,39 +1083,38 @@ export default function CoachTab() {
         online={online}
       />
 
-      {/* Conversation threads */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+      {/* Conversation history stays available without reserving an empty tray. */}
+      <section className="flex flex-wrap items-center gap-2 border-y py-2.5" style={{ borderColor: "var(--arbor-rule)" }} aria-label={t("elev.wave2Daily.ask.history")}>
+        <span className="me-auto text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }}>{t("elev.wave2Daily.ask.history")}</span>
         <button
           onClick={newConversation}
-          className="flex-shrink-0 flex min-h-11 items-center gap-1.5 text-[11px] font-extrabold px-3 py-1.5 rounded-full transition"
-          style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-[12px] font-extrabold focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+          style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}
         >
           <Icon name="add" size={14} /> {t("coach.new")}
         </button>
-        {conversations.map((c) => {
-          const on = c.id === activeConversationId;
-          return (
-            <div
-              key={c.id}
-              className="flex-shrink-0 flex items-center gap-1.5 rounded-full ps-3 pe-1.5 py-1 transition"
-              style={on ? { background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.30)" } : { background: T.paperElevated, border: "1px solid var(--arbor-rule)" }}
-            >
-              <button onClick={() => openConversation(c.id)} className="flex min-h-11 items-center gap-1.5 text-[11px] font-bold max-w-[160px] truncate" style={{ color: on ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>
-                <Icon name="chat" size={12} className="flex-shrink-0" /> <span className="truncate">{c.title}</span>
-              </button>
-              <button onClick={() => deleteConversation(c.id)} aria-label={t("aria.deleteConversation")} className="touch-target transition" style={{ color: "var(--arbor-muted)" }}>
-                <Icon name="delete" size={12} />
-              </button>
-            </div>
-          );
-        })}
-      </div>
+        {conversations.length > 0 ? (
+          <div className="flex w-full gap-2 overflow-x-auto pb-1 no-scrollbar">
+            {conversations.map((c) => {
+              const on = c.id === activeConversationId;
+              return (
+                <div key={c.id} className="flex flex-shrink-0 items-center gap-1.5 rounded-full ps-3 pe-1.5 py-1" style={on ? { background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.30)" } : { background: T.paperElevated, border: "1px solid var(--arbor-rule)" }}>
+                  <button onClick={() => openConversation(c.id)} className="flex min-h-11 max-w-[160px] items-center gap-1.5 truncate text-[12px] font-bold" style={{ color: on ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>
+                    <Icon name="chat" size={12} className="flex-shrink-0" /> <span className="truncate">{c.title}</span>
+                  </button>
+                  <button onClick={() => deleteConversation(c.id)} aria-label={t("aria.deleteConversation")} className="touch-target transition" style={{ color: "var(--arbor-muted)" }}><Icon name="delete" size={12} /></button>
+                </div>
+              );
+            })}
+          </div>
+        ) : null}
+      </section>
 
       {/* Chat thread — COACH-4: no fixed-height inner scroll; the thread flows
           with the page (ArborContext auto-scrolls the viewport to the streaming
           answer via chatBottomRef). The min-height keeps the conversation canvas
           from shrinking below the previous min(70dvh,560px) viewport. */}
-      <div data-module="coach-thread" className={`${cardCls} flex min-h-[min(70dvh,560px)] min-w-0 flex-col overflow-hidden`}>
+      <div data-module="coach-thread" className={`${cardCls} flex min-w-0 flex-col overflow-hidden`}>
         {/* Persistent named-coach identity strip. The lens/context frame is kept but
             visually subordinate so the conversation is the hero. Green primary —
             never the design's sapphire — per the parent color lock. */}
@@ -1121,11 +1126,11 @@ export default function CoachTab() {
             <p className="text-sm font-extrabold leading-tight" style={{ color: "var(--arbor-ink)" }}>{t("coach.coachName")}</p>
             {/* AI-13 (honest AI, Law 4): no presence dot, no "always here" —
                 a software guide, not a person on shift. */}
-            <p className="text-[11px] font-bold leading-tight" style={{ color: "var(--arbor-muted)" }}>
+            <p className="text-[12px] font-bold leading-tight" style={{ color: "var(--arbor-muted)" }}>
               {t("elev.aihonesty.coachStatus")}
             </p>
           </div>
-          <span className="text-[11px] font-bold flex items-center gap-1.5 flex-shrink-0" style={{ color: "var(--arbor-muted)" }}>
+          <span className="text-[12px] font-bold flex items-center gap-1.5 flex-shrink-0" style={{ color: "var(--arbor-muted)" }}>
             {isChatLoading && <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--arbor-clay)" }} aria-hidden />}
             <span className="truncate max-w-[160px]">{t("coach.lensLabel")}: {lensDisplay(selectedLens)}</span>
           </span>
@@ -1229,7 +1234,7 @@ export default function CoachTab() {
           </div>
         )}
 
-        <div className="flex-1 p-4 md:p-6">
+        <div className={hasThreadContent ? "flex-1 p-4 md:p-6" : "p-0"}>
          <div className="max-w-[760px] mx-auto space-y-3.5">
           {/* Empty state — orient a first-run parent on what Ask Arbor does.
               COACH-4: the title line lives ONCE, on the hero composer above;
@@ -1237,16 +1242,8 @@ export default function CoachTab() {
               ASK-7: this is THE single orientation block (with the scenarios)
               — it hides the moment any real turn exists, including a legacy
               conversation that still opens with the old welcome bubble. */}
-          {!userTurnExists && !aiTurnExists && !isChatLoading && (
-            <div className="flex flex-col items-center justify-center text-center gap-3 py-10 px-4">
-              <div className="w-14 h-14 rounded-full flex items-center justify-center overflow-hidden" style={{ background: "var(--arbor-green-soft)" }} aria-hidden>
-                <ArborMascot size={52} />
-              </div>
-              <p className="text-sm max-w-md leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("coach.empty.body")}</p>
-            </div>
-          )}
           {chatMessages.map((msg, idx) => (
-            <div key={idx} className={`flex gap-3 max-w-[85%] group ${msg.sender === "user" ? "ms-auto flex-row-reverse" : "me-auto"}`}>
+            <div key={idx} className={`flex gap-3 group ${msg.sender === "user" ? "ms-auto max-w-[85%] flex-row-reverse" : "me-auto w-full"}`}>
               {msg.sender === "user" ? (
                 <Avatar name={user?.displayName} photoURL={user?.photoURL} size={32} />
               ) : (
@@ -1257,9 +1254,9 @@ export default function CoachTab() {
               {/* Asymmetric "tail" via logical radii so it flips correctly in RTL:
                   the speaker-side bottom corner is tightened to 6px. Coach bubbles
                   carry a soft shadow to lift the conversation off the canvas. */}
-              <div dir="auto" className={`p-4 rounded-[18px] text-sm font-medium leading-[1.55] ${msg.sender === "user" ? "text-white" : ""}`}
+              <div dir="auto" className="p-4 rounded-[18px] text-sm font-medium leading-[1.55]"
                 style={msg.sender === "user"
-                  ? { background: T.gradientCta, borderEndEndRadius: 6 }
+                  ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)", borderEndEndRadius: 6 }
                   : { background: T.paperElevated, color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)", borderEndStartRadius: 6, boxShadow: "var(--shadow-sm)" }}>
                 {msg.sender === "ai" && !msg.contract && msg.lens && msg.lens !== "Integrated Balanced" && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full mb-3 inline-block" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>

@@ -71,12 +71,12 @@ const COLOR: Record<WorldColor, { bg: string; ink: string }> = {
 const WORLDS: World[] = [
   { id: "speech", name: "Sound Lab", tag: "Speech", icon: "mic", color: "sky", imagePrompt: "a bright sound-and-music studio with a big microphone, floating letters and musical notes", Comp: SpeechCoachTab, count: (d) => d.speech.items.length },
   { id: "feelings", name: "Mood Mountain", tag: "Feelings", icon: "favorite", color: "lav", imagePrompt: "a friendly mountain landscape with cheerful emotion characters (happy, sad, calm) and a warm sky", Comp: FeelingsLabTab, count: (d) => d.events.items.length },
-  { id: "adventures", name: "Story Quest", tag: "Adventure", icon: "map", color: "peach", imagePrompt: "an adventurous storybook landscape, holding a treasure map with a compass on a cliff", Comp: AdventuresTab, count: (d) => d.adventures.items.length },
+  { id: "adventures", name: "Story Quest", tag: "Adventure", icon: "map", color: "peach", imagePrompt: "an adventurous landscape with a treasure map and compass on a cliff", Comp: AdventuresTab, count: (d) => d.adventures.items.length },
   { id: "mimic", name: "Mimic Studio", tag: "Mimic", icon: "mood", color: "clay", imagePrompt: "a playful mirror studio making a silly happy face, sparkles around", Comp: MimicStudioTab, count: (d) => d.mimic.items.length },
   { id: "memory", name: "Mind Vault", tag: "Memory", icon: "psychology", color: "pink", imagePrompt: "opening a glowing memory vault full of colorful matching cards", Comp: MindVaultWorld, count: (d) => d.events.items.filter((e) => e.kind === "memory").length },
   { id: "reading", name: "Spell Forge", tag: "Reading", icon: "menu_book", color: "yellow", imagePrompt: "a magical letter forge where glowing letters become words", Comp: SpellForgeWorld, count: (d) => d.events.items.filter((e) => READING_KINDS.has(e.kind)).length },
   { id: "beat", name: "Beat Keeper", tag: "Rhythm", icon: "music_note", color: "clay", imagePrompt: "a colorful music stage with drums, rhythm bars and bouncing musical notes", isNew: true, Comp: BeatKeeperWorld, count: (d) => d.events.items.filter((e) => e.kind === "rhythm").length },
-  { id: "pose", name: "Hero Pose", tag: "Move", icon: "accessibility_new", color: "sky", imagePrompt: "a dynamic superhero action pose with bold motion lines", isNew: true, Comp: HeroPoseWorld, count: (d) => d.events.items.filter((e) => e.kind === "pose").length },
+  { id: "pose", name: "Hero Pose", tag: "Move", icon: "accessibility_new", color: "sky", imagePrompt: "a joyful movement pose with sweeping motion lines", isNew: true, Comp: HeroPoseWorld, count: (d) => d.events.items.filter((e) => e.kind === "pose").length },
   { id: "pattern", name: "Pattern Power", tag: "Logic", icon: "category", color: "lav", imagePrompt: "a puzzle world of glowing shapes arranged in patterns", isNew: true, Comp: PatternPowerWorld, count: (d) => d.events.items.filter((e) => e.kind === "pattern").length },
   { id: "word-world", name: "Word World", tag: "Language", icon: "menu_book", color: "sky", imagePrompt: "a warm cozy reading nook with open books, speech bubbles, and colorful letters floating gently", isNew: true, parentOnly: true, Comp: WordWorldTab, count: (d) => d.events.items.filter((e) => e.kind === "lang-strategy").length },
 ];
@@ -199,7 +199,7 @@ export default function HeroArcade({ initialWorldId }: { initialWorldId?: string
               <span className="text-[13px] font-extrabold" style={{ color: "var(--arbor-lav-ink)" }}>{t("elev.play.arcade.heroOfWeek")}</span>
             )}
           </div>
-          <h1 className="font-black leading-none truncate" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(24px,5vw,40px)" }}>
+          <h1 className="font-black leading-snug break-words" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(24px,5vw,40px)" }}>
             {hasName ? t("elev.play.arcade.heroBrave", { name: hero.name }) : t("elev.play.arcade.yourHero")}
           </h1>
           <div className="flex items-center gap-3 mt-3 flex-wrap">
@@ -230,7 +230,7 @@ export default function HeroArcade({ initialWorldId }: { initialWorldId?: string
 
       {/* WORLDS */}
       <div>
-        <h2 className="font-black mb-3" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(18px,3.4vw,24px)" }}>{t("elev.play.arcade.chooseWorld")}</h2>
+        <h2 className="font-black mb-3" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(20px,3.4vw,24px)" }}>{t("elev.play.arcade.chooseWorld")}</h2>
         <div className="grid gap-3 sm:gap-4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))" }}>
           {/* KID-06: the arcade grid listed 6 worlds while the kid home listed 8
               — Beat Keeper, Hero Pose and Pattern Power were hidden by an
@@ -252,12 +252,12 @@ export default function HeroArcade({ initialWorldId }: { initialWorldId?: string
                     style={{ background: "var(--arbor-pink)", color: "var(--arbor-on-accent)", border: "var(--comic-line)", borderTopLeftRadius: "var(--play-radius)", borderBottomRightRadius: "12px" }}>{t("elev.play.arcade.new")}</span>
                 )}
                 <div className="comic-halftone relative overflow-hidden" style={{ height: 120, background: c.bg, borderBottom: "var(--comic-line)" }}>
-                  <WorldScene worldId={w.id} imagePrompt={w.imagePrompt} heroUrl={hero.url ?? undefined}>
+                  <WorldScene worldId={w.id} imagePrompt={w.imagePrompt} heroUrl={hero.url ?? undefined} heroStyle={hero.style} sizes="(max-width: 639px) 50vw, (max-width: 1023px) 33vw, 240px">
                     <Icon name={glyph} size={48} fill={1} style={{ color: "var(--arbor-on-accent)", filter: "drop-shadow(2px 2px 0 rgba(23,27,34,.35))" }} />
                   </WorldScene>
                 </div>
                 <div className="p-3">
-                  <p className="font-black text-[16px] leading-none mb-2" style={{ fontFamily: "var(--font-display)" }}>{w.name}</p>
+                  <p className="font-black text-[20px] leading-snug mb-2" style={{ fontFamily: "var(--font-display)" }}>{w.name}</p>
                   <span className="inline-block text-[10.5px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full"
                     style={{ border: "2px solid var(--comic-ink)", color: c.ink }}>{w.tag}</span>
                   {/* OBJ-KID-02: no padlock ever renders inside `.arbor-play`.
@@ -274,7 +274,7 @@ export default function HeroArcade({ initialWorldId }: { initialWorldId?: string
 
       {/* HERO GEAR (cosmetics earned through play) */}
       <div>
-        <h2 className="font-black mb-3" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(18px,3.4vw,24px)" }}>{t("elev.play.arcade.gear")}</h2>
+        <h2 className="font-black mb-3" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(20px,3.4vw,24px)" }}>{t("elev.play.arcade.gear")}</h2>
         {unlocked.length > 0 ? (
           <div className="flex flex-wrap gap-2">
             {unlocked.map((c) => (

@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { useArbor } from "../../context/ArborContext";
 import { ArborMascot, type MascotMood } from "./ArborMascot";
+import { normalizeAvatarStyle } from "../../lib/avatarStyle";
 
 /**
  * HeroAvatar — the child rendered as the hero of the platform, the SAME identity
@@ -21,7 +22,7 @@ export function useHeroAvatar() {
   // `isGenerated` = a stylized, privacy-safe hero (descriptor) — safe to embed in
   // shareable/clinical documents; a real `photo` avatar is never auto-embedded.
   const isGenerated = childProfile.avatar?.source === "descriptor";
-  return { url, isGenerated, hasHero: !!url, name: childProfile.name?.split(" ")[0] || "your child" };
+  return { url, style: normalizeAvatarStyle(childProfile.avatar?.style), isGenerated, hasHero: !!url, name: childProfile.name?.split(" ")[0] || "your child" };
 }
 
 export function HeroAvatar({
@@ -42,10 +43,15 @@ export function HeroAvatar({
   className?: string;
 }) {
   const { url, name } = useHeroAvatar();
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
 
   // No generated hero yet → Sprout keeps the surface warm.
-  if (!url) {
-    return <ArborMascot size={size} mood={mood} animate={animate} className={className} />;
+  if (!url || failedUrl === url) {
+    return decorative ? (
+      <span aria-hidden="true" className={`inline-flex flex-shrink-0 ${className}`} style={{ width: size, height: size }}>
+        <ArborMascot size={size} mood={mood} animate={animate} />
+      </span>
+    ) : <ArborMascot size={size} mood={mood} animate={animate} className={className} />;
   }
 
   const badge = Math.max(16, Math.round(size * 0.3));
@@ -64,7 +70,9 @@ export function HeroAvatar({
         }}
       >
         <img
+          key={url}
           src={url}
+          onError={() => setFailedUrl(url)}
           alt={decorative ? "" : `${name}, the hero`}
           aria-hidden={decorative || undefined}
           referrerPolicy="no-referrer"

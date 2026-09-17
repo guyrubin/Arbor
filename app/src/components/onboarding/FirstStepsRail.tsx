@@ -30,7 +30,7 @@
  * on prefers-reduced-motion.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Sparkles, MessageCircle, Camera, BookOpen, Check, X, ChevronRight } from "lucide-react";
+import { Sparkles, MessageCircle, Camera, BookOpen, Check, X } from "lucide-react";
 import { useArbor, type ActiveTab } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { PASTEL, type PastelKey } from "../../lib/tokens";
@@ -147,7 +147,7 @@ export function FirstStepsRail() {
   return (
     <section
       aria-labelledby="first-steps-title"
-      className="rounded-[22px] p-4 md:p-5 text-start"
+      className="rounded-[18px] p-3 md:p-4 text-start"
       style={{
         background: "var(--arbor-paper-elevated)",
         border: "1px solid var(--arbor-rule)",
@@ -183,7 +183,10 @@ export function FirstStepsRail() {
         </button>
       </div>
 
-      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2">
+      <div
+        className="mt-3 overflow-hidden rounded-xl"
+        style={{ border: "1px solid var(--arbor-rule)" }}
+      >
         {STEPS.map((s, i) => {
           const isDone = done[s.id];
           const p = PASTEL[s.tone];
@@ -195,15 +198,12 @@ export function FirstStepsRail() {
               type="button"
               onClick={() => openStep(s.id, s.tab)}
               aria-label={isDone ? `${label} — ${t("elev.rail.stepDone")}` : label}
-              className="flex items-center gap-2.5 min-h-[44px] rounded-2xl px-3 py-2.5 text-start transition cursor-pointer"
-              /* OBJ-TODAY-01: a finished step is a check row, not a CTA. The
-                 tone wash (`PASTEL[*].soft`, itself a linear-gradient token)
-                 made "Capture a moment — Done" read as the loudest filled
-                 button on Today. The tone survives in the check disc's ink; the
-                 row itself recedes to paper-deep. */
+              className="flex min-h-11 w-full items-center gap-2.5 px-3 py-2 text-start transition cursor-pointer"
+              /* Finished steps remain quiet checklist rows; the tone is only a
+                 recognition cue, never a competing primary treatment. */
               style={{
                 background: isDone ? "var(--arbor-paper-deep)" : "var(--arbor-paper)",
-                border: "1px solid var(--arbor-rule)",
+                borderBottom: i < STEPS.length - 1 ? "1px solid var(--arbor-rule)" : undefined,
               }}
             >
               <span
@@ -221,25 +221,9 @@ export function FirstStepsRail() {
                   <s.Glyph style={{ width: "14px", height: "14px" }} />
                 )}
               </span>
-              <span className="flex-1 min-w-0">
-                <span
-                  className="block text-[var(--t-xs)] font-extrabold uppercase"
-                  style={{ color: p.ink, letterSpacing: "0.08em" }}
-                >
-                  {i + 1}
-                </span>
-                <span
-                  className="block text-[var(--t-sm)] font-bold leading-tight truncate"
-                  style={{ color: "var(--arbor-ink)" }}
-                >
-                  {label}
-                </span>
+              <span className="min-w-0 flex-1 text-[var(--t-sm)] font-bold leading-tight" style={{ color: "var(--arbor-ink)" }}>
+                {label}
               </span>
-              <ChevronRight
-                aria-hidden="true"
-                className="flex-shrink-0 rtl:-scale-x-100"
-                style={{ width: "16px", height: "16px", color: "var(--arbor-muted)" }}
-              />
             </button>
           );
         })}

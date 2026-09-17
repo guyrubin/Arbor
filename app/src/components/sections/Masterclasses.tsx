@@ -1,12 +1,10 @@
 import React, { useEffect, useState, useSyncExternalStore } from "react";
 import { motion } from "motion/react";
 import { celebrate } from "../../lib/celebrate";
-import { GraduationCap } from "lucide-react";
 import { Icon } from "../ui/Icon";
-import { HubHero } from "../ui/HubHero";
 import { SpineRibbon } from "../ui/SpineRibbon";
 import { EvidenceChip } from "../ui/EvidenceChip";
-import { cardCls, IconBadge, ProgressBar, PASTEL, type PastelKey } from "../ui/kit";
+import { cardCls, IconBadge, PASTEL, type PastelKey } from "../ui/kit";
 import { useLanguage } from "../../context/LanguageContext";
 import { useArbor } from "../../context/ArborContext";
 import { MASTERCLASSES, FRAME_LABELS, type FrameId, type Masterclass } from "../../lib/masterclasses";
@@ -222,7 +220,7 @@ export default function Masterclasses() {
   // drift into two different rails.
   const railStack = (
     <>
-      <p className="text-[11px] uppercase tracking-widest font-bold px-1" style={{ color: "var(--arbor-green-ink)" }}>
+      <p className="text-lg font-bold px-1" style={{ color: "var(--arbor-green-ink)" }}>
         {t("academy.learnMap.title")}
         <span className="block normal-case tracking-normal text-[12px] font-medium mt-1" style={{ color: "var(--arbor-muted)" }} dir="auto">
           {t("academy.learnMap.sub", { name: childName })}
@@ -241,7 +239,7 @@ export default function Masterclasses() {
       {/* Recommended-by-Family-Charter strip — relocated into the rail. */}
       {recommended.length > 0 && (
         <div className="rounded-2xl p-4" style={{ background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.25)" }}>
-          <p className="text-[11px] uppercase tracking-widest font-bold mb-2.5" style={{ color: "var(--arbor-green-ink)" }}>
+          <p className="text-xs uppercase tracking-widest font-bold mb-2.5" style={{ color: "var(--arbor-green-ink)" }}>
             {t("master.rec")}
           </p>
           <div className="flex flex-wrap gap-2">
@@ -249,7 +247,7 @@ export default function Masterclasses() {
               <button
                 key={c.id}
                 onClick={() => setOpenId(c.id)}
-                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-bold transition motion-safe:hover:-translate-y-0.5"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-bold transition motion-safe:hover:-translate-y-0.5"
                 dir="auto"
                 style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
               >
@@ -299,51 +297,18 @@ export default function Masterclasses() {
           `data-primary-move` marks the ONE control that performs the move
           surfaceContract.ts declares for this route — here the hero's pick CTA,
           passed to HubHero as a prop, so the stamp rides its wrapper. */}
-      <div data-primary-move="open-todays-pick" className="mx-auto w-full min-w-0 max-w-[1180px]">
-        <HubHero
-          zeroLine={t("elev.growthTruth.hero.empty")}
-          tone="sky"
-          icon={GraduationCap}
-          eyebrow={t("elev.hero.academy.eyebrow")}
-          title={t("elev.hero.academy.title", { name: childName })}
-          subtitle={t("elev.hero.academy.sub")}
-          cta={todaysRead ? {
-            label: t("elev.learnCare.pick.cta"),
-            onClick: () => requestLearnRead({ cardId: todaysRead.card.id, source: "learn-hub-todays-pick" }),
-            icon: <Icon name="menu_book" size={16} />,
-            testId: "academy-hero-cta",
-          } : nextCourse ? {
-            label: t("elev.hero.academy.cta"),
-            onClick: () => setOpenId(nextCourse.id),
-            icon: <Icon name="school" size={16} />,
-            testId: "academy-hero-cta",
-          } : undefined}
-          stats={heroStats}
-          testId="academy-hub-hero"
-        />
-        {/* Meta row — pulled up under the hero (hero carries its own mb-6). */}
-        <div className="-mt-3 mb-6 flex flex-wrap items-center gap-x-3 gap-y-1.5 px-1">
-          <EvidenceChip />
-          {/* LC-04: the honest why-line for today's read — the same claim
-              discipline as the Learn Library rail (only signals that scored). */}
-          {todaysRead && (
-            <p
-              data-testid="academy-pick-why"
-              dir="auto"
-              className="text-[11.5px] font-semibold leading-relaxed"
-              style={{ color: "var(--arbor-muted)" }}
-            >
-              <span className="font-extrabold" style={{ color: "var(--arbor-green-ink)" }}>
-                {t("elev.learnCare.pick.eyebrow")}
-              </span>
-              {" · "}
-              {he ? todaysRead.card.title.he : todaysRead.card.title.en}
-              {" — "}
-              {pickWhy}
-            </p>
-          )}
-        </div>
-      </div>
+      <header data-primary-move="open-todays-pick" data-testid="academy-hub-hero" className="mx-auto mb-6 w-full min-w-0 max-w-[1180px]">
+        <h1 className="text-2xl sm:text-3xl leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("elev.hero.academy.title", { name: childName })}</h1>
+        <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs" style={{ color: "var(--arbor-muted)" }}>{heroStats.map((stat) => <li key={stat.label}>{stat.value} {stat.label}</li>)}</ul>
+        {(todaysRead || nextCourse) && <section className="mt-4 border-y py-4 flex flex-wrap items-center justify-between gap-3" style={{ borderColor: "var(--arbor-rule)" }}>
+          <div className="min-w-0 max-w-[65ch] flex-1 basis-[240px]">
+            <h2 className="text-lg font-bold leading-snug" dir="auto" style={{ color: "var(--arbor-ink)" }}>{todaysRead ? (he ? todaysRead.card.title.he : todaysRead.card.title.en) : (he ? nextCourse!.titleHe : nextCourse!.title)}</h2>
+            {todaysRead && <p data-testid="academy-pick-why" dir="auto" className="mt-1 text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{pickWhy}</p>}
+          </div>
+          <button data-testid="academy-hero-cta" onClick={() => todaysRead ? requestLearnRead({ cardId: todaysRead.card.id, source: "learn-hub-todays-pick" }) : setOpenId(nextCourse!.id)} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold" style={{ background: "var(--arbor-green-ink)", color: "var(--arbor-paper-elevated)" }}><Icon name="menu_book" size={16} />{t(todaysRead ? "elev.learnCare.pick.cta" : "elev.hero.academy.cta")}</button>
+        </section>}
+        <div className="mt-3"><EvidenceChip /></div>
+      </header>
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1180px] space-y-6">
       {/* LC-05 / RUN-11 — the two kid-register doors that stood here ("Story
           journeys" → #/journey, "Comic library" → #/comics) are DELETED. This
@@ -353,12 +318,6 @@ export default function Masterclasses() {
           destinations remain reachable from the Stories hub, which is their
           home — no capability is lost (law 6). The surviving third tile said
           only "continue to lessons", which is what the page already does. */}
-
-      <header className="border-b px-1 pb-4" style={{ borderColor: "var(--arbor-rule)" }}>
-        <p className="text-[10px] font-extrabold uppercase tracking-[0.16em]" style={{ color: "var(--arbor-green-ink)" }}>{t("sec.master.eyebrow")}</p>
-        <h1 className="mt-1 text-2xl leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("sec.master.title")}</h1>
-        <p className="mt-1.5 max-w-2xl text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("sec.master.sub")}</p>
-      </header>
 
       {/* R17 — a phone meets a COURSE right after the hero and the pick line.
           MEASURED at 390 (round 2b): the first course card sat at 1,675 px, because
@@ -380,15 +339,15 @@ export default function Masterclasses() {
         {/* ── All courses gallery — first in the document, right column at xl ─ */}
         <div className="space-y-4 min-w-0 order-1 xl:order-2" data-testid="academy-courses">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-1">
-            <h2 className="text-[15px] font-extrabold uppercase tracking-widest" style={{ color: "var(--arbor-muted)" }}>
+            <h2 className="text-xl font-bold" style={{ color: "var(--arbor-muted)" }}>
               {t("academy.courses.title")}
             </h2>
             {/* W0.7 — "Show all ages" toggle: only rendered when the child's-age
                 view actually hides something (or the parent already opted in). */}
             {(ageHidden.length > 0 || showAllAges) && (
-              <span className="ms-auto inline-flex items-center gap-2">
+              <span className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:ms-auto sm:w-auto">
                 {!showAllAges && ageHidden.length > 0 && (
-                  <span className="text-[11px] font-bold" style={{ color: "var(--arbor-faint)" }} dir="auto">
+                  <span className="text-xs font-bold" style={{ color: "var(--arbor-faint)" }} dir="auto">
                     {agefilterText("elev.agefilter.hiddenCount", he, { n: ageHidden.length })}
                   </span>
                 )}
@@ -398,7 +357,7 @@ export default function Masterclasses() {
                   aria-checked={showAllAges}
                   onClick={toggleShowAllAges}
                   data-testid="agefilter-toggle-masterclasses"
-                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11.5px] font-extrabold transition"
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-extrabold transition"
                   style={
                     showAllAges
                       ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.25)" }
@@ -428,46 +387,32 @@ export default function Masterclasses() {
                   onClick={() => setOpenId(c.id)}
                   className={`${cardCls} flex flex-col text-start overflow-hidden transition motion-safe:hover:-translate-y-0.5`}
                 >
-                  {/* Gradient header band — pulled from FRAME_TONE → PASTEL (soft→
-                      elevated). No raw hex; Material Symbols "school" centred. */}
-                  <div
-                    className="relative flex items-center justify-center"
-                    style={{
-                      height: 74,
-                      background: `linear-gradient(135deg, ${p.soft}, var(--arbor-paper-elevated))`,
-                    }}
-                  >
-                    <span className="inline-flex items-center justify-center rounded-2xl" style={{ background: p.soft, color: p.ink, width: 44, height: 44 }}>
-                      <Icon name="school" size={24} fill={1} />
-                    </span>
-                  </div>
-
                   {/* Body */}
                   <div className="flex flex-col gap-2 p-5 flex-1">
                     {/* domain/frame pill at the top of the body */}
-                    <span className="self-start inline-flex items-center gap-1.5">
-                      <span className="text-[10.5px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full" style={{ background: p.soft, color: p.ink }}>
-                        {frameLabel(c.frame)}
+                    <span className="self-start inline-flex flex-wrap items-center gap-1.5">
+                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold" style={{ background: p.soft, color: p.ink }}>
+                        <Icon name="school" size={16} />{frameLabel(c.frame)}
                       </span>
                       {/* W0.7 age chip — a catalog fact ("Ages 4–8"), never a verdict. */}
                       {outOfBand && c.ageMinYears != null && (
-                        <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full" dir="auto" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-full" dir="auto" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
                           {c.ageMaxYears != null
                             ? agefilterText("elev.agefilter.chip", he, { min: c.ageMinYears, max: c.ageMaxYears })
                             : agefilterText("elev.agefilter.chipPlus", he, { min: c.ageMinYears })}
                         </span>
                       )}
                     </span>
-                    <h3 className="text-[15px] font-extrabold leading-snug" dir="auto" style={{ color: "var(--arbor-ink)" }}>
+                    <h3 className="text-[17px] font-bold leading-snug" dir="auto" style={{ color: "var(--arbor-ink)" }}>
                       {he ? c.titleHe : c.title}
                     </h3>
                     {/* meta line — "N lessons · M min" (honest catalog facts) */}
-                    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold flex-wrap" style={{ color: "var(--arbor-muted)" }}>
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold flex-wrap" style={{ color: "var(--arbor-muted)" }}>
                       <span className="inline-flex items-center gap-1"><Icon name="menu_book" size={13} /> {t("academy.lessons", { n: lessons })}</span>
                       <span aria-hidden="true" style={{ opacity: 0.6 }}>·</span>
                       <span className="inline-flex items-center gap-1"><Icon name="schedule" size={13} /> {c.durationMin} {t("master.min")}</span>
                     </span>
-                    <p className="text-[12.5px] leading-relaxed line-clamp-2" dir="auto" style={{ color: "var(--arbor-muted)" }}>
+                    <p className="text-sm leading-relaxed" dir="auto" style={{ color: "var(--arbor-muted)" }}>
                       {he ? c.hookHe : c.hook}
                     </p>
 
@@ -476,7 +421,6 @@ export default function Masterclasses() {
                         so the bar is strictly empty or full (1-of-1 done count),
                         never a fabricated continuous percentage. */}
                     <div className="mt-auto pt-3 space-y-3">
-                      <ProgressBar value={isCardDone ? 1 : 0} total={1} tone="mint" height={6} />
                       {/* Footer status chip CTA */}
                       <span
                         className="inline-flex items-center justify-center gap-1.5 w-full rounded-full px-3 py-1.5 text-[12px] font-extrabold"
@@ -540,15 +484,15 @@ function Reader({ m, he, isDone, onDone, onBack, frameLabel, tone, reflection, o
   };
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-5 max-w-[760px]">
-      <button onClick={onBack} className="inline-flex items-center gap-1.5 text-sm font-bold" style={{ color: "var(--arbor-muted)" }}>
+      <button onClick={onBack} className="inline-flex min-h-11 items-center gap-1.5 text-sm font-bold" style={{ color: "var(--arbor-muted)" }}>
         <Icon name="arrow_back" size={16} /> {t("master.all")}
       </button>
 
       <div>
         <div className="flex items-center gap-2 mb-2">
           <IconBadge tone={tone}><Icon name="school" size={20} /></IconBadge>
-          <span className="text-[10.5px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{frameLabel}</span>
-          <span className="inline-flex items-center gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}><Icon name="schedule" size={13} /> {m.durationMin} {t("master.min")}</span>
+          <span className="text-xs font-bold uppercase tracking-wide px-2 py-0.5 rounded-full" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{frameLabel}</span>
+          <span className="inline-flex items-center gap-1 text-xs font-bold" style={{ color: "var(--arbor-muted)" }}><Icon name="schedule" size={13} /> {m.durationMin} {t("master.min")}</span>
         </div>
         <h1 className="text-2xl md:text-[1.9rem] leading-tight tracking-tight" dir="auto" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
           {he ? m.titleHe : m.title}
@@ -569,7 +513,7 @@ function Reader({ m, he, isDone, onDone, onBack, frameLabel, tone, reflection, o
 
       {/* What to say — the verbatim parent script */}
       <div className="rounded-2xl p-4" style={{ background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.25)" }}>
-        <p className="text-[11px] uppercase tracking-widest font-bold mb-1.5 inline-flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}>
+        <p className="text-xs uppercase tracking-widest font-bold mb-1.5 inline-flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}>
           <Icon name="format_quote" size={15} fill={1} /> {t("master.whatToSay")}
         </p>
         <p className="text-[15px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)", fontStyle: "italic" }}>{he ? m.parentScriptHe : m.parentScript}</p>
@@ -577,7 +521,7 @@ function Reader({ m, he, isDone, onDone, onBack, frameLabel, tone, reflection, o
 
       {/* Try tonight */}
       <div className="rounded-2xl p-4" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-        <p className="text-[11px] uppercase tracking-widest font-bold mb-1.5 inline-flex items-center gap-1.5" style={{ color: "var(--arbor-muted)" }}>
+        <p className="text-xs uppercase tracking-widest font-bold mb-1.5 inline-flex items-center gap-1.5" style={{ color: "var(--arbor-muted)" }}>
           <Icon name="bedtime" size={15} fill={1} /> {t("master.tryTonight")}
         </p>
         <p className="text-[14px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}>{he ? m.tryTonightHe : m.tryTonight}</p>
@@ -585,7 +529,7 @@ function Reader({ m, he, isDone, onDone, onBack, frameLabel, tone, reflection, o
 
       {/* Wave-8: private parent reflection — client-only localStorage, never sent or stored server-side. */}
       <div className="rounded-2xl p-4" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}>
-        <p className="text-[11px] uppercase tracking-widest font-bold mb-1.5 inline-flex items-center gap-1.5" style={{ color: "var(--arbor-muted)" }}>
+        <p className="text-xs uppercase tracking-widest font-bold mb-1.5 inline-flex items-center gap-1.5" style={{ color: "var(--arbor-muted)" }}>
           <Icon name="edit_note" size={16} fill={1} /> {t("master.reflect.label")}
         </p>
         <textarea
@@ -597,7 +541,7 @@ function Reader({ m, he, isDone, onDone, onBack, frameLabel, tone, reflection, o
           className="w-full text-[14px] leading-relaxed rounded-lg px-3 py-2 resize-y min-h-[64px] focus:outline-none focus:ring-2"
           style={{ color: "var(--arbor-ink)", background: "var(--arbor-paper-sunk)", border: "1px solid var(--arbor-rule)" }}
         />
-        <p className="text-[11px] mt-1.5" style={{ color: "var(--arbor-faint)" }}>{t("master.reflect.hint")}</p>
+        <p className="text-xs mt-1.5" style={{ color: "var(--arbor-faint)" }}>{t("master.reflect.hint")}</p>
       </div>
 
       {isDone ? (
@@ -605,7 +549,7 @@ function Reader({ m, he, isDone, onDone, onBack, frameLabel, tone, reflection, o
           <Icon name="check" size={17} fill={1} /> {t("master.markedComplete")}
         </div>
       ) : (
-        <button onClick={onComplete} className="w-full py-3 text-white font-extrabold text-sm rounded-2xl flex items-center justify-center gap-2 active:scale-[0.98]" style={{ background: "var(--gradient-cta)" }}>
+        <button onClick={onComplete} className="w-full min-h-11 py-3 text-white font-extrabold text-sm rounded-2xl flex items-center justify-center gap-2 active:scale-[0.98]" style={{ background: "var(--gradient-cta)" }}>
           <Icon name="check" size={17} fill={1} /> {t("master.markComplete")}
         </button>
       )}

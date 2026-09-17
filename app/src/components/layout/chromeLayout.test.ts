@@ -65,7 +65,7 @@ describe("IA-01 — the Safety life-ring is mounted in all three chrome homes", 
   });
 
   it("MobileNav: the More-sheet header row mounts the ring and closes the sheet on navigate", () => {
-    const header = stripComments(mobileNav.slice(mobileNav.indexOf('aria-label={t("nav.popover.more")}')));
+    const header = stripComments(mobileNav.slice(mobileNav.indexOf("<Sheet"), mobileNav.indexOf("</Sheet>")));
     expect(header).toMatch(/<SafetyRing onNavigate=\{\(\) => setMoreOpen\(false\)\} \/>/);
   });
 

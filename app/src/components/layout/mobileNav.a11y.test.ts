@@ -113,11 +113,11 @@ describe("IA-16 — the unread coach count reaches the tab that opens the coach"
 });
 
 describe("IA-24 / IA-03 — the More sheet header holds the doors the strip cannot", () => {
-  const header = nav.slice(nav.indexOf('aria-label={t("nav.popover.more")}'), nav.indexOf("grid grid-cols-2"));
+  const header = nav.slice(nav.indexOf("<Sheet"), nav.indexOf("</Sheet>"));
 
   it("Kid Mode is reachable from the sheet (reuses KidModeButton, not a new door)", () => {
     expect(nav).toContain('import KidModeButton from "./KidModeButton";');
-    expect(header).toContain("<KidModeButton compact />");
+    expect(header).toContain("<KidModeButton compact onBeforeOpen={() => setMoreOpen(false)} />");
   });
 
   it("Settings is reachable from the sheet and asks the shell, which owns the state", () => {
@@ -137,7 +137,7 @@ describe("IA-24 / IA-03 — the More sheet header holds the doors the strip cann
 
   it("every header control keeps the 44 px floor", () => {
     const buttons = header.split("<button").slice(1);
-    expect(buttons.length, "sheet header buttons not found").toBeGreaterThanOrEqual(2);
+    expect(buttons.length, "sheet header buttons not found").toBeGreaterThanOrEqual(1);
     for (const b of buttons) {
       const open = b.slice(0, b.indexOf(">\n") + 1 || b.length);
       expect(open, open.replace(/\s+/g, " ").slice(0, 90)).toMatch(/w-11 h-11|min-h-11|min-h-\[44px\]|touch-target/);
@@ -148,6 +148,17 @@ describe("IA-24 / IA-03 — the More sheet header holds the doors the strip cann
   });
 });
 
+describe("IA-24 — More keeps every overflow destination readable", () => {
+  const header = nav.slice(nav.indexOf("<Sheet"), nav.indexOf("</Sheet>"));
+  it("uses six quiet rows with active-page semantics and wrapping labels", () => {
+    expect(header).toContain('className="space-y-1"');
+    expect(header).toContain('aria-current={on ? "page" : undefined}');
+    expect(header).toContain('block break-words leading-snug');
+    expect(header).toContain('block break-words text-[11px] leading-snug');
+    expect(header).not.toContain("grid grid-cols-2");
+    expect(header).not.toContain("truncate");
+  });
+});
 describe("the settings seam is a one-way event, not a second owner of the state", () => {
   const bus = read("settingsBus.ts");
 

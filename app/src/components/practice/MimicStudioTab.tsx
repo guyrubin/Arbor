@@ -205,7 +205,7 @@ export default function MimicStudioTab() {
       <section data-module="mimic-round">
       <PlayPanel tone="peach">
         <h2 className="text-xl font-extrabold mb-4 flex items-center gap-2" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-          <Icon name="mood" size={20} /> {`${pack.emoji} ${pack.title} — round ${promptIdx + 1} of ${pack.prompts.length}`}
+          <Icon name="mood" size={20} /> {t("elev.play.mimic.round", { pack: `${pack.emoji} ${pack.title}`, current: promptIdx + 1, total: pack.prompts.length })}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* Model card — the parent demonstrates, big and theatrical */}
@@ -237,7 +237,7 @@ export default function MimicStudioTab() {
                 <Icon name="chevron_right" size={20} />
               </button>
             </div>
-            {ratedPromptIds.has(prompt.id) && <p className="text-[10px] font-bold mt-2" style={{ color: "var(--arbor-clay)" }}>✓ Already played — replays still count</p>}
+            {ratedPromptIds.has(prompt.id) && <p className="text-[10px] font-bold mt-2" style={{ color: "var(--arbor-clay)" }}>✓ {t("elev.play.mimic.alreadyPlayed")}</p>}
           </div>
 
           {/* Mirror — the child watches themselves try it */}
@@ -255,7 +255,7 @@ export default function MimicStudioTab() {
                   </p>
                 ) : (
                   <PlayButton onClick={() => void startMirror()} tone="clay" size="md">
-                    <Icon name={mirrorGlyph} size={16} /> Turn on mirror
+                    <Icon name={mirrorGlyph} size={16} /> {t("elev.play.mimic.mirrorOn")}
                   </PlayButton>
                 )}
                 {camError && <p className="text-[11px] mt-3" style={{ color: "var(--arbor-pink)" }}>{camError}</p>}
@@ -263,7 +263,7 @@ export default function MimicStudioTab() {
             )}
             {mirrorOn && (
               <button onClick={stopMirror} className="absolute top-3 end-3 z-10 inline-flex items-center gap-1.5 text-[12px] font-extrabold px-3.5 py-2.5 min-h-[44px] rounded-xl text-white" style={{ background: "rgba(28,34,43,0.75)" }}>
-                <Icon name={mirrorOffGlyph} size={14} /> Mirror off
+                <Icon name={mirrorOffGlyph} size={14} /> {t("elev.play.mimic.mirrorOff")}
               </button>
             )}
           </div>
@@ -273,9 +273,9 @@ export default function MimicStudioTab() {
         <div className="flex flex-wrap items-center gap-2.5 mt-5" data-primary-move="complete-mimic-round">
           <span className="text-[13px] font-bold w-full sm:w-auto" style={{ color: "var(--arbor-muted)" }}>{rateAsk}</span>
           {([
-            { r: 1 as const, label: "Tried it!", tone: "pink" as const },
-            { r: 2 as const, label: "So close", tone: "yellow" as const },
-            { r: 3 as const, label: "Nailed it ⭐", tone: "clay" as const },
+            { r: 1 as const, label: t("elev.play.mimic.tried"), tone: "pink" as const },
+            { r: 2 as const, label: t("elev.play.mimic.close"), tone: "yellow" as const },
+            { r: 3 as const, label: t("elev.play.mimic.nailed"), tone: "clay" as const },
           ]).map((b) => (
             <PlayButton key={b.r} onClick={() => rate(b.r)} variant="soft" tone={b.tone} size="md">
               {b.label}
@@ -283,7 +283,7 @@ export default function MimicStudioTab() {
           ))}
           {justRated && (
             <motion.span initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-base">
-              {justRated === 3 ? "🎉 Amazing!" : justRated === 2 ? "👏 Great try!" : "💪 Trying IS the win!"}
+              {justRated === 3 ? t("elev.play.mimic.rated.nailed") : justRated === 2 ? t("elev.play.mimic.rated.close") : t("elev.play.mimic.rated.tried")}
             </motion.span>
           )}
         </div>
@@ -299,14 +299,14 @@ export default function MimicStudioTab() {
         const wonPack = MIMIC_PACKS.find((p) => p.id === wonPackId) ?? pack;
         return (
           <Celebrate
-            title={t("prac.mimic.packWin.title")}
-            subtitle={t("prac.mimic.packWin.sub", { name: first, pack: wonPack.title })}
+            title={t("elev.play.mimic.packComplete.title")}
+            subtitle={t("elev.play.mimic.packComplete.sub", { name: first, pack: wonPack.title })}
             stars={wonPack.prompts.length}
             starsTotal={wonPack.prompts.length}
           >
             {MIMIC_PACKS.filter((p) => p.id !== wonPackId).slice(0, 1).map((p) => (
               <PlayButton key={p.id} onClick={() => { setPackId(p.id); setWonPackId(null); }} tone="clay" size="md">
-                {p.emoji} Play {p.title}
+                {p.emoji} {t("elev.play.mimic.playPack", { pack: p.title })}
               </PlayButton>
             ))}
             {/* AP-050: practice_stamp — save a branded hero card for this pack win.
@@ -332,7 +332,7 @@ export default function MimicStudioTab() {
               </PlayButton>
             )}
             <PlayButton onClick={() => setWonPackId(null)} variant="soft" tone="lav" size="md">
-              Stay here
+              {t("elev.play.mimic.stay")}
             </PlayButton>
           </Celebrate>
         );

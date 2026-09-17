@@ -54,16 +54,22 @@ export function Sheet({
   onClose,
   title,
   children,
+  headerActions,
+  returnFocusRef,
 }: {
   open: boolean;
   onClose: () => void;
   title?: string;
   children: React.ReactNode;
+  /** Optional actions displayed beside the shared close control. */
+  headerActions?: React.ReactNode;
+  /** Restores focus to the invoking control after dismissal. */
+  returnFocusRef?: React.RefObject<HTMLElement | null>;
   /** Accepted so a caller can swap Sheet for Modal without editing props; a
    *  sheet is always full-bleed, so it is deliberately unused. */
   maxWidth?: string;
 }) {
-  const { ref: dialogRef, requestClose, onBackdropClick } = useDialog({ open, onClose });
+  const { ref: dialogRef, requestClose, onBackdropClick } = useDialog({ open, onClose, returnFocusRef });
   const titleId = useId();
   const { t } = useLanguage();
 
@@ -73,8 +79,9 @@ export function Sheet({
   return createPortal(
     <AnimatePresence>
       {open && (
+        <div className="arbor-app" style={{ display: "contents" }}>
         <motion.div
-          className="arbor-app fixed inset-0 z-50 flex flex-col justify-end"
+          className="fixed inset-0 z-50 flex flex-col justify-end"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -107,10 +114,12 @@ export function Sheet({
             <div aria-hidden="true" className="mx-auto mb-3 h-1 w-10 rounded-full" style={{ background: "var(--arbor-rule-strong)" }} />
             <div className="flex items-center justify-between gap-3 mb-4">
               {title && (
-                <h3 id={titleId} className="text-lg font-extrabold tracking-tight min-w-0 truncate" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+                <h3 id={titleId} className="text-lg font-extrabold tracking-tight min-w-0" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
                   {title}
                 </h3>
               )}
+              <div className="ms-auto flex flex-shrink-0 items-center gap-1">
+                {headerActions}
               <button
                 onClick={requestClose}
                 className="touch-target ms-auto flex flex-shrink-0 items-center justify-center rounded-lg transition"
@@ -119,10 +128,12 @@ export function Sheet({
               >
                 <X className="w-4 h-4" />
               </button>
+              </div>
             </div>
             {children}
           </motion.div>
         </motion.div>
+        </div>
       )}
     </AnimatePresence>,
     document.body

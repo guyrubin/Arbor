@@ -9,7 +9,6 @@ const TARGETS = {
   // MOB-28 / CR-22: the bottom sheet is a dialog owner like any other — it
   // joins the explicit list rather than being exempted from it.
   "ui/Sheet.tsx": "open",
-  "layout/MobileNav.tsx": "moreOpen",
   "practice/GoalBuilderModal.tsx": "open",
   "profile/AvatarCreator.tsx": "open",
   "profile/ProfileEditDrawer.tsx": "open",
@@ -74,6 +73,18 @@ describe("CR-03 actual consumer wiring", () => {
       expect(source).toContain("createPortal");
     });
   }
+  it("MobileNav delegates More state to the shared Sheet rather than becoming a second dialog owner", () => {
+    const nav = read("layout/MobileNav.tsx");
+    expect(nav).toContain('import { Sheet } from "../ui/Sheet";');
+    expect(nav).toContain("<Sheet");
+    expect(nav).toContain("open={moreOpen}");
+    expect(nav).toContain("onClose={() => setMoreOpen(false)}");
+    expect(nav).toContain("returnFocusRef={moreTriggerRef}");
+    expect(nav).toContain("headerActions={");
+    expect(nav).not.toContain("useDialog");
+    expect(nav).not.toContain("createPortal");
+    expect(nav).not.toContain('role="dialog"');
+  });
   it("rejects an import-only fix, wrong ref, always-open hidden form and missing immersive role", () => {
     const source = read("profile/AvatarCreator.tsx");
     expect(contract(source.replace('ref={dialogRef}', '')).bound).toBe(false);
@@ -98,7 +109,6 @@ describe("CR-03 actual consumer wiring", () => {
 
 describe("new portals retain their original register and scrim styles", () => {
   for (const [file, scope] of [
-    ["layout/MobileNav.tsx", "arbor-app"],
     ["tabs/MilestonesTab.tsx", "arbor-app arbor-parent"],
     ["coach/VoiceOverlay.tsx", "arbor-app arbor-parent"],
     ["tabs/HeroJourneyTab.tsx", "arbor-app arbor-parent"],
@@ -109,6 +119,15 @@ describe("new portals retain their original register and scrim styles", () => {
       expect(contract(source).layerResetsAppScope).toBe(false);
     });
   }
+  it("Sheet keeps app scope on a nonvisual wrapper while it owns one dialog layer", () => {
+    const sheet = read("ui/Sheet.tsx"), nav = read("layout/MobileNav.tsx"), found = contract(sheet);
+    expect(sheet).toContain('className="arbor-app" style={{ display: "contents" }}');
+    expect(found.layers).toBe(1);
+    expect(found.layerResetsAppScope).toBe(false);
+    expect(sheet).toContain("returnFocusRef?: React.RefObject<HTMLElement | null>");
+    expect(sheet).toContain("useDialog({ open, onClose, returnFocusRef })");
+    expect(nav).toContain("returnFocusRef={moreTriggerRef}");
+  });
   it("rejects the pre-review scope-on-scrim regression", () => {
     const source = read("tabs/MilestonesTab.tsx");
     expect(contract(source.replace('className="fixed inset-0', 'className="arbor-app fixed inset-0')).layerResetsAppScope).toBe(true);

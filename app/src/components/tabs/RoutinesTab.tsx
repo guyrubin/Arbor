@@ -132,6 +132,7 @@ export default function RoutinesTab() {
     >
       {/* Hub hero — names the surface + the job sentence. */}
       <HubHero
+        compact
         zeroLine={t("elev.growthTruth.hero.empty")}
         tone="sky"
         icon={CalendarCheck}

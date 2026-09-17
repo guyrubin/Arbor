@@ -44,22 +44,19 @@ export default function PromptCaptureCard({
 
   return (
     <section
-      className="rounded-[20px] p-5 sm:p-6"
+      className="rounded-[18px] p-4 sm:p-5"
       style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}
       data-testid="today-prompt-card"
     >
-      <span className="text-[10px] font-extrabold uppercase tracking-[0.13em]" style={{ color: "var(--arbor-green-ink)" }}>
-        {t("today.intent.doNow")}
-      </span>
-      <p className="mt-1 text-[12px] font-semibold" style={{ color: "var(--arbor-muted)" }}>
-        {t("elev.prompt.lead")}
-      </p>
       <h2
-        className="mt-1.5 text-[21px] font-extrabold leading-[1.15] sm:text-[23px]"
+        className="text-[20px] font-extrabold leading-[1.15] sm:text-[22px]"
         style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)", textWrap: "balance" } as React.CSSProperties}
       >
-        {promptKey ? t(promptKey) : t("today.intent.captureTitle")}
+        {t("today.intent.captureTitle")}
       </h2>
+      <p dir="auto" className="mt-1.5 text-[14px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+        {promptKey ? t(promptKey) : t("elev.prompt.lead")}
+      </p>
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <button
           type="button"

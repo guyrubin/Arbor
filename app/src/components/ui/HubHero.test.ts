@@ -10,6 +10,7 @@
  */
 import { describe, expect, it } from "vitest";
 import React from "react";
+import { Circle } from "lucide-react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -107,11 +108,38 @@ describe("HubHero — RUN-08 zero wall", () => {
   });
 });
 
+describe("HubHero compact mode", () => {
+  it("uses the flat compact treatment while retaining the CTA floor and every non-zero count", () => {
+    const html = renderToStaticMarkup(React.createElement(HubHero, {
+      ...base,
+      compact: true,
+      icon: Circle,
+      cta: { label: "Open", onClick: () => undefined },
+      stats: [{ value: 1, label: "one" }, { value: 2, label: "two" }, { value: 3, label: "three" }],
+    }));
+    expect(html).toContain("background:var(--arbor-paper-elevated)");
+    expect(html).toContain("box-shadow:none");
+    expect(html).toContain("background:var(--arbor-clay)");
+    expect(html).toContain("min-h-[48px]");
+    expect(html).toContain("flex flex-wrap gap-2");
+    expect(html).not.toContain("grid-cols-1");
+    expect(html).not.toContain("Growth");
+    for (const value of [1, 2, 3]) expect(html).toContain(`>${value}<`);
+  });
+});
 describe("HubHero — lane G hubs pass the translated teach line", () => {
-  it("Development and Profile heroes wire elev.growthTruth.hero.empty", () => {
-    for (const rel of ["components/tabs/DevelopmentTab.tsx", "components/sections/ChildProfile.tsx"]) {
-      expect(read(rel), `${rel} has no zeroLine`).toMatch(/zeroLine=\{t\("elev\.growthTruth\.hero\.empty"\)\}/);
-    }
+  it("Development's statistical hero wires the translated zero-state teach line", () => {
+    expect(read("components/tabs/DevelopmentTab.tsx")).toMatch(/zeroLine=\{t\("elev\.growthTruth\.hero\.empty"\)\}/);
+  });
+
+  it("Profile retains real family counts in its consolidated identity header", () => {
+    const profile = read("components/sections/ChildProfile.tsx");
+    expect(profile).toContain('data-testid="profile-hub-hero"');
+    expect(profile).toContain('profiles.length === 1');
+    expect(profile).toContain('shares.length + 1 === 1');
+    expect(profile).toContain('behaviorLogs.length + playLogs.length === 1');
+    expect(profile).not.toContain('<HubHero');
+    // ChildProfile.layout.test.tsx renders singular/plural and consent branches.
   });
 
   it("the teach line exists in EN + HE and carries no digit or verdict", () => {

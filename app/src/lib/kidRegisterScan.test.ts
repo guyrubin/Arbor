@@ -477,8 +477,6 @@ const DICT_ADULT_ALLOWED: Record<string, string> = {
   "kid.safety.aria":
     "retired from the kid home by KID-20/RUN-04 — the parent-side door renders elev.practice.door.* instead; key kept for dictionary parity",
   "kid.safety.locked": "the second retired reassurance chip, same reason",
-  "elev.play.beat.scoredAria":
-    "Beat Keeper round aria-label ('Round scored') — a screen-reading child hears it, so it is filed for retirement in FOLLOW-UPS rather than silently allowed forever",
 };
 
 describe("OBJ-KID-03: kid-namespace copy is written for the child, in both locales", () => {

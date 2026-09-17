@@ -11,8 +11,8 @@ import * as path from "path";
  * fixed-height inner-scroll card below the fold. The consolidation keeps the
  * hero composer as the single input and lets the thread flow with the page.
  * Firewall CONDITIONS (CODEX-9 lesson): coach.aiDisclosure (EU AI-Act Art. 50)
- * and the photo/voice entry points MUST survive, and the thread viewport must
- * not shrink below the previous min(70dvh,560px) behavior.
+ * and the photo/voice entry points MUST survive. A fresh thread must not reserve
+ * a tall empty transcript viewport; a settled answer still flows with the page.
  *
  * COACH-8: the Behaviors capture bar must be a REAL input (honest affordance),
  * not a button styled as a text field — typing prefills newLogTrigger and
@@ -51,15 +51,18 @@ describe("COACH-4 — CoachTab is one composer + one flowing thread", () => {
     expect(code).toContain('t("coach.aiDisclosure")');
   });
 
-  it("renders coach.empty.title exactly once", () => {
-    expect(count(code, "coach.empty.title")).toBe(1);
+  it("keeps one fresh Ask heading and its count-aware context without a duplicate composer title", () => {
+    expect(count(code, "<h1")).toBe(1);
+    expect(code).not.toContain("coach.empty.title");
+    expect(code).toContain("elev.aihonesty.memory.none");
+    expect(code).toContain("elev.aihonesty.memory.some");
   });
 
-  it("thread flows with the page — no fixed-height inner scroll, min-height floor kept", () => {
-    // A FIXED height class (" h-[min(...)"), as opposed to the kept min-height floor.
-    expect(code).not.toMatch(/(?<!min-)h-\[min\(70dvh/);
+  it("fresh Ask reserves no tall empty transcript while answer flow remains unbounded", () => {
+    expect(code).not.toMatch(/(?:min-)?h-\[min\(70dvh/);
     expect(code).not.toContain("overflow-y-auto");
-    expect(code).toContain("min-h-[min(70dvh,560px)]");
+    expect(code).toContain('data-module="coach-thread" className={`${cardCls} flex min-w-0 flex-col overflow-hidden`}');
+    expect(code).toContain("{chatMessages.map((msg, idx) => (");
   });
 
   it("keeps Council and the specialist handoff as the compact row under the thread", () => {

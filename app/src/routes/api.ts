@@ -1,6 +1,7 @@
 import express from "express";
 import { createHash } from "node:crypto";
 import type { ArborConfig } from "../config/env.js";
+import { normalizeAvatarStyle } from "../lib/avatarStyle.js";
 import { isAbortError, newAbortError, type ModelCallBudget, type ModelProvider } from "../ai/modelRouter.js";
 import { abortableIterate, raceWithAbort } from "../ai/modelRetry.js";
 import type { MemoryStore } from "../memory/types.js";
@@ -2112,7 +2113,13 @@ Return JSON: offTopic, observations[], possibleMeanings[], tryToday[] (1-3), avo
     flat: "a clean flat vector character illustration with simple rounded shapes and a cheerful palette",
     comichero: "a friendly child superhero in a bold, modern cel-shaded comic-book style: thick confident ink outlines, super-saturated primary colors (hero red + sky blue + sunshine yellow), halftone dot shading, an explosive radial action burst behind the hero, a flowing cape and a sleek fitted hero suit with a round chest emblem, a huge joyful grin and a dynamic mid-action pose — high-energy and exciting but always wholesome, never scary or violent, age-appropriate for young children"
   };
-
+  const SCENE_STYLE_DIRECTIONS: Record<string, string> = {
+    storybook: AVATAR_STYLES.storybook,
+    soft3d: AVATAR_STYLES.soft3d,
+    watercolor: AVATAR_STYLES.watercolor,
+    flat: AVATAR_STYLES.flat,
+    comichero: "a bold modern cel-shaded comic-book rendering medium with confident ink outlines, halftone shading and saturated color; preserve the reference character's existing outfit and accessories without adding a cape, hero suit, chest emblem or superhero costume"
+  };
   router.post("/generate-avatar", requireConsent(consentStore, "face_processing", (req) => !!req.body?.photo), async (req, res) => {
     const { descriptors, photo, style } = req.body ?? {};
     const stylePrompt = AVATAR_STYLES[style as string] ?? AVATAR_STYLES.storybook;
@@ -2218,14 +2225,14 @@ Framing: head-and-shoulders portrait, centered, simple soft background, warm and
       }
     }
 
-    const stylePrompt = AVATAR_STYLES[style as string] ?? AVATAR_STYLES.storybook;
-    const prompt = `Create a single, warm children's-storybook SCENE illustration.
-Style: ${stylePrompt}.
+    const stylePrompt = SCENE_STYLE_DIRECTIONS[normalizeAvatarStyle(style)];
+    const prompt = `Create a single, warm, child-safe scene illustration.
+Rendering medium: ${stylePrompt}.
 Scene: ${imagePrompt}
 ${referenceImage
-  ? "The attached character is the HERO of this story — feature this same stylized character as the main character in the scene, kept recognizable and consistent with the reference."
-  : "Feature a single friendly child character as the hero."}
-Gentle, non-scary, age-appropriate for ages 4-8. Calm, soft palette. No text, words, letters, or logos drawn in the image.`;
+  ? "The attached character is the main character in this scene. Preserve the reference's face, hair, age, outfit and accessories. Do not replace their clothing or identity with a generic costume."
+  : "Feature a single friendly child character whose clothing naturally fits the scene."}
+Friendly lighting and a readable composition. Gentle, non-scary, non-violent and age-appropriate for ages 4-8. No text, words, letters, or logos drawn in the image.`;
 
     // AIR-9: 60s image budget.
     const budget = createRouteBudget(res, "image");

@@ -71,7 +71,7 @@ describe("R17 · the Academy hub opens on courses", () => {
   it("nothing that is not a course stands between the hero and the gallery", () => {
     const body = hubBody(source);
     const between = body.slice(
-      body.indexOf('testId="academy-hub-hero"'),
+      body.indexOf('data-testid="academy-hub-hero"'),
       body.indexOf('data-testid="academy-courses"'),
     );
     // The hero, the pick why-line and the catalogue header may stand here.
@@ -97,7 +97,7 @@ describe("R17 · the Academy hub opens on courses", () => {
     const body = hubBody(source);
     const gallery = body.indexOf('data-testid="academy-courses"');
     const between =
-      body.slice(body.indexOf('testId="academy-hub-hero"'), gallery) + "{spineRibbon}";
+      body.slice(body.indexOf('data-testid="academy-hub-hero"'), gallery) + "{spineRibbon}";
     expect([...between.matchAll(/\{spineRibbon\}/g)].length).toBeGreaterThan(1);
   });
 
@@ -131,5 +131,16 @@ describe("R17 · the Academy hub opens on courses", () => {
     expect(he["academy.rail.more"]).toMatch(/[֐-׿]/);
     const summary = /<summary[\s\S]{0,400}?>/.exec(source)?.[0] ?? "";
     expect(summary).toContain("minHeight: 44");
+  });
+});
+
+describe("W2 — reading catalogue hierarchy", () => {
+  it("has one catalogue h1 and no decorative course roof", () => {
+    const body = hubBody(source);
+    expect(body.match(/<h1[\s>]/g)).toHaveLength(1);
+    expect(body).not.toContain("height: 74");
+    expect(body).not.toContain("<ProgressBar");
+    expect(body.indexOf("todaysRead.card.title")).toBeLessThan(body.indexOf('data-testid="academy-hero-cta"'));
+    expect(body).toContain("catalog.map((c)");
   });
 });

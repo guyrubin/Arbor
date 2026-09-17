@@ -6,8 +6,7 @@ import { Icon } from "../ui/Icon";
 import { selectionHaptic } from "../../lib/native";
 import { usePulses } from "../../lib/pulse";
 import { requestOpenSearch } from "../search/SearchModal";
-import { createPortal } from "react-dom";
-import { useDialog } from "../../hooks/useDialog";
+import { Sheet } from "../ui/Sheet";
 import SafetyRing from "./SafetyRing"; // IA-01: Safety life-ring in the More-sheet header row
 import KidModeButton from "./KidModeButton"; // IA-24: the Kid Mode door, in the sheet that never scrolls away
 import { requestOpenSettings } from "./settingsBus"; // IA-03: Settings moved out of the mobile strip
@@ -40,7 +39,6 @@ export default function MobileNav() {
   const milestonesNoticed = milestones.filter((m) => m.checked).length;
   const [moreOpen, setMoreOpen] = useState(false);
   const moreTriggerRef = useRef<HTMLButtonElement>(null);
-  const { ref: dialogRef, requestClose, onBackdropClick } = useDialog({ open: moreOpen, onClose: () => setMoreOpen(false), returnFocusRef: moreTriggerRef });
 
   const primary = PRIMARY_SECTION_IDS
     .map((id) => SECTIONS.find((section) => section.id === id))
@@ -127,100 +125,63 @@ export default function MobileNav() {
         </button>
       </nav>
 
-      {moreOpen && createPortal(
-        <div className="arbor-app" style={{ display: "contents" }}>
-        <div
-          ref={dialogRef}
-          tabIndex={-1}
-          data-arbor-dialog-layer
-          role="dialog"
-          aria-modal="true"
-          aria-label={t("nav.popover.more")}
-          className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end"
-          style={{ background: "color-mix(in srgb, var(--arbor-ink) 28%, transparent)" }}
-          onClick={onBackdropClick}
-        >
-          <div
-            className="rounded-t-3xl p-4 pb-8 bg-white"
-            style={{ boxShadow: "0 -8px 32px rgba(41,51,63,0.18)" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-base font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("nav.popover.more")}</span>
-              <div className="flex items-center gap-1">
-                {/* IA-01: Safety is one tap from the sheet too — closes it on navigate. */}
-                <SafetyRing onNavigate={() => setMoreOpen(false)} />
-                {/* IA-24: the Kid Mode door lived ONLY in the in-content strip,
-                    which is position:static — scroll a hub and the one way to
-                    hand the device to the child scrolls off with it. The sheet
-                    is fixed and one tap from every scroll position. Same
-                    component, same openKidMode, same parent-lock aria line. */}
-                <KidModeButton compact />
-                {/* IA-03: Settings moved out of the strip and lands beside the
-                    two accessories this header already hosted. Shell owns the
-                    open state and re-checks the kid gate (settingsBus). */}
-                <button
-                  aria-label={t("aria.settings")}
-                  onClick={() => { void selectionHaptic(); setMoreOpen(false); requestOpenSettings(); }}
-                  className="w-11 h-11 flex flex-shrink-0 items-center justify-center rounded-xl"
-                  style={{ color: "var(--arbor-muted)" }}
-                >
-                  <Icon name="settings" size={18} />
-                </button>
-                <button aria-label={t("aria.close")} onClick={requestClose} className="w-11 h-11 flex flex-shrink-0 items-center justify-center rounded-full" style={{ color: "var(--arbor-muted)" }}>
-                  <Icon name="close" size={18} />
-                </button>
-              </div>
-            </div>
-            {/* W1.9 mobile search entry: full-width row above the category
-                grid — opens the same SearchModal as the accessories strip
-                and desktop Ctrl/Cmd+K (Shell owns the open state + kid gate). */}
+      <Sheet
+        open={moreOpen}
+        onClose={() => setMoreOpen(false)}
+        returnFocusRef={moreTriggerRef}
+        title={t("nav.popover.more")}
+        headerActions={
+          <>
+            <SafetyRing onNavigate={() => setMoreOpen(false)} />
+            <KidModeButton compact onBeforeOpen={() => setMoreOpen(false)} />
             <button
-              onClick={() => { void selectionHaptic(); setMoreOpen(false); requestOpenSearch("more"); }}
-              className="w-full flex items-center gap-2.5 px-3 py-3 mb-2 min-h-[44px] rounded-2xl text-start text-sm font-bold transition"
-              style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}
+              aria-label={t("aria.settings")}
+              onClick={() => { void selectionHaptic(); setMoreOpen(false); requestOpenSettings(); }}
+              className="w-11 h-11 flex flex-shrink-0 items-center justify-center rounded-xl"
+              style={{ color: "var(--arbor-muted)" }}
             >
-              <Icon name="search" size={20} />
-              <span className="truncate">{t("top.search")}</span>
+              <Icon name="settings" size={18} />
             </button>
-            <div className="grid grid-cols-2 gap-2">
-              {overflow.map((sec) => {
-                const on = sec.id === activeSectionId;
-                // E1 living pulse — informational line under the label (counts/
-                // activity only; firewall lives in usePulses). Hidden when empty.
-                // No cast: NavSection.id IS HubId, so a hub without a pulse
-                // entry is a compile error, not a silently empty row.
-                const pulse = pulses[sec.id];
-                const pulseText = pulse ? t(pulse.key, pulse.params) : "";
-                return (
-                  <button
-                    key={sec.id}
-                    onClick={() => go(sec.id)}
-                    className="flex items-center gap-2.5 px-3 py-3 rounded-2xl text-start text-sm font-bold transition min-w-0"
-                    style={on
-                      ? { background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }
-                      : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
-                  >
-                    <Icon name={sec.msIcon} size={20} fill={on ? 1 : 0} />
-                    <span className="min-w-0 flex flex-col">
-                      <span className="truncate">{t("nav.cat." + sec.id)}</span>
-                      {pulseText ? (
-                        <span
-                          className="truncate text-[11px] leading-snug"
-                          style={{ color: "var(--arbor-muted)", fontWeight: 500 }}
-                        >
-                          {pulseText}
-                        </span>
-                      ) : null}
+          </>
+        }
+      >
+        <button
+          onClick={() => { void selectionHaptic(); setMoreOpen(false); requestOpenSearch("more"); }}
+          className="w-full flex items-center gap-2.5 px-3 py-3 mb-2 min-h-[44px] rounded-2xl text-start text-sm font-bold transition"
+          style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}
+        >
+          <Icon name="search" size={20} />
+          <span>{t("top.search")}</span>
+        </button>
+        <div className="space-y-1">
+          {overflow.map((sec) => {
+            const on = sec.id === activeSectionId;
+            const pulse = pulses[sec.id];
+            const pulseText = pulse ? t(pulse.key, pulse.params) : "";
+            return (
+              <button
+                key={sec.id}
+                onClick={() => go(sec.id)}
+                aria-current={on ? "page" : undefined}
+                className="flex min-h-11 w-full items-start gap-2.5 rounded-2xl px-3 py-2.5 text-start text-sm font-bold transition"
+                style={on
+                  ? { background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }
+                  : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
+              >
+                <Icon name={sec.msIcon} size={20} fill={on ? 1 : 0} />
+                <span className="min-w-0 flex-1">
+                  <span className="block break-words leading-snug">{t("nav.cat." + sec.id)}</span>
+                  {pulseText ? (
+                    <span className="mt-0.5 block break-words text-[11px] leading-snug" style={{ color: "var(--arbor-muted)", fontWeight: 500 }}>
+                      {pulseText}
                     </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+                  ) : null}
+                </span>
+              </button>
+            );
+          })}
         </div>
-        </div>, document.body
-      )}
+      </Sheet>
     </>
   );
 }

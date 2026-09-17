@@ -123,7 +123,7 @@ export default function DevScoreCard() {
         <div className="flex items-center gap-5 mt-3">
           <div className="flex-none w-[72px] h-[72px] rounded-full flex flex-col items-center justify-center" style={{ background: GREEN_SOFT }}>
             <span className="text-[24px] font-extrabold leading-none" style={{ fontFamily: "var(--font-display)", color: GREEN }}>{reached}</span>
-            <span className="text-[10px] font-bold mt-1" style={{ color: GREEN }}>{t("devscore.noticed.short")}</span>
+            <span className="text-xs font-bold mt-1" style={{ color: GREEN }}>{t("devscore.noticed.short")}</span>
           </div>
           <div className="min-w-0">
             <div className="text-[16px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: INK }}>
@@ -153,18 +153,18 @@ export default function DevScoreCard() {
           </span>
           <button
             onClick={coach}
-            className="inline-flex items-center gap-1.5 font-bold text-[13px] rounded-xl px-4 py-2 transition active:scale-[0.98]"
+            className="inline-flex min-h-11 items-center gap-1.5 font-bold text-[13px] rounded-xl px-4 py-2 transition active:scale-[0.98]"
             style={{ background: "var(--arbor-paper-elevated)", color: GREEN, border: `1px solid rgba(52,178,119,0.30)` }}
           >
             <Icon name="auto_awesome" size={15} /> {t("devscore.coach")}
           </button>
         </div>
 
-        <p className="text-[11.5px] mt-3.5" style={{ color: "var(--arbor-faint)" }}>{t("devscore.note")}</p>
+        <p className="text-xs mt-3.5" style={{ color: "var(--arbor-faint)" }}>{t("devscore.note")}</p>
         {/* CI-08 / CLM-004 — the provenance hedge (board-substantiated, Guy-approved 2026-06-22).
             Truth-before-avoidance: show the parent the basis. Pure provenance, never an outcome
             or "clinically validated" claim (CHARTER §3 p11). */}
-        <p className="text-[11.5px] mt-1.5" style={{ color: "var(--arbor-faint)" }}>{t("honesty.grounded")}</p>
+        <p className="text-xs mt-1.5" style={{ color: "var(--arbor-faint)" }}>{t("honesty.grounded")}</p>
       </div>
     </section>
   );

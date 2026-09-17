@@ -91,15 +91,43 @@ export const en: Record<string, string> = {
   // ── elev.play.adventures — Story Quest finish (KID-29)
   "elev.play.adventures.done.sub": "{n} of {total} first-try answers. The End — keep this story!",
 
-  // ── elev.play.mimic — Mimic Studio kid-safe note (KID-29)
+  // ── elev.play.mimic — Mimic Studio child controls (W3, HE pending GD-6)
   "elev.play.mimic.effortNote": "Every attempt counts — trying is the win.",
+  "elev.play.mimic.round": "{pack} — round {current} of {total}",
+  "elev.play.mimic.alreadyPlayed": "Already played — replays still count",
+  "elev.play.mimic.mirrorOn": "Turn on mirror",
+  "elev.play.mimic.mirrorOff": "Mirror off",
+  "elev.play.mimic.tried": "Tried it!",
+  "elev.play.mimic.close": "So close",
+  "elev.play.mimic.nailed": "Nailed it ⭐",
+  "elev.play.mimic.rated.nailed": "🎉 Amazing!",
+  "elev.play.mimic.rated.close": "👏 Great try!",
+  "elev.play.mimic.rated.tried": "💪 Trying is the win!",
+  "elev.play.mimic.packComplete.title": "Pack complete!",
+  "elev.play.mimic.packComplete.sub": "{name} played every round in {pack}. Pick another, or come back tomorrow.",
+  "elev.play.mimic.playPack": "Play {pack}",
+  "elev.play.mimic.stay": "Stay here",
 
   // ── elev.play.strip — weekly strip in Kid Mode (KID-18: done days only)
   "elev.play.strip.kidTitle": "Stars this week",
   "elev.play.strip.starAria": "A star for {day}",
 
   // ── elev.play.beat — Beat Keeper (no % readout)
-  "elev.play.beat.scoredAria": "Round scored",
+  "elev.play.beat.title": "Beat Keeper",
+  "elev.play.beat.scoredAria": "Round finished",
+  "elev.play.beat.tapAria": "Tap on the beat",
+  "elev.play.beat.startAria": "Start the beat",
+  "elev.play.beat.tap": "TAP!",
+  "elev.play.beat.start": "START",
+  "elev.play.beat.complete.title": "Right on beat, {name}!",
+  "elev.play.beat.complete.sub": "Steady taps build focus and self-control.",
+  "elev.play.beat.replay": "Play again",
+  "elev.play.beat.feedback.nailed": "Wow, {name}, you nailed the beat!",
+  "elev.play.beat.feedback.next": "Nice rhythm! Try the next tempo.",
+  "elev.play.beat.feedback.keep": "Keep feeling the beat — you’ve got this!",
+  "elev.play.beat.next": "Next tempo",
+  "elev.play.beat.finish": "Finish",
+  "elev.play.beat.support": "Timing, focus & self-regulation",
 
   // ── Builder C ─────────────────────────────────────────────────────────
   // OBJ-KID-04: an AI-backed start that fails must ANSWER the child inside
@@ -215,12 +243,41 @@ export const he: Record<string, string> = {
 
   "elev.play.adventures.done.sub": "{n} of {total} first-try answers. The End — keep this story!", // GD-6
 
+  // W3 child controls — source English pending native Hebrew review (GD-6).
   "elev.play.mimic.effortNote": "Every attempt counts — trying is the win.", // GD-6
+  "elev.play.mimic.round": "{pack} — round {current} of {total}", // GD-6
+  "elev.play.mimic.alreadyPlayed": "Already played — replays still count", // GD-6
+  "elev.play.mimic.mirrorOn": "Turn on mirror", // GD-6
+  "elev.play.mimic.mirrorOff": "Mirror off", // GD-6
+  "elev.play.mimic.tried": "Tried it!", // GD-6
+  "elev.play.mimic.close": "So close", // GD-6
+  "elev.play.mimic.nailed": "Nailed it ⭐", // GD-6
+  "elev.play.mimic.rated.nailed": "🎉 Amazing!", // GD-6
+  "elev.play.mimic.rated.close": "👏 Great try!", // GD-6
+  "elev.play.mimic.rated.tried": "💪 Trying is the win!", // GD-6
+  "elev.play.mimic.packComplete.title": "Pack complete!", // GD-6
+  "elev.play.mimic.packComplete.sub": "{name} played every round in {pack}. Pick another, or come back tomorrow.", // GD-6
+  "elev.play.mimic.playPack": "Play {pack}", // GD-6
+  "elev.play.mimic.stay": "Stay here", // GD-6
 
   "elev.play.strip.kidTitle": "Stars this week", // GD-6
   "elev.play.strip.starAria": "A star for {day}", // GD-6
 
-  "elev.play.beat.scoredAria": "Round scored", // GD-6
+  "elev.play.beat.title": "Beat Keeper", // GD-6
+  "elev.play.beat.scoredAria": "Round finished", // GD-6
+  "elev.play.beat.tapAria": "Tap on the beat", // GD-6
+  "elev.play.beat.startAria": "Start the beat", // GD-6
+  "elev.play.beat.tap": "TAP!", // GD-6
+  "elev.play.beat.start": "START", // GD-6
+  "elev.play.beat.complete.title": "Right on beat, {name}!", // GD-6
+  "elev.play.beat.complete.sub": "Steady taps build focus and self-control.", // GD-6
+  "elev.play.beat.replay": "Play again", // GD-6
+  "elev.play.beat.feedback.nailed": "Wow, {name}, you nailed the beat!", // GD-6
+  "elev.play.beat.feedback.next": "Nice rhythm! Try the next tempo.", // GD-6
+  "elev.play.beat.feedback.keep": "Keep feeling the beat — you’ve got this!", // GD-6
+  "elev.play.beat.next": "Next tempo", // GD-6
+  "elev.play.beat.finish": "Finish", // GD-6
+  "elev.play.beat.support": "Timing, focus & self-regulation", // GD-6
 
   // ── Builder C ─────────────────────────────────────────────────────────
   "elev.play.hero.rest": "הסיפור נח עכשיו — בואו נבחר סיפור אחר!",

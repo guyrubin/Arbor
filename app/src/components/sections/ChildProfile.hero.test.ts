@@ -15,8 +15,8 @@ const src = raw.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`])\/\/.*$/gm,
 
 /** The hero's <HubHero … /> block, so pins are scoped to the CTA/stats. */
 const hero = (() => {
-  const start = src.indexOf("<HubHero");
-  const end = src.indexOf('testId="profile-hub-hero"', start);
+  const start = src.indexOf("<header data-module=\"profile-identity\"");
+  const end = src.indexOf("</header>", start);
   return src.slice(start, end);
 })();
 
@@ -29,10 +29,10 @@ describe("GP-15 — the hero CTA is the contract's primary move", () => {
   it("with pending proposals the CTA reviews what Arbor remembers (→ memory); otherwise it adds a fact", () => {
     expect(hero).toMatch(/pendingMemoryItems\.length > 0\s*\?/);
     expect(hero).toContain('t("elev.growthTruth.profile.cta.review")');
-    expect(hero).toMatch(/onClick: \(\) => setActiveTab\("memory"\)/);
+    expect(hero).toMatch(/onClick=\{pendingMemoryItems\.length > 0 \? \(\) => setActiveTab\("memory"\)/);
     expect(hero).toContain('t("elev.growthTruth.profile.cta.addFact", { name: first })');
-    expect(hero).toMatch(/onClick: \(\) => setEditingProfile\(true\)/);
-    expect(hero).toContain('testId: "profile-hero-cta"');
+    expect(hero).toMatch(/: \(\) => setEditingProfile\(true\)/);
+    expect(hero).toContain('data-testid="profile-hero-cta"');
   });
 
   it("NEGATIVE CONTROL: the pre-fix 'Add a family member' CTA is gone from the hero", () => {
@@ -46,7 +46,8 @@ describe("GP-15 — the hero CTA is the contract's primary move", () => {
 describe("GP-15 — the child count is the family's real count", () => {
   it("reads profiles.length from useProfile()", () => {
     expect(src).toMatch(/const \{ profiles \} = useProfile\(\);/);
-    expect(hero).toMatch(/\{ value: profiles\.length, label: t\("elev\.stat\.children"\) \}/);
+    expect(hero).toContain('profiles.length === 1 ? "elev.wave2Knowledge.profile.childOne" : "elev.wave2Knowledge.profile.childMany"');
+    expect(hero).toContain("{ n: profiles.length }");
   });
 
   it("NEGATIVE CONTROL: the literal `1` stat is gone", () => {
@@ -68,5 +69,22 @@ describe("GP-26 / IA-09 — the strengths leaf is retired into Profile chapter 4
     expect(src).not.toMatch(/setActiveTab\("strengths"\)/);
     expect(src).toContain('t("cp.ch.strengths")');
     expect(src).toContain('t("cp.ch.support")');
+  });
+});
+
+describe("W2 — a useful identity header", () => {
+  it("has one route h1, no empty identity banner or duplicate PageHeader", () => {
+    expect(src.match(/<h1[\s>]/g)).toHaveLength(1);
+    expect(src).not.toContain("<PageHeader");
+    expect(src).not.toContain('h-[90px]');
+    expect(src.indexOf('data-module="profile-who"')).toBeLessThan(src.indexOf('t("cp.family.title")'));
+  });
+  it("keeps edit, Ask, and the existing drawer creation seam reachable", () => {
+    expect(src).toContain('setActiveTab("coach")');
+    expect(src).toContain('t("elev.wave2Knowledge.profile.edit")');
+    const create = hero.slice(hero.indexOf("!hasHero"));
+    expect(create).toContain("setEditingProfile(true)");
+    expect(create).not.toContain('setActiveTab("profile")');
+    expect(src).toContain("<ProfileEditDrawer");
   });
 });

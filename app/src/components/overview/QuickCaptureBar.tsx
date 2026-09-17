@@ -24,9 +24,9 @@ const GREEN = "var(--arbor-green-ink)";
 const RULE = "var(--arbor-rule)";
 
 /** Ambient aux modes — Material Symbols glyphs shared with JournalTab's compose tiles. */
-const AUX_MODES: { ms: string; key: Exclude<CaptureMode, "text">; label: string }[] = [
-  { ms: "mic", key: "voice", label: "today.capture.voice" },
-  { ms: "photo_camera", key: "photo", label: "today.capture.photo" },
+const AUX_MODES: { ms: string; key: Exclude<CaptureMode, "text">; label: string; shortLabel: string }[] = [
+  { ms: "mic", key: "voice", label: "today.capture.voice", shortLabel: "elev.wave2Daily.capture.voice" },
+  { ms: "photo_camera", key: "photo", label: "today.capture.photo", shortLabel: "elev.wave2Daily.capture.photo" },
 ];
 
 export default function QuickCaptureBar({
@@ -48,7 +48,7 @@ export default function QuickCaptureBar({
       initial={reduce ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={reduce ? { duration: 0 } : { duration: 0.16 }}
-      className="grid grid-cols-[1fr_auto_auto] lg:grid-cols-[1.1fr_1fr_1fr_1fr] items-stretch overflow-hidden rounded-[18px]"
+      className="grid grid-cols-3 lg:grid-cols-[1.1fr_1fr_1fr_1fr] items-stretch overflow-hidden rounded-[18px]"
       style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-sm)" }}
     >
       <div className="hidden lg:flex flex-col justify-center px-5 py-3">
@@ -68,9 +68,9 @@ export default function QuickCaptureBar({
         } as React.CSSProperties}
       >
         <span className="flex h-9 w-9 items-center justify-center rounded-full" style={{ background: "var(--arbor-tint)", color: "var(--arbor-clay)" }}><Icon name="edit_note" size={19} /></span>
-        <span className="hidden sm:inline">{t("today.capture.text")}</span>
+        <span>{t("today.capture.text")}</span>
       </button>
-      {AUX_MODES.map(({ ms, key, label }) => (
+      {AUX_MODES.map(({ ms, key, label, shortLabel }) => (
         <button
           key={key}
           type="button"
@@ -86,7 +86,7 @@ export default function QuickCaptureBar({
           } as React.CSSProperties}
         >
           <span className="flex h-9 w-9 items-center justify-center rounded-full" style={{ background: key === "voice" ? "var(--arbor-lav-soft)" : "var(--arbor-green-soft)", color: key === "voice" ? "var(--arbor-lav-ink)" : GREEN }}><Icon name={ms} size={20} fill={1} /></span>
-          <span className="hidden lg:inline text-[13px] font-bold" style={{ color: "var(--arbor-ink)" }}>{t(label)}</span>
+          <span className="text-[12px] font-bold" style={{ color: "var(--arbor-ink)" }}>{t(shortLabel)}</span>
         </button>
       ))}
     </motion.div>

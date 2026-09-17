@@ -85,6 +85,10 @@ export default function AskSpecialist() {
   // LC-08: audience is the first step of the export bar; remembered per device.
   const [audience, setAudienceState] = useState<ExportAudience>(readStoredAudience);
   const setAudience = (a: ExportAudience) => {
+    // Consent applies to the exact outgoing audience. Clear it in this click
+    // transaction, rather than waiting for the effect below, so an immediate
+    // export cannot reuse approval for a different recipient.
+    if (a !== audience) setReviewed(false);
     setAudienceState(a);
     try { localStorage.setItem(AUDIENCE_STORAGE_KEY, a); } catch { /* metadata only */ }
   };
@@ -311,7 +315,7 @@ export default function AskSpecialist() {
                 {p.verified && <Icon name="verified" size={16} fill={1} style={{ color: GREEN }} aria-label={t("elev.carehonesty.pro.verified")} />}
               </div>
               <div className="text-[12px] font-bold mt-px" style={{ color: GREEN }}>{p.role}</div>
-              <div className="text-[11px] font-semibold mt-0.5 inline-flex items-center gap-1.5" style={{ color: MUTED }}>
+              <div className="text-xs font-semibold mt-0.5 inline-flex items-center gap-1.5" style={{ color: MUTED }}>
                 <span>{p.langs?.split(" · ")[0] || p.langs}</span>
                 <span aria-hidden="true">·</span>
                 {/* Provider records arrive in an unknown language, so an
@@ -345,63 +349,50 @@ export default function AskSpecialist() {
     </aside>
   );
 
-  /** The three data-contract promises. Declared once so the mobile disclosure
-   *  and the md+ row cannot drift apart, and so the disclosure's one-line
-   *  label is built from the same titles rather than a fourth string. */
+  /** One data-contract disclosure retains every promise in empty and populated states. */
   const CONTRACT_TILES = [
     { icon: "visibility", title: t("consult.contract.review"), body: t("consult.contract.reviewBody") },
     { icon: "tune", title: t("consult.contract.control"), body: t("consult.contract.controlBody") },
     { icon: "verified_user", title: t("consult.contract.share"), body: t("consult.contract.shareBody") },
   ] as const;
 
+  const packetContract = (
+      <section data-testid="consult-contract">
+        <details className="rounded-[18px]" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
+          <summary
+            data-testid="consult-contract-summary"
+            className="touch-target !justify-start w-full cursor-pointer list-none gap-2 px-4 text-[12px] font-extrabold"
+            style={{ color: GREEN }}
+          >
+            <Icon name="verified_user" size={16} />
+            <span className="min-w-0 flex-1">
+              {CONTRACT_TILES.map((item) => item.title).join(" · ")}
+            </span>
+            <Icon name="expand_more" size={16} />
+          </summary>
+          <div className="grid grid-cols-1 gap-3 px-4 pb-4">
+            {CONTRACT_TILES.map((item) => (
+              <div key={item.icon}>
+                <span className="inline-flex items-center gap-2 text-[12px] font-extrabold" style={{ color: GREEN }}>
+                  <Icon name={item.icon} size={16} /> {item.title}
+                </span>
+                <p className="text-xs leading-relaxed mt-1.5" style={{ color: MUTED }}>{item.body}</p>
+              </div>
+            ))}
+          </div>
+        </details>
+      </section>
+  );
+
   return (
-    /* R18: a flex column, so the two blocks below can take an `order` under
-       md. `gap-5` replaces `space-y-5` deliberately: Tailwind's space-y is a
-       margin on `:not(:last-child)` and therefore keyed to DOM order, which
-       would have left the reordered blocks touching the sticky export bar.
-       Flex gap is keyed to the VISUAL order, so every gap stays 20 px at every
-       width. From md up no `order` applies and the DOM order is the layout. */
+    /* W2: one DOM/visual sequence: purpose, editable packet, contract, review/export. */
     <motion.div {...motionProps} className="flex flex-col gap-5 max-w-[1180px]">
-      {/* R14 (LC-28): at 390 the column above the summary carried the hub
-          eyebrow twice — once in the HubHero, again here, one block apart.
-          Below md this copy of it stands down; the h2 and the child-specific
-          sub (the more useful of the two subs on this route — the hero's
-          generic one is the one that yields at this width) both stay. From md
-          up the full header returns, so the heading outline never changes. */}
-      <header data-testid="consult-section-header">
-        <span className="hidden md:inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: GREEN }}>
-          <Icon name="stethoscope" size={15} /> {t("consult.eyebrow")}
-        </span>
-        {/* LC-28 / CR-21: this was a second <h1> on the route. The page's one
-            h1 belongs to the hub header; the consult section is a level down. */}
-        <h2 className="text-[1.6rem] font-extrabold leading-tight mt-0.5" style={{ fontFamily: "var(--font-display)", color: INK, textWrap: "balance" } as React.CSSProperties}>
-          {t("consult.title")}
-        </h2>
-        <p className="text-sm mt-1.5 leading-relaxed" style={{ color: MUTED, textWrap: "pretty" } as React.CSSProperties}>
-          {t("consult.subtitle", { name: firstName })}
-        </p>
-      </header>
-
-      {/* LC-20 — the first thing the clinician READS, and the thing the parent
-          writes. Always shown: a summary that never says why the parent came
-          makes the professional open by asking it. It stays first in the
-          PACKET — buildConsultPacket pushes the "What I'd like help with"
-          section as section 0 for every clinician audience — and first in the
-          DOM, which is what the heading outline and a screen reader follow.
-
-          R18: what it stopped being is first on a 390 px SCREEN. It is ~190 px
-          of empty textarea standing between the hub hero and "Your summary" —
-          the thing the parent opened this route to read — and it is the one
-          block here that asks for input rather than giving any. Under md it
-          renders after the summary; that section of the packet updates live
-          above as the parent types, and the export bar is
-          `sticky bottom-2`, so Copy / Download / Send are on screen the whole
-          time either way. Nothing is hidden and nothing is collapsed. */}
-      <section data-testid="consult-reason-section" className="max-md:order-2 rounded-[18px] p-4" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
-        <label htmlFor="consult-reason" className="inline-flex items-center gap-2 text-[12px] font-extrabold" style={{ color: GREEN }}>
+      {/* Purpose is always editable before the live packet; the same builder carries it into every audience. */}
+      <section data-testid="consult-reason-section" className="border-b pb-5" style={{ borderColor: RULE }}>
+        <label htmlFor="consult-reason" className="inline-flex items-center gap-2 text-lg font-bold" style={{ color: GREEN }}>
           <Icon name="help" size={16} /> {t("elev.learnCare.reason.label")}
         </label>
-        <p className="text-[11.5px] leading-relaxed mt-1" style={{ color: MUTED }}>{t("elev.learnCare.reason.hint")}</p>
+        <p className="text-sm leading-relaxed mt-1 max-w-[65ch]" style={{ color: MUTED }}>{t("elev.learnCare.reason.hint")}</p>
         <textarea
           id="consult-reason"
           data-testid="consult-reason-input"
@@ -414,57 +405,13 @@ export default function AskSpecialist() {
           style={{ color: INK, background: "var(--arbor-paper-sunk)", border: `1px solid ${RULE}` }}
         />
         {reason.trim() === "" && (
-          <p className="text-[11px] mt-1.5" style={{ color: MUTED }}>{t("elev.learnCare.reason.missing")}</p>
+          <p className="text-xs mt-1.5" style={{ color: MUTED }}>{t("elev.learnCare.reason.missing")}</p>
         )}
         {preparedQuestions.length > 0 && (
-          <p className="text-[11.5px] mt-2 inline-flex items-center gap-1.5" style={{ color: GREEN }}>
+          <p className="text-xs mt-2 inline-flex items-center gap-1.5" style={{ color: GREEN }}>
             <Icon name="check_circle" size={14} fill={1} /> {t("elev.learnCare.appt.questions.toPacket")}
           </p>
         )}
-      </section>
-
-      {/* R14 (LC-28): the data-contract tiles are a reassurance the parent
-          reads once, and at 390 they stacked into ~310 px between the reason
-          box and the summary the parent came for. From md up they stay the
-          three-column row they have always been; below md they fold into one
-          line that names all three promises and opens to the same three
-          tiles. Nothing is dropped — the disclosure is the whole capability
-          (law 6) — and the summary label is built from the tile titles the
-          parent would read anyway, so no new string is invented. */}
-      <section data-testid="consult-contract" className="max-md:order-3">
-        <details className="md:hidden rounded-[18px]" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
-          <summary
-            data-testid="consult-contract-summary"
-            className="touch-target !justify-start w-full cursor-pointer list-none gap-2 px-4 text-[12px] font-extrabold"
-            style={{ color: GREEN }}
-          >
-            <Icon name="verified_user" size={16} />
-            <span className="min-w-0 flex-1 truncate">
-              {CONTRACT_TILES.map((item) => item.title).join(" · ")}
-            </span>
-            <Icon name="expand_more" size={16} />
-          </summary>
-          <div className="grid grid-cols-1 gap-3 px-4 pb-4">
-            {CONTRACT_TILES.map((item) => (
-              <div key={item.icon}>
-                <span className="inline-flex items-center gap-2 text-[12px] font-extrabold" style={{ color: GREEN }}>
-                  <Icon name={item.icon} size={16} /> {item.title}
-                </span>
-                <p className="text-[11.5px] leading-relaxed mt-1.5" style={{ color: MUTED }}>{item.body}</p>
-              </div>
-            ))}
-          </div>
-        </details>
-        <div className="hidden md:grid md:grid-cols-3 gap-3">
-          {CONTRACT_TILES.map((item) => (
-            <div key={item.icon} className="rounded-[18px] p-4" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
-              <span className="inline-flex items-center gap-2 text-[12px] font-extrabold" style={{ color: GREEN }}>
-                <Icon name={item.icon} size={16} /> {item.title}
-              </span>
-              <p className="text-[11.5px] leading-relaxed mt-1.5" style={{ color: MUTED }}>{item.body}</p>
-            </div>
-          ))}
-        </div>
       </section>
 
       {/* AIX-S3(a): the Vision handoff note — parent-editable BEFORE anything is
@@ -479,13 +426,13 @@ export default function AskSpecialist() {
             </span>
             <button
               onClick={() => setVisionNote("")}
-              className="text-[11px] font-bold min-h-[44px] px-2"
+              className="text-xs font-bold min-h-[44px] px-2"
               style={{ color: MUTED }}
             >
               {t("consult.visionNote.remove")}
             </button>
           </div>
-          <p className="text-[11.5px] leading-relaxed mt-1" style={{ color: MUTED }}>{t("consult.visionNote.hint")}</p>
+          <p className="text-xs leading-relaxed mt-1" style={{ color: MUTED }}>{t("consult.visionNote.hint")}</p>
           <textarea
             value={visionNote}
             onChange={(e) => setVisionNote(e.target.value)}
@@ -500,6 +447,7 @@ export default function AskSpecialist() {
 
       {isEmpty ? (
         /* Empty state — new profile with nothing to summarise yet. */
+        <>
         <div className="rounded-2xl p-8 text-center" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
           <span className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mx-auto" style={{ background: GREEN_SOFT, color: GREEN }}>
             <Icon name="edit_note" size={26} />
@@ -514,10 +462,12 @@ export default function AskSpecialist() {
             {t("consult.empty.cta")}
           </button>
         </div>
+        {packetContract}
+        </>
       ) : (
         <>
-          {/* Two-column: live redactable packet (left) + verified-pros rail (right). */}
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_1.3fr] gap-5 items-start">
+          {/* Live packet first; the honest directory/support rail follows. */}
+          <div className="grid grid-cols-1 gap-5 items-start">
             {/* Left: the summary card (the moat read). Section titles mirror the
                 child record (incl. the Development-Map domains in the dev
                 snapshot); each item is a label/value inset row with an
@@ -567,7 +517,7 @@ export default function AskSpecialist() {
                   green tokens (never the design's blue). */}
               <div className="flex items-start gap-2.5 rounded-[13px] p-3 mt-3.5" style={{ background: GREEN_SOFT }}>
                 <Icon name="verified_user" size={19} fill={1} style={{ color: GREEN }} />
-                <span className="text-[11.5px] font-semibold leading-relaxed" style={{ color: GREEN }}>{t("care.trust")}</span>
+                <span className="text-xs font-semibold leading-relaxed" style={{ color: GREEN }}>{t("care.trust")}</span>
               </div>
 
               {/* LC-07: the recipient's exact text, word for word, for the
@@ -577,7 +527,7 @@ export default function AskSpecialist() {
                 <summary className="cursor-pointer list-none min-h-[44px] flex items-center gap-2 text-[12.5px] font-extrabold" style={{ color: GREEN }}>
                   <Icon name="visibility" size={16} /> {t("elev.carehonesty.consult.preview.toggle")}
                 </summary>
-                <p className="text-[11.5px] leading-relaxed" style={{ color: MUTED }}>{t("elev.carehonesty.consult.preview.hint")}</p>
+                <p className="text-xs leading-relaxed" style={{ color: MUTED }}>{t("elev.carehonesty.consult.preview.hint")}</p>
                 {exportText != null ? (
                   <pre
                     dir="auto"
@@ -599,17 +549,12 @@ export default function AskSpecialist() {
             {ProsRail}
           </div>
 
-          {/* Export & send bar (sticky) — the single transactional control.
-              LC-08: the audience selector is the REQUIRED first step; every verb
-              below builds through the same guarded text for that audience.
+      {/* The complete data contract remains one labeled disclosure, after the packet and before export. */}
+          {packetContract}
 
-              R18: it takes the LAST order under md so the reordered blocks
-              above cannot come after it. That keeps two things true at once —
-              the parent still writes the reason before reaching Copy /
-              Download / Send, and the bar is still the final element, so it
-              stays stuck to the bottom of the viewport for the whole column
-              instead of un-sticking part-way down. */}
-          <div className="sticky bottom-2 max-md:order-4 rounded-2xl p-4 flex flex-col gap-3" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-md)" }}>
+
+          {/* Review and export follow the entire packet in normal flow, without covering unread text. */}
+          <div data-testid="consult-review-export" className="border-t pt-5 flex flex-col gap-4" style={{ borderColor: RULE }}>
             <div className="flex flex-wrap items-center gap-2">
               <span id="consult-audience-label" className="text-[12px] font-extrabold me-1" style={{ color: INK }}>
                 {t("elev.carehonesty.consult.audience.label")}
@@ -647,11 +592,11 @@ export default function AskSpecialist() {
                   );
                 })}
               </div>
-              <span className="basis-full text-[11.5px] leading-relaxed" style={{ color: MUTED }}>
+              <span className="basis-full text-xs leading-relaxed" style={{ color: MUTED }}>
                 {t(`elev.carehonesty.consult.audience.hint.${audience}`)}
               </span>
               {exportText == null && (
-                <span role="alert" className="basis-full text-[11.5px] font-bold leading-relaxed" style={{ color: "var(--arbor-pink-ink)" }}>
+                <span role="alert" className="basis-full text-xs font-bold leading-relaxed" style={{ color: "var(--arbor-pink-ink)" }}>
                   {exportBuild.error}
                 </span>
               )}
@@ -661,7 +606,7 @@ export default function AskSpecialist() {
               <span className="text-[13px] font-bold me-auto" style={{ color: MUTED }} aria-live="polite">
                 {t("consult.selected", { n: includedCount })}
               </span>
-              <label className="flex items-start gap-2 min-w-[220px] min-h-[44px] text-[11.5px] font-bold leading-snug" style={{ color: MUTED }}>
+              <label className="flex items-start gap-2 min-w-[220px] min-h-[44px] text-xs font-bold leading-snug" style={{ color: MUTED }}>
                 <input
                   type="checkbox"
                   checked={reviewed}
