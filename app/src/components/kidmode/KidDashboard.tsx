@@ -30,6 +30,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { BookOpen, Brain, Gamepad2, Heart, HeartPulse, Map, Mic, Music, PersonStanding, Shapes, Smile, Sparkles, Star, ChevronRight } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
+import type { AvatarStyle } from "../../lib/api";
 import { useLanguage } from "../../context/LanguageContext";
 import { useHeroAvatar, HeroAvatar } from "../ui/HeroAvatar";
 import { usePracticeData } from "../../practice/usePracticeData";
@@ -80,7 +81,7 @@ interface AdventureDef {
 // the games↔worlds decision, plan §9.5).
 const ADVENTURES: AdventureDef[] = [
   { id: "playbank", worldId: "kid-playbank", accent: "green", Icon: Gamepad2, surface: "arcade", imagePrompt: "a joyful playroom full of colorful building blocks, learning toys and a friendly little dinosaur" },
-  { id: "hero", worldId: "kid-hero", accent: "clay", Icon: BookOpen, surface: "journeys", imagePrompt: "an epic storybook castle on a hill with a glowing open magic book and a brave flowing cape" },
+  { id: "hero", worldId: "kid-hero", accent: "clay", Icon: BookOpen, surface: "journeys", imagePrompt: "an epic castle on a hill with a glowing open magic book" },
 ]; // OBJ-KID-05: the "Feelings" adventure tile opened the SAME FeelingsLabTab as
    // the "Mood Mountain" game tile below (the arcade world `feelings` is that
    // component). Two tiles, one destination, and the child pays for the
@@ -107,9 +108,9 @@ const GAMES: GameDef[] = [
   { id: "mood-mountain", worldId: "feelings", accent: "lav", Icon: Heart, imagePrompt: "a friendly mountain landscape with cheerful emotion characters (happy, sad, calm) and a warm sky" },
   { id: "mind-vault", worldId: "memory", accent: "pink", Icon: Brain, imagePrompt: "opening a glowing memory vault full of colorful matching cards" },
   { id: "beat-keeper", worldId: "beat", accent: "clay", Icon: Music, imagePrompt: "a colorful music stage with drums, rhythm bars and bouncing musical notes" },
-  { id: "hero-pose", worldId: "pose", accent: "sky", Icon: PersonStanding, imagePrompt: "a dynamic superhero action pose with bold motion lines" },
+  { id: "hero-pose", worldId: "pose", accent: "sky", Icon: PersonStanding, imagePrompt: "a joyful movement pose with sweeping motion lines" },
   { id: "pattern-power", worldId: "pattern", accent: "lav", Icon: Shapes, imagePrompt: "a puzzle world of glowing shapes arranged in patterns" },
-  { id: "story-quest", worldId: "adventures", accent: "peach", Icon: Map, imagePrompt: "an adventurous storybook landscape, holding a treasure map with a compass on a cliff" },
+  { id: "story-quest", worldId: "adventures", accent: "peach", Icon: Map, imagePrompt: "an adventurous landscape with a treasure map and compass on a cliff" },
   { id: "mimic-studio", worldId: "mimic", accent: "clay", Icon: Smile, imagePrompt: "a playful mirror studio copying silly happy poses, sparkles all around" },
 ];
 
@@ -240,6 +241,7 @@ function SceneTile({
   sub,
   imagePrompt,
   heroUrl,
+  heroStyle,
   onClick,
   big,
   index,
@@ -251,6 +253,7 @@ function SceneTile({
   sub: string;
   imagePrompt: string;
   heroUrl?: string;
+  heroStyle?: AvatarStyle;
   onClick: () => void;
   big?: boolean;
   index: number;
@@ -274,7 +277,7 @@ function SceneTile({
       }}
     >
       <div className="relative" style={{ minBlockSize: big ? 60 : 100 }}>
-        <WorldScene worldId={worldId} imagePrompt={imagePrompt} heroUrl={heroUrl} sizes={big ? "(max-width: 639px) 100vw, 33vw" : "(max-width: 359px) 100vw, (max-width: 639px) 50vw, 25vw"}>
+        <WorldScene worldId={worldId} imagePrompt={imagePrompt} heroUrl={heroUrl} heroStyle={heroStyle} sizes={big ? "(max-width: 639px) 100vw, 33vw" : "(max-width: 359px) 100vw, (max-width: 639px) 50vw, 25vw"}>
           <span aria-hidden="true" className="grid h-full w-full place-items-center" style={{ color: ACCENT_INK[accent] }}><Icon className="w-10 h-10" /></span>
         </WorldScene>
       </div>
@@ -378,7 +381,7 @@ export default function KidDashboard({
         }}
       >
         <div className="relative flex-shrink-0" style={{ inlineSize: "45%", maxInlineSize: 300, minBlockSize: KID_HOME_BANNER_BLOCK }}>
-          <WorldScene worldId="kid-quest" imagePrompt="an epic storybook hero scene — a castle on a hill, a glowing open magic book and a brave cape mid-adventure" heroUrl={hero.url ?? undefined} sizes="(max-width: 639px) 45vw, 300px">
+          <WorldScene worldId="kid-quest" imagePrompt="an epic castle scene on a hill with a glowing open magic book" heroUrl={hero.url ?? undefined} heroStyle={hero.style} sizes="(max-width: 639px) 45vw, 300px">
             <Sparkles aria-hidden="true" className="w-10 h-10" style={{ color: "var(--arbor-sky-ink)" }} />
           </WorldScene>
         </div>
@@ -406,7 +409,7 @@ export default function KidDashboard({
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(160px, 100%), 1fr))", gap: `${KID_HOME_TILE_GAP}px` }}>
           {GAMES.map((g, i) => (
-            <SceneTile key={g.id} worldId={g.worldId} accent={g.accent} Icon={g.Icon} title={kt(`kid.game.${g.id}.title`)} sub={kt(`kid.game.${g.id}.sub`)} imagePrompt={g.imagePrompt} heroUrl={hero.url ?? undefined} index={i} onClick={() => onOpenSurface("arcade", g.worldId)} />
+            <SceneTile key={g.id} worldId={g.worldId} accent={g.accent} Icon={g.Icon} title={kt(`kid.game.${g.id}.title`)} sub={kt(`kid.game.${g.id}.sub`)} imagePrompt={g.imagePrompt} heroUrl={hero.url ?? undefined} heroStyle={hero.style} index={i} onClick={() => onOpenSurface("arcade", g.worldId)} />
           ))}
         </div>
       </section>
@@ -418,7 +421,7 @@ export default function KidDashboard({
         </h2>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: `${KID_HOME_TILE_GAP}px` }}>
           {ADVENTURES.map((a, i) => (
-            <SceneTile key={a.id} worldId={a.worldId} accent={a.accent} Icon={a.Icon} title={kt(`kid.adv.${a.id}.title`)} sub={kt(`kid.adv.${a.id}.sub`)} imagePrompt={a.imagePrompt} heroUrl={hero.url ?? undefined} big index={i} onClick={() => onOpenSurface(a.surface)} />
+            <SceneTile key={a.id} worldId={a.worldId} accent={a.accent} Icon={a.Icon} title={kt(`kid.adv.${a.id}.title`)} sub={kt(`kid.adv.${a.id}.sub`)} imagePrompt={a.imagePrompt} heroUrl={hero.url ?? undefined} heroStyle={hero.style} big index={i} onClick={() => onOpenSurface(a.surface)} />
           ))}
         </div>
       </section>

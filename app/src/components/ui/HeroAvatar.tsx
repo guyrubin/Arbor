@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useArbor } from "../../context/ArborContext";
 import { ArborMascot, type MascotMood } from "./ArborMascot";
+import { normalizeAvatarStyle } from "../../lib/avatarStyle";
 
 /**
  * HeroAvatar — the child rendered as the hero of the platform, the SAME identity
@@ -21,7 +22,7 @@ export function useHeroAvatar() {
   // `isGenerated` = a stylized, privacy-safe hero (descriptor) — safe to embed in
   // shareable/clinical documents; a real `photo` avatar is never auto-embedded.
   const isGenerated = childProfile.avatar?.source === "descriptor";
-  return { url, isGenerated, hasHero: !!url, name: childProfile.name?.split(" ")[0] || "your child" };
+  return { url, style: normalizeAvatarStyle(childProfile.avatar?.style), isGenerated, hasHero: !!url, name: childProfile.name?.split(" ")[0] || "your child" };
 }
 
 export function HeroAvatar({

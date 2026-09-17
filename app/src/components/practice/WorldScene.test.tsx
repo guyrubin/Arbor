@@ -46,7 +46,7 @@ describe("WorldScene current-key lifecycle and decorative fallback",()=>{
   expect(h.generate).toHaveBeenCalledTimes(1);expect(image(render())!.props.src).toBe("data:scene-A");
  });
  it("new hero immediately uses neutral art and ignores late old responses",async()=>{
-  const old=deferred(),current=deferred();h.generate.mockImplementationOnce(()=>old.promise).mockImplementationOnce(()=>current.promise);
+  const old=deferred(),current=deferred();h.generate.mockResolvedValue({dataUrl:"data:default"}).mockImplementationOnce(()=>old.promise).mockImplementationOnce(()=>current.promise);
   render();visible();await settle();
   expect(image(render({heroUrl:"data:hero-B"}))!.props.src).toContain("mood-mountain-v2-480");visible();await settle();old.resolve({dataUrl:"data:old-child"});await settle();
   expect(image(render({heroUrl:"data:hero-B"}))!.props.src).not.toBe("data:old-child");current.resolve({dataUrl:"data:new-child"});await settle();expect(image(render({heroUrl:"data:hero-B"}))!.props.src).toBe("data:new-child");
@@ -72,5 +72,32 @@ describe("WorldScene current-key lifecycle and decorative fallback",()=>{
  });
  it("cached current key avoids new generation after remount",async()=>{
   h.generate.mockResolvedValue({dataUrl:"data:cached"});render();visible();await settle();unmount();h.slots=[];expect(image(render())!.props.src).toBe("data:cached");expect(h.generate).toHaveBeenCalledTimes(1);
+ });
+});
+
+describe("WorldScene selected avatar medium",()=>{
+ it("sends each supported avatar style to the scene API",async()=>{
+  const styles=["storybook","soft3d","watercolor","flat","comichero"] as const;
+  h.generate.mockImplementation(({style}:any)=>Promise.resolve({dataUrl:"data:"+style}));
+  for(const heroStyle of styles){
+   render({worldId:"style-"+heroStyle,heroStyle});visible();await settle();
+   expect(h.generate).toHaveBeenLastCalledWith(expect.objectContaining({style:heroStyle,avatar:{dataUrl:"data:hero-A"}}));
+   unmount();h.slots=[];h.effects=[];h.observers=[];
+  }
+  expect(h.generate).toHaveBeenCalledTimes(styles.length);
+ });
+ it("treats invalid styles as comic medium and keeps same-url style changes isolated",async()=>{
+  const old=deferred(),current=deferred();
+  h.generate.mockResolvedValue({dataUrl:"data:default"}).mockImplementationOnce(()=>old.promise).mockImplementationOnce(()=>current.promise);
+  render({heroStyle:"storybook"});visible();await settle();
+  expect(image(render({heroStyle:"watercolor"}))!.props.src).toContain("mood-mountain-v2-480");
+  visible();await settle();old.resolve({dataUrl:"data:storybook-old"});await settle();
+  expect(image(render({heroStyle:"watercolor"}))!.props.src).not.toBe("data:storybook-old");
+  current.resolve({dataUrl:"data:watercolor-current"});await settle();
+  expect(image(render({heroStyle:"watercolor"}))!.props.src).toBe("data:watercolor-current");
+  unmount();h.slots=[];h.effects=[];h.observers=[];
+  expect(image(render({heroStyle:"watercolor"}))!.props.src).toBe("data:watercolor-current");
+  render({worldId:"invalid-style",heroStyle:"not-a-style" as any});visible();await settle();
+  expect(h.generate).toHaveBeenLastCalledWith(expect.objectContaining({style:"comichero"}));
  });
 });

@@ -1,16 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
 import { api, type AvatarStyle } from "../../lib/api";
+import { normalizeAvatarStyle } from "../../lib/avatarStyle";
 import { dedupeScene, getScene } from "../../lib/sceneCache";
 import { worldArtwork } from "./worldArtwork";
 import { runInstrumented } from "../../hooks/useAsyncAction";
 
 /* WorldScene — one visual identity for every child world.
-   The generated comic hero is the consistency reference: the same child identity
-   travels through stories, feelings and every Playbank world. Generation stays
-   lazy + memory-only cached; static comic art supplied by the caller remains the
-   first-paint fallback, so a world is never blank and unseen cards cost nothing.
-   All callers use noninteractive decorative art slots; the surrounding destination
-   label supplies meaning, so covered fallback avatars are also hidden from AT. */
+   The generated avatar is the consistency reference: face, hair, age, outfit and
+   accessories travel through each scene in the child's selected rendering medium.
+   Artwork remains lazy, memory-cached, deduped and bounded by a two-request queue. */
 
 const shortHash = (s: string): string => {
   let h = 0;
@@ -38,15 +36,11 @@ function toAvatarDataUrl(url: string): Promise<string> {
   return p;
 }
 
-const ARBOR_COMIC_BIBLE = [
-  "premium contemporary children's graphic-novel illustration",
-  "keep the supplied child unmistakably the same comic hero — preserve face, hair, age and defining features",
-  "expressive clean ink linework with softly painted detail, not 3D animation and not flat vector art",
-  "rich storybook environment with clear foreground, midground and background depth",
-  "warm cinematic child-safe lighting, sophisticated saturated color and subtle paper-and-ink texture",
-  "the hero is actively interacting with this world rather than posing for a portrait",
-  "composition must still read clearly as a game or story card crop at small size",
-  "no text, no UI, no logos, no photorealism",
+const WORLD_SCENE_REQUIREMENTS = [
+  "preserve the supplied child's face, hair, age, outfit and accessories",
+  "keep the child actively interacting with the world rather than posing for a portrait",
+  "use a readable small-card composition with foreground, midground and background depth",
+  "no text, no UI, no logos and no photorealism",
 ].join("; ");
 
 export default function WorldScene({
@@ -65,7 +59,8 @@ export default function WorldScene({
   sizes?: string;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
-  const key = heroUrl ? `world-v2|${worldId}|${shortHash(heroUrl)}` : null;
+  const style = normalizeAvatarStyle(heroStyle);
+  const key = heroUrl ? ["world-v3", worldId, shortHash(heroUrl), style].join("|") : null;
   const [resolved, setResolved] = useState<{ key: string; url: string } | null>(() => {
     const url = key ? getScene(key) : undefined;
     return key && url ? { key, url } : null;
@@ -79,8 +74,7 @@ export default function WorldScene({
 
   useEffect(() => {
     if (!heroUrl || !key) return;
-    // v2 intentionally invalidates the older mixed-style cache once. From here
-    // on, each child/world pair remains stable and cost-guarded.
+    // v3 intentionally invalidates older cache entries that could mix selected media.
     const cached = getScene(key);
     if (cached) { setResolved({ key, url: cached }); return; }
 
@@ -96,15 +90,15 @@ export default function WorldScene({
         toAvatarDataUrl(heroUrl).then((ref) =>
           runInstrumented("world_scene", () =>
             api.generateScene({
-              imagePrompt: `${imagePrompt}. Art direction: ${ARBOR_COMIC_BIBLE}`,
+              imagePrompt: imagePrompt + ". Character continuity: " + WORLD_SCENE_REQUIREMENTS,
               avatar: { dataUrl: ref },
-              style: heroStyle ?? "comichero",
+              style,
             }),
           ).then((r) => r.dataUrl),
         ),
       )
         .then((url) => { if (active) setResolved({ key, url }); })
-        .catch(() => { /* graceful: keep the supplied static comic fallback */ });
+        .catch(() => { /* graceful: keep the supplied static artwork fallback */ });
     };
 
     if (typeof IntersectionObserver === "undefined") { generate(); return () => { active = false; }; }
@@ -113,7 +107,7 @@ export default function WorldScene({
     }, { rootMargin: "160px" });
     obs.observe(el);
     return () => { active = false; obs.disconnect(); };
-  }, [key, imagePrompt, heroUrl, heroStyle]);
+  }, [key, imagePrompt, heroUrl, style]);
 
   return (
     <div ref={ref} aria-hidden="true" className="absolute inset-0">
