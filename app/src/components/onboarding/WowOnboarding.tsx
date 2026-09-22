@@ -161,10 +161,37 @@ export function WowOnboarding() {
       setStep("closing");
       track("wow_comic_shown", { fallback: result.fallback, prewarmed: camePrewarmed });
 
-      // UX26-30 (22 Sep 2026): the wow page is a single prewarmed card with no
-      // frozen page keys, so seeding it into savedComics produced a shelf book
-      // that could never open ("Unavailable"). The child shelf lists only
-      // complete saved books; the wow moment itself already landed above.
+      // W5 seed — runs for the real page AND the pre-composed fallback page
+      // (both are pages the parent actually saw); the null final-DOM fallback
+      // seeds nothing (no page artifact exists). Dedupe: once per child via
+      // arbor.wow.seeded.{childId}; the doc id is the adventureId anyway, so
+      // even a re-seed would upsert the same shelf slot, never duplicate.
+      if (result.url) {
+        const seedKey = `arbor.wow.seeded.${activeChild.id}`;
+        let alreadySeeded = false;
+        try {
+          alreadySeeded = localStorage.getItem(seedKey) !== null;
+          if (!alreadySeeded) localStorage.setItem(seedKey, "1");
+        } catch {
+          /* storage unavailable — upsert-by-adventureId keeps this idempotent */
+        }
+        if (!alreadySeeded) {
+          void savedComicsCol
+            .upsert(
+              toSavedComicMeta({
+                id: firstStory.id,
+                adventureId: firstStory.id,
+                title: storyTitle,
+                lang: he ? "he" : "en",
+                pageUrls: [],
+                createdAt: new Date().toISOString(),
+              })
+            )
+            .catch(() => {
+              /* seeding is best-effort — the wow moment itself already landed */
+            });
+        }
+      }
     })();
     return () => {
       alive = false;

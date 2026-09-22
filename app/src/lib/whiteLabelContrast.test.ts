@@ -247,7 +247,7 @@ const WRAPPERS = [
   // IA-08/RUN-12 (71ad7e5f): the register gate the six shared drill routes now
   // mount instead of PlayShell. Every white label on those routes sits inside
   // it, so its presentation is audited here rather than treated as unverified.
-  { name: "RegisterShell", file: "components/ui/playkit.tsx", slots: ["children"], params: ["kidMode", "title", "say", "subtitle", "mood", "action", "className", "children"] },
+  { name: "RegisterShell", file: "components/ui/playkit.tsx", slots: ["children"], params: ["kidMode", "title", "say", "subtitle", "mood", "action", "worldId", "headerVariant", "eyebrow", "className", "children"] },
 ] as const;
 function importsModule(source: ts.SourceFile, statement: ts.ImportDeclaration, module: string): boolean {
   if (!ts.isStringLiteral(statement.moduleSpecifier)) return false;

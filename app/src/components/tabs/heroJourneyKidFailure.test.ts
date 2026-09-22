@@ -46,9 +46,12 @@ function catchBody(src: string, handler: string): string {
 describe("OBJ-KID-04 — the Hero Story Play failure answers the child", () => {
   const body = catchBody(hero, "const startJourney = async");
 
-  it("routes the kid path to a kid-register state, and only the parent path to toast", () => {
-    expect(body).toContain("if (kidMode) setStoryResting(true);");
-    expect(body).toContain("else toast(msg,");
+  it("routes the kid path to the authored fallback story, and only the parent path to toast", () => {
+    // UX26-38 (22 Sep 2026): a failed generation no longer parks the child on a
+    // resting screen — the authored catalog story renders instead, silently.
+    expect(body).toContain("const fallback = authoredJourneyRender(story, aiLang);");
+    expect(body).toContain("setRender(fallback);");
+    expect(body).toContain('if (!kidMode) toast(msg, "error");');
     // The toast call is REACHABLE only through the else — never on its own line.
     expect(body).not.toMatch(/^\s*toast\(/m);
   });

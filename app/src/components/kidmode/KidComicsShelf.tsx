@@ -74,7 +74,12 @@ export default function KidComicsShelf({
   const [open, setOpen] = useState<OpenBook | null>(null);
   const [unavailableId, setUnavailableId] = useState<string | null>(null);
 
+  // UX26-30 (22 Sep 2026): the child shelf lists only books saved with frozen
+  // page keys. Metadata-only entries (the onboarding wow seed, legacy comic3
+  // saves) belong to the parent shelf, which can rebuild them; here they would
+  // only ever read "unavailable".
   const books = useMemo(() => saved.items
+    .filter((meta) => (meta.pageKeys?.length ?? 0) > 0)
     .map((meta) => ({ meta, adventure: getAdventure(meta.adventureId) }))
     .filter((item): item is { meta: SavedComicMeta; adventure: NonNullable<ReturnType<typeof getAdventure>> } => Boolean(item.adventure))
     .sort((a, b) => b.meta.createdAt.localeCompare(a.meta.createdAt)), [saved.items]);

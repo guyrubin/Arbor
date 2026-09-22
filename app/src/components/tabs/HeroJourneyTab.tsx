@@ -538,7 +538,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
             <p className="text-sm mb-4 max-w-md mx-auto" style={{ color: "var(--arbor-muted)" }} dir="auto">
               {he
                 ? `הסיפורים מצוירים סביב הדמות המאוירת של ${heroName} — לא סביב תמונה אמיתית.`
-                : `Stories are drawn around ${heroName}'s illustrated character — never around a real photo.`}
+                : `Stories are drawn around ${isolate(heroName)}'s illustrated character — never around a real photo.`}
             </p>
             <PlayButton tone="clay" onClick={() => setActiveTab("profile")}>
               <Icon name="auto_awesome" size={16} /> {he ? `צרו את הגיבור של ${isolate(heroName)}` : `Create ${isolate(heroName)}'s hero`}
@@ -840,7 +840,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
             <p className="text-sm mb-4 max-w-md mx-auto" style={{ color: "var(--arbor-muted)" }} dir="auto">
               {he
                 ? `הסיפורים מצוירים סביב הדמות המאוירת של ${heroName} — לא סביב תמונה אמיתית.`
-                : `Stories are drawn around ${heroName}'s illustrated character — never around a real photo.`}
+                : `Stories are drawn around ${isolate(heroName)}'s illustrated character — never around a real photo.`}
             </p>
             <PlayButton tone="clay" onClick={() => setActiveTab("profile")}>
               <Icon name="auto_awesome" size={16} /> {he ? `צרו את הגיבור של ${isolate(heroName)}` : `Create ${isolate(heroName)}'s hero`}
@@ -1138,7 +1138,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
               <span className="text-sm font-bold inline-flex items-center gap-2" style={{ color: "var(--arbor-green-ink)" }}>
                 <Icon name="check" size={16} /> {kidsStoriesText("journey.saved", aiLang)}
               </span>
-              <button type="button" onClick={exitJourney} className="touch-target rounded-xl px-4 text-sm font-black" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}>
+              <button type="button" onClick={exitJourney} className="touch-target min-h-[44px] rounded-xl px-4 text-sm font-black" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}>
                 {kidsStoriesText("journey.backStories", aiLang)}
               </button>
             </div>

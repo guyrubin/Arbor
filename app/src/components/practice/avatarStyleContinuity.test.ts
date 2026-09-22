@@ -31,7 +31,7 @@ describe("avatar medium continuity", () => {
     expect(count(dashboard, 'heroStyle={hero.style}')).toBe(3);
     expect(count(arcade, 'heroStyle={hero.style}')).toBe(1);
     expect(count(journey, 'heroStyle={heroAvatarStyle}')).toBe(2);
-    expect(journey).toContain('heroUrl={photoUrl} heroStyle={heroAvatarStyle}');
+    expect(journey).toContain('heroUrl={heroAvatarUrl} heroStyle={heroAvatarStyle}');
   });
 
   it("keeps generic scene rendering style-aware without changing the child costume", () => {

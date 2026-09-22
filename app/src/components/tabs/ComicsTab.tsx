@@ -255,7 +255,7 @@ export default function ComicsTab() {
           <p className="text-sm mb-5 max-w-md mx-auto" style={{ color: "var(--arbor-muted)" }} dir="auto">
             {he
               ? `צרו ל${name} דמות מאוירת משלו — ומשם הוא מככב בכל סיפור, קומיקס והרפתקה באקדמיה של ארבור.`
-              : `Create ${name}'s own illustrated character — then they star in every Academy story, comic and adventure across Arbor.`}
+              : `Create ${isolate(name)}'s own illustrated character — then they star in every Academy story, comic and adventure across Arbor.`}
           </p>
           <PlayButton tone="clay" onClick={() => setActiveTab("profile")}>
             <Icon name="auto_awesome" size={16} /> {he ? `צרו את הגיבור של ${isolate(name)}` : `Create ${isolate(name)}'s hero`}

@@ -181,11 +181,11 @@ export function HeroScenePlayer({
           ) : (
             <StoryIllustration seed={seed} className="absolute inset-0 h-full w-full" />
           )}
-          <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, rgba(21,25,31,.08), transparent 60%)" }} />
+          <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--comic-ink) 8%, transparent), transparent 60%)" }} />
           {(heroAvatarUrl || photoUrl) && (
             <div
               className="absolute bottom-2 h-[48%] max-h-48 rounded-2xl p-1"
-              style={{ insetInlineStart: "5%", background: "var(--arbor-paper-elevated)", outline: "2px solid var(--comic-ink)", boxShadow: "3px 5px 0 rgba(23,27,34,.25)" }}
+              style={{ insetInlineStart: "5%", background: "var(--arbor-paper-elevated)", outline: "2px solid var(--comic-ink)", boxShadow: "var(--comic-pop)" }}
             >
               <img
                 src={heroAvatarUrl ?? photoUrl}

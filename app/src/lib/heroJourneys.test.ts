@@ -26,18 +26,18 @@ const isMetricKey = (k: string): k is DevelopmentMetricId =>
   (METRIC_IDS as string[]).includes(k);
 
 describe("hero journey catalog", () => {
-  it("contains exactly 18 stories with unique ids", () => {
-    expect(HERO_STORIES).toHaveLength(18);
+  it("contains exactly 21 stories with unique ids", () => {
+    expect(HERO_STORIES).toHaveLength(21);
     const ids = HERO_STORIES.map((s) => s.id);
-    expect(new Set(ids).size).toBe(18);
+    expect(new Set(ids).size).toBe(21);
   });
 
-  it("covers all 5 packs (courage 5 / responsibility 4 / growth 4 / wisdom 3 / truth 2)", () => {
+  it("covers all 5 packs (courage 6 / responsibility 4 / growth 5 / wisdom 4 / truth 2) — UX26-37 added Lantern Path, Cloud Orchestra, Little Bridge Builders", () => {
     expect(PACKS).toHaveLength(5);
-    expect(storiesInPack("courage")).toHaveLength(5);
+    expect(storiesInPack("courage")).toHaveLength(6);
     expect(storiesInPack("responsibility")).toHaveLength(4);
-    expect(storiesInPack("growth")).toHaveLength(4);
-    expect(storiesInPack("wisdom")).toHaveLength(3);
+    expect(storiesInPack("growth")).toHaveLength(5);
+    expect(storiesInPack("wisdom")).toHaveLength(4);
     expect(storiesInPack("truth")).toHaveLength(2);
   });
 

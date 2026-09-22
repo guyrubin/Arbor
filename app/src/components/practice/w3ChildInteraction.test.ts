@@ -19,7 +19,8 @@ describe("W3 child interaction hierarchy", () => {
     const scenario = kidFeelings.indexOf("scenario.emoji");
     const listen = kidFeelings.indexOf("<SpeakButton");
     const choices = kidFeelings.indexOf("{emotionTiles}");
-    const selfCheck = kidFeelings.indexOf('t("elev.play.feelings.selfCheck"');
+    // 22 Sep 2026: the kid self-check copy moved to the kids register key.
+    const selfCheck = kidFeelings.indexOf('t("elev.kids.feelings.selfCheck"');
     for (const at of [scenario, listen, choices, selfCheck]) expect(at).toBeGreaterThan(-1);
     expect(scenario).toBeLessThan(listen);
     expect(listen).toBeLessThan(choices);
