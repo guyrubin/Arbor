@@ -1,7 +1,7 @@
 import { createPortal } from "react-dom";
 import { useDialog } from "../../hooks/useDialog";
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { celebrate } from "../../lib/celebrate";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
@@ -37,10 +37,11 @@ import { agefilterText } from "../../lib/i18nElevation/agefilter";
 import { ageMonthsFromProfile } from "../../lib/childAge";
 import { track } from "../../lib/analytics";
 import { HeroScenePlayer } from "../stories/HeroScenePlayer";
+import { ProvenanceBadge } from "../ui/ProvenanceBadge";
 import { generateJourneyPage, toSavedComicMeta, type SavedComicMeta } from "../../lib/heroComics";
 import { useKidSafeNav } from "../kidmode/useKidSafeNav";
 import { isKidModeActive, noteKidActivity, subscribeKidMode } from "../../lib/kidModeGate";
-import { MascotSay, PlayButton, PlayPanel } from "../ui/playkit";
+import { ComicPage, MascotSay, PlayButton, PlayPanel } from "../ui/playkit";
 import { EmptyState } from "../ui/EmptyState";
 import { SectionSkeleton } from "../ui/Skeleton";
 import { statesText } from "../../lib/i18nElevation/states";
@@ -180,6 +181,18 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
   const savedComicsCol = useChildCollection<SavedComicMeta>(childProfile.id, "savedComics");
   const comicPageKeys = useRef<Map<number, string>>(new Map());
   const [comicSaved, setComicSaved] = useState(false);
+  // M2: the kid ending line and the parent toast read ONE saved state. The ref
+  // is the synchronous twin of `comicSaved` (a setState is not readable inside
+  // the same async handler); `markComicSaved` is the only writer of either.
+  const comicSavedRef = useRef(false);
+  const markComicSaved = (value: boolean) => { comicSavedRef.current = value; setComicSaved(value); };
+  // M2: the cover is generated today but was never SHOWN. It is now the
+  // reader's opening page — same ComicPage primitive, same framed loading and
+  // smudged/Redraw states as a beat, and it never blocks: the child can turn
+  // past a cover that is still drawing.
+  const [coverArt, setCoverArt] = useState<{ url?: string; loading: boolean; error: boolean }>({ loading: false, error: false });
+  const [onCover, setOnCover] = useState(false);
+  const coverRun = useRef(0);
   const photoUrl = (childProfile as unknown as { photoUrl?: string }).photoUrl;
   // AVA-3: use a generated stylized character (a data-URL avatar) as the story hero —
   // never a raw face photo or a remote URL — so scenes stay consistent and privacy-safe.
@@ -304,17 +317,34 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
 
   // G2: the cover page (index 0) is drawn once per story start; the queue
   // (sceneCache MAX_CONCURRENT) keeps it behind the first beat's page.
-  useEffect(() => {
-    comicPageKeys.current = new Map();
-    setComicSaved(false);
-    if (!activeStory || !render || !heroAvatarUrl) return;
-    let active = true;
+  // M2: the SAME call now also feeds the reader's opening page — one
+  // generation path (generateJourneyPage / journeyPageKey), never a second.
+  // `Redraw` on the cover re-enters here rather than through an effect dep, so
+  // a retry costs exactly one call and the story-start effect stays keyed to
+  // the story.
+  const drawCover = () => {
     const cover = coverPageArgs();
     if (!cover) return;
+    const run = ++coverRun.current;
+    setCoverArt({ loading: true, error: false });
     generateJourneyPage(cover)
-      .then(({ key }) => { if (active) comicPageKeys.current.set(0, key); })
-      .catch(() => { /* a missing cover only means no shelf entry this time */ });
-    return () => { active = false; };
+      .then(({ key, url }) => {
+        comicPageKeys.current.set(0, key);
+        if (coverRun.current === run) setCoverArt({ url, loading: false, error: false });
+      })
+      .catch(() => { if (coverRun.current === run) setCoverArt({ loading: false, error: true }); });
+  };
+
+  useEffect(() => {
+    comicPageKeys.current = new Map();
+    markComicSaved(false);
+    coverRun.current += 1;
+    setCoverArt({ loading: false, error: false });
+    // With a hero the book opens on its cover; without one there is no cover to
+    // show and the reader opens on beat 1 exactly as before.
+    setOnCover(Boolean(activeStory && render && heroAvatarUrl));
+    if (!activeStory || !render || !heroAvatarUrl) return;
+    drawCover();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeStory?.id, heroAvatarUrl, aiLang]);
 
@@ -353,7 +383,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
       createdAt: new Date().toISOString(),
       pageKeys: keys,
     }));
-    setComicSaved(true);
+    markComicSaved(true);
   };
 
   const finishJourney = async () => {
@@ -375,13 +405,24 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
     try {
       await runsCol.upsert(run);
       await saveStoryAsComic().catch(() => { /* the story itself is saved; the shelf entry is best-effort */ });
+      // M2: one saved state, two registers. The child hears "your comic is on
+      // your shelf" (kid copy, rendered below); the parent gets the same fact
+      // in parent copy. Neither register borrows the other's words.
+      const shelved = comicSavedRef.current;
       // N1-01-R5: a finished story is one completed kid activity. A COUNT — the
       // story, its title and the child's choice never leave this function.
       // A no-op outside Kid Mode.
       noteKidActivity();
       setSaved(true);
       celebrate({ kind: "complete" });
-      if (!kidMode) toast(aiLang === "he" ? "המסע הושלם — הסיפור נשמר" : "Journey complete — story saved", "success");
+      if (!kidMode) {
+        toast(
+          shelved
+            ? (aiLang === "he" ? "המסע הושלם — הסיפור נשמר והקומיקס על המדף" : "Journey complete — story saved and the comic is on the shelf")
+            : (aiLang === "he" ? "המסע הושלם — הסיפור נשמר" : "Journey complete — story saved"),
+          "success",
+        );
+      }
     } finally {
       finishingRef.current = false;
       setFinishing(false);
@@ -437,23 +478,40 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
     );
 
   const canAdvance = !isDecision || !!choiceId;
+  // M2: the cover is a PAGE, not a beat. It sits before beat 1 and the counter
+  // says so ("Cover", then "1 / 8") — the eight beats keep their own numbers.
+  const hasCoverPage = Boolean(heroAvatarUrl);
+  const atFirstPage = onCover || (sceneIndex === 0 && !hasCoverPage);
+  const goBack = () => {
+    if (onCover) return;
+    if (sceneIndex === 0) { if (hasCoverPage) setOnCover(true); return; }
+    setSceneIndex((i) => Math.max(0, i - 1));
+  };
+  // Turning off the cover never waits for its art: a cover still drawing is a
+  // framed loading page the child can read past.
+  const goNext = () => {
+    if (onCover) { setOnCover(false); return; }
+    if (canAdvance) setSceneIndex((i) => Math.min(scenes.length - 1, i + 1));
+  };
   const renderNav = () => (
     <div className="flex items-center justify-between w-full max-w-xl mx-auto pt-2">
       <button
-        onClick={() => setSceneIndex((i) => Math.max(0, i - 1))}
-        disabled={sceneIndex === 0}
+        onClick={goBack}
+        disabled={atFirstPage}
         className="touch-target disabled:opacity-30 flex items-center gap-1 text-sm"
         style={{ color: "var(--arbor-muted)" }}
       >
         <Icon name="chevron_left" size={16} /> {kidsStoriesText("journey.back", aiLang)}
       </button>
       <span className="text-[10px] uppercase tracking-wider" style={{ color: "var(--arbor-faint)" }}>
-        {activeStory && `${sceneIndex + 1} / ${activeStory.beats.length}`}
+        {onCover
+          ? kidsStoriesText("journey.cover", aiLang)
+          : activeStory && `${sceneIndex + 1} / ${activeStory.beats.length}`}
       </span>
-      {sceneIndex < scenes.length - 1 ? (
+      {onCover || sceneIndex < scenes.length - 1 ? (
         <button
-          onClick={() => canAdvance && setSceneIndex((i) => Math.min(scenes.length - 1, i + 1))}
-          disabled={!canAdvance}
+          onClick={goNext}
+          disabled={!onCover && !canAdvance}
           className="touch-target disabled:opacity-30 flex items-center gap-1 text-sm font-bold"
           style={{ color: "var(--arbor-green-ink)" }}
         >
@@ -1101,9 +1159,49 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
   }
 
   // ── Player view ────────────────────────────────────────────────────────────
+  // M2: the opening page of the book. Same ComicPage primitive the beats use
+  // (frame, page-flip, loading, smudged + Redraw); no page number, because the
+  // cover is not one of the eight beats. The title the model lettered into the
+  // art is repeated as text so the page still names the story while the art is
+  // drawing, smudged, or read by a screen reader.
+  const coverPage = (immersiveMode: boolean) => (
+    <div className="flex flex-col items-center text-center gap-5">
+      <span className="text-[11px] uppercase tracking-widest font-bold" style={{ color: "var(--arbor-green-ink)" }}>
+        {kidsStoriesText("journey.cover", aiLang)}
+      </span>
+      <AnimatePresence mode="wait">
+        <ComicPage
+          key="journey-cover"
+          src={coverArt.url}
+          alt={kidsStoriesText("journey.coverAlt", aiLang, { title: render.title || activeStory.title })}
+          loading={!coverArt.url && coverArt.loading}
+          error={!coverArt.url && !coverArt.loading && coverArt.error}
+          rtl={uiLang === "he"}
+          contentFit="contain"
+          onImageError={() => setCoverArt({ loading: false, error: true })}
+          onRetry={drawCover}
+          errorLabel={kidsStoriesText("page.smudged", aiLang)}
+          retryLabel={kidsStoriesText("page.redraw", aiLang)}
+          loadingLabel={kidsStoriesText("page.drawing", aiLang)}
+        />
+      </AnimatePresence>
+      {/* S4: the badge labels GENERATED art only — a cover that is still
+          drawing or smudged has no art to attribute. */}
+      {coverArt.url && <ProvenanceBadge lang={uiLang === "he" ? "he" : "en"} className="-mt-2" />}
+      <h3
+        dir="auto"
+        className={`font-extrabold tracking-tight ${immersiveMode ? "text-xl" : "text-lg"}`}
+        style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display), Georgia, serif" }}
+      >
+        {render.title || activeStory.title}
+      </h3>
+    </div>
+  );
+
   const playerBody = (immersiveMode: boolean) => (
     <div className="space-y-6">
-      {displayScene && (
+      {onCover && coverPage(immersiveMode)}
+      {!onCover && displayScene && (
         <HeroScenePlayer
           scene={displayScene}
           seed={`${activeStory.id}-${displayScene.beatId}-${childProfile.name}`}
@@ -1121,10 +1219,10 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
         />
       )}
 
-      {renderChoices()}
+      {!onCover && renderChoices()}
 
       {/* Reflection / completion */}
-      {isReflection && (
+      {!onCover && isReflection && (
         <div className="w-full max-w-xl mx-auto space-y-4">
           {kidMode ? (
             <div className="rounded-2xl p-4 space-y-3 text-center" style={{ background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.25)" }}>

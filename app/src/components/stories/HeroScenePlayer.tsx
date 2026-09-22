@@ -10,6 +10,7 @@ import { generateJourneyPage, journeyPageKey, type JourneyPageArgs } from "../..
 import { runInstrumented } from "../../hooks/useAsyncAction";
 import { ProvenanceBadge } from "../ui/ProvenanceBadge";
 import { useLanguage } from "../../context/LanguageContext";
+import { isolate } from "../../lib/i18n";
 import { downloadHeroAvatarCanvas } from "../../lib/heroAvatarCanvas";
 import { isKidModeActive } from "../../lib/kidModeGate";
 import type { HeroSceneRender } from "../../types";
@@ -152,7 +153,7 @@ export function HeroScenePlayer({
                 `${(heroName || "hero").toLowerCase()}-comic-page-${beatNumber}.png`,
               )
             } className="touch-target flex items-center gap-1 transition" style={{ color: "var(--arbor-muted)" }} aria-label={t("aria.saveComicPage")}>
-            <Download className="w-3.5 h-3.5" /> Save
+            <Download className="w-3.5 h-3.5" /> {t("learn.save")}
           </button>
         )}
       </div>
@@ -165,7 +166,7 @@ export function HeroScenePlayer({
           <ComicPage
             key={scene.beatId}
             src={sceneArt}
-            alt={`Page ${beatNumber}: ${scene.title}`}
+            alt={kidsStoriesText("journey.pageAlt", aiLang, { number: beatNumber, title: scene.title })}
             pageNumber={beatNumber}
             loading={!sceneArt && artLoading}
             error={!sceneArt && !artLoading && artError}
@@ -193,7 +194,9 @@ export function HeroScenePlayer({
             >
               <img
                 src={heroAvatarUrl ?? photoUrl}
-                alt={heroName ? `${heroName}, the story hero` : "Story hero"}
+                alt={heroName
+                  ? kidsStoriesText("journey.heroAlt", aiLang, { name: isolate(heroName, aiLang) })
+                  : kidsStoriesText("journey.heroAltUnnamed", aiLang)}
                 className="h-full w-auto rounded-xl object-contain"
               />
             </div>
