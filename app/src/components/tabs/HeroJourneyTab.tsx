@@ -39,7 +39,7 @@ import { track } from "../../lib/analytics";
 import { HeroScenePlayer } from "../stories/HeroScenePlayer";
 import { useKidSafeNav } from "../kidmode/useKidSafeNav";
 import { isKidModeActive, noteKidActivity, subscribeKidMode } from "../../lib/kidModeGate";
-import { MascotSay } from "../ui/playkit";
+import { MascotSay, PlayButton, PlayPanel } from "../ui/playkit";
 import { EmptyState } from "../ui/EmptyState";
 import { SectionSkeleton } from "../ui/Skeleton";
 import { statesText } from "../../lib/i18nElevation/states";
@@ -157,7 +157,7 @@ const METRIC_EMOJI: Record<DevelopmentMetricId, string> = {
 };
 
 export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: string } = {}) {
-  const { childProfile } = useArbor();
+  const { childProfile, setActiveTab } = useArbor();
   // KID-05: hub tiles navigate the PARENT shell — rendered only while the
   // shell is reachable (null inside Kid Mode, where the call would be a
   // silent no-op and a dead button in front of the child).
@@ -178,6 +178,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
   // never a raw face photo or a remote URL — so scenes stay consistent and privacy-safe.
   const heroAvatarUrl = childProfile.avatar && photoUrl?.startsWith("data:") ? photoUrl : undefined;
   const heroAvatarStyle = normalizeAvatarStyle(childProfile.avatar?.style);
+  const heroName = childProfile.name?.split(" ")[0] || (aiLang === "he" ? "הילד/ה" : "your child");
 
   const totalMetrics = useMemo(
     () => runs.reduce((acc, r) => addMetrics(acc, r.metricsEarned ?? {}), emptyMetrics()),
@@ -527,6 +528,23 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
         </div>
         )}
 
+        {/* G1 hero-first (22 Sep 2026): a child without a generated hero gets one
+            parent-side step here, never a story starring the raw photo. */}
+        {!kidMode && !childProfile.avatar ? (
+          <PlayPanel tone="lav" className="text-center mb-4" data-testid="hero-first-gate">
+            <p className="text-[1.15rem] font-extrabold mb-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
+              {he ? `קודם כול, צרו את הגיבור של ${isolate(heroName)}` : `First, create ${isolate(heroName)}'s hero`}
+            </p>
+            <p className="text-sm mb-4 max-w-md mx-auto" style={{ color: "var(--arbor-muted)" }} dir="auto">
+              {he
+                ? `הסיפורים מצוירים סביב הדמות המאוירת של ${heroName} — לא סביב תמונה אמיתית.`
+                : `Stories are drawn around ${heroName}'s illustrated character — never around a real photo.`}
+            </p>
+            <PlayButton tone="clay" onClick={() => setActiveTab("profile")}>
+              <Icon name="auto_awesome" size={16} /> {he ? `צרו את הגיבור של ${isolate(heroName)}` : `Create ${isolate(heroName)}'s hero`}
+            </PlayButton>
+          </PlayPanel>
+        ) : null}
         {/* STORY WORLDS — each card is an illustrated world starring the hero */}
         <div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mb-3">
@@ -623,7 +641,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                     {/* The story's world, with the child's hero generated into the scene
                         (same pipeline as the Practice world-cards). Falls back to the
                         hero + emoji motif while loading / with no hero / on error. */}
-                    <WorldScene worldId={`story-${story.id}`} imagePrompt={`${story.title} — ${story.theme}`} heroUrl={photoUrl} heroStyle={heroAvatarStyle}>
+                    <WorldScene worldId={`story-${story.id}`} imagePrompt={`${story.title} — ${story.theme}`} heroUrl={heroAvatarUrl} heroStyle={heroAvatarStyle}>
                       <div className="flex items-center gap-1.5">
                         <HeroAvatar size={80} ring animate={false} />
                         <span style={{ fontSize: 46, filter: "drop-shadow(2px 2px 0 rgba(23,27,34,.3))" }} aria-hidden="true">
@@ -812,6 +830,23 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
         </div>
         )}
 
+        {/* G1 hero-first (22 Sep 2026): a child without a generated hero gets one
+            parent-side step here, never a story starring the raw photo. */}
+        {!kidMode && !childProfile.avatar ? (
+          <PlayPanel tone="lav" className="text-center mb-4" data-testid="hero-first-gate">
+            <p className="text-[1.15rem] font-extrabold mb-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
+              {he ? `קודם כול, צרו את הגיבור של ${isolate(heroName)}` : `First, create ${isolate(heroName)}'s hero`}
+            </p>
+            <p className="text-sm mb-4 max-w-md mx-auto" style={{ color: "var(--arbor-muted)" }} dir="auto">
+              {he
+                ? `הסיפורים מצוירים סביב הדמות המאוירת של ${heroName} — לא סביב תמונה אמיתית.`
+                : `Stories are drawn around ${heroName}'s illustrated character — never around a real photo.`}
+            </p>
+            <PlayButton tone="clay" onClick={() => setActiveTab("profile")}>
+              <Icon name="auto_awesome" size={16} /> {he ? `צרו את הגיבור של ${isolate(heroName)}` : `Create ${isolate(heroName)}'s hero`}
+            </PlayButton>
+          </PlayPanel>
+        ) : null}
         {/* STORY WORLDS — each card is an illustrated world starring the hero */}
         <div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mb-3">
@@ -908,7 +943,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                     {/* The story's world, with the child's hero generated into the scene
                         (same pipeline as the Practice world-cards). Falls back to the
                         hero + emoji motif while loading / with no hero / on error. */}
-                    <WorldScene worldId={`story-${story.id}`} imagePrompt={`${story.title} — ${story.theme}`} heroUrl={photoUrl} heroStyle={heroAvatarStyle}>
+                    <WorldScene worldId={`story-${story.id}`} imagePrompt={`${story.title} — ${story.theme}`} heroUrl={heroAvatarUrl} heroStyle={heroAvatarStyle}>
                       <div className="flex items-center gap-1.5">
                         <HeroAvatar size={80} ring animate={false} />
                         <span style={{ fontSize: 46, filter: "drop-shadow(2px 2px 0 rgba(23,27,34,.3))" }} aria-hidden="true">

@@ -123,6 +123,7 @@ forward
 front_hand
 fullscreen
 function
+gif
 girl
 gpp_maybe
 graphic_eq

@@ -25,7 +25,8 @@ describe("AIX-S7 — the no-hero invitation bookend is bilingual", () => {
     expect(stripped).toContain("הפכו את");
     // The EN branch is unchanged.
     expect(stripped).toContain("First, create");
-    expect(stripped).toContain("comic superhero");
+    // AV-04 (22 Sep 2026): the invite describes a comic BOOK, not a superhero costume.
+    expect(stripped).toContain("comic book");
     // IA-08 / RUN-12: #/comics is a PARENT door, so the bookend now renders
     // through RegisterShell's parent branch — `subtitle`, kit chrome, no
     // `.arbor-play`. The bilingual requirement is unchanged.

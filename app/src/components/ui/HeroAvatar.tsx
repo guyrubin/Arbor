@@ -13,12 +13,24 @@ import { normalizeAvatarStyle } from "../../lib/avatarStyle";
  * to Sprout (the mascot) so the surface is never empty — and `hasHero` lets the
  * caller offer a "Create {name}'s hero" affordance.
  */
+/**
+ * G1 hero-first (22 Sep 2026): the hero is the generated character, never the
+ * raw uploaded photo. A profile with `photoUrl` but no `avatar` metadata has no
+ * hero — surfaces show Sprout and offer "Create {name}'s hero" instead of
+ * quietly sending a real face into scene/comic generation.
+ */
+export const resolveHeroUrl = (child: {
+  avatar?: unknown;
+  photoUrl?: string;
+  comicAvatarUrl?: string;
+}): string | null => child.comicAvatarUrl || (child.avatar ? child.photoUrl || null : null);
+
 export function useHeroAvatar() {
   const { childProfile } = useArbor();
   // Resolution order: prefer the generated stylized comic hero, then any uploaded
   // photo. `avatar` is metadata; `comicAvatarUrl` (when present) is the AI-generated
   // privacy-safe hero. Return shape is unchanged so existing consumers keep working.
-  const url = (childProfile as { comicAvatarUrl?: string }).comicAvatarUrl || childProfile.photoUrl || null;
+  const url = resolveHeroUrl(childProfile);
   // `isGenerated` = a stylized, privacy-safe hero (descriptor) — safe to embed in
   // shareable/clinical documents; a real `photo` avatar is never auto-embedded.
   const isGenerated = childProfile.avatar?.source === "descriptor";

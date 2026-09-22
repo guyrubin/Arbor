@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { resolveHeroUrl } from "../ui/HeroAvatar";
 import { BookOpen, ChevronLeft, ChevronRight } from "lucide-react";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { useAuth } from "../../context/AuthContext";
@@ -62,7 +63,9 @@ export default function KidComicsShelf({
   const { aiLang } = useLanguage();
   const saved = useChildCollection<SavedComicMeta>(childProfile.id, "savedComics");
   const partitionKey = `${authKey ?? user?.uid ?? "anon"}|${childProfile.id}`;
-  const avatarToken = childProfile.photoUrl?.startsWith("data:") ? childProfile.photoUrl : "no-hero";
+  const heroUrl = resolveHeroUrl(childProfile);
+  // Must match ComicsTab's avatarKeyToken so parent-saved books resolve here.
+  const avatarToken = heroUrl?.startsWith("data:") ? heroUrl : "no-hero";
   const requestRef = useRef(0);
   const partitionRef = useRef(partitionKey);
   partitionRef.current = partitionKey;
