@@ -162,6 +162,16 @@ export const KID_HOME_SECTION_HEAD_BLOCK = 44;
 export const KID_HOME_HEAD_GAP = 10;
 /** Game tile, at the arcade world-tile's scale (was 97 px). */
 export const KID_HOME_GAME_TILE_BLOCK = 200;
+/** P2-3: the game tile's ART BOX, fixed.
+
+ *  The row was `minmax(100px, 1fr)`, so the artwork absorbed whatever the title
+ *  block did not need: a one-line title left 128 px of scene, a two-line title
+ *  ("Mood Mountain") left 106 px, and two tiles side by side in the same row
+ *  showed different-sized worlds. A constant art box makes the grid read as one
+ *  rhythm. 110 px is chosen so the tallest title block still fits inside
+ *  KID_HOME_GAME_TILE_BLOCK at 390 px, which keeps the fold arithmetic above
+ *  exactly as it was — proved in kidDashboard.fold.test.ts. */
+export const KID_HOME_GAME_TILE_IMAGE_BLOCK = 110;
 /** Growth-adventure tile (unchanged). */
 export const KID_HOME_ADVENTURE_TILE_BLOCK = 150;
 /** Grid gap between tiles. */
@@ -267,7 +277,7 @@ function SceneTile({
         appearance: "none",
         position: "relative",
         display: "grid",
-        gridTemplateRows: big ? "minmax(60px, 1fr) auto" : "minmax(100px, 1fr) auto",
+        gridTemplateRows: big ? "minmax(60px, 1fr) auto" : `${KID_HOME_GAME_TILE_IMAGE_BLOCK}px auto`,
         overflow: "hidden",
         textAlign: "start",
         cursor: "pointer",
@@ -277,7 +287,7 @@ function SceneTile({
         animationDelay: `${index * 40}ms`,
       }}
     >
-      <div className="relative" style={{ minBlockSize: big ? 60 : 100 }}>
+      <div className="relative" style={{ minBlockSize: big ? 60 : KID_HOME_GAME_TILE_IMAGE_BLOCK }}>
         <WorldScene worldId={worldId} imagePrompt={imagePrompt} heroUrl={heroUrl} heroStyle={heroStyle} sizes={big ? "(max-width: 639px) 100vw, 33vw" : "(max-width: 359px) 100vw, (max-width: 639px) 50vw, 25vw"}>
           <span aria-hidden="true" className="grid h-full w-full place-items-center" style={{ color: ACCENT_INK[accent] }}><Icon className="w-10 h-10" /></span>
         </WorldScene>

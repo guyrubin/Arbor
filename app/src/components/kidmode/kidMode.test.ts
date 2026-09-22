@@ -364,19 +364,18 @@ describe("KID-1: kid.* i18n keys exist in BOTH language maps", () => {
      the arcade itself does. The list is exact, so a name that gets translated
      must LEAVE it rather than sit here as a permanent excuse. */
   const HEBREW_SCRIPT = /[֐-׿]/;
-  const EN_BY_DESIGN: Record<string, string> = {
-    "kid.surface.journeys": "names the Hero Stories surface, whose own header still reads EN",
-    "kid.surface.arcade": "names the Playbank surface, whose own header still reads EN",
-    "kid.surface.feelings": "names the Feelings surface, whose own header still reads EN",
-    "kid.adv.playbank.title": "the Playbank tile is the surface name, verbatim (KID-4 honest navigation)",
-    "kid.adv.hero.title": "the Hero Stories tile is the surface name, verbatim",
-    "kid.adv.feelings.title": "the Feelings tile is the surface name, verbatim",
-    ...Object.fromEntries(
-      Object.keys(en)
-        .filter((k) => /^kid\.game\..+\.title$/.test(k))
-        .map((k) => [k, "an arcade world name, locked verbatim to the tile by the test above"]),
-    ),
-  };
+  /* Round 3: `kid.surface.*` and `kid.adv.*.title` were exempted in round 2 as
+     "proper nouns". They are not — they are destination LABELS a Hebrew child
+     reads ("Hero Stories" over the story surface, "Playbank" over the arcade),
+     and M2 caught them rendering English under a Hebrew UI. They are Hebrew now.
+     The ONLY thing still English is an arcade world's NAME: those are EN
+     literals in HeroArcade's WORLDS table and the test above locks each tile to
+     its world verbatim, so a tile cannot localize before the table does. */
+  const EN_BY_DESIGN: Record<string, string> = Object.fromEntries(
+    Object.keys(en)
+      .filter((k) => /^kid\.game\..+\.title$/.test(k))
+      .map((k) => [k, "an arcade world name, locked verbatim to the tile by the test above"]),
+  );
 
   it("every kid.* HE value is Hebrew, except the documented proper nouns", () => {
     const english = Object.keys(en)
@@ -398,6 +397,122 @@ describe("KID-1: kid.* i18n keys exist in BOTH language maps", () => {
       const slots = (s: string) => (s.match(/\{[a-zA-Z]+\}/g) ?? []).sort();
       expect(slots(he[key]), `${key}: slots changed in translation`).toEqual(slots(en[key]));
     }
+  });
+});
+
+/* ── F4, round 3: the guard has to cover EVERY kid dictionary ─────────────
+   Round 2 translated `kid.*` in lib/i18n.ts and wrote a guard that read only
+   that file. It passed while the LOUDER dictionary — lib/i18nElevation/
+   kidRegister.ts, which owns the arcade H1, Mood Mountain's speech bubble and
+   every world's back pill — sat 93/118 English. A guard scoped to one file is
+   how that happened, so this one enumerates the kid-facing dictionaries and
+   fails if a new one appears unlisted. Every exemption is an EXACT key with a
+   reason, and a key that gets translated must LEAVE the list. */
+import { en as kidRegEn, he as kidRegHe } from "../../lib/i18nElevation/kidRegister";
+import { en as kidsExpEn, he as kidsExpHe } from "../../lib/i18nElevation/kidsExperience";
+import { en as kidsStoriesEn, he as kidsStoriesHe } from "../../lib/i18nElevation/kidsStories";
+
+describe("F4: every kid-facing dictionary speaks Hebrew in its he export", () => {
+  const HEBREW_SCRIPT = /[֐-׿]/;
+
+  /** Exact keys that stay English, each with the reason. Arcade WORLD names are
+   *  EN literals in HeroArcade's WORLDS table; the kid home tile is locked to
+   *  them verbatim, so translating only the arrival header would mean tapping
+   *  "Sound Lab" and landing on a differently named screen (KID-4). */
+  const WORLD_NAME = "an arcade world name — EN literal in HeroArcade's WORLDS table; the tile is locked to it verbatim";
+  const EN_BY_DESIGN: Record<string, string> = {
+    "elev.play.soundlab.title": WORLD_NAME,
+    "elev.play.feelings.title": WORLD_NAME,
+    "elev.play.beat.title": WORLD_NAME,
+    "elev.play.pattern.title": WORLD_NAME,
+    "elev.kids.pose.title": WORLD_NAME,
+    "elev.kids.adventures.title": WORLD_NAME,
+    "elev.kids.mimic.title": WORLD_NAME,
+    "elev.play.arcade.worldAria": "two interpolation slots and a comma — there is no text to translate",
+  };
+
+  const DICTS: Array<[string, Record<string, string>, Record<string, string>]> = [
+    ["i18nElevation/kidRegister.ts", kidRegEn, kidRegHe],
+    ["i18nElevation/kidsExperience.ts", kidsExpEn, kidsExpHe],
+    ["i18nElevation/kidsStories.ts", kidsStoriesEn, kidsStoriesHe],
+  ];
+
+  it.each(DICTS)("%s carries no English in its he export", (label, dictEn, dictHe) => {
+    const english = Object.keys(dictEn)
+      .filter((k) => !(k in EN_BY_DESIGN))
+      .filter((k) => typeof dictHe[k] === "string")
+      .filter((k) => dictHe[k] === dictEn[k] || !HEBREW_SCRIPT.test(dictHe[k]));
+    expect(english, `${label} still English: ${english.join(", ")}`).toEqual([]);
+  });
+
+  it.each(DICTS)("%s keeps its he keys in sync with en", (label, dictEn, dictHe) => {
+    expect(Object.keys(dictHe).sort(), label).toEqual(Object.keys(dictEn).sort());
+  });
+
+  it.each(DICTS)("%s kept every interpolation slot through translation", (label, dictEn, dictHe) => {
+    const slots = (s: string) => (s.match(/\{[a-zA-Z]+\}/g) ?? []).sort();
+    for (const key of Object.keys(dictEn)) {
+      expect(slots(dictHe[key]), `${label} ${key}: slots changed`).toEqual(slots(dictEn[key]));
+    }
+  });
+
+  it("every EN-by-design key is still English (a translated one must leave the list)", () => {
+    const all = Object.assign({}, ...DICTS.map(([, , dictHe]) => dictHe)) as Record<string, string>;
+    for (const key of Object.keys(EN_BY_DESIGN)) {
+      expect(all[key], `${key} is not in any kid dictionary any more`).toBeTruthy();
+      expect(HEBREW_SCRIPT.test(all[key]), `${key} is Hebrew now — drop it from EN_BY_DESIGN`).toBe(false);
+    }
+  });
+
+  /* The three kid dictionaries OVERLAP: 16 keys are declared in more than one,
+     with different HE values, and `Object.assign` in i18nElevation/index.ts
+     means the last module listed silently wins. `elev.play.beat.title` was the
+     visible symptom — the tile said "Beat Keeper" and the arrival header said
+     something else. The per-dictionary tests above cannot see this, because each
+     file is clean on its own. So the assertion that matters is about the value
+     the CHILD actually gets: the merged one. */
+  const MERGE_ORDER = ["kidRegister", "kidsExperience", "kidsStories"];
+  /** Last-wins, exactly as `elevationHe` builds it. */
+  const effective = Object.assign({}, ...DICTS.map(([, , dictHe]) => dictHe)) as Record<string, string>;
+
+  it("the DICTS order matches the module order the app merges in", () => {
+    const index = readFileSync(path.join(__dirname, "..", "..", "lib", "i18nElevation", "index.ts"), "utf8");
+    const listed = MERGE_ORDER.map((m) => index.indexOf(`\n  ${m},`));
+    expect(listed.every((i) => i > -1), "every kid module must be in MODULES").toBe(true);
+    expect([...listed].sort((a, b) => a - b), "merge order drifted").toEqual(listed);
+    expect(DICTS.map(([l]) => l)).toEqual(MERGE_ORDER.map((m) => `i18nElevation/${m}.ts`));
+  });
+
+  it("the MERGED kid copy — what the child actually reads — is Hebrew", () => {
+    const english = Object.keys(effective)
+      .filter((k) => /^elev\.(?:kid|kids|play)\./.test(k))
+      .filter((k) => !(k in EN_BY_DESIGN))
+      .filter((k) => !HEBREW_SCRIPT.test(effective[k]));
+    expect(english, `merged kid copy still English: ${english.join(", ")}`).toEqual([]);
+  });
+
+  it("overlapping keys that disagree are a recorded, shrink-only hazard", () => {
+    const byKey = new Map<string, Set<string>>();
+    for (const [, , dictHe] of DICTS) {
+      for (const [key, value] of Object.entries(dictHe)) {
+        byKey.set(key, (byKey.get(key) ?? new Set()).add(value));
+      }
+    }
+    const conflicts = [...byKey].filter(([, values]) => values.size > 1).map(([key]) => key);
+    // Not zero: reconciling the two banks is a copy decision, not a build fix.
+    // Frozen so it can only go down — and the merged value is guarded above.
+    expect(conflicts.length, `overlapping kid keys with different HE values: ${conflicts.join(", ")}`).toBeLessThanOrEqual(16);
+  });
+
+  it("the kid-facing dictionary list is complete (a new one cannot hide)", () => {
+    // `// GD-6` marks an untranslated kid line. If a dictionary outside the
+    // list above carries one, this guard is not covering it.
+    const dir = path.join(__dirname, "..", "..", "lib", "i18nElevation");
+    const marked = readdirSync(dir)
+      .filter((f) => f.endsWith(".ts") && !f.endsWith(".test.ts"))
+      .filter((f) => readFileSync(path.join(dir, f), "utf8").includes("// GD-6"))
+      .map((f) => `i18nElevation/${f}`);
+    for (const f of marked) expect(DICTS.map(([l]) => l), `${f} carries GD-6 lines but is not guarded`).toContain(f);
   });
 });
 

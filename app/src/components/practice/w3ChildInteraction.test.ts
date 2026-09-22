@@ -54,7 +54,18 @@ describe("W3 child interaction hierarchy", () => {
     expect(beat).toContain("scoreBeatTaps(expRef.current, tapsRef.current)");
   });
 
-  it("records native Hebrew review debt instead of presenting machine copy as approved", () => {
+  /* CONTRACT CHANGED, 22 Sep 2026 (M1 round 3). This test used to require these
+     four HE values to be byte-identical to EN and carry a per-line `// GD-6`
+     marker. Its INTENT — never present unreviewed copy as approved — stands; its
+     mechanism does not. Holding the EN string shipped an English kid experience
+     to an IL-first product: rendered evidence in CRITIC-M1-round2.md (E7/E9)
+     showed the arcade H1 and Mood Mountain's speech bubble in English under a
+     Hebrew UI. The values are Hebrew now, and the debt is recorded where it
+     stays visible for the whole file instead of on lines that get translated
+     away. kidRegisterScan.test.ts enforces the other half: a Hebrew line must
+     LOSE its `// GD-6`, so the marker keeps meaning "a reviewer owes this one". */
+  it("records native Hebrew review debt instead of presenting copy as approved", () => {
+    const HEBREW = /[֐-׿]/;
     for (const key of [
       "elev.play.mimic.mirrorOn",
       "elev.play.mimic.packComplete.title",
@@ -62,8 +73,15 @@ describe("W3 child interaction hierarchy", () => {
       "elev.play.beat.feedback.nailed",
     ]) {
       expect(kidEn[key], key).toBeTruthy();
-      expect(kidHe[key], key).toBe(kidEn[key]);
-      expect(kidCopy).toMatch(new RegExp(`"${key}": .*// GD-6`));
+      expect(HEBREW.test(kidHe[key]), `${key} must be Hebrew: ${kidHe[key]}`).toBe(true);
+      // Translated → the per-line debt marker is gone.
+      expect(kidCopy).not.toMatch(new RegExp(`"${key}": .*// GD-6`));
     }
+    // …and the file still says, in one place, that this is a FIRST PASS and the
+    // native editorial gate is open.
+    expect(kidCopy).toContain("THIS IS A FIRST PASS");
+    expect(kidCopy).toMatch(/GD-6\/GD-7 native editorial sign-off is/);
+    // The lines that are still English keep their own marker.
+    expect(kidCopy).toMatch(/"elev\.play\.soundlab\.title": "Sound Lab", \/\/ GD-6/);
   });
 });

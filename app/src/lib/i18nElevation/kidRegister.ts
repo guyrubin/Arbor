@@ -11,9 +11,18 @@
  * Register laws (pinned by lib/kidRegisterScan.test.ts): every elev.kid.* /
  * elev.play.* value is counts-never-verdicts — no %, no score, no
  * development/diagnosis/assessment/accuracy vocabulary, no streak or
- * loss framing. HE values are EN placeholders behind the GD-6 native
- * transcreation gate (never machine-translated); each placeholder line is
- * marked `// GD-6` so the native reviewer can grep the worklist.
+ * loss framing.
+ *
+ * HE (22 Sep 2026): the `he` export held English for 93 of its 118 keys, so
+ * a Hebrew-speaking child met an English arcade H1, an English speech bubble
+ * on Mood Mountain and an English back pill in every world. Those values are
+ * now written Hebrew in the same warm ages-4-8 register as the rest of the
+ * kid copy. THIS IS A FIRST PASS: GD-6/GD-7 native editorial sign-off is
+ * still Guy's gate before release. Five lines stay English on purpose and
+ * keep their `// GD-6` marker: four arcade WORLD names (their tiles are
+ * locked to them verbatim by kidMode.test.ts, so a header cannot localize
+ * before HeroArcade's WORLDS table does) and one aria string that is nothing
+ * but interpolation slots.
  */
 
 export const en: Record<string, string> = {
@@ -175,109 +184,114 @@ export const en: Record<string, string> = {
 };
 
 export const he: Record<string, string> = {
-  "elev.kid.greeting.ready": "Ready for today's adventure?", // GD-6
-  "elev.kid.greeting.playedYesterday": "You played {world} yesterday", // GD-6
-  "elev.kid.crash.title": "Oops — let's go back to the map", // GD-6
-  "elev.kid.crash.home": "Home", // GD-6
+  "elev.kid.greeting.ready": "מוכנים להרפתקה של היום?",
+  "elev.kid.greeting.playedYesterday": "אתמול שיחקתם ב{world}",
+  "elev.kid.crash.title": "אופס — בואו נחזור למפה",
+  "elev.kid.crash.home": "בית",
 
-  "elev.play.arcade.allWorlds": "All worlds", // GD-6
-  "elev.play.arcade.heroOfWeek": "Hero of the week", // GD-6
-  "elev.play.arcade.yourHero": "Your hero", // GD-6
-  "elev.play.arcade.heroBrave": "{name} the Brave", // GD-6
-  "elev.play.arcade.level": "Level {n}", // GD-6
-  "elev.play.arcade.nextLevel": "Next level", // GD-6
-  "elev.play.arcade.nextLevelAria": "{n} of 5 stars toward the next level", // GD-6
-  "elev.play.arcade.daysPracticed": "days practiced", // GD-6
-  "elev.play.arcade.coachSay": "Pick a world, hero. Every win powers up {hero}!", // GD-6
-  "elev.play.arcade.coachSayGeneric": "Pick a world, hero. Every win powers up your hero!", // GD-6
-  "elev.play.arcade.chooseWorld": "Choose your world", // GD-6
-  "elev.play.arcade.soon": "Soon", // GD-6
-  "elev.play.arcade.comingSoonAria": "{world}, {tag}, coming soon", // GD-6
+  "elev.play.arcade.allWorlds": "כל העולמות",
+  "elev.play.arcade.heroOfWeek": "גיבור/ת השבוע",
+  "elev.play.arcade.yourHero": "הגיבור/ה שלכם",
+  "elev.play.arcade.heroBrave": "{name} — גיבור/ת העולמות",
+  "elev.play.arcade.level": "שלב {n}",
+  "elev.play.arcade.nextLevel": "השלב הבא",
+  "elev.play.arcade.nextLevelAria": "{n} מתוך 5 כוכבים לשלב הבא",
+  "elev.play.arcade.daysPracticed": "ימים של משחק",
+  "elev.play.arcade.coachSay": "בחרו עולם, גיבורים! כל הצלחה מחזקת את {hero}",
+  "elev.play.arcade.coachSayGeneric": "בחרו עולם, גיבורים! כל הצלחה מחזקת את הגיבור/ה שלכם",
+  "elev.play.arcade.chooseWorld": "בחרו עולם",
+  "elev.play.arcade.soon": "בקרוב",
+  "elev.play.arcade.comingSoonAria": "{world}, {tag}, בקרוב",
+  // Pure interpolation — two slots and a comma, nothing to translate.
   "elev.play.arcade.worldAria": "{world}, {tag}", // GD-6
-  "elev.play.arcade.starsAria": "{n} of 3 stars", // GD-6
-  "elev.play.arcade.new": "NEW", // GD-6
-  "elev.play.arcade.gear": "Your hero gear", // GD-6
-  "elev.play.arcade.firstGear": "Play a world to earn {name}'s first gear.", // GD-6
-  "elev.play.arcade.firstGearGeneric": "Play a world to earn your child's first gear.", // GD-6
-  "elev.play.arcade.comic.title": "Make {name}'s comic!", // GD-6
-  "elev.play.arcade.comic.titleGeneric": "Make your comic!", // GD-6
-  "elev.play.arcade.comic.bodyHero": "Turn your hero into a comic page, ready to share with the family.", // GD-6
-  "elev.play.arcade.comic.bodyNoHero": "Create {name}'s hero, then star them in a shareable comic.", // GD-6
-  "elev.play.arcade.comic.ctaHero": "Create comic page", // GD-6
-  "elev.play.arcade.comic.ctaNoHero": "Create my hero", // GD-6
+  "elev.play.arcade.starsAria": "{n} מתוך 3 כוכבים",
+  "elev.play.arcade.new": "חדש",
+  "elev.play.arcade.gear": "הציוד של הגיבור/ה",
+  "elev.play.arcade.firstGear": "שחקו בעולם כדי לקבל את הציוד הראשון של {name}",
+  "elev.play.arcade.firstGearGeneric": "שחקו בעולם כדי לקבל את הציוד הראשון של הילד/ה",
+  "elev.play.arcade.comic.title": "מכינים קומיקס של {name}",
+  "elev.play.arcade.comic.titleGeneric": "מכינים את הקומיקס שלכם!",
+  "elev.play.arcade.comic.bodyHero": "הפכו את הגיבור/ה שלכם לדף קומיקס, מוכן לשיתוף עם המשפחה.",
+  "elev.play.arcade.comic.bodyNoHero": "צרו דמות גיבור/ה ל{name}, ואז היא תככב בקומיקס לשיתוף.",
+  "elev.play.arcade.comic.ctaHero": "יצירת דף קומיקס",
+  "elev.play.arcade.comic.ctaNoHero": "יצירת הגיבור/ה שלי",
 
-  "elev.play.cosmetic.sprout-frame.label": "Sprout", // GD-6
-  "elev.play.cosmetic.sprout-frame.req": "Try your first activity", // GD-6
-  "elev.play.cosmetic.explorer-badge.label": "Explorer", // GD-6
-  "elev.play.cosmetic.explorer-badge.req": "Play in 3 different areas", // GD-6
-  "elev.play.cosmetic.steady-title.label": "Steady", // GD-6
-  "elev.play.cosmetic.steady-title.req": "Practice on 3 different days", // GD-6
-  "elev.play.cosmetic.bloom-frame.label": "Bloom", // GD-6
-  "elev.play.cosmetic.bloom-frame.req": "Complete 10 activities", // GD-6
-  "elev.play.cosmetic.allrounder-badge.label": "All-rounder", // GD-6
-  "elev.play.cosmetic.allrounder-badge.req": "Play in all 5 areas", // GD-6
-  "elev.play.cosmetic.devoted-title.label": "Devoted", // GD-6
-  "elev.play.cosmetic.devoted-title.req": "Practice on 7 different days", // GD-6
-  "elev.play.cosmetic.star-frame.label": "Star", // GD-6
-  "elev.play.cosmetic.star-frame.req": "Complete 25 activities", // GD-6
-  "elev.play.cosmetic.tree-frame.label": "Mighty tree", // GD-6
-  "elev.play.cosmetic.tree-frame.req": "Complete 50 activities", // GD-6
+  "elev.play.cosmetic.sprout-frame.label": "ספראוט",
+  "elev.play.cosmetic.sprout-frame.req": "נסו את הפעילות הראשונה",
+  "elev.play.cosmetic.explorer-badge.label": "חוקר/ת",
+  "elev.play.cosmetic.explorer-badge.req": "שחקו בשלושה תחומים שונים",
+  "elev.play.cosmetic.steady-title.label": "מתמיד/ה",
+  "elev.play.cosmetic.steady-title.req": "שחקו בשלושה ימים שונים",
+  "elev.play.cosmetic.bloom-frame.label": "פריחה",
+  "elev.play.cosmetic.bloom-frame.req": "השלימו עשר פעילויות",
+  "elev.play.cosmetic.allrounder-badge.label": "כל התחומים",
+  "elev.play.cosmetic.allrounder-badge.req": "שחקו בכל חמשת התחומים",
+  "elev.play.cosmetic.devoted-title.label": "מסור/ה",
+  "elev.play.cosmetic.devoted-title.req": "שחקו בשבעה ימים שונים",
+  "elev.play.cosmetic.star-frame.label": "כוכב",
+  "elev.play.cosmetic.star-frame.req": "השלימו 25 פעילויות",
+  "elev.play.cosmetic.tree-frame.label": "עץ אדיר",
+  "elev.play.cosmetic.tree-frame.req": "השלימו 50 פעילויות",
 
+  // World NAMES stay EN in both maps until the arcade table itself localizes:
+  // HeroArcade's WORLDS entries are EN literals and the kid home tile is locked
+  // to them verbatim (kidMode.test.ts), so translating only the arrival header
+  // would break KID-4 honest navigation — the child would tap "Sound Lab" and
+  // land on a differently named screen.
   "elev.play.soundlab.title": "Sound Lab", // GD-6
-  "elev.play.soundlab.say": "Say it with me, {name}!", // GD-6
-  "elev.play.soundlab.pickSound": "Pick a sound", // GD-6
-  "elev.play.soundlab.soundAria": "Sound {sound}", // GD-6
-  "elev.play.soundlab.sayIt": "Say it together", // GD-6
-  "elev.play.soundlab.record": "Record", // GD-6
-  "elev.play.soundlab.stop": "Stop", // GD-6
-  "elev.play.soundlab.listen": "Listen back", // GD-6
-  "elev.play.soundlab.saved": "Saved!", // GD-6
+  "elev.play.soundlab.say": "{name}, בואו נגיד את זה ביחד!",
+  "elev.play.soundlab.pickSound": "בחרו צליל",
+  "elev.play.soundlab.soundAria": "צליל {sound}",
+  "elev.play.soundlab.sayIt": "אומרים ביחד",
+  "elev.play.soundlab.record": "הקלטה",
+  "elev.play.soundlab.stop": "עצירה",
+  "elev.play.soundlab.listen": "להאזין שוב",
+  "elev.play.soundlab.saved": "נשמר!",
   "elev.play.soundlab.micOff": "המיקרופון נח רגע. תגידו בקול רם, ואז בחרו איך זה הלך!",
 
   "elev.play.feelings.title": "Mood Mountain", // GD-6
-  "elev.play.feelings.say": "Let's find the feeling, {name}!", // GD-6
-  "elev.play.feelings.selfCheck": "How are you feeling right now, {name}?", // GD-6
-  "elev.play.feelings.next": "Next feeling", // GD-6
-  "elev.play.feelings.yes": "Yes! This looks like {feeling}.", // GD-6
-  "elev.play.feelings.retry": "Good try — it might be {feeling}. Let's make that face together.", // GD-6
+  "elev.play.feelings.say": "{name}, בואו נמצא את הרגש!",
+  "elev.play.feelings.selfCheck": "{name}, איך אתם מרגישים עכשיו?",
+  "elev.play.feelings.next": "הרגש הבא",
+  "elev.play.feelings.yes": "כן! זה נראה כמו {feeling}.",
+  "elev.play.feelings.retry": "ניסיון יפה — אולי זה {feeling}. בואו נעשה את הפרצוף הזה ביחד.",
 
-  "elev.play.adventures.done.sub": "{n} of {total} first-try answers. The End — keep this story!", // GD-6
+  "elev.play.adventures.done.sub": "{n} מתוך {total} תשובות בניסיון הראשון. הסוף — שמרו את הסיפור הזה!",
 
-  // W3 child controls — source English pending native Hebrew review (GD-6).
-  "elev.play.mimic.effortNote": "Every attempt counts — trying is the win.", // GD-6
-  "elev.play.mimic.round": "{pack} — round {current} of {total}", // GD-6
-  "elev.play.mimic.alreadyPlayed": "Already played — replays still count", // GD-6
-  "elev.play.mimic.mirrorOn": "Turn on mirror", // GD-6
-  "elev.play.mimic.mirrorOff": "Mirror off", // GD-6
-  "elev.play.mimic.tried": "Tried it!", // GD-6
-  "elev.play.mimic.close": "So close", // GD-6
-  "elev.play.mimic.nailed": "Nailed it ⭐", // GD-6
-  "elev.play.mimic.rated.nailed": "🎉 Amazing!", // GD-6
-  "elev.play.mimic.rated.close": "👏 Great try!", // GD-6
-  "elev.play.mimic.rated.tried": "💪 Trying is the win!", // GD-6
-  "elev.play.mimic.packComplete.title": "Pack complete!", // GD-6
-  "elev.play.mimic.packComplete.sub": "{name} played every round in {pack}. Pick another, or come back tomorrow.", // GD-6
-  "elev.play.mimic.playPack": "Play {pack}", // GD-6
-  "elev.play.mimic.stay": "Stay here", // GD-6
+  "elev.play.mimic.effortNote": "כל ניסיון נחשב — עצם הניסיון הוא ההצלחה.",
+  "elev.play.mimic.round": "{pack} — סיבוב {current} מתוך {total}",
+  "elev.play.mimic.alreadyPlayed": "כבר שיחקתם — גם משחק חוזר נחשב",
+  "elev.play.mimic.mirrorOn": "להדליק מראה",
+  "elev.play.mimic.mirrorOff": "לכבות מראה",
+  "elev.play.mimic.tried": "ניסינו!",
+  "elev.play.mimic.close": "כמעט",
+  "elev.play.mimic.nailed": "בול! ⭐",
+  "elev.play.mimic.rated.nailed": "🎉 מדהים!",
+  "elev.play.mimic.rated.close": "👏 ניסיון יפה!",
+  "elev.play.mimic.rated.tried": "💪 הניסיון הוא ההצלחה!",
+  "elev.play.mimic.packComplete.title": "סיימתם את הערכה!",
+  "elev.play.mimic.packComplete.sub": "{name} עבר/ה את כל הסיבובים ב{pack}. אפשר לבחור ערכה אחרת, או לחזור מחר.",
+  "elev.play.mimic.playPack": "לשחק ב{pack}",
+  "elev.play.mimic.stay": "להישאר כאן",
 
-  "elev.play.strip.kidTitle": "Stars this week", // GD-6
-  "elev.play.strip.starAria": "A star for {day}", // GD-6
+  "elev.play.strip.kidTitle": "כוכבים השבוע",
+  "elev.play.strip.starAria": "כוכב עבור {day}",
 
   "elev.play.beat.title": "Beat Keeper", // GD-6
-  "elev.play.beat.scoredAria": "Round finished", // GD-6
-  "elev.play.beat.tapAria": "Tap on the beat", // GD-6
-  "elev.play.beat.startAria": "Start the beat", // GD-6
-  "elev.play.beat.tap": "TAP!", // GD-6
-  "elev.play.beat.start": "START", // GD-6
-  "elev.play.beat.complete.title": "Right on beat, {name}!", // GD-6
-  "elev.play.beat.complete.sub": "Steady taps build focus and self-control.", // GD-6
-  "elev.play.beat.replay": "Play again", // GD-6
-  "elev.play.beat.feedback.nailed": "Wow, {name}, you nailed the beat!", // GD-6
-  "elev.play.beat.feedback.next": "Nice rhythm! Try the next tempo.", // GD-6
-  "elev.play.beat.feedback.keep": "Keep feeling the beat — you’ve got this!", // GD-6
-  "elev.play.beat.next": "Next tempo", // GD-6
-  "elev.play.beat.finish": "Finish", // GD-6
-  "elev.play.beat.support": "Timing, focus & self-regulation", // GD-6
+  "elev.play.beat.scoredAria": "הסיבוב הסתיים",
+  "elev.play.beat.tapAria": "הקישו לפי המקצב",
+  "elev.play.beat.startAria": "להתחיל את המקצב",
+  "elev.play.beat.tap": "הקישו!",
+  "elev.play.beat.start": "מתחילים",
+  "elev.play.beat.complete.title": "{name}, הייתם בדיוק בקצב!",
+  "elev.play.beat.complete.sub": "הקשות יציבות מחזקות ריכוז ושליטה עצמית.",
+  "elev.play.beat.replay": "לשחק שוב",
+  "elev.play.beat.feedback.nailed": "וואו {name}, פגעתם בדיוק במקצב!",
+  "elev.play.beat.feedback.next": "מקצב נהדר! נסו את הקצב הבא.",
+  "elev.play.beat.feedback.keep": "תמשיכו להרגיש את המקצב — אתם בדרך!",
+  "elev.play.beat.next": "הקצב הבא",
+  "elev.play.beat.finish": "לסיים",
+  "elev.play.beat.support": "תזמון, ריכוז וויסות עצמי",
 
   // ── Builder C ─────────────────────────────────────────────────────────
   "elev.play.hero.rest": "הסיפור נח עכשיו — בואו נבחר סיפור אחר!",
@@ -301,7 +315,7 @@ export const he: Record<string, string> = {
 
   // ── Builder H (object backlog wave 1, §3d)
   "elev.play.speak.label": "לשמוע",
-  "elev.play.pattern.title": "כוח התבניות",
+  "elev.play.pattern.title": "Pattern Power", // GD-6
   "elev.play.pattern.say": "מה בא עכשיו? הקישו על הצורה שמשלימה את התבנית.",
   "elev.play.pattern.done.title": "סיימתם את כל התבניות, {name}!",
   "elev.play.pattern.done.sub": "זו כל הערכה. ערכה חדשה של צורות מחכה לכם כשתחזרו.",

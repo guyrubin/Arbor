@@ -4533,10 +4533,13 @@ export const he: Dict = {
      native editorial certification Guy still owes this surface. A reviewer
      signs these off before release; the worklist stays
      docs/KID-MODE-HE-TRANSCREATION-TODO-GD-6.md.
-     PROPER NOUNS STAY EN: world names (kid.game.*.title) are locked verbatim
-     to the arcade by kidMode.test.ts, and kid.surface.* / kid.adv.*.title
-     label the destination the child arrives at, which still reads EN. They
-     localize when the arcade does. ════ */
+     ONE EXEMPTION REMAINS: the arcade WORLD names (kid.game.*.title). They
+     are EN literals in HeroArcade's WORLDS table and kidMode.test.ts locks
+     each tile to its world's name verbatim (KID-4 honest navigation), so a
+     tile cannot localize before the table does. Destination LABELS
+     (kid.surface.*, kid.adv.*.title) are not world names and were wrongly
+     exempted in round 2 — a Hebrew child reads them, so they are Hebrew.
+     ════ */
   "kid.greeting": "היי {name}!",
   "kid.greetingSub": "אתם מדהימים היום!",
   "kid.stars.aria": "{count} כוכבים שנאספו",
@@ -4558,14 +4561,14 @@ export const he: Dict = {
   "kid.games.seeAll": "כל המשחקים",
   "kid.back.home": "בית",
   "kid.back.homeAria": "חזרה לבית",
-  "kid.surface.journeys": "Hero Stories",
-  "kid.surface.arcade": "Playbank",
-  "kid.surface.feelings": "Feelings",
-  "kid.adv.playbank.title": "Playbank",
+  "kid.surface.journeys": "סיפורי גיבורים",
+  "kid.surface.arcade": "ארגז המשחקים",
+  "kid.surface.feelings": "רגשות",
+  "kid.adv.playbank.title": "ארגז המשחקים",
   "kid.adv.playbank.sub": "משחקים, לומדים וגדלים",
-  "kid.adv.hero.title": "Hero Stories",
+  "kid.adv.hero.title": "סיפורי גיבורים",
   "kid.adv.hero.sub": "אתם הכוכבים",
-  "kid.adv.feelings.title": "Feelings",
+  "kid.adv.feelings.title": "רגשות",
   "kid.adv.feelings.sub": "לגלות ולהבין",
   // KID-4: game tile titles are VERBATIM HeroArcade world names — the tile's
   // name is exactly what the child sees on the surface it opens (honest

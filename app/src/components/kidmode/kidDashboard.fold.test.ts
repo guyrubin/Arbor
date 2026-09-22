@@ -26,6 +26,7 @@ import {
   KID_HOME_SECTION_HEAD_BLOCK,
   KID_HOME_HEAD_GAP,
   KID_HOME_GAME_TILE_BLOCK,
+  KID_HOME_GAME_TILE_IMAGE_BLOCK,
   KID_HOME_ADVENTURE_TILE_BLOCK,
   KID_HOME_TILE_GAP,
   KID_HOME_GAME_TITLE_SIZE,
@@ -280,5 +281,47 @@ describe("U1 — one FEATURED hero above the fold, plus the greeting mark", () =
     expect(comicsTop).toBeGreaterThan(FOLD);
     const comics = dash.slice(dash.indexOf("Saved comics are a distinct"));
     expect((comics.match(/<HeroAvatar/g) ?? []).length).toBe(1);
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   P2-3 — every game tile shows the same amount of world.
+
+   Rendered at 390: Sound Lab's art box measured 128 px and Mood Mountain's
+   106 px in the SAME grid row, because the art row was `minmax(100px, 1fr)` and
+   a two-line title ate the difference. The art box is a constant now. The
+   arithmetic below proves the constant was chosen so the tallest title block
+   still fits inside KID_HOME_GAME_TILE_BLOCK — i.e. the fix does not move the
+   fold the rest of this file depends on.
+   ═══════════════════════════════════════════════════════════════════════════ */
+describe("P2-3 — the tile art box is constant, and the fold does not move", () => {
+  /** Title block: 11 px padding top and bottom (SceneTile), the title at its
+   *  390 px clamp floor with lineHeight 1.12, and the --t-sm sub line. */
+  const TILE_PAD = 11;
+  const TITLE_LINE = KID_HOME_GAME_TITLE_MIN_PX * 1.12;
+  const SUB_BLOCK = 13 * 1.4 + 1; // --t-sm at the default root size + its 1 px offset
+
+  it("the art row is a fixed length, not a 1fr remainder", () => {
+    expect(dash).toContain("`${KID_HOME_GAME_TILE_IMAGE_BLOCK}px auto`");
+    expect(dash, "the art row must not absorb what the title leaves").not.toContain('"minmax(100px, 1fr) auto"');
+    expect(dash).toContain("minBlockSize: big ? 60 : KID_HOME_GAME_TILE_IMAGE_BLOCK");
+  });
+
+  it("a two-line title still fits inside the tile block at 390 px", () => {
+    const titleBlock = TILE_PAD * 2 + TITLE_LINE * 2 + SUB_BLOCK;
+    const needed = KID_HOME_GAME_TILE_IMAGE_BLOCK + titleBlock;
+    expect(needed, `two-line tile needs ${needed.toFixed(1)} px`).toBeLessThanOrEqual(KID_HOME_GAME_TILE_BLOCK);
+  });
+
+  it("a one-line title leaves the art box untouched (the tile floor absorbs it)", () => {
+    const titleBlock = TILE_PAD * 2 + TITLE_LINE + SUB_BLOCK;
+    expect(KID_HOME_GAME_TILE_IMAGE_BLOCK + titleBlock).toBeLessThan(KID_HOME_GAME_TILE_BLOCK);
+  });
+
+  it("negative control — the old 1fr row gave the two titles different art heights", () => {
+    const oneLine = KID_HOME_GAME_TILE_BLOCK - (TILE_PAD * 2 + TITLE_LINE + SUB_BLOCK);
+    const twoLine = KID_HOME_GAME_TILE_BLOCK - (TILE_PAD * 2 + TITLE_LINE * 2 + SUB_BLOCK);
+    expect(Math.round(oneLine - twoLine), "the gap the render measured as 128 vs 106").toBe(Math.round(TITLE_LINE));
+    expect(oneLine).not.toBe(twoLine);
   });
 });

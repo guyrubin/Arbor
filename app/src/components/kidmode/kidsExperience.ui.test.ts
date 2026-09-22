@@ -77,6 +77,21 @@ describe("Kids experience visual and session contract", () => {
     for (const line of lines) for (const slot of ["{name}", "{pose}"]) expect(line).toContain(slot);
   });
 
+  it("P2-2 — Material ligature names never reach the accessibility tree", () => {
+    // The round-2 critic measured `mic`, `favorite`, `arrow_back` in innerText
+    // and concluded a screen-reader child hears "mic" before "Sound Lab".
+    // innerText is not the accessible text: `Icon` already sets
+    // aria-hidden="true" whenever it has no label (Icon.tsx:50), so the glyph is
+    // removed from the tree. The finding is closed at the primitive — this
+    // guard is what keeps it closed, because the default is one expression.
+    const icon = read("../ui/Icon.tsx");
+    expect(icon).toContain("aria-hidden={ariaLabel ? undefined : true}");
+    expect(icon).toContain('role={ariaLabel ? "img" : undefined}');
+    expect(icon).toContain("{name}");
+    // A labelled glyph must NOT also be hidden, or the label is unreachable.
+    expect(icon).toContain('aria-label={ariaLabel}');
+  });
+
   it("M1 — no other world silences its cameo; it is the only hero they have", () => {
     for (const file of ["SpeechCoachTab.tsx", "MimicStudioTab.tsx", "FeelingsLabTab.tsx", "AdventuresTab.tsx", "MindVaultWorld.tsx", "SpellForgeWorld.tsx", "BeatKeeperWorld.tsx", "PatternPowerWorld.tsx"]) {
       expect(read(`../practice/${file}`), file).not.toContain("heroDecorative");
