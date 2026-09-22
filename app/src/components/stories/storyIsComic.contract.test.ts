@@ -296,3 +296,19 @@ describe("M2 R2 — no TDZ window on the cover helpers", () => {
     expect(tab.indexOf("const coverPageArgs = ")).toBeLessThan(tab.indexOf("const drawCover = "));
   });
 });
+
+describe("M2 R3 — one book, one adventure id", () => {
+  it("beat keys are minted from the STORY id, never from the illustration seed", () => {
+    expect(player).toContain("storyId: storyId ?? seed,");
+    expect(player).not.toContain("storyId: seed,");
+    // the seed keeps its one job: the authored fallback illustration
+    expect(player).toContain("<StoryIllustration seed={seed}");
+  });
+
+  it("the reader passes the story id, and the child partition stays the profile id", () => {
+    expect(tab).toContain("storyId={activeStory.id}");
+    expect(tab).toContain("childIdentity={childProfile.id}");
+    // the cover is minted from the same story id (unchanged)
+    expect(tab).toContain("storyId: activeStory.id,");
+  });
+});

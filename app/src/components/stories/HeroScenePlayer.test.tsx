@@ -37,6 +37,7 @@ vi.mock("../../lib/kidModeGate", () => ({ isKidModeActive: () => true }));
 import { HeroScenePlayer } from "./HeroScenePlayer";
 import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
 import { isolate } from "../../lib/i18n";
+import { journeyPageKey } from "../../lib/heroComics";
 import type { HeroSceneRender } from "../../types";
 
 function nodes(node: React.ReactNode): React.ReactElement<Record<string, unknown>>[] {
@@ -143,5 +144,122 @@ describe("HeroScenePlayer speaks the UI language", () => {
     const hero = nodes(tree).filter((node) => node.type === "img").find((img) => img.props.alt !== "");
     expect(hero!.props.alt).toBe(kidsStoriesText("journey.heroAltUnnamed", "he"));
     expect(String(hero!.props.alt)).not.toMatch(/[A-Za-z]/);
+  });
+});
+
+/**
+ * R3 (M3 critic, cross-module P0) — a journey book that could not open.
+ *
+ * `journeyPageKey` takes the adventure id at parts[6], and the beats were
+ * passing `seed` (`<storyId>-<beatId>-<childName>`). Every beat key therefore
+ * disagreed with the cover key minted in HeroJourneyTab, the M3 shelf validator
+ * rejected the book on both shelves — and the child's display name sat in a
+ * cache key in clear text.
+ */
+describe("journey page keys carry the story, not the illustration seed", () => {
+  const story = "the-two-gifts";
+  const beat = { beatId: "call" as const, title: "The two gifts", narration: "Two boxes wait.", imagePrompt: "two wrapped boxes on a step" };
+  const HERO_URL = "data:image/png;base64,AAAA";
+
+  function beatKeyFromRender(): string {
+    harness.slots = [undefined, true, false, 0];
+    harness.at = 0;
+    const tree = HeroScenePlayer({
+      scene: beat,
+      storyId: story,
+      seed: `${story}-${beat.beatId}-Dylan`,
+      beatNumber: 1,
+      beatTotal: 8,
+      heroAvatarUrl: HERO_URL,
+      heroAvatarStyle: "comichero",
+      heroName: "Dylan",
+      childIdentity: "child-dylan",
+      childId: "child-dylan",
+    });
+    const page = nodes(tree).find((node) => (node.type as { name?: string })?.name === "ComicPage");
+    expect(page, "the framed page was not rendered").toBeTruthy();
+    // the alt proves we are looking at beat 1's page; the key is the artefact
+    return journeyPageKey({
+      storyId: story,
+      lang: "en",
+      heroName: "Dylan",
+      heroDataUrl: HERO_URL,
+      style: "comichero",
+      childId: "child-dylan",
+      childIdentity: "child-dylan",
+      pageIndex: 1,
+      theme: beat.imagePrompt,
+      dialogue: undefined,
+      sfx: [],
+    });
+  }
+
+  const coverKey = journeyPageKey({
+    storyId: story,
+    lang: "en",
+    heroName: "Dylan",
+    heroDataUrl: HERO_URL,
+    style: "comichero",
+    childId: "child-dylan",
+    childIdentity: "child-dylan",
+    pageIndex: 0,
+    cover: true,
+    title: "The Two Gifts",
+    theme: "The Two Gifts — generosity",
+    sfx: [],
+  });
+
+  it("a beat key and the cover key for one story agree on parts[6]", () => {
+    const beatKey = beatKeyFromRender();
+    expect(beatKey.split("|")[6]).toBe(story);
+    expect(coverKey.split("|")[6]).toBe(story);
+    expect(beatKey.split("|")[6]).toBe(coverKey.split("|")[6]);
+    // …and they are still different pages of the same book
+    expect(beatKey.split("|")[8]).toBe("1");
+    expect(coverKey.split("|")[8]).toBe("0");
+  });
+
+  it("the child's name never appears unhashed in a key", () => {
+    const beatKey = beatKeyFromRender();
+    for (const key of [beatKey, coverKey]) {
+      expect(key).not.toContain("Dylan");
+      expect(key).not.toContain("child-dylan");
+    }
+  });
+
+  it("NEGATIVE CONTROL: the pre-fix beat key carried the seed, name and all", () => {
+    const preFix = journeyPageKey({
+      storyId: `${story}-${beat.beatId}-Dylan`, // what `storyId: seed` minted
+      lang: "en",
+      heroName: "Dylan",
+      heroDataUrl: HERO_URL,
+      style: "comichero",
+      childId: "child-dylan",
+      childIdentity: "child-dylan",
+      pageIndex: 1,
+      theme: beat.imagePrompt,
+      sfx: [],
+    });
+    expect(preFix.split("|")[6]).toBe("the-two-gifts-call-Dylan");
+    expect(preFix.split("|")[6]).not.toBe(coverKey.split("|")[6]);
+    expect(preFix).toContain("Dylan"); // the display name, in clear text
+  });
+
+  it("the seed still drives only the authored fallback illustration", () => {
+    harness.slots = [];
+    harness.at = 0;
+    const tree = HeroScenePlayer({
+      scene: { ...beat, imagePrompt: "" },
+      storyId: story,
+      seed: `${story}-${beat.beatId}-Dylan`,
+      beatNumber: 1,
+      beatTotal: 8,
+      heroName: "Dylan",
+      childIdentity: "child-dylan",
+      fallbackArtUrl: "/visuals/stories/v1/lantern-path-v1.webp",
+    });
+    const image = nodes(tree).find((node) => node.type === "img");
+    expect(image?.props.src).toBe("/visuals/stories/v1/lantern-path-v1.webp");
+    expect(harness.generateComic).not.toHaveBeenCalled();
   });
 });

@@ -1295,6 +1295,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
             <motion.div key={`journey-beat-${displayScene.beatId}`}>
               <HeroScenePlayer
                 scene={displayScene}
+                storyId={activeStory.id}
                 seed={`${activeStory.id}-${displayScene.beatId}-${childProfile.name}`}
                 beatNumber={sceneIndex + 1}
                 beatTotal={activeStory.beats.length}

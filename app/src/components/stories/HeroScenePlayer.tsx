@@ -32,6 +32,7 @@ import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
 export function HeroScenePlayer({
   scene,
   seed,
+  storyId,
   beatNumber,
   beatTotal,
   photoUrl,
@@ -46,6 +47,17 @@ export function HeroScenePlayer({
 }: {
   scene: HeroSceneRender;
   seed: string;
+  /**
+   * R3 (M3 critic, cross-module P0): the story's OWN id. `seed` is
+   * `<storyId>-<beatId>-<childName>` — a per-beat illustration seed — and it
+   * was being minted into `journeyPageKey` as the adventure id, so parts[6] of
+   * every beat key read "the-two-gifts-call-Dylan" while the cover (minted in
+   * HeroJourneyTab) carried the real story id. The shelf validator requires
+   * parts[6] === adventureId, so every journey book failed to open. It also put
+   * the child's display name into a cache key unhashed.
+   * `seed` stays what it always was: the fallback illustration's seed.
+   */
+  storyId?: string;
   beatNumber: number;
   beatTotal: number;
   photoUrl?: string;
@@ -74,7 +86,7 @@ export function HeroScenePlayer({
   const effectiveStyle = heroAvatarStyle ?? "comichero";
   const pageArgs: JourneyPageArgs | undefined = heroAvatarUrl && scene.imagePrompt
     ? {
-        storyId: seed,
+        storyId: storyId ?? seed,
         lang: aiLang,
         heroName: heroName ?? "",
         heroDataUrl: heroAvatarUrl,
