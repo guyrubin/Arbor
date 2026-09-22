@@ -43,6 +43,7 @@ import * as fullpicture from "./fullpicture";
 import * as gate from "./gate";
 import * as growth from "./growth";
 import * as growthTruth from "./growthTruth";
+import * as heroCreate from "./heroCreate";
 import * as journal from "./journal";
 import * as kidRegister from "./kidRegister";
 import * as kidsExperience from "./kidsExperience";
@@ -101,6 +102,7 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   gate,
   growth,
   growthTruth,
+  heroCreate,
   journal,
   kidRegister,
   kidsExperience,
