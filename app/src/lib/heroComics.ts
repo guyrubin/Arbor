@@ -619,6 +619,44 @@ export interface JourneyPageArgs {
   lifetimeEpoch?: ComicPageEpoch;
 }
 
+/**
+ * R2 (22 Sep 2026) — a page that FAILED is not silently bought again.
+ *
+ * The reader remounts a beat on every page turn, and the art effect re-ran for
+ * a key that had just failed: one smudged page was requested FOUR times in a
+ * single sitting (critic M2 round 1). Generation failures are remembered for
+ * the session, keyed exactly as the page is, so a remount re-renders the
+ * smudged page from memory and only an explicit Redraw pays again.
+ *
+ * Session-scoped and never persisted — this is a cost guard, not storage, and
+ * the next session is always allowed to try. It sits at the spend seam rather
+ * than in one component, so every caller of generateJourneyPage is covered.
+ */
+const journeyPageFailures = new Set<string>();
+
+/** Thrown INSTEAD of a provider call, so the caller keeps the framed smudged
+ *  page it is already showing and nothing is charged. */
+export class JourneyPageFailedBeforeError extends Error {
+  constructor(key: string) {
+    super(`journey page already failed this session: ${key}`);
+    this.name = "JourneyPageFailedBeforeError";
+  }
+}
+
+export function hasJourneyPageFailed(key: string): boolean {
+  return journeyPageFailures.has(key);
+}
+
+/** Redraw — the ONLY thing that buys a failed page another attempt. */
+export function clearJourneyPageFailure(key: string): void {
+  journeyPageFailures.delete(key);
+}
+
+/** Test seam — the set is module state by design. */
+export function _resetJourneyPageFailures(): void {
+  journeyPageFailures.clear();
+}
+
 export function journeyPageKey(a: JourneyPageArgs): string {
   return comicGenerationKey({
     avatarOrHash: a.heroDataUrl,
@@ -638,21 +676,30 @@ export async function generateJourneyPage(a: JourneyPageArgs): Promise<{ key: st
   if (epoch && (!a.childId || epoch.childId !== a.childId)) throw new ComicGenerationCancelledError();
   requireCurrentEpoch(epoch);
   const key = journeyPageKey(a);
-  const url = await resolveComicPage({
-    key, childId: a.childId, pageEpoch: epoch,
-    request: () => api
-      .generateComic({
-        avatar: { dataUrl: a.heroDataUrl },
-        heroName: a.heroName,
-        theme: a.theme,
-        ...(a.cover ? { cover: true, title: a.title } : { dialogue: a.dialogue }),
-        sfx: a.sfx,
-        style: a.style,
-        pageIndex: a.pageIndex,
-      })
-      .then((r) => r.dataUrl),
-  });
-  return { key, url };
+  // R2: a key that already failed this session never reaches the provider.
+  if (journeyPageFailures.has(key)) throw new JourneyPageFailedBeforeError(key);
+  try {
+    const url = await resolveComicPage({
+      key, childId: a.childId, pageEpoch: epoch,
+      request: () => api
+        .generateComic({
+          avatar: { dataUrl: a.heroDataUrl },
+          heroName: a.heroName,
+          theme: a.theme,
+          ...(a.cover ? { cover: true, title: a.title } : { dialogue: a.dialogue }),
+          sfx: a.sfx,
+          style: a.style,
+          pageIndex: a.pageIndex,
+        })
+        .then((r) => r.dataUrl),
+    });
+    return { key, url };
+  } catch (error) {
+    // A cancelled job (the child's pages were erased) is not a failed page:
+    // recording it would deny the next legitimate request.
+    if (!(error instanceof ComicGenerationCancelledError)) journeyPageFailures.add(key);
+    throw error;
+  }
 }
 
 /** Build a whole book by generating pages sequentially, reporting each as it

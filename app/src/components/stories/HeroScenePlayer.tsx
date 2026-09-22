@@ -6,7 +6,7 @@ import { ComicPage } from "../ui/playkit";
 import { SpeakButton } from "../ui/SpeakButton";
 import { stopSpeaking } from "../../lib/tts";
 import type { AvatarStyle } from "../../lib/api";
-import { generateJourneyPage, journeyPageKey, type JourneyPageArgs } from "../../lib/heroComics";
+import { clearJourneyPageFailure, generateJourneyPage, hasJourneyPageFailed, journeyPageKey, type JourneyPageArgs } from "../../lib/heroComics";
 import { runInstrumented } from "../../hooks/useAsyncAction";
 import { ProvenanceBadge } from "../ui/ProvenanceBadge";
 import { useLanguage } from "../../context/LanguageContext";
@@ -107,6 +107,15 @@ export function HeroScenePlayer({
       setArtLoading(false);
       return;
     }
+    // R2: a page that already failed this session stays smudged on a remount.
+    // Back/Next remount this component, and the effect used to re-request a key
+    // that had just failed — the same page bought again on every page turn.
+    // Only Redraw (below) clears the key and pays for another attempt.
+    if (hasJourneyPageFailed(artRequestKey)) {
+      setArtLoading(false);
+      setArtError(true);
+      return;
+    }
     let active = true;
     setArtLoading(true);
     // G2: one page per beat through the shared comic pipeline — memory cache,
@@ -173,7 +182,7 @@ export function HeroScenePlayer({
             rtl={uiLang === "he"}
             contentFit="contain"
             onImageError={() => { setResolvedArt(undefined); setArtError(true); }}
-            onRetry={() => { setArtError(false); setRetryTick((n) => n + 1); }}
+            onRetry={() => { if (artRequestKey) clearJourneyPageFailure(artRequestKey); setArtError(false); setRetryTick((n) => n + 1); }}
             errorLabel={kidsStoriesText("page.smudged", aiLang)}
             retryLabel={kidsStoriesText("page.redraw", aiLang)}
             loadingLabel={kidsStoriesText("page.drawing", aiLang)}

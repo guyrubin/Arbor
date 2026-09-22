@@ -27,12 +27,16 @@ describe("HeroScenePlayer — one framed page per beat", () => {
   it("a failed page stays a framed ComicPage with a Redraw control and localized copy", () => {
     expect(player).toContain("(sceneArt || artLoading || artError) ? (");
     expect(player).toContain("error={!sceneArt && !artLoading && artError}");
-    expect(player).toContain("onRetry={() => { setArtError(false); setRetryTick((n) => n + 1); }}");
+    // R2: Redraw now CLEARS the session failure key before re-arming — the
+    // guard added below makes a retry the only thing that pays again.
+    expect(player).toContain("onRetry={() => { if (artRequestKey) clearJourneyPageFailure(artRequestKey); setArtError(false); setRetryTick((n) => n + 1); }}");
     expect(player).toContain('errorLabel={kidsStoriesText("page.smudged", aiLang)}');
     expect(player).toContain('retryLabel={kidsStoriesText("page.redraw", aiLang)}');
     // the effect re-arms on retry, and the failure never falls through to StoryIllustration
     expect(player).toContain("}, [artRequestKey, retryTick]);");
     expect(player).toContain(".catch(() => { if (active) setArtError(true); })");
+    // R2: and the key is remembered so a remount does not buy it again.
+    expect(player).toContain("if (hasJourneyPageFailed(artRequestKey)) {");
   });
 
   it("reports each resolved page key upward and passes the child partition to the device store", () => {
@@ -60,7 +64,9 @@ describe("HeroJourneyTab — cover, shelf save, child ending", () => {
 
   it("wires the scene player to the child's store and the page-key collector", () => {
     expect(tab).toContain("childId={childProfile.id}");
-    expect(tab).toContain("onPageResolved={({ beatNumber, key }) => comicPageKeys.current.set(beatNumber, key)}");
+    // R2: the collector still records the key and now also drives the shelf
+    // write, because the last page usually resolves after the child arrives.
+    expect(tab).toContain("onPageResolved={({ beatNumber, key }) => { comicPageKeys.current.set(beatNumber, key); void shelveWhenComplete(); }}");
   });
 
   it("tells the child their comic is on the shelf, in the kid register only", () => {
@@ -91,12 +97,15 @@ describe("M2 — the cover is the opening page of the book", () => {
   });
 
   it("presents it with the shared ComicPage primitive, unnumbered", () => {
-    expect(tab).toContain('import { ComicPage, MascotSay, PlayButton, PlayPanel } from "../ui/playkit";');
+    expect(tab).toContain('import { ComicPage, MascotSay, PlayButton, PlayPanel, usePrefersReducedMotion } from "../ui/playkit";');
     expect(tab).toContain("const coverPage = (immersiveMode: boolean) => (");
     expect(tab).toContain('key="journey-cover"');
     expect(tab).toContain("src={coverArt.url}");
-    expect(tab).toContain("{onCover && coverPage(immersiveMode)}");
-    expect(tab).toContain("{!onCover && displayScene && (");
+    // R2: cover and beat are the two presence states of one animated slot, so
+    // the cover flips OUT before beat 1 flips in (round 1 simply unmounted it).
+    expect(tab).toContain("{onCover ? (");
+    expect(tab).toContain("{coverPage(immersiveMode)}");
+    expect(tab).toContain(") : displayScene ? (");
     // the cover is not a numbered page — ComicPage only badges pageNumber > 0
     expect(tab).not.toContain("pageNumber={0}");
   });
@@ -174,5 +183,116 @@ describe("M2 — the reader speaks the UI language", () => {
     for (const key of ["journey.cover", "journey.coverAlt", "journey.pageAlt", "journey.heroAlt", "journey.heroAltUnnamed"]) {
       expect(dict.match(new RegExp(`"${key.replace(".", "\.")}":`, "g")) || [], key).toHaveLength(2);
     }
+  });
+});
+
+/**
+ * M2 round 2 — what the critic failed on round 1 (d5d3044).
+ *
+ * The biggest one was not a pixel: shelving hung off the Finish button, and a
+ * story that already has a run HAS no Finish button. A child re-reading their
+ * favourite story read cover + eight pages, was told the story was saved, and
+ * `savedComics` stayed empty.
+ */
+describe("M2 R2 — reading the book to its end is what shelves it", () => {
+  it("the ending shelves the comic, Finish button or not", () => {
+    expect(tab).toContain("const shelveWhenComplete = async () => {");
+    expect(tab).toContain("if (!reachedEnding.current || comicSavedRef.current || shelvingRef.current) return;");
+    // armed by arriving at the last beat…
+    expect(tab).toContain("if (!isReflection || !activeStory || !render) return;");
+    expect(tab).toContain("reachedEnding.current = true;");
+    // …and retried as the last pages resolve
+    expect(tab).toContain("void shelveWhenComplete(); }}");
+  });
+
+  it("stays idempotent and still refuses an incomplete book", () => {
+    expect(tab).toContain("shelvingRef.current = true;");
+    expect(tab).toContain("if (keys.length !== expected) return;");
+    // the bounded cover retry is once per STORY now that the attempt repeats
+    expect(tab).toContain("if (coverRetried.current) return;");
+    expect(tab).toContain("coverRetried.current = false;");
+  });
+
+  it("the ending claims only what happened", () => {
+    // the comic line is gated on the shelf state, never on `saved` (the run)
+    expect(tab).toContain('{comicSaved && <p className="text-sm font-black"');
+    expect(tab).not.toMatch(/toast\([^)]*comicSaved/);
+  });
+});
+
+describe("M2 R2 — a smudged page is bought once, not once per page turn", () => {
+  const comics = read("lib/heroComics.ts");
+
+  it("the guard sits at the spend seam, so every caller is covered", () => {
+    expect(comics).toContain("const journeyPageFailures = new Set<string>();");
+    expect(comics).toContain("if (journeyPageFailures.has(key)) throw new JourneyPageFailedBeforeError(key);");
+    expect(comics).toContain("if (!(error instanceof ComicGenerationCancelledError)) journeyPageFailures.add(key);");
+    expect(comics).toContain("export function clearJourneyPageFailure(key: string): void {");
+    // session-scoped only: a failure is never written to a device store
+    expect(comics).not.toMatch(/putComicPage\([^)]*journeyPageFailures/);
+  });
+
+  it("only a deliberate request clears a failed key", () => {
+    expect(player).toContain("clearJourneyPageFailure(artRequestKey)");
+    // the cover's story-start/Redraw path and the one bounded finish retry
+    expect((tab.match(/clearJourneyPageFailure\(/g) || []).length).toBe(2);
+  });
+});
+
+describe("M2 R2 — the cover reads as a cover", () => {
+  it("prints 'Cover' once: the nav counter, not a second eyebrow", () => {
+    expect((tab.match(/kidsStoriesText\("journey\.cover", aiLang\)/g) || []).length).toBe(1);
+  });
+
+  it("lets the lettered art carry the title, keeping the text title as the fallback", () => {
+    expect(tab).toContain("{!coverArt.url && (\n        <h3");
+    expect(tab).toContain('alt={kidsStoriesText("journey.coverAlt", aiLang, { title: render.title || activeStory.title })}');
+  });
+
+  it("puts the hero on the front page, the same cameo the beats carry", () => {
+    const cover = tab.slice(tab.indexOf("const coverPage = (immersiveMode: boolean)"), tab.indexOf("const playerBody = (immersiveMode: boolean)"));
+    expect(cover).toContain("{heroAvatarUrl && (");
+    expect(cover).toContain('insetInlineStart: "5%"');
+    expect(cover).toContain('outline: "2px solid var(--comic-ink)"');
+    expect(cover).toContain('kidsStoriesText("journey.heroAlt", aiLang, { name: isolate(heroName, aiLang) })');
+    // the beats' cameo is the pattern being reused
+    expect(player).toContain('insetInlineStart: "5%"');
+  });
+
+  it("turns the page off the cover instead of vanishing it", () => {
+    expect(tab).toContain('<AnimatePresence mode="wait" initial={false}>');
+    expect(tab).toContain('key="journey-cover"');
+    expect(tab).toContain("key={`journey-beat-${displayScene.beatId}`}");
+    // reduced motion collapses the flip, as the shared primitive does
+    expect(tab).toContain("const reducedMotion = usePrefersReducedMotion();");
+    expect(tab).toContain("exit={reducedMotion");
+    expect(tab).toContain('transformOrigin: uiLang === "he" ? "right center" : "left center"');
+  });
+});
+
+describe("M2 R2 — the reader's own controls clear the touch floor", () => {
+  it("Immersive is 44 wide as well as 44 tall at 390", () => {
+    const imm = tab.split("<button").slice(1).find((chunk) => chunk.includes("immersiveTriggerRef"))!;
+    expect(imm).toContain("min-h-[44px]");
+    expect(imm).toContain('minWidth: "var(--touch-min)"');
+    expect(imm).toContain("justify-center");
+    // the icon-only mobile treatment survives
+    expect(imm).toContain('className="hidden sm:inline"');
+  });
+
+  it("the ending reflection toggles clear 44 in both registers", () => {
+    expect(tab).toContain('className="w-full text-start p-2.5 min-h-[44px] rounded-xl transition flex items-start gap-2"');
+    expect(tab).toContain('className="w-full rounded-xl p-3 min-h-[44px] text-start"');
+  });
+
+  it("NEGATIVE CONTROL: the pre-fix controls are what the rules reject", () => {
+    expect('className="inline-flex items-center gap-1.5 text-sm font-bold px-2 min-h-[44px]"').not.toContain("minWidth");
+    expect('className="w-full text-start p-2.5 rounded-xl transition flex items-start gap-2"').not.toContain("min-h-[44px]");
+  });
+});
+
+describe("M2 R2 — no TDZ window on the cover helpers", () => {
+  it("coverPageArgs is declared before its only caller", () => {
+    expect(tab.indexOf("const coverPageArgs = ")).toBeLessThan(tab.indexOf("const drawCover = "));
   });
 });

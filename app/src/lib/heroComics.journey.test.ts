@@ -16,7 +16,7 @@ vi.mock("./api", async (importOriginal) => ({
   api: { generateComic: (...a: unknown[]) => generateComic(...a) },
 }));
 
-import { ADVENTURES, STORY_COMIC, generateJourneyPage, getAdventure, journeyAdventure, journeyPageKey, type JourneyPageArgs } from "./heroComics";
+import { ADVENTURES, STORY_COMIC, JourneyPageFailedBeforeError, _resetJourneyPageFailures, clearJourneyPageFailure, generateJourneyPage, getAdventure, hasJourneyPageFailed, journeyAdventure, journeyPageKey, type JourneyPageArgs } from "./heroComics";
 import { HERO_STORIES } from "./heroJourneys";
 import { _resetSceneCache } from "./sceneCache";
 import { _resetComicPageStore, _setComicPageBackend, type ComicPageBackend, type ComicPageRecord } from "./comicPageStore";
@@ -58,6 +58,7 @@ beforeEach(() => {
   _resetComicPageStore(); // forgets the backend — inject ours AFTER the reset
   _setComicPageBackend(mem.backend);
   _resetSceneCache();
+  _resetJourneyPageFailures();
   generateComic.mockReset();
 });
 afterEach(() => { _setComicPageBackend(null); });
@@ -107,9 +108,14 @@ describe("journey pages — one pipeline, keyed apart from books", () => {
     expect(journey).not.toContain("|book|");
   });
 
+  // R2 (22 Sep 2026) — DELIBERATE CONTRACT CHANGE. A failure is still never
+  // cached AS A PAGE, so a Redraw regenerates. What changed is that the retry
+  // must be ASKED for: an automatic re-request on the next mount was paying for
+  // the same smudged page on every page turn (critic M2 round 1, P2).
   it("a failed page is not cached, so a Redraw request calls the provider again", async () => {
     generateComic.mockRejectedValueOnce(new Error("503 busy")).mockResolvedValueOnce({ dataUrl: "data:image/png;base64,UEFHRQ==" });
     await expect(generateJourneyPage(args())).rejects.toThrow(/busy/);
+    clearJourneyPageFailure(journeyPageKey(args())); // the child taps Redraw
     const { url } = await generateJourneyPage(args());
     expect(url).toBe("data:image/png;base64,UEFHRQ==");
     expect(generateComic).toHaveBeenCalledTimes(2);
@@ -131,5 +137,83 @@ describe("every catalog story can be shelved", () => {
   it("authored adventures keep their viral copy (the fallback never shadows them)", () => {
     const authored = ADVENTURES[0];
     expect(getAdventure(authored.id)?.copy).toBe(authored.copy);
+  });
+});
+
+/**
+ * R2 (critic M2 round 1, P2) — a smudged page cost money on every page turn.
+ *
+ * The reader remounts a beat whenever the child turns back or forward, and the
+ * art effect re-requested a key that had just failed: `pageIndex:1` was logged
+ * FOUR times in one sitting. A failed key is now remembered for the session at
+ * the spend seam, so the remount re-renders the smudged page for free and only
+ * an explicit Redraw pays again.
+ */
+describe("a page that failed is bought once, not once per page turn", () => {
+  it("two mounts, one failure, ONE provider call", async () => {
+    generateComic.mockRejectedValue(new Error("provider 503"));
+    const a = args();
+
+    // mount 1 — the page is requested and fails
+    await expect(generateJourneyPage(a)).rejects.toThrow("provider 503");
+    expect(generateComic).toHaveBeenCalledTimes(1);
+    expect(hasJourneyPageFailed(journeyPageKey(a))).toBe(true);
+
+    // mount 2 (Back then Next) — the same key is NOT requested again
+    await expect(generateJourneyPage(a)).rejects.toBeInstanceOf(JourneyPageFailedBeforeError);
+    expect(generateComic).toHaveBeenCalledTimes(1);
+
+    // …and a third turn is still free
+    await expect(generateJourneyPage(a)).rejects.toBeInstanceOf(JourneyPageFailedBeforeError);
+    expect(generateComic).toHaveBeenCalledTimes(1);
+  });
+
+  it("Redraw is the one thing that buys another attempt", async () => {
+    generateComic.mockRejectedValue(new Error("provider 503"));
+    const a = args();
+    await expect(generateJourneyPage(a)).rejects.toThrow("provider 503");
+    expect(generateComic).toHaveBeenCalledTimes(1);
+
+    clearJourneyPageFailure(journeyPageKey(a)); // the child taps Redraw
+    expect(hasJourneyPageFailed(journeyPageKey(a))).toBe(false);
+    generateComic.mockResolvedValue({ dataUrl: "data:image/png;base64,UEFHRQ==" });
+    const { url } = await generateJourneyPage(a);
+    expect(url).toBe("data:image/png;base64,UEFHRQ==");
+    expect(generateComic).toHaveBeenCalledTimes(2);
+
+    // the page is cached now, so turning back to it is free again
+    await generateJourneyPage(a);
+    expect(generateComic).toHaveBeenCalledTimes(2);
+  });
+
+  it("the guard is per PAGE — a sibling beat is unaffected", async () => {
+    generateComic.mockRejectedValue(new Error("provider 503"));
+    await expect(generateJourneyPage(args({ pageIndex: 1 }))).rejects.toThrow("provider 503");
+    generateComic.mockResolvedValue({ dataUrl: "data:image/png;base64,UEFHRQ==" });
+    const two = await generateJourneyPage(args({ pageIndex: 2, theme: "the gate opens" }));
+    expect(two.url).toBe("data:image/png;base64,UEFHRQ==");
+    expect(generateComic).toHaveBeenCalledTimes(2);
+    // the failed sibling is still remembered
+    expect(hasJourneyPageFailed(journeyPageKey(args({ pageIndex: 1 })))).toBe(true);
+  });
+
+  it("is session-scoped: a fresh session may try the page again", async () => {
+    generateComic.mockRejectedValue(new Error("provider 503"));
+    const a = args();
+    await expect(generateJourneyPage(a)).rejects.toThrow("provider 503");
+    _resetJourneyPageFailures(); // a new session starts with a clean set
+    generateComic.mockResolvedValue({ dataUrl: "data:image/png;base64,UEFHRQ==" });
+    await generateJourneyPage(a);
+    expect(generateComic).toHaveBeenCalledTimes(2);
+  });
+
+  it("NEGATIVE CONTROL: without the guard the same key is requested on every mount", async () => {
+    generateComic.mockRejectedValue(new Error("provider 503"));
+    const a = args();
+    for (let mount = 0; mount < 3; mount++) {
+      clearJourneyPageFailure(journeyPageKey(a)); // simulates the pre-fix effect
+      await expect(generateJourneyPage(a)).rejects.toThrow("provider 503");
+    }
+    expect(generateComic).toHaveBeenCalledTimes(3); // what the critic measured
   });
 });

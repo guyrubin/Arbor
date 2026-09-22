@@ -38,10 +38,10 @@ import { ageMonthsFromProfile } from "../../lib/childAge";
 import { track } from "../../lib/analytics";
 import { HeroScenePlayer } from "../stories/HeroScenePlayer";
 import { ProvenanceBadge } from "../ui/ProvenanceBadge";
-import { generateJourneyPage, toSavedComicMeta, type SavedComicMeta } from "../../lib/heroComics";
+import { clearJourneyPageFailure, generateJourneyPage, journeyPageKey, toSavedComicMeta, type SavedComicMeta } from "../../lib/heroComics";
 import { useKidSafeNav } from "../kidmode/useKidSafeNav";
 import { isKidModeActive, noteKidActivity, subscribeKidMode } from "../../lib/kidModeGate";
-import { ComicPage, MascotSay, PlayButton, PlayPanel } from "../ui/playkit";
+import { ComicPage, MascotSay, PlayButton, PlayPanel, usePrefersReducedMotion } from "../ui/playkit";
 import { EmptyState } from "../ui/EmptyState";
 import { SectionSkeleton } from "../ui/Skeleton";
 import { statesText } from "../../lib/i18nElevation/states";
@@ -193,6 +193,12 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
   const [coverArt, setCoverArt] = useState<{ url?: string; loading: boolean; error: boolean }>({ loading: false, error: false });
   const [onCover, setOnCover] = useState(false);
   const coverRun = useRef(0);
+  // R2: the shelf entry belongs to reading the book to its end, not to the
+  // Finish button (a re-read has none). These three keep that idempotent.
+  const reducedMotion = usePrefersReducedMotion();
+  const reachedEnding = useRef(false);
+  const shelvingRef = useRef(false);
+  const coverRetried = useRef(false);
   const photoUrl = (childProfile as unknown as { photoUrl?: string }).photoUrl;
   // AVA-3: use a generated stylized character (a data-URL avatar) as the story hero —
   // never a raw face photo or a remote URL — so scenes stay consistent and privacy-safe.
@@ -315,39 +321,9 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
     setSceneIndex((i) => Math.min(scenes.length - 1, i + 1));
   };
 
-  // G2: the cover page (index 0) is drawn once per story start; the queue
-  // (sceneCache MAX_CONCURRENT) keeps it behind the first beat's page.
-  // M2: the SAME call now also feeds the reader's opening page — one
-  // generation path (generateJourneyPage / journeyPageKey), never a second.
-  // `Redraw` on the cover re-enters here rather than through an effect dep, so
-  // a retry costs exactly one call and the story-start effect stays keyed to
-  // the story.
-  const drawCover = () => {
-    const cover = coverPageArgs();
-    if (!cover) return;
-    const run = ++coverRun.current;
-    setCoverArt({ loading: true, error: false });
-    generateJourneyPage(cover)
-      .then(({ key, url }) => {
-        comicPageKeys.current.set(0, key);
-        if (coverRun.current === run) setCoverArt({ url, loading: false, error: false });
-      })
-      .catch(() => { if (coverRun.current === run) setCoverArt({ loading: false, error: true }); });
-  };
-
-  useEffect(() => {
-    comicPageKeys.current = new Map();
-    markComicSaved(false);
-    coverRun.current += 1;
-    setCoverArt({ loading: false, error: false });
-    // With a hero the book opens on its cover; without one there is no cover to
-    // show and the reader opens on beat 1 exactly as before.
-    setOnCover(Boolean(activeStory && render && heroAvatarUrl));
-    if (!activeStory || !render || !heroAvatarUrl) return;
-    drawCover();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeStory?.id, heroAvatarUrl, aiLang]);
-
+  // R2 (critic P2): declared ABOVE its only caller. `drawCover` closed over a
+  // const declared 26 lines later — safe while the only call sites were an
+  // effect and an onRetry, one synchronous call away from a TDZ white screen.
   const coverPageArgs = () => activeStory && render && heroAvatarUrl ? {
     storyId: activeStory.id,
     lang: aiLang,
@@ -363,14 +339,59 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
     sfx: [] as string[],
   } : undefined;
 
+  // G2: the cover page (index 0) is drawn once per story start; the queue
+  // (sceneCache MAX_CONCURRENT) keeps it behind the first beat's page.
+  // M2: the SAME call now also feeds the reader's opening page — one
+  // generation path (generateJourneyPage / journeyPageKey), never a second.
+  // `Redraw` on the cover re-enters here rather than through an effect dep, so
+  // a retry costs exactly one call and the story-start effect stays keyed to
+  // the story.
+  const drawCover = () => {
+    const cover = coverPageArgs();
+    if (!cover) return;
+    // Story start and Redraw are both deliberate requests; the session failure
+    // guard only suppresses the automatic re-requests a remount would make.
+    clearJourneyPageFailure(journeyPageKey(cover));
+    const run = ++coverRun.current;
+    setCoverArt({ loading: true, error: false });
+    generateJourneyPage(cover)
+      .then(({ key, url }) => {
+        comicPageKeys.current.set(0, key);
+        if (coverRun.current === run) setCoverArt({ url, loading: false, error: false });
+      })
+      .catch(() => { if (coverRun.current === run) setCoverArt({ loading: false, error: true }); });
+  };
+
+  useEffect(() => {
+    comicPageKeys.current = new Map();
+    markComicSaved(false);
+    coverRun.current += 1;
+    reachedEnding.current = false;
+    coverRetried.current = false;
+    setCoverArt({ loading: false, error: false });
+    // With a hero the book opens on its cover; without one there is no cover to
+    // show and the reader opens on beat 1 exactly as before.
+    setOnCover(Boolean(activeStory && render && heroAvatarUrl));
+    if (!activeStory || !render || !heroAvatarUrl) return;
+    drawCover();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeStory?.id, heroAvatarUrl, aiLang]);
+
   const saveStoryAsComic = async () => {
     if (!activeStory || !render || !heroAvatarUrl) return;
     const expected = 1 + scenes.filter((scene) => scene.imagePrompt).length;
     // A cover that failed at story start gets ONE more try at the end (bounded:
     // one call), so a single busy moment does not cost the child their book.
     if (!comicPageKeys.current.has(0)) {
+      // R2: the shelf attempt now runs on the ending as well as on Finish, so
+      // the "one more try" is bounded per STORY, not per attempt.
+      if (coverRetried.current) return;
+      coverRetried.current = true;
       const cover = coverPageArgs();
-      if (cover) await generateJourneyPage(cover).then(({ key }) => comicPageKeys.current.set(0, key)).catch(() => {});
+      if (cover) {
+        clearJourneyPageFailure(journeyPageKey(cover));
+        await generateJourneyPage(cover).then(({ key }) => comicPageKeys.current.set(0, key)).catch(() => {});
+      }
     }
     const keys = [...comicPageKeys.current.entries()].sort((a, b) => a[0] - b[0]).map(([, key]) => key);
     if (keys.length !== expected) return; // incomplete art → no shelf entry (never a book that cannot open)
@@ -384,6 +405,25 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
       pageKeys: keys,
     }));
     markComicSaved(true);
+  };
+
+  /**
+   * R2 (critic FAIL — the re-read path). Shelving hung off the Finish button,
+   * and a story that already has a run has no Finish button (`saved` is true
+   * from `replay`). The child read the cover and all eight pages, the ending
+   * claimed the story was saved, and `savedComics` stayed empty.
+   *
+   * The shelf entry now belongs to READING the book to its end: once the last
+   * beat is on screen and the cover + every illustrated beat has resolved, the
+   * book is shelved exactly once. Idempotent (`comicSavedRef` + an in-flight
+   * guard) and still refuses an incomplete page set, so no book that cannot
+   * open ever reaches the shelf.
+   */
+  const shelveWhenComplete = async () => {
+    if (!reachedEnding.current || comicSavedRef.current || shelvingRef.current) return;
+    shelvingRef.current = true;
+    try { await saveStoryAsComic(); } catch { /* best-effort: the run itself is saved */ }
+    finally { shelvingRef.current = false; }
   };
 
   const finishJourney = async () => {
@@ -428,6 +468,16 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
       setFinishing(false);
     }
   };
+
+  // R2: reaching the last beat IS "finished reading". The attempt repeats from
+  // `onPageResolved` because the last page is usually still drawing when the
+  // child gets here; both paths funnel through the same idempotent writer.
+  useEffect(() => {
+    if (!isReflection || !activeStory || !render) return;
+    reachedEnding.current = true;
+    void shelveWhenComplete();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isReflection, activeStory?.id]);
 
   const replay = (run: HeroJourneyRun) => {
     const story = getStorySpec(run.storyId);
@@ -1166,12 +1216,12 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
   // drawing, smudged, or read by a screen reader.
   const coverPage = (immersiveMode: boolean) => (
     <div className="flex flex-col items-center text-center gap-5">
-      <span className="text-[11px] uppercase tracking-widest font-bold" style={{ color: "var(--arbor-green-ink)" }}>
-        {kidsStoriesText("journey.cover", aiLang)}
-      </span>
-      <AnimatePresence mode="wait">
+      {/* R2 (critic P0/P1): no "COVER" eyebrow. The nav counter already says
+          Cover, and the model letters the title INTO the art — a second grey
+          label above an untitled-looking picture is what stopped this reading
+          as a cover. */}
+      <div className="relative w-full max-w-3xl mx-auto">
         <ComicPage
-          key="journey-cover"
           src={coverArt.url}
           alt={kidsStoriesText("journey.coverAlt", aiLang, { title: render.title || activeStory.title })}
           loading={!coverArt.url && coverArt.loading}
@@ -1184,40 +1234,84 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
           retryLabel={kidsStoriesText("page.redraw", aiLang)}
           loadingLabel={kidsStoriesText("page.drawing", aiLang)}
         />
-      </AnimatePresence>
+        {/* R2 (critic P1): the front page is the one whose job is "this book is
+            about you", and it was the only page without the child. Same cameo
+            strip the beats carry (HeroScenePlayer), over the cover frame. */}
+        {heroAvatarUrl && (
+          <div
+            className="absolute bottom-2 h-[38%] max-h-40 rounded-2xl p-1"
+            style={{ insetInlineStart: "5%", background: "var(--arbor-paper-elevated)", outline: "2px solid var(--comic-ink)", boxShadow: "var(--comic-pop)" }}
+          >
+            <img
+              src={heroAvatarUrl}
+              alt={heroName
+                ? kidsStoriesText("journey.heroAlt", aiLang, { name: isolate(heroName, aiLang) })
+                : kidsStoriesText("journey.heroAltUnnamed", aiLang)}
+              className="h-full w-auto rounded-xl object-contain"
+            />
+          </div>
+        )}
+      </div>
       {/* S4: the badge labels GENERATED art only — a cover that is still
           drawing or smudged has no art to attribute. */}
       {coverArt.url && <ProvenanceBadge lang={uiLang === "he" ? "he" : "en"} className="-mt-2" />}
-      <h3
-        dir="auto"
-        className={`font-extrabold tracking-tight ${immersiveMode ? "text-xl" : "text-lg"}`}
-        style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display), Georgia, serif" }}
-      >
-        {render.title || activeStory.title}
-      </h3>
+      {/* R2 (critic P0): the lettered art carries the title. The text title is
+          the FALLBACK — it renders only while there is no art to letter it
+          (drawing / smudged), and the alt text carries it for a screen reader. */}
+      {!coverArt.url && (
+        <h3
+          dir="auto"
+          className={`font-extrabold tracking-tight ${immersiveMode ? "text-xl" : "text-lg"}`}
+          style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display), Georgia, serif" }}
+        >
+          {render.title || activeStory.title}
+        </h3>
+      )}
     </div>
   );
 
+  // R2 (critic G2): the turn off the cover. AnimatePresence wrapped ONE static
+  // key before, so nothing animated — the cover simply vanished. Cover and beat
+  // are now the two presence states of the same slot: `mode="wait"` plays the
+  // cover's flip-out to completion, then beat 1 mounts and ComicPage plays its
+  // own flip-in. Reduced motion collapses both to a cross-fade, exactly as the
+  // shared primitive does.
   const playerBody = (immersiveMode: boolean) => (
     <div className="space-y-6">
-      {onCover && coverPage(immersiveMode)}
-      {!onCover && displayScene && (
-        <HeroScenePlayer
-          scene={displayScene}
-          seed={`${activeStory.id}-${displayScene.beatId}-${childProfile.name}`}
-          beatNumber={sceneIndex + 1}
-          beatTotal={activeStory.beats.length}
-          photoUrl={photoUrl}
-          heroAvatarUrl={heroAvatarUrl}
-          heroAvatarStyle={heroAvatarStyle}
-          heroName={childProfile.name?.split(" ")[0]}
-          childIdentity={childProfile.id}
-          childId={childProfile.id}
-          onPageResolved={({ beatNumber, key }) => comicPageKeys.current.set(beatNumber, key)}
-          immersive={immersiveMode}
-          fallbackArtUrl={STORY_ART[activeStory.id]?.src}
-        />
-      )}
+      <div style={reducedMotion ? undefined : { perspective: 1600 }}>
+        <AnimatePresence mode="wait" initial={false}>
+          {onCover ? (
+            <motion.div
+              key="journey-cover"
+              exit={reducedMotion
+                ? { opacity: 0 }
+                : { opacity: 0, rotateY: uiLang === "he" ? -16 : 16, x: uiLang === "he" ? 28 : -28 }}
+              transition={{ duration: reducedMotion ? 0.2 : 0.42, ease: [0.22, 1, 0.36, 1] }}
+              style={{ transformOrigin: uiLang === "he" ? "right center" : "left center" }}
+            >
+              {coverPage(immersiveMode)}
+            </motion.div>
+          ) : displayScene ? (
+            <motion.div key={`journey-beat-${displayScene.beatId}`}>
+              <HeroScenePlayer
+                scene={displayScene}
+                seed={`${activeStory.id}-${displayScene.beatId}-${childProfile.name}`}
+                beatNumber={sceneIndex + 1}
+                beatTotal={activeStory.beats.length}
+                photoUrl={photoUrl}
+                heroAvatarUrl={heroAvatarUrl}
+                heroAvatarStyle={heroAvatarStyle}
+                heroName={childProfile.name?.split(" ")[0]}
+                childIdentity={childProfile.id}
+                childId={childProfile.id}
+                onPageResolved={({ beatNumber, key }) => { comicPageKeys.current.set(beatNumber, key); void shelveWhenComplete(); }}
+                immersive={immersiveMode}
+                fallbackArtUrl={STORY_ART[activeStory.id]?.src}
+              />
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+      </div>
 
       {!onCover && renderChoices()}
 
@@ -1234,7 +1328,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                   type="button"
                   aria-expanded={Boolean(questionsChecked[0])}
                   onClick={() => setQuestionsChecked((state) => ({ ...state, 0: !state[0] }))}
-                  className="w-full rounded-xl p-3 text-start"
+                  className="w-full rounded-xl p-3 min-h-[44px] text-start"
                   style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
                 >
                   <span className="block text-xs font-black">{kidsStoriesText("journey.childReflection", aiLang)}</span>
@@ -1270,7 +1364,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                   <button
                     key={i}
                     onClick={() => setQuestionsChecked((state) => ({ ...state, [i]: !state[i] }))}
-                    className="w-full text-start p-2.5 rounded-xl transition flex items-start gap-2"
+                    className="w-full text-start p-2.5 min-h-[44px] rounded-xl transition flex items-start gap-2"
                     style={questionsChecked[i]
                       ? { background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.30)", color: "var(--arbor-green-ink)" }
                       : { background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
@@ -1345,14 +1439,18 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
           className="inline-flex items-center gap-1.5 text-sm font-bold px-2 min-h-[44px]"
           style={{ color: "var(--arbor-muted)" }}
         >
-          <Icon name="arrow_back" size={16} style={uiLang === "he" ? { transform: "scaleX(-1)" } : undefined} /> {t("elev.stories.reader.back")}
+          {/* R2: the child's way out of a book is not "All journeys" — that is
+              the parent's word for a catalogue. Kid Mode gets the kid-register
+              line it already has; the parent door keeps its own. */}
+          <Icon name="arrow_back" size={16} style={uiLang === "he" ? { transform: "scaleX(-1)" } : undefined} />{" "}
+          {kidMode ? kidsStoriesText("journey.backStories", aiLang) : t("elev.stories.reader.back")}
         </button>
         <span className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{render.title}</span>
         <button
           ref={immersiveTriggerRef}
           onClick={() => setImmersive(true)}
-          className="inline-flex items-center gap-1.5 text-sm font-bold px-2 min-h-[44px]"
-          style={{ color: "var(--arbor-muted)" }}
+          className="inline-flex items-center justify-center gap-1.5 text-sm font-bold px-2 min-h-[44px]"
+          style={{ color: "var(--arbor-muted)", minWidth: "var(--touch-min)" }}
           aria-label={t("elev.stories.reader.immersive")}
         >
           <Icon name="fullscreen" size={16} /> <span className="hidden sm:inline">{t("elev.stories.reader.immersive")}</span>
