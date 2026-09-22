@@ -13,6 +13,8 @@ import { escalationCategories, renderEscalationMarkdown } from "../../safety/esc
 import { BEHAVIOR_TYPES, DEFAULT_BEHAVIOR_TYPE, EXTRACT_CONTEXTS, behaviorTypeLabel, isIncidentType, normalizeExtractedLog, validateLogDraft } from "../../content/behaviorTaxonomy";
 import type { BehaviorContext } from "../../types";
 import { speechSupported, startDictation } from "../../lib/speech";
+import { microphoneRecovery } from "../../lib/microphoneRecovery";
+import MicrophoneNotice from "../ui/MicrophoneNotice";
 
 /** Lightweight behavior log capture that can be opened from anywhere (e.g. Overview).
  *
@@ -72,6 +74,7 @@ export default function QuickLogModal({ open, onClose, mode = "text" }: { open: 
   // (AI-V7), and the parent's UI language (AI-CAP-2), so a Hebrew parent's
   // speech is never transcribed as English garbage.
   const [listening, setListening] = useState(false);
+  const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
   const [voiceInterim, setVoiceInterim] = useState("");
   const stopRef = useRef<(() => void) | null>(null);
   useEffect(() => {
@@ -80,6 +83,7 @@ export default function QuickLogModal({ open, onClose, mode = "text" }: { open: 
       setSource("text");
       setEscalationMarkdown(null);
       setHardMoment(false);
+      setVoiceNotice(null);
       stopRef.current?.();
     }
   }, [open]);
@@ -149,9 +153,10 @@ export default function QuickLogModal({ open, onClose, mode = "text" }: { open: 
     if (!speechSupported()) {
       // Not an error to recover from — the modal stays open on the typed form,
       // which is a strictly better outcome than the old hub switch.
-      toast(t("beh.toast.voiceUnsupported"), "error");
+      setVoiceNotice(microphoneRecovery("unsupported", uiLang));
       return;
     }
+    setVoiceNotice(null);
     setListening(true);
     setVoiceInterim("");
     stopRef.current = startDictation(
@@ -164,7 +169,7 @@ export default function QuickLogModal({ open, onClose, mode = "text" }: { open: 
           if (said.length >= TYPED_EXTRACT_MIN_CHARS) void extractFromTyped(said);
         },
         onInterim: (text) => setVoiceInterim(text),
-        onError: () => toast(t("beh.toast.voiceError"), "error"),
+        onError: (reason) => setVoiceNotice(microphoneRecovery(reason, uiLang)),
         onEnd: () => {
           setListening(false);
           setVoiceInterim("");
@@ -251,6 +256,7 @@ export default function QuickLogModal({ open, onClose, mode = "text" }: { open: 
 
   return (
     <Modal open={open} onClose={onClose} title={t("ql.title")}>
+      {voiceNotice && <MicrophoneNotice message={voiceNotice} lang={uiLang} onRetry={startVoice} onDismiss={() => setVoiceNotice(null)} />}
       {escalationMarkdown ? (
         <div role="alert" dir="auto" data-testid="quicklog-escalation" className="space-y-3 text-sm">
           <MarkdownBlock text={escalationMarkdown} className="space-y-2 text-xs leading-relaxed" />

@@ -15,6 +15,7 @@
  * (lexical + POST /api/live/turn server verdict) — never this text.
  */
 import { NON_DIAGNOSTIC_CONTRACT } from "../contracts/coach.js";
+import { renderSpokenContext, type SpokenContext } from "../ai/spokenContext.js";
 
 export type SpokenLanguage = "en" | "he";
 
@@ -36,9 +37,9 @@ export const toSpokenLanguage = (language: unknown): SpokenLanguage =>
  * The full Live systemInstruction: non-diagnostic contract + spoken persona +
  * spoken-reply format + the aiLang-driven language directive.
  */
-export const buildLiveSystemInstruction = (language: unknown): string =>
+export const buildLiveSystemInstruction = (language: unknown, context?: SpokenContext): string =>
   `${NON_DIAGNOSTIC_CONTRACT}
-${SPOKEN_COACH_PERSONA} Keep spoken replies short (2 to 4 sentences), kind, and practical: briefly acknowledge, then give one concrete thing to try, in plain everyday language. No markdown, no headings, no bullet points, no emojis. Observations only — never a diagnosis. If there's a safety concern, gently suggest professional help.${spokenLanguageDirective(language)}`;
+${SPOKEN_COACH_PERSONA} Keep spoken replies short (2 to 4 sentences), kind, and practical: briefly acknowledge, then give one concrete thing to try, or ask one short clarifying question when the needed context is missing. Never invent an earlier discussion. Use plain everyday language. No markdown, no headings, no bullet points, no emojis. Observations only — never a diagnosis. If there's a safety concern, gently suggest professional help.${spokenLanguageDirective(language)}${renderSpokenContext(context)}`;
 
 /** The default (EN) instruction — kept as a named constant for the token-pin tests. */
 export const LIVE_SYSTEM_INSTRUCTION = buildLiveSystemInstruction("en");

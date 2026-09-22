@@ -41,6 +41,12 @@ describe("ttsConfigured", () => {
 });
 
 describe("synthesizeSpeech", () => {
+  it("attributes ADC quota to Arbor's configured project and bounds synthesis", async () => {
+    await synthesizeSpeech(cfg({ gcpProjectId: "arbor-test" }), { text: "Hello.", lang: "en" });
+    const options = fetchMock.mock.calls[0][1] as any;
+    expect(options.headers["x-goog-user-project"]).toBe("arbor-test");
+    expect(options.signal).toBeInstanceOf(AbortSignal);
+  });
   it("throws NotConfiguredError when TTS is off (default ships the browser floor)", async () => {
     await expect(synthesizeSpeech(cfg({ ttsProvider: "none" }), { text: "hi", lang: "en" })).rejects.toBeInstanceOf(
       NotConfiguredError,

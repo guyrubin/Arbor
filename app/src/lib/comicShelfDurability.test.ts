@@ -33,6 +33,7 @@ import {
   planPages,
   rehydrateSavedMetaPagesFromStore,
   savedMetaPagesAvailable,
+  type ComicPageData,
   type SavedComicMeta,
 } from "./heroComics";
 import { _resetSceneCache } from "./sceneCache";
@@ -122,7 +123,7 @@ describe("AIX-S5 — reopening a saved book after a full reload", () => {
 describe("AIX-S5 — write-through persistence", () => {
   it("a freshly generated page is persisted to the device-local store", async () => {
     generateComic.mockResolvedValue({ dataUrl: "data:fresh" });
-    const page = { index: 0, title: "Cover", cover: true, status: "pending" as const };
+    const page: ComicPageData = { index: 0, title: "Cover", cover: true, status: "pending" };
     const url = await generatePage({ adventure, lang: "en", heroName: "Mia", page, childId: CHILD });
     expect(url).toBe("data:fresh");
     // Flush the fire-and-forget write, then locate the frozen v4 key.
@@ -134,7 +135,7 @@ describe("AIX-S5 — write-through persistence", () => {
 
   it("without a childId behavior is unchanged (no store writes)", async () => {
     generateComic.mockResolvedValue({ dataUrl: "data:fresh" });
-    const page = { index: 0, title: "Cover", cover: true, status: "pending" as const };
+    const page: ComicPageData = { index: 0, title: "Cover", cover: true, status: "pending" };
     await generatePage({ adventure, lang: "en", heroName: "Mia", page });
     await new Promise((r) => setTimeout(r, 0));
     expect(mem.map.size).toBe(0);

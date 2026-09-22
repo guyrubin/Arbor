@@ -1,0 +1,170 @@
+{
+  "recordedAt": "2026-09-22",
+  "artifactKind": "built-app-browser-fault-injection",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "browser": "Chrome via existing isolated Playwright session arbor-ai",
+  "server": "Local static dist/server.cjs on 127.0.0.1:4807; fresh npm run build",
+  "bundle": "index-CX8e3pOW.js",
+  "fixture": "Built-in synthetic sandbox Dylan demo; no actual family data entered; no writes saved",
+  "injection": "SpeechRecognition/WebkitSpeechRecognition.start immediately invokes onend with no words after10ms; Live availability response is intercepted as false",
+  "limitations": [
+    "Does not test physical microphone/device permissions, actual Chrome speech-service availability, or human voice/listening quality.",
+    "Native scrollbar reduces document clientWidth to375px within390px viewport; screenshots include scrollbar.",
+    "Only screenshots with final- prefix in this directory certify this built verification; earlier local images were developmental."
+  ],
+  "results": {
+    "en": {
+      "during": {
+        "starts": 2,
+        "phase": "listening"
+      },
+      "lang": "en",
+      "width": 390,
+      "height": 844,
+      "clientWidth": 375,
+      "scrollWidth": 375,
+      "starts": 6,
+      "phase": "off",
+      "notice": {
+        "x": 16,
+        "y": 95.16146087646484,
+        "width": 343,
+        "height": 146.25,
+        "bottom": 241.41146087646484
+      },
+      "buttons": [
+        {
+          "text": "Try voice again",
+          "height": 44,
+          "width": 120.99479675292969
+        },
+        {
+          "text": "Continue typing",
+          "height": 44,
+          "width": 125.38021087646484
+        }
+      ],
+      "text": "Recording stopped before we heard any words. Check the selected microphone and try again when you’re ready. You can also type here.Try voice againContinue typing",
+      "staticAssets": [
+        "http://127.0.0.1:4807/assets/index-CX8e3pOW.js"
+      ],
+      "errors": [],
+      "pageErrors": [],
+      "retryAndStop": {
+        "beforeRetry": 6,
+        "retryPhase": "listening",
+        "startsAtStop": 7,
+        "starts": 7,
+        "overlayPresent": false,
+        "recoveryPresent": false
+      }
+    },
+    "he": {
+      "during": {
+        "starts": 2,
+        "phase": "listening"
+      },
+      "lang": "he",
+      "width": 390,
+      "height": 844,
+      "clientWidth": 375,
+      "dir": "rtl",
+      "scrollWidth": 375,
+      "starts": 6,
+      "phase": "off",
+      "notice": {
+        "x": 16,
+        "y": 512.7448120117188,
+        "width": 343,
+        "height": 146.25,
+        "bottom": 658.9948120117188
+      },
+      "buttons": [
+        {
+          "text": "ננסה שוב",
+          "height": 44,
+          "width": 81.41667175292969
+        },
+        {
+          "text": "אמשיך בכתיבה",
+          "height": 44,
+          "width": 114.06771087646484
+        }
+      ],
+      "text": "ההקלטה נעצרה לפני שקלטנו מילים. בדקו שהמיקרופון הנכון נבחר ונסו שוב כשאתם מוכנים. אפשר גם לכתוב כאן.ננסה שובאמשיך בכתיבה",
+      "staticAssets": [
+        "http://127.0.0.1:4807/assets/index-CX8e3pOW.js"
+      ],
+      "errors": [],
+      "pageErrors": []
+    },
+    "quicklog": {
+      "path": "#/overview",
+      "starts": 3,
+      "width": 390,
+      "height": 844,
+      "clientWidth": 375,
+      "scrollWidth": 375,
+      "notice": {
+        "x": 41,
+        "y": 266.640625,
+        "width": 293,
+        "height": 169,
+        "bottom": 435.640625
+      },
+      "buttons": [
+        {
+          "text": "Try voice again",
+          "height": 44,
+          "width": 120.99479675292969
+        },
+        {
+          "text": "Continue typing",
+          "height": 44,
+          "width": 125.38021087646484
+        }
+      ],
+      "motion": "none",
+      "errors": [],
+      "pageErrors": [],
+      "note": "Settled modal; errors collected during preceding capture operation were empty."
+    },
+    "behaviors": {
+      "staticAssets": [
+        "http://127.0.0.1:4807/assets/index-CX8e3pOW.js"
+      ],
+      "visibility": "visible",
+      "path": "#/behaviors",
+      "starts": 3,
+      "width": 390,
+      "height": 844,
+      "clientWidth": 375,
+      "scrollWidth": 375,
+      "notice": {
+        "x": 33,
+        "y": 343.109375,
+        "width": 309,
+        "height": 169,
+        "bottom": 512.109375
+      },
+      "dialog": null,
+      "buttons": [
+        {
+          "text": "Try voice again",
+          "height": 44,
+          "width": 120.99479675292969
+        },
+        {
+          "text": "Continue typing",
+          "height": 44,
+          "width": 125.38021087646484
+        }
+      ],
+      "errors": [],
+      "pageErrors": []
+    }
+  }
+}

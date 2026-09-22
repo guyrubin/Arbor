@@ -219,9 +219,10 @@ const settledTurns = (thread: ReadonlyArray<ThreadTurnLike>): RecentTurn[] =>
  */
 export const buildVoiceContext = (
   thread: ReadonlyArray<ThreadTurnLike>,
-): { recentTurns?: RecentTurn[] } => {
+  childId?: string,
+): { recentTurns?: RecentTurn[]; contextChildId?: string } => {
   const recentTurns = settledTurns(thread);
-  return recentTurns.length > 0 ? { recentTurns } : {};
+  return recentTurns.length > 0 ? { recentTurns, ...(childId ? { contextChildId: childId } : {}) } : {};
 };
 
 export const buildChatContext = (input: {

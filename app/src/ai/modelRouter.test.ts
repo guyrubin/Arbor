@@ -1,9 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { createTestConfig } from "../testConfig.js";
 import { AiProviderError } from "./capabilities/contracts.js";
-import { modelForGeminiRequest, modelForRoute, routeDecisionFor, thinkingConfigForRoute, toAnthropicVertexModelId, type ModelRoute } from "./modelRouter.js";
+import { GeminiDevProvider, VertexGeminiProvider, VertexModelProvider, modelForGeminiRequest, modelForRoute, routeDecisionFor, thinkingConfigForRoute, toAnthropicVertexModelId, type ModelRoute } from "./modelRouter.js";
 
 describe("model route decisions", () => {
   it("routes high-stakes coach calls to Claude on Vertex and other routes to Gemini on Vertex", () => {
@@ -108,5 +108,23 @@ describe("per-route Gemini thinking budget (AIR-3)", () => {
     expect(thinkingConfigForRoute("analysis_structured", "gemini-2.0-flash")).toBeUndefined();
     expect(thinkingConfigForRoute("analysis_structured", "claude-sonnet-5@anthropic")).toBeUndefined();
     expect(thinkingConfigForRoute("analysis_structured", "gemini-2.5-flash-image")).toBeUndefined();
+  });
+});
+
+
+describe("production provider identity", () => {
+  it("reports the actual Gemini coach provider when the production model is Gemini", () => {
+    expect(routeDecisionFor(createTestConfig({ vertexModelChat: "gemini-2.5-flash" }), "coach_high_stakes").provider).toBe("vertex_gemini");
+  });
+  it("keeps image generation on regional Vertex even when a Live API key exists", async () => {
+    const image = { data: "c3ludGhldGlj", mimeType: "image/png" };
+    const vertex = vi.spyOn(VertexGeminiProvider.prototype, "generateImage").mockResolvedValue(image);
+    const developer = vi.spyOn(GeminiDevProvider.prototype, "generateImage").mockRejectedValue(new Error("quota exhausted"));
+    try {
+      const options = { prompt: "A synthetic fox illustration" };
+      await expect(new VertexModelProvider(createTestConfig()).generateImage(options)).resolves.toEqual(image);
+      expect(vertex).toHaveBeenCalledWith(options);
+      expect(developer).not.toHaveBeenCalled();
+    } finally { vi.restoreAllMocks(); }
   });
 });

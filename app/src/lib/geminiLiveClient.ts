@@ -201,7 +201,7 @@ export async function startGeminiLive(
     assertRunning();
     handlers.onPhase?.("connecting");
     assertRunning();
-    const ai = new GoogleGenAI({ apiKey: opts.token, httpOptions: { apiVersion: "v1alpha" } });
+    const ai = new GoogleGenAI({ apiKey: opts.token, httpOptions: { apiVersion: "v1beta" } });
     const micRequest = navigator.mediaDevices.getUserMedia({
       audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
     });
@@ -215,12 +215,15 @@ export async function startGeminiLive(
     assertRunning();
     inCtx = new AudioContext({ sampleRate: 16000 });
     outCtx = new AudioContext({ sampleRate: 24000 });
+    await withDeadline(Promise.all([inCtx, outCtx].map((context) => context.state === "suspended" ? context.resume() : Promise.resolve())), CONNECT_TIMEOUT_MS, "live-audio-timeout", opts.signal);
     assertRunning();
 
     const failedBeforeOpen = new Promise<never>((_, reject) => { rejectBeforeOpen = reject; });
     // connect() may throw synchronously before Promise.race attaches below.
     // Mark this deferred handled while retaining its rejection for the race.
     void failedBeforeOpen.catch(() => {});
+    let resolveSetup: () => void = () => {};
+    const configured = new Promise<void>((resolve) => { resolveSetup = resolve; });
     const connecting = ai.live.connect({
       model: opts.model,
       config: {
@@ -233,11 +236,11 @@ export async function startGeminiLive(
       callbacks: {
         onopen: () => {
           if (stopped) return;
-          opened = true;
-          handlers.onPhase?.("listening");
+          opened = true; // WebSocket open is not model acceptance.
         },
         onmessage: (msg: any) => {
           if (stopped) return;
+          if (msg?.setupComplete) resolveSetup();
           // ALL audio remains buffered behind the lexical + server screens.
           if (msg?.data) guard.pushAudio(msg.data);
           if (stopped) return;
@@ -283,7 +286,10 @@ export async function startGeminiLive(
       if (stopped) { try { connected.close(); } catch { /* already closed */ } }
       else session = connected;
     }).catch(() => {});
-    const connected = await withConnectDeadline(Promise.race([connecting, failedBeforeOpen]), opts.signal);
+    // The SDK resolves when the socket opens. Wait for provider setup approval
+    // too: retired/unsupported models can close immediately after onopen.
+    const prepared = Promise.all([connecting, configured]).then(([socket]) => socket);
+    const connected = await withConnectDeadline(Promise.race([prepared, failedBeforeOpen]), opts.signal);
     assertRunning();
     session = connected;
     source = inCtx.createMediaStreamSource(stream);
@@ -296,7 +302,7 @@ export async function startGeminiLive(
       try { session?.sendRealtimeInput({ media: { data, mimeType: "audio/pcm;rate=16000" } }); } catch { /* closed */ }
     };
     ready = true;
-    if (!opened) { opened = true; handlers.onPhase?.("listening"); }
+    handlers.onPhase?.("listening");
     assertRunning();
     return { stop: stopAll };
   } catch (err) {

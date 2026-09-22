@@ -17,6 +17,11 @@ export type ArborConfig = {
   vertexModelHandoff: string;
   /** Image-generation model (Gemini 2.5 Flash Image / "Nano Banana"). Outputs carry SynthID + C2PA. */
   vertexModelImage: string;
+  /** Ordered Vertex locations tried for image generation when the primary
+   *  region is saturated (429/503). First entry is always `vertexLocation`.
+   *  Every entry must satisfy the route policy region (EU in prod); non-EU
+   *  entries are dropped at request time, never silently used. */
+  vertexImageRegions: string[];
   modelProvider: ModelProviderKind;
   geminiApiKey?: string;
   geminiModel: string;
@@ -27,10 +32,7 @@ export type ArborConfig = {
    *  explicit Guy decision once the Live turn-guard slate (VC-1..VC-5) is
    *  green — never an env side-effect. */
   liveEnabled: boolean;
-  /** AI-V8: Gemini Live model for parent realtime voice. Default is the older
-   *  half-cascade flash-live model; the native-audio Live models (e.g.
-   *  gemini-2.5-flash-preview-native-audio-dialog) are the AVM-grade
-   *  prosody/emotion upgrade path. Model/provision choice is gate:guy (GD-3). */
+  /** Supported parent realtime model; pinned in production and exercised by the Live smoke. */
   liveModel: string;
   /** Local-dev image model (Gemini Developer API). */
   geminiImageModel: string;
@@ -92,6 +94,13 @@ const boolFromEnv = (value: string | undefined, fallback: boolean) => {
   return ["1", "true", "yes", "on"].includes(value.toLowerCase());
 };
 
+/** Ordered, de-duplicated image regions: the primary location first, then the
+ *  configured (or default EU) fallbacks. Blank entries are ignored. */
+export const imageRegionsFromEnv = (value: string | undefined, primary: string): string[] => {
+  const configured = (value ?? "europe-west1,europe-west3").split(",").map((s) => s.trim()).filter(Boolean);
+  return Array.from(new Set([primary, ...configured]));
+};
+
 const parseArborEnv = (value: string | undefined): ArborEnvironment => {
   const normalized = (value || "local").toLowerCase();
   if (["local", "dev", "stage", "prod"].includes(normalized)) return normalized as ArborEnvironment;
@@ -145,11 +154,18 @@ export const loadConfig = (): ArborConfig => {
     vertexModelAnalysis: process.env.VERTEX_MODEL_ANALYSIS || "gemini-2.5-flash",
     vertexModelHandoff: process.env.VERTEX_MODEL_HANDOFF || "gemini-2.5-flash",
     vertexModelImage: process.env.VERTEX_MODEL_IMAGE || "gemini-2.5-flash-image",
+    // 22 Sep 2026: europe-west4 returned 429 "Resource exhausted" on 26 of 35
+    // scene requests with project quota at 0 % — regional capacity, not quota.
+    // Family imagery stays in the EU: the fallback list is EU-only by default.
+    vertexImageRegions: imageRegionsFromEnv(
+      process.env.VERTEX_IMAGE_REGIONS,
+      process.env.VERTEX_LOCATION || process.env.GCP_REGION || "europe-west4"
+    ),
     modelProvider,
     geminiApiKey: process.env.GEMINI_API_KEY,
     geminiModel: process.env.GEMINI_MODEL || "gemini-2.5-flash",
     liveEnabled: boolFromEnv(process.env.LIVE_ENABLED, false),
-    liveModel: process.env.LIVE_MODEL || "gemini-2.0-flash-live-001",
+    liveModel: process.env.LIVE_MODEL || "gemini-3.8-live",
     geminiImageModel: process.env.GEMINI_IMAGE_MODEL || process.env.VERTEX_MODEL_IMAGE || "gemini-2.5-flash-image",
     firebaseProjectId: process.env.FIREBASE_PROJECT_ID || process.env.GCP_PROJECT_ID,
     firestoreDatabaseId: process.env.FIRESTORE_DATABASE_ID || "(default)",

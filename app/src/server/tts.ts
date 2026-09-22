@@ -73,7 +73,8 @@ async function synthesizeGoogle(config: ArborConfig, input: TtsInput): Promise<T
 
   const res = await fetch("https://texttospeech.googleapis.com/v1/text:synthesize", {
     method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...(config.gcpProjectId ? { "x-goog-user-project": config.gcpProjectId } : {}) },
+    signal: AbortSignal.timeout(15000),
     body: JSON.stringify({
       input: { text: input.text },
       voice: { languageCode, ...(voiceName ? { name: voiceName } : {}) },

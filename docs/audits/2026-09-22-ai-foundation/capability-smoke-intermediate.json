@@ -1,0 +1,98 @@
+{
+  "ts": "2026-09-22T07:06:29.350Z",
+  "models": {
+    "chat": "gemini-2.5-flash",
+    "analysis": "gemini-2.5-flash",
+    "image": "gemini-2.5-flash-image",
+    "live": "gemini-3.8-live"
+  },
+  "rows": [
+    {
+      "name": "council",
+      "route": "council",
+      "status": 200,
+      "ms": 26712,
+      "ok": false,
+      "evidence": {
+        "text": "### 1. What May Be Happening\nThis may involve **self-harm or suicide language**, which is outside the safe scope of an AI parenting coach.\n\n### 2. Why It May Be Happening\nSome situations need real-time assessment from a qualified person because timing, physical safety, and local context matter.\n\n### 3. What To Do Today\nPause the Arbor plan and contact the right local support now. If there is immediate danger, use local emergency services.\n\n### 4. What Is The Parent Script\n\"I am going to get another adult to help us right now. You are not in trouble.\"\n\n### 5. What To Avoid\nDo not wait for an AI answer if there is danger, injury, abuse, severe illness, self-harm language, caregiver loss of control, or sudden loss of skills.\n\n### 6. What To Observe\nWrite down what happened, when it started, duration, physical symptoms, safety risks, and who is currently with the child.\n\n### 7. When To Escalate\nEscalate now. Category: **self_harm**.\n\n### Get help now\nIf anyone is in immediate danger, call emergency services now: **112** (EU / NL / BE / mobile in Israel) or **911** (US). In Israel, ambulance (Magen David Adom) is **101**, police **100**.\n- 🇮🇱 Israel — ERAN emotional first aid: **1201** (24/7)\n- 🇳🇱 Netherlands — 113 Suicide Prevention: **0800-0113** (free) or **113**\n- 🇧🇪 Belgium — Zelfmoordlijn: **1813** · Centre de Prévention du Suicide: **0800 32 123**\n- 🇺🇸 US & Canada — 988 Suicide & Crisis Lifeline: **988**\nFind a local helpline: https://findahelpline.com\n\n### Call now\n- 🇮🇱 [1201](tel:1201) · [101](tel:101) · [100](tel:100)\n- 🇪🇺 [112](tel:112)\n- 🇳🇱 [0800-0113](tel:08000113)\n- 🇧🇪 [1813](tel:1813) · [1712](tel:1712)\n- 🇺🇸 [988](tel:988) · [911](tel:911)\n\n[Get help now](#/safety)",
+        "riskLevel": "urgent",
+        "escalationCategory": "self_harm",
+        "outputBlocked": true,
+        "blockedCategory": "crisis",
+        "council": []
+      }
+    },
+    {
+      "name": "handoff",
+      "route": "generate-handoff",
+      "status": 409,
+      "ms": 6886,
+      "ok": false,
+      "evidence": {
+        "error": "Professional support recommended",
+        "details": "Arbor could not produce a routine brief for this history. Please review it with a qualified adult.",
+        "escalationCategory": "crisis"
+      }
+    },
+    {
+      "name": "read aloud English",
+      "route": "tts",
+      "status": 200,
+      "ms": 2744,
+      "ok": true,
+      "evidence": {
+        "audio": true,
+        "chars": 25856
+      }
+    },
+    {
+      "name": "read aloud Hebrew",
+      "route": "tts",
+      "status": 200,
+      "ms": 334,
+      "ok": true,
+      "evidence": {
+        "audio": true,
+        "chars": 27136
+      }
+    },
+    {
+      "name": "avatar",
+      "route": "generate-avatar",
+      "status": 200,
+      "ms": 6251,
+      "ok": true,
+      "evidence": {
+        "image": true,
+        "chars": 1931802
+      }
+    },
+    {
+      "name": "vision synthetic illustration",
+      "route": "vision",
+      "status": 200,
+      "ms": 3414,
+      "ok": true,
+      "evidence": {
+        "mode": "observe",
+        "offTopic": true,
+        "observations": [],
+        "possibleMeanings": [],
+        "tryToday": [],
+        "avoid": [],
+        "nonDiagnosticNote": ""
+      }
+    },
+    {
+      "name": "comic",
+      "route": "generate-comic",
+      "status": 200,
+      "ms": 7169,
+      "ok": true,
+      "evidence": {
+        "image": true,
+        "chars": 2850214
+      }
+    }
+  ]
+}

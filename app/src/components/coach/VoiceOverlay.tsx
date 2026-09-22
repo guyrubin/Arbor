@@ -1,7 +1,8 @@
-import React, { useEffect, useRef } from "react";
+import React from "react";
 import { createPortal } from "react-dom";
 import { useDialog } from "../../hooks/useDialog";
 import Icon from "../ui/Icon";
+import MicrophoneNotice from "../ui/MicrophoneNotice";
 import { translate, type UiLang } from "../../lib/i18n";
 
 /**
@@ -11,8 +12,7 @@ import { translate, type UiLang } from "../../lib/i18n";
  * overlay opens no new capture path and sends nothing itself).
  *
  * What it shows, per phase (all four visually distinct WITHOUT reading text):
- *  - listening: soft-pulsing orb, halo driven by the REAL mic level (an
- *    AnalyserNode on one shared getUserMedia stream for the whole session);
+ *  - listening: soft-pulsing orb, a phase halo plus the real live transcript;
  *  - thinking:  slow shimmer;
  *  - speaking:  waveform bars;
  *  - off:       the sheet is unmounted by the owner.
@@ -46,60 +46,9 @@ export function orbMode(phase: VoiceOverlayPhase, reducedMotion: boolean): OrbMo
   return "wave";
 }
 
-/**
- * Real mic level → a CSS custom property on the halo element (no React state:
- * a 60fps setState would re-render the whole sheet every frame). One
- * getUserMedia stream is opened per overlay mount and shared across phase
- * changes; it is fully released on unmount/deactivation.
- */
-function useMicLevel(active: boolean, haloRef: React.RefObject<HTMLDivElement | null>) {
-  useEffect(() => {
-    if (!active) return;
-    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) return;
-    if (typeof AudioContext === "undefined") return;
-    let raf = 0;
-    let ctx: AudioContext | null = null;
-    let stream: MediaStream | null = null;
-    let cancelled = false;
-    navigator.mediaDevices
-      .getUserMedia({ audio: true })
-      .then((s) => {
-        if (cancelled) {
-          s.getTracks().forEach((t) => t.stop());
-          return;
-        }
-        stream = s;
-        ctx = new AudioContext();
-        const source = ctx.createMediaStreamSource(s);
-        const analyser = ctx.createAnalyser();
-        analyser.fftSize = 256;
-        source.connect(analyser);
-        const buf = new Uint8Array(analyser.frequencyBinCount);
-        const tick = () => {
-          analyser.getByteTimeDomainData(buf);
-          let sum = 0;
-          for (let i = 0; i < buf.length; i++) {
-            const v = (buf[i] - 128) / 128;
-            sum += v * v;
-          }
-          const level = Math.min(1, Math.sqrt(sum / buf.length) * 3);
-          haloRef.current?.style.setProperty("--vo-level", level.toFixed(3));
-          raf = requestAnimationFrame(tick);
-        };
-        raf = requestAnimationFrame(tick);
-      })
-      .catch(() => {
-        /* mic denied/unavailable — the orb still pulses via CSS, captions still work */
-      });
-    return () => {
-      cancelled = true;
-      if (raf) cancelAnimationFrame(raf);
-      stream?.getTracks().forEach((t) => t.stop());
-      void ctx?.close().catch(() => {});
-      haloRef.current?.style.removeProperty("--vo-level");
-    };
-  }, [active, haloRef]);
-}
+// The recording owner alone opens the microphone. Opening another stream here
+// can contend with Chrome's speech service and makes presentation own capture.
+// The phase pulse and real transcript provide feedback without another grant.
 
 // Static bar heights (px) for the speaking waveform — motion comes from the
 // vo-wave keyframes; under reduced motion these exact heights render frozen,
@@ -108,6 +57,7 @@ const WAVE_BARS = [10, 22, 30, 22, 10];
 
 export default function VoiceOverlay({
   phase,
+  notice,
   lang,
   interimText,
   answerText,
@@ -117,6 +67,7 @@ export default function VoiceOverlay({
   onClose,
 }: {
   phase: VoiceOverlayPhase;
+  notice?: string | null;
   lang: UiLang;
   /** The parent's own words, live while they speak (dir="auto"). */
   interimText: string;
@@ -131,8 +82,6 @@ export default function VoiceOverlay({
   const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars);
   const mode = orbMode(phase, reducedMotion);
   const { ref: dialogRef, requestClose } = useDialog<HTMLElement>({ open: true, onClose });
-  const haloRef = useRef<HTMLDivElement | null>(null);
-  useMicLevel(phase === "listening" && !reducedMotion, haloRef);
   const phaseLabel = t(`coach.voice.${phase}`);
 
   const overlay = (
@@ -175,17 +124,15 @@ export default function VoiceOverlay({
       </div>
 
       <div className="mt-2 flex flex-col items-center">
-        {/* Mic-level halo (listening only): scales with --vo-level set by the
-            AnalyserNode loop — pure CSS var, zero re-renders. */}
+        {/* Listening halo follows the phase without opening another microphone. */}
         <div className="relative flex items-center justify-center" style={{ width: 112, height: 112 }}>
           {mode === "pulse" && (
             <div
-              ref={haloRef}
               aria-hidden
               className="absolute inset-0 rounded-full"
               style={{
                 background: "var(--arbor-green-soft)",
-                transform: "scale(calc(1 + var(--vo-level, 0) * 0.35))",
+                transform: "scale(1.08)",
                 transition: "transform 90ms linear",
               }}
             />
@@ -235,6 +182,8 @@ export default function VoiceOverlay({
           </p>
         )}
       </div>
+
+      {notice && <MicrophoneNotice message={notice} lang={lang} />}
 
       {/* Live captions — always mounted so aria-live announces reliably.
           Interim = the parent's own words; answer = screened voice output. */}

@@ -1,0 +1,21 @@
+{
+  "fullRun": {
+    "passed": 22,
+    "total": 23,
+    "ts": "2026-09-22T07:33:15.073Z"
+  },
+  "targetedRetry": [
+    {
+      "name": "comic",
+      "route": "generate-comic",
+      "status": 200,
+      "ms": 10827,
+      "ok": true,
+      "evidence": {
+        "image": true,
+        "chars": 2667554
+      }
+    }
+  ],
+  "allCapabilitiesHaveSuccessfulExecution": true
+}

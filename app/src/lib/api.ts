@@ -105,10 +105,13 @@ function retryAfterOf(res: { headers: { get(name: string): string | null } }): n
   return Number.isFinite(n) && n > 0 ? n : undefined;
 }
 
-async function request<T>(url: string, method: string, body?: unknown): Promise<T> {
+async function request<T>(url: string, method: string, body?: unknown, signal?: AbortSignal): Promise<T> {
+  const headers = await authHeaders();
+  signal?.throwIfAborted();
   const res = await fetch(url, {
+    ...(signal ? { signal } : {}),
     method,
-    headers: await authHeaders(),
+    headers,
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
   if (!res.ok) {
@@ -136,6 +139,22 @@ async function request<T>(url: string, method: string, body?: unknown): Promise<
   return (await res.json()) as T;
 }
 const post = <T>(url: string, body: unknown) => request<T>(url, "POST", body);
+// Live startup includes auth-token refresh and response JSON, not only fetch.
+// Bound the whole operation and never send after an owner has cancelled it.
+function liveStartupRequest<T>(body: unknown, signal?: AbortSignal): Promise<T> {
+  const controller = new AbortController();
+  return new Promise<T>((resolve, reject) => {
+    const cleanup = () => { clearTimeout(timer); signal?.removeEventListener("abort", cancel); };
+    const cancel = () => { cleanup(); controller.abort(); reject(new DOMException("Voice start cancelled", "AbortError")); };
+    const timer = setTimeout(() => { cleanup(); controller.abort(); reject(new Error("live-token-timeout")); }, 10_000);
+    signal?.addEventListener("abort", cancel, { once: true });
+    if (signal?.aborted) { cancel(); return; }
+    request<T>("/api/live/token", "POST", body, controller.signal).then(
+      (value) => { cleanup(); resolve(value); },
+      (error) => { cleanup(); reject(error); },
+    );
+  });
+}
 const get = <T>(url: string) => request<T>(url, "GET");
 const del = <T>(url: string) => request<T>(url, "DELETE");
 
@@ -169,6 +188,8 @@ export async function streamVoice(
     scholarLens?: string;
     language?: "en" | "he";
     recentTurns?: { role: "parent" | "coach"; text: string }[];
+    contextChildId?: string;
+    privateMode?: boolean;
   },
   onDelta: (text: string) => void,
   opts: { signal?: AbortSignal; onEvent?: (event: string, data: Record<string, unknown>) => void } = {},
@@ -433,8 +454,15 @@ export const api = {
     post<{ proposals: unknown[] }>("/api/conversation/proposals", payload),
   // AI-V9: the session language selects the server-pinned persona + voice; the
   // pinned systemInstruction/speechConfig are echoed back for the connect call.
-  liveToken: (payload: { language?: "en" | "he"; childId?: string } = {}) =>
-    post<{ available: boolean; token?: string; model?: string; expiresAt?: string; reason?: string; systemInstruction?: string; speechConfig?: unknown }>("/api/live/token", payload),
+  liveToken: (payload: {
+    language?: "en" | "he";
+    childId?: string;
+    childProfile?: ChildProfile;
+    recentTurns?: { role: "parent" | "coach"; text: string }[];
+    contextChildId?: string;
+    privateMode?: boolean;
+  } = {}, opts: { signal?: AbortSignal } = {}) =>
+    liveStartupRequest<{ available: boolean; token?: string; model?: string; expiresAt?: string; reason?: string; systemInstruction?: string; speechConfig?: unknown }>(payload, opts.signal),
   // VC-2/VC-3: the authoritative per-turn Live screen. The liveTurnGuard treats
   // ANY failure of this call (network / non-200 / timeout) as FLAGGED (VC-5).
   liveTurn: (payload: { role: "user" | "model"; text: string; language?: "en" | "he"; childId?: string }) =>

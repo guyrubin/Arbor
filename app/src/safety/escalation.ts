@@ -40,6 +40,10 @@ export const escalationCategories: {
       // is self-harm language a parent reports verbatim — the reflexive-pronoun
       // frame must trip the screen even without the words "die"/"suicide".
       /suicid|self[-\s]?harm|kill (himself|herself|myself)|want(s|ed)? to (die|hurt (himself|herself|myself|themselves))/i,
+      // Spoken first-person intent often uses a modal instead of "want to".
+      // Keep the action + reflexive object bounded so routine "I might try"
+      // or "I could do it myself" cannot become a crisis match.
+      /\bi(?:\s+(?:might|may|could|will|am going to)|['’]m going to)\s+(?:hurt|harm|kill)\s+myself\b/i,
       /להתאבד|אובדני|אובדנית|לפגוע בעצמי|לפגוע בעצמו|לפגוע בעצמה|רוצה למות/i,
       /zelfmoord|zelf[-\s]?doden|sui[cï]cid|mezelf (pijn|iets aandoen)|wil (niet meer leven|dood)/i
     ]

@@ -77,7 +77,7 @@ import type { CoachContract } from "../types";
  * guard test fails the build when they drift, because a kept row's provenance
  * must name the prompt that actually produced the sentence.
  */
-export const TYPED_TURN_PROMPT = { key: "coach_chat", version: "1.2.0" } as const;
+export const TYPED_TURN_PROMPT = { key: "coach_chat", version: "1.3.0" } as const;
 
 /** The structured contract fields a parent may keep. ALLOW-LIST — see header. */
 export const KEEPABLE_CONTRACT_FIELDS = ["todayPlan", "parentScript", "observe"] as const;

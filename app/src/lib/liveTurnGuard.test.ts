@@ -265,7 +265,7 @@ describe("liveTurnGuard — fail-closed contract (VC-5)", () => {
       expect(body).not.toContain("continue");
     }
     // The verdict-catch specifically routes to failClosed.
-    expect(code).toMatch(/catch\s*\{\s*failClosed\("screen-unavailable"\);\s*return;\s*\}/);
+    expect(code).toMatch(/catch\s*\{\s*if \(!current\(\)\) return;\s*failClosed\("screen-unavailable"\);\s*return;\s*\}/);
   });
 });
 
@@ -331,5 +331,37 @@ describe("liveTurnGuard.interrupt — AI-V2(b) server-VAD barge-in", () => {
     await new Promise((r) => setTimeout(r, 60));
     expect(h.calls).not.toContain("failClosed:transcription-missing");
     expect(h.guard.halted).toBe(false);
+  });
+});
+
+describe("Live interruption during screening", () => {
+  it.each(["continue", "reject"])("drops old in-flight audio/captions after interruption (%s)", async (outcome) => {
+    let resolve!: (v: LiveTurnVerdict) => void;
+    let reject!: (e: Error) => void;
+    const pending = new Promise<LiveTurnVerdict>((yes, no) => { resolve = yes; reject = no; });
+    const h = makeHarness({ screenTurn: vi.fn(() => pending) });
+    h.guard.pushAudio("old");
+    h.guard.pushOutputTranscription("Keep the routine visual.");
+    const completion = h.guard.endModelTurn();
+    await Promise.resolve(); await Promise.resolve();
+    h.guard.interrupt();
+    if (outcome === "continue") resolve(CONTINUE); else reject(new Error("old request failed"));
+    await completion;
+    expect(h.played).toEqual([]);
+    expect(h.calls.some((call) => call.startsWith("model:"))).toBe(false);
+    expect(h.guard.halted).toBe(false);
+  });
+  it("interruption while waiting on the user's screen never releases the captured model turn", async () => {
+    let resolve!: (v: LiveTurnVerdict) => void;
+    const pending = new Promise<LiveTurnVerdict>((yes) => { resolve = yes; });
+    const h = makeHarness({ screenTurn: vi.fn(async (role) => role === "user" ? pending : CONTINUE) });
+    h.guard.pushInputTranscription("What should I say?");
+    h.guard.pushAudio("old"); h.guard.pushOutputTranscription("Try a short phrase.");
+    const completion = h.guard.endModelTurn();
+    h.guard.interrupt(); resolve(CONTINUE); await completion;
+    expect(h.played).toEqual([]);
+    h.guard.pushAudio("new"); h.guard.pushOutputTranscription("Tell me what changed.");
+    await h.guard.endModelTurn();
+    expect(h.played).toEqual(["new"]);
   });
 });

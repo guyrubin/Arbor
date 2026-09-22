@@ -99,7 +99,7 @@ describe("CR-03 actual consumer wiring", () => {
     expect(avatar).toContain("runAvatarGeneration");
     expect(read("practice/GoalBuilderModal.tsx")).toContain("onSave(merged)");
     expect(voice).toContain('"connecting" | "listening" | "thinking" | "speaking"');
-    expect(voice).toContain('useMicLevel(phase === "listening" && !reducedMotion, haloRef)');
+    expect(voice).not.toContain(".getUserMedia(");
     expect(voice).toContain('typeof document === "undefined" ? overlay : createPortal(');
     expect(voice.match(/aria-live="polite"/g)).toHaveLength(2);
     const hero = read("tabs/HeroJourneyTab.tsx");

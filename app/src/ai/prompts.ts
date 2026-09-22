@@ -31,6 +31,8 @@ import { NON_DIAGNOSTIC_CONTRACT } from "../contracts/coach.js";
 import { ageMonthsFromProfile } from "../lib/childAge.js";
 import type { ChildProfile } from "../types.js";
 import type { RecentTurn, WeeklyContext } from "./chatContext.js";
+import { renderSpokenContext, type SpokenContext } from "./spokenContext.js";
+import { buildLiveSystemInstruction } from "../lib/livePersona.js";
 
 // ── AI-12 / GP-16: the ONE profile allow-list every prompt goes through ──────
 //
@@ -132,6 +134,7 @@ export type PromptKey =
   | "coach_chat"
   | "council_synthesis"
   | "voice_reply"
+  | "live_session"
   | "extract_log";
 
 /**
@@ -148,15 +151,19 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // 1.2.0 / x.1.0 (AI-12, 2026-09-03): the child profile is rendered through
   // promptProfile() — the allow-list above — so `riskLevel`, `photoUrl`,
   // `avatar` and ids never reach the model. Byte change on every builder.
-  coach_chat: { version: "1.2.0", sha256: "d015d9755a34f91f1f31c76716774907f249cf5f107dbeac0aa3aa0aaa87c776" },
-  council_synthesis: { version: "1.1.0", sha256: "6c00185e6fb6dde9296345c7b186b32fb4fbe54455e6155cfc92b3d374ae75de" },
-  voice_reply: { version: "1.1.0", sha256: "ef00f7f8cebe131da356309a503f0aa2f6cf53e0ec5db651c59b45fd0114322c" },
+  coach_chat: { version: "1.3.0", sha256: "b6afe528a15ea78146856903382063b17c53269c8c2439ad6d04526b43c126eb" },
+  council_synthesis: { version: "1.2.0", sha256: "428ed3513c47ba544b8e1afee8a4492140902d4b1210ec8cbb75893d8b77a00f" },
+  voice_reply: { version: "1.6.0", sha256: "7c06dfda8297c50b0fd596f32a728689cd1503cb0662f9e10d3904e007be651b" },
+  live_session: { version: "1.4.0", sha256: "a860d147a58a4be6f0adca9b9525925c76e3db86bf563f0ee6ad5590572fbe5c" },
   extract_log: { version: "1.1.0", sha256: "4d30bdb29b6a9b09138e5438cdefb32235cb188b4559af09cca325bf58755b53" },
 };
 
 export const promptVersionOf = (key: PromptKey): string => PROMPT_VERSIONS[key].version;
 
-// ── Builders (byte-identical to the pre-EVAL-6 inline templates) ────────────
+/** Avoid inventing alarming crisis facts in routine escalation checklists. */
+export const ROUTINE_ESCALATION_GUIDANCE = "Escalation guidance must be proportionate to the facts the parent actually reported. For an ordinary challenge such as leaving the park, use a relevant threshold such as persistent or worsening difficulty that disrupts daily life and recommend discussing it with a qualified professional. Do not introduce unreported self-harm, suicide, abuse, violence, medical symptoms or other crisis scenarios in a routine answer or checklist. If the parent has reported a crisis concern, prioritize the established urgent-help guidance.";
+
+// ── Versioned builders ────────────────────────────────────────────────────
 
 export type ChatPromptArgs = {
   developmentalFramework: string;
@@ -227,6 +234,7 @@ Ground "What To Do Today" and the parent script in this lens, and prefer Six Fra
 ${renderRecentTurnsBlock(recentTurns)}${renderWeeklyContextLine(weeklyContext)}Parent question:
 ${message}
 
+${ROUTINE_ESCALATION_GUIDANCE}
 Return only JSON that matches the response schema. Open with the "text" field FIRST: 2-4 warm, plain sentences that briefly acknowledge the parent and give the heart of your answer — no headings, no lists, no labels. Keep todayPlan to 1-3 steps. Include sourceCardsUsed as source-card ids you used. Include followUps: 2-3 short, natural next questions THIS parent is likely to ask after THIS answer (specific to their situation, never generic), each under 100 characters, in the same language as your other text values.${languageDirective}
 `;
 
@@ -269,6 +277,7 @@ Integrate the council's distinct lenses into one coherent, non-diagnostic answer
 Parent question:
 ${message}
 
+${ROUTINE_ESCALATION_GUIDANCE}
 Return only JSON matching the response schema. Keep todayPlan to 1-3 steps. Include sourceCardsUsed. Include followUps: 2-3 short, natural next questions this parent is likely to ask after this answer, each under 100 characters, in the same language as your other text values.${languageDirective}
 `;
 
@@ -276,6 +285,8 @@ export type VoiceReplyPromptArgs = {
   /** SPOKEN_COACH_PERSONA — passed in from routes/api.ts so lib/livePersona.ts
    *  stays the ONLY module that states the persona text (AI-V9 grep guard). */
   persona: string;
+  /** Server-approved, child-bound context; never accept a client memory block. */
+  companionContext?: SpokenContext;
   scholar: { name: string; method: string };
   childProfile: unknown;
   message: string;
@@ -285,6 +296,7 @@ export type VoiceReplyPromptArgs = {
 /** /voice — the spoken-register reply prompt. */
 export const buildVoiceReplyPrompt = ({
   persona,
+  companionContext,
   scholar,
   childProfile,
   message,
@@ -292,8 +304,8 @@ export const buildVoiceReplyPrompt = ({
 }: VoiceReplyPromptArgs): string => `${NON_DIAGNOSTIC_CONTRACT}
 ${persona} Apply this lens: ${scholar.name} — ${scholar.method}
 Child: ${childProfile ? JSON.stringify(promptProfile(childProfile)) : "unknown"}
-The parent just said: "${message}"
-Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give one concrete thing to try, in plain everyday language. No markdown, no headings, no bullet points, no emojis. Observations only — never a diagnosis. If there's a safety concern, gently suggest professional help.${languageDirective}`;
+${renderSpokenContext(companionContext)}The parent just said: ${JSON.stringify(message)}
+Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give one concrete thing to try, or ask one short clarifying question when the needed context is missing. Never invent an earlier discussion. Use plain everyday language. No markdown, no headings, no bullet points, no emojis. Observations only — never a diagnosis. If there's a safety concern, gently suggest professional help.${languageDirective}`;
 
 export type ExtractLogPromptArgs = {
   childProfile: unknown;
@@ -347,6 +359,12 @@ const CANONICAL = {
   languageDirective: "«language-directive»",
   persona: "«spoken-persona»",
   behaviorTypes: "«behavior-types»",
+  spokenContext: {
+    profile: { age: 4, interests: ["«interest»"] },
+    approvedMemory: "«approved-memory»",
+    approvedMemoryFactsUsed: 1,
+    recentTurns: [{ role: "parent", text: "«turn-parent»" }, { role: "coach", text: "«turn-coach»" }],
+  } as SpokenContext,
   // Masterplan 1.3 — the coach_chat fingerprint pins the NEW optional blocks'
   // template text too (framing line, role labels, weekly-line phrasing).
   recentTurns: [
@@ -388,13 +406,22 @@ export const promptFingerprint = (key: PromptKey): string => {
         languageDirective: CANONICAL.languageDirective,
       }));
     case "voice_reply":
-      return sha256(buildVoiceReplyPrompt({
+      return sha256(JSON.stringify([buildVoiceReplyPrompt({
         persona: CANONICAL.persona,
+        companionContext: CANONICAL.spokenContext,
         scholar: CANONICAL.scholar,
         childProfile: CANONICAL.childProfile,
         message: CANONICAL.message,
         languageDirective: CANONICAL.languageDirective,
-      }));
+      }), buildVoiceReplyPrompt({
+        persona: CANONICAL.persona,
+        scholar: CANONICAL.scholar,
+        childProfile: null,
+        message: CANONICAL.message,
+        languageDirective: CANONICAL.languageDirective,
+      })]));
+    case "live_session":
+      return sha256(JSON.stringify([buildLiveSystemInstruction("he", CANONICAL.spokenContext), buildLiveSystemInstruction("he")]));
     case "extract_log":
       return sha256(buildExtractLogPrompt({
         childProfile: CANONICAL.childProfile,

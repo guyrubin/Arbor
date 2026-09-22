@@ -37,7 +37,7 @@ import { HeroScenePlayer } from "./HeroScenePlayer";
 function nodes(node: React.ReactNode): React.ReactElement<Record<string, unknown>>[] {
   if (!React.isValidElement(node)) return [];
   const element = node as React.ReactElement<Record<string, unknown>>;
-  return [element, ...React.Children.toArray(element.props.children).flatMap(nodes)];
+  return [element, ...React.Children.toArray(element.props.children as React.ReactNode).flatMap(nodes)];
 }
 
 beforeEach(() => {
@@ -50,7 +50,7 @@ describe("HeroScenePlayer authored fallback", () => {
   it("renders local story art with no avatar or provider request instead of dereferencing an absent result", () => {
     const tree = HeroScenePlayer({
       scene: {
-        beatId: "arrival",
+        beatId: "call",
         title: "The lanterns wake",
         narration: "A warm path glows.",
         imagePrompt: "",

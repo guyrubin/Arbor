@@ -23,5 +23,15 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    "android",
+    "ios",
+    "public",
+    "output",
+    ".playwright-cli",
+    "baseline-vite-cache"
+  ]
 }

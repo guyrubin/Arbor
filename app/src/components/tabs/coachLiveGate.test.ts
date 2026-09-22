@@ -60,7 +60,7 @@ describe("VC-7 — gate wiring stays fail-closed", () => {
       process.env.GEMINI_API_KEY = "some-key-set-for-another-reason";
       const config = loadConfig();
       expect(config.liveEnabled).toBe(false);
-      expect(config.liveModel).toBe("gemini-2.0-flash-live-001");
+      expect(config.liveModel).toBe("gemini-3.8-live");
       process.env.LIVE_ENABLED = "true";
       expect(loadConfig().liveEnabled).toBe(true);
     } finally {

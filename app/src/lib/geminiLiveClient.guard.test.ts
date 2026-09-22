@@ -89,7 +89,7 @@ describe("VC-1 condition 1 — transcription always on, absence handled by the g
 
 describe("F-01 — connect failure is deterministic (deadline + deferred reject + cleanup)", () => {
   it("the connect races the failedBeforeOpen deferred inside a hard deadline", () => {
-    expect(client).toContain("withConnectDeadline(Promise.race([connecting, failedBeforeOpen]), opts.signal)");
+    expect(client).toContain("withConnectDeadline(Promise.race([prepared, failedBeforeOpen]), opts.signal)");
     expect(client).toMatch(/CONNECT_TIMEOUT_MS = 10_000/);
   });
 

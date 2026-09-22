@@ -1,0 +1,812 @@
+{
+  "ts": "2026-09-22T06:59:28.495Z",
+  "models": {
+    "chat": "gemini-2.5-flash",
+    "analysis": "gemini-2.5-flash",
+    "image": "gemini-2.5-flash-image",
+    "live": "gemini-3.8-live"
+  },
+  "rows": [
+    {
+      "name": "coach",
+      "route": "chat",
+      "status": 200,
+      "ms": 21688,
+      "ok": true,
+      "evidence": {
+        "text": "Leaving a fun place like the park can be really tough for a 4-year-old, and it's common for them to have big feelings about it. One small thing you could try today is to give Noa a clear heads-up and involve them in a \"last thing\" before you go, which can help them feel more prepared and in control of the transition. This approach helps secure your connection while building their capability to manage changes in routine.\n\n### 1. What May Be Happening\n- **Difficulty with transitions** (high): Noa is 4 years old, and this is a common developmental challenge at this age as children learn to regulate emotions and manage changes in activity.\n- **Need for predictability and control** (medium): Providing warnings and involving Noa in the \"last thing\" can offer a sense of predictability and agency, which may ease the transition.\n\n### 2. Why It May Be Happening\nAge band: **3-5y**. Domains: **attachment_regulation, cognition_executive_function, independence_adaptive_skills**.\n\n### 3. What To Do Today\n- Give a \"5-minute warning\" before leaving, stating what you'll do next (e.g., \"5 more minutes, then we'll pack up and go home for a snack\").\n- Involve Noa in choosing one \"last thing\" to do at the park (e.g., \"Do you want to go down the slide one more time or swing?\").\n- As you leave, narrate what's next, keeping it positive and predictable (e.g., \"Okay, park time is done, now we're going home for that yummy snack!\").\n\n### 4. What Is The Parent Script\n\"Hey Noa, in 5 minutes we're going to pack up and head home for a special snack. What's one last thing you want to do before we go? One more slide or one more swing?\"\n\n### 5. What To Avoid\n- Surprising Noa with an abrupt departure.\n- Getting into a power struggle or lecturing during the transition.\n- Dismissing Noa's feelings about leaving.\n\n### 6. What To Observe\n- How Noa responds to the 5-minute warning.\n- If offering a \"last thing\" choice helps with cooperation.\n- Noa's mood and behavior once you've left the park and are on the way home or doing the next activity.\n\n### 7. When To Escalate\n- Noa's distress is consistently severe, lasting for extended periods after leaving the park.\n- Noa shows regression in other areas of development alongside this challenge.\n- The difficulty with transitions significantly impairs daily functioning across multiple settings.\n\n### Frame Routing\n- **Aim:** To help Noa develop emotional regulation and adaptability during transitions, fostering a sense of security and competence.\n- **Two Axes:** This approach balances the warmth of acknowledging Noa's feelings and offering choice with the structure of clear warnings and a predictable plan for leaving.\n- **Story:** You are creating a predictable \"leaving the park\" ritual, a mini-story where the park adventure ends, and a new home adventure begins.\n- **Shadow:** Acknowledge the frustration or sadness Noa might feel about leaving a preferred activity, allowing space for those feelings without letting them derail the plan.\n- **Marriage:** Ensure both parents or caregivers use a consistent strategy for park departures to provide Noa with predictability.\n- **Shepherd:** You, the parent, are the primary shepherd for implementing this immediate strategy.\n\n### Pending Memory Review\n- Noa struggles with transitions, specifically leaving the park. (Parent; short-term)\n- Noa may benefit from warnings, choices, and clear \"next activity\" plans during transitions. (Observation; medium-term)\n\n### Knowledge Cards Used\n- bowlby-secure-base\n- vygotsky-zpd\n- bronfenbrenner-ecosystem\n- erikson-developmental-arc\n\n### Handoff Note\nTeacher: N/A\n\nProfessional: N/A\n\n### Suggested Follow-ups\n- What if Noa still melts down?\n- How can I make the \"next thing\" enticing?\n- Should I always offer a choice?",
+        "contract": {
+          "text": "Leaving a fun place like the park can be really tough for a 4-year-old, and it's common for them to have big feelings about it. One small thing you could try today is to give Noa a clear heads-up and involve them in a \"last thing\" before you go, which can help them feel more prepared and in control of the transition. This approach helps secure your connection while building their capability to manage changes in routine.",
+          "riskLevel": "low",
+          "ageBand": "3-5y",
+          "domains": [
+            "attachment_regulation",
+            "cognition_executive_function",
+            "independence_adaptive_skills"
+          ],
+          "nonDiagnosticHypotheses": [
+            {
+              "label": "Difficulty with transitions",
+              "confidence": "high",
+              "rationale": "Noa is 4 years old, and this is a common developmental challenge at this age as children learn to regulate emotions and manage changes in activity."
+            },
+            {
+              "label": "Need for predictability and control",
+              "confidence": "medium",
+              "rationale": "Providing warnings and involving Noa in the \"last thing\" can offer a sense of predictability and agency, which may ease the transition."
+            }
+          ],
+          "todayPlan": [
+            "Give a \"5-minute warning\" before leaving, stating what you'll do next (e.g., \"5 more minutes, then we'll pack up and go home for a snack\").",
+            "Involve Noa in choosing one \"last thing\" to do at the park (e.g., \"Do you want to go down the slide one more time or swing?\").",
+            "As you leave, narrate what's next, keeping it positive and predictable (e.g., \"Okay, park time is done, now we're going home for that yummy snack!\")."
+          ],
+          "parentScript": "Hey Noa, in 5 minutes we're going to pack up and head home for a special snack. What's one last thing you want to do before we go? One more slide or one more swing?",
+          "avoid": [
+            "Surprising Noa with an abrupt departure.",
+            "Getting into a power struggle or lecturing during the transition.",
+            "Dismissing Noa's feelings about leaving."
+          ],
+          "observe": [
+            "How Noa responds to the 5-minute warning.",
+            "If offering a \"last thing\" choice helps with cooperation.",
+            "Noa's mood and behavior once you've left the park and are on the way home or doing the next activity."
+          ],
+          "escalateIf": [
+            "Noa's distress is consistently severe, lasting for extended periods after leaving the park.",
+            "Noa shows regression in other areas of development alongside this challenge.",
+            "The difficulty with transitions significantly impairs daily functioning across multiple settings."
+          ],
+          "frameRouting": {
+            "aim": "To help Noa develop emotional regulation and adaptability during transitions, fostering a sense of security and competence.",
+            "twoAxes": "This approach balances the warmth of acknowledging Noa's feelings and offering choice with the structure of clear warnings and a predictable plan for leaving.",
+            "story": "You are creating a predictable \"leaving the park\" ritual, a mini-story where the park adventure ends, and a new home adventure begins.",
+            "shadow": "Acknowledge the frustration or sadness Noa might feel about leaving a preferred activity, allowing space for those feelings without letting them derail the plan.",
+            "marriage": "Ensure both parents or caregivers use a consistent strategy for park departures to provide Noa with predictability.",
+            "shepherd": "You, the parent, are the primary shepherd for implementing this immediate strategy."
+          },
+          "memoryProposals": [
+            {
+              "fact": "Noa struggles with transitions, specifically leaving the park.",
+              "source": "Parent",
+              "retention": "short-term"
+            },
+            {
+              "fact": "Noa may benefit from warnings, choices, and clear \"next activity\" plans during transitions.",
+              "source": "Observation",
+              "retention": "medium-term"
+            }
+          ],
+          "handoffNotes": {
+            "teacher": "N/A",
+            "professional": "N/A"
+          },
+          "followUps": [
+            "What if Noa still melts down?",
+            "How can I make the \"next thing\" enticing?",
+            "Should I always offer a choice?"
+          ],
+          "sourceCardsUsed": [
+            "bowlby-secure-base",
+            "vygotsky-zpd",
+            "bronfenbrenner-ecosystem",
+            "erikson-developmental-arc"
+          ],
+          "sourceCards": [
+            {
+              "id": "bowlby-secure-base",
+              "title": "Bowlby \u2014 Secure Base & Repair",
+              "type": "scholar"
+            },
+            {
+              "id": "vygotsky-zpd",
+              "title": "Vygotsky \u2014 Zone of Proximal Development & Scaffolding",
+              "type": "scholar"
+            },
+            {
+              "id": "bronfenbrenner-ecosystem",
+              "title": "Bronfenbrenner \u2014 The Child's Ecosystem",
+              "type": "scholar"
+            },
+            {
+              "id": "erikson-developmental-arc",
+              "title": "Erikson \u2014 The Developmental Arc",
+              "type": "scholar"
+            }
+          ],
+          "approvedMemoryFactsUsed": 0
+        },
+        "memoryReviewItems": [
+          {
+            "memoryId": "3941f15f-c354-4ba3-9d6a-11ec6c773275",
+            "familyId": "default-family",
+            "childId": "smoke-synthetic-child",
+            "status": "pending",
+            "fact": "Noa struggles with transitions, specifically leaving the park.",
+            "source": "Parent",
+            "retention": "short-term",
+            "createdAt": "2026-09-22T06:57:13.965Z",
+            "prompt": "Leaving the park is hard. What is one small thing to try today?",
+            "frameRouting": {
+              "aim": "To help Noa develop emotional regulation and adaptability during transitions, fostering a sense of security and competence.",
+              "twoAxes": "This approach balances the warmth of acknowledging Noa's feelings and offering choice with the structure of clear warnings and a predictable plan for leaving.",
+              "story": "You are creating a predictable \"leaving the park\" ritual, a mini-story where the park adventure ends, and a new home adventure begins.",
+              "shadow": "Acknowledge the frustration or sadness Noa might feel about leaving a preferred activity, allowing space for those feelings without letting them derail the plan.",
+              "marriage": "Ensure both parents or caregivers use a consistent strategy for park departures to provide Noa with predictability.",
+              "shepherd": "You, the parent, are the primary shepherd for implementing this immediate strategy."
+            },
+            "latestEventId": "20462c13-0198-447a-86f6-a0394a956847"
+          },
+          {
+            "memoryId": "564ef225-8f6f-423b-9268-19ebb7c3ad6c",
+            "familyId": "default-family",
+            "childId": "smoke-synthetic-child",
+            "status": "pending",
+            "fact": "Noa may benefit from warnings, choices, and clear \"next activity\" plans during transitions.",
+            "source": "Observation",
+            "retention": "medium-term",
+            "createdAt": "2026-09-22T06:57:13.965Z",
+            "prompt": "Leaving the park is hard. What is one small thing to try today?",
+            "frameRouting": {
+              "aim": "To help Noa develop emotional regulation and adaptability during transitions, fostering a sense of security and competence.",
+              "twoAxes": "This approach balances the warmth of acknowledging Noa's feelings and offering choice with the structure of clear warnings and a predictable plan for leaving.",
+              "story": "You are creating a predictable \"leaving the park\" ritual, a mini-story where the park adventure ends, and a new home adventure begins.",
+              "shadow": "Acknowledge the frustration or sadness Noa might feel about leaving a preferred activity, allowing space for those feelings without letting them derail the plan.",
+              "marriage": "Ensure both parents or caregivers use a consistent strategy for park departures to provide Noa with predictability.",
+              "shepherd": "You, the parent, are the primary shepherd for implementing this immediate strategy."
+            },
+            "latestEventId": "8bf620a5-1463-4829-b9c2-e6f0474a1859"
+          },
+          {
+            "memoryId": "dbf426e1-4372-49bf-8fb0-5c1fc0caa8ea",
+            "familyId": "default-family",
+            "childId": "smoke-synthetic-child",
+            "status": "pending",
+            "fact": "Noa finds leaving the park challenging, often resisting transitions from preferred activities.",
+            "source": "Parent report",
+            "retention": "short-term",
+            "createdAt": "2026-09-22T06:29:43.239Z",
+            "prompt": "How can we make leaving the park easier without a battle?",
+            "frameRouting": {
+              "aim": "To help Noa develop self-regulation and transition skills, fostering a sense of agency and predictability in their daily routines.",
+              "twoAxes": "This approach balances warmth and attunement (offering physical connection and understanding distress) with structure and responsibility (clear warnings, choices, and predictable routines).",
+              "story": "By creating a consistent 'leaving ritual' with choices and comfort, the family can build a story of predictable endings and new beginnings, rather than abrupt disruptions.",
+              "shadow": "The shadow here is the frustration and disappointment Noa feels when a highly preferred activity ends, and the parent's own potential frustration with the ensuing 'battle.' Acknowledging these feelings without judgment is key.",
+              "marriage": "Co-parents or caregivers should align on the consistent park routine, warnings, and comfort strategies to provide a unified and predictable experience for Noa.",
+              "shepherd": "The parent is the primary shepherd for implementing these strategies. If challenges persist or escalate, a pediatrician or developmental specialist could offer further guidance."
+            },
+            "latestEventId": "13fa187e-5529-41b0-bca5-00855c8fb4f4"
+          }
+        ]
+      }
+    },
+    {
+      "name": "council",
+      "route": "council",
+      "status": 500,
+      "ms": 21645,
+      "ok": false,
+      "evidence": {
+        "error": "Failed to convene the scholar council",
+        "details": "[\n  {\n    \"origin\": \"string\",\n    \"code\": \"too_small\",\n    \"minimum\": 1,\n    \"inclusive\": true,\n    \"path\": [\n      \"handoffNotes\",\n      \"teacher\"\n    ],\n    \"message\": \"Too small: expected string to have >=1 characters\"\n  }\n]"
+      }
+    },
+    {
+      "name": "screened voice",
+      "route": "voice",
+      "status": 200,
+      "ms": 1158,
+      "ok": true,
+      "evidence": "event: delta\ndata: {\"text\":\"I hear that leaving the park can be a tough moment.\\n\\n\",\"tts\":{\"text\":\"I hear that leaving the park can be a tough moment.\",\"token\":\"1790060556278.e7b955e495c89a79bedb749f3419567a9aa69bdbffe913906d2c02df8e5e436e\"}}\n\nevent: delta\ndata: {\"text\":\"For a four-year-old, one possibility is to say, \\\"In five minutes, we'll pack up our things and say goodbye to the park until next time.\\\" This gives Noa a heads-up and a clear expectation. \",\"tts\":{\"text\":\"For a four-year-old, one possibility is to say, \\\"In five minutes, we'll pack up our things and say goodbye to the park until next time.\\\" This gives Noa a heads-up and a clear expectation.\",\"token\":\"1790060556667.92fcfb2d29ec32835afeae1215033b5cae853a2d6590b5df6deda1b8452f24de\"}}\n\nevent: delta\ndata: {\"text\":\"If this becomes a persistent challenge or causes significant distress, you might consider speaking with a professional about strategies for transitions.\",\"tts\":{\"text\":\"If this becomes a persistent challenge or causes significant distress, you might consider speaking with a professional about strategies for transitions.\",\"token\":\"1790060556806.4e4abf0a94f3b7f20d36707f4467de97e10e547fadbf2f1b8390102a230197f4\"}}\n\nevent: done\ndata: {}\n\n"
+    },
+    {
+      "name": "capture",
+      "route": "extract-log",
+      "status": 200,
+      "ms": 654,
+      "ok": true,
+      "evidence": {
+        "behaviorType": "Transition Refusal",
+        "intensity": 2,
+        "durationMinutes": 2,
+        "context": "Public",
+        "trigger": "leaving the park",
+        "response": "offered a hand and walked together",
+        "notes": ""
+      }
+    },
+    {
+      "name": "conversation proposals",
+      "route": "conversation/proposals",
+      "status": 200,
+      "ms": 864,
+      "ok": true,
+      "evidence": {
+        "proposals": [
+          {
+            "target": "observation",
+            "summary": "Noa had difficulty leaving the park for two minutes today.",
+            "sourceExcerpt": "Today at the park leaving was hard for two minutes.",
+            "confidence": 1
+          },
+          {
+            "target": "report_fact",
+            "summary": "Parent offered a hand and walked with Noa when leaving the park.",
+            "sourceExcerpt": "I offered a hand and we walked together.",
+            "confidence": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "focus",
+      "route": "todays-focus",
+      "status": 200,
+      "ms": 881,
+      "ok": true,
+      "evidence": {
+        "text": "It looks like leaving the park has been a moment of focus for your family this week. This can be a common developmental step for 4-year-olds as they navigate transitions. When it's almost time to leave, try giving Noa a five-minute warning, then a two-minute warning, so they can mentally prepare for the change in activity.",
+        "focus": "It looks like leaving the park has been a moment of focus for your family this week. This can be a common developmental step for 4-year-olds as they navigate transitions.",
+        "tryToday": "When it's almost time to leave, try giving Noa a five-minute warning, then a two-minute warning, so they can mentally prepare for the change in activity.",
+        "inputsUsed": {
+          "momentCount": 1,
+          "topTrigger": "Leaving the park"
+        },
+        "generatedAt": "2026-09-22T06:57:39.212Z",
+        "dateKey": "2026-09-22"
+      }
+    },
+    {
+      "name": "explain Hebrew",
+      "route": "explain",
+      "status": 200,
+      "ms": 1763,
+      "ok": true,
+      "evidence": {
+        "explanation": "\u05d1\u05d2\u05d9\u05dc 4, \u05d9\u05dc\u05d3\u05d9\u05dd \u05de\u05ea\u05d7\u05d9\u05dc\u05d9\u05dd \u05dc\u05dc\u05de\u05d5\u05d3 \u05d0\u05ea \u05d4\u05e8\u05e2\u05d9\u05d5\u05df \u05e9\u05dc \u05ea\u05d5\u05e8\u05d5\u05ea \u05d5\u05d7\u05dc\u05d5\u05e7\u05d4, \u05e9\u05d6\u05d4\u05d5 \u05e6\u05e2\u05d3 \u05d2\u05d3\u05d5\u05dc \u05d1\u05d4\u05ea\u05e4\u05ea\u05d7\u05d5\u05ea \u05d4\u05d7\u05d1\u05e8\u05ea\u05d9\u05ea \u05e9\u05dc\u05d4\u05dd. \u05d6\u05d4 \u05e2\u05d5\u05d6\u05e8 \u05dc\u05d4\u05dd \u05dc\u05d4\u05d1\u05d9\u05df \u05e9\u05dc\u05db\u05d5\u05dc\u05dd \u05d9\u05e9 \u05d4\u05d6\u05d3\u05de\u05e0\u05d5\u05ea \u05dc\u05e9\u05d7\u05e7 \u05d5\u05dc\u05d9\u05d4\u05e0\u05d5\u05ea, \u05d5\u05d6\u05d4 \u05d1\u05d5\u05e0\u05d4 \u05d0\u05ea \u05d4\u05d9\u05db\u05d5\u05dc\u05ea \u05e9\u05dc\u05d4\u05dd \u05dc\u05e9\u05ea\u05e3 \u05e4\u05e2\u05d5\u05dc\u05d4 \u05e2\u05dd \u05d0\u05d7\u05e8\u05d9\u05dd. \u05dc\u05e8\u05d5\u05d1, \u05d6\u05d4 \u05e0\u05e8\u05d0\u05d4 \u05db\u05de\u05d5 \u05d4\u05d1\u05e0\u05d4 \u05d4\u05d5\u05dc\u05db\u05ea \u05d5\u05d2\u05d5\u05d1\u05e8\u05ea \u05e9\u05dc '\u05ea\u05d5\u05e8\u05d9' \u05d5'\u05ea\u05d5\u05e8\u05da', \u05d2\u05dd \u05d0\u05dd \u05d6\u05d4 \u05e2\u05d3\u05d9\u05d9\u05df \u05d3\u05d5\u05e8\u05e9 \u05ea\u05d6\u05db\u05d5\u05e8\u05d5\u05ea.",
+        "tryToday": "\u05db\u05e9\u05d0\u05ea\u05dd \u05de\u05e9\u05d7\u05e7\u05d9\u05dd \u05e2\u05dd Noa \u05d4\u05d9\u05d5\u05dd, \u05e0\u05e1\u05d5 \u05dc\u05d5\u05de\u05e8: \"\u05e2\u05db\u05e9\u05d9\u05d5 \u05ea\u05d5\u05e8\u05d9 \u05dc\u05d1\u05e0\u05d5\u05ea \u05de\u05d2\u05d3\u05dc, \u05d5\u05d0\u05d7\u05e8 \u05db\u05da \u05ea\u05d5\u05e8\u05da. \u05d1\u05d5\u05d0 \u05e0\u05e8\u05d0\u05d4 \u05d0\u05d9\u05da \u05d0\u05e0\u05d7\u05e0\u05d5 \u05d9\u05db\u05d5\u05dc\u05d9\u05dd \u05dc\u05e2\u05e9\u05d5\u05ea \u05d0\u05ea \u05d6\u05d4 \u05d1\u05d9\u05d7\u05d3.\"",
+        "text": "\u05d1\u05d2\u05d9\u05dc 4, \u05d9\u05dc\u05d3\u05d9\u05dd \u05de\u05ea\u05d7\u05d9\u05dc\u05d9\u05dd \u05dc\u05dc\u05de\u05d5\u05d3 \u05d0\u05ea \u05d4\u05e8\u05e2\u05d9\u05d5\u05df \u05e9\u05dc \u05ea\u05d5\u05e8\u05d5\u05ea \u05d5\u05d7\u05dc\u05d5\u05e7\u05d4, \u05e9\u05d6\u05d4\u05d5 \u05e6\u05e2\u05d3 \u05d2\u05d3\u05d5\u05dc \u05d1\u05d4\u05ea\u05e4\u05ea\u05d7\u05d5\u05ea \u05d4\u05d7\u05d1\u05e8\u05ea\u05d9\u05ea \u05e9\u05dc\u05d4\u05dd. \u05d6\u05d4 \u05e2\u05d5\u05d6\u05e8 \u05dc\u05d4\u05dd \u05dc\u05d4\u05d1\u05d9\u05df \u05e9\u05dc\u05db\u05d5\u05dc\u05dd \u05d9\u05e9 \u05d4\u05d6\u05d3\u05de\u05e0\u05d5\u05ea \u05dc\u05e9\u05d7\u05e7 \u05d5\u05dc\u05d9\u05d4\u05e0\u05d5\u05ea, \u05d5\u05d6\u05d4 \u05d1\u05d5\u05e0\u05d4 \u05d0\u05ea \u05d4\u05d9\u05db\u05d5\u05dc\u05ea \u05e9\u05dc\u05d4\u05dd \u05dc\u05e9\u05ea\u05e3 \u05e4\u05e2\u05d5\u05dc\u05d4 \u05e2\u05dd \u05d0\u05d7\u05e8\u05d9\u05dd. \u05dc\u05e8\u05d5\u05d1, \u05d6\u05d4 \u05e0\u05e8\u05d0\u05d4 \u05db\u05de\u05d5 \u05d4\u05d1\u05e0\u05d4 \u05d4\u05d5\u05dc\u05db\u05ea \u05d5\u05d2\u05d5\u05d1\u05e8\u05ea \u05e9\u05dc '\u05ea\u05d5\u05e8\u05d9' \u05d5'\u05ea\u05d5\u05e8\u05da', \u05d2\u05dd \u05d0\u05dd \u05d6\u05d4 \u05e2\u05d3\u05d9\u05d9\u05df \u05d3\u05d5\u05e8\u05e9 \u05ea\u05d6\u05db\u05d5\u05e8\u05d5\u05ea. \u05db\u05e9\u05d0\u05ea\u05dd \u05de\u05e9\u05d7\u05e7\u05d9\u05dd \u05e2\u05dd Noa \u05d4\u05d9\u05d5\u05dd, \u05e0\u05e1\u05d5 \u05dc\u05d5\u05de\u05e8: \"\u05e2\u05db\u05e9\u05d9\u05d5 \u05ea\u05d5\u05e8\u05d9 \u05dc\u05d1\u05e0\u05d5\u05ea \u05de\u05d2\u05d3\u05dc, \u05d5\u05d0\u05d7\u05e8 \u05db\u05da \u05ea\u05d5\u05e8\u05da. \u05d1\u05d5\u05d0 \u05e0\u05e8\u05d0\u05d4 \u05d0\u05d9\u05da \u05d0\u05e0\u05d7\u05e0\u05d5 \u05d9\u05db\u05d5\u05dc\u05d9\u05dd \u05dc\u05e2\u05e9\u05d5\u05ea \u05d0\u05ea \u05d6\u05d4 \u05d1\u05d9\u05d7\u05d3.\"",
+        "generatedAt": "2026-09-22T06:57:40.979Z",
+        "dateKey": "2026-09-22"
+      }
+    },
+    {
+      "name": "plan",
+      "route": "generate-plan",
+      "status": 200,
+      "ms": 5190,
+      "ok": true,
+      "evidence": {
+        "title": "Supporting Calmer Park Departures for Noa",
+        "issue": "Difficulty transitioning from enjoyable activities like playing at the park, leading to frustration and meltdowns during departure.",
+        "phases": [
+          {
+            "name": "Preparation and Predictability",
+            "description": "Setting the stage for a smoother transition before even arriving at the park, and throughout the play session.",
+            "steps": [
+              {
+                "text": "Before leaving home, discuss the park visit, including that there will be a time to leave.",
+                "completed": false
+              },
+              {
+                "text": "Establish a visual timer or a verbal countdown system (e.g., '5 more minutes, then we pack up').",
+                "completed": false
+              },
+              {
+                "text": "At the park, give regular time warnings before departure (e.g., '10 minutes left to play!').",
+                "completed": false
+              }
+            ]
+          },
+          {
+            "name": "Transition Ritual",
+            "description": "Creating a consistent and positive routine for leaving the park.",
+            "steps": [
+              {
+                "text": "Introduce a 'last thing' activity (e.g., 'one more slide,' 'one more swing') before it's time to go.",
+                "completed": false
+              },
+              {
+                "text": "Involve Noa in a small task related to leaving, like helping to pack a bag or saying 'bye-bye' to the swings.",
+                "completed": false
+              },
+              {
+                "text": "Have a consistent 'leaving song' or phrase to signal the transition.",
+                "completed": false
+              }
+            ]
+          },
+          {
+            "name": "Post-Departure Connection",
+            "description": "Reinforcing positive behavior and connecting after the transition.",
+            "steps": [
+              {
+                "text": "Acknowledge Noa's feelings about leaving, even if they were upset.",
+                "completed": false
+              },
+              {
+                "text": "Shift focus to the next enjoyable activity or what's happening when you get home.",
+                "completed": false
+              },
+              {
+                "text": "Praise cooperation and effort during the departure process.",
+                "completed": false
+              }
+            ]
+          }
+        ],
+        "scripts": [
+          {
+            "scenario": "Giving a time warning at the park",
+            "say": "In 5 minutes, it will be time to say goodbye to the park. What's one more thing you want to do?",
+            "avoid": "Time to go NOW! Let's go!"
+          },
+          {
+            "scenario": "When Noa starts to protest leaving",
+            "say": "I know it's hard to leave when you're having so much fun. We can come back another day. Let's sing our leaving song!",
+            "avoid": "Stop crying, we have to go. You're being silly."
+          },
+          {
+            "scenario": "After a successful departure",
+            "say": "You did a great job leaving the park today, even though it was hard. I'm proud of you!",
+            "avoid": "Finally, we got out of there."
+          }
+        ],
+        "successIndicators": [
+          "Fewer tears or meltdowns during park departures.",
+          "Increased willingness to participate in the 'last thing' activity.",
+          "Easier shift of attention to the next activity after leaving the park.",
+          "Increased use of verbal communication to express feelings about leaving, rather than just crying or protesting."
+        ]
+      }
+    },
+    {
+      "name": "transition story",
+      "route": "generate-story",
+      "status": 200,
+      "ms": 12856,
+      "ok": true,
+      "evidence": {
+        "title": "Goodbye Park, See You Soon, Noa!",
+        "pages": [
+          "The sun shone brightly as Noa played at the park. Swings went high, and slides were fast! Laughter filled the air as Noa had so much fun.",
+          "Soon, a grown-up came to tell Noa, 'It's almost time to go home. We've had a wonderful time here today!'",
+          "Noa might have felt a little bit sad. It's hard to leave a fun place! Maybe Noa wanted just one more swing, or one more slide.",
+          "The grown-up smiled and said, 'It's okay to feel sad. We can wave goodbye to the park for now, and guess what? We can come back another day!'",
+          "So, Noa looked at the big slide and waved. 'Goodbye, slide!' Noa looked at the swings and waved. 'Goodbye, swings!' It felt good to say goodbye.",
+          "Holding the grown-up's hand, Noa walked away, thinking about all the fun things at home and knowing the park would be there another day.",
+          "Waving goodbye helps us remember that good times can happen again. We can always look forward to returning to our favorite places, like the park!"
+        ],
+        "illustrationPrompt": "A happy Noa (age 4) waving goodbye to a sunny park with swings and a slide, holding a grown-up's hand. The park is vibrant, and Noa has a thoughtful, slightly wistful but ultimately content expression.",
+        "discussionQuestions": [
+          "How did Noa feel when it was time to leave the park? It's okay to have all sorts of feelings!",
+          "What did Noa do to say goodbye to the park? Could we try that next time we leave a fun place?",
+          "What are some things Noa might do at home after leaving the park? Sometimes thinking about what's next helps with transitions.",
+          "The story says we can come back another day. What does 'another day' mean? And what might Noa want to do first when we return?",
+          "What's one thing Noa loves most about the park? Remembering the fun parts can make saying goodbye a little easier."
+        ],
+        "summary": "This story helps Noa navigate the transition of leaving a fun place like the park. It acknowledges potential feelings of sadness but introduces the coping strategy of waving goodbye and the comforting idea that good times can be revisited. It reinforces that saying goodbye for now allows for the anticipation of future fun."
+      }
+    },
+    {
+      "name": "hero journey",
+      "route": "generate-hero-journey",
+      "status": 200,
+      "ms": 15014,
+      "ok": true,
+      "evidence": {
+        "storyId": "david-and-goliath",
+        "title": "David and Goliath",
+        "scenes": [
+          {
+            "beatId": "call",
+            "title": "A Big Worry in the Valley",
+            "narration": "Noa was a small shepherd, looking after fluffy sheep in a sunny valley. One day, a big, scary whisper traveled through the air. Everyone was talking about a giant named Goliath who was making everyone feel very afraid.",
+            "imagePrompt": "Noa as a small shepherd, holding a crook, looking up with curious and concerned eyes, sheep grazing peacefully around, a distant, shadowy figure of a giant looms over a far-off valley.",
+            "sfx": [
+              "BAA!",
+              "WHISPER!",
+              "RUMBLE!"
+            ],
+            "dialogue": "What's that big noise?"
+          },
+          {
+            "beatId": "challenge",
+            "title": "The Giant's Shadow",
+            "narration": "The giant Goliath was enormous, taller than any tree! He stood in the middle of the valley, making big, loud noises. Even the grown-up soldiers, who were very brave, felt too small to face him.",
+            "imagePrompt": "A colossal giant Goliath, casting a long, intimidating shadow over a group of tiny, hesitant soldiers, while Noa peeks out from behind a large rock with wide eyes.",
+            "sfx": [
+              "BOOM!",
+              "SHUDDER!",
+              "GASP!"
+            ],
+            "dialogue": "He's so tall!"
+          },
+          {
+            "beatId": "fear",
+            "title": "A Pounding Heart",
+            "narration": "Noa's heart began to beat very fast, like a little drum. Goliath was so, so big, and Noa felt so very small. A tiny voice inside whispered, 'You can't do this, you're too little!'",
+            "imagePrompt": "Close-up on Noa's face, eyes wide with a mix of fear and determination, a huge, blurry giant's foot looming in the background, emphasizing the size difference.",
+            "sfx": [
+              "THUMP-THUMP!",
+              "GULP!",
+              "SHIVERS!"
+            ],
+            "dialogue": "My heart is beating fast!"
+          },
+          {
+            "beatId": "decision",
+            "title": "A Moment to Choose",
+            "narration": "Noa stood very still, thinking hard. The giant was still there, and the fear was still there. Now, Noa had to decide what to do next.",
+            "imagePrompt": "Noa standing thoughtfully at a crossroads, looking down at a tiny sling in their hand, with two paths stretching out before them.",
+            "sfx": [
+              "HMM...",
+              "WHOOSH!",
+              "THINK!"
+            ],
+            "dialogue": "What should I do now?"
+          },
+          {
+            "beatId": "consequence",
+            "title": "The Valley Holds Its Breath",
+            "narration": "Suddenly, the whole valley grew very, very quiet. Everyone stopped talking and turned to watch. All eyes were on Noa, waiting to see what the small hero would do.",
+            "imagePrompt": "A wide shot of the valley, with all the people and soldiers looking intently towards Noa in the center, a sense of hushed anticipation in the air.",
+            "sfx": [
+              "SILENCE!",
+              "WATCH!",
+              "WAIT!"
+            ],
+            "dialogue": "They are all looking!"
+          },
+          {
+            "beatId": "growth",
+            "title": "One Brave Step",
+            "narration": "Noa learned something important: being brave doesn't mean you're not scared at all. It means taking a tiny step forward, even when your heart is still fluttering. It means choosing to try.",
+            "imagePrompt": "Noa taking a small, determined step forward, a tiny but bright glow of courage radiating around them, casting aside a small shadow of fear.",
+            "sfx": [
+              "STEP!",
+              "BRAVE!",
+              "GLOW!"
+            ],
+            "dialogue": "I can do this!"
+          },
+          {
+            "beatId": "victory",
+            "title": "Cheers for the Hero",
+            "narration": "And just like that, the big, scary giant problem became small. The people in the valley cheered and clapped for Noa. They celebrated the small hero who had dared to be brave.",
+            "imagePrompt": "Goliath shrinking into the distance, looking much smaller, while Noa stands tall and smiles, with people in the background cheering and waving happily.",
+            "sfx": [
+              "CHEERS!",
+              "HOORAY!",
+              "YAY!"
+            ],
+            "dialogue": "We did it!"
+          },
+          {
+            "beatId": "reflection",
+            "title": "A Brave Heart",
+            "narration": "Noa rested on a soft, grassy hill, feeling peaceful and proud. 'I was braver than I knew,' Noa thought. 'Being small doesn't mean you can't be mighty.'",
+            "imagePrompt": "Noa sitting peacefully on a hillside, looking at a sky full of twinkling stars, a gentle, contented smile on their face.",
+            "sfx": [
+              "SIGH!",
+              "TWINKLE!",
+              "PEACE!"
+            ],
+            "dialogue": "I was brave today."
+          }
+        ],
+        "choices": [
+          {
+            "id": "a",
+            "label": "I will quietly walk away",
+            "consequence": "Noa steps back into the shadows, watching from afar. The scary feeling stays, but so does a quiet wish that Noa had tried."
+          },
+          {
+            "id": "b",
+            "label": "I will ask a friend for help",
+            "consequence": "Noa finds a trusted friend and shares the big worry. Feeling stronger with a friend's support, Noa steps forward, together-in-spirit."
+          },
+          {
+            "id": "c",
+            "label": "I will face the giant with my sling",
+            "consequence": "Noa takes a deep, steady breath, feeling small but strong. Picking up a small, smooth stone, Noa begins to walk towards the giant."
+          }
+        ],
+        "reflection": {
+          "practiced": [
+            "Courage",
+            "Self-belief",
+            "Facing fear"
+          ],
+          "questions": [
+            "When did you feel small today, like Noa did?",
+            "What helped Noa be brave even though the giant was big?",
+            "What is one giant-sized thing you want to try tomorrow?"
+          ]
+        }
+      }
+    },
+    {
+      "name": "bedtime story",
+      "route": "generate-bedtime-story",
+      "status": 200,
+      "ms": 7449,
+      "ok": true,
+      "evidence": {
+        "title": "Noa's Tower of Dreams",
+        "pages": [
+          "As the day began to tuck itself in, Noa found a wonderful pile of colourful blocks, just waiting for an adventure. Each block seemed to glow with a soft invitation, whispering a secret plan. With a little wiggle and a big smile, Noa knew exactly what to do next.",
+          "Carefully, one block at a time, Noa and a grown-up worked together, like two busy bees building a honeycomb. A red block here, a blue block there, stretching taller and taller. It was like creating a magnificent castle, reaching for the highest star.",
+          "Soon, the tower stood tall and proud, a beautiful mountain of colours made with love and careful hands. Noa's eyes twinkled with joy, looking up at the amazing creation. It was a special tower, built with teamwork and a happy heart.",
+          "Now, as the moon peeks through the window, Noa is snuggled in bed, warm and cosy. The memory of the tall, colourful tower whispers goodnight. Safe and loved, Noa's heart is full, ready for sweet dreams and all the gentle adventures tomorrow will bring."
+        ],
+        "illustrationPrompt": "A young child and a parent are sitting on a soft rug, looking up at a very tall, colourful block tower that almost reaches the ceiling. The room is bathed in warm, soft, golden light, with a cozy blanket draped nearby. The atmosphere is peaceful and dreamlike, emphasizing connection and wonder.",
+        "discussionQuestions": [
+          "What was your favourite part about building our tall tower today?",
+          "What do you think our tower will dream about tonight?"
+        ],
+        "summary": "Today, Noa experienced the joy of collaborative creation and connection while building a tall block tower with a parent."
+      }
+    },
+    {
+      "name": "adventure",
+      "route": "generate-adventure",
+      "status": 200,
+      "ms": 8992,
+      "ok": true,
+      "evidence": {
+        "id": "gen-1790060310489",
+        "title": "Block Building Fun",
+        "emoji": "\ud83e\uddf1",
+        "ageBand": [
+          3,
+          5
+        ],
+        "intro": "Hello Noa! Let's go on a block-building adventure together!",
+        "scenes": [
+          {
+            "id": "s0",
+            "skill": "sequencing",
+            "prompt": "You have a big pile of colorful blocks, and you want to build the tallest tower ever! What's the very first thing you need to do?",
+            "choices": [
+              {
+                "id": "c0",
+                "emoji": "\ud83d\udc46",
+                "text": "Pick up a block to start your tower.",
+                "correct": true,
+                "feedback": "That's a super start, Noa! You need to pick up a block to begin building your awesome tower!"
+              },
+              {
+                "id": "c1",
+                "emoji": "\ud83d\udea9",
+                "text": "Put a tiny flag on top of your tower.",
+                "correct": false,
+                "feedback": "Hmm, that's a fun idea for later! But first, we need to build the tower. What do we do before putting something on top?"
+              },
+              {
+                "id": "c2",
+                "emoji": "\ud83c\udfb6",
+                "text": "Make a funny sound with the blocks.",
+                "correct": false,
+                "feedback": "Making sounds is fun, but to build a tower, we need to take a block first. What do you think comes before making sounds?"
+              }
+            ]
+          },
+          {
+            "id": "s1",
+            "skill": "sequencing",
+            "prompt": "Wow, what a tall tower! Now, Noa wants to make a long, winding road for little toy cars right next to it. After you put the first block down for the road, what comes next to make it long?",
+            "choices": [
+              {
+                "id": "c0",
+                "emoji": "\u27a1\ufe0f",
+                "text": "Add another block right next to the first one, making it longer.",
+                "correct": true,
+                "feedback": "You got it, Noa! To make a road long, you keep adding blocks, one after the other. Great thinking!"
+              },
+              {
+                "id": "c1",
+                "emoji": "\ud83d\ude97",
+                "text": "Drive a toy car on the very first block.",
+                "correct": false,
+                "feedback": "Driving a car on the road sounds like fun! But is the road long enough yet for a good drive? What do we need to do before the car can zoom?"
+              },
+              {
+                "id": "c2",
+                "emoji": "\u2728",
+                "text": "Ask the blocks to fly.",
+                "correct": false,
+                "feedback": "Blocks are good at staying on the ground! To make a long road, we need to add more blocks. What do you think comes next to make it longer?"
+              }
+            ]
+          },
+          {
+            "id": "s2",
+            "skill": "sequencing",
+            "prompt": "Your tower is amazing and your road is super long, Noa! Now it's time to put all the blocks back in their big block bin. After you've put the very last block inside the bin, what's the final thing you do?",
+            "choices": [
+              {
+                "id": "c0",
+                "emoji": "\u84cb",
+                "text": "Gently put the lid back on the block bin.",
+                "correct": true,
+                "feedback": "Exactly, Noa! Putting the lid on is the perfect last step to keep all the blocks safe and tidy until next time. You're so good at tidying up!"
+              },
+              {
+                "id": "c1",
+                "emoji": "\ud83c\udf1f",
+                "text": "Find a sparkly sticker for the bin.",
+                "correct": false,
+                "feedback": "A sparkly sticker is a lovely idea, but usually, we put the lid on first to finish cleaning up. What do you think comes right after all the blocks are inside?"
+              },
+              {
+                "id": "c2",
+                "emoji": "\ud83e\udd17",
+                "text": "Give the bin a big hug.",
+                "correct": false,
+                "feedback": "A hug for the bin is sweet! But to finish putting things away, we need to close it up. What do you do with the lid after all the blocks are in?"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "behavior observations",
+      "route": "analyze-behavior",
+      "status": 200,
+      "ms": 3614,
+      "ok": true,
+      "evidence": {
+        "frequencyCount": {},
+        "intensityTrend": "No clear trend due to limited data. Only one log entry available.",
+        "triggerBreakdown": [
+          {
+            "trigger": "Leaving the park",
+            "percentage": 100
+          }
+        ],
+        "expertInsights": [
+          {
+            "heading": "Age Band: 3-5 years - Initiative, Play, School Readiness",
+            "text": "Noa is 4 years old, an age where children are developing initiative and learning to navigate transitions. Leaving a fun activity like the park can be challenging as it requires shifting focus and ending play. This is a common developmental hurdle as children learn to regulate their emotions and adapt to changes in routine.",
+            "scholarLens": "independence_adaptive_skills"
+          },
+          {
+            "heading": "Developmental Domain: Independence and Adaptive Skills",
+            "text": "The observation of difficulty leaving the park falls within the domain of independence and adaptive skills, specifically related to transitions. At 4 years old, children are learning to manage these shifts. The parent's response of offering a hand and a short countdown is a supportive strategy that could help Noa with this skill.",
+            "scholarLens": "independence_adaptive_skills"
+          },
+          {
+            "heading": "Developmental Domain: Cognition and Executive Function",
+            "text": "Transitions also draw on cognitive and executive function skills, such as attention shifting and planning. For a 4-year-old, moving from an engaging activity to a new one requires some mental flexibility. Providing a countdown helps with anticipating the change.",
+            "scholarLens": "cognition_executive_function"
+          }
+        ],
+        "actionPlanSuggestion": "For the 'leaving the park' challenge, you could try implementing a consistent transition ritual. This might involve a verbal cue, a special song, or a visual timer. For example, 'One more slide, then it's time to go!' followed by a specific action like putting on shoes. This helps Noa anticipate the change and feel more in control. Continue to use countdowns and offer a hand, as these seem to be helpful for Noa. If these difficulties become persistent, severe, or impact daily functioning, it could be helpful to seek professional advice."
+      }
+    },
+    {
+      "name": "handoff",
+      "route": "generate-handoff",
+      "status": 409,
+      "ms": 6689,
+      "ok": false,
+      "evidence": {
+        "error": "Professional support recommended",
+        "details": "Arbor could not produce a routine brief for this history. Please review it with a qualified adult.",
+        "escalationCategory": "crisis"
+      }
+    },
+    {
+      "name": "digest",
+      "route": "digest",
+      "status": 200,
+      "ms": 1633,
+      "ok": true,
+      "evidence": {
+        "title": "Noa's Week",
+        "subject": "Your Weekly Digest for Noa",
+        "preheader": "A quick look at Noa's week and a tip for next week.",
+        "summary": "This week's digest covers 0 days with 0 moments logged for Noa. While we don't have new observations, we can still celebrate Noa's strengths and offer support for challenges.",
+        "highlights": [
+          "Celebrating Noa's skill in building blocks, showing great fine motor development and problem-solving!",
+          "Acknowledging the effort it takes for Noa when transitioning from favorite activities like leaving the park."
+        ],
+        "watchFor": [],
+        "tryThisWeek": "Since we don't have new moments logged, try logging a moment when Noa is happily engaged in building blocks to celebrate this strength!",
+        "stats": {
+          "weekOf": "2026-09-15",
+          "daysCovered": 0,
+          "momentsLogged": 0,
+          "previousWeekMoments": 0,
+          "resolvedCount": 0,
+          "topContext": null,
+          "topBehavior": null,
+          "milestonesDone": 0,
+          "milestonesTotal": 0
+        },
+        "generated": "ai"
+      }
+    },
+    {
+      "name": "read aloud English",
+      "route": "tts",
+      "status": 500,
+      "ms": 4309,
+      "ok": false,
+      "evidence": {
+        "error": "Failed to synthesize speech",
+        "details": "Cloud TTS synthesize failed (403): {\n  \"error\": {\n    \"code\": 403,\n    \"message\": \"Your application is authenticating by using local Application Default Credentials. The texttospeech.googleapis.com API requires a quota project, which i"
+      }
+    },
+    {
+      "name": "read aloud Hebrew",
+      "route": "tts",
+      "status": 500,
+      "ms": 54,
+      "ok": false,
+      "evidence": {
+        "error": "Failed to synthesize speech",
+        "details": "Cloud TTS synthesize failed (403): {\n  \"error\": {\n    \"code\": 403,\n    \"message\": \"Your application is authenticating by using local Application Default Credentials. The texttospeech.googleapis.com API requires a quota project, which i"
+      }
+    },
+    {
+      "name": "avatar",
+      "route": "generate-avatar",
+      "status": 200,
+      "ms": 6212,
+      "ok": true,
+      "evidence": {
+        "image": true,
+        "chars": 1775418
+      }
+    },
+    {
+      "name": "vision synthetic illustration",
+      "route": "vision",
+      "ok": false,
+      "error": "Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON"
+    },
+    {
+      "name": "scene",
+      "route": "generate-scene",
+      "status": 200,
+      "ms": 6783,
+      "ok": true,
+      "evidence": {
+        "image": true,
+        "chars": 2038622
+      }
+    },
+    {
+      "name": "comic",
+      "route": "generate-comic",
+      "status": 500,
+      "ms": 20455,
+      "ok": false,
+      "evidence": {
+        "error": "Couldn't create this comic",
+        "details": "[VertexAI.ClientError]: got status: 429 Too Many Requests. {\"error\":{\"code\":429,\"message\":\"Resource exhausted. Please try again later. Please refer to https://cloud.google.com/vertex-ai/generative-ai/docs/error-code-429 for more details.\",\"status\":\"RESOURCE_EXHAUSTED\"}}"
+      }
+    },
+    {
+      "name": "Live session token",
+      "route": "live/token",
+      "status": 200,
+      "ms": 380,
+      "ok": true,
+      "evidence": {
+        "available": true,
+        "model": "gemini-3.8-live"
+      }
+    },
+    {
+      "name": "Live ephemeral audio",
+      "ok": true,
+      "ms": 7770,
+      "audioChunks": 18,
+      "transcript": "Hello there. It is so wonderful to connect with you today, and I am here to support you on your parenting journey."
+    }
+  ]
+}

@@ -863,7 +863,7 @@ export const HERO_STORIES: HeroStorySpec[] = [
   {
     id: "the-little-bridge-builders", pack: "growth", title: "The Little Bridge Builders", titleHe: "בוני הגשר הקטנים",
     theme: "A big repair becomes possible one careful piece at a time", themeHe: "תיקון גדול נעשה אפשרי חלק זהיר אחד בכל פעם",
-    origin: "original", ageRange: [4, 8], primaryMetric: "resilience", dilemmaType: "responsibility",
+    origin: "original", ageRange: [4, 8], primaryMetric: "resilience", dilemmaType: "repair",
     baseReward: { resilience: 2, responsibility: 1 },
     learningObjective: "Large tasks feel manageable when we pause, plan, ask for help, and finish one useful piece at a time.",
     learningObjectiveHe: "משימות גדולות נעשות אפשריות כשעוצרים, מתכננים, מבקשים עזרה ומסיימים חלק שימושי אחד בכל פעם.",

@@ -1,0 +1,106 @@
+{
+  "syntheticOnly": true,
+  "ts": "2026-09-22T07:15:29.844Z",
+  "results": [
+    {
+      "route": "generate-handoff",
+      "status": 200,
+      "blocked": false,
+      "flagged": [],
+      "outputs": [
+        {
+          "method": "generateJson",
+          "route": "handoff_structured",
+          "output": {
+            "title": "Professional Handoff Brief for [Child]",
+            "date": "2023-10-27",
+            "overview": "[Child] is 4 years old. Observations indicate [Child] may experience some difficulty with transitions, specifically noted when leaving a public park. During one such instance, offering a hand and walking together helped facilitate the transition, suggesting [Child] can respond to direct support.",
+            "keyStrengths": [
+              "Responds to guidance and physical proximity during transitions",
+              "Capable of walking with an adult during a transition",
+              "Engages in public settings"
+            ],
+            "classroomChallenges": [
+              "May experience challenges with transitions between activities or locations within the classroom",
+              "Could benefit from clear warnings and support during changes in routine"
+            ],
+            "languageSupportPlan": [
+              "Observe [Child]'s receptive and expressive language skills during daily activities.",
+              "Use clear, simple language and visual cues to support understanding of instructions and transitions.",
+              "Encourage verbal expression of needs or feelings, especially around changes."
+            ],
+            "suggestedTeacherStrategies": [
+              "Provide clear verbal warnings before transitions (e.g., 'Two more minutes until clean-up time').",
+              "Offer a hand or physical proximity during transitions to provide support and reassurance.",
+              "Use visual schedules or timers to help [Child] anticipate changes.",
+              "Acknowledge and praise successful transitions, no matter how small.",
+              "Offer choices when appropriate to give [Child] a sense of control during transitions."
+            ],
+            "crisisEscalationTrigger": "Persistent, severe, or sudden increase in distress during transitions; any behavior that poses a safety risk to [Child] or others; significant regression in previously acquired skills; or if concerns about [Child]'s well-being or safety arise, professional advice should be sought."
+          }
+        }
+      ]
+    },
+    {
+      "route": "chat",
+      "status": 200,
+      "blocked": false,
+      "flagged": [],
+      "outputs": [
+        {
+          "method": "generateJsonStream",
+          "route": "coach_high_stakes",
+          "output": "{\n  \"text\": \"It's completely understandable that leaving the park is a challenge; many 4-year-olds find transitions tough because they're learning to manage big feelings and new expectations. For today, let's try to make the leaving process more predictable and give [Child] a sense of control within the boundary. This can help secure your connection during the transition and scaffold their independence.\",\n  \"riskLevel\": \"low\",\n  \"ageBand\": \"3-5y\",\n  \"domains\": [\n    \"attachment_regulation\",\n    \"cognition_executive_function\",\n    \"independence_adaptive_skills\",\n    \"ecosystem_stressors\"\n  ],\n  \"nonDiagnosticHypotheses\": [\n    {\n      \"label\": \"Difficulty with transitions due to developing executive function skills\",\n      \"confidence\": \"high\",\n      \"rationale\": \"[Child]'s age (4 years) is a period where children are still developing the cognitive flexibility and planning skills needed for smooth transitions. The sudden shift from a highly engaging activity like park play to leaving can be overwhelming.\"\n    },\n    {\n      \"label\": \"Seeking autonomy and control\",\n      \"confidence\": \"medium\",\n      \"rationale\": \"At 4 years old, children are in Erikson's 'initiative vs. guilt' stage, where they are exploring independence and making choices. Resisting leaving the park could be a way for [Child] to assert their will and desire for control over their activities.\"\n    },\n    {\n      \"label\": \"Lack of clear, predictable routine or warning for transitions\",\n      \"confidence\": \"medium\",\n      \"rationale\": \"If transitions are often sudden or inconsistent, it can be harder for a child to anticipate and prepare for them. A predictable structure can reduce anxiety and resistance.\"\n    }\n  ],\n  \"todayPlan\": [\n    \"Give a 5-minute warning before leaving the park, then offer [Child] a small, limited choice for their 'last thing' to do.\"\n  ],\n  \"parentScript\": \"When it's almost time to go, say, 'In 5 minutes, it will be time to leave the park. Would you like to go down the big slide one more time or swing one more time before we go?' After they choose, say, 'Okay, last one! Then we'll walk to the car.'\",\n  \"avoid\": [\n    \"Surprising [Child] with 'time to go now' without warning.\",\n    \"Engaging in a long negotiation or debate about leaving.\",\n    \"Lecturing or shaming [Child] for their feelings about leaving.\"\n  ],\n  \"observe\": [\n    \"How [Child] responds to the 5-minute warning.\",\n    \"Whether offering a choice helps them transition more smoothly.\",\n    \"Any specific triggers or patterns in their resistance (e.g., always after a certain activity).\"\n  ],\n  \"escalateIf\": [\n    \"The distress is consistently severe and sustained, lasting long after leaving the park.\",\n    \"The resistance to leaving becomes physically aggressive or self-injurious.\",\n    \"There is a sudden and unexplained regression in [Child]'s ability to handle transitions.\"\n  ],\n  \"frameRouting\": {\n    \"aim\": \"To support [Child]'s emotional regulation and growing independence during transitions, fostering a sense of predictability and agency.\",\n    \"twoAxes\": \"This approach balances warmth by acknowledging [Child]'s feelings and offering connection, with structure by setting clear boundaries and providing a predictable sequence for leaving.\",\n    \"story\": \"You are helping [Child] write their 'Leaving the Park' story, where they get to choose the 'grand finale' before their next adventure. This creates a ritual of empowerment.\",\n    \"shadow\": \"The shadow here is [Child]'s frustration and disappointment at having to end a fun activity, and the parent's potential exasperation. Acknowledging these feelings without giving in to demands is key.\",\n    \"marriage\": \"Co-parents should align on the consistent use of the warning and choice strategy, ensuring [Child] receives the same message and support from both caregivers.\",\n    \"shepherd\": \"If this challenge persists with severe distress despite consistent strategies, consider discussing it with [Child]'s pediatrician to rule out any underlying medical or developmental factors.\"\n  },\n  \"memoryProposals\": [\n    {\n      \"fact\": \"[Child] responds well to a 5-minute warning and a limited choice when transitioning from preferred activities.\",\n      \"source\": \"parent\",\n      \"retention\": \"short_term\"\n    },\n    {\n      \"fact\": \"[Child] shows less resistance when given a predictable 'last thing' to do before leaving the park.\",\n      \"source\": \"parent\",\n      \"retention\": \"short_term\"\n    }\n  ],\n  \"handoffNotes\": {\n    \"teacher\": \"When transitioning [Child] from preferred activities, a 5-minute warning followed by a limited choice (e.g., 'one more turn on X or Y?') seems to help with cooperation.\",\n    \"professional\": \"Parent is seeking strategies for [Child]'s difficulty leaving the park. Current approach involves warnings and limited choices to support transitions and autonomy. Observing [Child]'s response to this structured approach.\"\n  },\n  \"sourceCardsUsed\": [\n    \"bowlby-secure-base\",\n    \"vygotsky-zpd\",\n    \"bronfenbrenner-ecosystem\",\n    \"erikson-developmental-arc\"\n  ],\n  \"followUps\": [\n    \"What if [Child] doesn't choose?\",\n    \"What if [Child] still has a meltdown?\",\n    \"How can I make this work with siblings?\"\n  ]\n}"
+        }
+      ]
+    },
+    {
+      "route": "council",
+      "status": 200,
+      "blocked": true,
+      "flagged": [
+        {
+          "path": ".escalateIf.2",
+          "text": "Concerns about self-harm or harm to others during transitions.",
+          "verdict": {
+            "flagged": true,
+            "category": "crisis",
+            "reason": "Crisis-adjacent language (self_harm) in model output.",
+            "escalationCategory": "self_harm"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "method": "generateJson",
+          "route": "creative_low_risk",
+          "output": {
+            "takeaway": "This challenge may reflect a disconnect in the predictability of the transition routine between the stimulating park environment and the next activity, rather than solely a child's resistance.",
+            "suggestion": "Establish a consistent 'leaving the park' ritual that connects the park experience to the next predictable activity at home, perhaps by introducing a visual timer or a specific 'goodbye to the park' song followed by a clear statement of what comes next (e.g., 'After our song, we'll go home for a snack and story time')."
+          }
+        },
+        {
+          "method": "generateJson",
+          "route": "creative_low_risk",
+          "output": {
+            "takeaway": "The child may be at an edge where they can begin to anticipate and participate in transitions with support, moving towards shared regulation rather than abrupt shifts.",
+            "suggestion": "Before arriving at the park, collaboratively establish a clear, shared 'leaving signal' (e.g., a special song, a visual timer). When it's time to go, initiate the signal together and say, 'Our signal means it's almost time to leave. Let's choose one last quick activity to do together before we go.' This models anticipation and shared control, scaffolding the transition."
+          }
+        },
+        {
+          "method": "generateJson",
+          "route": "creative_low_risk",
+          "output": {
+            "takeaway": "The child's distress when leaving the park may indicate a temporary disruption to their sense of security or enjoyment, communicating a need for co-regulation and reassurance during the transition.",
+            "suggestion": "Before it's time to leave, get down to their eye level, acknowledge their joy and the impending change (\"It looks like you're having such a wonderful time!\"), and offer a warm, physical connection like a hug or holding hands. Reassure them you are there with them as you transition, helping them feel safe and connected."
+          }
+        },
+        {
+          "method": "generateJsonStream",
+          "route": "coach_high_stakes",
+          "output": "{\n  \"text\": \"Leaving the park can be a big shift for a 4-year-old, especially when they're having so much fun. It's often less about defiance and more about navigating a change in their world. [Child]'s distress may be a temporary disruption to their sense of security or enjoyment, communicating a need for co-regulation and reassurance during the transition. One possibility is that [Child] is at an edge where they can begin to anticipate and participate in transitions with support, moving towards shared regulation rather than abrupt shifts. This challenge could also reflect a disconnect in the predictability of the transition routine between the stimulating park environment and the next activity. Today, let's try to make that transition a little more predictable and connected.\",\n  \"riskLevel\": \"low\",\n  \"ageBand\": \"3-5y\",\n  \"domains\": [\n    \"attachment_regulation\",\n    \"cognition_executive_function\",\n    \"ecosystem_stressors\",\n    \"independence_adaptive_skills\"\n  ],\n  \"nonDiagnosticHypotheses\": [\n    {\n      \"label\": \"[Child] may be experiencing a temporary disruption to their sense of security or enjoyment during the transition, needing co-regulation.\",\n      \"confidence\": \"medium\",\n      \"rationale\": \"Based on Bowlby's secure base theory, distress during separation or transition can indicate a need for reassurance and co-regulation to restore a sense of security.\"\n    },\n    {\n      \"label\": \"[Child] might be in the process of developing the skill to anticipate and participate in transitions, and could benefit from scaffolding.\",\n      \"confidence\": \"medium\",\n      \"rationale\": \"Vygotsky's ZPD suggests that with appropriate support, children can learn to manage tasks (like transitions) that are just beyond their independent ability.\"\n    },\n    {\n      \"label\": \"The challenge could be related to the predictability of the transition routine between the stimulating park environment and the next activity.\",\n      \"confidence\": \"medium\",\n      \"rationale\": \"Bronfenbrenner's ecosystem theory highlights how environmental factors, like routine consistency across settings, impact a child's behavior.\"\n    }\n  ],\n  \"todayPlan\": [\n    \"Before leaving the park, get down to [Child]'s eye level, acknowledge their fun, and introduce a special 'leaving signal' (like a song or a specific phrase).\",\n    \"Offer a warm hug or hold hands, reassuring them you are there with them as you transition.\",\n    \"Clearly state what comes next at home (e.g., 'After our song, we'll go home for a snack and story time').\"\n  ],\n  \"parentScript\": \"It sounds like leaving the park is a real sticking point, and that's so common for kids [Child]'s age! They're having a blast, and it's hard to stop. Today, let's try something to help [Child] feel more connected and prepared for the change. About 5-10 minutes before you need to leave, go over to [Child], get down to their level, and say something like, 'Wow, you are having so much fun on the swings! In a few minutes, we're going to do our special 'leaving song' and then head home for a yummy snack.' Then, when it's time, sing your song, offer a big hug, and gently guide them to the exit, reminding them about the snack. This helps them anticipate, feel connected, and know what's coming next.\",\n  \"avoid\": [\n    \"Abruptly announcing it's time to go without warning.\",\n    \"Treating [Child]'s distress as defiance or a personal affront.\",\n    \"Lecturing or shaming [Child] during their upset.\"\n  ],\n  \"observe\": [\n    \"How [Child] responds to the pre-warning and the special leaving signal.\",\n    \"If [Child] settles more quickly after the transition with this new routine.\",\n    \"Any patterns in when the transitions are harder (e.g., specific activities, time of day).\"\n  ],\n  \"escalateIf\": [\n    \"The distress is sustained, intense, and does not resolve after the transition.\",\n    \"There is regression in other areas of [Child]'s development.\",\n    \"Concerns about self-harm or harm to others during transitions.\"\n  ],\n  \"frameRouting\": {\n    \"aim\": \"To help [Child] navigate transitions with greater ease and predictability, fostering a sense of security and capability.\",\n    \"twoAxes\": \"This approach balances warmth and attunement by acknowledging [Child]'s feelings (warmth) with providing a clear, predictable routine for transitions (structure).\",\n    \"story\": \"The story of 'our special leaving signal' or 'our park adventure and what comes next' creates a narrative around transitions, making them feel less arbitrary.\",\n    \"shadow\": \"The shadow of frustration or resistance to change is faced by acknowledging that transitions can be hard and require emotional regulation, rather than bypassing the difficulty.\",\n    \"marriage\": \"Co-parents are encouraged to align on the consistent 'leaving the park' ritual and signals to provide a unified and predictable experience for [Child].\",\n    \"shepherd\": \"The parent is the primary shepherd for implementing this consistent routine; if challenges persist, a developmental specialist could offer further guidance.\"\n  },\n  \"memoryProposals\": [\n    {\n      \"fact\": \"[Child] struggles with leaving the park, indicating difficulty with transitions.\",\n      \"source\": \"Parent report\",\n      \"retention\": \"medium\"\n    },\n    {\n      \"fact\": \"Pre-warnings, co-regulation, and predictable 'what's next' statements may help [Child] with transitions.\",\n      \"source\": \"Arbor AI recommendation\",\n      \"retention\": \"high\"\n    }\n  ],\n  \"handoffNotes\": {\n    \"teacher\": \"Parent is working on predictable transition routines for [Child] when leaving stimulating environments. A consistent 'leaving signal' and clear 'what's next' might be helpful.\",\n    \"professional\": \"Parent reports [Child] struggles with leaving the park. Implementing pre-warnings, co-regulation, and predictable routines for transitions. Monitor for sustained distress or regression.\"\n  },\n  \"sourceCardsUsed\": [\n    \"bowlby-secure-base\",\n    \"vygotsky-zpd\",\n    \"bronfenbrenner-ecosystem\"\n  ],\n  \"followUps\": [\n    \"What if [Child] still resists the signal?\",\n    \"How long should I give the new routine?\",\n    \"What if we can't always do the 'what's next'?\"\n  ]\n}"
+        }
+      ]
+    }
+  ]
+}

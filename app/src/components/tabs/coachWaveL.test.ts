@@ -206,6 +206,6 @@ describe("AI-06 — Arbor Vision stops speaking the server's English at the pare
     // 451 fail-closed; the shared AI quota → 429. One surface, two opposite
     // problems, which is why the classifier exists.
     const routes = read("routes/api.ts");
-    expect(routes).toMatch(/router\.post\("\/vision", requireConsent\(consentStore, "face_processing"/);
+    expect(routes).toMatch(/router\.post\("\/vision", requireOwnership, requireConsent\(consentStore, "face_processing"/);
   });
 });
