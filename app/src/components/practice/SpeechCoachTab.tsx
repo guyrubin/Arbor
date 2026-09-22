@@ -742,6 +742,9 @@ export default function SpeechCoachTab() {
       title={t("elev.play.soundlab.title")}
       say={t("elev.play.soundlab.say", { name: first })}
       mood="happy"
+      worldId="speech"
+      headerVariant="compact"
+      eyebrow={t("elev.kids.mission")}
       action={
         /* KID-09: the read-aloud control, on the line the child is asked to
            act on. Zero kid worlds carried one before this pass. */

@@ -2111,21 +2111,21 @@ Return JSON: offTopic, observations[], possibleMeanings[], tryToday[] (1-3), avo
     soft3d: "a soft rounded 3D-rendered character, friendly and approachable, soft studio lighting",
     watercolor: "a soft watercolor children's-book character with loose painterly edges",
     flat: "a clean flat vector character illustration with simple rounded shapes and a cheerful palette",
-    comichero: "a friendly child superhero in a bold, modern cel-shaded comic-book style: thick confident ink outlines, super-saturated primary colors (hero red + sky blue + sunshine yellow), halftone dot shading, an explosive radial action burst behind the hero, a flowing cape and a sleek fitted hero suit with a round chest emblem, a huge joyful grin and a dynamic mid-action pose — high-energy and exciting but always wholesome, never scary or violent, age-appropriate for young children"
+    comichero: "a bold, modern cel-shaded comic-book character: thick confident ink outlines, saturated playful colors, halftone shading and a dynamic pose; keep the selected character intent, clothing and accessories, with friendly age-appropriate energy"
   };
   const SCENE_STYLE_DIRECTIONS: Record<string, string> = {
     storybook: AVATAR_STYLES.storybook,
     soft3d: AVATAR_STYLES.soft3d,
     watercolor: AVATAR_STYLES.watercolor,
     flat: AVATAR_STYLES.flat,
-    comichero: "a bold modern cel-shaded comic-book rendering medium with confident ink outlines, halftone shading and saturated color; preserve the reference character's existing outfit and accessories without adding a cape, hero suit, chest emblem or superhero costume"
+    comichero: "a bold modern cel-shaded comic-book rendering medium with confident ink outlines, halftone shading and saturated color; preserve the reference character's existing clothing and accessories exactly"
   };
   router.post("/generate-avatar", requireConsent(consentStore, "face_processing", (req) => !!req.body?.photo), async (req, res) => {
-    const { descriptors, photo, style } = req.body ?? {};
+    const { descriptors, character, photo, style } = req.body ?? {};
     const stylePrompt = AVATAR_STYLES[style as string] ?? AVATAR_STYLES.storybook;
 
     // Safety-screen any free-text descriptor the parent typed.
-    const freeText = [descriptors?.vibe, descriptors?.notes].filter(Boolean).join(" ");
+    const freeText = [descriptors?.vibe, descriptors?.notes, character?.customIdea].filter(Boolean).join(" ");
     const escalationMatch = screenForImmediateEscalation({ note: freeText });
     if (escalationMatch) {
       res.status(409).json({
@@ -2160,9 +2160,29 @@ Return JSON: offTopic, observations[], possibleMeanings[], tryToday[] (1-3), avo
           descriptors.vibe && `personality/vibe: ${descriptors.vibe}`
         ].filter(Boolean).join("; ")
       : "";
+    const characterPreset = ["princess", "superhero", "explorer", "custom"].includes(character?.preset)
+      ? character.preset as "princess" | "superhero" | "explorer" | "custom"
+      : undefined;
+    const customIdea = typeof character?.customIdea === "string"
+      ? character.customIdea.trim().slice(0, 160)
+      : "";
+    if (characterPreset === "custom" && !customIdea) {
+      res.status(400).json({ error: "Describe your character idea" });
+      return;
+    }
+    const characterDirection = characterPreset === "princess"
+      ? "Character intent selected by the parent: a warm royal adventurer with a crown or diadem and an elegant, practical outfit. Do not infer or prescribe gender."
+      : characterPreset === "superhero"
+      ? "Character intent selected by the parent: a friendly child superhero in an original, non-branded costume."
+      : characterPreset === "explorer"
+      ? "Character intent selected by the parent: a curious explorer with practical adventure clothing and a small compass or field bag."
+      : characterPreset === "custom"
+      ? `Character intent written by the parent: ${customIdea}.`
+      : "";
 
     const prompt = `Create a single, friendly, age-appropriate CHARACTER AVATAR for a child, for use in a calm parenting app.
 Style: ${stylePrompt}.
+${characterDirection}
 This must be a STYLIZED, NON-photorealistic illustration — create an original, friendly character. Do NOT reproduce any real person's exact likeness.
 ${cues ? `Loose appearance cues (stylize, do not copy literally): ${cues}.` : "Use a warm, neutral, friendly child character."}
 ${referenceImage ? "A reference photo is attached ONLY to capture general vibe (approximate hair colour, age). Produce a cartoon character inspired by it — never a realistic reproduction of the person." : ""}
@@ -2263,7 +2283,7 @@ Friendly lighting and a readable composition. Gentle, non-scary, non-violent and
   // one dialogue line — wholesome and age-appropriate. Powered by the image model
   // (Nano Banana), which auto-applies SynthID + C2PA provenance.
   router.post("/generate-comic", async (req, res) => {
-    const { avatar, heroName, sidekickName, theme, dialogue, sfx, setting, style, nameOnSuit } = req.body ?? {};
+    const { avatar, heroName, sidekickName, theme, dialogue, sfx, setting, style } = req.body ?? {};
     const safeName = String(heroName ?? "the hero").slice(0, 40);
     const themeText = String(theme ?? "a brave, kind everyday adventure").slice(0, 200);
 
@@ -2286,7 +2306,8 @@ Friendly lighting and a readable composition. Gentle, non-scary, non-violent and
       }
     }
 
-    const stylePrompt = AVATAR_STYLES[style as string] ?? AVATAR_STYLES.comichero;
+    const effectiveStyle = normalizeAvatarStyle(style);
+    const stylePrompt = SCENE_STYLE_DIRECTIONS[effectiveStyle];
     const sfxLine = Array.isArray(sfx) && sfx.length
       ? sfx.slice(0, 4).map((s: unknown) => String(s).slice(0, 12)).join(", ")
       : "KA-POW!, ZAP!, WHOOSH!";
@@ -2294,16 +2315,15 @@ Friendly lighting and a readable composition. Gentle, non-scary, non-violent and
     // panels omit it (the narration caption carries the words) so text isn't doubled.
     const dialogueLine = dialogue === undefined || dialogue === null ? "" : String(dialogue).slice(0, 120);
 
-    // The hero's name on the chest emblem is what makes the panel feel like it's
-    // truly THEIR comic (the viral hook). On by default for the comichero style.
-    const showNameOnSuit = nameOnSuit !== false && safeName !== "the hero";
-    const prompt = `Create a SINGLE dynamic full-page comic-book panel in a bold, premium cel-shaded comic art style: thick confident ink outlines, super-saturated primary colors, halftone dot shading, an EXPLOSIVE radial action burst and dramatic speed lines behind the hero, glowing sparkle effects — high-energy, eye-catching, and heroic, the kind of vivid panel a 5-8 year old would be thrilled to see themselves in.
-Hero: ${stylePrompt}. Name: ${safeName}.
+    // Comic composition and rendering medium are independent of costume. A
+    // supplied reference is authoritative for clothing and accessories.
+    const prompt = `Create a SINGLE dynamic full-page COMIC PANEL with a clear panel border, expressive composition, readable action, and lively comic energy suitable for ages 4-8.
+Rendering medium: ${stylePrompt}.
+Hero name: ${safeName}.
 ${referenceImage
-  ? "The attached character is the HERO — feature this exact stylized character as the main, central figure in a confident mid-action pose, kept recognizable and consistent with the reference (same face, hair, suit)."
-  : "Feature a single friendly child superhero as the central, large, mid-action figure."}
-${showNameOnSuit ? `Write the hero's name "${safeName}" boldly and legibly across the round chest emblem of the suit.` : ""}
-${sidekickName ? `Include a friendly younger sidekick named ${String(sidekickName).slice(0, 40)} in a matching hero suit beside them.` : ""}
+  ? "The attached stylized character is the main figure. Preserve the reference character's face, hair, age, clothing, character intent and accessories exactly. Do not add, remove or replace identity-defining clothing or props. Do not print the hero's name on clothing."
+  : "Feature a single friendly child protagonist as the central, large, active figure, with clothing and accessories that naturally fit the scene."}
+${sidekickName ? `Include a friendly younger sidekick named ${String(sidekickName).slice(0, 40)} beside the hero, in clothing natural to the scene and distinct from the hero's identity.` : ""}
 Scene/theme: ${themeText}.
 Setting: ${String(setting ?? "a cozy, lived-in family home interior").slice(0, 160)}.
 Include 2-3 BIG, bold, stylized comic sound-effect words bursting in the scene with thick outlines and bright fills: ${sfxLine}.

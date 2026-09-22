@@ -64,6 +64,9 @@ export function RegisterShell({
   subtitle,
   mood = "wave",
   action,
+  worldId,
+  headerVariant = "entry",
+  eyebrow,
   className = "",
   children,
 }: {
@@ -76,13 +79,18 @@ export function RegisterShell({
   subtitle?: string;
   mood?: MascotMood;
   action?: React.ReactNode;
+  /** Stable world identity for the child-only visual accent. */
+  worldId?: string;
+  /** Rich arrival header or the smaller companion used during active play. */
+  headerVariant?: "entry" | "compact";
+  eyebrow?: string;
   className?: string;
   children: React.ReactNode;
 }) {
   if (kidMode) {
     return (
       <PlayShell className={className}>
-        <PlayHeader title={title} say={say} mood={mood} action={action} />
+        <PlayHeader title={title} say={say} mood={mood} action={action} worldId={worldId} variant={headerVariant} eyebrow={eyebrow} />
         {children}
       </PlayShell>
     );
@@ -101,29 +109,42 @@ export function PlayHeader({
   say,
   mood = "wave",
   action,
+  worldId,
+  variant = "entry",
+  eyebrow,
 }: {
   title: string;
   say?: string;
   mood?: MascotMood;
   action?: React.ReactNode;
+  worldId?: string;
+  variant?: "entry" | "compact";
+  eyebrow?: string;
 }) {
+  const compact = variant === "compact";
   return (
-    <header className="flex flex-wrap items-center gap-x-5 gap-y-3">
-      <HeroAvatar size={84} mood={mood} animate className="flex-shrink-0 drop-shadow-sm" />
-      <div className="flex-1 min-w-[200px]">
+    <header
+      className={`play-scene-header play-scene-header--${variant} flex flex-wrap items-center ${compact ? "gap-x-2 gap-y-2" : "gap-x-4 gap-y-3"}`}
+      data-world-id={worldId}
+    >
+      <div className="play-hero-cameo flex-shrink-0" aria-hidden="true">
+        <HeroAvatar size={compact ? 56 : 88} mood={mood} animate decorative />
+      </div>
+      <div className={`flex-1 ${compact ? "min-w-0" : "min-w-[200px]"}`}>
+        {eyebrow ? <p className="play-eyebrow">{eyebrow}</p> : null}
         <h1
-          className="text-[1.9rem] md:text-[2.4rem] leading-[1.05]"
+          className={compact ? "text-[1.45rem] md:text-[1.7rem] leading-[1.08]" : "text-[1.9rem] md:text-[2.4rem] leading-[1.05]"}
           style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)", textWrap: "balance" }}
         >
           {title}
         </h1>
         {say && (
-          <div className="relative inline-block mt-2 rounded-2xl rounded-tl-sm px-3.5 py-2 bg-white shadow-[0_2px_10px_rgba(41,51,63,0.06)]">
+          <div className="play-caption relative inline-block mt-2 rounded-2xl rounded-tl-sm px-3.5 py-2 bg-white">
             <p className="text-sm font-bold leading-snug" style={{ color: "var(--arbor-ink-soft)" }}>{say}</p>
           </div>
         )}
       </div>
-      {action}
+      {action ? <div className="play-header-action flex-shrink-0">{action}</div> : null}
     </header>
   );
 }
@@ -158,6 +179,7 @@ export function PlayButton({
   children,
   onClick,
   disabled,
+  ariaLabel,
   variant = "primary",
   tone = "clay",
   size = "lg",
@@ -167,6 +189,7 @@ export function PlayButton({
   children: React.ReactNode;
   onClick?: () => void;
   disabled?: boolean;
+  ariaLabel?: string;
   variant?: "primary" | "soft" | "ghost";
   tone?: PlayTone;
   size?: "lg" | "md";
@@ -185,6 +208,7 @@ export function PlayButton({
       type={type}
       onClick={onClick}
       disabled={disabled}
+      aria-label={ariaLabel}
       className={`play-pressable inline-flex items-center justify-center gap-2 rounded-full font-extrabold disabled:opacity-55 disabled:pointer-events-none ${pad} ${variant === "primary" ? "shadow-[0_6px_18px_rgba(41,51,63,0.16)]" : ""} ${className}`}
       style={style}
     >
@@ -354,6 +378,8 @@ export function ComicPage({
   loading = false,
   error = false,
   rtl = false,
+  contentFit = "cover",
+  onImageError,
   onRetry,
   retryLabel = "Redraw page",
   errorLabel = "This page got a bit smudged.",
@@ -365,6 +391,8 @@ export function ComicPage({
   loading?: boolean;
   error?: boolean;
   rtl?: boolean;
+  contentFit?: "cover" | "contain";
+  onImageError?: React.ReactEventHandler<HTMLImageElement>;
   onRetry?: () => void;
   retryLabel?: string;
   errorLabel?: string;
@@ -399,7 +427,12 @@ export function ComicPage({
         }}
       >
         {src ? (
-          <img src={src} alt={alt} className="w-full h-full object-cover" />
+          <img
+            src={src}
+            alt={alt}
+            className={`w-full h-full ${contentFit === "contain" ? "object-contain" : "object-cover"}`}
+            onError={onImageError}
+          />
         ) : error ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-4 text-center" style={{ background: "var(--arbor-pink-soft)" }}>
             <span className="text-3xl" aria-hidden="true">🖍️</span>

@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
+import { useAuth } from "../../context/AuthContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { RegisterShell, PlayButton, PlayPanel } from "../ui/playkit";
@@ -11,16 +12,16 @@ import { ComicReader } from "../stories/ComicReader";
 import {
   ADVENTURES,
   adventureTitle,
-  comicKey,
   getAdventure,
-  rehydrateSavedPagesFromStore,
-  savedPagesAvailable,
+  readSavedMetaCoverFromStore,
+  rehydrateSavedMetaPagesFromStore,
+  savedMetaPagesAvailable,
   toSavedComicMeta,
   type HeroComic,
   type SavedComicMeta,
 } from "../../lib/heroComics";
-import { getScene } from "../../lib/sceneCache";
 import { isolate } from "../../lib/i18n";
+import { normalizeAvatarStyle } from "../../lib/avatarStyle";
 // W0.7 — age-fit filtering (shared helper; windows come from the canon
 // HeroStorySpec ageRange each adventure is built from)
 import { classifyAgeFit, loadShowAllAges, saveShowAllAges, windowFromRange } from "../../lib/ageFilter";
@@ -36,6 +37,7 @@ import { readRitualRecord, ritualOfTheMoment } from "../../lib/familyRitualsCade
 import { resolveWatchFocus } from "../../lib/screeningWatch";
 import { countSince } from "../../lib/pulse";
 import type { HeroPackId } from "../../types";
+import { comicShelfReadIsCurrent } from "../../lib/comicShelfScope";
 
 /**
  * ComicsTab (p1-comic-reader) — the bookshelf host for the `comics` route.
@@ -83,10 +85,17 @@ const STORY_EMOJI: Record<string, string> = {
   "jacob-wrestling-the-angel": "🌅",
   "the-garden-of-forgotten-seeds": "🌻",
   "king-solomons-choice": "⚖️",
+  "the-lantern-path": "🏮",
+  "the-cloud-orchestra": "🎼",
+  "the-little-bridge-builders": "🌉",
 };
+
+const savedMetaFingerprint = (meta: SavedComicMeta): string =>
+  JSON.stringify([meta.id, meta.adventureId, meta.lang, meta.createdAt, meta.pageCount, meta.identityVersion, meta.pageKeys]);
 
 export default function ComicsTab() {
   const { childProfile, setActiveTab, openPaywall, milestones, behaviorLogs, playLogs } = useArbor();
+  const { user } = useAuth();
   const { aiLang, t } = useLanguage();
   const { url: heroUrl, hasHero, name } = useHeroAvatar();
 
@@ -100,7 +109,15 @@ export default function ComicsTab() {
   // opening a saved book first rehydrates its pages (memory cache → the
   // device-local IndexedDB store) so the reader mounts with the art in hand —
   // fully cached books re-open with ZERO /generate-comic calls.
-  const [openBook, setOpenBook] = useState<{ id: string; pages: string[] } | null>(null);
+  const [openBook, setOpenBook] = useState<{
+    partitionKey: string;
+    scopeKey: string;
+    fingerprint?: string;
+    id: string;
+    pages: string[];
+    lang: "en" | "he";
+    meta?: SavedComicMeta;
+  } | null>(null);
 
   // W0.7 — default the bookshelf to the child's age band; "Show all ages"
   // (persisted per surface) keeps every book reachable (UC-1 rule). SAVED
@@ -121,7 +138,18 @@ export default function ComicsTab() {
   const heroDataUrl = heroUrl && heroUrl.startsWith("data:") ? heroUrl : undefined;
   // Must match generatePage's cache-key token so rehydration finds its pages.
   const avatarKeyToken = heroDataUrl || "no-hero";
+  const heroStyle = normalizeAvatarStyle(childProfile.avatar?.style);
   const savedCount = savedCol.items.length;
+  const partitionKey = `${user?.uid ?? "anon"}|${childProfile.id}`;
+  const collectionFingerprint = savedCol.items.map(savedMetaFingerprint).sort().join(";");
+  const scopeKey = `${partitionKey}|${avatarKeyToken}|${collectionFingerprint}`;
+  const scopeRef = useRef(scopeKey);
+  scopeRef.current = scopeKey;
+  const openRequestRef = useRef(0);
+  const probeRequestRef = useRef(0);
+  const visibleOpenBook = openBook?.partitionKey === partitionKey && openBook.scopeKey === scopeKey
+    ? openBook
+    : null;
 
   // TJB-28 — the close half. Before the closing hour this is a no-op, and it
   // writes at most once a day; the shelf itself never renders the hook.
@@ -143,34 +171,71 @@ export default function ComicsTab() {
   // AIX-S5 honesty layer: per saved adventure, are ALL pages available on this
   // device? Only then does the shelf promise "Read again"; otherwise the badge
   // says "Rebuild this book" so the promise matches the real cost/latency.
-  const [fullyCached, setFullyCached] = useState<Record<string, boolean>>({});
+  const [fullyCached, setFullyCached] = useState<{ scope: string; values: Record<string, boolean> }>({ scope: "", values: {} });
+  const [coverThumbs, setCoverThumbs] = useState<{ scope: string; values: Record<string, string> }>({ scope: "", values: {} });
+  const scopedCached = fullyCached.scope === scopeKey ? fullyCached.values : {};
+  const scopedCovers = coverThumbs.scope === scopeKey ? coverThumbs.values : {};
   useEffect(() => {
-    let alive = true;
+    openRequestRef.current += 1;
+    setOpenBook(null);
+    setFullyCached({ scope: "", values: {} });
+    setCoverThumbs({ scope: "", values: {} });
+  }, [partitionKey]);
+  useEffect(() => {
+    const request = ++probeRequestRef.current;
+    const startedScope = scopeKey;
     (async () => {
       const map: Record<string, boolean> = {};
+      const covers: Record<string, string> = {};
       for (const m of savedCol.items) {
         try {
-          map[m.adventureId] = await savedPagesAvailable(childProfile.id, m.adventureId, aiLang, avatarKeyToken);
+          map[m.adventureId] = await savedMetaPagesAvailable(childProfile.id, m, avatarKeyToken);
+          if (map[m.adventureId]) {
+            const cover = await readSavedMetaCoverFromStore(childProfile.id, m, avatarKeyToken);
+            if (cover) covers[m.adventureId] = cover;
+          }
         } catch {
           map[m.adventureId] = false;
         }
       }
-      if (alive) setFullyCached(map);
+      if (comicShelfReadIsCurrent(
+        { request, scope: startedScope },
+        { request: probeRequestRef.current, scope: scopeRef.current },
+      )) {
+        setFullyCached({ scope: startedScope, values: map });
+        setCoverThumbs({ scope: startedScope, values: covers });
+      }
     })();
-    return () => { alive = false; };
+    return () => { probeRequestRef.current += 1; };
     // Re-probe when the shelf, language, avatar or open book changes (a fresh
     // build persists pages, so returning from the reader can flip a badge).
-  }, [savedCol.items, aiLang, avatarKeyToken, childProfile.id, openBook]);
+  }, [savedCol.items, avatarKeyToken, childProfile.id, openBook, scopeKey]);
 
   const openComic = (id: string) => {
+    const request = ++openRequestRef.current;
+    const startedScope = scopeKey;
     if (!savedByAdventure[id]) {
-      setOpenBook({ id, pages: [] });
+      setOpenBook({ partitionKey, scopeKey, id, pages: [], lang: aiLang });
       return;
     }
+    const meta = savedByAdventure[id];
+    const fingerprint = savedMetaFingerprint(meta);
     // Saved book: rehydrate (all-or-nothing) before mounting the reader.
-    void rehydrateSavedPagesFromStore(childProfile.id, id, aiLang, avatarKeyToken)
-      .then((pages) => setOpenBook({ id, pages }))
-      .catch(() => setOpenBook({ id, pages: [] }));
+    void rehydrateSavedMetaPagesFromStore(childProfile.id, meta, avatarKeyToken)
+      .then((pages) => {
+        if (!comicShelfReadIsCurrent(
+          { request, scope: startedScope },
+          { request: openRequestRef.current, scope: scopeRef.current },
+        )) return;
+        setOpenBook({ partitionKey, scopeKey, fingerprint, id, pages, lang: meta.lang, meta });
+      })
+      .catch(() => {
+        if (!comicShelfReadIsCurrent(
+          { request, scope: startedScope },
+          { request: openRequestRef.current, scope: scopeRef.current },
+        )) return;
+        setOpenBook({ partitionKey, scopeKey, fingerprint, id, pages: [], lang: meta.lang, meta });
+      });
   };
 
   // No hero yet → invite the parent to create one (cross-domain entry point).
@@ -189,8 +254,8 @@ export default function ComicsTab() {
           </p>
           <p className="text-sm mb-5 max-w-md mx-auto" style={{ color: "var(--arbor-muted)" }} dir="auto">
             {he
-              ? `הפכו את ${name} לגיבור־על מצויר משלו — ומשם הוא מככב בכל סיפור, קומיקס והרפתקה באקדמיה של ארבור.`
-              : `Make ${name} into their own comic superhero — then they star in every Academy story, comic and adventure across Arbor.`}
+              ? `צרו ל${name} דמות מאוירת משלו — ומשם הוא מככב בכל סיפור, קומיקס והרפתקה באקדמיה של ארבור.`
+              : `Create ${name}'s own illustrated character — then they star in every Academy story, comic and adventure across Arbor.`}
           </p>
           <PlayButton tone="clay" onClick={() => setActiveTab("profile")}>
             <Icon name="auto_awesome" size={16} /> {he ? `צרו את הגיבור של ${isolate(name)}` : `Create ${isolate(name)}'s hero`}
@@ -201,34 +266,37 @@ export default function ComicsTab() {
   }
 
   // ── Reader view — one open book ────────────────────────────────────────────
-  const openAdventure = openBook ? getAdventure(openBook.id) : undefined;
-  if (openBook && openAdventure) {
+  const openAdventure = visibleOpenBook ? getAdventure(visibleOpenBook.id) : undefined;
+  if (visibleOpenBook && openAdventure) {
     // Re-open a saved book in the CURRENT language: the pages were rehydrated
     // in openComic (memory cache → device-local IndexedDB store) — a fully
     // available book mounts with zero /generate-comic calls; any miss hands
     // ComicReader an empty pageUrls so it falls back to a fresh build (whose
     // pages then persist through the store). `createdAt` carries over so
     // re-saving upserts the same shelf slot.
-    const meta = savedByAdventure[openAdventure.id];
+    const meta = visibleOpenBook.meta;
     const savedBook: HeroComic | undefined = meta
       ? {
           id: meta.id,
           adventureId: meta.adventureId,
-          title: adventureTitle(openAdventure, aiLang),
-          lang: aiLang,
-          pageUrls: openBook.pages,
+          title: meta.title || adventureTitle(openAdventure, meta.lang),
+          lang: meta.lang,
+          pageUrls: visibleOpenBook.pages,
           createdAt: meta.createdAt,
+          pageKeys: meta.pageKeys,
         }
       : undefined;
     return (
-      <RegisterShell kidMode={false} title={adventureTitle(openAdventure, aiLang)}>
+      <RegisterShell kidMode={false} title={adventureTitle(openAdventure, visibleOpenBook.lang)}>
         <ComicReader
+          key={`${partitionKey}|${openAdventure.id}|${visibleOpenBook.lang}|${meta?.createdAt ?? "new"}`}
           adventure={openAdventure}
-          lang={aiLang}
+          lang={visibleOpenBook.lang}
           heroName={name}
           heroDataUrl={heroDataUrl}
           saved={savedBook}
           childId={childProfile.id}
+          heroStyle={heroStyle}
           onSave={(comic) => { void savedCol.upsert(toSavedComicMeta(comic)); }}
           onClose={() => setOpenBook(null)}
           // Paywall stop: open the upgrade sheet and return to the shelf — the
@@ -375,15 +443,13 @@ export default function ComicsTab() {
           const saved = savedByAdventure[a.id];
           // In-session cover thumbnail (memory cache): current lang first, then
           // the lang the book was saved in; else the hero card.
-          const coverThumb = saved
-            ? getScene(comicKey(avatarKeyToken, a.id, aiLang, 0)) ?? getScene(comicKey(avatarKeyToken, a.id, saved.lang, 0))
-            : undefined;
+          const coverThumb = saved ? scopedCovers[a.id] : undefined;
           const title = adventureTitle(a, aiLang);
           // AIX-S5 honesty: "Read again" ONLY when every page is available on
           // this device (memory or IndexedDB) — a cold state (new device, or
           // pages evicted) says "Rebuild this book" instead of promising an
           // instant re-read that actually re-pays a full build.
-          const readAgain = !!saved && fullyCached[a.id] === true;
+          const readAgain = !!saved && scopedCached[a.id] === true;
           const badgeLabel = readAgain
             ? (he ? "לקרוא שוב" : "Read again")
             : saved
@@ -404,7 +470,7 @@ export default function ComicsTab() {
                   style={coverThumb ? undefined : { background: w.bg }}
                 >
                   {coverThumb ? (
-                    <img src={coverThumb} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                    <img src={coverThumb} alt="" className="absolute inset-0 w-full h-full object-contain" />
                   ) : (
                     <div className="comic-halftone absolute inset-0 grid place-items-center">
                       <div className="flex items-center gap-1.5">

@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { PlayHeader, MascotSay, ChoiceTile, ProgressPips, PlayButton, Celebrate } from "../ui/playkit";
 import { useArcadeLogger } from "../../practice/useArcadeLogger";
-import { PATTERN_PUZZLES, PATTERN_ROUNDS_PER_DAY, gradeStars, patternRound, puzzleOrderForDay, type PatternPuzzle } from "../../practice/newGames";
+import { gradeStars, patternRound, selectPatternSession, type PatternPuzzle } from "../../practice/newGames";
 import { dayKey } from "../../practice/signals";
 import { noteKidActivity } from "../../lib/kidModeGate";
 import { SpeakButton } from "../ui/SpeakButton";
@@ -68,6 +68,9 @@ export function PatternRoundView({
   speakLabel,
   lang,
   total,
+  correctFeedback,
+  retryFeedback,
+  supportLabel,
 }: {
   puzzle: PatternPuzzle;
   idx: number;
@@ -80,6 +83,9 @@ export function PatternRoundView({
   speakLabel: string;
   lang: string;
   total: number;
+  correctFeedback: string;
+  retryFeedback: string;
+  supportLabel: string;
 }) {
   return (
     <div className="space-y-6">
@@ -87,16 +93,18 @@ export function PatternRoundView({
         title={title}
         say={say}
         mood="think"
+        worldId="pattern"
+        variant="compact"
         action={<SpeakButton text={say} lang={lang} label={speakLabel} size="md" className="min-w-[44px] min-h-[44px] justify-center" />}
       />
       <ProgressPips total={total} current={idx} tone="lav" />
 
-      <div className="flex flex-wrap items-center justify-center gap-3 py-2" role="img" aria-label={patternAria}>
+      <div className="pattern-sequence" role="img" aria-label={patternAria}>
         {puzzle.shown.map((g, i) => (
-          <span key={i} className="text-[2.8rem] leading-none">{g}</span>
+          <span key={i} className="pattern-sequence-glyph">{g}</span>
         ))}
-        <span className="grid place-items-center text-[2rem] font-black rounded-2xl"
-          style={{ width: 64, height: 64, background: "var(--arbor-lav-soft)", border: "3px dashed var(--arbor-lav-ink)", color: "var(--arbor-lav-ink)" }}>
+        <span className="pattern-sequence-missing grid place-items-center text-[2rem] font-black rounded-2xl"
+          style={{ background: "var(--arbor-lav-soft)", border: "3px dashed var(--arbor-lav-ink)", color: "var(--arbor-lav-ink)" }}>
           {picked ?? "?"}
         </span>
       </div>
@@ -111,12 +119,12 @@ export function PatternRoundView({
 
       {picked && (
         <MascotSay mood={picked === puzzle.answer ? "proud" : "happy"} tone={picked === puzzle.answer ? "clay" : "peach"}>
-          {picked === puzzle.answer ? "Yes! You spotted the pattern." : `Good try — it was ${puzzle.answer}. Patterns repeat!`}
+          {picked === puzzle.answer ? correctFeedback : retryFeedback.replace("{answer}", puzzle.answer)}
         </MascotSay>
       )}
 
       <p className="flex items-center justify-center gap-1.5 text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }}>
-        <Icon name="category" size={14} /> Logic &amp; sequencing
+        <Icon name="category" size={14} /> {supportLabel}
       </p>
     </div>
   );
@@ -128,13 +136,19 @@ export default function PatternPowerWorld() {
   const [idx, setIdx] = useState(0);
   const [picked, setPicked] = useState<string | null>(null);
   const [scores, setScores] = useState<number[]>([]);
+  const [sessionSeed, setSessionSeed] = useState(0);
+  const advanceTimerRef = useRef<number | null>(null);
 
-  // KID-08: the day's order, resolved ONCE per mount so a re-render never
-  // reshuffles the board under the child's finger. Same order all day, a
-  // different one the next day — no copy anywhere says "tomorrow".
+  useEffect(() => () => {
+    if (advanceTimerRef.current !== null) window.clearTimeout(advanceTimerRef.current);
+  }, []);
+
+  // KID-08: each bounded sitting stays stable under the child's finger. Asking
+  // for six more advances the seed so the next completed set reaches different
+  // material without lengthening the required session.
   const puzzles = useMemo(
-    () => puzzleOrderForDay(dayKey(new Date())).slice(0, PATTERN_ROUNDS_PER_DAY),
-    [],
+    () => selectPatternSession(`${dayKey(new Date())}:${sessionSeed}`),
+    [sessionSeed],
   );
 
   // KID-01: clamped read — `puzzle` is always real, `done` is the separate signal.
@@ -150,7 +164,7 @@ export default function PatternPowerWorld() {
         title={t("elev.play.pattern.done.title", { name: first })}
         subtitle={t("elev.play.pattern.done.sub")}
         againLabel={t("elev.play.pattern.done.again")}
-        onReplay={() => { setIdx(0); setScores([]); setPicked(null); }}
+        onReplay={() => { setSessionSeed((seed) => seed + 1); setIdx(0); setScores([]); setPicked(null); }}
       />
     );
   }
@@ -164,7 +178,7 @@ export default function PatternPowerWorld() {
     // N1-01-R5: one completed kid activity. A COUNT and nothing else —
     // a no-op outside Kid Mode, so a parent using this screen cannot inflate it.
     noteKidActivity();
-    window.setTimeout(() => {
+    advanceTimerRef.current = window.setTimeout(() => {
       setScores((s) => [...s, score]);
       setPicked(null);
       setIdx((i) => i + 1);
@@ -184,6 +198,9 @@ export default function PatternPowerWorld() {
       speakLabel={t("elev.play.speak.label")}
       lang={uiLang}
       total={puzzles.length}
+      correctFeedback={t("elev.kids.pattern.feedback.yes")}
+      retryFeedback={t("elev.kids.pattern.feedback.retry", { answer: "{answer}" })}
+      supportLabel={t("elev.kids.pattern.support")}
     />
   );
 }

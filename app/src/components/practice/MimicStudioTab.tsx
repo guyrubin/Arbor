@@ -159,10 +159,13 @@ export default function MimicStudioTab() {
   return (
     <RegisterShell
       kidMode={kidMode}
-      title={t("prac.mimic.title")}
+      title={kidMode ? t("elev.kids.mimic.title") : t("prac.mimic.title")}
       say={headerSay}
       subtitle={headerSay}
       mood="cheer"
+      worldId="mimic"
+      headerVariant="compact"
+      eyebrow={kidMode ? t("elev.kids.mission") : undefined}
     >
 
       {/* The privacy strip is a PARENT assurance about how the mirror handles

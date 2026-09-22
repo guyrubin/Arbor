@@ -5,6 +5,7 @@ import { ComicPage, PlayButton, PlayPanel, ProgressPips, Celebrate, usePrefersRe
 import { HeroAvatar } from "../ui/HeroAvatar";
 import { track } from "../../lib/analytics";
 import { PaywallError } from "../../lib/api";
+import type { AvatarStyle } from "../../lib/api";
 import { trackShareInitiated, trackShareCompleted } from "../../lib/loopEvents";
 import { downloadHeroAvatarCanvas, renderComicCanvas } from "../../lib/heroAvatarCanvas";
 import { getStorySpec } from "../../lib/heroJourneys";
@@ -23,6 +24,7 @@ import {
   swipeToDelta,
   tapToDelta,
 } from "../../lib/heroComics";
+import { captureComicPageEpoch, type ComicPageEpoch } from "../../lib/comicPageStore";
 
 /**
  * ComicReader (p1-comic-reader) — a real, re-openable comic BOOK starring the
@@ -46,6 +48,7 @@ export function ComicReader({
   onPaywall,
   registerBack,
   childId,
+  heroStyle = "comichero",
 }: {
   adventure: Adventure;
   lang: ComicLang;
@@ -56,6 +59,7 @@ export function ComicReader({
   /** AIX-S5: enables the device-local IndexedDB page store — generated pages
    *  persist across sessions on this device (purged on erase/sign-out). */
   childId?: string;
+  heroStyle?: AvatarStyle;
   onSave: (comic: HeroComic) => void;
   onClose: () => void;
   /** Surfaces a PaywallError from the book build (or a page retry) to the host,
@@ -87,6 +91,7 @@ export function ComicReader({
         cover: i === 0,
         dataUrl: url,
         status: "ready" as const,
+        cacheKey: saved.pageKeys?.[i],
       }));
     }
     return initialPages;
@@ -95,6 +100,7 @@ export function ComicReader({
   const [finished, setFinished] = useState(false);
   const [bookError, setBookError] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const lifetimeEpoch = useRef<ComicPageEpoch | undefined>(childId ? captureComicPageEpoch(childId) : undefined);
 
   const total = pages.length;
   const current = pages[pageIndex];
@@ -118,6 +124,9 @@ export function ComicReader({
         setPages((prev) => prev.map((p) => (p.index === page.index ? page : p)));
       },
       childId,
+      heroStyle,
+      childId ?? heroName,
+      lifetimeEpoch.current,
     )
       .then((finalPages) => {
         if (!active) return;
@@ -159,6 +168,7 @@ export function ComicReader({
   // Keyboard: arrows turn pages (RTL inverts), Home/End jump.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement | null)?.closest?.("input, textarea, select, button, [contenteditable='true']")) return;
       if (e.key === "ArrowRight") { e.preventDefault(); go(rtl ? -1 : 1); }
       else if (e.key === "ArrowLeft") { e.preventDefault(); go(rtl ? 1 : -1); }
       else if (e.key === "Home") { e.preventDefault(); setFinished(false); setPageIndex(0); }
@@ -204,7 +214,7 @@ export function ComicReader({
     const page = pages.find((p) => p.index === index);
     if (!page) return;
     setPages((prev) => prev.map((p) => (p.index === index ? { ...p, status: "pending" } : p)));
-    generatePage({ adventure, lang, heroName, heroDataUrl, page, beatPrompt: beatPrompts[index], childId })
+    generatePage({ adventure, lang, heroName, heroDataUrl, page, beatPrompt: beatPrompts[index], childId, style: heroStyle, childIdentity: childId ?? heroName, lifetimeEpoch: lifetimeEpoch.current })
       .then((dataUrl) =>
         setPages((prev) => prev.map((p) => (p.index === index ? { ...p, dataUrl, status: "ready" } : p))),
       )
@@ -223,6 +233,7 @@ export function ComicReader({
     coverUrl: pages[0]?.dataUrl,
     pageUrls: pages.map((p) => p.dataUrl || ""),
     createdAt: saved?.createdAt ?? new Date().toISOString(),
+    pageKeys: pages.map((p) => p.cacheKey).filter((key): key is string => Boolean(key)),
   });
 
   const handleSave = () => {
@@ -354,7 +365,7 @@ export function ComicReader({
               Arbor Comics
             </span>
             {current.dataUrl ? (
-              <img src={current.dataUrl} alt={`Cover: ${adventureTitle(adventure, lang)}`} className="absolute inset-0 w-full h-full object-cover" />
+              <img src={current.dataUrl} alt={`Cover: ${adventureTitle(adventure, lang)}`} className="absolute inset-0 w-full h-full object-contain" />
             ) : (
               <>
                 <HeroAvatar size={120} mood="cheer" animate={!reduced} />
@@ -373,9 +384,10 @@ export function ComicReader({
               alt={`Page ${pageIndex}: ${current?.title ?? ""}`}
               pageNumber={pageIndex}
               loading={current?.status === "pending"}
-              error={current?.status === "error"}
-              rtl={rtl}
-              onRetry={() => current && retryPage(current.index)}
+               error={current?.status === "error"}
+               rtl={rtl}
+               contentFit="contain"
+               onRetry={() => current && retryPage(current.index)}
             />
           </AnimatePresence>
         )}

@@ -3,6 +3,7 @@ import {
   MAX_PAGES,
   _resetComicPageStore,
   _setComicPageBackend,
+  captureComicPageEpoch,
   getComicPage,
   hasComicPage,
   purgeAllComicPages,
@@ -98,6 +99,61 @@ describe("comicPageStore — GDPR purge hooks", () => {
     await putComicPage("b", "k1", "data:2");
     await purgeAllComicPages();
     expect(mem.map.size).toBe(0);
+  });
+});
+
+describe("comicPageStore — erase races", () => {
+  it("a read that resolves after child purge cannot return or re-touch erased bytes", async () => {
+    let release!: (record: ComicPageRecord | undefined) => void;
+    const pendingGet = new Promise<ComicPageRecord | undefined>((resolve) => { release = resolve; });
+    const key = "child-a|comic3|story|en|0|same";
+    const backend: ComicPageBackend = {
+      get: async () => pendingGet,
+      has: async () => true,
+      put: async (record) => { mem.map.set(record.key, { ...record }); },
+      delete: async (target) => { mem.map.delete(target); },
+      getAll: async () => [...mem.map.values()],
+      clear: async () => { mem.map.clear(); },
+    };
+    _setComicPageBackend(backend);
+    const read = getComicPage("child-a", "comic3|story|en|0|same");
+    await purgeComicPages("child-a");
+    release({ key, childId: "child-a", dataUrl: "data:old", lastUsed: 1 });
+    await expect(read).resolves.toBeUndefined();
+    expect(mem.map.has(key)).toBe(false);
+  });
+
+  it("serializes stale write → purge → fresh same-key write so fresh art survives", async () => {
+    let releaseFirstPut!: () => void;
+    let signalFirstPutStarted!: () => void;
+    const firstPut = new Promise<void>((resolve) => { releaseFirstPut = resolve; });
+    const firstPutStarted = new Promise<void>((resolve) => { signalFirstPutStarted = resolve; });
+    let puts = 0;
+    const backend: ComicPageBackend = {
+      get: async (key) => mem.map.get(key),
+      has: async (key) => mem.map.has(key),
+      put: async (record) => {
+        puts += 1;
+        if (puts === 1) {
+          signalFirstPutStarted();
+          await firstPut;
+        }
+        mem.map.set(record.key, { ...record });
+      },
+      delete: async (key) => { mem.map.delete(key); },
+      getAll: async () => [...mem.map.values()],
+      clear: async () => { mem.map.clear(); },
+    };
+    _setComicPageBackend(backend);
+    const oldEpoch = captureComicPageEpoch("child-a");
+    const oldWrite = putComicPage("child-a", "same-key", "data:old", oldEpoch);
+    await firstPutStarted;
+    const purge = purgeComicPages("child-a");
+    const freshEpoch = captureComicPageEpoch("child-a");
+    const freshWrite = putComicPage("child-a", "same-key", "data:fresh", freshEpoch);
+    releaseFirstPut();
+    await Promise.all([oldWrite, purge, freshWrite]);
+    expect(mem.map.get("child-a|same-key")?.dataUrl).toBe("data:fresh");
   });
 });
 

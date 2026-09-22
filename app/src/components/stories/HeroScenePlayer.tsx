@@ -6,7 +6,7 @@ import { ComicPage } from "../ui/playkit";
 import { SpeakButton } from "../ui/SpeakButton";
 import { stopSpeaking } from "../../lib/tts";
 import { api, type AvatarStyle } from "../../lib/api";
-import { comicKey } from "../../lib/heroComics";
+import { comicGenerationKey } from "../../lib/heroComics";
 import { getScene, resolveScene } from "../../lib/sceneCache";
 import { runInstrumented } from "../../hooks/useAsyncAction";
 import { ProvenanceBadge } from "../ui/ProvenanceBadge";
@@ -14,6 +14,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { downloadHeroAvatarCanvas } from "../../lib/heroAvatarCanvas";
 import { isKidModeActive } from "../../lib/kidModeGate";
 import type { HeroSceneRender } from "../../types";
+import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
 
 /**
  * AVA-3 / S3: scene-art cache. Generated scene images are large data URLs, so they
@@ -37,7 +38,9 @@ export function HeroScenePlayer({
   heroAvatarUrl,
   heroAvatarStyle,
   heroName,
+  childIdentity,
   immersive = false,
+  fallbackArtUrl,
 }: {
   scene: HeroSceneRender;
   seed: string;
@@ -48,11 +51,34 @@ export function HeroScenePlayer({
   heroAvatarUrl?: string;
   heroAvatarStyle?: AvatarStyle;
   heroName?: string;
+  /** Stable child partition; display names are not unique identities. */
+  childIdentity?: string;
   immersive?: boolean;
+  /** Authored local environment art; contains no child and never triggers generation. */
+  fallbackArtUrl?: string;
 }) {
-  const [sceneArt, setSceneArt] = useState<string | undefined>();
+  const [resolvedArt, setResolvedArt] = useState<{ key: string; url: string } | undefined>();
   const [artLoading, setArtLoading] = useState(false);
   const { uiLang, aiLang, t } = useLanguage();
+  const effectiveStyle = heroAvatarStyle ?? "comichero";
+  const artRequestKey = heroAvatarUrl && scene.imagePrompt
+    ? comicGenerationKey({
+        avatarOrHash: heroAvatarUrl,
+        adventureId: seed,
+        lang: aiLang,
+        pageIndex: beatNumber,
+         requestKind: "journey",
+         style: effectiveStyle,
+        childIdentity: childIdentity ?? heroName ?? seed,
+         heroName: heroName ?? "",
+         promptIdentity: JSON.stringify({
+           theme: scene.imagePrompt,
+           dialogue: scene.dialogue ?? null,
+           sfx: scene.sfx ?? [],
+         }),
+       })
+    : undefined;
+  const sceneArt = resolvedArt && resolvedArt.key === artRequestKey ? resolvedArt.url : undefined;
 
   // Stop speech whenever the scene changes or the card unmounts.
   useEffect(() => {
@@ -62,17 +88,20 @@ export function HeroScenePlayer({
 
   // The story IS a comic: when the child has a stylized hero and the beat has an
   // illustrator prompt, render (or reuse a cached) COMIC PANEL that stars their
-  // character — with the hero's name on the suit, this beat's punchy SFX, and a
+  // character — preserving the chosen outfit, with this beat's punchy SFX and a
   // short speech bubble. The narration below stays as the storyteller caption.
   useEffect(() => {
-    setSceneArt(undefined);
-    if (!heroAvatarUrl || !scene.imagePrompt) return;
+    setResolvedArt(undefined);
+    if (!heroAvatarUrl || !scene.imagePrompt || !artRequestKey) {
+      setArtLoading(false);
+      return;
+    }
     // Shared key format (comicKey) so Story-Journey beats and Comic Reader pages
     // reuse the same cached art; `seed` already encodes story+beat+child, and
     // aiLang (=== ComicLang) keys Hebrew beats to the Hebrew reader cache.
-    const key = comicKey(heroAvatarUrl, seed, aiLang, beatNumber);
+    const key = artRequestKey;
     const cached = getScene(key);
-    if (cached) { setSceneArt(cached); return; }
+    if (cached) { setResolvedArt({ key, url: cached }); setArtLoading(false); return; }
 
     let active = true;
     setArtLoading(true);
@@ -90,15 +119,15 @@ export function HeroScenePlayer({
           sfx: scene.sfx,
           // the hero's own short line for this beat → comic speech bubble
           dialogue: scene.dialogue,
-          style: (heroAvatarStyle ?? "comichero"),
+          style: effectiveStyle,
         }),
       ).then((r) => r.dataUrl),
     )
-      .then((url) => { if (active) setSceneArt(url); })
+      .then((url) => { if (active) setResolvedArt({ key, url }); })
       .catch(() => { /* graceful: keep the fallback illustration */ })
       .finally(() => { if (active) setArtLoading(false); });
     return () => { active = false; };
-  }, [seed, scene.imagePrompt, heroAvatarUrl, heroAvatarStyle, heroName, aiLang]);
+  }, [artRequestKey]);
 
   // AP-050: routes through the shared HeroAvatarCanvas module ("story" template)
   // so the scene save is tracked through one compositing path. Output is
@@ -107,14 +136,13 @@ export function HeroScenePlayer({
   // (the kid-register scanner strips `!isKidModeActive() && (…)` blocks), so
   // no file download is reachable from inside Kid Mode.
 
-  const artSize = immersive ? "w-40 h-40 md:w-48 md:h-48" : "w-28 h-28";
   const textSize = immersive ? "text-2xl md:text-3xl leading-relaxed" : "text-sm md:text-base leading-relaxed";
 
   return (
     <div className="flex flex-col items-center text-center gap-5">
       <div className="flex items-center gap-3 text-[11px] uppercase tracking-widest font-bold" style={{ color: "var(--arbor-green-ink)" }}>
         <span>
-          Beat {beatNumber} of {beatTotal}
+          {kidsStoriesText("journey.beat", aiLang, { current: beatNumber, total: beatTotal })}
         </span>
         {scene.narration && <SpeakButton text={scene.narration} lang={uiLang} className="touch-target" />}
         {/* KID-26: file downloads are a parent affordance — never reachable from inside Kid Mode. */}
@@ -142,14 +170,29 @@ export function HeroScenePlayer({
             alt={`Page ${beatNumber}: ${scene.title}`}
             pageNumber={beatNumber}
             loading={!sceneArt && artLoading}
+            contentFit="contain"
+            onImageError={() => setResolvedArt(undefined)}
           />
         </AnimatePresence>
       ) : (
-        <div className={`relative ${artSize} rounded-3xl overflow-hidden shadow-2xl`} style={{ outline: "1px solid var(--arbor-rule)" }}>
-          {photoUrl ? (
-            <img src={photoUrl} alt="Hero" className="w-full h-full object-cover" />
+        <div className="relative w-full max-w-3xl overflow-hidden rounded-[20px] shadow-2xl" style={{ aspectRatio: "3 / 2", outline: "3px solid var(--comic-ink)", background: "var(--arbor-paper-deep)" }}>
+          {fallbackArtUrl ? (
+            <img src={fallbackArtUrl} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-contain" />
           ) : (
-            <StoryIllustration seed={seed} className="w-full h-full" />
+            <StoryIllustration seed={seed} className="absolute inset-0 h-full w-full" />
+          )}
+          <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, rgba(21,25,31,.08), transparent 60%)" }} />
+          {(heroAvatarUrl || photoUrl) && (
+            <div
+              className="absolute bottom-2 h-[48%] max-h-48 rounded-2xl p-1"
+              style={{ insetInlineStart: "5%", background: "var(--arbor-paper-elevated)", outline: "2px solid var(--comic-ink)", boxShadow: "3px 5px 0 rgba(23,27,34,.25)" }}
+            >
+              <img
+                src={heroAvatarUrl ?? photoUrl}
+                alt={heroName ? `${heroName}, the story hero` : "Story hero"}
+                className="h-full w-auto rounded-xl object-contain"
+              />
+            </div>
           )}
         </div>
       )}

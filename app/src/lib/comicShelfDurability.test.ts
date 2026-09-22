@@ -31,8 +31,9 @@ import {
   comicKey,
   generatePage,
   planPages,
-  rehydrateSavedPagesFromStore,
-  savedPagesAvailable,
+  rehydrateSavedMetaPagesFromStore,
+  savedMetaPagesAvailable,
+  type SavedComicMeta,
 } from "./heroComics";
 import { _resetSceneCache } from "./sceneCache";
 import {
@@ -80,19 +81,32 @@ async function seedFullBook(avatarToken = "no-hero") {
   return total;
 }
 
+const legacyMeta = (): SavedComicMeta => ({
+  id: adventure.id,
+  adventureId: adventure.id,
+  title: adventure.title,
+  lang: "en",
+  createdAt: "2026-09-22T00:00:00.000Z",
+});
+
 describe("AIX-S5 — reopening a saved book after a full reload", () => {
   it("rehydrates every page from the store with ZERO /generate-comic calls", async () => {
     const total = await seedFullBook();
-    const pages = await rehydrateSavedPagesFromStore(CHILD, adventure.id, "en", "no-hero");
+    const pages = await rehydrateSavedMetaPagesFromStore(CHILD, legacyMeta(), "no-hero");
     expect(pages).toHaveLength(total);
     expect(pages[0]).toBe("data:page-0");
     expect(generateComic).not.toHaveBeenCalled();
   });
 
-  it("a full book build over a seeded store makes ZERO /generate-comic calls", async () => {
-    await seedFullBook();
+  it("a full v4 book build reuses its exact persisted identity after a reload", async () => {
+    generateComic.mockResolvedValue({ dataUrl: "data:fresh" });
     const spec = planPages(adventure, "en", Array.from({ length: bookPageCount(adventure.id) - 1 }, (_, i) => `Beat ${i + 1}`));
-    const out = await buildComicBook(adventure, "en", "Mia", undefined, spec, {}, () => {}, CHILD);
+    await buildComicBook(adventure, "en", "Mia", undefined, spec, {}, () => {}, CHILD);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    generateComic.mockReset();
+    _resetSceneCache();
+    const freshSpec = planPages(adventure, "en", Array.from({ length: bookPageCount(adventure.id) - 1 }, (_, i) => `Beat ${i + 1}`));
+    const out = await buildComicBook(adventure, "en", "Mia", undefined, freshSpec, {}, () => {}, CHILD);
     expect(out.every((p) => p.status === "ready")).toBe(true);
     expect(generateComic).not.toHaveBeenCalled();
   });
@@ -100,7 +114,7 @@ describe("AIX-S5 — reopening a saved book after a full reload", () => {
   it("returns [] (fresh-build fallback) when ANY page is missing — never a partial book", async () => {
     const total = await seedFullBook();
     mem.map.delete(`${CHILD}|${comicKey("no-hero", adventure.id, "en", total - 1)}`);
-    const pages = await rehydrateSavedPagesFromStore(CHILD, adventure.id, "en", "no-hero");
+    const pages = await rehydrateSavedMetaPagesFromStore(CHILD, legacyMeta(), "no-hero");
     expect(pages).toEqual([]);
   });
 });
@@ -111,9 +125,11 @@ describe("AIX-S5 — write-through persistence", () => {
     const page = { index: 0, title: "Cover", cover: true, status: "pending" as const };
     const url = await generatePage({ adventure, lang: "en", heroName: "Mia", page, childId: CHILD });
     expect(url).toBe("data:fresh");
-    // flush the fire-and-forget put
+    // Flush the fire-and-forget write, then locate the frozen v4 key.
     await new Promise((r) => setTimeout(r, 0));
-    expect(mem.map.get(`${CHILD}|${comicKey("no-hero", adventure.id, "en", 0)}`)?.dataUrl).toBe("data:fresh");
+    const stored = [...mem.map.values()].find((record) => record.key.startsWith(`${CHILD}|comic4|book|`));
+    expect(stored?.dataUrl).toBe("data:fresh");
+    expect(page.cacheKey).toBe(stored?.key.slice(`${CHILD}|`.length));
   });
 
   it("without a childId behavior is unchanged (no store writes)", async () => {
@@ -125,17 +141,17 @@ describe("AIX-S5 — write-through persistence", () => {
   });
 });
 
-describe("AIX-S5 — shelf honesty probe (savedPagesAvailable)", () => {
+describe("AIX-S5 — shelf honesty probe (savedMetaPagesAvailable)", () => {
   it("true only when EVERY page is available on this device", async () => {
     await seedFullBook();
-    expect(await savedPagesAvailable(CHILD, adventure.id, "en", "no-hero")).toBe(true);
+    expect(await savedMetaPagesAvailable(CHILD, legacyMeta(), "no-hero")).toBe(true);
   });
 
   it("false for a cold state (new device / evicted pages) — never 'Read again'", async () => {
-    expect(await savedPagesAvailable(CHILD, adventure.id, "en", "no-hero")).toBe(false);
+    expect(await savedMetaPagesAvailable(CHILD, legacyMeta(), "no-hero")).toBe(false);
     const total = await seedFullBook();
     mem.map.delete(`${CHILD}|${comicKey("no-hero", adventure.id, "en", total - 1)}`);
-    expect(await savedPagesAvailable(CHILD, adventure.id, "en", "no-hero")).toBe(false);
+    expect(await savedMetaPagesAvailable(CHILD, legacyMeta(), "no-hero")).toBe(false);
   });
 });
 
@@ -178,6 +194,7 @@ describe("AIX-S5 — firewall condition: device-local ONLY (no network reads the
       "lib/comicPageStore.ts",
       "lib/comicPageStore.test.ts",
       "lib/comicShelfDurability.test.ts",
+      "lib/heroComics.identity.test.ts",
       "lib/heroComics.ts", // read/write-through for page art
       "lib/childData.ts", // GDPR erase purge
       "context/AuthContext.tsx", // sign-out purge
@@ -186,6 +203,7 @@ describe("AIX-S5 — firewall condition: device-local ONLY (no network reads the
       // Verifies the erase path; introduces no network or upload consumer.
       "components/layout/accountDeletionFlow.test.ts",
       "components/tabs/ComicsTab.tsx", // doc comment only (consumes via heroComics)
+      "components/stories/ComicReader.tsx", // captures a child-lifetime epoch for build/retry cancellation
     ]);
     const offenders: string[] = [];
     const walk = (dir: string) => {
@@ -206,7 +224,7 @@ describe("AIX-S5 — firewall condition: device-local ONLY (no network reads the
     // heroComics: the persisted read feeds ONLY setScene + the return value.
     const hero = read("lib/heroComics.ts");
     expect(hero).toContain("getComicPage(childId, key)");
-    expect(hero).toContain("putComicPage(childId, key, url)");
+    expect(hero).toContain("putComicPage(childId, key, url, pageEpoch)");
     // The store functions must never appear inside an api.* call's arguments.
     expect(hero).not.toMatch(/api\.[a-zA-Z]+\([^)]*getComicPage/s);
   });
@@ -216,8 +234,8 @@ describe("AIX-S5 — honesty badge (ComicsTab source)", () => {
   const code = read("components/tabs/ComicsTab.tsx");
 
   it("'Read again' renders ONLY behind the fullyCached probe", () => {
-    expect(code).toContain("savedPagesAvailable");
-    expect(code).toMatch(/readAgain = !!saved && fullyCached\[a\.id\] === true/);
+    expect(code).toContain("savedMetaPagesAvailable");
+    expect(code).toMatch(/readAgain = !!saved && scopedCached\[a\.id\] === true/);
     // Every "Read again" literal is inside the readAgain branch (HE + EN).
     expect(code).toContain('he ? "לקרוא שוב" : "Read again"');
     expect(code).not.toMatch(/saved \? \(he \? "לקרוא שוב"/);
@@ -230,7 +248,10 @@ describe("AIX-S5 — honesty badge (ComicsTab source)", () => {
   });
 
   it("opening a saved book rehydrates from the store (zero-call path wired)", () => {
-    expect(code).toContain("rehydrateSavedPagesFromStore(childProfile.id");
+    expect(code).toContain("rehydrateSavedMetaPagesFromStore(childProfile.id");
+    expect(code).toContain("lang: meta.lang");
+    expect(code).toContain("pageKeys: meta.pageKeys");
+    expect(code).toContain("heroStyle={heroStyle}");
     expect(code).toContain("childId={childProfile.id}");
   });
 });

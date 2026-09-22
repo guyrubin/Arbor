@@ -47,7 +47,13 @@ describe("avatar medium continuity", () => {
     expect(sceneRoute).toContain('Gentle, non-scary, non-violent and age-appropriate for ages 4-8.');
     expect(sceneRoute).not.toContain('Calm, soft palette');
     expect(api).toContain('comichero: "a bold modern cel-shaded comic-book rendering medium');
-    expect(api).toContain('without adding a cape, hero suit, chest emblem or superhero costume');
+    expect(api).toContain("preserve the reference character's existing clothing and accessories exactly");
+    const comicRoute = api.slice(end);
+    expect(comicRoute).toContain("Preserve the reference character's face, hair, age, clothing, character intent and accessories exactly.");
+    expect(comicRoute).toContain("Feature a single friendly child protagonist");
+    expect(comicRoute).not.toContain("friendly child superhero as the central");
+    expect(comicRoute).not.toContain("legacy superhero chest emblem");
+    expect(comicRoute).not.toContain("showLegacyNameEmblem");
   });
 
   it("keeps generic world prompts free of forced comic costumes", () => {

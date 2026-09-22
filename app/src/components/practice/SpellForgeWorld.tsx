@@ -4,6 +4,8 @@ import { usePracticeData } from "../../practice/usePracticeData";
 import { track } from "../../lib/analytics";
 import type { PracticeEvent } from "../../types";
 import EarlyReadingTrack from "./EarlyReadingTrack";
+import { PlayHeader } from "../ui/playkit";
+import { useLanguage } from "../../context/LanguageContext";
 
 /* Spell Forge world — the early-reading track (letter tracing + phonics), given
    its own Hero Arcade entry. Supplies the language-domain event logger that
@@ -11,6 +13,7 @@ import EarlyReadingTrack from "./EarlyReadingTrack";
 
 export default function SpellForgeWorld() {
   const { childProfile } = useArbor();
+  const { t } = useLanguage();
   const data = usePracticeData(childProfile.id);
   const first = childProfile.name.split(" ")[0];
 
@@ -28,5 +31,17 @@ export default function SpellForgeWorld() {
     track("practice_event", { kind, domain: "language", correct });
   };
 
-  return <EarlyReadingTrack age={childProfile.age} first={first} onLog={onLog} />;
+  return (
+    <div className="space-y-6">
+      <PlayHeader
+        title={t("elev.kids.reading.title")}
+        say={t("elev.kids.reading.say")}
+        mood="think"
+        worldId="spell"
+        variant="compact"
+        eyebrow={t("elev.kids.mission")}
+      />
+      <EarlyReadingTrack age={childProfile.age} first={first} onLog={onLog} embedded />
+    </div>
+  );
 }

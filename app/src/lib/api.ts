@@ -371,7 +371,7 @@ export const api = {
     post<VisionResult>("/api/vision", payload),
   // AVA-1: generate a stylized character avatar from descriptors (default) or an
   // optional reference photo. The photo is never stored server-side.
-  generateAvatar: (payload: { childId?: string; descriptors?: AvatarDescriptors; photo?: { dataUrl: string }; style?: AvatarStyle }) =>
+  generateAvatar: (payload: { childId?: string; descriptors?: AvatarDescriptors; character?: AvatarCharacterIntent; photo?: { dataUrl: string }; style?: AvatarStyle }) =>
     post<{ dataUrl: string; style: string; source: "descriptor" | "photo" }>("/api/generate-avatar", payload),
   // AVA-3: render a story-beat scene featuring the child's generated character.
   generateScene: (payload: { imagePrompt: string; avatar?: { dataUrl: string }; style?: AvatarStyle }) =>
@@ -562,6 +562,12 @@ export type VisionDocument = {
 export type VisionResult = VisionObserve | VisionDocument;
 
 export type AvatarStyle = "storybook" | "soft3d" | "watercolor" | "flat" | "comichero";
+export type AvatarCharacterPreset = "princess" | "superhero" | "explorer" | "custom";
+export type AvatarCharacterIntent = {
+  preset: AvatarCharacterPreset;
+  /** Required only for preset=custom; never inferred from child profile data. */
+  customIdea?: string;
+};
 export type AvatarDescriptors = {
   hair?: string;
   skin?: string;

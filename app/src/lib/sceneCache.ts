@@ -22,6 +22,7 @@ const MAX_ENTRIES = 24;
 // entry to most-recently-used. Eviction always removes the map's first key.
 const mem = new Map<string, string>();
 const inFlight = new Map<string, Promise<string>>();
+let cacheEpoch = 0;
 
 // Throttle concurrent generations: many cards or beats mounting at once would
 // otherwise fire a dozen image-gen calls in parallel — choking the renderer and
@@ -69,18 +70,24 @@ export function setScene(key: string, url: string): void {
 export function resolveScene(key: string, gen: () => Promise<string>): Promise<string> {
   const cached = getScene(key);
   if (cached !== undefined) return Promise.resolve(cached);
-  const existing = inFlight.get(key);
+  const startedEpoch = cacheEpoch;
+  const flightKey = `${startedEpoch}|${key}`;
+  const existing = inFlight.get(flightKey);
   if (existing) return existing;
   const p = new Promise<string>((resolve, reject) => {
     genQueue.push(() => {
-      gen()
-        .then((url) => { setScene(key, url); resolve(url); })
+      Promise.resolve()
+        .then(gen)
+        .then((url) => {
+          if (startedEpoch === cacheEpoch) setScene(key, url);
+          resolve(url);
+        })
         .catch(reject)
         .finally(() => { activeGens--; pump(); });
     });
     pump();
-  }).finally(() => { inFlight.delete(key); });
-  inFlight.set(key, p);
+  }).finally(() => { inFlight.delete(flightKey); });
+  inFlight.set(flightKey, p);
   return p;
 }
 
@@ -90,9 +97,17 @@ export function resolveScene(key: string, gen: () => Promise<string>): Promise<s
  */
 export const dedupeScene = resolveScene;
 
+/** Privacy/lifecycle invalidation. Late provider results from an older epoch may
+ * still resolve to their original caller, but cannot repopulate this cache or
+ * be shared with work that starts after the invalidation. */
+export function invalidateSceneCache(): void {
+  cacheEpoch += 1;
+  mem.clear();
+}
+
 /** Test/QA reset hook — clears the cache and any in-flight/queued state. */
 export function _resetSceneCache(): void {
-  mem.clear();
+  invalidateSceneCache();
   inFlight.clear();
   genQueue.length = 0;
   activeGens = 0;

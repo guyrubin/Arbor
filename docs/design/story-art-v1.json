@@ -1,0 +1,89 @@
+{
+  "created": "2026-09-22",
+  "method": "Built-in imagegen; original illustrations; mechanical WebP exports from preserved originals",
+  "review": "ROS PAI/projects/arbor/execution/2026-09-22--kids-experience",
+  "totalBytes": 485030,
+  "assets": [
+    {
+      "id": "lantern-path",
+      "prompt": "Use case: illustration-story. Asset type: production story environment for Arbor children's web app, landscape 3:2. Create an original premium illustrated world for 'The Lantern Path': a friendly winding garden footpath at gentle blue-hour dusk, warm round paper lanterns glowing along low branches and stepping stones, a small inviting wooden garden gate and peaceful open clearing. The emotional theme is asking a friend to walk together. No characters; the app will overlay each child's own selected avatar. Make the environment welcoming, safe, magical yet grounded, with tactile painterly foliage, soft dimensional light, crisp readable silhouettes, warm golden light against muted teal foliage and sky, light comic-book ink accents without heavy outlines. High-quality children's adventure illustration matching a warm storybook garden world. Landscape scene fills the frame; main landmark and clear path centered; enough calm space in the lower center to overlay a small avatar, no blank UI area. No lettering, symbols, logos, borders, dialogue bubbles, text, reward objects, stars as currency, scary shadows, weapons, or people. Original art, no copyrighted characters. Output a single polished landscape illustration.",
+      "mode": "built-in imagegen, new original",
+      "date": "2026-09-22",
+      "status": "Lead visually reviewed original; Astra and in-product validation pending",
+      "originalFile": "exec-15375951-7951-4b21-808b-3d18ed7de4f4.png",
+      "originalSha256": "c34f1b174ec789822d906f2daaacb504589bb813882f6a231b2b2a4f329f9ee9",
+      "exports": [
+        {
+          "file": "lantern-path-v1.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 133622,
+          "quality": 74,
+          "sha256": "b04dcbf03f73945687a6651de78feae1a18255dbfe3b01dd1667e12663015ecc"
+        },
+        {
+          "file": "lantern-path-v1-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 41266,
+          "quality": 74,
+          "sha256": "ceb7dae7fbeb2eb1c3ed7e1cce296fcf0ae96f0a9998b543da4e63ae74740f86"
+        }
+      ]
+    },
+    {
+      "id": "cloud-orchestra",
+      "prompt": "Use case: illustration-story. Asset type: production story environment for Arbor children's web app, landscape 3:2. Create an original premium children's adventure illustration for 'The Cloud Orchestra': a peaceful magical garden music pavilion on a rounded grassy hill among soft low clouds, with three handmade wooden instruments (a little xylophone, a round hand drum and wind chimes) arranged in a welcoming semicircle. The theme is listening and taking turns. No characters; the app will overlay each child's own selected avatar. Match a warm storybook garden world: tactile painterly foliage, soft dimensional light, crisp readable silhouettes, gentle comic-book ink accents without heavy outlines. Soft turquoise sky, butter-yellow light, coral and lavender flowers, natural wood. Welcoming playful and safe, grounded instruments in a softly magical landscape. Landscape fills the frame, readable central pavilion and instruments, a calm grassy lower-center foreground for a small avatar overlay; clear uncluttered focal hierarchy. No lettering, musical-note symbols, logos, borders, speech bubbles, text, reward objects, scary shadows, weapons, people, copyrighted characters, or UI. Output a single polished landscape illustration.",
+      "mode": "built-in imagegen, new original",
+      "date": "2026-09-22",
+      "status": "Lead visually reviewed original; Astra and in-product validation pending",
+      "originalFile": "exec-ec0662f5-3092-476d-91a7-9c163ab8007d.png",
+      "originalSha256": "10a6bfea03f4bb1827b2d0db8695c408b9e03b9840ff73e83b9dd5f23e6e9450",
+      "exports": [
+        {
+          "file": "cloud-orchestra-v1.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 115208,
+          "quality": 74,
+          "sha256": "0c5913345a51ca6c3917737dceddc0339b5b68c6949d0d057166268a63344c3d"
+        },
+        {
+          "file": "cloud-orchestra-v1-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 39624,
+          "quality": 74,
+          "sha256": "a807206ab640c58ff3da85779f4773dc17620ce543db52ec3cc628e82ecbf779"
+        }
+      ]
+    },
+    {
+      "id": "little-bridge-builders",
+      "prompt": "Use case: illustration-story. Asset type: production story environment for Arbor children's web app, landscape 3:2. Create an original premium children's adventure illustration for 'The Little Bridge Builders': a tiny shallow pebble brook in a sunny garden, a small handmade toy bridge built with rounded colorful wooden blocks and smooth short planks crossing a narrow part, a few spare wooden blocks on the near grassy bank showing thoughtful rebuilding one piece at a time. The theme is cooperation, patient problem-solving and trying again. No characters; the app will overlay each child's own selected avatar. The bridge is toy-scale, gentle and safe, no building tools. Match a warm storybook garden world with tactile painterly foliage, soft dimensional sunlight, crisp readable silhouettes, subtle comic-book ink accents without heavy outlines. Warm cream, sage greens, turquoise shallow water, coral and honey-yellow blocks. Landscape fills the frame, bridge is clear central focus, calm lower-center grass and stepping stones to accommodate a small avatar overlay, low viewpoint revealing the little bridge. No lettering, logos, borders, speech bubbles, text, reward objects, scary hazards, deep water, tools, weapons, people, copyrighted characters or UI. Output a single polished landscape illustration.",
+      "mode": "built-in imagegen, new original",
+      "date": "2026-09-22",
+      "status": "Lead visually reviewed original; Astra and in-product validation pending",
+      "originalFile": "exec-507dc87a-8567-449b-aef1-fc886f4276f9.png",
+      "originalSha256": "5a74560f758c5c32f8001d1da31ad8017ad421892e050427ce6c242cb1d108a4",
+      "exports": [
+        {
+          "file": "little-bridge-builders-v1.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 114286,
+          "quality": 74,
+          "sha256": "5b0267bfc3fba6cc9bceb772fa20a711645fb1d47a936caacf487c0901690da6"
+        },
+        {
+          "file": "little-bridge-builders-v1-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 41024,
+          "quality": 74,
+          "sha256": "49944238ff6fdba93699f2c8bdaeabcc992b62905f51bc3370c11afd8433892a"
+        }
+      ]
+    }
+  ]
+}

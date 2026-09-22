@@ -162,17 +162,15 @@ export default function HeroArcade({ initialWorldId }: { initialWorldId?: string
     const Comp = open.Comp;
     return (
       <div className="arbor-play space-y-4">
-        {/* KID-4 honest arrival: the opened world announces its own name, so a
-            tile named "Beat Keeper" lands on a surface that SAYS Beat Keeper. */}
-        <div className="flex items-center gap-3 flex-wrap">
+        {/* The world component owns the single visible h1. Keep this control as
+            navigation only so active play never starts under duplicate titles. */}
+        <div className="flex items-center">
+          <span className="sr-only" role="status">{open.name}</span>
           <button onClick={() => setOpenId(null)}
             className="play-pressable inline-flex items-center gap-2 rounded-full px-4 min-h-[44px] text-[13px] font-extrabold"
             style={{ background: "var(--arbor-paper-elevated)", border: "var(--comic-line)", boxShadow: "var(--comic-pop)" }}>
             <Icon name="arrow_back" size={16} /> {t("elev.play.arcade.allWorlds")}
           </button>
-          <h1 className="font-black leading-none" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(20px,4vw,28px)" }}>
-            {open.name}
-          </h1>
         </div>
         <Suspense fallback={<TabSkeleton />}><Comp /></Suspense>
       </div>
@@ -181,6 +179,18 @@ export default function HeroArcade({ initialWorldId }: { initialWorldId?: string
 
   return (
     <div className="arbor-play space-y-6">
+      {kidMode ? (
+        <section className="comic-panel p-4 flex items-center gap-4" aria-label={t("aria.yourHero")}>
+          <HeroAvatar size={84} mood="cheer" ring decorative />
+          <div className="min-w-0">
+            <h1 className="font-black leading-snug" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(24px,5vw,36px)" }}>
+              {t("elev.play.arcade.chooseWorld")}
+            </h1>
+            <p className="mt-1 text-[14px] font-bold" style={{ color: "var(--arbor-ink-soft)" }}>{t("elev.kids.arcade.chooseSay")}</p>
+          </div>
+        </section>
+      ) : (
+        <>
       {/* HERO PANEL */}
       <section className="comic-panel p-5 sm:p-6 flex items-center gap-4 sm:gap-6" aria-label={t("aria.yourHero")}>
         <HeroCrest size={104} frame={activeFrame} badges={badges}>
@@ -227,10 +237,12 @@ export default function HeroArcade({ initialWorldId }: { initialWorldId?: string
           {hasName ? t("elev.play.arcade.coachSay", { hero: hero.name }) : t("elev.play.arcade.coachSayGeneric")}
         </div>
       </div>
+        </>
+      )}
 
       {/* WORLDS */}
       <div>
-        <h2 className="font-black mb-3" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(20px,3.4vw,24px)" }}>{t("elev.play.arcade.chooseWorld")}</h2>
+        {!kidMode && <h2 className="font-black mb-3" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(20px,3.4vw,24px)" }}>{t("elev.play.arcade.chooseWorld")}</h2>}
         <div className="grid gap-3 sm:gap-4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))" }}>
           {/* KID-06: the arcade grid listed 6 worlds while the kid home listed 8
               — Beat Keeper, Hero Pose and Pattern Power were hidden by an
@@ -264,7 +276,7 @@ export default function HeroArcade({ initialWorldId }: { initialWorldId?: string
                       Every WORLDS entry declares a Comp (kidMode.test.ts pins
                       that for every pre-selectable world), so the old "🔒 Soon"
                       fallback was unreachable code carrying a law-3 mechanic. */}
-                  {live && <Stars n={stars} aria={t("elev.play.arcade.starsAria", { n: stars })} />}
+                  {live && !kidMode && <Stars n={stars} aria={t("elev.play.arcade.starsAria", { n: stars })} />}
                 </div>
               </button>
             );
@@ -273,7 +285,7 @@ export default function HeroArcade({ initialWorldId }: { initialWorldId?: string
       </div>
 
       {/* HERO GEAR (cosmetics earned through play) */}
-      <div>
+      {!kidMode && <div>
         <h2 className="font-black mb-3" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(20px,3.4vw,24px)" }}>{t("elev.play.arcade.gear")}</h2>
         {unlocked.length > 0 ? (
           <div className="flex flex-wrap gap-2">
@@ -299,7 +311,7 @@ export default function HeroArcade({ initialWorldId }: { initialWorldId?: string
             {hasName ? t("elev.play.arcade.firstGear", { name: hero.name }) : t("elev.play.arcade.firstGearGeneric")}
           </p>
         )}
-      </div>
+      </div>}
 
       {/* VIRAL COMIC CTA (share loop wired in a later wave). KID-05: rendered
           only when the parent shell is reachable — inside Kid Mode the tap

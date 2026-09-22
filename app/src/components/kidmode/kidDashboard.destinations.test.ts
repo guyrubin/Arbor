@@ -35,11 +35,12 @@ describe("OBJ-KID-05 — one tile, one destination", () => {
     expect(new Set(keys).size).toBe(destinations.length);
   });
 
-  it("the home offers eleven tiles: the banner, two adventures, eight games", () => {
-    expect(destinations).toHaveLength(11);
+  it("the home offers twelve destinations: banner, two adventures, eight games, and comics", () => {
+    expect(destinations).toHaveLength(12);
     expect(destinations.filter((d) => d.tile.startsWith("game:"))).toHaveLength(8);
     expect(destinations.filter((d) => d.tile.startsWith("adv:"))).toHaveLength(2);
     expect(destinations[0].tile).toBe("quest-banner");
+    expect(destinations.at(-1)).toEqual({ tile: "hero-comics", surface: "comics", arg: null });
   });
 
   it("negative control — restoring the Feelings adventure tile collides with Mood Mountain", () => {

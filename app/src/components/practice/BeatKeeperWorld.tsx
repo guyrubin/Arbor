@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
-import { PlayHeader, MascotSay, ProgressPips, PlayButton, Celebrate } from "../ui/playkit";
+import { PlayHeader, MascotSay, ProgressPips, PlayButton, Celebrate, ChoiceTile, PlayPanel } from "../ui/playkit";
 import { useArcadeLogger } from "../../practice/useArcadeLogger";
-import { BEAT_ROUNDS, scoreBeatTaps, gradeStars } from "../../practice/newGames";
+import { BEAT_SETS, scoreBeatTaps, gradeStars } from "../../practice/newGames";
 import { SpeakButton } from "../ui/SpeakButton";
 import { useLanguage } from "../../context/LanguageContext";
 import { selectionHaptic } from "../../lib/native";
@@ -18,6 +18,7 @@ export default function BeatKeeperWorld() {
   const { first, log } = useArcadeLogger();
   const { t, uiLang } = useLanguage();
   const [roundIdx, setRoundIdx] = useState(0);
+  const [selectedSetId, setSelectedSetId] = useState<string | null>(null);
   const [phase, setPhase] = useState<"ready" | "playing" | "scored">("ready");
   const [pulse, setPulse] = useState(-1);
   const [score, setScore] = useState(0);
@@ -27,32 +28,74 @@ export default function BeatKeeperWorld() {
   const tapsRef = useRef<number[]>([]);
   const expRef = useRef<number[]>([]);
   const timerRef = useRef<number | null>(null);
+  const finishTimerRef = useRef<number | null>(null);
 
   useEffect(() => () => {
-    if (timerRef.current) window.clearInterval(timerRef.current);
+    if (timerRef.current !== null) window.clearInterval(timerRef.current);
+    if (finishTimerRef.current !== null) window.clearTimeout(finishTimerRef.current);
     // KID-27: the AudioContext is created on the first START (a user gesture,
     // which is what browsers require) and released with the world.
     closeBeatAudio();
   }, []);
 
-  const done = roundIdx >= BEAT_ROUNDS.length;
+  const selectedSet = BEAT_SETS.find((set) => set.id === selectedSetId) ?? null;
+  const rounds = selectedSet?.rounds ?? [];
+  const setLabel = selectedSet ? selectedSet.label[uiLang === "he" ? "he" : "en"] : "";
+
+  if (!selectedSet) {
+    const emoji: Record<string, string> = { "gentle-rain": "🌧️", "walking-parade": "🥁", "star-signals": "✨" };
+    return (
+      <div className="space-y-6">
+        <PlayHeader
+          title={t("elev.play.beat.title")}
+          say={t("elev.kids.beat.choose.say")}
+          mood="happy"
+          worldId="beat"
+          eyebrow={t("elev.kids.beat.choose.title")}
+        />
+        <PlayPanel tone="clay">
+          <div className="grid gap-3 sm:grid-cols-3">
+            {BEAT_SETS.map((set) => {
+              const label = set.label[uiLang === "he" ? "he" : "en"];
+              return (
+                <ChoiceTile
+                  key={set.id}
+                  emoji={emoji[set.id] ?? "🎵"}
+                  label={t("elev.kids.beat.choose.cta", { name: label })}
+                  onClick={() => {
+                    setSelectedSetId(set.id);
+                    setRoundIdx(0);
+                    setScores([]);
+                    setPhase("ready");
+                    setPulse(-1);
+                  }}
+                />
+              );
+            })}
+          </div>
+        </PlayPanel>
+      </div>
+    );
+  }
+
+  const done = roundIdx >= rounds.length;
   if (done) {
     const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
     return (
       <Celebrate title={t("elev.play.beat.complete.title", { name: first })} subtitle={t("elev.play.beat.complete.sub")} stars={gradeStars(avg)} starsTotal={3}>
-        <PlayButton onClick={() => { setRoundIdx(0); setScores([]); setPhase("ready"); setPulse(-1); }}>{t("elev.play.beat.replay")}</PlayButton>
+        <PlayButton onClick={() => { setSelectedSetId(null); setRoundIdx(0); setScores([]); setPhase("ready"); setPulse(-1); }}>{t("elev.kids.beat.choose.again")}</PlayButton>
       </Celebrate>
     );
   }
 
-  const round = BEAT_ROUNDS[roundIdx];
+  const round = rounds[roundIdx];
 
   const finish = () => {
     const s = scoreBeatTaps(expRef.current, tapsRef.current);
     setScore(s);
     setScores((p) => [...p, s]);
     setPhase("scored");
-    log("rhythm", "emotional", { correct: s >= 50, score: s, meta: `${round.beats}@${round.intervalMs}` });
+    log("rhythm", "emotional", { correct: s >= 50, score: s, meta: `${selectedSet.id}:${round.beats}@${round.intervalMs}` });
     // N1-01-R5: one completed kid activity. A COUNT and nothing else —
     // a no-op outside Kid Mode, so a parent using this screen cannot inflate it.
     noteKidActivity();
@@ -74,8 +117,8 @@ export default function BeatKeeperWorld() {
       setPulse(k - 1);
       beatClick();
       if (k >= round.beats) {
-        if (timerRef.current) window.clearInterval(timerRef.current);
-        window.setTimeout(finish, round.intervalMs);
+        if (timerRef.current !== null) window.clearInterval(timerRef.current);
+        finishTimerRef.current = window.setTimeout(finish, round.intervalMs);
       }
     }, round.intervalMs);
   };
@@ -93,9 +136,12 @@ export default function BeatKeeperWorld() {
         title={t("elev.play.beat.title")}
         say={t("elev.play.beat.say")}
         mood="happy"
+        worldId="beat"
+        variant="compact"
+        eyebrow={setLabel}
         action={<SpeakButton text={t("elev.play.beat.say")} lang={uiLang} label={t("elev.play.speak.label")} size="md" className="min-w-[44px] min-h-[44px] justify-center" />}
       />
-      <ProgressPips total={BEAT_ROUNDS.length} current={roundIdx} tone="clay" />
+      <ProgressPips total={rounds.length} current={roundIdx} tone="clay" />
 
       <div className="rounded-[var(--play-radius)] p-6 grid place-items-center comic-panel" style={{ background: "var(--arbor-green-soft)", minHeight: 220 }}>
         <button
@@ -122,7 +168,7 @@ export default function BeatKeeperWorld() {
           </MascotSay>
           <div className="flex justify-center">
             <PlayButton onClick={() => { setPhase("ready"); setPulse(-1); setRoundIdx((i) => i + 1); }}>
-              {roundIdx + 1 < BEAT_ROUNDS.length ? t("elev.play.beat.next") : t("elev.play.beat.finish")}
+              {roundIdx + 1 < rounds.length ? t("elev.play.beat.next") : t("elev.play.beat.finish")}
             </PlayButton>
           </div>
         </>

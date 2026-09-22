@@ -40,7 +40,7 @@ import { kidIsolate } from "./kidText";
 import { lastPlayedWorldYesterday } from "./kidGreeting";
 import { chooseTonightsStory } from "./tonightsStory";
 
-export type KidSurface = "journeys" | "arcade" | "feelings";
+export type KidSurface = "journeys" | "arcade" | "feelings" | "comics";
 
 type Accent = "green" | "clay" | "lav" | "peach" | "sky" | "pink";
 const ACCENT_BG: Record<Accent, string> = {
@@ -132,6 +132,7 @@ export function kidDestinations(bannerStoryId: string): KidDestination[] {
     { tile: "quest-banner", surface: "journeys", arg: bannerStoryId },
     ...ADVENTURES.map((a) => ({ tile: `adv:${a.id}`, surface: a.surface, arg: null })),
     ...GAMES.map((g) => ({ tile: `game:${g.id}`, surface: "arcade" as KidSurface, arg: g.worldId })),
+    { tile: "hero-comics", surface: "comics", arg: null },
   ];
 }
 
@@ -280,6 +281,7 @@ function SceneTile({
         <WorldScene worldId={worldId} imagePrompt={imagePrompt} heroUrl={heroUrl} heroStyle={heroStyle} sizes={big ? "(max-width: 639px) 100vw, 33vw" : "(max-width: 359px) 100vw, (max-width: 639px) 50vw, 25vw"}>
           <span aria-hidden="true" className="grid h-full w-full place-items-center" style={{ color: ACCENT_INK[accent] }}><Icon className="w-10 h-10" /></span>
         </WorldScene>
+
       </div>
       {/* Title block. */}
       <span style={{ padding: big ? "14px" : "11px", background: "var(--arbor-paper-elevated)" }}>
@@ -384,6 +386,9 @@ export default function KidDashboard({
           <WorldScene worldId="kid-quest" imagePrompt="an epic castle scene on a hill with a glowing open magic book" heroUrl={hero.url ?? undefined} heroStyle={hero.style} sizes="(max-width: 639px) 45vw, 300px">
             <Sparkles aria-hidden="true" className="w-10 h-10" style={{ color: "var(--arbor-sky-ink)" }} />
           </WorldScene>
+          <span className="absolute bottom-2 end-2 z-[2] rounded-2xl" style={{ background: "var(--arbor-paper-elevated)", border: "2px solid var(--comic-ink)", boxShadow: "2px 2px 0 var(--comic-ink)" }}>
+            <HeroAvatar size={80} mood="cheer" decorative />
+          </span>
         </div>
         <span style={{ flex: 1, minInlineSize: 0, padding: 14, alignSelf: "center" }}>
           <span style={{ display: "block", fontSize: 12, fontWeight: 800, color: "var(--arbor-sky-ink)" }}>{kt("kid.quest.eyebrow")}</span>
@@ -424,6 +429,28 @@ export default function KidDashboard({
             <SceneTile key={a.id} worldId={a.worldId} accent={a.accent} Icon={a.Icon} title={kt(`kid.adv.${a.id}.title`)} sub={kt(`kid.adv.${a.id}.sub`)} imagePrompt={a.imagePrompt} heroUrl={hero.url ?? undefined} heroStyle={hero.style} big index={i} onClick={() => onOpenSurface(a.surface)} />
           ))}
         </div>
+      </section>
+
+      {/* Saved comics are a distinct lower-home destination. The shelf mounts
+          only after this door opens, keyed to the active child in the overlay. */}
+      <section aria-label={t("elev.kids.comics.section")}>
+        <button
+          className="world-tile play-pressable w-full text-start"
+          onClick={() => onOpenSurface("comics")}
+          style={{ display: "flex", alignItems: "center", gap: 16, minBlockSize: 132, padding: 16, background: "var(--arbor-peach-soft)" }}
+        >
+          <span className="relative grid flex-shrink-0 place-items-center rounded-[22px]" style={{ inlineSize: 92, blockSize: 92, background: "var(--arbor-paper-elevated)", border: "var(--comic-line)" }}>
+            <BookOpen className="h-9 w-9" aria-hidden="true" style={{ color: "var(--arbor-peach-ink)" }} />
+            <span className="absolute -bottom-2 -end-2 rounded-2xl" style={{ background: "var(--arbor-paper-elevated)", border: "2px solid var(--comic-ink)" }}>
+              <HeroAvatar size={48} mood="cheer" decorative />
+            </span>
+          </span>
+          <span style={{ flex: 1, minInlineSize: 0 }}>
+            <span style={{ display: "block", fontFamily: "var(--font-display)", fontWeight: 900, fontSize: KID_HOME_GAME_TITLE_SIZE, color: "var(--arbor-ink)" }}>{kt("elev.kids.comics.title")}</span>
+            <span style={{ display: "block", marginBlockStart: 4, color: "var(--arbor-ink-soft)" }}>{kt("elev.kids.comics.sub")}</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, minBlockSize: 44, fontWeight: 800, color: "var(--arbor-peach-ink)" }}>{kt("elev.kids.comics.cta")} <ChevronRight className="h-4 w-4" aria-hidden="true" /></span>
+          </span>
+        </button>
       </section>
 
     </div>

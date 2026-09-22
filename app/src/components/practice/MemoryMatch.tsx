@@ -3,16 +3,12 @@ import { Icon } from "../ui/Icon";
 import { PlayPanel, PlayButton, Celebrate } from "../ui/playkit";
 import { SpeakButton } from "../ui/SpeakButton";
 import { useLanguage } from "../../context/LanguageContext";
-import { MEMORY_EMOJI_SETS } from "../../practice/playContent";
+import { MEMORY_THEMES } from "../../practice/playContent";
 import { memoryGridSize, memoryMaxCards, memorySetIndexForAge } from "../../practice/signals";
 import type { PracticeData } from "../../practice/usePracticeData";
 import type { PracticeEvent } from "../../types";
 import { track } from "../../lib/analytics";
 import { noteKidActivity } from "../../lib/kidModeGate";
-
-/** KID-09: the one sentence this world asks the child to understand, so the
- *  read-aloud control and the printed line can never drift apart. */
-const MEMORY_SAY = "Find the matching pairs — the board grows as you get stronger.";
 
 interface Card {
   uid: number;
@@ -21,8 +17,31 @@ interface Card {
   matched: boolean;
 }
 
+/** Cancels a pending pair resolution and rejects any stale callback after a
+ * theme switch, restart, or unmount. Exported for the lifecycle regression. */
+export function createMemoryPairLifecycle() {
+  let generation = 0;
+  let timer: number | null = null;
+  return {
+    schedule(delayMs: number, resolve: () => void) {
+      generation += 1;
+      const token = generation;
+      if (timer !== null) window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        timer = null;
+        if (token === generation) resolve();
+      }, delayMs);
+    },
+    invalidate() {
+      generation += 1;
+      if (timer !== null) window.clearTimeout(timer);
+      timer = null;
+    },
+  };
+}
+
 function buildDeck(size: 6 | 8 | 12, setIdx: number): Card[] {
-  const set = MEMORY_EMOJI_SETS[setIdx % MEMORY_EMOJI_SETS.length];
+  const set = MEMORY_THEMES[setIdx % MEMORY_THEMES.length];
   const pairs = size / 2;
   const chosen = set.emojis.slice(0, pairs);
   const deck = [...chosen, ...chosen].map((emoji, i) => ({ uid: i, emoji, flipped: false, matched: false }));
@@ -40,8 +59,9 @@ function buildDeck(size: 6 | 8 | 12, setIdx: number): Card[] {
  * after a hard round (see memoryGridSize). Each completed round logs a
  * `memory` practiceEvent scored on efficiency, feeding the cognition band.
  */
-export default function MemoryMatch({ data, childAge }: { data: PracticeData; childAge?: number }) {
+export default function MemoryMatch({ data, childAge, embedded = false }: { data: PracticeData; childAge?: number; embedded?: boolean }) {
   const { t, uiLang } = useLanguage();
+  const memorySay = t("elev.kids.memory.say");
   // Past round scores drive the adaptive grid size, bounded by an age-appropriate ceiling.
   const pastScores = useMemo(
     () => data.events.items.filter((e) => e.kind === "memory" && e.score !== undefined).map((e) => e.score as number).reverse(),
@@ -50,19 +70,24 @@ export default function MemoryMatch({ data, childAge }: { data: PracticeData; ch
   const maxCards = memoryMaxCards(childAge);
   const recommendedSize = memoryGridSize(pastScores, maxCards);
 
-  const [setIdx, setSetIdx] = useState(() => memorySetIndexForAge(childAge, MEMORY_EMOJI_SETS.length));
+  const [setIdx, setSetIdx] = useState(() => memorySetIndexForAge(childAge, MEMORY_THEMES.length));
   const [size, setSize] = useState<6 | 8 | 12>(recommendedSize);
-  const [deck, setDeck] = useState<Card[]>(() => buildDeck(recommendedSize, memorySetIndexForAge(childAge, MEMORY_EMOJI_SETS.length)));
+  const [deck, setDeck] = useState<Card[]>(() => buildDeck(recommendedSize, memorySetIndexForAge(childAge, MEMORY_THEMES.length)));
   const [flipped, setFlipped] = useState<number[]>([]);
   const [moves, setMoves] = useState(0);
   const [lock, setLock] = useState(false);
   const [won, setWon] = useState(false);
   const lastScore = useRef<number | null>(null);
+  const pairLifecycleRef = useRef<ReturnType<typeof createMemoryPairLifecycle> | null>(null);
+  if (pairLifecycleRef.current === null) pairLifecycleRef.current = createMemoryPairLifecycle();
+
+  useEffect(() => () => pairLifecycleRef.current?.invalidate(), []);
 
   const pairs = size / 2;
   const matchedCount = deck.filter((c) => c.matched).length / 2;
 
   const reset = (nextSize = recommendedSize, nextSet = setIdx) => {
+    pairLifecycleRef.current?.invalidate();
     setSize(nextSize);
     setDeck(buildDeck(nextSize, nextSet));
     setFlipped([]);
@@ -92,7 +117,7 @@ export default function MemoryMatch({ data, childAge }: { data: PracticeData; ch
       setLock(true);
       const firstEmoji = deck.find((c) => c.uid === nextFlipped[0])!.emoji;
       const matched = card.emoji === firstEmoji;
-      window.setTimeout(() => {
+      pairLifecycleRef.current?.schedule(matched ? 320 : 720, () => {
         setDeck((d) =>
           d.map((c) =>
             nextFlipped.includes(c.uid)
@@ -104,7 +129,7 @@ export default function MemoryMatch({ data, childAge }: { data: PracticeData; ch
         );
         setFlipped([]);
         setLock(false);
-      }, matched ? 320 : 720);
+      });
     }
   };
 
@@ -138,23 +163,27 @@ export default function MemoryMatch({ data, childAge }: { data: PracticeData; ch
 
   return (
     <PlayPanel>
-      <div className="flex items-center gap-3 mb-2">
-        <span className="grid place-items-center w-12 h-12 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
-          <Icon name="psychology" size={24} />
-        </span>
-        <div className="flex-1 min-w-0">
-          <h2 className="text-xl font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Memory Match</h2>
-          <p className="text-[12px] font-semibold" style={{ color: "var(--arbor-muted)" }}>{MEMORY_SAY}</p>
-        </div>
+      <div className={`flex items-center gap-3 mb-2 ${embedded ? "justify-end" : ""}`}>
+        {!embedded && (
+          <>
+            <span className="grid place-items-center w-12 h-12 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
+              <Icon name="psychology" size={24} />
+            </span>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-xl font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Memory Match</h2>
+              <p className="text-[12px] font-semibold" style={{ color: "var(--arbor-muted)" }}>{memorySay}</p>
+            </div>
+          </>
+        )}
         {/* KID-09: the world's own read-aloud control — a pre-reader can start
             without a grown-up reading the card out first. */}
-        <div className="ms-auto">
-          <SpeakButton text={MEMORY_SAY} lang={uiLang} label={t("elev.play.speak.label")} size="md" className="min-w-[44px] min-h-[44px] justify-center" />
+        <div className={embedded ? "" : "ms-auto"}>
+          <SpeakButton text={memorySay} lang={uiLang} label={t("elev.play.speak.label")} size="md" className="min-w-[44px] min-h-[44px] justify-center" />
         </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2 mb-5 mt-3">
-        {MEMORY_EMOJI_SETS.map((s, i) => {
+        {MEMORY_THEMES.map((s, i) => {
           const on = i === setIdx;
           return (
             /* KID-14: these measured 36-38 px — under the 44 px floor, on a
@@ -162,11 +191,11 @@ export default function MemoryMatch({ data, childAge }: { data: PracticeData; ch
                is the kid-register control with a 46 px minimum. */
             <PlayButton key={s.id} size="md" tone="lav" variant={on ? "primary" : "soft"}
               onClick={() => { setSetIdx(i); reset(size, i); }}>
-              {s.title}
+              {uiLang === "he" ? s.titleHe : s.title}
             </PlayButton>
           );
         })}
-        <span className="text-[13px] font-bold ms-auto" style={{ color: "var(--arbor-muted)" }}>Moves: <b style={{ color: "var(--arbor-ink)" }}>{moves}</b> · Found {matchedCount}/{pairs}</span>
+        <span className="text-[13px] font-bold ms-auto" style={{ color: "var(--arbor-muted)" }}>{t("elev.kids.memory.moves", { moves, found: matchedCount, total: pairs })}</span>
       </div>
 
       {won ? (

@@ -45,6 +45,7 @@ import * as growth from "./growth";
 import * as growthTruth from "./growthTruth";
 import * as journal from "./journal";
 import * as kidRegister from "./kidRegister";
+import * as kidsExperience from "./kidsExperience";
 import * as learnCare from "./learnCare";
 import * as lifecycle from "./lifecycle";
 import * as memorydisclosure from "./memorydisclosure";
@@ -101,6 +102,7 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   growthTruth,
   journal,
   kidRegister,
+  kidsExperience,
   learnCare,
   lifecycle,
   memorydisclosure,

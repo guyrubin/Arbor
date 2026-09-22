@@ -236,7 +236,7 @@ const STAGE_HINT_KEY: Record<ReadingStage, string> = {
   reading: "prac.read.stage.hint.reading",
 };
 
-export default function EarlyReadingTrack({ age, first, onLog }: { age: number; first: string; onLog: LogEvent }) {
+export default function EarlyReadingTrack({ age, first, onLog, embedded = false }: { age: number; first: string; onLog: LogEvent; embedded?: boolean }) {
   const { t } = useLanguage();
   // Same module-singleton gate SpeechCoachTab and RegisterShell read, so the
   // register follows the mount without the two hosts having to pass a prop.
@@ -276,13 +276,8 @@ export default function EarlyReadingTrack({ age, first, onLog }: { age: number; 
     setReadIdx((i) => (i + 1) % READING_LINES.length);
   };
 
-  const body = (
-    <SectionCard title={t("prac.read.title")} icon={<Icon name="menu_book" size={20} />} tone="lav"
-      action={<Chip tone="lav">{t("prac.read.tag")}</Chip>}>
-      <p className="text-xs rounded-xl p-3 mb-4" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}>
-        {t("prac.read.intro", { first })}
-      </p>
-
+  const content = (
+    <>
       {/* Stage selector — only stages appropriate to the age are offered */}
       <div role="tablist" aria-label={t("prac.read.tablist")} className="flex flex-wrap gap-2 mb-4">
         {READING_STAGES.map((s) => {
@@ -364,6 +359,15 @@ export default function EarlyReadingTrack({ age, first, onLog }: { age: number; 
         <LetterTrace onLog={onLog} />
       </div>
 
+    </>
+  );
+  const body = embedded && kidMode ? content : (
+    <SectionCard title={t("prac.read.title")} icon={<Icon name="menu_book" size={20} />} tone="lav"
+      action={<Chip tone="lav">{t("prac.read.tag")}</Chip>}>
+      <p className="text-xs rounded-xl p-3 mb-4" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}>
+        {t("prac.read.intro", { first })}
+      </p>
+      {content}
       <p className="text-[11px] mt-4" style={{ color: "var(--arbor-muted)" }}>
         {t("prac.read.footer", { first })}
       </p>

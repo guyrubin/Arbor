@@ -29,21 +29,32 @@ export const EMOTIONS: Emotion[] = [
 /** Scenario → feeling rounds: the child picks how the character feels. */
 export interface EmotionScenario {
   id: string;
-  text: string;            // {name} templated
+  text: string;
+  textHe: string;
   emoji: string;
-  answer: string;          // emotion id
+  /** Authored character feeling, retained for existing consumers and analytics compatibility. */
+  answer: string;
+  /** Other offered emotion IDs. The recognition game has one named answer. */
   distractors: [string, string];
+  /** Hebrew label for the same named answer in `textHe`. */
+  answerLabelHe: string;
 }
 
 export const EMOTION_SCENARIOS: EmotionScenario[] = [
-  { id: "tower-fell", emoji: "🧱", text: "Maya built a tall tower and her little brother knocked it down. How does Maya feel?", answer: "angry", distractors: ["happy", "excited"] },
-  { id: "dog-moved", emoji: "🐕", text: "Tom's best friend moved far away with his dog. How does Tom feel?", answer: "sad", distractors: ["excited", "angry"] },
-  { id: "birthday-soon", emoji: "🎂", text: "Tomorrow is Lily's birthday party with a bouncy castle! How does Lily feel tonight?", answer: "excited", distractors: ["sad", "afraid"] },
-  { id: "dark-room", emoji: "🌙", text: "Sam hears a strange noise in his dark room at night. How does Sam feel?", answer: "afraid", distractors: ["happy", "frustrated"] },
-  { id: "zipper-stuck", emoji: "🧥", text: "Noa tries to zip her jacket five times and it keeps getting stuck. How does Noa feel?", answer: "frustrated", distractors: ["excited", "sad"] },
-  { id: "grandma-visit", emoji: "👵", text: "Grandma surprised Ben with a visit and his favorite cookies. How does Ben feel?", answer: "happy", distractors: ["afraid", "angry"] },
-  { id: "turn-skipped", emoji: "🎲", text: "Everyone got a turn on the slide except Dana — they skipped her. How does Dana feel?", answer: "angry", distractors: ["happy", "excited"] },
-  { id: "new-school", emoji: "🏫", text: "It's Omar's first day at a brand-new school where he knows nobody. How does Omar feel?", answer: "afraid", distractors: ["angry", "happy"] },
+  { id: "tower-fell", emoji: "🧱", text: "Maya says, 'I feel angry when my tower is knocked down.' Which feeling did Maya name?", textHe: "מאיה אומרת: 'אני מרגישה כעס כשהמגדל שלי נופל.' איזה רגש מאיה אמרה?", answer: "angry", answerLabelHe: "כעס", distractors: ["sad", "frustrated"] },
+  { id: "dog-moved", emoji: "🐕", text: "Tom says, 'I feel sad because my friend and their dog moved far away.' Which feeling did Tom name?", textHe: "טום אומר: 'אני מרגיש עצב כי החבר שלי והכלב עברו רחוק.' איזה רגש טום אמר?", answer: "sad", answerLabelHe: "עצב", distractors: ["afraid", "excited"] },
+  { id: "birthday-soon", emoji: "🎂", text: "Lily says, 'I feel excited because my birthday party is tomorrow.' Which feeling did Lily name?", textHe: "לילי אומרת: 'אני מרגישה התרגשות כי מסיבת יום ההולדת שלי מחר.' איזה רגש לילי אמרה?", answer: "excited", answerLabelHe: "התרגשות", distractors: ["happy", "afraid"] },
+  { id: "dark-room", emoji: "🌙", text: "Sam says, 'I feel afraid after hearing a strange sound in the dark room.' Which feeling did Sam name?", textHe: "סם אומר: 'אני מרגיש פחד אחרי ששמעתי צליל מוזר בחדר חשוך.' איזה רגש סם אמר?", answer: "afraid", answerLabelHe: "פחד", distractors: ["sad", "frustrated"] },
+  { id: "zipper-stuck", emoji: "🧥", text: "Noa says, 'I feel frustrated because my jacket zipper keeps getting stuck.' Which feeling did Noa name?", textHe: "נועה אומרת: 'אני מרגישה תסכול כי הרוכסן במעיל שלי נתקע שוב ושוב.' איזה רגש נועה אמרה?", answer: "frustrated", answerLabelHe: "תסכול", distractors: ["angry", "sad"] },
+  { id: "grandma-visit", emoji: "🍪", text: "Ben says, 'I feel happy when Grandma visits with my favorite cookies.' Which feeling did Ben name?", textHe: "בן אומר: 'אני מרגיש שמחה כשסבתא באה עם העוגיות האהובות עליי.' איזה רגש בן אמר?", answer: "happy", answerLabelHe: "שמחה", distractors: ["excited", "sad"] },
+  { id: "turn-skipped", emoji: "🎲", text: "Dana says, 'I feel angry after my turn on the slide is skipped.' Which feeling did Dana name?", textHe: "דנה אומרת: 'אני מרגישה כעס אחרי שדילגו על התור שלי במגלשה.' איזה רגש דנה אמרה?", answer: "angry", answerLabelHe: "כעס", distractors: ["frustrated", "sad"] },
+  { id: "new-school", emoji: "🏫", text: "Omar says, 'I feel afraid on my first day at a new school.' Which feeling did Omar name?", textHe: "עומר אומר: 'אני מרגיש פחד ביום הראשון שלי בבית ספר חדש.' איזה רגש עומר אמר?", answer: "afraid", answerLabelHe: "פחד", distractors: ["excited", "sad"] },
+  { id: "building-interrupted", emoji: "🧩", text: "Rin says, 'I feel sad when it is time to put away my building project.' Which feeling did Rin name?", textHe: "רין אומר: 'אני מרגיש עצב כשמגיע הזמן לאסוף את פרויקט הבנייה שלי.' איזה רגש רין אמר?", answer: "sad", answerLabelHe: "עצב", distractors: ["frustrated", "angry"] },
+  { id: "waiting-turn", emoji: "🛝", text: "Eli says, 'I feel frustrated while I wait for a turn on the swing.' Which feeling did Eli name?", textHe: "אלי אומר: 'אני מרגיש תסכול בזמן שאני מחכה לתור בנדנדה.' איזה רגש אלי אמר?", answer: "frustrated", answerLabelHe: "תסכול", distractors: ["excited", "angry"] },
+  { id: "joining-play", emoji: "⚽", text: "Ari says, 'I feel afraid about asking to join a game already in progress.' Which feeling did Ari name?", textHe: "ארי אומר: 'אני מרגיש פחד לפני שאני מבקש להצטרף למשחק שכבר התחיל.' איזה רגש ארי אמר?", answer: "afraid", answerLabelHe: "פחד", distractors: ["excited", "sad"] },
+  { id: "surprising-sound", emoji: "🎈", text: "Jo says, 'I feel afraid when a balloon pops nearby.' Which feeling did Jo name?", textHe: "ג׳ו אומר: 'אני מרגיש פחד כשבלון מתפוצץ בקרבת מקום.' איזה רגש ג׳ו אמר?", answer: "afraid", answerLabelHe: "פחד", distractors: ["excited", "frustrated"] },
+  { id: "trying-again", emoji: "🛩️", text: "Kai says, 'I feel frustrated when my paper airplane keeps falling, then I try a new fold.' Which feeling did Kai name?", textHe: "קאי אומר: 'אני מרגיש תסכול כשמטוס הנייר שלי נופל שוב ושוב, ואז אני מנסה קיפול חדש.' איזה רגש קאי אמר?", answer: "frustrated", answerLabelHe: "תסכול", distractors: ["sad", "excited"] },
+  { id: "welcome", emoji: "👋", text: "Tali says, 'I feel happy when new neighbors say welcome and invite a wave.' Which feeling did Tali name?", textHe: "טלי אומרת: 'אני מרגישה שמחה כששכנים חדשים אומרים ברוכים הבאים ומזמינים לנופף.' איזה רגש טלי אמרה?", answer: "happy", answerLabelHe: "שמחה", distractors: ["excited", "afraid"] },
 ];
 
 /** Guided breathing patterns for the calm-down practice. */
@@ -145,8 +156,20 @@ export const EXPRESS_PROMPTS: ExpressPrompt[] = [
 
 /* ---------------- Memory Match (Epic 8) ---------------- */
 
-export const MEMORY_EMOJI_SETS: { id: string; title: string; emojis: string[] }[] = [
-  { id: "animals", title: "Animals", emojis: ["🐶", "🐱", "🦊", "🐼", "🦁", "🐸", "🐧", "🦋"] },
-  { id: "food", title: "Yummy things", emojis: ["🍎", "🍌", "🍪", "🍕", "🍓", "🧁", "🥑", "🍉"] },
-  { id: "space", title: "Space", emojis: ["🚀", "🪐", "⭐", "🌙", "☄️", "👩‍🚀", "🛸", "🌍"] },
+export interface MemoryTheme {
+  id: string;
+  title: string;
+  titleHe: string;
+  emojis: string[];
+}
+
+export const MEMORY_THEMES: MemoryTheme[] = [
+  { id: "animals", title: "Animals", titleHe: "חיות", emojis: ["🐶", "🐱", "🦊", "🐼", "🦁", "🐸", "🐧", "🦋"] },
+  { id: "food", title: "Yummy things", titleHe: "דברים טעימים", emojis: ["🍎", "🍌", "🍪", "🍕", "🍓", "🧁", "🥑", "🍉"] },
+  { id: "space", title: "Space", titleHe: "חלל", emojis: ["🚀", "🪐", "⭐", "🌙", "☄️", "👩‍🚀", "🛸", "🌍"] },
+  { id: "garden", title: "Garden", titleHe: "גינה", emojis: ["🌻", "🌷", "🐞", "🐝", "🪴", "🌿", "🦔", "🍄"] },
+  { id: "ocean", title: "Ocean", titleHe: "אוקיינוס", emojis: ["🐳", "🐙", "🦀", "🐠", "🪸", "🐚", "🦭", "🌊"] },
 ];
+
+/** Backward-compatible name used by the existing matching-board consumer. */
+export const MEMORY_EMOJI_SETS = MEMORY_THEMES;

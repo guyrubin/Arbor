@@ -13,8 +13,16 @@
 import { api, PaywallError } from "./api";
 import { HERO_STORIES, getStorySpec } from "./heroJourneys";
 import { getScene, resolveScene, setScene } from "./sceneCache";
-import { getComicPage, hasComicPage, putComicPage } from "./comicPageStore";
+import {
+  captureComicPageEpoch,
+  comicPageEpochIsCurrent,
+  getComicPage,
+  hasComicPage,
+  putComicPage,
+  type ComicPageEpoch,
+} from "./comicPageStore";
 import type { HeroStorySpec } from "../types";
+import type { AvatarStyle } from "./api";
 
 /** Per-story viral comic copy (bilingual): the heroic panel cue, a shout, and SFX. */
 export type ComicCopy = {
@@ -88,6 +96,24 @@ export const STORY_COMIC: Record<string, ComicCopy> = {
     dialogue: "I know what's fair!", dialogueHe: "אני יודע מה הוגן!",
     sfx: ["AHA!", "DING!", "SHINE!"], sfxHe: ["אהה!", "דינג!", "ברק!"],
   },
+  "the-lantern-path": {
+    theme: "a lantern-lit garden path with fireflies and warm pools of light, where a child hero takes one careful brave step",
+    themeHe: "שביל גינה מואר בפנסים וגחליליות, שבו גיבור ילד עושה צעד אמיץ וזהיר",
+    dialogue: "We can take one step together!", dialogueHe: "אפשר לעשות צעד אחד יחד!",
+    sfx: ["GLOW!", "STEP!", "TWINKLE!"], sfxHe: ["זוהר!", "צעד!", "נצנוץ!"],
+  },
+  "the-cloud-orchestra": {
+    theme: "a joyful child conductor among friendly musical clouds, weaving thunder, drizzle and whistles into one moonlit rhythm",
+    themeHe: "מנצח ילד ושמח בין עננים מוזיקליים ידידותיים, שוזר רעם, טפטוף ושריקות לקצב אחד לאור הירח",
+    dialogue: "Listen—now we play together!", dialogueHe: "תקשיבו — עכשיו מנגנים יחד!",
+    sfx: ["BOOM!", "PATTER!", "TOOT!"], sfxHe: ["בום!", "טיף־טף!", "טוּט!"],
+  },
+  "the-little-bridge-builders": {
+    theme: "a child hero and tiny friends rebuilding a bright wooden bridge over a toy stream, one sturdy piece at a time",
+    themeHe: "גיבור ילד וחברים קטנים בונים מחדש גשר עץ צבעוני מעל נחל צעצועים, חלק חזק אחד בכל פעם",
+    dialogue: "One piece, then the next!", dialogueHe: "חלק אחד, ואז הבא!",
+    sfx: ["CLICK!", "TAP!", "TA-DA!"], sfxHe: ["קליק!", "טוק!", "טה־דה!"],
+  },
 };
 
 /** One adventure the child can turn into a comic book (story spec + comic copy). */
@@ -128,6 +154,8 @@ export interface ComicPageData {
   /** The generated panel data-URL once it resolves. */
   dataUrl?: string;
   status: ComicPageStatus;
+  /** Frozen generation identity for saved-art rehydration. */
+  cacheKey?: string;
 }
 
 /** A finished (or in-progress) comic book — a first-class saved artifact. */
@@ -141,6 +169,8 @@ export interface HeroComic {
   /** All page data-URLs (index-aligned to pages[]). Cover at [0]. */
   pageUrls: string[];
   createdAt: string;
+  /** Exact device-local keys used for these bytes; optional for legacy books. */
+  pageKeys?: string[];
 }
 
 /** W5.4 — the persistable METADATA of a saved book. Art data-URLs are NEVER
@@ -154,6 +184,10 @@ export interface SavedComicMeta {
   title: string;
   lang: ComicLang;
   createdAt: string;
+  /** Optional v4 frozen identity. Legacy records intentionally omit this. */
+  pageKeys?: string[];
+  pageCount?: number;
+  identityVersion?: typeof COMIC_IDENTITY_VERSION;
 }
 
 /** Strip a book down to its persistable metadata. The doc id IS the adventureId
@@ -164,6 +198,11 @@ export const toSavedComicMeta = (comic: HeroComic): SavedComicMeta => ({
   title: comic.title,
   lang: comic.lang,
   createdAt: comic.createdAt,
+  ...(comic.pageKeys?.length ? {
+    pageKeys: comic.pageKeys,
+    pageCount: comic.pageKeys.length,
+    identityVersion: COMIC_IDENTITY_VERSION,
+  } : {}),
 });
 
 /** Rehydrate a saved book's page art from the in-session scene cache. Returns
@@ -230,11 +269,151 @@ export async function savedPagesAvailable(
   return true;
 }
 
+function frozenKeys(meta: SavedComicMeta): string[] | null | undefined {
+  const hasFrozenIdentity = meta.pageKeys !== undefined
+    || meta.pageCount !== undefined
+    || meta.identityVersion !== undefined;
+  if (!hasFrozenIdentity) return undefined;
+  if (!Array.isArray(meta.pageKeys) || meta.pageKeys.length === 0) return null;
+  if (meta.pageCount !== undefined && meta.pageCount !== meta.pageKeys.length) return null;
+  if (meta.identityVersion !== undefined && meta.identityVersion !== COMIC_IDENTITY_VERSION) return null;
+
+  const seen = new Set<string>();
+  for (let index = 0; index < meta.pageKeys.length; index++) {
+    const key = meta.pageKeys[index];
+    if (typeof key !== "string" || seen.has(key)) return null;
+    seen.add(key);
+    const parts = key.split("|");
+    if (
+      parts.length !== 11
+      || parts[0] !== "comic4"
+      || parts[1] !== "book"
+      || parts[2] !== COMIC_IDENTITY_VERSION
+      || parts[6] !== meta.adventureId
+      || parts[7] !== meta.lang
+      || Number(parts[8]) !== index
+    ) return null;
+  }
+  return meta.pageKeys;
+}
+
+function savedMetaPageKeys(meta: SavedComicMeta, legacyAvatarOrHash: string): string[] | null {
+  const frozen = frozenKeys(meta);
+  if (frozen === null) return null;
+  if (frozen) return frozen;
+  return Array.from({ length: bookPageCount(meta.adventureId) }, (_, index) =>
+    comicKey(legacyAvatarOrHash, meta.adventureId, meta.lang, index));
+}
+
+/** Read a saved artifact exactly as frozen. Legacy metadata falls back only to
+ * its historical comic3 per-child keys. This path never generates, substitutes
+ * another style, or consults another child''s records. */
+export async function rehydrateSavedMetaPagesFromStore(
+  childId: string,
+  meta: SavedComicMeta,
+  legacyAvatarOrHash: string,
+): Promise<string[]> {
+  const keys = savedMetaPageKeys(meta, legacyAvatarOrHash);
+  if (!keys) return [];
+  const urls: string[] = [];
+  for (const key of keys) {
+    const url = await getComicPage(childId, key);
+    if (!url) return [];
+    urls.push(url);
+  }
+  return urls;
+}
+
+export async function savedMetaPagesAvailable(
+  childId: string,
+  meta: SavedComicMeta,
+  legacyAvatarOrHash: string,
+): Promise<boolean> {
+  const keys = savedMetaPageKeys(meta, legacyAvatarOrHash);
+  if (!keys) return false;
+  for (const key of keys) {
+    if (!(await hasComicPage(childId, key))) return false;
+  }
+  return true;
+}
+
+export async function readSavedMetaCoverFromStore(
+  childId: string,
+  meta: SavedComicMeta,
+  legacyAvatarOrHash: string,
+): Promise<string | undefined> {
+  const keys = savedMetaPageKeys(meta, legacyAvatarOrHash);
+  return keys?.[0] ? getComicPage(childId, keys[0]) : undefined;
+}
+
+export function isStrictComicImageDataUrl(value: string): boolean {
+  const match = /^data:image\/(png|jpeg|webp|gif|avif);base64,([A-Za-z0-9+/]+={0,2})$/.exec(value);
+  if (!match) return false;
+  const payload = match[2];
+  if (payload.length < 4 || payload.length % 4 !== 0) return false;
+  try {
+    const bytes = atob(payload.slice(0, Math.min(payload.length, 32)));
+    const byte = (index: number) => bytes.charCodeAt(index);
+    switch (match[1]) {
+      case "png":
+        return bytes.length >= 8 && [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a].every((v, i) => byte(i) === v);
+      case "jpeg":
+        return bytes.length >= 3 && byte(0) === 0xff && byte(1) === 0xd8 && byte(2) === 0xff;
+      case "webp":
+        return bytes.length >= 12 && bytes.slice(0, 4) === "RIFF" && bytes.slice(8, 12) === "WEBP";
+      case "gif":
+        return bytes.startsWith("GIF87a") || bytes.startsWith("GIF89a");
+      case "avif":
+        return bytes.length >= 12 && bytes.slice(4, 8) === "ftyp" && /^(?:avif|avis)$/.test(bytes.slice(8, 12));
+      default:
+        return false;
+    }
+  } catch {
+    return false;
+  }
+}
+
 const shortHash = (s: string): string => {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
   return Math.abs(h).toString(36);
 };
+
+export const COMIC_IDENTITY_VERSION = "character-v4" as const;
+export type ComicRequestKind = "book" | "journey";
+
+export type ComicGenerationIdentity = {
+  avatarOrHash: string;
+  adventureId: string;
+  lang: ComicLang;
+  pageIndex?: number;
+  requestKind: ComicRequestKind;
+  style: AvatarStyle;
+  childIdentity: string;
+  heroName: string;
+  promptIdentity?: string;
+};
+
+/** New generation identity. Deliberately separate from the exact comic3
+ * legacy key used by already-saved page bytes. */
+export function comicGenerationKey(identity: ComicGenerationIdentity): string {
+  const h = identity.avatarOrHash.startsWith("data:")
+    ? shortHash(identity.avatarOrHash)
+    : identity.avatarOrHash;
+  return [
+    "comic4",
+    identity.requestKind,
+    COMIC_IDENTITY_VERSION,
+    identity.style,
+    shortHash(identity.childIdentity),
+    shortHash(identity.heroName),
+    identity.adventureId,
+    identity.lang,
+    identity.pageIndex ?? 0,
+    shortHash(identity.promptIdentity ?? ""),
+    h,
+  ].join("|");
+}
 
 /** Stable, durable cache key for a page of an avatar+adventure book in one lang.
  *  Shared by ComicReader pages and HeroScenePlayer beats so cache hits cross over.
@@ -309,6 +488,21 @@ export interface GeneratePageArgs {
    *  IndexedDB page store (comicPageStore) so saved books survive the session.
    *  Without it behavior is unchanged (memory cache only). */
   childId?: string;
+  style?: AvatarStyle;
+  childIdentity?: string;
+  /** One lifetime token shared by every page in a book build. */
+  lifetimeEpoch?: ComicPageEpoch;
+}
+
+export class ComicGenerationCancelledError extends Error {
+  constructor() {
+    super("Comic generation cancelled because the child data partition changed");
+    this.name = "ComicGenerationCancelledError";
+  }
+}
+
+function requireCurrentEpoch(epoch: ComicPageEpoch | undefined): void {
+  if (epoch && !comicPageEpochIsCurrent(epoch)) throw new ComicGenerationCancelledError();
 }
 
 /** Generate (or reuse a cached/in-flight) panel for one page. Resolves to a
@@ -317,43 +511,67 @@ export interface GeneratePageArgs {
  *  shared persistent scene cache (lib/sceneCache). */
 export async function generatePage(args: GeneratePageArgs): Promise<string> {
   const { adventure, lang, heroName, heroDataUrl, page, beatPrompt, childId } = args;
+  const pageEpoch = args.lifetimeEpoch ?? (childId ? captureComicPageEpoch(childId) : undefined);
+  if (pageEpoch && (!childId || pageEpoch.childId !== childId)) throw new ComicGenerationCancelledError();
+  requireCurrentEpoch(pageEpoch);
   const he = lang === "he";
   const baseTheme = he ? adventure.copy.themeHe : adventure.copy.theme;
-  const key = comicKey(heroDataUrl || "no-hero", adventure.id, lang, page.index);
+  const style = args.style ?? "comichero";
+  const theme = page.cover
+    ? `${baseTheme} — dramatic comic-book COVER with the title, no panels`
+    : beatPrompt || baseTheme;
+  const dialogue = page.cover ? undefined : (he ? adventure.copy.dialogueHe : adventure.copy.dialogue);
+  const sfx = he ? adventure.copy.sfxHe : adventure.copy.sfx;
+  const key = comicGenerationKey({
+    avatarOrHash: heroDataUrl || "no-hero",
+    adventureId: adventure.id,
+    lang,
+    pageIndex: page.index,
+    requestKind: "book",
+    style,
+    childIdentity: args.childIdentity ?? childId ?? heroName,
+    heroName,
+    promptIdentity: JSON.stringify({ theme, dialogue: dialogue ?? null, sfx, cover: page.cover }),
+  });
+  page.cacheKey = key;
 
   // AIX-S5 read-through: memory cache, then the device-local IndexedDB store —
   // a persisted page never re-pays a /generate-comic call.
   const memHit = getScene(key);
-  if (memHit !== undefined) return memHit;
+  if (memHit !== undefined) {
+    requireCurrentEpoch(pageEpoch);
+    return memHit;
+  }
   if (childId) {
     const persisted = await getComicPage(childId, key);
+    requireCurrentEpoch(pageEpoch);
     if (persisted !== undefined) {
       setScene(key, persisted);
       return persisted;
     }
   }
 
-  const theme = page.cover
-    ? `${baseTheme} — dramatic comic-book COVER with the title, no panels`
-    : beatPrompt || baseTheme;
-
   // S3: persist generated pages (and dedupe concurrent identical requests) via
   // the shared scene cache, so re-opening a book never re-pays generation.
-  const url = await resolveScene(key, () =>
-    api
+  const url = await resolveScene(key, () => {
+    // The scene-cache throttle may hold this work in its queue. Recheck at the
+    // instant the provider call starts so erased-child jobs never leave device.
+    requireCurrentEpoch(pageEpoch);
+    return api
       .generateComic({
         ...(heroDataUrl ? { avatar: { dataUrl: heroDataUrl } } : {}),
         heroName,
         theme,
-        ...(page.cover ? { cover: true } : { dialogue: he ? adventure.copy.dialogueHe : adventure.copy.dialogue }),
-        sfx: he ? adventure.copy.sfxHe : adventure.copy.sfx,
-        style: "comichero",
+        ...(page.cover ? { cover: true } : { dialogue }),
+        sfx,
+        style,
         pageIndex: page.index,
       })
-      .then((r) => r.dataUrl),
-  );
+      .then((r) => r.dataUrl);
+  });
+  requireCurrentEpoch(pageEpoch);
   // AIX-S5 write-through (device-local only; never uploaded/synced).
-  if (childId) void putComicPage(childId, key, url);
+  if (childId) void putComicPage(childId, key, url, pageEpoch);
   return url;
 }
 
@@ -375,10 +593,16 @@ export async function buildComicBook(
   onPage: (page: ComicPageData) => void,
   /** AIX-S5: enables the device-local page store (see GeneratePageArgs). */
   childId?: string,
+  style: AvatarStyle = "comichero",
+  childIdentity?: string,
+  suppliedLifetimeEpoch?: ComicPageEpoch,
 ): Promise<ComicPageData[]> {
   const out = pages.map((p) => ({ ...p }));
+  const lifetimeEpoch = suppliedLifetimeEpoch ?? (childId ? captureComicPageEpoch(childId) : undefined);
+  if (lifetimeEpoch && (!childId || lifetimeEpoch.childId !== childId)) throw new ComicGenerationCancelledError();
   for (const page of out) {
     try {
+      requireCurrentEpoch(lifetimeEpoch);
       const dataUrl = await generatePage({
         adventure,
         lang,
@@ -387,10 +611,15 @@ export async function buildComicBook(
         page,
         beatPrompt: beatPrompts[page.index],
         childId,
+        style,
+        childIdentity,
+        lifetimeEpoch,
       });
+      requireCurrentEpoch(lifetimeEpoch);
       page.dataUrl = dataUrl;
       page.status = "ready";
     } catch (err) {
+      if (err instanceof ComicGenerationCancelledError) throw err;
       // Paywall ≠ page failure: stop the whole build and surface it typed.
       if (err instanceof PaywallError) throw err;
       page.status = "error";

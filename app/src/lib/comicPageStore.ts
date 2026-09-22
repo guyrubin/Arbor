@@ -28,6 +28,8 @@
  */
 
 /** Bounded entry count — data URLs are large; keep the on-disk set small. */
+import { invalidateSceneCache } from "./sceneCache";
+
 export const MAX_PAGES = 30;
 
 export interface ComicPageRecord {
@@ -77,8 +79,12 @@ function tx<T>(db: IDBDatabase, mode: IDBTransactionMode, run: (store: IDBObject
   return new Promise((resolve, reject) => {
     const t = db.transaction(STORE, mode);
     const req = run(t.objectStore(STORE));
-    req.onsuccess = () => resolve(req.result);
+    let result!: T;
+    req.onsuccess = () => { result = req.result; };
     req.onerror = () => reject(req.error);
+    t.oncomplete = () => resolve(result);
+    t.onerror = () => reject(t.error);
+    t.onabort = () => reject(t.error);
   });
 }
 
@@ -110,6 +116,36 @@ function createIdbBackend(): ComicPageBackend {
 }
 
 let backend: ComicPageBackend | null | undefined;
+let globalPurgeEpoch = 0;
+const childPurgeEpoch = new Map<string, number>();
+let mutationChain: Promise<void> = Promise.resolve();
+
+function mutate<T>(operation: () => Promise<T>): Promise<T> {
+  const result = mutationChain.then(operation, operation);
+  mutationChain = result.then(() => undefined, () => undefined);
+  return result;
+}
+
+export type ComicPageEpoch = Readonly<{
+  childId: string;
+  global: number;
+  child: number;
+}>;
+
+/** Capture before an async generation/read begins. A later erase invalidates
+ * the token so late work cannot recreate or return the erased child's bytes. */
+export function captureComicPageEpoch(childId: string): ComicPageEpoch {
+  return {
+    childId,
+    global: globalPurgeEpoch,
+    child: childPurgeEpoch.get(childId) ?? 0,
+  };
+}
+
+export function comicPageEpochIsCurrent(epoch: ComicPageEpoch): boolean {
+  return epoch.global === globalPurgeEpoch
+    && epoch.child === (childPurgeEpoch.get(epoch.childId) ?? 0);
+}
 
 function resolveBackend(): ComicPageBackend | null {
   if (backend !== undefined) return backend;
@@ -129,6 +165,9 @@ export function _setComicPageBackend(b: ComicPageBackend | null): void {
 /** Test hook: forget the injected/default backend so it re-resolves. */
 export function _resetComicPageStore(): void {
   backend = undefined;
+  globalPurgeEpoch = 0;
+  childPurgeEpoch.clear();
+  mutationChain = Promise.resolve();
 }
 
 const recordKey = (childId: string, sceneKey: string): string => `${childId}|${sceneKey}`;
@@ -137,11 +176,16 @@ const recordKey = (childId: string, sceneKey: string): string => `${childId}|${s
 export async function getComicPage(childId: string, sceneKey: string): Promise<string | undefined> {
   const b = resolveBackend();
   if (!b) return undefined;
+  const epoch = captureComicPageEpoch(childId);
+  const key = recordKey(childId, sceneKey);
   try {
-    const rec = await b.get(recordKey(childId, sceneKey));
-    if (!rec) return undefined;
-    // Touch recency (best effort — a failed touch never fails the read).
-    void b.put({ ...rec, lastUsed: Date.now() }).catch(() => {});
+    const rec = await b.get(key);
+    if (!rec || !comicPageEpochIsCurrent(epoch)) return undefined;
+    await mutate(async () => {
+      if (!comicPageEpochIsCurrent(epoch)) return;
+      await b.put({ ...rec, lastUsed: Date.now() });
+    }).catch(() => {});
+    if (!comicPageEpochIsCurrent(epoch)) return undefined;
     return rec.dataUrl;
   } catch {
     return undefined;
@@ -152,8 +196,10 @@ export async function getComicPage(childId: string, sceneKey: string): Promise<s
 export async function hasComicPage(childId: string, sceneKey: string): Promise<boolean> {
   const b = resolveBackend();
   if (!b) return false;
+  const epoch = captureComicPageEpoch(childId);
   try {
-    return await b.has(recordKey(childId, sceneKey));
+    const found = await b.has(recordKey(childId, sceneKey));
+    return comicPageEpochIsCurrent(epoch) && found;
   } catch {
     return false;
   }
@@ -161,16 +207,30 @@ export async function hasComicPage(childId: string, sceneKey: string): Promise<b
 
 /** Persist one page data-URL, evicting least-recently-used entries beyond the
  *  MAX_PAGES bound. Never throws (durability is best effort). */
-export async function putComicPage(childId: string, sceneKey: string, dataUrl: string): Promise<void> {
+export async function putComicPage(
+  childId: string,
+  sceneKey: string,
+  dataUrl: string,
+  epoch: ComicPageEpoch = captureComicPageEpoch(childId),
+): Promise<void> {
   const b = resolveBackend();
-  if (!b) return;
+  if (!b || epoch.childId !== childId || !comicPageEpochIsCurrent(epoch)) return;
+  const key = recordKey(childId, sceneKey);
   try {
-    await b.put({ key: recordKey(childId, sceneKey), childId, dataUrl, lastUsed: Date.now() });
-    const all = await b.getAll();
-    if (all.length > MAX_PAGES) {
-      const surplus = [...all].sort((x, y) => x.lastUsed - y.lastUsed).slice(0, all.length - MAX_PAGES);
-      for (const rec of surplus) await b.delete(rec.key);
-    }
+    await mutate(async () => {
+      if (!comicPageEpochIsCurrent(epoch)) return;
+      await b.put({ key, childId, dataUrl, lastUsed: Date.now() });
+      if (!comicPageEpochIsCurrent(epoch)) return;
+      const all = await b.getAll();
+      if (!comicPageEpochIsCurrent(epoch)) return;
+      if (all.length > MAX_PAGES) {
+        const surplus = [...all].sort((x, y) => x.lastUsed - y.lastUsed).slice(0, all.length - MAX_PAGES);
+        for (const rec of surplus) {
+          if (!comicPageEpochIsCurrent(epoch)) return;
+          await b.delete(rec.key);
+        }
+      }
+    });
   } catch {
     /* best effort */
   }
@@ -179,12 +239,16 @@ export async function putComicPage(childId: string, sceneKey: string, dataUrl: s
 /** GDPR erase hook: remove every persisted page for one child. */
 export async function purgeComicPages(childId: string): Promise<void> {
   const b = resolveBackend();
+  childPurgeEpoch.set(childId, (childPurgeEpoch.get(childId) ?? 0) + 1);
+  invalidateSceneCache();
   if (!b) return;
   try {
-    const all = await b.getAll();
-    for (const rec of all) {
-      if (rec.childId === childId) await b.delete(rec.key);
-    }
+    await mutate(async () => {
+      const all = await b.getAll();
+      for (const rec of all) {
+        if (rec.childId === childId) await b.delete(rec.key);
+      }
+    });
   } catch {
     /* best effort */
   }
@@ -193,9 +257,11 @@ export async function purgeComicPages(childId: string): Promise<void> {
 /** Sign-out hook: remove every persisted page for every child on this device. */
 export async function purgeAllComicPages(): Promise<void> {
   const b = resolveBackend();
+  globalPurgeEpoch += 1;
+  invalidateSceneCache();
   if (!b) return;
   try {
-    await b.clear();
+    await mutate(() => b.clear());
   } catch {
     /* best effort */
   }

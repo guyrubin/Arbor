@@ -4,13 +4,21 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { SectionCard, TrustSafetyBar, cardCls } from "../ui/kit";
 import { RegisterShell, ChoiceTile, MascotSay, PlayButton, PlayPanel, ProgressPips } from "../ui/playkit";
-import { BREATHING_PATTERNS, CALM_TOOLS, EMOTION_SCENARIOS, EMOTIONS } from "../../practice/playContent";
+import { BREATHING_PATTERNS, CALM_TOOLS, EMOTION_SCENARIOS, EMOTIONS, type Emotion } from "../../practice/playContent";
 import { usePracticeData } from "../../practice/usePracticeData";
 import { EmotionAvatar } from "../ui/EmotionAvatar";
 import type { PracticeEvent } from "../../types";
+
 import { track } from "../../lib/analytics";
 import { isKidModeActive, noteKidActivity, subscribeKidMode } from "../../lib/kidModeGate";
 import { SpeakButton } from "../ui/SpeakButton";
+const HEBREW_EMOTION_LABELS: Readonly<Record<string, string>> = Object.freeze(
+  Object.fromEntries(EMOTION_SCENARIOS.map((scenario) => [scenario.answer, scenario.answerLabelHe])),
+);
+
+function emotionLabelFor(emotion: Emotion, uiLang: string): string {
+  return uiLang === "he" ? HEBREW_EMOTION_LABELS[emotion.id] ?? emotion.label : emotion.label;
+}
 
 const eventId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
@@ -36,7 +44,9 @@ export default function FeelingsLabTab() {
   const [talkedEmotion, setTalkedEmotion] = useState<string | null>(null);
   const [completedCalm, setCompletedCalm] = useState<string | null>(null);
   const scenario = EMOTION_SCENARIOS[scenarioIdx % EMOTION_SCENARIOS.length];
+  const scenarioText = uiLang === "he" ? scenario.textHe : scenario.text;
   const answer = EMOTIONS.find((e) => e.id === scenario.answer) ?? EMOTIONS[0];
+  const answerLabel = emotionLabelFor(answer, uiLang);
   const choiceIds = [scenario.answer, ...scenario.distractors];
   const choiceEmotions = useMemo(
     () => choiceIds.map((id) => EMOTIONS.find((e) => e.id === id)).filter(Boolean) as typeof EMOTIONS,
@@ -115,7 +125,7 @@ export default function FeelingsLabTab() {
       <ChoiceTile
         key={emotion.id}
         emoji={emotion.emoji}
-        label={emotion.label}
+        label={emotionLabelFor(emotion, uiLang)}
         onClick={() => chooseEmotion(emotion.id)}
         disabled={!!pickedEmotion}
         state={state}
@@ -148,7 +158,7 @@ export default function FeelingsLabTab() {
         <div className="rounded-[var(--play-radius)] p-6 mb-4 bg-white shadow-[0_2px_12px_rgba(41,51,63,0.05)]">
           <p className="text-5xl mb-3">{scenario.emoji}</p>
           <p className="text-[1.35rem] font-extrabold leading-snug" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-            {scenario.text}
+            {scenarioText}
           </p>
         </div>
         {/* The declared primaryMove for #/feelings ("complete-feelings-scenario"):
@@ -161,11 +171,11 @@ export default function FeelingsLabTab() {
           <div className="mt-5">
             <MascotSay mood={pickedEmotion === scenario.answer ? "proud" : "think"} tone={pickedEmotion === scenario.answer ? "clay" : "yellow"}>
               {pickedEmotion === scenario.answer
-                ? `Yes. This sounds like ${answer.label.toLowerCase()}. Ask: where do you feel that in your body?`
-                : `Warm retry: it might look more like ${answer.label.toLowerCase()}. Try making that face together.`}
+                ? t("elev.kids.feelings.yes", { feeling: answerLabel.toLowerCase() })
+                : t("elev.kids.feelings.retry", { feeling: answerLabel.toLowerCase() })}
             </MascotSay>
             <div className="mt-4">
-              <PlayButton tone="yellow" onClick={nextScenario}>Next feeling →</PlayButton>
+              <PlayButton tone="yellow" onClick={nextScenario}>{t("elev.kids.feelings.next")} →</PlayButton>
             </div>
           </div>
         )}
@@ -175,12 +185,12 @@ export default function FeelingsLabTab() {
             name={first}
             photoURL={childProfile.photoUrl}
             emotionEmoji={activeEmotion?.emoji}
-            emotionLabel={activeEmotion?.label}
+            emotionLabel={activeEmotion ? emotionLabelFor(activeEmotion, uiLang) : undefined}
             color={activeColor}
             size={64}
           />
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-extrabold mb-2" style={{ color: "var(--arbor-ink)" }}>How are you feeling right now, {first}?</p>
+            <p className="text-xs font-extrabold mb-2" style={{ color: "var(--arbor-ink)" }}>{t("elev.kids.feelings.selfCheck", { name: first })}</p>
             <div className="flex flex-wrap gap-1.5">
               {EMOTIONS.map((e) => {
                 const on = feltEmotion === e.id;
@@ -189,7 +199,7 @@ export default function FeelingsLabTab() {
                     key={e.id}
                     onClick={() => feel(e.id)}
                     aria-pressed={on}
-                    title={e.label}
+                    title={emotionLabelFor(e, uiLang)}
                     className="rounded-full px-2.5 py-1.5 text-base transition"
                     style={on ? { background: "#fff", boxShadow: `0 0 0 2px ${EMOTION_TONE[e.id] ?? "var(--arbor-clay)"}` } : { background: "#fff", border: "1px solid var(--arbor-rule)" }}
                   >
@@ -302,6 +312,9 @@ export default function FeelingsLabTab() {
       title={t("elev.play.feelings.title")}
       say={t("elev.play.feelings.say", { name: first })}
       mood="happy"
+      worldId="feelings"
+      headerVariant="compact"
+      eyebrow={t("elev.kids.mission")}
     >
 
       <PlayPanel tone="yellow">
@@ -310,11 +323,11 @@ export default function FeelingsLabTab() {
         <div className="rounded-[var(--play-radius)] p-6 my-4" style={{ background: "var(--arbor-paper-elevated)", boxShadow: "var(--shadow-sm)" }}>
           <p className="text-5xl mb-3">{scenario.emoji}</p>
           <p className="text-[1.35rem] font-extrabold leading-snug" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-            {scenario.text}
+            {scenarioText}
           </p>
           {/* KID-09: a child who cannot yet read the scenario can hear it. */}
           <SpeakButton
-            text={scenario.text}
+            text={scenarioText}
             lang={uiLang}
             label={t("elev.play.speak.label")}
             size="md"
@@ -328,11 +341,11 @@ export default function FeelingsLabTab() {
           <div className="mt-5">
             <MascotSay mood={pickedEmotion === scenario.answer ? "proud" : "think"} tone={pickedEmotion === scenario.answer ? "clay" : "yellow"}>
               {pickedEmotion === scenario.answer
-                ? t("elev.play.feelings.yes", { feeling: answer.label.toLowerCase() })
-                : t("elev.play.feelings.retry", { feeling: answer.label.toLowerCase() })}
+                ? t("elev.kids.feelings.yes", { feeling: answerLabel.toLowerCase() })
+                : t("elev.kids.feelings.retry", { feeling: answerLabel.toLowerCase() })}
             </MascotSay>
             <div className="mt-4">
-              <PlayButton tone="yellow" onClick={nextScenario}>{t("elev.play.feelings.next")} <Icon name="chevron_right" size={18} /></PlayButton>
+              <PlayButton tone="yellow" onClick={nextScenario}>{t("elev.kids.feelings.next")} <Icon name="chevron_right" size={18} /></PlayButton>
             </div>
           </div>
         )}
@@ -345,12 +358,12 @@ export default function FeelingsLabTab() {
             name={first}
             photoURL={childProfile.photoUrl}
             emotionEmoji={activeEmotion?.emoji}
-            emotionLabel={activeEmotion?.label}
+            emotionLabel={activeEmotion ? emotionLabelFor(activeEmotion, uiLang) : undefined}
             color={activeColor}
             size={64}
           />
           <div className="flex-1 min-w-0">
-            <p className="text-[15px] font-extrabold mb-2" style={{ color: "var(--arbor-ink)" }}>{t("elev.play.feelings.selfCheck", { name: first })}</p>
+            <p className="text-[15px] font-extrabold mb-2" style={{ color: "var(--arbor-ink)" }}>{t("elev.kids.feelings.selfCheck", { name: first })}</p>
             <div className="flex flex-wrap gap-2">
               {EMOTIONS.map((e) => {
                 const on = feltEmotion === e.id;
@@ -359,7 +372,7 @@ export default function FeelingsLabTab() {
                     key={e.id}
                     onClick={() => feel(e.id)}
                     aria-pressed={on}
-                    aria-label={e.label}
+                    aria-label={emotionLabelFor(e, uiLang)}
                     className="play-pressable rounded-full min-w-[48px] min-h-[48px] px-3 text-2xl transition"
                     style={on
                       ? { background: "var(--arbor-paper-elevated)", boxShadow: `0 0 0 3px ${EMOTION_TONE[e.id] ?? "var(--arbor-clay)"}` }

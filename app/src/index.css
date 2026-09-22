@@ -488,6 +488,114 @@ body {
     linear-gradient(135deg, color-mix(in oklab, var(--arbor-green-soft) 70%, var(--arbor-paper-elevated)), var(--arbor-paper-elevated) 80%);
   pointer-events: none;
 }
+/* Kid surfaces are often nested (overlay -> arcade -> game). Only the outer
+   register paints the wash, so colors never stack into a muddy backdrop. */
+.arbor-play .arbor-play::before { display: none; }
+
+.arbor-play .play-scene-header {
+  --play-world-soft: var(--arbor-sky-soft);
+  --play-world-ink: var(--arbor-sky-ink);
+  position: relative;
+  overflow: hidden;
+  padding: 14px 16px;
+  border: var(--comic-line);
+  border-radius: var(--play-radius);
+  background:
+    radial-gradient(circle at 92% 12%, color-mix(in oklab, var(--arbor-yellow) 24%, transparent) 0 22px, transparent 23px),
+    linear-gradient(125deg, var(--arbor-paper-elevated), color-mix(in oklab, var(--play-world-soft) 62%, var(--arbor-paper-elevated)));
+  box-shadow: 5px 5px 0 var(--comic-ink);
+}
+.arbor-play .play-scene-header[data-world-id="feelings"],
+.arbor-play .play-scene-header[data-world-id="pattern"] {
+  --play-world-soft: var(--arbor-lav-soft);
+  --play-world-ink: var(--arbor-lav-ink);
+}
+.arbor-play .play-scene-header[data-world-id="adventures"] {
+  --play-world-soft: var(--arbor-peach-soft);
+  --play-world-ink: var(--arbor-peach-ink);
+}
+.arbor-play .play-scene-header[data-world-id="memory"] {
+  --play-world-soft: var(--arbor-pink-soft);
+  --play-world-ink: var(--arbor-pink-ink);
+}
+.arbor-play .play-scene-header[data-world-id="beat"],
+.arbor-play .play-scene-header[data-world-id="mimic"] {
+  --play-world-soft: var(--arbor-green-soft);
+  --play-world-ink: var(--arbor-green-ink);
+}
+.arbor-play .play-scene-header--compact {
+  padding: 10px 14px;
+  border-width: 2px;
+  box-shadow: 3px 3px 0 var(--comic-ink);
+}
+.arbor-play .play-scene-header--compact .play-header-action {
+  margin-inline-start: auto;
+  align-self: center;
+}
+.arbor-play .pattern-sequence {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  inline-size: 100%;
+  min-inline-size: 0;
+  gap: clamp(4px, 1.5vw, 10px);
+  padding-block: 4px;
+}
+.arbor-play .pattern-sequence-glyph {
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  font-size: clamp(1.7rem, 8vw, 2.8rem);
+  line-height: 1;
+}
+.arbor-play .pattern-sequence-missing {
+  flex: 0 0 clamp(44px, 14vw, 64px);
+  inline-size: clamp(44px, 14vw, 64px);
+  block-size: clamp(44px, 14vw, 64px);
+  font-size: clamp(1.5rem, 7vw, 2rem);
+}
+.arbor-play .play-hero-cameo {
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--comic-ink);
+  border-radius: 22px;
+  background: color-mix(in oklab, var(--play-world-soft) 78%, white);
+  box-shadow: 3px 3px 0 color-mix(in oklab, var(--comic-ink) 82%, transparent);
+  overflow: hidden;
+}
+.arbor-play .play-caption {
+  border: 2px solid color-mix(in oklab, var(--comic-ink) 72%, transparent);
+  box-shadow: 3px 3px 0 color-mix(in oklab, var(--comic-ink) 18%, transparent);
+}
+.arbor-play .play-eyebrow {
+  margin-block-end: 3px;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--play-world-ink);
+}
+.arbor-play .play-comic-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-block-start: 18px;
+}
+.arbor-play .play-story-caption {
+  border-inline-start: 6px solid var(--arbor-clay);
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: var(--arbor-paper-elevated);
+  box-shadow: 0 3px 12px rgba(41,51,63,0.08);
+  color: var(--arbor-ink);
+}
+
+@media (max-width: 420px) {
+  .arbor-play .play-scene-header { padding: 10px 12px; gap: 10px; }
+  .arbor-play .play-scene-header--entry .play-hero-cameo { transform: scale(0.9); margin-inline: -4px; }
+  .arbor-play .play-caption { margin-block-start: 5px; }
+}
 
 /* Big, friendly play buttons + tiles get a soft springy press. */
 .play-pressable { transition: transform 140ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 140ms ease; }

@@ -52,6 +52,7 @@ import { dayKey } from "../../practice/signals";
 import { PageHeader, cardCls } from "../ui/kit";
 import { T, METRIC_VARS } from "../../lib/tokens";
 import { fmtDay } from "../../lib/formatDate";
+import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
 
 /** Comic-world skin per pack — bg + ink token + bilingual label (matches the
  *  Hero Arcade design layer so the Academy reads as the same comic universe). */
@@ -65,7 +66,7 @@ const PACK_WORLD: Record<HeroPackId, { bg: string; ink: string; label: string; l
 
 /** Per-story scene motif: a big emoji prop + a comic SFX burst (EN/HE), so every
  *  card is its own illustrated world with the child's hero standing inside it. */
-const STORY_ART: Record<string, { emoji: string; sfx: string; sfxHe: string }> = {
+const STORY_ART: Record<string, { emoji: string; sfx: string; sfxHe: string; src?: string }> = {
   "david-and-goliath": { emoji: "🛡️", sfx: "BOOM!", sfxHe: "בום!" },
   "moses-and-pharaoh": { emoji: "👑", sfx: "ECHO!", sfxHe: "הד!" },
   "the-lion-who-was-afraid": { emoji: "🦁", sfx: "ROAR!", sfxHe: "שאגה!" },
@@ -84,7 +85,37 @@ const STORY_ART: Record<string, { emoji: string; sfx: string; sfxHe: string }> =
   "the-two-mothers-and-the-quiet-judge": { emoji: "🤝", sfx: "SHH…", sfxHe: "ששש…" },
   "the-tyrant-and-the-town": { emoji: "📢", sfx: "STOP!", sfxHe: "די!" },
   "the-friendly-monster": { emoji: "👾", sfx: "GRRAH!", sfxHe: "גראח!" },
+  "the-lantern-path": { emoji: "🏮", sfx: "GLOW!", sfxHe: "זוהר!", src: "/visuals/stories/v1/lantern-path-v1.webp" },
+  "the-cloud-orchestra": { emoji: "🎼", sfx: "BOOM!", sfxHe: "בום!", src: "/visuals/stories/v1/cloud-orchestra-v1.webp" },
+  "the-little-bridge-builders": { emoji: "🌉", sfx: "CLICK!", sfxHe: "קליק!", src: "/visuals/stories/v1/little-bridge-builders-v1.webp" },
 };
+
+/** Immediate, authored, provider-free render. Used only when the personalized
+ * route is unavailable; preserves all eight beats, localized copy and exact
+ * authored choice consequences without adding any generation. */
+export function authoredJourneyRender(story: HeroStorySpec, lang: "en" | "he"): HeroJourneyRender {
+  const he = lang === "he";
+  const decision = story.beats.find((beat) => beat.id === "decision");
+  return {
+    storyId: story.id,
+    title: he ? story.titleHe : story.title,
+    scenes: story.beats.map((beat) => ({
+      beatId: beat.id,
+      title: he ? (beat.titleHe ?? beat.title) : beat.title,
+      narration: he ? (beat.spineHe ?? beat.spine) : beat.spine,
+      imagePrompt: "",
+    })),
+    choices: (decision?.choices ?? []).map((choice) => ({
+      id: choice.id,
+      label: he ? (choice.labelHe ?? choice.label) : choice.label,
+      consequence: he ? (choice.outcomeHintHe ?? choice.outcomeHint) : choice.outcomeHint,
+    })),
+    reflection: {
+      practiced: he ? (story.parentReflection.practicedHe ?? story.parentReflection.practiced) : story.parentReflection.practiced,
+      questions: he ? (story.parentReflection.questionsHe ?? story.parentReflection.questions) : story.parentReflection.questions,
+    },
+  };
+}
 
 /**
  * KID-25 — the same story, twice in one evening, cost two generations.
@@ -185,6 +216,8 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
   const { ref: dialogRef, requestClose } = useDialog({ open: Boolean(kidNav) && immersive && Boolean(activeStory && render), onClose: () => setImmersive(false), returnFocusRef: immersiveTriggerRef });
   const [questionsChecked, setQuestionsChecked] = useState<Record<number, boolean>>({});
   const [saved, setSaved] = useState(false);
+  const [finishing, setFinishing] = useState(false);
+  const finishingRef = useRef(false);
   const startedAtRef = useRef<string>("");
 
   // Scenes aligned to the fixed spine order, with a graceful fallback if the
@@ -234,12 +267,22 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
       setChoiceId(undefined);
       setQuestionsChecked({});
       setSaved(false);
+      setFinishing(false);
+      finishingRef.current = false;
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to start the journey.";
-      // Inside Kid Mode the answer is a kid-register line in `.arbor-play` — no
-      // error code, no "AI", no "try again later", and no queued parent toast.
-      if (kidMode) setStoryResting(true);
-      else toast(msg, "error");
+      const fallback = authoredJourneyRender(story, aiLang);
+      journeyMemo.set(journeyMemoKey(childProfile.id, story.id, aiLang, dayKey(new Date())), fallback);
+      startedAtRef.current = new Date().toISOString();
+      setActiveStory(story);
+      setRender(fallback);
+      setSceneIndex(0);
+      setChoiceId(undefined);
+      setQuestionsChecked({});
+      setSaved(false);
+      setFinishing(false);
+      finishingRef.current = false;
+      if (!kidMode) toast(msg, "error");
     } finally {
       setLoadingId(null);
     }
@@ -252,7 +295,9 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
   };
 
   const finishJourney = async () => {
-    if (!activeStory || !render) return;
+    if (!activeStory || !render || finishingRef.current) return;
+    finishingRef.current = true;
+    setFinishing(true);
     const metricsEarned = applyChoice(activeStory, choiceId);
     const run: HeroJourneyRun = {
       id: `run-${Date.now()}`,
@@ -265,14 +310,19 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
       metricsEarned,
       render,
     };
-    await runsCol.upsert(run);
-    // N1-01-R5: a finished story is one completed kid activity. A COUNT — the
-    // story, its title and the child's choice never leave this function.
-    // A no-op outside Kid Mode.
-    noteKidActivity();
-    setSaved(true);
-    celebrate({ kind: "complete" });
-    toast(aiLang === "he" ? "המסע הושלם — הסיפור נשמר" : "Journey complete — story saved", "success");
+    try {
+      await runsCol.upsert(run);
+      // N1-01-R5: a finished story is one completed kid activity. A COUNT — the
+      // story, its title and the child's choice never leave this function.
+      // A no-op outside Kid Mode.
+      noteKidActivity();
+      setSaved(true);
+      celebrate({ kind: "complete" });
+      if (!kidMode) toast(aiLang === "he" ? "המסע הושלם — הסיפור נשמר" : "Journey complete — story saved", "success");
+    } finally {
+      finishingRef.current = false;
+      setFinishing(false);
+    }
   };
 
   const replay = (run: HeroJourneyRun) => {
@@ -285,12 +335,16 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
     setChoiceId(run.choiceId);
     setQuestionsChecked({});
     setSaved(true);
+    setFinishing(false);
+    finishingRef.current = false;
   };
 
   const exitJourney = () => {
     setActiveStory(null);
     setRender(null);
     setImmersive(false);
+    setFinishing(false);
+    finishingRef.current = false;
   };
 
   // ── Shared player pieces ───────────────────────────────────────────────────
@@ -299,7 +353,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
     !choiceId && (
       <div className="space-y-2 w-full max-w-xl mx-auto">
         <p className="text-[11px] uppercase tracking-widest font-bold text-center" style={{ color: "var(--arbor-green-ink)" }}>
-          What do you do, {childProfile.name}?
+          {kidsStoriesText("journey.decision", aiLang, { name: childProfile.name })}
         </p>
         {render?.choices.map((c) => (
           <button
@@ -328,7 +382,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
         className="touch-target disabled:opacity-30 flex items-center gap-1 text-sm"
         style={{ color: "var(--arbor-muted)" }}
       >
-        <Icon name="chevron_left" size={16} /> Back
+        <Icon name="chevron_left" size={16} /> {kidsStoriesText("journey.back", aiLang)}
       </button>
       <span className="text-[10px] uppercase tracking-wider" style={{ color: "var(--arbor-faint)" }}>
         {activeStory && `${sceneIndex + 1} / ${activeStory.beats.length}`}
@@ -340,10 +394,10 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
           className="touch-target disabled:opacity-30 flex items-center gap-1 text-sm font-bold"
           style={{ color: "var(--arbor-green-ink)" }}
         >
-          Next <Icon name="chevron_right" size={16} />
+          {kidsStoriesText("journey.next", aiLang)} <Icon name="chevron_right" size={16} />
         </button>
       ) : (
-        <span className="text-[10px] uppercase tracking-wider font-bold" style={{ color: "var(--arbor-green-ink)" }}>The End</span>
+        <span className="text-[10px] uppercase tracking-wider font-bold" style={{ color: "var(--arbor-green-ink)" }}>{kidsStoriesText("journey.end", aiLang)}</span>
       )}
     </div>
   );
@@ -962,7 +1016,9 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
           heroAvatarUrl={heroAvatarUrl}
           heroAvatarStyle={heroAvatarStyle}
           heroName={childProfile.name?.split(" ")[0]}
+          childIdentity={childProfile.id}
           immersive={immersiveMode}
+          fallbackArtUrl={STORY_ART[activeStory.id]?.src}
         />
       )}
 
@@ -971,63 +1027,86 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
       {/* Reflection / completion */}
       {isReflection && (
         <div className="w-full max-w-xl mx-auto space-y-4">
-          {activeStory.parentInsight && (
-            <div className="rounded-2xl p-4 space-y-1.5" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-              <p className="text-[10px] uppercase tracking-widest font-bold" style={{ color: "var(--arbor-muted)" }}>
-                {aiLang === "he" ? "למבוגרים · למה הסיפור הזה" : "For grown-ups · Why this story"}
-              </p>
-              <p dir="auto" className="text-[13px] leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>
-                {aiLang === "he" ? activeStory.parentInsight.he : activeStory.parentInsight.en}
-              </p>
+          {kidMode ? (
+            <div className="rounded-2xl p-4 space-y-3 text-center" style={{ background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.25)" }}>
+              <p className="font-black" style={{ color: "var(--arbor-green-ink)" }}>{kidsStoriesText("journey.childEndingTitle", aiLang)}</p>
+              <p className="text-sm" style={{ color: "var(--arbor-ink-soft)" }}>{kidsStoriesText("journey.childEndingBody", aiLang)}</p>
+              {render.reflection.questions[0] && (
+                <button
+                  type="button"
+                  aria-expanded={Boolean(questionsChecked[0])}
+                  onClick={() => setQuestionsChecked((state) => ({ ...state, 0: !state[0] }))}
+                  className="w-full rounded-xl p-3 text-start"
+                  style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
+                >
+                  <span className="block text-xs font-black">{kidsStoriesText("journey.childReflection", aiLang)}</span>
+                  {questionsChecked[0] && <span dir="auto" className="mt-2 block text-sm">{render.reflection.questions[0]}</span>}
+                </button>
+              )}
             </div>
+          ) : (
+            <>
+              {activeStory.parentInsight && (
+                <div className="rounded-2xl p-4 space-y-1.5" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+                  <p className="text-[10px] uppercase tracking-widest font-bold" style={{ color: "var(--arbor-muted)" }}>
+                    {aiLang === "he" ? "למבוגרים · למה הסיפור הזה" : "For grown-ups · Why this story"}
+                  </p>
+                  <p dir="auto" className="text-[13px] leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>
+                    {aiLang === "he" ? activeStory.parentInsight.he : activeStory.parentInsight.en}
+                  </p>
+                </div>
+              )}
+              <div className="rounded-2xl p-4 space-y-2" style={{ background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.25)" }}>
+                <p className="text-[11px] uppercase tracking-widest font-bold" style={{ color: "var(--arbor-green-ink)" }}>{aiLang === "he" ? "מה תרגלנו היום" : "Today we practiced"}</p>
+                <div className="flex flex-wrap gap-2">
+                  {render.reflection.practiced.map((p, i) => (
+                    <span key={i} className="text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-paper-elevated)" }}>
+                      <Icon name="check" size={12} /> {p}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <p className="text-[11px] uppercase tracking-widest font-bold" style={{ color: "var(--arbor-green-ink)" }}>{aiLang === "he" ? "דברו על זה יחד" : "Talk about it together"}</p>
+                {render.reflection.questions.map((q, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setQuestionsChecked((state) => ({ ...state, [i]: !state[i] }))}
+                    className="w-full text-start p-2.5 rounded-xl transition flex items-start gap-2"
+                    style={questionsChecked[i]
+                      ? { background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.30)", color: "var(--arbor-green-ink)" }
+                      : { background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
+                  >
+                    <span className="mt-0.5 w-4 h-4 rounded flex items-center justify-center flex-shrink-0 text-white" style={{ background: questionsChecked[i] ? "var(--arbor-clay)" : "var(--arbor-rule-strong)" }}>
+                      {questionsChecked[i] && <Icon name="check" size={12} />}
+                    </span>
+                    <span dir="auto" className="text-xs">{q}</span>
+                  </button>
+                ))}
+              </div>
+            </>
           )}
-          <div className="rounded-2xl p-4 space-y-2" style={{ background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.25)" }}>
-            <p className="text-[11px] uppercase tracking-widest font-bold" style={{ color: "var(--arbor-green-ink)" }}>{aiLang === "he" ? "מה תרגלנו היום" : "Today we practiced"}</p>
-            <div className="flex flex-wrap gap-2">
-              {render.reflection.practiced.map((p, i) => (
-                <span
-                  key={i}
-                  className="text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1"
-                  style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-paper-elevated)" }}
-                >
-                  <Icon name="check" size={12} /> {p}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <p className="text-[11px] uppercase tracking-widest font-bold" style={{ color: "var(--arbor-green-ink)" }}>{aiLang === "he" ? "דברו על זה יחד" : "Talk about it together"}</p>
-            {render.reflection.questions.map((q, i) => (
-              <button
-                key={i}
-                onClick={() => setQuestionsChecked((s) => ({ ...s, [i]: !s[i] }))}
-                className="w-full text-start p-2.5 rounded-xl transition flex items-start gap-2"
-                style={questionsChecked[i]
-                  ? { background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.30)", color: "var(--arbor-green-ink)" }
-                  : { background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
-              >
-                <span
-                  className="mt-0.5 w-4 h-4 rounded flex items-center justify-center flex-shrink-0 text-white"
-                  style={{ background: questionsChecked[i] ? "var(--arbor-clay)" : "var(--arbor-rule-strong)" }}
-                >
-                  {questionsChecked[i] && <Icon name="check" size={12} />}
-                </span>
-                <span dir="auto" className="text-xs">
-                  {q}
-                </span>
-              </button>
-            ))}
-          </div>
 
           {!saved ? (
             <button
               onClick={finishJourney}
+              disabled={finishing}
               className="w-full py-3 text-white font-extrabold text-sm rounded-2xl flex items-center justify-center gap-2 active:scale-[0.98]"
               style={{ background: T.gradientCta }}
             >
-              <Icon name="emoji_events" size={16} /> {aiLang === "he" ? `סיימו ושמרו את הסיפור של ${isolate(childProfile.name)}` : `Finish & save ${isolate(childProfile.name)}'s story`}
+              <Icon name="emoji_events" size={16} /> {kidMode
+                ? kidsStoriesText("journey.finish", aiLang)
+                : aiLang === "he" ? `סיימו ושמרו את הסיפור של ${isolate(childProfile.name)}` : `Finish & save ${isolate(childProfile.name)}'s story`}
             </button>
+          ) : kidMode ? (
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <span className="text-sm font-bold inline-flex items-center gap-2" style={{ color: "var(--arbor-green-ink)" }}>
+                <Icon name="check" size={16} /> {kidsStoriesText("journey.saved", aiLang)}
+              </span>
+              <button type="button" onClick={exitJourney} className="touch-target rounded-xl px-4 text-sm font-black" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}>
+                {kidsStoriesText("journey.backStories", aiLang)}
+              </button>
+            </div>
           ) : (
             <div className="text-center text-sm font-bold flex items-center justify-center gap-2" style={{ color: "var(--arbor-green-ink)" }}>
               <Icon name="check" size={16} /> {aiLang === "he" ? `נשמר לסיפור של ${isolate(childProfile.name)}` : `Saved to ${isolate(childProfile.name)}'s story`}

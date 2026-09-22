@@ -30,23 +30,27 @@ import { useLanguage } from "../../context/LanguageContext";
 import KidDashboard, { type KidSurface } from "./KidDashboard";
 import { HoldExitButton } from "./HoldExitButton";
 import { KidErrorBoundary } from "./KidErrorBoundary";
+import { useArbor } from "../../context/ArborContext";
 
 // ── EXISTING surfaces — imported unchanged, never forked ──────────────────────
 const HeroJourneyTab = lazy(() => import("../tabs/HeroJourneyTab"));
 const PracticeHubTab = lazy(() => import("../practice/PracticeHubTab"));
 const FeelingsLabTab = lazy(() => import("../practice/FeelingsLabTab"));
+const KidComicsShelf = lazy(() => import("./KidComicsShelf"));
 
 // KID-1: labels are i18n keys (kid.* namespace) resolved with t() at render.
-const SURFACE_META: Record<KidSurface, { labelKey: string; Comp: React.ComponentType }> = {
+const SURFACE_META: Record<KidSurface, { labelKey: string; Comp?: React.ComponentType }> = {
   journeys: { labelKey: "kid.surface.journeys", Comp: HeroJourneyTab },
   arcade: { labelKey: "kid.surface.arcade", Comp: PracticeHubTab },
   feelings: { labelKey: "kid.surface.feelings", Comp: FeelingsLabTab },
+  comics: { labelKey: "elev.kids.comics.title" },
 };
 
 type View = "home" | KidSurface;
 
 export default function KidModeOverlay() {
   const { isKidModeOpen, closeKidMode } = useKidMode();
+  const { childProfile } = useArbor();
   const { t } = useLanguage();
   // KID-LOCK LEAK 1: rehydrate the surface in view from the persisted state so
   // a reload lands the child on the SAME kid surface (validated against
@@ -65,6 +69,7 @@ export default function KidModeOverlay() {
     return p.open ? p.worldId ?? null : null;
   });
   const overlayRef = useRef<HTMLDivElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
 
   const openSurface = (s: KidSurface, worldId?: string) => {
     setArcadeWorldId(worldId ?? null);
@@ -88,6 +93,19 @@ export default function KidModeOverlay() {
   useEffect(() => {
     if (!isKidModeOpen) return;
     writeKidModeState({ open: true, view, worldId: arcadeWorldId });
+  }, [isKidModeOpen, view, arcadeWorldId]);
+
+  // Each destination owns a fresh top-of-page arrival. The content div is the
+  // actual scroll container, so reset it after AnimatePresence mounts the next
+  // view rather than relying on window.scrollTo.
+  useEffect(() => {
+    if (!isKidModeOpen) return;
+    const frame = window.requestAnimationFrame(() => {
+      if (!contentRef.current) return;
+      contentRef.current.scrollTop = 0;
+      contentRef.current.scrollLeft = 0;
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, [isKidModeOpen, view, arcadeWorldId]);
 
   // Block Escape inside Kid Mode — a child must not press Escape to exit. The
@@ -251,6 +269,7 @@ export default function KidModeOverlay() {
 
           {/* ── Content area ───────────────────────────────────────────────── */}
           <div
+            ref={contentRef}
             style={{
               flex: 1,
               overflowY: "auto",
@@ -287,8 +306,12 @@ export default function KidModeOverlay() {
                     <Suspense fallback={<TabSkeleton />}>
                       <HeroJourneyTab initialStoryId={arcadeWorldId ?? undefined} />
                     </Suspense>
+                  ) : view === "comics" ? (
+                    <Suspense fallback={<TabSkeleton />}>
+                      <KidComicsShelf key={childProfile.id} childProfile={childProfile} onBack={() => setView("home")} />
+                    </Suspense>
                   ) : (
-                    <Suspense fallback={<TabSkeleton />}>{surface && <surface.Comp />}</Suspense>
+                    <Suspense fallback={<TabSkeleton />}>{surface?.Comp ? <surface.Comp /> : null}</Suspense>
                   )}
                 </motion.div>
               </AnimatePresence>

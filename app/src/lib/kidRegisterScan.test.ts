@@ -50,6 +50,7 @@ const KID_SURFACE_GRAPH = [
   // the shell
   "components/kidmode/KidModeOverlay.tsx",
   "components/kidmode/KidDashboard.tsx",
+  "components/kidmode/KidComicsShelf.tsx",
   "components/kidmode/KidErrorBoundary.tsx",
   "components/kidmode/HoldExitButton.tsx",
   "components/kidmode/ParentChallenge.tsx",
@@ -74,6 +75,7 @@ const KID_SURFACE_GRAPH = [
   // stories surface (KidSurface "journeys") — cross-lane files, frozen below
   "components/tabs/HeroJourneyTab.tsx",
   "components/stories/HeroScenePlayer.tsx",
+  "components/stories/SavedComicReader.tsx",
   // child-facing primitives
   "components/ui/playkit.tsx",
   // child-adjacent parent surface (KID-17) — scanned for the clinical class

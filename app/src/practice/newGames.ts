@@ -14,12 +14,29 @@ export interface PatternPuzzle {
 }
 
 export const PATTERN_PUZZLES: PatternPuzzle[] = [
+  // Alternating pairs — the original IDs remain stable for saved/replayed rounds.
   { id: "p1", shown: ["🔴", "🔵", "🔴", "🔵"], answer: "🔴", options: ["🔴", "🔵", "🟡"] },
-  { id: "p2", shown: ["⭐", "⭐", "⬛", "⭐", "⭐"], answer: "⬛", options: ["⬛", "⭐", "🔺"] },
-  { id: "p3", shown: ["🟢", "🟡", "🔴", "🟢", "🟡"], answer: "🔴", options: ["🔴", "🟢", "🟡"] },
-  { id: "p4", shown: ["🔺", "🔺", "🔵", "🔺", "🔺"], answer: "🔵", options: ["🔺", "🔵", "⭐"] },
   { id: "p5", shown: ["🌙", "⭐", "🌙", "⭐"], answer: "🌙", options: ["🌙", "⭐", "☀️"] },
+  { id: "p7", shown: ["🍎", "🍐", "🍎", "🍐"], answer: "🍎", options: ["🍎", "🍐", "🍓"] },
+  { id: "p8", shown: ["🟣", "🟠", "🟣", "🟠"], answer: "🟣", options: ["🟣", "🟠", "🟢"] },
+  { id: "p9", shown: ["🐟", "🐚", "🐟", "🐚"], answer: "🐟", options: ["🐟", "🐚", "🦀"] },
+  { id: "p10", shown: ["⬆️", "➡️", "⬆️", "➡️"], answer: "⬆️", options: ["⬆️", "➡️", "⬇️"] },
+
+  // Grouped repetitions.
+  { id: "p2", shown: ["⭐", "⭐", "⬛", "⭐", "⭐"], answer: "⬛", options: ["⬛", "⭐", "🔺"] },
+  { id: "p4", shown: ["🔺", "🔺", "🔵", "🔺", "🔺"], answer: "🔵", options: ["🔺", "🔵", "⭐"] },
+  { id: "p11", shown: ["🍀", "🍀", "🌼", "🍀", "🍀"], answer: "🌼", options: ["🌼", "🍀", "🌻"] },
+  { id: "p12", shown: ["🟦", "🟦", "🟨", "🟦", "🟦"], answer: "🟨", options: ["🟨", "🟦", "🟥"] },
+  { id: "p13", shown: ["🐸", "🐸", "🪵", "🐸", "🐸"], answer: "🪵", options: ["🪵", "🐸", "🐌"] },
+  { id: "p14", shown: ["☁️", "☁️", "🌈", "☁️", "☁️"], answer: "🌈", options: ["🌈", "☁️", "☀️"] },
+
+  // Three-item sequences.
+  { id: "p3", shown: ["🟢", "🟡", "🔴", "🟢", "🟡"], answer: "🔴", options: ["🔴", "🟢", "🟡"] },
   { id: "p6", shown: ["🟥", "🟦", "🟩", "🟥", "🟦"], answer: "🟩", options: ["🟩", "🟥", "🟦"] },
+  { id: "p15", shown: ["🍓", "🍌", "🍇", "🍓", "🍌"], answer: "🍇", options: ["🍇", "🍓", "🍌"] },
+  { id: "p16", shown: ["🚲", "🛴", "🚌", "🚲", "🛴"], answer: "🚌", options: ["🚌", "🚲", "🛴"] },
+  { id: "p17", shown: ["🟨", "🟦", "🟪", "🟨", "🟦"], answer: "🟪", options: ["🟪", "🟨", "🟦"] },
+  { id: "p18", shown: ["🌱", "🌿", "🌳", "🌱", "🌿"], answer: "🌳", options: ["🌳", "🌱", "🌿"] },
 ];
 
 /**
@@ -66,6 +83,11 @@ export function puzzleOrderForDay(dayKey: string, puzzles: PatternPuzzle[] = PAT
  */
 export const PATTERN_ROUNDS_PER_DAY = 6;
 
+/** A short, repeatable six-round session drawn from the larger authored bank. */
+export function selectPatternSession(dayKey: string, puzzles: PatternPuzzle[] = PATTERN_PUZZLES): PatternPuzzle[] {
+  return puzzleOrderForDay(dayKey, puzzles).slice(0, Math.min(PATTERN_ROUNDS_PER_DAY, puzzles.length));
+}
+
 export function patternRound(idx: number, puzzles: PatternPuzzle[] = PATTERN_PUZZLES): { done: boolean; puzzle: PatternPuzzle } {
   const last = Math.max(0, puzzles.length - 1);
   const clamped = Math.min(Math.max(0, Math.floor(idx)), last);
@@ -75,22 +97,60 @@ export function patternRound(idx: number, puzzles: PatternPuzzle[] = PATTERN_PUZ
 export interface PoseCard {
   id: string;
   name: string;
+  nameHe: string;
   emoji: string;
   cue: string;
+  cueHe: string;
+  /** An equally valid seated or lower-movement invitation. */
+  adaptedCue: string;
+  adaptedCueHe: string;
 }
 
 export const POSE_CARDS: PoseCard[] = [
-  { id: "star", name: "Star jump", emoji: "🌟", cue: "Arms and legs out wide like a star!" },
-  { id: "strong", name: "Strong arms", emoji: "💪", cue: "Show me your strongest muscles!" },
-  { id: "flamingo", name: "Flamingo", emoji: "🦩", cue: "Balance on one foot — wobbling is allowed!" },
-  { id: "fly", name: "Hero fly", emoji: "🦸", cue: "One fist up high and fly like a hero!" },
-  { id: "tree", name: "Tall tree", emoji: "🌳", cue: "Stand tall, arms up like branches." },
-  { id: "seed", name: "Tiny seed", emoji: "🌱", cue: "Curl up small… then GROW up big!" },
+  { id: "star", name: "Star shape", nameHe: "צורת כוכב", emoji: "🌟", cue: "Arms and legs out wide like a star!", cueHe: "ידיים ורגליים רחבות כמו כוכב!", adaptedCue: "From a chair, stretch your arms wide like a star.", adaptedCueHe: "מהכיסא, מתחו את הידיים רחב כמו כוכב." },
+  { id: "strong", name: "Strong arms", nameHe: "ידיים חזקות", emoji: "💪", cue: "Make a strong-arm shape, then let your shoulders soften.", cueHe: "עשו צורת ידיים חזקות, ואז רככו את הכתפיים.", adaptedCue: "Press your hands together, then relax them.", adaptedCueHe: "לחצו כפות ידיים זו לזו, ואז הרפו." },
+  { id: "flamingo", name: "Flamingo", nameHe: "פלמינגו", emoji: "🦩", cue: "Balance on one foot — wobbling is welcome!", cueHe: "התאזנו על רגל אחת — גם להתנדנד זה מצוין!", adaptedCue: "Sit tall and lift one foot for a moment, then switch.", adaptedCueHe: "שבו זקוף והרימו רגל אחת לרגע, ואז החליפו." },
+  { id: "fly", name: "Hero fly", nameHe: "מעוף גיבור", emoji: "🦸", cue: "Reach one hand forward and imagine a gentle glide.", cueHe: "שלחו יד אחת קדימה ודמיינו גלישה עדינה.", adaptedCue: "From your seat, reach one hand forward and glide it through the air.", adaptedCueHe: "מהכיסא, שלחו יד קדימה והחליקו אותה באוויר." },
+  { id: "tree", name: "Tall tree", nameHe: "עץ גבוה", emoji: "🌳", cue: "Stand tall, arms up like branches in a breeze.", cueHe: "עמדו גבוה, ידיים למעלה כמו ענפים ברוח.", adaptedCue: "Sit tall and sway your branch-arms gently.", adaptedCueHe: "שבו זקוף והניעו בעדינות את ידיי-הענפים." },
+  { id: "seed", name: "Tiny seed", nameHe: "זרע קטן", emoji: "🌱", cue: "Make yourself small, then slowly grow tall.", cueHe: "התכנסו קטן ואז גדלו לאט לגובה.", adaptedCue: "Curl your arms close, then open them slowly like a growing seed.", adaptedCueHe: "קרבו ידיים לגוף ואז פתחו אותן לאט כמו זרע שגדל." },
+  { id: "rainbow-reach", name: "Rainbow reach", nameHe: "מתיחת קשת", emoji: "🌈", cue: "Reach up and make a soft rainbow curve to each side.", cueHe: "הושיטו יד למעלה וצרו קשת רכה לכל צד.", adaptedCue: "Draw a rainbow in the air with one hand, then the other.", adaptedCueHe: "ציירו קשת באוויר ביד אחת, ואז בשנייה." },
+  { id: "sleepy-cat", name: "Sleepy cat stretch", nameHe: "מתיחת חתול ישנוני", emoji: "🐈", cue: "Stretch your arms forward, then tuck them in for a cozy cat curl.", cueHe: "מתחו ידיים קדימה ואז קרבו אותן להתכרבלות של חתול.", adaptedCue: "Reach both hands forward and bring them back for a cat hug.", adaptedCueHe: "שלחו שתי ידיים קדימה והחזירו אותן לחיבוק חתולי." },
+  { id: "penguin", name: "Penguin waddle", nameHe: "הליכת פינגווין", emoji: "🐧", cue: "Keep your arms by your sides and take two small penguin steps.", cueHe: "הצמידו ידיים לצדדים ועשו שני צעדי פינגווין קטנים.", adaptedCue: "Keep your arms by your sides and tip your shoulders side to side.", adaptedCueHe: "השאירו ידיים לצדדים והטו כתפיים מצד לצד." },
+  { id: "river-balance", name: "River balance", nameHe: "איזון נהר", emoji: "🏞️", cue: "Hold your arms out and sway slowly like a bridge over a river.", cueHe: "החזיקו ידיים לצדדים והתנדנדו לאט כמו גשר מעל נהר.", adaptedCue: "Sit tall with arms out and sway slowly from side to side.", adaptedCueHe: "שבו זקוף עם ידיים לצדדים והתנדנדו לאט מצד לצד." },
+  { id: "butterfly", name: "Butterfly wings", nameHe: "כנפי פרפר", emoji: "🦋", cue: "Lift and lower your arms like quiet butterfly wings.", cueHe: "הרימו והורידו ידיים כמו כנפי פרפר שקטות.", adaptedCue: "Let your hands flutter gently in your lap or in the air.", adaptedCueHe: "הניעו בעדינות את הידיים בחיק או באוויר." },
+  { id: "balloon", name: "Balloon float", nameHe: "בלון מרחף", emoji: "🎈", cue: "Reach for an imaginary balloon and let it float down slowly.", cueHe: "הושיטו יד לבלון דמיוני ותנו לו לרחף לאט למטה.", adaptedCue: "Lift one hand like a balloon, then float it slowly down.", adaptedCueHe: "הרימו יד אחת כמו בלון ואז הורידו אותה לאט." },
 ];
+
+export const POSE_ROUNDS_PER_SESSION = 6;
+
+/** Stable six-card pose session; a new seed can invite variety without extending the sitting. */
+export function selectPoseSession(seed = "pose-session", cards: PoseCard[] = POSE_CARDS): PoseCard[] {
+  const keyedCards = cards.map((card) => ({ card, key: `${seed}:${card.id}` }));
+  let h = 0x811c9dc5;
+  for (const { key } of keyedCards) {
+    for (let i = 0; i < key.length; i++) {
+      h ^= key.charCodeAt(i);
+      h = Math.imul(h, 0x01000193) >>> 0;
+    }
+  }
+  const ordered = [...cards];
+  for (let i = ordered.length - 1; i > 0; i--) {
+    h = (Math.imul(h, 1664525) + 1013904223) >>> 0;
+    const j = h % (i + 1);
+    [ordered[i], ordered[j]] = [ordered[j], ordered[i]];
+  }
+  return ordered.slice(0, Math.min(POSE_ROUNDS_PER_SESSION, cards.length));
+}
 
 export interface BeatRound {
   beats: number;
   intervalMs: number;
+}
+
+export interface BeatSet {
+  id: string;
+  label: { en: string; he: string };
+  rounds: BeatRound[];
 }
 
 /** Tempo ramps up across rounds; gentle enough for a 5–8 year old. */
@@ -98,6 +158,17 @@ export const BEAT_ROUNDS: BeatRound[] = [
   { beats: 6, intervalMs: 900 },
   { beats: 8, intervalMs: 760 },
   { beats: 8, intervalMs: 640 },
+];
+
+/** Three gentle three-round sound journeys. The default remains gentle rain. */
+export const BEAT_SETS: BeatSet[] = [
+  { id: "gentle-rain", label: { en: "Gentle rain", he: "גשם עדין" }, rounds: BEAT_ROUNDS },
+  { id: "walking-parade", label: { en: "Walking parade", he: "מצעד הליכה" }, rounds: [
+    { beats: 6, intervalMs: 800 }, { beats: 8, intervalMs: 800 }, { beats: 8, intervalMs: 800 },
+  ] },
+  { id: "star-signals", label: { en: "Star signals", he: "אותות כוכבים" }, rounds: [
+    { beats: 4, intervalMs: 1200 }, { beats: 5, intervalMs: 1100 }, { beats: 6, intervalMs: 1000 },
+  ] },
 ];
 
 /** Score a set of taps against the beat times they were aiming for, 0–100.

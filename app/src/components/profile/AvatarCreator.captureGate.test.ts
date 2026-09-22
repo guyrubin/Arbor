@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, vi } from "vitest";
-import { runAvatarGeneration } from "./avatarGate";
+import { isAvatarDraftCurrent, runAvatarGeneration, type AvatarDraftResult } from "./avatarGate";
 
 const CHILD_ID = "child-test-001";
 const PHOTO_URL = "data:image/jpeg;base64,/9j/abc123";
@@ -125,6 +125,46 @@ describe("F-NEW — face_processing consent must precede generateAvatar on the p
     );
   });
 
+  it.each(["storybook", "soft3d", "watercolor", "flat", "comichero"] as const)(
+    "forwards the selected %s rendering medium without changing character intent",
+    async (style) => {
+      const grantConsent = vi.fn(async () => undefined);
+      const generateAvatar = vi.fn(async () => AVATAR_RESULT);
+      const character = { preset: "explorer" as const };
+
+      await runAvatarGeneration(
+        CHILD_ID,
+        { mode: "describe", style, descriptors: { hair: "curly" }, character },
+        { grantConsent, generateAvatar },
+      );
+
+      expect(generateAvatar).toHaveBeenCalledWith(expect.objectContaining({ style, character }));
+    },
+  );
+
+  it.each(["princess", "superhero", "explorer"] as const)(
+    "forwards the explicit %s choice on both descriptor and photo paths",
+    async (preset) => {
+      const grantConsent = vi.fn(async () => undefined);
+      const generateAvatar = vi.fn(async () => AVATAR_RESULT);
+      const character = { preset };
+
+      await runAvatarGeneration(
+        CHILD_ID,
+        { mode: "describe", style: "storybook", descriptors: {}, character },
+        { grantConsent, generateAvatar },
+      );
+      expect(generateAvatar).toHaveBeenLastCalledWith(expect.objectContaining({ character }));
+
+      await runAvatarGeneration(
+        CHILD_ID,
+        { mode: "photo", refPhoto: PHOTO_URL, style: "storybook", descriptors: {}, character },
+        { grantConsent, generateAvatar },
+      );
+      expect(generateAvatar).toHaveBeenLastCalledWith(expect.objectContaining({ character, photo: { dataUrl: PHOTO_URL } }));
+    },
+  );
+
   it("does NOT call grantConsent when mode is photo but refPhoto is absent (no file chosen yet)", async () => {
     const grantConsent = vi.fn(async () => undefined);
     const generateAvatar = vi.fn(async () => ({
@@ -141,5 +181,26 @@ describe("F-NEW — face_processing consent must precede generateAvatar on the p
 
     // Without a refPhoto there is no face to process — gate does not fire.
     expect(grantConsent).not.toHaveBeenCalled();
+  });
+});
+
+describe("avatar draft identity snapshot", () => {
+  const draft: AvatarDraftResult = {
+    dataUrl: "data:image/png;base64,generated",
+    childId: "child-a",
+    requestId: 7,
+    style: "watercolor",
+    source: "photo",
+  };
+
+  it("allows Use only in the same open child/request session", () => {
+    expect(isAvatarDraftCurrent(draft, { childId: "child-a", requestId: 7, open: true })).toBe(true);
+    expect(isAvatarDraftCurrent(draft, { childId: "child-b", requestId: 7, open: true })).toBe(false);
+    expect(isAvatarDraftCurrent(draft, { childId: "child-a", requestId: 8, open: true })).toBe(false);
+    expect(isAvatarDraftCurrent(draft, { childId: "child-a", requestId: 7, open: false })).toBe(false);
+  });
+
+  it("retains the style and source selected when generation started", () => {
+    expect(draft).toMatchObject({ style: "watercolor", source: "photo" });
   });
 });

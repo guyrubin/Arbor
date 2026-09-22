@@ -10,13 +10,27 @@
  * the gate order is enforced in one place and verified by captureGate.test.ts.
  */
 
-import type { AvatarStyle, AvatarDescriptors } from "../../lib/api";
+import type { AvatarStyle, AvatarDescriptors, AvatarCharacterIntent } from "../../lib/api";
+
+export type AvatarResult = { dataUrl: string; style: AvatarStyle; source: "descriptor" | "photo" };
+export type AvatarDraftResult = AvatarResult & { childId: string; requestId: number };
+
+export const isAvatarDraftCurrent = (
+  draft: AvatarDraftResult | undefined,
+  current: { childId: string; requestId: number; open: boolean },
+): draft is AvatarDraftResult => Boolean(
+  draft
+  && current.open
+  && draft.childId === current.childId
+  && draft.requestId === current.requestId,
+);
 
 export type AvatarGenInput = {
   mode: "describe" | "photo";
   refPhoto?: string;
   style: AvatarStyle;
   descriptors: AvatarDescriptors;
+  character?: AvatarCharacterIntent;
 };
 
 export type AvatarGenDeps = {
@@ -28,6 +42,7 @@ export type AvatarGenDeps = {
     style?: AvatarStyle;
     photo?: { dataUrl: string };
     descriptors?: AvatarDescriptors;
+    character?: AvatarCharacterIntent;
   }) => Promise<{ dataUrl: string; style: string; source: "descriptor" | "photo" }>;
 };
 
@@ -52,11 +67,13 @@ export async function runAvatarGeneration(
       childId,
       style: input.style,
       photo: { dataUrl: input.refPhoto },
+      character: input.character,
     });
   }
   return deps.generateAvatar({
     childId,
     style: input.style,
     descriptors: input.descriptors,
+    character: input.character,
   });
 }

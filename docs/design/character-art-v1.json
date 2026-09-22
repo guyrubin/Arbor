@@ -1,0 +1,95 @@
+{
+  "created": "2026-09-22",
+  "method": "Built-in imagegen; original object-only character-intent illustrations; alpha-preserving mechanical WebP exports",
+  "review": "ROS PAI/projects/arbor/execution/2026-09-22--kids-experience",
+  "totalBytes": 85682,
+  "assets": [
+    {
+      "id": "princess",
+      "prompt": "Use case: stylized-concept. Asset type: small supportive illustration for the 'Princess' character-intent option in Arbor's avatar creator. Create one original delightful dimensional storybook illustration of a rounded golden crown with three soft points, small lavender and coral jewel shapes, resting on a folded lavender royal cape or cushion. Objects only: no person, face, body, skin tone, or gender cues. This is a costume idea, not a ready-made child avatar. Premium tactile painted 3D clay/gouache feel, gentle warm light, clear dark-ink edge accents, charming and polished rather than glittery. Square centered composition, objects occupy center 70%, generous margin for rounded crop, genuinely transparent background (alpha), soft contact shadow only. No text, letters, logo, badges, stars, reward cues, UI, border, copied IP or watermark.",
+      "mode": "built-in imagegen, new original",
+      "date": "2026-09-22",
+      "status": "Lead visually reviewed; Astra and in-product validation pending",
+      "originalFile": "exec-769a41c6-2cd0-41a5-b410-6b98d4019895.png",
+      "originalSha256": "5724eac4450f1f96fe1ffce6a77e1d6cadb862cf865e86d277c31627e132b4b6",
+      "exports": [
+        {
+          "file": "princess-v1.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 23086,
+          "quality": 82,
+          "alpha": true,
+          "sha256": "a02d5bfd06d810f126bd2844ac20fdcc7e2ed0d6b899c2bf1b52a95bc72dbbeb"
+        },
+        {
+          "file": "princess-v1-160.webp",
+          "width": 160,
+          "height": 160,
+          "bytes": 9472,
+          "quality": 82,
+          "alpha": true,
+          "sha256": "56fa5acfb394c8181defbb2682be8b5b55e78f0cf98f38a0a455e330effdb31f"
+        }
+      ]
+    },
+    {
+      "id": "superhero",
+      "prompt": "Use case: stylized-concept. Asset type: small supportive illustration for the 'Superhero' character-intent option in Arbor's avatar creator. Create one original delightful dimensional storybook illustration of a gently billowing folded coral-red superhero cape with a simple turquoise fabric eye-mask laid across the front, rounded friendly shapes, no emblem. Objects only: no person, face, body, skin tone, or gender cues. This is a costume idea, not a ready-made child avatar. Premium tactile painted 3D clay/gouache feel, gentle warm light, clear dark-ink edge accents, charming and polished rather than flashy. Match a crown-and-royal-cape style option: similarly substantial, clear and playful. Square centered composition, objects occupy center 70%, generous margin for rounded crop, genuinely transparent background (alpha), soft contact shadow only. No text, letters, logo, shields, badges, stars, weapons, conflict, reward cues, UI, border, copied IP or watermark.",
+      "mode": "built-in imagegen, new original",
+      "date": "2026-09-22",
+      "status": "Lead visually reviewed; Astra and in-product validation pending",
+      "originalFile": "exec-e7c93849-868f-4ea8-a51f-d55150e100a0.png",
+      "originalSha256": "51c2b04c8c89117b791cbfa9324fe7e4c20af6851475122f8a77903e2cb58c05",
+      "exports": [
+        {
+          "file": "superhero-v1.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 16412,
+          "quality": 82,
+          "alpha": true,
+          "sha256": "e3a0aebe09c8ceef52cd17310083cfa251e7e2ed5174e721234751bd26ce5327"
+        },
+        {
+          "file": "superhero-v1-160.webp",
+          "width": 160,
+          "height": 160,
+          "bytes": 7156,
+          "quality": 82,
+          "alpha": true,
+          "sha256": "f020ccea0f61cb99d34279fe403578a988b40260357f1b7c2d918c02072ade21"
+        }
+      ]
+    },
+    {
+      "id": "explorer",
+      "prompt": "Use case: stylized-concept. Asset type: small supportive illustration for the 'Explorer' character-intent option in Arbor's avatar creator. Create one original delightful dimensional storybook illustration of a small sage-green explorer satchel, a rounded brass compass with a simple blank dial and pointer, and a softly folded cream map with a winding dotted path and tiny leaf illustration, no letters. Objects only: no person, face, body, skin tone, or gender cues. This is a character idea, not a ready-made child avatar. Premium tactile painted 3D clay/gouache feel, gentle warm light, subtle dark-ink edge accents, charming and polished rather than shiny. Match equally substantial crown-and-cape and superhero-cape option illustrations. Square centered composition, objects occupy center 70%, generous margin for rounded crop, genuinely transparent background (alpha), soft contact shadow only. No text, letters, logo, badges, stars, reward cues, weapons, UI, border, copied IP or watermark.",
+      "mode": "built-in imagegen, new original",
+      "date": "2026-09-22",
+      "status": "Lead visually reviewed; Astra and in-product validation pending",
+      "originalFile": "exec-b20e5880-e240-4a63-9ccc-858188dbc7d5.png",
+      "originalSha256": "50d281fcc9116f3a0f9167e835739ee9a1fdb930319c89f452c543d08ffda0d0",
+      "exports": [
+        {
+          "file": "explorer-v1.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 20956,
+          "quality": 82,
+          "alpha": true,
+          "sha256": "3b6e456ed07cd12b460c6b46ef801564a279238581327c37cf993d0de43f870a"
+        },
+        {
+          "file": "explorer-v1-160.webp",
+          "width": 160,
+          "height": 160,
+          "bytes": 8600,
+          "quality": 82,
+          "alpha": true,
+          "sha256": "81e3f043a5073c64b23974362f5e416341fdc1c8d8254634ec69dcb0ce02a74e"
+        }
+      ]
+    }
+  ]
+}

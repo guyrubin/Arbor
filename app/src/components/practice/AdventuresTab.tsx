@@ -135,10 +135,13 @@ export default function AdventuresTab() {
   return (
     <RegisterShell
       kidMode={kidMode}
-      title={t("prac.adventures.title")}
+      title={kidMode ? t("elev.kids.adventures.title") : t("prac.adventures.title")}
       say={headerSay}
       subtitle={headerSay}
       mood="wave"
+      worldId="adventures"
+      headerVariant="compact"
+      eyebrow={kidMode ? t("elev.kids.mission") : undefined}
     >
 
       {/* Make-a-new-adventure CTA */}

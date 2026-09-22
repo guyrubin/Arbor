@@ -40,7 +40,7 @@ vi.mock("../../lib/celebrate", () => ({ celebrate: () => undefined }));
 
 import { PATTERN_PUZZLES, patternRound } from "../../practice/newGames";
 import PatternPowerWorld, { PatternDoneView, PatternRoundView } from "./PatternPowerWorld";
-import { puzzleOrderForDay, PATTERN_ROUNDS_PER_DAY } from "../../practice/newGames";
+import { puzzleOrderForDay, PATTERN_ROUNDS_PER_DAY, selectPatternSession } from "../../practice/newGames";
 import { dayKey } from "../../practice/signals";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -68,9 +68,10 @@ describe("KID-01: patternRound never dereferences past the table", () => {
   it("the component reads rounds ONLY through patternRound (source pin)", () => {
     const src = readFileSync(path.join(__dirname, "PatternPowerWorld.tsx"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
     // KID-08: the round is read through the clamped helper, now against the
-    // DAY's puzzle order rather than the module constant.
+    // DAY's bounded puzzle session rather than the module constant.
     expect(src).toContain("patternRound(idx, puzzles)");
-    expect(src).toContain("puzzleOrderForDay(dayKey(new Date()))");
+    expect(src).toContain("selectPatternSession(`${dayKey(new Date())}:${sessionSeed}`)");
+    expect(src).toContain("setSessionSeed((seed) => seed + 1)");
     expect(src, "a bare PATTERN_PUZZLES[...] read is the KID-01 crash").not.toMatch(/PATTERN_PUZZLES\s*\[/);
   });
 });
@@ -93,6 +94,9 @@ describe("KID-01: every round and the win screen render without throwing", () =>
             speakLabel: "Hear it",
             lang: "en",
             total: PATTERN_PUZZLES.length,
+            correctFeedback: "Yes! You spotted the pattern.",
+            retryFeedback: "Good try — it was {answer}.",
+            supportLabel: "Look, choose, and play",
           }),
         );
         expect(html).toContain("Pattern Power");
@@ -109,15 +113,15 @@ describe("KID-01: every round and the win screen render without throwing", () =>
         first: "Mia",
         stars: 3,
         onReplay: () => undefined,
-        title: "You finished every pattern, Mia!",
-        subtitle: "That is the whole set.",
-        againLabel: "Play this set again",
+        title: "You finished this set, Mia!",
+        subtitle: "That is the end of this set. Rest, or choose six more.",
+        againLabel: "Choose six more",
       }),
     );
     // KID-07: an ENDING, not a loop. The old screen offered "Play again" and
     // restarted puzzle 1 of the same six.
-    expect(html).toContain("You finished every pattern, Mia!");
-    expect(html).toContain("Play this set again");
+    expect(html).toContain("You finished this set, Mia!");
+    expect(html).toContain("Choose six more");
     expect(html).not.toContain("Pattern master");
     expect(html).toContain("⭐");
   });
@@ -129,7 +133,7 @@ describe("KID-01: every round and the win screen render without throwing", () =>
     expect(/Pattern Power|elev\.play\.pattern\.title/.test(html)).toBe(true);
     // KID-08: round 1 is the first puzzle of the DAY's order, not the module
     // constant's first entry — so assert it is one of the six, not a fixed one.
-    const first = puzzleOrderForDay(dayKey(new Date()))[0];
+    const first = selectPatternSession(`${dayKey(new Date())}:0`)[0];
     for (const g of first.shown) expect(html).toContain(g);
   });
 });
