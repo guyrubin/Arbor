@@ -32,6 +32,7 @@ import {
   comicGenerationKey,
   readSavedMetaCoverFromStore,
   rehydrateSavedMetaPagesFromStore,
+  savedBookTitle,
   savedComicDocId,
   savedMetaKind,
   savedMetaPageTotal,
@@ -41,6 +42,7 @@ import {
   type SavedComicMeta,
 } from "./heroComics";
 import { HERO_STORIES } from "./heroJourneys";
+import { en as kidsEn, he as kidsHe } from "./i18nElevation/kidsStories";
 import { _resetSceneCache } from "./sceneCache";
 import {
   _resetComicPageStore,
@@ -136,6 +138,56 @@ describe("M3 — a read-along comic opens from the device store", () => {
       pageCount: 2,
     };
     await expect(savedMetaPagesAvailable(CHILD, mixed, "no-hero")).resolves.toBe(false);
+  });
+});
+
+describe("M3 round 2 — the frozen-identity check stays STRICT for journey keys", () => {
+  it("rejects a record whose beat keys carry a per-beat seed in the story slot (parts[6])", async () => {
+    // HeroScenePlayer once minted beat keys with storyId = `<storyId>-<beatId>-<hero>`;
+    // only the cover carried the real story id. Such a record cannot prove it
+    // owns those pages, so it must never read — the fix is minting, not a
+    // looser validator (a prefix match would let one story claim another's bytes).
+    const exact = journeyKeys(UNCOVERED.id);
+    const seeded = exact.map((key, index) => {
+      if (index === 0) return key;
+      const parts = key.split("|");
+      parts[6] = `${UNCOVERED.id}-beat${index}-Dylan`;
+      return parts.join("|");
+    });
+    const meta = journeyMeta(UNCOVERED.id, seeded);
+    for (const key of seeded) await putComicPage(CHILD, key, PNG);
+    await expect(savedMetaPagesAvailable(CHILD, meta, "no-hero")).resolves.toBe(false);
+    await expect(rehydrateSavedMetaPagesFromStore(CHILD, meta, "no-hero")).resolves.toEqual([]);
+    await expect(readSavedMetaCoverFromStore(CHILD, meta, "no-hero")).resolves.toBeUndefined();
+  });
+
+  it("rejects a seed-shaped COVER too — index 0 is held to the same exact match", async () => {
+    const keys = journeyKeys(UNCOVERED.id).map((key, index) => {
+      if (index !== 0) return key;
+      const parts = key.split("|");
+      parts[6] = `${UNCOVERED.id}-cover-Dylan`;
+      return parts.join("|");
+    });
+    const meta = journeyMeta(UNCOVERED.id, keys);
+    for (const key of keys) await putComicPage(CHILD, key, PNG);
+    await expect(savedMetaPagesAvailable(CHILD, meta, "no-hero")).resolves.toBe(false);
+  });
+
+  it("source keeps the exact comparison and no prefix escape hatch", () => {
+    const hero = fs.readFileSync(path.resolve(__dirname, "heroComics.ts"), "utf8");
+    expect(hero).toContain("|| parts[6] !== meta.adventureId");
+    expect(hero).not.toMatch(/parts\[6\]\.startsWith/);
+  });
+});
+
+describe("M3 round 2 — titles follow the UI language", () => {
+  it("a read-along comic saved in English shows the catalog titleHe under a Hebrew UI", () => {
+    const meta = journeyMeta(UNCOVERED.id);
+    expect(savedBookTitle(meta, "he")).toBe(UNCOVERED.titleHe);
+    // Same language: the title the story gave the book wins.
+    expect(savedBookTitle(meta, "en")).toBe("The night we lit the path");
+    // No stored title: the catalog is the fallback.
+    expect(savedBookTitle({ ...meta, title: "" }, "en")).toBe(UNCOVERED.title);
   });
 });
 
@@ -266,8 +318,44 @@ describe("M3 — child shelf source wiring (components/kidmode/KidComicsShelf.ts
     expect(code).toContain('<img src={cover} alt=""');
   });
 
+  it("never shows a book that cannot open: only probed-available books render", () => {
+    expect(code).toContain('books.filter(({ meta }) => availability.values[meta.id] === "available")');
+    expect(code).toContain("openableBooks.map(");
+    expect(code).not.toContain("books.map(({ meta, adventure })");
+    // Checking holds the loading panel; nothing disabled is ever drawn.
+    expect(code).toContain("(books.length > 0 && !probeReady)");
+    expect(code).not.toContain('"shelf.unavailableShort"');
+    expect(code).not.toMatch(/disabled=\{state/);
+  });
+
+  it("each card is cover-led: fixed 3:2 box, object-cover, one big control, title below", () => {
+    const card = code.slice(code.indexOf("openableBooks.map("), code.indexOf("</button>", code.indexOf("openableBooks.map(")));
+    expect(card).toContain('aspectRatio: "3 / 2"');
+    expect(card).toContain("object-cover");
+    expect(card).not.toContain("object-contain");
+    expect(card.match(/<button[\s>]/g)?.length).toBe(1);
+    expect(card).toContain("savedBookTitle(meta, aiLang, adventure)");
+  });
+
   it("keeps the child register: still no generation, share, download or purchase seam", () => {
     expect(code).not.toMatch(/api\.|generateComic\(|generatePage\(|buildComicBook\(|openPaywall/);
+  });
+});
+
+describe("M3 round 2 — copy", () => {
+  it("the child shelf says 'your comics' in both languages (the child made them)", () => {
+    expect(kidsEn["shelf.subtitle"]).toMatch(/^Your comics/);
+    expect(kidsHe["shelf.subtitle"]).toContain("הקומיקסים שלכם");
+    expect(kidsEn["shelf.subtitle"]).not.toContain("grown-up");
+    expect(kidsHe["shelf.subtitle"]).not.toContain("מבוגר");
+  });
+
+  it("the parent off-device state says what to do, in both languages, and covers never pillarbox", () => {
+    const code = read("components/tabs/ComicsTab.tsx");
+    expect(code).toContain("read the story again on this device (Hero Stories)");
+    expect(code).toContain("קראו את הסיפור שוב במכשיר הזה");
+    expect(code).not.toContain("object-contain");
+    expect(code).toContain("savedBookTitle(saved, aiLang, a)");
   });
 });
 

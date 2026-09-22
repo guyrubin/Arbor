@@ -17,6 +17,7 @@ import {
   isStrictComicImageDataUrl,
   readSavedMetaCoverFromStore,
   rehydrateSavedMetaPagesFromStore,
+  savedBookTitle,
   savedMetaPagesAvailable,
   shelfBooks,
   toSavedComicMeta,
@@ -323,7 +324,7 @@ export default function ComicsTab() {
     // with no generation, save or paywall seam in reach. Page count comes from
     // the stored pages, which are cover + every beat of THAT story.
     const journeyMeta = visibleOpenBook.meta;
-    const journeyTitle = journeyMeta.title || adventureTitle(openAdventure, journeyMeta.lang);
+    const journeyTitle = savedBookTitle(journeyMeta, journeyMeta.lang, openAdventure);
     const journeyPages = visibleOpenBook.pages.map((dataUrl, index) => ({
       dataUrl,
       title: index === 0 ? journeyTitle : `${adventureTitle(openAdventure, journeyMeta.lang)} · ${index}`,
@@ -526,9 +527,10 @@ export default function ComicsTab() {
           const saved = a.meta;
           // Cover thumbnail read from the device store for this exact slot.
           const coverThumb = saved ? scopedCovers[a.id] : undefined;
-          // Authored books title from the catalog in the CURRENT language; a
-          // read-along comic keeps the title the story gave it.
-          const title = a.kind === "journey" && saved?.title ? saved.title : adventureTitle(a, aiLang);
+          // Titles follow the UI language: the catalog's title (titleHe under
+          // he) for every book; a read-along comic's saved title is used only
+          // when it was made in the language the parent is reading in.
+          const title = a.kind === "journey" && saved ? savedBookTitle(saved, aiLang, a) : adventureTitle(a, aiLang);
           // AIX-S5 honesty: "Read again" ONLY when every page is available on
           // this device (memory or IndexedDB) — a cold state (new device, or
           // pages evicted) says "Rebuild this book" instead of promising an
@@ -549,7 +551,7 @@ export default function ComicsTab() {
           const coverFace = (
             <>
               {coverThumb ? (
-                <img src={coverThumb} alt="" className="absolute inset-0 w-full h-full object-contain" />
+                <img src={coverThumb} alt="" className="absolute inset-0 w-full h-full object-cover" />
               ) : (
                 <div className="comic-halftone absolute inset-0 grid place-items-center">
                   <div className="flex items-center gap-1.5">
@@ -636,8 +638,8 @@ export default function ComicsTab() {
                 {offDevice && (
                   <p className="text-[11px] mt-2" dir="auto" style={{ color: "var(--arbor-muted)" }}>
                     {he
-                      ? "הדפים של הקומיקס הזה לא נמצאים במכשיר הזה. קריאה נוספת של הסיפור תיצור קומיקס חדש."
-                      : "This comic's pages are not on this device. Reading the story again makes a new one."}
+                      ? "הדפים של הקומיקס הזה שמורים במכשיר שבו נקרא הסיפור. כדי ליצור קומיקס חדש כאן, קראו את הסיפור שוב במכשיר הזה (סיפורי גיבורים)."
+                      : "This comic's pages live on the device the story was read on. To make a new one here, read the story again on this device (Hero Stories)."}
                   </p>
                 )}
               </div>

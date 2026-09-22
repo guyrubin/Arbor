@@ -6,12 +6,12 @@ import { useAuth } from "../../context/AuthContext";
 import { useLanguage } from "../../context/LanguageContext";
 import type { ChildProfile } from "../../types";
 import {
-  adventureTitle,
   avatarHash,
   getAdventure,
   isStrictComicImageDataUrl,
   readSavedMetaCoverFromStore,
   rehydrateSavedMetaPagesFromStore,
+  savedBookTitle,
   savedMetaPagesAvailable,
   savedMetaPageTotal,
   type SavedComicMeta,
@@ -78,10 +78,11 @@ export default function KidComicsShelf({
   const [open, setOpen] = useState<OpenBook | null>(null);
   const [unavailableId, setUnavailableId] = useState<string | null>(null);
 
-  // UX26-30 (22 Sep 2026): the child shelf lists only books saved with frozen
-  // page keys. Metadata-only entries (the onboarding wow seed, legacy comic3
-  // saves) belong to the parent shelf, which can rebuild them; here they would
-  // only ever read "unavailable".
+  // UX26-30 (22 Sep 2026): the child shelf considers only books saved with
+  // frozen page keys. Metadata-only entries (the onboarding wow seed, legacy
+  // comic3 saves) belong to the parent shelf, which can rebuild them; here
+  // they could never open. What survives the device-store probe below is what
+  // the child actually sees.
   const books = useMemo(() => saved.items
     .filter((meta) => (meta.pageKeys?.length ?? 0) > 0)
     .map((meta) => ({ meta, adventure: getAdventure(meta.adventureId) }))
@@ -92,6 +93,15 @@ export default function KidComicsShelf({
   const scopeRef = useRef(scopeKey);
   scopeRef.current = scopeKey;
   const partitionReady = confirmedPartition === partitionKey;
+  // UX26-30 + M3 round 2: the child shelf shows ONLY books that open. A book
+  // whose pages are not on this device is not a disabled card the child can
+  // press — it is not on the shelf at all, and the loading panel holds the
+  // surface until every book has been checked.
+  const probeReady = availability.scope === scopeKey
+    && books.every(({ meta }) => (availability.values[meta.id] ?? "checking") !== "checking");
+  const openableBooks = probeReady
+    ? books.filter(({ meta }) => availability.values[meta.id] === "available")
+    : [];
   const visibleOpen = open
     && open.partitionKey === partitionKey
     && books.some(({ meta }) => meta.id === open.meta.id && metaFingerprint(meta) === open.fingerprint)
@@ -154,9 +164,10 @@ export default function KidComicsShelf({
       setUnavailableId(meta.id);
       return;
     }
+    const readerTitle = savedBookTitle(meta, meta.lang, adventure);
     const pages = urls.map((dataUrl, index) => ({
       dataUrl,
-      title: index === 0 ? meta.title : `${adventureTitle(adventure, meta.lang)} · ${index}`,
+      title: index === 0 ? readerTitle : `${readerTitle} · ${index}`,
     }));
     setOpen({ partitionKey, fingerprint: metaFingerprint(meta), meta, pages });
     setUnavailableId(null);
@@ -196,41 +207,55 @@ export default function KidComicsShelf({
         </div>
       </div>
 
-      {!partitionReady || !saved.loaded ? (
+      {!partitionReady || !saved.loaded || (books.length > 0 && !probeReady) ? (
         <PlayPanel tone="lav" className="text-center">{kidsStoriesText("shelf.loading", aiLang)}</PlayPanel>
-      ) : books.length === 0 ? (
+      ) : openableBooks.length === 0 ? (
         <PlayPanel tone="lav" className="text-center">
           <div className="mx-auto mb-3 w-fit"><HeroAvatar size={88} mood="think" animate={false} /></div>
           <p className="font-black" style={{ color: "var(--arbor-ink)" }}>{kidsStoriesText("shelf.empty", aiLang)}</p>
           <p className="mt-1 text-sm" style={{ color: "var(--arbor-muted)" }}>{kidsStoriesText("shelf.emptyHint", aiLang)}</p>
         </PlayPanel>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {books.map(({ meta, adventure }) => {
-            const state = availability.scope === scopeKey ? availability.values[meta.id] ?? "checking" : "checking";
-            const unavailable = state === "unavailable";
+        <div className="grid gap-4 sm:grid-cols-2">
+          {openableBooks.map(({ meta, adventure }) => {
             const cover = covers.scope === scopeKey ? covers.values[meta.id] : undefined;
+            const title = savedBookTitle(meta, aiLang, adventure);
             return (
-              <PlayPanel key={meta.id} tone="lav" className="flex flex-col gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-2xl" style={{ background: "var(--arbor-yellow)", border: "2px solid var(--comic-ink)" }}>
-                    {cover
-                      ? <img src={cover} alt="" className="h-full w-full object-cover" />
-                      : <BookOpen className="h-7 w-7" aria-hidden="true" />}
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="font-black leading-tight" dir="auto">{meta.title || adventureTitle(adventure, meta.lang)}</h3>
-                    {unavailable && <p className="mt-1 text-xs" style={{ color: "var(--arbor-muted)" }}>{kidsStoriesText("shelf.unavailable", aiLang)}</p>}
-                  </div>
+              /* Cover-led card (benchmark: the art is the book). The whole card
+                 is ONE big control — the same 3:2 comic-panel cover box the
+                 parent shelf uses, object-cover so a square page fills it
+                 instead of pillarboxing, title underneath. */
+              <button
+                key={meta.id}
+                type="button"
+                onClick={() => void openBook(meta)}
+                aria-label={`${kidsStoriesText("shelf.read", aiLang)}: ${title}`}
+                data-testid={`kid-comic-card-${meta.id}`}
+                className="comic-panel play-pressable w-full overflow-hidden text-start"
+              >
+                <div className="relative w-full" style={{ aspectRatio: "3 / 2", borderBottom: "var(--comic-line)" }}>
+                  {cover ? (
+                    <img src={cover} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                  ) : (
+                    <div className="comic-halftone absolute inset-0 grid place-items-center" style={{ background: "var(--arbor-yellow)" }}>
+                      <HeroAvatar size={74} ring animate={false} decorative />
+                    </div>
+                  )}
+                  <span
+                    className="absolute bottom-2 inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[14px] font-black"
+                    style={{ insetInlineStart: 8, background: "var(--arbor-paper-elevated)", border: "var(--comic-line)", color: "var(--arbor-ink)" }}
+                  >
+                    <BookOpen className="h-4 w-4" aria-hidden="true" /> {kidsStoriesText("shelf.read", aiLang)}
+                  </span>
                 </div>
-                <PlayButton tone="clay" disabled={state !== "available"} onClick={() => void openBook(meta)}>
-                  {state === "checking" ? kidsStoriesText("shelf.loading", aiLang) : unavailable ? kidsStoriesText("shelf.unavailableShort", aiLang) : kidsStoriesText("shelf.read", aiLang)}
-                </PlayButton>
-                {unavailableId === meta.id && !unavailable && <p role="status" className="text-xs" style={{ color: "var(--arbor-muted)" }}>{kidsStoriesText("shelf.unavailable", aiLang)}</p>}
-              </PlayPanel>
+                <h3 className="p-3.5 text-[15px] font-black leading-tight" dir="auto" style={{ color: "var(--arbor-ink)" }}>{title}</h3>
+              </button>
             );
           })}
         </div>
+      )}
+      {unavailableId && (
+        <p role="status" className="text-sm" style={{ color: "var(--arbor-muted)" }}>{kidsStoriesText("shelf.unavailable", aiLang)}</p>
       )}
     </section>
   );

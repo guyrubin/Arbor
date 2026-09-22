@@ -259,6 +259,16 @@ export function shelfBooks(saved: readonly SavedComicMeta[]): { authored: ShelfB
   return { authored, extra };
 }
 
+/** The title to SHOW for a saved book in the UI's current language. A record
+ *  stores the title the book was made with (a read-along comic carries the
+ *  story's title in the language it was read in); under another UI language
+ *  the catalog has the right one, so the stored title is the fallback. */
+export function savedBookTitle(meta: SavedComicMeta, lang: ComicLang, adventure?: Adventure): string {
+  const catalog = adventure ?? getAdventure(meta.adventureId);
+  if (catalog && (lang !== meta.lang || !meta.title)) return adventureTitle(catalog, lang);
+  return meta.title || meta.adventureId;
+}
+
 /** How many pages a saved record HAS. Frozen keys are the truth (a journey book
  *  is cover + every beat, which is not the authored 8-beat book plan); only a
  *  legacy keyless record falls back to the catalog count. */
@@ -305,6 +315,12 @@ function frozenKeys(meta: SavedComicMeta): string[] | null | undefined {
   // M3: a saved record is EITHER a parent-built `book` or a read-along
   // `journey` — both are frozen v4 identities. The keys must agree with each
   // other and with a declared `kind`; a mixed list is not one book.
+  //
+  // parts[6] stays an EXACT match on meta.adventureId for every index, kind
+  // included. A journey page minted with a per-beat seed in that slot
+  // (`<storyId>-<beatId>-<heroName>`) is a key this record cannot prove it
+  // owns, so the record is rejected rather than read loosely: a prefix match
+  // here would let one story's saved book claim another story's page bytes.
   const declared = meta.kind;
   let kind: ComicRequestKind | undefined = declared;
   const seen = new Set<string>();

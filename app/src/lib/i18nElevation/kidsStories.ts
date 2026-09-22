@@ -9,9 +9,9 @@ export type KidsStoriesKey =
 
 const EN: Record<KidsStoriesKey, string> = {
   "shelf.title": "Hero Comics",
-  "shelf.subtitle": "Comics a grown-up saved for you",
+  "shelf.subtitle": "Your comics — open one and read it again",
   "shelf.empty": "Your comic shelf is waiting",
-  "shelf.emptyHint": "A grown-up can prepare and save a comic for you.",
+  "shelf.emptyHint": "Read a hero story and your comic appears here.",
   "shelf.loading": "Opening the bookshelf…",
   "shelf.read": "Read",
   "shelf.unavailable": "This comic is not available on this device right now.",
@@ -42,9 +42,9 @@ const EN: Record<KidsStoriesKey, string> = {
 
 const HE: Record<KidsStoriesKey, string> = {
   "shelf.title": "קומיקס הגיבורים",
-  "shelf.subtitle": "קומיקסים שמבוגר שמר בשבילכם",
+  "shelf.subtitle": "הקומיקסים שלכם — פתחו אחד וקראו שוב",
   "shelf.empty": "מדף הקומיקס שלכם מחכה",
-  "shelf.emptyHint": "מבוגר יכול להכין ולשמור קומיקס בשבילכם.",
+  "shelf.emptyHint": "קראו סיפור גיבורים והקומיקס שלכם יופיע כאן.",
   "shelf.loading": "פותחים את מדף הספרים…",
   "shelf.read": "לקרוא",
   "shelf.unavailable": "הקומיקס הזה לא זמין במכשיר הזה כרגע.",
