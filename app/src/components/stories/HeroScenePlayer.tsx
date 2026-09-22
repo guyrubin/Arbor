@@ -6,10 +6,11 @@ import { ComicPage } from "../ui/playkit";
 import { SpeakButton } from "../ui/SpeakButton";
 import { stopSpeaking } from "../../lib/tts";
 import type { AvatarStyle } from "../../lib/api";
-import { generateJourneyPage, journeyPageKey, type JourneyPageArgs } from "../../lib/heroComics";
+import { clearJourneyPageFailure, generateJourneyPage, hasJourneyPageFailed, journeyPageKey, type JourneyPageArgs } from "../../lib/heroComics";
 import { runInstrumented } from "../../hooks/useAsyncAction";
 import { ProvenanceBadge } from "../ui/ProvenanceBadge";
 import { useLanguage } from "../../context/LanguageContext";
+import { isolate } from "../../lib/i18n";
 import { downloadHeroAvatarCanvas } from "../../lib/heroAvatarCanvas";
 import { isKidModeActive } from "../../lib/kidModeGate";
 import type { HeroSceneRender } from "../../types";
@@ -31,6 +32,7 @@ import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
 export function HeroScenePlayer({
   scene,
   seed,
+  storyId,
   beatNumber,
   beatTotal,
   photoUrl,
@@ -45,6 +47,17 @@ export function HeroScenePlayer({
 }: {
   scene: HeroSceneRender;
   seed: string;
+  /**
+   * R3 (M3 critic, cross-module P0): the story's OWN id. `seed` is
+   * `<storyId>-<beatId>-<childName>` — a per-beat illustration seed — and it
+   * was being minted into `journeyPageKey` as the adventure id, so parts[6] of
+   * every beat key read "the-two-gifts-call-Dylan" while the cover (minted in
+   * HeroJourneyTab) carried the real story id. The shelf validator requires
+   * parts[6] === adventureId, so every journey book failed to open. It also put
+   * the child's display name into a cache key unhashed.
+   * `seed` stays what it always was: the fallback illustration's seed.
+   */
+  storyId?: string;
   beatNumber: number;
   beatTotal: number;
   photoUrl?: string;
@@ -73,7 +86,7 @@ export function HeroScenePlayer({
   const effectiveStyle = heroAvatarStyle ?? "comichero";
   const pageArgs: JourneyPageArgs | undefined = heroAvatarUrl && scene.imagePrompt
     ? {
-        storyId: seed,
+        storyId: storyId ?? seed,
         lang: aiLang,
         heroName: heroName ?? "",
         heroDataUrl: heroAvatarUrl,
@@ -104,6 +117,15 @@ export function HeroScenePlayer({
     setArtError(false);
     if (!pageArgs || !artRequestKey) {
       setArtLoading(false);
+      return;
+    }
+    // R2: a page that already failed this session stays smudged on a remount.
+    // Back/Next remount this component, and the effect used to re-request a key
+    // that had just failed — the same page bought again on every page turn.
+    // Only Redraw (below) clears the key and pays for another attempt.
+    if (hasJourneyPageFailed(artRequestKey)) {
+      setArtLoading(false);
+      setArtError(true);
       return;
     }
     let active = true;
@@ -152,7 +174,7 @@ export function HeroScenePlayer({
                 `${(heroName || "hero").toLowerCase()}-comic-page-${beatNumber}.png`,
               )
             } className="touch-target flex items-center gap-1 transition" style={{ color: "var(--arbor-muted)" }} aria-label={t("aria.saveComicPage")}>
-            <Download className="w-3.5 h-3.5" /> Save
+            <Download className="w-3.5 h-3.5" /> {t("learn.save")}
           </button>
         )}
       </div>
@@ -165,14 +187,14 @@ export function HeroScenePlayer({
           <ComicPage
             key={scene.beatId}
             src={sceneArt}
-            alt={`Page ${beatNumber}: ${scene.title}`}
+            alt={kidsStoriesText("journey.pageAlt", aiLang, { number: beatNumber, title: scene.title })}
             pageNumber={beatNumber}
             loading={!sceneArt && artLoading}
             error={!sceneArt && !artLoading && artError}
             rtl={uiLang === "he"}
             contentFit="contain"
             onImageError={() => { setResolvedArt(undefined); setArtError(true); }}
-            onRetry={() => { setArtError(false); setRetryTick((n) => n + 1); }}
+            onRetry={() => { if (artRequestKey) clearJourneyPageFailure(artRequestKey); setArtError(false); setRetryTick((n) => n + 1); }}
             errorLabel={kidsStoriesText("page.smudged", aiLang)}
             retryLabel={kidsStoriesText("page.redraw", aiLang)}
             loadingLabel={kidsStoriesText("page.drawing", aiLang)}
@@ -193,7 +215,9 @@ export function HeroScenePlayer({
             >
               <img
                 src={heroAvatarUrl ?? photoUrl}
-                alt={heroName ? `${heroName}, the story hero` : "Story hero"}
+                alt={heroName
+                  ? kidsStoriesText("journey.heroAlt", aiLang, { name: isolate(heroName, aiLang) })
+                  : kidsStoriesText("journey.heroAltUnnamed", aiLang)}
                 className="h-full w-auto rounded-xl object-contain"
               />
             </div>

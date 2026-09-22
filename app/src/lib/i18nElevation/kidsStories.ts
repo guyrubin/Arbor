@@ -3,6 +3,7 @@ export type KidsStoriesKey =
   | "shelf.loading" | "shelf.read" | "shelf.unavailable" | "shelf.unavailableShort" | "shelf.back"
   | "reader.page" | "reader.end" | "reader.endBody" | "reader.again" | "reader.back" | "reader.previous"
   | "journey.beat" | "journey.decision" | "journey.back" | "journey.next" | "journey.end"
+  | "journey.cover" | "journey.coverAlt" | "journey.pageAlt" | "journey.heroAlt" | "journey.heroAltUnnamed"
   | "journey.childEndingTitle" | "journey.childEndingBody" | "journey.childReflection"
   | "journey.finish" | "journey.saved" | "journey.backStories"
   | "journey.comicSaved" | "page.smudged" | "page.redraw" | "page.drawing";
@@ -24,6 +25,11 @@ const EN: Record<KidsStoriesKey, string> = {
   "reader.back": "Back to comics",
   "reader.previous": "Previous page",
   "journey.beat": "Beat {current} of {total}",
+  "journey.cover": "Cover",
+  "journey.coverAlt": "Cover: {title}",
+  "journey.pageAlt": "Page {number}: {title}",
+  "journey.heroAlt": "{name}, the hero of this story",
+  "journey.heroAltUnnamed": "The hero of this story",
   "journey.decision": "What do you do, {name}?",
   "journey.back": "Back",
   "journey.next": "Next",
@@ -57,6 +63,11 @@ const HE: Record<KidsStoriesKey, string> = {
   "reader.back": "חזרה לקומיקסים",
   "reader.previous": "לעמוד הקודם",
   "journey.beat": "קטע {current} מתוך {total}",
+  "journey.cover": "עטיפה",
+  "journey.coverAlt": "עטיפה: {title}",
+  "journey.pageAlt": "עמוד {number}: {title}",
+  "journey.heroAlt": "{name}, הגיבור/ה של הסיפור הזה",
+  "journey.heroAltUnnamed": "הגיבור/ה של הסיפור הזה",
   "journey.decision": "מה עושים, {name}?",
   "journey.back": "חזרה",
   "journey.next": "הבא",
