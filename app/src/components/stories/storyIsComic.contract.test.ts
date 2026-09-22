@@ -44,7 +44,9 @@ describe("HeroScenePlayer — one framed page per beat", () => {
 describe("HeroJourneyTab — cover, shelf save, child ending", () => {
   it("draws the cover once per story start and only when a hero exists", () => {
     expect(tab).toContain("if (!activeStory || !render || !heroAvatarUrl) return;");
-    expect(tab).toContain("pageIndex: 0,\n      cover: true,");
+    expect(tab).toContain("pageIndex: 0,\n    cover: true as const,");
+    // a cover that failed at start gets exactly one more try at finish
+    expect(tab).toContain("if (!comicPageKeys.current.has(0)) {");
     expect(tab).toContain("}, [activeStory?.id, heroAvatarUrl, aiLang]);");
   });
 

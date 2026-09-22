@@ -309,30 +309,39 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
     setComicSaved(false);
     if (!activeStory || !render || !heroAvatarUrl) return;
     let active = true;
-    const title = render.title || activeStory.title;
-    generateJourneyPage({
-      storyId: activeStory.id,
-      lang: aiLang,
-      heroName: childProfile.name?.split(" ")[0] ?? "",
-      heroDataUrl: heroAvatarUrl,
-      style: heroAvatarStyle,
-      childId: childProfile.id,
-      childIdentity: childProfile.id,
-      pageIndex: 0,
-      cover: true,
-      title,
-      theme: `${title} — ${activeStory.theme}`,
-      sfx: [],
-    })
+    const cover = coverPageArgs();
+    if (!cover) return;
+    generateJourneyPage(cover)
       .then(({ key }) => { if (active) comicPageKeys.current.set(0, key); })
       .catch(() => { /* a missing cover only means no shelf entry this time */ });
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeStory?.id, heroAvatarUrl, aiLang]);
 
+  const coverPageArgs = () => activeStory && render && heroAvatarUrl ? {
+    storyId: activeStory.id,
+    lang: aiLang,
+    heroName: childProfile.name?.split(" ")[0] ?? "",
+    heroDataUrl: heroAvatarUrl,
+    style: heroAvatarStyle,
+    childId: childProfile.id,
+    childIdentity: childProfile.id,
+    pageIndex: 0,
+    cover: true as const,
+    title: render.title || activeStory.title,
+    theme: `${render.title || activeStory.title} — ${activeStory.theme}`,
+    sfx: [] as string[],
+  } : undefined;
+
   const saveStoryAsComic = async () => {
     if (!activeStory || !render || !heroAvatarUrl) return;
     const expected = 1 + scenes.filter((scene) => scene.imagePrompt).length;
+    // A cover that failed at story start gets ONE more try at the end (bounded:
+    // one call), so a single busy moment does not cost the child their book.
+    if (!comicPageKeys.current.has(0)) {
+      const cover = coverPageArgs();
+      if (cover) await generateJourneyPage(cover).then(({ key }) => comicPageKeys.current.set(0, key)).catch(() => {});
+    }
     const keys = [...comicPageKeys.current.entries()].sort((a, b) => a[0] - b[0]).map(([, key]) => key);
     if (keys.length !== expected) return; // incomplete art → no shelf entry (never a book that cannot open)
     await savedComicsCol.upsert(toSavedComicMeta({
