@@ -2314,8 +2314,11 @@ Friendly lighting and a readable composition. Gentle, non-scary, non-violent and
   // one dialogue line — wholesome and age-appropriate. Powered by the image model
   // (Nano Banana), which auto-applies SynthID + C2PA provenance.
   router.post("/generate-comic", async (req, res) => {
-    const { avatar, heroName, sidekickName, theme, dialogue, sfx, setting, style } = req.body ?? {};
+    const { avatar, heroName, sidekickName, theme, dialogue, sfx, setting, style, cover, title } = req.body ?? {};
     const safeName = String(heroName ?? "the hero").slice(0, 40);
+    // G2: a cover is a title page — bold lettered title, no interior panels, no bubble.
+    const isCover = cover === true;
+    const safeTitle = String(title ?? "").replace(/["\n]/g, " ").trim().slice(0, 60);
     const themeText = String(theme ?? "a brave, kind everyday adventure").slice(0, 200);
 
     const escalationMatch = screenForImmediateEscalation({ note: `${themeText} ${dialogue ?? ""}` });
@@ -2348,7 +2351,9 @@ Friendly lighting and a readable composition. Gentle, non-scary, non-violent and
 
     // Comic composition and rendering medium are independent of costume. A
     // supplied reference is authoritative for clothing and accessories.
-    const prompt = `Create a SINGLE dynamic full-page COMIC PANEL with a clear panel border, expressive composition, readable action, and lively comic energy suitable for ages 4-8.
+    const prompt = `${isCover
+  ? `Create a SINGLE dramatic full-page COMIC-BOOK COVER: one bold hero image, a clear cover border, no interior panels, no speech bubbles${safeTitle ? `, with the title "${safeTitle}" lettered big and bold at the top` : ""}.`
+  : "Create a SINGLE dynamic full-page COMIC PANEL with a clear panel border, expressive composition, readable action, and lively comic energy suitable for ages 4-8."}
 Rendering medium: ${stylePrompt}.
 Hero name: ${safeName}.
 ${referenceImage

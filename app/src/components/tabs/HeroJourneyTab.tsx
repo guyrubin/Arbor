@@ -1,6 +1,6 @@
 import { createPortal } from "react-dom";
 import { useDialog } from "../../hooks/useDialog";
-import React, { useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { motion } from "motion/react";
 import { celebrate } from "../../lib/celebrate";
 import { Icon } from "../ui/Icon";
@@ -37,6 +37,7 @@ import { agefilterText } from "../../lib/i18nElevation/agefilter";
 import { ageMonthsFromProfile } from "../../lib/childAge";
 import { track } from "../../lib/analytics";
 import { HeroScenePlayer } from "../stories/HeroScenePlayer";
+import { generateJourneyPage, toSavedComicMeta, type SavedComicMeta } from "../../lib/heroComics";
 import { useKidSafeNav } from "../kidmode/useKidSafeNav";
 import { isKidModeActive, noteKidActivity, subscribeKidMode } from "../../lib/kidModeGate";
 import { MascotSay, PlayButton, PlayPanel } from "../ui/playkit";
@@ -173,6 +174,12 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
 
   const runsCol = useChildCollection<HeroJourneyRun>(childProfile.id, "heroRuns");
   const runs = runsCol.items;
+  // G2 (22 Sep 2026): every story read with a hero is a comic. Page keys are
+  // collected as the child turns pages (cover = 0, beats = 1..N); a complete
+  // set is saved as a book on the child's shelf when the story finishes.
+  const savedComicsCol = useChildCollection<SavedComicMeta>(childProfile.id, "savedComics");
+  const comicPageKeys = useRef<Map<number, string>>(new Map());
+  const [comicSaved, setComicSaved] = useState(false);
   const photoUrl = (childProfile as unknown as { photoUrl?: string }).photoUrl;
   // AVA-3: use a generated stylized character (a data-URL avatar) as the story hero —
   // never a raw face photo or a remote URL — so scenes stay consistent and privacy-safe.
@@ -295,6 +302,51 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
     setSceneIndex((i) => Math.min(scenes.length - 1, i + 1));
   };
 
+  // G2: the cover page (index 0) is drawn once per story start; the queue
+  // (sceneCache MAX_CONCURRENT) keeps it behind the first beat's page.
+  useEffect(() => {
+    comicPageKeys.current = new Map();
+    setComicSaved(false);
+    if (!activeStory || !render || !heroAvatarUrl) return;
+    let active = true;
+    const title = render.title || activeStory.title;
+    generateJourneyPage({
+      storyId: activeStory.id,
+      lang: aiLang,
+      heroName: childProfile.name?.split(" ")[0] ?? "",
+      heroDataUrl: heroAvatarUrl,
+      style: heroAvatarStyle,
+      childId: childProfile.id,
+      childIdentity: childProfile.id,
+      pageIndex: 0,
+      cover: true,
+      title,
+      theme: `${title} — ${activeStory.theme}`,
+      sfx: [],
+    })
+      .then(({ key }) => { if (active) comicPageKeys.current.set(0, key); })
+      .catch(() => { /* a missing cover only means no shelf entry this time */ });
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeStory?.id, heroAvatarUrl, aiLang]);
+
+  const saveStoryAsComic = async () => {
+    if (!activeStory || !render || !heroAvatarUrl) return;
+    const expected = 1 + scenes.filter((scene) => scene.imagePrompt).length;
+    const keys = [...comicPageKeys.current.entries()].sort((a, b) => a[0] - b[0]).map(([, key]) => key);
+    if (keys.length !== expected) return; // incomplete art → no shelf entry (never a book that cannot open)
+    await savedComicsCol.upsert(toSavedComicMeta({
+      id: activeStory.id,
+      adventureId: activeStory.id,
+      title: render.title || activeStory.title,
+      lang: aiLang,
+      pageUrls: [],
+      createdAt: new Date().toISOString(),
+      pageKeys: keys,
+    }));
+    setComicSaved(true);
+  };
+
   const finishJourney = async () => {
     if (!activeStory || !render || finishingRef.current) return;
     finishingRef.current = true;
@@ -313,6 +365,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
     };
     try {
       await runsCol.upsert(run);
+      await saveStoryAsComic().catch(() => { /* the story itself is saved; the shelf entry is best-effort */ });
       // N1-01-R5: a finished story is one completed kid activity. A COUNT — the
       // story, its title and the child's choice never leave this function.
       // A no-op outside Kid Mode.
@@ -530,7 +583,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
 
         {/* G1 hero-first (22 Sep 2026): a child without a generated hero gets one
             parent-side step here, never a story starring the raw photo. */}
-        {!kidMode && !childProfile.avatar ? (
+        {!kidMode && (!childProfile.avatar ? (
           <PlayPanel tone="lav" className="text-center mb-4" data-testid="hero-first-gate">
             <p className="text-[1.15rem] font-extrabold mb-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
               {he ? `קודם כול, צרו את הגיבור של ${isolate(heroName)}` : `First, create ${isolate(heroName)}'s hero`}
@@ -544,7 +597,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
               <Icon name="auto_awesome" size={16} /> {he ? `צרו את הגיבור של ${isolate(heroName)}` : `Create ${isolate(heroName)}'s hero`}
             </PlayButton>
           </PlayPanel>
-        ) : null}
+        ) : null)}
         {/* STORY WORLDS — each card is an illustrated world starring the hero */}
         <div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mb-3">
@@ -832,7 +885,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
 
         {/* G1 hero-first (22 Sep 2026): a child without a generated hero gets one
             parent-side step here, never a story starring the raw photo. */}
-        {!kidMode && !childProfile.avatar ? (
+        {!kidMode && (!childProfile.avatar ? (
           <PlayPanel tone="lav" className="text-center mb-4" data-testid="hero-first-gate">
             <p className="text-[1.15rem] font-extrabold mb-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
               {he ? `קודם כול, צרו את הגיבור של ${isolate(heroName)}` : `First, create ${isolate(heroName)}'s hero`}
@@ -846,7 +899,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
               <Icon name="auto_awesome" size={16} /> {he ? `צרו את הגיבור של ${isolate(heroName)}` : `Create ${isolate(heroName)}'s hero`}
             </PlayButton>
           </PlayPanel>
-        ) : null}
+        ) : null)}
         {/* STORY WORLDS — each card is an illustrated world starring the hero */}
         <div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mb-3">
@@ -1052,6 +1105,8 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
           heroAvatarStyle={heroAvatarStyle}
           heroName={childProfile.name?.split(" ")[0]}
           childIdentity={childProfile.id}
+          childId={childProfile.id}
+          onPageResolved={({ beatNumber, key }) => comicPageKeys.current.set(beatNumber, key)}
           immersive={immersiveMode}
           fallbackArtUrl={STORY_ART[activeStory.id]?.src}
         />
@@ -1066,6 +1121,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
             <div className="rounded-2xl p-4 space-y-3 text-center" style={{ background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.25)" }}>
               <p className="font-black" style={{ color: "var(--arbor-green-ink)" }}>{kidsStoriesText("journey.childEndingTitle", aiLang)}</p>
               <p className="text-sm" style={{ color: "var(--arbor-ink-soft)" }}>{kidsStoriesText("journey.childEndingBody", aiLang)}</p>
+              {comicSaved && <p className="text-sm font-black" style={{ color: "var(--arbor-green-ink)" }} data-testid="journey-comic-saved">{kidsStoriesText("journey.comicSaved", aiLang)}</p>}
               {render.reflection.questions[0] && (
                 <button
                   type="button"

@@ -195,6 +195,7 @@ describe("AIX-S5 — firewall condition: device-local ONLY (no network reads the
       "lib/comicPageStore.ts",
       "lib/comicPageStore.test.ts",
       "lib/comicShelfDurability.test.ts",
+      "lib/heroComics.journey.test.ts",
       "lib/heroComics.identity.test.ts",
       "lib/heroComics.ts", // read/write-through for page art
       "lib/childData.ts", // GDPR erase purge

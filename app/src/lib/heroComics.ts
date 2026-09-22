@@ -134,7 +134,19 @@ export const ADVENTURES: Adventure[] = HERO_STORIES.filter((s) => STORY_COMIC[s.
   copy: STORY_COMIC[s.id],
 }));
 
-export const getAdventure = (id: string): Adventure | undefined => ADVENTURES.find((a) => a.id === id);
+/** G2 (22 Sep 2026): every catalog story can be a saved comic, even without
+ *  authored viral copy — the story's own theme drives the art, no speech
+ *  bubble, generic SFX. Used for journey books on the child shelf. */
+export const journeyAdventure = (id: string): Adventure | undefined => {
+  const story = getStorySpec(id);
+  if (!story) return undefined;
+  return {
+    id: story.id, title: story.title, titleHe: story.titleHe, pack: story.pack,
+    copy: { theme: story.theme, themeHe: story.themeHe ?? story.theme, dialogue: "", dialogueHe: "", sfx: ["WHOOSH!", "TA-DA!"], sfxHe: ["ואוש!", "טה-דה!"] },
+  };
+};
+
+export const getAdventure = (id: string): Adventure | undefined => ADVENTURES.find((a) => a.id === id) ?? journeyAdventure(id);
 
 export const adventureTitle = (a: Adventure, lang: ComicLang): string => (lang === "he" ? a.titleHe : a.title);
 
@@ -534,9 +546,33 @@ export async function generatePage(args: GeneratePageArgs): Promise<string> {
     promptIdentity: JSON.stringify({ theme, dialogue: dialogue ?? null, sfx, cover: page.cover }),
   });
   page.cacheKey = key;
+  return resolveComicPage({
+    key, childId, pageEpoch,
+    request: () => api
+      .generateComic({
+        ...(heroDataUrl ? { avatar: { dataUrl: heroDataUrl } } : {}),
+        heroName,
+        theme,
+        ...(page.cover ? { cover: true, title: adventureTitle(adventure, lang) } : { dialogue }),
+        sfx,
+        style,
+        pageIndex: page.index,
+      })
+      .then((r) => r.dataUrl),
+  });
+}
 
-  // AIX-S5 read-through: memory cache, then the device-local IndexedDB store —
-  // a persisted page never re-pays a /generate-comic call.
+/** The shared page pipeline: memory cache → device-local IndexedDB (AIX-S5
+ *  read-through) → one deduped, throttled provider call (S3) → write-through.
+ *  A persisted page never re-pays /generate-comic; erased-child jobs never
+ *  leave the device (epoch rechecked at every await). */
+async function resolveComicPage(args: {
+  key: string;
+  childId?: string;
+  pageEpoch?: ComicPageEpoch;
+  request: () => Promise<string>;
+}): Promise<string> {
+  const { key, childId, pageEpoch, request } = args;
   const memHit = getScene(key);
   if (memHit !== undefined) {
     requireCurrentEpoch(pageEpoch);
@@ -550,29 +586,73 @@ export async function generatePage(args: GeneratePageArgs): Promise<string> {
       return persisted;
     }
   }
-
-  // S3: persist generated pages (and dedupe concurrent identical requests) via
-  // the shared scene cache, so re-opening a book never re-pays generation.
   const url = await resolveScene(key, () => {
     // The scene-cache throttle may hold this work in its queue. Recheck at the
     // instant the provider call starts so erased-child jobs never leave device.
     requireCurrentEpoch(pageEpoch);
-    return api
-      .generateComic({
-        ...(heroDataUrl ? { avatar: { dataUrl: heroDataUrl } } : {}),
-        heroName,
-        theme,
-        ...(page.cover ? { cover: true } : { dialogue }),
-        sfx,
-        style,
-        pageIndex: page.index,
-      })
-      .then((r) => r.dataUrl);
+    return request();
   });
   requireCurrentEpoch(pageEpoch);
-  // AIX-S5 write-through (device-local only; never uploaded/synced).
   if (childId) void putComicPage(childId, key, url, pageEpoch);
   return url;
+}
+
+/** G2 (22 Sep 2026): one page of a Hero Story read as a comic — the cover
+ *  (pageIndex 0) or one beat. Same pipeline and device store as book pages,
+ *  keyed as a `journey` request so it never collides with parent-built books. */
+export interface JourneyPageArgs {
+  storyId: string;
+  lang: ComicLang;
+  heroName: string;
+  heroDataUrl: string;
+  style: AvatarStyle;
+  childId?: string;
+  childIdentity: string;
+  /** 0 = cover, 1..N = beat number. */
+  pageIndex: number;
+  cover?: boolean;
+  theme: string;
+  dialogue?: string;
+  sfx?: string[];
+  /** Cover pages letter this title. */
+  title?: string;
+  lifetimeEpoch?: ComicPageEpoch;
+}
+
+export function journeyPageKey(a: JourneyPageArgs): string {
+  return comicGenerationKey({
+    avatarOrHash: a.heroDataUrl,
+    adventureId: a.storyId,
+    lang: a.lang,
+    pageIndex: a.pageIndex,
+    requestKind: "journey",
+    style: a.style,
+    childIdentity: a.childIdentity,
+    heroName: a.heroName,
+    promptIdentity: JSON.stringify({ theme: a.theme, dialogue: a.dialogue ?? null, sfx: a.sfx ?? [], cover: !!a.cover }),
+  });
+}
+
+export async function generateJourneyPage(a: JourneyPageArgs): Promise<{ key: string; url: string }> {
+  const epoch = a.lifetimeEpoch ?? (a.childId ? captureComicPageEpoch(a.childId) : undefined);
+  if (epoch && (!a.childId || epoch.childId !== a.childId)) throw new ComicGenerationCancelledError();
+  requireCurrentEpoch(epoch);
+  const key = journeyPageKey(a);
+  const url = await resolveComicPage({
+    key, childId: a.childId, pageEpoch: epoch,
+    request: () => api
+      .generateComic({
+        avatar: { dataUrl: a.heroDataUrl },
+        heroName: a.heroName,
+        theme: a.theme,
+        ...(a.cover ? { cover: true, title: a.title } : { dialogue: a.dialogue }),
+        sfx: a.sfx,
+        style: a.style,
+        pageIndex: a.pageIndex,
+      })
+      .then((r) => r.dataUrl),
+  });
+  return { key, url };
 }
 
 /** Build a whole book by generating pages sequentially, reporting each as it

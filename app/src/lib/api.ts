@@ -411,6 +411,8 @@ export const api = {
     pageIndex?: number;
     /** p1-comic-reader: render a dramatic title cover (no speech bubble). */
     cover?: boolean;
+    /** G2: the title to letter on a cover page. */
+    title?: string;
   }) => post<{ dataUrl: string }>("/api/generate-comic", payload),
   // Generative Cognitive Adventure personalized to the child (AdventureScenario shape).
   generateAdventure: (payload: { childProfile: ChildProfile; focusSkill?: string }) =>

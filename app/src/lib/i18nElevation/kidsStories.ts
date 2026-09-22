@@ -4,7 +4,8 @@ export type KidsStoriesKey =
   | "reader.page" | "reader.end" | "reader.endBody" | "reader.again" | "reader.back" | "reader.previous"
   | "journey.beat" | "journey.decision" | "journey.back" | "journey.next" | "journey.end"
   | "journey.childEndingTitle" | "journey.childEndingBody" | "journey.childReflection"
-  | "journey.finish" | "journey.saved" | "journey.backStories";
+  | "journey.finish" | "journey.saved" | "journey.backStories"
+  | "journey.comicSaved" | "page.smudged" | "page.redraw" | "page.drawing";
 
 const EN: Record<KidsStoriesKey, string> = {
   "shelf.title": "Hero Comics",
@@ -33,6 +34,10 @@ const EN: Record<KidsStoriesKey, string> = {
   "journey.finish": "Finish story",
   "journey.saved": "Story saved",
   "journey.backStories": "Back to stories",
+  "journey.comicSaved": "Your comic is on your shelf",
+  "page.smudged": "This page got a bit smudged.",
+  "page.redraw": "Redraw page",
+  "page.drawing": "Drawing the next page…",
 };
 
 const HE: Record<KidsStoriesKey, string> = {
@@ -62,7 +67,15 @@ const HE: Record<KidsStoriesKey, string> = {
   "journey.finish": "לסיים את הסיפור",
   "journey.saved": "הסיפור נשמר",
   "journey.backStories": "חזרה לסיפורים",
+  "journey.comicSaved": "הקומיקס שלכם על המדף",
+  "page.smudged": "העמוד הזה קצת נמרח.",
+  "page.redraw": "לצייר שוב",
+  "page.drawing": "מציירים את העמוד הבא…",
 };
+
+/** Registry shape for the dictionary firewall (i18nElevation/index.ts MODULES). */
+export const en: Record<string, string> = EN;
+export const he: Record<string, string> = HE;
 
 export function kidsStoriesText(key: KidsStoriesKey, lang: "en" | "he", vars: Record<string, string | number> = {}): string {
   return (lang === "he" ? HE[key] : EN[key]).replace(/\{(\w+)\}/g, (_, name: string) => String(vars[name] ?? ""));

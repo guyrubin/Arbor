@@ -5,9 +5,8 @@ import { StoryIllustration } from "./StoryIllustration";
 import { ComicPage } from "../ui/playkit";
 import { SpeakButton } from "../ui/SpeakButton";
 import { stopSpeaking } from "../../lib/tts";
-import { api, type AvatarStyle } from "../../lib/api";
-import { comicGenerationKey } from "../../lib/heroComics";
-import { getScene, resolveScene } from "../../lib/sceneCache";
+import type { AvatarStyle } from "../../lib/api";
+import { generateJourneyPage, journeyPageKey, type JourneyPageArgs } from "../../lib/heroComics";
 import { runInstrumented } from "../../hooks/useAsyncAction";
 import { ProvenanceBadge } from "../ui/ProvenanceBadge";
 import { useLanguage } from "../../context/LanguageContext";
@@ -41,6 +40,8 @@ export function HeroScenePlayer({
   childIdentity,
   immersive = false,
   fallbackArtUrl,
+  childId,
+  onPageResolved,
 }: {
   scene: HeroSceneRender;
   seed: string;
@@ -56,28 +57,36 @@ export function HeroScenePlayer({
   immersive?: boolean;
   /** Authored local environment art; contains no child and never triggers generation. */
   fallbackArtUrl?: string;
+  /** G2: enables the device-local page store so the story re-opens with its art. */
+  childId?: string;
+  /** G2: reports each resolved page key so the story can be saved as a book. */
+  onPageResolved?: (page: { beatNumber: number; key: string }) => void;
 }) {
   const [resolvedArt, setResolvedArt] = useState<{ key: string; url: string } | undefined>();
   const [artLoading, setArtLoading] = useState(false);
+  // G2: a failed page stays a framed comic page with narration and a Redraw
+  // control — never a silent swap back to generic art. `retryTick` re-arms
+  // the effect; the scene cache never stores failures, so a retry regenerates.
+  const [artError, setArtError] = useState(false);
+  const [retryTick, setRetryTick] = useState(0);
   const { uiLang, aiLang, t } = useLanguage();
   const effectiveStyle = heroAvatarStyle ?? "comichero";
-  const artRequestKey = heroAvatarUrl && scene.imagePrompt
-    ? comicGenerationKey({
-        avatarOrHash: heroAvatarUrl,
-        adventureId: seed,
+  const pageArgs: JourneyPageArgs | undefined = heroAvatarUrl && scene.imagePrompt
+    ? {
+        storyId: seed,
         lang: aiLang,
-        pageIndex: beatNumber,
-         requestKind: "journey",
-         style: effectiveStyle,
+        heroName: heroName ?? "",
+        heroDataUrl: heroAvatarUrl,
+        style: effectiveStyle,
+        childId,
         childIdentity: childIdentity ?? heroName ?? seed,
-         heroName: heroName ?? "",
-         promptIdentity: JSON.stringify({
-           theme: scene.imagePrompt,
-           dialogue: scene.dialogue ?? null,
-           sfx: scene.sfx ?? [],
-         }),
-       })
+        pageIndex: beatNumber,
+        theme: scene.imagePrompt,
+        dialogue: scene.dialogue,
+        sfx: scene.sfx ?? [],
+      }
     : undefined;
+  const artRequestKey = pageArgs ? journeyPageKey(pageArgs) : undefined;
   const sceneArt = resolvedArt && resolvedArt.key === artRequestKey ? resolvedArt.url : undefined;
 
   // Stop speech whenever the scene changes or the card unmounts.
@@ -92,42 +101,30 @@ export function HeroScenePlayer({
   // short speech bubble. The narration below stays as the storyteller caption.
   useEffect(() => {
     setResolvedArt(undefined);
-    if (!heroAvatarUrl || !scene.imagePrompt || !artRequestKey) {
+    setArtError(false);
+    if (!pageArgs || !artRequestKey) {
       setArtLoading(false);
       return;
     }
-    // Shared key format (comicKey) so Story-Journey beats and Comic Reader pages
-    // reuse the same cached art; `seed` already encodes story+beat+child, and
-    // aiLang (=== ComicLang) keys Hebrew beats to the Hebrew reader cache.
-    const key = artRequestKey;
-    const cached = getScene(key);
-    if (cached) { setResolvedArt({ key, url: cached }); setArtLoading(false); return; }
-
     let active = true;
     setArtLoading(true);
-    // M4: scene art is generated lazily and degrades gracefully (the catch below
-    // keeps the fallback illustration). runInstrumented adds start/success/error
-    // analytics ("scene_art_*") so silent generation failures are observable.
-    // resolveScene dedupes concurrent identical requests and throttles to
-    // MAX_CONCURRENT parallel generations (cost guard).
-    resolveScene(key, () =>
-      runInstrumented("scene_art", () =>
-        api.generateComic({
-          avatar: { dataUrl: heroAvatarUrl },
-          heroName,
-          theme: scene.imagePrompt,
-          sfx: scene.sfx,
-          // the hero's own short line for this beat → comic speech bubble
-          dialogue: scene.dialogue,
-          style: effectiveStyle,
-        }),
-      ).then((r) => r.dataUrl),
-    )
-      .then((url) => { if (active) setResolvedArt({ key, url }); })
-      .catch(() => { /* graceful: keep the fallback illustration */ })
+    // G2: one page per beat through the shared comic pipeline — memory cache,
+    // then the child's device store, then ONE deduped, throttled provider call
+    // (cost guard: sceneCache MAX_CONCURRENT), written back to the device store
+    // so the same story re-opens with its art. runInstrumented adds
+    // start/success/error analytics ("scene_art_*").
+    const key = artRequestKey;
+    runInstrumented("scene_art", () => generateJourneyPage(pageArgs))
+      .then(({ url }) => {
+        if (!active) return;
+        setResolvedArt({ key, url });
+        onPageResolved?.({ beatNumber, key });
+      })
+      .catch(() => { if (active) setArtError(true); })
       .finally(() => { if (active) setArtLoading(false); });
     return () => { active = false; };
-  }, [artRequestKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [artRequestKey, retryTick]);
 
   // AP-050: routes through the shared HeroAvatarCanvas module ("story" template)
   // so the scene save is tracked through one compositing path. Output is
@@ -160,9 +157,10 @@ export function HeroScenePlayer({
         )}
       </div>
 
-      {(sceneArt || artLoading) ? (
+      {(sceneArt || artLoading || artError) ? (
         // The comic panel — full-width, bold comic-book frame, turning like a page
         // each beat. Shared ComicPage primitive (page-flip + reduced-motion fade).
+        // A smudged page keeps the frame, the narration below and a Redraw control.
         <AnimatePresence mode="wait">
           <ComicPage
             key={scene.beatId}
@@ -170,8 +168,14 @@ export function HeroScenePlayer({
             alt={`Page ${beatNumber}: ${scene.title}`}
             pageNumber={beatNumber}
             loading={!sceneArt && artLoading}
+            error={!sceneArt && !artLoading && artError}
+            rtl={uiLang === "he"}
             contentFit="contain"
-            onImageError={() => setResolvedArt(undefined)}
+            onImageError={() => { setResolvedArt(undefined); setArtError(true); }}
+            onRetry={() => { setArtError(false); setRetryTick((n) => n + 1); }}
+            errorLabel={kidsStoriesText("page.smudged", aiLang)}
+            retryLabel={kidsStoriesText("page.redraw", aiLang)}
+            loadingLabel={kidsStoriesText("page.drawing", aiLang)}
           />
         </AnimatePresence>
       ) : (
