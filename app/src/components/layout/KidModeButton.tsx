@@ -1,6 +1,11 @@
+import { useState } from "react";
 import { Icon } from "../ui/Icon";
 import { useKidMode } from "../kidmode/KidModeContext";
 import { useLanguage } from "../../context/LanguageContext";
+import { useArborOptional } from "../../context/ArborContext";
+import { resolveHeroUrl } from "../ui/HeroAvatar";
+import HeroFirstStep from "../kidmode/HeroFirstStep";
+import { markHeroStepOffered, shouldOfferHeroStep } from "../kidmode/heroPromptGate";
 
 /**
  * The single affordance to hand the device to the child (enter Kid Mode).
@@ -16,14 +21,45 @@ import { useLanguage } from "../../context/LanguageContext";
 export default function KidModeButton({ compact = false, onBeforeOpen }: { compact?: boolean; onBeforeOpen?: () => void }) {
   const { openKidMode } = useKidMode();
   const { t } = useLanguage();
+  // M4: the ONE parent-side step before hand-over. Optional context so the
+  // button stays renderable outside ArborProvider (it behaves exactly as
+  // before there — straight into Kid Mode).
+  const arbor = useArborOptional();
+  const child = arbor?.childProfile;
+  const [stepOpen, setStepOpen] = useState(false);
 
   // E10: the parent-lock safety line — ships true because kid-mode exit is
   // gated by the parent challenge (hold → question/PIN → exit).
   const lockedLine = t("elev.kidmode.locked");
-  const handleOpen = () => { onBeforeOpen?.(); openKidMode(); };
+  const handleOpen = () => {
+    // Hero-first: a child with no hero gets their parent one step first —
+    // offered once per session per child, never a block on the child.
+    // onBeforeOpen (the mobile sheet's close) is deliberately NOT fired yet:
+    // it unmounts this button, and with it the step it is about to show.
+    if (child && shouldOfferHeroStep({ childId: child.id, hasHero: Boolean(resolveHeroUrl(child)) })) {
+      markHeroStepOffered(child.id);
+      setStepOpen(true);
+      return;
+    }
+    onBeforeOpen?.();
+    openKidMode();
+  };
+  const enterKidMode = () => { setStepOpen(false); onBeforeOpen?.(); openKidMode(); };
+  // Rendered beside the button so both the compact and the labelled pill get it.
+  const step = child ? (
+    <HeroFirstStep
+      open={stepOpen}
+      childId={child.id}
+      childName={child.name}
+      onEnterKidMode={enterKidMode}
+      onClose={() => setStepOpen(false)}
+    />
+  ) : null;
 
   if (compact) {
     return (
+      <>
+      {step}
       <button
         onClick={handleOpen}
         aria-label={`${t("aria.kidMode")} — ${lockedLine}`}
@@ -33,10 +69,13 @@ export default function KidModeButton({ compact = false, onBeforeOpen }: { compa
       >
         <Icon name="sports_esports" size={18} />
       </button>
+      </>
     );
   }
 
   return (
+    <>
+    {step}
     <button
       onClick={handleOpen}
       aria-label={`${t("aria.launchKidMode")} — ${lockedLine}`}
@@ -73,5 +112,6 @@ export default function KidModeButton({ compact = false, onBeforeOpen }: { compa
         </span>
       </span>
     </button>
+    </>
   );
 }

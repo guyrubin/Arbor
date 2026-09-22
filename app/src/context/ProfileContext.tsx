@@ -26,7 +26,10 @@ type ProfileContextValue = {
   needsOnboarding: boolean;
   setActiveChild: (id: string) => void;
   addChild: (input: NewChildInput) => Promise<ChildProfile>;
-  updateChild: (id: string, patch: Partial<ChildProfile>) => Promise<void>;
+  /** Applies the patch locally and remotely. Resolves FALSE when the remote
+   *  write failed (M4): the caller raises a parent-visible error rather than
+   *  letting a lost save look like a saved one. */
+  updateChild: (id: string, patch: Partial<ChildProfile>) => Promise<boolean>;
   /** Permanently delete a child and all of their data (GDPR/COPPA). Returns a
    *  provable deletion receipt from the server when available. */
   deleteChild: (id: string) => Promise<DeletionReceipt | null>;
@@ -206,15 +209,20 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   );
 
   const updateChild = useCallback(
-    async (id: string, patch: Partial<ChildProfile>) => {
+    async (id: string, patch: Partial<ChildProfile>): Promise<boolean> => {
+      let persisted = true;
       if (useFirestore && db) {
         try {
           await updateDoc(doc(db, profilesPath, id), patch as Record<string, unknown>);
         } catch {
-          /* fall through to local state update */
+          // M4 write honesty: the local state update still happens (the parent
+          // keeps editing what they can see), but the failure is REPORTED —
+          // a swallowed write made a lost hero look saved until the next load.
+          persisted = false;
         }
       }
       setProfiles((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+      return persisted;
     },
     [useFirestore, profilesPath]
   );

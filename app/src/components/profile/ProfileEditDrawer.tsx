@@ -194,7 +194,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
       // (birthDate is the field every months-precise consumer prefers). An
       // unchanged age keeps the stored fields untouched.
       const agePatch = ageMonths !== (ageMonthsFromProfile(activeChild) ?? 0) ? agePatchFromMonths(ageMonths) : {};
-      await updateChild(activeChild.id, {
+      const persisted = await updateChild(activeChild.id, {
         name: name.trim() || activeChild.name,
         ...agePatch,
         schoolContext,
@@ -214,6 +214,13 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
         interests: activeInterests.map(sanitizeInterestToken).filter(Boolean),
         interestsUpdatedAt: new Date().toISOString(),
       });
+      // M4 write honesty: a failed child-doc write used to be swallowed — the
+      // drawer closed and the parent believed the hero (and every other edit)
+      // was saved. The drawer now stays open with the error in view.
+      if (!persisted) {
+        toast(t("elev.hero.saveProfile.failed"), "error");
+        return;
+      }
       onClose();
     } finally {
       setSaving(false);
