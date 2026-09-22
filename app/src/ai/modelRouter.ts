@@ -1,5 +1,6 @@
 import { GoogleGenAI, type Schema } from "@google/genai";
 import type { ArborConfig } from "../config/env.js";
+import { withDefaultModelDeadlines } from "./modelDeadlines.js";
 import { ClaudeVertexProvider } from "./claudeVertexProvider.js";
 import { abortableIterate, raceWithAbort, withModelRetry, type ModelCallBudget } from "./modelRetry.js";
 import { recordUsage, startCallTimer } from "./usage.js";
@@ -185,7 +186,7 @@ export const structuredTextCandidateFor = (config: ArborConfig, route: ModelRout
   }
   return {
     ref: {
-      provider: route === "coach_high_stakes" ? "vertex_claude" : "vertex_gemini",
+      provider: /^claude-/i.test(modelIdForRoute(config, route)) ? "vertex_claude" : "vertex_gemini",
       model: modelIdForRoute(config, route),
       region: providerRegion(config.vertexLocation)
     },
@@ -480,15 +481,9 @@ export class VertexGeminiProvider {
 export class VertexModelProvider implements ModelProvider {
   private readonly claude: ClaudeVertexProvider;
   private readonly gemini: VertexGeminiProvider;
-  /** AI-Studio Gemini for IMAGES only: same model (gemini-2.5-flash-image) but a
-   *  separate quota pool from Vertex, which 429s under arcade/story load. Active
-   *  only when GEMINI_API_KEY is set; otherwise images stay on Vertex. */
-  private readonly genaiImages: GeminiDevProvider | null;
-
   constructor(private readonly config: ArborConfig) {
     this.claude = new ClaudeVertexProvider(config);
     this.gemini = new VertexGeminiProvider(config);
-    this.genaiImages = config.geminiApiKey ? new GeminiDevProvider(config) : null;
   }
 
   routeDecision(route: ModelRoute) {
@@ -505,10 +500,9 @@ export class VertexModelProvider implements ModelProvider {
   }
 
   generateImage(options: GenerateImageOptions) {
-    // Image generation always uses the Gemini image model (Claude can't render
-    // images). Prefer the AI-Studio path (separate quota) when a key is set,
-    // else Vertex (which 429s under load).
-    return (this.genaiImages ?? this.gemini).generateImage(options);
+    // A Live API key must not silently move images to another quota pool or
+    // global endpoint. Respect MODEL_PROVIDER=vertex for image generation too.
+    return this.gemini.generateImage(options);
   }
 
   generateJsonStream(options: GenerateJsonOptions) {
@@ -522,6 +516,5 @@ export class VertexModelProvider implements ModelProvider {
 }
 
 export const createModelProvider = (config: ArborConfig): ModelProvider => {
-  if (config.modelProvider === "vertex") return new VertexModelProvider(config);
-  return new GeminiDevProvider(config);
+  return withDefaultModelDeadlines(config.modelProvider === "vertex" ? new VertexModelProvider(config) : new GeminiDevProvider(config));
 };

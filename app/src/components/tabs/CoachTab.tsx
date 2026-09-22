@@ -44,6 +44,8 @@ import { createVoiceLifetime, type VoiceAttempt } from "../../lib/voiceLifetime"
 // AI-V7: the calm bottom-sheet voice surface (orb + live captions), owned by
 // voicePhase !== "off". The chip below stays the ONLY entry point.
 import VoiceOverlay from "../coach/VoiceOverlay";
+import MicrophoneNotice from "../ui/MicrophoneNotice";
+import { microphoneRecovery } from "../../lib/microphoneRecovery";
 import ConversationProposalTray from "../coach/ConversationProposalTray";
 // ENG-10 / ENG-11: the JITAI cue, rendered where the parent already is and
 // instrumented — and in the evening it is the Bedtime Stories door.
@@ -343,6 +345,7 @@ export default function CoachTab() {
   // prompt / socket connect window is never a silent 10s+ hole.
   const [voicePhase, setVoicePhase] = useState<"off" | "connecting" | "listening" | "thinking" | "speaking">("off");
   const [liveAvail, setLiveAvail] = useState(false);
+  const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
   // AI-V7: live caption of the PARENT'S OWN words while they speak (interim
   // browser-STT partials / Live input transcription — never model output).
   const [voiceInterim, setVoiceInterim] = useState("");
@@ -353,6 +356,9 @@ export default function CoachTab() {
   const liveCtlRef = useRef<null | { stop: () => void }>(null);
   const voiceOnRef = useRef(false);
   const voiceLifetimeRef = useRef(createVoiceLifetime());
+  // Long-lived recognition callbacks need the settled thread from this render.
+  const voiceMessagesRef = useRef(chatMessages);
+  voiceMessagesRef.current = chatMessages;
   const dictationLoopRef = useRef<DictationLoop | null>(null);
   // Streaming-voice TTS queue (speak each sentence as it streams in).
   const ttsQueueRef = useRef<string[]>([]);
@@ -464,7 +470,7 @@ export default function CoachTab() {
           // at a coach with no memory of the previous turn. The server also
           // grounds it in approved memory + source cards (routes/api /voice),
           // which is what the data-contract panel above the mic promises.
-          ...buildVoiceContext(chatMessages),
+          ...buildVoiceContext(voiceMessagesRef.current, childProfile.id),
         },
         (delta) => {
           if (!ownsTurn()) return;
@@ -532,7 +538,7 @@ export default function CoachTab() {
   const startListening = () => {
     const attempt = voiceLifetimeRef.current.current;
     if (!attempt?.isCurrent() || !voiceOnRef.current) return;
-    if (!speechSupported()) { toast(t("coach.toast.voiceUnsupported"), "info"); voiceOnRef.current = false; setVoicePhase("off"); return; }
+    if (!speechSupported()) { setVoiceNotice(microphoneRecovery("unsupported", uiLang)); voiceOnRef.current = false; setVoicePhase("off"); return; }
     setVoicePhase("listening");
     // AI-V3: the dictation loop owns recognition restarts — recoverable errors
     // ('no-speech', transient network) restart with backoff behind a max-retry
@@ -541,7 +547,7 @@ export default function CoachTab() {
     // shown while the loop is actually cycling.
     dictationLoopRef.current?.stop();
     const loop = createDictationLoop({
-      start: startDictation,
+      start: (handlers, lang) => startDictation(handlers, lang, { maxEmptyRestarts: 0 }),
       lang: aiLang === "he" ? "he-IL" : "en-US",
       isActive: () => attempt.isCurrent() && voiceOnRef.current,
       // AI-V7: surface interim partials as the overlay's live caption of the
@@ -561,14 +567,7 @@ export default function CoachTab() {
       onFatal: (reason) => {
         if (!attempt.isCurrent()) return;
         stopVoice();
-        toast(
-          reason === "permission"
-            ? t("coach.toast.micPermission")
-            : reason === "retry-exhausted"
-              ? t("coach.toast.micRetryStopped")
-              : t("coach.toast.voiceUnsupported"),
-          "info",
-        );
+        setVoiceNotice(microphoneRecovery(reason, uiLang));
       },
     });
     dictationLoopRef.current = loop;
@@ -585,6 +584,7 @@ export default function CoachTab() {
 
   const stopVoice = () => {
     voiceLifetimeRef.current.cancel();
+    setVoiceNotice(null);
     voiceOnRef.current = false;
     streamDoneRef.current = false;
     ttsQueueRef.current = [];
@@ -632,6 +632,7 @@ export default function CoachTab() {
     if (action === "interrupt" && voiceOnRef.current) { bargeInVoice(); return; }
     if (action !== "start") { stopVoice(); return; }
     if (voiceOnRef.current || liveCtlRef.current) stopVoice();
+    setVoiceNotice(null);
     // Paint before the token/import/mic/socket awaits; X owns cancellation
     // throughout startup, including before a LiveController exists.
     setVoicePhase("connecting");
@@ -640,7 +641,7 @@ export default function CoachTab() {
 
     if (liveAvail) {
       try {
-        const fresh = await api.liveToken({ language: getAiLanguage(), childId: childProfile.id });
+        const fresh = await api.liveToken({ language: getAiLanguage(), childId: childProfile.id, childProfile, ...buildVoiceContext(voiceMessagesRef.current, childProfile.id) }, { signal: attempt.signal });
         if (!attempt.isCurrent()) return;
         if (fresh.available && fresh.token && fresh.model) {
           const { startGeminiLive } = await import("../../lib/geminiLiveClient");
@@ -676,12 +677,13 @@ export default function CoachTab() {
                 setVoiceInterim("");
                 finalizeVoiceAiTurn();
                 setVoicePhase("off");
+                setVoiceNotice(microphoneRecovery("connection", uiLang));
               },
               onError: () => {
                 if (!attempt.isCurrent()) return;
                 attempt.end();
                 clearLiveRefs();
-                toast(t("coach.toast.voiceFallback"), "info");
+                setVoiceNotice(t("coach.toast.voiceFallback"));
                 startBrowserVoice();
               },
               screenTurn: async (role, text) => {
@@ -732,7 +734,7 @@ export default function CoachTab() {
                 if (!attempt.isCurrent()) return;
                 attempt.end();
                 clearLiveRefs();
-                toast(t("coach.toast.voiceStandardMode"), "info");
+                setVoiceNotice(t("coach.toast.voiceStandardMode"));
                 startBrowserVoice();
               },
             },
@@ -766,8 +768,14 @@ export default function CoachTab() {
           setAiFailure(classifyAiFailure(err, { online, childName: childFirst, retryAfterSeconds: err.retryAfterSeconds }));
           return;
         }
+        if (err instanceof Error && ["NotAllowedError", "SecurityError", "NotFoundError", "NotReadableError"].includes(err.name)) {
+          attempt.end();
+          setVoicePhase("off");
+          setVoiceNotice(microphoneRecovery(err.name, uiLang));
+          return;
+        }
         console.warn("Live voice start failed — falling back to browser voice", err);
-        toast(t("coach.toast.voiceFallback"), "info");
+        setVoiceNotice(t("coach.toast.voiceFallback"));
       }
     }
     if (!attempt.isCurrent()) return;
@@ -893,6 +901,7 @@ export default function CoachTab() {
                 Always visible on the Ask surface, never behind a toggle. */}
             <span className="ms-auto inline-flex items-center gap-1 text-[10px]" style={{ color: "var(--arbor-muted)" }}><Icon name="shield" size={13} /> {t("coach.aiDisclosure")}</span>
           </div>
+          {voiceNotice && voicePhase === "off" && <MicrophoneNotice message={voiceNotice} lang={uiLang} onRetry={() => void toggleVoice()} onDismiss={() => setVoiceNotice(null)} />}
         </section>
   );
 
@@ -1682,6 +1691,7 @@ export default function CoachTab() {
       {voicePhase !== "off" && (
         <VoiceOverlay
           phase={voicePhase}
+          notice={voiceNotice}
           lang={uiLang}
           interimText={voiceInterim}
           answerText={liveVoiceText}

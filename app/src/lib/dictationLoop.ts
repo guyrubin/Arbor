@@ -32,7 +32,7 @@ type DictationHandlers = {
 
 export type StartDictationFn = (handlers: DictationHandlers, lang?: string) => () => void;
 
-export type DictationFatalReason = "permission" | "unsupported" | "retry-exhausted";
+export type DictationFatalReason = "permission" | "unsupported" | "retry-exhausted" | "audio-capture" | "network";
 
 export type DictationLoopOptions = {
   /** The recognition seam — lib/speech.startDictation in production. */
@@ -62,6 +62,7 @@ const FATAL_BY_ERROR: Record<string, DictationFatalReason> = {
   "not-allowed": "permission",
   "service-not-allowed": "permission",
   unsupported: "unsupported",
+  "audio-capture": "audio-capture",
 };
 
 const MAX_BACKOFF_MS = 2000;
@@ -74,6 +75,7 @@ export function createDictationLoop(opts: DictationLoopOptions): DictationLoop {
   let timer: ReturnType<typeof setTimeout> | null = null;
   let restarts = 0;
   let stopped = false;
+  let lastError = "";
 
   const clearTimer = () => {
     if (timer) {
@@ -87,7 +89,7 @@ export function createDictationLoop(opts: DictationLoopOptions): DictationLoop {
     restarts += 1;
     if (restarts > maxRestarts) {
       stopped = true;
-      opts.onFatal("retry-exhausted");
+      opts.onFatal(lastError === "network" ? "network" : "retry-exhausted");
       return;
     }
     const delay = Math.min(baseBackoffMs * 2 ** (restarts - 1), MAX_BACKOFF_MS);
@@ -118,6 +120,7 @@ export function createDictationLoop(opts: DictationLoopOptions): DictationLoop {
         onError: (err) => {
           if (settled || stopped) return;
           settled = true;
+          lastError = err;
           const fatal = FATAL_BY_ERROR[err];
           if (fatal) {
             stopped = true;

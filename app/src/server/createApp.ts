@@ -202,6 +202,8 @@ export const createApp = (config: ArborConfig) => {
       "/api/vision",
       "/api/generate-plan",
       "/api/generate-story",
+      "/api/generate-bedtime-story",
+      "/api/conversation/proposals",
       "/api/generate-adventure",
       "/api/generate-hero-journey",
       "/api/analyze-behavior",

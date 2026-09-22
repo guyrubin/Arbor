@@ -3,14 +3,15 @@ import { createHash } from "node:crypto";
 import type { ArborConfig } from "../config/env.js";
 import { normalizeAvatarStyle } from "../lib/avatarStyle.js";
 import { isAbortError, newAbortError, type ModelCallBudget, type ModelProvider } from "../ai/modelRouter.js";
-import { abortableIterate, raceWithAbort } from "../ai/modelRetry.js";
+import { abortableIterate, raceWithAbort, isTransientModelError } from "../ai/modelRetry.js";
 import type { MemoryStore } from "../memory/types.js";
 import { createCoachResponseGeminiSchema, coachResponseZodSchema, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards } from "../contracts/coach.js";
-import { PROMPT_VERSIONS, buildChatPrompt, buildCouncilSynthesisPrompt, buildExtractLogPrompt, buildVoiceReplyPrompt, promptProfile } from "../ai/prompts.js";
+import { PROMPT_VERSIONS, buildChatPrompt, buildCouncilSynthesisPrompt, buildExtractLogPrompt, buildVoiceReplyPrompt, promptProfile, ROUTINE_ESCALATION_GUIDANCE } from "../ai/prompts.js";
 // Masterplan 1.3 — server-defensive sanitizers for the two OPTIONAL /chat body
 // fields (recentTurns transcript + counts-only weeklyContext). Both degrade to
 // the byte-identical legacy prompt on any malformed/absent input.
 import { sanitizeRecentTurns, sanitizeWeeklyContext } from "../ai/chatContext.js";
+import { assembleSpokenContext, liveContextWithoutNames, spokenChildId } from "../server/spokenContext.js";
 import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../services/framework.js";
 import { screenForImmediateEscalation, renderEscalationMarkdown, escalationMatchForCategory } from "../safety/escalation.js";
 import { DEFAULT_MEMORY_RETENTION, appendMemoryProposals, enforceMemoryRetention, foldMemoryEvents, getApprovedMemoryContext, getApprovedMemoryContextDetail, toChildId, toFamilyId, transitionMemory } from "../memory/memoryService.js";
@@ -24,10 +25,11 @@ import { selectCouncil, runScholarTakes, renderCouncilForSynthesis } from "../se
 import { buildGrant, isShareActive, type ShareStore } from "../sharing/shares.js";
 import { getStorySpec } from "../lib/heroJourneys.js";
 import { ARBOR_PROFESSIONALS, filterProfessionals } from "../services/professionals.js";
-import { Type } from "@google/genai";
+import { Type, Modality } from "@google/genai";
 import { createRedaction, REDACTION_DIRECTIVE, type RedactionContext } from "../server/redaction.js";
 import { runAccountDeletion, createFirestoreDeletionOps } from "../server/accountDeletion.js";
 import { screenModelOutput, screenModelOutputLexical, renderBlockedOutputMarkdown, outputClassifierEnabled, type OutputScreenVerdict } from "../safety/outputScreen.js";
+import { screenStructuredModelOutput } from "../safety/structuredOutput.js";
 import { SENTENCE_BOUNDARY_SCAN } from "../lib/sentenceStream.js";
 import { createJsonTextFieldExtractor } from "../server/jsonTextStream.js";
 import { mintTtsToken, verifyTtsToken } from "../server/ttsToken.js";
@@ -314,6 +316,24 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   const coachResponseSchema = createCoachResponseGeminiSchema(framework);
   // Per-child authorization (closes the IDOR on child-scoped reads/erasure).
   const requireOwnership = requireChildOwnership(memoryStore);
+  const sendImageFailure = (res: express.Response, error: unknown, fallback: string): void => {
+    if (isTransientModelError(error)) {
+      res.setHeader("Retry-After", "15");
+      res.status(503).json({ error: "Image creation is busy. Please try again in a moment.", retryable: true });
+      return;
+    }
+    // Provider diagnostics stay in server logs, never in parent-facing copy.
+    res.status(500).json({ error: fallback });
+  };
+  const sendScreenedJson = async (res: express.Response, payload: unknown): Promise<void> => {
+    const verdict = await screenStructuredModelOutput(modelProvider, payload);
+    if (verdict.flagged) {
+      res.status(422).json({ error: "Arbor could not safely complete this draft. Please try a different request.", outputBlocked: true, blockedCategory: verdict.category });
+      return;
+    }
+    res.json(payload);
+  };
+
 
   /**
    * AI-02: the ownership predicate behind requireOwnership, usable INSIDE a
@@ -1146,7 +1166,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   router.post("/voice", async (req, res) => {
     // AI-02: `recentTurns` joins the existing fields — the SAME sanitized
     // same-thread transcript /chat accepts (masterplan 1.3), re-capped here.
-    const { message, childProfile, scholarLens, language, recentTurns } = req.body;
+    const { message, childProfile, scholarLens, language, recentTurns, contextChildId, privateMode } = req.body;
     if (!message || typeof message !== "string") {
       res.status(400).json({ error: "A message is required" });
       return;
@@ -1175,33 +1195,33 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     const budget = createRouteBudget(res, "voice");
     try {
       const scholar = resolveScholar(scholarLens);
-      // AI-02 (grounding a spoken turn with memory + source cards + thread, as
-      // /chat does) is BUILT but NOT wired here. It changes what the model is
-      // asked on a spoken, child-adjacent surface, and the voice-loop-v1
-      // acceptance suite validated voice_reply @1.1.0 only. Shipping the
-      // grounded prompt would mean re-pinning a suite that was never re-run.
-      // Blocked on the judge key (AI-09); until then a spoken turn renders the
-      // exact validated prompt. The Ask data-contract copy must not claim
-      // otherwise for voice.
+      // The same approved facts and settled conversation can carry from typing
+      // into speech. Authorization happens before any ledger read, and every
+      // field is capped/projected by the server; no client memory is accepted.
+      const childId = spokenChildId(childProfile);
+      const canReadMemory = privateMode !== true && (!childId || await raceWithAbort(mayReadChildMemory(req, childId), budget.signal));
+      const companionContext = await raceWithAbort(assembleSpokenContext({
+        memoryStore, childProfile, recentTurns, contextChildId, privateMode,
+        canReadMemory, maxMemoryFacts: config.memoryPromptMaxFacts,
+      }), budget.signal);
       // AI-V9: persona + language directive come from the ONE shared spoken
       // persona module (lib/livePersona.ts) — byte-shared with the Live path.
       const languageDirective = spokenLanguageDirective(language);
-      const privacy = createRedaction(childProfile?.name);
+      // Withholding profile/history must not disable redaction of a name the
+      // parent includes in this request. This bounded value is used only for
+      // scrubbing/restoration; it does not authorize family context retrieval.
+      const rawChildName = typeof childProfile?.name === "string" ? childProfile.name.trim().slice(0, 80) : undefined;
+      const privacy = createRedaction(rawChildName);
       // EVAL-6: version-pinned named builder (ai/prompts.ts). The persona is
       // passed in so lib/livePersona.ts stays the only module stating
       // SPOKEN_COACH_PERSONA; spokenLanguageDirective(language) stays here too.
       const prompt = buildVoiceReplyPrompt({
         persona: SPOKEN_COACH_PERSONA,
         scholar,
-        childProfile,
+        childProfile: companionContext.profile,
+        companionContext,
         message,
         languageDirective
-        // AI-02 grounding (approvedMemory / knowledgeContext / recentTurns) is
-        // NOT wired here. Grounding changes what the model is asked on a SPOKEN
-        // child-adjacent surface, and voice-loop-v1 validated voice_reply
-        // @1.1.0 only. Re-pinning the suite without re-running it would assert
-        // a validation that never happened, so the grounded path stays unshipped
-        // until the eval can be re-run (blocked on the judge key, AI-09).
       });
 
       // SAFE-V1 + AI-V1/AIR-2: the output-safety screen (AI-2) MUST gate /voice
@@ -1219,7 +1239,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // /api/tts can skip ONLY the model re-screen for text that /voice
       // already screened (its lexical floor still runs unconditionally).
       const ttsLang = language === "he" ? "he" : "en";
-      const streamRequest = { route: "analysis_structured" as const, prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE, temperature: 0.6, budget: budget.budget, promptVersion: PROMPT_VERSIONS.voice_reply.version };
+      const streamRequest = { route: "analysis_structured" as const, prompt: privacy.redact(prompt) + (companionContext.profile?.name ? REDACTION_DIRECTIVE : ""), temperature: 0.6, budget: budget.budget, promptVersion: PROMPT_VERSIONS.voice_reply.version };
 
       // Flagged-output SSE tail, shared by both delivery paths — payloads are
       // byte-identical to the pre-cadence SAFE-V1 behavior.
@@ -1388,7 +1408,17 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       const expireTime = new Date(Date.now() + 20 * 60 * 1000).toISOString();
       // AI-V9: the instruction + voice are built per session language from the
       // ONE shared spoken-persona module and pinned server-side.
-      const systemInstruction = buildLiveSystemInstruction(req.body?.language);
+      const { childProfile, recentTurns, contextChildId, privateMode } = req.body ?? {};
+      const childId = spokenChildId(childProfile);
+      const canReadMemory = privateMode !== true && (!childId || await mayReadChildMemory(req, childId));
+      const companionContext = await assembleSpokenContext({
+        memoryStore, childProfile, recentTurns, contextChildId, privateMode,
+        canReadMemory, maxMemoryFacts: config.memoryPromptMaxFacts,
+      });
+      // Direct audio cannot restore the text route's child-name alias. Keep
+      // names/contact PII out of the token pin and use natural generic wording.
+      const liveContext = liveContextWithoutNames(companionContext, companionContext.profile?.name);
+      const systemInstruction = buildLiveSystemInstruction(req.body?.language, liveContext);
       const speechConfig = liveSpeechConfig(req.body?.language);
       const token = await ai.authTokens.create({
         config: {
@@ -1404,11 +1434,12 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
             config: {
               systemInstruction,
               speechConfig,
+              responseModalities: [Modality.AUDIO],
               inputAudioTranscription: {},
               outputAudioTranscription: {},
             },
           },
-          httpOptions: { apiVersion: "v1alpha" }
+          httpOptions: { apiVersion: "v1beta" }
         }
       });
       // The pinned instruction/speechConfig are echoed back so the client's
@@ -1562,7 +1593,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         }
       }), budget.signal);
       budget.settle();
-      res.json(privacy.restoreDeep(draft));
+      await sendScreenedJson(res, privacy.restoreDeep(draft));
     } catch (error: any) {
       budget.settle();
       if (budget.clientGone()) return;
@@ -1908,7 +1939,7 @@ Return only JSON matching the schema.`;
   // captured at onboarding (A3). The gate applies whenever an image is present
   // and fails CLOSED (451) without an active grant — and, because requireConsent
   // reads `childId` from the body, the client MUST send childId or every call 451s.
-  router.post("/vision", requireConsent(consentStore, "face_processing", (req) => !!req.body?.image), async (req, res) => {
+  router.post("/vision", requireOwnership, requireConsent(consentStore, "face_processing", (req) => !!req.body?.image), async (req, res) => {
     const { image, mode = "observe", note, childProfile, language } = req.body;
     const parsed = parseDataUrl(image?.dataUrl ?? image);
     if (!parsed) {
@@ -1993,7 +2024,7 @@ Return JSON: offTopic, observations[], possibleMeanings[], tryToday[] (1-3), avo
         schema,
         images: [{ data: parsed.data, mimeType: parsed.mimeType }]
       });
-      res.json({ mode, ...(privacy.restoreDeep(result) as Record<string, unknown>) });
+      await sendScreenedJson(res, { mode, ...(privacy.restoreDeep(result) as Record<string, unknown>) });
     } catch (error: any) {
       logger.error("Arbor Vision Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to analyze the image", details: error.message });
@@ -2073,7 +2104,7 @@ Return JSON: offTopic, observations[], possibleMeanings[], tryToday[] (1-3), avo
     }
   });
 
-  router.post("/score-utterance", requireConsent(consentStore, "voice_processing", (req) => childAsrConfigured(config) && !!req.body?.audio), async (req, res) => {
+  router.post("/score-utterance", requireOwnership, requireConsent(consentStore, "voice_processing", (req) => childAsrConfigured(config) && !!req.body?.audio), async (req, res) => {
     const { target, sound, level, audio } = req.body ?? {};
     if (!childAsrConfigured(config)) { res.json({ configured: false }); return; }
     if (!target || typeof target !== "string") { res.status(400).json({ error: "target is required" }); return; }
@@ -2120,7 +2151,7 @@ Return JSON: offTopic, observations[], possibleMeanings[], tryToday[] (1-3), avo
     flat: AVATAR_STYLES.flat,
     comichero: "a bold modern cel-shaded comic-book rendering medium with confident ink outlines, halftone shading and saturated color; preserve the reference character's existing outfit and accessories without adding a cape, hero suit, chest emblem or superhero costume"
   };
-  router.post("/generate-avatar", requireConsent(consentStore, "face_processing", (req) => !!req.body?.photo), async (req, res) => {
+  router.post("/generate-avatar", requireOwnership, requireConsent(consentStore, "face_processing", (req) => !!req.body?.photo), async (req, res) => {
     const { descriptors, photo, style } = req.body ?? {};
     const stylePrompt = AVATAR_STYLES[style as string] ?? AVATAR_STYLES.storybook;
 
@@ -2193,7 +2224,7 @@ Framing: head-and-shoulders portrait, centered, simple soft background, warm and
         return;
       }
       logger.error("Arbor Avatar Error", error, { requestId: requestIdOf(req) });
-      res.status(500).json({ error: "Couldn't create that avatar — please try again", details: error.message });
+      sendImageFailure(res, error, "Couldn't create that avatar — please try again");
     }
   });
 
@@ -2253,7 +2284,7 @@ Friendly lighting and a readable composition. Gentle, non-scary, non-violent and
         return;
       }
       logger.error("Arbor Scene Error", error, { requestId: requestIdOf(req) });
-      res.status(500).json({ error: "Couldn't illustrate this scene", details: error.message });
+      sendImageFailure(res, error, "Couldn't illustrate this scene — please try again");
     }
   });
 
@@ -2329,7 +2360,7 @@ Wholesome and age-appropriate for young children: confident, joyful and exciting
         return;
       }
       logger.error("Arbor Comic Error", error, { requestId: requestIdOf(req) });
-      res.status(500).json({ error: "Couldn't create this comic", details: error.message });
+      sendImageFailure(res, error, "Couldn't create this comic — please try again");
     }
   });
 
@@ -2457,7 +2488,7 @@ RULES:
         res.status(502).json({ error: "Couldn't build a complete adventure — please try again" });
         return;
       }
-      res.json(adventure);
+      await sendScreenedJson(res, adventure);
     } catch (error: any) {
       logger.error("Arbor Adventure Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Couldn't create that adventure — please try again", details: error.message });
@@ -2534,7 +2565,7 @@ Return JSON with title, issue, phases, scripts, and successIndicators.
           }
         }
       });
-      res.json(privacy.restoreDeep(response));
+      await sendScreenedJson(res, privacy.restoreDeep(response));
     } catch (error: any) {
       logger.error("Arbor Action Plan Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to generate Arbor action plan", details: error.message });
@@ -2562,7 +2593,7 @@ Topic: ${topic}
 Moral / Target skill: ${moral}
 Return JSON with title, pages, illustrationPrompt, discussionQuestions, summary.
 `;
-      res.json(privacy.restoreDeep(await modelProvider.generateJson({
+      await sendScreenedJson(res, privacy.restoreDeep(await modelProvider.generateJson({
         route: "creative_low_risk",
         prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
         schema: {
@@ -2818,7 +2849,7 @@ ${languageDirective}`;
       // No bedtimeStory store exists. GDPR export/erase have nothing to reach
       // because generate-and-discard produces no new persistent child-data.
       // ai_training is default-OFF: nothing written to a training pipeline here.
-      res.json(result);
+      await sendScreenedJson(res, result);
     } catch (error: any) {
       logger.error("Arbor Bedtime Story Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to generate Arbor bedtime story", details: error.message });
@@ -2955,6 +2986,8 @@ Create an Arbor professional handoff brief for ${String(audience).toUpperCase()}
 Child Details: ${JSON.stringify(promptProfile(childProfile))}
 Key Logged Behaviors: ${JSON.stringify(logs)}
 Milestone Context: ${JSON.stringify(milestones)}
+${ROUTINE_ESCALATION_GUIDANCE}
+When no crisis has been reported, crisisEscalationTrigger should contain only a relevant routine threshold for professional advice; do not invent a crisis scenario.
 Return JSON with title, date, overview, keyStrengths, classroomChallenges, languageSupportPlan, suggestedTeacherStrategies, crisisEscalationTrigger.${handoffLanguageDirective}
 `;
       const privacy = createRedaction(childProfile?.name);

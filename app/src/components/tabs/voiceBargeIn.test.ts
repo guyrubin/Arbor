@@ -85,17 +85,17 @@ describe("F-01 — the voice chip can never wedge into a dead button", () => {
     // The stale-ref branch clears but does NOT return — the tap keeps going,
     // paints the connecting state (S5), claims its attempt, and flows STRAIGHT
     // into the Live-availability branch.
-    expect(toggle).toMatch(/if \(voiceOnRef\.current \|\| liveCtlRef\.current\) stopVoice\(\);\s*setVoicePhase\("connecting"\);\s*const attempt = voiceLifetimeRef\.current\.begin\(\);\s*let liveClosed = false;\s*if \(liveAvail\)/);
+    expect(toggle).toMatch(/if \(voiceOnRef\.current \|\| liveCtlRef\.current\) stopVoice\(\);\s*setVoiceNotice\(null\);\s*setVoicePhase\("connecting"\);\s*const attempt = voiceLifetimeRef\.current\.begin\(\);\s*let liveClosed = false;\s*if \(liveAvail\)/);
     // …so every idle-looking tap reaches the token mint or the browser loop.
     expect(toggle).toContain("api.liveToken(");
     expect(toggle).toMatch(/startBrowserVoice\(\);\s*\};\s*$/);
   });
 
-  it("no bare catch on the Live start path — Paywall opens the paywall, everything else toasts", () => {
+  it("no bare catch on the Live start path — Paywall opens the paywall, transport failures remain visible", () => {
     expect(toggle).not.toMatch(/catch\s*\{/);
     expect(toggle).toContain("catch (err)");
     expect(toggle).toMatch(/err instanceof PaywallError[\s\S]{0,200}openPaywall\(/);
-    expect(toggle).toContain('toast(t("coach.toast.voiceFallback"), "info")');
+    expect(toggle).toContain('setVoiceNotice(t("coach.toast.voiceFallback"))');
     expect(toggle).toContain("console.warn");
   });
 });
@@ -165,13 +165,13 @@ describe("S5 — every Talk tap paints a visible outcome", () => {
     expect(client).toContain("if (stopped) stopTracks(granted)");
     expect(client).toContain("track.stop()");
     // The connect deadline still guards the socket half (F-01, unchanged).
-    expect(client).toContain("withConnectDeadline(Promise.race([connecting, failedBeforeOpen]), opts.signal)");
+    expect(client).toContain("withConnectDeadline(Promise.race([prepared, failedBeforeOpen]), opts.signal)");
   });
 
   it("stop and unmount invalidate ownership before abort/cleanup; awaits cannot adopt stale starts", () => {
     expect(coach).toMatch(/const stopVoice = \(\) => \{\s*voiceLifetimeRef\.current\.cancel\(\);/);
     expect(coach).toMatch(/useEffect\(\(\) => \(\) => \{\s*voiceLifetimeRef\.current\.cancel\(\);/);
-    expect(toggle).toMatch(/await api\.liveToken\([\s\S]{0,120}\);\s*if \(!attempt\.isCurrent\(\)\) return;/);
+    expect(toggle).toMatch(/await api\.liveToken\([\s\S]{0,250}\);\s*if \(!attempt\.isCurrent\(\)\) return;/);
     expect(toggle).toContain("signal: attempt.signal");
     expect(toggle).toMatch(/if \(!attempt\.adopt\(ctl\)\) return;\s*liveCtlRef\.current = ctl;/);
     expect(toggle).toMatch(/if \(liveClosed\) \{ ctl\.stop\(\); attempt\.end\(\); return; \}/);
@@ -181,25 +181,24 @@ describe("S5 — every Talk tap paints a visible outcome", () => {
     expect(toggle).toMatch(/err instanceof PaywallError[\s\S]{0,200}setVoicePhase\("off"\);\s*openPaywall\(/);
   });
 
-  it("terminal path: Live start failure toasts AND falls back to the browser loop", () => {
-    expect(toggle).toContain('toast(t("coach.toast.voiceFallback"), "info")');
+  it("terminal path: Live start failure stays visible AND falls back to the browser loop", () => {
+    expect(toggle).toContain('setVoiceNotice(t("coach.toast.voiceFallback"))');
     expect(toggle).toMatch(/startBrowserVoice\(\);\s*\};\s*$/);
   });
 
   it("terminal path: a post-open socket error STOPS the session before degrading", () => {
     // Previously onError only cleared the refs — mic + audio contexts stayed
     // hot with no controller left to stop them.
-    expect(toggle).toMatch(/onError: \(\) => \{\s*if \(!attempt\.isCurrent\(\)\) return;\s*attempt\.end\(\);\s*clearLiveRefs\(\);\s*toast\(t\("coach\.toast\.voiceFallback"\), "info"\);\s*startBrowserVoice\(\);/);
+    expect(toggle).toMatch(/onError: \(\) => \{\s*if \(!attempt\.isCurrent\(\)\) return;\s*attempt\.end\(\);\s*clearLiveRefs\(\);\s*setVoiceNotice\(t\("coach\.toast\.voiceFallback"\)\);\s*startBrowserVoice\(\);/);
   });
 
-  it("fallback loop paints on its own surfaces: listening phase or an honest toast", () => {
+  it("fallback loop paints on its own surfaces: listening phase or an persistent recovery notice", () => {
     // (d) startListening paints the listening state synchronously, and the
     // unsupported-browser branch ends visible (toast + off), never silent.
-    expect(startListeningFn).toMatch(/if \(!speechSupported\(\)\) \{ toast\(t\("coach\.toast\.voiceUnsupported"\), "info"\); voiceOnRef\.current = false; setVoicePhase\("off"\); return; \}\s*setVoicePhase\("listening"\);/);
+    expect(startListeningFn).toMatch(/if \(!speechSupported\(\)\) \{ setVoiceNotice\(microphoneRecovery\("unsupported", uiLang\)\); voiceOnRef\.current = false; setVoicePhase\("off"\); return; \}\s*setVoicePhase\("listening"\);/);
     // Fatal dictation outcomes stop voice AND toast (mic denied / retries out).
-    expect(startListeningFn).toMatch(/onFatal: \(reason\) => \{\s*if \(!attempt\.isCurrent\(\)\) return;\s*stopVoice\(\);\s*toast\(/);
-    expect(startListeningFn).toContain('t("coach.toast.micPermission")');
-    expect(startListeningFn).toContain('t("coach.toast.micRetryStopped")');
+    expect(startListeningFn).toMatch(/onFatal: \(reason\) => \{\s*if \(!attempt\.isCurrent\(\)\) return;\s*stopVoice\(\);\s*setVoiceNotice\(microphoneRecovery\(reason, uiLang\)/);
+    expect(startListeningFn).toContain("microphoneRecovery(reason, uiLang)");
   });
 
   it("the connecting copy exists in BOTH languages (parity with the phase set)", () => {
@@ -239,7 +238,7 @@ describe("voice attempt wiring rejects stale callbacks BEFORE mutations", () => 
   it("crisis/blocked still render resources after current-attempt teardown, fail-closed still uses screened fallback", () => {
     expect(toggle).toContain("v.resourcesMarkdown ?? renderEscalationMarkdown(escalationMatchForCategory(v.category))");
     expect(toggle).toContain("if (v.blockedMarkdown) appendVoiceAiDelta(v.blockedMarkdown)");
-    expect(toggle).toContain('toast(t("coach.toast.voiceStandardMode"), "info")');
+    expect(toggle).toContain('setVoiceNotice(t("coach.toast.voiceStandardMode"))');
     expect(toggle).toContain("screenTurn: async");
   });
 });

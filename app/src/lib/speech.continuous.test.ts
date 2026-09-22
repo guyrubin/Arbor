@@ -118,7 +118,7 @@ describe("AI-CAP-6 — pauses do not end capture; silence finalizes", () => {
     expect(interims).toEqual(["הוא בכה"]);
   });
 
-  it("with nothing said at all, the silence window closes the session cleanly (onEnd, no onResult)", () => {
+  it("with nothing said at all, the generous startup window ends capture with a reason", () => {
     const finals: string[] = [];
     let ended = 0;
     startDictation(
@@ -126,8 +126,8 @@ describe("AI-CAP-6 — pauses do not end capture; silence finalizes", () => {
       "en-US",
       { continuous: true, silenceFinalizeMs: 4500 },
     );
-    vi.advanceTimersByTime(4500);
-    expect(FakeRecognition.last!.stopCalls).toBe(1);
+    vi.advanceTimersByTime(30_000);
+    expect(FakeRecognition.last!.stopCalls).toBe(0);
     expect(finals).toEqual([]);
     expect(ended).toBe(1);
   });

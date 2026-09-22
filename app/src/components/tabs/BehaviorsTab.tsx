@@ -20,6 +20,8 @@ import HardMomentsSection from "../behaviors/HardMomentsSection";
 import { Modal } from "../ui/Modal";
 import ConfirmCaptureReview, { type CaptureSource } from "../overview/ConfirmCaptureReview";
 import { speechSupported, startDictation } from "../../lib/speech";
+import { microphoneRecovery } from "../../lib/microphoneRecovery";
+import MicrophoneNotice from "../ui/MicrophoneNotice";
 import { api, EscalationRequiredError, getAiLanguage } from "../../lib/api";
 import { escalationCategories, renderEscalationMarkdown } from "../../safety/escalation";
 import { BEHAVIOR_TYPES, behaviorTypeLabel, isIncidentType, normalizeExtractedLog, validateLogDraft } from "../../content/behaviorTaxonomy";
@@ -192,6 +194,7 @@ export default function BehaviorsTab() {
 
   // Voice-to-log
   const [listening, setListening] = useState(false);
+  const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
   const [parsing, setParsing] = useState(false);
   // AI-CAP-6: live interim transcript — the parent's own words render in the
   // capture area (calm register, --arbor-muted) while they are still speaking,
@@ -396,9 +399,10 @@ export default function BehaviorsTab() {
       return;
     }
     if (!speechSupported()) {
-      toast(t("beh.toast.voiceUnsupported"), "error");
+      setVoiceNotice(microphoneRecovery("unsupported", uiLang));
       return;
     }
+    setVoiceNotice(null);
     setListening(true);
     setVoiceInterim("");
     stopRef.current = startDictation(
@@ -406,7 +410,7 @@ export default function BehaviorsTab() {
         onResult: (text) => void parseVoice(text),
         // AI-CAP-6: spoken words appear live while still speaking.
         onInterim: (text) => setVoiceInterim(text),
-        onError: () => toast(t("beh.toast.voiceError"), "error"),
+        onError: (reason) => setVoiceNotice(microphoneRecovery(reason, uiLang)),
         onEnd: () => {
           setListening(false);
           setVoiceInterim("");
@@ -746,6 +750,8 @@ export default function BehaviorsTab() {
             <button type="button" onClick={() => focusForm()} aria-label={captureCopy.open} className="ms-auto flex h-11 w-11 items-center justify-center rounded-full text-white transition active:scale-95" style={{ background: T.gradientCta }}><Icon name="arrow_forward" size={18} className="rtl:rotate-180" /></button>
           </div>
         </div>
+
+        {voiceNotice && !captureOpen && <MicrophoneNotice message={voiceNotice} lang={uiLang} onRetry={toggleVoice} onDismiss={() => setVoiceNotice(null)} />}
 
         {/* TJB-09 — the optimistic-draft receipt. The parent's own words are
             already in the form below; this only says the rest is still coming,
@@ -1111,7 +1117,7 @@ export default function BehaviorsTab() {
                 onClick={toggleVoice}
                 disabled={parsing}
                 title={t("beh.speakToLog")}
-                className={`flex items-center gap-1.5 text-[11px] font-extrabold px-2.5 py-1.5 rounded-lg transition ${listening ? "animate-pulse" : ""}`}
+                className={`flex min-h-11 min-w-11 items-center gap-1.5 text-[11px] font-extrabold px-2.5 py-1.5 rounded-lg transition ${listening ? "animate-pulse" : ""}`}
                 style={listening
                   ? { background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)", border: "1px solid rgba(189,79,116,0.40)" }
                   : { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}
@@ -1120,12 +1126,14 @@ export default function BehaviorsTab() {
                 {parsing ? t("beh.parsing") : listening ? t("beh.stop") : t("beh.speak")}
               </button>
               {!editingLogId && (
-                <button type="button" onClick={() => { setCaptureOpen(false); setDetailsOpen(false); }} aria-label={captureCopy.close} className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)" }}>
+                <button type="button" onClick={() => { stopRef.current?.(); setCaptureOpen(false); setDetailsOpen(false); }} aria-label={captureCopy.close} className="flex h-11 w-11 items-center justify-center rounded-lg" style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)" }}>
                   <Icon name="close" size={16} />
                 </button>
               )}
               </div>
             </div>
+
+            {voiceNotice && <MicrophoneNotice message={voiceNotice} lang={uiLang} onRetry={toggleVoice} onDismiss={() => setVoiceNotice(null)} />}
 
             {/* AI-CAP-6 — live dictation caption: the parent's own words render
                 while they are still speaking (calm register, --arbor-muted;

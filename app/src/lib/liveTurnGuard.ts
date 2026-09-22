@@ -102,6 +102,7 @@ export function createLiveTurnGuard(deps: LiveTurnGuardDeps): LiveTurnGuard {
   const silenceMs = deps.transcriptionSilenceMs ?? 5000;
 
   let halted = false;
+  let modelEpoch = 0;
   let pendingAudio: string[] = [];
   let turnTranscript = "";
   let userTranscript = "";
@@ -123,6 +124,7 @@ export function createLiveTurnGuard(deps: LiveTurnGuardDeps): LiveTurnGuard {
   const stopWith = (notify?: () => void) => {
     if (halted) return;
     halted = true;
+    modelEpoch++;
     dropBuffers();
     deps.halt();
     notify?.();
@@ -199,6 +201,8 @@ export function createLiveTurnGuard(deps: LiveTurnGuardDeps): LiveTurnGuard {
       if (halted) return;
       clearSilenceTimer();
       flushUserTurn();
+      const epoch = modelEpoch;
+      const current = () => !halted && epoch === modelEpoch;
       const audio = pendingAudio;
       const transcript = turnTranscript.trim();
       pendingAudio = [];
@@ -209,7 +213,7 @@ export function createLiveTurnGuard(deps: LiveTurnGuardDeps): LiveTurnGuard {
       const inFlight = userScreens;
       userScreens = [];
       await Promise.all(inFlight).catch(() => { /* already failClosed'd */ });
-      if (halted) return;
+      if (!current()) return;
 
       if (!audio.length && !transcript) return; // empty turn — nothing to screen
       if (audio.length && !transcript) {
@@ -244,10 +248,11 @@ export function createLiveTurnGuard(deps: LiveTurnGuardDeps): LiveTurnGuard {
       try {
         verdict = await screenWithDeadline("model", transcript);
       } catch {
+        if (!current()) return;
         failClosed("screen-unavailable");
         return;
       }
-      if (halted) return;
+      if (!current()) return;
       if (verdict.action === "stop_crisis") {
         stopWith(() => deps.onCrisis?.(verdict));
         return;
@@ -258,12 +263,16 @@ export function createLiveTurnGuard(deps: LiveTurnGuardDeps): LiveTurnGuard {
       }
 
       // Full pass: release the buffered audio IN ORDER — the single sink site.
-      for (const chunk of audio) deps.sink(chunk);
-      deps.onModelTurn?.(transcript);
+      for (const chunk of audio) {
+        if (!current()) return;
+        deps.sink(chunk);
+      }
+      if (current()) deps.onModelTurn?.(transcript);
     },
 
     interrupt() {
       if (halted) return;
+      modelEpoch++; // Retire snapshots already waiting on async screens too.
       // The interrupted model turn will never complete — its buffered audio
       // was never screened and must never play. The parent's input
       // transcription keeps accumulating (they are the one talking).
@@ -278,6 +287,7 @@ export function createLiveTurnGuard(deps: LiveTurnGuardDeps): LiveTurnGuard {
 
     dispose() {
       halted = true;
+      modelEpoch++;
       dropBuffers();
     },
   };

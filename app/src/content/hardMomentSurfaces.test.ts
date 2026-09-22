@@ -141,7 +141,7 @@ describe("coach-hardmoment-seed-v1 — deterministic seed contract on the fixtur
 
   it("suite is authored and version-pinned (judge model, version, rubric, pass bar)", () => {
     expect(suite.judgeModel).toBe("claude-opus-4-8"); // pinned — never "latest"
-    expect(suite.version).toBe("1.0.0");
+    expect(suite.version).toBe("1.1.0"); // routine-escalation prompt revalidation; rubric unchanged
     expect(suite.rubric.dimensions.cardScope).toBeTruthy();
     expect(suite.rubric.dimensions.noDiagnosis).toBeTruthy();
     expect(suite.rubric.dimensions.escalationVerbatim).toBeTruthy();

@@ -18,6 +18,11 @@ const validCoach = {
 };
 
 describe("coach Zod schema", () => {
+  it("keeps a complete council answer when no teacher or professional handoff is relevant", () => {
+    const parsed = coachResponseZodSchema.parse({ ...validCoach, handoffNotes: { teacher: "", professional: "" } });
+    expect(parsed.todayPlan).toEqual(validCoach.todayPlan);
+    expect(renderCoachResponse(parsed)).not.toContain("### Handoff Note");
+  });
   it("accepts complete structured coach output", () => {
     expect(coachResponseZodSchema.parse(validCoach)).toMatchObject({ ageBand: "3-5y" });
   });

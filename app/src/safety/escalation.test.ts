@@ -38,6 +38,22 @@ describe("safety escalation screen", () => {
     expect(match?.resources).toMatch(/112|988|1201|0800-0113/);
   });
 
+  it.each([
+    "I might hurt myself tonight",
+    "I could hurt myself",
+    "I am going to hurt myself",
+    "I'm going to hurt myself",
+    "I may harm myself",
+    "I will hurt myself",
+  ])("recognizes direct self-directed intent before generation: %s", (message) => {
+    expect(screenForImmediateEscalation({ message })?.category).toBe("self_harm");
+  });
+
+  it.each(["I might try a calmer morning", "I could do this myself", "I am going to choose shoes with him"])(
+    "does not mistake ordinary modal language for self-harm: %s",
+    (message) => expect(screenForImmediateEscalation({ message })).toBeNull(),
+  );
+
   it("does not escalate routine parenting friction", () => {
     expect(screenForImmediateEscalation({ message: "My child argues about shoes in the morning" })).toBeNull();
   });

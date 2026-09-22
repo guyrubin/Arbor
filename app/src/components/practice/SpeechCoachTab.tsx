@@ -178,8 +178,10 @@ export default function SpeechCoachTab() {
     setAutoResult(null);
     setLastSaved(null);
     cleanupAudio();
+    let captureStream: MediaStream | null = null;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      captureStream = stream;
       const rec = new MediaRecorder(stream);
       chunksRef.current = [];
       rec.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
@@ -230,9 +232,15 @@ export default function SpeechCoachTab() {
         recog.onerror = () => { /* recognition is best-effort; parent scoring is the floor */ };
         recog.onend = () => { recogRef.current = null; };
         recogRef.current = recog;
-        recog.start();
+        try { recog.start(); } catch {
+          // The optional platform transcript must not shut down the local
+          // recorder. Parent review/listen-back remains available unchanged.
+          recogRef.current = null;
+        }
       }
     } catch {
+      captureStream?.getTracks().forEach((track) => track.stop());
+      mediaRef.current = null;
       // OBJ-KID-03 (law 2): the parent's line ("…practice out loud and score it
       // yourself below") named a control that only exists on the parent branch,
       // and used the grown-up's word for it. The child gets a kid line.

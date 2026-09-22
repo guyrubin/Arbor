@@ -14,12 +14,16 @@ import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from "vites
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-const { connectMock } = vi.hoisted(() => ({ connectMock: vi.fn() }));
+const { connectMock, sdkOptions, setupBehavior } = vi.hoisted(() => ({ connectMock: vi.fn(), sdkOptions: vi.fn(), setupBehavior: { automatic: true } }));
 
 vi.mock("@google/genai", () => ({
   GoogleGenAI: class {
-    live = { connect: connectMock };
-    constructor(_opts: unknown) {}
+    live = { connect: (args: any) => {
+      const result = connectMock(args);
+      if (setupBehavior.automatic) void Promise.resolve(result).then(() => args.callbacks.onmessage({ setupComplete: {} })).catch(() => {});
+      return result;
+    } };
+    constructor(opts: unknown) { sdkOptions(opts); }
   },
   Modality: { AUDIO: "AUDIO" },
 }));
@@ -582,6 +586,7 @@ function productionCoachHarness() {
     setConversationProposals: (update: (current: unknown[]) => unknown[]) => { proposals = update(proposals); },
     EscalationRequiredError: class extends Error {},
     clearLiveRefs, setVoiceInterim, appendVoiceUserTurn, appendVoiceAiDelta, finalizeVoiceAiTurn,
+    setVoiceNotice: vi.fn(), microphoneRecovery: () => "connection closed", uiLang: "en",
     voiceOnRef: { current: true }, speak,
     setVoicePhase: (phase: string) => phases.push({
       phase, current: attempt.isCurrent(),
@@ -669,5 +674,60 @@ describe("ordinary remote close versus safety halt — real client + production 
     expect(close).toHaveBeenCalledTimes(1);
     expect(FakeAudioContext.instances.flatMap((context) => context.sources)).toHaveLength(0);
     coach.lifetime.cancel();
+  });
+});
+
+
+describe("provider setup readiness", () => {
+  afterEach(() => { setupBehavior.automatic = true; });
+  it("uses v1beta and does not announce listening before setupComplete", async () => {
+    setupBehavior.automatic = false;
+    let cb!: Callbacks;
+    connectMock.mockImplementation(async ({ callbacks }: { callbacks: Callbacks }) => {
+      cb = callbacks; cb.onopen(); return { close() {}, sendRealtimeInput() {} };
+    });
+    const phases: string[] = [];
+    const pending = startGeminiLive(options, { onPhase: (p) => phases.push(p), screenTurn: async () => ({ action: "continue" }) });
+    await flushMicrotasks();
+    expect(phases).toEqual(["connecting"]);
+    expect(FakeAudioContext.instances.every((context) => context.graphs === 0)).toBe(true);
+    cb.onmessage({ setupComplete: {} });
+    const ctl = await pending;
+    expect(phases.at(-1)).toBe("listening");
+    expect(sdkOptions).toHaveBeenCalledWith(expect.objectContaining({ httpOptions: { apiVersion: "v1beta" } }));
+    ctl.stop();
+  });
+  it("provider rejection after WebSocket open remains a startup error", async () => {
+    setupBehavior.automatic = false;
+    let cb!: Callbacks;
+    connectMock.mockImplementation(async ({ callbacks }: { callbacks: Callbacks }) => {
+      cb = callbacks; cb.onopen(); return { close() {}, sendRealtimeInput() {} };
+    });
+    const onRemoteClose = vi.fn();
+    const pending = startGeminiLive(options, { onRemoteClose, screenTurn: async () => ({ action: "continue" }) });
+    const rejected = expect(pending).rejects.toThrow("live-closed-during-start");
+    await flushMicrotasks(); cb.onclose(); await rejected;
+    expect(onRemoteClose).not.toHaveBeenCalled();
+    expect(micTracks.every((track) => track.stopped)).toBe(true);
+  });
+});
+
+describe("suspended audio startup", () => {
+  it.each(["timeout", "cancel"])("%s while AudioContext.resume is pending closes both contexts and microphone", async (outcome) => {
+    vi.useFakeTimers();
+    vi.stubGlobal("AudioContext", class extends FakeAudioContext {
+      state = "suspended";
+      resume() { return new Promise<void>(() => {}); }
+    });
+    const owner = new AbortController();
+    const pending = startGeminiLive({ ...options, signal: owner.signal }, { screenTurn: async () => ({ action: "continue" }) });
+    const rejected = expect(pending).rejects.toThrow(outcome === "timeout" ? "live-audio-timeout" : "Voice start cancelled");
+    await flushMicrotasks();
+    if (outcome === "cancel") owner.abort(); else await vi.advanceTimersByTimeAsync(10_000);
+    await rejected;
+    expect(micTracks.every((track) => track.stopped)).toBe(true);
+    expect(FakeAudioContext.instances.every((context) => context.closed)).toBe(true);
+    expect(connectMock).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

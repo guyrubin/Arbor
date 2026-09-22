@@ -27,7 +27,7 @@ import * as path from "node:path";
 import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
 import { loadConfig } from "../src/config/env.js";
-import { createModelProvider, routeDecisionFor, toAnthropicVertexModelId, type ModelRoute } from "../src/ai/modelRouter.js";
+import { createModelProvider, VertexGeminiProvider, routeDecisionFor, toAnthropicVertexModelId, type ModelRoute } from "../src/ai/modelRouter.js";
 import { ClaudeVertexProvider } from "../src/ai/claudeVertexProvider.js";
 import { PROMPT_VERSIONS } from "../src/ai/prompts.js";
 import { createApiRouter } from "../src/routes/api.js";
@@ -69,6 +69,13 @@ const loadSuite = (name: string): EvalSuite => {
 
 const routeOf = (scenario: EvalScenario): string => scenario.route ?? "/api/chat";
 
+/** Explicit synthetic demographics, shared by the route and judge input. */
+const syntheticProfileFor = (suite: EvalSuite, scenario: EvalScenario) => ({
+  ...SYNTHETIC_PROFILE,
+  id: "eval-" + suite.suite + "-" + scenario.id,
+  ...(typeof scenario.input?.gender === "string" ? { gender: scenario.input.gender } : {}),
+});
+
 const modelRouteFor = (route: string): ModelRoute =>
   route === "/api/chat" ? "coach_high_stakes" : "analysis_structured";
 
@@ -99,12 +106,14 @@ const seedApprovedMemory = async (baseUrl: string, childId: string, facts: reado
 };
 
 // ── The real in-process server ───────────────────────────────────────────────
-const startServer = async () => {
+export const startServer = async (wrapProvider?: (provider: ReturnType<typeof createModelProvider>) => ReturnType<typeof createModelProvider>) => {
+  if (process.env.ARBOR_ENV === "prod" || process.env.MEMORY_ADAPTER === "firestore") throw new Error("Live evaluations require local synthetic stores; production data must not be used.");
   const config = loadConfig();
-  const modelProvider = createModelProvider(config);
+  const rawProvider = createModelProvider(config);
+  const modelProvider = wrapProvider ? wrapProvider(rawProvider) : rawProvider;
   const entitlementStore = createEntitlementStore(config);
   const app = express();
-  app.use(express.json());
+  app.use(express.json({ limit: "12mb" }));
   app.use(
     "/api",
     createApiRouter({
@@ -151,6 +160,8 @@ const buildScenarioRunner = (suite: EvalSuite, baseUrl: string) => async (scenar
   const route = routeOf(scenario);
   const locale = scenario.locale === "he" ? "he" : "en";
   const input = scenario.input ?? {};
+  // A scenario never inherits another scenario's persisted synthetic memories.
+  const scenarioProfile = syntheticProfileFor(suite, scenario);
 
   if (route === "/api/live/turn") {
     const text = String(input.text ?? input.outputTranscription ?? "");
@@ -178,7 +189,7 @@ const buildScenarioRunner = (suite: EvalSuite, baseUrl: string) => async (scenar
   // EVAL-5: scenarios that declare parent-approved memory get it seeded via
   // the real propose→approve seam before the coach call.
   if (Array.isArray(input.approvedMemoryFacts) && input.approvedMemoryFacts.length > 0) {
-    await seedApprovedMemory(baseUrl, SYNTHETIC_PROFILE.id, input.approvedMemoryFacts.map(String));
+    await seedApprovedMemory(baseUrl, scenarioProfile.id, input.approvedMemoryFacts.map(String));
   }
 
   // Coach-seed suites: the message is the governed seed + the parent follow-up.
@@ -195,7 +206,14 @@ const buildScenarioRunner = (suite: EvalSuite, baseUrl: string) => async (scenar
     const res = await fetch(`${baseUrl}/api/voice`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
-      body: JSON.stringify({ message, childProfile: SYNTHETIC_PROFILE, language: locale }),
+      body: JSON.stringify({
+        message, childProfile: scenarioProfile, language: locale,
+        ...(Array.isArray(input.recentTurns) ? {
+          recentTurns: input.recentTurns,
+          contextChildId: input.contextChildId === "different-child" ? "different-child" : scenarioProfile.id,
+        } : {}),
+        ...(input.privateMode === true ? { privateMode: true } : {}),
+      }),
     });
     return sseTranscript(await res.text());
   }
@@ -205,7 +223,7 @@ const buildScenarioRunner = (suite: EvalSuite, baseUrl: string) => async (scenar
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       message,
-      childProfile: SYNTHETIC_PROFILE,
+      childProfile: scenarioProfile,
       language: locale,
       // EVAL-5 (lens fidelity): the selected lens is load-bearing — pass it
       // through so the live answer is judged on APPLYING the method.
@@ -236,6 +254,13 @@ const judgeSchemaFor = (suite: EvalSuite) => ({
 });
 
 const buildJudgeCall = (suite: EvalSuite) => {
+  // The suite chooses the judge explicitly; never silently substitute a model.
+  if (suite.judgeModel?.startsWith("gemini-")) {
+    const config = loadConfig();
+    const judgeProvider = new VertexGeminiProvider({ ...config, modelProvider: "vertex", vertexModelHandoff: suite.judgeModel });
+    return async (prompt: string): Promise<Omit<ScenarioVerdict, "id">> =>
+      await judgeProvider.generateJson({ route: "handoff_structured", prompt, schema: judgeSchemaFor(suite), temperature: 0, promptVersion: "eval-judge" }) as Omit<ScenarioVerdict, "id">;
+  }
   if (process.env.ANTHROPIC_API_KEY) {
     return async (prompt: string): Promise<Omit<ScenarioVerdict, "id">> => {
       const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -274,6 +299,20 @@ const buildJudgeCall = (suite: EvalSuite) => {
 // ── Entry points ─────────────────────────────────────────────────────────────
 export const runLiveSuite = async (suiteName: string) => {
   const suite = loadSuite(suiteName);
+  // The judge must see the exact synthetic profile supplied to the route;
+  // otherwise a correctly restored child name appears to be hallucinated.
+  suite.scenarios = suite.scenarios.map((scenario) => ({
+    ...scenario,
+    input: {
+      ...scenario.input,
+      suppliedChildProfile: syntheticProfileFor(suite, scenario),
+      contextScope: scenario.input?.privateMode === true
+        ? "Private turn: server excludes the supplied profile, stored memory and previous turns."
+        : scenario.input?.contextChildId === "different-child"
+          ? "Server excludes recentTurns because they are bound to another child; the supplied profile is allowed."
+          : "Supplied profile and parent-approved memory are allowed; only same-child settled recentTurns are allowed.",
+    },
+  }));
   const { config, baseUrl, server } = await startServer();
   try {
     const primaryRoute = modelRouteFor(routeOf(suite.scenarios[0] ?? {} as EvalScenario));

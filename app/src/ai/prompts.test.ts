@@ -27,7 +27,7 @@ describe("EVAL-6 — PROMPT_VERSIONS hash guard", () => {
 
   it("covers the contract and every extracted route prompt", () => {
     expect(KEYS.sort()).toEqual(
-      ["coach_chat", "council_synthesis", "extract_log", "non_diagnostic_contract", "voice_reply"].sort(),
+      ["coach_chat", "council_synthesis", "extract_log", "non_diagnostic_contract", "voice_reply", "live_session"].sort(),
     );
   });
 
@@ -173,8 +173,8 @@ describe("EVAL-6 — builders keep the byte contract of the old inline templates
  * digest below. Same guarantee, new bytes — the ASSERTION is unchanged: with
  * both 1.3 fields absent the prompt equals the block-free rendering.
  */
-describe("Masterplan 1.3 — coach_chat block-free byte-parity (v1.2.0 pin)", () => {
-  const COACH_CHAT_V1_0_0_SHA256 = "781d9e82fb51556d1a8fc0d0458315df90eb9dd1aecfe04f0da186369951de88";
+describe("Masterplan 1.3 — coach_chat block-free byte-parity (v1.3.0 pin)", () => {
+  const COACH_CHAT_BLOCK_FREE_SHA256 = "7d5b299dedf6d5b491a0119b3611ae2ead96275986e94cb77ae923adcf1780e7";
   const sha256 = (text: string) => createHash("sha256").update(text, "utf8").digest("hex");
   const legacyArgs = {
     developmentalFramework: "«framework»",
@@ -186,23 +186,23 @@ describe("Masterplan 1.3 — coach_chat block-free byte-parity (v1.2.0 pin)", ()
     languageDirective: "«language-directive»",
   } as const;
 
-  it("with BOTH new fields absent, the prompt is byte-identical to the block-free 1.2.0 rendering", () => {
-    expect(sha256(buildChatPrompt({ ...legacyArgs }))).toBe(COACH_CHAT_V1_0_0_SHA256);
+  it("with BOTH new fields absent, the prompt is byte-identical to the block-free 1.3.0 rendering", () => {
+    expect(sha256(buildChatPrompt({ ...legacyArgs }))).toBe(COACH_CHAT_BLOCK_FREE_SHA256);
   });
 
   it("empty recentTurns / null weeklyContext (the sanitizers' degenerate outputs) also keep the block-free bytes", () => {
     expect(sha256(buildChatPrompt({ ...legacyArgs, recentTurns: [], weeklyContext: null }))).toBe(
-      COACH_CHAT_V1_0_0_SHA256,
+      COACH_CHAT_BLOCK_FREE_SHA256,
     );
   });
 
   it("either block present breaks parity (so the new pin actually covers the new text)", () => {
     expect(
       sha256(buildChatPrompt({ ...legacyArgs, recentTurns: [{ role: "parent", text: "hi" }] })),
-    ).not.toBe(COACH_CHAT_V1_0_0_SHA256);
+    ).not.toBe(COACH_CHAT_BLOCK_FREE_SHA256);
     expect(
       sha256(buildChatPrompt({ ...legacyArgs, weeklyContext: { momentCount: 1, milestonesCrossedCount: 0 } })),
-    ).not.toBe(COACH_CHAT_V1_0_0_SHA256);
+    ).not.toBe(COACH_CHAT_BLOCK_FREE_SHA256);
   });
 });
 

@@ -70,9 +70,9 @@ describe("phases are visually distinct without reading text", () => {
     expect(thinking).toContain("more_horiz");
     expect(speaking).toContain("animation:vo-wave");
     expect(listening).not.toContain("animation:vo-wave");
-    // The mic-level halo exists only while listening (real AnalyserNode drive).
-    expect(listening).toContain("--vo-level");
-    expect(thinking).not.toContain("--vo-level");
+    // The phase halo exists only while listening, without a second mic stream.
+    expect(listening).toContain("scale(1.08)");
+    expect(thinking).not.toContain("scale(1.08)");
     // S5: connecting is its own visible state — spinner glyph, not the
     // thinking ellipsis, and no mic halo (nothing is being captured yet).
     const connecting = render({ phase: "connecting" });

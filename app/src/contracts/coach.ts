@@ -48,8 +48,10 @@ export const coachResponseZodSchema = z.object({
     retention: z.string().min(1)
   })),
   handoffNotes: z.object({
-    teacher: z.string().min(1),
-    professional: z.string().min(1)
+    // Optional content: no relevant handoff must not discard a complete answer.
+    // Empty notes are already hidden by CoachAnswerCards.
+    teacher: z.string(),
+    professional: z.string()
   }),
   // ASK-4: anticipated next questions, localized by the languageDirective.
   // The zod cap is a TRANSFORM (never a hard .max) so a chatty model can't
@@ -238,10 +240,9 @@ ${response.memoryProposals.map((item) => `- ${item.fact} (${item.source}; ${item
 ### Knowledge Cards Used
 ${response.sourceCardsUsed?.map((card) => `- ${card}`).join("\n") || "- No Arbor AI Wiki card attached."}
 
-### Handoff Note
-Teacher: ${response.handoffNotes.teacher}
-
-Professional: ${response.handoffNotes.professional}${
+${response.handoffNotes.teacher || response.handoffNotes.professional ? `### Handoff Note
+${response.handoffNotes.teacher ? `Teacher: ${response.handoffNotes.teacher}` : ""}
+${response.handoffNotes.professional ? `Professional: ${response.handoffNotes.professional}` : ""}` : ""}${
     // ASK-4 FIREWALL CONDITION: followUps MUST flow through this rendered
     // text so screenModelOutput covers every string the chips display — a
     // rendered-but-unscreened field would be the first bypass of the AI-2

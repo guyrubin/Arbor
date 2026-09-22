@@ -1,6 +1,6 @@
 {
   "$comment": "AIR-4 / EVAL-8: the eval-to-prod model identity pin. Every route's alias (as configured in app/src/config/env.ts defaults) and its RESOLVED provider model id. Any bump to a VERTEX_MODEL_* default must refresh this file in the SAME PR, and the affected eval suites (coach-core-v1, eval:safety, coach-hardmoment-seed-v1 for coach_high_stakes) must re-run GREEN against the new resolved id before any prod flip (Guy gate GG-3).",
-  "updated": "2026-07-25",
+  "updated": "2026-09-22",
   "routes": {
     "coach_high_stakes": {
       "provider": "vertex_claude",
@@ -32,10 +32,12 @@
   "legacy": {
     "claude-3-5-sonnet@anthropic": "claude-3-5-sonnet-v2@20241022"
   },
-  "judgeModels": ["claude-opus-4-8"],
-  "$auxiliaryComment": "EVAL-8: non-routed model ids that legitimately appear in source (Live voice model default + its documented native-audio upgrade path). safety-eval's stale-model scan reads THIS file — a model id literal in the scanned sources that is in neither routes/legacy nor this list fails eval:safety.",
+  "judgeModels": [
+    "claude-opus-4-8",
+    "gemini-2.5-pro"
+  ],
+  "$auxiliaryComment": "Supported Live model; validated with a real setupComplete plus returned audio on v1beta. Historical retired models are not accepted as current source pins.",
   "auxiliary": [
-    "gemini-2.0-flash-live-001",
-    "gemini-2.5-flash-preview-native-audio-dialog"
+    "gemini-3.8-live"
   ]
 }

@@ -112,7 +112,7 @@ describe("createDictationLoop", () => {
     sessions[3].handlers.onError?.("network");
     vi.advanceTimersByTime(10_000);
     expect(sessions).toHaveLength(4);
-    expect(fatals).toEqual(["retry-exhausted"]);
+    expect(fatals).toEqual(["network"]);
   });
 
   it("a delivered transcript RESETS the breaker", () => {
