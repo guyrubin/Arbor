@@ -8,6 +8,7 @@ import { BREATHING_PATTERNS, CALM_TOOLS, EMOTION_SCENARIOS, EMOTIONS, type Emoti
 import { usePracticeData } from "../../practice/usePracticeData";
 import { EmotionAvatar } from "../ui/EmotionAvatar";
 import { resolveHeroUrl } from "../ui/HeroAvatar";
+import { ArborMascot } from "../ui/ArborMascot";
 import type { PracticeEvent } from "../../types";
 
 import { track } from "../../lib/analytics";
@@ -42,8 +43,9 @@ export default function FeelingsLabTab() {
   // The profile's stored photo used to be passed straight through here, so a
   // child with a real photo and `avatar: null` saw their own face mirrored back
   // as a game character — the exact case resolveHeroUrl exists to refuse. With
-  // no hero the value is null and <Avatar> falls back to initials; the photo is
-  // never a companion. One shared resolver, no local photo read.
+  // no hero the value is null and the companion falls back to Sprout (the same
+  // fallback every other world uses) — never initials, never the photo. One
+  // shared resolver, no local photo read.
   const heroUrl = resolveHeroUrl(childProfile);
 
   const [scenarioIdx, setScenarioIdx] = useState(0);
@@ -192,6 +194,7 @@ export default function FeelingsLabTab() {
           <EmotionAvatar
             name={first}
             photoURL={heroUrl}
+            fallback={<ArborMascot size={64} mood="happy" />}
             emotionEmoji={activeEmotion?.emoji}
             emotionLabel={activeEmotion ? emotionLabelFor(activeEmotion, uiLang) : undefined}
             color={activeColor}
@@ -365,6 +368,7 @@ export default function FeelingsLabTab() {
           <EmotionAvatar
             name={first}
             photoURL={heroUrl}
+            fallback={<ArborMascot size={64} mood="happy" />}
             emotionEmoji={activeEmotion?.emoji}
             emotionLabel={activeEmotion ? emotionLabelFor(activeEmotion, uiLang) : undefined}
             color={activeColor}

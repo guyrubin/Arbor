@@ -606,7 +606,6 @@ body {
 
 @media (max-width: 420px) {
   .arbor-play .play-scene-header { padding: 10px 12px; gap: 10px; }
-  .arbor-play .play-scene-header--entry .play-hero-cameo { transform: scale(0.9); margin-inline: -4px; }
   .arbor-play .play-caption { margin-block-start: 5px; }
 }
 

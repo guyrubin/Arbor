@@ -143,34 +143,122 @@ describe("U2 — the pattern run stays contiguous on a phone", () => {
   });
 });
 
-/* The other half of U2: "the compact header also allocates an entire wrapped
-   row to 'Hear it'." The compact variant fixed that by giving the title column
-   `min-w-0` (flex-basis 0, free to shrink), so the three items — cameo, title,
-   read-aloud — always resolve onto one line and the action never wraps. That is
-   a one-word property and the row comes straight back if it is dropped. */
-describe("U2 — the compact world header keeps its read-aloud on the title row", () => {
-  const playkit = readFileSync(path.join(here, "..", "ui", "playkit.tsx"), "utf8");
-  const header = playkit.slice(playkit.indexOf("export function PlayHeader("), playkit.indexOf("/** Sprout saying something inline"));
 
-  it("the compact title column can shrink to zero, so nothing is pushed to a second row", () => {
-    expect(header).toContain('compact ? "min-w-0" : "min-w-[200px]"');
+/* ═══════════════════════════════════════════════════════════════════════════
+   F3 (round 2) — the compact world header must not collapse at 320.
+
+   Round 1 gave the text column `min-w-0` so the action would never wrap. The
+   rendered result was the opposite of a fix: at 320 the column got ~110 px and
+   "What comes next? Tap the shape that finishes the pattern." rendered one word
+   per line over eight lines, so the header ate ~520 px of a 700 px screen
+   before the puzzle appeared. `min-w-[12rem]` restores a real minimum; the
+   header already wraps, so the action drops to its own row instead — which is
+   what Astra's accepted 11-candidate-pattern-390x700.jpg shows.
+
+   Modelled here the way the fold and the glyph run are modelled: flex line
+   breaking is deterministic given the item sizes, so the outcome is arithmetic,
+   not a screenshot claim.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const playkitSrc = readFileSync(path.join(here, "..", "ui", "playkit.tsx"), "utf8");
+const playHeader = playkitSrc.slice(playkitSrc.indexOf("export function PlayHeader("), playkitSrc.indexOf("/** Sprout saying something inline"));
+
+/** The cameo's rendered outer width: the HeroAvatar size plus the 2 px comic
+ *  border `.play-hero-cameo` puts around it. */
+const CAMEO_OUTER = (() => {
+  const size = /<HeroAvatar size=\{(\d+)\}/.exec(playHeader);
+  expect(size, "PlayHeader must render the cameo at a literal size").not.toBeNull();
+  const border = /\.arbor-play \.play-hero-cameo \{[^}]*border:\s*(\d+)px/.exec(css);
+  expect(border, ".play-hero-cameo must declare its border width").not.toBeNull();
+  return Number(size![1]) + 2 * Number(border![1]);
+})();
+
+/** The read-aloud action, as the critic measured it on Hero Pose ("Hear it",
+ *  66x44 — CRITIC-M1-round1.md E2). Its declared floor is 44 px; the wider
+ *  measured value is the conservative one for a wrap question. */
+const ACTION_PX = 66;
+
+/** `min-w-[12rem]` (compact) / `min-w-[200px]` (entry), read from the source. */
+function textMinPx(compact: boolean): number {
+  const m = /compact \? "min-w-\[([^\]]+)\]" : "min-w-\[([^\]]+)\]"/.exec(playHeader);
+  expect(m, "PlayHeader must declare a minimum width for its text column in BOTH variants").not.toBeNull();
+  return lengthPx(compact ? m![1] : m![2], 0);
+}
+
+/** Header padding + gap at a viewport: index.css overrides both at <= 420. */
+function headerBox(viewport: number): { padX: number; gap: number } {
+  const narrow = /@media \(max-width: 420px\) \{\s*\.arbor-play \.play-scene-header \{ padding: \d+px (\d+)px; gap: (\d+)px; \}/.exec(css);
+  expect(narrow, "the <=420 header override must exist").not.toBeNull();
+  if (viewport <= 420) return { padX: Number(narrow![1]), gap: Number(narrow![2]) };
+  const wide = /\.arbor-play \.play-scene-header--compact \{\s*padding: \d+px (\d+)px;/.exec(css);
+  expect(wide, "the compact header must declare its padding").not.toBeNull();
+  return { padX: Number(wide![1]), gap: 8 }; // gap-x-2
+}
+
+/** Flex line breaking for [cameo, text, action], then `flex-1` growth on the
+ *  text column. Returns the text column's final width and the row count. */
+function layoutCompactHeader(viewport: number, textMin: number): { textWidth: number; rows: number } {
+  const { padX, gap } = headerBox(viewport);
+  const inner = viewport - OVERLAY_PAD * 2 - padX * 2;
+  const items = [CAMEO_OUTER, textMin, ACTION_PX];
+  const rows: number[][] = [[]];
+  let used = 0;
+  for (const w of items) {
+    const add = rows[rows.length - 1].length === 0 ? w : gap + w;
+    if (used + add > inner && rows[rows.length - 1].length > 0) {
+      rows.push([w]);
+      used = w;
+    } else {
+      rows[rows.length - 1].push(w);
+      used += add;
+    }
+  }
+  const textRow = rows.find((r) => r.includes(textMin))!;
+  const fixedOnRow = textRow.filter((w) => w !== textMin).reduce((a, b) => a + b, 0);
+  const gaps = gap * (textRow.length - 1);
+  return { textWidth: Math.max(textMin, inner - fixedOnRow - gaps), rows: rows.length };
+}
+
+describe("F3 — the compact header gives its instruction a readable column", () => {
+  /** Below this a 14 px kid sentence starts breaking into one or two words a line. */
+  const READABLE_MIN = 176;
+
+  it("both variants declare a real minimum width (min-w-0 is what collapsed)", () => {
+    expect(playHeader).not.toContain('compact ? "min-w-0"');
+    expect(textMinPx(true)).toBeGreaterThanOrEqual(READABLE_MIN);
   });
 
-  it("the read-aloud action keeps the 44 px floor", () => {
-    const pattern = readFileSync(path.join(here, "PatternPowerWorld.tsx"), "utf8");
-    expect(pattern).toContain('min-w-[44px] min-h-[44px]');
+  for (const viewport of WIDTHS) {
+    it(`the instruction column is at least ${READABLE_MIN} px at ${viewport} px`, () => {
+      const { textWidth } = layoutCompactHeader(viewport, textMinPx(true));
+      expect(textWidth, `text column ${textWidth.toFixed(0)} px`).toBeGreaterThanOrEqual(READABLE_MIN);
+    });
+
+    it(`the header stays at most three rows at ${viewport} px`, () => {
+      expect(layoutCompactHeader(viewport, textMinPx(true)).rows).toBeLessThanOrEqual(3);
+    });
+  }
+
+  it("negative control — round 1's min-w-0 squeezed the column to about 110 px at 320", () => {
+    const { padX, gap } = headerBox(320);
+    const inner = 320 - OVERLAY_PAD * 2 - padX * 2;
+    const collapsed = inner - CAMEO_OUTER - ACTION_PX - gap * 2;
+    expect(collapsed).toBeLessThan(READABLE_MIN);
+    expect(collapsed).toBeLessThan(layoutCompactHeader(320, textMinPx(true)).textWidth);
   });
 
-  it("answer controls stay far above the 44 px floor — glyphs are not targets", () => {
-    // Astra: "Keep answer controls large; sequence glyphs are not interactive
-    // targets." The tiles are ChoiceTile, which carries its own floor.
+  it("the read-aloud action keeps the 44 px floor, and answer tiles stay large", () => {
     const pattern = readFileSync(path.join(here, "PatternPowerWorld.tsx"), "utf8");
+    expect(pattern).toContain("min-w-[44px] min-h-[44px]");
     expect(pattern).toContain("<ChoiceTile");
-    const tile = playkit.slice(playkit.indexOf("export function ChoiceTile("), playkit.indexOf("/** Chunky progress pips"));
+    const tile = playkitSrc.slice(playkitSrc.indexOf("export function ChoiceTile("), playkitSrc.indexOf("/** Chunky progress pips"));
     const min = /min-h-\[(\d+)px\]/.exec(tile);
     expect(min, "ChoiceTile must declare a minimum height").not.toBeNull();
     expect(Number(min![1])).toBeGreaterThanOrEqual(TOUCH_MIN);
-    // The glyph row is decorative reading material, not a control.
-    expect(declaration(".arbor-play .pattern-sequence-glyph", "flex")).toBe("0 0 auto");
+  });
+
+  it("one cameo size across all nine worlds — not per variant", () => {
+    // 51 px on seven worlds, 75 px on Beat Keeper's arrival header (E2/E10).
+    expect(playHeader).not.toMatch(/<HeroAvatar size=\{compact \?/);
+    expect((playHeader.match(/<HeroAvatar size=\{\d+\}/g) ?? []).length).toBe(1);
   });
 });

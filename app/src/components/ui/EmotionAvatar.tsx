@@ -14,6 +14,7 @@ export function EmotionAvatar({
   emotionLabel,
   color = "var(--arbor-clay)",
   size = 72,
+  fallback,
 }: {
   name?: string | null;
   photoURL?: string | null;
@@ -21,6 +22,12 @@ export function EmotionAvatar({
   emotionLabel?: string;
   color?: string;
   size?: number;
+  /** What stands in when there is no portrait. `<Avatar>`'s own fallback is
+   *  initials on a coloured disc — parent contact-list chrome, and the wrong
+   *  answer on a CHILD surface, where the fallback everywhere else is Sprout.
+   *  Callers on a kid surface pass `<ArborMascot />` here; the emotion ring and
+   *  the feeling badge still compose over whatever is supplied. */
+  fallback?: React.ReactNode;
 }) {
   const badge = Math.round(size * 0.42);
   return (
@@ -31,7 +38,13 @@ export function EmotionAvatar({
           style={{ boxShadow: `0 0 0 3px ${color}`, opacity: emotionEmoji ? 0.55 : 0.25 }}
           aria-hidden="true"
         />
-        <Avatar name={name} photoURL={photoURL} size={size} />
+        {!photoURL && fallback ? (
+          <span className="grid place-items-center overflow-hidden rounded-full" style={{ width: size, height: size }}>
+            {fallback}
+          </span>
+        ) : (
+          <Avatar name={name} photoURL={photoURL} size={size} />
+        )}
         {emotionEmoji && (
           <span
             className="absolute -bottom-1 -right-1 rounded-full flex items-center justify-center bg-white"

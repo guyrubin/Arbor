@@ -64,6 +64,7 @@ export default function HeroPoseWorld() {
         mood="cheer"
         worldId="pose"
         variant="compact"
+        heroDecorative
         action={<SpeakButton text={`${poseSay} ${poseCue} ${adaptedCue}`} lang={uiLang} label={t("elev.play.speak.label")} size="md" className="min-w-[44px] min-h-[44px] justify-center" />}
       />
       <ProgressPips total={poses.length} current={idx} tone="sky" />
@@ -74,9 +75,12 @@ export default function HeroPoseWorld() {
             it". The kids-world branch dropped the avatar and left the glyph
             alone, so the world named Hero Pose had no hero in it. Restored via
             the shared <HeroAvatar> (context-driven, Sprout when there is no
-            hero) — no per-game resolver, no new component. */}
+            hero) — no per-game resolver, no new component. Round 2: it is the
+            ONE hero announced on this screen (the header cameo goes decorative
+            above), and its accessible name is the instruction, not a second
+            reading of the child's identity. */}
         <div className="flex flex-wrap items-center justify-center gap-4 mb-3">
-          <HeroAvatar size={88} mood="cheer" />
+          <HeroAvatar size={88} mood="cheer" alt={t("elev.kids.pose.heroAlt", { name: first, pose: poseName })} />
           <span className="text-[4.5rem] leading-none" aria-hidden="true">{pose.emoji}</span>
         </div>
         <h2 className="font-black text-[1.7rem]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-sky-ink)" }}>{poseName}</h2>

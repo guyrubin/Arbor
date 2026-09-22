@@ -16,6 +16,10 @@ export const en: Record<string, string> = {
   "elev.kids.pose.skip": "Skip",
   "elev.kids.pose.cheer": "Amazing pose, {name}! High five!",
   "elev.kids.pose.title": "Hero Pose",
+  // The in-world portrait is the INSTRUCTION, so it carries the instruction as
+  // its accessible name (the world header's cameo goes decorative on this one
+  // screen so the hero is announced once, usefully).
+  "elev.kids.pose.heroAlt": "{name} in the {pose} pose",
   "elev.kids.feelings.selfCheck": "How are you feeling right now, {name}?",
   "elev.kids.feelings.yes": "Yes! This looks like {feeling}.",
   "elev.kids.feelings.retry": "Good try — it might be {feeling}. Let's make that face together.",
@@ -70,6 +74,7 @@ export const he: Record<string, string> = {
   "elev.kids.pose.skip": "לדלג",
   "elev.kids.pose.cheer": "תנוחה נהדרת, {name}! כיף!",
   "elev.kids.pose.title": "תנוחת גיבורים",
+  "elev.kids.pose.heroAlt": "{name} בתנוחת {pose}",
   "elev.kids.feelings.selfCheck": "איך מרגישים עכשיו, {name}?",
   "elev.kids.feelings.yes": "כן! זה נראה כמו {feeling}.",
   "elev.kids.feelings.retry": "ניסיון טוב — אולי זה {feeling}. אפשר לנסות לעשות יחד פרצוף כזה.",

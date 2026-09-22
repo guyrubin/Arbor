@@ -35,33 +35,52 @@ describe("Kids experience visual and session contract", () => {
     }
   });
 
-  it("M1 — the shared header cameo is an announced hero, in every world", () => {
-    // The nine worlds above all reach the child's hero through ONE primitive.
-    // It was `aria-hidden` + `decorative`, so nothing announced a hero anywhere
-    // in the child experience and the portrait was formally decoration. The
-    // prop's own stated reason ("the child's name is already adjacent") is
-    // false in this header: the adjacent text is the WORLD's name.
+  it("M1 — the shared header cameo announces the hero BY DEFAULT, in every world", () => {
+    // The nine worlds all reach the child's hero through ONE primitive. It was
+    // `aria-hidden` + `decorative`, so nothing announced a hero anywhere in the
+    // child experience. The prop's own stated reason ("the child's name is
+    // already adjacent") is false in this header: the adjacent text is the
+    // WORLD's name. Round 2: the opt-out is back as a caller's choice, default
+    // OFF — one world silences it, the other eight must not lose it.
     const playkit = read("../ui/playkit.tsx");
     const cameo = playkit.slice(playkit.indexOf('<div className="play-hero-cameo'), playkit.indexOf("</div>", playkit.indexOf('<div className="play-hero-cameo')));
     expect(cameo).toContain("<HeroAvatar");
-    expect(cameo, "the header hero must not be hidden from a screen-reader child").not.toContain('aria-hidden="true"');
-    expect(cameo, "the header hero must carry its real alt, not decoration").not.toContain("decorative");
+    expect(cameo, "the silence must never be hard-coded on").toContain("aria-hidden={heroDecorative || undefined}");
+    expect(cameo).toContain("decorative={heroDecorative}");
+    expect(playkit, "the opt-out defaults to OFF").toContain("heroDecorative = false");
     // Sprout stays the fallback through HeroAvatar itself — the header must not
     // grow its own avatar resolver.
     expect(playkit).not.toMatch(/photoUrl|comicAvatarUrl/);
   });
 
-  it("M1 — Hero Pose has a hero in it again", () => {
-    // The kids-world branch dropped `<HeroAvatar size={88} mood="cheer" />`
-    // from the pose panel, leaving the world named Hero Pose demonstrating its
-    // poses with a bare emoji. Restored through the shared primitive.
+  it("M1 — Hero Pose has a hero in it, announced ONCE, carrying the instruction", () => {
+    // Round 1 restored the in-world hero but left the header cameo announcing
+    // too: a screen-reader child heard "Dylan, the hero" twice on one screen and
+    // saw the identical headshot 190 px apart.
     const pose = read("../practice/HeroPoseWorld.tsx");
     expect(pose).toContain('import { HeroAvatar } from "../ui/HeroAvatar"');
-    expect(pose).toContain('<HeroAvatar size={88} mood="cheer" />');
+    expect(pose, "the header cameo defers to the in-world hero here").toContain("heroDecorative");
+    expect(pose).toContain('alt={t("elev.kids.pose.heroAlt", { name: first, pose: poseName })}');
     // It sits with the pose glyph — that pairing IS the game's instruction.
-    const panel = pose.slice(pose.indexOf("comic-panel"), pose.indexOf("{poseName}"));
+    const panel = pose.slice(pose.indexOf("comic-panel"), pose.indexOf("{poseName}</h2>"));
     expect(panel).toContain("<HeroAvatar");
     expect(panel).toContain("{pose.emoji}");
+  });
+
+  it("M1 — the instructional alt is bilingual through the existing kid copy path", () => {
+    const copy = read("../../lib/i18nElevation/kidsExperience.ts");
+    const lines = copy.split("\n").filter((l) => l.includes('"elev.kids.pose.heroAlt"'));
+    expect(lines.length, "one EN line and one HE line").toBe(2);
+    expect(lines[0]).toContain("{name} in the {pose} pose");
+    expect(/[֐-׿]/.test(lines[1]), `HE value is not Hebrew: ${lines[1]}`).toBe(true);
+    // The interpolation slots must survive translation.
+    for (const line of lines) for (const slot of ["{name}", "{pose}"]) expect(line).toContain(slot);
+  });
+
+  it("M1 — no other world silences its cameo; it is the only hero they have", () => {
+    for (const file of ["SpeechCoachTab.tsx", "MimicStudioTab.tsx", "FeelingsLabTab.tsx", "AdventuresTab.tsx", "MindVaultWorld.tsx", "SpellForgeWorld.tsx", "BeatKeeperWorld.tsx", "PatternPowerWorld.tsx"]) {
+      expect(read(`../practice/${file}`), file).not.toContain("heroDecorative");
+    }
   });
 
   it("wires expanded banks into bounded sessions and visible selectors", () => {

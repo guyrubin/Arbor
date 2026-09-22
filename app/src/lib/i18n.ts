@@ -4524,43 +4524,49 @@ export const he: Dict = {
   "care.lead": "נבנה מהנתונים של {name}. בטלו סימון של כל מה שתעדיפו לשמור פרטי.",
   "care.trust": "כלום לא יוצא מהמכשיר עד שתבחרו · GDPR/COPPA",
   "care.request": "בקשת ייעוץ",
-  /* ════ KID-1 — Kid Mode chrome (HE) — REVIEWER-PENDING PLACEHOLDERS (GD-6).
-     Child-facing Hebrew is behind the native-voice transcreation gate and is
-     NEVER machine-translated (kid register). Until Guy's native reviewer
-     delivers the transcreated copy, these placeholders deliberately carry the
-     EN values so uiLang=he renders the same vetted copy via the i18n seam
-     (zero hardcoded strings in the components). The full worklist for the
-     reviewer: docs/KID-MODE-HE-TRANSCREATION-TODO-GD-6.md. ════ */
-  "kid.greeting": "Hi {name}!",
-  "kid.greetingSub": "You're doing amazing today",
-  "kid.stars.aria": "{count} stars earned",
-  "kid.exit.backToParent": "Back to parent",
-  "kid.exit.backToParentAria": "Hold to go back to parent",
-  "kid.exit.holdIdle": "Hold to exit",
-  "kid.exit.holdAria": "Hold to exit Kid Mode",
-  "kid.exit.holding": "Hold… {n}s",
-  "kid.safety.aria": "Parent safety",
-  "kid.safety.locked": "Parent locked",
-  "kid.safety.private": "Private by default",
-  "kid.safety.stars": "Stars, never streaks",
-  "kid.quest.eyebrow": "Today's adventure",
-  "kid.quest.title": "Start a hero story",
-  "kid.quest.sub": "Pick a world and you're the star",
-  "kid.quest.cta": "Let's go",
-  "kid.adventures.title": "My growth adventures",
-  "kid.games.title": "Games",
-  "kid.games.seeAll": "See all games",
-  "kid.back.home": "Home",
-  "kid.back.homeAria": "Back to home",
+  /* ════ KID-1 — Kid Mode chrome (HE) — FIRST-PASS HEBREW, GD-6/GD-7 STILL OPEN.
+     Until 22 Sep 2026 every value here was the EN string, so an IL-first
+     product shipped a fully English child home to a Hebrew-native five-year
+     old (rendered evidence: CRITIC-M1-round1.md, E9). These are written
+     Hebrew — warm, plural-neutral, ages 4–8, the register the already-
+     transcreated elev.kids.* block uses — not a machine pass, and NOT the
+     native editorial certification Guy still owes this surface. A reviewer
+     signs these off before release; the worklist stays
+     docs/KID-MODE-HE-TRANSCREATION-TODO-GD-6.md.
+     PROPER NOUNS STAY EN: world names (kid.game.*.title) are locked verbatim
+     to the arcade by kidMode.test.ts, and kid.surface.* / kid.adv.*.title
+     label the destination the child arrives at, which still reads EN. They
+     localize when the arcade does. ════ */
+  "kid.greeting": "היי {name}!",
+  "kid.greetingSub": "אתם מדהימים היום!",
+  "kid.stars.aria": "{count} כוכבים שנאספו",
+  "kid.exit.backToParent": "חזרה להורה",
+  "kid.exit.backToParentAria": "החזיקו כדי לחזור להורה",
+  "kid.exit.holdIdle": "החזיקו כדי לצאת",
+  "kid.exit.holdAria": "החזיקו כדי לצאת ממצב ילדים",
+  "kid.exit.holding": "מחזיקים… {n} שניות",
+  "kid.safety.aria": "בטיחות להורים",
+  "kid.safety.locked": "נעול בידי ההורה",
+  "kid.safety.private": "פרטי כברירת מחדל",
+  "kid.safety.stars": "כוכבים, בלי רצפים",
+  "kid.quest.eyebrow": "ההרפתקה של היום",
+  "kid.quest.title": "מתחילים סיפור גיבורים",
+  "kid.quest.sub": "בוחרים עולם — ואתם הכוכבים",
+  "kid.quest.cta": "יוצאים לדרך",
+  "kid.adventures.title": "ההרפתקאות שלי",
+  "kid.games.title": "משחקים",
+  "kid.games.seeAll": "כל המשחקים",
+  "kid.back.home": "בית",
+  "kid.back.homeAria": "חזרה לבית",
   "kid.surface.journeys": "Hero Stories",
   "kid.surface.arcade": "Playbank",
   "kid.surface.feelings": "Feelings",
   "kid.adv.playbank.title": "Playbank",
-  "kid.adv.playbank.sub": "Play, learn & grow",
+  "kid.adv.playbank.sub": "משחקים, לומדים וגדלים",
   "kid.adv.hero.title": "Hero Stories",
-  "kid.adv.hero.sub": "You're the star",
+  "kid.adv.hero.sub": "אתם הכוכבים",
   "kid.adv.feelings.title": "Feelings",
-  "kid.adv.feelings.sub": "Explore & understand",
+  "kid.adv.feelings.sub": "לגלות ולהבין",
   // KID-4: game tile titles are VERBATIM HeroArcade world names — the tile's
   // name is exactly what the child sees on the surface it opens (honest
   // navigation; kidMode.test.ts locks the pairing). The old fantasy-named
@@ -4568,21 +4574,21 @@ export const he: Dict = {
   // that did not exist by those names. World names stay EN in both maps until
   // the arcade itself localizes (GD-6 native transcreation gate).
   "kid.game.sound-lab.title": "Sound Lab",
-  "kid.game.sound-lab.sub": "Speak & play",
+  "kid.game.sound-lab.sub": "מדברים ומשחקים",
   "kid.game.mood-mountain.title": "Mood Mountain",
-  "kid.game.mood-mountain.sub": "Spot the feeling",
+  "kid.game.mood-mountain.sub": "מזהים את הרגש",
   "kid.game.mind-vault.title": "Mind Vault",
-  "kid.game.mind-vault.sub": "Find the pairs",
+  "kid.game.mind-vault.sub": "מוצאים את הזוגות",
   "kid.game.beat-keeper.title": "Beat Keeper",
-  "kid.game.beat-keeper.sub": "Tap the beat",
+  "kid.game.beat-keeper.sub": "מתופפים בקצב",
   "kid.game.hero-pose.title": "Hero Pose",
-  "kid.game.hero-pose.sub": "Strike a pose",
+  "kid.game.hero-pose.sub": "עושים תנוחה",
   "kid.game.pattern-power.title": "Pattern Power",
-  "kid.game.pattern-power.sub": "What comes next?",
+  "kid.game.pattern-power.sub": "מה בא אחר כך?",
   "kid.game.story-quest.title": "Story Quest",
-  "kid.game.story-quest.sub": "Choose the way",
+  "kid.game.story-quest.sub": "בוחרים את הדרך",
   "kid.game.mimic-studio.title": "Mimic Studio",
-  "kid.game.mimic-studio.sub": "Copy the moves",
+  "kid.game.mimic-studio.sub": "מחקים את התנועות",
   // AIX-S1 — Arbor Vision modal (HE; flagged for arbor-localization native review).
   "vis.title.observe": "הראו לארבור תמונה",
   "vis.title.document": "סריקת מסמך",

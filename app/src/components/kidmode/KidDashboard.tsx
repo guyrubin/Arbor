@@ -387,14 +387,19 @@ export default function KidDashboard({
             <Sparkles aria-hidden="true" className="w-10 h-10" style={{ color: "var(--arbor-sky-ink)" }} />
           </WorldScene>
           <span className="absolute bottom-2 end-2 z-[2] rounded-2xl" style={{ background: "var(--arbor-paper-elevated)", border: "2px solid var(--comic-ink)", boxShadow: "2px 2px 0 var(--comic-ink)" }}>
-            <HeroAvatar size={80} mood="cheer" decorative />
+            {/* F6 — the featured hero ANNOUNCES. The adjacent text is "Start a
+                hero story", never the child's name, so the same argument that
+                un-hid the world-header cameo applies here. The greeting
+                portrait above keeps `decorative`: it really does sit next to
+                "Hi {name}!". */}
+            <HeroAvatar size={80} mood="cheer" />
           </span>
         </div>
         <span style={{ flex: 1, minInlineSize: 0, padding: 14, alignSelf: "center" }}>
           <span style={{ display: "block", fontSize: 12, fontWeight: 800, color: "var(--arbor-sky-ink)" }}>{kt("kid.quest.eyebrow")}</span>
           <span style={{ display: "block", fontFamily: "var(--font-display)", fontWeight: 900, fontSize: "clamp(20px, 5vw, 26px)", color: "var(--arbor-ink)", lineHeight: 1.12 }}>{kt("kid.quest.title")}</span>
           <span style={{ display: "block", fontSize: 13, color: "var(--arbor-ink)", marginBlockStart: 4 }}>{kt("kid.quest.sub")}</span>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, minBlockSize: 44, fontWeight: 800, color: "var(--arbor-sky-ink)" }}>{kt("kid.quest.cta")} <ChevronRight className="w-4 h-4" aria-hidden="true" /></span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, minBlockSize: 44, fontWeight: 800, color: "var(--arbor-sky-ink)" }}>{kt("kid.quest.cta")} <ChevronRight className="w-4 h-4 rtl:-scale-x-100" aria-hidden="true" /></span>
         </span>
       </button>
 
@@ -409,7 +414,7 @@ export default function KidDashboard({
             onClick={() => onOpenSurface("arcade")}
             style={{ appearance: "none", background: "transparent", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "4px", minHeight: `${KID_HOME_SECTION_HEAD_BLOCK}px`, fontSize: "var(--t-sm)", fontWeight: 700, color: "var(--arbor-muted)" }}
           >
-            {kt("kid.games.seeAll")} <ChevronRight className="w-4 h-4" aria-hidden="true" />
+            {kt("kid.games.seeAll")} <ChevronRight className="w-4 h-4 rtl:-scale-x-100" aria-hidden="true" />
           </button>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(160px, 100%), 1fr))", gap: `${KID_HOME_TILE_GAP}px` }}>
@@ -442,13 +447,13 @@ export default function KidDashboard({
           <span className="relative grid flex-shrink-0 place-items-center rounded-[22px]" style={{ inlineSize: 92, blockSize: 92, background: "var(--arbor-paper-elevated)", border: "var(--comic-line)" }}>
             <BookOpen className="h-9 w-9" aria-hidden="true" style={{ color: "var(--arbor-peach-ink)" }} />
             <span className="absolute -bottom-2 -end-2 rounded-2xl" style={{ background: "var(--arbor-paper-elevated)", border: "2px solid var(--comic-ink)" }}>
-              <HeroAvatar size={48} mood="cheer" decorative />
+              <HeroAvatar size={48} mood="cheer" />
             </span>
           </span>
           <span style={{ flex: 1, minInlineSize: 0 }}>
             <span style={{ display: "block", fontFamily: "var(--font-display)", fontWeight: 900, fontSize: KID_HOME_GAME_TITLE_SIZE, color: "var(--arbor-ink)" }}>{kt("elev.kids.comics.title")}</span>
             <span style={{ display: "block", marginBlockStart: 4, color: "var(--arbor-ink-soft)" }}>{kt("elev.kids.comics.sub")}</span>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, minBlockSize: 44, fontWeight: 800, color: "var(--arbor-peach-ink)" }}>{kt("elev.kids.comics.cta")} <ChevronRight className="h-4 w-4" aria-hidden="true" /></span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, minBlockSize: 44, fontWeight: 800, color: "var(--arbor-peach-ink)" }}>{kt("elev.kids.comics.cta")} <ChevronRight className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" /></span>
           </span>
         </button>
       </section>

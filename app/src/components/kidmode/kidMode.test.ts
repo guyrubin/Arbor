@@ -354,6 +354,51 @@ describe("KID-1: kid.* i18n keys exist in BOTH language maps", () => {
     expect(kidEn.length).toBeGreaterThan(0);
     expect(kidHe.sort()).toEqual(kidEn.sort());
   });
+
+  /* ── F4: the Hebrew kid home must be in Hebrew ───────────────────────────
+     Every `kid.*` HE value was the EN string, so an IL-first product rendered
+     a fully English child home under `dir="rtl"` (CRITIC-M1-round1.md, E9).
+     The only values that may stay EN are the PROPER NOUNS: the arcade's world
+     names, which the test above locks to the tile verbatim, and the surface
+     labels that name the destination the child lands on — those localize when
+     the arcade itself does. The list is exact, so a name that gets translated
+     must LEAVE it rather than sit here as a permanent excuse. */
+  const HEBREW_SCRIPT = /[֐-׿]/;
+  const EN_BY_DESIGN: Record<string, string> = {
+    "kid.surface.journeys": "names the Hero Stories surface, whose own header still reads EN",
+    "kid.surface.arcade": "names the Playbank surface, whose own header still reads EN",
+    "kid.surface.feelings": "names the Feelings surface, whose own header still reads EN",
+    "kid.adv.playbank.title": "the Playbank tile is the surface name, verbatim (KID-4 honest navigation)",
+    "kid.adv.hero.title": "the Hero Stories tile is the surface name, verbatim",
+    "kid.adv.feelings.title": "the Feelings tile is the surface name, verbatim",
+    ...Object.fromEntries(
+      Object.keys(en)
+        .filter((k) => /^kid\.game\..+\.title$/.test(k))
+        .map((k) => [k, "an arcade world name, locked verbatim to the tile by the test above"]),
+    ),
+  };
+
+  it("every kid.* HE value is Hebrew, except the documented proper nouns", () => {
+    const english = Object.keys(en)
+      .filter((k) => k.startsWith("kid."))
+      .filter((k) => !(k in EN_BY_DESIGN))
+      .filter((k) => he[k] === en[k] || !HEBREW_SCRIPT.test(he[k]));
+    expect(english, `still English in the HE dictionary: ${english.join(", ")}`).toEqual([]);
+  });
+
+  it("every EN-by-design key is still EN (a translated one must leave the list)", () => {
+    for (const key of Object.keys(EN_BY_DESIGN)) {
+      expect(en[key], `${key} missing from en`).toBeTruthy();
+      expect(he[key], `${key} is translated now — drop it from EN_BY_DESIGN`).toBe(en[key]);
+    }
+  });
+
+  it("translation kept every interpolation slot", () => {
+    for (const key of Object.keys(en).filter((k) => k.startsWith("kid."))) {
+      const slots = (s: string) => (s.match(/\{[a-zA-Z]+\}/g) ?? []).sort();
+      expect(slots(he[key]), `${key}: slots changed in translation`).toEqual(slots(en[key]));
+    }
+  });
 });
 
 describe("KID-1: no hardcoded UI copy renders in kidmode/*.tsx", () => {

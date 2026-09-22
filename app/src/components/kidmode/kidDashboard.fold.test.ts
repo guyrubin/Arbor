@@ -201,7 +201,15 @@ describe("KID-06 — the arcade grid lists the same games the home does", () => 
    ordinary destination tiles. Those edits are in the tree; without a guard the
    next tile pass silently puts them back — the overlay was one JSX span.
    ═══════════════════════════════════════════════════════════════════════════ */
-describe("U1 — the kid home has one featured hero", () => {
+describe("U1 — one FEATURED hero above the fold, plus the greeting mark", () => {
+  /* Round-2 honesty fix (F5): the old name said "one featured hero" while the
+     assertion below counted two portraits. Astra's disposition explicitly
+     KEEPS the greeting portrait, so two is correct — but the guard has to say
+     which two and why, or the next reader trusts the name over the code. The
+     enforced contract is: exactly one FEATURED portrait (the banner, 80 px,
+     announced) + at most the greeting mark (56 px, decorative, sitting next to
+     "Hi {name}!"), and nothing else above the fold. */
+
   /** The reusable destination tile every game and adventure renders through. */
   const sceneTile = dash.slice(dash.indexOf("function SceneTile("), dash.indexOf("export default function KidDashboard"));
 
@@ -226,9 +234,42 @@ describe("U1 — the kid home has one featured hero", () => {
     expect(KID_HOME_BANNER_BLOCK).toBe(190);
   });
 
-  it("only two portraits sit above the fold", () => {
+  it("above the fold: one featured portrait + at most the greeting mark", () => {
     const aboveFold = dash.slice(dash.indexOf("── Greeting header"), dash.indexOf("── Games ──"));
-    expect((aboveFold.match(/<HeroAvatar/g) ?? []).length).toBe(2);
+    const portraits = [...aboveFold.matchAll(/<HeroAvatar size=\{([^}]+)\}([^/]*)\/>/g)];
+    expect(portraits.length, "greeting mark + featured hero, nothing else").toBeLessThanOrEqual(2);
+    const featured = portraits.filter((m) => m[1] === "80");
+    expect(featured.length, "exactly one FEATURED portrait").toBe(1);
+    const greeting = portraits.filter((m) => m[1] === "KID_HOME_HEADER_BLOCK");
+    expect(greeting.length).toBeLessThanOrEqual(1);
+  });
+
+  it("F6 — the featured hero announces; only the greeting mark is decorative", () => {
+    // The builder's own a11y argument, applied to this screen: the text beside
+    // the banner portrait is "Start a hero story", never the child's name, so
+    // `decorative` was as wrong here as it was in the world header. Only :351
+    // really does sit next to "Hi {name}!".
+    const aboveFold = dash.slice(dash.indexOf("── Greeting header"), dash.indexOf("── Games ──"));
+    const greetingLine = aboveFold.split("\n").find((l) => l.includes("KID_HOME_HEADER_BLOCK"))!;
+    expect(greetingLine, "the greeting mark stays decorative").toContain("decorative");
+    const featuredLine = aboveFold.split("\n").find((l) => /<HeroAvatar size=\{80\}/.test(l))!;
+    expect(featuredLine, "the featured hero must announce").not.toContain("decorative");
+    // …and so does the comics door, whose adjacent copy is "Hero Comics".
+    const comics = dash.slice(dash.indexOf("Saved comics are a distinct"));
+    expect(comics.split("\n").find((l) => l.includes("<HeroAvatar"))!).not.toContain("decorative");
+  });
+
+  it("F8 — directional chevrons mirror in RTL; non-directional glyphs do not", () => {
+    // DESIGN.md: "directional icons rtl:-scale-x-100". E9 caught three arrows
+    // pointing right while sitting on the left of a Hebrew line.
+    const chevrons = [...dash.matchAll(/<ChevronRight className="([^"]+)"/g)].map((m) => m[1]);
+    expect(chevrons.length, "every chevron on the kid home").toBe(3);
+    for (const cls of chevrons) expect(cls, cls).toContain("rtl:-scale-x-100");
+    for (const glyph of ["Star", "Gamepad2", "Sparkles"]) {
+      const m = new RegExp(`<${glyph} className="([^"]*)"`).exec(dash);
+      expect(m, glyph).not.toBeNull();
+      expect(m![1], `${glyph} is not directional and must not mirror`).not.toContain("scale-x");
+    }
   });
 
   it("the remaining portrait is the comics door, far below the fold", () => {

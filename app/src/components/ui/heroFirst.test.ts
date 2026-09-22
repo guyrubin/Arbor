@@ -62,6 +62,41 @@ describe("M1 — no child surface reads the raw photo itself", () => {
     expect((feelings.text.match(/photoURL=\{heroUrl\}/g) ?? []).length).toBe(2);
   });
 
+  it("…and when there is no hero it is SPROUT, never a letter in a circle", () => {
+    // Round 1 closed the photo leak and shipped the wrong fallback: `Avatar`'s
+    // null-photo branch is initials, so the hero-less child met a flat disc with
+    // a "D" in it — in the one moment the surface asks about *them*. Every other
+    // world falls back to Sprout; a letter disc is parent contact-list chrome.
+    const feelings = files.find((f) => f.rel.endsWith("FeelingsLabTab.tsx"))!;
+    expect(feelings.text).toContain('import { ArborMascot } from "../ui/ArborMascot"');
+    expect((feelings.text.match(/fallback=\{<ArborMascot /g) ?? []).length).toBe(2);
+    // Both self-check sites — the one that has a hero and the one that does not.
+    expect((feelings.text.match(/<EmotionAvatar/g) ?? []).length).toBe(2);
+  });
+
+  it("the fallback slot exists on the primitive, so the ring still composes", () => {
+    const emotion = readFileSync(path.join(here, "EmotionAvatar.tsx"), "utf8");
+    expect(emotion).toContain("fallback?: React.ReactNode");
+    // Supplied fallback wins over Avatar's initials, and only when there is no
+    // portrait — a real hero still renders as the portrait.
+    expect(emotion).toContain("{!photoURL && fallback ? (");
+    expect(emotion).toContain("<Avatar name={name} photoURL={photoURL} size={size} />");
+  });
+
+  it("no kid surface renders an initials disc as the child's own stand-in", () => {
+    // <Avatar> is the parent-register person chip. A kid surface may not reach
+    // for it without handing it a fallback, or the initials branch is live again.
+    const offenders = files
+      .filter((f) => /<Avatar\b/.test(f.text))
+      .map((f) => f.rel);
+    expect(offenders, "kid surfaces use HeroAvatar (Sprout fallback), not Avatar").toEqual([]);
+    const usesEmotionAvatar = files.filter((f) => /<EmotionAvatar\b/.test(f.text));
+    expect(usesEmotionAvatar.length).toBeGreaterThan(0);
+    for (const f of usesEmotionAvatar) {
+      expect(f.text, `${f.rel} must pass a mascot fallback to EmotionAvatar`).toContain("fallback={<ArborMascot ");
+    }
+  });
+
   it("Sprout is the fallback, in the one place the fallback lives", () => {
     const hero = readFileSync(path.join(here, "HeroAvatar.tsx"), "utf8");
     const fallback = hero.slice(hero.indexOf("if (!url || failedUrl === url)"), hero.indexOf("const badge"));

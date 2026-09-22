@@ -112,6 +112,7 @@ export function PlayHeader({
   worldId,
   variant = "entry",
   eyebrow,
+  heroDecorative = false,
 }: {
   title: string;
   say?: string;
@@ -120,6 +121,11 @@ export function PlayHeader({
   worldId?: string;
   variant?: "entry" | "compact";
   eyebrow?: string;
+  /** Silences the header cameo for a screen reader. Default `false`: in eight
+   *  of the nine worlds this cameo is the ONLY hero on the screen, so it must
+   *  announce. A world that renders its own in-world hero (Hero Pose) passes
+   *  `true`, so the child hears the hero ONCE — and hears the useful one. */
+  heroDecorative?: boolean;
 }) {
   const compact = variant === "compact";
   return (
@@ -137,11 +143,22 @@ export function PlayHeader({
           `decorative` gives the portrait its real alt ("{name}, the hero");
           Sprout still covers the no-hero child through HeroAvatar's own
           fallback. No cosmetics here on purpose: HeroCrest carries EARNED gear,
-          which is parent-register progression the child branch strips. */}
-      <div className="play-hero-cameo flex-shrink-0">
-        <HeroAvatar size={compact ? 56 : 88} mood={mood} animate />
+          which is parent-register progression the child branch strips.
+          Round 2: `heroDecorative` puts the silence back for the ONE world that
+          renders a second, more useful hero of its own — the global removal
+          made Hero Pose announce the same portrait twice. The size is no longer
+          per-variant: the cameo measured 51 px on seven worlds and 75 px on
+          Beat Keeper's arrival header, so "the same hero everywhere" was not
+          even the same size. One number, enforced here, not per world. */}
+      <div className="play-hero-cameo flex-shrink-0" aria-hidden={heroDecorative || undefined}>
+        <HeroAvatar size={56} mood={mood} animate decorative={heroDecorative} />
       </div>
-      <div className={`flex-1 ${compact ? "min-w-0" : "min-w-[200px]"}`}>
+      {/* Round 2 / F3: `min-w-0` let this column shrink to ~110 px at 320, so
+          the instruction rendered one word per line and the header ate 520 of
+          700 px. The header already wraps, so a real minimum drops the action
+          onto its own row (Astra's accepted candidate shows exactly that)
+          instead of squeezing the copy. */}
+      <div className={`flex-1 ${compact ? "min-w-[12rem]" : "min-w-[200px]"}`}>
         {eyebrow ? <p className="play-eyebrow">{eyebrow}</p> : null}
         <h1
           className={compact ? "text-[1.45rem] md:text-[1.7rem] leading-[1.08]" : "text-[1.9rem] md:text-[2.4rem] leading-[1.05]"}

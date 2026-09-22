@@ -43,6 +43,7 @@ export function HeroAvatar({
   animate = true,
   ring = true,
   decorative = false,
+  alt,
   className = "",
 }: {
   size?: number;
@@ -52,6 +53,11 @@ export function HeroAvatar({
   /** When true the portrait is purely decorative (the child's name is already
    *  adjacent) — `alt=""` + `aria-hidden` so screen readers don't double-announce. */
   decorative?: boolean;
+  /** Overrides the default "{name}, the hero". Use it where the portrait is
+   *  doing a JOB — Hero Pose's in-world hero is the instruction, so it says
+   *  what the child should copy instead of repeating the identity the header
+   *  already gave. Ignored when `decorative`. */
+  alt?: string;
   className?: string;
 }) {
   const { url, name } = useHeroAvatar();
@@ -85,7 +91,7 @@ export function HeroAvatar({
           key={url}
           src={url}
           onError={() => setFailedUrl(url)}
-          alt={decorative ? "" : `${name}, the hero`}
+          alt={decorative ? "" : alt || `${name}, the hero`}
           aria-hidden={decorative || undefined}
           referrerPolicy="no-referrer"
           className="w-full h-full rounded-full object-cover"
