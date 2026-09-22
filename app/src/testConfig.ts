@@ -14,6 +14,7 @@ export const createTestConfig = (overrides: Partial<ArborConfig> = {}): ArborCon
   vertexModelAnalysis: "gemini-2.5-pro",
   vertexModelHandoff: "gemini-2.5-flash",
   vertexModelImage: "gemini-2.5-flash-image",
+  vertexImageRegions: ["europe-west4", "europe-west1", "europe-west3"],
   modelProvider: "vertex",
   geminiApiKey: "test-key",
   geminiModel: "gemini-2.5-flash",

@@ -17,6 +17,11 @@ export type ArborConfig = {
   vertexModelHandoff: string;
   /** Image-generation model (Gemini 2.5 Flash Image / "Nano Banana"). Outputs carry SynthID + C2PA. */
   vertexModelImage: string;
+  /** Ordered Vertex locations tried for image generation when the primary
+   *  region is saturated (429/503). First entry is always `vertexLocation`.
+   *  Every entry must satisfy the route policy region (EU in prod); non-EU
+   *  entries are dropped at request time, never silently used. */
+  vertexImageRegions: string[];
   modelProvider: ModelProviderKind;
   geminiApiKey?: string;
   geminiModel: string;
@@ -89,6 +94,13 @@ const boolFromEnv = (value: string | undefined, fallback: boolean) => {
   return ["1", "true", "yes", "on"].includes(value.toLowerCase());
 };
 
+/** Ordered, de-duplicated image regions: the primary location first, then the
+ *  configured (or default EU) fallbacks. Blank entries are ignored. */
+export const imageRegionsFromEnv = (value: string | undefined, primary: string): string[] => {
+  const configured = (value ?? "europe-west1,europe-west3").split(",").map((s) => s.trim()).filter(Boolean);
+  return Array.from(new Set([primary, ...configured]));
+};
+
 const parseArborEnv = (value: string | undefined): ArborEnvironment => {
   const normalized = (value || "local").toLowerCase();
   if (["local", "dev", "stage", "prod"].includes(normalized)) return normalized as ArborEnvironment;
@@ -142,6 +154,13 @@ export const loadConfig = (): ArborConfig => {
     vertexModelAnalysis: process.env.VERTEX_MODEL_ANALYSIS || "gemini-2.5-flash",
     vertexModelHandoff: process.env.VERTEX_MODEL_HANDOFF || "gemini-2.5-flash",
     vertexModelImage: process.env.VERTEX_MODEL_IMAGE || "gemini-2.5-flash-image",
+    // 22 Sep 2026: europe-west4 returned 429 "Resource exhausted" on 26 of 35
+    // scene requests with project quota at 0 % — regional capacity, not quota.
+    // Family imagery stays in the EU: the fallback list is EU-only by default.
+    vertexImageRegions: imageRegionsFromEnv(
+      process.env.VERTEX_IMAGE_REGIONS,
+      process.env.VERTEX_LOCATION || process.env.GCP_REGION || "europe-west4"
+    ),
     modelProvider,
     geminiApiKey: process.env.GEMINI_API_KEY,
     geminiModel: process.env.GEMINI_MODEL || "gemini-2.5-flash",

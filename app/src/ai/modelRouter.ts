@@ -2,7 +2,7 @@ import { GoogleGenAI, type Schema } from "@google/genai";
 import type { ArborConfig } from "../config/env.js";
 import { withDefaultModelDeadlines } from "./modelDeadlines.js";
 import { ClaudeVertexProvider } from "./claudeVertexProvider.js";
-import { abortableIterate, raceWithAbort, withModelRetry, type ModelCallBudget } from "./modelRetry.js";
+import { abortableIterate, isAbortError, isTransientModelError, raceWithAbort, withModelRetry, type ModelCallBudget } from "./modelRetry.js";
 import { recordUsage, startCallTimer } from "./usage.js";
 import { providerRegion, routePolicyFor, selectProvider, type ProviderCandidate } from "./capabilities/policy.js";
 import type { CapabilityRequest } from "./capabilities/contracts.js";
@@ -362,10 +362,34 @@ export class GeminiDevProvider implements ModelProvider {
   }
 }
 
-export class VertexGeminiProvider {
-  private vertexPromise: Promise<any> | null = null;
+/** Vertex SDK client factory, injectable so region fallback is testable without the SDK. */
+export type VertexClientFactory = (location: string) => Promise<any>;
 
-  constructor(private readonly config: ArborConfig) {}
+/** A region is skipped (never thrown from) when the model is absent there. */
+const isModelUnavailableInRegion = (err: any): boolean => {
+  const status = err?.status ?? err?.code ?? err?.response?.status;
+  return status === 404 || /NOT_FOUND|not found|is not supported in/i.test(String(err?.message || ""));
+};
+
+export class VertexGeminiProvider {
+  private readonly vertexByLocation = new Map<string, Promise<any>>();
+
+  constructor(
+    private readonly config: ArborConfig,
+    private readonly vertexFactory: VertexClientFactory = async (location) => {
+      const { VertexAI } = await import("@google-cloud/vertexai");
+      return new VertexAI({ project: this.config.gcpProjectId, location });
+    }
+  ) {}
+
+  /** Ordered image regions admitted by the route policy (EU-only in prod). The
+   *  primary `vertexLocation` is always first; a configured non-EU fallback is
+   *  dropped here rather than silently moving family imagery out of region. */
+  imageRegions(): string[] {
+    const policy = routePolicyFor(this.config);
+    const ordered = Array.from(new Set([this.config.vertexLocation, ...(this.config.vertexImageRegions ?? [])]));
+    return ordered.filter((location) => policy.allowedRegions.includes(providerRegion(location)));
+  }
 
   async generateJson(options: GenerateJsonOptions) {
     const modelId = modelForGeminiRequest(this.config, options.route, options.images);
@@ -445,36 +469,62 @@ export class VertexGeminiProvider {
   }
 
   async generateImage(options: GenerateImageOptions): Promise<GeneratedImage> {
-    const model = await this.getImageModel();
-    const timer = startCallTimer();
-    const result: any = await withModelRetry(() =>
-      raceWithAbort(model.generateContent({
-        contents: [{ role: "user", parts: buildVertexParts(options.prompt, options.images) }],
-        generationConfig: { responseModalities: ["IMAGE"] }
-      }), options.budget?.signal), 3, options.budget
-    );
-    recordUsage({ route: "creative_low_risk", provider: "vertex_gemini", model: this.config.vertexModelImage }, result.response?.usageMetadata, timer.finish());
-    return extractInlineImage(result.response?.candidates);
+    const regions = this.imageRegions();
+    const parts = buildVertexParts(options.prompt, options.images);
+    let lastErr: unknown;
+    for (let index = 0; index < regions.length; index += 1) {
+      const location = regions[index];
+      const isLast = index === regions.length - 1;
+      if (options.budget?.signal?.aborted) throw lastErr ?? new Error("Image generation aborted");
+      const model = await this.getImageModel(location);
+      const timer = startCallTimer();
+      try {
+        // Two in-region attempts before moving on: a saturated region rarely
+        // clears within one backoff, and the route deadline (60 s) has to
+        // cover every region in the list.
+        const result: any = await withModelRetry(() =>
+          raceWithAbort(model.generateContent({
+            contents: [{ role: "user", parts }],
+            generationConfig: { responseModalities: ["IMAGE"] }
+          }), options.budget?.signal), isLast ? 3 : 2, options.budget
+        );
+        recordUsage({ route: "creative_low_risk", provider: "vertex_gemini", model: this.config.vertexModelImage }, result.response?.usageMetadata, timer.finish());
+        if (index > 0) console.info("Arbor Image Region", { primary: regions[0], used: location, attemptsBefore: index });
+        // A blocked/empty candidate is a content verdict for THIS request, not
+        // a capacity signal: it must not be retried in another region.
+        return extractInlineImage(result.response?.candidates);
+      } catch (err) {
+        lastErr = err;
+        const capacity = isTransientModelError(err) || isModelUnavailableInRegion(err);
+        if (isLast || !capacity || isAbortError(err)) throw err;
+        if (options.budget?.deadlineAt && options.budget.deadlineAt - Date.now() < 8000) throw err;
+        console.warn("Arbor Image Region Fallback", {
+          from: location, to: regions[index + 1],
+          status: (err as any)?.status ?? (err as any)?.code ?? null,
+          reason: String((err as any)?.message || err).slice(0, 120)
+        });
+      }
+    }
+    throw lastErr;
   }
 
   private async getModel(route: ModelRoute, images?: ImagePart[]) {
-    const vertex = await this.getVertex();
+    const vertex = await this.getVertex(this.config.vertexLocation);
     return vertex.getGenerativeModel({ model: modelForGeminiRequest(this.config, route, images) });
   }
 
-  private async getImageModel() {
-    const vertex = await this.getVertex();
+  private async getImageModel(location: string) {
+    const vertex = await this.getVertex(location);
     return vertex.getGenerativeModel({ model: this.config.vertexModelImage });
   }
 
-  private async getVertex() {
-    if (!this.vertexPromise) {
-      this.vertexPromise = import("@google-cloud/vertexai").then(({ VertexAI }) => new VertexAI({
-        project: this.config.gcpProjectId,
-        location: this.config.vertexLocation
-      }));
+  private getVertex(location: string) {
+    let pending = this.vertexByLocation.get(location);
+    if (!pending) {
+      pending = this.vertexFactory(location);
+      this.vertexByLocation.set(location, pending);
     }
-    return this.vertexPromise;
+    return pending;
   }
 }
 
