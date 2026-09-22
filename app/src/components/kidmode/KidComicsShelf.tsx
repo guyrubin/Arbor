@@ -8,11 +8,12 @@ import type { ChildProfile } from "../../types";
 import {
   adventureTitle,
   avatarHash,
-  bookPageCount,
   getAdventure,
   isStrictComicImageDataUrl,
+  readSavedMetaCoverFromStore,
   rehydrateSavedMetaPagesFromStore,
   savedMetaPagesAvailable,
+  savedMetaPageTotal,
   type SavedComicMeta,
 } from "../../lib/heroComics";
 import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
@@ -71,6 +72,9 @@ export default function KidComicsShelf({
   partitionRef.current = partitionKey;
   const [confirmedPartition, setConfirmedPartition] = useState(partitionKey);
   const [availability, setAvailability] = useState<{ scope: string; values: Record<string, ShelfState> }>({ scope: "", values: {} });
+  // The cover (page 0) of every openable book, read from the same device store
+  // as the pages — the shelf card shows the book, not a generic icon.
+  const [covers, setCovers] = useState<{ scope: string; values: Record<string, string> }>({ scope: "", values: {} });
   const [open, setOpen] = useState<OpenBook | null>(null);
   const [unavailableId, setUnavailableId] = useState<string | null>(null);
 
@@ -100,17 +104,24 @@ export default function KidComicsShelf({
     setOpen(null);
     setUnavailableId(null);
     setAvailability({ scope: scopeKey, values: Object.fromEntries(books.map(({ meta }) => [meta.id, "checking"])) });
+    setCovers({ scope: "", values: {} });
     void (async () => {
       const next: Record<string, ShelfState> = {};
+      const nextCovers: Record<string, string> = {};
       for (const { meta } of books) {
         try {
           next[meta.id] = await savedMetaPagesAvailable(childProfile.id, meta, avatarToken) ? "available" : "unavailable";
+          if (next[meta.id] === "available") {
+            const cover = await readSavedMetaCoverFromStore(childProfile.id, meta, avatarToken);
+            if (cover && isStrictComicImageDataUrl(cover)) nextCovers[meta.id] = cover;
+          }
         } catch {
           next[meta.id] = "unavailable";
         }
       }
       if (request === requestRef.current && scopeRef.current === scopeKey) {
         setAvailability({ scope: scopeKey, values: next });
+        setCovers({ scope: scopeKey, values: nextCovers });
       }
     })();
     return () => { requestRef.current += 1; };
@@ -127,7 +138,9 @@ export default function KidComicsShelf({
     const urls = await rehydrateSavedMetaPagesFromStore(childProfile.id, meta, avatarToken).catch(() => []);
     if (request !== requestRef.current || partitionRef.current !== startedPartition || scopeRef.current !== startedScope) return;
     const adventure = getAdventure(meta.adventureId);
-    const expectedCount = meta.pageKeys?.length ?? bookPageCount(meta.adventureId);
+    // The saved record carries its own length (a read-along comic is cover +
+    // every beat, which is not the authored book plan).
+    const expectedCount = savedMetaPageTotal(meta);
     const validBytes = adventure
       && expectedCount > 0
       && urls.length === expectedCount
@@ -196,11 +209,14 @@ export default function KidComicsShelf({
           {books.map(({ meta, adventure }) => {
             const state = availability.scope === scopeKey ? availability.values[meta.id] ?? "checking" : "checking";
             const unavailable = state === "unavailable";
+            const cover = covers.scope === scopeKey ? covers.values[meta.id] : undefined;
             return (
               <PlayPanel key={meta.id} tone="lav" className="flex flex-col gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl" style={{ background: "var(--arbor-yellow)", border: "2px solid var(--comic-ink)" }}>
-                    <BookOpen className="h-7 w-7" aria-hidden="true" />
+                  <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-2xl" style={{ background: "var(--arbor-yellow)", border: "2px solid var(--comic-ink)" }}>
+                    {cover
+                      ? <img src={cover} alt="" className="h-full w-full object-cover" />
+                      : <BookOpen className="h-7 w-7" aria-hidden="true" />}
                   </div>
                   <div className="min-w-0">
                     <h3 className="font-black leading-tight" dir="auto">{meta.title || adventureTitle(adventure, meta.lang)}</h3>

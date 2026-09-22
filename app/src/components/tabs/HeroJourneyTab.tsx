@@ -347,6 +347,9 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
     await savedComicsCol.upsert(toSavedComicMeta({
       id: activeStory.id,
       adventureId: activeStory.id,
+      // M3: the read-along comic is its OWN shelf book (doc id
+      // `<storyId>:journey`) — it no longer overwrites a parent-built book.
+      kind: "journey",
       title: render.title || activeStory.title,
       lang: aiLang,
       pageUrls: [],

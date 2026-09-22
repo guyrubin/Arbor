@@ -195,6 +195,9 @@ describe("AIX-S5 — firewall condition: device-local ONLY (no network reads the
       "lib/comicPageStore.ts",
       "lib/comicPageStore.test.ts",
       "lib/comicShelfDurability.test.ts",
+      // M3 — seeds the store to prove a read-along comic reads back; a read
+      // path only, no network or upload consumer.
+      "lib/comicShelfJourneyBooks.test.ts",
       "lib/heroComics.journey.test.ts",
       "lib/heroComics.identity.test.ts",
       "lib/heroComics.ts", // read/write-through for page art

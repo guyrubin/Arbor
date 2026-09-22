@@ -176,6 +176,9 @@ export interface HeroComic {
   adventureId: string;
   title: string;
   lang: ComicLang;
+  /** "book" = a parent-built book off the comics shelf; "journey" = the comic a
+   *  child made by READING the story. Absent means "book" (legacy). */
+  kind?: ComicRequestKind;
   /** The cover panel data-URL — the shareable, viral artifact. */
   coverUrl?: string;
   /** All page data-URLs (index-aligned to pages[]). Cover at [0]. */
@@ -196,90 +199,99 @@ export interface SavedComicMeta {
   title: string;
   lang: ComicLang;
   createdAt: string;
+  /** M3 — which of the two books for this story this record IS. Absent on every
+   *  record written before 22 Sep 2026; `savedMetaKind` infers it from the keys. */
+  kind?: ComicRequestKind;
   /** Optional v4 frozen identity. Legacy records intentionally omit this. */
   pageKeys?: string[];
   pageCount?: number;
   identityVersion?: typeof COMIC_IDENTITY_VERSION;
 }
 
-/** Strip a book down to its persistable metadata. The doc id IS the adventureId
- *  (one shelf slot per adventure), so re-saving upserts instead of duplicating. */
-export const toSavedComicMeta = (comic: HeroComic): SavedComicMeta => ({
-  id: comic.adventureId,
-  adventureId: comic.adventureId,
-  title: comic.title,
-  lang: comic.lang,
-  createdAt: comic.createdAt,
-  ...(comic.pageKeys?.length ? {
-    pageKeys: comic.pageKeys,
-    pageCount: comic.pageKeys.length,
-    identityVersion: COMIC_IDENTITY_VERSION,
-  } : {}),
-});
+/** M3 — the shelf doc id. A parent-built book keeps the bare adventureId (one
+ *  shelf slot per adventure, upsert-on-resave). The comic a child made by
+ *  READING the same story is a DIFFERENT book and gets its own slot: sharing
+ *  one id made the last save win and orphaned the other book's page bytes. */
+export const savedComicDocId = (adventureId: string, kind: ComicRequestKind): string =>
+  kind === "journey" ? `${adventureId}:journey` : adventureId;
 
-/** Rehydrate a saved book's page art from the in-session scene cache. Returns
- *  the full index-aligned data-URL list (cover + every non-decision beat) only
- *  when EVERY page is cached; otherwise [] so the reader falls back to a fresh
- *  build — where generatePage still reuses any partial cache hits per page. */
-export function rehydrateSavedPages(adventureId: string, lang: ComicLang, avatarOrHash: string): string[] {
-  const beatCount = (getStorySpec(adventureId)?.beats || []).filter((b) => b.id !== "decision").length;
-  const urls: string[] = [];
-  for (let i = 0; i <= beatCount; i++) {
-    const url = getScene(comicKey(avatarOrHash, adventureId, lang, i));
-    if (!url) return [];
-    urls.push(url);
-  }
-  return urls;
+/** Which kind a saved record is. Declared `kind` wins; otherwise the frozen
+ *  keys say it (`comic4|journey|…` vs `comic4|book|…`); legacy = "book". */
+export function savedMetaKind(meta: SavedComicMeta): ComicRequestKind {
+  if (meta.kind === "journey" || meta.kind === "book") return meta.kind;
+  return meta.pageKeys?.[0]?.split("|")[1] === "journey" ? "journey" : "book";
 }
 
-/** The number of pages a book has (cover + every non-decision beat). */
+/** M3 — one slot on a comics shelf. `id` is the savedComics DOC id (the slot);
+ *  `adventureId` stays the story, so the catalog, age window and art prop still
+ *  resolve for a read-along comic parked at `<adventureId>:journey`. */
+export type ShelfBook = Adventure & {
+  adventureId: string;
+  kind: ComicRequestKind;
+  meta?: SavedComicMeta;
+};
+
+export const shelfBook = (adventure: Adventure, meta?: SavedComicMeta, docId?: string): ShelfBook => ({
+  ...adventure,
+  id: docId ?? adventure.id,
+  adventureId: adventure.id,
+  // A saved record declares (or its frozen keys reveal) which book it is; an
+  // unsaved slot is always an authored book waiting to be built.
+  kind: meta ? savedMetaKind(meta) : "book",
+  meta,
+});
+
+/** Every book a shelf must SHOW. `authored` is one slot per catalog adventure
+ *  (saved or not, in catalog order); `extra` is one slot per saved book that is
+ *  not one of those — the read-along comics, including a story with no authored
+ *  comic copy, newest first. Before M3 these were counted but never listed. */
+export function shelfBooks(saved: readonly SavedComicMeta[]): { authored: ShelfBook[]; extra: ShelfBook[] } {
+  const byDocId = new Map(saved.map((m) => [m.id, m]));
+  const authored = ADVENTURES.map((a) => shelfBook(a, byDocId.get(a.id)));
+  const extra = saved
+    .filter((m) => !ADVENTURES.some((a) => a.id === m.id))
+    .map((m) => {
+      const adventure = getAdventure(m.adventureId);
+      return adventure ? shelfBook(adventure, m, m.id) : null;
+    })
+    .filter((b): b is ShelfBook => b !== null)
+    .sort((a, b) => (b.meta?.createdAt ?? "").localeCompare(a.meta?.createdAt ?? ""));
+  return { authored, extra };
+}
+
+/** How many pages a saved record HAS. Frozen keys are the truth (a journey book
+ *  is cover + every beat, which is not the authored 8-beat book plan); only a
+ *  legacy keyless record falls back to the catalog count. */
+export function savedMetaPageTotal(meta: SavedComicMeta): number {
+  return meta.pageKeys?.length ?? bookPageCount(meta.adventureId);
+}
+
+/** Strip a book down to its persistable metadata. The doc id is the adventureId
+ *  for a parent-built book and `<adventureId>:journey` for a read-along comic,
+ *  so re-saving upserts its own slot instead of overwriting the other book. */
+export const toSavedComicMeta = (comic: HeroComic): SavedComicMeta => {
+  const kind: ComicRequestKind = comic.kind === "journey" ? "journey" : "book";
+  return {
+    id: savedComicDocId(comic.adventureId, kind),
+    adventureId: comic.adventureId,
+    title: comic.title,
+    lang: comic.lang,
+    createdAt: comic.createdAt,
+    ...(kind === "journey" ? { kind } : {}),
+    ...(comic.pageKeys?.length ? {
+      pageKeys: comic.pageKeys,
+      pageCount: comic.pageKeys.length,
+      identityVersion: COMIC_IDENTITY_VERSION,
+    } : {}),
+  };
+};
+
+/** The number of pages an AUTHORED book has (cover + every non-decision beat).
+ *  Saved records carry their own page count — see `savedMetaPageTotal`. */
 export function bookPageCount(adventureId: string): number {
   return 1 + (getStorySpec(adventureId)?.beats || []).filter((b) => b.id !== "decision").length;
 }
 
-/** AIX-S5 — durable rehydration: memory cache first, then the device-local
- *  IndexedDB page store (warming the memory cache on a hit). All-or-nothing
- *  like `rehydrateSavedPages`: returns the full index-aligned list only when
- *  EVERY page resolves, else [] so the reader falls back to a fresh build.
- *  Zero /generate-comic calls happen here — this is a pure read path. */
-export async function rehydrateSavedPagesFromStore(
-  childId: string,
-  adventureId: string,
-  lang: ComicLang,
-  avatarOrHash: string,
-): Promise<string[]> {
-  const total = bookPageCount(adventureId);
-  const urls: string[] = [];
-  for (let i = 0; i < total; i++) {
-    const key = comicKey(avatarOrHash, adventureId, lang, i);
-    let url = getScene(key);
-    if (!url) {
-      url = await getComicPage(childId, key);
-      if (url) setScene(key, url); // warm the in-session cache
-    }
-    if (!url) return [];
-    urls.push(url);
-  }
-  return urls;
-}
-
-/** AIX-S5 honesty probe: are ALL pages of a saved book available on this
- *  device (memory or IndexedDB) — WITHOUT loading the art? Drives the shelf
- *  badge: true → "Read again"; false → "Rebuild this book". */
-export async function savedPagesAvailable(
-  childId: string,
-  adventureId: string,
-  lang: ComicLang,
-  avatarOrHash: string,
-): Promise<boolean> {
-  const total = bookPageCount(adventureId);
-  for (let i = 0; i < total; i++) {
-    const key = comicKey(avatarOrHash, adventureId, lang, i);
-    if (getScene(key) !== undefined) continue;
-    if (!(await hasComicPage(childId, key))) return false;
-  }
-  return true;
-}
 
 function frozenKeys(meta: SavedComicMeta): string[] | null | undefined {
   const hasFrozenIdentity = meta.pageKeys !== undefined
@@ -290,16 +302,24 @@ function frozenKeys(meta: SavedComicMeta): string[] | null | undefined {
   if (meta.pageCount !== undefined && meta.pageCount !== meta.pageKeys.length) return null;
   if (meta.identityVersion !== undefined && meta.identityVersion !== COMIC_IDENTITY_VERSION) return null;
 
+  // M3: a saved record is EITHER a parent-built `book` or a read-along
+  // `journey` — both are frozen v4 identities. The keys must agree with each
+  // other and with a declared `kind`; a mixed list is not one book.
+  const declared = meta.kind;
+  let kind: ComicRequestKind | undefined = declared;
   const seen = new Set<string>();
   for (let index = 0; index < meta.pageKeys.length; index++) {
     const key = meta.pageKeys[index];
     if (typeof key !== "string" || seen.has(key)) return null;
     seen.add(key);
     const parts = key.split("|");
+    const keyKind = parts[1];
+    if (keyKind !== "book" && keyKind !== "journey") return null;
+    if (kind === undefined) kind = keyKind;
+    if (kind !== keyKind) return null;
     if (
       parts.length !== 11
       || parts[0] !== "comic4"
-      || parts[1] !== "book"
       || parts[2] !== COMIC_IDENTITY_VERSION
       || parts[6] !== meta.adventureId
       || parts[7] !== meta.lang

@@ -9,16 +9,21 @@ import { EmptyState, GhostBlock } from "../ui/EmptyState";
 import { statesText } from "../../lib/i18nElevation/states";
 import { HeroAvatar, useHeroAvatar } from "../ui/HeroAvatar";
 import { ComicReader } from "../stories/ComicReader";
+import SavedComicReader from "../stories/SavedComicReader";
 import {
   ADVENTURES,
   adventureTitle,
   getAdventure,
+  isStrictComicImageDataUrl,
   readSavedMetaCoverFromStore,
   rehydrateSavedMetaPagesFromStore,
   savedMetaPagesAvailable,
+  shelfBooks,
   toSavedComicMeta,
+  type ComicRequestKind,
   type HeroComic,
   type SavedComicMeta,
+  type ShelfBook,
 } from "../../lib/heroComics";
 import { isolate } from "../../lib/i18n";
 import { normalizeAvatarStyle } from "../../lib/avatarStyle";
@@ -46,6 +51,15 @@ import { comicShelfReadIsCurrent } from "../../lib/comicShelfScope";
  * a fresh build ("Make this comic"). Opening a book mounts ComicReader, which
  * owns the whole multi-page experience (cover-first streaming build, RTL page
  * turns, per-page retry, save/share).
+ *
+ * M3 (22 Sep 2026): a shelf holds TWO kinds of book. Beside the authored
+ * adventures sit the comics the child made by READING a story (`kind:
+ * "journey"`, doc id `<adventureId>:journey`, frozen `comic4|journey|…` keys,
+ * possibly for a story with no authored comic copy). Those were counted here
+ * but never listed, so they had no tile and could not be opened. They now get
+ * their own tile, and they are REPLAYED through the presentation-only
+ * SavedComicReader — their pages were drawn for that story, so this surface
+ * never re-generates one and never mounts ComicReader for one.
  *
  * COST GUARD: the shelf itself never generates anything — a book build (up to
  * ~6 image-gen calls, throttled by lib/sceneCache) starts only when the parent
@@ -99,11 +113,22 @@ export default function ComicsTab() {
   const { aiLang, t } = useLanguage();
   const { url: heroUrl, hasHero, name } = useHeroAvatar();
 
-  // The durable shelf: one metadata doc per saved adventure (doc id = adventureId).
+  // The durable shelf: one metadata doc per saved BOOK. A parent-built book
+  // sits at the adventureId; the comic the child made by reading the same
+  // story sits at `<adventureId>:journey` (M3 — they are two books).
   const savedCol = useChildCollection<SavedComicMeta>(childProfile.id, "savedComics");
-  const savedByAdventure = useMemo(
-    () => Object.fromEntries(savedCol.items.map((m) => [m.adventureId, m])) as Record<string, SavedComicMeta>,
+  // Every authored adventure is a tile; every saved book that is NOT one of
+  // those slots (a read-along comic, including one for a story with no
+  // authored copy) is a tile of its own — so the shelf lists what it counts.
+  const { authored: authoredBooks, extra: journeyBooks } = useMemo(
+    () => shelfBooks(savedCol.items),
     [savedCol.items]
+  );
+  /** Every slot the shelf can open, by doc id (age filter never hides a slot
+   *  from `openComic` — it only decides which tiles are drawn). */
+  const shelfByDocId = useMemo(
+    () => Object.fromEntries([...authoredBooks, ...journeyBooks].map((b) => [b.id, b])) as Record<string, ShelfBook>,
+    [authoredBooks, journeyBooks]
   );
   // The adventure currently open in the reader (null = bookshelf). AIX-S5:
   // opening a saved book first rehydrates its pages (memory cache → the
@@ -113,7 +138,12 @@ export default function ComicsTab() {
     partitionKey: string;
     scopeKey: string;
     fingerprint?: string;
+    /** The shelf slot (doc id) that was opened. */
     id: string;
+    /** The story behind that slot — what the catalog is keyed by. */
+    adventureId: string;
+    /** A journey book is READ-ONLY: it never mounts a generating reader. */
+    kind: ComicRequestKind;
     pages: string[];
     lang: "en" | "he";
     meta?: SavedComicMeta;
@@ -159,7 +189,9 @@ export default function ComicsTab() {
     closeDay(childProfile.id, now, {
       ritualDue: ritualOfTheMoment(now, readRitualRecord()) !== null,
       watchFocus: resolveWatchFocus(childProfile.id, milestones) != null,
-      unopenedStory: savedCount < ADVENTURES.length,
+      // An authored adventure with no saved book of its own is still unopened —
+      // read-along comics live in their own slots and never mask one.
+      unopenedStory: authoredBooks.some((book) => !book.meta),
       momentsToday:
         countSince(behaviorLogs, startOfToday, now) + countSince(playLogs, startOfToday, now),
     });
@@ -187,15 +219,16 @@ export default function ComicsTab() {
     (async () => {
       const map: Record<string, boolean> = {};
       const covers: Record<string, string> = {};
+      // Keyed by DOC id: two books for one story must not share a verdict.
       for (const m of savedCol.items) {
         try {
-          map[m.adventureId] = await savedMetaPagesAvailable(childProfile.id, m, avatarKeyToken);
-          if (map[m.adventureId]) {
+          map[m.id] = await savedMetaPagesAvailable(childProfile.id, m, avatarKeyToken);
+          if (map[m.id]) {
             const cover = await readSavedMetaCoverFromStore(childProfile.id, m, avatarKeyToken);
-            if (cover) covers[m.adventureId] = cover;
+            if (cover && isStrictComicImageDataUrl(cover)) covers[m.id] = cover;
           }
         } catch {
-          map[m.adventureId] = false;
+          map[m.id] = false;
         }
       }
       if (comicShelfReadIsCurrent(
@@ -211,30 +244,47 @@ export default function ComicsTab() {
     // build persists pages, so returning from the reader can flip a badge).
   }, [savedCol.items, avatarKeyToken, childProfile.id, openBook, scopeKey]);
 
-  const openComic = (id: string) => {
+  const openComic = (docId: string) => {
     const request = ++openRequestRef.current;
     const startedScope = scopeKey;
-    if (!savedByAdventure[id]) {
-      setOpenBook({ partitionKey, scopeKey, id, pages: [], lang: aiLang });
+    const book = shelfByDocId[docId];
+    if (!book) return;
+    const isCurrent = () => comicShelfReadIsCurrent(
+      { request, scope: startedScope },
+      { request: openRequestRef.current, scope: scopeRef.current },
+    );
+    const meta = book.meta;
+    if (!meta) {
+      // An unsaved slot is always an authored adventure: this is the ONE entry
+      // that starts a build, and it never fires for a read-along comic.
+      setOpenBook({ partitionKey, scopeKey, id: docId, adventureId: book.adventureId, kind: "book", pages: [], lang: aiLang });
       return;
     }
-    const meta = savedByAdventure[id];
     const fingerprint = savedMetaFingerprint(meta);
     // Saved book: rehydrate (all-or-nothing) before mounting the reader.
     void rehydrateSavedMetaPagesFromStore(childProfile.id, meta, avatarKeyToken)
       .then((pages) => {
-        if (!comicShelfReadIsCurrent(
-          { request, scope: startedScope },
-          { request: openRequestRef.current, scope: scopeRef.current },
-        )) return;
-        setOpenBook({ partitionKey, scopeKey, fingerprint, id, pages, lang: meta.lang, meta });
+        if (!isCurrent()) return;
+        // A read-along comic is presentation of stored bytes only — with any
+        // page missing there is nothing honest to show, so the tile flips to
+        // its off-device state instead of opening an empty reader.
+        if (book.kind === "journey" && !(pages.length > 0 && pages.every(isStrictComicImageDataUrl))) {
+          setFullyCached((state) => state.scope === startedScope
+            ? { ...state, values: { ...state.values, [docId]: false } }
+            : state);
+          return;
+        }
+        setOpenBook({ partitionKey, scopeKey, fingerprint, id: docId, adventureId: book.adventureId, kind: book.kind, pages, lang: meta.lang, meta });
       })
       .catch(() => {
-        if (!comicShelfReadIsCurrent(
-          { request, scope: startedScope },
-          { request: openRequestRef.current, scope: scopeRef.current },
-        )) return;
-        setOpenBook({ partitionKey, scopeKey, fingerprint, id, pages: [], lang: meta.lang, meta });
+        if (!isCurrent()) return;
+        if (book.kind === "journey") {
+          setFullyCached((state) => state.scope === startedScope
+            ? { ...state, values: { ...state.values, [docId]: false } }
+            : state);
+          return;
+        }
+        setOpenBook({ partitionKey, scopeKey, fingerprint, id: docId, adventureId: book.adventureId, kind: book.kind, pages: [], lang: meta.lang, meta });
       });
   };
 
@@ -266,7 +316,36 @@ export default function ComicsTab() {
   }
 
   // ── Reader view — one open book ────────────────────────────────────────────
-  const openAdventure = visibleOpenBook ? getAdventure(visibleOpenBook.id) : undefined;
+  const openAdventure = visibleOpenBook ? getAdventure(visibleOpenBook.adventureId) : undefined;
+  if (visibleOpenBook && openAdventure && visibleOpenBook.kind === "journey" && visibleOpenBook.meta) {
+    // M3 — a read-along comic is REPLAYED, never rebuilt: the parent sees the
+    // exact pages the child's story produced, straight from the device store,
+    // with no generation, save or paywall seam in reach. Page count comes from
+    // the stored pages, which are cover + every beat of THAT story.
+    const journeyMeta = visibleOpenBook.meta;
+    const journeyTitle = journeyMeta.title || adventureTitle(openAdventure, journeyMeta.lang);
+    const journeyPages = visibleOpenBook.pages.map((dataUrl, index) => ({
+      dataUrl,
+      title: index === 0 ? journeyTitle : `${adventureTitle(openAdventure, journeyMeta.lang)} · ${index}`,
+    }));
+    return (
+      <RegisterShell kidMode={false} title={journeyTitle}>
+        <SavedComicReader
+          key={`${partitionKey}|${visibleOpenBook.id}|${journeyMeta.createdAt}`}
+          title={journeyTitle}
+          lang={journeyMeta.lang}
+          pages={journeyPages}
+          onBack={() => setOpenBook(null)}
+          onUnavailable={() => {
+            setOpenBook(null);
+            setFullyCached((state) => state.scope === scopeKey
+              ? { ...state, values: { ...state.values, [visibleOpenBook.id]: false } }
+              : state);
+          }}
+        />
+      </RegisterShell>
+    );
+  }
   if (visibleOpenBook && openAdventure) {
     // Re-open a saved book in the CURRENT language: the pages were rehydrated
     // in openComic (memory cache → device-local IndexedDB store) — a fully
@@ -316,13 +395,17 @@ export default function ComicsTab() {
   // sit behind the "Show all ages" door with an age chip explaining why.
   const adventureFit = (id: string) =>
     classifyAgeFit(windowFromRange(getStorySpec(id)?.ageRange), childMonths);
-  const shelfAdventures = showAllAges
-    ? ADVENTURES
-    : ADVENTURES.filter((a) => !!savedByAdventure[a.id] || adventureFit(a.id) !== "out");
-  const hiddenAdventures = ADVENTURES.length - shelfAdventures.length;
-  const hiddenSpecs = ADVENTURES
-    .filter((a) => !shelfAdventures.includes(a))
-    .map((a) => getStorySpec(a.id))
+  const shownAuthored = showAllAges
+    ? authoredBooks
+    : authoredBooks.filter((a) => !!a.meta || adventureFit(a.adventureId) !== "out");
+  // Saved read-along comics are never age-filtered — they are books the child
+  // already made, and they are listed, not just counted.
+  const shelfAdventures = [...shownAuthored, ...journeyBooks];
+  const shelfTotal = ADVENTURES.length + journeyBooks.length;
+  const hiddenAdventures = authoredBooks.length - shownAuthored.length;
+  const hiddenSpecs = authoredBooks
+    .filter((a) => !shownAuthored.includes(a))
+    .map((a) => getStorySpec(a.adventureId))
     .filter((s): s is NonNullable<typeof s> => !!s);
 
   // IA-08 / RUN-12: `#/comics` is a PARENT door — no Kid-Mode surface mounts
@@ -350,7 +433,7 @@ export default function ComicsTab() {
               {he ? `מדף הקומיקס של ${isolate(name)}` : `${isolate(name)}'s comic bookshelf`}
             </p>
             <p className="text-[12.5px] mt-0.5" style={{ color: "var(--arbor-muted)" }} dir="auto">
-              {he ? `${savedCount} מתוך ${ADVENTURES.length} ספרים על המדף` : `${savedCount} of ${ADVENTURES.length} books on the shelf`}
+              {he ? `${savedCount} מתוך ${shelfTotal} ספרים על המדף` : `${savedCount} of ${shelfTotal} books on the shelf`}
             </p>
           </div>
           {/* W0.7 — "Show all ages" toggle: only when the child's-age view
@@ -439,26 +522,64 @@ export default function ComicsTab() {
       <div data-module="comics-shelf" data-primary-move="open-comic" className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))" }}>
         {shelfAdventures.map((a) => {
           const w = PACK_WORLD[a.pack];
-          const emoji = STORY_EMOJI[a.id] ?? "⭐";
-          const saved = savedByAdventure[a.id];
-          // In-session cover thumbnail (memory cache): current lang first, then
-          // the lang the book was saved in; else the hero card.
+          const emoji = STORY_EMOJI[a.adventureId] ?? "⭐";
+          const saved = a.meta;
+          // Cover thumbnail read from the device store for this exact slot.
           const coverThumb = saved ? scopedCovers[a.id] : undefined;
-          const title = adventureTitle(a, aiLang);
+          // Authored books title from the catalog in the CURRENT language; a
+          // read-along comic keeps the title the story gave it.
+          const title = a.kind === "journey" && saved?.title ? saved.title : adventureTitle(a, aiLang);
           // AIX-S5 honesty: "Read again" ONLY when every page is available on
           // this device (memory or IndexedDB) — a cold state (new device, or
           // pages evicted) says "Rebuild this book" instead of promising an
           // instant re-read that actually re-pays a full build.
           const readAgain = !!saved && scopedCached[a.id] === true;
+          // M3 — a read-along comic can only ever be REPLAYED: its pages were
+          // drawn for the story the child read, so a "rebuild" would be a
+          // different book. With the bytes gone the tile says so and opens
+          // nothing; reading the story again is what makes a new one.
+          const offDevice = a.kind === "journey" && !readAgain;
           const badgeLabel = readAgain
             ? (he ? "לקרוא שוב" : "Read again")
+            : offDevice
+            ? (he ? "לא במכשיר הזה" : "Not on this device")
             : saved
             ? (he ? "לבנות את הספר מחדש" : "Rebuild this book")
             : (he ? "צרו את הקומיקס" : "Make this comic");
+          const coverFace = (
+            <>
+              {coverThumb ? (
+                <img src={coverThumb} alt="" className="absolute inset-0 w-full h-full object-contain" />
+              ) : (
+                <div className="comic-halftone absolute inset-0 grid place-items-center">
+                  <div className="flex items-center gap-1.5">
+                    <HeroAvatar size={74} ring animate={false} decorative />
+                    <span style={{ fontSize: 42, filter: "drop-shadow(2px 2px 0 rgba(23,27,34,.3))" }} aria-hidden="true">{emoji}</span>
+                  </div>
+                </div>
+              )}
+              <span
+                className="absolute bottom-2 inline-flex items-center gap-1 text-[12px] font-black rounded-full px-3 py-1"
+                style={{ insetInlineStart: 8, background: "#fff", border: "var(--comic-line)", color: "var(--arbor-ink)" }}
+              >
+                <Icon name={readAgain ? "menu_book" : offDevice ? "cloud_off" : "auto_awesome"} size={14} /> {badgeLabel}
+              </span>
+            </>
+          );
           return (
-            <div key={a.id} className="comic-panel overflow-hidden">
+            <div key={a.id} className="comic-panel overflow-hidden" data-book-kind={a.kind}>
               {/* Book cover: the saved cover art, or the hero waiting in this world */}
               <div className="relative" style={{ aspectRatio: "3 / 2", borderBottom: "var(--comic-line)" }}>
+                {offDevice ? (
+                  /* Nothing to open: a plain face, not a control that lies. */
+                  <div
+                    className="absolute inset-0 grid place-items-center"
+                    style={coverThumb ? undefined : { background: w.bg }}
+                    data-testid={`comic-offdevice-${a.id}`}
+                  >
+                    {coverFace}
+                  </div>
+                ) : (
                 <button
                   onClick={() => openComic(a.id)}
                   aria-label={readAgain
@@ -469,39 +590,36 @@ export default function ComicsTab() {
                   className="absolute inset-0 grid place-items-center"
                   style={coverThumb ? undefined : { background: w.bg }}
                 >
-                  {coverThumb ? (
-                    <img src={coverThumb} alt="" className="absolute inset-0 w-full h-full object-contain" />
-                  ) : (
-                    <div className="comic-halftone absolute inset-0 grid place-items-center">
-                      <div className="flex items-center gap-1.5">
-                        <HeroAvatar size={74} ring animate={false} decorative />
-                        <span style={{ fontSize: 42, filter: "drop-shadow(2px 2px 0 rgba(23,27,34,.3))" }} aria-hidden="true">{emoji}</span>
-                      </div>
-                    </div>
-                  )}
-                  <span
-                    className="absolute bottom-2 inline-flex items-center gap-1 text-[12px] font-black rounded-full px-3 py-1"
-                    style={{ insetInlineStart: 8, background: "#fff", border: "var(--comic-line)", color: "var(--arbor-ink)" }}
-                  >
-                    <Icon name={readAgain ? "menu_book" : "auto_awesome"} size={14} /> {badgeLabel}
-                  </span>
+                  {coverFace}
                 </button>
+                )}
               </div>
 
               {/* Caption */}
               <div className="p-3.5">
-                <div className="flex items-center gap-2">
-                  <span className="font-black text-[15px] leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
+                {/* Wraps at 390: a read-along comic can carry one chip more
+                    than an authored book, and nothing may push out of the
+                    panel (containment floor). */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="min-w-0 font-black text-[15px] leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
                     {title}
                   </span>
                   <span className="ms-auto inline-flex items-center gap-1.5">
                     {/* W0.7 age chip — only on out-of-band books (a catalog
                         fact about the story, never a claim about the child). */}
-                    {adventureFit(a.id) === "out" && getStorySpec(a.id) && (
+                    {/* M3 — which of the two books this is, so a story with both
+                        a parent-built book and a read-along comic reads as two
+                        books rather than a duplicate. */}
+                    {a.kind === "journey" && (
+                      <span className="inline-block text-[10px] font-black px-2 py-0.5 rounded-full" dir="auto" style={{ border: "2px solid var(--comic-ink)", color: "var(--arbor-ink)" }}>
+                        {he ? "מהסיפור" : "From the story"}
+                      </span>
+                    )}
+                    {adventureFit(a.adventureId) === "out" && getStorySpec(a.adventureId) && (
                       <span className="inline-block text-[10px] font-black px-2 py-0.5 rounded-full" dir="auto" style={{ background: "#fff", border: "2px solid var(--comic-ink)", color: "var(--arbor-ink)" }}>
                         {agefilterText("elev.agefilter.chip", he, {
-                          min: getStorySpec(a.id)!.ageRange[0],
-                          max: getStorySpec(a.id)!.ageRange[1],
+                          min: getStorySpec(a.adventureId)!.ageRange[0],
+                          max: getStorySpec(a.adventureId)!.ageRange[1],
                         })}
                       </span>
                     )}
@@ -510,10 +628,17 @@ export default function ComicsTab() {
                     </span>
                   </span>
                 </div>
-                {saved && (
+                {saved && !offDevice && (
                   <span className="inline-flex items-center gap-1 text-[11px] font-black mt-2" style={{ color: "var(--arbor-green-ink)" }}>
                     <Icon name="check" size={14} /> {he ? "על המדף" : "On the shelf"}
                   </span>
+                )}
+                {offDevice && (
+                  <p className="text-[11px] mt-2" dir="auto" style={{ color: "var(--arbor-muted)" }}>
+                    {he
+                      ? "הדפים של הקומיקס הזה לא נמצאים במכשיר הזה. קריאה נוספת של הסיפור תיצור קומיקס חדש."
+                      : "This comic's pages are not on this device. Reading the story again makes a new one."}
+                  </p>
                 )}
               </div>
             </div>

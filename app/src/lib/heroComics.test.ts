@@ -22,14 +22,17 @@ import {
   tapToDelta,
   planPages,
   buildComicBook,
-  rehydrateSavedPages,
+  savedComicDocId,
+  savedMetaKind,
+  savedMetaPageTotal,
   toSavedComicMeta,
+  type SavedComicMeta,
   type ComicPageData,
   type HeroComic,
 } from "./heroComics";
 import { PaywallError } from "./api";
 import { getStorySpec } from "./heroJourneys";
-import { _resetSceneCache, setScene } from "./sceneCache";
+import { _resetSceneCache } from "./sceneCache";
 
 const adventure = ADVENTURES[0];
 
@@ -141,23 +144,56 @@ describe("saved-shelf metadata (W5.4)", () => {
     expect(JSON.stringify(meta)).not.toContain("data:");
   });
 
-  it("rehydrateSavedPages returns the whole book only when EVERY page is cached", () => {
+  it("legacy comic3 page keys stay lang- and avatar-specific (no cross-hydration)", () => {
     const beatCount = getStorySpec(adventure.id)!.beats.filter((b) => b.id !== "decision").length;
     const total = beatCount + 1; // cover + beats
-    // Nothing cached (fresh session) → [] → reader falls back to a fresh build.
-    expect(rehydrateSavedPages(adventure.id, "en", "data:hero")).toEqual([]);
-    // Partial cache (missing last page) → still [] (never a half-hydrated book).
-    for (let i = 0; i < total - 1; i++) setScene(comicKey("data:hero", adventure.id, "en", i), `data:page-${i}`);
-    expect(rehydrateSavedPages(adventure.id, "en", "data:hero")).toEqual([]);
-    // Full cache → the index-aligned data-URL list, cover at [0].
-    setScene(comicKey("data:hero", adventure.id, "en", total - 1), `data:page-${total - 1}`);
-    const urls = rehydrateSavedPages(adventure.id, "en", "data:hero");
-    expect(urls).toHaveLength(total);
-    expect(urls[0]).toBe("data:page-0");
-    expect(urls[total - 1]).toBe(`data:page-${total - 1}`);
-    // Cache keys are lang- and avatar-specific — no cross-hydration.
-    expect(rehydrateSavedPages(adventure.id, "he", "data:hero")).toEqual([]);
-    expect(rehydrateSavedPages(adventure.id, "en", "data:other-hero")).toEqual([]);
+    const en0 = comicKey("data:hero", adventure.id, "en", 0);
+    expect(comicKey("data:hero", adventure.id, "he", 0)).not.toBe(en0);
+    expect(comicKey("data:other-hero", adventure.id, "en", 0)).not.toBe(en0);
+    expect(comicKey("data:hero", adventure.id, "en", total - 1)).not.toBe(en0);
+    // The avatar token is hashed, so the same hero always lands on the same key.
+    expect(comicKey(avatarHash("data:hero"), adventure.id, "en", 0)).toBe(en0);
+  });
+
+  it("M3 — a journey book gets its OWN shelf slot, so neither book overwrites the other", () => {
+    const journeyKeys = [0, 1, 2].map((i) => `comic4|journey|character-v4|storybook|c|h|${adventure.id}|en|${i}|p|a`);
+    const journey = toSavedComicMeta({
+      id: "ignored",
+      adventureId: adventure.id,
+      kind: "journey",
+      title: "The read-along comic",
+      lang: "en",
+      pageUrls: [],
+      createdAt: "2026-09-22T00:00:00.000Z",
+      pageKeys: journeyKeys,
+    });
+    expect(journey.id).toBe(`${adventure.id}:journey`);
+    expect(journey.id).not.toBe(toSavedComicMeta(comic).id);
+    expect(journey.kind).toBe("journey");
+    expect(journey.pageCount).toBe(3);
+    expect(savedComicDocId(adventure.id, "book")).toBe(adventure.id);
+    // Page count comes from the frozen keys, never the authored 8-beat plan.
+    expect(savedMetaPageTotal(journey)).toBe(3);
+    expect(savedMetaKind(journey)).toBe("journey");
+  });
+
+  it("M3 — a legacy journey record (no `kind`) is still read as a journey book", () => {
+    const legacy: SavedComicMeta = {
+      id: adventure.id,
+      adventureId: adventure.id,
+      title: "Saved before the id split",
+      lang: "en",
+      createdAt: "2026-09-22T00:00:00.000Z",
+      pageKeys: [`comic4|journey|character-v4|storybook|c|h|${adventure.id}|en|0|p|a`],
+      pageCount: 1,
+      identityVersion: "character-v4",
+    };
+    expect(savedMetaKind(legacy)).toBe("journey");
+    expect(savedMetaPageTotal(legacy)).toBe(1);
+    // A keyless legacy record is a book and falls back to the catalog count.
+    const keyless: SavedComicMeta = { id: adventure.id, adventureId: adventure.id, title: "t", lang: "en", createdAt: "x" };
+    expect(savedMetaKind(keyless)).toBe("book");
+    expect(savedMetaPageTotal(keyless)).toBeGreaterThan(1);
   });
 });
 
