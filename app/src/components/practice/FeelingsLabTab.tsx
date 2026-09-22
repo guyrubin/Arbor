@@ -7,6 +7,7 @@ import { RegisterShell, ChoiceTile, MascotSay, PlayButton, PlayPanel, ProgressPi
 import { BREATHING_PATTERNS, CALM_TOOLS, EMOTION_SCENARIOS, EMOTIONS, type Emotion } from "../../practice/playContent";
 import { usePracticeData } from "../../practice/usePracticeData";
 import { EmotionAvatar } from "../ui/EmotionAvatar";
+import { resolveHeroUrl } from "../ui/HeroAvatar";
 import type { PracticeEvent } from "../../types";
 
 import { track } from "../../lib/analytics";
@@ -37,6 +38,13 @@ export default function FeelingsLabTab() {
   const { t, uiLang } = useLanguage();
   const data = usePracticeData(childProfile.id);
   const first = childProfile.name.split(" ")[0];
+  // M1 hero-first: the self-check companion is the HERO, never the raw upload.
+  // The profile's stored photo used to be passed straight through here, so a
+  // child with a real photo and `avatar: null` saw their own face mirrored back
+  // as a game character — the exact case resolveHeroUrl exists to refuse. With
+  // no hero the value is null and <Avatar> falls back to initials; the photo is
+  // never a companion. One shared resolver, no local photo read.
+  const heroUrl = resolveHeroUrl(childProfile);
 
   const [scenarioIdx, setScenarioIdx] = useState(0);
   const [pickedEmotion, setPickedEmotion] = useState<string | null>(null);
@@ -183,7 +191,7 @@ export default function FeelingsLabTab() {
         <div className="flex items-center gap-4 rounded-2xl p-4 mt-5" style={{ background: "var(--arbor-paper-deep)" }}>
           <EmotionAvatar
             name={first}
-            photoURL={childProfile.photoUrl}
+            photoURL={heroUrl}
             emotionEmoji={activeEmotion?.emoji}
             emotionLabel={activeEmotion ? emotionLabelFor(activeEmotion, uiLang) : undefined}
             color={activeColor}
@@ -356,7 +364,7 @@ export default function FeelingsLabTab() {
         <div className="mt-5 flex items-center gap-4 rounded-2xl p-4" style={{ background: "var(--arbor-paper-deep)" }}>
           <EmotionAvatar
             name={first}
-            photoURL={childProfile.photoUrl}
+            photoURL={heroUrl}
             emotionEmoji={activeEmotion?.emoji}
             emotionLabel={activeEmotion ? emotionLabelFor(activeEmotion, uiLang) : undefined}
             color={activeColor}

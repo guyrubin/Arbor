@@ -35,6 +35,35 @@ describe("Kids experience visual and session contract", () => {
     }
   });
 
+  it("M1 — the shared header cameo is an announced hero, in every world", () => {
+    // The nine worlds above all reach the child's hero through ONE primitive.
+    // It was `aria-hidden` + `decorative`, so nothing announced a hero anywhere
+    // in the child experience and the portrait was formally decoration. The
+    // prop's own stated reason ("the child's name is already adjacent") is
+    // false in this header: the adjacent text is the WORLD's name.
+    const playkit = read("../ui/playkit.tsx");
+    const cameo = playkit.slice(playkit.indexOf('<div className="play-hero-cameo'), playkit.indexOf("</div>", playkit.indexOf('<div className="play-hero-cameo')));
+    expect(cameo).toContain("<HeroAvatar");
+    expect(cameo, "the header hero must not be hidden from a screen-reader child").not.toContain('aria-hidden="true"');
+    expect(cameo, "the header hero must carry its real alt, not decoration").not.toContain("decorative");
+    // Sprout stays the fallback through HeroAvatar itself — the header must not
+    // grow its own avatar resolver.
+    expect(playkit).not.toMatch(/photoUrl|comicAvatarUrl/);
+  });
+
+  it("M1 — Hero Pose has a hero in it again", () => {
+    // The kids-world branch dropped `<HeroAvatar size={88} mood="cheer" />`
+    // from the pose panel, leaving the world named Hero Pose demonstrating its
+    // poses with a bare emoji. Restored through the shared primitive.
+    const pose = read("../practice/HeroPoseWorld.tsx");
+    expect(pose).toContain('import { HeroAvatar } from "../ui/HeroAvatar"');
+    expect(pose).toContain('<HeroAvatar size={88} mood="cheer" />');
+    // It sits with the pose glyph — that pairing IS the game's instruction.
+    const panel = pose.slice(pose.indexOf("comic-panel"), pose.indexOf("{poseName}"));
+    expect(panel).toContain("<HeroAvatar");
+    expect(panel).toContain("{pose.emoji}");
+  });
+
   it("wires expanded banks into bounded sessions and visible selectors", () => {
     const pattern = read("../practice/PatternPowerWorld.tsx");
     const pose = read("../practice/HeroPoseWorld.tsx");

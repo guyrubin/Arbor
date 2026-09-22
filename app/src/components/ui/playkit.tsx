@@ -127,8 +127,19 @@ export function PlayHeader({
       className={`play-scene-header play-scene-header--${variant} flex flex-wrap items-center ${compact ? "gap-x-2 gap-y-2" : "gap-x-4 gap-y-3"}`}
       data-world-id={worldId}
     >
-      <div className="play-hero-cameo flex-shrink-0" aria-hidden="true">
-        <HeroAvatar size={compact ? 56 : 88} mood={mood} animate decorative />
+      {/* M1 — hero continuity. This cameo is the ONE place the child's hero
+          enters a world header, so all nine child worlds inherit it from here
+          (no per-world avatar resolver). It used to be `aria-hidden` +
+          `decorative`, whose stated reason is "the child's name is already
+          adjacent" — but the adjacent text here is the WORLD's name ("Pattern
+          Power"), never the child's, so nothing announced the hero at all and
+          a screen-reader child arrived in a world with no hero in it. Dropping
+          `decorative` gives the portrait its real alt ("{name}, the hero");
+          Sprout still covers the no-hero child through HeroAvatar's own
+          fallback. No cosmetics here on purpose: HeroCrest carries EARNED gear,
+          which is parent-register progression the child branch strips. */}
+      <div className="play-hero-cameo flex-shrink-0">
+        <HeroAvatar size={compact ? 56 : 88} mood={mood} animate />
       </div>
       <div className={`flex-1 ${compact ? "min-w-0" : "min-w-[200px]"}`}>
         {eyebrow ? <p className="play-eyebrow">{eyebrow}</p> : null}

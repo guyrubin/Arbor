@@ -542,9 +542,22 @@ body {
   gap: clamp(4px, 1.5vw, 10px);
   padding-block: 4px;
 }
+/* M1 / Astra U2 — the run stays CONTIGUOUS on a phone. `nowrap` alone was not
+   enough to prove it: a bare text span is as wide as the emoji font decides
+   (advances run 1.0em-1.4em across platforms), so the row's total width was a
+   font metric, not a number. Each glyph now sits in a box of 1.3em of its OWN
+   font-size, which makes the width arithmetic closed-form and also gives the
+   run an even rhythm instead of per-emoji jitter:
+     width = shown x 1.3 x fs + missing + shown x gap
+   320 px (container 280): fs 27.2 -> 5x35.4 + 44.8 + 5x4.8 = 245.8
+   390 px (container 350): fs 31.2 -> 5x40.6 + 54.6 + 5x5.85 = 286.9
+   Five shown symbols is the widest puzzle in PATTERN_PUZZLES. Proved by
+   patternContiguity.test.ts against these exact declarations. */
 .arbor-play .pattern-sequence-glyph {
-  flex: 0 1 auto;
-  min-inline-size: 0;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  inline-size: 1.3em;
   font-size: clamp(1.7rem, 8vw, 2.8rem);
   line-height: 1;
 }

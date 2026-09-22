@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { PlayHeader, MascotSay, ProgressPips, PlayButton, Celebrate } from "../ui/playkit";
+import { HeroAvatar } from "../ui/HeroAvatar";
 import { useArcadeLogger } from "../../practice/useArcadeLogger";
 import { selectPoseSession } from "../../practice/newGames";
 import { dayKey } from "../../practice/signals";
@@ -68,8 +69,17 @@ export default function HeroPoseWorld() {
       <ProgressPips total={poses.length} current={idx} tone="sky" />
 
       <div className="rounded-[var(--play-radius)] p-6 text-center comic-panel" style={{ background: "var(--arbor-sky-soft)" }}>
-        <span className="text-[4.5rem] leading-none" aria-hidden="true">{pose.emoji}</span>
-        <h2 className="font-black text-[1.7rem] mt-3" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-sky-ink)" }}>{poseName}</h2>
+        {/* M1 — the hero DEMONSTRATES the pose. This pairing (hero beside the
+            pose glyph) is the game's whole fiction: "my hero shows it, I copy
+            it". The kids-world branch dropped the avatar and left the glyph
+            alone, so the world named Hero Pose had no hero in it. Restored via
+            the shared <HeroAvatar> (context-driven, Sprout when there is no
+            hero) — no per-game resolver, no new component. */}
+        <div className="flex flex-wrap items-center justify-center gap-4 mb-3">
+          <HeroAvatar size={88} mood="cheer" />
+          <span className="text-[4.5rem] leading-none" aria-hidden="true">{pose.emoji}</span>
+        </div>
+        <h2 className="font-black text-[1.7rem]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-sky-ink)" }}>{poseName}</h2>
         <p className="text-[15px] font-bold mt-1" style={{ color: "var(--arbor-ink-soft)" }}>{poseCue}</p>
         <p className="play-story-caption text-[13px] font-semibold mt-3">{adaptedCue}</p>
       </div>

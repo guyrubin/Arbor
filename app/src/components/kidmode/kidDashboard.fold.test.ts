@@ -190,3 +190,54 @@ describe("KID-06 — the arcade grid lists the same games the home does", () => 
     expect(preFixVisible.length).toBe(6);
   });
 });
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   U1 — ONE featured hero on the kid home, not six stickers.
+
+   Astra counted six copies of the same portrait above the fold (greeting,
+   story banner, four game cards) and asked for: greeting kept, compact
+   active-game companion kept, the featured story portrait enlarged to ~80 px
+   inside the EXISTING banner, and the standalone 48 px overlays removed from
+   ordinary destination tiles. Those edits are in the tree; without a guard the
+   next tile pass silently puts them back — the overlay was one JSX span.
+   ═══════════════════════════════════════════════════════════════════════════ */
+describe("U1 — the kid home has one featured hero", () => {
+  /** The reusable destination tile every game and adventure renders through. */
+  const sceneTile = dash.slice(dash.indexOf("function SceneTile("), dash.indexOf("export default function KidDashboard"));
+
+  it("ordinary destination tiles carry no standalone portrait overlay", () => {
+    expect(sceneTile).toContain("<WorldScene");
+    expect(sceneTile, "a portrait sticker on every tile is the noise U1 removed").not.toContain("<HeroAvatar");
+  });
+
+  it("the greeting keeps its portrait at the header block size", () => {
+    expect(dash).toContain("<HeroAvatar size={KID_HOME_HEADER_BLOCK}");
+    expect(KID_HOME_HEADER_BLOCK).toBe(56);
+  });
+
+  it("the featured story portrait is the enlarged one, inside the existing banner", () => {
+    const banner = dash.slice(dash.indexOf("Today's adventure banner"), dash.indexOf("── Games ──"));
+    const sizes = [...banner.matchAll(/<HeroAvatar size=\{(\d+)\}/g)].map((m) => Number(m[1]));
+    expect(sizes, "exactly one featured portrait in the banner").toEqual([80]);
+    // "inside the existing banner dimensions": the portrait is absolutely
+    // positioned in the scene column, so the banner block does not move and the
+    // fold arithmetic above still holds.
+    expect(banner).toContain("absolute bottom-2 end-2");
+    expect(KID_HOME_BANNER_BLOCK).toBe(190);
+  });
+
+  it("only two portraits sit above the fold", () => {
+    const aboveFold = dash.slice(dash.indexOf("── Greeting header"), dash.indexOf("── Games ──"));
+    expect((aboveFold.match(/<HeroAvatar/g) ?? []).length).toBe(2);
+  });
+
+  it("the remaining portrait is the comics door, far below the fold", () => {
+    const comicsTop =
+      firstGameTileTop +
+      KID_HOME_GAME_TILE_BLOCK * 4 + KID_HOME_TILE_GAP * 3 + // four rows of eight tiles
+      KID_HOME_SECTION_GAP;
+    expect(comicsTop).toBeGreaterThan(FOLD);
+    const comics = dash.slice(dash.indexOf("Saved comics are a distinct"));
+    expect((comics.match(/<HeroAvatar/g) ?? []).length).toBe(1);
+  });
+});
