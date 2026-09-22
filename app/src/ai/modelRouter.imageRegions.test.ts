@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestConfig } from "../testConfig.js";
 import { VertexGeminiProvider, type VertexClientFactory } from "./modelRouter.js";
 
@@ -12,6 +12,8 @@ const quiet = () => { vi.spyOn(console, "warn").mockImplementation(() => {}); vi
 const budget = (ms = 60000) => ({ signal: AbortSignal.timeout(ms), deadlineAt: Date.now() + ms, totalMs: ms });
 
 describe("Vertex image generation — EU regional fallback (22 Sep 2026 europe-west4 saturation)", () => {
+  beforeEach(() => vi.restoreAllMocks());
+
   it("moves to the next EU region when the primary returns 429, and returns that region's image", async () => {
     quiet();
     const calls: string[] = [];
