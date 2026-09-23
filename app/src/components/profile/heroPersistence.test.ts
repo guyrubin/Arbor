@@ -19,7 +19,7 @@ import { heroPatch, persistHero } from "./heroPersistence";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const read = (...p: string[]) => readFileSync(path.join(__dirname, "..", ...p), "utf8");
 
-const RESULT = { dataUrl: "data:image/jpeg;base64,AAAA", style: "comichero", source: "descriptor" as const };
+const RESULT = { dataUrl: "data:image/jpeg;base64,AAAA", style: "comichero" as const, source: "descriptor" as const };
 const now = () => new Date("2026-09-22T10:00:00.000Z");
 
 describe("heroPatch", () => {
