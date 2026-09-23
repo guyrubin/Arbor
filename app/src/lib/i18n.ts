@@ -4583,7 +4583,7 @@ export const he: Dict = {
   "kid.game.mind-vault.title": "Mind Vault",
   "kid.game.mind-vault.sub": "מוצאים את הזוגות",
   "kid.game.beat-keeper.title": "Beat Keeper",
-  "kid.game.beat-keeper.sub": "מתופפים בקצב",
+  "kid.game.beat-keeper.sub": "מתופפים יחד",
   "kid.game.hero-pose.title": "Hero Pose",
   "kid.game.hero-pose.sub": "עושים תנוחה",
   "kid.game.pattern-power.title": "Pattern Power",

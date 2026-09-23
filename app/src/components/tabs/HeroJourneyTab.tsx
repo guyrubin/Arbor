@@ -1373,9 +1373,10 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                       ? { background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.30)", color: "var(--arbor-green-ink)" }
                       : { background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
                   >
-                    <span className="mt-0.5 w-4 h-4 rounded flex items-center justify-center flex-shrink-0 text-white" style={{ background: questionsChecked[i] ? "var(--arbor-clay)" : "var(--arbor-rule-strong)" }}>
-                      {questionsChecked[i] && <Icon name="check" size={12} />}
-                    </span>
+                    {/* CR-01: explicit checked/unchecked pair so the white mark's fill is provable (same pixels as the ternary it replaces). */}
+                    {questionsChecked[i]
+                      ? <span className="mt-0.5 w-4 h-4 rounded flex items-center justify-center flex-shrink-0 text-white" style={{ background: "var(--arbor-clay)" }}><Icon name="check" size={12} /></span>
+                      : <span className="mt-0.5 w-4 h-4 rounded flex-shrink-0" style={{ background: "var(--arbor-rule-strong)" }} aria-hidden="true" />}
                     <span dir="auto" className="text-xs">{q}</span>
                   </button>
                 ))}

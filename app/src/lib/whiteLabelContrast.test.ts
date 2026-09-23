@@ -1091,6 +1091,10 @@ const FROZEN_DEBT: readonly Debt[] = [
 const FROZEN_SEAL = "66b8a7891677ed44216437abe0176e245b554deb40754e7f1d747688e6af5ee6";
 // Retire exact keys only after fixing/removing their consumer; never rewrite the snapshot.
 const RETIRED_DEBT: readonly string[] = [
+  // RESOLVED 2026-09-23 (kids gauntlet M2): the Hero Story reflection checkbox
+  // was a ternary fill under a white mark; split into an explicit checked (clay)
+  // / unchecked (no label) pair, same pixels, provable fill.
+  "components/tabs/HeroJourneyTab.tsx#a8ac8f3af3b7d2d06ffa8093b41042c2c74e979e9146077970b347c15fe53c44",
   // W2: user bubbles use functional green ink on its soft paper surface; no white label.
   "components/tabs/CoachTab.tsx#2b0a267a4d10ce4825e01f7eb82daedfb4c9fa74705a90e4c6b96eec34c78c6d",
   // RESOLVED 2026-09-04, not re-frozen. The Coach today-plan tick sat in a box
