@@ -44,6 +44,15 @@ const ensureAdminApp = (config: ArborConfig) => {
  */
 const PUBLIC_API_PATHS = new Set(["/waitlist"]);
 
+/**
+ * B-INF-02: server-to-server job paths. Their caller is Cloud Scheduler with a
+ * Google-signed OIDC token (not a Firebase ID token), so this middleware must
+ * not try — and fail — to verify it as one. The route itself verifies the
+ * token's audience and service account (server/digestJob.createOidcJobVerifier)
+ * and answers 401 on anything else, so the path is never open.
+ */
+export const JOB_API_PATHS = new Set(["/jobs/weekly-digest"]);
+
 export const createAuthMiddleware = (config: ArborConfig): RequestHandler => {
   const required = authRequired();
 
@@ -51,6 +60,10 @@ export const createAuthMiddleware = (config: ArborConfig): RequestHandler => {
     const header = req.headers.authorization || "";
     const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
     const isPublic = PUBLIC_API_PATHS.has(req.path);
+    if (JOB_API_PATHS.has(req.path) && req.method === "POST") {
+      next();
+      return;
+    }
 
     if (!token) {
       if (required && !isPublic) {

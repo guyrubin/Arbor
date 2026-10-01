@@ -12,6 +12,7 @@ import { PROMPT_VERSIONS, buildAnalyzeBehaviorPrompt, buildChatPrompt, buildCoun
 // the byte-identical legacy prompt on any malformed/absent input.
 import { sanitizeRecentTurns, sanitizeWeeklyContext } from "../ai/chatContext.js";
 import { assembleSpokenContext, liveContextWithoutNames, spokenChildId } from "../server/spokenContext.js";
+import { createDigestJobSource, createOidcJobVerifier, runWeeklyDigestJob, type DigestJobSource, type JobCallerVerifier } from "../server/digestJob.js";
 import { assembleCompanionContext, createCompanionLedgerSource, lastRatedAction, renderApprovedFactLines, type CompanionLedgerSource, type CompanionPurpose } from "../server/companionContext.js";
 import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../services/framework.js";
 import { screenForImmediateEscalation, renderEscalationMarkdown, escalationMatchForCategory } from "../safety/escalation.js";
@@ -111,6 +112,10 @@ type ApiDeps = {
   /** N1-07: the digest email sender (injectable test double). Defaults to
    *  server/emailProvider's fail-closed sendWeeklyDigestEmail. */
   digestEmailSender?: (msg: DigestEmailMessage) => Promise<{ sent: true; id?: string } | { sent: false; reason: string }>;
+  /** B-INF-02: the weekly-digest job's reads/writes (Firestore in prod, null
+   *  locally) and its caller check (Cloud Scheduler's OIDC token). Injectable. */
+  digestJobSource?: DigestJobSource;
+  jobCallerVerifier?: JobCallerVerifier;
   /** AIR-8: the boot-time CapabilityRegistry. When present (production wiring
    *  via createApp), /api/tts resolves synthesis through
    *  registry.get("speech_synthesis", ...) — the live dispatch seam. */
@@ -351,7 +356,7 @@ export const allowListHandoffInput = (
   return { logs: safeLogs, milestones: safeMilestones };
 };
 
-export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, sharedChildSource, companionLedgerSource, cohortMetricsStore, digestOptInStore, verifiedEmailResolver, digestEmailSender, aiCapabilityRegistry }: ApiDeps) => {
+export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, sharedChildSource, companionLedgerSource, cohortMetricsStore, digestOptInStore, verifiedEmailResolver, digestEmailSender, digestJobSource, jobCallerVerifier, aiCapabilityRegistry }: ApiDeps) => {
   const router = express.Router();
   // CARE-2: the recipient shared-view read seam (Firestore in prod, null locally).
   const sharedSource = sharedChildSource ?? createSharedChildRecordSource(config, memoryStore);
@@ -363,6 +368,10 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   const digestOptIns = digestOptInStore ?? createDigestOptInStore(config);
   const resolveVerifiedEmail = verifiedEmailResolver ?? firebaseVerifiedEmailResolver;
   const sendDigestEmail = digestEmailSender ?? ((msg: DigestEmailMessage) => sendWeeklyDigestEmail(msg));
+  // B-INF-02: the scheduled send. Lazily built so a test or local boot that
+  // never calls the job never touches Firestore for it.
+  let jobSource: DigestJobSource | null = digestJobSource ?? null;
+  const verifyJobCaller = jobCallerVerifier ?? createOidcJobVerifier(process.env, `${config.appUrl}/api/jobs/weekly-digest`);
   const developmentalFramework = buildDevelopmentalFrameworkPrompt(framework);
   const coachResponseSchema = createCoachResponseGeminiSchema(framework);
   // Per-child authorization (closes the IDOR on child-scoped reads/erasure).
@@ -3608,6 +3617,33 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
       // Status only — the body summarises a real child's week and is never logged.
       logger.error("Digest email send failed", undefined, { requestId: requestIdOf(req), errorMessage: error?.message });
       res.json({ sent: false, reason: "send_failed" });
+    }
+  });
+
+  // B-INF-02: the weekly digest job — Cloud Scheduler (infra/scheduler.yaml)
+  // calls this with an OIDC ID token for ARBOR_JOB_SA; anything else is 401
+  // (the Firebase auth middleware lets this one path through to THIS check).
+  // `?dryRun=1` decides and renders without sending or stamping.
+  router.post("/jobs/weekly-digest", async (req, res) => {
+    if (!(await verifyJobCaller(req.headers.authorization))) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+    try {
+      jobSource = jobSource ?? createDigestJobSource(config);
+      const report = await runWeeklyDigestJob({
+        source: jobSource,
+        resolveVerifiedEmail,
+        providerEnabled: resolveEmailProvider().enabled,
+        send: sendDigestEmail,
+        now: Date.now(),
+        dryRun: req.query.dryRun === "1" || req.query.dryRun === "true",
+      });
+      logger.info("Weekly digest job ran", { requestId: requestIdOf(req), dryRun: report.dryRun, considered: report.considered, results: report.results });
+      res.json(report);
+    } catch (error: any) {
+      logger.error("Weekly digest job failed", undefined, { requestId: requestIdOf(req), errorMessage: error?.message });
+      res.status(500).json({ error: "Weekly digest job failed" });
     }
   });
 

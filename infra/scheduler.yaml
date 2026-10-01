@@ -1,0 +1,47 @@
+# B-INF-02 — Cloud Scheduler definition for the weekly digest send job.
+#
+# APPLIED BY GUY, never by an agent (no gcloud by builders). Prerequisites, in
+# order (G-03 — email first, push after the store):
+#   1. B-INF-01: EMAIL_PROVIDER=resend + EMAIL_FROM in cloudbuild.prod.yaml's env
+#      line and RESEND_API_KEY=arbor-resend-key:latest in --set-secrets
+#      (server/emailProvider.prodEnv.test.ts pins the all-or-nothing shape).
+#   2. A dedicated service account for the scheduler:
+#        gcloud iam service-accounts create arbor-digest-job \
+#          --display-name "Arbor weekly digest scheduler"
+#   3. The API env learns who may call the job (cloudbuild.prod.yaml env line):
+#        ARBOR_JOB_SA=arbor-digest-job@<PROD_PROJECT_ID>.iam.gserviceaccount.com
+#        ARBOR_JOB_AUDIENCE=<the Cloud Run URL below>/api/jobs/weekly-digest
+#      With ARBOR_JOB_SA unset the route answers 401 to everyone (fail closed).
+#   4. DRY RUN FIRST — create the job pointing at `?dryRun=1`, trigger it once
+#      (`gcloud scheduler jobs run arbor-weekly-digest --location europe-west4`),
+#      read the Cloud Run log line "Weekly digest job ran" (considered + results,
+#      counts only: would_send / not_opted_in / unverified_address /
+#      provider_disabled / already_sent_this_week / no_child_record /
+#      firewall_blocked). Then update the uri to drop `?dryRun=1`.
+#
+# Create / update with:
+#   gcloud scheduler jobs create http arbor-weekly-digest --location europe-west4 \
+#     --schedule "0 8 * * 0" --time-zone "Asia/Jerusalem" \
+#     --uri "<CLOUD_RUN_URL>/api/jobs/weekly-digest?dryRun=1" --http-method POST \
+#     --oidc-service-account-email arbor-digest-job@<PROD_PROJECT_ID>.iam.gserviceaccount.com \
+#     --oidc-token-audience "<CLOUD_RUN_URL>/api/jobs/weekly-digest" \
+#     --attempt-deadline 540s --max-retry-attempts 1
+#
+# Idempotence: a retry or a double trigger cannot double-mail — each opt-in row
+# carries lastSentAt and the job refuses a send inside 6 days
+# (server/digestOptIn.decideDigestSend). A dry run never stamps lastSentAt.
+name: arbor-weekly-digest
+location: europe-west4
+# Sunday 08:00 Israel time: the digest lands at the start of the family's week.
+schedule: "0 8 * * 0"
+timeZone: Asia/Jerusalem
+attemptDeadline: 540s
+retryConfig:
+  retryCount: 1
+httpTarget:
+  httpMethod: POST
+  # Drop `?dryRun=1` only after the dry run reads clean (step 4 above).
+  uri: <CLOUD_RUN_URL>/api/jobs/weekly-digest?dryRun=1
+  oidcToken:
+    serviceAccountEmail: arbor-digest-job@<PROD_PROJECT_ID>.iam.gserviceaccount.com
+    audience: <CLOUD_RUN_URL>/api/jobs/weekly-digest

@@ -122,7 +122,9 @@ describe("buildDigestEmail — digest-field reuse under the clinical firewall", 
     expect(bodyText).toContain(narrative.summary.slice(0, 40));
     expect(bodyText).toContain(narrative.tryThisWeek);
     expect(bodyText).toContain(`${stats.momentsLogged} moments`);
-    expect(bodyText).toContain(`milestones: ${stats.milestonesDone} of ${stats.milestonesTotal}`);
+    // B-INF-02: counts only — the milestone figure never states its total.
+    expect(bodyText).toContain(`milestones noticed: ${stats.milestonesDone}`);
+    expect(bodyText).not.toContain(`of ${stats.milestonesTotal}`);
   });
 
   it("clinical firewall: the previous week's count NEVER renders (counts only, no deltas, no %)", () => {

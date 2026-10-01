@@ -131,13 +131,14 @@ export const buildDigestEmail = (input: {
     ? {
         watch: "שווה שיחה:",
         tryLbl: "שווה לנסות השבוע:",
-        counts: `השבוע במספרים: ${s.momentsLogged} רגעים נשמרו על פני ${s.daysCovered} ימים · ${s.resolvedCount} נפתרו יחד · אבני דרך: ${s.milestonesDone} מתוך ${s.milestonesTotal}.`,
+        // B-INF-02: counts only — the milestone figure never states a total.
+        counts: `השבוע במספרים: ${s.momentsLogged} רגעים נשמרו על פני ${s.daysCovered} ימים · ${s.resolvedCount} נפתרו יחד · אבני דרך שנצפו: ${s.milestonesDone}.`,
         open: "פתחו את Arbor ותגלו מה חדש.",
       }
     : {
         watch: "Worth a conversation:",
         tryLbl: "Try this week:",
-        counts: `The week in counts: ${s.momentsLogged} moments captured across ${s.daysCovered} days · ${s.resolvedCount} worked through together · milestones: ${s.milestonesDone} of ${s.milestonesTotal}.`,
+        counts: `The week in counts: ${s.momentsLogged} moments captured across ${s.daysCovered} days · ${s.resolvedCount} worked through together · milestones noticed: ${s.milestonesDone}.`,
         open: "Open Arbor to see what's new.",
       };
 
@@ -211,7 +212,10 @@ highlights (2-4 short bullets celebrating real effort/progress), watchFor (alway
 tryThisWeek (ONE concrete, doable suggestion grounded in the stats). Return only JSON matching the schema.${input.languageDirective ?? ""}`;
 
 /** Deterministic fallback narrative when AI is unavailable. */
-export const fallbackDigestNarrative = (childName: string, stats: WeeklyDigestStats) => {
+export const fallbackDigestNarrative = (childName: string, stats: WeeklyDigestStats, language: "en" | "he" = "en") => {
+  // B-INF-02: the scheduled send renders a Hebrew opt-in in Hebrew; the same
+  // counts-only rules hold (no denominator, no comparison, no watch items).
+  if (language === "he") return fallbackDigestNarrativeHe(childName, stats);
   const highlights: string[] = [];
   if (stats.momentsLogged > 0) {
     highlights.push(`You logged ${stats.momentsLogged} moment${stats.momentsLogged === 1 ? "" : "s"} across ${stats.daysCovered} day${stats.daysCovered === 1 ? "" : "s"} — that attention is the foundation of everything Arbor can see.`);
@@ -234,5 +238,31 @@ export const fallbackDigestNarrative = (childName: string, stats: WeeklyDigestSt
     tryThisWeek: stats.momentsLogged === 0
       ? "Log one moment a day — 20 seconds each — and next week's digest gets much smarter."
       : "Pick the most frequent trigger above and pre-empt it once this week with a named transition warning.",
+  };
+};
+
+/** B-INF-02 — the Hebrew fallback (calm Israeli-parent register; flagged for
+ *  native review). Counts only, exactly like the English one. */
+const fallbackDigestNarrativeHe = (childName: string, stats: WeeklyDigestStats) => {
+  const name = isolate(childName, "he");
+  const highlights: string[] = [];
+  if (stats.momentsLogged > 0) {
+    const moments = stats.momentsLogged === 1 ? "רגע אחד" : `${stats.momentsLogged} רגעים`;
+    const days = stats.daysCovered === 1 ? "ביום אחד" : `ב-${stats.daysCovered} ימים`;
+    highlights.push(`תיעדתם ${moments} ${days} — תשומת הלב הזו היא הבסיס לכל מה ש-Arbor יכול לראות.`);
+  }
+  if (stats.resolvedCount > 0) highlights.push(stats.resolvedCount === 1 ? "רגע אחד סומן כנפתר." : `${stats.resolvedCount} רגעים סומנו כנפתרו.`);
+  if (stats.milestonesDone > 0) highlights.push(stats.milestonesDone === 1 ? "אבן דרך אחת נצפתה עד כה." : `${stats.milestonesDone} אבני דרך נצפו עד כה.`);
+  if (highlights.length === 0) highlights.push(`שבוע שקט ביומן — אפילו הערה קצרה אחת ביום שומרת על הסיפור של ${name} חד.`);
+  return {
+    title: `השבוע של ${name}`,
+    subject: `סיכום השבוע של ${name}`,
+    preheader: highlights[0],
+    summary: highlights.join(" "),
+    highlights,
+    watchFor: [] as string[],
+    tryThisWeek: stats.momentsLogged === 0
+      ? "תעדו רגע אחד ביום — 20 שניות בכל פעם — והסיכום של השבוע הבא יהיה חכם יותר."
+      : "בחרו את הרגע שחוזר הכי הרבה ונסו להקדים אותו פעם אחת השבוע עם התראה רכה לפני המעבר.",
   };
 };

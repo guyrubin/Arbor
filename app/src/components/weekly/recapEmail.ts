@@ -13,7 +13,7 @@
  * nobody to send to. The mirror carries no address — the server takes it from
  * the authenticated, verified identity. */
 import { authHeaders } from "../../lib/api";
-import { trackDigestEmailOptIn, trackDigestEmailSend } from "../../lib/kpiEvents";
+import { trackDigestEmailOptIn } from "../../lib/kpiEvents";
 
 export const EMAIL_OPTIN_KEY = "arbor.recap.emailOptIn";
 
@@ -101,43 +101,6 @@ function digestLanguage(): "en" | "he" {
   }
 }
 
-/** The result vocabulary of POST /api/digest/email-send. Mirrors
- *  DIGEST_SEND_RESULTS in lib/kpiEvents.ts and the four fail-closed axes in
- *  server/digestOptIn.ts. */
-export type DigestSendOutcome = { sent: boolean; reason?: string };
-
-/**
- * N1-07: trigger this account's own weekly digest send. ADMIN-ONLY server-side
- * (403 for everyone else) — there is no scheduler in this wave, so the lead
- * triggers the first real sends by hand from a signed-in session. The result is
- * reported through the ONE analytics seam so the fail-closed proof is readable
- * in `cohort-report.mjs --events`: with the env unset every trigger must record
- * `digest_email_send { result: "provider_disabled" }` and zero `"sent"`.
- */
-export async function requestDigestEmailSend(payload: {
-  childProfile?: unknown;
-  logs?: unknown[];
-  milestones?: unknown[];
-}): Promise<DigestSendOutcome> {
-  try {
-    const res = await fetch("/api/digest/email-send", {
-      method: "POST",
-      headers: await authHeaders(),
-      body: JSON.stringify(payload ?? {}),
-    });
-    // 403 is "you are not the lead", not a send outcome — it never enters the
-    // census, because a refusal vocabulary polluted with authorisation noise
-    // stops being a fail-closed proof.
-    if (res.status === 403) return { sent: false, reason: "forbidden" };
-    const data = (await res.json()) as DigestSendOutcome;
-    trackDigestEmailSend(data.sent === true ? "sent" : String(data.reason || "send_failed"));
-    return { sent: data.sent === true, reason: data.reason };
-  } catch {
-    trackDigestEmailSend("send_failed");
-    return { sent: false, reason: "send_failed" };
-  }
-}
-
 export type DigestEmailStatus = { enabled: boolean; provider: string | null };
 
 /** Fail-closed status probe: any error reads as "channel not available". */
@@ -152,21 +115,7 @@ export async function fetchDigestEmailStatus(): Promise<DigestEmailStatus> {
   }
 }
 
-/**
- * The hand trigger. There is no UI for a send in this wave (and there must not
- * be one: the route is admin-only), so the lead's trigger is this handle on the
- * weekly surface, which this module already backs:
- *
- *   await window.__arborDigestSend({ logs: [], milestones: [] })
- *
- * Exposed unconditionally because the SERVER decides who may send — a non-admin
- * caller gets a 403 and no event. Guarded so a non-browser import (tests, SSR)
- * is a no-op.
- */
-try {
-  if (typeof window !== "undefined") {
-    (window as unknown as Record<string, unknown>).__arborDigestSend = requestDigestEmailSend;
-  }
-} catch {
-  /* non-browser context */
-}
+/* B-INF-02: the hand trigger (`window.__arborDigestSend` → POST
+ * /api/digest/email-send) is gone. The weekly send is the scheduled job
+ * (POST /api/jobs/weekly-digest, server/digestJob.ts, infra/scheduler.yaml),
+ * and the admin route stays callable for a one-off server-side test. */
