@@ -18,12 +18,19 @@
  *
  * C5 link: when the flagged domain maps to an expert-cited Daily Play
  * activity, a secondary CTA links there (no new data, just a tab switch).
+ *
+ * B-TODAY-05: Today shows ONLY the parent's own hard moments (the pattern
+ * branch), in the parent's own terms ("You marked {n} moments as hard (4–5)").
+ * The milestone-lag branch ("a skill typically seen by now hasn't been
+ * noted") was a norm comparison and is gone from Today; that signal stays on
+ * Growth's monitoring and Development Check (useMonitoring →
+ * screen.monitor.note.*). No peach: the card is ink and muted only.
  */
 import React, { useMemo, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { pickHighestWatchSignal, monitoredDomainToPlayHint } from "../../lib/monitoring";
+import { pickHighestWatchSignal, monitoredDomainToPlayHint, type DomainSignal, type MonitoringResult } from "../../lib/monitoring";
 import { useMonitoring } from "../../hooks/useMonitoring";
 import { PLAY_ACTIVITIES } from "../../playbank/content";
 import type { MonitoredDomainId } from "../../lib/monitoring";
@@ -33,10 +40,17 @@ import { ageMonthsFromProfile } from "../../lib/childAge";
 const INK = "var(--arbor-ink)";
 const MUTED = "var(--arbor-muted)";
 const RULE = "var(--arbor-rule)";
-// Peach = calm warm attention (non-alarming). Design system token.
-// Distinct from the green "on track" palette and from error red.
-const PEACH_INK = "var(--arbor-peach-ink)";
-const PEACH_SOFT = "var(--arbor-peach-soft)";
+
+/**
+ * B-TODAY-05 — the ONE render gate for Today's noticed card (OverviewTab's
+ * module budget mirrors it through this function): the highest monitor-level
+ * signal among domains whose reason includes the parent's own hard moments.
+ * A milestone-only signal never reaches Today.
+ */
+export function todayNoticedSignal(result: MonitoringResult): DomainSignal | null {
+  const domains = result.domains.filter((d) => d.level === "monitor" && d.reasons.includes("behavior_pattern"));
+  return domains.length ? pickHighestWatchSignal({ ...result, domains }) : null;
+}
 
 // Per-child localStorage key for dismissed detection signatures (same
 // try/catch idiom as FirstStepsRail / the Daily Play sessionLength pref).
@@ -74,13 +88,11 @@ export default function ArborNoticedCard() {
   const { milestones, behaviorLogs, childProfile, setActiveTab } = useArbor();
   const { t } = useLanguage();
 
-  const firstName = (childProfile.name || "your child").split(" ")[0];
-
   // The ONE shared watch derivation (hooks/useMonitoring) — it owns the
   // months-precise age conversion this card used to re-implement locally.
   const monitoring = useMonitoring();
 
-  const signal = useMemo(() => pickHighestWatchSignal(monitoring), [monitoring]);
+  const signal = useMemo(() => todayNoticedSignal(monitoring), [monitoring]);
 
   // DUX-011 dismiss — per-detection signature (child-scoped key). A different
   // domain or a level change is a NEW detection and shows again.
@@ -103,19 +115,9 @@ export default function ArborNoticedCard() {
     setDismissedSigs(next);
   };
 
-  // Build the body copy for the monitor state using the translation keys.
+  // B-TODAY-05: the pattern branch only — what the parent marked, counted.
   function buildMonitorBody(): string {
     const area = t("noticed.domain." + signal!.domain);
-    const hasMilestone = signal!.reasons.includes("milestone_overdue");
-    const hasPattern = signal!.reasons.includes("behavior_pattern");
-    if (hasMilestone && hasPattern) {
-      return t("noticed.monitor.body.both", {
-        name: firstName,
-        area,
-        n: signal!.patternMoments,
-      });
-    }
-    if (hasMilestone) return t("noticed.monitor.body.milestone", { name: firstName, area });
     return t("noticed.monitor.body.pattern", { n: signal!.patternMoments, area });
   }
 
@@ -129,8 +131,8 @@ export default function ArborNoticedCard() {
     >
       {/* Eyebrow + unobtrusive per-detection dismiss */}
       <div className="col-span-full flex items-center gap-1.5">
-        <Icon name="visibility" size={14} className="flex-shrink-0" style={{ color: PEACH_INK }} />
-        <span className="text-[11.5px] font-bold uppercase tracking-wide" style={{ color: PEACH_INK }}>
+        <Icon name="visibility" size={14} className="flex-shrink-0" style={{ color: MUTED }} />
+        <span className="text-[11.5px] font-bold uppercase tracking-wide" style={{ color: MUTED }}>
           {t("noticed.eyebrow")}
         </span>
         <button
@@ -147,7 +149,7 @@ export default function ArborNoticedCard() {
       <div className="min-w-0">
         <p className="text-[14.5px] font-extrabold leading-snug" style={{ color: INK }}>{t("noticed.monitor.title")}</p>
         <p className="mt-1 text-[12.5px] leading-relaxed" style={{ color: MUTED, textWrap: "pretty" } as React.CSSProperties}>{buildMonitorBody()}</p>
-        <p className="mt-1 text-[11.5px] font-medium" style={{ color: PEACH_INK }}>{t("noticed.monitor.cta")}</p>
+        <p className="mt-1 text-[11.5px] font-medium" style={{ color: INK }} data-testid="noticed-escalation">{t("noticed.monitor.cta")}</p>
       </div>
 
       {/* C5 link: expert-cited activity for the flagged domain */}
@@ -157,7 +159,7 @@ export default function ArborNoticedCard() {
           className="inline-flex items-center gap-1.5 text-[12.5px] font-bold rounded-xl px-3 py-2 touch-target transition active:scale-[0.98]"
           style={{
             background: "var(--arbor-paper-elevated)",
-            color: PEACH_INK,
+            color: INK,
             border: `1px solid ${RULE}`,
           }}
           aria-label={t("noticed.activity.aria", { area: t("noticed.domain." + signal!.domain) })}

@@ -18,7 +18,7 @@ import QuickLogModal from "../overview/QuickLogModal";
 import SinceLastVisit, { svString } from "../overview/SinceLastVisit";
 import PromptCaptureCard from "../overview/PromptCaptureCard";
 import { ErrorState } from "../ui/ErrorState";
-import ArborNoticedCard from "../sections/ArborNoticedCard";
+import ArborNoticedCard, { todayNoticedSignal } from "../sections/ArborNoticedCard";
 import type { CaptureMode } from "../../context/ArborContext";
 import { useTodaysFocus } from "../../hooks/useTodaysFocus";
 import { useLastVisit } from "../../hooks/useLastVisit";
@@ -27,7 +27,6 @@ import { predictRhythm, hourLabel } from "../../rhythm/predict";
 import { selectDailyPlay, concernDomainsFromLogs, daySeedFor, type ScoredActivity, type SessionLength } from "../../playbank/select";
 import { useDevScore } from "../../hooks/useDevScore";
 import { useMonitoring } from "../../hooks/useMonitoring";
-import { pickHighestWatchSignal } from "../../lib/monitoring";
 import { activeGoalDomains, type ActiveGoal } from "../../practice/goalBuilder";
 import { playDomainLabel } from "../../playbank/content";
 import { usePrideMoment } from "../../hooks/usePrideMoment";
@@ -472,10 +471,11 @@ export default function OverviewTab() {
   // not even a sibling module — it renders inside the anchor's left column.
   // Every input below is now the module's own render condition.
   //
-  // Mirrors ArborNoticedCard's render gate (monitor-level signal, not dismissed).
+  // Mirrors ArborNoticedCard's render gate through ITS selector (B-TODAY-05:
+  // a pattern-backed monitor signal, not dismissed).
   const monitoring = useMonitoring();
   const noticedWould = useMemo(() => {
-    const signal = pickHighestWatchSignal(monitoring);
+    const signal = todayNoticedSignal(monitoring);
     if (!signal || signal.level !== "monitor") return false;
     try {
       const raw = window.localStorage.getItem(`arbor.noticed.dismissed.${childProfile.id}`);

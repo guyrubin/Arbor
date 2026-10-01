@@ -169,3 +169,58 @@ describe("B-PLAY-01 — the For You card names no domain", () => {
     expect(src).toContain('t("foryou.title", { name: firstName })');
   });
 });
+
+/* B-TODAY-05 — Arbor Noticed carried a norm-comparison pointer ("a skill
+   that's typically seen by now hasn't been noted yet"), adjectives about the
+   child ("intense, unsettled") and caution colour (peach). Today's card now
+   counts only what the parent marked hard (4–5). */
+describe("B-TODAY-05 — the noticed card: no norm pointer, no adjectives, no peach", () => {
+  const NOTICED_BANNED = [/typically/i, /by now/i, /not yet/i, /intense/i, /unsettled/i, /עדיין לא/, /עצימים/, /סוערים/];
+  const dict = stripComments(readFileSync(path.join(SRC, "lib", "i18n.ts"), "utf8"));
+  const noticed = [...dict.matchAll(/"(noticed\.monitor\.[^"]+)":\s*"([^"]*)"/g)].map((m) => ({ key: m[1], value: m[2] }));
+
+  it("scans the noticed.monitor.* values in both languages", () => {
+    expect(noticed.filter((n) => n.key === "noticed.monitor.body.pattern")).toHaveLength(2);
+  });
+
+  it("no noticed.monitor.* value carries a banned word (EN + HE)", () => {
+    const offenders = noticed.filter((n) => NOTICED_BANNED.some((re) => re.test(n.value))).map((n) => `${n.key}: ${n.value}`);
+    expect(offenders).toEqual([]);
+  });
+
+  it("the milestone and both branches are deleted; the escalation sentence stays", () => {
+    expect(noticed.some((n) => n.key === "noticed.monitor.body.milestone" || n.key === "noticed.monitor.body.both")).toBe(false);
+    expect(noticed.filter((n) => n.key === "noticed.monitor.cta")).toHaveLength(2);
+    const card = stripComments(readFileSync(path.join(SRC, "components", "sections", "ArborNoticedCard.tsx"), "utf8"));
+    expect(card).toContain('t("noticed.monitor.cta")');
+    expect(card).not.toMatch(/noticed\.monitor\.body\.(milestone|both)/);
+  });
+
+  it("NEGATIVE CONTROL — the pre-fix values trip the scan", () => {
+    for (const pre of [
+      "One {area} skill that's typically seen by now hasn't been noted yet for {name}.",
+      "You've logged {n} intense, unsettled {area} moments recently.",
+      "תיעדתם {n} רגעים עצימים וסוערים בתחום {area} לאחרונה.",
+    ]) expect(NOTICED_BANNED.some((re) => re.test(pre)), pre).toBe(true);
+  });
+
+  it("no --arbor-peach-* token in ArborNoticedCard or SinceLastVisit", () => {
+    for (const rel of [["components", "sections", "ArborNoticedCard.tsx"], ["components", "overview", "SinceLastVisit.tsx"]]) {
+      expect(readFileSync(path.join(SRC, ...rel), "utf8"), rel.join("/")).not.toMatch(/--arbor-peach-/);
+    }
+  });
+
+  it("Today's gate is pattern-only: a milestone-only monitor signal renders nothing", async () => {
+    const { todayNoticedSignal } = await import("../components/sections/ArborNoticedCard");
+    const sig = (domain: string, reasons: string[], patternMoments = 0) => ({
+      domain, level: "monitor", reasons, overdueMilestones: reasons.includes("milestone_overdue") ? [{}] : [], patternMoments,
+    });
+    const result = (domains: unknown[]) => ({ generatedAt: "", ageMonths: 48, domains, watchAreas: [], elevated: true } as never);
+    expect(todayNoticedSignal(result([sig("language_communication", ["milestone_overdue"])]))).toBeNull();
+    const picked = todayNoticedSignal(result([
+      sig("language_communication", ["milestone_overdue"]),
+      sig("attachment_regulation", ["behavior_pattern"], 4),
+    ]));
+    expect(picked?.domain).toBe("attachment_regulation");
+  });
+});

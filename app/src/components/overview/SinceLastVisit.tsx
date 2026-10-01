@@ -199,8 +199,9 @@ export default function SinceLastVisit({
               <span
                 className="flex h-8 w-8 flex-none items-center justify-center rounded-full"
                 style={{
-                  background: row.kind === "noticed" ? "var(--arbor-peach-soft)" : "var(--arbor-green-soft)",
-                  color: row.kind === "noticed" ? "var(--arbor-peach-ink)" : "var(--arbor-green-ink)",
+                  /* B-TODAY-05: the folded noticed row is ink/muted, never peach. */
+                  background: row.kind === "noticed" ? "var(--arbor-paper-elevated)" : "var(--arbor-green-soft)",
+                  color: row.kind === "noticed" ? "var(--arbor-muted)" : "var(--arbor-green-ink)",
                 }}
               >
                 <Icon name={ROW_ICON[row.kind]} size={17} fill={row.kind === "milestone" ? 1 : 0} />
