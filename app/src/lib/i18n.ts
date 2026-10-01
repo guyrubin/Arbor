@@ -719,19 +719,15 @@ export const en: Dict = {
   "lang.act.phrase.title": "Morning phrase card",
   "lang.act.phrase.desc": "One short {target} sentence {first} can actually use today. Practice it together at breakfast.",
   "lang.act.phrase.example": "\"Can I play with you?\" · \"Where do I put my bag?\" · \"I need help, please.\"",
-  "lang.act.phrase.lens": "Vygotsky · ZPD",
   "lang.act.translate.title": "Translator game",
   "lang.act.translate.desc": "Say a sentence in {home}; {first} translates it into {target}. Celebrate attempts, not perfection.",
   "lang.act.translate.example": "Start with feelings: angry, scared, hungry, tired, happy. Body words first, then school words.",
-  "lang.act.translate.lens": "Vygotsky · Piaget",
   "lang.act.story.title": "Bedtime story in {target}",
   "lang.act.story.desc": "Read one book in {target}. Narrate slowly, point at pictures, and ask one open question after.",
   "lang.act.story.example": "\"What do you think happened just before the story started?\"",
-  "lang.act.story.lens": "Serve & Return",
   "lang.act.serve.title": "Serve & return",
   "lang.act.serve.desc": "Follow {first}'s lead on any {target} bid — if they offer one word, extend it into a sentence back. Don't correct, expand.",
   "lang.act.serve.example": "{name}: \"car\" → you: \"yes — the red car is going really fast!\"",
-  "lang.act.serve.lens": "Harvard Center · S&R",
   // AP-054 — Language Lab Vocab View (vl.*)
   // BINDING SLP-CLEARED COPY (board-cleared per ASHA + Core et al. 2013).
   // EN strings are VERBATIM per spec. HE strings carry the same non-screen
@@ -3044,19 +3040,15 @@ export const he: Dict = {
   "lang.act.phrase.title": "כרטיס משפט בבוקר",
   "lang.act.phrase.desc": "משפט קצר אחד ב{target} ש{first} יוכל/תוכל להשתמש בו היום. תרגלו יחד בארוחת הבוקר.",
   "lang.act.phrase.example": "\"אפשר לשחק איתך?\" · \"איפה לשים את התיק?\" · \"אני צריכ/ה עזרה, בבקשה.\"",
-  "lang.act.phrase.lens": "ויגוצקי · ZPD",
   "lang.act.translate.title": "משחק תרגום",
   "lang.act.translate.desc": "אמרו משפט ב{home}; {first} מתרגמ/ת ל{target}. חגגו ניסיונות, לא שלמות.",
   "lang.act.translate.example": "התחילו עם רגשות: כועס, מפחד, רעב, עייף, שמח. מילות גוף קודם, אחר כך מילות בית ספר.",
-  "lang.act.translate.lens": "ויגוצקי · פיאז'ה",
   "lang.act.story.title": "סיפור לפני השינה ב{target}",
   "lang.act.story.desc": "קראו ספר אחד ב{target}. ספרו לאט, הצביעו על תמונות, ושאלו שאלה פתוחה אחת אחרי.",
   "lang.act.story.example": "\"מה לדעתך קרה רגע לפני שהסיפור התחיל?\"",
-  "lang.act.story.lens": "הגשה והחזרה",
   "lang.act.serve.title": "הגשה והחזרה",
   "lang.act.serve.desc": "עקבו אחר הובלת {first} בכל פנייה ב{target} — אם הם מציעים מילה אחת, הרחיבו אותה למשפט חזרה. אל תתקנו, הרחיבו.",
   "lang.act.serve.example": "{name}: \"מכונית\" → אתם: \"כן — המכונית האדומה נוסעת מהר מאוד!\"",
-  "lang.act.serve.lens": "מרכז הרווארד · ה&ח",
   // AP-054 — Language Lab Vocab View — Hebrew (vl.*)
   // Flagged for arbor-localization native review before wide release.
   // Carries the same non-screen meaning as the EN strings; no clinical claims.

@@ -28,6 +28,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { SectionCard, cardCls, Chip } from "../ui/kit";
 import { T } from "../../lib/tokens";
+import { fmtDay } from "../../lib/formatDate";
 import {
   aggregateLangCounts,
   combinedTotal,
@@ -179,11 +180,119 @@ export function PhraseLogForm({
 
 // ── Main export ───────────────────────────────────────────────────────────────
 
+/**
+ * B-GROWTH-16 — the words written down, as the SECOND top-level module of
+ * #/language (under the log form): the first-view disclaimer (REQUIRED,
+ * re-accessible), the combined total, the per-language counts in the
+ * profile's own languages with the interpretation caption, the latest five
+ * words with their dates, and the provenance line. Counts and dates only —
+ * no share, no bar, no comparison between languages (GP-20 firewall).
+ */
+export function WordsList() {
+  const { childProfile } = useArbor();
+  const { t, uiLang } = useLanguage();
+  const [showDisclaimer, setShowDisclaimer] = useState(true);
+  const languages = (childProfile.languages ?? []).map((l) => l.trim()).filter(Boolean);
+  const first = childProfile.name.split(" ")[0];
+  const obsCol = useChildCollection<LangObservation>(childProfile.id, "langObs", {
+    orderByField: "timestamp",
+    orderDir: "desc",
+    max: 500,
+  });
+  const observations = obsCol.items;
+  const counts = useMemo(() => aggregateLangCounts(observations), [observations]);
+  const total = useMemo(() => combinedTotal(counts), [counts]);
+  const langRows = useMemo(() => profileLangCounts(languages, counts), [languages, counts]);
+  const latest = useMemo(
+    () => [...observations].sort((x, y) => (x.timestamp < y.timestamp ? 1 : -1)).slice(0, 5),
+    [observations],
+  );
+
+  return (
+    <div className="space-y-3" data-testid="lang-words-list">
+      <AnimatePresence>
+        {showDisclaimer && total > 0 && (
+          <DisclaimerPanel t={t} onClose={() => setShowDisclaimer(false)} />
+        )}
+      </AnimatePresence>
+      <SectionCard
+        title={t("vl.sectionTitle")}
+        icon={<Icon name="menu_book" size={20} />}
+        tone="sky"
+        action={!showDisclaimer && total > 0 ? (
+          <button
+            onClick={() => setShowDisclaimer(true)}
+            className="inline-flex items-center gap-1.5 text-xs font-bold min-h-11"
+            style={{ color: T.muted }}
+          >
+            <Icon name="info" size={14} />
+            {t("vl.disclaimerToggle")}
+          </button>
+        ) : undefined}
+      >
+        <div className="space-y-4">
+          {total === 0 ? (
+            <div className="text-center py-2 space-y-2">
+              <p className="text-sm leading-relaxed" style={{ color: T.ink }}>
+                {t("lang.vocabEmptyTitle", { first })}
+              </p>
+              <p className="text-xs" style={{ color: T.muted }}>
+                {t("lang.vocabEmptyNote")}
+              </p>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm font-bold" style={{ color: T.ink }} data-testid="vl-total">
+                {total === 1 ? t("vl.totalCountOne") : t("vl.totalCount", { n: total })}
+              </p>
+              <div className="rounded-2xl p-4 space-y-2" style={{ background: T.paperDeep }}>
+                <ul className="space-y-1" data-testid="vl-lang-counts">
+                  {langRows.map((c, idx) => (
+                    <li key={c.language} className="flex justify-between text-[12px]">
+                      <span style={{ color: T.muted }}>
+                        <span
+                          aria-hidden="true"
+                          className="inline-block w-1.5 h-1.5 rounded-full me-1.5 align-middle"
+                          style={{ background: langColor(idx) }}
+                        />
+                        {c.language}
+                      </span>
+                      <span style={{ color: T.ink }}>{c.count}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-[11px] italic leading-relaxed pt-1" style={{ color: T.muted }} data-testid="vl-interpret-caption">
+                  {t("vl.interpretCaption")}
+                </p>
+              </div>
+              <div>
+                <p className="text-[12px] font-bold mb-1.5" style={{ color: T.muted }}>{t("elev.growth.lang.words.latest")}</p>
+                <ul className="space-y-1" data-testid="vl-latest-words">
+                  {latest.map((w) => (
+                    <li key={w.id} className="flex items-baseline justify-between gap-3 text-sm">
+                      <span className="min-w-0 break-words" dir="auto" style={{ color: T.ink }}>{w.phrase}</span>
+                      <span className="flex-shrink-0 text-[12px]" style={{ color: T.muted }}>
+                        {w.language} · {fmtDay(w.timestamp, uiLang)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </>
+          )}
+          <p className="text-[11px] leading-relaxed" style={{ color: T.faint }} data-testid="vl-provenance">
+            {t("vl.provenance")}
+          </p>
+        </div>
+      </SectionCard>
+    </div>
+  );
+}
+
 export default function LanguageLabVocabView() {
   const { childProfile } = useArbor();
   const { t, uiLang } = useLanguage();
 
-  const [showDisclaimer, setShowDisclaimer] = useState(true);
   const [showActivities, setShowActivities] = useState(false);
 
   const childId = childProfile.id;
@@ -199,13 +308,7 @@ export default function LanguageLabVocabView() {
 
   const observations = obsCol.items;
 
-  // Aggregate counts.
-  const counts = useMemo(() => aggregateLangCounts(observations), [observations]);
-  const total = useMemo(() => combinedTotal(counts), [counts]);
-
-  // B-GROWTH-14: counts in the profile's OWN languages (zeros included), and a
-  // plain month list in place of the stacked per-language chart.
-  const langRows = useMemo(() => profileLangCounts(languages, counts), [languages, counts]);
+  // B-GROWTH-14: a plain month list in place of the stacked per-language chart.
   const months = useMemo(() => monthlyWordCounts(observations, 6), [observations]);
   const monthFmt = useMemo(
     () => new Intl.DateTimeFormat(uiLang === "he" ? "he-IL" : "en-US", { month: "long", timeZone: "UTC" }),
@@ -228,108 +331,10 @@ export default function LanguageLabVocabView() {
 
   return (
     <div className="space-y-5">
-      {/* Disclaimer — first-view (REQUIRED, re-accessible) */}
-      <AnimatePresence>
-        {showDisclaimer && (
-          <DisclaimerPanel t={t} onClose={() => setShowDisclaimer(false)} />
-        )}
-      </AnimatePresence>
-
-      {/* Re-open disclaimer toggle */}
-      {!showDisclaimer && (
-        <button
-          onClick={() => setShowDisclaimer(true)}
-          className="inline-flex items-center gap-1.5 text-xs font-bold min-h-[44px]"
-          style={{ color: T.muted }}
-        >
-          <Icon name="info" size={14} />
-          {t("vl.disclaimerToggle")}
-        </button>
-      )}
-
-      <SectionCard
-        title={t("vl.sectionTitle")}
-        icon={<Icon name="menu_book" size={20} />}
-        tone="sky"
-      >
-        <div className="space-y-5">
-          {total === 0 ? (
-            /* ── Teaching empty state — optional, private, never the hero ── */
-            <div className="text-center py-2 space-y-2">
-              <p className="text-sm leading-relaxed" style={{ color: T.ink }}>
-                {t("lang.vocabEmptyTitle", { first })}
-              </p>
-              <p className="text-xs" style={{ color: T.muted }}>
-                {t("lang.vocabEmptyNote")}
-              </p>
-            </div>
-          ) : (
-            /* ── COMBINED TOTAL LEADS (required by spec) ── */
-            <div className="text-center py-2">
-              <p className="text-[10px] uppercase font-bold tracking-widest mb-1" style={{ color: T.muted }}>
-                {t("vl.totalLabel")}
-              </p>
-              <p
-                className="text-4xl font-extrabold"
-                style={{ fontFamily: T.fontDisplay, color: T.greenInk }}
-              >
-                {total}
-              </p>
-              <p className="text-xs mt-1" style={{ color: T.muted }}>
-                {total === 1 ? t("vl.totalCountOne") : t("vl.totalCount", { n: total })}
-              </p>
-            </div>
-          )}
-
-          {/* ── Per-language counts — SECONDARY neutral context ── */}
-          {total > 0 && (
-            <div
-              className="rounded-2xl p-4 space-y-2"
-              style={{ background: T.paperDeep }}
-            >
-              {/* GP-20 clinical firewall: per-language COUNTS. The share
-                  percentage, its proportional bar and the `progressbar` role
-                  (aria-valuenow carried the same percentage to a screen reader)
-                  all graded one language against another on a parent surface.
-                  B-GROWTH-14: the rows are the PROFILE's languages, zeros
-                  included — never an assumed Hebrew/English pair. */}
-              <ul className="space-y-1" data-testid="vl-lang-counts">
-                {langRows.map((c, idx) => (
-                  <li key={c.language} className="flex justify-between text-[10px]">
-                    <span style={{ color: T.muted }}>
-                      <span
-                        aria-hidden="true"
-                        className="inline-block w-1.5 h-1.5 rounded-full me-1.5 align-middle"
-                        style={{ background: langColor(idx) }}
-                      />
-                      {c.language}
-                    </span>
-                    <span style={{ color: T.ink }}>{c.count}</span>
-                  </li>
-                ))}
-              </ul>
-
-              {/* Interpretation caption — REQUIRED adjacent, verbatim board-cleared */}
-              <p
-                className="text-[11px] italic leading-relaxed pt-1"
-                style={{ color: T.muted }}
-                data-testid="vl-interpret-caption"
-              >
-                {t("vl.interpretCaption")}
-              </p>
-            </div>
-          )}
-
-          {/* ── Provenance line — REQUIRED, visible ── */}
-          <p
-            className="text-[11px] leading-relaxed"
-            style={{ color: T.faint }}
-            data-testid="vl-provenance"
-          >
-            {t("vl.provenance")}
-          </p>
-        </div>
-      </SectionCard>
+      {/* B-GROWTH-16: the words list (with its first-view disclaimer, the
+          per-language counts, the interpretation caption and the provenance
+          line) moved up to a top-level module — see WordsList below. What
+          stays here, in the disclosure, is the month list and the ideas. */}
 
       {/* ── B-GROWTH-14: words logged per month — a plain list, newest first,
           at most six. Replaces the stacked per-language area chart. ── */}

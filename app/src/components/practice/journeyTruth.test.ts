@@ -27,6 +27,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import * as growth from "../../lib/i18nElevation/growth";
+import { translate } from "../../lib/i18n";
 import * as authCopy from "../../lib/i18nElevation/auth";
 import { en as trustEn, he as trustHe } from "../../lib/i18nElevation/trustcenter";
 
@@ -142,7 +143,7 @@ describe("GP-25 · the Science page counts what it lists", () => {
 
 describe("the primary move comes first", () => {
   it("the Language Lab log form is mounted under the hub header", () => {
-    expect(langTab).toContain("import LanguageLabVocabView, { PhraseLogForm }");
+    expect(langTab).toContain("import LanguageLabVocabView, { PhraseLogForm, WordsList }");
     expect(langTab).toContain("<PhraseLogForm childId={childProfile.id}");
     // It renders before the daily-practice card and before the vocabulary view.
     const form = at(langTab, "<PhraseLogForm childId");
@@ -151,6 +152,44 @@ describe("the primary move comes first", () => {
     // ...and no longer at the bottom of the vocabulary view.
     expect(vocab).toContain("export function PhraseLogForm");
     expect(vocab).not.toContain("<PhraseLogForm\n        childId={childId}");
+  });
+
+  /* B-GROWTH-16 — words first, practice ideas into the disclosure, no jargon
+     chip: the words written down are the second top-level module (under the
+     form), the four practice cards + week-plan CTA are demoted into the
+     "language-more" disclosure, and the ZPD/Vygotsky lens labels are gone. */
+  it("B-GROWTH-16 · order: form → words list → profile → disclosure (practice demoted inside)", () => {
+    const form = at(langTab, 'data-module="language-capture"');
+    const words = at(langTab, 'data-module="language-words"');
+    const profile = at(langTab, 'data-module="language-profile"');
+    const disclosure = at(langTab, 'data-module-disclosure="language-more"');
+    const practice = at(langTab, 'data-module="language-practice"');
+    expect(form).toBeLessThan(words);
+    expect(words).toBeLessThan(profile);
+    expect(profile).toBeLessThan(disclosure);
+    expect(practice).toBeGreaterThan(disclosure);
+    expect(langTab).toContain('<div data-module="language-practice" data-module-demoted');
+    expect(langTab).toContain("<WordsList />");
+    // the week-plan CTA travels with the practice cards, inside the disclosure
+    expect(at(langTab, "lang.weekPlanCta")).toBeGreaterThan(disclosure);
+  });
+
+  it("B-GROWTH-16 · 0 lens labels: no item.lens, no lang.act.*.lens keys", () => {
+    expect(langTab).not.toContain("item.lens");
+    expect(langTab).not.toMatch(/lang\.act\.\w+\.lens/);
+    for (const lang of ["en", "he"] as const) {
+      for (const k of ["phrase", "translate", "story", "serve"]) {
+        expect(translate(lang, `lang.act.${k}.lens`)).toBe(`lang.act.${k}.lens`);
+      }
+    }
+  });
+
+  it("B-GROWTH-16 · the words list carries the disclaimer, counts, caption, latest five with dates and provenance", () => {
+    const list = vocab.slice(vocab.indexOf("export function WordsList"), vocab.indexOf("export default function LanguageLabVocabView"));
+    for (const needle of ["DisclaimerPanel", 'data-testid="vl-lang-counts"', 'data-testid="vl-interpret-caption"', 'data-testid="vl-latest-words"', ".slice(0, 5)", "fmtDay(w.timestamp", 'data-testid="vl-provenance"']) {
+      expect(list, needle).toContain(needle);
+    }
+    expect(list).not.toMatch(/%|progressbar/);
   });
 
   it("MOB-21 · the avatar CTA names what the tap does", () => {

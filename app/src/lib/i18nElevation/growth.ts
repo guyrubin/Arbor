@@ -58,8 +58,10 @@ export const en: Record<string, string> = {
 
 
   // Builder M — R25 — #/language demotion disclosure (vocabulary log).
-  "elev.growth.lang.more.title": "Vocabulary log",
-  "elev.growth.lang.more.sub": "Optional — count the words you hear, whenever you want to.",
+  // B-GROWTH-16: the disclosure now holds the practice ideas and the month list.
+  "elev.growth.lang.more.title": "Practice ideas and words by month",
+  "elev.growth.lang.more.sub": "Optional — four short routines, and the words you wrote down month by month.",
+  "elev.growth.lang.words.latest": "Latest words",
 
   // B-GROWTH-04 — the Development Check door states the re-check date as text.
   "elev.growth.recheck.date": "Check again around {date}",
@@ -125,8 +127,10 @@ export const he: Record<string, string> = {
 
 
   // Builder M — R25 — #/language demotion disclosure (vocabulary log).
-  "elev.growth.lang.more.title": "יומן אוצר מילים",
-  "elev.growth.lang.more.sub": "רשות — סופרים את המילים שאתם שומעים, מתי שמתאים לכם.",
+  // B-GROWTH-16: בגילוי עכשיו — רעיונות תרגול ורשימת החודשים.
+  "elev.growth.lang.more.title": "רעיונות תרגול ומילים לפי חודש",
+  "elev.growth.lang.more.sub": "רשות — ארבע שגרות קצרות, והמילים שרשמתם חודש אחר חודש.",
+  "elev.growth.lang.words.latest": "המילים האחרונות",
 
   // B-GROWTH-04 — תאריך הבדיקה החוזרת, כטקסט
   "elev.growth.recheck.date": "לבדוק שוב בסביבות {date}",

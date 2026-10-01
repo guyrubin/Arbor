@@ -7,7 +7,7 @@ import { useChildCollection } from "../../hooks/useChildCollection";
 import { PageHeader, SectionCard, cardCls, Chip } from "../ui/kit";
 import { ageLabel } from "../../lib/childAge";
 import { aggregateLangCounts, type LangObservation } from "../../growth/vocabAgg";
-import LanguageLabVocabView, { PhraseLogForm } from "./LanguageLabVocabView";
+import LanguageLabVocabView, { PhraseLogForm, WordsList } from "./LanguageLabVocabView";
 
 /**
  * Language Lab — multilingual development support, driven by the child's own
@@ -65,28 +65,24 @@ export default function LanguageLabTab() {
       time: t("elev.growth.lang.duration.minutes", { n: 2 }),
       desc: t("lang.act.phrase.desc", { target, first }),
       example: t("lang.act.phrase.example"),
-      lens: t("lang.act.phrase.lens"),
     },
     {
       title: t("lang.act.translate.title"),
       time: t("elev.growth.lang.duration.minutes", { n: 5 }),
       desc: t("lang.act.translate.desc", { home: home || t("lang.theHomeLang"), first, target }),
       example: t("lang.act.translate.example"),
-      lens: t("lang.act.translate.lens"),
     },
     {
       title: t("lang.act.story.title", { target }),
       time: t("elev.growth.lang.duration.minutes", { n: 10 }),
       desc: t("lang.act.story.desc", { target }),
       example: t("lang.act.story.example"),
-      lens: t("lang.act.story.lens"),
     },
     {
       title: t("lang.act.serve.title"),
       time: t("elev.growth.lang.duration.daily"),
       desc: t("lang.act.serve.desc", { first, target }),
       example: t("lang.act.serve.example", { name: first }),
-      lens: t("lang.act.serve.lens"),
     },
   ];
 
@@ -128,55 +124,11 @@ export default function LanguageLabTab() {
             <PhraseLogForm childId={childProfile.id} languages={langs} onAdded={() => {}} t={t} />
           </div>
 
-          {/* Daily practice — the hero: real, usable value every day */}
-          <div data-module="language-practice" style={{ display: "contents" }}>
-          <SectionCard
-            title={t("lang.routinesTitle", { target })}
-            icon={<Icon name="auto_awesome" size={20} />}
-            tone="mint"
-            action={
-              <button
-                onClick={() =>
-                  // AIX-S4: seed via i18n — HE parents see a Hebrew prompt in the chat box.
-                  askCoach(t("seed.langWeekPlan", { name, age, target, home: home || t("lang.theHomeLang") }))
-                }
-                className="inline-flex min-h-11 items-center justify-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl transition"
-                style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
-              >
-                <Icon name="auto_awesome" size={14} /> {t("lang.weekPlanCta")}
-              </button>
-            }
-          >
-            <p className="text-[11px] font-bold uppercase tracking-wider mb-4" style={{ color: "var(--arbor-green-ink)" }}>{t("lang.dailyPractice")}</p>
-            <div className="grid min-w-0 grid-cols-1 gap-3 text-xs xl:grid-cols-2 xl:gap-4">
-              {activities.map((item) => (
-                <div key={item.title} className={`${cardCls} min-w-0 space-y-2 p-4`}>
-                  <div className="flex min-w-0 items-start justify-between gap-3">
-                    <b className="min-w-0 break-words leading-snug" style={{ color: "var(--arbor-ink)" }}>{item.title}</b>
-                    <Chip tone="yellow">{item.time}</Chip>
-                  </div>
-                  <p className="leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{item.desc}</p>
-                  <p className="italic rounded-xl p-2 text-[11px]" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}>
-                    {item.example}
-                  </p>
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                    <span className="break-words text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--arbor-green-ink)" }}>{item.lens}</span>
-                    <button
-                      onClick={() =>
-                        askCoach(t("seed.langActivity", { title: item.title, target, name, age }))
-                      }
-                      // Item 9: "Coach me" rendered 58×13 px × 4 cards. Type and
-                      // glyph unchanged; the hit box grows to --touch-min.
-                      className="touch-target gap-1 px-2 text-[10px] font-bold transition"
-                      style={{ color: "var(--arbor-muted)" }}
-                    >
-                      <Icon name="chat" size={12} /> {t("lang.coachMe")}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </SectionCard>
+          {/* B-GROWTH-16 — the words written down are the second module (the
+              parent's own record, under the form that writes it); the practice
+              ideas moved into the disclosure below. */}
+          <div data-module="language-words" style={{ display: "contents" }}>
+            <WordsList />
           </div>
 
           {/* Language profile — roles in the home + moments logged. One tone,
@@ -222,6 +174,56 @@ export default function LanguageLabTab() {
               <Icon name="expand_more" size={20} className="ms-auto" style={{ color: "var(--arbor-muted)" }} />
             </summary>
             <div className="px-4 pb-4 space-y-4">
+          {/* B-GROWTH-16: daily practice ideas — demoted into the disclosure. */}
+          <div data-module="language-practice" data-module-demoted style={{ display: "contents" }}>
+          <SectionCard
+            title={t("lang.routinesTitle", { target })}
+            icon={<Icon name="auto_awesome" size={20} />}
+            tone="mint"
+            action={
+              <button
+                onClick={() =>
+                  // AIX-S4: seed via i18n — HE parents see a Hebrew prompt in the chat box.
+                  askCoach(t("seed.langWeekPlan", { name, age, target, home: home || t("lang.theHomeLang") }))
+                }
+                className="inline-flex min-h-11 items-center justify-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl transition"
+                style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
+              >
+                <Icon name="auto_awesome" size={14} /> {t("lang.weekPlanCta")}
+              </button>
+            }
+          >
+            <p className="text-[11px] font-bold uppercase tracking-wider mb-4" style={{ color: "var(--arbor-green-ink)" }}>{t("lang.dailyPractice")}</p>
+            <div className="grid min-w-0 grid-cols-1 gap-3 text-xs xl:grid-cols-2 xl:gap-4">
+              {activities.map((item) => (
+                <div key={item.title} className={`${cardCls} min-w-0 space-y-2 p-4`}>
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    <b className="min-w-0 break-words leading-snug" style={{ color: "var(--arbor-ink)" }}>{item.title}</b>
+                    <Chip tone="yellow">{item.time}</Chip>
+                  </div>
+                  <p className="leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{item.desc}</p>
+                  <p className="italic rounded-xl p-2 text-[11px]" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}>
+                    {item.example}
+                  </p>
+                  <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
+                    <button
+                      onClick={() =>
+                        askCoach(t("seed.langActivity", { title: item.title, target, name, age }))
+                      }
+                      // Item 9: "Coach me" rendered 58×13 px × 4 cards. Type and
+                      // glyph unchanged; the hit box grows to --touch-min.
+                      className="touch-target gap-1 px-2 text-[10px] font-bold transition"
+                      style={{ color: "var(--arbor-muted)" }}
+                    >
+                      <Icon name="chat" size={12} /> {t("lang.coachMe")}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </SectionCard>
+          </div>
+
           {/* AP-054 — Vocabulary log, now SECONDARY & optional. It sits below the
               daily practice and profile so an empty counter is never the hero;
               logging still works exactly as before. */}
