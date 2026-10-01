@@ -75,6 +75,8 @@ export default function SafetyTab() {
     }
   }, [reviewedKey, checklistKey]);
 
+  const anySignTicked = WARNING_SIGN_KEYS.some((_, i) => !!checked[i]);
+
   const toggleSign = (i: number) => {
     const next = { ...checked, [i]: !checked[i] };
     setChecked(next);
@@ -212,11 +214,29 @@ export default function SafetyTab() {
           <div className="space-y-2">
             {WARNING_SIGN_KEYS.map((n, i) => (
               <label key={n} data-touch-shell="checklist-row" className={`${cardCls} flex items-start gap-3 p-2.5 min-h-11 transition cursor-pointer text-xs`}>
-                <input type="checkbox" checked={!!checked[i]} onChange={() => toggleSign(i)} className="mt-0.5 w-5 h-5 flex-shrink-0" style={{ accentColor: "var(--arbor-pink-ink)" }} />
-                <span style={{ color: checked[i] ? "var(--arbor-pink-ink)" : "var(--arbor-ink)", fontWeight: checked[i] ? 700 : 400 }}>{t(`elev.safety.sign.${n}`)}</span>
+                {/* B-CAREPRO-03 (law 1): a ticked sign goes bold in ink — never a
+                    colour change on a row about the child. */}
+                <input type="checkbox" checked={!!checked[i]} onChange={() => toggleSign(i)} className="mt-0.5 w-5 h-5 flex-shrink-0" style={{ accentColor: "var(--arbor-ink)" }} />
+                <span style={{ color: "var(--arbor-ink)", fontWeight: checked[i] ? 700 : 400 }}>{t(`elev.safety.sign.${n}`)}</span>
               </label>
             ))}
           </div>
+          {/* B-CAREPRO-03: a ticked warning sign gets a door, directly under the
+              checklist — the page's primary helpline (same number and markup
+              family as the one-tap call above). */}
+          {anySignTicked && (
+            <a
+              data-testid="safety-sign-call-row"
+              href={`tel:${primaryHelpline.tel}`}
+              onClick={() => track("safety_helpline_tel_tap", { code: primaryHelpline.tel, from: "warning_sign" })}
+              className={`${cardCls} flex items-center gap-3 px-3.5 py-2 mt-3 min-h-[44px] text-xs font-bold transition hover:shadow-[var(--shadow-xs)]`}
+              style={{ color: "var(--arbor-ink)" }}
+            >
+              <Icon name="call" size={16} fill={1} style={{ color: "var(--arbor-pink-ink)" }} />
+              <span className="flex-1 min-w-0">{t("elev.safety.signs.callRow")}</span>
+              <span dir="ltr" className="text-sm font-extrabold whitespace-nowrap" style={{ color: "var(--arbor-pink-ink)" }}>{primaryHelpline.number}</span>
+            </a>
+          )}
           <p className="text-[11px] mt-3" style={{ color: "var(--arbor-muted)" }}>{t("elev.safety.checklist.note")}</p>
         </SectionCard>
 

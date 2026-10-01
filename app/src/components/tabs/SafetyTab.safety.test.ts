@@ -159,3 +159,40 @@ describe("i18nElevation/safety — en/he records", () => {
     }
   });
 });
+
+/* ── 4 · B-CAREPRO-03 — a ticked crisis sign has a door, not only a pink row ── */
+
+import { helplineOrderFor } from "../../safety/escalation";
+
+describe("B-CAREPRO-03 — ticked sign renders a tel: link", () => {
+  const src = tabSource.replace(/\r\n/g, "\n");
+
+  it("ticked sign renders a tel: link to the page's primary helpline, inside the checklist card", () => {
+    const card = /<SectionCard title=\{t\("elev\.safety\.checklist\.title"\)\}[\s\S]*?<\/SectionCard>/.exec(src);
+    expect(card, "checklist card extracted").toBeTruthy();
+    const row = /\{anySignTicked && \([\s\S]*?<\/a>\s*\)\}/.exec(card![0]);
+    expect(row, "the call row is conditional on a ticked sign and lives inside the checklist card").toBeTruthy();
+    expect(row![0]).toContain("href={`tel:${primaryHelpline.tel}`}");
+    expect(row![0]).toContain("{primaryHelpline.number}");
+    expect(row![0]).toContain('t("elev.safety.signs.callRow")');
+    // untick → row gone: the flag derives from the persisted checked map only
+    expect(src).toContain("const anySignTicked = WARNING_SIGN_KEYS.some((_, i) => !!checked[i]);");
+  });
+
+  it("HE family gets 1201 first, international gets 112 (the primary the row dials)", () => {
+    const primaryFor = (hint: string) => HELPLINE_DIRECTORY.find((h) => h.region === helplineOrderFor(hint)[0])!;
+    expect(primaryFor("he").number).toBe("1201");
+    expect(primaryFor("en").number).toBe("112");
+  });
+
+  it("law 1: ticked rows change weight, never colour", () => {
+    const label = /<label key=\{n\} data-touch-shell="checklist-row"[\s\S]*?<\/label>/.exec(src);
+    expect(label).toBeTruthy();
+    expect(label![0]).not.toContain("pink");
+    expect(label![0]).not.toMatch(/checked\[i\] \? "var\(--arbor-/);
+    expect(label![0]).toMatch(/fontWeight: checked\[i\] \? 700 : 400/);
+    // NEGATIVE CONTROL: the pre-change row is caught by the same rule.
+    const pre = `<span style={{ color: checked[i] ? "var(--arbor-pink-ink)" : "var(--arbor-ink)", fontWeight: checked[i] ? 700 : 400 }}>`;
+    expect(/checked\[i\] \? "var\(--arbor-/.test(pre)).toBe(true);
+  });
+});
