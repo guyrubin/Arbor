@@ -40,6 +40,7 @@ import { kidIsolate } from "./kidText";
 import { lastPlayedWorldYesterday } from "./kidGreeting";
 import { chooseTonightsStory } from "./tonightsStory";
 import { HERO_STORIES } from "../../lib/heroJourneys";
+import { starEvents } from "../../practice/signals";
 
 export type KidSurface = "journeys" | "arcade" | "feelings" | "comics";
 
@@ -354,7 +355,8 @@ export default function KidDashboard({
       data.speech.items.length +
       data.mimic.items.length +
       data.adventures.items.length +
-      data.events.items.length +
+      // B-KID-02: a self check-in is not an achievement — no star.
+      starEvents(data.events.items).length +
       data.missions.items.filter((m) => m.completed).length,
     [data.speech.items, data.mimic.items, data.adventures.items, data.events.items, data.missions.items],
   );

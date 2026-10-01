@@ -581,7 +581,8 @@ export type PracticeEventKind =
   | 'rhythm'            // kept the beat in Beat Keeper (regulation/timing)
   | 'pattern'           // continued a sequence in Pattern Power (logic)
   | 'pose'              // copied a hero action pose in Hero Pose (body imitation)
-  | 'lang-strategy';    // LANG-15: parent logged a serve-and-return / narrated-play / shared-reading moment
+  | 'lang-strategy'     // LANG-15: parent logged a serve-and-return / narrated-play / shared-reading moment
+  | 'mood-checkin';     // B-KID-02: the child said how THEY feel — never correct/incorrect, never accuracy or stars
 
 export interface PracticeEvent {
   id: string;
@@ -592,6 +593,9 @@ export interface PracticeEvent {
   /** 0-100 where graded (e.g. memory round completion quality). */
   score?: number;
   meta?: string;
+  /** B-KID-02 (`mood-checkin` only): the feeling the child picked for
+   *  themselves. Carries no `correct` — a feeling is not an answer. */
+  emotion?: string;
   timestamp: string;
 }
 

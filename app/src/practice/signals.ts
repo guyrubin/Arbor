@@ -206,6 +206,19 @@ function toBand(signal: number): BandLevel {
 }
 
 /** Accuracy 0–100 over events with a defined correct flag; null when too few. */
+/**
+ * B-KID-02: the child's own feeling is a check-in, not an answer. True for the
+ * `mood-checkin` kind and for the legacy rows Mood Mountain wrote before it
+ * existed (`emotion-why`, correct=true, meta `self:<id>`). Such rows never
+ * enter accuracy and never earn a star.
+ */
+export const isMoodCheckin = (e: Pick<PracticeEvent, "kind" | "meta">): boolean =>
+  e.kind === "mood-checkin" || (e.kind === "emotion-why" && typeof e.meta === "string" && e.meta.startsWith("self:"));
+
+/** Practice events that count toward stars (everything but self check-ins). */
+export const starEvents = <T extends Pick<PracticeEvent, "kind" | "meta">>(events: T[]): T[] =>
+  events.filter((e) => !isMoodCheckin(e));
+
 function eventAccuracy(events: PracticeEvent[], kinds: PracticeEvent["kind"][], minN = 3): number | null {
   const graded = events.filter((e) => kinds.includes(e.kind) && e.correct !== undefined);
   if (graded.length < minN) return null;
@@ -252,7 +265,8 @@ export function domainBands(
     return Math.min(done * 2, 10); // sustained practice nudges the band, max +10
   };
 
-  const emotionAcc = eventAccuracy(events, ["emotion-id", "emotion-why"]);
+  // B-KID-02: self check-ins (incl. legacy `self:` rows) are not answers.
+  const emotionAcc = eventAccuracy(events.filter((e) => !isMoodCheckin(e)), ["emotion-id", "emotion-why"]);
   // phonics/sight-word are parent-confirmed taps always logged correct=true, so
   // they are exposure (confidence) signals — not accuracy — and are excluded here
   // to avoid inflating the language band that feeds the provider-shared trend.

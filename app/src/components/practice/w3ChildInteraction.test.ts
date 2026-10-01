@@ -26,7 +26,10 @@ describe("W3 child interaction hierarchy", () => {
     expect(listen).toBeLessThan(choices);
     expect(choices).toBeLessThan(selfCheck);
     expect(kidFeelings).toContain("onClick={() => feel(e.id)}");
-    expect(feelings).toContain('record("emotion-why", true, `self:${id}`)');
+    // B-KID-02: the child's own feeling is a mood-checkin (no `correct`), at
+    // most one per session — never an "emotion-why, correct: true" answer.
+    expect(feelings).not.toContain('record("emotion-why", true, `self:${id}`)');
+    expect(feelings).toContain('kind: "mood-checkin"');
     expect(feelings).toContain('record("emotion-id", id === scenario.answer, scenario.id)');
   });
 

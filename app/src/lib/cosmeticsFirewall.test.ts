@@ -183,7 +183,9 @@ describe("KidDashboard stars stay monotonic (exact useMemo anchor)", () => {
       "data.speech.items.length + " +
       "data.mimic.items.length + " +
       "data.adventures.items.length + " +
-      "data.events.items.length + " +
+      // B-KID-02: self check-ins (mood-checkin) earn no star. Still monotonic —
+      // a filter over an append-only log can only grow.
+      "starEvents(data.events.items).length + " +
       "data.missions.items.filter((m) => m.completed).length, " +
       "[data.speech.items, data.mimic.items, data.adventures.items, data.events.items, data.missions.items], );";
     expect(

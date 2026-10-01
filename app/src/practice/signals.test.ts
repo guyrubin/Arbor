@@ -451,3 +451,50 @@ describe("developmentTrajectory", () => {
     expect(traj.overall).toEqual([]);
   });
 });
+
+describe("B-KID-02 · mood-checkin never enters accuracy or stars", async () => {
+  const { isMoodCheckin, starEvents } = await import("./signals");
+  const ev = (kind: PracticeEventKind, extra: Partial<PracticeEvent> = {}): PracticeEvent => ({
+    id: `${kind}-${Math.random()}`,
+    kind,
+    domain: "emotional",
+    timestamp: new Date().toISOString(),
+    ...extra,
+  });
+  const base = [
+    ev("emotion-id", { correct: false }),
+    ev("emotion-id", { correct: false }),
+    ev("emotion-id", { correct: true }),
+  ];
+  const emotional = (events: PracticeEvent[]) => domainBands([], [], [], [], events).find((b) => b.domain === "emotional")!;
+
+  it("six self-check taps (or six legacy self: rows) → 0 change to the emotional band", () => {
+    const before = emotional(base);
+    const checkins = Array.from({ length: 6 }, () => ev("mood-checkin", { emotion: "happy" }));
+    const legacy = Array.from({ length: 6 }, (_, i) => ev("emotion-why", { correct: true, meta: `self:feeling${i}` }));
+    expect(emotional([...base, ...checkins])).toEqual(before);
+    expect(emotional([...base, ...legacy])).toEqual(before);
+  });
+
+  it("a mood-checkin carries no correct; it never earns a star; a real round still does", () => {
+    const c = ev("mood-checkin", { emotion: "sad" });
+    expect(c.correct).toBeUndefined();
+    expect(isMoodCheckin(c)).toBe(true);
+    expect(isMoodCheckin(ev("emotion-why", { correct: true, meta: "happy" }))).toBe(false);
+    expect(starEvents([c, ...base])).toHaveLength(3);
+  });
+
+  it("Mood Mountain writes ≤1 mood-checkin per session and no emotion-why self row (source pin)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const src = readFileSync(resolve(__dirname, "../components/practice/FeelingsLabTab.tsx"), "utf8");
+    expect(src).not.toContain("self:${id}");
+    expect(src).toContain('kind: "mood-checkin"');
+    expect(src).toContain("if (checkinRecorded.current) return;");
+    const feel = src.slice(src.indexOf("const feel = (id: string) =>"), src.indexOf("// The emotion the avatar should be wearing"));
+    expect(feel).not.toMatch(/correct/);
+    expect(read("components/kidmode/KidDashboard.tsx")).toContain("starEvents(data.events.items).length");
+    expect(read("components/practice/HeroArcade.tsx")).toContain("count: (d) => starEvents(d.events.items).length");
+    function read(rel: string) { return readFileSync(resolve(__dirname, "..", rel), "utf8"); }
+  });
+});

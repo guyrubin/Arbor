@@ -29,6 +29,7 @@ const MimicStudioTab = lazy(() => import("./MimicStudioTab"));
 const FeelingsLabTab = lazy(() => import("./FeelingsLabTab"));
 const AdventuresTab = lazy(() => import("./AdventuresTab"));
 import WorldScene from "./WorldScene";
+import { starEvents } from "../../practice/signals";
 const MindVaultWorld = lazy(() => import("./MindVaultWorld"));
 const SpellForgeWorld = lazy(() => import("./SpellForgeWorld"));
 const BeatKeeperWorld = lazy(() => import("./BeatKeeperWorld"));
@@ -70,7 +71,7 @@ const COLOR: Record<WorldColor, { bg: string; ink: string }> = {
 
 const WORLDS: World[] = [
   { id: "speech", name: "Sound Lab", tag: "Speech", icon: "mic", color: "sky", imagePrompt: "a bright sound-and-music studio with a big microphone, floating letters and musical notes", Comp: SpeechCoachTab, count: (d) => d.speech.items.length },
-  { id: "feelings", name: "Mood Mountain", tag: "Feelings", icon: "favorite", color: "lav", imagePrompt: "a friendly mountain landscape with cheerful emotion characters (happy, sad, calm) and a warm sky", Comp: FeelingsLabTab, count: (d) => d.events.items.length },
+  { id: "feelings", name: "Mood Mountain", tag: "Feelings", icon: "favorite", color: "lav", imagePrompt: "a friendly mountain landscape with cheerful emotion characters (happy, sad, calm) and a warm sky", Comp: FeelingsLabTab, count: (d) => starEvents(d.events.items).length },
   { id: "adventures", name: "Story Quest", tag: "Adventure", icon: "map", color: "peach", imagePrompt: "an adventurous landscape with a treasure map and compass on a cliff", Comp: AdventuresTab, count: (d) => d.adventures.items.length },
   { id: "mimic", name: "Mimic Studio", tag: "Mimic", icon: "mood", color: "clay", imagePrompt: "a playful mirror studio making a silly happy face, sparkles around", Comp: MimicStudioTab, count: (d) => d.mimic.items.length },
   { id: "memory", name: "Mind Vault", tag: "Memory", icon: "psychology", color: "pink", imagePrompt: "opening a glowing memory vault full of colorful matching cards", Comp: MindVaultWorld, count: (d) => d.events.items.filter((e) => e.kind === "memory").length },

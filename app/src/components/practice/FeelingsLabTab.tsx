@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useSyncExternalStore } from "react";
+import React, { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -94,10 +94,24 @@ export default function FeelingsLabTab() {
   };
 
   // Self-check: the child says how THEY feel; their avatar mirrors it (A4).
+  // B-KID-02: a feeling is not a correct answer. It is written as a
+  // `mood-checkin` with no `correct` (never accuracy, never stars), and at most
+  // ONE row per session — the avatar follows every tap, the ledger does not.
+  const checkinRecorded = useRef(false);
   const feel = (id: string) => {
     if (id === feltEmotion) return;
     setFeltEmotion(id);
-    record("emotion-why", true, `self:${id}`);
+    if (checkinRecorded.current) return;
+    checkinRecorded.current = true;
+    const event: PracticeEvent = {
+      id: eventId("mood-checkin"),
+      kind: "mood-checkin",
+      domain: "emotional",
+      emotion: id,
+      timestamp: new Date().toISOString(),
+    };
+    void data.events.upsert(event);
+    track("practice_event", { kind: "mood-checkin", domain: "emotional" });
   };
 
   // The emotion the avatar should be wearing right now.
