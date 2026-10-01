@@ -199,11 +199,14 @@ describe("TJB-28 — the hook is mounted, in-app, and sends nothing", () => {
     expect(card.length).toBeGreaterThan(1000);
   });
 
-  it("Growth mounts the card with real close-of-day signals", () => {
-    const mount = growth.match(/<TomorrowReasonCard[\s\S]{0,300}?\/>/)?.[0];
-    expect(mount).toBeTruthy();
-    expect(mount).toContain("signals=");
+  it("Growth writes the close of day with real signals; the card renders on Today (B-TODAY-18)", () => {
+    // The card moved to Today's continuation slot (the B-AI-06 coordinator);
+    // Growth keeps the CLOSE half, with the same derived signals.
+    expect(growth).not.toContain("<TomorrowReasonCard");
+    expect(growth).toContain("closeDay(childProfile.id, Date.now(), returnSignals);");
     expect(growth).toContain("returnSignals");
+    const slot = read("../components/overview/CompanionOfferSlot.tsx");
+    expect(slot).toContain("<TomorrowReasonCard onResolved={controls.refresh} />");
     // The signals are derived, not hard-coded to a constant.
     // B-GROWTH-04: through the one derivation (ritual record read, decided in lib).
     expect(growth).toContain("ritualRecord: readRitualRecord()");

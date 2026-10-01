@@ -29,17 +29,22 @@ import {
 } from "../../lib/tomorrowReason";
 
 export interface TomorrowReasonCardProps {
-  /** What is genuinely true right now, for the close-of-day write. */
-  signals: DayCloseSignals;
+  /** What is genuinely true right now, for the close-of-day write. B-TODAY-18:
+   *  optional — the Today slot only SHOWS a reason; Growth and Comics write. */
+  signals?: DayCloseSignals;
+  /** B-TODAY-18: called when the parent acts on or puts away the reason, so
+   *  the coordinator re-decides the slot. */
+  onResolved?: () => void;
   /** The child's first name, for the copy. */
   childName?: string;
   /** Injected in tests; the live surface reads the clock. */
   nowMs?: number;
 }
 
-export default function TomorrowReasonCard({ signals, childName, nowMs }: TomorrowReasonCardProps) {
+export default function TomorrowReasonCard({ signals, childName, nowMs, onResolved }: TomorrowReasonCardProps) {
   const { t } = useLanguage();
   const { setActiveTab, childProfile } = useArbor();
+  const firstName = childName ?? (childProfile.name || "").split(" ")[0];
   const now = useMemo(() => nowMs ?? Date.now(), [nowMs]);
 
   // What was left for today, resolved once per mount so the card cannot flicker
@@ -49,7 +54,7 @@ export default function TomorrowReasonCard({ signals, childName, nowMs }: Tomorr
   // The CLOSE half. Runs after paint, writes at most once a day, and never
   // touches the reason currently on screen (which belongs to an earlier day).
   useEffect(() => {
-    closeDay(childProfile.id, now, signals);
+    if (signals) closeDay(childProfile.id, now, signals);
     // `signals` is read once at close; re-running on every signal tick would
     // let a reason chosen at 19:30 be rewritten at 19:31.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -58,21 +63,23 @@ export default function TomorrowReasonCard({ signals, childName, nowMs }: Tomorr
   const dismiss = useCallback(() => {
     markReasonSeen(childProfile.id, now);
     setReason(null);
-  }, [now, childProfile.id]);
+    onResolved?.();
+  }, [now, childProfile.id, onResolved]);
 
   const act = useCallback(
     (tab: Parameters<typeof setActiveTab>[0]) => {
       markReasonSeen(childProfile.id, now);
       setReason(null);
+      onResolved?.();
       setActiveTab(tab);
     },
-    [now, childProfile.id, setActiveTab],
+    [now, childProfile.id, setActiveTab, onResolved],
   );
 
   if (!reason) return null;
 
   const p = reasonPresentation(reason.kind);
-  const name = (childName || "").trim();
+  const name = (firstName || "").trim();
   const vars = name ? { name } : undefined;
 
   return (

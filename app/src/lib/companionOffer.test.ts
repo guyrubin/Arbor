@@ -63,6 +63,7 @@ const empty = (over: Partial<OfferState> = {}): OfferState => ({
 const full = (over: Partial<OfferState> = {}): OfferState =>
   empty({
     pendingFollowUp: { id: "today.c.2026-06-16", recommendation: "Name the next transition five minutes ahead" },
+    tomorrowReason: { kind: "story" },
     whatChanged: { id: "welcome-back" },
     appointment: { id: "a1", dayOffset: 1 },
     screeningRecheckDue: true,
@@ -76,6 +77,7 @@ const withoutTop = (n: number): OfferState => {
   const s = full();
   const strip: Record<OfferKind, () => void> = {
     "follow-up": () => { s.pendingFollowUp = null; },
+    "tomorrow-reason": () => { s.tomorrowReason = null; },
     "what-changed": () => { s.whatChanged = null; },
     appointment: () => { s.appointment = null; },
     "screening-recheck": () => { s.screeningRecheckDue = false; },
@@ -91,7 +93,7 @@ const withoutTop = (n: number): OfferState => {
 describe("B-AI-06 — precedence table", () => {
   it("the table is the 23 Sep order", () => {
     expect([...OFFER_PRECEDENCE]).toEqual([
-      "follow-up", "what-changed", "appointment", "screening-recheck", "rhythm", "grounded-step", "tonight", "engagement",
+      "follow-up", "tomorrow-reason", "what-changed", "appointment", "screening-recheck", "rhythm", "grounded-step", "tonight", "engagement",
     ]);
   });
 
@@ -279,5 +281,27 @@ describe("B-AI-06 — render: exactly one proactive module", () => {
     expect(overview).toMatch(/todayOffer\.offer\?\.kind === "what-changed" && \(\s*<div data-module="today-lifecycle" data-proactive=""/);
     const slot = read("components/overview/CompanionOfferSlot.tsx");
     expect(slot).toMatch(/if \(!offer \|\| offer\.kind === "what-changed"\) return null;/);
+  });
+});
+
+describe("B-TODAY-18 — tomorrow's reason is a coordinator candidate", () => {
+  it("ranks right after the carry-over question, with its own reason line, on Today and Ask", () => {
+    expect(chooseOffer(empty({ tomorrowReason: { kind: "ritual" }, appointment: { id: "a", dayOffset: 0 } }))?.kind).toBe("tomorrow-reason");
+    expect(chooseOffer(empty({ tomorrowReason: { kind: "ritual" }, pendingFollowUp: { id: "x", recommendation: "Step" } }))?.kind).toBe("follow-up");
+    expect(chooseOffer(empty({ tomorrowReason: { kind: "moment" }, surface: "coach" }))?.reasonKey).toBe("elev.offer.reason.tomorrow");
+  });
+
+  it("the slot renders TomorrowReasonCard; Growth no longer mounts the card but keeps the close-of-day write", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { fileURLToPath } = await import("node:url");
+    const read = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), "utf8");
+    const slot = read("../components/overview/CompanionOfferSlot.tsx");
+    expect(slot).toContain('case "tomorrow-reason":');
+    expect(slot).toContain("<TomorrowReasonCard onResolved={controls.refresh} />");
+    const growth = read("../components/tabs/DevelopmentTab.tsx");
+    expect(growth).not.toContain("<TomorrowReasonCard");
+    expect(growth).toContain("closeDay(childProfile.id, Date.now(), returnSignals);");
+    const hook = read("../components/overview/useCompanionOffer.ts");
+    expect(hook).toContain("reasonForThisOpen(childId, now)");
   });
 });

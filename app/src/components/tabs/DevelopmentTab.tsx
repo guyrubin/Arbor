@@ -24,8 +24,7 @@ import { clearWatchFocus, resolveWatchFocus } from "../../lib/screeningWatch";
 // parent left themselves at the close of a day (TJB-28). B-GROWTH-03 moved the
 // reminders card (ENG-23) to #/smart-reminders and the family ritual whose
 // turn has come (ENG-25) to #/family.
-import TomorrowReasonCard from "../nextopen/TomorrowReasonCard";
-import { deriveReturnSignals } from "../../lib/tomorrowReason";
+import { closeDay, deriveReturnSignals } from "../../lib/tomorrowReason";
 import { readRitualRecord } from "../../lib/familyRitualsCadence";
 import { ADVENTURES, type SavedComicMeta } from "../../lib/heroComics";
 import { fmtDay } from "../../lib/formatDate";
@@ -242,6 +241,12 @@ export default function DevelopmentTab() {
     storyTotal: ADVENTURES.length,
     now: Date.now(),
   }), [chosenWatch, savedComics.items.length, behaviorLogs, playLogs]);
+  // TJB-28 CLOSE half (B-TODAY-18: the card that ran it moved to Today) —
+  // write tonight's reason once per day, exactly as the comic shelf does.
+  useEffect(() => {
+    closeDay(childProfile.id, Date.now(), returnSignals);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [childProfile.id]);
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1180px] space-y-5 sm:space-y-6">
@@ -389,9 +394,8 @@ export default function DevelopmentTab() {
           </div>
         </div>
       </section>
-      {/* TJB-28 — the one thing this parent left themselves at the close of a
-          previous day. Renders null on the day it was written and once acted on. */}
-      <TomorrowReasonCard signals={returnSignals} childName={firstName} />
+      {/* TJB-28 → B-TODAY-18: the reason card moved to Today's continuation
+          slot (the B-AI-06 coordinator); Growth keeps the close-of-day WRITE. */}
       {/* GP-32 — the month the family just finished, as COUNTS of what the
           PARENT noticed and kept. Never a progress report on the child: no
           scores, no deltas, no "areas needing work". Renders once per month

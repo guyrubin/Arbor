@@ -24,6 +24,7 @@ import {
   type OfferSurface,
 } from "../../lib/companionOffer";
 import { trackOfferShown, trackOfferSuppressed } from "../../lib/kpiEvents";
+import { reasonForThisOpen } from "../../lib/tomorrowReason";
 
 /** day|surface|kind(|reason) already emitted — one event per day, not per render. */
 const SEEN = new Set<string>();
@@ -78,6 +79,12 @@ export function useCompanionOffer(surface: OfferSurface, opts: { whatChanged?: {
     nowMs: now,
     surface,
     pendingFollowUp: pending ? { id: pending.id, recommendation: pending.recommendation } : null,
+    // B-TODAY-18: tomorrow's reason is a coordinator candidate (Today renders
+    // it; Ask shows the same one offer per visit).
+    tomorrowReason: (() => {
+      const r = reasonForThisOpen(childId, now);
+      return r ? { kind: r.kind } : null;
+    })(),
     whatChanged: opts.whatChanged ?? null,
     appointment: appointmentInWindow(appts.items, now),
     screeningRecheckDue: isRecheckDue(latestRecheckDueAt(screenings.items), now),

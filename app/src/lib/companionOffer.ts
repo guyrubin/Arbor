@@ -14,6 +14,10 @@
    PRECEDENCE (23 Sep §4 "Proactive offer arbitration"; pinned by
    companionOffer.test.ts — the table IS the contract):
      1. follow-up          — a step the parent chose and never rated (carry-over)
+     1a. tomorrow-reason   — B-TODAY-18 (framer, 1 Oct): the one thing the parent
+                             left themselves at the close of a previous day
+                             (lib/tomorrowReason). The continuation slot reads
+                             carry-over first, then tomorrow's reason.
      2. what-changed       — the lifecycle re-entry moment (Today only)
      3. appointment        — an appointment ≤2 days ahead, or yesterday's
      4. screening-recheck  — a Development Check re-look that has come due
@@ -49,6 +53,7 @@ import { isInQuietHours, isUnderDailyCeiling, nudgeDayKey, type JitaiPrefs } fro
 
 export const OFFER_PRECEDENCE = [
   "follow-up",
+  "tomorrow-reason",
   "what-changed",
   "appointment",
   "screening-recheck",
@@ -70,6 +75,8 @@ export interface OfferState {
   surface: OfferSurface;
   /** The single unrated step from a previous day (carryOverAction selector). */
   pendingFollowUp: { id: string; recommendation: string } | null;
+  /** B-TODAY-18: the reason left at a previous day's close (reasonForThisOpen). */
+  tomorrowReason?: { kind: string } | null;
   /** The lifecycle re-entry moment, when Today has one to show. */
   whatChanged: { id: string } | null;
   /** The nearest appointment in the window: dayOffset 0..2 ahead, or -1 (yesterday). */
@@ -243,6 +250,14 @@ export function offerCandidates(state: OfferState): CompanionOffer[] {
       reasonVars: { step: firstWords(state.pendingFollowUp.recommendation) },
       cta: { labelKey: "elev.offer.cta.followUp", action: "overview" },
       ledgerKind: "follow-up",
+    });
+  }
+  if (state.tomorrowReason) {
+    out.push({
+      kind: "tomorrow-reason",
+      reasonKey: "elev.offer.reason.tomorrow",
+      cta: { labelKey: "elev.rh.tomorrow.eyebrow", action: "overview" },
+      ledgerKind: "tomorrow-reason",
     });
   }
   if (state.whatChanged && state.surface === "today") {

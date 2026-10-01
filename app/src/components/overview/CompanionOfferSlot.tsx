@@ -6,6 +6,7 @@ import { useToastOptional } from "../../context/ToastContext";
 import CarryOverActionAsk from "./CarryOverActionAsk";
 import HardMomentTodayOffer from "./HardMomentTodayOffer";
 import RhythmCue from "../coach/RhythmCue";
+import TomorrowReasonCard from "../nextopen/TomorrowReasonCard";
 import type { CompanionOffer, OfferKind, OfferSurface } from "../../lib/companionOffer";
 
 /**
@@ -27,7 +28,7 @@ export interface OfferControls {
 }
 
 /** Kinds whose renderer already carries its own "not now" control. */
-const OWN_DISMISS: ReadonlySet<OfferKind> = new Set(["follow-up", "rhythm", "tonight", "engagement", "what-changed"]);
+const OWN_DISMISS: ReadonlySet<OfferKind> = new Set(["follow-up", "tomorrow-reason", "rhythm", "tonight", "engagement", "what-changed"]);
 
 export function OfferFrame({
   offer,
@@ -130,6 +131,11 @@ export default function CompanionOfferSlot({
   switch (offer.kind) {
     case "follow-up":
       body = <CarryOverActionAsk onSkip={controls.refresh} />;
+      break;
+    case "tomorrow-reason":
+      // B-TODAY-18: the card moved here from Growth; the close-of-day WRITE
+      // stays with the surfaces that know the signals (Growth, Comics).
+      body = <TomorrowReasonCard onResolved={controls.refresh} />;
       break;
     case "appointment":
     case "screening-recheck":
