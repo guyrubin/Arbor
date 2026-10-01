@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { ageYearsFromProfile } from "../../lib/childAge";
 import { motion } from "motion/react";
 import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
@@ -750,7 +751,7 @@ export default function OverviewTab() {
                  picked for the child's age. It names no goals, interests or
                  moments (none of them choose the question); on the bare floor
                  (no prompt) it says nothing. */
-              whyLine={todayChoice.kind === "prompt" ? t("today.intent.why.prompt", { age: childProfile.age }) : undefined}
+              whyLine={todayChoice.kind === "prompt" ? t("today.intent.why.prompt", { age: ageYearsFromProfile(childProfile) }) : undefined}
             />
           )}
           {/* ENG-12: a step accepted yesterday and never reported on used to
