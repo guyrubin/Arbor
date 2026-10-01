@@ -27,7 +27,7 @@ export interface OfferControls {
 }
 
 /** Kinds whose renderer already carries its own "not now" control. */
-const OWN_DISMISS: ReadonlySet<OfferKind> = new Set(["follow-up", "rhythm", "tonight", "reminder", "what-changed"]);
+const OWN_DISMISS: ReadonlySet<OfferKind> = new Set(["follow-up", "rhythm", "tonight", "engagement", "what-changed"]);
 
 export function OfferFrame({
   offer,
@@ -42,9 +42,9 @@ export function OfferFrame({
 }) {
   const { t } = useLanguage();
   const toast = useToastOptional();
-  const act = (verb: "snooze" | "dismiss") => {
-    controls[verb](offer.kind);
-    toast?.toast(t(verb === "snooze" ? "elev.offer.toast.later" : "elev.offer.toast.notToday"), "info", {
+  const act = (verb: "later" | "notToday") => {
+    (verb === "later" ? controls.snooze : controls.dismiss)(offer.kind);
+    toast?.toast(t(verb === "later" ? "elev.offer.toast.later" : "elev.offer.toast.notToday"), "info", {
       label: t("elev.offer.toast.undo"),
       onClick: () => controls.undo(offer.kind),
     });
@@ -64,7 +64,7 @@ export function OfferFrame({
       <div className="mt-1 flex flex-wrap items-center justify-end gap-1">
         <button
           type="button"
-          onClick={() => act("snooze")}
+          onClick={() => act("later")}
           aria-label={t("elev.offer.ctl.laterAria")}
           className="inline-flex min-h-[44px] items-center px-3 text-[12px] font-bold"
           style={{ color: "var(--arbor-muted)" }}
@@ -74,7 +74,7 @@ export function OfferFrame({
         {!OWN_DISMISS.has(offer.kind) && (
           <button
             type="button"
-            onClick={() => act("dismiss")}
+            onClick={() => act("notToday")}
             aria-label={t("elev.offer.ctl.notTodayAria")}
             className="inline-flex min-h-[44px] items-center px-3 text-[12px] font-bold"
             style={{ color: "var(--arbor-muted)" }}
@@ -137,7 +137,7 @@ export default function CompanionOfferSlot({
       break;
     case "rhythm":
     case "tonight":
-    case "reminder":
+    case "engagement":
       body = <RhythmCue surface={surface} nudge={offer.nudge ?? null} onDismiss={() => controls.dismiss(offer.kind)} />;
       break;
     case "grounded-step":

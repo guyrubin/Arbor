@@ -82,7 +82,7 @@ const withoutTop = (n: number): OfferState => {
     rhythm: () => { s.nudge = nudge("bedtime"); },
     "grounded-step": () => { s.groundedStep = null; },
     tonight: () => { s.nudge = nudge("log"); },
-    reminder: () => { s.nudge = null; },
+    engagement: () => { s.nudge = null; },
   };
   for (const k of OFFER_PRECEDENCE.slice(0, n)) strip[k]();
   return s;
@@ -91,7 +91,7 @@ const withoutTop = (n: number): OfferState => {
 describe("B-AI-06 — precedence table", () => {
   it("the table is the 23 Sep order", () => {
     expect([...OFFER_PRECEDENCE]).toEqual([
-      "follow-up", "what-changed", "appointment", "screening-recheck", "rhythm", "grounded-step", "tonight", "reminder",
+      "follow-up", "what-changed", "appointment", "screening-recheck", "rhythm", "grounded-step", "tonight", "engagement",
     ]);
   });
 

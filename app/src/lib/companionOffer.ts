@@ -20,7 +20,7 @@
      5. rhythm             — the PREP / CALM rhythm cue (engine requires medium+)
      6. grounded-step      — one hard-moment step matched to a logged moment
      7. tonight            — the evening (bedtime) door
-     8. reminder           — the parent's own engagement reminders (log /
+     8. engagement         — the parent's own engagement reminders (log /
                              practice), kept last so no existing cue is lost
 
    WHAT IT REUSES (never re-implements)
@@ -55,7 +55,7 @@ export const OFFER_PRECEDENCE = [
   "rhythm",
   "grounded-step",
   "tonight",
-  "reminder",
+  "engagement",
 ] as const;
 export type OfferKind = (typeof OFFER_PRECEDENCE)[number];
 
@@ -96,7 +96,7 @@ export interface CompanionOffer {
   cta: { labelKey: string; action: ActiveTab };
   /** The kind spent on the shared shown-ledger (a nudge spends its own kind). */
   ledgerKind: string;
-  /** The jitai nudge for rhythm / tonight / reminder offers. */
+  /** The jitai nudge for rhythm / tonight / engagement offers. */
   nudge?: Nudge;
 }
 
@@ -287,7 +287,7 @@ export function offerCandidates(state: OfferState): CompanionOffer[] {
     out.push({ kind: "tonight", reasonKey: "elev.offer.reason.tonight", cta: { labelKey: n.ctaKey, action: n.action }, ledgerKind: n.kind, nudge: n });
   }
   if (n && (n.kind === "log" || n.kind === "practice")) {
-    out.push({ kind: "reminder", reasonKey: "elev.offer.reason.reminder", cta: { labelKey: n.ctaKey, action: n.action }, ledgerKind: n.kind, nudge: n });
+    out.push({ kind: "engagement", reasonKey: "elev.offer.reason.reminder", cta: { labelKey: n.ctaKey, action: n.action }, ledgerKind: n.kind, nudge: n });
   }
   return out;
 }
