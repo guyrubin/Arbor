@@ -555,8 +555,10 @@ export default function AskSpecialist() {
               </details>
             </section>
 
-            {/* Right: verified-pros rail. */}
-            {ProsRail}
+            {/* Right: verified-pros rail. B-CAREPRO-04: mounted only while a
+                directory exists — "Verified professionals" over an empty
+                list implied a staffed expert layer Arbor does not have. */}
+            {hasDirectory && ProsRail}
           </div>
 
       {/* The complete data contract remains one labeled disclosure, after the packet and before export. */}
