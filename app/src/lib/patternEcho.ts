@@ -85,3 +85,56 @@ export function patternEchoFor(
   if (count < minCount) return null;
   return { type: label || (savedType || "").trim(), count, windowDays: ECHO_WINDOW_DAYS };
 }
+
+/** B-ASKJB-10: the fast-start chip built from the child's own recurring moment. */
+export type RecurringScenario = {
+  /** The behaviorType as the parent's logs spell it. */
+  type: string;
+  /** The keyed chip label ("{type} again — what now?"), the type localized. */
+  label: string;
+  /** The AI-input prompt (English map entry, or the generic prompt). */
+  prompt: string;
+};
+
+/**
+ * B-ASKJB-10 — Ask's fast-start leads with what THIS child keeps doing.
+ *
+ * Deterministic, zero model calls. Reuses `patternEchoFor` — the SAME
+ * recurrence rule and the SAME threshold (ECHO_MIN_COUNT logs inside
+ * ECHO_WINDOW_DAYS), never a second one. When several types recur, the most
+ * frequent leads (ties: the first logged). The label carries the localized type
+ * only — no count, no intensity, nothing about the child beyond the parent's
+ * own log. Plain Moments never recur here (suggestedChallenges' carve-out).
+ */
+export function recurringScenario(
+  logs: BehaviorLog[],
+  today: string,
+  opts: {
+    /** canonical type → English model prompt (CoachTab's map beside SCENARIOS). */
+    prompts: Readonly<Record<string, string>>;
+    /** Localized type label (behaviorTypeLabel). */
+    typeLabel: (type: string) => string;
+    t: (key: string, vars?: Record<string, string | number>) => string;
+    /** Generic prompt for a type the map does not know; `{type}` = the localized label. */
+    fallbackPrompt: string;
+  },
+): RecurringScenario | null {
+  const seen: string[] = [];
+  for (const log of logs) {
+    const type = (log.behaviorType || "").trim();
+    if (type && !seen.some((s) => s.toLowerCase() === type.toLowerCase())) seen.push(type);
+  }
+  let best: PatternEcho | null = null;
+  for (const type of seen) {
+    const echo = patternEchoFor(logs, type, today);
+    if (echo && (!best || echo.count > best.count)) best = echo;
+  }
+  if (!best) return null;
+  const typeLabel = opts.typeLabel(best.type);
+  const known = Object.keys(opts.prompts).find((k) => k.toLowerCase() === best!.type.toLowerCase());
+  return {
+    type: best.type,
+    label: opts.t("elev.coach.echo.chip", { type: typeLabel }),
+    prompt: known ? opts.prompts[known] : opts.fallbackPrompt.replace("{type}", typeLabel),
+  };
+}

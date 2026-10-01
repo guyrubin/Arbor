@@ -93,6 +93,8 @@ export const en: Record<string, string> = {
 
   // ── Builder F · OBJ-ASK-01 · the composer's accessible name
   "elev.coachcontract.composer.aria": "Ask about your child",
+  // B-ASKJB-10: the fast-start chip from the child's own recurring moment.
+  "elev.coach.echo.chip": "{type} again — what now?",
 
 };
 
@@ -140,6 +142,7 @@ export const he: Record<string, string> = {
 
   // ── Builder F · OBJ-ASK-01 · the composer's accessible name
   "elev.coachcontract.composer.aria": "לשאול על הילד שלכם",
+  "elev.coach.echo.chip": "שוב {type} — מה עכשיו?",
 
 };
 

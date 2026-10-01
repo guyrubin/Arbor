@@ -33,7 +33,9 @@ import { ShareButton } from "../ui/ShareButton";
 import { EvidenceChip } from "../ui/EvidenceChip";
 import ArborVision from "../coach/ArborVision";
 import { api, streamVoice, getAiLanguage, ApiError, EscalationRequiredError, PaywallError } from "../../lib/api";
-import { normalizeExtractedLog } from "../../content/behaviorTaxonomy";
+import { behaviorTypeLabel, normalizeExtractedLog } from "../../content/behaviorTaxonomy";
+import { recurringScenario } from "../../lib/patternEcho";
+import { localDayKey } from "../../lib/firstsKeepsake";
 import { handleVoiceDone } from "../../lib/voiceSafetyEvents";
 import type { BehaviorContext } from "../../types";
 import type { ChatMessage } from "../../context/ArborContext";
@@ -116,6 +118,22 @@ const SCENARIOS: { icon: string; labelKey: string; prompt: string }[] = [
   { icon: "bedtime", labelKey: "coach.scenario.bedtime", prompt: "Bedtime takes over an hour with lots of resistance. What's a calm wind-down plan and script?" },
   { icon: "school", labelKey: "coach.scenario.dropoff", prompt: "My child cries and clings at school dropoff. What may be happening and exactly what do I say?" },
 ];
+
+// B-ASKJB-10: the recurring-moment chip. When the child's own log shows one
+// behaviour type ECHO_MIN_COUNT times inside ECHO_WINDOW_DAYS (lib/patternEcho —
+// the one recurrence rule), Ask's fast-start leads with "{type} again — what
+// now?". Prompts are AI input, kept English like SCENARIOS; the label is keyed
+// (elev.coach.echo.chip) with the localized type label. Unknown types fall back
+// to the generic prompt with the localized label.
+const ECHO_PROMPTS: Readonly<Record<string, string>> = {
+  "Transition Refusal": "Leaving the house or switching activities keeps ending in refusal. What may be happening, and what do I do next time it starts?",
+  "Sensory Overload": "Loud or crowded places keep overwhelming my child. What may be happening, and what do I do next time it starts?",
+  "Screentime Dispute": "Ending screen time keeps turning into a fight. What may be happening, and what do I do next time it starts?",
+  "Sibling Conflict": "My children keep clashing. What may be happening, and what do I do next time it starts?",
+  "Food Refusal": "Meals keep ending in refusal. What may be happening, and what do I do next time it starts?",
+  "Sleep Meltdown": "Bedtime keeps falling apart. What may be happening, and what do I do next time it starts?",
+};
+const ECHO_FALLBACK_PROMPT = "This keeps happening: {type}. What may be happening, and what do I do next time it starts?";
 
 export default function CoachTab() {
   const {
@@ -336,6 +354,17 @@ export default function CoachTab() {
   // seedCoach lens steering are untouched.
   const [lensOpen, setLensOpen] = useState(false);
   const [showAllScenarios, setShowAllScenarios] = useState(false);
+  // B-ASKJB-10: deterministic, zero model calls — the recurrence rule is patternEcho's.
+  const echoScenario = useMemo(
+    () => recurringScenario(behaviorLogs, localDayKey(), {
+      prompts: ECHO_PROMPTS,
+      typeLabel: (type) => behaviorTypeLabel(type, t),
+      t,
+      fallbackPrompt: ECHO_FALLBACK_PROMPT,
+    }),
+    [behaviorLogs, t],
+  );
+  const staticShown = echoScenario ? 2 : 3;
   /* R22 (Builder L) — the lens VALUE is a stored English identifier
      ("Integrated Balanced"), not display copy. One place resolved it
      (`coach.lens.integrated`) and the identity strip and the attribution chip
@@ -964,7 +993,20 @@ export default function CoachTab() {
         <div className="space-y-2">
           <span className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("coach.fastStart")}</span>
           <div id="coach-scenarios" className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {(showAllScenarios ? SCENARIOS : SCENARIOS.slice(0, 3)).map((s) => (
+            {/* B-ASKJB-10: the child's own recurring moment leads, then 2 static chips. */}
+            {echoScenario && (
+              <button
+                key="echo"
+                data-testid="coach-scenario-echo"
+                onClick={() => handleChatSend(echoScenario.prompt, { displayText: echoScenario.label })}
+                disabled={isChatLoading}
+                className="inline-flex items-center gap-2 rounded-xl px-3 py-2.5 min-h-11 text-start text-[13px] font-bold transition disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                style={{ color: T.ink, border: "1px solid var(--arbor-rule)", background: "var(--arbor-paper-elevated)" }}
+              >
+                <Icon name="replay" size={16} style={{ color: "var(--arbor-green-ink)" }} /> <span dir="auto">{echoScenario.label}</span>
+              </button>
+            )}
+            {(showAllScenarios ? SCENARIOS : SCENARIOS.slice(0, staticShown)).map((s) => (
               <button
                 key={s.labelKey}
                 // ASK-5: the parent's bubble shows the localized label they
@@ -987,7 +1029,7 @@ export default function CoachTab() {
             >
               {showAllScenarios
                 ? t("elev.wave2Daily.ask.examples.less")
-                : t("elev.wave2Daily.ask.examples.more", { count: SCENARIOS.length - 3 })}
+                : t("elev.wave2Daily.ask.examples.more", { count: SCENARIOS.length - staticShown })}
             </button>
           </div>
         </div>
