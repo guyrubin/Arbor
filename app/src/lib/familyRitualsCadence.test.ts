@@ -156,8 +156,9 @@ describe("ENG-25 — the record is device-local and holds no child data", () => 
   });
 });
 
-describe("ENG-25 — the cadence is surfaced on a real surface", () => {
-  const growth = read("../components/tabs/DevelopmentTab.tsx");
+describe("ENG-25 → B-GROWTH-03 — the cadence is surfaced on #/family", () => {
+  // B-GROWTH-03: the card moved from Growth into Family Formation's rituals module.
+  const growth = read("../components/sections/FamilyFormation.tsx");
   const card = read("../components/nextopen/RitualTurnCard.tsx");
 
   it("NEGATIVE CONTROL: before this change no surface referenced the cadence", () => {
@@ -171,8 +172,12 @@ describe("ENG-25 — the cadence is surfaced on a real surface", () => {
     expect(card.length).toBeGreaterThan(1000);
   });
 
-  it("Growth mounts the card, and the card runs the cadence + records a run", () => {
+  it("#/family mounts the card inside the start-family-ritual module, and the card runs the cadence + records a run", () => {
     expect(growth).toMatch(/<RitualTurnCard\s*\/>/);
+    const mod = growth.indexOf('data-primary-move="start-family-ritual"');
+    expect(mod).toBeGreaterThan(-1);
+    expect(growth.indexOf("<RitualTurnCard")).toBeGreaterThan(mod);
+    expect(read("../components/tabs/DevelopmentTab.tsx")).not.toMatch(/RitualTurnCard/);
     expect(card).toContain("ritualOfTheMoment");
     expect(card).toContain("markRitualPractised");
     expect(card).toContain('data-testid="ritual-turn-card"');

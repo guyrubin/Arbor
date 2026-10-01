@@ -15,7 +15,7 @@
  * contexts and the heavy child surfaces stubbed.
  */
 
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, beforeAll } from "vitest";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { watchFocusKey } from "../../lib/screeningWatch";
@@ -49,6 +49,8 @@ vi.mock("../sections/ScreeningSheet", () => ({ default: () => null }));
 vi.mock("../ui/SpineRibbon", () => ({ SpineRibbon: () => null }));
 vi.mock("../ui/EvidenceChip", () => ({ EvidenceChip: () => null }));
 vi.mock("../ui/HubHero", () => ({ HubHero: () => null }));
+// B-GROWTH-30: the Record by area has its own rendered test (RecordByDomain.test.tsx).
+vi.mock("../growth/RecordByDomain", () => ({ default: () => null }));
 
 function installStorage() {
   const map = new Map<string, string>();
@@ -73,6 +75,10 @@ beforeEach(() => {
   state.behaviorLogs = [];
   state.playLogs = [];
 });
+
+// The first dynamic import of DevelopmentTab pays the whole module graph
+// (~5 s on a loaded machine); warm it once so no single test owns that cost.
+beforeAll(async () => { await import("./DevelopmentTab"); }, 60_000);
 
 describe("GP-07 — the timeline door", () => {
   it("opens the Story timeline, and no longer the Practice hub's score tile", async () => {

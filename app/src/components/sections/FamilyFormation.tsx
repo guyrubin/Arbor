@@ -6,6 +6,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { FAMILY_RITUALS, type FamilyRitual } from "../../lib/familyRituals";
+import RitualTurnCard from "../nextopen/RitualTurnCard";
 import { initialCharterValues, saveFamilyCharter } from "../../lib/familyCharter";
 import type { FrameId } from "../../lib/masterclasses";
 
@@ -100,6 +101,10 @@ export default function FamilyFormation() {
 
       <div data-module="family-rituals" data-primary-move="start-family-ritual">
         <h2 className="text-[15px] font-extrabold mb-3" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{he ? "טקסי משפחה" : "Family rituals"}</h2>
+        {/* B-GROWTH-03 / ENG-25 — the ritual whose turn has come round, beside
+            the rituals it belongs to (moved from #/development). Renders
+            nothing when no ritual is due. */}
+        <div className="mb-4 empty:hidden"><RitualTurnCard /></div>
         <div className="grid sm:grid-cols-2 gap-4">
           {FAMILY_RITUALS.map((r) => {
             const glyph = RITUAL_ICON[r.id] ?? "history_edu";

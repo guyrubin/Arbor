@@ -109,8 +109,9 @@ describe("ENG-23 — the card never promises what it cannot deliver", () => {
   });
 });
 
-describe("ENG-23 — Growth mounts the primed card, not the bare toggle", () => {
-  const src = read("../components/tabs/DevelopmentTab.tsx");
+describe("ENG-23 → B-GROWTH-03 — #/smart-reminders mounts the primed card, not the bare toggle", () => {
+  // B-GROWTH-03: the card moved from Growth to the home that owns reminders.
+  const src = read("../components/sections/SmartRemindersPanel.tsx");
   const card = read("../components/nextopen/PushPrimingCard.tsx");
 
   it("NEGATIVE CONTROL: the scan recognises the exact pre-change shape", () => {
@@ -128,6 +129,15 @@ describe("ENG-23 — Growth mounts the primed card, not the bare toggle", () => 
   it("reads both files (a scan over an empty string proves nothing)", () => {
     expect(src.length).toBeGreaterThan(2000);
     expect(card.length).toBeGreaterThan(1000);
+  });
+
+  it("B-GROWTH-03: the state comes from usePushPriming and Growth no longer mounts the card", () => {
+    expect(src).toContain("const push = usePushPriming();");
+    const growth = read("../components/tabs/DevelopmentTab.tsx");
+    expect(growth).not.toMatch(/<PushPrimingCard|import[^;]*(PushPrimingCard|usePushPriming|readPushPermission)/);
+    const hook = read("../hooks/usePushPriming.ts");
+    expect(hook).toContain('import("../lib/push.js")');
+    expect(hook).toContain("pushCapable()");
   });
 
   it("the unprimed toggle is gone and PushPrimingCard is mounted with real props", () => {

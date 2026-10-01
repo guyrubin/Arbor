@@ -135,11 +135,17 @@ describe("1.7 zero-regression — every capability stays reachable, reframed", (
   });
 });
 
-describe("1.7 mount — DevelopmentTab hosts the Full Picture card and the SpineRibbon", () => {
-  it("mounts the SpineRibbon with the registered elev.spine.growth string", () => {
-    expect(devTabSrc).toContain("<SpineRibbon");
-    expect(devTabSrc).toContain("elev.spine.growth");
-    expect(devTabSrc).toContain("growth-spine-ribbon");
+describe("1.7 mount — DevelopmentTab hosts the Full Picture card", () => {
+  /* B-GROWTH-03 — three foreign cards went to the homes that own their job:
+     the Growth SpineRibbon (-> Academy) is removed (the Journal ribbon keeps
+     the promise), the reminders card lives on #/smart-reminders and the ritual
+     card on #/family. Growth imports none of the three. */
+  it("B-GROWTH-03: DevelopmentTab imports none of SpineRibbon, PushPrimingCard, RitualTurnCard", () => {
+    for (const name of ["SpineRibbon", "PushPrimingCard", "RitualTurnCard"]) {
+      expect(devTabSrc, name).not.toMatch(new RegExp(`import[^;]*\\b${name}\\b`));
+      expect(devTabSrc, name).not.toContain(`<${name}`);
+    }
+    expect(devTabSrc).not.toContain("growth-spine-ribbon");
   });
   it("hosts the Full Picture entry card (title, promise, count teaser, CTA)", () => {
     expect(devTabSrc).toContain('data-testid="full-picture-card"');

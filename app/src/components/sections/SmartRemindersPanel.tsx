@@ -44,6 +44,8 @@ import {
    `lib/pulse.formatHour` is the language-aware sibling already used by the
    Today pulse (he → 24h "21:00") — one formatter, both locales. */
 import { formatHour } from "../../lib/pulse";
+import PushPrimingCard from "../nextopen/PushPrimingCard";
+import { usePushPriming } from "../../hooks/usePushPriming";
 
 // ── Token shorthands (all via var(--arbor-*), zero raw hex) ──────────────────
 const INK         = "var(--arbor-ink)";
@@ -87,6 +89,7 @@ const NUDGE_TYPES: Array<{
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function SmartRemindersPanel() {
+  const push = usePushPriming();
   const { setActiveTab, childProfile, behaviorLogs } = useArbor();
   const { t, uiLang } = useLanguage();
 
@@ -460,6 +463,20 @@ export default function SmartRemindersPanel() {
           />
         </div>
       </Section>
+      </div>
+
+      {/* B-GROWTH-03 / ENG-23 — phone reminders live where reminders are set.
+          Moved from #/development with the same honest copy ("Arbor sends
+          nothing" while pushCapable() is false); a demoted child of the
+          disclosure, no new top-level stamp. */}
+      <div data-module="reminders-push" data-module-demoted style={{ display: "contents" }}>
+        <PushPrimingCard
+          capable={push.capable}
+          permission={push.permission}
+          registered={push.registered}
+          pending={push.pending}
+          onToggle={push.onToggle}
+        />
       </div>
 
         </div>
