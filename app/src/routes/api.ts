@@ -920,7 +920,9 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       const memoryReviewItems = await appendMemoryProposals(memoryStore, childId, scrubMemoryProposals(structured.memoryProposals), {
         familyId,
         prompt: message,
-        frameRouting: structured.frameRouting
+        frameRouting: structured.frameRouting,
+        // B-GROWTH-29: the fact carries the answer's registry domains
+        answerDomains: structured.domains
       });
       budget.settle();
       const payload = { text: renderedText, contract: structured, memoryReviewItems };
@@ -1174,7 +1176,9 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       const memoryReviewItems = await appendMemoryProposals(memoryStore, childId, scrubMemoryProposals(structured.memoryProposals), {
         familyId,
         prompt: message,
-        frameRouting: structured.frameRouting
+        frameRouting: structured.frameRouting,
+        // B-GROWTH-29: the fact carries the answer's registry domains
+        answerDomains: structured.domains
       });
       budget.settle();
       const payload = { text: renderedText, contract: structured, council: restoredTakes, memoryReviewItems };

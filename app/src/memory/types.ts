@@ -1,4 +1,5 @@
 import type { CoachResponse } from "../contracts/coach.js";
+import type { DomainId } from "../lib/domains/registry.js";
 
 export type MemoryStatus = "pending" | "approved" | "rejected" | "deleted" | "expired";
 
@@ -16,6 +17,14 @@ export type MemoryLedgerEvent = {
   actor: "system" | "parent";
   prompt?: string;
   frameRouting?: CoachResponse["frameRouting"];
+  /**
+   * B-GROWTH-29 (spine §3, §4.3): the registry domains of the answer this fact
+   * was proposed from (`lib/domains/registry.ts` DomainId), set server-side at
+   * proposal time and carried unchanged through approve / edit / expire.
+   * Absent on facts proposed before the tag existed (no backfill) and on
+   * proposals with no answer contract. Exported and erased with the event.
+   */
+  domains?: DomainId[];
 };
 
 export type MemoryReviewItem = Omit<MemoryLedgerEvent, "eventId" | "eventType" | "actor"> & {

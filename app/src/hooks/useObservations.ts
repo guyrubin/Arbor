@@ -23,7 +23,7 @@ import type {
  * no write path. Limits mirror the existing readers.
  */
 export function useObservations(): Observation[] {
-  const { behaviorLogs, milestones, playLogs, childProfile } = useArbor();
+  const { behaviorLogs, milestones, playLogs, childProfile, memoryReviewItems } = useArbor();
   const childId = childProfile.id;
 
   const keepsakes = useChildCollection<KeepsakeDoc>(childId, "keepsakes");
@@ -53,11 +53,16 @@ export function useObservations(): Observation[] {
         mimicSessions: mimicSessions.items,
         adventureResults: adventureResults.items,
         missionRecords: missionRecords.items,
+        // B-GROWTH-29: approved facts that carry the answer's domains (untagged
+        // older facts stay out of the per-domain record — no backfill)
+        memoryFacts: (memoryReviewItems ?? [])
+          .filter((m) => m.status === "approved")
+          .map((m) => ({ id: m.memoryId, fact: m.fact, at: m.createdAt, domains: m.domains })),
       },
       childProfile,
     ),
     [
-      behaviorLogs, milestones, playLogs, childProfile,
+      behaviorLogs, milestones, playLogs, childProfile, memoryReviewItems,
       keepsakes.items, growthEntries.items, langObs.items, goalObservations.items, screenings.items,
       speechAttempts.items, practiceEvents.items, mimicSessions.items, adventureResults.items, missionRecords.items,
     ],

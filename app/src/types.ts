@@ -133,6 +133,8 @@ export interface MemoryReviewItem {
   createdAt: string;
   prompt?: string;
   frameRouting?: FrameRouting;
+  /** B-GROWTH-29: registry DomainIds of the answer the fact came from (absent on older facts). */
+  domains?: string[];
   latestEventId: string;
 }
 

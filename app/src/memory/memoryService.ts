@@ -1,6 +1,22 @@
 import { randomUUID } from "crypto";
 import type { CoachResponse } from "../contracts/coach.js";
 import type { MemoryLedgerEvent, MemoryReviewItem, MemoryStatus, MemoryStore } from "./types.js";
+import { DOMAIN_IDS, toDomains, type DomainId } from "../lib/domains/registry.js";
+
+/**
+ * B-GROWTH-29 — an answer contract's `domains` (framework ids, model output)
+ * → registry DomainIds, through the one registry. Unknown ids drop out; the
+ * result is distinct and in registry order. Empty → undefined (no tag).
+ */
+export const memoryDomainsFrom = (answerDomains?: readonly string[] | null): DomainId[] | undefined => {
+  const seen = new Set<DomainId>();
+  for (const id of answerDomains ?? []) for (const d of toDomains("developmental", String(id))) seen.add(d);
+  const out = DOMAIN_IDS.filter((d) => seen.has(d));
+  return out.length ? out : undefined;
+};
+
+/** Spread helper: `domains` only when there is a tag (keeps untagged events byte-identical). */
+const withDomains = (domains?: DomainId[]) => (domains && domains.length ? { domains: [...domains] } : {});
 
 export const toChildId = (childProfile: any) => {
   if (childProfile?.id) return String(childProfile.id);
@@ -29,6 +45,7 @@ export const foldMemoryEvents = (events: MemoryLedgerEvent[], childId?: string):
       createdAt: event.createdAt,
       prompt: event.prompt,
       frameRouting: event.frameRouting,
+      ...withDomains(event.domains),
       latestEventId: event.eventId
     });
   }
@@ -106,7 +123,8 @@ export const enforceMemoryRetention = async (
         createdAt: new Date(now).toISOString(),
         actor: "system",
         prompt: item.prompt,
-        frameRouting: item.frameRouting
+        frameRouting: item.frameRouting,
+        ...withDomains(item.domains)
       });
     } catch {
       // Best-effort tombstone: the filter below still excludes the fact.
@@ -148,12 +166,19 @@ export const appendMemoryProposals = async (
   store: MemoryStore,
   childId: string,
   proposals: CoachResponse["memoryProposals"],
-  context: { familyId: string; prompt: string; frameRouting: CoachResponse["frameRouting"] }
+  context: {
+    familyId: string;
+    prompt: string;
+    frameRouting: CoachResponse["frameRouting"];
+    /** B-GROWTH-29: the answer contract's `domains` (framework ids). */
+    answerDomains?: readonly string[] | null;
+  }
 ) => {
   if (proposals.length === 0) return foldMemoryEvents(await store.listEvents(childId), childId);
 
   const current = foldMemoryEvents(await store.listEvents(childId), childId);
   const now = new Date().toISOString();
+  const domains = memoryDomainsFrom(context.answerDomains);
 
   for (const proposal of proposals) {
     const duplicate = current.find(
@@ -176,7 +201,8 @@ export const appendMemoryProposals = async (
       createdAt: now,
       actor: "system",
       prompt: context.prompt,
-      frameRouting: context.frameRouting
+      frameRouting: context.frameRouting,
+      ...withDomains(domains)
     });
   }
 
@@ -214,7 +240,9 @@ export const transitionMemory = async (
     createdAt: new Date().toISOString(),
     actor: "parent",
     prompt: current.prompt,
-    frameRouting: current.frameRouting
+    frameRouting: current.frameRouting,
+    // B-GROWTH-29: the tag survives approve / edit / reject / delete
+    ...withDomains(current.domains)
   });
 
   const nextEvents = await store.listEvents(current.childId);
