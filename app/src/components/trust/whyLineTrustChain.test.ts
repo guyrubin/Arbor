@@ -250,7 +250,9 @@ describe("GP-22 — the Growth lane why-lines reach the Trust Center", () => {
   it("GP-23 — the milestone AI answers carry the chain through the action bar", () => {
     const src = read("components/tabs/MilestonesTab.tsx").replace(/\r\n/g, "\n");
     expect(src).toBeTruthy();
-    for (const surface of ["milestone-explain", "milestone-gaps"]) {
+    // B-GROWTH-12: the "milestone-gaps" analyzer is gone; the explain bar stays.
+    expect(src).not.toContain('surface="milestone-gaps"');
+    for (const surface of ["milestone-explain"]) {
       const bar = src.match(new RegExp(`<ContentActionBar[\\s\\S]{0,600}?surface="${surface}"[\\s\\S]{0,600}?/>`));
       expect(bar, `no ContentActionBar for ${surface}`).toBeTruthy();
       expect(bar![0]).toMatch(/\btrustLink\b/);

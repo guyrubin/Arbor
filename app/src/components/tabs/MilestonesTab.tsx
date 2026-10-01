@@ -33,7 +33,7 @@ import { MILESTONE_AGE_BANDS, ageWindowMilestones, bandForAgeMonths, comparisonA
 // (missing reviewer/rightsRef → never renders; ships with zero media entries).
 import { isRenderableMilestoneMedia } from "../../content/governance";
 // B0 — months-precise age spine
-import { ageMonthsFromProfile, ageYearsFromProfile } from "../../lib/childAge";
+import { ageLabelForMonths, ageMonthsFromProfile, ageYearsFromProfile } from "../../lib/childAge";
 // GP-10 — the record keeps DATES and "first time" language; Wave G strings.
 import { tGCare } from "../../lib/growthCareText";
 import { fmtDay } from "../../lib/formatDate";
@@ -68,9 +68,6 @@ export default function MilestonesTab() {
     milestones,
     setMilestoneObservation,
     addCustomMilestone,
-    handleGenerateMilestoneScaffold,
-    isAnalyzingMilestones,
-    milestoneAnalysisOfGaps,
     setActiveTab,
     seedCoach,
     childProfile,
@@ -99,10 +96,6 @@ export default function MilestonesTab() {
   // markdown renderer downstream, which threw the structure away.
   const [explanations, setExplanations] = useState<Record<string, ExplainAnswer>>({});
   const [explaining, setExplaining] = useState<Record<string, boolean>>({});
-  // AI-17: the ONE text form of the gap analysis, for the two consumers that
-  // genuinely need a string — one-tap keep, and seeding a coach thread. The
-  // render uses the structured fields directly.
-  const gapsText = milestoneAnalysisOfGaps ? explainAnswerText(milestoneAnalysisOfGaps, t("explain.tryToday")) : "";
   // GP-23: a failed explain is a STATE, not a fake answer. It used to be a
   // hard-coded English markdown heading rendered through
   // MarkdownBlock — untranslated, unstyled, and indistinguishable from real
@@ -401,6 +394,18 @@ export default function MilestonesTab() {
               {explaining[item.id] ? <Icon name="progress_activity" size={11} className="animate-spin" /> : <Icon name="menu_book" size={11} />}
               {explanations[item.id] || explainFailed[item.id] ? t("ms.hide") : t("ms.explain")}
             </button>
+            {/* B-GROWTH-12 — ONE AI door per milestone: a keyed seed in the page
+                language, no fixed lens (the /explain route above stays). */}
+            <button
+              type="button"
+              data-testid="ms-ask-arbor"
+              onClick={(e) => { e.preventDefault(); askAboutMilestone(item); }}
+              className="min-h-11 text-[11px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 transition"
+              style={{ color: "var(--arbor-ink)", background: "var(--arbor-paper-deep)" }}
+            >
+              <Icon name="forum" size={11} />
+              {t("ms.askArbor")}
+            </button>
             {/* LL-A3 — one tap from a milestone to its "why this matters" read */}
             {(() => {
               const read = bestCardForDomain(LEARN_CARDS, item.domain, ageYearsFromProfile(childProfile));
@@ -648,6 +653,28 @@ export default function MilestonesTab() {
   // prompt and a lens, then navigate to Daily Play (not Ask), so the prompt sat
   // unused — and the copy promised a quest in the child's world that was never
   // written. It now opens Daily Play and nothing else.
+  // B-GROWTH-12 — the ONE "Ask Arbor about this" seed: title, the child's
+  // first name and the milestone's age label, all in the page language.
+  const askSeedName = (childProfile.name || "").split(" ")[0];
+  const askAboutMilestone = (item: Milestone) =>
+    seedCoach({
+      prompt: t("seed.milestone.ask", {
+        title: item.title,
+        name: askSeedName,
+        band: typeof item.ageMonths === "number" ? ageLabelForMonths(item.ageMonths, t) : item.ageGroup,
+      }),
+      source: "milestone-ask",
+    });
+  const askAboutArea = (domId: string) =>
+    seedCoach({
+      prompt: t("seed.milestone.ask", {
+        title: domainLabel(domId),
+        name: askSeedName,
+        band: ageLabelForMonths(comparisonMonths, t),
+      }),
+      source: "milestone-ask",
+    });
+
   const openPlayIdeas = () => {
     setActiveTab("daily-play");
   };
@@ -866,6 +893,16 @@ export default function MilestonesTab() {
                     </div>
                     <ChevEnd className="w-4 h-4 flex-shrink-0" style={{ color: "var(--arbor-muted)" }} />
                   </button>
+                  <button
+                    type="button"
+                    data-testid="ms-map-ask-arbor"
+                    onClick={() => askAboutArea(dom.id)}
+                    className="min-h-11 inline-flex items-center gap-1.5 text-[13px] font-bold"
+                    style={{ color: "var(--arbor-ink)" }}
+                  >
+                    <Icon name="forum" size={16} />
+                    {t("ms.askArbor")}
+                  </button>
                 </div>
               );
             })()
@@ -893,48 +930,9 @@ export default function MilestonesTab() {
         )}
       </div>
 
-      {/* Interactive AI scaffolding gap analyzer */}
-      <div className="rounded-2xl p-6 space-y-4" style={{ background: "linear-gradient(120deg,var(--arbor-paper-tinted),var(--arbor-lav-soft))", border: "1px solid var(--arbor-rule)" }}>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <h4 className="text-base font-extrabold flex items-center gap-1.5" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-              <Icon name="auto_awesome" size={16} style={{ color: "var(--arbor-green-ink)" }} /> {t("ms.nurtureNext")}
-            </h4>
-            <p className="text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>{t("ms.nurtureDesc")}</p>
-          </div>
-          <button type="button" onClick={handleGenerateMilestoneScaffold} disabled={isAnalyzingMilestones} className="text-white text-xs font-extrabold px-4 py-2.5 min-h-11 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer ms-auto sm:ms-0 disabled:opacity-60" style={{ background: "var(--arbor-gradient-primary)" }}>
-            {isAnalyzingMilestones ? (<><Icon name="progress_activity" size={14} className="animate-spin" /> {t("ms.findingSteps")}</>) : (<><Icon name="psychology" size={15} /> {t("ms.findSteps")}</>)}
-          </button>
-        </div>
-
-        {milestoneAnalysisOfGaps ? (
-          <div className="p-4 rounded-xl text-xs leading-relaxed space-y-3 select-text bg-white" style={{ border: "1px solid var(--arbor-rule)" }}>
-            <ExplainAnswerBlock answer={milestoneAnalysisOfGaps} tryTodayLabel={t("explain.tryToday")} className="space-y-2" />
-            {/* GP-23 — "Find next steps" produced markdown whose only exit was
-                "Discuss in Coach": nothing said where it came from, and the
-                parent could not keep it. Same shared cluster as the inline
-                explainer: why-line → Trust Center → one-tap Keep, with the
-                coach hand-off demoted to a surface-specific extra. */}
-            <ContentActionBar
-              variant="inline"
-              surface="milestone-gaps"
-              why={t("elev.waveR.ms.gaps.why")}
-              trustLink
-              className="pt-2.5"
-              actions={[
-                { verb: "save", label: t("elev.waveR.ms.gaps.keep"), icon: "bookmark_add", onClick: () => keepBehaviorInsight(gapsText) },
-              ]}
-              extras={[
-                { id: "coach", label: t("ms.discussCoach"), icon: "forum", onClick: () => seedCoach({ prompt: t("seed.milestoneGaps", { analysis: gapsText }), lens: "Vygotsky's Scaffolding", source: "milestones-gap" }) },
-              ]}
-            />
-          </div>
-        ) : (
-          <div className="p-4 rounded-xl text-center text-xs bg-white" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}>
-            {t("ms.runHint")}
-          </div>
-        )}
-      </div>
+      {/* B-GROWTH-12: the "What to nurture next" analyzer (a second AI door
+          with a fixed "Vygotsky's Scaffolding" lens) is gone — each milestone
+          row and the Map's area pane carry the ONE door, "Ask Arbor about this". */}
 
       {/* UND-3 — "Gentle watch points" is DERIVED, never fabricated: real domain
           names + counts from the canonical useMonitoring derivation (clinical

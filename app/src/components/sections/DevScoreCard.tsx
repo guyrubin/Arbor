@@ -25,7 +25,7 @@ const GREEN_SOFT = "var(--arbor-green-soft)";
 const RULE = "var(--arbor-rule)";
 
 export default function DevScoreCard() {
-  const { childProfile, seedCoach } = useArbor();
+  const { childProfile } = useArbor();
   const { t } = useLanguage();
   const firstName = (childProfile.name || t("learn.yourChild")).split(" ")[0];
 
@@ -58,13 +58,6 @@ export default function DevScoreCard() {
       </section>
     );
   }
-
-  // Wave-3: the coach CTA is mechanism-only — it offers the parent ideas for
-  // nurturing development generally. It is NOT a "your child is lowest in X"
-  // pointer (that was a deficit verdict). The prompt is domain-agnostic.
-  const coach = () => {
-    seedCoach({ prompt: t("devscore.coach.prompt", { name: firstName }), source: "dev-score" });
-  };
 
   return (
     <section className="rounded-[22px] overflow-hidden" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-sm)" }}>
@@ -104,19 +97,8 @@ export default function DevScoreCard() {
           ))}
         </div>
 
-        {/* Route-to-pro (mechanism-only — no deficit pointer). */}
-        <div className="mt-5 flex flex-wrap items-center gap-3 rounded-2xl p-4" style={{ background: GREEN_SOFT }}>
-          <span className="text-[13.5px] font-bold flex-1 min-w-0" style={{ color: GREEN }}>
-            {t("devscore.coach.headline")}
-          </span>
-          <button
-            onClick={coach}
-            className="inline-flex min-h-11 items-center gap-1.5 font-bold text-[13px] rounded-xl px-4 py-2 transition active:scale-[0.98]"
-            style={{ background: "var(--arbor-paper-elevated)", color: GREEN, border: "1px solid var(--arbor-clay-border)" }}
-          >
-            <Icon name="auto_awesome" size={15} /> {t("devscore.coach")}
-          </button>
-        </div>
+        {/* B-GROWTH-12: the "Get ideas" coach CTA is gone — the ONE AI door
+            per milestone lives on #/milestones ("Ask Arbor about this"). */}
 
         <p className="text-xs mt-3.5" style={{ color: "var(--arbor-faint)" }}>{t("devscore.note")}</p>
         {/* CI-08 / CLM-004 — the provenance hedge (board-substantiated, Guy-approved 2026-06-22).

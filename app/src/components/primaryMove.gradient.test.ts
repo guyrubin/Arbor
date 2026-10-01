@@ -212,7 +212,8 @@ describe("OBJ-TODAY-01 — repo-wide ratchet", () => {
     // declares as that route's ONE primary move, and it is the only gradient in
     // the file. storiesCover.test.ts pins the stamp and its position.
     "tabs/HeroJourneyTab.tsx",
-    "tabs/MilestonesTab.tsx",
+    // (B-GROWTH-12: MilestonesTab left the ratchet — its only gradient was the
+    //  removed "Find next steps" analyzer button.)
     "tabs/PlansTab.tsx",
     "tabs/WeeklyTab.tsx",
     "ui/HubHero.tsx",

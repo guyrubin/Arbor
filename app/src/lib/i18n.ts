@@ -789,6 +789,8 @@ export const en: Dict = {
   "ms.nurtureNext": "What to nurture next",
   "ms.nurtureDesc": "Maps supportive next steps from what you've observed and not yet observed: a next-best-challenge view, never a deficit list.",
   "ms.findSteps": "Find next steps",
+  // B-GROWTH-12 — the ONE AI door per milestone (row + Map area pane)
+  "ms.askArbor": "Ask Arbor about this",
   "ms.findingSteps": "Finding next steps…",
   "ms.runHint": "Tap \"Find next steps\" above to map progress and suggest playful next exercises.",
   "ms.discussCoach": "Discuss in Coach",
@@ -2369,6 +2371,8 @@ export const en: Dict = {
   "seed.play.withGoal": "We're going to try \"{title}\" with {name} today, working on {goal}. How can I get the most out of it, and what should I watch for?",
   "seed.todayFocus": "About today: {focus} What is one concrete thing I can do for {name} today?",
   "seed.milestoneGaps": "Regarding the scaffolding gap analysis on milestones:\n\n{analysis}\n\nHow do we evaluate sensory resilience relative to these milestone hurdles?",
+  // B-GROWTH-12 — the ONE "Ask Arbor about this" seed (no fixed lens)
+  "seed.milestone.ask": "About {name} — {title} ({band}): what does this look like at home, and what helps it along?",
   "seed.planCoreg": "Regarding the Action Plan: \"{title}\". Let's formulate two additional specific co-regulation dialogue scripts dealing with the child's preoperational language-switching triggers.",
   "seed.langWeekPlan": "Give me a gentle one-week plan to build {name}'s (age {age}) confidence in {target}, with {home} as the home language. Keep it low-pressure, play-based, and non-diagnostic — a few minutes a day.",
   "seed.langActivity": "Help me run the \"{title}\" {target} activity with {name} (age {age}) today. Give me a 3-step script and one way to make it easier if they resist.",
@@ -3107,6 +3111,8 @@ export const he: Dict = {
   "ms.nurtureNext": "מה לטפח בהמשך",
   "ms.nurtureDesc": "ממפה צעדים תומכים ממה שראיתם וממה שעדיין לא — מבט על האתגר הבא, לעולם לא רשימת חסרים.",
   "ms.findSteps": "מצאו צעדים הבאים",
+  // B-GROWTH-12 — דלת ה-AI האחת לכל אבן דרך
+  "ms.askArbor": "לשאול את ארבור על זה",
   "ms.findingSteps": "מחפש צעדים הבאים…",
   "ms.runHint": "הקישו \"מצאו צעדים הבאים\" למעלה כדי למפות התקדמות ולהציע תרגילים משחקיים.",
   "ms.discussCoach": "המשיכו עם המאמן",
@@ -4620,6 +4626,8 @@ export const he: Dict = {
   "seed.play.withGoal": "אנחנו הולכים לנסות היום את \"{title}\" עם {name}, בעבודה על {goal}. איך אפיק מזה את המרב, ועל מה כדאי לשים לב?",
   "seed.todayFocus": "לגבי היום: {focus} מה דבר אחד קונקרטי שאני יכול/ה לעשות היום עבור {name}?",
   "seed.milestoneGaps": "לגבי ניתוח פערי הפיגומים באבני הדרך:\n\n{analysis}\n\nאיך נעריך חוסן חושי ביחס לאתגרי אבני הדרך האלה?",
+  // B-GROWTH-12 — זרע השאלה האחד "לשאול את ארבור על זה" (בלי עדשה קבועה)
+  "seed.milestone.ask": "לגבי {name} — {title} ({band}): איך זה נראה בבית, ומה עוזר לזה להתפתח?",
   "seed.planCoreg": "לגבי תוכנית הפעולה: \"{title}\". בואו ננסח שני תסריטי דיאלוג נוספים וספציפיים לוויסות משותף, שמתמודדים עם טריגרים של מעברי שפה בשלב הפרה-אופרציונלי.",
   "seed.langWeekPlan": "תנו לי תוכנית עדינה לשבוע אחד לחיזוק הביטחון של {name} (גיל {age}) ב{target}, כאשר {home} היא שפת הבית. בלי לחץ, מבוסס משחק ולא אבחנתי — כמה דקות ביום.",
   "seed.langActivity": "עזרו לי להעביר היום את הפעילות \"{title}\" ב{target} עם {name} (גיל {age}). תנו לי תסריט בשלושה שלבים ודרך אחת להקל אם יש התנגדות.",

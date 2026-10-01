@@ -110,7 +110,8 @@ describe("AI-17 — no surface re-flattens the explain route into markdown", () 
     expect(code).not.toMatch(/<MarkdownBlock text=\{explanations\[item\.id\]\}/);
     expect(code).not.toMatch(/<MarkdownBlock text=\{milestoneAnalysisOfGaps\}/);
     expect(code).toMatch(/<ExplainAnswerBlock answer=\{explanations\[item\.id\]\}/);
-    expect(code).toMatch(/<ExplainAnswerBlock answer=\{milestoneAnalysisOfGaps\}/);
+    // B-GROWTH-12: the gap analyzer (the second answer) was removed.
+    expect(code).not.toContain("milestoneAnalysisOfGaps");
   });
 
   it("the deterministic escalation copy STILL routes through the markdown renderer", () => {

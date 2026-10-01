@@ -58,7 +58,8 @@ describe("AIX-S4 — no raw-English template literal reaches a coach seed", () =
     expect(read("components/tabs/DailyPlayTab.tsx")).toContain('t("seed.play.withGoal"');
     expect(read("components/tabs/OverviewTab.tsx")).toContain('t("seed.play"');
     expect(read("components/tabs/OverviewTab.tsx")).toContain('t("seed.todayFocus"');
-    expect(read("components/tabs/MilestonesTab.tsx")).toContain('t("seed.milestoneGaps"');
+    // B-GROWTH-12: the gap-analysis seed left with its analyzer; the ONE door seeds this key.
+    expect(read("components/tabs/MilestonesTab.tsx")).toContain('t("seed.milestone.ask"');
     expect(read("components/tabs/PlansTab.tsx")).toContain('t("seed.planCoreg"');
     expect(read("components/tabs/LanguageLabTab.tsx")).toContain('t("seed.langWeekPlan"');
     expect(read("components/tabs/LanguageLabTab.tsx")).toContain('t("seed.langActivity"');
@@ -74,6 +75,7 @@ describe("AIX-S4 — seed keys exist in BOTH dictionaries with matching placehol
     "seed.play.withGoal",
     "seed.todayFocus",
     "seed.milestoneGaps",
+    "seed.milestone.ask",
     "seed.planCoreg",
     "seed.langWeekPlan",
     "seed.langActivity",

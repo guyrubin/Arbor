@@ -18,6 +18,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { translate } from "../../lib/i18n";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const app = path.join(here, "..", "..");
@@ -111,24 +112,10 @@ describe("GP-23 — a failed answer is an honest, translated STATE", () => {
   });
 });
 
-describe("GP-23 — the gap analysis joins the same cluster", () => {
-  const bar = actionBar(SRC, "milestone-gaps");
-
-  it("mounts the bar with why + trustLink + Keep, and demotes the coach hand-off", () => {
-    expect(bar, "no ContentActionBar for milestone-gaps").toBeTruthy();
-    expect(bar).toMatch(/\btrustLink\b/);
-    expect(bar).toMatch(/elev\.waveR\.ms\.gaps\.why/);
-    expect(bar).toMatch(/verb: "save"/);
-    // AI-17: the gap analysis is STORED as the route's two structured fields,
-    // so the keep verb writes its derived text form. Both halves of that chain
-    // are pinned — the derivation, and the verb that consumes it — so this is
-    // no weaker than pinning the single identifier it replaced.
-    expect(bar).toMatch(/keepBehaviorInsight\(gapsText\)/);
-    expect(SRC).toMatch(/const gapsText = milestoneAnalysisOfGaps \? explainAnswerText\(milestoneAnalysisOfGaps, t\("explain\.tryToday"\)\) : "";/);
-    // The coach hand-off is preserved, as a surface-specific EXTRA (the
-    // canonical verb order is never re-ordered around it).
-    expect(bar).toMatch(/extras=\{\[/);
-    expect(bar).toMatch(/t\("ms\.discussCoach"\)/);
+describe("GP-23 → B-GROWTH-12 — the gap analysis left with its analyzer", () => {
+  it("no milestone-gaps action bar, no gap text derivation", () => {
+    expect(actionBar(SRC, "milestone-gaps")).toBeFalsy();
+    expect(SRC).not.toContain("gapsText");
   });
 });
 
@@ -143,3 +130,51 @@ describe("GP-23 — CLINICAL FIREWALL on the new copy", () => {
     }
   });
 });
+
+/* B-GROWTH-12 — one "Ask Arbor about this" door replaces two AI doors: the
+   "What to nurture next" analyzer (fixed "Vygotsky's Scaffolding" lens) and
+   DevScoreCard's "Get ideas" CTA are gone; each milestone row and the Map's
+   area pane seed the coach through ONE keyed seed with no fixed lens. */
+describe("B-GROWTH-12 — one AI door per milestone", () => {
+  const card = read("components/sections/DevScoreCard.tsx");
+  const code = SRC.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
+
+  it("no fixed Vygotsky lens and no analyzer on #/milestones", () => {
+    expect(SRC).not.toContain('lens: "Vygotsky\'s Scaffolding"');
+    expect(code).not.toContain("handleGenerateMilestoneScaffold");
+    expect(code).not.toContain('t("ms.findSteps")');
+    expect(code).not.toContain('t("ms.nurtureNext")');
+    expect(code).not.toContain("seed.milestoneGaps");
+  });
+
+  it("no 'Get ideas' CTA on the DevScore card", () => {
+    expect(card).not.toContain('t("devscore.coach")');
+    expect(card).not.toContain("seedCoach");
+  });
+
+  it("each milestone row carries exactly one Ask door (after Explain); the Map pane carries one", () => {
+    expect((code.match(/data-testid="ms-ask-arbor"/g) ?? []).length).toBe(1);
+    expect((code.match(/data-testid="ms-map-ask-arbor"/g) ?? []).length).toBe(1);
+    expect(code.indexOf('data-testid="ms-ask-arbor"')).toBeGreaterThan(code.indexOf('t("ms.explain")'));
+    // both seed through the one key, source milestone-ask, no lens
+    const calls = code.split("seedCoach({").slice(1).map((c) => c.slice(0, c.indexOf("source:") + 40));
+    expect(calls.length).toBe(2);
+    for (const call of calls) {
+      expect(call).toContain('t("seed.milestone.ask"');
+      expect(call).toContain('source: "milestone-ask"');
+      expect(call).not.toContain("lens");
+    }
+  });
+
+  it("seed.milestone.ask and ms.askArbor exist in both languages; the HE seed is Hebrew", () => {
+    for (const key of ["seed.milestone.ask", "ms.askArbor"]) {
+      expect(translate("en", key)).not.toBe(key);
+      expect(translate("he", key)).not.toBe(key);
+    }
+    const he = translate("he", "seed.milestone.ask", { title: "צוחקת בקול", name: "נועה", band: "6 חודשים" });
+    expect(he).not.toMatch(/[A-Za-z]/);
+    expect(he).toContain("צוחקת בקול");
+    expect(translate("en", "seed.milestone.ask", { title: "Laughs", name: "Noa", band: "6 months" })).toContain("Laughs");
+  });
+});
+
