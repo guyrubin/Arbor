@@ -10,13 +10,12 @@ import CourseCard from "../overview/CourseCard";
 import GoalBuilderModal from "../practice/GoalBuilderModal";
 import SessionLengthChips from "../practice/SessionLengthChips";
 import { selectDailyPlay, concernDomainsFromLogs, daySeedFor, type ScoredActivity, type SessionLength } from "../../playbank/select";
-import { recommendCourse, READINESS_COURSES, localizeCourse } from "../../playbank/courses";
+import { recommendCourse, READINESS_COURSES, localizeCourse, courseActivities, type PlayCourse } from "../../playbank/courses";
 import { type PlayActivity, bandForAge, playDomainLabel } from "../../playbank/content";
 import { ageYearsFromProfile } from "../../lib/childAge";
 import { activeGoalDomains, type ActiveGoal } from "../../practice/goalBuilder";
 import { buildDailyPlan, buildGoalObservation, estimateLoggedDayCount, type DailyPlan } from "../../practice/dailyPlan";
 import { useChildCollection } from "../../hooks/useChildCollection";
-import { isolate } from "../../lib/i18n";
 import type { GoalObservation } from "../../practice/dailyPlan";
 import type { ChildProfile } from "../../types";
 // GP-01: the months-precise age label is THE parent-facing age render.
@@ -47,7 +46,7 @@ export default function DailyPlayTab() {
   const { behaviorLogs, childProfile, setActiveTab, logPlayCompletion, updateChild, seedCoach, actionLoop } = useArbor();
   const { toast } = useToast();
   const { t, uiLang } = useLanguage();
-  const firstName = (childProfile.name || "your child").split(" ")[0];
+  const firstName = (childProfile.name || t("learn.yourChild")).split(" ")[0];
 
   // CI-28: Goal Builder — Goals chip in the DailyPlay tab header.
   const activeGoals: ActiveGoal[] = childProfile.activeGoals ?? [];
@@ -56,7 +55,7 @@ export default function DailyPlayTab() {
 
   const handleSaveGoals = async (goals: ActiveGoal[]) => {
     await updateChild(childProfile.id, { activeGoals: goals });
-    toast("Focus set. Daily Play is now matched to what you're working on.", "success");
+    toast(t("elev.growth.play.toast.focusSet"), "success");
   };
 
   const [doneIds, setDoneIds] = useState<string[]>(() => {
@@ -120,13 +119,21 @@ export default function DailyPlayTab() {
     catch { return {}; }
   });
   const doneFor = (courseId: string) => courseProg[courseId] ?? [];
-  const toggleFor = (courseId: string) => (activityId: string) => {
-    const cur = courseProg[courseId] ?? [];
+  // B-GROWTH-19 — a course step ticked ON writes the playLogs record (source
+  // "course", idempotent per activity per day) and only THEN says so.
+  // Un-ticking keeps the log: the play happened; the local map only drives
+  // the step UI.
+  const toggleFor = (course: PlayCourse) => (activityId: string) => {
+    const cur = courseProg[course.id] ?? [];
     const adding = !cur.includes(activityId);
-    const updated = { ...courseProg, [courseId]: adding ? [...cur, activityId] : cur.filter((x) => x !== activityId) };
+    const updated = { ...courseProg, [course.id]: adding ? [...cur, activityId] : cur.filter((x) => x !== activityId) };
     setCourseProg(updated);
     try { localStorage.setItem(`arbor.course.${childProfile.id}`, JSON.stringify(updated)); } catch { /* ignore */ }
-    if (adding) toast(`Nice. Added to ${isolate(firstName)}'s day.`, "success");
+    if (!adding) return;
+    const activity = courseActivities(course).find((a) => a.id === activityId);
+    if (!activity) return;
+    logPlayCompletion(activity, "course", course.id);
+    toast(t("elev.growth.play.toast.added", { name: firstName }), "success");
   };
 
   // Readiness tracks — parent-chosen goal courses (school / sibling / sleep).
@@ -149,7 +156,7 @@ export default function DailyPlayTab() {
         localStorage.setItem(`arbor.play.done.${childProfile.id}`, JSON.stringify([...cur, p.activity.id]));
       }
     } catch { /* ignore */ }
-    toast(`Nice. Added to ${isolate(firstName)}'s day.`, "success");
+    toast(t("elev.growth.play.toast.added", { name: firstName }), "success");
   };
   const coach = (p: ScoredActivity) => {
     seedCoach({ prompt: t("seed.play", { title: p.activity.title, name: firstName, domain: p.activity.domain }), source: "daily-play" });
@@ -200,6 +207,9 @@ export default function DailyPlayTab() {
   });
 
   const handlePlanDid = (plan: DailyPlan) => {
+    // B-GROWTH-19: the plan's "We did this" writes the same playLogs record as
+    // every other path (it used to write only a device-local flag).
+    logPlayCompletion(plan.scoredActivity, "today");
     setPlanDone(true);
     try {
       localStorage.setItem(
@@ -207,7 +217,7 @@ export default function DailyPlayTab() {
         JSON.stringify({ date: new Date().toISOString().slice(0, 10), activityId: plan.scoredActivity.activity.id })
       );
     } catch { /* ignore */ }
-    toast(`Nice. Added to ${isolate(firstName)}'s day.`, "success");
+    toast(t("elev.growth.play.toast.added", { name: firstName }), "success");
   };
 
   const handlePlanCoach = (plan: DailyPlan) => {
@@ -226,7 +236,7 @@ export default function DailyPlayTab() {
     // arbor-safety review gates prod (requiredFix #4).
     const obs = buildGoalObservation({ plan: dailyPlan, observationText: text });
     await goalObservationsCol.upsert(obs);
-    toast(`Nice — added to ${isolate(firstName)}'s record.`, "success");
+    toast(t("elev.growth.play.toast.recorded", { name: firstName }), "success");
   };
 
   // CI-31: DailyPlanCard carries its own session length derived from the plan's
@@ -314,7 +324,7 @@ export default function DailyPlayTab() {
           course={course}
           childName={firstName}
           completedIds={doneFor(course.id)}
-          onToggle={toggleFor(course.id)}
+          onToggle={toggleFor(course)}
           onCoach={coachActivity}
           // Honesty gate (masterplan 3.1): a per-child rationale exists ONLY
           // when the course's domain actually came from the child's logged
@@ -357,7 +367,7 @@ export default function DailyPlayTab() {
           course={readinessCourse}
           childName={firstName}
           completedIds={doneFor(readinessCourse.id)}
-          onToggle={toggleFor(readinessCourse.id)}
+          onToggle={toggleFor(readinessCourse)}
           onCoach={coachActivity}
         />
       </section>
@@ -401,7 +411,7 @@ export default function DailyPlayTab() {
         className="inline-flex items-center gap-2 text-[13px] font-bold rounded-full px-4 py-2.5"
         style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)", minHeight: 44 }}
       >
-        <Icon name="menu_book" size={16} /> Turn today&apos;s practice into a comic →
+        <Icon name="menu_book" size={16} /> {t("elev.growth.play.comicCta")}
       </button>
 
       {/* CI-28: Goal Builder modal — opened via Goals chip in the header */}

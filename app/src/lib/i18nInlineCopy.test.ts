@@ -550,3 +550,41 @@ describe("R22 — the practice domain names and the Full Picture body carry both
     expect(translate("en", "plan.phaseProgress", { phase: "Phase 1", current: 1, total: 3 })).not.toContain("⁨");
   });
 });
+
+/* B-GROWTH-19 — DailyPlayTab toasted four English sentences ("Nice. Added to
+ * {name}'s day." ×3, "Focus set. …") and rendered an English comic CTA inside
+ * the Hebrew app; this file had no entry for it. Every string there now goes
+ * through t() — the scan pins it. */
+describe("B-GROWTH-19 — DailyPlayTab carries no English literal", () => {
+  const rel = "components/tabs/DailyPlayTab.tsx";
+  const code = stripComments(fs.readFileSync(path.join(SRC_ROOT, rel), "utf8"));
+  const TOAST_LITERAL = /toast\(\s*[`"']/;
+
+  it("no toast is a string/template literal; every toast goes through t()", () => {
+    const offenders = code.split("\n").filter((l) => TOAST_LITERAL.test(l));
+    expect(offenders).toEqual([]);
+    expect((code.match(/toast\(t\("elev\.growth\.play\.toast\./g) ?? []).length).toBe(5);
+  });
+
+  it("no English attribute, JSX text node or English fallback name", () => {
+    const offenders = code.split("\n").filter((l) =>
+      ENGLISH_ATTR.test(l) || ENGLISH_TEXT.test(l) || ENGLISH_TRAILING_TEXT.test(l.trimEnd()) || /"your child"/.test(l));
+    expect(offenders).toEqual([]);
+    expect(code).toContain('{t("elev.growth.play.comicCta")}');
+  });
+
+  it("the four keys resolve in EN and HE, and the HE is Hebrew", () => {
+    for (const key of ["elev.growth.play.toast.added", "elev.growth.play.toast.focusSet", "elev.growth.play.toast.recorded", "elev.growth.play.comicCta"]) {
+      expect(translate("en", key, { name: "Noa" }), key).not.toBe(key);
+      const he = translate("he", key, { name: "נועה" });
+      expect(he, key).not.toBe(key);
+      expect(he, key).not.toMatch(/[A-Za-z]/);
+    }
+  });
+
+  it("NEGATIVE CONTROL — the pre-fix toast trips the scan", () => {
+    expect(TOAST_LITERAL.test("    toast(`Nice. Added to ${isolate(firstName)}'s day.`, \"success\");")).toBe(true);
+    // the arrow-terminated CTA escaped the line scans — so it is pinned by text
+    expect(code).not.toContain("Turn today&apos;s practice into a comic");
+  });
+});

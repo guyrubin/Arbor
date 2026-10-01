@@ -20,6 +20,7 @@ import {
 import { useToastOptional } from "./ToastContext";
 import { validateLogDraft, momentLogFields, isIncidentType, MOMENT_BEHAVIOR_TYPE } from "../content/behaviorTaxonomy";
 import type { ScoredActivity } from "../playbank/select";
+import type { PlayActivity } from "../playbank/content";
 import { ROUTE_IDS, resolveHash, FALLBACK_ROUTE, type ActiveTab } from "../lib/routes";
 import {
   sampleBehaviorLogs,
@@ -424,22 +425,28 @@ function useArborState() {
     try { track("today_action_outcome", { outcome, capacity: item.capacity }); } catch { /* noop */ }
   };
   const removeTodayAction = (id: string) => void actionLoopCol.remove(id);
-  const logPlayCompletion = (a: ScoredActivity, source: PlayLog["source"]) => {
+  // B-GROWTH-19 — every Daily Play "We did this" path writes through here:
+  // a ranked pick (ScoredActivity, carries its reason) OR a bare course step
+  // (PlayActivity + the course id it was ticked in; reason "stage-match").
+  const logPlayCompletion = (a: ScoredActivity | PlayActivity, source: PlayLog["source"], courseId?: string) => {
+    const activity = "activity" in a ? a.activity : a;
+    const reason: PlayLog["reason"] = "activity" in a ? a.reason : "stage-match";
     const day = new Date().toISOString().slice(0, 10);
-    const id = `${a.activity.id}.${day}`;
+    const id = `${activity.id}.${day}`;
     // Idempotent per activity per day: skip the loop event on a repeat tap.
     const alreadyDone = playLogCol.items.some((p) => p.id === id);
     const rec: PlayLog = {
       id,
-      activityId: a.activity.id,
-      title: a.activity.title,
-      domain: a.activity.domain,
-      reason: a.reason,
+      activityId: activity.id,
+      title: activity.title,
+      domain: activity.domain,
+      reason,
       source,
+      ...(courseId ? { courseId } : {}),
       timestamp: new Date().toISOString(),
     };
     void playLogCol.upsert(rec); // fire-and-forget, optimistic + local-first
-    if (!alreadyDone) trackPlayCompleted(a.activity.domain, a.reason, source);
+    if (!alreadyDone) trackPlayCompleted(activity.domain, reason, source);
   };
 
   const [currentStory, setCurrentStory] = useState<BedtimeStory>(sampleBedtimeStory);

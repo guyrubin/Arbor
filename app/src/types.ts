@@ -261,6 +261,8 @@ export interface PlayLog {
   // additive — existing concern/stage values stay valid (zero regression).
   reason: "concern-match" | "stage-match" | "goal-match" | "interest-match";
   source: "today" | "library" | "course";
+  /** B-GROWTH-19 — the course a "course" row was ticked in (recommended or readiness). */
+  courseId?: string;
   timestamp: string; // ISO
 }
 

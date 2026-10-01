@@ -41,6 +41,12 @@ export const en: Record<string, string> = {
   "elev.growth.play.setFocus": "Set a focus",
   "elev.growth.play.goalsOne": "1 goal active",
   "elev.growth.play.goalsMany": "{n} goals active",
+  // B-GROWTH-19 — Daily Play toasts. "added" fires only after a playLogs row
+  // was written (it shows in the Journal), so it names that record.
+  "elev.growth.play.toast.added": "Saved to {name}'s journal.",
+  "elev.growth.play.toast.focusSet": "Focus set. Daily Play is now matched to what you're working on.",
+  "elev.growth.play.toast.recorded": "Added to {name}'s record.",
+  "elev.growth.play.comicCta": "Turn today's practice into a comic",
   "elev.growth.lang.duration.minutes": "{n} min",
   "elev.growth.lang.duration.daily": "Daily",
   "elev.growth.course.markDone": "Mark done",
@@ -82,6 +88,10 @@ export const he: Record<string, string> = {
   "elev.growth.play.setFocus": "לבחור מוקד",
   "elev.growth.play.goalsOne": "מוקד אחד פעיל",
   "elev.growth.play.goalsMany": "{n} מוקדים פעילים",
+  "elev.growth.play.toast.added": "נשמר ביומן של {name}.",
+  "elev.growth.play.toast.focusSet": "המוקד נקבע. המשחק היומי מותאם עכשיו למה שאתם עובדים עליו.",
+  "elev.growth.play.toast.recorded": "נוסף לרשומה של {name}.",
+  "elev.growth.play.comicCta": "להפוך את התרגול של היום לקומיקס",
   "elev.growth.lang.duration.minutes": "{n} דק׳",
   "elev.growth.lang.duration.daily": "כל יום",
   "elev.growth.course.markDone": "לסמן שנעשה",

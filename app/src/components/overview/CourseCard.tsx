@@ -90,7 +90,7 @@ export default function CourseCard({
             const isNext = !progress.complete && a.id === progress.nextActivityId;
             const open = openId === a.id;
             return (
-              <li key={a.id} className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${isNext ? "rgba(88,166,255,0.4)" : RULE}`, background: isNext ? GREEN_SOFT : "var(--arbor-paper-deep)" }}>
+              <li key={a.id} className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${isNext ? "var(--arbor-sky-ink)" : RULE}`, background: isNext ? GREEN_SOFT : "var(--arbor-paper-deep)" }}>
                 {/* Item 9 (touch floor): the done-toggle rendered as a 24 px
                     circle and the disclosure row as 246×22. The circle and the
                     row type are unchanged — the hit boxes grow to --touch-min
