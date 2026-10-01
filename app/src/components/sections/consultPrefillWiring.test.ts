@@ -71,9 +71,10 @@ const CALLS = walk(SRC).flatMap((f) => {
 const OBJECT_ARG = /^\{[\s\S]*\}$/;
 
 describe("B-CAREPRO-13 · every caller goes through the widened seam", () => {
-  it("the scan found the four known callers (Coach ×2, Screening, Safety)", () => {
+  it("the scan found the five known callers (Reports, Coach ×2, Screening, Safety)", () => {
     const files = CALLS.map((c) => c.rel).sort();
     expect(files).toEqual([
+      "components/sections/Reports.tsx", // B-CAREPRO-23: the one door from Your full record into Consult
       "components/sections/Screening.tsx",
       "components/tabs/CoachTab.tsx",
       "components/tabs/CoachTab.tsx",
