@@ -219,7 +219,8 @@ export default function StoryTimelineTab() {
         .filter((m) => m.status === "approved")
         .map((m) => ({ fact: m.fact, source: m.source })),
       milestonesObserved: momentum.milestones.observed,
-      milestonesTotal: momentum.milestones.total,
+      // B-ASKJB-19 residue: no total — the story never prints a denominator.
+      lang: uiLang,
       momentsThisWeek: momentum.momentsThisWeek,
       // momentsPrevWeek is deliberately NOT passed: composeChildStory no longer
       // renders a week-over-week clause (firewall), so feeding it the prior
@@ -230,7 +231,7 @@ export default function StoryTimelineTab() {
       // prose is the same firewall leak as a chart).
       planWins: momentum.winsThisWeek,
     }),
-    [childProfile.name, childProfile.age, memoryReviewItems, momentum],
+    [childProfile.name, childProfile.age, memoryReviewItems, momentum, uiLang],
   );
 
   const saveStory = () => {

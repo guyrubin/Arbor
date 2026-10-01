@@ -6,7 +6,6 @@ const base: ChildStoryInput = {
   ageYears: 4,
   approvedFacts: [],
   milestonesObserved: 0,
-  milestonesTotal: 0,
   momentsThisWeek: 0,
   momentsPrevWeek: 0,
   planWins: 0,
@@ -47,7 +46,6 @@ describe("composeChildStory (T4)", () => {
       momentsThisWeek: 5,
       momentsPrevWeek: 3,
       milestonesObserved: 4,
-      milestonesTotal: 10,
       planWins: 2,
     });
     const text = s.paragraphs.join(" ");
@@ -61,7 +59,9 @@ describe("composeChildStory (T4)", () => {
     expect(text).not.toMatch(/more than the|quieter week|the week before|last week/i);
     // Wave-3: the intensity-trend prose ("calmer" / "bigger lately") is gone.
     expect(text).not.toMatch(/calmer|bigger lately/i);
-    expect(text).toContain("4 of 10 milestones");
+    // B-ASKJB-19 residue (law 1): a count of what was noticed, never "of {total}".
+    expect(text).toContain("Together you've noted 4 milestones.");
+    expect(text).not.toMatch(/\d+ of \d+/);
     expect(text).toContain("2 small wins");
   });
 
@@ -70,5 +70,22 @@ describe("composeChildStory (T4)", () => {
     const txt = childStoryToText(s);
     expect(txt.startsWith("The Story of Mia")).toBe(true);
     expect(txt).toContain("is curious about everything");
+  });
+});
+
+describe("B-ASKJB-19 residue — the story's count sentences, EN + HE", () => {
+  it("HE renders the Hebrew count sentences (singular and plural), no denominator", () => {
+    const one = composeChildStory({ ...base, milestonesObserved: 1, planWins: 1, lang: "he" }).paragraphs.join(" ");
+    expect(one).toContain("יחד סימנתם אבן דרך אחת.");
+    expect(one).toContain("חגגתם ניצחון קטן אחד בדרך.");
+    const many = composeChildStory({ ...base, milestonesObserved: 6, planWins: 3, lang: "he" }).paragraphs.join(" ");
+    expect(many).toContain("אבני דרך");
+    expect(many).toContain("ניצחונות קטנים");
+    expect(many).not.toMatch(/\d+\s*(of|מתוך)\s*\d+/);
+  });
+  it("the input type carries no total (a denominator cannot be passed in)", () => {
+    // @ts-expect-error — milestonesTotal is gone from ChildStoryInput
+    const s = composeChildStory({ ...base, milestonesObserved: 2, milestonesTotal: 40 });
+    expect(s.paragraphs.join(" ")).not.toContain("40");
   });
 });

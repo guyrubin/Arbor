@@ -13,6 +13,7 @@
  */
 
 import { isolate } from "./bidi";
+import { translate, type UiLang } from "./i18n";
 
 export interface ChildStoryInput {
   name: string;
@@ -20,7 +21,10 @@ export interface ChildStoryInput {
   /** Parent-APPROVED memory facts only (the moat). */
   approvedFacts: Array<{ fact: string; source?: string }>;
   milestonesObserved: number;
-  milestonesTotal: number;
+  // B-ASKJB-19 residue (law 1): no `milestonesTotal` — the story counts the
+  // milestones the parent noticed and never prints a denominator.
+  /** Language of the count sentences (default "en"). */
+  lang?: UiLang;
   momentsThisWeek: number;
   momentsPrevWeek: number;
   planWins: number;
@@ -102,14 +106,22 @@ export function composeChildStory(i: ChildStoryInput): ChildStory {
   }
   if (rhythmBits.length) paragraphs.push(rhythmBits.join(" ") + ".");
 
+  // B-ASKJB-19 residue (law 1): "tracking {observed} of {total} milestones"
+  // was a denominator on a parent surface. Now two keyed count sentences
+  // (EN + HE): the milestones the parent noticed, and the small wins.
+  const lang: UiLang = i.lang ?? "en";
   const closers: string[] = [];
-  if (i.milestonesTotal > 0) {
-    closers.push(`Together you're tracking ${i.milestonesObserved} of ${i.milestonesTotal} milestones`);
+  if (i.milestonesObserved > 0) {
+    closers.push(i.milestonesObserved === 1
+      ? translate(lang, "story.milestones.one")
+      : translate(lang, "story.milestones.other", { n: i.milestonesObserved }));
   }
   if (i.planWins > 0) {
-    closers.push(`${closers.length ? "and " : "You've "}celebrated ${i.planWins} small win${i.planWins === 1 ? "" : "s"} along the way`);
+    closers.push(i.planWins === 1
+      ? translate(lang, "story.wins.one")
+      : translate(lang, "story.wins.other", { n: i.planWins }));
   }
-  if (closers.length) paragraphs.push(closers.join(", ") + ".");
+  if (closers.length) paragraphs.push(closers.join(" "));
 
   // Closing — the moat compounds.
   paragraphs.push(`Every memory you approve makes Arbor's guidance more truly about ${first}.`);

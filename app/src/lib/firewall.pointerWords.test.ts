@@ -260,3 +260,37 @@ describe("B-GROWTH-33 — no verdict word in any lib/i18n.ts value (FU#1)", () =
   });
 });
 
+
+/* Law 1 — child-record denominators on parent surfaces. A count of what the
+   parent noticed is allowed; "{n} of {total}" and "{n}/{total}" are not.
+   Scoped to the keys and sources these residues own (W1-CAREPRO extras):
+   · B-ASKJB-19 — lib/childStory.ts "tracking {observed} of {total} milestones" */
+const DENOMINATOR = /\{\w+\}\s*(of|\/|מתוך)\s*\{\w+\}|\d+\s*(of|\/|מתוך)\s*\d+/;
+const SRC_ROOT = path.resolve(__dirname, "..");
+
+describe("law 1 — no denominators on the Story card (B-ASKJB-19 residue)", () => {
+  const storyKeys = ["story.milestones.one", "story.milestones.other", "story.wins.one", "story.wins.other"];
+
+  it("the story count sentences exist in EN and HE and carry no denominator", () => {
+    for (const k of storyKeys) {
+      expect(dictEn[k], `en ${k}`).toBeTruthy();
+      expect(dictHe[k], `he ${k}`).toBeTruthy();
+      expect(DENOMINATOR.test(dictEn[k]), `en ${k}`).toBe(false);
+      expect(DENOMINATOR.test(dictHe[k]), `he ${k}`).toBe(false);
+      expect(/[A-Za-z]/.test(dictHe[k].replace(/\{\w+\}/g, "")), `he ${k} is Hebrew`).toBe(false);
+    }
+  });
+
+  it("childStory.ts builds no 'of ${total}' sentence and takes no total", () => {
+    const src = readFileSync(path.join(SRC_ROOT, "lib", "childStory.ts"), "utf8");
+    expect(src.length).toBeGreaterThan(2000);
+    expect(src).not.toMatch(/\} of \$\{/);
+    expect(src).not.toMatch(/^\s*milestonesTotal\s*:/m);
+  });
+
+  it("POSITIVE CONTROL — the pre-fix sentence and template trip the scan", () => {
+    expect(DENOMINATOR.test("Together you're tracking 4 of 10 milestones")).toBe(true);
+    expect(DENOMINATOR.test("{observed} of {total} milestones")).toBe(true);
+    expect(/\} of \$\{/.test("closers.push(`Together you're tracking ${i.milestonesObserved} of ${i.milestonesTotal} milestones`);")).toBe(true);
+  });
+});
