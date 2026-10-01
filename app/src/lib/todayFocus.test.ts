@@ -196,9 +196,29 @@ describe("ENG-07 — whyLineFor is built from real inputs", () => {
     expect(line).not.toMatch(/rhythm|goals|interests/);
   });
 
-  it("every real input is named when present", () => {
+  it("every real input is named when present — rhythm is not one (B-TODAY-04)", () => {
     const line = whyLineFor({ name: "Maya", recentCount: 9, confidence: "high", goals: 2, interests: 3 }, tEn);
-    expect(line).toBe("Chosen from recent moments, today's rhythm, age, your goals, interests.");
+    expect(line).toBe("Chosen from recent moments, age, your goals, interests.");
+  });
+
+  it("B-TODAY-04 — with rhythm confidence high, no rhythm key and no 'today's rhythm' / 'קצב היום' (EN + HE)", () => {
+    for (const confidence of ["medium", "high"]) {
+      const inp = { name: "Maya", recentCount: 9, confidence, goals: 2, interests: 3 };
+      expect(String(whyLineParts(inp).vars.list ?? "")).not.toContain("today.intent.why.rhythm");
+      expect(whyLineFor(inp, tEn)).not.toContain("today's rhythm");
+      expect(whyLineFor(inp, tHe)).not.toContain("קצב היום");
+    }
+  });
+
+  it("B-TODAY-04 — the prompt card's why-line is its own key and names no goals, interests or moments", () => {
+    expect(translate("en", "today.intent.why.prompt", { age: 4 })).toBe("A new question each day for 4-year-olds");
+    expect(translate("he", "today.intent.why.prompt", { age: 4 })).toBe("שאלה חדשה בכל יום לגיל 4");
+    for (const lang of ["en", "he"] as const) {
+      expect(translate(lang, "today.intent.why.prompt", { age: 4 })).not.toMatch(/goal|interest|moment|מטרות|תחומי עניין|רגע/i);
+    }
+    const src = read("components/tabs/OverviewTab.tsx");
+    expect(src).toMatch(/whyLine=\{todayChoice\.kind === "prompt" \? t\("today\.intent\.why\.prompt", \{ age: childProfile\.age \}\) : undefined\}/);
+    expect(src).not.toContain("whyLine={focusWhy}");
   });
 
   it("server-reported inputsUsed refines the count, but the LIVE ledger decides day-0 (OBJ-TODAY-02)", () => {
@@ -216,7 +236,7 @@ describe("ENG-07 — whyLineFor is built from real inputs", () => {
     const line = whyLineFor({ name: "מאיה", recentCount: 0, confidence: "none", goals: 0, interests: 0 }, tHe);
     expect(line).toContain("מאיה");
     expect(line).not.toMatch(/[A-Za-z]/);
-    for (const key of ["today.intent.why.list", "today.intent.why.day0", "today.intent.why.recent", "today.intent.why.rhythm", "today.intent.why.age", "today.intent.why.goals", "today.intent.why.interests", "today.intent.why.sep"]) {
+    for (const key of ["today.intent.why.list", "today.intent.why.day0", "today.intent.why.recent", "today.intent.why.prompt", "today.intent.why.age", "today.intent.why.goals", "today.intent.why.interests", "today.intent.why.sep"]) {
       expect(en[key], `en missing ${key}`).toBeTruthy();
       expect(he[key], `he missing ${key}`).toBeTruthy();
     }
@@ -267,7 +287,9 @@ describe("useTodaysFocus verdict-strip stays pinned (CODEX-2 firewall condition)
     expect(focusRoute).not.toContain("signals?.milestonesPercent");
     // The allowed flat inputs are still what the prompt uses.
     expect(focusRoute).toContain("${count}");
-    expect(focusRoute).toContain("${topTrigger");
+    // B-AI-03 renamed the interpolated trigger to `triggerSent` (only a
+    // trigger that is really sent is named); the flat-input rule is unchanged.
+    expect(focusRoute).toContain("${triggerSent");
   });
 });
 

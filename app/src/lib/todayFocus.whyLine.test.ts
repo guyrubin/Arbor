@@ -48,11 +48,13 @@ describe("OBJ-TODAY-02 — rhythm is named only when a rhythm read exists", () =
       .not.toContain("today.intent.why.rhythm");
   });
 
-  it("`medium` and `high` DO name it — the guard is not a blanket removal", () => {
+  it("B-TODAY-04: `medium` and `high` do NOT name it either — no rhythm reaches /todays-focus", () => {
     for (const confidence of ["medium", "high"]) {
       expect(String(whyLineParts({ ...base, recentCount: 4, confidence }).vars.list))
-        .toContain("today.intent.why.rhythm");
+        .not.toContain("today.intent.why.rhythm");
     }
+    expect(en["today.intent.why.rhythm"]).toBeUndefined();
+    expect(he["today.intent.why.rhythm"]).toBeUndefined();
   });
 
   it("negative control: the pre-fix rule (`confidence !== 'none'`) would have named it at low", () => {
@@ -67,7 +69,7 @@ describe("OBJ-TODAY-02 — rhythm is named only when a rhythm read exists", () =
   it("Hebrew takes the same path — no rhythm token, no English leak", () => {
     const line = whyLineFor({ ...base, name: "מאיה", recentCount: 4, confidence: "low" }, tHe);
     expect(line).not.toMatch(/[A-Za-z]/);
-    expect(line).not.toContain(he["today.intent.why.rhythm"]);
+    expect(line).not.toContain("קצב היום");
   });
 });
 
@@ -103,8 +105,9 @@ describe("OBJ-TODAY-02 — the prompt card stops asserting unused inputs", () =>
     expect(card).toMatch(/\{whyLine\s*&&\s*\(/);
   });
 
-  it("OverviewTab feeds it the SAME whyLineFor result the hero gets", () => {
-    expect(overview).toMatch(/whyLine=\{focusWhy\}/);
+  it("B-TODAY-04: OverviewTab feeds it its OWN prompt key; the hero keeps whyLineFor", () => {
+    expect(overview).toMatch(/whyLine=\{todayChoice\.kind === "prompt" \? t\("today\.intent\.why\.prompt"/);
+    expect(overview).not.toMatch(/whyLine=\{focusWhy\}/);
     expect(overview).toMatch(/why=\{focusWhy\}/);
     expect(overview).toMatch(/whyLineFor\(/);
   });

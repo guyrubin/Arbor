@@ -746,11 +746,11 @@ export default function OverviewTab() {
               promptKey={todayChoice.kind === "prompt" ? todayChoice.promptKey : null}
               childName={firstName}
               onCapture={() => { setQuickLogMode("text"); setQuickLogOpen(true); }}
-              /* OBJ-TODAY-02: the SAME derived why-line the focus hero mounts,
-                 not the authored `whySimple` claim. This card is the day-0
-                 surface, so it was the one asserting goals and interests on
-                 the screen that displayed neither. */
-              whyLine={focusWhy}
+              /* B-TODAY-04: the card's own why-line — a rotating question
+                 picked for the child's age. It names no goals, interests or
+                 moments (none of them choose the question); on the bare floor
+                 (no prompt) it says nothing. */
+              whyLine={todayChoice.kind === "prompt" ? t("today.intent.why.prompt", { age: childProfile.age }) : undefined}
             />
           )}
           {/* ENG-12: a step accepted yesterday and never reported on used to
@@ -760,10 +760,10 @@ export default function OverviewTab() {
               never a second gradient CTA, so Rule A's one-primary rule holds.
               It self-hides when there is nothing still open. */}
           <CarryOverActionAsk />
-          {/* ENG-11: the JITAI nudge reaches Today, not just the bell and Ask.
-              RhythmCue renders whatever the engine already decided — quiet
-              hours, the per-day ceiling and prefs all stay owned by the engine,
-              and it deliberately does not spend the shown-ledger here. */}
+          {/* ENG-11: the JITAI nudge reaches Today and Ask. RhythmCue renders
+              whatever the engine already decided — quiet hours, the per-day
+              ceiling and prefs stay owned by the engine; B-SHELL-02: it spends
+              the shown-ledger when the cue renders (idempotent per kind). */}
           <RhythmCue surface="today" />
           {/* N2-errfocus: a failed focus fetch used to degrade SILENTLY to the
               guaranteed-action fallback. The inline error renders ALONGSIDE the

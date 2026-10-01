@@ -76,7 +76,8 @@ export type WhyLineInputs = {
   name: string;
   /** Logged moments in the trailing 7 days. */
   recentCount: number;
-  /** rhythm/predict confidence — "none" means no rhythm read exists yet. */
+  /** rhythm/predict confidence. B-TODAY-04: not named in the why-line — the
+   *  client never sends a rhythm read to /todays-focus, so it is no input. */
   confidence: "none" | "low" | "medium" | "high" | string;
   /** Parent-expressed active goals (count). */
   goals: number;
@@ -103,11 +104,11 @@ export function whyLineParts(inp: WhyLineInputs): { key: string; vars: Record<st
   if (momentCount <= 0) return { key: "today.intent.why.day0", vars: { name: inp.name } };
   const parts: string[] = [];
   parts.push("today.intent.why.recent");
-  // OBJ-TODAY-02: "today's rhythm" is a claim about a read the app has. At
-  // `low` the same screen says "7 more days of moments and Arbor can start
-  // reading Dylan's daily rhythm" — naming rhythm as an input there is the
-  // page contradicting itself. Only a medium/high read earns the word.
-  if (inp.confidence === "medium" || inp.confidence === "high") parts.push("today.intent.why.rhythm");
+  // B-TODAY-04: "today's rhythm" is never named. useTodaysFocus sends count,
+  // top trigger and the last action — no rhythm field — and the /todays-focus
+  // prompt never mentions one, so naming it (even at medium/high confidence)
+  // claimed an input the model never saw. It returns when B-24 really passes
+  // rhythm to the server.
   parts.push("today.intent.why.age");
   if (inp.goals > 0) parts.push("today.intent.why.goals");
   if (inp.interests > 0) parts.push("today.intent.why.interests");
