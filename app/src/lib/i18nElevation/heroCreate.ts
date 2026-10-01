@@ -70,6 +70,8 @@ export const en: Record<string, string> = {
   "elev.hero.step.body": "Worlds, stories and comics are drawn around {name}'s illustrated character — never around a real photo.",
   "elev.hero.step.create": "Create {name}'s hero",
   "elev.hero.step.continue": "Continue with Sprout",
+  // B-KID-05: image quota spent for today — honest, no "try again in a moment".
+  "elev.hero.resting": "Hero drawing is resting today; Sprout will star.",
 
   // ── Write honesty ─────────────────────────────────────────────────────────
   "elev.hero.save.failed": "We couldn't save that hero. Check your connection and try again.",
@@ -124,6 +126,7 @@ export const he: Record<string, string> = {
   "elev.hero.step.body": "העולמות, הסיפורים והקומיקס מצוירים סביב הדמות המאוירת של {name} — לא סביב תמונה אמיתית.",
   "elev.hero.step.create": "צרו את הגיבור של {name}",
   "elev.hero.step.continue": "המשיכו עם ספראוט",
+  "elev.hero.resting": "ציור הגיבורים נח היום — ספראוט יככב.",
 
   "elev.hero.save.failed": "לא הצלחנו לשמור את הגיבור. בדקו את החיבור ונסו שוב.",
   "elev.hero.saveProfile.failed": "לא הצלחנו לשמור את השינויים. בדקו את החיבור ונסו שוב.",

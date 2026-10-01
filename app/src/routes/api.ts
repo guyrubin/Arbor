@@ -59,6 +59,7 @@ import {
   type VerifiedEmailResolver,
 } from "../server/digestOptIn.js";
 import { buildConsultRequest, type ConsultStore } from "../server/consultRequests.js";
+import { imageFailureResponse } from "../server/imageQuota.js";
 import { resolveEntitlement, COACH_METER, type EntitlementStore } from "../server/entitlements.js";
 import type { ReferralStore } from "../server/referral.js";
 import { scoreChildUtterance, childAsrConfigured, NotConfiguredError } from "../server/childAsr.js";
@@ -359,13 +360,12 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   // Per-child authorization (closes the IDOR on child-scoped reads/erasure).
   const requireOwnership = requireChildOwnership(memoryStore);
   const sendImageFailure = (res: express.Response, error: unknown, fallback: string): void => {
-    if (isTransientModelError(error)) {
-      res.setHeader("Retry-After", "15");
-      res.status(503).json({ error: "Image creation is busy. Please try again in a moment.", retryable: true });
-      return;
-    }
+    // B-KID-05: quota exhaustion → 429 image_resting (no Retry-After);
+    // transient → 503 + Retry-After 15; anything else → 500 with the fallback.
     // Provider diagnostics stay in server logs, never in parent-facing copy.
-    res.status(500).json({ error: fallback });
+    const out = imageFailureResponse(error, isTransientModelError, fallback);
+    if (out.retryAfter) res.setHeader("Retry-After", out.retryAfter);
+    res.status(out.status).json(out.body);
   };
   const sendScreenedJson = async (res: express.Response, payload: unknown): Promise<void> => {
     const verdict = await screenStructuredModelOutput(modelProvider, payload);

@@ -107,6 +107,14 @@ export type HandoffMilestoneInput = { domain: string; title: string };
 /** B-CAREPRO-10: POST /shares 409 code — the owner's co-parent seat is in use. */
 export const SEAT_IN_USE = "seat_in_use";
 
+/** B-KID-05: image endpoints' 429 code — today's drawing quota is spent
+ *  (server/imageQuota.ts). Not "busy": no Retry-After, nothing to retry today. */
+export const IMAGE_RESTING = "image_resting";
+
+/** True for the image-quota "resting" refusal (matched by code, never by copy). */
+export const isImageResting = (err: unknown): boolean =>
+  err instanceof ApiError && err.status === 429 && err.message === IMAGE_RESTING;
+
 /** `Retry-After` in seconds, or undefined when absent/not a number. */
 function retryAfterOf(res: { headers: { get(name: string): string | null } }): number | undefined {
   const raw = res.headers.get("Retry-After");
@@ -142,6 +150,10 @@ async function request<T>(url: string, method: string, body?: unknown, signal?: 
     // including a body that cannot be parsed — still escalates.
     if (res.status === 409 && errData?.error === SEAT_IN_USE) {
       throw new ApiError(SEAT_IN_USE, 409);
+    }
+    // B-KID-05: image quota exhaustion carries its own code and no retry hint.
+    if (res.status === 429 && errData?.code === IMAGE_RESTING) {
+      throw new ApiError(IMAGE_RESTING, 429);
     }
     if (res.status === 409) {
       // Server escalation contract (see routes/api.ts): 409 == a safety trigger

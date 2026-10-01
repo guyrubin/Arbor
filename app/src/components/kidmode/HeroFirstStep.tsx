@@ -50,6 +50,9 @@ export default function HeroFirstStep({
   const { t } = useLanguage();
   const [creatorOpen, setCreatorOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  // B-KID-05: today's drawing quota is spent. Say so, drop the create door
+  // (nothing to retry today), and keep "Continue with Sprout" — never blocked.
+  const [resting, setResting] = useState(false);
 
   const saveHero = async (result: AvatarResult) => {
     setSaving(true);
@@ -72,10 +75,17 @@ export default function HeroFirstStep({
           <p className="text-sm mb-5 max-w-md mx-auto" style={{ color: "var(--arbor-muted)" }} dir="auto">
             {t("elev.hero.step.body", { name: childName })}
           </p>
+          {resting && (
+            <p data-testid="hero-step-resting" role="status" className="text-sm font-bold mb-4 max-w-md mx-auto" style={{ color: "var(--arbor-ink)" }} dir="auto">
+              {t("elev.hero.resting")}
+            </p>
+          )}
           <div className="flex flex-col items-center gap-3">
-            <PlayButton tone="clay" onClick={() => setCreatorOpen(true)} disabled={saving}>
-              <Icon name="auto_awesome" size={16} /> {t("elev.hero.step.create", { name: childName })}
-            </PlayButton>
+            {!resting && (
+              <PlayButton tone="clay" onClick={() => setCreatorOpen(true)} disabled={saving}>
+                <Icon name="auto_awesome" size={16} /> {t("elev.hero.step.create", { name: childName })}
+              </PlayButton>
+            )}
             <button
               type="button"
               data-testid="hero-step-continue"
@@ -98,6 +108,10 @@ export default function HeroFirstStep({
         childId={childId}
         childName={childName}
         onClose={() => setCreatorOpen(false)}
+        onResting={() => {
+          setResting(true);
+          setCreatorOpen(false);
+        }}
         onCreated={(result) => {
           setCreatorOpen(false);
           void saveHero(result);

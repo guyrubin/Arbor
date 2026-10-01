@@ -3,7 +3,7 @@ import { useDialog } from "../../hooks/useDialog";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Sparkles, Camera, Wand2, ShieldCheck, Crown, Shield, Compass, Pencil, Eraser } from "lucide-react";
-import { api, type AvatarStyle, type AvatarDescriptors, type AvatarCharacterIntent } from "../../lib/api";
+import { api, isImageResting, type AvatarStyle, type AvatarDescriptors, type AvatarCharacterIntent } from "../../lib/api";
 import { fileToThumbnail, shrinkDataUrlToBudget } from "../../lib/image";
 import { useAsyncAction } from "../../hooks/useAsyncAction";
 import { useArborOptional } from "../../context/ArborContext";
@@ -56,6 +56,7 @@ export default function AvatarCreator({
   childName,
   onClose,
   onCreated,
+  onResting,
   parentDialogRef,
 }: {
   open: boolean;
@@ -63,6 +64,9 @@ export default function AvatarCreator({
   childName: string;
   onClose: () => void;
   onCreated: (result: AvatarResult) => void;
+  /** B-KID-05: today's image quota is spent (429 image_resting). The host
+   *  (HeroFirstStep) closes the creator and offers Sprout — no retry loop. */
+  onResting?: () => void;
   parentDialogRef?: React.RefObject<HTMLElement | null>;
 }) {
   const [mode, setMode] = useState<"describe" | "photo">("describe");
@@ -105,6 +109,15 @@ export default function AvatarCreator({
     },
     {
       fallbackError: t("gen.avatar.fail"),
+      // B-KID-05: a spent image quota says so ("resting today; Sprout will
+      // star") instead of the server string; the host may close the creator.
+      toMessage: (err) => {
+        if (isImageResting(err)) {
+          onResting?.();
+          return t("elev.hero.resting");
+        }
+        return err instanceof Error && err.message ? err.message : t("gen.avatar.fail");
+      },
       onPaywall: arbor ? (err) => arbor.openPaywall(err.feature || "avatarGenerate", err.plan) : undefined,
     },
   );
