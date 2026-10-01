@@ -14,11 +14,9 @@ import DevScoreCard from "../sections/DevScoreCard";
 import PhysicalGrowthCard from "../sections/PhysicalGrowthCard";
 import ScreeningSheet from "../sections/ScreeningSheet";
 import { SpineRibbon } from "../ui/SpineRibbon";
-import { DOMAIN_META } from "../../practice/content";
-
-/** OBJ-GROWTH-01 — the ONE domain count. Every surface that names "how many
- *  areas Arbor tracks" derives it from DOMAIN_META; nothing hard-codes it. */
-const DOMAIN_COUNT = Object.keys(DOMAIN_META).length;
+// B-GROWTH-01 — "areas of N" counted in ONE vocabulary: the milestone domains
+// inside the child's age window (numerator and denominator from one array).
+import { domainCountsIn } from "../../lib/domainCount";
 import { en as fullPictureEn, he as fullPictureHe } from "../../lib/i18nElevation/fullpicture";
 import { tGCare } from "../../lib/growthCareText";
 // GP-34 — the thing the parent chose to watch for after a Development Check.
@@ -191,11 +189,13 @@ export default function DevelopmentTab() {
   const heroStats = useMemo(() => {
     const inWindow = ageWindowMilestones(milestones, comparisonMonths);
     const noticed = inWindow.filter((m) => m.checked).length;
-    const domainsActive = new Set(milestones.filter((m) => m.checked).map((m) => m.domain)).size;
+    // B-GROWTH-01: both domain numbers from the SAME windowed array — the
+    // numerator can never exceed the denominator ("6 areas of 5" is gone).
+    const { active: domainsActive, total: domainsTotal } = domainCountsIn(inWindow);
     const nowMs = Date.now();
     const weekAgo = nowMs - WEEK_MS;
     const momentsWeek = countSince(behaviorLogs, weekAgo, nowMs) + countSince(playLogs, weekAgo, nowMs);
-    return { noticed, total: inWindow.length, domainsActive, momentsWeek };
+    return { noticed, total: inWindow.length, domainsActive, domainsTotal, momentsWeek };
   }, [milestones, comparisonMonths, behaviorLogs, playLogs]);
 
   // GP-06 — THE primary move of this hub, performed ON this hub. The Growth
@@ -303,10 +303,9 @@ export default function DevelopmentTab() {
           }}
           stats={[
             { value: heroStats.noticed, label: t("elev.hero.growth.stat.noticed", { total: heroStats.total }) },
-            // OBJ-GROWTH-01: one count, derived from DOMAIN_META — the same
-            // source the Full Picture teaser below already reads. The literal
-            // "(of 7)" that used to sit in the dictionary was true nowhere.
-            { value: heroStats.domainsActive, label: t("elev.hero.growth.stat.domains", { n: heroStats.domainsActive, total: DOMAIN_COUNT }) },
+            // B-GROWTH-01: numerator and denominator both count milestone
+            // domains in the child's age window (one vocabulary, n ≤ total).
+            { value: heroStats.domainsActive, label: t("elev.hero.growth.stat.domains", { n: heroStats.domainsActive, total: heroStats.domainsTotal }) },
             { value: heroStats.momentsWeek, label: t("elev.hero.growth.stat.week") },
           ]}
           // RUN-08: day-0 teach line instead of "0 · 0 · 0".
@@ -456,11 +455,10 @@ export default function DevelopmentTab() {
                 {tFP(uiLang, "elev.fullpicture.title")}
               </h2>
               <span className="inline-flex flex-shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-extrabold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
-                {/* OBJ-GROWTH-01 / R1: through the SHARED `t`, not the local
-                    tFP — tFP interpolates {var} but cannot resolve {plural},
-                    so the teaser was the one surface whose count could not
-                    agree with its own noun. Same DOMAIN_COUNT as the hero. */}
-                {t("elev.fullpicture.card.teaser", { n: DOMAIN_COUNT })}
+                {/* B-GROWTH-01: the teaser carries NO number — "5 areas
+                    covered" counted a vocabulary the Full Picture does not
+                    render (≤4 rows). Numberless until B-GROWTH-22 removes the card. */}
+                {t("elev.fullpicture.card.teaser")}
               </span>
             </div>
             <p className="mt-1 max-w-2xl break-words text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>

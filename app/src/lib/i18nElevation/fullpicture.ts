@@ -45,7 +45,7 @@ export const en: Record<string, string> = {
   // ── Development-hub entry card (IA canon: a CARD on the hub's Now region)
   "elev.fullpicture.card.promise": "Everything Arbor sees about {name}, in one calm place",
   "elev.fullpicture.card.promise.generic": "Everything Arbor sees about your child, in one calm place",
-  "elev.fullpicture.card.teaser": "{n} area{plural} covered",
+  "elev.fullpicture.card.teaser": "Every area, side by side",
   "elev.fullpicture.card.cta": "Open the full picture",
 };
 
@@ -67,6 +67,6 @@ export const he: Record<string, string> = {
 
   "elev.fullpicture.card.promise": "כל מה שארבור רואה על {name}, במקום רגוע אחד",
   "elev.fullpicture.card.promise.generic": "כל מה שארבור רואה על הילד או הילדה שלכם, במקום רגוע אחד",
-  "elev.fullpicture.card.teaser": "{n} תחומים בתמונה",
+  "elev.fullpicture.card.teaser": "כל התחומים, זה לצד זה",
   "elev.fullpicture.card.cta": "לתמונה המלאה",
 };
