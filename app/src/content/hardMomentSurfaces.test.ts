@@ -207,7 +207,7 @@ describe("CONT-2/CODEX-5 — surfaces consume gated selectors and existing seams
 
   it("Today offer goes through the EXISTING acceptTodayAction seam — no new capture path", () => {
     const code = stripComments(read("components/overview/HardMomentTodayOffer.tsx"));
-    expect(code).toContain('acceptTodayAction(locText(current.doNow, locale), "standard")');
+    expect(code).toContain('acceptTodayAction(locText(current.doNow, locale), "standard", "hard-moment")');
     expect(code).not.toMatch(/handleAddLog|upsert|firestore|setDoc/i);
     // OverviewTab mounts it inside the day-anchor column.
     expect(stripComments(read("components/tabs/OverviewTab.tsx"))).toContain("<HardMomentTodayOffer />");

@@ -68,7 +68,7 @@ export function buildSinceVisitRows(input: {
   /** TJB-05: the actionLoops ledger. Optional so existing callers compile. */
   actions?: ReadonlyArray<{
     id: string;
-    status: "accepted" | "completed";
+    status: "accepted" | "completed" | "superseded";
     acceptedAt: string;
     outcomeAt?: string;
   }>;

@@ -266,7 +266,7 @@ describe("use-time applicability and real Today action callbacks", () => {
     const onClick = button(HardMomentTodayOffer())?.props.onClick;
     expect(onClick).toBeTypeOf("function");
     onClick!();
-    expect(ui.acceptTodayAction).toHaveBeenLastCalledWith(find("hitting").doNow.en, "standard");
+    expect(ui.acceptTodayAction).toHaveBeenLastCalledWith(find("hitting").doNow.en, "standard", "hard-moment");
     ui.acceptTodayAction.mockClear();
     const card = find("hitting"), original = structuredClone(card);
     try {

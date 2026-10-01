@@ -21,7 +21,9 @@
 
 export type CarryOverEntry = {
   id: string;
-  status: "accepted" | "completed";
+  /** B-AI-05: `superseded` rows (replaced by a newer accept) never ask. Every
+   *  ActionSource asks — coach, plan, vision and hard-moment steps included. */
+  status: "accepted" | "completed" | "superseded";
   acceptedAt: string;
   recommendation: string;
 };
@@ -48,7 +50,9 @@ export function selectCarryOverAction<T extends CarryOverEntry>(
   let bestAt = -Infinity;
   for (const entry of entries) {
     if (entry.status !== "accepted") continue;
-    if (entry.id === todayId) continue;
+    // Today's rows — the base id and its B-AI-05 `.{n}` history suffixes —
+    // belong to the live card, not to the carry-over question.
+    if (entry.id === todayId || entry.id.startsWith(`${todayId}.`)) continue;
     if (skipped.has(entry.id)) continue;
     if (!entry.recommendation?.trim()) continue;
     const at = Date.parse(entry.acceptedAt);

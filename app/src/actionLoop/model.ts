@@ -10,14 +10,46 @@ export type ActionOutcome = "helped" | "somewhat" | "not_today";
 /** LC-22 adds `family-ritual`: the first step of a Family Formation ritual,
  *  accepted by the parent from that surface. Same class as `learn-read` —
  *  authored curriculum the parent chose, not fallback copy TODAY-1 bans. */
-export type ActionSource = "today-guidance" | "digest" | "learn-read" | "family-ritual";
+/** B-AI-05 adds the companion sources: `coach` (an Ask answer card),
+ *  `plan` (a plan step), `vision` (a vision result) and `hard-moment` (the
+ *  hard-moment offer on Today and the "Hard moment now" sheet). The controls
+ *  live in the screen lanes (B-ASKJB-04 / -26 / -31); this module owns the
+ *  ledger they write through. */
+export type ActionSource =
+  | "today-guidance"
+  | "digest"
+  | "learn-read"
+  | "family-ritual"
+  | "coach"
+  | "plan"
+  | "vision"
+  | "hard-moment";
+
+/** Runtime registry of every ActionSource. The mapped type fails to compile
+ *  when a source is added to the union and not listed here (exhaustiveness
+ *  guard: signalTimeline.actionThread.test.ts). */
+const ACTION_SOURCE_MAP: { [K in ActionSource]: true } = {
+  "today-guidance": true,
+  digest: true,
+  "learn-read": true,
+  "family-ritual": true,
+  coach: true,
+  plan: true,
+  vision: true,
+  "hard-moment": true,
+};
+export const ACTION_SOURCES = Object.keys(ACTION_SOURCE_MAP) as readonly ActionSource[];
+
+/** `superseded` (B-AI-05): an unrated step the parent replaced with a newer
+ *  accept. The row stays in the ledger (history), it just stops asking. */
+export type ActionStatus = "accepted" | "completed" | "superseded";
 
 export interface ActionLoopEntry {
   id: string;
   recommendation: string;
   source: ActionSource;
   capacity: ActionCapacity;
-  status: "accepted" | "completed";
+  status: ActionStatus;
   acceptedAt: string;
   outcome?: ActionOutcome;
   outcomeAt?: string;
@@ -34,7 +66,54 @@ export function todayActionId(childId: string, at = new Date()): string {
   return `today.${childId}.${dayKey(at)}`;
 }
 
-export function sortActionLoop(items: ActionLoopEntry[]): ActionLoopEntry[] {
+/** True for the day's base id and its `.{n}` history suffixes (B-AI-05). */
+export function isTodayActionId(id: string, todayId: string): boolean {
+  return id === todayId || id.startsWith(`${todayId}.`);
+}
+
+/** The first free id for a new accept today: the base id while it is unused,
+ *  else `{base}.{n}` (n ≥ 2). B-AI-05: a second accept the same day used to
+ *  overwrite the first — including a step whose outcome was already recorded. */
+export function nextTodayActionId(items: readonly ActionLoopEntry[], todayId: string): string {
+  const taken = new Set(items.map((item) => item.id));
+  if (!taken.has(todayId)) return todayId;
+  let n = 2;
+  while (taken.has(`${todayId}.${n}`)) n += 1;
+  return `${todayId}.${n}`;
+}
+
+/** B-AI-05 — what an accept writes. Never overwrites an existing row (so a
+ *  completed outcome survives); keeps at most ONE `accepted` row per child:
+ *  every other still-unrated row becomes `superseded`. Pure: the caller
+ *  persists `entry` and each row in `superseded`. */
+export function planAcceptedAction(
+  items: readonly ActionLoopEntry[],
+  input: { recommendation: string; source: ActionSource; capacity: ActionCapacity },
+  todayId: string,
+  at: Date = new Date(),
+): { entry: ActionLoopEntry; superseded: ActionLoopEntry[] } {
+  const entry: ActionLoopEntry = {
+    id: nextTodayActionId(items, todayId),
+    recommendation: input.recommendation.trim(),
+    source: input.source,
+    capacity: input.capacity,
+    status: "accepted",
+    acceptedAt: at.toISOString(),
+  };
+  const superseded = items
+    .filter((item) => item.status === "accepted" && !item.outcome)
+    .map((item) => ({ ...item, status: "superseded" as const }));
+  return { entry, superseded };
+}
+
+/** Today's live step: the newest non-superseded row of today's day key. */
+export function activeActionFor(items: readonly ActionLoopEntry[], todayId: string): ActionLoopEntry | null {
+  return (
+    sortActionLoop(items.filter((item) => item.status !== "superseded" && isTodayActionId(item.id, todayId)))[0] ?? null
+  );
+}
+
+export function sortActionLoop(items: readonly ActionLoopEntry[]): ActionLoopEntry[] {
   return [...items].sort((a, b) => b.acceptedAt.localeCompare(a.acceptedAt));
 }
 

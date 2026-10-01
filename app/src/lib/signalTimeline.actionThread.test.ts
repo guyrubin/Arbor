@@ -24,7 +24,7 @@ import {
   TIMELINE_SOURCE_IDS,
 } from "./signalTimeline";
 import { SURFACE_CONTRACTS } from "./surfaceContract";
-import type { ActionLoopEntry } from "../actionLoop/model";
+import { ACTION_SOURCES, type ActionLoopEntry } from "../actionLoop/model";
 import { en as closeloopEn, he as closeloopHe } from "./i18nElevation/closeloop";
 
 /** Echoing translator: renders the key + vars so assertions read structurally. */
@@ -136,5 +136,28 @@ describe("TJB-05 — the source is registered and the contract admits it", () =>
       if (c.threadWrite === "none" || c.threadWrite === "consented") continue;
       expect(TIMELINE_SOURCE_IDS, `${c.route} → ${c.threadWrite}`).toContain(c.threadWrite);
     }
+  });
+});
+
+describe("B-AI-05 — every ActionSource writes the thread", () => {
+  it("ACTION_SOURCES lists the companion sources (exhaustive over the union)", () => {
+    expect([...ACTION_SOURCES].sort()).toEqual(
+      ["coach", "digest", "family-ritual", "hard-moment", "learn-read", "plan", "today-guidance", "vision"],
+    );
+  });
+
+  it("each source folds to exactly one action row with the step's words", () => {
+    for (const source of ACTION_SOURCES) {
+      const rows = buildTimeline({ actionOutcomes: [{ ...accepted, id: `today.child-1.2026-09-04.${source}`, source }] });
+      expect(rows, source).toHaveLength(1);
+      expect(rows[0].kind).toBe("action");
+      expect(signalDetail(rows[0], t)).toBe(accepted.recommendation);
+    }
+  });
+
+  it("a superseded row stays in the thread as an accepted step (history, not a verdict)", () => {
+    const rows = buildTimeline({ actionOutcomes: [{ ...accepted, status: "superseded" }] });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].actionStatus).toBe("accepted");
   });
 });

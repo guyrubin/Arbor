@@ -47,7 +47,7 @@ import { isLearnPilotCard } from "../learn/learnPilotRelease";
 import { concernsForBehaviors } from "../content/selectCards";
 import { ageYearsFromProfile, ageMonthsFromProfile } from "../lib/childAge";
 import { ageWindowMilestones, comparisonAgeMonths } from "../lib/milestoneData";
-import { sortActionLoop, todayActionId } from "../actionLoop/model";
+import { activeActionFor, planAcceptedAction, sortActionLoop, todayActionId } from "../actionLoop/model";
 import { appendVoiceUser, applyVoiceDelta, settleVoiceTurn } from "../lib/voiceTranscript";
 import type { ConversationChangeRecord, ConversationProposal } from "../lib/conversationProposals";
 import { appendChatUser, appendChatAck, applyChatDelta, settleChatTurn, abortChatStream, hasUserTurn } from "../lib/chatStream";
@@ -407,14 +407,18 @@ function useArborState() {
   const donePlayIds = useMemo(() => playLogs.map((p) => p.activityId), [playLogs]);
   const actionLoop = useMemo(() => sortActionLoop(actionLoopCol.items), [actionLoopCol.items]);
   const activeTodayAction = useMemo(
-    () => actionLoop.find((entry) => entry.id === todayActionId(childProfile.id)) ?? null,
+    () => activeActionFor(actionLoop, todayActionId(childProfile.id)),
     [actionLoop, childProfile.id]
   );
   // AIX-S6: `source` carries provenance — "today-guidance" (default) or
   // "digest" (the weekly digest's AI-generated tryThisWeek text). Callers own
   // the TODAY-1 guard: only model-generated focus text may reach this seam.
+  // B-AI-05: an accept never overwrites a row (a completed outcome survives;
+  // the new row takes a `.{n}` id) and keeps ≤1 `accepted` row per child —
+  // an older unrated step becomes `superseded` (history, no longer asked).
   const acceptTodayAction = (recommendation: string, capacity: ActionCapacity, source: ActionLoopEntry["source"] = "today-guidance") => {
-    const item: ActionLoopEntry = { id: todayActionId(childProfile.id), recommendation: recommendation.trim(), source, capacity, status: "accepted", acceptedAt: new Date().toISOString() };
+    const { entry: item, superseded } = planAcceptedAction(actionLoop, { recommendation, source, capacity }, todayActionId(childProfile.id));
+    for (const old of superseded) void actionLoopCol.upsert(old);
     void actionLoopCol.upsert(item);
     try { track("today_action_accepted", { capacity, source }); } catch { /* noop */ }
   };

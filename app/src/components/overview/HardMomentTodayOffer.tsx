@@ -55,7 +55,7 @@ export default function HardMomentTodayOffer() {
           <button type="button" onClick={() => {
             const current = availableHardMomentCards(contextFor()).find((card) => card.id === offer.card.id);
             if (!current) return;
-            acceptTodayAction(locText(current.doNow, locale), "standard");
+            acceptTodayAction(locText(current.doNow, locale), "standard", "hard-moment");
           }}
             className="mt-3 inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-xl px-4 py-3 text-sm font-bold transition"
             // Transparent on a white card, so this border is the ONLY thing
