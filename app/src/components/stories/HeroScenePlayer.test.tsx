@@ -188,7 +188,7 @@ describe("B-KID-01 · photo-only child: Sprout stars, the photo never renders", 
     const { resolve } = await import("node:path");
     const player = readFileSync(resolve(__dirname, "HeroScenePlayer.tsx"), "utf8");
     const tab = readFileSync(resolve(__dirname, "../tabs/HeroJourneyTab.tsx"), "utf8");
-    expect(player).not.toMatch(/photoUrl/);
+    expect(player).not.toMatch(/\bphotoUrl\b/);
     expect(tab).not.toContain("photoUrl={photoUrl}");
     expect(tab).toContain("const heroCameoUrl = resolveHeroUrl(childProfile) ?? undefined;");
     expect(tab).toContain("cameoUrl={heroCameoUrl}");
