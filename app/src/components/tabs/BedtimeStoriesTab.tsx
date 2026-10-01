@@ -29,6 +29,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
 import { api, EscalationRequiredError } from "../../lib/api";
 import { isolate } from "../../lib/i18n";
+import { bedtimePrefill } from "../../lib/bedtimeStories";
 import type { BedtimeStory } from "../../types";
 import { cardCls } from "../ui/kit";
 import { ShareButton } from "../ui/ShareButton";
@@ -51,20 +52,19 @@ const emptyEvent = (): LocalDayEvent => ({
 
 export default function BedtimeStoriesTab() {
   const { childProfile, behaviorLogs, addMoment } = useArbor();
-  const { aiLang, t } = useLanguage();
+  const { aiLang, uiLang, t } = useLanguage();
   const { toast } = useToast();
-  const he = aiLang === "he";
+  // B-PLAY-13: the page's chrome follows the UI language; only the story
+  // request (and its read-aloud) keeps aiLang.
+  const he = uiLang === "he";
 
-  // Pre-seed from today's behavior logs (most recent 3) so parents aren't staring
-  // at a blank form. The parent can edit/remove before generating.
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const todayLogs = behaviorLogs
-    .filter((l) => l.timestamp?.startsWith(todayStr))
-    .slice(0, 3)
-    .map((l): LocalDayEvent => ({
-      id: `log-${l.id}`,
-      description: [l.behaviorType, l.trigger].filter(Boolean).join(" — "),
-    }));
+  // Pre-seed from today's record so parents aren't staring at a blank form.
+  // B-PLAY-13: the parent's LOCAL day (never the UTC slice), moments as their
+  // own words, at most one incident by its localized label. Editable before
+  // generating.
+  const todayLogs = bedtimePrefill(behaviorLogs, new Date(), t).map(
+    (p): LocalDayEvent => ({ id: `log-${p.id}`, description: p.description }),
+  );
 
   const [events, setEvents] = useState<LocalDayEvent[]>(
     todayLogs.length > 0 ? todayLogs : [emptyEvent()]

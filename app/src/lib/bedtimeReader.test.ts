@@ -110,3 +110,41 @@ describe("KID-10 · residue: no cover was added", () => {
     expect(src).not.toContain("WorldScene");
   });
 });
+
+describe("B-PLAY-13 · the prefill tells the truth about today", () => {
+  const t = (k: string) => (k === "beh.type.sensory" ? "עומס חושי" : k);
+  const now = new Date();
+  const at = (minsAgo: number) => new Date(now.getTime() - minsAgo * 60_000).toISOString();
+
+  it("a moment prefills exactly its own words — no 'Moment —' prefix", async () => {
+    const { bedtimePrefill } = await import("./bedtimeStories");
+    const lines = bedtimePrefill([{ id: "a", timestamp: at(0), behaviorType: "Moment", trigger: "she said butterfly" }], now, t);
+    expect(lines).toEqual([{ id: "a", description: "she said butterfly" }]);
+  });
+
+  it("at most one incident joins, by its localized label; three lines at most", async () => {
+    const { bedtimePrefill } = await import("./bedtimeStories");
+    const logs = [
+      { id: "i1", timestamp: at(0), behaviorType: "Sensory Overload", trigger: "loud mall" },
+      { id: "i2", timestamp: at(0), behaviorType: "Sibling Conflict", trigger: "toy" },
+      { id: "m1", timestamp: at(0), behaviorType: "Moment", trigger: "one" },
+      { id: "m2", timestamp: at(0), behaviorType: "Moment", trigger: "two" },
+      { id: "m3", timestamp: at(0), behaviorType: "Moment", trigger: "three" },
+    ];
+    const lines = bedtimePrefill(logs, now, t);
+    expect(lines.map((l) => l.description)).toEqual(["עומס חושי — loud mall", "one", "two"]);
+    expect(lines.some((l) => /Sensory Overload|Sibling/.test(l.description))).toBe(false);
+  });
+
+  it("the page reads its prefill from the helper — no UTC day slice, no type join", () => {
+    expect(src).toContain("bedtimePrefill(behaviorLogs, new Date(), t)");
+    expect(src).not.toMatch(/toISOString\(\)\.slice\(0,\s*10\)/);
+    expect(src).not.toMatch(/\[l\.behaviorType, l\.trigger\]/);
+  });
+
+  it("chrome follows uiLang; the story request and read-aloud keep aiLang", () => {
+    expect(src).toMatch(/const he = uiLang === "he";/);
+    expect(src).not.toMatch(/const he = aiLang === "he"/);
+    expect(src).toMatch(/language: aiLang,/);
+  });
+});

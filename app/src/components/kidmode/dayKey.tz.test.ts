@@ -25,6 +25,7 @@ import { describe, expect, it, afterAll } from "vitest";
 import { dayKey } from "../../practice/signals";
 import { lastPlayedWorldYesterday, dayBefore, type GreetingLedgers } from "./kidGreeting";
 import { todayActionId } from "../../actionLoop/model";
+import { bedtimePrefill } from "../../lib/bedtimeStories";
 
 const ORIGINAL_TZ = process.env.TZ;
 afterAll(() => {
@@ -100,5 +101,36 @@ describe("OBJ-TODAY-03 — todayActionId is a local day key", () => {
     expect(withTZ("Europe/Brussels", () => todayActionId("child-1", new Date("2026-07-22T18:00:00Z")))).toBe(
       "today.child-1.2026-07-22",
     );
+  });
+});
+
+describe("B-PLAY-13 — the Bedtime prefill reads the parent's local day", () => {
+  const t = (k: string) => k;
+  /** A moment logged tonight at 00:20 local (22:20 Z on 6 Sep under IDT/CEST). */
+  const MOMENT_TONIGHT = { id: "m1", timestamp: "2026-09-06T22:20:00Z", behaviorType: "Moment", trigger: "she said butterfly" };
+
+  it.each(ZONES)("%s: at 00:30 local, a moment from 00:20 still prefills", (tz) => {
+    const lines = withTZ(tz, () => bedtimePrefill([MOMENT_TONIGHT], new Date(TONIGHT), t));
+    expect(lines.map((l) => l.description)).toEqual(["she said butterfly"]);
+  });
+
+  it.each(ZONES)("%s: yesterday's moment does not prefill tonight", (tz) => {
+    const old = { ...MOMENT_TONIGHT, id: "m0", timestamp: "2026-09-05T20:00:00Z" };
+    expect(withTZ(tz, () => bedtimePrefill([old], new Date(TONIGHT), t))).toEqual([]);
+  });
+
+  it.each(ZONES)("%s: at 00:30 local, last evening's moment is not 'today'", (tz) => {
+    const lastEvening = { ...MOMENT_TONIGHT, id: "m-1", timestamp: "2026-09-06T17:00:00Z" };
+    expect(withTZ(tz, () => bedtimePrefill([lastEvening], new Date(TONIGHT), t))).toEqual([]);
+  });
+
+  it("negative control — the pre-fix UTC slice mis-files both cases", () => {
+    const preFix = (ts: string, now: Date) => ts.startsWith(now.toISOString().slice(0, 10));
+    // Next morning (10:00 IDT, 7 Sep): the 00:20 moment is missed by the UTC slice …
+    const morning = new Date("2026-09-07T07:00:00Z");
+    expect(preFix(MOMENT_TONIGHT.timestamp, morning)).toBe(false);
+    expect(withTZ("Asia/Jerusalem", () => bedtimePrefill([MOMENT_TONIGHT], morning, t))).toHaveLength(1);
+    // … and at 00:30 local it counted last evening (20:00 IDT, 6 Sep) as today.
+    expect(preFix("2026-09-06T17:00:00Z", new Date(TONIGHT))).toBe(true);
   });
 });

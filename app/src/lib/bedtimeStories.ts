@@ -15,6 +15,54 @@
  */
 
 import { isolate } from "./i18n";
+import { localDayKey } from "./firstsKeepsake";
+import { MOMENT_BEHAVIOR_TYPE, behaviorTypeLabel } from "../content/behaviorTaxonomy";
+
+/** One prefilled line of the bedtime form (B-PLAY-13). */
+export interface BedtimePrefillLine {
+  id: string;
+  description: string;
+}
+
+/**
+ * B-PLAY-13 — the bedtime form's prefill tells the truth about today.
+ *
+ * - "Today" is the parent's LOCAL calendar day (`localDayKey`), never the UTC
+ *   slice of an ISO string: at 00:30 in Israel the UTC date is still
+ *   yesterday, and the old `toISOString().slice(0,10)` prefilled nothing.
+ * - A moment is its own words (`trigger`), never "Moment — she said butterfly".
+ * - At most ONE incident joins, rendered by its localized behaviour label
+ *   (plus the parent's trigger words when present), never the raw English
+ *   type value.
+ * - Up to three lines in all, record order.
+ */
+export function bedtimePrefill(
+  logs: ReadonlyArray<{ id: string; timestamp?: string; behaviorType?: string; trigger?: string }>,
+  now: Date,
+  t: (key: string) => string,
+): BedtimePrefillLine[] {
+  const today = localDayKey(now);
+  const out: BedtimePrefillLine[] = [];
+  let incidents = 0;
+  for (const l of logs) {
+    if (out.length >= 3) break;
+    if (!l.timestamp) continue;
+    const at = new Date(l.timestamp);
+    if (Number.isNaN(at.getTime()) || localDayKey(at) !== today) continue;
+    const trigger = String(l.trigger ?? "").trim();
+    if (l.behaviorType === MOMENT_BEHAVIOR_TYPE) {
+      if (trigger) out.push({ id: l.id, description: trigger });
+      continue;
+    }
+    if (incidents >= 1) continue;
+    const label = behaviorTypeLabel(String(l.behaviorType ?? ""), t, "full");
+    const description = [label, trigger].filter(Boolean).join(" — ");
+    if (!description) continue;
+    incidents += 1;
+    out.push({ id: l.id, description });
+  }
+  return out;
+}
 
 /** A single logged day event passed as seed data for the story. */
 export interface DayEvent {
