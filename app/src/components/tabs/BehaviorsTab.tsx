@@ -477,11 +477,10 @@ export default function BehaviorsTab() {
     return {
       events: last7.length,
       contexts,
-      // RUN-08: a ratio only once there is a numerator. `${0}/${0}` is the
-      // string that defeated HubHero's zero test and printed "0/0 Resolved"
-      // on a day-0 hub; below one resolved moment the stat is the plain
-      // count, so the whole trio can read as zero and the teach line fires.
-      resolved: resolvedWeek === 0 ? 0 : `${resolvedWeek}/${last7.length}`,
+      // B-ASKJB-22 (was RUN-08's ratio): the resolved stat is the plain count
+      // of moments that settled this week — never "{n}/{total}", which reads
+      // as a grade on the child's week. Zero stays 0, so the teach line fires.
+      resolved: resolvedWeek,
     };
   }, [behaviorLogs]);
 
@@ -666,7 +665,7 @@ export default function BehaviorsTab() {
         stats={[
           { value: heroStats.events, label: t("beh.stats.events") },
           { value: heroStats.contexts, label: t("beh.stats.contexts") },
-          { value: heroStats.resolved, label: t("beh.stats.resolved") },
+          { value: heroStats.resolved, label: t("elev.closeloop.stats.settledWeek") },
         ]}
         testId="behaviors-hub-hero"
       />
@@ -850,9 +849,10 @@ export default function BehaviorsTab() {
         </section>
       )}
 
-      {/* CONT-2 — Hard moments (AR-CONT-01). Fail-closed: reads ONLY
-          publishedHardMomentCards, so the section is invisible until named
-          clinical review stamps the pack (GD-10). */}
+      {/* CONT-2 — Hard moments (AR-CONT-01). B-ASKJB-22: the section reads
+          availableHardMomentCards(context) (HardMomentsSection), the catalogue
+          filtered for this parent's locale and the child's age — not only
+          publishedHardMomentCards as this comment used to claim. */}
       <div data-module="behaviors-hard-moments" style={{ display: "contents" }}><HardMomentsSection /></div>
 
       {/* Row 2 — events main column + right rail (patterns) */}

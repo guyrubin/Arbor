@@ -117,6 +117,8 @@ export const en: Record<string, string> = {
   "elev.closeloop.pattern.noted.many": "{count} moments noted",
   "elev.closeloop.pattern.resolvedSub.one": "1 of {total} moments",
   "elev.closeloop.pattern.resolvedSub.many": "{count} of {total} moments",
+  // B-ASKJB-22: the Behaviors hero's resolved stat is a count, not a ratio.
+  "elev.closeloop.stats.settledWeek": "settled this week",
 };
 
 export const he: Record<string, string> = {
@@ -189,4 +191,5 @@ export const he: Record<string, string> = {
   "elev.closeloop.pattern.noted.many": "{count} רגעים תועדו",
   "elev.closeloop.pattern.resolvedSub.one": "רגע אחד מתוך {total}",
   "elev.closeloop.pattern.resolvedSub.many": "{count} מתוך {total} רגעים",
+  "elev.closeloop.stats.settledWeek": "נרגעו השבוע",
 };

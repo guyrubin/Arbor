@@ -305,3 +305,33 @@ describe("B-ASKJB-08 · the Ask secondary row promises no human", () => {
     expect(read("components/tabs/CoachTab.tsx")).toMatch(/setActiveTab\("consult"\); toast\(t\("coach\.specialist\.toast"\)/);
   });
 });
+
+/**
+ * B-ASKJB-22 — Behaviors copy and counts. "Toughest place / day / time" graded
+ * the child's week (the shipped patterns card reads "Most-logged …" since
+ * OBJ-BEH-04; the dead "Toughest" keys are deleted), and the hero printed
+ * "{settled}/{total} Resolved". Forbidden tokens across both dictionaries.
+ */
+describe("B-ASKJB-22 · no 'Toughest' / 'worst' grade in the copy; resolved is a count", () => {
+  const FORBIDDEN_EN = [/\bToughest\b/i, /\bworst\b/i];
+  const FORBIDDEN_HE = [/הכי קשה/];
+
+  it("NEGATIVE CONTROL — the pre-fix labels trip the scan", () => {
+    expect(FORBIDDEN_EN.some((re) => re.test("Toughest place"))).toBe(true);
+    expect(FORBIDDEN_HE.some((re) => re.test("הזמן הכי קשה"))).toBe(true);
+  });
+
+  it("no EN value says Toughest/worst; no HE value says 'הכי קשה'", () => {
+    for (const [k, v] of Object.entries(en)) for (const re of FORBIDDEN_EN) expect(`${k}: ${v}`).not.toMatch(re);
+    for (const [k, v] of Object.entries(he)) for (const re of FORBIDDEN_HE) expect(`${k}: ${v}`).not.toMatch(re);
+  });
+
+  it("the Behaviors hero prints the settled count with its label, no '/' ratio", () => {
+    const beh = fs.readFileSync(path.join(__dirname, "..", "components", "tabs", "BehaviorsTab.tsx"), "utf8");
+    expect(beh).toContain("resolved: resolvedWeek,");
+    expect(beh).not.toMatch(/`\$\{resolvedWeek\}\/\$\{last7\.length\}`/);
+    expect(beh).toContain('{ value: heroStats.resolved, label: t("elev.closeloop.stats.settledWeek") }');
+    expect(translate("en", "elev.closeloop.stats.settledWeek")).toBe("settled this week");
+    expect(translate("he", "elev.closeloop.stats.settledWeek")).toBe("נרגעו השבוע");
+  });
+});
