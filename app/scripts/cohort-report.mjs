@@ -55,6 +55,8 @@ const DAY_MS = 86_400_000;
 const FUNNEL_CHAINS = {
   acquisition: ["install", "first_plan", "activated", "paid"],
   billing: ["paywall_view", "checkout_start", "entitlement_active"],
+  // B-MEAS-02: the pilot's primary metric (server/cohortMetrics.ts summariseLoop).
+  loop: ["today_action_accepted", "today_action_outcome", "loop_continued"],
 };
 
 /* ── flags ───────────────────────────────────────────────────────────────── */
@@ -224,6 +226,45 @@ export function excludeInternal(rollups, events, includeInternal = false) {
   return { rollups: kept, events: events.filter((e) => !internalUids.has(e.uid)), excluded: rollups.length - kept.length };
 }
 
+/** B-MEAS-02 — ISO-8601 week key (YYYY-Www), UTC. Mirrors cohortMetrics.isoWeekOf. */
+export function isoWeekOf(iso) {
+  const ms = iso ? Date.parse(iso) : NaN;
+  if (!Number.isFinite(ms)) return null;
+  const d = new Date(ms);
+  const day = (d.getUTCDay() + 6) % 7;
+  const thursday = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - day + 3));
+  const year = thursday.getUTCFullYear();
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const week = 1 + Math.round(((thursday.getTime() - jan4.getTime()) / DAY_MS - 3 + ((jan4.getUTCDay() + 6) % 7)) / 7);
+  return `${year}-W${String(week).padStart(2, "0")}`;
+}
+
+/** B-MEAS-02 — per family per ISO week: completed = emitted loop_continued;
+ *  eligible = active (any event). share null on 0 eligible. Mirrors
+ *  cohortMetrics.summariseLoop (the parity guard runs both on one fixture). */
+export function summariseLoop(events) {
+  const active = new Map();
+  const done = new Map();
+  for (const e of events) {
+    const week = isoWeekOf(e.at);
+    if (!week) continue;
+    if (!active.has(week)) active.set(week, new Set());
+    active.get(week).add(e.uid);
+    if (e.event === "loop_continued") {
+      if (!done.has(week)) done.set(week, new Set());
+      done.get(week).add(e.uid);
+    }
+  }
+  const weeks = [...active.keys()].sort().map((week) => {
+    const eligible = active.get(week).size;
+    const completed = done.get(week)?.size ?? 0;
+    return { week, completed, eligible, share: eligible > 0 ? completed / eligible : null };
+  });
+  const completed = weeks.reduce((n, w) => n + w.completed, 0);
+  const eligible = weeks.reduce((n, w) => n + w.eligible, 0);
+  return { weeks, completed, eligible, share: eligible > 0 ? completed / eligible : null };
+}
+
 export function summariseActivation(events, asOf, windowDays) {
   const activated = new Set();
   const eligible = new Set();
@@ -349,6 +390,14 @@ function print(report, args) {
         lines.push(`  ${row.key.padEnd(14)} ${chain}${monotonic ? "" : "   ** NOT MONOTONIC **"}`);
       }
     }
+    if (report.loop) {
+      lines.push(rule("Loop — families who continued from a reported outcome, per ISO week"));
+      if (report.loop.weeks.length === 0) lines.push("  no active families in the window — not answerable yet");
+      for (const w of report.loop.weeks) {
+        lines.push(`  ${w.week}  completed ${String(w.completed).padStart(4)} of ${String(w.eligible).padStart(4)} eligible  ·  ${pct(w.completed, w.eligible)}`);
+      }
+      lines.push(`  all weeks: completed ${report.loop.completed} of ${report.loop.eligible} family-weeks  ·  ${pct(report.loop.completed, report.loop.eligible)}`);
+    }
   }
 
   if (args.sections.has("events")) {
@@ -376,6 +425,7 @@ export async function buildReport(db, args, now = new Date()) {
     if (!chain) continue;
     funnels[name] = countFunnelChain(events, chain, args.groupBy);
   }
+  const loop = args.funnels.includes("loop") ? summariseLoop(events) : undefined;
   const { definition, definitionStatus } = readActivationDefinition();
   return {
     since: args.since,
@@ -384,6 +434,7 @@ export async function buildReport(db, args, now = new Date()) {
     retention: cohortRetention(rollups, asOfDay),
     activation: { ...summariseActivation(events, now.getTime(), 7), definition, definitionStatus },
     funnels,
+    ...(loop ? { loop } : {}),
     eventCensus: [...census.entries()].map(([stage, count]) => ({ stage, count })).sort((a, b) => b.count - a.count || a.stage.localeCompare(b.stage)),
     scanned: { rollups: rollups.length, events: events.length, mode },
     internal: { excluded, included: includeInternal },

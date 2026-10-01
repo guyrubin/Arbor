@@ -72,7 +72,58 @@ export const MAX_EVENTS_SCANNED = 20000;
 export const FUNNEL_CHAINS: Record<string, readonly string[]> = {
   acquisition: FUNNEL_EVENTS,
   billing: ["paywall_view", "checkout_start", "entitlement_active"],
+  // B-MEAS-02: the pilot's primary metric — accept a step, report how it
+  // went, and the next focus is built from that report.
+  loop: ["today_action_accepted", "today_action_outcome", "loop_continued"],
 };
+
+/* ── the loop metric (B-MEAS-02) ──────────────────────────────────────────── */
+
+/** ISO-8601 week key (YYYY-Www) of an ISO timestamp, UTC. */
+export function isoWeekOf(iso: string | null): string | null {
+  const ms = iso ? Date.parse(iso) : NaN;
+  if (!Number.isFinite(ms)) return null;
+  const d = new Date(ms);
+  const day = (d.getUTCDay() + 6) % 7; // Monday = 0
+  const thursday = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - day + 3));
+  const year = thursday.getUTCFullYear();
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const week = 1 + Math.round(((thursday.getTime() - jan4.getTime()) / 86_400_000 - 3 + ((jan4.getUTCDay() + 6) % 7)) / 7);
+  return `${year}-W${String(week).padStart(2, "0")}`;
+}
+
+export type LoopWeek = { week: string; completed: number; eligible: number; share: number | null };
+export type LoopSummary = { weeks: LoopWeek[]; completed: number; eligible: number; share: number | null };
+
+/**
+ * Per family per ISO week: COMPLETED = the family emitted `loop_continued`
+ * that week (a focus was built from an outcome the parent reported — the last
+ * link of the chain, which cannot fire before an outcome exists); ELIGIBLE =
+ * the family was active that week (any event). `share` is null — printed "not
+ * answerable yet" — when nobody was eligible. Counts only; no uid leaves here.
+ */
+export function summariseLoop(events: readonly CohortEventDoc[]): LoopSummary {
+  const active = new Map<string, Set<string>>();
+  const done = new Map<string, Set<string>>();
+  for (const e of events) {
+    const week = isoWeekOf(e.at);
+    if (!week) continue;
+    if (!active.has(week)) active.set(week, new Set());
+    active.get(week)!.add(e.uid);
+    if (e.event === "loop_continued") {
+      if (!done.has(week)) done.set(week, new Set());
+      done.get(week)!.add(e.uid);
+    }
+  }
+  const weeks = [...active.keys()].sort().map((week) => {
+    const eligible = active.get(week)!.size;
+    const completed = done.get(week)?.size ?? 0;
+    return { week, completed, eligible, share: eligible > 0 ? completed / eligible : null };
+  });
+  const completed = weeks.reduce((n, w) => n + w.completed, 0);
+  const eligible = weeks.reduce((n, w) => n + w.eligible, 0);
+  return { weeks, completed, eligible, share: eligible > 0 ? completed / eligible : null };
+}
 
 export type CohortEventDoc = {
   uid: string;
@@ -331,6 +382,8 @@ export type CohortReport = {
   retention: RetentionReport;
   activation: ActivationSummary;
   funnels: Record<string, FunnelGroupRow[]>;
+  /** B-MEAS-02: present when the `loop` funnel was asked for. */
+  loop?: LoopSummary;
   eventCensus: FunnelStageCount[];
   scanned: { rollups: number; events: number; mode: "firestore" | "null" };
   /** B-MEAS-01: internal families (founder, comped, smoke) left out of every
@@ -408,6 +461,8 @@ export async function buildCohortReport(
     funnels[name] = countFunnelChain(events, chain, groupBy);
   }
 
+  const loop = (opts.funnels ?? []).includes("loop") ? summariseLoop(events) : undefined;
+
   const windowDays = opts.activationWindowDays ?? ACTIVATION_WINDOW_DAYS;
   const activationCounts = summariseActivation(events, { asOf: now.getTime(), windowDays });
 
@@ -420,6 +475,7 @@ export async function buildCohortReport(
     retention: cohortRetention(rollups, asOfDay),
     activation: { ...activationCounts, definition: null },
     funnels,
+    ...(loop ? { loop } : {}),
     eventCensus: [...census.entries()]
       .map(([stage, count]) => ({ stage, count }))
       .sort((a, b) => b.count - a.count || a.stage.localeCompare(b.stage)),

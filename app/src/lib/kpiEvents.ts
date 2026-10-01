@@ -79,6 +79,8 @@ export const KpiEvent = {
   OfferSuppressed: "offer_suppressed",
   /** B-PROV-06: a Live voice attempt fell back to browser voice (the balance alarm). */
   LiveUnavailable: "live_unavailable",
+  /** B-MEAS-02: a response was built from an outcome the parent reported (the loop closed). */
+  LoopContinued: "loop_continued",
 } as const;
 
 /** The capture entry modes (mirrors ArborContext's CaptureMode union). */
@@ -455,4 +457,19 @@ export function liveUnavailableReason(err: unknown, stage: "token" | "start"): L
 export function trackLiveUnavailable(reason: string): void {
   if (isKidModeActive()) return;
   track(KpiEvent.LiveUnavailable, { reason: oneOf(LIVE_UNAVAILABLE_REASONS, reason) });
+}
+
+/* ── The pilot's primary metric (B-MEAS-02) ─────────────────────────────── */
+
+/** Where the continued response came from. */
+export const LOOP_SOURCES = ["today-focus", "coach"] as const;
+
+/**
+ * A focus/coach response came back built from a parent-reported outcome
+ * (`inputsUsed.lastActionOutcome`): accept → outcome → continued. The prop
+ * bag is `{source}` and nothing else — never the step, never the outcome.
+ * cohort-report `--funnel loop` reads it per family per ISO week.
+ */
+export function trackLoopContinued(source: string): void {
+  track(KpiEvent.LoopContinued, { source: oneOf(LOOP_SOURCES, source) });
 }

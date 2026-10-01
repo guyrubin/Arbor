@@ -6,6 +6,7 @@ import { useLanguage, type AiLang } from "../context/LanguageContext";
 import { authHeaders } from "../lib/api";
 import { ChildProfile } from "../types";
 import type { FocusInputsUsed } from "../lib/todayFocus";
+import { trackLoopContinued } from "../lib/kpiEvents";
 
 export type FocusSignals = {
   count: number;
@@ -146,6 +147,9 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals) {
               lastActionOutcome: data.inputsUsed.lastActionOutcome ? String(data.inputsUsed.lastActionOutcome) : undefined,
             }
           : undefined;
+      // B-MEAS-02: the server built this focus from an outcome the parent
+      // reported — the loop closed. One event per generated focus, {source} only.
+      if (inputsUsed?.lastActionOutcome) trackLoopContinued("today-focus");
       // Firestore rejects `undefined` fields — only present keys are written.
       const next: Focus = {
         text,
