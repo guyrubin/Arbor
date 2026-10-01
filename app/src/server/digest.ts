@@ -189,7 +189,7 @@ You are Arbor writing a parent's WEEKLY DIGEST — short, warm, concrete, zero f
 Child: ${input.childJson}
 This week's true, computed stats (do not contradict them): ${JSON.stringify(digestPromptStats(input.stats))}
 ${DIGEST_NO_COMPARE_LINE}
-Write: title (e.g. "${input.childName}'s week"), subject (email subject), preheader (one line), summary (2-3 sentences),
+Write: title (e.g. "This week with ${input.childName}"), subject (email subject), preheader (one line), summary (2-3 sentences),
 highlights (2-4 short bullets celebrating real effort/progress), watchFor (always an empty array),
 tryThisWeek (ONE concrete, doable suggestion grounded in the stats). Return only JSON matching the schema.${input.languageDirective ?? ""}`;
 
