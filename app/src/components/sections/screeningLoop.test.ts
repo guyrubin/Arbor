@@ -30,6 +30,7 @@ const state = {
   milestones: [milestone] as Milestone[],
   behaviorLogs: [] as unknown[],
   setActiveTab: vi.fn(),
+  requestConsultPrefill: vi.fn(),
   items: [] as Record<string, unknown>[],
 };
 
@@ -193,5 +194,60 @@ describe("GP-11 / GP-34 — the result screen has somewhere to go", () => {
     const before = `{result.elevated && (<><button onClick={() => routeTo("reports")}/></>)}`;
     expect(before).not.toContain("!result.elevated");
     expect(before).not.toContain("screen-watch-offers");
+  });
+});
+
+/* B-GROWTH-17 — "Worth a conversation" led to an EMPTY professional directory
+   (#/find-pro) and to the 10-card export menu (#/reports) with a toast promising
+   a handoff builder it never opened. An elevated result now offers ONE action:
+   Consult, with the reason box pre-filled in the page language naming the
+   areas. The tap cannot run in static markup, so the prefill is asserted on
+   the pure helper with the REAL dictionaries and the routing by source scan. */
+describe("B-GROWTH-17 — one Consult action, pre-filled with the areas", () => {
+  it("the prefill names the areas in the page language (EN + HE, real dictionaries)", async () => {
+    const { visitPrefillReason } = await import("./Screening");
+    const { translate } = await vi.importActual<typeof import("../../lib/i18n")>("../../lib/i18n");
+    const areas = [{ domain: "language_communication" }, { domain: "social_development" }];
+    const en = visitPrefillReason(areas, (k, v) => translate("en", k, v));
+    expect(en).toContain("Language & communication");
+    expect(en).toContain("Social development");
+    expect(en).not.toMatch(/\{areas\}|screen\.domain/);
+    const he = visitPrefillReason(areas, (k, v) => translate("he", k, v));
+    expect(he).toContain("שפה ותקשורת");
+    expect(he).toContain("התפתחות חברתית");
+    expect(he).not.toMatch(/[A-Za-z]/);
+  });
+
+  it("the elevated branch routes to consult with the prefill — 0 find-pro / reports doors", async () => {
+    const fs = await import("node:fs");
+    const src = fs.readFileSync(new URL("./Screening.tsx", import.meta.url), "utf8");
+    expect(src).not.toMatch(/setActiveTab\((tab|"find-pro"|"reports")\)/);
+    expect(src).not.toContain("routeTo(");
+    expect(src).not.toContain('t("screen.next.findPro")');
+    expect(src).not.toContain('t("screen.toast.handoff")');
+    const fn = /const prepareForVisit = [\s\S]*?\r?\n  \};/.exec(src)?.[0] ?? "";
+    expect(fn).toContain("requestConsultPrefill(visitPrefillReason(watchAreas, t));");
+    expect(fn).toContain('setActiveTab("consult");');
+    const start = src.indexOf("{result.elevated && (");
+    const elevated = src.slice(start, src.indexOf("</button>", start) + "</button>".length);
+    expect((elevated.match(/<button/g) ?? []).length).toBe(1);
+    // …and the elevated block closes right after that one button
+    expect(src.slice(start + elevated.length).trimStart().startsWith(")}")).toBe(true);
+    expect(elevated).toContain("prepareForVisit(result.watchAreas)");
+  });
+
+  it("the retired keys are gone in both languages; the new ones resolve", async () => {
+    const { translate } = await vi.importActual<typeof import("../../lib/i18n")>("../../lib/i18n");
+    for (const lang of ["en", "he"] as const) {
+      expect(translate(lang, "screen.next.findPro")).toBe("screen.next.findPro");
+      expect(translate(lang, "screen.toast.handoff")).toBe("screen.toast.handoff");
+      expect(translate(lang, "screen.handoff.reason", { areas: "X" })).toContain("X");
+    }
+    expect(translate("en", "screen.next.summary")).toBe("Prepare for a visit");
+  });
+
+  it("NEGATIVE CONTROL — the pre-fix buttons trip the routing scan", () => {
+    const pre = `<button onClick={() => routeTo("find-pro")}/> const routeTo = (tab) => { onClose?.(); setActiveTab(tab); };`;
+    expect(/setActiveTab\((tab|"find-pro"|"reports")\)/.test(pre)).toBe(true);
   });
 });

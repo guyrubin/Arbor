@@ -158,11 +158,22 @@ export default function Screening() {
   );
 }
 
+/** B-GROWTH-17 — the Consult reason box's prefill after an elevated check: the
+ *  areas worth a conversation, named in the PAGE language via screen.domain.*.
+ *  Pure so the wording and the area list are testable without a tap. */
+export function visitPrefillReason(
+  watchAreas: readonly { domain: string }[],
+  t: (key: string, vars?: Record<string, string | number>) => string,
+): string {
+  const areas = watchAreas.map((d) => t(`screen.domain.${d.domain}`)).join(", ");
+  return t("screen.handoff.reason", { areas });
+}
+
 /** The screener phase machine (intro → questions → result), extracted so it can
  *  run as a full page OR inside an inline sheet (b2 My Child story spine). The
  *  optional `onClose` lets the sheet dismiss itself before routing to Care. */
 export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
-  const { childProfile, milestones, setActiveTab } = useArbor();
+  const { childProfile, milestones, setActiveTab, requestConsultPrefill } = useArbor();
   const { toast } = useToast();
   const { t, uiLang } = useLanguage();
   const first = childProfile.name.split(" ")[0];
@@ -294,8 +305,17 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
     if (!reminderDueAt) remind();
   };
 
-  // From the sheet, close first then route so the parent lands on the Care surface.
-  const routeTo = (tab: "reports" | "find-pro") => { onClose?.(); setActiveTab(tab); };
+  // B-GROWTH-17 — ONE action after an elevated result: Consult, with the reason
+  // box pre-filled naming the areas. It used to offer an export MENU ("reports",
+  // with a toast promising a handoff builder it did not open) and an EMPTY
+  // professional directory ("find-pro"). From the sheet, close first then route.
+  // NOTE: requestConsultPrefill takes a string today; B-CAREPRO-13 widens it to
+  // { reason?, … } — pass the reason through that shape once it lands.
+  const prepareForVisit = (watchAreas: readonly { domain: string }[]) => {
+    requestConsultPrefill(visitPrefillReason(watchAreas, t));
+    onClose?.();
+    setActiveTab("consult");
+  };
 
   return (
     <div className="space-y-4">
@@ -549,14 +569,15 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
             <SectionCard title={t("screen.next.title")} icon={<Icon name="verified_user" size={20} />} tone="sky">
               <div className="flex flex-wrap gap-2">
                 {result.elevated && (
-                  <>
-                    <button onClick={() => { routeTo("reports"); toast(t("screen.toast.handoff"), "info"); }} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "var(--arbor-gradient-primary)" }}>
-                      <Icon name="description" size={16} /> {t("screen.next.summary")}
-                    </button>
-                    <button onClick={() => routeTo("find-pro")} className="inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 bg-white" style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)" }}>
-                      <Icon name="search" size={16} /> {t("screen.next.findPro")}
-                    </button>
-                  </>
+                  <button
+                    type="button"
+                    data-testid="screen-prepare-visit"
+                    onClick={() => prepareForVisit(result.watchAreas)}
+                    className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3"
+                    style={{ background: "var(--arbor-gradient-primary)", minHeight: 44 }}
+                  >
+                    <Icon name="description" size={16} /> {t("screen.next.summary")}
+                  </button>
                 )}
                 <button
                   onClick={remind}
