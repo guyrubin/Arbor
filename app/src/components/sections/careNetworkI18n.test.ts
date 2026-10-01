@@ -465,3 +465,61 @@ describe("documented exception: the persisted appointment mode stays English", (
     expect(before).not.toContain("const modeLabel =");
   });
 });
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   B-CAREPRO-15 — packet headings render through sectionTitle/sectionNote
+   (titleKey) everywhere in components/sections; the English `section.title`
+   fallback never reaches a Hebrew family. Also: the recipient viewer's Close
+   has a 44 px floor and share errors never interpolate the server's text.
+   ═══════════════════════════════════════════════════════════════════════════ */
+import { readdirSync } from "node:fs";
+
+describe("B-CAREPRO-15 · packet section headings are keyed", () => {
+  const SECTIONS_DIR = path.dirname(fileURLToPath(import.meta.url));
+  const files = readdirSync(SECTIONS_DIR).filter((f) => /\.tsx$/.test(f) && !/\.test\./.test(f));
+  const RAW_HEADING = /\{section\.(title|note)\}/;
+  const sharing = readFileSync(path.join(SECTIONS_DIR, "TrustedSharing.tsx"), "utf8").replace(/\r\n/g, "\n");
+
+  it("the scan read real files (TrustedSharing and AskSpecialist among them)", () => {
+    expect(files).toContain("TrustedSharing.tsx");
+    expect(files).toContain("AskSpecialist.tsx");
+    expect(files.length).toBeGreaterThan(10);
+  });
+
+  it("no {section.title} / {section.note} in components/sections", () => {
+    const hits = files.filter((f) => RAW_HEADING.test(readFileSync(path.join(SECTIONS_DIR, f), "utf8")));
+    expect(hits).toEqual([]);
+    // NEGATIVE CONTROL: the pre-change preview/viewer lines are caught.
+    expect(RAW_HEADING.test('<p className="text-[12.5px] font-extrabold" dir="auto">{section.title}</p>')).toBe(true);
+    expect(RAW_HEADING.test('{section.note && <p className="text-[11px]">{section.note}</p>}')).toBe(true);
+  });
+
+  it("both TrustedSharing sites render sectionTitle(section, uiLang)", () => {
+    expect((sharing.match(/\{sectionTitle\(section, uiLang\)\}/g) ?? []).length).toBe(2);
+  });
+
+  it("a Hebrew heading resolves from the key (0 Latin letters in the scaffold)", () => {
+    const he1 = translate("he", "elev.packet.section.about", { name: "נועה" });
+    expect(he1).not.toMatch(/[A-Za-z]/);
+    expect(he1).not.toBe("elev.packet.section.about");
+  });
+
+  it("the viewer Close button has a 44 px floor", () => {
+    const close = /<button onClick=\{closeSharedView\}[^>]*>/.exec(sharing);
+    expect(close).toBeTruthy();
+    expect(close![0]).toContain("min-h-11");
+  });
+
+  it("create/revoke error toasts are keyed without the server's message", () => {
+    expect(sharing).not.toMatch(/audit\.(createError|revokeError)",\s*\{\s*message/);
+    expect(sharing).toContain('toast(t("sec.sharing.audit.createError"), "error")');
+    expect(sharing).toContain('toast(t("sec.sharing.audit.revokeError"), "error")');
+    for (const lang of ["en", "he"] as const) {
+      for (const k of ["sec.sharing.audit.createError", "sec.sharing.audit.revokeError"]) {
+        expect(translate(lang, k)).not.toContain("{message}");
+      }
+    }
+    // NEGATIVE CONTROL: the pre-change call is caught.
+    expect(/audit\.(createError|revokeError)",\s*\{\s*message/.test('toast(t("sec.sharing.audit.createError", { message: e.message }), "error");')).toBe(true);
+  });
+});

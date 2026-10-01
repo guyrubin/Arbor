@@ -164,7 +164,9 @@ export interface SharedPacketView {
   expiresAt: string | null;
   scopes: string[];
   generatedAt: string;
-  sections: { id: string; title: string; note?: string; items: { id: string; text: string }[] }[];
+  /** B-CAREPRO-15: the server sends the full PacketSection — the keys let the
+   *  viewer render headings in the reader's language (sectionTitle). */
+  sections: { id: string; title: string; titleKey?: string; titleVars?: Record<string, string | number>; note?: string; noteKey?: string; items: { id: string; text: string }[] }[];
 }
 
 /** M9: proof-of-deletion receipt returned by a full child-data erase. */
