@@ -34,6 +34,8 @@ const KIND_ICON: Record<SignalKind, string> = {
   practice: "rocket_launch",
   // TJB-05 — Today's accepted/completed step.
   action: "task_alt",
+  // B-AI-04 — a suggestion line the parent kept.
+  kept: "bookmark_added",
 };
 
 /** JRNL-3: kind + filter labels resolve through i18n (timeline.* keys) at
@@ -47,6 +49,7 @@ const KIND_LABEL_KEY: Record<SignalKind, string> = {
   // Resolves via withChildSignals until childsignals registers in i18nElevation/index.ts.
   practice: "elev.childsignals.kind",
   action: "elev.closeloop.thread.kind",
+  kept: "elev.kept.thread.kind",
 };
 
 const FILTERS: { key: SignalKind | "all"; labelKey: string }[] = [
@@ -57,6 +60,7 @@ const FILTERS: { key: SignalKind | "all"; labelKey: string }[] = [
   { key: "play", labelKey: "timeline.filter.play" },
   { key: "practice", labelKey: "elev.childsignals.filter" },
   { key: "action", labelKey: "elev.closeloop.thread.filter" },
+  { key: "kept", labelKey: "elev.kept.thread.filter" },
   { key: "memory", labelKey: "timeline.filter.memory" },
   // AI-04 (consent gate): the Ask-thread filter is gone with its source. A
   // chip whose count can only ever read zero is a dead end, not a filter.

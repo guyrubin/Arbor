@@ -40,6 +40,7 @@ export function useTimeline(): TimelineSignal[] {
     // is already read once by ArborContext (sorted, capped at 100); this hook
     // FOLDS that same list into the thread instead of opening a second read.
     actionLoop,
+    keptInsights,
     childProfile,
   } = useArbor();
   const childId = childProfile.id;
@@ -76,6 +77,8 @@ export function useTimeline(): TimelineSignal[] {
       memory: memoryReviewItems,
       play: playLogs,
       actionOutcomes: actionLoop,
+      // B-AI-04: the kept-insight rows ArborContext already reads (no second read).
+      keptInsights,
       practiceEvents: practiceEvents.items,
       speechAttempts: speechAttempts.items,
       mimicSessions: mimicSessions.items,
@@ -85,7 +88,7 @@ export function useTimeline(): TimelineSignal[] {
       keepsakes: keepsakes.items,
     }),
     [
-      behaviorLogs, milestones, actionPlans, memoryReviewItems, playLogs, actionLoop,
+      behaviorLogs, milestones, actionPlans, memoryReviewItems, playLogs, actionLoop, keptInsights,
       practiceEvents.items, speechAttempts.items, mimicSessions.items,
       adventureResults.items, missionRecords.items, heroRuns.items, keepsakes.items,
     ],

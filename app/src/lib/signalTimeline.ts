@@ -5,6 +5,7 @@ import type {
   AdventureResult,
   BehaviorLog,
   HeroJourneyRun,
+  InsightRecord,
   MemoryReviewItem,
   Milestone,
   MimicSession,
@@ -44,7 +45,7 @@ import type { FirstKeepsake } from "./firstsKeepsake";
  * A kind nothing can produce is a dead filter chip and four dead render
  * branches, so it was removed with its source rather than left standing.
  */
-export type SignalKind = "moment" | "milestone" | "plan" | "memory" | "play" | "practice" | "action";
+export type SignalKind = "moment" | "milestone" | "plan" | "memory" | "play" | "practice" | "action" | "kept";
 export type SignalTone = "mint" | "coral" | "lav" | "yellow" | "pink" | "sky";
 
 /**
@@ -131,6 +132,10 @@ export const SIGNAL_PROVENANCE: Record<SignalKind, SignalProvenance> = {
   // TJB-05: Arbor OFFERED the step, but accepting it and saying how it went
   // are both the parent's own acts — the badge must read "You".
   action: "manual",
+  // B-AI-04: Arbor drafted the line, but KEEPING it is the parent's act —
+  // the row reads "You kept" and carries the line verbatim, no claim about
+  // the child.
+  kept: "manual",
 };
 
 export const isAutoSignal = (kind: SignalKind): boolean => SIGNAL_PROVENANCE[kind] === "auto";
@@ -168,6 +173,8 @@ export const signalTitle = (s: TimelineSignal, t: TranslateFn): string => {
       // "You tried today's step — it helped"); the step text itself is the
       // detail line, so one row visibly evolves rather than two rows racing.
       return t(`elev.closeloop.thread.title.${s.actionStatus ?? "accepted"}`);
+    case "kept":
+      return t("elev.kept.thread.title");
   }
 };
 
@@ -208,6 +215,8 @@ export const signalMeta = (s: TimelineSignal, t: TranslateFn): string | undefine
       // The capacity the parent chose, in minutes — a plain duration fact
       // (same key the moment rows use), never a score.
       return s.durationMinutes ? t("timeline.meta.minutes", { n: s.durationMinutes }) : undefined;
+    case "kept":
+      return undefined;
   }
 };
 
@@ -252,6 +261,13 @@ export interface TimelineSources {
    * subcollection nobody read.
    */
   actionOutcomes?: ActionLoopEntry[];
+  /**
+   * B-AI-04 — suggestion lines the parent kept ("Keep this" on #/behaviors,
+   * `insights` rows of kind `kept-insight`). Folded as kind "kept",
+   * provenance "You kept", the line verbatim as the detail. Analysis rows in
+   * the same subcollection are ignored.
+   */
+  keptInsights?: InsightRecord[];
   // Masterplan 1.4 — the six child-activity ledgers (all registered in
   // CHILD_SUBCOLLECTIONS; read directly via useChildCollection, no derived
   // sink). Folded as kind "practice", provenance "child".
@@ -282,6 +298,7 @@ const TIMELINE_SOURCE_ID_MAP: { [K in keyof Required<TimelineSources>]: true } =
   memory: true,
   play: true,
   actionOutcomes: true,
+  keptInsights: true,
   practiceEvents: true,
   speechAttempts: true,
   mimicSessions: true,
@@ -472,6 +489,19 @@ export const buildTimeline = (sources: TimelineSources): TimelineSignal[] => {
       tone: "sky",
       actionStatus: status,
       durationMinutes: capacityMinutes[entry.capacity] ?? undefined,
+    });
+  }
+
+  // B-AI-04 — kept insights: one row per kept line, the parent's own act.
+  // One tone for every row (never a verdict colour).
+  for (const row of sources.keptInsights || []) {
+    if (row.kind !== "kept-insight" || !row.text?.trim()) continue;
+    signals.push({
+      id: `kept-${row.id}`,
+      kind: "kept",
+      at: row.createdAt || null,
+      detail: row.text,
+      tone: "lav",
     });
   }
 

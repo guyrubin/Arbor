@@ -104,6 +104,8 @@ const KIND_MS: Record<SignalKind, string> = {
   practice: "rocket_launch",
   // TJB-05 — Today's accepted/completed step, written back into the thread.
   action: "task_alt",
+  // B-AI-04 — a suggestion line the parent kept.
+  kept: "bookmark_added",
 };
 
 function JournalRow({

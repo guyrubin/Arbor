@@ -201,6 +201,8 @@ describe("signal provenance", () => {
       // TJB-05 — accepting the day's step and saying how it went are the
       // PARENT's acts, even though Arbor offered the step.
       action: "manual",
+      // B-AI-04 — keeping a suggestion line is the PARENT's act.
+      kept: "manual",
     });
     expect(isAutoSignal("moment")).toBe(false);
     expect(isAutoSignal("milestone")).toBe(false);
