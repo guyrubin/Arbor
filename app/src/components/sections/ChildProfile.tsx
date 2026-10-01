@@ -78,7 +78,7 @@ export default function ChildProfile() {
     // the previous `.months` access fed `undefined` into ageLabelForMonths()
     // and the chapter read "in the NaN years NaN months window".
     const band = ageLabelForMonths(milestoneAgeWindow(comparisonMonths).currentBandMonths, t);
-    return { checked, total, share: total > 0 ? (checked / total) * 100 : 0, band };
+    return { checked, total, band };
   }, [milestones, comparisonMonths, t]);
   const nextMilestones = useMemo(() => selectNextMilestones(milestones, comparisonMonths, 3), [milestones, comparisonMonths]);
 
@@ -256,17 +256,12 @@ export default function ChildProfile() {
       {/* Chapter 3 — milestones */}
       <div data-module="profile-milestones" data-module-demoted style={{ display: "contents" }}>
       <SectionCard title={t("cp.ch.milestones")} icon={<Icon name="check_circle" size={20} fill={1} />} tone="mint">
-        <div className="flex items-center gap-4">
-          <div className="flex-1">
-            <div className="h-2.5 rounded-full overflow-hidden" style={{ background: "var(--arbor-paper-deep)" }}>
-              {/* Count-proportion fill of the age-window record (never a score). */}
-              <div className="h-full rounded-full transition-all" style={{ width: `${windowRecord.share}%`, background: "var(--arbor-gradient-progress)" }} />
-            </div>
-            <p className="text-xs mt-2" style={{ color: "var(--arbor-muted)" }}>
-              <strong style={{ color: "var(--arbor-ink)" }}>{t("elev.growthTruth.window.noticed", { checked: windowRecord.checked, total: windowRecord.total, band: windowRecord.band })}</strong>
-            </p>
-          </div>
-        </div>
+        {/* B-CAREPRO-05 (CN-004): the count sentence only — no proportional
+            fill of a child record. A bar over checked/total reads as "how far
+            along" the child is, which is a verdict (law 1). */}
+        <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>
+          <strong style={{ color: "var(--arbor-ink)" }}>{t("elev.growthTruth.window.noticed", { checked: windowRecord.checked, total: windowRecord.total, band: windowRecord.band })}</strong>
+        </p>
         {nextMilestones.length > 0 && (
           <div className="mt-3 space-y-2">
             <span className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("cp.ms.worthWatching")}</span>

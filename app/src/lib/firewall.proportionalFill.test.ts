@@ -1,0 +1,113 @@
+/**
+ * B-CAREPRO-05 · CN-004 — "no proportional fill of a child record".
+ *
+ * Clinical firewall (law 1): a parent surface shows COUNTS of parent-noticed
+ * things. A bar or ring filled to checked/total of the child's record reads as
+ * "how far along" the child is — a verdict, whatever the comment beside it says
+ * (the Profile milestone bar carried "never a score" in its own comment).
+ *
+ * The rule is enforced by WALKING components/** (never a named-file list) and
+ * classifying every proportional-fill site found:
+ *   - an inline `width: \`${…}%\`` template, or
+ *   - a `<ProgressBar` / `<RadialProgress` call (the kit primitives render a
+ *     value/total ratio).
+ * Every site must sit in exactly one ledger below. A new site fails until a
+ * human classifies it; a child-record site may only exist as a NAMED pending
+ * debt with its ticket, so it cannot pass silently.
+ */
+import { describe, expect, it } from "vitest";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const SRC = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
+const COMPONENTS = path.join(SRC, "components");
+
+const walk = (dir: string): string[] =>
+  readdirSync(dir).flatMap((name) => {
+    const full = path.join(dir, name);
+    return statSync(full).isDirectory() ? walk(full) : [full];
+  });
+
+/** The detector — proven by the negative controls below. */
+const FILL_SITE = /width:\s*`\$\{[^`]*\}%`|<ProgressBar\b|<RadialProgress\b/g;
+
+function fillSites(src: string): string[] {
+  return [...src.replace(/\r\n/g, "\n").matchAll(FILL_SITE)].map((m) => m[0]);
+}
+
+type Entry = { file: string; match: string; why: string };
+
+/** Child-record fills that still ship, each NAMED with the item that removes
+ *  it. A pending entry whose site has already gone is tolerated (the fix
+ *  landed in a parallel lane) — delete the entry when you see it. */
+const PENDING_CHILD_RECORD: Entry[] = [
+  { file: "components/practice/SpeechCoachTab.tsx", match: "dose.trialsToday / dose.perSessionTarget", why: "Speech dose bar — FU#30 (pending; B-PLAY-07 replaces it with 'about 5 minutes together')" },
+  { file: "components/sections/AcademyForYou.tsx", match: "<RadialProgress", why: "explored-courses ring — B-PLAY-01 / B-PLAY-18 (lane SHELLPLAY)" },
+  { file: "components/sections/AcademyForYou.tsx", match: "<ProgressBar", why: "per-domain explored bars — B-PLAY-01 / B-PLAY-18 (lane SHELLPLAY)" },
+  { file: "components/profile/RewardsCard.tsx", match: "next.progress * 100", why: "progress toward the next cosmetic, fed by the child's activity count — UNTICKETED, raised in REJECTIONS.md (B-CAREPRO-05) for the framer" },
+];
+
+/** Fills that are NOT a record of the child. */
+const NOT_CHILD_RECORD: Entry[] = [
+  { file: "components/ui/kit.tsx", match: "${pct}%", why: "the ProgressBar primitive itself — every call site is classified here" },
+  { file: "components/overview/CourseCard.tsx", match: "progress.percent", why: "the parent's own course progress" },
+  { file: "components/sections/Masterclasses.tsx", match: "doneCount / total", why: "the parent's own masterclass progress" },
+  { file: "components/tabs/RoutinesTab.tsx", match: "<ProgressBar", why: "today's routine steps — a parent task list, reset daily" },
+  { file: "components/practice/EarlyReadingTrack.tsx", match: "coverage * 100", why: "live trace coverage of the stroke being drawn (kid register), never stored" },
+  { file: "components/practice/MimicMatch.tsx", match: "${pct}%", why: "live match meter inside the kid game, never stored" },
+];
+
+const SOURCES = walk(COMPONENTS)
+  .filter((f) => /\.tsx$/.test(f) && !/\.test\.tsx$/.test(f))
+  .map((f) => ({ rel: path.relative(SRC, f).replace(/\\/g, "/"), src: readFileSync(f, "utf8").replace(/\r\n/g, "\n") }));
+
+const classified = (rel: string, site: string): Entry | undefined =>
+  [...PENDING_CHILD_RECORD, ...NOT_CHILD_RECORD].find((e) => e.file === rel && site.includes(e.match));
+
+describe("CN-004 · no proportional fill of a child record", () => {
+  it("the walk is real (non-vacuity)", () => {
+    expect(SOURCES.length).toBeGreaterThan(100);
+    const total = SOURCES.reduce((n, f) => n + fillSites(f.src).length, 0);
+    expect(total).toBeGreaterThanOrEqual(NOT_CHILD_RECORD.length);
+  });
+
+  it("every proportional-fill site in components/** is classified (a new one fails)", () => {
+    const unclassified: string[] = [];
+    for (const f of SOURCES) {
+      for (const site of fillSites(f.src)) if (!classified(f.rel, site)) unclassified.push(`${f.rel}: ${site}`);
+    }
+    expect(unclassified, "classify each site: a child-record fill is a firewall breach (law 1)").toEqual([]);
+  });
+
+  it("the Profile milestone chapter carries the count sentence and no fill", () => {
+    const profile = SOURCES.find((f) => f.rel === "components/sections/ChildProfile.tsx");
+    expect(profile, "ChildProfile.tsx found by the walk").toBeTruthy();
+    expect(fillSites(profile!.src)).toEqual([]);
+    expect(profile!.src).not.toContain("windowRecord.share");
+    expect(profile!.src).toContain('t("elev.growthTruth.window.noticed"');
+  });
+
+  it("the Speech dose bar is named explicitly — it cannot pass silently", () => {
+    const speech = PENDING_CHILD_RECORD.find((e) => e.file === "components/practice/SpeechCoachTab.tsx");
+    expect(speech?.why).toMatch(/FU#30/);
+  });
+
+  it("every NOT_CHILD_RECORD entry still matches a live site (no stale exemptions)", () => {
+    for (const e of NOT_CHILD_RECORD) {
+      const f = SOURCES.find((s) => s.rel === e.file);
+      expect(f, `${e.file} no longer exists — drop the entry`).toBeTruthy();
+      expect(fillSites(f!.src).some((site) => site.includes(e.match)), `${e.file} no longer carries "${e.match}" — drop the entry`).toBe(true);
+    }
+  });
+
+  it("NEGATIVE CONTROL: the pre-change Profile bar is detected and is not classified", () => {
+    const pre = '<div className="h-full rounded-full transition-all" style={{ width: `${windowRecord.share}%`, background: "var(--arbor-gradient-progress)" }} />';
+    const sites = fillSites(pre);
+    expect(sites).toHaveLength(1);
+    expect(classified("components/sections/ChildProfile.tsx", sites[0])).toBeUndefined();
+    // and a new kit-primitive call on a child surface is caught too
+    expect(fillSites("<ProgressBar value={s.checked} total={s.total} />")).toEqual(["<ProgressBar"]);
+    expect(classified("components/sections/ChildProfile.tsx", "<ProgressBar")).toBeUndefined();
+  });
+});
