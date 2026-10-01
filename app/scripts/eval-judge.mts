@@ -44,8 +44,9 @@ import { createWaitlistStore } from "../src/server/waitlist.js";
 import { computeContentHash } from "../src/content/governance.js";
 import { hardMomentCards, type HardMomentCard } from "../src/content/hardMomentCards.js";
 import { buildHardMomentSeedPrompt } from "../src/content/hardMomentSurface.js";
-import { appendResultsRow, judgeVisibleInput, runSuiteWithDeps, type ScenarioVerdict } from "../src/eval/judge.js";
+import { appendResultsRow, runSuiteWithDeps, type ScenarioVerdict } from "../src/eval/judge.js";
 import type { EvalScenario, EvalSuite } from "../src/eval/acceptance.js";
+import { handoffWireBody, runnerInputError } from "../src/eval/runnerInput.js";
 
 const REPO_ROOT = path.resolve(process.cwd(), "..");
 
@@ -77,7 +78,7 @@ const syntheticProfileFor = (suite: EvalSuite, scenario: EvalScenario) => ({
 });
 
 const modelRouteFor = (route: string): ModelRoute =>
-  route === "/api/chat" ? "coach_high_stakes" : "analysis_structured";
+  route === "/api/chat" ? "coach_high_stakes" : route === "/api/generate-handoff" ? "handoff_structured" : "analysis_structured";
 
 /**
  * EVAL-5: seed parent-approved memory facts for a scenario through the SAME
@@ -160,8 +161,26 @@ const buildScenarioRunner = (suite: EvalSuite, baseUrl: string) => async (scenar
   const route = routeOf(scenario);
   const locale = scenario.locale === "he" ? "he" : "en";
   const input = scenario.input ?? {};
+  // B-CAREPRO-12 residue: one rule (src/eval/runnerInput) says what each route
+  // needs; a scenario the runner cannot drive fails here, by name.
+  const inputError = runnerInputError(scenario);
+  if (inputError) throw new Error(`scenario "${scenario.id}" ${inputError}`);
   // A scenario never inherits another scenario's persisted synthetic memories.
   const scenarioProfile = syntheticProfileFor(suite, scenario);
+
+  // B-CAREPRO-12 residue (school-handoff-v1): the School Brief route. The body
+  // is what the client posts (logs with day/timestamp, milestones, language,
+  // audience teacher); the server's allow-list is what the scenario tests. The
+  // transcript is the raw status + JSON so the judge sees the brief or the 409
+  // escalation contract exactly as the client would.
+  if (route === "/api/generate-handoff") {
+    const res = await fetch(`${baseUrl}/api/generate-handoff`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(handoffWireBody(input, scenarioProfile)),
+    });
+    return `HTTP ${res.status}\n${await res.text()}`;
+  }
 
   if (route === "/api/live/turn") {
     const text = String(input.text ?? input.outputTranscription ?? "");
@@ -304,7 +323,7 @@ export const runLiveSuite = async (suiteName: string) => {
   suite.scenarios = suite.scenarios.map((scenario) => ({
     ...scenario,
     input: {
-      ...judgeVisibleInput(scenario.input),
+      ...scenario.input,
       suppliedChildProfile: syntheticProfileFor(suite, scenario),
       contextScope: scenario.input?.privateMode === true
         ? "Private turn: server excludes the supplied profile, stored memory and previous turns."
