@@ -8,8 +8,10 @@ import {
   monitoredDomainToPlayHint,
   watchPointsSummary,
   MONITORED_DOMAIN_LABEL,
+  MONITORED_DOMAINS,
   monitoringAgeYears,
 } from "./monitoring.js";
+import framework from "../framework.json";
 import type { BehaviorLog, ChildProfile, Milestone } from "../types";
 
 const NOW = new Date("2026-06-06T12:00:00.000Z").getTime();
@@ -501,7 +503,7 @@ describe("watchPointsSummary (UND-3)", () => {
     expect(watchPointsSummary(res)).toEqual([]); // …but the milestone card stays silent
   });
 
-  it("caps at two domains, largest count first", () => {
+  it("caps at two domains, in catalogue order (B-GROWTH-09: never by count)", () => {
     const res = deriveMonitoring(
       {
         ageYears: 6,
@@ -517,8 +519,12 @@ describe("watchPointsSummary (UND-3)", () => {
     );
     const points = watchPointsSummary(res);
     expect(points).toHaveLength(2);
-    expect(points[0]).toEqual({ domain: "social_development", count: 2 });
-    expect(points[1].count).toBe(1);
+    // language (1) precedes social (2) in framework.json — the larger count
+    // does NOT jump the queue.
+    expect(points).toEqual([
+      { domain: "language_communication", count: 1 },
+      { domain: "social_development", count: 2 },
+    ]);
   });
 });
 
@@ -574,5 +580,37 @@ describe("GP-04 — monitoringAgeYears is the corrected age (preterm)", () => {
 
   it("correction stops at 24 months (AAP) — a 30-month-old born at 28 weeks compares at 30", () => {
     expect(monitoringAgeYears(profile({ ageMonths: 30, age: 2, preterm: { gestationalWeeks: 28 } })) * 12).toBe(30);
+  });
+});
+
+/* B-GROWTH-09 — watch-point rows follow the catalogue's domain order for ANY
+   input order; ordering by lag count ranked the child's areas. */
+describe("B-GROWTH-09 — watch points are in framework.json domain order", () => {
+  it("MONITORED_DOMAINS is framework.json's domain order minus ecosystem_stressors", () => {
+    const fw = (framework as { domains: { id: string }[] }).domains.map((d) => d.id).filter((id) => id !== "ecosystem_stressors");
+    expect(MONITORED_DOMAINS).toEqual(fw);
+  });
+
+  it("order independence: every input permutation yields the same rows", () => {
+    const base = [
+      milestone({ domain: "sensory_motor_patterns", ageGroup: "18 months" }),
+      milestone({ domain: "sensory_motor_patterns", ageGroup: "2 years" }),
+      milestone({ domain: "sensory_motor_patterns", ageGroup: "18 months" }),
+      milestone({ domain: "attachment_regulation", ageGroup: "2 years" }),
+      milestone({ domain: "social_development", ageGroup: "18 months" }),
+      milestone({ domain: "social_development", ageGroup: "2 years" }),
+    ];
+    const perms = [base, [...base].reverse(), [base[4], base[0], base[3], base[5], base[1], base[2]]];
+    const outs = perms.map((ms) => watchPointsSummary(deriveMonitoring({ ageYears: 6, milestones: ms, now: NOW }, "Mila"), 6));
+    for (const o of outs) expect(o).toEqual(outs[0]);
+    const order = outs[0].map((p) => p.domain);
+    expect(order).toEqual([...order].sort((a, b) => MONITORED_DOMAINS.indexOf(a) - MONITORED_DOMAINS.indexOf(b)));
+    expect(order[0]).toBe("attachment_regulation"); // count 1, still first
+  });
+
+  it("NEGATIVE CONTROL — a count-descending sort would have put sensory (3) first", () => {
+    const counts = { attachment_regulation: 1, social_development: 2, sensory_motor_patterns: 3 };
+    const byCount = Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([d]) => d);
+    expect(byCount[0]).toBe("sensory_motor_patterns");
   });
 });

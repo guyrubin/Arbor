@@ -168,3 +168,34 @@ describe("clinical firewall — parent drill routes report counts, never percent
     ).toEqual([]);
   });
 });
+
+/* B-GROWTH-09 — the Milestones "Gentle watch points" box sat on a yellow wash
+   with a yellow-ink eye icon: a chromatic verdict on the child's open items.
+   It now takes the Screening monitoring card's paper + muted treatment, and
+   its copy names the parent's own answers, never "typically seen by now". */
+describe("clinical firewall — ms-watch-points carries no verdict colour or norm claim", () => {
+  const ms = readFileSync(path.join(componentsRoot, "tabs", "MilestonesTab.tsx"), "utf8");
+  const start = ms.indexOf('data-testid="ms-watch-points"');
+  const block = ms.slice(start, ms.indexOf("</div>", ms.indexOf("{t(\"ms.watch.close\")}", start)));
+
+  it("the block exists and uses no --arbor-yellow-* / --arbor-peach-* token", () => {
+    expect(start).toBeGreaterThan(-1);
+    expect(block).toContain('t("ms.watch.close")');
+    expect(block).not.toMatch(/--arbor-(yellow|peach)-/);
+    expect(block).toContain('background: "var(--arbor-paper-deep)"');
+  });
+
+  it("no ms.watch.* string claims a norm (EN \"typically seen by now\" / HE \"בדרך כלל עד גיל זה\")", async () => {
+    const { en, he } = await import("../../lib/i18n");
+    const bad = [
+      ...Object.entries(en).filter(([k, v]) => k.startsWith("ms.watch.") && /typically seen by now/i.test(v)),
+      ...Object.entries(he).filter(([k, v]) => k.startsWith("ms.watch.") && /בדרך כלל עד גיל זה/.test(v)),
+    ];
+    expect(bad).toEqual([]);
+  });
+
+  it("NEGATIVE CONTROL — the pre-fix wash trips the token scan", () => {
+    const pre = '<div data-testid="ms-watch-points" style={{ background: "var(--arbor-yellow-soft)" }}>';
+    expect(/--arbor-(yellow|peach)-/.test(pre)).toBe(true);
+  });
+});

@@ -797,8 +797,8 @@ export const en: Dict = {
   // UND-3 — derived watch-points card: real domain names + COUNTS only (clinical
   // firewall — never severity or verdict language, nothing fabricated).
   "ms.watch.corrected": "Because {name} arrived early, Arbor is comparing milestones against a corrected age of about {corrected} months rather than {chrono} — preemies catch up on their own timeline.",
-  "ms.watch.area.one": "1 {area} skill that's typically seen by now hasn't been noticed yet.",
-  "ms.watch.area.many": "{n} {area} skills typically seen by now haven't been noticed yet.",
+  "ms.watch.area.one": "You marked ‘not yet’ or ‘not sure’ on 1 {area} skill.",
+  "ms.watch.area.many": "You marked ‘not yet’ or ‘not sure’ on {n} {area} skills.",
   "ms.watch.none": "Nothing stands out right now. Keep noticing everyday moments and revisit in a few weeks.",
   "ms.watch.close": "That's common and rarely a concern on its own. If something feels persistent, or you'd simply like reassurance, you can ask Arbor or share a development snapshot with your pediatrician or teacher.",
   "ms.watch.childFallback": "your child",
@@ -3116,8 +3116,8 @@ export const he: Dict = {
   "ms.watchPoints": "נקודות תשומת לב עדינות",
   // UND-3 — כרטיס נקודות תשומת לב נגזר: שמות תחומים וספירות בלבד.
   "ms.watch.corrected": "בגלל ש{name} נולד/ה מוקדם, ארבור משווה אבני דרך מול גיל מתוקן של כ-{corrected} חודשים במקום {chrono} — פגים מתקדמים בקצב משלהם.",
-  "ms.watch.area.one": "מיומנות אחת בתחום {area} שנראית בדרך כלל עד גיל זה טרם סומנה.",
-  "ms.watch.area.many": "{n} מיומנויות בתחום {area} שנראות בדרך כלל עד גיל זה טרם סומנו.",
+  "ms.watch.area.one": "סימנתם ׳עוד לא׳ או ׳לא בטוחים׳ על מיומנות אחת בתחום {area}.",
+  "ms.watch.area.many": "סימנתם ׳עוד לא׳ או ׳לא בטוחים׳ על {n} מיומנויות בתחום {area}.",
   "ms.watch.none": "שום דבר לא בולט כרגע. המשיכו לשים לב לרגעים יום-יומיים וחזרו לבדוק בעוד כמה שבועות.",
   "ms.watch.close": "זה נפוץ ולרוב אינו סיבה לדאגה בפני עצמו. אם משהו מרגיש מתמשך, או שפשוט תרצו ביטחון, אפשר לשאול את ארבור או לשתף תמונת התפתחות עם רופא הילדים או הצוות החינוכי.",
   "ms.watch.childFallback": "הילד/ה שלכם",

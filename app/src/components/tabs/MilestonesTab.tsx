@@ -934,8 +934,10 @@ export default function MilestonesTab() {
           nothing is in the not-seen column; hidden entirely when there is also
           no corrected-age note to carry. */}
       {(watchPoints.length > 0 || corrected.applied) && (
-        <div data-testid="ms-watch-points" className="p-5 rounded-2xl flex items-start gap-4 text-xs" style={{ background: "var(--arbor-yellow-soft)" }}>
-          <Icon name="visibility" size={20} className="mt-0.5" style={{ color: "var(--arbor-yellow-ink)" }} />
+        // B-GROWTH-09: paper surface + muted ink — the Screening monitoring
+        // card's treatment. The yellow wash was a chromatic verdict.
+        <div data-testid="ms-watch-points" className="p-5 rounded-2xl flex items-start gap-4 text-xs" style={{ background: "var(--arbor-paper-deep)" }}>
+          <Icon name="visibility" size={20} className="mt-0.5" style={{ color: "var(--arbor-muted)" }} />
           <div className="space-y-1 leading-relaxed">
             <strong className="text-sm block" style={{ color: "var(--arbor-ink)" }}>{t("ms.watchPoints")}</strong>
             <p style={{ color: "var(--arbor-muted)" }}>

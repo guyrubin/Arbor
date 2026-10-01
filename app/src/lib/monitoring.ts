@@ -48,7 +48,8 @@ export const MONITORED_DOMAIN_LABEL: Record<MonitoredDomainId, string> = {
   sensory_motor_patterns: "Sensory & movement",
 };
 
-const MONITORED_DOMAINS = Object.keys(MONITORED_DOMAIN_LABEL) as MonitoredDomainId[];
+/** framework.json domain order (ecosystem_stressors excluded) — pinned by monitoring.test.ts. */
+export const MONITORED_DOMAINS = Object.keys(MONITORED_DOMAIN_LABEL) as MonitoredDomainId[];
 
 export type WatchLevel = "on_track" | "monitor";
 
@@ -326,13 +327,12 @@ export function watchPointsSummary(
   result: MonitoringResult,
   max = 2,
 ): { domain: MonitoredDomainId; count: number }[] {
+  // B-GROWTH-09: CATALOGUE order (MONITORED_DOMAINS = framework.json domain
+  // order), never by count — sorting the child's areas by how many items the
+  // parent left open was a ranking of the child (a weakest-domain pointer).
   return result.watchAreas
     .filter((d) => d.reasons.includes("milestone_overdue") && d.overdueMilestones.length > 0)
-    .sort(
-      (a, b) =>
-        b.overdueMilestones.length - a.overdueMilestones.length ||
-        a.domain.localeCompare(b.domain),
-    )
+    .sort((a, b) => MONITORED_DOMAINS.indexOf(a.domain) - MONITORED_DOMAINS.indexOf(b.domain))
     .slice(0, max)
     .map((d) => ({ domain: d.domain, count: d.overdueMilestones.length }));
 }
