@@ -56,8 +56,8 @@ describe("B-PLAY-04 · the Practice pulse counts rounds played this week", () =>
 });
 
 describe("firewall copy · pressure words (B-PLAY-04)", () => {
-  // Scope: "momentum" (this item). NOTE: prac.mimic.packWin.sub still says "come
-  // back tomorrow" (law 3) — filed to the framer, not widened here.
+  // Scope: "momentum" (this item). "come back tomorrow" (law 3) is closed by the
+  // B-PLAY-04 residue and guarded in lib/kidRegisterScan.test.ts.
   const PRESSURE_EN = [/momentum/i];
   const PRESSURE_HE = [/מומנטום/];
 

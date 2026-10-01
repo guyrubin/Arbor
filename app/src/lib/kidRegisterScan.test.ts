@@ -446,7 +446,10 @@ const HEBREW = /[\u0590-\u05FF]/;
 // B-KID-04: Hebrew loss-framing too (in a row / streak / missed / you lost /
 // time's up / don't break / hurry) — the HE dictionary was scanned with
 // English-only terms, so a transcreated pressure line passed.
-const LOSS_FRAMED = /in a row|streak|don'?t break|days? straight|consecutiv|hurry|time'?s up|missed|you lost|ברצף|רצף|פספס|הפסד|נגמר הזמן|אל תשבר|מהרו|תמהר/i;
+// B-PLAY-04 residue (law 3): "come back tomorrow" is a return-pressure line
+// (elev.play.mimic.packComplete.sub said it to the child on the Mimic pack-win
+// card, and the dead base key prac.mimic.packWin.sub carried it too, EN + HE).
+const LOSS_FRAMED = /in a row|streak|don'?t break|days? straight|consecutiv|hurry|time'?s up|missed|you lost|come back tomorrow|ברצף|רצף|פספס|הפסד|נגמר הזמן|אל תשבר|מהרו|תמהר|(?:תחזור|תחזרי|תחזרו|חזרו|חזור|חזרי|לחזור)\s+מחר/i;
 const KID_KEY = /^elev\.(?:kid|play)\./;
 
 describe("kid dictionary (lib/i18nElevation/kidRegister.ts) — counts never verdicts", () => {
@@ -620,5 +623,46 @@ describe("B-KID-04 · flat stars on completion in the kid register", () => {
   it("HE loss-framing is seen by the dictionary scan (negative control)", () => {
     for (const bad of ["שלושה ימים ברצף!", "אל תשברו את הרצף", "פספסת יום", "נגמר הזמן"]) expect(LOSS_FRAMED.test(bad), bad).toBe(true);
     expect(LOSS_FRAMED.test("כל הכבוד, סיימתם!")).toBe(false);
+  });
+});
+
+/* ── B-PLAY-04 residue (law 3) — no return pressure in any key a kid surface renders ── */
+describe("law 3: i18n keys referenced on kid surfaces carry no loss/return-pressure line (EN + HE)", () => {
+  const ALL_HE: Record<string, string> = { ...kidHe, ...baseHe };
+  const referenced = new Set<string>();
+  for (const rel of KID_SURFACE_GRAPH) {
+    const src = stripParentOnly(stripComments(readFileSync(path.join(SRC, rel), "utf8")));
+    for (const m of src.matchAll(/\bt\(\s*"([\w.]+)"/g)) referenced.add(m[1]);
+  }
+
+  it("the scan resolved real keys, the Mimic pack-win line among them", () => {
+    expect(referenced.size).toBeGreaterThan(50);
+    expect(referenced.has("elev.play.mimic.packComplete.sub")).toBe(true);
+  });
+
+  it("0 referenced values are loss-framed or say 'come back tomorrow'", () => {
+    const hits: string[] = [];
+    for (const key of referenced) {
+      for (const [lang, dict] of [["en", ALL_EN], ["he", ALL_HE]] as const) {
+        const v = dict[key];
+        if (v && LOSS_FRAMED.test(v)) hits.push(`${lang} ${key}: ${v}`);
+      }
+    }
+    expect(hits).toEqual([]);
+  });
+
+  it("the pack-win close is neutral in both locales", () => {
+    expect(kidEn["elev.play.mimic.packComplete.sub"]).toContain("That was a good round.");
+    expect(kidHe["elev.play.mimic.packComplete.sub"]).toContain("זה היה סיבוב טוב.");
+    expect(baseEn["prac.mimic.packWin.sub"]).toContain("That was a good round.");
+    expect(baseHe["prac.mimic.packWin.sub"]).toContain("זה היה סבב טוב.");
+  });
+
+  it("POSITIVE CONTROL — the pre-fix EN and HE lines trip the rule", () => {
+    expect(LOSS_FRAMED.test("{name} played every round in {pack}. Pick another, or come back tomorrow.")).toBe(true);
+    expect(LOSS_FRAMED.test("{name} שיחק/ה את כל הסבבים ב{pack}. בחרו עוד אחת, או חזרו מחר.")).toBe(true);
+    expect(LOSS_FRAMED.test("תחזור מחר!")).toBe(true);
+    expect(LOSS_FRAMED.test("{name} עבר/ה את כל הסיבובים ב{pack}. אפשר לבחור ערכה אחרת, או לחזור מחר.")).toBe(true);
+    expect(LOSS_FRAMED.test("That was a good round.")).toBe(false);
   });
 });

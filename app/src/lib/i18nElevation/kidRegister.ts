@@ -115,7 +115,7 @@ export const en: Record<string, string> = {
   "elev.play.mimic.rated.close": "👏 Great try!",
   "elev.play.mimic.rated.tried": "💪 Trying is the win!",
   "elev.play.mimic.packComplete.title": "Pack complete!",
-  "elev.play.mimic.packComplete.sub": "{name} played every round in {pack}. Pick another, or come back tomorrow.",
+  "elev.play.mimic.packComplete.sub": "{name} played every round in {pack}. That was a good round.",
   "elev.play.mimic.playPack": "Play {pack}",
   "elev.play.mimic.stay": "Stay here",
 
@@ -274,7 +274,7 @@ export const he: Record<string, string> = {
   "elev.play.mimic.rated.close": "👏 ניסיון יפה!",
   "elev.play.mimic.rated.tried": "💪 הניסיון הוא ההצלחה!",
   "elev.play.mimic.packComplete.title": "סיימתם את הערכה!",
-  "elev.play.mimic.packComplete.sub": "{name} עבר/ה את כל הסיבובים ב{pack}. אפשר לבחור ערכה אחרת, או לחזור מחר.",
+  "elev.play.mimic.packComplete.sub": "{name} עבר/ה את כל הסיבובים ב{pack}. זה היה סיבוב טוב.",
   "elev.play.mimic.playPack": "לשחק ב{pack}",
   "elev.play.mimic.stay": "להישאר כאן",
 
