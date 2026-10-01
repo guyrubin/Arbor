@@ -48,7 +48,11 @@ describe("AIX-S6 — acceptTodayAction carries provenance", () => {
 
   it("source defaults to today-guidance and is persisted on the entry", () => {
     expect(code).toMatch(/acceptTodayAction = \(recommendation: string, capacity: ActionCapacity, source: ActionLoopEntry\["source"\] = "today-guidance"\)/);
-    expect(code).toMatch(/recommendation: recommendation\.trim\(\), source, capacity/);
+    // B-AI-05: the entry is built by actionLoop/model planAcceptedAction
+    // (trimmed text + source + capacity), which never overwrites a row.
+    expect(code).toMatch(/planAcceptedAction\(actionLoop, \{ recommendation, source, capacity \}, todayActionId\(childProfile\.id\)\)/);
+    const model = read("actionLoop/model.ts");
+    expect(model).toMatch(/recommendation: input\.recommendation\.trim\(\),\s*source: input\.source,\s*capacity: input\.capacity,/);
   });
 });
 
