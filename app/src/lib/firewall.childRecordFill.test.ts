@@ -1,0 +1,92 @@
+/**
+ * B-GROWTH-07 — CLINICAL FIREWALL clause: "no proportional fill of a child
+ * record" (PAI/projects/arbor/reference/ui-enforcement-and-audit.md).
+ *
+ * The Milestones Development Map drew the child's checked/total as a ring
+ * (`RadialProgress`) and every domain as a fill bar (`ProgressBar`). A fill is
+ * a proportion, and a proportion of a child's record reads as a grade however
+ * the label is worded. The count stays; the fill goes.
+ *
+ * Source scan, because the shape is the defect: a render test passes as
+ * happily against a second bar under a different name.
+ *
+ * Allow-list (not scanned): `RoutinesTab.tsx` step progress — a PARENT task,
+ * not a child record.
+ * Known violations (scanned, owned by other lanes, must STILL violate until
+ * that lane clears them — then delete the entry so the guard tightens):
+ *   - `components/sections/AcademyForYou.tsx` RadialProgress + ProgressBar
+ *     (lane SHELLPLAY, B-PLAY-01 / B-PLAY-18)
+ * `components/sections/ChildProfile.tsx` (`width: ${windowRecord.share}%`) is
+ * scanned CLEAN: the Profile lane removes that bar in its own commit.
+ */
+import { describe, expect, it } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
+
+const SRC = path.resolve(__dirname, "..");
+const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf8");
+const stripComments = (src: string) =>
+  src.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+
+/** RadialProgress / ProgressBar as JSX or import, or an inline `width: `${…}%``. */
+const FILL_PATTERNS: [string, RegExp][] = [
+  ["RadialProgress", /\bRadialProgress\b/],
+  ["ProgressBar", /\bProgressBar\b/],
+  ["width %-template", /width:\s*`\$\{[^`]*\}%`/],
+];
+
+const growthDir = path.join(SRC, "components", "growth");
+const GROWTH_FILES = fs.existsSync(growthDir)
+  ? fs.readdirSync(growthDir).filter((f) => /\.tsx?$/.test(f) && !/\.test\./.test(f)).map((f) => `components/growth/${f}`)
+  : [];
+
+const SCANNED = [
+  "components/tabs/MilestonesTab.tsx",
+  "components/tabs/DevelopmentTab.tsx",
+  ...GROWTH_FILES,
+  "components/sections/ChildProfile.tsx",
+  "components/practice/DevelopmentCopilot.tsx",
+  "components/sections/AcademyForYou.tsx",
+];
+
+const KNOWN_VIOLATIONS = new Set([
+  "components/sections/AcademyForYou.tsx",
+]);
+
+const violationsIn = (rel: string) => {
+  const src = stripComments(read(rel));
+  return FILL_PATTERNS.filter(([, re]) => re.test(src)).map(([name]) => name);
+};
+
+describe("B-GROWTH-07 — no proportional fill of a child record", () => {
+  it("scans a non-empty growth component set", () => {
+    expect(GROWTH_FILES.length).toBeGreaterThan(0);
+  });
+
+  for (const rel of SCANNED.filter((f) => !KNOWN_VIOLATIONS.has(f))) {
+    it(`${rel} draws no ring, bar or %-width fill`, () => {
+      expect(violationsIn(rel)).toEqual([]);
+    });
+  }
+
+  it("the known violations still violate (delete the entry when the owning lane clears it)", () => {
+    for (const rel of KNOWN_VIOLATIONS) expect(violationsIn(rel).length, rel).toBeGreaterThan(0);
+  });
+
+  it("the Milestones map keeps the count as text, without a /total fraction", () => {
+    const ms = stripComments(read("components/tabs/MilestonesTab.tsx"));
+    expect(ms).toContain('data-testid="ms-map-count"');
+    expect(ms).toContain('{windowChecked} {t("ms.domainOf")}');
+    expect(ms).not.toContain('{s.checked}/{s.total}');
+    expect((ms.match(/\{s\.checked\} \{t\("ms\.domainOf"\)\}/g) ?? []).length).toBe(2);
+  });
+
+  it("NEGATIVE CONTROL — the pre-fix shapes trip every pattern", () => {
+    const pre = [
+      "<RadialProgress value={windowChecked} total={windowTotal} tone=\"mint\" size={92} thickness={10}>",
+      "<ProgressBar value={s.checked} total={s.total} tone={dv.tone} height={9} />",
+      "<div style={{ width: `${windowRecord.share}%` }} />",
+    ].join("\n");
+    expect(FILL_PATTERNS.every(([, re]) => re.test(pre))).toBe(true);
+  });
+});

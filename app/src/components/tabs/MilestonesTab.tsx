@@ -25,7 +25,7 @@ import { explainAnswerText, isEmptyExplainAnswer, type ExplainAnswer } from "../
 // string, no why-line, no provenance, nothing to keep. They now ride the same
 // shared action cluster every other content object uses.
 import { ContentActionBar, ContentWhyLine } from "../ui/ContentActionBar";
-import { cardCls, ProgressBar, RadialProgress, Split, domainVisual, PASTEL } from "../ui/kit";
+import { cardCls, Split, domainVisual, PASTEL } from "../ui/kit";
 import { authHeaders, getAiLanguage } from "../../lib/api";
 import { DOMAIN_REFERENCES } from "../../lib/milestoneReferences";
 import { MILESTONE_AGE_BANDS, ageWindowMilestones, bandForAgeMonths, comparisonAgeMonths, correctedAge, explainMilestonePrompt } from "../../lib/milestoneData";
@@ -177,7 +177,6 @@ export default function MilestonesTab() {
   // the whole 0–6y catalogue ("0 of 133" / "0/28" on day 0).
   const windowMilestones = useMemo(() => ageWindowMilestones(milestones, comparisonMonths), [milestones, comparisonMonths]);
   const windowChecked = windowMilestones.filter((m) => m.checked).length;
-  const windowTotal = windowMilestones.length;
 
   // UND-3 — "Gentle watch points" derives from the canonical useMonitoring
   // watch-area derivation: real domain names + COUNTS only (clinical firewall —
@@ -692,18 +691,15 @@ export default function MilestonesTab() {
             {/* Development Map summary — count headline only, no verdict score. */}
             <div className={`${cardCls} min-w-0 p-4 sm:p-6`}>
               <span className="text-[11px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("ms.developmentMap")}</span>
-              {/* Ring/dial visual — CLINICAL FIREWALL: the number inside is a COUNT of
-                  noticed milestones (never a %/score/verdict); the ring fill is only the
-                  checked/total count-proportion, and it is not labelled as competence. */}
-              <div className="mt-4 flex min-w-0 flex-col items-start gap-4 sm:flex-row sm:items-center">
-                <RadialProgress value={windowChecked} total={windowTotal} tone="mint" size={92} thickness={10}>
-                  <span className="text-center leading-none">
-                    <span className="block text-[26px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-green-ink)" }}>{windowChecked}</span>
-                    <span className="block text-[11px] font-bold mt-0.5" style={{ color: "var(--arbor-muted)" }}>{t("ms.of")} {windowTotal}</span>
-                  </span>
-                </RadialProgress>
+              {/* B-GROWTH-07 — CLINICAL FIREWALL: no proportional fill of a child
+                  record. The ring drew checked/total as an arc; the count now
+                  stands alone as text in display type ("{n} noticed"). */}
+              <div className="mt-4 min-w-0" data-testid="ms-map-count">
                 <div className="min-w-0">
                   <div className="text-[12px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("ms.observedSoFar")}</div>
+                  <div className="mt-1 text-[26px] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+                    {windowChecked} {t("ms.domainOf")}
+                  </div>
                   <p className="text-[11px] mt-1.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("ms.snapshotNotScore")}</p>
                   {/* GP-08: the denominator is the age window, and the parent is told so. */}
                   <p className="text-[11px] mt-1.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.growthTruth.window.hint")}</p>
@@ -808,10 +804,10 @@ export default function MilestonesTab() {
                       <div className="flex items-center gap-2.5 mb-2">
                         <Icon className="w-[18px] h-[18px] flex-shrink-0" style={{ color: PASTEL[dv.tone].ink }} />
                         <span className="flex-1 text-[13.5px] font-bold" style={{ color: "var(--arbor-ink)" }}>{domainLabel(dom.id, dom.label)}</span>
-                        <span className="text-[11px] font-extrabold" style={{ color: "var(--arbor-muted)" }}>{s.checked}/{s.total} {t("ms.domainOf")}</span>
+                        {/* B-GROWTH-07: a count, never a bar or a "/total" fraction. */}
+                        <span className="text-[11px] font-extrabold" style={{ color: "var(--arbor-muted)" }}>{s.checked} {t("ms.domainOf")}</span>
                         <ChevEnd className="w-4 h-4 flex-shrink-0" style={{ color: "var(--arbor-muted)" }} />
                       </div>
-                      <ProgressBar value={s.checked} total={s.total} tone={dv.tone} height={9} />
                     </button>
                   );
                 })}
@@ -841,10 +837,9 @@ export default function MilestonesTab() {
                     </span>
                     <div className="flex-1">
                       <div className="text-[17px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{domainLabel(dom.id, dom.label)}</div>
-                      <div className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>{s.checked}/{s.total} {t("ms.domainOf")}</div>
+                      <div className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>{s.checked} {t("ms.domainOf")}</div>
                     </div>
                   </div>
-                  <ProgressBar value={s.checked} total={s.total} tone={dv.tone} height={9} />
 
                   {renderDomainChecklist(dom.id)}
 
