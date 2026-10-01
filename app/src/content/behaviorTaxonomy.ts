@@ -70,6 +70,18 @@ export const INCIDENT_TYPES: ReadonlySet<string> = new Set<string>(
 
 export const isIncidentType = (behaviorType: string): boolean => INCIDENT_TYPES.has(behaviorType);
 
+/**
+ * B-TODAY-01 — does an extraction made from the ONE-field moment form earn the
+ * incident review? Only when the model's label really named an incident type.
+ * An unmatched free label ("First word") falls back to DEFAULT_BEHAVIOR_TYPE
+ * with `typeMatched: false`, and a "Moment" label is not an incident — both
+ * keep the parent's words in the moment field (saved via momentLogFields:
+ * behaviorType "Moment", intensity 1). Never a joyful line filed as a
+ * Transition Refusal at 3/5.
+ */
+export const extractionOpensIncidentReview = (n: { typeMatched: boolean; behaviorType: string }): boolean =>
+  n.typeMatched && isIncidentType(n.behaviorType);
+
 /** Minimal draft shape every capture surface holds before a write. */
 export type BehaviorLogDraft = {
   behaviorType: string;

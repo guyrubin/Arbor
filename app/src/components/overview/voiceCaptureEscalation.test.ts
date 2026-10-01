@@ -139,3 +139,22 @@ describe("VC-4 — CoachTab voice loop: escalation stops the loop, resources lan
     expect(coach).toMatch(/appendMarkdown: \(md\) => appendVoiceAiDelta\(`\\n\\n\$\{md\}`\)/);
   });
 });
+
+describe("B-TODAY-01 — QuickLogModal voice names the branch it was spoken into", () => {
+  const modal = stripComments(read("components/overview/QuickLogModal.tsx"));
+  it("the dictation result routes with the live branch (ref, not a stale closure)", () => {
+    expect(modal).toMatch(/void extractFromTyped\(said, hardMomentRef\.current \? "incident" : "moment"\)/);
+    expect(modal).toMatch(/hardMomentRef\.current = hardMoment;/);
+  });
+  it("the voice transcript lands in the moment field with 'voice' provenance before extraction", () => {
+    const onResult = /onResult: \(text\) => \{[\s\S]*?\n        \},/.exec(modal)?.[0] ?? "";
+    expect(onResult).toBeTruthy();
+    expect(onResult.indexOf("setNewLogTrigger(said)")).toBeLessThan(onResult.indexOf("extractFromTyped("));
+    expect(onResult).toMatch(/setSource\("voice"\)/);
+  });
+  it("the 409 branch in the modal still writes zero draft fields", () => {
+    const branch = /if \(err instanceof EscalationRequiredError\) \{([\s\S]*?)\} else \{/.exec(modal)?.[1] ?? "";
+    expect(branch).toBeTruthy();
+    expect(branch).not.toMatch(/setNewLog/);
+  });
+});

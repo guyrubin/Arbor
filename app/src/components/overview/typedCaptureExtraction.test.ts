@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { en, he } from "../../lib/i18n";
+import { extractionOpensIncidentReview, momentLogFields, normalizeExtractedLog } from "../../content/behaviorTaxonomy";
 
 /**
  * AI-CAP-3 + AI-CAP-4 — typed capture through the ONE extraction seam and the
@@ -192,5 +193,46 @@ describe("AI-CAP-3/4 — copy: EN+HE parity, factual, zero confidence wording (C
     for (const value of [en["ql.review.source.aiDraft"], he["ql.review.source.aiDraft"]]) {
       expect(value).not.toMatch(/confidence|certainty|verified|accurate|ודאות|ביטחון|מאומת|מדויק/i);
     }
+  });
+});
+
+/**
+ * B-TODAY-01 — a dictated joyful moment is never filed as an incident.
+ * From the moment form, the incident review opens only when the extraction
+ * label really is an incident type; otherwise the words stay in the moment
+ * field and Save writes a Moment at intensity 1.
+ */
+describe("B-TODAY-01 — moment-branch extraction routing (both branches)", () => {
+  const joyEn = "Noa said butterfly for the first time this morning";
+  const joyHe = "נועה אמרה פרפר בפעם הראשונה הבוקר";
+  const route = (label: string, text: string) =>
+    extractionOpensIncidentReview(normalizeExtractedLog({ behaviorType: label }, text));
+
+  it("{behaviorType:'Moment'} or a free label keeps the moment form; Save = Moment at intensity 1", () => {
+    expect(route("Moment", joyEn)).toBe(false);
+    expect(route("First word", joyEn)).toBe(false);
+    expect(route("First word", joyHe)).toBe(false);
+    const saved = momentLogFields(joyEn);
+    expect(saved.behaviorType).toBe("Moment");
+    expect(saved.intensity).toBe(1);
+  });
+
+  it("the HE transcript is preserved verbatim on the moment branch", () => {
+    expect(momentLogFields(joyHe).trigger).toBe(joyHe);
+  });
+
+  it("{behaviorType:'Transition Refusal'} opens the incident review", () => {
+    expect(route("Transition Refusal", joyEn)).toBe(true);
+  });
+
+  it("the modal gates the moment branch BEFORE any draft field is written; the hard-moment path is unchanged", () => {
+    const fn = /const extractFromTyped = async \(text: string, from: "moment" \| "incident" = "incident"\) => \{[\s\S]*?\n  \};/.exec(modal)?.[0] ?? "";
+    expect(fn).toBeTruthy();
+    const gate = fn.indexOf('if (from === "moment" && !extractionOpensIncidentReview(n)) return;');
+    expect(gate).toBeGreaterThan(-1);
+    expect(gate).toBeLessThan(fn.indexOf("setNewLogType("));
+    expect(gate).toBeLessThan(fn.indexOf("setHardMoment(true)"));
+    // The typed Enter path inside the incident form keeps the default branch.
+    expect(modal).toMatch(/void extractFromTyped\(typed\);/);
   });
 });

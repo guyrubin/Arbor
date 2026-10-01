@@ -54,7 +54,8 @@ describe("TJB-08 — voice captures on Today, not on Behaviors", () => {
     // The transcript lands in the SAME field a typed sentence lands in, and
     // then takes the SAME extraction route into ConfirmCaptureReview.
     expect(modal).toMatch(/setNewLogTrigger\(said\)/);
-    expect(modal).toMatch(/said\.length >= TYPED_EXTRACT_MIN_CHARS\) void extractFromTyped\(said\)/);
+    // B-TODAY-01: the call names the branch it was spoken into.
+    expect(modal).toMatch(/said\.length >= TYPED_EXTRACT_MIN_CHARS\) void extractFromTyped\(said, /);
     expect(modal).toMatch(/<ConfirmCaptureReview/);
   });
 

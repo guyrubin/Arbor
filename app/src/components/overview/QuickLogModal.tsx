@@ -10,7 +10,7 @@ import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { api, EscalationRequiredError, getAiLanguage } from "../../lib/api";
 import { escalationCategories, renderEscalationMarkdown } from "../../safety/escalation";
-import { BEHAVIOR_TYPES, DEFAULT_BEHAVIOR_TYPE, EXTRACT_CONTEXTS, behaviorTypeLabel, isIncidentType, normalizeExtractedLog, validateLogDraft } from "../../content/behaviorTaxonomy";
+import { BEHAVIOR_TYPES, DEFAULT_BEHAVIOR_TYPE, EXTRACT_CONTEXTS, behaviorTypeLabel, extractionOpensIncidentReview, isIncidentType, normalizeExtractedLog, validateLogDraft } from "../../content/behaviorTaxonomy";
 import type { BehaviorContext } from "../../types";
 import { speechSupported, startDictation } from "../../lib/speech";
 import { microphoneRecovery } from "../../lib/microphoneRecovery";
@@ -61,6 +61,10 @@ export default function QuickLogModal({ open, onClose, mode = "text" }: { open: 
   // what you tried) is opt-in behind "This was a hard moment", so a joyful
   // moment never has to invent a challenge type or a parent response.
   const [hardMoment, setHardMoment] = useState(false);
+  // B-TODAY-01: the dictation callback outlives the render that armed it, so
+  // the branch it was spoken into is read through a ref, not a stale closure.
+  const hardMomentRef = useRef(false);
+  hardMomentRef.current = hardMoment;
   const toggleHardMoment = (on: boolean) => {
     setHardMoment(on);
     if (on && !isIncidentType(newLogType)) setNewLogType(DEFAULT_BEHAVIOR_TYPE);
@@ -101,12 +105,19 @@ export default function QuickLogModal({ open, onClose, mode = "text" }: { open: 
   // placeholder. Extraction failure (non-escalation) leaves today's manual
   // form untouched — the typed sentence stays in the trigger field.
   const TYPED_EXTRACT_MIN_CHARS = 25;
-  const extractFromTyped = async (text: string) => {
+  // B-TODAY-01: `from` names the form the words were captured in. From the
+  // ONE-field moment form, the incident review opens ONLY when the model's
+  // label really is an incident type (extractionOpensIncidentReview);
+  // otherwise the parent's words stay verbatim in the moment field
+  // (source "voice") and Save writes a Moment at intensity 1 via addMoment.
+  // The hard-moment form's path is unchanged. Zero added model calls.
+  const extractFromTyped = async (text: string, from: "moment" | "incident" = "incident") => {
     setDrafting(true);
     setEscalationMarkdown(null);
     try {
       const d = await api.extractLog({ message: text, childProfile, language: getAiLanguage() });
       const n = normalizeExtractedLog(d, text);
+      if (from === "moment" && !extractionOpensIncidentReview(n)) return;
       setNewLogType(n.behaviorType);
       setNewLogIntensity(n.intensity);
       setNewLogDuration(n.durationMinutes);
@@ -166,7 +177,7 @@ export default function QuickLogModal({ open, onClose, mode = "text" }: { open: 
           if (!said) return;
           setNewLogTrigger(said);
           setSource("voice");
-          if (said.length >= TYPED_EXTRACT_MIN_CHARS) void extractFromTyped(said);
+          if (said.length >= TYPED_EXTRACT_MIN_CHARS) void extractFromTyped(said, hardMomentRef.current ? "incident" : "moment");
         },
         onInterim: (text) => setVoiceInterim(text),
         onError: (reason) => setVoiceNotice(microphoneRecovery(reason, uiLang)),
