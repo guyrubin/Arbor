@@ -39,6 +39,7 @@ import { HoldExitButton } from "./HoldExitButton";
 import { kidIsolate } from "./kidText";
 import { lastPlayedWorldYesterday } from "./kidGreeting";
 import { chooseTonightsStory } from "./tonightsStory";
+import { HERO_STORIES } from "../../lib/heroJourneys";
 
 export type KidSurface = "journeys" | "arcade" | "feelings" | "comics";
 
@@ -318,7 +319,7 @@ export default function KidDashboard({
   onExit: () => void;
 }) {
   const { childProfile } = useArbor();
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
   const hero = useHeroAvatar();
   const data = usePracticeData(childProfile.id);
   // RUN-03: every kid-register string renders through the bidi isolate so an
@@ -339,6 +340,10 @@ export default function KidDashboard({
     () => chooseTonightsStory(data.today, childProfile.id),
     [data.today, childProfile.id],
   );
+  // B-KID-06: the banner names the one story it opens (HE title in Hebrew),
+  // instead of "Start a hero story / Pick a world" on a door with no choice.
+  const tonightsStory = HERO_STORIES.find((s) => s.id === tonightsStoryId);
+  const tonightsTitle = tonightsStory ? (uiLang === "he" ? tonightsStory.titleHe : tonightsStory.title) : "";
   const greetingSub = yesterdayWorld
     ? kt("elev.kid.greeting.playedYesterday", { world: t(`kid.game.${yesterdayWorld}.title`) })
     : kt("elev.kid.greeting.ready");
@@ -397,8 +402,8 @@ export default function KidDashboard({
             <Sparkles aria-hidden="true" className="w-10 h-10" style={{ color: "var(--arbor-sky-ink)" }} />
           </WorldScene>
           <span className="absolute bottom-2 end-2 z-[2] rounded-2xl" style={{ background: "var(--arbor-paper-elevated)", border: "2px solid var(--comic-ink)", boxShadow: "2px 2px 0 var(--comic-ink)" }}>
-            {/* F6 — the featured hero ANNOUNCES. The adjacent text is "Start a
-                hero story", never the child's name, so the same argument that
+            {/* F6 — the featured hero ANNOUNCES. The adjacent text is "Tonight's
+                story: {title}", never the child's name, so the same argument that
                 un-hid the world-header cameo applies here. The greeting
                 portrait above keeps `decorative`: it really does sit next to
                 "Hi {name}!". */}
@@ -407,7 +412,7 @@ export default function KidDashboard({
         </div>
         <span style={{ flex: 1, minInlineSize: 0, padding: 14, alignSelf: "center" }}>
           <span style={{ display: "block", fontSize: 12, fontWeight: 800, color: "var(--arbor-sky-ink)" }}>{kt("kid.quest.eyebrow")}</span>
-          <span style={{ display: "block", fontFamily: "var(--font-display)", fontWeight: 900, fontSize: "clamp(20px, 5vw, 26px)", color: "var(--arbor-ink)", lineHeight: 1.12 }}>{kt("kid.quest.title")}</span>
+          <span style={{ display: "block", fontFamily: "var(--font-display)", fontWeight: 900, fontSize: "clamp(20px, 5vw, 26px)", color: "var(--arbor-ink)", lineHeight: 1.12 }}>{kt("kid.quest.title", { title: tonightsTitle })}</span>
           <span style={{ display: "block", fontSize: 13, color: "var(--arbor-ink)", marginBlockStart: 4 }}>{kt("kid.quest.sub")}</span>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 6, minBlockSize: 44, fontWeight: 800, color: "var(--arbor-sky-ink)" }}>{kt("kid.quest.cta")} <ChevronRight className="w-4 h-4 rtl:-scale-x-100" aria-hidden="true" /></span>
         </span>

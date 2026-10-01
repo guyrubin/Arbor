@@ -178,3 +178,29 @@ describe("Kids experience visual and session contract", () => {
     expect(overlay).toContain('view === "comics"');
   });
 });
+
+describe("B-KID-06 · kid copy says what the door does", async () => {
+  const { en: kidsEn, he: kidsHe } = await import("../../lib/i18nElevation/kidsExperience");
+  const { en: storiesEn, he: storiesHe } = await import("../../lib/i18nElevation/kidsStories");
+  const { en: baseEn, he: baseHe } = await import("../../lib/i18n");
+  const { HERO_STORIES } = await import("../../lib/heroJourneys");
+
+  it("the comics door uses the shelf's own line — nothing a grown-up 'saved' (books shelve themselves)", () => {
+    expect(kidsEn["elev.kids.comics.sub"]).toBe(storiesEn["shelf.subtitle"]);
+    expect(kidsHe["elev.kids.comics.sub"]).toBe(storiesHe["shelf.subtitle"]);
+    expect(kidsEn["elev.kids.comics.sub"]).not.toMatch(/grown-up|saved/i);
+    expect(kidsHe["elev.kids.comics.sub"]).not.toContain("מבוגר");
+  });
+
+  it("the banner names tonight's ONE story, EN title or HE titleHe; no 'pick a world'", () => {
+    expect(baseEn["kid.quest.title"]).toContain("{title}");
+    expect(baseHe["kid.quest.title"]).toContain("{title}");
+    for (const v of [baseEn["kid.quest.title"], baseEn["kid.quest.sub"]]) expect(v).not.toMatch(/pick a world|start a hero story/i);
+    for (const v of [baseHe["kid.quest.title"], baseHe["kid.quest.sub"]]) expect(v).not.toContain("בוחרים עולם");
+    const dashboard = read("KidDashboard.tsx");
+    expect(dashboard).toContain('kt("kid.quest.title", { title: tonightsTitle })');
+    expect(dashboard).toContain('uiLang === "he" ? tonightsStory.titleHe : tonightsStory.title');
+    expect(HERO_STORIES.length).toBeGreaterThan(0);
+    for (const s of HERO_STORIES) expect(s.titleHe, s.id).toMatch(/[֐-׿]/);
+  });
+});
