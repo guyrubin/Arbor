@@ -85,7 +85,7 @@ describe("F-01 — the voice chip can never wedge into a dead button", () => {
     // The stale-ref branch clears but does NOT return — the tap keeps going,
     // paints the connecting state (S5), claims its attempt, and flows STRAIGHT
     // into the Live-availability branch.
-    expect(toggle).toMatch(/if \(voiceOnRef\.current \|\| liveCtlRef\.current\) stopVoice\(\);\s*setVoiceNotice\(null\);\s*setVoicePhase\("connecting"\);\s*const attempt = voiceLifetimeRef\.current\.begin\(\);\s*let liveClosed = false;\s*if \(liveAvail\)/);
+    expect(toggle).toMatch(/if \(voiceOnRef\.current \|\| liveCtlRef\.current\) stopVoice\(\);\s*setVoiceNotice\(null\);\s*setVoicePhase\("connecting"\);\s*const attempt = voiceLifetimeRef\.current\.begin\(\);\s*let liveClosed = false;\s*let liveStage: "token" \| "start" = "token";\s*if \(liveAvail\)/);
     // …so every idle-looking tap reaches the token mint or the browser loop.
     expect(toggle).toContain("api.liveToken(");
     expect(toggle).toMatch(/startBrowserVoice\(\);\s*\};\s*$/);
