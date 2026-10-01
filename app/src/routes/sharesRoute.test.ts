@@ -7,6 +7,11 @@
  *  (b) the Free/Plus 402 body says nothing about "your account" (a co-parent
  *      gets a read-only view of what is shared, never the account).
  *
+ * B-CAREPRO-11 — "Shared with me" and the recipient packet authorise on the
+ * recipient's email, so the address must be verified: an unverified token
+ * gets an empty inbound list and 403 on the packet; a verified one is
+ * unchanged.
+ *
  * The test mounts a tiny identity shim in front of the router so each request
  * can act as a different signed-in parent (x-test-uid / x-test-email).
  */
@@ -70,6 +75,9 @@ beforeAll(async () => {
       consultStore: createConsultStore(config),
       adminMetrics: createAdminMetricsStore(config),
       waitlistStore: createWaitlistStore(config),
+      // B-CAREPRO-11: a minimal stored record so a verified recipient's packet
+      // resolves end to end (200), proving the new gate is the only change.
+      sharedChildSource: { load: async () => ({ profile: { name: "Dylan", age: 5 }, logs: [], milestones: [], plans: [], memory: [] }) as any },
     }),
   );
   await new Promise<void>((resolve) => { server = app.listen(0, "127.0.0.1", resolve); });
@@ -172,5 +180,59 @@ describe("B-CAREPRO-10 · client: seat_in_use is a hint, not a paywall or an esc
     }
     expect(lcEn["elev.learnCare.share.seatInUse"]).toContain("{email}");
     expect(lcHe["elev.learnCare.share.seatInUse"]).toContain("{email}");
+  });
+});
+
+describe("B-CAREPRO-11 · recipient routes require a verified email", () => {
+  const RECIPIENT = "coparent-b11@example.com";
+  let grantId = "";
+
+  beforeAll(async () => {
+    const res = await fetch(`${baseUrl}/api/shares`, {
+      method: "POST",
+      headers: as("owner-b11", "owner-b11@example.com"),
+      body: JSON.stringify({ childId: "child-b11", childName: "Dylan", recipientEmail: RECIPIENT, role: "viewer", scopes: ["milestones"], duration: "30d" }),
+    });
+    expect(res.status).toBe(200);
+    grantId = ((await res.json()) as { id: string }).id;
+    expect(grantId).toBeTruthy();
+  });
+
+  const inbound = async (verified: boolean) => {
+    const res = await fetch(`${baseUrl}/api/shared-with-me`, { headers: as("recipient-b11", RECIPIENT, verified) });
+    return { status: res.status, shares: ((await res.json()) as { shares: { id: string }[] }).shares };
+  };
+  const packet = async (verified: boolean) => {
+    const res = await fetch(`${baseUrl}/api/shared/${grantId}/packet`, { headers: as("recipient-b11", RECIPIENT, verified) });
+    return { status: res.status, json: (await res.json()) as Record<string, unknown> };
+  };
+
+  it("unverified token → empty inbound list", async () => {
+    const { status, shares } = await inbound(false);
+    expect(status).toBe(200);
+    expect(shares).toEqual([]);
+  });
+
+  it("unverified token → 403 on the packet, no child data in the body", async () => {
+    const { status, json } = await packet(false);
+    expect(status).toBe(403);
+    expect(json.sections).toBeUndefined();
+    expect(JSON.stringify(json)).not.toContain("Dylan");
+  });
+
+  it("verified (Google) token → unchanged: the grant is listed and the packet resolves", async () => {
+    const list = await inbound(true);
+    expect(list.shares.map((g) => g.id)).toContain(grantId);
+    const { status, json } = await packet(true);
+    expect(status).toBe(200);
+    expect(json.childName).toBe("Dylan");
+  });
+
+  it("the middleware attaches the claim (source)", () => {
+    const here = path.dirname(fileURLToPath(import.meta.url));
+    const mw = readFileSync(path.join(here, "..", "server", "authMiddleware.ts"), "utf8");
+    expect(mw).toContain("emailVerified: decoded.email_verified === true");
+    // NEGATIVE CONTROL: the pre-fix attachment drops the claim.
+    expect("(req as any).user = { uid: decoded.uid, email: decoded.email ?? null };").not.toContain("emailVerified");
   });
 });

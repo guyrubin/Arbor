@@ -118,10 +118,9 @@ const redactProfile = <T,>(privacy: RedactionContext, profile: T): T =>
 const actorOf = (req: express.Request) => ({
   uid: (req as any).user?.uid || "local-sandbox",
   email: ((req as any).user?.email as string | null) || null,
-  // N1-07: the verified-address claim, when the auth middleware propagates it.
-  // Today it does not (it attaches uid + email only), so this is `undefined`
-  // and the resolver falls back to an Admin SDK lookup — correct either way,
-  // and the absence can only ever make the lane MORE fail-closed.
+  // N1-07: the verified-address claim. B-CAREPRO-11: server/authMiddleware
+  // now propagates `decoded.email_verified`; anything but `true` stays
+  // `undefined` and every email-authorized lane treats that as unverified.
   emailVerified: (req as any).user?.emailVerified === true ? true : undefined,
 });
 
@@ -582,8 +581,10 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
 
   // The co-parent / recipient side: grants shared *with* the signed-in adult.
   router.get("/shared-with-me", async (req, res) => {
-    const { email } = actorOf(req);
-    if (!email) { res.json({ shares: [] }); return; }
+    const { email, emailVerified } = actorOf(req);
+    // B-CAREPRO-11: grants match on the recipient's email, so the address must
+    // be PROVEN — an unverified token sees an empty inbound list.
+    if (!email || emailVerified !== true) { res.json({ shares: [] }); return; }
     try {
       res.json({ shares: await shareStore.listByRecipient(email) });
     } catch (error: any) {
@@ -599,7 +600,12 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   // inside resolveSharedPacket → buildSharedScopePacket — the ONLY egress for
   // recipient-facing child data. Never returns raw subcollection documents.
   router.get("/shared/:grantId/packet", async (req, res) => {
-    const { email } = actorOf(req);
+    const { email, emailVerified } = actorOf(req);
+    // B-CAREPRO-11: no packet for an unverified address (same reason as above).
+    if (emailVerified !== true) {
+      res.status(403).json({ error: "Verify your email address to open shared views." });
+      return;
+    }
     try {
       const result = await resolveSharedPacket({
         grantId: req.params.grantId,

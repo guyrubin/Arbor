@@ -64,7 +64,11 @@ export const createAuthMiddleware = (config: ArborConfig): RequestHandler => {
     try {
       ensureAdminApp(config);
       const decoded = await getAuth().verifyIdToken(token);
-      (req as any).user = { uid: decoded.uid, email: decoded.email ?? null };
+      // B-CAREPRO-11 (N1-07-C1): carry the verified-address claim. Recipient
+      // share routes authorize on the email, and an Email/Password token can
+      // be minted for any address without proving it — only a verified
+      // address may match a grant. Also lets digestOptIn skip its Admin lookup.
+      (req as any).user = { uid: decoded.uid, email: decoded.email ?? null, emailVerified: decoded.email_verified === true };
       next();
     } catch (err: any) {
       if (required) {
