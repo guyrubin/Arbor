@@ -52,6 +52,7 @@ import ConversationProposalTray from "../coach/ConversationProposalTray";
 // ENG-10 / ENG-11: the JITAI cue, rendered where the parent already is and
 // instrumented — and in the evening it is the Bedtime Stories door.
 import CompanionOfferSlot from "../overview/CompanionOfferSlot";
+import { liveUnavailableReason, trackLiveUnavailable } from "../../lib/kpiEvents";
 import { useCompanionOffer } from "../overview/useCompanionOffer";
 // AI-06 / AI-24: one classifier from a thrown transport error (or from being
 // offline) to the honest, ACTIONABLE thing to say — never a generic retry.
@@ -649,12 +650,17 @@ export default function CoachTab() {
     setVoicePhase("connecting");
     const attempt = voiceLifetimeRef.current.begin();
     let liveClosed = false;
+    // B-PROV-06: where the attempt failed (token mint vs socket start), so a
+    // fallback counts as ONE live_unavailable event with a closed-enum reason.
+    let liveStage: "token" | "start" = "token";
 
     if (liveAvail) {
       try {
         const fresh = await api.liveToken({ language: getAiLanguage(), childId: childProfile.id, childProfile, ...buildVoiceContext(voiceMessagesRef.current, childProfile.id) }, { signal: attempt.signal });
         if (!attempt.isCurrent()) return;
+        if (!(fresh.available && fresh.token && fresh.model)) trackLiveUnavailable("token_error");
         if (fresh.available && fresh.token && fresh.model) {
+          liveStage = "start";
           const { startGeminiLive } = await import("../../lib/geminiLiveClient");
           if (!attempt.isCurrent()) return;
           const ctl = await startGeminiLive(
@@ -786,6 +792,10 @@ export default function CoachTab() {
           return;
         }
         console.warn("Live voice start failed — falling back to browser voice", err);
+        // B-PROV-06: the balance alarm — a depleted prepay shows up as
+        // "closed before open"; count it (closed enum, no text) before falling back.
+        const unavailable = liveUnavailableReason(err, liveStage);
+        if (unavailable) trackLiveUnavailable(unavailable);
         setVoiceNotice(t("coach.toast.voiceFallback"));
       }
     }

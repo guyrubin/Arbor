@@ -27,6 +27,7 @@
  */
 import { track } from "./analytics";
 import { OFFER_PRECEDENCE, OFFER_SUPPRESS_REASONS } from "./companionOffer";
+import { isKidModeActive } from "./kidModeGate";
 
 export const KpiEvent = {
   /** The bell panel was opened (the in-app notification surface's reach). */
@@ -76,6 +77,8 @@ export const KpiEvent = {
   OfferShown: "offer_shown",
   /** B-AI-06: a proactive candidate in hand did not render, with the reason. */
   OfferSuppressed: "offer_suppressed",
+  /** B-PROV-06: a Live voice attempt fell back to browser voice (the balance alarm). */
+  LiveUnavailable: "live_unavailable",
 } as const;
 
 /** The capture entry modes (mirrors ArborContext's CaptureMode union). */
@@ -424,4 +427,32 @@ export function trackOfferSuppressed(args: { kind: string; reason: string; surfa
     reason: oneOf(OFFER_SUPPRESS_REASONS, args.reason),
     surface: oneOf(OFFER_SURFACES, args.surface),
   });
+}
+
+/* ── Live voice availability (B-PROV-06) ────────────────────────────────── */
+
+/** Why a Live voice attempt fell back to browser voice. Closed enum, no text. */
+export const LIVE_UNAVAILABLE_REASONS = ["closed_before_open", "closed_during_start", "token_error"] as const;
+export type LiveUnavailableReason = (typeof LIVE_UNAVAILABLE_REASONS)[number];
+
+/**
+ * Maps a failed Live start to its reason, or null when the failure is not an
+ * availability signal (a mic denial, a paywall, a quota/consent refusal and a
+ * mid-start timeout are told to the parent elsewhere and are not counted).
+ * `stage` is where the attempt was: minting the token, or opening the socket.
+ * "live-closed-before-open" is the depleted-prepay signature (the provider
+ * accepts the socket handshake and closes it before setup).
+ */
+export function liveUnavailableReason(err: unknown, stage: "token" | "start"): LiveUnavailableReason | null {
+  const message = err instanceof Error ? err.message : "";
+  if (message === "live-closed-before-open") return "closed_before_open";
+  if (message === "live-closed-during-start") return "closed_during_start";
+  if (stage === "token") return "token_error";
+  return null;
+}
+
+/** One event per failed Live attempt. Kid Mode never emits (kid egress gate). */
+export function trackLiveUnavailable(reason: string): void {
+  if (isKidModeActive()) return;
+  track(KpiEvent.LiveUnavailable, { reason: oneOf(LIVE_UNAVAILABLE_REASONS, reason) });
 }
