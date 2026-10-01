@@ -89,8 +89,10 @@ describe("§3f row 3 — the parent door leads with tonight's cover", () => {
 
   it("stays inside the declared module budget, with exactly one primary move", () => {
     const modules = (HERO.match(/\bdata-module=/g) || []).length;
+    const demoted = (HERO.match(/\bdata-module-demoted\b/g) || []).length;
     const moves = (HERO.match(/\bdata-primary-move=/g) || []).length;
-    expect(modules).toBeLessThanOrEqual(contractFor("stories")!.moduleBudget);
+    expect(modules - demoted).toBeLessThanOrEqual(contractFor("stories")!.moduleBudget);
+    expect(modules - demoted).toBeLessThanOrEqual(3);
     expect(moves).toBe(1);
   });
 
@@ -112,11 +114,7 @@ describe("§3f row 3 — the parent door leads with tonight's cover", () => {
   });
 
   it("RUN-08 — no zero wall: the counts line renders only when there is something to count", () => {
-    expect(parent).toMatch(
-      /\{\(runs\.length > 0 \|\| METRIC_IDS\.some\(\(m\) => totalMetrics\[m\] > 0\)\) && \(/,
-    );
-    // Every metric chip is itself filtered to non-zero.
-    expect(parent).toContain("METRIC_IDS.filter((m) => totalMetrics[m] > 0)");
+    expect(parent).toMatch(/\{runs\.length > 0 && \(\s*<p[^>]*>\s*\{t\("elev\.stories\.counts\.stories", \{ n: runs\.length \}\)\}/);
   });
 
   it("KID-29 residue — the kid banner keeps the crest and the name, not the tally", () => {
@@ -183,5 +181,54 @@ describe("chooseTonightsStory — one story per local day, stable and rotating",
     expect(picks.size).toBeGreaterThan(1);
     const sameDayTwoKids = new Set(["child-1", "child-2", "child-3"].map((c) => chooseTonightsStory("2026-09-07", c)));
     expect(sameDayTwoKids.size).toBeGreaterThan(1);
+  });
+});
+
+describe("B-PLAY-11 — Tonight cover: no virtue tallies, insight first, catalogue behind 'More stories'", () => {
+  const parent = parentBranch(HERO);
+
+  it("no METRIC_LABELS / virtue tally renders on the parent branch (law 1); the shared-reading count stays", () => {
+    expect(parent).not.toContain("METRIC_LABELS");
+    expect(parent).not.toContain("METRIC_EMOJI");
+    expect(parent).not.toContain("totalMetrics");
+    expect(parent).toContain('t("elev.stories.counts.stories", { n: runs.length })');
+  });
+
+  it("the grown-up insight sits under the cover title and before Play, in uiLang", () => {
+    const cover = parent.slice(parent.indexOf('data-module="stories-tonight"'), parent.indexOf("</section>", parent.indexOf('data-module="stories-tonight"')));
+    const insight = cover.indexOf('data-testid="stories-tonight-insight"');
+    expect(insight).toBeGreaterThan(cover.indexOf("tonightStory.titleHe"));
+    expect(insight).toBeLessThan(cover.indexOf('t("elev.stories.tonight.cta")'));
+    expect(cover).toContain('uiLang === "he" ? tonightStory.parentInsight.he : tonightStory.parentInsight.en');
+    // The reader's insight block reads uiLang too (it is chrome, not story text).
+    expect(HERO).toContain('uiLang === "he" ? activeStory.parentInsight.he : activeStory.parentInsight.en');
+    expect(HERO).not.toContain('aiLang === "he" ? activeStory.parentInsight.he');
+  });
+
+  it("pack filter + catalogue sit in ONE collapsed disclosure, demoted (R25)", () => {
+    const details = parent.indexOf('<details data-module-disclosure="stories-more"');
+    const close = parent.indexOf("</details>", details);
+    expect(details).toBeGreaterThan(parent.indexOf('data-module="stories-tonight"'));
+    const inside = parent.slice(details, close);
+    expect(inside).toContain('<section data-module="stories-catalogue" data-module-demoted');
+    expect(inside).toContain('role="tablist"');
+    expect(inside).toContain('t("elev.stories.more")');
+    expect((parent.match(/data-module-disclosure=/g) || []).length).toBe(1);
+    // The hero-first gate is never collapsed away.
+    expect(parent.indexOf('data-testid="hero-first-gate"')).toBeLessThan(details);
+  });
+
+  it("no comic register token or .comic-panel on the parent branch (kit tokens only)", () => {
+    // The parent door only — the player view below it (coverPage onward) is the book itself.
+    const door = parent.slice(0, parent.indexOf("const coverPage = (immersiveMode: boolean)"));
+    expect(door.length).toBeGreaterThan(2000);
+    expect(door).not.toMatch(/var\(--comic-/);
+    expect(door).not.toContain("comic-panel");
+  });
+
+  it("negative control: the pre-fix tally line is what the rule rejects", () => {
+    const preFix = '{METRIC_LABELS[m]} {totalMetrics[m]}';
+    expect(preFix).toContain("METRIC_LABELS");
+    expect(parent).not.toContain(preFix);
   });
 });

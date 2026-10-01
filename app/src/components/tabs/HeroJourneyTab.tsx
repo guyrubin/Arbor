@@ -14,10 +14,6 @@ import { isolate } from "../../lib/i18n";
 import {
   HERO_STORIES,
   PACKS,
-  METRIC_IDS,
-  METRIC_LABELS,
-  emptyMetrics,
-  addMetrics,
   applyChoice,
   getStorySpec,
   storiesInPack,
@@ -149,14 +145,6 @@ export function clearJourneyMemo(): void {
 
 const METRIC_COLORS: Record<DevelopmentMetricId, string> = METRIC_VARS;
 
-const METRIC_EMOJI: Record<DevelopmentMetricId, string> = {
-  courage: "🦁",
-  responsibility: "🛡️",
-  resilience: "💪",
-  empathy: "💛",
-  wisdom: "🦉",
-  truth: "🕯️",
-};
 
 export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: string } = {}) {
   const { childProfile, setActiveTab } = useArbor();
@@ -209,10 +197,6 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
   const heroCameoUrl = resolveHeroUrl(childProfile) ?? undefined;
   const heroName = childProfile.name?.split(" ")[0] || (aiLang === "he" ? "הילד/ה" : "your child");
 
-  const totalMetrics = useMemo(
-    () => runs.reduce((acc, r) => addMetrics(acc, r.metricsEarned ?? {}), emptyMetrics()),
-    [runs]
-  );
 
   const [packFilter, setPackFilter] = useState<HeroPackId | "all">("all");
   // W0.7 — default the story catalog to the child's age band; "Show all ages"
@@ -943,6 +927,13 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
               <span className="block text-[1.35rem] font-extrabold leading-tight mt-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
                 {tonightStory ? (he ? tonightStory.titleHe : tonightStory.title) : t("elev.stories.catalogue.title")}
               </span>
+              {/* B-PLAY-11: why tonight's story — the grown-up insight, under the
+                  title and before Play, in the parent's UI language. */}
+              {tonightStory?.parentInsight && (
+                <span data-testid="stories-tonight-insight" className="block mt-2 text-[13px] leading-relaxed line-clamp-3" style={{ color: "var(--arbor-ink-soft)" }} dir="auto">
+                  {uiLang === "he" ? tonightStory.parentInsight.he : tonightStory.parentInsight.en}
+                </span>
+              )}
               <span className="flex flex-wrap items-center gap-2 mt-3">
                 {tonightStory && (
                   <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[11.5px] font-bold" style={{ background: "var(--arbor-paper-deep)", color: PACK_WORLD[tonightStory.pack].ink }}>
@@ -966,19 +957,43 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
             plus six virtue counters all showing 0 on day 0: a wall of zeros on
             the first evening. One quiet line, rendered only once there IS
             something to count. Counts, never verdicts (law 1). */}
-        {(runs.length > 0 || METRIC_IDS.some((m) => totalMetrics[m] > 0)) && (
-          <p className="text-[11.5px] px-1 flex flex-wrap items-center gap-x-3 gap-y-1" style={{ color: "var(--arbor-muted)" }}>
-            {runs.length > 0 && <span>{t("elev.stories.counts.stories", { n: runs.length })}</span>}
-            {METRIC_IDS.filter((m) => totalMetrics[m] > 0).map((m) => (
-              <span key={m} className="inline-flex items-center gap-1">
-                <span aria-hidden="true">{METRIC_EMOJI[m]}</span>
-                {METRIC_LABELS[m]} {totalMetrics[m]}
-              </span>
-            ))}
+        {/* B-PLAY-11: the six virtue tallies ("Courage 3") are gone from the
+            parent page — a running per-virtue count of the child reads as a
+            measurement (law 1). The one count kept is the shared-reading line. */}
+        {runs.length > 0 && (
+          <p className="text-[11.5px] px-1" style={{ color: "var(--arbor-muted)" }}>
+            {t("elev.stories.counts.stories", { n: runs.length })}
           </p>
         )}
 
-        <section data-module="stories-catalogue" className="space-y-6">
+        {/* G1 hero-first (22 Sep 2026): a child without a generated hero gets one
+            parent-side step here, never a story starring the raw photo.
+            B-PLAY-11: it stays OUT of the "More stories" disclosure so it is
+            never collapsed away. */}
+        {!kidMode && (!childProfile.avatar ? (
+          <PlayPanel tone="lav" className="text-center mb-4" data-testid="hero-first-gate">
+            <p className="text-[1.15rem] font-extrabold mb-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
+              {he ? `קודם כול, צרו את הגיבור של ${isolate(heroName)}` : `First, create ${isolate(heroName)}'s hero`}
+            </p>
+            <p className="text-sm mb-4 max-w-md mx-auto" style={{ color: "var(--arbor-muted)" }} dir="auto">
+              {he
+                ? `הסיפורים מצוירים סביב הדמות המאוירת של ${heroName} — לא סביב תמונה אמיתית.`
+                : `Stories are drawn around ${isolate(heroName)}'s illustrated character — never around a real photo.`}
+            </p>
+            <PlayButton tone="clay" onClick={() => setActiveTab("profile")}>
+              <Icon name="auto_awesome" size={16} /> {he ? `צרו את הגיבור של ${isolate(heroName)}` : `Create ${isolate(heroName)}'s hero`}
+            </PlayButton>
+          </PlayPanel>
+        ) : null)}
+        {/* B-PLAY-11: the pack filter and the whole catalogue sit behind ONE
+            collapsed "More stories" disclosure (R25: a demoted module inside a
+            data-module-disclosure), so above the fold is cover + insight + Play. */}
+        <details data-module-disclosure="stories-more" className="group" data-testid="stories-more" open={pinned ? true : undefined}>
+        <summary className="list-none cursor-pointer inline-flex items-center gap-1.5 min-h-11 px-1 text-[13px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>
+          <Icon name="expand_more" size={18} className="transition group-open:rotate-180" />
+          {t("elev.stories.more")}
+        </summary>
+        <section data-module="stories-catalogue" data-module-demoted className="space-y-6 mt-3">
         {/* PACK FILTER — comic chips. Absent while the catalog is pinned to
             tonight's single story: there is nothing to filter. */}
         {!pinned && (
@@ -995,8 +1010,8 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                 className="px-3.5 py-2.5 min-h-[44px] rounded-full text-[13px] font-black transition"
                 style={
                   active
-                    ? { background: w ? w.bg : "var(--arbor-clay)", color: "#fff", border: "var(--comic-line)", boxShadow: "var(--comic-pop)" }
-                    : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink-soft)", border: "var(--comic-line)" }
+                    ? { background: w ? w.bg : "var(--arbor-clay)", color: "#fff", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }
+                    : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink-soft)", border: "1px solid var(--arbor-rule)" }
                 }
               >
                 {p.label}
@@ -1006,23 +1021,6 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
         </div>
         )}
 
-        {/* G1 hero-first (22 Sep 2026): a child without a generated hero gets one
-            parent-side step here, never a story starring the raw photo. */}
-        {!kidMode && (!childProfile.avatar ? (
-          <PlayPanel tone="lav" className="text-center mb-4" data-testid="hero-first-gate">
-            <p className="text-[1.15rem] font-extrabold mb-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
-              {he ? `קודם כול, צרו את הגיבור של ${isolate(heroName)}` : `First, create ${isolate(heroName)}'s hero`}
-            </p>
-            <p className="text-sm mb-4 max-w-md mx-auto" style={{ color: "var(--arbor-muted)" }} dir="auto">
-              {he
-                ? `הסיפורים מצוירים סביב הדמות המאוירת של ${heroName} — לא סביב תמונה אמיתית.`
-                : `Stories are drawn around ${isolate(heroName)}'s illustrated character — never around a real photo.`}
-            </p>
-            <PlayButton tone="clay" onClick={() => setActiveTab("profile")}>
-              <Icon name="auto_awesome" size={16} /> {he ? `צרו את הגיבור של ${isolate(heroName)}` : `Create ${isolate(heroName)}'s hero`}
-            </PlayButton>
-          </PlayPanel>
-        ) : null)}
         {/* STORY WORLDS — each card is an illustrated world starring the hero */}
         <div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mb-3">
@@ -1047,7 +1045,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                   className="inline-flex items-center gap-1 rounded-full px-3 py-2.5 min-h-[44px] text-[11.5px] font-black"
                   style={{
                     background: showAllAges ? "var(--arbor-yellow)" : "#fff",
-                    border: "2px solid var(--comic-ink)",
+                    border: "1px solid var(--arbor-rule-strong)",
                     color: "var(--arbor-ink)",
                   }}
                 >
@@ -1068,7 +1066,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
           )}
           {/* W0.7 — honest empty state: the catalog is written for older ages. */}
           {displayStories.length === 0 && ageHiddenStories.length > 0 && (
-            <div className="comic-panel p-5 text-center" data-testid="agefilter-empty-hero-journeys">
+            <div className={`${cardCls} p-5 text-center`} data-testid="agefilter-empty-hero-journeys">
               <p className="text-[14px] font-black" dir="auto" style={{ color: "var(--arbor-ink)" }}>
                 {agefilterText("elev.agefilter.empty", he, {
                   min: hiddenAgeMin ?? "",
@@ -1080,7 +1078,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                 type="button"
                 onClick={toggleShowAllAges}
                 className="mt-3 inline-flex items-center gap-1 rounded-full px-3.5 py-2.5 min-h-[44px] text-[12.5px] font-black"
-                style={{ background: "var(--arbor-yellow)", border: "2px solid var(--comic-ink)", color: "var(--arbor-ink)" }}
+                style={{ background: "var(--arbor-yellow)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
               >
                 <Icon name="unfold_more" size={15} /> {agefilterText("elev.agefilter.showAll", he)}
               </button>
@@ -1102,20 +1100,20 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                   {isAimed(story) ? (
                     <span
                       className="absolute top-0 z-[2] text-[10.5px] font-black px-2.5 py-1 inline-flex items-center gap-1"
-                      style={{ background: "var(--arbor-yellow)", color: "var(--arbor-ink)", border: "var(--comic-line)", insetInlineStart: 0, borderStartStartRadius: "var(--play-radius)", borderEndEndRadius: "12px" }}
+                      style={{ background: "var(--arbor-yellow)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)", insetInlineStart: 0, borderStartStartRadius: "var(--play-radius)", borderEndEndRadius: "12px" }}
                     >
                       ★ {he ? "המטרה שלכם" : "Your aim"}
                     </span>
                   ) : story.origin === "original" ? (
                     <span
                       className="absolute top-0 z-[2] text-[11px] font-black text-white px-2.5 py-1"
-                      style={{ background: "var(--arbor-pink-ink)", border: "var(--comic-line)", insetInlineStart: 0, borderStartStartRadius: "var(--play-radius)", borderEndEndRadius: "12px" }}
+                      style={{ background: "var(--arbor-pink-ink)", border: "1px solid var(--arbor-rule)", insetInlineStart: 0, borderStartStartRadius: "var(--play-radius)", borderEndEndRadius: "12px" }}
                     >
                       {he ? "מקורי" : "ORIGINAL"}
                     </span>
                   ) : null}
                   {/* Scene: the hero standing in this story's world */}
-                  <div className="comic-halftone relative overflow-hidden" style={{ height: 150, background: w.bg, borderBottom: "var(--comic-line)" }}>
+                  <div className="relative overflow-hidden" style={{ height: 150, background: w.bg, borderBottom: "1px solid var(--arbor-rule)" }}>
                     {/* The story's world, with the child's hero generated into the scene
                         (same pipeline as the Practice world-cards). Falls back to the
                         hero + emoji motif while loading / with no hero / on error. */}
@@ -1129,7 +1127,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                     </WorldScene>
                     <span
                       className="absolute top-2 z-[3] text-[10.5px] font-black rounded-full px-2 py-0.5"
-                      style={{ insetInlineEnd: 8, background: "#fff", border: "2px solid var(--comic-ink)", color: "var(--arbor-ink)" }}
+                      style={{ insetInlineEnd: 8, background: "#fff", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
                     >
                       {he ? "גיל" : "Age"} {story.ageRange[0]}–{story.ageRange[1]}
                     </span>
@@ -1145,7 +1143,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                     <div className="flex items-center gap-2 mt-2">
                       <span
                         className="inline-block text-[10.5px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full"
-                        style={{ border: "2px solid var(--comic-ink)", color: w.ink }}
+                        style={{ border: "1px solid var(--arbor-rule-strong)", color: w.ink }}
                       >
                         {he ? w.labelHe : w.label}
                       </span>
@@ -1167,6 +1165,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
         </div>
 
         </section>
+        </details>
 
         <section data-module="stories-library">
         {/* JOURNEY LIBRARY */}
@@ -1180,7 +1179,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                W0 syncStore, which re-mounts this runsCol listener). */
             <SectionSkeleton title={false} rows={2} rowClassName="h-[120px]" loaded={runsCol.loaded} testId="hero-library-skeleton" />
           ) : runs.length === 0 ? (
-            <div className="comic-panel p-5">
+            <div className={`${cardCls} p-5`}>
               <EmptyState
                 headline={he ? "עדיין אין מסעות" : "No quests yet"}
                 body={he ? "בחרו סיפור למעלה והתחילו את המסע הראשון. כל מסע שהושלם נשמר כאן." : "Pick a story above and start your first quest. Completed quests are saved here."}
@@ -1194,7 +1193,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                 const art = STORY_ART[run.storyId] ?? { emoji: "⭐", sfx: "POW!", sfxHe: "פאו!" };
                 return (
                   <button key={run.id} onClick={() => replay(run)} className="world-tile text-start" aria-label={run.title}>
-                    <div className="comic-halftone grid place-items-center" style={{ height: 72, background: w.bg, borderBottom: "var(--comic-line)" }}>
+                    <div className="grid place-items-center" style={{ height: 72, background: w.bg, borderBottom: "1px solid var(--arbor-rule)" }}>
                       <span style={{ fontSize: 34 }} aria-hidden="true">{art.emoji}</span>
                     </div>
                     <div className="p-2.5">
@@ -1348,10 +1347,11 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
               {activeStory.parentInsight && (
                 <div className="rounded-2xl p-4 space-y-1.5" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
                   <p className="text-[10px] uppercase tracking-widest font-bold" style={{ color: "var(--arbor-muted)" }}>
-                    {aiLang === "he" ? "למבוגרים · למה הסיפור הזה" : "For grown-ups · Why this story"}
+                    {uiLang === "he" ? "למבוגרים · למה הסיפור הזה" : "For grown-ups · Why this story"}
                   </p>
                   <p dir="auto" className="text-[13px] leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>
-                    {aiLang === "he" ? activeStory.parentInsight.he : activeStory.parentInsight.en}
+                    {/* B-PLAY-11: the grown-up insight is parent chrome → uiLang. */}
+                    {uiLang === "he" ? activeStory.parentInsight.he : activeStory.parentInsight.en}
                   </p>
                 </div>
               )}

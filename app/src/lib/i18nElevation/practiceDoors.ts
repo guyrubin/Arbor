@@ -78,6 +78,8 @@ export const en: Record<string, string> = {
   "elev.stories.sub": "One story for tonight, starring {name}. The whole shelf is below when you want it.",
   "elev.stories.counts.stories": "{n} stories read together",
   "elev.stories.catalogue.title": "Choose a different story",
+  // B-PLAY-11: the one disclosure holding the pack filter + catalogue.
+  "elev.stories.more": "More stories",
   "elev.stories.library.title": "Your library",
   "elev.stories.reader.back": "All journeys",
   "elev.stories.reader.immersive": "Immersive",
@@ -187,6 +189,7 @@ export const he: Record<string, string> = {
   "elev.stories.sub": "סיפור אחד לערב, בכיכוב {name}. כל המדף מחכה מתחת כשתרצו.",
   "elev.stories.counts.stories": "{n} סיפורים שקראתם יחד",
   "elev.stories.catalogue.title": "בחירת סיפור אחר",
+  "elev.stories.more": "סיפורים נוספים",
   "elev.stories.library.title": "הספרייה שלכם",
   "elev.stories.reader.back": "כל המסעות",
   "elev.stories.reader.immersive": "מסך מלא",
