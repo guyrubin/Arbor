@@ -44,14 +44,45 @@ describe("B-AI-05 — accept keeps history", () => {
     expect(ledger.find((e) => e.id === todayId)?.outcome).toBe("helped");
   });
 
-  it("keeps at most one accepted row per child: the newer accept supersedes an unrated one", () => {
+  it("framer ruling: a new accept supersedes only TODAY's unrated step — yesterday's stays the carry-over question", () => {
     const yesterday: ActionLoopEntry = { ...entry("today.child-1.2026-09-30", "2026-09-30T19:00:00Z") };
     const morning: ActionLoopEntry = { ...entry(todayId, "2026-10-01T07:00:00Z") };
     const { entry: next, superseded } = planAcceptedAction([yesterday, morning], { recommendation: "Coach step", source: "coach", capacity: "standard" }, todayId, at);
     expect(next.id).toBe(`${todayId}.2`);
-    expect(superseded.map((s) => [s.id, s.status])).toEqual([[yesterday.id, "superseded"], [todayId, "superseded"]]);
-    const ledger = [...superseded, next];
-    expect(ledger.filter((e) => e.status === "accepted")).toHaveLength(1);
+    expect(superseded.map((s) => [s.id, s.status])).toEqual([[todayId, "superseded"]]);
+    // The ledger after the write: yesterday's unrated step is still `accepted`.
+    const ledger = [yesterday, ...superseded, next];
+    expect(ledger.find((e) => e.id === yesterday.id)?.status).toBe("accepted");
+    // One live step for today, plus the one carry-over question.
+    expect(ledger.filter((e) => e.status === "accepted" && isTodayActionId(e.id, todayId))).toHaveLength(1);
+  });
+
+  it("the carry-over ask survives a new accept until rated, or until 3 days pass (then expires silently)", async () => {
+    const { selectCarryOverAction, MAX_CARRY_DAYS } = await import("../components/overview/carryOverAction");
+    expect(MAX_CARRY_DAYS).toBe(3);
+    const yesterday: ActionLoopEntry = { ...entry("today.child-1.2026-09-30", "2026-09-30T19:00:00Z") };
+    const { entry: next, superseded } = planAcceptedAction([yesterday], { recommendation: "New step", source: "today-guidance", capacity: "tiny" }, todayId, at);
+    expect(superseded).toEqual([]);
+    const ledger = [yesterday, next];
+    // Day 1: still asked.
+    expect(selectCarryOverAction(ledger, todayId, at.getTime())?.id).toBe(yesterday.id);
+    // Rated → no longer asked.
+    const rated = ledger.map((e) => (e.id === yesterday.id ? { ...e, status: "completed" as const, outcome: "helped" as const } : e));
+    expect(selectCarryOverAction(rated, todayId, at.getTime())).toBeNull();
+    // Unrated but older than 3 days → expired silently (nothing written, just not asked).
+    const later = Date.parse("2026-10-04T08:00:00Z");
+    const laterToday = todayActionId("child-1", new Date(later));
+    expect(selectCarryOverAction([yesterday], laterToday, later)).toBeNull();
+    // (today's new step is itself the next carry-over question — inside its own window.)
+    expect(selectCarryOverAction(ledger, laterToday, later)?.id).toBe(next.id);
+    expect(ledger.find((e) => e.id === yesterday.id)?.status).toBe("accepted");
+  });
+
+  it("negative control: the pre-ruling rule (supersede EVERY unrated row) would have retired yesterday's question", () => {
+    const yesterday: ActionLoopEntry = { ...entry("today.child-1.2026-09-30", "2026-09-30T19:00:00Z") };
+    const preRuling = [yesterday].filter((item) => item.status === "accepted" && !item.outcome);
+    expect(preRuling.map((e) => e.id)).toEqual([yesterday.id]);
+    expect(planAcceptedAction([yesterday], { recommendation: "x", source: "plan", capacity: "tiny" }, todayId, at).superseded).toEqual([]);
   });
 
   it("a rated row is never superseded", () => {

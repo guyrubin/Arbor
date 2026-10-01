@@ -28,8 +28,9 @@ export type CarryOverEntry = {
   recommendation: string;
 };
 
-/** How long a still-open step keeps asking. Beyond this it is history, not a question. */
-export const MAX_CARRY_DAYS = 7;
+/** How long a still-open step keeps asking. Beyond this it is history, not a
+ *  question — it expires silently (framer ruling 1 Oct: 3 days, not 7). */
+export const MAX_CARRY_DAYS = 3;
 
 const DAY = 86_400_000;
 

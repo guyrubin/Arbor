@@ -83,9 +83,14 @@ export function nextTodayActionId(items: readonly ActionLoopEntry[], todayId: st
 }
 
 /** B-AI-05 — what an accept writes. Never overwrites an existing row (so a
- *  completed outcome survives); keeps at most ONE `accepted` row per child:
- *  every other still-unrated row becomes `superseded`. Pure: the caller
- *  persists `entry` and each row in `superseded`. */
+ *  completed outcome survives). Framer ruling (1 Oct, applied with B-TODAY-18's
+ *  carry-over slot): accepting a new step does NOT retire an older unrated
+ *  step from a PREVIOUS day — that step is the carry-over question, and it
+ *  keeps asking until the parent rates it or MAX_CARRY_DAYS (3) pass, then
+ *  expires silently (selectCarryOverAction stops asking; no write). Only
+ *  TODAY's still-unrated rows become `superseded` — the live card holds one
+ *  step per day. Pure: the caller persists `entry` and each row in
+ *  `superseded`. */
 export function planAcceptedAction(
   items: readonly ActionLoopEntry[],
   input: { recommendation: string; source: ActionSource; capacity: ActionCapacity },
@@ -101,7 +106,7 @@ export function planAcceptedAction(
     acceptedAt: at.toISOString(),
   };
   const superseded = items
-    .filter((item) => item.status === "accepted" && !item.outcome)
+    .filter((item) => item.status === "accepted" && !item.outcome && isTodayActionId(item.id, todayId))
     .map((item) => ({ ...item, status: "superseded" as const }));
   return { entry, superseded };
 }

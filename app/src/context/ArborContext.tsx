@@ -415,8 +415,9 @@ function useArborState() {
   // "digest" (the weekly digest's AI-generated tryThisWeek text). Callers own
   // the TODAY-1 guard: only model-generated focus text may reach this seam.
   // B-AI-05: an accept never overwrites a row (a completed outcome survives;
-  // the new row takes a `.{n}` id) and keeps ≤1 `accepted` row per child —
-  // an older unrated step becomes `superseded` (history, no longer asked).
+  // the new row takes a `.{n}` id); only TODAY's unrated step becomes
+  // `superseded` — a previous day's unrated step stays the carry-over question
+  // until rated or MAX_CARRY_DAYS pass (framer ruling, 1 Oct).
   const acceptTodayAction = (recommendation: string, capacity: ActionCapacity, source: ActionLoopEntry["source"] = "today-guidance") => {
     const { entry: item, superseded } = planAcceptedAction(actionLoop, { recommendation, source, capacity }, todayActionId(childProfile.id));
     for (const old of superseded) void actionLoopCol.upsert(old);
