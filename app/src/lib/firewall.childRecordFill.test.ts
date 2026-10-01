@@ -61,6 +61,25 @@ describe("B-GROWTH-07 — no proportional fill of a child record", () => {
     expect(GROWTH_FILES.length).toBeGreaterThan(0);
   });
 
+  /* B-GROWTH-30 — the record by area is covered BEFORE it renders (spine §9
+     verdict creep): no fill, no fraction of a total, no chart, and its strings
+     carry counts of noticed things only. */
+  it("covers the Record by area (components/growth/RecordByDomain.tsx)", () => {
+    expect(SCANNED).toContain("components/growth/RecordByDomain.tsx");
+    const src = stripComments(read("components/growth/RecordByDomain.tsx"));
+    expect(src).not.toMatch(/\btotal\b|%|Chart|<svg/);
+    expect(src).not.toMatch(/sort\([^)]*count/);
+  });
+
+  it("the Record-by-area strings name no total, share or trend (EN + HE)", () => {
+    const growth = read("lib/i18nElevation/growth.ts");
+    const lines = growth.split("\n").filter((l) => l.includes("elev.growth.record."));
+    expect(lines.length).toBeGreaterThanOrEqual(26);
+    for (const l of lines) {
+      expect(l).not.toMatch(/\{total\}|%|\bof \{|מתוך|more than|less than|behind|ahead|trend/i);
+    }
+  });
+
   for (const rel of SCANNED.filter((f) => !KNOWN_VIOLATIONS.has(f))) {
     it(`${rel} draws no ring, bar or %-width fill`, () => {
       expect(violationsIn(rel)).toEqual([]);

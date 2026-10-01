@@ -106,6 +106,8 @@ const DRILL_FILES = [
   "practice/FeelingsLabTab.tsx",
   "../components/tabs/LanguageLabVocabView.tsx",
   "../components/tabs/LanguageLabTab.tsx",
+  // B-GROWTH-30 — the record by area (spine §9: the guard covers it before it renders)
+  "growth/RecordByDomain.tsx",
 ] as const;
 
 /** `{…accuracy…}%` / `{…pct…}%` / `{…percent…}%` — a rendered performance share. */
@@ -143,7 +145,7 @@ describe("clinical firewall — parent drill routes report counts, never percent
     }
   });
 
-  it("the four drill files are all readable (sanity — a renamed file must fail loudly)", () => {
+  it("the drill files are all readable (sanity — a renamed file must fail loudly)", () => {
     for (const rel of DRILL_FILES) expect(readDrill(rel).length).toBeGreaterThan(500);
   });
 

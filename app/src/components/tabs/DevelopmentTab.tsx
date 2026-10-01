@@ -49,6 +49,7 @@ import FirstWordsLedger from "../growth/FirstWordsLedger";
 // GP-30 — one leaf per milestone the parent noticed; counts only, never a
 // picture of the child (the rule lives in lib/arborTree.ts).
 import ArborTreeCard from "../growth/ArborTreeCard";
+import RecordByDomain from "../growth/RecordByDomain";
 
 /** Masterplan 1.7 — module-local string resolution for the Full Picture entry
  *  card (same recipe as Screening.tsx × screeningcalm: i18nElevation/index.ts
@@ -481,6 +482,11 @@ export default function DevelopmentTab() {
       </section>
       {/* The Map — the record's home (counts only). */}
       <div data-module="growth-map" style={{ display: "contents" }}><DevScoreCard /></div>
+      {/* B-GROWTH-30 — the record by area (spine Option A): one row per domain
+          of the registry that has something noticed, registry order, counts
+          and dates only. The fourth stamped module (budget 4); B-GROWTH-02
+          folds Map / Words / Tree into this one record card. */}
+      <RecordByDomain />
       {/* GP-33 — the first-words ledger. The Language Lab has been writing to
           `langObs` for months and the record never showed it; the words are a
           keepsake, not an aggregate. Counts and dates only. */}

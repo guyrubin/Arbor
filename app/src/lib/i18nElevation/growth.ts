@@ -60,6 +60,22 @@ export const en: Record<string, string> = {
   // Builder M — R25 — #/language demotion disclosure (vocabulary log).
   "elev.growth.lang.more.title": "Vocabulary log",
   "elev.growth.lang.more.sub": "Optional — count the words you hear, whenever you want to.",
+
+  // B-GROWTH-30 — the Record by area (spine Option A). Counts of things the
+  // parent noticed and dates only; never a share, a total or a trend.
+  "elev.growth.record.title": "What we know about {name}, by area",
+  "elev.growth.record.sub": "Everything you've noted, grouped by area. Tap an area for its dated list.",
+  "elev.growth.record.empty": "As you note moments, words and milestones, they gather here by area.",
+  "elev.growth.record.count.one": "1 thing noticed in the last 4 weeks",
+  "elev.growth.record.count.many": "{n} things noticed in the last 4 weeks",
+  "elev.growth.record.latest": "Latest: {item} · {date}",
+  "elev.growth.record.item.measurement": "Measurement noted",
+  "elev.growth.record.item.check": "Development Check answered",
+  "elev.growth.record.item.practice": "Practice session",
+  "elev.growth.record.item.word": "{phrase} ({language})",
+  "elev.growth.record.sheet.milestones": "Milestones",
+  "elev.growth.record.sheet.ask": "Ask Arbor about {domain}",
+  "elev.growth.record.ask.seed": "Here is what I've noted about {name}'s {domain}. What is worth knowing right now?",
 };
 
 export const he: Record<string, string> = {
@@ -105,4 +121,19 @@ export const he: Record<string, string> = {
   // Builder M — R25 — #/language demotion disclosure (vocabulary log).
   "elev.growth.lang.more.title": "יומן אוצר מילים",
   "elev.growth.lang.more.sub": "רשות — סופרים את המילים שאתם שומעים, מתי שמתאים לכם.",
+
+  // B-GROWTH-30 — התיעוד לפי תחום
+  "elev.growth.record.title": "מה אנחנו יודעים על {name}, לפי תחום",
+  "elev.growth.record.sub": "כל מה שרשמתם, מקובץ לפי תחום. הקישו על תחום לרשימה עם תאריכים.",
+  "elev.growth.record.empty": "כשתרשמו רגעים, מילים ואבני דרך, הם יתקבצו כאן לפי תחום.",
+  "elev.growth.record.count.one": "דבר אחד שנרשם ב-4 השבועות האחרונים",
+  "elev.growth.record.count.many": "{n} דברים שנרשמו ב-4 השבועות האחרונים",
+  "elev.growth.record.latest": "האחרון: {item} · {date}",
+  "elev.growth.record.item.measurement": "נרשמה מדידה",
+  "elev.growth.record.item.check": "מולאה בדיקת התפתחות",
+  "elev.growth.record.item.practice": "מפגש תרגול",
+  "elev.growth.record.item.word": "{phrase} ({language})",
+  "elev.growth.record.sheet.milestones": "אבני דרך",
+  "elev.growth.record.sheet.ask": "לשאול את ארבור על {domain}",
+  "elev.growth.record.ask.seed": "זה מה שרשמתי על {domain} של {name}. מה כדאי לדעת עכשיו?",
 };
