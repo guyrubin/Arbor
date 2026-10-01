@@ -81,3 +81,46 @@ describe("UND-6 — weekly focus is age-aware", () => {
     expect(code).not.toMatch(/milestones\.find\(\s*\(m\)\s*=>\s*!m\.checked\s*\)/);
   });
 });
+
+/* B-GROWTH-13 — one h1 on #/milestones and the 44 px floor on EVERY button
+   (rename Save/Cancel, delete confirm/cancel and gestation Save/Clear/Cancel
+   were 30–36 px). Source scan over every <button opening tag in the file. */
+describe("B-GROWTH-13 — Milestones h1 and touch floor", () => {
+  const src = stripComments(read("components/tabs/MilestonesTab.tsx"));
+
+  /** Every `<button …>` opening tag, braces respected. */
+  const buttonTags = (code: string): string[] => {
+    const out: string[] = [];
+    for (const m of code.matchAll(/<button\b/g)) {
+      let i = (m.index ?? 0) + 7;
+      let depth = 0;
+      for (; i < code.length; i++) {
+        const c = code[i];
+        if (c === "{") depth++;
+        else if (c === "}") depth--;
+        else if (c === ">" && depth === 0) break;
+      }
+      out.push(code.slice(m.index, i + 1));
+    }
+    return out;
+  };
+
+  it("exactly one h1 (the route title) and it carries the old h2's classes", () => {
+    expect((src.match(/<h1\b/g) ?? []).length).toBe(1);
+    expect(src).toContain('<h1 className="text-2xl md:text-[2rem] leading-[1.1]"');
+    expect(src).toContain('{t("ms.title")}</h1>');
+  });
+
+  it("no <button without min-h-11 or touch-target", () => {
+    const tags = buttonTags(src);
+    expect(tags.length).toBeGreaterThan(20);
+    const bare = tags.filter((tag) => !/min-h-11|touch-target/.test(tag));
+    expect(bare).toEqual([]);
+  });
+
+  it("NEGATIVE CONTROL — the pre-fix rename Save trips the scan", () => {
+    const pre = '<button type="submit" className="text-white font-extrabold text-xs px-4 py-2 rounded-xl transition">Save</button>';
+    expect(buttonTags(pre).filter((tag) => !/min-h-11|touch-target/.test(tag))).toHaveLength(1);
+  });
+});
+

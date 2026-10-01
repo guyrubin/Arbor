@@ -357,7 +357,7 @@ export default function MilestonesTab() {
                 type="button"
                 onClick={(e) => { e.preventDefault(); setConfirmDeleteId(null); setRenameDraft(item.title); setRenamingId(item.id); }}
                 aria-label={t("aria.renameCustomMilestone")}
-                className="text-[11px] transition"
+                className="min-h-11 text-[11px] transition"
                 style={{ color: "var(--arbor-muted)" }}
               >
                 <Icon name="edit" size={11} />
@@ -368,7 +368,7 @@ export default function MilestonesTab() {
                 type="button"
                 onClick={(e) => { e.preventDefault(); setRenamingId(null); setConfirmDeleteId(item.id); }}
                 aria-label={t("aria.deleteCustomMilestone")}
-                className="text-[11px] transition"
+                className="min-h-11 text-[11px] transition"
                 style={{ color: "var(--arbor-muted)" }}
               >
                 <Icon name="delete" size={11} />
@@ -395,7 +395,7 @@ export default function MilestonesTab() {
               type="button"
               onClick={(e) => { e.preventDefault(); void explain(item); }}
               disabled={explaining[item.id]}
-              className="text-[11px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 transition"
+              className="min-h-11 text-[11px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 transition"
               style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}
             >
               {explaining[item.id] ? <Icon name="progress_activity" size={11} className="animate-spin" /> : <Icon name="menu_book" size={11} />}
@@ -409,7 +409,7 @@ export default function MilestonesTab() {
                 <button
                   type="button"
                   onClick={(e) => { e.preventDefault(); requestLearnRead({ cardId: read.id, source: "milestone" }); }}
-                  className="text-[11px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 transition"
+                  className="min-h-11 text-[11px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 transition"
                   style={{ color: "var(--arbor-lav-ink)", background: "var(--arbor-lav-soft)" }}
                 >
                   <Icon name="local_library" size={11} />
@@ -450,7 +450,7 @@ export default function MilestonesTab() {
                     <button
                       type="button"
                       onClick={(e) => { e.preventDefault(); setKeepsakeFor(item.id); }}
-                      className="text-[11px] font-bold"
+                      className="min-h-11 text-[11px] font-bold"
                       style={{ color: "var(--arbor-muted)" }}
                     >
                       {t("elev.waveR.keepsake.edit")}
@@ -486,16 +486,16 @@ export default function MilestonesTab() {
                 className="flex-1 rounded-xl px-3 py-2 text-sm focus:outline-none"
                 style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
               />
-              <button type="submit" className="text-white font-extrabold text-xs px-4 py-2 rounded-xl transition" style={{ background: "var(--arbor-clay)" }}>{t("ms.renameSave")}</button>
-              <button type="button" onClick={() => setRenamingId(null)} className="text-xs px-2" style={{ color: "var(--arbor-muted)" }}>{t("ms.cancel")}</button>
+              <button type="submit" className="min-h-11 text-white font-extrabold text-xs px-4 py-2 rounded-xl transition" style={{ background: "var(--arbor-clay)" }}>{t("ms.renameSave")}</button>
+              <button type="button" onClick={() => setRenamingId(null)} className="min-h-11 text-xs px-2" style={{ color: "var(--arbor-muted)" }}>{t("ms.cancel")}</button>
             </form>
           )}
           {/* UND-8 — inline delete confirm row — no native window.confirm. */}
           {item.custom && confirmDeleteId === item.id && (
             <div className="flex flex-wrap items-center gap-2 pt-2">
               <span className="text-[11px] font-bold" style={{ color: "var(--arbor-ink)" }}>{t("ms.deleteConfirm")}</span>
-              <button type="button" onClick={() => { deleteMilestone(item.id); setConfirmDeleteId(null); }} className="text-xs font-extrabold px-3 py-1.5 rounded-xl text-white" style={{ background: "var(--arbor-clay-deep)" }}>{t("ms.deleteYes")}</button>
-              <button type="button" onClick={() => setConfirmDeleteId(null)} className="text-xs px-2" style={{ color: "var(--arbor-muted)" }}>{t("ms.cancel")}</button>
+              <button type="button" onClick={() => { deleteMilestone(item.id); setConfirmDeleteId(null); }} className="min-h-11 text-xs font-extrabold px-3 py-1.5 rounded-xl text-white" style={{ background: "var(--arbor-clay-deep)" }}>{t("ms.deleteYes")}</button>
+              <button type="button" onClick={() => setConfirmDeleteId(null)} className="min-h-11 text-xs px-2" style={{ color: "var(--arbor-muted)" }}>{t("ms.cancel")}</button>
             </div>
           )}
         </div>
@@ -503,7 +503,7 @@ export default function MilestonesTab() {
           <div className="flex items-center gap-2 flex-shrink-0">
             {/* Memory portrait — a quiet reminder this is a moment in the child's record. */}
             <HeroAvatar size={28} animate={false} ring={false} className="flex-shrink-0" />
-            <button type="button" onClick={(e) => { e.preventDefault(); celebrate(); }} title={t("elev.growthTruth.ms.celebrate")} className="transition" style={{ color: "var(--arbor-peach-ink)" }}>
+            <button type="button" onClick={(e) => { e.preventDefault(); celebrate(); }} title={t("elev.growthTruth.ms.celebrate")} className="min-h-11 transition" style={{ color: "var(--arbor-peach-ink)" }}>
               <Icon name="celebration" size={16} />
             </button>
           </div>
@@ -604,7 +604,7 @@ export default function MilestonesTab() {
                 type="button"
                 onClick={toggleBand}
                 aria-expanded={!collapsed}
-                className="w-full flex items-center justify-between gap-2 text-start"
+                className="min-h-11 w-full flex items-center justify-between gap-2 text-start"
                 style={{ cursor: isToggleable ? "pointer" : "default" }}
               >
                 <span className="flex items-center gap-2">
@@ -631,7 +631,7 @@ export default function MilestonesTab() {
                 <button
                   type="button"
                   onClick={toggleBand}
-                  className="text-[11px] font-bold min-h-[44px]"
+                  className="text-[11px] font-bold min-h-11"
                   style={{ color: "var(--arbor-green-ink)" }}
                 >
                   {isLater ? t("elev.growthTruth.ms.showLater") : t("ms.showEarlier")}
@@ -672,7 +672,7 @@ export default function MilestonesTab() {
         {/* The child's memory portrait — modest, no comic frame in the parent register. */}
         <HeroAvatar size={52} mood="wave" animate={false} ring={false} className="flex-shrink-0" />
         <div className="min-w-0">
-          <h2 className="text-2xl md:text-[2rem] leading-[1.1]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("ms.title")}</h2>
+          <h1 className="text-2xl md:text-[2rem] leading-[1.1]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("ms.title")}</h1>
           <p className="text-sm mt-1.5 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>{t("ms.subtitle")}</p>
         </div>
       </div>
@@ -780,11 +780,11 @@ export default function MilestonesTab() {
                     />
                   </label>
                   <div className="flex flex-wrap items-stretch gap-2">
-                    <button type="submit" disabled={savingGestation} className="text-white font-extrabold text-xs px-4 py-2 rounded-xl transition disabled:opacity-60" style={{ background: "var(--arbor-clay)" }}>
+                    <button type="submit" disabled={savingGestation} className="min-h-11 text-white font-extrabold text-xs px-4 py-2 rounded-xl transition disabled:opacity-60" style={{ background: "var(--arbor-clay)" }}>
                       {savingGestation ? <Icon name="progress_activity" size={14} className="animate-spin" /> : t("ms.gestationSave")}
                     </button>
-                    <button type="button" disabled={savingGestation} onClick={() => saveGestation(null)} className="text-xs px-3 py-2 rounded-xl" style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>{t("ms.gestationClear")}</button>
-                    <button type="button" onClick={() => setShowGestation(false)} className="text-xs px-2" style={{ color: "var(--arbor-muted)" }}>{t("ms.cancel")}</button>
+                    <button type="button" disabled={savingGestation} onClick={() => saveGestation(null)} className="min-h-11 text-xs px-3 py-2 rounded-xl" style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>{t("ms.gestationClear")}</button>
+                    <button type="button" onClick={() => setShowGestation(false)} className="min-h-11 text-xs px-2" style={{ color: "var(--arbor-muted)" }}>{t("ms.cancel")}</button>
                   </div>
                 </form>
               )}
@@ -806,7 +806,7 @@ export default function MilestonesTab() {
                       key={dom.id}
                       type="button"
                       onClick={() => setOpenDomain(dom.id)}
-                      className="text-start rounded-[14px] p-3 transition hover:bg-[var(--arbor-paper-deep)]"
+                      className="min-h-11 text-start rounded-[14px] p-3 transition hover:bg-[var(--arbor-paper-deep)]"
                       style={{ border: "1px solid var(--arbor-rule)", minHeight: 44 }}
                     >
                       <div className="flex items-center gap-2.5 mb-2">
@@ -833,7 +833,7 @@ export default function MilestonesTab() {
                   <button
                     type="button"
                     onClick={() => setOpenDomain(null)}
-                    className="inline-flex items-center gap-1.5 text-[12px] font-extrabold rounded-lg px-2.5 py-1.5 transition"
+                    className="min-h-11 inline-flex items-center gap-1.5 text-[12px] font-extrabold rounded-lg px-2.5 py-1.5 transition"
                     style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}
                   >
                     <ChevStart className="w-4 h-4" /> {t("ms.allDomains")}
@@ -857,7 +857,7 @@ export default function MilestonesTab() {
                     type="button"
                     data-testid="ms-play-ideas"
                     onClick={openPlayIdeas}
-                    className="w-full flex items-center gap-2.5 rounded-[13px] p-3 text-start transition"
+                    className="min-h-11 w-full flex items-center gap-2.5 rounded-[13px] p-3 text-start transition"
                     style={{ background: "var(--arbor-paper)", border: "1px solid var(--arbor-rule)", minHeight: 44 }}
                   >
                     <Icon name="sports_esports" size={18} style={{ color: "var(--arbor-ink-soft)" }} />
