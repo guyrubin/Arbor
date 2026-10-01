@@ -10,7 +10,7 @@
  * Scan discipline: \r\n normalised first, extractions asserted toBeTruthy(),
  * and every rule carries a negative control against the pre-change source.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -204,5 +204,78 @@ describe("LC-11b · one teacher door — every door, not one named file", () => 
     expect(build).toBeGreaterThan(-1);
     expect(redirect).toBeLessThan(build);
     expect(hook.slice(redirect, build)).toContain('setActiveTab("school-brief")');
+  });
+});
+
+/* ── B-CAREPRO-01 — a server escalation (409) is a Safety door, not a retry toast ──
+ *
+ * request() throws EscalationRequiredError on EVERY 409 with `details`
+ * (which outranks `error`) as its message — so the old
+ * `includes("Professional support")` branch never matched and the parent got
+ * the generic "Couldn't build" toast. */
+import { api, EscalationRequiredError, ApiError } from "../../lib/api";
+
+describe("B-CAREPRO-01 · a blocked School Brief generate opens the escalation card", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  const stubFetch = (status: number, body: unknown) =>
+    vi.stubGlobal("fetch", vi.fn(async () => ({
+      ok: status < 400,
+      status,
+      headers: { get: () => null },
+      json: async () => body,
+    })));
+
+  const payload = { childProfile: {} as any, logs: [], milestones: [], audience: "teacher" };
+
+  it("409 (input screen body) reaches the caller as EscalationRequiredError", async () => {
+    stubFetch(409, {
+      error: "Professional support recommended",
+      details: "This handoff should be reviewed by a qualified adult before sharing. Category: self_harm",
+      escalationCategory: "self_harm",
+    });
+    const err = await api.generateBrief(payload).catch((e) => e);
+    expect(err).toBeInstanceOf(EscalationRequiredError);
+    // The message the old substring branch looked at never carries the phrase.
+    expect(err.message).not.toContain("Professional support");
+  });
+
+  it("409 (output screen body) reaches the caller as EscalationRequiredError", async () => {
+    stubFetch(409, { error: "Professional support recommended", details: "Arbor could not produce a routine brief." });
+    const err = await api.generateBrief(payload).catch((e) => e);
+    expect(err).toBeInstanceOf(EscalationRequiredError);
+  });
+
+  it("500 stays a plain ApiError (the existing buildFailed toast path)", async () => {
+    stubFetch(500, { error: "boom" });
+    const err = await api.generateBrief(payload).catch((e) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    expect(err).not.toBeInstanceOf(EscalationRequiredError);
+  });
+
+  it("SchoolBrief imports EscalationRequiredError and branches on it before the generic toast", () => {
+    expect(brief).toMatch(/import \{[^}]*EscalationRequiredError[^}]*\} from "\.\.\/\.\.\/lib\/api"/);
+    const catchBlock = /\} catch \(err: any\) \{([\s\S]*?)\} finally \{/.exec(brief);
+    expect(catchBlock).toBeTruthy();
+    const body = catchBlock![1];
+    const esc = body.indexOf("err instanceof EscalationRequiredError");
+    const generic = body.indexOf('t("elev.learnCare.brief.buildFailed")');
+    expect(esc).toBeGreaterThan(-1);
+    expect(generic).toBeGreaterThan(esc);
+    expect(body.slice(esc, generic)).toContain("setEscalationBlocked(true)");
+    // The escalation branch raises no toast.
+    expect(body.slice(esc, body.indexOf("else", esc))).not.toContain("toast(");
+  });
+
+  it("the dead substring branch is gone", () => {
+    expect(brief).not.toContain('includes("Professional support")');
+  });
+
+  it("the escalation card renders from a blocked generate on BOTH screens", () => {
+    expect(brief).toMatch(/const escalationCard = escalationNote \|\| escalationBlocked \?/);
+    // once under the empty state (input screen), once in the draft branch (output screen)
+    expect(brief.match(/\{escalationCard\}/g)?.length).toBe(2);
+    const card = /data-testid="school-brief-escalation"[\s\S]*?<\/section>/.exec(brief);
+    expect(card![0]).toContain("elev.learnCare.brief.escalation.blocked");
   });
 });

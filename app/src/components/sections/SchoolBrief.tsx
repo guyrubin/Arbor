@@ -4,7 +4,7 @@ import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
-import { api, PaywallError } from "../../lib/api";
+import { api, PaywallError, EscalationRequiredError } from "../../lib/api";
 import type { SchoolBrief as SchoolBriefData } from "../../types";
 import { Modal } from "../ui/Modal";
 import {
@@ -72,6 +72,10 @@ export default function SchoolBrief() {
   const [exportState, setExportState] = useState<ExportState>(initialExportState());
   const [reviewOpen, setReviewOpen] = useState(false);
   const [editing, setEditing] = useState(false);
+  // B-CAREPRO-01: the server's escalation screen (409) blocked the generate.
+  // A blocked generate has no draft, so the parent-only escalation card renders
+  // from this flag — never a "please try again" toast.
+  const [escalationBlocked, setEscalationBlocked] = useState(false);
 
   const sectionLabels = useMemo(
     () => ({
@@ -132,6 +136,7 @@ export default function SchoolBrief() {
 
   const generate = async () => {
     setGenerating(true);
+    setEscalationBlocked(false);
     try {
       const data = await api.generateBrief({
         childProfile,
@@ -154,8 +159,11 @@ export default function SchoolBrief() {
       // A fresh brief is rendered but NOT approved — approval is per-export.
       setExportState(markRendered(initialExportState()));
     } catch (err: any) {
-      if (err instanceof PaywallError) toast(err.message, "info");
-      else if (err?.message?.includes("Professional support")) toast(err.message, "error");
+      // B-CAREPRO-01: branch on the TYPED 409 before the generic toast. The old
+      // "Professional support" substring match never fired — request() puts
+      // the server's `details` string in the message, which outranks `error`.
+      if (err instanceof EscalationRequiredError) setEscalationBlocked(true);
+      else if (err instanceof PaywallError) toast(err.message, "info");
       else toast(t("elev.learnCare.brief.buildFailed"), "error");
     } finally {
       setGenerating(false);
@@ -197,6 +205,31 @@ export default function SchoolBrief() {
 
   // LC-11: the generator's escalation note — parent-only, never exported.
   const escalationNote = parentEscalationNote(draft);
+
+  // LC-11 + B-CAREPRO-01: ONE parent-only escalation card, fed by the built
+  // draft's note OR by a blocked generate (409 on the input or output screen).
+  const escalationCard = escalationNote || escalationBlocked ? (
+    <section
+      data-testid="school-brief-escalation"
+      className="rounded-2xl p-4 space-y-2"
+      style={{ background: "var(--arbor-yellow-soft)", border: `1px solid ${RULE}` }}
+    >
+      <h2 className="text-[14px] font-extrabold inline-flex items-center gap-2" style={{ color: "var(--arbor-yellow-ink)" }}>
+        <Icon name="flag" size={16} /> {t("elev.learnCare.brief.escalation.title")}
+      </h2>
+      <p className="text-[13px] leading-relaxed" dir="auto" style={{ color: INK }}>
+        {escalationBlocked ? t("elev.learnCare.brief.escalation.blocked") : escalationNote}
+      </p>
+      <p className="text-[11.5px] leading-relaxed" style={{ color: MUTED }}>{t("elev.learnCare.brief.escalation.body")}</p>
+      <button
+        onClick={() => setActiveTab("safety")}
+        className="inline-flex items-center gap-2 text-[12.5px] font-bold rounded-xl px-4 min-h-[44px]"
+        style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", border: `1px solid ${RULE}` }}
+      >
+        <Icon name="health_and_safety" size={16} /> {t("elev.learnCare.brief.escalation.cta")}
+      </button>
+    </section>
+  ) : null;
 
   const motionProps = reduceMotion
     ? { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 0 } }
@@ -240,24 +273,27 @@ export default function SchoolBrief() {
           `data-primary-move` marks the ONE control that performs the move
           surfaceContract.ts declares for this route. */}
       {!draft ? (
-        <div data-module="brief-start" className="rounded-2xl p-8 text-center" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
-          <span className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mx-auto" style={{ background: GREEN_SOFT, color: GREEN }}>
-            <Icon name="school" size={26} />
-          </span>
-          <h2 className="text-[17px] font-extrabold mt-3" style={{ color: INK }}>{t("schoolBrief.empty.title")}</h2>
-          <p className="text-sm mt-1.5 leading-relaxed max-w-[440px] mx-auto" style={{ color: MUTED }}>{t("schoolBrief.empty.body", { name: firstName })}</p>
-          <button
-            {...primaryMove}
-            onClick={generate}
-            disabled={generating}
-            className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-5 py-3 mt-4 min-h-[44px] disabled:opacity-60"
-            style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
-          >
-            {generating
-              ? (<><Icon name="progress_activity" size={16} className="animate-spin" /> {t("schoolBrief.generating")}</>)
-              : (<><Icon name="auto_awesome" size={16} /> {t("schoolBrief.generate", { name: firstName })}</>)}
-          </button>
-        </div>
+        <>
+          <div data-module="brief-start" className="rounded-2xl p-8 text-center" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
+            <span className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mx-auto" style={{ background: GREEN_SOFT, color: GREEN }}>
+              <Icon name="school" size={26} />
+            </span>
+            <h2 className="text-[17px] font-extrabold mt-3" style={{ color: INK }}>{t("schoolBrief.empty.title")}</h2>
+            <p className="text-sm mt-1.5 leading-relaxed max-w-[440px] mx-auto" style={{ color: MUTED }}>{t("schoolBrief.empty.body", { name: firstName })}</p>
+            <button
+              {...primaryMove}
+              onClick={generate}
+              disabled={generating}
+              className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-5 py-3 mt-4 min-h-[44px] disabled:opacity-60"
+              style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
+            >
+              {generating
+                ? (<><Icon name="progress_activity" size={16} className="animate-spin" /> {t("schoolBrief.generating")}</>)
+                : (<><Icon name="auto_awesome" size={16} /> {t("schoolBrief.generate", { name: firstName })}</>)}
+            </button>
+          </div>
+          {escalationCard}
+        </>
       ) : (
         <>
           {editing && (
@@ -305,26 +341,7 @@ export default function SchoolBrief() {
               silently. It belongs to the PARENT. Shown here, outside the brief
               card, clearly labelled as not part of the teacher's document, and
               routed to Safety and support. */}
-          {escalationNote && (
-            <section
-              data-testid="school-brief-escalation"
-              className="rounded-2xl p-4 space-y-2"
-              style={{ background: "var(--arbor-yellow-soft)", border: `1px solid ${RULE}` }}
-            >
-              <h2 className="text-[14px] font-extrabold inline-flex items-center gap-2" style={{ color: "var(--arbor-yellow-ink)" }}>
-                <Icon name="flag" size={16} /> {t("elev.learnCare.brief.escalation.title")}
-              </h2>
-              <p className="text-[13px] leading-relaxed" dir="auto" style={{ color: INK }}>{escalationNote}</p>
-              <p className="text-[11.5px] leading-relaxed" style={{ color: MUTED }}>{t("elev.learnCare.brief.escalation.body")}</p>
-              <button
-                onClick={() => setActiveTab("safety")}
-                className="inline-flex items-center gap-2 text-[12.5px] font-bold rounded-xl px-4 min-h-[44px]"
-                style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", border: `1px solid ${RULE}` }}
-              >
-                <Icon name="health_and_safety" size={16} /> {t("elev.learnCare.brief.escalation.cta")}
-              </button>
-            </section>
-          )}
+          {escalationCard}
 
           <div className="flex flex-wrap items-center gap-3">
             <button

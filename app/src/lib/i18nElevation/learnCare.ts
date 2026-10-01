@@ -75,6 +75,9 @@ export const en: Record<string, string> = {
   "elev.learnCare.brief.escalation.body":
     "This note stays with you. It is not in the brief the teacher receives.",
   "elev.learnCare.brief.escalation.cta": "Open Safety and support",
+  // B-CAREPRO-01: the server's escalation screen blocked the generate (409).
+  "elev.learnCare.brief.escalation.blocked":
+    "Arbor paused this brief. Something in what you have logged is better talked through with a qualified adult before a teacher document is written. Safety and support shows who to reach.",
   "elev.learnCare.brief.print": "Save as PDF",
   "elev.learnCare.brief.printed": "Opened for printing. Choose “Save as PDF” to keep a copy.",
   "elev.learnCare.brief.oneDoor": "The teacher brief lives in School Brief",
@@ -160,6 +163,8 @@ export const he: Record<string, string> = {
   "elev.learnCare.brief.escalation.title": "בשבילכם — לא חלק מהעותק של הצוות החינוכי",
   "elev.learnCare.brief.escalation.body": "ההערה הזו נשארת אצלכם. היא לא נמצאת במסמך שהגן או בית הספר מקבלים.",
   "elev.learnCare.brief.escalation.cta": "לפתוח בטיחות ותמיכה",
+  "elev.learnCare.brief.escalation.blocked":
+    "ארבור עצר את המסמך הזה. משהו ממה שתיעדתם כדאי לברר קודם עם איש מקצוע, לפני שנכתב מסמך לצוות החינוכי. בבטיחות ותמיכה תמצאו למי לפנות.",
   "elev.learnCare.brief.print": "לשמור כ‑PDF",
   "elev.learnCare.brief.printed": "נפתח להדפסה. בחרו „שמירה כ‑PDF” כדי לשמור עותק.",
   "elev.learnCare.brief.oneDoor": "המסמך לצוות החינוכי נמצא במסמך לגן ולבית הספר",
