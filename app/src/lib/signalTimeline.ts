@@ -514,6 +514,19 @@ export const weekWindow = (signals: TimelineSignal[], now: number = Date.now()):
 export const weekMomentCount = (signals: TimelineSignal[], now: number = Date.now()): number =>
   weekWindow(signals, now).filter((s) => s.kind === "moment").length;
 
+/**
+ * B-ASKJB-13 — the Journal feed header says what it counts. The feed mixes
+ * kinds (moments, plans, memory, play, practice, milestones); calling all of
+ * them "moments" made "19 moments" out of 3 moments + 16 other rows. The
+ * header names "moments" only when every row IS a moment, else "entries".
+ * Returns the i18n key (plural form chosen here — `.one` for exactly 1).
+ */
+export const journalFeedCountKey = (signals: TimelineSignal[]): { key: string; n: number } => {
+  const n = signals.length;
+  const unit = n > 0 && signals.every((s) => s.kind === "moment") ? "moments" : "entries";
+  return { key: `journal.timeline.${unit}${n === 1 ? ".one" : ""}`, n };
+};
+
 export type Trend = "up" | "down" | "flat";
 
 export interface Momentum {

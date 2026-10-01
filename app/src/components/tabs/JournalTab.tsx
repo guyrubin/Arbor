@@ -7,7 +7,7 @@ import { statesText } from "../../lib/i18nElevation/states";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import {
-  groupByDay, SIGNAL_PROVENANCE, signalDetail, signalTitle, weekMomentCount,
+  groupByDay, journalFeedCountKey, SIGNAL_PROVENANCE, signalDetail, signalTitle, weekMomentCount,
   type SignalKind, type SignalProvenance, type TimelineSignal,
 } from "../../lib/signalTimeline";
 import { withChildSignals } from "../../lib/i18nElevation/childsignals";
@@ -88,13 +88,10 @@ const PLAY_TO_DOMAIN: Record<PlayDomain, DevelopmentalDomainId> = {
   social: "social_development",
 };
 
-/** Fallback domain for derived kinds that carry no explicit domain. Moments are
- *  NOT here (JRNL-6): they classify via classifyBehaviorDomain, and when that
- *  returns null the chip is omitted rather than guessed. */
-const KIND_DOMAIN: Partial<Record<SignalKind, DevelopmentalDomainId>> = {
-  plan: "independence_adaptive_skills",
-  memory: "cognition_executive_function",
-};
+/* B-ASKJB-13: no kind→domain fallback. A plan or memory row carries no
+ * domain of its own, so it shows its kind icon (KIND_MS), never a guessed
+ * domain chip. Only explicit data (milestone domain, PLAY_TO_DOMAIN, the
+ * moment classifier) produces a chip. */
 
 /** Fallback glyph when a row has no domain (unclassifiable moment). */
 const KIND_MS: Record<SignalKind, string> = {
@@ -395,9 +392,12 @@ export default function JournalTab() {
   // RUN-08: the count here is the SAME weekCount the stat beside it shows; it
   // used to be `recentSignals.length` (capped at 3), which is how one screen
   // came to carry "0 · 3 · 5 · 10".
+  // B-ASKJB-13: the line says what it counts (moments this week) and claims
+  // nothing Arbor does not do — no "Arbor is connecting".
   const storyCopy = weekCount
-    ? t("journal.story.body", { count: weekCount })
+    ? t(weekCount === 1 ? "journal.story.body.one" : "journal.story.body", { count: weekCount })
     : t("journal.story.empty");
+  const feedCount = journalFeedCountKey(signals);
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto flex w-full min-w-0 max-w-[1080px] flex-col gap-5">
@@ -586,7 +586,7 @@ export default function JournalTab() {
         <section aria-labelledby="journal-timeline-title">
           <div className="mb-1 flex items-center justify-between gap-3">
             <h2 id="journal-timeline-title" className="text-[18px] font-extrabold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{t("journal.timeline.title")}</h2>
-            <span className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>{signals.length} {t("journal.timeline.count")}</span>
+            <span className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>{t(feedCount.key, { n: feedCount.n })}</span>
           </div>
           {groups.map((group) => (
             <div key={group.key}>
@@ -602,7 +602,7 @@ export default function JournalTab() {
                 <span className="h-px flex-1" style={{ background: "var(--arbor-rule)" }} aria-hidden />
               </div>
               {group.signals.map((s) => {
-                const domain = domainOf.get(s.id) ?? KIND_DOMAIN[s.kind] ?? null;
+                const domain = domainOf.get(s.id) ?? null;
                 // Masterplan 1.4: third provenance class — the CHILD's own
                 // practice/play activity gets the child's name as its badge.
                 const prov = SIGNAL_PROVENANCE[s.kind];
@@ -642,9 +642,9 @@ export default function JournalTab() {
           `signal === null` keeps it closed. */}
       <JournalEntrySheet
         signal={openSignal}
-        domain={openSignal ? (domainOf.get(openSignal.id) ?? KIND_DOMAIN[openSignal.kind] ?? null) : null}
+        domain={openSignal ? (domainOf.get(openSignal.id) ?? null) : null}
         domainLabel={(() => {
-          const d = openSignal ? (domainOf.get(openSignal.id) ?? KIND_DOMAIN[openSignal.kind] ?? null) : null;
+          const d = openSignal ? (domainOf.get(openSignal.id) ?? null) : null;
           return d ? t(`journal.domain.${d}`) : "";
         })()}
         prov={openSignal ? SIGNAL_PROVENANCE[openSignal.kind] : "manual"}

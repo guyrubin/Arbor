@@ -51,7 +51,8 @@ describe("F-09 — no zero-arg toLocaleDateString in src/components", () => {
     expect(journal).toMatch(/const weekCount = useMemo\(\(\) => weekMomentCount\(signals/);
     // …feeds the header stat AND the story copy — one number per screen.
     expect(journal).toMatch(
-      /const storyCopy = weekCount\s+\? t\("journal\.story\.body", \{ count: weekCount \}\)/,
+      // B-ASKJB-13: the plural form is picked from the same number.
+      /const storyCopy = weekCount\s+\? t\(weekCount === 1 \? "journal\.story\.body\.one" : "journal\.story\.body", \{ count: weekCount \}\)/,
     );
     // Negative control — the pre-fix shape: a second, capped week list feeding
     // the story copy ("0 · 3 · 5 · 10" on one screen) must not come back.

@@ -66,7 +66,7 @@ describe("RUN-08 · one week count, one definition", () => {
     expect(journal).toMatch(/weekMomentCount\(signals, Date\.now\(\)\)/);
     expect(story).toMatch(/weekMomentCount\(signals, Date\.now\(\)\)/);
     // The Journal's story copy reads the SAME number as the stat beside it.
-    expect(journal).toMatch(/t\("journal\.story\.body", \{ count: weekCount \}\)/);
+    expect(journal).toMatch(/"journal\.story\.body", \{ count: weekCount \}\)/);
     // NEGATIVE CONTROL: the two definitions this replaced are gone.
     expect(journal).not.toMatch(/const weekCount = weekSignals\.length/);
     expect(journal).not.toMatch(/count: recentSignals\.length/);
