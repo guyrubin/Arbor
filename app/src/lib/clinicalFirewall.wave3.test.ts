@@ -167,8 +167,8 @@ describe("Wave-3 clinical firewall — prose paths emit no intensity-trend verdi
     expect(code).not.toContain("Avg intensity");
     expect(code).not.toContain("avgIntensityThisWeek");
     expect(code).not.toContain("momentum.intensityTrend");
-    // The story call must pass intensityTrend: "none" (never the live value).
-    expect(code).toMatch(/intensityTrend:\s*"none"/);
+    // B-AI-02: the story input has no intensity-trend field at all now.
+    expect(code).not.toMatch(/intensityTrend/);
   });
 
   it("BehaviorsTab.tsx no longer renders a per-type intensity sparkline", () => {

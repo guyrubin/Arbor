@@ -23,8 +23,6 @@ export interface ChildStoryInput {
   milestonesTotal: number;
   momentsThisWeek: number;
   momentsPrevWeek: number;
-  /** From computeMomentum: how this week's intensity compares. */
-  intensityTrend: "rising" | "easing" | "steady" | "none" | string;
   planWins: number;
 }
 

@@ -240,10 +240,9 @@ export default function StoryTimelineTab() {
       // renders a week-over-week clause (firewall), so feeding it the prior
       // window would only invite the comparison back.
       momentsPrevWeek: 0,
-      // Wave-3 clinical subtraction: never pass the intensity trend into the
-      // story narrative (a behavior-intensity verdict rendered as prose is the
-      // same firewall leak as a chart). The story now stays observational-only.
-      intensityTrend: "none",
+      // Wave-3 clinical subtraction → B-AI-02: the story input has no
+      // intensity-trend field at all (a behavior-intensity verdict rendered as
+      // prose is the same firewall leak as a chart).
       planWins: momentum.winsThisWeek,
     }),
     [childProfile.name, childProfile.age, memoryReviewItems, momentum],

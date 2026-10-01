@@ -385,8 +385,9 @@ export async function streamCouncil(
 }
 
 export const api = {
+  // B-AI-02: the parent's AI language rides along (Hebrew insights for a Hebrew parent).
   analyzeBehavior: (payload: { logs: BehaviorLog[]; childProfile: ChildProfile }) =>
-    post<BehaviorAnalysis>("/api/analyze-behavior", payload),
+    post<BehaviorAnalysis>("/api/analyze-behavior", { ...payload, language: getAiLanguage() }),
   generatePlan: (payload: { challengeTopic: string; childProfile: ChildProfile }) =>
     post<ActionPlan>("/api/generate-plan", payload),
   generateStory: (payload: { childName: string; age: number; topic: string; moral: string }) =>

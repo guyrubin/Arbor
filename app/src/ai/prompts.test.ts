@@ -7,6 +7,8 @@ import {
   buildChatPrompt,
   buildCouncilSynthesisPrompt,
   buildExtractLogPrompt,
+  buildGeneratePlanPrompt,
+  buildAnalyzeBehaviorPrompt,
   buildTodaysFocusPrompt,
   buildVoiceReplyPrompt,
   promptFingerprint,
@@ -28,7 +30,7 @@ describe("EVAL-6 — PROMPT_VERSIONS hash guard", () => {
 
   it("covers the contract and every extracted route prompt", () => {
     expect(KEYS.sort()).toEqual(
-      ["coach_chat", "council_synthesis", "extract_log", "non_diagnostic_contract", "voice_reply", "live_session", "todays_focus"].sort(),
+      ["coach_chat", "council_synthesis", "extract_log", "non_diagnostic_contract", "voice_reply", "live_session", "todays_focus", "weekly_digest", "generate_plan", "analyze_behavior"].sort(),
     );
   });
 
@@ -368,5 +370,40 @@ Return only JSON matching the schema.`;
     expect(buildChatPrompt({ ...args, acceptedActions: [], keptInsights: [] })).toBe(buildChatPrompt(args));
     const withStep = buildChatPrompt({ ...args, acceptedActions: [{ recommendation: "Warn first", status: "completed", outcome: "not_today", acceptedAt: "2026-09-30T08:00:00Z" }] });
     expect(withStep).toContain('- "Warn first" (accepted 2026-09-30; parent reported: not today)');
+  });
+});
+
+/**
+ * B-AI-02 — /generate-plan's prompt moved into ai/prompts.ts. Without context
+ * the builder renders EXACTLY the inline template it replaced (copied
+ * verbatim from routes/api.ts @ 9fdd258); facts and past steps add one block.
+ */
+describe("B-AI-02 — generate_plan byte-parity; analyze_behavior has no trend", () => {
+  const legacyPlan = (fw: string, profile: unknown, topic: unknown) => `
+${NON_DIAGNOSTIC_CONTRACT}
+${fw}
+
+Generate a structured, non-diagnostic Arbor action plan.
+Profile: ${JSON.stringify(promptProfile(profile))}
+Focus Challenge: "${topic}"
+Return JSON with title, issue, phases, scripts, and successIndicators.
+`;
+  it("no context → the builder bytes equal the retired inline template", () => {
+    const p = { id: "c", name: "Noa", age: 4 };
+    expect(buildGeneratePlanPrompt({ developmentalFramework: "FW", childProfile: p, challengeTopic: "transitions" })).toBe(legacyPlan("FW", p, "transitions"));
+    expect(buildGeneratePlanPrompt({ developmentalFramework: "FW", childProfile: p, challengeTopic: "x", approvedFacts: [], pastSteps: [] })).toBe(legacyPlan("FW", p, "x"));
+  });
+  it("facts + past steps add one quoted block (and break parity)", () => {
+    const withCtx = buildGeneratePlanPrompt({
+      developmentalFramework: "FW", childProfile: null, challengeTopic: "t", approvedFacts: ["Bath helps"],
+      pastSteps: [{ recommendation: "Warn first", status: "completed", outcome: "not_today", acceptedAt: "2026-09-30T00:00:00Z" }],
+    });
+    expect(withCtx).toContain('- "Bath helps"');
+    expect(withCtx).toContain('- "Warn first" (parent reported: not today)');
+  });
+  it("analyze_behavior asks for no intensityTrend and carries the language directive", () => {
+    const p = buildAnalyzeBehaviorPrompt({ developmentalFramework: "FW", childProfile: null, logs: [], languageDirective: "«HE»" });
+    expect(p).not.toContain("intensityTrend");
+    expect(p).toContain("Return JSON with frequencyCount, triggerBreakdown, expertInsights, actionPlanSuggestion.«HE»");
   });
 });

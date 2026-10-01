@@ -9,7 +9,6 @@ const base: ChildStoryInput = {
   milestonesTotal: 0,
   momentsThisWeek: 0,
   momentsPrevWeek: 0,
-  intensityTrend: "none",
   planWins: 0,
 };
 
@@ -47,9 +46,6 @@ describe("composeChildStory (T4)", () => {
       ...base,
       momentsThisWeek: 5,
       momentsPrevWeek: 3,
-      // Wave-3 clinical subtraction: intensity trend must NOT leak into prose
-      // anymore, even when passed. The narrative stays observational-only.
-      intensityTrend: "easing",
       milestonesObserved: 4,
       milestonesTotal: 10,
       planWins: 2,

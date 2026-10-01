@@ -6,13 +6,13 @@ import { isAbortError, newAbortError, type ModelCallBudget, type ModelProvider }
 import { abortableIterate, raceWithAbort, isTransientModelError } from "../ai/modelRetry.js";
 import type { MemoryStore } from "../memory/types.js";
 import { createCoachResponseGeminiSchema, coachResponseZodSchema, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards } from "../contracts/coach.js";
-import { PROMPT_VERSIONS, buildChatPrompt, buildCouncilSynthesisPrompt, buildExtractLogPrompt, buildTodaysFocusPrompt, buildVoiceReplyPrompt, promptProfile, ROUTINE_ESCALATION_GUIDANCE } from "../ai/prompts.js";
+import { PROMPT_VERSIONS, buildAnalyzeBehaviorPrompt, buildChatPrompt, buildCouncilSynthesisPrompt, buildExtractLogPrompt, buildGeneratePlanPrompt, buildTodaysFocusPrompt, buildVoiceReplyPrompt, promptProfile, ROUTINE_ESCALATION_GUIDANCE } from "../ai/prompts.js";
 // Masterplan 1.3 — server-defensive sanitizers for the two OPTIONAL /chat body
 // fields (recentTurns transcript + counts-only weeklyContext). Both degrade to
 // the byte-identical legacy prompt on any malformed/absent input.
 import { sanitizeRecentTurns, sanitizeWeeklyContext } from "../ai/chatContext.js";
 import { assembleSpokenContext, liveContextWithoutNames, spokenChildId } from "../server/spokenContext.js";
-import { assembleCompanionContext, createCompanionLedgerSource, lastRatedAction, renderApprovedFactLines, type CompanionLedgerSource } from "../server/companionContext.js";
+import { assembleCompanionContext, createCompanionLedgerSource, lastRatedAction, renderApprovedFactLines, type CompanionLedgerSource, type CompanionPurpose } from "../server/companionContext.js";
 import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../services/framework.js";
 import { screenForImmediateEscalation, renderEscalationMarkdown, escalationMatchForCategory } from "../safety/escalation.js";
 import { DEFAULT_MEMORY_RETENTION, appendMemoryProposals, enforceMemoryRetention, foldMemoryEvents, getApprovedMemoryContext, getApprovedMemoryContextDetail, toChildId, toFamilyId, transitionMemory } from "../memory/memoryService.js";
@@ -402,6 +402,18 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     } catch {
       return false;
     }
+  };
+
+  // B-AI-02: one call shape for the handlers that ground in CompanionContext
+  // (/digest, /generate-plan, /analyze-behavior) — ownership-checked memory,
+  // the caller's own ledgers, ≤5 facts ranked against `query`.
+  const companionFor = async (req: express.Request, purpose: CompanionPurpose, childProfile: unknown, query: string) => {
+    const childId = spokenChildId(childProfile);
+    const canReadMemory = !childId || await mayReadChildMemory(req, childId);
+    return assembleCompanionContext({
+      purpose, audience: "parent", childId, childProfile, memoryStore, ledgerSource,
+      uid: actorOf(req).uid, query, canReadMemory, maxFacts: 5,
+    });
   };
 
   /**
@@ -2690,19 +2702,21 @@ RULES:
     }
 
     try {
-      const prompt = `
-${NON_DIAGNOSTIC_CONTRACT}
-${developmentalFramework}
-
-Generate a structured, non-diagnostic Arbor action plan.
-Profile: ${JSON.stringify(promptProfile(childProfile))}
-Focus Challenge: "${challengeTopic}"
-Return JSON with title, issue, phases, scripts, and successIndicators.
-`;
+      // B-AI-02: the plan is grounded in the parent's approved facts (ranked
+      // against the topic) and what they already tried, from CompanionContext.
+      const companion = await companionFor(req, "generate-plan", childProfile, typeof challengeTopic === "string" ? challengeTopic : "");
+      const prompt = buildGeneratePlanPrompt({
+        developmentalFramework,
+        childProfile,
+        challengeTopic,
+        approvedFacts: companion.approvedFacts.map((fact) => fact.text),
+        pastSteps: companion.acceptedActions,
+      });
       const privacy = createRedaction(childProfile?.name);
       const response = await modelProvider.generateJson({
         route: "analysis_structured",
         prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
+        promptVersion: PROMPT_VERSIONS.generate_plan.version,
         schema: {
           type: Type.OBJECT,
           required: ["title", "issue", "phases", "scripts", "successIndicators"],
@@ -3039,7 +3053,7 @@ ${languageDirective}`;
   });
 
   router.post("/analyze-behavior", async (req, res) => {
-    const { logs, childProfile } = req.body;
+    const { logs, childProfile, language } = req.body;
     const safetyLogText = Array.isArray(logs)
       ? logs.map((log) => [log.behaviorType, log.trigger, log.response, log.notes].filter(Boolean).join(" ")).join("\n")
       : "";
@@ -3054,24 +3068,31 @@ ${languageDirective}`;
     }
 
     try {
-      const prompt = `
-${NON_DIAGNOSTIC_CONTRACT}
-${developmentalFramework}
-Analyze Arbor parent-logged observations.
-Child Details: ${JSON.stringify(promptProfile(childProfile))}
-Behavior Logs: ${JSON.stringify(logs)}
-Return JSON with frequencyCount, intensityTrend, triggerBreakdown, expertInsights, actionPlanSuggestion.
-`;
+      // B-AI-02: `language` reaches the prompt (a Hebrew parent gets Hebrew
+      // insights) and the parent's recent steps come from CompanionContext.
+      const languageDirective =
+        language === "he"
+          ? "\nIMPORTANT: Write every human-readable text value in the JSON response in natural, warm Hebrew (עברית). Keep JSON keys in English."
+          : "";
+      const companion = await companionFor(req, "analyze-behavior", childProfile, "");
+      const prompt = buildAnalyzeBehaviorPrompt({
+        developmentalFramework,
+        childProfile,
+        logs,
+        languageDirective,
+        pastSteps: companion.acceptedActions,
+      });
       const privacy = createRedaction(childProfile?.name);
       const analysis = privacy.restoreDeep(await modelProvider.generateJson({
         route: "analysis_structured",
         prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
+        promptVersion: PROMPT_VERSIONS.analyze_behavior.version,
+        // B-AI-02: no `intensityTrend` — a trend on child data with 0 render sites.
         schema: {
           type: Type.OBJECT,
-          required: ["frequencyCount", "intensityTrend", "triggerBreakdown", "expertInsights", "actionPlanSuggestion"],
+          required: ["frequencyCount", "triggerBreakdown", "expertInsights", "actionPlanSuggestion"],
           properties: {
             frequencyCount: { type: Type.OBJECT, properties: {} },
-            intensityTrend: { type: Type.STRING },
             triggerBreakdown: {
               type: Type.ARRAY,
               items: {
@@ -3104,6 +3125,9 @@ Return JSON with frequencyCount, intensityTrend, triggerBreakdown, expertInsight
       // from the prompt/schema above; strip it defensively in case the model
       // emits it anyway so no parent-grading text can reach the client.
       delete analysis.effectivenessRating;
+      // B-AI-02: same defence for the retired trend field — it never reaches
+      // the client, so it never reaches a stored `insights` row either.
+      delete analysis.intensityTrend;
 
       // AI-2 / CI-13: output-side safety screen for the model-authored free-text
       // fields. expertInsights[].heading/.text and actionPlanSuggestion are the
@@ -3399,17 +3423,23 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
       const languageDirective = language === "he" ? "\nWrite every human-readable value in warm, natural Hebrew (עברית)." : "";
       // B-TODAY-03: the ONE prompt builder (server/digest.ts) projects out the
       // prior-week count and the milestone total and states the no-compare rule.
+      // B-AI-02 (absorbs B-TODAY-23's digest input): the parent's accepted
+      // steps + outcomes reach the digest prompt HERE and nowhere else, so
+      // tryThisWeek never re-proposes a step reported "not today".
+      const companion = await companionFor(req, "digest", childProfile, "");
       const prompt = buildDigestPrompt({
         contract: NON_DIAGNOSTIC_CONTRACT,
         childJson: childProfile ? JSON.stringify(promptProfile(childProfile)) : "unknown",
         childName: privacy.redact(childName),
         stats,
         languageDirective,
+        recentSteps: companion.acceptedActions.map((a) => ({ recommendation: a.recommendation, ...(a.outcome ? { outcome: a.outcome } : {}) })),
       });
       const narrative = privacy.restoreDeep(await modelProvider.generateJson({
         route: "analysis_structured",
         prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
         temperature: 0.5,
+        promptVersion: PROMPT_VERSIONS.weekly_digest.version,
         schema: {
           type: Type.OBJECT,
           required: ["title", "subject", "preheader", "summary", "highlights", "watchFor", "tryThisWeek"],
