@@ -448,10 +448,10 @@ export const en: Dict = {
   "coach.pending": "pending",
   "coach.approved": "approved",
   // ia-b6: Ask-a-Specialist door from the Ask pillar
-  "coach.specialist.cta": "Ask a specialist",
-  "coach.specialist.lead": "Want a human?",
-  "coach.specialist.toast": "Opening the specialist handoff — you choose what to share.",
-  "coach.specialist.aria": "Ask a human specialist — open the consult handoff",
+  "coach.specialist.cta": "Build a summary",
+  "coach.specialist.lead": "Preparing for a visit?",
+  "coach.specialist.toast": "Opening Prepare for a visit — you choose what to share.",
+  "coach.specialist.aria": "Prepare for a visit — build a summary you choose to share",
   // UC-1 ask — persistent coach identity strip (en). Honest-AI disclosure: no doctor honorific,
   // no live-human presence signal (clinical firewall / AI Act Art.50). Council 2026-07-18.
   "coach.coachName": "Arbor Coach",
@@ -2788,10 +2788,10 @@ export const he: Dict = {
   "coach.pending": "ממתינות",
   "coach.approved": "אושרו",
   // ia-b6: Ask-a-Specialist door from the Ask pillar
-  "coach.specialist.cta": "שאל מומחה",
-  "coach.specialist.lead": "רוצה לדבר עם איש מקצוע?",
-  "coach.specialist.toast": "פותח את ההעברה למומחה — אתה בוחר מה לשתף.",
-  "coach.specialist.aria": "פנייה לאיש מקצוע — פתיחת ההעברה לייעוץ",
+  "coach.specialist.cta": "להכין סיכום",
+  "coach.specialist.lead": "נפגשים עם איש מקצוע?",
+  "coach.specialist.toast": "פותחים את ההכנה לפגישה — אתם בוחרים מה לשתף.",
+  "coach.specialist.aria": "הכנה לפגישה — להכין סיכום שאתם בוחרים לשתף",
   // UC-1 ask — persistent coach identity strip (he)
   // Honest-AI disclosure (he) — doctor honorific + live-presence removed. FLAG: native-Hebrew
   // review before publish, per the transcreation gate.

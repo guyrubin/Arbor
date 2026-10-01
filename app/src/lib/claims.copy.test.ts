@@ -270,3 +270,38 @@ describe("5 · Milestones promises no quest and no feed it does not write", () =
     expect(/feeds the Map/i.test("Mark each skill you've noticed — it feeds the Map, Academy & Care Network.")).toBe(true);
   });
 });
+
+/**
+ * B-ASKJB-08 — "Want a human? Ask a specialist" promised a person. There is
+ * none: ARBOR_PROFESSIONALS is empty and the button opens Consult, which
+ * builds a summary the parent chooses to share. Care is a handoff, never a
+ * staffed human-expert layer (claim gate). The four keys say what it does.
+ */
+describe("B-ASKJB-08 · the Ask secondary row promises no human", () => {
+  const KEYS = ["coach.specialist.cta", "coach.specialist.lead", "coach.specialist.toast", "coach.specialist.aria"];
+  const FORBIDDEN = [/specialist/i, /\bhuman\b/i, /talk to a human/i, /מומחה/, /מומחית/];
+
+  it("NEGATIVE CONTROL — the pre-fix strings trip the scan", () => {
+    for (const pre of ["Ask a specialist", "Want a human?", "שאל מומחה", "פותח את ההעברה למומחה — אתה בוחר מה לשתף."]) {
+      expect(FORBIDDEN.some((re) => re.test(pre)), pre).toBe(true);
+    }
+  });
+
+  it("none of the four keys promises a specialist or a human (EN + HE)", () => {
+    for (const lang of LANGS) {
+      for (const key of KEYS) {
+        const v = translate(lang, key);
+        expect(v, `${lang} ${key} missing`).not.toBe(key);
+        for (const re of FORBIDDEN) expect(v, `${lang} ${key}: ${v}`).not.toMatch(re);
+      }
+    }
+  });
+
+  it("the row names the real destination (Prepare for a visit)", () => {
+    expect(en["coach.specialist.lead"]).toBe("Preparing for a visit?");
+    expect(en["coach.specialist.cta"]).toBe("Build a summary");
+    expect(he["coach.specialist.lead"]).toBe("נפגשים עם איש מקצוע?");
+    expect(he["coach.specialist.cta"]).toBe("להכין סיכום");
+    expect(read("components/tabs/CoachTab.tsx")).toMatch(/setActiveTab\("consult"\); toast\(t\("coach\.specialist\.toast"\)/);
+  });
+});
