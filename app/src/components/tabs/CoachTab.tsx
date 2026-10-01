@@ -51,7 +51,8 @@ import { microphoneRecovery } from "../../lib/microphoneRecovery";
 import ConversationProposalTray from "../coach/ConversationProposalTray";
 // ENG-10 / ENG-11: the JITAI cue, rendered where the parent already is and
 // instrumented — and in the evening it is the Bedtime Stories door.
-import RhythmCue from "../coach/RhythmCue";
+import CompanionOfferSlot from "../overview/CompanionOfferSlot";
+import { useCompanionOffer } from "../overview/useCompanionOffer";
 // AI-06 / AI-24: one classifier from a thrown transport error (or from being
 // offline) to the honest, ACTIONABLE thing to say — never a generic retry.
 import { browserOnline, classifyAiFailure, type AiFailureCopy } from "../../lib/aiErrorCopy";
@@ -160,6 +161,8 @@ export default function CoachTab() {
     commitConversationProposal,
     openPaywall,
   } = useArbor();
+  // B-AI-06: Ask renders the SAME single-offer decision as Today.
+  const askOffer = useCompanionOffer("coach");
   const { toast } = useToast();
   const { aiLang, t, uiLang } = useLanguage();
   const { user } = useAuth();
@@ -937,14 +940,13 @@ export default function CoachTab() {
         {!composerDocked && composerSection}
       </div>
 
-      {/* ENG-10 / ENG-11 — the one cue the engine is allowed to spend today,
-          rendered on a surface the parent actually opens (the bell alone was
-          a badge nobody hunts for) and measured. In the evening this IS the
-          Bedtime Stories door: lib/timeOfDay bedtimeDoorOpen → the BEDTIME
-          kind → the "bedtime-stories" route. Quiet hours, the parent's Smart
-          Reminders toggles and the max-2/day ceiling stay owned by the engine;
-          this renders nothing when the engine says stay quiet. */}
-      {!userTurnExists && <RhythmCue surface="coach" />}
+      {/* ENG-10 / ENG-11 → B-AI-06 — the one proactive offer, rendered on a
+          surface the parent actually opens. In the evening it IS the Bedtime
+          Stories door (RhythmCue renders the BEDTIME kind → the
+          "bedtime-stories" route). The coordinator (lib/companionOffer) owns
+          quiet hours, the max-2/day ceiling and the shown-ledger; this
+          renders nothing when it says stay quiet. */}
+      {!userTurnExists && <CompanionOfferSlot surface="coach" offer={askOffer.offer} controls={askOffer} />}
 
       {/* Fast-start scenarios (IA-2) — calm bordered chips on a fresh conversation */}
       {!userTurnExists && (

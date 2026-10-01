@@ -119,7 +119,9 @@ describe("ENG-12 — the step that outlived its day", () => {
   it("is mounted on Today, and NOT as a second primary CTA", () => {
     const here = path.dirname(fileURLToPath(import.meta.url));
     const overview = readFileSync(path.join(here, "../tabs/OverviewTab.tsx"), "utf8");
-    expect(overview).toContain("<CarryOverActionAsk />");
+    // B-AI-06: mounted through the single-offer slot (kind "follow-up").
+    expect(overview).toContain('<CompanionOfferSlot surface="today"');
+    expect(readFileSync(path.join(here, "./CompanionOfferSlot.tsx"), "utf8")).toContain("<CarryOverActionAsk onSkip={controls.refresh} />");
     // Negative control: the shipped file had no such mount.
     expect("      {activeTodayAction ? (\n        <TodayActionLoop />").not.toContain("CarryOverActionAsk");
 

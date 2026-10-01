@@ -11,9 +11,8 @@ import DailyPlayCard from "../overview/DailyPlayCard";
 import QuickCaptureBar from "../overview/QuickCaptureBar";
 import TodayRecommendation from "../overview/TodayRecommendation";
 import TodayActionLoop from "../overview/TodayActionLoop";
-import CarryOverActionAsk from "../overview/CarryOverActionAsk";
-import RhythmCue from "../coach/RhythmCue";
-import HardMomentTodayOffer from "../overview/HardMomentTodayOffer";
+import CompanionOfferSlot from "../overview/CompanionOfferSlot";
+import { useCompanionOffer } from "../overview/useCompanionOffer";
 import ProgressNarrative from "../overview/ProgressNarrative";
 import QuickLogModal from "../overview/QuickLogModal";
 import SinceLastVisit, { svString } from "../overview/SinceLastVisit";
@@ -555,6 +554,13 @@ export default function OverviewTab() {
   const foldNoticed = modulePlan.demoted.includes("noticed");
   const showSinceStrip = modulePlan.visible.has("since");
   const showLifecycle = modulePlan.visible.has("lifecycle");
+  // B-AI-06: ONE proactive offer per open. The coordinator ranks the carry-over
+  // question, the lifecycle moment, appointments, a due re-check, the rhythm
+  // cue, the hard-moment step and the evening door, and Today renders only the
+  // winner (CompanionOfferSlot; the lifecycle card keeps its own position).
+  const todayOffer = useCompanionOffer("today", {
+    whatChanged: showLifecycle && lifecycleMoment ? { id: lifecycleMoment.kind } : null,
+  });
 
   const sinceVisit = useMemo(
     () => (foldNoticed
@@ -754,18 +760,16 @@ export default function OverviewTab() {
               whyLine={todayChoice.kind === "prompt" ? t("today.intent.why.prompt", { age: ageYearsFromProfile(childProfile) }) : undefined}
             />
           )}
-          {/* ENG-12: a step accepted yesterday and never reported on used to
-              vanish at midnight (activeTodayAction keys off today's date), so
-              the outcome was never asked again. This slim strip carries the
-              question forward under the day's anchor — never a second card and
-              never a second gradient CTA, so Rule A's one-primary rule holds.
-              It self-hides when there is nothing still open. */}
-          <CarryOverActionAsk />
-          {/* ENG-11: the JITAI nudge reaches Today and Ask. RhythmCue renders
-              whatever the engine already decided — quiet hours, the per-day
-              ceiling and prefs stay owned by the engine; B-SHELL-02: it spends
-              the shown-ledger when the cue renders (idempotent per kind). */}
-          <RhythmCue surface="today" />
+          {/* B-AI-06: the ONE proactive slot under the day's anchor. Its
+              renderers are the cards that used to mount here independently —
+              ENG-12's carry-over question (the step that outlived its day),
+              ENG-11's rhythm / evening cue and CONT-2's hard-moment offer
+              (fail-closed on published cards, outline button through the
+              existing acceptTodayAction seam) — plus appointments and a due
+              re-check. At most one renders, with its reason line; the
+              coordinator honours quiet hours and the 2/day ceiling and spends
+              the shown-ledger. Never a second gradient CTA (Rule A). */}
+          <CompanionOfferSlot surface="today" offer={todayOffer.offer} controls={todayOffer} />
           {/* N2-errfocus: a failed focus fetch used to degrade SILENTLY to the
               guaranteed-action fallback. The inline error renders ALONGSIDE the
               fallback (never instead of it — the anchor above always renders),
@@ -783,12 +787,6 @@ export default function OverviewTab() {
               retrying={focusLoading}
             />
           )}
-          {/* CONT-2 — hard-moment offer (AR-CONT-01). Fail-closed on
-              publishedHardMomentCards via selectCards; offers a matched card's
-              doNow through the EXISTING acceptTodayAction seam (outline button
-              — the anchor keeps the single gradient-primary CTA). Renders
-              nothing until clinical review publishes cards (GD-10). */}
-          <HardMomentTodayOffer />
         </div>
         {/* ── Development-Map card (right, 1fr) ─────────────────────────────────
             Clinical firewall: a milestone-count ring + a COUNT-based 3-stat
@@ -858,8 +856,8 @@ export default function OverviewTab() {
              re-entry before a list of events they were not there for. At most
              one renders, each occurrence once, and it counts against the ≤5
              Rule-A budget like any other module. ── */}
-      {showLifecycle && lifecycleMoment && (
-        <div data-module="today-lifecycle" style={{ display: "contents" }}>
+      {showLifecycle && lifecycleMoment && todayOffer.offer?.kind === "what-changed" && (
+        <div data-module="today-lifecycle" data-proactive="" data-offer-kind="what-changed" style={{ display: "contents" }}>
         <LifecycleMomentCard
           moment={lifecycleMoment}
           childName={firstName}

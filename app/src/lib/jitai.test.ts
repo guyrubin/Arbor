@@ -254,10 +254,10 @@ describe("B-SHELL-02 — ceiling binds without the bell (ledger level)", () => {
     expect(nextNudge({ ...logConditions, nowMs: day, shownToday }, prefs())).toBeNull();
   });
 
-  it("RhythmCue spends the ledger in its impression effect; nothing imports the bell or useNotifications", () => {
+  it("the B-AI-06 coordinator spends the ledger where the offer renders; nothing imports the bell or useNotifications", () => {
     const src = (rel: string) => readFileSync(path.join(__dirname, "..", rel), "utf8");
-    const cue = src("components/coach/RhythmCue.tsx").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
-    expect(cue).toMatch(/useEffect\(\(\) => \{\s*if \(!visible\) return;\s*recordNudgeShown\(visible\.kind\);/);
+    const hook = src("components/overview/useCompanionOffer.ts").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    expect(hook).toMatch(/useEffect\(\(\) => \{\s*const day = nudgeDayKey\(\);\s*if \(offer\) \{\s*recordNudgeShown\(offer\.ledgerKind\);/);
     const panel = src("components/sections/SmartRemindersPanel.tsx");
     expect(panel).toMatch(/shownNudgesToday\(\)/);
   });

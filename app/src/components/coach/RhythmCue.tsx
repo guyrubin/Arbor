@@ -1,10 +1,9 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect } from "react";
 import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { predictRhythm } from "../../rhythm/predict";
-import { nextNudge, type Nudge } from "../../lib/jitai";
-import { loadPrefs, shownNudgesToday, nudgeDayKey, recordNudgeShown } from "../../growth/jitaiPrefs";
+import type { Nudge } from "../../lib/jitai";
+import { nudgeDayKey } from "../../growth/jitaiPrefs";
 import { trackNudgeActed, trackNudgeDismissed, trackNudgeShown, type NudgeSurface } from "../../lib/jitaiTelemetry";
 import { PASTEL } from "../../lib/tokens";
 
@@ -28,103 +27,45 @@ import { PASTEL } from "../../lib/tokens";
  * CONTRACTS THIS MUST NOT BREAK
  *  - The engine is the ONE decision point: quiet hours, the parent's Smart
  *    Reminders toggles and the max-2/day ceiling are all enforced inside
- *    nextNudge(). This component adds no rules of its own; it only renders
- *    what the engine already decided to allow, and stays silent on null.
- *  - B-SHELL-02: it SPENDS the ceiling. recordNudgeShown(kind) runs in the
- *    impression effect — the render site is where a cue is shown — and is
- *    idempotent per kind per day, so the same cue on Today AND on Ask costs
- *    one slot, and the ratified max-2/day ceiling binds on a phone too. (The
- *    bell used to be the only spender, mounted `hidden lg:flex`, so on phones
- *    the ceiling never bound.) Lane-X B-AI-06 later moves the spend into its
- *    single-offer coordinator; until then, it lives here.
+ *    nextNudge() and the B-AI-06 coordinator (lib/companionOffer). This
+ *    component adds no rules of its own; it renders what it is handed and
+ *    stays silent on null.
+ *  - B-AI-06: the coordinator SPENDS the ceiling (recordNudgeShown, idempotent
+ *    per kind per day) where it decides an offer renders — one spender for
+ *    every proactive kind, on Today and on Ask.
  *  - Clinical firewall: the card carries the CUE's copy only. No count about
  *    the child, no score, no ring, no colour that means good or bad — the
  *    tone is the cue's own pastel, chosen by kind, not by how the day went.
  */
 
-const DISMISS_KEY_PREFIX = "arbor.rhythmcue.dismissed.";
-
-function dismissedToday(nowMs = Date.now()): string[] {
-  try {
-    const raw = localStorage.getItem(DISMISS_KEY_PREFIX + nudgeDayKey(nowMs));
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed.filter((k): k is string => typeof k === "string") : [];
-  } catch {
-    return [];
-  }
-}
-
-function recordDismissed(kind: string, nowMs = Date.now()): string[] {
-  const next = [...new Set([...dismissedToday(nowMs), kind])];
-  try {
-    localStorage.setItem(DISMISS_KEY_PREFIX + nudgeDayKey(nowMs), JSON.stringify(next));
-  } catch {
-    /* storage blocked — the cue simply reappears next mount */
-  }
-  return next;
-}
-
 /** day|surface|kind already counted — see the impression effect below. */
 const SEEN_IMPRESSIONS = new Set<string>();
 
-export default function RhythmCue({ surface = "coach" }: { surface?: NudgeSurface }) {
-  const { childProfile, behaviorLogs, setActiveTab, requestCapture } = useArbor();
+/**
+ * B-AI-06: a RENDERER of the coordinator's decision. The single-offer
+ * coordinator (components/overview/useCompanionOffer) runs `nextNudge` with
+ * the prefs and the shown-ledger, arbitrates it against every other proactive
+ * candidate, spends the day's ceiling and owns dismissal (Not today / Later /
+ * Undo). This card only renders the nudge it is handed.
+ */
+export default function RhythmCue({
+  surface = "coach",
+  nudge,
+  onDismiss,
+}: {
+  surface?: NudgeSurface;
+  nudge: Nudge | null;
+  onDismiss?: () => void;
+}) {
+  const { setActiveTab, requestCapture } = useArbor();
   const { t } = useLanguage();
 
-  const [dismissed, setDismissed] = useState<string[]>(() => dismissedToday());
-
-  const firstName = (childProfile.name || "").split(" ")[0];
-
-  const rhythm = useMemo(
-    () =>
-      predictRhythm(
-        behaviorLogs.map((l) => ({ timestamp: l.timestamp, intensity: l.intensity })),
-        Date.now(),
-        { ageYears: childProfile.age },
-      ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [behaviorLogs.length, childProfile.age],
-  );
-
-  const loggedToday = useMemo(() => {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    return behaviorLogs.filter((l) => new Date(l.timestamp).getTime() >= start.getTime()).length;
-  }, [behaviorLogs]);
-
-  const recent7d = useMemo(() => {
-    const cutoff = Date.now() - 7 * 86_400_000;
-    return behaviorLogs.filter((l) => new Date(l.timestamp).getTime() >= cutoff).length;
-  }, [behaviorLogs]);
-
-  const nudge: Nudge | null = useMemo(
-    () =>
-      nextNudge(
-        {
-          nowMs: Date.now(),
-          rhythm,
-          loggedToday,
-          recent7d,
-          childName: firstName,
-          shownToday: shownNudgesToday(),
-        },
-        loadPrefs(),
-      ),
-    [rhythm, loggedToday, recent7d, firstName],
-  );
-
-  const visible = nudge && !dismissed.includes(nudge.kind) ? nudge : null;
+  const visible = nudge;
 
   // ENG-11: an impression, not a decision — and exactly ONE per cue per
-  // surface per day. This component is mounted on Today AND on Ask, so a
-  // per-mount effect logged the same cue twice on a tab switch, skewing the
-  // very metric ENG-11 exists to produce. The seen-set is module-level and
-  // day-keyed, so a remount within the day is silent and a new day starts over.
+  // surface per day (module-level, day-keyed seen-set).
   useEffect(() => {
     if (!visible) return;
-    // B-SHELL-02: spend the day's ceiling where the cue renders. Idempotent per
-    // kind per day (growth/jitaiPrefs), so a remount or a second surface is free.
-    recordNudgeShown(visible.kind);
     const key = `${nudgeDayKey()}|${surface}|${visible.kind}`;
     if (SEEN_IMPRESSIONS.has(key)) return;
     SEEN_IMPRESSIONS.add(key);
@@ -176,7 +117,7 @@ export default function RhythmCue({ surface = "coach" }: { surface?: NudgeSurfac
             aria-label={t("elev.evening.card.dismissAria")}
             onClick={() => {
               trackNudgeDismissed(visible, surface);
-              setDismissed(recordDismissed(visible.kind));
+              onDismiss?.();
             }}
             className="inline-flex items-center min-h-[44px] px-3 rounded-xl text-[12px] font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
             style={{ color: "var(--arbor-muted)" }}

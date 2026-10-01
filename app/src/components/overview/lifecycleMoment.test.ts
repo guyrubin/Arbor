@@ -81,7 +81,8 @@ describe("ENG-09 — the lifecycle module is wired into Today", () => {
   it("feeds the budget the module's REAL render condition, not a proxy", () => {
     expect(overview).toMatch(/lifecycle:\s*lifecycleMoment\s*!==\s*null/);
     expect(overview).toMatch(/showLifecycle\s*=\s*modulePlan\.visible\.has\("lifecycle"\)/);
-    expect(overview).toMatch(/\{showLifecycle && lifecycleMoment && \(/);
+    // B-AI-06: and only when the single-offer coordinator chose it.
+    expect(overview).toMatch(/\{showLifecycle && lifecycleMoment && todayOffer\.offer\?\.kind === "what-changed" && \(/);
   });
 
   it("mounts useLastVisit exactly once — the hook WRITES, so twice is a double stamp", () => {

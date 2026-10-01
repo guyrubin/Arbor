@@ -30,7 +30,7 @@ import {
  * score, no verdict, and the three outcome buttons carry one shared neutral
  * treatment — colour-coding "helped" against "not today" would grade the day.
  */
-export default function CarryOverActionAsk() {
+export default function CarryOverActionAsk({ onSkip }: { onSkip?: () => void } = {}) {
   const { actionLoop, recordTodayOutcome, childProfile } = useArbor();
   const { t, uiLang } = useLanguage();
   const [skipped, setSkipped] = useState<string[]>(() => readSkippedCarryOvers());
@@ -99,7 +99,7 @@ export default function CarryOverActionAsk() {
       </div>
       <button
         type="button"
-        onClick={() => setSkipped(rememberSkippedCarryOver(entry.id))}
+        onClick={() => { setSkipped(rememberSkippedCarryOver(entry.id)); onSkip?.(); }}
         className="mt-2 min-h-11 px-1 text-[11.5px] font-bold"
         style={{ color: "var(--arbor-muted)" }}
       >

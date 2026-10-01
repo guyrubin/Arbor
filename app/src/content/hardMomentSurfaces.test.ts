@@ -209,8 +209,10 @@ describe("CONT-2/CODEX-5 — surfaces consume gated selectors and existing seams
     const code = stripComments(read("components/overview/HardMomentTodayOffer.tsx"));
     expect(code).toContain('acceptTodayAction(locText(current.doNow, locale), "standard", "hard-moment")');
     expect(code).not.toMatch(/handleAddLog|upsert|firestore|setDoc/i);
-    // OverviewTab mounts it inside the day-anchor column.
-    expect(stripComments(read("components/tabs/OverviewTab.tsx"))).toContain("<HardMomentTodayOffer />");
+    // B-AI-06: OverviewTab mounts the single-offer slot inside the day-anchor
+    // column; the slot renders this offer as its "grounded-step" kind.
+    expect(stripComments(read("components/tabs/OverviewTab.tsx"))).toContain('<CompanionOfferSlot surface="today"');
+    expect(stripComments(read("components/overview/CompanionOfferSlot.tsx"))).toContain("<HardMomentTodayOffer />");
   });
 
   it("coach entry uses the EXISTING seedCoach seam with provenance", () => {

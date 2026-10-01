@@ -26,6 +26,7 @@
  * rendered back to a parent as a judgement about their family.
  */
 import { track } from "./analytics";
+import { OFFER_PRECEDENCE, OFFER_SUPPRESS_REASONS } from "./companionOffer";
 
 export const KpiEvent = {
   /** The bell panel was opened (the in-app notification surface's reach). */
@@ -71,6 +72,10 @@ export const KpiEvent = {
   DigestEmailOptIn: "digest_email_optin",
   /** A digest send was attempted, with its fail-closed axis. */
   DigestEmailSend: "digest_email_send",
+  /** B-AI-06: the single-offer coordinator rendered one proactive offer. */
+  OfferShown: "offer_shown",
+  /** B-AI-06: a proactive candidate in hand did not render, with the reason. */
+  OfferSuppressed: "offer_suppressed",
 } as const;
 
 /** The capture entry modes (mirrors ArborContext's CaptureMode union). */
@@ -394,4 +399,29 @@ export function trackDigestEmailOptIn(on: boolean): void {
 /** A digest send was attempted (N1-07). `result` is a fail-closed axis or "sent". */
 export function trackDigestEmailSend(result: string): void {
   track(KpiEvent.DigestEmailSend, { result: oneOf(DIGEST_SEND_RESULTS, result) });
+}
+
+/* ── Single-offer coordinator (B-AI-06) ────────────────────────────────── */
+
+/** The surfaces that render the coordinator's one offer. */
+export const OFFER_SURFACES = ["today", "coach"] as const;
+
+/** The coordinator rendered its one offer (once per kind per surface per day). */
+export function trackOfferShown(args: { kind: string; surface: string }): void {
+  track(KpiEvent.OfferShown, {
+    kind: oneOf(OFFER_PRECEDENCE, args.kind),
+    surface: oneOf(OFFER_SURFACES, args.surface),
+  });
+}
+
+/** A candidate in hand was not rendered: quiet hours, ceiling, snoozed,
+ *  dismissed today, or the 7-day suppression after three dismissals. A
+ *  lower-precedence candidate losing to a higher one is arbitration, not
+ *  suppression, and is never emitted. */
+export function trackOfferSuppressed(args: { kind: string; reason: string; surface: string }): void {
+  track(KpiEvent.OfferSuppressed, {
+    kind: oneOf(OFFER_PRECEDENCE, args.kind),
+    reason: oneOf(OFFER_SUPPRESS_REASONS, args.reason),
+    surface: oneOf(OFFER_SURFACES, args.surface),
+  });
 }

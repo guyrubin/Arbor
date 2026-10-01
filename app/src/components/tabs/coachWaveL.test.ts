@@ -22,11 +22,18 @@ const stripComments = (code: string) =>
 
 const coach = stripComments(read("components/tabs/CoachTab.tsx"));
 const cue = stripComments(read("components/coach/RhythmCue.tsx"));
+// B-AI-06: the engine call, the prefs, the shown-ledger and the ceiling spend
+// moved into the single-offer coordinator hook; RhythmCue renders its nudge.
+const coordinator = stripComments(read("components/overview/useCompanionOffer.ts"));
+const slot = stripComments(read("components/overview/CompanionOfferSlot.tsx"));
 
 describe("ENG-10 / ENG-11 — the cue is mounted on a surface a parent opens, and measured", () => {
-  it("CoachTab mounts RhythmCue", () => {
-    expect(coach).toMatch(/import RhythmCue from "\.\.\/coach\/RhythmCue"/);
-    expect(coach).toMatch(/<RhythmCue\s+surface="coach"\s*\/>/);
+  it("CoachTab mounts the coordinator's slot, which renders RhythmCue (B-AI-06)", () => {
+    expect(coach).toMatch(/import CompanionOfferSlot from "\.\.\/overview\/CompanionOfferSlot"/);
+    expect(coach).toMatch(/useCompanionOffer\("coach"\)/);
+    expect(coach).toMatch(/<CompanionOfferSlot surface="coach" offer=\{askOffer\.offer\} controls=\{askOffer\} \/>/);
+    expect(slot).toMatch(/import RhythmCue from "\.\.\/coach\/RhythmCue"/);
+    expect(slot).toMatch(/<RhythmCue surface=\{surface\} nudge=\{offer\.nudge \?\? null\}/);
   });
 
   it("NEGATIVE CONTROL — the pre-change CoachTab had no cue at all", () => {
@@ -35,14 +42,16 @@ describe("ENG-10 / ENG-11 — the cue is mounted on a surface a parent opens, an
   });
 
   it("the cue renders the ENGINE's decision and adds no gate of its own", () => {
-    expect(cue).toMatch(/nextNudge\(/);
-    expect(cue).toMatch(/loadPrefs\(\)/);
-    expect(cue).toMatch(/shownNudgesToday\(\)/);
-    // B-SHELL-02: the bell is retired, so the cue is THE spender of the
-    // day's ceiling — exactly once, in the impression effect (idempotent per
-    // kind per day in growth/jitaiPrefs.recordNudgeShown).
-    expect((cue.match(/recordNudgeShown\(/g) ?? []).length).toBe(1);
-    expect(cue).toMatch(/recordNudgeShown\(visible\.kind\)/);
+    // B-AI-06: the coordinator runs the engine with the prefs + shown-ledger…
+    expect(coordinator).toMatch(/nextNudge\(/);
+    expect(coordinator).toMatch(/loadPrefs\(\)/);
+    expect(coordinator).toMatch(/shownNudgesToday\(now\)/);
+    // …and is THE spender of the day's ceiling — exactly once, where the
+    // offer renders (idempotent per kind per day in jitaiPrefs).
+    expect((coordinator.match(/recordNudgeShown\(/g) ?? []).length).toBe(1);
+    expect(coordinator).toMatch(/recordNudgeShown\(offer\.ledgerKind\)/);
+    // The cue itself decides nothing and spends nothing.
+    expect(cue).not.toMatch(/nextNudge\(|loadPrefs\(|recordNudgeShown\(/);
   });
 
   it("every visible string comes from the nudge's i18n keys, never inline copy", () => {

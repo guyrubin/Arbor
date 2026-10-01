@@ -184,7 +184,8 @@ describe("P1-B firewall — the budget counts modules, never a governance gate",
     // Regression pin for the mis-modelling behind P1-B: HardMomentTodayOffer
     // renders in the anchor row's left column, so it never competed for a slot.
     const anchorStart = overview.indexOf('lg:grid-cols-[1.85fr_0.85fr]');
-    const offer = overview.indexOf("<HardMomentTodayOffer");
+    // B-AI-06: it renders through the single-offer slot in that column.
+    const offer = overview.indexOf("<CompanionOfferSlot");
     expect(anchorStart).toBeGreaterThan(-1);
     expect(offer).toBeGreaterThan(anchorStart);
   });
