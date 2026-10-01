@@ -100,3 +100,63 @@ describe("OBJ-JOURNAL-05 · the queue renders the scrubbed list, and counts it",
 function plainFact() {
   return "Dylan asks for the same book at bedtime";
 }
+
+/* ── B-CAREPRO-06 — the same rule on the three other memory surfaces ─────────
+ * #/memory rendered `{m.fact}` for pending AND approved; #/profile and #/safety
+ * rendered approved facts raw. Each now reads through the shared scrub. */
+describe("B-CAREPRO-06 · ChildMemory, ChildProfile and SafetyTab render scrubbed memory text", () => {
+  const MEMORY = stripComments(read("components/sections/ChildMemory.tsx"));
+  const PROFILE = stripComments(read("components/sections/ChildProfile.tsx"));
+  const SAFETY = stripComments(read("components/tabs/SafetyTab.tsx"));
+  const SURFACES = [["ChildMemory", MEMORY], ["ChildProfile", PROFILE], ["SafetyTab", SAFETY]] as const;
+
+  it("each surface imports the shared scrub", () => {
+    for (const [name, src] of SURFACES) {
+      expect(src, `${name} does not import the scrub`).toMatch(/import \{[^}]*scrubMemoryProposals[^}]*\} from "\.\.\/\.\.\/server\/parentWordsScrub";/);
+    }
+  });
+
+  /** The raw context lists are never iterated for render — only the scrubbed ones. */
+  const RAW_RENDER = /\b(?:approvedMemoryItems|pendingMemoryItems)\.(?:map|slice)\(/;
+
+  it("no surface iterates a raw memory list for render", () => {
+    for (const [name, src] of [["ChildProfile", PROFILE], ["SafetyTab", SAFETY]] as const) {
+      expect(RAW_RENDER.test(src), `${name} renders a raw memory list`).toBe(false);
+    }
+    // ChildMemory iterates the stored approved rows on purpose (Edit opens the
+    // parent's own text); MemoryRow shows the scrubbed wording, never the
+    // stored string, and the pending queue is the scrub survivors.
+    expect(MEMORY).not.toContain("{m.fact}");
+    expect(MEMORY).not.toContain("pendingMemoryItems.map(");
+    // NEGATIVE CONTROL: the three pre-change render sites are caught by the same rule.
+    expect(RAW_RENDER.test("{pendingMemoryItems.map((m: MemoryReviewItem) => (")).toBe(true);
+    expect(RAW_RENDER.test("{approvedMemoryItems.slice(0, 5).map((m) => (")).toBe(true);
+    expect(RAW_RENDER.test("{approvedMemoryItems.map((item) => (")).toBe(true);
+  });
+
+  it("ChildMemory: the pending queue is the scrub survivors; rows display the plain-words text; Edit opens the stored text", () => {
+    expect(MEMORY).toContain("scrubMemoryProposals(pendingMemoryItems)");
+    expect(MEMORY).toContain("{pendingQueue.map((m: MemoryReviewItem) => (");
+    expect(MEMORY).toContain('t("elev.childmem.pending.title", { count: pendingQueue.length })');
+    expect(MEMORY).not.toContain("pendingMemoryItems.map(");
+    expect(MEMORY).toContain("const shownFact = toParentWords(m.fact);");
+    expect(MEMORY).toContain('{shownFact || t("elev.childmem.fact.unshown")}');
+    expect(MEMORY).toContain('useState(m.fact ?? "")');
+  });
+
+  it("ChildProfile and SafetyTab list the scrubbed approved facts", () => {
+    expect(PROFILE).toContain("scrubMemoryProposals(approvedMemoryItems)");
+    expect(PROFILE).toContain("shownApproved.slice(0, 5).map(");
+    expect(PROFILE).not.toContain("approvedMemoryItems.slice(");
+    expect(PROFILE).toContain("pendingQueue.length === 1");
+    expect(SAFETY).toContain("scrubMemoryProposals(approvedMemoryItems)");
+    expect(SAFETY).toContain("shownApproved.map((item) => (");
+    expect(SAFETY).not.toContain("approvedMemoryItems.map(");
+  });
+
+  it("the captured fixture renders as the plain-words rewrite (what all three surfaces show)", () => {
+    const [shown] = scrubMemoryProposals([{ memoryId: "x", fact: "Dylan experiences severe transition anxiety", status: "approved" }]);
+    expect(shown.fact).toBe(toParentWords("Dylan experiences severe transition anxiety"));
+    expect(shown.fact).not.toMatch(/severe|anxiety/i);
+  });
+});

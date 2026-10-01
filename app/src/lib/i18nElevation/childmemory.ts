@@ -25,6 +25,8 @@ export const en: Record<string, string> = {
 
   "elev.childmem.empty.title": "No memory yet",
   "elev.childmem.empty.body": "As you log moments and talk with Arbor, it will suggest facts about {name} for you to approve. Approved facts make every answer more personal.",
+  // B-CAREPRO-06: an approved fact whose wording the plain-words scrub cannot keep.
+  "elev.childmem.fact.unshown": "Kept as you approved it, but not shown here in clinical words. Edit it into your own words, or forget it.",
 
 
   "elev.childmem.action.approve": "Approve",
@@ -46,6 +48,7 @@ export const he: Record<string, string> = {
 
   "elev.childmem.empty.title": "עדיין אין זיכרון",
   "elev.childmem.empty.body": "ככל שתתעדו רגעים ותשוחחו עם ארבור, הוא יציע עובדות על {name} שתוכלו לאשר. עובדות מאושרות הופכות כל תשובה לאישית יותר.",
+  "elev.childmem.fact.unshown": "נשמר כפי שאישרתם, אבל לא מוצג כאן במילים קליניות. ערכו אותו במילים שלכם, או בקשו לשכוח אותו.",
 
 
   "elev.childmem.action.approve": "אישור",

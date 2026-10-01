@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import {
@@ -9,6 +9,23 @@ import {
   SEVERITY_WORDS,
 } from "./parentWordsScrub.js";
 import { findClinicalDiagnosisTerm } from "../lib/clinicalScan.js";
+import express from "express";
+import type { AddressInfo } from "node:net";
+import type { Server } from "node:http";
+import { createApiRouter } from "../routes/api.js";
+import { createTestConfig } from "../testConfig.js";
+import { loadFramework } from "../services/framework.js";
+import { LocalMemoryStore } from "../memory/localMemoryStore.js";
+import { foldMemoryEvents } from "../memory/memoryService.js";
+import { LocalShareStore } from "../sharing/shares.js";
+import { LocalConsentStore } from "../sharing/consent.js";
+import { createCounterStore } from "./quotaStore.js";
+import { createEntitlementStore } from "./entitlements.js";
+import { createReferralStore } from "./referral.js";
+import { createConsultStore } from "./consultRequests.js";
+import { createAdminMetricsStore } from "./adminMetrics.js";
+import { createWaitlistStore } from "./waitlist.js";
+import type { ModelProvider } from "../ai/modelRouter.js";
 
 /**
  * OBJ-JOURNAL-05 / OBJ-STORIES-01 — the two strings captured in the run,
@@ -133,5 +150,77 @@ describe("the clause and the wiring are both present", () => {
     expect(api).not.toMatch(/appendMemoryProposals\(memoryStore, childId, structured\.memoryProposals/);
     expect(api).toContain("PLAIN_PARENT_WORDS_CLAUSE");
     expect(api).toMatch(/\.summary = toParentWords\(/);
+  });
+});
+
+/* ── B-CAREPRO-06 — the third write path: POST /memory/:childId/propose ──────
+ * /chat and /council scrubbed at append; /propose appended the raw string.
+ * Run against the REAL router with a local memory store. */
+describe("B-CAREPRO-06 · /memory/:childId/propose stores the scrubbed text", () => {
+  const memoryStore = new LocalMemoryStore();
+  let server: Server;
+  let baseUrl = "";
+
+  beforeAll(async () => {
+    const config = createTestConfig();
+    const entitlementStore = createEntitlementStore(config);
+    const app = express();
+    app.use(express.json());
+    app.use(
+      "/api",
+      createApiRouter({
+        config,
+        modelProvider: {} as unknown as ModelProvider,
+        memoryStore,
+        shareStore: new LocalShareStore(),
+        consentStore: new LocalConsentStore(),
+        framework: loadFramework(),
+        entitlementStore,
+        referralStore: createReferralStore(config, entitlementStore),
+        counters: createCounterStore(config),
+        consultStore: createConsultStore(config),
+        adminMetrics: createAdminMetricsStore(config),
+        waitlistStore: createWaitlistStore(config),
+      }),
+    );
+    await new Promise<void>((resolve) => { server = app.listen(0, "127.0.0.1", resolve); });
+    baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  });
+
+  afterAll(async () => {
+    await new Promise<void>((resolve, reject) => server.close((e) => (e ? reject(e) : resolve())));
+  });
+
+  const propose = (childId: string, fact: string) =>
+    fetch(`${baseUrl}/api/memory/${childId}/propose`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fact, source: "rhythm" }),
+    });
+
+  const stored = async (childId: string) =>
+    foldMemoryEvents(await memoryStore.listEvents(childId), childId).map((i) => i.fact);
+
+  it("the captured proposal is stored in plain parent words", async () => {
+    const res = await propose("c-propose-1", CAPTURED_MEMORY_PROPOSAL);
+    expect(res.status).toBe(200);
+    const facts = await stored("c-propose-1");
+    expect(facts).toHaveLength(1);
+    expect(facts[0]).toBe(toParentWords(CAPTURED_MEMORY_PROPOSAL));
+    expect(BANNED.test(facts[0])).toBe(false);
+    // NEGATIVE CONTROL: what the pre-fix path stored is what the scan rejects.
+    expect(BANNED.test(CAPTURED_MEMORY_PROPOSAL)).toBe(true);
+  });
+
+  it("a fact that cannot be put in parent words is not stored at all", async () => {
+    const res = await propose("c-propose-2", "Dylan has a diagnosis of autism spectrum disorder.");
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { items: unknown[] }).items).toEqual([]);
+    expect(await stored("c-propose-2")).toEqual([]);
+  });
+
+  it("a plain parent fact is stored unchanged", async () => {
+    await propose("c-propose-3", "Dylan likes to line up his cars before bed.");
+    expect(await stored("c-propose-3")).toEqual(["Dylan likes to line up his cars before bed."]);
   });
 });

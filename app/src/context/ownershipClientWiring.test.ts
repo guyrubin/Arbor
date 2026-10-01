@@ -97,7 +97,8 @@ describe("OWN-1 — a failed memory review read is surfaced, retryable, honest",
   });
 
   it("an unreadable ledger never masquerades as an empty one — the lists are suppressed while errored", () => {
-    expect(memory).toContain("{!memoryReviewError && pendingMemoryItems.length > 0 && (");
+    // B-CAREPRO-06: the queue renders the plain-words scrub survivors (pendingQueue).
+    expect(memory).toContain("{!memoryReviewError && pendingQueue.length > 0 && (");
     expect(memory).toContain("{!memoryReviewError && (");
   });
 

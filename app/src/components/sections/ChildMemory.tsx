@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { motion } from "motion/react";
 import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
@@ -23,6 +23,9 @@ import {
 // The same scanner the share egress fails closed on, run here so the parent who
 // writes the word hears about it instead of a co-parent hitting a blank wall.
 import { findClinicalDiagnosisTerm } from "../../lib/clinicalScan";
+// B-CAREPRO-06: memory text renders through the same plain-words scrub the
+// Story queue uses (server/parentWordsScrub is client-safe and pure).
+import { scrubMemoryProposals, toParentWords } from "../../server/parentWordsScrub";
 // GP-22 — the memory queue is a why-line surface too: every pending row is a
 // claim about the child, and nothing said where it came from.
 import { ContentWhyLine } from "../ui/ContentActionBar";
@@ -40,6 +43,14 @@ export default function ChildMemory() {
   const { t, aiLang } = useLanguage();
   const he = aiLang === "he";
   const first = childProfile.name.split(" ")[0];
+  // B-CAREPRO-06: the pending queue is what survives the plain-words scrub —
+  // a proposal the scrub drops is not shown and stays in the ledger. The rows
+  // keep their STORED text so the Edit box opens on the parent's own record;
+  // MemoryRow displays the scrubbed wording.
+  const pendingQueue = useMemo(() => {
+    const kept = new Set(scrubMemoryProposals(pendingMemoryItems).map((p) => p.memoryId));
+    return pendingMemoryItems.filter((m) => kept.has(m.memoryId));
+  }, [pendingMemoryItems]);
   // Saved Learn Library reads, newest first; stale bookmarks (removed cards) are dropped.
   const savedLearnCards = savedLearnIds
     .map((id) => learnCardById(id))
@@ -83,11 +94,11 @@ export default function ChildMemory() {
           marks a top-level sibling module (what moduleBudget counts);
           `data-primary-move` marks the ONE control that performs the move
           surfaceContract.ts declares for this route. */}
-      {!memoryReviewError && pendingMemoryItems.length > 0 && (
+      {!memoryReviewError && pendingQueue.length > 0 && (
         <div data-module="memory-pending" data-primary-move="approve-memory-fact" style={{ display: "contents" }}>
-        <SectionCard title={t("elev.childmem.pending.title", { count: pendingMemoryItems.length })} icon={<Icon name="verified_user" size={20} />} tone="yellow">
+        <SectionCard title={t("elev.childmem.pending.title", { count: pendingQueue.length })} icon={<Icon name="verified_user" size={20} />} tone="yellow">
           <div className="space-y-3">
-            {pendingMemoryItems.map((m: MemoryReviewItem) => (
+            {pendingQueue.map((m: MemoryReviewItem) => (
               <MemoryRow
                 key={m.memoryId}
                 m={m}
@@ -302,6 +313,9 @@ export function MemoryRow({ m, busy, onApprove, onReject, onForget, onEdited }: 
      share they may never make. Fail-closed enforcement stays where it belongs,
      at the egress. */
   const clinicalTerm = editing ? findClinicalDiagnosisTerm(factDraft) : null;
+  // B-CAREPRO-06: what the parent READS is the plain-words wording; the Edit
+  // box (factDraft) still opens on the stored text — the parent's own record.
+  const shownFact = toParentWords(m.fact);
 
   const openEdit = () => {
     setFactDraft(m.fact ?? "");
@@ -405,7 +419,7 @@ export function MemoryRow({ m, busy, onApprove, onReject, onForget, onEdited }: 
           </div>
         </div>
       ) : (
-        <p className="text-sm" dir="auto" style={{ color: "var(--arbor-ink)" }}>{m.fact}</p>
+        <p className="text-sm" dir="auto" style={{ color: shownFact ? "var(--arbor-ink)" : "var(--arbor-muted)" }}>{shownFact || t("elev.childmem.fact.unshown")}</p>
       )}
       <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1.5 text-[11px]" style={{ color: "var(--arbor-muted)" }}>
         {m.source && <span className="inline-flex items-center gap-1"><Icon name="link" size={12} /> {m.source}</span>}

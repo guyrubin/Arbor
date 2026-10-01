@@ -11,6 +11,9 @@ import { scopeDisplayLabels } from "../../lib/shareScopes";
 import type { ShareGrant } from "../../types";
 import ProfileEditDrawer from "../profile/ProfileEditDrawer";
 import { useProfile } from "../../context/ProfileContext";
+// B-CAREPRO-06: memory text renders through the same plain-words scrub the
+// Story queue uses — the parent never reads a fact in an assessment register.
+import { scrubMemoryProposals } from "../../server/parentWordsScrub";
 // GP-01 / GP-08 / RUN-02: months-precise age label + the shared age window and
 // the ONE "worth watching next" derivation.
 import { ageLabel, ageLabelForMonths, ageMonthsFromProfile } from "../../lib/childAge";
@@ -81,6 +84,11 @@ export default function ChildProfile() {
     return { checked, total, band };
   }, [milestones, comparisonMonths, t]);
   const nextMilestones = useMemo(() => selectNextMilestones(milestones, comparisonMonths, 3), [milestones, comparisonMonths]);
+
+  // B-CAREPRO-06: approved facts and the proposal count read the scrubbed
+  // lists; a fact the scrub drops is not shown here and stays in the ledger.
+  const shownApproved = useMemo(() => scrubMemoryProposals(approvedMemoryItems), [approvedMemoryItems]);
+  const pendingQueue = useMemo(() => scrubMemoryProposals(pendingMemoryItems), [pendingMemoryItems]);
 
   // Chapter 7 — the live plan, if one exists.
   const activePlan = actionPlans[0] ?? null;
@@ -329,11 +337,11 @@ export default function ChildProfile() {
       <div data-module="profile-memory" data-module-demoted style={{ display: "contents" }}>
       <SectionCard title={t("cp.ch.memory")} icon={<Icon name="bookmark" size={20} />} tone="lav">
         <p className="mb-2 text-xs" style={{ color: "var(--arbor-muted)" }}>{t("elev.wave2Knowledge.profile.approved")}</p>
-        {approvedMemoryItems.length > 0 ? (
+        {shownApproved.length > 0 ? (
           <ul className="space-y-1.5 text-sm" style={{ color: "var(--arbor-ink)" }}>
-            {approvedMemoryItems.slice(0, 5).map((m) => (
-              <li key={m.memoryId} className="flex items-start gap-2">
-                <span className="mt-2 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "var(--arbor-lav-ink)" }} /> {m.fact}
+            {shownApproved.slice(0, 5).map((shown) => (
+              <li key={shown.memoryId} className="flex items-start gap-2">
+                <span className="mt-2 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "var(--arbor-lav-ink)" }} /> {shown.fact}
               </li>
             ))}
           </ul>
@@ -342,8 +350,8 @@ export default function ChildProfile() {
             {t("cp.memory.empty", { name: first })}
           </p>
         )}
-        {pendingMemoryItems.length > 0 && (
-          <p className="text-xs mt-2 font-bold" style={{ color: "var(--arbor-lav-ink)" }}><span className="block">{t("elev.wave2Knowledge.profile.proposed")}</span>{pendingMemoryItems.length === 1 ? t("cp.memory.pendingOne", { count: pendingMemoryItems.length }) : t("cp.memory.pendingMany", { count: pendingMemoryItems.length })}</p>
+        {pendingQueue.length > 0 && (
+          <p className="text-xs mt-2 font-bold" style={{ color: "var(--arbor-lav-ink)" }}><span className="block">{t("elev.wave2Knowledge.profile.proposed")}</span>{pendingQueue.length === 1 ? t("cp.memory.pendingOne", { count: pendingQueue.length }) : t("cp.memory.pendingMany", { count: pendingQueue.length })}</p>
         )}
         <div className="mt-3"><JumpLink onClick={() => setActiveTab("memory")} color="var(--arbor-lav-ink)">{t("cp.reviewMemory", { name: first })}</JumpLink></div>
       </SectionCard>

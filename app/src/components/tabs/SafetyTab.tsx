@@ -15,6 +15,7 @@ import {
   type HelplineRegion,
 } from "../../safety/escalation";
 import { loadAttribution } from "../../lib/attribution";
+import { scrubMemoryProposals } from "../../server/parentWordsScrub";
 import { PageHeader, SectionCard, cardCls, PASTEL, PastelKey } from "../ui/kit";
 
 type Contact = { id: string; name: string; role: string; phone: string; notes: string };
@@ -74,6 +75,10 @@ export default function SafetyTab() {
       setChecked({});
     }
   }, [reviewedKey, checklistKey]);
+
+  // B-CAREPRO-06: approved facts render through the plain-words scrub; a fact
+  // the scrub drops is not shown here and stays in the ledger (#/memory).
+  const shownApproved = useMemo(() => scrubMemoryProposals(approvedMemoryItems), [approvedMemoryItems]);
 
   const anySignTicked = WARNING_SIGN_KEYS.some((_, i) => !!checked[i]);
 
@@ -307,11 +312,11 @@ export default function SafetyTab() {
       <div data-module="safety-memory" data-module-demoted style={{ display: "contents" }}>
       <SectionCard title={t("elev.safety.memory.title", { name: first })} icon={<Icon name="neurology" size={20} />} tone="lav">
         <p className="text-xs mb-3" style={{ color: "var(--arbor-muted)" }}>{t("elev.safety.memory.sub")}</p>
-        {approvedMemoryItems.length === 0 ? (
+        {shownApproved.length === 0 ? (
           <p className={`${cardCls} text-xs p-3`} style={{ color: "var(--arbor-muted)" }}>{t("elev.safety.memory.empty")}</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {approvedMemoryItems.map((item) => (
+            {shownApproved.map((item) => (
               <div key={item.memoryId} className={`${cardCls} p-3 flex items-start justify-between gap-2`}>
                 <p className="text-xs leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{item.fact}</p>
                 <button

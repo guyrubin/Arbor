@@ -425,10 +425,20 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         res.status(400).json({ error: "A non-empty memory fact is required" });
         return;
       }
+      // B-CAREPRO-06: the third write path scrubs like /chat and /council — a
+      // fact that cannot be put in plain parent words is not stored (empty
+      // items), and what is stored is the plain-words wording.
+      const proposals = scrubMemoryProposals([
+        { fact: fact.trim(), source: source || "rhythm", retention: retention || DEFAULT_MEMORY_RETENTION },
+      ]);
+      if (proposals.length === 0) {
+        res.json({ items: [] });
+        return;
+      }
       const items = await appendMemoryProposals(
         memoryStore,
         req.params.childId,
-        [{ fact: fact.trim(), source: source || "rhythm", retention: retention || DEFAULT_MEMORY_RETENTION }],
+        proposals,
         // OWN-1: uid-derived family in prod; the body's familyId is only the
         // single-tenant/local fallback (via toFamilyId inside resolveFamilyId).
         { familyId: await resolveFamilyId(req, { familyId }), prompt: prompt || "rhythm:pattern", frameRouting: null }
