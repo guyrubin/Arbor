@@ -242,7 +242,8 @@ describe("/api/todays-focus inputsUsed (AI-19)", () => {
       signals: { count: 7, topTrigger: "bedtime", lastActionRecommendation: "two-minute warning", lastActionOutcome: "helped", avg: 4.2, milestonesPercent: 63 },
     });
     expect(status).toBe(200);
-    expect(json.inputsUsed).toEqual({ momentCount: 7, topTrigger: "bedtime", lastActionOutcome: "helped" });
+    // B-AI-01: factCount = approved facts placed in the context (an integer).
+    expect(json.inputsUsed).toEqual({ momentCount: 7, topTrigger: "bedtime", lastActionOutcome: "helped", factCount: 0 });
     const wire = JSON.stringify(json.inputsUsed);
     expect(wire).not.toContain("4.2");
     expect(wire).not.toContain("63");
@@ -255,7 +256,7 @@ describe("/api/todays-focus inputsUsed (AI-19)", () => {
       childProfile: { id: "c-focus-inputs-empty", name: "Mia", age: 4 },
       signals: { count: 0 },
     });
-    expect(json.inputsUsed).toEqual({ momentCount: 0 });
+    expect(json.inputsUsed).toEqual({ momentCount: 0, factCount: 0 });
   });
 });
 
