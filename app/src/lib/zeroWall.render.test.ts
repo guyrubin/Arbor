@@ -64,7 +64,9 @@ describe("RUN-08 · one week count, one definition", () => {
     const journal = read("components/tabs/JournalTab.tsx");
     const story = read("components/tabs/StoryTimelineTab.tsx");
     expect(journal).toMatch(/weekMomentCount\(signals, Date\.now\(\)\)/);
-    expect(story).toMatch(/weekMomentCount\(signals, Date\.now\(\)\)/);
+    // B-ASKJB-19: Story no longer prints a week count at all (its stat grid
+    // is gone), so it cannot re-derive one.
+    expect(story).not.toMatch(/weekMomentCount\(/);
     // The Journal's story copy reads the SAME number as the stat beside it.
     expect(journal).toMatch(/"journal\.story\.body", \{ count: weekCount \}\)/);
     // NEGATIVE CONTROL: the two definitions this replaced are gone.
@@ -122,26 +124,15 @@ describe("RUN-08 · Journal and Story zero branches", () => {
     expect(journal).toContain('t("elev.journal.week.zero")');
   });
 
-  it("the Story stat grid collapses to one teach line when every stat is zero", () => {
-    expect(story).toMatch(/statGrid\.allZero \?/);
-    expect(story).toContain('data-testid="story-stats-zero-line"');
-    expect(story).toContain('elev.childsignals.stat.zero');
+  it("B-ASKJB-19: the Story stat grid is gone — no zero wall because no wall", () => {
+    expect(story).not.toMatch(/statGrid/);
+    expect(story).not.toContain("<StatTile");
   });
 
-  it("never a denominator before its numerator reaches 1", () => {
-    expect(story).toMatch(/momentum\.planSteps\.done === 0 \? 0 :/);
-    expect(story).toMatch(/checkedMilestones === 0 \? 0 :/);
-    // NEGATIVE CONTROL: the unconditional ratios that shipped.
-    expect(story).not.toMatch(/\$\{momentum\.planSteps\.done\}\/\$\{momentum\.planSteps\.total \|\| 0\}/);
-    expect(story).not.toMatch(/\$\{momentum\.milestones\.observed\}\/\$\{momentum\.milestones\.total \|\| 0\}/);
-  });
-
-  it("the milestone total is the AGE WINDOW, the same counter Today reads", () => {
-    // ArborContext derives checkedMilestones/totalMilestones from
-    // ageWindowMilestones(…comparisonAgeMonths…) — the Story tile now reads
-    // those instead of momentum.milestones, which counts every band (133).
-    expect(story).toMatch(/playLogs, checkedMilestones, totalMilestones,/);
-    expect(read("context/ArborContext.tsx")).toMatch(/const windowedMilestones = useMemo\(/);
-    expect(read("context/ArborContext.tsx")).toMatch(/ageWindowMilestones\(milestones, comparisonAgeMonths\(/);
+  it("never a denominator: no {done}/{total} ratio anywhere on the Story page", () => {
+    expect(story).not.toMatch(/\}\/\$\{/);
+    // NEGATIVE CONTROL: the shapes that shipped.
+    expect(/\}\/\$\{/.test("`${momentum.planSteps.done}/${momentum.planSteps.total}`")).toBe(true);
+    expect(/\}\/\$\{/.test("`${checkedMilestones}/${totalMilestones}`")).toBe(true);
   });
 });

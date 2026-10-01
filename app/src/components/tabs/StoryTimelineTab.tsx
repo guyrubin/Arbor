@@ -4,16 +4,14 @@ import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import {
-  buildMonthsLayer, computeMomentum, deriveNextStep, groupByDay,
-  SIGNAL_PROVENANCE, signalDetail, signalMeta, signalTitle, weekMomentCount,
+  buildMonthsLayer, computeMomentum, groupByDay,
+  SIGNAL_PROVENANCE, signalDetail, signalMeta, signalTitle,
   type MonthNode, type SignalKind, type SignalTone, type TimelineSignal, type TranslateFn,
 } from "../../lib/signalTimeline";
 import { withChildSignals } from "../../lib/i18nElevation/childsignals";
 import { useTimeline } from "../../hooks/useTimeline";
 import { PageHeader, PASTEL, IconBadge, Chip, SectionCard, cardCls, type PastelKey } from "../ui/kit";
-import { statIsZero } from "../ui/HubHero";
 import { MemoryRow } from "../sections/ChildMemory";
-import ScreeningSheet from "../sections/ScreeningSheet";
 import { composeChildStory, childStoryToText } from "../../lib/childStory";
 import { isolate } from "../../lib/i18n";
 // OBJ-JOURNAL-05 (render half): the shared parent-words scrub. Pure and
@@ -65,21 +63,6 @@ const FILTERS: { key: SignalKind | "all"; labelKey: string }[] = [
   // AI-04 (consent gate): the Ask-thread filter is gone with its source. A
   // chip whose count can only ever read zero is a dead end, not a filter.
 ];
-
-function StatTile({ tone, icon, value, label, foot }: {
-  tone: PastelKey; icon: React.ReactNode; value: React.ReactNode; label: string; foot?: React.ReactNode;
-}) {
-  return (
-    <div className={`${cardCls} p-4 flex items-center gap-3.5`}>
-      <IconBadge tone={tone} size={42}>{icon}</IconBadge>
-      <div className="min-w-0">
-        <div className="text-[1.45rem] leading-none font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{value}</div>
-        <div className="text-[11px] font-bold mt-1 truncate" style={{ color: "var(--arbor-muted)" }}>{label}</div>
-        {foot && <div className="text-[10.5px] font-bold mt-0.5">{foot}</div>}
-      </div>
-    </div>
-  );
-}
 
 /* B-ASKJB-18: no intensity scale on a Story row. Five dots filled in coral
  * read as a severity grade on the child (law 1 — chromatic verdict), and the
@@ -208,14 +191,13 @@ function MonthsSpine({ nodes, locale, tt }: { nodes: MonthNode[]; locale: string
 export default function StoryTimelineTab() {
   const {
     behaviorLogs, milestones, actionPlans, memoryReviewItems,
-    childProfile, setActiveTab, seedCoach,
+    childProfile, setActiveTab,
     pendingMemoryItems, handleMemoryDecision, isMemoryUpdating,
-    playLogs, checkedMilestones, totalMilestones,
+    playLogs,
   } = useArbor();
   const { t, uiLang } = useLanguage();
   const locale = uiLang === "he" ? "he" : "en";
   const [filter, setFilter] = useState<SignalKind | "all">("all");
-  const [checkOpen, setCheckOpen] = useState(false);
 
   const signals = useTimeline();
   // elev.childsignals.* labels resolve from the module until index.ts registration.
@@ -226,7 +208,6 @@ export default function StoryTimelineTab() {
     () => computeMomentum(behaviorLogs, actionPlans, milestones),
     [behaviorLogs, actionPlans, milestones],
   );
-  const nextStep = useMemo(() => deriveNextStep(momentum, childProfile.name, tt), [momentum, childProfile.name, tt]);
 
   // T4: narrate the moat into "The Story of {child}" — deterministic + grounded
   // only in parent-approved facts + the momentum signals (no model call, G2-safe).
@@ -267,20 +248,6 @@ export default function StoryTimelineTab() {
     }
   };
 
-  /* RUN-08 — the three stats, derived in one place so the "no denominator
-     before a numerator" rule is stated once rather than three times. Values
-     are numbers until a numerator exists; `statIsZero` (ui/HubHero) is the
-     shared zero test, so the grid and every hub hero agree on what a zero is. */
-  const statGrid = useMemo(() => {
-    const moments = weekMomentCount(signals, Date.now());
-    const planSteps = momentum.planSteps.done === 0 ? 0 : `${momentum.planSteps.done}/${momentum.planSteps.total}`;
-    const milestones = checkedMilestones === 0 ? 0 : `${checkedMilestones}/${totalMilestones}`;
-    return {
-      moments, planSteps, milestones,
-      allZero: [moments, planSteps, milestones].every(statIsZero),
-    };
-  }, [signals, momentum.planSteps.done, momentum.planSteps.total, checkedMilestones, totalMilestones]);
-
   /* OBJ-JOURNAL-05 — the memory queue proposed "Dylan experiences severe
      transition anxiety, which manifest as refusal": a severity adjective and a
      clinical noun, printed to a parent as a fact to approve. The prompt asks
@@ -301,39 +268,12 @@ export default function StoryTimelineTab() {
 
   const firstName = childProfile.name?.split(" ")[0] || tt("elev.childsignals.prov.fallback");
 
-  // Wave-3 clinical subtraction: the prior momentTrend arrow was color-coded
-  // (coral = "more moments this week = bad", mint = "fewer = good") — a behavior
-  // trend on a child metric = verdict-shaped. Removed. The flat momentsThisWeek
-  // count renders with a neutral "vs N last week" comparison (descriptive only).
-
-  const handleCoach = (prompt: string) => {
-    seedCoach({ prompt, source: "story-timeline" });
-  };
-
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
       <PageHeader
         eyebrow={tt("elev.childsignals.story.eyebrow")}
         title={tt("elev.childsignals.story.title", { name: isolate(firstName) })}
         subtitle={tt("elev.childsignals.story.sub")}
-        action={
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={() => setCheckOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-bold transition bg-white"
-              style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)" }}
-            >
-              <Icon name="fact_check" size={18} /> {t("mychild.quickcheck.short")}
-            </button>
-            <button
-              onClick={() => setActiveTab("weekly")}
-              className="inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-bold transition bg-white"
-              style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)" }}
-            >
-              <Icon name="monitoring" size={18} /> {tt("elev.childsignals.story.weeklyCta")}
-            </button>
-          </div>
-        }
       />
 
       {/* T4 — "The Story of {child}": the moat, narrated. Reads only approved
@@ -371,83 +311,15 @@ export default function StoryTimelineTab() {
         </div>
       </SectionCard>
 
-      {/* Momentum strip — Wave-3 clinical subtraction (2026-06-26): the prior
-          4-tile grid included an "Avg intensity X/5" tile with rising/easing
-          TrendingUp/Down glyphs color-coded coral/mint = a behavior-intensity
-          verdict on a child metric. Removed. The flat parent-log moment count +
-          the plan-steps + milestones counts stay (all are flat parent-owned
-          counts, no verdict). */}
-      {/* RUN-08 — the zero wall. At day 0 this grid read "0 · 3/7 · 0/133": a
-          plan denominator with no numerator, and an ALL-AGES milestone total
-          beside Today's age-windowed "0 of 39" for the same child. Now:
-          · one `weekMomentCount` (lib/signalTimeline) — the same selector the
-            Journal header and its story copy read, so one phrase = one number;
-          · `checkedMilestones`/`totalMilestones` from ArborContext, already
-            windowed through ageWindowMilestones — the count Today uses;
-          · never a denominator before its numerator reaches 1;
-          · every stat zero → one teach line, no numerals (the HubHero rule,
-            shared through statIsZero rather than re-derived here). */}
-      {statGrid.allZero ? (
-        <p
-          data-testid="story-stats-zero-line"
-          className={`${cardCls} p-4 text-[13.5px] font-bold`}
-          style={{ color: PASTEL.lav.ink }}
-          dir="auto"
-        >
-          {tt("elev.childsignals.stat.zero")}
-        </p>
-      ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-          <StatTile
-            tone="coral" icon={<Icon name="bolt" size={20} fill={1} />}
-            value={statGrid.moments} label={tt("elev.childsignals.stat.moments")}
-            // CLINICAL FIREWALL: this foot used to render `vs {n} last week` — two
-            // week counts side by side is a trend delta on a child-data parent
-            // surface, which §2 bans (it also shipped hard-coded in English on an
-            // otherwise fully translated screen). The tile's own value already
-            // carries the week's count; no prior window is shown.
-            foot={undefined}
-          />
-          <StatTile
-            tone="sky" icon={<Icon name="eco" size={20} fill={1} />}
-            value={statGrid.planSteps}
-            label={tt("elev.childsignals.stat.planSteps")}
-            foot={momentum.winsThisWeek > 0
-              ? <span style={{ color: "var(--arbor-muted)" }}>{tt("elev.childsignals.stat.wins", { count: momentum.winsThisWeek })}</span>
-              : undefined}
-          />
-          <StatTile
-            tone="lav" icon={<Icon name="check_circle" size={20} fill={1} />}
-            value={statGrid.milestones}
-            label={tt("elev.childsignals.stat.milestones")}
-          />
-        </div>
-      )}
-
+      {/* B-ASKJB-19: Story renders to its budget — the two header CTAs (Quick
+          check + Weekly) and the screening sheet they opened, the stat grid
+          ("{done}/{total}" ratios) and the coral next-step card are gone. The
+          stream is header · story card · months · memory queue (when pending)
+          before the entries. deriveNextStep stays in lib/signalTimeline for
+          its tests. */}
       {/* Masterplan 1.8 — the months spine: milestone crossings + cumulative
           moments-captured totals, collapsed beyond the last 3 months. */}
       <MonthsSpine nodes={months} locale={locale} tt={tt} />
-
-      {/* Proactive next-best-step — the timeline feeding the coach */}
-      {nextStep && (
-        <div className="rounded-[22px] p-5 flex flex-col sm:flex-row sm:items-center gap-4" style={{ background: PASTEL.coral.soft }}>
-          <IconBadge tone="coral" size={44}><Icon name="auto_awesome" size={20} fill={1} /></IconBadge>
-          <div className="flex-1 min-w-0">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider" style={{ color: PASTEL.coral.ink }}>{tt("elev.childsignals.story.noticed")}</span>
-            <p className="text-sm font-bold mt-0.5" style={{ color: "var(--arbor-ink)" }} dir="auto">{nextStep.message}</p>
-          </div>
-          {nextStep.cta && (
-            <button
-              onClick={() => (nextStep.cta!.prompt ? handleCoach(nextStep.cta!.prompt) : setActiveTab("behaviors"))}
-              className="inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-extrabold flex-shrink-0 transition motion-safe:hover:-translate-y-0.5"
-              style={{ background: PASTEL.coral.ink, color: "var(--arbor-on-accent)" }}
-            >
-              <span dir="auto">{nextStep.cta.label}</span>
-              <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
-            </button>
-          )}
-        </div>
-      )}
 
       {/* Inline Memory review (b2): a contextual action queue, present only when
           there are pending facts. Reuses MemoryRow verbatim — single source of
@@ -545,7 +417,6 @@ export default function StoryTimelineTab() {
         </div>
       )}
 
-      <ScreeningSheet open={checkOpen} onClose={() => setCheckOpen(false)} />
     </motion.div>
   );
 }

@@ -428,3 +428,32 @@ describe("B-ASKJB-16 — Journal inside timeline-stream renders at most 3 module
     expect(journal).not.toMatch(/\bSpineRibbon\b/);
   });
 });
+
+describe("B-ASKJB-19 — Story density to its budget", () => {
+  const story = stripJsComments(read("src/components/tabs/StoryTimelineTab.tsx"));
+
+  it("no header CTAs, no screening sheet, no stat grid, no next-step card", () => {
+    expect(story).not.toContain("statGrid");
+    expect(story).not.toContain("deriveNextStep");
+    expect(story).not.toContain("ScreeningSheet");
+    expect(story).not.toContain("mychild.quickcheck.short");
+    expect(story).not.toContain("elev.childsignals.story.weeklyCta");
+    // The PageHeader carries no action slot.
+    const header = story.slice(story.indexOf("<PageHeader"), story.indexOf("/>", story.indexOf("<PageHeader")));
+    expect(header).not.toContain("action=");
+  });
+
+  it("inside the stream, at most 4 blocks precede the entries (header · story card · months · memory queue)", () => {
+    const body = story.slice(story.indexOf("<motion.div"), story.indexOf('data-testid="timeline-filter-chips"'));
+    const blocks = ["<PageHeader", "<SectionCard", "<MonthsSpine", "<StatTile", "rounded-[22px] p-5"]
+      .filter((tok) => body.includes(tok));
+    expect(blocks).toEqual(["<PageHeader", "<SectionCard", "<MonthsSpine"]);
+    // header + story card + months + (memory queue SectionCard, when pending) = 4
+    expect((body.match(/<PageHeader|<SectionCard|<MonthsSpine/g) || []).length).toBeLessThanOrEqual(4);
+  });
+
+  it("the timeline leaf still renders within its contract (toggle + stream)", () => {
+    const timeline = read("src/components/tabs/TimelineTab.tsx");
+    expect(countModules(timeline).topLevel).toBeLessThanOrEqual(contractFor("timeline" as ActiveTab)!.moduleBudget);
+  });
+});
