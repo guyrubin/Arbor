@@ -155,6 +155,44 @@ export const buildDigestEmail = (input: {
   return { subject, preheader, bodyText };
 };
 
+/**
+ * B-TODAY-03 — what the digest MODEL may see of the stats. The full stats
+ * object still ships to the client (counts card), but the prompt never gets a
+ * week-vs-week pair (`previousWeekMoments`) or an of-total denominator
+ * (`milestonesTotal`): handed both, the model narrated deltas and ratios the
+ * firewall forbids ("never week-vs-week"). Projection, not deletion — the
+ * client contract is unchanged.
+ */
+export const digestPromptStats = (stats: WeeklyDigestStats): Omit<WeeklyDigestStats, "previousWeekMoments" | "milestonesTotal"> => {
+  const { previousWeekMoments: _prev, milestonesTotal: _total, ...rest } = stats;
+  return rest;
+};
+
+/** The no-compare rule, stated once and placed in every digest prompt. */
+export const DIGEST_NO_COMPARE_LINE = "Never compare with earlier weeks; never state a total or a share.";
+
+/**
+ * B-TODAY-03 — THE digest prompt builder (routes/api.ts /digest calls it; the
+ * guard asserts on its output, so a rewrite of the wording — lane X B-AI-02 —
+ * keeps the projection and the no-compare line or fails the test).
+ * `watchFor` stays in the schema for compatibility but is not asked for: the
+ * server answers it with [] on every response.
+ */
+export const buildDigestPrompt = (input: {
+  contract: string;
+  childJson: string;
+  childName: string;
+  stats: WeeklyDigestStats;
+  languageDirective?: string;
+}): string => `${input.contract}
+You are Arbor writing a parent's WEEKLY DIGEST — short, warm, concrete, zero fluff. Never diagnose.
+Child: ${input.childJson}
+This week's true, computed stats (do not contradict them): ${JSON.stringify(digestPromptStats(input.stats))}
+${DIGEST_NO_COMPARE_LINE}
+Write: title (e.g. "${input.childName}'s week"), subject (email subject), preheader (one line), summary (2-3 sentences),
+highlights (2-4 short bullets celebrating real effort/progress), watchFor (always an empty array),
+tryThisWeek (ONE concrete, doable suggestion grounded in the stats). Return only JSON matching the schema.${input.languageDirective ?? ""}`;
+
 /** Deterministic fallback narrative when AI is unavailable. */
 export const fallbackDigestNarrative = (childName: string, stats: WeeklyDigestStats) => {
   const highlights: string[] = [];
@@ -172,7 +210,8 @@ export const fallbackDigestNarrative = (childName: string, stats: WeeklyDigestSt
     preheader: highlights[0],
     summary: highlights.join(" "),
     highlights,
-    watchFor: stats.topBehavior ? [`${stats.topBehavior} came up most often${stats.topContext ? ` (mostly at ${stats.topContext.toLowerCase()})` : ""}.`] : [],
+    // B-TODAY-03: no "worth keeping an eye on" items, from AI or fallback.
+    watchFor: [] as string[],
     tryThisWeek: stats.momentsLogged === 0
       ? "Log one moment a day — 20 seconds each — and next week's digest gets much smarter."
       : "Pick the most frequent trigger above and pre-empt it once this week with a named transition warning.",

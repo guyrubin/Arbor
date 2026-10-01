@@ -40,7 +40,7 @@ import { requireChildOwnership } from "../server/requireChildOwnership.js";
 import { requireConsent } from "../server/requireConsent.js";
 import { CANONICAL_BEHAVIOR_TYPES } from "../content/behaviorTaxonomy.js";
 import { buildConsent, type ConsentPurpose, type ConsentStore } from "../sharing/consent.js";
-import { computeWeeklyDigestStats, fallbackDigestNarrative, buildDigestEmail } from "../server/digest.js";
+import { computeWeeklyDigestStats, fallbackDigestNarrative, buildDigestEmail, buildDigestPrompt } from "../server/digest.js";
 import { resolveEmailProvider, sendWeeklyDigestEmail, type DigestEmailMessage } from "../server/emailProvider.js";
 import {
   FUNNEL_CHAINS,
@@ -3306,13 +3306,15 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
     try {
       const privacy = createRedaction(childProfile?.name);
       const languageDirective = language === "he" ? "\nWrite every human-readable value in warm, natural Hebrew (עברית)." : "";
-      const prompt = `${NON_DIAGNOSTIC_CONTRACT}
-You are Arbor writing a parent's WEEKLY DIGEST — short, warm, concrete, zero fluff. Never diagnose.
-Child: ${childProfile ? JSON.stringify(promptProfile(childProfile)) : "unknown"}
-This week's true, computed stats (do not contradict them): ${JSON.stringify(stats)}
-Write: title (e.g. "${privacy.redact(childName)}'s week"), subject (email subject), preheader (one line), summary (2-3 sentences),
-highlights (2-4 short bullets celebrating real effort/progress), watchFor (0-2 gentle observations worth keeping an eye on),
-tryThisWeek (ONE concrete, doable suggestion grounded in the stats). Return only JSON matching the schema.${languageDirective}`;
+      // B-TODAY-03: the ONE prompt builder (server/digest.ts) projects out the
+      // prior-week count and the milestone total and states the no-compare rule.
+      const prompt = buildDigestPrompt({
+        contract: NON_DIAGNOSTIC_CONTRACT,
+        childJson: childProfile ? JSON.stringify(promptProfile(childProfile)) : "unknown",
+        childName: privacy.redact(childName),
+        stats,
+        languageDirective,
+      });
       const narrative = privacy.restoreDeep(await modelProvider.generateJson({
         route: "analysis_structured",
         prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
@@ -3351,7 +3353,8 @@ tryThisWeek (ONE concrete, doable suggestion grounded in the stats). Return only
         res.json({ ...fallback, stats, generated: "fallback", outputBlocked: true });
         return;
       }
-      res.json({ ...narrative, stats, generated: "ai" });
+      // B-TODAY-03: watchFor is [] on every response (schema kept for clients).
+      res.json({ ...narrative, watchFor: [], stats, generated: "ai" });
     } catch (error: any) {
       logger.warn("Digest AI narrative unavailable — serving deterministic fallback", {
         requestId: requestIdOf(req),

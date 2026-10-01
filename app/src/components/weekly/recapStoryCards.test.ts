@@ -302,3 +302,19 @@ describe("streak ban — no strip/recap file touches the resettable member", () 
     });
   }
 });
+
+/**
+ * B-TODAY-03 — the server answers `watchFor: []` on every digest, so the
+ * summary card's attention block always renders its neutral empty key; no
+ * attention item appears in EN or HE.
+ */
+describe("B-TODAY-03 · the recap shows no attention items", () => {
+  it("watchFor [] → attention block empty; the empty-state key exists EN + HE", () => {
+    const r = report({ watchFor: [] });
+    const summary = buildRecapCards(r).find((c) => c.kind === "summary") as { attention: string[] } | undefined;
+    expect(summary?.attention).toEqual([]);
+    const recapEnDict = rcEn; const recapHeDict = rcHe;
+    expect((recapEnDict as Record<string, string>)["elev.recap.block.attention.empty"]).toBeTruthy();
+    expect((recapHeDict as Record<string, string>)["elev.recap.block.attention.empty"]).toBeTruthy();
+  });
+});

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { computeWeeklyDigestStats, fallbackDigestNarrative } from "./digest.js";
+import { buildDigestEmail, buildDigestPrompt, computeWeeklyDigestStats, DIGEST_NO_COMPARE_LINE, digestPromptStats, fallbackDigestNarrative } from "./digest.js";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 
 const NOW = Date.parse("2026-06-11T12:00:00.000Z");
 const daysAgo = (n: number) => new Date(NOW - n * 86_400_000).toISOString();
@@ -68,5 +70,59 @@ describe("weekly digest stats (RET-1)", () => {
     expect(n.preheader.length).toBeGreaterThan(0);
     expect(n.highlights.length).toBeGreaterThan(0);
     expect(n.tryThisWeek.length).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * B-TODAY-03 — the digest prompt was handed `previousWeekMoments` and
+ * `milestonesTotal` ("do not contradict them") and asked for "watchFor"
+ * observations. Asserted on the FINAL prompt builder, not a literal, so a
+ * rewrite (lane X B-AI-02) must keep the projection and the no-compare line.
+ */
+describe("B-TODAY-03 — digest prompt projection and no-compare rule", () => {
+  const stats = computeWeeklyDigestStats(
+    [log({ timestamp: daysAgo(1) }), log({ timestamp: daysAgo(9) })],
+    [{ title: "m", checked: true }, { title: "n", checked: false }],
+    NOW,
+  );
+  const prompt = buildDigestPrompt({ contract: "CONTRACT", childJson: "{}", childName: "Noa", stats, languageDirective: "" });
+
+  it("NEGATIVE CONTROL — the raw stats DO carry both fields", () => {
+    expect(JSON.stringify(stats)).toContain("previousWeekMoments");
+    expect(JSON.stringify(stats)).toContain("milestonesTotal");
+  });
+
+  it("the final prompt contains neither previousWeekMoments nor milestonesTotal", () => {
+    expect(prompt).not.toContain("previousWeekMoments");
+    expect(prompt).not.toContain("milestonesTotal");
+    expect(Object.keys(digestPromptStats(stats))).not.toContain("previousWeekMoments");
+    expect(prompt).toContain('"momentsLogged":1');
+  });
+
+  it("the prompt states the no-compare rule and asks for no watch-for observations", () => {
+    expect(prompt).toContain(DIGEST_NO_COMPARE_LINE);
+    expect(DIGEST_NO_COMPARE_LINE).toMatch(/Never compare with earlier weeks; never state a total or a share\./);
+    expect(prompt).not.toMatch(/keeping an eye on|gentle observations/);
+  });
+
+  it("the /digest route builds its prompt through buildDigestPrompt and answers watchFor: []", () => {
+    const api = readFileSync(path.join(__dirname, "..", "routes", "api.ts"), "utf8");
+    const route = api.slice(api.indexOf('router.post("/digest",'), api.indexOf('router.get("/digest/email-status"'));
+    expect(route).toContain("buildDigestPrompt({");
+    expect(route).not.toContain("JSON.stringify(stats)");
+    expect(route).toMatch(/res\.json\(\{ \.\.\.narrative, watchFor: \[\], stats, generated: "ai" \}\)/);
+  });
+
+  it("the fallback narrative (and so every fallback response) carries watchFor: []", () => {
+    const busy = computeWeeklyDigestStats([log(), log(), log({ context: "School" })], [], NOW);
+    expect(busy.topBehavior).toBeTruthy();
+    expect(fallbackDigestNarrative("Noa", busy).watchFor).toEqual([]);
+  });
+
+  it("the email builder renders no watch line from a fallback narrative", () => {
+    const n = fallbackDigestNarrative("Noa", stats);
+    const email = buildDigestEmail({ childName: "Noa", language: "en", narrative: n, stats });
+    expect(n.watchFor).toEqual([]);
+    expect(email.bodyText).not.toMatch(/came up most often/);
   });
 });
