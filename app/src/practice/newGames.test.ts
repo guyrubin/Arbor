@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { BEAT_ROUNDS, BEAT_SETS, PATTERN_PUZZLES, PATTERN_ROUNDS_PER_DAY, POSE_CARDS, POSE_ROUNDS_PER_SESSION, gradeStars, scoreBeatTaps, selectPatternSession, selectPoseSession } from "./newGames";
+import { BEAT_ROUNDS, BEAT_SETS, PATTERN_PUZZLES, PATTERN_ROUNDS_PER_DAY, POSE_CARDS, POSE_ROUNDS_PER_SESSION, scoreBeatTaps, selectPatternSession, selectPoseSession } from "./newGames";
 
 describe("scoreBeatTaps", () => {
   it("scores perfectly-timed taps as 100", () => {
@@ -25,14 +25,10 @@ describe("scoreBeatTaps", () => {
   });
 });
 
-describe("gradeStars", () => {
-  it("maps scores to a kind 1–3 stars (never zero)", () => {
-    expect(gradeStars(0)).toBe(1);
-    expect(gradeStars(49)).toBe(1);
-    expect(gradeStars(50)).toBe(2);
-    expect(gradeStars(79)).toBe(2);
-    expect(gradeStars(80)).toBe(3);
-    expect(gradeStars(100)).toBe(3);
+describe("B-KID-04 · gradeStars is gone (flat stars on completion)", () => {
+  it("newGames exports no star grader", async () => {
+    const mod = await import("./newGames");
+    expect("gradeStars" in mod).toBe(false);
   });
 });
 

@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { celebrate } from "../../lib/celebrate";
 import { ArborMascot, type MascotMood } from "./ArborMascot";
 import { HeroAvatar } from "./HeroAvatar";
+import { useLanguage } from "../../context/LanguageContext";
 import { PageHeader } from "./kit";
 import { TONE_INK, TONE_SOFT, T, type PlayTone } from "../../lib/tokens";
 
@@ -331,6 +332,7 @@ export function Celebrate({
   starsTotal?: number;
   children?: React.ReactNode;
 }) {
+  const { t } = useLanguage();
   React.useEffect(() => {
     celebrateBurst();
   }, []);
@@ -342,7 +344,7 @@ export function Celebrate({
         {title}
       </h2>
       {typeof stars === "number" && typeof starsTotal === "number" && (
-        <div className="flex justify-center gap-1.5 mt-3" aria-label={`${stars} of ${starsTotal} stars`}>
+        <div className="flex justify-center gap-1.5 mt-3" aria-label={t("elev.play.celebrate.starsAria", { n: stars, total: starsTotal })}>
           {Array.from({ length: starsTotal }).map((_, i) => (
             <span key={i} className="text-2xl" style={{ filter: i < stars ? "none" : "grayscale(1)", opacity: i < stars ? 1 : 0.35 }}>
               ⭐

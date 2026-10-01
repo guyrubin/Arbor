@@ -48,6 +48,7 @@ export const en: Record<string, string> = {
   "elev.play.arcade.comingSoonAria": "{world}, {tag}, coming soon",
   "elev.play.arcade.worldAria": "{world}, {tag}",
   "elev.play.arcade.starsAria": "{n} of 3 stars",
+  "elev.play.celebrate.starsAria": "{n} of {total} stars",
   "elev.play.arcade.new": "NEW",
   "elev.play.arcade.gear": "Your hero gear",
   "elev.play.arcade.firstGear": "Play a world to earn {name}'s first gear.",
@@ -206,6 +207,7 @@ export const he: Record<string, string> = {
   // Pure interpolation — two slots and a comma, nothing to translate.
   "elev.play.arcade.worldAria": "{world}, {tag}", // GD-6
   "elev.play.arcade.starsAria": "{n} מתוך 3 כוכבים",
+  "elev.play.celebrate.starsAria": "{n} מתוך {total} כוכבים",
   "elev.play.arcade.new": "חדש",
   "elev.play.arcade.gear": "הציוד של הגיבור/ה",
   "elev.play.arcade.firstGear": "שחקו בעולם כדי לקבל את הציוד הראשון של {name}",

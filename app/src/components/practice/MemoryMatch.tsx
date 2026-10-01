@@ -201,7 +201,8 @@ export default function MemoryMatch({ data, childAge, embedded = false }: { data
       {won ? (
         <Celebrate
           title="All pairs found!"
-          stars={lastScore.current !== null ? Math.max(1, Math.round((lastScore.current / 100) * 3)) : 3}
+          // B-KID-04 (law 3): solving the board earns all three stars.
+          stars={3}
           starsTotal={3}
           subtitle={`Solved in ${moves} moves. ${recommendedSize > size ? "Next round gets a little bigger!" : recommendedSize < size ? "We'll keep it comfy next round." : "Nicely done."}`}
         >

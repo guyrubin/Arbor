@@ -194,9 +194,6 @@ export function scoreBeatTaps(expected: number[], taps: number[], tolMs = 320): 
   return Math.round(total / expected.length);
 }
 
-/** Map a 0–100 accuracy score to a 1–3 star rating (kind, never zero stars). */
-export function gradeStars(score: number): number {
-  if (score >= 80) return 3;
-  if (score >= 50) return 2;
-  return 1;
-}
+// B-KID-04: `gradeStars` (0–100 accuracy → 1–3 stars) is deleted. Kid worlds
+// award flat full stars on completion (law 3); kidRegisterScan.test.ts fails
+// on any `stars=` that is not the literal total.

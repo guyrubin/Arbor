@@ -294,7 +294,8 @@ export default function AdventuresTab() {
         <PlayPanel>
           <Celebrate
             title={`${isolate(first)} finished “${scenario.title}”!`}
-            stars={sessionCorrect}
+            // B-KID-04 (law 3): finishing the story lights every star.
+            stars={scenario.scenes.length}
             starsTotal={scenario.scenes.length}
             // KID-29: kid-register finish — the child is never told they were measured.
             subtitle={t("elev.play.adventures.done.sub", { n: sessionCorrect, total: scenario.scenes.length })}

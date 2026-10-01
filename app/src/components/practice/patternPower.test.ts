@@ -111,7 +111,6 @@ describe("KID-01: every round and the win screen render without throwing", () =>
     const html = renderToString(
       React.createElement(PatternDoneView, {
         first: "Mia",
-        stars: 3,
         onReplay: () => undefined,
         title: "You finished this set, Mia!",
         subtitle: "That is the end of this set. Rest, or choose six more.",
@@ -124,6 +123,10 @@ describe("KID-01: every round and the win screen render without throwing", () =>
     expect(html).toContain("Choose six more");
     expect(html).not.toContain("Pattern master");
     expect(html).toContain("⭐");
+    // B-KID-04: finishing lights all three — none greyed, aria keyed.
+    expect(html.split("⭐").length - 1).toBe(3);
+    expect(html).not.toContain("grayscale(1)");
+    expect(html).toContain('aria-label="elev.play.celebrate.starsAria"');
   });
 
   it("the default export mounts on round 1 (wiring smoke)", () => {

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { PlayHeader, MascotSay, ChoiceTile, ProgressPips, PlayButton, Celebrate } from "../ui/playkit";
 import { useArcadeLogger } from "../../practice/useArcadeLogger";
-import { gradeStars, patternRound, selectPatternSession, type PatternPuzzle } from "../../practice/newGames";
+import { patternRound, selectPatternSession, type PatternPuzzle } from "../../practice/newGames";
 import { dayKey } from "../../practice/signals";
 import { noteKidActivity } from "../../lib/kidModeGate";
 import { SpeakButton } from "../ui/SpeakButton";
@@ -35,21 +35,20 @@ function shuffle<T>(arr: T[]): T[] {
  *  streak, no missed-day framing (law 3). */
 export function PatternDoneView({
   first,
-  stars,
   onReplay,
   title,
   subtitle,
   againLabel,
 }: {
   first: string;
-  stars: number;
   onReplay: () => void;
   title: string;
   subtitle: string;
   againLabel: string;
 }) {
   return (
-    <Celebrate title={title} subtitle={subtitle} stars={stars} starsTotal={3}>
+    // B-KID-04 (law 3): a finished set earns all three stars — 0/6 included.
+    <Celebrate title={title} subtitle={subtitle} stars={3} starsTotal={3}>
       <PlayButton onClick={onReplay}>{againLabel}</PlayButton>
     </Celebrate>
   );
@@ -156,11 +155,9 @@ export default function PatternPowerWorld() {
   const options = useMemo(() => shuffle(puzzle.options), [puzzle.id]);
 
   if (done) {
-    const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
     return (
       <PatternDoneView
         first={first}
-        stars={gradeStars(avg)}
         title={t("elev.play.pattern.done.title", { name: first })}
         subtitle={t("elev.play.pattern.done.sub")}
         againLabel={t("elev.play.pattern.done.again")}

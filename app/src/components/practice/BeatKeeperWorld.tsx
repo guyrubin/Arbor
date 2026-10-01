@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { PlayHeader, MascotSay, ProgressPips, PlayButton, Celebrate, ChoiceTile, PlayPanel } from "../ui/playkit";
 import { useArcadeLogger } from "../../practice/useArcadeLogger";
-import { BEAT_SETS, scoreBeatTaps, gradeStars } from "../../practice/newGames";
+import { BEAT_SETS, scoreBeatTaps } from "../../practice/newGames";
 import { SpeakButton } from "../ui/SpeakButton";
 import { useLanguage } from "../../context/LanguageContext";
 import { selectionHaptic } from "../../lib/native";
@@ -80,9 +80,10 @@ export default function BeatKeeperWorld() {
 
   const done = roundIdx >= rounds.length;
   if (done) {
-    const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+    // B-KID-04 (law 3): finishing IS the achievement — flat full stars, never
+    // a grade of how close the taps were to the beat.
     return (
-      <Celebrate title={t("elev.play.beat.complete.title", { name: first })} subtitle={t("elev.play.beat.complete.sub")} stars={gradeStars(avg)} starsTotal={3}>
+      <Celebrate title={t("elev.play.beat.complete.title", { name: first })} subtitle={t("elev.play.beat.complete.sub")} stars={3} starsTotal={3}>
         <PlayButton onClick={() => { setSelectedSetId(null); setRoundIdx(0); setScores([]); setPhase("ready"); setPulse(-1); }}>{t("elev.kids.beat.choose.again")}</PlayButton>
       </Celebrate>
     );

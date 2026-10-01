@@ -92,7 +92,35 @@ const EXCLUDED: Record<string, string> = {
   "components/practice/WordWorldTab.tsx": "parent-register by design; its WORLDS entry carries parentOnly, so no Kid Mode tile or arcade cell reaches it",
 };
 
-type RuleId = "pct" | "kitShell" | "nav" | "download" | "clinical" | "confetti" | "smallBtn" | "lockGlyph" | "adultWords";
+type RuleId = "pct" | "kitShell" | "nav" | "download" | "clinical" | "confetti" | "smallBtn" | "lockGlyph" | "adultWords" | "gradedStars";
+
+/**
+ * B-KID-04 (law 3): a `stars={…}` whose expression is not literally the same
+ * as its `starsTotal={…}` grades the child — 1 of 3 stars after a hard round is
+ * a verdict with a picture on it. Completion lights every star. Returns every
+ * offending pair, so a failure names the expression.
+ */
+function gradedStarsHits(src: string): string[] {
+  const hits: string[] = [];
+  const exprAt = (openIdx: number): string | null => {
+    const close = matchBracket(src, openIdx);
+    return close < 0 ? null : src.slice(openIdx + 1, close).trim();
+  };
+  for (const m of src.matchAll(/\bstars=\{/g)) {
+    const open = m.index! + m[0].length - 1;
+    const value = exprAt(open);
+    // The total sits in the same tag: look a short way either side.
+    const from = Math.max(0, m.index! - 400);
+    const window = src.slice(from, Math.min(src.length, m.index! + 600));
+    let total: string | null = null;
+    for (const t of window.matchAll(/\bstarsTotal=\{/g)) {
+      total = exprAt(from + t.index! + t[0].length - 1);
+      break;
+    }
+    if (value === null || total === null || value !== total) hits.push(`stars={${value}} starsTotal={${total}}`);
+  }
+  return hits;
+}
 
 /** Shrink-only baseline: EXACT counts. Fixing a hit must lower the number. */
 const FROZEN: Partial<Record<string, Partial<Record<RuleId, { count: number; reason: string }>>>> = {
@@ -215,6 +243,7 @@ const RULES: Record<RuleId, (src: string) => string[]> = {
   nav: (src) => [...src.matchAll(/\bsetActiveTab\(/g)].map((m) => m[0]),
   download: (src) => [...src.matchAll(/\bdownload[A-Za-z]*Canvas\(|<a\b[^>]*\sdownload(?:[\s=>])/g)].map((m) => m[0]),
   clinical: (src) => copySpans(src).filter((s) => CLINICAL.test(s)),
+  gradedStars: (src) => gradedStarsHits(src),
   confetti: (src) => [...src.matchAll(/\bconfetti\(/g)].map((m) => m[0]),
   smallBtn: (src) =>
     // `(?<==)>` lets an arrow function's `=>` inside an attribute pass without ending the tag.
@@ -296,6 +325,10 @@ describe("kid-register scanner — positive controls (planted violations are see
     ["clinical", "<p>in video-modeling practice the effort matters</p>"],
     ["clinical", '`Recognition ${x}` + "accuracy"'],
     ["confetti", "confetti({ particleCount: 70 })"],
+    // B-KID-04: the synthetic grade the item names, and the two pre-fix shapes.
+    ["gradedStars", "<Celebrate title={x} stars={1} starsTotal={3}>"],
+    ["gradedStars", "<Celebrate title={x} stars={gradeStars(avg)} starsTotal={3}>"],
+    ["gradedStars", "<Celebrate\n  title={x}\n  stars={sessionCorrect}\n  starsTotal={scenario.scenes.length}\n>"],
     ["smallBtn", '<button onClick={() => x()} className="p-2 rounded-xl">'],
     ["smallBtn", '<button className="rounded-full px-3.5 py-1.5 text-[11.5px]">'],
     ["smallBtn", '<button\n  onClick={() => y()}\n  className="px-3 py-1 rounded-xl">'],
@@ -322,6 +355,9 @@ describe("kid-register scanner — negative controls (legitimate code passes)", 
     ["clinical", "const emotionAccuracy = useMemo(() => 0, []);"], // an identifier, not copy
     ["clinical", '{t("prac.speech.progress.stat", { tries: s.attempts, accuracy: s.recentAccuracy })}'],
     ["confetti", 'import { celebrate } from "../../lib/celebrate"; celebrate({ kind: "play" });'],
+    ["gradedStars", "<Celebrate title={x} stars={3} starsTotal={3}>"],
+    ["gradedStars", "<Celebrate title={x} stars={pack.prompts.length} starsTotal={pack.prompts.length}>"],
+    ["gradedStars", '<Stars n={stars} aria={t("elev.play.arcade.starsAria", { n: stars })} />'], // not a stars= prop
     ["smallBtn", '<button className="p-3 min-w-[44px] min-h-[44px] rounded-xl">'],
     ["smallBtn", '<button className="px-3.5 py-2.5 min-h-[44px]">'],
     ["smallBtn", '<span className="px-2.5 py-1">badge</span>'], // not a button
@@ -407,7 +443,10 @@ describe("kid-register scan — no verdicts, parent chrome, dead nav, file saves
 /* ── The kid dictionary ────────────────────────────────────────────────── */
 
 const HEBREW = /[\u0590-\u05FF]/;
-const LOSS_FRAMED = /in a row|streak|don'?t break|days? straight|consecutiv|hurry|time'?s up|missed|you lost/i;
+// B-KID-04: Hebrew loss-framing too (in a row / streak / missed / you lost /
+// time's up / don't break / hurry) — the HE dictionary was scanned with
+// English-only terms, so a transcreated pressure line passed.
+const LOSS_FRAMED = /in a row|streak|don'?t break|days? straight|consecutiv|hurry|time'?s up|missed|you lost|ברצף|רצף|פספס|הפסד|נגמר הזמן|אל תשבר|מהרו|תמהר/i;
 const KID_KEY = /^elev\.(?:kid|play)\./;
 
 describe("kid dictionary (lib/i18nElevation/kidRegister.ts) — counts never verdicts", () => {
@@ -552,5 +591,34 @@ describe("KID-17: achievements and monthly objectives key on effort only", () =>
     expect(src).not.toMatch(/consistency score/i);
     expect(src).not.toMatch(/Not yet/);
     expect(src).toContain("aimDomains(aimVirtues(loadCharter()))");
+  });
+});
+
+describe("B-KID-04 · flat stars on completion in the kid register", () => {
+  it("Beat Keeper, Pattern Power, Mind Vault and Story Quest light every star on completion (0/6 Pattern → 3 of 3)", () => {
+    const read = (rel: string) => stripParentOnly(stripComments(readFileSync(path.join(SRC, rel), "utf8")));
+    for (const rel of ["components/practice/BeatKeeperWorld.tsx", "components/practice/PatternPowerWorld.tsx", "components/practice/MemoryMatch.tsx"]) {
+      const src = read(rel);
+      expect(src, rel).toMatch(/stars=\{3\}\s*starsTotal=\{3\}/);
+      expect(src, rel).not.toContain("gradeStars");
+      expect(RULES.gradedStars(src), rel).toEqual([]);
+    }
+    expect(read("components/practice/AdventuresTab.tsx")).toContain("stars={scenario.scenes.length}");
+  });
+
+  it("the Celebrate aria is keyed EN + HE: '3 of 3 stars'", async () => {
+    const { translate } = await import("./i18n");
+    expect(translate("en", "elev.play.celebrate.starsAria", { n: 3, total: 3 })).toBe("3 of 3 stars");
+    const he = translate("he", "elev.play.celebrate.starsAria", { n: 3, total: 3 });
+    expect(he).toMatch(HEBREW);
+    expect(he).toContain("3");
+    const kit = readFileSync(path.join(SRC, "components/ui/playkit.tsx"), "utf8");
+    expect(kit).toContain('aria-label={t("elev.play.celebrate.starsAria", { n: stars, total: starsTotal })}');
+    expect(kit).not.toContain("`${stars} of ${starsTotal} stars`");
+  });
+
+  it("HE loss-framing is seen by the dictionary scan (negative control)", () => {
+    for (const bad of ["שלושה ימים ברצף!", "אל תשברו את הרצף", "פספסת יום", "נגמר הזמן"]) expect(LOSS_FRAMED.test(bad), bad).toBe(true);
+    expect(LOSS_FRAMED.test("כל הכבוד, סיימתם!")).toBe(false);
   });
 });
