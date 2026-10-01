@@ -25,6 +25,7 @@ import {
   tapToDelta,
 } from "../../lib/heroComics";
 import { captureComicPageEpoch, type ComicPageEpoch } from "../../lib/comicPageStore";
+import { wowPageFor } from "../../lib/comicPrewarm";
 
 /**
  * ComicReader (p1-comic-reader) — a real, re-openable comic BOOK starring the
@@ -82,6 +83,13 @@ export function ComicReader({
     return { initialPages: planPages(adventure, lang, beatTitles), beatPrompts: prompts };
   }, [adventure, lang]);
 
+  // B-SHELL-10 (framer decision): a saved book with no pages (the wow's
+  // metadata-only seed) takes the in-memory wow page as its cover — the page
+  // the parent already saw, in time or late — and builds only the rest.
+  const wowCover = useRef<string | null>(
+    saved && !saved.pageUrls.length ? wowPageFor(childId, adventure.id, lang) : null,
+  );
+
   // Hydrate from a saved book (instant, no network) or start a fresh build.
   const [pages, setPages] = useState<ComicPageData[]>(() => {
     if (saved && saved.pageUrls.length) {
@@ -93,6 +101,10 @@ export function ComicReader({
         status: "ready" as const,
         cacheKey: saved.pageKeys?.[i],
       }));
+    }
+    if (wowCover.current) {
+      const cover = wowCover.current;
+      return initialPages.map((p) => (p.index === 0 ? { ...p, dataUrl: cover, status: "ready" as const } : p));
     }
     return initialPages;
   });
@@ -117,7 +129,8 @@ export function ComicReader({
       lang,
       heroName,
       heroDataUrl,
-      initialPages,
+      // B-SHELL-10: the wow cover is already drawn — never request it again.
+      wowCover.current ? initialPages.filter((p) => p.index !== 0) : initialPages,
       beatPrompts,
       (page) => {
         if (!active) return;

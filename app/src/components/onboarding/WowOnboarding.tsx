@@ -40,6 +40,7 @@ import { toSavedComicMeta, type SavedComicMeta } from "../../lib/heroComics";
 // MOB-22 — the first comic is defined once (lib/firstComic) so the domain
 // step can start drawing it and this step can take the finished page.
 import { firstComicWithin } from "../../lib/firstComic";
+import { holdWowPage } from "../../lib/comicPrewarm";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { HERO_STORIES } from "../../lib/heroJourneys";
 import { renderHeroAvatarCanvas } from "../../lib/heroAvatarCanvas";
@@ -140,8 +141,11 @@ export function WowOnboarding() {
       // to leave the parent waiting on a blank page with no deadline.
       const first = await firstComicWithin(identity);
       const camePrewarmed = first.prewarmed;
+      const wowLang = he ? "he" : "en";
       if (first.dataUrl) {
         result = { url: first.dataUrl, fallback: false };
+        // B-SHELL-10: the seeded shelf book opens on THIS page (in memory only).
+        holdWowPage(activeChild.id, firstStory.id, wowLang, first.dataUrl);
       } else {
         // Calm fallback — a pre-composed branded page via the shared template
         // registry (no new compositing code). A PaywallError lands here too:
@@ -167,7 +171,12 @@ export function WowOnboarding() {
       // (no second request — it is the same in-flight call).
       if (first.timedOut && first.late) {
         void first.late.then((late) => {
-          if (late.dataUrl && wowMounted.current) {
+          if (!late.dataUrl) return;
+          // B-SHELL-10 (framer decision): the late page is ACCEPTED even after
+          // the overlay closed — held in memory so #/comics opens the seeded
+          // book on it, with no re-generation.
+          holdWowPage(activeChild.id, firstStory.id, wowLang, late.dataUrl);
+          if (wowMounted.current) {
             setComic({ url: late.dataUrl, fallback: false });
             track("wow_comic_late", { landed: true });
           }

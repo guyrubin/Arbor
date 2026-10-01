@@ -108,4 +108,33 @@ export function takePrewarmedComic(key: string): Promise<PrewarmedComic> | null 
 /** Drop whatever is held. Called on sign-out and by tests. */
 export function clearPrewarmedComic(): void {
   slot = null;
+  wowPages.clear();
+}
+
+/* B-SHELL-10 (framer decision, 1 Oct) — the wow page reaches the shelf.
+ *
+ * The wow seeds the shelf with a METADATA-ONLY book (`pageUrls: []`, W5.4: art
+ * data-URLs never reach a store), so opening it on #/comics rebuilt the whole
+ * book and re-generated the very page the parent had just seen — and a page
+ * that landed late (after the 8 s box) was simply lost. The real page the wow
+ * showed (in time or late) is now held HERE, in memory for the tab's lifetime,
+ * keyed by child + story + language, and ComicReader takes it as the cover of
+ * that book instead of drawing it again. Same doctrine as the slot above: no
+ * store, cleared on sign-out (clearPrewarmedComic), never the composed
+ * fallback page (that one is a template, not the child's comic). */
+const wowPages = new Map<string, string>();
+
+const wowPageKey = (childId: string, adventureId: string, lang: string): string => `${childId}|${adventureId}|${lang}`;
+
+/** Hold the real first page the wow showed (or the late one that landed after). */
+export function holdWowPage(childId: string, adventureId: string, lang: string, dataUrl: string): void {
+  if (!childId || !adventureId || !dataUrl) return;
+  wowPages.set(wowPageKey(childId, adventureId, lang), dataUrl);
+}
+
+/** The held wow page for this child's book in this language, or null. Not
+ *  consumed: re-opening the book before it is saved shows the same page. */
+export function wowPageFor(childId: string | undefined, adventureId: string, lang: string): string | null {
+  if (!childId) return null;
+  return wowPages.get(wowPageKey(childId, adventureId, lang)) ?? null;
 }
