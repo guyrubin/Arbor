@@ -10,6 +10,8 @@
  * docs/prd-red-flag-screening-2026-06-07.md.
  */
 
+import { toAgeBand, type CanonicalBandId } from "./domains/ageBands";
+
 export type ScreenDomainId =
   | "attachment_regulation"
   | "language_communication"
@@ -150,6 +152,12 @@ export function bandForAge(years: number): AgeBand {
  * months (ScreeningFlow via comparisonAgeMonths) use this so a preterm child is
  * screened against the same corrected band the Milestones map already uses.
  */
+/** B-GROWTH-27: a Development Check band id → the canonical CDC-checkpoint
+ *  bands it spans (lib/domains/ageBands.ts). */
+export function screeningBandToCanonical(bandId: string): CanonicalBandId[] {
+  return toAgeBand("screening", bandId);
+}
+
 export function bandForAgeMonths(months: number): AgeBand {
   const m = Math.max(0, Number.isFinite(months) ? months : 0);
   return (

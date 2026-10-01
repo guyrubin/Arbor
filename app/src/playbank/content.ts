@@ -9,6 +9,7 @@
 
 import type { Stage } from "./stages";
 import { primaryDomain, domainInline } from "../lib/domains/registry";
+import { toAgeBand, type CanonicalBandId } from "../lib/domains/ageBands";
 import { en as domainsEn, he as domainsHe } from "../lib/i18nElevation/domains";
 
 export type PlayDomain = "regulation" | "language" | "motor" | "cognitive" | "social";
@@ -80,6 +81,15 @@ export const PLAY_BANDS: { band: PlayBand; label: string; minYears: number; maxY
   { band: "preschool", label: "Preschooler", minYears: 3, maxYears: 5 },
   { band: "early-school", label: "School-age", minYears: 5, maxYears: 12 },
 ];
+
+/** B-GROWTH-27: a Daily Play band / micro-stage → the canonical CDC-checkpoint
+ *  bands it spans (lib/domains/ageBands.ts). */
+export function playBandToCanonical(band: PlayBand): CanonicalBandId[] {
+  return toAgeBand("play", band);
+}
+export function stageToCanonical(stage: Stage): CanonicalBandId[] {
+  return toAgeBand("stage", stage);
+}
 
 export function bandForAge(ageYears: number): PlayBand {
   const hit = PLAY_BANDS.find((b) => ageYears >= b.minYears && ageYears < b.maxYears);

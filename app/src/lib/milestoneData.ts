@@ -1,4 +1,5 @@
 import { Milestone } from "../types";
+import { toAgeBand, type CanonicalBandId } from "./domains/ageBands";
 
 /**
  * CDC / AAP-2022 developmental milestone checklists (Zubler et al., *Pediatrics*
@@ -371,6 +372,12 @@ export const MILESTONE_AGE_BANDS: { months: number; label: string }[] = [
  * meets). Milestones with no `ageMonths` (legacy/custom) are bucketed by the
  * caller; this helper only handles numeric ages.
  */
+/** B-GROWTH-27: a milestone band (keyed by its threshold months) → the
+ *  canonical CDC-checkpoint bands it spans (lib/domains/ageBands.ts). */
+export function milestoneBandToCanonical(bandMonths: number): CanonicalBandId[] {
+  return toAgeBand("milestone", String(bandMonths));
+}
+
 export function bandForAgeMonths(ageMonths: number): { months: number; label: string } {
   let band = MILESTONE_AGE_BANDS[0];
   for (const b of MILESTONE_AGE_BANDS) {

@@ -44,6 +44,7 @@
  * child.
  */
 import { ageMonthsFromProfile, type ChildAgeProfile } from "../lib/childAge.js";
+import { toAgeBand, type CanonicalBandId } from "../lib/domains/ageBands.js";
 
 /** The age-band vocabulary the knowledge cards use in their front matter. */
 export const KNOWLEDGE_AGE_BANDS = ["0-12m", "12-36m", "3-5y", "6-8y", "9-12y"] as const;
@@ -54,6 +55,10 @@ export type KnowledgeAgeBand = (typeof KNOWLEDGE_AGE_BANDS)[number];
  * rather than returning nothing: an older child should still reach the oldest
  * written material instead of silently falling back to unfiltered retrieval.
  */
+/** B-GROWTH-27: a knowledge-card band → the canonical CDC-checkpoint bands it
+ *  spans (lib/domains/ageBands.ts). */
+export const knowledgeBandToCanonical = (band: KnowledgeAgeBand): CanonicalBandId[] => toAgeBand("knowledge", band);
+
 export const ageBandForMonths = (months: number | null | undefined): KnowledgeAgeBand | undefined => {
   if (typeof months !== "number" || !Number.isFinite(months) || months < 0) return undefined;
   if (months < 12) return "0-12m";
