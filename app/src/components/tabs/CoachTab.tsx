@@ -1186,13 +1186,13 @@ export default function CoachTab() {
                 ).uses,
                 tcc("elev.coachcontract.uses.turns"),
                 ...(weeklyOn ? [tcc("elev.coachcontract.uses.weekly")] : []),
-                // AI-02: the panel sits directly above the microphone, so it
-                // must describe a SPOKEN turn too. The browser voice loop is
-                // grounded exactly like a typed question now; Live HD is a
-                // direct browser↔model audio session that carries neither the
-                // approved memory facts nor earlier turns, so when that is the
-                // path a mic tap will take, the panel says so rather than
-                // leaving the typed-request claim standing over it.
+                // AI-02 / B-ASKJB-01: the panel sits directly above the
+                // microphone, so it describes a SPOKEN turn too. Both spoken
+                // paths are grounded from server/spokenContext.ts: profile,
+                // approved memory facts and this conversation's recent turns
+                // (never the weekly counts). Live HD pins the same context into
+                // its token with names stripped, so its line says "without
+                // names" and renders only when Live is the path a tap takes.
                 tcc("elev.coachcontract.uses.spoken"),
                 ...(liveAvail ? [tcc("elev.coachcontract.uses.spokenLive")] : []),
               ]}

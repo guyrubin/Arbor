@@ -36,17 +36,16 @@ export const en: Record<string, string> = {
   "elev.coachcontract.uses.turns": "The recent turns of this conversation, so the coach can follow the thread",
   "elev.coachcontract.uses.weekly": "This week's moment counts — numbers and categories only, never your written notes",
 
-  // AI-02 — the SPOKEN contract. The panel used to describe the typed request
-  // only, while sitting directly above the microphone, leaving the typed claim
-  // standing over a spoken turn that carries far less. Grounding the spoken
-  // path was built and then held back: it changes the prompt on a spoken,
-  // child-adjacent surface that the voice-loop-v1 suite validated at the
-  // ungrounded version. So the panel states what a spoken turn ACTUALLY
-  // carries. When the suite is re-run against the grounded prompt, this line
-  // and the wiring in routes/api /voice move together — never one without the
-  // other, or the panel is making a promise the server does not keep.
-  "elev.coachcontract.uses.spoken": "Speaking sends less than typing — your words and the profile, but not the memory facts you approved or earlier turns",
-  "elev.coachcontract.uses.spokenLive": "Live voice is a direct audio call with the model: it carries your words and the profile, and does not carry your approved memory facts or earlier turns",
+  // AI-02 / B-ASKJB-01 — the SPOKEN contract, stated from what the server
+  // actually assembles (server/spokenContext.ts `assembleSpokenContext`): the
+  // profile allow-list, this child's approved unexpired memory facts (up to
+  // MEMORY_PROMPT_MAX_FACTS) and this conversation's recent turns. Weekly
+  // moment counts never travel with voice. Live HD pins the same context into
+  // its token with names stripped (`liveContextWithoutNames`). Since PR 109
+  // the spoken path is grounded; the old "sends less than typing" line was
+  // false. A change to the server assembly moves this copy with it.
+  "elev.coachcontract.uses.spoken": "Speaking sends your words, the profile, memory facts you approved and this conversation's recent turns — never this week's moment counts",
+  "elev.coachcontract.uses.spokenLive": "Live voice is a direct audio call with the model: it carries your words, the profile, memory facts you approved and this conversation's recent turns, without names — never this week's moment counts",
 
   // ── What Arbor stores
   "elev.coachcontract.stores.thread": "This conversation is saved so you can come back to it",
@@ -102,8 +101,8 @@ export const he: Record<string, string> = {
   "elev.coachcontract.uses.turns": "החילופים האחרונים בשיחה הזו, כדי שהמאמן יעקוב אחרי ההקשר",
   "elev.coachcontract.uses.weekly": "סיכום מספרי של הרגעים מהשבוע — מספרים וקטגוריות בלבד, אף פעם לא ההערות שכתבתם",
 
-  "elev.coachcontract.uses.spoken": "דיבור שולח פחות מכתיבה — את המילים שלכם ואת הפרופיל, אבל לא את עובדות הזיכרון שאישרתם או את החילופים הקודמים",
-  "elev.coachcontract.uses.spokenLive": "שיחת קול חיה היא שיחת אודיו ישירה עם המודל: היא נושאת את המילים שלכם ואת הפרופיל, ולא את עובדות הזיכרון שאישרתם או את החילופים הקודמים",
+  "elev.coachcontract.uses.spoken": "דיבור שולח את המילים שלכם, את הפרופיל, את עובדות הזיכרון שאישרתם ואת החילופים האחרונים בשיחה הזו — אף פעם לא את ספירת הרגעים של השבוע",
+  "elev.coachcontract.uses.spokenLive": "שיחת קול חיה היא שיחת אודיו ישירה עם המודל: היא נושאת את המילים שלכם, את הפרופיל, את עובדות הזיכרון שאישרתם ואת החילופים האחרונים בשיחה הזו, ללא שמות — אף פעם לא את ספירת הרגעים של השבוע",
 
   "elev.coachcontract.stores.thread": "השיחה הזו נשמרת כדי שתוכלו לחזור אליה",
 

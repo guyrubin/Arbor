@@ -16,7 +16,9 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { assembleSpokenContext } from "../../server/spokenContext";
+import type { MemoryLedgerEvent, MemoryStore } from "../../memory/types";
 import { en as honestyEn, he as honestyHe } from "../../lib/i18nElevation/aiHonesty";
 import { elevationEn, elevationHe } from "../../lib/i18nElevation";
 
@@ -159,5 +161,61 @@ describe("MOB-14 — bottom-docked elements under components/tabs clear the Mobi
   it("CoachTab's docked composer uses the OverviewTab offset formula", () => {
     expect(coachSrc).toContain('className="sticky bottom-[calc(var(--mobile-nav-h)+env(safe-area-inset-bottom)+8px)] lg:bottom-0 z-30"');
     expect(coachSrc).not.toContain("sticky bottom-16");
+  });
+});
+
+/* ── B-ASKJB-01: the spoken contract matches what the server sends ───────── */
+// Since PR 109 both spoken paths carry approved memory + this conversation's
+// recent turns (server/spokenContext.ts). The panel said the opposite.
+const SPOKEN_NEGATIONS = ["sends less", "not the memory", "does not carry", "ולא את עובדות הזיכרון", "אבל לא את עובדות הזיכרון", "שולח פחות"];
+
+describe("B-ASKJB-01 — data-use panel: voice carries what the server assembles", () => {
+  it("negative control: the negation list recognises the OLD copy", () => {
+    const OLD_EN = "Speaking sends less than typing — your words and the profile, but not the memory facts you approved or earlier turns";
+    const OLD_HE = "שיחת קול חיה היא שיחת אודיו ישירה עם המודל: היא נושאת את המילים שלכם ואת הפרופיל, ולא את עובדות הזיכרון שאישרתם או את החילופים הקודמים";
+    expect(SPOKEN_NEGATIONS.some((n) => OLD_EN.includes(n))).toBe(true);
+    expect(SPOKEN_NEGATIONS.some((n) => OLD_HE.includes(n))).toBe(true);
+  });
+
+  it("assembleSpokenContext returns approved memory and recent turns (the premise)", async () => {
+    const ev: MemoryLedgerEvent = {
+      eventId: "m1", memoryId: "m1", childId: "child-a", familyId: "family-a", status: "approved",
+      fact: "Shoes picked the night before help.", eventType: "approved", source: "parent",
+      retention: "3 months", createdAt: new Date().toISOString(), actor: "parent",
+    } as MemoryLedgerEvent;
+    const store: MemoryStore = { listEvents: vi.fn(async () => [ev]), appendEvent: vi.fn(async () => {}), eraseChild: async () => 0 };
+    const ctx = await assembleSpokenContext({
+      memoryStore: store, childProfile: { id: "child-a", name: "Noa", age: 4 }, contextChildId: "child-a",
+      canReadMemory: true, recentTurns: [{ role: "parent", text: "That helped yesterday." }],
+    });
+    expect(ctx.approvedMemory).toContain("Shoes picked the night before help.");
+    expect(ctx.recentTurns.length).toBeGreaterThan(0);
+  });
+
+  it("neither spoken key says voice carries less memory than typing (en + he)", () => {
+    for (const dict of [elevationEn, elevationHe] as Record<string, string>[]) {
+      for (const key of ["elev.coachcontract.uses.spoken", "elev.coachcontract.uses.spokenLive"]) {
+        const v = dict[key];
+        expect(v, key).toBeTruthy();
+        for (const neg of SPOKEN_NEGATIONS) expect(v, `${key} contains "${neg}"`).not.toContain(neg);
+      }
+    }
+  });
+
+  it("both keys name approved memory and recent turns; the Live line says 'without names'", () => {
+    const en = elevationEn as Record<string, string>;
+    const he = elevationHe as Record<string, string>;
+    for (const key of ["elev.coachcontract.uses.spoken", "elev.coachcontract.uses.spokenLive"]) {
+      expect(en[key]).toMatch(/memory facts you approved/);
+      expect(en[key]).toMatch(/recent turns/);
+      expect(he[key]).toMatch(/עובדות הזיכרון שאישרתם/);
+    }
+    expect(en["elev.coachcontract.uses.spokenLive"]).toMatch(/without names/);
+    expect(he["elev.coachcontract.uses.spokenLive"]).toMatch(/ללא שמות/);
+  });
+
+  it("the CoachTab render-site comment no longer repeats the false claim", () => {
+    expect(coachSrc).not.toMatch(/carries neither the\s+\/\/\s+approved memory facts nor earlier turns/);
+    expect(coachSrc).not.toMatch(/carries neither the approved memory/);
   });
 });
