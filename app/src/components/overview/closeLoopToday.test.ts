@@ -131,7 +131,7 @@ describe("ENG-12 — the step that outlived its day", () => {
     // Non-destructive: skipping must not delete the record (and its thread row).
     expect(ask).not.toContain("removeTodayAction");
     // One write path — the same seam the live card uses.
-    expect(ask).toContain("recordTodayOutcome(entry.id, value)");
+    expect(ask).toContain("recordTodayOutcome(entry.id, value, \"carry\")");
   });
 });
 

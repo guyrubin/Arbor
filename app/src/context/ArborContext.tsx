@@ -37,6 +37,7 @@ import { isKidModeActive } from "../lib/kidModeGate";
 import { runInstrumented } from "../hooks/useAsyncAction";
 import { trackFirstPlan, trackInviteActivated, trackPlayCompleted } from "../lib/loopEvents";
 import { trackCaptureStarted, trackCaptureSaved, trackPlanGenerated } from "../lib/kpiEvents";
+import { todayOutcomeProps, type TodayOutcomeVia } from "../lib/loopEvents";
 import { notePlanCreatedFromAnswer } from "../lib/captureProposals";
 import { consumeReferralCode } from "../lib/attribution";
 import { refreshEntitlement } from "../hooks/useEntitlement";
@@ -422,11 +423,13 @@ function useArborState() {
     void actionLoopCol.upsert(item);
     try { track("today_action_accepted", { capacity, source }); } catch { /* noop */ }
   };
-  const recordTodayOutcome = (id: string, outcome: ActionOutcome) => {
+  // B-TODAY-15: `via` = where the outcome was rated (the step card or the
+  // carry-over ask); the event carries via + daysLate (ids/enums/counts only).
+  const recordTodayOutcome = (id: string, outcome: ActionOutcome, via: TodayOutcomeVia = "card") => {
     const item = actionLoop.find((entry) => entry.id === id);
     if (!item) return;
     void actionLoopCol.upsert({ ...item, status: "completed", outcome, outcomeAt: new Date().toISOString() });
-    try { track("today_action_outcome", { outcome, capacity: item.capacity }); } catch { /* noop */ }
+    try { track("today_action_outcome", todayOutcomeProps({ outcome, capacity: item.capacity, via, acceptedAt: item.acceptedAt })); } catch { /* noop */ }
   };
   const removeTodayAction = (id: string) => void actionLoopCol.remove(id);
   // B-GROWTH-19 — every Daily Play "We did this" path writes through here:

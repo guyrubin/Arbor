@@ -5,6 +5,7 @@ import type { CaptureSource } from "./ConfirmCaptureReview";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
+import { abandonCaptureRequest, captureRequestPending, trackCaptureStarted } from "../../lib/kpiEvents";
 import type { CaptureMode } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -81,6 +82,26 @@ export default function QuickLogModal({ open, onClose, mode = "text" }: { open: 
   const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
   const [voiceInterim, setVoiceInterim] = useState("");
   const stopRef = useRef<(() => void) | null>(null);
+  // B-TODAY-15: Today's text tile and voice tile open this sheet directly, so
+  // neither emitted capture_started and a voice save was counted as "text".
+  // The sheet now starts the funnel on open — unless a request is already in
+  // flight (the ENG-01 nudge reaches it through requestCapture) — and a close
+  // without a save abandons the request so a later save is not misattributed.
+  // (A save consumes the request in trackCaptureSaved, so abandoning after a
+  // save is a no-op.)
+  const startedHere = useRef(false);
+  useEffect(() => {
+    if (open) {
+      if (!captureRequestPending()) {
+        trackCaptureStarted(mode === "voice" ? "voice" : "text");
+        startedHere.current = true;
+      }
+      return;
+    }
+    if (startedHere.current) abandonCaptureRequest();
+    startedHere.current = false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
   useEffect(() => {
     if (!open) {
       setReviewing(false);

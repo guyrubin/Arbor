@@ -133,6 +133,18 @@ export function resetCaptureFunnel(): void {
   pendingCaptureMode = null;
 }
 
+/** B-TODAY-15: is a capture request already in flight (so an opener that
+ *  was reached THROUGH a request — the ENG-01 nudge — does not start twice)? */
+export function captureRequestPending(): boolean {
+  return pendingCaptureMode !== null;
+}
+
+/** B-TODAY-15: the sheet closed without a save — the request dies here, so a
+ *  later save elsewhere is never attributed to this mode. */
+export function abandonCaptureRequest(): void {
+  pendingCaptureMode = null;
+}
+
 /** Someone asked for a capture in this entry mode (bar, bell nudge, link). */
 export function trackCaptureStarted(mode: CaptureModeId): void {
   pendingCaptureMode = mode;

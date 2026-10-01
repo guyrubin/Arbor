@@ -798,3 +798,55 @@ describe("B-MEAS-06 — admin Attribution shows four stages, Activation = activa
     expect(tab).toContain("ratePct(r.paid, r.activated)");
   });
 });
+
+describe("B-TODAY-15 — Today's capture and loop can be measured as built", () => {
+  beforeEach(() => {
+    trackSpy.mockClear();
+    resetCaptureFunnel();
+  });
+  const quickLog = read("components/overview/QuickLogModal.tsx");
+  const carry = read("components/overview/CarryOverActionAsk.tsx");
+
+  it("QuickLogModal starts the funnel on open (voice → 'voice', text → 'text') unless a request is pending", () => {
+    expect(quickLog).toContain('if (!captureRequestPending()) {');
+    expect(quickLog).toContain('trackCaptureStarted(mode === "voice" ? "voice" : "text");');
+    expect(quickLog).toContain("if (startedHere.current) abandonCaptureRequest();");
+  });
+
+  it("Today text and voice each produce capture_started → capture_saved with the matching mode", async () => {
+    const { captureRequestPending, abandonCaptureRequest } = await import("./kpiEvents");
+    // voice tile → sheet opens dictating → addMoment saves
+    expect(captureRequestPending()).toBe(false);
+    trackCaptureStarted("voice");
+    trackCaptureSaved("moment");
+    expect(lastCall()).toEqual([KpiEvent.CaptureSaved, { mode: "voice", source: "moment" }]);
+    // text tile
+    trackCaptureStarted("text");
+    trackCaptureSaved("moment");
+    expect(lastCall()).toEqual([KpiEvent.CaptureSaved, { mode: "text", source: "moment" }]);
+    // a closed sheet abandons its request: a later save is not called "voice"
+    trackCaptureStarted("voice");
+    expect(captureRequestPending()).toBe(true);
+    abandonCaptureRequest();
+    trackCaptureSaved("log");
+    expect(lastCall()).toEqual([KpiEvent.CaptureSaved, { mode: "text", source: "log" }]);
+  });
+
+  it("a carry-over outcome reports via 'carry' with whole local daysLate; ids/enums/counts only", async () => {
+    const { todayOutcomeProps } = await import("./loopEvents");
+    const now = new Date(2026, 9, 3, 9, 0);
+    const props = todayOutcomeProps({ outcome: "helped", capacity: "2min", via: "carry", acceptedAt: new Date(2026, 9, 1, 21, 0).toISOString(), now });
+    expect(props).toEqual({ outcome: "helped", capacity: "2min", via: "carry", daysLate: 2 });
+    expect(Object.keys(props).sort()).toEqual(["capacity", "daysLate", "outcome", "via"]);
+    const same = todayOutcomeProps({ outcome: "not_today", capacity: "2min", via: "card", acceptedAt: new Date(2026, 9, 3, 8, 0).toISOString(), now });
+    expect(same.daysLate).toBe(0);
+    expect(carry).toContain('recordTodayOutcome(entry.id, value, "carry")');
+    expect(arborCtx).toContain('track("today_action_outcome", todayOutcomeProps({ outcome, capacity: item.capacity, via, acceptedAt: item.acceptedAt }))');
+  });
+
+  it("a later focus that used the outcome is already counted once (B-MEAS-02 loop_continued) — no second event", () => {
+    const focusHook = read("hooks/useTodaysFocus.ts");
+    expect(focusHook).toContain('if (inputsUsed?.lastActionOutcome) trackLoopContinued("today-focus");');
+    expect(read("lib/kpiEvents.ts")).not.toContain("trackFocusUsedOutcome");
+  });
+});

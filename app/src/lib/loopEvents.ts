@@ -204,6 +204,34 @@ export function resetSessionClose(): void {
 export const trackActionOffered = (surface: string): void =>
   track("today_action_offered", { surface });
 
+/** B-TODAY-15: where a Today step's outcome was rated. */
+export type TodayOutcomeVia = "card" | "carry";
+
+/**
+ * B-TODAY-15 — the `today_action_outcome` prop bag: ids, enums and counts only.
+ * `via` says whether the parent rated the step on its own card or on the
+ * carry-over ask; `daysLate` is whole LOCAL days between accepting the step
+ * and rating it (0 = same day), so the carry-over strip's yield is readable.
+ */
+export function todayOutcomeProps(input: {
+  outcome: string;
+  capacity: string;
+  via: TodayOutcomeVia;
+  acceptedAt: string;
+  now?: Date;
+}): { outcome: string; capacity: string; via: TodayOutcomeVia; daysLate: number } {
+  const now = input.now ?? new Date();
+  const accepted = new Date(input.acceptedAt);
+  const midnight = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const raw = Number.isNaN(accepted.getTime()) ? 0 : Math.round((midnight(now) - midnight(accepted)) / 86_400_000);
+  return {
+    outcome: input.outcome,
+    capacity: input.capacity,
+    via: input.via === "carry" ? "carry" : "card",
+    daysLate: Math.max(0, raw),
+  };
+}
+
 // wired by: ui/ErrorState on mount — every degraded-surface banner (incl. the
 // N2 Today-focus banner) counts once. `surface` is a short id; the banner's
 // headline/body copy must never ride along.

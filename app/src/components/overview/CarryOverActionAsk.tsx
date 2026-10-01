@@ -85,7 +85,7 @@ export default function CarryOverActionAsk({ onSkip }: { onSkip?: () => void } =
           <button
             key={value}
             type="button"
-            onClick={() => recordTodayOutcome(entry.id, value)}
+            onClick={() => recordTodayOutcome(entry.id, value, "carry")}
             className="min-h-11 rounded-xl px-2 text-xs font-bold transition active:scale-[0.98]"
             style={{
               border: "1px solid var(--arbor-rule-strong)",
