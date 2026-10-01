@@ -182,16 +182,17 @@ describe("LC-11b · one teacher door — every door, not one named file", () => 
     expect(/type === "teacher"/.exec(PRE_CONSULT)).toBeNull();
   });
 
-  it("the Reports page's Teacher Handoff card opens the School Brief, not the ungated PDF", () => {
+  it("the Reports page carries no Teacher card at all (B-CAREPRO-23: parent-record documents only)", () => {
     expect(reports.length).toBeGreaterThan(2000);
     expect(reports).toContain("export default function Reports");
-    expect(/data-testid="reports-teacher-one-door"/.exec(reports)).toBeTruthy();
-    const card = /r\.type === "teacher" \? \([\s\S]{0,900}?\) : \(/.exec(reports);
-    expect(card).toBeTruthy();
-    expect(card![0]).toContain("openTeacherDoor");
-    expect(card![0]).not.toContain("exportReport(r.type)");
-    // NEGATIVE CONTROL: the pre-change card had no teacher branch at all.
-    expect(/r\.type === "teacher"/.exec(PRE_REPORTS_CARD)).toBeNull();
+    // The page iterates the parent-record list — the teacher type (and every
+    // professional preset) cannot appear as a card, so no ungated teacher PDF.
+    const page = reports.slice(reports.indexOf("export default function Reports"));
+    expect(page).toContain("{PARENT_RECORD_REPORTS.map((r) => (");
+    expect(page).not.toContain("reports-teacher-one-door");
+    expect(page).not.toMatch(/\{REPORTS\.map\(/);
+    // NEGATIVE CONTROL: the pre-change card exported every type unconditionally.
+    expect(PRE_REPORTS_CARD).toContain("exportReport(r.type)");
   });
 
   it("the export SEAM itself refuses the teacher type, before any packet is built", () => {

@@ -90,7 +90,7 @@ export const en: Dict = {
   "nav.tab.plans": "Growth Plans",
   "nav.tab.weekly": "Weekly Report",
   "nav.tab.find-pro": "Find a Professional",
-  "nav.tab.reports": "Reports & Handoffs",
+  "nav.tab.reports": "Your full record",
   "nav.tab.sharing": "Trusted Sharing",
   "nav.tab.appointments": "Appointments",
   "nav.tab.safety": "Safety & Escalation",
@@ -905,8 +905,8 @@ export const en: Dict = {
   "master.reflect.hint": "Optional. Only you see this.",
   "master.progress.count": "{done} of {total} complete",
   "master.progress.all": "All caught up — beautifully done.",
-  "sec.reports.title": "Reports & Handoffs",
-  "sec.reports.sub": "A clean, shareable PDF of {name}'s information for teachers, therapists and doctors — built from the moments you've already logged.",
+  "sec.reports.title": "Your full record",
+  "sec.reports.sub": "Your own documents about {name}, built from what you've already logged. A summary for a professional is prepared in Consult.",
   "sec.screen.title": "Development Check",
   "sec.screen.sub": "A short, non-diagnostic check of how {name} is doing across developmental areas, and a calm next step if anything is worth a professional conversation.",
   "monitor.title": "What your notes are showing",
@@ -1989,7 +1989,7 @@ export const en: Dict = {
   "prac.speech.progress.coachCta": "Coach me on this sound",
   "prac.speech.progress.empty": "No practice yet — every try lands here as a count, and feeds the report you can share with a speech professional.",
   "prac.speech.progress.stat": "{tries} tries · reached {level} level",
-  "prac.speech.progress.footer": "These counts are included in professional reports (Care Network → Reports & Handoffs) so a speech-language professional sees real between-session data.",
+  "prac.speech.progress.footer": "These counts are included in professional reports (Care Network → Consult) so a speech-language professional sees real between-session data.",
 
   /* ════════ UC-1 design-reconciliation scaffold (EN) — consumed by Wave-2 leaf
      agents. Firewall: every "progress" string is a COUNT of parent-noticed
@@ -2469,7 +2469,7 @@ export const he: Dict = {
   "nav.tab.plans": "תוכניות התפתחות",
   "nav.tab.weekly": "דוח שבועי",
   "nav.tab.find-pro": "מצאו איש מקצוע",
-  "nav.tab.reports": "דוחות והעברות",
+  "nav.tab.reports": "התיעוד המלא שלכם",
   "nav.tab.sharing": "שיתוף מהימן",
   "nav.tab.appointments": "פגישות",
   "nav.tab.safety": "בטיחות והסלמה",
@@ -3228,8 +3228,8 @@ export const he: Dict = {
   "master.reflect.hint": "אופציונלי. רק אתם רואים את זה.",
   "master.progress.count": "{done} מתוך {total} הושלמו",
   "master.progress.all": "השלמתם הכל — כל הכבוד.",
-  "sec.reports.title": "דוחות והעברות",
-  "sec.reports.sub": "PDF נקי ומוכן לשיתוף של המידע על {name} למורים, למטפלים ולרופאים — נבנה מהרגעים שכבר תיעדתם.",
+  "sec.reports.title": "התיעוד המלא שלכם",
+  "sec.reports.sub": "המסמכים שלכם על {name}, שנבנים ממה שכבר תיעדתם. סיכום לאיש מקצוע מכינים בהתייעצות.",
   "sec.screen.title": "בדיקת התפתחות",
   "sec.screen.sub": "בדיקה קצרה ולא־אבחנתית של מצב {name} על פני תחומי ההתפתחות, וצעד הבא רגוע אם משהו ראוי לשיחה עם איש מקצוע.",
   "monitor.title": "מה עולה מתוך התיעוד שלכם",
@@ -4246,7 +4246,7 @@ export const he: Dict = {
   "prac.speech.progress.coachCta": "עזרו לי לאמן את הצליל הזה",
   "prac.speech.progress.empty": "עדיין אין תרגול — כל ניסיון נספר כאן, ומזין את הדוח שאפשר לשתף עם איש מקצוע לדיבור.",
   "prac.speech.progress.stat": "{tries} ניסיונות · הגיע לרמת {level}",
-  "prac.speech.progress.footer": "הספירות האלה נכללות בדוחות המקצועיים (רשת הטיפול ← דוחות והעברות) כדי שאיש מקצוע לדיבור ושפה יראה נתונים אמיתיים בין המפגשים.",
+  "prac.speech.progress.footer": "הספירות האלה נכללות בדוחות המקצועיים (רשת הטיפול ← התייעצות) כדי שאיש מקצוע לדיבור ושפה יראה נתונים אמיתיים בין המפגשים.",
 
   /* ════════ UC-1 design-reconciliation scaffold (HE) — transcreated, native
      review pending. Firewall: "התקדמות" כאן = ספירת אבני-דרך שההורה שם לב אליהן,

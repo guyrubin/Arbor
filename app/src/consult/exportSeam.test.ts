@@ -123,3 +123,42 @@ describe("B-CAREPRO-02 — every Consult menu type honours excludedIds", () => {
     }
   });
 });
+
+/* B-CAREPRO-23 — #/reports is "Your full record": no professional preset is
+ * exportable from the page; the only professional path is the Consult door
+ * (redaction, reason, questions, reviewed gate). */
+describe("B-CAREPRO-23 — Reports.tsx never calls exportReport with a professional type", () => {
+  const reportsSrc = readFileSync(path.join(COMPONENTS, "sections", "Reports.tsx"), "utf8").replace(/\r\n/g, "\n");
+  const page = reportsSrc.slice(reportsSrc.indexOf("export default function Reports"));
+
+  it("the page renders PARENT_RECORD_REPORTS (5 cards) and nothing from the professional list", () => {
+    expect(page.length).toBeGreaterThan(1500);
+    expect(reportsSrc).toContain("export const PARENT_RECORD_REPORTS = REPORTS.filter((r) => !isProfessionalReportType(r.type));");
+    expect(page).toContain("{PARENT_RECORD_REPORTS.map((r) => (");
+    expect(page).not.toMatch(/\{REPORTS\.map\(|CONSULT_MENU_REPORTS/);
+    const parentTypes = ALL_REPORT_TYPES.filter((t) => !isProfessionalReportType(t));
+    expect(parentTypes).toEqual(["weekly", "snapshot", "behavior", "language", "growth"]);
+  });
+
+  it("every exportReport call on the page takes a parent-record card's type — no literal, no professional", () => {
+    const calls = [...page.matchAll(/exportReport\(([^)]*)\)/g)].map((m) => m[1].trim());
+    expect(calls).toEqual(["r.type"]);
+    // the r it reads is the PARENT_RECORD_REPORTS iteration variable
+    const loop = page.slice(page.indexOf("{PARENT_RECORD_REPORTS.map((r) => ("));
+    expect(loop.indexOf("exportReport(r.type)")).toBeGreaterThan(0);
+    for (const pro of ["teacher", "therapist", "pediatrician", "slp", "behavioral_health"]) {
+      expect(page).not.toContain(`exportReport("${pro}"`);
+    }
+    // NEGATIVE CONTROL: the pre-change page iterated the full list.
+    const pre = `{REPORTS.map((r) => (<button onClick={() => exportReport(r.type)}>PDF</button>))}`;
+    expect(/\{REPORTS\.map\(/.test(pre)).toBe(true);
+  });
+
+  it("one door to Consult, through the prefill seam; no teacher card", () => {
+    const door = /data-testid="reports-consult-door"/.exec(page);
+    expect(door).toBeTruthy();
+    expect(page).toMatch(/const openConsult = \(\) => \{\n\s*requestConsultPrefill\(\{ audience: "clinician" \}\);\n\s*setActiveTab\("consult"\);/);
+    expect(page).not.toContain("reports-teacher-one-door");
+    expect(page).not.toContain('r.type === "teacher"');
+  });
+});

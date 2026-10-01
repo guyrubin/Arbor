@@ -81,6 +81,8 @@ export const en: Record<string, string> = {
   // ── Builder G · item 8 — Reports (ten cards, the page chrome, the PDF shell)
   "elev.reports.eyebrow": "Care Network",
   "elev.reports.section": "Exportable reports",
+  "elev.reports.proDoor.title": "Prepare a summary for a professional",
+  "elev.reports.proDoor.desc": "In Consult you choose what it includes and review it before anything leaves.",
   "elev.reports.exportAria": "Export {title} as PDF",
   "elev.reports.printHint": "Reports open in a new tab — use your browser's Save as PDF. Every report carries Arbor's non-diagnostic framing.",
   "elev.reports.printMeta": "Generated {date} · Parent-prepared · Non-diagnostic",
@@ -178,6 +180,8 @@ export const he: Record<string, string> = {
   // ── Builder G · item 8 — Reports (ten cards, the page chrome, the PDF shell)
   "elev.reports.eyebrow": "רשת התמיכה",
   "elev.reports.section": "מסמכים לייצוא",
+  "elev.reports.proDoor.title": "הכנת סיכום לאיש מקצוע",
+  "elev.reports.proDoor.desc": "בהתייעצות בוחרים מה ייכלל בסיכום ובודקים אותו לפני שמשהו יוצא.",
   "elev.reports.exportAria": "ייצוא {title} כ-PDF",
   "elev.reports.printHint": "המסמכים נפתחים בלשונית חדשה — השתמשו ב\"שמירה כ-PDF\" של הדפדפן. בכל מסמך מופיעה ההבהרה שארבור אינו מאבחן.",
   "elev.reports.printMeta": "הופק ב-{date} · הוכן על ידי ההורים · אינו אבחנה",

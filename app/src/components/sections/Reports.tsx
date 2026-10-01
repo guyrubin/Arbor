@@ -5,7 +5,6 @@ import { Icon } from "../ui/Icon";
 import { PageHeader, SectionCard, cardCls, PASTEL, PastelKey } from "../ui/kit";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { useToast } from "../../context/ToastContext";
 import { buildReport, openPrintableReport, isProfessionalReportType, ReportDoc, ReportType } from "../../lib/reportExport";
 import { buildPacketInput, buildPresetPacket, presetPacketToPrintSections } from "../../consult/packet";
 import { getLastExportedAt, recordExport } from "../../consult/exportHistory";
@@ -14,8 +13,9 @@ import { useChildCollection } from "../../hooks/useChildCollection";
 import type { LangObservation } from "../../growth/vocabAgg";
 import type { GrowthEntry } from "../../growth/growthEntries";
 
-/** The 8 clinical PDF report types. Exported so the single Consult export menu
- *  (b3) consumes the same list — there is exactly one report definition source. */
+/** The 10 PDF report types (5 parent-record documents, 5 professional presets).
+ *  Exported so the single Consult export menu (b3) consumes the same list —
+ *  there is exactly one report definition source. */
 export const REPORTS: { title: string; desc: string; titleKey: string; descKey: string; tone: PastelKey; type: ReportType }[] = [
   { title: "Weekly Insight", desc: "This week's summary for your records or to share.", titleKey: "elev.reports.weekly.title", descKey: "elev.reports.weekly.desc", tone: "mint", type: "weekly" },
   { title: "Teacher Handoff", desc: "Classroom-ready context, what helps and what escalates.", titleKey: "elev.reports.teacher.title", descKey: "elev.reports.teacher.desc", tone: "sky", type: "teacher" },
@@ -37,6 +37,13 @@ export const REPORTS: { title: string; desc: string; titleKey: string; descKey: 
  *  the redaction the parent just approved — they stay on #/reports. The
  *  teacher document lives in the School Brief (LC-11), so it is not listed. */
 export const CONSULT_MENU_REPORTS = REPORTS.filter((r) => isProfessionalReportType(r.type) && r.type !== "teacher");
+
+/** B-CAREPRO-23: #/reports is "Your full record" — ONLY the parent-record
+ *  documents (weekly, snapshot, behaviour pattern, language note, growth plan).
+ *  No professional preset is exportable from this page: those documents need
+ *  the Consult review gate (redaction, reason, questions, reviewed checkbox),
+ *  so the page carries one door to Consult instead. */
+export const PARENT_RECORD_REPORTS = REPORTS.filter((r) => !isProfessionalReportType(r.type));
 
 /** Single clinical-PDF export seam: build a report doc from real child state and
  *  open it as a printable tab. b3's Consult menu and this page share this hook —
@@ -142,24 +149,22 @@ export function useReportExport() {
   };
 }
 
-/** Care Network › Reports — exportable artifacts generated from real child data.
- *  Still routable for deep links; the primary surface is the Consult flow (b3). */
+/** Care Network › Reports — "Your full record": the parent's own documents,
+ *  generated from real child data. Still routable for deep links (deep-export
+ *  must-hold); professional summaries are prepared in the Consult flow (b3).
+ *
+ *  B-CAREPRO-23: the five professional cards (therapist, pediatrician, SLP,
+ *  behavioural health — and the Teacher card, a redirect to a redirect) are
+ *  gone from this page. They exported with no redaction, reason, questions or
+ *  reviewed gate; the same documents are built in Consult behind that gate,
+ *  so the page has ONE door there (through the B-CAREPRO-13 prefill seam). */
 export default function Reports() {
-  const { childProfile, setActiveTab } = useArbor();
+  const { childProfile, setActiveTab, requestConsultPrefill } = useArbor();
   const { t } = useLanguage();
-  const { toast } = useToast();
   const exportReport = useReportExport();
-  // LC-11b — the second teacher door. This card used to call exportReport
-  // ("teacher") straight into the preset PDF: no per-export approval, no
-  // CURATED_FIELDS allowlist, no escalation-note assertion, no parent review
-  // of AI-edited fields — everything the School Brief exists to enforce. The
-  // route is live (#/reports), so "one teacher document, one door" was false
-  // and the open door was the UNGATED one. It now opens the School Brief, the
-  // same redirect the Consult menu makes (and the export seam itself now
-  // refuses the type, so neither door can be reopened by accident).
-  const openTeacherDoor = () => {
-    toast(t("elev.learnCare.brief.oneDoor.hint"), "info");
-    setActiveTab("school-brief");
+  const openConsult = () => {
+    requestConsultPrefill({ audience: "clinician" });
+    setActiveTab("consult");
   };
 
   return (
@@ -173,36 +178,39 @@ export default function Reports() {
       <div data-module="reports-catalogue" data-primary-move="export-report" style={{ display: "contents" }}>
       <SectionCard title={t("elev.reports.section")} icon={<Icon name="assessment" size={20} />} tone="mint">
         <div className="grid sm:grid-cols-2 gap-3">
-          {REPORTS.map((r) => (
-            <div key={r.title} className={`${cardCls} p-4 flex items-start gap-3`}>
+          {PARENT_RECORD_REPORTS.map((r) => (
+            <div key={r.type} className={`${cardCls} p-4 flex items-start gap-3`}>
               <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0" style={{ background: PASTEL[r.tone].soft, color: PASTEL[r.tone].ink }}><Icon name="description" size={18} /></span>
               <div className="min-w-0 flex-1">
                 <h3 className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t(r.titleKey)}</h3>
                 <p className="text-xs mt-0.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t(r.descKey)}</p>
               </div>
-              {r.type === "teacher" ? (
-                <button
-                  onClick={openTeacherDoor}
-                  data-testid="reports-teacher-one-door"
-                  className="flex-shrink-0 inline-flex items-center justify-center gap-1 text-xs font-bold rounded-lg px-3 min-h-11 min-w-11 transition hover:brightness-95"
-                  style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-green-ink)" }}
-                  aria-label={t("elev.learnCare.brief.oneDoor")}
-                >
-                  {t("elev.learnCare.brief.oneDoor")} <Icon name="arrow_forward" size={14} className="rtl:-scale-x-100" />
-                </button>
-              ) : (
-                <button
-                  onClick={() => exportReport(r.type)}
-                  className="flex-shrink-0 inline-flex items-center justify-center gap-1 text-xs font-bold rounded-lg px-3 min-h-11 min-w-11 transition hover:brightness-95"
-                  style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-green-ink)" }}
-                  aria-label={t("elev.reports.exportAria", { title: t(r.titleKey) })}
-                >
-                  <Icon name="download" size={14} /> PDF
-                </button>
-              )}
+              <button
+                onClick={() => exportReport(r.type)}
+                className="flex-shrink-0 inline-flex items-center justify-center gap-1 text-xs font-bold rounded-lg px-3 min-h-11 min-w-11 transition hover:brightness-95"
+                style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-green-ink)" }}
+                aria-label={t("elev.reports.exportAria", { title: t(r.titleKey) })}
+              >
+                <Icon name="download" size={14} /> PDF
+              </button>
             </div>
           ))}
         </div>
+        {/* B-CAREPRO-23: ONE door for a professional summary — Consult, where
+            the parent redacts, adds the reason and ticks the reviewed gate. */}
+        <button
+          type="button"
+          onClick={openConsult}
+          data-testid="reports-consult-door"
+          className={`${cardCls} w-full mt-3 p-4 flex items-center gap-3 min-h-11 text-start transition hover:brightness-95`}
+        >
+          <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0" style={{ background: PASTEL.lav.soft, color: PASTEL.lav.ink }}><Icon name="forum" size={18} /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.reports.proDoor.title")}</span>
+            <span className="block text-xs mt-0.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.reports.proDoor.desc")}</span>
+          </span>
+          <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100 flex-shrink-0" style={{ color: "var(--arbor-green-ink)" }} />
+        </button>
       </SectionCard>
       </div>
 

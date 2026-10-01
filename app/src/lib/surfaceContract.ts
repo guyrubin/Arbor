@@ -368,7 +368,9 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
   },
   {
     route: "reports", hub: "care", depth: 1,
-    job: "Export the deep report when a pro needs the full record.",
+    // B-CAREPRO-23: "Your full record" — parent-record documents only; a
+    // professional summary goes through Consult (one door on the page).
+    job: "Export your own full record; a professional summary goes through Consult.",
     primaryMove: "export-report", moduleBudget: 2, demotionTarget: "consult",
     // The deep-export door folded into the Consult flow; read/export — no write.
     threadWrite: "none",
