@@ -19,6 +19,8 @@ import { TrustSafetyBar, cardCls } from "../ui/kit";
 // each coach request sends, and hosts the weekly-context consent toggle.
 import { TrustPanel } from "../ui/TrustPanel";
 import { coachContractText } from "../../lib/i18nElevation/coachcontract";
+import { liveResidencyUntil } from "../../lib/liveResidency";
+import { fmtDayLong } from "../../lib/formatDate";
 import { buildVoiceContext, readWeeklyContextConsent, writeWeeklyContextConsent } from "../../ai/chatContext";
 import { T } from "../../lib/tokens";
 import CoachAnswerCards from "../coach/CoachAnswerCards";
@@ -345,6 +347,8 @@ export default function CoachTab() {
   // prompt / socket connect window is never a silent 10s+ hole.
   const [voicePhase, setVoicePhase] = useState<"off" | "connecting" | "listening" | "thinking" | "speaking">("off");
   const [liveAvail, setLiveAvail] = useState(false);
+  // B-ASKJB-02: the Live residency exception's last day (null → undated line).
+  const [liveUntil, setLiveUntil] = useState<Date | null>(null);
   const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
   // AI-V7: live caption of the PARENT'S OWN words while they speak (interim
   // browser-STT partials / Live input transcription — never model output).
@@ -401,7 +405,11 @@ export default function CoachTab() {
   // minted only inside toggleVoice when the parent actually starts talking.
   useEffect(() => {
     let cancelled = false;
-    api.liveAvailability().then((r) => { if (!cancelled && r.available) setLiveAvail(true); }).catch(() => {});
+    api.liveAvailability().then((r) => {
+      if (cancelled || !r.available) return;
+      setLiveAvail(true);
+      setLiveUntil(liveResidencyUntil(r));
+    }).catch(() => {});
     return () => { cancelled = true; };
   }, []);
 
@@ -1194,7 +1202,13 @@ export default function CoachTab() {
                 // its token with names stripped, so its line says "without
                 // names" and renders only when Live is the path a tap takes.
                 tcc("elev.coachcontract.uses.spoken"),
-                ...(liveAvail ? [tcc("elev.coachcontract.uses.spokenLive")] : []),
+                // B-ASKJB-02: whenever Live is the path, its line names the
+                // global endpoint and the exception's end date.
+                ...(liveAvail ? [tcc("elev.coachcontract.uses.spokenLive", {
+                  residency: liveUntil
+                    ? tcc("elev.coachcontract.uses.liveResidency", { date: fmtDayLong(liveUntil, uiLang === "he" ? "he" : "en") })
+                    : tcc("elev.coachcontract.uses.liveResidencyUndated"),
+                })] : []),
               ]}
               stores={[
                 // Reused dead key — still accurate: durable facts wait for

@@ -468,7 +468,9 @@ export const api = {
   // Gemini Live: mint an ephemeral token for a direct browser Live session.
   // AI-V8: config-only availability probe (no SDK call, no token mint server-side).
   // Probe THIS on mount; call liveToken only when the parent toggles voice on.
-  liveAvailability: () => get<{ available: boolean }>("/api/live/availability"),
+  // B-ASKJB-02: `exceptionUntil` (YYYY-MM-DD) is the Live residency exception's
+  // last day once lane X (B-PROV-01) serves it; lib/liveResidency falls back.
+  liveAvailability: () => get<{ available: boolean; exceptionUntil?: string }>("/api/live/availability"),
   /** Returns ephemeral review proposals only; this endpoint cannot commit records. */
   extractConversationProposals: (payload: { transcript: string; childProfile: ChildProfile; milestones: Pick<Milestone, "id" | "title" | "checked" | "observationStatus">[]; language?: "en" | "he" }) =>
     post<{ proposals: unknown[] }>("/api/conversation/proposals", payload),

@@ -18,6 +18,9 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { assembleSpokenContext } from "../../server/spokenContext";
+import { coachContractText } from "../../lib/i18nElevation/coachcontract";
+import { LIVE_RESIDENCY_EXCEPTION_UNTIL, liveResidencyUntil } from "../../lib/liveResidency";
+import { fmtDayLong } from "../../lib/formatDate";
 import type { MemoryLedgerEvent, MemoryStore } from "../../memory/types";
 import { en as honestyEn, he as honestyHe } from "../../lib/i18nElevation/aiHonesty";
 import { elevationEn, elevationHe } from "../../lib/i18nElevation";
@@ -217,5 +220,52 @@ describe("B-ASKJB-01 — data-use panel: voice carries what the server assembles
   it("the CoachTab render-site comment no longer repeats the false claim", () => {
     expect(coachSrc).not.toMatch(/carries neither the\s+\/\/\s+approved memory facts nor earlier turns/);
     expect(coachSrc).not.toMatch(/carries neither the approved memory/);
+  });
+});
+
+/* ── B-ASKJB-02: Live residency stated whenever Live can be the path ─────── */
+describe("B-ASKJB-02 — the Live line names the global endpoint and the exception date", () => {
+  const live = (lang: "en" | "he", until: Date | null) =>
+    coachContractText(lang, "elev.coachcontract.uses.spokenLive", {
+      residency: until
+        ? coachContractText(lang, "elev.coachcontract.uses.liveResidency", { date: fmtDayLong(until, lang) })
+        : coachContractText(lang, "elev.coachcontract.uses.liveResidencyUndated"),
+    });
+
+  it("the spokenLive key carries the {residency} slot in both languages", () => {
+    for (const dict of [elevationEn, elevationHe] as Record<string, string>[]) {
+      expect(dict["elev.coachcontract.uses.spokenLive"]).toContain("{residency}");
+    }
+  });
+
+  it("liveAvail true + exception date: EN + HE name the global endpoint and the date", () => {
+    const until = liveResidencyUntil({ exceptionUntil: "2026-10-31" }, new Date(2026, 9, 1).getTime());
+    expect(until).not.toBeNull();
+    const en = live("en", until);
+    const he = live("he", until);
+    expect(en).toMatch(/Google's global endpoint, not the EU region, until October 31, 2026\./);
+    expect(he).toMatch(/נקודת הקצה הגלובלית של Google, לא באזור האיחוד האירופי, עד/);
+    expect(he).toMatch(/2026/);
+    for (const v of [en, he]) expect(v).not.toContain("{");
+  });
+
+  it("no server date → the program constant; a lapsed date is never printed", () => {
+    expect(LIVE_RESIDENCY_EXCEPTION_UNTIL).toBe("2026-10-31");
+    const fallback = liveResidencyUntil({}, new Date(2026, 9, 1).getTime());
+    expect(fallback?.getFullYear()).toBe(2026);
+    expect(fallback?.getMonth()).toBe(9);
+    expect(fallback?.getDate()).toBe(31);
+    expect(liveResidencyUntil({ exceptionUntil: "not-a-date" }, new Date(2026, 9, 1).getTime())?.getDate()).toBe(31);
+    expect(liveResidencyUntil({}, new Date(2026, 10, 1).getTime())).toBeNull();
+    expect(live("en", null)).toMatch(/Google's global endpoint, not the EU region\.$/);
+    expect(live("he", null)).toMatch(/לא באזור האיחוד האירופי\.$/);
+  });
+
+  it("CoachTab fills {residency} whenever it renders the Live line, and only when liveAvail", () => {
+    const flat = coachSrc.replace(/\s+/g, " ");
+    expect(flat).toMatch(/\.\.\.\(liveAvail \? \[tcc\("elev\.coachcontract\.uses\.spokenLive", \{ residency:/);
+    expect(coachSrc).toMatch(/setLiveUntil\(liveResidencyUntil\(r\)\)/);
+    // The Live line is never rendered without the residency vars.
+    expect(coachSrc).not.toMatch(/tcc\("elev\.coachcontract\.uses\.spokenLive"\)/);
   });
 });

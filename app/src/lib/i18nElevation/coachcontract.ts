@@ -45,7 +45,13 @@ export const en: Record<string, string> = {
   // the spoken path is grounded; the old "sends less than typing" line was
   // false. A change to the server assembly moves this copy with it.
   "elev.coachcontract.uses.spoken": "Speaking sends your words, the profile, memory facts you approved and this conversation's recent turns — never this week's moment counts",
-  "elev.coachcontract.uses.spokenLive": "Live voice is a direct audio call with the model: it carries your words, the profile, memory facts you approved and this conversation's recent turns, without names — never this week's moment counts",
+  "elev.coachcontract.uses.spokenLive": "Live voice is a direct audio call with the model: it carries your words, the profile, memory facts you approved and this conversation's recent turns, without names — never this week's moment counts. {residency}",
+  // B-ASKJB-02 — the residency clause, filled into {residency}. Live's token
+  // is minted on Google's global endpoint, not the EU region (dated
+  // exception; lib/liveResidency.ts resolves the date). The undated form is
+  // used only when no truthful date can be printed.
+  "elev.coachcontract.uses.liveResidency": "Live runs on Google's global endpoint, not the EU region, until {date}.",
+  "elev.coachcontract.uses.liveResidencyUndated": "Live runs on Google's global endpoint, not the EU region.",
 
   // ── What Arbor stores
   "elev.coachcontract.stores.thread": "This conversation is saved so you can come back to it",
@@ -102,7 +108,9 @@ export const he: Record<string, string> = {
   "elev.coachcontract.uses.weekly": "סיכום מספרי של הרגעים מהשבוע — מספרים וקטגוריות בלבד, אף פעם לא ההערות שכתבתם",
 
   "elev.coachcontract.uses.spoken": "דיבור שולח את המילים שלכם, את הפרופיל, את עובדות הזיכרון שאישרתם ואת החילופים האחרונים בשיחה הזו — אף פעם לא את ספירת הרגעים של השבוע",
-  "elev.coachcontract.uses.spokenLive": "שיחת קול חיה היא שיחת אודיו ישירה עם המודל: היא נושאת את המילים שלכם, את הפרופיל, את עובדות הזיכרון שאישרתם ואת החילופים האחרונים בשיחה הזו, ללא שמות — אף פעם לא את ספירת הרגעים של השבוע",
+  "elev.coachcontract.uses.spokenLive": "שיחת קול חיה היא שיחת אודיו ישירה עם המודל: היא נושאת את המילים שלכם, את הפרופיל, את עובדות הזיכרון שאישרתם ואת החילופים האחרונים בשיחה הזו, ללא שמות — אף פעם לא את ספירת הרגעים של השבוע. {residency}",
+  "elev.coachcontract.uses.liveResidency": "שיחת קול חיה פועלת על נקודת הקצה הגלובלית של Google, לא באזור האיחוד האירופי, עד {date}.",
+  "elev.coachcontract.uses.liveResidencyUndated": "שיחת קול חיה פועלת על נקודת הקצה הגלובלית של Google, לא באזור האיחוד האירופי.",
 
   "elev.coachcontract.stores.thread": "השיחה הזו נשמרת כדי שתוכלו לחזור אליה",
 
