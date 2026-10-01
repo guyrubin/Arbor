@@ -35,7 +35,7 @@ export default function PostCaptureCoachStrip() {
       <button
         type="button"
         onClick={acceptPostCaptureCoach}
-        className="min-h-9 flex-shrink-0 rounded-xl px-3 py-2 text-xs font-extrabold transition active:scale-[0.98]"
+        className="min-h-11 flex-shrink-0 rounded-xl px-3 py-2 text-xs font-extrabold transition active:scale-[0.98]"
         /* OBJ-TODAY-01: mounted globally from Shell, so this strip can appear
            over any hub — including Today, where the anchor already owns the one
            gradient. An offer to keep talking is secondary: outline. */
@@ -47,7 +47,7 @@ export default function PostCaptureCoachStrip() {
         type="button"
         onClick={dismissPostCaptureCoach}
         aria-label={t("beh.postCapture.dismiss")}
-        className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg"
+        className="touch-target flex flex-shrink-0 items-center justify-center rounded-lg"
         style={{ color: "var(--arbor-muted)" }}
       >
         <Icon name="close" size={15} />

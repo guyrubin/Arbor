@@ -32,6 +32,8 @@ const FILES = {
   behaviors: "components/tabs/BehaviorsTab.tsx",
   coach: "components/tabs/CoachTab.tsx",
   language: "components/tabs/LanguageLabVocabView.tsx",
+  // B-SHELL-21: the shell-mounted post-capture strip (CTA was 36 px, dismiss 32).
+  strip: "components/overview/PostCaptureCoachStrip.tsx",
 } as const;
 
 /** A 44 px HEIGHT floor, in any of the accepted forms (sibling ratchets' regex). */
@@ -45,6 +47,8 @@ const CONTROLS: { id: string; file: keyof typeof FILES; near: string; width?: tr
   { id: "Behaviors week-group header", file: "behaviors", near: "setCollapsedWeeks((p) =>" },
   { id: "Coach contract disclosure", file: "coach", near: 'data-testid="coach-contract-toggle"', width: true },
   { id: "Language vocab ideas chevron", file: "language", near: "setShowActivities((v) => !v)", width: true },
+  { id: "Post-capture strip CTA", file: "strip", near: "onClick={acceptPostCaptureCoach}" },
+  { id: "Post-capture strip dismiss", file: "strip", near: "onClick={dismissPostCaptureCoach}", width: true },
 ];
 
 /** The className/style of the element containing `near` (sibling ratchets' helper). */
@@ -77,6 +81,8 @@ describe("touch floor · the sub-44 shapes stay out of these files", () => {
     ["behaviors", 'className="w-full flex items-center justify-between text-[11px] font-bold rounded-lg px-3 py-2"'],
     ["coach", "min-h-[36px]"],
     ["language", 'className="inline-flex items-center gap-1 text-xs min-h-[44px]"'],
+    ["strip", "min-h-9 flex-shrink-0"],
+    ["strip", "flex h-8 w-8 flex-shrink-0"],
   ];
 
   for (const [file, shape] of RETIRED) {
@@ -185,5 +191,11 @@ describe("R19 · an icon-only control needs a width floor the cascade cannot era
   it("the glyph did not grow with the box", () => {
     expect(read(FILES.language)).toContain('<Icon name="expand_more" size={16} />');
     expect(read(FILES.language)).toContain('<Icon name="expand_less" size={16} />');
+  });
+});
+
+describe("B-SHELL-21 · the post-capture strip still clears MobileNav", () => {
+  it("the strip keeps its bottom-20 offset above the bar", () => {
+    expect(read(FILES.strip)).toMatch(/bottom-20/);
   });
 });
