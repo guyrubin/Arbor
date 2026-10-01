@@ -46,8 +46,7 @@ describe("DEFAULT_PREFS", () => {
   });
   it("all nudge types default to on", () => {
     expect(DEFAULT_PREFS.types.guidance).toBe(true);
-    expect(DEFAULT_PREFS.types.milestone).toBe(true);
-    expect(DEFAULT_PREFS.types.weekly).toBe(true);
+    expect(DEFAULT_PREFS.types.moments).toBe(true);
   });
   it("calmWindowOnly defaults to false", () => {
     expect(DEFAULT_PREFS.calmWindowOnly).toBe(false);
@@ -65,10 +64,10 @@ describe("loadPrefs / savePrefs round-trip", () => {
 
   it("persists a toggled type", () => {
     const p = loadPrefs();
-    p.types.milestone = false;
+    p.types.moments = false;
     savePrefs(p);
     const reloaded = loadPrefs();
-    expect(reloaded.types.milestone).toBe(false);
+    expect(reloaded.types.moments).toBe(false);
     expect(reloaded.types.guidance).toBe(true); // unchanged
   });
 

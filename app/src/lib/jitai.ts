@@ -58,16 +58,18 @@ export interface JitaiInputs {
 }
 
 /**
- * TJB-03: which Smart Reminders type toggle governs each engine kind. The
- * parent's "Today's guidance" switch covers the rhythm-driven cues (prep +
- * calm). The LOG and PRACTICE cues are engagement reminders with no matching
- * toggle today — they are governed by quiet hours + the ceiling only.
- * (milestone → monitoring items and weekly → the recap line are mapped at the
- * consumer, hooks/useNotifications.)
+ * TJB-03 / B-TODAY-02: which Smart Reminders switch governs each engine kind.
+ * Total by construction (a Record over the NudgeKind union): every kind the
+ * engine can produce has exactly one switch that turns it off.
+ *   guidance — the rhythm cues (prep, calm) and the evening bedtime door
+ *   moments  — the engagement reminders (log, practice)
  */
-export const NUDGE_KIND_PREF: Partial<Record<NudgeKind, NudgeTypeKey>> = {
+export const NUDGE_KIND_PREF: Record<NudgeKind, NudgeTypeKey> = {
   prep: "guidance",
   calm: "guidance",
+  bedtime: "guidance",
+  log: "moments",
+  practice: "moments",
 };
 
 function kindAllowed(kind: NudgeKind, inp: JitaiInputs, prefs?: JitaiPrefs): boolean {
@@ -76,8 +78,7 @@ function kindAllowed(kind: NudgeKind, inp: JitaiInputs, prefs?: JitaiPrefs): boo
   // distinct kind stays silent.
   if (!shown.includes(kind) && !isUnderDailyCeiling(shown.length)) return false;
   if (!prefs) return true;
-  const pref = NUDGE_KIND_PREF[kind];
-  if (pref && prefs.types[pref] === false) return false;
+  if (prefs.types[NUDGE_KIND_PREF[kind]] === false) return false;
   // Calm-window routing: when the parent asked for calmer stretches only and
   // the rhythm has identified one, fire inside that window only. With no
   // window known yet there is nothing to route by, so the cue is not blocked.

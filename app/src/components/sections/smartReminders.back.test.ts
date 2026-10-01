@@ -108,3 +108,35 @@ describe("3 · the rail toggle exists only where the rail can render (PLAT-3)", 
     expect(settings.slice(Math.max(0, idx - 400), idx)).toContain('hidden 2xl:block" data-testid="settings-rail-row"');
   });
 });
+
+/**
+ * B-TODAY-02 — the contract line overclaimed delivery: "Arbor sends at most 2
+ * nudges per day" while web delivers nothing outside the app and push has a
+ * test route only. It now says "shows … inside the app".
+ */
+describe("B-TODAY-02 · the contract copy claims no sending", () => {
+  const SEND = /\bsends?\b|\bsending\b|שולח|שולחת|שולחים/i;
+  it("NEGATIVE CONTROL — the pre-fix copy trips the scan (EN + HE)", () => {
+    expect(SEND.test("Arbor sends at most 2 nudges per day.")).toBe(true);
+    expect(SEND.test("ארבור שולח לכל היותר 2 תזכורות ביום.")).toBe(true);
+  });
+  it("sr.max2 says 'inside the app' and contains no send verb", () => {
+    for (const lang of ["en", "he"] as const) {
+      const v = translate(lang, "sr.max2");
+      expect(v).not.toBe("sr.max2");
+      expect(v, `${lang}: ${v}`).not.toMatch(SEND);
+    }
+    expect(translate("en", "sr.max2")).toMatch(/inside the app/);
+    expect(translate("he", "sr.max2")).toMatch(/בתוך האפליקציה/);
+  });
+  it("the switch copy names what each switch governs; the retired switches are gone", () => {
+    for (const lang of ["en", "he"] as const) {
+      for (const k of ["sr.types.moments.label", "sr.types.moments.desc", "sr.nextNudge.kind.bedtime"]) {
+        expect(translate(lang, k), `${lang} ${k}`).not.toBe(k);
+      }
+      for (const k of ["sr.types.milestone.label", "sr.types.weekly.label"]) expect(translate(lang, k)).toBe(k);
+    }
+    expect(panel).toContain('bedtime:  "sr.nextNudge.kind.bedtime"');
+    expect(panel).not.toMatch(/useNotifications|TopbarBell/);
+  });
+});

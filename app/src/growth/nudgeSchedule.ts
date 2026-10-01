@@ -128,9 +128,8 @@ export function planNudge(input: PlanNudgeInput): NudgePlan {
     return { deliver: false, reason: "no_candidate", kind: null, channel };
   }
 
-  // 3) The parent switched this kind off. Not every kind has a switch
-  //    (NUDGE_KIND_PREF is partial by design); the ones without are governed by
-  //    quiet hours and the ceiling alone.
+  // 3) The parent switched this kind off. B-TODAY-02: NUDGE_KIND_PREF is
+  //    total — every kind has exactly one switch (guidance | moments).
   const pref = NUDGE_KIND_PREF[candidate.kind];
   if (pref && prefs.types[pref] === false) {
     return { deliver: false, reason: "type_off", kind: candidate.kind, channel };

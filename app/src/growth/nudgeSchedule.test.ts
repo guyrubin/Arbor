@@ -206,7 +206,7 @@ describe("N1-06 — type_off and no_candidate", () => {
     });
   });
 
-  it("a kind with NO parent switch (log/practice/bedtime) is not type_off'd", () => {
+  it("a kind under ANOTHER switch (log → moments) is not type_off'd when guidance is off", () => {
     const off = prefsWith({ quietStart: 21, quietEnd: 8, types: { guidance: false } });
     const plan = planNudge({
       prefs: off,

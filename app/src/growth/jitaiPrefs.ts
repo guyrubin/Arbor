@@ -20,7 +20,17 @@
  *   - No copy implying the app monitors/surveils the child
  */
 
-export type NudgeTypeKey = "guidance" | "milestone" | "weekly";
+/**
+ * B-TODAY-02: the parent's switches, each covering real engine kinds
+ * (lib/jitai NUDGE_KIND_PREF maps every NudgeKind to exactly one):
+ *   guidance — prep, calm, bedtime
+ *   moments  — log, practice
+ * The old `weekly` switch had no reader, and `milestone` gated the bell's
+ * monitoring rows while saying "worth celebrating"; the bell is retired
+ * (B-SHELL-02), so a `notes` switch would gate nothing — not offered.
+ * Stored `milestone` / `weekly` values are dropped on read.
+ */
+export type NudgeTypeKey = "guidance" | "moments";
 
 export interface JitaiPrefs {
   /** Per-type on/off toggles. */
@@ -37,8 +47,7 @@ const LS_KEY = "arbor.jitai.prefs";
 export const DEFAULT_PREFS: JitaiPrefs = {
   types: {
     guidance: true,
-    milestone: true,
-    weekly: true,
+    moments: true,
   },
   quietStart: 21,
   quietEnd: 8,
@@ -53,8 +62,8 @@ export function loadPrefs(): JitaiPrefs {
     return {
       types: {
         guidance: parsed.types?.guidance ?? DEFAULT_PREFS.types.guidance,
-        milestone: parsed.types?.milestone ?? DEFAULT_PREFS.types.milestone,
-        weekly: parsed.types?.weekly ?? DEFAULT_PREFS.types.weekly,
+        // B-TODAY-02 read-migration: legacy `milestone` / `weekly` are not read.
+        moments: parsed.types?.moments ?? DEFAULT_PREFS.types.moments,
       },
       quietStart: parsed.quietStart ?? DEFAULT_PREFS.quietStart,
       quietEnd: parsed.quietEnd ?? DEFAULT_PREFS.quietEnd,

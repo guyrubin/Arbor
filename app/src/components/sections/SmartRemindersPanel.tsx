@@ -15,8 +15,11 @@
  * DATA SAFETY:
  *   - Reads/writes ONLY to localStorage via jitaiPrefs.ts.
  *   - No child-data write, no Firestore mutation, no new consent surface.
- *   - Reads next-nudge from the existing JITAI engine via nextNudge() +
- *     useNotifications (same path as the Topbar bell), no new signal path.
+ *   - Reads next-nudge from the existing JITAI engine via nextNudge() with the
+ *     parent's prefs and today's ledger (the same inputs RhythmCue renders
+ *     from), no new signal path.
+ *   - B-TODAY-02: nothing leaves the app. The contract line says "shows …
+ *     inside the app" and that nothing is sent to a phone or email yet.
  *
  * ENTRY POINTS: Settings modal → "Smart Reminders" row (always visible).
  * Also reachable from Ask Arbor section via setActiveTab("smart-reminders").
@@ -54,8 +57,6 @@ const GREEN       = "var(--arbor-green-ink)";
 const GREEN_SOFT  = "var(--arbor-green-soft)";
 const CLAY        = "var(--arbor-clay)";
 const ON_ACCENT   = "var(--arbor-on-accent)";
-const PEACH_SOFT  = "var(--arbor-peach-soft)";
-const PEACH_INK   = "var(--arbor-peach-ink)";
 const LAV_SOFT    = "var(--arbor-lav-soft)";
 
 // ── Hours available in the quiet-hours picker ────────────────────────────────
@@ -67,6 +68,7 @@ const KIND_KEY: Record<string, string> = {
   calm:     "sr.nextNudge.kind.calm",
   log:      "sr.nextNudge.kind.log",
   practice: "sr.nextNudge.kind.practice",
+  bedtime:  "sr.nextNudge.kind.bedtime",
 };
 
 // ── Type definitions ──────────────────────────────────────────────────────────
@@ -77,9 +79,10 @@ const NUDGE_TYPES: Array<{
   tone: string;
   toneSoft: string;
 }> = [
-  { key: "guidance",  labelKey: "sr.types.guidance.label",  descKey: "sr.types.guidance.desc",  tone: CLAY,      toneSoft: GREEN_SOFT },
-  { key: "milestone", labelKey: "sr.types.milestone.label", descKey: "sr.types.milestone.desc", tone: GREEN,     toneSoft: GREEN_SOFT },
-  { key: "weekly",    labelKey: "sr.types.weekly.label",    descKey: "sr.types.weekly.desc",    tone: PEACH_INK, toneSoft: PEACH_SOFT },
+  // B-TODAY-02: one switch per NudgeTypeKey; lib/jitai NUDGE_KIND_PREF maps
+  // every engine kind onto exactly one of these.
+  { key: "guidance", labelKey: "sr.types.guidance.label", descKey: "sr.types.guidance.desc", tone: CLAY,  toneSoft: GREEN_SOFT },
+  { key: "moments",  labelKey: "sr.types.moments.label",  descKey: "sr.types.moments.desc",  tone: GREEN, toneSoft: GREEN_SOFT },
 ];
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -91,8 +94,8 @@ export default function SmartRemindersPanel() {
   const [prefs, setPrefs] = useState<JitaiPrefs>(loadPrefs);
   const [savedFlash, setSavedFlash] = useState(false);
 
-  // Derive the next nudge from the existing JITAI engine (read-only, same path
-  // as TopbarBell / useNotifications — no new signal path).
+  // Derive the next nudge from the existing JITAI engine (read-only — the same
+  // engine RhythmCue renders from, no new signal path).
   const firstName = (childProfile.name || "your child").split(" ")[0];
 
   const ageMonthsPrecise = ageMonthsFromProfile(childProfile);
@@ -124,7 +127,7 @@ export default function SmartRemindersPanel() {
     return behaviorLogs.filter((l) => new Date(l.timestamp).getTime() >= cutoff).length;
   }, [behaviorLogs]);
 
-  // TJB-03: the preview runs the SAME gated engine the bell runs — the
+  // TJB-03: the preview runs the SAME gated engine RhythmCue runs — the
   // parent's saved prefs + today's shown count are passed in, so the "next
   // nudge" card shows what will actually fire, not what the engine could.
   const shownToday = useMemo(() => shownNudgesToday(), []);
