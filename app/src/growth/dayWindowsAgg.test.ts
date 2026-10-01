@@ -8,7 +8,7 @@
  *   - Aggregator buckets correctly from a known RhythmPrediction.
  */
 import { describe, it, expect } from "vitest";
-import { buildDayWindowsSummary, estimateFrictionDays } from "./dayWindowsAgg";
+import { buildDayWindowsSummary, type DayWindowsLog } from "./dayWindowsAgg";
 import type { RhythmPrediction } from "../rhythm/predict";
 import fs from "node:fs";
 import path from "node:path";
@@ -25,6 +25,8 @@ function makeRichPrediction(): RhythmPrediction {
     confidence: "medium",
     daysObserved: 8,
     daysNeeded: 0,
+    hardDays: 4,
+    hardLogs: 5,
     frictionPeak: { hour: 17 },
     calmWindow: { startHour: 10, endHour: 12 },
     windDownHour: 19,
@@ -54,6 +56,8 @@ function makeLowDataPrediction(): RhythmPrediction {
     confidence: "low",
     daysObserved: 3,
     daysNeeded: 4,
+    hardDays: 0,
+    hardLogs: 0,
     frictionPeak: null,
     calmWindow: null,
     windDownHour: 19,
@@ -66,12 +70,29 @@ function makeNoneDataPrediction(): RhythmPrediction {
     confidence: "none",
     daysObserved: 0,
     daysNeeded: 7,
+    hardDays: 0,
+    hardLogs: 0,
     frictionPeak: null,
     calmWindow: null,
     windDownHour: null,
     bands: Array.from({ length: 15 }, (_, i) => ({ hour: 6 + i, tone: "calm" as const, score: 0 })),
   };
 }
+
+/** B-TODAY-06 fixture: 4 hard moments on 3 days at 17:xx, plus plain logs. */
+const DAY = 86_400_000;
+const atLocal = (daysAgo: number, hour: number, minute = 10) => {
+  const d = new Date(NOW_MS - daysAgo * DAY);
+  d.setHours(hour, minute, 0, 0);
+  return d.getTime();
+};
+const LOGS: DayWindowsLog[] = [
+  { timestamp: atLocal(1, 17), intensity: 5 },
+  { timestamp: atLocal(1, 17, 40), intensity: 4 },
+  { timestamp: atLocal(3, 17), intensity: 5 },
+  { timestamp: atLocal(5, 17), intensity: 4 },
+  ...[1, 2, 3, 4, 5, 6, 7, 8].map((d) => ({ timestamp: atLocal(d, 10), intensity: 1 })),
+];
 
 // ── Copy contract: board-cleared verbatim strings ─────────────────────────
 // These test strings match what DayWindowsPanel renders via i18n keys.
@@ -99,8 +120,9 @@ describe("AP-051 copy contract — board-cleared verbatim strings are present in
     expect(i18nSrc).toContain(PANEL_TITLE);
   });
 
-  it("calmer label is in i18n.ts", () => {
-    expect(i18nSrc).toContain(LABEL_CALMER);
+  it("B-TODAY-06: the calmer label is retired (absence of logs is not calm)", () => {
+    expect(i18nSrc).not.toContain(LABEL_CALMER);
+    expect(i18nSrc).not.toContain('"dw.label.calmer"');
   });
 
   it("trickier label is in i18n.ts", () => {
@@ -216,30 +238,20 @@ describe("buildDayWindowsSummary — sufficient data path (medium/high confidenc
     expect(result.hasEnoughData).toBe(true);
   });
 
-  it("produces a 'usually-calmer' window", () => {
-    const result = buildDayWindowsSummary(makeRichPrediction(), NOW_MS);
-    const calmer = result.windows.find((w) => w.label === "usually-calmer");
-    expect(calmer).toBeDefined();
+  it("B-TODAY-06: produces NO 'usually-calmer' window", () => {
+    const result = buildDayWindowsSummary(makeRichPrediction(), NOW_MS, LOGS);
+    expect(result.windows.map((w) => w.label)).toEqual(["often-trickier"]);
   });
 
   it("produces an 'often-trickier' window when frictionPeak exists", () => {
-    const result = buildDayWindowsSummary(makeRichPrediction(), NOW_MS);
+    const result = buildDayWindowsSummary(makeRichPrediction(), NOW_MS, LOGS);
     const trickier = result.windows.find((w) => w.label === "often-trickier");
     expect(trickier).toBeDefined();
   });
 
-  it("calmer window has lower pressureScore than trickier window", () => {
-    const result = buildDayWindowsSummary(makeRichPrediction(), NOW_MS);
-    const calmer = result.windows.find((w) => w.label === "usually-calmer");
-    const trickier = result.windows.find((w) => w.label === "often-trickier");
-    expect(calmer).toBeDefined();
-    expect(trickier).toBeDefined();
-    expect(calmer!.pressureScore).toBeLessThan(trickier!.pressureScore);
-  });
-
-  it("trickier window is centred near the frictionPeak hour (±2h)", () => {
+  it("trickier window is centred near the frictionPeak hour (±1h)", () => {
     const pred = makeRichPrediction();
-    const result = buildDayWindowsSummary(pred, NOW_MS);
+    const result = buildDayWindowsSummary(pred, NOW_MS, LOGS);
     const trickier = result.windows.find((w) => w.label === "often-trickier");
     expect(trickier).toBeDefined();
     const peakHour = pred.frictionPeak!.hour; // 17
@@ -247,31 +259,32 @@ describe("buildDayWindowsSummary — sufficient data path (medium/high confidenc
     expect(trickier!.endHour).toBeGreaterThanOrEqual(peakHour);
   });
 
-  it("pattern observation is non-null and anchors denominator to daysLogged", () => {
-    const result = buildDayWindowsSummary(makeRichPrediction(), NOW_MS);
+  it("pattern observation anchors the denominator to daysLogged", () => {
+    const result = buildDayWindowsSummary(makeRichPrediction(), NOW_MS, LOGS);
     expect(result.patternObservation).not.toBeNull();
     expect(result.patternObservation!.daysLogged).toBe(8);
   });
 
-  it("patternObservation.hardDays < daysLogged (honest — not every day)", () => {
-    const result = buildDayWindowsSummary(makeRichPrediction(), NOW_MS);
-    const obs = result.patternObservation!;
-    expect(obs.hardDays).toBeLessThan(obs.daysLogged);
+  it("B-TODAY-06: 4 hard moments on 3 days at 17:xx → hardDays is exactly 3 (read from the logs)", () => {
+    const result = buildDayWindowsSummary(makeRichPrediction(), NOW_MS, LOGS);
+    expect(result.patternObservation!.hardDays).toBe(3);
   });
 
-  it("patternObservation.hardDays >= 1 (minimum honest signal)", () => {
-    const result = buildDayWindowsSummary(makeRichPrediction(), NOW_MS);
-    expect(result.patternObservation!.hardDays).toBeGreaterThanOrEqual(1);
+  it("B-TODAY-06: the peak hour is a number (formatted at render), never an am/pm label", () => {
+    const result = buildDayWindowsSummary(makeRichPrediction(), NOW_MS, LOGS);
+    expect(result.patternObservation!.peakHour).toBe(17);
+    expect(JSON.stringify(result)).not.toMatch(/\d(am|pm)\b/);
   });
 
-  it("pattern peak hour label is a recognisable time string", () => {
-    const result = buildDayWindowsSummary(makeRichPrediction(), NOW_MS);
-    // frictionPeak.hour=17 → "5pm"
-    expect(result.patternObservation!.peakHourLabel).toBe("5pm");
+  it("B-TODAY-06: hourCounts count the hard logs per hour (6–20)", () => {
+    const result = buildDayWindowsSummary(makeRichPrediction(), NOW_MS, LOGS);
+    expect(result.hourCounts).toHaveLength(15);
+    expect(result.hourCounts.find((c) => c.hour === 17)?.count).toBe(4);
+    expect(result.hourCounts.find((c) => c.hour === 10)?.count).toBe(0); // plain moments are not counted
   });
 
   it("returns daysNeeded=0 when data is sufficient", () => {
-    const result = buildDayWindowsSummary(makeRichPrediction(), NOW_MS);
+    const result = buildDayWindowsSummary(makeRichPrediction(), NOW_MS, LOGS);
     expect(result.daysNeeded).toBe(0);
   });
 });
@@ -280,7 +293,7 @@ describe("buildDayWindowsSummary — no friction peak edge case", () => {
   it("returns no trickier window when frictionPeak is null", () => {
     const pred = makeRichPrediction();
     pred.frictionPeak = null;
-    const result = buildDayWindowsSummary(pred, NOW_MS);
+    const result = buildDayWindowsSummary(pred, NOW_MS, LOGS);
     const trickier = result.windows.find((w) => w.label === "often-trickier");
     expect(trickier).toBeUndefined();
   });
@@ -288,28 +301,24 @@ describe("buildDayWindowsSummary — no friction peak edge case", () => {
   it("patternObservation is null when frictionPeak is null", () => {
     const pred = makeRichPrediction();
     pred.frictionPeak = null;
-    const result = buildDayWindowsSummary(pred, NOW_MS);
+    const result = buildDayWindowsSummary(pred, NOW_MS, LOGS);
     expect(result.patternObservation).toBeNull();
   });
 });
 
-describe("estimateFrictionDays — pure helper", () => {
-  it("clamps output to at most daysLogged - 1", () => {
-    expect(estimateFrictionDays(7, 1.0)).toBeLessThan(7);
+describe("B-TODAY-06 — the evidence floor gates the panel", () => {
+  it("a 'medium' read below the hard floor (hand-built) still shows no windows", () => {
+    const pred = { ...makeRichPrediction(), hardDays: 1, hardLogs: 1 };
+    const result = buildDayWindowsSummary(pred, NOW_MS, LOGS);
+    expect(result.hasEnoughData).toBe(false);
+    expect(result.windows).toEqual([]);
+    expect(result.patternObservation).toBeNull();
+    expect(result.hourCounts.every((c) => c.count === 0)).toBe(true);
   });
 
-  it("returns at least 1 when daysLogged > 0 and score > 0", () => {
-    expect(estimateFrictionDays(7, 0.01)).toBeGreaterThanOrEqual(1);
-  });
-
-  it("returns 0 when daysLogged is 0", () => {
-    expect(estimateFrictionDays(0, 0.8)).toBe(0);
-  });
-
-  it("scales linearly with pressureScore", () => {
-    // 0.7 of 10 days ≈ 7 days, clamped to 9
-    expect(estimateFrictionDays(10, 0.7)).toBe(7);
-    // 0.5 of 10 days = 5
-    expect(estimateFrictionDays(10, 0.5)).toBe(5);
+  it("the fabricated estimator is gone from the module", () => {
+    const src = fs.readFileSync(path.resolve(__dirname, "./dayWindowsAgg.ts"), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+    expect(src).not.toMatch(/estimateFrictionDays|findCalmerStretch|usually-calmer/);
   });
 });

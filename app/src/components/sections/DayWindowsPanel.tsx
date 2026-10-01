@@ -12,6 +12,12 @@
  *   - Pattern anchored to "the days you logged"
  *   - NO "predict/prediction/will be/dysregulated/behavioral episode"
  *
+ * B-TODAY-06: no colour grades the child's day. The bars are single-ink with
+ * opacity ∝ the hour's count of hard (4–5) logs and an aria count per hour;
+ * there is no "Usually calmer" window (absence is not calm); the day count is
+ * read from the logs (growth/dayWindowsAgg), and every hour is formatted in
+ * the UI language. Below the evidence floor the strip stays uniform.
+ *
  * READ-ONLY: consumes existing RhythmPrediction and BehaviorLog data.
  * Does NOT write any child data. Does NOT generate new signals.
  * Does NOT replace the existing Today/Overview inline nudge (AP-006 / jitai.ts) —
@@ -25,23 +31,16 @@ import { useLanguage } from "../../context/LanguageContext";
 import type { UiLang } from "../../lib/i18n";
 import { predictRhythm } from "../../rhythm/predict";
 import { formatHour } from "../../lib/pulse";
-import { buildDayWindowsSummary } from "../../growth/dayWindowsAgg";
+import { buildDayWindowsSummary, type HourCount } from "../../growth/dayWindowsAgg";
 import { cardCls } from "../ui/kit";
 
 // Token shorthands — all via var(--arbor-*), NO raw hex.
+// B-TODAY-06: ink, muted and paper only — no green/peach grading.
 const INK    = "var(--arbor-ink)";
 const MUTED  = "var(--arbor-muted)";
 const RULE   = "var(--arbor-rule)";
-const GREEN  = "var(--arbor-green-ink)";
-const GREEN_SOFT = "var(--arbor-green-soft)";
 const PAPER_ELEVATED = "var(--arbor-paper-elevated)";
 const PAPER_DEEP     = "var(--arbor-paper-deep)";
-
-// Window tone tokens (CSS vars only).
-const CALMER_BG  = "var(--arbor-green-soft)";
-const CALMER_INK = "var(--arbor-green-ink)";
-const TRICKIER_BG  = "var(--arbor-peach-soft)";
-const TRICKIER_INK = "var(--arbor-peach-ink)";
 
 export default function DayWindowsPanel() {
   const { behaviorLogs, childProfile, setActiveTab } = useArbor();
@@ -58,12 +57,13 @@ export default function DayWindowsPanel() {
     [behaviorLogs, childProfile.age]
   );
 
-  const summary = useMemo(() => buildDayWindowsSummary(rhythm, Date.now()), [rhythm]);
+  const summary = useMemo(
+    () => buildDayWindowsSummary(rhythm, Date.now(), behaviorLogs.map((l) => ({ timestamp: l.timestamp, intensity: l.intensity }))),
+    [rhythm, behaviorLogs],
+  );
 
   const firstName = (childProfile.name || "your child").split(" ")[0];
 
-  // Build the 24-hour visualization bands (waking window 6–21).
-  const vizBands = rhythm.bands.slice(0, 15); // hours 6–20 inclusive
 
   return (
     <motion.div
@@ -77,7 +77,7 @@ export default function DayWindowsPanel() {
       <button
         onClick={() => setActiveTab("overview")}
         className="inline-flex items-center gap-2 font-bold text-sm rounded-full px-4"
-        style={{ minHeight: 44, color: GREEN, background: GREEN_SOFT }}
+        style={{ minHeight: 44, color: INK, background: PAPER_DEEP }}
         aria-label={t("dw.back")}
       >
         {/* OBJ-TODAY-08: `msr` alone left the glyph unmirrored — computed
@@ -114,8 +114,8 @@ export default function DayWindowsPanel() {
       >
         {summary.hasEnoughData ? (
           <>
-            {/* 24-hour bar visualization */}
-            <HourBar bands={vizBands} uiLang={uiLang} />
+            {/* Hard moments per hour — single ink, opacity ∝ count */}
+            <HourBar counts={summary.hourCounts} uiLang={uiLang} />
 
             {/* Named windows */}
             <div
@@ -123,11 +123,10 @@ export default function DayWindowsPanel() {
               style={{ borderBottom: `1px solid ${RULE}` }}
             >
               {summary.windows.map((w) => {
-                const isCalmer = w.label === "usually-calmer";
-                const bg  = isCalmer ? CALMER_BG  : TRICKIER_BG;
-                const ink = isCalmer ? CALMER_INK : TRICKIER_INK;
-                const glyph = isCalmer ? "wb_sunny" : "bedtime";
-                const label = isCalmer ? t("dw.label.calmer") : t("dw.label.trickier");
+                const bg = PAPER_DEEP;
+                const ink = INK;
+                const glyph = "schedule";
+                const label = t("dw.label.trickier");
                 const ariaLabel = t("dw.window.aria", {
                   label,
                   startHour: formatHour(w.startHour, uiLang),
@@ -179,9 +178,9 @@ export default function DayWindowsPanel() {
                   data-testid="dw-pattern-observation"
                 >
                   {t("dw.pattern", {
-                    hardDays: summary.patternObservation.hardDays,
-                    daysLogged: summary.patternObservation.daysLogged,
-                    peakHour: summary.patternObservation.peakHourLabel,
+                    n: summary.patternObservation.hardDays,
+                    m: summary.patternObservation.daysLogged,
+                    hour: formatHour(summary.patternObservation.peakHour, uiLang),
                   })}
                 </p>
               </div>
@@ -191,7 +190,7 @@ export default function DayWindowsPanel() {
             <div className="px-5 md:px-6 py-3 flex items-center gap-2" style={{ borderBottom: `1px solid ${RULE}` }}>
               <span
                 className="text-[12px] font-bold rounded-full px-3 py-1"
-                style={{ background: GREEN_SOFT, color: GREEN }}
+                style={{ background: PAPER_DEEP, color: MUTED }}
               >
                 {t("dw.daysLogged", { n: summary.daysLogged })}
               </span>
@@ -206,7 +205,7 @@ export default function DayWindowsPanel() {
                 of the surface filling in, never a pattern claim. Mounting it
                 here is what makes the route legible at 3 of 7 days; the
                 determinism guard below it is unchanged and always visible. */}
-            <HourBar bands={vizBands} uiLang={uiLang} />
+            <HourBar counts={summary.hourCounts} uiLang={uiLang} />
             <div className="px-5 md:px-6 pb-6 flex items-start gap-4">
               <span
                 className="rounded-2xl flex items-center justify-center flex-shrink-0"
@@ -274,61 +273,50 @@ export default function DayWindowsPanel() {
   );
 }
 
-// ── Inner: 24-hour bar ─────────────────────────────────────────────────────
+// ── Inner: hard moments per hour ─────────────────────────────────────────
 
 interface HourBarProps {
-  bands: Array<{ hour: number; tone: "calm" | "watch" | "friction"; score: number }>;
+  /** Hard (4–5) logs per waking hour; all zero below the evidence floor. */
+  counts: HourCount[];
   /** TJB-14: tick labels are TIME, and time is written differently in Hebrew. */
   uiLang: UiLang;
 }
 
-function HourBar({ bands, uiLang }: HourBarProps) {
-  if (!bands.length) return null;
+/**
+ * B-TODAY-06: one ink, uniform height, opacity proportional to the hour's
+ * count — a count, never a tone. Each bar carries its count for screen
+ * readers ("5pm: 3 hard moments").
+ */
+function HourBar({ counts, uiLang }: HourBarProps) {
+  const { t } = useLanguage();
+  if (!counts.length) return null;
+  const max = Math.max(0, ...counts.map((c) => c.count));
 
   return (
-    <div
-      className="px-5 md:px-6 pt-5 pb-4"
-      aria-hidden="true" // decorative — the named windows below are the accessible summary
-    >
-      <div className="flex items-end gap-[3px] h-10" role="presentation">
-        {bands.map((b) => {
-          const heightPct = Math.max(15, Math.round(b.score * 100));
-          const bg =
-            b.tone === "friction"
-              ? TRICKIER_BG
-              : b.tone === "watch"
-              ? "var(--arbor-yellow-soft)"
-              : CALMER_BG;
-          const border =
-            b.tone === "friction"
-              ? `1px solid ${TRICKIER_INK}`
-              : b.tone === "watch"
-              ? "1px solid var(--arbor-yellow-ink)"
-              : `1px solid ${CALMER_INK}`;
-
-          return (
-            <div
-              key={b.hour}
-              className="flex-1 rounded-sm transition-all"
-              style={{
-                height: `${heightPct}%`,
-                minHeight: 6,
-                background: bg,
-                border,
-                opacity: 0.85,
-              }}
-              title={formatHour(b.hour, uiLang)}
-            />
-          );
-        })}
+    <div className="px-5 md:px-6 pt-5 pb-4">
+      <div className="flex items-end gap-[3px] h-10" role="list" aria-label={t("dw.bars.aria")}>
+        {counts.map((c) => (
+          <div
+            key={c.hour}
+            role="listitem"
+            aria-label={t(c.count === 1 ? "dw.hour.aria.one" : "dw.hour.aria", { hour: formatHour(c.hour, uiLang), n: c.count })}
+            data-testid="dw-hour-bar"
+            className="flex-1 h-full rounded-sm"
+            style={{
+              background: INK,
+              opacity: max > 0 ? 0.08 + 0.92 * (c.count / max) : 0.08,
+            }}
+            title={formatHour(c.hour, uiLang)}
+          />
+        ))}
       </div>
       {/* Hour tick labels — sparse (every 3h) */}
-      <div className="flex items-center gap-[3px] mt-1">
-        {bands.map((b, i) => (
-          <div key={b.hour} className="flex-1 text-center">
+      <div className="flex items-center gap-[3px] mt-1" aria-hidden="true">
+        {counts.map((c, i) => (
+          <div key={c.hour} className="flex-1 text-center">
             {i % 3 === 0 ? (
               <span className="text-[10px]" style={{ color: MUTED }}>
-                {formatHour(b.hour, uiLang)}
+                {formatHour(c.hour, uiLang)}
               </span>
             ) : null}
           </div>

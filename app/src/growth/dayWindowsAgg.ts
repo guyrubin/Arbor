@@ -7,164 +7,133 @@
  *   - Anchored to "the days you logged" — honest denominator, always.
  *   - Read-only: no I/O, no Date.now() inside — callers inject `nowMs`.
  *
- * This module is a tested pure function layer over the existing JITAI
- * rhythm engine (lib/jitai.ts) and predictRhythm (rhythm/predict.ts).
- * It adds NO new child-data read path and writes NOTHING.
+ * B-TODAY-06 (law 1 + law 9):
+ *   - REAL COUNT. The day count was `round(pressureScore × daysLogged)`
+ *     clamped to [1, daysLogged−1] — with scores normalised to the peak, one
+ *     intensity-5 log read "13 of 14 days". It is now counted from the logs:
+ *     distinct days with a hard (4–5) log within ±1 h of the peak.
+ *   - NO CALM WINDOW. "Usually calmer" was the first all-zero 2-hour pair —
+ *     absence of logs read as calm. Removed with `findCalmerStretch`.
+ *   - EVIDENCE FLOOR. Windows render only above rhythm/predict's floor
+ *     (MIN_HARD_DAYS hard days, MIN_HARD_LOGS hard logs).
+ *   - COUNTS PER HOUR, not tones: the panel draws single-ink bars from
+ *     `hourCounts`, never a green/peach grade of the child's day.
+ *   - The peak hour is a NUMBER; the panel formats it in the UI language.
+ *
+ * Adds NO new child-data read path and writes NOTHING.
  */
-import type { RhythmPrediction } from "../rhythm/predict";
+import { HIGH_INTENSITY, MIN_HARD_DAYS, MIN_HARD_LOGS, RHYTHM_WINDOW_DAYS, rhythmDayKey, type RhythmPrediction } from "../rhythm/predict";
+
+/** A log as the aggregator needs it (timestamp + 1–5 intensity). */
+export interface DayWindowsLog {
+  timestamp: string | number;
+  intensity: number;
+}
 
 /** A named 2-hour window in the day. */
 export interface DayWindow {
-  /** "Usually calmer" | "Often trickier" (board-cleared verbatim labels) */
-  label: "usually-calmer" | "often-trickier";
+  /** "Often trickier" (board-cleared verbatim label). */
+  label: "often-trickier";
   /** Display start hour 0–23 */
   startHour: number;
-  /** Display end hour 0–23 (exclusive) */
+  /** Display end hour 0–23 */
   endHour: number;
-  /** Normalised pressure 0–1 (avg of constituent bands' scores). */
-  pressureScore: number;
+}
+
+/** Hard (4–5) logs per waking hour, inside the observation window. */
+export interface HourCount {
+  hour: number;
+  count: number;
 }
 
 export interface DayWindowsSummary {
-  /** Whether the parent has logged enough days for windows to be meaningful. */
+  /** Whether the logs clear the evidence floor for windows to be meaningful. */
   hasEnoughData: boolean;
   /** Days logged in the trailing observation window. */
   daysLogged: number;
   /** Minimum days needed before patterns are visible (from rhythm engine). */
   daysNeeded: number;
-  /**
-   * Up to 2 named windows: one calmer, one trickier (when data allows).
-   * Empty when hasEnoughData is false.
-   */
+  /** At most one window — the trickier one, when data allows. */
   windows: DayWindow[];
-  /**
-   * Pattern observation string that MUST anchor the count to "the days you logged".
-   * Null when hasEnoughData is false or no clear trickier window exists.
-   * NEVER contains "predict/prediction/will be".
-   */
+  /** Null when hasEnoughData is false or no peak exists. */
   patternObservation: PatternObservation | null;
+  /** Waking hours 6–20; all zero below the floor (the learning strip). */
+  hourCounts: HourCount[];
 }
 
 export interface PatternObservation {
-  /** Hour label of the trickier peak (e.g. "5pm"). */
-  peakHourLabel: string;
-  /** Number of logged days that showed friction at peak. */
+  /** Peak hour 0–23 — formatted at render in the UI language. */
+  peakHour: number;
+  /** Distinct logged days with a hard moment within ±1 h of the peak. */
   hardDays: number;
   /** Denominator: the days you logged in the window. */
   daysLogged: number;
 }
 
+const DAY_MS = 86_400_000;
+const FIRST_HOUR = 6;
+const LAST_HOUR = 20;
+
+const toMs = (ts: string | number): number => (typeof ts === "number" ? ts : new Date(ts).getTime());
+
 /**
- * Derive up to 2 named day-windows from an existing RhythmPrediction.
- *
- * @param rhythmData  Output of predictRhythm() — injected, never computed here.
- * @param nowMs       Current epoch ms — injected so this function is pure.
+ * Derive the Day Windows summary from a RhythmPrediction plus the SAME logs
+ * it was built from (the counts are read from the logs, never estimated).
  *
  * Pure: no I/O, deterministic for same inputs.
- * Read-only: does not write any child data.
  */
 export function buildDayWindowsSummary(
   rhythmData: RhythmPrediction,
-  nowMs: number, // eslint-disable-line @typescript-eslint/no-unused-vars -- required for purity contract
+  nowMs: number,
+  logs: DayWindowsLog[] = [],
+  windowDays: number = RHYTHM_WINDOW_DAYS,
 ): DayWindowsSummary {
-  const { confidence, daysObserved, daysNeeded, bands, frictionPeak } = rhythmData;
+  const { confidence, daysObserved, daysNeeded, frictionPeak } = rhythmData;
+  const zeroCounts = (): HourCount[] =>
+    Array.from({ length: LAST_HOUR - FIRST_HOUR + 1 }, (_, i) => ({ hour: FIRST_HOUR + i, count: 0 }));
 
-  // The panel requires at least "medium" confidence (≥ minDays logged).
-  const hasEnoughData = confidence === "medium" || confidence === "high";
+  // Dependable read AND the hard-moment floor (rhythm/predict already folds
+  // the floor into `confidence`; checked here too so a hand-built read cannot
+  // slip past it).
+  const hasEnoughData =
+    (confidence === "medium" || confidence === "high") &&
+    rhythmData.hardDays >= MIN_HARD_DAYS &&
+    rhythmData.hardLogs >= MIN_HARD_LOGS;
 
   if (!hasEnoughData) {
-    return { hasEnoughData: false, daysLogged: daysObserved, daysNeeded, windows: [], patternObservation: null };
+    return { hasEnoughData: false, daysLogged: daysObserved, daysNeeded, windows: [], patternObservation: null, hourCounts: zeroCounts() };
   }
 
-  // ── Build windows ───────────────────────────────────────────────────────
+  const since = nowMs - windowDays * DAY_MS;
+  const hard = logs.filter((l) => {
+    const t = toMs(l.timestamp);
+    return Number.isFinite(t) && t >= since && t <= nowMs && l.intensity >= HIGH_INTENSITY;
+  });
+
+  const hourCounts = zeroCounts();
+  for (const l of hard) {
+    const h = new Date(toMs(l.timestamp)).getHours();
+    const slot = hourCounts.find((c) => c.hour === h);
+    if (slot) slot.count += 1;
+  }
+
   const windows: DayWindow[] = [];
-
-  // Calmer window: the calmest 2-hour stretch during the waking day.
-  const calmerBand = findCalmerStretch(bands);
-  if (calmerBand) {
-    windows.push({
-      label: "usually-calmer",
-      startHour: calmerBand.startHour,
-      endHour: calmerBand.endHour,
-      pressureScore: calmerBand.avgScore,
-    });
-  }
-
-  // Trickier window: centred on the friction peak (±1h), if one exists.
   let patternObservation: PatternObservation | null = null;
   if (frictionPeak) {
     const peak = frictionPeak.hour;
-    const winStart = Math.max(6, peak - 1);
-    const winEnd = Math.min(21, peak + 1);
-    const peakBands = bands.filter((b) => b.hour >= winStart && b.hour <= winEnd);
-    const avgScore = peakBands.length > 0
-      ? peakBands.reduce((sum, b) => sum + b.score, 0) / peakBands.length
-      : 0;
+    const winStart = Math.max(FIRST_HOUR, peak - 1);
+    const winEnd = Math.min(LAST_HOUR + 1, peak + 1);
+    windows.push({ label: "often-trickier", startHour: winStart, endHour: winEnd });
 
-    windows.push({
-      label: "often-trickier",
-      startHour: winStart,
-      endHour: winEnd,
-      pressureScore: avgScore,
-    });
-
-    // Pattern observation: how many of the observed days showed friction at peak.
-    // Conservative: count bands with score >= 0.5 as "hard" fraction of daysLogged.
-    const frictionDays = estimateFrictionDays(daysObserved, avgScore);
-    patternObservation = {
-      peakHourLabel: hourLabel(peak),
-      hardDays: frictionDays,
-      daysLogged: daysObserved,
-    };
-  }
-
-  return { hasEnoughData, daysLogged: daysObserved, daysNeeded: 0, windows, patternObservation };
-}
-
-// ── Internal helpers ────────────────────────────────────────────────────────
-
-interface CalmerStretch {
-  startHour: number;
-  endHour: number;
-  avgScore: number;
-}
-
-/** Find the 2-hour run with the lowest average friction score during the day. */
-function findCalmerStretch(
-  bands: RhythmPrediction["bands"],
-): CalmerStretch | null {
-  if (bands.length < 2) return null;
-
-  let best: CalmerStretch | null = null;
-  let bestScore = Infinity;
-
-  for (let i = 0; i < bands.length - 1; i++) {
-    const avg = (bands[i].score + bands[i + 1].score) / 2;
-    if (avg < bestScore) {
-      bestScore = avg;
-      best = { startHour: bands[i].hour, endHour: bands[i + 1].hour, avgScore: avg };
+    // The real count: distinct logged days with a hard moment near the peak.
+    const nearPeakDays = new Set<number>();
+    for (const l of hard) {
+      const ms = toMs(l.timestamp);
+      const h = new Date(ms).getHours();
+      if (h >= peak - 1 && h <= peak + 1) nearPeakDays.add(rhythmDayKey(ms));
     }
+    patternObservation = { peakHour: peak, hardDays: nearPeakDays.size, daysLogged: daysObserved };
   }
 
-  return best;
-}
-
-/**
- * Estimate how many of the observed days showed friction at a window.
- * Conservative model: the normalised pressure score (0–1) is treated as the
- * fraction of days that contributed friction moments at that hour.
- * Output is rounded to a whole day, clamped to [1, daysLogged - 1].
- */
-export function estimateFrictionDays(daysLogged: number, pressureScore: number): number {
-  if (daysLogged <= 0) return 0;
-  const raw = Math.round(pressureScore * daysLogged);
-  return Math.max(1, Math.min(raw, daysLogged - 1));
-}
-
-/** 24h hour → friendly label, matching rhythm/predict.ts hourLabel(). */
-export function hourLabel(hour: number): string {
-  const h = ((hour % 24) + 24) % 24;
-  const am = h < 12;
-  const display = h % 12 === 0 ? 12 : h % 12;
-  return `${display}${am ? "am" : "pm"}`;
+  return { hasEnoughData, daysLogged: daysObserved, daysNeeded: 0, windows, patternObservation, hourCounts };
 }

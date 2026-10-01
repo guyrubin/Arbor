@@ -43,6 +43,14 @@ export interface RhythmPrediction {
   calmWindow: { startHour: number; endHour: number } | null;
   /** Suggested evening wind-down start hour. */
   windDownHour: number | null;
+  /**
+   * B-TODAY-06 — the evidence floor's inputs. `hardDays` = distinct days with
+   * an intensity≥4 log in the window; `hardLogs` = how many such logs. A peak,
+   * a calm window and a dependable (medium/high) read all require
+   * hardDays ≥ MIN_HARD_DAYS and hardLogs ≥ MIN_HARD_LOGS.
+   */
+  hardDays: number;
+  hardLogs: number;
 }
 
 export interface RhythmOptions {
@@ -57,9 +65,23 @@ export interface RhythmOptions {
   ageYears?: number;
 }
 
-const DEFAULTS = { windowDays: 21, wakeHour: 6, sleepHour: 21, minDays: 7 } as const;
+/** Trailing window the rhythm read learns from (days). */
+export const RHYTHM_WINDOW_DAYS = 21;
+const DEFAULTS = { windowDays: RHYTHM_WINDOW_DAYS, wakeHour: 6, sleepHour: 21, minDays: 7 } as const;
 const DAY_MS = 86_400_000;
-const HIGH_INTENSITY = 4; // 4–5 are the moments worth predicting around
+/** 4–5 are the moments worth reading around ("hard"). */
+export const HIGH_INTENSITY = 4;
+/**
+ * B-TODAY-06 — evidence floor. One intensity-5 log among ten days of plain
+ * moments used to become a friction peak (scores are normalised to the
+ * peak), a "13 of 14 days" count downstream and a PREP/CALM cue. Three hard
+ * logs on three distinct days is the least that can be called a tendency.
+ */
+export const MIN_HARD_DAYS = 3;
+export const MIN_HARD_LOGS = 3;
+
+/** The day bucket every rhythm count uses (one definition, so n ≤ m holds). */
+export const rhythmDayKey = (ms: number): number => Math.floor(ms / DAY_MS);
 
 function toMs(ts: string | number): number {
   return typeof ts === "number" ? ts : new Date(ts).getTime();
@@ -96,9 +118,15 @@ export function predictRhythm(
 
   // Distinct contributing days (uncertainty is about *coverage*, not raw count).
   const dayKeys = new Set<number>();
-  for (const e of inWindow) dayKeys.add(Math.floor(toMs(e.timestamp) / DAY_MS));
+  for (const e of inWindow) dayKeys.add(rhythmDayKey(toMs(e.timestamp)));
   const daysObserved = dayKeys.size;
   const daysNeeded = Math.max(0, minDays - daysObserved);
+
+  // B-TODAY-06: the evidence floor — hard logs and the distinct days they fell on.
+  const hardEvents = inWindow.filter((e) => e.intensity >= HIGH_INTENSITY);
+  const hardLogs = hardEvents.length;
+  const hardDays = new Set(hardEvents.map((e) => rhythmDayKey(toMs(e.timestamp)))).size;
+  const enoughHard = hardDays >= MIN_HARD_DAYS && hardLogs >= MIN_HARD_LOGS;
 
   // Intensity-weighted pressure per hour (only hard moments push a band).
   const hours = Array.from({ length: sleepHour - wakeHour }, (_, i) => wakeHour + i);
@@ -117,11 +145,15 @@ export function predictRhythm(
     return { hour, tone, score };
   });
 
-  const confidence: RhythmConfidence =
+  const coverage: RhythmConfidence =
     daysObserved === 0 ? "none"
     : daysObserved < minDays ? "low"
     : daysObserved < windowDays * 0.6 ? "medium"
     : "high";
+  // Coverage alone is not a rhythm: below the hard-moment floor the read
+  // stays "low" however many days were logged.
+  const confidence: RhythmConfidence =
+    (coverage === "medium" || coverage === "high") && !enoughHard ? "low" : coverage;
 
   // Below the usable bar, don't assert peaks/windows — only the honest "learning" read.
   if (confidence === "none" || confidence === "low" || peakRaw === 0) {
@@ -130,6 +162,7 @@ export function predictRhythm(
       bands: bands.map((b) => ({ ...b, tone: "calm", score: 0 })),
       frictionPeak: null, calmWindow: null,
       windDownHour: confidence === "none" ? null : Math.floor(windDownPrior(opts.ageYears)),
+      hardDays, hardLogs,
     };
   }
 
@@ -161,7 +194,7 @@ export function predictRhythm(
       ? Math.max(17, eveningPeak.hour - 1)
       : Math.floor(windDownPrior(opts.ageYears));
 
-  return { confidence, daysObserved, daysNeeded, bands, frictionPeak, calmWindow, windDownHour };
+  return { confidence, daysObserved, daysNeeded, bands, frictionPeak, calmWindow, windDownHour, hardDays, hardLogs };
 }
 
 /** 24h hour → friendly label, e.g. 17 → "5pm", 9 → "9am". */

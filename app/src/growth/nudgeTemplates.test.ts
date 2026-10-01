@@ -32,6 +32,8 @@ const baseRhythm = (over: Partial<RhythmPrediction> = {}): RhythmPrediction => (
   confidence: "low",
   daysObserved: 2,
   daysNeeded: 5,
+  hardDays: 0,
+  hardLogs: 0,
   bands: [],
   frictionPeak: null,
   calmWindow: null,

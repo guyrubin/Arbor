@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { nextNudge, NUDGE_KIND_PREF } from "./jitai";
 import { ROUTE_IDS } from "./routes";
 import { DEFAULT_PREFS, recordNudgeShown, shownNudgesToday, type JitaiPrefs } from "../growth/jitaiPrefs";
+import { predictRhythm } from "../rhythm/predict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import type { RhythmPrediction } from "../rhythm/predict";
@@ -10,6 +11,8 @@ const baseRhythm = (over: Partial<RhythmPrediction> = {}): RhythmPrediction => (
   confidence: "high",
   daysObserved: 14,
   daysNeeded: 0,
+  hardDays: 4,
+  hardLogs: 6,
   bands: [],
   frictionPeak: null,
   calmWindow: null,
@@ -284,5 +287,43 @@ describe("B-TODAY-02 — every NudgeKind maps to exactly one switch", () => {
     const inp = { nowMs: at(19), rhythm: baseRhythm({ confidence: "low" }), loggedToday: 2, recent7d: 9, childName: "Dylan" };
     expect(nextNudge(inp, prefs())?.kind).toBe("bedtime");
     expect(nextNudge(inp, prefs({ types: { guidance: false, moments: true } }))?.kind).not.toBe("bedtime");
+  });
+});
+
+/**
+ * B-TODAY-06 — PREP and CALM stay silent under the evidence floor. Ten days
+ * of plain moments plus ONE intensity-5 log used to make a friction peak and
+ * a dependable read, so the engine fired PREP before "the hard hour" and CALM
+ * at a derived wind-down. Real engine end to end: predictRhythm → nextNudge.
+ */
+describe("B-TODAY-06 — no PREP/CALM cue below the hard-moment floor", () => {
+  const NOW = new Date(2026, 5, 17, 15, 0, 0).getTime();
+  const DAY = 86_400_000;
+  const at = (daysAgo: number, hour: number, intensity: number) => {
+    const d = new Date(NOW - daysAgo * DAY);
+    d.setHours(hour, 0, 0, 0);
+    return { timestamp: d.toISOString(), intensity };
+  };
+
+  it("10 days of moments + 1 intensity-5 log → low read, no peak, no PREP/CALM at any hour", () => {
+    const events = Array.from({ length: 10 }, (_, d) => at(d + 1, 10, 1));
+    events.push(at(2, 17, 5));
+    const rhythm = predictRhythm(events, NOW);
+    expect(rhythm.confidence).toBe("low");
+    expect(rhythm.frictionPeak).toBeNull();
+    for (let h = 0; h < 24; h++) {
+      const nowMs = new Date(2026, 5, 17, h, 0, 0).getTime();
+      const n = nextNudge({ nowMs, rhythm, loggedToday: 1, recent7d: 9, childName: "Dylan" });
+      expect(["prep", "calm"]).not.toContain(n?.kind);
+    }
+  });
+
+  it("NEGATIVE CONTROL — above the floor (3 hard days, 3 hard logs at 17:00) PREP fires at 15:00", () => {
+    const events = Array.from({ length: 10 }, (_, d) => at(d + 1, 10, 1));
+    events.push(at(1, 17, 5), at(2, 17, 4), at(3, 17, 5));
+    const rhythm = predictRhythm(events, NOW);
+    expect(["medium", "high"]).toContain(rhythm.confidence);
+    expect(rhythm.frictionPeak?.hour).toBe(17);
+    expect(nextNudge({ nowMs: NOW, rhythm, loggedToday: 1, recent7d: 9, childName: "Dylan" })?.kind).toBe("prep");
   });
 });

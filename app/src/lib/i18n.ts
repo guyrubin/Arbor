@@ -1715,11 +1715,13 @@ export const en: Dict = {
   // HARD RULE: NO string may contain "will be", "predicts", "predict",
   // "prediction", "expect [child] to", or a confidence %.
   "dw.title": "Your Day at a Glance",
-  "dw.subtitle": "Patterns Arbor has noticed from what you've logged — calmer stretches and the trickier ones.",
-  "dw.label.calmer": "Usually calmer",
+  "dw.subtitle": "The hard moments you've logged, by hour of the day.",
   "dw.label.trickier": "Often trickier",
   // Pattern string: ALWAYS anchor the denominator to "the days you logged".
-  "dw.pattern": "{hardDays} of the last {daysLogged} days you logged showed a trickier stretch around {peakHour}.",
+  "dw.pattern": "On {n} of the {m} days you logged, a hard moment was noted around {hour}.",
+  "dw.bars.aria": "Hard moments by hour, in the days you logged",
+  "dw.hour.aria": "{hour}: {n} hard moments",
+  "dw.hour.aria.one": "{hour}: 1 hard moment",
   // Determinism guard — ALWAYS visible near the chart.
   "dw.guard": "These are tendencies, not predictions — every day is different, and you know your child best.",
   // Low-data state (<7 days logged).
@@ -3950,10 +3952,12 @@ export const he: Dict = {
   // AP-051 — Day Windows panel (HE — flagged for arbor-localization native review before wide release)
   // Non-predictive framing preserved: "נטיות" = tendencies, "הימים שתיעדת" = the days you logged.
   "dw.title": "היום שלכם במבט אחד",
-  "dw.subtitle": "תבניות שארבור הבחין בהן ממה שתיעדתם — רגועות יותר ומאתגרות יותר.",
-  "dw.label.calmer": "בדרך כלל רגוע",
+  "dw.subtitle": "הרגעים הקשים שתיעדתם, לפי שעה ביום.",
   "dw.label.trickier": "לעיתים מאתגר",
-  "dw.pattern": "{hardDays} מתוך {daysLogged} הימים שתיעדתם הראו קטע מאתגר יותר בסביבות {peakHour}.",
+  "dw.pattern": "ב-{n} מתוך {m} הימים שתיעדתם, נרשם רגע קשה בסביבות {hour}.",
+  "dw.bars.aria": "רגעים קשים לפי שעה, בימים שתיעדתם",
+  "dw.hour.aria": "{hour}: {n} רגעים קשים",
+  "dw.hour.aria.one": "{hour}: רגע קשה אחד",
   "dw.guard": "אלו נטיות, לא ידיעות ודאיות — כל יום שונה, ואתם מכירים את ילדכם הכי טוב.",
   "dw.lowData": "המשיכו לתעד ותבניות אלו יתבהרו. כרגע אין מספיק נתונים לראות מקצב ברור.",
   "dw.window.aria": "חלון {label}: {startHour} עד {endHour}",

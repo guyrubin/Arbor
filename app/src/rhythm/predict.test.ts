@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { predictRhythm, hourLabel, type RhythmEvent } from "./predict";
+import { predictRhythm, hourLabel, MIN_HARD_DAYS, MIN_HARD_LOGS, type RhythmEvent } from "./predict";
 
 const NOW = new Date("2026-06-15T12:00:00").getTime();
 const DAY = 86_400_000;
@@ -83,5 +83,52 @@ describe("hourLabel", () => {
     expect(hourLabel(12)).toBe("12pm");
     expect(hourLabel(17)).toBe("5pm");
     expect(hourLabel(23)).toBe("11pm");
+  });
+});
+
+/**
+ * B-TODAY-06 — evidence floor. Scores are normalised to the peak, so one
+ * intensity-5 log among days of plain moments used to be a "friction peak"
+ * with a dependable read. A peak, a calm window and medium/high confidence
+ * now need MIN_HARD_DAYS distinct hard days and MIN_HARD_LOGS hard logs.
+ */
+describe("predictRhythm — B-TODAY-06 evidence floor", () => {
+  it("the floor is 3 hard days and 3 hard logs", () => {
+    expect(MIN_HARD_DAYS).toBe(3);
+    expect(MIN_HARD_LOGS).toBe(3);
+  });
+
+  it("10 days of moments + 1 intensity-5 log → low, no peak, no calm window; counts exposed", () => {
+    const events: RhythmEvent[] = [];
+    for (let d = 1; d <= 10; d++) events.push(ev(d, 10, 1));
+    events.push(ev(2, 17, 5));
+    const r = predictRhythm(events, NOW, { minDays: 7 });
+    expect(r.daysObserved).toBe(10);
+    expect(r.hardDays).toBe(1);
+    expect(r.hardLogs).toBe(1);
+    expect(r.confidence).toBe("low");
+    expect(r.frictionPeak).toBeNull();
+    expect(r.calmWindow).toBeNull();
+  });
+
+  it("4 hard logs on only 2 days → still below the floor", () => {
+    const events: RhythmEvent[] = [];
+    for (let d = 1; d <= 10; d++) events.push(ev(d, 10, 1));
+    events.push(ev(1, 17, 5), ev(1, 18, 4), ev(2, 17, 5), ev(2, 16, 4));
+    const r = predictRhythm(events, NOW, { minDays: 7 });
+    expect(r.hardDays).toBe(2);
+    expect(r.hardLogs).toBe(4);
+    expect(r.confidence).toBe("low");
+    expect(r.frictionPeak).toBeNull();
+  });
+
+  it("NEGATIVE CONTROL — 3 hard logs on 3 days clears the floor and the peak returns", () => {
+    const events: RhythmEvent[] = [];
+    for (let d = 1; d <= 10; d++) events.push(ev(d, 10, 1));
+    events.push(ev(1, 17, 5), ev(2, 17, 4), ev(3, 17, 5));
+    const r = predictRhythm(events, NOW, { minDays: 7 });
+    expect(r.hardDays).toBe(3);
+    expect(["medium", "high"]).toContain(r.confidence);
+    expect(r.frictionPeak?.hour).toBe(17);
   });
 });

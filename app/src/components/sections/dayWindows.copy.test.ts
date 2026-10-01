@@ -89,8 +89,9 @@ describe("TJB-14 — Day Windows", () => {
   });
 
   it("the learning bands render below the usable bar", () => {
-    // Two HourBar mounts: the data-rich branch and the low-data branch.
-    expect((src.match(/<HourBar bands=\{vizBands\} uiLang=\{uiLang\} \/>/g) ?? []).length).toBe(2);
+    // Two HourBar mounts: the data-rich branch and the low-data branch
+    // (B-TODAY-06: both read the aggregator's per-hour counts).
+    expect((src.match(/<HourBar counts=\{summary\.hourCounts\} uiLang=\{uiLang\} \/>/g) ?? []).length).toBe(2);
   });
 
   it("every hour on the route is written in the UI language", () => {
@@ -187,5 +188,42 @@ describe("OBJ-TODAY-06 — the weekly secondary modules are demoted", () => {
   it("negative control: the shipped 17 px link markup has no floor", () => {
     const shipped = `<button onClick={() => setActiveTab("scholar")} className="text-[11px] font-bold mt-3">{t("wk.scholarExplore")}</button>`;
     expect(shipped).not.toContain("touch-target");
+  });
+});
+
+/**
+ * B-TODAY-06 — Day Windows printed a fabricated count and coloured the
+ * child's day: green = calm, peach = trickier, "Usually calmer" from absence,
+ * and an am/pm hour baked into the Hebrew sentence.
+ */
+describe("B-TODAY-06 — Day Windows: neutral ink, real counts, local hours", () => {
+  const raw = read("components/sections/DayWindowsPanel.tsx");
+  const src = strip(raw);
+
+  it("no --arbor-peach-* or --arbor-green-* in DayWindowsPanel.tsx", () => {
+    expect(raw).not.toMatch(/--arbor-peach-|--arbor-green-/);
+  });
+
+  it("bars are single-ink with opacity ∝ count and an aria count per hour", () => {
+    expect(src).toMatch(/background: INK,/);
+    expect(src).toMatch(/opacity: max > 0 \? 0\.08 \+ 0\.92 \* \(c\.count \/ max\) : 0\.08/);
+    expect(src).toMatch(/aria-label=\{t\(c\.count === 1 \? "dw\.hour\.aria\.one" : "dw\.hour\.aria"/);
+    expect(src).not.toMatch(/tone === "friction"|usually-calmer|dw\.label\.calmer/);
+  });
+
+  it("the pattern sentence takes the real count and a UI-language hour", () => {
+    expect(src).toMatch(/t\("dw\.pattern", \{\s*n: summary\.patternObservation\.hardDays,\s*m: summary\.patternObservation\.daysLogged,\s*hour: formatHour\(summary\.patternObservation\.peakHour, uiLang\),/);
+  });
+
+  it("EN + HE: 'On 3 of the 8 days…' and no am/pm in the Hebrew render", async () => {
+    const { translate } = await import("../../lib/i18n");
+    expect(translate("en", "dw.pattern", { n: 3, m: 8, hour: formatHour(17, "en") })).toMatch(/^On 3 of the 8 days you logged, a hard moment was noted around /);
+    const heLine = translate("he", "dw.pattern", { n: 3, m: 8, hour: formatHour(17, "he") });
+    expect(heLine).toMatch(/3/);
+    expect(heLine).not.toMatch(/am|pm/i);
+    for (const k of ["dw.bars.aria", "dw.hour.aria", "dw.hour.aria.one"]) {
+      expect(translate("en", k)).not.toBe(k);
+      expect(translate("he", k)).not.toBe(k);
+    }
   });
 });
