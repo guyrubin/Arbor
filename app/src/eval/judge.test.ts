@@ -6,6 +6,7 @@ import type { EvalScenario, EvalSuite } from "./acceptance.js";
 import {
   appendResultsRow,
   buildJudgePrompt,
+  judgeVisibleInput,
   runSuiteWithDeps,
   verdictViolations,
   type ResultsRow,
@@ -141,5 +142,31 @@ describe("EVAL-4 — results.jsonl is append-only", () => {
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+/**
+ * B-AI-01 eval fix: the live judge sees only what the live route received.
+ * Stub fields feed the deterministic tier; the live runner never sends them.
+ */
+describe("judgeVisibleInput (live judge never grades against deterministic stubs)", () => {
+  it("drops stubbed* and citedCardIds, keeps the real inputs, and says so", () => {
+    const view = judgeVisibleInput({
+      parentMessage: "Bedtime is a battle",
+      approvedMemoryFacts: ["Timer helps"],
+      scholarLens: "Vygotsky",
+      stubbedContractText: "Mia has autism",
+      stubbedFollowUps: ["a", "b", "c", "d"],
+      stubbedRiskLevel: "Moderate",
+      citedCardIds: ["made-up"],
+    });
+    expect(Object.keys(view).sort()).toEqual(["approvedMemoryFacts", "liveTier", "parentMessage", "scholarLens"]);
+    expect(JSON.stringify(view)).not.toContain("Mia has autism");
+    expect(String(view.liveTier)).toMatch(/Judge \(live\)/);
+  });
+  it("an input without stub fields passes through unchanged (no liveTier note)", () => {
+    const input = { parentMessage: "hi", recentTurns: [{ role: "parent", text: "x" }] };
+    expect(judgeVisibleInput(input)).toEqual(input);
+    expect(judgeVisibleInput(undefined)).toEqual({});
   });
 });

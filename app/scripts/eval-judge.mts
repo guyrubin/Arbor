@@ -44,7 +44,7 @@ import { createWaitlistStore } from "../src/server/waitlist.js";
 import { computeContentHash } from "../src/content/governance.js";
 import { hardMomentCards, type HardMomentCard } from "../src/content/hardMomentCards.js";
 import { buildHardMomentSeedPrompt } from "../src/content/hardMomentSurface.js";
-import { appendResultsRow, runSuiteWithDeps, type ScenarioVerdict } from "../src/eval/judge.js";
+import { appendResultsRow, judgeVisibleInput, runSuiteWithDeps, type ScenarioVerdict } from "../src/eval/judge.js";
 import type { EvalScenario, EvalSuite } from "../src/eval/acceptance.js";
 
 const REPO_ROOT = path.resolve(process.cwd(), "..");
@@ -304,7 +304,7 @@ export const runLiveSuite = async (suiteName: string) => {
   suite.scenarios = suite.scenarios.map((scenario) => ({
     ...scenario,
     input: {
-      ...scenario.input,
+      ...judgeVisibleInput(scenario.input),
       suppliedChildProfile: syntheticProfileFor(suite, scenario),
       contextScope: scenario.input?.privateMode === true
         ? "Private turn: server excludes the supplied profile, stored memory and previous turns."
