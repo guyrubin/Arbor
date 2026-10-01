@@ -115,8 +115,9 @@ export const en: Record<string, string> = {
   "elev.closeloop.pattern.headline": "Most of what you logged happened at {place}, on {day}.",
   "elev.closeloop.pattern.noted.one": "1 moment noted",
   "elev.closeloop.pattern.noted.many": "{count} moments noted",
-  "elev.closeloop.pattern.resolvedSub.one": "1 of {total} moments",
-  "elev.closeloop.pattern.resolvedSub.many": "{count} of {total} moments",
+  // B-ASKJB-22 residue (law 1): a count of settled moments, never "of {total}".
+  "elev.closeloop.pattern.resolvedSub.one": "1 moment you marked settled",
+  "elev.closeloop.pattern.resolvedSub.many": "{count} moments you marked settled",
   // B-ASKJB-22: the Behaviors hero's resolved stat is a count, not a ratio.
   "elev.closeloop.stats.settledWeek": "settled this week",
 };
@@ -189,7 +190,7 @@ export const he: Record<string, string> = {
   "elev.closeloop.pattern.headline": "רוב מה שתיעדתם קרה {place}, בימי {day}.",
   "elev.closeloop.pattern.noted.one": "רגע אחד תועד",
   "elev.closeloop.pattern.noted.many": "{count} רגעים תועדו",
-  "elev.closeloop.pattern.resolvedSub.one": "רגע אחד מתוך {total}",
-  "elev.closeloop.pattern.resolvedSub.many": "{count} מתוך {total} רגעים",
+  "elev.closeloop.pattern.resolvedSub.one": "רגע אחד שסימנתם שנרגע",
+  "elev.closeloop.pattern.resolvedSub.many": "{count} רגעים שסימנתם שנרגעו",
   "elev.closeloop.stats.settledWeek": "נרגעו השבוע",
 };

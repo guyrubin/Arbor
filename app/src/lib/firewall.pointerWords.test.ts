@@ -294,3 +294,37 @@ describe("law 1 — no denominators on the Story card (B-ASKJB-19 residue)", () 
     expect(/\} of \$\{/.test("closers.push(`Together you're tracking ${i.milestonesObserved} of ${i.milestonesTotal} milestones`);")).toBe(true);
   });
 });
+
+import { translate as translateKey } from "./i18n";
+
+/* · B-ASKJB-22 — PatternInsights "Resolved {resolved}/{total}" + "{count} of {total} moments" */
+describe("law 1 — no denominators on the Behaviors patterns card (B-ASKJB-22 residue)", () => {
+  const keys = ["elev.closeloop.pattern.resolvedSub.one", "elev.closeloop.pattern.resolvedSub.many"];
+
+  it("the resolved sub-lines are counts in EN and HE (no {total}, no 'of'/'מתוך')", () => {
+    for (const k of keys) {
+      for (const lang of ["en", "he"] as const) {
+        // elevation keys live in the merged dictionaries — read them through translate()
+        const v = translateKey(lang, k);
+        expect(v, `${lang} ${k} resolves`).not.toBe(k);
+        expect(v, `${lang} ${k}`).toBeTruthy();
+        expect(v, `${lang} ${k}`).not.toContain("{total}");
+        expect(DENOMINATOR.test(v), `${lang} ${k}`).toBe(false);
+        expect(/\b(of)\b|מתוך/.test(v), `${lang} ${k}`).toBe(false);
+      }
+    }
+  });
+
+  it("PatternInsights renders the resolved count alone — no '/', no total", () => {
+    const src = readFileSync(path.join(SRC_ROOT, "components", "behaviors", "PatternInsights.tsx"), "utf8");
+    expect(src).toContain('label={t("beh.pattern.resolved")} value={String(insights.resolved)}');
+    expect(src).not.toMatch(/insights\.total|total: logs\.length/);
+    expect(src).not.toMatch(/\$\{insights\.resolved\}\/\$\{/);
+  });
+
+  it("POSITIVE CONTROL — the pre-fix value and sub-lines trip the scan", () => {
+    expect(/\$\{insights\.resolved\}\/\$\{/.test("value={`${insights.resolved}/${insights.total}`}")).toBe(true);
+    expect(DENOMINATOR.test("{count} of {total} moments")).toBe(true);
+    expect(DENOMINATOR.test("{count} מתוך {total} רגעים")).toBe(true);
+  });
+});

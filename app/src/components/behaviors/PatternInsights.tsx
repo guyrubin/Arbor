@@ -45,7 +45,8 @@ export default function PatternInsights({ logs }: { logs: BehaviorLog[] }) {
     const time = topBy((l) => timeBand(new Date(l.timestamp).getHours()).toLowerCase());
     const resolved = logs.filter((l) => l.resolved).length;
 
-    return { context, day, time, resolved, total: logs.length };
+    // B-ASKJB-22 residue (law 1): no total — the row counts what was settled.
+    return { context, day, time, resolved };
   }, [logs]);
 
   if (!insights) return null;
@@ -119,7 +120,7 @@ export default function PatternInsights({ logs }: { logs: BehaviorLog[] }) {
         {insights.time && (
           <Row iconName="schedule" tone="yellow" label={t("elev.closeloop.pattern.time")} value={timeLabel} sub={noted(insights.time.n)} />
         )}
-        <Row iconName="check_circle" fill={1} tone="mint" label={t("beh.pattern.resolved")} value={`${insights.resolved}/${insights.total}`} sub={t(`elev.closeloop.pattern.resolvedSub.${insights.resolved === 1 ? "one" : "many"}`, { count: insights.resolved, total: insights.total })} />
+        <Row iconName="check_circle" fill={1} tone="mint" label={t("beh.pattern.resolved")} value={String(insights.resolved)} sub={t(`elev.closeloop.pattern.resolvedSub.${insights.resolved === 1 ? "one" : "many"}`, { count: insights.resolved })} />
       </div>
     </div>
   );
