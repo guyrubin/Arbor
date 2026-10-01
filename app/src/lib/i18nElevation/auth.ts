@@ -14,6 +14,9 @@ export const en: Record<string, string> = {
   // promises the next step and delivers a modal instead. The label now names
   // what the tap actually does.
   "elev.auth.avatar.cta": "Create {name}'s hero",
+
+  // B-SHELL-07: the first coach seed — model input, built in aiLang.
+  "elev.auth.ob.seed": "{domain} is on my mind with {name} ({age}). Where should I start?",
 };
 
 export const he: Record<string, string> = {
@@ -25,4 +28,5 @@ export const he: Record<string, string> = {
 
   // ── Builder F · MOB-21
   "elev.auth.avatar.cta": "ליצור את הגיבור של {name}",
+  "elev.auth.ob.seed": "{domain} מעסיק אותי עם {name} ({age}). מאיפה כדאי להתחיל?",
 };

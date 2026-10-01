@@ -277,3 +277,14 @@ describe("OBJ-SHELL-03 · no dir-keyed border override on the shell asides", () 
     expect(/aside:last-of-type[^,{]*:not\(:first-of-type\)/.test(fixed[0].selector)).toBe(true);
   });
 });
+
+describe("B-SHELL-07 · the onboarding Back control mirrors under RTL", () => {
+  it("OnboardingFlow's back chevron carries the inline RTL mirror (rtl: variant is not emitted there)", () => {
+    const flow = stripComments(fs.readFileSync(path.join(COMPONENTS, "auth", "OnboardingFlow.tsx"), "utf8"));
+    const back = flow.slice(flow.indexOf("onClick={goBack}"), flow.indexOf("</button>", flow.indexOf("onClick={goBack}")));
+    expect(back).toContain("<ChevronLeft");
+    expect(back).toMatch(/isRtl \? \{ transform: "scaleX\(-1\)" \}/);
+    // negative control: the pre-fix glyph had no mirror hint
+    expect(/scaleX\(-1\)|rtl:-scale-x-100/.test('<ChevronLeft className="w-4 h-4" />')).toBe(false);
+  });
+});

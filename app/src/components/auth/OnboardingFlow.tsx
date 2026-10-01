@@ -6,7 +6,8 @@ import {
 } from "lucide-react";
 import { useProfile } from "../../context/ProfileContext";
 import { findIncompleteOnboardingChild } from "../../lib/onboardingGate";
-import { ageMonthsFromProfile, isoDateOf } from "../../lib/childAge";
+import { ageLabelForMonths, ageMonthsFromProfile, isoDateOf } from "../../lib/childAge";
+import { translate, type UiLang } from "../../lib/i18n";
 import { markWowPending, setCoachSeed, markAvatarSkipped, clearAvatarSkipped } from "../../lib/onboardingJourney";
 import { useEntitlement } from "../../hooks/useEntitlement"; // MOB-12: admin gate for the replay affordance
 import { LegalLinks } from "../billing/LegalLinks"; // MOB-01: policy links beside the consent checkbox
@@ -47,6 +48,25 @@ const DOMAINS: { id: string; nameKey: string; subKey: string; icon: React.ReactN
 
 function ArborMark() {
   return <ArborMarkIcon size={56} />;
+}
+
+/**
+ * B-SHELL-07 (KSH-V C9) — the coach seed is MODEL INPUT, so it is built in
+ * `aiLang` from one keyed template (elev.auth.ob.seed), with the domain name
+ * and the age label (ageLabelForMonths) in the same language. It used to be an
+ * English literal with an English-only age string inside a Hebrew session.
+ */
+export function buildOnboardingCoachSeed(input: {
+  aiLang: UiLang;
+  domainNameKey: string | null;
+  domainFallback: string;
+  name: string;
+  totalAgeMonths: number;
+}): string {
+  const tr = (key: string, vars?: Record<string, string | number>) => translate(input.aiLang, key, vars);
+  const domain = input.domainNameKey ? tr(input.domainNameKey) : input.domainFallback;
+  const age = ageLabelForMonths(input.totalAgeMonths, (key, vars) => tr(key, vars));
+  return tr("elev.auth.ob.seed", { domain, name: input.name.trim(), age });
 }
 
 function ageString(totalMonths: number): string {
@@ -112,7 +132,7 @@ function ProgressDots({ step, total }: { step: Step; total: number }) {
               background: active
                 ? "var(--arbor-green-ink)"
                 : done
-                  ? "rgba(52,178,119,0.45)"
+                  ? "color-mix(in srgb, var(--arbor-green-ink) 45%, transparent)"
                   : "var(--arbor-rule-strong)",
             }}
           />
@@ -340,7 +360,7 @@ export function StepChild({
 
       {/* Languages (optional) */}
       {!showLangs ? (
-        <button type="button" onClick={() => setShowLangs(true)} className="text-xs font-bold" style={{ color: "var(--arbor-green-ink)" }}>
+        <button type="button" onClick={() => setShowLangs(true)} className="inline-flex min-h-11 w-full items-center text-start text-xs font-bold" style={{ color: "var(--arbor-green-ink)" }}>
           {t("ob.addLangs")}
         </button>
       ) : (
@@ -352,10 +372,10 @@ export function StepChild({
                 key={l}
                 type="button"
                 onClick={() => toggleLang(l)}
-                className="px-3 py-1.5 rounded-xl text-xs font-bold transition"
+                className="min-h-11 px-3 py-1.5 rounded-xl text-xs font-bold transition"
                 style={
                   languages.includes(l)
-                    ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.40)" }
+                    ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid color-mix(in srgb, var(--arbor-green-ink) 40%, transparent)" }
                     : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }
                 }
               >
@@ -371,7 +391,7 @@ export function StepChild({
         className="space-y-2.5 rounded-2xl p-3.5 transition-shadow"
         style={{
           background: "var(--arbor-green-soft)",
-          border: missing === "consent" ? "1px solid var(--arbor-clay)" : "1px solid rgba(52,178,119,0.30)",
+          border: missing === "consent" ? "1px solid var(--arbor-clay)" : "1px solid color-mix(in srgb, var(--arbor-green-ink) 30%, transparent)",
           boxShadow: missing === "consent" ? "0 0 0 3px rgba(224,122,95,0.18)" : "none",
         }}
       >
@@ -465,7 +485,7 @@ export function StepDomains({
               className="flex items-start gap-3 px-4 py-3 rounded-2xl text-start transition active:scale-[0.99]"
               style={
                 on
-                  ? { background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.40)" }
+                  ? { background: "var(--arbor-green-soft)", border: "1px solid color-mix(in srgb, var(--arbor-green-ink) 40%, transparent)" }
                   : { background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }
               }
               aria-pressed={on}
@@ -654,7 +674,7 @@ function PromiseCard({ name }: { name: string }) {
     <div
       data-testid="onboarding-promise-card"
       className="rounded-2xl p-4 space-y-3"
-      style={{ background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.30)" }}
+      style={{ background: "var(--arbor-green-soft)", border: "1px solid color-mix(in srgb, var(--arbor-green-ink) 30%, transparent)" }}
     >
       <p className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>
         {p("elev.promise.eyebrow")}
@@ -679,7 +699,7 @@ function PromiseCard({ name }: { name: string }) {
       <p
         className="flex items-start gap-2 border-t pt-2.5 text-[11.5px] font-bold leading-snug"
         dir="auto"
-        style={{ borderColor: "rgba(52,178,119,0.25)", color: "var(--arbor-green-ink)" }}
+        style={{ borderColor: "color-mix(in srgb, var(--arbor-green-ink) 25%, transparent)", color: "var(--arbor-green-ink)" }}
       >
         <ShieldCheck className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" aria-hidden />
         <span className="min-w-0">{p("elev.promise.lock")}</span>
@@ -802,7 +822,8 @@ export function StepReady({
 export default function OnboardingFlow() {
   const { addChild, updateChild, profiles } = useProfile();
   const { toast } = useToast();
-  const { t, aiLang } = useLanguage();
+  const { t, aiLang, uiLang } = useLanguage();
+  const isRtl = uiLang === "he";
   // MOB-12: the "Relaunch onboarding demo" replay is a QA affordance, never a
   // parent-facing control — DEV builds or admin accounts only.
   const { entitlement } = useEntitlement();
@@ -1002,9 +1023,14 @@ export default function OnboardingFlow() {
       // Seed the coach if domains were picked.
       if (selectedDomains.length > 0) {
         const firstDomain = DOMAINS.find((d) => d.id === selectedDomains[0]);
-        const topDomain = firstDomain ? t(firstDomain.nameKey) : selectedDomains[0];
         setCoachSeed(
-          `${topDomain} is on my mind with ${name.trim()} (${ageString(totalAgeMonths)}). Where should I start?`,
+          buildOnboardingCoachSeed({
+            aiLang: aiLang === "he" ? "he" : "en",
+            domainNameKey: firstDomain ? firstDomain.nameKey : null,
+            domainFallback: selectedDomains[0],
+            name,
+            totalAgeMonths,
+          }),
         );
       }
 
@@ -1035,19 +1061,23 @@ export default function OnboardingFlow() {
             <button
               type="button"
               onClick={goBack}
-              className="rounded-lg transition flex items-center justify-center"
-              style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)", width: 36, height: 36 }}
+              // B-SHELL-07: 44×44 (touch-target) and the chevron points to the
+              // reading start — mirrored inline under RTL, as PracticeStudioTab
+              // does, because the rtl: variant is not emitted here.
+              className="touch-target rounded-lg transition flex items-center justify-center"
+              style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
               aria-label={t("ob.step.back")}
+              data-testid="onboarding-back"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-4 h-4" style={isRtl ? { transform: "scaleX(-1)" } : undefined} />
             </button>
           ) : (
-            <div style={{ width: 36 }} />
+            <div style={{ width: 44 }} />
           )}
           <div className="flex-1">
             <ProgressDots step={step} total={5} />
           </div>
-          <div style={{ width: 36 }} />
+          <div style={{ width: 44 }} />
         </div>
 
         {/* Step content with an entrance-only slide. Deliberately NO AnimatePresence

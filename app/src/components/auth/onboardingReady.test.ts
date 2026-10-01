@@ -175,3 +175,38 @@ describe("OBJ-ONB-01 · both ways out of step 3 ride the fold", () => {
     expect(flow).toContain('data-testid="onboarding-domains-footer"');
   });
 });
+
+describe("B-SHELL-07 — onboarding Hebrew and target fixes", () => {
+  it("the coach seed under aiLang=he has 0 Latin words except the child's name", async () => {
+    const { buildOnboardingCoachSeed } = await import("./OnboardingFlow");
+    const seed = buildOnboardingCoachSeed({ aiLang: "he", domainNameKey: null, domainFallback: "דיבור", name: "Noa", totalAgeMonths: 40 });
+    const latin = (seed.replace(/Noa/g, "").match(/[A-Za-z]+/g) ?? []);
+    expect(latin).toEqual([]);
+    expect(seed).toContain("Noa");
+    // EN keeps the English template with the localized age label.
+    const en = buildOnboardingCoachSeed({ aiLang: "en", domainNameKey: null, domainFallback: "Speech", name: "Noa", totalAgeMonths: 40 });
+    expect(en).toContain("Where should I start?");
+    expect(en).toContain("Noa");
+  });
+
+  it("the seed is the keyed template, never the old English literal", () => {
+    expect(flow).not.toContain("is on my mind with ${name.trim()}");
+    expect(flow).toContain("buildOnboardingCoachSeed({");
+  });
+
+  it("Back is 44×44 (touch-target) and its chevron mirrors under RTL", () => {
+    const back = flow.slice(flow.indexOf("onClick={goBack}"), flow.indexOf("</button>", flow.indexOf("onClick={goBack}")));
+    expect(back).toContain("touch-target");
+    expect(back).not.toMatch(/width: 36, height: 36/);
+    expect(back).toContain('<ChevronLeft className="w-4 h-4" style={isRtl ? { transform: "scaleX(-1)" } : undefined} />');
+  });
+
+  it("'Add languages' is a 44 px row and the language chips are min-h-11", () => {
+    expect(flow).toMatch(/onClick=\{\(\) => setShowLangs\(true\)\} className="inline-flex min-h-11/);
+    expect(flow).toContain('className="min-h-11 px-3 py-1.5 rounded-xl text-xs font-bold transition"');
+  });
+
+  it("0 rgba(52,178,119 literals in the file", () => {
+    expect(flow).not.toContain("rgba(52,178,119");
+  });
+});
