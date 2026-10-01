@@ -41,8 +41,9 @@ import FirstStepsRail, { useFirstStepsRail } from "../onboarding/FirstStepsRail"
 import LifecycleMomentCard from "../overview/LifecycleMomentCard";
 import { useLifecycleMoment } from "../overview/useLifecycleMoment";
 import WeekOpenAnchorCard from "../overview/WeekOpenAnchorCard";
-import { readWeekAnchorSeen, weekOpenAnchorDue } from "../overview/weekAnchor";
-import { recapWeekId } from "../../hooks/useWeeklyRecap";
+import { readWeekAnchorSeen, weekAnchorRecapDue, weekOpenAnchorDue } from "../overview/weekAnchor";
+import WeekAnchorCard from "../overview/WeekAnchorCard";
+import { recapWeekId, useWeeklyRecap } from "../../hooks/useWeeklyRecap";
 import { track } from "../../lib/analytics";
 
 const DAY = 86_400_000;
@@ -338,6 +339,19 @@ export default function OverviewTab() {
           }
     );
   }, [childProfile.id]);
+  // B-TODAY-08: Today's ONE useWeeklyRecap() mount (it used to live inside
+  // SinceLastVisit, which now reads it as a prop). The hook's module-level
+  // guard keeps it from double-generating with WeeklyTab. A written, unopened
+  // recap for this week is the Monday anchor (WeekAnchorCard → #/weekly).
+  const weeklyRecap = useWeeklyRecap();
+  const recapAnchorDue =
+    !weekOpen.dismissed &&
+    weekOpen.childId === childProfile.id &&
+    weekAnchorRecapDue({
+      weekId: weekOpen.weekId,
+      recapUnopened: !!weeklyRecap.currentReport && weeklyRecap.recapUnopened,
+      anchorSeenWeekId: weekOpen.seenWeekId,
+    });
   const weekOpenDue =
     !weekOpen.dismissed &&
     weekOpen.childId === childProfile.id &&
@@ -350,13 +364,14 @@ export default function OverviewTab() {
   const todayChoice = useMemo(
     () => chooseTodayAction({
       hasActiveAction: !!activeTodayAction,
+      hasWeekAnchorRecap: recapAnchorDue,
       hasWeekOpenAnchor: weekOpenDue,
       focusHeadline,
       focusPending: focusLoading && !focus && recentCount > 0,
       promptKeys,
       hasDailyPlay: !!dailyPlay,
     }),
-    [activeTodayAction, weekOpenDue, focusHeadline, focusLoading, focus, recentCount, promptKeys, dailyPlay]
+    [activeTodayAction, recapAnchorDue, weekOpenDue, focusHeadline, focusLoading, focus, recentCount, promptKeys, dailyPlay]
   );
   // KPI 0.8: % opens ending in an offered action (target 100%).
   useEffect(() => {
@@ -716,7 +731,12 @@ export default function OverviewTab() {
               week. It sits FIRST in this chain only because chooseTodayAction
               already ranked it below an accepted action — kind "weekOpen" is
               unreachable while one exists — so the loop still wins. */}
-          {todayChoice.kind === "weekOpen" ? (
+          {todayChoice.kind === "recap" ? (
+            <WeekAnchorCard
+              weekId={weekOpen.weekId}
+              onDismiss={() => setWeekOpen((prev) => ({ ...prev, dismissed: true }))}
+            />
+          ) : todayChoice.kind === "weekOpen" ? (
             <WeekOpenAnchorCard
               weekId={weekOpen.weekId}
               childId={childProfile.id}
@@ -884,6 +904,7 @@ export default function OverviewTab() {
           storyCount={memoryCounts.story}
           onRowTap={onSinceRowTap}
           onMore={() => setActiveTab("journal")}
+          recap={weeklyRecap}
         />
         </div>
       )}

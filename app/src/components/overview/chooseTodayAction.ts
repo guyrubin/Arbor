@@ -14,19 +14,15 @@
                   and the recap already exists and is firewall-clean. The
                   CALLER owns "the week has turned" (weekAnchorRecapDue) so
                   this stays a pure ranking function.
-     1b. weekOpen — ENG-24 as SHIPPED: the calendar week has turned and this
-                  device has not been offered the week's anchor yet. Says only
-                  what the calendar says and offers one capture, so it needs no
-                  recap signal and can be mounted with nothing but a date and a
-                  localStorage read (weekOpenAnchorDue). Ranks BELOW `recap`,
-                  which is the same ritual with a verified report behind it, and
-                  below an accepted action; above focus for the same reason
-                  `recap` is — a week boundary is the cheapest habit anchor
-                  there is, it appears once a week, and dismissing it falls
-                  straight through to the focus hero in the same frame.
      2. focus   — a real AI focus headline exists (or is still being fetched
                   for a child WITH data: `focusPending` keeps the hero+skeleton
                   so the slot never flickers prompt→focus mid-load).
+     2a. weekOpen — ENG-24 as SHIPPED: the calendar week has turned and this
+                  device has not been offered the week's anchor yet. Says only
+                  what the calendar says and offers one capture. B-TODAY-08:
+                  it ranks BELOW focus — a generic capture invitation must
+                  never displace a grounded step on Sunday–Tuesday first opens;
+                  it still outranks the prompt / play / capture floors.
      3. prompt  — no AI focus → the promptBank capture prompt of the day
                   ("What made her laugh today?") with a capture CTA.
      4. play    — no band prompts (defensively unreachable: bandForAge always
@@ -68,8 +64,8 @@ export function chooseTodayAction(input: {
 }): TodayActionChoice {
   if (input.hasActiveAction) return { kind: "loop" };
   if (input.hasWeekAnchorRecap) return { kind: "recap" };
-  if (input.hasWeekOpenAnchor) return { kind: "weekOpen" };
   if (input.focusHeadline || input.focusPending) return { kind: "focus" };
+  if (input.hasWeekOpenAnchor) return { kind: "weekOpen" };
   if (input.promptKeys.length > 0) return { kind: "prompt", promptKey: input.promptKeys[0] };
   if (input.hasDailyPlay) return { kind: "play" };
   return { kind: "capture" };

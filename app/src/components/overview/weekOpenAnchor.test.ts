@@ -305,12 +305,15 @@ describe("ENG-24 — where the week-open anchor sits in the one ranking function
     expect(chooseTodayAction({ ...BASE, hasWeekOpenAnchor: false }).kind).toBe("prompt");
   });
 
-  it("outranks the focus hero, the capture prompt, play and the capture floor", () => {
+  it("outranks the capture prompt, play and the capture floor", () => {
     expect(chooseTodayAction({ ...BASE, hasWeekOpenAnchor: true })).toEqual({ kind: "weekOpen" });
-    expect(chooseTodayAction({ ...BASE, focusHeadline: "One calm handoff", hasWeekOpenAnchor: true })).toEqual({ kind: "weekOpen" });
-    expect(chooseTodayAction({ ...BASE, focusPending: true, hasWeekOpenAnchor: true })).toEqual({ kind: "weekOpen" });
     expect(chooseTodayAction({ ...BASE, promptKeys: [], hasWeekOpenAnchor: true })).toEqual({ kind: "weekOpen" });
     expect(chooseTodayAction({ ...BASE, promptKeys: [], hasDailyPlay: false, hasWeekOpenAnchor: true })).toEqual({ kind: "weekOpen" });
+  });
+
+  it("B-TODAY-08: NEVER displaces a grounded step — focus (or a focus in flight) wins", () => {
+    expect(chooseTodayAction({ ...BASE, focusHeadline: "One calm handoff", hasWeekOpenAnchor: true })).toEqual({ kind: "focus" });
+    expect(chooseTodayAction({ ...BASE, focusPending: true, hasWeekOpenAnchor: true })).toEqual({ kind: "focus" });
   });
 
   it("NEVER outranks an accepted action, nor a VERIFIED recap", () => {
@@ -336,6 +339,7 @@ describe("ENG-24 — where the week-open anchor sits in the one ranking function
                 });
                 if (hasActiveAction) expect(choice.kind).toBe("loop");
                 else if (hasWeekAnchorRecap) expect(choice.kind).toBe("recap");
+                else if (focusHeadline) expect(choice.kind).toBe("focus");
                 else if (hasWeekOpenAnchor) expect(choice.kind).toBe("weekOpen");
                 else expect(choice.kind).not.toBe("weekOpen");
               }
@@ -366,19 +370,23 @@ describe("ENG-24 — Today mounts the honest anchor, and only the honest one", (
     expect(OVERVIEW).toContain("hasWeekOpenAnchor: weekOpenDue");
   });
 
-  it("buys NO recap subscription for it — Today's load is unchanged", () => {
-    // The whole reason this variant exists. `recapWeekId` is a pure date
-    // function; the hook itself must never be called here.
-    expect(OVERVIEW).not.toMatch(/useWeeklyRecap\(/);
-    expect(OVERVIEW).not.toMatch(/recapUnopened/);
+  it("B-TODAY-08: buys NO second recap subscription — the overview tree mounts useWeeklyRecap exactly once", () => {
+    // The subscription already existed (SinceLastVisit mounted it on Today);
+    // B-TODAY-08 hoisted it into OverviewTab and passes it down as a prop.
+    const since = stripComments(read("SinceLastVisit.tsx"));
+    const mounts = (OVERVIEW.match(/useWeeklyRecap\(/g) ?? []).length + (since.match(/useWeeklyRecap\(/g) ?? []).length;
+    expect(mounts).toBe(1);
+    expect(OVERVIEW).toMatch(/const weeklyRecap = useWeeklyRecap\(\);/);
+    expect(OVERVIEW).toContain("recap={weeklyRecap}");
     expect(OVERVIEW).not.toMatch(/useChildCollection\(/);
-    // NEGATIVE CONTROL: the shape this rule rejects.
+    // NEGATIVE CONTROL: the shape this rule counts.
     expect(/useWeeklyRecap\(/.test("const recap = useWeeklyRecap();")).toBe(true);
   });
 
-  it("the recap-CLAIMING card is still not mounted anywhere on Today", () => {
-    expect(OVERVIEW).not.toContain("<WeekAnchorCard");
-    expect(OVERVIEW).not.toContain("weekAnchorRecapDue(");
+  it("B-TODAY-08: the recap-claiming card mounts only for kind 'recap', from the verified signal", () => {
+    expect(OVERVIEW).toContain('todayChoice.kind === "recap" ? (\n            <WeekAnchorCard');
+    expect(OVERVIEW).toContain("weekAnchorRecapDue({");
+    expect(OVERVIEW).toContain("hasWeekAnchorRecap: recapAnchorDue");
   });
 
   it("the accepted-action loop still wins the slot ahead of it", () => {
@@ -387,8 +395,12 @@ describe("ENG-24 — Today mounts the honest anchor, and only the honest one", (
     // action, which the ranking suite above pins behaviourally.
     expect(OVERVIEW).toMatch(/todayChoice\.kind === "weekOpen" \?[\s\S]{0,600}?activeTodayAction \? \(\s*<TodayActionLoop/);
     const chain = stripComments(read("chooseTodayAction.ts"));
-    expect(chain.indexOf("input.hasActiveAction")).toBeLessThan(chain.indexOf("input.hasWeekOpenAnchor"));
-    expect(chain.indexOf("input.hasWeekAnchorRecap")).toBeLessThan(chain.indexOf("input.hasWeekOpenAnchor"));
+    // B-TODAY-08 chain order: loop → recap → focus → weekOpen → prompt → play → capture.
+    const at = (s: string) => chain.indexOf(s);
+    expect(at("input.hasActiveAction")).toBeLessThan(at("input.hasWeekAnchorRecap"));
+    expect(at("input.hasWeekAnchorRecap")).toBeLessThan(at("input.focusHeadline ||"));
+    expect(at("input.focusHeadline ||")).toBeLessThan(at("input.hasWeekOpenAnchor)"));
+    expect(at("input.hasWeekOpenAnchor)")).toBeLessThan(at("input.promptKeys.length"));
   });
 
   it("costs the Rule-A module budget nothing (it takes the anchor slot)", () => {

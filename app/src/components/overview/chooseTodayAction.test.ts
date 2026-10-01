@@ -125,3 +125,24 @@ describe("ENG-24 — the week's recap can be the day's anchor", () => {
     }
   });
 });
+
+describe("B-TODAY-08 — chain order loop > recap > focus > weekOpen", () => {
+  const B = { hasActiveAction: false, focusHeadline: null as string | null, focusPending: false, promptKeys: ["k"], hasDailyPlay: true };
+
+  it("focus > weekOpen: a grounded step is never displaced by the week-open invitation", () => {
+    expect(chooseTodayAction({ ...B, focusHeadline: "Do X", hasWeekOpenAnchor: true })).toEqual({ kind: "focus" });
+    expect(chooseTodayAction({ ...B, focusPending: true, hasWeekOpenAnchor: true })).toEqual({ kind: "focus" });
+  });
+
+  it("recap > focus: a written, unopened recap takes the slot once a week", () => {
+    expect(chooseTodayAction({ ...B, focusHeadline: "Do X", hasWeekAnchorRecap: true, hasWeekOpenAnchor: true })).toEqual({ kind: "recap" });
+  });
+
+  it("loop > recap", () => {
+    expect(chooseTodayAction({ ...B, hasActiveAction: true, hasWeekAnchorRecap: true })).toEqual({ kind: "loop" });
+  });
+
+  it("weekOpen still outranks the prompt floor when no focus exists", () => {
+    expect(chooseTodayAction({ ...B, hasWeekOpenAnchor: true })).toEqual({ kind: "weekOpen" });
+  });
+});

@@ -5,7 +5,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { track } from "../../lib/analytics";
 import { en as svEn, he as svHe } from "../../lib/i18nElevation/sincevisit";
 import { rcString } from "../weekly/recapStrings";
-import { useWeeklyRecap } from "../../hooks/useWeeklyRecap";
+import type { useWeeklyRecap } from "../../hooks/useWeeklyRecap";
 import { computeStreak } from "../../lib/streak";
 import { collectMomentTimestamps, type SinceVisitRow } from "./sinceVisitEvents";
 
@@ -85,6 +85,7 @@ export default function SinceLastVisit({
   storyCount,
   onRowTap,
   onMore,
+  recap,
 }: {
   rows: SinceVisitRow[];
   hiddenCount: number;
@@ -94,14 +95,15 @@ export default function SinceLastVisit({
   storyCount: number;
   onRowTap: (row: SinceVisitRow) => void;
   onMore: () => void;
+  /** B-TODAY-08: Today's ONE useWeeklyRecap() mount, passed down (the hook
+   *  used to be mounted here; OverviewTab now owns it for the anchor too). */
+  recap: ReturnType<typeof useWeeklyRecap>;
 }) {
   const { t, uiLang } = useLanguage();
   const { behaviorLogs, playLogs, childProfile, setActiveTab } = useArbor();
 
-  // W2 2.1: app-open recap mount — auto-generates this week's digest for
-  // returning parents (the hook's module-level guard keeps WeeklyTab and this
-  // mount from double-firing in one session).
-  const recap = useWeeklyRecap();
+  // W2 2.1: the app-open recap mount now lives in OverviewTab (B-TODAY-08);
+  // this strip reads the same hook result as a prop.
   const recapLine = !!recap.currentReport && recap.recapUnopened;
 
   const sv = (key: string, vars?: Record<string, string | number>): string => svString(t, uiLang, key, vars);

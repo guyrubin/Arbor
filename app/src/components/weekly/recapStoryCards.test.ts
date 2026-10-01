@@ -194,8 +194,11 @@ describe("RecapStoryCards — swipe affordance without a gesture lib", () => {
 describe("Since-strip integration — recap entry line + continuity counter", () => {
   const code = stripComments(read("components/overview/SinceLastVisit.tsx"));
 
-  it("mounts useWeeklyRecap (the app-open auto-generate mount)", () => {
-    expect(code).toContain("useWeeklyRecap()");
+  it("reads the app-open auto-generate mount, which Today owns since B-TODAY-08", () => {
+    // OverviewTab mounts useWeeklyRecap() once and passes it to the strip.
+    expect(stripComments(read("components/tabs/OverviewTab.tsx"))).toContain("useWeeklyRecap()");
+    expect(code).toContain("recap: ReturnType<typeof useWeeklyRecap>;");
+    expect(code).not.toContain("useWeeklyRecap()");
   });
 
   it("the unopened-recap entry line deep-links to the weekly recap", () => {
