@@ -69,8 +69,6 @@ export default function MilestonesTab() {
     handleGenerateMilestoneScaffold,
     isAnalyzingMilestones,
     milestoneAnalysisOfGaps,
-    setChatInput,
-    setSelectedLens,
     setActiveTab,
     seedCoach,
     childProfile,
@@ -639,12 +637,11 @@ export default function MilestonesTab() {
     );
   };
 
-  // Loop-2 affordance: turn a Map domain into a playful kid quest. Routes to the
-  // existing Daily Play activity library (which surfaces in the child's world),
-  // seeded with the domain context — no new write path or capability invented.
-  const assignActivity = (domId: string, domLabel: string) => {
-    setChatInput(`Suggest one playful, age-appropriate activity I can assign ${childProfile.name || "my child"} to gently support "${domLabel}". Keep it to a single quest they'd enjoy.`);
-    setSelectedLens("Vygotsky's Scaffolding");
+  // B-GROWTH-08: the honest destination. This used to seed an ENGLISH coach
+  // prompt and a lens, then navigate to Daily Play (not Ask), so the prompt sat
+  // unused — and the copy promised a quest in the child's world that was never
+  // written. It now opens Daily Play and nothing else.
+  const openPlayIdeas = () => {
     setActiveTab("daily-play");
   };
 
@@ -851,26 +848,21 @@ export default function MilestonesTab() {
 
                   {renderDomainChecklist(dom.id)}
 
-                  {/* Loop-2: assign a playful activity for this domain → kid quest. */}
+                  {/* B-GROWTH-08: opens Daily Play — the honest destination. No
+                      quest is written and no coach prompt is seeded. */}
                   <button
                     type="button"
-                    onClick={() => assignActivity(dom.id, dom.label)}
+                    data-testid="ms-play-ideas"
+                    onClick={openPlayIdeas}
                     className="w-full flex items-center gap-2.5 rounded-[13px] p-3 text-start transition"
-                    style={{ background: "var(--arbor-peach-soft)", border: "1px solid rgba(217,118,63,0.25)", minHeight: 44 }}
+                    style={{ background: "var(--arbor-paper)", border: "1px solid var(--arbor-rule)", minHeight: 44 }}
                   >
-                    <Icon name="sports_esports" size={18} style={{ color: "var(--arbor-peach-ink)" }} />
-                    <div className="flex-1">
-                      <div className="text-[13px] font-extrabold" style={{ color: "var(--arbor-peach-ink)" }}>{t("ms.assignActivity")}</div>
-                      <div className="text-[11px] leading-snug" style={{ color: "var(--arbor-muted)" }}>{t("ms.assignHint", { name: firstName || childProfile.name })}</div>
+                    <Icon name="sports_esports" size={18} style={{ color: "var(--arbor-ink-soft)" }} />
+                    <div className="flex-1 text-[13px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>
+                      {t("ms.playIdeas", { area: domainLabel(dom.id, dom.label) })}
                     </div>
-                    <ChevEnd className="w-4 h-4 flex-shrink-0" style={{ color: "var(--arbor-peach-ink)" }} />
+                    <ChevEnd className="w-4 h-4 flex-shrink-0" style={{ color: "var(--arbor-muted)" }} />
                   </button>
-
-                  {/* Connective-tissue hint: marking skills feeds Map/Academy/Care. */}
-                  <div className="flex items-start gap-2.5 rounded-[13px] p-3.5" style={{ background: "var(--arbor-sky-soft)" }}>
-                    <Icon name="sync" size={18} className="mt-0.5" style={{ color: "var(--arbor-sky-ink)" }} />
-                    <span className="text-[12px] leading-relaxed font-semibold" style={{ color: "var(--arbor-sky-ink)" }}>{t("ms.mapHint")}</span>
-                  </div>
                 </div>
               );
             })()

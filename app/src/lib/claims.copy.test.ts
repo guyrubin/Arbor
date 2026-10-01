@@ -219,3 +219,50 @@ describe("4 · Weekly's empty state offers the move instead of describing it", (
     expect(tab).toContain('t("wk.noReports")');
   });
 });
+
+/* B-GROWTH-08 — the Milestones domain CTA promised "it lands in {name}'s world
+   as a quest" (no quest is written) and the map hint said marking skills "feeds
+   the Map, Academy & Care Network". The CTA seeded an ENGLISH coach prompt and
+   then navigated to Daily Play, so the prompt sat unused. It now opens Daily
+   Play and nothing else. */
+describe("5 · Milestones promises no quest and no feed it does not write", () => {
+  const msEntries = (dict: Record<string, string>) => Object.entries(dict).filter(([k]) => k.startsWith("ms."));
+
+  it("no ms.* string claims a quest landing or a feed, in EN or HE", () => {
+    const offenders: string[] = [];
+    for (const [k, v] of msEntries(en)) {
+      if (/lands in/i.test(v) && /quest/i.test(v)) offenders.push(`en:${k}`);
+      if (/feeds the Map/i.test(v)) offenders.push(`en:${k}`);
+      if (/\bquest\b|Academy|Care Network/i.test(v)) offenders.push(`en:${k} → ${v}`);
+    }
+    for (const [k, v] of msEntries(he)) {
+      if (/משימה|משימת|האקדמיה|רשת הטיפול|מזין את המפה/.test(v)) offenders.push(`he:${k} → ${v}`);
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it("the retired keys are gone in both languages and the CTA resolves", () => {
+    for (const lang of LANGS) {
+      for (const key of ["ms.mapHint", "ms.assignHint", "ms.assignActivity"]) expect(translate(lang, key)).toBe(key);
+      const cta = translate(lang, "ms.playIdeas", { area: "X" });
+      expect(cta).not.toBe("ms.playIdeas");
+      expect(cta).toContain("X");
+    }
+  });
+
+  it("the CTA routes to daily-play and seeds no coach prompt or lens", () => {
+    const tab = read("components/tabs/MilestonesTab.tsx");
+    const fn = /const openPlayIdeas = \(\) => \{([\s\S]*?)\};/.exec(tab)?.[1] ?? "";
+    expect(fn).toContain('setActiveTab("daily-play")');
+    expect(tab).not.toContain("setChatInput");
+    expect(tab).not.toContain("setSelectedLens");
+    expect(tab).not.toMatch(/t\("ms\.(mapHint|assignHint|assignActivity)"/);
+    expect(tab).toContain('t("ms.playIdeas", { area: domainLabel(dom.id, dom.label) })');
+  });
+
+  it("NEGATIVE CONTROL — the pre-fix strings trip the scan", () => {
+    const pre = "Pick a playful activity for this area — it lands in {name}'s world as a quest.";
+    expect(/lands in/i.test(pre) && /quest/i.test(pre)).toBe(true);
+    expect(/feeds the Map/i.test("Mark each skill you've noticed — it feeds the Map, Academy & Care Network.")).toBe(true);
+  });
+});
