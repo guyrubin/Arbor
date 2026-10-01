@@ -80,6 +80,9 @@ export const en: Record<string, string> = {
   "elev.stories.catalogue.title": "Choose a different story",
   // B-PLAY-11: the one disclosure holding the pack filter + catalogue.
   "elev.stories.more": "More stories",
+  // B-PLAY-05: the Practice door's one "since last play" line (counts + titles).
+  "elev.practice.door.since": "Since the last play, {name}: {summary}",
+  "elev.practice.door.since.story": "finished “{title}”",
   "elev.stories.library.title": "Your library",
   "elev.stories.reader.back": "All journeys",
   "elev.stories.reader.immersive": "Immersive",
@@ -190,6 +193,8 @@ export const he: Record<string, string> = {
   "elev.stories.counts.stories": "{n} סיפורים שקראתם יחד",
   "elev.stories.catalogue.title": "בחירת סיפור אחר",
   "elev.stories.more": "סיפורים נוספים",
+  "elev.practice.door.since": "מאז המשחק האחרון, {name}: {summary}",
+  "elev.practice.door.since.story": "סיים/ה את „{title}”",
   "elev.stories.library.title": "הספרייה שלכם",
   "elev.stories.reader.back": "כל המסעות",
   "elev.stories.reader.immersive": "מסך מלא",

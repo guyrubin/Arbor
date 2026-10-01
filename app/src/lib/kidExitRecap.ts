@@ -77,7 +77,10 @@ type Translate = (key: string, vars?: Record<string, string | number>) => string
 export function kidExitRecapLine(
   counts: KidActivityCounts,
   t: Translate,
-  childName: string
+  childName: string,
+  /** B-PLAY-05: extra parent-register parts (finished story titles) and the
+   *  wrapper key; the exit strip passes neither and is unchanged. */
+  opts: { extraParts?: readonly string[]; stripKey?: string } = {},
 ): string | null {
   const parts: string[] = [];
   for (const kind of KID_ACTIVITY_KINDS) {
@@ -85,10 +88,42 @@ export function kidExitRecapLine(
     if (!n) continue;
     parts.push(t(`elev.childsignals.title.${kind}.${n === 1 ? "one" : "many"}`, { count: n }));
   }
+  for (const extra of opts.extraParts ?? []) if (extra.trim()) parts.push(extra);
   if (parts.length === 0) return null;
   const name = childName.trim() || t("elev.childsignals.prov.fallback");
-  return t("elev.learnCare.kidExit.strip", {
+  return t(opts.stripKey ?? "elev.learnCare.kidExit.strip", {
     name,
     summary: parts.join(t("elev.learnCare.kidExit.join")),
+  });
+}
+
+/** B-PLAY-05: the fallback window when no Kid Mode session is known (7 days). */
+export const SINCE_LAST_PLAY_FALLBACK_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * B-PLAY-05 — the Practice door's "since last play" line: the same counts as
+ * the exit strip since the latest Kid Mode session began, plus the titles of
+ * stories finished in that window (at most two, the parent's own record).
+ * null when nothing happened, so day 0 renders nothing. Counts only — no
+ * correctness, no score, no streak.
+ */
+export function sinceLastPlayLine(input: {
+  ledgers: KidActivityLedgers;
+  stories: ReadonlyArray<{ title: string; completedAt?: string | null }>;
+  sinceMs: number;
+  t: Translate;
+  childName: string;
+}): string | null {
+  const counts = countsSince(input.ledgers, input.sinceMs);
+  const titles = input.stories
+    .filter((s) => {
+      const ms = msOf(s.completedAt ?? null);
+      return ms != null && ms >= input.sinceMs && !!s.title?.trim();
+    })
+    .slice(0, 2)
+    .map((s) => input.t("elev.practice.door.since.story", { title: s.title.trim() }));
+  return kidExitRecapLine(counts, input.t, input.childName, {
+    extraParts: titles,
+    stripKey: "elev.practice.door.since",
   });
 }

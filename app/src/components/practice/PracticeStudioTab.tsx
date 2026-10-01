@@ -23,6 +23,11 @@ import { usePracticeData } from "../../practice/usePracticeData";
 import { STUDIO_WORLDS, studioCountKey, type StudioWorld } from "./studioWorlds";
 import { track } from "../../lib/analytics";
 import { requestOpenSettings } from "../layout/settingsBus";
+import { useChildCollection } from "../../hooks/useChildCollection";
+import { withChildSignals } from "../../lib/i18nElevation/childsignals";
+import { SINCE_LAST_PLAY_FALLBACK_MS, sinceLastPlayLine } from "../../lib/kidExitRecap";
+import { lastKidSessionStartedAt } from "../../lib/kidModeGate";
+import type { HeroJourneyRun } from "../../types";
 
 // B-PLAY-02: the world list and each tile's count + unit live in the pure
 // components/practice/studioWorlds module (fixture-testable without React).
@@ -34,6 +39,28 @@ export default function PracticeStudioTab() {
   const isRtl = uiLang === "he";
   const firstName = (childProfile.name || "").split(" ")[0];
   const data = usePracticeData(childProfile.id);
+  const heroRuns = useChildCollection<HeroJourneyRun>(childProfile.id, "heroRuns");
+
+  // B-PLAY-05: ONE "since last play" line inside the Kid Mode door (no new
+  // module): what the child did since the latest Kid Mode session began (7
+  // days when this tab has seen none) — the exit strip's counts plus finished
+  // story titles. Hidden when nothing happened.
+  const sinceLine = React.useMemo(() => {
+    const sinceMs = lastKidSessionStartedAt() ?? Date.now() - SINCE_LAST_PLAY_FALLBACK_MS;
+    return sinceLastPlayLine({
+      ledgers: {
+        speech: data.speech.items.map((x) => x.timestamp),
+        mimic: data.mimic.items.map((x) => x.timestamp),
+        mission: data.missions.items.map((x) => x.timestamp),
+        adventure: data.adventures.items.map((x) => x.timestamp),
+        practice: data.events.items.map((x) => x.timestamp),
+      },
+      stories: heroRuns.items,
+      sinceMs,
+      t: withChildSignals(t, uiLang === "he"),
+      childName: firstName,
+    });
+  }, [data.speech.items, data.mimic.items, data.missions.items, data.adventures.items, data.events.items, heroRuns.items, t, uiLang, firstName]);
 
   // KID-21: this session's parent area was reached by answering the math
   // question, and no PIN is set. Say so ONCE, here on the parent door next to
@@ -82,6 +109,11 @@ export default function PracticeStudioTab() {
             <p className="text-[12.5px]" style={{ color: "var(--arbor-ink-soft)" }}>
               {t("practice.studio.kidmode.sub")}
             </p>
+            {sinceLine && (
+              <p data-testid="practice-since-last-play" className="text-[12.5px] font-bold mt-1" style={{ color: "var(--arbor-ink)" }} dir="auto">
+                {sinceLine}
+              </p>
+            )}
             {/* KID-20 / RUN-04: the three reassurance chips are PARENT copy, so
                 they live here on the door — not in the child's first viewport. */}
             <ul aria-label={t("elev.practice.door.aria")} className="flex flex-wrap gap-1.5 mt-2 list-none p-0 m-0">

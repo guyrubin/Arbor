@@ -83,6 +83,21 @@ export interface KidSessionDeps {
 /** In-memory mirror, so a blocked sessionStorage still measures the session. */
 let kidSessionMemory: { at: number; n: number } | null = null;
 
+/** B-PLAY-05: the start of the most recent Kid Mode session that ENDED in this
+ *  tab. One number, in memory only (it dies with the tab, like the session). */
+let lastEndedSessionAt: number | null = null;
+
+/**
+ * B-PLAY-05 — when the latest Kid Mode session began: the open session's start
+ * (the session counter, KIDMODE_SESSION_SS_KEY) or, after the exit, the start
+ * of the session that just ended. null when this tab has seen none; the caller
+ * then picks its own window.
+ */
+export function lastKidSessionStartedAt(deps: KidSessionDeps = {}): number | null {
+  const open = readKidSession(deps);
+  return open ? open.at : lastEndedSessionAt;
+}
+
 function sessionStore(deps: KidSessionDeps): KidModeStorage | null {
   return deps.storage !== undefined ? deps.storage : defaultSessionStorage();
 }
@@ -221,6 +236,7 @@ export function setKidModeActive(next: boolean, deps: KidSessionDeps = {}): void
 /** Closes the measured session and emits it. Called only on a true→false flip. */
 function endKidSession(deps: KidSessionDeps): void {
   const session = readKidSession(deps);
+  if (session) lastEndedSessionAt = session.at;
   writeKidSession(null, deps);
   const now = deps.now ?? Date.now();
   // No stamp (storage blocked before the open, or a pre-N1-01 session still in

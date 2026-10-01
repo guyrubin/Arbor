@@ -334,3 +334,53 @@ describe("B-PLAY-02 · per-world count and unit", () => {
     expect(translate("en", "practice.studio.sessions")).toBe("practice.studio.sessions");
   });
 });
+
+describe("B-PLAY-05 — 'Since last play' line on the Practice door", () => {
+  const studio = readFileSync(path.join(here, "..", "components", "practice", "PracticeStudioTab.tsx"), "utf8");
+  const tEn = (key: string, vars?: Record<string, string | number>) => translate("en", key, vars);
+  const tHe = (key: string, vars?: Record<string, string | number>) => translate("he", key, vars);
+  const T0 = Date.parse("2026-10-01T16:00:00Z");
+  const after = (min: number) => new Date(T0 + min * 60_000).toISOString();
+
+  it("3 speech tries + 1 finished story read as ONE sentence with both (EN + HE)", async () => {
+    const { sinceLastPlayLine } = await import("./kidExitRecap");
+    const { withChildSignals } = await import("./i18nElevation/childsignals");
+    const input = {
+      ledgers: { speech: [after(1), after(2), after(3)] },
+      stories: [{ title: "Little David", completedAt: after(9) }],
+      sinceMs: T0,
+      childName: "Maya",
+    };
+    const en = sinceLastPlayLine({ ...input, t: withChildSignals(tEn, false) })!;
+    expect(en).toContain("Maya");
+    expect(en).toContain("3 speech practice rounds");
+    expect(en).toContain("Little David");
+    expect(en.split(/[.!?]\s/).length).toBe(1);
+    const he = sinceLastPlayLine({ ...input, t: withChildSignals(tHe, true) })!;
+    expect(he).toContain("Little David");
+    expect(he).toContain("3");
+    expect(he).not.toMatch(/speech|Since/);
+  });
+
+  it("day 0 (or nothing since the session began) renders nothing", async () => {
+    const { sinceLastPlayLine } = await import("./kidExitRecap");
+    expect(sinceLastPlayLine({ ledgers: {}, stories: [], sinceMs: T0, t: tEn, childName: "Maya" })).toBeNull();
+    expect(sinceLastPlayLine({ ledgers: { speech: [after(-5)] }, stories: [{ title: "Old", completedAt: after(-60) }], sinceMs: T0, t: tEn, childName: "Maya" })).toBeNull();
+  });
+
+  it("count-only keys: no score, %, streak or correctness in the new copy", () => {
+    for (const dict of [doorsEn, doorsHe]) {
+      for (const key of ["elev.practice.door.since", "elev.practice.door.since.story"]) {
+        expect(dict[key], key).toBeTruthy();
+        expect(dict[key]).not.toMatch(/%|score|streak|correct|right|wrong|ציון|רצף|נכון/i);
+      }
+    }
+  });
+
+  it("the line lives INSIDE the kid-mode door (no new module); the page still stamps 2", () => {
+    const door = studio.slice(studio.indexOf('data-module="practice-kidmode-door"'), studio.indexOf("</section>", studio.indexOf('data-module="practice-kidmode-door"')));
+    expect(door).toContain('data-testid="practice-since-last-play"');
+    expect((studio.match(/\bdata-module="/g) || []).length).toBe(2);
+    expect(studio).toContain("lastKidSessionStartedAt() ?? Date.now() - SINCE_LAST_PLAY_FALLBACK_MS");
+  });
+});
