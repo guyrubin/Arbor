@@ -26,7 +26,7 @@ export const en: Dict = {
   "nudge.log.body": "One quick note keeps the picture growing, and makes every tip sharper.",
   "nudge.log.cta": "Log a moment",
   "nudge.practice.headline": "A quick win for {name}",
-  "nudge.practice.body": "Two minutes of playful practice today keeps the momentum going.",
+  "nudge.practice.body": "Two minutes of play together, whenever it fits.",
   "nudge.practice.cta": "Practice & Play",
   // CI-08 — the ONE canonical non-diagnostic honesty line every developmental
   // surface inherits (clinical board, 2026-06-21). Never "clinically validated".
@@ -2390,7 +2390,7 @@ export const he: Dict = {
   "nudge.log.body": "פתק קצר אחד שומר על התמונה מתעדכנת, ומחדד כל טיפ.",
   "nudge.log.cta": "תיעדו רגע",
   "nudge.practice.headline": "ניצחון קטן ומהיר עבור {name}",
-  "nudge.practice.body": "שתי דקות של תרגול שובב היום שומרות על המומנטום.",
+  "nudge.practice.body": "שתי דקות של משחק ביחד, מתי שנוח לכם.",
   "nudge.practice.cta": "תרגול ומשחק",
   // CI-08 canonical honesty line (HE draft — flagged for native clinical review).
   "honesty.signal": "סימן לשיחה עם איש המקצוע שלך — לא אבחנה.",

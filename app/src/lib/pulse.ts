@@ -16,6 +16,7 @@ import { useLanguage } from "../context/LanguageContext";
 import { predictRhythm, hourLabel } from "../rhythm/predict";
 import type { UiLang } from "./i18n";
 import type { HubId } from "./surfaceContract";
+import { usePractice7d } from "../practice/practiceWeekCount";
 
 // HubId comes from surfaceContract's HUB_IDS — the ten Heartwood hub ids that
 // SC-1 asserts mirror navigation.ts SECTIONS exactly. usePulses() returns a
@@ -79,6 +80,8 @@ export function usePulses(): HubPulses {
     unreadCoachCount,
   } = useArbor();
   const { uiLang } = useLanguage();
+  // B-PLAY-04: kid-play rounds this week (practiceEvents, one subscription).
+  const practice7d = usePractice7d(childProfile.id);
 
   return useMemo<HubPulses>(() => {
     const nowMs = Date.now();
@@ -132,12 +135,15 @@ export function usePulses(): HubPulses {
         ? { key: "elev.pulse.growth.noticed", params: { count: noticed, total: milestones.length }, count: noticed }
         : { key: "elev.pulse.growth.empty" };
 
-    // ── Practice / Stories / Learn (Heartwood D2+D3 hubs): no per-hub state
-    //    in ArborContext yet (practice logs live in usePracticeData; course/
-    //    story progress is surface-local) — honest standing lines, like Care.
-    //    Learn inherits the former Academy line (the parent-learning half of
-    //    the D2 Academy split).
-    const practice: HubPulse = { key: "elev.pulse.practice.empty" };
+    // ── Practice (B-PLAY-04): the rounds the child played this week — the
+    //    return path reaching the More sheet. A count, never a verdict; the
+    //    standing line at zero. Stories / Learn: no per-hub state in
+    //    ArborContext yet (surface-local) — honest standing lines, like Care.
+    //    Learn inherits the former Academy line (the D2 Academy split).
+    const practice: HubPulse =
+      practice7d > 0
+        ? { key: pickCountKey("elev.pulse.practice.rounds", practice7d), params: { count: practice7d }, count: practice7d }
+        : { key: "elev.pulse.practice.empty" };
     const stories: HubPulse = { key: "elev.pulse.stories.empty", params: { name } };
     const learn: HubPulse = { key: "elev.pulse.learn.empty" };
 
@@ -172,5 +178,6 @@ export function usePulses(): HubPulses {
     conversations,
     unreadCoachCount,
     uiLang,
+    practice7d,
   ]);
 }

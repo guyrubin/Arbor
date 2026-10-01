@@ -40,6 +40,9 @@ export const en: Record<string, string> = {
   //    context yet; honest standing lines. Learn inherits the former Academy
   //    line: the parent-learning half of the D2 Academy split.)
   "elev.pulse.practice.empty": "Short, playful practice — a few minutes counts",
+  // B-PLAY-04: count-only (plural forms), never a streak or a score.
+  "elev.pulse.practice.rounds": "{count} rounds played this week",
+  "elev.pulse.practice.roundsOne": "1 round played this week",
   "elev.pulse.stories.empty": "Stories with {name} as the hero",
   "elev.pulse.learn.empty": "Short, practical guidance — ready when you are",
 
@@ -170,6 +173,8 @@ export const he: Record<string, string> = {
   "elev.pulse.growth.empty": "אבן הדרך הראשונה מחכה לכם",
 
   "elev.pulse.practice.empty": "תרגול משחקי קצר — גם כמה דקות שוות",
+  "elev.pulse.practice.rounds": "{count} סבבי משחק השבוע",
+  "elev.pulse.practice.roundsOne": "סבב משחק אחד השבוע",
   "elev.pulse.stories.empty": "סיפורים שבהם {name} הגיבור",
   "elev.pulse.learn.empty": "ידע קצר ומעשי — מוכן כשנוח לכם",
 
