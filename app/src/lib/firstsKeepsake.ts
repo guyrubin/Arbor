@@ -17,13 +17,18 @@
 
    WHERE IT LIVES, AND WHY
    ───────────────────────
-   Device-local, at `arbor.firstsKeepsakes.<childId>` — minted through
-   `childScopedKey`, so `clearChildLocalState` sweeps it the moment that child
-   is deleted (childLocalStateSweep.guard.test.ts covers the shape
-   automatically). Deliberately NOT a new Firestore sink: a new per-child
-   collection has to be registered in CHILD_SUBCOLLECTIONS or it silently
-   escapes both the GDPR export and the erase sweep, and that registry is not
-   this wave's to edit.
+   B-GROWTH-10 (Guy G9): the per-child subcollection `keepsakes` (doc id =
+   milestone id), read and written through `useChildCollection`, and
+   REGISTERED in CHILD_SUBCOLLECTIONS so the Art. 15/20 export carries
+   `collections.keepsakes` and both erase paths delete it. It used to be
+   device-local only (`arbor.firstsKeepsakes.<childId>`): the parent's notes
+   were missing from the GDPR export and vanished on a device switch while the
+   optional photo persisted in Storage.
+
+   That legacy key is now a MIGRATION SOURCE only: `migrateLocalKeepsakes`
+   reads it once, writes what the subcollection lacks (or holds an older copy
+   of), and deletes the key. It is still minted through `childScopedKey`, so
+   `clearChildLocalState` sweeps any copy a never-migrated device still holds.
 
    A PHOTO IS SWEPT WITH THE CHILD
    ───────────────────────────────
@@ -214,4 +219,71 @@ export function writeKeepsakes(childId: string, map: KeepsakeMap, given?: Storag
   } catch {
     /* quota / private window — the note stays on screen, nothing is lost silently */
   }
+}
+
+/* ── B-GROWTH-10 — the registered subcollection ─────────────────────────────
+   Doc id = milestone id; the doc carries the same fields as FirstKeepsake
+   (`noticedOn` is the keepsake's date). Pure helpers above are unchanged —
+   only persistence moved. */
+
+/** The per-child Firestore subcollection (registered in CHILD_SUBCOLLECTIONS). */
+export const KEEPSAKES_COLLECTION = "keepsakes";
+
+export type KeepsakeDoc = FirstKeepsake & { id: string };
+
+/** One keepsake as its subcollection document. */
+export const keepsakeDoc = (k: FirstKeepsake): KeepsakeDoc => ({ ...k, id: k.milestoneId });
+
+/** The subcollection's documents as the map the UI reads; invalid docs drop. */
+export function keepsakeMapFromDocs(docs: readonly unknown[]): KeepsakeMap {
+  const out: KeepsakeMap = {};
+  for (const d of docs) {
+    if (!isKeepsake(d)) continue;
+    const { id: _id, ...rest } = d as KeepsakeDoc;
+    void _id;
+    out[d.milestoneId] = rest as FirstKeepsake;
+  }
+  return out;
+}
+
+/** Which device-local keepsakes the subcollection needs: the ones it lacks,
+ *  and the ones it holds an OLDER copy of (by `updatedAt`). A newer remote
+ *  copy — written on another device after this one — always wins. */
+export function localKeepsakesToMigrate(local: KeepsakeMap, remote: KeepsakeMap): FirstKeepsake[] {
+  return Object.values(local).filter((k) => {
+    const r = remote[k.milestoneId];
+    return !r || (k.updatedAt || "") > (r.updatedAt || "");
+  });
+}
+
+/**
+ * One-time client migration from `arbor.firstsKeepsakes.<childId>`: read the
+ * local map ONCE, upsert what the subcollection needs, then delete the key.
+ * If any write rejects, the key stays and the next load retries — a note is
+ * never dropped on a failed write. Returns how many keepsakes were written.
+ */
+export async function migrateLocalKeepsakes(
+  childId: string,
+  remote: KeepsakeMap,
+  upsert: (doc: KeepsakeDoc) => Promise<void>,
+  given?: Storage | null,
+): Promise<number> {
+  const s = store(given);
+  if (!s || !childId) return 0;
+  const key = firstsKeepsakeKey(childId);
+  let raw: string | null;
+  try {
+    raw = s.getItem(key);
+  } catch {
+    return 0;
+  }
+  if (raw === null) return 0;
+  const todo = localKeepsakesToMigrate(parseKeepsakes(raw), remote);
+  await Promise.all(todo.map((k) => upsert(keepsakeDoc(k))));
+  try {
+    s.removeItem(key);
+  } catch {
+    /* the next load re-reads it; upserts are idempotent per milestone id */
+  }
+  return todo.length;
 }

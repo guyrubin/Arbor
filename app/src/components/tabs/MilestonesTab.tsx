@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useDialog } from "../../hooks/useDialog";
 import { motion, AnimatePresence } from "motion/react";
@@ -45,13 +45,15 @@ import { useMonitoring } from "../../hooks/useMonitoring";
 import { watchPointsSummary } from "../../lib/monitoring";
 import { HeroAvatar } from "../ui/HeroAvatar";
 // GP-31 — a first is a note and a date, not a boolean. The editor lives in
-// components/milestones; the record + its per-child, sweepable store live in
-// lib/firstsKeepsake (beside lib/firsts, which owns the CELEBRATION of a first).
+// components/milestones; the record's pure helpers live in lib/firstsKeepsake
+// (beside lib/firsts, which owns the CELEBRATION of a first).
+// B-GROWTH-10 — persistence is the registered `keepsakes` subcollection.
 import FirstKeepsakeSheet from "../milestones/FirstKeepsakeSheet";
 import {
-  readKeepsakes, removeKeepsake, upsertKeepsake, writeKeepsakes,
-  type KeepsakeDraft, type KeepsakeMap,
+  keepsakeDoc, keepsakeMapFromDocs, migrateLocalKeepsakes, upsertKeepsake,
+  type KeepsakeDoc, type KeepsakeDraft,
 } from "../../lib/firstsKeepsake";
+import { useChildCollection } from "../../hooks/useChildCollection";
 import framework from "../../framework.json";
 import { DevelopmentalDomainId, Milestone } from "../../types";
 
@@ -123,23 +125,36 @@ export default function MilestonesTab() {
 
   const { ref: dialogRef, requestClose, onBackdropClick } = useDialog({ open: Boolean(celebratingId), onClose: () => setCelebratingId(null) });
 
-  // GP-31 — the keepsakes this child's parent has written. Device-local at
-  // `arbor.firstsKeepsakes.<childId>`, so clearChildLocalState sweeps them
-  // with the child; re-seeded whenever the active child changes so one
-  // child's notes can never appear under a sibling's milestones.
-  const [keepsakes, setKeepsakes] = useState<KeepsakeMap>({});
+  // GP-31 / B-GROWTH-10 — the keepsakes this child's parent has written, in
+  // the registered `keepsakes` subcollection (doc id = milestone id): synced
+  // across devices, in the GDPR export, erased with the child. The
+  // collection is per child, so one child's notes never appear under a
+  // sibling's milestones.
+  const keepsakeCol = useChildCollection<KeepsakeDoc>(childProfile.id, "keepsakes");
+  const keepsakes = useMemo(() => keepsakeMapFromDocs(keepsakeCol.items), [keepsakeCol.items]);
   const [keepsakeFor, setKeepsakeFor] = useState<string | null>(null);
+  // One-time migration of the legacy device-local map
+  // (`arbor.firstsKeepsakes.<childId>`): once per child per mount, and never
+  // in the first commit after a child switch, when the collection still
+  // holds the PREVIOUS child's documents.
+  const keepsakeChildSeen = useRef(childProfile.id);
+  const keepsakeMigratedFor = useRef<string | null>(null);
   useEffect(() => {
-    setKeepsakes(readKeepsakes(childProfile.id));
-  }, [childProfile.id]);
-  const persistKeepsakes = (next: KeepsakeMap) => {
-    setKeepsakes(next);
-    writeKeepsakes(childProfile.id, next);
+    const switched = keepsakeChildSeen.current !== childProfile.id;
+    keepsakeChildSeen.current = childProfile.id;
+    if (switched || !keepsakeCol.loaded || keepsakeMigratedFor.current === childProfile.id) return;
+    keepsakeMigratedFor.current = childProfile.id;
+    migrateLocalKeepsakes(childProfile.id, keepsakes, keepsakeCol.upsert).catch(() => {
+      keepsakeMigratedFor.current = null; // the local key stays; the next load retries
+    });
+  }, [childProfile.id, keepsakeCol.loaded, keepsakeCol.items, keepsakeCol.upsert, keepsakes]);
+  const saveKeepsake = (draft: KeepsakeDraft) => {
+    const next = upsertKeepsake(keepsakes, draft, new Date().toISOString());
+    void keepsakeCol.upsert(keepsakeDoc(next[draft.milestoneId]));
   };
-  const saveKeepsake = (draft: KeepsakeDraft) =>
-    persistKeepsakes(upsertKeepsake(keepsakes, draft, new Date().toISOString()));
-  const dropKeepsake = (milestoneId: string) =>
-    persistKeepsakes(removeKeepsake(keepsakes, milestoneId));
+  const dropKeepsake = (milestoneId: string) => {
+    void keepsakeCol.remove(milestoneId);
+  };
   const openKeepsake = keepsakeFor ? milestones.find((m) => m.id === keepsakeFor) ?? null : null;
 
   /** One place decides what a mark does. Celebration fires ONLY on a fresh

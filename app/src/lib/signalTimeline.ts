@@ -14,6 +14,7 @@ import type {
   SpeechAttempt,
 } from "../types";
 import { isolate } from "./i18n";
+import type { FirstKeepsake } from "./firstsKeepsake";
 
 /**
  * The Signal Timeline — Arbor's unified developmental activity stream.
@@ -206,6 +207,13 @@ export const signalMeta = (s: TimelineSignal, t: TranslateFn): string | undefine
 export interface TimelineSources {
   behaviorLogs?: BehaviorLog[];
   milestones?: Milestone[];
+  /**
+   * B-GROWTH-10 — the parent's keepsake notes (`keepsakes` subcollection, doc
+   * id = milestone id). Folded INTO the noticed milestone's own kind
+   * "milestone" signal: the parent's note becomes its `detail` (and the
+   * optional photo its `photo`), so a first appears once, in the parent's words.
+   */
+  keepsakes?: FirstKeepsake[];
   plans?: ActionPlan[];
   memory?: MemoryReviewItem[];
   /**
@@ -262,6 +270,7 @@ export type SignalSource = keyof TimelineSources;
 const TIMELINE_SOURCE_ID_MAP: { [K in keyof Required<TimelineSources>]: true } = {
   behaviorLogs: true,
   milestones: true,
+  keepsakes: true,
   plans: true,
   memory: true,
   play: true,
@@ -372,8 +381,11 @@ export const buildTimeline = (sources: TimelineSources): TimelineSignal[] => {
     });
   }
 
+  const keepsakeBy = new Map((sources.keepsakes || []).map((k) => [k.milestoneId, k] as const));
   for (const m of sources.milestones || []) {
     if (!m.checked) continue;
+    // B-GROWTH-10: the parent's own words, when they kept a note on this first.
+    const kept = keepsakeBy.get(m.id);
     signals.push({
       id: `milestone-${m.id}`,
       kind: "milestone",
@@ -382,7 +394,8 @@ export const buildTimeline = (sources: TimelineSources): TimelineSignal[] => {
       // milestones still fall back to the "Ongoing" group.
       at: m.observationUpdatedAt || null,
       refTitle: m.title,
-      detail: m.description || "",
+      detail: kept?.note || m.description || "",
+      ...(kept?.photoUrl ? { photo: kept.photoUrl } : {}),
       tone: "lav",
       ageGroup: m.ageGroup,
     });

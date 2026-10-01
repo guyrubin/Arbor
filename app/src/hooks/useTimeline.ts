@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useArbor } from "../context/ArborContext";
 import { buildTimeline, type TimelineSignal } from "../lib/signalTimeline";
 import { useChildCollection } from "./useChildCollection";
+import type { KeepsakeDoc } from "../lib/firstsKeepsake";
 import type {
   AdventureResult,
   HeroJourneyRun,
@@ -63,6 +64,9 @@ export function useTimeline(): TimelineSignal[] {
   const heroRuns = useChildCollection<HeroJourneyRun>(childId, "heroRuns", {
     orderByField: "startedAt", orderDir: "desc", max: 100,
   });
+  // B-GROWTH-10 — the parent's keepsake notes (registered CHILD_SUBCOLLECTION),
+  // folded into the noticed milestone's own signal as its detail.
+  const keepsakes = useChildCollection<KeepsakeDoc>(childId, "keepsakes");
 
   return useMemo(
     () => buildTimeline({
@@ -78,11 +82,12 @@ export function useTimeline(): TimelineSignal[] {
       adventureResults: adventureResults.items,
       missionRecords: missionRecords.items,
       heroRuns: heroRuns.items,
+      keepsakes: keepsakes.items,
     }),
     [
       behaviorLogs, milestones, actionPlans, memoryReviewItems, playLogs, actionLoop,
       practiceEvents.items, speechAttempts.items, mimicSessions.items,
-      adventureResults.items, missionRecords.items, heroRuns.items,
+      adventureResults.items, missionRecords.items, heroRuns.items, keepsakes.items,
     ],
   );
 }

@@ -1,8 +1,18 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { CHILD_SUBCOLLECTIONS } from "./childData";
+import { CHILD_SUBCOLLECTIONS, exportChildData, eraseEverything } from "./childData";
+import type { ChildProfile } from "../types";
+
+// The export/erase calls below hit the server first; offline here, so the
+// client half (what this file guards) is what runs.
+vi.mock("./api", () => ({
+  api: {
+    privacyExport: async () => { throw new Error("offline"); },
+    privacyErase: async () => { throw new Error("offline"); },
+  },
+}));
 
 // Guard against the caps-reconcile COPPA/GDPR finding: a per-child
 // useChildCollection("name") sink that is NOT registered in
@@ -52,4 +62,45 @@ describe("child-data GDPR allow-list completeness", () => {
     // the assertion is unchanged.
     30_000,
   );
+});
+
+/* B-GROWTH-10 (Guy G9) — the parent's keepsake notes moved from a device-local
+   key into the `keepsakes` subcollection. Registered, they ride the Art. 15/20
+   export and the Art. 17 erase like every other per-child sink. */
+describe("B-GROWTH-10 — keepsakes export and erase with the child", () => {
+  const installStorage = () => {
+    const map = new Map<string, string>();
+    vi.stubGlobal("localStorage", {
+      get length() { return map.size; },
+      clear: () => map.clear(),
+      key: (i: number) => [...map.keys()][i] ?? null,
+      getItem: (k: string) => map.get(k) ?? null,
+      setItem: (k: string, v: string) => { map.set(k, String(v)); },
+      removeItem: (k: string) => { map.delete(k); },
+    } as Storage);
+    vi.stubGlobal("sessionStorage", { get length() { return 0; }, key: () => null, getItem: () => null, setItem: () => {}, removeItem: () => {}, clear: () => {} } as Storage);
+    return map;
+  };
+  const doc = { id: "ms-1", milestoneId: "ms-1", note: "three steps to me", noticedOn: "2026-09-20", createdAt: "t", updatedAt: "t" };
+
+  it("is registered", () => {
+    expect(CHILD_SUBCOLLECTIONS).toContain("keepsakes");
+  });
+
+  it("the export JSON carries collections.keepsakes", async () => {
+    const map = installStorage();
+    map.set("arbor.keepsakes.c1", JSON.stringify([doc]));
+    const out = await exportChildData(undefined, { id: "c1", name: "Noa" } as ChildProfile);
+    expect(out.collections.keepsakes).toEqual([doc]);
+  });
+
+  it("child erase removes it", async () => {
+    const map = installStorage();
+    map.set("arbor.keepsakes.c1", JSON.stringify([doc]));
+    map.set("arbor.keepsakes.c2", JSON.stringify([doc]));
+    const receipt = await eraseEverything(undefined, "c1");
+    expect(map.has("arbor.keepsakes.c1")).toBe(false);
+    expect(map.has("arbor.keepsakes.c2")).toBe(true); // a sibling's notes stay
+    expect(receipt.childId).toBe("c1");
+  });
 });

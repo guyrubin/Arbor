@@ -59,6 +59,10 @@ export const CHILD_SUBCOLLECTIONS = [
   // createdAt). Page-art data-URLs are never persisted (Firestore 1MB doc cap
   // + the localStorage-quota regression documented in lib/sceneCache.ts).
   "savedComics",
+  // B-GROWTH-10 (Guy G9): the parent's keepsake notes on a noticed milestone
+  // (doc id = milestone id). They were device-local and missing from the
+  // Art. 15/20 export; registered here they export and erase with the child.
+  "keepsakes",
 ];
 
 const remoteActive = (uid?: string) =>

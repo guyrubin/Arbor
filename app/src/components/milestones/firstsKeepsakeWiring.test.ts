@@ -3,6 +3,12 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { en as waveREn, he as waveRHe } from "../../lib/i18nElevation/waveR";
+import {
+  firstsKeepsakeKey, keepsakeMapFromDocs, localKeepsakesToMigrate, migrateLocalKeepsakes,
+  upsertKeepsake, writeKeepsakes, type KeepsakeDoc, type KeepsakeMap,
+} from "../../lib/firstsKeepsake";
+import { buildTimeline } from "../../lib/signalTimeline";
+import type { Milestone } from "../../types";
 
 /**
  * GP-31 — the keepsake is BUILT and WIRED, and its photo cannot escape the
@@ -61,11 +67,15 @@ describe("the keepsake is reachable from the milestone the parent just marked", 
     expect(tab).toMatch(/\{item\.checked && \(\s*<div className="pt-2">/);
   });
 
-  it("save and remove go through the pure helpers and this child's own store", () => {
+  it("save and remove go through the pure helpers and this child's registered subcollection (B-GROWTH-10)", () => {
+    expect(tab).toContain('useChildCollection<KeepsakeDoc>(childProfile.id, "keepsakes")');
     expect(tab).toContain("upsertKeepsake(keepsakes, draft");
-    expect(tab).toContain("removeKeepsake(keepsakes, milestoneId)");
-    expect(tab).toContain("writeKeepsakes(childProfile.id, next)");
-    expect(tab).toContain("readKeepsakes(childProfile.id)");
+    expect(tab).toContain("keepsakeCol.upsert(keepsakeDoc(next[draft.milestoneId]))");
+    expect(tab).toContain("keepsakeCol.remove(milestoneId)");
+    expect(tab).toContain("migrateLocalKeepsakes(childProfile.id, keepsakes, keepsakeCol.upsert)");
+    // NEGATIVE CONTROL: the device-local persistence is gone from the surface.
+    expect(tab).not.toContain("writeKeepsakes(");
+    expect(tab).not.toContain("readKeepsakes(");
   });
 
   it("the milestone record itself is never rewritten by a keepsake", () => {
@@ -165,5 +175,93 @@ describe("no inline copy — every string is an i18n key", () => {
       expect(waveRHe[key], `${key} missing from HE`).toBeTruthy();
       expect(waveRHe[key], `${key} was not translated`).not.toBe(waveREn[key]);
     }
+  });
+});
+
+/* ── B-GROWTH-10 — keepsakes live in a registered child subcollection ────── */
+
+const memStore = () => {
+  const map = new Map<string, string>();
+  const reads: string[] = [];
+  const s = {
+    get length() { return map.size; },
+    clear: () => map.clear(),
+    key: (i: number) => [...map.keys()][i] ?? null,
+    getItem: (k: string) => { reads.push(k); return map.get(k) ?? null; },
+    setItem: (k: string, v: string) => { map.set(k, String(v)); },
+    removeItem: (k: string) => { map.delete(k); },
+  } as Storage;
+  return { s, map, reads };
+};
+
+const KID = "kid-1";
+const DAY = "2026-09-20";
+const keep = (milestoneId: string, note: string, updatedAt: string): KeepsakeMap =>
+  upsertKeepsake({}, { milestoneId, note, noticedOn: DAY }, updatedAt);
+
+describe("B-GROWTH-10 — one-time migration of the device-local map", () => {
+  it("reads the local map once, writes every keepsake the subcollection lacks, then clears the key", async () => {
+    const { s, map, reads } = memStore();
+    writeKeepsakes(KID, { ...keep("ms-1", "three steps to me", "t1"), ...keep("ms-2", "first word: dog", "t1") }, s);
+    const written: KeepsakeDoc[] = [];
+    const n = await migrateLocalKeepsakes(KID, {}, async (d) => { written.push(d); }, s);
+    expect(n).toBe(2);
+    expect(written.map((d) => d.id).sort()).toEqual(["ms-1", "ms-2"]);
+    expect(written.every((d) => d.id === d.milestoneId)).toBe(true);
+    expect(map.has(firstsKeepsakeKey(KID))).toBe(false);
+    expect(reads.filter((k) => k === firstsKeepsakeKey(KID))).toHaveLength(1);
+    // a second load finds nothing to migrate and writes nothing
+    const again: KeepsakeDoc[] = [];
+    expect(await migrateLocalKeepsakes(KID, {}, async (d) => { again.push(d); }, s)).toBe(0);
+    expect(again).toEqual([]);
+  });
+
+  it("a NEWER remote copy (written on another device) wins; an older one is replaced", () => {
+    const local = { ...keep("ms-1", "local old", "2026-09-01T00:00:00Z"), ...keep("ms-2", "local new", "2026-09-10T00:00:00Z") };
+    const remote = { ...keep("ms-1", "remote newer", "2026-09-05T00:00:00Z"), ...keep("ms-2", "remote older", "2026-09-02T00:00:00Z") };
+    expect(localKeepsakesToMigrate(local, remote).map((k) => k.note)).toEqual(["local new"]);
+  });
+
+  it("a failed write keeps the local key so the next load retries — no note is dropped", async () => {
+    const { s, map } = memStore();
+    writeKeepsakes(KID, keep("ms-1", "kept", "t1"), s);
+    await expect(migrateLocalKeepsakes(KID, {}, async () => { throw new Error("offline"); }, s)).rejects.toThrow("offline");
+    expect(map.has(firstsKeepsakeKey(KID))).toBe(true);
+  });
+
+  it("the subcollection's docs read back as the map the UI renders; invalid docs drop", () => {
+    const doc: KeepsakeDoc = { id: "ms-1", ...keep("ms-1", "note", "t1")["ms-1"] };
+    const back = keepsakeMapFromDocs([doc, { id: "x", note: "" }, null]);
+    expect(Object.keys(back)).toEqual(["ms-1"]);
+    expect(back["ms-1"].note).toBe("note");
+    expect("id" in back["ms-1"]).toBe(false);
+  });
+
+  it("the migration runs once per child, never in the stale commit right after a child switch", () => {
+    const eff = /const keepsakeChildSeen = useRef[\s\S]*?\}, \[childProfile\.id, keepsakeCol\.loaded/.exec(tab)?.[0] ?? "";
+    expect(eff).toContain("if (switched || !keepsakeCol.loaded || keepsakeMigratedFor.current === childProfile.id) return;");
+    expect(eff).toContain("keepsakeMigratedFor.current = null;");
+  });
+});
+
+describe("B-GROWTH-10 — registered, exported, erased, and on the timeline", () => {
+  it("keepsakes is a registered CHILD_SUBCOLLECTION (export + both erase paths)", async () => {
+    const { CHILD_SUBCOLLECTIONS } = await import("../../lib/childData");
+    expect(CHILD_SUBCOLLECTIONS).toContain("keepsakes");
+    // the timeline reader uses the same literal sink name the guard scans for
+    expect(read("hooks/useTimeline.ts")).toContain('useChildCollection<KeepsakeDoc>(childId, "keepsakes")');
+  });
+
+  it("the timeline shows the noticed milestone with the parent's note", () => {
+    const m = { id: "ms-1", domain: "language_communication", ageGroup: "12 months", title: "Says a first word", description: "catalogue text", checked: true, observationUpdatedAt: "2026-09-20T09:00:00Z" } as Milestone;
+    const k = keep("ms-1", "She said dog at the window", "t1")["ms-1"];
+    const withNote = buildTimeline({ milestones: [m], keepsakes: [{ ...k, photoUrl: "https://x/p.jpg" }] }).find((s) => s.id === "milestone-ms-1");
+    expect(withNote?.kind).toBe("milestone");
+    expect(withNote?.detail).toBe("She said dog at the window");
+    expect(withNote?.photo).toBe("https://x/p.jpg");
+    // NEGATIVE CONTROL: without the keepsake source the row carries the catalogue text
+    expect(buildTimeline({ milestones: [m] }).find((s) => s.id === "milestone-ms-1")?.detail).toBe("catalogue text");
+    // one row per first — the keepsake never adds a second
+    expect(buildTimeline({ milestones: [m], keepsakes: [k] }).filter((s) => s.kind === "milestone")).toHaveLength(1);
   });
 });
