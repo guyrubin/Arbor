@@ -10,7 +10,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useCheckout } from "../../hooks/useCheckout";
 import { useNativePrices } from "../../hooks/useNativePrices";
 import { isNativePlatform, nativePlatform } from "../../lib/runtime";
-import { trackCheckoutStart, trackPaywallView } from "../../lib/kpiEvents";
+import { trackPaywallView } from "../../lib/kpiEvents";
 import type { PaidPlan } from "../../lib/pricing";
 import { fmtStoreCurrency } from "./PlanPrices";
 import { LegalLinks } from "./LegalLinks";
@@ -169,13 +169,9 @@ export default function PaywallModal() {
             the store answered with a price (loading line shown in its place). */}
         <button
           type="button"
-          onClick={() => {
-            // The launch, reported before the platform gate runs: a parent who
-            // reaches the store sheet and cancels is still a started checkout,
-            // and a funnel that drops them reads better than it performed.
-            trackCheckoutStart({ plan: selected, channel: isNativePlatform ? "native" : "web" });
-            void startCheckout(selected, cadence);
-          }}
+          // B-SHELL-12: checkout_start is reported inside useCheckout.startCheckout
+          // (before the platform gate), once per tap, for every surface.
+          onClick={() => void startCheckout(selected, cadence, "paywall")}
           disabled={busy || cta.disabled}
           aria-busy={cta.loading || busy}
           data-testid="paywall-cta"

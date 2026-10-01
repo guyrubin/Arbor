@@ -259,6 +259,10 @@ export type NudgeSuppressReason = (typeof NUDGE_SUPPRESS_REASONS)[number] | "no_
 export const CHECKOUT_CHANNELS = ["web", "native"] as const;
 export type CheckoutChannel = (typeof CHECKOUT_CHANNELS)[number];
 
+/** B-SHELL-12: the purchase surfaces that start a checkout (useCheckout reports). */
+export const CHECKOUT_SURFACES = ["paywall", "settings"] as const;
+export type CheckoutSurface = (typeof CHECKOUT_SURFACES)[number];
+
 /** The fail-closed axes of the digest send route (N1-07), plus success. */
 export const DIGEST_SEND_RESULTS = [
   "sent",
@@ -350,10 +354,12 @@ export function trackPaywallView(args: { plan: string; reason: string }): void {
 }
 
 /** Checkout was launched (N1-02). No amount, no currency, no customer id. */
-export function trackCheckoutStart(args: { plan: string; channel: string }): void {
+export function trackCheckoutStart(args: { plan: string; channel: string; surface?: string }): void {
   track(KpiEvent.CheckoutStart, {
     plan: shortId(args.plan),
     channel: oneOf(CHECKOUT_CHANNELS, args.channel),
+    // B-SHELL-12: which surface's tap started it (allow-listed id, never copy).
+    ...(args.surface !== undefined ? { surface: oneOf(CHECKOUT_SURFACES, args.surface) } : {}),
   });
 }
 

@@ -183,13 +183,34 @@ describe("N1-02 — the call sites are LIVE (source pins + pre-fix negative cont
     expect(modal).not.toContain(preFix);
   });
 
-  it("the CTA reports the launch before the platform gate runs", () => {
-    expect(modal).toContain("trackCheckoutStart({");
-    const cta = modal.slice(modal.indexOf("trackCheckoutStart({"));
-    expect(cta.indexOf("startCheckout(selected, cadence)")).toBeGreaterThan(0);
-    expect(modal).toMatch(/channel: isNativePlatform \? "native" : "web"/);
-    // NEGATIVE CONTROL — the pre-fix one-liner handler must be gone.
-    expect(modal).not.toContain("onClick={() => void startCheckout(selected, cadence)}");
+  it("B-SHELL-12: the launch is reported inside useCheckout, before the platform gate, for every surface", () => {
+    const hook = read("hooks/useCheckout.ts");
+    const start = hook.slice(hook.indexOf("const startCheckout = async"), hook.indexOf("const openPortal"));
+    expect(start).toContain('trackCheckoutStart({ plan, channel: isNativePlatform ? "native" : "web", surface });');
+    // Reported before the commerce gate and before performCheckout runs.
+    expect(start.indexOf("trackCheckoutStart(")).toBeLessThan(start.indexOf("commerceAllowed()"));
+    expect(start.indexOf("trackCheckoutStart(")).toBeLessThan(start.indexOf("performCheckout("));
+    // Exactly one emit per tap: the paywall no longer fires its own.
+    expect(modal).not.toContain("trackCheckoutStart(");
+    expect(modal).toContain('onClick={() => void startCheckout(selected, cadence, "paywall")}');
+  });
+
+  it("B-SHELL-12: Settings upgrades enter the funnel with surface 'settings'", () => {
+    const settings = read("components/layout/SettingsModal.tsx");
+    expect(settings).toContain('startCheckout("plus", cadence, "settings")');
+    expect(settings).toContain('startCheckout("family", cadence, "settings")');
+    // NEGATIVE CONTROL — the pre-fix silent calls are gone.
+    expect(settings).not.toMatch(/startCheckout\("(plus|family)", cadence\)/);
+  });
+
+  it("B-SHELL-12: the surface prop is an allow-listed id; no price or email reaches the event", () => {
+    trackSpy.mockClear();
+    trackCheckoutStart({ plan: "plus", channel: "web", surface: "settings" });
+    expect(calls("checkout_start")[0][1]).toEqual({ plan: "plus", channel: "web", surface: "settings" });
+    trackCheckoutStart({ plan: "plus", channel: "web", surface: "parent@example.com €12.99" });
+    const props = calls("checkout_start")[1][1] as Record<string, unknown>;
+    expect(props.surface).not.toContain("@");
+    expect(JSON.stringify(props)).not.toMatch(/12\.99|@/);
   });
 
   it("the transition guard is a plan comparison, not a status check alone", () => {

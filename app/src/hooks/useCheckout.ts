@@ -4,6 +4,7 @@ import { useLanguage } from "../context/LanguageContext";
 import { useArborOptional } from "../context/ArborContext";
 import { isNativePlatform } from "../lib/runtime";
 import { commerceAllowed } from "../components/kidmode/parentGate";
+import { trackCheckoutStart, type CheckoutSurface } from "../lib/kpiEvents";
 import {
   defaultDeps,
   performCheckout,
@@ -76,8 +77,13 @@ export function useCheckout() {
     if (fx.toastKey) toast(t(fx.toastKey), fx.tone);
   };
 
-  const startCheckout = async (plan: PaidPlan, cadence: Cadence) => {
+  const startCheckout = async (plan: PaidPlan, cadence: Cadence, surface: CheckoutSurface) => {
     if (busy) return;
+    // B-SHELL-12: ONE checkout_start per tap, from every purchase surface
+    // (Settings used to start checkout silently). Reported before the platform
+    // gate runs: a parent who reaches the store sheet and cancels is still a
+    // started checkout. Ids and enums only — no price, no email.
+    trackCheckoutStart({ plan, channel: isNativePlatform ? "native" : "web", surface });
     // STORE-3 age-hard gate: a session whose parent area was reached via the
     // kid-exit MATH question (no PIN on this device) cannot start a purchase.
     if (!commerceAllowed()) {

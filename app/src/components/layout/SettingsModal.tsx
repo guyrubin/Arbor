@@ -240,13 +240,13 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
                   labeled BEFORE any tap toward checkout. */}
               <div className="flex flex-wrap items-center gap-2 mt-2.5">
                 <span className="inline-flex items-center gap-1.5">
-                  <button onClick={() => void startCheckout("plus", cadence)} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 min-h-11 disabled:opacity-50" style={{ background: "var(--arbor-clay)", color: T.onAccent }}>
+                  <button onClick={() => void startCheckout("plus", cadence, "settings")} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 min-h-11 disabled:opacity-50" style={{ background: "var(--arbor-clay)", color: T.onAccent }}>
                     {t("set.plan.upgradePlus")}
                   </button>
                   <PlanBadge plan="plus" />
                 </span>
                 <span className="inline-flex items-center gap-1.5">
-                  <button onClick={() => void startCheckout("family", cadence)} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 min-h-11 disabled:opacity-50" style={{ background: "var(--arbor-clay-deep)", color: T.onAccent }}>
+                  <button onClick={() => void startCheckout("family", cadence, "settings")} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 min-h-11 disabled:opacity-50" style={{ background: "var(--arbor-clay-deep)", color: T.onAccent }}>
                     {t("set.plan.upgradeFamily")}
                   </button>
                   <PlanBadge plan="family" />
