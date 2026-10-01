@@ -88,3 +88,27 @@ describe("W0.3 firewall guard — Screening.tsx source is clean", () => {
     expect(src).toContain("i18nElevation/screeningcalm");
   });
 });
+
+/* B-GROWTH-18 — the check comes before the monitoring card: "Start the check"
+   sat at y≈1090 at 390 px under the monitoring module. Source order of the two
+   stamped modules is the guard (the rendered y is the validator's probe). */
+describe("B-GROWTH-18 — module order on #/screening", () => {
+  it("screening-check precedes screening-monitoring", () => {
+    const check = src.indexOf('data-module="screening-check"');
+    const monitoring = src.indexOf('data-module="screening-monitoring"');
+    expect(check).toBeGreaterThan(-1);
+    expect(monitoring).toBeGreaterThan(-1);
+    expect(check).toBeLessThan(monitoring);
+  });
+
+  it("the monitoring export button meets the 44 px floor", () => {
+    const at = src.indexOf("onClick={exportMonitoring}");
+    expect(at).toBeGreaterThan(-1);
+    expect(src.slice(at, at + 200)).toContain("min-h-11");
+  });
+
+  it("NEGATIVE CONTROL — the pre-fix order trips the order check", () => {
+    const pre = '<div data-module="screening-monitoring"></div><div data-module="screening-check"></div>';
+    expect(pre.indexOf('data-module="screening-check"')).toBeGreaterThan(pre.indexOf('data-module="screening-monitoring"'));
+  });
+});

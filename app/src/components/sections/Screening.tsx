@@ -102,6 +102,13 @@ export default function Screening() {
           marks a top-level sibling module (what moduleBudget counts);
           `data-primary-move` marks the ONE control that performs the move
           surfaceContract.ts declares for this route. */}
+      {/* B-GROWTH-18: the check comes FIRST — "Start the check" was below the
+          fold at 390 px under the monitoring card. The monitoring card is the
+          second module, unchanged. */}
+      <div data-module="screening-check" data-primary-move="complete-check" style={{ display: "contents" }}>
+        <ScreeningFlow />
+      </div>
+
       {/* Passive developmental-monitoring layer — surveillance, never a test or diagnosis. */}
       <div data-module="screening-monitoring" style={{ display: "contents" }}>
       <SectionCard
@@ -114,7 +121,7 @@ export default function Screening() {
           monitoring.elevated ? (
             <button
               onClick={exportMonitoring}
-              className="inline-flex items-center gap-2 font-bold text-xs rounded-xl px-3.5 py-2 bg-white"
+              className="inline-flex min-h-11 items-center gap-2 font-bold text-xs rounded-xl px-3.5 py-2 bg-white"
               style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}
             >
               <Icon name="description" size={14} /> {t("monitor.export")}
@@ -150,10 +157,6 @@ export default function Screening() {
           </div>
         )}
       </SectionCard>
-      </div>
-
-      <div data-module="screening-check" data-primary-move="complete-check" style={{ display: "contents" }}>
-        <ScreeningFlow />
       </div>
     </motion.div>
   );
