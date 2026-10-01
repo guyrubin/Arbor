@@ -204,3 +204,22 @@ describe("B-KID-06 · kid copy says what the door does", async () => {
     for (const s of HERO_STORIES) expect(s.titleHe, s.id).toMatch(/[֐-׿]/);
   });
 });
+
+describe("B-KID-06 · Word World never claims a Kid Mode seat", async () => {
+  const { STUDIO_WORLDS } = await import("../practice/studioWorlds");
+  const { en: baseEn, he: baseHe } = await import("../../lib/i18n");
+  it("a parent-only arcade world opens its parent tab and the label names that tab (EN + HE)", () => {
+    const arcade = read("../practice/HeroArcade.tsx");
+    const parentOnly = [...arcade.matchAll(/\{ id: "([a-z-]+)"[^\n]*parentOnly: true/g)].map((m) => m[1]);
+    expect(parentOnly).toEqual(["word-world"]);
+    for (const id of parentOnly) {
+      const w = STUDIO_WORLDS.find((x) => x.id === id)!;
+      expect(w.tab, id).toBe("language");
+      expect(w.tabNameKey, id).toBe("nav.tab.language");
+    }
+    expect(baseEn["practice.studio.openIn"]).toContain("{tab}");
+    expect(baseHe["practice.studio.openIn"]).toContain("{tab}");
+    expect(baseHe["nav.tab.language"]).toMatch(/[֐-׿]/);
+    expect(read("../practice/PracticeStudioTab.tsx")).toContain('t("practice.studio.openIn", { tab: t(world.tabNameKey) })');
+  });
+});

@@ -181,7 +181,9 @@ export default function PracticeStudioTab() {
                       style={world.tab && isRtl ? { transform: "scaleX(-1)" } : undefined}
                     />
                     {world.tab
-                      ? t("practice.studio.openDirect")
+                      ? world.tabNameKey
+                        ? t("practice.studio.openIn", { tab: t(world.tabNameKey) })
+                        : t("practice.studio.openDirect")
                       : t("practice.studio.openKidmode", { world: t(world.kidNameKey) })}
                   </span>
                 </span>

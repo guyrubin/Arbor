@@ -34,6 +34,10 @@ export interface StudioWorld {
   tone: keyof typeof PASTEL;
   /** Standalone parent-shell route, when one exists; else Kid Mode only. */
   tab?: ActiveTab;
+  /** B-KID-06: a world with no Kid Mode seat names the parent tab it opens.
+   *  Word World is parent-only in the arcade (HeroArcade `parentOnly`), so its
+   *  tile must never promise "In Kid Mode as …" for a world the child cannot see. */
+  tabNameKey?: string;
   unit: StudioCountUnit;
   count: (d: StudioCountSource) => number;
 }
@@ -47,7 +51,7 @@ const eventsOf = (d: StudioCountSource, pred: (kind: string) => boolean) =>
 
 export const STUDIO_WORLDS: StudioWorld[] = [
   { id: "speech", key: "speech", kidNameKey: "elev.practice.world.kid.speech", msIcon: "mic", tone: "sky", tab: "speech", unit: "tries", count: (d) => d.speech.items.length },
-  { id: "word-world", key: "words", kidNameKey: "elev.practice.world.kid.words", msIcon: "menu_book", tone: "sky", unit: "tries", count: (d) => eventsOf(d, (k) => k === "lang-strategy") },
+  { id: "word-world", key: "words", kidNameKey: "elev.practice.world.kid.words", msIcon: "menu_book", tone: "sky", tab: "language", tabNameKey: "nav.tab.language", unit: "tries", count: (d) => eventsOf(d, (k) => k === "lang-strategy") },
   { id: "feelings", key: "feelings", kidNameKey: "elev.practice.world.kid.feelings", msIcon: "favorite", tone: "pink", tab: "feelings", unit: "rounds", count: (d) => eventsOf(d, (k) => FEELINGS_KINDS.has(k)) },
   { id: "mimic", key: "mimic", kidNameKey: "elev.practice.world.kid.mimic", msIcon: "mood", tone: "coral", tab: "mimic", unit: "tries", count: (d) => d.mimic.items.length },
   { id: "adventures", key: "adventures", kidNameKey: "elev.practice.world.kid.adventures", msIcon: "map", tone: "yellow", tab: "adventures", unit: "stories", count: (d) => d.adventures.items.length },
