@@ -93,7 +93,7 @@ const GREEN_SOFT = "var(--arbor-green-soft)";
 const RULE = "var(--arbor-rule)";
 
 export default function SchoolBrief() {
-  const { childProfile, behaviorLogs, milestones, setActiveTab } = useArbor();
+  const { childProfile, behaviorLogs, milestones, setActiveTab, openPaywall } = useArbor();
   const { t, uiLang } = useLanguage();
   const { toast } = useToast();
   const reduceMotion = useReducedMotion();
@@ -207,7 +207,9 @@ export default function SchoolBrief() {
       // "Professional support" substring match never fired — request() puts
       // the server's `details` string in the message, which outranks `error`.
       if (err instanceof EscalationRequiredError) setEscalationBlocked(true);
-      else if (err instanceof PaywallError) toast(err.message, "info");
+      // B-CAREPRO-16: a Free parent gets the paywall sheet (its professional-
+      // reports body, in their language) — never the server's English message.
+      else if (err instanceof PaywallError) openPaywall(err.feature, err.plan);
       else toast(t("elev.learnCare.brief.buildFailed"), "error");
     } finally {
       setGenerating(false);
@@ -495,14 +497,14 @@ function EditableListSection({ icon, title, items, field, onUpdate, onAdd, onRem
             <input
               value={it}
               onChange={(e) => onUpdate(field, i, e.target.value)}
-              className="flex-1 text-[14px] leading-relaxed rounded-lg px-2.5 py-1.5 min-h-[40px] focus:outline-none focus:ring-2"
+              className="flex-1 text-[14px] leading-relaxed rounded-lg px-2.5 py-1.5 min-h-11 focus:outline-none focus:ring-2"
               style={{ color: INK, background: "var(--arbor-paper-sunk)", border: `1px solid ${RULE}` }}
             />
             <button
               type="button"
               onClick={() => onRemove(field, i)}
               aria-label={removeAria}
-              className="flex-shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-lg mt-0.5"
+              className="flex-shrink-0 inline-flex items-center justify-center min-h-11 min-w-11 rounded-lg"
               style={{ color: MUTED, border: `1px solid ${RULE}` }}
             >
               <Icon name="close" size={14} />
@@ -512,7 +514,7 @@ function EditableListSection({ icon, title, items, field, onUpdate, onAdd, onRem
         <button
           type="button"
           onClick={() => onAdd(field)}
-          className="inline-flex items-center gap-1.5 text-[13px] font-bold mt-1"
+          className="inline-flex items-center gap-1.5 text-[13px] font-bold mt-1 min-h-11"
           style={{ color: GREEN }}
         >
           <Icon name="add" size={14} /> {addItemLabel}

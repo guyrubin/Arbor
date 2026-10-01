@@ -30,6 +30,7 @@ const FILES = {
   findpro: "components/sections/FindProfessional.tsx",
   safety: "components/tabs/SafetyTab.tsx",
   consult: "components/sections/AskSpecialist.tsx",
+  brief: "components/sections/SchoolBrief.tsx",
 } as const;
 
 /** Anything that declares a 44 px floor, in any of the accepted forms. */
@@ -55,6 +56,12 @@ const CONTROLS: { id: string; file: keyof typeof FILES; near: string }[] = [
   { id: "LC-23 mark reviewed", file: "safety", near: "onClick={markReviewed}" },
   { id: "LC-23 forget a memory fact", file: "safety", near: 'handleMemoryDecision(item.memoryId, "deleted")' },
   { id: "LC-16 find a professional door", file: "consult", near: "rounded-[13px] min-h-11 transition hover:brightness-95" },
+  // B-CAREPRO-16 — the School Brief editor
+  { id: "B-CAREPRO-16 brief list-item input", file: "brief", near: "onChange={(e) => onUpdate(field, i, e.target.value)}" },
+  { id: "B-CAREPRO-16 brief remove item", file: "brief", near: "onClick={() => onRemove(field, i)}" },
+  { id: "B-CAREPRO-16 brief add item", file: "brief", near: "onClick={() => onAdd(field)}" },
+  { id: "B-CAREPRO-16 brief edit toggle", file: "brief", near: "onClick={() => setEditing((e) => !e)}" },
+  { id: "B-CAREPRO-16 brief review", file: "brief", near: "onClick={() => setReviewOpen(true)}" },
 ];
 
 /** The className/style of the element containing `near`. */
@@ -84,6 +91,8 @@ describe("touch floor · the sub-44 shapes stay out of these files", () => {
     ["safety", 'className="text-[10px] font-bold flex-shrink-0 disabled:opacity-50"'],
     ["reports", 'className="flex-shrink-0 inline-flex items-center gap-1 text-xs font-bold rounded-lg px-2.5 py-1.5 transition hover:brightness-95"'],
     ["consult", 'className="w-full text-center text-[12px] font-bold rounded-[13px] py-2.5 transition hover:brightness-95"'],
+    ["brief", "w-9 h-9"],
+    ["brief", "min-h-[40px]"],
   ];
 
   for (const [file, shape] of RETIRED) {

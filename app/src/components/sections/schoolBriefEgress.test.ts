@@ -279,3 +279,34 @@ describe("B-CAREPRO-01 · a blocked School Brief generate opens the escalation c
     expect(card![0]).toContain("elev.learnCare.brief.escalation.blocked");
   });
 });
+
+/* B-CAREPRO-16 — a Free parent's generate answers 402 (requirePlusFeature
+ * "professionalReports"); the brief used to toast the server's English
+ * "Upgrade to Arbor Plus to use professional reports." with no paywall. */
+import { PaywallError } from "../../lib/api";
+
+describe("B-CAREPRO-16 · a Free parent gets the paywall sheet, not an English toast", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const payload = { childProfile: {} as any, logs: [], milestones: [], audience: "teacher" };
+
+  it("402 reaches the caller as PaywallError carrying the professionalReports feature", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({
+      ok: false,
+      status: 402,
+      headers: { get: () => null },
+      json: async () => ({ error: "Upgrade required", details: "Upgrade to Arbor Plus to use professional reports.", upgrade: { feature: "professionalReports", plan: "plus" } }),
+    })));
+    const err = await api.generateBrief(payload).catch((e) => e);
+    expect(err).toBeInstanceOf(PaywallError);
+    expect(err.feature).toBe("professionalReports");
+  });
+
+  it("the PaywallError branch opens the paywall with the error's feature and plan; no toast of err.message", () => {
+    const catchBlock = /\} catch \(err: any\) \{([\s\S]*?)\} finally \{/.exec(brief);
+    expect(catchBlock).toBeTruthy();
+    expect(catchBlock![1]).toContain("else if (err instanceof PaywallError) openPaywall(err.feature, err.plan);");
+    expect(brief).not.toMatch(/toast\(err\.message/);
+    // NEGATIVE CONTROL: the pre-change branch is caught by the same rule.
+    expect(/toast\(err\.message/.test('else if (err instanceof PaywallError) toast(err.message, "info");')).toBe(true);
+  });
+});
