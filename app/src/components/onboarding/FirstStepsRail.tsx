@@ -11,8 +11,11 @@
  * the ≤5 budget via `useFirstStepsRail()` below, so it can never displace the
  * primary action again.
  *
- * Steps: create the hero avatar → meet the coach → capture a moment → create
- * the first comic. Each step deep-links via setActiveTab; completion is
+ * Steps (B-TODAY-07): capture a moment → meet the coach → create the hero
+ * avatar → create the first comic. The capture step opens the same one-field
+ * moment sheet as Today's capture bar, IN PLACE (the `onCapture` prop — the
+ * route stays #/overview), never the Behaviors incident form; every other
+ * step deep-links via setActiveTab; completion is
  * auto-detected from existing state where cheap (hero avatar, conversations,
  * logs) and on-click otherwise (comic). State lives in the shared journey
  * store (lib/onboardingJourney, IA W6.1 — the one localStorage owner; the wow
@@ -49,13 +52,14 @@ type StepId = "avatar" | "coach" | "capture" | "comic";
 const STEPS: ReadonlyArray<{
   id: StepId;
   labelKey: string;
-  tab: ActiveTab;
+  /** null = the step opens in place through `onCapture` (no hub switch). */
+  tab: ActiveTab | null;
   tone: PastelKey;
   Glyph: typeof Sparkles;
 }> = [
-  { id: "avatar", labelKey: "elev.rail.step.avatar", tab: "profile", tone: "mint", Glyph: Sparkles },
+  { id: "capture", labelKey: "elev.rail.step.capture", tab: null, tone: "sky", Glyph: Camera },
   { id: "coach", labelKey: "elev.rail.step.coach", tab: "coach", tone: "lav", Glyph: MessageCircle },
-  { id: "capture", labelKey: "elev.rail.step.capture", tab: "behaviors", tone: "sky", Glyph: Camera },
+  { id: "avatar", labelKey: "elev.rail.step.avatar", tab: "profile", tone: "mint", Glyph: Sparkles },
   { id: "comic", labelKey: "elev.rail.step.comic", tab: "comics", tone: "pink", Glyph: BookOpen },
 ];
 
@@ -115,7 +119,7 @@ export function useFirstStepsRail(): FirstStepsRailState {
   };
 }
 
-export function FirstStepsRail() {
+export function FirstStepsRail({ onCapture }: { onCapture: () => void }) {
   const { setActiveTab } = useArbor();
   const { t } = useLanguage();
   const { visible, done, doneCount, name } = useFirstStepsRail();
@@ -133,13 +137,16 @@ export function FirstStepsRail() {
   }, []);
 
   const openStep = useCallback(
-    (id: StepId, tab: ActiveTab) => {
+    (id: StepId, tab: ActiveTab | null) => {
       // Click-completion for steps with no cheap state signal (coach doubles
       // up with auto-detection; comic is click-only).
       if (id === "coach" || id === "comic") setRailClicked(id);
-      setActiveTab(tab);
+      // B-TODAY-07: capture opens the moment sheet on Today (done-detection
+      // is unchanged: the saved moment flips it).
+      if (tab === null) onCapture();
+      else setActiveTab(tab);
     },
-    [setActiveTab]
+    [setActiveTab, onCapture]
   );
 
   if (!visible) return null;

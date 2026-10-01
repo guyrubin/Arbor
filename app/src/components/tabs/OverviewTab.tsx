@@ -891,7 +891,7 @@ export default function OverviewTab() {
       {/* ── E11 first-steps rail — a Today module now, not Shell chrome. It is
              the day-0 start path, so it renders in every state where it still
              has steps left, but it can never outrank the day's action again. ── */}
-      {modulePlan.visible.has("rail") && <div data-module="today-rail" style={{ display: "contents" }}><FirstStepsRail /></div>}
+      {modulePlan.visible.has("rail") && <div data-module="today-rail" style={{ display: "contents" }}><FirstStepsRail onCapture={() => { setQuickLogMode("text"); setQuickLogOpen(true); }} /></div>}
 
       {/* ── "Arbor Noticed" (DUX-011) — the single highest watch signal from the
              child's own logged data, below the anchor row. Renders NOTHING with
