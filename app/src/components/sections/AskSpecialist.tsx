@@ -23,8 +23,7 @@ import type { PastelKey } from "../ui/kit";
 import type { Professional } from "../../services/professionals";
 import { ARBOR_PROFESSIONALS } from "../../services/professionals";
 import { authHeaders } from "../../lib/api";
-import { REPORTS, useReportExport } from "./Reports";
-import { isProfessionalReportType } from "../../lib/reportExport";
+import { CONSULT_MENU_REPORTS, useReportExport } from "./Reports";
 // LC-20 + LC-12: the reason for the visit, the questions prepared in
 // Appointments, and the discipline-specific evidence each preset reads.
 import { useChildCollection } from "../../hooks/useChildCollection";
@@ -72,15 +71,6 @@ const readStoredAudience = (): ExportAudience => {
 };
 
 type ExportBuild = { text: string; error: null } | { text: null; error: string };
-
-/** B-CAREPRO-02: the Consult PDF menu lists ONLY the professional preset
- *  documents — the ones built through `presetPacketToPrintSections`, which
- *  honours the parent's include-toggles (excludedIds) and re-runs the
- *  clinician ceiling. The five parent-record documents (weekly, snapshot,
- *  behavior, language, growth) build through `buildReport`, which never reads
- *  the redaction the parent just approved — they stay on #/reports. The
- *  teacher document lives in the School Brief (LC-11), so it is not listed. */
-const CONSULT_MENU_REPORTS = REPORTS.filter((r) => isProfessionalReportType(r.type) && r.type !== "teacher");
 
 export default function AskSpecialist() {
   const { childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems, setActiveTab, pendingConsultNote, consumeConsultPrefill } = useArbor();

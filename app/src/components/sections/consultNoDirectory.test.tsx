@@ -45,7 +45,7 @@ vi.mock("./Reports", async () => {
   const REPORTS = [
     { title: "Therapist Summary", desc: "", titleKey: "elev.reports.therapist.title", descKey: "", tone: "lav", type: "therapist" },
   ];
-  return { REPORTS, useReportExport: () => vi.fn() };
+  return { REPORTS, CONSULT_MENU_REPORTS: REPORTS, useReportExport: () => vi.fn() };
 });
 
 import AskSpecialist from "./AskSpecialist";

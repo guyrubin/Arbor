@@ -29,6 +29,15 @@ export const REPORTS: { title: string; desc: string; titleKey: string; descKey: 
   { title: "Growth Plan Progress", desc: "Plan steps completed and what's next.", titleKey: "elev.reports.growth.title", descKey: "elev.reports.growth.desc", tone: "mint", type: "growth" },
 ];
 
+/** B-CAREPRO-02: the Consult PDF menu lists ONLY the professional preset
+ *  documents — the ones this seam builds through `presetPacketToPrintSections`,
+ *  which honours the parent's include-toggles (excludedIds) and re-runs the
+ *  clinician ceiling. The five parent-record documents (weekly, snapshot,
+ *  behavior, language, growth) build through `buildReport`, which never reads
+ *  the redaction the parent just approved — they stay on #/reports. The
+ *  teacher document lives in the School Brief (LC-11), so it is not listed. */
+export const CONSULT_MENU_REPORTS = REPORTS.filter((r) => isProfessionalReportType(r.type) && r.type !== "teacher");
+
 /** Single clinical-PDF export seam: build a report doc from real child state and
  *  open it as a printable tab. b3's Consult menu and this page share this hook —
  *  no second export engine is introduced.

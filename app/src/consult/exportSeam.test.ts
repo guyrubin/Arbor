@@ -71,7 +71,7 @@ import { buildPresetPacket, presetPacketToPrintSections, type BuildPacketInput, 
 const ALL_REPORT_TYPES: ReportType[] = [
   "weekly", "teacher", "therapist", "pediatrician", "slp", "behavioral_health", "snapshot", "behavior", "language", "growth",
 ];
-/** The same predicate AskSpecialist applies to REPORTS (asserted below). */
+/** The same predicate Reports.tsx applies for the Consult menu (asserted below). */
 const consultMenuTypes = ALL_REPORT_TYPES.filter((t) => isProfessionalReportType(t) && t !== "teacher") as ConsultAudience[];
 
 const FIXTURE: BuildPacketInput = {
@@ -87,9 +87,11 @@ describe("B-CAREPRO-02 — every Consult menu type honours excludedIds", () => {
   const ask = readFileSync(path.join(COMPONENTS, "sections", "AskSpecialist.tsx"), "utf8").replace(/\r\n/g, "\n");
 
   it("the menu is the professional-preset subset, keyed (EN + HE), never the full REPORTS list", () => {
-    expect(ask).toContain(
-      'const CONSULT_MENU_REPORTS = REPORTS.filter((r) => isProfessionalReportType(r.type) && r.type !== "teacher");'
+    const seam = readFileSync(path.join(COMPONENTS, "sections", "Reports.tsx"), "utf8");
+    expect(seam).toContain(
+      'export const CONSULT_MENU_REPORTS = REPORTS.filter((r) => isProfessionalReportType(r.type) && r.type !== "teacher");'
     );
+    expect(ask).toMatch(/import \{ CONSULT_MENU_REPORTS, useReportExport \} from "\.\/Reports";/);
     expect(ask).toContain("{CONSULT_MENU_REPORTS.map((r, idx) => (");
     expect(ask).not.toMatch(/\{REPORTS\.map\(/);
     // the item label is the translated key, not the English literal
