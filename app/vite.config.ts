@@ -2,10 +2,16 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import { defineConfig } from "vite";
+import { formatBuildVersion } from "./src/lib/buildVersion";
 
 export default defineConfig(() => {
   return {
     base: "./",
+    // B-INF-05: the hosting build runs with GITHUB_SHA set; About shows its
+    // 7-char form. Without a SHA (local dev) the About row says "dev".
+    define: {
+      __APP_VERSION__: JSON.stringify(formatBuildVersion(process.env.GITHUB_SHA)),
+    },
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {

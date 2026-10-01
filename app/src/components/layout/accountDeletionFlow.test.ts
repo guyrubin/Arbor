@@ -172,8 +172,8 @@ function settings(source = settingsSource) {
     "../../lib/theme": { ACCENT_THEMES: ["green", "teal", "blue"], getSavedTheme: () => "green", setTheme: vi.fn() },
     "../../lib/formatDate": { fmtDay: () => "" },
     "../../lib/i18n": { translate: (_lang: string, key: string) => key },
-    // MOB-20: the About row reads the declared version from the app manifest.
-    "../../../metadata.json": { default: { name: "Arbor", version: "0.0.0" }, __esModule: true },
+    // MOB-20 / B-INF-05: the About row reads the stamped build identity.
+    "../../lib/buildVersion": { APP_BUILD: "dev" },
   };
   const r = renderer(source, imports);
   const onClose = vi.fn();

@@ -129,11 +129,10 @@ describe("CR-21 · the sidebar wordmark is not a page heading", () => {
 });
 
 describe("MOB-20 · Settings says which Arbor this is, and how to reach one", () => {
-  it("the About row reads the declared version from the app manifest", () => {
-    expect(SETTINGS).toContain('import metadata from "../../../metadata.json";');
-    expect(SETTINGS).toContain("{ version: metadata.version }");
-    const manifest = JSON.parse(readRoot("metadata.json")) as { version?: string };
-    expect(manifest.version, "metadata.json declares no version").toBeTruthy();
+  it("the About row reads the stamped build (B-INF-05), not the manifest's 0.0.0", () => {
+    expect(SETTINGS).toContain('import { APP_BUILD } from "../../lib/buildVersion";');
+    expect(SETTINGS).toContain("{ version: APP_BUILD }");
+    expect(SETTINGS).not.toContain("metadata.version");
   });
 
   it("the support link is the address the app already gives, not a new one", () => {
