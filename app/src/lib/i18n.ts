@@ -401,7 +401,7 @@ export const en: Dict = {
   // top bar
   "top.caringFor": "Caring for",
   "top.age": "Age",
-  "top.focus": "Focus",
+  "top.focus": "Working on",
   "top.search": "Search",
   "top.howHelps": "How Arbor helps",
   // error / retry states (m5)
@@ -2740,7 +2740,7 @@ export const he: Dict = {
   // top bar
   "top.caringFor": "מטפלים ב־",
   "top.age": "גיל",
-  "top.focus": "מיקוד",
+  "top.focus": "עובדים על",
   "top.search": "חיפוש",
   "top.howHelps": "איך ארבור עוזר",
   "err.retry": "נסו שוב",

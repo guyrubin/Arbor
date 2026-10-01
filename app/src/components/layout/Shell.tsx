@@ -21,6 +21,8 @@ import { TabSkeleton } from "../ui/Skeleton";
 import SearchModal, { SEARCH_OPEN_EVENT, requestOpenSearch, type SearchOpenSurface } from "../search/SearchModal";
 import { track } from "../../lib/analytics";
 import SettingsModal from "./SettingsModal";
+import ProfileEditDrawer from "../profile/ProfileEditDrawer";
+import { usePulses } from "../../lib/pulse";
 import PaywallModal from "../billing/PaywallModal";
 import { refreshEntitlement, takeBillingReturn, startBillingReturnPoll, BILLING_PENDING_KEY } from "../../hooks/useEntitlement";
 import { selectionHaptic } from "../../lib/native";
@@ -214,6 +216,15 @@ export default function Shell() {
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // B-SHELL-19: the strip's "Working on:" label opens the profile editor
+  // (it is challenges[0] — parent-chosen and editable).
+  const [profileEditOpen, setProfileEditOpen] = useState(false);
+  // B-SHELL-19: below lg the hub one-liner is the hub's LIVE count when its
+  // pulse carries one (count-only, never a denominator), else the standing
+  // nav.sub.<hub> sentence.
+  const pulses = usePulses();
+  const countedPulse = pulses[section.id];
+  const hubPulse = countedPulse && typeof countedPulse.count === "number" && countedPulse.count > 0 ? countedPulse : null;
   // F-02: <main> is the desktop scrollport (overflow-y-auto below), so a tab
   // switch kept the previous tab's scroll offset and showed the new tab
   // mid-page (plus a ghost frame of clipped old content during the exit).
@@ -368,7 +379,7 @@ export default function Shell() {
                   and on the Profile hub, so nothing is lost on a phone. */}
               <span className="hidden sm:inline truncate text-xs font-medium min-w-0" style={{ color: "var(--arbor-muted)" }}>
                 {ageLabel(childProfile, t)}
-                {focusLabel && <> · {t("top.focus")}: <strong style={{ color: "var(--arbor-clay-deep)" }}>{focusLabel}</strong></>}
+                {focusLabel && <> · <button type="button" data-testid="strip-working-on" onClick={() => setProfileEditOpen(true)} className="inline-flex min-h-11 items-center gap-1 align-middle hover:underline underline-offset-2">{t("top.focus")}: <strong style={{ color: "var(--arbor-clay-deep)" }}>{focusLabel}</strong></button></>}
               </span>
             </>}
             actions={<div className="flex items-center gap-2">
@@ -466,7 +477,7 @@ export default function Shell() {
               only where the topbar cannot. EN + HE already exist for all ten
               hubs in lib/i18n.ts — no new string, and none invented. */}
           <p className="lg:hidden text-[11px] leading-snug mb-3 min-w-0" style={{ color: "var(--arbor-muted)" }}>
-            {t("nav.sub." + section.id, { name: childProfile.name })}
+            {hubPulse ? t(hubPulse.key, hubPulse.params) : t("nav.sub." + section.id, { name: childProfile.name })}
           </p>
 
           {/* W0.5+W0.6: global freshness banner — offline / sync-error, mounted
@@ -557,6 +568,7 @@ export default function Shell() {
           off. */}
       {!kidLocked && <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />}
       {!kidLocked && <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />}
+      {!kidLocked && <ProfileEditDrawer open={profileEditOpen} onClose={() => setProfileEditOpen(false)} />}
       {!kidLocked && <PaywallModal />}
       {/* AP-048: Kid Mode full-screen overlay — rendered at z-70, above everything.
           Desktop-only entry point (Topbar button starts at lg). The overlay

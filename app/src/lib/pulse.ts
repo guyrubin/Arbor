@@ -128,11 +128,13 @@ export function usePulses(): HubPulses {
         ? { key: pickCountKey("elev.pulse.behaviors.week", behaviorsWeek), params: { count: behaviorsWeek }, count: behaviorsWeek }
         : { key: "elev.pulse.behaviors.empty" };
 
-    // ── Growth: parent-noticed milestones as "x of y" (the canonical count).
+    // ── Growth: parent-noticed milestones — B-SHELL-19: a COUNT only. The
+    //    old "x of y" put the all-ages catalogue (`milestones.length`) behind
+    //    the count as a denominator.
     const noticed = milestones.filter((m) => m.checked).length;
     const growth: HubPulse =
       noticed > 0
-        ? { key: "elev.pulse.growth.noticed", params: { count: noticed, total: milestones.length }, count: noticed }
+        ? { key: pickCountKey("elev.pulse.growth.noticed", noticed), params: { count: noticed }, count: noticed }
         : { key: "elev.pulse.growth.empty" };
 
     // ── Practice (B-PLAY-04): the rounds the child played this week — the

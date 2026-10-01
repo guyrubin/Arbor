@@ -76,3 +76,42 @@ describe("firewall copy · pressure words (B-PLAY-04)", () => {
     expect(he["nudge.practice.body"]).toBe("שתי דקות של משחק ביחד, מתי שנוח לכם.");
   });
 });
+
+describe("B-SHELL-19 · pulses carry no denominator; the hub line and the strip label", () => {
+  const shell = readFileSync(path.join(here, "..", "components", "layout", "Shell.tsx"), "utf8");
+
+  it("no pulse string contains a denominator ('of', 'מתוך', {total})", () => {
+    const keys = [...pulseSrc.matchAll(/"(elev\.pulse\.[a-zA-Z.]+)"/g)].map((m) => m[1]);
+    const all = new Set<string>();
+    for (const k of keys) { all.add(k); all.add(`${k}One`); }
+    let checked = 0;
+    for (const k of all) {
+      for (const [dict, re] of [[elevationEn, /\bof\b|\{total\}/i], [elevationHe, /מתוך|\{total\}/]] as const) {
+        const v = dict[k];
+        if (v === undefined) continue;
+        checked += 1;
+        expect(v, k).not.toMatch(re);
+      }
+    }
+    expect(checked).toBeGreaterThan(20);
+    expect(pulseSrc).not.toMatch(/total: milestones\.length/);
+  });
+
+  it("negative control: the pre-fix Growth pulse trips the rule", () => {
+    expect("{count} of {total} milestones noticed").toMatch(/\bof\b|\{total\}/i);
+    expect("שמתם לב ל‑{count} מתוך {total} אבני דרך").toMatch(/מתוך/);
+  });
+
+  it("below lg the hub line renders the counted pulse, else nav.sub.<hub>", () => {
+    expect(shell).toContain("const pulses = usePulses();");
+    expect(shell).toContain('{hubPulse ? t(hubPulse.key, hubPulse.params) : t("nav.sub." + section.id, { name: childProfile.name })}');
+    expect(shell).toMatch(/countedPulse\.count > 0 \? countedPulse : null/);
+  });
+
+  it("the strip label is 'Working on' (EN + HE) and opens the profile editor", () => {
+    expect(en["top.focus"]).toBe("Working on");
+    expect(he["top.focus"]).toBe("עובדים על");
+    expect(shell).toContain('onClick={() => setProfileEditOpen(true)}');
+    expect(shell).toContain("<ProfileEditDrawer open={profileEditOpen}");
+  });
+});

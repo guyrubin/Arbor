@@ -33,7 +33,8 @@ export const en: Record<string, string> = {
   "elev.pulse.behaviors.empty": "Nothing logged this week",
 
   // ── Growth (milestones — always "x of y noticed", never a score)
-  "elev.pulse.growth.noticed": "{count} of {total} milestones noticed",
+  "elev.pulse.growth.noticed": "You noticed {count} milestones",
+  "elev.pulse.growth.noticedOne": "You noticed 1 milestone",
   "elev.pulse.growth.empty": "The first milestone is waiting",
 
   // ── Practice / Stories / Learn (Heartwood D2+D3 hubs — no per-hub state in
@@ -169,7 +170,8 @@ export const he: Record<string, string> = {
   "elev.pulse.behaviors.weekOne": "אירוע אחד נרשם השבוע",
   "elev.pulse.behaviors.empty": "לא נרשם דבר השבוע",
 
-  "elev.pulse.growth.noticed": "שמתם לב ל‑{count} מתוך {total} אבני דרך",
+  "elev.pulse.growth.noticed": "שמתם לב ל‑{count} אבני דרך",
+  "elev.pulse.growth.noticedOne": "שמתם לב לאבן דרך אחת",
   "elev.pulse.growth.empty": "אבן הדרך הראשונה מחכה לכם",
 
   "elev.pulse.practice.empty": "תרגול משחקי קצר — גם כמה דקות שוות",
