@@ -63,4 +63,9 @@ npm run eval:safety
 npm run build
 ```
 
+Founder scripts (Application Default Credentials, production; run by the lead, never by a builder):
+
+- `node scripts/cohort-report.mjs --since <date> --retention --activation --funnel billing|loop --events`: the cohort read.
+- `node scripts/tag-internal-accounts.mjs --since <date> [--uids a,b] [--apply]`: tags founder, comped and smoke rollups `cohort: "internal"` (B-MEAS-07). Dry run by default; `--apply` writes that one field.
+
 `GEMINI_MODEL` defaults to `gemini-2.5-flash`, which the Gemini API model docs list as the stable Gemini 2.5 Flash model.
