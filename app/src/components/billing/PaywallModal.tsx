@@ -65,7 +65,9 @@ export default function PaywallModal() {
 
   // Feature-specific body copy keeps the pitch relevant to what they just hit.
   const body =
-    paywall.feature === "professionalReports" ? t("pw.bodyReports")
+    // B-CAREPRO-08: the professionalReports gate guards ONE thing — the
+    // AI-drafted school note (/api/generate-handoff). Packets and PDFs are free.
+    paywall.feature === "professionalReports" ? pc("pw.bodySchoolNotes")
       : paywall.feature === "advancedPlans" ? t("pw.bodyPlans")
         : paywall.feature === "coach_unlimited" ? t("pw.bodyCoach")
           : t("pw.body");

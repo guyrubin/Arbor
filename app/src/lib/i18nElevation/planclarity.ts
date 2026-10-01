@@ -28,7 +28,10 @@ export const en: Record<string, string> = {
   "elev.plan.free.3": "One child profile",
   "elev.plan.plusTitle": "Arbor Plus adds",
   "elev.plan.plus.1": "Coaching without the daily limit",
-  "elev.plan.plus.2": "Professional reports and school handoffs",
+  // B-CAREPRO-08: every packet and PDF is free (built client-side, no gate);
+  // the ONE Plus gate in Care is /api/generate-handoff (professionalReports),
+  // the AI-drafted School Brief. The bullet sells what the gate guards.
+  "elev.plan.plus.2": "AI-drafted school notes",
   "elev.plan.plus.3": "Advanced growth plans",
   "elev.plan.plus.4": "Up to six children",
   "elev.plan.familyTitle": "Arbor Family adds",
@@ -38,6 +41,9 @@ export const en: Record<string, string> = {
   // revocable packet at GET /shared/:grantId/packet. Not "a seat" — nobody
   // gets to use the account. The bullet now says the thing that exists.
   "elev.plan.family.1": "Everything in Plus, plus one co-parent invite: a read-only view of what you choose to share, revocable any time",
+
+  // ── Paywall body for the professionalReports gate (B-CAREPRO-08) ──────────
+  "elev.plan.pw.bodySchoolNotes": "AI-drafted school notes are part of Arbor Plus. Upgrade and Arbor drafts the note for your child's teacher.",
 };
 
 export const he: Record<string, string> = {
@@ -54,9 +60,12 @@ export const he: Record<string, string> = {
   "elev.plan.free.3": "פרופיל ילד אחד",
   "elev.plan.plusTitle": "ארבור פלוס מוסיף",
   "elev.plan.plus.1": "אימון בלי המכסה היומית",
-  "elev.plan.plus.2": "דוחות מקצועיים והעברות לגן ולבית הספר",
+  "elev.plan.plus.2": "מסמכים לגן ולבית הספר שארבור מנסח בשבילכם",
   "elev.plan.plus.3": "תוכניות צמיחה מתקדמות",
   "elev.plan.plus.4": "עד שישה ילדים",
   "elev.plan.familyTitle": "ארבור משפחה מוסיף",
   "elev.plan.family.1": "כל מה שבפלוס, ובנוסף הזמנה אחת להורה שותף: צפייה בלבד במה שתבחרו לשתף, וניתן לבטל בכל רגע",
+
+  // ── Paywall body (he) ──────────────────────────────────────────────────────
+  "elev.plan.pw.bodySchoolNotes": "מסמכים לגן ולבית הספר שארבור מנסח הם חלק מארבור פלוס. שדרגו וארבור ינסח את המסמך לצוות החינוכי.",
 };
