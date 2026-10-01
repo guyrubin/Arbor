@@ -226,7 +226,16 @@ ${renderHelplineLinksMarkdown()}`;
 
 /** ISO date the crisis numbers above were last verified against live national
  * registries. Update this (and the numbers) on each arbor-safety re-review. */
-export const HELPLINES_REVIEWED_ON = "2026-06-21";
+/* Re-verified 2026-10-01 (B-CAREPRO-07) against the national registries:
+ *   il_eran 1201   eran.org.il ("קו חם 1201")
+ *   il_mda 101 · il_police 100   Magen David Adom / Israel Police (101 ambulance, 100 police)
+ *   eu_112   EU single emergency number
+ *   nl_113 0800-0113   113.nl — reachable via 113 and free via 0800-0113, 24/7
+ *   be_1813 1813   zelfmoord1813.be ("Bel 1813", 24/7)
+ *   be_1712 1712   1712.be (violence/abuse line, Mon–Fri 09:00–18:00)
+ *   us_988 988 · us_911 911   988lifeline.org
+ * Next review due by 2027-03-30 (180 d); the CI currency test warns 14 d before. */
+export const HELPLINES_REVIEWED_ON = "2026-10-01";
 
 /** Re-review cadence — crisis numbers must be re-verified at least this often. */
 export const HELPLINE_REVIEW_INTERVAL_DAYS = 180;
