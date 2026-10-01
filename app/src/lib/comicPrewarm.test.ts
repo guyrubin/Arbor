@@ -189,10 +189,11 @@ describe("MOB-22 — both call sites are wired", () => {
   });
 
   it("the wow overlay takes the prewarmed page before generating anything", () => {
-    expect(wow).toContain("takeFirstComic(");
-    expect(wow).toContain("generateFirstComic(");
-    // The take happens FIRST; the generation is the else branch.
-    expect(wow.indexOf("takeFirstComic(")).toBeLessThan(wow.indexOf("generateFirstComic("));
+    // B-SHELL-10: the take-then-generate order moved into firstComicWithin
+    // (one request through the prewarm slot, boxed at 8 s).
+    expect(wow).toContain("firstComicWithin(identity)");
+    const within = shared.slice(shared.indexOf("export async function firstComicWithin"));
+    expect(within.indexOf("takePrewarmedComic(key)")).toBeLessThan(within.indexOf("prewarmComic(key, () => generateFirstComic(id))"));
     // The overlay no longer assembles its own payload — one definition only.
     expect(wow).not.toContain("api.generateComic(");
     expect(wow).not.toContain("FIRST_STORY_COMIC");

@@ -39,7 +39,7 @@ import { track } from "../../lib/analytics";
 import { toSavedComicMeta, type SavedComicMeta } from "../../lib/heroComics";
 // MOB-22 — the first comic is defined once (lib/firstComic) so the domain
 // step can start drawing it and this step can take the finished page.
-import { generateFirstComic, takeFirstComic } from "../../lib/firstComic";
+import { firstComicWithin } from "../../lib/firstComic";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { HERO_STORIES } from "../../lib/heroJourneys";
 import { renderHeroAvatarCanvas } from "../../lib/heroAvatarCanvas";
@@ -74,6 +74,9 @@ export function WowOnboarding() {
   const [avatarSkipped] = useState<boolean>(() => readJourney().avatarSkipped === true);
   const [avatarOpen, setAvatarOpen] = useState(false);
   const [comic, setComic] = useState<{ url: string | null; fallback: boolean } | null>(null);
+  // B-SHELL-10: a late first page may only land while the overlay is mounted.
+  const wowMounted = useRef(true);
+  useEffect(() => () => { wowMounted.current = false; }, []);
   // The avatar created INSIDE this flow, held locally: updateChild's profile
   // patch lands async (Firestore write first), so the comic step must not
   // depend on context propagation to star the fresh hero.
@@ -132,34 +135,44 @@ export function WowOnboarding() {
       // A miss (a hero created since, paywall, offline, or no prewarm at all)
       // is null, and the normal generation below runs untouched.
       const identity = { name, he, ...(heroDataUrl ? { heroDataUrl } : {}) };
-      const prewarmed = await (takeFirstComic(identity) ?? Promise.resolve(null));
-      let camePrewarmed = false;
-      if (prewarmed?.dataUrl) {
-        result = { url: prewarmed.dataUrl, fallback: false };
-        camePrewarmed = true;
+      // B-SHELL-10: ONE request (the prewarm slot is reused when the domain
+      // step already started it), boxed at 8 s. A 429 or a hung request used
+      // to leave the parent waiting on a blank page with no deadline.
+      const first = await firstComicWithin(identity);
+      const camePrewarmed = first.prewarmed;
+      if (first.dataUrl) {
+        result = { url: first.dataUrl, fallback: false };
       } else {
+        // Calm fallback — a pre-composed branded page via the shared template
+        // registry (no new compositing code). A PaywallError lands here too:
+        // the front door never opens onto a paywall. B-SHELL-10: a timeout
+        // lands here as well, while the request keeps drawing (`first.late`).
         try {
-          result = { url: await generateFirstComic(identity), fallback: false };
+          const card = await renderHeroAvatarCanvas("comic", {
+            imageUrl: heroDataUrl,
+            name,
+            title: storyTitle,
+          });
+          result = { url: card.dataUrl, fallback: true };
         } catch {
-          // Calm fallback — a pre-composed branded page via the shared template
-          // registry (no new compositing code). A PaywallError lands here too:
-          // the front door never opens onto a paywall.
-          try {
-            const card = await renderHeroAvatarCanvas("comic", {
-              imageUrl: heroDataUrl,
-              name,
-              title: storyTitle,
-            });
-            result = { url: card.dataUrl, fallback: true };
-          } catch {
-            result = { url: null, fallback: true }; // final DOM fallback below
-          }
+          result = { url: null, fallback: true }; // final DOM fallback below
         }
       }
       if (!alive) return;
       setComic(result);
       setStep("closing");
-      track("wow_comic_shown", { fallback: result.fallback, prewarmed: camePrewarmed });
+      track("wow_comic_shown", { fallback: result.fallback, prewarmed: camePrewarmed, timedOut: first.timedOut });
+      // B-SHELL-10: the page keeps drawing in the background; if it lands
+      // while the wow is still open, the real page replaces the composed one
+      // (no second request — it is the same in-flight call).
+      if (first.timedOut && first.late) {
+        void first.late.then((late) => {
+          if (late.dataUrl && wowMounted.current) {
+            setComic({ url: late.dataUrl, fallback: false });
+            track("wow_comic_late", { landed: true });
+          }
+        });
+      }
 
       // W5 seed — runs for the real page AND the pre-composed fallback page
       // (both are pages the parent actually saw); the null final-DOM fallback

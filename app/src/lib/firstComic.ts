@@ -91,3 +91,51 @@ export function prewarmFirstComic(id: FirstComicIdentity): void {
 export function takeFirstComic(id: FirstComicIdentity): Promise<PrewarmedComic> | null {
   return takePrewarmedComic(firstComicKey(id));
 }
+
+/** B-SHELL-10: the wow waits at most this long for the real first page. */
+export const FIRST_COMIC_TIMEOUT_MS = 8000;
+
+export interface FirstComicWithin {
+  /** The real page when it arrived inside the box; null on timeout or failure. */
+  dataUrl: string | null;
+  /** True when the box closed first (the request is still drawing). */
+  timedOut: boolean;
+  /** The domain step had already started this exact page. */
+  prewarmed: boolean;
+  /** On timeout: the still-running request, so a late page can still land.
+   *  Never rejects (a failure settles to `{ dataUrl: null }`). */
+  late: Promise<PrewarmedComic> | null;
+}
+
+/**
+ * B-SHELL-10 — the first comic gets an 8-second client time-box.
+ *
+ * With /generate-comic answering 429 or hanging, the wow step used to wait on
+ * the request forever (no deadline) — a blank page at the front door. Now the
+ * request runs through the SAME prewarm slot the domain step uses (a page
+ * already being drawn is reused, never re-requested) and is raced against the
+ * box. On timeout the caller shows its pre-composed page, and the request keeps
+ * drawing in the background (`late`), so a late real page can still replace it.
+ * A failure inside the box returns `{ dataUrl: null, timedOut: false }` — the
+ * same fallback the wow always had.
+ */
+export async function firstComicWithin(
+  id: FirstComicIdentity,
+  ms: number = FIRST_COMIC_TIMEOUT_MS,
+): Promise<FirstComicWithin> {
+  const key = firstComicKey(id);
+  let pending = takePrewarmedComic(key);
+  const prewarmed = pending != null;
+  if (!pending) {
+    prewarmComic(key, () => generateFirstComic(id));
+    pending = takePrewarmedComic(key) ?? Promise.resolve({ dataUrl: null });
+  }
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const box = new Promise<"timeout">((resolve) => {
+    timer = setTimeout(() => resolve("timeout"), ms);
+  });
+  const winner = await Promise.race([pending, box]);
+  if (timer !== undefined) clearTimeout(timer);
+  if (winner === "timeout") return { dataUrl: null, timedOut: true, prewarmed, late: pending };
+  return { dataUrl: winner.dataUrl, timedOut: false, prewarmed, late: null };
+}
