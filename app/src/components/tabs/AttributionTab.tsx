@@ -27,9 +27,13 @@ import { Skeleton } from "../ui/Skeleton";
  */
 
 // The funnel stages we measure, in order. Names must match lib/loopEvents.
-const FUNNEL = [
+// B-MEAS-06: `first_plan` is the FIRST PLAN (it can happen inside the
+// onboarding session); "Activation" is `activated` (kpiEvents.ts: a loop
+// completed on a later day), the stage the cohort report reads.
+export const FUNNEL = [
   { event: "install", labelKey: "attr.stage.install", fallback: "Install" },
-  { event: "first_plan", labelKey: "attr.stage.activation", fallback: "Activation" },
+  { event: "first_plan", labelKey: "attr.stage.firstPlan", fallback: "First plan" },
+  { event: "activated", labelKey: "attr.stage.activation", fallback: "Activation" },
   { event: "paid", labelKey: "attr.stage.paid", fallback: "Paid" },
 ] as const;
 
@@ -37,7 +41,7 @@ const CANONICAL_EXAMPLE =
   "https://arborparentingapp.com/?utm_source=instagram&utm_medium=social&utm_campaign=launch_il&utm_content=bio_link";
 
 function emptyCounts() {
-  return { install: 0, first_plan: 0, paid: 0 };
+  return { install: 0, first_plan: 0, activated: 0, paid: 0 };
 }
 
 export default function AttributionTab() {
@@ -87,7 +91,7 @@ export default function AttributionTab() {
 
   const totals = useMemo(
     () => rows.reduce(
-      (acc, r) => ({ install: acc.install + r.install, first_plan: acc.first_plan + r.first_plan, paid: acc.paid + r.paid }),
+      (acc, r) => ({ install: acc.install + r.install, first_plan: acc.first_plan + r.first_plan, activated: acc.activated + r.activated, paid: acc.paid + r.paid }),
       emptyCounts(),
     ),
     [rows],
@@ -227,9 +231,10 @@ export default function AttributionTab() {
                   </th>
                   <td className="text-end px-4 py-3 font-mono tabular-nums" dir="ltr" style={{ color: "var(--arbor-ink)" }}>{r.install}</td>
                   <td className="text-end px-4 py-3 font-mono tabular-nums" dir="ltr" style={{ color: "var(--arbor-ink)" }}>{r.first_plan}</td>
+                  <td className="text-end px-4 py-3 font-mono tabular-nums" dir="ltr" style={{ color: "var(--arbor-ink)" }}>{r.activated}</td>
                   <td className="text-end px-4 py-3 font-mono tabular-nums" dir="ltr" style={{ color: "var(--arbor-ink)" }}>{r.paid}</td>
-                  <td className="text-end px-4 py-3 font-mono tabular-nums" dir="ltr" style={{ color: "var(--arbor-muted)" }}>{ratePct(r.first_plan, r.install)}</td>
-                  <td className="text-end px-4 py-3 font-mono tabular-nums" dir="ltr" style={{ color: "var(--arbor-muted)" }}>{ratePct(r.paid, r.first_plan)}</td>
+                  <td className="text-end px-4 py-3 font-mono tabular-nums" dir="ltr" style={{ color: "var(--arbor-muted)" }}>{ratePct(r.activated, r.install)}</td>
+                  <td className="text-end px-4 py-3 font-mono tabular-nums" dir="ltr" style={{ color: "var(--arbor-muted)" }}>{ratePct(r.paid, r.activated)}</td>
                 </tr>
               ))}
             </tbody>
@@ -240,9 +245,10 @@ export default function AttributionTab() {
                 </th>
                 <td className="text-end px-4 py-3 font-mono tabular-nums font-bold" dir="ltr" style={{ color: "var(--arbor-ink)" }}>{totals.install}</td>
                 <td className="text-end px-4 py-3 font-mono tabular-nums font-bold" dir="ltr" style={{ color: "var(--arbor-ink)" }}>{totals.first_plan}</td>
+                <td className="text-end px-4 py-3 font-mono tabular-nums font-bold" dir="ltr" style={{ color: "var(--arbor-ink)" }}>{totals.activated}</td>
                 <td className="text-end px-4 py-3 font-mono tabular-nums font-bold" dir="ltr" style={{ color: "var(--arbor-ink)" }}>{totals.paid}</td>
-                <td className="text-end px-4 py-3 font-mono tabular-nums" dir="ltr" style={{ color: "var(--arbor-muted)" }}>{ratePct(totals.first_plan, totals.install)}</td>
-                <td className="text-end px-4 py-3 font-mono tabular-nums" dir="ltr" style={{ color: "var(--arbor-muted)" }}>{ratePct(totals.paid, totals.first_plan)}</td>
+                <td className="text-end px-4 py-3 font-mono tabular-nums" dir="ltr" style={{ color: "var(--arbor-muted)" }}>{ratePct(totals.activated, totals.install)}</td>
+                <td className="text-end px-4 py-3 font-mono tabular-nums" dir="ltr" style={{ color: "var(--arbor-muted)" }}>{ratePct(totals.paid, totals.activated)}</td>
               </tr>
             </tfoot>
           </table>

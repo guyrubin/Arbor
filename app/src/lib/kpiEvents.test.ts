@@ -271,6 +271,7 @@ describe("ENG-22 — the new call sites are LIVE (source pins + negative control
    ══════════════════════════════════════════════════════════════════════════ */
 
 import {
+  NUDGE_SUPPRESS_REASONS,
   UNKNOWN_ID,
   trackActivated,
   trackCheckoutStart,
@@ -758,5 +759,42 @@ describe("N1-01 — the seams are LIVE (source pins + pre-fix negative controls)
     // loopEvents legitimately uses track() for its own families and the new
     // helper for this one — but it must not open-code the close event's name.
     expect(loop).not.toContain('track("session_close"');
+  });
+});
+
+
+describe("B-MEAS-06 — the nudge_suppressed reason allow-list", () => {
+  beforeEach(() => trackSpy.mockClear());
+
+  it("snapshot: three emitted reasons; no_candidate is never on the wire", () => {
+    expect([...NUDGE_SUPPRESS_REASONS]).toEqual(["quiet_hours", "ceiling", "type_off"]);
+    expect(NUDGE_SUPPRESS_REASONS as readonly string[]).not.toContain("no_candidate");
+  });
+
+  it("a stray no_candidate emission folds to the sentinel", () => {
+    trackNudgeSuppressed({ kind: "rhythm", reason: "no_candidate" });
+    expect(lastCall()[1]).toEqual({ kind: "rhythm", reason: UNKNOWN_ID });
+  });
+});
+
+describe("B-MEAS-06 — admin Attribution shows four stages, Activation = activated", () => {
+  it("FUNNEL is install → first_plan ('First plan') → activated ('Activation') → paid, EN + HE", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const { en, he } = await import("./i18n");
+    const tab = readFileSync(resolve(__dirname, "../components/tabs/AttributionTab.tsx"), "utf8");
+    expect(tab).toContain('{ event: "first_plan", labelKey: "attr.stage.firstPlan", fallback: "First plan" }');
+    expect(tab).toContain('{ event: "activated", labelKey: "attr.stage.activation", fallback: "Activation" }');
+    const stages = [...tab.matchAll(/\{ event: "([a-z_]+)", labelKey: "(attr\.stage\.[A-Za-z]+)"/g)].map((m) => [m[1], m[2]]);
+    expect(stages.map((s) => s[0])).toEqual(["install", "first_plan", "activated", "paid"]);
+    for (const [, key] of stages) {
+      expect(en[key], key).toBeTruthy();
+      expect(he[key], key).toMatch(/[֐-׿]/);
+    }
+    expect(en["attr.stage.firstPlan"]).toBe("First plan");
+    expect(he["attr.stage.firstPlan"]).toBe("תוכנית ראשונה");
+    // The activation rate reads `activated`, not first_plan.
+    expect(tab).toContain("ratePct(r.activated, r.install)");
+    expect(tab).toContain("ratePct(r.paid, r.activated)");
   });
 });

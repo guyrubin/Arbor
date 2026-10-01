@@ -234,13 +234,16 @@ export const NUDGE_CHANNELS = ["bell", "local"] as const;
 export type NudgeChannel = (typeof NUDGE_CHANNELS)[number];
 
 /** Why planNudge declined to deliver (N1-06's four reasons). */
+// B-MEAS-06: the EMIT allow-list carries three. `no_candidate` ("nothing to
+// say") is a planNudge outcome that is deliberately never emitted (silence is
+// a feature, not an event), so it stays in the plan type below but off the
+// wire; a stray emission folds to UNKNOWN_ID like any off-list value.
 export const NUDGE_SUPPRESS_REASONS = [
   "quiet_hours",
   "ceiling",
   "type_off",
-  "no_candidate",
 ] as const;
-export type NudgeSuppressReason = (typeof NUDGE_SUPPRESS_REASONS)[number];
+export type NudgeSuppressReason = (typeof NUDGE_SUPPRESS_REASONS)[number] | "no_candidate";
 
 /** Checkout launch channels. */
 export const CHECKOUT_CHANNELS = ["web", "native"] as const;

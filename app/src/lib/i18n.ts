@@ -1509,7 +1509,7 @@ export const en: Dict = {
   "ov.attention.body": "High and urgent cases should involve a human. Review them on the timeline.",
   // P0-5 attribution dashboard (internal/admin)
   "attr.title": "Attribution & funnel",
-  "attr.subtitle": "Install → activation → paid, by acquisition channel and market. First-party data from your own event stream.",
+  "attr.subtitle": "Install → first plan → activation → paid, by acquisition channel and market. First-party data from your own event stream.",
   "attr.refresh": "Refresh",
   "attr.groupBy": "Group by",
   "attr.group.source": "Source / channel",
@@ -1524,6 +1524,7 @@ export const en: Dict = {
   "attr.locked.title": "Internal dashboard",
   "attr.locked.body": "This funnel dashboard is available to Arbor operators only.",
   "attr.stage.install": "Install",
+  "attr.stage.firstPlan": "First plan",
   "attr.stage.activation": "Activation",
   "attr.stage.paid": "Paid",
   "attr.col.source": "Source",
@@ -2400,7 +2401,7 @@ export const he: Dict = {
   "nav.tagline": "יומן התפתחות",
   // P0-5 attribution dashboard (internal/admin)
   "attr.title": "ייחוס ומשפך",
-  "attr.subtitle": "התקנה ← הפעלה ← תשלום, לפי ערוץ רכישה ושוק. נתוני צד-ראשון מזרם האירועים שלכם.",
+  "attr.subtitle": "התקנה ← תוכנית ראשונה ← הפעלה ← תשלום, לפי ערוץ רכישה ושוק. נתוני צד-ראשון מזרם האירועים שלכם.",
   "attr.refresh": "רענון",
   "attr.groupBy": "קיבוץ לפי",
   "attr.group.source": "מקור / ערוץ",
@@ -2415,6 +2416,7 @@ export const he: Dict = {
   "attr.locked.title": "לוח פנימי",
   "attr.locked.body": "לוח המשפך הזה זמין למפעילי ארבור בלבד.",
   "attr.stage.install": "התקנה",
+  "attr.stage.firstPlan": "תוכנית ראשונה",
   "attr.stage.activation": "הפעלה",
   "attr.stage.paid": "תשלום",
   "attr.col.source": "מקור",
