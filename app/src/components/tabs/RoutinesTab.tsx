@@ -95,15 +95,16 @@ export default function RoutinesTab() {
       const nextKeys = wasOn ? current.filter((k) => k !== stepKey) : [...current, stepKey];
       persist({ ...doneMap, [selected.id]: nextKeys });
 
-      // Completion reward: fire the star toast only on the transition INTO
-      // all-done (last step checked), never on toggling an already-complete
-      // routine's steps off and on.
+      // B-GROWTH-24: the completion toast fires only on the transition INTO
+      // all-done. It used to say "⭐ {name} earned a star in their world!" —
+      // no star is written anywhere, and a reward aimed at the child is a
+      // pressure mechanic (law 3). It now names what happened, to the parent.
       const nowComplete = nextKeys.length === total && total > 0;
       if (!wasOn && nowComplete) {
-        toast(t("routines.starEarned", { name: firstName }), "success");
+        toast(t("routines.doneToast"), "success");
       }
     },
-    [doneMap, selected.id, total, persist, toast, t, firstName]
+    [doneMap, selected.id, total, persist, toast, t]
   );
 
   const resetRoutine = useCallback(() => {
@@ -122,7 +123,8 @@ export default function RoutinesTab() {
     [doneMap]
   );
 
-  const heroSub = useMemo(() => t("routines.sub", { name: firstName }), [t, firstName]);
+  // B-GROWTH-24: the count is the catalogue's, never a word ("Seven" was 12).
+  const heroSub = useMemo(() => t("routines.sub", { name: firstName, count: ROUTINES.length }), [t, firstName]);
 
   return (
     <motion.div

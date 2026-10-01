@@ -23,6 +23,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { en, he, translate, type UiLang } from "../../lib/i18n";
 import { SURFACE_CONTRACTS } from "../../lib/surfaceContract";
+import { ROUTINES } from "../../lib/routines";
 
 const LANGS: UiLang[] = ["en", "he"];
 const SRC = path.resolve(__dirname, "..", "..");
@@ -77,10 +78,17 @@ describe("GP-29 · the routine itself is untouched", () => {
     expect(TAB).toContain('t("routines.reset")');
   });
 
-  it("the completion star — the one real reward — still fires on the last step", () => {
+  it("the completion toast still fires on the last step — and names no star (B-GROWTH-24)", () => {
     expect(TAB).toContain("const nowComplete = nextKeys.length === total && total > 0;");
-    expect(TAB).toContain('toast(t("routines.starEarned", { name: firstName }), "success")');
-    for (const lang of LANGS) expect(translate(lang, "routines.starEarned")).not.toBe("routines.starEarned");
+    expect(TAB).toContain('toast(t("routines.doneToast"), "success")');
+    expect(TAB).not.toContain("routines.starEarned");
+    for (const lang of LANGS) {
+      const s = translate(lang, "routines.doneToast");
+      expect(s).not.toBe("routines.doneToast");
+      // no star glyph, no child-world claim, no reward aimed at the child
+      expect(s).not.toMatch(/⭐|★|star|world|כוכב|בעולם/i);
+      expect(translate(lang, "routines.starEarned")).toBe("routines.starEarned");
+    }
   });
 
   it("progress is still a count, never a percentage (firewall)", () => {
@@ -106,5 +114,24 @@ describe("GP-29 · NEGATIVE CONTROL — the shipped shapes are what this rejects
   it("the guard is not vacuous — the same predicates pass on controls that DO exist", () => {
     expect(TAB).toContain('data-testid="routines-reset"');
     expect(translate("en", "routines.reset")).not.toBe("routines.reset");
+  });
+});
+
+/* B-GROWTH-24 — the subtitle said "Seven research-backed routines" over a
+   catalogue of 12. The number now interpolates ROUTINES.length. */
+describe("B-GROWTH-24 · the subtitle's number is the catalogue's", () => {
+  it("the subtitle interpolates ROUTINES.length in EN and HE", () => {
+    expect(TAB).toContain('t("routines.sub", { name: firstName, count: ROUTINES.length })');
+    for (const lang of LANGS) {
+      const s = translate(lang, "routines.sub", { name: "Noa", count: ROUTINES.length });
+      expect(s.startsWith(`${ROUTINES.length} `), `${lang}: ${s}`).toBe(true);
+      expect(s).not.toMatch(/Seven|שבע/);
+    }
+    expect(ROUTINES.length).toBe(12);
+  });
+
+  it("NEGATIVE CONTROL — the pre-fix subtitle disagrees with the catalogue", () => {
+    const pre = "Seven research-backed routines — pick one, make it yours, run it with {name}.";
+    expect(/Seven/.test(pre) && ROUTINES.length !== 7).toBe(true);
   });
 });

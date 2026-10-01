@@ -62,6 +62,10 @@ const RETIRED = [
   "שכותב את עצמו",
   "ברשימה",
   "מושב להורה שותף",
+  // B-GROWTH-24 — the Routines completion toast promised a star in the
+  // child's world; nothing is written there, and a child reward is law 3.
+  "earned a star",
+  "זכה בכוכב",
 ];
 
 describe("1 · the retired claims are gone from BOTH dictionaries", () => {
