@@ -44,6 +44,7 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db, firebaseEnabled } from "./firebase";
 import { loadAttribution } from "./attribution";
 import { buildRollup, mergeRollup, type RetentionRollup } from "./retention";
+import { api } from "./api";
 
 /** Top-level collection. One document per family, id = uid. */
 export const RETENTION_ROLLUP_COLLECTION = "retentionRollups";
@@ -52,6 +53,7 @@ export const RETENTION_ROLLUP_COLLECTION = "retentionRollups";
  *  Pinned by the guard: a new key here is a privacy review, not a patch. */
 export const RETENTION_ROLLUP_DOC_KEYS = [
   "activeDays",
+  "cohort",
   "firstSeen",
   "market",
   "source",
@@ -71,7 +73,13 @@ export interface RetentionRollupDoc {
   tzOffsetMinutes: number;
   /** ISO instant of the last write. */
   updatedAt: string;
+  /** B-MEAS-01: "internal" for founder / comped / smoke accounts, as tagged by
+   *  the SERVER on /entitlement (never derived from, or stored with, an email).
+   *  The cohort report excludes internal families by default. */
+  cohort: RetentionCohort;
 }
+
+export type RetentionCohort = "internal" | "family";
 
 /** What a session knows about itself. Supplied by the caller so the module
  *  stays deterministic under test — no Date.now() hidden inside a branch. */
@@ -81,6 +89,9 @@ export interface RetentionSessionContext {
   tzOffsetMinutes: number;
   source: string | null;
   market: string | null;
+  /** B-MEAS-01: the server's tag for this account; undefined when it could not
+   *  be read this session (the stored tag is then kept, never downgraded). */
+  cohort?: RetentionCohort;
 }
 
 /** Read/write seam. The default implementation is Firestore; the guard passes
@@ -120,6 +131,7 @@ export function nextRollupDoc(
   if (!merged) return null;
 
   const prior = stored && typeof stored === "object" ? (stored as Record<string, unknown>) : null;
+  const cohort: RetentionCohort = ctx.cohort ?? (prior?.cohort === "internal" ? "internal" : "family");
   const unchanged =
     prev !== null &&
     merged.firstSeen === prev.firstSeen &&
@@ -127,7 +139,8 @@ export function nextRollupDoc(
     prior !== null &&
     prior.source === ctx.source &&
     prior.market === ctx.market &&
-    prior.tzOffsetMinutes === ctx.tzOffsetMinutes;
+    prior.tzOffsetMinutes === ctx.tzOffsetMinutes &&
+    prior.cohort === cohort;
   if (unchanged) return null;
 
   return {
@@ -137,6 +150,7 @@ export function nextRollupDoc(
     market: ctx.market,
     tzOffsetMinutes: ctx.tzOffsetMinutes,
     updatedAt: new Date(ctx.at).toISOString(),
+    cohort,
   };
 }
 
@@ -213,15 +227,25 @@ export function recordRetentionSession(uid: string | undefined): void {
   } catch {
     /* attribution is a slice key, never a precondition */
   }
+  const at = new Date();
+  const tzOffsetMinutes = localTzOffsetMinutes();
+  // B-MEAS-01: the cohort tag comes from the server's /entitlement answer
+  // (comped / admin / @example.com → "internal"). A failed read leaves it
+  // undefined, and nextRollupDoc keeps whatever tag is already stored.
+  const write = (cohort: RetentionCohort | undefined) => {
+    try {
+      void upsertRetentionRollup(firestoreRollupStore(), { uid, at, tzOffsetMinutes, source, market, cohort });
+    } catch {
+      /* best effort */
+    }
+  };
   try {
-    void upsertRetentionRollup(firestoreRollupStore(), {
-      uid,
-      at: new Date(),
-      tzOffsetMinutes: localTzOffsetMinutes(),
-      source,
-      market,
-    });
+    void api
+      .entitlement()
+      .then((e) => (e?.cohort === "internal" ? "internal" : e?.cohort === "family" ? "family" : undefined))
+      .catch(() => undefined)
+      .then((cohort) => write(cohort as RetentionCohort | undefined));
   } catch {
-    /* best effort */
+    write(undefined);
   }
 }

@@ -60,7 +60,7 @@ import {
 } from "../server/digestOptIn.js";
 import { buildConsultRequest, type ConsultStore } from "../server/consultRequests.js";
 import { imageFailureResponse } from "../server/imageQuota.js";
-import { resolveEntitlement, COACH_METER, type EntitlementStore } from "../server/entitlements.js";
+import { cohortTagFor, resolveEntitlement, COACH_METER, type EntitlementStore } from "../server/entitlements.js";
 import type { ReferralStore } from "../server/referral.js";
 import { scoreChildUtterance, childAsrConfigured, NotConfiguredError } from "../server/childAsr.js";
 import { dispatchSpeechSynthesis, screenAndSynthesizeSpeech, synthesizeSpeech, ttsConfigured, NotConfiguredError as TtsNotConfigured, UnsafeTtsOutputError } from "../server/tts.js";
@@ -3163,6 +3163,8 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
         currentPeriodEnd: entitlement.currentPeriodEnd ?? null,
         willRenew: entitlement.willRenew ?? null,
         isAdmin: isAdmin(actor),
+        // B-MEAS-01: a measurement tag (internal | family), never the email.
+        cohort: cohortTagFor(entitlement, actor, isAdmin(actor)),
       });
     } catch (error: any) {
       logger.error("Arbor Entitlement Error", error, { requestId: requestIdOf(req) });
@@ -3289,7 +3291,10 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
         ? sinceParam
         : new Date(Date.now() - 7 * 86_400_000).toISOString();
       const groupBy = req.query.groupBy === "market" ? "market" : "source";
-      res.json(await buildCohortReport(cohortMetrics, { since, groupBy, funnels: Object.keys(FUNNEL_CHAINS) }));
+      // B-MEAS-01: internal (founder / comped / smoke) families are excluded
+      // by default; `?includeInternal=1` puts them back. The count is reported.
+      const includeInternal = req.query.includeInternal === "1" || req.query.includeInternal === "true";
+      res.json(await buildCohortReport(cohortMetrics, { since, groupBy, funnels: Object.keys(FUNNEL_CHAINS), includeInternal }));
     } catch (error: any) {
       logger.error("Arbor Cohort Report Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to build the cohort report", details: error.message });

@@ -81,7 +81,15 @@ export type CohortEventDoc = {
   props: Record<string, unknown>;
 };
 
-export type StoredRollup = RetentionRollup & { source: string | null; market: string | null };
+/** B-MEAS-01: `uid` is the rollup's document id — used ONLY to drop an
+ *  internal family's events from the same report; it never reaches the
+ *  response. `cohort` is the writer's tag; a doc without one is a family. */
+export type StoredRollup = RetentionRollup & {
+  source: string | null;
+  market: string | null;
+  uid?: string;
+  cohort?: "internal" | "family";
+};
 
 export interface CohortMetricsStore {
   /** Every family's rollup document, bounded. */
@@ -148,6 +156,8 @@ export class FirestoreCohortMetricsStore implements CohortMetricsStore {
           activeDays,
           source: typeof data.source === "string" ? data.source : null,
           market: typeof data.market === "string" ? data.market : null,
+          uid: d.id,
+          cohort: data.cohort === "internal" ? "internal" : "family",
         });
       }
       return out;
@@ -323,8 +333,36 @@ export type CohortReport = {
   funnels: Record<string, FunnelGroupRow[]>;
   eventCensus: FunnelStageCount[];
   scanned: { rollups: number; events: number; mode: "firestore" | "null" };
+  /** B-MEAS-01: internal families (founder, comped, smoke) left out of every
+   *  number above, and whether the caller asked to keep them in. */
+  internal: { excluded: number; included: boolean };
   generatedAt: string;
 };
+
+/**
+ * B-MEAS-01: split the rollups into the families a cohort number is about and
+ * the internal ones. Events of an internal uid are dropped with them, so the
+ * funnels, activation and census exclude the same accounts the retention does.
+ */
+export function excludeInternal<E extends { uid: string }>(
+  rollups: readonly StoredRollup[],
+  events: readonly E[],
+  includeInternal = false,
+): { rollups: StoredRollup[]; events: E[]; excluded: number } {
+  if (includeInternal) return { rollups: [...rollups], events: [...events], excluded: 0 };
+  const internalUids = new Set<string>();
+  const kept: StoredRollup[] = [];
+  for (const r of rollups) {
+    if (r.cohort === "internal") {
+      if (r.uid) internalUids.add(r.uid);
+    } else kept.push(r);
+  }
+  return {
+    rollups: kept,
+    events: events.filter((e) => !internalUids.has(e.uid)),
+    excluded: rollups.length - kept.length,
+  };
+}
 
 /**
  * Build the whole report. Pure orchestration over the store plus two library
@@ -345,16 +383,20 @@ export async function buildCohortReport(
     now?: Date;
     funnels?: readonly string[];
     activationWindowDays?: number;
+    /** B-MEAS-01: keep internal families in (default: excluded). */
+    includeInternal?: boolean;
   },
 ): Promise<CohortReport> {
   const now = opts.now ?? new Date();
   const groupBy = opts.groupBy === "market" ? "market" : "source";
   const asOfDay = dayKeyOf(now) ?? new Date(now).toISOString().slice(0, 10);
 
-  const [rollups, events] = await Promise.all([
+  const [allRollups, allEvents] = await Promise.all([
     store.listRetentionRollups(),
     store.listEvents(opts.since),
   ]);
+  const includeInternal = opts.includeInternal === true;
+  const { rollups, events, excluded } = excludeInternal(allRollups, allEvents, includeInternal);
 
   const census = new Map<string, number>();
   for (const e of events) census.set(e.event, (census.get(e.event) ?? 0) + 1);
@@ -382,6 +424,7 @@ export async function buildCohortReport(
       .map(([stage, count]) => ({ stage, count }))
       .sort((a, b) => b.count - a.count || a.stage.localeCompare(b.stage)),
     scanned: { rollups: rollups.length, events: events.length, mode: store.mode },
+    internal: { excluded, included: includeInternal },
     generatedAt: now.toISOString(),
   };
 }

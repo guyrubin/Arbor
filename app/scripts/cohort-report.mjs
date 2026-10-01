@@ -25,7 +25,14 @@
  *
  * Flags: --retention --activation --funnel <name> --events
  *        --since <ISO|YYYY-MM-DD> --group-by source|market --json
+ *        --include-internal
  * With no section flag, every section prints.
+ *
+ * B-MEAS-01: families whose rollup carries `cohort: "internal"` (founder,
+ * comped testers, `@example.com` release-smoke accounts — tagged server-side
+ * via /entitlement, never by email in the rollup) are EXCLUDED from every
+ * number by default, with their events, and the excluded count is printed.
+ * `--include-internal` puts them back.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -53,7 +60,7 @@ const FUNNEL_CHAINS = {
 /* ── flags ───────────────────────────────────────────────────────────────── */
 
 function parseArgs(argv) {
-  const out = { funnels: [], sections: new Set(), json: false, since: null, groupBy: "source" };
+  const out = { funnels: [], sections: new Set(), json: false, since: null, groupBy: "source", includeInternal: false };
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
     if (a === "--retention") out.sections.add("retention");
@@ -63,6 +70,7 @@ function parseArgs(argv) {
     else if (a === "--since") out.since = argv[++i];
     else if (a === "--group-by") out.groupBy = argv[++i] === "market" ? "market" : "source";
     else if (a === "--json") out.json = true;
+    else if (a === "--include-internal") out.includeInternal = true;
     else if (a === "--help" || a === "-h") out.help = true;
   }
   if (out.sections.size === 0) {
@@ -203,6 +211,19 @@ export function countFunnelChain(events, chain, groupBy) {
     .sort((a, b) => b.stages[0].count - a.stages[0].count);
 }
 
+/** B-MEAS-01: drop internal families (and their events) unless asked not to.
+ *  Mirrors server/cohortMetrics.ts `excludeInternal`; the guard runs both. */
+export function excludeInternal(rollups, events, includeInternal = false) {
+  if (includeInternal) return { rollups: [...rollups], events: [...events], excluded: 0 };
+  const internalUids = new Set();
+  const kept = [];
+  for (const r of rollups) {
+    if (r.cohort === "internal") { if (r.uid) internalUids.add(r.uid); }
+    else kept.push(r);
+  }
+  return { rollups: kept, events: events.filter((e) => !internalUids.has(e.uid)), excluded: rollups.length - kept.length };
+}
+
 export function summariseActivation(events, asOf, windowDays) {
   const activated = new Set();
   const eligible = new Set();
@@ -252,6 +273,8 @@ async function fetchRollups(db) {
       activeDays: data.activeDays.filter((x) => typeof x === "string"),
       source: typeof data.source === "string" ? data.source : null,
       market: typeof data.market === "string" ? data.market : null,
+      uid: typeof d.id === "string" ? d.id : undefined,
+      cohort: data.cohort === "internal" ? "internal" : "family",
     });
   }
   return out;
@@ -292,6 +315,11 @@ function print(report, args) {
   lines.push(`Arbor cohort report — generated ${report.generatedAt}`);
   lines.push(`window: since ${report.since}  ·  as of ${report.asOfDay}  ·  grouped by ${report.groupBy}`);
   lines.push(`scanned: ${report.scanned.rollups} rollups, ${report.scanned.events} events (${report.scanned.mode})`);
+  if (report.internal) {
+    lines.push(report.internal.included
+      ? "internal included (--include-internal): founder, comped and smoke accounts are IN these numbers"
+      : `internal excluded: ${report.internal.excluded}`);
+  }
 
   if (args.sections.has("retention")) {
     lines.push(rule("Retention"));
@@ -335,8 +363,10 @@ function print(report, args) {
 /* ── main ────────────────────────────────────────────────────────────────── */
 
 export async function buildReport(db, args, now = new Date()) {
-  const [rollups, eventsResult] = await Promise.all([fetchRollups(db), fetchEvents(db, args.since)]);
-  const { events, mode } = eventsResult;
+  const [allRollups, eventsResult] = await Promise.all([fetchRollups(db), fetchEvents(db, args.since)]);
+  const { mode } = eventsResult;
+  const includeInternal = args.includeInternal === true;
+  const { rollups, events, excluded } = excludeInternal(allRollups, eventsResult.events, includeInternal);
   const asOfDay = now.toISOString().slice(0, 10);
   const census = new Map();
   for (const e of events) census.set(e.event, (census.get(e.event) ?? 0) + 1);
@@ -356,6 +386,7 @@ export async function buildReport(db, args, now = new Date()) {
     funnels,
     eventCensus: [...census.entries()].map(([stage, count]) => ({ stage, count })).sort((a, b) => b.count - a.count || a.stage.localeCompare(b.stage)),
     scanned: { rollups: rollups.length, events: events.length, mode },
+    internal: { excluded, included: includeInternal },
     generatedAt: now.toISOString(),
   };
 }
@@ -363,7 +394,7 @@ export async function buildReport(db, args, now = new Date()) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
-    process.stdout.write(`cohort-report — the founder's cohort read\n\n  --retention --activation --funnel <${Object.keys(FUNNEL_CHAINS).join("|")}> --events\n  --since <ISO|YYYY-MM-DD>  --group-by source|market  --json\n\nRuns on ADC. Reads retentionRollups + event names only.\n`);
+    process.stdout.write(`cohort-report — the founder's cohort read\n\n  --retention --activation --funnel <${Object.keys(FUNNEL_CHAINS).join("|")}> --events\n  --since <ISO|YYYY-MM-DD>  --group-by source|market  --json  --include-internal\n\nRuns on ADC. Reads retentionRollups + event names only. Internal (founder/comped/smoke) families are excluded unless --include-internal.\n`);
     return;
   }
   let db;

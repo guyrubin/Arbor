@@ -572,6 +572,8 @@ export type EntitlementInfo = {
   currentPeriodEnd?: string | null;
   willRenew?: boolean | null;
   isAdmin?: boolean;
+  /** B-MEAS-01: measurement cohort tag (founder/comped/smoke = "internal"). */
+  cohort?: "internal" | "family";
 };
 
 export type AdminOverview = {

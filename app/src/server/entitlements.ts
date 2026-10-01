@@ -255,6 +255,27 @@ export const resolveEntitlement = async (
   return { plan: "free", limits: PLAN_LIMITS.free, source: "default", enforced: true, status: "active" };
 };
 
+/**
+ * B-MEAS-01: which cohort a signed-in account belongs to for MEASUREMENT.
+ * "internal" = the env comp lists (founder, comped testers, demo accounts),
+ * the admin list, or a synthetic `@example.com` identity (release-smoke
+ * accounts). Everything else is a "family". Served on `/entitlement` as a tag
+ * the client copies into its retention rollup — the email itself never leaves
+ * the server and is never written to a rollup. Referral comps are real
+ * families (source "store"), so only the ENV grant marks an account internal.
+ */
+export type CohortTag = "internal" | "family";
+export const cohortTagFor = (
+  entitlement: Pick<Entitlement, "source">,
+  actor: { email: string | null },
+  admin: boolean,
+): CohortTag => {
+  if (admin || entitlement.source === "env") return "internal";
+  const email = (actor.email || "").trim().toLowerCase();
+  if (email.endsWith("@example.com")) return "internal";
+  return "family";
+};
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 export const COACH_METER = "coach_daily";
 

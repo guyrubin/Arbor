@@ -142,12 +142,13 @@ describe("N1-04 (a) — the writer: one merge per new day, idempotent within a d
 describe("N1-04 (b) — payload scan: the key set is exactly the documented one", () => {
   const keysOf = (d: unknown) => Object.keys(d as Record<string, unknown>).sort();
 
-  it("the written document carries exactly { firstSeen, activeDays, source, market, tzOffsetMinutes, updatedAt }", async () => {
+  it("the written document carries exactly { firstSeen, activeDays, source, market, tzOffsetMinutes, updatedAt, cohort }", async () => {
     const { store, state } = fakeStore(null);
     await upsertRetentionRollup(store, ctx());
     expect(keysOf(state.writes[0])).toEqual([...RETENTION_ROLLUP_DOC_KEYS]);
     expect([...RETENTION_ROLLUP_DOC_KEYS]).toEqual([
       "activeDays",
+      "cohort",
       "firstSeen",
       "market",
       "source",
@@ -293,5 +294,41 @@ describe("N1-04 (d) — week-4 is answerable, and an empty denominator is null",
     const dishonest = { eligible: 0, returned: 0, rate: 0 };
     expect(dishonest.rate).not.toBeNull();
     expect(() => expect(dishonest.rate).toBeNull()).toThrow();
+  });
+});
+
+
+describe("B-MEAS-01 — the rollup carries the server's cohort tag, never an email", () => {
+  it("an internal account (tag from /entitlement) writes cohort: internal; a family writes family", async () => {
+    const internal = fakeStore(null);
+    await upsertRetentionRollup(internal.store, ctx({ cohort: "internal" }));
+    expect(internal.state.writes[0].cohort).toBe("internal");
+    const family = fakeStore(null);
+    await upsertRetentionRollup(family.store, ctx({ cohort: "family" }));
+    expect(family.state.writes[0].cohort).toBe("family");
+  });
+
+  it("an unread tag never downgrades a stored internal one; a changed tag rewrites the same day", async () => {
+    const { store, state } = fakeStore(null);
+    await upsertRetentionRollup(store, ctx({ cohort: "internal" }));
+    expect(await upsertRetentionRollup(store, ctx({ cohort: undefined }))).toBe("unchanged");
+    expect(state.writes).toHaveLength(1);
+    expect(await upsertRetentionRollup(store, ctx({ cohort: "family" }))).toBe("written");
+    expect(state.writes[1].cohort).toBe("family");
+  });
+
+  it("no rollup value carries an email or a name — the tag is the only cohort fact", async () => {
+    const { store, state } = fakeStore(null);
+    await upsertRetentionRollup(store, ctx({ cohort: "internal" }));
+    const json = JSON.stringify(state.writes[0]);
+    expect(json).not.toMatch(/@|example\.com|bguy/i);
+    expect(Object.keys(state.writes[0]).filter((k) => /child|name|note|text|transcript|email/i.test(k))).toEqual([]);
+  });
+
+  it("the writer asks /entitlement for the tag (server-side decision), never reads an email itself", () => {
+    const src = read("lib/retentionRollup.ts");
+    expect(src).toContain("api");
+    expect(src).toContain(".entitlement()");
+    expect(src).not.toMatch(/\.email\b/);
   });
 });
