@@ -7,6 +7,7 @@ import { SectionCard, Chip, IconBadge } from "../ui/kit";
 import { SpineRibbon } from "../ui/SpineRibbon";
 import { trustText } from "../../lib/i18nElevation/trustcenter";
 import { DOMAIN_META } from "../../practice/content";
+import { ALL_MILESTONES } from "../../lib/milestoneData";
 
 /**
  * Trust Center — masterplan 3.3 + 3.4 + 3.1 (Maytal Row-2, all six frames).
@@ -409,7 +410,9 @@ export default function SciencePage() {
           </p>
 
           <div className="grid grid-cols-3 gap-3 mt-4">
-            <StatTile value="133" label={t("sci.stat.milestones")} />
+            {/* B-CAREPRO-09: the count is the catalogue, never a literal; the
+                label carries no domain count (the tile beside it is that). */}
+            <StatTile value={String(ALL_MILESTONES.length)} label={t("sci.stat.milestones")} />
             {/* OBJ-GROWTH-01: this said 7 while the Development hub said 7,
                 rendered 6 rows, and the Full Picture covered 5. One count,
                 from DOMAIN_META. */}

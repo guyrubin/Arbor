@@ -110,7 +110,8 @@ describe("trust center — AP-060 content preserved (never delete factual conten
   it("ASQ-3 hold + citation notes + stat tiles survive", () => {
     expect(src).toContain('t("sci.asq3.mention")');
     expect(src).toContain('t("sci.cdc.framework")');
-    expect(src).toMatch(/StatTile value="133"/);
+    // B-CAREPRO-09: the milestone tile survives, now derived from the catalogue.
+    expect(src).toMatch(/StatTile value=\{String\(ALL_MILESTONES\.length\)\}/);
     expect(src).not.toMatch(/ages-and-stages|asq3?\.com|agesandstages/i);
   });
 });

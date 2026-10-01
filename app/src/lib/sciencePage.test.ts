@@ -17,6 +17,9 @@
  */
 
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { en, he } from "./i18n";
 
 // ── VERBATIM strings that MUST appear (board-cleared 2026-06-23) ───────────────
@@ -24,8 +27,10 @@ import { en, he } from "./i18n";
 const VERBATIM_HERO_EN =
   "Developmentally informed — built on cited public guidance from the CDC, AAP, ASHA, and WHO.";
 
+// B-CAREPRO-09 (G11, 2026-10-01): amended — the old line said Arbor does not
+// "screen" while #/screening (the Development Check) exists.
 const VERBATIM_DISCLAIMER_EN =
-  "Arbor is not a diagnostic tool and does not replace professional care. It tracks development and surfaces things worth discussing — it does not diagnose, screen, or label your child. Milestones describe what most children do at a given age; every child develops on their own timeline. If you have a concern, or if Arbor flags one, talk to your pediatrician or a qualified professional.";
+  "Arbor is not a diagnostic tool and does not replace professional care. It tracks development and surfaces things worth discussing — it does not diagnose or label your child; the Development Check is a parent checklist, not a screening test. Milestones describe what most children do at a given age; every child develops on their own timeline. If you have a concern, or if Arbor flags one, talk to your pediatrician or a qualified professional.";
 
 const VERBATIM_BOARD_EN =
   "Reviewed by Arbor's internal developmental reviewers (backgrounds spanning child psychology, speech-language, and developmental pediatrics). They are not licensed clinicians and Arbor is not clinically validated; their role is to keep our content faithful to cited public guidance.";
@@ -165,19 +170,37 @@ describe("AP-060 firewall: ASQ-3 hold — no outbound link, no item reproduction
 });
 
 describe("AP-060 firewall: stats framing — allowed provenance copy used", () => {
-  it("sci.stat.milestones mentions 133 milestones and 7 domains (provenance framing)", () => {
-    expect(en["sci.stat.milestones"]).toContain("milestones");
-    // stats value tile shows "133" as the numeric; label confirms domains
-    expect(en["sci.stat.milestones"]).toContain("7");
+  // B-CAREPRO-09: "133 · milestones across 7 developmental domains" sat beside a
+  // domains tile that counts 6. Labels carry no count; values are derived.
+  it("stat labels carry no domain count, EN and HE", () => {
+    expect(en["sci.stat.milestones"]).toBe("milestones");
+    expect(he["sci.stat.milestones"]).toBe("אבני דרך");
+    for (const key of ["sci.stat.milestones", "sci.stat.domains", "sci.stat.sources"]) {
+      expect(en[key], `${key} EN carries a digit`).not.toMatch(/\d/);
+      expect(he[key], `${key} HE carries a digit`).not.toMatch(/\d/);
+    }
   });
 
-  it("sci.howbuilt.body does not claim outcome/effect-size improvements", () => {
-    const body = (en["sci.howbuilt.body"] ?? "").toLowerCase();
-    expect(body).not.toContain("improves development");
-    expect(body).not.toContain("faster milestones");
-    expect(body).not.toContain("clinically validated");
-    expect(body).not.toContain("evidence-based");
-    expect(body).not.toContain("arbor's 7-domain assessment");
+  it("no digit literal in any StatTile value — every tile is derived", () => {
+    const src = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "components", "tabs", "SciencePage.tsx"), "utf8");
+    const values = [...src.matchAll(/<StatTile value=(\{[^}]*\}|"[^"]*")/g)].map((m) => m[1]);
+    expect(values.length).toBe(3);
+    for (const v of values) expect(v, `literal StatTile value ${v}`).not.toMatch(/^"/);
+    expect(src).toContain("<StatTile value={String(ALL_MILESTONES.length)}");
+    // NEGATIVE CONTROL: the pre-change tile is caught by the same rule.
+    expect('<StatTile value="133" label={t("sci.stat.milestones")} />').toMatch(/<StatTile value="/);
+  });
+
+  it("the dead sci.howbuilt.body key is gone in both languages", () => {
+    expect(en["sci.howbuilt.body"]).toBeUndefined();
+    expect(he["sci.howbuilt.body"]).toBeUndefined();
+  });
+
+  it("the disclaimer no longer says Arbor does not screen (G11 amendment), EN and HE", () => {
+    expect(en["sci.disclaimer"]).not.toMatch(/diagnose, screen/);
+    expect(en["sci.disclaimer"]).toContain("the Development Check is a parent checklist, not a screening test");
+    expect(he["sci.disclaimer"]).not.toContain("אינו בודק");
+    expect(he["sci.disclaimer"]).toContain("רשימת תיוג להורים");
   });
 
   it("sci.cdc.framework says 'most children' not 'by [exact age]'", () => {
