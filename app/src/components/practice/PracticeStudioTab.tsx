@@ -5,8 +5,8 @@
  * the parent #/practice route).
  *
  * Register rules: calm/clinical parent framing, tokens only, counts never
- * verdicts. Each world says what skill it nurtures, shows the child's session
- * count, and names its Kid Mode world so parent and child share a vocabulary.
+ * verdicts. Each world says what skill it nurtures, shows the count of its
+ * own records in its own unit (B-PLAY-02), and names its Kid Mode world so parent and child share a vocabulary.
  * Worlds with a standalone route open directly (parent hands the device over);
  * arcade-only worlds launch Kid Mode (parent-locked).
  */
@@ -19,39 +19,12 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useKidMode } from "../kidmode/KidModeContext";
 import { markPinNudgeShown, shouldNudgeForPin } from "../kidmode/parentGate";
-import { usePracticeData, type PracticeData } from "../../practice/usePracticeData";
+import { usePracticeData } from "../../practice/usePracticeData";
+import { STUDIO_WORLDS, studioCountKey, type StudioWorld } from "./studioWorlds";
 import { track } from "../../lib/analytics";
-import type { ActiveTab } from "../../lib/routes";
 
-const READING_KINDS = new Set(["phonics", "sight-word", "letter-trace"]);
-
-interface StudioWorld {
-  id: string;
-  /** i18n key prefix: `practice.world.<id>.name` / `.skill` */
-  key: string;
-  /** i18n key for the Kid-Mode world name — shared vocabulary between parent
-   *  and child. OBJ-PRACTICE-02: these were English literals, so a Hebrew
-   *  parent read "Sound Lab" on a right-to-left page. */
-  kidNameKey: string;
-  msIcon: string;
-  tone: keyof typeof PASTEL;
-  /** Standalone parent-shell route, when one exists; else Kid Mode only. */
-  tab?: ActiveTab;
-  count: (d: PracticeData) => number;
-}
-
-const STUDIO_WORLDS: StudioWorld[] = [
-  { id: "speech", key: "speech", kidNameKey: "elev.practice.world.kid.speech", msIcon: "mic", tone: "sky", tab: "speech", count: (d) => d.speech.items.length },
-  { id: "word-world", key: "words", kidNameKey: "elev.practice.world.kid.words", msIcon: "menu_book", tone: "sky", count: (d) => d.events.items.filter((e) => e.kind === "lang-strategy").length },
-  { id: "feelings", key: "feelings", kidNameKey: "elev.practice.world.kid.feelings", msIcon: "favorite", tone: "pink", tab: "feelings", count: (d) => d.events.items.length },
-  { id: "mimic", key: "mimic", kidNameKey: "elev.practice.world.kid.mimic", msIcon: "mood", tone: "coral", tab: "mimic", count: (d) => d.mimic.items.length },
-  { id: "adventures", key: "adventures", kidNameKey: "elev.practice.world.kid.adventures", msIcon: "map", tone: "yellow", tab: "adventures", count: (d) => d.adventures.items.length },
-  { id: "memory", key: "memory", kidNameKey: "elev.practice.world.kid.memory", msIcon: "psychology", tone: "lav", count: (d) => d.events.items.filter((e) => e.kind === "memory").length },
-  { id: "reading", key: "reading", kidNameKey: "elev.practice.world.kid.reading", msIcon: "auto_stories", tone: "yellow", count: (d) => d.events.items.filter((e) => READING_KINDS.has(e.kind)).length },
-  { id: "beat", key: "rhythm", kidNameKey: "elev.practice.world.kid.rhythm", msIcon: "music_note", tone: "coral", count: (d) => d.events.items.filter((e) => e.kind === "rhythm").length },
-  { id: "pose", key: "movement", kidNameKey: "elev.practice.world.kid.movement", msIcon: "accessibility_new", tone: "mint", count: (d) => d.events.items.filter((e) => e.kind === "pose").length },
-  { id: "pattern", key: "logic", kidNameKey: "elev.practice.world.kid.logic", msIcon: "category", tone: "lav", count: (d) => d.events.items.filter((e) => e.kind === "pattern").length },
-];
+// B-PLAY-02: the world list and each tile's count + unit live in the pure
+// components/practice/studioWorlds module (fixture-testable without React).
 
 export default function PracticeStudioTab() {
   const { childProfile, setActiveTab } = useArbor();
@@ -189,7 +162,7 @@ export default function PracticeStudioTab() {
                         className="rounded-full px-2 py-0.5 text-[10.5px] font-bold"
                         style={{ background: tone.soft, color: tone.ink }}
                       >
-                        {t("practice.studio.sessions", { n: sessions })}
+                        {t(studioCountKey(world.unit, sessions), { n: sessions })}
                       </span>
                     )}
                   </span>

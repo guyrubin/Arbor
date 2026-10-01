@@ -30,6 +30,8 @@ import { fileURLToPath } from "node:url";
 import { contractFor } from "./surfaceContract";
 import { en as doorsEn, he as doorsHe } from "./i18nElevation/practiceDoors";
 import { elevationEn, elevationHe } from "./i18nElevation";
+import { translate } from "./i18n";
+import { STUDIO_WORLDS, studioCountKey, type StudioCountSource } from "../components/practice/studioWorlds";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.resolve(here, "..");
@@ -40,7 +42,8 @@ const stripComments = (src: string) =>
 const SPEECH = stripComments(read("components/practice/SpeechCoachTab.tsx"));
 const FEELINGS = stripComments(read("components/practice/FeelingsLabTab.tsx"));
 const JOURNEY = stripComments(read("components/practice/JourneyTab.tsx"));
-const STUDIO = stripComments(read("components/practice/PracticeStudioTab.tsx"));
+// B-PLAY-02: the world list moved to components/practice/studioWorlds.ts.
+const STUDIO = stripComments(read("components/practice/PracticeStudioTab.tsx")) + stripComments(read("components/practice/studioWorlds.ts"));
 
 const countOf = (src: string, re: RegExp) => (src.match(re) || []).length;
 const MODULE = /\bdata-module=/g;
@@ -279,5 +282,55 @@ describe("item 6 (IA-02) — every route in this batch stamps its contract", () 
   it("NEGATIVE CONTROL: an unstamped leaf and a double-stamped leaf both fail", () => {
     expect(countOf("<div className='x' />", MODULE)).toBe(0);
     expect(countOf('<a data-primary-move="x" /><b data-primary-move="y" />', MOVE)).toBe(2);
+  });
+});
+
+/**
+ * B-PLAY-02 — Practice tile counts tell the truth. The Feelings tile counted
+ * every practiceEvents row of every kind, and every world said "sessions"
+ * whatever it counted. Fixture: 5 Beat Keeper rounds, 0 Feelings rounds.
+ */
+describe("B-PLAY-02 · per-world count and unit", () => {
+  const ev = (kind: string, i: number) => ({ id: `${kind}-${i}`, kind, timestamp: "2026-10-01T10:00:00Z" });
+  const fixture = (events: { id: string; kind: string; timestamp: string }[]): StudioCountSource =>
+    ({ speech: { items: [] }, mimic: { items: [] }, adventures: { items: [] }, events: { items: events } } as unknown as StudioCountSource);
+  const world = (id: string) => STUDIO_WORLDS.find((w) => w.id === id)!;
+  const chip = (lang: "en" | "he", id: string, d: StudioCountSource) => {
+    const n = world(id).count(d);
+    return n > 0 ? translate(lang, studioCountKey(world(id).unit, n), { n }) : null;
+  };
+
+  it("5 Beat Keeper rounds render '5 rounds' on Beat Keeper and no chip on Feelings (EN + HE)", () => {
+    const d = fixture([0, 1, 2, 3, 4].map((i) => ev("rhythm", i)));
+    expect(chip("en", "beat", d)).toBe("5 rounds");
+    expect(chip("he", "beat", d)).toBe("5 סבבים");
+    expect(chip("en", "feelings", d)).toBeNull();
+    expect(chip("he", "feelings", d)).toBeNull();
+  });
+
+  it("Feelings counts emotion-id | emotion-why | calm only", () => {
+    const d = fixture([ev("emotion-id", 1), ev("emotion-why", 2), ev("calm", 3), ev("memory", 4), ev("pattern", 5), ev("phonics", 6), ev("vocab-naming", 7)]);
+    expect(world("feelings").count(d)).toBe(3);
+  });
+
+  it("plural keys for 1 vs many, every unit, both locales", () => {
+    for (const unit of ["tries", "rounds", "stories"] as const) {
+      for (const lang of ["en", "he"] as const) {
+        const one = translate(lang, studioCountKey(unit, 1), { n: 1 });
+        const many = translate(lang, studioCountKey(unit, 3), { n: 3 });
+        expect(one, `${lang} ${unit}.one`).not.toBe(studioCountKey(unit, 1));
+        expect(many, `${lang} ${unit}`).not.toBe(studioCountKey(unit, 3));
+        expect(one).not.toContain("{n}");
+        expect(many).toContain("3");
+      }
+    }
+    expect(translate("en", studioCountKey("rounds", 1), { n: 1 })).toBe("1 round");
+    expect(translate("he", studioCountKey("rounds", 1), { n: 1 })).toBe("סבב אחד");
+  });
+
+  it("no world says 'sessions' any more", () => {
+    const studio = stripComments(read("components/practice/PracticeStudioTab.tsx"));
+    expect(studio).not.toContain("practice.studio.sessions");
+    expect(translate("en", "practice.studio.sessions")).toBe("practice.studio.sessions");
   });
 });
