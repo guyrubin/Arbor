@@ -38,6 +38,8 @@ export const en: Record<string, string> = {
   "elev.pulse.kidmode.quests": "{count} quests completed today",
   "elev.pulse.kidmode.questsOne": "1 quest completed today",
   "elev.pulse.kidmode.empty": "Quests are ready — hand over the device",
+  // B-TODAY-09: the step card's ONE seeded ask (was "Begin").
+  "elev.today.askAbout": "Ask about this",
 };
 
 export const he: Record<string, string> = {
@@ -65,4 +67,5 @@ export const he: Record<string, string> = {
   "elev.pulse.kidmode.quests": "{count} משימות הושלמו היום",
   "elev.pulse.kidmode.questsOne": "משימה אחת הושלמה היום",
   "elev.pulse.kidmode.empty": "המשימות מוכנות — אפשר למסור את המכשיר",
+  "elev.today.askAbout": "לשאול על זה",
 };

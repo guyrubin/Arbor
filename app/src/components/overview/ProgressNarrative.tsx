@@ -45,11 +45,9 @@ export default function ProgressNarrative({
    *  week-vs-week sentence in the "What changed" cell — a COMPARATIVE trend
    *  delta about the CHILD on a child-data parent surface, which the standing
    *  clinical firewall bans (IA masterplan §2; UI masterplan §1: the continuity
-   *  surfaces are event language only, never comparative). The prop is retained
-   *  only so the existing OverviewTab call site keeps compiling; nothing here
-   *  may read it, and ProgressNarrative.firewall.test.ts fails the build if a
-   *  prior-window count is ever interpolated into rendered copy again. */
-  momentsLastWeek?: number;
+   *  surfaces are event language only, never comparative). B-TODAY-09 deleted
+   *  the unread prior-window prop itself; ProgressNarrative.firewall.test.ts
+   *  still fails the build if a prior-window count reaches rendered copy. */
   actions: ActionLoopEntry[];
   /** ENG-18: days of logging still needed before predictRhythm can read the
    *  child's daily rhythm (`RhythmPrediction.daysNeeded`). Optional — omit it

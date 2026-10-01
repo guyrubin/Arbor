@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { en, he } from "../../lib/i18n";
+import { elevationEn, elevationHe } from "../../lib/i18nElevation/index";
 
 /**
  * TODAY-2 / CODEX-1 / TODAY-7 / CODEX-7 — Today-hub consolidation acceptance
@@ -166,5 +167,37 @@ describe("W2 Today supporting presentation", () => {
     const overview = stripComments(read("components/tabs/OverviewTab.tsx"));
     expect(overview).toMatch(/<button\s+type="button"\s+onClick=\{\(\) => setActiveTab\("development"\)\}/);
     expect(overview).not.toMatch(/<section\s+onClick=\{\(\) => setActiveTab\("development"\)\}/);
+  });
+});
+
+describe("B-TODAY-09 — no dead header button, no duplicate Ask row, no dead verdict plumbing", () => {
+  const overview = stripComments(read("components/tabs/OverviewTab.tsx"));
+  const focusHook = stripComments(read("hooks/useTodaysFocus.ts"));
+  const narrative = stripComments(read("components/overview/ProgressNarrative.tsx"));
+
+  it("OverviewTab carries no setShowAiRail, no today-coach-row, no milestonesPercent, no weekAvg", () => {
+    expect(overview.length).toBeGreaterThan(20_000);
+    for (const tok of ["setShowAiRail", "today-coach-row", "milestonesPercent", "weekAvg", "momentsLastWeek"]) {
+      expect(overview, tok).not.toContain(tok);
+    }
+  });
+
+  it("the step card offers exactly one seeded ask, labelled 'Ask about this' (EN + HE)", () => {
+    expect(count(overview, /t\("seed\.todayFocus"/g)).toBe(1);
+    expect(overview).toContain('action={t("elev.today.askAbout")}');
+    expect(overview).not.toContain('action={t("today.begin")}');
+    expect(elevationEn["elev.today.askAbout"]).toBe("Ask about this");
+    expect(elevationHe["elev.today.askAbout"]).toBe("לשאול על זה");
+  });
+
+  it("FocusSignals drops avg + milestonesPercent; ProgressNarrative drops the unread prop", () => {
+    const type = focusHook.slice(focusHook.indexOf("export type FocusSignals"), focusHook.indexOf("};", focusHook.indexOf("export type FocusSignals")));
+    expect(type).not.toMatch(/\bavg\s*:/);
+    expect(type).not.toMatch(/milestonesPercent\s*:/);
+    expect(narrative).not.toContain("momentsLastWeek");
+  });
+
+  it("negative control: the pre-fix header button is what the scan rejects", () => {
+    expect('<button onClick={() => setShowAiRail(true)} className="hidden sm:inline-flex">').toContain("setShowAiRail");
   });
 });

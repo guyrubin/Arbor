@@ -10,15 +10,12 @@ import { trackLoopContinued } from "../lib/kpiEvents";
 
 export type FocusSignals = {
   count: number;
-  avg: number;
   topTrigger: string;
-  milestonesPercent: number;
   /**
-   * Wave-3 clinical subtraction (2026-06-26): the coach prompt no longer passes
-   * `milestonesPercent` or `avg` (intensity) to the model — both are verdict
-   * primitives that could be re-emitted as a child verdict. The prompt now uses
-   * flat parent-log counts + the top pattern only. The fields stay on the type
-   * for back-compat with callers; they are ignored below.
+   * Wave-3 clinical subtraction (2026-06-26): the coach prompt passes flat
+   * parent-log counts + the top pattern only. B-TODAY-09 deleted the `avg`
+   * (intensity) and `milestonesPercent` fields the subtraction had left on
+   * this type "for back-compat" — no caller computes them any more.
    */
   milestonesChecked?: number;
   milestonesTotal?: number;

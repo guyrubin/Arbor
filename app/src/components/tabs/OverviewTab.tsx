@@ -99,9 +99,9 @@ const GREEN_SOFT = "var(--arbor-green-soft)";
  */
 export default function OverviewTab() {
   const {
-    setActiveTab, milestones, milestonesPercent, checkedMilestones, totalMilestones,
+    setActiveTab, milestones, checkedMilestones, totalMilestones,
     behaviorLogs, childProfile, seedCoach,
-    donePlayIds, logPlayCompletion, playLogs, requestCapture, setShowAiRail, actionLoop,
+    donePlayIds, logPlayCompletion, playLogs, requestCapture, actionLoop,
     activeTodayAction, acceptTodayAction, requestJournalFocus, conversations,
     pendingCaptureMode, consumeCaptureRequest,
   } = useArbor();
@@ -233,24 +233,9 @@ export default function OverviewTab() {
     [behaviorLogs]
   );
 
-  // TODAY-6: the PREVIOUS 7-day window's logged-moment count (days 8–14),
-  // derived here where behaviorLogs are in scope, for the narrative's ONE
-  // comparative sentence. Counts only — never a trend adjective or score.
-  const momentsLastWeek = useMemo(() => {
-    const now = Date.now();
-    return behaviorLogs.filter((l) => {
-      const at = new Date(l.timestamp).getTime();
-      return at >= now - 14 * DAY && at < now - 7 * DAY;
-    }).length;
-  }, [behaviorLogs]);
-
-  const { weekAvg } = useMemo(() => {
-    const now = Date.now();
-    const inWindow = (start: number, end: number) =>
-      behaviorLogs.filter((l) => { const ts = new Date(l.timestamp).getTime(); return ts >= start && ts < end; });
-    const avg = (arr: typeof behaviorLogs) => (arr.length ? arr.reduce((s, l) => s + l.intensity, 0) / arr.length : 0);
-    return { weekAvg: avg(inWindow(now - 7 * DAY, now + DAY)) };
-  }, [behaviorLogs]);
+  // B-TODAY-09: the prior-window moment count, the intensity average and the
+  // milestone percentage were computed here and never read (the narrative and
+  // the focus prompt both ignore them) — deleted, not hidden.
 
   const topTrigger = useMemo(() => {
     const counts = new Map<string, number>();
@@ -264,9 +249,7 @@ export default function OverviewTab() {
 
   const { focus, loading: focusLoading, error: focusError, regenerate: regenerateFocus } = useTodaysFocus(childProfile, {
     count: recentCount,
-    avg: weekAvg,
     topTrigger,
-    milestonesPercent,
     lastActionRecommendation: latestCompletedAction?.recommendation,
     lastActionOutcome: latestCompletedAction?.outcome,
   });
@@ -635,7 +618,6 @@ export default function OverviewTab() {
       ) : (
         <div className="flex items-center gap-3 px-1 py-3"><Icon name="auto_awesome" size={20} fill={1} style={{ color: "var(--arbor-clay)" }} /><div><div className="text-[13px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("ov.recoLoading", { name: firstName })}</div><div className="text-[11px]" style={{ color: "var(--arbor-faint)" }}>{t("ov.play.desc")}</div></div></div>
       )}
-      <button onClick={() => seedCoach({ prompt: focus ? t("seed.todayFocus", { focus: focus.text, name: firstName }) : undefined, source: "today-coach-row" })} className="mt-3 inline-flex min-h-[44px] items-center gap-2 px-1 text-[12px] font-extrabold" style={{ color: "var(--arbor-clay)" }}><Icon name="forum" size={18} />{t("today.coach.reply")}<Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" /></button>
     </section>
   );
   // Visible only while it holds a slot in the ≤5 budget; otherwise it drops
@@ -670,9 +652,6 @@ export default function OverviewTab() {
               a maximally long AI first sentence pushed the CTA past 812px. */}
           <p className="mt-1 text-[14px] hidden sm:block" style={{ color: "var(--arbor-muted)" }}>{t("today.header.sub")}</p>
         </div>
-        <button onClick={() => setShowAiRail(true)} className="hidden sm:inline-flex items-center gap-2 min-h-[44px] rounded-2xl px-4 text-[12px] font-extrabold" style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)", background: "var(--arbor-green-soft)" }}>
-          <Icon name="verified_user" size={17} /> {t("airail.title")}
-        </button>
       </header>
 
       {/* ── Quick Capture (W6.2/TODAY-4) — ambient voice/photo/text capture,
@@ -752,7 +731,7 @@ export default function OverviewTab() {
               headline={focusHeadline ?? t("ov.recoEmpty", { name: firstName })}
               body={focusHeadline ? focusBody : undefined}
               meta={t("today.meta")}
-              action={t("today.begin")}
+              action={t("elev.today.askAbout")}
               loading={focusLoading && !focus}
               onBegin={beginGuidance}
               accept={focusHeadline ? {
@@ -939,7 +918,6 @@ export default function OverviewTab() {
           behaviorLogs={behaviorLogs.map((item) => ({ id: `moment-${item.id}`, timestamp: item.timestamp, label: item.context || item.notes || t("today.feed.logged") }))}
           playLogs={playLogs.map((item) => ({ id: `play-${item.id}`, timestamp: item.timestamp, label: item.title }))}
           noticedMilestones={checkedMilestones}
-          momentsLastWeek={momentsLastWeek}
           actions={actionLoop}
           // ENG-18: the cold-start countdown Today never showed. predictRhythm
           // already runs here for the why-line; this passes its `daysNeeded`
