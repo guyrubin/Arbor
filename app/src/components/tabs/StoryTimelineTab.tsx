@@ -114,6 +114,13 @@ function SignalRow({ signal, childName }: { signal: TimelineSignal; childName?: 
                   {childName || tt("elev.childsignals.prov.fallback")}
                 </span>
               )}
+              {/* B-DATA-10: resolved is a glyph + label, never a colour. */}
+              {signal.resolved && (
+                <span data-testid="signal-resolved" className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wide" style={{ color: "var(--arbor-ink-soft)" }}>
+                  <Icon name="check" size={12} />
+                  {t("beh.resolved")}
+                </span>
+              )}
               {signal.at && <span className="text-[10.5px] font-semibold ms-auto" style={{ color: "var(--arbor-muted)" }}>{new Date(signal.at).toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" })}</span>}
             </div>
             <p className="text-sm font-extrabold mt-0.5" style={{ color: "var(--arbor-ink)" }} dir="auto">{signalTitle(signal, tt)}</p>

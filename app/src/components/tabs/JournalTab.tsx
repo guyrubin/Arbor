@@ -115,6 +115,7 @@ function JournalRow({
   title,
   detail,
   originLabel = "",
+  resolvedLabel = "",
   focused = false,
   onOpen,
 }: {
@@ -131,6 +132,8 @@ function JournalRow({
    *  above still reads "You" — keeping it was the parent's act — but the words
    *  are Arbor's, and a row that does not say so is the defect AI-04 closes. */
   originLabel?: string;
+  /** B-DATA-10: the "Resolved" label (beh.resolved), shown only on a resolved moment. */
+  resolvedLabel?: string;
   /** TODAY-6: true while this row is the target of an evidence deep-link —
    *  a brief calm highlight so the parent lands on the cited entry. */
   focused?: boolean;
@@ -150,7 +153,7 @@ function JournalRow({
       type="button"
       id={`journal-signal-${signal.id}`}
       onClick={onOpen}
-      aria-label={title}
+      aria-label={signal.resolved ? `${title} — ${resolvedLabel}` : title}
       className="flex w-full gap-3.5 border-b py-4 text-start last:border-b-0 rounded-xl transition-colors"
       style={{ borderColor: "var(--arbor-rule)", background: focused ? "var(--arbor-green-soft)" : undefined }}
     >
@@ -196,6 +199,13 @@ function JournalRow({
             >
               <Icon name="bookmark_added" size={11} fill={1} />
               {originLabel}
+            </span>
+          )}
+          {/* B-DATA-10: a resolved moment carries a glyph + label, never a colour. */}
+          {signal.resolved && (
+            <span data-testid="journal-row-resolved" className="inline-flex items-center gap-1 text-[12px] font-bold" style={{ color: "var(--arbor-ink-soft)" }}>
+              <Icon name="check" size={13} />
+              {resolvedLabel}
             </span>
           )}
           {/* Domain chip — omitted when the entry can't be classified (JRNL-6). */}
@@ -623,6 +633,7 @@ export default function JournalTab() {
                     title={signalTitle(s, tt)}
                     detail={signalDetail(s, tt)}
                     originLabel={provenanceForSignal(keptProvenance, s.id) ? originLabel : ""}
+                    resolvedLabel={t("beh.resolved")}
                     focused={s.id === focusId}
                     onOpen={() => setOpenSignal(s)}
                   />

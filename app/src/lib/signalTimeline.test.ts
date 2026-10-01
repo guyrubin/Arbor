@@ -69,9 +69,9 @@ describe("buildTimeline", () => {
     expect(signals[0].at).toBe(daysAgo(1));
     // undated (milestone, plan) sink to the end
     expect(signals[signals.length - 1].at).toBeNull();
-    // unresolved moment is coral, resolved is mint
+    // B-DATA-10: every moment carries the same tone; nothing is coral.
     const moments = signals.filter((s) => s.kind === "moment");
-    expect(moments.every((m) => m.tone === "coral")).toBe(true);
+    expect(moments.every((m) => m.tone === "lav")).toBe(true);
   });
 
   it("excludes unchecked milestones and non-approved memory", () => {
@@ -353,5 +353,52 @@ describe("groupByDay", () => {
     expect(groups[groups.length - 1].label).toBe("מתמשך");
     // No English leaks into any HE group label.
     for (const g of groups) expect(g.label).not.toMatch(/[A-Za-z]/);
+  });
+});
+
+describe("B-DATA-10 · a logged moment is not painted coral because it is unresolved", () => {
+  it("two moments, one resolved, carry the same tone; the resolved one carries the flag for its label", () => {
+    const signals = buildTimeline({
+      behaviorLogs: [log({ id: "open", timestamp: daysAgo(1) }), log({ id: "done", timestamp: daysAgo(2), resolved: true })],
+    });
+    const open = signals.find((s) => s.id === "moment-open")!;
+    const done = signals.find((s) => s.id === "moment-done")!;
+    expect(open.tone).toBe(done.tone);
+    expect(open.tone).not.toBe("coral");
+    expect(done.resolved).toBe(true);
+    expect(open.resolved).toBeUndefined();
+  });
+
+  it("source scan: no `resolved ?` inside any tone: expression in signalTimeline.ts", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const src = readFileSync(resolve(__dirname, "signalTimeline.ts"), "utf8");
+    const toneExprs = [...src.matchAll(/\btone:\s*([^,\n]+)/g)].map((m) => m[1]);
+    expect(toneExprs.length).toBeGreaterThan(3);
+    for (const expr of toneExprs) expect(expr, `tone: ${expr}`).not.toMatch(/resolved\s*\?/);
+    // Negative control: the pre-fix line is what the scan rejects.
+    expect(/resolved\s*\?/.test('log.resolved ? "mint" : "coral"')).toBe(true);
+  });
+
+  it("the three render sites show resolved as a glyph + 'beh.resolved' label (EN + HE), never a tone", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const { en, he } = await import("./i18n");
+    const read = (rel: string) => readFileSync(resolve(__dirname, "..", rel), "utf8");
+    const story = read("components/tabs/StoryTimelineTab.tsx");
+    const journal = read("components/tabs/JournalTab.tsx");
+    const sheet = read("components/journal/JournalEntrySheet.tsx");
+    for (const [name, file] of [["story", story], ["journal", journal], ["sheet", sheet]] as const) {
+      expect(file, name).toContain("signal.resolved && (");
+      expect(file, name).toContain('<Icon name="check"');
+      expect(file, name).not.toMatch(/resolved\s*\?\s*["'](mint|coral|green)/);
+    }
+    expect(story).toContain('t("beh.resolved")');
+    expect(sheet).toContain('t("beh.resolved")');
+    expect(journal).toContain('resolvedLabel={t("beh.resolved")}');
+    // The row is a button named by aria-label, so the label must reach it too.
+    expect(journal).toContain("aria-label={signal.resolved ? `${title} — ${resolvedLabel}` : title}");
+    expect(en["beh.resolved"]).toBeTruthy();
+    expect(he["beh.resolved"]).toMatch(/[֐-׿]/);
   });
 });

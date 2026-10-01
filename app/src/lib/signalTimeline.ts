@@ -95,6 +95,13 @@ export interface TimelineSignal {
    */
   actionStatus?: "accepted" | "helped" | "somewhat" | "not_today" | "done";
   /**
+   * B-DATA-10 (kind "moment" only) — the parent marked this moment resolved.
+   * FIREWALL: rendered as a glyph + label on the row ("Resolved"), never as a
+   * colour. Every moment carries the SAME tone, resolved or not; painting the
+   * unresolved ones coral made the feed a verdict strip about the child.
+   */
+  resolved?: boolean;
+  /**
    * Same-day same-type aggregation count (kind:"practice" only) — one warm
    * signal per day per activity type, never one row per raw event.
    * FIREWALL: a flat event count, never a rate or a period-vs-period delta.
@@ -373,7 +380,10 @@ export const buildTimeline = (sources: TimelineSources): TimelineSignal[] => {
       at: log.timestamp || null,
       refTitle: log.behaviorType || undefined,
       detail: log.trigger || log.notes || "",
-      tone: log.resolved ? "mint" : "coral",
+      // B-DATA-10: tone derives from kind only (like action rows below);
+      // `resolved` travels as data and renders as a label, never a colour.
+      tone: "lav",
+      ...(log.resolved ? { resolved: true } : {}),
       intensity: log.intensity,
       context: log.context,
       photo: log.photoAttachment,
