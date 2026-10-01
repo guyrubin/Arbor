@@ -217,7 +217,7 @@ describe("ENG-07 — whyLineFor is built from real inputs", () => {
       expect(translate(lang, "today.intent.why.prompt", { age: 4 })).not.toMatch(/goal|interest|moment|מטרות|תחומי עניין|רגע/i);
     }
     const src = read("components/tabs/OverviewTab.tsx");
-    expect(src).toMatch(/whyLine=\{todayChoice\.kind === "prompt" \? t\("today\.intent\.why\.prompt", \{ age: childProfile\.age \}\) : undefined\}/);
+    expect(src).toMatch(/whyLine=\{todayChoice\.kind === "prompt" \? t\("today\.intent\.why\.prompt", \{ age: ageYearsFromProfile\(childProfile\) \}\) : undefined\}/);
     expect(src).not.toContain("whyLine={focusWhy}");
   });
 
