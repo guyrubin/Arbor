@@ -37,6 +37,9 @@ export const en: Record<string, string> = {
   // ── Board header
   "elev.plans.focusIssue": "Focus: {issue}",
   "elev.plans.daysActive": "{n} days running",
+  // B-ASKJB-28: the one quiet routines row below the active plan.
+  "elev.plans.routines.row": "Your routines ({n})",
+  "elev.plans.routines.add": "Add a routine",
 };
 
 export const he: Record<string, string> = {
@@ -58,4 +61,6 @@ export const he: Record<string, string> = {
 
   "elev.plans.focusIssue": "במוקד: {issue}",
   "elev.plans.daysActive": "{n} ימים בתוקף",
+  "elev.plans.routines.row": "השגרות שלכם ({n})",
+  "elev.plans.routines.add": "הוספת שגרה",
 };

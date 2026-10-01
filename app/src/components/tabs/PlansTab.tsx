@@ -11,6 +11,8 @@ import { PageHeader, cardCls } from "../ui/kit";
 import { ContentWhyLine } from "../ui/ContentActionBar";
 import PlanKanban from "../plans/PlanKanban";
 import RoutinesCard from "../plans/RoutinesCard";
+import { useChildCollection } from "../../hooks/useChildCollection";
+/* B-ASKJB-28: the routines row only counts docs; their shape stays RoutinesCard's. */
 import { planProgress, suggestedChallenges } from "../../lib/plans";
 import { HeroAvatar } from "../ui/HeroAvatar";
 
@@ -37,6 +39,9 @@ export default function PlansTab() {
   } = useArbor();
   const { t, uiLang } = useLanguage();
   const first = childProfile.name.split(" ")[0];
+  // B-ASKJB-28: the routines row's count (the same collection RoutinesCard reads).
+  const routinesCol = useChildCollection<{ id: string }>(childProfile.id, "routines");
+  const routineCount = routinesCol.items.length;
 
   // Masterplan 4.3 teach-empty: the ONE CTA focuses the existing challenge
   // input above — no second create path.
@@ -148,8 +153,6 @@ export default function PlansTab() {
           </button>
         </div>
       </div>
-
-      <div data-module="plans-routines" style={{ display: "contents" }}><RoutinesCard /></div>
 
       {!plansLoaded && (
         /* Masterplan 4.3 — per-section skeleton reserving the plan cards'
@@ -271,6 +274,25 @@ export default function PlansTab() {
           );
         })}
       </div>
+
+      {/* B-ASKJB-28: routines fold into ONE quiet row BELOW the active plan —
+          not a top-level module (no data-module stamp). "Your routines ({n})"
+          opens the same RoutinesCard (open, reset, edit, add: unchanged); with
+          none it reads as a text link "Add a routine". Data, export and erase
+          are unchanged (law 6). */}
+      <details data-testid="plans-routines-row" className="group">
+        <summary
+          className="list-none cursor-pointer inline-flex min-h-11 items-center gap-1.5 px-1 text-[13px] font-extrabold"
+          style={{ color: routineCount > 0 ? "var(--arbor-ink)" : "var(--arbor-green-ink)" }}
+        >
+          <Icon name={routineCount > 0 ? "checklist" : "add"} size={16} />
+          <span className={routineCount > 0 ? undefined : "underline underline-offset-2"}>
+            {routineCount > 0 ? t("elev.plans.routines.row", { n: routineCount }) : t("elev.plans.routines.add")}
+          </span>
+          {routineCount > 0 && <Icon name="expand_more" size={16} className="transition group-open:rotate-180" />}
+        </summary>
+        <div className="mt-3"><RoutinesCard /></div>
+      </details>
     </motion.div>
   );
 }

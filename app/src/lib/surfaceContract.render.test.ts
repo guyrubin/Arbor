@@ -457,3 +457,30 @@ describe("B-ASKJB-19 — Story density to its budget", () => {
     expect(countModules(timeline).topLevel).toBeLessThanOrEqual(contractFor("timeline" as ActiveTab)!.moduleBudget);
   });
 });
+
+describe("B-ASKJB-28 — Plans folds RoutinesCard into one quiet row", () => {
+  const plans = stripJsComments(read("src/components/tabs/PlansTab.tsx"));
+
+  it("Plans stamps exactly plans-create and plans-active (2 blocks when a plan exists)", () => {
+    const stamps = [...plans.matchAll(/data-module="([a-z-]+)"/g)].map((m) => m[1]);
+    expect(stamps).toEqual(["plans-create", "plans-active"]);
+    expect(plans).not.toContain("plans-routines\"");
+  });
+
+  it("the routines row sits below plans-active and opens the same RoutinesCard", () => {
+    const row = plans.indexOf('data-testid="plans-routines-row"');
+    expect(row).toBeGreaterThan(plans.indexOf('data-module="plans-active"'));
+    expect(plans.indexOf("<RoutinesCard />", row)).toBeGreaterThan(row);
+    expect((plans.match(/<RoutinesCard \/>/g) || []).length).toBe(1);
+    expect(plans).toContain('t("elev.plans.routines.row", { n: routineCount })');
+    expect(plans).toContain('t("elev.plans.routines.add")');
+  });
+
+  it("EN + HE copy for the row", async () => {
+    const { en, he } = await import("./i18nElevation/plans");
+    expect(en["elev.plans.routines.row"]).toBe("Your routines ({n})");
+    expect(he["elev.plans.routines.row"]).toContain("{n}");
+    expect(en["elev.plans.routines.add"]).toBe("Add a routine");
+    expect(he["elev.plans.routines.add"]).toBeTruthy();
+  });
+});
