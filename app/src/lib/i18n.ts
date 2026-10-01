@@ -806,7 +806,7 @@ export const en: Dict = {
   "ms.noMilestones": "No milestones in this domain yet.",
   "ms.bornEarly": "Born early?",
   "ms.gestationLabel": "Weeks of pregnancy at birth",
-  "ms.gestationHint": "If your baby was born before 40 weeks, Arbor compares milestones against corrected age until about 2 years — so an early arrival isn't flagged early.",
+  "ms.gestationHint": "If your baby was born before 40 weeks, Arbor compares milestones against corrected age until about 2 years — so an early arrival is not read as late.",
   "ms.gestationSave": "Save",
   "ms.gestationClear": "Born at term",
   "ms.correctedBadge": "Comparing against corrected age",
@@ -938,8 +938,7 @@ export const en: Dict = {
   // UND-5 — corrected-age (preterm) intro sentence: observational, never a verdict.
   "screen.intro.corrected": "Because {name} arrived early, this check uses a corrected age of about {months} months — the same corrected age the milestone map uses. Preemies catch up on their own timeline.",
   "screen.last.line": "Last checked {date} · {status}",
-  "screen.last.flagged": "{n} area(s) flagged",
-  "screen.last.calm": "no areas flagged",
+  "screen.last.calm": "no area to talk over for now",
   "screen.viewLast": "View last result",
   "screen.start": "Start the check",
   "screen.cancel": "Cancel",
@@ -1503,7 +1502,6 @@ export const en: Dict = {
   "ov.safety.title": "Not sure something's right? We're here.",
   "ov.safety.body": "Arbor is non-diagnostic. For anything urgent, or that needs an expert, we'll help you reach a professional.",
   "ov.safety.cta": "Reach a professional",
-  "ov.attention.title": "{n} flagged for professional input",
   "ov.attention.body": "High and urgent cases should involve a human. Review them on the timeline.",
   // P0-5 attribution dashboard (internal/admin)
   "attr.title": "Attribution & funnel",
@@ -3123,7 +3121,7 @@ export const he: Dict = {
   "ms.noMilestones": "אין עדיין אבני דרך בתחום זה.",
   "ms.bornEarly": "נולד מוקדם?",
   "ms.gestationLabel": "שבועות הריון בלידה",
-  "ms.gestationHint": "אם תינוקכם נולד לפני שבוע 40, ארבור משווה אבני דרך מול גיל מתוקן עד גיל שנתיים בערך — כך שלידה מוקדמת לא תסומן מוקדם מדי.",
+  "ms.gestationHint": "אם תינוקכם נולד לפני שבוע 40, ארבור משווה אבני דרך מול גיל מתוקן עד גיל שנתיים בערך — כך שלידה מוקדמת לא תיקרא כאיחור.",
   "ms.gestationSave": "שמירה",
   "ms.gestationClear": "נולד במועד",
   "ms.correctedBadge": "משווה מול גיל מתוקן",
@@ -3253,8 +3251,7 @@ export const he: Dict = {
   // UND-5 — משפט גיל מתוקן (פגות) בפתיח הבדיקה: תצפיתי, לעולם לא שיפוטי.
   "screen.intro.corrected": "בגלל ש{name} נולד/ה מוקדם, הבדיקה משתמשת בגיל מתוקן של כ-{months} חודשים — אותו גיל מתוקן שבו משתמשת מפת אבני הדרך. פגים מתקדמים בקצב משלהם.",
   "screen.last.line": "נבדק לאחרונה {date} · {status}",
-  "screen.last.flagged": "{n} תחומים סומנו",
-  "screen.last.calm": "לא סומנו תחומים",
+  "screen.last.calm": "אין כרגע תחום לשיחה",
   "screen.viewLast": "הצגת התוצאה האחרונה",
   "screen.start": "התחלת הבדיקה",
   "screen.cancel": "ביטול",
@@ -3792,7 +3789,6 @@ export const he: Dict = {
   "ov.safety.title": "לא בטוחים שמשהו תקין? אנחנו כאן.",
   "ov.safety.body": "ארבור אינו כלי אבחון. לכל דבר דחוף, או כזה שדורש מומחה, נעזור לכם לפנות לאיש מקצוע.",
   "ov.safety.cta": "פנו לאיש מקצוע",
-  "ov.attention.title": "{n} סומנו לבדיקת איש מקצוע",
   "ov.attention.body": "מקרים בעדיפות גבוהה ודחופה צריכים מעורבות של אדם. סקרו אותם בציר הזמן.",
   // C1 — Arbor Noticed card
   "noticed.eyebrow": "ארבור שם לב",

@@ -5,6 +5,7 @@ import { recommend } from "../practice/signals";
 import { composeWeek } from "../practice/journey";
 import type { DomainBand } from "../practice/signals";
 import type { MissionRecord, PracticeDomain } from "../types";
+import { en as dictEn, he as dictHe } from "./i18n";
 
 /* OBJ-GROWTH-05 — law 1 bans weakest-domain pointers, and three surfaces
    printed one anyway at 7208d0db:
@@ -224,3 +225,38 @@ describe("B-TODAY-05 — the noticed card: no norm pointer, no adjectives, no pe
     expect(picked?.domain).toBe("attachment_regulation");
   });
 });
+
+/* B-GROWTH-33 / FU#1 — the shipped dictionary (lib/i18n.ts) is held to the
+   verdict vocabulary too, value by value: a parent-visible string may not say
+   a child or an area is "flagged", "on track", "behind", or the "weakest" /
+   "lowest". Every key of lib/i18n.ts is parent-visible (it is the UI
+   dictionary); the internal `status: "on_track"` in stored screenings is a
+   data value, never a dictionary string (lib/screening.ts), so it is out of
+   scope by construction. */
+describe("B-GROWTH-33 — no verdict word in any lib/i18n.ts value (FU#1)", () => {
+  const VERDICT = /\b(flagged|on[\s-]track|behind|weakest|lowest)\b/i;
+
+  it("EN: 0 values carry a verdict word", () => {
+    const hits = Object.entries(dictEn).filter(([, v]) => VERDICT.test(String(v))).map(([k]) => k);
+    expect(hits).toEqual([]);
+  });
+
+  it("HE: 0 values carry a Latin verdict word", () => {
+    const hits = Object.entries(dictHe).filter(([, v]) => VERDICT.test(String(v))).map(([k]) => k);
+    expect(hits).toEqual([]);
+  });
+
+  it("the unrendered verdict keys are deleted from both dictionaries", () => {
+    for (const key of ["screen.last.flagged", "ov.attention.title"]) {
+      expect(key in dictEn, key).toBe(false);
+      expect(key in dictHe, key).toBe(false);
+    }
+  });
+
+  it("POSITIVE CONTROL — the pre-fix strings trip the scan", () => {
+    for (const pre of ["{n} area(s) flagged", "no areas flagged", "{n} flagged for professional input", "the weakest area", "on track"]) {
+      expect(VERDICT.test(pre), pre).toBe(true);
+    }
+  });
+});
+

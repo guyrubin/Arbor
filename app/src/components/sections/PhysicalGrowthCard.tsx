@@ -40,7 +40,6 @@ const GREEN = "var(--arbor-green-ink)";
 const RULE = "var(--arbor-rule)";
 const PAPER_ELEVATED = "var(--arbor-paper-elevated)";
 const PAPER_SUNK = "var(--arbor-paper-sunk)";
-const GREEN_SOFT = "var(--arbor-green-soft)";
 
 // ---- Mini SVG trajectory chart ------------------------------------------
 
