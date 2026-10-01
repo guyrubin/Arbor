@@ -8,8 +8,12 @@
 export const en: Record<string, string> = {
   // Accessible name for the desktop hub navigation landmark.
   "elev.sidebar.nav.aria": "Arbor hubs",
+  // B-SHELL-03: the Ask tab/row's accessible name names what its badge counts
+  // (notes the coach surfaced that await the parent's review).
+  "elev.sidebar.badge.review": "{label} — {count} to review",
 };
 
 export const he: Record<string, string> = {
   "elev.sidebar.nav.aria": "האזורים של ארבור",
+  "elev.sidebar.badge.review": "{label} — {count} ממתינים לעיון שלכם",
 };

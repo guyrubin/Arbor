@@ -14,17 +14,17 @@ import { SECTIONS, sectionForTab, primaryTabOf, type NavBadge } from "../../lib/
  *  badge is a COUNT of parent-noticed milestones, never a percentage/score. */
 export function badgeText(
   badge: NavBadge | undefined,
-  state: { milestonesNoticed: number; plansCount: number; unreadCoachCount: number }
+  state: { milestonesNoticed: number; plansCount: number; pendingReviewCount: number }
 ): string {
   if (!badge) return "";
   if (badge === "milestone") return state.milestonesNoticed ? String(state.milestonesNoticed) : "";
   if (badge === "plans") return state.plansCount ? String(state.plansCount) : "";
-  if (badge.kind === "count") return state.unreadCoachCount ? String(state.unreadCoachCount) : "";
+  if (badge.kind === "count") return state.pendingReviewCount ? String(state.pendingReviewCount) : "";
   return ""; // { kind: "dot" } handled by the caller
 }
 
 export default function Sidebar() {
-  const { activeTab, setActiveTab, milestones, actionPlans, unreadCoachCount } = useArbor();
+  const { activeTab, setActiveTab, milestones, actionPlans, pendingReviewCount } = useArbor();
   const milestonesNoticed = milestones.filter((m) => m.checked).length;
   const { user, signOut, firebaseEnabled } = useAuth();
   const { t } = useLanguage();
@@ -76,13 +76,19 @@ export default function Sidebar() {
       <nav aria-label={t("elev.sidebar.nav.aria")} className="flex flex-col gap-1 flex-1">
         {SECTIONS.map((sec) => {
           const active = sec.id === activeSectionId;
-          const text = badgeText(sec.badge, { milestonesNoticed, plansCount: actionPlans.length, unreadCoachCount });
+          const text = badgeText(sec.badge, { milestonesNoticed, plansCount: actionPlans.length, pendingReviewCount });
+          // B-SHELL-03: a screen reader hears what the number counts.
+          const reviewAria =
+            typeof sec.badge === "object" && sec.badge.kind === "count" && text !== ""
+              ? t("elev.sidebar.badge.review", { label: t("nav.cat." + sec.id), count: pendingReviewCount })
+              : undefined;
           const showDot = typeof sec.badge === "object" && sec.badge.kind === "dot";
           return (
             <button
               key={sec.id}
               onClick={() => setActiveTab(primaryTabOf(sec))}
               aria-current={active ? "page" : undefined}
+              aria-label={reviewAria}
               className="flex items-center justify-between gap-3 rounded-[13px] text-start transition"
               style={{
                 padding: "11px 13px",
@@ -101,7 +107,7 @@ export default function Sidebar() {
               {showDot ? (
                 <span aria-hidden="true" className="rounded-full flex-shrink-0" style={{ width: 8, height: 8, background: "var(--arbor-clay)" }} />
               ) : text ? (
-                <span className="text-[11px] font-extrabold rounded-full px-2 py-0.5 flex-shrink-0" style={active ? { background: "var(--arbor-clay)", color: "#fff" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
+                <span aria-hidden={reviewAria ? true : undefined} className="text-[11px] font-extrabold rounded-full px-2 py-0.5 flex-shrink-0" style={active ? { background: "var(--arbor-clay)", color: "#fff" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
                   {text}
                 </span>
               ) : null}

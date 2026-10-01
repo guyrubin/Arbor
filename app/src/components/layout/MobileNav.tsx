@@ -32,7 +32,7 @@ const PRIMARY_SECTION_IDS = ["today", "journal", "ask", "growth"] as const;
 const EMPHASIZED_SECTION_IDS = new Set<string>(["today", "ask", "journal"]);
 
 export default function MobileNav() {
-  const { activeTab, setActiveTab, milestones, actionPlans, unreadCoachCount } = useArbor();
+  const { activeTab, setActiveTab, milestones, actionPlans, pendingReviewCount } = useArbor();
   const { t } = useLanguage();
   const pulses = usePulses(); // E1 living pulses — shown on the More-sheet rows
   const activeSectionId = sectionForTab(activeTab).id;
@@ -79,18 +79,23 @@ export default function MobileNav() {
           // full opacity keeps the same hierarchy without paying for it in
           // legibility: emphasis is weight and glyph size, never opacity.
           const emphasized = EMPHASIZED_SECTION_IDS.has(sec.id);
-          // IA-16: the sidebar's unread-coach badge, on the tab a phone
-          // actually uses to reach the coach. Same derivation, same app state —
-          // badgeText is the sidebar's own function, imported, not re-written.
-          // CLINICAL FIREWALL: a count of unread messages TO THE PARENT; it
-          // says nothing about the child.
-          const badge = badgeText(sec.badge, { milestonesNoticed, plansCount: actionPlans.length, unreadCoachCount });
+          // IA-16: the sidebar's Ask badge, on the tab a phone actually uses
+          // to reach the coach. Same derivation, same app state — badgeText is
+          // the sidebar's own function, imported, not re-written.
+          // B-SHELL-03: the number counts notes awaiting the PARENT's review
+          // (the coach's memory review queue), and the tab's accessible name
+          // says so. CLINICAL FIREWALL: it says nothing about the child.
+          const badge = badgeText(sec.badge, { milestonesNoticed, plansCount: actionPlans.length, pendingReviewCount });
           const showBadge = typeof sec.badge === "object" && sec.badge.kind === "count" && badge !== "";
+          const reviewAria = showBadge
+            ? t("elev.sidebar.badge.review", { label: t("nav.short." + sec.id), count: pendingReviewCount })
+            : undefined;
           return (
             <button
               key={sec.id}
               onClick={() => go(sec.id)}
               aria-current={on ? "page" : undefined}
+              aria-label={reviewAria}
               className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 font-bold transition ${emphasized ? "text-[12px]" : "text-[11px]"}`}
               style={{ color: on ? "var(--arbor-clay-deep)" : "var(--arbor-muted)" }}
             >
@@ -98,6 +103,7 @@ export default function MobileNav() {
                 <Icon name={sec.msIcon} size={emphasized ? 21 : 18} fill={on ? 1 : 0} />
                 {showBadge && (
                   <span
+                    aria-hidden="true"
                     className="absolute -top-1.5 text-[10px] font-extrabold rounded-full px-1.5 leading-4 text-center"
                     style={{ insetInlineStart: "100%", marginInlineStart: "-7px", background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}
                   >

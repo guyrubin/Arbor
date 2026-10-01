@@ -763,10 +763,12 @@ function useArborState() {
   const milestonesPercent = totalMilestones > 0 ? Math.round((checkedMilestones / totalMilestones) * 100) : 0;
   const pendingMemoryItems = memoryReviewItems.filter((item) => item.status === "pending");
   const approvedMemoryItems = memoryReviewItems.filter((item) => item.status === "approved");
-  // UC-1: read-only unread-coach badge count for the Ask Arbor sidebar row.
-  // Honest signal: the coach's append-only review queue — facts the coach
-  // surfaced that still await the parent's approval. Never a fabricated "1".
-  const unreadCoachCount = pendingMemoryItems.length;
+  // UC-1 / B-SHELL-03: the Ask badge count = notes the coach surfaced that
+  // still await the parent's review (the memory review queue). It is NOT a
+  // count of unread messages. Never a fabricated "1".
+  const pendingReviewCount = pendingMemoryItems.length;
+  /** @deprecated alias of `pendingReviewCount` (B-SHELL-03), kept for readers. */
+  const unreadCoachCount = pendingReviewCount;
 
   // --- HANDLERS: SERVER API CALLS ---
 
@@ -1617,6 +1619,7 @@ function useArborState() {
     milestonesPercent,
     pendingMemoryItems,
     approvedMemoryItems,
+    pendingReviewCount,
     unreadCoachCount,
     handleMemoryDecision,
     proposeMemory,

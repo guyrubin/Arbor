@@ -88,7 +88,7 @@ describe("IA-16 — the current tab announces itself", () => {
 describe("IA-16 — the unread coach count reaches the tab that opens the coach", () => {
   it("MobileNav imports the sidebar's own badge derivation, it does not fork one", () => {
     expect(nav).toContain('import { badgeText } from "./Sidebar";');
-    expect(nav).toContain("badgeText(sec.badge, { milestonesNoticed, plansCount: actionPlans.length, unreadCoachCount })");
+    expect(nav).toContain("badgeText(sec.badge, { milestonesNoticed, plansCount: actionPlans.length, pendingReviewCount })");
     expect(read("Sidebar.tsx")).toContain("export function badgeText(");
   });
 
@@ -173,5 +173,37 @@ describe("the settings seam is a one-way event, not a second owner of the state"
     expect(shell).toMatch(/const onSettingsRequest = \(\) => \{\s*\n\s*if \(isKidModeActive\(\)\) return;\s*\n\s*setSettingsOpen\(true\);/);
     expect(shell).toContain("window.addEventListener(SETTINGS_OPEN_EVENT, onSettingsRequest)");
     expect(shell).toContain("window.removeEventListener(SETTINGS_OPEN_EVENT, onSettingsRequest)");
+  });
+});
+
+describe("B-SHELL-03 — the Ask badge says what it counts", () => {
+  const sidebar = stripComments(read("Sidebar.tsx"));
+
+  it("the tab's accessible name carries the count through the review key (MobileNav + Sidebar)", () => {
+    expect(nav).toContain('t("elev.sidebar.badge.review", { label: t("nav.short." + sec.id), count: pendingReviewCount })');
+    expect(bar).toContain("aria-label={reviewAria}");
+    expect(sidebar).toContain('t("elev.sidebar.badge.review", { label: t("nav.cat." + sec.id), count: pendingReviewCount })');
+    expect(sidebar).toContain("aria-label={reviewAria}");
+  });
+
+  it("the visible chip is hidden from AT (the name already says it) and its number is unchanged", () => {
+    const badge = bar.slice(bar.indexOf("{showBadge &&"), bar.indexOf("{t(\"nav.short."));
+    expect(badge).toContain('aria-hidden="true"');
+    expect(badge).toContain("{badge}");
+  });
+
+  it("EN + HE keys exist and both carry {count}; the EN name says 'to review'", async () => {
+    const { en, he } = await import("../../lib/i18nElevation/sidebar");
+    expect(en["elev.sidebar.badge.review"]).toContain("{count} to review");
+    expect(en["elev.sidebar.badge.review"]).toContain("{label}");
+    expect(he["elev.sidebar.badge.review"]).toContain("{count}");
+    expect(he["elev.sidebar.badge.review"]).toContain("{label}");
+  });
+
+  it("the context field is pendingReviewCount (alias kept); no comment claims 'unread messages'", () => {
+    const ctx = read(path.join("..", "..", "context", "ArborContext.tsx"));
+    expect(ctx).toContain("const pendingReviewCount = pendingMemoryItems.length;");
+    expect(ctx).toContain("const unreadCoachCount = pendingReviewCount;");
+    expect(read("MobileNav.tsx")).not.toMatch(/unread messages/);
   });
 });
