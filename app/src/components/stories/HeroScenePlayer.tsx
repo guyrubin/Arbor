@@ -15,6 +15,7 @@ import { downloadHeroAvatarCanvas } from "../../lib/heroAvatarCanvas";
 import { isKidModeActive } from "../../lib/kidModeGate";
 import type { HeroSceneRender } from "../../types";
 import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
+import { ArborMascot } from "../ui/ArborMascot";
 
 /**
  * AVA-3 / S3: scene-art cache. Generated scene images are large data URLs, so they
@@ -27,7 +28,11 @@ import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
 /**
  * The cinematic scene card for one beat of a Hero Journey: a generated scene that
  * stars the child's own character (AVA-3) when a stylized avatar is available, falling
- * back to a seeded illustration (or the child's photo) plus narration and read-aloud.
+ * back to a seeded illustration plus narration and read-aloud.
+ *
+ * B-KID-01: the cameo on the fallback page is the generated hero
+ * (`heroAvatarUrl`, else `cameoUrl` = `resolveHeroUrl(child)`) or Sprout. A real
+ * photo is never the story cameo — there is no photo prop to pass one through.
  */
 export function HeroScenePlayer({
   scene,
@@ -35,7 +40,7 @@ export function HeroScenePlayer({
   storyId,
   beatNumber,
   beatTotal,
-  photoUrl,
+  cameoUrl,
   heroAvatarUrl,
   heroAvatarStyle,
   heroName,
@@ -60,7 +65,9 @@ export function HeroScenePlayer({
   storyId?: string;
   beatNumber: number;
   beatTotal: number;
-  photoUrl?: string;
+  /** B-KID-01: the child's hero for the fallback cameo — `resolveHeroUrl(child)`
+   *  (a generated character), never the raw uploaded photo. Absent → Sprout. */
+  cameoUrl?: string;
   /** A generated stylized avatar (data URL) used as the hero across scenes. */
   heroAvatarUrl?: string;
   heroAvatarStyle?: AvatarStyle;
@@ -208,20 +215,24 @@ export function HeroScenePlayer({
             <StoryIllustration seed={seed} className="absolute inset-0 h-full w-full" />
           )}
           <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--comic-ink) 8%, transparent), transparent 60%)" }} />
-          {(heroAvatarUrl || photoUrl) && (
-            <div
-              className="absolute bottom-2 h-[48%] max-h-48 rounded-2xl p-1"
-              style={{ insetInlineStart: "5%", background: "var(--arbor-paper-elevated)", outline: "2px solid var(--comic-ink)", boxShadow: "var(--comic-pop)" }}
-            >
+          <div
+            className="absolute bottom-2 h-[48%] max-h-48 rounded-2xl p-1"
+            style={{ insetInlineStart: "5%", background: "var(--arbor-paper-elevated)", outline: "2px solid var(--comic-ink)", boxShadow: "var(--comic-pop)" }}
+          >
+            {(heroAvatarUrl ?? cameoUrl) ? (
               <img
-                src={heroAvatarUrl ?? photoUrl}
+                src={heroAvatarUrl ?? cameoUrl}
                 alt={heroName
                   ? kidsStoriesText("journey.heroAlt", aiLang, { name: isolate(heroName, aiLang) })
                   : kidsStoriesText("journey.heroAltUnnamed", aiLang)}
                 className="h-full w-auto rounded-xl object-contain"
               />
-            </div>
-          )}
+            ) : (
+              // No generated hero yet: Sprout stars (role="img", keyed EN/HE
+              // aria label). The story never blocks on a missing hero.
+              <ArborMascot size={120} mood="wave" className="h-full w-auto" />
+            )}
+          </div>
         </div>
       )}
 

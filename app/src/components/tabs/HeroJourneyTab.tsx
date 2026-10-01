@@ -45,7 +45,7 @@ import { ComicPage, MascotSay, PlayButton, PlayPanel, usePrefersReducedMotion } 
 import { EmptyState } from "../ui/EmptyState";
 import { SectionSkeleton } from "../ui/Skeleton";
 import { statesText } from "../../lib/i18nElevation/states";
-import { HeroAvatar } from "../ui/HeroAvatar";
+import { HeroAvatar, resolveHeroUrl } from "../ui/HeroAvatar";
 import HeroCrest from "../ui/HeroCrest";
 import { ArborMascot } from "../ui/ArborMascot";
 import WorldScene from "../practice/WorldScene";
@@ -204,6 +204,9 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
   // never a raw face photo or a remote URL — so scenes stay consistent and privacy-safe.
   const heroAvatarUrl = childProfile.avatar && photoUrl?.startsWith("data:") ? photoUrl : undefined;
   const heroAvatarStyle = normalizeAvatarStyle(childProfile.avatar?.style);
+  // B-KID-01: the fallback-page cameo is the generated hero or Sprout — a
+  // photo-only child (photoUrl, no avatar) resolves to null here, never the photo.
+  const heroCameoUrl = resolveHeroUrl(childProfile) ?? undefined;
   const heroName = childProfile.name?.split(" ")[0] || (aiLang === "he" ? "הילד/ה" : "your child");
 
   const totalMetrics = useMemo(
@@ -1302,7 +1305,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                 seed={`${activeStory.id}-${displayScene.beatId}-${childProfile.name}`}
                 beatNumber={sceneIndex + 1}
                 beatTotal={activeStory.beats.length}
-                photoUrl={photoUrl}
+                cameoUrl={heroCameoUrl}
                 heroAvatarUrl={heroAvatarUrl}
                 heroAvatarStyle={heroAvatarStyle}
                 heroName={childProfile.name?.split(" ")[0]}

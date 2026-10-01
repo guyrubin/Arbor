@@ -115,7 +115,7 @@ describe("HeroScenePlayer speaks the UI language", () => {
       seed: "the-lantern-path-call-נועה",
       beatNumber: 1,
       beatTotal: 8,
-      photoUrl: "data:image/png;base64,AAAA",
+      cameoUrl: "data:image/png;base64,HEROAAAA",
       heroName: "Mia",
       childIdentity: "child-a",
       fallbackArtUrl: "/visuals/stories/v1/lantern-path-v1.webp",
@@ -137,13 +137,67 @@ describe("HeroScenePlayer speaks the UI language", () => {
       seed: "the-lantern-path-call-anon",
       beatNumber: 2,
       beatTotal: 8,
-      photoUrl: "data:image/png;base64,AAAA",
+      cameoUrl: "data:image/png;base64,HEROAAAA",
       childIdentity: "child-a",
       fallbackArtUrl: "/visuals/stories/v1/lantern-path-v1.webp",
     });
     const hero = nodes(tree).filter((node) => node.type === "img").find((img) => img.props.alt !== "");
     expect(hero!.props.alt).toBe(kidsStoriesText("journey.heroAltUnnamed", "he"));
     expect(String(hero!.props.alt)).not.toMatch(/[A-Za-z]/);
+  });
+});
+
+/**
+ * B-KID-01 — a real photo is never the story cameo. A photo-only child
+ * (photoUrl on the profile, no generated avatar) used to reach this player as
+ * `photoUrl` and paint the child's real face on every fallback beat. The prop is
+ * gone; the cameo is the generated hero (`cameoUrl` = resolveHeroUrl) or Sprout.
+ */
+describe("B-KID-01 · photo-only child: Sprout stars, the photo never renders", () => {
+  const PHOTO = "data:image/jpeg;base64,REALPHOTO";
+  const scene: HeroSceneRender = { beatId: "call", title: "The lanterns wake", narration: "A warm path glows.", imagePrompt: "" };
+  it("8 beats, EN and HE → 0 img equal to the photo; Sprout renders every beat", () => {
+    for (const lang of ["en", "he"] as const) {
+      for (let beat = 1; beat <= 8; beat++) {
+        harness.slots = [];
+        harness.at = 0;
+        harness.lang = lang;
+        // The tab passes nothing photo-shaped any more; even a caller that
+        // tried would have no prop to pass it through (cast proves the shape).
+        const tree = HeroScenePlayer({
+          scene: { ...scene, imagePrompt: "" },
+          seed: `the-lantern-path-${beat}`,
+          beatNumber: beat,
+          beatTotal: 8,
+          heroName: "Mia",
+          childIdentity: "child-a",
+          fallbackArtUrl: "/visuals/stories/v1/lantern-path-v1.webp",
+          ...({ photoUrl: PHOTO } as Record<string, unknown>),
+        } as Parameters<typeof HeroScenePlayer>[0]);
+        const all = nodes(tree);
+        const dataImgs = all.filter((n) => n.type === "img" && String(n.props.src).startsWith("data:"));
+        expect(dataImgs.filter((n) => n.props.src === PHOTO), `${lang} beat ${beat}`).toHaveLength(0);
+        const sprout = all.filter((n) => (n.type as { name?: string })?.name === "ArborMascot");
+        expect(sprout, `${lang} beat ${beat}: Sprout`).toHaveLength(1);
+      }
+    }
+  });
+
+  it("the player declares no photoUrl prop and the tab passes resolveHeroUrl, not the photo", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const player = readFileSync(resolve(__dirname, "HeroScenePlayer.tsx"), "utf8");
+    const tab = readFileSync(resolve(__dirname, "../tabs/HeroJourneyTab.tsx"), "utf8");
+    expect(player).not.toMatch(/photoUrl/);
+    expect(tab).not.toContain("photoUrl={photoUrl}");
+    expect(tab).toContain("const heroCameoUrl = resolveHeroUrl(childProfile) ?? undefined;");
+    expect(tab).toContain("cameoUrl={heroCameoUrl}");
+  });
+
+  it("resolveHeroUrl: photo-only → null; generated hero → its url", async () => {
+    const { resolveHeroUrl } = await import("../ui/HeroAvatar");
+    expect(resolveHeroUrl({ photoUrl: PHOTO })).toBeNull();
+    expect(resolveHeroUrl({ photoUrl: "data:image/png;base64,HERO", avatar: { source: "descriptor" } })).toBe("data:image/png;base64,HERO");
   });
 });
 
