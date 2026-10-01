@@ -210,7 +210,6 @@ const HEX_ALLOWLIST: Record<string, readonly string[]> = {
   "components/tabs/BehaviorsTab.tsx": ["#14160f", "#ccc", "#f0ece0"], // print-CSS template string
   "components/tabs/ComicsTab.tsx": ["#fff"],
   "components/tabs/HeroJourneyTab.tsx": ["#fff"],
-  "components/tabs/LanguageLabVocabView.tsx": ["#ffffff"],
   "components/tabs/MilestonesTab.tsx": ["#fff"], // Wave T: confetti brand literals moved to lib/celebrate (BRAND_CONFETTI)
   "components/ui/ArborMark.tsx": [
     // brand-mark SVG gradient stops — allowlisted art file

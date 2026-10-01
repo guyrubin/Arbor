@@ -4,11 +4,9 @@
  * Acceptance criteria tested:
  *  1. Combined total leads: combinedTotal() is the sum of all per-language counts.
  *  2. Per-language counts are correct.
- *  3. mixPct() computes the mix percentage correctly (rounds to nearest int).
- *  4. mixPct(0, 0) returns 0 — empty-state guard.
- *  5. buildVocabTrend() returns at most 13 weekly points.
- *  6. Trend is cumulative: each point >= the previous.
- *  7. Observations outside the 90-day window are excluded.
+ *  3–7. B-GROWTH-14 retired mixPct() (a share) and buildVocabTrend() (the
+ *     stacked per-language chart); profileLangCounts() and monthlyWordCounts()
+ *     replace them — counts in the profile's own languages, and a month list.
  *  8. FRAMING GATE: banned words absent from vocabAgg.ts source.
  *  9. LanguageLabVocabView source: interpretation caption + provenance line +
  *     activity sub-line + first-view disclaimer render verbatim.
@@ -22,8 +20,8 @@ import path from "node:path";
 import {
   aggregateLangCounts,
   combinedTotal,
-  mixPct,
-  buildVocabTrend,
+  profileLangCounts,
+  monthlyWordCounts,
   type LangObservation,
 } from "./vocabAgg";
 
@@ -100,90 +98,44 @@ describe("combinedTotal", () => {
   });
 });
 
-// ── 3+4. mixPct ───────────────────────────────────────────────────────────────
+// ── 3–7. B-GROWTH-14: profile-language counts + month list ─────────────────
 
-describe("mixPct", () => {
-  it("computes Hebrew mix % correctly: 3/5 = 60%", () => {
-    expect(mixPct(3, 5)).toBe(60);
+describe("profileLangCounts (B-GROWTH-14)", () => {
+  it("a Russian+Hebrew profile with 3 Russian words reads Russian 3 · Hebrew 0 — no English", () => {
+    const observations = [obs("Russian", "мама", 1, NOW_MS), obs("Russian", "дом", 2, NOW_MS), obs("Russian", "кот", 3, NOW_MS)];
+    const rows = profileLangCounts(["Russian", "Hebrew"], aggregateLangCounts(observations));
+    expect(rows).toEqual([{ language: "Russian", count: 3 }, { language: "Hebrew", count: 0 }]);
+    expect(rows.map((r) => `${r.language} ${r.count}`).join(" · ")).toBe("Russian 3 · Hebrew 0");
+    expect(rows.some((r) => /english/i.test(r.language))).toBe(false);
   });
 
-  it("computes English mix % correctly: 2/5 = 40%", () => {
-    expect(mixPct(2, 5)).toBe(40);
-  });
-
-  it("rounds to nearest integer: 1/3 = 33%", () => {
-    expect(mixPct(1, 3)).toBe(33);
-  });
-
-  it("returns 0 when total is 0 (empty-state guard)", () => {
-    expect(mixPct(0, 0)).toBe(0);
-  });
-
-  it("returns 100 when all observations are in one language", () => {
-    expect(mixPct(7, 7)).toBe(100);
+  it("keeps profile order and appends a logged language the profile no longer lists", () => {
+    const rows = profileLangCounts(["Arabic", "Hebrew"], [{ language: "Hebrew", count: 2 }, { language: "French", count: 1 }]);
+    expect(rows.map((r) => r.language)).toEqual(["Arabic", "Hebrew", "French"]);
+    expect(rows.reduce((s, r) => s + r.count, 0)).toBe(3);
   });
 });
 
-// ── 5+6+7. buildVocabTrend ────────────────────────────────────────────────────
-
-describe("buildVocabTrend", () => {
-  it("returns at most 13 weekly points for a 90-day window", () => {
-    const trend = buildVocabTrend([], NOW_MS);
-    expect(trend.length).toBeLessThanOrEqual(13);
+describe("monthlyWordCounts (B-GROWTH-14)", () => {
+  it("counts per calendar month, newest first", () => {
+    const at = (iso: string, i: number): LangObservation => ({ id: `o${i}`, timestamp: iso, language: "Hebrew", phrase: `w${i}` });
+    const rows = monthlyWordCounts([
+      at("2026-09-02T10:00:00Z", 1), at("2026-09-20T10:00:00Z", 2), at("2026-09-30T10:00:00Z", 3), at("2026-09-01T00:00:00Z", 4),
+      at("2026-08-15T10:00:00Z", 5), at("2025-12-31T23:00:00Z", 6),
+    ]);
+    expect(rows).toEqual([
+      { year: 2026, month: 8, count: 4 },
+      { year: 2026, month: 7, count: 1 },
+      { year: 2025, month: 11, count: 1 },
+    ]);
   });
 
-  it("returns 13 points for a 90-day window (ceil(90/7) = 13)", () => {
-    const trend = buildVocabTrend([], NOW_MS);
-    expect(trend.length).toBe(13);
-  });
-
-  it("cumulative totals are non-decreasing", () => {
-    const observations: LangObservation[] = [
-      obs("Hebrew", "שלום", 3, NOW_MS),
-      obs("English", "dog", 10, NOW_MS),
-      obs("Hebrew", "תודה", 20, NOW_MS),
-    ];
-    const trend = buildVocabTrend(observations, NOW_MS);
-    for (let i = 1; i < trend.length; i++) {
-      expect(trend[i].cumulativeTotal).toBeGreaterThanOrEqual(trend[i - 1].cumulativeTotal);
-    }
-  });
-
-  it("excludes observations older than 90 days", () => {
-    const observations: LangObservation[] = [
-      obs("Hebrew", "שלום", 91, NOW_MS),  // should be excluded
-      obs("English", "dog", 1, NOW_MS),   // should be included
-    ];
-    const trend = buildVocabTrend(observations, NOW_MS);
-    const last = trend[trend.length - 1];
-    expect(last.cumulativeTotal).toBe(1); // only the English observation
-  });
-
-  it("final cumulative total equals total in-window observations", () => {
-    const observations: LangObservation[] = [
-      obs("Hebrew", "שלום", 5, NOW_MS),
-      obs("Hebrew", "תודה", 15, NOW_MS),
-      obs("English", "dog", 25, NOW_MS),
-    ];
-    const trend = buildVocabTrend(observations, NOW_MS);
-    const last = trend[trend.length - 1];
-    expect(last.cumulativeTotal).toBe(3);
-  });
-
-  it("tracks per-language breakdown in each trend point", () => {
-    const observations: LangObservation[] = [
-      obs("Hebrew", "שלום", 3, NOW_MS),
-      obs("English", "dog", 3, NOW_MS),
-    ];
-    const trend = buildVocabTrend(observations, NOW_MS);
-    const last = trend[trend.length - 1];
-    expect(last.byLanguage["Hebrew"]).toBe(1);
-    expect(last.byLanguage["English"]).toBe(1);
-  });
-
-  it("returns all-zero trend for empty observations", () => {
-    const trend = buildVocabTrend([], NOW_MS);
-    expect(trend.every((p) => p.cumulativeTotal === 0)).toBe(true);
+  it("returns at most six months and ignores unparseable timestamps", () => {
+    const obsAt = (m: number): LangObservation => ({ id: `m${m}`, timestamp: new Date(Date.UTC(2026, m, 5)).toISOString(), language: "Hebrew", phrase: "x" });
+    const rows = monthlyWordCounts([...Array.from({ length: 9 }, (_, m) => obsAt(m)), { id: "bad", timestamp: "nope", language: "Hebrew", phrase: "x" }]);
+    expect(rows).toHaveLength(6);
+    expect(rows[0]).toEqual({ year: 2026, month: 8, count: 1 });
+    expect(monthlyWordCounts([])).toEqual([]);
   });
 });
 
@@ -270,8 +222,18 @@ describe("LanguageLabVocabView source gates", () => {
     expect(src).toContain('"vl.activitiesTitle"');
   });
 
-  it("mix label key vl.mixLabel is used (not balance/imbalance/gap)", () => {
-    expect(src).toContain('"vl.mixLabel"');
+  // ── B-GROWTH-14: no Hebrew/English assumption, no chart ─────────────────────
+
+  it("imports nothing from recharts and draws no chart", () => {
+    expect(src).not.toMatch(/from\s+["']recharts["']/);
+    expect(src).not.toMatch(/<(AreaChart|LineChart|BarChart|ResponsiveContainer|svg)\b/);
+    expect(src).not.toMatch(/t\("vl\.(mixLabel|mixValue|trendTitle)"/);
+    expect(src).toContain("profileLangCounts(languages, counts)");
+    expect(src).toContain('data-testid="vl-month-list"');
+  });
+
+  it("finds no language by a /hebrew|english/ regex for a count", () => {
+    expect(src).not.toMatch(/heCount|enCount/);
   });
 
   // ── 10. Banned words absent from the component source ────────────────────────
@@ -332,5 +294,37 @@ describe("LanguageLabVocabView source gates", () => {
     // Neither raw color name nor token should appear in bar coloring.
     expect(/var\(--arbor-danger\)/.test(src)).toBe(false);
     expect(/var\(--arbor-yellow-ink\)/.test(src)).toBe(false);
+  });
+});
+
+/* B-GROWTH-14 — "Logged mix: Hebrew / English" told a Russian- or Arabic-speaking
+   family "0 … in English". The vl.* copy now names no language except where a
+   key is CHOSEN for a profile language the component matched (the activity
+   ideas vl.actHe* / vl.actEn*, which localise the language's own name; see
+   REJECTIONS.md B-GROWTH-14). */
+describe("B-GROWTH-14 — vl.* copy assumes no language pair", () => {
+  const ACTIVITY_KEYS = /^vl\.act(He|En)(Title|Body)$/;
+  it("no vl.* string names Hebrew/English (EN) or עברית/אנגלית (HE)", async () => {
+    const { en, he } = await import("../lib/i18n");
+    const offenders: string[] = [];
+    for (const [k, v] of Object.entries(en)) if (k.startsWith("vl.") && !ACTIVITY_KEYS.test(k) && /Hebrew|English/.test(v)) offenders.push(`en:${k}`);
+    for (const [k, v] of Object.entries(he)) if (k.startsWith("vl.") && !ACTIVITY_KEYS.test(k) && /עברית|אנגלית/.test(v)) offenders.push(`he:${k}`);
+    expect(offenders).toEqual([]);
+  });
+
+  it("the caption drops \"mix\"; the month row resolves in EN and HE", async () => {
+    const { translate } = await import("../lib/i18n");
+    expect(translate("en", "vl.interpretCaption")).not.toMatch(/\bmix\b/i);
+    expect(translate("he", "vl.interpretCaption")).not.toContain("תמהיל");
+    expect(translate("en", "vl.month.row", { month: "September", n: 4 })).toBe("September · 4 words");
+    expect(translate("he", "vl.month.row", { month: "ספטמבר", n: 4 })).toBe("ספטמבר · 4 מילים");
+    for (const lang of ["en", "he"] as const) {
+      for (const k of ["vl.mixLabel", "vl.mixValue", "vl.trendTitle"]) expect(translate(lang, k)).toBe(k);
+    }
+  });
+
+  it("NEGATIVE CONTROL — the pre-fix mix line trips the scan", () => {
+    expect(/Hebrew|English/.test("Logged mix: Hebrew / English")).toBe(true);
+    expect(/עברית|אנגלית/.test("תמהיל מתועד: עברית / אנגלית")).toBe(true);
   });
 });

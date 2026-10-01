@@ -6,29 +6,22 @@
  * No ASR, no automated word detection, no new child-data write from this component.
  *
  * BINDING SLP-CLEARED COPY (board-cleared per ASHA + Core et al. 2013):
- *  - LEADS with the COMBINED TOTAL; per-language mix is SECONDARY neutral context.
- *  - Mix label: "Logged mix: Hebrew / English" — NOT "balance"/"imbalance"/"gap".
- *  - Interpretation caption is REQUIRED adjacent to the mix display.
+ *  - LEADS with the COMBINED TOTAL; per-language counts are SECONDARY neutral context.
+ *  - B-GROWTH-14: no "Hebrew / English" mix line (it assumed two languages a
+ *    Russian- or Arabic-speaking family does not have) and no per-language
+ *    chart (a proportional picture). Counts per PROFILE language + a month list.
+ *  - Interpretation caption is REQUIRED adjacent to the counts.
  *  - Provenance line is REQUIRED and visible at all times.
  *  - Activity section title: "Ideas for both languages" — NEVER "balanced activities".
  *  - Activity sub-line: "These are ideas, not instructions…" — REQUIRED.
  *  - First-view disclaimer is REQUIRED (re-accessible via toggle).
  *  - NO red/amber on the lower-count language.
- *  - Trend lines show per-language growth but NEVER characterize one as falling behind.
+ *  - The month list is a plain count per month; it NEVER characterizes one language.
  *  - NEVER a readiness score/percentile/verdict.
  */
 
 import React, { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-} from "recharts";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -38,7 +31,8 @@ import { T } from "../../lib/tokens";
 import {
   aggregateLangCounts,
   combinedTotal,
-  buildVocabTrend,
+  monthlyWordCounts,
+  profileLangCounts,
   type LangObservation,
 } from "../../growth/vocabAgg";
 
@@ -187,7 +181,7 @@ export function PhraseLogForm({
 
 export default function LanguageLabVocabView() {
   const { childProfile } = useArbor();
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
 
   const [showDisclaimer, setShowDisclaimer] = useState(true);
   const [showActivities, setShowActivities] = useState(false);
@@ -209,17 +203,19 @@ export default function LanguageLabVocabView() {
   const counts = useMemo(() => aggregateLangCounts(observations), [observations]);
   const total = useMemo(() => combinedTotal(counts), [counts]);
 
-  // Trend data.
-  const trend = useMemo(
-    () => buildVocabTrend(observations, Date.now(), 90),
-    [observations],
+  // B-GROWTH-14: counts in the profile's OWN languages (zeros included), and a
+  // plain month list in place of the stacked per-language chart.
+  const langRows = useMemo(() => profileLangCounts(languages, counts), [languages, counts]);
+  const months = useMemo(() => monthlyWordCounts(observations, 6), [observations]);
+  const monthFmt = useMemo(
+    () => new Intl.DateTimeFormat(uiLang === "he" ? "he-IL" : "en-US", { month: "long", timeZone: "UTC" }),
+    [uiLang],
   );
-
-  // Derive HE and EN counts for the mix display.
-  // Searches for languages containing "Hebrew"/"English" (case-insensitive)
-  // to handle variations like "Hebrew", "עברית", "English", "אנגלית".
-  const heCount = counts.find((c) => /hebrew|עברית/i.test(c.language))?.count ?? 0;
-  const enCount = counts.find((c) => /english|אנגלית/i.test(c.language))?.count ?? 0;
+  const monthFmtYear = useMemo(
+    () => new Intl.DateTimeFormat(uiLang === "he" ? "he-IL" : "en-US", { month: "long", year: "numeric", timeZone: "UTC" }),
+    [uiLang],
+  );
+  const thisYear = new Date().getUTCFullYear();
 
   // If fewer than 2 languages configured, show a gentle prompt.
   if (languages.length < 2) {
@@ -229,15 +225,6 @@ export default function LanguageLabVocabView() {
       </div>
     );
   }
-
-  // Trend chart data — use cumulative total + per-language breakdown.
-  const chartData = trend.map((pt) => ({
-    label: pt.label,
-    total: pt.cumulativeTotal,
-    ...Object.fromEntries(
-      languages.map((l) => [l, pt.byLanguage[l] ?? 0])
-    ),
-  }));
 
   return (
     <div className="space-y-5">
@@ -294,28 +281,20 @@ export default function LanguageLabVocabView() {
             </div>
           )}
 
-          {/* ── Mix display — SECONDARY neutral context ── */}
+          {/* ── Per-language counts — SECONDARY neutral context ── */}
           {total > 0 && (
             <div
               className="rounded-2xl p-4 space-y-2"
               style={{ background: T.paperDeep }}
             >
-              {/* Mix label — verbatim board-cleared copy */}
-              <p className="text-xs font-bold" style={{ color: T.muted }}>
-                {t("vl.mixLabel")}
-              </p>
-
-              {/* Mix value — verbatim format */}
-              <p className="text-xs" style={{ color: T.ink }}>
-                {t("vl.mixValue", { heCount, enCount })}
-              </p>
-
               {/* GP-20 clinical firewall: per-language COUNTS. The share
                   percentage, its proportional bar and the `progressbar` role
                   (aria-valuenow carried the same percentage to a screen reader)
-                  all graded one language against another on a parent surface. */}
-              <ul className="space-y-1 pt-1">
-                {counts.map((c, idx) => (
+                  all graded one language against another on a parent surface.
+                  B-GROWTH-14: the rows are the PROFILE's languages, zeros
+                  included — never an assumed Hebrew/English pair. */}
+              <ul className="space-y-1" data-testid="vl-lang-counts">
+                {langRows.map((c, idx) => (
                   <li key={c.language} className="flex justify-between text-[10px]">
                     <span style={{ color: T.muted }}>
                       <span
@@ -352,59 +331,24 @@ export default function LanguageLabVocabView() {
         </div>
       </SectionCard>
 
-      {/* ── Vocabulary trend (last 90 days) — hidden until there's data to show ── */}
-      {total > 0 && (
+      {/* ── B-GROWTH-14: words logged per month — a plain list, newest first,
+          at most six. Replaces the stacked per-language area chart. ── */}
+      {months.length > 0 && (
         <SectionCard
-          title={t("vl.trendTitle")}
-          icon={<Icon name="menu_book" size={20} />}
+          title={t("vl.month.title")}
+          icon={<Icon name="calendar_month" size={20} />}
           tone="mint"
         >
-          <div className="h-44 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-                <CartesianGrid stroke="rgba(41,51,63,0.06)" vertical={false} />
-                <XAxis
-                  dataKey="label"
-                  stroke={T.muted}
-                  fontSize={10}
-                  tickLine={false}
-                  axisLine={false}
-                  interval="preserveStartEnd"
-                />
-                <YAxis
-                  stroke={T.muted}
-                  fontSize={10}
-                  tickLine={false}
-                  axisLine={false}
-                  allowDecimals={false}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: "#ffffff",
-                    border: "1px solid rgba(41,51,63,0.12)",
-                    borderRadius: 12,
-                    fontSize: 11,
-                  }}
-                  labelStyle={{ color: T.inkSoft, fontWeight: 700 }}
-                />
-                {/* Per-language areas — NO warning color on any language */}
-                {languages.map((lang, idx) => (
-                  <Area
-                    key={lang}
-                    type="monotone"
-                    dataKey={lang}
-                    stackId="1"
-                    stroke={langColor(idx)}
-                    fill={langColor(idx)}
-                    fillOpacity={0.18}
-                    strokeWidth={2}
-                    dot={false}
-                    name={lang}
-                  />
-                ))}
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+          <ul className="space-y-1.5 text-sm" data-testid="vl-month-list">
+            {months.map((m) => {
+              const label = (m.year === thisYear ? monthFmt : monthFmtYear).format(new Date(Date.UTC(m.year, m.month, 1)));
+              return (
+                <li key={`${m.year}-${m.month}`} style={{ color: T.ink }}>
+                  {m.count === 1 ? t("vl.month.row.one", { month: label }) : t("vl.month.row", { month: label, n: m.count })}
+                </li>
+              );
+            })}
+          </ul>
         </SectionCard>
       )}
 

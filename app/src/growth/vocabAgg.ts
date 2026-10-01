@@ -57,88 +57,46 @@ export function combinedTotal(counts: LangCount[]): number {
 }
 
 /**
- * Mix percentage for a single language: `lang.count / total * 100`, rounded
- * to the nearest integer. Returns 0 if total is 0.
- *
- * Naming: "mix %" — never "balance", "ratio", or "percentile".
+ * B-GROWTH-14 — per-language counts in the PROFILE's languages, in profile
+ * order, zeros included ("Russian 3 · Hebrew 0"). Any logged language the
+ * profile no longer lists follows after, so no logged word disappears.
+ * Never a share, never a ranking, never an assumption about which two
+ * languages a family speaks.
  */
-export function mixPct(langCount: number, total: number): number {
-  if (total === 0) return 0;
-  return Math.round((langCount / total) * 100);
+export function profileLangCounts(profileLanguages: readonly string[], counts: readonly LangCount[]): LangCount[] {
+  const byLang = new Map(counts.map((c) => [c.language, c.count] as const));
+  const listed = profileLanguages.map((l) => l.trim()).filter(Boolean);
+  const out: LangCount[] = listed.map((language) => ({ language, count: byLang.get(language) ?? 0 }));
+  for (const c of counts) if (!listed.includes(c.language)) out.push(c);
+  return out;
 }
 
-/** A single data point for the trend chart: date bucket + cumulative count. */
-export interface TrendPoint {
-  /** Human-readable label for the X axis, e.g. "Jun 1". */
-  label: string;
-  /** Cumulative observation count up to and including this bucket. */
-  cumulativeTotal: number;
-  /** Per-language cumulative counts keyed by language name. */
-  byLanguage: Record<string, number>;
+/** One calendar month of logged words. `month` is 0-based (Date#getUTCMonth). */
+export interface MonthCount {
+  year: number;
+  month: number;
+  count: number;
 }
 
 /**
- * Build a 90-day vocabulary growth trend in weekly buckets.
- *
- * Each bucket is a 7-day window; the last bucket covers the 7 days ending at
- * `nowMs`. Returns at most 13 points (13 weeks ≈ 91 days). Points are sorted
- * oldest-first for charting.
- *
- * The trend shows PER-LANGUAGE growth but NEVER characterizes one language as
- * "falling behind" — that framing is the caller's responsibility (and is
- * forbidden per the SLP board gate).
+ * B-GROWTH-14 — words logged per calendar month (UTC), newest first, at most
+ * `max` months (default 6). Months with nothing logged are omitted: this is a
+ * plain list of what the parent wrote down, not a time series to read a curve
+ * into.
  */
-export function buildVocabTrend(
-  observations: LangObservation[],
-  nowMs: number,
-  windowDays = 90,
-): TrendPoint[] {
-  const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-  const bucketCount = Math.ceil(windowDays / 7);
-  const cutoff = nowMs - windowDays * 24 * 60 * 60 * 1000;
-
-  // Collect all unique languages seen.
-  const langs = [...new Set(observations.map((o) => o.language.trim()).filter(Boolean))];
-
-  // Build bucket boundaries (oldest first).
-  const buckets: { startMs: number; endMs: number; label: string }[] = [];
-  for (let i = bucketCount - 1; i >= 0; i--) {
-    const endMs = nowMs - i * WEEK_MS;
-    const startMs = endMs - WEEK_MS;
-    const d = new Date(endMs);
-    const label = d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-    buckets.push({ startMs, endMs, label });
+export function monthlyWordCounts(observations: readonly LangObservation[], max = 6): MonthCount[] {
+  const map = new Map<string, MonthCount>();
+  for (const o of observations) {
+    const d = new Date(o.timestamp);
+    if (Number.isNaN(d.getTime())) continue;
+    const year = d.getUTCFullYear();
+    const month = d.getUTCMonth();
+    const key = `${year}-${month}`;
+    const cur = map.get(key) ?? { year, month, count: 0 };
+    cur.count += 1;
+    map.set(key, cur);
   }
-
-  // Sort observations by timestamp.
-  const sorted = [...observations]
-    .filter((o) => new Date(o.timestamp).getTime() >= cutoff)
-    .sort((a, b) => (a.timestamp < b.timestamp ? -1 : 1));
-
-  // Compute per-bucket incremental counts.
-  const incrementalByBucket: Record<string, number>[] = buckets.map(() => ({}));
-  for (const obs of sorted) {
-    const ts = new Date(obs.timestamp).getTime();
-    const lang = obs.language.trim();
-    const idx = buckets.findIndex((b) => ts >= b.startMs && ts < b.endMs);
-    if (idx >= 0) {
-      incrementalByBucket[idx][lang] = (incrementalByBucket[idx][lang] ?? 0) + 1;
-    }
-  }
-
-  // Convert to cumulative.
-  const cumByLang: Record<string, number> = Object.fromEntries(langs.map((l) => [l, 0]));
-  let cumTotal = 0;
-  return buckets.map((bucket, i) => {
-    const inc = incrementalByBucket[i];
-    for (const lang of langs) {
-      cumByLang[lang] = (cumByLang[lang] ?? 0) + (inc[lang] ?? 0);
-    }
-    cumTotal += Object.values(inc).reduce((s, v) => s + v, 0);
-    return {
-      label: bucket.label,
-      cumulativeTotal: cumTotal,
-      byLanguage: { ...cumByLang },
-    };
-  });
+  return [...map.values()]
+    .sort((a, b) => (b.year - a.year) || (b.month - a.month))
+    .slice(0, Math.max(0, max));
 }
