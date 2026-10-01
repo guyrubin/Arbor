@@ -294,6 +294,12 @@ describe("IA-04 / IA-17 — exactly one child switcher at every width", () => {
     // …while the capabilities that were NOT duplicated stay put (law 6).
     expect(src).toContain("<ProfileEditDrawer");
     expect(src).toContain("<FamilyGlanceCard />");
+    // B-SHELL-18: the glance card is identity only — exactly one control
+    // switches child (the chip below), the card has no handler and no button.
+    const glance = stripComments(readFileSync(path.join(here, "..", "profile", "FamilyGlanceCard.tsx"), "utf8"));
+    expect(glance).not.toMatch(/onClick/);
+    expect(glance).not.toMatch(/<button\b/);
+    expect(glance).not.toContain("setActiveChild");
     // negative control: switching and add-child live in the surviving switcher.
     const chip = stripComments(readFileSync(path.join(here, "TopbarKidSwitcher.tsx"), "utf8"));
     expect(chip).toContain("setActiveChild(p.id)");

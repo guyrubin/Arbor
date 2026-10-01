@@ -1,8 +1,10 @@
 /**
  * C3 - Family Glance panel.
  *
- * Compact cross-child orientation for 2+ child households. This is a switcher,
- * not an assessment surface: it shows identity, age, and active profile state.
+ * Compact cross-child orientation for 2+ child households. B-SHELL-18: this is
+ * IDENTITY, not a second switcher and not an assessment surface: it shows each
+ * child's avatar, name, age and which profile is active. Switching lives in the
+ * one switcher chip (TopbarKidSwitcher), one row up.
  */
 import React from "react";
 import { Users } from "lucide-react";
@@ -21,7 +23,7 @@ const GREEN_SOFT = "var(--arbor-green-soft)";
 
 export default function FamilyGlanceCard() {
   const { t } = useLanguage();
-  const { setActiveChild, profiles } = useProfile();
+  const { profiles } = useProfile();
   const rows = useFamilyGlance();
   // The glance row carries the legacy whole-years `age`; the label reads the
   // full profile (birthDate / ageMonths) so an infant is "7 months", not "Age 0".
@@ -50,14 +52,12 @@ export default function FamilyGlanceCard() {
 
       <ul className="divide-y" style={{ borderColor: RULE }}>
         {rows.map((row) => (
-          <li key={row.id}>
-            <button
-              onClick={() => setActiveChild(row.id)}
-              className="w-full flex items-center gap-3 px-3.5 py-3 text-start transition active:scale-[0.99]"
-              style={{ background: row.isActive ? "var(--arbor-paper-deep)" : "transparent" }}
-              aria-label={t("family.glance.switch", { name: row.name })}
-              aria-current={row.isActive ? "true" : undefined}
-            >
+          <li
+            key={row.id}
+            className="w-full flex items-center gap-3 px-3.5 py-3 text-start"
+            style={{ background: row.isActive ? "var(--arbor-paper-deep)" : "transparent" }}
+            aria-current={row.isActive ? "true" : undefined}
+          >
               <span className="flex-shrink-0">
                 <Avatar name={row.name} photoURL={row.photoUrl} size={32} ring={row.isActive} />
               </span>
@@ -81,7 +81,6 @@ export default function FamilyGlanceCard() {
               >
                 {row.isActive ? t("family.glance.active") : t("family.glance.ready")}
               </span>
-            </button>
           </li>
         ))}
       </ul>
