@@ -1,3 +1,5 @@
+import { liveExceptionFromEnv } from "../ai/liveResidency.js";
+
 export type ArborEnvironment = "local" | "dev" | "stage" | "prod";
 export type ModelProviderKind = "gemini_dev" | "vertex";
 export type MemoryAdapterKind = "local" | "firestore";
@@ -34,6 +36,16 @@ export type ArborConfig = {
   liveEnabled: boolean;
   /** Supported parent realtime model; pinned in production and exercised by the Live smoke. */
   liveModel: string;
+  /** B-PROV-01: last day (YYYY-MM-DD, UTC end of day) production may admit the
+   *  GLOBAL AI Studio Live endpoint under the dated residency exception.
+   *  Env LIVE_GLOBAL_EXCEPTION_UNTIL (alias LIVE_RESIDENCY_EXCEPTION_UNTIL);
+   *  unset → the program default in ai/liveResidency.ts; "off" → none.
+   *  Optional so hand-built test configs stay valid (absent = no exception). */
+  liveGlobalExceptionUntil?: string;
+  /** B-PROV-01: the Vertex `eu` Live attempt (LIVE_VERTEX_EU, default off). */
+  liveVertexEu?: boolean;
+  /** B-PROV-01: Vertex location for the EU Live attempt (LIVE_VERTEX_LOCATION). */
+  liveVertexLocation?: string;
   /** Local-dev image model (Gemini Developer API). */
   geminiImageModel: string;
   firebaseProjectId?: string;
@@ -166,6 +178,9 @@ export const loadConfig = (): ArborConfig => {
     geminiModel: process.env.GEMINI_MODEL || "gemini-2.5-flash",
     liveEnabled: boolFromEnv(process.env.LIVE_ENABLED, false),
     liveModel: process.env.LIVE_MODEL || "gemini-3.8-live",
+    liveGlobalExceptionUntil: liveExceptionFromEnv(process.env.LIVE_GLOBAL_EXCEPTION_UNTIL ?? process.env.LIVE_RESIDENCY_EXCEPTION_UNTIL),
+    liveVertexEu: boolFromEnv(process.env.LIVE_VERTEX_EU, false),
+    liveVertexLocation: process.env.LIVE_VERTEX_LOCATION || "europe-west4",
     geminiImageModel: process.env.GEMINI_IMAGE_MODEL || process.env.VERTEX_MODEL_IMAGE || "gemini-2.5-flash-image",
     firebaseProjectId: process.env.FIREBASE_PROJECT_ID || process.env.GCP_PROJECT_ID,
     firestoreDatabaseId: process.env.FIRESTORE_DATABASE_ID || "(default)",

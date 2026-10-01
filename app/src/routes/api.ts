@@ -60,6 +60,7 @@ import {
 } from "../server/digestOptIn.js";
 import { buildConsultRequest, type ConsultStore } from "../server/consultRequests.js";
 import { imageFailureResponse } from "../server/imageQuota.js";
+import { decideLive, LIVE_VERTEX_EU_PROVIDER } from "../ai/liveResidency.js";
 import { cohortTagFor, resolveEntitlement, COACH_METER, type EntitlementStore } from "../server/entitlements.js";
 import type { ReferralStore } from "../server/referral.js";
 import { scoreChildUtterance, childAsrConfigured, NotConfiguredError } from "../server/childAsr.js";
@@ -1441,14 +1442,22 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   // the GD-3 hazard an accidental env change — setting GEMINI_API_KEY for any
   // other reason would have silently routed all voice around the screened
   // /voice path. Flipping the flag to true IS the GD-3 unlock (Guy decision).
-  const liveConfigured = () => Boolean(config.liveEnabled && config.geminiApiKey);
+  // B-PROV-01: "configured" is no longer the whole question — the realtime
+  // path runs through the provider policy (ai/liveResidency.ts): the global
+  // AI Studio endpoint is an honest region "global" candidate that production
+  // admits only under the dated exception, and the Vertex `eu` attempt sits
+  // behind LIVE_VERTEX_EU. decideLive() still returns nothing without
+  // LIVE_ENABLED (VC-7), and stays config + clock only (AI-V8: no SDK).
 
   // AI-V8: availability computed from config alone — no SDK call, no token
   // mint, no network. CoachTab probes THIS on mount; a real ephemeral token is
   // minted only when the parent actually toggles voice. (An availability
   // endpoint keyed on the key alone would recreate the VC-7 hazard.)
   router.get("/live/availability", (_req, res) => {
-    res.json({ available: liveConfigured() });
+    const live = decideLive(config);
+    // B-PROV-01 / B-ASKJB-02: `exceptionUntil` names the dated exception only
+    // while it is what admits the global endpoint.
+    res.json({ available: live.available, ...(live.exceptionUntil ? { exceptionUntil: live.exceptionUntil } : {}) });
   });
 
   // RT-1 (v6): Gemini Live streaming. Mint a short-lived ephemeral token so the
@@ -1457,14 +1466,35 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   // to the browser voice loop when Live isn't configured/provisioned.
   // Metered by createAiQuota in createApp.ts (same list as the other paid mints).
   router.post("/live/token", async (req, res) => {
-    if (!liveConfigured()) {
+    const live = decideLive(config);
+    if (!live.available) {
+      if (live.reason === "policy_denied") {
+        // B-PROV-01: residency refused (prod, exception lapsed, no EU path).
+        // 503 → the client takes the EU STT → text → TTS loop.
+        logger.warn("Live denied by the realtime residency policy", { requestId: requestIdOf(req), exception_until: config.liveGlobalExceptionUntil ?? null });
+        res.status(503).json({ available: false, code: "live_residency_denied", reason: "Live voice is not available in this region right now." });
+        return;
+      }
       res.json({ available: false, reason: "Gemini Live is not enabled on this server." });
       return;
     }
-    const apiKey = config.geminiApiKey as string;
+    const selected = live.decision!.selected.ref;
+    // B-PROV-01: every mint is logged with the region it runs in and the
+    // exception that admitted it (null when none was needed).
+    logger.info("Live provider decision", {
+      requestId: requestIdOf(req),
+      provider: selected.provider,
+      region: selected.region,
+      exception_until: live.exceptionUntil ?? null,
+    });
+    const euPath = selected.provider === LIVE_VERTEX_EU_PROVIDER;
     try {
       const { GoogleGenAI } = await import("@google/genai");
-      const ai = new GoogleGenAI({ apiKey });
+      // The EU attempt mints on Vertex in the configured EU location; the
+      // global path keeps the AI Studio key. Never a silent hop between them.
+      const ai = euPath
+        ? new GoogleGenAI({ vertexai: true, project: config.gcpProjectId, location: config.liveVertexLocation || config.vertexLocation })
+        : new GoogleGenAI({ apiKey: config.geminiApiKey as string });
       const model = config.liveModel;
       const expireTime = new Date(Date.now() + 20 * 60 * 1000).toISOString();
       // AI-V9: the instruction + voice are built per session language from the
@@ -1508,7 +1538,13 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // constraints are authoritative).
       res.json({ available: true, token: (token as any).name, model, expiresAt: expireTime, systemInstruction, speechConfig });
     } catch (error: any) {
-      logger.error("Arbor Live Token Error", error, { requestId: requestIdOf(req) });
+      logger.error("Arbor Live Token Error", error, { requestId: requestIdOf(req), provider: selected.provider, region: selected.region });
+      if (euPath) {
+        // B-PROV-01: the Vertex `eu` attempt could not mint (ephemeral Live
+        // tokens are a Developer-API feature today). 503, browser fallback.
+        res.status(503).json({ available: false, code: "live_eu_unavailable", reason: "EU live voice is not available yet." });
+        return;
+      }
       res.json({ available: false, reason: error.message });
     }
   });

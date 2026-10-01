@@ -25,3 +25,43 @@ describe("selectProvider", () => {
     try { selectProvider(request, policy, [retained]); } catch (error) { expect((error as AiProviderError).code).toBe("policy_denied"); }
   });
 });
+
+describe("B-PROV-01 · realtime_audio under the dated residency exception", async () => {
+  const live = await import("../liveResidency.js");
+  const { routePolicyFor } = await import("./policy.js");
+  const NOW = Date.parse("2026-10-01T12:00:00Z");
+  const prod = (over: Record<string, unknown> = {}) => ({
+    arborEnv: "prod" as const, liveEnabled: true, geminiApiKey: "k", liveModel: "gemini-3.8-live",
+    vertexLocation: "europe-west4", gcpProjectId: undefined as string | undefined,
+    liveGlobalExceptionUntil: "2026-10-31" as string | undefined, liveVertexEu: false, liveVertexLocation: "europe-west4", ...over,
+  });
+
+  it("the current path is an honest region:'global' candidate, and the base prod policy rejects it", () => {
+    const candidate = live.liveGlobalCandidate({ liveModel: "gemini-3.8-live" });
+    expect(candidate.ref.region).toBe("global");
+    expect(() => selectProvider(live.LIVE_REQUEST, routePolicyFor({ arborEnv: "prod" }), [candidate])).toThrow(AiProviderError);
+  });
+
+  it("before / on the date the realtime policy admits 'global'; after it, it does not", () => {
+    expect(live.realtimePolicyFor(prod(), NOW).allowedRegions).toEqual(["eu", "global"]);
+    expect(live.realtimePolicyFor(prod(), Date.parse("2026-10-31T23:59:59Z")).allowedRegions).toContain("global");
+    expect(live.realtimePolicyFor(prod(), Date.parse("2026-11-01T00:00:01Z")).allowedRegions).toEqual(["eu"]);
+    expect(live.realtimePolicyFor(prod({ liveGlobalExceptionUntil: undefined }), NOW).allowedRegions).toEqual(["eu"]);
+  });
+
+  it("decideLive: exceptionUntil only while the exception is what admits global", () => {
+    expect(live.decideLive(prod(), NOW)).toMatchObject({ available: true, exceptionUntil: "2026-10-31" });
+    const after = live.decideLive(prod(), Date.parse("2026-11-02T00:00:00Z"));
+    expect(after).toEqual({ available: false, reason: "policy_denied" });
+    expect(live.decideLive({ ...prod(), arborEnv: "local" }, NOW).exceptionUntil).toBeUndefined();
+    expect(live.decideLive(prod({ liveEnabled: false }), NOW)).toEqual({ available: false, reason: "not_configured" });
+  });
+
+  it("the Vertex eu candidate is eligible in prod without any exception and outranks global", () => {
+    const d = live.decideLive(prod({ liveVertexEu: true, gcpProjectId: "p" }), NOW);
+    expect(d.decision?.selected.ref).toMatchObject({ provider: live.LIVE_VERTEX_EU_PROVIDER, region: "eu" });
+    expect(d.exceptionUntil).toBeUndefined();
+    const after = live.decideLive(prod({ liveVertexEu: true, gcpProjectId: "p" }), Date.parse("2027-01-01T00:00:00Z"));
+    expect(after.available).toBe(true);
+  });
+});
