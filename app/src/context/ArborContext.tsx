@@ -54,6 +54,18 @@ import type { ConversationChangeRecord, ConversationProposal } from "../lib/conv
 import { appendChatUser, appendChatAck, applyChatDelta, settleChatTurn, abortChatStream, hasUserTurn } from "../lib/chatStream";
 import { buildChatContext, readWeeklyContextConsent } from "../ai/chatContext";
 import { useLanguage } from "./LanguageContext";
+import type { ExportAudience } from "../consult/packet";
+import type { ProfessionalReportType } from "../lib/reportExport";
+
+/** B-CAREPRO-13 — what a caller may hand the Consult composer. All optional;
+ *  `preset` is a professional PDF type (never "teacher": the School Brief is
+ *  the one teacher document). */
+export type ConsultPrefill = {
+  reason?: string;
+  note?: string;
+  audience?: ExportAudience;
+  preset?: Exclude<ProfessionalReportType, "teacher">;
+};
 
 const readLS = (key: string): string | null => {
   try {
@@ -264,9 +276,16 @@ function useArborState() {
    * shared or sent without the existing explicit consult act (copy / download
    * / export / send), all of which stay behind the reviewed-checkbox gate.
    */
-  const [pendingConsultNote, setPendingConsultNote] = useState<string | null>(null);
-  const requestConsultPrefill = (note: string) => setPendingConsultNote(note);
-  const consumeConsultPrefill = () => setPendingConsultNote(null);
+  //
+  // B-CAREPRO-13 — ONE seam carries all four fields a caller can know: the
+  // reason for the visit (the reason box), a parent-editable note, the
+  // audience the packet is for, and a professional preset for the PDF menu.
+  // Callers: Coach teacher note (note + audience "teacher"), Vision handoff
+  // (note), Screening elevated (reason), Safety ticked signs (reason). Every
+  // field lands EDITABLE; the reviewed-checkbox gate still guards every export.
+  const [pendingConsultPrefill, setPendingConsultPrefill] = useState<ConsultPrefill | null>(null);
+  const requestConsultPrefill = (prefill: ConsultPrefill) => setPendingConsultPrefill(prefill);
+  const consumeConsultPrefill = () => setPendingConsultPrefill(null);
 
   /**
    * LL — Learn Library deep-link seam (mirrors the capture seam above). Any
@@ -1548,7 +1567,7 @@ function useArborState() {
     pendingJournalFocusId,
     requestJournalFocus,
     consumeJournalFocus,
-    pendingConsultNote,
+    pendingConsultPrefill,
     requestConsultPrefill,
     consumeConsultPrefill,
     chatMessages,

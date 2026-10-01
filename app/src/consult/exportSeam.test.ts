@@ -92,7 +92,12 @@ describe("B-CAREPRO-02 — every Consult menu type honours excludedIds", () => {
       'export const CONSULT_MENU_REPORTS = REPORTS.filter((r) => isProfessionalReportType(r.type) && r.type !== "teacher");'
     );
     expect(ask).toMatch(/import \{ CONSULT_MENU_REPORTS, useReportExport \} from "\.\/Reports";/);
-    expect(ask).toContain("{CONSULT_MENU_REPORTS.map((r, idx) => (");
+    // B-CAREPRO-13: the menu renders `menuReports` — CONSULT_MENU_REPORTS with
+    // a caller's preset moved first; it draws on nothing else.
+    expect(ask).toContain("{menuReports.map((r, idx) => (");
+    const menuMemo = /const menuReports = useMemo\([\s\S]*?\[presetHint\]\s*\);/.exec(ask);
+    expect(menuMemo).toBeTruthy();
+    expect(menuMemo![0].replace(/CONSULT_MENU_REPORTS/g, "")).not.toMatch(/REPORTS/);
     expect(ask).not.toMatch(/\{REPORTS\.map\(/);
     // the item label is the translated key, not the English literal
     expect(ask).not.toMatch(/\{r\.title\}/);

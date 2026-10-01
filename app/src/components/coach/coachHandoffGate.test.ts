@@ -41,7 +41,8 @@ const OLD_HANDOFF = `                      onAddToHandoff={() => {
                         toast(t("coach.toast.teacherNoteCopied"), "info");
                       }}`;
 /** The note must be BOUND (a parameter) and CONSUMED (through the prefill seam). */
-const HANDOFF_CONSUMES_NOTE = /onAddToHandoff=\{\(note\) => \{[\s\S]{0,300}?requestConsultPrefill\(note\)/;
+// B-CAREPRO-13: the teacher note travels with audience "teacher".
+const HANDOFF_CONSUMES_NOTE = /onAddToHandoff=\{\(note\) => \{[\s\S]{0,300}?requestConsultPrefill\(\{ note, audience: "teacher" \}\)/;
 
 describe("AI-05(a) — the teacher note is consumed, not dropped", () => {
   it("negative control: the regex does NOT match the pre-fix zero-argument callback", () => {

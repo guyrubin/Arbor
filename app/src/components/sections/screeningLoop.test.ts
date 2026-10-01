@@ -227,7 +227,7 @@ describe("B-GROWTH-17 — one Consult action, pre-filled with the areas", () => 
     expect(src).not.toContain('t("screen.next.findPro")');
     expect(src).not.toContain('t("screen.toast.handoff")');
     const fn = /const prepareForVisit = [\s\S]*?\r?\n  \};/.exec(src)?.[0] ?? "";
-    expect(fn).toContain("requestConsultPrefill(visitPrefillReason(watchAreas, t));");
+    expect(fn).toContain("requestConsultPrefill({ reason: visitPrefillReason(watchAreas, t) });");
     expect(fn).toContain('setActiveTab("consult");');
     const start = src.indexOf("{result.elevated && (");
     const elevated = src.slice(start, src.indexOf("</button>", start) + "</button>".length);

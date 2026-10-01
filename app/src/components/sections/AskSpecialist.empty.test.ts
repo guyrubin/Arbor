@@ -18,14 +18,14 @@ const record = {
   actionPlans: [] as Array<{ title: string; issue?: string }>,
   approvedMemoryItems: [] as Array<{ fact: string; status: string }>,
   setActiveTab: vi.fn(),
-  pendingConsultNote: null as string | null,
+  pendingConsultPrefill: null,
   consumeConsultPrefill: vi.fn(),
 };
 
 vi.mock("../../context/ArborContext", () => ({ useArbor: () => record }));
 vi.mock("../../context/ToastContext", () => ({ useToast: () => ({ toast: vi.fn() }) }));
 vi.mock("../../context/LanguageContext", () => ({ useLanguage: () => ({ t: (k: string) => k, uiLang: "en" }) }));
-vi.mock("./Reports", () => ({ REPORTS: [], useReportExport: () => vi.fn() }));
+vi.mock("./Reports", () => ({ REPORTS: [], CONSULT_MENU_REPORTS: [], useReportExport: () => vi.fn() }));
 vi.mock("./FindProfessional", () => ({ default: () => null }));
 vi.mock("../ui/Modal", () => ({ Modal: () => null, default: () => null }));
 vi.mock("../../lib/api", () => ({ authHeaders: async () => ({}) }));

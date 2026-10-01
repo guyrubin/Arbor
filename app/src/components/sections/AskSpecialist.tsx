@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion, AnimatePresence } from "motion/react";
 import Icon from "../ui/Icon";
-import { useArbor } from "../../context/ArborContext";
+import { useArbor, type ConsultPrefill } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import {
@@ -70,10 +70,29 @@ const readStoredAudience = (): ExportAudience => {
   }
 };
 
+/** B-CAREPRO-13 — the pure reading of a prefill: which composer fields it
+ *  sets. Blank strings set nothing; an unknown audience or a non-menu preset
+ *  is dropped; a preset with no audience implies "clinician" (every menu
+ *  preset is a clinician-level document). Each field is independent, so an
+ *  audience never clears a reason. */
+export function resolveConsultPrefill(p: ConsultPrefill): {
+  reason?: string; note?: string; audience?: ExportAudience; preset?: ConsultPrefill["preset"];
+} {
+  const out: ReturnType<typeof resolveConsultPrefill> = {};
+  if (typeof p.reason === "string" && p.reason.trim() !== "") out.reason = p.reason;
+  if (typeof p.note === "string" && p.note.trim() !== "") out.note = p.note;
+  if (p.audience && (EXPORT_AUDIENCES as readonly string[]).includes(p.audience)) out.audience = p.audience;
+  if (p.preset && CONSULT_MENU_REPORTS.some((r) => r.type === p.preset)) {
+    out.preset = p.preset;
+    if (!out.audience) out.audience = "clinician";
+  }
+  return out;
+}
+
 type ExportBuild = { text: string; error: null } | { text: null; error: string };
 
 export default function AskSpecialist() {
-  const { childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems, setActiveTab, pendingConsultNote, consumeConsultPrefill } = useArbor();
+  const { childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems, setActiveTab, pendingConsultPrefill, consumeConsultPrefill } = useArbor();
   const { toast } = useToast();
   const { t, uiLang } = useLanguage();
   const reduceMotion = useReducedMotion();
@@ -116,13 +135,24 @@ export default function AskSpecialist() {
     () => questionsCol.items.map((q) => q.text).filter((x) => x.trim().length > 0),
     [questionsCol.items]
   );
+  // B-CAREPRO-13 — the ONE prefill seam carries four fields and this composer
+  // consumes all four into EDITABLE local state: the reason box, the note, the
+  // audience row and the PDF menu's suggested preset. The audience is applied
+  // without persisting it (a caller's hint is not the parent's remembered
+  // choice) and without touching the reason — setting the audience must not
+  // clear what the caller wrote. The reviewed gate starts unticked, as ever.
+  const [presetHint, setPresetHint] = useState<ConsultPrefill["preset"]>(undefined);
   useEffect(() => {
-    if (pendingConsultNote != null) {
-      setVisionNote(pendingConsultNote);
-      consumeConsultPrefill();
-    }
+    if (pendingConsultPrefill == null) return;
+    const patch = resolveConsultPrefill(pendingConsultPrefill);
+    if (patch.reason !== undefined) setReason(patch.reason);
+    if (patch.note !== undefined) setVisionNote(patch.note);
+    if (patch.audience !== undefined) setAudienceState(patch.audience);
+    if (patch.preset !== undefined) setPresetHint(patch.preset);
+    setReviewed(false);
+    consumeConsultPrefill();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingConsultNote]);
+  }, [pendingConsultPrefill]);
 
   // Export-as-PDF popover state + a11y refs.
   const [menuOpen, setMenuOpen] = useState(false);
@@ -268,6 +298,16 @@ export default function AskSpecialist() {
     try { exportReport(type, excluded, { reason, questions: preparedQuestions }); }
     catch { toast(t("consult.exportError"), "error"); }
   };
+
+  // B-CAREPRO-13 — a caller's preset (e.g. Reports' "Prepare a summary") is
+  // listed first and marked; it still exports only through runExport, i.e.
+  // behind the reviewed gate that disables the menu trigger.
+  const menuReports = useMemo(
+    () => (presetHint
+      ? [...CONSULT_MENU_REPORTS.filter((r) => r.type === presetHint), ...CONSULT_MENU_REPORTS.filter((r) => r.type !== presetHint)]
+      : [...CONSULT_MENU_REPORTS]),
+    [presetHint]
+  );
 
   // Popover: outside-click closes; Esc/arrow handled per-item below.
   useEffect(() => {
@@ -652,15 +692,18 @@ export default function AskSpecialist() {
                       transition={{ duration: reduceMotion ? 0 : 0.15 }}
                       className="absolute bottom-full mb-2 w-[260px] rounded-2xl overflow-hidden p-1.5 z-20 end-0"
                       style={{ transformOrigin: "bottom", background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-md)" }}>
-                      {CONSULT_MENU_REPORTS.map((r, idx) => (
+                      {menuReports.map((r, idx) => (
                         <button
                           key={r.type}
                           ref={(el) => { itemRefs.current[idx] = el; }}
                           role="menuitem"
+                          aria-current={r.type === presetHint ? "true" : undefined}
+                          data-testid={r.type === presetHint ? "consult-menu-preset" : undefined}
                           onClick={() => runExport(r.type)}
                           onKeyDown={(e) => onMenuKey(e, idx)}
-                          className="w-full text-start rounded-xl px-3 py-2.5 text-[13px] font-semibold transition hover:brightness-95 min-h-[44px] flex items-center"
+                          className="w-full text-start rounded-xl px-3 py-2.5 text-[13px] font-semibold transition hover:brightness-95 min-h-[44px] flex items-center gap-2"
                           style={{ color: INK }}>
+                          {r.type === presetHint && <Icon name="check" size={14} weight={600} />}
                           {t(r.titleKey)}
                         </button>
                       ))}

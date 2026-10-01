@@ -23,7 +23,7 @@ vi.mock("../../context/ArborContext", () => ({
     actionPlans: [],
     approvedMemoryItems: [],
     setActiveTab: vi.fn(),
-    pendingConsultNote: null,
+    pendingConsultPrefill: null,
     consumeConsultPrefill: vi.fn(),
   }),
 }));

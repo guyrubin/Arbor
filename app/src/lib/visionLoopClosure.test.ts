@@ -26,7 +26,7 @@ describe("AIX-S3(a) — CoachTab consumes the handoff note (mount contract)", ()
   const code = read("components/tabs/CoachTab.tsx");
 
   it("onGoHandoff receives the note argument and threads it into requestConsultPrefill", () => {
-    expect(code).toMatch(/onGoHandoff=\{\(note\) => \{ requestConsultPrefill\(note\);/);
+    expect(code).toMatch(/onGoHandoff=\{\(note\) => \{ requestConsultPrefill\(\{ note \}\);/);
   });
 
   it("the old dropped-argument mount is gone", () => {
@@ -47,10 +47,12 @@ describe("AIX-S3(a) — CoachTab consumes the handoff note (mount contract)", ()
 describe("AIX-S3(a) — AskSpecialist: parent-editable prefill, explicit-act sharing", () => {
   const code = read("components/sections/AskSpecialist.tsx");
 
-  it("consumes the one-shot seam (pendingConsultNote → local editable state)", () => {
-    expect(code).toContain("pendingConsultNote");
+  it("consumes the one-shot seam (pendingConsultPrefill → local editable state)", () => {
+    // B-CAREPRO-13: the seam carries { reason, note, audience, preset }; the
+    // note still lands in the same editable field.
+    expect(code).toContain("pendingConsultPrefill");
     expect(code).toContain("consumeConsultPrefill()");
-    expect(code).toContain("setVisionNote(pendingConsultNote)");
+    expect(code).toContain("setVisionNote(patch.note)");
   });
 
   it("renders the note as an EDITABLE textarea (prefill is not consent)", () => {
@@ -81,8 +83,8 @@ describe("AIX-S3 — ArborContext seam shape", () => {
   const code = read("context/ArborContext.tsx");
 
   it("defines the one-shot consult-prefill seam (mirrors the capture seam)", () => {
-    expect(code).toContain("const requestConsultPrefill = (note: string) => setPendingConsultNote(note)");
-    expect(code).toContain("const consumeConsultPrefill = () => setPendingConsultNote(null)");
+    expect(code).toContain("const requestConsultPrefill = (prefill: ConsultPrefill) => setPendingConsultPrefill(prefill)");
+    expect(code).toContain("const consumeConsultPrefill = () => setPendingConsultPrefill(null)");
   });
 });
 

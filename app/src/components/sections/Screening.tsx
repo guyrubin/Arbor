@@ -313,10 +313,9 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
   // box pre-filled naming the areas. It used to offer an export MENU ("reports",
   // with a toast promising a handoff builder it did not open) and an EMPTY
   // professional directory ("find-pro"). From the sheet, close first then route.
-  // NOTE: requestConsultPrefill takes a string today; B-CAREPRO-13 widens it to
-  // { reason?, … } — pass the reason through that shape once it lands.
+  // B-CAREPRO-13: the areas land in the REASON box (not the note field).
   const prepareForVisit = (watchAreas: readonly { domain: string }[]) => {
-    requestConsultPrefill(visitPrefillReason(watchAreas, t));
+    requestConsultPrefill({ reason: visitPrefillReason(watchAreas, t) });
     onClose?.();
     setActiveTab("consult");
   };

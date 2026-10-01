@@ -1410,8 +1410,10 @@ export default function CoachTab() {
                       // it away, so "Teacher note" was a bare tab switch into an
                       // empty Consult composer — the same defect AIX-S3(a) fixed
                       // for ArborVision's handoff. Same seam, same contract.
+                      // B-CAREPRO-13: the note is FOR a teacher, so the
+                      // audience lands on "teacher" (not the stored default).
                       onAddToHandoff={(note) => {
-                        requestConsultPrefill(note);
+                        requestConsultPrefill({ note, audience: "teacher" });
                         setActiveTab("consult");
                         toast(t("coach.toast.teacherNoteCopied"), "info");
                       }}
@@ -1792,7 +1794,7 @@ export default function CoachTab() {
         // AIX-S3(a): the handoff note is CONSUMED, not dropped — it prefills
         // the Consult composer (parent-editable) via the context seam. Prefill
         // is not consent: sharing still requires the explicit consult act.
-        onGoHandoff={(note) => { requestConsultPrefill(note); setActiveTab("consult"); toast(t("coach.toast.handoffPrefilled"), "info"); }}
+        onGoHandoff={(note) => { requestConsultPrefill({ note }); setActiveTab("consult"); toast(t("coach.toast.handoffPrefilled"), "info"); }}
         // AIX-S3(b): suggestedMemory items route through the EXISTING parent-
         // approved propose seam — they land ONLY in the pending-approval queue
         // (Profile › Child Memory); nothing auto-approves.
