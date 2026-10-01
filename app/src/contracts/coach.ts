@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { Type } from "@google/genai";
 import type { FrameworkDefinition } from "../services/framework.js";
+import { domainLabel } from "../lib/domains/registry.js";
+import { he as DOMAIN_NAMES_HE } from "../lib/i18nElevation/domains.js";
 
 export const NON_DIAGNOSTIC_CONTRACT = `
 ARBOR DEVELOPMENTAL AI CONTRACT:
@@ -195,7 +197,108 @@ export const createCoachResponseGeminiSchema = (framework: FrameworkDefinition) 
   }
 });
 
-export const renderCoachResponse = (response: CoachResponse) => {
+/**
+ * B-AI-01 eval fix (coach_chat 1.4.1): the rendered answer's section labels
+ * come from the session language. A Hebrew answer used to carry English
+ * headers ("What To Do Today") around Hebrew content (coach-core-v1
+ * coach-he-reply, heNaturalness 0.5). EN stays byte-identical.
+ */
+export type CoachRenderLanguage = "en" | "he";
+
+const COACH_RENDER_LABELS: Record<CoachRenderLanguage, {
+  happening: string; why: string; ageBand: string; domains: string; today: string; script: string;
+  avoid: string; observe: string; escalate: string; frames: string; aim: string; twoAxes: string;
+  story: string; shadow: string; marriage: string; shepherd: string; memory: string; noMemory: string;
+  cards: string; noCards: string; handoff: string; teacher: string; professional: string;
+  followUps: string; fallbackHypothesis: string;
+}> = {
+  en: {
+    happening: "### 1. What May Be Happening",
+    why: "### 2. Why It May Be Happening",
+    ageBand: "Age band:",
+    domains: "Domains:",
+    today: "### 3. What To Do Today",
+    script: "### 4. What Is The Parent Script",
+    avoid: "### 5. What To Avoid",
+    observe: "### 6. What To Observe",
+    escalate: "### 7. When To Escalate",
+    frames: "### Frame Routing",
+    aim: "Aim:",
+    twoAxes: "Two Axes:",
+    story: "Story:",
+    shadow: "Shadow:",
+    marriage: "Marriage:",
+    shepherd: "Shepherd:",
+    memory: "### Pending Memory Review",
+    noMemory: "- No durable child memory proposed.",
+    cards: "### Knowledge Cards Used",
+    noCards: "- No Arbor AI Wiki card attached.",
+    handoff: "### Handoff Note",
+    teacher: "Teacher:",
+    professional: "Professional:",
+    followUps: "### Suggested Follow-ups",
+    fallbackHypothesis: "One possibility is a temporary mismatch between the child's developmental capacity, the environment, and the demand being placed on them.",
+  },
+  he: {
+    happening: "### 1. מה אולי קורה",
+    why: "### 2. למה זה אולי קורה",
+    ageBand: "שלב גיל:",
+    domains: "תחומים:",
+    today: "### 3. מה לעשות היום",
+    script: "### 4. מה אפשר להגיד",
+    avoid: "### 5. ממה כדאי להימנע",
+    observe: "### 6. על מה לשים לב",
+    escalate: "### 7. מתי לפנות לאיש מקצוע",
+    frames: "### שש המסגרות",
+    aim: "מטרה:",
+    twoAxes: "שני צירים:",
+    story: "סיפור:",
+    shadow: "צל:",
+    marriage: "זוגיות:",
+    shepherd: "רועה:",
+    memory: "### זיכרון שממתין לאישורכם",
+    noMemory: "- לא הוצע זיכרון חדש.",
+    cards: "### כרטיסי ידע שנעזרנו בהם",
+    noCards: "- לא צורף כרטיס ידע.",
+    handoff: "### הערה להעברה",
+    teacher: "לצוות החינוכי:",
+    professional: "לאיש מקצוע:",
+    followUps: "### שאלות המשך",
+    fallbackHypothesis: "אפשרות אחת היא פער זמני בין היכולת ההתפתחותית, הסביבה והדרישה שמוצבת כרגע.",
+  },
+};
+
+/** Domain ids as the reader sees them: EN keeps the framework ids (byte
+ *  parity); HE prints the registry's Hebrew names (lib/domains/registry). */
+const renderDomains = (domains: readonly string[], language: CoachRenderLanguage): string =>
+  language === "he"
+    ? domains.map((id) => domainLabel("developmental", id, (key) => DOMAIN_NAMES_HE[key] ?? key, id)).join(", ")
+    : domains.join(", ");
+
+/**
+ * B-AI-01 eval fix (verdict scrub): a hypothesis' `confidence` is a graded
+ * label when the model writes low / medium / high (coach-core-v1
+ * coach-no-verdict-strings, noDiagnosis 0 at 1.3.0). The server replaces every
+ * value with ONE fixed uncertainty phrase in the session language, so no grade
+ * reaches the rendered text, the answer cards or an export. Mutates in place.
+ */
+export const HYPOTHESIS_UNCERTAINTY: Record<CoachRenderLanguage, string> = {
+  en: "one possibility",
+  he: "אפשרות אחת",
+};
+
+export const scrubHypothesisConfidence = <T extends Pick<CoachResponse, "nonDiagnosticHypotheses">>(
+  response: T,
+  language: CoachRenderLanguage = "en",
+): T => {
+  for (const hypothesis of response.nonDiagnosticHypotheses ?? []) {
+    hypothesis.confidence = HYPOTHESIS_UNCERTAINTY[language];
+  }
+  return response;
+};
+
+export const renderCoachResponse = (response: CoachResponse, language: CoachRenderLanguage = "en") => {
+  const L = COACH_RENDER_LABELS[language] ?? COACH_RENDER_LABELS.en;
   const hypotheses = response.nonDiagnosticHypotheses
     .map((item) => `- **${item.label}** (${item.confidence}): ${item.rationale}`)
     .join("\n");
@@ -205,51 +308,51 @@ export const renderCoachResponse = (response: CoachResponse) => {
   // exact text that was previewed as deltas — one screened rendering, no fork.
   const lead = response.text?.trim() ? `${response.text.trim()}\n\n` : "";
 
-  return `${lead}### 1. What May Be Happening
-${hypotheses || "One possibility is a temporary mismatch between the child's developmental capacity, the environment, and the demand being placed on them."}
+  return `${lead}${L.happening}
+${hypotheses || L.fallbackHypothesis}
 
-### 2. Why It May Be Happening
-Age band: **${response.ageBand}**. Domains: **${response.domains.join(", ")}**.
+${L.why}
+${L.ageBand} **${response.ageBand}**. ${L.domains} **${renderDomains(response.domains, language)}**.
 
-### 3. What To Do Today
+${L.today}
 ${response.todayPlan.map((step) => `- ${step}`).join("\n")}
 
-### 4. What Is The Parent Script
+${L.script}
 "${response.parentScript}"
 
-### 5. What To Avoid
+${L.avoid}
 ${response.avoid.map((item) => `- ${item}`).join("\n")}
 
-### 6. What To Observe
+${L.observe}
 ${response.observe.map((item) => `- ${item}`).join("\n")}
 
-### 7. When To Escalate
+${L.escalate}
 ${response.escalateIf.map((item) => `- ${item}`).join("\n")}
 
-### Frame Routing
-- **Aim:** ${response.frameRouting.aim}
-- **Two Axes:** ${response.frameRouting.twoAxes}
-- **Story:** ${response.frameRouting.story}
-- **Shadow:** ${response.frameRouting.shadow}
-- **Marriage:** ${response.frameRouting.marriage}
-- **Shepherd:** ${response.frameRouting.shepherd}
+${L.frames}
+- **${L.aim}** ${response.frameRouting.aim}
+- **${L.twoAxes}** ${response.frameRouting.twoAxes}
+- **${L.story}** ${response.frameRouting.story}
+- **${L.shadow}** ${response.frameRouting.shadow}
+- **${L.marriage}** ${response.frameRouting.marriage}
+- **${L.shepherd}** ${response.frameRouting.shepherd}
 
-### Pending Memory Review
-${response.memoryProposals.map((item) => `- ${item.fact} (${item.source}; ${item.retention})`).join("\n") || "- No durable child memory proposed."}
+${L.memory}
+${response.memoryProposals.map((item) => `- ${item.fact} (${item.source}; ${item.retention})`).join("\n") || L.noMemory}
 
-### Knowledge Cards Used
-${response.sourceCardsUsed?.map((card) => `- ${card}`).join("\n") || "- No Arbor AI Wiki card attached."}
+${L.cards}
+${response.sourceCardsUsed?.map((card) => `- ${card}`).join("\n") || L.noCards}
 
-${response.handoffNotes.teacher || response.handoffNotes.professional ? `### Handoff Note
-${response.handoffNotes.teacher ? `Teacher: ${response.handoffNotes.teacher}` : ""}
-${response.handoffNotes.professional ? `Professional: ${response.handoffNotes.professional}` : ""}` : ""}${
+${response.handoffNotes.teacher || response.handoffNotes.professional ? `${L.handoff}
+${response.handoffNotes.teacher ? `${L.teacher} ${response.handoffNotes.teacher}` : ""}
+${response.handoffNotes.professional ? `${L.professional} ${response.handoffNotes.professional}` : ""}` : ""}${
     // ASK-4 FIREWALL CONDITION: followUps MUST flow through this rendered
     // text so screenModelOutput covers every string the chips display — a
     // rendered-but-unscreened field would be the first bypass of the AI-2
     // output screen. Keep this the LAST section so the streamed prose lead
     // and section ordering above stay byte-identical for existing tests.
     response.followUps?.length
-      ? `\n\n### Suggested Follow-ups\n${response.followUps.map((q) => `- ${q}`).join("\n")}`
+      ? `\n\n${L.followUps}\n${response.followUps.map((q) => `- ${q}`).join("\n")}`
       : ""
   }`;
 };

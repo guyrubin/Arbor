@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildSourceCards, coachResponseZodSchema, renderCoachResponse } from "./coach.js";
+import { HYPOTHESIS_UNCERTAINTY, buildSourceCards, coachResponseZodSchema, renderCoachResponse, scrubHypothesisConfidence } from "./coach.js";
 
 const validCoach = {
   riskLevel: "routine",
@@ -115,5 +115,55 @@ describe("buildSourceCards (COACH-6 citation resolution)", () => {
   it("returns an empty list for missing/empty ids", () => {
     expect(buildSourceCards(undefined, cards)).toEqual([]);
     expect(buildSourceCards([], cards)).toEqual([]);
+  });
+});
+
+/**
+ * B-AI-01 eval fix (coach_chat 1.4.1). Live coach-core-v1: a Hebrew answer
+ * carried English section headers (coach-he-reply), and "(medium)" / "(high)"
+ * hypothesis confidence was judged a graded verdict (coach-no-verdict-strings).
+ */
+describe("renderCoachResponse language + confidence scrub (B-AI-01 eval fix)", () => {
+  const EN_HEADERS = ["What May Be Happening", "Why It May Be Happening", "What To Do Today", "What Is The Parent Script", "What To Avoid", "What To Observe", "When To Escalate", "Frame Routing", "Pending Memory Review", "Knowledge Cards Used", "Handoff Note", "Suggested Follow-ups", "Age band:", "Domains:", "Teacher:", "Professional:"];
+  const he = () => ({
+    ...structuredClone(validCoach),
+    text: "המאבק של הבוקר מתיש.",
+    domains: ["attachment_regulation", "health_sleep_feeding"],
+    followUps: ["מה להגיד כשהיא בוכה?"],
+  });
+
+  it("EN rendering is unchanged when no language is passed (default en)", () => {
+    expect(renderCoachResponse(validCoach as any)).toBe(renderCoachResponse(validCoach as any, "en"));
+    expect(renderCoachResponse(validCoach as any)).toContain("### 3. What To Do Today");
+    expect(renderCoachResponse(validCoach as any)).toContain("Domains: **attachment_regulation**");
+  });
+
+  it("HE rendering carries no English section label and prints the registry's Hebrew domain names", () => {
+    const text = renderCoachResponse(he() as any, "he");
+    for (const header of EN_HEADERS) expect(text, header).not.toContain(header);
+    expect(text).toContain("### 3. מה לעשות היום");
+    expect(text).toContain("### 7. מתי לפנות לאיש מקצוע");
+    expect(text).toContain("רגשות והתנהגות");
+    expect(text).toContain("גוף, שינה ואכילה");
+    expect(text).not.toContain("attachment_regulation");
+    // negative control: the same contract rendered EN still has the English labels
+    expect(renderCoachResponse(he() as any, "en")).toContain("### 3. What To Do Today");
+  });
+
+  it("scrubHypothesisConfidence replaces every graded value with the fixed uncertainty phrase", () => {
+    const graded = { ...structuredClone(validCoach), nonDiagnosticHypotheses: [
+      { label: "a", confidence: "high", rationale: "r" },
+      { label: "b", confidence: "Medium", rationale: "r" },
+      { label: "c", confidence: "80%", rationale: "r" },
+    ] };
+    // negative control: unscrubbed, the grade renders
+    expect(renderCoachResponse(graded as any)).toContain("(high)");
+    scrubHypothesisConfidence(graded as any, "en");
+    const text = renderCoachResponse(graded as any);
+    expect(graded.nonDiagnosticHypotheses.map((h) => h.confidence)).toEqual(Array(3).fill(HYPOTHESIS_UNCERTAINTY.en));
+    expect(text).not.toMatch(/\((?:high|medium|low|moderate|\d+%)\)/i);
+    const heGraded = { ...structuredClone(validCoach) };
+    scrubHypothesisConfidence(heGraded as any, "he");
+    expect(heGraded.nonDiagnosticHypotheses[0].confidence).toBe("אפשרות אחת");
   });
 });

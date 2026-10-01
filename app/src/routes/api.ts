@@ -5,7 +5,7 @@ import { normalizeAvatarStyle } from "../lib/avatarStyle.js";
 import { isAbortError, newAbortError, type ModelCallBudget, type ModelProvider } from "../ai/modelRouter.js";
 import { abortableIterate, raceWithAbort, isTransientModelError } from "../ai/modelRetry.js";
 import type { MemoryStore } from "../memory/types.js";
-import { createCoachResponseGeminiSchema, coachResponseZodSchema, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards } from "../contracts/coach.js";
+import { createCoachResponseGeminiSchema, coachResponseZodSchema, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards, scrubHypothesisConfidence } from "../contracts/coach.js";
 import { PROMPT_VERSIONS, buildAnalyzeBehaviorPrompt, buildChatPrompt, buildCouncilSynthesisPrompt, buildExtractLogPrompt, buildGeneratePlanPrompt, buildTodaysFocusPrompt, buildVoiceReplyPrompt, promptProfile, ROUTINE_ESCALATION_GUIDANCE } from "../ai/prompts.js";
 // Masterplan 1.3 — server-defensive sanitizers for the two OPTIONAL /chat body
 // fields (recentTurns transcript + counts-only weeklyContext). Both degrade to
@@ -942,8 +942,13 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // this; it is the number of approved facts injected into the prompt.
       structured.approvedMemoryFactsUsed = approvedMemoryFactsUsed;
 
+      // B-AI-01 eval fix: no graded hypothesis confidence (low/medium/high)
+      // reaches the parent, and the rendered labels follow the session language.
+      const renderLanguage = language === "he" ? "he" : "en";
+      scrubHypothesisConfidence(structured, renderLanguage);
+
       // AI-2: output-side safety screen (lexical floor + optional semantic classifier).
-      const renderedText = renderCoachResponse(structured);
+      const renderedText = renderCoachResponse(structured, renderLanguage);
       const outputVerdict = await screenModelOutput(modelProvider, renderedText);
       if (outputVerdict.flagged) {
         // Done-time flag (lexical floor on the FULL rendered answer + the
@@ -1199,7 +1204,10 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       structured.approvedMemoryFactsUsed = approvedMemoryFactsUsed;
 
       // AI-2: output-side safety screen.
-      const renderedText = renderCoachResponse(structured);
+      // B-AI-01 eval fix: same verdict scrub + session-language labels as /chat.
+      const renderLanguage = language === "he" ? "he" : "en";
+      scrubHypothesisConfidence(structured, renderLanguage);
+      const renderedText = renderCoachResponse(structured, renderLanguage);
       const outputVerdict = await screenModelOutput(modelProvider, renderedText);
       if (outputVerdict.flagged) {
         // Done-time flag (lexical floor on the FULL rendered answer + the
