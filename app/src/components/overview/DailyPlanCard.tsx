@@ -24,7 +24,10 @@ import SessionLengthChips from "../practice/SessionLengthChips";
  * inherits document dir (set by LanguageContext on <html>).
  *
  * Empty states:
- *   - plan === null && noGoal: renders the NO-GOAL state ("Set a focus goal to get today's plan.").
+ *   - plan === null: renders the NO-PLAN state ("Set a focus goal to get today's plan.").
+ *   - plan !== null && noGoal (B-GROWTH-20): the plan renders — buildDailyPlan picks
+ *     an activity with or without a goal — plus ONE optional secondary line
+ *     "Set a focus to match it to what you're working on" that opens the goal modal.
  *   - plan !== null && plan.sparse: activity IS shown, why-line reads "Gets more personalized as you log more days."
  *   - plan !== null: happy path.
  */
@@ -82,8 +85,10 @@ export default function DailyPlanCard({
     onSessionLengthChange(v);
   };
 
-  // ── NO-GOAL empty state ──────────────────────────────────────────────────────
-  if (noGoal || !plan) {
+  // ── NO-PLAN empty state ──────────────────────────────────────────────────────
+  // B-GROWTH-20: only when there is no plan. A plan without a goal is still
+  // today's plan (the goal is optional; it only sharpens the match).
+  if (!plan) {
     return (
       <section
         aria-label={t("plan.card.eyebrow")}
@@ -322,6 +327,19 @@ export default function DailyPlanCard({
             </span>
           )}
         </p>
+
+        {/* B-GROWTH-20: no goal yet — the focus is an optional refinement, never a gate. */}
+        {noGoal && (
+          <button
+            type="button"
+            onClick={onSetGoal}
+            data-testid="plan-set-focus-optional"
+            className="mt-1 inline-flex min-h-11 items-center text-start text-[12.5px] font-bold underline underline-offset-2"
+            style={{ color: GREEN }}
+          >
+            {t("elev.growth.play.setFocusOptional")}
+          </button>
+        )}
 
         {/* Row 4: household items pills */}
         {activity.householdItems.length > 0 && (

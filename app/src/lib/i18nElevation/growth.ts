@@ -61,6 +61,9 @@ export const en: Record<string, string> = {
   "elev.growth.lang.more.title": "Vocabulary log",
   "elev.growth.lang.more.sub": "Optional — count the words you hear, whenever you want to.",
 
+  // B-GROWTH-20 — Daily Play: the plan shows without a goal; the focus is optional.
+  "elev.growth.play.setFocusOptional": "Set a focus to match it to what you're working on",
+
   // B-GROWTH-30 — the Record by area (spine Option A). Counts of things the
   // parent noticed and dates only; never a share, a total or a trend.
   "elev.growth.record.title": "What we know about {name}, by area",
@@ -121,6 +124,9 @@ export const he: Record<string, string> = {
   // Builder M — R25 — #/language demotion disclosure (vocabulary log).
   "elev.growth.lang.more.title": "יומן אוצר מילים",
   "elev.growth.lang.more.sub": "רשות — סופרים את המילים שאתם שומעים, מתי שמתאים לכם.",
+
+  // B-GROWTH-20 — התוכנית מוצגת גם בלי מטרה; המיקוד הוא רשות
+  "elev.growth.play.setFocusOptional": "הגדירו מיקוד כדי להתאים אותה למה שאתם עובדים עליו",
 
   // B-GROWTH-30 — התיעוד לפי תחום
   "elev.growth.record.title": "מה אנחנו יודעים על {name}, לפי תחום",
