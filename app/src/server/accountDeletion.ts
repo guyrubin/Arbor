@@ -53,6 +53,10 @@ export interface DeletionOps {
   shares: (uid: string, email: string | null) => Promise<number>;
   childData: (uid: string) => Promise<{ deleted: number; note?: string }>;
   families: (uid: string) => Promise<{ deleted: number; note?: string }>;
+  /** B-DATA-01: the weekly-digest mailing consent `digestOptIn/{uid}` (holds the email). */
+  digestOptIn: (uid: string) => Promise<number>;
+  /** B-DATA-01: the per-family retention rollup `retentionRollups/{uid}`. */
+  retentionRollup: (uid: string) => Promise<number>;
   userTree: (uid: string) => Promise<{ deleted: number; note?: string }>;
   storageFiles: (uid: string) => Promise<{ deleted: number; note?: string }>;
   authUser: (uid: string) => Promise<void>;
@@ -69,9 +73,32 @@ const CLASS_ORDER: Array<Exclude<keyof DeletionOps, "authUser">> = [
   "shares",
   "childData",
   "families",
+  "digestOptIn",
+  "retentionRollup",
   "userTree",
   "storageFiles",
 ];
+
+/**
+ * B-DATA-01: every TOP-LEVEL Firestore collection whose document id is the uid
+ * (as declared in firestore.rules), and the deletion class that removes it.
+ * accountDeletion.test.ts parses the rules file and fails when a uid-keyed
+ * collection appears with no class here — the omission that left
+ * `digestOptIn/{uid}` (an email address) and `retentionRollups/{uid}` behind
+ * after a "complete" deletion.
+ */
+export const UID_KEYED_COLLECTIONS: Readonly<Record<string, Exclude<keyof DeletionOps, "authUser">>> = {
+  users: "userTree",
+  entitlements: "entitlements",
+  retentionRollups: "retentionRollup",
+  digestOptIn: "digestOptIn",
+};
+
+/** Top-level collection names (server-side copies of the client constants,
+ *  which live behind the browser SDK in lib/retentionRollup.ts). */
+export const RETENTION_ROLLUP_COLLECTION = "retentionRollups";
+
+export const DELETION_CLASS_ORDER: ReadonlyArray<Exclude<keyof DeletionOps, "authUser">> = CLASS_ORDER;
 
 export async function runAccountDeletion(
   ops: DeletionOps,
@@ -151,6 +178,8 @@ export interface FirestoreDeletionStores {
   consentEraseByChild: (childId: string) => Promise<number>;
   shareEraseByChild: (ownerUid: string, childId: string) => Promise<number>;
   pushTokensRemove: (uid: string) => Promise<void>;
+  /** B-DATA-01: DigestOptInStore.remove — the same delete DELETE /digest/email-optin runs. */
+  digestOptInRemove: (uid: string) => Promise<void>;
 }
 
 export function createFirestoreDeletionOps(
@@ -270,6 +299,16 @@ export function createFirestoreDeletionOps(
         }
       }
       return { deleted };
+    },
+
+    async digestOptIn(uid) {
+      await stores.digestOptInRemove(uid);
+      return 1;
+    },
+
+    async retentionRollup(uid) {
+      await db.collection(RETENTION_ROLLUP_COLLECTION).doc(uid).delete();
+      return 1;
     },
 
     async userTree(uid) {

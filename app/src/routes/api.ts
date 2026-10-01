@@ -3576,6 +3576,8 @@ tryThisWeek (ONE concrete, doable suggestion grounded in the stats). Return only
         consentEraseByChild: (childId) => consentStore.eraseByChild(childId),
         shareEraseByChild: (ownerUid, childId) => shareStore.eraseByChild(ownerUid, childId),
         pushTokensRemove: (u) => pushTokenStore.remove(u),
+        // B-DATA-01: the digest consent row holds the email address.
+        digestOptInRemove: (u) => digestOptIns.remove(u),
       });
       const receipt = await runAccountDeletion(ops, uid, email);
       logger.info("Account deletion executed", {
