@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildNewChildInput } from "./childProfileInput";
 
 describe("buildNewChildInput", () => {
-  it("stores months-precise age, approximate birthDate, and optional gender from Add Child", () => {
+  it("stores months-precise age + its anchor date, NO invented birthDate, and optional gender from Add Child", () => {
     const input = buildNewChildInput({
       name: " Lenny ",
       ageMonths: 13,
@@ -17,7 +17,7 @@ describe("buildNewChildInput", () => {
       name: "Lenny",
       age: 1,
       ageMonths: 13,
-      birthDate: "2025-05-01",
+      ageMonthsAsOf: "2026-06-15",
       gender: "boy",
       languages: ["Hebrew"],
       strengths: ["curious", "kind"],
@@ -40,7 +40,7 @@ describe("buildNewChildInput", () => {
     expect(input.name).toBe("New Child");
     expect(input.age).toBe(0);
     expect(input.ageMonths).toBe(0);
-    expect(input.birthDate).toBe("2026-06-01");
+    expect("birthDate" in input).toBe(false);
     expect(input.gender).toBe("unspecified");
     expect(input.languages).toEqual(["English"]);
   });

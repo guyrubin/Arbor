@@ -1,5 +1,5 @@
 import type { ChildProfile } from "../types";
-import { birthDateFromAgeMonths } from "./childAge";
+import { isoDateOf } from "./childAge";
 
 export type ChildGender = "girl" | "boy" | "other" | "unspecified";
 
@@ -21,6 +21,10 @@ const clampAgeMonths = (ageMonths: number) => Math.max(0, Math.min(216, Math.rou
 /**
  * Builds the Add Child payload in one tested place so profile creation always
  * carries the months-precise age spine used by recommendations.
+ *
+ * B-DATA-03: months only — `ageMonths` + the date it was true on
+ * (`ageMonthsAsOf`). No `birthDate` is invented from the months value; the
+ * key is absent unless a parent typed a real date somewhere else.
  */
 export function buildNewChildInput(params: BuildNewChildInputParams): Omit<ChildProfile, "id"> {
   const ageMonths = clampAgeMonths(params.ageMonths);
@@ -28,7 +32,7 @@ export function buildNewChildInput(params: BuildNewChildInputParams): Omit<Child
     name: params.name.trim() || "New Child",
     age: Math.floor(ageMonths / 12),
     ageMonths,
-    birthDate: birthDateFromAgeMonths(ageMonths, params.now),
+    ageMonthsAsOf: isoDateOf(params.now),
     gender: params.gender,
     languages: params.languages.length ? params.languages : ["English"],
     schoolContext: "",

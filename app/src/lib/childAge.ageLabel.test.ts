@@ -196,7 +196,7 @@ describe("GP-01 — source scan: no parent-facing .tsx renders the whole-years `
 
 /* ── GP-03 / MOB-04 — the age patch builder ────────────────────────────────── */
 
-describe("GP-03 — agePatchFromMonths writes { birthDate, ageMonths, age } from ONE months value", () => {
+describe("GP-03 / B-DATA-03 — agePatchFromMonths writes { age, ageMonths, ageMonthsAsOf } from ONE months value and clears birthDate", () => {
   it("changing the age CHANGES ageMonthsFromProfile(patched)", () => {
     const before = profile({ birthDate: "2023-09-01", ageMonths: 36, age: 3 });
     expect(ageMonthsFromProfile(before, NOW)).toBe(36);
@@ -204,7 +204,8 @@ describe("GP-03 — agePatchFromMonths writes { birthDate, ageMonths, age } from
     expect(ageMonthsFromProfile(patched, NOW)).toBe(48);
     expect(patched.age).toBe(4);
     expect(patched.ageMonths).toBe(48);
-    expect(patched.birthDate).toBe("2022-09-01");
+    // B-DATA-03: the stale date is CLEARED, never replaced by an invented one.
+    expect(patched.birthDate).toBeUndefined();
   });
 
   it("NEGATIVE CONTROL: the pre-fix `{ age }`-only patch leaves the months spine stale", () => {

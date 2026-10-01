@@ -28,9 +28,11 @@ const listSources = (dir: string): string[] =>
     return /\.tsx?$/.test(entry) && !/\.test\.tsx?$/.test(entry) ? [full] : [];
   });
 
-/** The helpers that are ALLOWED to stand in for the explicit triple, because
- *  each one writes birthDate + ageMonths + age from a single months value. */
-const AGE_WRITE_HELPERS = ["agePatchFromMonths", "buildNewChildInput", "birthDateFromAgeMonths"];
+/** The helpers that are ALLOWED to stand in for the explicit fields, because
+ *  each one writes ageMonths + ageMonthsAsOf + age from a single months value.
+ *  B-DATA-03: `birthDateFromAgeMonths` is no longer one — a birth date is never
+ *  invented from months (see childAge.test.ts for the tree scan). */
+const AGE_WRITE_HELPERS = ["agePatchFromMonths", "buildNewChildInput"];
 
 /** `addChild(...)` / `updateChild(...)` call text across the tree. */
 const ageWrites = listSources(SRC).flatMap((file) => {
@@ -54,7 +56,8 @@ describe("GP-03 · a child's age is never written in pieces", () => {
     const offenders = ageWrites
       .filter(({ call }) => {
         if (AGE_WRITE_HELPERS.some((helper) => call.includes(helper))) return false;
-        return !(call.includes("birthDate") && call.includes("ageMonths"));
+        // ageMonths plus the date it is true on (or a parent-typed birthDate).
+        return !(call.includes("ageMonths") && (call.includes("ageMonthsAsOf") || call.includes("birthDate")));
       })
       .map(({ file }) => file);
     expect(
@@ -70,7 +73,7 @@ describe("GP-03 · a child's age is never written in pieces", () => {
     const viaHelper = `updateChild(id, {\n  name: n,\n  ...agePatchFromMonths(ageMonths),\n})`;
 
     const failing = (call: string) =>
-      !AGE_WRITE_HELPERS.some((h) => call.includes(h)) && !(call.includes("birthDate") && call.includes("ageMonths"));
+      !AGE_WRITE_HELPERS.some((h) => call.includes(h)) && !(call.includes("ageMonths") && (call.includes("ageMonthsAsOf") || call.includes("birthDate")));
 
     expect(failing(bad)).toBe(true);
     expect(failing(explicit)).toBe(false);

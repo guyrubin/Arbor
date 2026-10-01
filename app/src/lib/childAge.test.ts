@@ -312,3 +312,72 @@ describe("legacy age*12 fallback", () => {
     expect(ageMonthsFromProfile(p, NOW)).toBe(7);
   });
 });
+
+// ── B-DATA-03 — a birth date is never fabricated from months ────────────────
+
+describe("B-DATA-03 · months-only entry stores no birthDate", async () => {
+  const fs = await import("node:fs");
+  const path = await import("node:path");
+  const { agePatchFromMonths, ageLabel, ageMonthsFromProfile } = await import("./childAge");
+  const { buildNewChildInput } = await import("./childProfileInput");
+  const { buildPacketInput } = await import("../consult/packet");
+  const { translate } = await import("./i18n");
+  const NOW = new Date(2026, 9, 1, 12);
+  const SRC = path.resolve(__dirname, "..");
+
+  it("Add-child (months only) → the stored doc has no birthDate key, and carries ageMonthsAsOf", () => {
+    const input = buildNewChildInput({ name: "Noa", ageMonths: 9, gender: "girl", languages: ["Hebrew"], strengthsText: "", challengesText: "", now: NOW });
+    expect(Object.keys(input)).not.toContain("birthDate");
+    expect(input.ageMonths).toBe(9);
+    expect(input.ageMonthsAsOf).toBe("2026-10-01");
+  });
+
+  it("a drawer edit carries an own undefined birthDate (it CLEARS the stored one) and never a date string", () => {
+    const patch = agePatchFromMonths(20, NOW);
+    expect(Object.prototype.hasOwnProperty.call(patch, "birthDate")).toBe(true);
+    expect(patch.birthDate).toBeUndefined();
+    const fabricated = { age: 1, ageMonths: 9, birthDate: "2026-01-01" };
+    const edited = { ...fabricated, ...patch };
+    expect(ageMonthsFromProfile(edited, NOW)).toBe(20);
+  });
+
+  it("age renders months-precise EN/HE from months + anchor, ageing forward without a date", () => {
+    const stored = { age: 0, ageMonths: 9, ageMonthsAsOf: "2026-10-01" };
+    const enT = (k: string, v?: Record<string, number>) => translate("en", k, v);
+    const heT = (k: string, v?: Record<string, number>) => translate("he", k, v);
+    expect(ageLabel(stored, enT, NOW)).toBe("9 months");
+    expect(ageLabel(stored, heT, NOW)).toMatch(/9/);
+    expect(ageLabel(stored, heT, NOW)).toMatch(/[\u0590-\u05FF]/);
+    expect(ageMonthsFromProfile(stored, new Date(2027, 0, 2, 12))).toBe(12);
+  });
+
+  it("the pediatric packet prints no DOB and ages a months-only child from its anchor", () => {
+    const packet = buildPacketInput(
+      { profile: { name: "Noa", age: 0, ageMonths: 9, ageMonthsAsOf: "2026-07-01", languages: [] }, logs: [], milestones: [], plans: [], memory: [] },
+      NOW.getTime(),
+    );
+    // Anchored on 1 Jul at 9 months → 12 months on 1 Oct (no invented date needed).
+    expect(packet.profile.ageMonths).toBe(12);
+    const json = JSON.stringify(packet);
+    expect(json).not.toMatch(/birthDate|dob|\d{4}-\d{2}-01"/i);
+  });
+
+  it("tree scan: nothing outside lib/childAge.ts calls birthDateFromAgeMonths (no writer can store one)", () => {
+    const list = (dir: string): string[] => fs.readdirSync(dir).flatMap((e) => {
+      const full = path.join(dir, e);
+      if (fs.statSync(full).isDirectory()) return list(full);
+      return /\.tsx?$/.test(e) && !/\.test\.tsx?$/.test(e) ? [full] : [];
+    });
+    const callers = list(SRC)
+      .filter((f) => !f.split(path.sep).join("/").endsWith("lib/childAge.ts"))
+      .filter((f) => /birthDateFromAgeMonths\s*\(/.test(fs.readFileSync(f, "utf8")));
+    expect(callers).toEqual([]);
+  });
+
+  it("ProfileContext maps a clearable own-undefined to deleteField() and drops it locally", () => {
+    const ctx = fs.readFileSync(path.join(SRC, "context/ProfileContext.tsx"), "utf8");
+    expect(ctx).toContain("for (const k of clears) firestorePatch[k] = deleteField();");
+    expect(ctx).toContain("for (const k of clears) delete next[k];");
+    expect(ctx).toContain("CLEARABLE_PROFILE_FIELDS");
+  });
+});

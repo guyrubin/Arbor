@@ -156,6 +156,8 @@ export interface RawPacketProfile {
   ageMonths?: number;
   /** ISO YYYY-MM-DD — the gold source for the months-precise age. */
   birthDate?: string;
+  /** B-DATA-03: the date `ageMonths` was true on, so a DOB-less age still ages. */
+  ageMonthsAsOf?: string;
   languages: string[];
   schoolContext?: string;
   strengths?: string[];
@@ -232,7 +234,7 @@ export function buildPacketInput(record: RawChildRecord, nowMs: number): BuildPa
       // age-windowed milestone denominator, so both share sides derive it.
       ageMonths:
         ageMonthsFromProfile(
-          { age: rawNum(p.age), birthDate: rawOptStr(p.birthDate), ageMonths: rawOptNum(p.ageMonths) },
+          { age: rawNum(p.age), birthDate: rawOptStr(p.birthDate), ageMonths: rawOptNum(p.ageMonths), ageMonthsAsOf: rawOptStr(p.ageMonthsAsOf) },
           at
         ) ?? undefined,
       languages: rawStrArr(p.languages),

@@ -232,31 +232,49 @@ function defaultLabel(key: string, vars?: Record<string, number>): string {
 
 // ── Age edit (profile drawer) ────────────────────────────────────────────────
 
-/** The three age fields every consumer reads, derived from ONE months value. */
+/** The age fields an edit writes, derived from ONE months value. */
 export interface AgePatch {
   /** Legacy whole-years field (Math.floor(months / 12)). */
   age: number;
-  /** Explicit months (the onboarding fallback). */
+  /** Explicit months (the parent's own number). */
   ageMonths: number;
-  /** Approximate ISO birth date — the gold source `ageMonthsFromProfile` prefers. */
-  birthDate: string;
+  /**
+   * B-DATA-03: ALWAYS present and ALWAYS undefined — a months edit never
+   * invents a birth date, and it CLEARS any stored one (ProfileContext maps an
+   * own `undefined` on a CLEARABLE_PROFILE_FIELDS key to `deleteField()`), so
+   * the months the parent just typed is what every reader sees.
+   */
+  birthDate: undefined;
   /** The date `ageMonths` is true on, so a DOB-less profile still ages. */
   ageMonthsAsOf: string;
 }
 
 /**
+ * B-DATA-03: profile fields a patch may CLEAR by carrying an own `undefined`.
+ * Firestore is configured with `ignoreUndefinedProperties`, which would
+ * otherwise skip the key and leave a stale (fabricated) birthDate winning over
+ * the months the parent typed.
+ */
+export const CLEARABLE_PROFILE_FIELDS: readonly string[] = ["birthDate"];
+
+/**
  * GP-03 / MOB-04: the ONE builder for an age edit. Editing the age used to
  * patch `age` alone while `birthDate`/`ageMonths` stayed stale, so the topbar
  * showed the new number while every months-precise consumer (bands, screening,
- * monitoring) kept reasoning about the old child. Writing all three fields from
- * one months value keeps `ageMonthsFromProfile(patched)` in step with the edit.
+ * monitoring) kept reasoning about the old child. One months value writes
+ * `age` + `ageMonths` + `ageMonthsAsOf` and clears `birthDate`, which keeps
+ * `ageMonthsFromProfile(patched)` in step with the edit.
+ *
+ * B-DATA-03: it used to write `birthDate: birthDateFromAgeMonths(...)` — a
+ * fabricated "1st of the month" date that then printed as a birthday, fired the
+ * lifecycle birthday moment, and outranked every later months edit.
  */
 export function agePatchFromMonths(ageMonths: number, now?: Date): AgePatch {
   const months = Math.max(0, Math.min(216, Math.round(Number.isFinite(ageMonths) ? ageMonths : 0)));
   return {
     age: Math.floor(months / 12),
     ageMonths: months,
-    birthDate: birthDateFromAgeMonths(months, now),
+    birthDate: undefined,
     ageMonthsAsOf: isoDateOf(now),
   };
 }
@@ -264,6 +282,10 @@ export function agePatchFromMonths(ageMonths: number, now?: Date): AgePatch {
 // ── Onboarding utility ───────────────────────────────────────────────────────
 
 /**
+ * B-DATA-03: NEVER STORED. No writer may persist this value as `birthDate`
+ * (childAge.test.ts scans the tree); a months-only age is stored as
+ * `ageMonths` + `ageMonthsAsOf`. Kept for display-free arithmetic only.
+ *
  * Derive an approximate birth date (ISO YYYY-MM-DD) from an entered age in
  * months, anchored to `now`. Used during onboarding when the parent enters
  * "9 months" rather than an exact DOB — the stored date is approximate but

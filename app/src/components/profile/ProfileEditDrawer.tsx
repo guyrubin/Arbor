@@ -15,7 +15,7 @@ import { uploadChildPhoto } from "../../lib/storage";
 import { sanitizeInterestToken } from "../../playbank/select";
 import { isolate } from "../../lib/i18n";
 import { fmtDay } from "../../lib/formatDate";
-// GP-03 / MOB-04: ONE age write ({ birthDate, ageMonths, age }) from a months
+// GP-03 / MOB-04: ONE age write ({ age, ageMonths, ageMonthsAsOf }, birthDate cleared) from a months
 // value, and the months-precise label shown live while editing (GP-01).
 import { ageLabelForMonths, ageMonthsFromProfile, agePatchFromMonths } from "../../lib/childAge";
 import AvatarCreator from "./AvatarCreator";
@@ -189,10 +189,10 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
   const save = async () => {
     setSaving(true);
     try {
-      // GP-03: the age is written as { birthDate, ageMonths, age } from ONE
-      // months value, so ageMonthsFromProfile(patched) moves with the edit
-      // (birthDate is the field every months-precise consumer prefers). An
-      // unchanged age keeps the stored fields untouched.
+      // GP-03 / B-DATA-03: the age is written as { age, ageMonths,
+      // ageMonthsAsOf } from ONE months value and any stored birthDate is
+      // cleared (never re-invented), so ageMonthsFromProfile(patched) moves
+      // with the edit. An unchanged age keeps the stored fields untouched.
       const agePatch = ageMonths !== (ageMonthsFromProfile(activeChild) ?? 0) ? agePatchFromMonths(ageMonths) : {};
       const persisted = await updateChild(activeChild.id, {
         name: name.trim() || activeChild.name,

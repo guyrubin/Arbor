@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
-import { collection, doc, getDocs, setDoc, updateDoc } from "firebase/firestore";
+import { collection, deleteField, doc, getDocs, setDoc, updateDoc } from "firebase/firestore";
 import { db, firebaseEnabled } from "../lib/firebase";
 import { useAuth } from "./AuthContext";
 import { ChildProfile, DeletionReceipt } from "../types";
@@ -10,6 +10,7 @@ import { authHeaders } from "../lib/api";
 import { trackProfileCreated } from "../lib/loopEvents";
 import { bandForAge } from "../lib/screening";
 import { computeNeedsOnboarding } from "../lib/onboardingGate";
+import { CLEARABLE_PROFILE_FIELDS } from "../lib/childAge";
 
 const LS_PROFILES = "arbor.children";
 const LS_ACTIVE = "arbor.activeChildId";
@@ -211,9 +212,15 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const updateChild = useCallback(
     async (id: string, patch: Partial<ChildProfile>): Promise<boolean> => {
       let persisted = true;
+      // B-DATA-03: an own `undefined` on a clearable field (birthDate after a
+      // months edit) DELETES the stored value — ignoreUndefinedProperties would
+      // otherwise skip it and leave a stale date outranking the new months.
+      const clears = CLEARABLE_PROFILE_FIELDS.filter((k) => Object.prototype.hasOwnProperty.call(patch, k) && (patch as Record<string, unknown>)[k] === undefined);
+      const firestorePatch: Record<string, unknown> = { ...(patch as Record<string, unknown>) };
+      for (const k of clears) firestorePatch[k] = deleteField();
       if (useFirestore && db) {
         try {
-          await updateDoc(doc(db, profilesPath, id), patch as Record<string, unknown>);
+          await updateDoc(doc(db, profilesPath, id), firestorePatch);
         } catch {
           // M4 write honesty: the local state update still happens (the parent
           // keeps editing what they can see), but the failure is REPORTED —
@@ -221,7 +228,12 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
           persisted = false;
         }
       }
-      setProfiles((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+      const applyLocal = (p: ChildProfile): ChildProfile => {
+        const next = { ...p, ...patch } as Record<string, unknown>;
+        for (const k of clears) delete next[k];
+        return next as unknown as ChildProfile;
+      };
+      setProfiles((prev) => prev.map((p) => (p.id === id ? applyLocal(p) : p)));
       return persisted;
     },
     [useFirestore, profilesPath]

@@ -125,7 +125,9 @@ describe("migration: profiles written before the anchor existed", () => {
 describe("every ageMonths write carries the anchor", () => {
   it("agePatchFromMonths stamps ageMonthsAsOf alongside the triple", () => {
     const patch = agePatchFromMonths(30, NOW);
-    expect(patch).toEqual({ age: 2, ageMonths: 30, birthDate: "2024-03-01", ageMonthsAsOf: "2026-09-07" });
+    // B-DATA-03: no invented birthDate — the own `undefined` clears a stored one.
+    expect(patch).toEqual({ age: 2, ageMonths: 30, birthDate: undefined, ageMonthsAsOf: "2026-09-07" });
+    expect(Object.prototype.hasOwnProperty.call(patch, "birthDate")).toBe(true);
   });
 
   it("a drawer edit re-reads as the value that was just typed", () => {
