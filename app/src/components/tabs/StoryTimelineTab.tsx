@@ -77,15 +77,10 @@ function StatTile({ tone, icon, value, label, foot }: {
   );
 }
 
-function IntensityDots({ value, label }: { value: number; label: string }) {
-  return (
-    <span className="inline-flex items-center gap-0.5" aria-label={label}>
-      {[1, 2, 3, 4, 5].map((n) => (
-        <span key={n} className="w-1.5 h-1.5 rounded-full" style={{ background: n <= value ? PASTEL.coral.ink : "var(--arbor-rule-strong)" }} />
-      ))}
-    </span>
-  );
-}
+/* B-ASKJB-18: no intensity scale on a Story row. Five dots filled in coral
+ * read as a severity grade on the child (law 1 — chromatic verdict), and the
+ * row data carries `intensity` for every log, plain moments included. The
+ * value stays in the record; the row never draws it. */
 
 function SignalRow({ signal, childName }: { signal: TimelineSignal; childName?: string }) {
   const { t, uiLang } = useLanguage();
@@ -119,7 +114,6 @@ function SignalRow({ signal, childName }: { signal: TimelineSignal; childName?: 
                   {childName || tt("elev.childsignals.prov.fallback")}
                 </span>
               )}
-              {typeof signal.intensity === "number" && <IntensityDots value={signal.intensity} label={tt("elev.childsignals.story.intensityAria", { n: signal.intensity })} />}
               {signal.at && <span className="text-[10.5px] font-semibold ms-auto" style={{ color: "var(--arbor-muted)" }}>{new Date(signal.at).toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" })}</span>}
             </div>
             <p className="text-sm font-extrabold mt-0.5" style={{ color: "var(--arbor-ink)" }} dir="auto">{signalTitle(signal, tt)}</p>

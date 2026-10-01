@@ -59,3 +59,34 @@ describe("StoryTimelineTab months layer — no comparative wording (clinical fir
     expect(monthNode).not.toMatch(/momentsInMonth|monthlyCount|periodCount|countThisMonth/);
   });
 });
+
+/**
+ * B-ASKJB-18 — the Story row drew a 5-dot intensity scale filled with
+ * PASTEL.coral.ink for any `signal.intensity` (every log carries one, plain
+ * moments included): a chromatic severity grade on the child. Gone; the value
+ * stays in the record only.
+ */
+describe("B-ASKJB-18 · no intensity dots on a Story row", () => {
+  const code = stripComments(
+    fs.readFileSync(path.join(SRC_ROOT, "components/tabs/StoryTimelineTab.tsx"), "utf8"),
+  );
+  const signalRow = (() => {
+    const at = code.indexOf("function SignalRow(");
+    expect(at, "SignalRow not found").toBeGreaterThan(-1);
+    const end = code.indexOf("\nfunction ", at + 10);
+    return code.slice(at, end === -1 ? undefined : end);
+  })();
+
+  it("no IntensityDots symbol in the source", () => {
+    expect(code).not.toMatch(/IntensityDots/);
+  });
+  it("no coral fill and no intensity read inside SignalRow", () => {
+    expect(signalRow).not.toMatch(/PASTEL\.coral\.ink/);
+    expect(signalRow).not.toMatch(/--arbor-coral/);
+    expect(signalRow).not.toMatch(/signal\.intensity/);
+  });
+  it("the intensityAria key is removed EN + HE", () => {
+    const dict = fs.readFileSync(path.join(SRC_ROOT, "lib/i18nElevation/childsignals.ts"), "utf8");
+    expect(dict).not.toContain("elev.childsignals.story.intensityAria");
+  });
+});
