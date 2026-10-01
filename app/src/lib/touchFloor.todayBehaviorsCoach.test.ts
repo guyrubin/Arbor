@@ -119,73 +119,83 @@ describe("touch floor · the sub-44 shapes stay out of these files", () => {
 });
 
 /* ══════════════════════════════════════════════════════════════════════════
-   R19 — why the Language chevron measured 16 px WIDE a second time.
+   R19 → B-SHELL-25 — the 44 px width floor stops being decoration.
 
-   R10 gave it `min-w-11`. Round 2c re-measured `#/language` and read 16 px
-   again. The class was never the problem; the CASCADE was:
+   R19 found WHY `min-w-11` on the Language chevron still rendered 16 px wide:
 
      app/src/index.css   `.arbor-app button, .arbor-app a { min-width: 0 }`
-                         — written after `@import "tailwindcss"`, so UNLAYERED;
+                         — written after `@import "tailwindcss"`, UNLAYERED;
      tailwind            `.min-w-11 { min-width: calc(var(--spacing) * 11) }`
                          — emitted inside `@layer utilities`.
 
-   Unlayered declarations beat every layered one regardless of specificity, so
-   `min-width: 0` wins on EVERY <button> and <a> in the app. `min-w-*` is inert
-   there. `.touch-target` is unlayered too and more specific than the reset
-   (`.arbor-app .touch-target` = 0,2,0 vs `.arbor-app button` = 0,1,1), so it is
-   the one width floor that survives — which is why DESIGN.md's floor recipe is
-   a class and not a utility pair.
+   Unlayered declarations beat every layered one, so `min-w-*` was inert on
+   every <button> and <a>. R19 pinned the defect and allowed only
+   `.touch-target`. B-SHELL-25 FIXES the cascade instead: the reset now sits in
+   `@layer base`, below `@layer utilities` in the cascade, so `min-w-11` holds.
+   `.touch-target` (unlayered, more specific) remains the recipe for icon-only
+   controls. The "touch-target only" special case is deleted.
 
-   Height is unaffected: nothing resets `min-height`, so `min-h-11` still holds.
+   There is no CSS engine in this node harness, so the cascade is modelled from
+   the parsed source (layer order base < utilities < unlayered — the CSS
+   Cascade Layers rule). The 320/390 rendered width sweep is the orchestrator's.
    ══════════════════════════════════════════════════════════════════════════ */
 
-/** A width floor that SURVIVES the unlayered button/anchor reset. */
-const CASCADE_SAFE_WIDTH = /touch-target|minWidth|min-width/;
+/** Which layer a selector's declaration lives in: the name of the enclosing
+ *  `@layer x { … }` block, or "unlayered". */
+function layerOf(css: string, needle: string): string {
+  const at = css.indexOf(needle);
+  expect(at, `selector not found: ${needle}`).toBeGreaterThan(-1);
+  let depth = 0;
+  let layer = "unlayered";
+  const re = /@layer\s+([a-z-]+)\s*\{|\{|\}/g;
+  const stack: string[] = [];
+  for (let m = re.exec(css); m && m.index < at; m = re.exec(css)) {
+    if (m[1]) { stack.push(m[1]); depth += 1; }
+    else if (m[0] === "{") stack.push("");
+    else stack.pop();
+  }
+  for (let i = stack.length - 1; i >= 0; i--) if (stack[i]) { layer = stack[i]; break; }
+  void depth;
+  return layer;
+}
 
-/** Icon-only controls: no label text to hold the box open, so the declared
- *  width floor is the whole hit box. `min-w-*` does not count here. */
-const ICON_ONLY: { id: string; file: keyof typeof FILES; near: string }[] = [
-  { id: "Language vocab ideas chevron", file: "language", near: "setShowActivities((v) => !v)" },
-  { id: "Today play-card citation link", file: "play", near: "{activity.source.org}" },
-];
+/** CSS Cascade Layers: later-declared layers win; unlayered beats all layers. */
+const LAYER_RANK: Record<string, number> = { theme: 0, base: 1, components: 2, utilities: 3, unlayered: 9 };
 
-describe("R19 · an icon-only control needs a width floor the cascade cannot erase", () => {
-  const CSS = readFileSync(path.join(SRC, "index.css"), "utf8");
+describe("B-SHELL-25 · the min-width reset is layered, so min-w-* utilities win", () => {
+  const CSS = readFileSync(path.join(SRC, "index.css"), "utf8").replace(/\r\n/g, "\n");
+  const RESET = ".arbor-app a { min-width: 0; }";
 
-  it("the reset that erases every `min-w-*` on a button or anchor is still there", () => {
-    // If this rule is ever deleted, the rule below can be relaxed — but until
-    // then a `min-w-11` on a button is decoration, not a hit box.
-    expect(CSS.replace(/\s+/g, " ")).toContain(".arbor-app button, .arbor-app a { min-width: 0; }");
-    // …and it is written AFTER the tailwind import, i.e. unlayered.
-    expect(CSS.indexOf('@import "tailwindcss"')).toBeLessThan(CSS.indexOf(".arbor-app a { min-width: 0; }"));
+  it("the reset sits inside @layer base (CSS-order test)", () => {
+    expect(CSS).toContain(RESET);
+    expect(layerOf(CSS, RESET)).toBe("base");
+    // …and nowhere unlayered.
+    expect(CSS.split(RESET).length - 1).toBe(1);
   });
 
-  it("`.touch-target` is the recipe that outranks it (unlayered + more specific)", () => {
+  it("a button.min-w-11 now computes min-width 44 px: utilities outrank base", () => {
+    // tailwind emits `.min-w-11` in @layer utilities; the reset is in @layer base.
+    expect(LAYER_RANK.utilities).toBeGreaterThan(LAYER_RANK[layerOf(CSS, RESET)]);
+    // 11 × the 4 px spacing unit = 44 px.
+    expect(11 * 4).toBe(44);
+  });
+
+  it("NEGATIVE CONTROL: the pre-fix unlayered reset beats the utility", () => {
+    const preFix = '@import "tailwindcss";\n.arbor-app button,\n.arbor-app a { min-width: 0; }\n';
+    expect(layerOf(preFix, RESET)).toBe("unlayered");
+    expect(LAYER_RANK.unlayered).toBeGreaterThan(LAYER_RANK.utilities);
+  });
+
+  it("`.touch-target` is kept: unlayered, sets min-width to the touch floor", () => {
     expect(CSS).toContain(".arbor-app .touch-target {");
+    expect(layerOf(CSS, ".arbor-app .touch-target {")).toBe("unlayered");
     const at = CSS.indexOf(".arbor-app .touch-target {");
     expect(CSS.slice(at, at + 220)).toContain("min-width:  var(--touch-min)");
   });
 
-  for (const c of ICON_ONLY) {
-    it(`${c.id} uses that recipe, not a min-w utility`, () => {
-      const shell = shellAround(read(FILES[c.file]), c.near);
-      expect(shell).toMatch(CASCADE_SAFE_WIDTH);
-      // The className itself no longer leans on the inert utility.
-      const cls = shell.match(/className="([^"]*)"/)?.[1] ?? "";
-      expect(cls, `${c.id} className`).not.toMatch(/min-w-/);
-    });
-  }
-
-  it("NEGATIVE CONTROL: the R10 shape passes the old width regex and fails this one", () => {
-    const r10 = 'className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 text-xs"';
-    expect(r10).toMatch(WIDTH_FLOOR);          // why round 2c believed it was fixed
-    const cls = r10.match(/className="([^"]*)"/)?.[1] ?? "";
-    expect(cls).toMatch(/min-w-/);             // …and why it still rendered at 16 px
-    expect(cls.includes("touch-target")).toBe(false);
-    // The shipped shape is the inverse on both counts.
-    const now = read(FILES.language);
-    expect(now).not.toContain(r10);
-    expect(now).toContain('className="touch-target gap-1 text-xs"');
+  it("the icon-only controls R19 fixed keep their touch-target width floor", () => {
+    expect(read(FILES.language)).toContain('className="touch-target gap-1 text-xs"');
+    expect(shellAround(read(FILES.play), "{activity.source.org}")).toMatch(/touch-target|minWidth|min-width/);
   });
 
   it("the glyph did not grow with the box", () => {

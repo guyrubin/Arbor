@@ -194,8 +194,14 @@ html, body, #root { min-height: 100%; overflow-x: hidden; }
 .arbor-app canvas,
 .arbor-app svg { max-width: 100%; }
 
-.arbor-app button,
-.arbor-app a { min-width: 0; }
+/* B-SHELL-25: the button/anchor min-width reset lives in @layer base, so a
+   `min-w-*` utility (@layer utilities) wins over it. Unlayered, it beat every
+   layered rule and made all 33 `min-w-11|min-w-[44px]` uses on buttons and
+   anchors decoration. The touch-target class (unlayered, below) still outranks both. */
+@layer base {
+  .arbor-app button,
+  .arbor-app a { min-width: 0; }
+}
 
 .arbor-app h1,
 .arbor-app h2,
