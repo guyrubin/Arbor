@@ -6,7 +6,7 @@ import { track } from "../../lib/analytics";
 import { SectionCard, Chip, IconBadge } from "../ui/kit";
 import { SpineRibbon } from "../ui/SpineRibbon";
 import { trustText } from "../../lib/i18nElevation/trustcenter";
-import { DOMAIN_META } from "../../practice/content";
+import { DOMAINS, DOMAIN_COUNT, domainName } from "../../lib/domains/registry";
 import { ALL_MILESTONES } from "../../lib/milestoneData";
 
 /**
@@ -413,13 +413,21 @@ export default function SciencePage() {
             {/* B-CAREPRO-09: the count is the catalogue, never a literal; the
                 label carries no domain count (the tile beside it is that). */}
             <StatTile value={String(ALL_MILESTONES.length)} label={t("sci.stat.milestones")} />
-            {/* OBJ-GROWTH-01: this said 7 while the Development hub said 7,
-                rendered 6 rows, and the Full Picture covered 5. One count,
-                from DOMAIN_META. */}
-            <StatTile value={String(Object.keys(DOMAIN_META).length)} label={t("sci.stat.domains")} />
+            {/* OBJ-GROWTH-01 → B-GROWTH-26: one count, from the domain
+                registry (DOMAIN_COUNT = DOMAINS.length); the names follow. */}
+            <StatTile value={String(DOMAIN_COUNT)} label={t("sci.stat.domains")} />
             {/* GP-25 / law 8: "40+" was a claim; six rows render below it.
                 The number is the list. */}
             <StatTile value={String(CITATIONS.length)} label={t("sci.stat.sources")} />
+          </div>
+
+          {/* B-GROWTH-26: the same eight names Growth and Milestones print,
+              from the one registry — never a private list. */}
+          <div className="mt-4" data-testid="science-domain-names">
+            <p className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("elev.domains.science.title")}</p>
+            <ul className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[13px]" style={{ color: "var(--arbor-ink)" }}>
+              {DOMAINS.map((d) => <li key={d.id}>{domainName(d.id, t)}</li>)}
+            </ul>
           </div>
 
           <div className="rounded-2xl p-4 mt-4" style={{ background: "var(--arbor-paper-deep)" }}>

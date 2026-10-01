@@ -7,6 +7,7 @@ import { AiBlock, Checklist, KeepBar, SayThis } from "../ui/AiBlock";
 import { TrustLink } from "../trust/TrustLink";
 import { trackShareInitiated, trackShareCompleted } from "../../lib/loopEvents";
 import { track } from "../../lib/analytics";
+import { toDomains, domainLabel } from "../../lib/domains/registry";
 
 /**
  * Pure helper: returns the G2-safe disclosure header for N sources.
@@ -74,8 +75,9 @@ export function escalationTier(riskLevel?: string): "quiet" | "prominent" {
  * rendered `d.replace(/_/g, " ")`, so a parent read "independence adaptive
  * skills"; `ageBand` is the retrieval vocabulary ("3-5y") and was printed raw.
  *
- * Both now resolve through dictionaries that already exist: `journal.domain.*`
- * (the seven framework domains, EN + HE, used by the Journal chips) and
+ * Both now resolve through dictionaries that already exist: the domain
+ * registry (B-GROWTH-26: every framework id → its registry domain name(s),
+ * EN + HE, the same names Growth and Milestones print) and
  * `elev.band.*` (the five KNOWLEDGE_AGE_BANDS). A value outside either
  * vocabulary — the model can emit one — is de-identified into words rather
  * than rendered as an id, and never as a raw key: translate() falls back to
@@ -83,9 +85,9 @@ export function escalationTier(riskLevel?: string): "quiet" | "prominent" {
  * Exported so tests cover them without mounting the component.
  */
 export function domainChipLabel(domain: string, lang: UiLang = "en"): string {
-  const key = "journal.domain." + domain;
-  const label = translate(lang, key);
-  if (label !== key) return label;
+  if (toDomains("developmental", domain).length > 0) {
+    return domainLabel("developmental", domain, (k) => translate(lang, k));
+  }
   const words = domain.replace(/[_-]+/g, " ").trim();
   return words.charAt(0).toUpperCase() + words.slice(1);
 }

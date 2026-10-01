@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { DOMAIN_META } from "../practice/content";
+import { DOMAINS, DOMAIN_COUNT } from "./domains/registry";
 import { translate } from "./i18n";
 import { resolvePlural } from "../context/LanguageContext";
 import { ALL_MILESTONES, MILESTONE_AGE_BANDS, ageWindowMilestones } from "./milestoneData";
@@ -34,7 +35,7 @@ describe("OBJ-GROWTH-01 — one domain count, derived once", () => {
   it("EN and HE both interpolate the count and read singular at 1", () => {
     const t = (lang: "en" | "he", vars: Record<string, string | number>) =>
       resolvePlural(lang, translate(lang, "elev.hero.growth.stat.domains", vars), vars);
-    const total = Object.keys(DOMAIN_META).length;
+    const total = DOMAIN_COUNT;
     for (const lang of ["en", "he"] as const) {
       expect(t(lang, { n: 1, total })).toContain(String(total));
       expect(t(lang, { n: total, total })).toContain(String(total));
@@ -106,14 +107,20 @@ describe("OBJ-GROWTH-01 — one domain count, derived once", () => {
     });
   });
 
-  it("the remaining surfaces derive the total from DOMAIN_META, never a literal", () => {
+  it("B-GROWTH-26: DOMAIN_COUNT is the registry's length — 8 domains (Guy D1)", () => {
+    expect(DOMAIN_COUNT).toBe(DOMAINS.length);
+    expect(DOMAIN_COUNT).toBe(8);
+  });
+
+  it("the remaining surfaces derive the total from the registry's DOMAIN_COUNT, never a literal", () => {
     const sci = stripComments(read("components", "tabs", "SciencePage.tsx"));
-    expect(sci).toContain('value={String(Object.keys(DOMAIN_META).length)} label={t("sci.stat.domains")}');
+    expect(sci).toContain('value={String(DOMAIN_COUNT)} label={t("sci.stat.domains")}');
+    expect(sci).toContain('import { DOMAINS, DOMAIN_COUNT, domainName } from "../../lib/domains/registry";');
     expect(sci).not.toMatch(/value="7"\s+label=\{t\("sci\.stat\.domains"\)\}/);
 
     // The Full Picture's own domain list already walks the same source.
     const copilot = stripComments(read("components", "practice", "DevelopmentCopilot.tsx"));
-    expect(copilot).toContain("DOMAIN_META[b.domain]");
+    expect(copilot).toContain('domainLabel("practice", b.domain, t)');
   });
 
   /* R1 (round-1 rejection) — the derivation landed but two of the three
@@ -140,10 +147,11 @@ describe("OBJ-GROWTH-01 — one domain count, derived once", () => {
       }
     });
 
-    it("the Copilot derives DOMAIN_COUNT the same way and prints no bare total", () => {
-      expect(copilot).toContain("const DOMAIN_COUNT = Object.keys(DOMAIN_META).length;");
+    it("the Copilot takes DOMAIN_COUNT from the registry and prints no bare total", () => {
+      expect(copilot).toMatch(/import \{ DOMAIN_COUNT, [^}]*\} from "\.\.\/\.\.\/lib\/domains\/registry";/);
+      expect(copilot).not.toMatch(/const DOMAIN_COUNT = /);
       expect(copilot).toMatch(/elev\.fullpicture\.pulse\.moments"[^)]*total: DOMAIN_COUNT/);
-      expect(copilot).toMatch(/elev\.fullpicture\.pulse\.week"[^)]*total: DOMAIN_COUNT/);
+      expect(copilot).toContain('"elev.fullpicture.pulse.week", { n: distinctDomains("practice", data.week.domainsTouched).length, total: DOMAIN_COUNT }');
       // the hard-coded English tile and the manual plural suffix are both gone
       expect(copilot).not.toContain("Practice interactions in 7 days, across {");
       expect(copilot).not.toContain("kPlural");
@@ -153,7 +161,7 @@ describe("OBJ-GROWTH-01 — one domain count, derived once", () => {
       expect(copilot).not.toContain("domain(s)");
       expect(copilot).not.toContain("day(s)");
       // the professional line names the same total and pluralizes its days
-      expect(copilot).toContain("${data.week.domainsTouched.length} of ${DOMAIN_COUNT} domains.");
+      expect(copilot).toContain('${distinctDomains("practice", data.week.domainsTouched).length} of ${DOMAIN_COUNT} domains.');
       expect(copilot).toMatch(/plural\(data\.week\.activeDays, "day"\)/);
       expect(copilot).toMatch(/plural\(data\.streak, "day"\)/);
     });

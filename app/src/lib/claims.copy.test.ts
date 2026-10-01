@@ -261,7 +261,7 @@ describe("5 · Milestones promises no quest and no feed it does not write", () =
     expect(tab).not.toContain("setChatInput");
     expect(tab).not.toContain("setSelectedLens");
     expect(tab).not.toMatch(/t\("ms\.(mapHint|assignHint|assignActivity)"/);
-    expect(tab).toContain('t("ms.playIdeas", { area: domainLabel(dom.id, dom.label) })');
+    expect(tab).toContain('t("ms.playIdeas", { area: domainLabel(dom.id) })');
   });
 
   it("NEGATIVE CONTROL — the pre-fix strings trip the scan", () => {

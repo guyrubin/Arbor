@@ -77,6 +77,7 @@ const DOMAIN_MS: Record<DevelopmentalDomainId, string> = {
   independence_adaptive_skills: "eco",
   sensory_motor_patterns: "sign_language",
   ecosystem_stressors: "public",
+  health_sleep_feeding: "bedtime", // B-GROWTH-26: the 8th domain (body, sleep & eating)
 };
 
 /** PlayDomain (5) → the canonical 7-domain taxonomy for the per-entry chip. */

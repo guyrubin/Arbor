@@ -56,6 +56,14 @@
       "guidanceOutput": "Context-aware plan, co-parent alignment prompt, handoff summary",
       "safetyBoundary": "Do not assign blame; route safety, abuse, or crisis concerns to appropriate help",
       "milestoneAliases": ["Ecosystem"]
+    },
+    {
+      "id": "health_sleep_feeding",
+      "label": "Body, sleep and eating",
+      "tracks": "Growth measurements, sleep, feeding and nutrition, illness, vision and hearing checks, preterm correction",
+      "guidanceOutput": "Sleep and feeding routine, measurement log, questions for the next check-up",
+      "safetyBoundary": "No medical diagnosis; route growth, feeding, sleep or illness concerns to the paediatrician or family doctor",
+      "milestoneAliases": ["Health"]
     }
   ],
   "ageBands": [

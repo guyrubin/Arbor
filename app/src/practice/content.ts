@@ -178,19 +178,17 @@ export const MISSION_CYCLE: MissionTemplate[] = [
   },
 ];
 
-/** R22 (Builder L) — `label` is the ENGLISH name and stays: the clinician
- *  export reads one stable language, and non-rendering callers (watch.ts's
- *  `area`/`domainLabel`, signals.ts) compose with it. `labelKey` is what a
- *  RENDERED surface must use — `t(DOMAIN_META[d].labelKey)` — so a Hebrew
- *  parent stops reading "Speech sounds" inside their own app. Values live in
- *  `lib/i18nElevation/growthTruth.ts` (EN + HE), the same recipe
- *  `framework.json`'s six monitored domains already have in `screen.domain.*`. */
-export const DOMAIN_META: Record<PracticeDomain, { label: string; labelKey: string; color: string; soft: string }> = {
-  language:  { label: "Language",             labelKey: "elev.growthTruth.domain.language",  color: "#2f7bbf", soft: "#e5f0fb" },
-  speech:    { label: "Speech sounds",        labelKey: "elev.growthTruth.domain.speech",    color: "#1f8a5a", soft: "#e4f4ec" },
-  cognition: { label: "Thinking & logic",     labelKey: "elev.growthTruth.domain.cognition", color: "#6354c4", soft: "#ece9fb" },
-  social:    { label: "Social skills",        labelKey: "elev.growthTruth.domain.social",    color: "#a9780f", soft: "#fbf1d4" },
-  emotional: { label: "Emotional regulation", labelKey: "elev.growthTruth.domain.emotional", color: "#bd4f74", soft: "#fce2ec" },
+/** B-GROWTH-26 — DOMAIN_META carries VISUALS only. A practice domain's NAME
+ *  comes from the one domain registry (`lib/domains/registry.ts`
+ *  `domainLabel("practice", id, t)` on a rendered surface, `domainLabelEn` in
+ *  a data module or the English clinician export), never a private label here
+ *  (`lib/domains/noPrivateVocab.guard.test.ts`). */
+export const DOMAIN_META: Record<PracticeDomain, { color: string; soft: string }> = {
+  language:  { color: "#2f7bbf", soft: "#e5f0fb" },
+  speech:    { color: "#1f8a5a", soft: "#e4f4ec" },
+  cognition: { color: "#6354c4", soft: "#ece9fb" },
+  social:    { color: "#a9780f", soft: "#fbf1d4" },
+  emotional: { color: "#bd4f74", soft: "#fce2ec" },
 };
 
 /* ---------------- Module D · Cognitive Adventures (MITA port) ---------------- */

@@ -7,6 +7,7 @@ import { useChildCollection } from "../../hooks/useChildCollection";
 import { useToast } from "../../context/ToastContext";
 import { PageHeader, SectionCard, cardCls, Chip, IconBadge, TrustSafetyBar } from "../ui/kit";
 import { bandForAgeMonths, scoreScreening, type ScreenAnswer, type ScreeningResult } from "../../lib/screening";
+import { domainLabel } from "../../lib/domains/registry";
 import { comparisonAgeMonths, correctedAge } from "../../lib/milestoneData";
 import { ageLabel, ageMonthsFromProfile } from "../../lib/childAge";
 import { computeRecheckDueAt, isRecheckDue } from "../../lib/screeningRecheck";
@@ -71,7 +72,7 @@ export default function Screening() {
   // monitoring.ts buildNote(). monitoring.ts itself stays a pure EN-source
   // module feeding the clinician printable. Counts only — never a verdict.
   const watchNote = (d: DomainSignal): string => {
-    const area = t(`screen.domain.${d.domain}`).toLowerCase();
+    const area = domainLabel("screen", d.domain, t).toLowerCase();
     const parts: string[] = [];
     if (d.reasons.includes("milestone_overdue")) {
       parts.push(
@@ -137,7 +138,7 @@ export default function Screening() {
               <div key={d.domain} className="rounded-2xl p-3.5" style={{ background: "var(--arbor-paper-deep)" }}>
                 <div className="flex items-center gap-2">
                   <Icon name="visibility" size={14} style={{ color: "var(--arbor-muted)" }} />
-                  <span className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{t(`screen.domain.${d.domain}`)}</span>
+                  <span className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{domainLabel("screen", d.domain, t)}</span>
                 </div>
                 <p className="text-[12.5px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{watchNote(d)}</p>
               </div>
@@ -159,13 +160,13 @@ export default function Screening() {
 }
 
 /** B-GROWTH-17 — the Consult reason box's prefill after an elevated check: the
- *  areas worth a conversation, named in the PAGE language via screen.domain.*.
+ *  areas worth a conversation, named in the PAGE language via the domain registry.
  *  Pure so the wording and the area list are testable without a tap. */
 export function visitPrefillReason(
   watchAreas: readonly { domain: string }[],
   t: (key: string, vars?: Record<string, string | number>) => string,
 ): string {
-  const areas = watchAreas.map((d) => t(`screen.domain.${d.domain}`)).join(", ");
+  const areas = watchAreas.map((d) => domainLabel("screen", d.domain, t)).join(", ");
   return t("screen.handoff.reason", { areas });
 }
 
@@ -488,7 +489,7 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
             <div className="grid sm:grid-cols-2 gap-3">
               {result.domains.map((d) => (
                 <div key={d.domain} className={`${cardCls} p-4 flex items-center justify-between gap-3`}>
-                  <span className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{t(`screen.domain.${d.domain}`)}</span>
+                  <span className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{domainLabel("screen", d.domain, t)}</span>
                   <Chip tone="lav">
                     {tCalm(uiLang, d.status === "watch" ? "elev.screencalm.row.discuss" : "elev.screencalm.row.reviewed")}
                   </Chip>
@@ -514,7 +515,7 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
                       <li key={item.id} className={`${cardCls} flex flex-wrap items-center justify-between gap-3 p-3.5`}>
                         <span className="min-w-0 flex-1">
                           <span className="block break-words text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{milestone.title}</span>
-                          <span className="mt-0.5 block break-words text-xs leading-snug" style={{ color: "var(--arbor-muted)" }}>{t(`screen.domain.${item.domain}`)}</span>
+                          <span className="mt-0.5 block break-words text-xs leading-snug" style={{ color: "var(--arbor-muted)" }}>{domainLabel("screen", item.domain, t)}</span>
                         </span>
                         <button
                           type="button"

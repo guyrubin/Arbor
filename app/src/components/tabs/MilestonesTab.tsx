@@ -54,7 +54,7 @@ import {
   type KeepsakeDoc, type KeepsakeDraft,
 } from "../../lib/firstsKeepsake";
 import { useChildCollection } from "../../hooks/useChildCollection";
-import framework from "../../framework.json";
+import { DEVELOPMENTAL_DOMAIN_IDS, domainLabel as registryDomainLabel } from "../../lib/domains/registry";
 import { DevelopmentalDomainId, Milestone } from "../../types";
 
 function celebrate() {
@@ -85,19 +85,12 @@ export default function MilestonesTab() {
 
   const { t, uiLang } = useLanguage();
   const isRtl = uiLang === "he";
-  const domainOptions = framework.domains;
-  /* R22 (Builder L) — `framework.json`'s `label` is English-only, so the domain
-     Map printed "Attachment and regulation" inside the Hebrew app. The six
-     monitored domains already have a bilingual dictionary (`screen.domain.<id>`,
-     used by the screening surfaces); this is the same resolver AcademyForYou's
-     Learning Map uses (components/sections/AcademyForYou.tsx `labelFor`).
-     `translate()` returns the key itself when it is missing, which is the signal
-     to fall back to framework.json (today only `ecosystem_stressors`). */
-  const domainLabel = (id: string, fallback: string) => {
-    const key = `screen.domain.${id}`;
-    const translated = t(key);
-    return translated === key ? fallback : translated;
-  };
+  /* B-GROWTH-26 — the catalogue's domain list and every domain NAME come from
+     the one domain registry (lib/domains/registry.ts, EN + HE in
+     lib/i18nElevation/domains.ts): the same names Growth and Science print.
+     No framework.json label, no screen.domain.* private dictionary. */
+  const domainOptions = useMemo(() => DEVELOPMENTAL_DOMAIN_IDS.map((id) => ({ id })), []);
+  const domainLabel = (id: string) => registryDomainLabel("developmental", id, t);
   // openDomain === null → the "all domains" master list (the closed Map);
   // set → the single-domain drill-in detail pane.
   const [openDomain, setOpenDomain] = useState<string | null>(null);
@@ -818,7 +811,7 @@ export default function MilestonesTab() {
                     >
                       <div className="flex items-center gap-2.5 mb-2">
                         <Icon className="w-[18px] h-[18px] flex-shrink-0" style={{ color: PASTEL[dv.tone].ink }} />
-                        <span className="flex-1 text-[13.5px] font-bold" style={{ color: "var(--arbor-ink)" }}>{domainLabel(dom.id, dom.label)}</span>
+                        <span className="flex-1 text-[13.5px] font-bold" style={{ color: "var(--arbor-ink)" }}>{domainLabel(dom.id)}</span>
                         {/* B-GROWTH-07: a count, never a bar or a "/total" fraction. */}
                         <span className="text-[11px] font-extrabold" style={{ color: "var(--arbor-muted)" }}>{s.checked} {t("ms.domainOf")}</span>
                         <ChevEnd className="w-4 h-4 flex-shrink-0" style={{ color: "var(--arbor-muted)" }} />
@@ -851,7 +844,7 @@ export default function MilestonesTab() {
                       <Icon className="w-6 h-6" style={{ color: PASTEL[dv.tone].ink }} />
                     </span>
                     <div className="flex-1">
-                      <div className="text-[17px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{domainLabel(dom.id, dom.label)}</div>
+                      <div className="text-[17px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{domainLabel(dom.id)}</div>
                       <div className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>{s.checked} {t("ms.domainOf")}</div>
                     </div>
                   </div>
@@ -869,7 +862,7 @@ export default function MilestonesTab() {
                   >
                     <Icon name="sports_esports" size={18} style={{ color: "var(--arbor-ink-soft)" }} />
                     <div className="flex-1 text-[13px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>
-                      {t("ms.playIdeas", { area: domainLabel(dom.id, dom.label) })}
+                      {t("ms.playIdeas", { area: domainLabel(dom.id) })}
                     </div>
                     <ChevEnd className="w-4 h-4 flex-shrink-0" style={{ color: "var(--arbor-muted)" }} />
                   </button>
@@ -892,7 +885,7 @@ export default function MilestonesTab() {
           <form onSubmit={submitCustom} className="flex flex-col sm:flex-row gap-2 items-stretch">
             <input autoFocus value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder={t("ms.newPlaceholder")} className="flex-1 rounded-xl px-3 py-2 text-sm focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
             <select value={newDomain} onChange={(e) => setNewDomain(e.target.value as DevelopmentalDomainId)} className="rounded-xl px-3 py-2 text-xs" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}>
-              {domainOptions.map((d) => <option key={d.id} value={d.id}>{domainLabel(d.id, d.label)}</option>)}
+              {domainOptions.map((d) => <option key={d.id} value={d.id}>{domainLabel(d.id)}</option>)}
             </select>
             <button type="submit" className="text-white font-extrabold text-xs px-4 py-2 min-h-11 rounded-xl transition" style={{ background: "var(--arbor-clay)" }}>{t("ms.add")}</button>
             <button type="button" onClick={() => setShowAdd(false)} className="touch-target px-2 text-xs" style={{ color: "var(--arbor-muted)" }}>{t("ms.cancel")}</button>
@@ -964,8 +957,8 @@ export default function MilestonesTab() {
                   {watchPoints
                     .map((w) =>
                       w.count === 1
-                        ? t("ms.watch.area.one", { area: t(`screen.domain.${w.domain}`).toLowerCase() })
-                        : t("ms.watch.area.many", { n: w.count, area: t(`screen.domain.${w.domain}`).toLowerCase() }),
+                        ? t("ms.watch.area.one", { area: registryDomainLabel("screen", w.domain, t).toLowerCase() })
+                        : t("ms.watch.area.many", { n: w.count, area: registryDomainLabel("screen", w.domain, t).toLowerCase() }),
                     )
                     .join(" ")}{" "}
                   {t("ms.watch.close")}

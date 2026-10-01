@@ -110,7 +110,9 @@ export type DevelopmentalDomainId =
   | 'social_development'
   | 'independence_adaptive_skills'
   | 'sensory_motor_patterns'
-  | 'ecosystem_stressors';
+  | 'ecosystem_stressors'
+  // B-GROWTH-26 (Guy D1): the 8th domain — body, sleep & eating (registry `body`).
+  | 'health_sleep_feeding';
 
 export interface FrameRouting {
   aim: string;

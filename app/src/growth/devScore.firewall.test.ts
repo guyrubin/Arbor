@@ -20,6 +20,7 @@ import { computeDevScore, type DevScore, type DomainScore } from "./devScore";
 import { CHILD_SUBCOLLECTIONS } from "../lib/childData";
 import { translate } from "../lib/i18n";
 import framework from "../framework.json";
+import { domainLabel } from "../lib/domains/registry";
 
 const SRC = path.resolve(__dirname, "..");
 const read = (rel: string) => readFileSync(path.join(SRC, rel), "utf8");
@@ -104,15 +105,16 @@ describe("B-GROWTH-06 — no gauge metaphor, no Latin domain label under he", ()
     expect(nav.match(/\{ tab: "development", label: "Development", icon: Sprout \}/g)?.length).toBe(2);
   });
 
-  it("the sr-only domain labels go through screen.domain.* — Hebrew for every framework domain", () => {
+  it("the sr-only domain labels go through the domain registry (B-GROWTH-26) — Hebrew for every framework domain", () => {
     const card = stripComments(read("components/sections/DevScoreCard.tsx"));
-    expect(card).toContain("domain: t(`screen.domain.${d.domain}`)");
+    expect(card).toContain('domain: domainLabel("developmental", d.domain, t)');
     expect(card).not.toContain("framework.json");
+    expect(card).not.toContain("screen.domain.");
     for (const { id } of (framework as { domains: { id: string }[] }).domains) {
-      const he = translate("he", `screen.domain.${id}`);
-      expect(he, id).not.toBe(`screen.domain.${id}`);
+      const he = domainLabel("developmental", id, (k) => translate("he", k));
       expect(he, id).not.toMatch(/[A-Za-z]/);
-      expect(translate("en", `screen.domain.${id}`), id).not.toBe(`screen.domain.${id}`);
+      const en = domainLabel("developmental", id, (k) => translate("en", k));
+      expect(en, id).not.toMatch(/elev\.|_/);
     }
   });
 

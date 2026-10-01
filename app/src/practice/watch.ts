@@ -1,7 +1,8 @@
 import type { BehaviorLog, MissionRecord, PracticeDomain } from "../types";
-import { DOMAIN_META, SOUND_LIBRARY } from "./content";
+import { SOUND_LIBRARY } from "./content";
 import type { ScreenDomainId } from "../lib/screening";
 import type { DomainBand, SoundStats } from "./signals";
+import { translate, domainLabelEn } from "../lib/domains/registry";
 
 /* Watch Signals (Epic 2) — continuous, non-diagnostic pattern awareness.
  *
@@ -45,15 +46,10 @@ export interface ScreeningWatchArea {
   label: string;
 }
 
-/** Screening domains that have a practice-signal counterpart. Independence and
- *  sensory deliberately have none — they map to `undefined`, the row keeps its
- *  own label, and the level falls back to the calm default. */
-const SCREEN_TO_PRACTICE: Partial<Record<ScreenDomainId, PracticeDomain>> = {
-  language_communication: "language",
-  social_development: "social",
-  attachment_regulation: "emotional",
-  cognition_executive_function: "cognition",
-};
+/* B-GROWTH-26: screening domain → practice-signal counterpart goes THROUGH
+ * the domain registry (`translate`), not a private map. Independence and
+ * sensory have none (hands / moving carry no practice id) — the row keeps its
+ * own label, and the level falls back to the calm default. */
 
 export interface WatchInput {
   age: number;
@@ -90,9 +86,9 @@ export function watchSignals(input: WatchInput): WatchSignal[] {
     const level: WatchLevel = lagging.length >= 3 ? "discuss" : "monitor";
     out.push({
       id: "speech-sounds",
-      area: DOMAIN_META.speech.label,
+      area: domainLabelEn("practice", "speech"),
       domain: "speech",
-      domainLabel: DOMAIN_META.speech.label,
+      domainLabel: domainLabelEn("practice", "speech"),
       level,
       evidence: lagging.map((s) => {
         const e = SOUND_LIBRARY.find((x) => x.id === s.sound);
@@ -121,7 +117,7 @@ export function watchSignals(input: WatchInput): WatchSignal[] {
       id: "regulation",
       area: "Frequent intense moments",
       domain: "emotional",
-      domainLabel: DOMAIN_META.emotional.label,
+      domainLabel: domainLabelEn("practice", "emotional"),
       level,
       evidence: [
         `${intense.length} high-intensity moments logged in the last 28 days`,
@@ -145,7 +141,7 @@ export function watchSignals(input: WatchInput): WatchSignal[] {
       id: "attention",
       area: "Attention & task completion",
       domain: "cognition",
-      domainLabel: DOMAIN_META.cognition.label,
+      domainLabel: domainLabelEn("practice", "cognition"),
       level: "monitor",
       evidence: [
         // Counts, never percentages (IA W4.5): evidence rides into clinician exports.
@@ -164,7 +160,7 @@ export function watchSignals(input: WatchInput): WatchSignal[] {
   //    its OWN domain id, so a sensory or independence row is never relabelled
   //    "Language" by a regex fallback, and the evidence line is an i18n key.
   for (const area of input.screeningWatchLabels) {
-    const domain = SCREEN_TO_PRACTICE[area.domain] ?? null;
+    const domain: PracticeDomain | null = translate("screen", area.domain, "practice") ?? null;
     const b = domain ? band(domain) : undefined;
     const level: WatchLevel = b && b.band === "emerging" ? "discuss" : "monitor";
     out.push({

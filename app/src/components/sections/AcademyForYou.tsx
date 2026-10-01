@@ -41,28 +41,19 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useDevScore } from "../../hooks/useDevScore";
 import { MASTERCLASSES, FRAME_LABELS } from "../../lib/masterclasses";
 import type { FrameId } from "../../lib/masterclasses";
-import framework from "../../framework.json";
+import { domainLabel } from "../../lib/domains/registry";
 import { cardCls } from "../ui/kit";
 import { TrustLink } from "../trust/TrustLink";
 
-// ── Domain label lookup (mirrors DevScoreCard + ScholarHubCard) ───────────────
+// ── Domain label lookup ───────────────────────────────────────────────────────
 
-const DOMAIN_LABEL: Record<string, string> = Object.fromEntries(
-  (framework.domains as { id: string; label: string }[]).map((d) => [d.id, d.label])
-);
 /**
- * LC-13 / item 8: framework.json's `label` is English-only, so the Learning
- * Map printed English domain names inside the Hebrew app. The six monitored
- * domains already have a bilingual dictionary — `screen.domain.<id>`, used by
- * the screening surfaces — so this reuses it rather than minting a second
- * canon. `translate` returns the key itself when it is missing, which is the
- * signal to fall back to framework.json (today only `ecosystem_stressors`).
+ * B-GROWTH-26: a framework domain id is named by the ONE domain registry
+ * (lib/domains/registry.ts → lib/i18nElevation/domains.ts, EN + HE) — the same
+ * names Growth, Milestones and Science print. No framework.json label, no
+ * private dictionary.
  */
-const labelFor = (id: string, t: (key: string) => string) => {
-  const key = `screen.domain.${id}`;
-  const translated = t(key);
-  return translated === key ? DOMAIN_LABEL[id] ?? id : translated;
-};
+const labelFor = (id: string, t: (key: string) => string) => domainLabel("developmental", id, t);
 
 // ── Course-progress read ───────────────────────────────────────────────────────
 

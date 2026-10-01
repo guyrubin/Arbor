@@ -30,4 +30,10 @@ export const DOMAIN_REFERENCES: Record<DevelopmentalDomainId, { label: string; u
     label: "Harvard — toxic stress",
     url: "https://developingchild.harvard.edu/science/key-concepts/toxic-stress/",
   },
+  // B-GROWTH-26: the 8th domain (body, sleep & eating) — the same AAP
+  // ages-and-stages landing page already cited above.
+  health_sleep_feeding: {
+    label: "AAP HealthyChildren — ages & stages",
+    url: "https://www.healthychildren.org/English/ages-stages/Pages/default.aspx",
+  },
 };

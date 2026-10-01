@@ -209,12 +209,13 @@ describe("B-GROWTH-17 — one Consult action, pre-filled with the areas", () => 
     const { translate } = await vi.importActual<typeof import("../../lib/i18n")>("../../lib/i18n");
     const areas = [{ domain: "language_communication" }, { domain: "social_development" }];
     const en = visitPrefillReason(areas, (k, v) => translate("en", k, v));
-    expect(en).toContain("Language & communication");
-    expect(en).toContain("Social development");
+    // B-GROWTH-26: the areas are named by the one domain registry
+    expect(en).toContain("Talking & understanding");
+    expect(en).toContain("Playing with others");
     expect(en).not.toMatch(/\{areas\}|screen\.domain/);
     const he = visitPrefillReason(areas, (k, v) => translate("he", k, v));
-    expect(he).toContain("שפה ותקשורת");
-    expect(he).toContain("התפתחות חברתית");
+    expect(he).toContain("דיבור והבנה");
+    expect(he).toContain("משחק עם אחרים");
     expect(he).not.toMatch(/[A-Za-z]/);
   });
 

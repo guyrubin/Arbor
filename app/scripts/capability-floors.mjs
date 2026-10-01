@@ -132,7 +132,7 @@ function readSrc(relPath) {
   }
 }
 
-// ── F4a: DevelopmentalDomainId union = 7 members ─────────────────────────────
+// ── F4a: DevelopmentalDomainId union = 8 members (B-GROWTH-26, Guy D1) ───────
 {
   const text = readSrc("types.ts");
   if (!text) {
@@ -143,16 +143,16 @@ function readSrc(relPath) {
       fail("F4a", "domains-union", "DevelopmentalDomainId not found");
     } else {
       const literals = (unionMatch[1].match(/'[^']+'/g) || []).length;
-      if (literals === 7) {
-        pass("F4a", "domains-union", "DevelopmentalDomainId=" + literals + "=7");
+      if (literals === 8) {
+        pass("F4a", "domains-union", "DevelopmentalDomainId=" + literals + "=8");
       } else {
-        fail("F4a", "domains-union", literals + "!=7");
+        fail("F4a", "domains-union", literals + "!=8");
       }
     }
   }
 }
 
-// ── F4b: framework.json domains.length = 7 ───────────────────────────────────
+// ── F4b: framework.json domains.length = 8 (B-GROWTH-26, Guy D1) ─────────────
 {
   const fwPath = path.join(src, "framework.json");
   if (!existsSync(fwPath)) {
@@ -160,10 +160,10 @@ function readSrc(relPath) {
   } else {
     const fw = JSON.parse(readFileSync(fwPath, "utf8"));
     const count = fw.domains ? fw.domains.length : 0;
-    if (count === 7) {
-      pass("F4b", "domains-framework", "framework.json domains=" + count + "=7");
+    if (count === 8) {
+      pass("F4b", "domains-framework", "framework.json domains=" + count + "=8");
     } else {
-      fail("F4b", "domains-framework", "framework.json domains=" + count + "!=7");
+      fail("F4b", "domains-framework", "framework.json domains=" + count + "!=8");
     }
   }
 }

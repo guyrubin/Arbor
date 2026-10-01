@@ -11,6 +11,7 @@ import type {
   SpeechLevel,
 } from "../types";
 import { DOMAIN_ROTATION } from "./journey";
+import { translate } from "../lib/domains/registry";
 
 /* Pure scoring engine for the Practice Studio + Development Copilot.
    No I/O, no Date.now() inside the math (callers pass `today`) — unit-testable. */
@@ -164,12 +165,11 @@ export interface DomainBand {
   basis: string[];
 }
 
-const MILESTONE_DOMAIN_MAP: Record<string, PracticeDomain> = {
-  language_communication: "language",
-  cognition_executive_function: "cognition",
-  social_development: "social",
-  attachment_regulation: "emotional",
-};
+/* B-GROWTH-26: the ad-hoc MILESTONE_DOMAIN_MAP is gone — a milestone's
+ * practice counterpart is looked up THROUGH the domain registry
+ * (developmental id → registry domain → that domain's practice id). Same
+ * result as the old four-row map: hands / moving / body / family have no
+ * practice counterpart and stay absent. */
 
 export interface DomainMilestoneCount {
   reached: number;
@@ -182,13 +182,13 @@ export interface DomainMilestoneCount {
  * firewall allows: a parent-owned tally, never a 0–100 verdict on the child.
  *
  * Milestones carry a DevelopmentalDomainId; this maps each onto its practice
- * domain via MILESTONE_DOMAIN_MAP so the keys line up with domainBands /
+ * domain via the registry (`translate`) so the keys line up with domainBands /
  * DOMAIN_META. Domains with no mapped milestones (e.g. "speech") are absent.
  */
 export function domainMilestoneCounts(milestones: Milestone[]): Map<PracticeDomain, DomainMilestoneCount> {
   const map = new Map<PracticeDomain, DomainMilestoneCount>();
   for (const m of milestones) {
-    const domain = MILESTONE_DOMAIN_MAP[m.domain];
+    const domain = translate("developmental", m.domain, "practice");
     if (!domain) continue;
     const e = map.get(domain) ?? { reached: 0, total: 0 };
     e.total += 1;
@@ -244,7 +244,7 @@ export function domainBands(
   const milestonePct = new Map<PracticeDomain, number>();
   const counts = new Map<PracticeDomain, { done: number; total: number }>();
   for (const m of milestones) {
-    const domain = MILESTONE_DOMAIN_MAP[m.domain];
+    const domain = translate("developmental", m.domain, "practice");
     if (!domain) continue;
     const c = counts.get(domain) ?? { done: 0, total: 0 };
     c.total++;
@@ -591,7 +591,7 @@ export function weeklyMissionPlan(
   // Not-yet-reached milestones grouped by the practice domain they map to.
   const gaps = new Map<PracticeDomain, Milestone[]>();
   for (const m of milestones) {
-    const domain = MILESTONE_DOMAIN_MAP[m.domain];
+    const domain = translate("developmental", m.domain, "practice");
     if (!domain || m.checked) continue;
     const list = gaps.get(domain) ?? [];
     list.push(m);

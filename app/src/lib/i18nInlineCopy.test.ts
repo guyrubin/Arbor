@@ -7,6 +7,7 @@ import { en as growthTruthEn, he as growthTruthHe } from "./i18nElevation/growth
 import { MISSION_CYCLE, DOMAIN_META } from "../practice/content";
 import { JOURNEY_EXTRAS, MISSION_COPY_KEYS, OBJECTIVE_TITLE_KEYS } from "../practice/journey";
 import { translate } from "./i18n";
+import { domainLabel } from "./domains/registry";
 
 /**
  * TODAY-5 / PLAT-4 / CODEX-6 — anti-regression guard for the i18n registry
@@ -235,9 +236,9 @@ describe("item 8 — no hardcoded English on the Learn·Care export surfaces", (
     expect(rep).toContain("padding-inline-start");
   });
 
-  it("the Learning Map domain labels resolve through the shared screen.domain dictionary", () => {
+  it("the Learning Map domain labels resolve through the domain registry (B-GROWTH-26)", () => {
     const academy = fs.readFileSync(path.join(SRC_ROOT, "components/sections/AcademyForYou.tsx"), "utf8");
-    expect(academy).toContain("const key = `screen.domain.${id}`;");
+    expect(academy).toContain('const labelFor = (id: string, t: (key: string) => string) => domainLabel("developmental", id, t);');
     expect(academy).not.toMatch(/const labelFor = \(id: string\) => DOMAIN_LABEL\[id\]/);
   });
 
@@ -443,12 +444,18 @@ describe("R23 — every Development Journey string a parent reads has both langu
 });
 
 describe("R22 — the practice domain names and the Full Picture body carry both languages", () => {
-  it("DOMAIN_META carries a labelKey for every domain, bilingual", () => {
+  it("B-GROWTH-26: DOMAIN_META carries visuals only; practice names come from the registry, bilingual", () => {
     const entries = Object.entries(DOMAIN_META);
     expect(entries.length).toBe(5);
-    expectBilingual(entries.map(([, m]) => m.labelKey), growthTruthEn, growthTruthHe, "DOMAIN_META labels");
-    // The ENGLISH label stays: the clinician export reads one stable language.
-    for (const [, m] of entries) expect(growthTruthEn[m.labelKey]).toBe(m.label);
+    for (const [, m] of entries) {
+      expect(Object.keys(m).sort()).toEqual(["color", "soft"]);
+    }
+    for (const [id] of entries) {
+      const en = domainLabel("practice", id, (k) => translate("en", k));
+      const he = domainLabel("practice", id, (k) => translate("he", k));
+      expect(en, id).not.toMatch(/elev\./);
+      expect(he, id).not.toMatch(/[A-Za-z]/);
+    }
   });
 
   it("the Full Picture chrome is keyed in both languages at every render site", () => {
@@ -479,7 +486,7 @@ describe("R22 — the practice domain names and the Full Picture body carry both
       expect(HEBREW_SCRIPT.test(growthTruthHe[key] ?? ""), `${key} has no Hebrew value`).toBe(true);
     }
     // The rendered domain row and the watch row take the KEYED label.
-    expect(src).toContain("t(meta.labelKey)");
+    expect(src).toContain('domainLabel("practice", b.domain, t)');
     expect(src).toContain("domainText(w.area, w.domain)");
   });
 
@@ -514,8 +521,8 @@ describe("R22 — the practice domain names and the Full Picture body carry both
     expect(ask).not.toContain("label={section.title}");
 
     const ms = stripComments(readSrc("components/tabs/MilestonesTab.tsx"));
-    expect(ms).toContain("const key = `screen.domain.${id}`;");
-    expect(ms).toContain("{domainLabel(dom.id, dom.label)}");
+    expect(ms).toContain('const domainLabel = (id: string) => registryDomainLabel("developmental", id, t);');
+    expect(ms).toContain("{domainLabel(dom.id)}");
     expect(ms).not.toMatch(/>\{dom\.label\}</);
     expect(ms).not.toContain('title="Celebrate"');
 

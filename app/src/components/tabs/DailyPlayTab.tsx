@@ -393,7 +393,7 @@ export default function DailyPlayTab() {
               done={doneIds.includes(p.activity.id)}
               onDid={markDone}
               onCoach={coach}
-              concernLabel={p.reason === "concern-match" ? playDomainLabel(p.activity.domain, uiLang) : undefined}
+              concernLabel={p.reason === "concern-match" ? playDomainLabel(p.activity.domain, uiLang, p.activity.id) : undefined}
               goalLabel={
                 p.reason === "goal-match"
                   ? activeGoals.find((g) => g.domainId === p.activity.domain)?.label

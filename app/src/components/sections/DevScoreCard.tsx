@@ -3,6 +3,7 @@ import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useDevScore } from "../../hooks/useDevScore";
+import { domainLabel } from "../../lib/domains/registry";
 import { HeroAvatar } from "../ui/HeroAvatar";
 
 /* My Child › Development — the Development picture (PRD C4).
@@ -98,7 +99,7 @@ export default function DevScoreCard() {
         <div className="sr-only">
           {score.domains.map((d) => (
             <span key={d.domain}>
-              {t("devscore.noticed.aria", { domain: t(`screen.domain.${d.domain}`), reached: d.reached, total: d.total })}{"; "}
+              {t("devscore.noticed.aria", { domain: domainLabel("developmental", d.domain, t), reached: d.reached, total: d.total })}{"; "}
             </span>
           ))}
         </div>

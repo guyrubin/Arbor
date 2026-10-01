@@ -23,6 +23,9 @@ Arbor should model the child across seven domains. Each parent concern should be
 | Independence and adaptive skills | `independence_adaptive_skills` | Sleep, toileting, dressing, eating, chores, transitions | Independence ladder, prepared environment, responsibility step | Avoid shame or coercive plans; watch for medical or sensory explanations |
 | Sensory and motor patterns | `sensory_motor_patterns` | Sound, texture, movement, fatigue, fine/gross motor observations | Sensory-aware routine, environment change, observation log | Observation only; professional referral for persistent sensory or motor concerns |
 | Ecosystem and stressors | `ecosystem_stressors` | Family routines, school context, languages, moves, illness, conflict, caregiver stress | Context-aware plan, co-parent alignment prompt, handoff summary | Do not assign blame; route safety, abuse, or crisis concerns to appropriate help |
+| Body, sleep and eating | `health_sleep_feeding` | Growth measurements, sleep, feeding and nutrition, illness, vision and hearing checks, preterm correction | Sleep and feeding routine, measurement log, questions for the next check-up | No medical diagnosis; route growth, feeding, sleep or illness concerns to the paediatrician or family doctor |
+
+The eight framework domains resolve to the eight parent-facing domains of the one registry (`app/src/lib/domains/registry.ts`, B-GROWTH-26): talking, moving, hands, thinking, playing, feelings, body, family. `sensory_motor_patterns` splits into moving + hands.
 
 ## Age-Band Logic
 

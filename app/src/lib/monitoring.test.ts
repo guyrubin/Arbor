@@ -586,8 +586,10 @@ describe("GP-04 — monitoringAgeYears is the corrected age (preterm)", () => {
 /* B-GROWTH-09 — watch-point rows follow the catalogue's domain order for ANY
    input order; ordering by lag count ranked the child's areas. */
 describe("B-GROWTH-09 — watch points are in framework.json domain order", () => {
-  it("MONITORED_DOMAINS is framework.json's domain order minus ecosystem_stressors", () => {
-    const fw = (framework as { domains: { id: string }[] }).domains.map((d) => d.id).filter((id) => id !== "ecosystem_stressors");
+  it("MONITORED_DOMAINS is framework.json's domain order minus ecosystem_stressors and health_sleep_feeding (B-GROWTH-26)", () => {
+    const fw = (framework as { domains: { id: string }[] }).domains
+      .map((d) => d.id)
+      .filter((id) => id !== "ecosystem_stressors" && id !== "health_sleep_feeding");
     expect(MONITORED_DOMAINS).toEqual(fw);
   });
 

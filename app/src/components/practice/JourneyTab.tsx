@@ -6,6 +6,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { PageHeader, SectionCard, cardCls, Chip } from "../ui/kit";
 import { DOMAIN_META, fillTemplate } from "../../practice/content";
+import { domainLabel } from "../../lib/domains/registry";
 import { computeAchievements } from "../../practice/achievements";
 import { aimDomains, composeWeek, suggestObjectives, MISSION_COPY_KEYS, OBJECTIVE_TITLE_KEYS } from "../../practice/journey";
 import { aimVirtues, loadCharter } from "../../lib/becoming";
@@ -184,7 +185,7 @@ export default function JourneyTab() {
       <section data-module="journey-week">
       <SectionCard title={t("elev.practice.journey.week.title")} icon={<Icon name="calendar_month" size={20} />} tone="mint"
         action={aims.length > 0
-          ? <Chip tone="mint">{t("elev.growth.journey.aim", { domain: t(DOMAIN_META[aims[0]].labelKey) })}</Chip>
+          ? <Chip tone="mint">{t("elev.growth.journey.aim", { domain: domainLabel("practice", aims[0], t) })}</Chip>
           : undefined}>
         <div className="grid grid-cols-1 lg:grid-cols-7 gap-3">
           {week.map((day) => {
@@ -249,7 +250,7 @@ export default function JourneyTab() {
                     <Icon name="check_circle" size={16} />
                   </span>
                   <Chip tone={obj.domain === "speech" ? "mint" : obj.domain === "language" ? "sky" : obj.domain === "cognition" ? "lav" : obj.domain === "social" ? "yellow" : "pink"}>
-                    {t(meta.labelKey)}
+                    {domainLabel("practice", obj.domain, t)}
                   </Chip>
                 </span>
                 <span className="block text-sm font-extrabold mt-3" style={{ color: "var(--arbor-ink)" }}>{keyed(OBJECTIVE_TITLE_KEYS[obj.title], obj.title)}</span>
@@ -311,7 +312,7 @@ export default function JourneyTab() {
                     const reached = Math.min(b.reached ?? windowed?.reached ?? 0, total);
                     return (
                       <div key={b.domain}>
-                        <p className="text-[10px] font-bold mb-1" style={{ color: meta.color }}>{t(meta.labelKey)}</p>
+                        <p className="text-[10px] font-bold mb-1" style={{ color: meta.color }}>{domainLabel("practice", b.domain, t)}</p>
                         <p className="text-[11px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.practice.journey.history.count", { reached, total })}</p>
                         <p className="text-[10px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.practice.journey.history.noticed")}</p>
                       </div>

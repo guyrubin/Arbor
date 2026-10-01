@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  Heart, Languages, Brain, Users, Sprout, Hand, Globe,
+  Heart, Languages, Brain, Users, Sprout, Hand, Globe, Moon,
   type LucideIcon,
 } from "lucide-react";
 import type { DevelopmentalDomainId } from "../../types";
@@ -359,6 +359,8 @@ export const DOMAIN_VISUALS: Record<DevelopmentalDomainId, DomainVisual> = {
   independence_adaptive_skills: { icon: Sprout,    tone: "yellow" },
   sensory_motor_patterns:       { icon: Hand,      tone: "pink" },
   ecosystem_stressors:          { icon: Globe,     tone: "mint" },
+  // B-GROWTH-26 (Guy D1): the 8th domain — body, sleep & eating.
+  health_sleep_feeding:         { icon: Moon,      tone: "sky" },
 };
 
 /** Lookup the icon+tone for a domain id, with a safe mint/Sprout fallback for

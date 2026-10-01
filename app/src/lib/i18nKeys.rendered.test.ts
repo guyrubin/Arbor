@@ -178,7 +178,8 @@ describe("3 · coach attribution chips speak parent words", () => {
   it("negative control: the shipped chip expressions printed the identifiers", () => {
     // CoachAnswerCards.tsx:311-313 as shipped.
     expect("independence_adaptive_skills".replace(/_/g, " ")).toBe("independence adaptive skills");
-    expect(domainChipLabel("independence_adaptive_skills", "en")).toBe("Independence");
+    // B-GROWTH-26: the chip names the registry domain (one name app-wide)
+    expect(domainChipLabel("independence_adaptive_skills", "en")).toBe("Hands, senses & self-care");
     expect(ageBandChipLabel("3-5y", "en")).not.toBe("3-5y");
   });
 });

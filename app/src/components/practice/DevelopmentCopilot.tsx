@@ -11,6 +11,7 @@ import { PageHeader, SectionCard, TrustSafetyBar, cardCls, Chip } from "../ui/ki
 // assertion; the shared slot mounts the TrustLink beside the why text.
 import { ContentWhyLine } from "../ui/ContentActionBar";
 import { DOMAIN_META } from "../../practice/content";
+import { DOMAIN_COUNT, distinctDomains, domainLabel, domainLabelEn } from "../../lib/domains/registry";
 import { usePracticeData, useCopilot } from "../../practice/usePracticeData";
 import { domainMilestoneCounts } from "../../practice/signals";
 import { watchSignals } from "../../practice/watch";
@@ -41,13 +42,11 @@ function tFP(uiLang: string, key: string, vars?: Record<string, string | number>
 // track / strong" label is rendered against a child anymore (mirrors DevScoreCard).
 // The band is still computed by signals.ts (drives the route-to-pro escalation
 // internally) but is never surfaced as a verdict. One mechanism-only message.
-/** OBJ-GROWTH-01 / R1 — the ONE answer to "how many areas does Arbor
- *  track", derived from DOMAIN_META exactly as DevelopmentTab and
- *  SciencePage derive it. Nothing on this screen names a total any other
- *  way: the pulse tiles printed a bare "0 domains" and the professional
- *  preview printed "0 domain(s)." — a count with no basis and an
- *  unresolved plural, on the same screen as the hub's "5 areas covered". */
-const DOMAIN_COUNT = Object.keys(DOMAIN_META).length;
+/* OBJ-GROWTH-01 / R1 → B-GROWTH-26 — the ONE answer to "how many areas does
+ * Arbor track" is the domain registry's DOMAIN_COUNT (8), the same total
+ * #/science prints. Practice domains touched are counted IN THAT SPACE
+ * (`distinctDomains("practice", …)`: language + speech are one area), so the
+ * numerator can never exceed the total. */
 
 /** R22 (Builder L): the mechanism note was a module literal, so it printed
  *  English on a Hebrew page. Same sentence, now a key (growthTruth, EN + HE). */
@@ -103,12 +102,10 @@ export default function DevelopmentCopilot() {
      it composes `area`/`domainLabel` from DOMAIN_META's ENGLISH `label` and a
      Hebrew parent read "Speech sounds" on the row. Where the string IS that
      label, render the keyed one; screening-derived areas already arrive
-     translated (`screen.domain.*`, resolved in screeningWatchLabels above) and
+     translated (registry names, resolved in screeningWatchLabels below) and
      pass through untouched. */
-  const domainText = (text: string, domain: PracticeDomain | null | undefined) => {
-    const meta = domain ? DOMAIN_META[domain] : null;
-    return meta && text === meta.label ? t(meta.labelKey) : text;
-  };
+  const domainText = (text: string, domain: PracticeDomain | null | undefined) =>
+    domain && text === domainLabelEn("practice", domain) ? domainLabel("practice", domain, t) : text;
 
   // Wave-3 (2026-06-27): the domain picture is now a flat COUNT of parent-
   // noticed milestones per domain (a parent-owned log), never the 0–100 band
@@ -140,10 +137,10 @@ export default function DevelopmentCopilot() {
     [screeningsCol.items]
   );
   // OBJ-GROWTH-06: each "worth a conversation" area carries its OWN domain id
-  // and the label the screening result screen itself renders (`screen.domain.*`,
+  // and the label the screening result screen itself renders (registry `domainLabel`,
   // EN + HE) - watch.ts no longer re-guesses the domain from the label text.
   const screeningWatchLabels = useMemo(
-    () => lastScreening?.watchAreas.map((w) => ({ domain: w.domain, label: t(`screen.domain.${w.domain}`) })) ?? [],
+    () => lastScreening?.watchAreas.map((w) => ({ domain: w.domain, label: domainLabel("screen", w.domain, t) })) ?? [],
     [lastScreening, t]
   );
   const watch = useMemo(
@@ -183,7 +180,7 @@ export default function DevelopmentCopilot() {
       data.adventures.items.length +
       data.events.items.length +
       completedMissions.length;
-    return { practiceMoments: moments, skillAreas: domains.size };
+    return { practiceMoments: moments, skillAreas: distinctDomains("practice", [...domains]).length };
   }, [data.speech.items, data.mimic.items, data.adventures.items, data.events.items, data.missions.items]);
 
   /* Masterplan 2.3 — a RESETTABLE continuity counter is banned from PARENT
@@ -200,7 +197,7 @@ export default function DevelopmentCopilot() {
   const { clinicianSummary, previewSummary } = useMemo(() => {
     // R1: the parent reads this <pre> too (previewSummary), so no "(s)".
     const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
-    const homePractice = `Home practice, last 7 days: ${data.week.sessions} interactions on ${plural(data.week.activeDays, "day")} across ${data.week.domainsTouched.length} of ${DOMAIN_COUNT} domains.`;
+    const homePractice = `Home practice, last 7 days: ${data.week.sessions} interactions on ${plural(data.week.activeDays, "day")} across ${distinctDomains("practice", data.week.domainsTouched).length} of ${DOMAIN_COUNT} domains.`;
     const streakClause = ` Streak: ${plural(data.streak, "day")}.`;
     const build = (withStreak: boolean): string | null => {
       const lines: string[] = [
@@ -214,7 +211,7 @@ export default function DevelopmentCopilot() {
           const c = domainCounts.get(b.domain);
           const reached = c?.reached ?? 0;
           const total = c?.total ?? 0;
-          return `  • ${DOMAIN_META[b.domain].label}: ${reached} of ${total} milestones noticed by parent (home-practice signal; basis: ${b.basis.join(", ")})`;
+          return `  • ${domainLabelEn("practice", b.domain)}: ${reached} of ${total} milestones noticed by parent (home-practice signal; basis: ${b.basis.join(", ")})`;
         }),
         ``,
         withStreak ? `${homePractice}${streakClause}` : homePractice,
@@ -323,11 +320,10 @@ export default function DevelopmentCopilot() {
         ) : (
         <ul className="space-y-2.5">
           {visibleDomains.map((b) => {
-            const meta = DOMAIN_META[b.domain];
             const c = domainCounts.get(b.domain) ?? { reached: 0, total: 0 };
             return (
               <li key={b.domain} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                <span className="text-xs font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t(meta.labelKey)}</span>
+                <span className="text-xs font-extrabold" style={{ color: "var(--arbor-ink)" }}>{domainLabel("practice", b.domain, t)}</span>
                 <span className="text-[11.5px]" style={{ color: "var(--arbor-muted)" }}>
                   {t("elev.growthTruth.copilot.domains.count", { reached: c.reached, total: c.total })} · {t(MECHANISM_NOTE_KEY)}
                 </span>
@@ -490,7 +486,7 @@ export default function DevelopmentCopilot() {
                     const reached = Math.min(b.reached ?? windowed?.reached ?? 0, total);
                     return (
                       <li key={b.domain} className="flex items-baseline justify-between gap-2 text-[11px]">
-                        <span className="font-bold" style={{ color: meta.color }}>{t(meta.labelKey)}</span>
+                        <span className="font-bold" style={{ color: meta.color }}>{domainLabel("practice", b.domain, t)}</span>
                         <span style={{ color: "var(--arbor-muted)" }}>{t("elev.growthTruth.copilot.history.count", { reached, total })}</span>
                       </li>
                     );
@@ -516,7 +512,7 @@ export default function DevelopmentCopilot() {
         <div className={`${cardCls} p-5`}>
           <p className="text-2xl font-extrabold" style={{ color: "var(--arbor-ink)" }}>{data.week.sessions}</p>
           <p className="text-[10.5px] mt-0.5" style={{ color: "var(--arbor-muted)" }}>
-            {t("elev.fullpicture.pulse.week", { n: data.week.domainsTouched.length, total: DOMAIN_COUNT })}
+            {t("elev.fullpicture.pulse.week", { n: distinctDomains("practice", data.week.domainsTouched).length, total: DOMAIN_COUNT })}
           </p>
         </div>
       </div>

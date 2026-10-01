@@ -34,6 +34,7 @@ import * as childsignals from "./childsignals";
 import * as closeloop from "./closeloop";
 import * as coachcontract from "./coachcontract";
 import * as continueModule from "./continue";
+import * as domains from "./domains";
 import * as evening from "./evening";
 import * as firstMoment from "./firstMoment";
 import * as firstMonth from "./firstMonth";
@@ -93,6 +94,7 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   closeloop,
   coachcontract,
   continueModule,
+  domains,
   evening,
   firstMoment,
   firstMonth,

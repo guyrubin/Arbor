@@ -8,6 +8,8 @@
  */
 
 import type { Stage } from "./stages";
+import { primaryDomain, domainInline } from "../lib/domains/registry";
+import { en as domainsEn, he as domainsHe } from "../lib/i18nElevation/domains";
 
 export type PlayDomain = "regulation" | "language" | "motor" | "cognitive" | "social";
 
@@ -8326,19 +8328,16 @@ export const PLAY_ACTIVITIES_HE: Record<string, PlayActivityHe> = {
   },
 };
 
-/** Parent-facing label for each developmental domain — used to name the
- *  "because…" driver on the Daily Play card ("settling big feelings"). */
-export const PLAY_DOMAIN_LABEL: Record<PlayDomain, { en: string; he: string }> = {
-  regulation: { en: "settling big feelings", he: "להירגע מרגשות גדולים" },
-  language: { en: "talking and words", he: "דיבור ומילים" },
-  motor: { en: "moving and coordination", he: "תנועה ותיאום" },
-  cognitive: { en: "focus and problem-solving", he: "ריכוז ופתרון בעיות" },
-  social: { en: "playing with others", he: "משחק עם אחרים" },
-};
-
-/** The localized domain label for the current UI language. */
-export function playDomainLabel(domain: PlayDomain, lang: "en" | "he"): string {
-  return PLAY_DOMAIN_LABEL[domain][lang === "he" ? "he" : "en"];
+/** B-GROWTH-26: the private PLAY_DOMAIN_LABEL dictionary is gone. A play
+ *  domain is named by its REGISTRY domain's in-sentence form (the same names
+ *  Growth, Milestones and Science print), so the Daily Play "because…" driver
+ *  reads "feelings and behaviour", never a fifth vocabulary. `activityId`
+ *  splits `motor` into moving / hands (registry FINE_MOTOR_ACTIVITY_IDS). */
+export function playDomainLabel(domain: PlayDomain, lang: "en" | "he", activityId?: string): string {
+  const dom = primaryDomain("play", domain, { activityId });
+  if (!dom) return domain;
+  const dict = lang === "he" ? domainsHe : domainsEn;
+  return domainInline(dom, (k) => dict[k] ?? k);
 }
 
 /** Return the activity with Hebrew content swapped in when lang is "he" and a

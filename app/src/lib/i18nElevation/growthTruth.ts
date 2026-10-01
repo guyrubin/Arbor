@@ -65,16 +65,8 @@ export const en: Record<string, string> = {
   "elev.growthTruth.strengths.ctaTitle": "Turn a challenge into a calm next step",
   "elev.growthTruth.strengths.ctaBody": "Arbor reads {name}'s profile and proposes an age-aware plan or script.",
 
-  // ── Builder L · R22 · the five PRACTICE domain names (practice/content.ts
-  //    DOMAIN_META.labelKey). framework.json's six MONITORED domains already
-  //    had `screen.domain.*`; the five practice domains had an English-only
-  //    `label` field, so every Growth surface that walks DOMAIN_META printed
-  //    "Speech sounds" inside the Hebrew app. One dictionary, one label.
-  "elev.growthTruth.domain.language": "Language",
-  "elev.growthTruth.domain.speech": "Speech sounds",
-  "elev.growthTruth.domain.cognition": "Thinking & logic",
-  "elev.growthTruth.domain.social": "Social skills",
-  "elev.growthTruth.domain.emotional": "Emotional regulation",
+  // (B-GROWTH-26: the five practice-domain names moved to the one domain
+  //  registry, lib/i18nElevation/domains.ts.)
 
   // ── Builder L · R22 · the Full Picture (DevelopmentCopilot) chrome. The
   //    whole body rendered English under lang=he. Counts and mechanism only —
@@ -161,12 +153,7 @@ export const he: Record<string, string> = {
   "elev.growthTruth.strengths.ctaTitle": "להפוך אתגר לצעד הבא רגוע",
   "elev.growthTruth.strengths.ctaBody": "ארבור קוראת את הפרופיל של {name} ומציעה תוכנית או תסריט שמתאימים לגיל.",
 
-  // ── Builder L · R22 · חמשת תחומי התרגול (DOMAIN_META.labelKey)
-  "elev.growthTruth.domain.language": "שפה",
-  "elev.growthTruth.domain.speech": "הגייה וצלילים",
-  "elev.growthTruth.domain.cognition": "חשיבה והיגיון",
-  "elev.growthTruth.domain.social": "מיומנויות חברתיות",
-  "elev.growthTruth.domain.emotional": "ויסות רגשי",
+  // (B-GROWTH-26: שמות התחומים עברו למרשם התחומים, lib/i18nElevation/domains.ts.)
 
   // ── Builder L · R22 · התמונה המלאה (DevelopmentCopilot)
   "elev.growthTruth.copilot.eyebrow": "התפתחות",

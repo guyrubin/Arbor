@@ -22,6 +22,7 @@ import type { BehaviorLog, ChildProfile, Milestone, DevelopmentalDomainId } from
 import { assertClinicianExportCeiling } from "../consult/packet";
 import { ageMonthsFromProfile } from "./childAge";
 import { comparisonAgeMonths } from "./milestoneData";
+import { translate } from "./domains/registry";
 
 /**
  * GP-04 — the age the monitoring layer compares against, in (fractional) years:
@@ -37,7 +38,7 @@ export function monitoringAgeYears(profile: ChildProfile, now?: Date): number {
 
 /** The six monitored developmental domains (the ecosystem domain is contextual,
  *  not a child-skill domain, so it is intentionally excluded from monitoring). */
-export type MonitoredDomainId = Exclude<DevelopmentalDomainId, "ecosystem_stressors">;
+export type MonitoredDomainId = Exclude<DevelopmentalDomainId, "ecosystem_stressors" | "health_sleep_feeding">;
 
 export const MONITORED_DOMAIN_LABEL: Record<MonitoredDomainId, string> = {
   attachment_regulation: "Attachment & regulation",
@@ -378,15 +379,11 @@ export function pickHighestWatchSignal(result: MonitoringResult): DomainSignal |
 export type PlayDomainHint = "regulation" | "language" | "social" | "cognitive" | "motor";
 
 export function monitoredDomainToPlayHint(domain: MonitoredDomainId): PlayDomainHint {
-  const map: Record<MonitoredDomainId, PlayDomainHint> = {
-    attachment_regulation: "regulation",
-    language_communication: "language",
-    cognition_executive_function: "cognitive",
-    social_development: "social",
-    independence_adaptive_skills: "regulation",
-    sensory_motor_patterns: "motor",
-  };
-  return map[domain];
+  // B-GROWTH-26: through the domain registry, not a private map. One
+  // deliberate change: independence_adaptive_skills is registry "hands"
+  // (self-care, fine motor), whose play counterpart is motor — it used to
+  // hint "regulation". Every monitored id has a counterpart (registry test).
+  return translate("developmental", domain, "play") ?? "regulation";
 }
 
 /**
