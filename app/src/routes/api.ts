@@ -71,6 +71,7 @@ import { AiProviderError } from "../ai/capabilities/contracts.js";
 import type { CapabilityRegistry } from "../ai/capabilities/registry.js";
 import { billingCheckoutUrl } from "../server/billing.js";
 import { buildLiveSystemInstruction, liveSpeechConfig, SPOKEN_COACH_PERSONA, spokenLanguageDirective } from "../lib/livePersona.js";
+import { countAnalyzeLogs, toAnalyzeLogInputs } from "../lib/analyzeLogPayload.js";
 import { isAdmin } from "../server/admin.js";
 import type { AdminMetricsStore } from "../server/adminMetrics.js";
 import type { UsageCounterStore } from "../server/quotaStore.js";
@@ -3102,14 +3103,16 @@ ${languageDirective}`;
           required: ["frequencyCount", "triggerBreakdown", "expertInsights", "actionPlanSuggestion"],
           properties: {
             frequencyCount: { type: Type.OBJECT, properties: {} },
+            // B-AI-13 (law 1): a whole-number count per trigger — no
+            // proportional field. The server overwrites it with its own count.
             triggerBreakdown: {
               type: Type.ARRAY,
               items: {
                 type: Type.OBJECT,
-                required: ["trigger", "percentage"],
+                required: ["trigger", "count"],
                 properties: {
                   trigger: { type: Type.STRING },
-                  percentage: { type: Type.NUMBER }
+                  count: { type: Type.NUMBER }
                 }
               }
             },
@@ -3137,6 +3140,12 @@ ${languageDirective}`;
       // B-AI-02: same defence for the retired trend field — it never reaches
       // the client, so it never reaches a stored `insights` row either.
       delete analysis.intensityTrend;
+      // B-AI-13 (law 1): counts only. The model's counting is replaced by the
+      // server's own count over the allowlisted logs (no notes, G-14), so a
+      // miscount or a proportional field never reaches the parent.
+      const counted = countAnalyzeLogs(toAnalyzeLogInputs(logs));
+      analysis.frequencyCount = counted.frequencyCount;
+      analysis.triggerBreakdown = counted.triggerBreakdown;
 
       // AI-2 / CI-13: output-side safety screen for the model-authored free-text
       // fields. expertInsights[].heading/.text and actionPlanSuggestion are the

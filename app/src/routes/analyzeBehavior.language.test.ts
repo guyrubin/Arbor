@@ -111,6 +111,44 @@ describe("B-AI-02 — /analyze-behavior", () => {
   });
 });
 
+describe("B-AI-13 — /analyze-behavior returns counts only and never forwards notes", () => {
+  // 7 logs: 4 Tantrum (3 transitions, 1 bedtime), 2 Hitting (transitions), 1 Moment (no trigger).
+  const seven = [
+    { behaviorType: "Tantrum", trigger: "transitions", notes: "NOTE-SENTINEL-1" },
+    { behaviorType: "Tantrum", trigger: "transitions", response: "RESP-SENTINEL" },
+    { behaviorType: "Tantrum", trigger: "transitions", resolutionNotes: "RES-SENTINEL" },
+    { behaviorType: "Tantrum", trigger: "bedtime", sourceExcerpt: "EXCERPT-SENTINEL" },
+    { behaviorType: "Hitting", trigger: "transitions", photoAttachment: "data:PHOTO-SENTINEL" },
+    { behaviorType: "Hitting", trigger: "transitions", intensity: 5 },
+    { behaviorType: "Moment", trigger: "", notes: "NOTE-SENTINEL-2" },
+  ].map((l, i) => ({ id: `l${i}`, timestamp: new Date(now - i * 3_600_000).toISOString(), ...l }));
+
+  it("a fixture with 7 logs returns whole-number counts, no proportional field (even when the model emits one)", async () => {
+    const res = await post("/analyze-behavior", { logs: seven, childProfile: { id: "child-a", age: 4 }, language: "en" });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.triggerBreakdown).toEqual([{ trigger: "transitions", count: 5 }, { trigger: "bedtime", count: 1 }]);
+    expect(body.frequencyCount).toEqual({ Tantrum: 4, Hitting: 2, Moment: 1 });
+    expect(JSON.stringify(body)).not.toMatch(/percent|ratio|share/i);
+    for (const n of [...body.triggerBreakdown.map((r: { count: number }) => r.count), ...Object.values(body.frequencyCount) as number[]]) {
+      expect(Number.isInteger(n)).toBe(true);
+    }
+  });
+
+  it("the prompt carries no notes or other parent free text, even from a client that still sends them", () => {
+    for (const sentinel of ["NOTE-SENTINEL", "RESP-SENTINEL", "RES-SENTINEL", "EXCERPT-SENTINEL", "PHOTO-SENTINEL"]) {
+      expect(prompts.analyze).not.toContain(sentinel);
+    }
+    expect(prompts.analyze).toContain('"behaviorType":"Hitting","trigger":"transitions"');
+  });
+
+  it("the prompt asks for counts, never a share", () => {
+    const task = prompts.analyze.slice(prompts.analyze.indexOf("Analyze Arbor parent-logged observations"));
+    expect(task).not.toMatch(/percent|%/i);
+    expect(task).toContain("triggerBreakdown lists each trigger with count = how many logs name it");
+  });
+});
+
 describe("B-AI-02 — /generate-plan and /digest ground in CompanionContext", () => {
   it("the plan prompt gets approved facts + past outcomes", async () => {
     const res = await post("/generate-plan", { challengeTopic: "transitions", childProfile: { id: "child-a", age: 4 } });

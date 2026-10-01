@@ -404,6 +404,24 @@ Return JSON with title, issue, phases, scripts, and successIndicators.
   it("analyze_behavior asks for no intensityTrend and carries the language directive", () => {
     const p = buildAnalyzeBehaviorPrompt({ developmentalFramework: "FW", childProfile: null, logs: [], languageDirective: "«HE»" });
     expect(p).not.toContain("intensityTrend");
-    expect(p).toContain("Return JSON with frequencyCount, triggerBreakdown, expertInsights, actionPlanSuggestion.«HE»");
+    // B-AI-13: the count instruction sits between the return line and the directive.
+    expect(p).toContain("Return JSON with frequencyCount, triggerBreakdown, expertInsights, actionPlanSuggestion.\nfrequencyCount maps each behaviorType");
+    expect(p.trimEnd().endsWith("Counts are whole numbers of logs only.«HE»")).toBe(true);
+  });
+  it("B-AI-13: analyze_behavior requests counts, never a share — and never sees notes", () => {
+    const p = buildAnalyzeBehaviorPrompt({
+      developmentalFramework: "FW", childProfile: null, languageDirective: "",
+      logs: [{ behaviorType: "Tantrum", trigger: "bedtime", notes: "NOTE-SENTINEL", response: "RESP-SENTINEL", resolutionNotes: "RES-SENTINEL", photoAttachment: "data:PHOTO", intensity: 4 }],
+    });
+    const task = p.slice(p.indexOf("Analyze Arbor parent-logged observations"));
+    expect(task).not.toMatch(/percent|%|ratio|proportion|share of/i);
+    expect(task).toContain("triggerBreakdown lists each trigger with count = how many logs name it");
+    for (const sentinel of ["NOTE-SENTINEL", "RESP-SENTINEL", "RES-SENTINEL", "data:PHOTO", '"intensity"']) expect(p).not.toContain(sentinel);
+    expect(p).toContain('{"behaviorType":"Tantrum","trigger":"bedtime"}');
+    // NEGATIVE CONTROL: the pre-change prompt line forwarded the raw log.
+    expect(`Behavior Logs: ${JSON.stringify([{ notes: "NOTE-SENTINEL" }])}`).toContain("NOTE-SENTINEL");
+  });
+  it("B-AI-13: analyze_behavior is pinned at 1.1.0", () => {
+    expect(PROMPT_VERSIONS.analyze_behavior.version).toBe("1.1.0");
   });
 });

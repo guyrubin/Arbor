@@ -34,6 +34,7 @@ import type { RecentTurn, WeeklyContext } from "./chatContext.js";
 import { renderSpokenContext, type SpokenContext } from "./spokenContext.js";
 import { buildLiveSystemInstruction } from "../lib/livePersona.js";
 import { buildDigestPrompt } from "../server/digest.js";
+import { toAnalyzeLogInputs } from "../lib/analyzeLogPayload.js";
 
 // ── AI-12 / GP-16: the ONE profile allow-list every prompt goes through ──────
 //
@@ -182,7 +183,11 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // pins these three yet.
   weekly_digest: { version: "1.0.0", sha256: "cb29becb347e53c4e681f547d714d1f5547345de85a750bb77396de016d76392" },
   generate_plan: { version: "1.0.0", sha256: "18143fede1c79c553fdcf2b42ac69abe7b1e54e0aaa00a5602036ad72e57d1df" },
-  analyze_behavior: { version: "1.0.0", sha256: "71aad2d29b70808d02c07203479fb1d7fe1e64ac16da1388ed05fa02f13b6b30" },
+  // 1.1.0 (B-AI-13): the logs pass the shared allowlist (no notes / free
+  // text, G-14) and triggerBreakdown asks for a whole-number count per trigger
+  // (the schema's proportional field is gone; the server overwrites both count
+  // fields). No eval suite pins analyze_behavior yet — nothing to re-pin.
+  analyze_behavior: { version: "1.1.0", sha256: "ab41c3734485833a8b6ab24c8d63e3e2d1e2e680acff357cdb86d8e963fe60c4" },
 };
 
 export const promptVersionOf = (key: PromptKey): string => PROMPT_VERSIONS[key].version;
@@ -497,14 +502,18 @@ export type AnalyzeBehaviorPromptArgs = {
 };
 
 /** /analyze-behavior — B-AI-02: no `intensityTrend` (a trend on child data,
- *  0 render sites), and the parent's language reaches the prompt. */
+ *  0 render sites), and the parent's language reaches the prompt.
+ *  B-AI-13: the logs pass the shared allowlist (lib/analyzeLogPayload — no
+ *  notes or other parent free text, G-14), and triggerBreakdown asks for a
+ *  whole-number count per trigger, nothing proportional. */
 export const buildAnalyzeBehaviorPrompt = ({ developmentalFramework, childProfile, logs, languageDirective, pastSteps }: AnalyzeBehaviorPromptArgs): string => `
 ${NON_DIAGNOSTIC_CONTRACT}
 ${developmentalFramework}
 Analyze Arbor parent-logged observations.
 Child Details: ${JSON.stringify(promptProfile(childProfile))}
-Behavior Logs: ${JSON.stringify(logs)}
-${renderPlanContextBlock(undefined, pastSteps)}Return JSON with frequencyCount, triggerBreakdown, expertInsights, actionPlanSuggestion.${languageDirective}
+Behavior Logs: ${JSON.stringify(toAnalyzeLogInputs(logs))}
+${renderPlanContextBlock(undefined, pastSteps)}Return JSON with frequencyCount, triggerBreakdown, expertInsights, actionPlanSuggestion.
+frequencyCount maps each behaviorType to how many logs carry it; triggerBreakdown lists each trigger with count = how many logs name it. Counts are whole numbers of logs only.${languageDirective}
 `;
 
 // ── Fingerprints (the contentHash pattern applied to prompts) ───────────────

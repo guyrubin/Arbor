@@ -1,3 +1,4 @@
+import { toAnalyzeLogInputs } from "./analyzeLogPayload";
 import type { ActionPlan, BedtimeStory, BehaviorAnalysis, SchoolBrief, ChildProfile, BehaviorLog, Milestone, HeroJourneyRender, CoachContract, CouncilTake, MemoryReviewItem, ShareGrant, ShareRole, SharedPacketView, ConsentGrant, ConsentPurpose, DeletionReceipt } from "../types";
 import type { AdventureScenario } from "../practice/content";
 
@@ -386,8 +387,10 @@ export async function streamCouncil(
 
 export const api = {
   // B-AI-02: the parent's AI language rides along (Hebrew insights for a Hebrew parent).
+  // B-AI-13 (G-14): the request carries counts, types, triggers and context —
+  // never the parent's notes or other free text (lib/analyzeLogPayload).
   analyzeBehavior: (payload: { logs: BehaviorLog[]; childProfile: ChildProfile }) =>
-    post<BehaviorAnalysis>("/api/analyze-behavior", { ...payload, language: getAiLanguage() }),
+    post<BehaviorAnalysis>("/api/analyze-behavior", { ...payload, logs: toAnalyzeLogInputs(payload.logs), language: getAiLanguage() }),
   generatePlan: (payload: { challengeTopic: string; childProfile: ChildProfile }) =>
     post<ActionPlan>("/api/generate-plan", payload),
   generateStory: (payload: { childName: string; age: number; topic: string; moral: string }) =>

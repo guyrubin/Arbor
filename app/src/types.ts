@@ -475,7 +475,9 @@ export interface BehaviorAnalysis {
   frequencyCount: { [key: string]: number };
   // B-AI-02: `intensityTrend` removed — a trend on child data that nothing
   // rendered; the server no longer asks for it and deletes it if emitted.
-  triggerBreakdown: { trigger: string; percentage: number }[];
+  // B-AI-13 (law 1): a whole-number count per trigger, computed by the
+  // server; no proportional field.
+  triggerBreakdown: { trigger: string; count: number }[];
   // W0.4: effectivenessRating ("feedback on parent's responses") removed — the
   // app never scores the parent. Legacy server responses may still carry the
   // key; consumers must ignore it rather than render it.
