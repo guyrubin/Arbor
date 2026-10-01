@@ -196,3 +196,39 @@ describe("B-CAREPRO-03 — ticked sign renders a tel: link", () => {
     expect(/checked\[i\] \? "var\(--arbor-/.test(pre)).toBe(true);
   });
 });
+
+/* ── 5 · B-CAREPRO-03 (rest, via B-CAREPRO-13) — "Prepare a conversation" ── */
+
+describe("B-CAREPRO-03 — a ticked sign can prepare a conversation in Consult", () => {
+  const src = tabSource.replace(/\r\n/g, "\n");
+
+  it("the button is conditional on a ticked sign and lives inside the checklist card", () => {
+    const card = /<SectionCard title=\{t\("elev\.safety\.checklist\.title"\)\}[\s\S]*?<\/SectionCard>/.exec(src);
+    expect(card).toBeTruthy();
+    const btn = /\{anySignTicked && \(\s*<button[\s\S]*?<\/button>\s*\)\}/.exec(card![0]);
+    expect(btn, "prepare button extracted").toBeTruthy();
+    expect(btn![0]).toContain("onClick={prepareConversation}");
+    expect(btn![0]).toContain('t("elev.safety.signs.prepare")');
+    expect(btn![0]).toContain("min-h-[44px]");
+    expect(btn![0]).not.toMatch(/pink/);
+  });
+
+  it("the ticked labels ride in as the Consult REASON (the widened seam), then route to consult", () => {
+    const fn = /const prepareConversation = \(\) => \{[\s\S]*?\n  \};/.exec(src);
+    expect(fn).toBeTruthy();
+    expect(fn![0]).toContain("WARNING_SIGN_KEYS.filter((_, i) => !!checked[i])");
+    expect(fn![0]).toContain('requestConsultPrefill({ reason: t("elev.safety.signs.consultReason", { labels }) });');
+    expect(fn![0]).toContain('setActiveTab("consult");');
+    // NEGATIVE CONTROL: a bare-string call (lands as the note) fails the rule.
+    expect('requestConsultPrefill(labels);').not.toContain("requestConsultPrefill({ reason:");
+  });
+
+  it("EN + HE strings exist and the reason names the labels", () => {
+    for (const rec of [safetyEnRecord, safetyHeRecord]) {
+      expect(rec["elev.safety.signs.prepare"]).toBeTruthy();
+      expect(rec["elev.safety.signs.consultReason"]).toContain("{labels}");
+    }
+    expect(safetyHeRecord["elev.safety.signs.prepare"]).not.toMatch(/[A-Za-z]/);
+    expect(safetyHeRecord["elev.safety.signs.consultReason"].replace("{labels}", "")).not.toMatch(/[A-Za-z]/);
+  });
+});

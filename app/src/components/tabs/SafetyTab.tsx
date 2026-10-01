@@ -37,7 +37,7 @@ const inputCls = "rounded-lg px-3 py-2 min-h-11 text-sm focus:outline-none";
 const inputStyle: React.CSSProperties = { background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" };
 
 export default function SafetyTab() {
-  const { childProfile, approvedMemoryItems, handleMemoryDecision, isMemoryUpdating } = useArbor();
+  const { childProfile, approvedMemoryItems, handleMemoryDecision, isMemoryUpdating, requestConsultPrefill, setActiveTab } = useArbor();
   const { t, uiLang } = useLanguage();
   const first = childProfile.name.split(" ")[0];
 
@@ -81,6 +81,15 @@ export default function SafetyTab() {
   const shownApproved = useMemo(() => scrubMemoryProposals(approvedMemoryItems), [approvedMemoryItems]);
 
   const anySignTicked = WARNING_SIGN_KEYS.some((_, i) => !!checked[i]);
+
+  // B-CAREPRO-03 + B-CAREPRO-13: "Prepare a conversation" hands the ticked
+  // signs to Consult as the REASON for the visit (editable there; nothing
+  // leaves without the reviewed gate).
+  const prepareConversation = () => {
+    const labels = WARNING_SIGN_KEYS.filter((_, i) => !!checked[i]).map((n) => t(`elev.safety.sign.${n}`)).join("; ");
+    requestConsultPrefill({ reason: t("elev.safety.signs.consultReason", { labels }) });
+    setActiveTab("consult");
+  };
 
   const toggleSign = (i: number) => {
     const next = { ...checked, [i]: !checked[i] };
@@ -241,6 +250,19 @@ export default function SafetyTab() {
               <span className="flex-1 min-w-0">{t("elev.safety.signs.callRow")}</span>
               <span dir="ltr" className="text-sm font-extrabold whitespace-nowrap" style={{ color: "var(--arbor-pink-ink)" }}>{primaryHelpline.number}</span>
             </a>
+          )}
+          {anySignTicked && (
+            <button
+              type="button"
+              data-testid="safety-sign-prepare"
+              onClick={prepareConversation}
+              className={`${cardCls} w-full flex items-center gap-3 px-3.5 py-2 mt-2 min-h-[44px] text-xs font-bold text-start transition hover:shadow-[var(--shadow-xs)]`}
+              style={{ color: "var(--arbor-green-ink)" }}
+            >
+              <Icon name="forum" size={16} />
+              <span className="flex-1 min-w-0">{t("elev.safety.signs.prepare")}</span>
+              <Icon name="arrow_forward" size={14} className="rtl:-scale-x-100" />
+            </button>
           )}
           <p className="text-[11px] mt-3" style={{ color: "var(--arbor-muted)" }}>{t("elev.safety.checklist.note")}</p>
         </SectionCard>

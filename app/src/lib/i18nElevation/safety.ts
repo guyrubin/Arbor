@@ -50,6 +50,8 @@ export const en: Record<string, string> = {
   "elev.safety.sign.6": "Escalating aggression that endangers self or others",
   "elev.safety.checklist.note": "Any checked sign is a prompt to consult a professional promptly.",
   "elev.safety.signs.callRow": "You marked a warning sign. Talk it through with someone now:",
+  "elev.safety.signs.prepare": "Prepare a conversation",
+  "elev.safety.signs.consultReason": "Warning signs noticed: {labels}",
 
   // ── Safety review
   "elev.safety.review.title": "Safety review",
@@ -123,6 +125,8 @@ export const he: Record<string, string> = {
   "elev.safety.sign.6": "תוקפנות מסלימה שמסכנת את הילד או את הסביבה",
   "elev.safety.checklist.note": "כל סימן שסומן הוא תזכורת לפנות בהקדם לאיש מקצוע.",
   "elev.safety.signs.callRow": "סימנתם סימן אזהרה. כדאי לדבר על זה עם מישהו עכשיו:",
+  "elev.safety.signs.prepare": "הכנה לשיחה",
+  "elev.safety.signs.consultReason": "סימני אזהרה שהבחנו בהם: {labels}",
 
   // ── Safety review
   "elev.safety.review.title": "רענון בטיחות",

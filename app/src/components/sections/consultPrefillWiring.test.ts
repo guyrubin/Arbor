@@ -71,12 +71,13 @@ const CALLS = walk(SRC).flatMap((f) => {
 const OBJECT_ARG = /^\{[\s\S]*\}$/;
 
 describe("B-CAREPRO-13 · every caller goes through the widened seam", () => {
-  it("the scan found the known callers (Coach ×2, Screening)", () => {
+  it("the scan found the four known callers (Coach ×2, Screening, Safety)", () => {
     const files = CALLS.map((c) => c.rel).sort();
     expect(files).toEqual([
       "components/sections/Screening.tsx",
       "components/tabs/CoachTab.tsx",
       "components/tabs/CoachTab.tsx",
+      "components/tabs/SafetyTab.tsx",
     ]);
   });
 
@@ -95,6 +96,7 @@ describe("B-CAREPRO-13 · every caller goes through the widened seam", () => {
     expect(coach).toContain('requestConsultPrefill({ note, audience: "teacher" });'); // teacher note
     expect(coach).toContain("requestConsultPrefill({ note });"); // Vision handoff
     expect(read("components/sections/Screening.tsx")).toContain("requestConsultPrefill({ reason: visitPrefillReason(watchAreas, t) });");
+    expect(read("components/tabs/SafetyTab.tsx")).toContain('requestConsultPrefill({ reason: t("elev.safety.signs.consultReason", { labels }) });');
   });
 
   it("the context seam carries the four-field type and only AskSpecialist consumes it", () => {
