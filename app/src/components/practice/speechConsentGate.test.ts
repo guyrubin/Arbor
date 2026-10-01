@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { isGrantActive, platformAsrAllowed, voiceConsentState, VOICE_CONSENT_PURPOSE } from "./speechConsentGate";
+import { isGrantActive, platformAsrAllowed, speechScoringAllowed, voiceConsentState, VOICE_CONSENT_PURPOSE } from "./speechConsentGate";
+import { en as kidEn, he as kidHe } from "../../lib/i18nElevation/kidRegister";
 import type { ConsentGrant } from "../../types";
 import { en, he } from "../../lib/i18n";
 
@@ -96,7 +97,8 @@ describe("STORE-K2 — voice consent reduction (unit)", () => {
 
 describe("STORE-K2 — SpeechCoachTab wiring (source-pinned)", () => {
   it("the recognizer constructor is obtained ONLY through the consent gate", () => {
-    expect(stripped).toMatch(/const\s+Ctor\s*=\s*platformAsrAllowed\(voiceConsent\)\s*\?\s*getRecognitionCtor\(\)\s*:\s*null/);
+    // B-KID-03: the gate also receives kidMode, and refuses in the kid register.
+    expect(stripped).toMatch(/const\s+Ctor\s*=\s*platformAsrAllowed\(voiceConsent,\s*kidMode\)\s*\?\s*getRecognitionCtor\(\)\s*:\s*null/);
   });
 
   it("no start path bypasses the gate: every recognizer construction/start is downstream of that Ctor", () => {
@@ -160,5 +162,44 @@ describe("STORE-K2 — consent copy exists in both languages", () => {
   it("the invite states the egress honestly (the recording leaves the device)", () => {
     expect(en["prac.speech.voiceConsent.body"]).toMatch(/leaves the phone/i);
     expect(en["prac.speech.voiceConsent.checkbox"]).toMatch(/parent or guardian/i);
+  });
+});
+
+
+describe("B-KID-03 · no recogniser and no score call inside the kid register", () => {
+  const kidBranch = stripped.slice(stripped.indexOf("const kidSounds ="));
+
+  it("kid case: a GRANTED voice consent still never starts the recogniser or a score call in Kid Mode", () => {
+    expect(platformAsrAllowed("granted", true)).toBe(false);
+    expect(platformAsrAllowed("granted", false)).toBe(true);
+    expect(speechScoringAllowed(true)).toBe(false);
+    expect(speechScoringAllowed(false)).toBe(true);
+  });
+
+  it("the cloud score call sits behind speechScoringAllowed(kidMode)", () => {
+    expect(stripped).toContain("if (speechScoringAllowed(kidMode) && level !== \"story\" && autoVerdictOk) {");
+    expect([...stripped.matchAll(/scoreUtterance\(\{/g)]).toHaveLength(1);
+  });
+
+  it("the kid branch has no scoring tiles, no saveAttempt, and a 'Hear it' control that speaks the target word", () => {
+    expect(kidBranch.length).toBeGreaterThan(500);
+    expect(kidBranch).not.toContain("saveAttempt(");
+    expect(kidBranch).not.toContain("RESULT_BTN");
+    expect(kidBranch).not.toContain("howDidItSound");
+    expect(kidBranch).toMatch(/<SpeakButton\s+text=\{target\}/);
+    expect(kidBranch).toContain('t("elev.play.soundlab.hearIt")');
+  });
+
+  it("the parent door is unchanged: consent invite + parent scoring tiles", () => {
+    const parentBranch = stripped.slice(0, stripped.indexOf("const kidSounds ="));
+    expect(parentBranch).toContain('saveAttempt(b.result, "parent")');
+    expect(parentBranch).toMatch(/!kidMode\s*&&\s*voiceConsent\s*===\s*"absent"/);
+  });
+
+  it("kid copy (EN + HE) no longer asks the child to 'tap how it went'", () => {
+    expect(kidEn["elev.play.soundlab.hearIt"]).toBe("Hear it");
+    expect(kidHe["elev.play.soundlab.hearIt"]).toMatch(/[֐-׿]/);
+    expect(kidEn["elev.play.soundlab.micOff"]).not.toMatch(/how it went/i);
+    expect(kidHe["elev.play.soundlab.micOff"]).not.toContain("איך זה הלך");
   });
 });

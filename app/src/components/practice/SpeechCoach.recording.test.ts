@@ -53,3 +53,52 @@ describe("speech practice recording ownership", () => {
     expect(h.recognitionStart).not.toHaveBeenCalled();
   });
 });
+
+
+/* B-KID-03 — the network spy: with voice consent GRANTED, a Kid Mode recording
+   runs its full lifecycle (start → stop → onstop) through the production
+   closure and the REAL gates, and never reaches /api/score-utterance nor the
+   platform recogniser. The parent path with the same grant still scores. */
+async function kidRound(kidMode: boolean) {
+  const gate = await import("./speechConsentGate");
+  const scoreUtterance = vi.fn(async () => ({ source: "cloud", result: "got", heard: "sun" }));
+  const recognitionStart = vi.fn();
+  const noteKidActivity = vi.fn();
+  const stream = { getTracks: () => [{ stop: vi.fn() }] };
+  const mediaRef = { current: null as any };
+  class Recorder {
+    stream = stream; state = "inactive"; mimeType = "audio/webm"; onstop: null | (() => Promise<void>) = null; ondataavailable: unknown = null;
+    start() { this.state = "recording"; }
+    async stop() { this.state = "inactive"; await this.onstop?.(); }
+  }
+  const scope = {
+    setMicError: vi.fn(), setHeard: vi.fn(), setAutoResult: vi.fn(), setLastSaved: vi.fn(), cleanupAudio: vi.fn(),
+    navigator: { mediaDevices: { getUserMedia: async () => stream } },
+    MediaRecorder: Recorder, Blob, URL: { createObjectURL: () => "blob:local" },
+    chunksRef: { current: [] }, mediaRef, recogRef: { current: null }, setRecState: vi.fn(),
+    setAudioUrl: vi.fn(), scoreUtterance, level: "word", autoVerdictOk: true,
+    voiceConsent: "granted", platformAsrAllowed: gate.platformAsrAllowed, speechScoringAllowed: gate.speechScoringAllowed,
+    getRecognitionCtor: () => class { start = recognitionStart; }, recognitionLangFor: () => "en-US", aiLang: "en",
+    target: "sun", sound: { id: "s" }, kidMode, t: (key: string) => key, noteKidActivity,
+  };
+  const compiled = ts.transpileModule(`return (${body});`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+  const start = new Function(...Object.keys(scope), compiled)(...Object.values(scope));
+  await start();
+  await mediaRef.current.stop();
+  return { scoreUtterance, recognitionStart, noteKidActivity };
+}
+
+describe("B-KID-03 · Kid Mode recording never scores (network spy)", () => {
+  it("consent granted + Kid Mode → 0 calls to /api/score-utterance, 0 recogniser starts; one kid activity counted", async () => {
+    const kid = await kidRound(true);
+    expect(kid.scoreUtterance).not.toHaveBeenCalled();
+    expect(kid.recognitionStart).not.toHaveBeenCalled();
+    expect(kid.noteKidActivity).toHaveBeenCalledTimes(1);
+  });
+  it("positive control: the parent door with the same grant still scores and still recognises", async () => {
+    const parent = await kidRound(false);
+    expect(parent.scoreUtterance).toHaveBeenCalledTimes(1);
+    expect(parent.recognitionStart).toHaveBeenCalledTimes(1);
+    expect(parent.noteKidActivity).not.toHaveBeenCalled();
+  });
+});

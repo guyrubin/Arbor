@@ -55,7 +55,18 @@ export function voiceConsentState(
 /**
  * THE GATE: may the platform recognizer start? Only under an active grant —
  * "unknown" and "absent" both mean no recognizer is constructed at all.
+ * B-KID-03: and NEVER in the kid register, whatever the grant says.
  */
-export function platformAsrAllowed(state: VoiceConsentState): boolean {
-  return state === "granted";
+export function platformAsrAllowed(state: VoiceConsentState, kidMode = false): boolean {
+  return !kidMode && state === "granted";
+}
+
+/**
+ * B-KID-03: may this session call `/api/score-utterance`? Never in the kid
+ * register — Sound Lab is hear → say → hear yourself, played back locally. No
+ * recogniser, no score call, no verdict and no speechAttempt row from Kid Mode;
+ * the parent door (consent + scoring) is unchanged.
+ */
+export function speechScoringAllowed(kidMode: boolean): boolean {
+  return !kidMode;
 }

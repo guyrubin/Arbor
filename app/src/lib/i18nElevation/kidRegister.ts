@@ -87,7 +87,8 @@ export const en: Record<string, string> = {
   "elev.play.soundlab.stop": "Stop",
   "elev.play.soundlab.listen": "Listen back",
   "elev.play.soundlab.saved": "Saved!",
-  "elev.play.soundlab.micOff": "The microphone is having a nap. Say it out loud, then tap how it went!",
+  "elev.play.soundlab.micOff": "The microphone is having a nap. Hear the word, then say it out loud!",
+  "elev.play.soundlab.hearIt": "Hear it",
 
   // ── elev.play.feelings — Mood Mountain kid subset (KID-04)
   "elev.play.feelings.title": "Mood Mountain",
@@ -247,7 +248,8 @@ export const he: Record<string, string> = {
   "elev.play.soundlab.stop": "עצירה",
   "elev.play.soundlab.listen": "להאזין שוב",
   "elev.play.soundlab.saved": "נשמר!",
-  "elev.play.soundlab.micOff": "המיקרופון נח רגע. תגידו בקול רם, ואז בחרו איך זה הלך!",
+  "elev.play.soundlab.micOff": "המיקרופון נח רגע. הקשיבו למילה, ואז תגידו אותה בקול רם!",
+  "elev.play.soundlab.hearIt": "להקשיב למילה",
 
   "elev.play.feelings.title": "Mood Mountain", // GD-6
   "elev.play.feelings.say": "{name}, בואו נמצא את הרגש!",

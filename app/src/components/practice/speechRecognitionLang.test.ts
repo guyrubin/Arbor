@@ -48,7 +48,8 @@ describe("AIX-S2 — SpeechCoachTab wiring (source-pinned)", () => {
   });
 
   it("the cloud scoring path is gated on autoVerdictOk too", () => {
-    expect(stripped).toMatch(/if\s*\(level\s*!==\s*"story"\s*&&\s*autoVerdictOk\)/);
+    // B-KID-03 prefixes the kid-register refusal; the autoVerdictOk gate stays.
+    expect(stripped).toMatch(/if\s*\(speechScoringAllowed\(kidMode\)\s*&&\s*level\s*!==\s*"story"\s*&&\s*autoVerdictOk\)/);
   });
 
   it("autoResult can only be set inside an autoVerdictOk-gated block (stays null for non-EN)", () => {

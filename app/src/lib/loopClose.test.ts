@@ -283,7 +283,7 @@ describe("N1-01-R5 — every kid-world completion seam counts one activity", () 
     { file: "components/practice/BeatKeeperWorld.tsx", seam: "a Beat Keeper round scored" },
     { file: "components/practice/MemoryMatch.tsx", seam: "a Mind Vault board solved" },
     { file: "components/practice/MimicMatch.tsx", seam: "a Mimic face rated" },
-    { file: "components/practice/SpeechCoachTab.tsx", seam: "a Sound Lab attempt saved" },
+    { file: "components/practice/SpeechCoachTab.tsx", seam: "a Sound Lab recording finished (B-KID-03: no scored attempt in Kid Mode)" },
     { file: "components/practice/FeelingsLabTab.tsx", seam: "a feeling named correctly" },
     { file: "components/practice/HeroPoseWorld.tsx", seam: "a Hero Pose confirmed" },
     { file: "components/tabs/HeroJourneyTab.tsx", seam: "a Hero Journey story finished" },

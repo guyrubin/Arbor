@@ -17,7 +17,7 @@ import { api } from "../../lib/api";
 import { isKidModeActive, noteKidActivity, subscribeKidMode } from "../../lib/kidModeGate";
 import { SpeakButton } from "../ui/SpeakButton";
 import { mediaControlHidden, resolveMediaPermission, type MediaPermission } from "../../practice/mediaPermission";
-import { platformAsrAllowed, voiceConsentState, VOICE_CONSENT_PURPOSE, type VoiceConsentState } from "./speechConsentGate";
+import { platformAsrAllowed, speechScoringAllowed, voiceConsentState, VOICE_CONSENT_PURPOSE, type VoiceConsentState } from "./speechConsentGate";
 import EarlyReadingTrack from "./EarlyReadingTrack";
 
 /* Minimal typing for the (vendor-prefixed) Web Speech API. */
@@ -190,12 +190,16 @@ export default function SpeechCoachTab() {
         const blob = new Blob(chunksRef.current, { type: rec.mimeType || "audio/webm" });
         setAudioUrl(URL.createObjectURL(blob));
         setRecState("review");
+        // B-KID-03: in Kid Mode the round IS hear → say → hear yourself; a
+        // finished recording is the one completed kid activity (a count only).
+        if (kidMode) noteKidActivity();
         // Cloud upgrade: if a child-ASR provider (SoapBox/Whisper) is configured,
         // score the recording for a more accurate result. Otherwise the on-device
         // Web Speech transcript above remains the result; parent scoring is the floor.
         // AIX-S2: gated on autoVerdictOk — the cloud path carries no language
         // field and the targets are EN, so it can never be honest for HE.
-        if (level !== "story" && autoVerdictOk) {
+        // B-KID-03: never from the kid register (speechScoringAllowed).
+        if (speechScoringAllowed(kidMode) && level !== "story" && autoVerdictOk) {
           try {
             const score = await scoreUtterance({ target, sound: sound.id, level, audioBlob: blob });
             if (score && score.source === "cloud") {
@@ -214,7 +218,8 @@ export default function SpeechCoachTab() {
       // ONLY under an active voice_processing grant — the same purpose that gates
       // /api/score-utterance (451 fail-closed). No grant, or not read yet → Ctor
       // is null, nothing starts, and the parent-scoring floor carries the session.
-      const Ctor = platformAsrAllowed(voiceConsent) ? getRecognitionCtor() : null;
+      // B-KID-03: and never in Kid Mode, whatever the grant says.
+      const Ctor = platformAsrAllowed(voiceConsent, kidMode) ? getRecognitionCtor() : null;
       // AIX-S2: never render an en-US mis-transcript verdict about an HE child —
       // the whole auto-listen path is suppressed for non-EN sessions.
       if (Ctor && level !== "story" && autoVerdictOk) {
@@ -273,9 +278,8 @@ export default function SpeechCoachTab() {
     setAutoResult(null);
     cleanupAudio();
     track("speech_attempt", { sound: sound.id, level, result, method });
-    // N1-01-R5: one completed kid activity. A COUNT and nothing else —
-    // a no-op outside Kid Mode, so a parent using this screen cannot inflate it.
-    noteKidActivity();
+    // N1-01-R5 / B-KID-03: saveAttempt is parent-register only now; the kid
+    // activity is counted once, when a Kid Mode recording finishes (onstop).
     if (result === "got" && itemIdx < items.length - 1) setItemIdx((i) => i + 1);
   };
 
@@ -739,11 +743,12 @@ export default function SpeechCoachTab() {
   }
 
   // KID-03: the KID register — Sound Lab. Hero + big target card, sound picker
-  // as icon pills (no numerals), record → auto-playback, and the parent floor
-  // as three big tiles. No dose bar, no per-sound progress or trend arrows, no
-  // coach hand-off, no language switch, no consent card, no verdict copy.
+  // as icon pills (no numerals), "Hear it" → record → auto-playback. B-KID-03:
+  // no recogniser, no score call and no scoring tiles here — the child hears
+  // the word, says it, and hears themselves (local playback only); nothing is
+  // graded and no speechAttempt row is written from the kid register. No dose
+  // bar, no per-sound progress, no coach hand-off, no consent card.
   const kidSounds = SOUND_LIBRARY.filter((s) => isSoundAgeAppropriate(s.band, childProfile.age));
-  const RESULT_EMOJI: Record<SpeechAttempt["result"], string> = { got: "🌟", almost: "👍", missed: "🔁" };
   return (
     <RegisterShell
       kidMode
@@ -793,6 +798,16 @@ export default function SpeechCoachTab() {
         <p className="font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)", fontSize: "3.4rem" }}>
           {target}
         </p>
+        {/* B-KID-03: step one is hearing the word itself. */}
+        <div className="flex justify-center mt-3">
+          <SpeakButton
+            text={target}
+            lang={uiLang}
+            label={t("elev.play.soundlab.hearIt")}
+            size="md"
+            className="min-w-[44px] min-h-[44px] justify-center"
+          />
+        </div>
         <div className="flex justify-center gap-2.5 mt-5">
           <PlayButton variant="soft" tone="sky" size="md" onClick={() => setItemIdx((i) => Math.max(0, i - 1))} disabled={itemIdx === 0}>
             {t("prac.speech.back")}
@@ -806,8 +821,7 @@ export default function SpeechCoachTab() {
       <div className="flex flex-wrap items-center justify-center gap-3">
         {/* KID-23: with the microphone blocked or absent there is nothing to
             tap — the child gets a line in their own register instead of a
-            button that does nothing. The parent floor (the three result tiles
-            below) still records the round, so the world keeps working. */}
+            button that does nothing; "Hear it" and saying it aloud still work. */}
         {micHidden ? (
           <MascotSay mood="happy" tone="sky">{t("elev.play.mic.unavailable")}</MascotSay>
         ) : recState !== "recording" ? (
@@ -831,13 +845,6 @@ export default function SpeechCoachTab() {
         )}
       </div>
       {micError && <MascotSay mood="think" tone="peach">{micError}</MascotSay>}
-
-      <div className="grid grid-cols-3 gap-3" role="group" aria-label={t("prac.speech.howDidItSound")}>
-        {RESULT_BTN.map((b) => (
-          <ChoiceTile key={b.result} emoji={RESULT_EMOJI[b.result]} label={t(b.labelKey)} onClick={() => saveAttempt(b.result, "parent")} />
-        ))}
-      </div>
-      {lastSaved && <MascotSay mood="proud" tone="clay">{t("elev.play.soundlab.saved")}</MascotSay>}
     </RegisterShell>
   );
 }
