@@ -24,6 +24,7 @@ import type { Professional } from "../../services/professionals";
 import { ARBOR_PROFESSIONALS } from "../../services/professionals";
 import { authHeaders } from "../../lib/api";
 import { REPORTS, useReportExport } from "./Reports";
+import { isProfessionalReportType } from "../../lib/reportExport";
 // LC-20 + LC-12: the reason for the visit, the questions prepared in
 // Appointments, and the discipline-specific evidence each preset reads.
 import { useChildCollection } from "../../hooks/useChildCollection";
@@ -71,6 +72,15 @@ const readStoredAudience = (): ExportAudience => {
 };
 
 type ExportBuild = { text: string; error: null } | { text: null; error: string };
+
+/** B-CAREPRO-02: the Consult PDF menu lists ONLY the professional preset
+ *  documents — the ones built through `presetPacketToPrintSections`, which
+ *  honours the parent's include-toggles (excludedIds) and re-runs the
+ *  clinician ceiling. The five parent-record documents (weekly, snapshot,
+ *  behavior, language, growth) build through `buildReport`, which never reads
+ *  the redaction the parent just approved — they stay on #/reports. The
+ *  teacher document lives in the School Brief (LC-11), so it is not listed. */
+const CONSULT_MENU_REPORTS = REPORTS.filter((r) => isProfessionalReportType(r.type) && r.type !== "teacher");
 
 export default function AskSpecialist() {
   const { childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems, setActiveTab, pendingConsultNote, consumeConsultPrefill } = useArbor();
@@ -247,7 +257,7 @@ export default function AskSpecialist() {
     toast(t("elev.packet.downloaded"), "success");
   };
 
-  const runExport = (type: typeof REPORTS[number]["type"]) => {
+  const runExport = (type: typeof CONSULT_MENU_REPORTS[number]["type"]) => {
     setMenuOpen(false);
     menuTriggerRef.current?.focus();
     // LC-11 — ONE teacher door. Two teacher artefacts used to coexist with
@@ -285,10 +295,10 @@ export default function AskSpecialist() {
 
   const onMenuKey = (e: React.KeyboardEvent, idx: number) => {
     if (e.key === "Escape") { e.preventDefault(); setMenuOpen(false); menuTriggerRef.current?.focus(); return; }
-    if (e.key === "ArrowDown") { e.preventDefault(); itemRefs.current[(idx + 1) % REPORTS.length]?.focus(); }
-    else if (e.key === "ArrowUp") { e.preventDefault(); itemRefs.current[(idx - 1 + REPORTS.length) % REPORTS.length]?.focus(); }
+    if (e.key === "ArrowDown") { e.preventDefault(); itemRefs.current[(idx + 1) % CONSULT_MENU_REPORTS.length]?.focus(); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); itemRefs.current[(idx - 1 + CONSULT_MENU_REPORTS.length) % CONSULT_MENU_REPORTS.length]?.focus(); }
     else if (e.key === "Home") { e.preventDefault(); itemRefs.current[0]?.focus(); }
-    else if (e.key === "End") { e.preventDefault(); itemRefs.current[REPORTS.length - 1]?.focus(); }
+    else if (e.key === "End") { e.preventDefault(); itemRefs.current[CONSULT_MENU_REPORTS.length - 1]?.focus(); }
   };
 
   const motionProps = reduceMotion
@@ -650,7 +660,7 @@ export default function AskSpecialist() {
                       transition={{ duration: reduceMotion ? 0 : 0.15 }}
                       className="absolute bottom-full mb-2 w-[260px] rounded-2xl overflow-hidden p-1.5 z-20 end-0"
                       style={{ transformOrigin: "bottom", background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-md)" }}>
-                      {REPORTS.map((r, idx) => (
+                      {CONSULT_MENU_REPORTS.map((r, idx) => (
                         <button
                           key={r.type}
                           ref={(el) => { itemRefs.current[idx] = el; }}
@@ -659,7 +669,7 @@ export default function AskSpecialist() {
                           onKeyDown={(e) => onMenuKey(e, idx)}
                           className="w-full text-start rounded-xl px-3 py-2.5 text-[13px] font-semibold transition hover:brightness-95 min-h-[44px] flex items-center"
                           style={{ color: INK }}>
-                          {r.title}
+                          {t(r.titleKey)}
                         </button>
                       ))}
                     </motion.div>
