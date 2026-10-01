@@ -411,3 +411,20 @@ describe("R25 — the shipped check enforces exactly this, and its one exemption
     expect(TODAY_MODULES).toContain("const budget = opts.budget ?? TODAY_MODULE_BUDGET;");
   });
 });
+
+describe("B-ASKJB-16 — Journal inside timeline-stream renders at most 3 modules", () => {
+  const journal = read("src/components/tabs/JournalTab.tsx");
+
+  it("the three Journal stamps exist and nothing else is stamped", () => {
+    const stamps = [...stripJsComments(journal).matchAll(/data-module="([a-z-]+)"/g)].map((m) => m[1]);
+    expect(stamps).toEqual(["journal-header", "journal-compose", "journal-thread"]);
+  });
+
+  it("top-level count inside timeline-stream is <= 3 (the journal budget), SpineRibbon gone", () => {
+    const c = countModules(journal);
+    expect(c.topLevel).toBeLessThanOrEqual(contractFor("journal" as ActiveTab)!.moduleBudget);
+    expect(c.topLevel).toBeLessThanOrEqual(3);
+    expect(journal).not.toContain("journal-spine-ribbon");
+    expect(journal).not.toMatch(/\bSpineRibbon\b/);
+  });
+});

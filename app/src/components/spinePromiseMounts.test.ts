@@ -32,19 +32,14 @@ describe("masterplan 1.5 — SpineRibbon mounts", () => {
     }
   });
 
-  it("JournalTab imports and mounts SpineRibbon with the journal spine string", () => {
-    expect(journal).toMatch(/import \{ SpineRibbon \} from "\.\.\/ui\/SpineRibbon"/);
-    expect(journal).toMatch(/<SpineRibbon\b/);
-    expect(journal).toContain('t("elev.spine.journal"');
-    expect(journal).toContain('testId="journal-spine-ribbon"');
-    // One-direction deep link → the story timeline the journal feeds.
-    expect(journal).toMatch(/onFollow=\{\(\) => setActiveTab\("timeline"\)\}/);
-  });
-
-  it("Journal ribbon sits BELOW the header + compose region (never above)", () => {
-    const mount = journal.indexOf("journal-spine-ribbon");
-    expect(mount).toBeGreaterThan(journal.indexOf('t("journal.title")'));
-    expect(mount).toBeGreaterThan(journal.indexOf('t("journal.compose.title")'));
+  it("B-ASKJB-16: JournalTab no longer mounts or imports SpineRibbon (the density toggle is the door to Story)", () => {
+    expect(journal).not.toMatch(/import \{ SpineRibbon \}/);
+    expect(journal).not.toMatch(/<SpineRibbon\b/);
+    expect(journal).not.toContain("journal-spine-ribbon");
+    // The door it duplicated is still there: TimelineTab's density toggle.
+    const timeline = read("tabs/TimelineTab.tsx");
+    expect(timeline).toContain('data-module="timeline-density"');
+    expect(timeline).toContain("onClick={() => setActiveTab(d.tab)}");
   });
 
   it("Masterclasses imports and mounts SpineRibbon with the academy spine string", () => {

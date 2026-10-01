@@ -15,7 +15,6 @@ import { classifyBehaviorDomain } from "../../lib/monitoring";
 import { useTimeline } from "../../hooks/useTimeline";
 import type { CaptureMode } from "../../context/ArborContext";
 import { PASTEL, IconBadge, Chip, cardCls, domainVisual, type PastelKey } from "../ui/kit";
-import { SpineRibbon } from "../ui/SpineRibbon";
 import type { DevelopmentalDomainId } from "../../types";
 import { bandForAge, type PlayDomain } from "../../playbank/content";
 import { dailyPromptKeys } from "../../lib/promptBank";
@@ -413,7 +412,7 @@ export default function JournalTab() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto flex w-full min-w-0 max-w-[1080px] flex-col gap-5">
-      <header className="border-b pb-5" style={{ borderColor: "var(--arbor-rule)" }}>
+      <header data-module="journal-header" className="border-b pb-5" style={{ borderColor: "var(--arbor-rule)" }}>
         <div className="grid min-w-0 items-end gap-5 md:grid-cols-[minmax(0,1.25fr)_minmax(220px,.75fr)]">
           <div>
             <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-lav-ink)" }}>
@@ -469,7 +468,7 @@ export default function JournalTab() {
       {/* Compose card — "Log a moment" + three modality tiles. All three trigger the
           EXISTING capture flow (BehaviorsTab); the Voice/Photo/Text split is an
           entry affordance, not a new capture path. */}
-      <section ref={composeRef} className="rounded-[18px] p-4 sm:p-5" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-xs)" }}>
+      <section ref={composeRef} data-module="journal-compose" className="rounded-[18px] p-4 sm:p-5" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-xs)" }}>
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
             <p className="text-[10px] font-extrabold uppercase tracking-[0.16em]" style={{ color: "var(--arbor-lav-ink)" }}>{t("journal.compose.eyebrow")}</p>
@@ -531,20 +530,15 @@ export default function JournalTab() {
           answer it keeps from (CoachTab). Journal keeps every kept row in the
           feed below. */}
 
-      {/* Masterplan 1.5 — spine ribbon: what a saved moment feeds (ONE direction:
-          → the weekly story behind the timeline tab). Quiet strip below the
-          header + compose region, never above them (Rule A keeps it off Today).
-          Plain activity fact — no %, verdicts, or deltas (clinical firewall). */}
-      <SpineRibbon
-        tone="lav"
-        icon="auto_stories"
-        text={t("elev.spine.journal", { name: childFirstName })}
-        onFollow={() => setActiveTab("timeline")}
-        testId="journal-spine-ribbon"
-      />
+      {/* B-ASKJB-16: the spine ribbon to #/timeline is cut — the density
+          toggle at the top of this page (TimelineTab) is the one door to
+          Story. */}
 
       {/* Flat single-column feed — day-grouped, gated on the ledger load (JRNL-7)
-          so a returning parent never sees a false "No moments yet" flash. */}
+          so a returning parent never sees a false "No moments yet" flash.
+          B-ASKJB-16: ONE stamp for the thread, whichever branch renders
+          (display: contents — no layout change). */}
+      <div data-module="journal-thread" style={{ display: "contents" }}>
       {!logsLoaded ? (
         <div className="flex flex-col gap-3" aria-hidden>
           <Skeleton className="h-20" />
@@ -642,6 +636,7 @@ export default function JournalTab() {
           ))}
         </section>
       )}
+      </div>
 
       {/* TJB-08 — the Journal's text capture, in place. Rendered once; it
           portals to document.body, so it sits over the feed rather than
