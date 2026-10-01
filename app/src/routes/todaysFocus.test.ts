@@ -220,3 +220,52 @@ describe("createApp wiring (AIR-5/AIR-6 metering, source-pinned)", () => {
     expect(createAppSrc).toContain('app.use("/api/tts", createTtsQuota(counters))');
   });
 });
+
+describe("B-AI-03 · the prompt states only what the parent logged", () => {
+  it("count 0, no trigger → no trigger clause, 'no moments logged this week', a starter step, inputsUsed without topTrigger", async () => {
+    draft = { focus: "A quiet week to notice what your child enjoys.", tryToday: "Try naming one feeling together at dinner." };
+    lastPrompt = "";
+    const { status, json } = await postFocus({
+      childProfile: { id: "c-ai03-zero", name: "Test Child", age: 3 },
+      signals: { count: 0 },
+    });
+    expect(status).toBe(200);
+    expect(lastPrompt).not.toContain("transitions");
+    expect(lastPrompt).not.toContain("most often around");
+    expect(lastPrompt).toContain("no moments logged this week");
+    expect(lastPrompt).toMatch(/age-appropriate starter step/);
+    const inputs = json.inputsUsed as Record<string, unknown>;
+    expect(inputs.momentCount).toBe(0);
+    expect(inputs).not.toHaveProperty("topTrigger");
+  });
+
+  it("topTrigger '' with moments → the count only; never the 'transitions' default (B-TODAY-04 acceptance)", async () => {
+    draft = { ...CLEAN_DRAFT };
+    lastPrompt = "";
+    const { json } = await postFocus({
+      childProfile: { id: "c-ai03-empty", name: "Test Child", age: 4 },
+      signals: { count: 3, topTrigger: "" },
+    });
+    expect(lastPrompt).toContain("3 moments.");
+    expect(lastPrompt).not.toContain("transitions");
+    expect(lastPrompt).not.toContain("most often around");
+    expect(json.inputsUsed as Record<string, unknown>).not.toHaveProperty("topTrigger");
+  });
+
+  it("Hebrew, no trigger → neither 'transitions' nor 'מעברים' in the prompt", async () => {
+    draft = { focus: "שבוע שקט.", tryToday: "נסו לקרוא יחד ספר קצר." };
+    lastPrompt = "";
+    await postFocus({ childProfile: { id: "c-ai03-he", name: "Test Child", age: 4 }, signals: { count: 0 }, language: "he" });
+    expect(lastPrompt).toContain("עברית");
+    expect(lastPrompt).not.toContain("transitions");
+    expect(lastPrompt).not.toContain("מעברים");
+  });
+
+  it("a trigger sent with zero moments is not a fact — dropped from prompt and inputsUsed", async () => {
+    draft = { ...CLEAN_DRAFT };
+    lastPrompt = "";
+    const { json } = await postFocus({ childProfile: { id: "c-ai03-orphan", name: "T", age: 4 }, signals: { count: 0, topTrigger: "bedtime" } });
+    expect(lastPrompt).not.toContain("bedtime");
+    expect(json.inputsUsed as Record<string, unknown>).not.toHaveProperty("topTrigger");
+  });
+});

@@ -1763,6 +1763,8 @@ Finalized parent transcript: ${privacy.redact(transcript.trim())}${REDACTION_DIR
       : "";
     const lang = language === "he" ? "he" : "en";
     const dateKey = focusDateKey();
+    // B-AI-03: a trigger is only a fact when there are moments it describes.
+    const triggerSent = count > 0 ? topTrigger : "";
 
     const cacheKey = `${actorOf(req).uid}:${childProfile?.id ?? "none"}:${dateKey}:${lang}`;
     const cached = focusCache.get(cacheKey);
@@ -1778,10 +1780,18 @@ Finalized parent transcript: ${privacy.redact(transcript.trim())}${REDACTION_DIR
         lang === "he"
           ? "\nIMPORTANT: The parent speaks Hebrew. Write both fields in natural, warm Hebrew (עברית)."
           : "";
+      // B-AI-03: the prompt states only facts the parent actually logged. A
+      // missing trigger used to become a "transitions" default —
+      // a pattern the parent never reported. No trigger → no clause; no moments
+      // → say so and ask for an age-appropriate starter step.
+      const weekLine =
+        count === 0
+          ? "What the parent has logged this week: no moments logged this week. Offer an age-appropriate starter step: something easy to try and notice together, not a fix for a problem."
+          : `What the parent has logged this week: ${count} moment${count === 1 ? "" : "s"}${triggerSent ? `, most often around "${triggerSent}"` : ""}.`;
       const prompt = `${NON_DIAGNOSTIC_CONTRACT}
 You are Arbor's Today's Focus writer for a calm parenting app.
 Child: ${childProfile ? JSON.stringify(promptProfile(childProfile)) : "unknown"}
-What the parent has logged this week: ${count} moment${count === 1 ? "" : "s"}, most often around "${topTrigger || "transitions"}".${lastActionRecommendation && lastActionOutcome ? ` The parent last tried "${lastActionRecommendation}" and reported the attempt as "${lastActionOutcome}". Use that parent-reported outcome to avoid repeating an unhelpful step and adapt effort or framing.` : ""}
+${weekLine}${lastActionRecommendation && lastActionOutcome ? ` The parent last tried "${lastActionRecommendation}" and reported the attempt as "${lastActionOutcome}". Use that parent-reported outcome to avoid repeating an unhelpful step and adapt effort or framing.` : ""}
 Write today's single most useful parenting focus:
 - "focus": 1-2 short, warm sentences naming what to pay attention to today — an observation about the child's week, never an assessment.
 - "tryToday": ONE small, concrete thing to try today — a developmental mechanism (serve-and-return, co-regulation, a transition cue), phrased as a doable step.
@@ -1832,7 +1842,7 @@ Return only JSON matching the schema.`;
       // count, the parent-tagged category label, and the parent-reported
       // outcome enum. Never intensity, never a percentage, never note text.
       const inputsUsed: { momentCount: number; topTrigger?: string; lastActionOutcome?: string } = { momentCount: count };
-      if (topTrigger) inputsUsed.topTrigger = topTrigger;
+      if (triggerSent) inputsUsed.topTrigger = triggerSent;
       if (lastActionOutcome) inputsUsed.lastActionOutcome = lastActionOutcome;
       const payload = { text, focus, tryToday, inputsUsed, generatedAt: new Date().toISOString(), dateKey };
       // Firewall condition 4: only screened payloads are cached.
