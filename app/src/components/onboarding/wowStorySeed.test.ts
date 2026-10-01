@@ -99,6 +99,7 @@ describe("CHILD_SUBCOLLECTIONS registry pin — the seed invented NO new sink", 
       "apptFollowUps", // LC-12
       "wellness",
       "savedComics",
+      "keepsakes", // B-GROWTH-10 (4ccb483): milestone keepsakes moved from device-local into the registered record
     ]);
   });
 });
