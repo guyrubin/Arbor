@@ -103,12 +103,12 @@ describe("1 · every literal i18n key in src/** resolves in EN and HE", () => {
     expect(found.has("nav.")).toBe(false);
   });
 
-  it("negative control: the two keys the bell shipped without would have failed this scan", () => {
-    // Proven by construction — these are the exact keys TopbarBell asks for.
-    // Before this item neither existed, so translate() returned the key and the
-    // scan above would have listed four entries (2 keys × 2 languages).
+  it("negative control: a missing key comes back as the key (the shape this scan catches)", () => {
+    // B-SHELL-02 retired the bell and its keys; a retired key now resolves to
+    // itself in both languages, exactly what the scan above would flag if a
+    // render site still asked for it.
     for (const key of ["bell.title", "bell.empty", "bell.unread", "bell.unreadOne", "aria.notifications"]) {
-      for (const lang of LANGS) expect(translate(lang, key)).not.toBe(key);
+      for (const lang of LANGS) expect(translate(lang, key)).toBe(key);
     }
     expect(translate("en", "bell.thisKeyDoesNotExist")).toBe("bell.thisKeyDoesNotExist");
   });

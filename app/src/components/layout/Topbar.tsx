@@ -1,7 +1,6 @@
 import React from "react";
 import TopbarKidSwitcher from "./TopbarKidSwitcher";
 import TopbarSearch from "../search/TopbarSearch";
-import TopbarBell from "./TopbarBell";
 import KidModeButton from "./KidModeButton";
 import SafetyRing from "./SafetyRing"; // IA-01: canon Safety life-ring — first control in the band
 import OfflineChip from "../ui/OfflineChip"; // W0.6: renders only while offline
@@ -116,9 +115,6 @@ export default function Topbar() {
         >
           <Icon name="verified_user" size={18} />
         </button>
-        <div className="flex-shrink-0">
-          <TopbarBell />
-        </div>
         <div className="flex-shrink-0 min-w-0">
           <TopbarKidSwitcher />
         </div>

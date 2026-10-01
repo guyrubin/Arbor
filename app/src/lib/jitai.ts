@@ -150,9 +150,9 @@ export function nextNudge(inp: JitaiInputs, prefs?: JitaiPrefs): Nudge | null {
   //    max(17, eveningPeak - 1)), who get BEDTIME at 17:00 instead of LOG.
   //    That is their own rhythm rather than an invented early evening, but the
   //    window is not unconditional and this comment used to claim it was.
-  //    Quiet hours (default 21:00) close it again. The max-2 ceiling applies —
-  //    though note RhythmCue reads the ledger without spending it, so on Today
-  //    and Ask the ceiling binds only via the bell.
+  //    Quiet hours (default 21:00) close it again. The max-2 ceiling applies:
+  //    RhythmCue (the in-app render site on Today and Ask, every width) spends
+  //    the ledger when a cue renders (B-SHELL-02).
   if (bedtimeDoorOpen(hour, rhythm.windDownHour) && kindAllowed("bedtime", inp, prefs)) {
     return {
       kind: "bedtime",

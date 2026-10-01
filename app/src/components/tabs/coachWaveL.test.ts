@@ -38,9 +38,11 @@ describe("ENG-10 / ENG-11 — the cue is mounted on a surface a parent opens, an
     expect(cue).toMatch(/nextNudge\(/);
     expect(cue).toMatch(/loadPrefs\(\)/);
     expect(cue).toMatch(/shownNudgesToday\(\)/);
-    // It must NOT spend the day's ceiling a second time — the bell owns that
-    // ledger (growth/jitaiPrefs.recordNudgeShown).
-    expect(cue).not.toMatch(/recordNudgeShown/);
+    // B-SHELL-02: the bell is retired, so the cue is THE spender of the
+    // day's ceiling — exactly once, in the impression effect (idempotent per
+    // kind per day in growth/jitaiPrefs.recordNudgeShown).
+    expect((cue.match(/recordNudgeShown\(/g) ?? []).length).toBe(1);
+    expect(cue).toMatch(/recordNudgeShown\(visible\.kind\)/);
   });
 
   it("every visible string comes from the nudge's i18n keys, never inline copy", () => {

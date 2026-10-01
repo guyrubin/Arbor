@@ -21,10 +21,36 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-describe("TopbarBell — a LOG nudge opens the composer on arrival (lane T)", () => {
-  it("handleNavigate calls requestCapture(item.capture) BEFORE setActiveTab", () => {
-    const bell = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "TopbarBell.tsx"), "utf8");
-    expect(bell).toMatch(/if \(item\.capture\) requestCapture\(item\.capture\);\s*\n\s*setActiveTab\(item\.action\);/);
+describe("RhythmCue — a LOG nudge opens the composer on arrival (lane T; the bell's contract, kept)", () => {
+  it("the cue's action calls requestCapture(visible.capture) BEFORE setActiveTab", () => {
+    const cue = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "coach", "RhythmCue.tsx"), "utf8");
+    expect(cue).toMatch(/if \(visible\.capture\) requestCapture\(visible\.capture\);\s*\n\s*setActiveTab\(visible\.action\);/);
+  });
+});
+
+/* ── B-SHELL-02 — the desktop bell is retired ─────────────────────────────── */
+describe("B-SHELL-02 — no bell, no notification centre", () => {
+  const SRC_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+  const walk = (dir: string, out: string[] = []): string[] => {
+    for (const e of readdirSync(dir)) {
+      const full = path.join(dir, e);
+      if (statSync(full).isDirectory()) walk(full, out);
+      else if (/\.(ts|tsx)$/.test(e)) out.push(full);
+    }
+    return out;
+  };
+  it("0 TopbarBell / useNotifications imports anywhere in src", () => {
+    const offenders = walk(SRC_ROOT).filter((f) =>
+      /import[^;]*from\s+["'][^"']*(TopbarBell|useNotifications)["']/.test(readFileSync(f, "utf8")),
+    );
+    expect(offenders).toEqual([]);
+    expect(existsSync(path.join(SRC_ROOT, "components", "layout", "TopbarBell.tsx"))).toBe(false);
+    expect(existsSync(path.join(SRC_ROOT, "hooks", "useNotifications.ts"))).toBe(false);
+  });
+  it("the topbar band mounts Safety · Search · Kid Mode · child chip and no Notifications control", () => {
+    const band = stripComments(topbar.slice(topbar.lastIndexOf("Right zone")));
+    for (const c of ["<SafetyRing", "<TopbarSearch", "<KidModeButton", "<TopbarKidSwitcher"]) expect(band).toContain(c);
+    expect(band).not.toMatch(/TopbarBell|aria\.notifications|Notifications/);
   });
 });
 
@@ -52,7 +78,7 @@ describe("IA-01 — the Safety life-ring is mounted in all three chrome homes", 
     const band = stripComments(topbar.slice(topbar.lastIndexOf("Right zone")));
     const ring = band.indexOf("<SafetyRing");
     expect(ring).toBeGreaterThan(-1);
-    for (const later of ["<OfflineChip", "<TopbarSearch", "<KidModeButton", "<TopbarBell", "<TopbarKidSwitcher"]) {
+    for (const later of ["<OfflineChip", "<TopbarSearch", "<KidModeButton", "<TopbarKidSwitcher"]) {
       expect(band.indexOf(later), `${later} renders before the Safety ring`).toBeGreaterThan(ring);
     }
     expect(/flex-shrink-0|flex-none/.test(band.slice(Math.max(0, ring - 120), ring))).toBe(true);
@@ -136,7 +162,7 @@ describe("UC-8a — the topbar title always gets usable width", () => {
     expect(band).toMatch(/minInlineSize:\s*"[\d.]+rem"/);
     // …and every other control in the band keeps its intrinsic size, so no
     // control can be squeezed to unreachable.
-    for (const control of ["KidModeButton", "TopbarBell", "TopbarKidSwitcher"]) {
+    for (const control of ["KidModeButton", "TopbarKidSwitcher"]) {
       const idx = band.indexOf(`<${control}`);
       expect(idx, `${control} not found in the topbar control band`).toBeGreaterThan(-1);
       const wrapper = band.slice(Math.max(0, idx - 220), idx);

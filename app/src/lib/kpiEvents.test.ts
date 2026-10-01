@@ -212,23 +212,19 @@ describe("ENG-22 — retention reads the names the helpers actually emit", () =>
 });
 
 describe("ENG-22 — the new call sites are LIVE (source pins + negative controls)", () => {
-  const bell = read("components/layout/TopbarBell.tsx");
   const onboarding = read("components/auth/OnboardingFlow.tsx");
   const arbor = read("context/ArborContext.tsx");
   const push = read("lib/push.ts");
 
   it("the scanned files are non-empty (a vacuous pass is not a pass)", () => {
-    for (const src of [bell, onboarding, arbor, push]) {
+    for (const src of [onboarding, arbor, push]) {
       expect(src).toBeTruthy();
       expect(src.length).toBeGreaterThan(200);
     }
   });
 
-  it("bell: open + row tap instrumented at the two choke points", () => {
-    expect(bell).toContain("trackBellOpen(items.length)");
-    expect(bell).toContain("trackBellItemTap(item.kind, item.action)");
-    // Negative control — the pre-change file had NO bell telemetry at all.
-    expect(bell).not.toMatch(/trackBellOpen\(\s*items\s*\)/);
+  it("bell: retired by B-SHELL-02 — its file is gone, so its two events have no call site", () => {
+    expect(fs.existsSync(path.resolve(__dirname, "..", "components/layout/TopbarBell.tsx"))).toBe(false);
   });
 
   it("onboarding: completion fires on the real submit path", () => {

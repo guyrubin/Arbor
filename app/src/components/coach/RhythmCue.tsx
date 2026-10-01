@@ -4,7 +4,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { predictRhythm } from "../../rhythm/predict";
 import { nextNudge, type Nudge } from "../../lib/jitai";
-import { loadPrefs, shownNudgesToday, nudgeDayKey } from "../../growth/jitaiPrefs";
+import { loadPrefs, shownNudgesToday, nudgeDayKey, recordNudgeShown } from "../../growth/jitaiPrefs";
 import { trackNudgeActed, trackNudgeDismissed, trackNudgeShown, type NudgeSurface } from "../../lib/jitaiTelemetry";
 import { PASTEL } from "../../lib/tokens";
 
@@ -15,8 +15,9 @@ import { PASTEL } from "../../lib/tokens";
  * badge a parent has to go looking for. The engine is allowed TWO cues a day;
  * spending one on a surface nobody opens is spending it on nothing. This is
  * the same cue, from the same engine, rendered where the parent already is —
- * and, unlike the bell, instrumented (lib/jitaiTelemetry), so which cue earns
- * its slot stops being a guess.
+ * and instrumented (lib/jitaiTelemetry), so which cue earns its slot stops
+ * being a guess. B-SHELL-02: the desktop bell is gone; this is THE in-app
+ * render site of a nudge on every width.
  *
  * ENG-10: in the evening that cue IS the bedtime door. `lib/timeOfDay
  * bedtimeDoorOpen` (the first production consumer `dayPartFor` has ever had)
@@ -29,9 +30,13 @@ import { PASTEL } from "../../lib/tokens";
  *    Reminders toggles and the max-2/day ceiling are all enforced inside
  *    nextNudge(). This component adds no rules of its own; it only renders
  *    what the engine already decided to allow, and stays silent on null.
- *  - It does NOT call recordNudgeShown(). That counter is the ceiling's
- *    ledger and the bell owns it; incrementing from a second surface would
- *    burn the day's budget twice for one cue.
+ *  - B-SHELL-02: it SPENDS the ceiling. recordNudgeShown(kind) runs in the
+ *    impression effect — the render site is where a cue is shown — and is
+ *    idempotent per kind per day, so the same cue on Today AND on Ask costs
+ *    one slot, and the ratified max-2/day ceiling binds on a phone too. (The
+ *    bell used to be the only spender, mounted `hidden lg:flex`, so on phones
+ *    the ceiling never bound.) Lane-X B-AI-06 later moves the spend into its
+ *    single-offer coordinator; until then, it lives here.
  *  - Clinical firewall: the card carries the CUE's copy only. No count about
  *    the child, no score, no ring, no colour that means good or bad — the
  *    tone is the cue's own pastel, chosen by kind, not by how the day went.
@@ -117,6 +122,9 @@ export default function RhythmCue({ surface = "coach" }: { surface?: NudgeSurfac
   // day-keyed, so a remount within the day is silent and a new day starts over.
   useEffect(() => {
     if (!visible) return;
+    // B-SHELL-02: spend the day's ceiling where the cue renders. Idempotent per
+    // kind per day (growth/jitaiPrefs), so a remount or a second surface is free.
+    recordNudgeShown(visible.kind);
     const key = `${nudgeDayKey()}|${surface}|${visible.kind}`;
     if (SEEN_IMPRESSIONS.has(key)) return;
     SEEN_IMPRESSIONS.add(key);

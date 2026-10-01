@@ -79,7 +79,8 @@ export type CaptureModeId = "voice" | "photo" | "text" | "ai-draft";
 /** Where a saved capture came from — a short literal id, never copy. */
 export type CaptureSource = "moment" | "log";
 
-/** Bell row classes (mirrors useNotifications' AppNotification.kind). */
+/** Bell row classes. B-SHELL-02: the bell is retired, so trackBellOpen /
+ *  trackBellItemTap have no call site; the names stay for history only. */
 export type BellItemKind = "nudge" | "monitoring";
 
 /* ── Bell ──────────────────────────────────────────────────────────────── */

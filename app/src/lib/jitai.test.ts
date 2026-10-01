@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { nextNudge, NUDGE_KIND_PREF } from "./jitai";
 import { ROUTE_IDS } from "./routes";
-import { DEFAULT_PREFS, type JitaiPrefs } from "../growth/jitaiPrefs";
+import { DEFAULT_PREFS, recordNudgeShown, shownNudgesToday, type JitaiPrefs } from "../growth/jitaiPrefs";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import type { RhythmPrediction } from "../rhythm/predict";
 
 const baseRhythm = (over: Partial<RhythmPrediction> = {}): RhythmPrediction => ({
@@ -206,5 +208,54 @@ describe("ENG-10 — the BEDTIME cue is the evening door", () => {
     expect(n?.bodyKey).toBe("elev.evening.nudge.body");
     expect(n?.ctaKey).toBe("elev.evening.nudge.cta");
     expect(n?.vars?.name).toBe("Dylan");
+  });
+});
+
+/**
+ * B-SHELL-02 — the ceiling binds without the bell. The bell (desktop only,
+ * `hidden lg:flex`) was the ONLY caller of recordNudgeShown, so on a phone the
+ * ratified max-2/day ceiling never bound and SmartReminders' "n of 2 today"
+ * always read 0. RhythmCue now spends the ledger at its render site.
+ * Render-free: drives the real growth/jitaiPrefs ledger the way RhythmCue's
+ * impression effect does.
+ */
+describe("B-SHELL-02 — ceiling binds without the bell (ledger level)", () => {
+  const mem = new Map<string, string>();
+  const stub = {
+    getItem: (k: string) => (mem.has(k) ? mem.get(k)! : null),
+    setItem: (k: string, v: string) => void mem.set(k, String(v)),
+    removeItem: (k: string) => void mem.delete(k),
+    clear: () => mem.clear(),
+  };
+  (globalThis as unknown as { localStorage: typeof stub }).localStorage = stub;
+
+  it("a cue rendered twice in one day (Today + Ask) grows the ledger by exactly 1 per kind", () => {
+    mem.clear();
+    const day = at(16);
+    expect(shownNudgesToday(day)).toEqual([]);
+    recordNudgeShown("log", day); // Today renders the LOG cue
+    recordNudgeShown("log", day); // Ask renders the same cue
+    expect(shownNudgesToday(day)).toEqual(["log"]);
+  });
+
+  it("after two kinds are shown, nextNudge returns null for a third kind", () => {
+    mem.clear();
+    const day = at(16);
+    recordNudgeShown("prep", day);
+    recordNudgeShown("calm", day);
+    const shownToday = shownNudgesToday(day);
+    expect(shownToday).toHaveLength(2);
+    const logConditions = { rhythm: baseRhythm({ confidence: "low" }), loggedToday: 0, recent7d: 4, childName: "Dylan" };
+    // NEGATIVE CONTROL — the same inputs fire with an empty ledger.
+    expect(nextNudge({ ...logConditions, nowMs: day, shownToday: [] }, prefs())?.kind).toBe("log");
+    expect(nextNudge({ ...logConditions, nowMs: day, shownToday }, prefs())).toBeNull();
+  });
+
+  it("RhythmCue spends the ledger in its impression effect; nothing imports the bell or useNotifications", () => {
+    const src = (rel: string) => readFileSync(path.join(__dirname, "..", rel), "utf8");
+    const cue = src("components/coach/RhythmCue.tsx").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    expect(cue).toMatch(/useEffect\(\(\) => \{\s*if \(!visible\) return;\s*recordNudgeShown\(visible\.kind\);/);
+    const panel = src("components/sections/SmartRemindersPanel.tsx");
+    expect(panel).toMatch(/shownNudgesToday\(\)/);
   });
 });
