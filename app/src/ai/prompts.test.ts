@@ -2,8 +2,10 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { NON_DIAGNOSTIC_CONTRACT } from "../contracts/coach.js";
 import {
+  COACH_CHAT_FIELD_RULES,
   MODEL_PROFILE_FIELDS,
   PROMPT_VERSIONS,
+  ROUTINE_ESCALATION_GUIDANCE,
   buildChatPrompt,
   buildCouncilSynthesisPrompt,
   buildExtractLogPrompt,
@@ -175,9 +177,13 @@ describe("EVAL-6 — builders keep the byte contract of the old inline templates
  * block-free baseline moved from the retired 1.0.0 digest (47871f42…) to the
  * digest below. Same guarantee, new bytes — the ASSERTION is unchanged: with
  * both 1.3 fields absent the prompt equals the block-free rendering.
+ *
+ * B-AI-01 eval fix (2026-10-01, coach_chat 1.4.1): COACH_CHAT_FIELD_RULES is
+ * static template text, so the block-free digest moved from the 1.3.0/1.4.0
+ * bytes (7d5b299d…) to the digest below. The optional blocks stay additions.
  */
-describe("Masterplan 1.3 — coach_chat block-free byte-parity (v1.3.0 pin)", () => {
-  const COACH_CHAT_BLOCK_FREE_SHA256 = "7d5b299dedf6d5b491a0119b3611ae2ead96275986e94cb77ae923adcf1780e7";
+describe("Masterplan 1.3 — coach_chat block-free byte-parity (v1.4.1 pin)", () => {
+  const COACH_CHAT_BLOCK_FREE_SHA256 = "7b545347db0dc1ac909fff148e88dc1bf13ffa4738a4257790bdfde79eef5283";
   const sha256 = (text: string) => createHash("sha256").update(text, "utf8").digest("hex");
   const legacyArgs = {
     developmentalFramework: "«framework»",
@@ -189,7 +195,7 @@ describe("Masterplan 1.3 — coach_chat block-free byte-parity (v1.3.0 pin)", ()
     languageDirective: "«language-directive»",
   } as const;
 
-  it("with BOTH new fields absent, the prompt is byte-identical to the block-free 1.3.0 rendering", () => {
+  it("with BOTH new fields absent, the prompt is byte-identical to the block-free 1.4.1 rendering", () => {
     expect(sha256(buildChatPrompt({ ...legacyArgs }))).toBe(COACH_CHAT_BLOCK_FREE_SHA256);
   });
 
@@ -362,7 +368,7 @@ Return only JSON matching the schema.`;
     expect(withFacts).toContain('- "Bath helps bedtime"');
     expect(withFacts).not.toBe(legacyInline(null, 0, "", "", "", ""));
   });
-  it("coach_chat 1.4.0: an empty ledger keeps the 1.3.0 block-free bytes; a step adds the block", () => {
+  it("coach_chat 1.4.x: an empty ledger keeps the block-free bytes; a step adds the block", () => {
     const args = {
       developmentalFramework: "F", approvedMemory: "", knowledgeContext: "", childProfile: null,
       scholar: { name: "s", concept: "c", method: "m", defaultFrame: "f" }, message: "q", languageDirective: "",
@@ -423,5 +429,34 @@ Return JSON with title, issue, phases, scripts, and successIndicators.
   });
   it("B-AI-13: analyze_behavior is pinned at 1.1.0", () => {
     expect(PROMPT_VERSIONS.analyze_behavior.version).toBe("1.1.0");
+  });
+});
+
+/**
+ * B-AI-01 eval fix (coach_chat 1.4.1): the field rules ride the /chat prompt
+ * only. They answer four live-judge findings (crisis words in a routine
+ * escalateIf, ignored approved memory, invented behaviour on a condition
+ * question, graded confidence); council and voice keep their own pinned bytes.
+ */
+describe("coach_chat 1.4.1 — field rules", () => {
+  const chatArgs = {
+    developmentalFramework: "F", approvedMemory: "- Timer helps", knowledgeContext: "", childProfile: null,
+    scholar: { name: "s", concept: "c", method: "m", defaultFrame: "f" }, message: "q", languageDirective: "",
+  };
+  it("the /chat prompt carries the rules right after the routine escalation guidance", () => {
+    const prompt = buildChatPrompt(chatArgs);
+    expect(prompt).toContain(`${ROUTINE_ESCALATION_GUIDANCE}\n${COACH_CHAT_FIELD_RULES}\nReturn only JSON`);
+    expect(COACH_CHAT_FIELD_RULES).toMatch(/ARBOR APPROVED CHILD MEMORY/);
+    expect(COACH_CHAT_FIELD_RULES).toMatch(/only a qualified professional can assess/);
+    expect(COACH_CHAT_FIELD_RULES).toMatch(/never write that condition's name or any label back/);
+    expect(COACH_CHAT_FIELD_RULES).toMatch(/In a routine answer no field names self-harm/);
+    expect(COACH_CHAT_FIELD_RULES).toMatch(/never low, medium, high/);
+    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.4.1");
+  });
+  it("council and voice prompts do not carry the /chat field rules", () => {
+    const council = buildCouncilSynthesisPrompt({ developmentalFramework: "F", approvedMemory: "", knowledgeContext: "", childProfile: null, councilTakes: "T", message: "q", languageDirective: "" });
+    const voice = buildVoiceReplyPrompt({ persona: "P", scholar: chatArgs.scholar, childProfile: null, message: "q", languageDirective: "" });
+    expect(council).not.toContain(COACH_CHAT_FIELD_RULES);
+    expect(voice).not.toContain(COACH_CHAT_FIELD_RULES);
   });
 });

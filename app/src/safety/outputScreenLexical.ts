@@ -26,7 +26,7 @@ export type OutputScreenVerdict = {
   escalationCategory?: CrisisEscalationCategory;
 };
 
-const CONDITION_TOKENS = [
+export const CONDITION_TOKENS = [
   "autism", "autistic", "adhd", "add\\b", "asperger", "ocd", "odd\\b", "bipolar",
   "depress(?:ion|ive)", "anxiety disorder", "dyslexia", "dyspraxia", "apraxia",
   "intellectual disability", "developmental delay", "sensory processing disorder",
@@ -41,7 +41,7 @@ const CONDITIONS = CONDITION_TOKENS.join("|");
  * leading name token must stay capitalization-sensitive (the `/i` flag would make
  * `\p{Lu}`/`[A-Z]` match lowercase too, defeating the "capitalized name" guard).
  */
-const ciSource = (src: string): string =>
+export const ciSource = (src: string): string =>
   src.replace(/\\?[A-Za-z]/g, (m) => (m[0] === "\\" ? m : `[${m.toLowerCase()}${m.toUpperCase()}]`));
 
 // Proper-name subject: screenModelOutput runs on the ALIAS-RESTORED, child-facing
@@ -64,13 +64,12 @@ const CONDITIONS_NAME = ciSource(
 // Hebrew/RTL diagnosis floor: Hebrew has no capitalization, so the name-subject trick
 // does not apply — instead match the explicit Hebrew diagnostic frames around a
 // clinical condition. Latin acronyms (ADHD/OCD/…) inside Hebrew text are case-folded.
-const HE_CONDITIONS = ciSource(
-  [
-    "אוטיזם", "אוטיסט(?:ית|ים)?", "אספרגר", "היפראקטיביות", "הפרעת קשב",
-    "דיכאון", "דיסלקציה", "דיספרקסיה", "אפרקסיה", "פיגור שכלי", "עיכוב התפתחותי",
-    "תסמונת טורט", "OCD", "ADHD", "ADD", "PTSD",
-  ].join("|"),
-);
+export const HE_CONDITION_TOKENS = [
+  "אוטיזם", "אוטיסט(?:ית|ים)?", "אספרגר", "היפראקטיביות", "הפרעת קשב",
+  "דיכאון", "דיסלקציה", "דיספרקסיה", "אפרקסיה", "פיגור שכלי", "עיכוב התפתחותי",
+  "תסמונת טורט", "OCD", "ADHD", "ADD", "PTSD",
+];
+const HE_CONDITIONS = ciSource(HE_CONDITION_TOKENS.join("|"));
 
 const DIAGNOSIS_PATTERNS = [
   // "your child has ADHD", "she is autistic", "this is autism", "he suffers from OCD"

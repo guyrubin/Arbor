@@ -162,7 +162,13 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // (the parent's accepted steps + reported outcomes, kept insights) sits
   // under the memory block. With the ledger absent the bytes equal 1.3.0
   // (block-free parity pinned in prompts.test.ts). Re-pin: coach-core-v1.
-  coach_chat: { version: "1.4.0", sha256: "1d0a2acf6b2b2461a305af0aafa5fe0d4c4a0557b5578ee977b4937db8e9b38c" },
+  // 1.4.1 (B-AI-01 eval fix, 2026-10-01): COACH_CHAT_FIELD_RULES under the
+  // escalation guidance (approved memory first, condition questions answered
+  // without invented behaviour, escalateIf from reported facts only with no
+  // crisis words in a routine answer, confidence as an uncertainty phrase).
+  // The block-free 1.3.0 parity ends here by design (new pin in prompts.test.ts).
+  // Re-pin: coach-core-v1, coach-hardmoment-seed-v1 (live tier re-run 1 Oct).
+  coach_chat: { version: "1.4.1", sha256: "d577ab7fbef1d97288be864d7add86d1c21dd9f6ea55aaa33c4b8c731be9d612" },
   council_synthesis: { version: "1.2.0", sha256: "428ed3513c47ba544b8e1afee8a4492140902d4b1210ec8cbb75893d8b77a00f" },
   voice_reply: { version: "1.6.0", sha256: "7c06dfda8297c50b0fd596f32a728689cd1503cb0662f9e10d3904e007be651b" },
   live_session: { version: "1.4.0", sha256: "a860d147a58a4be6f0adca9b9525925c76e3db86bf563f0ee6ad5590572fbe5c" },
@@ -194,6 +200,22 @@ export const promptVersionOf = (key: PromptKey): string => PROMPT_VERSIONS[key].
 
 /** Avoid inventing alarming crisis facts in routine escalation checklists. */
 export const ROUTINE_ESCALATION_GUIDANCE = "Escalation guidance must be proportionate to the facts the parent actually reported. For an ordinary challenge such as leaving the park, use a relevant threshold such as persistent or worsening difficulty that disrupts daily life and recommend discussing it with a qualified professional. Do not introduce unreported self-harm, suicide, abuse, violence, medical symptoms or other crisis scenarios in a routine answer or checklist. If the parent has reported a crisis concern, prioritize the established urgent-help guidance.";
+
+/**
+ * coach_chat 1.4.1 (B-AI-01 eval fix, 2026-10-01) — field rules for /chat only.
+ * The live coach-core-v1 runs (1.3.0 at 92a4b74 and 1.4.0) showed four model
+ * habits the template did not forbid: (1) about one benign answer in three put
+ * "self-harm" into escalateIf, which the VC-8 crisis output screen then routes
+ * to the crisis surface; (2) approved memory reached the prompt and was
+ * ignored; (3) "does she have ADHD?" was answered with invented behaviours;
+ * (4) hypothesis confidence came back as low/medium/high — a graded label.
+ * Council and voice keep ROUTINE_ESCALATION_GUIDANCE alone (their pins hold).
+ */
+export const COACH_CHAT_FIELD_RULES = `Field rules:
+- When a fact under ARBOR APPROVED CHILD MEMORY bears on the question, build the answer on it first and name it (what already works for this child) in "text" and todayPlan, before adding anything new.
+- If the parent asks whether the child has a condition or a label, never write that condition's name or any label back, not even to decline. Say plainly in "text" that Arbor cannot answer that question and only a qualified professional can assess it. Do not describe behaviours the parent did not report: ask what they have noticed, and make todayPlan about noticing and writing down concrete moments to bring to that conversation.
+- escalateIf: 1-3 thresholds built only from what the parent reported (how often, how long, how intense, in how many settings, skills lost, daily life disrupted) and whom to talk to. In a routine answer no field names self-harm, suicide, abuse, violence or injury.
+- nonDiagnosticHypotheses[].confidence: an uncertainty phrase such as "one possibility", never low, medium, high, a score or a percentage.`;
 
 // ── Versioned builders ────────────────────────────────────────────────────
 
@@ -306,6 +328,7 @@ ${renderRecentTurnsBlock(recentTurns)}${renderWeeklyContextLine(weeklyContext)}P
 ${message}
 
 ${ROUTINE_ESCALATION_GUIDANCE}
+${COACH_CHAT_FIELD_RULES}
 Return only JSON that matches the response schema. Open with the "text" field FIRST: 2-4 warm, plain sentences that briefly acknowledge the parent and give the heart of your answer — no headings, no lists, no labels. Keep todayPlan to 1-3 steps. Include sourceCardsUsed as source-card ids you used. Include followUps: 2-3 short, natural next questions THIS parent is likely to ask after THIS answer (specific to their situation, never generic), each under 100 characters, in the same language as your other text values.${languageDirective}
 `;
 

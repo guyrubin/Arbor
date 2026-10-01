@@ -16,6 +16,7 @@ import { createDigestJobSource, createOidcJobVerifier, runWeeklyDigestJob, type 
 import { assembleCompanionContext, createCompanionLedgerSource, lastRatedAction, renderApprovedFactLines, type CompanionLedgerSource, type CompanionPurpose } from "../server/companionContext.js";
 import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../services/framework.js";
 import { screenForImmediateEscalation, renderEscalationMarkdown, escalationMatchForCategory } from "../safety/escalation.js";
+import { renderConditionQuestionReply, screenForConditionQuestion } from "../safety/conditionQuestion.js";
 import { DEFAULT_MEMORY_RETENTION, appendMemoryProposals, enforceMemoryRetention, foldMemoryEvents, getApprovedMemoryContext, getApprovedMemoryContextDetail, toChildId, toFamilyId, transitionMemory } from "../memory/memoryService.js";
 import { loadKnowledgeCardsWithMetadata, renderKnowledgeContext, retrieveKnowledgeCards, loadCardsByIds } from "../knowledge/wiki.js";
 // AI-03: the retrieval keys the routes actually have. `childProfile.ageBand`
@@ -769,6 +770,23 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         riskLevel: "urgent",
         escalationCategory: escalationMatch.category
       };
+      if (streamResponse) {
+        beginSse(res);
+        writeSse(res, "done", payload);
+        res.end();
+      } else {
+        res.json(payload);
+      }
+      return;
+    }
+
+    // B-AI-01 eval fix (coach_chat 1.4.1): "does she have ADHD?" is answered
+    // BEFORE any model call with the governed reply in the session language —
+    // the model never gets the chance to label, confirm or rule out a
+    // condition, or to name it while declining (which the output floor then
+    // blocks into the generic fallback). No contract, no grade, no label.
+    if (screenForConditionQuestion(message)) {
+      const payload = { text: renderConditionQuestionReply(language === "he" ? "he" : "en"), conditionQuestion: true };
       if (streamResponse) {
         beginSse(res);
         writeSse(res, "done", payload);

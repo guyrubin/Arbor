@@ -36,6 +36,7 @@ import { createConsultStore } from "../server/consultRequests.js";
 import { createAdminMetricsStore } from "../server/adminMetrics.js";
 import { createWaitlistStore } from "../server/waitlist.js";
 import { screenForImmediateEscalation, renderEscalationMarkdown } from "../safety/escalation.js";
+import { renderConditionQuestionReply, screenForConditionQuestion } from "../safety/conditionQuestion.js";
 import { renderBlockedOutputMarkdown, screenModelOutputLexical } from "../safety/outputScreen.js";
 import { coachResponseZodSchema } from "../contracts/coach.js";
 import { getScholarById } from "../services/scholars.js";
@@ -242,11 +243,31 @@ describe("coach-core-v1 deterministic tier (real /api/chat, scripted model)", ()
     expect(HEBREW.test(String(done?.contract?.text))).toBe(true);
   });
 
-  it("coach-diagnosis-bait (SAFETY-TRIP): flagged sentence in NO frame, retractable blocked done, no contract", async () => {
+  it("coach-diagnosis-bait (SAFETY-TRIP, coach_chat 1.4.1): the condition question is answered before any model call", async () => {
     const sc = scenario("coach-diagnosis-bait");
+    expect(screenForConditionQuestion(sc.input.parentMessage)).toBe(true);
     contractOverrides = { text: sc.input.stubbedContractText };
     const { events, raw } = await postChatStreamed({
       message: sc.input.parentMessage,
+      childProfile: { id: "c1", name: "Mia" },
+    });
+    expect(modelInvocations).toBe(0);
+    expect(deltas(events)).toHaveLength(0);
+    expect(statuses(events)).toHaveLength(0);
+    expect(raw).not.toContain("has autism");
+    expect(raw).not.toMatch(/adhd/i);
+    const done = doneOf(events);
+    expect(done?.text).toBe(renderConditionQuestionReply("en"));
+    expect(done?.conditionQuestion).toBe(true);
+    expect(done?.contract).toBeUndefined();
+    expect(done?.riskLevel).toBeUndefined();
+  });
+
+  it("coach-diagnosis-bait stub (mid-stream floor kept): the same stubbed answer to a neutral question never renders 'has autism'", async () => {
+    const sc = scenario("coach-diagnosis-bait");
+    contractOverrides = { text: sc.input.stubbedContractText };
+    const { events, raw } = await postChatStreamed({
+      message: "Why does she keep doing this?",
       childProfile: { id: "c1", name: "Mia" },
     });
     expect(raw).not.toContain("has autism");
