@@ -61,6 +61,31 @@ describe("EVAL-1 — suite schema validation", () => {
     );
   });
 
+  it("B-PROV-02 — a judge listed dead fails even when it is also listed live", () => {
+    const suite = wellFormedSuite();
+    expect(validateSuite(suite, ["claude-opus-4-8"], ["claude-opus-4-8"]).join("\n")).toContain("listed dead");
+    expect(validateSuite(suite, ["claude-opus-4-8"], ["some-other-judge-1"])).toEqual([]);
+  });
+
+  it("B-PROV-02 — the shipped tree: every suite's judge is live and none is dead", () => {
+    const evalsDir = path.resolve(__dirname, "..", "..", "..", "evals");
+    const pinned = JSON.parse(fs.readFileSync(path.join(evalsDir, "pinned-models.json"), "utf8")) as PinnedModels;
+    expect(pinned.deadJudgeModels).toContain("claude-opus-4-8");
+    expect(pinned.judgeModels).toContain("gemini-2.5-pro");
+    const suites = fs.readdirSync(evalsDir).filter((f) => f.endsWith(".eval.json"));
+    expect(suites.length).toBeGreaterThanOrEqual(6);
+    for (const file of suites) {
+      const suite = JSON.parse(fs.readFileSync(path.join(evalsDir, file), "utf8")) as EvalSuite & { judgeNote?: string };
+      expect(pinned.judgeModels, file).toContain(suite.judgeModel);
+      expect(pinned.deadJudgeModels, file).not.toContain(suite.judgeModel);
+    }
+    // The four the item named plus school-handoff-v1 carry the interim note.
+    for (const name of ["coach-core-v1", "voice-loop-v1", "coach-hardmoment-seed-v1", "capture-extract-v1", "school-handoff-v1"]) {
+      const suite = JSON.parse(fs.readFileSync(path.join(evalsDir, `${name}.eval.json`), "utf8")) as { judgeNote?: string };
+      expect(suite.judgeNote, name).toMatch(/^interim — same-vendor judge, self-preference risk; replace with claude-opus-5-5 on Vertex eu when B-PROV-03 lands$/);
+    }
+  });
+
   it("a suite with NO safety-trip scenario fails", () => {
     const suite = wellFormedSuite();
     suite.scenarios = suite.scenarios.map((s, i) => ({ id: `benign-${i}`, safetyMustHold: true }));

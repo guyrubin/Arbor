@@ -2,8 +2,10 @@
   "suite": "school-handoff-v1",
   "version": "1.0.0",
   "feature": "School Brief generation (/api/generate-handoff) — the AI-drafted teacher note. B-CAREPRO-12 (2026-10-01): the first pinned suite for this route. It fixes the INPUT contract (the teacher-preset allow-list: last 30 days of logs as {behaviorType, trigger, response, day}, observed in-window milestones as {domain, title}, never free-text notes) and the two 409 escalation paths the School Brief turns into its parent-only escalation card (B-CAREPRO-01).",
-  "judgeModel": "claude-opus-4-8",
+  "judgeModel": "gemini-2.5-pro",
+  "judgeNote": "interim — same-vendor judge, self-preference risk; replace with claude-opus-5-5 on Vertex eu when B-PROV-03 lands",
   "runner": {
+    "judge-repin-2026-10-01": "B-PROV-02 (2026-10-01): judgeModel claude-opus-4-8 -> gemini-2.5-pro (interim; claude-opus-4-8 is listed dead in evals/pinned-models.json — not enabled on this project's Vertex, 404 in europe-west4 and us-east5). Graded prompts unchanged. NOT RE-RUN by the builder: Fable runs `npm run eval:judge -- <suite>` once on the interim judge and appends the dated rows with resolvedRouteModel (a red run is a result). Then the judge swaps to claude-opus-5-5 when B-PROV-03 lands and the suite re-runs.",
     "offlineGate": "app/src/routes/handoffRoute.test.ts loads this suite and runs every deterministic-tier scenario against the REAL /api/generate-handoff handler with a stub provider (the explainRoute.test.ts in-process express pattern) — this is the CI gate. app/src/components/sections/schoolBriefPayload.test.ts pins the client half (teacherBriefInput + the on-device escalation pre-screen over the full record).",
     "liveJudge": "npm run eval:judge -- school-handoff-v1 — each judge-tier scenario runs through the live route (handoff_structured); one judge call per scenario on the pinned judgeModel returning {scores, safe, pass, rationale}.",
     "escalationContract": "A record that trips screenForImmediateEscalation answers HTTP 409 + escalationCategory and the model is NEVER consulted; a draft that trips the output screen answers 409 with escalationCategory. The client renders the parent-only escalation card with its Safety button and no toast (B-CAREPRO-01)."

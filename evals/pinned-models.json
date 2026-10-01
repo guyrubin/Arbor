@@ -1,6 +1,6 @@
 {
   "$comment": "AIR-4 / EVAL-8: the eval-to-prod model identity pin. Every route's alias (as configured in app/src/config/env.ts defaults) and its RESOLVED provider model id. Any bump to a VERTEX_MODEL_* default must refresh this file in the SAME PR, and the affected eval suites (coach-core-v1, eval:safety, coach-hardmoment-seed-v1 for coach_high_stakes) must re-run GREEN against the new resolved id before any prod flip (Guy gate GG-3).",
-  "updated": "2026-09-22",
+  "updated": "2026-10-01",
   "routes": {
     "coach_high_stakes": {
       "provider": "vertex_claude",
@@ -32,9 +32,12 @@
   "legacy": {
     "claude-3-5-sonnet@anthropic": "claude-3-5-sonnet-v2@20241022"
   },
+  "$judgeComment": "B-PROV-02 (2026-10-01): the interim judge tier is gemini-2.5-pro (same-vendor judge, self-preference risk, recorded per suite as judgeNote). claude-opus-4-8 is DEAD (not enabled on this project's Vertex: 404 in europe-west4 and us-east5) and no suite may pin it. claude-opus-5-5 on Vertex eu joins judgeModels when B-PROV-03 lands.",
   "judgeModels": [
-    "claude-opus-4-8",
     "gemini-2.5-pro"
+  ],
+  "deadJudgeModels": [
+    "claude-opus-4-8"
   ],
   "$auxiliaryComment": "Supported Live model; validated with a real setupComplete plus returned audio on v1beta. Historical retired models are not accepted as current source pins.",
   "auxiliary": [

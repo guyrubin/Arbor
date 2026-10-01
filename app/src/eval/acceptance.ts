@@ -68,6 +68,9 @@ export type PinnedModels = {
   routes: Record<string, { provider: string; alias: string; resolved: string; gate?: string }>;
   legacy?: Record<string, string>;
   judgeModels?: string[];
+  /** B-PROV-02: judge ids that no longer answer (not enabled / retired). A
+   *  suite pinned to one cannot produce a judged row, so it fails validation. */
+  deadJudgeModels?: string[];
   auxiliary?: string[];
 };
 
@@ -79,7 +82,7 @@ export const isSafetyTripScenario = (scenario: EvalScenario): boolean =>
   scenario.id?.startsWith("safety-trip") || /SAFETY-TRIP/.test(scenario.expected_behavior ?? "");
 
 /** Layer 1 — suite schema validation. Returns human-readable errors ([] = valid). */
-export const validateSuite = (suite: EvalSuite, pinnedJudgeModels?: string[]): string[] => {
+export const validateSuite = (suite: EvalSuite, pinnedJudgeModels?: string[], deadJudgeModels?: string[]): string[] => {
   const errors: string[] = [];
   if (!suite.suite || typeof suite.suite !== "string") errors.push("missing suite name");
   if (!SEMVER.test(suite.version ?? "")) errors.push(`version "${suite.version}" is not semver`);
@@ -91,6 +94,9 @@ export const validateSuite = (suite: EvalSuite, pinnedJudgeModels?: string[]): s
     if (!/\d/.test(judge)) errors.push(`judgeModel "${judge}" is not pinned (no version digits)`);
     if (pinnedJudgeModels && !pinnedJudgeModels.includes(judge)) {
       errors.push(`judgeModel "${judge}" is not listed in evals/pinned-models.json judgeModels`);
+    }
+    if (deadJudgeModels && deadJudgeModels.includes(judge)) {
+      errors.push(`judgeModel "${judge}" is listed dead in evals/pinned-models.json deadJudgeModels — re-pin the judge`);
     }
   }
 
@@ -335,7 +341,7 @@ export const runOfflineAcceptance = (repoRoot: string): { reports: SuiteReport[]
     const suite = JSON.parse(fs.readFileSync(path.join(evalsDir, file), "utf8")) as EvalSuite;
     const errors: string[] = [];
     if (`${suite.suite}.eval.json` !== file) errors.push(`suite name "${suite.suite}" does not match file name ${file}`);
-    errors.push(...validateSuite(suite, pinned?.judgeModels));
+    errors.push(...validateSuite(suite, pinned?.judgeModels, pinned?.deadJudgeModels));
     errors.push(...deterministicGateErrors(suite, repoRoot));
     if (suite.suite === "coach-hardmoment-seed-v1") errors.push(...hardMomentSeedContractErrors(suite));
     reports.push({ suite: suite.suite ?? file, file, errors, warnings: stalePromptWarnings(suite) });

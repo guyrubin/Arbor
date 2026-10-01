@@ -79,7 +79,7 @@ export function todayHardMomentOffer(
 
 /**
  * Ask Arbor "Talk this through" seed — built for the EXISTING seedCoach seam.
- * Contract (evals/coach-hardmoment-seed-v1, pinned judge claude-opus-4-8):
+ * Contract (evals/coach-hardmoment-seed-v1, pinned judge gemini-2.5-pro, interim — B-PROV-02):
  *   1. The card's five sections bound the scope of the conversation.
  *   2. The coach must never diagnose, label, score, or issue a verdict.
  *   3. The governed escalation boundary is embedded VERBATIM (byte-identical
