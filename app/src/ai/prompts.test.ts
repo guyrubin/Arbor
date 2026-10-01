@@ -7,6 +7,7 @@ import {
   buildChatPrompt,
   buildCouncilSynthesisPrompt,
   buildExtractLogPrompt,
+  buildTodaysFocusPrompt,
   buildVoiceReplyPrompt,
   promptFingerprint,
   promptProfile,
@@ -27,7 +28,7 @@ describe("EVAL-6 — PROMPT_VERSIONS hash guard", () => {
 
   it("covers the contract and every extracted route prompt", () => {
     expect(KEYS.sort()).toEqual(
-      ["coach_chat", "council_synthesis", "extract_log", "non_diagnostic_contract", "voice_reply", "live_session"].sort(),
+      ["coach_chat", "council_synthesis", "extract_log", "non_diagnostic_contract", "voice_reply", "live_session", "todays_focus"].sort(),
     );
   });
 
@@ -316,5 +317,56 @@ describe("AI-12 / GP-16 — promptProfile allow-list: no verdict, photo, avatar 
     for (const banned of ["riskLevel", "photoUrl", "avatar", "id", "onboardingComplete", "onboardingCompletedAt", "interestsUpdatedAt"]) {
       expect((MODEL_PROFILE_FIELDS as readonly string[]).includes(banned)).toBe(false);
     }
+  });
+});
+
+/**
+ * B-AI-01 (← B-TODAY-24 server half) — the /todays-focus prompt moved out of
+ * routes/api.ts into the versioned `buildTodaysFocusPrompt`. Byte-parity: with
+ * no approved facts the builder renders EXACTLY the inline template it
+ * replaced (copied verbatim below from api.ts @ 92a4b74).
+ */
+describe("B-AI-01 — todays_focus byte-parity with the retired inline template", () => {
+  const legacyInline = (childProfile: unknown, count: number, triggerSent: string, lastActionRecommendation: string, lastActionOutcome: string, languageDirective: string) => {
+    const weekLine =
+      count === 0
+        ? "What the parent has logged this week: no moments logged this week. Offer an age-appropriate starter step: something easy to try and notice together, not a fix for a problem."
+        : `What the parent has logged this week: ${count} moment${count === 1 ? "" : "s"}${triggerSent ? `, most often around "${triggerSent}"` : ""}.`;
+    return `${NON_DIAGNOSTIC_CONTRACT}
+You are Arbor's Today's Focus writer for a calm parenting app.
+Child: ${childProfile ? JSON.stringify(promptProfile(childProfile)) : "unknown"}
+${weekLine}${lastActionRecommendation && lastActionOutcome ? ` The parent last tried "${lastActionRecommendation}" and reported the attempt as "${lastActionOutcome}". Use that parent-reported outcome to avoid repeating an unhelpful step and adapt effort or framing.` : ""}
+Write today's single most useful parenting focus:
+- "focus": 1-2 short, warm sentences naming what to pay attention to today — an observation about the child's week, never an assessment.
+- "tryToday": ONE small, concrete thing to try today — a developmental mechanism (serve-and-return, co-regulation, a transition cue), phrased as a doable step.
+Never include a score, percentage, trend, severity, readiness claim, diagnosis, or outcome claim. No headings, no markdown, no emojis.${languageDirective}
+Return only JSON matching the schema.`;
+  };
+  const cases: Array<[unknown, number, string, string, string, string]> = [
+    [{ id: "c", name: "Noa", age: 4 }, 3, "transitions", "Two-minute warning", "not_today", ""],
+    [{ id: "c", name: "Noa", age: 4 }, 0, "", "", "", "\nIMPORTANT: Hebrew."],
+    [null, 1, "", "step", "", ""],
+  ];
+  it("no facts → the builder bytes equal the inline template for every case", () => {
+    for (const [p, count, trig, rec, out, dir] of cases) {
+      expect(buildTodaysFocusPrompt({ childProfile: p, count, triggerSent: trig, lastActionRecommendation: rec, lastActionOutcome: out, languageDirective: dir }))
+        .toBe(legacyInline(p, count, trig, rec, out, dir));
+      expect(buildTodaysFocusPrompt({ childProfile: p, count, triggerSent: trig, lastActionRecommendation: rec, lastActionOutcome: out, languageDirective: dir, approvedFacts: [] }))
+        .toBe(legacyInline(p, count, trig, rec, out, dir));
+    }
+  });
+  it("approved facts add one quoted block (and break parity, so the pin covers it)", () => {
+    const withFacts = buildTodaysFocusPrompt({ childProfile: null, count: 0, triggerSent: "", lastActionRecommendation: "", lastActionOutcome: "", languageDirective: "", approvedFacts: ["Bath helps bedtime"] });
+    expect(withFacts).toContain('- "Bath helps bedtime"');
+    expect(withFacts).not.toBe(legacyInline(null, 0, "", "", "", ""));
+  });
+  it("coach_chat 1.4.0: an empty ledger keeps the 1.3.0 block-free bytes; a step adds the block", () => {
+    const args = {
+      developmentalFramework: "F", approvedMemory: "", knowledgeContext: "", childProfile: null,
+      scholar: { name: "s", concept: "c", method: "m", defaultFrame: "f" }, message: "q", languageDirective: "",
+    };
+    expect(buildChatPrompt({ ...args, acceptedActions: [], keptInsights: [] })).toBe(buildChatPrompt(args));
+    const withStep = buildChatPrompt({ ...args, acceptedActions: [{ recommendation: "Warn first", status: "completed", outcome: "not_today", acceptedAt: "2026-09-30T08:00:00Z" }] });
+    expect(withStep).toContain('- "Warn first" (accepted 2026-09-30; parent reported: not today)');
   });
 });

@@ -6,12 +6,13 @@ import { isAbortError, newAbortError, type ModelCallBudget, type ModelProvider }
 import { abortableIterate, raceWithAbort, isTransientModelError } from "../ai/modelRetry.js";
 import type { MemoryStore } from "../memory/types.js";
 import { createCoachResponseGeminiSchema, coachResponseZodSchema, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards } from "../contracts/coach.js";
-import { PROMPT_VERSIONS, buildChatPrompt, buildCouncilSynthesisPrompt, buildExtractLogPrompt, buildVoiceReplyPrompt, promptProfile, ROUTINE_ESCALATION_GUIDANCE } from "../ai/prompts.js";
+import { PROMPT_VERSIONS, buildChatPrompt, buildCouncilSynthesisPrompt, buildExtractLogPrompt, buildTodaysFocusPrompt, buildVoiceReplyPrompt, promptProfile, ROUTINE_ESCALATION_GUIDANCE } from "../ai/prompts.js";
 // Masterplan 1.3 — server-defensive sanitizers for the two OPTIONAL /chat body
 // fields (recentTurns transcript + counts-only weeklyContext). Both degrade to
 // the byte-identical legacy prompt on any malformed/absent input.
 import { sanitizeRecentTurns, sanitizeWeeklyContext } from "../ai/chatContext.js";
 import { assembleSpokenContext, liveContextWithoutNames, spokenChildId } from "../server/spokenContext.js";
+import { assembleCompanionContext, createCompanionLedgerSource, lastRatedAction, renderApprovedFactLines, type CompanionLedgerSource } from "../server/companionContext.js";
 import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../services/framework.js";
 import { screenForImmediateEscalation, renderEscalationMarkdown, escalationMatchForCategory } from "../safety/escalation.js";
 import { DEFAULT_MEMORY_RETENTION, appendMemoryProposals, enforceMemoryRetention, foldMemoryEvents, getApprovedMemoryContext, getApprovedMemoryContextDetail, toChildId, toFamilyId, transitionMemory } from "../memory/memoryService.js";
@@ -94,6 +95,10 @@ type ApiDeps = {
   /** CARE-2: read seam for the recipient shared view (injectable for tests);
    *  defaults to the Firestore/local source derived from config. */
   sharedChildSource?: SharedChildRecordSource;
+  /** B-AI-01: CompanionContext's read of the caller's own child ledgers
+   *  (actionLoops, kept insights). Injectable for tests; defaults to the
+   *  Firestore/null source derived from config. */
+  companionLedgerSource?: CompanionLedgerSource;
   /** N1-05: the founder-side cohort reader (injectable for tests); defaults
    *  to the Firestore/null store derived from config. */
   cohortMetricsStore?: CohortMetricsStore;
@@ -346,10 +351,12 @@ export const allowListHandoffInput = (
   return { logs: safeLogs, milestones: safeMilestones };
 };
 
-export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, sharedChildSource, cohortMetricsStore, digestOptInStore, verifiedEmailResolver, digestEmailSender, aiCapabilityRegistry }: ApiDeps) => {
+export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, sharedChildSource, companionLedgerSource, cohortMetricsStore, digestOptInStore, verifiedEmailResolver, digestEmailSender, aiCapabilityRegistry }: ApiDeps) => {
   const router = express.Router();
   // CARE-2: the recipient shared-view read seam (Firestore in prod, null locally).
   const sharedSource = sharedChildSource ?? createSharedChildRecordSource(config, memoryStore);
+  // B-AI-01: the companion ledger read (Firestore in prod, null locally).
+  const ledgerSource = companionLedgerSource ?? createCompanionLedgerSource(config);
   // N1-07: the weekly-digest mail wire. Defaults here rather than in createApp
   // so the seams stay injectable for the guard without a second wiring site.
   const cohortMetrics = cohortMetricsStore ?? createCohortMetricsStore(config);
@@ -768,11 +775,25 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       const childId = toChildId(childProfile);
       // OWN-1: uid-derived family — never the client-supplied childProfile.familyId.
       const familyId = await resolveFamilyId(req, childProfile);
-      // ASK-6: keep the fact COUNT alongside the prompt context — the count
-      // (an integer only, never content) is backfilled onto the contract so
-      // the parent can SEE the answer was grounded in facts they approved.
-      const { context: approvedMemory, factsUsed: approvedMemoryFactsUsed } =
-        await getApprovedMemoryContextDetail(memoryStore, childId, config.memoryPromptMaxFacts);
+      // B-AI-01: ONE context service. Approved facts are ranked against THIS
+      // question (keyword overlap + recency, 2,400-char cap — the old path was
+      // a newest-first slice of up to 40); the parent's accepted steps and kept
+      // insights come from the server-read ledgers, scoped to the caller's uid.
+      // ASK-6: the fact COUNT (an integer only, never content) is backfilled
+      // onto the contract so the parent can SEE the answer was grounded.
+      const companion = await assembleCompanionContext({
+        purpose: "chat",
+        audience: "parent",
+        childId,
+        childProfile,
+        memoryStore,
+        ledgerSource,
+        uid: actorOf(req).uid,
+        query: typeof message === "string" ? message : "",
+        maxFacts: config.memoryPromptMaxFacts,
+      });
+      const approvedMemory = renderApprovedFactLines(companion.approvedFacts);
+      const approvedMemoryFactsUsed = companion.approvedFacts.length;
       if (streamResponse) writeSse(res, "status", { stage: "sources" });
       // SCH-3: the selected lens is now load-bearing — its scholar's card(s) are
       // guaranteed into the context and lead, alongside age/domain matches.
@@ -806,7 +827,10 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         // integer clamps + trigger-label cap + outcome enum) no matter what
         // the wire delivered. Empty/invalid ⇒ "" blocks ⇒ legacy bytes.
         recentTurns: sanitizeRecentTurns(recentTurns),
-        weeklyContext: sanitizeWeeklyContext(weeklyContext)
+        weeklyContext: sanitizeWeeklyContext(weeklyContext),
+        // 1.4 (B-AI-01): the parent's own action ledger + kept insights.
+        acceptedActions: companion.acceptedActions,
+        keptInsights: companion.keptInsights,
       });
 
       // SEC/CMP P0: child PII never reaches the model — redact at the call seam,
@@ -1797,8 +1821,8 @@ Finalized parent transcript: ${privacy.redact(transcript.trim())}${REDACTION_DIR
     const { childProfile, signals, language } = req.body ?? {};
     const count = Math.max(0, Math.min(500, Number(signals?.count ?? 0) || 0));
     const topTrigger = String(signals?.topTrigger ?? "").slice(0, 80);
-    const lastActionRecommendation = String(signals?.lastActionRecommendation ?? "").slice(0, 300);
-    const lastActionOutcome = ["helped", "somewhat", "not_today"].includes(signals?.lastActionOutcome)
+    const clientLastRecommendation = String(signals?.lastActionRecommendation ?? "").slice(0, 300);
+    const clientLastOutcome = ["helped", "somewhat", "not_today"].includes(signals?.lastActionOutcome)
       ? (signals.lastActionOutcome as string)
       : "";
     const lang = language === "he" ? "he" : "en";
@@ -1820,23 +1844,39 @@ Finalized parent transcript: ${privacy.redact(transcript.trim())}${REDACTION_DIR
         lang === "he"
           ? "\nIMPORTANT: The parent speaks Hebrew. Write both fields in natural, warm Hebrew (עברית)."
           : "";
-      // B-AI-03: the prompt states only facts the parent actually logged. A
-      // missing trigger used to become a "transitions" default —
-      // a pattern the parent never reported. No trigger → no clause; no moments
-      // → say so and ask for an age-appropriate starter step.
-      const weekLine =
-        count === 0
-          ? "What the parent has logged this week: no moments logged this week. Offer an age-appropriate starter step: something easy to try and notice together, not a fix for a problem."
-          : `What the parent has logged this week: ${count} moment${count === 1 ? "" : "s"}${triggerSent ? `, most often around "${triggerSent}"` : ""}.`;
-      const prompt = `${NON_DIAGNOSTIC_CONTRACT}
-You are Arbor's Today's Focus writer for a calm parenting app.
-Child: ${childProfile ? JSON.stringify(promptProfile(childProfile)) : "unknown"}
-${weekLine}${lastActionRecommendation && lastActionOutcome ? ` The parent last tried "${lastActionRecommendation}" and reported the attempt as "${lastActionOutcome}". Use that parent-reported outcome to avoid repeating an unhelpful step and adapt effort or framing.` : ""}
-Write today's single most useful parenting focus:
-- "focus": 1-2 short, warm sentences naming what to pay attention to today — an observation about the child's week, never an assessment.
-- "tryToday": ONE small, concrete thing to try today — a developmental mechanism (serve-and-return, co-regulation, a transition cue), phrased as a doable step.
-Never include a score, percentage, trend, severity, readiness claim, diagnosis, or outcome claim. No headings, no markdown, no emojis.${languageDirective}
-Return only JSON matching the schema.`;
+      // B-AI-01: the server reads the parent's own actionLoops ledger (and the
+      // approved facts) through CompanionContext instead of trusting what the
+      // client sent. The client's last-step fields remain only as a fallback
+      // for a ledger the server cannot read (local adapter, read failure).
+      const focusChildId = spokenChildId(childProfile);
+      const canReadMemory = !focusChildId || await raceWithAbort(mayReadChildMemory(req, focusChildId), budget.signal);
+      const companion = await raceWithAbort(assembleCompanionContext({
+        purpose: "todays-focus",
+        audience: "parent",
+        childId: focusChildId,
+        childProfile,
+        memoryStore,
+        ledgerSource,
+        uid: actorOf(req).uid,
+        canReadMemory,
+        maxFacts: 5,
+      }), budget.signal);
+      const rated = lastRatedAction(companion.acceptedActions);
+      const lastActionRecommendation = rated ? rated.recommendation : clientLastRecommendation;
+      const lastActionOutcome = rated?.outcome ?? clientLastOutcome;
+      const approvedFacts = companion.approvedFacts.map((fact) => fact.text);
+      // B-TODAY-24 server half: the prompt is the versioned builder in
+      // ai/prompts.ts (todays_focus); byte-parity with the old inline template
+      // is pinned in prompts.test.ts.
+      const prompt = buildTodaysFocusPrompt({
+        childProfile,
+        count,
+        triggerSent,
+        lastActionRecommendation,
+        lastActionOutcome,
+        languageDirective,
+        approvedFacts,
+      });
 
       const privacy = createRedaction(childProfile?.name);
       const draft = (await raceWithAbort(modelProvider.generateJson({
@@ -1844,6 +1884,8 @@ Return only JSON matching the schema.`;
         prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
         temperature: 0.5,
         budget: budget.budget,
+        // B-AI-01: `required` stays the two fields; B-TODAY-24 adds its
+        // optional `sayThis` property here without touching the contract.
         schema: {
           type: Type.OBJECT,
           required: ["focus", "tryToday"],
@@ -1851,7 +1893,8 @@ Return only JSON matching the schema.`;
             focus: { type: Type.STRING },
             tryToday: { type: Type.STRING }
           }
-        }
+        },
+        promptVersion: PROMPT_VERSIONS.todays_focus.version
       }), budget.signal)) as { focus?: unknown; tryToday?: unknown };
 
       const restored = privacy.restoreDeep(draft) as { focus?: unknown; tryToday?: unknown };
@@ -1881,9 +1924,12 @@ Return only JSON matching the schema.`;
       // AI-19: provenance of the inputs the focus was built from — an integer
       // count, the parent-tagged category label, and the parent-reported
       // outcome enum. Never intensity, never a percentage, never note text.
-      const inputsUsed: { momentCount: number; topTrigger?: string; lastActionOutcome?: string } = { momentCount: count };
+      // B-AI-01: `factCount` = approved facts placed in the context (an
+      // integer, never content); the outcome is reported only when the prompt
+      // actually cited the step (server ledger first, client fallback).
+      const inputsUsed: { momentCount: number; topTrigger?: string; lastActionOutcome?: string; factCount: number } = { momentCount: count, factCount: approvedFacts.length };
       if (triggerSent) inputsUsed.topTrigger = triggerSent;
-      if (lastActionOutcome) inputsUsed.lastActionOutcome = lastActionOutcome;
+      if (lastActionRecommendation && lastActionOutcome) inputsUsed.lastActionOutcome = lastActionOutcome;
       const payload = { text, focus, tryToday, inputsUsed, generatedAt: new Date().toISOString(), dateKey };
       // Firewall condition 4: only screened payloads are cached.
       if (focusCache.size >= FOCUS_CACHE_MAX) {

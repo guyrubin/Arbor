@@ -1,13 +1,10 @@
 import { sanitizeRecentTurns } from "../ai/chatContext.js";
-import { promptProfile } from "../ai/prompts.js";
 import type { SpokenContext } from "../ai/spokenContext.js";
-import { enforceMemoryRetention, foldMemoryEvents, isMemoryExpired } from "../memory/memoryService.js";
 import type { MemoryStore } from "../memory/types.js";
+import { assembleCompanionContext } from "./companionContext.js";
 import { createRedaction } from "./redaction.js";
 
 const EMPTY = (): SpokenContext => ({ profile: null, approvedMemory: "", approvedMemoryFactsUsed: 0, recentTurns: [] });
-const MEMORY_CHAR_CAP = 2400;
-const MEMORY_FACT_CHAR_CAP = 600;
 
 /** Never derive a persistent child identity from a name or the default child. */
 export const spokenChildId = (profile: unknown): string | null => {
@@ -20,6 +17,11 @@ export const spokenChildId = (profile: unknown): string | null => {
  * No new consent or storage surface: memory already approved for this child,
  * selected profile fields, and settled text from the currently visible thread.
  * Weekly logs/notes are deliberately absent, including when supplied by a caller.
+ *
+ * B-AI-01: a thin projection of `assembleCompanionContext` (server/
+ * companionContext.ts). The spoken transports pass NO query, so the selector
+ * keeps the ledger's newest-first order and the `/voice` + `/live/token`
+ * prompts stay byte-identical (pinned by spokenContext.test.ts).
  */
 export const assembleSpokenContext = async (input: {
   memoryStore: MemoryStore;
@@ -32,36 +34,21 @@ export const assembleSpokenContext = async (input: {
 }): Promise<SpokenContext> => {
   if (input.privateMode === true || !input.canReadMemory) return EMPTY();
   const childId = spokenChildId(input.childProfile);
+  const companion = await assembleCompanionContext({
+    purpose: "voice",
+    audience: "parent",
+    childId,
+    childProfile: input.childProfile,
+    memoryStore: input.memoryStore,
+    maxFacts: Math.min(8, Math.max(1, input.maxMemoryFacts ?? 8)),
+  });
   const context = EMPTY();
-  context.profile = promptProfile(input.childProfile);
+  context.profile = companion.profile;
   // The explicit binding guards stale history when the selected child changes.
   // Legacy clients without a binding still receive profile + approved memory.
   if (childId && input.contextChildId === childId) context.recentTurns = sanitizeRecentTurns(input.recentTurns);
-  if (!childId) return context;
-
-  // Memory is optional grounding: a failed read must not stop the voice loop
-  // or fall back to a stale/unchecked fact. Continue with this thread only.
-  let current;
-  try {
-    const events = await input.memoryStore.listEvents(childId);
-    current = await enforceMemoryRetention(input.memoryStore, foldMemoryEvents(events, childId));
-  } catch {
-    return context;
-  }
-  const cap = Math.min(8, Math.max(1, input.maxMemoryFacts ?? 8));
-  const facts: string[] = [];
-  let chars = 0;
-  for (const item of current) {
-    const createdAt = Date.parse(item.createdAt);
-    if (item.status !== "approved" || !Number.isFinite(createdAt) || createdAt > Date.now() || isMemoryExpired(item)) continue;
-    const fact = item.fact.trim().slice(0, MEMORY_FACT_CHAR_CAP);
-    if (!fact || chars + fact.length + (facts.length ? 1 : 0) > MEMORY_CHAR_CAP) continue;
-    facts.push(fact);
-    chars += fact.length + (facts.length > 1 ? 1 : 0);
-    if (facts.length >= cap) break;
-  }
-  context.approvedMemory = facts.join("\n");
-  context.approvedMemoryFactsUsed = facts.length;
+  context.approvedMemory = companion.approvedFacts.map((fact) => fact.text).join("\n");
+  context.approvedMemoryFactsUsed = companion.approvedFacts.length;
   return context;
 };
 

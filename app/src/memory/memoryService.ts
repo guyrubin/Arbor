@@ -159,6 +159,75 @@ export const getApprovedMemoryContextDetail = async (
   return { context: lines.join("\n"), factsUsed: windowed.length };
 };
 
+/* ── B-AI-01 bounded fact selector (companion plan §4: no vector store) ──── */
+
+/** The prompt budget shared by every companion consumer (was spokenContext.ts). */
+export const APPROVED_FACT_CHAR_CAP = 2400;
+export const APPROVED_FACT_ITEM_CHAR_CAP = 600;
+
+const FACT_STOPWORDS = new Set([
+  "the", "and", "for", "with", "that", "this", "what", "when", "how", "can", "you", "your", "our", "his", "her",
+  "she", "him", "they", "them", "are", "was", "has", "have", "about", "from", "into", "does", "not", "but", "any",
+  "all", "out", "get", "got", "should", "would", "could", "she's", "he's", "it's", "i'm", "we're",
+]);
+
+/** Lower-cased word tokens (Latin + Hebrew + digits), ≥3 chars, minus stopwords. */
+export const factTokens = (text: string): Set<string> => {
+  const out = new Set<string>();
+  for (const raw of String(text || "").toLowerCase().match(/[\p{L}\p{N}']+/gu) ?? []) {
+    const token = raw.replace(/^'+|'+$/g, "");
+    if (token.length >= 3 && !FACT_STOPWORDS.has(token)) out.add(token);
+  }
+  return out;
+};
+
+/** Recency weight in (0, 0.5]: half-life ≈ 21 days. Overlap (integers) dominates. */
+const recencyWeight = (createdAtMs: number, now: number): number =>
+  0.5 * Math.pow(0.5, Math.max(0, now - createdAtMs) / (21 * 86_400_000));
+
+/**
+ * B-AI-01 — the ONE approved-fact selector. Filters (approved, dated, not in
+ * the future, not retention-expired — pending/rejected/deleted never pass),
+ * ranks by keyword overlap with `query` plus recency decay, and fills a
+ * 2,400-char budget (per fact ≤600 chars) up to `maxFacts`.
+ *
+ * With NO query tokens the input order (foldMemoryEvents: newest first) is
+ * kept exactly — the spoken transports (`/voice`, `/live/token`) select this
+ * way, so their prompts stay byte-identical to the pre-B-AI-01 assembler.
+ */
+export const selectApprovedFacts = (
+  items: readonly MemoryReviewItem[],
+  opts: { query?: string; maxFacts: number; now?: number },
+): MemoryReviewItem[] => {
+  const now = opts.now ?? Date.now();
+  const eligible = items.filter((item) => {
+    const createdAt = Date.parse(item.createdAt);
+    return item.status === "approved" && Number.isFinite(createdAt) && createdAt <= now && !isMemoryExpired(item, now);
+  });
+  const query = factTokens(opts.query ?? "");
+  const ordered =
+    query.size === 0
+      ? eligible
+      : eligible
+          .map((item, index) => {
+            let overlap = 0;
+            for (const token of factTokens(item.fact)) if (query.has(token)) overlap += 1;
+            return { item, index, score: overlap + recencyWeight(Date.parse(item.createdAt), now) };
+          })
+          .sort((a, b) => b.score - a.score || a.index - b.index)
+          .map((entry) => entry.item);
+  const picked: MemoryReviewItem[] = [];
+  let chars = 0;
+  for (const item of ordered) {
+    const fact = item.fact.trim().slice(0, APPROVED_FACT_ITEM_CHAR_CAP);
+    if (!fact || chars + fact.length + (picked.length ? 1 : 0) > APPROVED_FACT_CHAR_CAP) continue;
+    picked.push({ ...item, fact });
+    chars += fact.length + (picked.length > 1 ? 1 : 0);
+    if (picked.length >= opts.maxFacts) break;
+  }
+  return picked;
+};
+
 export const getApprovedMemoryContext = async (store: MemoryStore, childId: string, maxFacts = 40) =>
   (await getApprovedMemoryContextDetail(store, childId, maxFacts)).context;
 
