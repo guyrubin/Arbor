@@ -621,16 +621,11 @@ export interface JourneyObjective {
 }
 
 /**
- * Weekly snapshot of the Longitudinal Development Score (moat artifact, PRD C4).
- * The canonical shape lives in `growth/devScore.ts` (kept dependency-free); this
- * re-export makes the moat artifact discoverable alongside the other typed records.
- */
-export type { DevScoreSnapshot } from "./growth/devScore";
-
-/**
- * A `DevScoreSnapshot` as persisted in the child collection — adds the `id`
- * (ISO week key, e.g. "2026-W24") so it is idempotent per week and survives
- * device changes. Only `DevScoreCard` writes these; the Today strip is read-only.
+ * LEGACY — the shape of the `devScoreSnapshots` documents DevScoreCard wrote
+ * weekly until B-GROWTH-06 (composite 0–100 grades of a child). Nothing writes
+ * or reads them any more; the subcollection stays registered in
+ * CHILD_SUBCOLLECTIONS so existing documents still export and erase until
+ * Guy's G12 deletion decision (counted by the read-only census first).
  */
 export interface StoredDevScoreSnapshot {
   id: string;            // ISO week key, e.g. "2026-W24"

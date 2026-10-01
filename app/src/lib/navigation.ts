@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Activity, Languages,
   FileBarChart, Calendar,
   Share2, BookOpen, Sliders, Waypoints, ShieldAlert,
-  Target, Map, Gauge, School, Moon,
+  Target, Map, School, Moon,
   MessageCircle, NotebookPen, UserCircle,
   Clock, ListChecks, BarChart3, Bell, BadgeCheck,
   Sparkles, Heart, Library,
@@ -163,7 +163,8 @@ export const SECTIONS: NavSection[] = [
     msIcon: "eco",
     badge: "milestone",
     items: [
-      { tab: "development", label: "Development", icon: Gauge },
+      // B-GROWTH-06: a sprout, not a gauge — no meter metaphor on a child.
+      { tab: "development", label: "Development", icon: Sprout },
       { tab: "milestones", label: "Milestones", icon: Sprout },
       { tab: "language", label: "Language & Communication", icon: Languages },
       { tab: "daily-play", label: "Daily Play", icon: Map },
@@ -174,7 +175,8 @@ export const SECTIONS: NavSection[] = [
     // pill promoted OUT of Growth into its own depth-0 Practice hub; Copilot
     // stays homed here per canon (fallback → growth).
     primaryTabs: [
-      { tab: "development", label: "Development", icon: Gauge },
+      // B-GROWTH-06: a sprout, not a gauge — no meter metaphor on a child.
+      { tab: "development", label: "Development", icon: Sprout },
       { tab: "milestones", label: "Milestones", icon: Sprout },
       { tab: "language", label: "Language & Communication", icon: Languages },
     ],

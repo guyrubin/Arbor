@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useArbor } from "../context/ArborContext";
-import { computeDevScore, type DevScore, type DevScoreSnapshot } from "../growth/devScore";
+import { computeDevScore, type DevScore } from "../growth/devScore";
 import { ageMonthsFromProfile } from "../lib/childAge";
 import { ageWindowMilestones, comparisonAgeMonths } from "../lib/milestoneData";
 
@@ -20,14 +20,13 @@ import { ageWindowMilestones, comparisonAgeMonths } from "../lib/milestoneData";
  * whole 0–6y catalogue. "x of y age-appropriate milestones noticed" is now true:
  * a 6-month-old's parent sees "0 of 14", not "0 of 133".
  *
- * `prior` is optional: only the snapshot-keeping surface (DevScoreCard) needs
- * the previous snapshot to compute deltas. Everything else reads focusDomain /
- * confidence / byDomain from the same pure result.
+ * B-GROWTH-06: no `prior` snapshot any more — nothing computes a delta, and
+ * nothing persists a composite grade.
  *
  * CLINICAL FIREWALL: this returns counts and a descriptive focus domain — the
  * caller must never render it as a 0–100 verdict, ring, or deficit pointer.
  */
-export function useDevScore(prior?: DevScoreSnapshot | null): DevScore {
+export function useDevScore(): DevScore {
   const { milestones, childProfile } = useArbor();
   const comparisonMonths = useMemo(() => {
     const chronoMonths = ageMonthsFromProfile(childProfile) ?? Math.round((childProfile.age || 0) * 12);
@@ -37,8 +36,7 @@ export function useDevScore(prior?: DevScoreSnapshot | null): DevScore {
     () =>
       computeDevScore(
         ageWindowMilestones(milestones, comparisonMonths).map((m) => ({ domain: m.domain, checked: m.checked })),
-        prior,
       ),
-    [milestones, comparisonMonths, prior],
+    [milestones, comparisonMonths],
   );
 }

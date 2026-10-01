@@ -1,9 +1,14 @@
 /**
  * Pride Moment — threshold-crossing detector (R3, arbor-growth).
  *
- * Detects when a DevScore domain (or the overall score) crosses a celebration
- * threshold it had not already cleared, or when the total checked milestone
- * count crosses a round-number milestone-count threshold.
+ * Detects when the total count of milestones the PARENT has noticed crosses a
+ * round-number threshold it had not already cleared.
+ *
+ * B-GROWTH-06 (clinical firewall): the per-domain branch is gone. It fired a
+ * celebration when a child's domain SCORE (share of the age window reached)
+ * crossed 25/50/75/100 — a percentage grade of the child, celebrated. What
+ * remains counts what the parent noticed; a crossing is persisted, so it fires
+ * once and never again even if a milestone is later un-marked.
  *
  * Design rules:
  *  - Pure and deterministic: no Date.now(), no side effects. Caller injects
@@ -21,14 +26,6 @@
  *  - Face-safety: the caller passes only a first-name (or none). No surname.
  */
 
-import type { DevScore } from "./devScore";
-
-/** Thresholds at which a domain's score triggers a pride moment, in ascending
- *  order. The crossing is detected when the score goes FROM below a threshold
- *  TO at or above it. */
-export const DOMAIN_THRESHOLDS = [25, 50, 75, 100] as const;
-export type DomainThreshold = (typeof DOMAIN_THRESHOLDS)[number];
-
 /** Milestone-count round-number thresholds that earn a pride moment. */
 export const MILESTONE_COUNT_THRESHOLDS = [5, 10, 15, 20, 25, 30] as const;
 export type MilestoneThreshold = (typeof MILESTONE_COUNT_THRESHOLDS)[number];
@@ -37,10 +34,8 @@ export type MilestoneThreshold = (typeof MILESTONE_COUNT_THRESHOLDS)[number];
 export interface PrideCrossing {
   /** Unique key — used for idempotency storage. */
   key: string;
-  /** "domain" for a per-domain score crossing, "milestone_count" for raw count. */
-  kind: "domain" | "milestone_count";
-  /** Domain id (kind="domain") or undefined (kind="milestone_count"). */
-  domain?: string;
+  /** The only kind left: the parent-noticed milestone count. */
+  kind: "milestone_count";
   /** The threshold that was crossed. */
   threshold: number;
   /** First name (or undefined) — for the factual card line. */
@@ -51,12 +46,9 @@ export interface PrideCrossing {
 export interface PrideState {
   /** Set of crossing keys that have already been celebrated. */
   crossedThresholds: string[];
-  /** Last persisted milestone count (for count-threshold idempotency). */
+  /** Last persisted milestone count — the baseline a crossing is measured
+   *  from. Missing or 0 = no baseline yet (the caller records one silently). */
   lastMilestoneCount?: number;
-}
-
-function domainThresholdKey(domain: string, threshold: number): string {
-  return `domain:${domain}:${threshold}`;
 }
 
 function milestoneCountKey(threshold: number): string {
@@ -64,61 +56,34 @@ function milestoneCountKey(threshold: number): string {
 }
 
 /**
- * Detect any new threshold crossings.
+ * Detect any new milestone-count threshold crossings.
  *
- * @param current  The freshly computed DevScore.
- * @param prior    The DevScore byDomain snapshot from the last persisted record
- *                 (pass `null` / `undefined` for first-ever — no celebration on
- *                 first render; we don't want a confetti dump on onboarding).
- * @param checkedCount  The current total number of checked milestones.
- * @param state    Persisted idempotency state from the last celebration cycle.
+ * @param checkedCount  The current total number of milestones the parent noticed.
+ * @param state    Persisted idempotency state (crossed keys + the baseline count).
  * @param firstName  Child's first name (no surname). Optional.
  * @returns Any NEW crossings (may be empty). Caller persists the new keys.
  */
 export function detectPrideCrossings({
-  current,
-  priorByDomain,
   checkedCount,
   state,
   firstName,
 }: {
-  current: DevScore;
-  priorByDomain: Record<string, number> | null | undefined;
   checkedCount: number;
   state: PrideState;
   firstName?: string;
 }): PrideCrossing[] {
-  // First-ever render: no prior snapshot exists. We celebrate nothing yet so
-  // new users don't get an immediate confetti on loading the app.
-  if (!priorByDomain) return [];
+  // No baseline yet: celebrate nothing (no confetti dump for every historical
+  // milestone on first observation). The caller records the baseline silently.
+  const prevCount = state.lastMilestoneCount ?? 0;
+  if (prevCount <= 0) return [];
 
   const alreadyCrossed = new Set(state.crossedThresholds);
   const crossings: PrideCrossing[] = [];
-
-  // ── Domain score crossings ────────────────────────────────────────────────
-  for (const d of current.domains) {
-    const priorScore = priorByDomain[d.domain] ?? 0;
-    for (const threshold of DOMAIN_THRESHOLDS) {
-      const key = domainThresholdKey(d.domain, threshold);
-      if (alreadyCrossed.has(key)) continue; // already celebrated
-      // Only fire on a genuine new upward crossing (AADC: no negative events).
-      if (d.score >= threshold && priorScore < threshold) {
-        crossings.push({ key, kind: "domain", domain: d.domain, threshold, firstName });
-        alreadyCrossed.add(key);
-      }
-    }
-  }
-
-  // ── Milestone count crossings ─────────────────────────────────────────────
-  // Mirror the domain first-render guard: a fresh state (no established prior
-  // count) establishes the baseline silently rather than dumping confetti for
-  // every historical milestone on first observation. Only an increase from a
-  // real prior count (prevCount > 0) earns a celebration.
-  const prevCount = state.lastMilestoneCount ?? 0;
   for (const threshold of MILESTONE_COUNT_THRESHOLDS) {
     const key = milestoneCountKey(threshold);
     if (alreadyCrossed.has(key)) continue;
-    if (prevCount > 0 && checkedCount >= threshold && prevCount < threshold) {
+    // Positive-only (AADC): a genuine new upward crossing of the noticed count.
+    if (checkedCount >= threshold && prevCount < threshold) {
       crossings.push({ key, kind: "milestone_count", threshold, firstName });
       alreadyCrossed.add(key);
     }
@@ -149,35 +114,20 @@ export function mergeCrossings(state: PrideState, crossings: PrideCrossing[], ch
  *  - First name only (no surname). Falls back to "Your child".
  *  - Returns [en, he] tuple.
  */
-export function factualShareLine(crossing: PrideCrossing, domainLabel: string): { en: string; he: string } {
+export function factualShareLine(crossing: PrideCrossing): { en: string; he: string } {
   const name = crossing.firstName || "Your child";
   const nameHe = crossing.firstName || "ילד/ה שלכם";
-
-  if (crossing.kind === "milestone_count") {
-    return {
-      en: `${name} reached a new milestone`,
-      he: `${nameHe} הגיע/ה לאבן דרך חדשה`,
-    };
-  }
-
-  // domain crossing
-  const domain = (domainLabel || crossing.domain || "").toLowerCase();
   return {
-    en: `A new milestone for ${name} in ${domain}`,
-    he: `אבן דרך חדשה עבור ${nameHe} ב${domain}`,
+    en: `${name} reached a new milestone`,
+    he: `${nameHe} הגיע/ה לאבן דרך חדשה`,
   };
 }
 
 /**
- * Pick the "best" crossing to celebrate when multiple fire at once
- * (show only one at a time — prevent flooding).
- * Preference: 100% domain crossings first, then count crossings, then others.
+ * Pick ONE crossing to celebrate when several fire at once (prevent flooding):
+ * the highest threshold crossed.
  */
 export function pickCelebration(crossings: PrideCrossing[]): PrideCrossing | null {
   if (crossings.length === 0) return null;
-  const full = crossings.find((c) => c.kind === "domain" && c.threshold === 100);
-  if (full) return full;
-  const count = crossings.find((c) => c.kind === "milestone_count");
-  if (count) return count;
-  return crossings[0];
+  return [...crossings].sort((a, b) => b.threshold - a.threshold)[0];
 }

@@ -973,6 +973,7 @@ export const en: Dict = {
   "screen.domain.social_development": "Social development",
   "screen.domain.independence_adaptive_skills": "Independence & daily skills",
   "screen.domain.sensory_motor_patterns": "Sensory & movement",
+  "screen.domain.ecosystem_stressors": "Family & everyday context",
   // Age-band labels (screen.band.<band id> — EN mirrors lib/screening.ts AGE_BANDS).
   "screen.band.0-1": "Under 1 year",
   "screen.band.1-2": "1–2 years",
@@ -3289,6 +3290,7 @@ export const he: Dict = {
   "screen.domain.social_development": "התפתחות חברתית",
   "screen.domain.independence_adaptive_skills": "עצמאות ומיומנויות יום-יום",
   "screen.domain.sensory_motor_patterns": "חישה ותנועה",
+  "screen.domain.ecosystem_stressors": "משפחה והקשר יום-יומי",
   "screen.band.0-1": "עד גיל שנה",
   "screen.band.1-2": "שנה עד שנתיים",
   "screen.band.2-3": "2–3 שנים",

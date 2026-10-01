@@ -1,27 +1,23 @@
 import { describe, it, expect } from "vitest";
-import { computeDevScore, toSnapshot, shouldSnapshot, type ScoreMilestone, type DevScoreSnapshot } from "./devScore";
-
-const NOW = new Date("2026-06-15T12:00:00").getTime();
-const DAY = 86_400_000;
+import { computeDevScore, type ScoreMilestone } from "./devScore";
 
 const ms = (domain: string, checked: boolean): ScoreMilestone => ({ domain, checked });
 
 describe("computeDevScore", () => {
-  it("scores each domain by share of milestones reached", () => {
+  it("counts each domain's noticed and total milestones (B-GROWTH-06: counts only)", () => {
     const s = computeDevScore([
-      ms("Motor", true), ms("Motor", true), ms("Motor", false), ms("Motor", false), // 50%
-      ms("Language", true), ms("Language", true), ms("Language", true), // 100%
+      ms("Motor", true), ms("Motor", true), ms("Motor", false), ms("Motor", false),
+      ms("Language", true), ms("Language", true), ms("Language", true),
     ]);
-    const motor = s.domains.find((d) => d.domain === "Motor")!;
-    const lang = s.domains.find((d) => d.domain === "Language")!;
-    expect(motor.score).toBe(50);
-    expect(lang.score).toBe(100);
-    expect(s.overall).toBe(Math.round((5 / 7) * 100)); // 71
+    expect(s.domains).toEqual([
+      { domain: "Language", reached: 3, total: 3, confidence: "medium" },
+      { domain: "Motor", reached: 2, total: 4, confidence: "medium" },
+    ]);
   });
 
   it("returns a 'none' read with no milestones", () => {
     const s = computeDevScore([]);
-    expect(s.overall).toBe(0);
+    expect(s.domains).toEqual([]);
     expect(s.confidence).toBe("none");
     expect(s.focusDomain).toBeNull();
   });
@@ -38,16 +34,6 @@ describe("computeDevScore", () => {
   it("never points focus at a fully-reached domain", () => {
     const s = computeDevScore([ms("Motor", true), ms("Motor", true), ms("Motor", true)]);
     expect(s.focusDomain).toBeNull();
-  });
-
-  it("derives an honest trend only against a prior snapshot", () => {
-    const milestones = [ms("Motor", true), ms("Motor", true), ms("Motor", false)]; // 67%
-    const flat = computeDevScore(milestones);
-    expect(flat.domains[0].trend).toBe("flat"); // no prior
-
-    const prior: DevScoreSnapshot = { takenMs: NOW - 7 * DAY, overall: 33, byDomain: { Motor: 33 } };
-    const up = computeDevScore(milestones, prior);
-    expect(up.domains[0].trend).toBe("up"); // 33 → 67
   });
 
   it("scales confidence with how many milestones inform a domain", () => {
@@ -68,21 +54,5 @@ describe("computeDevScore", () => {
       "language_communication", "social_development",
     ]);
     expect(s.focusDomain).toBe("social_development");
-  });
-});
-
-describe("snapshots", () => {
-  it("round-trips a snapshot from a score", () => {
-    const s = computeDevScore([ms("Motor", true), ms("Language", false)]);
-    const snap = toSnapshot(s, NOW);
-    expect(snap.takenMs).toBe(NOW);
-    expect(snap.overall).toBe(s.overall);
-    expect(snap.byDomain.Motor).toBe(100);
-  });
-
-  it("snapshots weekly (and always when there is no prior)", () => {
-    expect(shouldSnapshot(null, NOW)).toBe(true);
-    expect(shouldSnapshot({ takenMs: NOW - 3 * DAY, overall: 0, byDomain: {} }, NOW)).toBe(false);
-    expect(shouldSnapshot({ takenMs: NOW - 8 * DAY, overall: 0, byDomain: {} }, NOW)).toBe(true);
   });
 });

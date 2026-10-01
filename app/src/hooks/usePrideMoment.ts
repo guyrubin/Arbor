@@ -1,16 +1,20 @@
 /**
  * usePrideMoment — wires the tested R3 pride-moment detector (growth/prideMoment.ts)
- * into the live app. Thin glue: reads the current DevScore from milestones, the prior
- * per-domain snapshot DevScoreCard already persists (`arbor.devscore.{id}`), and the
- * idempotency state (`arbor.pride.{id}`); surfaces at most ONE celebration to show.
+ * into the live app. Thin glue: reads the count of milestones the parent has
+ * noticed and the idempotency state (`arbor.pride.{id}`); surfaces at most ONE
+ * celebration to show.
  *
- * AADC: positive-only — a regression never fires (enforced in the detector). A fresh
- * user (no prior snapshot) celebrates nothing. Dismissing persists the crossing so it
- * never re-fires. No score number / no surname / no real face reaches the UI.
+ * B-GROWTH-06: no DevScore and no `arbor.devscore.{id}` snapshot any more — the
+ * per-domain SCORE crossings were a celebrated percentage grade of the child.
+ * Only the parent-noticed count can cross a threshold now.
+ *
+ * AADC: positive-only — a regression never fires (enforced in the detector). A
+ * fresh family celebrates nothing: the first non-zero count is recorded silently
+ * as the baseline. Dismissing persists the crossing so it never re-fires. No
+ * score number / no surname / no real face reaches the UI.
  */
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useArbor } from "../context/ArborContext";
-import { useDevScore } from "./useDevScore";
 import {
   detectPrideCrossings,
   pickCelebration,
@@ -20,7 +24,6 @@ import {
 } from "../growth/prideMoment";
 
 const prideKey = (childId: string) => `arbor.pride.${childId}`;
-const devscoreKey = (childId: string) => `arbor.devscore.${childId}`;
 
 function loadPrideState(childId: string): PrideState {
   try {
@@ -40,21 +43,6 @@ function loadPrideState(childId: string): PrideState {
   return { crossedThresholds: [], lastMilestoneCount: 0 };
 }
 
-/** The prior per-domain scores from the last persisted weekly snapshot, or null on
- *  first-ever (which the detector treats as "establish baseline, celebrate nothing"). */
-function loadPriorByDomain(childId: string): Record<string, number> | null {
-  try {
-    const raw = localStorage.getItem(devscoreKey(childId));
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    const snap = Array.isArray(parsed) ? parsed[parsed.length - 1] : parsed;
-    const byDomain = snap?.byDomain;
-    return byDomain && typeof byDomain === "object" ? (byDomain as Record<string, number>) : null;
-  } catch {
-    return null;
-  }
-}
-
 export interface PrideMomentResult {
   crossing: PrideCrossing | null;
   firstName?: string;
@@ -67,18 +55,28 @@ export function usePrideMoment(): PrideMomentResult {
   const firstName = (childProfile?.name || "").split(" ")[0] || undefined;
 
   const checkedCount = useMemo(() => milestones.filter((m) => m.checked).length, [milestones]);
-  // The ONE shared dev-score derivation (hooks/useDevScore).
-  const current = useDevScore();
 
   const [dismissed, setDismissed] = useState(false);
+
+  // The baseline: the first non-zero noticed count is recorded silently, so a
+  // family arriving with history is never shown a burst of old crossings.
+  useEffect(() => {
+    if (!childId || checkedCount <= 0) return;
+    const state = loadPrideState(childId);
+    if ((state.lastMilestoneCount ?? 0) > 0) return;
+    try {
+      localStorage.setItem(prideKey(childId), JSON.stringify({ ...state, lastMilestoneCount: checkedCount }));
+    } catch {
+      /* storage unavailable — no baseline, so nothing celebrates (fail quiet) */
+    }
+  }, [childId, checkedCount]);
 
   const crossing = useMemo(() => {
     if (!childId) return null;
     const state = loadPrideState(childId);
-    const priorByDomain = loadPriorByDomain(childId);
-    const crossings = detectPrideCrossings({ current, priorByDomain, checkedCount, state, firstName });
+    const crossings = detectPrideCrossings({ checkedCount, state, firstName });
     return pickCelebration(crossings);
-  }, [childId, current, checkedCount, firstName]);
+  }, [childId, checkedCount, firstName]);
 
   const dismiss = useCallback(() => {
     if (childId && crossing) {

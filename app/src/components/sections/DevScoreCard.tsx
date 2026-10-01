@@ -1,23 +1,9 @@
-import React, { useEffect, useMemo } from "react";
+import React from "react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { useChildCollection } from "../../hooks/useChildCollection";
 import { useDevScore } from "../../hooks/useDevScore";
 import { HeroAvatar } from "../ui/HeroAvatar";
-import framework from "../../framework.json";
-import type { StoredDevScoreSnapshot } from "../../types";
-import { isoWeekKey, prefersReducedMotion } from "../../lib/devscore";
-import {
-  toSnapshot, shouldSnapshot, type DevScoreSnapshot,
-} from "../../growth/devScore";
-
-// Domain id → human label, resolved from the framework (e.g. social_development
-// → "Social development"). Parents must never see machine ids.
-const DOMAIN_LABEL: Record<string, string> = Object.fromEntries(
-  (framework.domains as { id: string; label: string }[]).map((d) => [d.id, d.label])
-);
-const labelFor = (id: string) => DOMAIN_LABEL[id] ?? id;
 
 /* My Child › Development — the Development picture (PRD C4).
  *
@@ -38,46 +24,17 @@ const GREEN_SOFT = "var(--arbor-green-soft)";
 const RULE = "var(--arbor-rule)";
 
 export default function DevScoreCard() {
-  const { milestones, childProfile, seedCoach } = useArbor();
+  const { childProfile, seedCoach } = useArbor();
   const { t } = useLanguage();
-  const firstName = (childProfile.name || "your child").split(" ")[0];
-  const key = `arbor.devscore.${childProfile.id}`;
-  const animateRing = !prefersReducedMotion();
+  const firstName = (childProfile.name || t("learn.yourChild")).split(" ")[0];
 
-  // Weekly snapshots are a cross-device moat artifact: persist through the same
-  // child-collection path as the rest of the app (Firestore when signed in,
-  // localStorage in sandbox), so trend survives a new device. localStorage stays
-  // a first-paint read-through fallback only.
-  // (Wave-3: snapshots still recorded for back-compat; nothing renders a verdict
-  // from them anymore — they are a parent-owned log of progress over time.)
-  const snapshots = useChildCollection<StoredDevScoreSnapshot>(childProfile.id, "devScoreSnapshots", {
-    orderByField: "takenMs",
-    orderDir: "desc",
-    max: 52,
-  });
-
-  const prior = useMemo<DevScoreSnapshot | null>(() => {
-    const latest = snapshots.items[0];
-    if (latest) return { takenMs: latest.takenMs, overall: latest.overall, byDomain: latest.byDomain };
-    try { return JSON.parse(localStorage.getItem(key) || "null"); } catch { return null; }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [snapshots.items, childProfile.id]);
-
-  // The ONE shared dev-score derivation (hooks/useDevScore). This is the only
-  // caller that passes `prior` — it owns the weekly snapshot log.
-  const score = useDevScore(prior);
-
-  // Record a fresh weekly snapshot so the parent keeps an honest log of progress
-  // over time (Wave-3: this is a parent-owned log; no verdict renders from it).
-  useEffect(() => {
-    if (!snapshots.loaded || score.confidence === "none") return;
-    if (!shouldSnapshot(prior, Date.now())) return;
-    const now = Date.now();
-    const snap = toSnapshot(score, now);
-    try { localStorage.setItem(key, JSON.stringify(snap)); } catch { /* ignore */ }
-    void snapshots.upsert({ id: isoWeekKey(now), ...snap });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [score.confidence, snapshots.loaded]);
+  // The ONE shared dev-score derivation (hooks/useDevScore) — counts only.
+  // B-GROWTH-06: this card USED TO upsert a weekly `devScoreSnapshots` document
+  // (per-domain 0–100 scores + an overall %) and mirror it to
+  // `arbor.devscore.<id>`: composite grades of the child, stored and exported,
+  // that nothing rendered. The writer is gone; legacy documents stay registered
+  // in CHILD_SUBCOLLECTIONS (export + erase) until Guy's G12 deletion decision.
+  const score = useDevScore();
 
   const reached = score.domains.reduce((n, d) => n + d.reached, 0);
   const total = score.domains.reduce((n, d) => n + d.total, 0);
@@ -90,7 +47,7 @@ export default function DevScoreCard() {
           <HeroAvatar size={48} mood="wave" animate={false} ring={false} className="flex-shrink-0" />
           <div className="min-w-0">
             <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: GREEN }}>
-              <Icon name="speed" size={15} /> {t("devscore.eyebrow")}
+              <Icon name="eco" size={15} /> {t("devscore.eyebrow")}
             </span>
             <p className="text-sm mt-2 leading-relaxed" style={{ color: MUTED, textWrap: "pretty" } as React.CSSProperties}>
               {t("devscore.empty", { name: firstName })}
@@ -115,7 +72,7 @@ export default function DevScoreCard() {
           {/* The child as the hero of their own development record — modest parent register. */}
           <HeroAvatar size={44} mood="wave" animate={false} ring={false} className="flex-shrink-0" />
           <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: GREEN }}>
-            <Icon name="speed" size={15} /> {t("devscore.eyebrow")}
+            <Icon name="eco" size={15} /> {t("devscore.eyebrow")}
           </span>
         </div>
 
@@ -141,7 +98,7 @@ export default function DevScoreCard() {
         <div className="sr-only">
           {score.domains.map((d) => (
             <span key={d.domain}>
-              {t("devscore.noticed.aria", { domain: labelFor(d.domain), reached: d.reached, total: d.total })}{"; "}
+              {t("devscore.noticed.aria", { domain: t(`screen.domain.${d.domain}`), reached: d.reached, total: d.total })}{"; "}
             </span>
           ))}
         </div>
@@ -154,7 +111,7 @@ export default function DevScoreCard() {
           <button
             onClick={coach}
             className="inline-flex min-h-11 items-center gap-1.5 font-bold text-[13px] rounded-xl px-4 py-2 transition active:scale-[0.98]"
-            style={{ background: "var(--arbor-paper-elevated)", color: GREEN, border: `1px solid rgba(52,178,119,0.30)` }}
+            style={{ background: "var(--arbor-paper-elevated)", color: GREEN, border: "1px solid var(--arbor-clay-border)" }}
           >
             <Icon name="auto_awesome" size={15} /> {t("devscore.coach")}
           </button>
