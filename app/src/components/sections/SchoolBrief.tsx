@@ -5,7 +5,11 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
 import { api, PaywallError, EscalationRequiredError } from "../../lib/api";
-import type { SchoolBrief as SchoolBriefData } from "../../types";
+import type { BehaviorLog, Milestone, SchoolBrief as SchoolBriefData } from "../../types";
+import type { HandoffLogInput, HandoffMilestoneInput } from "../../lib/api";
+import { milestoneInAgeWindow } from "../../consult/packet";
+import { ageMonthsFromProfile } from "../../lib/childAge";
+import { screenForImmediateEscalation } from "../../safety/escalation";
 import { Modal } from "../ui/Modal";
 import {
   initialExportState,
@@ -47,6 +51,38 @@ import { openPrintableReport } from "../../lib/reportExport";
  *    never reads raw memory-ledger / behavior-log fields);
  *  - is generate-and-present: it does NOT persist a new child-data record.
  */
+
+/** B-CAREPRO-12: the teacher-preset window. */
+export const BRIEF_WINDOW_DAYS = 30;
+
+/** B-CAREPRO-12 — what the School Brief sends to /generate-handoff: logs from
+ *  the last 30 days as {behaviorType, trigger, response, day} (no notes,
+ *  intensity, duration, photo, excerpt) and the OBSERVED milestones inside the
+ *  child's age window as {domain, title}. Never the whole record. */
+export function teacherBriefInput(
+  logs: BehaviorLog[],
+  milestones: Milestone[],
+  childAgeMonths: number,
+  nowMs: number = Date.now(),
+): { logs: HandoffLogInput[]; milestones: HandoffMilestoneInput[] } {
+  const cutoff = nowMs - BRIEF_WINDOW_DAYS * 86_400_000;
+  return {
+    logs: logs
+      .filter((l) => Number.isFinite(Date.parse(l.timestamp)) && Date.parse(l.timestamp) >= cutoff)
+      .map((l) => ({ behaviorType: l.behaviorType ?? "", trigger: l.trigger ?? "", response: l.response ?? "", day: l.timestamp.slice(0, 10) })),
+    milestones: milestones
+      .filter((m) => m.checked && milestoneInAgeWindow(m.ageMonths, childAgeMonths))
+      .map((m) => ({ domain: m.domain, title: m.title })),
+  };
+}
+
+/** B-CAREPRO-12: the escalation screen keeps its coverage. The server used to
+ *  screen every log's behaviorType/trigger/response/notes; notes no longer
+ *  leave the device, so the same screen runs here over the FULL record first. */
+export function recordNeedsEscalation(logs: BehaviorLog[]): boolean {
+  const text = logs.map((l) => [l.behaviorType, l.trigger, l.response, l.notes].filter(Boolean).join(" ")).join("\n");
+  return screenForImmediateEscalation({ handoffLogs: text }) !== null;
+}
 
 type ListField = "keyStrengths" | "classroomChallenges" | "languageSupportPlan" | "suggestedTeacherStrategies";
 
@@ -137,11 +173,19 @@ export default function SchoolBrief() {
   const generate = async () => {
     setGenerating(true);
     setEscalationBlocked(false);
+    // B-CAREPRO-12: screen the full record on the device before anything is sent.
+    if (recordNeedsEscalation(behaviorLogs)) {
+      setEscalationBlocked(true);
+      setGenerating(false);
+      return;
+    }
+    const childAgeMonths = ageMonthsFromProfile(childProfile) ?? Math.max(0, childProfile.age || 0) * 12;
+    const preset = teacherBriefInput(behaviorLogs, milestones, childAgeMonths);
     try {
       const data = await api.generateBrief({
         childProfile,
-        logs: behaviorLogs,
-        milestones,
+        logs: preset.logs,
+        milestones: preset.milestones,
         audience: "teacher", // reuse the redacted + escalation-screened path
         // LC-11: a Hebrew-speaking gan teacher was handed an English brief —
         // the generation prompt carried no language directive at all. The

@@ -97,6 +97,13 @@ export class ApiError extends Error {
   }
 }
 
+/** B-CAREPRO-12: one behaviour log as the School Brief sends it — what
+ *  happened, what set it off, what helped, and the day. No notes, intensity,
+ *  duration, photo or excerpt. */
+export type HandoffLogInput = { behaviorType: string; trigger: string; response: string; day: string };
+/** B-CAREPRO-12: one observed, in-window milestone — area and title only. */
+export type HandoffMilestoneInput = { domain: string; title: string };
+
 /** B-CAREPRO-10: POST /shares 409 code — the owner's co-parent seat is in use. */
 export const SEAT_IN_USE = "seat_in_use";
 
@@ -386,7 +393,9 @@ export const api = {
   // LC-11: `language` threads the parent's UI language into the handoff
   // generation seam (mirroring extractLog/vision). The matching languageDirective
   // in the /generate-handoff prompt is a server-side change (src/routes/api.ts).
-  generateBrief: (payload: { childProfile: ChildProfile; logs: BehaviorLog[]; milestones: Milestone[]; audience: string; language?: "en" | "he" }) =>
+  // B-CAREPRO-12: the teacher-preset input only — never raw logs or the
+  // whole milestone catalogue (the server allow-lists the same fields).
+  generateBrief: (payload: { childProfile: ChildProfile; logs: HandoffLogInput[]; milestones: HandoffMilestoneInput[]; audience: string; language?: "en" | "he" }) =>
     post<SchoolBrief>("/api/generate-handoff", payload),
   // AI-CAP-2: `language` threads the parent's AI language into the extraction
   // prompt (mirroring /chat's languageDirective) so an HE description yields

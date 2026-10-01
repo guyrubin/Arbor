@@ -301,6 +301,49 @@ const voiceSafetyFallback = (language: unknown) =>
 /** Spoken when the model produced an empty reply on /voice (pre-cadence literal, unchanged). */
 const VOICE_EMPTY_REPLY_FALLBACK = "Let's take this one step at a time — tell me a little more about what's happening.";
 
+/* B-CAREPRO-12 — /generate-handoff input allow-list.
+ * The School Brief used to post every behaviour log (free-text notes
+ * included) and every milestone, and the route put both into the prompt
+ * verbatim. The client now sends the teacher preset; the server enforces the
+ * same shape whatever arrives: logs from the last 30 days as
+ * {behaviorType, trigger, response, day}, observed milestones as
+ * {domain, title}. Anything else is dropped before the prompt is built. */
+export const HANDOFF_WINDOW_DAYS = 30;
+const HANDOFF_MAX_LOGS = 200;
+const HANDOFF_MAX_MILESTONES = 80;
+const handoffStr = (v: unknown, max: number): string => (typeof v === "string" ? v.trim().slice(0, max) : "");
+const handoffDay = (log: Record<string, unknown>): string => {
+  const day = handoffStr(log.day, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(day)) return day;
+  // An older client posts the raw log: derive the day from its timestamp.
+  const ts = Date.parse(handoffStr(log.timestamp, 40));
+  return Number.isFinite(ts) ? new Date(ts).toISOString().slice(0, 10) : "";
+};
+export const allowListHandoffInput = (
+  logs: unknown,
+  milestones: unknown,
+  nowMs: number = Date.now(),
+): { logs: { behaviorType: string; trigger: string; response: string; day: string }[]; milestones: { domain: string; title: string }[] } => {
+  // Compare on whole days; one day of slack absorbs the client's time zone.
+  const cutoffDay = new Date(nowMs - (HANDOFF_WINDOW_DAYS + 1) * 86_400_000).toISOString().slice(0, 10);
+  const safeLogs = (Array.isArray(logs) ? logs : [])
+    .filter((l): l is Record<string, unknown> => !!l && typeof l === "object")
+    .map((l) => ({
+      behaviorType: handoffStr(l.behaviorType, 80),
+      trigger: handoffStr(l.trigger, 240),
+      response: handoffStr(l.response, 240),
+      day: handoffDay(l),
+    }))
+    .filter((l) => l.day !== "" && l.day >= cutoffDay && (l.behaviorType || l.trigger || l.response))
+    .slice(0, HANDOFF_MAX_LOGS);
+  const safeMilestones = (Array.isArray(milestones) ? milestones : [])
+    .filter((m): m is Record<string, unknown> => !!m && typeof m === "object" && m.checked !== false)
+    .map((m) => ({ domain: handoffStr(m.domain, 40), title: handoffStr(m.title, 160) }))
+    .filter((m) => m.title !== "")
+    .slice(0, HANDOFF_MAX_MILESTONES);
+  return { logs: safeLogs, milestones: safeMilestones };
+};
+
 export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, sharedChildSource, cohortMetricsStore, digestOptInStore, verifiedEmailResolver, digestEmailSender, aiCapabilityRegistry }: ApiDeps) => {
   const router = express.Router();
   // CARE-2: the recipient shared-view read seam (Firestore in prod, null locally).
@@ -3001,7 +3044,10 @@ Return JSON with frequencyCount, intensityTrend, triggerBreakdown, expertInsight
   });
 
   router.post("/generate-handoff", async (req, res) => {
-    const { childProfile, logs, milestones, audience = "teacher", language } = req.body;
+    const { childProfile, audience = "teacher", language } = req.body;
+    // B-CAREPRO-12: only the allow-listed teacher-preset fields reach the
+    // screen and the prompt.
+    const { logs, milestones } = allowListHandoffInput(req.body?.logs, req.body?.milestones);
     // LC-11: the client sends `language`, and until this line existed the
     // argument was INERT — a Hebrew-reading parent handed their child's teacher
     // an English brief. Same directive the coach and vision routes use.
@@ -3009,9 +3055,14 @@ Return JSON with frequencyCount, intensityTrend, triggerBreakdown, expertInsight
       language === "he"
         ? "\nIMPORTANT: Write every human-readable text value in the JSON response in natural, warm Hebrew (עברית). Keep JSON keys in English."
         : "";
-    const safetyLogText = Array.isArray(logs)
-      ? logs.map((log) => [log.behaviorType, log.trigger, log.response, log.notes].filter(Boolean).join(" ")).join("\n")
-      : "";
+    // The escalation screen reads whatever ARRIVED (an older client still
+    // posts notes) — it is an in-memory regex, nothing reaches the model. The
+    // current client sends no notes and screens the FULL record, notes
+    // included, on the device first (SchoolBrief.tsx), so coverage is unchanged.
+    const rawLogs: Record<string, unknown>[] = Array.isArray(req.body?.logs) ? req.body.logs.filter((l: unknown) => !!l && typeof l === "object") : [];
+    const safetyLogText = rawLogs
+      .map((log) => [log.behaviorType, log.trigger, log.response, log.notes].filter((v) => typeof v === "string" && v).join(" "))
+      .join("\n");
     const escalationMatch = screenForImmediateEscalation({ handoffLogs: safetyLogText });
     if (escalationMatch) {
       res.status(409).json({
