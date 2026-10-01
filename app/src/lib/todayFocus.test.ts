@@ -285,11 +285,17 @@ describe("useTodaysFocus verdict-strip stays pinned (CODEX-2 firewall condition)
     expect(focusRoute).not.toMatch(/milestone readiness/i);
     expect(focusRoute).not.toContain("signals?.avg");
     expect(focusRoute).not.toContain("signals?.milestonesPercent");
+    // B-AI-01: the template moved to ai/prompts.ts buildTodaysFocusPrompt;
+    // the route passes the flat inputs and the builder interpolates them.
+    expect(focusRoute).toMatch(/buildTodaysFocusPrompt\(\{[\s\S]*?\bcount,[\s\S]*?\btriggerSent,/);
+    const prompts = fs.readFileSync(path.join(__dirname, "..", "ai", "prompts.ts"), "utf8");
+    const builder = prompts.slice(prompts.indexOf("export const buildTodaysFocusPrompt"), prompts.indexOf("// ── Fingerprints"));
+    expect(builder).not.toMatch(/average intensity|milestone readiness/i);
     // The allowed flat inputs are still what the prompt uses.
-    expect(focusRoute).toContain("${count}");
+    expect(builder).toContain("${count}");
     // B-AI-03 renamed the interpolated trigger to `triggerSent` (only a
     // trigger that is really sent is named); the flat-input rule is unchanged.
-    expect(focusRoute).toContain("${triggerSent");
+    expect(builder).toContain("${triggerSent");
   });
 });
 
