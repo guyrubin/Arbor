@@ -22,14 +22,14 @@ beforeEach(() => {
 
 describe("B-PROV-06 — the reason classifier", () => {
   it("maps the Live client's rejections to the closed enum", () => {
-    expect(liveUnavailableReason(new Error("live-closed-before-open"), "start")).toBe("closed_before_open");
-    expect(liveUnavailableReason(new Error("live-closed-during-start"), "start")).toBe("closed_during_start");
-    expect(liveUnavailableReason(new Error("HTTP 503"), "token")).toBe("token_error");
+    expect(liveUnavailableReason(new Error("live-closed-before-open"), "socket")).toBe("closed_before_open");
+    expect(liveUnavailableReason(new Error("live-closed-during-start"), "socket")).toBe("closed_during_start");
+    expect(liveUnavailableReason(new Error("HTTP 503"), "mint")).toBe("token_error");
   });
 
   it("other start failures are not availability signals (no event)", () => {
-    expect(liveUnavailableReason(new Error("Gemini Live error"), "start")).toBeNull();
-    expect(liveUnavailableReason("weird", "start")).toBeNull();
+    expect(liveUnavailableReason(new Error("Gemini Live error"), "socket")).toBeNull();
+    expect(liveUnavailableReason("weird", "socket")).toBeNull();
   });
 });
 

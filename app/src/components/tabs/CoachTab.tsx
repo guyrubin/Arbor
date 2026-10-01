@@ -652,7 +652,7 @@ export default function CoachTab() {
     let liveClosed = false;
     // B-PROV-06: where the attempt failed (token mint vs socket start), so a
     // fallback counts as ONE live_unavailable event with a closed-enum reason.
-    let liveStage: "token" | "start" = "token";
+    let liveStage: "mint" | "socket" = "mint";
 
     if (liveAvail) {
       try {
@@ -660,7 +660,7 @@ export default function CoachTab() {
         if (!attempt.isCurrent()) return;
         if (!(fresh.available && fresh.token && fresh.model)) trackLiveUnavailable("token_error");
         if (fresh.available && fresh.token && fresh.model) {
-          liveStage = "start";
+          liveStage = "socket";
           const { startGeminiLive } = await import("../../lib/geminiLiveClient");
           if (!attempt.isCurrent()) return;
           const ctl = await startGeminiLive(

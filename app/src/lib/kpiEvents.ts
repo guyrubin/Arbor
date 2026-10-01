@@ -445,11 +445,11 @@ export type LiveUnavailableReason = (typeof LIVE_UNAVAILABLE_REASONS)[number];
  * "live-closed-before-open" is the depleted-prepay signature (the provider
  * accepts the socket handshake and closes it before setup).
  */
-export function liveUnavailableReason(err: unknown, stage: "token" | "start"): LiveUnavailableReason | null {
+export function liveUnavailableReason(err: unknown, stage: "mint" | "socket"): LiveUnavailableReason | null {
   const message = err instanceof Error ? err.message : "";
   if (message === "live-closed-before-open") return "closed_before_open";
   if (message === "live-closed-during-start") return "closed_during_start";
-  if (stage === "token") return "token_error";
+  if (stage === "mint") return "token_error";
   return null;
 }
 
