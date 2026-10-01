@@ -7,7 +7,7 @@ import { useProfile } from "../../context/ProfileContext";
 import { useToast } from "../../context/ToastContext";
 import { downloadJson, exportChildData } from "../../lib/childData";
 import { useAuth } from "../../context/AuthContext";
-import { api, ApiError, PaywallError } from "../../lib/api";
+import { api, ApiError, PaywallError, SEAT_IN_USE } from "../../lib/api";
 import type { DeletionReceipt, ShareGrant, ShareRole, SharedPacketView } from "../../types";
 import Modal from "../ui/Modal";
 import { PageHeader, SectionCard, cardCls, Chip, TrustSafetyBar, PASTEL, PastelKey, InitialsTile } from "../ui/kit";
@@ -62,7 +62,14 @@ export default function TrustedSharing() {
   // they had just asked for. Focus moves to its first control instead.
   const recipientRef = React.useRef<HTMLInputElement | null>(null);
   const [reviewing, setReviewing] = useState(false);
-  const [draft, setDraft] = useState({ recipientEmail: "", role: "co_parent" as ShareRole, scopes: [] as ShareScopeId[], duration: DURATIONS[0] as string });
+  // B-CAREPRO-10(c): the wizard opens on `viewer` until G1 decides whether a
+  // co-parent invite is free. `viewer` grants the identical read-only view on
+  // every plan; defaulting to co_parent sent every Free/Plus first share to
+  // the Family paywall.
+  const DEFAULT_ROLE: ShareRole = "viewer";
+  const [draft, setDraft] = useState({ recipientEmail: "", role: DEFAULT_ROLE as ShareRole, scopes: [] as ShareScopeId[], duration: DURATIONS[0] as string });
+  // B-CAREPRO-10(a): the seat-in-use 409 → a hint naming the live co-parent.
+  const [seatInUse, setSeatInUse] = useState<{ email: string | null; grantId: string | null } | null>(null);
   // LC-17: after a grant is created there is no server email — the recipient
   // learns nothing unless they already use Arbor and happen to open #/sharing.
   // The parent gets a prefilled invite to send themselves, and the copy says
@@ -154,12 +161,17 @@ export default function TrustedSharing() {
       await api.createShare({ childId: childProfile.id, childName: childProfile.name, recipientEmail: email, role: draft.role, scopes: draft.scopes, duration: draft.duration });
       toast(t("sec.sharing.audit.shared", { scopes: scopesLabel(draft.scopes), email, role: roleLabel(draft.role) }), "success");
       setInvite({ email });
-      setDraft({ recipientEmail: "", role: "co_parent", scopes: [], duration: DURATIONS[0] });
+      setDraft({ recipientEmail: "", role: DEFAULT_ROLE, scopes: [], duration: DURATIONS[0] });
+      setSeatInUse(null);
       setReviewing(false);
       setAdding(false);
       await load();
     } catch (e: any) {
-      if (e instanceof PaywallError) openPaywall(e.feature, e.plan);
+      if (e instanceof ApiError && e.status === 409 && e.message === SEAT_IN_USE) {
+        // No paywall: the parent already holds the seat. Point at the row.
+        const holder = shares.find((g) => g.role === "co_parent" && isLiveGrant(g)) ?? null;
+        setSeatInUse({ email: holder?.recipientEmail ?? null, grantId: holder?.id ?? null });
+      } else if (e instanceof PaywallError) openPaywall(e.feature, e.plan);
       else toast(t("sec.sharing.audit.createError", { message: e.message }), "error");
     } finally {
       setBusy(null);
@@ -415,6 +427,28 @@ export default function TrustedSharing() {
               <div className="flex items-center gap-2 text-xs" style={{ color: "var(--arbor-muted)" }}><Icon name="schedule" size={16} /> {t(`share.duration.${draft.duration}`)}</div>
             </div>
             <div className="rounded-2xl p-4 flex items-start gap-3" style={{ background: "var(--arbor-yellow-soft)", border: "1px solid var(--arbor-rule)" }}><Icon name="verified_user" size={19} style={{ color: "var(--arbor-yellow-ink)" }} /><p className="text-xs leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{t("sec.sharing.review.note")}</p></div>
+            {seatInUse && (
+              <div data-testid="share-seat-in-use" role="alert" className="rounded-2xl p-4 flex flex-wrap items-center gap-3" style={{ background: "var(--arbor-paper-sunk)", border: "1px solid var(--arbor-rule)" }}>
+                <Icon name="group" size={19} style={{ color: "var(--arbor-ink)" }} />
+                <p className="flex-1 min-w-0 text-xs leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}>
+                  {seatInUse.email ? t("elev.learnCare.share.seatInUse", { email: seatInUse.email }) : t("elev.learnCare.share.seatInUse.unnamed")}
+                </p>
+                {seatInUse.grantId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const row = document.getElementById(`share-row-${seatInUse.grantId}`);
+                      row?.scrollIntoView({ behavior: "smooth", block: "center" });
+                      row?.focus();
+                    }}
+                    className="inline-flex items-center gap-1.5 min-h-11 px-3 rounded-xl text-xs font-bold"
+                    style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
+                  >
+                    {t("elev.learnCare.share.seatInUse.show")}
+                  </button>
+                )}
+              </div>
+            )}
             <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end"><button onClick={() => setReviewing(false)} className="inline-flex items-center justify-center rounded-xl px-4 min-h-11 text-sm font-bold" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}>{t("sec.sharing.review.back")}</button><button data-primary-move="grant-share" onClick={createShare} disabled={busy === "create"} className="inline-flex items-center justify-center gap-2 text-white font-bold text-sm rounded-xl px-4 min-h-11 disabled:opacity-60" style={{ background: "var(--arbor-clay)" }}>{busy === "create" ? <><Icon name="progress_activity" size={16} className="animate-spin" /> {t("sec.sharing.review.working")}</> : t("sec.sharing.review.approve")}</button></div>
           </div>}
         </div>
@@ -438,7 +472,7 @@ export default function TrustedSharing() {
               {team.map((g) => {
                 const tone = ROLE_TONE[g.role] || ROLE_TONE.viewer;
                 return (
-                  <div key={g.id} className="min-w-0 border-b p-4 last:border-b-0" style={{ borderColor: "var(--arbor-rule)" }}>
+                  <div key={g.id} id={`share-row-${g.id}`} tabIndex={-1} className="min-w-0 border-b p-4 last:border-b-0" style={{ borderColor: "var(--arbor-rule)" }}>
                     <div className="flex items-center gap-3">
                       <InitialsTile name={g.recipientEmail} tone={tone} />
                       <div className="flex-1 min-w-0">

@@ -97,6 +97,9 @@ export class ApiError extends Error {
   }
 }
 
+/** B-CAREPRO-10: POST /shares 409 code — the owner's co-parent seat is in use. */
+export const SEAT_IN_USE = "seat_in_use";
+
 /** `Retry-After` in seconds, or undefined when absent/not a number. */
 function retryAfterOf(res: { headers: { get(name: string): string | null } }): number | undefined {
   const raw = res.headers.get("Retry-After");
@@ -126,6 +129,12 @@ async function request<T>(url: string, method: string, body?: unknown, signal?: 
     if (res.status === 402) {
       const plan = errData?.upgrade?.plan === "family" ? "family" : "plus";
       throw new PaywallError(detail, { plan, feature: errData?.upgrade?.feature });
+    }
+    // B-CAREPRO-10: the co-parent seat conflict is the ONE 409 that is not a
+    // safety screen. It is matched by its exact code, so every other 409 —
+    // including a body that cannot be parsed — still escalates.
+    if (res.status === 409 && errData?.error === SEAT_IN_USE) {
+      throw new ApiError(SEAT_IN_USE, 409);
     }
     if (res.status === 409) {
       // Server escalation contract (see routes/api.ts): 409 == a safety trigger

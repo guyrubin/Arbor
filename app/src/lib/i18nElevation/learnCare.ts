@@ -90,6 +90,10 @@ export const en: Record<string, string> = {
   "elev.learnCare.share.preview.empty": "These choices do not open any section yet. Pick at least one more.",
   "elev.learnCare.share.preview.blocked": "This combination cannot be shared safely. Change what is selected.",
   "elev.learnCare.share.invite.cta": "Send an invite",
+  // B-CAREPRO-10: the co-parent seat is in use (409 seat_in_use) — no upsell.
+  "elev.learnCare.share.seatInUse": "Revoke {email} to invite another co-parent.",
+  "elev.learnCare.share.seatInUse.unnamed": "Revoke your current co-parent invite to invite another co-parent.",
+  "elev.learnCare.share.seatInUse.show": "Show that invite",
   "elev.learnCare.share.invite.subject": "{child} on Arbor — I shared some context with you",
   "elev.learnCare.share.invite.body":
     "I shared part of {child}'s Arbor record with you. Open Arbor with this email address and look under Sharing to see it: {link}",
@@ -176,6 +180,9 @@ export const he: Record<string, string> = {
   "elev.learnCare.share.preview.empty": "הבחירות האלה עדיין לא פותחות שום פרק. בחרו עוד אחד לפחות.",
   "elev.learnCare.share.preview.blocked": "אי אפשר לשתף את השילוב הזה בבטחה. שנו את מה שנבחר.",
   "elev.learnCare.share.invite.cta": "לשלוח הזמנה",
+  "elev.learnCare.share.seatInUse": "כדי להזמין הורה שותף אחר, בטלו קודם את ההזמנה של {email}.",
+  "elev.learnCare.share.seatInUse.unnamed": "כדי להזמין הורה שותף אחר, בטלו קודם את ההזמנה הנוכחית להורה שותף.",
+  "elev.learnCare.share.seatInUse.show": "להציג את ההזמנה",
   "elev.learnCare.share.invite.subject": "{child} בארבור — שיתפתי אתכם בהקשר",
   "elev.learnCare.share.invite.body":
     "שיתפתי אתכם בחלק מהרשומה של {child} בארבור. היכנסו לארבור עם כתובת המייל הזו ובדקו במסך השיתוף: {link}",

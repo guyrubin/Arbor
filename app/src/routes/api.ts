@@ -519,9 +519,11 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       const entitlement = await resolveEntitlement(entitlementStore, { uid, email });
       const seats = entitlement.limits.coParentSeats;
       if (seats < 1) {
+        // B-CAREPRO-10(b): neutral, true copy — a co-parent gets a read-only
+        // view of what the owner shares, never "your account".
         res.status(402).json({
           error: "Co-parent sharing is an Arbor Family feature",
-          details: "Upgrade to Arbor Family to invite a co-parent to share your account.",
+          details: "Co-parent invites are part of Arbor Family.",
           upgrade: { feature: "coParentSeats", plan: "family" },
         });
         return;
@@ -529,11 +531,11 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       const activeCoParents = (await shareStore.listByOwner(uid))
         .filter((g) => g.role === "co_parent" && isShareActive(g)).length;
       if (activeCoParents >= seats) {
-        res.status(402).json({
-          error: "Co-parent seat limit reached",
-          details: `Your plan includes ${seats} co-parent seat${seats === 1 ? "" : "s"}. Revoke the current co-parent before inviting another.`,
-          upgrade: { feature: "coParentSeats", plan: "family" },
-        });
+        // B-CAREPRO-10(a): a Family holder whose seat is in use is not sold
+        // Family again. 409 with a stable code and NO upgrade object; the
+        // client keys a "revoke {email}" hint off `error` (lib/api.ts keeps
+        // this one code out of the escalation 409 contract).
+        res.status(409).json({ error: "seat_in_use" });
         return;
       }
     }
