@@ -49,6 +49,7 @@ import VoiceOverlay from "../coach/VoiceOverlay";
 import MicrophoneNotice from "../ui/MicrophoneNotice";
 import { microphoneRecovery } from "../../lib/microphoneRecovery";
 import ConversationProposalTray from "../coach/ConversationProposalTray";
+import CaptureProposalsTray from "../capture/CaptureProposalsTray";
 // ENG-10 / ENG-11: the JITAI cue, rendered where the parent already is and
 // instrumented — and in the evening it is the Bedtime Stories door.
 import CompanionOfferSlot from "../overview/CompanionOfferSlot";
@@ -1531,6 +1532,14 @@ export default function CoachTab() {
             );
           })()}
 
+          {/* B-ASKJB-03 (AI-04): "Keep this" lives under the answer it keeps
+              from. The typed-turn tray builds from the coach's chatMessages
+              with zero model calls; it used to mount only on Journal, so a
+              parent who asked here saw no Keep. Hidden while a new turn
+              streams (it would offer the previous answer's lines). Kept rows
+              land in the Journal feed. */}
+          {!isChatLoading && <CaptureProposalsTray surface="coach" />}
+
           {/* F-08: the chat-status live region — ALWAYS mounted (twin:
               VoiceOverlay's captions, "always mounted so aria-live announces
               reliably"); only its text changes. The visible spinner row below
@@ -1702,7 +1711,11 @@ export default function CoachTab() {
             const record = await commitConversationProposal(proposal);
             noteKeepCommitted(record, "coach-voice");
             setConversationProposals((items) => items.filter((item) => item.id !== proposal.id));
-            toast(t("coach.voice.proposalSaved"), "success");
+            // B-ASKJB-03: ONE toast per Keep. The tray raises "Kept" + Undo
+            // once the audit row lands; this success toast doubled it. Only a
+            // milestone confirmation (which the tray deliberately gives no
+            // Undo, and so no toast) still confirms here.
+            if (proposal.target === "milestone") toast(t("coach.voice.proposalSaved"), "success");
           } catch {
             toast(t("coach.voice.proposalSaveError"), "error");
           } finally { setProposalBusyId(null); }

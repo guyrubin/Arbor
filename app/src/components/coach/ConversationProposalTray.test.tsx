@@ -172,3 +172,27 @@ describe("ConversationProposalTray Keep and Undo", () => {
     expect(harness.undoChange).not.toHaveBeenCalled();
   });
 });
+describe("B-ASKJB-03 — one voice Keep raises exactly one toast", () => {
+  it("the tray raises one 'Kept' toast for a journal Keep", async () => {
+    vi.useFakeTimers();
+    harness.callbackRender = true;
+    const item = { ...proposal, target: "journal" as const };
+    const confirm = vi.fn(async () => { harness.changes.push(committed(item)); });
+    const tree = ConversationProposalTray(props({ proposals: [item], onConfirm: confirm }));
+    control(tree, "Save").onClick();
+    await vi.runAllTimersAsync();
+    expect(harness.toast).toHaveBeenCalledTimes(1);
+  });
+
+  it("CoachTab's onConfirm raises no second success toast (milestone only, which the tray never toasts)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const path = await import("node:path");
+    const src = readFileSync(path.join(__dirname, "..", "tabs", "CoachTab.tsx"), "utf8").replace(/\r\n/g, "\n");
+    const block = src.slice(src.indexOf("<ConversationProposalTray"), src.indexOf("/>", src.indexOf("onConfirm={async (proposal)")));
+    const successToasts = [...block.matchAll(/toast\(t\("[^"]+"\), "success"\)/g)].map((m) => m[0]);
+    expect(successToasts).toHaveLength(1);
+    expect(block).toContain('if (proposal.target === "milestone") toast(t("coach.voice.proposalSaved"), "success");');
+    // The error toast on a failed commit stays.
+    expect(block).toContain('toast(t("coach.voice.proposalSaveError"), "error");');
+  });
+});

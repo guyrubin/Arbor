@@ -37,15 +37,27 @@ describe("the scan is real", () => {
   });
 });
 
-describe("the tray is mounted where a typed turn can be kept", () => {
-  it("JournalTab imports and renders it", () => {
-    expect(journal).toContain('import CaptureProposalsTray from "../capture/CaptureProposalsTray"');
-    expect(journal).toMatch(/<CaptureProposalsTray\s+surface="journal"\s*\/>/);
+describe("the tray is mounted where a typed turn can be kept (B-ASKJB-03: under the Ask answer)", () => {
+  const coach = stripComments(read("components/tabs/CoachTab.tsx"));
+
+  it("CoachTab imports and renders it with the typed surface id 'coach'", () => {
+    expect(coach).toContain('import CaptureProposalsTray from "../capture/CaptureProposalsTray"');
+    expect(coach).toMatch(/<CaptureProposalsTray\s+surface="coach"\s*\/>/);
+  });
+
+  it("it sits after the thread's answers and before the failure card", () => {
+    const at = coach.indexOf('<CaptureProposalsTray surface="coach" />');
+    expect(at).toBeGreaterThan(coach.indexOf("<CoachAnswerCards"));
+    expect(at).toBeLessThan(coach.indexOf('data-testid="coach-failure-card"'));
+  });
+
+  it("JournalTab no longer imports or renders a proposals tray", () => {
+    expect(journal).not.toContain("CaptureProposalsTray");
   });
 
   it("NEGATIVE CONTROL: an import with no mount would not satisfy the rule", () => {
     const importOnly = 'import CaptureProposalsTray from "../capture/CaptureProposalsTray";\nreturn <div />;';
-    expect(/<CaptureProposalsTray\s+surface="journal"\s*\/>/.test(importOnly)).toBe(false);
+    expect(/<CaptureProposalsTray\s+surface="coach"\s*\/>/.test(importOnly)).toBe(false);
   });
 });
 

@@ -27,7 +27,6 @@ import QuickLogModal from "../overview/QuickLogModal";
 // kept row came from. The tray is the ONLY new capture affordance here; both
 // of its actions run existing seams (commitConversationProposal for the
 // one-tap keep, requestCapture("ai-draft") for the edit-first route).
-import CaptureProposalsTray from "../capture/CaptureProposalsTray";
 import { provenanceForSignal, readCaptureProvenance, type KeptProvenance } from "../../lib/captureProvenance";
 
 /**
@@ -528,12 +527,9 @@ export default function JournalTab() {
         </div>
       </section>
 
-      {/* AI-04 — the typed-turn proposals tray. A voice turn has had a review
-          tray since Harbor; a typed turn produced nothing keepable at all, so
-          the parent retyped what they had just read. Sits directly under the
-          compose card because keeping a line IS a capture. Renders nothing
-          when the last answer offers nothing keepable. */}
-      <CaptureProposalsTray surface="journal" />
+      {/* B-ASKJB-03: the typed-turn proposals tray moved to Ask, under the
+          answer it keeps from (CoachTab). Journal keeps every kept row in the
+          feed below. */}
 
       {/* Masterplan 1.5 — spine ribbon: what a saved moment feeds (ONE direction:
           → the weekly story behind the timeline tab). Quiet strip below the

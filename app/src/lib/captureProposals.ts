@@ -96,7 +96,7 @@ export const MAX_TYPED_PROPOSALS = 4;
  * itself; a component that happens to render the answer is not the seam. */
 
 /** The surface id the typed coach tray reports keeps under. */
-export const COACH_KEEP_SURFACE = "coach-typed";
+export const COACH_KEEP_SURFACE = "coach";
 
 /**
  * A typed-coach proposal was COMMITTED. Delegates to the one keep reporter and
