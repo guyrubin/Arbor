@@ -61,6 +61,9 @@ export const en: Record<string, string> = {
   "elev.growth.lang.more.title": "Vocabulary log",
   "elev.growth.lang.more.sub": "Optional — count the words you hear, whenever you want to.",
 
+  // B-GROWTH-04 — the Development Check door states the re-check date as text.
+  "elev.growth.recheck.date": "Check again around {date}",
+
   // B-GROWTH-20 — Daily Play: the plan shows without a goal; the focus is optional.
   "elev.growth.play.setFocusOptional": "Set a focus to match it to what you're working on",
 
@@ -124,6 +127,9 @@ export const he: Record<string, string> = {
   // Builder M — R25 — #/language demotion disclosure (vocabulary log).
   "elev.growth.lang.more.title": "יומן אוצר מילים",
   "elev.growth.lang.more.sub": "רשות — סופרים את המילים שאתם שומעים, מתי שמתאים לכם.",
+
+  // B-GROWTH-04 — תאריך הבדיקה החוזרת, כטקסט
+  "elev.growth.recheck.date": "לבדוק שוב בסביבות {date}",
 
   // B-GROWTH-20 — התוכנית מוצגת גם בלי מטרה; המיקוד הוא רשות
   "elev.growth.play.setFocusOptional": "הגדירו מיקוד כדי להתאים אותה למה שאתם עובדים עליו",

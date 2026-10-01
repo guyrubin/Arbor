@@ -25,6 +25,7 @@
  */
 
 import type { ActiveTab } from "./routes";
+import { ritualOfTheMoment, type RitualRecord } from "./familyRitualsCadence";
 
 /** What is waiting. Ordered by how concrete the next move is. */
 export type ReasonKind = "ritual" | "focus" | "story" | "moment";
@@ -57,6 +58,51 @@ export interface DayCloseSignals {
  * the first child's reason. And a key that does not end in the child id is not
  * swept by lib/childLocalState when that child is deleted.
  */
+/* ── The signals, derived once (B-GROWTH-04) ────────────────────────────── */
+
+export interface ReturnSignalInputs {
+  /** Moments and Daily Play wins — anything with a timestamp. */
+  behaviorLogs: ReadonlyArray<{ timestamp: string | number }>;
+  playLogs: ReadonlyArray<{ timestamp: string | number }>;
+  /** The parent chose something to watch for and it is still open. */
+  watchFocus: boolean;
+  /** The family-ritual cadence record (lib/familyRitualsCadence). */
+  ritualRecord: RitualRecord;
+  now: number;
+  /** Saved comic books vs authored adventures (Growth's view of the shelf). */
+  savedComicCount?: number;
+  storyTotal?: number;
+  /** A caller that knows the shelf book by book (Comics) passes this instead. */
+  unopenedStory?: boolean;
+}
+
+const tsOf = (v: string | number): number => (typeof v === "number" ? v : Date.parse(v));
+
+/**
+ * B-GROWTH-04 — the ONE derivation of the close-of-day facts. It used to be
+ * written out twice (DevelopmentTab, ComicsTab); both now call this. Pure: the
+ * caller reads storage, this only decides.
+ */
+export function deriveReturnSignals(input: ReturnSignalInputs): DayCloseSignals {
+  const { now } = input;
+  const startOfToday = new Date(now).setHours(0, 0, 0, 0);
+  const today = (items: ReadonlyArray<{ timestamp: string | number }>) =>
+    items.filter((it) => {
+      const t = tsOf(it.timestamp);
+      return Number.isFinite(t) && t >= startOfToday && t <= now;
+    }).length;
+  return {
+    ritualDue: ritualOfTheMoment(now, input.ritualRecord) !== null,
+    watchFocus: input.watchFocus,
+    unopenedStory:
+      input.unopenedStory ??
+      (typeof input.savedComicCount === "number" && typeof input.storyTotal === "number"
+        ? input.savedComicCount < input.storyTotal
+        : false),
+    momentsToday: today(input.behaviorLogs) + today(input.playLogs),
+  };
+}
+
 const storeKey = (childId: string) => `arbor.tomorrowReason.${childId}`;
 
 /** The hour a day is treated as closing. Local time, deliberately late. */

@@ -21,6 +21,7 @@ import {
   computeRecheckDueAt,
   isRecheckDue,
   latestRecheckDueAt,
+  recheckCandidate,
 } from "./screeningRecheck";
 import { en, he, translate } from "./i18n";
 
@@ -161,12 +162,14 @@ describe("re-check reminder source contract", () => {
     expect(src).toContain('t("screen.recheck.dueOn"');
   });
 
-  it("DevelopmentTab.tsx pointer row surfaces 'Re-check due' once due", () => {
+  it("B-GROWTH-04: DevelopmentTab.tsx states the re-check DATE as text, no chip", () => {
     const src = readSrc("components/tabs/DevelopmentTab.tsx");
-    expect(src).toContain('data-testid="dev-recheck-due"');
-    expect(src).toContain('t("dev.watching.recheckDue")');
+    expect(src).toContain('data-testid="dev-recheck-date"');
+    expect(src).toContain('t("elev.growth.recheck.date", { date: fmtDay(recheckDueAt, uiLang) })');
     expect(src).toContain("latestRecheckDueAt");
-    expect(src).toContain("isRecheckDue");
+    // the yellow proactive chip is gone
+    expect(src).not.toContain('data-testid="dev-recheck-due"');
+    expect(src).not.toContain("--arbor-yellow-soft");
   });
 
   it("no raw hex literals in the new surfaces (tokens only)", () => {
@@ -174,5 +177,28 @@ describe("re-check reminder source contract", () => {
       const src = readSrc(rel);
       expect(src.match(/#[0-9a-fA-F]{3,6}\b/g) ?? []).toHaveLength(0);
     }
+  });
+});
+
+// ── B-GROWTH-04 — the re-check as ONE continuation candidate for Today ──────
+describe("recheckCandidate (B-GROWTH-04)", () => {
+  const now = Date.parse("2026-10-01T09:00:00.000Z");
+  it("a screening with a past recheckDueAt yields exactly one candidate", () => {
+    const c = recheckCandidate([
+      { answeredAt: "2026-08-01T00:00:00.000Z", recheckDueAt: "2026-08-22T00:00:00.000Z" },
+      { answeredAt: "2026-09-01T00:00:00.000Z", recheckDueAt: "2026-09-22T00:00:00.000Z" },
+    ], now);
+    expect(c).toEqual({ kind: "recheck", dueAt: "2026-09-22T00:00:00.000Z" });
+  });
+  it("a future date, no date, or no screening yields null", () => {
+    expect(recheckCandidate([{ answeredAt: "2026-09-25T00:00:00.000Z", recheckDueAt: "2026-10-16T00:00:00.000Z" }], now)).toBeNull();
+    expect(recheckCandidate([{ answeredAt: "2026-09-25T00:00:00.000Z" }], now)).toBeNull();
+    expect(recheckCandidate([], now)).toBeNull();
+  });
+  it("only the LATEST screening counts (an older due date never resurfaces)", () => {
+    expect(recheckCandidate([
+      { answeredAt: "2026-08-01T00:00:00.000Z", recheckDueAt: "2026-08-22T00:00:00.000Z" },
+      { answeredAt: "2026-09-28T00:00:00.000Z" },
+    ], now)).toBeNull();
   });
 });

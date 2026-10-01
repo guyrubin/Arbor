@@ -7,7 +7,7 @@ import { HubHero } from "../ui/HubHero";
 import { EvidenceChip } from "../ui/EvidenceChip";
 import { countSince, WEEK_MS } from "../../lib/pulse";
 import { useChildCollection } from "../../hooks/useChildCollection";
-import { isRecheckDue, latestRecheckDueAt } from "../../lib/screeningRecheck";
+import { latestRecheckDueAt } from "../../lib/screeningRecheck";
 import { ageWindowMilestones, comparisonAgeMonths, selectWeeklyFocus } from "../../lib/milestoneData";
 import { ageMonthsFromProfile } from "../../lib/childAge";
 import DevScoreCard from "../sections/DevScoreCard";
@@ -27,8 +27,9 @@ import { clearWatchFocus, resolveWatchFocus } from "../../lib/screeningWatch";
 import PushPrimingCard from "../nextopen/PushPrimingCard";
 import RitualTurnCard from "../nextopen/RitualTurnCard";
 import TomorrowReasonCard from "../nextopen/TomorrowReasonCard";
+import { deriveReturnSignals } from "../../lib/tomorrowReason";
 import { readPushPermission, type PushPermission } from "../../lib/pushPriming";
-import { readRitualRecord, ritualOfTheMoment } from "../../lib/familyRitualsCadence";
+import { readRitualRecord } from "../../lib/familyRitualsCadence";
 import { ADVENTURES, type SavedComicMeta } from "../../lib/heroComics";
 import { fmtDay } from "../../lib/formatDate";
 // R22 (Builder L) — the recent-observation row printed `log.behaviorType`, the
@@ -80,10 +81,10 @@ export default function DevelopmentTab() {
     childProfile.id,
     "screenings"
   );
-  const recheckDue = useMemo(
-    () => isRecheckDue(latestRecheckDueAt(screenings.items)),
-    [screenings.items]
-  );
+  // B-GROWTH-04: the re-check is a DATE on the Development Check door, as
+  // text in neutral ink — the yellow "due" chip was a second proactive hook
+  // (Today's one proactive slot owns the reminder, precedence 4).
+  const recheckDueAt = useMemo(() => latestRecheckDueAt(screenings.items), [screenings.items]);
 
   // UND-6 — age-aware weekly focus: "not sure" items in the current corrected
   // band first (watch for it this week), then not-yet/unmarked in-band, then
@@ -269,17 +270,17 @@ export default function DevelopmentTab() {
   // TJB-28 — the facts the close-of-day write chooses from. Every one of them
   // is about the PARENT's next move, never a reading of the child.
   const savedComics = useChildCollection<SavedComicMeta>(childProfile.id, "savedComics");
-  const returnSignals = useMemo(() => {
-    const now = Date.now();
-    const startOfToday = new Date(now).setHours(0, 0, 0, 0);
-    return {
-      ritualDue: ritualOfTheMoment(now, readRitualRecord()) !== null,
-      watchFocus: chosenWatch != null,
-      unopenedStory: savedComics.items.length < ADVENTURES.length,
-      momentsToday:
-        countSince(behaviorLogs, startOfToday, now) + countSince(playLogs, startOfToday, now),
-    };
-  }, [chosenWatch, savedComics.items.length, behaviorLogs, playLogs]);
+  // B-GROWTH-04: one derivation (lib/tomorrowReason.deriveReturnSignals),
+  // shared with the comic shelf's close-of-day write.
+  const returnSignals = useMemo(() => deriveReturnSignals({
+    behaviorLogs,
+    playLogs,
+    watchFocus: chosenWatch != null,
+    ritualRecord: readRitualRecord(),
+    savedComicCount: savedComics.items.length,
+    storyTotal: ADVENTURES.length,
+    now: Date.now(),
+  }), [chosenWatch, savedComics.items.length, behaviorLogs, playLogs]);
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1180px] space-y-5 sm:space-y-6">
@@ -526,15 +527,15 @@ export default function DevelopmentTab() {
             ? t("dev.watching.line", { name: firstName })
             : t("dev.watching.lineGeneric")}
         </span>
-        {/* UND-2 — the parent's saved re-check reminder surfaces HERE once due
-            (neutral reminder chip — never a verdict; CLINICAL FIREWALL). */}
-        {recheckDue && (
+        {/* UND-2 → B-GROWTH-04 — the parent's saved re-check date, as plain
+            text in neutral ink (no chip, no colour; CLINICAL FIREWALL). */}
+        {recheckDueAt && (
           <span
-            data-testid="dev-recheck-due"
-            className="inline-flex flex-shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs font-extrabold"
-            style={{ background: "var(--arbor-yellow-soft)", color: "var(--arbor-ink)" }}
+            data-testid="dev-recheck-date"
+            className="flex-shrink-0 text-[12px]"
+            style={{ color: "var(--arbor-muted)" }}
           >
-            <Icon name="notifications" size={12} /> {t("dev.watching.recheckDue")}
+            {t("elev.growth.recheck.date", { date: fmtDay(recheckDueAt, uiLang) })}
           </span>
         )}
         <span className="ms-12 inline-flex flex-shrink-0 items-center gap-1 text-[12px] font-bold sm:ms-0" style={{ color: "var(--arbor-green-ink)" }}>

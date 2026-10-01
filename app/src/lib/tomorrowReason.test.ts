@@ -15,6 +15,7 @@ import { ROUTE_IDS } from "./routes";
 import {
   chooseReason,
   clearStoredReason,
+  deriveReturnSignals,
   closeDay,
   dayStamp,
   isDayClosing,
@@ -204,7 +205,8 @@ describe("TJB-28 — the hook is mounted, in-app, and sends nothing", () => {
     expect(mount).toContain("signals=");
     expect(growth).toContain("returnSignals");
     // The signals are derived, not hard-coded to a constant.
-    expect(growth).toMatch(/ritualDue:\s*ritualOfTheMoment\(/);
+    // B-GROWTH-04: through the one derivation (ritual record read, decided in lib).
+    expect(growth).toContain("ritualRecord: readRitualRecord()");
   });
 
   it("the shelf writes the close too — an evening usually ends there, not on Growth", () => {
@@ -213,9 +215,10 @@ describe("TJB-28 — the hook is mounted, in-app, and sends nothing", () => {
     expect(shelf).toContain("closeDay(childProfile.id, ");
     // It WRITES the hook; it never renders it (one display surface only).
     expect(shelf).not.toContain("<TomorrowReasonCard");
-    const call = shelf.match(/closeDay\(childProfile\.id, now, \{[\s\S]{0,500}?\}\);/)?.[0];
+    // B-GROWTH-04: the shelf derives through deriveReturnSignals like Growth.
+    const call = shelf.match(/closeDay\(childProfile\.id, now, deriveReturnSignals\(\{[\s\S]{0,600}?\}\)\);/)?.[0];
     expect(call).toBeTruthy();
-    for (const field of ["ritualDue:", "watchFocus:", "unopenedStory:", "momentsToday:"]) {
+    for (const field of ["ritualRecord:", "watchFocus:", "unopenedStory:", "behaviorLogs", "playLogs"]) {
       expect(call, `close-of-day write missing ${field}`).toContain(field);
     }
   });
@@ -229,5 +232,43 @@ describe("TJB-28 — the hook is mounted, in-app, and sends nothing", () => {
   it("nothing about the hook is a notification", () => {
     expect(card).not.toMatch(/registerPush|Notification\.|new Notification|serviceWorker/);
     expect(read("./tomorrowReason.ts")).not.toMatch(/registerPush|Notification\.|serviceWorker|fetch\(/);
+  });
+});
+
+/* B-GROWTH-04 — the close-of-day facts derived ONCE (Growth and Comics both
+   call deriveReturnSignals; neither writes the derivation out by hand). */
+describe("deriveReturnSignals (B-GROWTH-04)", () => {
+  const now = new Date(2026, 9, 1, 20, 0, 0).getTime();
+  const at = (h: number, dayOffset = 0) => new Date(2026, 9, 1 + dayOffset, h, 0, 0).toISOString();
+
+  it("counts today's moments and plays only, and reads the shelf", () => {
+    const s = deriveReturnSignals({
+      behaviorLogs: [{ timestamp: at(9) }, { timestamp: at(9, -1) }],
+      playLogs: [{ timestamp: at(18) }],
+      watchFocus: true,
+      ritualRecord: {},
+      savedComicCount: 2,
+      storyTotal: 5,
+      now,
+    });
+    expect(s.momentsToday).toBe(2);
+    expect(s.watchFocus).toBe(true);
+    expect(s.unopenedStory).toBe(true);
+    expect(typeof s.ritualDue).toBe("boolean");
+  });
+
+  it("a caller that knows the shelf book by book overrides the count", () => {
+    const s = deriveReturnSignals({ behaviorLogs: [], playLogs: [], watchFocus: false, ritualRecord: {}, unopenedStory: false, savedComicCount: 0, storyTotal: 5, now });
+    expect(s.unopenedStory).toBe(false);
+    expect(s.momentsToday).toBe(0);
+  });
+
+  it("Growth and Comics both derive through it (source pins)", () => {
+    const here = path.dirname(fileURLToPath(import.meta.url));
+    for (const rel of ["../components/tabs/DevelopmentTab.tsx", "../components/tabs/ComicsTab.tsx"]) {
+      const src = readFileSync(path.join(here, rel), "utf8");
+      expect(src, rel).toContain("deriveReturnSignals({");
+      expect(src, rel).not.toContain("countSince(behaviorLogs, startOfToday");
+    }
   });
 });

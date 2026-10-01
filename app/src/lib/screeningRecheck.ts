@@ -40,3 +40,14 @@ export function latestRecheckDueAt<T extends RecheckRecord>(items: readonly T[])
   const latest = [...items].sort((a, b) => (a.answeredAt < b.answeredAt ? 1 : -1))[0];
   return latest?.recheckDueAt;
 }
+
+/** B-GROWTH-04 — the re-check as a continuation CANDIDATE for Today's one
+ *  proactive slot (precedence 4): the latest screening's due date, once it has
+ *  arrived, else null. A plain date fact about the parent's own reminder. */
+export function recheckCandidate<T extends RecheckRecord>(
+  screenings: readonly T[],
+  now: number = Date.now(),
+): { kind: "recheck"; dueAt: string } | null {
+  const dueAt = latestRecheckDueAt(screenings);
+  return dueAt && isRecheckDue(dueAt, now) ? { kind: "recheck", dueAt } : null;
+}

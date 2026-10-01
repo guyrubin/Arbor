@@ -38,10 +38,9 @@ import { track } from "../../lib/analytics";
 // TJB-28 — the shelf is where an evening actually ends, so this is the surface
 // most likely to be open at the close of a day. It writes the return hook; the
 // hook itself is SHOWN on Growth (components/nextopen/TomorrowReasonCard).
-import { closeDay } from "../../lib/tomorrowReason";
-import { readRitualRecord, ritualOfTheMoment } from "../../lib/familyRitualsCadence";
+import { closeDay, deriveReturnSignals } from "../../lib/tomorrowReason";
+import { readRitualRecord } from "../../lib/familyRitualsCadence";
 import { resolveWatchFocus } from "../../lib/screeningWatch";
-import { countSince } from "../../lib/pulse";
 import type { HeroPackId } from "../../types";
 import { comicShelfReadIsCurrent } from "../../lib/comicShelfScope";
 
@@ -186,16 +185,17 @@ export default function ComicsTab() {
   // writes at most once a day; the shelf itself never renders the hook.
   useEffect(() => {
     const now = Date.now();
-    const startOfToday = new Date(now).setHours(0, 0, 0, 0);
-    closeDay(childProfile.id, now, {
-      ritualDue: ritualOfTheMoment(now, readRitualRecord()) !== null,
+    // B-GROWTH-04: the same derivation Growth uses (lib/tomorrowReason).
+    closeDay(childProfile.id, now, deriveReturnSignals({
+      ritualRecord: readRitualRecord(),
       watchFocus: resolveWatchFocus(childProfile.id, milestones) != null,
       // An authored adventure with no saved book of its own is still unopened —
       // read-along comics live in their own slots and never mask one.
       unopenedStory: authoredBooks.some((book) => !book.meta),
-      momentsToday:
-        countSince(behaviorLogs, startOfToday, now) + countSince(playLogs, startOfToday, now),
-    });
+      behaviorLogs,
+      playLogs,
+      now,
+    }));
     // One write per mount is the whole intent — the day's reason must not be
     // re-chosen as the parent browses the shelf.
     // eslint-disable-next-line react-hooks/exhaustive-deps
