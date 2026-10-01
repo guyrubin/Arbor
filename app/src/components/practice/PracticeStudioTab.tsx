@@ -22,6 +22,7 @@ import { markPinNudgeShown, shouldNudgeForPin } from "../kidmode/parentGate";
 import { usePracticeData } from "../../practice/usePracticeData";
 import { STUDIO_WORLDS, studioCountKey, type StudioWorld } from "./studioWorlds";
 import { track } from "../../lib/analytics";
+import { requestOpenSettings } from "../layout/settingsBus";
 
 // B-PLAY-02: the world list and each tile's count + unit live in the pure
 // components/practice/studioWorlds module (fixture-testable without React).
@@ -110,15 +111,26 @@ export default function PracticeStudioTab() {
         </button>
       </section>
 
+      {/* B-PLAY-06: the PIN nudge is a 44 px button that opens Settings with
+          the PIN row in view (was a static "… · Settings" line). Removed again
+          when lane-X B-KID-14 carries "Set PIN once". */}
       {nudgePin && (
-        <p
+        <button
+          type="button"
           data-testid="gate-pin-nudge"
-          className="rounded-2xl px-4 py-3 text-[12.5px] leading-relaxed"
+          onClick={() => requestOpenSettings({ focus: "pin" })}
+          className="w-full min-h-11 rounded-2xl px-4 py-3 text-start text-[12.5px] leading-relaxed transition focus:outline-none focus-visible:ring-2"
           style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink-soft)", border: "1px solid var(--arbor-rule)" }}
         >
-          <b style={{ color: "var(--arbor-ink)" }}>{t("elev.gate.set.title")}</b>{" "}
-          {t("elev.gate.set.sub")} {t("elev.gate.set.cta")} · {t("nav.settings")}
-        </p>
+          <span className="flex items-center gap-3">
+            <Icon name="lock" size={18} />
+            <span className="min-w-0 flex-1">
+              <b style={{ color: "var(--arbor-ink)" }}>{t("elev.gate.set.title")}</b>{" "}
+              {t("elev.gate.set.sub")}
+            </span>
+            <span className="font-extrabold flex-shrink-0" style={{ color: "var(--arbor-ink)" }}>{t("elev.gate.set.cta")}</span>
+          </span>
+        </button>
       )}
 
       {/* World grid */}

@@ -161,6 +161,8 @@ function settings(source = settingsSource) {
   const imports = { ...b.imports,
     "../ui/Icon": { Icon: "Icon" }, "./AdminDashboard": { default: "AdminDashboard", __esModule: true },
     "./ParentalGatePanel": { default: "ParentalGatePanel", __esModule: true },
+    // B-PLAY-06: Settings consumes a requested row focus on open.
+    "./settingsBus": { consumeSettingsFocus: () => null, SETTINGS_FOCUS_ANCHOR: { pin: "settings-pin-row" } },
     "./DeleteAccountModal": { default: "DeleteAccountModal", __esModule: true },
     "../referral/InviteCard": { default: "InviteCard", __esModule: true },
     "../billing/PlanPrices": { PlanPrices: "PlanPrices" }, "../billing/LegalLinks": { LegalLinks: "LegalLinks" },

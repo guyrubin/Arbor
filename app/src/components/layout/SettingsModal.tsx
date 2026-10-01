@@ -7,6 +7,7 @@ import { Modal } from "../ui/Modal";
 import { Sheet, useCompactSurface } from "../ui/Sheet";
 import AdminDashboard from "./AdminDashboard";
 import ParentalGatePanel from "./ParentalGatePanel";
+import { consumeSettingsFocus, SETTINGS_FOCUS_ANCHOR } from "./settingsBus";
 import DeleteAccountModal from "./DeleteAccountModal";
 import InviteCard from "../referral/InviteCard";
 import { PlanPrices } from "../billing/PlanPrices";
@@ -60,6 +61,26 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
       setDraftAiLang(aiLang);
     }
   }, [open, uiLang, aiLang]);
+
+  // B-PLAY-06: a caller that opened Settings for one row (Practice's "Set a
+  // PIN") lands with that row in view. Two frames: the sheet mounts, then lays out.
+  useEffect(() => {
+    if (!open) return;
+    const focus = consumeSettingsFocus();
+    if (!focus || typeof window === "undefined") return;
+    let raf2 = 0;
+    const raf1 = window.requestAnimationFrame(() => {
+      raf2 = window.requestAnimationFrame(() => {
+        document
+          .querySelector(`[data-testid="${SETTINGS_FOCUS_ANCHOR[focus]}"]`)
+          ?.scrollIntoView({ block: "center", behavior: "smooth" });
+      });
+    });
+    return () => {
+      window.cancelAnimationFrame(raf1);
+      window.cancelAnimationFrame(raf2);
+    };
+  }, [open]);
 
   // A closed Settings session must never reopen the destructive confirmation.
   useEffect(() => {
@@ -364,7 +385,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
         </div>
         {/* STORE-3: parent PIN management — the ONLY setup surface (the kid-mode
             challenge card can no longer mint the PIN). */}
-        <div className="pt-1">
+        <div className="pt-1" data-testid="settings-pin-row">
           <Row icon={<Icon name="lock" size={18} />} title={t("elev.gate.set.title")} sub={t("elev.gate.set.sub")}>
             <span />
           </Row>

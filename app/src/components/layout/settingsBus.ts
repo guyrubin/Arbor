@@ -13,9 +13,29 @@
  */
 export const SETTINGS_OPEN_EVENT = "arbor:open-settings";
 
+/** A Settings row a caller can ask to land on (B-PLAY-06). */
+export type SettingsFocus = "pin";
+
+/** The anchor each focus scrolls into view — a data-testid inside SettingsModal. */
+export const SETTINGS_FOCUS_ANCHOR: Record<SettingsFocus, string> = {
+  pin: "settings-pin-row",
+};
+
+let pendingFocus: SettingsFocus | null = null;
+
 /** Ask the shell to open the Settings modal. Kid Mode is re-checked by the
- *  listener, exactly as it is for search — every path in passes one gate. */
-export function requestOpenSettings(): void {
+ *  listener, exactly as it is for search — every path in passes one gate.
+ *  B-PLAY-06: `focus` names the row the sheet should scroll to; it is held
+ *  here (one module-level slot, no store) until SettingsModal consumes it. */
+export function requestOpenSettings(opts?: { focus?: SettingsFocus }): void {
   if (typeof window === "undefined") return;
+  pendingFocus = opts?.focus ?? null;
   window.dispatchEvent(new CustomEvent(SETTINGS_OPEN_EVENT));
+}
+
+/** Read-and-clear the pending focus (SettingsModal calls this on open). */
+export function consumeSettingsFocus(): SettingsFocus | null {
+  const f = pendingFocus;
+  pendingFocus = null;
+  return f;
 }
