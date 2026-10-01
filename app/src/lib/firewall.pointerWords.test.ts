@@ -25,9 +25,9 @@ import type { MissionRecord, PracticeDomain } from "../types";
 const SRC = path.resolve(__dirname, "..");
 const POINTER = /least practice|weakest|lowest[ -](band|share|scoring)|explore next/i;
 
-/** Files this item owns. lib/i18n.ts still carries the retired `foryou.header`
- *  / `hub.scholar.domainLabel` VALUES; nothing renders them any more, and their
- *  deletion is filed in FOLLOW-UPS.md (that file belongs to another builder). */
+/** Files this item owns. B-PLAY-01: lib/i18n.ts is scanned too — the retired
+ *  `foryou.header` ("A good place to explore next") is deleted, so the shipped
+ *  dictionary itself is now held to the rule. */
 function scanTargets(): { name: string; text: string }[] {
   const out: { name: string; text: string }[] = [];
   const elevDir = path.join(SRC, "lib", "i18nElevation");
@@ -46,6 +46,7 @@ function scanTargets(): { name: string; text: string }[] {
     ["components", "sections", "AcademyForYou.tsx"],
     ["components", "sections", "ScholarHubCard.tsx"],
     ["components", "practice", "DevelopmentCopilot.tsx"],
+    ["lib", "i18n.ts"],
   ]) {
     out.push({ name: rel.join("/"), text: readFileSync(path.join(SRC, ...rel), "utf8") });
   }
@@ -131,5 +132,40 @@ describe("OBJ-GROWTH-05 (b) — the pick no longer follows the band", () => {
         .filter((d) => d !== focus)
         .sort((x, y) => (bands.find((b) => b.domain === x)?.signal ?? 50) - (bands.find((b) => b.domain === y)?.signal ?? 50));
     expect(preFixOthers(ALL_BANDS("social"), "language")[0]).toBe("social");
+  });
+});
+
+/* B-PLAY-01 — Learn never names the weakest domain. `focusDomain` is the
+   lowest-scoring domain (growth/devScore.ts); the For You card printed it as
+   its chip, in "Arbor suggests starting with {domain}" and in "Courses to
+   explore for {domain}". The ranking may order the courses; it is never named. */
+describe("B-PLAY-01 — the For You card names no domain", () => {
+  const dict = stripComments(readFileSync(path.join(SRC, "lib", "i18n.ts"), "utf8"));
+  const foryouValues = [...dict.matchAll(/"(foryou\.[^"]+)":\s*"([^"]*)"/g)].map((m) => ({ key: m[1], value: m[2] }));
+
+  it("scans a non-empty foryou.* set in both languages", () => {
+    expect(foryouValues.length).toBeGreaterThan(10);
+  });
+
+  it("no foryou.* value carries a {domain} placeholder (EN + HE)", () => {
+    const offenders = foryouValues.filter((v) => v.value.includes("{domain}")).map((v) => v.key);
+    expect(offenders).toEqual([]);
+  });
+
+  it("NEGATIVE CONTROL — the pre-fix values trip the same check", () => {
+    for (const pre of ["Arbor suggests starting with {domain} — here's a gentle place", "Courses to explore for {domain}"]) {
+      expect(pre.includes("{domain}")).toBe(true);
+    }
+  });
+
+  it("AcademyForYou renders no labelFor() output and no ring/bar inside academy-foryou-*", () => {
+    const src = stripComments(readFileSync(path.join(SRC, "components", "sections", "AcademyForYou.tsx"), "utf8"));
+    // labelFor survives only as the no-data gate (focusLabel is never rendered).
+    expect(src).not.toMatch(/\{focusLabel\}/);
+    expect(src).not.toMatch(/domain:\s*focusLabel/);
+    expect(src).not.toMatch(/\{labelFor\(/);
+    expect(src).not.toMatch(/academy-foryou-domain-(chip|row)/);
+    expect(src).not.toMatch(/<RadialProgress|<ProgressBar/);
+    expect(src).toContain('t("foryou.title", { name: firstName })');
   });
 });

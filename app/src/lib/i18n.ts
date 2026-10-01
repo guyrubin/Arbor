@@ -1682,20 +1682,15 @@ export const en: Dict = {
   // Safety gate: no warn/amber/red token on recommended card; no deficit framing;
   // banned words: "low","weak","behind","delay","concern","deficit","lowest","needs work","score".
   "foryou.eyebrow": "For You",
-  // Section header — VERBATIM
-  "foryou.header": "A good place to explore next",
-  // Recommendation line — VERBATIM (interpolates {domain})
-  "foryou.recLine": "Arbor suggests starting with {domain} — here's a gentle place to put your energy this week.",
+  // B-PLAY-01: the card title names what the pick is built from, never the
+  // (lowest-ranked) domain. foryou.header / .recLine / .whyBody are retired.
+  "foryou.title": "Courses picked for {name}'s age and what you've noticed",
   // "Here's why" toggle label
   "foryou.whyToggle": "Here's why",
-  // "Here's why" expansion body — LOAD-BEARING VERBATIM (board-cleared)
-  "foryou.whyBody": "This is simply an area you've logged less about so far, so Arbor has the least to go on here. Spending a little time here helps Arbor understand your child better — it's not a sign anything is wrong.",
-  // Course roll-up label — VERBATIM (interpolates {domain})
-  "foryou.coursesLabel": "Courses to explore for {domain}",
+  // Course roll-up label — B-PLAY-01: no {domain}
+  "foryou.coursesLabel": "Courses to explore first",
   // Progress label — VERBATIM "[X] of [Y] explored" (NOT "% complete")
   "foryou.progress": "{x} of {y} explored",
-  // All-domains section header
-  "foryou.allDomainsHeader": "Learning map",
   // CTA
   "foryou.cta": "Explore masterclasses",
   // No-data state
@@ -4004,18 +3999,12 @@ export const he: Dict = {
   // Flagged for arbor-localization native review before wide release.
   // Same invitational meaning as EN — "least-explored" framing, NOT deficit framing.
   "foryou.eyebrow": "בשבילכם",
-  // "A good place to explore next" — invitational, not diagnostic
-  "foryou.header": "מקום טוב להתחיל לחקור",
-  // Recommendation line — same invitational register as EN
-  "foryou.recLine": "ארבור מציע להתחיל עם {domain} — כאן יש מקום עדין להשקיע קצת אנרגיה השבוע.",
   "foryou.whyToggle": "למה דווקא כאן?",
-  // "Here's why" expansion — preserves the "logged less / not a sign anything is wrong" meaning
-  "foryou.whyBody": "פשוט תיעדתם פחות על תחום זה עד כה, ולכן לארבור יש פחות מידע לעבוד איתו כאן. קצת זמן בתחום זה עוזר לארבור להכיר את ילדכם טוב יותר — זה לא סימן שמשהו לא בסדר.",
-  // Course roll-up label
-  "foryou.coursesLabel": "שיעורים לחקור עבור {domain}",
+  // B-PLAY-01: title + courses label name no domain.
+  "foryou.title": "קורסים שנבחרו לגיל של {name} ולמה שהבחנתם בו",
+  "foryou.coursesLabel": "שיעורים לחקור קודם",
   // "[X] of [Y] explored" — NOT "% complete"
   "foryou.progress": "{x} מתוך {y} נחקרו",
-  "foryou.allDomainsHeader": "מפת הלמידה",
   "foryou.cta": "חקרו שיעורי הורים",
   "foryou.nodata": "סמנו כמה אבני דרך וארבור יציע לאן כדאי להפנות אנרגיה השבוע.",
   "foryou.provenance": "מבוסס על אבני הדרך שתיעדתם — הצעה עורכת לחקור, לא אות אבחנתי.",

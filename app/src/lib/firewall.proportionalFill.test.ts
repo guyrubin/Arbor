@@ -43,8 +43,6 @@ type Entry = { file: string; match: string; why: string };
  *  landed in a parallel lane) — delete the entry when you see it. */
 const PENDING_CHILD_RECORD: Entry[] = [
   { file: "components/practice/SpeechCoachTab.tsx", match: "dose.trialsToday / dose.perSessionTarget", why: "Speech dose bar — FU#30 (pending; B-PLAY-07 replaces it with 'about 5 minutes together')" },
-  { file: "components/sections/AcademyForYou.tsx", match: "<RadialProgress", why: "explored-courses ring — B-PLAY-01 / B-PLAY-18 (lane SHELLPLAY)" },
-  { file: "components/sections/AcademyForYou.tsx", match: "<ProgressBar", why: "per-domain explored bars — B-PLAY-01 / B-PLAY-18 (lane SHELLPLAY)" },
   { file: "components/profile/RewardsCard.tsx", match: "next.progress * 100", why: "progress toward the next cosmetic, fed by the child's activity count — UNTICKETED, raised in REJECTIONS.md (B-CAREPRO-05) for the framer" },
 ];
 

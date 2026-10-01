@@ -14,8 +14,8 @@
  * not a child record.
  * Known violations (scanned, owned by other lanes, must STILL violate until
  * that lane clears them — then delete the entry so the guard tightens):
- *   - `components/sections/AcademyForYou.tsx` RadialProgress + ProgressBar
- *     (lane SHELLPLAY, B-PLAY-01 / B-PLAY-18)
+ *   - none. AcademyForYou's RadialProgress + ProgressBar were cleared by
+ *     B-PLAY-01 (lane SHELLPLAY); the file is now scanned clean.
  * `components/sections/ChildProfile.tsx` (`width: ${windowRecord.share}%`) is
  * scanned CLEAN: the Profile lane removes that bar in its own commit.
  */
@@ -49,9 +49,7 @@ const SCANNED = [
   "components/sections/AcademyForYou.tsx",
 ];
 
-const KNOWN_VIOLATIONS = new Set([
-  "components/sections/AcademyForYou.tsx",
-]);
+const KNOWN_VIOLATIONS = new Set<string>([]);
 
 const violationsIn = (rel: string) => {
   const src = stripComments(read(rel));

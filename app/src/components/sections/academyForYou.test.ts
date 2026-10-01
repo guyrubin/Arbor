@@ -12,11 +12,10 @@
  *
  * Additional safety gates:
  *  - Cleared copy keys exist in BOTH EN and HE dictionaries (i18n parity).
- *  - "foryou.header" contains the verbatim cleared copy "A good place to explore next".
- *  - "foryou.recLine" contains the verbatim cleared copy pattern.
- *  - "foryou.whyBody" contains the verbatim cleared expansion copy.
+ *  - B-PLAY-01: foryou.header / recLine / whyBody retired (law-1 pointer);
+ *    foryou.title names the inputs, never the domain.
  *  - "foryou.progress" uses "explored" (not "complete", not "%").
- *  - "foryou.coursesLabel" uses "explore" (not "complete", not "finish").
+ *  - "foryou.coursesLabel" uses "explore" (not "complete", not "finish") and no {domain}.
  *
  * Note: React component rendering tests live in component test files.
  * These tests run against the i18n dictionary and the FRAME_TO_DOMAIN logic
@@ -29,28 +28,22 @@ import { en, he } from "../../lib/i18n";
 
 // ── Verbatim cleared copy assertions ─────────────────────────────────────────
 
-describe("AP-053 verbatim cleared copy — foryou.header", () => {
-  it('EN foryou.header is exactly "A good place to explore next"', () => {
-    expect(en["foryou.header"]).toBe("A good place to explore next");
+// B-PLAY-01 retired the AP-053 "verbatim cleared" header / recLine / whyBody:
+// each named (or explained) the lowest-ranked domain — a law-1 pointer that
+// overrides the 2026-06 board clearance. The title now names the inputs.
+describe("B-PLAY-01 — the For You title names what the pick is built from", () => {
+  it("foryou.title (EN + HE) carries {name}, no {domain}", () => {
+    for (const dict of [en, he]) {
+      expect(dict["foryou.title"]).toContain("{name}");
+      expect(dict["foryou.title"]).not.toContain("{domain}");
+    }
+    expect(en["foryou.title"]).toBe("Courses picked for {name}'s age and what you've noticed");
   });
-});
-
-describe("AP-053 verbatim cleared copy — foryou.recLine", () => {
-  it("EN foryou.recLine contains the verbatim recommendation pattern with {domain} placeholder", () => {
-    const line = en["foryou.recLine"] ?? "";
-    expect(line).toContain("Arbor suggests starting with {domain}");
-    expect(line).toContain("gentle place to put your energy this week");
-  });
-});
-
-describe("AP-053 verbatim cleared copy — foryou.whyBody (LOAD-BEARING)", () => {
-  it("EN foryou.whyBody matches the verbatim board-cleared expansion copy", () => {
-    const body = en["foryou.whyBody"] ?? "";
-    // Assert each load-bearing phrase is present verbatim
-    expect(body).toContain("you've logged less about so far");
-    expect(body).toContain("Arbor has the least to go on here");
-    expect(body).toContain("helps Arbor understand your child better");
-    expect(body).toContain("it's not a sign anything is wrong");
+  it("the retired pointer keys are gone from both dictionaries", () => {
+    for (const k of ["foryou.header", "foryou.recLine", "foryou.whyBody", "foryou.allDomainsHeader"]) {
+      expect(en[k], k).toBeUndefined();
+      expect(he[k], k).toBeUndefined();
+    }
   });
 });
 
@@ -82,10 +75,11 @@ describe("AP-053 progress label — foryou.progress", () => {
 // ── Courses label: "explore" (not "complete") ────────────────────────────────
 
 describe("AP-053 courses label — foryou.coursesLabel", () => {
-  it('EN foryou.coursesLabel contains "explore" and {domain}', () => {
+  it('EN foryou.coursesLabel contains "explore" and never a {domain} (B-PLAY-01)', () => {
     const label = en["foryou.coursesLabel"] ?? "";
     expect(label.toLowerCase()).toContain("explore");
-    expect(label).toContain("{domain}");
+    expect(label).not.toContain("{domain}");
+    expect(he["foryou.coursesLabel"]).not.toContain("{domain}");
   });
 
   it('EN foryou.coursesLabel does not contain "complete" or "finish"', () => {

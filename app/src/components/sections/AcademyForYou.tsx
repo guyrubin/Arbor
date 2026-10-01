@@ -22,6 +22,13 @@
  *  - course progress: MASTERCLASSES catalogue + localStorage "arbor.masterclasses.done"
  *    (same key used by Masterclasses.tsx, read-only here).
  *
+ * B-PLAY-01 (law 1, overrides AP-053's verbatim copy): the lowest-score
+ * ranker still ORDERS which courses lead, but nothing on this card NAMES it —
+ * no domain chip, no "Arbor suggests starting with {domain}", no domain in the
+ * courses label, and no per-domain ring/bars (the Learning Map lives in
+ * Growth). The title says what the pick is built from: the child's age and
+ * what the parent noticed.
+ *
  * TOKEN-ONLY styling: var(--arbor-*). No raw hex. No index.css edits.
  * Logical CSS for HE/RTL. Touch targets >= 44px.
  */
@@ -35,7 +42,7 @@ import { useDevScore } from "../../hooks/useDevScore";
 import { MASTERCLASSES, FRAME_LABELS } from "../../lib/masterclasses";
 import type { FrameId } from "../../lib/masterclasses";
 import framework from "../../framework.json";
-import { cardCls, ProgressBar, RadialProgress, domainVisual, PASTEL } from "../ui/kit";
+import { cardCls } from "../ui/kit";
 import { TrustLink } from "../trust/TrustLink";
 
 // ── Domain label lookup (mirrors DevScoreCard + ScholarHubCard) ───────────────
@@ -227,37 +234,11 @@ export default function AcademyForYou({ onNavigateToMasterclasses }: { onNavigat
             className="text-[15px] font-extrabold leading-snug"
             style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}
           >
-            {/* OBJ-GROWTH-05: no "explore next" ranking language. */}
-            {t("elev.growthTruth.learn.header")}
+            {/* OBJ-GROWTH-05 / B-PLAY-01: no ranking language, no domain —
+                the title names what the pick is built from. */}
+            {t("foryou.title", { name: firstName })}
           </h2>
         </div>
-
-        {/* Recommended domain chip — POSITIVE/NEUTRAL styling only */}
-        <div
-          className="rounded-2xl px-4 py-2.5 mb-4"
-          style={{
-            background: "var(--arbor-green-soft)",
-            border: "1px solid rgba(52,178,119,0.20)",
-          }}
-          data-testid="academy-foryou-domain-chip"
-        >
-          <span
-            className="text-sm font-extrabold"
-            style={{ color: "var(--arbor-green-ink)" }}
-          >
-            {focusLabel}
-          </span>
-        </div>
-
-        {/* Recommendation line — VERBATIM cleared copy */}
-        <p
-          className="text-[14px] leading-relaxed mb-4"
-          style={{ color: "var(--arbor-ink)" }}
-          data-testid="academy-foryou-rec-line"
-          dir="auto"
-        >
-          {t("foryou.recLine", { domain: focusLabel })}
-        </p>
 
         {/* "Here's why" expansion — LOAD-BEARING verbatim copy.
             Masterplan 3.1: the TrustLink chip rides the SAME row as the why
@@ -325,8 +306,8 @@ export default function AcademyForYou({ onNavigateToMasterclasses }: { onNavigat
               className="text-[11px] uppercase tracking-widest font-bold mb-1"
               style={{ color: "var(--arbor-muted)" }}
             >
-              {/* "Courses to explore for [Domain]" — VERBATIM cleared copy */}
-              {t("foryou.coursesLabel", { domain: focusLabel })}
+              {/* B-PLAY-01: the label never names the (lowest-ranked) domain. */}
+              {t("foryou.coursesLabel")}
             </p>
             <p
               className="text-[14px] font-extrabold"
@@ -360,89 +341,22 @@ export default function AcademyForYou({ onNavigateToMasterclasses }: { onNavigat
         )}
       </div>
 
-      {/* ── Learning Map — all-domains course roll-up ───────────────────────────
-          The design's "Learning Map" spine: an overall progress ring over a
-          per-domain list of COUNT bars (icon + dot + cleared "X of Y explored"
-          label + a count-based bar). NOT a ranked deficit list — ordered
-          alphabetically by domain id. The ring/bars render value/total COUNTS
-          (explored masterclasses of available), never a 0–100 competence verdict;
-          the cleared verbatim "X of Y explored" text is kept in ADDITION to the
-          bar. Ring accent is --arbor-green-ink via tone="mint" (never blue). */}
-      {domainRows.length > 0 && (() => {
-        const totalExplored = domainRows.reduce((s, r) => s + r.explored, 0);
-        const totalAvailable = domainRows.reduce((s, r) => s + r.available, 0);
-        return (
-          <div
-            className={`${cardCls} p-5`}
-            data-testid="academy-foryou-all-domains"
-          >
-            <h3
-              className="text-[13px] font-extrabold uppercase tracking-widest mb-4"
-              style={{ color: "var(--arbor-muted)" }}
-            >
-              {t("foryou.allDomainsHeader")}
-            </h3>
-
-            {/* Overall ring — a COUNT of explored courses across domains, not a
-                competence score. Centre label shows the raw count, never "%". */}
-            <div className="flex items-center gap-4 mb-5">
-              <RadialProgress value={totalExplored} total={totalAvailable} tone="mint" size={88} thickness={9}>
-                <span className="text-center leading-none">
-                  <span className="block text-[18px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>
-                    {totalExplored}
-                  </span>
-                  <span className="block text-[10px] font-bold" style={{ color: "var(--arbor-muted)" }}>
-                    / {totalAvailable}
-                  </span>
-                </span>
-              </RadialProgress>
-              <p className="text-[13px] leading-relaxed min-w-0" style={{ color: "var(--arbor-ink-soft)" }} dir="auto">
-                {t("foryou.progress", { x: totalExplored, y: totalAvailable })}
-              </p>
-            </div>
-
-            <div className="space-y-3.5">
-              {/* Alphabetical order only — never rendered as a ranked deficit list */}
-              {domainRows.map((row) => {
-                const v = domainVisual(row.domainId);
-                const DomainIcon = v.icon;
-                return (
-                  <div
-                    key={row.domainId}
-                    data-testid={`academy-foryou-domain-row-${row.domainId}`}
-                  >
-                    <div className="flex items-center gap-2.5 mb-1.5">
-                      {/* leading domain color dot + lucide icon */}
-                      <span
-                        className="inline-flex items-center justify-center rounded-lg flex-shrink-0"
-                        style={{ background: PASTEL[v.tone].soft, color: PASTEL[v.tone].ink, width: 26, height: 26 }}
-                      >
-                        <DomainIcon className="w-3.5 h-3.5" aria-hidden />
-                      </span>
-                      <span
-                        className="text-[13px] font-bold truncate flex-1 min-w-0"
-                        style={{ color: "var(--arbor-ink)" }}
-                        title={labelFor(row.domainId, t)}
-                      >
-                        {labelFor(row.domainId, t)}
-                      </span>
-                      {/* "[X] of [Y] explored" — VERBATIM cleared label, kept in ADDITION to the bar */}
-                      <span
-                        className="text-[12px] font-extrabold flex-shrink-0"
-                        style={{ color: "var(--arbor-muted)" }}
-                      >
-                        {t("foryou.progress", { x: row.explored, y: row.available })}
-                      </span>
-                    </div>
-                    {/* COUNT bar (explored / available), domain-colored — not a verdict */}
-                    <ProgressBar value={row.explored} total={row.available} tone={v.tone} height={7} />
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })()}
+      {/* B-PLAY-01: the per-domain Learning Map (ring + one bar and one domain
+          label per row) left this card — the Map lives in Growth. What stays
+          is the family's own course count across the catalogue, as text. */}
+      {domainRows.length > 0 && (
+        <p
+          className="text-[13px] leading-relaxed px-1"
+          style={{ color: "var(--arbor-ink-soft)" }}
+          data-testid="academy-foryou-total"
+          dir="auto"
+        >
+          {t("foryou.progress", {
+            x: domainRows.reduce((n, r) => n + r.explored, 0),
+            y: domainRows.reduce((n, r) => n + r.available, 0),
+          })}
+        </p>
+      )}
 
       {/* Non-diagnostic provenance note */}
       <p className="text-[11.5px] px-1" style={{ color: "var(--arbor-faint)" }}>

@@ -653,7 +653,6 @@ const RGBA_BASELINE: Record<string, number> = {
   "components/profile/ProfileSwitcher.tsx": 1,
   "components/profile/RewardsCard.tsx": 1,
   "components/search/TopbarSearch.tsx": 1,
-  "components/sections/AcademyForYou.tsx": 1,
   "components/sections/AskSpecialist.tsx": 2,
   "components/sections/DevScoreCard.tsx": 1,
   "components/sections/FindProfessional.tsx": 3,
