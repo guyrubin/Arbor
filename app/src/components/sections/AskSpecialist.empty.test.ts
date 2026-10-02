@@ -26,7 +26,6 @@ vi.mock("../../context/ArborContext", () => ({ useArbor: () => record }));
 vi.mock("../../context/ToastContext", () => ({ useToast: () => ({ toast: vi.fn() }) }));
 vi.mock("../../context/LanguageContext", () => ({ useLanguage: () => ({ t: (k: string) => k, uiLang: "en" }) }));
 vi.mock("./Reports", () => ({ REPORTS: [], CONSULT_MENU_REPORTS: [], useReportExport: () => vi.fn() }));
-vi.mock("./FindProfessional", () => ({ default: () => null }));
 vi.mock("../ui/Modal", () => ({ Modal: () => null, default: () => null }));
 vi.mock("../../lib/api", () => ({ authHeaders: async () => ({}) }));
 vi.mock("../../lib/loopEvents", () => ({ trackShareInitiated: vi.fn(), trackShareCompleted: vi.fn() }));

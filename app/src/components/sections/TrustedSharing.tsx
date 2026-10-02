@@ -309,9 +309,6 @@ export default function TrustedSharing() {
             <button onClick={() => setAdding((a) => !a)} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold text-white" style={{ background: "var(--arbor-gradient-primary)" }}>
               <Icon name="add" size={18} /> {t("sec.sharing.new")}
             </button>
-            <button onClick={() => setActiveTab("find-pro")} className="inline-flex min-h-11 items-center justify-center gap-2 px-1 py-2 text-sm font-bold" style={{ color: "var(--arbor-green-ink)" }}>
-              {t("sec.sharing.findPro")} <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
-            </button>
           </div>
         }
       />

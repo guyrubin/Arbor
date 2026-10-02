@@ -342,7 +342,7 @@ function ApptRow({
   // an unknown language, and the row is already dir="auto" for exactly that.
   const modeLabel =
     /^in.?person$/i.test(appt.mode) ? t("elev.careNet.mode.inPerson")
-    : /^(online|remote|video)$/i.test(appt.mode) ? t("elev.careNet.filter.online")
+    : /^(online|remote|video)$/i.test(appt.mode) ? t("elev.careNet.mode.online")
     : appt.mode;
 
   return (

@@ -41,7 +41,6 @@ export const en: Record<string, string> = {
   "elev.charter.default.responsibility": "Responsibility",
   "elev.charter.default.kindness": "Kindness",
   "elev.charter.remove": "Remove {value}",
-  "elev.carehonesty.pro.verified": "Verified by Arbor",
   "elev.learnCare.receipt.clientDocs": "Records removed from this device",
   "elev.learnCare.saved.browse": "Browse picks for {name}",
   // R12: the shelf pages at 30 reads. This is a LENGTH control, not an age
@@ -146,7 +145,6 @@ export const he: Record<string, string> = {
   "elev.charter.default.responsibility": "אחריות",
   "elev.charter.default.kindness": "טוב לב",
   "elev.charter.remove": "הסרת {value}",
-  "elev.carehonesty.pro.verified": "מאומת על ידי ארבור",
   "elev.learnCare.receipt.clientDocs": "רשומות שנמחקו מהמכשיר הזה",
   "elev.learnCare.saved.browse": "לעיין בהמלצות עבור {name}",
   "elev.learnCare.shelf.more": "להציג עוד קריאות ({n})",

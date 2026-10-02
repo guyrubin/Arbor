@@ -138,6 +138,10 @@ export const HASH_ALIASES: Readonly<Record<string, ActiveTab>> = {
  */
 export const RETIRED_ROUTES: Readonly<Record<string, ActiveTab>> = {
   strengths: "profile",
+  // B-CAREPRO-19 (G3): the professional directory has zero records and its
+  // consult requests 404. The route returns with the first real record; until
+  // then #/find-pro lands on Consult, which prepares the same visit.
+  "find-pro": "consult",
 };
 
 export function resolveRouteId(raw: string): ActiveTab | null {

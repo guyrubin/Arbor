@@ -351,9 +351,11 @@ describe("R25 — every leaf renders within its declared moduleBudget", () => {
       expect(c.demoted, `${route} must demote, not delete, the modules it folded away`).toBeGreaterThan(0);
       expect(c.disclosures, `${route} must carry exactly one disclosure`).toBe(1);
     }
+    // B-CAREPRO-19: #/find-pro is retired to Consult — its seat renders the
+    // Consult leaf (like #/handoff), which stays inside the same budget of 2.
     const findPro = countModules(leaves.get("find-pro")!);
-    expect(findPro.topLevel).toBe(2);
-    expect(findPro.demoted).toBe(0);
+    expect(findPro.topLevel).toBeLessThanOrEqual(2);
+    expect(leaves.get("find-pro")).toBe(leaves.get("consult"));
   });
 
   it("negative control: a leaf one stamp over budget is rejected by the same arithmetic", () => {

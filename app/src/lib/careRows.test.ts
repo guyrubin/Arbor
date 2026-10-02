@@ -27,7 +27,6 @@ const readRoot = (rel: string) => readFileSync(path.join(here, "..", "..", rel),
 const CHARTER = read("components/sections/FamilyFormation.tsx");
 const CONSULT = read("components/sections/AskSpecialist.tsx");
 const CONSULT_TAB = read("components/tabs/ConsultTab.tsx");
-const FINDPRO = read("components/sections/FindProfessional.tsx");
 const SIDEBAR = read("components/layout/Sidebar.tsx");
 const SETTINGS = read("components/layout/SettingsModal.tsx");
 
@@ -67,32 +66,24 @@ describe("LC-22 · a family ritual can be started", () => {
   });
 });
 
-describe("LC-16 · no verb over an empty directory", () => {
+describe("LC-16 → B-CAREPRO-19 · no directory verb; the trusted send is the move", () => {
   it("negative control: the directory really is empty", () => {
     expect(ARBOR_PROFESSIONALS).toEqual([]);
   });
 
-  it("the professional verb and the rail door are conditional on a directory", () => {
-    expect(CONSULT).toContain("const hasDirectory = pros.length > 0;");
-    expect(CONSULT).toContain("onClick={hasDirectory ? () => setSendOpen(true) : sendToTrusted}");
-    expect(CONSULT).toContain("{hasDirectory && (");
-    // …and both come back automatically the moment there is one entry.
-    expect(CONSULT).not.toContain('<button\n                onClick={() => setSendOpen(true)}\n                disabled={noneSelected}\n                className');
+  it("the professional verb, the rail and the directory door are gone", () => {
+    expect(CONSULT).not.toContain("hasDirectory");
+    expect(CONSULT).not.toContain("setSendOpen");
+    expect(CONSULT).not.toContain('setActiveTab("find-pro")');
   });
 
   it("what replaces it is a real move: the SAME audience-capped text, by mail", () => {
-    expect(CONSULT).toContain('data-testid={hasDirectory ? "consult-send-pro" : "consult-send-trusted"}');
+    expect(CONSULT).toContain('data-testid="consult-send-trusted"');
     expect(CONSULT).toContain("const sendToTrusted = () => {");
     expect(CONSULT).toContain("if (exportText == null) return;");
     expect(CONSULT).toContain("encodeURIComponent(exportText)");
     expect(careEn["elev.learnCare.trusted.send"]).toBeTruthy();
-    expect(careHe["elev.learnCare.trusted.send"]).toMatch(/[֐-׿]/);
-  });
-
-  it("FindProfessional withholds its search and filters until there is something to search", () => {
-    expect(FINDPRO).toContain("{pros.length > 0 && (");
-    // The empty state itself stays — it is the honest thing on the page.
-    expect(FINDPRO).toContain('t("elev.careNet.empty.title")');
+    expect(careHe["elev.learnCare.trusted.send"]).toMatch(/[\u0590-\u05FF]/);
   });
 });
 

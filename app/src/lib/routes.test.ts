@@ -105,6 +105,13 @@ describe("hash aliases", () => {
     expect(resolveRouteId("#/strengths")).toBe("profile");
   });
 
+  it("B-CAREPRO-19: #/find-pro lands on Consult; the id keeps its seat (ROUTE_IDS still 43)", () => {
+    expect(RETIRED_ROUTES["find-pro"]).toBe("consult");
+    expect(resolveRouteId("#/find-pro")).toBe("consult");
+    expect(ROUTE_IDS as readonly string[]).toContain("find-pro");
+    expect(ROUTE_IDS.length).toBe(43);
+  });
+
   it("unknown hashes still fall back exactly as before (null)", () => {
     for (const raw of ["", "#/", "#/nope", "nonsense", "#/OVERVIEW", "#/overview/extra", "#/care-team-x"]) {
       expect(resolveRouteId(raw), `"${raw}" should not resolve`).toBeNull();

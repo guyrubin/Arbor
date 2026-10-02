@@ -1,8 +1,12 @@
 /**
- * B-CAREPRO-04 — "Verified professionals" never renders over an empty
- * directory. `ARBOR_PROFESSIONALS` is `[]` and the API adds nothing, so the
- * rail's heading claimed a staffed human-expert layer that does not exist
- * (CARE-4 claim gate). Rendered at the real component, EN and HE.
+ * B-CAREPRO-04 → B-CAREPRO-19 — Consult never shows a professional directory.
+ *
+ * B-CAREPRO-04 hid the "Verified professionals" rail while the directory was
+ * empty. B-CAREPRO-19 (G3) retired the directory itself: #/find-pro lands on
+ * Consult, the rail and the Send-to-a-professional modal are deleted, and the
+ * one send verb is "Send to someone you trust" (the same audience-capped
+ * text). Rendered at the real component, EN and HE — including with a
+ * directory entry, which no longer brings anything back.
  */
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -23,6 +27,7 @@ vi.mock("../../context/ArborContext", () => ({
     actionPlans: [],
     approvedMemoryItems: [],
     setActiveTab: vi.fn(),
+    requestConsultPrefill: vi.fn(),
     pendingConsultPrefill: null,
     consumeConsultPrefill: vi.fn(),
   }),
@@ -39,14 +44,7 @@ vi.mock("../../hooks/useChildCollection", () => ({
 }));
 vi.mock("../../lib/api", () => ({ authHeaders: async () => ({}) }));
 vi.mock("../../lib/loopEvents", () => ({ trackShareInitiated: vi.fn(), trackShareCompleted: vi.fn() }));
-vi.mock("./FindProfessional", () => ({ default: () => null }));
 vi.mock("../ui/Modal", () => ({ Modal: () => null }));
-vi.mock("./Reports", async () => {
-  const REPORTS = [
-    { title: "Therapist Summary", desc: "", titleKey: "elev.reports.therapist.title", descKey: "", tone: "lav", type: "therapist" },
-  ];
-  return { REPORTS, CONSULT_MENU_REPORTS: REPORTS, useReportExport: () => vi.fn() };
-});
 
 import AskSpecialist from "./AskSpecialist";
 
@@ -54,38 +52,43 @@ const STRINGS = ["Verified professionals", "אנשי מקצוע מאומתים"]
 
 beforeEach(() => { harness.locale = "en"; harness.pros = []; });
 
-describe("B-CAREPRO-04 — no 'Verified professionals' over an empty directory", () => {
-  it("negative control: the shipped directory really is empty and the strings are the real keys", async () => {
+describe("B-CAREPRO-19 — no directory rail or professional verb on Consult", () => {
+  it("negative control: the shipped directory really is empty and the rail keys are gone", async () => {
     const real = await vi.importActual<typeof import("../../services/professionals")>("../../services/professionals");
     expect(real.ARBOR_PROFESSIONALS).toEqual([]);
-    expect(translate("en", "care.pros.title")).toBe(STRINGS[0]);
-    expect(translate("he", "care.pros.title")).toBe(STRINGS[1]);
+    expect(translate("en", "care.pros.title")).toBe("care.pros.title");
+    expect(translate("he", "care.pros.title")).toBe("care.pros.title");
   });
 
   for (const locale of ["en", "he"] as const) {
-    it(`${locale}: the consult page renders, with zero occurrences of either heading`, () => {
+    it(`${locale}: the consult page renders the trusted-send verb and no directory heading`, () => {
       harness.locale = locale;
       const html = renderToStaticMarkup(<AskSpecialist />);
       // non-vacuity: the page really rendered its packet
       expect(html.length).toBeGreaterThan(2000);
       expect(html).toContain('data-testid="consult-send-trusted"');
+      expect(html).not.toContain('data-testid="consult-send-pro"');
       for (const s of STRINGS) expect(html.includes(s), `${locale} DOM carries "${s}"`).toBe(false);
     });
   }
 
-  it("POSITIVE CONTROL: with one verified entry the rail and its heading return", () => {
-    harness.pros = [{ id: "p1", name: "Dr. Test", role: "OT", langs: "EN", mode: "Online", city: "", rating: 5, verified: true, tone: "mint" }];
+  it("a directory entry brings nothing back (the rail is deleted, not gated)", () => {
+    harness.pros = [{ id: "p1", name: "Test Record", role: "OT", langs: "EN", mode: "Online", city: "", rating: 5, verified: true, tone: "mint" }];
     const html = renderToStaticMarkup(<AskSpecialist />);
-    expect(html).toContain(STRINGS[0]);
-    expect(html).toContain('data-testid="consult-send-pro"');
+    expect(html).not.toContain(STRINGS[0]);
+    expect(html).not.toContain('data-testid="consult-send-pro"');
   });
 
-  it("the rail mount is gated on hasDirectory (source)", async () => {
+  it("source: no rail, no Send modal, no door to #/find-pro", async () => {
     const { readFileSync } = await import("node:fs");
     const path = await import("node:path");
     const { fileURLToPath } = await import("node:url");
     const src = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "AskSpecialist.tsx"), "utf8");
-    expect(src).toContain("{hasDirectory && ProsRail}");
-    expect(src).not.toMatch(/^\s*\{ProsRail\}\s*$/m);
+    expect(src.length).toBeGreaterThan(5000);
+    for (const gone of ["ProsRail", "hasDirectory", "FindProfessional", "setSendOpen", 'setActiveTab("find-pro")', "/api/professionals"]) {
+      expect(src, gone).not.toContain(gone);
+    }
+    // NEGATIVE CONTROL: the pre-change mount is what the rule catches.
+    expect("{hasDirectory && ProsRail}").toContain("ProsRail");
   });
 });

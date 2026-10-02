@@ -21,7 +21,6 @@ const SRC = path.join(__dirname, "..", "..");
 const read = (rel: string) => readFileSync(path.join(SRC, rel), "utf8").replace(/\r\n/g, "\n");
 
 const appts = read("components/sections/Appointments.tsx");
-const findPro = read("components/sections/FindProfessional.tsx");
 
 /** The pre-change Appointments shape, verbatim from the audited source. */
 const PRE_APPTS = `
@@ -33,18 +32,10 @@ type Appt = { id: string; who: string; role: string; when: string; mode: string 
   <ComingSoon label="Booking" /><ComingSoon label="Reminders" />
 `.replace(/\r\n/g, "\n");
 
-/** The pre-change consult-request success handler. */
-const PRE_FINDPRO = `
-      setConsultDone({ id: request.id, mailto });
-      track("consult_send_completed", { proRole: consultPro.role, mode: consultMode });
-      toast(\`Consultation request sent for \${consultPro.name}.\`, "success");
-`.replace(/\r\n/g, "\n");
-
 describe("LC-12 · the Appointments surface uses the date model", () => {
   it("the sources were really read", () => {
     expect(appts.length).toBeGreaterThan(2000);
     expect(appts).toContain("export default function Appointments");
-    expect(findPro).toContain("export default function FindProfessional");
   });
 
   it("the date is a real datetime input, not free-text prose", () => {
@@ -89,22 +80,7 @@ describe("LC-12 · the Appointments surface uses the date model", () => {
   });
 });
 
-describe("LC-09 · find → share → track is one flow", () => {
-  it("a recorded consult request creates a tracked appointment", () => {
-    const wired = /appointmentFromConsultRequest\(\{[\s\S]{0,400}?requestId: request\.id/.exec(findPro);
-    expect(wired).toBeTruthy();
-    expect(/appointmentFromConsultRequest/.exec(PRE_FINDPRO)).toBeNull();
-    expect(/apptsCol\.upsert\(/.exec(findPro)).toBeTruthy();
-  });
-
-  it("the embedded directory does not offer to navigate to the page it is already on", () => {
-    // Every "prepare a summary" CTA inside FindProfessional is behind !embedded.
-    const consultNav = [...findPro.matchAll(/setActiveTab\("consult"\)/g)];
-    expect(consultNav.length).toBeGreaterThan(0);
-    expect(/\{!embedded &&/.exec(findPro)).toBeTruthy();
-    expect(/\{!embedded &&/.exec(PRE_FINDPRO)).toBeNull();
-  });
-
+describe("LC-09 · share → track is one flow (the directory leg retired with B-CAREPRO-19)", () => {
   it("'prepare a summary' is ONE door — Appointments routes to consult, not reports", () => {
     expect(/setActiveTab\("consult"\)/.exec(appts)).toBeTruthy();
     expect(appts).not.toContain('setActiveTab("reports")');

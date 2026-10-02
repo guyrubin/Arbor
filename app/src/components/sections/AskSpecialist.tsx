@@ -17,19 +17,13 @@ import {
 } from "../../consult/packet";
 import { ClinicalLanguageError } from "../../lib/clinicalScan";
 import { trackShareInitiated, trackShareCompleted } from "../../lib/loopEvents";
-import { Modal } from "../ui/Modal";
-import { InitialsTile, InsetRow, PASTEL } from "../ui/kit";
-import type { PastelKey } from "../ui/kit";
-import type { Professional } from "../../services/professionals";
-import { ARBOR_PROFESSIONALS } from "../../services/professionals";
-import { authHeaders } from "../../lib/api";
+import { InsetRow } from "../ui/kit";
 import { CONSULT_MENU_REPORTS, useReportExport } from "./Reports";
 // LC-20 + LC-12: the reason for the visit, the questions prepared in
 // Appointments, and the discipline-specific evidence each preset reads.
 import { useChildCollection } from "../../hooks/useChildCollection";
 import type { LangObservation } from "../../growth/vocabAgg";
 import type { GrowthEntry } from "../../growth/growthEntries";
-import FindProfessional from "./FindProfessional";
 
 /* Care › Consult — the single "get expert input" flow (b3).
    One spine (a parent-redacted packet from the child's record) and one honest
@@ -160,37 +154,10 @@ export default function AskSpecialist() {
   const menuRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
-  // Send-to-a-professional modal. `sendPro` carries the pro chosen from the rail
-  // so FindProfessional can open its consult request directly on that pro.
-  const [sendOpen, setSendOpen] = useState(false);
-
-  // Verified-pros rail — same live source/fallback as the FindProfessional tab
-  // (curated, Arbor-verified). The rail is a preview; the full filterable
-  // directory + consult transaction still lives in FindProfessional, which we
-  // host in the Send modal so no transaction logic is duplicated here.
-  const [pros, setPros] = useState<Professional[]>(ARBOR_PROFESSIONALS);
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        const res = await fetch("/api/professionals", { headers: await authHeaders() });
-        if (res.ok) {
-          const data = await res.json();
-          if (alive && Array.isArray(data.professionals) && data.professionals.length) setPros(data.professionals);
-        }
-      } catch { /* keep fallback */ }
-    })();
-    return () => { alive = false; };
-  }, []);
-  const railPros = useMemo(() => pros.filter((p) => p.verified).slice(0, 3), [pros]);
-  /** LC-16 — Guy #6. There is no directory: `ARBOR_PROFESSIONALS` is `[]` and
-   *  the API adds nothing, so "Send to a professional" opened a modal onto an
-   *  empty list and the rail's "Find a professional" door led to the same. The
-   *  verb and the rail are withheld while the directory is empty; they return
-   *  the moment it has one entry. What a parent CAN do — hand the packet to
-   *  someone they already trust — takes their place, through the same
-   *  audience-capped export text (no second egress path). */
-  const hasDirectory = pros.length > 0;
+  /** LC-16 / B-CAREPRO-19 — there is no professional directory (G3: the
+   *  route is retired until one real record exists), so the verb is the move a
+   *  parent CAN make: hand the same audience-capped packet to someone they
+   *  already trust, through the one export text (no second egress path). */
   const sendToTrusted = () => {
     if (exportText == null) return;
     trackShareInitiated("story", "ask_specialist");
@@ -199,10 +166,6 @@ export default function AskSpecialist() {
     try { window.location.href = href; trackShareCompleted("story", "email"); }
     catch { toast(t("elev.packet.copyFailed"), "error"); }
   };
-  // Pro `tone` is a free string from the directory; clamp it to a valid layout-kit
-  // pastel so InitialsTile never renders blank on an unexpected value.
-  const proTone = (tone: string): PastelKey => (tone in PASTEL ? (tone as PastelKey) : "sky");
-
   const packet = useMemo(
     () => buildConsultPacket({
       // LC-17b: the SHARED input assembler (consult/packet.buildPacketInput) —
@@ -335,60 +298,6 @@ export default function AskSpecialist() {
     ? { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 0 } }
     : { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.2 } };
 
-  // Right-rail verified-pros card. Tapping "Request consult" opens the Send
-  // modal (FindProfessional embedded), prefilled with the selected packet — the
-  // existing consult transaction is reused, not re-implemented.
-  const ProsRail = (
-    <aside className="space-y-3.5">
-      <h2 className="text-[15px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: INK }}>{t("care.pros.title")}</h2>
-      <div className="flex flex-col gap-3.5">
-        {railPros.map((p) => (
-          <div
-            key={p.id}
-            className="rounded-[18px] p-4 flex items-center gap-3.5"
-            style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-sm)" }}
-          >
-            <InitialsTile name={p.name} tone={proTone(p.tone)} />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[15px] font-extrabold truncate" style={{ color: INK }}>{p.name}</span>
-                {p.verified && <Icon name="verified" size={16} fill={1} style={{ color: GREEN }} aria-label={t("elev.carehonesty.pro.verified")} />}
-              </div>
-              <div className="text-[12px] font-bold mt-px" style={{ color: GREEN }}>{p.role}</div>
-              <div className="text-xs font-semibold mt-0.5 inline-flex items-center gap-1.5" style={{ color: MUTED }}>
-                <span>{p.langs?.split(" · ")[0] || p.langs}</span>
-                <span aria-hidden="true">·</span>
-                {/* Provider records arrive in an unknown language, so an
-                    unrecognised mode passes through as-is; the one value we
-                    recognise is ours to translate rather than print in English
-                    to a Hebrew-reading parent. */}
-                <span dir="auto">{/online|remote/i.test(`${p.mode} ${p.city}`) ? t("elev.careNet.filter.online") : p.mode}</span>
-                <span aria-hidden="true">·</span>
-                <span className="inline-flex items-center gap-0.5" style={{ color: "var(--arbor-yellow-ink)" }}><Icon name="star" size={13} fill={1} /> {p.rating}</span>
-              </div>
-            </div>
-            <button
-              onClick={() => setSendOpen(true)}
-              className="inline-flex items-center font-extrabold text-[12px] rounded-[11px] px-4 py-2.5 whitespace-nowrap min-h-[44px]"
-              style={{ background: "var(--arbor-ink)", color: "#fff", boxShadow: "0 8px 18px -6px rgba(20,34,90,0.5)" }}
-            >
-              {t("care.request")}
-            </button>
-          </div>
-        ))}
-      </div>
-      {hasDirectory && (
-        <button
-          onClick={() => setActiveTab("find-pro")}
-          className="w-full inline-flex items-center justify-center text-center text-[12px] font-bold rounded-[13px] min-h-11 transition hover:brightness-95"
-          style={{ background: "var(--arbor-paper-deep)", color: GREEN }}
-        >
-          {t("sec.findpro.title")}
-        </button>
-      )}
-    </aside>
-  );
-
   /** One data-contract disclosure retains every promise in empty and populated states. */
   const CONTRACT_TILES = [
     { icon: "visibility", title: t("consult.contract.review"), body: t("consult.contract.reviewBody") },
@@ -506,7 +415,7 @@ export default function AskSpecialist() {
         </>
       ) : (
         <>
-          {/* Live packet first; the honest directory/support rail follows. */}
+          {/* Live packet first. */}
           <div className="grid grid-cols-1 gap-5 items-start">
             {/* Left: the summary card (the moat read). Section titles mirror the
                 child record (incl. the Development-Map domains in the dev
@@ -584,11 +493,6 @@ export default function AskSpecialist() {
                 )}
               </details>
             </section>
-
-            {/* Right: verified-pros rail. B-CAREPRO-04: mounted only while a
-                directory exists — "Verified professionals" over an empty
-                list implied a staffed expert layer Arbor does not have. */}
-            {hasDirectory && ProsRail}
           </div>
 
       {/* The complete data contract remains one labeled disclosure, after the packet and before export. */}
@@ -712,30 +616,21 @@ export default function AskSpecialist() {
                 </AnimatePresence>
               </div>
 
-              {/* LC-16 — the professional verb only exists while a directory
-                  does. Otherwise the parent gets the move they can actually
-                  make: hand the same audience-capped packet to someone they
-                  already trust. */}
+              {/* LC-16 / B-CAREPRO-19 — hand the same audience-capped packet
+                  to someone the parent already trusts. */}
               <button
-                onClick={hasDirectory ? () => setSendOpen(true) : sendToTrusted}
+                onClick={sendToTrusted}
                 disabled={noneSelected}
-                data-testid={hasDirectory ? "consult-send-pro" : "consult-send-trusted"}
+                data-testid="consult-send-trusted"
                 className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-4 py-3 transition disabled:opacity-50 min-h-[44px]"
                 style={{ background: "var(--arbor-paper-sunk)", color: GREEN, border: "1px solid rgba(52,178,119,0.30)" }}>
-                <Icon name={hasDirectory ? "send" : "mail"} size={17} />
-                {hasDirectory ? t("consult.send") : t("elev.learnCare.trusted.send")}
+                <Icon name="mail" size={17} />
+                {t("elev.learnCare.trusted.send")}
               </button>
             </div>
           </div>
         </>
       )}
-
-      {/* Send modal — hosts the verified directory + consult-request flow with the
-          audience-capped packet handed in as the prefilled note (LC-08: a
-          blocked build hands in NOTHING). */}
-      <Modal open={sendOpen} onClose={() => setSendOpen(false)} title={t("consult.send")} maxWidth="max-w-3xl">
-        <FindProfessional embedded incomingNote={exportText ?? ""} />
-      </Modal>
     </motion.div>
   );
 }

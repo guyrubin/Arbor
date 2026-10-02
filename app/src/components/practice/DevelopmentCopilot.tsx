@@ -279,7 +279,7 @@ export default function DevelopmentCopilot() {
       {escalationSignal && (
         <button
           type="button"
-          onClick={() => setActiveTab("find-pro")}
+          onClick={() => setActiveTab("consult")}
           data-testid="copilot-escalate-cta"
           className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-start transition active:scale-[0.99]"
           style={{ minHeight: 44, background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}

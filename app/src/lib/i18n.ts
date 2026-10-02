@@ -343,7 +343,6 @@ export const en: Dict = {
   "consult.copy": "Copy",
   "consult.download": "Download",
   "consult.exportPdf": "Export as PDF",
-  "consult.send": "Send to a professional",
   "consult.opening": "Opening report…",
   "consult.exportError": "Couldn't build that report — try again.",
   // AIX-S3(a) — Vision handoff note prefills the consult composer (parent-editable).
@@ -882,7 +881,6 @@ export const en: Dict = {
   "sec.mem.sub": "The facts about {name} that Arbor remembers, only what you approve. Source-linked, time-stamped and forgettable, always.",
   "sec.family.title": "Family formation",
   "sec.family.sub": "The long game: values, rituals and stories that form a family over years, not days.",
-  "sec.findpro.title": "Find a professional",
   "sec.findpro.sub": "A curated, Arbor-verified network of child-development specialists, coordinated around {name}, with your context ready to share.",
   "sec.master.eyebrow": "Parent learning",
   "sec.master.title": "Parent masterclasses",
@@ -1018,7 +1016,6 @@ export const en: Dict = {
   // CARE-3 — Trusted Sharing fully localized; scope LABELS resolve from stable
   // scope IDs (lib/shareScopes.ts) at render — enforcement never reads labels.
   "sec.sharing.new": "New share",
-  "sec.sharing.findPro": "Find a professional",
   "sec.sharing.trustNote": "Every share is parent-approved, time-boxed and fully revocable — enforced on the server.",
   "sec.sharing.form.title": "Share {name}'s context",
   "sec.sharing.form.emailPlaceholder": "Recipient email (they sign in with this to see what you share)",
@@ -2265,10 +2262,8 @@ export const en: Dict = {
   // behind a vague "more".
   "academy.rail.more": "Learning Map, this week’s concept and progress",
   "care.packet.title": "Your summary",
-  "care.pros.title": "Verified professionals",
   "care.lead": "Built from {name}'s record. Uncheck anything you'd rather keep private.",
   "care.trust": "Nothing leaves your device until you choose · GDPR/COPPA",
-  "care.request": "Request consult",
   /* ════ KID-1 — Kid Mode chrome (kid register, comic voice — NEVER referenced
      from parent surfaces; register separation is enforced by a test in
      components/kidmode/kidMode.test.ts). Values are the live EN copy moved out
@@ -2725,7 +2720,6 @@ export const he: Dict = {
   "consult.copy": "העתקה",
   "consult.download": "הורדה",
   "consult.exportPdf": "ייצוא כ-PDF",
-  "consult.send": "שליחה לאיש מקצוע",
   "consult.opening": "פותח דוח…",
   "consult.exportError": "לא הצלחנו לבנות את הדוח — נסו שוב.",
   // AIX-S3(a) — פתק ה־Vision ממלא מראש את חלון הייעוץ (ניתן לעריכה על ידי ההורה).
@@ -3212,7 +3206,6 @@ export const he: Dict = {
   "sec.mem.sub": "העובדות על {name} שארבור זוכר, רק מה שאתם מאשרים. מקושר למקור, מתוארך, וניתן לשכוח תמיד.",
   "sec.family.title": "בניית משפחה",
   "sec.family.sub": "המשחק הארוך: ערכים, טקסים וסיפורים שמעצבים משפחה לאורך שנים, לא ימים.",
-  "sec.findpro.title": "מצאו איש מקצוע",
   "sec.findpro.sub": "רשת אנשי מקצוע מובחרת ומאומתת בידי ארבור בתחום התפתחות הילד, מתואמת סביב {name}, עם ההקשר שלכם מוכן לשיתוף.",
   "sec.master.eyebrow": "למידה להורים",
   "sec.master.title": "מאסטרקלאס להורים",
@@ -3332,7 +3325,6 @@ export const he: Dict = {
   "sec.sharing.sub": "אתם מחליטים מה לגבי {name} משותף, עם מי, ולכמה זמן. כל הרשאה מוגבלת בזמן ומבוטלת מיד עם פקיעתה.",
   // CARE-3 — מסך השיתוף מתורגם במלואו; תוויות היקף נפתרות ממזהים יציבים.
   "sec.sharing.new": "שיתוף חדש",
-  "sec.sharing.findPro": "מציאת איש/אשת מקצוע",
   "sec.sharing.trustNote": "כל שיתוף מאושר על ידי ההורה, מוגבל בזמן וניתן לביטול מלא — נאכף בשרת.",
   "sec.sharing.form.title": "שיתוף ההקשר של {name}",
   "sec.sharing.form.emailPlaceholder": "אימייל הנמען/ת (איתו הם נכנסים כדי לראות את מה ששיתפתם)",
@@ -4508,10 +4500,8 @@ export const he: Dict = {
   "academy.courses.title": "כל הקורסים",
   "academy.rail.more": "מפת הלמידה, מושג השבוע וההתקדמות",
   "care.packet.title": "הסיכום שלכם",
-  "care.pros.title": "אנשי מקצוע מאומתים",
   "care.lead": "נבנה מהנתונים של {name}. בטלו סימון של כל מה שתעדיפו לשמור פרטי.",
   "care.trust": "כלום לא יוצא מהמכשיר עד שתבחרו · GDPR/COPPA",
-  "care.request": "בקשת ייעוץ",
   /* ════ KID-1 — Kid Mode chrome (HE) — FIRST-PASS HEBREW, GD-6/GD-7 STILL OPEN.
      Until 22 Sep 2026 every value here was the EN string, so an IL-first
      product shipped a fully English child home to a Hebrew-native five-year

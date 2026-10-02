@@ -63,6 +63,6 @@ describe("W2 Care — coherent purpose and share flow", () => {
    expect(ASK).toContain('serializeForExport(audience, packet, excluded');
    expect(ASK).toContain('disabled={noneSelected}');
    expect(ASK).toContain('if (exportText == null) return');
-   expect(ASK).toContain('hasDirectory ? t("consult.send") : t("elev.learnCare.trusted.send")');
+   expect(ASK).toContain('{t("elev.learnCare.trusted.send")}');
  });
 });

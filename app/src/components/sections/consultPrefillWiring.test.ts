@@ -28,7 +28,6 @@ vi.mock("../../hooks/useChildCollection", () => ({
 }));
 vi.mock("../../lib/api", () => ({ authHeaders: async () => ({}) }));
 vi.mock("../../lib/loopEvents", () => ({ trackShareInitiated: vi.fn(), trackShareCompleted: vi.fn() }));
-vi.mock("./FindProfessional", () => ({ default: () => null }));
 vi.mock("../ui/Modal", () => ({ Modal: () => null }));
 vi.mock("./Reports", async () => {
   const REPORTS = [

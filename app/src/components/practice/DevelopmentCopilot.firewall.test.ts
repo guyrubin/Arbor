@@ -113,8 +113,9 @@ describe("1.7 firewall guard — DevelopmentCopilot.tsx source is clean", () => 
 });
 
 describe("1.7 zero-regression — every capability stays reachable, reframed", () => {
-  it("keeps the escalate path (find-pro), gated on the internal signal only", () => {
-    expect(copilotSrc).toContain('setActiveTab("find-pro")');
+  it("keeps the escalate path (B-CAREPRO-19: to Consult, not the retired directory), gated on the internal signal only", () => {
+    expect(copilotSrc).toContain('setActiveTab("consult")');
+    expect(copilotSrc).not.toContain('setActiveTab("find-pro")');
     expect(copilotSrc).toContain("escalationSignal");
   });
   it("keeps all sections: domain picture, weekly focus, conversation rows, history, pulse, clinician summary", () => {

@@ -199,7 +199,6 @@ const HEX_ALLOWLIST: Record<string, readonly string[]> = {
   "components/practice/WordWorldTab.tsx": ["#fff"],
   "components/profile/AvatarCreator.tsx": ["#fff"],
   "components/sections/AskSpecialist.tsx": ["#fff"],
-  "components/sections/FindProfessional.tsx": ["#fff"],
   "components/sections/Strengths.tsx": ["#eef6f1"],
   "components/stories/StoryIllustration.tsx": [
     // SVG illustration palette — allowlisted art file
@@ -655,7 +654,6 @@ const RGBA_BASELINE: Record<string, number> = {
   "components/search/TopbarSearch.tsx": 1,
   "components/sections/AskSpecialist.tsx": 2,
   "components/sections/DevScoreCard.tsx": 1,
-  "components/sections/FindProfessional.tsx": 3,
   "components/sections/Masterclasses.tsx": 3,
   "components/sections/Screening.tsx": 3,
   "components/sections/ScreeningSheet.tsx": 1,
