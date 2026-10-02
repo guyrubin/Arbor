@@ -9,13 +9,15 @@ import { Skeleton } from "../ui/Skeleton";
 import { PageHeader, SectionCard, cardCls, IconBadge } from "../ui/kit";
 import { HeroAvatar } from "../ui/HeroAvatar";
 import { useDevScore } from "../../hooks/useDevScore";
-import { useWeeklyRecap, topMomentDisplay, type WeeklyReport } from "../../hooks/useWeeklyRecap";
-import { behaviorTypeLabel } from "../../content/behaviorTaxonomy";
+import { useWeeklyRecap, recapWeekStartMs, type WeeklyReport } from "../../hooks/useWeeklyRecap";
 import { rankLearnCards } from "../../learn/learnLibrary";
 import { LEARN_CARDS } from "../../learn/learnCards";
 import { ageYearsFromProfile } from "../../lib/childAge";
 import { track } from "../../lib/analytics";
-import RecapStoryCards from "../weekly/RecapStoryCards";
+import RecapStoryCards, { type RecapRecord } from "../weekly/RecapStoryCards";
+import { parseFirstsState } from "../overview/whatChangedEvents";
+import { firstsStorageKey } from "../../lib/firsts";
+import { dailyPromptKeys } from "../../lib/promptBank";
 import QuickLogModal from "../overview/QuickLogModal";
 import { rcString } from "../weekly/recapStrings";
 import { weeklyChipIds, isEmptyCurrentWeek } from "../weekly/weeklySelection";
@@ -33,7 +35,10 @@ import type { WeeklyDigest } from "../../lib/api";
  * configured (server/emailProvider.ts).
  */
 export default function WeeklyTab() {
-  const { childProfile, setActiveTab, acceptTodayAction, activeTodayAction, requestLearnRead } = useArbor();
+  const {
+    childProfile, setActiveTab, acceptTodayAction, activeTodayAction, requestLearnRead,
+    behaviorLogs, playLogs, milestones, checkedMilestones, actionLoop, approvedMemoryItems, keptInsights,
+  } = useArbor();
   const { user } = useAuth();
   const { t, uiLang, aiLang } = useLanguage();
   const he = aiLang === "he";
@@ -41,6 +46,8 @@ export default function WeeklyTab() {
   // is the existing "openable from anywhere" capture (its own doc comment) and
   // portals through Modal, so no new capture path is invented here.
   const [logOpen, setLogOpen] = useState(false);
+  // B-TODAY-23: card 3's fallback opens the same sheet with its question as the cue.
+  const [logPrompt, setLogPrompt] = useState<string | null>(null);
   // OBJ-TODAY-06: the two demoted secondary modules, collapsed by default so
   // the generated week reads at its declared budget.
   const [showWeeklyMore, setShowWeeklyMore] = useState(false);
@@ -79,7 +86,8 @@ export default function WeeklyTab() {
   // Counts only under the moments stat (clinical firewall — never a derived
   // score). Legacy reports without a resolved count fall back to the digest's
   // resolvedCount; when neither exists the line is simply omitted.
-  const selectedWins = selected ? selected.summary.resolved ?? selected.digest?.stats.resolvedCount : undefined;
+  // B-TODAY-23: the stat trio ("behavior events" · top trigger · done/total
+  // steps) is gone — the letter's cards carry the week, as events.
   const first = childProfile.name.split(" ")[0];
 
   // P1 language fix: this week's stored narrative is in another language and a
@@ -92,6 +100,31 @@ export default function WeeklyTab() {
   // W2 2.1: the CURRENT week renders as the story-card ritual when its digest
   // exists; history weeks keep the classic layout below.
   const showRecap = !!selected?.digest && selected.id === currentId && !awaitingLanguage;
+
+  // B-TODAY-23: the letter reads the parent's OWN record over the report's
+  // calendar week (recapWeekStartMs: the same week recapWeekId files it under).
+  // Everything here is already on the device; card 3's quotes never leave it.
+  const recapRecord = useMemo<RecapRecord>(() => {
+    let firstsRaw: string | null = null;
+    try {
+      firstsRaw = window.localStorage.getItem(firstsStorageKey(childProfile.id));
+    } catch {
+      firstsRaw = null;
+    }
+    const now = new Date();
+    return {
+      weekStartMs: recapWeekStartMs(now),
+      behaviorLogs,
+      playLogs,
+      milestones,
+      actionLoop,
+      approvedFacts: approvedMemoryItems,
+      keptIdeas: keptInsights,
+      firstsState: parseFirstsState(firstsRaw),
+      milestoneCount: checkedMilestones,
+      promptKey: dailyPromptKeys({ ageYears: ageYearsFromProfile(childProfile), childId: childProfile.id, date: now })[0] ?? null,
+    };
+  }, [childProfile, behaviorLogs, playLogs, milestones, actionLoop, approvedMemoryItems, keptInsights, checkedMilestones]);
   useEffect(() => {
     if (showRecap && recap.recapUnopened) recap.markRecapOpened();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -237,58 +270,20 @@ export default function WeeklyTab() {
             <div data-module="weekly-recap" data-primary-move="accept-recap-recommendation" style={{ display: "contents" }}>
             <RecapStoryCards
               report={selected as WeeklyReport & { digest: WeeklyDigest }}
+              record={recapRecord}
               childName={childProfile.name}
               canAccept={selected.digest.generated === "ai"}
               accepted={activeTodayAction?.recommendation === selected.digest.tryThisWeek.trim()}
               onAccept={() => acceptTodayAction(selected.digest!.tryThisWeek, "standard", "digest")}
+              onCapture={() => {
+                setLogPrompt(recapRecord.promptKey);
+                setLogOpen(true);
+              }}
             />
             </div>
           )}
 
-          <div data-module="weekly-stats" className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className={`${cardCls} p-5`}>
-              <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("wk.behaviorEvents")}</span>
-              <div className="text-3xl font-extrabold mt-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{selected.summary.count}</div>
-              {selectedWins !== undefined && (
-                <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>{t("wk.momentsResolved", { n: selected.summary.count, wins: selectedWins })}</p>
-              )}
-            </div>
-            <div className={`${cardCls} p-5`}>
-              <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("wk.topTrigger")}</span>
-              {/* F-11: schema behaviorTypes render as the stat (label map);
-                  the parent's free-typed trigger renders QUOTED + truncated —
-                  parent words stay visibly parent words, never a
-                  computed-looking value (topMomentDisplay untangles legacy
-                  docs that conflated the two). */}
-              {(() => {
-                const top = topMomentDisplay(selected.summary);
-                return (
-                  <>
-                    <div className="text-sm font-bold mt-2 leading-snug" dir="auto" style={{ color: "var(--arbor-ink)" }}>
-                      {top.type
-                        ? behaviorTypeLabel(top.type, t, "full")
-                        : top.quote
-                          ? t("wk.triggerQuote", { text: top.quote })
-                          : "—"}
-                    </div>
-                    {top.type && top.quote && (
-                      <p className="text-[11px] mt-1" dir="auto" style={{ color: "var(--arbor-muted)" }}>
-                        {t("wk.triggerQuote", { text: top.quote })}
-                      </p>
-                    )}
-                  </>
-                );
-              })()}
-            </div>
-            <div className={`${cardCls} p-5`}>
-              <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("wk.actionSteps")}</span>
-              <div className="text-3xl font-extrabold mt-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{selected.planProgress.done}<span className="text-lg" style={{ color: "var(--arbor-muted)" }}>/{selected.planProgress.total}</span></div>
-              <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>{t("wk.stepsComplete")}</p>
-            </div>
-          </div>
-
-          {/* The week's narrative is being rewritten in the active language —
-              the truthful counts above still stand. */}
+          {/* The week's narrative is being rewritten in the active language. */}
           {awaitingLanguage && (
             <div className={`${cardCls} p-6 flex items-center gap-2 text-sm`} style={{ color: "var(--arbor-muted)" }} role="status">
               <Icon name="refresh" size={16} className="animate-spin" /> {t("wk.generating")}
@@ -518,7 +513,12 @@ export default function WeeklyTab() {
           </details>
         </>
       )}
-      <QuickLogModal open={logOpen} onClose={() => setLogOpen(false)} />
+      <QuickLogModal open={logOpen} promptKey={logPrompt}
+        onClose={() => {
+          setLogOpen(false);
+          setLogPrompt(null);
+        }}
+      />
     </motion.div>
   );
 }

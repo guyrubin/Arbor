@@ -79,6 +79,9 @@ export const en: Record<string, string> = {
   "elev.brief.changed.facts.many": "{n} new things you approved about {name}",
   "elev.brief.changed.moments.one": "1 moment kept",
   "elev.brief.changed.moments.many": "{n} moments kept",
+  // B-TODAY-23: Weekly's "New this week" card counts "Keep this" ideas too.
+  "elev.brief.changed.ideas.one": "1 idea you kept",
+  "elev.brief.changed.ideas.many": "{n} ideas you kept",
 };
 
 export const he: Record<string, string> = {
@@ -136,4 +139,6 @@ export const he: Record<string, string> = {
   "elev.brief.changed.facts.many": "{n} דברים חדשים שאישרתם על {name}",
   "elev.brief.changed.moments.one": "רגע אחד נשמר",
   "elev.brief.changed.moments.many": "{n} רגעים נשמרו",
+  "elev.brief.changed.ideas.one": "רעיון אחד ששמרתם",
+  "elev.brief.changed.ideas.many": "{n} רעיונות ששמרתם",
 };

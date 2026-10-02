@@ -64,6 +64,26 @@ export function recapWeekId(d = new Date()): string {
   return `${d.getFullYear()}-W${String(week).padStart(2, "0")}`;
 }
 
+/**
+ * B-TODAY-23: the first instant of the calendar week `recapWeekId(now)` names
+ * — the ONE week definition the report id already uses, so Weekly's cards
+ * count exactly the events of the week the report is filed under. Binary
+ * search over the id (it is constant on one contiguous interval ending at
+ * `now`; the search span is 8 days), so DST and the year cut follow the id.
+ */
+export function recapWeekStartMs(now: Date = new Date()): number {
+  const id = recapWeekId(now);
+  let lo = now.getTime() - 8 * DAY; // definitely another week
+  let hi = now.getTime(); // in the week
+  if (recapWeekId(new Date(lo)) === id) return lo;
+  while (hi - lo > 1) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (recapWeekId(new Date(mid)) === id) hi = mid;
+    else lo = mid;
+  }
+  return hi;
+}
+
 export type WeeklyReport = {
   id: string; // = recapWeekId
   /** Legacy/back-compat display label, frozen in `lang` at generation time.

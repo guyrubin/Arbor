@@ -122,6 +122,21 @@ describe("the card's dictionary is event-only in BOTH locales", () => {
   }
 });
 
+/* B-TODAY-23 reuse: the weekly "What changed?" letter speaks the same
+   vocabulary — its card 1 IS this composer over a calendar week. */
+describe("the weekly letter's dictionary is event-only in BOTH locales (B-TODAY-23)", () => {
+  const LETTER_KEYS = Object.keys(en).filter((k) => /^elev\.recap\.(new|helped|words|try|card)\./.test(k));
+  it("the letter keys exist in both locales", () => {
+    expect(LETTER_KEYS.length).toBeGreaterThanOrEqual(12);
+    for (const k of LETTER_KEYS) expect(he[k], `he ${k}`).toBeTruthy();
+  });
+  for (const [lang, dict] of [["en", en], ["he", he]] as const) {
+    it(`${lang}: no banned comparative / total / trend word on the letter`, () => {
+      for (const k of LETTER_KEYS) expect(firstHit(dict[k]), `${lang} ${k} = "${dict[k]}"`).toBeNull();
+    });
+  }
+});
+
 const RECAP = { currentReport: { id: "r" }, recapUnopened: true, currentId: "2026-W40" } as unknown as Parameters<typeof WhatChanged>[0]["recap"];
 const NO_RECAP = { currentReport: null, recapUnopened: false, currentId: "2026-W40" } as unknown as Parameters<typeof WhatChanged>[0]["recap"];
 const EVERY_LINE: WhatChangedLine[][] = [

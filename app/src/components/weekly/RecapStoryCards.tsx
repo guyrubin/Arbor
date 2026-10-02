@@ -1,31 +1,37 @@
 /* ════════════════════════════════════════════════════════════════════════════
-   RecapStoryCards — W2 2.1 (masterplan ARBOR-UI-MASTERPLAN-2026-08-11 §4 ·
-   Maytal Row-1 #2 + #4 · the Wrapped-pattern weekly ritual).
+   RecapStoryCards — the weekly "What changed?" letter (B-TODAY-23; first
+   built W2 2.1 as the Wrapped-pattern ritual, masterplan 2026-08-11 §4).
 
-   The primary view of the CURRENT week's report in WeeklyTab: 3–5
-   full-screen-ish story cards, one stat/insight per card, navigated by
-   buttons + keyboard (no gesture lib — masterplan explicitly button/keyboard/
+   The primary view of the CURRENT week's report in WeeklyTab: ALWAYS four
+   cards, navigated by buttons + keyboard (no gesture lib — button/keyboard/
    reduced-motion first):
 
-     1. what went well — hero headline + the digest's warm summary
-     2. evidence — COUNT CHIPS ONLY (Maytal's frame drew per-domain trend
-        arrows; the concept-translation doc bans them: activity evidence,
-        never direction — and previousWeekMoments never renders here, a
-        side-by-side week count is a trend by inspection)
-     3. the three-block summary — progress / keep doing / worth attention,
-        the attention block in neutral conversation framing ("שווה שיחה"),
-        never warning colors
-     4. LAST — exactly ONE recommendation, CTA wired through the EXISTING
-        digest tryThisWeek → acceptTodayAction seam (TODAY-1 guard upstream:
+     1. New this week — composeWhatChanged (the SAME composer as Today's
+        "What changed since you left" card) over the calendar week the report
+        id names (recapWeekStartMs): firsts, milestones noticed by title,
+        approved facts, kept ideas, moments kept. Counts of parent-noticed
+        things, never a total, a delta or a verdict.
+     2. What helped — the parent's OWN step reports this week, grouped by
+        step ("{step}: helped 2 · not today 1"). The template subject is the
+        step, so "Maya is calmer" is impossible by construction.
+     3. In your words — 2–3 parent-written moment texts, quoted, dir="auto",
+        built client-side from the record and NEVER sent anywhere (no fetch,
+        no digest field). With fewer than 3 moments this card becomes one
+        promptBank question with a capture CTA (the Sunday check-in fallback).
+     4. LAST — exactly ONE recommendation: the digest's tryThisWeek, CTA wired
+        through the EXISTING acceptTodayAction seam (TODAY-1 guard upstream:
         WeeklyTab passes canAccept only for AI digests). Parent-mediated
         ShareButton lives on this final card ONLY.
+
+   Gone with B-TODAY-23: the model's "what went well" paragraph, the count
+   chips and the highlights/keep/watchFor block (stored digests keep them).
 
    Motion: slide/fade via motion.div, zeroed under useReducedMotion (plus the
    global reduced-motion CSS guard). RTL: arrow keys and chevrons flip.
 
-   CLINICAL FIREWALL: counts only, no trend deltas, no scores — pinned by
-   recapStoryCards.test.ts (which also pins single-recommendation-last and
-   the lib/streak resettable-value ban across recap/strip files).
+   CLINICAL FIREWALL: counts and events only — pinned by recapStoryCards.test.ts
+   and whatChanged.firewall.test.ts (which also pin single-recommendation-last
+   and the lib/streak resettable-value ban across recap files).
    ════════════════════════════════════════════════════════════════════════════ */
 import React, { useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
@@ -37,72 +43,166 @@ import { rcString } from "./recapStrings";
 import { resolveRecapMove } from "../../lib/recapMove";
 import type { WeeklyReport } from "../../hooks/useWeeklyRecap";
 import type { WeeklyDigest } from "../../lib/api";
+import type { ActionOutcome } from "../../actionLoop/model";
+import type { FirstsState } from "../../lib/firsts";
+import { composeWhatChanged, type WhatChangedLine } from "../overview/whatChangedEvents";
+import { LINE_ICON, countFor, whatChangedLineText } from "../overview/WhatChanged";
+
+/** One step the parent tried this week, with their own outcome reports. */
+export type RecapStepRow = { step: string; helped: number; somewhat: number; notToday: number };
 
 export type RecapCard =
-  | { kind: "wentwell"; body: string }
-  | { kind: "evidence"; chips: Array<{ key: "moments" | "days" | "resolved" | "milestones"; n: number }> }
-  | { kind: "summary"; progress: string[]; keep: string[]; attention: string[] }
+  | { kind: "new"; lines: WhatChangedLine[]; hiddenCount: number }
+  | { kind: "helped"; steps: RecapStepRow[] }
+  /** quotes.length >= 2 → the parent's words; else the promptBank fallback. */
+  | { kind: "words"; quotes: string[]; promptKey: string | null }
   | { kind: "recommendation"; text: string };
 
-/**
- * Pure card builder (unit-tested): always 4 cards, the LAST is the single
- * recommendation. Counts only on the evidence card — previousWeekMoments is
- * deliberately never read here.
- */
-export function buildRecapCards(report: WeeklyReport & { digest: WeeklyDigest }): RecapCard[] {
-  const d = report.digest;
-  const s = d.stats;
-  const chips: Array<{ key: "moments" | "days" | "resolved" | "milestones"; n: number }> = [
-    { key: "moments" as const, n: s.momentsLogged },
-    { key: "days" as const, n: s.daysCovered },
-    { key: "resolved" as const, n: s.resolvedCount },
-    { key: "milestones" as const, n: s.milestonesDone },
-  ].filter((c) => c.n > 0);
-  if (chips.length === 0) chips.push({ key: "moments", n: 0 });
+/** The record slice the letter reads — all of it already on the device. */
+export type RecapRecord = {
+  /** recapWeekStartMs(now): the first instant of the report's calendar week. */
+  weekStartMs: number;
+  behaviorLogs: ReadonlyArray<{ id: string; timestamp: string; trigger?: string; notes?: string }>;
+  playLogs: ReadonlyArray<{ id: string; timestamp: string; title?: string }>;
+  milestones: ReadonlyArray<{ title: string; checked: boolean; observationUpdatedAt?: string }>;
+  actionLoop: ReadonlyArray<{
+    id: string;
+    recommendation: string;
+    status: "accepted" | "completed" | "superseded";
+    acceptedAt: string;
+    outcomeAt?: string;
+    outcome?: ActionOutcome;
+  }>;
+  /** Parent-approved memory facts (createdAt decides the week). */
+  approvedFacts: ReadonlyArray<{ createdAt: string }>;
+  /** "Keep this" kept-insight rows (createdAt decides the week). */
+  keptIdeas: ReadonlyArray<{ createdAt: string }>;
+  firstsState: FirstsState;
+  /** Milestones noticed in total — detectFirsts' input, never rendered. */
+  milestoneCount: number;
+  /** Today's first promptBank key — card 3's fallback question. */
+  promptKey: string | null;
+};
 
-  const highlights = d.highlights.filter((h) => h.trim().length > 0);
+/** Card 3 shows the parent's words only from this many moments up. */
+export const RECAP_WORDS_MIN_MOMENTS = 3;
+export const RECAP_WORDS_MAX = 3;
+export const RECAP_QUOTE_MAX = 140;
+export const RECAP_STEPS_MAX = 3;
+/** Card 1 holds one more line than Today (a week is longer than a visit). */
+export const RECAP_NEW_MAX_LINES = 5;
+
+const ms = (iso: string | undefined): number => {
+  const v = iso ? Date.parse(iso) : NaN;
+  return Number.isFinite(v) ? v : NaN;
+};
+const clipQuote = (s: string): string => {
+  const clean = s.replace(/\s+/g, " ").trim();
+  return clean.length > RECAP_QUOTE_MAX ? `${clean.slice(0, RECAP_QUOTE_MAX - 1).trimEnd()}…` : clean;
+};
+
+/** Card 2: the parent's step reports this week, grouped by step, newest first. */
+export function weekStepRows(actionLoop: RecapRecord["actionLoop"], weekStartMs: number): RecapStepRow[] {
+  const groups = new Map<string, RecapStepRow & { latest: number }>();
+  for (const a of actionLoop) {
+    const at = ms(a.outcomeAt);
+    if (a.status !== "completed" || !a.outcome || !(at >= weekStartMs)) continue;
+    const step = a.recommendation.replace(/\s+/g, " ").trim();
+    if (!step) continue;
+    const g = groups.get(step) ?? { step, helped: 0, somewhat: 0, notToday: 0, latest: 0 };
+    if (a.outcome === "helped") g.helped += 1;
+    else if (a.outcome === "somewhat") g.somewhat += 1;
+    else g.notToday += 1;
+    g.latest = Math.max(g.latest, at);
+    groups.set(step, g);
+  }
+  return [...groups.values()]
+    .sort((x, y) => y.latest - x.latest)
+    .slice(0, RECAP_STEPS_MAX)
+    .map((g) => ({ step: g.step, helped: g.helped, somewhat: g.somewhat, notToday: g.notToday }));
+}
+
+/** Card 3: up to 3 parent-written moment texts this week, newest first. */
+export function weekQuotes(logs: RecapRecord["behaviorLogs"], weekStartMs: number): string[] {
+  const week = logs
+    .map((l) => ({ at: ms(l.timestamp), text: (l.trigger || l.notes || "").trim() }))
+    .filter((l) => l.at >= weekStartMs);
+  if (week.length < RECAP_WORDS_MIN_MOMENTS) return [];
+  const quotes = week
+    .filter((l) => l.text.length > 0)
+    .sort((a, b) => b.at - a.at)
+    .slice(0, RECAP_WORDS_MAX)
+    .map((l) => clipQuote(l.text));
+  return quotes.length >= 2 ? quotes : [];
+}
+
+/**
+ * Pure card builder (unit-tested): ALWAYS 4 cards, the LAST is the single
+ * recommendation. The digest contributes only tryThisWeek; every other card
+ * is the parent's own record over the report's calendar week.
+ */
+export function buildRecapCards(report: WeeklyReport & { digest: WeeklyDigest }, record: RecapRecord): RecapCard[] {
+  const inWeek = (iso: string) => ms(iso) >= record.weekStartMs;
+  const changed = composeWhatChanged({
+    previousVisitAt: new Date(record.weekStartMs - 1).toISOString(),
+    behaviorLogs: record.behaviorLogs,
+    playLogs: record.playLogs,
+    milestones: record.milestones,
+    actionLoop: record.actionLoop,
+    approvedFactsSince: record.approvedFacts.filter((f) => inWeek(f.createdAt)).length,
+    keptIdeasSince: record.keptIdeas.filter((k) => inWeek(k.createdAt)).length,
+    includeSteps: false,
+    firstsState: record.firstsState,
+    firstsCounts: { milestoneCount: record.milestoneCount },
+    maxLines: RECAP_NEW_MAX_LINES,
+  });
+  const quotes = weekQuotes(record.behaviorLogs, record.weekStartMs);
   return [
-    { kind: "wentwell", body: d.summary },
-    { kind: "evidence", chips },
-    {
-      kind: "summary",
-      progress: highlights.slice(0, 2),
-      keep: highlights.length > 2 ? highlights.slice(2) : [d.summary],
-      attention: d.watchFor.filter((w) => w.trim().length > 0),
-    },
-    { kind: "recommendation", text: d.tryThisWeek },
+    { kind: "new", lines: changed.lines, hiddenCount: changed.hiddenCount },
+    { kind: "helped", steps: weekStepRows(record.actionLoop, record.weekStartMs) },
+    { kind: "words", quotes, promptKey: quotes.length > 0 ? null : record.promptKey },
+    { kind: "recommendation", text: report.digest.tryThisWeek },
   ];
 }
 
 const CARD_ICON: Record<RecapCard["kind"], string> = {
-  wentwell: "favorite",
-  evidence: "photo_camera",
-  summary: "checklist",
-  recommendation: "task_alt",
+  new: "auto_awesome",
+  helped: "task_alt",
+  words: "format_quote",
+  recommendation: "lightbulb",
 };
 
 export default function RecapStoryCards({
   report,
+  record,
   childName,
   canAccept,
   accepted,
   onAccept,
+  onCapture,
+  initialIndex = 0,
 }: {
   report: WeeklyReport & { digest: WeeklyDigest };
+  /** The parent's own record for the report's week (client-side only). */
+  record: RecapRecord;
   childName: string;
   /** TODAY-1 guard, decided by WeeklyTab: AI digests only. */
   canAccept: boolean;
   /** Today's step already IS this recommendation (honest done-state). */
   accepted: boolean;
   onAccept: () => void;
+  /** Card 3's fallback: open the ONE capture sheet in place (WeeklyTab). */
+  onCapture: () => void;
+  /** The card the letter opens on (0 = "New this week"). */
+  initialIndex?: number;
 }) {
   const { t, uiLang } = useLanguage();
   const rtl = uiLang === "he";
   const reduce = useReducedMotion();
   const rc = (key: string, vars?: Record<string, string | number>) => rcString(t, uiLang, key, vars);
 
-  const cards = useMemo(() => buildRecapCards(report), [report]);
-  const [index, setIndex] = useState(0);
+  const cards = useMemo(() => buildRecapCards(report, record), [report, record]);
+  const [index, setIndex] = useState(() => Math.min(Math.max(0, initialIndex), 3));
   const [dir, setDir] = useState(1);
 
   useEffect(() => {
@@ -133,7 +233,7 @@ export default function RecapStoryCards({
   const last = index === cards.length - 1;
   const first = childName.split(" ")[0];
 
-  const chipLabel = (c: { key: string; n: number }) => rc(`elev.recap.chip.${c.key}`, { n: c.n });
+  const num = (n: number) => countFor(n, uiLang);
 
   return (
     <section
@@ -152,74 +252,112 @@ export default function RecapStoryCards({
         transition={{ duration: reduce ? 0 : 0.22, ease: "easeOut" }}
         className="rounded-[24px] p-6 sm:p-8 min-h-[380px] flex flex-col"
         style={{
-          background:
-            card.kind === "wentwell" ? "var(--arbor-lav-soft)" :
-            card.kind === "recommendation" ? "var(--arbor-green-soft)" :
-            "var(--arbor-paper-elevated)",
+          background: card.kind === "recommendation" ? "var(--arbor-green-soft)" : "var(--arbor-paper-elevated)",
           boxShadow: "var(--shadow-sm)",
         }}
       >
         <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[0.12em]" style={{ color: "var(--arbor-muted)" }}>
           <Icon name={CARD_ICON[card.kind]} size={15} />
-          {card.kind === "wentwell" && rc("elev.recap.wentwell.eyebrow")}
-          {card.kind === "evidence" && rc("elev.recap.evidence.title")}
-          {card.kind === "summary" && rc("elev.recap.summary.title")}
+          {card.kind === "new" && rc("elev.recap.new.eyebrow")}
+          {card.kind === "helped" && rc("elev.recap.helped.eyebrow")}
+          {card.kind === "words" && rc("elev.recap.words.eyebrow")}
           {card.kind === "recommendation" && rc("elev.recap.try.eyebrow")}
         </div>
 
-        {card.kind === "wentwell" && (
-          <div className="flex-1 flex flex-col justify-center">
-            <h3 className="text-[26px] sm:text-[32px] leading-tight" style={{ color: "var(--arbor-lav-ink)", fontFamily: "var(--font-display)", fontWeight: 700 }}>
-              {rc("elev.recap.wentwell.title")}
-            </h3>
-            <p className="mt-4 text-[15px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}>
-              {card.body}
-            </p>
+        {card.kind === "new" && (
+          <div className="flex-1 flex flex-col justify-center" data-testid="recap-card-new">
+            {card.lines.length > 0 ? (
+              <ul className="space-y-2">
+                {card.lines.map((line, i) => {
+                  // The quote belongs to card 3 ("In your words"): one place
+                  // for the parent's words, so card 1 carries the count only.
+                  const { title, sub } = whatChangedLineText(line, t, uiLang, first);
+                  return (
+                    <li key={`${line.kind}.${i}`} className="flex items-start gap-3 rounded-xl px-3 py-2.5" style={{ background: "var(--arbor-paper-deep)" }}>
+                      <span className="mt-0.5 flex h-8 w-8 flex-none items-center justify-center rounded-full" style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-green-ink)" }}>
+                        <Icon name={LINE_ICON[line.kind]} size={17} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span dir="auto" className="block text-[14px] font-bold leading-snug" style={{ color: "var(--arbor-ink)" }}>{title}</span>
+                        {sub && line.kind !== "moments" && (
+                          <span dir="auto" className="mt-0.5 block text-[12.5px]" style={{ color: "var(--arbor-muted)" }}>{sub}</span>
+                        )}
+                      </span>
+                    </li>
+                  );
+                })}
+                {card.hiddenCount > 0 && (
+                  <li className="px-1 text-[12.5px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+                    {t("elev.sincevisit.more", { n: num(card.hiddenCount) })}
+                  </li>
+                )}
+              </ul>
+            ) : (
+              <p className="text-[15px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{rc("elev.recap.new.empty")}</p>
+            )}
           </div>
         )}
 
-        {card.kind === "evidence" && (
-          <div className="flex-1 flex flex-col justify-center">
-            {/* Count chips ONLY — activity evidence, never direction (no trend
-                arrows: the firewall translation of Maytal's frame 2). */}
-            <div className="flex flex-wrap gap-2.5">
-              {card.chips.map((c) => (
-                <span
-                  key={c.key}
-                  className="inline-flex min-h-[44px] items-center gap-2 rounded-full px-5 text-[14px] font-extrabold"
-                  style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
-                >
-                  {chipLabel(c)}
-                </span>
-              ))}
-            </div>
+        {card.kind === "helped" && (
+          <div className="flex-1 flex flex-col justify-center" data-testid="recap-card-helped">
+            {card.steps.length > 0 ? (
+              <ul className="space-y-2.5">
+                {/* The STEP is the subject of every line — never the child. */}
+                {card.steps.map((row) => (
+                  <li key={row.step} className="rounded-2xl p-4" style={{ background: "var(--arbor-paper-deep)" }}>
+                    <p dir="auto" className="text-[14px] font-extrabold leading-snug" style={{ color: "var(--arbor-ink)" }}>{row.step}</p>
+                    <p className="mt-1 text-[12.5px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+                      {[
+                        row.helped > 0 ? rc("elev.recap.helped.helped", { n: num(row.helped) }) : null,
+                        row.somewhat > 0 ? rc("elev.recap.helped.somewhat", { n: num(row.somewhat) }) : null,
+                        row.notToday > 0 ? rc("elev.recap.helped.notToday", { n: num(row.notToday) }) : null,
+                      ].filter(Boolean).join(" · ")}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-[15px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{rc("elev.recap.helped.empty")}</p>
+            )}
           </div>
         )}
 
-        {card.kind === "summary" && (
-          <div className="flex-1 flex flex-col justify-center gap-3 mt-3">
-            {([
-              ["progress", card.progress] as const,
-              ["keep", card.keep] as const,
-              ["attention", card.attention] as const,
-            ]).map(([block, lines]) => (
-              /* Three blocks in ONE neutral tone — the "attention" block is a
-                 conversation opener, never a warning surface. */
-              <div key={block} className="rounded-2xl p-4" style={{ background: "var(--arbor-paper-deep)" }}>
-                <div className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>
-                  {rc(`elev.recap.block.${block}`)}
-                </div>
-                {lines.length > 0 ? (
-                  <ul className="mt-1.5 space-y-1 text-[13.5px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}>
-                    {lines.map((line, i) => <li key={i}>{line}</li>)}
-                  </ul>
-                ) : (
-                  <p className="mt-1.5 text-[13px]" style={{ color: "var(--arbor-muted)" }}>
-                    {rc("elev.recap.block.attention.empty")}
+        {card.kind === "words" && (
+          <div className="flex-1 flex flex-col justify-center" data-testid="recap-card-words">
+            {card.quotes.length > 0 ? (
+              /* The parent's own words, rendered from the device record only:
+                 nothing on this card is ever sent to the network. */
+              <ul className="space-y-3">
+                {card.quotes.map((q, i) => (
+                  <li key={i}>
+                    <blockquote dir="auto" className="border-s-2 ps-3 text-[15px] leading-relaxed" style={{ color: "var(--arbor-ink)", borderColor: "var(--arbor-rule-strong)" }}>
+                      “{q}”
+                    </blockquote>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div>
+                <h3 className="text-[13px] font-extrabold" style={{ color: "var(--arbor-muted)" }}>{rc("elev.recap.words.prompt")}</h3>
+                {card.promptKey && (
+                  <p dir="auto" className="mt-2 text-[20px] leading-snug" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)", fontWeight: 700 }}>
+                    {t(card.promptKey, { name: first })}
                   </p>
                 )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    track("recap_words_capture", { week: report.id });
+                    onCapture();
+                  }}
+                  data-testid="recap-words-capture"
+                  className="mt-5 inline-flex min-h-[44px] items-center gap-2 rounded-2xl px-5 text-[13px] font-extrabold transition active:scale-[0.98]"
+                  style={{ background: "transparent", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)" }}
+                >
+                  <Icon name="add" size={16} /> {rc("elev.recap.words.capture")}
+                </button>
               </div>
-            ))}
+            )}
           </div>
         )}
 
@@ -283,7 +421,7 @@ export default function RecapStoryCards({
                 getCardOpts={() => ({
                   name: first,
                   headline: report.digest.title,
-                  sub: chipLabel({ key: "moments", n: report.digest.stats.momentsLogged }),
+                  sub: rc("elev.recap.chip.moments", { n: num(report.digest.stats.momentsLogged) }),
                 })}
               />
             </div>

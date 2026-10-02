@@ -41,6 +41,8 @@ export type WhatChangedLine =
   | { kind: "milestone"; title: string; at: number }
   | { kind: "step"; step: string; outcome: Exclude<ActionOutcome, "not_today">; focusId: string; at: number }
   | { kind: "facts"; count: number }
+  /** B-TODAY-23: "Keep this" ideas the parent kept (kept-insight rows). */
+  | { kind: "ideas"; count: number }
   | { kind: "moments"; count: number; quote: string; focusId: string }
   | { kind: "noticed" };
 
@@ -82,6 +84,10 @@ export function composeWhatChanged(input: {
   /** Rule A / law 6: the watch signal folds in as a line. */
   includeNoticed?: boolean;
   maxLines?: number;
+  /** B-TODAY-23: "Keep this" ideas kept inside the window (Weekly card 1). */
+  keptIdeasSince?: number;
+  /** B-TODAY-23: Weekly's card 1 leaves step outcomes to card 2. Default true. */
+  includeSteps?: boolean;
 }): WhatChanged {
   const sinceMs = parseMs(input.previousVisitAt ?? undefined);
   if (!Number.isFinite(sinceMs)) return { lines: [], hiddenCount: 0 };
@@ -133,7 +139,7 @@ export function composeWhatChanged(input: {
   //    an unrated step: that one lives in the continuation slot above the
   //    step; and a "not today" never reaches the card — TJB-05's firewall:
   //    a step set aside is not news about the child).
-  const outcomes = input.actionLoop
+  const outcomes = (input.includeSteps === false ? [] : input.actionLoop)
     .filter((a) => a.status === "completed" && (a.outcome === "helped" || a.outcome === "somewhat") && parseMs(a.outcomeAt) > sinceMs)
     .sort((a, b) => parseMs(b.outcomeAt) - parseMs(a.outcomeAt));
   for (const a of outcomes) {
@@ -146,6 +152,13 @@ export function composeWhatChanged(input: {
   if (facts > 0) {
     lines.push({ kind: "facts", count: facts });
     events += facts;
+  }
+
+  // 4b. ideas the parent kept ("Keep this") — Weekly only (B-TODAY-23).
+  const ideas = Math.max(0, Math.floor(input.keptIdeasSince || 0));
+  if (ideas > 0) {
+    lines.push({ kind: "ideas", count: ideas });
+    events += ideas;
   }
 
   // 5. moments kept (behaviour logs + plays), the latest one quoted.
@@ -166,7 +179,7 @@ export function composeWhatChanged(input: {
   }
 
   const shown = lines.slice(0, maxLines);
-  const eventsIn = (l: WhatChangedLine) => (l.kind === "moments" || l.kind === "facts" ? l.count : 1);
+  const eventsIn = (l: WhatChangedLine) => (l.kind === "moments" || l.kind === "facts" || l.kind === "ideas" ? l.count : 1);
   const shownEvents = shown.reduce((s, l) => s + eventsIn(l), 0);
   return { lines: shown, hiddenCount: Math.max(0, events - shownEvents) };
 }
@@ -182,4 +195,17 @@ export function coldStartLineKey(daysNeeded: number | undefined): string | null 
   if (typeof daysNeeded !== "number" || !Number.isFinite(daysNeeded)) return null;
   if (daysNeeded <= 0) return null;
   return daysNeeded === 1 ? "elev.closeloop.coldstart.one" : "elev.closeloop.coldstart.many";
+}
+
+/**
+ * The first-moment ledger as stored by lib/firsts (FirstsMoment owns writes).
+ * Pure: the caller does the storage read; junk or absence → nothing seen.
+ */
+export function parseFirstsState(raw: string | null | undefined): FirstsState {
+  try {
+    const parsed = raw ? (JSON.parse(raw) as FirstsState) : null;
+    return parsed && Array.isArray(parsed.seen) ? parsed : { seen: [] };
+  } catch {
+    return { seen: [] };
+  }
 }

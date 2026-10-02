@@ -26,27 +26,27 @@ export const en: Record<string, string> = {
 
   // Story cards chrome.
   "elev.recap.aria": "Weekly recap story cards",
-  "elev.recap.card.count": "Card {i} of {n}",
+  // B-TODAY-23: no "of" on the letter, not even the carousel position.
+  "elev.recap.card.count": "Card {i} · {n} cards",
   "elev.recap.nav.prev": "Previous card",
   "elev.recap.nav.next": "Next card",
 
-  // Card 1 — what went well (mockup frame 2 hero).
-  "elev.recap.wentwell.eyebrow": "This week",
-  "elev.recap.wentwell.title": "What went well ❤️",
-
-  // Card 2 — evidence counts (frame 2, arrows → count chips).
-  "elev.recap.evidence.title": "The week in moments",
+  // B-TODAY-23 — "What changed?" four-card letter. Event language only.
+  // Card 1 — New this week (composeWhatChanged over the calendar week).
+  "elev.recap.new.eyebrow": "New this week",
+  "elev.recap.new.empty": "What you keep this week appears here.",
+  // Card 2 — What helped (the parent's own step reports; the step is the subject).
+  "elev.recap.helped.eyebrow": "What helped",
+  "elev.recap.helped.helped": "helped {n}",
+  "elev.recap.helped.somewhat": "helped a little {n}",
+  "elev.recap.helped.notToday": "not today {n}",
+  "elev.recap.helped.empty": "Steps you try this week appear here, with how they went.",
+  // Card 3 — In your words (parent-written moments, client-side only).
+  "elev.recap.words.eyebrow": "In your words",
+  "elev.recap.words.prompt": "A question for this week",
+  "elev.recap.words.capture": "Capture a moment",
+  // Share caption sub-line (final card).
   "elev.recap.chip.moments": "{n} moments captured",
-  "elev.recap.chip.days": "{n} active days",
-  "elev.recap.chip.resolved": "{n} worked through together",
-  "elev.recap.chip.milestones": "{n} milestones reached",
-
-  // Card 3 — the three-block summary (frame 4, neutral attention block).
-  "elev.recap.summary.title": "My summary for this week",
-  "elev.recap.block.progress": "Progress",
-  "elev.recap.block.keep": "Keep doing",
-  "elev.recap.block.attention": "Worth a conversation",
-  "elev.recap.block.attention.empty": "Nothing waiting here this week",
 
   // Card 4 (LAST) — exactly one recommendation.
   "elev.recap.try.eyebrow": "One thing for the coming week",
@@ -74,24 +74,21 @@ export const he: Record<string, string> = {
   "elev.recap.days": "{n} ימים של רגעים יחד",
 
   "elev.recap.aria": "כרטיסי הסיכום השבועי",
-  "elev.recap.card.count": "כרטיס {i} מתוך {n}",
+  "elev.recap.card.count": "כרטיס {i} · {n} כרטיסים",
   "elev.recap.nav.prev": "הכרטיס הקודם",
   "elev.recap.nav.next": "הכרטיס הבא",
 
-  "elev.recap.wentwell.eyebrow": "השבוע",
-  "elev.recap.wentwell.title": "מה הלך טוב ❤️",
-
-  "elev.recap.evidence.title": "השבוע ברגעים",
+  "elev.recap.new.eyebrow": "חדש השבוע",
+  "elev.recap.new.empty": "מה שתשמרו השבוע יופיע כאן.",
+  "elev.recap.helped.eyebrow": "מה עזר",
+  "elev.recap.helped.helped": "עזר {n}",
+  "elev.recap.helped.somewhat": "עזר קצת {n}",
+  "elev.recap.helped.notToday": "לא היום {n}",
+  "elev.recap.helped.empty": "צעדים שתנסו השבוע יופיעו כאן, עם איך שהם הלכו.",
+  "elev.recap.words.eyebrow": "במילים שלכם",
+  "elev.recap.words.prompt": "שאלה לשבוע הזה",
+  "elev.recap.words.capture": "לתעד רגע",
   "elev.recap.chip.moments": "{n} רגעים נשמרו",
-  "elev.recap.chip.days": "{n} ימים פעילים",
-  "elev.recap.chip.resolved": "{n} רגעים שצלחתם יחד",
-  "elev.recap.chip.milestones": "{n} אבני דרך הושגו",
-
-  "elev.recap.summary.title": "הסיכום שלי לשבוע הזה",
-  "elev.recap.block.progress": "התקדמות",
-  "elev.recap.block.keep": "מומלץ להמשיך",
-  "elev.recap.block.attention": "שווה שיחה",
-  "elev.recap.block.attention.empty": "אין משהו שמחכה כאן השבוע",
 
   "elev.recap.try.eyebrow": "דבר אחד לשבוע הקרוב",
   "elev.recap.try.title": "שווה לנסות השבוע",

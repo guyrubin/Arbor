@@ -27,14 +27,52 @@ import { coldStartLineKey, type WhatChangedLine } from "./whatChangedEvents";
  * too. Pinned by whatChanged.firewall.test.ts and whatChanged.test.ts.
  */
 
-const LINE_ICON: Record<WhatChangedLine["kind"], string> = {
+export const LINE_ICON: Record<WhatChangedLine["kind"], string> = {
   first: "auto_awesome",
   milestone: "workspace_premium",
   step: "task_alt",
   facts: "bookmark",
+  ideas: "lightbulb",
   moments: "edit_note",
   noticed: "visibility",
 };
+
+type TFn = (key: string, vars?: Record<string, string | number>) => string;
+
+/** A count in a Hebrew line is bidi-isolated (FSI…PDI); EN keeps the digit.
+ *  Latin titles/steps inside a Hebrew line are isolated by t() itself
+ *  (lib/i18n translate → isolate), so they are passed through untouched. */
+export const countFor = (n: number, lang: string): string => (lang === "he" ? `⁨${n}⁩` : String(n));
+
+/**
+ * The words of one What-changed line — shared by Today's card and Weekly's
+ * "New this week" card (B-TODAY-23), so the two never drift. Event language
+ * only (whatChanged.firewall.test.ts).
+ */
+export function whatChangedLineText(line: WhatChangedLine, t: TFn, lang: string, firstName: string): { title: string; sub?: string } {
+  const num = (n: number) => countFor(n, lang);
+  switch (line.kind) {
+    case "first":
+      return { title: t(firstCopyKeys(line.first).title), sub: line.title ? t("elev.brief.changed.milestone", { title: line.title }) : undefined };
+    case "milestone":
+      return { title: t("elev.brief.changed.milestone", { title: line.title }) };
+    case "step":
+      return {
+        title: t(line.outcome === "somewhat" ? "elev.brief.changed.step.somewhat" : "elev.brief.changed.step.helped", { step: line.step }),
+      };
+    case "facts":
+      return { title: line.count === 1 ? t("elev.brief.changed.facts.one", { name: firstName }) : t("elev.brief.changed.facts.many", { n: num(line.count), name: firstName }) };
+    case "ideas":
+      return { title: line.count === 1 ? t("elev.brief.changed.ideas.one") : t("elev.brief.changed.ideas.many", { n: num(line.count) }) };
+    case "moments":
+      return {
+        title: line.count === 1 ? t("elev.brief.changed.moments.one") : t("elev.brief.changed.moments.many", { n: num(line.count) }),
+        sub: line.quote ? `“${line.quote}”` : undefined,
+      };
+    case "noticed":
+      return { title: t("elev.sincevisit.row.noticed") };
+  }
+}
 
 export default function WhatChanged({
   lines,
@@ -55,38 +93,14 @@ export default function WhatChanged({
 }) {
   const { t, uiLang } = useLanguage();
   const { behaviorLogs, playLogs, childProfile, setActiveTab } = useArbor();
-  const he = uiLang === "he";
   const firstName = (childProfile.name || "").split(" ")[0];
-  /** A count in a Hebrew line is bidi-isolated (FSI…PDI); EN keeps the digit.
-   *  Latin titles/steps inside a Hebrew line are isolated by t() itself
-   *  (lib/i18n translate → isolate), so they are passed through untouched. */
-  const num = (n: number): string => (he ? `⁨${n}⁩` : String(n));
+  const num = (n: number): string => countFor(n, uiLang);
 
   const recapLine = !!recap.currentReport && recap.recapUnopened;
   const totalDays = computeStreak(collectMomentTimestamps(behaviorLogs, playLogs)).totalDays;
   const coldKey = coldStartLineKey(rhythmDaysNeeded);
 
-  const label = (line: WhatChangedLine): { title: string; sub?: string } => {
-    switch (line.kind) {
-      case "first":
-        return { title: t(firstCopyKeys(line.first).title), sub: line.title ? t("elev.brief.changed.milestone", { title: line.title }) : undefined };
-      case "milestone":
-        return { title: t("elev.brief.changed.milestone", { title: line.title }) };
-      case "step":
-        return {
-          title: t(line.outcome === "somewhat" ? "elev.brief.changed.step.somewhat" : "elev.brief.changed.step.helped", { step: line.step }),
-        };
-      case "facts":
-        return { title: line.count === 1 ? t("elev.brief.changed.facts.one", { name: firstName }) : t("elev.brief.changed.facts.many", { n: num(line.count), name: firstName }) };
-      case "moments":
-        return {
-          title: line.count === 1 ? t("elev.brief.changed.moments.one") : t("elev.brief.changed.moments.many", { n: num(line.count) }),
-          sub: line.quote ? `“${line.quote}”` : undefined,
-        };
-      case "noticed":
-        return { title: t("elev.sincevisit.row.noticed") };
-    }
-  };
+  const label = (line: WhatChangedLine) => whatChangedLineText(line, t, uiLang, firstName);
 
   useEffect(() => {
     // KPI 0.8 names are pinned (lib/loopEvents): the ONE card keeps the

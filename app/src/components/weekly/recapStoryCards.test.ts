@@ -1,18 +1,35 @@
-import { describe, it, expect } from "vitest";
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, it, expect, vi } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { buildRecapCards, type RecapCard } from "./RecapStoryCards";
+
+const langState = vi.hoisted(() => ({ lang: "en" as "en" | "he" }));
+vi.mock("../../context/LanguageContext", async () => {
+  const { translate } = await vi.importActual<typeof import("../../lib/i18n")>("../../lib/i18n");
+  return {
+    useLanguage: () => ({
+      t: (k: string, v?: Record<string, string | number>) => translate(langState.lang, k, v),
+      uiLang: langState.lang,
+    }),
+  };
+});
+vi.mock("../../lib/analytics", () => ({ track: () => undefined }));
+vi.mock("../ui/ShareButton", () => ({ default: () => null, ShareButton: () => null }));
+
+import RecapStoryCards, { buildRecapCards, type RecapCard, type RecapRecord } from "./RecapStoryCards";
 import { weeklyChipIds, isEmptyCurrentWeek } from "./weeklySelection";
 import { en as rcEn, he as rcHe } from "../../lib/i18nElevation/recap";
-import type { WeeklyReport } from "../../hooks/useWeeklyRecap";
+import { recapWeekId, recapWeekStartMs, type WeeklyReport } from "../../hooks/useWeeklyRecap";
 import type { WeeklyDigest } from "../../lib/api";
 
 /**
  * W2 2.1/2.2/2.3 — the weekly recap ritual (masterplan 2026-08-11 §4 ·
- * Maytal Row-1 #2/#4/#6). Four layers:
- *   1. the pure card builder (3–5 cards, LAST card = exactly ONE
- *      recommendation, evidence card = counts only and never the previous
- *      week's count),
+ * Maytal Row-1 #2/#4/#6), rebuilt by B-TODAY-23 as the "What changed?"
+ * four-card letter. Four layers:
+ *   1. the pure card builder (ALWAYS 4 cards — New this week · What helped ·
+ *      In your words · the ONE recommendation LAST) and the rendered letter
+ *      (EN + HE, no delta/%/"of" totals, card 3 never on the network),
  *   2. the i18n module contract (en/he parity, namespacing, clinical
  *      firewall: counts, never trend/comparative wording or arrows),
  *   3. source structure: story cards are button+keyboard navigated (no
@@ -49,9 +66,9 @@ const digest = (over: Partial<WeeklyDigest> = {}): WeeklyDigest => ({
 });
 
 const report = (over: Partial<WeeklyDigest> = {}): WeeklyReport & { digest: WeeklyDigest } => ({
-  id: "2026-W33",
-  weekLabel: "Week of August 11",
-  generatedAt: "2026-08-11T06:00:00.000Z",
+  id: "2026-W40",
+  weekLabel: "Week of September 27",
+  generatedAt: "2026-10-01T06:00:00.000Z",
   summary: { count: 3, resolved: 2, topTrigger: "Transitions" },
   milestoneWins: ["First steps"],
   planProgress: { done: 1, total: 4 },
@@ -60,51 +77,193 @@ const report = (over: Partial<WeeklyDigest> = {}): WeeklyReport & { digest: Week
   digest: digest(over),
 });
 
-/* ── 1. the pure card builder ─────────────────────────────────────────────── */
+/* ── 1. the pure four-card letter (B-TODAY-23) ────────────────────────────── */
 
-describe("buildRecapCards — story-card shape", () => {
-  it("builds 3–5 cards, one stat/insight per card", () => {
-    const cards = buildRecapCards(report());
-    expect(cards.length).toBeGreaterThanOrEqual(3);
-    expect(cards.length).toBeLessThanOrEqual(5);
-    expect(cards.map((c) => c.kind)).toEqual(["wentwell", "evidence", "summary", "recommendation"]);
+const NOW = new Date("2026-10-01T12:00:00.000Z");
+const WEEK_START = recapWeekStartMs(NOW);
+const H = 3_600_000;
+const at = (offsetH: number) => new Date(WEEK_START + offsetH * H).toISOString();
+const before = (h: number) => new Date(WEEK_START - h * H).toISOString();
+
+const record = (over: Partial<RecapRecord> = {}): RecapRecord => ({
+  weekStartMs: WEEK_START,
+  behaviorLogs: [
+    { id: "m1", timestamp: at(2), trigger: "said butterfly at the window" },
+    { id: "m2", timestamp: at(5), trigger: "built a tower with her brother" },
+    { id: "m3", timestamp: at(9), notes: "fell asleep singing" },
+    { id: "old", timestamp: before(2), trigger: "LAST WEEK TEXT" },
+  ],
+  playLogs: [{ id: "p1", timestamp: at(3), title: "Bubble chase" }],
+  milestones: [
+    { title: "Stacks two blocks", checked: true, observationUpdatedAt: at(4) },
+    { title: "Old milestone", checked: true, observationUpdatedAt: before(30) },
+  ],
+  actionLoop: [
+    { id: "a1", recommendation: "Name the next transition", status: "completed", acceptedAt: at(1), outcomeAt: at(6), outcome: "helped" },
+    { id: "a2", recommendation: "Name the next transition", status: "completed", acceptedAt: at(10), outcomeAt: at(12), outcome: "helped" },
+    { id: "a3", recommendation: "Name the next transition", status: "completed", acceptedAt: at(20), outcomeAt: at(22), outcome: "not_today" },
+    { id: "a4", recommendation: "Offer two choices", status: "completed", acceptedAt: at(13), outcomeAt: at(14), outcome: "somewhat" },
+    { id: "a0", recommendation: "Last week's step", status: "completed", acceptedAt: before(10), outcomeAt: before(9), outcome: "helped" },
+  ],
+  approvedFacts: [{ createdAt: at(7) }, { createdAt: at(8) }, { createdAt: before(40) }],
+  keptIdeas: [{ createdAt: at(11) }],
+  firstsState: { seen: ["first_milestone"] },
+  milestoneCount: 2,
+  promptKey: "elev.prompt.toddler.1",
+  ...over,
+});
+
+describe("recapWeekStartMs — the report id's own calendar week", () => {
+  it("the start is inside the week and the instant before it is not", () => {
+    expect(recapWeekId(new Date(WEEK_START))).toBe(recapWeekId(NOW));
+    expect(recapWeekId(new Date(WEEK_START - 1))).not.toBe(recapWeekId(NOW));
+    expect(NOW.getTime() - WEEK_START).toBeLessThanOrEqual(7 * 24 * H);
+  });
+});
+
+describe("buildRecapCards — always four cards, the last is the recommendation", () => {
+  it("New this week · What helped · In your words · One thing for next week", () => {
+    const cards = buildRecapCards(report(), record());
+    expect(cards.map((c) => c.kind)).toEqual(["new", "helped", "words", "recommendation"]);
+    // …and still four on an empty week.
+    const empty = buildRecapCards(report(), record({ behaviorLogs: [], playLogs: [], milestones: [], actionLoop: [], approvedFacts: [], keptIdeas: [] }));
+    expect(empty.map((c) => c.kind)).toEqual(["new", "helped", "words", "recommendation"]);
   });
 
-  it("the LAST card is the recommendation, and it is the ONLY one (plan rule 2.1)", () => {
-    const cards = buildRecapCards(report());
-    expect(cards[cards.length - 1].kind).toBe("recommendation");
+  it("the LAST card is the recommendation, and it is the ONLY one", () => {
+    const cards = buildRecapCards(report(), record());
     expect(cards.filter((c) => c.kind === "recommendation")).toHaveLength(1);
-    const rec = cards[cards.length - 1] as Extract<RecapCard, { kind: "recommendation" }>;
+    const rec = cards[3] as Extract<RecapCard, { kind: "recommendation" }>;
     expect(rec.text).toBe(report().digest.tryThisWeek);
   });
 
-  it("evidence card carries COUNT CHIPS ONLY and never the previous week's count", () => {
-    const cards = buildRecapCards(report());
-    const ev = cards.find((c) => c.kind === "evidence") as Extract<RecapCard, { kind: "evidence" }>;
-    expect(ev.chips.length).toBeGreaterThan(0);
-    for (const chip of ev.chips) {
-      expect(["moments", "days", "resolved", "milestones"]).toContain(chip.key);
-      expect(chip.n).not.toBe(999); // previousWeekMoments sentinel
+  it("card 1 = composeWhatChanged over the week: milestone by title, facts, kept ideas, moments — no steps", () => {
+    const c = buildRecapCards(report(), record())[0] as Extract<RecapCard, { kind: "new" }>;
+    expect(c.lines.map((l) => l.kind)).toEqual(["milestone", "facts", "ideas", "moments"]);
+    expect(c.lines[0]).toMatchObject({ title: "Stacks two blocks" });
+    expect(c.lines[1]).toMatchObject({ count: 2 });
+    expect(c.lines[2]).toMatchObject({ count: 1 });
+    // ONE moment definition: 3 logs + 1 play this week; last week's log is out.
+    expect(c.lines[3]).toMatchObject({ count: 4 });
+  });
+
+  it("card 2 groups the parent's own step reports by step, newest first; last week is out", () => {
+    const c = buildRecapCards(report(), record())[1] as Extract<RecapCard, { kind: "helped" }>;
+    expect(c.steps).toEqual([
+      { step: "Name the next transition", helped: 2, somewhat: 0, notToday: 1 },
+      { step: "Offer two choices", helped: 0, somewhat: 1, notToday: 0 },
+    ]);
+  });
+
+  it("card 3 quotes up to 3 of the parent's own texts this week; < 3 moments → one prompt question", () => {
+    const c = buildRecapCards(report(), record())[2] as Extract<RecapCard, { kind: "words" }>;
+    expect(c.quotes).toEqual(["fell asleep singing", "built a tower with her brother", "said butterfly at the window"]);
+    expect(c.promptKey).toBeNull();
+    expect(JSON.stringify(c)).not.toContain("LAST WEEK TEXT");
+    const quiet = buildRecapCards(report(), record({ behaviorLogs: record().behaviorLogs.slice(0, 2) }))[2] as Extract<RecapCard, { kind: "words" }>;
+    expect(quiet.quotes).toEqual([]);
+    expect(quiet.promptKey).toBe("elev.prompt.toddler.1");
+  });
+
+  it("the digest's model paragraph, chips, highlights and watchFor never reach a card", () => {
+    const cards = JSON.stringify(buildRecapCards(report(), record()));
+    expect(cards).not.toContain("999"); // previousWeekMoments sentinel
+    expect(cards).not.toContain(digest().summary);
+    expect(cards).not.toContain("Transitions before kindergarten");
+    expect(cards).not.toContain("Two bedtime wins");
+  });
+});
+
+/* ── 1b. the rendered letter (EN + HE) and the network seal on card 3 ────── */
+
+const renderCard = (index: number, lang: "en" | "he", rec: RecapRecord = record()) => {
+  langState.lang = lang;
+  return renderToStaticMarkup(
+    React.createElement(RecapStoryCards, {
+      report: report(),
+      record: rec,
+      childName: "Maya Cohen",
+      canAccept: true,
+      accepted: false,
+      onAccept: () => undefined,
+      onCapture: () => undefined,
+      initialIndex: index,
+    }),
+  );
+};
+const visible = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&[a-z#0-9]+;/gi, " ");
+/** The acceptance vocabulary, shared with whatChanged.firewall.test.ts. */
+const LETTER_BANNED = /\bof\s+\{?total\}?|\bvs\.?(?=\s|$)|%|\bmore\s+than\b|\bfewer\b|\bup\b|\bdown\b|מתוך|יותר|פחות|\d+\s*\/\s*\d+/i;
+
+describe("RecapStoryCards — the rendered letter", () => {
+  it("EN: card 1 lists the week's events as counts and titles", () => {
+    const html = renderCard(0, "en");
+    expect(html).toContain("New this week");
+    expect(html).toContain("Noticed: Stacks two blocks");
+    expect(html).toContain("2 new things you approved about Maya");
+    expect(html).toContain("1 idea you kept");
+    expect(html).toContain("4 moments kept");
+    // the quote is card 3's, not card 1's
+    expect(html).not.toContain("fell asleep singing");
+  });
+
+  it("EN: card 2's subject is the step, never the child", () => {
+    const html = renderCard(1, "en");
+    expect(html).toContain("Name the next transition");
+    expect(html).toContain("helped 2 · not today 1");
+    expect(html).toContain("helped a little 1");
+    expect(visible(html)).not.toMatch(/\bMaya\b/);
+  });
+
+  it("HE: counts are bidi-isolated and the letter is Hebrew", () => {
+    const one = renderCard(0, "he");
+    expect(one).toContain("חדש השבוע");
+    expect(one).toContain("⁨4⁩ רגעים נשמרו");
+    const two = renderCard(1, "he");
+    expect(two).toContain("עזר ⁨2⁩ · לא היום ⁨1⁩");
+  });
+
+  it("card 3 renders the parent's words quoted, dir=auto; the fallback is one question + a 44 px capture move", () => {
+    const words = renderCard(2, "en");
+    expect(words).toContain("In your words");
+    expect(words).toMatch(/<blockquote dir="auto"[^>]*>“fell asleep singing”/);
+    const quiet = renderCard(2, "he", record({ behaviorLogs: [] }));
+    expect(quiet).toContain('data-testid="recap-words-capture"');
+    expect(quiet).toContain("min-h-[44px]");
+    expect(quiet).toContain("שאלה לשבוע הזה");
+  });
+
+  it("card 4 is the recommendation, the only card with the accept move and the share", () => {
+    const html = renderCard(3, "en");
+    expect(html).toContain(report().digest.tryThisWeek);
+    for (const i of [0, 1, 2]) expect(renderCard(i, "en")).not.toContain("recap-move-note");
+  });
+
+  it("no delta, %, 'of' total or denominator on any card, EN + HE", () => {
+    for (const lang of ["en", "he"] as const) {
+      for (const i of [0, 1, 2, 3]) {
+        const text = visible(renderCard(i, lang));
+        expect(text.match(LETTER_BANNED)?.[0] ?? null, `${lang} card ${i + 1}: ${text}`).toBeNull();
+      }
     }
-    // The whole card set never leaks the prior-week count (a side-by-side
-    // week count is a trend by inspection).
-    expect(JSON.stringify(cards)).not.toContain("999");
   });
 
-  it("a quiet week still yields a truthful evidence chip (0 moments, no fabrication)", () => {
-    const r = report({
-      stats: { ...digest().stats, momentsLogged: 0, daysCovered: 0, resolvedCount: 0, milestonesDone: 0 },
-    });
-    const ev = buildRecapCards(r).find((c) => c.kind === "evidence") as Extract<RecapCard, { kind: "evidence" }>;
-    expect(ev.chips).toEqual([{ key: "moments", n: 0 }]);
-  });
-
-  it("summary card is the 3-block shape; empty watchFor stays empty (neutral, no invented concern)", () => {
-    const r = report({ watchFor: [] });
-    const sum = buildRecapCards(r).find((c) => c.kind === "summary") as Extract<RecapCard, { kind: "summary" }>;
-    expect(sum.progress.length).toBeGreaterThan(0);
-    expect(sum.keep.length).toBeGreaterThan(0);
-    expect(sum.attention).toEqual([]);
+  it("card 3 is never sent to the network (spied fetch stays silent while every card renders)", () => {
+    const spy = vi.fn(() => Promise.reject(new Error("network")));
+    const real = globalThis.fetch;
+    globalThis.fetch = spy as unknown as typeof fetch;
+    try {
+      for (const i of [0, 1, 2, 3]) renderCard(i, "en");
+      buildRecapCards(report(), record());
+    } finally {
+      globalThis.fetch = real;
+    }
+    expect(spy).not.toHaveBeenCalled();
+    // …and no request seam is reachable from the letter or its record.
+    const letter = stripComments(read("components/weekly/RecapStoryCards.tsx"));
+    expect(letter).not.toMatch(/\bfetch\(|\bapi\.|\bpost\(/);
+    const weekly = stripComments(read("components/tabs/WeeklyTab.tsx"));
+    expect(weekly).not.toMatch(/api\.[a-zA-Z]+\([^)]*recapRecord/);
   });
 });
 
@@ -144,12 +303,13 @@ describe("i18nElevation/recap — en/he records", () => {
     }
   });
 
-  it("the mockup voice ships: what-went-well hero, three-block titles, ready line", () => {
-    expect(rcHe["elev.recap.wentwell.title"]).toContain("מה הלך טוב");
-    expect(rcHe["elev.recap.block.progress"]).toBe("התקדמות");
-    expect(rcHe["elev.recap.block.keep"]).toBe("מומלץ להמשיך");
-    // "לשים לב" translated to the conversation framing, never warning language.
-    expect(rcHe["elev.recap.block.attention"]).toContain("שווה שיחה");
+  it("the letter's voice ships: four card eyebrows EN + HE, ready line", () => {
+    expect(rcEn["elev.recap.new.eyebrow"]).toBe("New this week");
+    expect(rcHe["elev.recap.helped.eyebrow"]).toBe("מה עזר");
+    expect(rcHe["elev.recap.words.eyebrow"]).toBe("במילים שלכם");
+    expect(rcEn["elev.recap.try.eyebrow"]).toBeTruthy();
+    // B-TODAY-23 retired the model-paragraph / chips / three-block cards.
+    for (const k of ["elev.recap.wentwell.title", "elev.recap.block.attention", "elev.recap.chip.days"]) expect(rcEn[k]).toBeUndefined();
     expect(rcEn["elev.recap.ready"]).toContain("{name}");
     expect(rcEn["elev.recap.days"]).toContain("days of moments together");
   });
@@ -310,17 +470,14 @@ describe("streak ban — no strip/recap file touches the resettable member", () 
 });
 
 /**
- * B-TODAY-03 — the server answers `watchFor: []` on every digest, so the
- * summary card's attention block always renders its neutral empty key; no
- * attention item appears in EN or HE.
+ * B-TODAY-03 — the server answers `watchFor: []` on every digest. Since
+ * B-TODAY-23 no card renders the digest's watchFor at all (the three-block
+ * summary card is gone), so no attention item can appear in EN or HE.
  */
 describe("B-TODAY-03 · the recap shows no attention items", () => {
-  it("watchFor [] → attention block empty; the empty-state key exists EN + HE", () => {
-    const r = report({ watchFor: [] });
-    const summary = buildRecapCards(r).find((c) => c.kind === "summary") as { attention: string[] } | undefined;
-    expect(summary?.attention).toEqual([]);
-    const recapEnDict = rcEn; const recapHeDict = rcHe;
-    expect((recapEnDict as Record<string, string>)["elev.recap.block.attention.empty"]).toBeTruthy();
-    expect((recapHeDict as Record<string, string>)["elev.recap.block.attention.empty"]).toBeTruthy();
+  it("even a digest that carries watchFor puts none of it on a card", () => {
+    const cards = JSON.stringify(buildRecapCards(report({ watchFor: ["Bedtime came up twice."] }), record()));
+    expect(cards).not.toContain("Bedtime came up twice.");
+    expect(cards).not.toContain("attention");
   });
 });

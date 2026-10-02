@@ -656,7 +656,7 @@ export default function OverviewTab() {
       setActiveTab("development");
       return;
     }
-    if (line.kind === "facts") {
+    if (line.kind === "facts" || line.kind === "ideas") {
       setActiveTab("memory");
       return;
     }
