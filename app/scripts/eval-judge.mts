@@ -46,7 +46,7 @@ import { hardMomentCards, type HardMomentCard } from "../src/content/hardMomentC
 import { buildHardMomentSeedPrompt } from "../src/content/hardMomentSurface.js";
 import { appendResultsRow, judgeVisibleInput, runSuiteWithDeps, type ScenarioVerdict } from "../src/eval/judge.js";
 import type { EvalScenario, EvalSuite } from "../src/eval/acceptance.js";
-import { handoffWireBody, runnerInputError } from "../src/eval/runnerInput.js";
+import { handoffWireBody, runnerInputError, todaysFocusWireBody } from "../src/eval/runnerInput.js";
 
 const REPO_ROOT = path.resolve(process.cwd(), "..");
 
@@ -178,6 +178,29 @@ const buildScenarioRunner = (suite: EvalSuite, baseUrl: string) => async (scenar
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(handoffWireBody(input, scenarioProfile)),
+    });
+    return `HTTP ${res.status}\n${await res.text()}`;
+  }
+
+  // B-TODAY-24 (today-focus-v1): the step card's route. Approved facts (the
+  // scenario child's, and a sibling's for the isolation case) are seeded
+  // through the real propose→approve seam first; the body is what Today
+  // posts. The transcript is the raw status + JSON (focus, tryToday,
+  // sayThis, inputsUsed) so the judge sees exactly what the card would.
+  if (route === "/api/todays-focus") {
+    const body = todaysFocusWireBody(input, scenarioProfile);
+    const childId = String(body.childProfile.id ?? scenarioProfile.id);
+    if (Array.isArray(input.approvedFacts) && input.approvedFacts.length > 0) {
+      await seedApprovedMemory(baseUrl, childId, input.approvedFacts.map(String));
+    }
+    const sibling = (input.siblingSeed ?? null) as { childId?: unknown; approvedFacts?: unknown } | null;
+    if (sibling && typeof sibling.childId === "string" && Array.isArray(sibling.approvedFacts) && sibling.approvedFacts.length > 0) {
+      await seedApprovedMemory(baseUrl, sibling.childId, sibling.approvedFacts.map(String));
+    }
+    const res = await fetch(`${baseUrl}/api/todays-focus`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
     });
     return `HTTP ${res.status}\n${await res.text()}`;
   }

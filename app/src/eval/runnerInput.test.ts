@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { handoffWireBody, runnerInputError } from "./runnerInput";
+import { handoffWireBody, runnerInputError, todaysFocusWireBody } from "./runnerInput";
 import type { EvalSuite } from "./acceptance";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -60,9 +60,33 @@ describe("the handoff wire body is what a School Brief client posts", () => {
     expect(body.language).toBe("he");
   });
 
+  it("B-TODAY-24: a todays-focus scenario needs the child and signals.count; the wire body is what Today posts", () => {
+    expect(runnerInputError({ route: "/api/todays-focus", input: { signals: { count: 1 } } })).toMatch(/childProfile/);
+    expect(runnerInputError({ route: "/api/todays-focus", input: { childProfile: { id: "c" } } })).toMatch(/signals\.count/);
+    expect(runnerInputError({ route: "/api/todays-focus", input: { childProfile: { id: "c" }, signals: { count: 0 } } })).toBeNull();
+    const body = todaysFocusWireBody(
+      {
+        childProfile: { id: "eval-c3", name: "Maya", age: 5 },
+        signals: { count: 3, topTrigger: "bedtime" },
+        ledger: [{ recommendation: "Use a two-minute sand timer", status: "completed", outcome: "not_today" }],
+        approvedFacts: ["NEVER POSTED"],
+        language: "he",
+      },
+      profile,
+    );
+    expect(body).toEqual({
+      childProfile: { id: "eval-c3", name: "Maya", age: 5 },
+      signals: { count: 3, topTrigger: "bedtime", lastActionRecommendation: "Use a two-minute sand timer", lastActionOutcome: "not_today" },
+      language: "he",
+    });
+    expect(JSON.stringify(body)).not.toContain("NEVER POSTED");
+    const runner = readFileSync(path.join(APP, "scripts", "eval-judge.mts"), "utf8").replace(/\r\n/g, "\n");
+    expect(runner).toMatch(/if \(route === "\/api\/todays-focus"\) \{[\s\S]{0,900}todaysFocusWireBody\(input, scenarioProfile\)[\s\S]{0,900}seedApprovedMemory\(baseUrl, sibling\.childId/);
+  });
+
   it("the runner calls the rule and has the handoff branch", () => {
     const runner = readFileSync(path.join(APP, "scripts", "eval-judge.mts"), "utf8").replace(/\r\n/g, "\n");
-    expect(runner).toContain('import { handoffWireBody, runnerInputError } from "../src/eval/runnerInput.js";');
+    expect(runner).toContain('import { handoffWireBody, runnerInputError, todaysFocusWireBody } from "../src/eval/runnerInput.js";');
     expect(runner).toContain("const inputError = runnerInputError(scenario);");
     expect(runner).toMatch(/if \(route === "\/api\/generate-handoff"\) \{[\s\S]{0,400}handoffWireBody\(input, scenarioProfile\)/);
   });

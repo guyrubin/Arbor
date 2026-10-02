@@ -108,7 +108,9 @@ describe("OBJ-TODAY-02 — the prompt card stops asserting unused inputs", () =>
   it("B-TODAY-04: OverviewTab feeds it its OWN prompt key; the hero keeps whyLineFor", () => {
     expect(overview).toMatch(/whyLine=\{todayChoice\.kind === "prompt" \? t\("today\.intent\.why\.prompt"/);
     expect(overview).not.toMatch(/whyLine=\{focusWhy\}/);
-    expect(overview).toMatch(/why=\{focusWhy\}/);
+    // B-TODAY-12/24: the hero's why is focusWhy, except when the step IS the
+    // matched pilot hard-moment guide, which states its own provenance.
+    expect(overview).toMatch(/why=\{stepIsHardMoment \? t\("elev\.brief\.hardMoment\.why"\) : focusWhy\}/);
     expect(overview).toMatch(/whyLineFor\(/);
   });
 

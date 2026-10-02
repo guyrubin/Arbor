@@ -47,6 +47,11 @@ describe("B-TODAY-07 · rail order and capture target", () => {
   });
 
   it("Today passes the capture bar's own opener (text sheet), so the route stays #/overview", () => {
-    expect(overview).toContain('<FirstStepsRail onCapture={() => { setQuickLogMode("text"); setQuickLogOpen(true); }} />');
+    // B-TODAY-19 (07fea27): every capture door on Today goes through the ONE
+    // in-place opener, startCapture(mode, promptKey?, hard?) — the same seam
+    // the QuickCapture bar uses — which opens QuickLogModal on #/overview.
+    expect(overview).toContain('<FirstStepsRail onCapture={() => startCapture("text")} />');
+    expect(overview).toMatch(/const startCapture = \(mode: CaptureMode[^)]*\) => \{\s*setQuickLogMode\(mode\);[\s\S]{0,120}setQuickLogOpen\(true\);/);
+    expect(overview).not.toMatch(/FirstStepsRail onCapture=\{\(\) => setActiveTab\(/);
   });
 });

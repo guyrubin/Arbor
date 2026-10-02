@@ -41,10 +41,17 @@ describe("W2 2.6 JournalTab prompt mount", () => {
   it("tap shows the prompt as a writing cue and never injects it into the draft", () => {
     expect(src).toContain('data-testid="journal-prompt-cue"');
     expect(src).toContain("{t(activePromptKey)}");
-    // The sanctioned pattern: capture opens exactly as before, mode-only.
-    expect(src).toContain("requestCapture(mode)");
-    // The prompt key/text must never flow into the capture call.
-    expect(src).not.toMatch(/requestCapture\((?!mode\))/);
+    // B-TODAY-19 (07fea27) moved capture IN PLACE: the Journal opens the ONE
+    // capture sheet itself (no requestCapture hand-off to Behaviors), and the
+    // tapped prompt rides in as the sheet's visible cue — its KEY, stored on
+    // the log as promptKey — never as draft text.
+    expect(src).toMatch(
+      /const startCapture = \(mode: CaptureMode\) => \{\s*setQuickLogMode\(mode\);\s*setQuickLogPromptKey\(activePromptKey\);\s*setQuickLogOpen\(true\);/,
+    );
+    expect(src).toContain("<QuickLogModal open={quickLogOpen} mode={quickLogMode} promptKey={quickLogPromptKey}");
+    expect(src).not.toMatch(/requestCapture\(/);
+    // The prompt TEXT must never flow into the sheet (only the key, as a cue).
+    expect(src).not.toMatch(/setQuickLogPromptKey\(t\(|promptKey=\{t\(|initialText=|defaultText=/);
   });
 
   it("tracks journal_prompt_tap with the child's band", () => {
