@@ -17,6 +17,11 @@ import { speechSupported, startDictation } from "../../lib/speech";
 import { microphoneRecovery } from "../../lib/microphoneRecovery";
 import MicrophoneNotice from "../ui/MicrophoneNotice";
 import { fileToThumbnail } from "../../lib/image";
+import { HardMomentGuideContent } from "../behaviors/HardMomentsSection";
+import { recentBehaviorTypes } from "../../content/hardMomentSurface";
+import { availableHardMomentCards, matchToRecentBehaviors } from "../../content/selectCards";
+import type { HardMomentContext } from "../../content/pilotRelease";
+import { ageMonthsFromProfile } from "../../lib/childAge";
 
 /** Lightweight behavior log capture that can be opened from anywhere (e.g. Overview).
  *
@@ -33,12 +38,17 @@ export default function QuickLogModal({
   onClose,
   mode = "text",
   promptKey,
+  hardMomentNow = false,
 }: {
   open: boolean;
   onClose: () => void;
   mode?: CaptureMode;
   /** B-TODAY-19: the elev.prompt.* key of the question being answered. */
   promptKey?: string | null;
+  /** B-TODAY-10: opened from the "Hard moment" tile — the sheet leads with
+   *  the pilot guide matched to the parent's recent moments (say this ·
+   *  do now · escalation, zero model calls), then the hard-moment form. */
+  hardMomentNow?: boolean;
 }) {
   const {
     newLogType,
@@ -57,6 +67,7 @@ export default function QuickLogModal({
     setNewLogNotes,
     setNewLogPhoto,
     childProfile,
+    behaviorLogs,
     handleAddLog,
     addMoment,
     offerPostCaptureCoach,
@@ -146,6 +157,24 @@ export default function QuickLogModal({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+  // B-TODAY-10: the tile's sheet opens on the hard-moment branch, with the
+  // guide matched to the parent's own recent moment types preselected
+  // (matchToRecentBehaviors(recentBehaviorTypes(logs))[0]); with no match,
+  // the first guide available for this child's age. Zero model calls.
+  useEffect(() => {
+    if (open && hardMomentNow) toggleHardMoment(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, hardMomentNow]);
+  const hardGuide = (() => {
+    if (!open || !hardMomentNow) return null;
+    const now = new Date();
+    const context: HardMomentContext = { now, ageMonths: ageMonthsFromProfile(childProfile, now), locale: uiLang === "he" ? "he" : "en" };
+    const card =
+      matchToRecentBehaviors(recentBehaviorTypes(behaviorLogs, now), undefined, now, context.ageMonths, context.locale)[0] ??
+      availableHardMomentCards(context)[0];
+    return card ? { card, context } : null;
+  })();
+
   // Photo mode opens the picker on arrival — the tap on the tile is the
   // gesture (same 120 ms hand-off the Behaviors form uses); the visible
   // "Add a photo" control stays for browsers that block the programmatic tap.
@@ -335,7 +364,19 @@ export default function QuickLogModal({
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={t("ql.title")}>
+    <Modal open={open} onClose={onClose} title={hardMomentNow ? t("elev.capture.hard.title") : t("ql.title")}>
+      {hardGuide && !reviewing && !escalationMarkdown && (
+        <section data-testid="quicklog-hard-guide" className="mb-4 space-y-3">
+          <p className="text-[13px] leading-snug" style={{ color: "var(--arbor-muted)" }}>{t("elev.capture.hard.lead")}</p>
+          <HardMomentGuideContent
+            card={hardGuide.card}
+            context={hardGuide.context}
+            childName={(childProfile.name || "").split(" ")[0]}
+            t={t}
+          />
+          <p className="pt-1 text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("elev.capture.hard.logLead")}</p>
+        </section>
+      )}
       {voiceNotice && <MicrophoneNotice message={voiceNotice} lang={uiLang} onRetry={startVoice} onDismiss={() => setVoiceNotice(null)} />}
       {escalationMarkdown ? (
         <div role="alert" dir="auto" data-testid="quicklog-escalation" className="space-y-3 text-sm">

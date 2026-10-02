@@ -129,14 +129,16 @@ describe("CODEX-7 — capture review carries no static confidence verdict (firew
 
 
 describe("W2 Today working density", () => {
-  it("keeps all three fixed capture doors visibly labeled and the action illustration compact", () => {
+  it("keeps every fixed capture door visibly labeled and the action illustration compact", () => {
     const capture = stripComments(read("components/overview/QuickCaptureBar.tsx"));
     const compactHero = stripComments(read("components/overview/TodayRecommendation.tsx"));
-    expect(capture).toContain('<span>{t("today.capture.text")}</span>');
+    // B-TODAY-10: four tiles share one visible-label class (LABEL), never hidden.
+    expect(capture).toContain('<span className={LABEL}>{t("today.capture.text")}</span>');
     expect(capture).toContain('shortLabel: "elev.wave2Daily.capture.voice"');
     expect(capture).toContain('shortLabel: "elev.wave2Daily.capture.photo"');
     expect(capture).toContain('aria-label={t(label)}');
-    expect(capture).toContain('<span className="text-[12px] font-bold"');
+    expect(capture).toContain('{t("elev.capture.hard.tile")}</span>');
+    expect(capture).toMatch(/const LABEL = "max-w-full truncate text-\[11\.5px\] sm:text-\[12px\] font-bold";/);
     expect(capture).not.toContain("hidden sm:inline");
     expect(capture).not.toContain("hidden lg:inline");
     expect(compactHero).toContain("HeroAvatar size={40}");

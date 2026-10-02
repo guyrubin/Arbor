@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ageYearsFromProfile } from "../../lib/childAge";
+import { ageMonthsFromProfile, ageYearsFromProfile } from "../../lib/childAge";
+import { availableHardMomentCards } from "../../content/selectCards";
 import { motion } from "motion/react";
 import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
@@ -131,14 +132,16 @@ export default function OverviewTab() {
   useEffect(() => {
     if (pendingCaptureMode !== "text") return;
     consumeCaptureRequest();
-    setQuickLogMode("text");
-    setQuickLogPromptKey(null);
-    setQuickLogOpen(true);
+    startCapture("text");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingCaptureMode]);
-  const startCapture = (mode: CaptureMode, promptKey: string | null = null) => {
+  // B-TODAY-10: the "Hard moment" tile opens the same sheet on its
+  // hard-moment branch (the matched pilot guide first).
+  const [quickLogHard, setQuickLogHard] = useState(false);
+  const startCapture = (mode: CaptureMode, promptKey: string | null = null, hard = false) => {
     setQuickLogMode(mode);
     setQuickLogPromptKey(promptKey);
+    setQuickLogHard(hard);
     setQuickLogOpen(true);
   };
 
@@ -348,6 +351,14 @@ export default function OverviewTab() {
   useEffect(() => {
     track("today_action_offered", { kind: todayChoice.kind });
   }, [todayChoice.kind]);
+
+  // B-TODAY-10: the tile shows only while a pilot guide is available for this
+  // child's age and locale — after HARD_MOMENT_PILOT.expiresAt the list is
+  // empty and the tile is absent (pilotRelease.hardMomentPublication).
+  const hardMomentTile = useMemo(() => {
+    const now = new Date();
+    return availableHardMomentCards({ now, ageMonths: ageMonthsFromProfile(childProfile, now), locale: uiLang === "he" ? "he" : "en" }).length > 0;
+  }, [childProfile, uiLang]);
 
   // CODEX-2: time-of-day-aware greeting (was hardcoded to the morning copy).
   const hour = new Date().getHours();
@@ -660,6 +671,7 @@ export default function OverviewTab() {
           childName={firstName}
           onText={() => startCapture("text")}
           onMode={(mode) => startCapture(mode)}
+          onHardMoment={hardMomentTile ? () => startCapture("text", null, true) : undefined}
         />
       </div>
 
@@ -977,7 +989,7 @@ export default function OverviewTab() {
 
       {/* The ONE capture sheet (text · voice · photo, B-TODAY-19). Portals to
           document.body, so it contributes no box to the flex column. */}
-      <QuickLogModal open={quickLogOpen} mode={quickLogMode} promptKey={quickLogPromptKey} onClose={() => setQuickLogOpen(false)} />
+      <QuickLogModal open={quickLogOpen} mode={quickLogMode} promptKey={quickLogPromptKey} hardMomentNow={quickLogHard} onClose={() => setQuickLogOpen(false)} />
     </motion.div>
   );
 }

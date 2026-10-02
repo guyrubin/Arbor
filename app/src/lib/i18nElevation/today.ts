@@ -47,6 +47,12 @@ export const en: Record<string, string> = {
   "elev.capture.photo.caption": "A photo moment",
   "elev.capture.photo.alt": "The photo you added",
   "elev.capture.photo.remove": "Remove photo",
+  // B-TODAY-10: the capture bar's "Hard moment" tile and its sheet header.
+  "elev.capture.hard.tile": "Hard moment",
+  "elev.capture.hard.aria": "Hard moment now — words to use and what to do",
+  "elev.capture.hard.title": "Hard moment now",
+  "elev.capture.hard.lead": "Matched to the moments you logged. Use what helps.",
+  "elev.capture.hard.logLead": "When it has passed, you can keep a note of it.",
 };
 
 export const he: Record<string, string> = {
@@ -80,4 +86,9 @@ export const he: Record<string, string> = {
   "elev.capture.photo.caption": "רגע בתמונה",
   "elev.capture.photo.alt": "התמונה שהוספתם",
   "elev.capture.photo.remove": "להסיר את התמונה",
+  "elev.capture.hard.tile": "רגע קשה",
+  "elev.capture.hard.aria": "רגע קשה עכשיו — מה להגיד ומה לעשות",
+  "elev.capture.hard.title": "רגע קשה עכשיו",
+  "elev.capture.hard.lead": "מותאם לרגעים שתיעדתם. קחו את מה שעוזר.",
+  "elev.capture.hard.logLead": "כשזה עובר, אפשר לשמור על זה הערה.",
 };

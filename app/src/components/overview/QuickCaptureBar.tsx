@@ -26,26 +26,41 @@ const AUX_MODES: { ms: string; key: Exclude<CaptureMode, "text">; label: string;
   { ms: "photo_camera", key: "photo", label: "today.capture.photo", shortLabel: "elev.wave2Daily.capture.photo" },
 ];
 
+/** Tile anatomy shared by all four tiles: icon over label below sm (each tile
+ *  is ~89 px wide at 390), icon beside label from sm up; ≥48 px tall. */
+const TILE =
+  "min-w-0 inline-flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2.5 px-1.5 sm:px-3 py-1.5 sm:py-2.5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset";
+const TILE_STYLE = (ink: string): React.CSSProperties =>
+  ({ minHeight: 48, borderColor: RULE, color: ink, ["--tw-ring-color" as string]: GREEN }) as React.CSSProperties;
+const ICON = "flex h-8 w-8 sm:h-9 sm:w-9 flex-none items-center justify-center rounded-full";
+const LABEL = "max-w-full truncate text-[11.5px] sm:text-[12px] font-bold";
+
 export default function QuickCaptureBar({
   childName,
   onText,
   onMode,
+  onHardMoment,
 }: {
   childName: string;
   /** Open the capture sheet in text mode (inline on Today). */
   onText: () => void;
   /** Open the capture sheet in voice or photo mode (inline on Today). */
   onMode: (mode: CaptureMode) => void;
+  /** B-TODAY-10: the "Hard moment" tile. Omitted (tile absent) when no pilot
+   *  guide is available for this child — e.g. after HARD_MOMENT_PILOT expires. */
+  onHardMoment?: () => void;
 }) {
   const reduce = useReducedMotion();
   const { t } = useLanguage();
+  const tiles = onHardMoment ? 4 : 3;
 
   return (
     <motion.div
       initial={reduce ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={reduce ? { duration: 0 } : { duration: 0.16 }}
-      className="grid grid-cols-3 lg:grid-cols-[1.1fr_1fr_1fr_1fr] items-stretch overflow-hidden rounded-[18px]"
+      data-capture-tiles={tiles}
+      className={`grid ${tiles === 4 ? "grid-cols-4 lg:grid-cols-[1.3fr_1fr_1fr_1fr_1fr]" : "grid-cols-3 lg:grid-cols-[1.1fr_1fr_1fr_1fr]"} items-stretch overflow-hidden rounded-[18px]`}
       style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-sm)" }}
     >
       <div className="hidden lg:flex flex-col justify-center px-5 py-3">
@@ -56,16 +71,12 @@ export default function QuickCaptureBar({
         type="button"
         onClick={onText}
         aria-label={t("today.capture.aria", { name: childName })}
-        className="inline-flex items-center justify-center gap-2.5 px-4 py-2.5 text-[13px] font-bold transition active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset lg:border-s"
-        style={{
-          minHeight: 48,
-          color: "var(--arbor-ink)",
-          borderColor: RULE,
-          ["--tw-ring-color" as string]: GREEN,
-        } as React.CSSProperties}
+        data-capture-tile="text"
+        className={`${TILE} lg:border-s active:scale-[0.99]`}
+        style={TILE_STYLE("var(--arbor-ink)")}
       >
-        <span className="flex h-9 w-9 items-center justify-center rounded-full" style={{ background: "var(--arbor-tint)", color: "var(--arbor-clay)" }}><Icon name="edit_note" size={19} /></span>
-        <span>{t("today.capture.text")}</span>
+        <span className={ICON} style={{ background: "var(--arbor-tint)", color: "var(--arbor-clay)" }}><Icon name="edit_note" size={19} /></span>
+        <span className={LABEL}>{t("today.capture.text")}</span>
       </button>
       {AUX_MODES.map(({ ms, key, label, shortLabel }) => (
         <button
@@ -74,18 +85,32 @@ export default function QuickCaptureBar({
           onClick={() => onMode(key)}
           aria-label={t(label)}
           title={t(label)}
-          className="min-w-[52px] inline-flex items-center justify-center gap-2.5 px-3 py-2.5 transition active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset lg:border-s"
-          style={{
-            minHeight: 48,
-            borderColor: RULE,
-            color: GREEN,
-            ["--tw-ring-color" as string]: GREEN,
-          } as React.CSSProperties}
+          data-capture-tile={key}
+          className={`${TILE} border-s active:scale-[0.97]`}
+          style={TILE_STYLE(GREEN)}
         >
-          <span className="flex h-9 w-9 items-center justify-center rounded-full" style={{ background: key === "voice" ? "var(--arbor-lav-soft)" : "var(--arbor-green-soft)", color: key === "voice" ? "var(--arbor-lav-ink)" : GREEN }}><Icon name={ms} size={20} fill={1} /></span>
-          <span className="text-[12px] font-bold" style={{ color: "var(--arbor-ink)" }}>{t(shortLabel)}</span>
+          <span className={ICON} style={{ background: key === "voice" ? "var(--arbor-lav-soft)" : "var(--arbor-green-soft)", color: key === "voice" ? "var(--arbor-lav-ink)" : GREEN }}><Icon name={ms} size={20} fill={1} /></span>
+          <span className={LABEL} style={{ color: "var(--arbor-ink)" }}>{t(shortLabel)}</span>
         </button>
       ))}
+      {/* B-TODAY-10: the 4th tile. Neutral ink on paper — never red, coral or
+          peach, never "SOS" (a hard moment is not an emergency; the
+          SafetyRing stays the human-escalation path). Opens the capture
+          sheet on the guide matched to the parent's own recent moments. */}
+      {onHardMoment && (
+        <button
+          type="button"
+          onClick={onHardMoment}
+          aria-label={t("elev.capture.hard.aria")}
+          title={t("elev.capture.hard.aria")}
+          data-capture-tile="hard-moment"
+          className={`${TILE} border-s active:scale-[0.97]`}
+          style={TILE_STYLE("var(--arbor-ink)")}
+        >
+          <span className={ICON} style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink-soft)" }}><Icon name="volunteer_activism" size={19} /></span>
+          <span className={LABEL} style={{ color: "var(--arbor-ink)" }}>{t("elev.capture.hard.tile")}</span>
+        </button>
+      )}
     </motion.div>
   );
 }
