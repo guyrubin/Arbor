@@ -66,6 +66,9 @@ export const en: Record<string, string> = {
   // B-TODAY-12: Ask's door to the grounded step that lives on Today's card.
   "elev.brief.grounded.open": "See it on Today",
   "elev.brief.hardMoment.why": "Picked from a pilot guide that matches moments you logged.",
+  // B-TODAY-24: a why-line part, only when the server used approved facts.
+  "elev.brief.why.facts": "{n} things you told Arbor",
+  "elev.brief.why.facts.one": "1 thing you told Arbor",
 };
 
 export const he: Record<string, string> = {
@@ -113,4 +116,6 @@ export const he: Record<string, string> = {
   "elev.brief.family.aria": "מה מחכה לשאר הילדים",
   "elev.brief.grounded.open": "לראות בעמוד היום",
   "elev.brief.hardMoment.why": "נבחר ממדריך פיילוט שמתאים לרגעים שתיעדתם.",
+  "elev.brief.why.facts": "{n} דברים שסיפרתם לארבור",
+  "elev.brief.why.facts.one": "דבר אחד שסיפרתם לארבור",
 };

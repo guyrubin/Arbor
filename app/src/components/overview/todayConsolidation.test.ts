@@ -231,7 +231,9 @@ describe("B-TODAY-12 — one step card: the hard-moment offer folds into it as '
     expect(hero).toContain('data-testid="today-saythis-pilot"');
     expect(hero).toMatch(/role="note" data-testid="today-saythis-escalation"/);
     expect(hero).not.toMatch(/<details[\s\S]{0,200}today-saythis-escalation/);
-    expect(overview).toContain("sayThis={hardMomentSayThis}");
+    // B-TODAY-24: one Say-this line — the governed guide's, else the focus's own.
+    expect(overview).toContain("sayThis={stepSayThis}");
+    expect(overview).toMatch(/const stepSayThis: StepSayThis \| undefined = hardMomentSayThis\s*\?\? \(!stepIsHardMoment && focus\?\.sayThis/);
     expect(overview).toContain("text: locText(renderSayThis(hardMoment.card, firstName), hmLocale)");
     expect(overview).toContain("escalation: { title: t(\"hm.section.escalation\"), text: escalationText(hardMoment.card, hmLocale) }");
   });

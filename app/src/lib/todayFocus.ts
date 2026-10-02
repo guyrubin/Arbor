@@ -70,7 +70,13 @@ export function focusBodyFor(focus: FocusLike): string | undefined {
 }
 
 /** What /api/todays-focus reports it actually used (AI-19), when present. */
-export type FocusInputsUsed = { momentCount?: number; topTrigger?: string; lastActionOutcome?: string };
+export type FocusInputsUsed = {
+  momentCount?: number;
+  topTrigger?: string;
+  lastActionOutcome?: string;
+  /** B-TODAY-24: approved facts the server placed in the focus context (CompanionContext) — an integer, never content. */
+  factCount?: number;
+};
 
 export type WhyLineInputs = {
   name: string;
@@ -112,6 +118,13 @@ export function whyLineParts(inp: WhyLineInputs): { key: string; vars: Record<st
   parts.push("today.intent.why.age");
   if (inp.goals > 0) parts.push("today.intent.why.goals");
   if (inp.interests > 0) parts.push("today.intent.why.interests");
+  // B-TODAY-24: "{n} things you told Arbor" — named ONLY when the server
+  // reports it placed approved facts in this focus's context (inputsUsed).
+  const facts = Number(inp.inputsUsed?.factCount ?? 0);
+  if (Number.isFinite(facts) && facts > 0) {
+    parts.push(facts === 1 ? "elev.brief.why.facts.one" : "elev.brief.why.facts");
+    return { key: "today.intent.why.list", vars: { list: parts.join("|"), n: Math.floor(facts) } };
+  }
   return { key: "today.intent.why.list", vars: { list: parts.join("|") } };
 }
 
@@ -124,7 +137,7 @@ export function whyLineFor(
   if (key === "today.intent.why.day0") return t(key, vars);
   const list = String(vars.list)
     .split("|")
-    .map((k) => t(k))
+    .map((k) => (vars.n !== undefined ? t(k, { n: vars.n }) : t(k)))
     .join(t("today.intent.why.sep"));
   return t(key, { list });
 }

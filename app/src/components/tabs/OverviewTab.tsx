@@ -377,6 +377,19 @@ export default function OverviewTab() {
     [activeTodayAction, hardMoment, recapAnchorDue, weekOpenDue, focusHeadline, focusLoading, focus, recentCount, promptKeys, dailyPlay]
   );
   const stepIsHardMoment = todayChoice.kind === "hardMoment" && !!hardMoment;
+  // B-TODAY-24: the step card's ONE Say-this line — the governed pilot guide's
+  // words when one matches (with its escalation), else the focus's own
+  // sayThis from /todays-focus (same model call, screened server-side).
+  const stepSayThis: StepSayThis | undefined = hardMomentSayThis
+    ?? (!stepIsHardMoment && focus?.sayThis
+      ? {
+          text: focus.sayThis,
+          lang: (focus.lang === "he" ? "he" : focus.lang === "en" ? "en" : hmLocale),
+          title: t("hm.section.sayThis"),
+          copyLabel: t("coach.action.copy"),
+          copiedLabel: t("coach.cards.copied"),
+        }
+      : undefined);
   const hardMomentDoNow = hardMoment ? locText(hardMoment.card.doNow, hmLocale) : "";
   // KPI 0.8: % opens ending in an offered action (target 100%).
   useEffect(() => {
@@ -802,7 +815,7 @@ export default function OverviewTab() {
               // own ContentWhyLine slot so the TrustLink lands AFTER the why text
               // (it used to sit between the CTA and a sibling <p>).
               why={stepIsHardMoment ? t("elev.brief.hardMoment.why") : focusWhy}
-              sayThis={hardMomentSayThis}
+              sayThis={stepSayThis}
             />
           ) : todayChoice.kind === "play" ? (
             playSection

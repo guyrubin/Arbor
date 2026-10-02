@@ -34,12 +34,14 @@ import { createWaitlistStore } from "../server/waitlist.js";
 import type { ModelProvider } from "../ai/modelRouter.js";
 
 let lastPrompt = "";
+let lastSchema: { required?: string[]; properties?: Record<string, unknown> } = {};
 let providerCalls = 0;
 let draft: Record<string, unknown> = {};
 
 const stubModelProvider = {
-  generateJson: async ({ prompt }: { prompt: string }) => {
+  generateJson: async ({ prompt, schema }: { prompt: string; schema?: { required?: string[]; properties?: Record<string, unknown> } }) => {
     lastPrompt = prompt;
+    if (schema?.properties && "tryToday" in schema.properties) lastSchema = schema;
     providerCalls += 1;
     return draft;
   },
@@ -267,5 +269,60 @@ describe("B-AI-03 · the prompt states only what the parent logged", () => {
     const { json } = await postFocus({ childProfile: { id: "c-ai03-orphan", name: "T", age: 4 }, signals: { count: 0, topTrigger: "bedtime" } });
     expect(lastPrompt).not.toContain("bedtime");
     expect(json.inputsUsed as Record<string, unknown>).not.toHaveProperty("topTrigger");
+  });
+});
+
+/* ── B-TODAY-24: grounded step — sayThis + a truthful why-line input ──────── */
+describe("B-TODAY-24 · /todays-focus returns one screened sayThis (≤140) and factCount", () => {
+  it("the schema gains an OPTIONAL sayThis; required stays focus + tryToday", async () => {
+    draft = { ...CLEAN_DRAFT, sayThis: "Two more minutes, then shoes on together." };
+    providerCalls = 0;
+    const { status, json } = await postFocus({ childProfile: { id: "c-say-1", name: "T", age: 4 }, signals: { count: 2 } });
+    expect(status).toBe(200);
+    expect(providerCalls).toBe(1); // model calls per focus unchanged (1)
+    expect(Object.keys(lastSchema.properties ?? {})).toEqual(["focus", "tryToday", "sayThis"]);
+    expect(lastSchema.required).toEqual(["focus", "tryToday"]);
+    expect(json.sayThis).toBe("Two more minutes, then shoes on together.");
+    expect(lastPrompt).toContain('"sayThis": ONE short sentence (under 140 characters)');
+  });
+
+  it("an over-long sayThis is dropped, never cut", async () => {
+    draft = { ...CLEAN_DRAFT, sayThis: "x".repeat(141) };
+    const { status, json } = await postFocus({ childProfile: { id: "c-say-2", name: "T", age: 4 }, signals: { count: 2 } });
+    expect(status).toBe(200);
+    expect(json).not.toHaveProperty("sayThis");
+  });
+
+  it("sayThis passes the SAME output screen: a diagnostic line blocks the whole focus (422)", async () => {
+    draft = { ...CLEAN_DRAFT, sayThis: "Tell her she has autism and that is why." };
+    const { status, json } = await postFocus({ childProfile: { id: "c-say-3", name: "T", age: 4 }, signals: { count: 2 } });
+    expect(status).toBe(422);
+    expect(JSON.stringify(json)).not.toContain("autism");
+  });
+
+  it("factCount is the count of approved facts placed in the context (0 with none)", async () => {
+    draft = { ...CLEAN_DRAFT };
+    const { json } = await postFocus({ childProfile: { id: "c-say-4", name: "T", age: 4 }, signals: { count: 2 } });
+    expect((json.inputsUsed as Record<string, unknown>).factCount).toBe(0);
+    const src = fs.readFileSync(path.join(__dirname, "api.ts"), "utf8");
+    expect(src).toContain("factCount: approvedFacts.length");
+    // The Hebrew directive covers every field now (focus, tryToday, sayThis).
+    expect(src).toContain("Write every field in natural, warm Hebrew (עברית).");
+  });
+
+  it("today-focus-v1 is authored against this route (the suite's offline gate)", () => {
+    const suite = JSON.parse(fs.readFileSync(path.resolve(__dirname, "..", "..", "..", "evals", "today-focus-v1.eval.json"), "utf8")) as {
+      suite: string; promptVersions: Record<string, string>; scenarios: { id: string; route?: string; locale?: string; safetyMustHold?: boolean }[];
+    };
+    expect(suite.suite).toBe("today-focus-v1");
+    expect(suite.promptVersions.todays_focus).toBe("1.1.0");
+    const ids = suite.scenarios.map((s) => s.id);
+    for (const required of ["cold-start", "approved-fact-used", "not-today-not-repeated", "he-output", "two-child-isolation", "safety-trip-no-score-trend-diagnosis", "saythis-length"]) {
+      expect(ids.some((id) => id.startsWith(required)), required).toBe(true);
+    }
+    for (const sc of suite.scenarios) {
+      expect(sc.route).toBe("/api/todays-focus");
+      expect(sc.safetyMustHold).toBe(true);
+    }
   });
 });

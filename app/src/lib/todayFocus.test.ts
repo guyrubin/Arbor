@@ -97,8 +97,9 @@ describe("OverviewTab wiring (TODAY-1 + CODEX-2)", () => {
     // hero now reads the whole record so the model's ONE step is the headline
     // and legacy text-only records still resolve through focusHeadlineFrom.
     expect(src).toContain("focusHeadlineFor(focus)");
-    expect(src).toContain('headline={focusHeadline ?? t("ov.recoEmpty"');
-    expect(src).toContain("body={focusHeadline ? focusBody : undefined}");
+    // B-TODAY-12: one step card — the guide's doNow when it IS the step.
+    expect(src).toContain('headline={stepIsHardMoment ? hardMomentDoNow : focusHeadline ?? t("ov.recoEmpty"');
+    expect(src).toContain("body={!stepIsHardMoment && focusHeadline ? focusBody : undefined}");
   });
 
   it("has no keyword-override branch (canned copy never replaces live guidance)", () => {
@@ -109,8 +110,9 @@ describe("OverviewTab wiring (TODAY-1 + CODEX-2)", () => {
   it("never feeds the marketing fallback into the action loop", () => {
     // TODAY-2/CODEX-1: the accept CTA moved into the hero; the guard moved
     // with it — the accept prop is offered ONLY from a real focus headline.
-    expect(src).toMatch(/accept=\{focusHeadline\s*\?/);
-    expect(src).toContain("acceptTodayAction(focusHeadline");
+    // B-TODAY-12: …or from a released pilot guide (re-checked at tap time).
+    expect(src).toMatch(/accept=\{stepIsHardMoment \|\| focusHeadline\s*\?/);
+    expect(src).toContain("if (focusHeadline) acceptTodayAction(focusHeadline, capacity);");
     expect(src).not.toMatch(/acceptTodayAction\([^)]*recoEmpty/);
     expect(src).not.toMatch(/focus\?\.text\?\.trim\(\)\s*\|\|\s*t\("ov\.recoEmpty"/);
   });
@@ -244,7 +246,7 @@ describe("ENG-07 — whyLineFor is built from real inputs", () => {
 
   it("OverviewTab feeds the hero why-line from whyLineFor, never a fixed key", () => {
     const src = read("components/tabs/OverviewTab.tsx");
-    expect(src).toContain("why={focusWhy}");
+    expect(src).toContain('why={stepIsHardMoment ? t("elev.brief.hardMoment.why") : focusWhy}');
     expect(src).toMatch(/whyLineFor\(\s*\{\s*name: firstName,\s*recentCount,\s*confidence: rhythm\.confidence,\s*goals: activeGoals\.length,\s*interests: childProfile\.interests\?\.length \?\? 0,\s*inputsUsed: focus\?\.inputsUsed,\s*\},\s*t,\s*\)/);
   });
 });
@@ -361,5 +363,37 @@ describe("mobile pinned capture bar exists as documented (TODAY-4)", () => {
   it("--mobile-nav-h is declared in index.css", () => {
     const css = read("index.css");
     expect(css).toContain("--mobile-nav-h:");
+  });
+});
+
+describe("B-TODAY-24 — the why-line names approved facts only when the server used them", () => {
+  const dict: Record<string, string> = {
+    "today.intent.why.list": "Chosen from {list}.",
+    "today.intent.why.recent": "recent moments",
+    "today.intent.why.age": "age",
+    "today.intent.why.sep": ", ",
+    "elev.brief.why.facts": "{n} things you told Arbor",
+    "elev.brief.why.facts.one": "1 thing you told Arbor",
+  };
+  const t = (k: string, v?: Record<string, string | number>) =>
+    (dict[k] ?? k).replace(/\{(\w+)\}/g, (_m, name: string) => String(v?.[name] ?? `{${name}}`));
+  const base = { name: "Maya", recentCount: 3, confidence: "none", goals: 0, interests: 0 };
+
+  it("factCount > 0 → '{n} things you told Arbor' (singular at 1)", () => {
+    expect(whyLineFor({ ...base, inputsUsed: { momentCount: 3, factCount: 2 } }, t)).toBe("Chosen from recent moments, age, 2 things you told Arbor.");
+    expect(whyLineFor({ ...base, inputsUsed: { momentCount: 3, factCount: 1 } }, t)).toBe("Chosen from recent moments, age, 1 thing you told Arbor.");
+  });
+
+  it("factCount 0 or absent → never named (the line names only inputsUsed)", () => {
+    expect(whyLineFor({ ...base, inputsUsed: { momentCount: 3, factCount: 0 } }, t)).toBe("Chosen from recent moments, age.");
+    expect(whyLineFor({ ...base, inputsUsed: { momentCount: 3 } }, t)).toBe("Chosen from recent moments, age.");
+    expect(whyLineParts({ ...base, inputsUsed: { momentCount: 3 } }).vars).toEqual({ list: "today.intent.why.recent|today.intent.why.age" });
+  });
+
+  it("EN + HE strings exist", async () => {
+    const { translate } = await import("./i18n");
+    expect(translate("en", "elev.brief.why.facts", { n: 3 })).toBe("3 things you told Arbor");
+    expect(translate("he", "elev.brief.why.facts", { n: 3 })).toBe("3 דברים שסיפרתם לארבור");
+    expect(translate("he", "elev.brief.why.facts.one")).toBe("דבר אחד שסיפרתם לארבור");
   });
 });

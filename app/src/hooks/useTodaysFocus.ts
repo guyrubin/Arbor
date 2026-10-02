@@ -36,6 +36,8 @@ export type Focus = {
   text: string;
   focus?: string;
   tryToday?: string;
+  /** B-TODAY-24: ONE sentence the parent can say while trying the step (≤140). */
+  sayThis?: string;
   inputsUsed?: FocusInputsUsed;
   generatedAt: string;
   dateKey: string;
@@ -136,12 +138,16 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals) {
       };
       const focusObservation = tidy(data.focus, 400);
       const tryToday = tidy(data.tryToday, 300);
+      // B-TODAY-24: the server drops an over-long line; never re-cut here.
+      const sayThisRaw = String(data.sayThis ?? "").replace(/[#*]/g, "").replace(/\s+/g, " ").trim();
+      const sayThis = sayThisRaw && sayThisRaw.length <= 140 ? sayThisRaw : undefined;
       const inputsUsed: FocusInputsUsed | undefined =
         data.inputsUsed && typeof data.inputsUsed === "object"
           ? {
               momentCount: Number.isFinite(Number(data.inputsUsed.momentCount)) ? Number(data.inputsUsed.momentCount) : undefined,
               topTrigger: data.inputsUsed.topTrigger ? String(data.inputsUsed.topTrigger).slice(0, 80) : undefined,
               lastActionOutcome: data.inputsUsed.lastActionOutcome ? String(data.inputsUsed.lastActionOutcome) : undefined,
+              factCount: Number.isFinite(Number(data.inputsUsed.factCount)) ? Math.max(0, Math.floor(Number(data.inputsUsed.factCount))) : undefined,
             }
           : undefined;
       // B-MEAS-02: the server built this focus from an outcome the parent
@@ -152,6 +158,7 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals) {
         text,
         ...(focusObservation ? { focus: focusObservation } : {}),
         ...(tryToday ? { tryToday } : {}),
+        ...(sayThis ? { sayThis } : {}),
         ...(inputsUsed ? { inputsUsed: JSON.parse(JSON.stringify(inputsUsed)) as FocusInputsUsed } : {}),
         generatedAt: new Date().toISOString(),
         dateKey: todayKey(),

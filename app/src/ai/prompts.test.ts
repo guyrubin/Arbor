@@ -334,6 +334,8 @@ describe("AI-12 / GP-16 — promptProfile allow-list: no verdict, photo, avatar 
  * no approved facts the builder renders EXACTLY the inline template it
  * replaced (copied verbatim below from api.ts @ 92a4b74).
  */
+// B-TODAY-24 (todays_focus 1.1.0): the ONE parity test now carries the one
+// added "sayThis" bullet; every other byte is still the retired inline template.
 describe("B-AI-01 — todays_focus byte-parity with the retired inline template", () => {
   const legacyInline = (childProfile: unknown, count: number, triggerSent: string, lastActionRecommendation: string, lastActionOutcome: string, languageDirective: string) => {
     const weekLine =
@@ -347,6 +349,7 @@ ${weekLine}${lastActionRecommendation && lastActionOutcome ? ` The parent last t
 Write today's single most useful parenting focus:
 - "focus": 1-2 short, warm sentences naming what to pay attention to today — an observation about the child's week, never an assessment.
 - "tryToday": ONE small, concrete thing to try today — a developmental mechanism (serve-and-return, co-regulation, a transition cue), phrased as a doable step.
+- "sayThis": ONE short sentence (under 140 characters) the parent can say to the child while trying that step — warm, plain words a child understands; never a label, a verdict or praise of an outcome.
 Never include a score, percentage, trend, severity, readiness claim, diagnosis, or outcome claim. No headings, no markdown, no emojis.${languageDirective}
 Return only JSON matching the schema.`;
   };

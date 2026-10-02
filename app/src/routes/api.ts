@@ -1865,6 +1865,8 @@ Finalized parent transcript: ${privacy.redact(transcript.trim())}${REDACTION_DIR
   const focusCache = new Map<string, Record<string, unknown>>();
   const FOCUS_CACHE_MAX = 1000;
 
+  /** B-TODAY-24: the step card's Say-this line is one short sentence. */
+  const TODAY_SAY_THIS_MAX = 140;
   router.post("/todays-focus", async (req, res) => {
     const { childProfile, signals, language } = req.body ?? {};
     const count = Math.max(0, Math.min(500, Number(signals?.count ?? 0) || 0));
@@ -1890,7 +1892,7 @@ Finalized parent transcript: ${privacy.redact(transcript.trim())}${REDACTION_DIR
     try {
       const languageDirective =
         lang === "he"
-          ? "\nIMPORTANT: The parent speaks Hebrew. Write both fields in natural, warm Hebrew (עברית)."
+          ? "\nIMPORTANT: The parent speaks Hebrew. Write every field in natural, warm Hebrew (עברית)."
           : "";
       // B-AI-01: the server reads the parent's own actionLoops ledger (and the
       // approved facts) through CompanionContext instead of trusting what the
@@ -1932,22 +1934,27 @@ Finalized parent transcript: ${privacy.redact(transcript.trim())}${REDACTION_DIR
         prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
         temperature: 0.5,
         budget: budget.budget,
-        // B-AI-01: `required` stays the two fields; B-TODAY-24 adds its
-        // optional `sayThis` property here without touching the contract.
+        // B-AI-01: `required` stays the two fields; B-TODAY-24 adds the
+        // optional `sayThis` property without touching the contract.
         schema: {
           type: Type.OBJECT,
           required: ["focus", "tryToday"],
           properties: {
             focus: { type: Type.STRING },
-            tryToday: { type: Type.STRING }
+            tryToday: { type: Type.STRING },
+            sayThis: { type: Type.STRING }
           }
         },
         promptVersion: PROMPT_VERSIONS.todays_focus.version
-      }), budget.signal)) as { focus?: unknown; tryToday?: unknown };
+      }), budget.signal)) as { focus?: unknown; tryToday?: unknown; sayThis?: unknown };
 
-      const restored = privacy.restoreDeep(draft) as { focus?: unknown; tryToday?: unknown };
+      const restored = privacy.restoreDeep(draft) as { focus?: unknown; tryToday?: unknown; sayThis?: unknown };
       const focus = String(restored.focus ?? "").replace(/[#*]/g, "").replace(/\s+/g, " ").trim().slice(0, 400);
       const tryToday = String(restored.tryToday ?? "").replace(/[#*]/g, "").replace(/\s+/g, " ").trim().slice(0, 300);
+      // B-TODAY-24: one sentence the parent can say; ≤140 chars, dropped when
+      // over (a cut sentence is worse than none), screened with the rest.
+      const sayThisRaw = String(restored.sayThis ?? "").replace(/[#*]/g, "").replace(/\s+/g, " ").trim();
+      const sayThis = sayThisRaw.length > 0 && sayThisRaw.length <= TODAY_SAY_THIS_MAX ? sayThisRaw : "";
       const text = [focus, tryToday].filter(Boolean).join(" ");
       if (!text) {
         budget.settle();
@@ -1957,7 +1964,7 @@ Finalized parent transcript: ${privacy.redact(transcript.trim())}${REDACTION_DIR
 
       // Firewall condition 1: the FULL output screen gates the return. Flagged
       // output never reaches the parent (and never reaches the cache).
-      const outputVerdict = await screenModelOutput(modelProvider, text);
+      const outputVerdict = await screenModelOutput(modelProvider, [text, sayThis].filter(Boolean).join(" "));
       budget.settle();
       if (outputVerdict.flagged) {
         logger.warn("Todays Focus output blocked by output safety screen", {
@@ -1978,7 +1985,7 @@ Finalized parent transcript: ${privacy.redact(transcript.trim())}${REDACTION_DIR
       const inputsUsed: { momentCount: number; topTrigger?: string; lastActionOutcome?: string; factCount: number } = { momentCount: count, factCount: approvedFacts.length };
       if (triggerSent) inputsUsed.topTrigger = triggerSent;
       if (lastActionRecommendation && lastActionOutcome) inputsUsed.lastActionOutcome = lastActionOutcome;
-      const payload = { text, focus, tryToday, inputsUsed, generatedAt: new Date().toISOString(), dateKey };
+      const payload = { text, focus, tryToday, ...(sayThis ? { sayThis } : {}), inputsUsed, generatedAt: new Date().toISOString(), dateKey };
       // Firewall condition 4: only screened payloads are cached.
       if (focusCache.size >= FOCUS_CACHE_MAX) {
         const oldest = focusCache.keys().next().value;

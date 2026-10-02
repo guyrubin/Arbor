@@ -179,7 +179,12 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // facts block (absent → legacy bytes). The last rated step now comes from
   // the server's actionLoops ledger. No suite pins it yet (B-TODAY-24 authors
   // evals/today-focus-v1).
-  todays_focus: { version: "1.0.0", sha256: "35b38bbab687f97428ea23d5fd0bfd177945e0eb2ae0162c0f30a1c94ebb8951" },
+  // 1.1.0 (B-TODAY-24, 2026-10-02): one new bullet asks for "sayThis" — ONE
+  // sentence (<140 chars) the parent can say while trying the step; the schema
+  // gains the optional field. Everything else is byte-identical to 1.0.0
+  // (parity pinned in prompts.test.ts). Re-pin: today-focus-v1 (first run —
+  // the suite is authored with this bump; live tier = Fable / Guy G5).
+  todays_focus: { version: "1.1.0", sha256: "7e25cefb76e15871bb58ea8bfc1a6b85782410fd355612178c06b321ca16c590" },
   // 1.0.0 (B-AI-02): first pins. weekly_digest = server/digest.ts
   // buildDigestPrompt + the OPTIONAL recent-steps line (the parent's accepted
   // steps + outcomes; absent → the B-TODAY-03 bytes). generate_plan moved out
@@ -476,6 +481,7 @@ ${renderFocusFactsBlock(approvedFacts)}${weekLine}${lastActionRecommendation && 
 Write today's single most useful parenting focus:
 - "focus": 1-2 short, warm sentences naming what to pay attention to today — an observation about the child's week, never an assessment.
 - "tryToday": ONE small, concrete thing to try today — a developmental mechanism (serve-and-return, co-regulation, a transition cue), phrased as a doable step.
+- "sayThis": ONE short sentence (under 140 characters) the parent can say to the child while trying that step — warm, plain words a child understands; never a label, a verdict or praise of an outcome.
 Never include a score, percentage, trend, severity, readiness claim, diagnosis, or outcome claim. No headings, no markdown, no emojis.${languageDirective}
 Return only JSON matching the schema.`;
 };
