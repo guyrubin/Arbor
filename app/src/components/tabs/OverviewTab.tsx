@@ -101,7 +101,7 @@ export default function OverviewTab() {
   const {
     setActiveTab, milestones, checkedMilestones, totalMilestones,
     behaviorLogs, childProfile, seedCoach,
-    donePlayIds, logPlayCompletion, playLogs, requestCapture, actionLoop,
+    donePlayIds, logPlayCompletion, playLogs, actionLoop,
     activeTodayAction, acceptTodayAction, requestJournalFocus, conversations,
     pendingCaptureMode, consumeCaptureRequest,
   } = useArbor();
@@ -116,42 +116,30 @@ export default function OverviewTab() {
   // Rule A: the disclosure is a SECONDARY drawer now (feed + displaced play +
   // wellness check-in) — collapsed by default so Today stays ≤5 modules.
   const [showTools, setShowTools] = useState(false);
-  // W6.2 ambient capture — text mode opens the existing QuickLogModal inline
-  // (the parent never leaves Today); voice/photo hand the mode to the SAME
-  // requestCapture() seam JournalTab's compose tiles use (BehaviorsTab consumes
-  // it once and opens the real mic/photo flow). No new capture path.
+  // W6.2 ambient capture → B-TODAY-19: every tile (text · voice · photo)
+  // opens the ONE capture sheet in place (QuickLogModal portals to body), so
+  // the parent never leaves Today. No hand-off to Behaviors.
   const [quickLogOpen, setQuickLogOpen] = useState(false);
-  // TJB-08: which modality the modal opens in ("text" unless a tile says voice).
+  // TJB-08: which modality the sheet opens in.
   const [quickLogMode, setQuickLogMode] = useState<CaptureMode>("text");
+  // B-TODAY-19: the promptBank question the sheet answers (stored on the log).
+  const [quickLogPromptKey, setQuickLogPromptKey] = useState<string | null>(null);
   // ENG-01: the JITAI LOG nudge lands on Today with a pending "text" capture
-  // request (the same requestCapture seam Journal's tiles use) — consume it
+  // request (the requestCapture seam the rhythm cue uses) — consume it
   // once and open the quick-log here, so the nudge's promise "Log a moment"
-  // is one tap, not a hub switch. Voice/photo requests are Behaviors' to
-  // consume and pass through untouched.
+  // is one tap, not a hub switch.
   useEffect(() => {
     if (pendingCaptureMode !== "text") return;
     consumeCaptureRequest();
     setQuickLogMode("text");
+    setQuickLogPromptKey(null);
     setQuickLogOpen(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingCaptureMode]);
-  /* TJB-08: voice captures IN PLACE. The mic tile used to hand the mode to
-     requestCapture() and switch hubs, so tapping "voice" on Today changed the
-     route under the parent and executed the capture on Behaviors. QuickLogModal
-     portals to body and now accepts a `mode`, and both seams it needs already
-     exist (lib/speech for dictation, api.extractLog for the draft), so nothing
-     new is built and the shared ConfirmCaptureReview gate still applies.
-     PHOTO still hands off, deliberately: ArborContext's `addMoment` writes no
-     `photoAttachment`, so routing a photo through the one-field moment form
-     would drop the picture silently. That cross-file edit is in FOLLOW-UPS. */
-  const startCapture = (mode: CaptureMode) => {
-    if (mode === "voice") {
-      setQuickLogMode("voice");
-      setQuickLogOpen(true);
-      return;
-    }
-    requestCapture(mode);
-    setActiveTab("behaviors");
+  const startCapture = (mode: CaptureMode, promptKey: string | null = null) => {
+    setQuickLogMode(mode);
+    setQuickLogPromptKey(promptKey);
+    setQuickLogOpen(true);
   };
 
   // Parent-expressed goals (not a child assessment). Feed Daily Play selection
@@ -670,8 +658,8 @@ export default function OverviewTab() {
         <QuickCaptureBar
           key="today-primary-capture"
           childName={firstName}
-          onText={() => { setQuickLogMode("text"); setQuickLogOpen(true); }}
-          onMode={startCapture}
+          onText={() => startCapture("text")}
+          onMode={(mode) => startCapture(mode)}
         />
       </div>
 
@@ -720,7 +708,7 @@ export default function OverviewTab() {
               weekId={weekOpen.weekId}
               childId={childProfile.id}
               childName={firstName}
-              onCapture={() => { setQuickLogMode("text"); setQuickLogOpen(true); }}
+              onCapture={() => startCapture("text")}
               onDismiss={() => setWeekOpen((prev) => ({ ...prev, dismissed: true }))}
             />
           ) : activeTodayAction ? (
@@ -751,7 +739,7 @@ export default function OverviewTab() {
             <PromptCaptureCard
               promptKey={todayChoice.kind === "prompt" ? todayChoice.promptKey : null}
               childName={firstName}
-              onCapture={() => { setQuickLogMode("text"); setQuickLogOpen(true); }}
+              onCapture={() => startCapture("text", todayChoice.kind === "prompt" ? todayChoice.promptKey : null)}
               /* B-TODAY-04: the card's own why-line — a rotating question
                  picked for the child's age. It names no goals, interests or
                  moments (none of them choose the question); on the bare floor
@@ -862,7 +850,7 @@ export default function OverviewTab() {
           childName={firstName}
           onDismiss={lifecycle.dismiss}
           onSaveInterests={lifecycle.saveInterests}
-          onCapture={() => { setQuickLogMode("text"); setQuickLogOpen(true); }}
+          onCapture={() => startCapture("text")}
         />
         </div>
       )}
@@ -891,7 +879,7 @@ export default function OverviewTab() {
       {/* ── E11 first-steps rail — a Today module now, not Shell chrome. It is
              the day-0 start path, so it renders in every state where it still
              has steps left, but it can never outrank the day's action again. ── */}
-      {modulePlan.visible.has("rail") && <div data-module="today-rail" style={{ display: "contents" }}><FirstStepsRail onCapture={() => { setQuickLogMode("text"); setQuickLogOpen(true); }} /></div>}
+      {modulePlan.visible.has("rail") && <div data-module="today-rail" style={{ display: "contents" }}><FirstStepsRail onCapture={() => startCapture("text")} /></div>}
 
       {/* ── "Arbor Noticed" (DUX-011) — the single highest watch signal from the
              child's own logged data, below the anchor row. Renders NOTHING with
@@ -987,9 +975,9 @@ export default function OverviewTab() {
         </section>
       )}
 
-      {/* Text-mode quick capture — the orphaned-but-working QuickLogModal, revived.
-          Portals to document.body, so it contributes no box to the flex column. */}
-      <QuickLogModal open={quickLogOpen} mode={quickLogMode} onClose={() => setQuickLogOpen(false)} />
+      {/* The ONE capture sheet (text · voice · photo, B-TODAY-19). Portals to
+          document.body, so it contributes no box to the flex column. */}
+      <QuickLogModal open={quickLogOpen} mode={quickLogMode} promptKey={quickLogPromptKey} onClose={() => setQuickLogOpen(false)} />
     </motion.div>
   );
 }

@@ -33,20 +33,20 @@ describe("TJB-08 — voice captures on Today, not on Behaviors", () => {
   const overview = strip(read("components/tabs/OverviewTab.tsx"));
   const modal = strip(read("components/overview/QuickLogModal.tsx"));
 
-  it("the voice branch opens the modal in place and never switches hub", () => {
-    expect(overview).toMatch(/if \(mode === "voice"\) \{[\s\S]{0,120}setQuickLogOpen\(true\);[\s\S]{0,40}return;/);
-    // The hub switch survives only on the branch that still needs it (photo).
+  it("every mode (B-TODAY-19: voice AND photo) opens the modal in place and never switches hub", () => {
     const fn = overview.slice(overview.indexOf("const startCapture"), overview.indexOf("const activeGoals"));
-    expect((fn.match(/setActiveTab\("behaviors"\)/g) ?? []).length).toBe(1);
+    expect(fn).toMatch(/setQuickLogMode\(mode\);[\s\S]{0,80}setQuickLogOpen\(true\);/);
+    expect((fn.match(/setActiveTab\("behaviors"\)/g) ?? []).length).toBe(0);
     expect(overview).toMatch(/<QuickLogModal open=\{quickLogOpen\} mode=\{quickLogMode\}/);
   });
 
-  it("every other opener resets the mode, so text capture is unchanged", () => {
+  it("every opener goes through startCapture or resets the mode, so text capture is unchanged", () => {
     const openers = overview.match(/setQuickLogOpen\(true\)/g) ?? [];
     const resets = overview.match(/setQuickLogMode\("text"\)/g) ?? [];
-    // one opener is the voice branch itself, which sets mode "voice"
+    // one opener is startCapture itself (it sets the tapped mode); the ENG-01
+    // nudge consumer resets to text.
     expect(openers.length - resets.length).toBe(1);
-    expect(overview).toMatch(/setQuickLogMode\("voice"\)/);
+    expect(overview).toMatch(/onMode=\{\(mode\) => startCapture\(mode\)\}/);
   });
 
   it("the modal reuses the existing dictation and extraction seams — no new capture path", () => {

@@ -11,14 +11,11 @@ import type { CaptureMode } from "../../context/ArborContext";
    + the home indicator, so it stays visible at any scroll position (sticky
    cannot engage there: the shell's overflow-x-hidden ancestors are scroll
    containers that grow with content). Inline at the top of the spine on md+.
-   Three modality affordances, ZERO new capture paths: the primary CTA opens
-   the existing QuickLogModal inline (text), and the mic / photo tiles hand the
-   mode to the EXISTING requestCapture() seam — the same one JournalTab's
-   compose tiles use (BehaviorsTab consumes it once and opens the real
-   voice/photo flow). TODAY-3: every handoff from here arms BehaviorsTab's
-   explicit-confirm gate, so nothing captured via this bar writes a behavior
-   log without passing the shared ConfirmCaptureReview (same contract as the
-   QuickLogModal text path). Convenience, not a nag. */
+   Every tile opens the ONE capture sheet (QuickLogModal) in place, in its
+   own mode — text, voice (already dictating), photo (picker + preview) — so
+   nothing captured here leaves Today (TJB-08, B-TODAY-19). Drafted captures
+   still pass the shared ConfirmCaptureReview inside that sheet. Convenience,
+   not a nag. */
 
 const GREEN = "var(--arbor-green-ink)";
 const RULE = "var(--arbor-rule)";
@@ -35,9 +32,9 @@ export default function QuickCaptureBar({
   onMode,
 }: {
   childName: string;
-  /** Open the existing QuickLogModal (text capture, inline on Today). */
+  /** Open the capture sheet in text mode (inline on Today). */
   onText: () => void;
-  /** Hand voice/photo to the existing requestCapture() seam. */
+  /** Open the capture sheet in voice or photo mode (inline on Today). */
   onMode: (mode: CaptureMode) => void;
 }) {
   const reduce = useReducedMotion();

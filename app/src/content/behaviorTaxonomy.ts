@@ -114,6 +114,34 @@ export const momentLogFields = (text: string, context: string = "Home") => ({
   context,
 });
 
+/**
+ * B-TODAY-19 — the ONE plain-moment record `addMoment` writes: the moment
+ * fields, resolved, plus the optional in-doc photo and the answered prompt's
+ * key. Optional keys are omitted, never `undefined` (Firestore rejects it).
+ * Null when the moment has no words (validateLogDraft).
+ */
+export function buildMomentLog(
+  text: string,
+  context: string,
+  opts: { photoAttachment?: string; promptKey?: string } = {},
+  now: Date = new Date(),
+) {
+  const fields = momentLogFields(text, context);
+  if (validateLogDraft(fields)) return null;
+  return {
+    id: `log-${now.getTime()}`,
+    timestamp: now.toISOString(),
+    behaviorType: fields.behaviorType,
+    intensity: fields.intensity,
+    durationMinutes: fields.durationMinutes,
+    trigger: fields.trigger,
+    context: fields.context,
+    resolved: true,
+    ...(opts.photoAttachment ? { photoAttachment: opts.photoAttachment } : {}),
+    ...(opts.promptKey ? { promptKey: opts.promptKey } : {}),
+  };
+}
+
 export const DEFAULT_BEHAVIOR_TYPE: CanonicalBehaviorType = "Transition Refusal";
 
 /** Contexts accepted by the extraction schema — the client-side clamp mirror

@@ -18,7 +18,7 @@ import {
   InsightRecord,
 } from "../types";
 import { useToastOptional } from "./ToastContext";
-import { validateLogDraft, momentLogFields, isIncidentType, MOMENT_BEHAVIOR_TYPE } from "../content/behaviorTaxonomy";
+import { validateLogDraft, momentLogFields, buildMomentLog, isIncidentType, MOMENT_BEHAVIOR_TYPE } from "../content/behaviorTaxonomy";
 import type { ScoredActivity } from "../playbank/select";
 import type { PlayActivity } from "../playbank/content";
 import { ROUTE_IDS, resolveHash, FALLBACK_ROUTE, type ActiveTab } from "../lib/routes";
@@ -1222,19 +1222,16 @@ function useArborState() {
    * state, so a half-filled form elsewhere never leaks into it). Returns the
    * written row, or null when the text is empty.
    */
-  const addMoment = (text: string): BehaviorLog | null => {
-    const fields = momentLogFields(text, newLogContext);
-    if (validateLogDraft(fields)) return null;
-    const logItem: BehaviorLog = {
-      id: `log-${Date.now()}`,
-      timestamp: new Date().toISOString(),
-      behaviorType: fields.behaviorType,
-      intensity: fields.intensity,
-      durationMinutes: fields.durationMinutes,
-      trigger: fields.trigger,
-      context: fields.context as BehaviorContext,
-      resolved: true,
-    };
+  const addMoment = (
+    text: string,
+    opts: { photoAttachment?: string; promptKey?: string } = {},
+  ): BehaviorLog | null => {
+    // B-TODAY-19: the one capture sheet keeps a photo in place (in-doc
+    // thumbnail, as handleAddLog does) and the answered prompt's key — one
+    // pure builder (content/behaviorTaxonomy buildMomentLog).
+    const built = buildMomentLog(text, newLogContext, opts);
+    if (!built) return null;
+    const logItem: BehaviorLog = { ...built, context: built.context as BehaviorContext };
     void logsCol.upsert(logItem);
     track("log_created", { type: logItem.behaviorType, intensity: logItem.intensity, context: logItem.context });
     trackCaptureSaved("moment");

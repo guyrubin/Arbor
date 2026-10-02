@@ -69,23 +69,17 @@ describe("TJB-12 — both ends of the handoff are wired", () => {
   const journal = strip(read("../components/tabs/JournalTab.tsx"));
   const behaviors = strip(read("../components/tabs/BehaviorsTab.tsx"));
 
-  it("the Journal arms the cue when a capture tile is tapped", () => {
+  it("B-TODAY-19: the Journal's prompt now rides into the ONE sheet in place", () => {
+    // The Journal no longer hands captures to Behaviors, so it no longer arms
+    // this store: the tapped prompt goes to QuickLogModal as `promptKey`,
+    // rendered as a visible cue and stored on the log.
     const startCapture = /const startCapture = \(mode: CaptureMode\) => \{[\s\S]*?\n  \};/.exec(journal)?.[0] ?? "";
     expect(startCapture).toBeTruthy();
-    expect(startCapture).toContain("setCaptureCue(activePromptKey)");
-    // NEGATIVE CONTROL: the shipped body did the mode handoff and nothing
-    // else — this assertion fails on it, which is what made the cue vanish.
-    const shipped = `const startCapture = (mode: CaptureMode) => {
-    requestCapture(mode);
-    setActiveTab("behaviors");
-  };`;
-    expect(shipped).not.toContain("setCaptureCue");
-  });
-
-  it("the capture handoff itself stays mode-only (the W1 rule is untouched)", () => {
-    const startCapture = /const startCapture = \(mode: CaptureMode\) => \{[\s\S]*?\n  \};/.exec(journal)?.[0] ?? "";
-    expect(startCapture).toContain("requestCapture(mode)");
-    expect(journal).not.toMatch(/requestCapture\((?!mode\))/);
+    expect(startCapture).toContain("setQuickLogPromptKey(activePromptKey)");
+    expect(startCapture).not.toContain("requestCapture(");
+    const modal = strip(read("../components/overview/QuickLogModal.tsx"));
+    expect(modal).toContain('data-testid="quicklog-prompt-cue"');
+    expect(modal).not.toMatch(/setNewLog\w+\([^)]*promptKey/);
   });
 
   it("the capture form RENDERS the cue and never merges it into the draft", () => {

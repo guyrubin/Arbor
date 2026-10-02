@@ -42,6 +42,11 @@ export const en: Record<string, string> = {
   "elev.today.askAbout": "Ask about this",
   // B-TODAY-13: the rhythm line's quiet door to #/day-windows.
   "elev.today.dw.link": "See the hours",
+  // B-TODAY-19: the capture sheet's photo mode.
+  "elev.capture.photo.label": "What's in the photo? (optional)",
+  "elev.capture.photo.caption": "A photo moment",
+  "elev.capture.photo.alt": "The photo you added",
+  "elev.capture.photo.remove": "Remove photo",
 };
 
 export const he: Record<string, string> = {
@@ -71,4 +76,8 @@ export const he: Record<string, string> = {
   "elev.pulse.kidmode.empty": "המשימות מוכנות — אפשר למסור את המכשיר",
   "elev.today.askAbout": "לשאול על זה",
   "elev.today.dw.link": "לשעות היום",
+  "elev.capture.photo.label": "מה רואים בתמונה? (רשות)",
+  "elev.capture.photo.caption": "רגע בתמונה",
+  "elev.capture.photo.alt": "התמונה שהוספתם",
+  "elev.capture.photo.remove": "להסיר את התמונה",
 };

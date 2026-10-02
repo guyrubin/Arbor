@@ -247,6 +247,9 @@ export interface BehaviorLog {
   resolved?: boolean;
   resolutionNotes?: string;
   photoAttachment?: string;
+  /** B-TODAY-19: the promptBank question this moment answered (elev.prompt.*
+   *  key) — stored so "prompt answered" is a fact, never the question text. */
+  promptKey?: string;
   /** Parent-confirmed Harbor conversation provenance; never written by the realtime provider. */
   conversationProposalId?: string;
   sourceExcerpt?: string;

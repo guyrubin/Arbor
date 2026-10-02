@@ -226,13 +226,18 @@ describe("TJB-01 — no capture surface renders a blocking alert()", () => {
     const ctx = readSrc("context/ArborContext.tsx");
     expect(ctx).toMatch(/const invalid = validateLogDraft\(\{ behaviorType: newLogType, trigger: newLogTrigger, response: newLogResponse \}\)/);
     expect(ctx).toContain("toast(t(invalid), \"error\")");
-    expect(ctx).toContain("const addMoment = (text: string)");
+    // B-TODAY-19: addMoment takes the photo + prompt key, through the ONE
+    // pure builder that keeps the same validateLogDraft rule.
+    expect(ctx).toMatch(/const addMoment = \(\s*text: string,/);
+    expect(ctx).toContain("buildMomentLog(text, newLogContext, opts)");
+    expect(readSrc("content/behaviorTaxonomy.ts")).toMatch(/export function buildMomentLog[\s\S]{0,400}if \(validateLogDraft\(fields\)\) return null;/);
   });
 
   it("QuickLogModal's default path is the ONE-field moment form writing through addMoment", () => {
     const modal = readSrc("components/overview/QuickLogModal.tsx");
     expect(modal).toContain('data-testid="quicklog-moment-form"');
-    expect(modal).toMatch(/addMoment\(newLogTrigger\)/);
+    expect(modal).toMatch(/addMoment\(words, \{/);
+    expect(modal).toContain("const words = newLogTrigger.trim()");
     // The incident branch still validates through the shared rule.
     expect(modal).toMatch(/validateLogDraft\(\{ behaviorType: newLogType/);
     expect(modal).not.toMatch(/!newLogTrigger\.trim\(\) \|\| !newLogResponse\.trim\(\)/);

@@ -16,19 +16,30 @@ import type { BehaviorContext } from "../../types";
 import { speechSupported, startDictation } from "../../lib/speech";
 import { microphoneRecovery } from "../../lib/microphoneRecovery";
 import MicrophoneNotice from "../ui/MicrophoneNotice";
+import { fileToThumbnail } from "../../lib/image";
 
 /** Lightweight behavior log capture that can be opened from anywhere (e.g. Overview).
  *
- *  TJB-08: `mode` lets a caller open the modal ALREADY dictating. Today's mic
- *  tile used to call `setActiveTab("behaviors")` — the capture executed on a
- *  different hub, so a parent who tapped "voice" on Today landed on Behaviors
- *  with the URL changed under them. The dictation seam (lib/speech) and the
- *  extraction seam (api.extractLog, already used by the typed path below) are
- *  both reusable here, so voice needs no new capture path and no new screen.
- *  The photo tile still hands off — see FOLLOW-UPS: `addMoment` in
- *  ArborContext does not carry `photoAttachment`, so a photo captured through
- *  the one-field moment form would be silently dropped. */
-export default function QuickLogModal({ open, onClose, mode = "text" }: { open: boolean; onClose: () => void; mode?: CaptureMode }) {
+ *  TJB-08 + B-TODAY-19: `mode` opens the ONE capture sheet in the modality
+ *  the parent tapped — text, voice (already dictating) or photo (the file
+ *  picker opens, with a preview and a remove control) — so Today and the
+ *  Journal never hand a capture to another hub. The photo is the same
+ *  in-doc thumbnail the Behaviors form stores (lib/image fileToThumbnail;
+ *  Firebase Storage stays Guy's INF-6 gate). `promptKey` is the promptBank
+ *  question the parent is answering: shown as a visible cue, never draft
+ *  text, and stored on the log so "prompt answered" is a fact. */
+export default function QuickLogModal({
+  open,
+  onClose,
+  mode = "text",
+  promptKey,
+}: {
+  open: boolean;
+  onClose: () => void;
+  mode?: CaptureMode;
+  /** B-TODAY-19: the elev.prompt.* key of the question being answered. */
+  promptKey?: string | null;
+}) {
   const {
     newLogType,
     setNewLogType,
@@ -44,6 +55,7 @@ export default function QuickLogModal({ open, onClose, mode = "text" }: { open: 
     setNewLogContext,
     newLogNotes,
     setNewLogNotes,
+    setNewLogPhoto,
     childProfile,
     handleAddLog,
     addMoment,
@@ -93,7 +105,7 @@ export default function QuickLogModal({ open, onClose, mode = "text" }: { open: 
   useEffect(() => {
     if (open) {
       if (!captureRequestPending()) {
-        trackCaptureStarted(mode === "voice" ? "voice" : "text");
+        trackCaptureStarted(mode === "voice" ? "voice" : mode === "photo" ? "photo" : "text");
         startedHere.current = true;
       }
       return;
@@ -102,6 +114,23 @@ export default function QuickLogModal({ open, onClose, mode = "text" }: { open: 
     startedHere.current = false;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+  // B-TODAY-19: the photo rides the moment in place (in-doc thumbnail). It is
+  // mirrored into the shared draft too, so the hard-moment form's
+  // handleAddLog keeps it if the parent flips the toggle.
+  const [photo, setPhoto] = useState("");
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
+  const attachPhoto = (value: string) => {
+    setPhoto(value);
+    setNewLogPhoto(value);
+  };
+  const onPhotoPicked = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      attachPhoto(await fileToThumbnail(file));
+    } catch {
+      toast(t("beh.toast.imageError"), "error");
+    }
+  };
   useEffect(() => {
     if (!open) {
       setReviewing(false);
@@ -110,8 +139,21 @@ export default function QuickLogModal({ open, onClose, mode = "text" }: { open: 
       setHardMoment(false);
       setVoiceNotice(null);
       stopRef.current?.();
+      setPhoto((had) => {
+        if (had) setNewLogPhoto("");
+        return "";
+      });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+  // Photo mode opens the picker on arrival — the tap on the tile is the
+  // gesture (same 120 ms hand-off the Behaviors form uses); the visible
+  // "Add a photo" control stays for browsers that block the programmatic tap.
+  useEffect(() => {
+    if (!open || mode !== "photo") return;
+    const timer = window.setTimeout(() => photoInputRef.current?.click(), 120);
+    return () => window.clearTimeout(timer);
+  }, [open, mode]);
   // TODAY-3: the review step is the SHARED ConfirmCaptureReview contract
   // (also rendered by BehaviorsTab for voice/photo/handoff captures — one
   // contract, never a forked path). CODEX-7: its provenance line states only
@@ -232,12 +274,18 @@ export default function QuickLogModal({ open, onClose, mode = "text" }: { open: 
   // is nothing drafted to review; the parent wrote every word).
   const saveMoment = (e: React.FormEvent) => {
     e.preventDefault();
-    const written = addMoment(newLogTrigger);
+    // A photo with no words still keeps: the caption is a neutral label.
+    const words = newLogTrigger.trim() || (photo ? t("elev.capture.photo.caption") : "");
+    const written = addMoment(words, {
+      ...(photo ? { photoAttachment: photo } : {}),
+      ...(promptKey ? { promptKey } : {}),
+    });
     if (!written) {
       toast(t("beh.toast.fillTrigger"), "error");
       return;
     }
     setNewLogTrigger("");
+    attachPhoto("");
     onClose();
     toast(t("ql.moment.okToast"), "success");
   };
@@ -338,14 +386,49 @@ export default function QuickLogModal({ open, onClose, mode = "text" }: { open: 
             </button>
           </div>
         )}
+        {promptKey && (
+          <p dir="auto" data-testid="quicklog-prompt-cue" className="rounded-xl px-3 py-2 text-[13px] font-semibold leading-snug" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}>
+            {t(promptKey)}
+          </p>
+        )}
+        {(mode === "photo" || photo) && (
+          <div className="space-y-1.5" data-testid="quicklog-photo">
+            {photo ? (
+              <div className="flex items-center gap-3">
+                <img src={photo} alt={t("elev.capture.photo.alt")} className="h-24 w-24 flex-none rounded-xl object-cover" style={{ border: "1px solid var(--arbor-rule)" }} />
+                <button
+                  type="button"
+                  onClick={() => attachPhoto("")}
+                  data-testid="quicklog-photo-remove"
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-xs font-bold"
+                  style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-muted)" }}
+                >
+                  <Icon name="close" size={16} /> {t("elev.capture.photo.remove")}
+                </button>
+              </div>
+            ) : (
+              <label className="flex min-h-11 cursor-pointer items-center gap-2 rounded-xl px-3 text-xs font-bold" style={{ color: "var(--arbor-ink)", background: "var(--arbor-paper-deep)", border: "1px dashed var(--arbor-rule-strong)" }}>
+                <Icon name="add_a_photo" size={18} style={{ color: "var(--arbor-green-ink)" }} /> {t("beh.addPhoto")}
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  data-testid="quicklog-photo-input"
+                  onChange={(e) => void onPhotoPicked(e.target.files?.[0])}
+                />
+              </label>
+            )}
+          </div>
+        )}
         <div className="space-y-1.5">
-          <label htmlFor="quick-log-moment" className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ql.moment.label")}</label>
+          <label htmlFor="quick-log-moment" className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{mode === "photo" || photo ? t("elev.capture.photo.label") : t("ql.moment.label")}</label>
           <input
             id="quick-log-moment"
             value={newLogTrigger}
             onChange={(e) => setNewLogTrigger(e.target.value)}
             placeholder={t("ql.moment.ph")}
-            autoFocus
+            autoFocus={mode !== "photo"}
             className="min-h-11 w-full rounded-xl p-2.5 text-sm focus:outline-none"
             style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
           />

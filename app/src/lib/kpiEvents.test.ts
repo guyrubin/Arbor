@@ -807,9 +807,10 @@ describe("B-TODAY-15 — Today's capture and loop can be measured as built", () 
   const quickLog = read("components/overview/QuickLogModal.tsx");
   const carry = read("components/overview/CarryOverActionAsk.tsx");
 
-  it("QuickLogModal starts the funnel on open (voice → 'voice', text → 'text') unless a request is pending", () => {
+  it("QuickLogModal starts the funnel on open (voice → 'voice', photo → 'photo', text → 'text') unless a request is pending", () => {
     expect(quickLog).toContain('if (!captureRequestPending()) {');
-    expect(quickLog).toContain('trackCaptureStarted(mode === "voice" ? "voice" : "text");');
+    // B-TODAY-19: the photo tile opens the sheet in place too.
+    expect(quickLog).toContain('trackCaptureStarted(mode === "voice" ? "voice" : mode === "photo" ? "photo" : "text");');
     expect(quickLog).toContain("if (startedHere.current) abandonCaptureRequest();");
   });
 

@@ -19,7 +19,6 @@ import type { DevelopmentalDomainId } from "../../types";
 import { bandForAge, type PlayDomain } from "../../playbank/content";
 import { dailyPromptKeys } from "../../lib/promptBank";
 import { track } from "../../lib/analytics";
-import { setCaptureCue } from "../../lib/captureCue";
 import JournalEntrySheet from "../journal/JournalEntrySheet";
 import QuickLogModal from "../overview/QuickLogModal";
 // AI-04 — the typed-turn proposals tray, and the ledger that records where a
@@ -37,9 +36,9 @@ import { provenanceForSignal, readCaptureProvenance, type KeptProvenance } from 
  *
  * Anatomy (top → bottom), reconciled to the wireframe's "Journal" screen:
  *  1. a COMPOSE card — "Log a moment" with three capture-mode tiles
- *     (Voice / Photo / Text) that open the EXISTING capture flow IN THE CHOSEN
- *     MODE via requestCapture(); the split is an entry affordance, not a new
- *     capture path.
+ *     (Voice / Photo / Text) that open the ONE capture sheet (QuickLogModal)
+ *     in place, IN THE CHOSEN MODE (B-TODAY-19); the split is an entry
+ *     affordance, not a new capture path.
  *  2. a flat single-column FEED (~840px) of moment rows, grouped by day with a
  *     slim sticky localized day header (JRNL-8 — the flat column is a validated
  *     call; do NOT restore the 2-col grid). Each row carries a colored domain
@@ -243,7 +242,7 @@ function JournalRow({
 }
 
 export default function JournalTab() {
-  const { setActiveTab, requestCapture, milestones, playLogs, behaviorLogs, logsLoaded, pendingJournalFocusId, consumeJournalFocus, childProfile, startEditLog } = useArbor();
+  const { setActiveTab, milestones, playLogs, behaviorLogs, logsLoaded, pendingJournalFocusId, consumeJournalFocus, childProfile, startEditLog } = useArbor();
   const { t, uiLang } = useLanguage();
   const locale = uiLang === "he" ? "he" : "en";
   // elev.childsignals.* keys (practice-kind titles) resolve from the module
@@ -288,34 +287,21 @@ export default function JournalTab() {
     return () => clearTimeout(timer);
   }, [focusId, logsLoaded]);
 
-  // TJB-08: the Journal's own text capture, in place. Tapping "Text" used to
-  // run setActiveTab("behaviors") — the parent asked to write a moment on the
-  // Journal and was moved to a different hub, losing the feed they were
-  // reading and changing the route under them. QuickLogModal is the EXISTING
-  // text-capture surface (Today mounts it the same way) and it portals to
-  // document.body, so it opens over the Journal with the hash untouched.
+  // TJB-08 + B-TODAY-19: the Journal's capture, in place, in every mode.
+  // Text, voice and photo all open QuickLogModal — the ONE capture sheet
+  // Today mounts the same way — which portals to document.body, so it opens
+  // over the Journal with the hash untouched. The tapped writing prompt rides
+  // in as the sheet's visible cue and is stored with the log (never as draft
+  // text — the sanctioned W1 rule).
   const [quickLogOpen, setQuickLogOpen] = useState(false);
+  const [quickLogMode, setQuickLogMode] = useState<CaptureMode>("text");
+  const [quickLogPromptKey, setQuickLogPromptKey] = useState<string | null>(null);
 
-  /** Open the real capture flow in the requested modality. Previously these
-   *  tiles were decoys: all three ran a bare setActiveTab("behaviors"), so
-   *  "Voice" and "Photo" promised a mode they never opened. `requestCapture`
-   *  hands the mode to the capture surface, which acts on it and clears it. */
+  /** Open the one capture sheet in the requested modality. */
   const startCapture = (mode: CaptureMode) => {
-    if (mode === "text") {
-      setQuickLogOpen(true);
-      return;
-    }
-    // Voice and photo still hand off: their affordances (the mic seam, the
-    // file input) live on the Behaviors capture form and QuickLogModal has no
-    // mode parameter to receive them. The cross-file edit that would bring
-    // them in place too is in FOLLOW-UPS.
-    // TJB-12: carry the tapped writing prompt onto the capture form. It rides
-    // its OWN channel, never the capture call — the sanctioned W1 rule is that
-    // the question is a visible cue and never draft content, so the mode
-    // handoff below stays mode-only.
-    setCaptureCue(activePromptKey);
-    requestCapture(mode);
-    setActiveTab("behaviors");
+    setQuickLogMode(mode);
+    setQuickLogPromptKey(activePromptKey);
+    setQuickLogOpen(true);
   };
 
   // Masterplan 4.3 teach-empty: the empty feed's ONE CTA focuses the capture
@@ -641,7 +627,7 @@ export default function JournalTab() {
       {/* TJB-08 — the Journal's text capture, in place. Rendered once; it
           portals to document.body, so it sits over the feed rather than
           replacing it, and the route never changes. */}
-      <QuickLogModal open={quickLogOpen} onClose={() => setQuickLogOpen(false)} />
+      <QuickLogModal open={quickLogOpen} mode={quickLogMode} promptKey={quickLogPromptKey} onClose={() => setQuickLogOpen(false)} />
 
       {/* TJB-13 — the row's detail sheet. Rendered once for the whole feed;
           `signal === null` keeps it closed. */}
