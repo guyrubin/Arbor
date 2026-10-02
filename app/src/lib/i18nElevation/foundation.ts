@@ -109,22 +109,6 @@ export const en: Record<string, string> = {
   // ov.tools.show / ov.tools.hide — one drawer vocabulary across the app.
   "elev.wk.more.title": "More from this week",
 
-  // TJB-23 · the Today tools drawer's daily check-in, which carried no
-  // translator at all. `hint` deliberately does NOT promise pattern insights:
-  // nothing in src/ reads the `wellness` collection this card writes, so
-  // transcreating that claim would have shipped it into a second language.
-  "elev.checkin.title": "Today's check-in",
-  "elev.checkin.mood": "Mood",
-  "elev.checkin.moodAria": "Mood {n} of 5",
-  "elev.checkin.sleep": "Sleep:",
-  "elev.checkin.sleepValue": "{n}h",
-  "elev.checkin.sleepAria": "Hours of sleep: {n}",
-  "elev.checkin.appetite": "Appetite",
-  "elev.checkin.appetite.good": "Good",
-  "elev.checkin.appetite.ok": "Ok",
-  "elev.checkin.appetite.poor": "Low",
-  "elev.checkin.saved": "Saved for today.",
-  "elev.checkin.hint": "Tap to log — kept with today's date.",
 
   // TJB-28 · the Today receipt's second line, read back from the outcome the
   // parent just recorded. The claim is backed: `outcome` is written to the
@@ -219,18 +203,6 @@ export const he: Record<string, string> = {
 
   "elev.wk.more.title": "עוד מהשבוע",
 
-  "elev.checkin.title": "העדכון היומי",
-  "elev.checkin.mood": "מצב רוח",
-  "elev.checkin.moodAria": "מצב רוח {n} מתוך 5",
-  "elev.checkin.sleep": "שינה:",
-  "elev.checkin.sleepValue": "{n} שעות",
-  "elev.checkin.sleepAria": "שעות שינה: {n}",
-  "elev.checkin.appetite": "תיאבון",
-  "elev.checkin.appetite.good": "טוב",
-  "elev.checkin.appetite.ok": "בסדר",
-  "elev.checkin.appetite.poor": "מועט",
-  "elev.checkin.saved": "נשמר להיום.",
-  "elev.checkin.hint": "הקישו כדי לתעד — נשמר עם התאריך של היום.",
 
   "elev.today.receipt.helped": "אמרתם שזה עזר. זה נכנס לצעד שארבור תציע בפעם הבאה.",
   "elev.today.receipt.somewhat": "אמרתם שזה עזר קצת. זה נכנס לצעד שארבור תציע בפעם הבאה.",

@@ -85,12 +85,12 @@ const RATCHET: Record<string, number> = {
   //    disclosure for Today's secondary tools — the trust chips at 30–31, the
   //    "Open source moments" link at 40, and the action-loop Remove at 36.
   //    The check-in card's mood and appetite chips came with them: they live
-  //    inside that same drawer and were 30 px.
-  "components/tabs/OverviewTab.tsx": 0,
+  //    inside that same drawer and were 30 px. B-TODAY-17 deleted the drawer,
+  //    its toggle and the check-in, leaving OverviewTab with no raw <button>
+  //    of its own, so its row leaves the ratchet (the scan needs buttons).
   // B-TODAY-21: ProgressNarrative's evidence rows → the What-changed lines.
   "components/overview/WhatChanged.tsx": 0,
   "components/overview/TodayActionLoop.tsx": 0,
-  "components/overview/DailyCheckinCard.tsx": 0,
   "components/trust/TrustLink.tsx": 0,
   "components/ui/EvidenceChip.tsx": 0,
 };

@@ -84,7 +84,7 @@ describe("TODAY-2/CODEX-1 — one loop, not three stacked widgets", () => {
     expect(overview).not.toMatch(/today-recent-context/);
   });
 
-  it("section order: capture → day anchor → What changed → rail → noticed → tools", () => {
+  it("section order: capture → day anchor → What changed → rail → noticed", () => {
     // W1 Rule A, as corrected by P1-A (2026-08-12): the primary-action anchor
     // comes FIRST so the one CTA clears the fold; the since-strip and the
     // first-steps rail follow it. The Daily Play section is a single JSX
@@ -97,7 +97,6 @@ describe("TODAY-2/CODEX-1 — one loop, not three stacked widgets", () => {
       overview.indexOf("<WhatChanged"),
       overview.indexOf("<FirstStepsRail"),
       overview.indexOf("<ArborNoticedCard"),
-      overview.indexOf("<DailyCheckinCard"),
     ];
     for (const idx of order) expect(idx).toBeGreaterThan(-1);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
@@ -254,5 +253,45 @@ describe("B-TODAY-12 — one step card: the hard-moment offer folds into it as '
   it("the coordinator's grounded step renders nothing extra on Today", () => {
     expect(slot).toMatch(/if \(offer\.kind === "grounded-step" && surface === "today"\) return null;/);
     expect(slot).not.toContain("HardMomentTodayOffer");
+  });
+});
+
+describe("B-TODAY-17 — the drawer is gone: no feed, no check-in, no displaced play", () => {
+  const overview = stripComments(read("components/tabs/OverviewTab.tsx"));
+
+  it("no drawer toggle, no activity feed, no Live dot, no check-in mount", () => {
+    for (const tok of ["showTools", "activityFeed", "hasRecentActivity", "ov.dailyTools", "today.live", "<DailyCheckinCard", "usePrideMoment"]) {
+      expect(overview, tok).not.toContain(tok);
+    }
+    expect(existsSync(path.join(SRC_ROOT, "components/overview/DailyCheckinCard.tsx"))).toBe(false);
+  });
+
+  it("Today stamps at most four top-level modules in every state (budget 4 = contract)", () => {
+    const stamps = [...overview.matchAll(/data-module="(today-[a-z]+)"/g)].map((m) => m[1]);
+    expect(stamps.sort()).toEqual(["today-anchor", "today-changed", "today-lifecycle", "today-noticed", "today-rail"]);
+    const budget = read("components/overview/todayModules.ts").match(/TODAY_MODULE_BUDGET = (\d+)/)?.[1];
+    expect(Number(budget)).toBe(4);
+    expect(read("lib/surfaceContract.ts")).toMatch(/route: "overview"[\s\S]{0,200}moduleBudget: 4/);
+  });
+
+  it("no wellness writer remains; export/erase still lists wellness", () => {
+    const writers: string[] = [];
+    const walk = (dir: string) => {
+      for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+        const p = path.join(dir, e.name);
+        if (e.isDirectory()) walk(p);
+        else if (/\.(ts|tsx)$/.test(e.name) && !/\.test\./.test(e.name) && /"wellness"/.test(fs.readFileSync(p, "utf8"))) writers.push(path.relative(SRC_ROOT, p).split(path.sep).join("/"));
+      }
+    };
+    walk(SRC_ROOT);
+    expect(writers).toEqual(["lib/childData.ts"]);
+  });
+
+  it("#/daily-play stays reachable from Growth", () => {
+    const nav = read("lib/navigation.ts");
+    const growth = nav.slice(nav.indexOf('id: "growth"'));
+    const next = growth.indexOf('id: "', 12);
+    const growthBlock = next > 0 ? growth.slice(0, next) : growth;
+    expect(growthBlock).toMatch(/tab: "daily-play"/);
   });
 });

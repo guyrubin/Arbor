@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import * as path from "node:path";
 // The `en`/`he` exported from lib/i18n are the BASE dictionaries; elevation
 // modules are spread UNDER them by DICTS, so a new `elev.*` key is only
@@ -34,18 +34,7 @@ const NEW_KEYS = [
   "elev.dw.daysLoggedOf",
   "elev.dw.context",
   "elev.wk.more.title",
-  "elev.checkin.title",
-  "elev.checkin.mood",
-  "elev.checkin.moodAria",
-  "elev.checkin.sleep",
-  "elev.checkin.sleepValue",
-  "elev.checkin.sleepAria",
-  "elev.checkin.appetite",
-  "elev.checkin.appetite.good",
-  "elev.checkin.appetite.ok",
-  "elev.checkin.appetite.poor",
-  "elev.checkin.saved",
-  "elev.checkin.hint",
+  // B-TODAY-17: the elev.checkin.* keys left with the check-in card.
 ];
 
 describe("TJB-14/TJB-23 — every new string lands in BOTH locales", () => {
@@ -128,30 +117,13 @@ describe("TJB-14 — Smart Reminders quiet hours speak Hebrew", () => {
   });
 });
 
-describe("TJB-23 — the daily check-in has a translator", () => {
-  const src = strip(read("components/overview/DailyCheckinCard.tsx"));
-
-  it("it uses useLanguage and no bare English label survives", () => {
-    expect(src).toMatch(/useLanguage\(\)/);
-    for (const literal of ["Today&apos;s check-in", ">Mood<", ">Appetite<", "Saved for today", "pattern insights"]) {
-      expect(src, `bare literal still present: ${literal}`).not.toContain(literal);
-    }
-  });
-
-  it("the appetite chips read from keys, not the raw enum value", () => {
-    expect(src).toMatch(/t\(`elev\.checkin\.appetite\.\$\{a\}`\)/);
-    // `capitalize` was doing the English-only prettifying of the enum.
-    expect(src).not.toMatch(/capitalize/);
-  });
-
-  it("the footer no longer promises pattern insights the app does not compute", () => {
-    expect(en["elev.checkin.hint"]).not.toMatch(/pattern|insight/i);
-    expect(en["elev.checkin.saved"]).not.toMatch(/pattern|insight/i);
-  });
-
-  it("negative control: the shipped markup fails the translator check", () => {
-    const shipped = `<Icon name="favorite" size={14} /> Today&apos;s check-in`;
-    expect(shipped).toContain("Today&apos;s check-in");
+// B-TODAY-17: the daily check-in (TJB-23's subject) is deleted with Today's
+// drawer — it wrote a `wellness` collection nothing reads. The guard now pins
+// that it stays gone and that its keys went with it.
+describe("TJB-23 → B-TODAY-17 — the daily check-in is gone, with its keys", () => {
+  it("no DailyCheckinCard file, no elev.checkin.* key", () => {
+    expect(existsSync(path.join(app, "src", "components/overview/DailyCheckinCard.tsx"))).toBe(false);
+    expect(Object.keys(en).filter((k) => k.startsWith("elev.checkin."))).toEqual([]);
   });
 });
 

@@ -6,8 +6,8 @@ import { usePrideMoment } from "../../hooks/usePrideMoment";
  * when the child crosses a development milestone threshold for the first time.
  * Originally designed for Today, but Rule A caps Today's module budget, so the
  * W5 mount lives on the Milestones tab (MilestonesTab) — the surface where
- * crossings are born; Today keeps only its plain feed row (usePrideMoment is
- * wired there separately). Renders nothing when there is no new crossing.
+ * crossings are born (B-TODAY-17 removed Today's feed row, so this is the
+ * hook's only mount). Renders nothing when there is no new crossing.
  * The data trigger (tested R3 detector via usePrideMoment: positive-only,
  * idempotent, no score number) is unchanged; presentation goes through the
  * shared E7 CelebrationMoment grammar (hero avatar, one warm sentence,

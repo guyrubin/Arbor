@@ -119,13 +119,10 @@ describe("TJB-28 — the receipt reads back what the parent said", () => {
 describe("OBJ-TODAY-05 — a feed row older than today carries its date", () => {
   const overview = strip(read("components/tabs/OverviewTab.tsx"));
 
-  it("the feed stamps through the one date seam, on the LOCAL day boundary", () => {
-    expect(overview).toMatch(/import \{ fmtDay \} from "\.\.\/\.\.\/lib\/formatDate"/);
-    expect(overview).toMatch(/isSameLocalDay\(d, new Date\(\)\) \? time : `\$\{fmtDay\(d, uiLang\)\} · \$\{time\}`/);
-    expect(overview).toMatch(/time: fmtWhen\(at\)/);
-    expect(overview).not.toMatch(/time: fmtTime\(at\)/);
-    // Local, not UTC — the rule OBJ-TODAY-03 pinned for the action id.
-    expect(overview).toMatch(/getFullYear\(\) === b\.getFullYear\(\)[\s\S]{0,120}getDate\(\) === b\.getDate\(\)/);
+  // B-TODAY-17 deleted the feed (and the drawer it lived in): no time-only
+  // row can come back on Today. The date seam itself stays pinned below.
+  it("B-TODAY-17: Today carries no activity feed, so no undated feed row can return", () => {
+    expect(overview).not.toMatch(/activityFeed|fmtWhen|today\.feed\.loggedSub/);
   });
 
   it("the seam really produces an explicit month name in both locales", () => {

@@ -32,11 +32,10 @@ const ALL: Record<TodayModuleId, boolean> = {
   changed: true,
   noticed: true,
   rail: true,
-  play: true,
 };
 
 /** Every module the caller may actually request (the anchor is implicit). */
-const OPTIONAL: TodayModuleId[] = ["lifecycle", "changed", "noticed", "rail", "play"];
+const OPTIONAL: TodayModuleId[] = ["lifecycle", "changed", "noticed", "rail"];
 
 describe("Rule A module budget — resolveTodayModules", () => {
   it("never exceeds the budget, in ANY combination of wants", () => {
@@ -59,11 +58,16 @@ describe("Rule A module budget — resolveTodayModules", () => {
     expect(resolveTodayModules(ALL, { budget: 1, noticedCanFold: true }).visible.has("anchor")).toBe(true);
   });
 
-  it("the audited state (returning + rail + noticed + play) fits in five, nothing cut", () => {
+  it("B-TODAY-17: the budget is four, and the contract says so", () => {
+    expect(TODAY_MODULE_BUDGET).toBe(4);
+    // play is not a Today module any more (Daily Play renders only AS the step).
+    expect(todayModulePriority({ noticedCanFold: true })).not.toContain("play" as TodayModuleId);
+  });
+
+  it("the audited state (returning + rail + noticed) fits in four, nothing cut", () => {
     // The audited shape, with NO lifecycle moment to say — the ordinary open.
-    // B-TODAY-21: since-strip + narrative are ONE card now, so a slot came free.
     const plan = resolveTodayModules({ ...ALL, lifecycle: false }, { noticedCanFold: true });
-    expect(plan.visible.size).toBe(5);
+    expect(plan.visible.size).toBe(4);
     expect(plan.visible.has("noticed")).toBe(true);
     expect(plan.demoted).toEqual([]);
   });
@@ -75,7 +79,7 @@ describe("Rule A module budget — resolveTodayModules", () => {
     // Everything it displaces still lands somewhere: the watch signal folds
     // into the What-changed card as a line (law 6).
     expect(plan.visible.has("changed")).toBe(true);
-    expect(plan.visible.has("play")).toBe(true);
+    expect(plan.visible.has("rail")).toBe(true);
     expect(plan.demoted).toEqual(["noticed"]);
   });
 
@@ -89,12 +93,12 @@ describe("Rule A module budget — resolveTodayModules", () => {
     const plan = resolveTodayModules({ ...ALL, changed: false }, { noticedCanFold: false });
     expect(plan.visible.has("noticed")).toBe(true);
     expect(plan.visible.size).toBeLessThanOrEqual(TODAY_MODULE_BUDGET);
-    // Five wants incl. the anchor and a lifecycle moment: nothing is cut.
+    // Four wants incl. the anchor and a lifecycle moment: nothing is cut.
     expect(plan.demoted).toEqual([]);
-    // Under a tighter budget play is cut before the watch signal.
-    const tight = resolveTodayModules({ ...ALL, changed: false }, { budget: 4, noticedCanFold: false });
+    // Under a tighter budget the rail is cut before the watch signal.
+    const tight = resolveTodayModules({ ...ALL, changed: false }, { budget: 3, noticedCanFold: false });
     expect(tight.visible.has("noticed")).toBe(true);
-    expect(tight.demoted).toEqual(["play"]);
+    expect(tight.demoted).toEqual(["rail"]);
   });
 
   it("at the real budget, a demoted watch signal ALWAYS has the What-changed card to fold into", () => {
@@ -108,17 +112,14 @@ describe("Rule A module budget — resolveTodayModules", () => {
     }
   });
 
-  it("without a fold target the watch signal is cut only after rail and play", () => {
-    // Forced demotion, no card to fold into: the cheap modules must go first.
+  it("without a fold target the watch signal is cut only after the rail", () => {
+    // Forced demotion, no card to fold into: the cheap module must go first.
     const plan = resolveTodayModules({ ...ALL, changed: false }, { budget: 2, noticedCanFold: false });
     if (plan.demoted.includes("noticed")) {
       expect(plan.demoted).toContain("rail");
-      expect(plan.demoted).toContain("play");
     }
     expect(todayModulePriority({ noticedCanFold: false }).indexOf("noticed"))
       .toBeLessThan(todayModulePriority({ noticedCanFold: false }).indexOf("rail"));
-    expect(todayModulePriority({ noticedCanFold: false }).indexOf("noticed"))
-      .toBeLessThan(todayModulePriority({ noticedCanFold: false }).indexOf("play"));
   });
 
   it("day-0 (anchor + rail only) sits far under the budget", () => {
@@ -169,7 +170,10 @@ describe("P1-B firewall — the budget counts modules, never a governance gate",
     expect(overview).toMatch(/resolveTodayModules\(/);
     expect(overview).toMatch(/modulePlan\.visible\.has\("rail"\)/);
     expect(overview).toMatch(/modulePlan\.visible\.has\("noticed"\)/);
-    expect(overview).toMatch(/showPlayInline\s*=\s*modulePlan\.visible\.has\("play"\)/);
+    // B-TODAY-17: no play module, no drawer — playSection renders only as the step.
+    expect(overview).not.toMatch(/modulePlan\.visible\.has\("play"\)|showPlayInline|data-module="today-play"/);
+    expect(overview.match(/\{playSection\}|^\s*playSection\s*$/gm) ?? []).toHaveLength(1);
+    expect(overview).toMatch(/todayChoice\.kind === "play" \? \(\s*playSection/);
     expect(overview).toMatch(/foldNoticed\s*=\s*modulePlan\.demoted\.includes\("noticed"\)/);
     expect(overview).toMatch(/showChanged\s*=\s*modulePlan\.visible\.has\("changed"\)/);
     // ENG-09: the lifecycle module's real render condition is "the pure

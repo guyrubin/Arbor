@@ -12,7 +12,6 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
 import { useAuth } from "../../context/AuthContext";
-import DailyCheckinCard from "../overview/DailyCheckinCard";
 import DailyPlayCard from "../overview/DailyPlayCard";
 import QuickCaptureBar from "../overview/QuickCaptureBar";
 import TodayRecommendation from "../overview/TodayRecommendation";
@@ -32,17 +31,14 @@ import ArborNoticedCard, { todayNoticedSignal } from "../sections/ArborNoticedCa
 import type { CaptureMode } from "../../context/ArborContext";
 import { useTodaysFocus } from "../../hooks/useTodaysFocus";
 import { useLastVisit } from "../../hooks/useLastVisit";
-import { PASTEL } from "../ui/kit";
 import { predictRhythm, hourLabel } from "../../rhythm/predict";
 import { selectDailyPlay, concernDomainsFromLogs, daySeedFor, type ScoredActivity, type SessionLength } from "../../playbank/select";
 import { useMonitoring } from "../../hooks/useMonitoring";
 import { activeGoalDomains, type ActiveGoal } from "../../practice/goalBuilder";
 import { playDomainLabel } from "../../playbank/content";
-import { usePrideMoment } from "../../hooks/usePrideMoment";
 import { focusHeadlineFor, focusBodyFor, whyLineFor } from "../../lib/todayFocus";
 import { isIncidentType } from "../../content/behaviorTaxonomy";
 import { dailyPromptKeys } from "../../lib/promptBank";
-import { fmtDay } from "../../lib/formatDate";
 import { chooseTodayAction } from "../overview/chooseTodayAction";
 import { resolveTodayModules } from "../overview/todayModules";
 import FirstStepsRail, { useFirstStepsRail } from "../onboarding/FirstStepsRail";
@@ -57,33 +53,29 @@ import { track } from "../../lib/analytics";
 const DAY = 86_400_000;
 
 // Token shorthands so the screen reads from one palette, not scattered literals.
-const GREEN = "var(--arbor-green-ink)";
-const GREEN_SOFT = "var(--arbor-green-soft)";
 
 /**
  * TODAY — one integrated loop, not stacked widgets (TODAY-2/CODEX-1), now under
- * the W1 Rule-A budget (masterplan 2026-08-11): ≤5 visible modules and exactly
- * ONE primary action above the fold, on every open.
+ * the W1 Rule-A budget (masterplan 2026-08-11): ≤4 visible modules since
+ * B-TODAY-17 and exactly ONE primary action above the fold, on every open.
  *
  * What renders now (top → bottom):
  *   Quick Capture bar (W6.2/TODAY-4): ambient capture chrome — first in the
  *       DOM, pinned bottom on phones, inline on lg+.
- *   Row 1 (1.85fr / 0.85fr) — FIRST, so the day's action clears the fold: the
- *       GUARANTEED action in the left slot — the chooseTodayAction chain picks
- *       exactly one of:
- *         loop (accepted action) → focus hero (+why-line) → promptBank capture
- *         card (+why-line) → Daily Play promotion → bare capture card.
- *       · Development-Map count card (→ Growth) on the right.
- *   SinceLastVisit (W1 1.1): returning parents only — warm greeting + ≤3
- *       tappable EVENT rows since the previous visit (+N more in Journal),
- *       with the "Arbor remembers" count line as its footer. Continuity lines
- *       collapse INTO this strip (Rule A), incl. the ArborNoticed fold.
- *   FirstStepsRail (E11): the 4-step start path for genuinely new accounts.
- *   Arbor Noticed (DUX-011): the highest watch signal; never on day-0, and it
- *       FOLDS into a SinceLastVisit row when the budget is spent.
- *   Progress narrative: retrospective picture + the ONE evidence surface.
- *   More (collapsed disclosure): the activity feed, the Daily Play section
- *       when the budget displaces it, and the wellness check-in.
+ *   Row 1 — FIRST, so the day's action clears the fold: the GUARANTEED
+ *       action in the left slot — the chooseTodayAction chain picks exactly
+ *       one of: loop (accepted action) → focus hero (+why-line) → promptBank
+ *       capture card (+why-line) → Daily Play (the ONLY place play renders on
+ *       Today, B-TODAY-17) → bare capture card.
+ *       · B-TODAY-21: the ONE "What changed since you left" card (returning
+ *         parents only, never day-0) in the right column at lg, under the
+ *         anchor below lg — it replaced the dev-map count card, the
+ *         SinceLastVisit strip and the progress narrative.
+ *   Lifecycle moment (ENG-09), FirstStepsRail (E11), Arbor Noticed (DUX-011:
+ *       never on day-0; FOLDS into a What-changed line when the budget is
+ *       spent).
+ *   B-TODAY-17: no "More" drawer — no activity feed, no displaced play, no
+ *       wellness check-in.
  *   Day-0 (no data, first visit): header + capture bar + primary action + the
  *       first-steps rail ONLY — no picture, no play, no watch signal.
  *
@@ -117,9 +109,6 @@ export default function OverviewTab() {
   const { t, uiLang } = useLanguage();
   const { user } = useAuth();
   const { toast } = useToast();
-  // Rule A: the disclosure is a SECONDARY drawer now (feed + displaced play +
-  // wellness check-in) — collapsed by default so Today stays ≤5 modules.
-  const [showTools, setShowTools] = useState(false);
   // W6.2 ambient capture → B-TODAY-19: every tile (text · voice · photo)
   // opens the ONE capture sheet in place (QuickLogModal portals to body), so
   // the parent never leaves Today. No hand-off to Behaviors.
@@ -436,85 +425,9 @@ export default function OverviewTab() {
     seedCoach({ prompt: stepText ? t("seed.todayFocus", { focus: stepText, name: firstName }) : undefined, source: "today-guidance" });
   };
 
-  // ── Kid activity feed (Loops 1+3+5) — kid-originated + parent-logged events
-  //    from the ONE shared child profile, unified into a single live feed. Every
-  //    row is a neutral/positive fact — never a score, verdict, or trend. ──
-  const { crossing: milestoneCrossing } = usePrideMoment();
-
-  type FeedRow = {
-    id: string;
-    at: number;
-    icon: React.ReactNode;
-    tone: { soft: string; ink: string };
-    title: string;
-    sub: string;
-  };
-
-  const activityFeed: FeedRow[] = useMemo(() => {
-    const rows: FeedRow[] = [];
-    /* OBJ-TODAY-05: the feed stamped time only, so a May log read "Log a
-       moment · 10:15 AM" — indistinguishable from this morning in a feed that
-       shows the whole ledger. Rows from TODAY keep the bare time (a date there
-       would be noise); anything older leads with its date through the ONE
-       date seam, lib/formatDate (explicit month name, never an ambiguous
-       DD/MM). "Today" is the LOCAL day, the same rule OBJ-TODAY-03 pinned for
-       the action id. */
-    const fmtTime = (ms: number) =>
-      new Date(ms).toLocaleTimeString(uiLang === "he" ? "he-IL" : "en-US", { hour: "numeric", minute: "2-digit" });
-    const isSameLocalDay = (a: Date, b: Date) =>
-      a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-    const fmtWhen = (ms: number) => {
-      const d = new Date(ms);
-      const time = fmtTime(ms);
-      return isSameLocalDay(d, new Date()) ? time : `${fmtDay(d, uiLang)} · ${time}`;
-    };
-
-    // Kid-side quest / play completions (Loop 3 — stars/streak window)
-    for (const p of playLogs) {
-      const at = new Date(p.timestamp).getTime();
-      rows.push({
-        id: `play.${p.id}`,
-        at,
-        icon: <Icon name="sports_esports" size={21} />,
-        tone: { soft: "var(--arbor-tint)", ink: "var(--arbor-clay)" },
-        title: t("today.feed.played", { title: p.title }),
-        sub: t("today.feed.playedSub", { domain: playDomainLabel(p.domain, uiLang === "he" ? "he" : "en") }),
-      });
-    }
-    // Parent-logged moments (Loop 1 window — emotional/behavioral signal)
-    for (const l of behaviorLogs) {
-      const at = new Date(l.timestamp).getTime();
-      rows.push({
-        id: `beh.${l.id}`,
-        at,
-        icon: <Icon name="edit_note" size={21} />,
-        tone: { soft: PASTEL.lav.soft, ink: PASTEL.lav.ink },
-        title: t("today.feed.logged"),
-        sub: t("today.feed.loggedSub", { context: l.context ?? t("ov.logMoment"), time: fmtWhen(at) }),
-      });
-    }
-    // A freshly-noticed milestone (Loop 5 — growth story). No timestamp on
-    // milestones, so it floats to the top when present.
-    if (milestoneCrossing) {
-      rows.push({
-        id: "milestone.crossing",
-        at: Date.now(),
-        icon: <Icon name="workspace_premium" size={21} fill={1} />,
-        tone: { soft: GREEN_SOFT, ink: GREEN },
-        title: t("today.feed.noticed"),
-        // Firewall-safe: a calm factual sub, never the threshold/score that
-        // triggered the crossing.
-        sub: t("devscore.mechanism.short"),
-      });
-    }
-    return rows.sort((a, b) => b.at - a.at).slice(0, 4);
-  }, [playLogs, behaviorLogs, milestoneCrossing, t, uiLang]);
-
-  // The "Live" pill reflects REAL recent activity (last 48h), not a static label.
-  const hasRecentActivity = useMemo(
-    () => activityFeed.some((r) => r.at >= Date.now() - 2 * DAY),
-    [activityFeed]
-  );
+  // B-TODAY-17: the activity feed (and its "Live" pill) is gone with the
+  // drawer it lived in — the ONE What-changed card says what is new, and the
+  // Journal holds the whole ledger.
 
   // ── Rule A budget inputs: which conditional modules would ACTUALLY render? ──
   // P1-B: the previous implementation asked `todayHardMomentOffer(...)` here.
@@ -601,7 +514,7 @@ export default function OverviewTab() {
   const lifecycle = useLifecycleMoment({ previousVisitAt });
   const lifecycleMoment = lifecycle.moment;
 
-  // ── Rule A: resolve the ≤5-module budget from the REAL render conditions. ──
+  // ── Rule A: resolve the ≤4-module budget from the REAL render conditions. ──
   const modulePlan = useMemo(
     () => resolveTodayModules(
       {
@@ -612,7 +525,6 @@ export default function OverviewTab() {
         changed: changedWould,
         rail: railWould,
         noticed: !dayZero && noticedWould,
-        play: !dayZero && todayChoice.kind !== "play",
       },
       { noticedCanFold: changedWould },
     ),
@@ -665,9 +577,9 @@ export default function OverviewTab() {
     setActiveTab("journal");
   };
 
-  // The Daily Play "Try together" section — ONE JSX instance, placed either as
-  // a visible module, in the left slot when it IS the primary action, or inside
-  // the More disclosure when the module budget displaces it.
+  // The Daily Play "Try together" section — B-TODAY-17: it renders ONLY in the
+  // anchor's left slot when it IS the day's step (todayChoice.kind "play");
+  // otherwise Today shows no play module (its home is Growth › Daily Play).
   const playSection = (
     <section className="border-y py-5" style={{ borderColor: "var(--arbor-rule)" }} aria-label={t("today.feed.title", { name: firstName })}>
       <div className="mb-3 flex items-center justify-between gap-3 px-1">
@@ -675,7 +587,6 @@ export default function OverviewTab() {
           <div className="text-[11px] font-extrabold uppercase tracking-[0.12em]" style={{ color: "var(--arbor-clay)" }}>{t("today.feed.eyebrow")}</div>
           <h2 className="mt-1 text-[17px] font-extrabold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{t("today.feed.title", { name: firstName })}</h2>
         </div>
-        {hasRecentActivity && <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold" style={{ color: "var(--arbor-clay)" }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--arbor-clay)" }} />{t("today.live")}</span>}
       </div>
       {dailyPlay ? (
         <DailyPlayCard pick={dailyPlay} childName={firstName} done={donePlayIds.includes(dailyPlay.activity.id)} onDid={markPlayDone} onCoach={coachOnPlay} concernLabel={dailyPlay.reason === "concern-match" ? playDomainLabel(dailyPlay.activity.domain, uiLang) : undefined} goalLabel={dailyPlay.reason === "goal-match" ? activeGoals.find((g) => g.domainId === dailyPlay.activity.domain)?.label : undefined} sessionLength={sessionLength} onSessionLengthChange={handleSessionLength} ageYears={childProfile.age} sessionTapped={sessionTapped} rhythmHintTime={rhythm.calmWindow ? hourLabel(rhythm.calmWindow.startHour) : undefined} />
@@ -684,9 +595,6 @@ export default function OverviewTab() {
       )}
     </section>
   );
-  // Visible only while it holds a slot in the ≤5 budget; otherwise it drops
-  // into the More drawer below (never off the screen).
-  const showPlayInline = modulePlan.visible.has("play");
 
   return (
     <motion.div
@@ -740,20 +648,17 @@ export default function OverviewTab() {
         />
       </div>
 
-      {/* ── Row 1 (1.85fr / 0.85fr): guaranteed action · Development-Map card.
+      {/* ── Row 1: guaranteed action · What changed (B-TODAY-21).
              P1-A: this row is FIRST in the column — the day's action clears the
              fold before anything else competes for the viewport. ── */}
 
-      {/* Item 11 (IA-02): the surface contract reaches the DOM. Seven slots
+      {/* Item 11 (IA-02): the surface contract reaches the DOM. Five slots
              carry `data-module` — one per TodayModuleId — and `modulePlan`
-             already lets at most five of them render, so the count on screen
-             is the Rule-A budget (5) that todayModules.ts computes, never the
-             number of stamps in this file. Deliberately UNSTAMPED: the header
-             and the QuickCapture bar (chrome, per todayModules.ts), the More
-             drawer (it RECEIVES demoted modules, so counting it would make the
-             overflow container compete with its own overflow), and playSection
-             itself — it is one JSX instance placed in three positions, and only
-             the top-level one is a sibling module. */}
+             lets at most four of them render (B-TODAY-17), so the count on
+             screen is the Rule-A budget that todayModules.ts computes, never
+             the number of stamps in this file. Deliberately UNSTAMPED: the
+             header and the QuickCapture bar (chrome, per todayModules.ts) and
+             playSection, which renders only INSIDE the anchor as the step. */}
       {/* B-TODAY-21: at lg the ONE What-changed card takes the right column the
              dev-map count card used to hold; below lg it follows the anchor. */}
       <div className={showChanged ? "grid grid-cols-1 items-start gap-4 md:gap-5 lg:grid-cols-[1.55fr_1fr]" : "grid grid-cols-1 gap-4 md:gap-5 lg:max-w-[820px]"}>
@@ -892,7 +797,7 @@ export default function OverviewTab() {
       {/* ── ENG-09 / Wave E: the lifecycle moment. BELOW the anchor row (P1-A —
              nothing outranks the day's action; since B-TODAY-21 that row also
              holds the ONE What-changed card). At most
-             one renders, each occurrence once, and it counts against the ≤5
+             one renders, each occurrence once, and it counts against the ≤4
              Rule-A budget like any other module. ── */}
       {showLifecycle && lifecycleMoment && todayOffer.offer?.kind === "what-changed" && (
         <div data-module="today-lifecycle" data-proactive="" data-offer-kind="what-changed" style={{ display: "contents" }}>
@@ -922,62 +827,11 @@ export default function OverviewTab() {
              instead of rendering as a sibling card (foldNoticed above). ── */}
       {modulePlan.visible.has("noticed") && <div data-module="today-noticed" style={{ display: "contents" }}><ArborNoticedCard /></div>}
 
-      {/* ── Daily Play "Try together" — visible only while it holds a budget
-             slot; the primary-slot chain renders it when it IS the action;
-             otherwise the budget displaces it into the disclosure below. ── */}
-      {showPlayInline && <div data-module="today-play" style={{ display: "contents" }}>{playSection}</div>}
 
-      {/* ── More (secondary, collapsed — Rule A): the activity feed, the Daily
-             Play section when displaced, and the wellness check-in. This
-             disclosure is the drawer that RECEIVES demoted modules, so it is
-             deliberately NOT counted by the budget (todayModules.ts) — counting
-             the overflow container against its own overflow is incoherent. It
-             is a 34px collapsed row, not a module. ── */}
-      {!dayZero && (
-        <section className="pt-1">
-          <button
-            onClick={() => setShowTools((v) => !v)}
-            /* OBJ-TODAY-04: the drawer toggle was 358x18 — the whole disclosure
-               for Today's secondary tools, under half the 44 px floor. */
-            className="w-full flex items-center justify-between mb-3 min-h-11"
-            aria-expanded={showTools}
-          >
-            <h2 className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-faint)" }}>{t("ov.dailyTools")}</h2>
-            <span className="inline-flex items-center gap-1 text-xs font-bold" style={{ color: GREEN }}>
-              {showTools ? t("ov.tools.hide") : t("ov.tools.show")}
-              <Icon name="chevron_right" size={18} className={`transition-transform rtl:-scale-x-100 ${showTools ? "rotate-90" : ""}`} />
-            </span>
-          </button>
-          {showTools && (
-            <div className="space-y-4">
-              {/* The unified activity feed (parent-logged + kid-side events). */}
-              {activityFeed.length > 0 ? (
-                <ul className="space-y-2.5" aria-label={t("today.feed.title", { name: firstName })}>
-                  {activityFeed.map((r) => (
-                    <li key={r.id} className="flex items-center gap-3 px-1">
-                      <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full" style={{ background: r.tone.soft, color: r.tone.ink }}>{r.icon}</span>
-                      <div className="min-w-0">
-                        <div className="truncate text-[13px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{r.title}</div>
-                        <div className="truncate text-[11px]" style={{ color: "var(--arbor-faint)" }}>{r.sub}</div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="px-1 text-[12px]" style={{ color: "var(--arbor-faint)" }}>{t("today.feed.empty", { name: firstName })}</p>
-              )}
-              {/* B-TODAY-13: the Day Windows row left this drawer. The doors
-                  are the rhythm line's "See the hours" link (when a PREP or
-                  CALM cue shows), Settings, and the md+ pill. */}
-              {/* Daily Play displaced here when the module budget is spent. */}
-              {!showPlayInline && todayChoice.kind !== "play" && playSection}
-              <div className="max-w-[520px]">
-                <DailyCheckinCard />
-              </div>
-            </div>
-          )}
-        </section>
-      )}
+      {/* B-TODAY-17: the "Your daily tools" drawer is gone — its feed (the
+             What-changed card + Journal say what is new), the displaced Daily
+             Play (its home is Growth › Daily Play, #/daily-play) and the
+             wellness check-in (no reader; `wellness` stays in export/erase). ── */}
 
       {/* The ONE capture sheet (text · voice · photo, B-TODAY-19). Portals to
           document.body, so it contributes no box to the flex column. */}

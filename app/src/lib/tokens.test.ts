@@ -635,7 +635,6 @@ const RGBA_BASELINE: Record<string, number> = {
   "components/layout/MobileNav.tsx": 2,
   "components/layout/SettingsModal.tsx": 1,
   "components/overview/CourseCard.tsx": 1,
-  "components/overview/DailyCheckinCard.tsx": 2,
   "components/plans/RoutinesCard.tsx": 1,
   "components/practice/AdventuresTab.tsx": 1,
   "components/practice/EarlyReadingTrack.tsx": 2,

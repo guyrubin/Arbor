@@ -110,12 +110,12 @@ describe("ENG-09 — the lifecycle module is wired into Today", () => {
     }
   });
 
-  it("Rule A holds: a lifecycle moment never pushes Today past five modules", () => {
+  it("Rule A holds: a lifecycle moment never pushes Today past four modules (B-TODAY-17)", () => {
     const plan = resolveTodayModules(
-      { lifecycle: true, changed: true, noticed: true, rail: true, play: true },
+      { lifecycle: true, changed: true, noticed: true, rail: true },
       { noticedCanFold: true },
     );
-    expect(plan.visible.size).toBeLessThanOrEqual(5);
+    expect(plan.visible.size).toBeLessThanOrEqual(4);
     expect(plan.visible.has("lifecycle")).toBe(true);
   });
 

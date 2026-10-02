@@ -49,10 +49,11 @@
  * fires once), and with since + narrative merged the six possible modules
  * leave only `noticed` to fold at the real budget.
  */
-export type TodayModuleId = "anchor" | "lifecycle" | "changed" | "noticed" | "rail" | "play";
+export type TodayModuleId = "anchor" | "lifecycle" | "changed" | "noticed" | "rail";
 
-/** Rule A: at most five visible modules on Today, in every state. */
-export const TODAY_MODULE_BUDGET = 5;
+/** Rule A: at most four visible modules on Today, in every state (B-TODAY-17:
+ *  the play module left Today — Daily Play renders only as the day's step). */
+export const TODAY_MODULE_BUDGET = 4;
 
 /**
  * Priority, highest first. The tail loses its slot when the budget is spent.
@@ -70,8 +71,8 @@ export const TODAY_MODULE_BUDGET = 5;
  */
 export function todayModulePriority(opts: { noticedCanFold: boolean }): readonly TodayModuleId[] {
   return opts.noticedCanFold
-    ? ["anchor", "changed", "lifecycle", "rail", "play", "noticed"]
-    : ["anchor", "changed", "lifecycle", "noticed", "rail", "play"];
+    ? ["anchor", "changed", "lifecycle", "rail", "noticed"]
+    : ["anchor", "changed", "lifecycle", "noticed", "rail"];
 }
 
 export type TodayModuleWants = Partial<Record<TodayModuleId, boolean>>;
