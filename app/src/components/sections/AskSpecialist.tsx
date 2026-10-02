@@ -10,6 +10,7 @@ import {
   countIncluded,
   isConsultPacketEmpty,
   sectionTitle,
+  itemText,
   serializeForExport,
   exportPrintSections,
   normalizeExportAudience,
@@ -445,7 +446,7 @@ export default function AskSpecialist() {
                       <InsetRow
                         key={it.id}
                         label={sectionTitle(section, uiLang)}
-                        value={it.text}
+                        value={itemText(it, uiLang)}
                         excluded={!on}
                         multiline
                         testId="consult-packet-item"
@@ -453,7 +454,7 @@ export default function AskSpecialist() {
                           <button
                             onClick={() => toggle(it.id)}
                             aria-pressed={on}
-                            aria-label={`Include: ${it.text}`}
+                            aria-label={t("elev.packet.include", { item: itemText(it, uiLang) })}
                             className="flex-shrink-0 w-11 h-11 -m-3 rounded-md flex items-center justify-center transition self-start"
                             style={{ color: on ? "var(--arbor-paper-elevated)" : MUTED }}
                           >

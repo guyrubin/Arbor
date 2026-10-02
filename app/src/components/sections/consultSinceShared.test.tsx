@@ -73,9 +73,11 @@ describe("B-CAREPRO-17 · Consult shows 'Since you last shared'", () => {
       const preview = /data-testid="consult-export-preview"[^>]*>([\s\S]*?)<\/pre>/.exec(html);
       expect(preview, "preview rendered").toBeTruthy();
       expect(preview![1]).toContain(heading);
-      expect(preview![1]).toContain("1 new moment logged.");
-      expect(preview![1]).toContain("0 action plans added.");
-      expect(preview![1]).toContain("0 milestones newly noticed.");
+      // B-CAREPRO-32: the three counts are keyed lines in the reader's language.
+      const lines = locale === "en"
+        ? ["1 new moment logged.", "0 action plans added.", "0 milestones newly noticed."]
+        : ["רגע חדש אחד תועד.", "תוכניות פעולה נוספו.", "אבני דרך נצפו לראשונה."];
+      for (const line of lines) expect(preview![1]).toContain(line);
     });
   }
 

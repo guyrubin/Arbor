@@ -174,11 +174,14 @@ describe("CARE-2 — no raw subcollection documents ever reach a recipient", () 
     // ...and raw field VALUES must not appear either.
     expect(payload).not.toContain(RAW_TRIGGER);
     expect(payload).not.toContain(RAW_RESPONSE);
-    // Every emitted item is a derived string line, not a document.
+    // Every emitted item is a derived string line, not a document. B-CAREPRO-32:
+    // it may also carry the dictionary key + vars that render the SAME line in
+    // the recipient's language (the raw-key and raw-value scans above cover them).
     for (const section of r.view.sections) {
       for (const item of section.items) {
-        expect(Object.keys(item).sort()).toEqual(["id", "text"]);
+        for (const k of Object.keys(item)) expect(["id", "text", "textKey", "vars"]).toContain(k);
         expect(typeof item.text).toBe("string");
+        if ("textKey" in item) expect(String(item.textKey)).toMatch(/^elev\.packet\./);
       }
     }
   });

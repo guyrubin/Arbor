@@ -18,7 +18,7 @@ import { REPORT_SCOPE_BY_TYPE, type ShareScopeId, scopeDisplayLabels, shareScope
 import { fmtDay } from "../../lib/formatDate";
 // LC-17: the review step shows the RECIPIENT'S ACTUAL VIEW, built by the same
 // function the server uses for them — not a list of scope labels.
-import { buildPacketInput, buildSharedScopePacket, sectionTitle, sectionNote } from "../../consult/packet";
+import { buildPacketInput, buildSharedScopePacket, itemText, sectionTitle, sectionNote } from "../../consult/packet";
 import { ClinicalLanguageError } from "../../lib/clinicalScan";
 
 // IA W4.5 + CARE-3: the professional share scopes mirror the W4.1 preset
@@ -415,7 +415,7 @@ export default function TrustedSharing() {
                       <p className="text-[12.5px] font-extrabold" dir="auto" style={{ color: "var(--arbor-ink)" }}>{sectionTitle(section, uiLang)}</p>
                       <ul className="list-disc ps-5 mt-1 space-y-0.5">
                         {section.items.map((it) => (
-                          <li key={it.id} className="text-[12px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-muted)" }}>{it.text}</li>
+                          <li key={it.id} className="text-[12px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-muted)" }}>{itemText(it, uiLang)}</li>
                         ))}
                       </ul>
                     </div>
@@ -628,7 +628,7 @@ export default function TrustedSharing() {
                       {section.items.map((item) => (
                         <li key={item.id} className="flex items-start gap-2 text-sm leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}>
                           <span className="mt-2 h-1 w-1 flex-shrink-0 rounded-full" style={{ background: "var(--arbor-muted)" }} />
-                          {item.text}
+                          {itemText(item, uiLang)}
                         </li>
                       ))}
                     </ul>

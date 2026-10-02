@@ -195,3 +195,58 @@ describe("LC-19 — Language Transition Note is built from the record", () => {
     for (const canned of PRE_FIX_CANNED) expect(lineIsDerivedOrLabelled(canned, empty.child)).toBe(false);
   });
 });
+
+/* ── B-CAREPRO-32 — the parent-record PDFs speak the family's language ───────
+ * #/reports documents were English end to end for a Hebrew family: titles,
+ * headings, count lines, "Arbor — Development Fieldbook", and event days
+ * formatted "en". buildReport takes `lang`; English stays byte-identical. */
+import { translate } from "./i18n";
+
+const HE_CTX: ReportContext = {
+  child: { id: "c1", name: "Noa", age: 4, languages: ["Hebrew", "English"], schoolContext: "גן דו-לשוני", strengths: ["חמה עם בעלי חיים"], challenges: ["מעברים גדולים"] },
+  logs: [
+    log(1, { trigger: "אח קטן הפיל את המגדל", response: "קראנו לרגש בשם" }),
+    log(2, { trigger: "אח קטן הפיל את המגדל", response: "קראנו לרגש בשם" }),
+    log(3, { behaviorType: "Sibling Conflict", trigger: "צעצוע משותף", response: "חיבוק" }),
+  ],
+  plans: [{ id: "p1", title: "ספירה לאחור", issue: "בקרים", phases: [{ title: "שלב", steps: [{ id: "s1", text: "שעון חול", completed: true }, { id: "s2", text: "שיר", completed: false }] }] } as unknown as ReportContext["plans"][number]],
+  checkedMilestones: 6,
+  totalMilestones: 10,
+  langObs: [{ id: "o1", phrase: "עוד פעם", language: "Hebrew", timestamp: new Date(Date.now() - DAY).toISOString() } as unknown as NonNullable<ReportContext["langObs"]>[number]],
+};
+const ALLOWED = ["Noa"];
+const latinLeft = (text: string) => {
+  let rest = text;
+  for (const a of ALLOWED) rest = rest.split(a).join("");
+  return rest.match(/[A-Za-z]+/g) ?? [];
+};
+
+describe("B-CAREPRO-32 · Hebrew parent-record PDFs", () => {
+  for (const type of ["weekly", "snapshot", "behavior", "language", "growth"] as const) {
+    it(`${type}: title, headings and lines carry no Latin beyond the child's name`, () => {
+      const doc = buildReport(type, HE_CTX, "he");
+      const text = flattenDoc(doc);
+      expect(doc.title).toBe(translate("he", `elev.reports.${type}.title`));
+      expect(latinLeft(text), text).toEqual([]);
+    });
+  }
+
+  it("event days are formatted in Hebrew and the behaviour type is labelled", () => {
+    const text = flattenDoc(buildReport("behavior", HE_CTX, "he"));
+    expect(text).not.toContain("Transition Refusal");
+    expect(text).toContain(translate("he", "beh.type.transition"));
+  });
+
+  it("the brand line is keyed (the print shell reads elev.reports.brand for HE)", () => {
+    const src = fs.readFileSync(path.join(__dirname, "reportExport.ts"), "utf8");
+    expect(src).toContain('translate(lang, "elev.reports.brand")');
+    expect(translate("he", "elev.reports.brand")).toMatch(/[\u0590-\u05FF]/);
+  });
+
+  it("English is unchanged: the default and 'en' produce the same document", () => {
+    for (const type of ["weekly", "snapshot", "behavior", "language", "growth"] as const) {
+      expect(buildReport(type, CTX, "en")).toEqual(buildReport(type, CTX));
+    }
+    expect(flattenDoc(buildReport("weekly", CTX))).toContain("Most-logged: Transition Refusal");
+  });
+});

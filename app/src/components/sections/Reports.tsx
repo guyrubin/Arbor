@@ -70,7 +70,7 @@ export function useReportExport() {
       totalMilestones,
       heroImageUrl,
       langObs: langObsCol.items,
-    });
+    }, uiLang);
     openPrintableReport(doc, childProfile.name, uiLang);
   };
 }

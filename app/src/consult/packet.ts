@@ -12,7 +12,8 @@ import { ClinicalLanguageError, findClinicalDiagnosisTerm } from "../lib/clinica
 import { translate, type UiLang } from "../lib/i18n";
 import { DOMAIN_LABEL } from "../lib/screening";
 import { bandForAgeMonths, milestoneAgeWindow } from "../lib/milestoneData";
-import { ageLabel, ageMonthsFromProfile } from "../lib/childAge";
+import { ageLabel, ageLabelForMonths, ageMonthsFromProfile } from "../lib/childAge";
+import { behaviorTypeLabel } from "../content/behaviorTaxonomy";
 
 export interface PacketInputProfile {
   name: string;
@@ -72,7 +73,79 @@ export interface PacketInputGrowthEntry {
   weightKg?: number;
 }
 
-export interface PacketItem { id: string; text: string }
+/** B-CAREPRO-32 — a value interpolated into a keyed item line. Plain values
+ *  are the family's own words or numbers; the object forms are resolved per
+ *  language at serialize time:
+ *   · `{ key, vars }`       — a nested dictionary string (domain, plural, label);
+ *   · `{ list, join }`      — a list joined with the language's separator;
+ *   · `{ ageMonths }`       — an age label in the reader's language;
+ *   · `{ momentType }`      — a stored behaviour type through its i18n label
+ *                             (named so a recipient payload never carries the
+ *                             raw log field name, server/sharedPacket guard);
+ *   · `{ languageName }`    — a profile/observation language name, localized
+ *                             when it is a known language, else as written. */
+export type PacketVar =
+  | string
+  | number
+  | { key: string; vars?: Record<string, PacketVar>; fallback?: string }
+  | { list: PacketVar[]; join: "and" | "comma" | "semicolon" }
+  | { ageMonths: number }
+  | { momentType: string }
+  | { languageName: string };
+
+/** LC-13 / B-CAREPRO-32: `text` is the English line (every existing reader
+ *  keeps working and English output is byte-identical); `textKey` + `vars`
+ *  render the same line in the reader's language through `itemText`. */
+export interface PacketItem { id: string; text: string; textKey?: string; vars?: Record<string, PacketVar> }
+
+const KNOWN_LANGUAGE_NAMES = ["hebrew", "english", "arabic", "russian", "french"] as const;
+
+/** List separators per language. Hebrew's "and" is the prefix ו־, joined to
+ *  the next word ("עברית ואנגלית"). */
+const LIST_SEPARATOR: Record<UiLang, Record<"and" | "comma" | "semicolon", string>> = {
+  en: { and: " and ", comma: ", ", semicolon: "; " },
+  he: { and: " ו", comma: ", ", semicolon: "; " },
+};
+
+function resolveVar(v: PacketVar, lang: UiLang): string | number {
+  if (typeof v === "string" || typeof v === "number") return v;
+  if ("key" in v) {
+    const out = translate(lang, v.key, resolveVars(v.vars, lang));
+    // A key the dictionary does not carry (a custom domain id) reads as its
+    // human fallback, never as the raw key.
+    return out === v.key && v.fallback !== undefined ? v.fallback : out;
+  }
+  if ("list" in v) {
+    const parts = v.list.map((x) => String(resolveVar(x, lang)));
+    return parts.join(LIST_SEPARATOR[lang][v.join]);
+  }
+  if ("ageMonths" in v) return ageLabelForMonths(v.ageMonths, (k, vars) => translate(lang, k, vars));
+  if ("momentType" in v) return behaviorTypeLabel(v.momentType, (k) => translate(lang, k), "full");
+  const raw = v.languageName.trim();
+  const known = (KNOWN_LANGUAGE_NAMES as readonly string[]).find((n) => raw.toLowerCase() === n);
+  return known ? translate(lang, `ob.lang.${known}`) : raw;
+}
+
+function resolveVars(vars: Record<string, PacketVar> | undefined, lang: UiLang): Record<string, string | number> | undefined {
+  if (!vars) return undefined;
+  const out: Record<string, string | number> = {};
+  for (const [k, v] of Object.entries(vars)) out[k] = resolveVar(v, lang);
+  return out;
+}
+
+/** B-CAREPRO-32 — an item line in the reader's language. English returns the
+ *  stored `text` unchanged (byte-identical exports); any other language
+ *  renders `textKey` with its vars. An item without a key is the family's own
+ *  words (reason, question, memory fact, logged phrase) and stays as written. */
+export function itemText(item: PacketItem, lang: UiLang = "en"): string {
+  if (lang === "en" || !item.textKey) return item.text;
+  return translate(lang, item.textKey, resolveVars(item.vars, lang));
+}
+
+/** "N time(s)" in the reader's language. */
+const timesVar = (n: number): PacketVar => ({ key: n === 1 ? "elev.packet.times.one" : "elev.packet.times.other", vars: { n } });
+/** A screening/milestone domain id through its dictionary label. */
+const domainVar = (domain: string): PacketVar => ({ key: `screen.domain.${domain}`, fallback: humanDomainLabel(domain) });
 /** LC-13 / item 8: `title`/`note` stay the English default so every existing
  *  caller keeps working; `titleKey`/`noteKey` (+ `titleVars`) are what
  *  `serializePacket` renders when a language is passed. A gan teacher receives
@@ -351,12 +424,20 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
   }
 
   // 1) Who the child is.
+  const basicsVars: Record<string, PacketVar> = { name: profile.name, age: { ageMonths: childAgeMonthsOf(profile) } };
   const aboutItems: PacketItem[] = [
-    { id: "about-basics", text: `${profile.name}, ${ageLabel(profile)}${profile.languages.length ? `, speaks ${profile.languages.join(" and ")}` : ""}.` },
+    profile.languages.length
+      ? {
+          id: "about-basics",
+          text: `${profile.name}, ${ageLabel(profile)}, speaks ${profile.languages.join(" and ")}.`,
+          textKey: "elev.packet.item.basicsLangs",
+          vars: { ...basicsVars, languages: { list: profile.languages.map((l) => ({ languageName: l })), join: "and" } },
+        }
+      : { id: "about-basics", text: `${profile.name}, ${ageLabel(profile)}.`, textKey: "elev.packet.item.basics", vars: basicsVars },
   ];
-  if (profile.schoolContext) aboutItems.push({ id: "about-school", text: `Setting: ${profile.schoolContext}.` });
-  if (profile.strengths?.length) aboutItems.push({ id: "about-strengths", text: `Strengths: ${profile.strengths.join(", ")}.` });
-  if (profile.challenges?.length) aboutItems.push({ id: "about-focus", text: `Current focus: ${profile.challenges.join(", ")}.` });
+  if (profile.schoolContext) aboutItems.push({ id: "about-school", text: `Setting: ${profile.schoolContext}.`, textKey: "elev.packet.item.setting", vars: { setting: profile.schoolContext } });
+  if (profile.strengths?.length) aboutItems.push({ id: "about-strengths", text: `Strengths: ${profile.strengths.join(", ")}.`, textKey: "elev.packet.item.strengths", vars: { list: { list: profile.strengths, join: "comma" } } });
+  if (profile.challenges?.length) aboutItems.push({ id: "about-focus", text: `Current focus: ${profile.challenges.join(", ")}.`, textKey: "elev.packet.item.focus", vars: { list: { list: profile.challenges, join: "comma" } } });
   sections.push({ id: "about", title: `About ${profile.name}`, titleKey: "elev.packet.section.about", titleVars: { name: profile.name }, items: aboutItems });
 
   // 2) What's been happening — top recent concerns by frequency.
@@ -371,6 +452,8 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
     const items: PacketItem[] = top.map(([type, c], i) => ({
       id: `pattern-${i}`,
       text: `${type}: ${c.n} time${c.n === 1 ? "" : "s"} in the last ${windowDays} days${c.maxIntensity >= 4 ? ", sometimes intense" : ""}.`,
+      textKey: c.maxIntensity >= 4 ? "elev.packet.item.patternIntense" : "elev.packet.item.pattern",
+      vars: { type: { momentType: type }, times: timesVar(c.n), days: windowDays },
     }));
     sections.push({
       id: "patterns",
@@ -402,14 +485,28 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
     const inWindow = milestones.filter((m) => milestoneInAgeWindow(m.ageMonths, childMonths));
     const observedInWindow = inWindow.filter((m) => effectiveObservation(m) === "yes");
     const MAX_LISTED = 6;
-    const groupLine = (id: string, label: string, group: PacketInputMilestone[]): PacketItem | null => {
+    const groupLine = (id: string, label: string, labelKey: string, group: PacketInputMilestone[]): PacketItem | null => {
       if (group.length === 0) return null;
-      const listed = group.slice(0, MAX_LISTED).map((m) => {
+      const shown = group.slice(0, MAX_LISTED);
+      const listed = shown.map((m) => {
         const date = isoDay(m.observedAt);
         return `${m.title} (${humanDomainLabel(m.domain)}${date ? `, ${date}` : ""})`;
       });
       const more = group.length > MAX_LISTED ? `; and ${group.length - MAX_LISTED} more` : "";
-      return { id, text: `${label} (${group.length}): ${listed.join("; ")}${more}.` };
+      // Milestone titles stay as catalogued (GD-6); the scaffold, the domain
+      // and the "and N more" tail are the reader's language.
+      const entries: PacketVar[] = shown.map((m) => {
+        const date = isoDay(m.observedAt);
+        return date
+          ? { key: "elev.packet.item.milestoneDated", vars: { title: m.title, domain: domainVar(m.domain), date } }
+          : { key: "elev.packet.item.milestone", vars: { title: m.title, domain: domainVar(m.domain) } };
+      });
+      return {
+        id,
+        text: `${label} (${group.length}): ${listed.join("; ")}${more}.`,
+        textKey: group.length > MAX_LISTED ? "elev.packet.item.groupMore" : "elev.packet.item.group",
+        vars: { label: { key: labelKey }, n: group.length, list: { list: entries, join: "semicolon" }, ...(group.length > MAX_LISTED ? { more: group.length - MAX_LISTED } : {}) },
+      };
     };
     const byDomain = new Map<string, { done: number; total: number }>();
     for (const m of inWindow) {
@@ -417,30 +514,38 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
       d.total += 1; if (effectiveObservation(m) === "yes") d.done += 1;
       byDomain.set(m.domain, d);
     }
-    const windowLabel = bandForAgeMonths(childMonths).label;
+    const band = bandForAgeMonths(childMonths);
+    const windowLabel = band.label;
+    const overallTotal = observed.length !== observedInWindow.length;
     const items: PacketItem[] = [
       {
         id: "dev-overall",
         text: `${observedInWindow.length} of ${inWindow.length} milestones on the ${windowLabel} checklists noticed so far` +
-          (observed.length !== observedInWindow.length ? ` (${observed.length} noticed in total).` : "."),
+          (overallTotal ? ` (${observed.length} noticed in total).` : "."),
+        textKey: overallTotal ? "elev.packet.item.devOverallTotal" : "elev.packet.item.devOverall",
+        vars: { done: observedInWindow.length, total: inWindow.length, band: { ageMonths: band.months }, all: observed.length },
       },
       ...[
-        groupLine("dev-observed", "Observed", observed),
-        groupLine("dev-not-sure", "Not sure yet", notSure),
+        groupLine("dev-observed", "Observed", "elev.packet.item.observed", observed),
+        groupLine("dev-not-sure", "Not sure yet", "elev.packet.item.notSure", notSure),
       ].filter((it): it is PacketItem => it !== null),
       ...[...byDomain.entries()]
         .filter(([, d]) => d.total > 0)
-        .map(([domain, d], i) => ({ id: `dev-${i}`, text: `${humanDomainLabel(domain)}: ${d.done} of ${d.total} noticed.` })),
+        .map(([domain, d], i) => ({
+          id: `dev-${i}`,
+          text: `${humanDomainLabel(domain)}: ${d.done} of ${d.total} noticed.`,
+          textKey: "elev.packet.item.devDomain",
+          vars: { domain: domainVar(domain), done: d.done, total: d.total },
+        })),
     ];
     sections.push({ id: "development", title: "Development snapshot", titleKey: "elev.packet.section.development", items });
   }
 
   // 4) What's been tried — active plans (shows the family is already working on it).
   if (plans.length) {
-    const items: PacketItem[] = plans.slice(0, 4).map((p, i) => ({
-      id: `tried-${i}`,
-      text: p.issue ? `${p.title} — for ${p.issue}.` : p.title,
-    }));
+    const items: PacketItem[] = plans.slice(0, 4).map((p, i) => (p.issue
+      ? { id: `tried-${i}`, text: `${p.title} — for ${p.issue}.`, textKey: "elev.packet.item.triedFor", vars: { title: p.title, issue: p.issue } }
+      : { id: `tried-${i}`, text: p.title }));
     sections.push({ id: "tried", title: "What we've already tried", titleKey: "elev.packet.section.tried", items });
   }
 
@@ -465,7 +570,14 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
     const items: PacketItem[] = input.langObs.slice(0, 12).map((o, i) => {
       const day = isoDay(o.at);
       const lang = o.language ? ` [${o.language}]` : "";
-      return { id: `lang-${i}`, text: `${o.phrase}${lang}${day ? ` (${day})` : ""}` };
+      const text = `${o.phrase}${lang}${day ? ` (${day})` : ""}`;
+      if (!o.language && !day) return { id: `lang-${i}`, text };
+      return {
+        id: `lang-${i}`,
+        text,
+        textKey: `elev.packet.item.phrase${o.language ? "Lang" : ""}${day ? "Dated" : ""}`,
+        vars: { phrase: o.phrase, language: { languageName: o.language ?? "" }, date: day ?? "" },
+      };
     });
     sections.push({
       id: "language-observations",
@@ -488,7 +600,16 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
           g.heightCm != null ? `${g.heightCm} cm` : null,
           g.weightKg != null ? `${g.weightKg} kg` : null,
         ].filter(Boolean);
-        return { id: `growth-${i}`, text: `${isoDay(g.date) ?? g.date}: ${parts.join(", ")}` };
+        const partVars: PacketVar[] = [
+          ...(g.heightCm != null ? [{ key: "elev.packet.item.cm", vars: { n: g.heightCm } }] : []),
+          ...(g.weightKg != null ? [{ key: "elev.packet.item.kg", vars: { n: g.weightKg } }] : []),
+        ];
+        return {
+          id: `growth-${i}`,
+          text: `${isoDay(g.date) ?? g.date}: ${parts.join(", ")}`,
+          textKey: "elev.packet.item.measurement",
+          vars: { date: isoDay(g.date) ?? g.date, parts: { list: partVars, join: "comma" as const } },
+        };
       })
       .filter((it) => !/: $/.test(it.text));
     if (items.length) {
@@ -517,6 +638,8 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
       .map(([trigger, n], i) => ({
         id: `trigger-${i}`,
         text: `"${trigger}" — noted ${n} time${n === 1 ? "" : "s"}.`,
+        textKey: "elev.packet.item.trigger",
+        vars: { quote: trigger, times: timesVar(n) },
       }));
     sections.push({
       id: "triggers",
@@ -576,9 +699,9 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
         titleKey: sinceKey, titleVars: sinceVars,
         noteKey: "elev.packet.note.sinceLast",
         items: [
-          { id: "delta-logs", text: `${newLogs} new moment${s(newLogs)} logged.` },
-          { id: "delta-plans", text: `${newPlans} action plan${s(newPlans)} added.` },
-          { id: "delta-milestones", text: `${newlyNoticed} milestone${s(newlyNoticed)} newly noticed.` },
+          { id: "delta-logs", text: `${newLogs} new moment${s(newLogs)} logged.`, textKey: `elev.packet.item.deltaLogs.${newLogs === 1 ? "one" : "other"}`, vars: { n: newLogs } },
+          { id: "delta-plans", text: `${newPlans} action plan${s(newPlans)} added.`, textKey: `elev.packet.item.deltaPlans.${newPlans === 1 ? "one" : "other"}`, vars: { n: newPlans } },
+          { id: "delta-milestones", text: `${newlyNoticed} milestone${s(newlyNoticed)} newly noticed.`, textKey: `elev.packet.item.deltaMilestones.${newlyNoticed === 1 ? "one" : "other"}`, vars: { n: newlyNoticed } },
         ],
       });
     }
@@ -621,7 +744,7 @@ export function serializePacket(packet: ConsultPacket, excludedIds: Set<string> 
     lines.push(`## ${sectionTitle(section, lang)}`);
     const note = sectionNote(section, lang);
     if (note) lines.push(`_${note}_`);
-    for (const it of items) lines.push(`- ${it.text}`);
+    for (const it of items) lines.push(`- ${itemText(it, lang)}`);
     lines.push("");
   }
   return lines.join("\n").trim() + "\n";
@@ -887,7 +1010,7 @@ export function presetPacketToPrintSections(
     const note = sectionNote(section, lang);
     sections.push({
       heading: sectionTitle(section, lang),
-      body: [...(note ? [note] : []), ...items.map((it) => it.text)],
+      body: [...(note ? [note] : []), ...items.map((it) => itemText(it, lang))],
     });
   }
   assertWithinCeiling(preset, sections.flatMap((s) => [s.heading, ...s.body]).join("\n"));
@@ -990,7 +1113,7 @@ export function exportPrintSections(
       const items = section.items.filter((it) => !excludedIds.has(it.id));
       if (items.length === 0) continue;
       const sNote = sectionNote(section, lang);
-      sections.push({ heading: sectionTitle(section, lang), body: [...(sNote ? [sNote] : []), ...items.map((it) => it.text)] });
+      sections.push({ heading: sectionTitle(section, lang), body: [...(sNote ? [sNote] : []), ...items.map((it) => itemText(it, lang))] });
     }
     const out = [...sections, ...noteSection];
     assertClinicianExportCeiling(out.flatMap((s) => [s.heading, ...s.body]).join("\n"));

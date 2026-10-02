@@ -10,6 +10,7 @@ import type { LangObservation } from "../growth/vocabAgg";
 import { fmtDay } from "./formatDate";
 import { translate, type UiLang } from "./i18n";
 import { topMomentDisplay } from "../hooks/useWeeklyRecap";
+import { behaviorTypeLabel } from "../content/behaviorTaxonomy";
 
 export type ReportSection = { heading: string; body: string | string[] };
 export type ReportDoc = {
@@ -82,7 +83,24 @@ function modeOf(m: Map<string, number>) {
   m.forEach((v, k) => { if (v > max) { max = v; top = k; } });
   return top;
 }
-function topMomentLines(logs: BehaviorLog[]): string[] {
+/** B-CAREPRO-32 — one line in the report's language. English returns the
+ *  literal (the EN document stays byte-identical); any other language renders
+ *  the key (same words, `elev.reports.line.*`, EN + HE). */
+type Tr = (key: string, en: string, vars?: Record<string, string | number>) => string;
+const trFor = (lang: UiLang): Tr => (key, en, vars) => (lang === "en" ? en : translate(lang, key, vars));
+/** The behaviour-type label in the report's language (EN keeps the stored value). */
+const typeLabelFor = (lang: UiLang) => (type: string) =>
+  lang === "en" ? type : behaviorTypeLabel(type, (k) => translate(lang, k), "full");
+/** A profile/observation language name in the report's language when it is a
+ *  known language ("Hebrew" → "עברית"); anything else prints as written. */
+const KNOWN_LANGUAGES = ["hebrew", "english", "arabic", "russian", "french"];
+const languageNameFor = (lang: UiLang) => (name: string) => {
+  if (lang === "en") return name;
+  const known = KNOWN_LANGUAGES.find((n) => n === name.trim().toLowerCase());
+  return known ? translate(lang, `ob.lang.${known}`) : name;
+};
+
+function topMomentLines(logs: BehaviorLog[], tr: Tr, typeLabel: (t: string) => string): string[] {
   const typeCounts = new Map<string, number>();
   const triggerCounts = new Map<string, number>();
   logs.forEach((l) => {
@@ -96,46 +114,64 @@ function topMomentLines(logs: BehaviorLog[]): string[] {
     topTrigger: modeOf(triggerCounts),
     ...(topBehaviorType ? { topBehaviorType } : {}),
   });
-  const lines = [`Most-logged: ${top.type || "—"}`];
-  if (top.quote) lines.push(`Often-noted trigger, in the parent's words: “${top.quote}”`);
+  const shownType = top.type ? typeLabel(top.type) : "—";
+  const lines = [tr("elev.reports.line.mostLogged", `Most-logged: ${shownType}`, { type: shownType })];
+  if (top.quote) lines.push(tr("elev.reports.line.oftenTrigger", `Often-noted trigger, in the parent's words: “${top.quote}”`, { quote: top.quote }));
   return lines;
 }
 /** One event line: behaviorType as the label, the parent's free-typed trigger
  *  quoted + truncated through the same shared quarantine helper. */
-function eventLine(l: BehaviorLog): string {
+function eventLine(l: BehaviorLog, lang: UiLang, tr: Tr, typeLabel: (t: string) => string): string {
   const m = topMomentDisplay({ topTrigger: l.trigger || "", topBehaviorType: l.behaviorType });
-  return `${fmtDay(l.timestamp, "en")} — ${m.type || l.behaviorType}${m.quote ? ` — parent noted: “${m.quote}”` : ""}`;
+  const day = fmtDay(l.timestamp, lang);
+  const type = typeLabel(m.type || l.behaviorType);
+  return m.quote
+    ? tr("elev.reports.line.eventQuoted", `${day} — ${type} — parent noted: “${m.quote}”`, { day, type, quote: m.quote })
+    : tr("elev.reports.line.event", `${day} — ${type}`, { day, type });
 }
 
-export function buildReport(type: ParentReportType, ctx: ReportContext): ReportDoc {
-  return { ...buildReportBody(type, ctx), heroImageUrl: ctx.heroImageUrl };
+/** B-CAREPRO-32: `lang` renders the whole parent-record document — title,
+ *  headings, count lines, dates — in the family's language (default English,
+ *  byte-identical for every existing caller). */
+export function buildReport(type: ParentReportType, ctx: ReportContext, lang: UiLang = "en"): ReportDoc {
+  return { ...buildReportBody(type, ctx, lang), heroImageUrl: ctx.heroImageUrl };
 }
 
-function buildReportBody(type: ParentReportType, ctx: ReportContext): ReportDoc {
+function buildReportBody(type: ParentReportType, ctx: ReportContext, lang: UiLang): ReportDoc {
   const { child, logs, plans, checkedMilestones, totalMilestones } = ctx;
+  const tr = trFor(lang);
+  const typeLabel = typeLabelFor(lang);
+  const age = lang === "en" ? ageLabel(child) : ageLabel(child, (k, v) => translate(lang, k, v));
   const wk = recentLogs(logs, 7);
   const mo = recentLogs(logs, 28);
-  const common = `${child.name}, ${ageLabel(child)}`;
+  const common = `${child.name}, ${age}`;
+  const title = (t: ParentReportType, en: string) => tr(`elev.reports.${t}.title`, en);
+  const noticed = tr("elev.reports.line.milestonesNoticed", `${checkedMilestones} of ${totalMilestones} age-appropriate milestones noticed`, { done: checkedMilestones, total: totalMilestones });
+  const momentsLogged = (n: number) => tr(n === 1 ? "elev.reports.line.momentsLogged.one" : "elev.reports.line.momentsLogged.other", `${n} moments logged`, { n });
+  const moments = (n: number) => tr(n === 1 ? "elev.reports.line.moments.one" : "elev.reports.line.moments.other", `${n} moments`, { n });
+  const resolved = (n: number) => tr("elev.reports.line.resolved", `${n} marked resolved`, { n });
+  const langName = languageNameFor(lang);
+  const languagesLine = child.languages.map(langName).join(" · ");
 
   switch (type) {
     case "weekly":
-      return { title: "Weekly Insight", subtitle: common, sections: [
-        { heading: "This week", body: [`${wk.length} moments logged`, `${resolvedCount(wk)} marked resolved`, ...topMomentLines(wk)] },
-        { heading: "Development", body: [`${checkedMilestones} of ${totalMilestones} age-appropriate milestones noticed`] },
-        { heading: "Suggested focus", body: child.challenges.slice(0, 2) },
+      return { title: title("weekly", "Weekly Insight"), subtitle: common, sections: [
+        { heading: tr("elev.reports.h.thisWeek", "This week"), body: [momentsLogged(wk.length), resolved(resolvedCount(wk)), ...topMomentLines(wk, tr, typeLabel)] },
+        { heading: tr("elev.reports.h.development", "Development"), body: [noticed] },
+        { heading: tr("elev.reports.h.suggestedFocus", "Suggested focus"), body: child.challenges.slice(0, 2) },
       ]};
     case "snapshot":
-      return { title: "Development Snapshot", subtitle: common, sections: [
-        { heading: "At a glance", body: [`${ageLabel(child)}`, `${checkedMilestones} of ${totalMilestones} age-appropriate milestones noticed`] },
-        { heading: "Strengths", body: child.strengths },
-        { heading: "Where to support", body: child.challenges },
-        { heading: "Languages", body: child.languages.join(" · ") },
+      return { title: title("snapshot", "Development Snapshot"), subtitle: common, sections: [
+        { heading: tr("elev.reports.h.atAGlance", "At a glance"), body: [`${age}`, noticed] },
+        { heading: tr("elev.reports.h.strengths", "Strengths"), body: child.strengths },
+        { heading: tr("elev.reports.h.whereToSupport", "Where to support"), body: child.challenges },
+        { heading: tr("elev.reports.h.languages", "Languages"), body: languagesLine },
       ]};
     case "behavior":
-      return { title: "Behavior Pattern Report", subtitle: common, sections: [
-        { heading: "Summary (28 days)", body: [`${mo.length} moments`, `${resolvedCount(mo)} marked resolved`, ...topMomentLines(mo)] },
-        { heading: "Recent events", body: mo.slice(0, 8).map(eventLine) },
-        { heading: "What helped", body: mo.map((l) => l.response).filter(Boolean).slice(0, 5) },
+      return { title: title("behavior", "Behavior Pattern Report"), subtitle: common, sections: [
+        { heading: tr("elev.reports.h.summary28", "Summary (28 days)"), body: [moments(mo.length), resolved(resolvedCount(mo)), ...topMomentLines(mo, tr, typeLabel)] },
+        { heading: tr("elev.reports.h.recentEvents", "Recent events"), body: mo.slice(0, 8).map((l) => eventLine(l, lang, tr, typeLabel)) },
+        { heading: tr("elev.reports.h.whatHelped", "What helped"), body: mo.map((l) => l.response).filter(Boolean).slice(0, 5) },
       ]};
     case "language": {
       // LC-19: child-specific lines come ONLY from the record — profile
@@ -146,26 +182,29 @@ function buildReportBody(type: ParentReportType, ctx: ReportContext): ReportDoc 
       const obs = (ctx.langObs ?? []).filter((o) => (o.phrase || "").trim() && (o.language || "").trim());
       const byLang = new Map<string, number>();
       for (const o of obs) byLang.set(o.language.trim(), (byLang.get(o.language.trim()) ?? 0) + 1);
-      const perLanguage = [...byLang.entries()].map(([lang, n]) => `${lang}: ${n} word${n === 1 ? "" : "s"} or phrase${n === 1 ? "" : "s"} the parent has noticed`);
+      const perLanguage = [...byLang.entries()].map(([language, n]) =>
+        tr(n === 1 ? "elev.reports.line.wordsNoticed.one" : "elev.reports.line.wordsNoticed.other",
+          `${language}: ${n} word${n === 1 ? "" : "s"} or phrase${n === 1 ? "" : "s"} the parent has noticed`, { language: langName(language), n }));
       const recent = [...obs]
         .sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)))
         .slice(0, LANG_PHRASES_MAX)
-        .map((o) => `${o.language.trim()}, in the parent's words: “${o.phrase.trim()}”`);
+        .map((o) => tr("elev.reports.line.parentWords", `${o.language.trim()}, in the parent's words: “${o.phrase.trim()}”`, { language: langName(o.language.trim()), phrase: o.phrase.trim() }));
       const languageFocus = child.challenges.filter((c) => /language|english|hebrew|dutch|speak|speech|talk|word|vocab/i.test(c));
-      return { title: "Language Transition Note", subtitle: common, sections: [
-        { heading: "Languages at home", body: child.languages.join(" · ") },
-        { heading: "School context", body: child.schoolContext },
-        { heading: "Words and phrases the parent has noticed", body: [...perLanguage, ...recent] },
-        { heading: "Where the parent asks for support", body: languageFocus },
-        { heading: "Phrases that help at school", body: SUGGESTED_SCHOOL_PHRASES.map((p) => `${GENERAL_SUGGESTION_LABEL} ${p}`) },
+      const suggestionLabel = tr("elev.reports.line.suggestedLabel", GENERAL_SUGGESTION_LABEL);
+      return { title: title("language", "Language Transition Note"), subtitle: common, sections: [
+        { heading: tr("elev.reports.h.languagesAtHome", "Languages at home"), body: languagesLine },
+        { heading: tr("elev.reports.h.schoolContext", "School context"), body: child.schoolContext },
+        { heading: tr("elev.reports.h.wordsNoticed", "Words and phrases the parent has noticed"), body: [...perLanguage, ...recent] },
+        { heading: tr("elev.reports.h.parentAsks", "Where the parent asks for support"), body: languageFocus },
+        { heading: tr("elev.reports.h.schoolPhrases", "Phrases that help at school"), body: SUGGESTED_SCHOOL_PHRASES.map((p, i) => `${suggestionLabel} ${tr(`elev.reports.line.schoolPhrase.${i + 1}`, p)}`) },
       ]};
     }
     case "growth":
-      return { title: "Growth Plan Progress", subtitle: common, sections: plans.length ? plans.map((p) => {
+      return { title: title("growth", "Growth Plan Progress"), subtitle: common, sections: plans.length ? plans.map((p) => {
         const steps = p.phases.flatMap((ph) => ph.steps);
         const done = steps.filter((s) => s.completed).length;
-        return { heading: p.title, body: [`${done}/${steps.length} steps complete`, ...steps.slice(0, 6).map((s) => `${s.completed ? "✓" : "○"} ${s.text}`)] };
-      }) : [{ heading: "No active plans", body: "Create a Growth Plan to track progress here." }] };
+        return { heading: p.title, body: [tr("elev.reports.line.stepsComplete", `${done}/${steps.length} steps complete`, { done, total: steps.length }), ...steps.slice(0, 6).map((s) => `${s.completed ? "✓" : "○"} ${s.text}`)] };
+      }) : [{ heading: tr("elev.reports.h.noPlans", "No active plans"), body: tr("elev.reports.line.noPlans", "Create a Growth Plan to track progress here.") }] };
   }
 }
 
@@ -276,7 +315,7 @@ function renderPrintableHtml(doc: ReportDoc, childName: string, lang: UiLang = "
   </style></head><body>
   <div class="brand">${doc.heroImageUrl
     ? `<img class="hero" src="${doc.heroImageUrl}" alt="" referrerpolicy="no-referrer" />`
-    : `<span class="dot">A</span>`}<b>Arbor — Development Fieldbook</b></div>
+    : `<span class="dot">A</span>`}<b>${esc(lang === "en" ? "Arbor — Development Fieldbook" : translate(lang, "elev.reports.brand"))}</b></div>
   <h1>${esc(doc.title)}</h1>
   ${doc.subtitle ? `<p class="sub">${esc(doc.subtitle)}</p>` : ""}
   <p class="meta">${esc(translate(lang, "elev.reports.printMeta", { date: fmtDay(new Date(), lang) }))}</p>
