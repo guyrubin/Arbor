@@ -109,6 +109,10 @@ export interface BuildPacketInput {
    *  ⇒ the packet gains a computed, counts-only "Since the last export" delta
    *  section. Absent (no prior export) ⇒ no delta section — fail quiet. */
   lastExportedAt?: string | number;
+  /** B-CAREPRO-17: WHO received that last export. Present ⇒ the delta
+   *  section's heading names them ("Since you last shared with the
+   *  pediatrician (date)") instead of the generic "Since the last export". */
+  lastExportedAudience?: ConsultAudience | "self";
   /** LC-20: the parent's one-line reason for the visit. When present it is the
    *  FIRST section of every packet, so the clinician does not open by asking
    *  the question the parent already answered. The parent's own words. */
@@ -558,11 +562,18 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
         return Number.isFinite(t) && t > lastMs;
       }).length;
       const s = (n: number) => (n === 1 ? "" : "s");
+      // B-CAREPRO-17: the heading names who last received it — honest about
+      // what the anchor is (the last time THIS audience got a summary), until
+      // B-CAREPRO-37 re-anchors it on the visit itself.
+      const sinceKey = input.lastExportedAudience && input.lastExportedAudience !== "teacher"
+        ? `elev.packet.section.sinceShared.${input.lastExportedAudience}`
+        : "elev.packet.section.sinceLast";
+      const sinceVars = { date: isoDay(lastMs) ?? "" };
       sections.push({
         id: "since-last-visit",
-        title: `Since the last export (${isoDay(lastMs)})`,
+        title: translate("en", sinceKey, sinceVars),
         note: "What was added since this summary was last prepared for this audience — counts only.",
-        titleKey: "elev.packet.section.sinceLast", titleVars: { date: isoDay(lastMs) },
+        titleKey: sinceKey, titleVars: sinceVars,
         noteKey: "elev.packet.note.sinceLast",
         items: [
           { id: "delta-logs", text: `${newLogs} new moment${s(newLogs)} logged.` },

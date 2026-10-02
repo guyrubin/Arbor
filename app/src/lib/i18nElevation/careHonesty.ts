@@ -93,6 +93,12 @@ export const en: Record<string, string> = {
   "elev.packet.note.triggers": "The parent's own words for what preceded a hard moment — counts, not causes.",
   "elev.packet.section.questions": "Questions I want to ask",
   "elev.packet.section.sinceLast": "Since the last export ({date})",
+  // B-CAREPRO-17: the delta heading names who last received the summary.
+  "elev.packet.section.sinceShared.pediatrician": "Since you last shared with the pediatrician ({date})",
+  "elev.packet.section.sinceShared.slp": "Since you last shared with the speech therapist ({date})",
+  "elev.packet.section.sinceShared.behavioral_health": "Since you last shared with the behaviour or psychology professional ({date})",
+  "elev.packet.section.sinceShared.therapist": "Since you last shared with a clinician ({date})",
+  "elev.packet.section.sinceShared.self": "Since you last saved this for your records ({date})",
   "elev.packet.note.sinceLast": "What was added since this summary was last prepared for this audience — counts only.",
   // ── Builder G · item 8 — Reports (ten cards, the page chrome, the PDF shell)
   "elev.reports.eyebrow": "Care Network",
@@ -203,6 +209,11 @@ export const he: Record<string, string> = {
   "elev.packet.note.triggers": "המילים של ההורים למה שקדם לרגע קשה — ספירה, לא סיבה.",
   "elev.packet.section.questions": "שאלות",
   "elev.packet.section.sinceLast": "מאז הפעם הקודמת ({date})",
+  "elev.packet.section.sinceShared.pediatrician": "מאז ששיתפתם בפעם האחרונה עם רופא/ת הילדים ({date})",
+  "elev.packet.section.sinceShared.slp": "מאז ששיתפתם בפעם האחרונה עם קלינאי/ת התקשורת ({date})",
+  "elev.packet.section.sinceShared.behavioral_health": "מאז ששיתפתם בפעם האחרונה עם איש/אשת המקצוע להתנהגות או לפסיכולוגיה ({date})",
+  "elev.packet.section.sinceShared.therapist": "מאז ששיתפתם בפעם האחרונה עם איש/אשת מקצוע ({date})",
+  "elev.packet.section.sinceShared.self": "מאז ששמרתם את זה בפעם האחרונה לרשומות שלכם ({date})",
   "elev.packet.note.sinceLast": "מה נוסף מאז שהסיכום הזה הוכן בפעם הקודמת לאותו נמען — ספירה בלבד.",
   // ── Builder G · item 8 — Reports (ten cards, the page chrome, the PDF shell)
   "elev.reports.eyebrow": "רשת התמיכה",

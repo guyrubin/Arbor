@@ -19,7 +19,7 @@ import {
 } from "../../consult/packet";
 import { ClinicalLanguageError } from "../../lib/clinicalScan";
 import { trackShareInitiated, trackShareCompleted } from "../../lib/loopEvents";
-import { recordExport } from "../../consult/exportHistory";
+import { getLastExportedAt, recordExport } from "../../consult/exportHistory";
 import { InsetRow } from "../ui/kit";
 import { useConsultPdf } from "./Reports";
 // LC-20 + LC-12: the reason for the visit, the questions prepared in
@@ -154,6 +154,7 @@ export default function AskSpecialist() {
     try {
       window.location.href = href;
       trackShareCompleted("story", "email");
+      recordExport(childProfile.id, audience);
     }
     catch { toast(t("elev.packet.copyFailed"), "error"); }
   };
@@ -173,8 +174,13 @@ export default function AskSpecialist() {
         .map((o) => ({ phrase: o.phrase ?? "", language: o.language, at: o.timestamp }))
         .filter((o) => o.phrase.trim().length > 0),
       growthEntries: growthCol.items.map((g) => ({ date: g.date, heightCm: g.heightCm, weightKg: g.weightKg })),
+      // B-CAREPRO-17 / CARE-7: "Since you last shared with {audience}" —
+      // counts since this audience last received a summary from this device
+      // (device-local until a server anchor, G5). Absent on a first export.
+      lastExportedAt: getLastExportedAt(childProfile.id, audience) ?? undefined,
+      lastExportedAudience: audience,
     }),
-    [childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems, reason, preparedQuestions, langObsCol.items, growthCol.items]
+    [childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems, reason, preparedQuestions, langObsCol.items, growthCol.items, audience]
   );
 
   // LC-06: "about" is always emitted, so the honest emptiness test is
@@ -212,6 +218,7 @@ export default function AskSpecialist() {
     try {
       await navigator.clipboard.writeText(exportText);
       trackShareCompleted("story", "clipboard");
+      recordExport(childProfile.id, audience);
       toast(t("elev.packet.copied"), "success");
     }
     catch { toast(t("elev.packet.copyFailed"), "error"); }
