@@ -80,8 +80,10 @@ export const en: Record<string, string> = {
     "Arbor paused this brief. Something in what you have logged is better talked through with a qualified adult before a teacher document is written. Safety and support shows who to reach.",
   "elev.learnCare.brief.print": "Save as PDF",
   "elev.learnCare.brief.printed": "Opened for printing. Choose “Save as PDF” to keep a copy.",
-  "elev.learnCare.brief.oneDoor": "The teacher brief lives in School Brief",
-  "elev.learnCare.brief.oneDoor.hint": "One teacher document, one door.",
+  // B-CAREPRO-27: the free draft and the Plus AI draft.
+  "elev.learnCare.brief.draftHint": "Drafted from what you've recorded. Edit any line before you save it — or let Arbor write a fuller draft.",
+  "elev.learnCare.brief.aiDraft": "Draft with Arbor",
+  "elev.learnCare.brief.plus": "Plus",
 
   // ── LC-17 · Trusted Sharing ────────────────────────────────────────────────
   "elev.learnCare.share.preview.title": "They will see exactly this",
@@ -171,8 +173,9 @@ export const he: Record<string, string> = {
     "ארבור עצר את המסמך הזה. משהו ממה שתיעדתם כדאי לברר קודם עם איש מקצוע, לפני שנכתב מסמך לצוות החינוכי. בבטיחות ותמיכה תמצאו למי לפנות.",
   "elev.learnCare.brief.print": "לשמור כ‑PDF",
   "elev.learnCare.brief.printed": "נפתח להדפסה. בחרו „שמירה כ‑PDF” כדי לשמור עותק.",
-  "elev.learnCare.brief.oneDoor": "המסמך לצוות החינוכי נמצא במסמך לגן ולבית הספר",
-  "elev.learnCare.brief.oneDoor.hint": "מסמך אחד לצוות החינוכי, דלת אחת.",
+  "elev.learnCare.brief.draftHint": "הטיוטה נכתבה ממה שתיעדתם. אפשר לערוך כל שורה לפני השמירה — או לבקש מארבור טיוטה מלאה יותר.",
+  "elev.learnCare.brief.aiDraft": "לנסח עם ארבור",
+  "elev.learnCare.brief.plus": "פלוס",
 
   // ── LC-17 ──────────────────────────────────────────────────────────────────
   "elev.learnCare.share.preview.title": "זה בדיוק מה שהם יראו",

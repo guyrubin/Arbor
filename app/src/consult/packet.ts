@@ -1057,6 +1057,19 @@ export function normalizeExportAudience(value: unknown): ExportAudience | null {
     : null;
 }
 
+/** B-CAREPRO-27 — ONE teacher document. A teacher never receives this
+ *  packet's Markdown or print sections: the School Brief is the teacher
+ *  egress (per-export approval, curated fields, fail-closed scan, outside-erase
+ *  notice — `schoolBrief/schoolBrief.buildSchoolBriefExport`). The teacher
+ *  preset still exists: it seeds the brief's free draft (`teacherBriefDraft`)
+ *  and caps the `report_teacher` share scope. */
+export class TeacherEgressError extends Error {
+  constructor() {
+    super("A teacher receives the School Brief, never the consult packet text.");
+    this.name = "TeacherEgressError";
+  }
+}
+
 /** Scan the parent note for a non-clinician preset (fail closed). */
 function assertNoteAllowed(preset: ConsultPreset, note: string): void {
   if (!preset.clinicalTermScan) return;
@@ -1085,6 +1098,7 @@ export function serializeForExport(
     assertClinicianExportCeiling(md);
     return md;
   }
+  if (audience === "teacher") throw new TeacherEgressError();
   const preset = CONSULT_PRESETS[audience];
   assertNoteAllowed(preset, note);
   const md = appendParentNote(serializePresetPacket(preset.audience, packet, excludedIds, lang), note, noteHeading);
@@ -1119,6 +1133,7 @@ export function exportPrintSections(
     assertClinicianExportCeiling(out.flatMap((s) => [s.heading, ...s.body]).join("\n"));
     return out;
   }
+  if (audience === "teacher") throw new TeacherEgressError();
   const preset = CONSULT_PRESETS[audience];
   assertNoteAllowed(preset, note);
   const out = [...presetPacketToPrintSections(audience, packet, excludedIds, lang), ...noteSection];
@@ -1126,4 +1141,33 @@ export function exportPrintSections(
   assertWithinCeiling(preset, text);
   assertClinicianExportCeiling(text);
   return out;
+}
+
+/* ── B-CAREPRO-27 — the School Brief's free draft, from the teacher preset ───
+ * A Free parent used to meet a paywall before any teacher document existed,
+ * while Consult's teacher audience minted a second, deterministic document.
+ * Now the brief editor OPENS on this draft — built from the teacher preset's
+ * ceiling (about + what the family already tries; never logs, milestones or
+ * memory) in the parent's language — and "Draft with Arbor" (Plus) replaces it
+ * through /generate-handoff. Any line the clinical-term scan would refuse is
+ * left out of the draft (the parent can still type it; the export scan stays
+ * the gate). */
+export interface TeacherBriefDraft {
+  overview: string;
+  keyStrengths: string[];
+  suggestedTeacherStrategies: string[];
+}
+
+export function teacherBriefDraft(input: BuildPacketInput, lang: UiLang = "en"): TeacherBriefDraft {
+  const packet = capToPreset(CONSULT_PRESETS.teacher, buildConsultPacket(input));
+  const items = (id: string) => packet.sections.find((s) => s.id === id)?.items ?? [];
+  const clean = (line: string) => line.trim().length > 0 && !findClinicalDiagnosisTerm(line);
+  return {
+    // overview ← the teacher preset's "about" lines (strengths have their own list)
+    overview: items("about").filter((it) => it.id !== "about-strengths").map((it) => itemText(it, lang)).filter(clean).join(" "),
+    // keyStrengths ← the profile's strengths, as the parent wrote them
+    keyStrengths: (input.profile.strengths ?? []).filter(clean),
+    // suggestedTeacherStrategies ← what the family already tries
+    suggestedTeacherStrategies: items("tried").map((it) => itemText(it, lang)).filter(clean),
+  };
 }

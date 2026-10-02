@@ -13,6 +13,8 @@ import {
   assertClinicianExportCeiling,
   isConsultPacketEmpty,
   serializeForExport,
+  exportPrintSections,
+  TeacherEgressError,
   humanDomainLabel,
   milestoneInAgeWindow,
   EXPORT_AUDIENCES,
@@ -522,21 +524,21 @@ describe("RUN-01 — the development snapshot never reads as a deficit list", ()
 describe("LC-08 — serializeForExport: one seam, audience-capped, note scanned", () => {
   const noteHeading = "Parent note";
 
-  it("teacher output excludes memory facts and log-derived patterns", () => {
-    const md = serializeForExport("teacher", buildConsultPacket(base), new Set(), "Loves trains.", noteHeading);
+  it("B-CAREPRO-27: a teacher is refused at the seam — the School Brief is the one teacher document", () => {
+    const packet = buildConsultPacket(base);
+    expect(() => serializeForExport("teacher", packet, new Set(), "Loves trains.", noteHeading)).toThrow(TeacherEgressError);
+    expect(() => exportPrintSections("teacher", packet)).toThrow(TeacherEgressError);
+    // the teacher CEILING still caps what the preset may carry (share scopes, the brief's free draft)
+    const md = serializePresetPacket("teacher", buildConsultPacket(base));
     expect(md).not.toMatch(/Calms fastest with a countdown/);
     expect(md).not.toMatch(/Transition Refusal/);
-    expect(md).not.toMatch(/Sibling Conflict/);
     expect(md).not.toMatch(/Development snapshot/);
     expect(md).toContain("Smoother mornings");
-    expect(md).toContain("## Parent note");
-    expect(md).toContain("Loves trains.");
   });
 
-  it("a note containing a clinical term FAILS CLOSED for a teacher, passes for a clinician and for the parent's own records", () => {
+  it("a note containing a clinical term passes for a clinician and for the parent's own records", () => {
     const note = "The school suggested a speech delay assessment.";
     const packet = buildConsultPacket(base);
-    expect(() => serializeForExport("teacher", packet, new Set(), note, noteHeading)).toThrow(ClinicalLanguageError);
     expect(serializeForExport("therapist", packet, new Set(), note, noteHeading)).toContain(note);
     expect(serializeForExport("self", packet, new Set(), note, noteHeading)).toContain(note);
   });
@@ -553,7 +555,7 @@ describe("LC-08 — serializeForExport: one seam, audience-capped, note scanned"
 
   it("a percentage or forbidden token in the note fails closed for EVERY audience", () => {
     const packet = buildConsultPacket(base);
-    for (const audience of EXPORT_AUDIENCES) {
+    for (const audience of EXPORT_AUDIENCES.filter((a) => a !== "teacher")) {
       expect(() => serializeForExport(audience, packet, new Set(), "Progress 80% overall.", noteHeading), audience).toThrow(ClinicalLanguageError);
       expect(() => serializeForExport(audience, packet, new Set(), "riskLevel: Low", noteHeading), audience).toThrow(ClinicalLanguageError);
     }
@@ -767,8 +769,8 @@ describe("LC-11b — the teacher ceiling excludes the parent's clinician-facing 
     questions: [CLINICIAN_QUESTION],
   };
 
-  it("Copy / Download / Send to a teacher carry neither the reason nor the questions", () => {
-    const md = serializeForExport("teacher", buildConsultPacket(clinicianVoiceRecord), new Set(), "", noteHeading);
+  it("the teacher ceiling carries neither the reason nor the questions", () => {
+    const md = serializePresetPacket("teacher", buildConsultPacket(clinicianVoiceRecord));
     expect(md).not.toContain(CLINICIAN_VOICE);
     expect(md).not.toContain(CLINICIAN_QUESTION);
     expect(md).not.toContain("What I'd like help with");
@@ -781,15 +783,14 @@ describe("LC-11b — the teacher ceiling excludes the parent's clinician-facing 
     // Pre-change: the reason rode the teacher ceiling, the term scan hit
     // "delay", `serializeForExport` threw, and Copy / Download / Send all
     // disabled. The sections are now capped out before the guard sees them.
-    expect(() => serializeForExport("teacher", buildConsultPacket(clinicianVoiceRecord), new Set(), "", noteHeading)).not.toThrow();
+    expect(() => serializePresetPacket("teacher", buildConsultPacket(clinicianVoiceRecord))).not.toThrow();
     // The clinician audience still receives the parent's words, verbatim.
     expect(serializeForExport("therapist", buildConsultPacket(clinicianVoiceRecord), new Set(), "", noteHeading)).toContain(CLINICIAN_VOICE);
   });
 
-  it("NEGATIVE CONTROL: the scan is intact — the same term in the PARENT NOTE still fails closed", () => {
-    expect(() =>
-      serializeForExport("teacher", buildConsultPacket(richRecord), new Set(), "The gan mentioned a speech delay.", noteHeading)
-    ).toThrow(ClinicalLanguageError);
+  it("NEGATIVE CONTROL: the scan is intact — the same term inside the teacher ceiling still fails closed", () => {
+    const seeded = { ...richRecord, profile: { ...richRecord.profile, schoolContext: "The gan mentioned a speech delay." } };
+    expect(() => serializePresetPacket("teacher", buildConsultPacket(seeded))).toThrow(ClinicalLanguageError);
   });
 
   it("NEGATIVE CONTROL: put the parent-voice sections back in the teacher ceiling and the reason leaks", () => {

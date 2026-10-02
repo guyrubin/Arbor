@@ -23,6 +23,7 @@ import { trackShareInitiated, trackShareCompleted } from "../../lib/loopEvents";
 import { getLastExportedAt, recordExport } from "../../consult/exportHistory";
 import { InsetRow } from "../ui/kit";
 import { useConsultPdf } from "./Reports";
+import { handTeacherNote } from "../../schoolBrief/teacherHandoff";
 // LC-20 + LC-12: the reason for the visit, the questions prepared in
 // Appointments, and the discipline-specific evidence each preset reads.
 import { useChildCollection } from "../../hooks/useChildCollection";
@@ -338,10 +339,15 @@ export default function AskSpecialist() {
             {t("elev.carehonesty.consult.teacher.title", { name: firstName })}
           </h2>
           <p className="text-[13px] leading-relaxed mt-1.5" style={{ color: MUTED }}>{t("elev.carehonesty.consult.teacher.body")}</p>
+          {visionNote.trim() !== "" && (
+            <p data-testid="consult-teacher-note-carried" className="text-xs mt-2 inline-flex items-center gap-1.5" style={{ color: GREEN }}>
+              <Icon name="check_circle" size={14} fill={1} /> {t("elev.carehonesty.consult.teacher.noteCarried")}
+            </p>
+          )}
           <button
             type="button"
             data-testid="consult-teacher-open"
-            onClick={() => setActiveTab("school-brief")}
+            onClick={() => { handTeacherNote(visionNote); setActiveTab("school-brief"); }}
             className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-4 py-3 mt-4 min-h-[44px]"
             style={{ background: "var(--arbor-gradient-primary)", color: "var(--arbor-paper-elevated)", boxShadow: "var(--arbor-clay-glow)" }}
           >

@@ -180,7 +180,8 @@ describe("LC-11b · one teacher door — every door, not one named file", () => 
     expect(consult).toContain('const isTeacher = audience === "teacher";');
     const branch = /data-testid="consult-teacher-branch"[\s\S]*?<\/section>/.exec(consult);
     expect(branch).toBeTruthy();
-    expect(branch![0]).toContain('onClick={() => setActiveTab("school-brief")}');
+    // B-CAREPRO-27: the teacher note travels with the parent into the brief.
+    expect(branch![0]).toContain('onClick={() => { handTeacherNote(visionNote); setActiveTab("school-brief"); }}');
     // no Copy / PDF / send text for a teacher: the build and the PDF both stop first
     expect(consult).toContain('if (isTeacher) return { text: null, error: "" };');
     expect(consult).toContain("if (exportText == null || isTeacher) return;");
@@ -273,10 +274,12 @@ describe("B-CAREPRO-01 · a blocked School Brief generate opens the escalation c
     expect(brief).not.toContain('includes("Professional support")');
   });
 
-  it("the escalation card renders from a blocked generate on BOTH screens", () => {
+  it("the escalation card renders from a blocked generate (one screen since B-CAREPRO-27: the draft is always there)", () => {
     expect(brief).toMatch(/const escalationCard = escalationNote \|\| escalationBlocked \?/);
-    // once under the empty state (input screen), once in the draft branch (output screen)
-    expect(brief.match(/\{escalationCard\}/g)?.length).toBe(2);
+    // B-CAREPRO-27: there is no empty state any more — the free draft is on
+    // screen from the start — so the card mounts once, beside the draft.
+    expect(brief.match(/\{escalationCard\}/g)?.length).toBe(1);
+    expect(brief).not.toContain("{!draft ? (");
     const card = /data-testid="school-brief-escalation"[\s\S]*?<\/section>/.exec(brief);
     expect(card![0]).toContain("elev.learnCare.brief.escalation.blocked");
   });
@@ -310,5 +313,112 @@ describe("B-CAREPRO-16 · a Free parent gets the paywall sheet, not an English t
     expect(brief).not.toMatch(/toast\(err\.message/);
     // NEGATIVE CONTROL: the pre-change branch is caught by the same rule.
     expect(/toast\(err\.message/.test('else if (err instanceof PaywallError) toast(err.message, "info");')).toBe(true);
+  });
+});
+
+/* ── B-CAREPRO-27 — one teacher document: the School Brief, seeded from the
+ * teacher preset. Consult's teacher Copy/Download/mail used to mint a second,
+ * deterministic teacher document (about + tried) beside the AI brief, and the
+ * brief itself was Plus-only. Now: the packet seam refuses a teacher, the brief
+ * opens on a FREE draft from CONSULT_PRESETS.teacher, and "Draft with Arbor"
+ * (Plus) is the only network path. */
+import {
+  buildConsultPacket,
+  exportPrintSections,
+  serializeForExport,
+  teacherBriefDraft,
+  TeacherEgressError,
+  type BuildPacketInput,
+} from "../../consult/packet";
+import { buildSchoolBriefExport, findClinicalDiagnosisTerm } from "../../schoolBrief/schoolBrief";
+import { handTeacherNote, takeTeacherNote } from "../../schoolBrief/teacherHandoff";
+
+const DRAFT_INPUT: BuildPacketInput = {
+  profile: { name: "Dylan", age: 5, languages: ["Hebrew", "English"], schoolContext: "Gan Shaked", strengths: ["Builds towers", "Kind to friends"], challenges: ["Speech delay"] },
+  logs: [{ behaviorType: "Transition Refusal", intensity: 4, timestamp: new Date().toISOString(), trigger: "leaving the park" }],
+  milestones: [{ domain: "language_communication", title: "Says two-word phrases", checked: true }],
+  plans: [{ title: "Five-minute warning", issue: "leaving the park" }],
+  memory: [{ fact: "Calms with a countdown", status: "approved" }],
+  nowMs: Date.now(),
+  reason: "Should we get him assessed?",
+};
+
+describe("B-CAREPRO-27 · teacher egress only via buildSchoolBriefExport", () => {
+  it("the consult seam refuses a teacher (Copy text and PDF sections)", () => {
+    const packet = buildConsultPacket(DRAFT_INPUT);
+    expect(() => serializeForExport("teacher", packet)).toThrow(TeacherEgressError);
+    expect(() => exportPrintSections("teacher", packet)).toThrow(TeacherEgressError);
+    // POSITIVE CONTROL: a clinician audience still builds.
+    expect(serializeForExport("therapist", packet)).toContain("Five-minute warning");
+  });
+
+  it("no component hands the literal teacher audience to a packet serializer", () => {
+    const TEACHER_CALL = /\b(serializeForExport|exportPrintSections|serializePresetPacket|presetPacketToPrintSections|buildPresetPacket)\(\s*"teacher"/;
+    const offenders = SOURCES.filter((f) => f.rel.startsWith("components/") && TEACHER_CALL.test(f.src)).map((f) => f.rel);
+    expect(offenders).toEqual([]);
+    expect(TEACHER_CALL.test('serializeForExport("teacher", packet, excluded)')).toBe(true);
+  });
+
+  it("the School Brief prints only through buildSchoolBriefExport (approval + curated fields + scan)", () => {
+    const onApprove = /const onApprove = \(\) => \{[\s\S]*?\n  \};/.exec(brief);
+    expect(onApprove).toBeTruthy();
+    expect(onApprove![0]).toContain("canExport(approved)");
+    expect(onApprove![0]).toContain("buildExport()");
+    expect(onApprove![0]).toContain("openPrintableReport(");
+    expect(brief).toMatch(/return buildSchoolBriefExport\(draft, \{/);
+  });
+});
+
+describe("B-CAREPRO-27 · the brief opens on a free draft from the teacher preset", () => {
+  it("overview ← about lines; strengths ← profile strengths; strategies ← what the family tries", () => {
+    const d = teacherBriefDraft(DRAFT_INPUT, "en");
+    expect(d.overview).toContain("Dylan");
+    expect(d.overview).toContain("Setting: Gan Shaked.");
+    expect(d.keyStrengths).toEqual(["Builds towers", "Kind to friends"]);
+    expect(d.suggestedTeacherStrategies).toEqual(["Five-minute warning — for leaving the park."]);
+  });
+
+  it("never carries what the teacher ceiling forbids: logs, milestones, memory, the clinician-facing reason", () => {
+    const text = JSON.stringify(teacherBriefDraft(DRAFT_INPUT, "en"));
+    for (const banned of ["Transition Refusal", "Says two-word phrases", "Calms with a countdown", "assessed"]) expect(text).not.toContain(banned);
+  });
+
+  it("a line the clinical scan would refuse is left out, so the free draft prints (EN + HE)", () => {
+    for (const lang of ["en", "he"] as const) {
+      const d = teacherBriefDraft(DRAFT_INPUT, lang);
+      const all = [d.overview, ...d.keyStrengths, ...d.suggestedTeacherStrategies].join("\n");
+      expect(findClinicalDiagnosisTerm(all), lang).toBeNull();
+      expect(() => buildSchoolBriefExport({ ...d, classroomChallenges: [], languageSupportPlan: [] }, { title: "Brief", date: "2026-10-02" })).not.toThrow();
+    }
+    // NEGATIVE CONTROL: the dropped line would have failed the export scan.
+    expect(findClinicalDiagnosisTerm("Current focus: Speech delay.")).not.toBeNull();
+  });
+
+  it("HE draft passes the HE clinical list and speaks Hebrew around the family's words", () => {
+    const d = teacherBriefDraft({ ...DRAFT_INPUT, profile: { ...DRAFT_INPUT.profile, schoolContext: "גן שקד", challenges: ["בקרים"] } }, "he");
+    expect(d.overview).toContain("מסגרת:");
+    expect(d.overview).not.toContain("Setting:");
+    expect(findClinicalDiagnosisTerm(d.overview)).toBeNull();
+  });
+
+  it("the editor seeds from the free draft — no network, no paywall — and Plus is the AI draft", () => {
+    expect(brief).toContain("const [draft, setDraft] = useState<SchoolBriefData>(freeDraft);");
+    expect(brief).toMatch(/teacherBriefDraft\(\n?\s*buildPacketInput\(/);
+    // the AI path is a separate, labelled button; the free path calls no api
+    const freeDraftMemo = /const freeDraft = useMemo<SchoolBriefData>\(\(\) => \{[\s\S]*?\}, \[/.exec(brief);
+    expect(freeDraftMemo).toBeTruthy();
+    expect(freeDraftMemo![0]).not.toMatch(/api\.|fetch\(/);
+    expect(brief).toContain('data-testid="school-brief-ai-draft"');
+    expect(brief).toContain('t("elev.learnCare.brief.aiDraft")');
+    // the distinct-from-consult line and the empty state are gone (one document)
+    expect(brief).not.toContain("schoolBrief.distinct");
+    expect(brief).not.toContain("schoolBrief.empty.");
+  });
+
+  it("Consult's teacher note travels once into the brief", () => {
+    handTeacherNote("  Loves trains — use them for transitions.  ");
+    expect(takeTeacherNote()).toBe("Loves trains — use them for transitions.");
+    expect(takeTeacherNote()).toBeNull();
+    expect(brief).toContain("useState<string | null>(() => takeTeacherNote())");
   });
 });

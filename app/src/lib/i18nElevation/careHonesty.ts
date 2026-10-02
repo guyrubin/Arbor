@@ -26,6 +26,7 @@ export const en: Record<string, string> = {
   "elev.carehonesty.consult.teacher.title": "{name}'s teacher gets the School Brief",
   "elev.carehonesty.consult.teacher.body": "One page in classroom words: what helps and what to try. You review every line, and nothing prints until you approve it.",
   "elev.carehonesty.consult.teacher.cta": "Open the teacher brief",
+  "elev.carehonesty.consult.teacher.noteCarried": "Your note for the teacher goes into the brief, where you can edit it.",
   // B-CAREPRO-28: one PDF per audience (the 10-item menu and the .md download are gone).
   "elev.carehonesty.consult.pdf": "Save as PDF",
   "elev.carehonesty.consult.pdf.selfTitle": "Summary for my records",
@@ -224,6 +225,7 @@ export const he: Record<string, string> = {
   "elev.carehonesty.consult.teacher.title": "לגננת של {name} יוצא מכתב לגן",
   "elev.carehonesty.consult.teacher.body": "עמוד אחד במילים של כיתה: מה עוזר ומה כדאי לנסות. אתם עוברים על כל שורה, ושום דבר לא מודפס לפני שאישרתם.",
   "elev.carehonesty.consult.teacher.cta": "לפתוח את המכתב לגן",
+  "elev.carehonesty.consult.teacher.noteCarried": "ההערה שלכם לצוות החינוכי נכנסת למכתב, ושם אפשר לערוך אותה.",
   "elev.carehonesty.consult.pdf": "שמירה כ-PDF",
   "elev.carehonesty.consult.pdf.selfTitle": "סיכום לרשומות שלי",
   "elev.carehonesty.consult.preview.toggle": "תצוגה מקדימה של מה שיוצא בדיוק",

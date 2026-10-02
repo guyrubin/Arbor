@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
@@ -7,7 +7,8 @@ import { useToast } from "../../context/ToastContext";
 import { api, PaywallError, EscalationRequiredError } from "../../lib/api";
 import type { BehaviorLog, Milestone, SchoolBrief as SchoolBriefData } from "../../types";
 import type { HandoffLogInput, HandoffMilestoneInput } from "../../lib/api";
-import { milestoneInAgeWindow } from "../../consult/packet";
+import { buildPacketInput, milestoneInAgeWindow, teacherBriefDraft } from "../../consult/packet";
+import { takeTeacherNote } from "../../schoolBrief/teacherHandoff";
 import { ageMonthsFromProfile } from "../../lib/childAge";
 import { screenForImmediateEscalation } from "../../safety/escalation";
 import { Modal } from "../ui/Modal";
@@ -33,9 +34,15 @@ import { openPrintableReport } from "../../lib/reportExport";
 
 /* AP-056 — School Handoff Brief (parent-controlled, teacher-facing).
  *
- * DISTINCT from Care › Consult (the clinician packet). This surface:
- *  - generates via the EXISTING /generate-handoff endpoint (audience="teacher"),
- *    which already escalation-screens (409) + redacts name/email/phone server-side;
+ * B-CAREPRO-27: THE teacher document — Consult's teacher audience opens here.
+ * This surface:
+ *  - OPENS on a free, deterministic draft from the teacher preset
+ *    (consult/packet.teacherBriefDraft: about → overview, the profile's
+ *    strengths → strengths, what the family already tries → strategies), in
+ *    the parent's language, built on the device;
+ *  - "Draft with Arbor" (Plus) replaces it via the EXISTING /generate-handoff
+ *    endpoint (audience="teacher"), which already escalation-screens (409) +
+ *    redacts name/email/phone server-side;
  *  - shows the parent the EXACT rendered brief;
  *  - lets the parent PER-SECTION EDIT the curated fields before export (the
  *    editable payload is a transient `draft` in React state — never persisted;
@@ -93,19 +100,50 @@ const GREEN_SOFT = "var(--arbor-green-soft)";
 const RULE = "var(--arbor-rule)";
 
 export default function SchoolBrief() {
-  const { childProfile, behaviorLogs, milestones, setActiveTab, openPaywall } = useArbor();
+  const { childProfile, behaviorLogs, milestones, actionPlans, setActiveTab, openPaywall } = useArbor();
   const { t, uiLang } = useLanguage();
   const { toast } = useToast();
   const reduceMotion = useReducedMotion();
   const firstName = (childProfile.name || "your child").split(" ")[0];
 
+  // B-CAREPRO-27: a note Consult's teacher branch handed over (one-shot).
+  const [handedNote] = useState<string | null>(() => takeTeacherNote());
+
+  // B-CAREPRO-27 — the FREE draft: the teacher preset's ceiling (about + what
+  // the family already tries; never logs, milestones or memory), in the
+  // parent's language. No network, no paywall.
+  const freeDraft = useMemo<SchoolBriefData>(() => {
+    const draft = teacherBriefDraft(
+      buildPacketInput({ profile: childProfile, logs: behaviorLogs, milestones, plans: actionPlans, memory: [] }, Date.now()),
+      uiLang,
+    );
+    return {
+      title: "",
+      date: "",
+      overview: [draft.overview, handedNote ?? ""].filter((s) => s.trim()).join("\n\n"),
+      keyStrengths: draft.keyStrengths,
+      classroomChallenges: [],
+      languageSupportPlan: [],
+      suggestedTeacherStrategies: draft.suggestedTeacherStrategies,
+      crisisEscalationTrigger: "",
+    };
+  }, [childProfile, behaviorLogs, milestones, actionPlans, uiLang, handedNote]);
+
   // generate-and-present: the brief lives in component state only — no new
   // persistent child-data store is created (Condition 6). `draft` is the
   // EDITABLE payload; the export is built from it, so the clinical-term scan
   // inside buildSchoolBriefExport covers any parent edit (Condition 3).
-  const [draft, setDraft] = useState<SchoolBriefData | null>(null);
+  const [draft, setDraft] = useState<SchoolBriefData>(freeDraft);
+  // Once the parent edits (or Arbor drafts), the free draft no longer follows the record.
+  const [owned, setOwned] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [exportState, setExportState] = useState<ExportState>(initialExportState());
+  // The draft is rendered on open, so the approval state machine starts there.
+  const [exportState, setExportState] = useState<ExportState>(() => markRendered(initialExportState()));
+  useEffect(() => {
+    if (owned) return;
+    setDraft(freeDraft);
+    setExportState(markRendered(initialExportState()));
+  }, [freeDraft, owned]);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   // B-CAREPRO-01: the server's escalation screen (409) blocked the generate.
@@ -140,6 +178,7 @@ export default function SchoolBrief() {
   // re-approve the edited brief before it can leave the app. The state machine
   // stays idle → rendered → approved (no edit-bypass phase).
   const resetApproval = useCallback(() => {
+    setOwned(true);
     setExportState((s) => markRendered(s));
   }, []);
 
@@ -199,6 +238,7 @@ export default function SchoolBrief() {
         language: uiLang === "he" ? "he" : "en",
       });
       setDraft(data);
+      setOwned(true);
       setEditing(false);
       // A fresh brief is rendered but NOT approved — approval is per-export.
       setExportState(markRendered(initialExportState()));
@@ -281,10 +321,10 @@ export default function SchoolBrief() {
     ? { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 0 } }
     : { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.2 } };
 
-  // Item 11 (IA-02): ONE declared move, two mutually exclusive controls that
-  // perform it — "Write the brief" on the empty state and "Regenerate" once a
-  // draft exists. Built once and spread onto both, so this file carries exactly
-  // one `data-primary-move` and the page renders exactly one.
+  // Item 11 (IA-02): ONE declared move. B-CAREPRO-27: the brief exists on open
+  // (the free draft), so the move that builds the teacher's document is
+  // "Save as PDF" — review, approve, print. Spread once, so this file carries
+  // exactly one `data-primary-move` and the page renders exactly one.
   const primaryMove = { "data-primary-move": "build-school-brief" };
 
   return (
@@ -301,11 +341,6 @@ export default function SchoolBrief() {
         </p>
       </header>
 
-      {/* Distinct-from-consult line — the two surfaces coexist. */}
-      <p className="text-[12px] leading-relaxed rounded-xl p-3" style={{ background: "var(--arbor-paper-sunk)", color: MUTED, border: `1px solid ${RULE}` }}>
-        {t("schoolBrief.distinct")}
-      </p>
-
       {/* Non-diagnostic framing line. */}
       <div className="flex items-start gap-3 rounded-2xl p-4" style={{ background: GREEN_SOFT }}>
         <Icon name="favorite" size={20} fill={1} style={{ color: GREEN }} />
@@ -318,33 +353,11 @@ export default function SchoolBrief() {
           marks a top-level sibling module (what moduleBudget counts);
           `data-primary-move` marks the ONE control that performs the move
           surfaceContract.ts declares for this route. */}
-      {!draft ? (
-        <>
-          <div data-module="brief-start" className="rounded-2xl p-8 text-center" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
-            <span className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mx-auto" style={{ background: GREEN_SOFT, color: GREEN }}>
-              <Icon name="school" size={26} />
-            </span>
-            <h2 className="text-[17px] font-extrabold mt-3" style={{ color: INK }}>{t("schoolBrief.empty.title")}</h2>
-            <p className="text-sm mt-1.5 leading-relaxed max-w-[440px] mx-auto" style={{ color: MUTED }}>{t("schoolBrief.empty.body", { name: firstName })}</p>
-            <button
-              {...primaryMove}
-              onClick={generate}
-              disabled={generating}
-              className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-5 py-3 mt-4 min-h-[44px] disabled:opacity-60"
-              style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
-            >
-              {generating
-                ? (<><Icon name="progress_activity" size={16} className="animate-spin" /> {t("schoolBrief.generating")}</>)
-                : (<><Icon name="auto_awesome" size={16} /> {t("schoolBrief.generate", { name: firstName })}</>)}
-            </button>
-          </div>
-          {escalationCard}
-        </>
-      ) : (
-        <>
-          {editing && (
-            <p className="text-[12px] leading-relaxed" style={{ color: MUTED }}>{t("schoolBrief.editHint")}</p>
-          )}
+      <>
+          {/* B-CAREPRO-27: where the draft came from, and what Plus adds. */}
+          <p data-testid="school-brief-draft-hint" className="text-[12px] leading-relaxed" style={{ color: MUTED }}>
+            {editing ? t("schoolBrief.editHint") : t("elev.learnCare.brief.draftHint")}
+          </p>
 
           {/* The rendered brief — curated sections only (editable when `editing`). */}
           <div data-module="brief-draft" className="rounded-2xl p-5 md:p-6 space-y-5" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
@@ -390,14 +403,20 @@ export default function SchoolBrief() {
           {escalationCard}
 
           <div className="flex flex-wrap items-center gap-3">
+            {/* B-CAREPRO-27 / G2: Plus = AI drafting only. A Free parent who taps
+                it gets the paywall (B-CAREPRO-16); the free draft above already
+                prints. */}
             <button
-              {...primaryMove}
+              data-testid="school-brief-ai-draft"
               onClick={generate}
               disabled={generating}
               className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-4 py-3 min-h-[44px] disabled:opacity-50"
               style={{ background: "var(--arbor-paper-sunk)", color: INK, border: `1px solid ${RULE}` }}
             >
-              <Icon name="refresh" size={16} className={generating ? "animate-spin" : undefined} /> {t("schoolBrief.regenerate")}
+              {generating
+                ? (<><Icon name="progress_activity" size={16} className="animate-spin" /> {t("schoolBrief.generating")}</>)
+                : (<><Icon name="auto_awesome" size={16} /> {t("elev.learnCare.brief.aiDraft")}
+                    <span className="text-[11px] font-extrabold rounded-full px-2 py-0.5" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>{t("elev.learnCare.brief.plus")}</span></>)}
             </button>
             {/* Per-section edit toggle — keeps the default view calm; full edit power on demand. */}
             <button
@@ -410,6 +429,7 @@ export default function SchoolBrief() {
             </button>
             {/* Opening the review is NOT an export — export only fires after approve. */}
             <button
+              {...primaryMove}
               onClick={() => setReviewOpen(true)}
               className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-3 min-h-[44px]"
               style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
@@ -417,8 +437,7 @@ export default function SchoolBrief() {
               <Icon name="description" size={16} /> {t("elev.learnCare.brief.print")}
             </button>
           </div>
-        </>
-      )}
+      </>
 
       {/* Approval screen (Condition 1 + 5) — the parent sees the exact brief,
           reads the outside-erase-reach notice, and must click approve to export. */}
