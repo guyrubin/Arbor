@@ -409,12 +409,11 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
           </button>
         </Row>
 
-        {/* TJB-25 / IA-07: Today's pill row collapses below `md`, and the Day
-            Windows pill was the ONLY door to #/day-windows in the whole app —
-            grep it. Same rhythm engine as the reminders row above it, same
-            open pattern, its own shipped keys (dw.title / dw.subtitle /
-            dw.cta, EN + HE). Law 6: the pill is hidden on phones, the route is
-            not. */}
+        {/* TJB-25 / IA-07 + B-TODAY-13: Today's pill row collapses below
+            `md`, so this row is the always-present door to #/day-windows at
+            390; the other doors are the md+ pill and the rhythm line's "See
+            the hours" link when a PREP or CALM cue shows. Same open pattern,
+            its own shipped keys (dw.title / dw.subtitle / dw.cta, EN + HE). */}
         <Row icon={<Icon name="schedule" size={18} />} title={t("dw.title")} sub={t("dw.subtitle")}>
           <button
             onClick={() => { onClose(); setActiveTab("day-windows"); }}

@@ -112,6 +112,21 @@ export default function RhythmCue({
           >
             {t(visible.ctaKey, visible.vars)}
           </button>
+          {/* B-TODAY-13: Day Windows consolidates into this line. A PREP or
+              CALM cue is a statement about the hours of the day, so it carries
+              the one quiet door to them (a text link, never a second filled
+              CTA). The Settings row and the md+ pill stay (law 6). */}
+          {(visible.kind === "prep" || visible.kind === "calm") && (
+            <button
+              type="button"
+              data-testid="rhythm-cue-day-windows"
+              onClick={() => setActiveTab("day-windows")}
+              className="inline-flex items-center min-h-[44px] px-2 text-[12px] font-bold underline underline-offset-2 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+              style={{ color: "var(--arbor-green-ink)" }}
+            >
+              {t("elev.today.dw.link")}
+            </button>
+          )}
           <button
             type="button"
             aria-label={t("elev.evening.card.dismissAria")}

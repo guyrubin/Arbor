@@ -40,6 +40,8 @@ export const en: Record<string, string> = {
   "elev.pulse.kidmode.empty": "Quests are ready — hand over the device",
   // B-TODAY-09: the step card's ONE seeded ask (was "Begin").
   "elev.today.askAbout": "Ask about this",
+  // B-TODAY-13: the rhythm line's quiet door to #/day-windows.
+  "elev.today.dw.link": "See the hours",
 };
 
 export const he: Record<string, string> = {
@@ -68,4 +70,5 @@ export const he: Record<string, string> = {
   "elev.pulse.kidmode.questsOne": "משימה אחת הושלמה היום",
   "elev.pulse.kidmode.empty": "המשימות מוכנות — אפשר למסור את המכשיר",
   "elev.today.askAbout": "לשאול על זה",
+  "elev.today.dw.link": "לשעות היום",
 };
