@@ -22,6 +22,16 @@ import { recentBehaviorTypes } from "../../content/hardMomentSurface";
 import { availableHardMomentCards, matchToRecentBehaviors } from "../../content/selectCards";
 import type { HardMomentContext } from "../../content/pilotRelease";
 import { ageMonthsFromProfile } from "../../lib/childAge";
+import { patternEchoFor } from "../../lib/patternEcho";
+import { undoSavedCapture } from "../../lib/savedCaptureUndo";
+import { dayKey } from "../../practice/signals";
+import { SayThis } from "../ui/AiBlock";
+import { hardMomentPilotText } from "../../content/hardMomentPilotText";
+import { hardMomentPublication } from "../../content/pilotRelease";
+import { renderSayThis, type HardMomentCard } from "../../content/hardMomentCards";
+import { locText } from "../../content/hardMomentSurface";
+import { isolate } from "../../lib/bidi";
+import type { BehaviorLog } from "../../types";
 
 /** Lightweight behavior log capture that can be opened from anywhere (e.g. Overview).
  *
@@ -70,7 +80,8 @@ export default function QuickLogModal({
     behaviorLogs,
     handleAddLog,
     addMoment,
-    offerPostCaptureCoach,
+    deleteLog,
+    seedCoach,
   } = useArbor();
   const { toast } = useToast();
   const { t, uiLang } = useLanguage();
@@ -174,6 +185,46 @@ export default function QuickLogModal({
       availableHardMomentCards(context)[0];
     return card ? { card, context } : null;
   })();
+
+  /* B-TODAY-20 — the sheet replies after Save. It swaps to one beat and stays
+     open until "Done": line 1 is the count-only pattern echo (patternEchoFor,
+     ≥3 of the same type in 21 days) or "Kept in {name}'s journal"; line 2 is
+     ONE next move — the matched pilot guide's Say-this for a hard moment, or
+     "Ask Arbor about this" (seedCoach, source post-capture, prefill only) for
+     a plain one; Undo removes the row (lib/savedCaptureUndo).
+     Zero model calls. The global post-capture strip is no longer raised from
+     here (it stays for Behaviors until that lane retires it). */
+  const [reply, setReply] = useState<null | { log: BehaviorLog; hard: boolean; seed: string }>(null);
+  const [sayCopied, setSayCopied] = useState(false);
+  const logIdsRef = useRef<string[]>([]);
+  logIdsRef.current = behaviorLogs.map((l) => l.id);
+  useEffect(() => {
+    if (!open) {
+      setReply(null);
+      setSayCopied(false);
+    }
+  }, [open]);
+  const firstName = (childProfile.name || "").split(" ")[0];
+  const replyLocale = uiLang === "he" ? "he" : "en";
+  const replyEcho = reply
+    ? patternEchoFor([...behaviorLogs.filter((l) => l.id !== reply.log.id), reply.log], reply.log.behaviorType, dayKey(new Date()))
+    : null;
+  const replyCard: HardMomentCard | null = (() => {
+    if (!reply?.hard) return null;
+    const now = new Date();
+    const ctx: HardMomentContext = { now, ageMonths: ageMonthsFromProfile(childProfile, now), locale: replyLocale };
+    return (
+      matchToRecentBehaviors([reply.log.behaviorType], undefined, now, ctx.ageMonths, ctx.locale)[0] ??
+      (hardGuide?.card && hardMomentPublication(hardGuide.card, ctx) ? hardGuide.card : null)
+    );
+  })();
+  const undoReply = async () => {
+    if (!reply) return;
+    await undoSavedCapture(reply.log.id, { readLogIds: () => logIdsRef.current, removeLog: deleteLog });
+    setReply(null);
+    onClose();
+    toast(t("elev.capture.reply.undone"), "info");
+  };
 
   // Photo mode opens the picker on arrival — the tap on the tile is the
   // gesture (same 120 ms hand-off the Behaviors form uses); the visible
@@ -315,8 +366,12 @@ export default function QuickLogModal({
     }
     setNewLogTrigger("");
     attachPhoto("");
-    onClose();
-    toast(t("ql.moment.okToast"), "success");
+    // B-TODAY-20: no toast-only end — the sheet replies.
+    setReply({
+      log: written,
+      hard: false,
+      seed: t("elev.capture.reply.seed", { name: firstName, text: written.trigger }),
+    });
   };
 
   const submit = (e: React.FormEvent) => {
@@ -336,22 +391,20 @@ export default function QuickLogModal({
       toast(t("ql.errToast"), "error");
       return;
     }
-    // AI-CAP-7: snapshot the confirmed fields BEFORE handleAddLog resets the
-    // form, then offer the ONE dismissible post-capture coach CTA (rendered
-    // globally by PostCaptureCoachStrip; prefill-only via seedCoach
-    // source 'post-capture', never auto-sent, no write-path change).
+    // AI-CAP-7 → B-TODAY-20: snapshot the confirmed fields BEFORE
+    // handleAddLog resets the form; the seed is the reply panel's fallback
+    // move when no pilot guide matches (prefill only, source post-capture).
     const confirmedPrompt = t("beh.postCapture.prompt", {
-      name: (childProfile.name || "").split(" ")[0],
+      name: firstName,
       type: behaviorTypeLabel(newLogType, t),
       trigger: newLogTrigger,
       response: newLogResponse,
     });
-    handleAddLog(e);
+    const written = handleAddLog(e);
     setReviewing(false);
     setSource("text");
-    onClose();
-    toast(t("ql.okToast"), "success");
-    offerPostCaptureCoach(confirmedPrompt);
+    if (!written) return;
+    setReply({ log: written, hard: true, seed: confirmedPrompt });
   };
 
   const discard = () => {
@@ -365,6 +418,70 @@ export default function QuickLogModal({
 
   return (
     <Modal open={open} onClose={onClose} title={hardMomentNow ? t("elev.capture.hard.title") : t("ql.title")}>
+      {reply ? (
+        <section data-testid="quicklog-reply" aria-live="polite" className="space-y-4 text-sm">
+          <p dir="auto" data-testid="quicklog-reply-line1" className="flex items-start gap-2 text-[15px] font-bold leading-snug" style={{ color: "var(--arbor-ink)" }}>
+            <Icon name="check_circle" size={20} style={{ color: "var(--arbor-green-ink)" }} className="mt-0.5 flex-none" />
+            <span>
+              {replyEcho
+                ? t("elev.closeloop.echo.title", {
+                    type: isolate(behaviorTypeLabel(replyEcho.type, t), replyLocale),
+                    n: replyEcho.count,
+                    days: replyEcho.windowDays,
+                  })
+                : t("elev.capture.reply.kept", { name: firstName })}
+            </span>
+          </p>
+          {replyCard ? (
+            <div data-testid="quicklog-reply-saythis" className="space-y-1.5" lang={replyLocale} dir={replyLocale === "he" ? "rtl" : "ltr"}>
+              <SayThis
+                text={locText(renderSayThis(replyCard, firstName), replyLocale)}
+                title={t("hm.section.sayThis")}
+                lang={replyLocale}
+                copyLabel={t("coach.action.copy")}
+                copiedLabel={t("coach.cards.copied")}
+                copied={sayCopied}
+                onCopy={() => {
+                  try { void navigator.clipboard?.writeText(locText(renderSayThis(replyCard, firstName), replyLocale)); } catch { /* best-effort */ }
+                  setSayCopied(true);
+                }}
+              />
+              <p className="px-1 text-xs" style={{ color: "var(--arbor-muted)" }}>{hardMomentPilotText(replyLocale).status}</p>
+            </div>
+          ) : (
+            <button
+              type="button"
+              data-testid="quicklog-reply-ask"
+              onClick={() => { seedCoach({ prompt: reply.seed, source: "post-capture" }); onClose(); }}
+              className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl px-4 text-[13px] font-extrabold"
+              style={{ border: "1px solid var(--arbor-green-ink)", color: "var(--arbor-green-ink)", background: "transparent" }}
+            >
+              {t("elev.capture.reply.ask")}
+              <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
+            </button>
+          )}
+          <div className="flex items-center justify-between gap-3">
+            <button
+              type="button"
+              data-testid="quicklog-reply-undo"
+              onClick={() => void undoReply()}
+              className="inline-flex min-h-11 items-center px-3 text-xs font-bold"
+              style={{ color: "var(--arbor-muted)" }}
+            >
+              {t("elev.capture.reply.undo")}
+            </button>
+            <button
+              type="button"
+              data-testid="quicklog-reply-done"
+              onClick={onClose}
+              className="inline-flex min-h-11 items-center rounded-xl px-5 text-xs font-extrabold"
+              style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
+            >
+              {t("elev.capture.reply.done")}
+            </button>
+          </div>
+        </section>
+      ) : (<>
       {hardGuide && !reviewing && !escalationMarkdown && (
         <section data-testid="quicklog-hard-guide" className="mb-4 space-y-3">
           <p className="text-[13px] leading-snug" style={{ color: "var(--arbor-muted)" }}>{t("elev.capture.hard.lead")}</p>
@@ -543,6 +660,7 @@ export default function QuickLogModal({
           )}
         </button>
       </form>}
+      </>)}
     </Modal>
   );
 }

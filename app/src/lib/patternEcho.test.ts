@@ -134,3 +134,28 @@ describe("TJB-06 — the echo is actually mounted on the save path", () => {
     expect(echoBlock).toContain('setActiveTab("plans")');
   });
 });
+
+describe("B-TODAY-20 — the capture sheet's reply echoes a third Transition Refusal (EN + HE)", () => {
+  const refusal = (id: string, daysAgo: number) =>
+    log({ id, behaviorType: "Transition Refusal", timestamp: nDaysAgo(daysAgo) });
+
+  it("a third one in 21 days → count 3; a second → no echo", () => {
+    const two = [refusal("a", 2), refusal("b", 9)];
+    expect(patternEchoFor(two, "Transition Refusal", TODAY)).toBeNull();
+    const three = [...two, refusal("c", 0)];
+    expect(patternEchoFor(three, "Transition Refusal", TODAY)).toMatchObject({ count: 3, windowDays: 21 });
+  });
+
+  it("the reply line reads 'You've noted … 3 times …' in EN and HE, with no intensity or colour", async () => {
+    const { translate } = await import("./i18n");
+    const enLine = translate("en", "elev.closeloop.echo.title", { type: "Transition refusal", n: 3, days: 21 });
+    const heLine = translate("he", "elev.closeloop.echo.title", { type: "סירוב למעבר", n: 3, days: 21 });
+    expect(enLine).toMatch(/^You've noted .+ 3 times in the last 21 days$/);
+    expect(heLine).toContain("3 פעמים");
+    for (const line of [enLine, heLine]) expect(line).not.toMatch(/intens|severity|עוצמה|%|\/5/i);
+    const modal = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "components", "overview", "QuickLogModal.tsx"), "utf8");
+    expect(modal).toMatch(/patternEchoFor\(\[\.\.\.behaviorLogs\.filter\(\(l\) => l\.id !== reply\.log\.id\), reply\.log\], reply\.log\.behaviorType, dayKey\(new Date\(\)\)\)/);
+    const replyBlock = modal.slice(modal.indexOf('data-testid="quicklog-reply"'), modal.indexOf('data-testid="quicklog-reply-undo"'));
+    expect(replyBlock).not.toMatch(/intensity|--arbor-(peach|coral|red|amber)/);
+  });
+});

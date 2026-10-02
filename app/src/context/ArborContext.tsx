@@ -1172,12 +1172,14 @@ function useArborState() {
   // TJB-01: the ONE validation rule lives in content/behaviorTaxonomy
   // (validateLogDraft) — trigger always, response only for incident types —
   // and the failure is a calm toast, never a blocking alert().
-  const handleAddLog = (e: React.FormEvent) => {
+  // B-TODAY-20: returns the written row (null when invalid) so the capture
+  // sheet's reply panel can echo and Undo exactly that row.
+  const handleAddLog = (e: React.FormEvent): BehaviorLog | null => {
     e.preventDefault();
     const invalid = validateLogDraft({ behaviorType: newLogType, trigger: newLogTrigger, response: newLogResponse });
     if (invalid) {
       toast(t(invalid), "error");
-      return;
+      return null;
     }
     const existing = editingLogId ? behaviorLogs.find((l) => l.id === editingLogId) : null;
     const logItem: BehaviorLog = {
@@ -1214,6 +1216,7 @@ function useArborState() {
       trackCaptureSaved("log");
     }
     resetLogForm();
+    return logItem;
   };
 
   /**

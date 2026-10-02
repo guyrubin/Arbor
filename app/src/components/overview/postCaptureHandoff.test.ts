@@ -95,12 +95,39 @@ describe("AI-CAP-7 — both gated confirms offer, once each, with the write path
     expect(count(confirm, /offerPostCaptureCoach\(/g)).toBe(1);
   });
 
-  it("QuickLogModal confirm does the same through the same context seam", () => {
-    const confirm = /const confirm = \(e: React\.FormEvent\) => \{[\s\S]*?\n  };/.exec(modal)?.[0] ?? "";
+  it("B-TODAY-20: QuickLogModal no longer offers the strip — its reply panel carries the one next move", () => {
+    expect(modal).not.toContain("offerPostCaptureCoach");
+    const confirm = /const confirm = \(e: React\.FormEvent\) => \{[\s\S]*?\n  \};/.exec(modal)?.[0] ?? "";
     expect(confirm).toBeTruthy();
+    // The confirmed fields are still snapshotted BEFORE handleAddLog resets
+    // the form — as the reply's fallback seed, prefill only.
     expect(confirm).toMatch(/beh\.postCapture\.prompt/);
     expect(confirm.indexOf("confirmedPrompt")).toBeLessThan(confirm.indexOf("handleAddLog(e)"));
-    expect(count(confirm, /offerPostCaptureCoach\(/g)).toBe(1);
+    expect(confirm).toMatch(/setReply\(\{ log: written, hard: true, seed: confirmedPrompt \}\)/);
+    // The reply's Ask is the ONE seedCoach seam, source post-capture, never a send.
+    expect(modal).toMatch(/seedCoach\(\{ prompt: reply\.seed, source: "post-capture" \}\)/);
+    expect(modal).not.toMatch(/handleSend|sendMessage|api\.chat/);
+    // No toast-only end on either save path.
+    expect(modal).not.toContain('toast(t("ql.okToast")');
+    expect(modal).not.toContain('toast(t("ql.moment.okToast")');
+  });
+
+  it("B-TODAY-20: no toast or string names a hub that does not exist ('Behavior Patterns')", () => {
+    for (const dict of [en, he]) {
+      for (const [k, v] of Object.entries(dict)) {
+        if (!k.startsWith("ql.")) continue;
+        expect(v, k).not.toMatch(/Behavior Patterns|דפוסי ההתנהגות/);
+      }
+    }
+  });
+
+  it("B-TODAY-20: the reply controls clear 44 px", () => {
+    for (const id of ["quicklog-reply-ask", "quicklog-reply-undo", "quicklog-reply-done"]) {
+      const at = modal.indexOf(`data-testid="${id}"`);
+      expect(at, id).toBeGreaterThan(-1);
+      const tag = modal.slice(modal.lastIndexOf("<button", at), modal.indexOf(">", modal.indexOf("className", at)));
+      expect(tag, id).toContain("min-h-11");
+    }
   });
 
   it("the strip never touches the behavior-log write path", () => {

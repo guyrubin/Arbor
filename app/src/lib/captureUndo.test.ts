@@ -286,3 +286,25 @@ describe("N1-08 — the provenance chip at keep time", () => {
     expect(badChip).toMatch(/confiden|certain|accura|probab|%|high|low|likely/i);
   });
 });
+
+describe("B-TODAY-20 — Undo in the capture sheet's reply removes the saved row", () => {
+  it("removes exactly that row, once", async () => {
+    const { undoSavedCapture } = await import("./savedCaptureUndo");
+    let ids = ["log-1", "log-2"];
+    const removeLog = vi.fn((id: string) => { ids = ids.filter((x) => x !== id); });
+    const first = await undoSavedCapture("log-2", { readLogIds: () => ids, removeLog });
+    expect(first).toEqual({ undone: true, id: "log-2" });
+    expect(ids).toEqual(["log-1"]);
+    const second = await undoSavedCapture("log-2", { readLogIds: () => ids, removeLog });
+    expect(second).toEqual({ undone: false, reason: "not_found" });
+    expect(removeLog).toHaveBeenCalledTimes(1);
+  });
+
+  it("the sheet's Undo goes through this module with the context's deleteLog", () => {
+    const modal = readFileSync(path.join(__dirname, "..", "components", "overview", "QuickLogModal.tsx"), "utf8");
+    expect(modal).toContain('import { undoSavedCapture } from "../../lib/savedCaptureUndo";');
+    // The kept-capture module keeps its N1-08 rule: no delete seam in it.
+    expect(readFileSync(path.join(__dirname, "captureUndo.ts"), "utf8")).not.toContain("undoSavedCapture");
+    expect(modal).toContain("undoSavedCapture(reply.log.id, { readLogIds: () => logIdsRef.current, removeLog: deleteLog })");
+  });
+});

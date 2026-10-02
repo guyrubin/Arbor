@@ -53,6 +53,14 @@ export const en: Record<string, string> = {
   "elev.capture.hard.title": "Hard moment now",
   "elev.capture.hard.lead": "Matched to the moments you logged. Use what helps.",
   "elev.capture.hard.logLead": "When it has passed, you can keep a note of it.",
+  // B-TODAY-20: the capture sheet's reply after Save (no counts about the
+  // child, no comparison — the echo line is elev.closeloop.echo.title).
+  "elev.capture.reply.kept": "Kept in {name}'s journal",
+  "elev.capture.reply.ask": "Ask Arbor about this",
+  "elev.capture.reply.seed": "I just noted this about {name}: \"{text}\". What might it tell me, and is there one small thing I could try?",
+  "elev.capture.reply.undo": "Undo",
+  "elev.capture.reply.done": "Done",
+  "elev.capture.reply.undone": "Removed from the journal.",
 };
 
 export const he: Record<string, string> = {
@@ -91,4 +99,10 @@ export const he: Record<string, string> = {
   "elev.capture.hard.title": "רגע קשה עכשיו",
   "elev.capture.hard.lead": "מותאם לרגעים שתיעדתם. קחו את מה שעוזר.",
   "elev.capture.hard.logLead": "כשזה עובר, אפשר לשמור על זה הערה.",
+  "elev.capture.reply.kept": "נשמר ביומן של {name}",
+  "elev.capture.reply.ask": "לשאול את ארבור על זה",
+  "elev.capture.reply.seed": "רשמתי עכשיו משהו על {name}: \"{text}\". מה זה יכול לספר לי, והאם יש דבר קטן אחד שכדאי לנסות?",
+  "elev.capture.reply.undo": "ביטול",
+  "elev.capture.reply.done": "סיום",
+  "elev.capture.reply.undone": "הוסר מהיומן.",
 };
