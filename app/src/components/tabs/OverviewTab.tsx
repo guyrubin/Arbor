@@ -227,10 +227,34 @@ export default function OverviewTab() {
   };
 
   // ── Today's AI focus — "the one thing that matters today" (the hero title) ──
-  const recentCount = useMemo(
-    () => behaviorLogs.filter((l) => new Date(l.timestamp).getTime() >= Date.now() - 7 * DAY).length,
-    [behaviorLogs]
-  );
+  // B-TODAY-11: what the parent logged in 7 days = moments + plays + milestones
+  // noticed (observationUpdatedAt), so play-only and milestone-only families
+  // get a step too.
+  const recentCount = useMemo(() => {
+    const since = Date.now() - 7 * DAY;
+    const inWindow = (raw?: string) => {
+      const at = raw ? new Date(raw).getTime() : NaN;
+      return Number.isFinite(at) && at >= since;
+    };
+    return (
+      behaviorLogs.filter((l) => inWindow(l.timestamp)).length +
+      playLogs.filter((p) => inWindow(p.timestamp)).length +
+      milestones.filter((m) => m.checked && inWindow(m.observationUpdatedAt)).length
+    );
+  }, [behaviorLogs, playLogs, milestones]);
+  // B-TODAY-11: the newest capture or step outcome — a focus generated before
+  // it refreshes once per open.
+  const latestRecordAt = useMemo(() => {
+    let latest = 0;
+    const consider = (raw?: string) => {
+      const at = raw ? new Date(raw).getTime() : NaN;
+      if (Number.isFinite(at) && at > latest) latest = at;
+    };
+    for (const l of behaviorLogs) consider(l.timestamp);
+    for (const p of playLogs) consider(p.timestamp);
+    for (const a of actionLoop) consider(a.outcomeAt);
+    return latest || undefined;
+  }, [behaviorLogs, playLogs, actionLoop]);
 
   // B-TODAY-09: the prior-window moment count, the intensity average and the
   // milestone percentage were computed here and never read (the narrative and
@@ -251,6 +275,7 @@ export default function OverviewTab() {
     topTrigger,
     lastActionRecommendation: latestCompletedAction?.recommendation,
     lastActionOutcome: latestCompletedAction?.outcome,
+    latestAt: latestRecordAt,
   });
 
   // TODAY-1/CODEX-2: the headline is ALWAYS derived from the AI focus text

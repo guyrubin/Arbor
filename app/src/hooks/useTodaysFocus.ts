@@ -7,6 +7,7 @@ import { authHeaders } from "../lib/api";
 import { ChildProfile } from "../types";
 import type { FocusInputsUsed } from "../lib/todayFocus";
 import { trackLoopContinued } from "../lib/kpiEvents";
+import { dayKey } from "../practice/signals";
 
 export type FocusSignals = {
   count: number;
@@ -21,6 +22,8 @@ export type FocusSignals = {
   milestonesTotal?: number;
   lastActionRecommendation?: string;
   lastActionOutcome?: "helped" | "somewhat" | "not_today";
+  /** B-TODAY-11: ms of the newest behaviourLog, playLog or step outcome. */
+  latestAt?: number;
 };
 
 /** `lang` is part of the cache IDENTITY — a Hebrew sentence must never render
@@ -44,7 +47,32 @@ export type Focus = {
   lang?: AiLang;
 };
 
-const todayKey = () => new Date().toISOString().slice(0, 10);
+/** B-TODAY-11: the parent's LOCAL day (practice/signals dayKey — the key the
+ *  action id already uses), never the UTC slice. */
+const todayKey = () => dayKey(new Date());
+
+/**
+ * B-TODAY-11 — bounded regeneration (pure, unit-tested). A focus the day and
+ * language still match is CONTENT-stale when a behaviourLog, playLog or step
+ * outcome landed after it was generated; it regenerates at most ONCE per
+ * Today mount (`refreshedThisMount`), so two captures in one open cost ≤1
+ * extra call and a re-open with nothing new costs 0.
+ */
+export function focusRefreshDecision(input: {
+  focus: { dateKey?: string; lang?: string; generatedAt?: string } | null | undefined;
+  day: string;
+  lang: string;
+  count: number;
+  latestAt?: number | null;
+  refreshedThisMount: boolean;
+}): "none" | "generate" | "refresh" {
+  if (input.count <= 0) return "none";
+  if (isFocusStale(input.focus, input.day, input.lang)) return "generate";
+  if (input.refreshedThisMount) return "none";
+  const gen = Date.parse(input.focus?.generatedAt ?? "");
+  const latest = Number(input.latestAt);
+  return Number.isFinite(gen) && Number.isFinite(latest) && latest > gen ? "refresh" : "none";
+}
 
 /**
  * Cache-validity decision (pure, unit-tested): a cached focus survives only
@@ -94,6 +122,8 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals) {
   // inline error + retry ALONGSIDE the fallback (never instead of it).
   const [error, setError] = useState(false);
   const triedAuto = useRef(false);
+  // B-TODAY-11: one content refresh per Today mount (never reset by a re-render).
+  const refreshedThisMount = useRef(false);
 
   const ref = () => (remote && db && uid ? doc(db, `users/${uid}/children/${child.id}/insights/todaysFocus`) : null);
 
@@ -121,8 +151,11 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals) {
             topTrigger: signals.topTrigger,
             lastActionRecommendation: signals.lastActionRecommendation,
             lastActionOutcome: signals.lastActionOutcome,
+            ...(Number.isFinite(Number(signals.latestAt)) && signals.latestAt ? { latestAt: new Date(Number(signals.latestAt)).toISOString() } : {}),
           },
           language: focusLang,
+          // B-TODAY-11: the parent's local day (the server accepts ±1 day).
+          dateKey: todayKey(),
         }),
       });
       if (!res.ok) throw new Error("focus generation failed");
@@ -218,16 +251,28 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [child.id, remote, uid, focusLang]);
 
-  // Auto-generate once per child/day/language when stale and there is data.
+  // Auto-generate once per child/day/language when stale and there is data;
+  // B-TODAY-11: refresh at most once per mount when a capture or an outcome
+  // landed after the focus was generated.
   useEffect(() => {
-    if (triedAuto.current || loading) return;
-    const stale = isFocusStale(focus, todayKey(), focusLang);
-    if (stale && signals.count > 0) {
+    if (loading) return;
+    const decision = focusRefreshDecision({
+      focus,
+      day: todayKey(),
+      lang: focusLang,
+      count: signals.count,
+      latestAt: signals.latestAt,
+      refreshedThisMount: refreshedThisMount.current,
+    });
+    if (decision === "generate" && !triedAuto.current) {
       triedAuto.current = true;
+      void generate();
+    } else if (decision === "refresh") {
+      refreshedThisMount.current = true;
       void generate();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focus, signals.count, loading, focusLang]);
+  }, [focus, signals.count, signals.latestAt, loading, focusLang]);
 
   // OBJ-TODAY-02: `inputsUsed` is a PROVENANCE report, and provenance is only
   // worth printing while it still matches the ledger the parent can see. The

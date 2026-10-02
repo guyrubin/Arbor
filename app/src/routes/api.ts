@@ -1867,8 +1867,25 @@ Finalized parent transcript: ${privacy.redact(transcript.trim())}${REDACTION_DIR
 
   /** B-TODAY-24: the step card's Say-this line is one short sentence. */
   const TODAY_SAY_THIS_MAX = 140;
+  /**
+   * B-TODAY-11 — the parent's LOCAL day. The client sends its local
+   * yyyy-mm-dd (practice/signals dayKey, the key the action id already uses);
+   * it is accepted when it is within ±1 day of the server's UTC day (every
+   * real timezone), else the server's UTC day stands. An Israeli parent at
+   * 01:00 no longer gets yesterday's step until 03:00.
+   */
+  const acceptedFocusDay = (raw: unknown): string => {
+    const server = focusDateKey();
+    if (typeof raw !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return server;
+    const diff = Math.abs(Date.parse(`${raw}T00:00:00Z`) - Date.parse(`${server}T00:00:00Z`));
+    return Number.isFinite(diff) && diff <= 86_400_000 ? raw : server;
+  };
+  /** B-TODAY-11 — what the step was built from: a capture or an outcome after
+   *  the cached focus changes the key, so ONE regeneration can follow it. */
+  const focusRev = (count: number, lastOutcome: string, latestAt: string): string =>
+    createHash("sha256").update(`${count}|${lastOutcome}|${latestAt}`, "utf8").digest("hex").slice(0, 12);
   router.post("/todays-focus", async (req, res) => {
-    const { childProfile, signals, language } = req.body ?? {};
+    const { childProfile, signals, language, dateKey: clientDateKey } = req.body ?? {};
     const count = Math.max(0, Math.min(500, Number(signals?.count ?? 0) || 0));
     const topTrigger = String(signals?.topTrigger ?? "").slice(0, 80);
     const clientLastRecommendation = String(signals?.lastActionRecommendation ?? "").slice(0, 300);
@@ -1876,11 +1893,14 @@ Finalized parent transcript: ${privacy.redact(transcript.trim())}${REDACTION_DIR
       ? (signals.lastActionOutcome as string)
       : "";
     const lang = language === "he" ? "he" : "en";
-    const dateKey = focusDateKey();
+    const dateKey = acceptedFocusDay(clientDateKey);
     // B-AI-03: a trigger is only a fact when there are moments it describes.
     const triggerSent = count > 0 ? topTrigger : "";
+    const latestAtMs = Date.parse(String(signals?.latestAt ?? ""));
+    const latestAt = Number.isFinite(latestAtMs) ? new Date(latestAtMs).toISOString() : "";
+    const rev = focusRev(count, clientLastOutcome, latestAt);
 
-    const cacheKey = `${actorOf(req).uid}:${childProfile?.id ?? "none"}:${dateKey}:${lang}`;
+    const cacheKey = `${actorOf(req).uid}:${childProfile?.id ?? "none"}:${dateKey}:${lang}:${rev}`;
     const cached = focusCache.get(cacheKey);
     if (cached) {
       res.json(cached);

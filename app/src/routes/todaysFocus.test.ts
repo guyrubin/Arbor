@@ -326,3 +326,35 @@ describe("B-TODAY-24 · /todays-focus returns one screened sayThis (≤140) and 
     }
   });
 });
+
+/* ── B-TODAY-11: local day accepted ±1 day; rev in the cache key ─────────── */
+describe("B-TODAY-11 · /todays-focus dateKey + rev", () => {
+  const serverDay = () => new Date().toISOString().slice(0, 10);
+  const shift = (days: number) => new Date(Date.parse(`${serverDay()}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
+
+  it("a client local day within ±1 of the server's UTC day is used; anything else falls back", async () => {
+    draft = { ...CLEAN_DRAFT };
+    const plus = await postFocus({ childProfile: { id: "c-day-1", name: "T", age: 4 }, signals: { count: 1 }, dateKey: shift(1) });
+    expect(plus.json.dateKey).toBe(shift(1));
+    const minus = await postFocus({ childProfile: { id: "c-day-2", name: "T", age: 4 }, signals: { count: 1 }, dateKey: shift(-1) });
+    expect(minus.json.dateKey).toBe(shift(-1));
+    const far = await postFocus({ childProfile: { id: "c-day-3", name: "T", age: 4 }, signals: { count: 1 }, dateKey: shift(3) });
+    expect(far.json.dateKey).toBe(serverDay());
+    const junk = await postFocus({ childProfile: { id: "c-day-4", name: "T", age: 4 }, signals: { count: 1 }, dateKey: "tomorrow" });
+    expect(junk.json.dateKey).toBe(serverDay());
+  });
+
+  it("rev(count, lastOutcome, latestAt) is in the cache key: nothing new → cache hit; a new capture → one call", async () => {
+    draft = { ...CLEAN_DRAFT };
+    const body = (latestAt: string, count = 2) => ({ childProfile: { id: "c-rev", name: "T", age: 4 }, signals: { count, latestAt }, dateKey: serverDay() });
+    providerCalls = 0;
+    await postFocus(body("2026-10-02T06:00:00.000Z"));
+    expect(providerCalls).toBe(1);
+    await postFocus(body("2026-10-02T06:00:00.000Z"));
+    expect(providerCalls).toBe(1); // re-open with nothing new: 0 calls
+    await postFocus(body("2026-10-02T09:30:00.000Z", 3));
+    expect(providerCalls).toBe(2); // a capture after it: one call
+    const src = fs.readFileSync(path.join(__dirname, "api.ts"), "utf8");
+    expect(src).toContain("const cacheKey = `${actorOf(req).uid}:${childProfile?.id ?? \"none\"}:${dateKey}:${lang}:${rev}`;");
+  });
+});

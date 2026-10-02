@@ -61,7 +61,8 @@ describe("useTodaysFocus source — language in the key, the record, and the req
 
   it("cache-load and auto-generate both re-run on a language switch", () => {
     expect(src).toMatch(/\[child\.id, remote, uid, focusLang\]/);
-    expect(src).toMatch(/\[focus, signals\.count, loading, focusLang\]/);
+    // B-TODAY-11: the newest capture/outcome is a dependency too (bounded refresh).
+    expect(src).toMatch(/\[focus, signals\.count, signals\.latestAt, loading, focusLang\]/);
   });
 
   it("the verdict-strip firewall payload is untouched (CODEX-2 condition)", () => {
@@ -128,5 +129,45 @@ describe("N2-errfocus — focus fetch failure surfaces an inline error + retry",
       const hits = i18nSrc.split(`"${key}":`).length - 1;
       expect(hits).toBeGreaterThanOrEqual(2); // en + he
     }
+  });
+});
+
+/* ── B-TODAY-11: local day, bounded regeneration, non-incident families ──── */
+describe("B-TODAY-11 — focus refresh", () => {
+  it("the hook keys the day LOCALLY and sends it (01:00 local is today, not yesterday's UTC)", async () => {
+    const { dayKey } = await import("../practice/signals");
+    // 01:00 local on 2 Oct: the local key is the 2nd in EVERY timezone; the
+    // old toISOString() slice gave the 1st for any zone east of UTC (Israel).
+    expect(dayKey(new Date(2026, 9, 2, 1, 0))).toBe("2026-10-02");
+    const src = fs.readFileSync(path.join(__dirname, "useTodaysFocus.ts"), "utf8");
+    expect(src).toContain("const todayKey = () => dayKey(new Date());");
+    expect(src).not.toMatch(/todayKey = \(\) => new Date\(\)\.toISOString\(\)/);
+    expect(src).toContain("dateKey: todayKey(),");
+  });
+
+  it("stale-rule table: day/lang → generate; newer capture/outcome → ONE refresh per mount; nothing new → none", async () => {
+    const { focusRefreshDecision } = await import("./useTodaysFocus");
+    const day = "2026-10-02";
+    const gen = "2026-10-02T06:00:00.000Z";
+    const focus = { dateKey: day, lang: "he", generatedAt: gen };
+    const after = Date.parse(gen) + 3_600_000;
+    const before = Date.parse(gen) - 3_600_000;
+    const rows: [string, Parameters<typeof focusRefreshDecision>[0], string][] = [
+      ["no focus yet, data → generate", { focus: null, day, lang: "he", count: 2, refreshedThisMount: false }, "generate"],
+      ["yesterday's focus → generate", { focus: { ...focus, dateKey: "2026-10-01" }, day, lang: "he", count: 2, refreshedThisMount: false }, "generate"],
+      ["first capture after the focus → refresh", { focus, day, lang: "he", count: 3, latestAt: after, refreshedThisMount: false }, "refresh"],
+      ["second capture in the same open → none (≤1 extra call)", { focus, day, lang: "he", count: 4, latestAt: after + 60_000, refreshedThisMount: true }, "none"],
+      ["re-open, nothing new → none (0 calls)", { focus, day, lang: "he", count: 3, latestAt: before, refreshedThisMount: false }, "none"],
+      ["no data at all → none", { focus: null, day, lang: "he", count: 0, refreshedThisMount: false }, "none"],
+      ["3 play logs, 0 behaviour logs → generate (count includes plays)", { focus: null, day, lang: "en", count: 3, refreshedThisMount: false }, "generate"],
+    ];
+    for (const [label, input, want] of rows) expect(focusRefreshDecision(input), label).toBe(want);
+  });
+
+  it("Today's count = behaviourLogs + playLogs + milestones noticed in 7 days; latestAt rides the signals", () => {
+    const overview = fs.readFileSync(path.join(__dirname, "..", "components", "tabs", "OverviewTab.tsx"), "utf8");
+    expect(overview).toMatch(/behaviorLogs\.filter\(\(l\) => inWindow\(l\.timestamp\)\)\.length \+\s*playLogs\.filter\(\(p\) => inWindow\(p\.timestamp\)\)\.length \+\s*milestones\.filter\(\(m\) => m\.checked && inWindow\(m\.observationUpdatedAt\)\)\.length/);
+    expect(overview).toContain("latestAt: latestRecordAt,");
+    expect(overview).toContain("for (const a of actionLoop) consider(a.outcomeAt);");
   });
 });
