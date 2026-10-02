@@ -15,7 +15,6 @@ import {
   type HelplineRegion,
 } from "../../safety/escalation";
 import { loadAttribution } from "../../lib/attribution";
-import { scrubMemoryProposals } from "../../server/parentWordsScrub";
 import { PageHeader, SectionCard, cardCls, PASTEL, PastelKey } from "../ui/kit";
 
 type Contact = { id: string; name: string; role: string; phone: string; notes: string };
@@ -37,9 +36,8 @@ const inputCls = "rounded-lg px-3 py-2 min-h-11 text-sm focus:outline-none";
 const inputStyle: React.CSSProperties = { background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" };
 
 export default function SafetyTab() {
-  const { childProfile, approvedMemoryItems, handleMemoryDecision, isMemoryUpdating, requestConsultPrefill, setActiveTab } = useArbor();
+  const { childProfile, requestConsultPrefill, setActiveTab } = useArbor();
   const { t, uiLang } = useLanguage();
-  const first = childProfile.name.split(" ")[0];
 
   // LC-14: the family's market decides which helplines come first. The
   // attribution market (il / nl / be) is the strongest signal; otherwise the
@@ -76,10 +74,6 @@ export default function SafetyTab() {
     }
   }, [reviewedKey, checklistKey]);
 
-  // B-CAREPRO-06: approved facts render through the plain-words scrub; a fact
-  // the scrub drops is not shown here and stays in the ledger (#/memory).
-  const shownApproved = useMemo(() => scrubMemoryProposals(approvedMemoryItems), [approvedMemoryItems]);
-
   const anySignTicked = WARNING_SIGN_KEYS.some((_, i) => !!checked[i]);
 
   // B-CAREPRO-03 + B-CAREPRO-13: "Prepare a conversation" hands the ticked
@@ -110,7 +104,10 @@ export default function SafetyTab() {
     try { localStorage.setItem(reviewedKey, now); } catch { /* ignore */ }
   };
 
-  const reviewStale = !lastReviewed || Date.now() - new Date(lastReviewed).getTime() > 30 * 86_400_000;
+  // B-CAREPRO-14: the "it's been a while" nudge is for a review that went
+  // stale, never for a parent who has not reviewed yet — first visit reads
+  // neutrally ("Not reviewed yet").
+  const reviewStale = !!lastReviewed && Date.now() - new Date(lastReviewed).getTime() > 30 * 86_400_000;
 
   /** One helpline group: heading + every directory entry as a tel: link. */
   const renderHelplineGroup = (region: HelplineRegion) => (
@@ -273,7 +270,7 @@ export default function SafetyTab() {
           }
         >
           <p className="text-sm" style={{ color: "var(--arbor-ink)" }}>
-            {t("elev.safety.review.last")} <strong>{lastReviewed ? fmtDay(lastReviewed, uiLang) : t("elev.safety.review.never")}</strong>
+            {t("elev.safety.review.last")} <strong>{lastReviewed ? fmtDay(lastReviewed, uiLang) : t("elev.safety.review.notYet")}</strong>
           </p>
           {reviewStale && (
             <div className="text-xs rounded-xl px-3 py-2 mt-3" style={{ background: "var(--arbor-yellow-soft)", color: "var(--arbor-yellow-ink)" }}>
@@ -330,31 +327,20 @@ export default function SafetyTab() {
       </SectionCard>
       </div>
 
-      {/* Approved memory */}
-      <div data-module="safety-memory" data-module-demoted style={{ display: "contents" }}>
-      <SectionCard title={t("elev.safety.memory.title", { name: first })} icon={<Icon name="neurology" size={20} />} tone="lav">
-        <p className="text-xs mb-3" style={{ color: "var(--arbor-muted)" }}>{t("elev.safety.memory.sub")}</p>
-        {shownApproved.length === 0 ? (
-          <p className={`${cardCls} text-xs p-3`} style={{ color: "var(--arbor-muted)" }}>{t("elev.safety.memory.empty")}</p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {shownApproved.map((item) => (
-              <div key={item.memoryId} className={`${cardCls} p-3 flex items-start justify-between gap-2`}>
-                <p className="text-xs leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{item.fact}</p>
-                <button
-                  onClick={() => handleMemoryDecision(item.memoryId, "deleted")}
-                  disabled={isMemoryUpdating === item.memoryId}
-                  className="inline-flex items-center text-[10px] font-bold flex-shrink-0 min-h-11 px-1 disabled:opacity-50"
-                  style={{ color: "var(--arbor-pink-ink)" }}
-                >
-                  {t("elev.safety.memory.forget")}
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </SectionCard>
-      </div>
+      {/* B-CAREPRO-14: the memory ledger has one home (Child Memory, Profile
+          hub). Safety keeps a door to it, not a second list with its own
+          unconfirmed Forget. */}
+      <button
+        type="button"
+        data-testid="safety-memory-link"
+        onClick={() => setActiveTab("memory")}
+        className={`${cardCls} w-full flex items-center gap-3 px-4 py-2 min-h-[44px] text-sm font-bold text-start transition hover:shadow-[var(--shadow-xs)]`}
+        style={{ color: "var(--arbor-ink)" }}
+      >
+        <Icon name="neurology" size={18} style={{ color: "var(--arbor-muted)" }} />
+        <span className="flex-1 min-w-0">{t("elev.safety.memory.link")}</span>
+        <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" style={{ color: "var(--arbor-muted)" }} />
+      </button>
 
       {/* Static safeguards */}
       <div data-module="safety-safeguards" data-module-demoted className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">

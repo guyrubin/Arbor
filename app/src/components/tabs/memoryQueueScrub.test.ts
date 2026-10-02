@@ -108,7 +108,9 @@ describe("B-CAREPRO-06 · ChildMemory, ChildProfile and SafetyTab render scrubbe
   const MEMORY = stripComments(read("components/sections/ChildMemory.tsx"));
   const PROFILE = stripComments(read("components/sections/ChildProfile.tsx"));
   const SAFETY = stripComments(read("components/tabs/SafetyTab.tsx"));
-  const SURFACES = [["ChildMemory", MEMORY], ["ChildProfile", PROFILE], ["SafetyTab", SAFETY]] as const;
+  // B-CAREPRO-14: SafetyTab no longer lists memory (one door to the ledger),
+  // so it renders no fact at all — asserted below instead of the scrub import.
+  const SURFACES = [["ChildMemory", MEMORY], ["ChildProfile", PROFILE]] as const;
 
   it("each surface imports the shared scrub", () => {
     for (const [name, src] of SURFACES) {
@@ -149,9 +151,9 @@ describe("B-CAREPRO-06 · ChildMemory, ChildProfile and SafetyTab render scrubbe
     expect(PROFILE).toContain("shownApproved.slice(0, 5).map(");
     expect(PROFILE).not.toContain("approvedMemoryItems.slice(");
     expect(PROFILE).toContain("pendingQueue.length === 1");
-    expect(SAFETY).toContain("scrubMemoryProposals(approvedMemoryItems)");
-    expect(SAFETY).toContain("shownApproved.map((item) => (");
-    expect(SAFETY).not.toContain("approvedMemoryItems.map(");
+    // B-CAREPRO-14: Safety renders no memory text at all.
+    expect(SAFETY).not.toContain("approvedMemoryItems");
+    expect(SAFETY).not.toContain("item.fact");
   });
 
   it("the captured fixture renders as the plain-words rewrite (what all three surfaces show)", () => {

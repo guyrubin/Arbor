@@ -4,7 +4,7 @@
  * script, the tel:-linked crisis-helpline directory (labels keyed by
  * HELPLINE_DIRECTORY ids from src/safety/escalation.ts —
  * `elev.safety.helpline.<id>`), warning-sign checklist, safety review,
- * emergency contacts, approved-memory list and the static safeguards.
+ * emergency contacts, one door to the memory ledger and the static safeguards.
  *
  * CLINICAL FIREWALL: plain facts and instructions only — no percentages,
  * verdicts, or deficit framing. Crisis copy leads with emergency services.
@@ -57,7 +57,7 @@ export const en: Record<string, string> = {
   "elev.safety.review.title": "Safety review",
   "elev.safety.review.mark": "Mark reviewed",
   "elev.safety.review.last": "Last reviewed:",
-  "elev.safety.review.never": "never",
+  "elev.safety.review.notYet": "Not reviewed yet",
   "elev.safety.review.stale": "It’s been a while — review safety info monthly to keep it current.",
 
   // ── Emergency contacts
@@ -67,11 +67,8 @@ export const en: Record<string, string> = {
   "elev.safety.contacts.phone": "Phone",
   "elev.safety.contacts.notes": "Notes",
 
-  // ── What Arbor knows (approved memory)
-  "elev.safety.memory.title": "What Arbor knows about {name}",
-  "elev.safety.memory.sub": "Only parent-approved observations become active memory. Forget any of them at any time.",
-  "elev.safety.memory.empty": "No approved memory yet. Approve observations from the Child Memory queue.",
-  "elev.safety.memory.forget": "Forget",
+  // ── B-CAREPRO-14: one door to the memory ledger (no second list here)
+  "elev.safety.memory.link": "Review what Arbor remembers",
 
   // ── Static safeguards
   "elev.safety.guard.medical.title": "Medical escalation safeguard",
@@ -132,7 +129,7 @@ export const he: Record<string, string> = {
   "elev.safety.review.title": "רענון בטיחות",
   "elev.safety.review.mark": "סימון כנבדק",
   "elev.safety.review.last": "נבדק לאחרונה:",
-  "elev.safety.review.never": "עוד לא",
+  "elev.safety.review.notYet": "עוד לא נבדק",
   "elev.safety.review.stale": "עבר קצת זמן — כדאי לרענן את פרטי הבטיחות פעם בחודש כדי שיישארו עדכניים.",
 
   // ── Emergency contacts
@@ -142,11 +139,8 @@ export const he: Record<string, string> = {
   "elev.safety.contacts.phone": "טלפון",
   "elev.safety.contacts.notes": "הערות",
 
-  // ── What Arbor knows (approved memory)
-  "elev.safety.memory.title": "מה ארבור יודעת על {name}",
-  "elev.safety.memory.sub": "רק תצפיות שאישרתם הופכות לזיכרון פעיל. אפשר למחוק כל אחת מהן בכל רגע.",
-  "elev.safety.memory.empty": "עוד אין זיכרונות מאושרים. אשרו תצפיות מתור הזיכרון של הילד.",
-  "elev.safety.memory.forget": "לשכוח",
+  // ── B-CAREPRO-14: one door to the memory ledger (no second list here)
+  "elev.safety.memory.link": "לעבור על מה שארבור זוכרת",
 
   // ── Static safeguards
   "elev.safety.guard.medical.title": "מנגנון הסלמה רפואית",

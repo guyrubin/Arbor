@@ -54,7 +54,7 @@ const CONTROLS: { id: string; file: keyof typeof FILES; near: string }[] = [
   { id: "OBJ-CARE-03 findpro specialty chips", file: "findpro", near: "setQuery(s.query)" },
   { id: "LC-23 safety checklist row", file: "safety", near: "<label key={n}" },
   { id: "LC-23 mark reviewed", file: "safety", near: "onClick={markReviewed}" },
-  { id: "LC-23 forget a memory fact", file: "safety", near: 'handleMemoryDecision(item.memoryId, "deleted")' },
+  { id: "B-CAREPRO-14 memory ledger door", file: "safety", near: 'data-testid="safety-memory-link"' },
   { id: "LC-16 find a professional door", file: "consult", near: "rounded-[13px] min-h-11 transition hover:brightness-95" },
   // B-CAREPRO-16 — the School Brief editor
   { id: "B-CAREPRO-16 brief list-item input", file: "brief", near: "onChange={(e) => onUpdate(field, i, e.target.value)}" },

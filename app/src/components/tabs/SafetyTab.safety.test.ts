@@ -232,3 +232,44 @@ describe("B-CAREPRO-03 — a ticked sign can prepare a conversation in Consult",
     expect(safetyHeRecord["elev.safety.signs.consultReason"].replace("{labels}", "")).not.toMatch(/[A-Za-z]/);
   });
 });
+
+/* ── 6 · B-CAREPRO-14 — one memory ledger; no nag on a first visit ────────── */
+
+describe("B-CAREPRO-14 — Safety links to the memory ledger and greets a first visit neutrally", () => {
+  const src = tabSource.replace(/\r\n/g, "\n");
+
+  it("no Forget control and no second memory list on Safety", () => {
+    expect(src).not.toContain("handleMemoryDecision");
+    expect(src).not.toContain("approvedMemoryItems");
+    expect(src).not.toContain('data-module="safety-memory"');
+    expect(src).not.toContain("elev.safety.memory.forget");
+    // NEGATIVE CONTROL: the pre-change one-tap Forget is what the rule catches.
+    expect('onClick={() => handleMemoryDecision(item.memoryId, "deleted")}').toContain("handleMemoryDecision");
+  });
+
+  it("one 44 px link row reaches the ledger", () => {
+    const row = /<button[^>]*?data-testid="safety-memory-link"[\s\S]*?<\/button>/.exec(src);
+    expect(row, "memory link row extracted").toBeTruthy();
+    expect(row![0]).toContain('setActiveTab("memory")');
+    expect(row![0]).toContain("min-h-[44px]");
+    expect(row![0]).toContain('t("elev.safety.memory.link")');
+  });
+
+  it("demoted modules = 4 (helplines, checklist, contacts, safeguards)", () => {
+    const demoted = [...src.matchAll(/data-module="([^"]+)" data-module-demoted/g)].map((m) => m[1]);
+    expect(demoted).toEqual(["safety-helplines", "safety-checklist", "safety-contacts", "safety-safeguards"]);
+  });
+
+  it("the stale nudge needs a past review older than 30 days; never-reviewed reads 'Not reviewed yet'", () => {
+    expect(src).toContain("const reviewStale = !!lastReviewed && Date.now() - new Date(lastReviewed).getTime() > 30 * 86_400_000;");
+    // NEGATIVE CONTROL: the pre-change predicate fires on a first visit.
+    const pre = (lastReviewed: string | null) => !lastReviewed || Date.now() - new Date(lastReviewed).getTime() > 30 * 86_400_000;
+    const post = (lastReviewed: string | null) => !!lastReviewed && Date.now() - new Date(lastReviewed).getTime() > 30 * 86_400_000;
+    expect(pre(null)).toBe(true);
+    expect(post(null)).toBe(false);
+    expect(post(new Date(Date.now() - 31 * 86_400_000).toISOString())).toBe(true);
+    expect(post(new Date().toISOString())).toBe(false);
+    expect(safetyEnRecord["elev.safety.review.notYet"]).toBe("Not reviewed yet");
+    expect(safetyHeRecord["elev.safety.review.notYet"]).toMatch(/[֐-׿]/);
+  });
+});
