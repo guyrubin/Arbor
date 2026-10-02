@@ -39,7 +39,6 @@ function profile(over: Partial<ChildProfile> = {}): ChildProfile {
     schoolContext: "",
     strengths: [],
     challenges: [],
-    riskLevel: "Low",
     ...over,
   };
 }

@@ -545,7 +545,6 @@ describe("GP-04 — monitoringAgeYears is the corrected age (preterm)", () => {
     schoolContext: "",
     strengths: [],
     challenges: [],
-    riskLevel: "Low",
     ...over,
   });
   // A 12-month-band item the parent answered "not yet": overdue once the

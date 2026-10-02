@@ -16,8 +16,7 @@ export const defaultChildProfile: ChildProfile = {
     "Severe transition anxiety (refusal to leave the house)",
     "Sensory meltdowns in overcrowded dynamic spaces",
     "English language hesitation when answering elders"
-  ],
-  riskLevel: "Low"
+  ]
 };
 
 export const sampleBehaviorLogs: BehaviorLog[] = [

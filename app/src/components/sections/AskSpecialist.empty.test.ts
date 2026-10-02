@@ -12,7 +12,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 const record = {
-  childProfile: { id: "c1", name: "Noa Levi", age: 4, languages: ["Hebrew"], schoolContext: "", strengths: [], challenges: [], riskLevel: "Low" },
+  childProfile: { id: "c1", name: "Noa Levi", age: 4, languages: ["Hebrew"], schoolContext: "", strengths: [], challenges: [] },
   behaviorLogs: [] as Array<{ behaviorType: string; intensity: number; timestamp: string; resolved?: boolean }>,
   milestones: [] as Array<{ domain: string; title: string; checked: boolean }>,
   actionPlans: [] as Array<{ title: string; issue?: string }>,

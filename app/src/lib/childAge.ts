@@ -258,6 +258,17 @@ export interface AgePatch {
 export const CLEARABLE_PROFILE_FIELDS: readonly string[] = ["birthDate"];
 
 /**
+ * B-CAREPRO-34 — the migration: profile fields that are RETIRED from the child
+ * record. No reader and no writer remains; every profile write deletes them
+ * (ProfileContext.updateChild maps each to `deleteField()` and drops it from
+ * local state), so a stored value disappears on the parent's next save.
+ * `riskLevel` was a graded verdict ('Low' | 'Moderate' | 'High') written at
+ * onboarding and read by one internal boolean; the coach answer's own
+ * CoachContract.riskLevel is a different field and is untouched.
+ */
+export const RETIRED_PROFILE_FIELDS: readonly string[] = ["riskLevel"];
+
+/**
  * GP-03 / MOB-04: the ONE builder for an age edit. Editing the age used to
  * patch `age` alone while `birthDate`/`ageMonths` stayed stale, so the topbar
  * showed the new number while every months-precise consumer (bands, screening,

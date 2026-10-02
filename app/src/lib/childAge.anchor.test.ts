@@ -46,7 +46,6 @@ const anchored = (over: Partial<ChildProfile> = {}): ChildProfile =>
     schoolContext: "",
     strengths: [],
     challenges: [],
-    riskLevel: "Low",
     ...over,
   }) as ChildProfile;
 

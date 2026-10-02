@@ -946,7 +946,6 @@ export default function OnboardingFlow() {
         schoolContext: "",
         strengths: [],
         challenges: [],
-        riskLevel: "Low",
         // P0.4: mark setup as in-flight so the gate keeps the flow mounted through
         // every step and resumes (not restarts) if interrupted. Flipped true at submit.
         onboardingComplete: false,

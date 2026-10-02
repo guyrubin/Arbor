@@ -22,8 +22,9 @@ describe("buildNewChildInput", () => {
       languages: ["Hebrew"],
       strengths: ["curious", "kind"],
       challenges: ["sleep transitions"],
-      riskLevel: "Low",
     });
+    // B-CAREPRO-34: a new child record carries no graded verdict field.
+    expect(input).not.toHaveProperty("riskLevel");
   });
 
   it("falls back to a safe name, English language, and unspecified gender", () => {

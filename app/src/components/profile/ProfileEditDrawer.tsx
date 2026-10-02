@@ -201,9 +201,6 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
         languages: languages.split(",").map((s) => s.trim()).filter(Boolean),
         strengths: strengths.split("\n").map((s) => s.trim()).filter(Boolean),
         challenges: challenges.split("\n").map((s) => s.trim()).filter(Boolean),
-        // Firewall: riskLevel is no longer parent-authored (a verdict field has no
-        // place in the parent-facing editor); preserve any stored value untouched.
-        riskLevel: activeChild.riskLevel,
         photoUrl: photoUrl || "",
         ...(avatarMeta ? { avatar: avatarMeta } : {}),
         // CI-29: persist interests[] + ISO timestamp (parent-written only, COPPA-gated).

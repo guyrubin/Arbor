@@ -38,6 +38,5 @@ export function buildNewChildInput(params: BuildNewChildInputParams): Omit<Child
     schoolContext: "",
     strengths: toLines(params.strengthsText),
     challenges: toLines(params.challengesText),
-    riskLevel: "Low",
   };
 }

@@ -8,7 +8,6 @@ export interface ChildProfile {
   schoolContext: string;
   strengths: string[];
   challenges: string[];
-  riskLevel: 'Low' | 'Moderate' | 'High';
   /**
    * P0.4 — explicit onboarding completion. `false` is stamped when the profile is
    * created at the start of OnboardingFlow and flipped to `true` only when the flow

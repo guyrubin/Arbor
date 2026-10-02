@@ -160,9 +160,9 @@ export default function DevelopmentCopilot() {
   // Masterplan 1.7: the old graded dashboard-risk value is gone. What remains
   // is a single internal boolean that gates the PRESENCE of the escalate CTA (Screening.firewall.test.ts precedent: outcome-gated CTA
   // presence is allowed; a graded tone/label is not). Nothing about this
-  // boolean is ever displayed.
-  const escalationSignal =
-    childProfile.riskLevel !== "Low" || watch.some((w) => w.level === "discuss");
+  // boolean is ever displayed. B-CAREPRO-34: the persisted profile verdict
+  // field is retired — the parent's own watch answers are the only signal.
+  const escalationSignal = watch.some((w) => w.level === "discuss");
 
   // GD-10: cumulative practice register — a running tally of activity, never a
   // score. Replaces the old developmentScore VALUE in the pulse tiles.

@@ -41,7 +41,6 @@ const CTX: ReportContext = {
     schoolContext: "Bilingual preschool",
     strengths: ["warm with animals"],
     challenges: ["big transitions"],
-    riskLevel: "Low",
   },
   logs: [
     log(1),

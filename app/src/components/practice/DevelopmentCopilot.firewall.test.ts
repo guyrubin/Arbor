@@ -113,6 +113,12 @@ describe("1.7 firewall guard — DevelopmentCopilot.tsx source is clean", () => 
 });
 
 describe("1.7 zero-regression — every capability stays reachable, reframed", () => {
+  it("B-CAREPRO-34: the escalation signal reads the parent's watch answers only, never the retired profile verdict", () => {
+    expect(copilotSrc).toContain('const escalationSignal = watch.some((w) => w.level === "discuss");');
+    expect(copilotSrc).not.toMatch(/childProfile\.riskLevel/);
+    // NEGATIVE CONTROL: the pre-change read is what the rule catches.
+    expect(/childProfile\.riskLevel/.test('childProfile.riskLevel !== "Low" || watch.some((w) => w.level === "discuss")')).toBe(true);
+  });
   it("keeps the escalate path (B-CAREPRO-19: to Consult, not the retired directory), gated on the internal signal only", () => {
     expect(copilotSrc).toContain('setActiveTab("consult")');
     expect(copilotSrc).not.toContain('setActiveTab("find-pro")');

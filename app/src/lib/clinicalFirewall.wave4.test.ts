@@ -134,8 +134,9 @@ describe("Wave-4 (a) — non-clinician preset outputs pass the shared clinical s
 });
 
 /* (b) — the forbidden tokens appear in NO serializer output. The parent-record
- * context deliberately carries `riskLevel: "High"` on the profile: the field
- * exists on ChildProfile, and the guard proves no builder ever serializes it. */
+ * context deliberately carries a legacy stored `riskLevel: "High"` on the
+ * profile (retired from ChildProfile by B-CAREPRO-34, but an unmigrated record
+ * may still hold it), and the guard proves no builder ever serializes it. */
 
 const PARENT_REPORT_TYPES = Object.keys({
   weekly: 1,
@@ -145,8 +146,14 @@ const PARENT_REPORT_TYPES = Object.keys({
   growth: 1,
 } satisfies Record<ParentReportType, 1>) as ParentReportType[];
 
+/** B-CAREPRO-34: `riskLevel` is retired from ChildProfile (no writer, no
+ *  reader; deleted on the next profile write). A record stored before the
+ *  migration may still carry it, so the fixture spreads it in as legacy data. */
+const LEGACY_STORED_VERDICT = { riskLevel: "High" };
+
 const PARENT_CTX: ReportContext = {
   child: {
+    ...LEGACY_STORED_VERDICT,
     id: "c1",
     name: "Noa",
     age: 4,
@@ -154,7 +161,6 @@ const PARENT_CTX: ReportContext = {
     schoolContext: "Bilingual preschool",
     strengths: ["warm with animals"],
     challenges: ["big transitions", "new English words"],
-    riskLevel: "High",
   },
   logs: [
     { id: "l1", timestamp: new Date(Date.now() - 1 * DAY).toISOString(), behaviorType: "Transition Refusal", intensity: 4, durationMinutes: 10, trigger: "Screen off", response: "Countdown from five", resolved: true },

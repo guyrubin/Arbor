@@ -10,7 +10,7 @@ import { authHeaders } from "../lib/api";
 import { trackProfileCreated } from "../lib/loopEvents";
 import { bandForAge } from "../lib/screening";
 import { computeNeedsOnboarding } from "../lib/onboardingGate";
-import { CLEARABLE_PROFILE_FIELDS } from "../lib/childAge";
+import { CLEARABLE_PROFILE_FIELDS, RETIRED_PROFILE_FIELDS } from "../lib/childAge";
 
 const LS_PROFILES = "arbor.children";
 const LS_ACTIVE = "arbor.activeChildId";
@@ -218,6 +218,8 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       const clears = CLEARABLE_PROFILE_FIELDS.filter((k) => Object.prototype.hasOwnProperty.call(patch, k) && (patch as Record<string, unknown>)[k] === undefined);
       const firestorePatch: Record<string, unknown> = { ...(patch as Record<string, unknown>) };
       for (const k of clears) firestorePatch[k] = deleteField();
+      // B-CAREPRO-34: a retired field leaves the stored record on this write.
+      for (const k of RETIRED_PROFILE_FIELDS) firestorePatch[k] = deleteField();
       if (useFirestore && db) {
         try {
           await updateDoc(doc(db, profilesPath, id), firestorePatch);
@@ -231,6 +233,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       const applyLocal = (p: ChildProfile): ChildProfile => {
         const next = { ...p, ...patch } as Record<string, unknown>;
         for (const k of clears) delete next[k];
+        for (const k of RETIRED_PROFILE_FIELDS) delete next[k];
         return next as unknown as ChildProfile;
       };
       setProfiles((prev) => prev.map((p) => (p.id === id ? applyLocal(p) : p)));
