@@ -69,6 +69,17 @@ export const en: Record<string, string> = {
   // B-TODAY-24: a why-line part, only when the server used approved facts.
   "elev.brief.why.facts": "{n} things you told Arbor",
   "elev.brief.why.facts.one": "1 thing you told Arbor",
+  // B-TODAY-21: the ONE "What changed since you left" card — events and
+  // counts only (no delta, comparison, total or verdict in either locale).
+  "elev.brief.changed.title": "What changed since you left",
+  "elev.brief.changed.milestone": "Noticed: {title}",
+  "elev.brief.changed.step.helped": "You tried “{step}” — it helped",
+  "elev.brief.changed.step.somewhat": "You tried “{step}” — it helped a little",
+  "elev.brief.changed.step.notToday": "You set “{step}” aside for another day",
+  "elev.brief.changed.facts.one": "1 new thing you approved about {name}",
+  "elev.brief.changed.facts.many": "{n} new things you approved about {name}",
+  "elev.brief.changed.moments.one": "1 moment kept",
+  "elev.brief.changed.moments.many": "{n} moments kept",
 };
 
 export const he: Record<string, string> = {
@@ -118,4 +129,13 @@ export const he: Record<string, string> = {
   "elev.brief.hardMoment.why": "נבחר ממדריך פיילוט שמתאים לרגעים שתיעדתם.",
   "elev.brief.why.facts": "{n} דברים שסיפרתם לארבור",
   "elev.brief.why.facts.one": "דבר אחד שסיפרתם לארבור",
+  "elev.brief.changed.title": "מה חדש מאז שהייתם כאן",
+  "elev.brief.changed.milestone": "שמתם לב: {title}",
+  "elev.brief.changed.step.helped": "ניסיתם „{step}” — זה עזר",
+  "elev.brief.changed.step.somewhat": "ניסיתם „{step}” — זה עזר קצת",
+  "elev.brief.changed.step.notToday": "השארתם את „{step}” ליום אחר",
+  "elev.brief.changed.facts.one": "דבר חדש אחד שאישרתם על {name}",
+  "elev.brief.changed.facts.many": "{n} דברים חדשים שאישרתם על {name}",
+  "elev.brief.changed.moments.one": "רגע אחד נשמר",
+  "elev.brief.changed.moments.many": "{n} רגעים נשמרו",
 };

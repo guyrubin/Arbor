@@ -40,13 +40,20 @@
  * `lifecycle` (ENG-09, Wave E) sits directly below the anchor in both orders.
  * It is the AT MOST ONE lifecycle moment lib/lifecycle.ts resolves for this
  * open — a first-week keepsake, a birthday, a welcome back after a lapse. It
- * outranks the since-strip deliberately: a parent returning after a fortnight
+ * sat above the since-strip until B-TODAY-21; the target order puts the ONE
+ * What-changed card first and the lifecycle moment under it (it is rare by
+ * construction). Earlier rationale: a parent returning after a fortnight
  * needs the warm, age-anchored re-entry before a list of events they were not
  * there for. It is rare by construction (each occurrence fires once), so it
  * costs the tail a slot only on the handful of opens where it has something
  * to say.
  */
-export type TodayModuleId = "anchor" | "lifecycle" | "since" | "noticed" | "narrative" | "rail" | "play";
+/*
+ * B-TODAY-21: `since` + `narrative` → `changed` — the ONE "What changed since
+ * you left" card. `noticed` folds into `changed` exactly as it folded into
+ * the since-strip (law 6: the watch signal never vanishes).
+ */
+export type TodayModuleId = "anchor" | "lifecycle" | "changed" | "noticed" | "rail" | "play";
 
 /** Rule A: at most five visible modules on Today, in every state. */
 export const TODAY_MODULE_BUDGET = 5;
@@ -58,8 +65,8 @@ export const TODAY_MODULE_BUDGET = 5;
  * must land somewhere, never just vanish:
  *   play    → the collapsed "More" drawer (and it keeps its full home in
  *             Growth › Daily Play),
- *   noticed → FOLDS into a since-strip row ("Arbor noticed something — look"),
- *             which only exists when the strip itself renders.
+ *   noticed → FOLDS into a What-changed line ("Arbor noticed something —
+ *             look"), which only exists when that card itself renders.
  *
  * Hence the two orders: when the strip is absent there is nothing to fold
  * into, so `noticed` climbs above `rail`/`play` and `play` takes the cut
@@ -67,8 +74,8 @@ export const TODAY_MODULE_BUDGET = 5;
  */
 export function todayModulePriority(opts: { noticedCanFold: boolean }): readonly TodayModuleId[] {
   return opts.noticedCanFold
-    ? ["anchor", "lifecycle", "since", "narrative", "rail", "play", "noticed"]
-    : ["anchor", "lifecycle", "since", "narrative", "noticed", "rail", "play"];
+    ? ["anchor", "changed", "lifecycle", "rail", "play", "noticed"]
+    : ["anchor", "changed", "lifecycle", "noticed", "rail", "play"];
 }
 
 export type TodayModuleWants = Partial<Record<TodayModuleId, boolean>>;

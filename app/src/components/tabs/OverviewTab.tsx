@@ -22,9 +22,10 @@ import TodayContinuation from "../overview/TodayContinuation";
 import FamilyOfferLines from "../overview/FamilyOfferLines";
 import { chooseContinuation } from "../overview/continuation";
 import { useCompanionOffer } from "../overview/useCompanionOffer";
-import ProgressNarrative from "../overview/ProgressNarrative";
 import QuickLogModal from "../overview/QuickLogModal";
-import SinceLastVisit from "../overview/SinceLastVisit";
+import WhatChanged from "../overview/WhatChanged";
+import { composeWhatChanged, type WhatChangedLine } from "../overview/whatChanged";
+import { firstsStorageKey, type FirstsState } from "../../lib/firsts";
 import PromptCaptureCard from "../overview/PromptCaptureCard";
 import { ErrorState } from "../ui/ErrorState";
 import ArborNoticedCard, { todayNoticedSignal } from "../sections/ArborNoticedCard";
@@ -34,7 +35,6 @@ import { useLastVisit } from "../../hooks/useLastVisit";
 import { PASTEL } from "../ui/kit";
 import { predictRhythm, hourLabel } from "../../rhythm/predict";
 import { selectDailyPlay, concernDomainsFromLogs, daySeedFor, type ScoredActivity, type SessionLength } from "../../playbank/select";
-import { useDevScore } from "../../hooks/useDevScore";
 import { useMonitoring } from "../../hooks/useMonitoring";
 import { activeGoalDomains, type ActiveGoal } from "../../practice/goalBuilder";
 import { playDomainLabel } from "../../playbank/content";
@@ -43,7 +43,6 @@ import { focusHeadlineFor, focusBodyFor, whyLineFor } from "../../lib/todayFocus
 import { isIncidentType } from "../../content/behaviorTaxonomy";
 import { dailyPromptKeys } from "../../lib/promptBank";
 import { fmtDay } from "../../lib/formatDate";
-import { buildSinceVisitRows, type SinceVisitRow } from "../overview/sinceVisitEvents";
 import { chooseTodayAction } from "../overview/chooseTodayAction";
 import { resolveTodayModules } from "../overview/todayModules";
 import FirstStepsRail, { useFirstStepsRail } from "../onboarding/FirstStepsRail";
@@ -108,20 +107,16 @@ const GREEN_SOFT = "var(--arbor-green-soft)";
  */
 export default function OverviewTab() {
   const {
-    setActiveTab, milestones, checkedMilestones, totalMilestones,
+    setActiveTab, milestones, checkedMilestones,
     behaviorLogs, childProfile, seedCoach,
     donePlayIds, logPlayCompletion, playLogs, actionLoop,
-    activeTodayAction, acceptTodayAction, requestJournalFocus, conversations,
+    activeTodayAction, acceptTodayAction, requestJournalFocus, approvedMemoryItems,
     pendingCaptureMode, consumeCaptureRequest,
   } = useArbor();
 
   const { t, uiLang } = useLanguage();
   const { user } = useAuth();
   const { toast } = useToast();
-  // The ONE shared dev-score derivation (hooks/useDevScore) — the same result
-  // the Development hub and the other picture surfaces read. Hoisted here
-  // because the dev-map card below renders it inside a JSX callback.
-  const devScore = useDevScore();
   // Rule A: the disclosure is a SECONDARY drawer now (feed + displaced play +
   // wellness check-in) — collapsed by default so Today stays ≤5 modules.
   const [showTools, setShowTools] = useState(false);
@@ -521,18 +516,6 @@ export default function OverviewTab() {
     [activityFeed]
   );
 
-  // ── Dev-footer COUNT stats (clinical firewall: counts only, never a %/verdict) ──
-  const devStats = useMemo(() => {
-    const focusCount = activeGoals.length; // parent-expressed goals, never weakest-domain
-    const domainsWithProgress = new Set(
-      milestones.filter((m) => m.checked).map((m) => m.domain)
-    ).size; // domains where a milestone has been noticed (count of 7)
-    const weekActivity =
-      behaviorLogs.filter((l) => new Date(l.timestamp).getTime() >= Date.now() - 7 * DAY).length +
-      playLogs.filter((p) => new Date(p.timestamp).getTime() >= Date.now() - 7 * DAY).length;
-    return { focus: focusCount, domains: domainsWithProgress, week: weekActivity };
-  }, [activeGoals.length, milestones, behaviorLogs, playLogs]);
-
   // ── Rule A budget inputs: which conditional modules would ACTUALLY render? ──
   // P1-B: the previous implementation asked `todayHardMomentOffer(...)` here.
   // That resolves through publishedHardMomentCards, which governance (GD-10)
@@ -566,23 +549,43 @@ export default function OverviewTab() {
   const dayZero =
     !isReturning && behaviorLogs.length === 0 && playLogs.length === 0 && checkedMilestones === 0;
 
-  // ── W1 1.1: the since-visit EVENT rows (strictly newer than the previous
-  //    visit). Built WITHOUT the fold row first, because whether the strip has
-  //    anything to say is what decides if there is a fold target at all. ──
-  const sinceBase = useMemo(
-    () => buildSinceVisitRows({
-      previousVisitAt: isReturning ? previousVisitAt : null,
+  // ── B-TODAY-21: the ONE "What changed since you left" composer (events
+  //    strictly newer than the previous visit). Built WITHOUT the fold line
+  //    first, because whether the card has anything to say decides whether
+  //    the watch signal has a fold target at all. ──
+  const firstsState = useMemo<FirstsState>(() => {
+    try {
+      const raw = window.localStorage.getItem(firstsStorageKey(childProfile.id));
+      const parsed = raw ? (JSON.parse(raw) as FirstsState) : null;
+      return parsed && Array.isArray(parsed.seen) ? parsed : { seen: [] };
+    } catch {
+      return { seen: [] };
+    }
+  }, [childProfile.id]);
+  const approvedFactsSince = useMemo(() => {
+    const since = previousVisitAt ? Date.parse(previousVisitAt) : NaN;
+    if (!Number.isFinite(since)) return 0;
+    return approvedMemoryItems.filter((m) => Date.parse(m.createdAt) > since).length;
+  }, [approvedMemoryItems, previousVisitAt]);
+  const composeChanged = (includeNoticed: boolean) =>
+    composeWhatChanged({
+      previousVisitAt: isReturning && !dayZero ? previousVisitAt : null,
       behaviorLogs,
       playLogs,
       milestones,
-      conversations,
-      // TJB-05: the day's step is an EVENT since the last visit too — it used
-      // to write actionLoops and show up nowhere.
-      actions: actionLoop,
-      includeNoticedRow: false,
-    }),
-    [isReturning, previousVisitAt, behaviorLogs, playLogs, milestones, conversations, actionLoop]
+      actionLoop,
+      approvedFactsSince,
+      firstsState,
+      firstsCounts: { milestoneCount: checkedMilestones },
+      includeNoticed,
+    });
+  const changedBase = useMemo(
+    () => composeChanged(false),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isReturning, dayZero, previousVisitAt, behaviorLogs, playLogs, milestones, actionLoop, approvedFactsSince, firstsState, checkedMilestones]
   );
+  const recapLineDue = !!weeklyRecap.currentReport && weeklyRecap.recapUnopened;
+  const changedWould = !dayZero && isReturning && (changedBase.lines.length > 0 || recapLineDue);
 
   // ── ENG-09 (Wave E): the lifecycle spine. `onboardingCompletedAt` finally
   //    has a reader — the pure resolver in lib/lifecycle.ts turns the account's
@@ -606,22 +609,21 @@ export default function OverviewTab() {
         // open. Day-0 with no data still shows nothing — the resolver cannot
         // produce a moment before the first capture (P1-C day-0 shape).
         lifecycle: lifecycleMoment !== null,
-        since: isReturning && sinceBase.rows.length > 0,
+        changed: changedWould,
         rail: railWould,
         noticed: !dayZero && noticedWould,
-        narrative: !dayZero,
         play: !dayZero && todayChoice.kind !== "play",
       },
-      { noticedCanFold: isReturning && sinceBase.rows.length > 0 },
+      { noticedCanFold: changedWould },
     ),
-    [isReturning, sinceBase.rows.length, railWould, dayZero, noticedWould, todayChoice.kind, lifecycleMoment]
+    [changedWould, railWould, dayZero, noticedWould, todayChoice.kind, lifecycleMoment]
   );
 
-  // The watch signal degrades by FOLDING into a since-strip row ("Arbor noticed
-  // something — look"), never by vanishing (todayModules.ts guarantees it is
-  // only demotable while the strip is there to receive it).
+  // The watch signal degrades by FOLDING into a What-changed line ("Arbor
+  // noticed something — look"), never by vanishing (todayModules.ts
+  // guarantees it is only demotable while the card is there to receive it).
   const foldNoticed = modulePlan.demoted.includes("noticed");
-  const showSinceStrip = modulePlan.visible.has("since");
+  const showChanged = modulePlan.visible.has("changed");
   const showLifecycle = modulePlan.visible.has("lifecycle");
   // B-AI-06: ONE proactive offer per open. The coordinator ranks the carry-over
   // question, the lifecycle moment, appointments, a due re-check, the rhythm
@@ -643,46 +645,25 @@ export default function OverviewTab() {
     />
   );
 
-  const sinceVisit = useMemo(
-    () => (foldNoticed
-      ? buildSinceVisitRows({
-        previousVisitAt: isReturning ? previousVisitAt : null,
-        behaviorLogs,
-        playLogs,
-        milestones,
-        conversations,
-        actions: actionLoop,
-        includeNoticedRow: true,
-      })
-      : sinceBase),
-    [foldNoticed, sinceBase, isReturning, previousVisitAt, behaviorLogs, playLogs, milestones, conversations, actionLoop]
+  const changed = useMemo(
+    () => (foldNoticed ? composeChanged(true) : changedBase),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [foldNoticed, changedBase]
   );
 
-  const onSinceRowTap = (row: SinceVisitRow) => {
-    if (row.kind === "milestone" || row.kind === "noticed") {
+  const onChangedLineTap = (line: WhatChangedLine) => {
+    if (line.kind === "milestone" || line.kind === "noticed" || line.kind === "first") {
       setActiveTab("development");
       return;
     }
-    if (row.kind === "conversations") {
-      setActiveTab("coach");
+    if (line.kind === "facts") {
+      setActiveTab("memory");
       return;
     }
-    // moments / plays / the day's step deep-link to the exact journal
-    // timeline signal (TJB-05 gives the step a real id to land on).
-    requestJournalFocus(row.focusId);
+    // moments and steps deep-link to the exact journal timeline signal.
+    requestJournalFocus(line.focusId);
     setActiveTab("journal");
   };
-
-  // "Arbor remembers" footer counts (counts only — clinical firewall).
-  const memoryCounts = useMemo(() => {
-    const dayStart = new Date();
-    dayStart.setHours(0, 0, 0, 0);
-    const s = dayStart.getTime();
-    const capturedToday =
-      behaviorLogs.filter((l) => new Date(l.timestamp).getTime() >= s).length +
-      playLogs.filter((p) => new Date(p.timestamp).getTime() >= s).length;
-    return { capturedToday, week: devStats.week, story: behaviorLogs.length + playLogs.length };
-  }, [behaviorLogs, playLogs, devStats.week]);
 
   // The Daily Play "Try together" section — ONE JSX instance, placed either as
   // a visible module, in the left slot when it IS the primary action, or inside
@@ -773,7 +754,10 @@ export default function OverviewTab() {
              overflow container compete with its own overflow), and playSection
              itself — it is one JSX instance placed in three positions, and only
              the top-level one is a sibling module. */}
-      <div data-module="today-anchor" className="grid grid-cols-1 lg:grid-cols-[1.85fr_0.85fr] gap-5">
+      {/* B-TODAY-21: at lg the ONE What-changed card takes the right column the
+             dev-map count card used to hold; below lg it follows the anchor. */}
+      <div className={showChanged ? "grid grid-cols-1 items-start gap-4 md:gap-5 lg:grid-cols-[1.55fr_1fr]" : "grid grid-cols-1 gap-4 md:gap-5 lg:max-w-[820px]"}>
+      <div data-module="today-anchor" className="min-w-0">
         {/* ── Day anchor (left slot) — W1 1.2 guaranteed action. ONE slot, one
                primary: an accepted action owns it (TodayActionLoop); else the
                chooseTodayAction chain renders the AI focus hero, the promptBank
@@ -885,66 +869,24 @@ export default function OverviewTab() {
             />
           )}
         </div>
-        {/* ── Development-Map card (right, 1fr) ─────────────────────────────────
-            Clinical firewall: a milestone-count ring + a COUNT-based 3-stat
-            footer (Focus / Domains / Week). NO 0–100 ring, no per-domain %, no
-            on-track verdict, no weakest-domain pointer. Click → Growth. */}
-        {(() => {
-          if (dayZero) return null;
-          const score = devScore;
-          if (score.confidence === "none") return null;
-          return (
-            <button
-              type="button"
-              onClick={() => setActiveTab("development")}
-              className="w-full min-h-11 rounded-[22px] p-5 flex flex-col text-start transition motion-safe:hover:-translate-y-0.5"
-              style={{ background: "var(--arbor-paper-elevated)", boxShadow: "var(--shadow-sm)" }}
-            >
-              <div className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-clay)" }}>
-                {t("devscore.eyebrow")}
-              </div>
-              <div className="flex items-center gap-4 mt-3">
-                <div className="flex-none w-[72px] h-[72px] rounded-full flex flex-col items-center justify-center" style={{ background: "var(--arbor-green-soft)" }}>
-                  <span className="text-[18px] font-extrabold leading-none" style={{ color: "var(--arbor-green-ink)" }}>{checkedMilestones}</span>
-                  <span className="text-[10px] font-bold mt-1" style={{ color: "var(--arbor-green-ink)" }}>{t("devscore.noticed.short")}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[14px] font-extrabold leading-tight" style={{ color: "var(--arbor-ink)" }}>
-                    {t("devscore.noticed", { reached: checkedMilestones, total: totalMilestones })}
-                  </div>
-                  <div className="text-[11.5px] mt-1.5 leading-relaxed" style={{ color: "var(--arbor-faint)" }}>
-                    {t("devscore.mechanism.short")}
-                  </div>
-                </div>
-              </div>
-              {/* Empty state (no milestones noticed yet): a 3-zero footer is
-                  meaningless, so teach where the picture comes from instead. */}
-              {checkedMilestones === 0 ? (
-                <div className="mt-auto pt-4">
-                  <div className="rounded-xl px-3.5 py-3 text-[11.5px] font-semibold leading-relaxed" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-faint)" }}>
-                    {t("today.devmap.empty")}
-                  </div>
-                </div>
-              ) : (
-                /* COUNT-based 3-stat footer. Focus = parent-expressed goals;
-                   Domains = domains with a noticed milestone (of 7); Week = moments
-                   noticed in 7d. */
-                <div className="flex gap-2 mt-auto pt-4">
-                  {([
-                    { v: devStats.focus, label: t("devscore.stat.focus"), ink: "var(--arbor-clay)" },
-                    { v: devStats.domains, label: t("devscore.stat.domains"), ink: "var(--arbor-green-ink)" },
-                    { v: devStats.week, label: t("devscore.stat.week"), ink: "var(--arbor-clay-deep)" },
-                  ] as const).map((s) => (
-                    <div key={s.label} className="flex-1 rounded-xl py-2.5 text-center" style={{ background: "var(--arbor-paper-deep)" }}>
-                      <div className="text-[17px] font-extrabold leading-none" style={{ color: s.ink }}>{s.v}</div>
-                      <div className="text-[9.5px] font-bold mt-1.5" style={{ color: "var(--arbor-faint)" }}>{s.label}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </button>
-          );
-        })()}
+      </div>
+      {/* ── B-TODAY-21: "What changed since you left" — events from the record
+             since the previous visit (≤4 lines, the recap-ready line, the
+             cold-start line, days together). Replaces SinceLastVisit,
+             ProgressNarrative and the dev-map count card (milestone counts
+             live in Growth). Returning parents only; never on day-0. ── */}
+      {showChanged && (
+        <div data-module="today-changed" className="min-w-0">
+          <WhatChanged
+            lines={changed.lines}
+            hiddenCount={changed.hiddenCount}
+            recap={weeklyRecap}
+            rhythmDaysNeeded={rhythm.daysNeeded}
+            onLineTap={onChangedLineTap}
+            onMore={() => setActiveTab("journal")}
+          />
+        </div>
+      )}
       </div>
 
       {/* ── ENG-09 / Wave E: the lifecycle moment. BELOW the anchor row (P1-A —
@@ -965,27 +907,6 @@ export default function OverviewTab() {
         </div>
       )}
 
-      {/* ── W1 1.1: "Since your last visit" — returning parents only. It sits
-             BELOW the anchor row (P1-A): continuity is warm, but it is not the
-             day's action, and above the fold it was costing ~450px and burying
-             the one CTA. The "continuing where we left off" framing stays on the
-             anchor itself, so the narrative order still reads greeting → resume
-             → what's new. ── */}
-      {showSinceStrip && (
-        <div data-module="today-since" style={{ display: "contents" }}>
-        <SinceLastVisit
-          rows={sinceVisit.rows}
-          hiddenCount={sinceVisit.hiddenCount}
-          capturedToday={memoryCounts.capturedToday}
-          weekCount={memoryCounts.week}
-          storyCount={memoryCounts.story}
-          onRowTap={onSinceRowTap}
-          onMore={() => setActiveTab("journal")}
-          recap={weeklyRecap}
-        />
-        </div>
-      )}
-
       {/* ── E11 first-steps rail — a Today module now, not Shell chrome. It is
              the day-0 start path, so it renders in every state where it still
              has steps left, but it can never outrank the day's action again. ── */}
@@ -998,35 +919,9 @@ export default function OverviewTab() {
              P1-C: it is inside the day-0 guard — a parent who has answered
              nothing has produced no signal, so a "worth keeping an eye on" card
              on a brand-new account would be manufactured from ABSENT data.
-             Rule A: when the budget is spent it FOLDS into a SinceLastVisit row
+             Rule A: when the budget is spent it FOLDS into a What-changed line
              instead of rendering as a sibling card (foldNoticed above). ── */}
       {modulePlan.visible.has("noticed") && <div data-module="today-noticed" style={{ display: "contents" }}><ArborNoticedCard /></div>}
-
-      {/* ── Progress narrative — retrospective picture. Its "Your evidence" cell
-             is the ONE recent-moments surface on Today (CODEX-1). Skipped on
-             day-0 (Rule A: day-0 = capture bar + primary action only). ── */}
-      {/* TODAY-6: evidence ids are the JOURNAL TIMELINE SIGNAL ids (the same
-             `moment-`/`play-` prefixes buildTimeline assigns), so a tapped row
-             deep-links to exactly that entry via the requestJournalFocus seam.
-             The deep-link carries only the id — never a derived score. */}
-      {modulePlan.visible.has("narrative") && (
-        <div data-module="today-narrative" style={{ display: "contents" }}>
-        <ProgressNarrative
-          childName={firstName}
-          behaviorLogs={behaviorLogs.map((item) => ({ id: `moment-${item.id}`, timestamp: item.timestamp, label: item.context || item.notes || t("today.feed.logged") }))}
-          playLogs={playLogs.map((item) => ({ id: `play-${item.id}`, timestamp: item.timestamp, label: item.title }))}
-          noticedMilestones={checkedMilestones}
-          actions={actionLoop}
-          // ENG-18: the cold-start countdown Today never showed. predictRhythm
-          // already runs here for the why-line; this passes its `daysNeeded`
-          // instead of leaving a new parent to guess when this starts working.
-          rhythmDaysNeeded={rhythm.daysNeeded}
-          onOpenEvidence={(evidenceId) => {
-            if (evidenceId) requestJournalFocus(evidenceId); setActiveTab("journal");
-          }}
-        />
-        </div>
-      )}
 
       {/* ── Daily Play "Try together" — visible only while it holds a budget
              slot; the primary-slot chain renders it when it IS the action;
