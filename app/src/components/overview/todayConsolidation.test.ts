@@ -285,7 +285,7 @@ describe("B-TODAY-17 — the drawer is gone: no feed, no check-in, no displaced 
     };
     walk(SRC_ROOT);
     expect(writers).toEqual(["lib/childData.ts"]);
-  });
+  }, 60_000); // a whole-tree read; the default 5 s is too tight on a loaded machine
 
   it("#/daily-play stays reachable from Growth", () => {
     const nav = read("lib/navigation.ts");
