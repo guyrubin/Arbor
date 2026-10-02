@@ -4,7 +4,6 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToastOptional } from "../../context/ToastContext";
 import CarryOverActionAsk from "./CarryOverActionAsk";
-import HardMomentTodayOffer from "./HardMomentTodayOffer";
 import RhythmCue from "../coach/RhythmCue";
 import TomorrowReasonCard from "../nextopen/TomorrowReasonCard";
 import type { CompanionOffer, OfferKind, OfferSurface } from "../../lib/companionOffer";
@@ -95,14 +94,18 @@ export function OfferFrame({
 function CompanionOfferCard({ offer }: { offer: CompanionOffer }) {
   const { t } = useLanguage();
   const { setActiveTab } = useArbor();
-  const eyebrow = offer.kind === "appointment" ? t("elev.offer.card.appt") : t("elev.offer.card.recheck");
+  const eyebrow =
+    offer.kind === "appointment" ? t("elev.offer.card.appt")
+    : offer.kind === "grounded-step" ? t("hm.today.eyebrow")
+    : t("elev.offer.card.recheck");
+  const ctaLabel = offer.kind === "grounded-step" ? t("elev.brief.grounded.open") : t(offer.cta.labelKey);
   return (
     <div
       className="flex items-start gap-3 rounded-xl px-3 py-3"
       style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}
     >
       <span aria-hidden className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl" style={{ background: "var(--arbor-paper)", color: "var(--arbor-green-ink)" }}>
-        <Icon name={offer.kind === "appointment" ? "event" : "fact_check"} size={20} />
+        <Icon name={offer.kind === "appointment" ? "event" : offer.kind === "grounded-step" ? "volunteer_activism" : "fact_check"} size={20} />
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-[11px] font-extrabold uppercase tracking-[0.12em]" style={{ color: "var(--arbor-green-ink)" }}>{eyebrow}</p>
@@ -112,7 +115,7 @@ function CompanionOfferCard({ offer }: { offer: CompanionOffer }) {
           className="mt-2 inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 text-[12.5px] font-extrabold"
           style={{ background: "var(--arbor-paper)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-green-ink)" }}
         >
-          {t(offer.cta.labelKey)}
+          {ctaLabel}
           <Icon name="arrow_forward" size={16} className="flex-shrink-0 rtl:-scale-x-100" />
         </button>
       </div>
@@ -134,6 +137,9 @@ export default function CompanionOfferSlot({
   placement?: "continuation" | "under-step";
 }) {
   if (!offer || offer.kind === "what-changed") return null;
+  // B-TODAY-12: on Today the grounded hard-moment step lives ON the step card
+  // (its Say-this, or its doNow as the step) — one card, one accept.
+  if (offer.kind === "grounded-step" && surface === "today") return null;
   let body: React.ReactNode = null;
   switch (offer.kind) {
     case "follow-up":
@@ -154,7 +160,8 @@ export default function CompanionOfferSlot({
       body = <RhythmCue surface={surface} nudge={offer.nudge ?? null} onDismiss={() => controls.dismiss(offer.kind)} />;
       break;
     case "grounded-step":
-      body = <HardMomentTodayOffer />;
+      // Ask: a plain door back to Today, where the step card carries it.
+      body = <CompanionOfferCard offer={offer} />;
       break;
   }
   return (

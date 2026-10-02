@@ -146,3 +146,20 @@ describe("B-TODAY-08 — chain order loop > recap > focus > weekOpen", () => {
     expect(chooseTodayAction({ ...B, hasWeekOpenAnchor: true })).toEqual({ kind: "weekOpen" });
   });
 });
+
+describe("B-TODAY-12 — a grounded hard-moment step when there is no focus", () => {
+  const BASE2 = { hasActiveAction: false, focusHeadline: null as string | null, focusPending: false, promptKeys: ["elev.prompt.toddler.1"], hasDailyPlay: true };
+  it("focus > hardMoment: the guide's Say-this rides on the focus instead", () => {
+    expect(chooseTodayAction({ ...BASE2, focusHeadline: "Do X", hasHardMomentStep: true })).toEqual({ kind: "focus" });
+    expect(chooseTodayAction({ ...BASE2, focusPending: true, hasHardMomentStep: true })).toEqual({ kind: "focus" });
+  });
+  it("hardMoment > weekOpen > prompt > play", () => {
+    expect(chooseTodayAction({ ...BASE2, hasHardMomentStep: true, hasWeekOpenAnchor: true })).toEqual({ kind: "hardMoment" });
+    expect(chooseTodayAction({ ...BASE2, hasHardMomentStep: true })).toEqual({ kind: "hardMoment" });
+  });
+  it("loop and recap still outrank it; absent flag = unchanged chain", () => {
+    expect(chooseTodayAction({ ...BASE2, hasActiveAction: true, hasHardMomentStep: true })).toEqual({ kind: "loop" });
+    expect(chooseTodayAction({ ...BASE2, hasWeekAnchorRecap: true, hasHardMomentStep: true })).toEqual({ kind: "recap" });
+    expect(chooseTodayAction({ ...BASE2 }).kind).toBe("prompt");
+  });
+});

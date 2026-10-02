@@ -1,6 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ageMonthsFromProfile, ageYearsFromProfile } from "../../lib/childAge";
 import { availableHardMomentCards } from "../../content/selectCards";
+import { escalationText, locText } from "../../content/hardMomentSurface";
+import { acceptHardMomentStep, hardMomentStepFor } from "../overview/hardMomentStep";
+import { renderSayThis } from "../../content/hardMomentCards";
+import { hardMomentPilotText } from "../../content/hardMomentPilotText";
+import type { StepSayThis } from "../overview/TodayRecommendation";
 import { motion } from "motion/react";
 import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
@@ -338,9 +343,30 @@ export default function OverviewTab() {
       anchorSeenWeekId: weekOpen.seenWeekId,
     });
 
+  // ── B-TODAY-12: the matched pilot hard-moment guide is the step's content,
+  //    never a second card. With a focus, its Say-this rides on the focus
+  //    card; with no focus, its doNow IS the step (same accept seam).
+  const hmLocale: "en" | "he" = uiLang === "he" ? "he" : "en";
+  const hardMoment = useMemo(() => {
+    const now = new Date();
+    return hardMomentStepFor(behaviorLogs, { now, ageMonths: ageMonthsFromProfile(childProfile, now), locale: hmLocale }, !!activeTodayAction);
+  }, [activeTodayAction, behaviorLogs, childProfile, hmLocale]);
+  const hardMomentSayThis: StepSayThis | undefined = hardMoment
+    ? {
+        text: locText(renderSayThis(hardMoment.card, firstName), hmLocale),
+        lang: hmLocale,
+        title: t("hm.section.sayThis"),
+        copyLabel: t("coach.action.copy"),
+        copiedLabel: t("coach.cards.copied"),
+        pilotLabel: hardMoment.pilot ? hardMomentPilotText(hmLocale).status : undefined,
+        escalation: { title: t("hm.section.escalation"), text: escalationText(hardMoment.card, hmLocale) },
+      }
+    : undefined;
+
   const todayChoice = useMemo(
     () => chooseTodayAction({
       hasActiveAction: !!activeTodayAction,
+      hasHardMomentStep: !!hardMoment,
       hasWeekAnchorRecap: recapAnchorDue,
       hasWeekOpenAnchor: weekOpenDue,
       focusHeadline,
@@ -348,8 +374,10 @@ export default function OverviewTab() {
       promptKeys,
       hasDailyPlay: !!dailyPlay,
     }),
-    [activeTodayAction, recapAnchorDue, weekOpenDue, focusHeadline, focusLoading, focus, recentCount, promptKeys, dailyPlay]
+    [activeTodayAction, hardMoment, recapAnchorDue, weekOpenDue, focusHeadline, focusLoading, focus, recentCount, promptKeys, dailyPlay]
   );
+  const stepIsHardMoment = todayChoice.kind === "hardMoment" && !!hardMoment;
+  const hardMomentDoNow = hardMoment ? locText(hardMoment.card.doNow, hmLocale) : "";
   // KPI 0.8: % opens ending in an offered action (target 100%).
   useEffect(() => {
     track("today_action_offered", { kind: todayChoice.kind });
@@ -368,8 +396,11 @@ export default function OverviewTab() {
   const greetingKey =
     hour < 12 ? "today.greeting.morning" : hour < 18 ? "today.greeting.afternoon" : "today.greeting.evening";
 
+  // The step card's ONE seeded ask: the focus text, or (B-TODAY-12) the
+  // matched guide's doNow when that is the step.
   const beginGuidance = () => {
-    seedCoach({ prompt: focus ? t("seed.todayFocus", { focus: focus.text, name: firstName }) : undefined, source: "today-guidance" });
+    const stepText = stepIsHardMoment ? hardMomentDoNow : focus?.text;
+    seedCoach({ prompt: stepText ? t("seed.todayFocus", { focus: stepText, name: firstName }) : undefined, source: "today-guidance" });
   };
 
   // ── Kid activity feed (Loops 1+3+5) — kid-originated + parent-logged events
@@ -740,25 +771,38 @@ export default function OverviewTab() {
             />
           ) : activeTodayAction ? (
             <TodayActionLoop />
-          ) : todayChoice.kind === "focus" ? (
+          ) : todayChoice.kind === "focus" || (todayChoice.kind === "hardMoment" && hardMoment) ? (
+            /* ONE step card. B-TODAY-12: with a focus, the matched pilot
+               guide's Say-this rides on it; with no focus, the guide's doNow
+               IS the step (same accept seam, source "hard-moment", B-AI-05).
+               One card, one accept, never a second "Make this today's step". */
             <TodayRecommendation
-              eyebrow={t("today.guidance.tag")}
-              headline={focusHeadline ?? t("ov.recoEmpty", { name: firstName })}
-              body={focusHeadline ? focusBody : undefined}
+              eyebrow={stepIsHardMoment ? t("hm.today.eyebrow") : t("today.guidance.tag")}
+              headline={stepIsHardMoment ? hardMomentDoNow : focusHeadline ?? t("ov.recoEmpty", { name: firstName })}
+              body={!stepIsHardMoment && focusHeadline ? focusBody : undefined}
               meta={t("today.meta")}
               action={t("elev.today.askAbout")}
-              loading={focusLoading && !focus}
+              loading={!stepIsHardMoment && focusLoading && !focus}
               onBegin={beginGuidance}
-              accept={focusHeadline ? {
+              accept={stepIsHardMoment || focusHeadline ? {
                 label: t("today.action.make"),
                 lengthAria: t("today.action.length"),
                 minUnit: t("today.action.min"),
-                onAccept: (capacity) => acceptTodayAction(focusHeadline, capacity),
+                onAccept: (capacity) => {
+                  if (!stepIsHardMoment) {
+                    if (focusHeadline) acceptTodayAction(focusHeadline, capacity);
+                    return;
+                  }
+                  // Re-check the release at tap time (the pilot can expire mid-session).
+                  const now = new Date();
+                  if (hardMoment) acceptHardMomentStep(hardMoment.card.id, { now, ageMonths: ageMonthsFromProfile(childProfile, now), locale: hmLocale }, capacity, acceptTodayAction);
+                },
               } : undefined}
               // W1 1.2 why-line + masterplan 3.1 chain: the copy rides the card's
               // own ContentWhyLine slot so the TrustLink lands AFTER the why text
               // (it used to sit between the CTA and a sibling <p>).
-              why={focusWhy}
+              why={stepIsHardMoment ? t("elev.brief.hardMoment.why") : focusWhy}
+              sayThis={hardMomentSayThis}
             />
           ) : todayChoice.kind === "play" ? (
             playSection
@@ -774,13 +818,11 @@ export default function OverviewTab() {
               whyLine={todayChoice.kind === "prompt" ? t("today.intent.why.prompt", { age: ageYearsFromProfile(childProfile) }) : undefined}
             />
           )}
-          {/* B-AI-06: the ONE proactive slot under the day's anchor. Its
-              renderers are the cards that used to mount here independently —
-              ENG-12's carry-over question (the step that outlived its day),
-              ENG-11's rhythm / evening cue and CONT-2's hard-moment offer
-              (fail-closed on published cards, outline button through the
-              existing acceptTodayAction seam) — plus appointments and a due
-              re-check. At most one renders, with its reason line; the
+          {/* B-AI-06: the ONE proactive slot. Under the step it renders the
+              rhythm / evening cue, appointments and a due re-check (the
+              carry-over and tomorrow's reason sit ABOVE the step, B-TODAY-18;
+              the grounded hard-moment step is the step card's own content,
+              B-TODAY-12). At most one renders, with its reason line; the
               coordinator honours quiet hours and the 2/day ceiling and spends
               the shown-ledger. Never a second gradient CTA (Rule A). */}
           {continuation === "none" && offerSlot}
@@ -995,7 +1037,7 @@ export default function OverviewTab() {
               {/* B-TODAY-13: the Day Windows row left this drawer. The doors
                   are the rhythm line's "See the hours" link (when a PREP or
                   CALM cue shows), Settings, and the md+ pill. */}
-              {/* Daily Play displaced here by the hard-moment offer (budget). */}
+              {/* Daily Play displaced here when the module budget is spent. */}
               {!showPlayInline && todayChoice.kind !== "play" && playSection}
               <div className="max-w-[520px]">
                 <DailyCheckinCard />

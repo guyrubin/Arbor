@@ -112,8 +112,10 @@ export function SayThis({
       icon={<Icon name="format_quote" size={12} />} title={title} tint="var(--arbor-sky-ink)"
       action={
         <div className="flex items-center gap-2">
-          <SpeakButton text={text} lang={lang} className="text-[10px]" />
-          <button onClick={onCopy} className="text-[10px] font-bold inline-flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}>
+          {/* B-TODAY-12: both controls reach the 44 px floor (the script now
+              rides on Today's step card, not only inside a coach answer). */}
+          <SpeakButton text={text} lang={lang} className="text-[10px] min-h-11 px-1" />
+          <button onClick={onCopy} className="text-[10px] font-bold inline-flex min-h-11 items-center gap-1 px-1" style={{ color: "var(--arbor-muted)" }}>
             {copied ? <><Icon name="check" size={12} /> {copiedLabel}</> : <><Icon name="content_copy" size={12} /> {copyLabel}</>}
           </button>
         </div>

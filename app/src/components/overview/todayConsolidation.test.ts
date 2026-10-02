@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
+import { existsSync } from "node:fs";
 import * as path from "node:path";
 import { en, he } from "../../lib/i18n";
 import { elevationEn, elevationHe } from "../../lib/i18nElevation/index";
@@ -42,7 +43,8 @@ describe("TODAY-2/CODEX-1 — one loop, not three stacked widgets", () => {
   it("OverviewTab renders ONE mutually-exclusive primary slot (W1 1.2 chain)", () => {
     // The guaranteed-action chain: accepted action → focus hero → prompt
     // capture card / play promotion — one ternary chain, one slot.
-    expect(overview).toMatch(/activeTodayAction\s*\?\s*\(\s*<TodayActionLoop\s*\/>\s*\)\s*:\s*todayChoice\.kind\s*===\s*"focus"\s*\?\s*\(/);
+    // B-TODAY-12: the focus hero and the grounded hard-moment step are ONE card.
+    expect(overview).toMatch(/activeTodayAction\s*\?\s*\(\s*<TodayActionLoop\s*\/>\s*\)\s*:\s*todayChoice\.kind\s*===\s*"focus"\s*\|\|\s*\(todayChoice\.kind === "hardMoment" && hardMoment\)\s*\?\s*\(/);
     expect(count(overview, /<TodayActionLoop/g)).toBe(1);
     expect(count(overview, /<TodayRecommendation/g)).toBe(1);
     expect(count(overview, /<PromptCaptureCard/g)).toBe(1);
@@ -54,7 +56,9 @@ describe("TODAY-2/CODEX-1 — one loop, not three stacked widgets", () => {
   });
 
   it("TODAY-1 guard survives the merge: accept is offered ONLY from a real focus headline", () => {
-    expect(overview).toMatch(/accept=\{focusHeadline\s*\?/);
+    // B-TODAY-12: …or from a released pilot guide (re-checked at tap time).
+    expect(overview).toMatch(/accept=\{stepIsHardMoment \|\| focusHeadline\s*\?/);
+    expect(overview).toContain("if (focusHeadline) acceptTodayAction(focusHeadline, capacity);");
     // and the action card can no longer persist anything into actionLoops
     expect(loop).not.toMatch(/acceptTodayAction/);
   });
@@ -201,5 +205,45 @@ describe("B-TODAY-09 — no dead header button, no duplicate Ask row, no dead ve
 
   it("negative control: the pre-fix header button is what the scan rejects", () => {
     expect('<button onClick={() => setShowAiRail(true)} className="hidden sm:inline-flex">').toContain("setShowAiRail");
+  });
+});
+
+describe("B-TODAY-12 — one step card: the hard-moment offer folds into it as 'Say this'", () => {
+  const overview = stripComments(read("components/tabs/OverviewTab.tsx"));
+  const hero = stripComments(read("components/overview/TodayRecommendation.tsx"));
+  const slot = stripComments(read("components/overview/CompanionOfferSlot.tsx"));
+  /** The day-anchor column: from its primary-move stamp to the end of the anchor module. */
+  const anchor = overview.slice(overview.indexOf('data-primary-move="do-today-action"'), overview.indexOf("{showLifecycle &&"));
+
+  it("the anchor tree holds ONE accept label and ONE gradient owner", () => {
+    expect(anchor.length).toBeGreaterThan(1000);
+    expect(count(anchor, /t\("today\.action\.make"\)/g)).toBe(1);
+    expect(count(anchor, /<TodayRecommendation(?=[\s>])/g)).toBe(1);
+    expect(count(anchor, /--arbor-gradient-primary/g)).toBe(0);
+    expect(count(hero, /--arbor-gradient-primary/g)).toBe(1);
+    expect(overview).not.toContain("HardMomentTodayOffer");
+    expect(existsSync(path.join(SRC_ROOT, "components/overview/HardMomentTodayOffer.tsx"))).toBe(false);
+  });
+
+  it("Say-this renders through the shared SayThis, with the pilot label and an always-visible escalation", () => {
+    expect(hero).toContain('import { SayThis } from "../ui/AiBlock";');
+    expect(hero).toContain('data-testid="today-saythis"');
+    expect(hero).toContain('data-testid="today-saythis-pilot"');
+    expect(hero).toMatch(/role="note" data-testid="today-saythis-escalation"/);
+    expect(hero).not.toMatch(/<details[\s\S]{0,200}today-saythis-escalation/);
+    expect(overview).toContain("sayThis={hardMomentSayThis}");
+    expect(overview).toContain("text: locText(renderSayThis(hardMoment.card, firstName), hmLocale)");
+    expect(overview).toContain("escalation: { title: t(\"hm.section.escalation\"), text: escalationText(hardMoment.card, hmLocale) }");
+  });
+
+  it("the SayThis controls reach 44 px (it now sits on Today's step)", () => {
+    const ai = stripComments(read("components/ui/AiBlock.tsx"));
+    expect(ai).toContain('className="text-[10px] min-h-11 px-1"');
+    expect(ai).toContain("inline-flex min-h-11 items-center gap-1 px-1");
+  });
+
+  it("the coordinator's grounded step renders nothing extra on Today", () => {
+    expect(slot).toMatch(/if \(offer\.kind === "grounded-step" && surface === "today"\) return null;/);
+    expect(slot).not.toContain("HardMomentTodayOffer");
   });
 });

@@ -76,9 +76,11 @@ describe("CONT-2 — before the pilot release, the all-draft pack is unavailable
     expect(code).toMatch(/publishedHardMomentCards\.length\s*>\s*0\s*&&/);
   });
 
-  it("Today offer renders nothing without a match or with an active action", () => {
-    const code = stripComments(read("components/overview/HardMomentTodayOffer.tsx"));
-    expect(code).toMatch(/if\s*\(activeTodayAction\s*\|\|\s*!offer\)\s*return null/);
+  it("Today's step carries nothing without a match or with an active action (B-TODAY-12)", () => {
+    const code = stripComments(read("components/overview/hardMomentStep.ts"));
+    expect(code).toMatch(/if \(hasActiveAction\) return null;/);
+    expect(code).toMatch(/if \(!offer\) return null;/);
+    expect(code).toMatch(/if \(!publication\) return null;/);
   });
 });
 
@@ -187,7 +189,8 @@ describe("coach-hardmoment-seed-v1 — deterministic seed contract on the fixtur
 describe("CONT-2/CODEX-5 — surfaces consume gated selectors and existing seams", () => {
   const SURFACES = [
     "components/behaviors/HardMomentsSection.tsx",
-    "components/overview/HardMomentTodayOffer.tsx",
+    "components/overview/hardMomentStep.ts",
+    "components/tabs/OverviewTab.tsx",
     "components/tabs/CoachTab.tsx",
   ];
 
@@ -205,14 +208,16 @@ describe("CONT-2/CODEX-5 — surfaces consume gated selectors and existing seams
     expect(stripComments(read("components/behaviors/HardMomentsSection.tsx"))).toContain("availableHardMomentCards(context)");
   });
 
-  it("Today offer goes through the EXISTING acceptTodayAction seam — no new capture path", () => {
-    const code = stripComments(read("components/overview/HardMomentTodayOffer.tsx"));
-    expect(code).toContain('acceptTodayAction(locText(current.doNow, locale), "standard", "hard-moment")');
+  it("Today's step goes through the EXISTING acceptTodayAction seam — no new capture path (B-TODAY-12)", () => {
+    const code = stripComments(read("components/overview/hardMomentStep.ts"));
+    expect(code).toContain('accept(locText(current.doNow, ctx.locale), capacity, "hard-moment")');
     expect(code).not.toMatch(/handleAddLog|upsert|firestore|setDoc/i);
-    // B-AI-06: OverviewTab mounts the single-offer slot inside the day-anchor
-    // column; the slot renders this offer as its "grounded-step" kind.
-    expect(stripComments(read("components/tabs/OverviewTab.tsx"))).toContain('<CompanionOfferSlot surface="today"');
-    expect(stripComments(read("components/overview/CompanionOfferSlot.tsx"))).toContain("<HardMomentTodayOffer />");
+    const overview = stripComments(read("components/tabs/OverviewTab.tsx"));
+    expect(overview).toContain("acceptHardMomentStep(hardMoment.card.id,");
+    expect(overview).toContain(", capacity, acceptTodayAction)");
+    // The second card is gone; the slot renders nothing for it on Today.
+    expect(overview).not.toContain("HardMomentTodayOffer");
+    expect(stripComments(read("components/overview/CompanionOfferSlot.tsx"))).toMatch(/if \(offer\.kind === "grounded-step" && surface === "today"\) return null;/);
   });
 
   it("coach entry uses the EXISTING seedCoach seam with provenance", () => {
@@ -224,14 +229,14 @@ describe("CONT-2/CODEX-5 — surfaces consume gated selectors and existing seams
     }
   });
 
-  it("TODAY-2 holds: the offer button is outline, never a second gradient primary", () => {
-    const code = stripComments(read("components/overview/HardMomentTodayOffer.tsx"));
-    expect(code).not.toContain("--arbor-gradient-primary");
-    expect(code).not.toContain("gradientCta");
+  it("TODAY-2 holds: one step card, one accept — never a second 'Make this today's step' (B-TODAY-12)", () => {
+    const overview = stripComments(read("components/tabs/OverviewTab.tsx"));
+    expect((overview.match(/<TodayRecommendation\b/g) ?? []).length).toBe(1);
+    expect((overview.match(/t\("today\.action\.make"\)/g) ?? []).length).toBe(1);
   });
 
   it("tokens only: no hex literals or white literals in the new surfaces", () => {
-    for (const rel of ["components/behaviors/HardMomentsSection.tsx", "components/overview/HardMomentTodayOffer.tsx"]) {
+    for (const rel of ["components/behaviors/HardMomentsSection.tsx", "components/overview/hardMomentStep.ts", "components/overview/TodayRecommendation.tsx"]) {
       const code = read(rel);
       expect(code, `${rel} carries a raw hex literal`).not.toMatch(/#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b/);
       expect(code, `${rel} uses bg-white`).not.toMatch(/\bbg-white\b/);

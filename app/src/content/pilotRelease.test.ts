@@ -18,13 +18,16 @@ const ui = vi.hoisted(() => ({
   acceptTodayAction: vi.fn(),
   seedCoach: vi.fn(),
 }));
-vi.mock("../context/ArborContext", () => ({ useArbor: () => ({ ...ui, requestLearnRead: vi.fn() }) }));
+vi.mock("../context/ArborContext", () => ({ useArbor: () => ({ ...ui, requestLearnRead: vi.fn() }), useArborOptional: () => null }));
 vi.mock("../context/LanguageContext", () => ({ useLanguage: () => ({
   uiLang: ui.locale, aiLang: ui.locale, t: (key: string) => translate(ui.locale, key),
 }) }));
 vi.mock("../components/ui/Modal", () => ({ Modal: () => null }));
 import HardMomentsSection, { HardMomentGuideContent } from "../components/behaviors/HardMomentsSection";
-import HardMomentTodayOffer from "../components/overview/HardMomentTodayOffer";
+import TodayRecommendation from "../components/overview/TodayRecommendation";
+import { acceptHardMomentStep, hardMomentStepFor } from "../components/overview/hardMomentStep";
+import { renderSayThis } from "./hardMomentCards";
+import { escalationText, locText } from "./hardMomentSurface";
 
 const NOW = new Date("2026-09-04T12:00:00Z");
 const context = (locale: ContentLocale = "en", ageMonths: number | null = 36): HardMomentContext => ({ locale, ageMonths, now: NOW });
@@ -201,12 +204,24 @@ describe("real parent surface markup", () => {
       expect(section).not.toContain(find("homework").title[locale]);
       expect(section).toContain('min-h-11');
       expect(section).toContain('min-w-0');
-      const today = renderToStaticMarkup(createElement(HardMomentTodayOffer));
-      expect(today).toContain(find("hitting").title[locale]);
+      // B-TODAY-12: the matched guide rides on Today's ONE step card.
+      const step = hardMomentStepFor(ui.behaviorLogs, { now: NOW, ageMonths: ui.childProfile.ageMonths, locale }, false);
+      expect(step?.card.id).toBe("hitting");
+      const today = renderToStaticMarkup(createElement(TodayRecommendation, {
+        eyebrow: "e", headline: locText(step!.card.doNow, locale), meta: "m", action: "a", loading: false, onBegin: () => {},
+        accept: { label: translate(locale, "today.action.make"), lengthAria: "l", minUnit: "min", onAccept: () => {} },
+        sayThis: {
+          text: locText(renderSayThis(step!.card, "Noa"), locale), lang: locale, title: "Say this", copyLabel: "Copy", copiedLabel: "Copied",
+          pilotLabel: step!.pilot ? hardMomentPilotText(locale).status : undefined,
+          escalation: { title: "esc", text: escalationText(step!.card, locale) },
+        },
+      }));
+      expect(today).toContain(find("hitting").doNow[locale]);
       expect(today).toContain(hardMomentPilotText(locale).status);
-      expect(today).toContain(hardMomentPilotText(locale).explanation);
+      expect(today).toContain(escalationText(find("hitting"), locale));
       expect(today).toContain('min-h-11');
-      expect(today).not.toContain("gradient-primary");
+      // ONE gradient (the accept), never a second.
+      expect(today.match(/gradient-primary/g) ?? []).toHaveLength(1);
       ui.childProfile.ageMonths = 12;
       // WAVE-G · THE AGE GAP — an out-of-band child still gets ZERO guides, but
       // the catalogue surface now says why instead of vanishing (the Today
@@ -216,7 +231,9 @@ describe("real parent surface markup", () => {
       expect(outOfBand).not.toContain(find("hitting").title[locale]);
       expect(outOfBand).not.toContain('data-testid="hard-moments-section"');
       expect(outOfBand).toContain('data-testid="hard-moments-age-notice"');
-      expect(renderToStaticMarkup(createElement(HardMomentTodayOffer))).toBe("");
+      expect(hardMomentStepFor(ui.behaviorLogs, { now: NOW, ageMonths: 12, locale }, false)).toBeNull();
+      // …and never for a parent who already has today's step.
+      expect(hardMomentStepFor(ui.behaviorLogs, { now: NOW, ageMonths: 36, locale }, true)).toBeNull();
     });
   }
 });
@@ -254,18 +271,13 @@ describe("use-time applicability and real Today action callbacks", () => {
   it("Today rechecks retirement, copy, age and expiry before accepting its rendered action", () => {
     vi.useFakeTimers(); vi.setSystemTime(NOW);
     ui.behaviorLogs = [log]; ui.acceptTodayAction.mockClear();
-    // The real component has no React state hooks; context hooks are mocked above.
-    // Walk its returned React elements to invoke the actual button callback.
-    type Element = { type: unknown; props: { children?: unknown; onClick?: () => void } };
-    const button = (node: unknown): Element | undefined => {
-      if (!node || typeof node !== "object") return;
-      if (Array.isArray(node)) return node.map(button).find(Boolean);
-      const element = node as Element;
-      return element.type === "button" ? element : button(element.props?.children);
+    // B-TODAY-12: the step card's accept calls acceptHardMomentStep, which
+    // re-reads the release at the moment of the tap.
+    const onClick = () => {
+      const now = new Date();
+      acceptHardMomentStep("hitting", { now, ageMonths: ui.childProfile.ageMonths, locale: "en" }, "standard", ui.acceptTodayAction);
     };
-    const onClick = button(HardMomentTodayOffer())?.props.onClick;
-    expect(onClick).toBeTypeOf("function");
-    onClick!();
+    onClick();
     expect(ui.acceptTodayAction).toHaveBeenLastCalledWith(find("hitting").doNow.en, "standard", "hard-moment");
     ui.acceptTodayAction.mockClear();
     const card = find("hitting"), original = structuredClone(card);

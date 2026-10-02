@@ -6,6 +6,21 @@ import { trackActionOffered } from "../../lib/loopEvents";
 import { ContentWhyLine } from "../ui/ContentActionBar";
 import { TrustLink } from "../trust/TrustLink";
 import { HeroAvatar } from "../ui/HeroAvatar";
+import { SayThis } from "../ui/AiBlock";
+
+/** B-TODAY-12 / B-TODAY-24: the step card's ONE "Say this" line. */
+export interface StepSayThis {
+  /** The words, already in the card's language (EN or HE). */
+  text: string;
+  lang: "en" | "he";
+  title: string;
+  copyLabel: string;
+  copiedLabel: string;
+  /** Pilot status label ("Pilot guide") when the words come from a pilot card. */
+  pilotLabel?: string;
+  /** The governed escalation sentence, verbatim — always visible, never a tap away. */
+  escalation?: { title: string; text: string };
+}
 
 /**
  * TODAY-2/CODEX-1 consolidation: the pre-accept half of the old TodayActionLoop
@@ -17,7 +32,7 @@ import { HeroAvatar } from "../ui/HeroAvatar";
  * guard upstream) "Begin" stays the lone primary and acceptTodayAction is
  * unreachable, so fallback copy can never be persisted into actionLoops.
  */
-export default function TodayRecommendation({ eyebrow, headline, body, meta, action, loading, onBegin, accept, why }: {
+export default function TodayRecommendation({ eyebrow, headline, body, meta, action, loading, onBegin, accept, why, sayThis }: {
   eyebrow: string;
   /** TJB-02: the model's ONE doable step (`tryToday`) — what the capacity
    *  chips + accept attach to and what acceptTodayAction persists. */
@@ -36,8 +51,12 @@ export default function TodayRecommendation({ eyebrow, headline, body, meta, act
    *  the TrustLink still mounts on its own so the why → Trust Center chain is
    *  never missing from this surface. */
   why?: string;
+  /** B-TODAY-12: the matched hard-moment card's words ride ON the step (one
+   *  card, one accept) instead of a second card with a second accept. */
+  sayThis?: StepSayThis;
 }) {
   const [capacity, setCapacity] = useState<ActionCapacity>("standard");
+  const [sayCopied, setSayCopied] = useState(false);
   // N8 KPI 3a: the offer moment — the accept row actually rendered (real AI
   // focus, TODAY-1 guard upstream). Once per hero instance; the headline text
   // itself never rides on the event (surface id only).
@@ -70,6 +89,32 @@ export default function TodayRecommendation({ eyebrow, headline, body, meta, act
         </div>
         {!loading && body && (
           <p dir="auto" data-testid="today-focus-observation" className="mt-3 text-[14px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{body}</p>
+        )}
+        {!loading && sayThis && (
+          <div data-testid="today-saythis" lang={sayThis.lang} dir={sayThis.lang === "he" ? "rtl" : "ltr"} className="mt-3 min-w-0 space-y-2">
+            <SayThis
+              text={sayThis.text}
+              title={sayThis.title}
+              lang={sayThis.lang}
+              copyLabel={sayThis.copyLabel}
+              copiedLabel={sayThis.copiedLabel}
+              copied={sayCopied}
+              onCopy={() => {
+                try { void navigator.clipboard?.writeText(sayThis.text); } catch { /* best-effort */ }
+                setSayCopied(true);
+              }}
+            />
+            {sayThis.pilotLabel && (
+              <p data-testid="today-saythis-pilot" className="px-1 text-xs" style={{ color: "var(--arbor-muted)" }}>{sayThis.pilotLabel}</p>
+            )}
+            {sayThis.escalation && (
+              <div role="note" data-testid="today-saythis-escalation" className="min-w-0 rounded-xl px-3 py-2.5"
+                style={{ background: "var(--arbor-paper-deep)", borderInlineStart: "3px solid var(--arbor-green-ink)" }}>
+                <p className="text-xs font-bold" style={{ color: "var(--arbor-green-ink)" }}>{sayThis.escalation.title}</p>
+                <p className="mt-0.5 break-words text-[13px] leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{sayThis.escalation.text}</p>
+              </div>
+            )}
+          </div>
         )}
         {accept && (
           <div className="mt-3 inline-flex rounded-xl p-1" style={{ background: "var(--arbor-paper-deep)" }} role="group" aria-label={accept.lengthAria}>

@@ -63,6 +63,9 @@ export const en: Record<string, string> = {
   "elev.capture.reply.undone": "Removed from the journal.",
   // B-TODAY-18: the family line (one line per sibling, under the step).
   "elev.brief.family.aria": "Waiting for your other children",
+  // B-TODAY-12: Ask's door to the grounded step that lives on Today's card.
+  "elev.brief.grounded.open": "See it on Today",
+  "elev.brief.hardMoment.why": "Picked from a pilot guide that matches moments you logged.",
 };
 
 export const he: Record<string, string> = {
@@ -108,4 +111,6 @@ export const he: Record<string, string> = {
   "elev.capture.reply.done": "סיום",
   "elev.capture.reply.undone": "הוסר מהיומן.",
   "elev.brief.family.aria": "מה מחכה לשאר הילדים",
+  "elev.brief.grounded.open": "לראות בעמוד היום",
+  "elev.brief.hardMoment.why": "נבחר ממדריך פיילוט שמתאים לרגעים שתיעדתם.",
 };

@@ -109,8 +109,9 @@ describe("B-AI-05 — accept keeps history", () => {
   it("the hard-moment offer books as hard-moment, never today-guidance", async () => {
     const { readFileSync } = await import("node:fs");
     const { fileURLToPath } = await import("node:url");
-    const src = readFileSync(fileURLToPath(new URL("../components/overview/HardMomentTodayOffer.tsx", import.meta.url)), "utf8");
-    expect(src).toContain('"standard", "hard-moment")');
+    // B-TODAY-12: the offer folded into the step card; its accept helper books it.
+    const src = readFileSync(fileURLToPath(new URL("../components/overview/hardMomentStep.ts", import.meta.url)), "utf8");
+    expect(src).toContain('capacity, "hard-moment")');
     expect(src).not.toContain('"today-guidance"');
   });
 });
