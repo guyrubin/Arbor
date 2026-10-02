@@ -148,6 +148,8 @@ export const en: Record<string, string> = {
   "elev.wk.rest.sub": "Wins and moments, the weekly email, and the brief you can share.",
   "elev.wk.rest.door": "Back to Today",
   "elev.sr.more.title": "When Arbor may reach you",
+  // B-TODAY-16: the phone-reminder card's section on #/smart-reminders.
+  "elev.sr.delivery.heading": "Delivery",
   "elev.sr.more.sub": "Quiet hours, and holding nudges for a calm moment.",
 };
 
@@ -244,5 +246,6 @@ export const he: Record<string, string> = {
   "elev.wk.rest.sub": "הישגים ורגעים, המייל השבועי והתקציר שאפשר לשתף.",
   "elev.wk.rest.door": "חזרה להיום",
   "elev.sr.more.title": "מתי מותר לארבור לפנות אליכם",
+  "elev.sr.delivery.heading": "איך התזכורות מגיעות",
   "elev.sr.more.sub": "שעות שקט, ושמירת התזכורות לרגע רגוע.",
 };

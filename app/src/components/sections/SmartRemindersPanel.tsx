@@ -219,11 +219,17 @@ export default function SmartRemindersPanel() {
           `data-primary-move` marks the ONE control that performs the move
           surfaceContract.ts declares for this route. */}
       {/* MAX-2 CONTRACT CARD — always visible (AC-5) */}
+      {/* B-TODAY-16: one card, two halves — the max-2 contract and, under a
+          rule, the next nudge (it lost its own module slot to Delivery). */}
       <div
         data-module="reminders-contract"
+        className="rounded-2xl overflow-hidden"
+        style={{ border: `1px solid ${RULE_STRONG}` }}
+      >
+      <div
         data-testid="sr-max2-contract"
-        className="rounded-2xl p-4 flex items-start gap-3"
-        style={{ background: LAV_SOFT, border: `1px solid ${RULE_STRONG}` }}
+        className="p-4 flex items-start gap-3"
+        style={{ background: LAV_SOFT }}
         role="note"
         aria-label={t("sr.max2")}
       >
@@ -245,48 +251,49 @@ export default function SmartRemindersPanel() {
         </div>
       </div>
 
-      {/* NEXT NUDGE CARD (AC-1) */}
-      <div data-module="reminders-next" style={{ display: "contents" }}>
-      <Section title={t("sr.nextNudge.label")} icon={<Icon name="bolt" size={16} />}>
-        <div
-          className="rounded-2xl p-4"
-          style={{ background: PAPER_DEEP, border: `1px solid ${RULE}` }}
-          data-testid="sr-next-nudge"
-        >
-          {nudge ? (
-            <div className="flex items-center gap-3">
-              <span
-                className="inline-flex items-center justify-center rounded-xl flex-shrink-0"
-                style={{ width: 36, height: 36, background: GREEN_SOFT, color: GREEN }}
-                aria-hidden="true"
-              >
-                <Icon name="notifications" size={18} />
-              </span>
-              <div className="min-w-0">
-                <p className="text-[14px] font-bold" style={{ color: INK }}>
-                  {t(KIND_KEY[nudge.kind] ?? "sr.nextNudge.kind.prep")}
-                </p>
-                <p className="text-[12px] mt-0.5" style={{ color: MUTED }}>
-                  {t(nudge.headlineKey, nudge.vars)}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              <span
-                className="inline-flex items-center justify-center rounded-xl flex-shrink-0"
-                style={{ width: 36, height: 36, background: PAPER, color: FAINT }}
-                aria-hidden="true"
-              >
-                <Icon name="notifications_off" size={18} />
-              </span>
-              <p className="text-[13px]" style={{ color: MUTED }}>
-                {t("sr.nextNudge.none")}
+      {/* NEXT NUDGE (AC-1) — B-TODAY-16: the contract card's second half (no
+          own data-module stamp), so the page keeps 3 top-level modules once
+          Delivery takes a slot: contract · prefs · delivery. */}
+      <div
+        className="p-4"
+        style={{ background: PAPER_DEEP, borderTop: `1px solid ${RULE}` }}
+        data-testid="sr-next-nudge"
+        aria-label={t("sr.nextNudge.label")}
+      >
+        <p className="mb-2 text-[11px] font-extrabold uppercase tracking-wide" style={{ color: FAINT }}>{t("sr.nextNudge.label")}</p>
+        {nudge ? (
+          <div className="flex items-center gap-3">
+            <span
+              className="inline-flex items-center justify-center rounded-xl flex-shrink-0"
+              style={{ width: 36, height: 36, background: GREEN_SOFT, color: GREEN }}
+              aria-hidden="true"
+            >
+              <Icon name="notifications" size={18} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[14px] font-bold" style={{ color: INK }}>
+                {t(KIND_KEY[nudge.kind] ?? "sr.nextNudge.kind.prep")}
+              </p>
+              <p className="text-[12px] mt-0.5" style={{ color: MUTED }}>
+                {t(nudge.headlineKey, nudge.vars)}
               </p>
             </div>
-          )}
-        </div>
-      </Section>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <span
+              className="inline-flex items-center justify-center rounded-xl flex-shrink-0"
+              style={{ width: 36, height: 36, background: PAPER, color: FAINT }}
+              aria-hidden="true"
+            >
+              <Icon name="notifications_off" size={18} />
+            </span>
+            <p className="text-[13px]" style={{ color: MUTED }}>
+              {t("sr.nextNudge.none")}
+            </p>
+          </div>
+        )}
+      </div>
       </div>
 
       {/* PER-TYPE TOGGLES (AC-2). The declared move is set-reminder-prefs: this
@@ -325,6 +332,23 @@ export default function SmartRemindersPanel() {
             );
           })}
         </div>
+      </Section>
+      </div>
+
+      {/* B-TODAY-16 — DELIVERY: phone reminders live where nudges are
+          configured, above the quiet-hours disclosure. One mount app-wide
+          (Growth no longer mounts it; state from hooks/usePushPriming). The
+          card keeps its honest states (lib/pushPriming: "Arbor sends nothing"
+          while pushCapable() is false). */}
+      <div data-module="reminders-delivery" style={{ display: "contents" }}>
+      <Section title={t("elev.sr.delivery.heading")} icon={<Icon name="send" size={16} />}>
+        <PushPrimingCard
+          capable={push.capable}
+          permission={push.permission}
+          registered={push.registered}
+          pending={push.pending}
+          onToggle={push.onToggle}
+        />
       </Section>
       </div>
 
@@ -463,20 +487,6 @@ export default function SmartRemindersPanel() {
           />
         </div>
       </Section>
-      </div>
-
-      {/* B-GROWTH-03 / ENG-23 — phone reminders live where reminders are set.
-          Moved from #/development with the same honest copy ("Arbor sends
-          nothing" while pushCapable() is false); a demoted child of the
-          disclosure, no new top-level stamp. */}
-      <div data-module="reminders-push" data-module-demoted style={{ display: "contents" }}>
-        <PushPrimingCard
-          capable={push.capable}
-          permission={push.permission}
-          registered={push.registered}
-          pending={push.pending}
-          onToggle={push.onToggle}
-        />
       </div>
 
         </div>

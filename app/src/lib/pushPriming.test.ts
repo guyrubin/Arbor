@@ -17,7 +17,7 @@
  *   4. every copy key the card can ask for exists in EN and HE.
  */
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { pushPrimingCopy, pushPrimingState, type PushPrimingInputs } from "./pushPriming";
@@ -158,5 +158,60 @@ describe("ENG-23 → B-GROWTH-03 — #/smart-reminders mounts the primed card, n
     const switchAt = card.indexOf('role="switch"');
     expect(guardAt).toBeGreaterThan(-1);
     expect(switchAt).toBeGreaterThan(guardAt);
+  });
+});
+
+describe("B-TODAY-16 — push opt-in lives where nudges are configured (one mount)", () => {
+  const srcRoot = path.resolve(here, "..");
+  const walk = (dir: string): string[] =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((d) => {
+      const p = path.join(dir, d.name);
+      if (d.isDirectory()) return d.name === "node_modules" ? [] : walk(p);
+      return /\.(tsx?|jsx?)$/.test(d.name) && !/\.test\./.test(d.name) ? [p] : [];
+    });
+  const panel = read("../components/sections/SmartRemindersPanel.tsx");
+
+  it("PushPrimingCard is referenced only from SmartRemindersPanel (one mount app-wide)", () => {
+    const files = walk(srcRoot);
+    expect(files.length).toBeGreaterThan(200);
+    const users = files
+      .filter((f) => !f.endsWith(path.join("nextopen", "PushPrimingCard.tsx")))
+      .filter((f) => /\bPushPrimingCard\b/.test(readFileSync(f, "utf8")))
+      .map((f) => path.relative(srcRoot, f).split(path.sep).join("/"));
+    expect(users).toEqual(["components/sections/SmartRemindersPanel.tsx"]);
+    expect((panel.match(/<PushPrimingCard\b/g) || []).length).toBe(1);
+  });
+
+  it("it sits in its own Delivery section, above the quiet-hours disclosure, not demoted", () => {
+    const delivery = panel.indexOf('data-module="reminders-delivery"');
+    const disclosure = panel.indexOf("data-module-disclosure=");
+    const mount = panel.indexOf("<PushPrimingCard");
+    expect(delivery).toBeGreaterThan(-1);
+    expect(delivery).toBeLessThan(disclosure);
+    expect(mount).toBeGreaterThan(delivery);
+    expect(mount).toBeLessThan(disclosure);
+    expect(panel).not.toContain('data-module="reminders-push"');
+    expect(panel).toContain('t("elev.sr.delivery.heading")');
+  });
+
+  it("the page budget stays 3 non-demoted modules (next nudge folded into the contract card)", () => {
+    const code = panel.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
+    const stamps = (code.match(/\bdata-module="/g) || []).length;
+    const demoted = (code.match(/\bdata-module-demoted\b/g) || []).length;
+    expect(stamps - demoted).toBe(3);
+    expect(panel).not.toContain('data-module="reminders-next"');
+    const contract = panel.indexOf('data-module="reminders-contract"');
+    const next = panel.indexOf('data-testid="sr-next-nudge"');
+    const prefs = panel.indexOf('data-module="reminders-prefs"');
+    expect(contract).toBeGreaterThan(-1);
+    expect(next).toBeGreaterThan(contract);
+    expect(next).toBeLessThan(prefs);
+  });
+
+  it("EN + HE heading", async () => {
+    const f = await import("./i18nElevation/foundation");
+    expect(f.en["elev.sr.delivery.heading"]).toBe("Delivery");
+    expect(f.he["elev.sr.delivery.heading"]).toBeTruthy();
+    expect(f.he["elev.sr.delivery.heading"]).not.toBe(f.en["elev.sr.delivery.heading"]);
   });
 });
