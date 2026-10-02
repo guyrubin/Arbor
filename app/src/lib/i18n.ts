@@ -180,7 +180,6 @@ export const en: Dict = {
   "learn.whyMatters": "Why this matters",
   "learn.understandWhy": "Understand why this happens",
   "learn.goDeeper": "Go deeper",
-  "learn.weeklyRead": "This week's read",
   "learn.moreLibrary": "More in the Library",
   "learn.trailTitle": "Learning trail",
   "learn.trailSub": "The reads you've saved from the Learn Library.",
@@ -1467,8 +1466,6 @@ export const en: Dict = {
   "ov.hero.desc": "Turn {name} into their own comic hero — then they star across every game, story and adventure in Arbor.",
   "ov.hero.cta": "Create {name}'s hero",
   "ov.hero.card": "Save hero card",
-  "ov.tools.show": "Show",
-  "ov.tools.hide": "Hide",
   // KID-6: gain-framed completion toast — celebrates what was ADDED, never
   // warns about a streak to protect (loss-framed streak copy is banned on
   // child-adjacent surfaces). The old MissionsPanel is deleted; the key stays
@@ -1574,11 +1571,7 @@ export const en: Dict = {
   "wk.milestoneWins": "Milestone wins ({n})",
   "wk.noMilestones": "No milestones checked in this report.",
   "wk.reviewMilestones": "Review milestones →",
-  "wk.scholarSpotlight": "Scholar spotlight",
-  "wk.scholarExplore": "Explore Scholar Frameworks →",
-  "wk.readyToShare": "Ready to share",
-  "wk.compileBrief": "Turn this week into a shareable summary for school or clinicians — in Consult, you choose what to share.",
-  "wk.brief": "Build {first}'s summary in Consult",
+  "wk.brief": "Prepare a snapshot for a visit",
   // C4 — Physical growth tracking
   "growth.eyebrow": "Physical growth",
   "growth.empty.title": "No measurements yet",
@@ -2539,7 +2532,6 @@ export const he: Dict = {
   "learn.whyMatters": "למה זה חשוב",
   "learn.understandWhy": "להבין למה זה קורה",
   "learn.goDeeper": "להעמיק",
-  "learn.weeklyRead": "הקריאה של השבוע",
   "learn.moreLibrary": "עוד בספרייה",
   "learn.trailTitle": "מסלול הלמידה",
   "learn.trailSub": "הקריאות ששמרתם מספריית הלמידה.",
@@ -3742,8 +3734,6 @@ export const he: Dict = {
   "ov.hero.desc": "הפכו את {name} לגיבור קומיקס משלו — ואז הוא יככב בכל משחק, סיפור והרפתקה בארבור.",
   "ov.hero.cta": "צרו את הגיבור של {name}",
   "ov.hero.card": "שמרו כרטיס גיבור",
-  "ov.tools.show": "הצג",
-  "ov.tools.hide": "הסתר",
   // KID-6: ניסוח של רווח — חוגגים את מה שנוסף, בלי "רצף" שצריך לשמור עליו.
   "ov.mission.toastDone": "יופי! עוד יום תרגול נוסף לסיפור של {name}.",
   "ov.reco.play.title": "התחברו דרך משחק",
@@ -3815,11 +3805,7 @@ export const he: Dict = {
   "wk.milestoneWins": "אבני דרך שהושגו ({n})",
   "wk.noMilestones": "לא סומנו אבני דרך בדוח זה.",
   "wk.reviewMilestones": "סקרו אבני דרך →",
-  "wk.scholarSpotlight": "זרקור מומחה",
-  "wk.scholarExplore": "גלו מסגרות מומחים →",
-  "wk.readyToShare": "מוכן לשיתוף",
-  "wk.compileBrief": "הפכו את השבוע הזה לסיכום לשיתוף עם בית הספר או גורמי הטיפול — בהתייעצות אתם בוחרים מה לשתף.",
-  "wk.brief": "צרו סיכום עבור {first} בהתייעצות",
+  "wk.brief": "להכין תמונת מצב לביקור",
   // C4 — Physical growth tracking
   "growth.eyebrow": "גדילה גופנית",
   "growth.empty.title": "אין מדידות עדיין",

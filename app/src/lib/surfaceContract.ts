@@ -96,6 +96,11 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
     // Re-homed Profile → Today (Heartwood D3: the recap is a ritual, not a
     // settings page). Accepting the last card feeds Today, not the timeline —
     // no such source id exists in buildTimeline; "none" is honest.
+    // B-TODAY-22 (FU-N1-L1, framer default) — STATE-CONDITIONAL SECONDARY:
+    // with no report stored for the current week there is nothing to accept,
+    // so the stamped `weekly-empty` module offers ONE explicit secondary move,
+    // `data-secondary-move="capture-moment"` (open the capture sheet in place).
+    // The primary move stays the declaration; it renders once a week exists.
     threadWrite: "none",
   },
 

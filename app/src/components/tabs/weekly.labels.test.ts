@@ -126,3 +126,71 @@ describe("4 · principle 3 · one gradient, and it is the primary move", () => {
     expect(tab).not.toContain('style={{ background: "var(--arbor-gradient-primary)" }}');
   });
 });
+
+/**
+ * B-TODAY-22 — Weekly page: one story, one secondary door. The generated
+ * week renders ≤3 non-demoted modules with one nested level at most; the
+ * Scholar spotlight and the weekly read (picked by devScore.focusDomain, a
+ * hidden weakest-domain pointer) are gone; ONE outline door to Consult; the
+ * email row hides until the channel exists or the parent opted in; the empty
+ * state is stamped with its explicit secondary move; no bg-white.
+ */
+describe("5 · B-TODAY-22 · one story, one secondary door", () => {
+  const code = tab.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  const stamps = [...code.matchAll(/<div data-module="(weekly-[a-z]+)"([^>]*)>/g)].map((m) => ({ id: m[1], demoted: /data-module-demoted/.test(m[2]) }));
+
+  it("≤3 non-demoted modules in the source ceiling, and they are mutually exclusive states", () => {
+    const top = stamps.filter((s) => !s.demoted).map((s) => s.id).sort();
+    expect(top).toEqual(["weekly-empty", "weekly-insight", "weekly-recap"]);
+    expect(top.length).toBeLessThanOrEqual(SURFACE_CONTRACTS.find((c) => c.route === "weekly")!.moduleBudget);
+    expect(stamps.filter((s) => s.demoted).map((s) => s.id).sort()).toEqual(["weekly-detail", "weekly-email", "weekly-share"]);
+  });
+
+  it("one <details>, holding the milestone wins only — one nested level at most", () => {
+    expect((code.match(/<details\b/g) ?? []).length).toBe(1);
+    const details = code.slice(code.indexOf("<details"), code.indexOf("</details>"));
+    expect(details).toContain('data-module="weekly-detail"');
+    expect(details).toContain('t("wk.milestoneWins"');
+    expect(details).not.toMatch(/weekly-email|weekly-share|aria-expanded|setActiveTab\("overview"\)/);
+  });
+
+  it("no Scholar spotlight and no weekly read — no Latin catalogue copy on the Hebrew route", () => {
+    expect(code).not.toMatch(/spotlight|weeklyRead|scholarsInfo|useDevScore|setActiveTab\("scholar"\)/);
+    const hook = fs.readFileSync(path.resolve(__dirname, "../../hooks/useWeeklyRecap.ts"), "utf8");
+    expect(hook).not.toMatch(/scholarsInfo|spotlight: \{ name/);
+  });
+
+  it("ONE outline door, 'Prepare a snapshot for a visit' → #/consult (EN + HE)", () => {
+    expect((code.match(/setActiveTab\("consult"\)/g) ?? []).length).toBe(1);
+    expect(translate("en", "wk.brief", { first: "Noa" })).toBe("Prepare a snapshot for a visit");
+    expect(translate("he", "wk.brief", { first: "Noa" })).toBe("להכין תמונת מצב לביקור");
+  });
+
+  it("the email row renders only when the channel exists or the parent opted in", () => {
+    expect(code).toMatch(/\{\(emailStatus\.enabled \|\| emailOptIn\) && \(\s*<div data-module="weekly-email"/);
+    expect(code).toContain("writeEmailOptIn"); // the opt-in store is kept
+  });
+
+  it("the empty state is stamped and its ONE move is the explicit secondary capture-moment", () => {
+    expect(code).toContain('data-module="weekly-empty"');
+    expect(code).toMatch(/data-secondary-move="capture-moment"\s*data-testid="weekly-log-a-moment"/);
+    const contract = fs.readFileSync(path.resolve(__dirname, "../../lib/surfaceContract.ts"), "utf8");
+    expect(contract).toContain('data-secondary-move="capture-moment"');
+  });
+
+  it("0 bg-white in the file", () => {
+    expect(tab).not.toContain("bg-white");
+  });
+
+  it("#/learn stays in its hub; #/scholar keeps its route seat and its search door", () => {
+    const tabs = SECTIONS.flatMap((s) => [...s.items, ...(s.tools ?? [])].map((i) => i.tab));
+    expect(tabs).toContain("learn");
+    // Scholar (hub: ask) never had a nav item; the Weekly spotlight was its
+    // only in-page door. It stays a live route reachable from search until
+    // B-ASKJB-12 retires it (that item depends on this cut).
+    const search = fs.readFileSync(path.resolve(__dirname, "../../lib/searchIndex.ts"), "utf8");
+    expect(search).toMatch(/EXTRA_ROUTE_TABS[^\n]*"scholar"/);
+    const routes = fs.readFileSync(path.resolve(__dirname, "../../lib/routes.ts"), "utf8");
+    expect(routes).toContain('"scholar"');
+  });
+});

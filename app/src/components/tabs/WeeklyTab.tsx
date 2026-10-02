@@ -8,10 +8,7 @@ import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { Skeleton } from "../ui/Skeleton";
 import { PageHeader, SectionCard, cardCls, IconBadge } from "../ui/kit";
 import { HeroAvatar } from "../ui/HeroAvatar";
-import { useDevScore } from "../../hooks/useDevScore";
 import { useWeeklyRecap, recapWeekStartMs, type WeeklyReport } from "../../hooks/useWeeklyRecap";
-import { rankLearnCards } from "../../learn/learnLibrary";
-import { LEARN_CARDS } from "../../learn/learnCards";
 import { ageYearsFromProfile } from "../../lib/childAge";
 import { track } from "../../lib/analytics";
 import RecapStoryCards, { type RecapRecord } from "../weekly/RecapStoryCards";
@@ -36,33 +33,26 @@ import type { WeeklyDigest } from "../../lib/api";
  */
 export default function WeeklyTab() {
   const {
-    childProfile, setActiveTab, acceptTodayAction, activeTodayAction, requestLearnRead,
+    childProfile, setActiveTab, acceptTodayAction, activeTodayAction,
     behaviorLogs, playLogs, milestones, checkedMilestones, actionLoop, approvedMemoryItems, keptInsights,
   } = useArbor();
   const { user } = useAuth();
-  const { t, uiLang, aiLang } = useLanguage();
-  const he = aiLang === "he";
+  const { t, uiLang } = useLanguage();
   // ENG-07: the empty week offers the move that fills it, in place. QuickLogModal
   // is the existing "openable from anywhere" capture (its own doc comment) and
   // portals through Modal, so no new capture path is invented here.
   const [logOpen, setLogOpen] = useState(false);
   // B-TODAY-23: card 3's fallback opens the same sheet with its question as the cue.
   const [logPrompt, setLogPrompt] = useState<string | null>(null);
-  // OBJ-TODAY-06: the two demoted secondary modules, collapsed by default so
-  // the generated week reads at its declared budget.
-  const [showWeeklyMore, setShowWeeklyMore] = useState(false);
   const rc = (key: string, vars?: Record<string, string | number>) => rcString(t, uiLang, key, vars);
 
   const recap = useWeeklyRecap();
   const { reports, generating, generate, currentId, currentLabel, labelFor } = recap;
 
-  // LL-A4: "This week's read" — the same explainable ranking the Library uses
-  // (age window + focus-domain nurture), surfaced as one pick in the report.
-  const devScore = useDevScore();
-  const weeklyRead = useMemo(
-    () => rankLearnCards(LEARN_CARDS, { ageYears: ageYearsFromProfile(childProfile), focusDomain: devScore.focusDomain })[0],
-    [childProfile, devScore.focusDomain]
-  );
+  // B-TODAY-22: the weekly read (ranked by devScore.focusDomain — a hidden
+  // weakest-domain pointer selecting content) and the Scholar spotlight are
+  // gone from #/weekly. Learn owns ranking; #/learn and #/scholar keep their
+  // hub doors.
 
   // F-06: the tab ALWAYS lands on the CURRENT week — never a stored
   // reports[0], which after a quiet stretch is a week months in the past
@@ -239,7 +229,11 @@ export default function WeeklyTab() {
       ) : !selected ? (
         /* F-06: the current week with nothing stored yet says so honestly —
            it never falls back to rendering a past week as if it were now. */
-        <div className={`${cardCls} p-8 text-center text-sm`} style={{ color: "var(--arbor-muted)" }}>
+        /* B-TODAY-22 (FU-N1-L1, framer default): the empty week is a stamped
+           module whose ONE move is the explicit secondary "capture-moment"
+           (surfaceContract weekly) — the primary move has nothing to accept
+           until a week exists. */
+        <div data-module="weekly-empty" className={`${cardCls} p-8 text-center text-sm`} style={{ color: "var(--arbor-muted)" }}>
           {/* ENG-07: the copy promised "log a moment and this week's report will
               build itself". Nothing builds itself — the report is generated when
               a parent taps the header button — so the sentence is now what
@@ -249,6 +243,7 @@ export default function WeeklyTab() {
           <button
             type="button"
             onClick={() => setLogOpen(true)}
+            data-secondary-move="capture-moment"
             data-testid="weekly-log-a-moment"
             className="mt-4 inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 transition active:scale-[0.98]"
             style={{ background: "transparent", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)", minHeight: 44, minWidth: 44 }}
@@ -317,7 +312,7 @@ export default function WeeklyTab() {
                   </p>
                 )}
                 {selected.digest.tryThisWeek && (
-                  <div className="rounded-xl p-3 text-sm bg-white" style={{ color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule-strong)" }}>
+                  <div className="rounded-xl p-3 text-sm" style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule-strong)" }}>
                     <strong style={{ color: "var(--arbor-green-ink)" }}>{t("wk.tryThisWeek")}</strong> {selected.digest.tryThisWeek}
                     {/* AIX-S6: feed the action loop from the digest's next-step —
                         through the EXISTING acceptTodayAction seam, with digest
@@ -355,111 +350,59 @@ export default function WeeklyTab() {
           </div>
           )}
 
-          {/* R25 (item 11) — #/weekly rendered 6 top-level modules against a declared
-          moduleBudget of 3. The tail below is DEMOTED, never removed: one
-          collapsed disclosure on the pattern components/practice/SpeechCoachTab.tsx
-          `speech-more` already ships, so every capability keeps its door (law 6)
-          while the fold belongs to the primary move. Demoted modules keep their
-          own `data-module` stamp and add `data-module-demoted`, which is what
-          makes the budget rule countable: top-level = stamps minus demoted. */}
+          {/* R25 (item 11) → B-TODAY-22: ONE collapsed disclosure, holding the
+              week's milestone wins only (one nested level at most). Demoted
+              modules keep their `data-module` stamp and add
+              `data-module-demoted` — top-level = stamps minus demoted. The
+              Scholar spotlight, the weekly read, the nested "More" toggle and
+              the door back to Today are gone (Today is the back button). */}
           <details data-module-disclosure="weekly-more" className={`${cardCls} p-0 overflow-hidden`}>
             <summary className="cursor-pointer list-none px-6 py-4 min-h-[44px] flex items-center gap-3">
               <span className="grid place-items-center w-9 h-9 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" }}>
                 <Icon name="trophy" size={18} />
               </span>
-              <span className="min-w-0">
-                <span className="block text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.wk.rest.title")}</span>
-                <span className="block text-[12px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.wk.rest.sub")}</span>
-              </span>
+              <span className="block min-w-0 text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.wk.rest.title")}</span>
               <Icon name="expand_more" size={20} className="ms-auto" style={{ color: "var(--arbor-muted)" }} />
             </summary>
-            <div className="px-4 pb-4 space-y-4">
-            {/* demotionTarget: "overview" — the hub the contract sends these to. */}
-            <button onClick={() => setActiveTab("overview")} className="inline-flex min-h-11 w-full items-center justify-between gap-2 rounded-xl px-4 py-2.5 text-sm font-bold" style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}>
-              <span>{t("elev.wk.rest.door")}</span>
-              <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
-            </button>
-          <div data-module="weekly-detail" data-module-demoted className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <SectionCard title={t("wk.milestoneWins", { n: selected.milestoneWins.length })} icon={<Icon name="trophy" size={20} />} tone="mint">
-              {selected.milestoneWins.length ? (
-                <ul className="space-y-1.5 text-sm" style={{ color: "var(--arbor-ink)" }}>
-                  {selected.milestoneWins.slice(0, 8).map((m, i) => (
-                    <li key={i} className="flex items-center gap-2"><span style={{ color: "var(--arbor-green-ink)" }}>✓</span> {m}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>{t("wk.noMilestones")}</p>
-              )}
-              <button onClick={() => setActiveTab("milestones")} className="touch-target text-[11px] font-bold !inline-flex !justify-start gap-1 mt-3" style={{ color: "var(--arbor-green-ink)" }}>
-                <Icon name="checklist" size={12} /> {t("wk.reviewMilestones")}
-              </button>
-            </SectionCard>
-          </div>
-
-          {/* ── OBJ-TODAY-06 · secondary modules, demoted ────────────────────
-              `surfaceContract.weekly.moduleBudget` is 3 and the generated week
-              rendered 8. The Scholar spotlight and the weekly read are the two
-              that neither carry the week's story nor its move — and the Scholar
-              body is catalogue copy that exists only in English (GD-6), so on
-              the Hebrew route it was three Latin sentences inside an RTL page.
-              Demoting them to the hub's own disclosure keeps both reachable and
-              takes them off the default read. Same idiom as Today's tools
-              drawer (OverviewTab `showTools`); every link inside clears 44 px. */}
-          <div>
-            <button
-              type="button"
-              onClick={() => setShowWeeklyMore((v) => !v)}
-              className="w-full flex items-center justify-between min-h-11"
-              aria-expanded={showWeeklyMore}
-              data-testid="weekly-more-toggle"
-            >
-              <h2 className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-faint)" }}>{t("elev.wk.more.title")}</h2>
-              <span className="inline-flex items-center gap-1 text-xs font-bold" style={{ color: "var(--arbor-green-ink)" }}>
-                {/* Reuses Today's drawer verbs — one Show/Hide vocabulary app-wide. */}
-                {showWeeklyMore ? t("ov.tools.hide") : t("ov.tools.show")}
-                <Icon name="chevron_right" size={18} className={`transition-transform rtl:-scale-x-100 ${showWeeklyMore ? "rotate-90" : ""}`} />
-              </span>
-            </button>
-            {showWeeklyMore && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-3">
-                <SectionCard title={t("wk.scholarSpotlight")} icon={<Icon name="school" size={20} />} tone="lav">
-                  <div className="flex items-baseline gap-2">
-                    <strong className="text-sm" dir="auto" style={{ color: "var(--arbor-ink)" }}>{selected.spotlight.name}</strong>
-                    <span className="text-[10px] uppercase font-bold" dir="auto" style={{ color: "var(--arbor-muted)" }}>{selected.spotlight.concept}</span>
-                  </div>
-                  <p className="text-xs leading-relaxed mt-2" dir="auto" style={{ color: "var(--arbor-muted)" }}>{selected.spotlight.value}</p>
-                  <button onClick={() => setActiveTab("scholar")} className="touch-target text-[11px] font-bold !inline-flex !justify-start mt-3" style={{ color: "var(--arbor-lav-ink)" }}>{t("wk.scholarExplore")}</button>
+            <div className="px-4 pb-4">
+              <div data-module="weekly-detail" data-module-demoted>
+                <SectionCard title={t("wk.milestoneWins", { n: selected.milestoneWins.length })} icon={<Icon name="trophy" size={20} />} tone="mint">
+                  {selected.milestoneWins.length ? (
+                    <ul className="space-y-1.5 text-sm" style={{ color: "var(--arbor-ink)" }}>
+                      {selected.milestoneWins.slice(0, 8).map((m, i) => (
+                        <li key={i} className="flex items-center gap-2" dir="auto"><span style={{ color: "var(--arbor-green-ink)" }}>✓</span> {m}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>{t("wk.noMilestones")}</p>
+                  )}
+                  <button onClick={() => setActiveTab("milestones")} className="touch-target text-[11px] font-bold !inline-flex !justify-start gap-1 mt-3" style={{ color: "var(--arbor-green-ink)" }}>
+                    <Icon name="checklist" size={12} /> {t("wk.reviewMilestones")}
+                  </button>
                 </SectionCard>
-
-                {/* LL-A4: this week's read — one Library pick ranked by age window +
-                    focus domain (opportunity framing; the Library door explains why). */}
-                {weeklyRead && (
-                  <SectionCard title={t("learn.weeklyRead")} icon={<Icon name="local_library" size={20} />} tone="sky">
-                    <h4 className="text-sm font-extrabold leading-snug" dir="auto" style={{ color: "var(--arbor-ink)" }}>
-                      {he ? weeklyRead.title.he : weeklyRead.title.en}
-                    </h4>
-                    <p className="text-xs leading-relaxed line-clamp-2 mt-1.5" dir="auto" style={{ color: "var(--arbor-muted)" }}>
-                      {he ? weeklyRead.hook.he : weeklyRead.hook.en}
-                    </p>
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold mt-2" style={{ color: "var(--arbor-muted)" }}>
-                      <Icon name="schedule" size={13} /> {t("learn.minutes", { n: weeklyRead.minutes })}
-                    </span>
-                    <button
-                      onClick={() => requestLearnRead({ cardId: weeklyRead.id, source: "weekly-report" })}
-                      className="touch-target text-[11px] font-bold !inline-flex !justify-start gap-1 mt-3"
-                      style={{ color: "var(--arbor-sky-ink)" }}
-                    >
-                      <Icon name="menu_book" size={12} /> {t("learn.readCard")}
-                    </button>
-                  </SectionCard>
-                )}
               </div>
-            )}
+            </div>
+          </details>
+
+          {/* ── B-TODAY-22: ONE outline door — "Prepare a snapshot for a visit"
+                 (wk.brief) → #/consult. A secondary move, never a second
+                 gradient competing with the recommendation the week is for. ── */}
+          <div data-module="weekly-share" data-module-demoted>
+            <button onClick={() => setActiveTab("consult")}
+              type="button"
+              data-testid="weekly-snapshot-door"
+              className="inline-flex w-full sm:w-auto items-center justify-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 transition active:scale-[0.98]"
+              style={{ background: "transparent", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)", minHeight: 44 }}
+            >
+              <Icon name="send" size={16} /> {t("wk.brief", { first })}
+            </button>
           </div>
 
-          {/* ── W2 2.2: weekly email opt-in — settings row. The channel is
-                 FAIL-CLOSED until a provider is configured server-side; the
-                 opt-in is stored per account and honored the day it ships. ── */}
+          {/* ── W2 2.2: weekly email opt-in — settings row. FAIL-CLOSED until a
+                 provider is configured server-side. B-TODAY-22 (Guy G4): the
+                 row shows only once the channel exists or the parent already
+                 opted in; the opt-in store is kept either way. ── */}
+          {(emailStatus.enabled || emailOptIn) && (
           <div data-module="weekly-email" data-module-demoted className={`${cardCls} p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4`}>
             <div className="flex items-center gap-3 min-w-0">
               <IconBadge tone="lav"><Icon name="mail" size={20} /></IconBadge>
@@ -484,33 +427,12 @@ export default function WeeklyTab() {
             >
               <span
                 aria-hidden
-                className="inline-block h-6 w-6 rounded-full bg-white shadow transition-transform ltr:translate-x-1 rtl:-translate-x-1"
-                style={{ transform: emailOptIn ? (uiLang === "he" ? "translateX(-28px)" : "translateX(28px)") : undefined }}
+                className="inline-block h-6 w-6 rounded-full shadow transition-transform ltr:translate-x-1 rtl:-translate-x-1"
+                style={{ background: "var(--arbor-paper-elevated)", transform: emailOptIn ? (uiLang === "he" ? "translateX(-28px)" : "translateX(28px)") : undefined }}
               />
             </button>
           </div>
-
-          <div data-module="weekly-share" data-module-demoted className={`${cardCls} p-6 flex flex-col sm:flex-row items-center justify-between gap-4`}>
-            <div className="flex items-center gap-3">
-              <IconBadge tone="sky"><Icon name="send" size={20} /></IconBadge>
-              <div>
-                <h3 className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("wk.readyToShare")}</h3>
-                <p className="text-sm mt-0.5" style={{ color: "var(--arbor-muted)" }}>{t("wk.compileBrief")}</p>
-              </div>
-            </div>
-            {/* Principle 3: compiling a brief is a real capability and a
-                SECONDARY move on this screen — outline, not a second gradient
-                competing with the recommendation the week is for. */}
-            <button
-              onClick={() => setActiveTab("consult")}
-              className="inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 transition active:scale-[0.98] flex-shrink-0"
-              style={{ background: "transparent", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)", minHeight: 44 }}
-            >
-              <Icon name="send" size={16} /> {t("wk.brief", { first })}
-            </button>
-          </div>
-            </div>
-          </details>
+          )}
         </>
       )}
       <QuickLogModal open={logOpen} promptKey={logPrompt}

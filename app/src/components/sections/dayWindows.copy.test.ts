@@ -33,7 +33,6 @@ const strip = (code: string) => code.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^
 const NEW_KEYS = [
   "elev.dw.daysLoggedOf",
   "elev.dw.context",
-  "elev.wk.more.title",
   // B-TODAY-17: the elev.checkin.* keys left with the check-in card.
 ];
 
@@ -127,34 +126,24 @@ describe("TJB-23 → B-TODAY-17 — the daily check-in is gone, with its keys", 
   });
 });
 
-describe("OBJ-TODAY-06 — the weekly secondary modules are demoted", () => {
+// B-TODAY-22 superseded OBJ-TODAY-06's nested "More" toggle: the Scholar
+// spotlight (English-only catalogue copy on the Hebrew route, GD-6) and the
+// weekly read are DELETED from #/weekly, not demoted; one <details> holds the
+// milestone wins only.
+describe("OBJ-TODAY-06 → B-TODAY-22 — one disclosure, no Scholar copy, no weekly read", () => {
   const src = strip(read("components/tabs/WeeklyTab.tsx"));
 
-  it("Scholar and the weekly read sit behind the disclosure, not in the default read", () => {
-    expect(src).toMatch(/showWeeklyMore/);
-    const gate = src.indexOf("showWeeklyMore && (");
-    expect(gate).toBeGreaterThan(-1);
-    // Both demoted cards live AFTER the gate; milestone wins stays before it.
-    expect(src.indexOf('t("wk.scholarSpotlight")')).toBeGreaterThan(gate);
-    expect(src.indexOf('t("learn.weeklyRead")')).toBeGreaterThan(gate);
-    expect(src.indexOf('t("wk.milestoneWins"')).toBeLessThan(gate);
-  });
-
-  it("the disclosure reuses Today's Show/Hide verbs — no second vocabulary", () => {
-    expect(src).toMatch(/t\("ov\.tools\.hide"\) : t\("ov\.tools\.show"\)/);
-    expect(en["elev.wk.more.title"]).toBeTruthy();
-  });
-
-  it("the three secondary links clear the 44 px floor", () => {
-    for (const key of ["wk.reviewMilestones", "wk.scholarExplore", "learn.readCard"]) {
-      const at = src.indexOf(`t("${key}")`);
-      expect(at, `${key} not found`).toBeGreaterThan(-1);
-      // the button opening tag immediately before the label carries touch-target
-      const openTag = src.lastIndexOf("<button", at);
-      expect(src.slice(openTag, at), `${key} link is still under 44 px`).toContain("touch-target");
+  it("no spotlight, no weekly read, no nested toggle", () => {
+    for (const tok of ["showWeeklyMore", "wk.scholarSpotlight", "learn.weeklyRead", "selected.spotlight", "rankLearnCards", "focusDomain", "ov.tools."]) {
+      expect(src, tok).not.toContain(tok);
     }
-    expect(src).toMatch(/aria-expanded=\{showWeeklyMore\}[\s\S]{0,80}/);
-    expect(src).toMatch(/onClick=\{\(\) => setShowWeeklyMore/);
+    expect((src.match(/<details\b/g) ?? []).length).toBe(1);
+  });
+
+  it("the milestone-wins link still clears the 44 px floor", () => {
+    const at = src.indexOf('t("wk.reviewMilestones")');
+    expect(at).toBeGreaterThan(-1);
+    expect(src.slice(src.lastIndexOf("<button", at), at)).toContain("touch-target");
   });
 
   it("negative control: the shipped 17 px link markup has no floor", () => {

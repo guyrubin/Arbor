@@ -105,11 +105,6 @@ export const en: Record<string, string> = {
   "elev.dw.daysLoggedOf": "{n} of {total} days logged so far.",
   "elev.dw.context": "Patterns for {name}, based on what you've logged.",
 
-  // OBJ-TODAY-06 · the weekly disclosure heading. Its Show/Hide verbs reuse
-  // ov.tools.show / ov.tools.hide — one drawer vocabulary across the app.
-  "elev.wk.more.title": "More from this week",
-
-
   // TJB-28 · the Today receipt's second line, read back from the outcome the
   // parent just recorded. The claim is backed: `outcome` is written to the
   // action entry and sent to /api/todays-focus as `lastActionOutcome`.
@@ -128,9 +123,7 @@ export const en: Record<string, string> = {
   "elev.shell.focus.multilingual": "Growing up multilingual",
 
   // Builder M — R25 — #/weekly and #/smart-reminders demotion disclosures.
-  "elev.wk.rest.title": "The rest of the week",
-  "elev.wk.rest.sub": "Wins and moments, the weekly email, and the brief you can share.",
-  "elev.wk.rest.door": "Back to Today",
+  "elev.wk.rest.title": "Milestones noticed this week",
   "elev.sr.more.title": "When Arbor may reach you",
   // B-TODAY-16: the phone-reminder card's section on #/smart-reminders.
   "elev.sr.delivery.heading": "Delivery",
@@ -201,7 +194,6 @@ export const he: Record<string, string> = {
   "elev.dw.daysLoggedOf": "תיעדתם {n} מתוך {total} ימים עד כה.",
   "elev.dw.context": "דפוסים של {name}, לפי מה שתיעדתם.",
 
-  "elev.wk.more.title": "עוד מהשבוע",
 
 
   "elev.today.receipt.helped": "אמרתם שזה עזר. זה נכנס לצעד שארבור תציע בפעם הבאה.",
@@ -214,9 +206,7 @@ export const he: Record<string, string> = {
   "elev.shell.focus.multilingual": "גדל/ה עם יותר משפה אחת",
 
   // Builder M — R25 — #/weekly and #/smart-reminders demotion disclosures.
-  "elev.wk.rest.title": "שאר השבוע",
-  "elev.wk.rest.sub": "הישגים ורגעים, המייל השבועי והתקציר שאפשר לשתף.",
-  "elev.wk.rest.door": "חזרה להיום",
+  "elev.wk.rest.title": "אבני דרך שסימנתם השבוע",
   "elev.sr.more.title": "מתי מותר לארבור לפנות אליכם",
   "elev.sr.delivery.heading": "איך התזכורות מגיעות",
   "elev.sr.more.sub": "שעות שקט, ושמירת התזכורות לרגע רגוע.",

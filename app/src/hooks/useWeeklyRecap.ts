@@ -52,7 +52,6 @@ import { useChildCollection } from "./useChildCollection";
 import { api, type WeeklyDigest } from "../lib/api";
 import { rcString } from "../components/weekly/recapStrings";
 import { CANONICAL_BEHAVIOR_TYPES } from "../content/behaviorTaxonomy";
-import { scholarsInfo } from "../initialData";
 import { dayKey } from "../practice/signals";
 
 const DAY = 86_400_000;
@@ -111,7 +110,9 @@ export type WeeklyReport = {
   summary: { count: number; resolved?: number; topTrigger: string; topBehaviorType?: string };
   milestoneWins: string[];
   planProgress: { done: number; total: number };
-  spotlight: { name: string; concept: string; value: string };
+  /** B-TODAY-22: no longer written (the Scholar spotlight left #/weekly);
+   *  optional so stored reports that carry one stay readable. Never rendered. */
+  spotlight?: { name: string; concept: string; value: string };
   insight: string;
   /** RET-1: the structured "{child}'s week" digest (email/push-ready payload). */
   digest?: WeeklyDigest;
@@ -399,7 +400,6 @@ export function useWeeklyRecap() {
       total += 1;
       if (s.completed) done += 1;
     })));
-    const spotlight = scholarsInfo[new Date().getDate() % scholarsInfo.length];
     return {
       summary: {
         count: recent.length,
@@ -410,7 +410,6 @@ export function useWeeklyRecap() {
       },
       milestoneWins: wins,
       planProgress: { done, total },
-      spotlight: { name: spotlight.name, concept: spotlight.concept, value: spotlight.value },
     };
   }, [behaviorLogs, milestones, actionPlans]);
 
