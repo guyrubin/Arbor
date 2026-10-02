@@ -12,6 +12,10 @@ import {
   resolveWeekLabel,
   topMomentDisplay,
   TRIGGER_QUOTE_MAX,
+  isRecapContentStale,
+  recapRegenAllowed,
+  latestRecapEventAt,
+  RECAP_CONTENT_STALE_MS,
 } from "./useWeeklyRecap";
 
 /**
@@ -267,5 +271,71 @@ describe("isRecapUnopened — the Since-strip entry-line gate", () => {
 
   it("no report yet → nothing to announce", () => {
     expect(isRecapUnopened(false, "2026-W33", null)).toBe(false);
+  });
+});
+
+/* ── B-TODAY-14: Weekly regenerates when the week moves on ─────────────────── */
+describe("B-TODAY-14 — the week's report refreshes itself, at most once a local day", () => {
+  const H = 3_600_000;
+  // Report written Tue 09:00; a new moment Wed 19:00; the parent opens Wed 20:00.
+  const generatedAt = new Date(2026, 8, 29, 9, 0).toISOString();
+  const genMs = Date.parse(generatedAt);
+  const momentWed = genMs + 34 * H;
+  const openWed = genMs + 35 * H;
+  const base = { loaded: true, hasCurrentWeek: true, weekMomentCount: 4, alreadyTried: false, generating: false, languageStale: false };
+
+  it("decision table: content-stale = newer event AND report older than 20 h", () => {
+    const rows: [string, Parameters<typeof isRecapContentStale>[0], boolean][] = [
+      ["new moment next day", { generatedAt, latestEventAt: momentWed, nowMs: openWed }, true],
+      ["nothing new since the report", { generatedAt, latestEventAt: genMs - H, nowMs: openWed }, false],
+      ["new moment but report is 6 h old", { generatedAt, latestEventAt: genMs + 5 * H, nowMs: genMs + 6 * H }, false],
+      ["fallback report skips the age rule", { generatedAt, latestEventAt: genMs + 5 * H, nowMs: genMs + 6 * H, fallback: true }, true],
+      ["no events at all", { generatedAt, latestEventAt: null, nowMs: openWed }, false],
+      ["no report", { generatedAt: null, latestEventAt: momentWed, nowMs: openWed }, false],
+    ];
+    for (const [label, input, want] of rows) expect(isRecapContentStale(input), label).toBe(want);
+    expect(RECAP_CONTENT_STALE_MS).toBe(20 * H);
+  });
+
+  it("a new moment the next day → one regeneration on open", () => {
+    const contentStale = isRecapContentStale({ generatedAt, latestEventAt: momentWed, nowMs: openWed });
+    const regenAllowed = recapRegenAllowed(null, "2026-09-30");
+    expect(shouldAutoGenerateRecap({ ...base, contentStale, regenAllowed })).toBe(true);
+  });
+
+  it("a second open the same day → none (the day marker is spent)", () => {
+    const contentStale = isRecapContentStale({ generatedAt, latestEventAt: momentWed, nowMs: openWed });
+    const regenAllowed = recapRegenAllowed("2026-09-30", "2026-09-30");
+    expect(regenAllowed).toBe(false);
+    expect(shouldAutoGenerateRecap({ ...base, contentStale, regenAllowed })).toBe(false);
+    // …and the in-session guard alone also stops it.
+    expect(shouldAutoGenerateRecap({ ...base, contentStale, regenAllowed: true, alreadyTried: true })).toBe(false);
+  });
+
+  it("the next local day earns one more; a fallback report regenerates freely", () => {
+    expect(recapRegenAllowed("2026-09-30", "2026-10-01")).toBe(true);
+    expect(recapRegenAllowed("2026-09-30", "2026-09-30", true)).toBe(true);
+  });
+
+  it("an empty week is never fabricated, stale or not", () => {
+    expect(shouldAutoGenerateRecap({ ...base, weekMomentCount: 0, contentStale: true, regenAllowed: true })).toBe(false);
+  });
+
+  it("the latest event reads behaviour logs and step outcomes inside the window", () => {
+    const from = genMs - 7 * 24 * H;
+    const logs = [{ timestamp: new Date(genMs - H).toISOString() }, { timestamp: new Date(genMs - 30 * 24 * H).toISOString() }];
+    const actions = [{ outcomeAt: new Date(momentWed).toISOString() }, {}];
+    expect(latestRecapEventAt(logs, actions, from, openWed)).toBe(momentWed);
+    expect(latestRecapEventAt(logs, [], from, openWed)).toBe(genMs - H);
+    expect(latestRecapEventAt([], [], from, openWed)).toBeNull();
+  });
+
+  it("the hook wires it: language keeps the report's language, one key per child per day", () => {
+    const src = fs.readFileSync(path.join(__dirname, "useWeeklyRecap.ts"), "utf8");
+    expect(src).toContain("arbor.recap.regenDay.${childId}");
+    expect(src).toMatch(/contentStale,\s*regenAllowed,\s*\}\);/);
+    // Regeneration writes in the session's AI language (HE stays HE).
+    expect(src).toMatch(/language: aiLang/);
+    expect(src).toMatch(/lang: aiLang/);
   });
 });

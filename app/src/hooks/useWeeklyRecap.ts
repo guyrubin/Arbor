@@ -53,6 +53,7 @@ import { api, type WeeklyDigest } from "../lib/api";
 import { rcString } from "../components/weekly/recapStrings";
 import { CANONICAL_BEHAVIOR_TYPES } from "../content/behaviorTaxonomy";
 import { scholarsInfo } from "../initialData";
+import { dayKey } from "../practice/signals";
 
 const DAY = 86_400_000;
 
@@ -111,14 +112,90 @@ export function shouldAutoGenerateRecap(input: {
   generating: boolean;
   /** The stored report is in a different AI language than the live session. */
   languageStale?: boolean;
+  /** B-TODAY-14: the week moved on after the report was written (isRecapContentStale). */
+  contentStale?: boolean;
+  /** B-TODAY-14: today's one content regeneration is still unspent (recapRegenAllowed). */
+  regenAllowed?: boolean;
 }): boolean {
+  const contentDue = !!input.contentStale && input.regenAllowed !== false;
   return (
     input.loaded &&
-    (!input.hasCurrentWeek || !!input.languageStale) &&
+    (!input.hasCurrentWeek || !!input.languageStale || contentDue) &&
     !input.alreadyTried &&
     !input.generating &&
     input.weekMomentCount > 0
   );
+}
+
+/** B-TODAY-14: a written report is at least this old before new moments rewrite it. */
+export const RECAP_CONTENT_STALE_MS = 20 * 60 * 60 * 1000;
+
+/**
+ * B-TODAY-14 — the week moved on. A report written after the week's first
+ * moment used to stay the week's story until a manual Retell. It is stale
+ * when the latest behaviour log or step outcome in the week is newer than
+ * `generatedAt` AND the report is older than 20 h. A fallback digest
+ * (generated without the model) skips the age rule: rewriting it costs no
+ * model call unless the model is back, and then the daily cap applies.
+ */
+export function isRecapContentStale(input: {
+  generatedAt?: string | null;
+  /** ms of the newest behaviourLog / action outcome in the report's week. */
+  latestEventAt: number | null;
+  nowMs: number;
+  /** The stored digest was the deterministic fallback (or absent). */
+  fallback?: boolean;
+}): boolean {
+  if (!input.generatedAt || input.latestEventAt === null) return false;
+  const gen = Date.parse(input.generatedAt);
+  if (!Number.isFinite(gen)) return false;
+  if (input.latestEventAt <= gen) return false;
+  if (input.fallback) return true;
+  return input.nowMs - gen >= RECAP_CONTENT_STALE_MS;
+}
+
+/**
+ * B-TODAY-14 (Guy G11: ≤1 digest call per family per day) — at most one
+ * automatic content regeneration per child per LOCAL day, tracked by
+ * `arbor.recap.regenDay.{childId}`. A fallback report regenerates freely.
+ */
+export function recapRegenAllowed(lastRegenDay: string | null, today: string, fallback = false): boolean {
+  return fallback || lastRegenDay !== today;
+}
+
+/** The newest behaviourLog timestamp or action outcome inside [fromMs, nowMs]. */
+export function latestRecapEventAt(
+  logs: readonly { timestamp: string }[],
+  actions: readonly { outcomeAt?: string }[],
+  fromMs: number,
+  nowMs: number,
+): number | null {
+  let latest: number | null = null;
+  const consider = (raw?: string) => {
+    if (!raw) return;
+    const at = Date.parse(raw);
+    if (!Number.isFinite(at) || at < fromMs || at > nowMs + DAY) return;
+    if (latest === null || at > latest) latest = at;
+  };
+  for (const l of logs) consider(l.timestamp);
+  for (const a of actions) consider(a.outcomeAt);
+  return latest;
+}
+
+const regenDayKey = (childId: string) => `arbor.recap.regenDay.${childId}`;
+function readRegenDay(childId: string): string | null {
+  try {
+    return window.localStorage.getItem(regenDayKey(childId));
+  } catch {
+    return null;
+  }
+}
+function writeRegenDay(childId: string, day: string): void {
+  try {
+    window.localStorage.setItem(regenDayKey(childId), day);
+  } catch {
+    /* best-effort: the in-session guard still holds */
+  }
 }
 
 /**
@@ -237,7 +314,7 @@ function readOpenedWeek(childId: string): string | null {
 const autoAttempted = new Set<string>();
 
 export function useWeeklyRecap() {
-  const { behaviorLogs, milestones, actionPlans, childProfile } = useArbor();
+  const { behaviorLogs, milestones, actionPlans, childProfile, actionLoop } = useArbor();
   // The SAME language value the render uses — settled synchronously by the
   // provider's state initializer, so there is no cold-load race here.
   const { t, aiLang, uiLang } = useLanguage();
@@ -373,24 +450,45 @@ export function useWeeklyRecap() {
    */
   const languageRefreshPending = languageStale && (generating || !autoAttempted.has(attemptKey));
 
+  // B-TODAY-14: the week moved on after the report was written.
+  const nowMs = Date.now();
+  const today = dayKey(new Date(nowMs));
+  const reportFallback = !!currentReport && (!currentReport.digest || currentReport.digest.generated === "fallback");
+  const latestEventAt = latestRecapEventAt(behaviorLogs, actionLoop, nowMs - 7 * DAY, nowMs);
+  const contentStale = isRecapContentStale({
+    generatedAt: currentReport?.generatedAt,
+    latestEventAt,
+    nowMs,
+    fallback: reportFallback,
+  });
+  const regenAllowed = recapRegenAllowed(readRegenDay(childProfile.id), today, reportFallback);
+  // A content rewrite is its own attempt: one per child/week/language/day
+  // (a fallback report: one per newest event, so it can catch up for free).
+  const contentOnly = !!currentReport && !languageStale && contentStale;
+  const contentKey = `${attemptKey}:content:${today}${reportFallback ? `:${latestEventAt ?? ""}` : ""}`;
+
   // Auto-generate the week's report on the FIRST app-open of a new week —
   // moved from WeeklyTab's tab-entry effect to this app-level hook (W2 2.1) —
   // and re-generate when the live AI language no longer matches the stored one.
   useEffect(() => {
+    const key = contentOnly ? contentKey : attemptKey;
     const decision = shouldAutoGenerateRecap({
       loaded: reportsCol.loaded,
       hasCurrentWeek: reportsCol.items.some((r) => r.id === currentId),
       weekMomentCount: snapshot.summary.count,
-      alreadyTried: autoAttempted.has(attemptKey),
+      alreadyTried: autoAttempted.has(key),
       generating,
       languageStale,
+      contentStale,
+      regenAllowed,
     });
     if (decision) {
-      autoAttempted.add(attemptKey);
+      autoAttempted.add(key);
+      if (contentOnly) writeRegenDay(childProfile.id, today);
       void generate();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reportsCol.loaded, reportsCol.items, snapshot.summary.count, childProfile.id, aiLang, languageStale]);
+  }, [reportsCol.loaded, reportsCol.items, snapshot.summary.count, childProfile.id, aiLang, languageStale, contentStale, regenAllowed, contentKey]);
 
   const recapUnopened = isRecapUnopened(!!currentReport, currentId, openedWeek);
 
