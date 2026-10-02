@@ -91,26 +91,28 @@ describe("ENG-09 — the lifecycle module is wired into Today", () => {
     expect(hook).not.toMatch(/useLastVisit/);
   });
 
-  it("renders AFTER the day's action (P1-A) and BEFORE the since-strip", () => {
-    const anchor = overview.indexOf("lg:grid-cols-[1.85fr_0.85fr]");
+  // B-TODAY-21: the since-strip is gone; the ONE What-changed card sits in the
+  // anchor ROW (the seat the dev-map card held), so the lifecycle moment now
+  // renders after that row — still after the day's action (P1-A).
+  it("renders AFTER the day's action (P1-A) and after the anchor row's What-changed card", () => {
+    const anchor = overview.indexOf('data-module="today-anchor"');
+    const changed = overview.indexOf("<WhatChanged");
     const lifecycle = overview.indexOf("<LifecycleMomentCard");
-    const since = overview.indexOf("<SinceLastVisit");
     expect(anchor).toBeGreaterThan(-1);
-    expect(lifecycle).toBeGreaterThan(anchor);
-    expect(since).toBeGreaterThan(lifecycle);
+    expect(changed).toBeGreaterThan(anchor);
+    expect(lifecycle).toBeGreaterThan(changed);
   });
 
-  it("the budget ranks it directly below the anchor, in both orders", () => {
+  it("the budget ranks it directly below the anchor row (anchor + What changed), in both orders", () => {
     for (const noticedCanFold of [false, true]) {
       const order = todayModulePriority({ noticedCanFold });
-      expect(order[0]).toBe("anchor");
-      expect(order[1]).toBe("lifecycle");
+      expect(order.slice(0, 3)).toEqual(["anchor", "changed", "lifecycle"]);
     }
   });
 
   it("Rule A holds: a lifecycle moment never pushes Today past five modules", () => {
     const plan = resolveTodayModules(
-      { lifecycle: true, since: true, noticed: true, narrative: true, rail: true, play: true },
+      { lifecycle: true, changed: true, noticed: true, rail: true, play: true },
       { noticedCanFold: true },
     );
     expect(plan.visible.size).toBeLessThanOrEqual(5);

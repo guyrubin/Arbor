@@ -12,7 +12,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildSinceVisitRows, SINCE_VISIT_MAX_ROWS } from "./sinceVisitEvents";
 import { buildTimeline } from "../../lib/signalTimeline";
-import { en, he } from "../../lib/i18nElevation/closeloop";
+import { elevationEn, elevationHe } from "../../lib/i18nElevation";
 
 const PREV = "2026-09-03T20:00:00.000Z";
 const base = {
@@ -90,18 +90,26 @@ describe("TJB-05 — the step is an event on the since-visit strip", () => {
     expect(JSON.stringify(rows)).not.toMatch(/helped|somewhat|not_today/);
   });
 
-  it("Today feeds the ledger in, and the strip labels both variants in EN + HE", () => {
+  // B-TODAY-21: the strip is gone; the ONE What-changed card reads the same
+  // ledger through composeWhatChanged (which extends buildSinceVisitRows) and
+  // names a step only once the PARENT reported it helped — an accepted step
+  // with no outcome lives in the continuation slot, and a "not today" never
+  // reaches the card (this file's firewall, carried forward).
+  it("Today feeds the ledger into the What-changed composer, which labels the parent's outcome in EN + HE", () => {
     const here = path.dirname(fileURLToPath(import.meta.url));
     const overview = readFileSync(path.join(here, "../tabs/OverviewTab.tsx"), "utf8");
-    expect(overview).toContain("actions: actionLoop,");
+    const composeCall = overview.slice(overview.indexOf("composeWhatChanged({"), overview.indexOf("});", overview.indexOf("composeWhatChanged({")));
+    expect(composeCall).toContain("actionLoop,");
+    const composer = readFileSync(path.join(here, "./whatChangedEvents.ts"), "utf8");
+    expect(composer).toContain("actions: input.actionLoop,");
 
-    const strip = readFileSync(path.join(here, "./SinceLastVisit.tsx"), "utf8");
-    expect(strip).toContain('case "action":');
-    expect(strip).toContain("elev.closeloop.since.outcome");
-    expect(strip).toContain("elev.closeloop.since.accepted");
-    for (const k of ["elev.closeloop.since.accepted", "elev.closeloop.since.outcome"]) {
-      expect(en[k], `EN ${k}`).toBeTruthy();
-      expect(he[k], `HE ${k}`).toBeTruthy();
+    const card = readFileSync(path.join(here, "./WhatChanged.tsx"), "utf8");
+    expect(card).toContain('case "step":');
+    for (const k of ["elev.brief.changed.step.helped", "elev.brief.changed.step.somewhat"]) {
+      expect(card).toContain(k);
+      expect(elevationEn[k], `EN ${k}`).toContain("{step}");
+      expect(elevationHe[k], `HE ${k}`).toContain("{step}");
     }
+    expect(card).not.toMatch(/not_today|notToday/);
   });
 });

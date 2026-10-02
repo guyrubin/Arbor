@@ -24,7 +24,7 @@ import { chooseContinuation } from "../overview/continuation";
 import { useCompanionOffer } from "../overview/useCompanionOffer";
 import QuickLogModal from "../overview/QuickLogModal";
 import WhatChanged from "../overview/WhatChanged";
-import { composeWhatChanged, type WhatChangedLine } from "../overview/whatChanged";
+import { composeWhatChanged, type WhatChangedLine } from "../overview/whatChangedEvents";
 import { firstsStorageKey, type FirstsState } from "../../lib/firsts";
 import PromptCaptureCard from "../overview/PromptCaptureCard";
 import { ErrorState } from "../ui/ErrorState";
@@ -890,9 +890,8 @@ export default function OverviewTab() {
       </div>
 
       {/* ── ENG-09 / Wave E: the lifecycle moment. BELOW the anchor row (P1-A —
-             nothing outranks the day's action) and ABOVE the since-strip: a
-             parent returning after a fortnight needs the warm, age-anchored
-             re-entry before a list of events they were not there for. At most
+             nothing outranks the day's action; since B-TODAY-21 that row also
+             holds the ONE What-changed card). At most
              one renders, each occurrence once, and it counts against the ≤5
              Rule-A budget like any other module. ── */}
       {showLifecycle && lifecycleMoment && todayOffer.offer?.kind === "what-changed" && (

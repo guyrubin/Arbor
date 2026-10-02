@@ -84,7 +84,7 @@ describe("TODAY-2/CODEX-1 — one loop, not three stacked widgets", () => {
     expect(overview).not.toMatch(/today-recent-context/);
   });
 
-  it("section order: capture → day anchor → since-strip → rail → noticed → narrative → tools", () => {
+  it("section order: capture → day anchor → What changed → rail → noticed → tools", () => {
     // W1 Rule A, as corrected by P1-A (2026-08-12): the primary-action anchor
     // comes FIRST so the one CTA clears the fold; the since-strip and the
     // first-steps rail follow it. The Daily Play section is a single JSX
@@ -93,10 +93,10 @@ describe("TODAY-2/CODEX-1 — one loop, not three stacked widgets", () => {
     const order = [
       overview.indexOf("<QuickCaptureBar"),
       overview.indexOf("<TodayActionLoop"),
-      overview.indexOf("<SinceLastVisit"),
+      // B-TODAY-21: since-strip + narrative + dev-map card → ONE card.
+      overview.indexOf("<WhatChanged"),
       overview.indexOf("<FirstStepsRail"),
       overview.indexOf("<ArborNoticedCard"),
-      overview.indexOf("<ProgressNarrative"),
       overview.indexOf("<DailyCheckinCard"),
     ];
     for (const idx of order) expect(idx).toBeGreaterThan(-1);
@@ -169,17 +169,24 @@ describe("W2 Today supporting presentation", () => {
     expect(rail).toContain('onClick={() => openStep(s.id, s.tab)}');
   });
 
-  it("makes the Growth summary a genuine keyboard-operable door", () => {
+  // B-TODAY-21: the dev-map count card ("{reached} of {total}") is deleted —
+  // milestone counts stay in Growth. Today's door into Growth is now the
+  // What-changed card's milestone / first / watch lines: real <button>s.
+  it("keeps a genuine keyboard-operable door into Growth (the What-changed milestone lines)", () => {
     const overview = stripComments(read("components/tabs/OverviewTab.tsx"));
-    expect(overview).toMatch(/<button\s+type="button"\s+onClick=\{\(\) => setActiveTab\("development"\)\}/);
+    const card = stripComments(read("components/overview/WhatChanged.tsx"));
+    expect(overview).toMatch(/line\.kind === "milestone"[^\n]*\n\s*setActiveTab\("development"\)/);
+    expect(card).toMatch(/<button\s+type="button"\s+data-testid="what-changed-line"/);
     expect(overview).not.toMatch(/<section\s+onClick=\{\(\) => setActiveTab\("development"\)\}/);
+    expect(overview).not.toContain("devscore.noticed");
   });
 });
 
 describe("B-TODAY-09 — no dead header button, no duplicate Ask row, no dead verdict plumbing", () => {
   const overview = stripComments(read("components/tabs/OverviewTab.tsx"));
   const focusHook = stripComments(read("hooks/useTodaysFocus.ts"));
-  const narrative = stripComments(read("components/overview/ProgressNarrative.tsx"));
+  // B-TODAY-21: ProgressNarrative is deleted; its successor is the card.
+  const narrative = stripComments(read("components/overview/WhatChanged.tsx"));
 
   it("OverviewTab carries no setShowAiRail, no today-coach-row, no milestonesPercent, no weekAvg", () => {
     expect(overview.length).toBeGreaterThan(20_000);
@@ -196,7 +203,7 @@ describe("B-TODAY-09 — no dead header button, no duplicate Ask row, no dead ve
     expect(elevationHe["elev.today.askAbout"]).toBe("לשאול על זה");
   });
 
-  it("FocusSignals drops avg + milestonesPercent; ProgressNarrative drops the unread prop", () => {
+  it("FocusSignals drops avg + milestonesPercent; the What-changed card carries no prior-window prop", () => {
     const type = focusHook.slice(focusHook.indexOf("export type FocusSignals"), focusHook.indexOf("};", focusHook.indexOf("export type FocusSignals")));
     expect(type).not.toMatch(/\bavg\s*:/);
     expect(type).not.toMatch(/milestonesPercent\s*:/);

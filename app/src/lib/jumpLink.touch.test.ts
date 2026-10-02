@@ -87,7 +87,8 @@ const RATCHET: Record<string, number> = {
   //    The check-in card's mood and appetite chips came with them: they live
   //    inside that same drawer and were 30 px.
   "components/tabs/OverviewTab.tsx": 0,
-  "components/overview/ProgressNarrative.tsx": 0,
+  // B-TODAY-21: ProgressNarrative's evidence rows → the What-changed lines.
+  "components/overview/WhatChanged.tsx": 0,
   "components/overview/TodayActionLoop.tsx": 0,
   "components/overview/DailyCheckinCard.tsx": 0,
   "components/trust/TrustLink.tsx": 0,

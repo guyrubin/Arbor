@@ -191,8 +191,10 @@ describe("RecapStoryCards — swipe affordance without a gesture lib", () => {
   });
 });
 
-describe("Since-strip integration — recap entry line + continuity counter", () => {
-  const code = stripComments(read("components/overview/SinceLastVisit.tsx"));
+// B-TODAY-21: the since-strip folded into the ONE "What changed since you
+// left" card, which now carries the recap entry line and the counter.
+describe("What-changed integration — recap entry line + continuity counter", () => {
+  const code = stripComments(read("components/overview/WhatChanged.tsx"));
 
   it("reads the app-open auto-generate mount, which Today owns since B-TODAY-08", () => {
     // OverviewTab mounts useWeeklyRecap() once and passes it to the strip.
@@ -202,7 +204,7 @@ describe("Since-strip integration — recap entry line + continuity counter", ()
   });
 
   it("the unopened-recap entry line deep-links to the weekly recap", () => {
-    expect(code).toContain('rc("elev.recap.ready"');
+    expect(code).toContain('t("elev.recap.ready"');
     expect(code).toContain('setActiveTab("weekly")');
     expect(code).toContain('track("recap_ready_tap"');
     expect(code).toMatch(/recapUnopened/);
@@ -210,7 +212,7 @@ describe("Since-strip integration — recap entry line + continuity counter", ()
 
   it("the footer counter renders totalDays (cumulative) from computeStreak", () => {
     expect(code).toMatch(/computeStreak\(.*\)\.totalDays/);
-    expect(code).toContain('rc("elev.recap.days"');
+    expect(code).toContain('t("elev.recap.days"');
   });
 });
 
@@ -288,7 +290,8 @@ describe("streak ban — no strip/recap file touches the resettable member", () 
   // Raw sources INCLUDING comments: the banned token must not exist at all,
   // which also forbids useRef in these files (mount effects/state instead).
   const FILES = [
-    "components/overview/SinceLastVisit.tsx",
+    "components/overview/WhatChanged.tsx",
+    "components/overview/whatChangedEvents.ts",
     "components/overview/sinceVisitEvents.ts",
     "components/weekly/RecapStoryCards.tsx",
     "components/weekly/recapStrings.ts",

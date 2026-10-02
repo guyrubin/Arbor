@@ -1,224 +1,326 @@
-import { describe, it, expect } from "vitest";
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, it, expect, vi } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { buildSinceVisitRows, SINCE_VISIT_MAX_ROWS } from "./sinceVisitEvents";
-import { en as svEn, he as svHe } from "../../lib/i18nElevation/sincevisit";
 
 /**
- * W1 1.1 — SinceLastVisit acceptance (masterplan 2026-08-11 §3 · Maytal
- * Row-1 #1). Three layers:
- *   1. the pure row builder (filtering strictly after the previous visit,
- *      ≤3 rows, overflow math, priority order, the Rule-A noticed fold),
- *   2. the i18n module contract (en/he parity, namespacing, and the clinical
- *      firewall: EVENT language only — never comparative/trend wording),
- *   3. source-level structure: OverviewTab renders SinceLastVisit BEFORE the
- *      primary-action slot, deep-links rows, and instruments the strip.
+ * B-TODAY-21 — the ONE "What changed since you left" card on Today
+ * (ported from sinceLastVisit.test.ts). Three layers:
+ *   1. the pure composer (composeWhatChanged): ≤4 EVENT lines in the item's
+ *      order — a first · a milestone noticed by title · a step outcome · facts
+ *      the parent approved · moments kept with the latest quoted — strictly
+ *      newer than the previous visit, plus the Rule-A `noticed` fold;
+ *   2. the rendered card (EN + HE): one card, event-only language, bidi-
+ *      isolated counts in Hebrew, days together = totalDays only (no streak
+ *      walk), hidden when there is nothing to say;
+ *   3. OverviewTab wiring: one mount, returning parents only, never on day-0,
+ *      the three retired mounts gone, evidence taps keep requestJournalFocus.
  */
 
-const T0 = Date.parse("2026-08-10T20:00:00.000Z");
+const state = vi.hoisted(() => ({
+  lang: "en" as "en" | "he",
+  behaviorLogs: [] as Array<{ id: string; timestamp: string }>,
+  playLogs: [] as Array<{ id: string; timestamp: string }>,
+  tracked: [] as Array<[string, unknown]>,
+}));
+vi.mock("../../context/LanguageContext", async () => {
+  const { translate } = await vi.importActual<typeof import("../../lib/i18n")>("../../lib/i18n");
+  return {
+    useLanguage: () => ({
+      t: (k: string, v?: Record<string, string | number>) => translate(state.lang, k, v),
+      uiLang: state.lang,
+    }),
+  };
+});
+vi.mock("../../context/ArborContext", () => ({
+  useArbor: () => ({
+    behaviorLogs: state.behaviorLogs,
+    playLogs: state.playLogs,
+    childProfile: { id: "c1", name: "Maya Cohen" },
+    setActiveTab: () => undefined,
+  }),
+}));
+vi.mock("../../lib/analytics", () => ({
+  track: (name: string, meta: unknown) => {
+    state.tracked.push([name, meta]);
+  },
+}));
+
+import WhatChanged from "./WhatChanged";
+import { composeWhatChanged, WHAT_CHANGED_MAX_LINES, WHAT_CHANGED_QUOTE_MAX, type WhatChangedLine } from "./whatChangedEvents";
+
+const T0 = Date.parse("2026-09-28T20:00:00.000Z");
 const iso = (ms: number) => new Date(ms).toISOString();
 const PREV = iso(T0);
+const H = 3_600_000;
 
-const beh = (id: string, atMs: number) => ({ id, timestamp: iso(atMs) });
-const play = (id: string, atMs: number) => ({ id, timestamp: iso(atMs) });
+const beh = (id: string, atMs: number, trigger = "") => ({ id, timestamp: iso(atMs), trigger });
+const play = (id: string, atMs: number, title = "") => ({ id, timestamp: iso(atMs), title });
 const ms = (title: string, checked: boolean, atMs?: number) => ({
   title,
   checked,
   observationUpdatedAt: atMs === undefined ? undefined : iso(atMs),
 });
-const convo = (id: string, atMs: number) => ({ id, updatedAt: iso(atMs) });
+const step = (id: string, outcomeAtMs: number, outcome: "helped" | "somewhat" | "not_today", recommendation = "Name the feeling first") => ({
+  id,
+  recommendation,
+  status: "completed" as const,
+  acceptedAt: iso(outcomeAtMs - H),
+  outcomeAt: iso(outcomeAtMs),
+  outcome,
+});
 
-const EMPTY = { behaviorLogs: [], playLogs: [], milestones: [], conversations: [] };
+const BASE = {
+  previousVisitAt: PREV as string | null,
+  behaviorLogs: [] as ReturnType<typeof beh>[],
+  playLogs: [] as ReturnType<typeof play>[],
+  milestones: [] as ReturnType<typeof ms>[],
+  actionLoop: [] as ReturnType<typeof step>[],
+  approvedFactsSince: 0,
+  firstsState: { seen: ["first_milestone" as const] },
+  firstsCounts: { milestoneCount: 5 },
+};
 
-describe("buildSinceVisitRows — filtering + aggregation", () => {
-  it("no previous visit → no rows (the strip is returning-parents only)", () => {
-    const r = buildSinceVisitRows({ ...EMPTY, previousVisitAt: null, behaviorLogs: [beh("a", T0 + 1)] });
-    expect(r.rows).toEqual([]);
-    expect(r.totalEvents).toBe(0);
+/* ── 1. the composer ──────────────────────────────────────────────────────── */
+
+describe("composeWhatChanged — events strictly after the previous visit", () => {
+  it("no previous visit (first visit / day-0) → no lines", () => {
+    const r = composeWhatChanged({ ...BASE, previousVisitAt: null, behaviorLogs: [beh("a", T0 + H)] });
+    expect(r).toEqual({ lines: [], hiddenCount: 0 });
   });
 
-  it("only events STRICTLY after the previous visit count", () => {
-    const r = buildSinceVisitRows({
-      ...EMPTY,
-      previousVisitAt: PREV,
-      behaviorLogs: [beh("old", T0 - 1), beh("boundary", T0), beh("new", T0 + 60_000)],
+  it("nothing new since the visit → no lines (the card hides)", () => {
+    const r = composeWhatChanged({
+      ...BASE,
+      behaviorLogs: [beh("old", T0 - H), beh("boundary", T0)],
+      milestones: [ms("Old", true, T0 - H)],
+      actionLoop: [step("s0", T0 - 1, "helped")],
     });
-    expect(r.rows).toHaveLength(1);
-    expect(r.rows[0]).toMatchObject({ kind: "moments", count: 1, focusId: "moment-new" });
+    expect(r.lines).toEqual([]);
   });
 
-  it("moments aggregate to ONE row carrying the NEWEST journal signal id", () => {
-    const r = buildSinceVisitRows({
-      ...EMPTY,
-      previousVisitAt: PREV,
-      behaviorLogs: [beh("a", T0 + 1000), beh("b", T0 + 9000), beh("c", T0 + 5000)],
+  it("the five event kinds come in the item's order: first · milestone · step · facts · moments", () => {
+    const r = composeWhatChanged({
+      ...BASE,
+      maxLines: 99,
+      firstsState: { seen: [] },
+      firstsCounts: { milestoneCount: 2 },
+      milestones: [ms("Waves bye-bye", true, T0 + 2 * H), ms("Stacks two blocks", true, T0 + 3 * H)],
+      actionLoop: [step("s1", T0 + 4 * H, "helped")],
+      approvedFactsSince: 2,
+      behaviorLogs: [beh("m1", T0 + 5 * H, "said butterfly")],
     });
-    expect(r.rows).toEqual([{ kind: "moments", at: T0 + 9000, count: 3, focusId: "moment-b" }]);
+    expect(r.lines.map((l) => l.kind)).toEqual(["first", "milestone", "step", "facts", "moments"]);
   });
 
-  it("play rows carry the play- signal prefix (journal timeline deep-link)", () => {
-    const r = buildSinceVisitRows({ ...EMPTY, previousVisitAt: PREV, playLogs: [play("p1", T0 + 2000)] });
-    expect(r.rows[0]).toMatchObject({ kind: "plays", focusId: "play-p1" });
-  });
-
-  it("milestone crossings are title-specific rows and outrank the aggregates", () => {
-    const r = buildSinceVisitRows({
-      ...EMPTY,
-      previousVisitAt: PREV,
-      milestones: [ms("First steps", true, T0 + 3000), ms("Old news", true, T0 - 5000), ms("Unchecked", false, T0 + 3000)],
-      behaviorLogs: [beh("a", T0 + 1000)],
-    });
-    expect(r.rows[0]).toMatchObject({ kind: "milestone", title: "First steps" });
-    expect(r.rows[1]).toMatchObject({ kind: "moments" });
-  });
-
-  it("caps at 3 rows and reports hidden EVENTS for '+N more in Journal'", () => {
-    const r = buildSinceVisitRows({
-      previousVisitAt: PREV,
+  it("caps at 4 lines and reports the hidden EVENTS for '+N more in Journal'", () => {
+    const r = composeWhatChanged({
+      ...BASE,
       milestones: [ms("A", true, T0 + 1), ms("B", true, T0 + 2)],
-      behaviorLogs: [beh("m1", T0 + 3), beh("m2", T0 + 4)],
-      playLogs: [play("p1", T0 + 5), play("p2", T0 + 6), play("p3", T0 + 7)],
-      conversations: [convo("c1", T0 + 8)],
+      actionLoop: [step("s1", T0 + 3, "helped")],
+      approvedFactsSince: 1,
+      behaviorLogs: [beh("m1", T0 + 4), beh("m2", T0 + 5)],
+      playLogs: [play("p1", T0 + 6)],
     });
-    expect(r.rows).toHaveLength(SINCE_VISIT_MAX_ROWS);
-    // milestone A + milestone B + moments(2) shown; plays(3) + convo(1) hidden.
-    expect(r.totalEvents).toBe(2 + 2 + 3 + 1);
-    expect(r.hiddenCount).toBe(4);
+    expect(WHAT_CHANGED_MAX_LINES).toBe(4);
+    expect(r.lines).toHaveLength(4);
+    expect(r.lines.map((l) => l.kind)).toEqual(["milestone", "milestone", "step", "facts"]);
+    // moments (2 logs + 1 play = 3 events) did not fit.
+    expect(r.hiddenCount).toBe(3);
   });
 
-  it("the Rule-A fold inserts the noticed row after milestones", () => {
-    const r = buildSinceVisitRows({
-      ...EMPTY,
-      previousVisitAt: PREV,
-      includeNoticedRow: true,
-      milestones: [ms("First steps", true, T0 + 1)],
-      behaviorLogs: [beh("a", T0 + 2)],
-    });
-    expect(r.rows.map((x) => x.kind)).toEqual(["milestone", "noticed", "moments"]);
+  it("a milestone is named by its title — never 'of total' (no total is even an input)", () => {
+    const r = composeWhatChanged({ ...BASE, milestones: [ms("First steps", true, T0 + H), ms("Unchecked", false, T0 + H)] });
+    expect(r.lines).toEqual([{ kind: "milestone", title: "First steps", at: T0 + H }]);
   });
 
-  it("conversations since the visit produce a row", () => {
-    const r = buildSinceVisitRows({ ...EMPTY, previousVisitAt: PREV, conversations: [convo("c", T0 + 1)] });
-    expect(r.rows).toEqual([{ kind: "conversations", at: T0 + 1, count: 1 }]);
+  it("a step line is the parent's own outcome report, deep-linked to its journal row", () => {
+    const r = composeWhatChanged({
+      ...BASE,
+      actionLoop: [
+        step("s1", T0 + H, "somewhat", "Offer two choices"),
+        { ...step("s2", T0 + 2 * H, "helped"), status: "accepted" as const, outcome: undefined, outcomeAt: undefined },
+        // TJB-05's firewall carried forward: a step set aside is not news.
+        step("s3", T0 + 3 * H, "not_today"),
+      ],
+    });
+    expect(r.lines).toEqual([{ kind: "step", step: "Offer two choices", outcome: "somewhat", focusId: "action-s1", at: T0 + H }]);
+  });
+
+  it("ONE moment definition: behaviour logs + plays since the visit, the latest quoted and tappable", () => {
+    const r = composeWhatChanged({
+      ...BASE,
+      behaviorLogs: [beh("m1", T0 + H, "said butterfly"), beh("old", T0 - H, "old one")],
+      playLogs: [play("p1", T0 + 3 * H, "Bubble chase")],
+    });
+    expect(r.lines).toEqual([{ kind: "moments", count: 2, quote: "Bubble chase", focusId: "play-p1" }]);
+  });
+
+  it("the quote is clipped to one line", () => {
+    const long = "x".repeat(WHAT_CHANGED_QUOTE_MAX + 40);
+    const r = composeWhatChanged({ ...BASE, behaviorLogs: [beh("m1", T0 + H, long)] });
+    const line = r.lines[0] as Extract<WhatChangedLine, { kind: "moments" }>;
+    expect(line.quote.length).toBeLessThanOrEqual(WHAT_CHANGED_QUOTE_MAX);
+    expect(line.quote.endsWith("…")).toBe(true);
+  });
+
+  it("a first absorbs its own milestone (one event, one line); a seen first is a plain milestone line", () => {
+    const first = composeWhatChanged({
+      ...BASE,
+      firstsState: { seen: [] },
+      firstsCounts: { milestoneCount: 1 },
+      milestones: [ms("Points at a dog", true, T0 + H)],
+    });
+    expect(first.lines).toEqual([{ kind: "first", first: "first_milestone", title: "Points at a dog" }]);
+    const seen = composeWhatChanged({ ...BASE, firstsCounts: { milestoneCount: 1 }, milestones: [ms("Points at a dog", true, T0 + H)] });
+    expect(seen.lines.map((l) => l.kind)).toEqual(["milestone"]);
+  });
+
+  it("facts: the count of facts the parent approved since the visit, nothing when zero", () => {
+    expect(composeWhatChanged({ ...BASE, approvedFactsSince: 3 }).lines).toEqual([{ kind: "facts", count: 3 }]);
+    expect(composeWhatChanged({ ...BASE, approvedFactsSince: 0 }).lines).toEqual([]);
+  });
+
+  it("Rule-A fold (law 6): the watch signal always lands inside the 4 lines", () => {
+    const r = composeWhatChanged({
+      ...BASE,
+      includeNoticed: true,
+      milestones: [ms("A", true, T0 + 1), ms("B", true, T0 + 2)],
+      actionLoop: [step("s1", T0 + 3, "helped")],
+      approvedFactsSince: 1,
+      behaviorLogs: [beh("m1", T0 + 4)],
+    });
+    expect(r.lines).toHaveLength(4);
+    expect(r.lines.some((l) => l.kind === "noticed")).toBe(true);
   });
 });
 
-/* ── i18n module contract + clinical firewall ─────────────────────────────── */
+/* ── 2. the rendered card ─────────────────────────────────────────────────── */
 
-// EVENT language only: comparative/trend wording is a firewall breach on a
-// child-data surface ("more than last time" = a trend delta by inspection).
-// The `u` flag keeps the emoji class from matching lone surrogate halves
-// (without it, 📈's high surrogate also matches 👋's).
-const BANNED_EN = /\bmore than\b|\bless than\b|\bfaster\b|\bslower\b|\bimproved\b|\bdeclined\b|\bbehind\b|\bahead of\b|\btrend\b|[↑↓📈📉]|\d+\s*%/iu;
-const BANNED_HE = /יותר מ|פחות מ|מהר יותר|לאט יותר|שיפור|ירידה|מגמה|בפיגור/;
+const RECAP_NONE = { currentReport: null, recapUnopened: false, currentId: "2026-W40" } as unknown as Parameters<typeof WhatChanged>[0]["recap"];
+const RECAP_READY = { currentReport: { id: "r" }, recapUnopened: true, currentId: "2026-W40" } as unknown as Parameters<typeof WhatChanged>[0]["recap"];
 
-describe("i18nElevation/sincevisit — en/he records", () => {
-  it("keys are namespaced, parity holds, and no value is empty", () => {
-    expect(Object.keys(svEn).sort()).toEqual(Object.keys(svHe).sort());
-    for (const [k, v] of [...Object.entries(svEn), ...Object.entries(svHe)]) {
-      expect(k.startsWith("elev.sincevisit."), `${k} must be namespaced elev.sincevisit.*`).toBe(true);
-      expect(v.trim().length, `${k} is empty`).toBeGreaterThan(0);
-    }
+const ALL_KINDS: WhatChangedLine[] = [
+  { kind: "first", first: "first_milestone", title: "Points at a dog" },
+  { kind: "step", step: "Name the feeling first", outcome: "helped", focusId: "action-s1", at: T0 },
+  { kind: "facts", count: 3, },
+  { kind: "moments", count: 4, quote: "said butterfly", focusId: "moment-m1" },
+];
+
+function render(lines: WhatChangedLine[], lang: "en" | "he", opts: { recap?: boolean; hidden?: number; daysNeeded?: number } = {}) {
+  state.lang = lang;
+  return renderToStaticMarkup(
+    React.createElement(WhatChanged, {
+      lines,
+      hiddenCount: opts.hidden ?? 0,
+      recap: opts.recap ? RECAP_READY : RECAP_NONE,
+      rhythmDaysNeeded: opts.daysNeeded,
+      onLineTap: () => undefined,
+      onMore: () => undefined,
+    }),
+  );
+}
+
+describe("WhatChanged — one card, event lines, both locales", () => {
+  state.behaviorLogs = [beh("a", T0 - 48 * H), beh("b", T0 - 24 * H), beh("c", T0)];
+
+  it("EN: one card with the title, the four lines, the quote and days together", () => {
+    const html = render(ALL_KINDS, "en", { daysNeeded: 2 });
+    expect(html.match(/data-testid="what-changed"/g)).toHaveLength(1);
+    expect(html).toContain("What changed since you left");
+    expect(html.match(/data-testid="what-changed-line"/g)).toHaveLength(4);
+    expect(html).toContain("You noticed something new");
+    expect(html).toContain("it helped");
+    expect(html).toContain("3 new things you approved about Maya");
+    expect(html).toContain("4 moments kept");
+    expect(html).toContain("said butterfly");
+    expect(html).toContain("3 days of moments together");
+    expect(html).toContain('data-testid="today-coldstart-line"');
   });
 
-  it("both records interpolate the same {var} tokens per key", () => {
-    const vars = (s: string) => (s.match(/\{[a-z]+\}/gi) ?? []).sort();
-    for (const k of Object.keys(svEn)) {
-      expect(vars(svHe[k]), `{var} mismatch on ${k}`).toEqual(vars(svEn[k]));
-    }
+  it("HE: counts are bidi-isolated (FSI…PDI) and the Hebrew copy renders", () => {
+    const html = render(ALL_KINDS, "he", { hidden: 2 });
+    expect(html).toContain("מה חדש מאז שהייתם כאן");
+    expect(html).toContain("⁨3⁩ דברים חדשים שאישרתם על ⁨Maya⁩");
+    expect(html).toContain("⁨4⁩ רגעים נשמרו");
+    expect(html).toContain("עוד ⁨2⁩ ביומן");
+    expect(html).toContain("⁨3⁩ ימים של רגעים יחד");
+    // the Latin step inside a Hebrew line is isolated too
+    expect(html).toContain("⁨Name the feeling first⁩");
+    expect(html, "no double isolation").not.toContain("⁨⁨");
   });
 
-  it("clinical firewall: EVENT language only — no comparative/trend wording, no %", () => {
-    for (const [k, v] of Object.entries(svEn)) expect(v, `en ${k} carries trend wording`).not.toMatch(BANNED_EN);
-    for (const [k, v] of Object.entries(svHe)) expect(v, `he ${k} carries trend wording`).not.toMatch(BANNED_HE);
+  it("the recap-ready line rides at the top of the card when the week is unopened", () => {
+    const html = render([], "en", { recap: true });
+    expect(html).toContain('data-testid="what-changed-recap"');
+    expect(html).toContain("Your week with Maya is ready");
   });
 
-  it("the mockup voice ships: the returning greeting + the since-visit title", () => {
-    expect(svHe["elev.sincevisit.greeting"]).toContain("שמחנו לראות אותך שוב");
-    expect(svHe["elev.sincevisit.title"]).toContain("חדש מאז הביקור האחרון");
-    expect(svHe["elev.sincevisit.resume"]).toContain("ממשיכים מאיפה שהפסקנו");
+  it("hidden when there are no events and no recap line", () => {
+    expect(render([], "en")).toBe("");
+    expect(render([], "he")).toBe("");
+  });
+
+  it("every line is a ≥44 px tap", () => {
+    const html = render(ALL_KINDS, "en");
+    const buttons = html.match(/<button[^>]*data-testid="what-changed-line"[^>]*>/g) ?? [];
+    expect(buttons).toHaveLength(4);
+    for (const b of buttons) expect(b).toMatch(/min-h-11/);
+  });
+
+  it("the watch-signal line is neutral ink (no verdict colour)", () => {
+    const html = render([{ kind: "noticed" }], "en");
+    expect(html).toContain("Arbor noticed something");
+    expect(html).not.toMatch(/--arbor-(peach|coral|red|amber)/);
   });
 });
 
-/* ── Source-level structure (house pattern: node env, source scans) ───────── */
+/* ── 3. source-level wiring ───────────────────────────────────────────────── */
 
 const SRC_ROOT = path.resolve(__dirname, "..", "..");
-function read(rel: string): string {
-  return fs.readFileSync(path.join(SRC_ROOT, rel), "utf8");
-}
-function stripComments(code: string): string {
-  return code.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
-}
+const read = (rel: string) => fs.readFileSync(path.join(SRC_ROOT, rel), "utf8");
+const stripComments = (code: string) => code.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
-describe("OverviewTab wiring — the primary action precedes the strip (Rule A fold)", () => {
+describe("OverviewTab wiring — ONE What-changed card", () => {
   const overview = stripComments(read("components/tabs/OverviewTab.tsx"));
-  const strip = stripComments(read("components/overview/SinceLastVisit.tsx"));
+  const card = stripComments(read("components/overview/WhatChanged.tsx"));
 
-  // P1-A (2026-08-12 audit) INVERTED this assertion. The strip used to render
-  // BEFORE the anchor row ("greeting → what's new → resume"), but at ~430px on
-  // desktop and ~450px on mobile it pushed the day's single primary CTA to
-  // y≈1224 / y≈1697 against an 826 / 812px fold. Rule A is one primary action
-  // ABOVE THE FOLD, so continuity now follows the action instead of preceding
-  // it; the "continuing where we left off" framing stays on the anchor itself.
-  it("SinceLastVisit renders AFTER the primary-action slot", () => {
-    const stripIdx = overview.indexOf("<SinceLastVisit");
-    const primaryIdx = overview.indexOf("<TodayActionLoop");
-    expect(stripIdx).toBeGreaterThan(-1);
-    expect(primaryIdx).toBeGreaterThan(-1);
-    expect(stripIdx).toBeGreaterThan(primaryIdx);
+  it("one mount, inside its data-module stamp, after the primary-action slot", () => {
+    expect(overview.match(/<WhatChanged\b/g)).toHaveLength(1);
+    expect(overview).toMatch(/showChanged\s*&&\s*\(\s*<div data-module="today-changed"[^>]*>\s*<WhatChanged/);
+    expect(overview.indexOf("<WhatChanged")).toBeGreaterThan(overview.indexOf("<TodayActionLoop"));
   });
 
-  it("the strip is gated on the returning-parent state (useLastVisit two-slot)", () => {
-    expect(overview).toContain("useLastVisit(childProfile)");
-    expect(overview).toMatch(/showSinceStrip\s*&&/);
-    expect(overview).toMatch(/previousVisitAt:\s*isReturning\s*\?\s*previousVisitAt\s*:\s*null/);
+  it("the four restatements are gone: SinceLastVisit, ProgressNarrative, the dev-map count card", () => {
+    expect(overview).not.toMatch(/<SinceLastVisit\b|<ProgressNarrative\b/);
+    expect(overview).not.toContain("devscore.noticed");
+    expect(overview).not.toContain("devscore.stat.");
+    expect(overview).not.toContain("useDevScore");
+    expect(overview).not.toContain("today.intent.memoryLine");
+    expect(fs.existsSync(path.join(SRC_ROOT, "components/overview/SinceLastVisit.tsx"))).toBe(false);
+    expect(fs.existsSync(path.join(SRC_ROOT, "components/overview/ProgressNarrative.tsx"))).toBe(false);
   });
 
-  it("moment/play rows deep-link through the requestJournalFocus seam", () => {
-    expect(overview).toMatch(/requestJournalFocus\(row\.focusId\)/);
+  it("returning parents only, never on day-0", () => {
+    expect(overview).toMatch(/previousVisitAt:\s*isReturning\s*&&\s*!dayZero\s*\?\s*previousVisitAt\s*:\s*null/);
+    expect(overview).toMatch(/changedWould\s*=\s*!dayZero\s*&&\s*isReturning/);
+    expect(overview).toMatch(/changed:\s*changedWould/);
   });
 
-  it("the strip instruments render + row taps (KPI 0.8)", () => {
-    expect(strip).toContain('track("sincevisit_shown"');
-    expect(strip).toContain('track("sincevisit_row_tap"');
+  it("evidence taps keep the requestJournalFocus seam", () => {
+    expect(overview).toMatch(/requestJournalFocus\(line\.focusId\)/);
   });
 
-  it("the strip carries the mounted continuity footer (today.intent.* now live)", () => {
-    expect(strip).toContain('t("today.intent.remembers")');
-    expect(strip).toContain('t("today.intent.memoryLine"');
-  });
-
-  it("no comparative/trend wording in the strip component itself (firewall)", () => {
-    expect(strip).not.toMatch(BANNED_EN);
-    expect(strip).not.toMatch(BANNED_HE);
-  });
-
-  it("day-0 keeps the lean shape: narrative, watch card and disclosure are dayZero-gated", () => {
-    expect(overview).toMatch(/dayZero\s*=/);
-    // The narrative and the watch card render off the budget plan, whose
-    // `narrative`/`noticed` wants are themselves `!dayZero &&` …
-    // E1/J wrapped every budgeted module in its `data-module` stamp, so the
-    // gate now sits outside that wrapper — the gate itself is unchanged.
-    expect(overview).toMatch(
-      /modulePlan\.visible\.has\("narrative"\)\s*&&\s*\(\s*<div data-module="today-narrative"[^>]*>\s*<ProgressNarrative/,
-    );
-    expect(overview).toMatch(/narrative:\s*!dayZero/);
-    // P1-C: the watch card is inside the day-0 guard too — a parent who has
-    // answered nothing has produced nothing for Arbor to have "noticed".
-    expect(overview).toMatch(/noticed:\s*!dayZero\s*&&\s*noticedWould/);
-    expect(overview).toMatch(
-      /modulePlan\.visible\.has\("noticed"\)\s*&&\s*<div data-module="today-noticed"[^>]*>\s*<ArborNoticedCard/,
-    );
-    // Negative control — ONE render site each. A second, ungated mount of
-    // either component would put day-0 back where P1-C found it.
-    expect(overview.match(/<ProgressNarrative\b/g)).toHaveLength(1);
-    expect(overview.match(/<ArborNoticedCard\b/g)).toHaveLength(1);
-    // …and the More disclosure stays dayZero-gated directly.
-    expect(overview).toMatch(/\{!dayZero\s*&&\s*\(\s*<section/);
-  });
-
-  it("Rule A fold: ArborNoticedCard collapses into a strip row when Today is full", () => {
+  it("Rule-A fold: the watch signal folds into the card when Today is full", () => {
     expect(overview).toMatch(/foldNoticed\s*=\s*modulePlan\.demoted\.includes\("noticed"\)/);
-    expect(overview).toMatch(/includeNoticedRow:\s*true/);
+    expect(overview).toMatch(/foldNoticed\s*\?\s*composeChanged\(true\)/);
+  });
+
+  it("days together = totalDays only (no streak walk), KPI names kept", () => {
+    expect(card).toMatch(/computeStreak\([^)]*\)\)\.totalDays/);
+    expect(card).not.toMatch(/\.(current|longest|currentStreak|walk)\b/);
+    expect(card).toContain('track("sincevisit_shown"');
+    expect(card).toContain('track("sincevisit_row_tap"');
   });
 });

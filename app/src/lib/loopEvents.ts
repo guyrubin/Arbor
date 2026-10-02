@@ -98,7 +98,7 @@ export const trackPlayCompleted = (domain: string, reason: string, source: strin
 /* ── M0.8 KPI instrumentation (N8) ─────────────────────────────────────────
  * The six launch-KPI event families. Three were already live at their call
  * sites (raw track() — names pinned, do not rename):
- *   2. since-strip     → "sincevisit_shown" / "sincevisit_row_tap"  (SinceLastVisit)
+ *   2. since-strip     → "sincevisit_shown" / "sincevisit_row_tap"  (WhatChanged, B-TODAY-21)
  *   3b. action accept  → "today_action_accepted" / "today_action_outcome" (ArborContext)
  *   4. recap           → "recap_opened" (RecapStoryCards) + share via
  *                        trackShareInitiated/Completed above (lib/share ← ShareButton)

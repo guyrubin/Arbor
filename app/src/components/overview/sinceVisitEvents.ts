@@ -1,5 +1,7 @@
 /* ════════════════════════════════════════════════════════════════════════════
-   sinceVisitEvents — W1 1.1 pure row builder for the SinceLastVisit strip.
+   sinceVisitEvents — W1 1.1 pure row builder (the since-visit window).
+   B-TODAY-21: the SinceLastVisit strip is gone; whatChangedEvents.ts
+   composeWhatChanged extends this builder for the ONE What-changed card.
 
    Turns the data OverviewTab already holds (behaviorLogs, playLogs, milestone
    crossings, coach conversations) into ≤ maxRows EVENT rows strictly newer
@@ -8,7 +10,7 @@
    CLINICAL FIREWALL: rows are events and counts ONLY ("2 moments captured",
    "milestone crossed: first steps") — never comparative/trend wording. This
    module emits numbers and ids; the component maps them onto the
-   elev.sincevisit.* strings (both guarded by sinceLastVisit.test.ts).
+   elev.* strings (guarded by whatChanged.test.ts + sinceVisitAction.test.ts).
 
    Pure functions — unit-testable without React or context.
    ════════════════════════════════════════════════════════════════════════════ */

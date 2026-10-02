@@ -3,12 +3,11 @@ import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { track } from "../../lib/analytics";
-import { isolate } from "../../lib/bidi";
 import { computeStreak } from "../../lib/streak";
 import { firstCopyKeys } from "../../lib/firsts";
 import type { useWeeklyRecap } from "../../hooks/useWeeklyRecap";
 import { collectMomentTimestamps } from "./sinceVisitEvents";
-import { coldStartLineKey, type WhatChangedLine } from "./whatChanged";
+import { coldStartLineKey, type WhatChangedLine } from "./whatChangedEvents";
 
 /**
  * B-TODAY-21 — the ONE "What changed since you left" card on Today.
@@ -16,7 +15,7 @@ import { coldStartLineKey, type WhatChangedLine } from "./whatChanged";
  * Replaces SinceLastVisit (rows + "Arbor remembers" footer), ProgressNarrative
  * ("What changed for {name}" — a second week definition) and the dev-map
  * count card ("{reached} of {total}"). It renders the composer's ≤4 EVENT
- * lines (whatChanged.ts), the recap-ready line, the cold-start line and the
+ * lines (whatChangedEvents.ts), the recap-ready line, the cold-start line and the
  * days-together counter (totalDays only — never the resettable walk).
  *
  * Hidden on day-0 and whenever there is nothing to say (OverviewTab gates the
@@ -58,9 +57,10 @@ export default function WhatChanged({
   const { behaviorLogs, playLogs, childProfile, setActiveTab } = useArbor();
   const he = uiLang === "he";
   const firstName = (childProfile.name || "").split(" ")[0];
-  /** A count in a Hebrew line is bidi-isolated (FSI…PDI); EN keeps the digit. */
+  /** A count in a Hebrew line is bidi-isolated (FSI…PDI); EN keeps the digit.
+   *  Latin titles/steps inside a Hebrew line are isolated by t() itself
+   *  (lib/i18n translate → isolate), so they are passed through untouched. */
   const num = (n: number): string => (he ? `⁨${n}⁩` : String(n));
-  const words = (s: string): string => isolate(s, he ? "he" : "en");
 
   const recapLine = !!recap.currentReport && recap.recapUnopened;
   const totalDays = computeStreak(collectMomentTimestamps(behaviorLogs, playLogs)).totalDays;
@@ -69,17 +69,12 @@ export default function WhatChanged({
   const label = (line: WhatChangedLine): { title: string; sub?: string } => {
     switch (line.kind) {
       case "first":
-        return { title: t(firstCopyKeys(line.first).title), sub: line.title ? t("elev.brief.changed.milestone", { title: words(line.title) }) : undefined };
+        return { title: t(firstCopyKeys(line.first).title), sub: line.title ? t("elev.brief.changed.milestone", { title: line.title }) : undefined };
       case "milestone":
-        return { title: t("elev.brief.changed.milestone", { title: words(line.title) }) };
+        return { title: t("elev.brief.changed.milestone", { title: line.title }) };
       case "step":
         return {
-          title: t(
-            line.outcome === "helped" ? "elev.brief.changed.step.helped"
-            : line.outcome === "somewhat" ? "elev.brief.changed.step.somewhat"
-            : "elev.brief.changed.step.notToday",
-            { step: words(line.step) },
-          ),
+          title: t(line.outcome === "somewhat" ? "elev.brief.changed.step.somewhat" : "elev.brief.changed.step.helped", { step: line.step }),
         };
       case "facts":
         return { title: line.count === 1 ? t("elev.brief.changed.facts.one", { name: firstName }) : t("elev.brief.changed.facts.many", { n: num(line.count), name: firstName }) };
@@ -94,7 +89,9 @@ export default function WhatChanged({
   };
 
   useEffect(() => {
-    if (lines.length > 0 || recapLine) track("whatchanged_shown", { lines: lines.length, recap: recapLine ? 1 : 0 });
+    // KPI 0.8 names are pinned (lib/loopEvents): the ONE card keeps the
+    // since-strip's event names so the series does not break.
+    if (lines.length > 0 || recapLine) track("sincevisit_shown", { rows: lines.length, recap: recapLine ? 1 : 0 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -144,7 +141,7 @@ export default function WhatChanged({
                   data-testid="what-changed-line"
                   data-line-kind={line.kind}
                   onClick={() => {
-                    track("whatchanged_line_tap", { kind: line.kind });
+                    track("sincevisit_row_tap", { kind: line.kind });
                     onLineTap(line);
                   }}
                   className="flex w-full min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-start transition active:scale-[0.99]"

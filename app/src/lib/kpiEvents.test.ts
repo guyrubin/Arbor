@@ -27,7 +27,8 @@ const read = (rel: string) =>
 
 const loopEvents = read("lib/loopEvents.ts");
 const authCtx = read("context/AuthContext.tsx");
-const sinceVisit = read("components/overview/SinceLastVisit.tsx");
+// B-TODAY-21: the since-strip's events moved, names unchanged, to the ONE card.
+const sinceVisit = read("components/overview/WhatChanged.tsx");
 const todayHero = read("components/overview/TodayRecommendation.tsx");
 const arborCtx = read("context/ArborContext.tsx");
 const recapCards = read("components/weekly/RecapStoryCards.tsx");
@@ -45,7 +46,7 @@ describe("N8 KPI events — all six families live at their call sites", () => {
     expect(authCtx).toMatch(/if \(user\?\.uid\) trackSessionOpen\(\)/);
   });
 
-  it("2. since-strip: render + row tap instrumented in SinceLastVisit", () => {
+  it("2. since-strip: render + row tap instrumented in the What-changed card", () => {
     expect(sinceVisit).toContain('track("sincevisit_shown"');
     expect(sinceVisit).toContain('track("sincevisit_row_tap"');
   });

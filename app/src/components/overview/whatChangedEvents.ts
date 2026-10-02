@@ -39,7 +39,7 @@ export const WHAT_CHANGED_QUOTE_MAX = 60;
 export type WhatChangedLine =
   | { kind: "first"; first: FirstKind; title?: string }
   | { kind: "milestone"; title: string; at: number }
-  | { kind: "step"; step: string; outcome: ActionOutcome; focusId: string; at: number }
+  | { kind: "step"; step: string; outcome: Exclude<ActionOutcome, "not_today">; focusId: string; at: number }
   | { kind: "facts"; count: number }
   | { kind: "moments"; count: number; quote: string; focusId: string }
   | { kind: "noticed" };
@@ -129,13 +129,15 @@ export function composeWhatChanged(input: {
     events += 1;
   });
 
-  // 3. a step outcome — the parent's own report on a step (never an
-  //    unrated step: that one lives in the continuation slot above the step).
+  // 3. a step outcome — the parent's own report that a step helped (never
+  //    an unrated step: that one lives in the continuation slot above the
+  //    step; and a "not today" never reaches the card — TJB-05's firewall:
+  //    a step set aside is not news about the child).
   const outcomes = input.actionLoop
-    .filter((a) => a.status === "completed" && a.outcome && parseMs(a.outcomeAt) > sinceMs)
+    .filter((a) => a.status === "completed" && (a.outcome === "helped" || a.outcome === "somewhat") && parseMs(a.outcomeAt) > sinceMs)
     .sort((a, b) => parseMs(b.outcomeAt) - parseMs(a.outcomeAt));
   for (const a of outcomes) {
-    lines.push({ kind: "step", step: a.recommendation, outcome: a.outcome!, focusId: `action-${a.id}`, at: parseMs(a.outcomeAt) });
+    lines.push({ kind: "step", step: a.recommendation, outcome: a.outcome === "somewhat" ? "somewhat" : "helped", focusId: `action-${a.id}`, at: parseMs(a.outcomeAt) });
     events += 1;
   }
 

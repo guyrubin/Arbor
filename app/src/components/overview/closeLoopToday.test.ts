@@ -22,7 +22,7 @@ import {
   selectCarryOverAction,
   type CarryOverEntry,
 } from "./carryOverAction";
-import { coldStartLineKey } from "./ProgressNarrative";
+import { coldStartLineKey } from "./whatChangedEvents";
 import { todayActionId } from "../../actionLoop/model";
 
 const NOW = Date.parse("2026-09-04T08:00:00.000Z");
@@ -150,11 +150,13 @@ describe("ENG-18 — the cold-start progress line", () => {
     expect(coldStartLineKey(Number.NaN)).toBeNull();
   });
 
-  it("Today passes predictRhythm's own daysNeeded into the narrative", () => {
+  // B-TODAY-21: the line moved with ProgressNarrative into the ONE
+  // "What changed since you left" card.
+  it("Today passes predictRhythm's own daysNeeded into the What-changed card", () => {
     const here = path.dirname(fileURLToPath(import.meta.url));
     const overview = readFileSync(path.join(here, "../tabs/OverviewTab.tsx"), "utf8");
     expect(overview).toContain("rhythmDaysNeeded={rhythm.daysNeeded}");
-    const narrative = readFileSync(path.join(here, "./ProgressNarrative.tsx"), "utf8");
+    const narrative = readFileSync(path.join(here, "./WhatChanged.tsx"), "utf8");
     expect(narrative).toContain('data-testid="today-coldstart-line"');
     // FIREWALL: the line may only interpolate the days Arbor needs and the
     // child's NAME — never a count of the child's own behaviour.

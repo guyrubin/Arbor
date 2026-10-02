@@ -37,21 +37,17 @@
  *    so it is never a sibling module (the very confusion that produced P1-B).
  */
 /*
- * `lifecycle` (ENG-09, Wave E) sits directly below the anchor in both orders.
- * It is the AT MOST ONE lifecycle moment lib/lifecycle.ts resolves for this
- * open — a first-week keepsake, a birthday, a welcome back after a lapse. It
- * sat above the since-strip until B-TODAY-21; the target order puts the ONE
- * What-changed card first and the lifecycle moment under it (it is rare by
- * construction). Earlier rationale: a parent returning after a fortnight
- * needs the warm, age-anchored re-entry before a list of events they were not
- * there for. It is rare by construction (each occurrence fires once), so it
- * costs the tail a slot only on the handful of opens where it has something
- * to say.
- */
-/*
  * B-TODAY-21: `since` + `narrative` → `changed` — the ONE "What changed since
- * you left" card. `noticed` folds into `changed` exactly as it folded into
- * the since-strip (law 6: the watch signal never vanishes).
+ * you left" card (it took the anchor row's second column, the dev-map card's
+ * old seat). `noticed` folds into `changed` exactly as it folded into the
+ * since-strip (law 6: the watch signal never vanishes).
+ *
+ * `lifecycle` (ENG-09, Wave E) sits directly below that anchor row (anchor +
+ * changed) in both orders. It is the AT MOST ONE lifecycle moment
+ * lib/lifecycle.ts resolves for this open — a first-week keepsake, a birthday,
+ * a welcome back after a lapse. It is rare by construction (each occurrence
+ * fires once), and with since + narrative merged the six possible modules
+ * leave only `noticed` to fold at the real budget.
  */
 export type TodayModuleId = "anchor" | "lifecycle" | "changed" | "noticed" | "rail" | "play";
 
@@ -68,7 +64,7 @@ export const TODAY_MODULE_BUDGET = 5;
  *   noticed → FOLDS into a What-changed line ("Arbor noticed something —
  *             look"), which only exists when that card itself renders.
  *
- * Hence the two orders: when the strip is absent there is nothing to fold
+ * Hence the two orders: when the card is absent there is nothing to fold
  * into, so `noticed` climbs above `rail`/`play` and `play` takes the cut
  * instead. A watch signal never silently disappears to make room.
  */

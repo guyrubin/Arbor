@@ -205,8 +205,9 @@ describe("B-TODAY-05 — the noticed card: no norm pointer, no adjectives, no pe
     ]) expect(NOTICED_BANNED.some((re) => re.test(pre)), pre).toBe(true);
   });
 
-  it("no --arbor-peach-* token in ArborNoticedCard or SinceLastVisit", () => {
-    for (const rel of [["components", "sections", "ArborNoticedCard.tsx"], ["components", "overview", "SinceLastVisit.tsx"]]) {
+  // B-TODAY-21: the folded watch line lives in the What-changed card now.
+  it("no --arbor-peach-* token in ArborNoticedCard or the What-changed card", () => {
+    for (const rel of [["components", "sections", "ArborNoticedCard.tsx"], ["components", "overview", "WhatChanged.tsx"]]) {
       expect(readFileSync(path.join(SRC, ...rel), "utf8"), rel.join("/")).not.toMatch(/--arbor-peach-/);
     }
   });

@@ -372,8 +372,9 @@ describe("ENG-24 — Today mounts the honest anchor, and only the honest one", (
 
   it("B-TODAY-08: buys NO second recap subscription — the overview tree mounts useWeeklyRecap exactly once", () => {
     // The subscription already existed (SinceLastVisit mounted it on Today);
-    // B-TODAY-08 hoisted it into OverviewTab and passes it down as a prop.
-    const since = stripComments(read("SinceLastVisit.tsx"));
+    // B-TODAY-08 hoisted it into OverviewTab and passes it down as a prop —
+    // since B-TODAY-21 to the ONE What-changed card.
+    const since = stripComments(read("WhatChanged.tsx"));
     const mounts = (OVERVIEW.match(/useWeeklyRecap\(/g) ?? []).length + (since.match(/useWeeklyRecap\(/g) ?? []).length;
     expect(mounts).toBe(1);
     expect(OVERVIEW).toMatch(/const weeklyRecap = useWeeklyRecap\(\);/);
