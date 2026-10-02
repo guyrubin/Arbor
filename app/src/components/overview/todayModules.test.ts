@@ -183,11 +183,14 @@ describe("P1-B firewall — the budget counts modules, never a governance gate",
   it("the hard-moment offer is not a sibling module (it lives inside the anchor)", () => {
     // Regression pin for the mis-modelling behind P1-B: HardMomentTodayOffer
     // renders in the anchor row's left column, so it never competed for a slot.
-    const anchorStart = overview.indexOf('lg:grid-cols-[1.85fr_0.85fr]');
-    // B-AI-06: it renders through the single-offer slot in that column.
-    const offer = overview.indexOf("<CompanionOfferSlot");
+    const anchorStart = overview.indexOf('data-module="today-anchor"');
+    // B-AI-06: it renders through the single-offer slot in that column
+    // (B-TODAY-18: one slot instance, placed inside the anchor's left column).
+    const placedAbove = overview.indexOf("{offerSlot}", anchorStart);
+    const placedUnder = overview.indexOf('{continuation === "none" && offerSlot}', anchorStart);
     expect(anchorStart).toBeGreaterThan(-1);
-    expect(offer).toBeGreaterThan(anchorStart);
+    expect(placedAbove).toBeGreaterThan(anchorStart);
+    expect(placedUnder).toBeGreaterThan(anchorStart);
   });
 });
 

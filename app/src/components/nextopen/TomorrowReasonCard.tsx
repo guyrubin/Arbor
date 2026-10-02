@@ -128,7 +128,9 @@ export default function TomorrowReasonCard({ signals, childName, nowMs, onResolv
           data-testid="tomorrow-reason-cta"
           onClick={() => act(p.action)}
           className="inline-flex items-center gap-2 rounded-2xl px-5 text-[13px] font-extrabold transition active:scale-[0.97]"
-          style={{ minHeight: 44, background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}
+          // B-TODAY-18: it sits above Today's step card now, which owns the
+          // one filled primary — so this is an outline, never a fill.
+          style={{ minHeight: 44, background: "transparent", border: "1px solid var(--arbor-green-ink)", color: "var(--arbor-green-ink)" }}
         >
           {t(p.ctaKey)}
           <Icon name="chevron_right" size={16} className="rtl:rotate-180" />

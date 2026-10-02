@@ -13,10 +13,13 @@ import QuickCaptureBar from "../overview/QuickCaptureBar";
 import TodayRecommendation from "../overview/TodayRecommendation";
 import TodayActionLoop from "../overview/TodayActionLoop";
 import CompanionOfferSlot from "../overview/CompanionOfferSlot";
+import TodayContinuation from "../overview/TodayContinuation";
+import FamilyOfferLines from "../overview/FamilyOfferLines";
+import { chooseContinuation } from "../overview/continuation";
 import { useCompanionOffer } from "../overview/useCompanionOffer";
 import ProgressNarrative from "../overview/ProgressNarrative";
 import QuickLogModal from "../overview/QuickLogModal";
-import SinceLastVisit, { svString } from "../overview/SinceLastVisit";
+import SinceLastVisit from "../overview/SinceLastVisit";
 import PromptCaptureCard from "../overview/PromptCaptureCard";
 import { ErrorState } from "../ui/ErrorState";
 import ArborNoticedCard, { todayNoticedSignal } from "../sections/ArborNoticedCard";
@@ -558,6 +561,18 @@ export default function OverviewTab() {
   const todayOffer = useCompanionOffer("today", {
     whatChanged: showLifecycle && lifecycleMoment ? { id: lifecycleMoment.kind } : null,
   });
+  // B-TODAY-18: ONE slot instance, placed by the coordinator's winner — the
+  // carry-over / tomorrow's-reason kinds above the step, every other kind
+  // under it. Never two proactive frames.
+  const continuation = chooseContinuation({ offerKind: todayOffer.offer?.kind });
+  const offerSlot = (
+    <CompanionOfferSlot
+      surface="today"
+      offer={todayOffer.offer}
+      controls={todayOffer}
+      placement={continuation === "none" ? "under-step" : "continuation"}
+    />
+  );
 
   const sinceVisit = useMemo(
     () => (foldNoticed
@@ -699,13 +714,13 @@ export default function OverviewTab() {
                so it can never be persisted into actionLoops nor injected into
                the next focus prompt. */}
         <div data-primary-move="do-today-action" className="min-w-0">
-          {showSinceStrip && (
-            /* Mockup frame 1: "ממשיכים מאיפה שהפסקנו" — the resume framing sits
-               directly above the guaranteed-action card for returning parents. */
-            <p className="mb-2 px-1 text-[11px] font-extrabold uppercase tracking-[0.12em]" style={{ color: "var(--arbor-clay)" }}>
-              {svString(t, uiLang, "elev.sincevisit.resume")}
-            </p>
-          )}
+          {/* B-TODAY-18: the continuation slot ABOVE the step — exactly one of
+              the carry-over outcome ask or tomorrow's reason, or nothing, as
+              the coordinator decided (chooseContinuation maps its winner to
+              this placement). The resume eyebrow is the slot's eyebrow now. */}
+          <TodayContinuation choice={continuation} isReturning={isReturning}>
+            {offerSlot}
+          </TodayContinuation>
           {/* ENG-24: the week-open anchor takes the slot at the top of a new
               week. It sits FIRST in this chain only because chooseTodayAction
               already ranked it below an accepted action — kind "weekOpen" is
@@ -768,7 +783,10 @@ export default function OverviewTab() {
               re-check. At most one renders, with its reason line; the
               coordinator honours quiet hours and the 2/day ceiling and spends
               the shown-ledger. Never a second gradient CTA (Rule A). */}
-          <CompanionOfferSlot surface="today" offer={todayOffer.offer} controls={todayOffer} />
+          {continuation === "none" && offerSlot}
+          {/* B-TODAY-18 / B-AI-06 framer ruling: the family line — one line
+              per sibling, each from that child's own state (familyOfferLines). */}
+          <FamilyOfferLines activeChildId={childProfile.id} />
           {/* N2-errfocus: a failed focus fetch used to degrade SILENTLY to the
               guaranteed-action fallback. The inline error renders ALONGSIDE the
               fallback (never instead of it — the anchor above always renders),

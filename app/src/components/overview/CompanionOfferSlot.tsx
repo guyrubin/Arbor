@@ -35,11 +35,14 @@ export function OfferFrame({
   surface,
   controls,
   children,
+  className = "mt-3 min-w-0",
 }: {
   offer: CompanionOffer;
   surface: OfferSurface;
   controls: OfferControls;
   children: React.ReactNode;
+  /** B-TODAY-18: the continuation placement sits above the step (no top gap). */
+  className?: string;
 }) {
   const { t } = useLanguage();
   const toast = useToastOptional();
@@ -56,7 +59,7 @@ export function OfferFrame({
       data-offer-kind={offer.kind}
       data-offer-surface={surface}
       data-testid="companion-offer"
-      className="mt-3 min-w-0"
+      className={className}
     >
       <p dir="auto" data-testid="offer-reason" className="mb-1.5 px-1 text-[12px] font-semibold leading-snug" style={{ color: "var(--arbor-muted)" }}>
         {t(offer.reasonKey, offer.reasonVars)}
@@ -121,10 +124,14 @@ export default function CompanionOfferSlot({
   surface,
   offer,
   controls,
+  placement = "under-step",
 }: {
   surface: OfferSurface;
   offer: CompanionOffer | null;
   controls: OfferControls;
+  /** B-TODAY-18: on Today the carry-over / tomorrow's-reason kinds render in
+   *  the continuation slot above the step (TodayContinuation wraps this). */
+  placement?: "continuation" | "under-step";
 }) {
   if (!offer || offer.kind === "what-changed") return null;
   let body: React.ReactNode = null;
@@ -151,7 +158,7 @@ export default function CompanionOfferSlot({
       break;
   }
   return (
-    <OfferFrame offer={offer} surface={surface} controls={controls}>
+    <OfferFrame offer={offer} surface={surface} controls={controls} className={placement === "continuation" ? "min-w-0" : undefined}>
       {body}
     </OfferFrame>
   );

@@ -61,6 +61,8 @@ export const en: Record<string, string> = {
   "elev.capture.reply.undo": "Undo",
   "elev.capture.reply.done": "Done",
   "elev.capture.reply.undone": "Removed from the journal.",
+  // B-TODAY-18: the family line (one line per sibling, under the step).
+  "elev.brief.family.aria": "Waiting for your other children",
 };
 
 export const he: Record<string, string> = {
@@ -105,4 +107,5 @@ export const he: Record<string, string> = {
   "elev.capture.reply.undo": "ביטול",
   "elev.capture.reply.done": "סיום",
   "elev.capture.reply.undone": "הוסר מהיומן.",
+  "elev.brief.family.aria": "מה מחכה לשאר הילדים",
 };
