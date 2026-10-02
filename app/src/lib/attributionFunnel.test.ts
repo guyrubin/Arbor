@@ -81,3 +81,65 @@ describe("UTM scheme constants", () => {
     expect(FUNNEL_EVENTS).toEqual(["install", "first_plan", "activated", "paid"]);
   });
 });
+
+/* ── B-CAREPRO-30 — the dashboard reads the cross-family cohort reader ────── */
+import { cohortRowsToFunnel } from "./attributionFunnel";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+import { en, he } from "./i18n";
+import { NO_PILL_ROW_TABS, pillRowFor, sectionForTab } from "./navigation";
+
+describe("B-CAREPRO-30 · cohortRowsToFunnel", () => {
+  it("maps /admin/cohorts acquisition rows onto funnel counts (unknown stage ignored, missing = 0)", () => {
+    const rows = cohortRowsToFunnel([
+      { key: "tiktok", stages: [{ stage: "install", count: 3 }, { stage: "first_plan", count: 1 }] },
+      { key: "instagram", stages: [{ stage: "install", count: 9 }, { stage: "activated", count: 2 }, { stage: "paid", count: 1 }, { stage: "child_name", count: 7 }] },
+    ]);
+    expect(rows).toEqual([
+      { key: "instagram", install: 9, first_plan: 0, activated: 2, paid: 1 },
+      { key: "tiktok", install: 3, first_plan: 1, activated: 0, paid: 0 },
+    ]);
+    expect(cohortRowsToFunnel([])).toEqual([]);
+  });
+});
+
+describe("B-CAREPRO-30 · AttributionTab reads every family, counts only, no fallbacks", () => {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const tab = readFileSync(path.join(here, "..", "components", "tabs", "AttributionTab.tsx"), "utf8");
+
+  it("reads GET /api/admin/cohorts, never the operator's own users/{uid}/events", () => {
+    expect(tab.length).toBeGreaterThan(3000);
+    expect(tab).toContain("/api/admin/cohorts?groupBy=${groupBy}&since=");
+    expect(tab).toContain("cohortRowsToFunnel(report.funnels?.acquisition ?? [])");
+    expect(tab).not.toMatch(/users\/\$\{uid\}\/events/);
+    expect(tab).not.toContain("getDocs(");
+    // NEGATIVE CONTROL: the pre-change own-uid read is what the rule catches.
+    expect(/users\/\$\{uid\}\/events/.test("getDocs(collection(db, `users/${uid}/events`))")).toBe(true);
+  });
+
+  it("no English || fallbacks and no rate column (counts only)", () => {
+    expect(tab).not.toMatch(/\bt\([^)]*\)\s*\|\|/);
+    expect(tab).not.toContain("ratePct(");
+    expect(tab).not.toContain("fallback:");
+    // NEGATIVE CONTROL
+    expect(/\bt\([^)]*\)\s*\|\|/.test('t("attr.title") || "Attribution"')).toBe(true);
+  });
+
+  it("every attr.* key the tab asks for exists EN + HE", () => {
+    const keys = new Set([...tab.matchAll(/"(attr\.[a-zA-Z.]+)"/g)].map((m) => m[1]).filter((k) => !k.endsWith(".")));
+    expect(keys.size).toBeGreaterThan(15);
+    for (const k of keys) {
+      expect(en[k], `${k} EN`).toBeTruthy();
+      expect(he[k], `${k} HE`).toMatch(/[\u0590-\u05FF]/);
+    }
+  });
+
+  it("renders without the Care pill row (highlight stays Care)", () => {
+    expect(NO_PILL_ROW_TABS.has("attribution")).toBe(true);
+    expect(sectionForTab("attribution").id).toBe("care");
+    expect(pillRowFor(sectionForTab("attribution"), "attribution")).toEqual([]);
+    // POSITIVE CONTROL: Consult keeps the Care pills.
+    expect(pillRowFor(sectionForTab("consult"), "consult").length).toBeGreaterThan(1);
+  });
+});

@@ -4,7 +4,7 @@ import { Icon } from "../ui/Icon";
 import { useArbor, ActiveTab } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { sectionForTab, hubTabsForSection, isCompactHiddenTool } from "../../lib/navigation";
+import { sectionForTab, pillRowFor, isCompactHiddenTool } from "../../lib/navigation";
 import { contractFor } from "../../lib/surfaceContract";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
@@ -415,7 +415,7 @@ export default function Shell() {
               border, sticky to the top of the scroll region. The first pill of
               each section is its Overview/hub. Renders only when there is more
               than one capability. */}
-          {hubTabsForSection(section).length > 1 && (
+          {pillRowFor(section, activeTab).length > 1 && (
             <div
               role="tablist"
               aria-label={`${section.label} sections`}
@@ -445,7 +445,7 @@ export default function Shell() {
                 paddingBlockStart: "calc(var(--arbor-main-pt) + 0.5rem)",
               }}
             >
-              {hubTabsForSection(section).map((it) => {
+              {pillRowFor(section, activeTab).map((it) => {
                 const on = it.tab === activeTab;
                 const PillIcon = it.icon;
                 return (

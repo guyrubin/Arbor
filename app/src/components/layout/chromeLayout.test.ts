@@ -423,8 +423,10 @@ describe("TJB-25 — Today collapses to the Weekly Report below md", () => {
   it("Shell hides the pill with a CLASS — the route is never filtered out", () => {
     expect(bare).toContain("isCompactHiddenTool");
     expect(bare).toContain('"hidden md:inline-flex" : "inline-flex"');
-    // hubTabsForSection is still called unfiltered: the pill returns at md
-    expect(bare).toContain("hubTabsForSection(section).map((it) =>");
+    // The hub's pill set is still mapped unfiltered by breakpoint (pillRowFor
+    // = hubTabsForSection, except routes with no pill row — B-CAREPRO-30):
+    // the pill returns at md.
+    expect(bare).toContain("pillRowFor(section, activeTab).map((it) =>");
   });
 
   it("a parent who IS on a collapsed tool still sees its pill (no orphan state)", () => {

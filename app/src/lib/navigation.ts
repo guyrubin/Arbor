@@ -370,6 +370,19 @@ export const TAB_SECTION_FALLBACK: Record<string, string> = {
   science: "profile",
 };
 
+/**
+ * B-CAREPRO-30 — routes that render with NO hub pill row. The admin
+ * attribution dashboard keeps its Care highlight (TAB_SECTION_FALLBACK) but is
+ * not a Care capability a parent moves between, so it does not wear the Care
+ * pills. Shell renders `pillRowFor`, never `hubTabsForSection` directly.
+ */
+export const NO_PILL_ROW_TABS: ReadonlySet<ActiveTab> = new Set<ActiveTab>(["attribution"]);
+
+/** The pill row Shell renders for `tab` inside `section` (empty = none). */
+export function pillRowFor(section: NavSection, tab: ActiveTab): NavItem[] {
+  return NO_PILL_ROW_TABS.has(tab) ? [] : hubTabsForSection(section);
+}
+
 export function sectionForTab(tab: ActiveTab): NavSection {
   const direct = SECTIONS.find((s) => s.items.some((i) => i.tab === tab));
   if (direct) return direct;

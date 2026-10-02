@@ -46,6 +46,26 @@ export function aggregateFunnel(
     .sort((a, b) => b.install - a.install || b.first_plan - a.first_plan);
 }
 
+/** B-CAREPRO-30 — one group row of the cross-family cohort reader
+ *  (`GET /api/admin/cohorts` → `funnels.acquisition`, server/cohortMetrics
+ *  `FunnelGroupRow`): the group key and a count per stage. */
+export type CohortFunnelRow = { key: string; stages: { stage: string; count: number }[] };
+
+/** Map the cohort reader's acquisition rows onto the dashboard's FunnelRow.
+ *  Counts only; an unknown stage is ignored, a missing one reads 0, a
+ *  non-numeric count reads 0. Sorted like `aggregateFunnel`. */
+export function cohortRowsToFunnel(rows: readonly CohortFunnelRow[]): FunnelRow[] {
+  return rows
+    .map((row) => {
+      const counts = emptyCounts();
+      for (const s of row.stages ?? []) {
+        if (isFunnelEvent(s.stage)) counts[s.stage] = Number.isFinite(s.count) ? s.count : 0;
+      }
+      return { key: String(row.key ?? "unknown"), ...counts };
+    })
+    .sort((a, b) => b.install - a.install || b.first_plan - a.first_plan);
+}
+
 /** Distinct campaigns present in the data (for the filter dropdown). */
 export function campaignsOf(events: FunnelEventDoc[]): string[] {
   const set = new Set<string>();

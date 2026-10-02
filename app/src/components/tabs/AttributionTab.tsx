@@ -1,125 +1,130 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { collection, getDocs } from "firebase/firestore";
 import Icon from "../ui/Icon";
-import { db, firebaseEnabled } from "../../lib/firebase";
-import { useAuth } from "../../context/AuthContext";
 import { useEntitlement } from "../../hooks/useEntitlement";
 import { useLanguage } from "../../context/LanguageContext";
+import { authHeaders } from "../../lib/api";
 import { UTM_KEYS } from "../../lib/attribution";
-import { aggregateFunnel, campaignsOf, ratePct, type FunnelEventDoc, type FunnelRow } from "../../lib/attributionFunnel";
+import { cohortRowsToFunnel, type CohortFunnelRow, type FunnelRow } from "../../lib/attributionFunnel";
 import { PageHeader } from "../ui/kit";
 import { EmptyState } from "../ui/EmptyState";
 import { ErrorState } from "../ui/ErrorState";
 import { Skeleton } from "../ui/Skeleton";
 
 /**
- * P0-5 — Attribution + UTM funnel dashboard (internal / admin-only).
+ * P0-5 — Attribution funnel dashboard (internal / admin-only).
  *
- * A read-only view over the signed-in operator's own `users/{uid}/events`
- * collection (the same path lib/analytics writes to). It aggregates the growth
- * funnel — install → activation (first_plan) → paid — sliced by acquisition
- * `source` and by `market`, with an optional `utm_campaign` filter. No capture
- * logic lives here; it reuses the canonical UTM_KEYS export from lib/attribution.
+ * B-CAREPRO-30: the job is "see which channels bring families in", and the
+ * view used to read only the signed-in operator's own `users/{uid}/events` —
+ * one account's funnel. It now reads the cross-family reader that already
+ * exists, `GET /api/admin/cohorts` (admin-gated on the server, internal
+ * accounts excluded by default, counts only: no per-family row, no child data,
+ * no name ever leaves the server — server/cohortMetrics.ts). Grouped by
+ * acquisition `source` or by `market`, over a chosen window.
  *
- * Privacy: reads ONLY the operator's own event collection (no cross-user reads,
- * no child data). Gating reuses the existing `entitlement.isAdmin` signal — no
- * new auth path. Never surfaced in the parent-facing nav.
+ * Counts only: the table shows how many families reached each stage, never a
+ * rate. Gating reuses `entitlement.isAdmin` (the entry is admin-only in
+ * Settings and the server refuses non-admins with 403). Never in parent nav,
+ * and it renders with no hub pill row (lib/navigation NO_PILL_ROW_TABS).
  */
 
-// The funnel stages we measure, in order. Names must match lib/loopEvents.
+// The funnel stages we show, in order. Names must match lib/loopEvents.
 // B-MEAS-06: `first_plan` is the FIRST PLAN (it can happen inside the
 // onboarding session); "Activation" is `activated` (kpiEvents.ts: a loop
 // completed on a later day), the stage the cohort report reads.
 export const FUNNEL = [
-  { event: "install", labelKey: "attr.stage.install", fallback: "Install" },
-  { event: "first_plan", labelKey: "attr.stage.firstPlan", fallback: "First plan" },
-  { event: "activated", labelKey: "attr.stage.activation", fallback: "Activation" },
-  { event: "paid", labelKey: "attr.stage.paid", fallback: "Paid" },
+  { event: "install", labelKey: "attr.stage.install" },
+  { event: "first_plan", labelKey: "attr.stage.firstPlan" },
+  { event: "activated", labelKey: "attr.stage.activation" },
+  { event: "paid", labelKey: "attr.stage.paid" },
 ] as const;
+
+/** The window the cohort reader counts from. */
+export const PERIOD_DAYS = [7, 30, 90] as const;
+type PeriodDays = (typeof PERIOD_DAYS)[number];
 
 const CANONICAL_EXAMPLE =
   "https://arborparentingapp.com/?utm_source=instagram&utm_medium=social&utm_campaign=launch_il&utm_content=bio_link";
 
-function emptyCounts() {
-  return { install: 0, first_plan: 0, activated: 0, paid: 0 };
-}
+type CohortResponse = {
+  funnels?: { acquisition?: CohortFunnelRow[] };
+  internal?: { excluded?: number };
+};
 
 export default function AttributionTab() {
-  const { user } = useAuth();
   const { entitlement } = useEntitlement();
   const { t } = useLanguage();
   const isAdmin = Boolean(entitlement.isAdmin);
 
-  const [events, setEvents] = useState<FunnelEventDoc[] | null>(null);
+  const [rows, setRows] = useState<FunnelRow[] | null>(null);
+  const [internalExcluded, setInternalExcluded] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
   const [groupBy, setGroupBy] = useState<"source" | "market">("source");
-  const [campaign, setCampaign] = useState("__all__");
-
-  const uid = user?.uid;
+  const [period, setPeriod] = useState<PeriodDays>(30);
 
   const load = useCallback(async () => {
     if (!isAdmin) return;
     setLoading(true);
-    setError(null);
+    setFailed(false);
     try {
-      if (!firebaseEnabled || !db || !uid || uid === "local-sandbox") {
-        setEvents([]); // sandbox / no backend → legitimate empty state, not an error
-        return;
-      }
-      const snap = await getDocs(collection(db, `users/${uid}/events`));
-      setEvents(snap.docs.map((d) => d.data() as FunnelEventDoc));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load");
+      const since = new Date(Date.now() - period * 86_400_000).toISOString();
+      const res = await fetch(
+        `/api/admin/cohorts?groupBy=${groupBy}&since=${encodeURIComponent(since)}`,
+        { headers: await authHeaders() },
+      );
+      if (!res.ok) throw new Error(`cohorts ${res.status}`);
+      const report = (await res.json()) as CohortResponse;
+      setRows(cohortRowsToFunnel(report.funnels?.acquisition ?? []));
+      setInternalExcluded(Number(report.internal?.excluded) || 0);
+    } catch {
+      setFailed(true);
     } finally {
       setLoading(false);
     }
-  }, [isAdmin, uid]);
+  }, [isAdmin, groupBy, period]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  // Campaign options derived from the loaded events (so the filter only shows
-  // campaigns that actually have data).
-  const campaigns = useMemo(() => campaignsOf(events ?? []), [events]);
-
-  const rows: FunnelRow[] = useMemo(
-    () => (events ? aggregateFunnel(events, groupBy, campaign) : []),
-    [events, groupBy, campaign],
-  );
-
   const totals = useMemo(
-    () => rows.reduce(
+    () => (rows ?? []).reduce(
       (acc, r) => ({ install: acc.install + r.install, first_plan: acc.first_plan + r.first_plan, activated: acc.activated + r.activated, paid: acc.paid + r.paid }),
-      emptyCounts(),
+      { install: 0, first_plan: 0, activated: 0, paid: 0 },
     ),
     [rows],
   );
 
   // --- Gating: non-admins never see this view (defence in depth; the entry
-  // point is also admin-gated). Render a quiet, honest guard. ---
+  // point is also admin-gated and the server answers 403). ---
   if (!isAdmin) {
     return (
       <div>
-        <PageHeader title={t("attr.title") || "Attribution"} />
+        <PageHeader title={t("attr.title")} />
         <EmptyState
           icon={<Icon name="lock" size={32} />}
-          headline={t("attr.locked.title") || "Internal dashboard"}
-          body={t("attr.locked.body") || "This funnel dashboard is available to Arbor operators only."}
+          headline={t("attr.locked.title")}
+          body={t("attr.locked.body")}
         />
       </div>
     );
   }
 
-  const groupLabel = (key: string) =>
-    groupBy === "source" ? key : (t("attr.market." + key) || key);
+  const groupLabel = (key: string) => {
+    if (groupBy === "source") return key;
+    const marketKey = `attr.market.${key}`;
+    const label = t(marketKey);
+    return label === marketKey ? key : label;
+  };
+  const selectCls = "rounded-xl px-3 min-h-[44px] text-xs font-bold";
+  const selectStyle: React.CSSProperties = { color: "var(--arbor-ink)", background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" };
+  const shown = rows ?? [];
 
   return (
     <div>
       <PageHeader
-        title={t("attr.title") || "Attribution & funnel"}
-        subtitle={t("attr.subtitle") || "Install → activation → paid, by acquisition channel and market. First-party data from your own event stream."}
+        title={t("attr.title")}
+        subtitle={t("attr.subtitle")}
         action={
           <button
             type="button"
@@ -128,67 +133,53 @@ export default function AttributionTab() {
             className="inline-flex items-center justify-center gap-2 font-bold text-xs rounded-2xl px-4 min-h-[44px] transition disabled:opacity-60"
             style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
           >
-            <Icon name="refresh" size={16} className={loading ? "animate-spin" : ""} /> {t("attr.refresh") || "Refresh"}
+            <Icon name="refresh" size={16} className={loading ? "animate-spin" : ""} /> {t("attr.refresh")}
           </button>
         }
       />
 
-      {/* Controls */}
-      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
-          marks a top-level sibling module (what moduleBudget counts);
-          `data-primary-move` marks the ONE control that performs the move
-          surfaceContract.ts declares for this route. */}
+      {/* Item 11 (IA-02): `data-module` marks a top-level sibling module (what
+          moduleBudget counts); `data-primary-move` marks the ONE control that
+          performs the move surfaceContract.ts declares for this route. */}
       <div data-module="attribution-controls" className="flex flex-wrap items-center gap-3 mb-6">
         <label className="inline-flex items-center gap-2 text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>
-          {t("attr.groupBy") || "Group by"}
-          <select
-            value={groupBy}
-            onChange={(e) => setGroupBy(e.target.value as "source" | "market")}
-            className="rounded-xl px-3 min-h-[44px] text-xs font-bold bg-white"
-            style={{ color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}
-          >
-            <option value="source">{t("attr.group.source") || "Source / channel"}</option>
-            <option value="market">{t("attr.group.market") || "Market"}</option>
+          {t("attr.groupBy")}
+          <select value={groupBy} onChange={(e) => setGroupBy(e.target.value as "source" | "market")} className={selectCls} style={selectStyle}>
+            <option value="source">{t("attr.group.source")}</option>
+            <option value="market">{t("attr.group.market")}</option>
           </select>
         </label>
         <label className="inline-flex items-center gap-2 text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>
-          {t("attr.campaign") || "Campaign"}
-          <select
-            value={campaign}
-            onChange={(e) => setCampaign(e.target.value)}
-            className="rounded-xl px-3 min-h-[44px] text-xs font-bold bg-white"
-            style={{ color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}
-          >
-            <option value="__all__">{t("attr.campaign.all") || "All campaigns"}</option>
-            {campaigns.map((c) => (
-              <option key={c} value={c}>{c}</option>
+          {t("attr.period")}
+          <select value={period} onChange={(e) => setPeriod(Number(e.target.value) as PeriodDays)} className={selectCls} style={selectStyle}>
+            {PERIOD_DAYS.map((d) => (
+              <option key={d} value={d}>{t("attr.period.days", { n: d })}</option>
             ))}
           </select>
         </label>
       </div>
 
-      {/* States */}
-      {loading && events === null && (
-        <div className="space-y-2" aria-busy="true" aria-label={t("attr.loading") || "Loading analytics"}>
+      {loading && rows === null && (
+        <div className="space-y-2" aria-busy="true" aria-label={t("attr.loading")}>
           {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-12 w-full rounded-2xl" />)}
         </div>
       )}
 
-      {error && (
+      {failed && (
         <ErrorState
           surface="attribution"
-          headline={t("attr.error.title") || "Couldn't load analytics"}
-          body={t("attr.error.body") || "We couldn't read your event stream. Your data is safe — try again."}
+          headline={t("attr.error.title")}
+          body={t("attr.error.body")}
           onRetry={() => void load()}
           retrying={loading}
         />
       )}
 
-      {!loading && !error && rows.length === 0 && (
+      {!loading && !failed && rows !== null && shown.length === 0 && (
         <EmptyState
           icon={<Icon name="bar_chart" size={32} />}
-          headline={t("attr.empty.title") || "No events yet"}
-          body={t("attr.empty.body") || "Share a tagged link to start measuring. Tag outbound links with the UTM scheme, e.g."}
+          headline={t("attr.empty.title")}
+          body={t("attr.empty.body")}
           action={
             <code
               className="block text-[11px] leading-relaxed rounded-xl px-3 py-2 break-all max-w-md"
@@ -201,54 +192,42 @@ export default function AttributionTab() {
         />
       )}
 
-      {!error && rows.length > 0 && (
+      {!failed && shown.length > 0 && (
         <div data-module="attribution-funnel" data-primary-move="view-attribution" className="rounded-2xl overflow-x-auto" style={{ border: "1px solid var(--arbor-rule)" }}>
           <table className="w-full text-sm border-collapse">
-            <caption className="sr-only">{t("attr.title") || "Attribution funnel"}</caption>
+            <caption className="sr-only">{t("attr.title")}</caption>
             <thead>
               <tr style={{ background: "var(--arbor-paper-deep)" }}>
                 <th scope="col" className="text-start font-extrabold px-4 py-3 text-xs" style={{ color: "var(--arbor-muted)" }}>
-                  {groupBy === "source" ? (t("attr.col.source") || "Source") : (t("attr.col.market") || "Market")}
+                  {groupBy === "source" ? t("attr.col.source") : t("attr.col.market")}
                 </th>
                 {FUNNEL.map((f) => (
                   <th key={f.event} scope="col" className="text-end font-extrabold px-4 py-3 text-xs" style={{ color: "var(--arbor-muted)" }}>
-                    {t(f.labelKey) || f.fallback}
+                    {t(f.labelKey)}
                   </th>
                 ))}
-                <th scope="col" className="text-end font-extrabold px-4 py-3 text-xs" style={{ color: "var(--arbor-muted)" }}>
-                  {t("attr.col.actRate") || "Inst→Act"}
-                </th>
-                <th scope="col" className="text-end font-extrabold px-4 py-3 text-xs" style={{ color: "var(--arbor-muted)" }}>
-                  {t("attr.col.payRate") || "Act→Paid"}
-                </th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
+              {shown.map((r) => (
                 <tr key={r.key} style={{ borderTop: "1px solid var(--arbor-rule)" }}>
-                  <th scope="row" className="text-start font-bold px-4 py-3" style={{ color: "var(--arbor-ink)" }}>
+                  <th scope="row" className="text-start font-bold px-4 py-3" dir="auto" style={{ color: "var(--arbor-ink)" }}>
                     {groupLabel(r.key)}
                   </th>
-                  <td className="text-end px-4 py-3 font-mono tabular-nums" dir="ltr" style={{ color: "var(--arbor-ink)" }}>{r.install}</td>
-                  <td className="text-end px-4 py-3 font-mono tabular-nums" dir="ltr" style={{ color: "var(--arbor-ink)" }}>{r.first_plan}</td>
-                  <td className="text-end px-4 py-3 font-mono tabular-nums" dir="ltr" style={{ color: "var(--arbor-ink)" }}>{r.activated}</td>
-                  <td className="text-end px-4 py-3 font-mono tabular-nums" dir="ltr" style={{ color: "var(--arbor-ink)" }}>{r.paid}</td>
-                  <td className="text-end px-4 py-3 font-mono tabular-nums" dir="ltr" style={{ color: "var(--arbor-muted)" }}>{ratePct(r.activated, r.install)}</td>
-                  <td className="text-end px-4 py-3 font-mono tabular-nums" dir="ltr" style={{ color: "var(--arbor-muted)" }}>{ratePct(r.paid, r.activated)}</td>
+                  {FUNNEL.map((f) => (
+                    <td key={f.event} className="text-end px-4 py-3 font-mono tabular-nums" dir="ltr" style={{ color: "var(--arbor-ink)" }}>{r[f.event]}</td>
+                  ))}
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr style={{ borderTop: "2px solid var(--arbor-rule)", background: "var(--arbor-paper-deep)" }}>
                 <th scope="row" className="text-start font-extrabold px-4 py-3" style={{ color: "var(--arbor-ink)" }}>
-                  {t("attr.total") || "Total"}
+                  {t("attr.total")}
                 </th>
-                <td className="text-end px-4 py-3 font-mono tabular-nums font-bold" dir="ltr" style={{ color: "var(--arbor-ink)" }}>{totals.install}</td>
-                <td className="text-end px-4 py-3 font-mono tabular-nums font-bold" dir="ltr" style={{ color: "var(--arbor-ink)" }}>{totals.first_plan}</td>
-                <td className="text-end px-4 py-3 font-mono tabular-nums font-bold" dir="ltr" style={{ color: "var(--arbor-ink)" }}>{totals.activated}</td>
-                <td className="text-end px-4 py-3 font-mono tabular-nums font-bold" dir="ltr" style={{ color: "var(--arbor-ink)" }}>{totals.paid}</td>
-                <td className="text-end px-4 py-3 font-mono tabular-nums" dir="ltr" style={{ color: "var(--arbor-muted)" }}>{ratePct(totals.activated, totals.install)}</td>
-                <td className="text-end px-4 py-3 font-mono tabular-nums" dir="ltr" style={{ color: "var(--arbor-muted)" }}>{ratePct(totals.paid, totals.activated)}</td>
+                {FUNNEL.map((f) => (
+                  <td key={f.event} className="text-end px-4 py-3 font-mono tabular-nums font-bold" dir="ltr" style={{ color: "var(--arbor-ink)" }}>{totals[f.event]}</td>
+                ))}
               </tr>
             </tfoot>
           </table>
@@ -256,8 +235,9 @@ export default function AttributionTab() {
       )}
 
       <p className="text-[11px] mt-4" style={{ color: "var(--arbor-muted)" }}>
-        {t("attr.footnote") || "First-party counts from your own event stream. UTM keys:"}{" "}
+        {t("attr.footnote")}{" "}
         <span dir="ltr" className="font-mono">{UTM_KEYS.join(", ")}</span>.
+        {internalExcluded > 0 && <> {t("attr.internalExcluded", { n: internalExcluded })}</>}
       </p>
     </div>
   );

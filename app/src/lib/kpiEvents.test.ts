@@ -783,8 +783,8 @@ describe("B-MEAS-06 — admin Attribution shows four stages, Activation = activa
     const { resolve } = await import("node:path");
     const { en, he } = await import("./i18n");
     const tab = readFileSync(resolve(__dirname, "../components/tabs/AttributionTab.tsx"), "utf8");
-    expect(tab).toContain('{ event: "first_plan", labelKey: "attr.stage.firstPlan", fallback: "First plan" }');
-    expect(tab).toContain('{ event: "activated", labelKey: "attr.stage.activation", fallback: "Activation" }');
+    expect(tab).toContain('{ event: "first_plan", labelKey: "attr.stage.firstPlan" }');
+    expect(tab).toContain('{ event: "activated", labelKey: "attr.stage.activation" }');
     const stages = [...tab.matchAll(/\{ event: "([a-z_]+)", labelKey: "(attr\.stage\.[A-Za-z]+)"/g)].map((m) => [m[1], m[2]]);
     expect(stages.map((s) => s[0])).toEqual(["install", "first_plan", "activated", "paid"]);
     for (const [, key] of stages) {
@@ -793,9 +793,9 @@ describe("B-MEAS-06 — admin Attribution shows four stages, Activation = activa
     }
     expect(en["attr.stage.firstPlan"]).toBe("First plan");
     expect(he["attr.stage.firstPlan"]).toBe("תוכנית ראשונה");
-    // The activation rate reads `activated`, not first_plan.
-    expect(tab).toContain("ratePct(r.activated, r.install)");
-    expect(tab).toContain("ratePct(r.paid, r.activated)");
+    // B-CAREPRO-30: counts only — the table prints each stage's count from
+    // the cohort reader, never a rate.
+    expect(tab).not.toContain("ratePct(");
   });
 });
 
