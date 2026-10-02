@@ -198,7 +198,6 @@ const HEX_ALLOWLIST: Record<string, readonly string[]> = {
   "components/practice/SpeechCoachTab.tsx": ["#fff", "#ffffff"],
   "components/practice/WordWorldTab.tsx": ["#fff"],
   "components/profile/AvatarCreator.tsx": ["#fff"],
-  "components/sections/AskSpecialist.tsx": ["#fff"],
   "components/sections/Strengths.tsx": ["#eef6f1"],
   "components/stories/StoryIllustration.tsx": [
     // SVG illustration palette — allowlisted art file

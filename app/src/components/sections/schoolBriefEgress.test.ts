@@ -122,19 +122,22 @@ const SOURCES = walk(SRC)
   .filter((f) => /\.tsx?$/.test(f) && !/\.test\.tsx?$/.test(f))
   .map((f) => ({ rel: path.relative(SRC, f).replace(/\\/g, "/"), src: readFileSync(f, "utf8").replace(/\r\n/g, "\n") }));
 
-/** A file can reach a teacher export if it consumes the export seam or builds
- *  a preset packet itself. `consult/packet.ts` DEFINES those functions — it is
- *  the policy module, not a door. */
+/** A file can reach a teacher export if it consumes the export seam
+ *  (`serializeForExport` / `exportPrintSections`) or builds a preset packet
+ *  itself. `consult/packet.ts` DEFINES those functions — it is the policy
+ *  module, not a door. B-CAREPRO-28: `useReportExport` prints parent-record
+ *  documents only (its parameter is a ParentReportType), so it is no door. */
 const TEACHER_REACHERS = SOURCES.filter(
   (f) =>
     f.rel !== "consult/packet.ts" &&
-    (/useReportExport\(\)/.test(f.src) || /buildPresetPacket\(/.test(f.src) || /presetPacketToPrintSections\(/.test(f.src))
+    (/serializeForExport\(/.test(f.src) || /exportPrintSections\(/.test(f.src) ||
+      /buildPresetPacket\(/.test(f.src) || /presetPacketToPrintSections\(/.test(f.src))
 );
 
-/** The rule every door must satisfy: it recognises the teacher type and sends
- *  it to the School Brief instead of minting a rival teacher document. */
+/** The rule every door must satisfy: it recognises the teacher audience and
+ *  sends it to the School Brief instead of minting a rival teacher document. */
 const routesTeacherToSchoolBrief = (src: string): boolean =>
-  /type === "teacher"/.test(src) && /setActiveTab\("school-brief"\)/.test(src);
+  /(type|audience) === "teacher"/.test(src) && /setActiveTab\("school-brief"\)/.test(src);
 
 /** The pre-change Reports card: every report type exported unconditionally. */
 const PRE_REPORTS_CARD = `
@@ -157,9 +160,8 @@ describe("LC-11b · one teacher door — every door, not one named file", () => 
   it("the sweep really found the doors (non-vacuity)", () => {
     expect(SOURCES.length).toBeGreaterThan(100);
     const rels = TEACHER_REACHERS.map((f) => f.rel);
-    expect(rels).toContain("components/sections/Reports.tsx");
     expect(rels).toContain("components/sections/AskSpecialist.tsx");
-    expect(TEACHER_REACHERS.length).toBeGreaterThanOrEqual(2);
+    expect(TEACHER_REACHERS.length).toBeGreaterThanOrEqual(1);
   });
 
   it("EVERY file that can reach a teacher export routes it to the School Brief", () => {
@@ -174,11 +176,14 @@ describe("LC-11b · one teacher door — every door, not one named file", () => 
     expect(routesTeacherToSchoolBrief(HYPOTHETICAL_NEW_DOOR)).toBe(false);
   });
 
-  it("the Consult menu's teacher item opens the School Brief instead of a rival document", () => {
-    const branch = /if \(type === "teacher"\)[\s\S]{0,300}?\n    \}/.exec(consult);
+  it("B-CAREPRO-28: Consult's teacher audience opens the School Brief and builds no teacher text", () => {
+    expect(consult).toContain('const isTeacher = audience === "teacher";');
+    const branch = /data-testid="consult-teacher-branch"[\s\S]*?<\/section>/.exec(consult);
     expect(branch).toBeTruthy();
-    expect(branch![0]).toContain('setActiveTab("school-brief")');
-    expect(branch![0]).toContain("return;");
+    expect(branch![0]).toContain('onClick={() => setActiveTab("school-brief")}');
+    // no Copy / PDF / send text for a teacher: the build and the PDF both stop first
+    expect(consult).toContain('if (isTeacher) return { text: null, error: "" };');
+    expect(consult).toContain("if (exportText == null || isTeacher) return;");
     expect(/type === "teacher"/.exec(PRE_CONSULT)).toBeNull();
   });
 
@@ -195,16 +200,12 @@ describe("LC-11b · one teacher door — every door, not one named file", () => 
     expect(PRE_REPORTS_CARD).toContain("exportReport(r.type)");
   });
 
-  it("the export SEAM itself refuses the teacher type, before any packet is built", () => {
-    // Defence in depth: the redirect lives in useReportExport, so a caller
-    // that forgets it still cannot mint the rival document.
-    const hook = reports.slice(reports.indexOf("export function useReportExport"));
-    const redirect = hook.indexOf('if (type === "teacher")');
-    const build = hook.indexOf("buildPresetPacket(");
-    expect(redirect).toBeGreaterThan(-1);
-    expect(build).toBeGreaterThan(-1);
-    expect(redirect).toBeLessThan(build);
-    expect(hook.slice(redirect, build)).toContain('setActiveTab("school-brief")');
+  it("B-CAREPRO-28: the Reports seam prints parent records only — no preset packet is built there", () => {
+    const hook = reports.slice(reports.indexOf("export function useReportExport"), reports.indexOf("export function useConsultPdf"));
+    expect(hook.length).toBeGreaterThan(300);
+    expect(hook).toContain("return (type: ParentReportType) => {");
+    expect(reports).not.toContain("buildPresetPacket(");
+    expect(reports).not.toContain("presetPacketToPrintSections(");
   });
 });
 

@@ -288,17 +288,20 @@ describe("Wave-4 (c) — single-serializer seam (static source scan over src/com
     expect(screening).toMatch(/\bbuildMonitoringReportDoc\b/);
   });
 
-  it("AskSpecialist reaches professional exports ONLY through the seam's useReportExport — never lib/reportExport directly", () => {
+  it("B-CAREPRO-28: AskSpecialist prints ONLY through the seam's useConsultPdf, from ceiling-bound sections — never lib/reportExport directly", () => {
     const ask = COMPONENT_FILES.find((f) => f.rel === "components/sections/AskSpecialist.tsx")!.code;
     expect(ask, "AskSpecialist imports lib/reportExport directly").not.toMatch(/from\s+["'][^"']*reportExport["']/);
-    expect(ask, "AskSpecialist no longer routes exports through useReportExport").toMatch(/\buseReportExport\b/);
+    expect(ask, "AskSpecialist no longer prints through the Reports seam").toMatch(/\buseConsultPdf\b/);
+    // the sections it hands over come from the guarded print twin of the Copy text
+    expect(ask).toContain("exportPrintSections(audience, packet, excluded, visionNote");
+    expect(ask).not.toMatch(/\bopenPrintableReport\b/);
   });
 
-  it("the Reports seam gates on isProfessionalReportType and routes professionals through the consult preset serializer", () => {
+  it("the Reports seam prints parent records through buildReport and Consult's preset sections as handed — it builds no preset packet", () => {
     const seam = COMPONENT_FILES.find((f) => f.rel === PRESET_SEAM)!.code;
     expect(seam).toMatch(/\bisProfessionalReportType\b/);
-    expect(seam).toMatch(/\bbuildPresetPacket\b/);
-    expect(seam).toMatch(/\bpresetPacketToPrintSections\b/);
+    expect(seam).toMatch(/export function useConsultPdf\(\)/);
+    expect(seam).not.toMatch(/\b(buildPresetPacket|presetPacketToPrintSections)\b/);
     expect(seam).toMatch(/from\s+["'][^"']*consult\/packet["']/);
   });
 });

@@ -4,8 +4,10 @@
  * packet always carries "about"), so a new profile saw a one-line packet with
  * a live export bar. This renders the REAL AskSpecialist (static markup, node
  * env) with the app contexts stubbed: a profile-only record must mount the
- * `consult.empty.*` state and NO packet rows / export bar; one logged moment
- * (negative control) must mount the packet rows + the audience radiogroup. */
+ * `consult.empty.*` state and NO packet rows / export verbs; one logged moment
+ * (negative control) must mount the packet rows + the export verbs.
+ * B-CAREPRO-28: step 1 (who it is for) renders in both — choosing the
+ * audience comes before the record, and a teacher brief needs no moments. */
 
 import { describe, expect, it, vi } from "vitest";
 import React from "react";
@@ -25,7 +27,7 @@ const record = {
 vi.mock("../../context/ArborContext", () => ({ useArbor: () => record }));
 vi.mock("../../context/ToastContext", () => ({ useToast: () => ({ toast: vi.fn() }) }));
 vi.mock("../../context/LanguageContext", () => ({ useLanguage: () => ({ t: (k: string) => k, uiLang: "en" }) }));
-vi.mock("./Reports", () => ({ REPORTS: [], CONSULT_MENU_REPORTS: [], useReportExport: () => vi.fn() }));
+vi.mock("./Reports", () => ({ REPORTS: [], useReportExport: () => vi.fn(), useConsultPdf: () => vi.fn() }));
 vi.mock("../ui/Modal", () => ({ Modal: () => null, default: () => null }));
 vi.mock("../../lib/api", () => ({ authHeaders: async () => ({}) }));
 vi.mock("../../lib/loopEvents", () => ({ trackShareInitiated: vi.fn(), trackShareCompleted: vi.fn() }));
@@ -44,7 +46,8 @@ describe("LC-06 — AskSpecialist empty state", () => {
     expect(html).toContain("consult.empty.title");
     expect(html).toContain("consult.empty.cta");
     expect(html).not.toContain('data-testid="consult-packet-item"');
-    expect(html).not.toContain('role="radiogroup"');
+    expect(html).not.toContain('data-testid="consult-copy"');
+    expect(html).toContain('role="radiogroup"');
   });
 
   it("NEGATIVE CONTROL: one logged moment mounts the packet rows + the audience step instead", async () => {
@@ -54,6 +57,7 @@ describe("LC-06 — AskSpecialist empty state", () => {
     expect(html).not.toContain("consult.empty.title");
     expect(html).toContain('data-testid="consult-packet-item"');
     expect(html).toContain('role="radiogroup"');
+    expect(html).toContain('data-testid="consult-copy"');
     expect(html).toContain("elev.carehonesty.consult.preview.toggle");
     record.behaviorLogs = [];
   });

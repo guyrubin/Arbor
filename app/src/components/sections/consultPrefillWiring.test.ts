@@ -36,7 +36,7 @@ vi.mock("./Reports", async () => {
     { titleKey: "elev.reports.slp.title", type: "slp" },
     { titleKey: "elev.reports.behavioral_health.title", type: "behavioral_health" },
   ];
-  return { REPORTS, CONSULT_MENU_REPORTS: REPORTS, useReportExport: () => vi.fn() };
+  return { REPORTS, useReportExport: () => vi.fn(), useConsultPdf: () => vi.fn() };
 });
 
 import { resolveConsultPrefill } from "./AskSpecialist";
@@ -115,21 +115,20 @@ describe("B-CAREPRO-13 · every caller goes through the widened seam", () => {
 describe("B-CAREPRO-13 · AskSpecialist consumes all four fields", () => {
   const ask = read("components/sections/AskSpecialist.tsx");
 
-  it("the effect applies reason, note, audience and preset, re-arms the gate, then consumes", () => {
+  it("the effect applies reason, note and audience (a preset IS an audience), re-arms the gate, then consumes", () => {
     const eff = /useEffect\(\(\) => \{\n    if \(pendingConsultPrefill == null\) return;[\s\S]*?\}, \[pendingConsultPrefill\]\);/.exec(ask);
     expect(eff).toBeTruthy();
     for (const line of [
       "setReason(patch.reason)",
       "setVisionNote(patch.note)",
       "setAudienceState(patch.audience)",
-      "setPresetHint(patch.preset)",
       "setReviewed(false)",
       "consumeConsultPrefill()",
     ]) expect(eff![0]).toContain(line);
     // the caller's audience is not persisted as the parent's remembered choice
     expect(eff![0]).not.toContain("setAudience(");
     // no auto-send from the prefill
-    expect(eff![0]).not.toMatch(/copy\(|download\(|runExport\(|sendToTrusted\(|exportReport\(/);
+    expect(eff![0]).not.toMatch(/copy\(|savePdf\(|printPdf\(|sendToTrusted\(|exportReport\(/);
   });
 
   it("every prefilled field stays editable", () => {
@@ -138,20 +137,23 @@ describe("B-CAREPRO-13 · AskSpecialist consumes all four fields", () => {
     expect(ask).toContain("onClick={() => setAudience(a)}");
   });
 
-  it("the preset is listed first and marked in the PDF menu (still behind the gate)", () => {
-    expect(ask).toContain("{menuReports.map((r, idx) => (");
-    expect(ask).toContain('aria-current={r.type === presetHint ? "true" : undefined}');
-    expect(ask).toMatch(/disabled=\{noneSelected\}\n\s*aria-haspopup="menu"/);
+  it("B-CAREPRO-28: a caller's preset selects that audience; every verb stays behind the gate", () => {
+    expect(ask).not.toContain("presetHint");
+    expect(ask).not.toContain("menuReports");
+    for (const verb of ["onClick={copy} disabled={noneSelected}", "onClick={savePdf} disabled={noneSelected}"]) expect(ask).toContain(verb);
+    expect(ask).toMatch(/onClick=\{sendToTrusted\}\n\s*disabled=\{noneSelected\}/);
   });
 
   it("resolver: an audience never clears a reason; each field independent", () => {
     expect(resolveConsultPrefill({ reason: "Speech at 3", audience: "teacher" })).toEqual({ reason: "Speech at 3", audience: "teacher" });
     expect(resolveConsultPrefill({ note: "From the coach", audience: "teacher" })).toEqual({ note: "From the coach", audience: "teacher" });
-    expect(resolveConsultPrefill({ reason: "r", note: "n", audience: "self", preset: "slp" })).toEqual({ reason: "r", note: "n", audience: "self", preset: "slp" });
+    expect(resolveConsultPrefill({ reason: "r", note: "n", audience: "self" })).toEqual({ reason: "r", note: "n", audience: "self" });
   });
 
-  it("resolver: a preset implies clinician; blanks, unknown audiences and non-menu presets set nothing", () => {
-    expect(resolveConsultPrefill({ preset: "pediatrician" })).toEqual({ preset: "pediatrician", audience: "clinician" });
+  it("resolver: a preset IS the audience; legacy 'clinician' reads as therapist; blanks, unknowns and the teacher preset set nothing", () => {
+    expect(resolveConsultPrefill({ preset: "pediatrician" })).toEqual({ audience: "pediatrician" });
+    expect(resolveConsultPrefill({ preset: "slp", reason: "Visit with SLP" })).toEqual({ audience: "slp", reason: "Visit with SLP" });
+    expect(resolveConsultPrefill({ audience: "clinician" as never })).toEqual({ audience: "therapist" });
     expect(resolveConsultPrefill({ reason: "  ", note: "" })).toEqual({});
     expect(resolveConsultPrefill({ audience: "nurse" as never })).toEqual({});
     expect(resolveConsultPrefill({ preset: "teacher" as never })).toEqual({});

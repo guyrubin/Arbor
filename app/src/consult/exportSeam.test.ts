@@ -60,67 +60,123 @@ describe("LC-08 — no component imports or calls serializePacket directly", () 
   });
 });
 
-/* ── B-CAREPRO-02 — the Consult PDF menu only offers documents that honour the
- * redaction the parent just approved. The five parent-record documents built
- * through `buildReport` (no `excludedIds` parameter at all) printed "Suggested
- * focus", quoted triggers and "What helped" whatever the toggles said, behind a
- * consent checkbox that covered text the parent never saw. */
+/* ── B-CAREPRO-28 — every Consult egress uses the chosen professional preset;
+ * one PDF per audience; the 10-item menu and the .md download are gone.
+ * Before: Copy/Download/mail for "a clinician" always serialized the therapist
+ * preset, so the SLP phrases and the pediatrician's measurements reached only
+ * a separate PDF menu. Now the audience IS the preset, and Copy (text) and
+ * Save as PDF (print sections) are built from the same packet, the same
+ * redaction and the same note — so they carry the same words. */
 import { isProfessionalReportType, type ReportType } from "../lib/reportExport";
-import { buildPresetPacket, presetPacketToPrintSections, type BuildPacketInput, type ConsultAudience } from "./packet";
+import {
+  buildConsultPacket,
+  exportPrintSections,
+  serializeForExport,
+  EXPORT_AUDIENCES,
+  DEFAULT_EXPORT_AUDIENCE,
+  normalizeExportAudience,
+  type BuildPacketInput,
+  type ConsultPacket,
+  type ExportAudience,
+} from "./packet";
 
 const ALL_REPORT_TYPES: ReportType[] = [
   "weekly", "teacher", "therapist", "pediatrician", "slp", "behavioral_health", "snapshot", "behavior", "language", "growth",
 ];
-/** The same predicate Reports.tsx applies for the Consult menu (asserted below). */
-const consultMenuTypes = ALL_REPORT_TYPES.filter((t) => isProfessionalReportType(t) && t !== "teacher") as ConsultAudience[];
 
+const NOW = Date.UTC(2026, 9, 2);
+const DAY = 86_400_000;
 const FIXTURE: BuildPacketInput = {
   profile: { name: "Dylan", age: 5, languages: ["Hebrew"], schoolContext: "Gan", strengths: ["curious"], challenges: ["transitions"] },
-  logs: [{ behaviorType: "Transition Refusal", intensity: 3, timestamp: new Date().toISOString() }],
-  milestones: [],
-  plans: [],
-  memory: [],
-  nowMs: Date.now(),
+  logs: [
+    { behaviorType: "Transition Refusal", intensity: 3, timestamp: new Date(NOW - 2 * DAY).toISOString(), trigger: "Leaving the park" },
+  ],
+  milestones: [{ domain: "communication", title: "Says two-word phrases", checked: true, status: "yes", observedAt: new Date(NOW - 5 * DAY).toISOString() }],
+  plans: [{ title: "Five-minute warning" }],
+  memory: [{ fact: "Calms with a countdown", status: "approved" }],
+  nowMs: NOW,
+  reason: "Talking at gan",
+  langObs: [{ phrase: "more juice", language: "en", at: new Date(NOW - 3 * DAY).toISOString() }],
+  growthEntries: [{ date: "2026-09-20", heightCm: 108, weightKg: 18 }],
 };
 
-describe("B-CAREPRO-02 — every Consult menu type honours excludedIds", () => {
-  const ask = readFileSync(path.join(COMPONENTS, "sections", "AskSpecialist.tsx"), "utf8").replace(/\r\n/g, "\n");
+/** The words a document carries: headings and lines, without Markdown marks. */
+function copyLines(md: string): string[] {
+  return md
+    .split("\n")
+    .map((l) => l.replace(/^#+\s*/, "").replace(/^-\s*/, "").replace(/^_(.*)_$/, "$1").trim())
+    .filter(Boolean);
+}
+function pdfLines(packet: ConsultPacket, audience: ExportAudience, excluded = new Set<string>(), note = ""): string[] {
+  return exportPrintSections(audience, packet, excluded, note, "Parent note").flatMap((s) => [s.heading, ...s.body]);
+}
 
-  it("the menu is the professional-preset subset, keyed (EN + HE), never the full REPORTS list", () => {
+describe("B-CAREPRO-28 — one preset per audience across Copy and PDF", () => {
+  const packet = buildConsultPacket(FIXTURE);
+  const clinicianAudiences = EXPORT_AUDIENCES.filter((a) => a !== "teacher" && a !== "self");
+
+  it("the audience step is the six choices, pediatrician first; legacy 'clinician' reads as therapist", () => {
+    expect([...EXPORT_AUDIENCES]).toEqual(["pediatrician", "slp", "behavioral_health", "therapist", "teacher", "self"]);
+    expect(DEFAULT_EXPORT_AUDIENCE).toBe("pediatrician");
+    expect(normalizeExportAudience("clinician")).toBe("therapist");
+    expect(normalizeExportAudience("nurse")).toBeNull();
+  });
+
+  it("copy text == PDF sections for each preset (and for my records), with and without redaction and a note", () => {
+    for (const audience of [...clinicianAudiences, "self" as const]) {
+      for (const excluded of [new Set<string>(), new Set(["about-focus", "mem-0"])]) {
+        for (const note of ["", "Please ask about the countdown."]) {
+          const md = serializeForExport(audience, packet, excluded, note, "Parent note");
+          // The Markdown carries a document title + prepared line the print
+          // shell renders itself; everything after them must match line for line.
+          const copy = copyLines(md).slice(2);
+          expect(copy, `${audience}`).toEqual(pdfLines(packet, audience, excluded, note));
+        }
+      }
+    }
+  });
+
+  it("SLP → the copy carries the language-observations section; pediatrician → measurements; neither leaks into the other", () => {
+    const slp = serializeForExport("slp", packet);
+    const ped = serializeForExport("pediatrician", packet);
+    expect(slp).toContain("Phrases we have heard");
+    expect(slp).toContain("more juice");
+    expect(slp).not.toContain("Measurements we have taken");
+    expect(ped).toContain("Measurements we have taken");
+    expect(ped).toContain("108 cm");
+    expect(ped).not.toContain("Phrases we have heard");
+    // behaviour/psychology carries the parent's own trigger words
+    expect(serializeForExport("behavioral_health", packet)).toContain("Leaving the park");
+    // NEGATIVE CONTROL: the pre-B-28 clinician copy (therapist ceiling) had neither section.
+    const therapist = serializeForExport("therapist", packet);
+    expect(therapist).not.toContain("Phrases we have heard");
+    expect(therapist).not.toContain("Measurements we have taken");
+  });
+
+  it("every PDF honours the include-toggles the parent just reviewed", () => {
+    for (const audience of [...clinicianAudiences, "self" as const]) {
+      const kept = pdfLines(packet, audience).join("\n");
+      expect(kept, `${audience} fixture lacks the focus line`).toContain("Current focus");
+      const redacted = pdfLines(packet, audience, new Set(["about-focus"])).join("\n");
+      expect(redacted, `${audience} printed an excluded row`).not.toContain("Current focus");
+    }
+  });
+
+  it("the Consult screen: one PDF button, no .md Download, no menu", () => {
+    const ask = readFileSync(path.join(COMPONENTS, "sections", "AskSpecialist.tsx"), "utf8").replace(/\r\n/g, "\n");
     const seam = readFileSync(path.join(COMPONENTS, "sections", "Reports.tsx"), "utf8");
-    expect(seam).toContain(
-      'export const CONSULT_MENU_REPORTS = REPORTS.filter((r) => isProfessionalReportType(r.type) && r.type !== "teacher");'
-    );
-    expect(ask).toMatch(/import \{ CONSULT_MENU_REPORTS, useReportExport \} from "\.\/Reports";/);
-    // B-CAREPRO-13: the menu renders `menuReports` — CONSULT_MENU_REPORTS with
-    // a caller's preset moved first; it draws on nothing else.
-    expect(ask).toContain("{menuReports.map((r, idx) => (");
-    const menuMemo = /const menuReports = useMemo\([\s\S]*?\[presetHint\]\s*\);/.exec(ask);
-    expect(menuMemo).toBeTruthy();
-    expect(menuMemo![0].replace(/CONSULT_MENU_REPORTS/g, "")).not.toMatch(/REPORTS/);
-    expect(ask).not.toMatch(/\{REPORTS\.map\(/);
-    // the item label is the translated key, not the English literal
-    expect(ask).not.toMatch(/\{r\.title\}/);
-    expect(consultMenuTypes).toEqual(["therapist", "pediatrician", "slp", "behavioral_health"]);
-  });
-
-  it("every Consult menu type honours excludedIds", () => {
-    for (const type of consultMenuTypes) {
-      const packet = buildPresetPacket(type, FIXTURE);
-      const kept = presetPacketToPrintSections(type, packet, new Set()).flatMap((s) => s.body).join("\n");
-      // non-vacuity: without the toggle the line IS in the document
-      expect(kept, `${type} fixture lacks the focus line`).toContain("Current focus");
-      const redacted = presetPacketToPrintSections(type, packet, new Set(["about-focus"])).flatMap((s) => s.body).join("\n");
-      expect(redacted, `${type} printed an excluded row`).not.toContain("Current focus");
+    expect(ask).toContain('data-testid="consult-pdf"');
+    expect((ask.match(/data-testid="consult-pdf"/g) ?? []).length).toBe(1);
+    expect(ask).toMatch(/onClick=\{savePdf\} disabled=\{noneSelected\}/);
+    for (const gone of ['type: "text/markdown"', "a.download", "role=\"menu\"", "menuReports", "CONSULT_MENU_REPORTS", "consult.download", "consult.exportPdf"]) {
+      expect(ask, gone).not.toContain(gone);
     }
-  });
-
-  it("NEGATIVE CONTROL: the parent-record types would have reached the menu without the filter", () => {
-    const unfiltered = ALL_REPORT_TYPES.filter((t) => t !== "teacher");
-    expect(unfiltered).toEqual(expect.arrayContaining(["weekly", "snapshot", "behavior", "language", "growth"]));
-    for (const t of ["weekly", "snapshot", "behavior", "language", "growth"] as ReportType[]) {
-      expect(isProfessionalReportType(t)).toBe(false);
-    }
+    expect(seam).not.toContain("CONSULT_MENU_REPORTS");
+    // the last preset is remembered on the device under the same key
+    expect(ask).toContain('const AUDIENCE_STORAGE_KEY = "arbor.consultExportAudience";');
+    // the parent-record documents are never on the Consult screen
+    const parentTypes = ALL_REPORT_TYPES.filter((t) => !isProfessionalReportType(t));
+    expect(parentTypes).toEqual(["weekly", "snapshot", "behavior", "language", "growth"]);
   });
 });
 
@@ -133,7 +189,7 @@ describe("B-CAREPRO-23 — Reports.tsx never calls exportReport with a professio
 
   it("the page renders PARENT_RECORD_REPORTS (5 cards) and nothing from the professional list", () => {
     expect(page.length).toBeGreaterThan(1500);
-    expect(reportsSrc).toContain("export const PARENT_RECORD_REPORTS = REPORTS.filter((r) => !isProfessionalReportType(r.type));");
+    expect(reportsSrc).toMatch(/export const PARENT_RECORD_REPORTS = REPORTS\.filter\(\n\s*\(r\)[^=]*=> !isProfessionalReportType\(r\.type\)\n\);/);
     expect(page).toContain("{PARENT_RECORD_REPORTS.map((r) => (");
     expect(page).not.toMatch(/\{REPORTS\.map\(|CONSULT_MENU_REPORTS/);
     const parentTypes = ALL_REPORT_TYPES.filter((t) => !isProfessionalReportType(t));
@@ -157,7 +213,8 @@ describe("B-CAREPRO-23 — Reports.tsx never calls exportReport with a professio
   it("one door to Consult, through the prefill seam; no teacher card", () => {
     const door = /data-testid="reports-consult-door"/.exec(page);
     expect(door).toBeTruthy();
-    expect(page).toMatch(/const openConsult = \(\) => \{\n\s*requestConsultPrefill\(\{ audience: "clinician" \}\);\n\s*setActiveTab\("consult"\);/);
+    // B-CAREPRO-28: the door names no audience; Consult's step 1 does.
+    expect(page).toMatch(/const openConsult = \(\) => \{\n\s*requestConsultPrefill\(\{\}\);\n\s*setActiveTab\("consult"\);/);
     expect(page).not.toContain("reports-teacher-one-door");
     expect(page).not.toContain('r.type === "teacher"');
   });

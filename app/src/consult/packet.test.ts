@@ -537,13 +537,13 @@ describe("LC-08 — serializeForExport: one seam, audience-capped, note scanned"
     const note = "The school suggested a speech delay assessment.";
     const packet = buildConsultPacket(base);
     expect(() => serializeForExport("teacher", packet, new Set(), note, noteHeading)).toThrow(ClinicalLanguageError);
-    expect(serializeForExport("clinician", packet, new Set(), note, noteHeading)).toContain(note);
+    expect(serializeForExport("therapist", packet, new Set(), note, noteHeading)).toContain(note);
     expect(serializeForExport("self", packet, new Set(), note, noteHeading)).toContain(note);
   });
 
   it("clinician output keeps patterns + approved memory; parent-own records keep everything selected", () => {
     const packet = buildConsultPacket(base);
-    const clin = serializeForExport("clinician", packet);
+    const clin = serializeForExport("therapist", packet);
     expect(clin).toMatch(/Transition Refusal: 2 times/);
     expect(clin).toMatch(/Calms fastest with a countdown/);
     const self = serializeForExport("self", packet, new Set(["mem-0"]));
@@ -783,7 +783,7 @@ describe("LC-11b — the teacher ceiling excludes the parent's clinician-facing 
     // disabled. The sections are now capped out before the guard sees them.
     expect(() => serializeForExport("teacher", buildConsultPacket(clinicianVoiceRecord), new Set(), "", noteHeading)).not.toThrow();
     // The clinician audience still receives the parent's words, verbatim.
-    expect(serializeForExport("clinician", buildConsultPacket(clinicianVoiceRecord), new Set(), "", noteHeading)).toContain(CLINICIAN_VOICE);
+    expect(serializeForExport("therapist", buildConsultPacket(clinicianVoiceRecord), new Set(), "", noteHeading)).toContain(CLINICIAN_VOICE);
   });
 
   it("NEGATIVE CONTROL: the scan is intact — the same term in the PARENT NOTE still fails closed", () => {

@@ -111,7 +111,7 @@ describe("the language reaches every export door", () => {
   });
 
   it("serializeForExport — the ONE Copy/Download/Send seam — passes it through", () => {
-    const md = serializeForExport("clinician", packet, new Set(), "", "Parent note", "he");
+    const md = serializeForExport("therapist", packet, new Set(), "", "Parent note", "he");
     expect(hasLatinHeading(md)).toBe(false);
   });
 

@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { motion, useReducedMotion, AnimatePresence } from "motion/react";
+import React, { useEffect, useMemo, useState } from "react";
+import { motion, useReducedMotion } from "motion/react";
 import Icon from "../ui/Icon";
 import { useArbor, type ConsultPrefill } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
@@ -11,41 +11,40 @@ import {
   isConsultPacketEmpty,
   sectionTitle,
   serializeForExport,
+  exportPrintSections,
+  normalizeExportAudience,
   EXPORT_AUDIENCES,
   DEFAULT_EXPORT_AUDIENCE,
   type ExportAudience,
 } from "../../consult/packet";
 import { ClinicalLanguageError } from "../../lib/clinicalScan";
 import { trackShareInitiated, trackShareCompleted } from "../../lib/loopEvents";
+import { recordExport } from "../../consult/exportHistory";
 import { InsetRow } from "../ui/kit";
-import { CONSULT_MENU_REPORTS, useReportExport } from "./Reports";
+import { useConsultPdf } from "./Reports";
 // LC-20 + LC-12: the reason for the visit, the questions prepared in
 // Appointments, and the discipline-specific evidence each preset reads.
 import { useChildCollection } from "../../hooks/useChildCollection";
 import type { LangObservation } from "../../growth/vocabAgg";
 import type { GrowthEntry } from "../../growth/growthEntries";
 
-/* Care › Consult — the single "get expert input" flow (b3).
-   One spine (a parent-redacted packet from the child's record) and one honest
-   action bar with four verbs: Copy / Download / Export as PDF / Send to a
-   professional. No HubTabs facets, no hidden handoff door, no triple "share"
-   buttons. Safety L3: nothing leaves the device until the parent exports.
+/* Care › Consult — "Prepare for a visit" (b3 → B-CAREPRO-28).
+   One spine (a parent-redacted packet from the child's record) in three steps:
 
-   UC-1: two-column reconcile — live redactable packet card (left) +
-   verified-pros rail (right). The packet is built from the LIVE child record
-   (buildConsultPacket), never a static design array; each section's items
-   render as label/value inset rows with a per-item include-toggle. The
-   GDPR/COPPA trust row lives INSIDE the summary card in green tokens.
-
-   Wave T (lane C):
-   · LC-08 — the audience ("For: a clinician / a teacher / my own records") is
-     a REQUIRED first step of the export bar; Copy / Download / Send all build
-     their text through the ONE guarded seam `serializeForExport` (audience
-     ceiling + note scan, fail closed). The last choice is remembered on the
-     device (metadata only, never child data).
-   · LC-07 — packet rows render in full (no truncation) and a "Preview exactly
-     what leaves" expander shows the recipient's text word for word.
-   · LC-06 — the empty state mounts for a profile-only record. */
+   1 · Who is it for? — the audience IS the preset: pediatrician · speech
+       therapist · behaviour/psychology · another clinician · teacher · my own
+       records. A teacher is handed to the School Brief (one teacher document,
+       LC-11); every other audience builds its own preset packet.
+   2 · What changed — the parent's reason for the visit, then the live packet
+       (each item an include-toggle; rows render in full, LC-07) and a preview
+       of exactly what leaves.
+   3 · What leaves — the reviewed gate, then Copy · Save as PDF · Send to
+       someone you trust. All three serialize the SAME preset through the one
+       guarded seam (`serializeForExport` / `exportPrintSections`: audience
+       ceiling + note scan, fail closed). Safety L3: nothing leaves the device
+       until the parent acts. The .md Download and the 10-item PDF menu are
+       gone (B-CAREPRO-28). The last audience is remembered on the device
+       (metadata only, never child data). */
 
 const INK = "var(--arbor-ink)";
 const MUTED = "var(--arbor-muted)";
@@ -57,29 +56,29 @@ const RULE = "var(--arbor-rule)";
 const AUDIENCE_STORAGE_KEY = "arbor.consultExportAudience";
 const readStoredAudience = (): ExportAudience => {
   try {
-    const v = localStorage.getItem(AUDIENCE_STORAGE_KEY);
-    return v && (EXPORT_AUDIENCES as readonly string[]).includes(v) ? (v as ExportAudience) : DEFAULT_EXPORT_AUDIENCE;
+    return normalizeExportAudience(localStorage.getItem(AUDIENCE_STORAGE_KEY)) ?? DEFAULT_EXPORT_AUDIENCE;
   } catch {
     return DEFAULT_EXPORT_AUDIENCE;
   }
 };
 
-/** B-CAREPRO-13 — the pure reading of a prefill: which composer fields it
- *  sets. Blank strings set nothing; an unknown audience or a non-menu preset
- *  is dropped; a preset with no audience implies "clinician" (every menu
- *  preset is a clinician-level document). Each field is independent, so an
+/** The clinician presets a caller may name (`ConsultPrefill.preset`). */
+const CLINICIAN_PRESETS = ["pediatrician", "slp", "behavioral_health", "therapist"] as const;
+
+/** B-CAREPRO-13 / B-CAREPRO-28 — the pure reading of a prefill: which composer
+ *  fields it sets. Blank strings set nothing; an unknown audience is dropped
+ *  (the legacy "clinician" reads as "therapist"); a clinician preset IS the
+ *  audience and outranks a generic one. Each field is independent, so an
  *  audience never clears a reason. */
 export function resolveConsultPrefill(p: ConsultPrefill): {
-  reason?: string; note?: string; audience?: ExportAudience; preset?: ConsultPrefill["preset"];
+  reason?: string; note?: string; audience?: ExportAudience;
 } {
   const out: ReturnType<typeof resolveConsultPrefill> = {};
   if (typeof p.reason === "string" && p.reason.trim() !== "") out.reason = p.reason;
   if (typeof p.note === "string" && p.note.trim() !== "") out.note = p.note;
-  if (p.audience && (EXPORT_AUDIENCES as readonly string[]).includes(p.audience)) out.audience = p.audience;
-  if (p.preset && CONSULT_MENU_REPORTS.some((r) => r.type === p.preset)) {
-    out.preset = p.preset;
-    if (!out.audience) out.audience = "clinician";
-  }
+  const audience = normalizeExportAudience(p.audience);
+  if (audience) out.audience = audience;
+  if (p.preset && (CLINICIAN_PRESETS as readonly string[]).includes(p.preset)) out.audience = p.preset;
   return out;
 }
 
@@ -90,12 +89,12 @@ export default function AskSpecialist() {
   const { toast } = useToast();
   const { t, uiLang } = useLanguage();
   const reduceMotion = useReducedMotion();
-  const exportReport = useReportExport();
+  const printPdf = useConsultPdf();
   const firstName = (childProfile.name || "your child").split(" ")[0];
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [reviewed, setReviewed] = useState(false);
 
-  // LC-08: audience is the first step of the export bar; remembered per device.
+  // Step 1: the audience (= the preset); remembered per device.
   const [audience, setAudienceState] = useState<ExportAudience>(readStoredAudience);
   const setAudience = (a: ExportAudience) => {
     // Consent applies to the exact outgoing audience. Clear it in this click
@@ -105,18 +104,16 @@ export default function AskSpecialist() {
     setAudienceState(a);
     try { localStorage.setItem(AUDIENCE_STORAGE_KEY, a); } catch { /* metadata only */ }
   };
+  const isTeacher = audience === "teacher";
 
   // AIX-S3(a): the Vision handoff note lands HERE — as a parent-editable note in
   // the composer, never as an auto-share. Consume the one-shot seam into local
-  // editable state; the note rides into copy/download/export/send ONLY through
-  // the parent's existing explicit acts (all behind the reviewed-checkbox gate).
+  // editable state; the note rides into copy/PDF/send ONLY through the parent's
+  // explicit acts (all behind the reviewed-checkbox gate).
   const [visionNote, setVisionNote] = useState("");
 
-  // LC-20 — REASON FOR VISIT. The packet opened with "About" and never said why
-  // the parent was coming, so the clinician still had to ask the first
-  // question. The composer is ALWAYS shown (not only when the coach prefilled
-  // it) and the line rides into every audience's packet, in the parent's own
-  // words. Device-local until an export the parent triggers.
+  // LC-20 — REASON FOR VISIT. Always shown; rides into every clinician packet
+  // in the parent's own words. Device-local until an export the parent takes.
   const [reason, setReason] = useState("");
 
   // The parent's prepared questions and the discipline-specific evidence — the
@@ -129,30 +126,21 @@ export default function AskSpecialist() {
     () => questionsCol.items.map((q) => q.text).filter((x) => x.trim().length > 0),
     [questionsCol.items]
   );
-  // B-CAREPRO-13 — the ONE prefill seam carries four fields and this composer
-  // consumes all four into EDITABLE local state: the reason box, the note, the
-  // audience row and the PDF menu's suggested preset. The audience is applied
-  // without persisting it (a caller's hint is not the parent's remembered
-  // choice) and without touching the reason — setting the audience must not
-  // clear what the caller wrote. The reviewed gate starts unticked, as ever.
-  const [presetHint, setPresetHint] = useState<ConsultPrefill["preset"]>(undefined);
+  // B-CAREPRO-13 — the ONE prefill seam: this composer consumes reason, note
+  // and audience (a caller's preset IS an audience since B-CAREPRO-28) into
+  // EDITABLE local state. The audience is applied without persisting it (a
+  // caller's hint is not the parent's remembered choice) and without touching
+  // the reason. The reviewed gate starts unticked, as ever.
   useEffect(() => {
     if (pendingConsultPrefill == null) return;
     const patch = resolveConsultPrefill(pendingConsultPrefill);
     if (patch.reason !== undefined) setReason(patch.reason);
     if (patch.note !== undefined) setVisionNote(patch.note);
     if (patch.audience !== undefined) setAudienceState(patch.audience);
-    if (patch.preset !== undefined) setPresetHint(patch.preset);
     setReviewed(false);
     consumeConsultPrefill();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingConsultPrefill]);
-
-  // Export-as-PDF popover state + a11y refs.
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuTriggerRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   /** LC-16 / B-CAREPRO-19 — there is no professional directory (G3: the
    *  route is retired until one real record exists), so the verb is the move a
@@ -163,17 +151,17 @@ export default function AskSpecialist() {
     trackShareInitiated("story", "ask_specialist");
     const subject = t("elev.learnCare.trusted.subject", { name: firstName });
     const href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(exportText)}`;
-    try { window.location.href = href; trackShareCompleted("story", "email"); }
+    try {
+      window.location.href = href;
+      trackShareCompleted("story", "email");
+    }
     catch { toast(t("elev.packet.copyFailed"), "error"); }
   };
+
   const packet = useMemo(
     () => buildConsultPacket({
       // LC-17b: the SHARED input assembler (consult/packet.buildPacketInput) —
-      // one mapping for this surface, the Reports export and both sides of a
-      // share. The hand-rolled version here dropped every log `trigger`, so the
-      // behavioural-health preset's only distinguishing section could never be
-      // reached from the app; RUN-01's months-precise age comes from the same
-      // place now, for everyone.
+      // one mapping for this surface and both sides of a share.
       ...buildPacketInput(
         { profile: childProfile, logs: behaviorLogs, milestones, plans: actionPlans, memory: approvedMemoryItems },
         Date.now()
@@ -196,22 +184,21 @@ export default function AskSpecialist() {
   const toggle = (id: string) =>
     setExcluded((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
-  // LC-08: the ONE export text for Copy / Download / Send — audience-capped
-  // and note-scanned. A blocked build yields NO text (fail closed) and a
-  // parent-readable reason; every verb disables until the parent fixes it.
+  // LC-08 / B-CAREPRO-28: the ONE export text for Copy and Send, for the
+  // chosen preset — audience-capped and note-scanned. A blocked build yields
+  // NO text (fail closed) and a parent-readable reason; every verb disables
+  // until the parent fixes it. The teacher branch builds nothing here: the
+  // School Brief is the one teacher document.
   const exportBuild = useMemo<ExportBuild>(() => {
+    if (isTeacher) return { text: null, error: "" };
     try {
-      // LC-13 / item 8: `uiLang` renders the packet SCAFFOLD (headings, the
-      // prepared line) in the parent's language — a gan teacher receives a
-      // Hebrew packet, not an English skeleton around Hebrew items.
+      // LC-13 / item 8: `uiLang` renders the packet SCAFFOLD in the parent's language.
       return { text: serializeForExport(audience, packet, excluded, visionNote, t("consult.visionNote.heading"), uiLang), error: null };
     } catch (err) {
-      const reason = err instanceof ClinicalLanguageError && audience === "teacher"
-        ? t("elev.carehonesty.consult.blocked.teacher", { term: err.term })
-        : t("elev.carehonesty.consult.blocked.generic");
-      return { text: null, error: reason };
+      // Fail closed: a forbidden token or a % in the note blocks every verb.
+      return { text: null, error: err instanceof ClinicalLanguageError ? t("elev.carehonesty.consult.blocked.generic") : t("consult.exportError") };
     }
-  }, [audience, packet, excluded, visionNote, t, uiLang]);
+  }, [isTeacher, audience, packet, excluded, visionNote, t, uiLang]);
   const exportText = exportBuild.text;
   const noneSelected = includedCount === 0 || !reviewed || exportText == null;
 
@@ -229,69 +216,21 @@ export default function AskSpecialist() {
     }
     catch { toast(t("elev.packet.copyFailed"), "error"); }
   };
-  const download = () => {
-    if (exportText == null) return;
-    const blob = new Blob([exportText], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = `${firstName}-arbor-handoff-${audience}-${packet.generatedAt}.md`;
-    document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(url);
-    toast(t("elev.packet.downloaded"), "success");
-  };
 
-  const runExport = (type: typeof CONSULT_MENU_REPORTS[number]["type"]) => {
-    setMenuOpen(false);
-    menuTriggerRef.current?.focus();
-    // LC-11 — ONE teacher door. Two teacher artefacts used to coexist with
-    // different content ceilings: this menu's "Teacher Handoff" (about + tried)
-    // and the School Brief (AI-curated five fields, parent-approved per export,
-    // clinical scan fail-closed). A parent could not tell which one to use, so
-    // the menu item now opens the School Brief instead of minting a rival
-    // document.
-    if (type === "teacher") {
-      toast(t("elev.learnCare.brief.oneDoor.hint"), "info");
-      setActiveTab("school-brief");
-      return;
+  // B-CAREPRO-28: ONE PDF for the chosen audience — the same preset, the same
+  // redaction and the same note as the Copy text (exportPrintSections is the
+  // print twin of serializeForExport). Fail closed: a blocked build prints
+  // nothing and records nothing.
+  const savePdf = () => {
+    if (exportText == null || isTeacher) return;
+    try {
+      const sections = exportPrintSections(audience, packet, excluded, visionNote, t("consult.visionNote.heading"), uiLang);
+      printPdf(audience, sections);
+      recordExport(childProfile.id, audience);
+    } catch (err) {
+      void err;
+      toast(t("consult.exportError"), "error");
     }
-    toast(t("consult.opening"), "info");
-    // Professional audiences route through the W4.1 preset serializer inside
-    // useReportExport — the parent's include-toggles (redaction) ride along.
-    // The catch is the fail-closed seam: a blocked packet exports NOTHING.
-    try { exportReport(type, excluded, { reason, questions: preparedQuestions }); }
-    catch { toast(t("consult.exportError"), "error"); }
-  };
-
-  // B-CAREPRO-13 — a caller's preset (e.g. Reports' "Prepare a summary") is
-  // listed first and marked; it still exports only through runExport, i.e.
-  // behind the reviewed gate that disables the menu trigger.
-  const menuReports = useMemo(
-    () => (presetHint
-      ? [...CONSULT_MENU_REPORTS.filter((r) => r.type === presetHint), ...CONSULT_MENU_REPORTS.filter((r) => r.type !== presetHint)]
-      : [...CONSULT_MENU_REPORTS]),
-    [presetHint]
-  );
-
-  // Popover: outside-click closes; Esc/arrow handled per-item below.
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onDoc = (e: MouseEvent) => {
-      if (menuRef.current?.contains(e.target as Node)) return;
-      if (menuTriggerRef.current?.contains(e.target as Node)) return;
-      setMenuOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    // Focus the first menu item when opened.
-    const id = window.setTimeout(() => itemRefs.current[0]?.focus(), 0);
-    return () => { document.removeEventListener("mousedown", onDoc); window.clearTimeout(id); };
-  }, [menuOpen]);
-
-  const onMenuKey = (e: React.KeyboardEvent, idx: number) => {
-    if (e.key === "Escape") { e.preventDefault(); setMenuOpen(false); menuTriggerRef.current?.focus(); return; }
-    if (e.key === "ArrowDown") { e.preventDefault(); itemRefs.current[(idx + 1) % CONSULT_MENU_REPORTS.length]?.focus(); }
-    else if (e.key === "ArrowUp") { e.preventDefault(); itemRefs.current[(idx - 1 + CONSULT_MENU_REPORTS.length) % CONSULT_MENU_REPORTS.length]?.focus(); }
-    else if (e.key === "Home") { e.preventDefault(); itemRefs.current[0]?.focus(); }
-    else if (e.key === "End") { e.preventDefault(); itemRefs.current[CONSULT_MENU_REPORTS.length - 1]?.focus(); }
   };
 
   const motionProps = reduceMotion
@@ -333,12 +272,80 @@ export default function AskSpecialist() {
       </section>
   );
 
+  /** Numbered step heading (the steps are the page's reading order). */
+  const stepHeading = (n: number, label: string, id?: string) => (
+    <h2 id={id} className="flex items-center gap-2 text-[15px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: INK }}>
+      <span aria-hidden="true" className="inline-flex items-center justify-center w-6 h-6 rounded-full text-[12px] font-extrabold" style={{ background: GREEN_SOFT, color: GREEN }}>{n}</span>
+      {label}
+    </h2>
+  );
+
   return (
-    /* W2: one DOM/visual sequence: purpose, editable packet, contract, review/export. */
+    /* W2: one DOM/visual sequence: who, purpose, editable packet, contract, review/export. */
     <motion.div {...motionProps} className="flex flex-col gap-5 max-w-[1180px]">
-      {/* Purpose is always editable before the live packet; the same builder carries it into every audience. */}
-      <section data-testid="consult-reason-section" className="border-b pb-5" style={{ borderColor: RULE }}>
-        <label htmlFor="consult-reason" className="inline-flex items-center gap-2 text-lg font-bold" style={{ color: GREEN }}>
+      {/* Step 1 · Who is it for? — the audience IS the preset (B-CAREPRO-28).
+          LC-28 / OBJ-CARE-02: the hub CTA scrolls to and focuses this row. */}
+      <section data-testid="consult-audience-step" className="flex flex-col gap-2">
+        {stepHeading(1, t("elev.carehonesty.consult.audience.label"), "consult-audience-label")}
+        <div
+          id="consult-audience-row"
+          data-testid="consult-audience-row"
+          tabIndex={-1}
+          role="radiogroup"
+          aria-labelledby="consult-audience-label"
+          className="flex flex-wrap items-center gap-1.5 focus:outline-none"
+          style={{ scrollMarginBlockStart: "0.75rem" }}
+        >
+          {EXPORT_AUDIENCES.map((a) => {
+            const on = a === audience;
+            return (
+              <button
+                key={a}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                onClick={() => setAudience(a)}
+                className="inline-flex items-center gap-1.5 text-[12.5px] font-bold rounded-xl px-3.5 py-2 min-h-[44px] transition"
+                style={on
+                  ? { background: GREEN, color: "var(--arbor-paper-elevated)" }
+                  : { background: "var(--arbor-paper-sunk)", color: INK, border: `1px solid ${RULE}` }}
+              >
+                {on && <Icon name="check" size={14} weight={600} />}
+                {t(`elev.carehonesty.consult.audience.${a}`)}
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-xs leading-relaxed" style={{ color: MUTED }}>
+          {t(`elev.carehonesty.consult.audience.hint.${audience}`)}
+        </p>
+      </section>
+
+      {isTeacher ? (
+        /* LC-11 / B-CAREPRO-28 — ONE teacher document. A teacher never gets
+           this packet's text; the School Brief (classroom words, per-export
+           approval, fail-closed scan) is the teacher branch. */
+        <section data-testid="consult-teacher-branch" className="rounded-[22px] p-5" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-sm)" }}>
+          <h2 className="text-[15px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: INK }}>
+            {t("elev.carehonesty.consult.teacher.title", { name: firstName })}
+          </h2>
+          <p className="text-[13px] leading-relaxed mt-1.5" style={{ color: MUTED }}>{t("elev.carehonesty.consult.teacher.body")}</p>
+          <button
+            type="button"
+            data-testid="consult-teacher-open"
+            onClick={() => setActiveTab("school-brief")}
+            className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-4 py-3 mt-4 min-h-[44px]"
+            style={{ background: "var(--arbor-gradient-primary)", color: "var(--arbor-paper-elevated)", boxShadow: "var(--arbor-clay-glow)" }}
+          >
+            <Icon name="school" size={17} /> {t("elev.carehonesty.consult.teacher.cta")}
+          </button>
+        </section>
+      ) : (
+        <>
+      {/* Step 2 · What changed — purpose first; the same builder carries it into every clinician packet. */}
+      <section data-testid="consult-reason-section" className="border-t pt-5" style={{ borderColor: RULE }}>
+        {stepHeading(2, t("elev.carehonesty.consult.step.changed"))}
+        <label htmlFor="consult-reason" className="inline-flex items-center gap-2 text-[14px] font-bold mt-3" style={{ color: GREEN }}>
           <Icon name="help" size={16} /> {t("elev.learnCare.reason.label")}
         </label>
         <p className="text-sm leading-relaxed mt-1 max-w-[65ch]" style={{ color: MUTED }}>{t("elev.learnCare.reason.hint")}</p>
@@ -405,8 +412,8 @@ export default function AskSpecialist() {
           <p className="text-sm mt-1.5 leading-relaxed max-w-[420px] mx-auto" style={{ color: MUTED }}>{t("consult.empty.body")}</p>
           <button
             onClick={() => setActiveTab("behaviors")}
-            className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-5 py-3 mt-4 min-h-[44px]"
-            style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
+            className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-5 py-3 mt-4 min-h-[44px]"
+            style={{ background: "var(--arbor-gradient-primary)", color: "var(--arbor-paper-elevated)", boxShadow: "var(--arbor-clay-glow)" }}
           >
             {t("consult.empty.cta")}
           </button>
@@ -415,139 +422,93 @@ export default function AskSpecialist() {
         </>
       ) : (
         <>
-          {/* Live packet first. */}
-          <div className="grid grid-cols-1 gap-5 items-start">
-            {/* Left: the summary card (the moat read). Section titles mirror the
-                child record (incl. the Development-Map domains in the dev
-                snapshot); each item is a label/value inset row with an
-                include-toggle. LC-07: rows render in FULL — the row is the line
-                the parent approves, so it is never cut mid-sentence. */}
-            <section className="rounded-[22px] p-5" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-sm)" }}>
-              <h2 className="text-[15px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: INK }}>{t("care.packet.title")}</h2>
-              <p className="text-[12px] font-semibold mt-1.5 leading-relaxed" style={{ color: MUTED }}>{t("care.lead", { name: firstName })}</p>
+          {/* The summary card (the moat read). Each item is a label/value inset
+              row with an include-toggle. LC-07: rows render in FULL — the row
+              is the line the parent approves, so it is never cut mid-sentence. */}
+          <section className="rounded-[22px] p-5" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-sm)" }}>
+            <h3 className="text-[15px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: INK }}>{t("care.packet.title")}</h3>
+            <p className="text-[12px] font-semibold mt-1.5 leading-relaxed" style={{ color: MUTED }}>{t("care.lead", { name: firstName })}</p>
 
-              <div className="flex flex-col gap-2.5 mt-4">
-                {packet.sections.map((section) => (
-                  <div key={section.id} className="flex flex-col gap-2">
-                    {section.items.map((it) => {
-                      const on = !excluded.has(it.id);
-                      return (
-                        <InsetRow
-                          key={it.id}
-                          label={sectionTitle(section, uiLang)}
-                          value={it.text}
-                          excluded={!on}
-                          multiline
-                          testId="consult-packet-item"
-                          check={
-                            <button
-                              onClick={() => toggle(it.id)}
-                              aria-pressed={on}
-                              aria-label={`Include: ${it.text}`}
-                              className="flex-shrink-0 w-11 h-11 -m-3 rounded-md flex items-center justify-center transition self-start"
-                              style={{ color: on ? "#fff" : MUTED }}
+            <div className="flex flex-col gap-2.5 mt-4">
+              {packet.sections.map((section) => (
+                <div key={section.id} className="flex flex-col gap-2">
+                  {section.items.map((it) => {
+                    const on = !excluded.has(it.id);
+                    return (
+                      <InsetRow
+                        key={it.id}
+                        label={sectionTitle(section, uiLang)}
+                        value={it.text}
+                        excluded={!on}
+                        multiline
+                        testId="consult-packet-item"
+                        check={
+                          <button
+                            onClick={() => toggle(it.id)}
+                            aria-pressed={on}
+                            aria-label={`Include: ${it.text}`}
+                            className="flex-shrink-0 w-11 h-11 -m-3 rounded-md flex items-center justify-center transition self-start"
+                            style={{ color: on ? "var(--arbor-paper-elevated)" : MUTED }}
+                          >
+                            <span
+                              className="w-5 h-5 rounded-md flex items-center justify-center"
+                              style={on ? { background: GREEN, color: "var(--arbor-paper-elevated)" } : { background: "var(--arbor-paper-sunk)", border: `1px solid ${RULE}` }}
                             >
-                              <span
-                                className="w-5 h-5 rounded-md flex items-center justify-center"
-                                style={on ? { background: GREEN, color: "#fff" } : { background: "var(--arbor-paper-sunk)", border: `1px solid ${RULE}` }}
-                              >
-                                {on && <Icon name="check" size={14} weight={600} />}
-                              </span>
-                            </button>
-                          }
-                        />
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
+                              {on && <Icon name="check" size={14} weight={600} />}
+                            </span>
+                          </button>
+                        }
+                      />
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
 
-              {/* Trust row (Safety L3) — the GDPR/COPPA promise, INSIDE the card,
-                  green tokens (never the design's blue). */}
-              <div className="flex items-start gap-2.5 rounded-[13px] p-3 mt-3.5" style={{ background: GREEN_SOFT }}>
-                <Icon name="verified_user" size={19} fill={1} style={{ color: GREEN }} />
-                <span className="text-xs font-semibold leading-relaxed" style={{ color: GREEN }}>{t("care.trust")}</span>
-              </div>
+            {/* Trust row (Safety L3) — the GDPR/COPPA promise, INSIDE the card. */}
+            <div className="flex items-start gap-2.5 rounded-[13px] p-3 mt-3.5" style={{ background: GREEN_SOFT }}>
+              <Icon name="verified_user" size={19} fill={1} style={{ color: GREEN }} />
+              <span className="text-xs font-semibold leading-relaxed" style={{ color: GREEN }}>{t("care.trust")}</span>
+            </div>
 
-              {/* LC-07: the recipient's exact text, word for word, for the
-                  audience chosen below. A blocked build shows the reason here
-                  instead of any text (fail closed). */}
-              <details className="mt-3.5 rounded-[13px] px-3.5 py-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }}>
-                <summary className="cursor-pointer list-none min-h-[44px] flex items-center gap-2 text-[12.5px] font-extrabold" style={{ color: GREEN }}>
-                  <Icon name="visibility" size={16} /> {t("elev.carehonesty.consult.preview.toggle")}
-                </summary>
-                <p className="text-xs leading-relaxed" style={{ color: MUTED }}>{t("elev.carehonesty.consult.preview.hint")}</p>
-                {exportText != null ? (
-                  <pre
-                    dir="auto"
-                    data-testid="consult-export-preview"
-                    className="whitespace-pre-wrap break-words text-[12px] leading-relaxed mt-2 mb-2 font-sans"
-                    style={{ color: INK, fontFamily: "inherit" }}
-                  >
-                    {exportText}
-                  </pre>
-                ) : (
-                  <p role="alert" className="text-[12px] font-bold leading-relaxed mt-2 mb-2" style={{ color: "var(--arbor-pink-ink)" }}>
-                    {exportBuild.error}
-                  </p>
-                )}
-              </details>
-            </section>
-          </div>
+            {/* LC-07: the recipient's exact text, word for word, for the
+                audience chosen in step 1. A blocked build shows the reason
+                here instead of any text (fail closed). */}
+            <details className="mt-3.5 rounded-[13px] px-3.5 py-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }}>
+              <summary className="cursor-pointer list-none min-h-[44px] flex items-center gap-2 text-[12.5px] font-extrabold" style={{ color: GREEN }}>
+                <Icon name="visibility" size={16} /> {t("elev.carehonesty.consult.preview.toggle")}
+              </summary>
+              <p className="text-xs leading-relaxed" style={{ color: MUTED }}>{t("elev.carehonesty.consult.preview.hint")}</p>
+              {exportText != null ? (
+                <pre
+                  dir="auto"
+                  data-testid="consult-export-preview"
+                  className="whitespace-pre-wrap break-words text-[12px] leading-relaxed mt-2 mb-2 font-sans"
+                  style={{ color: INK, fontFamily: "inherit" }}
+                >
+                  {exportText}
+                </pre>
+              ) : (
+                <p role="alert" className="text-[12px] font-bold leading-relaxed mt-2 mb-2" style={{ color: "var(--arbor-pink-ink)" }}>
+                  {exportBuild.error}
+                </p>
+              )}
+            </details>
+          </section>
 
       {/* The complete data contract remains one labeled disclosure, after the packet and before export. */}
           {packetContract}
 
-
-          {/* Review and export follow the entire packet in normal flow, without covering unread text. */}
+          {/* Step 3 · What leaves — the review gate, then one set of verbs for
+              the chosen audience. Follows the packet in normal flow, without
+              covering unread text. */}
           <div data-testid="consult-review-export" className="border-t pt-5 flex flex-col gap-4" style={{ borderColor: RULE }}>
-            <div className="flex flex-wrap items-center gap-2">
-              <span id="consult-audience-label" className="text-[12px] font-extrabold me-1" style={{ color: INK }}>
-                {t("elev.carehonesty.consult.audience.label")}
+            {stepHeading(3, t("elev.carehonesty.consult.step.leaves"))}
+            {exportText == null && (
+              <span role="alert" className="text-xs font-bold leading-relaxed" style={{ color: "var(--arbor-pink-ink)" }}>
+                {exportBuild.error}
               </span>
-              {/* LC-28 / OBJ-CARE-02: the hub hero pushed the packet to 1,320 px
-                  at 390. The hero CTA now scrolls to and focuses THIS row — the
-                  export bar's required first step — rather than the top of a
-                  long flow, so the packet is the first thing on screen. */}
-              <div
-                id="consult-audience-row"
-                data-testid="consult-audience-row"
-                tabIndex={-1}
-                role="radiogroup"
-                aria-labelledby="consult-audience-label"
-                className="flex flex-wrap items-center gap-1.5 focus:outline-none"
-                style={{ scrollMarginBlockStart: "0.75rem" }}
-              >
-                {EXPORT_AUDIENCES.map((a) => {
-                  const on = a === audience;
-                  return (
-                    <button
-                      key={a}
-                      type="button"
-                      role="radio"
-                      aria-checked={on}
-                      onClick={() => setAudience(a)}
-                      className="inline-flex items-center gap-1.5 text-[12.5px] font-bold rounded-xl px-3.5 py-2 min-h-[44px] transition"
-                      style={on
-                        ? { background: GREEN, color: "#fff" }
-                        : { background: "var(--arbor-paper-sunk)", color: INK, border: `1px solid ${RULE}` }}
-                    >
-                      {on && <Icon name="check" size={14} weight={600} />}
-                      {t(`elev.carehonesty.consult.audience.${a}`)}
-                    </button>
-                  );
-                })}
-              </div>
-              <span className="basis-full text-xs leading-relaxed" style={{ color: MUTED }}>
-                {t(`elev.carehonesty.consult.audience.hint.${audience}`)}
-              </span>
-              {exportText == null && (
-                <span role="alert" className="basis-full text-xs font-bold leading-relaxed" style={{ color: "var(--arbor-pink-ink)" }}>
-                  {exportBuild.error}
-                </span>
-              )}
-            </div>
-
+            )}
             <div className="flex flex-wrap items-center gap-3">
               <span className="text-[13px] font-bold me-auto" style={{ color: MUTED }} aria-live="polite">
                 {t("consult.selected", { n: includedCount })}
@@ -561,61 +522,20 @@ export default function AskSpecialist() {
                 />
                 <span>{t("consult.reviewed")}</span>
               </label>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
               <button onClick={copy} disabled={noneSelected}
+                data-testid="consult-copy"
                 className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-4 py-3 transition disabled:opacity-50 min-h-[44px]"
-                style={{ background: GREEN_SOFT, color: GREEN }}>
+                style={{ background: "var(--arbor-gradient-primary)", color: "var(--arbor-paper-elevated)", boxShadow: "var(--arbor-clay-glow)" }}>
                 <Icon name="content_copy" size={17} /> {t("consult.copy")}
               </button>
-              <button onClick={download} disabled={noneSelected}
-                className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-3 transition disabled:opacity-50 min-h-[44px]"
-                style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}>
-                <Icon name="download" size={18} /> {t("consult.download")}
+              <button onClick={savePdf} disabled={noneSelected}
+                data-testid="consult-pdf"
+                className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-4 py-3 transition disabled:opacity-50 min-h-[44px]"
+                style={{ background: "var(--arbor-paper-sunk)", color: INK, border: `1px solid ${RULE}` }}>
+                <Icon name="description" size={17} /> {t("elev.carehonesty.consult.pdf")}
               </button>
-
-              {/* Export as PDF ▾ — menu replacing the standalone Reports grid. */}
-              <div className="relative">
-                <button
-                  ref={menuTriggerRef}
-                  onClick={() => setMenuOpen((o) => !o)}
-                  disabled={noneSelected}
-                  aria-haspopup="menu"
-                  aria-expanded={menuOpen}
-                  className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-4 py-3 transition disabled:opacity-50 min-h-[44px]"
-                  style={{ background: "var(--arbor-paper-sunk)", color: INK, border: `1px solid ${RULE}` }}>
-                  <Icon name="description" size={17} /> {t("consult.exportPdf")} <Icon name="expand_more" size={15} />
-                </button>
-                <AnimatePresence>
-                  {menuOpen && (
-                    <motion.div
-                      ref={menuRef}
-                      role="menu"
-                      aria-label={t("consult.exportPdf")}
-                      initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
-                      animate={reduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1 }}
-                      exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
-                      transition={{ duration: reduceMotion ? 0 : 0.15 }}
-                      className="absolute bottom-full mb-2 w-[260px] rounded-2xl overflow-hidden p-1.5 z-20 end-0"
-                      style={{ transformOrigin: "bottom", background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-md)" }}>
-                      {menuReports.map((r, idx) => (
-                        <button
-                          key={r.type}
-                          ref={(el) => { itemRefs.current[idx] = el; }}
-                          role="menuitem"
-                          aria-current={r.type === presetHint ? "true" : undefined}
-                          data-testid={r.type === presetHint ? "consult-menu-preset" : undefined}
-                          onClick={() => runExport(r.type)}
-                          onKeyDown={(e) => onMenuKey(e, idx)}
-                          className="w-full text-start rounded-xl px-3 py-2.5 text-[13px] font-semibold transition hover:brightness-95 min-h-[44px] flex items-center gap-2"
-                          style={{ color: INK }}>
-                          {r.type === presetHint && <Icon name="check" size={14} weight={600} />}
-                          {t(r.titleKey)}
-                        </button>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
               {/* LC-16 / B-CAREPRO-19 — hand the same audience-capped packet
                   to someone the parent already trusts. */}
               <button
@@ -623,12 +543,14 @@ export default function AskSpecialist() {
                 disabled={noneSelected}
                 data-testid="consult-send-trusted"
                 className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-4 py-3 transition disabled:opacity-50 min-h-[44px]"
-                style={{ background: "var(--arbor-paper-sunk)", color: GREEN, border: "1px solid rgba(52,178,119,0.30)" }}>
+                style={{ background: "var(--arbor-paper-sunk)", color: GREEN, border: `1px solid ${RULE}` }}>
                 <Icon name="mail" size={17} />
                 {t("elev.learnCare.trusted.send")}
               </button>
             </div>
           </div>
+        </>
+      )}
         </>
       )}
     </motion.div>

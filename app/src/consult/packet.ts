@@ -883,31 +883,57 @@ export function presetPacketToPrintSections(
   return sections;
 }
 
-/* ── LC-08 — the ONE export seam for Copy / Download / Send ─────────────────
- * The consult surface's most-used verbs used to build their text through the
- * unguarded `serializePacket` — no audience, no ceiling, no scan — so a
- * teacher reached through "Send to a professional" received memory facts and
- * log-derived patterns the teacher preset forbids, and the free-text parent
- * note was never scanned. Components may not import `serializePacket` (a
- * source-scan guard enforces it); they call this instead:
+/* ── LC-08 + B-CAREPRO-28 — the ONE export seam for every Consult egress ─────
+ * The consult surface's verbs used to build their text through the unguarded
+ * `serializePacket` (LC-08), and then — even once guarded — every clinician
+ * got the THERAPIST preset on Copy/Download/mail while the SLP phrases and the
+ * pediatrician's measurements reached only a separate 10-item PDF menu.
  *
- *  - clinician → the clinician preset (therapist ceiling — all clinician
- *    presets share one policy), term-scan exempt, forbidden tokens + %
- *    fail closed;
+ * B-CAREPRO-28: the audience IS the preset. The parent picks who the summary
+ * is for (pediatrician · speech therapist · behaviour/psychology · other
+ * clinician · teacher · my records) and Copy, PDF and "Send to someone you
+ * trust" all serialize that one preset through this seam:
+ *
+ *  - a clinician preset → its own ceiling (+ the one evidence section its
+ *    discipline reads), term-scan exempt, forbidden tokens + % fail closed;
  *  - teacher   → the teacher preset: curated ceiling, AND the parent note is
- *    scanned for clinical-diagnosis terms BEFORE it joins (fail closed);
+ *    scanned for clinical-diagnosis terms BEFORE it joins (fail closed). The
+ *    Consult screen hands a teacher to the School Brief instead (LC-11);
  *  - self      → the parent's own records: everything they selected, still
- *    behind the forbidden-token / percentage ceiling (no export carries a
- *    riskLevel or a %). */
+ *    behind the forbidden-token / percentage ceiling.
+ *
+ * Components may not import `serializePacket` (a source-scan guard enforces
+ * it); they call `serializeForExport` / `exportPrintSections` instead. */
 
-export type ExportAudience = "clinician" | "teacher" | "self";
-export const EXPORT_AUDIENCES: readonly ExportAudience[] = ["clinician", "teacher", "self"];
-export const DEFAULT_EXPORT_AUDIENCE: ExportAudience = "clinician";
+export type ExportAudience = ConsultAudience | "self";
 
-const PRESET_FOR_EXPORT_AUDIENCE: Record<Exclude<ExportAudience, "self">, ConsultAudience> = {
-  clinician: "therapist",
-  teacher: "teacher",
-};
+/** The audience step, in the order the parent reads it. */
+export const EXPORT_AUDIENCES: readonly ExportAudience[] = [
+  "pediatrician", "slp", "behavioral_health", "therapist", "teacher", "self",
+];
+export const DEFAULT_EXPORT_AUDIENCE: ExportAudience = "pediatrician";
+
+/** A stored or caller-supplied audience → a current one. The pre-B-28 value
+ *  "clinician" meant the therapist ceiling, so it maps there; anything else
+ *  unknown is null (the caller keeps its default). */
+export function normalizeExportAudience(value: unknown): ExportAudience | null {
+  if (value === "clinician") return "therapist";
+  return typeof value === "string" && (EXPORT_AUDIENCES as readonly string[]).includes(value)
+    ? (value as ExportAudience)
+    : null;
+}
+
+/** Scan the parent note for a non-clinician preset (fail closed). */
+function assertNoteAllowed(preset: ConsultPreset, note: string): void {
+  if (!preset.clinicalTermScan) return;
+  const violation = findClinicalDiagnosisTerm(note);
+  if (violation) {
+    throw new ClinicalLanguageError(
+      violation,
+      `Export blocked: clinical-diagnosis term "${violation}" in the parent note is not allowed in a ${preset.audience} export.`
+    );
+  }
+}
 
 /** Serialize a packet for a chosen audience with the parent's note appended
  *  under `noteHeading`. Throws `ClinicalLanguageError` (fail closed — nothing
@@ -925,18 +951,45 @@ export function serializeForExport(
     assertClinicianExportCeiling(md);
     return md;
   }
-  const preset = CONSULT_PRESETS[PRESET_FOR_EXPORT_AUDIENCE[audience]];
-  if (preset.clinicalTermScan) {
-    const violation = findClinicalDiagnosisTerm(note);
-    if (violation) {
-      throw new ClinicalLanguageError(
-        violation,
-        `Export blocked: clinical-diagnosis term "${violation}" in the parent note is not allowed in a ${preset.audience} export.`
-      );
-    }
-  }
+  const preset = CONSULT_PRESETS[audience];
+  assertNoteAllowed(preset, note);
   const md = appendParentNote(serializePresetPacket(preset.audience, packet, excludedIds, lang), note, noteHeading);
   assertWithinCeiling(preset, md);
   assertClinicianExportCeiling(md);
   return md;
+}
+
+/** B-CAREPRO-28 — the PDF twin of `serializeForExport`: the SAME audience,
+ *  the same capped sections, the same redaction and the same parent note, as
+ *  print-shell sections for `openPrintableReport`. Copy and PDF therefore
+ *  carry the same words (consult/exportSeam.test.ts proves it per preset). */
+export function exportPrintSections(
+  audience: ExportAudience,
+  packet: ConsultPacket,
+  excludedIds: Set<string> = new Set(),
+  note: string = "",
+  noteHeading: string = "Parent note",
+  lang: UiLang = "en"
+): PresetPrintSection[] {
+  const trimmed = note.trim();
+  const noteSection: PresetPrintSection[] = trimmed ? [{ heading: noteHeading, body: [trimmed] }] : [];
+  if (audience === "self") {
+    const sections: PresetPrintSection[] = [];
+    for (const section of packet.sections) {
+      const items = section.items.filter((it) => !excludedIds.has(it.id));
+      if (items.length === 0) continue;
+      const sNote = sectionNote(section, lang);
+      sections.push({ heading: sectionTitle(section, lang), body: [...(sNote ? [sNote] : []), ...items.map((it) => it.text)] });
+    }
+    const out = [...sections, ...noteSection];
+    assertClinicianExportCeiling(out.flatMap((s) => [s.heading, ...s.body]).join("\n"));
+    return out;
+  }
+  const preset = CONSULT_PRESETS[audience];
+  assertNoteAllowed(preset, note);
+  const out = [...presetPacketToPrintSections(audience, packet, excludedIds, lang), ...noteSection];
+  const text = out.flatMap((s) => [s.heading, ...s.body]).join("\n");
+  assertWithinCeiling(preset, text);
+  assertClinicianExportCeiling(text);
+  return out;
 }

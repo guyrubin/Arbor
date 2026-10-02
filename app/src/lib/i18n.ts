@@ -341,9 +341,6 @@ export const en: Dict = {
   "consult.contract.share": "Share deliberately",
   "consult.contract.shareBody": "Nothing leaves Arbor until you take the final action.",
   "consult.copy": "Copy",
-  "consult.download": "Download",
-  "consult.exportPdf": "Export as PDF",
-  "consult.opening": "Opening report…",
   "consult.exportError": "Couldn't build that report — try again.",
   // AIX-S3(a) — Vision handoff note prefills the consult composer (parent-editable).
   "consult.visionNote.title": "Note from Arbor Vision",
@@ -2716,9 +2713,6 @@ export const he: Dict = {
   "consult.contract.share": "משתפים בכוונה",
   "consult.contract.shareBody": "שום דבר לא יוצא מארבור עד שאתם עושים את הפעולה הסופית.",
   "consult.copy": "העתקה",
-  "consult.download": "הורדה",
-  "consult.exportPdf": "ייצוא כ-PDF",
-  "consult.opening": "פותח דוח…",
   "consult.exportError": "לא הצלחנו לבנות את הדוח — נסו שוב.",
   // AIX-S3(a) — פתק ה־Vision ממלא מראש את חלון הייעוץ (ניתן לעריכה על ידי ההורה).
   "consult.visionNote.title": "פתק מ־Arbor Vision",

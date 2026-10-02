@@ -5,17 +5,15 @@ import { Icon } from "../ui/Icon";
 import { PageHeader, SectionCard, cardCls, PASTEL, PastelKey } from "../ui/kit";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { buildReport, openPrintableReport, isProfessionalReportType, ReportDoc, ReportType } from "../../lib/reportExport";
-import { buildPacketInput, buildPresetPacket, presetPacketToPrintSections } from "../../consult/packet";
-import { getLastExportedAt, recordExport } from "../../consult/exportHistory";
+import { buildReport, openPrintableReport, isProfessionalReportType, ReportDoc, ReportType, type ParentReportType } from "../../lib/reportExport";
+import type { ExportAudience, PresetPrintSection } from "../../consult/packet";
 import { useHeroAvatar } from "../ui/HeroAvatar";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import type { LangObservation } from "../../growth/vocabAgg";
-import type { GrowthEntry } from "../../growth/growthEntries";
 
-/** The 10 PDF report types (5 parent-record documents, 5 professional presets).
- *  Exported so the single Consult export menu (b3) consumes the same list —
- *  there is exactly one report definition source. */
+/** The 10 report definitions (5 parent-record documents, 5 professional
+ *  presets) — the one source of their titles. #/reports renders the parent
+ *  records; Consult titles its PDF from the preset rows (B-CAREPRO-28). */
 export const REPORTS: { title: string; desc: string; titleKey: string; descKey: string; tone: PastelKey; type: ReportType }[] = [
   { title: "Weekly Insight", desc: "This week's summary for your records or to share.", titleKey: "elev.reports.weekly.title", descKey: "elev.reports.weekly.desc", tone: "mint", type: "weekly" },
   { title: "Teacher Handoff", desc: "Classroom-ready context, what helps and what escalates.", titleKey: "elev.reports.teacher.title", descKey: "elev.reports.teacher.desc", tone: "sky", type: "teacher" },
@@ -29,42 +27,31 @@ export const REPORTS: { title: string; desc: string; titleKey: string; descKey: 
   { title: "Growth Plan Progress", desc: "Plan steps completed and what's next.", titleKey: "elev.reports.growth.title", descKey: "elev.reports.growth.desc", tone: "mint", type: "growth" },
 ];
 
-/** B-CAREPRO-02: the Consult PDF menu lists ONLY the professional preset
- *  documents — the ones this seam builds through `presetPacketToPrintSections`,
- *  which honours the parent's include-toggles (excludedIds) and re-runs the
- *  clinician ceiling. The five parent-record documents (weekly, snapshot,
- *  behavior, language, growth) build through `buildReport`, which never reads
- *  the redaction the parent just approved — they stay on #/reports. The
- *  teacher document lives in the School Brief (LC-11), so it is not listed. */
-export const CONSULT_MENU_REPORTS = REPORTS.filter((r) => isProfessionalReportType(r.type) && r.type !== "teacher");
-
 /** B-CAREPRO-23: #/reports is "Your full record" — ONLY the parent-record
  *  documents (weekly, snapshot, behaviour pattern, language note, growth plan).
  *  No professional preset is exportable from this page: those documents need
  *  the Consult review gate (redaction, reason, questions, reviewed checkbox),
- *  so the page carries one door to Consult instead. */
-export const PARENT_RECORD_REPORTS = REPORTS.filter((r) => !isProfessionalReportType(r.type));
-
-/** Single clinical-PDF export seam: build a report doc from real child state and
- *  open it as a printable tab. b3's Consult menu and this page share this hook —
- *  no second export engine is introduced.
+ *  so the page carries one door to Consult instead.
  *
- *  IA W4.2: professional audiences (teacher/therapist/pediatrician) build ONLY
- *  through the consult preset serializer — audience data ceilings + the
- *  fail-closed clinical scan run on every build AND at the print egress. Parent
- *  redaction choices (excludedIds, from the Consult include-toggles) survive
- *  into the PDF. Parent-record types stay on `buildReport`. */
+ *  B-CAREPRO-28: the Consult PDF menu (its professional subset of REPORTS) is
+ *  gone — Consult prints ONE PDF for the chosen audience through
+ *  `useConsultPdf`, from the same capped sections its Copy text is built from. */
+export const PARENT_RECORD_REPORTS = REPORTS.filter(
+  (r): r is (typeof REPORTS)[number] & { type: ParentReportType } => !isProfessionalReportType(r.type)
+);
+
+/** The parent-record PDF seam (#/reports): build a report doc from real child
+ *  state and open it as a printable tab. Professional summaries never come
+ *  through here (B-CAREPRO-28): they are printed by Consult, behind its gate. */
 export function useReportExport() {
   const {
-    childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems,
-    checkedMilestones, totalMilestones, setActiveTab,
+    childProfile, behaviorLogs, actionPlans,
+    checkedMilestones, totalMilestones,
   } = useArbor();
-  // LC-13 / item 8: the PDF a Hebrew family hands a gan teacher used to carry
-  // an English title and English section headings around Hebrew items.
-  const { t, uiLang } = useLanguage();
-  // The child's hero anchors the printed handoff to *this* child. Privacy gate:
-  // embed ONLY the stylized descriptor hero (isGenerated) — never a real photo —
-  // into a document the parent may forward to a clinician.
+  // LC-13 / item 8: the PDF carries the family's language.
+  const { uiLang } = useLanguage();
+  // The child's hero anchors the printed record to *this* child. Privacy gate:
+  // embed ONLY the stylized descriptor hero (isGenerated) — never a real photo.
   const { url: heroUrl, isGenerated } = useHeroAvatar();
   // LC-19: the parent's logged phrases feed the Language Transition Note —
   // the same registered `langObs` sink Language Lab writes (export/erase-swept).
@@ -73,69 +60,8 @@ export function useReportExport() {
     orderDir: "desc",
     max: 500,
   });
-  // LC-20: the pediatrician preset's own evidence — the measurements the parent
-  // logged, as entered. Same registered sink the growth card writes.
-  const growthCol = useChildCollection<GrowthEntry>(childProfile.id, "growthEntries", {
-    orderByField: "date",
-    orderDir: "desc",
-    max: 200,
-  });
-  /** LC-20/LC-12: `extras` carries the parent's own voice — the reason for the
-   *  visit and the questions they prepared in Appointments — from whichever
-   *  surface triggered the export. Absent → the packet is unchanged. */
-  return (
-    type: ReportType,
-    excludedIds?: Set<string>,
-    extras?: { reason?: string; questions?: string[] }
-  ) => {
+  return (type: ParentReportType) => {
     const heroImageUrl = isGenerated && heroUrl ? heroUrl : undefined;
-    // LC-11b — ONE teacher door, closed at the SEAM. This hook is the only
-    // path to a preset PDF, so the redirect lives here rather than in each
-    // caller: the Reports card and the Consult menu both reach it, and any
-    // future caller inherits it. The School Brief is the one teacher document
-    // (per-export parent approval, CURATED_FIELDS allowlist, the escalation
-    // note held back, fail-closed scan) — none of which this path has.
-    if (type === "teacher") {
-      setActiveTab("school-brief");
-      return;
-    }
-    if (isProfessionalReportType(type)) {
-      const packet = buildPresetPacket(type, {
-        // LC-17b: the SHARED input assembler — the one mapping the consult
-        // surface and both share sides use. Hand-rolling it here is what
-        // dropped every log `trigger`, leaving the behavioural-health preset
-        // with no triggers section and making it byte-identical to the
-        // therapist summary for every real user.
-        ...buildPacketInput(
-          { profile: childProfile, logs: behaviorLogs, milestones, plans: actionPlans, memory: approvedMemoryItems },
-          Date.now()
-        ),
-        // CARE-7: the delta section renders only when THIS audience has a
-        // prior export on record.
-        lastExportedAt: getLastExportedAt(childProfile.id, type) ?? undefined,
-        // LC-20: the four "professional" reports were byte-identical documents.
-        // Each clinician preset now carries the ONE evidence section its own
-        // discipline reads — SLP the phrases, pediatrician the measurements —
-        // and every packet opens with the parent's reason for coming.
-        reason: extras?.reason,
-        questions: extras?.questions,
-        langObs: langObsCol.items
-          .map((o) => ({ phrase: o.phrase ?? "", language: o.language, at: o.timestamp }))
-          .filter((o) => o.phrase.trim().length > 0),
-        growthEntries: growthCol.items.map((g) => ({ date: g.date, heightCm: g.heightCm, weightKg: g.weightKg })),
-      });
-      const doc: ReportDoc = {
-        title: t(REPORTS.find((r) => r.type === type)!.titleKey),
-        subtitle: `${childProfile.name}, ${ageLabel(childProfile)}`,
-        sections: presetPacketToPrintSections(type, packet, excludedIds, uiLang),
-        heroImageUrl,
-      };
-      openPrintableReport(doc, childProfile.name, uiLang);
-      // Only a build that survived the fail-closed guards reaches this line —
-      // a blocked packet throws above and records nothing.
-      recordExport(childProfile.id, type);
-      return;
-    }
     const doc = buildReport(type, {
       child: childProfile,
       logs: behaviorLogs,
@@ -145,6 +71,26 @@ export function useReportExport() {
       heroImageUrl,
       langObs: langObsCol.items,
     });
+    openPrintableReport(doc, childProfile.name, uiLang);
+  };
+}
+
+/** B-CAREPRO-28 — Consult's ONE PDF per audience. The caller hands the
+ *  sections it built with `exportPrintSections` (the same audience, redaction
+ *  and note as its Copy text); this opens them in the shared print shell with
+ *  the audience's own title and the stylized hero (never a real photo). */
+export function useConsultPdf() {
+  const { childProfile } = useArbor();
+  const { t, uiLang } = useLanguage();
+  const { url: heroUrl, isGenerated } = useHeroAvatar();
+  return (audience: ExportAudience, sections: PresetPrintSection[]) => {
+    const report = REPORTS.find((r) => r.type === audience);
+    const doc: ReportDoc = {
+      title: report ? t(report.titleKey) : t("elev.carehonesty.consult.pdf.selfTitle"),
+      subtitle: `${childProfile.name}, ${ageLabel(childProfile)}`,
+      sections,
+      heroImageUrl: isGenerated && heroUrl ? heroUrl : undefined,
+    };
     openPrintableReport(doc, childProfile.name, uiLang);
   };
 }
@@ -162,8 +108,10 @@ export default function Reports() {
   const { childProfile, setActiveTab, requestConsultPrefill } = useArbor();
   const { t } = useLanguage();
   const exportReport = useReportExport();
+  // B-CAREPRO-28: the door names no audience — the parent picks the
+  // profession in Consult's first step (their last choice is remembered).
   const openConsult = () => {
-    requestConsultPrefill({ audience: "clinician" });
+    requestConsultPrefill({});
     setActiveTab("consult");
   };
 
