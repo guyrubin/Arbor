@@ -55,6 +55,9 @@ const ALLOWED = new Set([
   "overview/TodayRecommendation.tsx",
   "overview/PromptCaptureCard.tsx",
   "overview/WeekOpenAnchorCard.tsx",
+  // B-TODAY-26: Tonight is the step slot's evening state — Today's
+  // `do-today-action`, mutually exclusive with TodayRecommendation.
+  "overview/TonightCard.tsx",
   "overview/QuickLogModal.tsx",
   "overview/ConfirmCaptureReview.tsx",
   "overview/DailyPlanCard.tsx",
@@ -195,6 +198,8 @@ describe("OBJ-TODAY-01 — repo-wide ratchet", () => {
     "overview/PromptCaptureCard.tsx",
     "overview/QuickLogModal.tsx",
     "overview/TodayRecommendation.tsx",
+    // B-TODAY-26: licensed above (Today's do-today-action, evening state).
+    "overview/TonightCard.tsx",
     "practice/GoalBuilderModal.tsx",
     "practice/PracticeStudioTab.tsx",
     "profile/AvatarCreator.tsx",

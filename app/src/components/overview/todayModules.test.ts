@@ -188,8 +188,10 @@ describe("P1-B firewall — the budget counts modules, never a governance gate",
     const anchorStart = overview.indexOf('data-module="today-anchor"');
     // B-AI-06: it renders through the single-offer slot in that column
     // (B-TODAY-18: one slot instance, placed inside the anchor's left column).
-    const placedAbove = overview.indexOf("{offerSlot}", anchorStart);
-    const placedUnder = overview.indexOf('{continuation === "none" && offerSlot}', anchorStart);
+    // B-TODAY-26: inside TodayContinuation the slot shares the place with the
+    // day-close line (`… ? <DayCloseLine …/> : offerSlot}`).
+    const placedAbove = overview.indexOf(": offerSlot}", anchorStart);
+    const placedUnder = overview.indexOf("{!offerIsContinuation && offerSlot}", anchorStart);
     expect(anchorStart).toBeGreaterThan(-1);
     expect(placedAbove).toBeGreaterThan(anchorStart);
     expect(placedUnder).toBeGreaterThan(anchorStart);
@@ -220,5 +222,18 @@ describe("P1-A firewall — nothing outranks the day's action", () => {
 
   it("Today mounts the rail itself, so it counts against the budget", () => {
     expect(overview).toMatch(/import FirstStepsRail, \{ useFirstStepsRail \}/);
+  });
+});
+
+describe("B-TODAY-26 — Tonight is the anchor, not a module", () => {
+  const overview = stripComments(read("components/tabs/OverviewTab.tsx"));
+  it("Tonight renders inside the anchor's step slot and adds no TodayModuleId (no play module at 20:00)", () => {
+    const anchor = overview.indexOf('data-module="today-anchor"');
+    const tonight = overview.indexOf("<TonightCard");
+    const changed = overview.indexOf('data-module="today-changed"');
+    expect(tonight).toBeGreaterThan(anchor);
+    expect(tonight).toBeLessThan(changed);
+    expect(todayModulePriority({ noticedCanFold: true })).not.toContain("tonight" as TodayModuleId);
+    expect(todayModulePriority({ noticedCanFold: true })).not.toContain("play" as TodayModuleId);
   });
 });

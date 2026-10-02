@@ -18,8 +18,12 @@ import TodayRecommendation from "../overview/TodayRecommendation";
 import TodayActionLoop from "../overview/TodayActionLoop";
 import CompanionOfferSlot from "../overview/CompanionOfferSlot";
 import TodayContinuation from "../overview/TodayContinuation";
+import TonightCard, { DayCloseLine } from "../overview/TonightCard";
+import { bedtimeDoorOpen } from "../../lib/timeOfDay";
+import { dayStamp, deriveReturnSignals } from "../../lib/tomorrowReason";
+import { readRitualRecord } from "../../lib/familyRitualsCadence";
 import FamilyOfferLines from "../overview/FamilyOfferLines";
-import { chooseContinuation } from "../overview/continuation";
+import { chooseContinuation, dayCloseDue, dayCloseKey, isContinuationKind } from "../overview/continuation";
 import { useCompanionOffer } from "../overview/useCompanionOffer";
 import QuickLogModal from "../overview/QuickLogModal";
 import WhatChanged from "../overview/WhatChanged";
@@ -157,6 +161,29 @@ export default function OverviewTab() {
     ),
     [behaviorLogs, childProfile.age]
   );
+
+  // ── B-TODAY-26: the evening door and the day's kept moments. The hour is
+  //    read at render (Today re-renders on every open); bedtimeDoorOpen is the
+  //    ONE evening rule (18:00 on, or the family's own wind-down hour). The
+  //    count is the day-close signal (deriveReturnSignals.momentsToday) — the
+  //    same number closeDay writes tomorrow's reason from; no new count. ──
+  const nowHour = new Date().getHours();
+  const tonightOpen = bedtimeDoorOpen(nowHour, rhythm.windDownHour);
+  const momentsToday = useMemo(
+    () => deriveReturnSignals({ behaviorLogs, playLogs, watchFocus: false, ritualRecord: readRitualRecord(), now: Date.now() }).momentsToday,
+    [behaviorLogs, playLogs]
+  );
+  const [dayCloseDismissedDay, setDayCloseDismissedDay] = useState<string | null>(() => {
+    try { return window.localStorage.getItem(dayCloseKey(childProfile.id)); } catch { return null; }
+  });
+  useEffect(() => {
+    try { setDayCloseDismissedDay(window.localStorage.getItem(dayCloseKey(childProfile.id))); } catch { setDayCloseDismissedDay(null); }
+  }, [childProfile.id]);
+  const dismissDayClose = () => {
+    const today = dayStamp(Date.now());
+    try { window.localStorage.setItem(dayCloseKey(childProfile.id), today); } catch { /* best-effort */ }
+    setDayCloseDismissedDay(today);
+  };
 
   const [sessionLength, setSessionLength] = useState<SessionLength>(() => {
     try { return (localStorage.getItem(`arbor.play.sessionLength.${childProfile.id}`) as SessionLength) || "standard"; }
@@ -382,8 +409,11 @@ export default function OverviewTab() {
       focusPending: focusLoading && !focus && recentCount > 0,
       promptKeys,
       hasDailyPlay: !!dailyPlay,
+      // B-TODAY-26: a family with nothing in the record yet keeps the day-0
+      // capture floor; Tonight needs a day to read from.
+      tonight: tonightOpen && behaviorLogs.length + playLogs.length > 0,
     }),
-    [activeTodayAction, hardMoment, recapAnchorDue, weekOpenDue, focusHeadline, focusLoading, focus, recentCount, promptKeys, dailyPlay]
+    [activeTodayAction, hardMoment, recapAnchorDue, weekOpenDue, focusHeadline, focusLoading, focus, recentCount, promptKeys, dailyPlay, tonightOpen, behaviorLogs.length, playLogs.length]
   );
   const stepIsHardMoment = todayChoice.kind === "hardMoment" && !!hardMoment;
   // B-TODAY-24: the step card's ONE Say-this line — the governed pilot guide's
@@ -547,13 +577,23 @@ export default function OverviewTab() {
   // B-TODAY-18: ONE slot instance, placed by the coordinator's winner — the
   // carry-over / tomorrow's-reason kinds above the step, every other kind
   // under it. Never two proactive frames.
-  const continuation = chooseContinuation({ offerKind: todayOffer.offer?.kind });
+  // B-TODAY-26: while Tonight holds the step slot, the coordinator's evening
+  // cue (offer kind "tonight" — RhythmCue's BEDTIME kind) is not rendered on
+  // Today: one voice for the evening.
+  const shownOffer = todayChoice.kind === "tonight" && todayOffer.offer?.kind === "tonight" ? null : todayOffer.offer;
+  const offerIsContinuation = isContinuationKind(shownOffer?.kind);
+  const continuation = chooseContinuation({
+    offerKind: shownOffer?.kind,
+    // B-TODAY-26: the day-close line fills a continuation slot the
+    // coordinator left empty, after the sleep hour, until "Good night".
+    dayClose: !dayZero && dayCloseDue({ hour: nowHour, dismissedDay: dayCloseDismissedDay, today: dayStamp(Date.now()) }),
+  });
   const offerSlot = (
     <CompanionOfferSlot
       surface="today"
-      offer={todayOffer.offer}
+      offer={shownOffer}
       controls={todayOffer}
-      placement={continuation === "none" ? "under-step" : "continuation"}
+      placement={offerIsContinuation ? "continuation" : "under-step"}
     />
   );
 
@@ -677,7 +717,9 @@ export default function OverviewTab() {
               the coordinator decided (chooseContinuation maps its winner to
               this placement). The resume eyebrow is the slot's eyebrow now. */}
           <TodayContinuation choice={continuation} isReturning={isReturning}>
-            {offerSlot}
+            {continuation === "dayClose"
+              ? <DayCloseLine momentsToday={momentsToday} onGoodNight={dismissDayClose} />
+              : offerSlot}
           </TodayContinuation>
           {/* ENG-24: the week-open anchor takes the slot at the top of a new
               week. It sits FIRST in this chain only because chooseTodayAction
@@ -687,6 +729,14 @@ export default function OverviewTab() {
             <WeekAnchorCard
               weekId={weekOpen.weekId}
               onDismiss={() => setWeekOpen((prev) => ({ ...prev, dismissed: true }))}
+            />
+          ) : todayChoice.kind === "tonight" ? (
+            /* B-TODAY-26: the evening door IS the step — no generation here. */
+            <TonightCard
+              momentsToday={momentsToday}
+              childName={firstName}
+              onRead={() => setActiveTab("bedtime-stories")}
+              onRoutine={() => setActiveTab("routines")}
             />
           ) : todayChoice.kind === "weekOpen" ? (
             <WeekOpenAnchorCard
@@ -752,7 +802,7 @@ export default function OverviewTab() {
               B-TODAY-12). At most one renders, with its reason line; the
               coordinator honours quiet hours and the 2/day ceiling and spends
               the shown-ledger. Never a second gradient CTA (Rule A). */}
-          {continuation === "none" && offerSlot}
+          {!offerIsContinuation && offerSlot}
           {/* B-TODAY-18 / B-AI-06 framer ruling: the family line — one line
               per sibling, each from that child's own state (familyOfferLines). */}
           <FamilyOfferLines activeChildId={childProfile.id} />

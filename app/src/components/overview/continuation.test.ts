@@ -76,9 +76,13 @@ describe("B-TODAY-18 · placement on Today", () => {
 
   it("ONE CompanionOfferSlot instance, placed by the coordinator's winner (never a second arbiter)", () => {
     expect((overview.match(/<CompanionOfferSlot\b/g) ?? []).length).toBe(1);
-    expect(overview).toContain("const continuation = chooseContinuation({ offerKind: todayOffer.offer?.kind });");
-    expect(overview).toContain('placement={continuation === "none" ? "under-step" : "continuation"}');
-    expect(overview).toContain('{continuation === "none" && offerSlot}');
+    // B-TODAY-26: the slot's placement follows the coordinator's winner KIND
+    // (isContinuationKind); the day-close line only fills an empty slot, and
+    // the evening cue is withheld while Tonight is the step (one voice).
+    expect(overview).toMatch(/const continuation = chooseContinuation\(\{\s*offerKind: shownOffer\?\.kind,/);
+    expect(overview).toContain("const offerIsContinuation = isContinuationKind(shownOffer?.kind);");
+    expect(overview).toContain('placement={offerIsContinuation ? "continuation" : "under-step"}');
+    expect(overview).toContain("{!offerIsContinuation && offerSlot}");
     expect(overview).not.toMatch(/<CarryOverActionAsk\b|<TomorrowReasonCard\b/);
     expect(slot).toContain("<CarryOverActionAsk onSkip={controls.refresh} />");
     expect(slot).toContain("<TomorrowReasonCard onResolved={controls.refresh} />");

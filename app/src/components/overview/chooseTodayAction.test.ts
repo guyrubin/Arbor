@@ -163,3 +163,89 @@ describe("B-TODAY-12 — a grounded hard-moment step when there is no focus", ()
     expect(chooseTodayAction({ ...BASE2 }).kind).toBe("prompt");
   });
 });
+
+/* ── B-TODAY-26 — Tonight takes the step slot in the evening ─────────────── */
+import { bedtimeDoorOpen } from "../../lib/timeOfDay";
+import { chooseContinuation, dayCloseDue, DAY_CLOSE_LINE_HOUR } from "./continuation";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+describe("B-TODAY-26 — Tonight and the day-close: the hour table", () => {
+  const FOCUS = { ...BASE, focusHeadline: "Mornings ran smoother this week" };
+  const at = (hour: number, windDownHour: number | null = null, over: Partial<typeof BASE> = {}) =>
+    chooseTodayAction({ ...FOCUS, ...over, tonight: bedtimeDoorOpen(hour, windDownHour) }).kind;
+
+  it("09:00 → the step card; 20:00 → Tonight", () => {
+    expect(at(9)).toBe("focus");
+    expect(at(20)).toBe("tonight");
+  });
+
+  it("every hour: closed in the morning and afternoon (no wind-down known), open from 18:00", () => {
+    for (let h = 0; h < 24; h++) {
+      const expected = h >= 18 ? "tonight" : "focus";
+      expect(at(h), `hour ${h}`).toBe(expected);
+    }
+  });
+
+  it("the family's own wind-down hour opens it earlier in the afternoon, never in the morning", () => {
+    expect(at(17, 17)).toBe("tonight");
+    expect(at(16, 17)).toBe("focus");
+    expect(at(10, 9)).toBe("focus");
+  });
+
+  it("an open step and the week's recap still outrank it; it outranks every daytime step", () => {
+    expect(at(20, null, { hasActiveAction: true })).toBe("loop");
+    expect(chooseTodayAction({ ...BASE, hasWeekAnchorRecap: true, tonight: true }).kind).toBe("recap");
+    for (const over of [{ hasHardMomentStep: true }, { hasWeekOpenAnchor: true }, { hasDailyPlay: true, promptKeys: [] as string[] }]) {
+      expect(chooseTodayAction({ ...BASE, ...over, tonight: true }).kind).toBe("tonight");
+    }
+  });
+
+  it("the day-close line: after 21:00, until Good night, and never over a carry-over or tomorrow's reason", () => {
+    expect(DAY_CLOSE_LINE_HOUR).toBe(21);
+    expect(dayCloseDue({ hour: 20, dismissedDay: null, today: "2026-10-02" })).toBe(false);
+    expect(dayCloseDue({ hour: 21, dismissedDay: null, today: "2026-10-02" })).toBe(true);
+    expect(dayCloseDue({ hour: 22, dismissedDay: "2026-10-02", today: "2026-10-02" })).toBe(false);
+    expect(dayCloseDue({ hour: 22, dismissedDay: "2026-10-01", today: "2026-10-02" })).toBe(true);
+    expect(chooseContinuation({ offerKind: null, dayClose: true })).toBe("dayClose");
+    expect(chooseContinuation({ offerKind: "follow-up", dayClose: true })).toBe("carry");
+    expect(chooseContinuation({ offerKind: "tomorrow-reason", dayClose: true })).toBe("reason");
+    expect(chooseContinuation({ offerKind: "rhythm", dayClose: false })).toBe("none");
+  });
+});
+
+describe("B-TODAY-26 — Today wiring: one voice, no generation, no timer", () => {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const strip = (c: string) => c.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  const overview = strip(readFileSync(path.join(here, "../tabs/OverviewTab.tsx"), "utf8"));
+  const card = strip(readFileSync(path.join(here, "TonightCard.tsx"), "utf8"));
+
+  it("the clock feeds the chain through bedtimeDoorOpen; Tonight renders in the step slot", () => {
+    expect(overview).toMatch(/const tonightOpen = bedtimeDoorOpen\(nowHour, rhythm\.windDownHour\)/);
+    expect(overview).toMatch(/tonight: tonightOpen && behaviorLogs\.length \+ playLogs\.length > 0/);
+    expect(overview).toMatch(/todayChoice\.kind === "tonight" \? \(\s*<TonightCard/);
+  });
+
+  it("the coordinator's evening cue is not rendered while Tonight holds the slot", () => {
+    expect(overview).toMatch(/const shownOffer = todayChoice\.kind === "tonight" && todayOffer\.offer\?\.kind === "tonight" \? null : todayOffer\.offer/);
+    expect(overview).toContain("offer={shownOffer}");
+  });
+
+  it("the count is the day-close signal; the card navigates and generates nothing", () => {
+    expect(overview).toMatch(/deriveReturnSignals\(\{[^}]*\}\)\.momentsToday/);
+    expect(overview).toContain('onRead={() => setActiveTab("bedtime-stories")}');
+    expect(overview).toContain('onRoutine={() => setActiveTab("routines")}');
+    expect(card).not.toMatch(/fetch\(|api\.|generate|setTimeout|setInterval|streak|tomorrow/i);
+  });
+
+  it("EN + HE keys for Tonight and the day-close line", async () => {
+    const { translate } = await import("../../lib/i18n");
+    for (const k of ["elev.tonight.eyebrow", "elev.tonight.headline.many", "elev.tonight.headline.one", "elev.tonight.headline.none", "elev.tonight.read", "elev.tonight.routine", "elev.dayclose.kept.many", "elev.dayclose.kept.one", "elev.dayclose.kept.none", "elev.dayclose.goodnight"]) {
+      expect(translate("en", k), k).not.toBe(k);
+      expect(translate("he", k), k).not.toBe(k);
+      expect(translate("he", k)).not.toBe(translate("en", k));
+    }
+    expect(translate("en", "elev.tonight.headline.many", { n: 4 })).toBe("Read tonight's story from today's 4 moments");
+  });
+});

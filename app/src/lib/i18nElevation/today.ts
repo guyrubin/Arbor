@@ -82,6 +82,18 @@ export const en: Record<string, string> = {
   // B-TODAY-23: Weekly's "New this week" card counts "Keep this" ideas too.
   "elev.brief.changed.ideas.one": "1 idea you kept",
   "elev.brief.changed.ideas.many": "{n} ideas you kept",
+  // B-TODAY-26: Tonight in the step slot, and the day-close line. The count
+  // is today's moments (the day-close signal); no timer, no streak.
+  "elev.tonight.eyebrow": "Tonight",
+  "elev.tonight.headline.many": "Read tonight's story from today's {n} moments",
+  "elev.tonight.headline.one": "Read tonight's story from today's moment",
+  "elev.tonight.headline.none": "Read a story with {name} tonight",
+  "elev.tonight.read": "Open tonight's story",
+  "elev.tonight.routine": "Wind-down routine",
+  "elev.dayclose.kept.many": "Kept today: {n} moments",
+  "elev.dayclose.kept.one": "Kept today: 1 moment",
+  "elev.dayclose.kept.none": "Nothing kept today",
+  "elev.dayclose.goodnight": "Good night",
 };
 
 export const he: Record<string, string> = {
@@ -141,4 +153,14 @@ export const he: Record<string, string> = {
   "elev.brief.changed.moments.many": "{n} רגעים נשמרו",
   "elev.brief.changed.ideas.one": "רעיון אחד ששמרתם",
   "elev.brief.changed.ideas.many": "{n} רעיונות ששמרתם",
+  "elev.tonight.eyebrow": "הערב",
+  "elev.tonight.headline.many": "קראו את הסיפור של הערב מ־{n} הרגעים של היום",
+  "elev.tonight.headline.one": "קראו את הסיפור של הערב מהרגע של היום",
+  "elev.tonight.headline.none": "קראו סיפור עם {name} הערב",
+  "elev.tonight.read": "לסיפור של הערב",
+  "elev.tonight.routine": "שגרת ההרגעה",
+  "elev.dayclose.kept.many": "נשמרו היום: {n} רגעים",
+  "elev.dayclose.kept.one": "נשמר היום: רגע אחד",
+  "elev.dayclose.kept.none": "היום לא נשמר רגע",
+  "elev.dayclose.goodnight": "לילה טוב",
 };

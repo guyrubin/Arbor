@@ -29,7 +29,8 @@ export default function TodayContinuation({
   if (choice === "none") return null;
   return (
     <div data-testid="today-continuation" data-continuation={choice} className="mb-3 min-w-0">
-      {isReturning && (
+      {/* B-TODAY-26: the day-close line closes the day; it continues nothing. */}
+      {isReturning && choice !== "dayClose" && (
         <p className="mb-1 px-1 text-[11px] font-extrabold uppercase tracking-[0.12em]" style={{ color: "var(--arbor-clay)" }}>
           {t("elev.sincevisit.resume")}
         </p>

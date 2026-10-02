@@ -14,6 +14,14 @@
                   and the recap already exists and is firewall-clean. The
                   CALLER owns "the week has turned" (weekAnchorRecapDue) so
                   this stays a pure ranking function.
+     1b. tonight — B-TODAY-26: the evening (bedtime) door is open
+                  (lib/timeOfDay bedtimeDoorOpen: 18:00 on, or the family's own
+                  wind-down hour) and no step is open → the step slot is
+                  Tonight: "Read tonight's story from today's {n} moments"
+                  (#/bedtime-stories, nothing generated until the tap) with a
+                  wind-down routine link. The CALLER owns the clock. Ranks
+                  under an accepted step and the week's recap (both are the
+                  parent's own open business), over every daytime step.
      2. focus   — a real AI focus headline exists (or is still being fetched
                   for a child WITH data: `focusPending` keeps the hero+skeleton
                   so the slot never flickers prompt→focus mid-load).
@@ -42,6 +50,7 @@
 export type TodayActionChoice =
   | { kind: "loop" }
   | { kind: "recap" }
+  | { kind: "tonight" }
   | { kind: "weekOpen" }
   | { kind: "focus" }
   | { kind: "hardMoment" }
@@ -60,6 +69,9 @@ export function chooseTodayAction(input: {
    *  been offered the week's anchor yet (weekOpenAnchorDue). Defaults to false,
    *  so every existing caller keeps its exact behaviour. */
   hasWeekOpenAnchor?: boolean;
+  /** B-TODAY-26: bedtimeDoorOpen(hour, rhythm.windDownHour) — the caller's
+   *  clock. Defaults to false, so every existing caller keeps its behaviour. */
+  tonight?: boolean;
   /** B-TODAY-12: a pilot hard-moment guide matches recent moments (todayHardMomentOffer). */
   hasHardMomentStep?: boolean;
   /** The scrubbed AI focus headline (focusHeadlineFrom), or null. */
@@ -73,6 +85,7 @@ export function chooseTodayAction(input: {
 }): TodayActionChoice {
   if (input.hasActiveAction) return { kind: "loop" };
   if (input.hasWeekAnchorRecap) return { kind: "recap" };
+  if (input.tonight) return { kind: "tonight" };
   if (input.focusHeadline || input.focusPending) return { kind: "focus" };
   if (input.hasHardMomentStep) return { kind: "hardMoment" };
   if (input.hasWeekOpenAnchor) return { kind: "weekOpen" };
