@@ -240,6 +240,7 @@ export default function CoachTab() {
   const [weeklyNotice, setWeeklyNotice] = useState(() => shouldShowWeeklyContextNotice(childProfile.id));
   useEffect(() => { setWeeklyNotice(shouldShowWeeklyContextNotice(childProfile.id)); }, [childProfile.id]);
   const closeWeeklyNotice = () => { dismissWeeklyContextNotice(childProfile.id); setWeeklyNotice(false); };
+  const contractToggleRef = useRef<HTMLButtonElement | null>(null);
   // Parent-register copy; module not yet in the i18nElevation index (owned by
   // a parallel stream) so it resolves through its own lookup, same semantics.
   const tcc = (key: string, params?: Record<string, string | number>) =>
@@ -910,7 +911,7 @@ export default function CoachTab() {
                 onClick={() => {
                   closeWeeklyNotice();
                   setContractOpen(true);
-                  requestAnimationFrame(() => document.querySelector('[data-testid="coach-contract-toggle"]')?.scrollIntoView({ block: "center", behavior: reducedMotion ? "auto" : "smooth" }));
+                  requestAnimationFrame(() => contractToggleRef.current?.scrollIntoView({ block: "center", behavior: reducedMotion ? "auto" : "smooth" }));
                 }}
                 className="inline-flex min-h-11 items-center px-2 text-[12px] font-bold underline underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded-lg"
                 style={{ color: "var(--arbor-green-ink)" }}
@@ -1250,6 +1251,7 @@ export default function CoachTab() {
               contract panel below this strip. Parent register only. */}
           <button
             type="button"
+            ref={contractToggleRef}
             onClick={() => setContractOpen((v) => !v)}
             aria-expanded={contractOpen}
             aria-label={tcc("elev.coachcontract.title")}
