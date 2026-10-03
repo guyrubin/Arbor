@@ -73,10 +73,14 @@ export const en: Record<string, string> = {
   "elev.coachcontract.feedback.undo": "Tap again to undo",
   "elev.coachcontract.feedback.note": "This is about the answer, never about your child.",
 
-  // ── The consent toggle (default OFF, per child)
+  // ── The consent toggle (B-ASKJB-07: default ON, per child, explicit off)
   "elev.coachcontract.toggle": "Let the coach see this week's moments",
   "elev.coachcontract.toggleHint":
-    'Off by default. When on, the coach sees counts only — for example "4 moments this week, 2 milestones observed" — never your notes.',
+    'On unless you turn it off. The coach sees counts and how your last step went — for example "4 moments this week, 2 milestones observed" — never your notes.',
+  // ── B-ASKJB-07 · the one-time notice above the composer (per child)
+  "elev.coachcontract.notice.body": "Arbor now uses this week's counts and how your last step went.",
+  "elev.coachcontract.notice.change": "Change",
+  "elev.coachcontract.notice.dismiss": "Got it",
 
   // ── Builder F · OBJ-ASK-03 (chrome half) · the lens picker rendered
   // "Lev Vygotsky (Next Best Challenge Engine)" in the Hebrew app. The
@@ -129,7 +133,10 @@ export const he: Record<string, string> = {
 
   "elev.coachcontract.toggle": "לאפשר למאמן לראות את הרגעים מהשבוע",
   "elev.coachcontract.toggleHint":
-    'כבוי כברירת מחדל. כשהוא פועל, המאמן רואה מספרים בלבד — למשל "4 רגעים השבוע, 2 אבני דרך שנצפו" — אף פעם לא את ההערות שלכם.',
+    'פועל, אלא אם תכבו אותו. המאמן רואה מספרים ואיך עבר הצעד האחרון — למשל "4 רגעים השבוע, 2 אבני דרך שנצפו" — אף פעם לא את ההערות שלכם.',
+  "elev.coachcontract.notice.body": "ארבור משתמש עכשיו במספרים מהשבוע ובאיך עבר הצעד האחרון שלכם.",
+  "elev.coachcontract.notice.change": "לשנות",
+  "elev.coachcontract.notice.dismiss": "הבנתי",
 
   // ── Builder F · OBJ-ASK-03 (chrome half) · lens concept labels
   "elev.coachcontract.lens.concept.vygotsky": "האתגר הבא בגובה העיניים",

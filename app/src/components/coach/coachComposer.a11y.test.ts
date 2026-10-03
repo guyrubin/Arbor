@@ -121,3 +121,28 @@ describe("AI-04 · what is actually wired for a typed turn", () => {
     expect(send).not.toContain("deriveConversationProposals");
   });
 });
+
+describe("B-ASKJB-07 · the one-time weekly-context notice above the composer", () => {
+  it("renders inside the composer, above the textarea, with 44 px Change + dismiss", () => {
+    const composer = coach.slice(coach.indexOf("const composerSection"), coach.indexOf("<textarea"));
+    const notice = composer.slice(composer.indexOf('data-testid="coach-weekly-notice"'));
+    expect(notice.length).toBeGreaterThan(0);
+    for (const id of ["coach-weekly-notice-change", "coach-weekly-notice-dismiss"]) {
+      const at = notice.indexOf(`data-testid="${id}"`);
+      expect(at).toBeGreaterThan(-1);
+      expect(notice.slice(at, at + 900)).toMatch(/min-h-11/);
+    }
+    // Change opens the panel that holds the per-child off.
+    expect(notice).toMatch(/setContractOpen\(true\)/);
+    expect(notice).toMatch(/ps-3 pe-1/); // logical padding only
+  });
+
+  it("the notice copy exists in EN and HE", () => {
+    for (const k of ["elev.coachcontract.notice.body", "elev.coachcontract.notice.change", "elev.coachcontract.notice.dismiss"]) {
+      expect(ccEn[k], k).toBeTruthy();
+      expect(ccHe[k], k).toBeTruthy();
+      expect(ccHe[k]).not.toMatch(/[A-Za-z]/);
+    }
+    expect(coachContractText("en", "elev.coachcontract.notice.body")).toMatch(/this week's counts/);
+  });
+});

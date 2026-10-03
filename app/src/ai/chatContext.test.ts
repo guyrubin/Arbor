@@ -3,7 +3,8 @@
  *  - server-defensive sanitizers (caps, whitelists, clamps, degrade-to-legacy),
  *  - client-side buildChatContext (thread mapping, live/ack exclusion,
  *    counts-only weekly digest, toggle gating),
- *  - the per-child consent flag (DEFAULT OFF; storage failure ⇒ off).
+ *  - the per-child consent flag (DEFAULT ON since B-ASKJB-07; explicit "0" ⇒
+ *    off; storage unavailable ⇒ off) and the one-time notice.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
@@ -12,10 +13,13 @@ import {
   RECENT_TURN_CHAR_CAP,
   buildChatContext,
   computeWeeklyContext,
+  dismissWeeklyContextNotice,
   readWeeklyContextConsent,
   sanitizeRecentTurns,
   sanitizeWeeklyContext,
+  shouldShowWeeklyContextNotice,
   weeklyContextConsentKey,
+  weeklyContextNoticeKey,
   writeWeeklyContextConsent,
 } from "./chatContext.js";
 
@@ -170,7 +174,7 @@ describe("buildChatContext — the one call ArborContext.sendMessage makes", () 
   });
 });
 
-describe("weekly-context consent flag — per child, DEFAULT OFF", () => {
+describe("weekly-context consent flag — per child, DEFAULT ON (B-ASKJB-07, Guy G1)", () => {
   const store = new Map<string, string>();
   const fakeLocalStorage = {
     getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
@@ -183,21 +187,57 @@ describe("weekly-context consent flag — per child, DEFAULT OFF", () => {
     vi.unstubAllGlobals();
   });
 
-  it("defaults to OFF when nothing is stored, and OFF when storage is unavailable", () => {
+  it("defaults to ON when nothing is stored; OFF when storage is unavailable or throws", () => {
     vi.stubGlobal("localStorage", fakeLocalStorage);
-    expect(readWeeklyContextConsent("child-1")).toBe(false);
+    expect(readWeeklyContextConsent("child-1")).toBe(true);
     vi.unstubAllGlobals(); // node env: no localStorage at all
+    expect(readWeeklyContextConsent("child-1")).toBe(false);
+    vi.stubGlobal("localStorage", { getItem: () => { throw new Error("blocked"); } });
     expect(readWeeklyContextConsent("child-1")).toBe(false);
   });
 
-  it("round-trips per child under the pinned key shape", () => {
+  it("an explicit off is stored as \"0\" per child and stays off", () => {
     vi.stubGlobal("localStorage", fakeLocalStorage);
     expect(weeklyContextConsentKey("c9")).toBe("arbor.coach.weeklyContext.c9");
+    writeWeeklyContextConsent("c9", false);
+    expect(store.get("arbor.coach.weeklyContext.c9")).toBe("0");
+    expect(readWeeklyContextConsent("c9")).toBe(false);
+    expect(readWeeklyContextConsent("other-child")).toBe(true); // per-child scope
     writeWeeklyContextConsent("c9", true);
     expect(readWeeklyContextConsent("c9")).toBe(true);
-    expect(readWeeklyContextConsent("other-child")).toBe(false); // per-child scope
-    writeWeeklyContextConsent("c9", false);
-    expect(readWeeklyContextConsent("c9")).toBe(false);
-    expect(store.has("arbor.coach.weeklyContext.c9")).toBe(false); // off = removed
+    // A legacy explicit "on" from the opt-in era still reads on.
+    store.set("arbor.coach.weeklyContext.legacy", "on");
+    expect(readWeeklyContextConsent("legacy")).toBe(true);
+  });
+
+  it("new child: the first send carries weeklyContext; after off the next send omits it (legacy bytes)", () => {
+    vi.stubGlobal("localStorage", fakeLocalStorage);
+    const inputs = {
+      thread: [],
+      behaviorLogs: [{ timestamp: daysAgo(1), trigger: "transitions" }],
+      milestones: [],
+      actionLoop: [],
+      now: NOW,
+    };
+    const first = buildChatContext({ ...inputs, weeklyContextEnabled: readWeeklyContextConsent("new-child") });
+    expect(first.weeklyContext).toEqual({ momentCount: 1, milestonesCrossedCount: 0 });
+    writeWeeklyContextConsent("new-child", false);
+    const next = buildChatContext({ ...inputs, weeklyContextEnabled: readWeeklyContextConsent("new-child") });
+    expect("weeklyContext" in next).toBe(false);
+    const legacy = buildChatContext({ ...inputs, weeklyContextEnabled: false });
+    expect(JSON.stringify(next)).toBe(JSON.stringify(legacy));
+  });
+
+  it("the one-time notice shows only while the default is in force, and dismiss persists per child", () => {
+    vi.stubGlobal("localStorage", fakeLocalStorage);
+    expect(shouldShowWeeklyContextNotice("a")).toBe(true);
+    dismissWeeklyContextNotice("a");
+    expect(store.get(weeklyContextNoticeKey("a"))).toBe("1");
+    expect(shouldShowWeeklyContextNotice("a")).toBe(false);
+    expect(shouldShowWeeklyContextNotice("b")).toBe(true); // per child
+    writeWeeklyContextConsent("b", false); // the parent chose: no notice
+    expect(shouldShowWeeklyContextNotice("b")).toBe(false);
+    vi.unstubAllGlobals();
+    expect(shouldShowWeeklyContextNotice("c")).toBe(false); // no storage ⇒ consent off ⇒ nothing to announce
   });
 });

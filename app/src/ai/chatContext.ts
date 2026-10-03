@@ -24,8 +24,9 @@
  * CONSENT MODEL: recentTurns needs no new consent (same-thread text the
  * parent just typed/read, already persisted in the conversation). The weekly
  * digest is consent-gated per child via localStorage
- * `arbor.coach.weeklyContext.{childId}` — DEFAULT OFF, absent field when off,
- * so an off-toggle request is byte-identical to today's prompt.
+ * `arbor.coach.weeklyContext.{childId}` — DEFAULT ON since B-ASKJB-07 (Guy G1;
+ * an explicit "0" is off), absent field when off, so an off-toggle request is
+ * byte-identical to the legacy prompt.
  */
 
 export type RecentTurnRole = "parent" | "coach";
@@ -112,15 +113,22 @@ export const sanitizeWeeklyContext = (raw: unknown): WeeklyContext | null => {
   return out;
 };
 
-// ── Client-side consent flag (per child, DEFAULT OFF) ───────────────────────
+// ── Client-side consent flag (per child, DEFAULT ON — B-ASKJB-07) ───────────
 
 export const weeklyContextConsentKey = (childId: string): string =>
   `arbor.coach.weeklyContext.${childId}`;
 
-/** Absent / unreadable localStorage ⇒ false — the toggle is OFF by default. */
+/** B-ASKJB-07 (Guy G1 = ON, G-15): the weekly counts + last outcome are ON
+ *  by default, with a one-time notice above the composer and a per-child off.
+ *  Absent key ⇒ true. An explicit off is stored as "0" and stays off. No
+ *  localStorage at all, or a storage that throws ⇒ false (we cannot honour a
+ *  parent's off we cannot read, so we never send on a guess). */
+export const WEEKLY_CONTEXT_OFF = "0";
 export const readWeeklyContextConsent = (childId: string): boolean => {
   try {
-    return globalThis.localStorage?.getItem(weeklyContextConsentKey(childId)) === "on";
+    const ls = globalThis.localStorage;
+    if (!ls) return false;
+    return ls.getItem(weeklyContextConsentKey(childId)) !== WEEKLY_CONTEXT_OFF;
   } catch {
     return false;
   }
@@ -129,9 +137,44 @@ export const readWeeklyContextConsent = (childId: string): boolean => {
 export const writeWeeklyContextConsent = (childId: string, on: boolean): void => {
   try {
     if (on) globalThis.localStorage?.setItem(weeklyContextConsentKey(childId), "on");
-    else globalThis.localStorage?.removeItem(weeklyContextConsentKey(childId));
+    else globalThis.localStorage?.setItem(weeklyContextConsentKey(childId), WEEKLY_CONTEXT_OFF);
   } catch {
-    /* consent stays off when storage is unavailable */
+    /* storage unavailable: readWeeklyContextConsent already reads off */
+  }
+};
+
+/** One-time notice per child ("Arbor now uses this week's counts…"). */
+export const weeklyContextNoticeKey = (childId: string): string =>
+  `arbor.coach.weeklyContextNotice.${childId}`;
+
+export const readWeeklyContextNoticeDismissed = (childId: string): boolean => {
+  try {
+    const ls = globalThis.localStorage;
+    if (!ls) return true;
+    return ls.getItem(weeklyContextNoticeKey(childId)) === "1";
+  } catch {
+    return true;
+  }
+};
+
+export const dismissWeeklyContextNotice = (childId: string): void => {
+  try {
+    globalThis.localStorage?.setItem(weeklyContextNoticeKey(childId), "1");
+  } catch {
+    /* the notice simply shows again next visit */
+  }
+};
+
+/** The notice shows only while the default is in force: consent on AND the
+ *  parent has never chosen (no stored value) AND not dismissed. */
+export const shouldShowWeeklyContextNotice = (childId: string): boolean => {
+  try {
+    const ls = globalThis.localStorage;
+    if (!ls) return false;
+    if (ls.getItem(weeklyContextConsentKey(childId)) !== null) return false;
+    return !readWeeklyContextNoticeDismissed(childId);
+  } catch {
+    return false;
   }
 };
 

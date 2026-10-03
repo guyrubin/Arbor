@@ -21,7 +21,7 @@ import { TrustPanel } from "../ui/TrustPanel";
 import { coachContractText } from "../../lib/i18nElevation/coachcontract";
 import { liveResidencyUntil } from "../../lib/liveResidency";
 import { fmtDayLong } from "../../lib/formatDate";
-import { buildVoiceContext, readWeeklyContextConsent, writeWeeklyContextConsent } from "../../ai/chatContext";
+import { buildVoiceContext, dismissWeeklyContextNotice, readWeeklyContextConsent, shouldShowWeeklyContextNotice, writeWeeklyContextConsent } from "../../ai/chatContext";
 import { T } from "../../lib/tokens";
 import CoachAnswerCards from "../coach/CoachAnswerCards";
 // ENG-21: the in-context value preview — the quiet, dismissible free-vs-Plus
@@ -234,6 +234,12 @@ export default function CoachTab() {
   const [contractOpen, setContractOpen] = useState(false);
   const [weeklyOn, setWeeklyOn] = useState(() => readWeeklyContextConsent(childProfile.id));
   useEffect(() => { setWeeklyOn(readWeeklyContextConsent(childProfile.id)); }, [childProfile.id]);
+  // B-ASKJB-07 (Guy G1 = ON): the weekly counts + last outcome are on by
+  // default; a one-line notice above the composer says so ONCE per child,
+  // with "Change" opening the panel that holds the per-child off.
+  const [weeklyNotice, setWeeklyNotice] = useState(() => shouldShowWeeklyContextNotice(childProfile.id));
+  useEffect(() => { setWeeklyNotice(shouldShowWeeklyContextNotice(childProfile.id)); }, [childProfile.id]);
+  const closeWeeklyNotice = () => { dismissWeeklyContextNotice(childProfile.id); setWeeklyNotice(false); };
   // Parent-register copy; module not yet in the i18nElevation index (owned by
   // a parallel stream) so it resolves through its own lookup, same semantics.
   const tcc = (key: string, params?: Record<string, string | number>) =>
@@ -887,6 +893,40 @@ export default function CoachTab() {
                   ? t("elev.aihonesty.memory.one", { name: childFirst })
                   : t("elev.aihonesty.memory.some", { name: childFirst, n: approvedMemoryItems.length })}
             </p>
+          )}
+          {weeklyNotice && weeklyOn && (
+            <div
+              data-testid="coach-weekly-notice"
+              role="note"
+              className="mb-2 flex flex-wrap items-center gap-x-2 rounded-xl ps-3 pe-1"
+              style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}
+            >
+              <p className="flex-1 min-w-0 py-2 text-[12px] leading-snug" style={{ color: "var(--arbor-ink)" }}>
+                {tcc("elev.coachcontract.notice.body")}
+              </p>
+              <button
+                type="button"
+                data-testid="coach-weekly-notice-change"
+                onClick={() => {
+                  closeWeeklyNotice();
+                  setContractOpen(true);
+                  requestAnimationFrame(() => document.querySelector('[data-testid="coach-contract-toggle"]')?.scrollIntoView({ block: "center", behavior: reducedMotion ? "auto" : "smooth" }));
+                }}
+                className="inline-flex min-h-11 items-center px-2 text-[12px] font-bold underline underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded-lg"
+                style={{ color: "var(--arbor-green-ink)" }}
+              >
+                {tcc("elev.coachcontract.notice.change")}
+              </button>
+              <button
+                type="button"
+                data-testid="coach-weekly-notice-dismiss"
+                onClick={closeWeeklyNotice}
+                className="inline-flex min-h-11 items-center px-2 text-[12px] font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded-lg"
+                style={{ color: "var(--arbor-muted)" }}
+              >
+                {tcc("elev.coachcontract.notice.dismiss")}
+              </button>
+            </div>
           )}
           <div className="flex items-end gap-2 rounded-[20px] p-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }}>
             <textarea
