@@ -242,3 +242,71 @@ describe("AP-060: i18n parity for sci.* keys", () => {
     ).toEqual([]);
   });
 });
+
+// ── B-CAREPRO-24: the data list names everything Arbor keeps; Science leaves the Profile pill row ──
+import { CHILD_DATA_ROWS, childDataRowFor } from "./childDataGroups";
+import { trustText } from "./i18nElevation/trustcenter";
+import { SECTIONS, sectionForTab } from "./navigation";
+
+const LIB = path.dirname(fileURLToPath(import.meta.url));
+/** CHILD_SUBCOLLECTIONS read from childData.ts source (no Firebase import). */
+function childSubcollections(): string[] {
+  const src = readFileSync(path.join(LIB, "childData.ts"), "utf8").replace(/\r\n/g, "\n");
+  const body = /export const CHILD_SUBCOLLECTIONS = \[([\s\S]*?)\n\];/.exec(src)?.[1] ?? "";
+  return [...body.replace(/\/\/.*$/gm, "").matchAll(/"([A-Za-z]+)"/g)].map((m) => m[1]);
+}
+
+describe("B-CAREPRO-24 · The Science's data list covers every CHILD_SUBCOLLECTIONS entry", () => {
+  it("every subcollection maps to exactly one visible row", () => {
+    const subs = childSubcollections();
+    expect(subs.length, "the parse is real").toBeGreaterThanOrEqual(30);
+    for (const name of subs) {
+      const rows = CHILD_DATA_ROWS.filter((r) => r.collections.includes(name));
+      expect(rows.length, `${name} must sit in exactly one row`).toBe(1);
+    }
+    // no row names a collection that is not swept (a typo would hide one)
+    for (const r of CHILD_DATA_ROWS) for (const c of r.collections) expect(subs, `${r.id}: ${c}`).toContain(c);
+    // the omissions the item names are now visible rows
+    for (const [c, row] of [["appointments", "care"], ["apptFollowUps", "care"], ["contacts", "care"], ["langObs", "milestones"], ["growthEntries", "milestones"]] as const) {
+      expect(childDataRowFor(c)).toBe(row);
+    }
+    expect(CHILD_DATA_ROWS.find((r) => r.id === "sharing")?.elsewhere).toEqual(["server-shares", "device-export-history"]);
+    // NEGATIVE CONTROL: an unplaced name has no row
+    expect(childDataRowFor("someNewSink")).toBeUndefined();
+  });
+
+  it("every row has a label and a description in EN and HE", () => {
+    for (const r of CHILD_DATA_ROWS) {
+      for (const field of ["label", "desc"] as const) {
+        const key = `elev.trust.data.${r.id}.${field}`;
+        const enV = trustText("en", key);
+        const heV = trustText("he", key);
+        expect(enV, key).not.toBe(key);
+        expect(heV, key).not.toBe(key);
+        expect(heV, `${key} HE differs from EN`).not.toBe(enV);
+      }
+    }
+  });
+
+  it("SciencePage renders the rows from the grouped map and manages data in Settings", () => {
+    const src = readFileSync(path.join(LIB, "..", "components", "tabs", "SciencePage.tsx"), "utf8");
+    expect(src).toContain("CHILD_DATA_ROWS.map((row) =>");
+    expect(src).not.toMatch(/\["profile", "moments", "play"/);
+    expect(src).toContain('requestOpenSettings({ focus: "data" })');
+    expect(src).not.toMatch(/testId="trust-manage-data"[\s\S]{0,40}setActiveTab\("profile"\)|setActiveTab\("profile"\)\}\s*\n\s*testId="trust-manage-data"/);
+    expect(trustText("en", "elev.trust.data.manageCta")).toMatch(/Settings/);
+    expect(trustText("he", "elev.trust.data.manageCta")).toContain("בהגדרות");
+    const bus = readFileSync(path.join(LIB, "..", "components", "layout", "settingsBus.ts"), "utf8");
+    expect(bus).toContain('data: "settings-data-row"');
+    const modal = readFileSync(path.join(LIB, "..", "components", "layout", "SettingsModal.tsx"), "utf8");
+    expect(modal).toContain('data-testid="settings-data-row"');
+  });
+
+  it("Profile pills are Profile's own: science is not a tool; it still highlights Profile", () => {
+    const profile = SECTIONS.find((s) => s.id === "profile")!;
+    const pills = [...(profile.primaryTabs ?? []), ...(profile.tools ?? [])].map((x) => x.tab);
+    expect(pills).not.toContain("science");
+    expect(pills).toContain("profile");
+    expect(sectionForTab("science").id).toBe("profile");
+  });
+});

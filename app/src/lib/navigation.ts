@@ -6,7 +6,7 @@ import {
   Share2, BookOpen, Sliders, Waypoints, ShieldAlert,
   Target, Map, School, Moon,
   MessageCircle, NotebookPen, UserCircle,
-  Clock, ListChecks, BarChart3, Bell, BadgeCheck,
+  Clock, ListChecks, BarChart3, Bell,
   Sparkles, Heart, Library,
 } from "lucide-react";
 import type { ActiveTab } from "../context/ArborContext";
@@ -299,15 +299,15 @@ export const SECTIONS: NavSection[] = [
       { tab: "profile", label: "Development Profile", icon: UserCircle },
       { tab: "memory", label: "Child Memory", icon: Waypoints },
     ],
-    // Hub only; Child Memory and The Science are the hub's contextual tools.
-    // science resolves to Profile via TAB_SECTION_FALLBACK (it is not a
-    // category `item`). Heartwood D3: the Weekly Report re-homed to Today.
+    // Hub only; Child Memory is the hub's contextual tool. B-CAREPRO-24: The
+    // Science left the pill row — it still resolves to Profile via
+    // TAB_SECTION_FALLBACK (highlight) and keeps its TrustLink, EvidenceChip
+    // and Settings doors. Heartwood D3: the Weekly Report re-homed to Today.
     primaryTabs: [
       { tab: "profile", label: "Development Profile", icon: UserCircle },
     ],
     tools: [
       { tab: "memory", label: "Child Memory", icon: Waypoints, msIcon: "neurology" },
-      { tab: "science", label: "The Science", icon: BadgeCheck, msIcon: "verified" },
     ],
   },
 ];

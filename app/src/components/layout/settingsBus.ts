@@ -14,11 +14,14 @@
 export const SETTINGS_OPEN_EVENT = "arbor:open-settings";
 
 /** A Settings row a caller can ask to land on (B-PLAY-06). */
-export type SettingsFocus = "pin";
+export type SettingsFocus = "pin" | "data";
 
 /** The anchor each focus scrolls into view — a data-testid inside SettingsModal. */
 export const SETTINGS_FOCUS_ANCHOR: Record<SettingsFocus, string> = {
   pin: "settings-pin-row",
+  // B-CAREPRO-24: The Science's "Export or delete" lands on the data row
+  // (B-CAREPRO-35 makes it the one "Your data" home).
+  data: "settings-data-row",
 };
 
 let pendingFocus: SettingsFocus | null = null;

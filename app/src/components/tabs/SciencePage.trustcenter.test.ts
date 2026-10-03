@@ -143,8 +143,10 @@ describe("trust center — deep-link validity", () => {
     }
   });
 
-  it("links land on the intended surfaces: Profile (data controls) + Consult (contact)", () => {
-    expect(src).toContain('setActiveTab("profile")');
+  it("links land on the intended surfaces: Settings (data controls) + Consult (contact)", () => {
+    // B-CAREPRO-24: manage → Settings › data row (B-CAREPRO-35's one home), not #/profile.
+    expect(src).toContain('requestOpenSettings({ focus: "data" })');
+    expect(src).not.toContain('setActiveTab("profile")');
     expect(src).toContain('setActiveTab("consult")');
   });
 });

@@ -8,6 +8,8 @@ import { SpineRibbon } from "../ui/SpineRibbon";
 import { trustText } from "../../lib/i18nElevation/trustcenter";
 import { DOMAINS, DOMAIN_COUNT, domainName } from "../../lib/domains/registry";
 import { ALL_MILESTONES } from "../../lib/milestoneData";
+import { CHILD_DATA_ROWS } from "../../lib/childDataGroups";
+import { requestOpenSettings } from "../layout/settingsBus";
 
 /**
  * Trust Center — masterplan 3.3 + 3.4 + 3.1 (Maytal Row-2, all six frames).
@@ -326,15 +328,15 @@ export default function SciencePage() {
       <div id="trust-data" data-testid="trust-section-data" className="scroll-mt-4">
         <SectionCard title={tt("elev.trust.data.title")} icon={<Icon name={SECTION_ICON.data} size={18} />} tone="lav">
           <ul role="list">
-            {/* GP-25: the list is what the app actually collects. The approved
-                memory ledger was missing entirely, and the profile row named
-                three of the nine fields the edit drawer writes. */}
-            {(["profile", "moments", "play", "screening", "coach", "memory"] as const).map((row) => (
+            {/* GP-25 / B-CAREPRO-24: the list is what the app actually keeps —
+                derived from lib/childDataGroups, where every CHILD_SUBCOLLECTIONS
+                entry sits in exactly one row (sciencePage.test.ts coverage). */}
+            {CHILD_DATA_ROWS.map((row) => (
               <LegendRow
-                key={row}
-                chip={<IconBadge tone="lav" size={32}><Icon name={{ profile: "person", moments: "edit_note", play: "sports_esports", screening: "checklist", coach: "forum", memory: "bookmark" }[row]} size={16} /></IconBadge>}
-                label={tt(`elev.trust.data.${row}.label`)}
-                desc={tt(`elev.trust.data.${row}.desc`)}
+                key={row.id}
+                chip={<IconBadge tone="lav" size={32}><Icon name={row.icon} size={16} /></IconBadge>}
+                label={tt(`elev.trust.data.${row.id}.label`)}
+                desc={tt(`elev.trust.data.${row.id}.desc`)}
               />
             ))}
           </ul>
@@ -344,7 +346,7 @@ export default function SciencePage() {
           <LinkRow
             icon="settings_account_box"
             label={tt("elev.trust.data.manageCta")}
-            onGo={() => setActiveTab("profile")}
+            onGo={() => requestOpenSettings({ focus: "data" })}
             testId="trust-manage-data"
           />
         </SectionCard>

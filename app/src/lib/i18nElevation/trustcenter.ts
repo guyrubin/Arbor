@@ -64,10 +64,15 @@ export const en: Record<string, string> = {
   "elev.trust.data.profile.desc":
     "Name, age, languages, school context, the strengths and challenges you write, the interests you add, and a photo or generated avatar if you make one.",
   "elev.trust.data.moments.label": "Moments and journal notes",
-  "elev.trust.data.moments.desc": "What you write stays in your family's space.",
+  // B-CAREPRO-24: the rows derive from lib/childDataGroups (every CHILD_SUBCOLLECTIONS entry sits in one).
+  "elev.trust.data.moments.desc": "Moments you log, journal notes, keepsake notes and the patterns Arbor finds in them. What you write stays in your family's space.",
+  "elev.trust.data.milestones.label": "Milestones, measurements and language notes",
+  "elev.trust.data.milestones.desc": "The milestones you noticed, the height and weight you entered, and the words and phrases you noted.",
   "elev.trust.data.play.label": "Activity history",
   "elev.trust.data.play.desc":
-    "Which activities were completed, so the next suggestion can continue from there.",
+    "Activities and games played, and the stories and comics you saved, so the next suggestion can continue from there.",
+  "elev.trust.data.plans.label": "Plans, routines and goals",
+  "elev.trust.data.plans.desc": "Action plans and today's steps with how they went, routines, goals, saved Learn cards and weekly letters.",
   "elev.trust.data.screening.label": "Development-check answers",
   "elev.trust.data.screening.desc":
     "Used only to surface what may be worth a conversation.",
@@ -79,8 +84,12 @@ export const en: Record<string, string> = {
   "elev.trust.data.memory.label": "What Arbor remembers",
   "elev.trust.data.memory.desc":
     "Facts you approved one at a time in Child Memory. Nothing is remembered until you approve it, and you can forget any of it.",
+  "elev.trust.data.care.label": "Appointments, visit notes and contacts",
+  "elev.trust.data.care.desc": "Appointments, the questions you prepared, what the professional said afterwards, safety contacts and saved briefs.",
+  "elev.trust.data.sharing.label": "Who you shared with",
+  "elev.trust.data.sharing.desc": "The people you gave access to and what they can see, and, on this device, when you last sent a summary to each professional.",
   "elev.trust.data.manage": "Everything can be exported or deleted, any time.",
-  "elev.trust.data.manageCta": "Manage your data in Profile",
+  "elev.trust.data.manageCta": "Export or delete in Settings",
 
   // ── Section 3 — What each sign means (legend of ARBOR'S actual marks)
   "elev.trust.signs.title": "What each sign means",
@@ -168,9 +177,13 @@ export const he: Record<string, string> = {
   "elev.trust.data.profile.desc":
     "שם, גיל, שפות, הקשר הגן או בית הספר, החוזקות והאתגרים שאתם כותבים, תחומי העניין שהוספתם, ותמונה או דמות מאויירת אם יצרתם.",
   "elev.trust.data.moments.label": "רגעים ורשומות ביומן",
-  "elev.trust.data.moments.desc": "מה שאתם כותבים נשאר במרחב המשפחתי שלכם.",
+  "elev.trust.data.moments.desc": "רגעים שתיעדתם, רשומות ביומן, הערות מזכרת והדפוסים ש-Arbor מוצא בהם. מה שאתם כותבים נשאר במרחב המשפחתי שלכם.",
+  "elev.trust.data.milestones.label": "אבני דרך, מדידות ותיעוד שפה",
+  "elev.trust.data.milestones.desc": "אבני הדרך שסימנתם, הגובה והמשקל שהזנתם, והמילים והמשפטים שתיעדתם.",
   "elev.trust.data.play.label": "היסטוריית פעילויות",
-  "elev.trust.data.play.desc": "אילו פעילויות הושלמו, כדי שההצעה הבאה תמשיך מאותה נקודה.",
+  "elev.trust.data.play.desc": "פעילויות ומשחקים ששוחקו, וסיפורים וקומיקס ששמרתם, כדי שההצעה הבאה תמשיך מאותה נקודה.",
+  "elev.trust.data.plans.label": "תוכניות, שגרות ומטרות",
+  "elev.trust.data.plans.desc": "תוכניות פעולה וצעדי היום ואיך הם הלכו, שגרות, מטרות, כרטיסי למידה ששמרתם ומכתבים שבועיים.",
   "elev.trust.data.screening.label": "תשובות מבדיקת ההתפתחות",
   "elev.trust.data.screening.desc": "משמשות רק כדי להאיר מה ששווה שיחה.",
   "elev.trust.data.coach.label": "שיחות עם Arbor",
@@ -179,8 +192,12 @@ export const he: Record<string, string> = {
   "elev.trust.data.memory.label": "מה ארבור זוכרת",
   "elev.trust.data.memory.desc":
     "עובדות שאישרתם אחת־אחת במסך הזיכרון. שום דבר לא נשמר לפני אישור שלכם, ואפשר לשכוח כל אחת מהן.",
+  "elev.trust.data.care.label": "פגישות, סיכומי ביקור ואנשי קשר",
+  "elev.trust.data.care.desc": "פגישות, השאלות שהכנתם, מה שאמר איש המקצוע אחרי הביקור, אנשי קשר לחירום ומכתבים ששמרתם.",
+  "elev.trust.data.sharing.label": "עם מי שיתפתם",
+  "elev.trust.data.sharing.desc": "האנשים שנתתם להם גישה ומה הם יכולים לראות, ובמכשיר הזה, מתי שלחתם לאחרונה סיכום לכל איש מקצוע.",
   "elev.trust.data.manage": "אפשר לייצא או למחוק את הכול, בכל רגע.",
-  "elev.trust.data.manageCta": "ניהול המידע בפרופיל",
+  "elev.trust.data.manageCta": "ייצוא או מחיקה בהגדרות",
 
   "elev.trust.signs.title": "מה המשמעות של כל סימן",
   "elev.trust.signs.intro": "‏Arbor משתמש בקומץ סימנים — כולם ספירות ותצפיות פשוטות.",

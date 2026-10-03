@@ -456,12 +456,15 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
           </a>
         </Row>
 
-        {/* Data & privacy → profile editor (export / delete live there) */}
+        {/* Data & privacy → profile editor (export / delete live there).
+            B-CAREPRO-24: the anchor The Science's manage link scrolls to. */}
+        <div data-testid="settings-data-row">
         <Row icon={<Icon name="verified_user" size={18} />} title={t("set.data.title")} sub={t("set.data.sub")}>
           <button onClick={() => { onClose(); setActiveTab("profile"); }} className="text-xs font-bold rounded-xl px-3 min-h-11" style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}>
             {t("set.data.open")}
           </button>
         </Row>
+        </div>
         </Section>
 
         {/* P0.2 (SET-ADMIN): operator-only tools isolated in their own section */}
