@@ -71,9 +71,10 @@ describe("CONT-2 — before the pilot release, the all-draft pack is unavailable
     expect(code).toMatch(/if\s*\(cards\.length\s*===\s*0\)\s*return null/);
   });
 
-  it("CoachTab chips are gated on a non-empty published list", () => {
+  it("CoachTab's one door (B-ASKJB-31) is gated on the available pilot guides, never the published list", () => {
     const code = stripComments(read("components/tabs/CoachTab.tsx"));
-    expect(code).toMatch(/publishedHardMomentCards\.length\s*>\s*0\s*&&/);
+    expect(code).toMatch(/hardMomentGuides\.length\s*>\s*0\s*&&/);
+    expect(code).not.toContain("publishedHardMomentCards");
   });
 
   it("Today's step carries nothing without a match or with an active action (B-TODAY-12)", () => {
@@ -220,13 +221,14 @@ describe("CONT-2/CODEX-5 — surfaces consume gated selectors and existing seams
     expect(stripComments(read("components/overview/CompanionOfferSlot.tsx"))).toMatch(/if \(offer\.kind === "grounded-step" && surface === "today"\) return null;/);
   });
 
-  it("coach entry uses the EXISTING seedCoach seam with provenance", () => {
-    for (const rel of ["components/tabs/CoachTab.tsx", "components/behaviors/HardMomentsSection.tsx"]) {
+  it("B-ASKJB-31 (clinical veto): no door seeds a card into the prompt; Ask gets a reference card", () => {
+    for (const rel of ["components/tabs/CoachTab.tsx", "components/behaviors/HardMomentsSection.tsx", "components/behaviors/HardMomentNowSheet.tsx"]) {
       const code = stripComments(read(rel));
-      expect(code, `${rel} misses the seedCoach seam`).toContain("seedCoach({");
-      expect(code).toContain("buildHardMomentSeedPrompt(");
-      expect(code, `${rel} misses seed provenance`).toContain('source: "hard-moment-card"');
+      expect(code, `${rel} seeds a hard-moment card`).not.toContain("buildHardMomentSeedPrompt(");
     }
+    expect(stripComments(read("components/behaviors/HardMomentNowSheet.tsx"))).toContain("setAskHardMomentRef(card.id);");
+    // The governed seed builder itself is untouched (coach-hardmoment-seed-v1).
+    expect(stripComments(read("content/hardMomentSurface.ts"))).toContain("export function buildHardMomentSeedPrompt");
   });
 
   it("TODAY-2 holds: one step card, one accept — never a second 'Make this today's step' (B-TODAY-12)", () => {

@@ -73,7 +73,8 @@ describe("B-TODAY-10 · gating and opener", () => {
   it("the tile renders only when Today passes an opener, gated on available pilot guides", () => {
     expect(BAR).toMatch(/\{onHardMoment && \(/);
     expect(TODAY).toMatch(/availableHardMomentCards\(\{ now, ageMonths: ageMonthsFromProfile\(childProfile, now\), locale: uiLang === "he" \? "he" : "en" \}\)\.length > 0/);
-    expect(TODAY).toContain('onHardMoment={hardMomentTile ? () => startCapture("text", null, true) : undefined}');
+    // B-ASKJB-31: the tile opens the ONE "Hard moment now" sheet (context seam).
+    expect(TODAY).toContain("onHardMoment={hardMomentTile ? () => openHardMomentNow() : undefined}");
   });
 
   it("after HARD_MOMENT_PILOT.expiresAt no guide is available, so the tile is absent", () => {

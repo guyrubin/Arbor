@@ -1,20 +1,17 @@
 import React, { useState } from "react";
 import { Icon } from "../ui/Icon";
 import { AiBlock, SayThis } from "../ui/AiBlock";
-import { Modal } from "../ui/Modal";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { cardCls } from "../ui/kit";
 import { renderSayThis, type HardMomentCard, type HardMomentCategory } from "../../content/hardMomentCards";
-import { HARD_MOMENT_CATEGORIES, buildHardMomentSeedPrompt, escalationText, locText, recentBehaviorTypes } from "../../content/hardMomentSurface";
+import { HARD_MOMENT_CATEGORIES, escalationText, locText, recentBehaviorTypes } from "../../content/hardMomentSurface";
 import { availableHardMomentCards, matchToRecentBehaviors } from "../../content/selectCards";
 import { hardMomentPublication, type HardMomentContext } from "../../content/pilotRelease";
 import { hardMomentAgeFit, explainsEmptyHardMoments } from "../../content/hardMomentAgeFit";
 import HardMomentAgeNotice from "./HardMomentAgeNotice";
 import { hardMomentPilotText } from "../../content/hardMomentPilotText";
-import { matchLearnCards } from "../../learn/learnLibrary";
-import { LEARN_CARDS } from "../../learn/learnCards";
-import { ageMonthsFromProfile, ageYearsFromProfile } from "../../lib/childAge";
+import { ageMonthsFromProfile } from "../../lib/childAge";
 
 /** Renderable without a provider; also independently enforces the release policy. */
 export function HardMomentGuideContent({ card, context, childName, t }: {
@@ -96,10 +93,12 @@ export function restingGuides<T>(available: T[], matched: T[]): T[] {
 
 /** Contextual catalog: select by ID again when a sheet or action is used. */
 export default function HardMomentsSection() {
-  const { childProfile, seedCoach, requestLearnRead, behaviorLogs } = useArbor();
-  const { t, uiLang, aiLang } = useLanguage();
+  // B-ASKJB-31: a shelf card opens the ONE "Hard moment now" sheet on that
+  // card (openHardMomentNow). The shelf's own modal — and its prompt seed —
+  // are gone: "Talk it through" now hands Ask a reference card, never a seed.
+  const { childProfile, behaviorLogs, openHardMomentNow } = useArbor();
+  const { t, uiLang } = useLanguage();
   const [category, setCategory] = useState<HardMomentCategory | "all">("all");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   // TJB-21: the shelf opened as the whole catalogue — 22 tiles, 2,025 px between
   // the capture bar and the parent's own logs. It now rests as THREE tiles
   // matched to what this parent actually logged, behind an "All guides" door
@@ -112,7 +111,6 @@ export default function HardMomentsSection() {
   };
   const context = contextFor();
   const cards = availableHardMomentCards(context);
-  const openCard = cards.find((card) => card.id === selectedId);
   const childFirst = (childProfile.name || "").split(" ")[0];
   const copy = hardMomentPilotText(locale);
   const categories = HARD_MOMENT_CATEGORIES.filter((value) => cards.some((card) => card.category === value));
@@ -151,11 +149,6 @@ export default function HardMomentsSection() {
         <p className="mt-1 text-sm leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>{t("hm.sub")}</p>
         {hasPilot && <p className="mt-2 text-xs font-semibold" style={{ color: "var(--arbor-green-ink)" }}>{copy.status}</p>}
       </div>
-      {/* Persistent live region: mounting a role="status" together with its
-          text is routinely dropped by NVDA/JAWS/VoiceOver. Only the text swaps. */}
-      <p role="status" aria-live="polite" className="text-sm" style={{ color: "var(--arbor-ink)" }}>
-        {selectedId && !openCard ? copy.unavailable : ""}
-      </p>
       {/* The category filter belongs to the OPEN catalogue: filtering three
           matched tiles is a control with nothing to control. */}
       {expanded && (
@@ -178,7 +171,7 @@ export default function HardMomentsSection() {
       )}
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2" data-testid="hard-moment-tiles">
         {visible.map((card) => (
-          <button key={card.id} type="button" onClick={() => setSelectedId(card.id)}
+          <button key={card.id} type="button" data-testid="hard-moment-tile" onClick={() => openHardMomentNow(card.id)}
             className="flex min-h-[52px] min-w-0 items-center justify-between gap-2 rounded-xl px-3.5 py-3 text-start transition"
             style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
             <span className="min-w-0">
@@ -204,40 +197,6 @@ export default function HardMomentsSection() {
           {expanded ? t("elev.closeloop.hm.fewer") : t("elev.closeloop.hm.allGuides", { n: cards.length })}
         </button>
       )}
-      <Modal open={!!openCard} onClose={() => setSelectedId(null)} title={openCard ? locText(openCard.title, locale) : undefined}>
-        {openCard && (
-          <div className="min-w-0 space-y-3" lang={locale} dir={locale === "he" ? "rtl" : "ltr"}>
-            <HardMomentGuideContent card={openCard} context={context} childName={childFirst} t={t} />
-            <button type="button" onClick={() => {
-              const aiContext = contextFor(aiLang === "he" ? "he" : "en");
-              const current = availableHardMomentCards(aiContext).find((card) => card.id === selectedId);
-              if (!current) { setSelectedId(null); return; }
-              const prompt = buildHardMomentSeedPrompt(current, aiContext.locale, childFirst, aiContext);
-              if (prompt) seedCoach({ prompt, source: "hard-moment-card" });
-              setSelectedId(null);
-            }}
-              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition"
-              // rule-strong is a divider token (1.17:1 on white) and cannot
-              // carry a control boundary; green-ink is 7.19:1.
-              style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)", background: "var(--arbor-paper-elevated)" }}>
-              <Icon name="forum" size={16} /> {t("hm.talkThrough")}
-            </button>
-            {(() => {
-              const read = matchLearnCards(LEARN_CARDS, { concerns: openCard.concerns, ageYears: ageYearsFromProfile(childProfile) }, 1)[0];
-              if (!read) return null;
-              return <button type="button" onClick={() => {
-                if (!availableHardMomentCards(contextFor()).some((card) => card.id === selectedId)) { setSelectedId(null); return; }
-                requestLearnRead({ cardId: read.id, source: "hard-moment-card" });
-                setSelectedId(null);
-              }}
-                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition"
-                style={{ color: "var(--arbor-lav-ink)", border: "1px solid var(--arbor-lav-ink)", background: "var(--arbor-lav-soft)" }}>
-                <Icon name="local_library" size={16} /> {t("learn.understandWhy")}
-              </button>;
-            })()}
-          </div>
-        )}
-      </Modal>
     </section>
   );
 }

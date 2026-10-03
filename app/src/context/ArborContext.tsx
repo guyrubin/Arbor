@@ -452,6 +452,15 @@ function useArborState() {
     try { track("today_action_outcome", todayOutcomeProps({ outcome, capacity: item.capacity, via, acceptedAt: item.acceptedAt })); } catch { /* noop */ }
   };
   const removeTodayAction = (id: string) => void actionLoopCol.remove(id);
+  // B-ASKJB-31 — the ONE "Hard moment now" sheet (mounted once in Shell).
+  // Doors: Ask's fast-start chip, a Behaviors shelf card (opens on that card),
+  // Today's capture-bar tile (B-TODAY-10). `askHardMomentRef` is the card the
+  // sheet hands to Ask as a reference card above the composer — display only,
+  // never written into a prompt (clinical veto).
+  const [hardMomentNow, setHardMomentNow] = useState<{ open: boolean; cardId?: string }>({ open: false });
+  const openHardMomentNow = (cardId?: string) => setHardMomentNow({ open: true, ...(cardId ? { cardId } : {}) });
+  const closeHardMomentNow = () => setHardMomentNow({ open: false });
+  const [askHardMomentRef, setAskHardMomentRef] = useState<string | null>(null);
   // B-GROWTH-19 — every Daily Play "We did this" path writes through here:
   // a ranked pick (ScoredActivity, carries its reason) OR a bare course step
   // (PlayActivity + the course id it was ticked in; reason "stage-match").
@@ -1545,6 +1554,11 @@ function useArborState() {
     acceptTodayAction,
     recordTodayOutcome,
     removeTodayAction,
+    hardMomentNow,
+    openHardMomentNow,
+    closeHardMomentNow,
+    askHardMomentRef,
+    setAskHardMomentRef,
     currentStory,
     setCurrentStory,
     selectedLens,

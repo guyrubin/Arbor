@@ -107,7 +107,7 @@ export default function OverviewTab() {
     behaviorLogs, childProfile, seedCoach,
     donePlayIds, logPlayCompletion, playLogs, actionLoop,
     activeTodayAction, acceptTodayAction, requestJournalFocus, approvedMemoryItems,
-    pendingCaptureMode, consumeCaptureRequest,
+    pendingCaptureMode, consumeCaptureRequest, openHardMomentNow,
   } = useArbor();
 
   const { t, uiLang } = useLanguage();
@@ -131,8 +131,9 @@ export default function OverviewTab() {
     startCapture("text");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingCaptureMode]);
-  // B-TODAY-10: the "Hard moment" tile opens the same sheet on its
-  // hard-moment branch (the matched pilot guide first).
+  // B-TODAY-10 → B-ASKJB-31: the "Hard moment" tile opens the shared "Hard
+  // moment now" sheet (openHardMomentNow, mounted once in Shell); the capture
+  // sheet's hard-moment branch stays for a caller that passes hard=true.
   const [quickLogHard, setQuickLogHard] = useState(false);
   const startCapture = (mode: CaptureMode, promptKey: string | null = null, hard = false) => {
     setQuickLogMode(mode);
@@ -684,7 +685,7 @@ export default function OverviewTab() {
           childName={firstName}
           onText={() => startCapture("text")}
           onMode={(mode) => startCapture(mode)}
-          onHardMoment={hardMomentTile ? () => startCapture("text", null, true) : undefined}
+          onHardMoment={hardMomentTile ? () => openHardMomentNow() : undefined}
         />
       </div>
 

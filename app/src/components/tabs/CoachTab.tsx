@@ -72,15 +72,14 @@ import { splitCompleteSentences } from "../../lib/sentenceStream";
 // ASK-7: thread-shape predicates — orientation/follow-up/trust guards key off
 // real user/AI turns, never message-count checks (the welcome bubble is gone).
 import { hasUserTurn, hasAiTurn } from "../../lib/chatStream";
-import { publishedHardMomentCards } from "../../content/hardMomentCards";
 // LL-A1: "Go deeper" — after a settled answer, up to 2 Learn Library reads
 // matched on the contract's framework domains + concerns keyword-derived from
 // the answer text, deep-linked via the requestLearnRead seam.
 import { matchLearnCards } from "../../learn/learnLibrary";
 import { LEARN_CARDS } from "../../learn/learnCards";
-import { concernsForBehaviors } from "../../content/selectCards";
-import { ageYearsFromProfile } from "../../lib/childAge";
-import { buildHardMomentSeedPrompt, locText } from "../../content/hardMomentSurface";
+import { availableHardMomentCards, concernsForBehaviors } from "../../content/selectCards";
+import { ageMonthsFromProfile, ageYearsFromProfile } from "../../lib/childAge";
+import { locText } from "../../content/hardMomentSurface";
 import { speak, stopSpeaking, ttsSupported } from "../../lib/tts";
 import { voiceState } from "../../lib/voice";
 // AI-V5: screened-sentence tokens + next-sentence audio prefetch keep the
@@ -183,6 +182,9 @@ export default function CoachTab() {
     activeTodayAction,
     acceptTodayAction,
     removeTodayAction,
+    openHardMomentNow,
+    askHardMomentRef,
+    setAskHardMomentRef,
   } = useArbor();
   // B-AI-06: Ask renders the SAME single-offer decision as Today.
   const askOffer = useCompanionOffer("coach");
@@ -244,6 +246,13 @@ export default function CoachTab() {
   useEffect(() => { setWeeklyNotice(shouldShowWeeklyContextNotice(childProfile.id)); }, [childProfile.id]);
   const closeWeeklyNotice = () => { dismissWeeklyContextNotice(childProfile.id); setWeeklyNotice(false); };
   const contractToggleRef = useRef<HTMLButtonElement | null>(null);
+  // B-ASKJB-31: the pilot guides this child can open right now (the chip's
+  // gate) and the reference card the sheet handed to Ask, if still available.
+  const hardMomentGuides = (() => {
+    const now = new Date();
+    return availableHardMomentCards({ now, ageMonths: ageMonthsFromProfile(childProfile, now), locale: uiLang === "he" ? "he" : "en" });
+  })();
+  const askRefCard = askHardMomentRef ? hardMomentGuides.find((card) => card.id === askHardMomentRef) ?? null : null;
   // Parent-register copy; module not yet in the i18nElevation index (owned by
   // a parallel stream) so it resolves through its own lookup, same semantics.
   const tcc = (key: string, params?: Record<string, string | number>) =>
@@ -898,6 +907,40 @@ export default function CoachTab() {
                   : t("elev.aihonesty.memory.some", { name: childFirst, n: approvedMemoryItems.length })}
             </p>
           )}
+          {/* B-ASKJB-31: the guide the parent opened in the sheet, shown as a
+              reference card above the composer. Display only — nothing from it
+              is written into the prompt (clinical veto). */}
+          {askRefCard && (
+            <div
+              data-testid="coach-hard-moment-ref"
+              role="note"
+              className="mb-2 flex items-start gap-2 rounded-xl ps-3 pe-1 py-1"
+              style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}
+            >
+              <div className="min-w-0 flex-1 py-1.5">
+                <p className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>{t("hm.ref.eyebrow")}</p>
+                <p className="text-[13px] font-extrabold break-words" style={{ color: "var(--arbor-ink)" }}>{locText(askRefCard.title, uiLang === "he" ? "he" : "en")}</p>
+                <p className="mt-0.5 text-[11px] leading-snug" style={{ color: "var(--arbor-muted)" }}>{t("hm.ref.note")}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => openHardMomentNow(askRefCard.id)}
+                className="inline-flex min-h-11 items-center px-2 text-[12px] font-bold underline underline-offset-2 rounded-lg focus:outline-none focus-visible:ring-2"
+                style={{ color: "var(--arbor-green-ink)" }}
+              >
+                {t("hm.ref.open")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setAskHardMomentRef(null)}
+                aria-label={t("hm.ref.dismiss")}
+                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg focus:outline-none focus-visible:ring-2"
+                style={{ color: "var(--arbor-muted)" }}
+              >
+                <Icon name="close" size={16} />
+              </button>
+            </div>
+          )}
           {weeklyNotice && weeklyOn && (
             <div
               data-testid="coach-weekly-notice"
@@ -1037,6 +1080,21 @@ export default function CoachTab() {
         <div className="space-y-2">
           <span className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("coach.fastStart")}</span>
           <div id="coach-scenarios" className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {/* B-ASKJB-31: ONE "Hard moment now" chip opens the shared sheet
+                (replaces the dead publishedHardMomentCards group). Hidden when
+                no pilot guide is available for this child (age, expiry). */}
+            {hardMomentGuides.length > 0 && (
+              <button
+                key="hard-moment-now"
+                type="button"
+                data-testid="coach-hard-moment-now"
+                onClick={() => openHardMomentNow()}
+                className="inline-flex items-center gap-2 rounded-xl px-3 py-2.5 min-h-11 text-start text-[13px] font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                style={{ color: T.ink, border: "1px solid var(--arbor-rule-strong)", background: "var(--arbor-paper-elevated)" }}
+              >
+                <Icon name="support" size={16} style={{ color: "var(--arbor-ink-soft)" }} /> {t("hm.now.title")}
+              </button>
+            )}
             {/* B-ASKJB-10: the child's own recurring moment leads, then 2 static chips. */}
             {echoScenario && (
               <button
@@ -1075,33 +1133,6 @@ export default function CoachTab() {
                 ? t("elev.wave2Daily.ask.examples.less")
                 : t("elev.wave2Daily.ask.examples.more", { count: SCENARIOS.length - staticShown })}
             </button>
-          </div>
-        </div>
-      )}
-
-      {/* CONT-2 — hard-moment "Talk this through" (AR-CONT-01). Reads ONLY
-          publishedHardMomentCards (fail-closed governance), so this group is
-          invisible until named clinical review stamps the pack (GD-10). Each
-          chip calls the EXISTING seedCoach seam with the card context; the
-          seed embeds the governed escalation VERBATIM (never paraphrased) and
-          is covered by evals/coach-hardmoment-seed-v1. */}
-      {!userTurnExists && publishedHardMomentCards.length > 0 && (
-        <div className="space-y-2" data-testid="coach-hard-moments">
-          <span className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("hm.coach.heading")}</span>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {publishedHardMomentCards.map((card) => (
-              <button
-                key={card.id}
-                type="button"
-                onClick={() => seedCoach({ prompt: buildHardMomentSeedPrompt(card, aiLang === "he" ? "he" : "en", childFirst), source: "hard-moment-card" })}
-                disabled={isChatLoading}
-                className="inline-flex min-h-[48px] items-center gap-2 rounded-2xl px-4 py-3 text-start text-sm font-bold transition motion-safe:hover:-translate-y-0.5 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-                style={{ color: T.ink, border: "1px solid var(--arbor-rule)", background: "var(--arbor-paper-elevated)" }}
-              >
-                <Icon name="forum" size={15} style={{ color: "var(--arbor-green-ink)" }} />
-                <span className="min-w-0 truncate">{t("hm.talkThrough")} · {locText(card.title, uiLang === "he" ? "he" : "en")}</span>
-              </button>
-            ))}
           </div>
         </div>
       )}

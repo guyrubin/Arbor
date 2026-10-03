@@ -24,6 +24,7 @@ import SettingsModal from "./SettingsModal";
 import ProfileEditDrawer from "../profile/ProfileEditDrawer";
 import { usePulses } from "../../lib/pulse";
 import PaywallModal from "../billing/PaywallModal";
+import HardMomentNowSheet from "../behaviors/HardMomentNowSheet";
 import { refreshEntitlement, takeBillingReturn, startBillingReturnPoll, BILLING_PENDING_KEY } from "../../hooks/useEntitlement";
 import { selectionHaptic } from "../../lib/native";
 // AP-048: Kid Mode overlay + context provider
@@ -571,6 +572,9 @@ export default function Shell() {
       {!kidLocked && <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />}
       {!kidLocked && <ProfileEditDrawer open={profileEditOpen} onClose={() => setProfileEditOpen(false)} />}
       {!kidLocked && <PaywallModal />}
+      {/* B-ASKJB-31: the ONE "Hard moment now" sheet; open state lives in
+          ArborContext (openHardMomentNow) so Ask, Behaviors and Today share it. */}
+      {!kidLocked && <HardMomentNowSheet />}
       {/* AP-048: Kid Mode full-screen overlay — rendered at z-70, above everything.
           Desktop-only entry point (Topbar button starts at lg). The overlay
           itself is responsive; MobileNav is byte-unchanged. */}

@@ -116,3 +116,91 @@ describe("TJB-21 — the guide shelf rests at three, and the door keeps every gu
     expect(prefix).not.toContain('data-testid="hard-moments-door"');
   });
 });
+
+/**
+ * B-ASKJB-31 — "Hard moment now": ONE sheet over the pilot guides with doors
+ * from Ask, Behaviors and Today. Opening or reading a card makes no request;
+ * every door hides after the pilot expires (injected clock); the card is never
+ * seeded into the prompt (clinical veto).
+ */
+describe("B-ASKJB-31 — the Hard moment now sheet and its doors", async () => {
+  const { hardMomentSheetCards, hardMomentSheetOrder } = await import("./HardMomentNowSheet");
+  const { HARD_MOMENT_PILOT } = await import("../../content/pilotRelease");
+  const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  const SHEET = strip(read("components/behaviors/HardMomentNowSheet.tsx"));
+  const SHELF = strip(read("components/behaviors/HardMomentsSection.tsx"));
+  const COACH = strip(read("components/tabs/CoachTab.tsx"));
+  const TODAY = strip(read("components/tabs/OverviewTab.tsx"));
+  const SHELL = strip(read("components/layout/Shell.tsx"));
+  const CTX = strip(read("context/ArborContext.tsx"));
+  const inPilot = new Date(Date.parse(HARD_MOMENT_PILOT.expiresAt) - 7 * 86_400_000);
+  const afterPilot = new Date(Date.parse(HARD_MOMENT_PILOT.expiresAt) + 1000);
+  const refusals = [0, 1, 2].map((i) => ({ behaviorType: "Transition Refusal", timestamp: new Date(inPilot.getTime() - i * 86_400_000).toISOString() }));
+
+  it("a child with 3 'Transition Refusal' logs sees the matched card first; nothing is dropped", () => {
+    const { ordered, matchedIds } = hardMomentSheetCards({ now: inPilot, ageMonths: 48, locale: "en" }, refusals);
+    expect(matchedIds.length).toBeGreaterThan(0);
+    expect(ordered[0].id).toBe(matchedIds[0]);
+    const none = hardMomentSheetCards({ now: inPilot, ageMonths: 48, locale: "en" }, []);
+    expect(ordered.map((c) => c.id).sort()).toEqual(none.ordered.map((c) => c.id).sort());
+    expect(hardMomentSheetOrder([{ id: "a" }, { id: "b" }, { id: "c" }], [{ id: "c" }, { id: "x" }]).map((c) => c.id)).toEqual(["c", "a", "b"]);
+  });
+
+  it("after the pilot expires the sheet offers nothing, EN and HE (every door's gate)", () => {
+    expect(hardMomentSheetCards({ now: afterPilot, ageMonths: 48, locale: "en" }, refusals).ordered).toEqual([]);
+    expect(hardMomentSheetCards({ now: afterPilot, ageMonths: 48, locale: "he" }, refusals).ordered).toEqual([]);
+  });
+
+  it("every door is gated on availableHardMomentCards (Ask chip, Behaviors shelf, Today tile)", () => {
+    expect(COACH).toMatch(/\{hardMomentGuides\.length > 0 && \(/);
+    expect(COACH).toContain("availableHardMomentCards({ now, ageMonths: ageMonthsFromProfile(childProfile, now)");
+    expect(COACH).toContain("onClick={() => openHardMomentNow()}");
+    expect(SHELF).toMatch(/if\s*\(cards\.length\s*===\s*0\)\s*return null/);
+    expect(SHELF).toContain("onClick={() => openHardMomentNow(card.id)}");
+    expect(TODAY).toContain("onHardMoment={hardMomentTile ? () => openHardMomentNow() : undefined}");
+  });
+
+  it("one sheet, mounted once in Shell, opened through the context seam", () => {
+    expect((SHELL.match(/<HardMomentNowSheet\b/g) ?? []).length).toBe(1);
+    expect(CTX).toContain("const openHardMomentNow = (cardId?: string) =>");
+    for (const rel of ["components/tabs/CoachTab.tsx", "components/behaviors/HardMomentsSection.tsx", "components/tabs/OverviewTab.tsx"]) {
+      expect(strip(read(rel)), rel).not.toMatch(/<HardMomentNowSheet\b/);
+    }
+  });
+
+  it("no seed and no request: opening or reading a card never reaches /chat; Ask gets a reference card", () => {
+    for (const [name, code] of [["sheet", SHEET], ["shelf", SHELF]] as const) {
+      expect(code, name).not.toMatch(/seedCoach|buildHardMomentSeedPrompt|fetch\(|api\.|sendToCoach|handleChatSend/);
+    }
+    expect(COACH).not.toContain("buildHardMomentSeedPrompt");
+    expect(COACH).not.toContain("publishedHardMomentCards");
+    expect(SHEET).toContain("setAskHardMomentRef(card.id);");
+    expect(COACH).toContain('data-testid="coach-hard-moment-ref"');
+    // The reference card is display-only: nothing on the send path reads it.
+    expect(CTX).not.toMatch(/askHardMomentRef[^\n]*\bbody\b|JSON\.stringify\([^)]*askHardMomentRef/);
+  });
+
+  it("'Try this tonight' books the governed doNow with source 'hard-moment' via the one seam", () => {
+    expect(SHEET).toContain('acceptHardMomentStep(card.id, { now: new Date(), ageMonths: context.ageMonths, locale }, "standard", acceptTodayAction)');
+  });
+
+  it("neutral ink: no red/coral/peach/pink token, no 'SOS', the guide renders through HardMomentGuideContent; chips ≥44 px", () => {
+    expect(SHEET).not.toMatch(/--arbor-(red|coral|peach|pink|clay)/);
+    expect(SHEET).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+    expect(SHEET).not.toMatch(/\bSOS\b/);
+    expect(SHEET).toContain("<HardMomentGuideContent");
+    const chip = SHEET.slice(SHEET.indexOf('data-testid="hard-moment-now-chip"'), SHEET.indexOf('data-testid="hard-moment-now-chip"') + 400);
+    expect(chip).toMatch(/min-h-11 min-w-11/);
+  });
+
+  it("the sheet copy exists in EN and HE, with no Latin on HE and no SOS in either", async () => {
+    const { en, he } = await import("../../lib/i18n");
+    for (const k of ["hm.now.title", "hm.now.pick", "hm.now.matched", "hm.now.back", "hm.now.tryTonight", "hm.now.talk", "hm.now.none", "hm.ref.eyebrow", "hm.ref.note", "hm.ref.open", "hm.ref.dismiss"]) {
+      expect(en[k], k).toBeTruthy();
+      expect(he[k], k).toBeTruthy();
+      expect(he[k], k).not.toMatch(/[A-Za-z]/);
+      expect(`${en[k]} ${he[k]}`).not.toMatch(/\bSOS\b/i);
+    }
+    expect(he["hm.now.title"]).toBe("רגע קשה עכשיו");
+  });
+});
