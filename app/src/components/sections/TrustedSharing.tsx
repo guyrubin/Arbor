@@ -14,7 +14,7 @@ import { PageHeader, SectionCard, cardCls, Chip, TrustSafetyBar, PASTEL, PastelK
 import { ErrorState } from "../ui/ErrorState";
 import { REPORTS } from "./Reports";
 import { isProfessionalReportType } from "../../lib/reportExport";
-import { REPORT_SCOPE_BY_TYPE, type ShareScopeId, scopeDisplayLabels, shareScopeLabelKey } from "../../lib/shareScopes";
+import { REPORT_SCOPE_BY_TYPE, WEEK_SHARE_SCOPES, WEEK_SHARE_DURATION, type ShareScopeId, scopeDisplayLabels, shareScopeLabelKey } from "../../lib/shareScopes";
 import { fmtDay } from "../../lib/formatDate";
 // LC-17: the review step shows the RECIPIENT'S ACTUAL VIEW, built by the same
 // function the server uses for them — not a list of scope labels.
@@ -107,6 +107,32 @@ export default function TrustedSharing() {
     }
   }, [draft.scopes, draft.role, childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems]);
 
+  /* B-CAREPRO-26 — "Share {name}'s week" is the FIRST card: email → "See what
+     they will see" (tap 1, the recipient's own packet, same builder + same
+     assembler as the server) → "Share {name}'s week" (tap 2, a live grant).
+     Role = DEFAULT_ROLE until G1 decides whether the co-parent seat is free
+     (`viewer` gives the identical read-only view on every plan). */
+  const WEEK_ROLE: ShareRole = DEFAULT_ROLE;
+  const [weekEmail, setWeekEmail] = useState("");
+  const [weekPreviewing, setWeekPreviewing] = useState(false);
+  const weekEmailValid = /^\S+@\S+\.\S+$/.test(weekEmail.trim());
+  const weekPreview = React.useMemo(() => {
+    if (!weekPreviewing) return { sections: null as null | { id: string; title: string; items: { id: string; text: string }[] }[], blocked: false };
+    try {
+      const packet = buildSharedScopePacket(
+        [...WEEK_SHARE_SCOPES],
+        false, // the week card never grants the professional view
+        buildPacketInput(
+          { profile: childProfile, logs: behaviorLogs, milestones, plans: actionPlans, memory: approvedMemoryItems },
+          Date.now()
+        )
+      );
+      return { sections: packet.sections, blocked: false };
+    } catch (err) {
+      return { sections: null, blocked: err instanceof ClinicalLanguageError };
+    }
+  }, [weekPreviewing, childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems]);
+
   /** LC-17: a prefilled invite the PARENT sends. Arbor sends no email. */
   const inviteHref = (email: string): string => {
     const link = `${typeof window === "undefined" ? "" : window.location.origin}/#/sharing`;
@@ -153,18 +179,16 @@ export default function TrustedSharing() {
 
   const setScope = (f: ShareScopeId) => setDraft((d) => ({ ...d, scopes: d.scopes.includes(f) ? d.scopes.filter((x) => x !== f) : [...d.scopes, f] }));
 
-  const createShare = async () => {
-    const email = draft.recipientEmail.trim();
-    if (!email || draft.scopes.length === 0) return;
-    setBusy("create");
+  /** One grant path for the week card and the custom wizard (same toasts,
+   *  same invite hand-off, same seat / paywall handling). */
+  const grant = async (g: { email: string; role: ShareRole; scopes: ShareScopeId[]; duration: string }, busyKey: string, onDone: () => void) => {
+    setBusy(busyKey);
     try {
-      await api.createShare({ childId: childProfile.id, childName: childProfile.name, recipientEmail: email, role: draft.role, scopes: draft.scopes, duration: draft.duration });
-      toast(t("sec.sharing.audit.shared", { scopes: scopesLabel(draft.scopes), email, role: roleLabel(draft.role) }), "success");
-      setInvite({ email });
-      setDraft({ recipientEmail: "", role: DEFAULT_ROLE, scopes: [], duration: DURATIONS[0] });
+      await api.createShare({ childId: childProfile.id, childName: childProfile.name, recipientEmail: g.email, role: g.role, scopes: g.scopes, duration: g.duration });
+      toast(t("sec.sharing.audit.shared", { scopes: scopesLabel(g.scopes), email: g.email, role: roleLabel(g.role) }), "success");
+      setInvite({ email: g.email });
       setSeatInUse(null);
-      setReviewing(false);
-      setAdding(false);
+      onDone();
       await load();
     } catch (e: any) {
       if (e instanceof ApiError && e.status === 409 && e.message === SEAT_IN_USE) {
@@ -177,6 +201,25 @@ export default function TrustedSharing() {
     } finally {
       setBusy(null);
     }
+  };
+
+  const createShare = async () => {
+    const email = draft.recipientEmail.trim();
+    if (!email || draft.scopes.length === 0) return;
+    await grant({ email, role: draft.role, scopes: draft.scopes, duration: draft.duration }, "create", () => {
+      setDraft({ recipientEmail: "", role: DEFAULT_ROLE, scopes: [], duration: DURATIONS[0] });
+      setReviewing(false);
+      setAdding(false);
+    });
+  };
+
+  const shareWeek = async () => {
+    const email = weekEmail.trim();
+    if (!weekEmailValid) return;
+    await grant({ email, role: WEEK_ROLE, scopes: [...WEEK_SHARE_SCOPES], duration: WEEK_SHARE_DURATION }, "week", () => {
+      setWeekEmail("");
+      setWeekPreviewing(false);
+    });
   };
 
   const revoke = async (g: ShareGrant) => {
@@ -306,8 +349,10 @@ export default function TrustedSharing() {
         subtitle={t("sec.sharing.sub", { name: first })}
         action={
           <div className="flex flex-wrap items-center gap-3">
-            <button onClick={() => setAdding((a) => !a)} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold text-white" style={{ background: "var(--arbor-gradient-primary)" }}>
-              <Icon name="add" size={18} /> {t("sec.sharing.new")}
+            {/* B-CAREPRO-26: the full wizard sits behind "Custom share" (outline);
+                the week card below is the page's one primary move. */}
+            <button onClick={() => setAdding((a) => !a)} aria-expanded={adding} data-testid="sharing-custom-open" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold" style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)", background: "var(--arbor-paper-elevated)" }}>
+              <Icon name="tune" size={18} /> {t("elev.learnCare.share.week.custom")}
             </button>
           </div>
         }
@@ -337,6 +382,80 @@ export default function TrustedSharing() {
           hand-off it produces (LC-17) are two steps of one capability, so
           they carry one stamp between them rather than competing as two. */}
       <div data-module="sharing-grant" style={{ display: "contents" }}>
+      {!error && (
+        <section data-testid="share-week-card" className="rounded-[22px] p-5 space-y-3" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }}>
+          <h2 className="text-[16px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("elev.learnCare.share.week.title", { name: first })}</h2>
+          <p className="text-[13px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.share.week.body")}</p>
+          {!weekPreviewing ? (
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                value={weekEmail}
+                onChange={(e) => setWeekEmail(e.target.value)}
+                placeholder={t("elev.learnCare.share.week.email")}
+                aria-label={t("elev.learnCare.share.week.email")}
+                data-testid="share-week-email"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                dir="auto"
+                className="min-w-0 flex-1 rounded-xl px-3 min-h-11 text-sm"
+                style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }}
+              />
+              <button
+                type="button"
+                data-testid="share-week-preview-open"
+                onClick={() => setWeekPreviewing(true)}
+                disabled={!weekEmailValid}
+                className="inline-flex items-center justify-center gap-2 rounded-xl px-4 min-h-11 text-sm font-bold disabled:opacity-40"
+                style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
+              >
+                <Icon name="visibility" size={16} /> {t("elev.learnCare.share.week.preview")}
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3" aria-live="polite">
+              <p className="text-sm font-extrabold break-all" dir="auto" style={{ color: "var(--arbor-ink)" }}>{weekEmail.trim()}</p>
+              {/* The recipient's actual view — buildSharedScopePacket on the
+                  shared assembler, the same call server/sharedPacket.ts makes. */}
+              <div data-testid="share-week-preview" className="rounded-xl p-3.5 space-y-2.5" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+                <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--arbor-green-ink)" }}>{t("elev.learnCare.share.preview.title")}</p>
+                {weekPreview.blocked ? (
+                  <p role="alert" className="text-[12px] font-bold leading-relaxed" style={{ color: "var(--arbor-pink-ink)" }}>{t("elev.learnCare.share.preview.blocked")}</p>
+                ) : !weekPreview.sections || weekPreview.sections.length === 0 ? (
+                  <p className="text-[12px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.share.preview.empty")}</p>
+                ) : (
+                  weekPreview.sections.map((section) => (
+                    <div key={section.id}>
+                      <p className="text-[12.5px] font-extrabold" dir="auto" style={{ color: "var(--arbor-ink)" }}>{sectionTitle(section, uiLang)}</p>
+                      <ul className="list-disc ps-5 mt-1 space-y-0.5">
+                        {section.items.map((it) => (
+                          <li key={it.id} className="text-[12px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-muted)" }}>{itemText(it, uiLang)}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
+                <button type="button" onClick={() => setWeekPreviewing(false)} className="inline-flex items-center justify-center rounded-xl px-4 min-h-11 text-sm font-bold" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}>
+                  {t("elev.learnCare.share.week.edit")}
+                </button>
+                <button
+                  type="button"
+                  data-primary-move="grant-share"
+                  data-testid="share-week-confirm"
+                  onClick={shareWeek}
+                  disabled={busy === "week" || weekPreview.blocked}
+                  className="inline-flex items-center justify-center gap-2 text-white font-bold text-sm rounded-xl px-4 min-h-11 disabled:opacity-60"
+                  style={{ background: "var(--arbor-gradient-primary)" }}
+                >
+                  {busy === "week" ? <><Icon name="progress_activity" size={16} className="animate-spin" /> {t("sec.sharing.review.working")}</> : t("elev.learnCare.share.week.share", { name: first })}
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
       {invite && (
         <div data-testid="share-invite" className="border-y py-4 flex flex-wrap items-center gap-3" style={{ borderColor: "var(--arbor-rule)" }}>
           <span className="text-sm font-bold break-all" dir="auto" style={{ color: "var(--arbor-ink)" }}>{invite.email}</span>
@@ -448,7 +567,7 @@ export default function TrustedSharing() {
                 )}
               </div>
             )}
-            <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end"><button onClick={() => setReviewing(false)} className="inline-flex items-center justify-center rounded-xl px-4 min-h-11 text-sm font-bold" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}>{t("sec.sharing.review.back")}</button><button data-primary-move="grant-share" onClick={createShare} disabled={busy === "create"} className="inline-flex items-center justify-center gap-2 text-white font-bold text-sm rounded-xl px-4 min-h-11 disabled:opacity-60" style={{ background: "var(--arbor-clay)" }}>{busy === "create" ? <><Icon name="progress_activity" size={16} className="animate-spin" /> {t("sec.sharing.review.working")}</> : t("sec.sharing.review.approve")}</button></div>
+            <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end"><button onClick={() => setReviewing(false)} className="inline-flex items-center justify-center rounded-xl px-4 min-h-11 text-sm font-bold" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}>{t("sec.sharing.review.back")}</button><button data-testid="sharing-wizard-approve" onClick={createShare} disabled={busy === "create"} className="inline-flex items-center justify-center gap-2 text-white font-bold text-sm rounded-xl px-4 min-h-11 disabled:opacity-60" style={{ background: "var(--arbor-clay)" }}>{busy === "create" ? <><Icon name="progress_activity" size={16} className="animate-spin" /> {t("sec.sharing.review.working")}</> : t("sec.sharing.review.approve")}</button></div>
           </div>}
         </div>
       )}

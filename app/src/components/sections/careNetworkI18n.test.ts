@@ -129,8 +129,9 @@ describe("B-CAREPRO-15 · packet section headings are keyed", () => {
     expect(RAW_HEADING.test('{section.note && <p className="text-[11px]">{section.note}</p>}')).toBe(true);
   });
 
-  it("both TrustedSharing sites render sectionTitle(section, uiLang)", () => {
-    expect((sharing.match(/\{sectionTitle\(section, uiLang\)\}/g) ?? []).length).toBe(2);
+  it("every TrustedSharing site renders sectionTitle(section, uiLang)", () => {
+    // consent preview + recipient viewer + B-CAREPRO-26's week-card preview
+    expect((sharing.match(/\{sectionTitle\(section, uiLang\)\}/g) ?? []).length).toBe(3);
   });
 
   it("a Hebrew heading resolves from the key (0 Latin letters in the scaffold)", () => {

@@ -35,6 +35,12 @@ export type ShareScopeId = (typeof SHARE_SCOPE_IDS)[number];
 export const isShareScopeId = (value: string): value is ShareScopeId =>
   (SHARE_SCOPE_IDS as readonly string[]).includes(value);
 
+/** B-CAREPRO-26 (CARE-3): the first card on Sharing — "Share {name}'s week" —
+ *  grants exactly these two scopes, read-only, until revoked. */
+export const WEEK_SHARE_SCOPES: readonly ShareScopeId[] = ["weekly_insight", "story_timeline"];
+/** The duration id the week card sends (expiryFromDuration reads "revok"). */
+export const WEEK_SHARE_DURATION = "until_revoked" as const;
+
 /** Professional consult presets → their share-scope IDs. Mirrors the REPORTS
  *  definition (Reports.tsx) one-to-one so the share scopes can never drift from
  *  the consult preset set (IA W4.5). */
