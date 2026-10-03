@@ -3,8 +3,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ChildProfile from "./ChildProfile";
 import { en, he } from "../../lib/i18nElevation/wave2Knowledge";
+import { en as goalsEn, he as goalsHe } from "../../lib/i18nElevation/goals";
 const harness=vi.hoisted(() => ({
  callback:false, locale:"en", pending:[] as unknown[], approved:[] as unknown[], hasHero:true,
+ goals:[] as unknown[], challenges:[] as string[],
  setActiveTab:vi.fn(), setState:vi.fn(),
 }));
 vi.mock("react", async (original) => {
@@ -16,13 +18,13 @@ vi.mock("react", async (original) => {
  };
 });
 vi.mock("../../context/ArborContext",()=>({useArbor:()=>({
- childProfile:{id:"c1",name:"Dylan",age:5,languages:["English"],schoolContext:"School",challenges:[],strengths:[],interests:["Dinosaurs"]},
+ childProfile:{id:"c1",name:"Dylan",age:5,languages:["English"],schoolContext:"School",challenges:harness.challenges,strengths:[],interests:["Dinosaurs"],activeGoals:harness.goals},
  milestones:[],behaviorLogs:[],playLogs:[],actionPlans:[],approvedMemoryItems:harness.approved,pendingMemoryItems:harness.pending,setActiveTab:harness.setActiveTab,
 })}));
 vi.mock("../../context/ProfileContext",()=>({useProfile:()=>({profiles:[{id:"c1"}]})}));
 vi.mock("../../context/AuthContext",()=>({useAuth:()=>({user:{displayName:"Parent"}})}));
 vi.mock("../../context/LanguageContext",()=>({useLanguage:()=>({t:(key:string,vars?:Record<string,unknown>)=>{
- let value=(harness.locale==="he"?he:en)[key]||key;
+ let value=(harness.locale==="he"?he:en)[key]||(harness.locale==="he"?goalsHe:goalsEn)[key]||key;
  for(const [k,v] of Object.entries(vars||{}))value=value.replaceAll("{"+k+"}",String(v));
  return value;
 }})}));
@@ -34,7 +36,7 @@ function elements(node:React.ReactNode):React.ReactElement<Record<string,any>>[]
  const element=node as React.ReactElement<Record<string,any>>;
  return[element,...React.Children.toArray(element.props.children).flatMap(elements)];
 }
-beforeEach(()=>{vi.clearAllMocks();harness.callback=false;harness.locale="en";harness.pending=[];harness.approved=[];harness.hasHero=true;});
+beforeEach(()=>{vi.clearAllMocks();harness.callback=false;harness.locale="en";harness.pending=[];harness.approved=[];harness.hasHero=true;harness.goals=[];harness.challenges=[];});
 describe("W2 Profile identity and protected doors",()=>{
  it("renders one h1 and honest singular counts with parent facts before family",()=>{
   const html=renderToStaticMarkup(<ChildProfile/>);
@@ -80,4 +82,74 @@ describe("W2 Profile identity and protected doors",()=>{
   expect(create||button).toBeDefined();(create||button)!.props.onClick();
   expect(harness.setState).toHaveBeenCalledWith(true);expect(harness.setActiveTab).not.toHaveBeenCalled();
  });
+});
+
+/* ── B-CAREPRO-29 — "What we're working on" = the parent's chosen goals ───── */
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { GOAL_TILES } from "../../practice/goalBuilder";
+import { buildConsultPacket, buildPacketInput, itemText } from "../../consult/packet";
+import { translate } from "../../lib/i18n";
+
+const PROFILE_SRC = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "ChildProfile.tsx"), "utf8").replace(/\r\n/g, "\n");
+const GOALS = [
+  { goalId: "transitions", label: "Moving between activities more smoothly", domainId: "regulation", addedAt: "2026-09-01T00:00:00.000Z" },
+  { goalId: "early-talking", label: "Building early talking / back-and-forth", domainId: "language", addedAt: "2026-09-02T00:00:00.000Z" },
+];
+
+describe("B-CAREPRO-29 · Profile shows the parent's chosen goals", () => {
+  it("no regex focus derivation and no plan next-step chapter in the source", () => {
+    expect(PROFILE_SRC).not.toMatch(/\/anx\|regulat|\/school\|kindergarten/);
+    expect(PROFILE_SRC).not.toContain("cp.focus.");
+    expect(PROFILE_SRC).not.toContain('data-module="profile-next"');
+    expect(PROFILE_SRC).toContain("goalLabel(g, t)");
+    // NEGATIVE CONTROL: the pre-change derivation is caught by the same rule
+    expect("/anx|regulat|meltdown|emotion|sensory/i.test(challengeText)").toMatch(/\/anx\|regulat/);
+  });
+
+  it("HE parent with Hebrew challenges sees their chosen goals in Hebrew; no derived chip", () => {
+    harness.locale = "he";
+    harness.challenges = ["התקפי זעם במעברים", "חרדה"];
+    harness.goals = GOALS;
+    const html = renderToStaticMarkup(<ChildProfile />);
+    expect(html).toContain(goalsHe["elev.goal.profile.title"]);
+    expect(html).toContain(goalsHe["elev.goal.tile.transitions"]);
+    expect(html).toContain(goalsHe["elev.goal.tile.early-talking"]);
+    expect(html).toContain(goalsHe["elev.goal.profile.edit"]);
+    expect(html).not.toContain("Moving between activities");
+    expect(html).not.toMatch(/ויסות רגשי|Emotional Regulation/);
+  });
+
+  it("EN with no goals: the empty state invites the choice; English challenges derive nothing", () => {
+    harness.challenges = ["meltdowns and anxiety"];
+    const html = renderToStaticMarkup(<ChildProfile />);
+    expect(html).toContain("Choose what you&#x27;re working on");
+    expect(html).not.toContain("Emotional Regulation");
+    expect(html).toMatch(/data-testid="profile-goals-edit"[^>]*min-h-11|min-h-11[^>]*data-testid="profile-goals-edit"/);
+  });
+
+  it("i18n parity: all 8 tiles have EN + HE labels; EN matches the stored label", () => {
+    expect(GOAL_TILES).toHaveLength(8);
+    for (const tile of GOAL_TILES) {
+      const key = `elev.goal.tile.${tile.id}`;
+      expect(goalsEn[key], key).toBe(tile.label);
+      expect(goalsHe[key], key).toBeTruthy();
+      expect(goalsHe[key]).not.toMatch(/[A-Za-z]/);
+    }
+  });
+
+  it("the packet's Current focus lists the goals first, then challenges — in the reader's language", () => {
+    const raw = { profile: { name: "Noa", age: 5, languages: ["Hebrew"], challenges: ["בכי בבוקר"], activeGoals: GOALS }, logs: [], milestones: [], plans: [], memory: [] };
+    const packet = buildConsultPacket(buildPacketInput(raw, Date.parse("2026-10-02T09:00:00Z")));
+    const focus = packet.sections.flatMap((s) => s.items).find((i) => i.id === "about-focus");
+    expect(focus, "about-focus present").toBeTruthy();
+    expect(focus!.text).toBe("Current focus: Moving between activities more smoothly, Building early talking / back-and-forth, בכי בבוקר.");
+    const heLine = itemText(focus!, "he");
+    expect(heLine).toContain(translate("he", "elev.goal.tile.transitions"));
+    expect(heLine.indexOf(translate("he", "elev.goal.tile.early-talking"))).toBeLessThan(heLine.indexOf("בכי בבוקר"));
+    // challenges-only profiles keep their line (every challenges reader keeps working)
+    const legacy = buildConsultPacket(buildPacketInput({ ...raw, profile: { ...raw.profile, activeGoals: undefined, challenges: ["mornings"] } }, Date.now()));
+    expect(legacy.sections.flatMap((s) => s.items).find((i) => i.id === "about-focus")!.text).toBe("Current focus: mornings.");
+  });
 });

@@ -27,6 +27,7 @@ import { AnimatePresence } from "motion/react";
 import {
   GOAL_TILES,
   MAX_ACTIVE_GOALS,
+  goalLabel,
   prefillGoalIdsForConcern,
   type ActiveGoal,
   type GoalTile,
@@ -85,13 +86,13 @@ function lastLinkedObservation(goal: ActiveGoal, logs: BehaviorLog[]): string | 
   return matched[0] ?? null;
 }
 
-function daysAgoLabel(isoTs: string | null): string {
+function daysAgoLabel(isoTs: string | null, t: (key: string, vars?: Record<string, string | number>) => string): string {
   if (!isoTs) return "";
   const diffMs = Date.now() - new Date(isoTs).getTime();
   const days = Math.floor(diffMs / 86_400_000);
-  if (days === 0) return "today";
-  if (days === 1) return "yesterday";
-  return `${days} days ago`;
+  if (days === 0) return t("elev.goal.modal.today");
+  if (days === 1) return t("elev.goal.modal.yesterday");
+  return t("elev.goal.modal.daysAgo", { n: days });
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -119,7 +120,7 @@ export default function GoalBuilderModal({
 }: GoalBuilderModalProps) {
   const { t } = useLanguage();
   const { ref: dialogRef, requestClose, onBackdropClick } = useDialog({ open, onClose });
-  const firstName = (childName || "your child").split(" ")[0];
+  const firstName = (childName || t("elev.goal.modal.yourChild")).split(" ")[0];
   const hasGoals = activeGoals.length > 0;
 
   // ── Selection state (tile grid) ──────────────────────────────────────────
@@ -192,7 +193,7 @@ export default function GoalBuilderModal({
             ref={dialogRef}
             role="dialog"
             aria-modal="true"
-            aria-label={hasGoals ? "Goal status" : `Pick a focus for ${firstName}`}
+            aria-label={hasGoals ? t("elev.goal.modal.status") : t("elev.goal.modal.pick", { name: firstName })}
             tabIndex={-1}
             className="w-full sm:max-w-lg rounded-t-[22px] sm:rounded-3xl overflow-hidden"
             style={{
@@ -216,12 +217,12 @@ export default function GoalBuilderModal({
                   style={{ fontFamily: "var(--font-display)", color: INK }}
                 >
                   {hasGoals && selected.length === 0
-                    ? "Your focus areas"
-                    : `Pick a focus for ${firstName}`}
+                    ? t("elev.goal.modal.status")
+                    : t("elev.goal.modal.pick", { name: firstName })}
                 </h3>
                 {!hasGoals && (
                   <p className="text-[13px] mt-0.5" style={{ color: MUTED }}>
-                    Choose 1 to 3. Activities on Daily Play will be matched to what you pick.
+                    {t("elev.goal.modal.pickSub")}
                   </p>
                 )}
               </div>
@@ -261,12 +262,12 @@ export default function GoalBuilderModal({
                             aria-hidden="true"
                           />
                           <span className="flex-1 text-[14px] font-semibold" style={{ color: INK }}>
-                            {goal.label}
+                            {goalLabel(goal, t)}
                           </span>
                           {!isRemoving && (
                             <button
                               onClick={() => handleRemove(goal.goalId)}
-                              aria-label={`Remove ${goal.label}`}
+                              aria-label={t("elev.goal.modal.remove", { goal: goalLabel(goal, t) })}
                               className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-lg transition"
                               style={{ color: MUTED }}
                             >
@@ -280,17 +281,16 @@ export default function GoalBuilderModal({
                           {obsCount > 0 ? (
                             <>
                               <span className="font-bold" style={{ color: GREEN }}>
-                                {obsCount}
-                              </span>{" "}
-                              {obsCount === 1 ? "observation" : "observations"} linked
+                                {obsCount === 1 ? t("elev.goal.modal.obs.one") : t("elev.goal.modal.obs.many", { n: obsCount })}
+                              </span>
                               {lastTs && (
                                 <span style={{ color: MUTED }}>
-                                  {" "}· Last linked: {daysAgoLabel(lastTs)}
+                                  {" · "}{t("elev.goal.modal.lastLinked", { when: daysAgoLabel(lastTs, t) })}
                                 </span>
                               )}
                             </>
                           ) : (
-                            "No observations linked yet"
+                            t("elev.goal.modal.obs.none")
                           )}
                         </p>
 
@@ -298,21 +298,21 @@ export default function GoalBuilderModal({
                         {isRemoving && (
                           <div className="mt-3 flex items-center gap-2 flex-wrap">
                             <span className="text-[13px] font-semibold" style={{ color: INK }}>
-                              Remove &ldquo;{goal.label}&rdquo;?
+                              {t("elev.goal.modal.removeConfirm", { goal: goalLabel(goal, t) })}
                             </span>
                             <button
                               onClick={() => handleRemove(goal.goalId)}
                               className="rounded-lg px-4 min-h-[44px] text-[12px] font-bold transition"
                               style={{ background: "var(--arbor-danger, #d6566f)", color: "#fff" }}
                             >
-                              Yes, remove
+                              {t("elev.goal.modal.removeYes")}
                             </button>
                             <button
                               onClick={cancelRemove}
                               className="rounded-lg px-4 min-h-[44px] text-[12px] font-bold transition"
                               style={{ background: PAPER, color: MUTED, border: `1px solid ${RULE}` }}
                             >
-                              Keep it
+                              {t("elev.goal.modal.keep")}
                             </button>
                           </div>
                         )}
@@ -327,13 +327,13 @@ export default function GoalBuilderModal({
                       className="inline-flex items-center gap-1.5 text-[13px] font-bold transition"
                       style={{ color: GREEN }}
                     >
-                      <Icon name="add" size={16} /> Add another focus
+                      <Icon name="add" size={16} /> {t("elev.goal.modal.addAnother")}
                     </button>
                   )}
 
                   {/* Observation link explanation */}
                   <p className="text-[12px] leading-relaxed" style={{ color: MUTED }}>
-                    Observations are linked automatically when you log a moment in the same area.
+                    {t("elev.goal.modal.obsHint")}
                   </p>
                 </div>
               )}
@@ -343,8 +343,9 @@ export default function GoalBuilderModal({
                 <div>
                   {hasGoals && (
                     <p className="text-[13px] mb-3" style={{ color: MUTED }}>
-                      Choose up to {MAX_ACTIVE_GOALS - activeGoals.length} more focus
-                      {MAX_ACTIVE_GOALS - activeGoals.length !== 1 ? "es" : ""}.
+                      {MAX_ACTIVE_GOALS - activeGoals.length === 1
+                        ? t("elev.goal.modal.more.one")
+                        : t("elev.goal.modal.more.many", { n: MAX_ACTIVE_GOALS - activeGoals.length })}
                     </p>
                   )}
                   <div className="grid grid-cols-2 gap-2.5">
@@ -363,7 +364,7 @@ export default function GoalBuilderModal({
                           onClick={() => !isDisabled && toggleTile(tile)}
                           aria-pressed={isSelected}
                           aria-disabled={isDisabled}
-                          title={isDisabled ? "You can set up to 3 focuses." : undefined}
+                          title={isDisabled ? t("elev.goal.modal.cap") : undefined}
                           className="flex items-center gap-3 rounded-2xl p-3.5 text-start transition"
                           style={{
                             background: isSelected
@@ -399,7 +400,7 @@ export default function GoalBuilderModal({
                             className="text-[13px] font-semibold leading-snug flex-1"
                             style={{ color: isSelected ? GREEN : INK }}
                           >
-                            {tile.label}
+                            {goalLabel({ goalId: tile.id, label: tile.label }, t)}
                           </span>
                         </button>
                       );
@@ -428,7 +429,7 @@ export default function GoalBuilderModal({
                     }}
                   >
                     <Icon name="check" size={20} />
-                    Save {selected.length} focus{selected.length !== 1 ? "es" : ""}
+                    {selected.length === 1 ? t("elev.goal.modal.save.one") : t("elev.goal.modal.save.many", { n: selected.length })}
                   </button>
                 </motion.div>
               )}

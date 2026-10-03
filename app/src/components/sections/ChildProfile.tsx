@@ -18,6 +18,9 @@ import { scrubMemoryProposals } from "../../server/parentWordsScrub";
 // the ONE "worth watching next" derivation.
 import { ageLabel, ageLabelForMonths, ageMonthsFromProfile } from "../../lib/childAge";
 import { ageWindowMilestones, comparisonAgeMonths, milestoneAgeWindow, selectNextMilestones } from "../../lib/milestoneData";
+// B-CAREPRO-29: "What we're working on" = the parent's chosen goals (CI-28 tiles).
+import GoalBuilderModal from "../practice/GoalBuilderModal";
+import { goalLabel, type ActiveGoal } from "../../practice/goalBuilder";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -31,7 +34,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export default function ChildProfile() {
   const {
     childProfile, milestones,
-    behaviorLogs, playLogs, actionPlans, approvedMemoryItems, pendingMemoryItems, setActiveTab,
+    behaviorLogs, playLogs, approvedMemoryItems, pendingMemoryItems, setActiveTab, updateChild,
   } = useArbor();
   const { t } = useLanguage();
   const { user } = useAuth();
@@ -90,22 +93,12 @@ export default function ChildProfile() {
   const shownApproved = useMemo(() => scrubMemoryProposals(approvedMemoryItems), [approvedMemoryItems]);
   const pendingQueue = useMemo(() => scrubMemoryProposals(pendingMemoryItems), [pendingMemoryItems]);
 
-  // Chapter 7 — the live plan, if one exists.
-  const activePlan = actionPlans[0] ?? null;
-  const planProgress = useMemo(() => {
-    if (!activePlan) return null;
-    let done = 0, total = 0;
-    activePlan.phases.forEach((ph) => ph.steps.forEach((s) => { total += 1; if (s.completed) done += 1; }));
-    return { done, total };
-  }, [activePlan]);
-
-  // Derive the current developmental focus from the child's real profile.
-  const challengeText = childProfile.challenges.join(" ");
-  const focus = [
-    childProfile.languages.length > 1 && { labelKey: "languageTransition", tone: "sky" as const },
-    /anx|regulat|meltdown|emotion|sensory/i.test(challengeText) && { labelKey: "emotionalRegulation", tone: "coral" as const },
-    /school|kindergarten|class/i.test(childProfile.schoolContext) && { labelKey: "schoolReadiness", tone: "mint" as const },
-  ].filter(Boolean) as { labelKey: "languageTransition" | "emotionalRegulation" | "schoolReadiness"; tone: "sky" | "coral" | "mint" }[];
+  // B-CAREPRO-29: "What we're working on" is what the PARENT chose (the 1–3
+  // curated activeGoals the coach already reads) — never a focus derived from
+  // an English regex over free-text challenges, which no Hebrew family matched.
+  // The plan "next step" chapter is gone with it (Plans keeps its own door).
+  const activeGoals: ActiveGoal[] = childProfile.activeGoals ?? [];
+  const [goalsOpen, setGoalsOpen] = useState(false);
 
   // Child-card subtitle from REAL data (languages · school) — never the mock's
   // hardcoded "Bilingual · Pre-K". Falls back to languages-only when no school.
@@ -147,10 +140,30 @@ export default function ChildProfile() {
           <Field label={t("cp.f.languages")} value={childProfile.languages.join(" · ") || "—"} />
           <Field label={t("cp.f.school")} value={childProfile.schoolContext || "—"} />
           <div>
-            <p className="text-xs font-bold mb-2" style={{ color: "var(--arbor-muted)" }}>{t("cp.f.focus")}</p>
-            <div className="flex flex-wrap gap-1.5">
-              {focus.length > 0 ? focus.map((f) => <Chip key={f.labelKey} tone={f.tone}>{t(`cp.focus.${f.labelKey}`)}</Chip>) : <span className="text-sm" style={{ color: "var(--arbor-muted)" }}>{t("cp.focus.empty")}</span>}
+            <p className="text-xs font-bold mb-2" style={{ color: "var(--arbor-muted)" }}>{t("elev.goal.profile.title")}</p>
+            <div className="flex flex-wrap items-center gap-1.5" data-testid="profile-goals">
+              {activeGoals.map((g) => <Chip key={g.goalId} tone="lav">{goalLabel(g, t)}</Chip>)}
+              <button
+                type="button"
+                data-testid="profile-goals-edit"
+                onClick={() => setGoalsOpen(true)}
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-2 text-sm font-bold"
+                style={{ color: "var(--arbor-green-ink)" }}
+              >
+                <Icon name={activeGoals.length > 0 ? "edit" : "add"} size={16} />
+                {activeGoals.length > 0 ? t("elev.goal.profile.edit") : t("elev.goal.profile.empty")}
+              </button>
             </div>
+            {goalsOpen && (
+              <GoalBuilderModal
+                open={goalsOpen}
+                onClose={() => setGoalsOpen(false)}
+                childName={childProfile.name}
+                activeGoals={activeGoals}
+                behaviorLogs={behaviorLogs}
+                onSave={(goals) => { void updateChild(childProfile.id, { activeGoals: goals }); }}
+              />
+            )}
           </div>
           {/* CI-29: Interests field — parent-logged preferences, never interpreted.
               Displayed as read-only lav chips; edit opens ProfileEditDrawer. */}
@@ -354,27 +367,6 @@ export default function ChildProfile() {
           <p className="text-xs mt-2 font-bold" style={{ color: "var(--arbor-lav-ink)" }}><span className="block">{t("elev.wave2Knowledge.profile.proposed")}</span>{pendingQueue.length === 1 ? t("cp.memory.pendingOne", { count: pendingQueue.length }) : t("cp.memory.pendingMany", { count: pendingQueue.length })}</p>
         )}
         <div className="mt-3"><JumpLink onClick={() => setActiveTab("memory")} color="var(--arbor-lav-ink)">{t("cp.reviewMemory", { name: first })}</JumpLink></div>
-      </SectionCard>
-      </div>
-
-      {/* Chapter 7 — the next step */}
-      <div data-module="profile-next" data-module-demoted style={{ display: "contents" }}>
-      <SectionCard title={t("cp.ch.next")} icon={activePlan ? <Icon name="tune" size={20} /> : <Icon name="fact_check" size={20} />} tone="yellow">
-        {activePlan && planProgress ? (
-          <>
-            <p className="text-sm" style={{ color: "var(--arbor-ink)" }}>
-              {t("cp.next.active", { title: activePlan.title, done: planProgress.done, total: planProgress.total })}
-            </p>
-            <div className="mt-3"><JumpLink onClick={() => setActiveTab("plans")} color="var(--arbor-yellow-ink)">{t("cp.continuePlan")}</JumpLink></div>
-          </>
-        ) : (
-          <>
-            <p className="text-sm" style={{ color: "var(--arbor-ink)" }}>
-              {t("cp.next.none", { name: first })}
-            </p>
-            <div className="mt-3"><JumpLink onClick={() => setActiveTab("plans")} color="var(--arbor-yellow-ink)">{t("cp.createPlan")}</JumpLink></div>
-          </>
-        )}
       </SectionCard>
       </div>
 

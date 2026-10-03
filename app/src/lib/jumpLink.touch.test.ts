@@ -124,8 +124,9 @@ describe("item 9 · the primary-move controls state a 44 px hit box", () => {
     const decl = src.slice(src.indexOf("function JumpLink"));
     expect(decl).toContain("touch-target");
     // The sites all go through the primitive rather than hand-rolled links.
-    // (Eight since GP-26 retired the strengths door — see profileMemoryOrder.)
-    expect((src.match(/<JumpLink /g) ?? []).length).toBeGreaterThanOrEqual(8);
+    // (Eight since GP-26 retired the strengths door — see profileMemoryOrder;
+    // six since B-CAREPRO-29 removed the plan "next step" chapter's two.)
+    expect((src.match(/<JumpLink /g) ?? []).length).toBeGreaterThanOrEqual(6);
   });
 
   it("the Milestones preterm input and the vocabulary add button state a floor", () => {

@@ -25,6 +25,9 @@ export interface PacketInputProfile {
   schoolContext?: string;
   strengths?: string[];
   challenges?: string[];
+  /** B-CAREPRO-29: the parent's chosen goals (CI-28 tiles). The packet's
+   *  "Current focus" line reads them first, then `challenges`. */
+  activeGoals?: { goalId: string; label: string }[];
 }
 export interface PacketInputLog {
   behaviorType: string;
@@ -239,6 +242,9 @@ export interface RawPacketProfile {
   schoolContext?: string;
   strengths?: string[];
   challenges?: string[];
+  /** B-CAREPRO-29: `ChildProfile.activeGoals` (only goalId + label are read;
+   *  a Firestore document is untrusted — `rawGoals` drops malformed rows). */
+  activeGoals?: { goalId: string; label: string }[];
 }
 /** Raw behaviour-log fields (a `BehaviorLog`, or a Firestore document). */
 export interface RawPacketLog {
@@ -277,6 +283,15 @@ export interface RawChildRecord {
 const rawStr = (v: unknown): string => (typeof v === "string" ? v : "");
 const rawNum = (v: unknown, fallback = 0): number => (typeof v === "number" && Number.isFinite(v) ? v : fallback);
 const rawStrArr = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
+/** B-CAREPRO-29: chosen goals → {goalId, label}; anything malformed is dropped. */
+const rawGoals = (v: unknown): { goalId: string; label: string }[] =>
+  Array.isArray(v)
+    ? v.flatMap((g) => {
+        const goalId = rawStr((g as { goalId?: unknown } | null)?.goalId);
+        const label = rawStr((g as { label?: unknown } | null)?.label);
+        return goalId && label ? [{ goalId, label }] : [];
+      })
+    : [];
 const rawOptStr = (v: unknown): string | undefined => rawStr(v) || undefined;
 const rawOptNum = (v: unknown): number | undefined => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
 const rawTs = (v: unknown): string | number =>
@@ -318,6 +333,7 @@ export function buildPacketInput(record: RawChildRecord, nowMs: number): BuildPa
       schoolContext: rawOptStr(p.schoolContext),
       strengths: rawStrArr(p.strengths),
       challenges: rawStrArr(p.challenges),
+      activeGoals: rawGoals(p.activeGoals),
     },
     logs: record.logs.map((l) => ({
       behaviorType: rawStr(l.behaviorType),
@@ -437,7 +453,18 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
   ];
   if (profile.schoolContext) aboutItems.push({ id: "about-school", text: `Setting: ${profile.schoolContext}.`, textKey: "elev.packet.item.setting", vars: { setting: profile.schoolContext } });
   if (profile.strengths?.length) aboutItems.push({ id: "about-strengths", text: `Strengths: ${profile.strengths.join(", ")}.`, textKey: "elev.packet.item.strengths", vars: { list: { list: profile.strengths, join: "comma" } } });
-  if (profile.challenges?.length) aboutItems.push({ id: "about-focus", text: `Current focus: ${profile.challenges.join(", ")}.`, textKey: "elev.packet.item.focus", vars: { list: { list: profile.challenges, join: "comma" } } });
+  // B-CAREPRO-29: the parent's chosen goals lead (keyed, so a Hebrew reader
+  // gets the Hebrew tile label); free-text challenges follow, as written.
+  const goals = profile.activeGoals ?? [];
+  const challenges = (profile.challenges ?? []).filter((c) => !goals.some((g) => g.label.toLowerCase() === c.toLowerCase()));
+  if (goals.length || challenges.length) {
+    aboutItems.push({
+      id: "about-focus",
+      text: `Current focus: ${[...goals.map((g) => g.label), ...challenges].join(", ")}.`,
+      textKey: "elev.packet.item.focus",
+      vars: { list: { list: [...goals.map((g): PacketVar => ({ key: `elev.goal.tile.${g.goalId}`, fallback: g.label })), ...challenges], join: "comma" } },
+    });
+  }
   sections.push({ id: "about", title: `About ${profile.name}`, titleKey: "elev.packet.section.about", titleVars: { name: profile.name }, items: aboutItems });
 
   // 2) What's been happening — top recent concerns by frequency.

@@ -42,6 +42,7 @@ import * as growthCare from "./growthCare";
 import * as foundation from "./foundation";
 import * as fullpicture from "./fullpicture";
 import * as gate from "./gate";
+import * as goals from "./goals";
 import * as growth from "./growth";
 import * as growthTruth from "./growthTruth";
 import * as heroCreate from "./heroCreate";
@@ -104,6 +105,7 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   foundation,
   fullpicture,
   gate,
+  goals,
   growth,
   growthTruth,
   heroCreate,

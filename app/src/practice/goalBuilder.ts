@@ -181,6 +181,19 @@ export function prefillGoalIdsForConcern(concernId: string): string[] {
   return CONCERN_TO_GOAL_PREFILL[concernId] ?? [];
 }
 
+/** B-CAREPRO-29: the display key for a goal tile (EN + HE in
+ *  lib/i18nElevation/goals.ts). The stored `label` stays English — the coach
+ *  context reads it byte-identically; only what the parent READS is keyed. */
+export const goalLabelKey = (goalId: string): string => `elev.goal.tile.${goalId}`;
+
+/** A goal's label in the parent's language; an unknown id (a retired tile)
+ *  falls back to the stored label, never to the raw key. */
+export function goalLabel(goal: { goalId: string; label: string }, t: (key: string, vars?: Record<string, string | number>) => string): string {
+  const key = goalLabelKey(goal.goalId);
+  const v = t(key);
+  return v && v !== key ? v : goal.label;
+}
+
 /** Look up a goal tile by id. Returns undefined if not found. */
 export function goalTileById(id: string): GoalTile | undefined {
   return GOAL_TILES.find((t) => t.id === id);
