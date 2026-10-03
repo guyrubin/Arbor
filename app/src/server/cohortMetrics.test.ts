@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach, afterAll } from "vitest";
+import { describe, it, expect, vi, afterEach, afterAll, onTestFinished } from "vitest";
 import express from "express";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -453,6 +453,10 @@ describe("GET /api/admin/cohorts — the gate", () => {
   });
 
   it("an admin gets a report whose every key survives the scan", async () => {
+    // The route reads the real clock; the fixture is anchored on NOW. Pin Date only
+    // (timers stay real for fetch) so "d28 not answerable yet" does not rot 28 days later.
+    vi.useFakeTimers({ toFake: ["Date"], now: NOW });
+    onTestFinished(() => { vi.useRealTimers(); });
     process.env.ARBOR_ADMIN_UIDS = "founder-uid";
     const base = await harness("founder-uid", new FakeStore(
       [rollup(10, [0, 1, 7])],
