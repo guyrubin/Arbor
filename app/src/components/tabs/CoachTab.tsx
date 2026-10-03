@@ -55,6 +55,8 @@ import CaptureProposalsTray from "../capture/CaptureProposalsTray";
 // ENG-10 / ENG-11: the JITAI cue, rendered where the parent already is and
 // instrumented — and in the evening it is the Bedtime Stories door.
 import CompanionOfferSlot from "../overview/CompanionOfferSlot";
+import TodayContinuation from "../overview/TodayContinuation";
+import { chooseContinuation } from "../overview/continuation";
 import { liveUnavailableReason, trackLiveUnavailable } from "../../lib/kpiEvents";
 import { useCompanionOffer } from "../overview/useCompanionOffer";
 // AI-06 / AI-24: one classifier from a thrown transport error (or from being
@@ -188,6 +190,16 @@ export default function CoachTab() {
   } = useArbor();
   // B-AI-06: Ask renders the SAME single-offer decision as Today.
   const askOffer = useCompanionOffer("coach");
+  // B-ASKJB-06: the coordinator's winner → Today's continuation placement.
+  const askContinuation = chooseContinuation({ offerKind: askOffer.offer?.kind });
+  const askOfferSlot = (
+    <CompanionOfferSlot
+      surface="coach"
+      offer={askOffer.offer}
+      controls={askOffer}
+      placement={askContinuation !== "none" ? "continuation" : "under-step"}
+    />
+  );
   const { toast } = useToast();
   const { aiLang, t, uiLang } = useLanguage();
   const { user } = useAuth();
@@ -883,7 +895,10 @@ export default function CoachTab() {
   // Fresh state has no transcript messages, status, or failure card. Keep the
   // coach header and footer reachable without reserving a blank message canvas.
   const hasThreadContent = chatMessages.length > 0 || isChatLoading || !!failureCopy;
-  // R24: the contract stamps live on THIS element, not on the docked wrapper.
+  // R24: the contract stamp lives on THIS element, not on the docked wrapper.
+  // B-ASKJB-06: only `data-primary-move` now — the composer sits INSIDE
+  // coach-orientation, so a `data-module` here was a fourth module stamp
+  // (budget 3 = orientation · history · thread; validator ruling).
   // They were on the `composerDocked &&` branch only, so on a fresh thread —
   // the state a parent actually lands in — #/coach rendered no
   // primary-move stamp at all and the declared move was unmeasurable
@@ -892,7 +907,6 @@ export default function CoachTab() {
   // one stamp in the DOM in either state, with one occurrence in source.
   const composerSection = (
         <section
-          data-module="coach-composer"
           data-primary-move="ask"
           className={composerDocked ? "py-2.5" : "pt-3 pb-4 sm:pt-4 sm:pb-5"}
           aria-label={t("elev.hero.ask.cta")}
@@ -1059,83 +1073,87 @@ export default function CoachTab() {
           </div>
         </header>
 
+        {/* B-ASKJB-06 — Ask opens on the continuation. The ONE coordinator
+            (lib/companionOffer, via useCompanionOffer("coach")) picks the
+            offer; components/overview/continuation.chooseContinuation maps a
+            carry-over ask or tomorrow's reason into Today's own
+            TodayContinuation slot (same object, never a second card); any
+            other kind (RhythmCue, an appointment…) renders through the same
+            slot in place. Nothing renders when the coordinator stays quiet. */}
+        {!userTurnExists && (askContinuation !== "none"
+          ? <TodayContinuation choice={askContinuation} isReturning>{askOfferSlot}</TodayContinuation>
+          : askOfferSlot)}
+
         {/* Composer-first: the parent's question is the primary job on this page.
             COACH-4: this hero composer is the ONE input on the surface — the
             mirrored in-thread composer was removed; follow-up turns also send
             from here. ASK-2: once the thread has a user turn the SAME element
             docks sticky at the bottom of the page instead (see below). */}
         {!composerDocked && composerSection}
-      </div>
 
-      {/* ENG-10 / ENG-11 → B-AI-06 — the one proactive offer, rendered on a
-          surface the parent actually opens. In the evening it IS the Bedtime
-          Stories door (RhythmCue renders the BEDTIME kind → the
-          "bedtime-stories" route). The coordinator (lib/companionOffer) owns
-          quiet hours, the max-2/day ceiling and the shown-ledger; this
-          renders nothing when it says stay quiet. */}
-      {!userTurnExists && <CompanionOfferSlot surface="coach" offer={askOffer.offer} controls={askOffer} />}
-
-      {/* Fast-start scenarios (IA-2) — calm bordered chips on a fresh conversation */}
-      {!userTurnExists && (
-        <div className="space-y-2">
-          <span className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("coach.fastStart")}</span>
-          <div id="coach-scenarios" className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {/* B-ASKJB-31: ONE "Hard moment now" chip opens the shared sheet
-                (replaces the dead publishedHardMomentCards group). Hidden when
-                no pilot guide is available for this child (age, expiry). */}
-            {hardMomentGuides.length > 0 && (
+        {/* Fast-start scenarios (IA-2) + the "Hard moment now" chip — ONE row under
+            the composer, inside orientation (B-ASKJB-06). */}
+        {!userTurnExists && (
+          <div className="space-y-2">
+            <span className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("coach.fastStart")}</span>
+            <div id="coach-scenarios" className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {/* B-ASKJB-31: ONE "Hard moment now" chip opens the shared sheet
+                  (replaces the dead publishedHardMomentCards group). Hidden when
+                  no pilot guide is available for this child (age, expiry). */}
+              {hardMomentGuides.length > 0 && (
+                <button
+                  key="hard-moment-now"
+                  type="button"
+                  data-testid="coach-hard-moment-now"
+                  onClick={() => openHardMomentNow()}
+                  className="inline-flex items-center gap-2 rounded-xl px-3 py-2.5 min-h-11 text-start text-[13px] font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                  style={{ color: T.ink, border: "1px solid var(--arbor-rule-strong)", background: "var(--arbor-paper-elevated)" }}
+                >
+                  <Icon name="support" size={16} style={{ color: "var(--arbor-ink-soft)" }} /> {t("hm.now.title")}
+                </button>
+              )}
+              {/* B-ASKJB-10: the child's own recurring moment leads, then 2 static chips. */}
+              {echoScenario && (
+                <button
+                  key="echo"
+                  data-testid="coach-scenario-echo"
+                  onClick={() => handleChatSend(echoScenario.prompt, { displayText: echoScenario.label })}
+                  disabled={isChatLoading}
+                  className="inline-flex items-center gap-2 rounded-xl px-3 py-2.5 min-h-11 text-start text-[13px] font-bold transition disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                  style={{ color: T.ink, border: "1px solid var(--arbor-rule)", background: "var(--arbor-paper-elevated)" }}
+                >
+                  <Icon name="replay" size={16} style={{ color: "var(--arbor-green-ink)" }} /> <span dir="auto">{echoScenario.label}</span>
+                </button>
+              )}
+              {(showAllScenarios ? SCENARIOS : SCENARIOS.slice(0, staticShown)).map((s) => (
+                <button
+                  key={s.labelKey}
+                  // ASK-5: the parent's bubble shows the localized label they
+                  // actually tapped; the canonical EN prompt goes to the model.
+                  onClick={() => handleChatSend(s.prompt, { displayText: t(s.labelKey) })}
+                  disabled={isChatLoading}
+                  className="inline-flex items-center gap-2 rounded-xl px-3 py-2.5 min-h-11 text-start text-[13px] font-bold transition disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                  style={{ color: T.ink, border: "1px solid var(--arbor-rule)", background: "var(--arbor-paper-elevated)" }}
+                >
+                  <Icon name={s.icon} size={16} style={{ color: "var(--arbor-green-ink)" }} /> {t(s.labelKey)}
+                </button>
+              ))}
               <button
-                key="hard-moment-now"
                 type="button"
-                data-testid="coach-hard-moment-now"
-                onClick={() => openHardMomentNow()}
-                className="inline-flex items-center gap-2 rounded-xl px-3 py-2.5 min-h-11 text-start text-[13px] font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-                style={{ color: T.ink, border: "1px solid var(--arbor-rule-strong)", background: "var(--arbor-paper-elevated)" }}
+                onClick={() => setShowAllScenarios((shown) => !shown)}
+                aria-expanded={showAllScenarios}
+                aria-controls="coach-scenarios"
+                className="inline-flex min-h-11 items-center justify-center rounded-xl px-3 text-[12px] font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}
               >
-                <Icon name="support" size={16} style={{ color: "var(--arbor-ink-soft)" }} /> {t("hm.now.title")}
+                {showAllScenarios
+                  ? t("elev.wave2Daily.ask.examples.less")
+                  : t("elev.wave2Daily.ask.examples.more", { count: SCENARIOS.length - staticShown })}
               </button>
-            )}
-            {/* B-ASKJB-10: the child's own recurring moment leads, then 2 static chips. */}
-            {echoScenario && (
-              <button
-                key="echo"
-                data-testid="coach-scenario-echo"
-                onClick={() => handleChatSend(echoScenario.prompt, { displayText: echoScenario.label })}
-                disabled={isChatLoading}
-                className="inline-flex items-center gap-2 rounded-xl px-3 py-2.5 min-h-11 text-start text-[13px] font-bold transition disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-                style={{ color: T.ink, border: "1px solid var(--arbor-rule)", background: "var(--arbor-paper-elevated)" }}
-              >
-                <Icon name="replay" size={16} style={{ color: "var(--arbor-green-ink)" }} /> <span dir="auto">{echoScenario.label}</span>
-              </button>
-            )}
-            {(showAllScenarios ? SCENARIOS : SCENARIOS.slice(0, staticShown)).map((s) => (
-              <button
-                key={s.labelKey}
-                // ASK-5: the parent's bubble shows the localized label they
-                // actually tapped; the canonical EN prompt goes to the model.
-                onClick={() => handleChatSend(s.prompt, { displayText: t(s.labelKey) })}
-                disabled={isChatLoading}
-                className="inline-flex items-center gap-2 rounded-xl px-3 py-2.5 min-h-11 text-start text-[13px] font-bold transition disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-                style={{ color: T.ink, border: "1px solid var(--arbor-rule)", background: "var(--arbor-paper-elevated)" }}
-              >
-                <Icon name={s.icon} size={16} style={{ color: "var(--arbor-green-ink)" }} /> {t(s.labelKey)}
-              </button>
-            ))}
-            <button
-              type="button"
-              onClick={() => setShowAllScenarios((shown) => !shown)}
-              aria-expanded={showAllScenarios}
-              aria-controls="coach-scenarios"
-              className="inline-flex min-h-11 items-center justify-center rounded-xl px-3 text-[12px] font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-              style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}
-            >
-              {showAllScenarios
-                ? t("elev.wave2Daily.ask.examples.less")
-                : t("elev.wave2Daily.ask.examples.more", { count: SCENARIOS.length - staticShown })}
-            </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* ASK-9: the lens machinery, DEMOTED below the fast-start scenarios —
           prime mobile real estate belongs to the composer + scenarios. Default
@@ -1215,23 +1233,8 @@ export default function CoachTab() {
         })()}
       </div>
 
-      {/* ENG-21 — the value preview. Mounted LAST on the fresh-thread stack:
-          below the composer, the fast-start scenarios, the hard-moment door and
-          the lens row, so it can never sit above something a parent came here
-          to use. It renders only on an EMPTY conversation (no turn at all, so
-          this can never be a hard-moment or escalation thread), only while this
-          surface is idle, and only for a server-VERIFIED free parent whose day's
-          coach allowance is nearly spent — never at zero, where the paywall
-          already owns the moment. Every other case returns null: see
-          decideValuePreview's named reasons. */}
-      <ValuePreview
-        threadEmpty={chatMessages.length === 0}
-        surfaceIdle={!isChatLoading && !failureCopy && voicePhase === "off" && !visionMode}
-        online={online}
-      />
-
       {/* Conversation history stays available without reserving an empty tray. */}
-      <section className="flex flex-wrap items-center gap-2 border-y py-2.5" style={{ borderColor: "var(--arbor-rule)" }} aria-label={t("elev.wave2Daily.ask.history")}>
+      <section data-module="coach-history" className="flex flex-wrap items-center gap-2 border-y py-2.5" style={{ borderColor: "var(--arbor-rule)" }} aria-label={t("elev.wave2Daily.ask.history")}>
         <span className="me-auto text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }}>{t("elev.wave2Daily.ask.history")}</span>
         <button
           onClick={newConversation}
@@ -1756,6 +1759,21 @@ export default function CoachTab() {
             the thread is a compact secondary row: Council (multi-lens send of the
             current question) + the Ask-a-Specialist warm handoff (ia-b6,
             navigation only — stays enabled while an answer is streaming). */}
+        <div className="px-4 pb-2 empty:hidden">
+          {/* ENG-21 — the value preview. B-ASKJB-06: it lives INSIDE the thread
+              block (above its footer row), never as its own top-level module, so
+              it can never sit above something a parent came here to use. It renders only on an EMPTY conversation (no turn at all, so
+              this can never be a hard-moment or escalation thread), only while this
+              surface is idle, and only for a server-VERIFIED free parent whose day's
+              coach allowance is nearly spent — never at zero, where the paywall
+              already owns the moment. Every other case returns null: see
+              decideValuePreview's named reasons. */}
+          <ValuePreview
+            threadEmpty={chatMessages.length === 0}
+            surfaceIdle={!isChatLoading && !failureCopy && voicePhase === "off" && !visionMode}
+            online={online}
+          />
+        </div>
         <div className="flex flex-wrap items-center gap-2 px-4 py-2" style={{ borderTop: "1px solid var(--arbor-rule)", background: "var(--arbor-paper-deep)" }}>
           <button
             type="button"

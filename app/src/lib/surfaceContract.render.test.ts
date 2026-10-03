@@ -207,7 +207,9 @@ describe("R24 — the coach composer is stamped in BOTH of its positions", () =>
 
   it("the stamps sit on the shared composer element, not on the docked wrapper", () => {
     expect(composerSection, "the composerSection slice must really contain the composer").toContain("<textarea");
-    expect(composerSection).toContain('data-module="coach-composer"');
+    // B-ASKJB-06: the composer keeps the primary-move stamp only; it is
+    // nested in coach-orientation, so a module stamp would be a 4th module.
+    expect(composerSection).not.toContain('data-module="coach-composer"');
     expect(composerSection).toContain('data-primary-move="ask"');
   });
 
@@ -219,7 +221,7 @@ describe("R24 — the coach composer is stamped in BOTH of its positions", () =>
 
   it("exactly one of each stamp exists in the file, so the DOM can only ever hold one", () => {
     expect((COACH.match(/data-primary-move="ask"/g) || []).length).toBe(1);
-    expect((COACH.match(/data-module="coach-composer"/g) || []).length).toBe(1);
+    expect((COACH.match(/data-module="coach-composer"/g) || []).length).toBe(0);
   });
 
   it("negative control: the pre-fix shape — the stamp on the docked branch only", () => {
@@ -314,7 +316,7 @@ describe("R25 — every leaf renders within its declared moduleBudget", () => {
   it("the leaf resolution really reads Shell's registry", () => {
     expect(leaves.size).toBeGreaterThanOrEqual(40);
     expect(leaves.has("coach")).toBe(true);
-    expect(leaves.get("coach")).toContain('data-module="coach-composer"');
+    expect(leaves.get("coach")).toContain('data-primary-move="ask"');
   });
 
   it("no route stamps more top-level modules than its contract allows", () => {
@@ -484,5 +486,92 @@ describe("B-ASKJB-28 — Plans folds RoutinesCard into one quiet row", () => {
     expect(he["elev.plans.routines.row"]).toContain("{n}");
     expect(en["elev.plans.routines.add"]).toBe("Add a routine");
     expect(he["elev.plans.routines.add"]).toBeTruthy();
+  });
+});
+
+/**
+ * B-ASKJB-06 (AGP validation C9) — the first render-count assertion. No jsdom
+ * here, so the fresh-thread stack is read from CoachTab's root JSX: every
+ * top-level sibling of the root <motion.div> (6-space indent in this file)
+ * that renders on a FRESH thread (no user turn) must carry `data-module`, and
+ * their count must stay ≤ the contract's moduleBudget. The nested
+ * composer carries only `data-primary-move` (no module stamp, B-ASKJB-06).
+ */
+export function freshTopLevelModules(source: string): { stamped: string[]; unstamped: string[] } {
+  const src = source.replace(/\r\n/g, "\n");
+  const start = src.indexOf("  return (\n    <motion.div");
+  const end = src.indexOf("\n    </motion.div>", start);
+  const body = src.slice(start, end).split("\n").slice(2);
+  // Overlays that render nothing at rest on a fresh thread.
+  const REST_NULL = /^<(ConversationProposalTray|ArborVision|ToneSheet)\b/;
+  const stamped: string[] = [];
+  const unstamped: string[] = [];
+  for (let i = 0; i < body.length; i++) {
+    const line = body[i];
+    if (!/^ {6}[<{]/.test(line) || /^ {6}<\//.test(line) || /^ {6}\{\/\*/.test(line)) continue;
+    const head = line.trim();
+    // Gated blocks that never render on a fresh thread.
+    if (/^\{(composerDocked|voicePhase !== "off"|[^}]*&& userTurnExists|userTurnExists) &&/.test(head) && !/!userTurnExists/.test(head)) continue;
+    if (/^\{lastMessage\?\.sender === "ai" && userTurnExists/.test(head)) continue;
+    if (REST_NULL.test(head)) continue;
+    // The element (this line, or the first element line of a gated block).
+    let el = head;
+    for (let j = i; j < Math.min(i + 6, body.length) && !/^<[A-Za-z]/.test(el.replace(/^\{[^<]*/, "")); j++) el = body[j].trim();
+    const mod = el.match(/data-module="([^"]+)"/);
+    if (mod) stamped.push(mod[1]);
+    else unstamped.push(el.slice(0, 60));
+  }
+  return { stamped, unstamped };
+}
+
+describe("B-ASKJB-06 — Ask's fresh stack meets moduleBudget 3", () => {
+  const COACH = read("src/components/tabs/CoachTab.tsx");
+  const budget = contractFor("coach")!.moduleBudget;
+  const fresh = freshTopLevelModules(COACH);
+
+  it("exactly coach-orientation · coach-history · coach-thread, ≤ moduleBudget", () => {
+    expect(budget).toBe(3);
+    expect(fresh.stamped).toEqual(["coach-orientation", "coach-history", "coach-thread"]);
+    expect(fresh.stamped.length).toBeLessThanOrEqual(budget);
+  });
+
+  it("no unstamped sibling renders on a fresh thread beyond the lens row B-ASKJB-12 retires", () => {
+    // B-ASKJB-12 replaces the lens row with the Tone control in the identity
+    // strip; its commit tightens this to [].
+    expect(fresh.unstamped.length).toBeLessThanOrEqual(1);
+    for (const u of fresh.unstamped) expect(u).toMatch(/^<div className="space-y-2">/);
+  });
+
+  it("the continuation, the chip row and ValuePreview are inside modules, not siblings", () => {
+    const orientation = COACH.slice(COACH.indexOf('<div data-module="coach-orientation"'), COACH.indexOf('data-module="coach-history"'));
+    expect(orientation).toContain("<TodayContinuation choice={askContinuation} isReturning>{askOfferSlot}</TodayContinuation>");
+    expect(orientation).toContain('id="coach-scenarios"');
+    expect(orientation).toContain('data-testid="coach-hard-moment-now"');
+    expect(orientation.indexOf("{askOfferSlot}")).toBeLessThan(orientation.indexOf("{!composerDocked && composerSection}"));
+    expect(orientation.indexOf("{!composerDocked && composerSection}")).toBeLessThan(orientation.indexOf('id="coach-scenarios"'));
+    const thread = COACH.slice(COACH.indexOf('<div data-module="coach-thread"'));
+    expect(thread).toContain("<ValuePreview");
+    // The coordinator is the ONE arbiter: Today's chooser, never a second.
+    expect(COACH).toContain('chooseContinuation({ offerKind: askOffer.offer?.kind })');
+    expect((COACH.match(/<CompanionOfferSlot\b/g) || []).length).toBe(1);
+  });
+
+  it("negative control: the pre-fix stack (offer slot, chips and ValuePreview as siblings) fails the count", () => {
+    const PRE = [
+      "  return (",
+      "    <motion.div>",
+      '      <div data-module="coach-orientation" className="space-y-4">',
+      "      </div>",
+      '      {!userTurnExists && <CompanionOfferSlot surface="coach" />}',
+      "      {!userTurnExists && (",
+      '        <div className="space-y-2">',
+      "      )}",
+      "      <ValuePreview",
+      '      <section className="flex">',
+      '      <div data-module="coach-thread">',
+      "    </motion.div>",
+    ].join("\n");
+    const pre = freshTopLevelModules(PRE);
+    expect(pre.unstamped.length).toBeGreaterThan(1);
   });
 });

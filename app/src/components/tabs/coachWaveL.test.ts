@@ -31,7 +31,8 @@ describe("ENG-10 / ENG-11 — the cue is mounted on a surface a parent opens, an
   it("CoachTab mounts the coordinator's slot, which renders RhythmCue (B-AI-06)", () => {
     expect(coach).toMatch(/import CompanionOfferSlot from "\.\.\/overview\/CompanionOfferSlot"/);
     expect(coach).toMatch(/useCompanionOffer\("coach"\)/);
-    expect(coach).toMatch(/<CompanionOfferSlot surface="coach" offer=\{askOffer\.offer\} controls=\{askOffer\} \/>/);
+    // B-ASKJB-06: the same slot, now placed by Today's continuation chooser.
+    expect(coach).toMatch(/<CompanionOfferSlot\s+surface="coach"\s+offer=\{askOffer\.offer\}\s+controls=\{askOffer\}/);
     expect(slot).toMatch(/import RhythmCue from "\.\.\/coach\/RhythmCue"/);
     expect(slot).toMatch(/<RhythmCue surface=\{surface\} nudge=\{offer\.nudge \?\? null\}/);
   });
