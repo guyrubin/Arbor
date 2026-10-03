@@ -11,6 +11,7 @@
 import type { AdventureResult, MimicSession, PracticeEvent, SpeechAttempt } from "../../types";
 import type { ActiveTab } from "../../lib/routes";
 import type { PASTEL } from "../../lib/tokens";
+import type { DomainId } from "../../lib/domains/registry";
 
 /** The slice of PracticeData a tile count reads. */
 export interface StudioCountSource {
@@ -40,6 +41,10 @@ export interface StudioWorld {
   tabNameKey?: string;
   unit: StudioCountUnit;
   count: (d: StudioCountSource) => number;
+  /** B-CAREPRO-20 · spine §7b: the registry domains this world exercises
+   *  (primary first). Parent-side read only — the kid register never shows a
+   *  domain name. Consult's "At home while you wait" matches on it. */
+  domains: readonly DomainId[];
 }
 
 const READING_KINDS = new Set<string>(["phonics", "sight-word", "letter-trace"]);
@@ -50,16 +55,16 @@ const eventsOf = (d: StudioCountSource, pred: (kind: string) => boolean) =>
   d.events.items.filter((e) => pred(e.kind)).length;
 
 export const STUDIO_WORLDS: StudioWorld[] = [
-  { id: "speech", key: "speech", kidNameKey: "elev.practice.world.kid.speech", msIcon: "mic", tone: "sky", tab: "speech", unit: "tries", count: (d) => d.speech.items.length },
-  { id: "word-world", key: "words", kidNameKey: "elev.practice.world.kid.words", msIcon: "menu_book", tone: "sky", tab: "language", tabNameKey: "nav.tab.language", unit: "tries", count: (d) => eventsOf(d, (k) => k === "lang-strategy") },
-  { id: "feelings", key: "feelings", kidNameKey: "elev.practice.world.kid.feelings", msIcon: "favorite", tone: "pink", tab: "feelings", unit: "rounds", count: (d) => eventsOf(d, (k) => FEELINGS_KINDS.has(k)) },
-  { id: "mimic", key: "mimic", kidNameKey: "elev.practice.world.kid.mimic", msIcon: "mood", tone: "coral", tab: "mimic", unit: "tries", count: (d) => d.mimic.items.length },
-  { id: "adventures", key: "adventures", kidNameKey: "elev.practice.world.kid.adventures", msIcon: "map", tone: "yellow", tab: "adventures", unit: "stories", count: (d) => d.adventures.items.length },
-  { id: "memory", key: "memory", kidNameKey: "elev.practice.world.kid.memory", msIcon: "psychology", tone: "lav", unit: "rounds", count: (d) => eventsOf(d, (k) => k === "memory") },
-  { id: "reading", key: "reading", kidNameKey: "elev.practice.world.kid.reading", msIcon: "auto_stories", tone: "yellow", unit: "tries", count: (d) => eventsOf(d, (k) => READING_KINDS.has(k)) },
-  { id: "beat", key: "rhythm", kidNameKey: "elev.practice.world.kid.rhythm", msIcon: "music_note", tone: "coral", unit: "rounds", count: (d) => eventsOf(d, (k) => k === "rhythm") },
-  { id: "pose", key: "movement", kidNameKey: "elev.practice.world.kid.movement", msIcon: "accessibility_new", tone: "mint", unit: "rounds", count: (d) => eventsOf(d, (k) => k === "pose") },
-  { id: "pattern", key: "logic", kidNameKey: "elev.practice.world.kid.logic", msIcon: "category", tone: "lav", unit: "rounds", count: (d) => eventsOf(d, (k) => k === "pattern") },
+  { id: "speech", key: "speech", kidNameKey: "elev.practice.world.kid.speech", msIcon: "mic", tone: "sky", tab: "speech", unit: "tries", count: (d) => d.speech.items.length, domains: ["talking"] },
+  { id: "word-world", key: "words", kidNameKey: "elev.practice.world.kid.words", msIcon: "menu_book", tone: "sky", tab: "language", tabNameKey: "nav.tab.language", unit: "tries", count: (d) => eventsOf(d, (k) => k === "lang-strategy"), domains: ["talking"] },
+  { id: "feelings", key: "feelings", kidNameKey: "elev.practice.world.kid.feelings", msIcon: "favorite", tone: "pink", tab: "feelings", unit: "rounds", count: (d) => eventsOf(d, (k) => FEELINGS_KINDS.has(k)), domains: ["feelings", "playing"] },
+  { id: "mimic", key: "mimic", kidNameKey: "elev.practice.world.kid.mimic", msIcon: "mood", tone: "coral", tab: "mimic", unit: "tries", count: (d) => d.mimic.items.length, domains: ["hands", "playing"] },
+  { id: "adventures", key: "adventures", kidNameKey: "elev.practice.world.kid.adventures", msIcon: "map", tone: "yellow", tab: "adventures", unit: "stories", count: (d) => d.adventures.items.length, domains: ["thinking", "feelings"] },
+  { id: "memory", key: "memory", kidNameKey: "elev.practice.world.kid.memory", msIcon: "psychology", tone: "lav", unit: "rounds", count: (d) => eventsOf(d, (k) => k === "memory"), domains: ["thinking"] },
+  { id: "reading", key: "reading", kidNameKey: "elev.practice.world.kid.reading", msIcon: "auto_stories", tone: "yellow", unit: "tries", count: (d) => eventsOf(d, (k) => READING_KINDS.has(k)), domains: ["thinking"] },
+  { id: "beat", key: "rhythm", kidNameKey: "elev.practice.world.kid.rhythm", msIcon: "music_note", tone: "coral", unit: "rounds", count: (d) => eventsOf(d, (k) => k === "rhythm"), domains: ["moving"] },
+  { id: "pose", key: "movement", kidNameKey: "elev.practice.world.kid.movement", msIcon: "accessibility_new", tone: "mint", unit: "rounds", count: (d) => eventsOf(d, (k) => k === "pose"), domains: ["moving"] },
+  { id: "pattern", key: "logic", kidNameKey: "elev.practice.world.kid.logic", msIcon: "category", tone: "lav", unit: "rounds", count: (d) => eventsOf(d, (k) => k === "pattern"), domains: ["thinking"] },
 ];
 
 /** The chip's i18n key for `n` records of a world (`.one` for exactly 1). */

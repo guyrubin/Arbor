@@ -27,6 +27,10 @@ export const en: Record<string, string> = {
   "elev.carehonesty.consult.teacher.body": "One page in classroom words: what helps and what to try. You review every line, and nothing prints until you approve it.",
   "elev.carehonesty.consult.teacher.cta": "Open the teacher brief",
   "elev.carehonesty.consult.teacher.noteCarried": "Your note for the teacher goes into the brief, where you can edit it.",
+  // B-CAREPRO-20: parent-only "At home while you wait" — worlds that work the referred domain (never exported).
+  "elev.carehonesty.consult.home.title": "At home while you wait",
+  "elev.carehonesty.consult.home.hint": "Games in Arbor that work on the same area as this visit. Only you see this; it is not part of what you share.",
+  "elev.carehonesty.consult.home.open": "Open {world}",
   // B-CAREPRO-28: one PDF per audience (the 10-item menu and the .md download are gone).
   "elev.carehonesty.consult.pdf": "Save as PDF",
   "elev.carehonesty.consult.pdf.selfTitle": "Summary for my records",
@@ -226,6 +230,9 @@ export const he: Record<string, string> = {
   "elev.carehonesty.consult.teacher.body": "עמוד אחד במילים של כיתה: מה עוזר ומה כדאי לנסות. אתם עוברים על כל שורה, ושום דבר לא מודפס לפני שאישרתם.",
   "elev.carehonesty.consult.teacher.cta": "לפתוח את המכתב לגן",
   "elev.carehonesty.consult.teacher.noteCarried": "ההערה שלכם לצוות החינוכי נכנסת למכתב, ושם אפשר לערוך אותה.",
+  "elev.carehonesty.consult.home.title": "בבית, בזמן ההמתנה",
+  "elev.carehonesty.consult.home.hint": "משחקים בארבור שעובדים על אותו תחום כמו הביקור הזה. רק אתם רואים את זה, וזה לא חלק ממה שמשתפים.",
+  "elev.carehonesty.consult.home.open": "לפתוח את {world}",
   "elev.carehonesty.consult.pdf": "שמירה כ-PDF",
   "elev.carehonesty.consult.pdf.selfTitle": "סיכום לרשומות שלי",
   "elev.carehonesty.consult.preview.toggle": "תצוגה מקדימה של מה שיוצא בדיוק",

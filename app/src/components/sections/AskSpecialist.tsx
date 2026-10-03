@@ -24,6 +24,8 @@ import { getLastExportedAt, recordExport } from "../../consult/exportHistory";
 import { InsetRow } from "../ui/kit";
 import { useConsultPdf } from "./Reports";
 import { handTeacherNote } from "../../schoolBrief/teacherHandoff";
+import { homePracticeWorlds, openHomePracticeWorld } from "../../consult/homePractice";
+import { useKidMode } from "../kidmode/KidModeContext";
 // LC-20 + LC-12: the reason for the visit, the questions prepared in
 // Appointments, and the discipline-specific evidence each preset reads.
 import { useChildCollection } from "../../hooks/useChildCollection";
@@ -107,6 +109,10 @@ export default function AskSpecialist() {
     try { localStorage.setItem(AUDIENCE_STORAGE_KEY, a); } catch { /* metadata only */ }
   };
   const isTeacher = audience === "teacher";
+  // B-CAREPRO-20: the worlds that work the chosen professional's domain —
+  // parent-only, names only, never part of any packet.
+  const { openKidMode } = useKidMode();
+  const homeWorlds = useMemo(() => homePracticeWorlds(audience), [audience]);
 
   // AIX-S3(a): the Vision handoff note lands HERE — as a parent-editable note in
   // the composer, never as an auto-share. Consume the one-shot seam into local
@@ -381,6 +387,37 @@ export default function AskSpecialist() {
           <p className="text-xs mt-2 inline-flex items-center gap-1.5" style={{ color: GREEN }}>
             <Icon name="check_circle" size={14} fill={1} /> {t("elev.learnCare.appt.questions.toPacket")}
           </p>
+        )}
+        {/* B-CAREPRO-20 · spine §5 — "At home while you wait": the two or three
+            Practice worlds whose declared domains match this professional.
+            Parent-only (outside the packet card and the preview), names only:
+            no counts, no performance. */}
+        {homeWorlds.length > 0 && (
+          <div data-testid="consult-home-practice" className="rounded-[13px] p-3.5 mt-4" style={{ background: "var(--arbor-paper-sunk)", border: `1px solid ${RULE}` }}>
+            <h3 className="inline-flex items-center gap-2 text-[13px] font-extrabold" style={{ color: INK }}>
+              <Icon name="home" size={16} style={{ color: GREEN }} /> {t("elev.carehonesty.consult.home.title")}
+            </h3>
+            <p className="text-xs leading-relaxed mt-1 max-w-[65ch]" style={{ color: MUTED }}>{t("elev.carehonesty.consult.home.hint")}</p>
+            <div className="flex flex-wrap gap-2 mt-2.5">
+              {homeWorlds.map((w) => {
+                const name = t(w.kidNameKey);
+                return (
+                  <button
+                    key={w.id}
+                    type="button"
+                    data-testid="consult-home-world"
+                    data-world={w.id}
+                    onClick={() => openHomePracticeWorld(w, { setActiveTab, openKidMode })}
+                    aria-label={t("elev.carehonesty.consult.home.open", { world: name })}
+                    className="inline-flex items-center gap-2 text-[12.5px] font-bold rounded-xl px-3.5 py-2 min-h-[44px] transition"
+                    style={{ background: "var(--arbor-paper-elevated)", color: INK, border: `1px solid ${RULE}` }}
+                  >
+                    <Icon name={w.msIcon} size={16} style={{ color: GREEN }} /> {name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         )}
       </section>
 
