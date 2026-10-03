@@ -1,14 +1,20 @@
 import React, { useMemo } from "react";
 import { usePracticeData } from "../../practice/usePracticeData";
 import { evaluateCosmetics, lifetimeDomains, type CosmeticStats } from "../../practice/cosmetics";
-import { isolate } from "../../lib/i18n";
+import { useLanguage } from "../../context/LanguageContext";
 
 /**
- * RewardsCard (A5) — gentle, earned-through-play rewards for the child. Pure
- * celebration: shows the cosmetics unlocked by practice and the nearest next one,
- * with no streak-shaming or countdowns (per the PRD's no-dark-patterns stance).
+ * RewardsCard (A5) — gentle, earned-through-play rewards for the child, on a
+ * PARENT surface (ProfileEditDrawer). Pure celebration: the cosmetics already
+ * unlocked and ONE count sentence ("3 adventures so far").
+ *
+ * B-CAREPRO-44 (laws 1 + 3): no bar, no "Next:" target, no next-reward
+ * silhouette. A fill toward the next cosmetic is a proportional fill of a child
+ * record (firewall.proportionalFill.test.ts) and progress-toward-a-reward is a
+ * pressure mechanic; the count says what happened and stops there.
  */
 export default function RewardsCard({ childId, name }: { childId: string; name: string }) {
+  const { t } = useLanguage();
   const data = usePracticeData(childId);
 
   const stats: CosmeticStats = useMemo(() => ({
@@ -29,15 +35,15 @@ export default function RewardsCard({ childId, name }: { childId: string; name: 
     }).length,
   }), [data.speech.items, data.mimic.items, data.adventures.items, data.events.items, data.missions.items, data.daysPracticed]);
 
-  const { unlocked, next } = useMemo(() => evaluateCosmetics(stats), [stats]);
+  const { unlocked } = useMemo(() => evaluateCosmetics(stats), [stats]);
 
   return (
-    <div className="pt-4 mt-2 space-y-2" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
+    <div className="pt-4 mt-2 space-y-2" style={{ borderTop: "1px solid var(--arbor-rule)" }} data-testid="rewards-card">
       <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>
-        {isolate(name)}&apos;s rewards
+        {t("profile.rewards.title", { name })}
       </span>
 
-      {unlocked.length > 0 ? (
+      {unlocked.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {unlocked.map((c) => (
             <span
@@ -50,25 +56,20 @@ export default function RewardsCard({ childId, name }: { childId: string; name: 
             </span>
           ))}
         </div>
-      ) : (
-        <p className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>
-          Play an activity to earn {isolate(name)}&apos;s first reward 🌱
-        </p>
       )}
 
-      {next && (
-        <div className="rounded-xl p-3 mt-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-          <div className="flex items-center justify-between text-[11px] mb-1.5">
-            <span style={{ color: "var(--arbor-ink)" }}>
-              <b>Next:</b> <span aria-hidden="true">{next.cosmetic.emoji}</span> {next.cosmetic.label}
-            </span>
-            <span style={{ color: "var(--arbor-muted)" }}>{next.cosmetic.requirement}</span>
-          </div>
-          <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(41,51,63,0.08)" }}>
-            <div className="h-full rounded-full" style={{ width: `${Math.round(next.progress * 100)}%`, background: "var(--arbor-clay)" }} />
-          </div>
-        </div>
-      )}
+      <p className="text-[11px]" style={{ color: "var(--arbor-muted)" }} data-testid="rewards-count">
+        {rewardsCountLine(t, stats.totalSessions, name)}
+      </p>
     </div>
   );
+}
+
+type T = (key: string, vars?: Record<string, string | number>) => string;
+
+/** The ONE line the card says about the child's play: a count, never a target. */
+export function rewardsCountLine(t: T, n: number, name: string): string {
+  if (n <= 0) return t("profile.rewards.none", { name });
+  if (n === 1) return t("profile.rewards.count.one");
+  return t("profile.rewards.count", { n });
 }

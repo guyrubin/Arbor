@@ -851,6 +851,11 @@ export const en: Dict = {
   "profile.interests.addBtn": "Add",
   "profile.interests.updated": "Updated {when}",
   "profile.ageLine": "Age {age}",
+  // B-CAREPRO-44: RewardsCard — a count sentence, never a bar toward the next reward
+  "profile.rewards.title": "{name}'s rewards",
+  "profile.rewards.count": "{n} adventures so far",
+  "profile.rewards.count.one": "1 adventure so far",
+  "profile.rewards.none": "No adventures yet. Rewards appear here after {name} plays.",
   // CI-29: 12 suggested interests (EN)
   "interest.trains": "Trains",
   "interest.dinosaurs": "Dinosaurs",
@@ -3133,6 +3138,11 @@ export const he: Dict = {
   "profile.interests.addBtn": "הוסיפו",
   "profile.interests.updated": "עודכן {when}",
   "profile.ageLine": "גיל {age}",
+  // B-CAREPRO-44: RewardsCard (Hebrew)
+  "profile.rewards.title": "הפרסים של {name}",
+  "profile.rewards.count": "{n} הרפתקאות עד כה",
+  "profile.rewards.count.one": "הרפתקה אחת עד כה",
+  "profile.rewards.none": "עוד אין הרפתקאות. הפרסים יופיעו כאן אחרי ש{name} ישחק/תשחק.",
   // CI-29: 12 suggested interests (Hebrew)
   "interest.trains": "רכבות",
   "interest.dinosaurs": "דינוזאורים",

@@ -19,6 +19,7 @@ import { describe, expect, it } from "vitest";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { translate } from "./i18n";
 
 const SRC = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const COMPONENTS = path.join(SRC, "components");
@@ -43,7 +44,6 @@ type Entry = { file: string; match: string; why: string };
  *  landed in a parallel lane) — delete the entry when you see it. */
 const PENDING_CHILD_RECORD: Entry[] = [
   { file: "components/practice/SpeechCoachTab.tsx", match: "dose.trialsToday / dose.perSessionTarget", why: "Speech dose bar — FU#30 (pending; B-PLAY-07 replaces it with 'about 5 minutes together')" },
-  { file: "components/profile/RewardsCard.tsx", match: "next.progress * 100", why: "progress toward the next cosmetic, fed by the child's activity count — UNTICKETED, raised in REJECTIONS.md (B-CAREPRO-05) for the framer" },
 ];
 
 /** Fills that are NOT a record of the child. */
@@ -84,6 +84,30 @@ describe("CN-004 · no proportional fill of a child record", () => {
     expect(fillSites(profile!.src)).toEqual([]);
     expect(profile!.src).not.toContain("windowRecord.share");
     expect(profile!.src).toContain('t("elev.growthTruth.window.noticed"');
+  });
+
+  it("B-CAREPRO-44 · RewardsCard says a count sentence: no fill, no next-reward target, no pending entry", () => {
+    const rewards = SOURCES.find((f) => f.rel === "components/profile/RewardsCard.tsx");
+    expect(rewards, "RewardsCard.tsx found by the walk").toBeTruthy();
+    expect(fillSites(rewards!.src)).toEqual([]);
+    expect(rewards!.src).not.toMatch(/next\.progress|next\.cosmetic|<b>Next:/);
+    expect(rewards!.src).toContain("rewardsCountLine(t, stats.totalSessions, name)");
+    expect(PENDING_CHILD_RECORD.some((e) => e.file === "components/profile/RewardsCard.tsx")).toBe(false);
+    // the sentence exists in both locales and carries no target or percentage
+    for (const lang of ["en", "he"] as const) {
+      const line = translate(lang, "profile.rewards.count", { n: 3 });
+      expect(line, lang).toContain("3");
+      expect(line).not.toMatch(/%|next|הבא/i);
+      expect(translate(lang, "profile.rewards.count.one")).not.toBe("profile.rewards.count.one");
+      expect(translate(lang, "profile.rewards.none", { name: "Noa" })).toContain("Noa");
+    }
+    expect(translate("en", "profile.rewards.count", { n: 3 })).toBe("3 adventures so far");
+    expect(translate("he", "profile.rewards.count", { n: 3 })).toBe("3 הרפתקאות עד כה");
+    // the pre-change bar is detected and would be unclassified now
+    const pre = '<div className="h-full rounded-full" style={{ width: `${Math.round(next.progress * 100)}%`, background: "var(--arbor-clay)" }} />';
+    const sites = fillSites(pre);
+    expect(sites).toHaveLength(1);
+    expect(classified("components/profile/RewardsCard.tsx", sites[0])).toBeUndefined();
   });
 
   it("the Speech dose bar is named explicitly — it cannot pass silently", () => {
