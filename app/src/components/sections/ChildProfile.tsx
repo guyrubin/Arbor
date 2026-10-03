@@ -21,6 +21,8 @@ import { ageWindowMilestones, comparisonAgeMonths, milestoneAgeWindow, selectNex
 // B-CAREPRO-29: "What we're working on" = the parent's chosen goals (CI-28 tiles).
 import GoalBuilderModal from "../practice/GoalBuilderModal";
 import { goalLabel, type ActiveGoal } from "../../practice/goalBuilder";
+// B-CAREPRO-33: the quoted facts carry an as-of date and ask "Still true?" after 90 days.
+import { confirmFact, factMonthLabel, isFactStale, type FactField } from "../../lib/factsAsOf";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -36,7 +38,7 @@ export default function ChildProfile() {
     childProfile, milestones,
     behaviorLogs, playLogs, approvedMemoryItems, pendingMemoryItems, setActiveTab, updateChild,
   } = useArbor();
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
   const { user } = useAuth();
   // GP-15: the child count is the family's real count, never a literal.
   const { profiles } = useProfile();
@@ -100,6 +102,43 @@ export default function ChildProfile() {
   const activeGoals: ActiveGoal[] = childProfile.activeGoals ?? [];
   const [goalsOpen, setGoalsOpen] = useState(false);
 
+  // B-CAREPRO-33: "as of {month}" under a dated fact; after 90 days a quiet
+  // "Still true? Keep · Edit" — Keep stamps today, Edit opens the drawer.
+  const factLine = (field: FactField, hasValue: boolean): React.ReactNode => {
+    const asOf = childProfile.factsAsOf?.[field];
+    if (!hasValue || !asOf) return null;
+    const stale = isFactStale(asOf, Date.now());
+    return (
+      <span data-testid={`profile-fact-asof-${field}`} className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs" style={{ color: "var(--arbor-muted)" }}>
+        <span>{t("elev.profile.fact.asOf", { month: factMonthLabel(asOf, uiLang === "he" ? "he" : "en") })}</span>
+        {stale && (
+          <span data-testid={`profile-fact-stale-${field}`} className="inline-flex flex-wrap items-center gap-x-1">
+            <span>{t("elev.profile.fact.stillTrue")}</span>
+            <button
+              type="button"
+              data-testid={`profile-fact-keep-${field}`}
+              onClick={() => { void updateChild(childProfile.id, { factsAsOf: confirmFact(childProfile.factsAsOf, field, new Date().toISOString()) }); }}
+              className="touch-target px-1 font-bold"
+              style={{ color: "var(--arbor-green-ink)" }}
+            >
+              {t("elev.profile.fact.keep")}
+            </button>
+            <span aria-hidden="true">·</span>
+            <button
+              type="button"
+              data-testid={`profile-fact-edit-${field}`}
+              onClick={() => setEditingProfile(true)}
+              className="touch-target px-1 font-bold"
+              style={{ color: "var(--arbor-green-ink)" }}
+            >
+              {t("elev.profile.fact.edit")}
+            </button>
+          </span>
+        )}
+      </span>
+    );
+  };
+
   // Child-card subtitle from REAL data (languages · school) — never the mock's
   // hardcoded "Bilingual · Pre-K". Falls back to languages-only when no school.
   const langs = childProfile.languages.join(" · ");
@@ -137,8 +176,8 @@ export default function ChildProfile() {
       <SectionCard title={t("cp.ch.who", { name: first, age: ageLabel(childProfile, t) })} icon={<Icon name="person" size={20} />} tone="mint">
         <p className="mb-4 text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.wave2Knowledge.profile.facts")}</p>
         <div className="grid sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
-          <Field label={t("cp.f.languages")} value={childProfile.languages.join(" · ") || "—"} />
-          <Field label={t("cp.f.school")} value={childProfile.schoolContext || "—"} />
+          <Field label={t("cp.f.languages")} value={childProfile.languages.join(" · ") || "—"} asOf={factLine("languages", childProfile.languages.length > 0)} />
+          <Field label={t("cp.f.school")} value={childProfile.schoolContext || "—"} asOf={factLine("schoolContext", Boolean(childProfile.schoolContext))} />
           <div>
             <p className="text-xs font-bold mb-2" style={{ color: "var(--arbor-muted)" }}>{t("elev.goal.profile.title")}</p>
             <div className="flex flex-wrap items-center gap-1.5" data-testid="profile-goals">
@@ -395,11 +434,12 @@ export default function ChildProfile() {
   );
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+function Field({ label, value, asOf }: { label: string; value: string; asOf?: React.ReactNode }) {
   return (
     <div>
       <p className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{label}</p>
       <p className="text-sm font-semibold mt-0.5" style={{ color: "var(--arbor-ink)" }}>{value}</p>
+      {asOf}
     </div>
   );
 }

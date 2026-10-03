@@ -14,6 +14,7 @@ import { DOMAIN_LABEL } from "../lib/screening";
 import { bandForAgeMonths, milestoneAgeWindow } from "../lib/milestoneData";
 import { ageLabel, ageLabelForMonths, ageMonthsFromProfile } from "../lib/childAge";
 import { behaviorTypeLabel } from "../content/behaviorTaxonomy";
+import { factMonthLabel } from "../lib/factsAsOf";
 
 export interface PacketInputProfile {
   name: string;
@@ -28,6 +29,8 @@ export interface PacketInputProfile {
   /** B-CAREPRO-29: the parent's chosen goals (CI-28 tiles). The packet's
    *  "Current focus" line reads them first, then `challenges`. */
   activeGoals?: { goalId: string; label: string }[];
+  /** B-CAREPRO-33: when the parent last wrote/confirmed the quoted facts. */
+  factsAsOf?: { schoolContext?: string };
 }
 export interface PacketInputLog {
   behaviorType: string;
@@ -94,7 +97,9 @@ export type PacketVar =
   | { list: PacketVar[]; join: "and" | "comma" | "semicolon" }
   | { ageMonths: number }
   | { momentType: string }
-  | { languageName: string };
+  | { languageName: string }
+  /** B-CAREPRO-33: an ISO date rendered as its month + year in the reader's language. */
+  | { monthOf: string };
 
 /** LC-13 / B-CAREPRO-32: `text` is the English line (every existing reader
  *  keeps working and English output is byte-identical); `textKey` + `vars`
@@ -124,6 +129,7 @@ function resolveVar(v: PacketVar, lang: UiLang): string | number {
   }
   if ("ageMonths" in v) return ageLabelForMonths(v.ageMonths, (k, vars) => translate(lang, k, vars));
   if ("momentType" in v) return behaviorTypeLabel(v.momentType, (k) => translate(lang, k), "full");
+  if ("monthOf" in v) return factMonthLabel(v.monthOf, lang);
   const raw = v.languageName.trim();
   const known = (KNOWN_LANGUAGE_NAMES as readonly string[]).find((n) => raw.toLowerCase() === n);
   return known ? translate(lang, `ob.lang.${known}`) : raw;
@@ -245,6 +251,8 @@ export interface RawPacketProfile {
   /** B-CAREPRO-29: `ChildProfile.activeGoals` (only goalId + label are read;
    *  a Firestore document is untrusted — `rawGoals` drops malformed rows). */
   activeGoals?: { goalId: string; label: string }[];
+  /** B-CAREPRO-33: `ChildProfile.factsAsOf` (only the setting date is quoted). */
+  factsAsOf?: { schoolContext?: string };
 }
 /** Raw behaviour-log fields (a `BehaviorLog`, or a Firestore document). */
 export interface RawPacketLog {
@@ -283,6 +291,11 @@ export interface RawChildRecord {
 const rawStr = (v: unknown): string => (typeof v === "string" ? v : "");
 const rawNum = (v: unknown, fallback = 0): number => (typeof v === "number" && Number.isFinite(v) ? v : fallback);
 const rawStrArr = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
+/** B-CAREPRO-33: only a parseable setting date survives the seam. */
+const rawFactsAsOf = (v: unknown): { schoolContext?: string } | undefined => {
+  const d = rawStr((v as { schoolContext?: unknown } | null | undefined)?.schoolContext);
+  return d && Number.isFinite(Date.parse(d)) ? { schoolContext: d } : undefined;
+};
 /** B-CAREPRO-29: chosen goals → {goalId, label}; anything malformed is dropped. */
 const rawGoals = (v: unknown): { goalId: string; label: string }[] =>
   Array.isArray(v)
@@ -334,6 +347,7 @@ export function buildPacketInput(record: RawChildRecord, nowMs: number): BuildPa
       strengths: rawStrArr(p.strengths),
       challenges: rawStrArr(p.challenges),
       activeGoals: rawGoals(p.activeGoals),
+      factsAsOf: rawFactsAsOf(p.factsAsOf),
     },
     logs: record.logs.map((l) => ({
       behaviorType: rawStr(l.behaviorType),
@@ -451,7 +465,15 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
         }
       : { id: "about-basics", text: `${profile.name}, ${ageLabel(profile)}.`, textKey: "elev.packet.item.basics", vars: basicsVars },
   ];
-  if (profile.schoolContext) aboutItems.push({ id: "about-school", text: `Setting: ${profile.schoolContext}.`, textKey: "elev.packet.item.setting", vars: { setting: profile.schoolContext } });
+  // B-CAREPRO-33: a dated setting says when the parent last confirmed it.
+  const settingAsOf = profile.factsAsOf?.schoolContext;
+  if (profile.schoolContext) {
+    aboutItems.push(
+      settingAsOf
+        ? { id: "about-school", text: `Setting (as of ${factMonthLabel(settingAsOf, "en")}): ${profile.schoolContext}.`, textKey: "elev.packet.item.settingAsOf", vars: { setting: profile.schoolContext, month: { monthOf: settingAsOf } } }
+        : { id: "about-school", text: `Setting: ${profile.schoolContext}.`, textKey: "elev.packet.item.setting", vars: { setting: profile.schoolContext } }
+    );
+  }
   if (profile.strengths?.length) aboutItems.push({ id: "about-strengths", text: `Strengths: ${profile.strengths.join(", ")}.`, textKey: "elev.packet.item.strengths", vars: { list: { list: profile.strengths, join: "comma" } } });
   // B-CAREPRO-29: the parent's chosen goals lead (keyed, so a Hebrew reader
   // gets the Hebrew tile label); free-text challenges follow, as written.

@@ -36,6 +36,8 @@ export interface ChildProfile {
    * Gate §E: arbor-safety COPPA review required before shipping to prod.
    */
   activeGoals?: import('./practice/goalBuilder').ActiveGoal[];
+  /** B-CAREPRO-33: when each Care-quoted fact was last written or confirmed (ISO). */
+  factsAsOf?: import('./lib/factsAsOf').FactsAsOf;
   /**
    * CI-29: Parent-entered interest tags (e.g. "Trains", "Dinosaurs").
    * Parent-facing only — the child never enters this field.

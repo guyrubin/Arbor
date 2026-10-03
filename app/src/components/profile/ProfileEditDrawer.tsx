@@ -20,6 +20,7 @@ import { fmtDay } from "../../lib/formatDate";
 import { ageLabelForMonths, ageMonthsFromProfile, agePatchFromMonths } from "../../lib/childAge";
 import AvatarCreator from "./AvatarCreator";
 import RewardsCard from "./RewardsCard";
+import { stampChangedFacts } from "../../lib/factsAsOf";
 // GP-18: a Level-5 delete confirms in the app own dialog, never window.confirm.
 // Same primitive and the same typed-name pattern as the Care delete modal
 // (components/sections/TrustedSharing.tsx:570), including its i18n keys.
@@ -194,13 +195,19 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
       // cleared (never re-invented), so ageMonthsFromProfile(patched) moves
       // with the edit. An unchanged age keeps the stored fields untouched.
       const agePatch = ageMonths !== (ageMonthsFromProfile(activeChild) ?? 0) ? agePatchFromMonths(ageMonths) : {};
-      const persisted = await updateChild(activeChild.id, {
-        name: name.trim() || activeChild.name,
-        ...agePatch,
+      // B-CAREPRO-33: the facts Care documents quote, and the date each was
+      // last written — only a field whose value changed is re-stamped.
+      const facts = {
         schoolContext,
         languages: languages.split(",").map((s) => s.trim()).filter(Boolean),
         strengths: strengths.split("\n").map((s) => s.trim()).filter(Boolean),
         challenges: challenges.split("\n").map((s) => s.trim()).filter(Boolean),
+      };
+      const persisted = await updateChild(activeChild.id, {
+        name: name.trim() || activeChild.name,
+        ...agePatch,
+        ...facts,
+        factsAsOf: stampChangedFacts(activeChild, facts, new Date().toISOString()),
         photoUrl: photoUrl || "",
         ...(avatarMeta ? { avatar: avatarMeta } : {}),
         // CI-29: persist interests[] + ISO timestamp (parent-written only, COPPA-gated).

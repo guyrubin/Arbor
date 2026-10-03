@@ -4,9 +4,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import ChildProfile from "./ChildProfile";
 import { en, he } from "../../lib/i18nElevation/wave2Knowledge";
 import { en as goalsEn, he as goalsHe } from "../../lib/i18nElevation/goals";
+import { en as cpEn, he as cpHe } from "../../lib/i18nElevation/careprofile";
 const harness=vi.hoisted(() => ({
  callback:false, locale:"en", pending:[] as unknown[], approved:[] as unknown[], hasHero:true,
- goals:[] as unknown[], challenges:[] as string[],
+ goals:[] as unknown[], challenges:[] as string[], factsAsOf:undefined as unknown, updateChild:vi.fn(),
  setActiveTab:vi.fn(), setState:vi.fn(),
 }));
 vi.mock("react", async (original) => {
@@ -18,13 +19,13 @@ vi.mock("react", async (original) => {
  };
 });
 vi.mock("../../context/ArborContext",()=>({useArbor:()=>({
- childProfile:{id:"c1",name:"Dylan",age:5,languages:["English"],schoolContext:"School",challenges:harness.challenges,strengths:[],interests:["Dinosaurs"],activeGoals:harness.goals},
- milestones:[],behaviorLogs:[],playLogs:[],actionPlans:[],approvedMemoryItems:harness.approved,pendingMemoryItems:harness.pending,setActiveTab:harness.setActiveTab,
+ childProfile:{id:"c1",name:"Dylan",age:5,languages:["English"],schoolContext:"School",challenges:harness.challenges,strengths:[],interests:["Dinosaurs"],activeGoals:harness.goals,factsAsOf:harness.factsAsOf},
+ milestones:[],behaviorLogs:[],playLogs:[],actionPlans:[],approvedMemoryItems:harness.approved,pendingMemoryItems:harness.pending,setActiveTab:harness.setActiveTab,updateChild:harness.updateChild,
 })}));
 vi.mock("../../context/ProfileContext",()=>({useProfile:()=>({profiles:[{id:"c1"}]})}));
 vi.mock("../../context/AuthContext",()=>({useAuth:()=>({user:{displayName:"Parent"}})}));
-vi.mock("../../context/LanguageContext",()=>({useLanguage:()=>({t:(key:string,vars?:Record<string,unknown>)=>{
- let value=(harness.locale==="he"?he:en)[key]||(harness.locale==="he"?goalsHe:goalsEn)[key]||key;
+vi.mock("../../context/LanguageContext",()=>({useLanguage:()=>({uiLang:harness.locale,t:(key:string,vars?:Record<string,unknown>)=>{
+ let value=(harness.locale==="he"?he:en)[key]||(harness.locale==="he"?goalsHe:goalsEn)[key]||(harness.locale==="he"?cpHe:cpEn)[key]||key;
  for(const [k,v] of Object.entries(vars||{}))value=value.replaceAll("{"+k+"}",String(v));
  return value;
 }})}));
@@ -36,7 +37,7 @@ function elements(node:React.ReactNode):React.ReactElement<Record<string,any>>[]
  const element=node as React.ReactElement<Record<string,any>>;
  return[element,...React.Children.toArray(element.props.children).flatMap(elements)];
 }
-beforeEach(()=>{vi.clearAllMocks();harness.callback=false;harness.locale="en";harness.pending=[];harness.approved=[];harness.hasHero=true;harness.goals=[];harness.challenges=[];});
+beforeEach(()=>{vi.clearAllMocks();harness.callback=false;harness.locale="en";harness.pending=[];harness.approved=[];harness.hasHero=true;harness.goals=[];harness.challenges=[];harness.factsAsOf=undefined;});
 describe("W2 Profile identity and protected doors",()=>{
  it("renders one h1 and honest singular counts with parent facts before family",()=>{
   const html=renderToStaticMarkup(<ChildProfile/>);
@@ -151,5 +152,57 @@ describe("B-CAREPRO-29 · Profile shows the parent's chosen goals", () => {
     // challenges-only profiles keep their line (every challenges reader keeps working)
     const legacy = buildConsultPacket(buildPacketInput({ ...raw, profile: { ...raw.profile, activeGoals: undefined, challenges: ["mornings"] } }, Date.now()));
     expect(legacy.sections.flatMap((s) => s.items).find((i) => i.id === "about-focus")!.text).toBe("Current focus: mornings.");
+  });
+});
+
+/* ── B-CAREPRO-33 — "Still true?" on the facts Care documents quote ───────── */
+describe("B-CAREPRO-33 · the Who band dates its facts", () => {
+  const DAYS = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
+
+  for (const locale of ["en", "he"] as const) {
+    it(`${locale}: a setting dated 120 days ago shows 'as of {month}' and the Still-true prompt`, () => {
+      harness.locale = locale;
+      harness.factsAsOf = { schoolContext: DAYS(120) };
+      const html = renderToStaticMarkup(<ChildProfile />);
+      const L = locale === "he" ? cpHe : cpEn;
+      expect(html).toContain('data-testid="profile-fact-asof-schoolContext"');
+      expect(html).toContain(L["elev.profile.fact.asOf"].replace("{month}", ""));
+      expect(html).toContain('data-testid="profile-fact-stale-schoolContext"');
+      expect(html).toContain(L["elev.profile.fact.stillTrue"]);
+      expect(html).toContain(L["elev.profile.fact.keep"]);
+      expect(html).toContain(L["elev.profile.fact.edit"]);
+      expect(html).toMatch(/data-testid="profile-fact-keep-schoolContext"[^>]*class="touch-target/);
+    });
+  }
+
+  it("a 30-day-old setting shows its date and no prompt; an undated one shows neither", () => {
+    harness.factsAsOf = { schoolContext: DAYS(30) };
+    let html = renderToStaticMarkup(<ChildProfile />);
+    expect(html).toContain('data-testid="profile-fact-asof-schoolContext"');
+    expect(html).not.toContain("profile-fact-stale-");
+    harness.factsAsOf = undefined;
+    html = renderToStaticMarkup(<ChildProfile />);
+    expect(html).not.toContain("profile-fact-asof-");
+  });
+
+  it("Keep stamps today through updateChild; Edit opens the drawer", () => {
+    harness.callback = true;
+    harness.factsAsOf = { schoolContext: DAYS(120), languages: DAYS(10) };
+    // the as-of line rides on Field's `asOf` prop, so walk props.asOf as well as children
+    const deep = (node: React.ReactNode): React.ReactElement<Record<string, any>>[] => {
+      if (!React.isValidElement<Record<string, any>>(node)) return [];
+      const el = node as React.ReactElement<Record<string, any>>;
+      return [el, ...[...React.Children.toArray(el.props.children), el.props.asOf].flatMap(deep)];
+    };
+    const find = (id: string) => deep(ChildProfile()).find((el) => el.props["data-testid"] === id)!;
+    const before = Date.now();
+    find("profile-fact-keep-schoolContext").props.onClick();
+    expect(harness.updateChild).toHaveBeenCalledTimes(1);
+    const [childId, patch] = harness.updateChild.mock.calls[0] as [string, { factsAsOf: Record<string, string> }];
+    expect(childId).toBe("c1");
+    expect(Date.parse(patch.factsAsOf.schoolContext)).toBeGreaterThanOrEqual(before - 1000);
+    expect(patch.factsAsOf.languages).toBe((harness.factsAsOf as Record<string, string>).languages);
+    find("profile-fact-edit-schoolContext").props.onClick();
+    expect(harness.setState).toHaveBeenCalledWith(true);
   });
 });

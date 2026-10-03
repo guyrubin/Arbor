@@ -81,6 +81,8 @@ export const en: Record<string, string> = {
   "elev.packet.item.basics": "{name}, {age}.",
   "elev.packet.item.basicsLangs": "{name}, {age}, speaks {languages}.",
   "elev.packet.item.setting": "Setting: {setting}.",
+  // B-CAREPRO-33: the setting line names when the parent last confirmed it.
+  "elev.packet.item.settingAsOf": "Setting (as of {month}): {setting}.",
   "elev.packet.item.strengths": "Strengths: {list}.",
   "elev.packet.item.focus": "Current focus: {list}.",
   "elev.packet.times.one": "1 time",
@@ -270,6 +272,7 @@ export const he: Record<string, string> = {
   "elev.packet.item.basics": "{name}, {age}.",
   "elev.packet.item.basicsLangs": "{name}, {age}, מדבר/ת {languages}.",
   "elev.packet.item.setting": "מסגרת: {setting}.",
+  "elev.packet.item.settingAsOf": "מסגרת (נכון ל{month}): {setting}.",
   "elev.packet.item.strengths": "חוזקות: {list}.",
   "elev.packet.item.focus": "במה מתמקדים עכשיו: {list}.",
   "elev.packet.times.one": "פעם אחת",

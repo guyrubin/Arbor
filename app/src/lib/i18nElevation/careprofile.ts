@@ -7,6 +7,11 @@
  * no AI/tech framing); flagged for arbor-localization native review. */
 
 export const en: Record<string, string> = {
+  // B-CAREPRO-33: "Still true?" on the facts every Care document quotes.
+  "elev.profile.fact.asOf": "as of {month}",
+  "elev.profile.fact.stillTrue": "Still true?",
+  "elev.profile.fact.keep": "Keep",
+  "elev.profile.fact.edit": "Edit",
   // ── E2 · Ask Arbor hero (slim)
   "elev.hero.ask.eyebrow": "Ask Arbor",
   "elev.hero.ask.title": "A calm next step, whenever you need one.",
@@ -31,6 +36,10 @@ export const en: Record<string, string> = {
 };
 
 export const he: Record<string, string> = {
+  "elev.profile.fact.asOf": "נכון ל{month}",
+  "elev.profile.fact.stillTrue": "עדיין נכון?",
+  "elev.profile.fact.keep": "כן, עדיין נכון",
+  "elev.profile.fact.edit": "לעדכן",
   "elev.hero.ask.eyebrow": "שאלו את ארבור",
   "elev.hero.ask.title": "צעד רגוע קדימה, בכל רגע שתצטרכו.",
   "elev.hero.ask.cta": "לשאול שאלה",
