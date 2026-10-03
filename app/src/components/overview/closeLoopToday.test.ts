@@ -166,3 +166,58 @@ describe("ENG-18 — the cold-start progress line", () => {
     expect(line).not.toMatch(/recentBehaviors|recentPlay|noticedMilestones|momentsLastWeek/);
   });
 });
+
+/**
+ * B-ASKJB-04 — an Ask answer's first step enters the action loop with
+ * source "coach": accept → Today's step → outcome → next-day carry-over.
+ * The source union itself is B-AI-05's (actionLoop/model.test.ts).
+ */
+describe("B-ASKJB-04 — a coach-sourced step through accept → outcome → carry-over", () => {
+  it("accept writes today's row with source 'coach'; the card shows it as accepted; a different step offers replace", async () => {
+    const { planAcceptedAction, activeActionFor } = await import("../../actionLoop/model");
+    const { tryItState } = await import("../coach/CoachAnswerCards");
+    const step = "Name the feeling before the transition.";
+    const { entry } = planAcceptedAction([], { recommendation: step, source: "coach", capacity: "standard" }, TODAY_ID, new Date(NOW));
+    expect(entry.source).toBe("coach");
+    expect(entry.status).toBe("accepted");
+    const active = activeActionFor([entry], TODAY_ID);
+    expect(active?.id).toBe(entry.id); // Today renders it as today's step
+    expect(tryItState(step, active)).toBe("accepted");
+    expect(tryItState("Another step.", active)).toBe("replace");
+    expect(tryItState(step, null)).toBe("accept");
+    // Replace: B-AI-05 supersedes today's unrated row; one step per day.
+    const second = planAcceptedAction([entry], { recommendation: "Another step.", source: "coach", capacity: "standard" }, TODAY_ID, new Date(NOW + 60_000));
+    expect(second.superseded.map((r) => r.status)).toEqual(["superseded"]);
+    expect(activeActionFor([...second.superseded, second.entry], TODAY_ID)?.recommendation).toBe("Another step.");
+    // A rated step today hides the control (never a second step that day).
+    expect(tryItState(step, { ...entry, status: "completed" })).toBe("hidden");
+  });
+
+  it("next day the carry-over asks about the unrated coach step; after the outcome it never re-asks", () => {
+    const yesterdayCoach = entry({ id: "today.child-1.2026-09-03", recommendation: "Name the feeling before the transition." });
+    const coach = { ...yesterdayCoach, source: "coach" as const };
+    expect(selectCarryOverAction([coach], TODAY_ID, NOW)?.recommendation).toBe("Name the feeling before the transition.");
+    expect(selectCarryOverAction([{ ...coach, status: "completed", outcome: "helped" }], TODAY_ID, NOW)).toBeNull();
+  });
+
+  it("CoachTab wires the card to the one accept seam with source 'coach', and the event carries the source", () => {
+    const here = path.dirname(fileURLToPath(import.meta.url));
+    const coachTab = readFileSync(path.resolve(here, "../tabs/CoachTab.tsx"), "utf8");
+    expect(coachTab).toContain('onTryIt={(step) => acceptTodayAction(step, "standard", "coach")}');
+    expect(coachTab).toContain("onUndoTryIt={(id) => removeTodayAction(id)}");
+    const ctx = readFileSync(path.resolve(here, "../../context/ArborContext.tsx"), "utf8");
+    expect(ctx).toMatch(/track\("today_action_accepted", \{ capacity, source \}\)/);
+    // Today names where the step came from.
+    const loop = readFileSync(path.resolve(here, "TodayActionLoop.tsx"), "utf8");
+    expect(loop).toContain('activeTodayAction.source === "coach" ? t("today.action.eyebrow.coach")');
+  });
+
+  it("the try-it copy exists in EN and HE", async () => {
+    const { en, he } = await import("../../lib/i18n");
+    for (const k of ["coach.tryIt", "coach.tryIt.replace", "coach.tryIt.replaces", "coach.tryIt.accepted", "coach.tryIt.undo", "today.action.eyebrow.coach"]) {
+      expect(en[k], k).toBeTruthy();
+      expect(he[k], k).toBeTruthy();
+      expect(he[k].replace(/\{\w+\}/g, "")).not.toMatch(/[A-Za-z]/);
+    }
+  });
+});

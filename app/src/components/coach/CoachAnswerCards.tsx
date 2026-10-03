@@ -20,6 +20,65 @@ export function sourcesLabel(n: number, lang: UiLang = "en"): string {
   return translate(lang, "cite.drawer.header", { n, plural: lang === "he" ? "ות" : "s" });
 }
 
+/** B-ASKJB-04 — today's step as the answer card sees it (ids/status/text only). */
+export type CoachTodayStep = { id: string; recommendation: string; status: "accepted" | "completed" | "superseded" };
+
+/**
+ * Pure helper (B-ASKJB-04): what the "I'll try it" control under step 1 shows.
+ *  - "accepted": this step IS today's step and still waits for an outcome →
+ *    "Today's step · we'll ask how it went" + Undo.
+ *  - "replace": another step is accepted today and unrated → "Make this
+ *    today's step" with the one-line "Replaces …" confirm (B-AI-05 marks the
+ *    old row superseded; a completed row is never overwritten).
+ *  - "hidden": today's step already has an outcome — one step per day.
+ *  - "accept": no step today → "I'll try it".
+ */
+export function tryItState(step: string, today: CoachTodayStep | null | undefined): "accept" | "replace" | "accepted" | "hidden" {
+  if (!today || today.status === "superseded") return "accept";
+  if (today.status === "completed") return "hidden";
+  return today.recommendation.trim() === step.trim() ? "accepted" : "replace";
+}
+
+/** B-ASKJB-04 — the control under step 1 that enters the action loop. */
+export function CoachTryIt({ step, today, lang, onTryIt, onUndo }: {
+  step: string;
+  today: CoachTodayStep | null | undefined;
+  lang: UiLang;
+  onTryIt: (step: string) => void;
+  onUndo: (id: string) => void;
+}) {
+  const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars);
+  const state = tryItState(step, today);
+  if (state === "hidden") return null;
+  if (state === "accepted" && today) {
+    return (
+      <div data-testid="coach-try-it" data-state="accepted" role="status" className="mt-2 flex flex-wrap items-center gap-x-2 pt-2" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
+        <span className="inline-flex flex-1 min-w-0 items-center gap-1.5 text-[12px] font-bold" style={{ color: "var(--arbor-green-ink)" }}>
+          <Icon name="check_circle" size={14} /> {t("coach.tryIt.accepted")}
+        </span>
+        <button type="button" onClick={() => onUndo(today.id)} className="inline-flex min-h-11 items-center px-2 text-[12px] font-bold underline underline-offset-2" style={{ color: "var(--arbor-muted)" }}>
+          {t("coach.tryIt.undo")}
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div data-testid="coach-try-it" data-state={state} className="mt-2 space-y-1 pt-2" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
+      <button
+        type="button"
+        onClick={() => onTryIt(step)}
+        className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 text-[13px] font-extrabold"
+        style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule-strong)" }}
+      >
+        <Icon name="flag" size={14} /> {state === "replace" ? t("coach.tryIt.replace") : t("coach.tryIt")}
+      </button>
+      {state === "replace" && today && (
+        <p className="text-[11px] leading-snug" style={{ color: "var(--arbor-muted)" }}>{t("coach.tryIt.replaces", { current: today.recommendation })}</p>
+      )}
+    </div>
+  );
+}
+
 /** COACH-6: one resolved citation drawer row. `title`/`type` are null when the
  *  server sent no metadata for the id (the row falls back to slug rendering). */
 export type CitationRow = { id: string; title: string | null; type: string | null };
@@ -299,8 +358,13 @@ function AnswerFeedback({ contract, lens, surface, lang, sources }: {
 // unchanged, so this surface renders exactly what it rendered before (pinned
 // by coachAnswerCardsMarkup.test.ts).
 
-export default function CoachAnswerCards({ contract, lens, council, lang = "en", onSaveToPlan, onCreateLog, onAddToHandoff, onManageMemory, reviewUnavailable = false }: {
+export default function CoachAnswerCards({ contract, lens, council, lang = "en", onSaveToPlan, onCreateLog, onAddToHandoff, onManageMemory, reviewUnavailable = false, todayStep, onTryIt, onUndoTryIt }: {
   contract: CoachContract;
+  /** B-ASKJB-04: today's step (context activeTodayAction) + the accept seam.
+   *  Absent handlers ⇒ no control (render-only callers and fixtures). */
+  todayStep?: CoachTodayStep | null;
+  onTryIt?: (step: string) => void;
+  onUndoTryIt?: (id: string) => void;
   lens?: string;
   council?: CouncilTake[];
   lang?: UiLang;
@@ -389,6 +453,9 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
           }
         >
           <Checklist items={contract.todayPlan} />
+          {onTryIt && onUndoTryIt && (
+            <CoachTryIt step={contract.todayPlan[0]} today={todayStep} lang={lang} onTryIt={onTryIt} onUndo={onUndoTryIt} />
+          )}
         </AiBlock>
       )}
 

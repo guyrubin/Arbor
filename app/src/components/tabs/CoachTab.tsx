@@ -180,6 +180,9 @@ export default function CoachTab() {
     conversationChanges,
     commitConversationProposal,
     openPaywall,
+    activeTodayAction,
+    acceptTodayAction,
+    removeTodayAction,
   } = useArbor();
   // B-AI-06: Ask renders the SAME single-offer decision as Today.
   const askOffer = useCompanionOffer("coach");
@@ -1395,6 +1398,11 @@ export default function CoachTab() {
                       lens={msg.lens}
                       council={msg.council}
                       lang={uiLang}
+                      // B-ASKJB-04: "I'll try it" under step 1 enters the action
+                      // loop (source "coach"); one step per day (B-AI-05 supersede).
+                      todayStep={activeTodayAction}
+                      onTryIt={(step) => acceptTodayAction(step, "standard", "coach")}
+                      onUndoTryIt={(id) => removeTodayAction(id)}
                       // ASK-6: memory footer deep link — Profile › Child Memory.
                       onManageMemory={() => setActiveTab("memory")}
                       // OWN-1: no review invite while the ledger is unreadable.

@@ -471,3 +471,23 @@ describe("ASK-3 — script + plan lead, hypotheses collapse, frames never render
     expect(html).not.toContain("Why this might be happening");
   });
 });
+
+describe("B-ASKJB-04 — the try-it control renders per state, 44 px, EN + HE", () => {
+  it("accept / replace / accepted / hidden", async () => {
+    const React = (await import("react")).default;
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const { CoachTryIt } = await import("./CoachAnswerCards");
+    const noop = () => {};
+    const r = (today: any, lang: "en" | "he" = "en") =>
+      renderToStaticMarkup(React.createElement(CoachTryIt, { step: "Name it first.", today, lang, onTryIt: noop, onUndo: noop }));
+    expect(r(null)).toContain("I&#x27;ll try it");
+    expect(r(null)).toContain("min-h-11");
+    const other = { id: "today.c.2026-10-03", recommendation: "Warn first.", status: "accepted" };
+    expect(r(other)).toContain("Make this today&#x27;s step");
+    expect(r(other)).toContain("Warn first.");
+    expect(r({ ...other, recommendation: "Name it first." })).toContain("we&#x27;ll ask how it went");
+    expect(r({ ...other, status: "completed" })).toBe("");
+    expect(r(null, "he")).toContain("אנסה את זה");
+    expect(r(other, "he")).toContain("שזה יהיה הצעד של היום");
+  });
+});
