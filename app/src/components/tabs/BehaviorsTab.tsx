@@ -30,7 +30,8 @@ import { ContentActionBar } from "../ui/ContentActionBar";
 import { fileToThumbnail } from "../../lib/image";
 import { uploadChildPhoto } from "../../lib/storage";
 import { useAuth } from "../../context/AuthContext";
-import { weekStartKey, escapeHtml } from "../../lib/behaviorUtils";
+import { weekStartKey } from "../../lib/behaviorUtils";
+import { exportBehaviorPdf } from "../../lib/behaviorExport";
 import { BehaviorContext, BehaviorLog } from "../../types";
 import { clearCaptureCue, useCaptureCue } from "../../lib/captureCue";
 import { fmtDay, fmtDayShort, fmtDayTime } from "../../lib/formatDate";
@@ -500,29 +501,9 @@ export default function BehaviorsTab() {
     }));
   }, [behaviorLogs, types]);
 
-  const exportPdf = () => {
-    const rows = filtered
-      .map(
-        (l) =>
-          `<tr><td>${escapeHtml(fmtDayTime(l.timestamp, uiLang))}</td><td>${escapeHtml(l.behaviorType)}</td><td>${l.context || ""}</td><td>${l.intensity}/5</td><td>${l.durationMinutes}m</td><td>${l.resolved ? t("beh.resolved") : t("beh.open")}</td><td>${escapeHtml(l.trigger)}</td><td>${escapeHtml(l.response ?? "")}</td></tr>`
-      )
-      .join("");
-    // print stylesheet — intentional literals (printed report has its own static
-    // palette; design tokens don't apply to the export window, m3-hex-sweep skip).
-    const html = `<!doctype html><html><head><title>${t("beh.pdf.title")}</title>
-      <style>body{font-family:Georgia,serif;color:#14160f;padding:32px} h1{font-size:20px} table{width:100%;border-collapse:collapse;font-size:11px;margin-top:16px} th,td{border:1px solid #ccc;padding:6px;text-align:left;vertical-align:top} th{background:#f0ece0}</style>
-      </head><body>
-      <h1>${t("beh.pdf.heading")}</h1>
-      <p>${t("beh.pdf.generated", { date: fmtDayTime(Date.now(), uiLang), n: filtered.length })}</p>
-      <table><thead><tr><th>${t("beh.pdf.col.when")}</th><th>${t("beh.pdf.col.type")}</th><th>${t("beh.pdf.col.where")}</th><th>${t("beh.pdf.col.intensity")}</th><th>${t("beh.pdf.col.duration")}</th><th>${t("beh.pdf.col.status")}</th><th>${t("beh.triggerField")}</th><th>${t("beh.parentAction")}</th></tr></thead><tbody>${rows}</tbody></table>
-      </body></html>`;
-    const w = window.open("", "_blank");
-    if (!w) return;
-    w.document.write(html);
-    w.document.close();
-    w.focus();
-    w.print();
-  };
+  // B-ASKJB-14: the export lives in lib/behaviorExport (the Journal's Hard
+  // moments view prints the same document).
+  const exportPdf = () => exportBehaviorPdf(filtered, { t, lang: uiLang });
 
   const resetFilters = () => {
     setSearch("");

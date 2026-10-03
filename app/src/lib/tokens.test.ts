@@ -205,7 +205,6 @@ const HEX_ALLOWLIST: Record<string, readonly string[]> = {
     "#c7c0e8", "#cfe0c2", "#cfe6f6", "#d79f86", "#dcd6f4", "#e4f0fa", "#e7c6b6", "#ece9fb",
     "#f3b24d", "#f4d991", "#f6b27a", "#f6cdd9", "#f6d9b8", "#fbe1ea", "#fbeede", "#fce39a",
   ],
-  "components/tabs/BehaviorsTab.tsx": ["#14160f", "#ccc", "#f0ece0"], // print-CSS template string
   "components/tabs/ComicsTab.tsx": ["#fff"],
   "components/tabs/HeroJourneyTab.tsx": ["#fff"],
   "components/tabs/MilestonesTab.tsx": ["#fff"], // Wave T: confetti brand literals moved to lib/celebrate (BRAND_CONFETTI)
@@ -728,6 +727,8 @@ describe("rgba-creep ratchet — src/**/*.{ts,tsx,css} may only shrink", () => {
    ═══════════════════════════════════════════════════════════════════════════ */
 const LIB_PRACTICE_HEX_ALLOWLIST: Record<string, readonly string[]> = {
   "lib/behaviorUtils.ts": ["#6f9e6f", "#9bbf5a", "#d7aa55", "#e08a3c", "#e2562d"],
+  // B-ASKJB-14: the behaviour-log print CSS moved here from BehaviorsTab.
+  "lib/behaviorExport.ts": ["#14160f", "#ccc", "#f0ece0"], // print-CSS template string
   "lib/native.ts": ["#eef2ef"],
   "lib/reportExport.ts": ["#1f8a5a", "#29333f", "#2a9c66", "#69747f", "#9aa0a8", "#e4f4ec", "#e8edea", "#fff"], // print-report CSS template
   "lib/shareCard.ts": ["#1f8a5a", "#29333f", "#34b277", "#3a4651", "#5f6b75", "#d6ebde", "#e4f4ec", "#eef6f0", "#fff", "#ffffff"], // share-card canvas art

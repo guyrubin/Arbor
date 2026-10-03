@@ -26,6 +26,8 @@ import QuickLogModal from "../overview/QuickLogModal";
 // of its actions run existing seams (commitConversationProposal for the
 // one-tap keep, requestCapture("ai-draft") for the edit-first route).
 import { provenanceForSignal, readCaptureProvenance, type KeptProvenance } from "../../lib/captureProvenance";
+import { JOURNAL_FILTERS, firstGroupOfMonth, isHardMomentSignal, journalMonthKeys, matchesJournalFilter, momentLogId, monthLabel, type JournalFilter } from "../../lib/journalFilters";
+import { exportBehaviorPdf } from "../../lib/behaviorExport";
 
 /**
  * UC-1 Journal (wireframe-reconciled) — a single calm column of logged moments.
@@ -369,10 +371,45 @@ export default function JournalTab() {
   // JRNL-8: the feed renders through the SAME groupByDay the Story density
   // uses — slim sticky localized day headers, time-only inside a group,
   // "Ongoing" last. The flat single column stays (validated call).
-  const groups = useMemo(
-    () => groupByDay(signals, Date.now(), { locale, ongoingLabel: t("timeline.ongoing") }),
-    [signals, locale, t],
+  // B-ASKJB-14 — Journal finds things. One filter row above the thread: All ·
+  // Hard moments (isIncidentType) · Kept from Arbor (captureProvenance) · an
+  // on-device search over trigger, response, notes and the localized type
+  // label (never sent anywhere, never stored — session state only) · a month
+  // jump built from groupByDay keys. The filtered list feeds the SAME
+  // groupByDay, so a filter narrows rows within the render that typed it.
+  const [journalFilter, setJournalFilter] = useState<JournalFilter>("all");
+  const [journalQuery, setJournalQuery] = useState("");
+  const logsById = useMemo(() => new Map((behaviorLogs || []).map((l) => [l.id, l])), [behaviorLogs]);
+  const keptIds = useMemo(
+    () => new Set(signals.filter((s) => provenanceForSignal(keptProvenance, s.id)).map((s) => s.id)),
+    [signals, keptProvenance],
   );
+  const filtering = journalFilter !== "all" || journalQuery.trim() !== "";
+  const visibleSignals = useMemo(
+    () => filtering
+      ? signals.filter((s) => matchesJournalFilter(s, { filter: journalFilter, query: journalQuery, logsById, keptIds, labelOf: (x) => signalTitle(x, tt) }))
+      : signals,
+    [filtering, signals, journalFilter, journalQuery, logsById, keptIds, tt],
+  );
+  const groups = useMemo(
+    () => groupByDay(visibleSignals, Date.now(), { locale, ongoingLabel: t("timeline.ongoing") }),
+    [visibleSignals, locale, t],
+  );
+  const monthKeys = useMemo(() => journalMonthKeys(groups.map((g) => g.key)), [groups]);
+  const jumpToMonth = (month: string) => {
+    const key = firstGroupOfMonth(groups.map((g) => g.key), month);
+    if (!key) return;
+    try { document.getElementById(`journal-day-${key}`)?.scrollIntoView({ block: "start", behavior: "smooth" }); } catch { /* jsdom/SSR */ }
+  };
+  const clearJournalFilters = () => { setJournalFilter("all"); setJournalQuery(""); };
+  // The Hard moments view prints the SAME PDF Behaviors prints (lib/behaviorExport).
+  const exportHardMoments = () => {
+    const rows = visibleSignals
+      .filter((s) => isHardMomentSignal(s, logsById))
+      .map((s) => logsById.get(momentLogId(s)!)!)
+      .filter(Boolean);
+    exportBehaviorPdf(rows, { t, lang: uiLang });
+  };
 
   // JRNL-7 + F-09 + RUN-08/TJB-27: ONE counting source of truth. The header
   // stat ("This week in the story") and the story copy now read the SAME
@@ -577,11 +614,84 @@ export default function JournalTab() {
             <h2 id="journal-timeline-title" className="text-[18px] font-extrabold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{t("journal.timeline.title")}</h2>
             <span className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>{t(feedCount.key, { n: feedCount.n })}</span>
           </div>
+          <div data-testid="journal-filters" className="mb-3 space-y-2">
+            <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t("journal.filter.aria")}>
+              {JOURNAL_FILTERS.map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  data-testid={`journal-filter-${f}`}
+                  aria-pressed={journalFilter === f}
+                  onClick={() => setJournalFilter(f)}
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full px-3.5 text-[13px] font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                  style={journalFilter === f
+                    ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)" }
+                    : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink-soft)", border: "1px solid var(--arbor-rule)" }}
+                >
+                  {t(`journal.filter.${f}`)}
+                </button>
+              ))}
+              {journalFilter === "hard" && visibleSignals.some((sig) => isHardMomentSignal(sig, logsById)) && (
+                <button
+                  type="button"
+                  data-testid="journal-export-pdf"
+                  onClick={exportHardMoments}
+                  className="ms-auto inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-[12px] font-bold"
+                  style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)", background: "var(--arbor-paper-elevated)" }}
+                >
+                  <Icon name="download" size={15} style={{ color: "var(--arbor-green-ink)" }} /> {t("beh.exportPdf")}
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-xl ps-3 pe-2" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}>
+                <Icon name="search" size={16} style={{ color: "var(--arbor-muted)" }} />
+                <input
+                  type="search"
+                  data-testid="journal-search"
+                  value={journalQuery}
+                  onChange={(e) => setJournalQuery(e.target.value)}
+                  placeholder={t("journal.filter.search")}
+                  aria-label={t("journal.filter.search")}
+                  dir="auto"
+                  className="min-h-11 min-w-0 flex-1 bg-transparent text-sm focus:outline-none"
+                  style={{ color: "var(--arbor-ink)" }}
+                />
+              </label>
+              {monthKeys.length > 1 && (
+                <select
+                  data-testid="journal-month"
+                  aria-label={t("journal.filter.month")}
+                  value=""
+                  onChange={(e) => { if (e.target.value) jumpToMonth(e.target.value); }}
+                  className="min-h-11 rounded-xl px-3 text-[13px] font-bold"
+                  style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}
+                >
+                  <option value="">{t("journal.filter.month")}</option>
+                  {monthKeys.map((m) => <option key={m} value={m}>{monthLabel(m, locale)}</option>)}
+                </select>
+              )}
+            </div>
+          </div>
+          {filtering && visibleSignals.length === 0 && (
+            <div data-testid="journal-filter-empty" role="status" className="flex flex-wrap items-center gap-2 py-4">
+              <p className="text-sm" style={{ color: "var(--arbor-ink-soft)" }}>{t("journal.filter.empty")}</p>
+              <button
+                type="button"
+                onClick={clearJournalFilters}
+                className="inline-flex min-h-11 items-center px-2 text-sm font-bold underline underline-offset-2"
+                style={{ color: "var(--arbor-green-ink)" }}
+              >
+                {t("journal.filter.clear")}
+              </button>
+            </div>
+          )}
           {groups.map((group) => (
             <div key={group.key}>
               {/* Slim sticky day header — localized (Intl), start-aligned so it
                   mirrors correctly under RTL. */}
               <div
+                id={`journal-day-${group.key}`}
                 className="sticky top-0 z-[5] -mx-1 flex items-center gap-3 px-1 py-1.5"
                 style={{ background: "var(--arbor-paper)" }}
               >
