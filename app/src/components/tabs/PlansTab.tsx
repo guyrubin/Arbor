@@ -9,6 +9,7 @@ import { statesText } from "../../lib/i18nElevation/states";
 import { track } from "../../lib/analytics";
 import { PageHeader, cardCls } from "../ui/kit";
 import { ContentWhyLine } from "../ui/ContentActionBar";
+import { SayThis } from "../ui/AiBlock";
 import PlanKanban from "../plans/PlanKanban";
 import RoutinesCard from "../plans/RoutinesCard";
 import { useChildCollection } from "../../hooks/useChildCollection";
@@ -242,8 +243,9 @@ export default function PlansTab() {
                   {plan.scripts.map((sc, scIdx) => (
                     <div key={scIdx} className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-3 p-3 rounded-xl bg-white" style={{ border: "1px solid var(--arbor-rule)" }}>
                       <div><strong className="block" style={{ color: "var(--arbor-green-ink)" }}>{sc.scenario}</strong></div>
-                      <div className="space-y-1.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
-                        <p><b style={{ color: "var(--arbor-ink)" }}>{t("plan.say")}</b> “{sc.say}”</p>
+                      <div className="min-w-0 space-y-1.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+                        {/* B-ASKJB-24: each plan script through the shared SayThis. */}
+                        <SayThis text={sc.say} title={t("plan.say")} lang={uiLang === "he" ? "he" : "en"} copyLabel={t("coach.action.copy")} copiedLabel={t("coach.cards.copied")} />
                         {sc.avoid && <p><b style={{ color: "var(--arbor-pink-ink)" }}>{t("plan.avoid")}</b> {sc.avoid}</p>}
                       </div>
                     </div>
@@ -253,7 +255,7 @@ export default function PlansTab() {
                   <button
                     type="button"
                     onClick={() => {
-                      seedCoach({ prompt: t("seed.planCoreg", { title: plan.title }), lens: "Bowlby's Attachment Model", source: "plans-coreg" });
+                      seedCoach({ prompt: t("seed.planCoreg", { title: plan.title }), source: "plans-coreg" });
                     }}
                     className="min-h-11 text-[10px] font-extrabold uppercase tracking-wider px-3 py-1.5 rounded-xl transition inline-flex items-center gap-1.5 cursor-pointer"
                     style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}

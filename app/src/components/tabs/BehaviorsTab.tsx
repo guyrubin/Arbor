@@ -10,6 +10,7 @@ import { useLanguage } from "../../context/LanguageContext";
 // longer a markdown wall — AI-17 renders its two structured fields as fields.
 import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { ExplainAnswerBlock } from "../ui/ExplainAnswer";
+import { SayThis } from "../ui/AiBlock";
 import { explainAnswerText } from "../../lib/explainAnswer";
 import { Skeleton } from "../ui/Skeleton";
 import { cardCls, PASTEL, type PastelKey } from "../ui/kit";
@@ -1064,9 +1065,20 @@ export default function BehaviorsTab() {
                                           <AnimatePresence initial={false}>
                                             {inlineCoRegulationScripts[log.id] && (
                                               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="p-3 rounded-xl space-y-2 mt-1 text-[11px] leading-relaxed select-text overflow-hidden bg-white" style={{ border: "1px solid var(--arbor-rule)" }}>
-                                                <ExplainAnswerBlock answer={inlineCoRegulationScripts[log.id]} tryTodayLabel={t("explain.tryToday")} className="space-y-1.5" />
+                                                {/* B-ASKJB-24: a generated script renders through the shared
+                                                    SayThis (copy + read-aloud identical to Ask); its step keeps
+                                                    the checklist block. A failure (no step) keeps the prose
+                                                    block, whose MarkdownBlock turns a helpline into a link. */}
+                                                {inlineCoRegulationScripts[log.id].tryToday ? (
+                                                  <>
+                                                    <SayThis text={inlineCoRegulationScripts[log.id].explanation} title={t("beh.coRegScript")} lang={uiLang === "he" ? "he" : "en"} copyLabel={t("coach.action.copy")} copiedLabel={t("coach.cards.copied")} />
+                                                    <ExplainAnswerBlock answer={{ explanation: "", tryToday: inlineCoRegulationScripts[log.id].tryToday }} tryTodayLabel={t("explain.tryToday")} className="space-y-1.5" />
+                                                  </>
+                                                ) : (
+                                                  <ExplainAnswerBlock answer={inlineCoRegulationScripts[log.id]} tryTodayLabel={t("explain.tryToday")} className="space-y-1.5" />
+                                                )}
                                                 <div className="flex justify-end pt-1 gap-2" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
-                                                  <button type="button" onClick={() => seedCoach({ prompt: `Regarding the log event where the child did: "${log.trigger}" and parent responded: "${log.response}". Here is the script I generated: \n\n${explainAnswerText(inlineCoRegulationScripts[log.id], t("explain.tryToday"))}\n\nHow do I adapt this if they continue to resist or act physically aggressive?`, lens: "Bowlby's Attachment Model", source: "behavior-coreg" })} className="text-[10px] font-bold transition flex items-center gap-1" style={{ color: "var(--arbor-green-ink)" }}>
+                                                  <button type="button" onClick={() => seedCoach({ prompt: t("seed.logCoreg", { trigger: log.trigger || "", response: log.response || "", script: explainAnswerText(inlineCoRegulationScripts[log.id], t("explain.tryToday")) }), source: "behavior-coreg" })} className="min-h-11 text-[10px] font-bold transition flex items-center gap-1" style={{ color: "var(--arbor-green-ink)" }}>
                                                     {t("beh.discussCoach")} <Icon name="open_in_new" size={11} />
                                                   </button>
                                                 </div>

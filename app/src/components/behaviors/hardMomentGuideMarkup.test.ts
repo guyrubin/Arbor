@@ -81,9 +81,12 @@ describe("AI-17 negative controls — the guide matchers reject a regressed rend
   });
 
   it("one framed section per axis, plus the escalation note", () => {
-    // do-now, say-this, avoid, observe, escalation = 5 framed blocks.
-    expect(html.split("rounded-xl p-4").length - 1).toBe(5);
+    // B-ASKJB-24: do-now, avoid, observe, escalation = 4 guide frames; the
+    // say-this axis is the shared SayThis card (copy + read-aloud as on Ask).
+    expect(html.split("rounded-xl p-4").length - 1).toBe(4);
+    expect(html.split('data-testid="say-this"').length - 1).toBe(1);
     expect(html).toContain('data-testid="hard-moment-escalation"');
+    expect(render("he")).toContain('data-testid="say-this"');
   });
 
   it("the escalation note keeps its own distinct treatment, not the section frame", () => {

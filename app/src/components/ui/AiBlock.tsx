@@ -41,6 +41,7 @@ export function AiBlock({
   tint,
   tone = "card",
   action,
+  testId,
   children,
 }: {
   /** Leading glyph. Omitted by the guide tone, which titles with a heading. */
@@ -51,11 +52,13 @@ export function AiBlock({
   tone?: AiBlockTone;
   /** Trailing control on the title row (card tone only). */
   action?: React.ReactNode;
+  /** Optional `data-testid` on the frame root (absent ⇒ no attribute). */
+  testId?: string;
   children: React.ReactNode;
 }) {
   if (tone === "inset") {
     return (
-      <div className="rounded-xl p-3" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+      <div data-testid={testId} className="rounded-xl p-3" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
         <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider mb-1.5" style={{ color: tint }}>{icon} {title}</span>
         {children}
       </div>
@@ -63,14 +66,14 @@ export function AiBlock({
   }
   if (tone === "guide") {
     return (
-      <div className="min-w-0 rounded-xl p-4" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+      <div data-testid={testId} className="min-w-0 rounded-xl p-4" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
         <h4 className="text-xs font-bold" style={{ color: tint }}>{title}</h4>
         {children}
       </div>
     );
   }
   return (
-    <div className="rounded-xl p-3.5 bg-white" style={{ border: "1px solid var(--arbor-rule)" }}>
+    <div data-testid={testId} className="rounded-xl p-3.5 bg-white" style={{ border: "1px solid var(--arbor-rule)" }}>
       <div className="flex items-center justify-between gap-2 mb-2">
         <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider" style={{ color: tint }}>
           {icon} {title}
@@ -86,9 +89,15 @@ export function AiBlock({
  * SayThis — the exact words a parent can say aloud, with the two affordances
  * that make them usable in the moment: read-aloud and copy.
  *
- * The transient copied state stays with the CALLER, because a surface that
- * has several copy targets clears them as one; owning it here would let two
- * confirmations sit on screen at once.
+ * The transient copied state stays with the CALLER when it passes one,
+ * because a surface that has several copy targets clears them as one; owning
+ * it here would let two confirmations sit on screen at once. A caller with a
+ * single script (the hard-moment guide, a plan script, a per-log script) may
+ * omit `copied`/`onCopy` and SayThis keeps its own state (B-ASKJB-24).
+ *
+ * B-ASKJB-24 — ONE "Say this" grammar: every surface that hands the parent
+ * words to say renders them through here, so copy + read-aloud are identical
+ * to Ask. `data-testid="say-this"` marks each instance.
  */
 export function SayThis({
   text,
@@ -104,19 +113,26 @@ export function SayThis({
   lang?: UiLang;
   copyLabel: string;
   copiedLabel: string;
-  copied: boolean;
-  onCopy: () => void;
+  copied?: boolean;
+  onCopy?: () => void;
 }) {
+  const [ownCopied, setOwnCopied] = useState(false);
+  const isCopied = copied ?? ownCopied;
+  const handleCopy = onCopy ?? (() => {
+    try { void navigator.clipboard?.writeText(text); } catch { /* best-effort */ }
+    setOwnCopied(true);
+  });
   return (
     <AiBlock
+      testId="say-this"
       icon={<Icon name="format_quote" size={12} />} title={title} tint="var(--arbor-sky-ink)"
       action={
         <div className="flex items-center gap-2">
           {/* B-TODAY-12: both controls reach the 44 px floor (the script now
               rides on Today's step card, not only inside a coach answer). */}
           <SpeakButton text={text} lang={lang} className="text-[10px] min-h-11 px-1" />
-          <button onClick={onCopy} className="text-[10px] font-bold inline-flex min-h-11 items-center gap-1 px-1" style={{ color: "var(--arbor-muted)" }}>
-            {copied ? <><Icon name="check" size={12} /> {copiedLabel}</> : <><Icon name="content_copy" size={12} /> {copyLabel}</>}
+          <button onClick={handleCopy} className="text-[10px] font-bold inline-flex min-h-11 items-center gap-1 px-1" style={{ color: "var(--arbor-muted)" }}>
+            {isCopied ? <><Icon name="check" size={12} /> {copiedLabel}</> : <><Icon name="content_copy" size={12} /> {copyLabel}</>}
           </button>
         </div>
       }

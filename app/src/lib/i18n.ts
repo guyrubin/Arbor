@@ -2361,6 +2361,10 @@ export const en: Dict = {
   "seed.milestoneGaps": "Regarding the scaffolding gap analysis on milestones:\n\n{analysis}\n\nHow do we evaluate sensory resilience relative to these milestone hurdles?",
   // B-GROWTH-12 — the ONE "Ask Arbor about this" seed (no fixed lens)
   "seed.milestone.ask": "About {name} — {title} ({band}): what does this look like at home, and what helps it along?",
+  // B-ASKJB-24: the per-log "Discuss with Arbor" seed, keyed (was an English
+  // literal in BehaviorsTab). Trigger and response travel as the parent's own
+  // quoted words; {script} is the script Arbor wrote for this moment.
+  "seed.logCoreg": "About this moment: the trigger was \"{trigger}\" and I responded \"{response}\". Here is the script Arbor gave me:\n\n{script}\n\nHow do I adapt it if they keep resisting or get physical?",
   "seed.planCoreg": "Regarding the Action Plan: \"{title}\". Let's formulate two additional specific co-regulation dialogue scripts dealing with the child's preoperational language-switching triggers.",
   "seed.langWeekPlan": "Give me a gentle one-week plan to build {name}'s (age {age}) confidence in {target}, with {home} as the home language. Keep it low-pressure, play-based, and non-diagnostic — a few minutes a day.",
   "seed.langActivity": "Help me run the \"{title}\" {target} activity with {name} (age {age}) today. Give me a 3-step script and one way to make it easier if they resist.",
@@ -4602,6 +4606,7 @@ export const he: Dict = {
   "seed.milestoneGaps": "לגבי ניתוח פערי הפיגומים באבני הדרך:\n\n{analysis}\n\nאיך נעריך חוסן חושי ביחס לאתגרי אבני הדרך האלה?",
   // B-GROWTH-12 — זרע השאלה האחד "לשאול את ארבור על זה" (בלי עדשה קבועה)
   "seed.milestone.ask": "לגבי {name} — {title} ({band}): איך זה נראה בבית, ומה עוזר לזה להתפתח?",
+  "seed.logCoreg": "לגבי הרגע הזה: הטריגר היה \"{trigger}\" והתגובה שלי הייתה \"{response}\". זה התסריט שארבור נתן לי:\n\n{script}\n\nאיך להתאים אותו אם ההתנגדות ממשיכה או שזה הופך לפיזי?",
   "seed.planCoreg": "לגבי תוכנית הפעולה: \"{title}\". בואו ננסח שני תסריטי דיאלוג נוספים וספציפיים לוויסות משותף, שמתמודדים עם טריגרים של מעברי שפה בשלב הפרה-אופרציונלי.",
   "seed.langWeekPlan": "תנו לי תוכנית עדינה לשבוע אחד לחיזוק הביטחון של {name} (גיל {age}) ב{target}, כאשר {home} היא שפת הבית. בלי לחץ, מבוסס משחק ולא אבחנתי — כמה דקות ביום.",
   "seed.langActivity": "עזרו לי להעביר היום את הפעילות \"{title}\" ב{target} עם {name} (גיל {age}). תנו לי תסריט בשלושה שלבים ודרך אחת להקל אם יש התנגדות.",

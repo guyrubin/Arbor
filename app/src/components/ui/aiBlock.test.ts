@@ -18,6 +18,8 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { AiBlock, Checklist, KeepBar, SayThis } from "./AiBlock";
 
 const el = React.createElement;
@@ -115,7 +117,7 @@ describe("AI-17 — SayThis is the parent script, quoted and copyable", () => {
   });
 
   it("sits in the card frame the coach answer uses", () => {
-    expect(sayThis(false)).toContain('<div class="rounded-xl p-3.5 bg-white"');
+    expect(sayThis(false)).toContain('<div data-testid="say-this" class="rounded-xl p-3.5 bg-white"');
   });
 
   it("swaps the copy control for a confirmation, and back", () => {
@@ -127,6 +129,65 @@ describe("AI-17 — SayThis is the parent script, quoted and copyable", () => {
   it("negative control: the two copy states are different markup", () => {
     expect(sayThis(false)).not.toBe(sayThis(true));
     expect(sayThis(false).length).toBeGreaterThan(200);
+  });
+});
+
+/* ── B-ASKJB-24 · ONE "Say this" grammar ───────────────────────────────────── */
+
+describe("B-ASKJB-24 — every say-this surface renders the shared SayThis", () => {
+  const read = (rel: string) => readFileSync(path.resolve(__dirname, "..", "..", rel), "utf8");
+  const strip = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+
+  it("SayThis carries data-testid=\"say-this\"; a plain AiBlock carries none", () => {
+    expect(sayThis(false)).toContain('data-testid="say-this"');
+    expect(frame("card")).not.toContain("data-testid");
+  });
+
+  it("without copied/onCopy SayThis keeps its own copy state (single-script callers)", () => {
+    const html = renderToStaticMarkup(el(SayThis, { text: "Breathe with me.", title: "Say this", copyLabel: "Copy", copiedLabel: "Copied" }));
+    expect(html).toContain('data-testid="say-this"');
+    expect(html).toContain("Copy");
+    expect(html).not.toContain("Copied");
+  });
+
+  // The four surfaces (+ the Hard-moment-now sheet once it exists) route
+  // their script through <SayThis — never a hand-rolled quote.
+  const SURFACES: Array<[string, RegExp]> = [
+    ["components/coach/CoachAnswerCards.tsx", /<SayThis[\s\S]{0,200}?contract\.parentScript/],
+    ["components/behaviors/HardMomentsSection.tsx", /hm\.section\.sayThis"\s*\?\s*\([\s\S]{0,200}?<SayThis/],
+    ["components/tabs/PlansTab.tsx", /<SayThis text=\{sc\.say\}/],
+    ["components/tabs/BehaviorsTab.tsx", /<SayThis text=\{inlineCoRegulationScripts\[log\.id\]\.explanation\}/],
+  ];
+  for (const [rel, re] of SURFACES) {
+    it(`${rel} renders its script through SayThis`, () => {
+      expect(strip(read(rel))).toMatch(re);
+    });
+  }
+
+  it("PlansTab no longer hand-rolls the quoted script", () => {
+    expect(strip(read("components/tabs/PlansTab.tsx"))).not.toMatch(/“\{sc\.say\}”/);
+  });
+
+  // Scoped on purpose: LanguageLabTab / MilestonesTab still carry Growth-lane
+  // lens literals (validation §4, lane GROWTH) — not this item's files.
+  const LENS_SCOPED = [
+    "components/tabs/BehaviorsTab.tsx",
+    "components/tabs/PlansTab.tsx",
+    "components/behaviors/HardMomentsSection.tsx",
+    "components/behaviors/HardMomentNowSheet.tsx",
+  ];
+  for (const rel of LENS_SCOPED) {
+    it(`${rel} passes no fixed lens literal (the parent's chosen tone applies)`, () => {
+      let src = "";
+      try { src = read(rel); } catch { return; } // the sheet may not exist yet
+      expect(strip(src)).not.toMatch(/lens:\s*"/);
+    });
+  }
+
+  it("the per-log seed is keyed (seed.logCoreg), never an English literal", () => {
+    const beh = strip(read("components/tabs/BehaviorsTab.tsx"));
+    expect(beh).toContain('t("seed.logCoreg"');
+    expect(beh).not.toContain("Regarding the log event");
   });
 });
 

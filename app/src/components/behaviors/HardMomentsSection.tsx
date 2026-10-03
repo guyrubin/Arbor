@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Icon } from "../ui/Icon";
-import { AiBlock } from "../ui/AiBlock";
+import { AiBlock, SayThis } from "../ui/AiBlock";
 import { Modal } from "../ui/Modal";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -46,10 +46,17 @@ export function HardMomentGuideContent({ card, context, childName, t }: {
       </p>
       {/* AI-17: the per-axis section is the shared AiBlock guide tone. This
           file used to hand-roll a third copy of the coach answer's frame. */}
-      {sections.map(([key, text]) => (
+      {/* B-ASKJB-24: the say-this axis renders through the shared SayThis
+          (copy + read-aloud identical to Ask); the other axes keep the guide
+          frame. The pilot's say-this note stays directly under the words. */}
+      {sections.map(([key, text]) => key === "hm.section.sayThis" ? (
+        <div key={key} className="min-w-0 space-y-1.5">
+          <SayThis text={text} title={t(key)} lang={locale} copyLabel={t("coach.action.copy")} copiedLabel={t("coach.cards.copied")} />
+          <p className="px-1 text-xs leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>{copy.sayThisNote}</p>
+        </div>
+      ) : (
         <AiBlock key={key} tone="guide" title={t(key)} tint="var(--arbor-green-ink)">
           <p className="mt-1 break-words text-base leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{text}</p>
-          {key === "hm.section.sayThis" && <p className="mt-2 text-xs leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>{copy.sayThisNote}</p>}
         </AiBlock>
       ))}
       <div className="min-w-0 rounded-xl p-4" role="note" data-testid="hard-moment-escalation"
