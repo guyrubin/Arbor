@@ -56,11 +56,12 @@ describe("B-TODAY-19 · every capture tile opens the one sheet in place", () => 
     });
   }
 
-  it("0 setActiveTab(\"behaviors\") in Today; the Journal keeps only the row editor's hop", () => {
+  it("0 setActiveTab(\"behaviors\") in Today and in the Journal", () => {
     expect(TODAY).not.toContain('setActiveTab("behaviors")');
     // editOpenSignal hands an existing log to the one editor — not a capture door.
-    expect(JOURNAL.split('setActiveTab("behaviors")').length - 1).toBe(1);
-    expect(JOURNAL).toMatch(/startEditLog\(logId\);\s*setOpenSignal\(null\);\s*setActiveTab\("behaviors"\)/);
+    // B-ASKJB-30: the row editor's hop is gone too — Edit opens the sheet in place.
+    expect(JOURNAL.split('setActiveTab("behaviors")').length - 1).toBe(0);
+    expect(JOURNAL).toMatch(/setOpenSignal\(null\);\s*openCaptureSheet\(\{ editLogId: logId \}\);/);
   });
 
   it("Today's prompt card passes its promptKey into the sheet", () => {
@@ -161,5 +162,78 @@ describe("negative control — the pre-fix handler fails the guard", () => {
     expect(body).toContain('setActiveTab("behaviors")');
     expect(body).toContain("requestCapture(");
     expect(body).not.toContain("setQuickLogMode(mode)");
+  });
+});
+
+
+/**
+ * B-ASKJB-30 — capture and edit open the ONE sheet in place from every
+ * screen in the Ask lane; an AI draft still cannot be saved without review.
+ */
+describe("B-ASKJB-30 · edit and review in place", () => {
+  const rd = (rel: string) => readFileSync(path.resolve(__dirname, "..", "..", rel), "utf8");
+  const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  const MODAL = strip(rd("components/overview/QuickLogModal.tsx"));
+  const CTX = strip(rd("context/ArborContext.tsx"));
+  const SHELL = strip(rd("components/layout/Shell.tsx"));
+  const SHEET = strip(rd("components/journal/JournalEntrySheet.tsx"));
+
+  it("rg setActiveTab(\"behaviors\") = 0 in Coach, Journal, Story, the capture tray and Search", () => {
+    for (const rel of [
+      "components/tabs/CoachTab.tsx", "components/tabs/JournalTab.tsx", "components/tabs/StoryTimelineTab.tsx",
+      "components/capture/CaptureProposalsTray.tsx", "components/search/SearchModal.tsx",
+    ]) {
+      expect(strip(rd(rel)), rel).not.toContain('setActiveTab("behaviors")');
+    }
+  });
+
+  it("the Journal's Edit opens the sheet with the log id — the route stays #/journal", () => {
+    const journal = strip(rd("components/tabs/JournalTab.tsx"));
+    expect(journal).toContain("openCaptureSheet({ editLogId: logId });");
+    expect(journal).not.toMatch(/setActiveTab\(/);
+    expect(CTX).toContain("if (opts.editLogId) startEditLog(opts.editLogId);");
+  });
+
+  it("an edit opens the incident form prefilled; Save goes through handleAddLog's editingLogId branch; closing unsaved disarms it", () => {
+    expect(MODAL).toMatch(/else if \(editLogId\) \{\s*setHardMoment\(true\);/);
+    expect(MODAL).toContain("if (editLogId) cancelEditLog();");
+    // handleAddLog is called from confirm only — the review step is the one write.
+    expect(MODAL.match(/handleAddLog\(/g)?.length).toBe(1);
+    expect(MODAL.slice(MODAL.indexOf("const confirm = "), MODAL.indexOf("const discard = "))).toContain("handleAddLog(e)");
+    expect(CTX).toContain("const existing = editingLogId ? behaviorLogs.find((l) => l.id === editingLogId) : null;");
+  });
+
+  it("fail-closed: a review-mode sheet opens ON the review step, and the AI handoffs all use it", () => {
+    expect(MODAL).toMatch(/if \(review\) \{\s*setSource\(review\);\s*setHardMoment\(true\);\s*setReviewing\(true\);/);
+    expect(strip(rd("components/capture/CaptureProposalsTray.tsx"))).toContain('openCaptureSheet({ review: "ai-draft" });');
+    // The seam never arms pendingCaptureMode (Behaviors would re-open it later).
+    const seam = CTX.slice(CTX.indexOf("const openCaptureSheet = "), CTX.indexOf("const closeCaptureSheet"));
+    expect(seam).not.toContain("setPendingCaptureMode");
+    expect(seam).toContain("trackCaptureStarted(");
+  });
+
+  it("one sheet mounted once in Shell through the context seam", () => {
+    expect((SHELL.match(/<QuickLogModal\b/g) ?? []).length).toBe(1);
+    expect(SHELL).toContain("open={captureSheet.open}");
+    expect(SHELL).toContain("editLogId={captureSheet.editLogId}");
+    expect(SHELL).toContain("review={captureSheet.review}");
+  });
+
+  it("hard moments resolve and delete from the entry sheet; delete asks through a keyed modal, never window.confirm", () => {
+    expect(SHEET).toContain('data-testid="journal-entry-resolve"');
+    expect(SHEET).toContain('data-testid="journal-entry-delete-confirm"');
+    expect(SHEET).toContain('onClick={() => { setConfirmDelete(false); onDelete?.(); }}');
+    expect(SHEET).not.toContain("window.confirm");
+    const journal = strip(rd("components/tabs/JournalTab.tsx"));
+    expect(journal).toContain("hardMoment={openLog && isIncidentType(openLog.behaviorType) ? { resolved: !!openLog.resolved } : undefined}");
+  });
+
+  it("EN + HE copy for the edit toast and the entry-sheet actions", async () => {
+    const { en, he } = await import("../../lib/i18n");
+    for (const k of ["capture.edit.saved", "journal.entry.markResolved", "journal.entry.reopen", "journal.entry.delete", "journal.entry.deleteConfirm.title", "journal.entry.deleteConfirm.body", "journal.entry.deleteConfirm.yes", "journal.entry.deleteConfirm.no"]) {
+      expect(en[k], k).toBeTruthy();
+      expect(he[k], k).toBeTruthy();
+      expect(he[k]).not.toMatch(/[A-Za-z]/);
+    }
   });
 });

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Icon } from "../ui/Icon";
 import { Modal } from "../ui/Modal";
 import { useLanguage } from "../../context/LanguageContext";
@@ -40,6 +40,9 @@ export default function JournalEntrySheet({
   kept = null,
   onClose,
   onEdit,
+  hardMoment,
+  onToggleResolved,
+  onDelete,
 }: {
   signal: TimelineSignal | null;
   domain: DevelopmentalDomainId | null;
@@ -56,8 +59,13 @@ export default function JournalEntrySheet({
    *  kind already carries its "Arbor suggested this" line below. */
   kept?: KeptProvenance | null;
   onClose: () => void;
-  /** Present only for parent-owned moments — routes into the existing editor. */
+  /** Present only for parent-owned moments — opens the ONE capture sheet in place. */
   onEdit?: () => void;
+  /** B-ASKJB-30: present for a hard moment (an incident-type log) — resolve
+   *  and delete live here now, not on the Behaviors list. */
+  hardMoment?: { resolved: boolean };
+  onToggleResolved?: () => void;
+  onDelete?: () => void;
 }) {
   const { t, uiLang } = useLanguage();
   const { childProfile } = useArbor();
@@ -66,6 +74,8 @@ export default function JournalEntrySheet({
     ? (domain ? domainVisual(domain).tone : (signal.tone as PastelKey))
     : "lav";
   const p = PASTEL[tone];
+  // B-ASKJB-30: delete asks through a keyed confirm modal (never window.confirm).
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   return (
     <Modal open={!!signal} onClose={onClose} title={t("elev.closeloop.entry.title")}>
@@ -195,8 +205,61 @@ export default function JournalEntrySheet({
               <Icon name="edit_note" size={17} /> {t("elev.closeloop.entry.edit")}
             </button>
           )}
+
+          {hardMoment && prov === "manual" && (onToggleResolved || onDelete) && (
+            <div className="flex flex-wrap items-center gap-2" data-testid="journal-entry-hard-actions">
+              {onToggleResolved && (
+                <button
+                  type="button"
+                  onClick={onToggleResolved}
+                  aria-pressed={hardMoment.resolved}
+                  data-testid="journal-entry-resolve"
+                  className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl px-3 text-[13px] font-bold"
+                  style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)", background: "var(--arbor-paper-elevated)" }}
+                >
+                  <Icon name={hardMoment.resolved ? "replay" : "check_circle"} size={16} />
+                  {hardMoment.resolved ? t("journal.entry.reopen") : t("journal.entry.markResolved")}
+                </button>
+              )}
+              {onDelete && (
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(true)}
+                  data-testid="journal-entry-delete"
+                  className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-3 text-[13px] font-bold"
+                  style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-muted)", background: "var(--arbor-paper-elevated)" }}
+                >
+                  <Icon name="delete" size={16} /> {t("journal.entry.delete")}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
+      <Modal open={confirmDelete} onClose={() => setConfirmDelete(false)} title={t("journal.entry.deleteConfirm.title")}>
+        <div className="space-y-4" data-testid="journal-entry-delete-confirm">
+          <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>{t("journal.entry.deleteConfirm.body")}</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(false)}
+              className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl px-4 text-[13px] font-bold"
+              style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)", background: "var(--arbor-paper-elevated)" }}
+            >
+              {t("journal.entry.deleteConfirm.no")}
+            </button>
+            <button
+              type="button"
+              data-testid="journal-entry-delete-yes"
+              onClick={() => { setConfirmDelete(false); onDelete?.(); }}
+              className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl px-4 text-[13px] font-bold"
+              style={{ border: "1px solid var(--arbor-ink)", color: "var(--arbor-ink)", background: "var(--arbor-paper-deep)" }}
+            >
+              {t("journal.entry.deleteConfirm.yes")}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </Modal>
   );
 }

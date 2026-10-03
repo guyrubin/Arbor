@@ -63,7 +63,7 @@ const KIND_ICON: Partial<Record<SearchKind, string>> = {
  *  active child's logs, conversations, milestones and plans. Full-screen-ish
  *  on mobile (375px: input top, scrollable results, 44px rows). */
 export default function SearchModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { behaviorLogs, milestones, actionPlans, conversations, childProfile, setActiveTab, openConversation } = useArbor();
+  const { behaviorLogs, milestones, actionPlans, conversations, childProfile, setActiveTab, openConversation, openCaptureSheet } = useArbor();
   const { t, uiLang } = useLanguage();
   const heLang = uiLang === "he";
   const [q, setQ] = useState("");
@@ -125,7 +125,7 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
     const out: Result[] = [];
     behaviorLogs.forEach((l) => {
       if (`${l.behaviorType} ${l.trigger} ${l.response} ${l.notes || ""}`.toLowerCase().includes(term))
-        out.push({ kind: "log", kindLabel: t("sm.kind.log"), icon: <Icon name="schedule" size={16} style={{ color: "var(--arbor-sky-ink)" }} />, label: l.behaviorType, sub: l.trigger, go: () => setActiveTab("behaviors") });
+        out.push({ kind: "log", kindLabel: t("sm.kind.log"), icon: <Icon name="schedule" size={16} style={{ color: "var(--arbor-sky-ink)" }} />, label: l.behaviorType, sub: l.trigger, go: () => openCaptureSheet({ editLogId: l.id }) });
     });
     conversations.forEach((c) => {
       if (c.title.toLowerCase().includes(term) || c.messages.some((m) => m.text.toLowerCase().includes(term)))
@@ -140,7 +140,7 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
         out.push({ kind: "plan", kindLabel: t("sm.kind.plan"), icon: <Icon name="tune" size={16} style={{ color: "var(--arbor-lav-ink)" }} />, label: p.title, sub: p.issue, go: () => setActiveTab("plans") });
     });
     return out.slice(0, 12);
-  }, [q, behaviorLogs, milestones, actionPlans, conversations, setActiveTab, openConversation, t]);
+  }, [q, behaviorLogs, milestones, actionPlans, conversations, setActiveTab, openConversation, openCaptureSheet, t]);
 
   const term = q.trim();
   const shown: Result[] = term ? [...catalogResults, ...dataResults] : routeCommands;

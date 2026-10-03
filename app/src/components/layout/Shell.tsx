@@ -25,6 +25,7 @@ import ProfileEditDrawer from "../profile/ProfileEditDrawer";
 import { usePulses } from "../../lib/pulse";
 import PaywallModal from "../billing/PaywallModal";
 import HardMomentNowSheet from "../behaviors/HardMomentNowSheet";
+import QuickLogModal from "../overview/QuickLogModal";
 import { refreshEntitlement, takeBillingReturn, startBillingReturnPoll, BILLING_PENDING_KEY } from "../../hooks/useEntitlement";
 import { selectionHaptic } from "../../lib/native";
 // AP-048: Kid Mode overlay + context provider
@@ -204,7 +205,7 @@ function SurfaceFrame({ route, children }: { route: ActiveTab; children: React.R
 }
 
 export default function Shell() {
-  const { activeTab, setActiveTab, showAiRail, setShowAiRail, showSandboxBanner, childProfile } = useArbor();
+  const { activeTab, setActiveTab, showAiRail, setShowAiRail, showSandboxBanner, childProfile, captureSheet, closeCaptureSheet } = useArbor();
   const { toast } = useToast();
   const { t } = useLanguage();
   const ActiveTabComponent = tabRegistry[activeTab];
@@ -575,6 +576,17 @@ export default function Shell() {
       {/* B-ASKJB-31: the ONE "Hard moment now" sheet; open state lives in
           ArborContext (openHardMomentNow) so Ask, Behaviors and Today share it. */}
       {!kidLocked && <HardMomentNowSheet />}
+      {/* B-ASKJB-30: the ONE capture sheet every screen in the Ask lane opens
+          in place (openCaptureSheet); it portals to body, the route stays. */}
+      {!kidLocked && (
+        <QuickLogModal
+          open={captureSheet.open}
+          mode={captureSheet.mode}
+          review={captureSheet.review}
+          editLogId={captureSheet.editLogId}
+          onClose={closeCaptureSheet}
+        />
+      )}
       {/* AP-048: Kid Mode full-screen overlay — rendered at z-70, above everything.
           Desktop-only entry point (Topbar button starts at lg). The overlay
           itself is responsive; MobileNav is byte-unchanged. */}

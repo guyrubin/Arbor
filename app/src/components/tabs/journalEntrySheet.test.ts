@@ -62,11 +62,11 @@ describe("TJB-13 — the sheet reads the entry and routes to the ONE editor", ()
     expect(journal).toContain("signal={openSignal}");
   });
 
-  it("editing goes through the existing startEditLog + Behaviors form", () => {
+  it("editing opens the ONE capture sheet in place (startEditLog inside openCaptureSheet, B-ASKJB-30)", () => {
     const edit = /const editOpenSignal = \(\) => \{[\s\S]*?\n  \};/.exec(journal)?.[0] ?? "";
     expect(edit).toBeTruthy();
-    expect(edit).toContain("startEditLog(logId)");
-    expect(edit).toContain('setActiveTab("behaviors")');
+    expect(edit).toContain("openCaptureSheet({ editLogId: logId })");
+    expect(edit).not.toContain('setActiveTab("behaviors")');
     // No second log form: the sheet must not own draft state or a write.
     expect(sheet).not.toMatch(/setNewLog|handleAddLog|upsert\(/);
   });

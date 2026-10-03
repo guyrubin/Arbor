@@ -77,7 +77,7 @@ const OLD_OVERFLOW_LOG = `                            onClick={() => {
 /** Every branch that writes an AI-authored draft must arm the gate BEFORE the
  *  tab switch — the Behaviors consumer reads pendingCaptureMode on arrival. */
 const GATED_OVERFLOW_LOG =
-  /setNewLogNotes\(msg\.text[\s\S]{0,900}?requestCapture\("ai-draft"\);\s*\n\s*setActiveTab\("behaviors"\);/;
+  /setNewLogNotes\(msg\.text[\s\S]{0,900}?openCaptureSheet\(\{ review: "ai-draft" \}\);/;
 
 describe("AI-05(b) — the overflow Log no longer bypasses the fail-closed ai-draft gate", () => {
   it("negative control: the pre-fix snippet writes a draft and switches tab with NO gate", () => {
@@ -86,26 +86,23 @@ describe("AI-05(b) — the overflow Log no longer bypasses the fail-closed ai-dr
     expect(/requestCapture/.test(OLD_OVERFLOW_LOG)).toBe(false);
   });
 
-  it("the overflow Log arms requestCapture('ai-draft') before navigating", () => {
+  it("the overflow Log opens the capture sheet in review ('ai-draft')", () => {
     expect(coachSrc).toMatch(GATED_OVERFLOW_LOG);
   });
 
-  it("NO setNewLog* write in CoachTab reaches Behaviors without the gate", () => {
-    // Every `setActiveTab("behaviors")` in this file must be preceded, within
-    // the same handler, by the gate. Extraction is guarded so an empty match
-    // set fails loudly instead of passing silently.
-    const navigations = [...coachSrc.matchAll(/setActiveTab\("behaviors"\)/g)];
-    expect(navigations.length).toBeGreaterThan(0);
-    for (const nav of navigations) {
-      const before = coachSrc.slice(Math.max(0, nav.index! - 900), nav.index!);
-      expect(before).toBeTruthy();
-      // A navigation that carries no draft at all needs no gate; one that does
-      // must have armed it.
+  it("NO setNewLog* write in CoachTab reaches the capture sheet without the review gate (B-ASKJB-30)", () => {
+    // B-ASKJB-30: capture opens the ONE sheet in place — CoachTab never
+    // switches to Behaviors. Every sheet opening that follows a setNewLog*
+    // draft write must open in review with 'ai-draft' provenance. Extraction
+    // is guarded so an empty match set fails loudly.
+    expect(coachSrc).not.toContain('setActiveTab("behaviors")');
+    const openings = [...coachSrc.matchAll(/openCaptureSheet\(/g)];
+    expect(openings.length).toBeGreaterThan(0);
+    for (const at of openings) {
+      const before = coachSrc.slice(Math.max(0, at.index! - 900), at.index!);
+      const call = coachSrc.slice(at.index!, at.index! + 60);
       if (/setNewLog/.test(before)) {
-        expect(
-          /requestCapture\("ai-draft"\)/.test(before),
-          `a setNewLog* write reaches Behaviors ungated near index ${nav.index}`,
-        ).toBe(true);
+        expect(call, `a setNewLog* draft reaches the sheet ungated near index ${at.index}`).toMatch(/^openCaptureSheet\(\{ review: "ai-draft" \}\)/);
       }
     }
   });

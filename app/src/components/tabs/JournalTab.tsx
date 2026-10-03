@@ -28,6 +28,7 @@ import QuickLogModal from "../overview/QuickLogModal";
 import { provenanceForSignal, readCaptureProvenance, type KeptProvenance } from "../../lib/captureProvenance";
 import { JOURNAL_FILTERS, firstGroupOfMonth, isHardMomentSignal, journalMonthKeys, matchesJournalFilter, momentLogId, monthLabel, type JournalFilter } from "../../lib/journalFilters";
 import { exportBehaviorPdf } from "../../lib/behaviorExport";
+import { isIncidentType } from "../../content/behaviorTaxonomy";
 
 /**
  * UC-1 Journal (wireframe-reconciled) — a single calm column of logged moments.
@@ -244,7 +245,7 @@ function JournalRow({
 }
 
 export default function JournalTab() {
-  const { setActiveTab, milestones, playLogs, behaviorLogs, logsLoaded, pendingJournalFocusId, consumeJournalFocus, childProfile, startEditLog } = useArbor();
+  const { milestones, playLogs, behaviorLogs, logsLoaded, pendingJournalFocusId, consumeJournalFocus, childProfile, openCaptureSheet, toggleLogResolved, deleteLog } = useArbor();
   const { t, uiLang } = useLanguage();
   const locale = uiLang === "he" ? "he" : "en";
   // elev.childsignals.* keys (practice-kind titles) resolve from the module
@@ -342,13 +343,20 @@ export default function JournalTab() {
   const [openSignal, setOpenSignal] = useState<TimelineSignal | null>(null);
   const openMomentLogId = (s: TimelineSignal | null): string | null =>
     s && s.kind === "moment" && s.id.startsWith("moment-") ? s.id.slice("moment-".length) : null;
+  // B-ASKJB-30: Edit opens the ONE capture sheet in place (prefilled through
+  // startEditLog inside openCaptureSheet) — the route stays #/journal.
   const editOpenSignal = () => {
     const logId = openMomentLogId(openSignal);
     if (!logId) return;
-    startEditLog(logId);
     setOpenSignal(null);
-    setActiveTab("behaviors");
+    openCaptureSheet({ editLogId: logId });
   };
+  // Hard moments resolve and delete from the entry sheet (delete behind a
+  // keyed confirm modal there, never window.confirm).
+  const openLog = (() => {
+    const id = openMomentLogId(openSignal);
+    return id ? (behaviorLogs || []).find((l) => l.id === id) ?? null : null;
+  })();
 
   // Per-signal domain: milestones + play carry an explicit domain; moments
   // classify from their own text via classifyBehaviorDomain (JRNL-6) — when
@@ -760,6 +768,9 @@ export default function JournalTab() {
         kept={openSignal ? provenanceForSignal(keptProvenance, openSignal.id) : null}
         onClose={() => setOpenSignal(null)}
         onEdit={openMomentLogId(openSignal) ? editOpenSignal : undefined}
+        hardMoment={openLog && isIncidentType(openLog.behaviorType) ? { resolved: !!openLog.resolved } : undefined}
+        onToggleResolved={openLog ? () => toggleLogResolved(openLog.id) : undefined}
+        onDelete={openLog ? () => { deleteLog(openLog.id); setOpenSignal(null); } : undefined}
       />
     </motion.div>
   );

@@ -185,6 +185,7 @@ export default function CoachTab() {
     acceptTodayAction,
     removeTodayAction,
     openHardMomentNow,
+    openCaptureSheet,
     askHardMomentRef,
     setAskHardMomentRef,
   } = useArbor();
@@ -1471,8 +1472,7 @@ export default function CoachTab() {
                           // requestCapture seam — Behaviors opens the form
                           // VISIBLE, review gate armed, factual 'ai-draft'
                           // provenance; the only write path is confirmReview.
-                          requestCapture("ai-draft");
-                          setActiveTab("behaviors");
+                          openCaptureSheet({ review: "ai-draft" });
                           toast(t("coach.toast.logDrafted"), "success");
                         } catch (err) {
                           // FAIL-CLOSED (same contract as AI-CAP-1): a 409 from
@@ -1484,8 +1484,7 @@ export default function CoachTab() {
                             return;
                           }
                           setNewLogNotes(msg.contract!.nonDiagnosticHypotheses?.[0]?.rationale?.slice(0, 300) || source.slice(0, 300));
-                          requestCapture("ai-draft");
-                          setActiveTab("behaviors");
+                          openCaptureSheet({ review: "ai-draft" });
                           toast(t("coach.toast.notePrefilled"), "info");
                         }
                       }}
@@ -1555,8 +1554,7 @@ export default function CoachTab() {
                               // opens the form into view. An AI-authored draft
                               // must never reach the log store un-reviewed, so
                               // this entry point routes through the SAME seam.
-                              requestCapture("ai-draft");
-                              setActiveTab("behaviors");
+                              openCaptureSheet({ review: "ai-draft" });
                               setOpenMenuIdx(null);
                               toast(t("coach.toast.logPrefilled"), "info");
                             }}
@@ -1902,7 +1900,7 @@ export default function CoachTab() {
         // draft, so it goes through the same fail-closed ai-draft gate as every
         // other AI-authored draft — armed BEFORE the tab switch, because the
         // Behaviors consumer reads pendingCaptureMode on arrival.
-        onGoBehaviors={(noteText) => { setNewLogNotes(noteText.slice(0, 400)); requestCapture("ai-draft"); setActiveTab("behaviors"); toast(t("coach.toast.photoCaptured"), "info"); }}
+        onGoBehaviors={(noteText) => { setNewLogNotes(noteText.slice(0, 400)); openCaptureSheet({ review: "ai-draft" }); toast(t("coach.toast.photoCaptured"), "info"); }}
       />
     </motion.div>
   );

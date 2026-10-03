@@ -49,6 +49,8 @@ export default function QuickLogModal({
   mode = "text",
   promptKey,
   hardMomentNow = false,
+  review,
+  editLogId,
 }: {
   open: boolean;
   onClose: () => void;
@@ -59,6 +61,14 @@ export default function QuickLogModal({
    *  the pilot guide matched to the parent's recent moments (say this ·
    *  do now · escalation, zero model calls), then the hard-moment form. */
   hardMomentNow?: boolean;
+  /** B-ASKJB-30: the draft is already filled (an AI extraction) — open
+   *  straight into ConfirmCaptureReview with this provenance. The only write
+   *  is Confirm (fail-closed: an AI draft never saves unreviewed). */
+  review?: CaptureSource;
+  /** B-ASKJB-30: edit this log in place — the incident form opens prefilled
+   *  (openCaptureSheet ran startEditLog); Save updates the row through
+   *  handleAddLog's editingLogId branch. */
+  editLogId?: string;
 }) {
   const {
     newLogType,
@@ -82,6 +92,7 @@ export default function QuickLogModal({
     addMoment,
     deleteLog,
     seedCoach,
+    cancelEditLog,
   } = useArbor();
   const { toast } = useToast();
   const { t, uiLang } = useLanguage();
@@ -172,6 +183,25 @@ export default function QuickLogModal({
   // guide matched to the parent's own recent moment types preselected
   // (matchToRecentBehaviors(recentBehaviorTypes(logs))[0]); with no match,
   // the first guide available for this child's age. Zero model calls.
+  // B-ASKJB-30: arrive in the right state. A review opens on the review
+  // step over the shared draft; an edit opens the incident form as-is (the
+  // type stays the log's own — never forced to the default incident type).
+  useEffect(() => {
+    if (!open) return;
+    if (review) {
+      setSource(review);
+      setHardMoment(true);
+      setReviewing(true);
+    } else if (editLogId) {
+      setHardMoment(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, review, editLogId]);
+  const closeSheet = () => {
+    // An edit that is closed without saving must not leave editingLogId armed.
+    if (editLogId) cancelEditLog();
+    onClose();
+  };
   useEffect(() => {
     if (open && hardMomentNow) toggleHardMoment(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -404,6 +434,12 @@ export default function QuickLogModal({
     setReviewing(false);
     setSource("text");
     if (!written) return;
+    if (editLogId) {
+      // An edit is not a new capture: no echo, no Undo-delete of the row.
+      toast(t("capture.edit.saved"), "success");
+      onClose();
+      return;
+    }
     setReply({ log: written, hard: true, seed: confirmedPrompt });
   };
 
@@ -413,11 +449,11 @@ export default function QuickLogModal({
     setNewLogNotes("");
     setReviewing(false);
     setSource("text");
-    onClose();
+    closeSheet();
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={hardMomentNow ? t("elev.capture.hard.title") : t("ql.title")}>
+    <Modal open={open} onClose={closeSheet} title={editLogId ? t("beh.editMoment") : hardMomentNow ? t("elev.capture.hard.title") : t("ql.title")}>
       {reply ? (
         <section data-testid="quicklog-reply" aria-live="polite" className="space-y-4 text-sm">
           <p dir="auto" data-testid="quicklog-reply-line1" className="flex items-start gap-2 text-[15px] font-bold leading-snug" style={{ color: "var(--arbor-ink)" }}>

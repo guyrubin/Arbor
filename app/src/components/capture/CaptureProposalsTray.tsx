@@ -27,7 +27,7 @@ import { trackKeepUndone } from "../../lib/kpiEvents";
  *                          `conversationProposalId` + `sourceExcerpt` on the
  *                          behaviour log and files a ConversationChangeRecord
  *                          in the registered `conversationChanges` collection.
- *   "Edit before keeping"→ requestCapture("ai-draft") — the fail-closed gate
+ *   "Edit before keeping"→ openCaptureSheet({ review: "ai-draft" }) — the fail-closed gate
  *                          (review flag armed, factual 'ai-draft' provenance,
  *                          form opened into view; the only write is
  *                          confirmReview). Nothing here writes a log directly.
@@ -47,7 +47,7 @@ export default function CaptureProposalsTray({ surface }: { surface: string }) {
   const {
     chatMessages, childProfile, behaviorLogs, milestones,
     conversationChanges, commitConversationProposal, undoConversationChange,
-    requestCapture, setActiveTab, setNewLogNotes,
+    openCaptureSheet, setNewLogNotes,
   } = useArbor();
   const { t, uiLang } = useLanguage();
   const toastCtx = useToastOptional();
@@ -175,8 +175,9 @@ export default function CaptureProposalsTray({ surface }: { surface: string }) {
   /** The fail-closed route for a parent who wants to change it first. */
   const editFirst = (entry: (typeof visible)[number]) => {
     setNewLogNotes(summaryOf(entry.proposal.id, entry.proposal.summary).slice(0, 400));
-    requestCapture("ai-draft");
-    setActiveTab("behaviors");
+    // B-ASKJB-30: the review opens in place (the ONE capture sheet); an AI
+    // draft still cannot be saved without the review step.
+    openCaptureSheet({ review: "ai-draft" });
     setDismissed((prev) => new Set([...prev, entry.proposal.id]));
   };
 

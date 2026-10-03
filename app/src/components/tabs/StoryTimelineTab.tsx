@@ -191,7 +191,7 @@ function MonthsSpine({ nodes, locale, tt }: { nodes: MonthNode[]; locale: string
 export default function StoryTimelineTab() {
   const {
     behaviorLogs, milestones, actionPlans, memoryReviewItems,
-    childProfile, setActiveTab,
+    childProfile, setActiveTab, openCaptureSheet,
     pendingMemoryItems, handleMemoryDecision, isMemoryUpdating,
     playLogs,
   } = useArbor();
@@ -392,8 +392,9 @@ export default function StoryTimelineTab() {
             {tt("elev.childsignals.story.empty.body")}
           </p>
           <button
-            onClick={() => setActiveTab("behaviors")}
-            className="inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-extrabold mt-4 transition motion-safe:hover:-translate-y-0.5"
+            // B-ASKJB-30: the capture sheet opens in place (photo mode).
+            onClick={() => openCaptureSheet({ mode: "photo" })}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-extrabold mt-4 transition motion-safe:hover:-translate-y-0.5"
             style={{ background: PASTEL.coral.ink, color: "var(--arbor-on-accent)" }}
           >
             <Icon name="photo_camera" size={18} /> {tt("elev.childsignals.story.empty.cta")}

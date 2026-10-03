@@ -102,15 +102,13 @@ describe("'Keep this' runs the ONE durable-write seam, and records provenance fr
 });
 
 describe("'Edit first' reuses the fail-closed ai-draft gate", () => {
-  it("routes through requestCapture('ai-draft'), never a bare tab switch", () => {
+  it("opens the ONE capture sheet in review ('ai-draft'), in place — never a tab switch (B-ASKJB-30)", () => {
     const editBlock = /const editFirst = \([\s\S]*?\n  };/.exec(tray)?.[0] ?? "";
     expect(editBlock).toBeTruthy();
-    expect(editBlock).toMatch(/requestCapture\(\s*"ai-draft"\s*\)/);
-    // Order matters: the gate must be armed BEFORE navigation, exactly as the
-    // coach answer-card and overflow paths do (AI-05 / AI-CAP-4).
-    expect(editBlock.indexOf('requestCapture("ai-draft")')).toBeLessThan(
-      editBlock.indexOf('setActiveTab("behaviors")'),
-    );
+    // The draft is written first, then the sheet opens ON the review step
+    // (fail-closed: the only write is Confirm), exactly as the coach paths do.
+    expect(editBlock).toMatch(/setNewLogNotes\([\s\S]*?openCaptureSheet\(\{ review: "ai-draft" \}\)/);
+    expect(editBlock).not.toContain('setActiveTab("behaviors")');
   });
 
   it("NEGATIVE CONTROL: the bypass shape AI-05 removed elsewhere fails here too", () => {

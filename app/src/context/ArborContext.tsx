@@ -53,6 +53,7 @@ import { appendVoiceUser, applyVoiceDelta, settleVoiceTurn } from "../lib/voiceT
 import type { ConversationChangeRecord, ConversationProposal } from "../lib/conversationProposals";
 import { appendChatUser, appendChatAck, applyChatDelta, settleChatTurn, abortChatStream, hasUserTurn } from "../lib/chatStream";
 import { buildChatContext, readWeeklyContextConsent } from "../ai/chatContext";
+import type { CaptureSource } from "../components/overview/ConfirmCaptureReview";
 import { useLanguage } from "./LanguageContext";
 import type { ExportAudience } from "../consult/packet";
 import type { ProfessionalReportType } from "../lib/reportExport";
@@ -1266,6 +1267,22 @@ function useArborState() {
   };
   const cancelEditLog = () => resetLogForm();
 
+  // B-ASKJB-30 — capture and edit open the ONE sheet in place (QuickLogModal,
+  // mounted once in Shell), from any screen: no hub switch on a capture path.
+  //  - `review`: the draft is already filled (an AI extraction) — the sheet
+  //    opens straight into ConfirmCaptureReview; the only write is Confirm.
+  //  - `editLogId`: the incident form opens prefilled (startEditLog); Save
+  //    updates the row through handleAddLog's editingLogId branch.
+  // capture_started is emitted here for a capture (an edit is not one), and
+  // pendingCaptureMode is NOT armed — Behaviors must not re-open it later.
+  const [captureSheet, setCaptureSheet] = useState<{ open: boolean; mode?: CaptureMode; review?: CaptureSource; editLogId?: string }>({ open: false });
+  const openCaptureSheet = (opts: { mode?: CaptureMode; review?: CaptureSource; editLogId?: string } = {}) => {
+    if (opts.editLogId) startEditLog(opts.editLogId);
+    else trackCaptureStarted(opts.review === "ai-draft" ? "ai-draft" : opts.mode ?? "text");
+    setCaptureSheet({ open: true, ...opts });
+  };
+  const closeCaptureSheet = () => setCaptureSheet({ open: false });
+
   // Edit a custom milestone's title.
   const updateMilestoneTitle = (id: string, title: string) => {
     const m = milestones.find((x) => x.id === id);
@@ -1554,6 +1571,9 @@ function useArborState() {
     acceptTodayAction,
     recordTodayOutcome,
     removeTodayAction,
+    captureSheet,
+    openCaptureSheet,
+    closeCaptureSheet,
     hardMomentNow,
     openHardMomentNow,
     closeHardMomentNow,
