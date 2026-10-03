@@ -46,10 +46,7 @@ export const en: Record<string, string> = {
   "elev.carehonesty.safety.otherCountries": "Other countries",
   // ── Builder G · item 8 — Appointments form, charter starter set, brief toast
   "elev.learnCare.appt.new": "New appointment",
-  "elev.learnCare.appt.who.label": "Who you are seeing",
   "elev.learnCare.appt.who.placeholder": "Professional name",
-  "elev.learnCare.appt.role.label": "Their role",
-  "elev.learnCare.appt.role.placeholder": "e.g. Speech therapist",
   "elev.learnCare.appt.save": "Save",
   "elev.learnCare.appt.none": "No appointments scheduled.",
   "elev.learnCare.appt.prepare": "Prepare your questions",
@@ -244,7 +241,6 @@ export const he: Record<string, string> = {
   "elev.carehonesty.safety.otherCountries": "מדינות אחרות",
   // ── Builder G · item 8 — Appointments form, charter starter set, brief toast
   "elev.learnCare.appt.new": "פגישה חדשה",
-  "elev.learnCare.appt.who.label": "עם מי נפגשים",
   "elev.learnCare.appt.who.placeholder": "שם איש המקצוע",
   "elev.learnCare.appt.role.label": "התפקיד",
   "elev.learnCare.appt.role.placeholder": "למשל קלינאית תקשורת",

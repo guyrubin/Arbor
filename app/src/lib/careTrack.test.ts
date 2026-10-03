@@ -205,3 +205,53 @@ describe("LC-12 · calendar file", () => {
     expect(appointmentToIcs(appt({ id: "a1" }), NOW)).toBeNull();
   });
 });
+
+/* ── B-CAREPRO-31 — appointment profession, mode, the Prepare window ──────── */
+import {
+  APPOINTMENT_PROFESSIONS,
+  APPOINTMENT_MODES,
+  PROFESSION_ROLE_EN,
+  consultAudienceForProfession,
+  isAppointmentProfession,
+  isPrepareDue,
+} from "./careTrack";
+import { EXPORT_AUDIENCES } from "../consult/packet";
+
+describe("B-CAREPRO-31 · the Appointment type carries a profession", () => {
+  it("the G14 list: pediatrician, speech, OT, PT, psychologist, teacher/kindergarten, other", () => {
+    expect([...APPOINTMENT_PROFESSIONS]).toEqual(["pediatrician", "slp", "ot", "pt", "psychologist", "teacher", "other"]);
+    for (const p of APPOINTMENT_PROFESSIONS) {
+      expect(isAppointmentProfession(p)).toBe(true);
+      expect(PROFESSION_ROLE_EN[p]).toBeTruthy();
+    }
+    expect(isAppointmentProfession("Professional")).toBe(false);
+    expect([...APPOINTMENT_MODES]).toEqual(["In person", "Online"]);
+    const typed: Appointment = appt({ id: "p1", profession: "slp" });
+    expect(typed.profession).toBe("slp");
+  });
+
+  it("each profession prepares with a real Consult audience (SLP → SLP preset)", () => {
+    expect(consultAudienceForProfession("slp")).toBe("slp");
+    expect(consultAudienceForProfession("pediatrician")).toBe("pediatrician");
+    expect(consultAudienceForProfession("psychologist")).toBe("behavioral_health");
+    expect(consultAudienceForProfession("teacher")).toBe("teacher");
+    expect(consultAudienceForProfession("ot")).toBe("therapist");
+    for (const p of APPOINTMENT_PROFESSIONS) expect(EXPORT_AUDIENCES).toContain(consultAudienceForProfession(p));
+  });
+
+  it("Prepare shows on an upcoming, dated, not-done visit within 14 days only", () => {
+    const at = (days: number) => new Date(NOW + days * 86_400_000).toISOString();
+    expect(isPrepareDue(appt({ id: "a", whenIso: at(3) }), NOW)).toBe(true);
+    expect(isPrepareDue(appt({ id: "b", whenIso: at(14) }), NOW)).toBe(true);
+    expect(isPrepareDue(appt({ id: "c", whenIso: at(15) }), NOW)).toBe(false);
+    expect(isPrepareDue(appt({ id: "d", whenIso: at(-1) }), NOW)).toBe(false);
+    expect(isPrepareDue(appt({ id: "e", whenIso: at(3), status: "done" }), NOW)).toBe(false);
+    expect(isPrepareDue(appt({ id: "f" }), NOW)).toBe(false); // undated
+  });
+
+  it("the calendar summary survives an empty name", () => {
+    const ics = appointmentToIcs(appt({ id: "n1", who: "", role: "Speech therapist", whenIso: new Date(NOW + 86_400_000).toISOString() }), NOW);
+    expect(ics?.content).toContain("SUMMARY:Speech therapist");
+    expect(ics?.content).not.toContain("SUMMARY: —");
+  });
+});

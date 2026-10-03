@@ -113,3 +113,59 @@ describe("LC-09 · the reports deep link is not a general door (shrink-only)", (
     expect(count).toBeLessThanOrEqual(ALLOWED["components/practice/DevelopmentCopilot.tsx"]);
   });
 });
+
+/* ── B-CAREPRO-31 — profession, mode, Prepare, the stamped primary move ───── */
+import { translate } from "../../lib/i18n";
+import { appointmentRoleLabel } from "./Appointments";
+
+describe("B-CAREPRO-31 · appointment lifecycle on #/appointments", () => {
+  it("the form takes a profession select and an in-person/online choice; nothing is hard-coded", () => {
+    expect(appts).toContain('data-testid="appt-profession-select"');
+    expect(appts).toContain("APPOINTMENT_PROFESSIONS.map((p) =>");
+    expect(appts).toContain('"appt-mode-in-person"');
+    expect(appts).toContain("mode: form.mode,");
+    expect(appts).not.toContain('mode: "Online",');
+    expect(appts).not.toContain('role: form.role || "Professional"');
+    // NEGATIVE CONTROL: the pre-change writes are caught by the same rules
+    expect('      mode: "Online",\n').toContain('mode: "Online",');
+  });
+
+  it("an in-person booking reads 'In person' (EN + HE) — the stored token maps through the row's label", () => {
+    const addBlock = /const addAppt = \(\) => \{[\s\S]*?\n  \};/.exec(appts)?.[0] ?? "";
+    expect(addBlock, "addAppt extracted").not.toBe("");
+    expect(addBlock).toContain("mode: form.mode");
+    expect(appts).toContain('useState<{ who: string; profession: AppointmentProfession | ""; mode: AppointmentMode; when: string }>({ who: "", profession: "", mode: "In person", when: "" })');
+    expect(/\^in\.\?person\$\/i\.test\(appt\.mode\)/.test(appts)).toBe(true);
+    expect("In person").toMatch(/^in.?person$/i);
+    expect(translate("en", "elev.careNet.mode.inPerson")).toBe("In person");
+    expect(translate("he", "elev.careNet.mode.inPerson")).toBe("פנים אל פנים");
+  });
+
+  it("Prepare on an upcoming row → Consult with the profession's preset and the reason written", () => {
+    const prep = /const prepare = \(a: Appointment\) => \{[\s\S]*?\n  \};/.exec(appts)?.[0] ?? "";
+    expect(prep, "prepare extracted").not.toBe("");
+    expect(prep).toContain("audience: consultAudienceForProfession(profession)");
+    expect(prep).toContain('"elev.careNet.appt.prepare.reason"');
+    expect(prep).toContain('setActiveTab("consult")');
+    expect(appts).toContain("onPrepare={isPrepareDue(a, nowMs) ? () => prepare(a) : undefined}");
+    expect(translate("en", "elev.careNet.appt.prepare.reason", { profession: "Speech therapist", date: "5 Oct" })).toBe("Visit with Speech therapist on 5 Oct");
+    expect(translate("he", "elev.careNet.appt.prepare.reason", { profession: "קלינאי/ת תקשורת", date: "5 באוק׳" })).toContain("קלינאי/ת תקשורת");
+  });
+
+  it("existing rows without a profession read 'Professional' keyed; a typed role stays; a profession is keyed", () => {
+    const t = (lang: "en" | "he") => (k: string) => translate(lang, k);
+    expect(appointmentRoleLabel({ role: "Professional" }, t("en"))).toBe("Professional");
+    expect(appointmentRoleLabel({ role: "Professional" }, t("he"))).toBe("איש/אשת מקצוע");
+    expect(appointmentRoleLabel({ role: "" }, t("he"))).toBe("איש/אשת מקצוע");
+    expect(appointmentRoleLabel({ role: "Dr Cohen's clinic" }, t("he"))).toBe("Dr Cohen's clinic");
+    expect(appointmentRoleLabel({ role: "Speech therapist", profession: "slp" }, t("he"))).toBe("קלינאי/ת תקשורת");
+  });
+
+  it("the header Add carries the ONE primary-move stamp; close and question-remove reach 44 px", () => {
+    const stamps = appts.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").match(/\bdata-primary-move="/g) ?? [];
+    expect(stamps).toHaveLength(1);
+    expect(appts).toMatch(/<button data-primary-move="add-appointment" onClick=\{\(\) => setAdding\(\(a\) => !a\)\}/);
+    expect(appts).toMatch(/aria-label=\{t\("aria\.cancel"\)\} className="touch-target/);
+    expect(appts).toMatch(/aria-label=\{t\("aria\.removeQuestion"\)\} className="touch-target/);
+  });
+});

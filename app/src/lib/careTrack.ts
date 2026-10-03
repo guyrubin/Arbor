@@ -42,12 +42,42 @@ export const APPOINTMENT_STATUSES: readonly AppointmentStatus[] = ["requested", 
 /** The server's consult-request status model (server/consultRequests.ts). */
 export type ConsultRequestStatus = "requested" | "contacted" | "booked" | "closed";
 
+/** B-CAREPRO-31 (G14): who the visit is with — a stable id, labelled at
+ *  render (EN + HE). Spine §7b: appointments carry a profession. */
+export type AppointmentProfession = "pediatrician" | "slp" | "ot" | "pt" | "psychologist" | "teacher" | "other";
+
+export const APPOINTMENT_PROFESSIONS: readonly AppointmentProfession[] = [
+  "pediatrician", "slp", "ot", "pt", "psychologist", "teacher", "other",
+];
+
+/** The English label kept in the legacy `role` field (and the calendar file's
+ *  summary). The screen never reads it for a row that has a `profession`. */
+export const PROFESSION_ROLE_EN: Record<AppointmentProfession, string> = {
+  pediatrician: "Pediatrician",
+  slp: "Speech therapist",
+  ot: "Occupational therapist",
+  pt: "Physiotherapist",
+  psychologist: "Psychologist",
+  teacher: "Teacher / kindergarten",
+  other: "Professional",
+};
+
+export const isAppointmentProfession = (v: unknown): v is AppointmentProfession =>
+  typeof v === "string" && (APPOINTMENT_PROFESSIONS as readonly string[]).includes(v);
+
+/** The visit format, stored as the English token the row's render-time label
+ *  map already reads (In person / Online — see ApptRow's modeLabel). */
+export const APPOINTMENT_MODES = ["In person", "Online"] as const;
+export type AppointmentMode = (typeof APPOINTMENT_MODES)[number];
+
 /** One appointment. `whenIso` is the machine date; `when` survives as the
  *  human label so records typed before LC-12 are never lost or mis-read. */
 export interface Appointment {
   id: string;
   who: string;
   role: string;
+  /** B-CAREPRO-31: the profession (absent on records made before it). */
+  profession?: AppointmentProfession;
   /** Free-text label (legacy records, and anything the parent typed). */
   when: string;
   mode: string;
@@ -56,6 +86,27 @@ export interface Appointment {
   status?: AppointmentStatus;
   /** The consult request this appointment was created from (LC-09). */
   requestId?: string;
+}
+
+/** B-CAREPRO-31: the Consult audience (= preset) that prepares for a visit
+ *  with this profession. OT / PT / other → "another clinician" (therapist)
+ *  until B-CAREPRO-42 splits it; a teacher goes to the School Brief branch. */
+export function consultAudienceForProfession(p: AppointmentProfession): "pediatrician" | "slp" | "therapist" | "behavioral_health" | "teacher" {
+  switch (p) {
+    case "pediatrician": return "pediatrician";
+    case "slp": return "slp";
+    case "psychologist": return "behavioral_health";
+    case "teacher": return "teacher";
+    default: return "therapist";
+  }
+}
+
+/** The "Prepare" window: an upcoming, dated, not-yet-done visit within 14 days. */
+export const PREPARE_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
+export function isPrepareDue(a: Appointment, nowMs: number): boolean {
+  const start = appointmentStartMs(a);
+  if (start == null || appointmentStatus(a) === "done") return false;
+  return start >= nowMs && start - nowMs <= PREPARE_WINDOW_MS;
 }
 
 /** A parent's own note after the visit — their words, kept with the booking. */
@@ -222,7 +273,8 @@ export const ICS_DEFAULT_DURATION_MS = 60 * 60 * 1000;
 export function appointmentToIcs(appt: Appointment, nowMs: number): IcsFile | null {
   const start = appointmentStartMs(appt);
   if (start == null) return null;
-  const summary = appt.role ? `${appt.who} — ${appt.role}` : appt.who;
+  // B-CAREPRO-31: the name is optional now — never a leading " — ".
+  const summary = [appt.who.trim(), (appt.role ?? "").trim()].filter(Boolean).join(" — ") || "Appointment";
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",

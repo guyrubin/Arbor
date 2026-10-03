@@ -8,9 +8,14 @@ import { useChildCollection } from "../../hooks/useChildCollection";
 import { PageHeader, SectionCard, cardCls, Chip } from "../ui/kit";
 import { fmtDay } from "../../lib/formatDate";
 import {
+  APPOINTMENT_PROFESSIONS,
+  PROFESSION_ROLE_EN,
   appointmentStartMs,
   appointmentStatus,
   appointmentToIcs,
+  consultAudienceForProfession,
+  isAppointmentProfession,
+  isPrepareDue,
   defaultIcsEgressDeps,
   dueReminders,
   followUpsFor,
@@ -20,8 +25,31 @@ import {
   sortAppointments,
   type Appointment,
   type AppointmentFollowUp,
+  type AppointmentMode,
+  type AppointmentProfession,
   type AppointmentStatus,
 } from "../../lib/careTrack";
+
+/** B-CAREPRO-31: profession → its label key (literal keys, so the careNetwork
+ *  coverage guard sees every one rendered). */
+const PROFESSION_KEY: Record<AppointmentProfession, string> = {
+  pediatrician: "elev.careNet.appt.profession.pediatrician",
+  slp: "elev.careNet.appt.profession.slp",
+  ot: "elev.careNet.appt.profession.ot",
+  pt: "elev.careNet.appt.profession.pt",
+  psychologist: "elev.careNet.appt.profession.psychologist",
+  teacher: "elev.careNet.appt.profession.teacher",
+  other: "elev.careNet.appt.profession.other",
+};
+
+/** What a row says the visit is with: the profession when one is stored; a
+ *  legacy row's typed role as written; the old English default ("Professional")
+ *  and an empty role read the keyed word instead. */
+export function appointmentRoleLabel(a: Pick<Appointment, "role" | "profession">, t: (key: string) => string): string {
+  if (a.profession && isAppointmentProfession(a.profession)) return t(PROFESSION_KEY[a.profession]);
+  const role = (a.role ?? "").trim();
+  return role && role.toLowerCase() !== "professional" ? role : t("elev.careNet.appt.professional");
+}
 
 type PrepQuestion = { id: string; text: string };
 
@@ -60,7 +88,7 @@ type PrepQuestion = { id: string; text: string };
  *  done), never the child. Nothing here scores, rates or colour-codes a child.
  */
 export default function Appointments() {
-  const { setActiveTab, childProfile } = useArbor();
+  const { setActiveTab, childProfile, requestConsultPrefill } = useArbor();
   const { t, uiLang } = useLanguage();
   const { toast } = useToast();
   const apptsCol = useChildCollection<Appointment>(childProfile.id, "appointments");
@@ -80,24 +108,45 @@ export default function Appointments() {
   );
 
   const [adding, setAdding] = useState(false);
-  const [form, setForm] = useState({ who: "", role: "", when: "" });
+  const [form, setForm] = useState<{ who: string; profession: AppointmentProfession | ""; mode: AppointmentMode; when: string }>({ who: "", profession: "", mode: "In person", when: "" });
   const [q, setQ] = useState("");
 
+  // B-CAREPRO-31: the profession is the one required field (G14 list); the
+  // name is optional; the mode is what the parent picked (it used to be
+  // hard-coded "Online", so an in-person visit's chip said Online).
   const addAppt = () => {
-    if (!form.who.trim()) return;
+    if (!form.profession) return;
     void apptsCol.upsert({
       id: `a${Date.now()}`,
-      who: form.who,
-      role: form.role || "Professional",
+      who: form.who.trim(),
+      // `role` stays on the record for older readers (and the calendar file):
+      // the profession's English label. The row renders the keyed profession.
+      role: PROFESSION_ROLE_EN[form.profession],
+      profession: form.profession,
       // `datetime-local` yields "YYYY-MM-DDTHH:mm" (device-local). Stored as
       // given; parsing stays in careTrack so ordering has ONE definition.
       whenIso: form.when ? new Date(form.when).toISOString() : undefined,
       when: "",
-      mode: "Online",
+      mode: form.mode,
       status: "confirmed",
     });
-    setForm({ who: "", role: "", when: "" });
+    setForm({ who: "", profession: "", mode: "In person", when: "" });
     setAdding(false);
+  };
+
+  /** B-CAREPRO-31: "Prepare" on an upcoming visit (≤ 14 days) → Consult with
+   *  the profession's preset and the reason already written. */
+  const prepare = (a: Appointment) => {
+    const profession: AppointmentProfession = a.profession && isAppointmentProfession(a.profession) ? a.profession : "other";
+    const start = appointmentStartMs(a);
+    requestConsultPrefill({
+      audience: consultAudienceForProfession(profession),
+      reason: t("elev.careNet.appt.prepare.reason", {
+        profession: t(PROFESSION_KEY[profession]),
+        date: start != null ? fmtDay(new Date(start).toISOString(), uiLang) : whenLabel(a),
+      }),
+    });
+    setActiveTab("consult");
   };
   const addQ = () => {
     if (q.trim()) {
@@ -157,6 +206,7 @@ export default function Appointments() {
       onRemove={() => void apptsCol.remove(a.id)}
       onCalendar={() => void saveIcs(a)}
       onFollowUp={(note) => saveFollowUp(a, note)}
+      onPrepare={isPrepareDue(a, nowMs) ? () => prepare(a) : undefined}
       t={t}
     />
   );
@@ -168,7 +218,7 @@ export default function Appointments() {
         title={t("sec.appt.title")}
         subtitle={t("sec.appt.sub")}
         action={
-          <button onClick={() => setAdding((a) => !a)} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3 min-h-[44px]" style={{ background: "var(--arbor-gradient-primary)" }}>
+          <button data-primary-move="add-appointment" onClick={() => setAdding((a) => !a)} aria-expanded={adding} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3 min-h-[44px]" style={{ background: "var(--arbor-gradient-primary)" }}>
             <Icon name="add" size={18} /> {t("elev.careNet.appt.add")}
           </button>
         }
@@ -182,16 +232,25 @@ export default function Appointments() {
         <div data-module="appt-new" className={`${cardCls} p-5`}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("elev.learnCare.appt.new")}</h3>
-            <button onClick={() => setAdding(false)} aria-label={t("aria.cancel")}><Icon name="close" size={17} style={{ color: "var(--arbor-muted)" }} /></button>
+            <button onClick={() => setAdding(false)} aria-label={t("aria.cancel")} className="touch-target flex-shrink-0"><Icon name="close" size={17} style={{ color: "var(--arbor-muted)" }} /></button>
           </div>
           <div className="grid sm:grid-cols-3 gap-2">
             <label className="flex flex-col gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
-              {t("elev.learnCare.appt.who.label")}
-              <input value={form.who} onChange={(e) => setForm({ ...form, who: e.target.value })} placeholder={t("elev.learnCare.appt.who.placeholder")} className="rounded-xl px-3 py-2.5 text-sm min-h-[44px]" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
+              {t("elev.careNet.appt.profession.label")}
+              <select
+                data-testid="appt-profession-select"
+                value={form.profession}
+                onChange={(e) => setForm({ ...form, profession: isAppointmentProfession(e.target.value) ? e.target.value : "" })}
+                className="rounded-xl px-3 py-2.5 text-sm min-h-[44px]"
+                style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
+              >
+                <option value="">{t("elev.careNet.appt.profession.choose")}</option>
+                {APPOINTMENT_PROFESSIONS.map((p) => <option key={p} value={p}>{t(PROFESSION_KEY[p])}</option>)}
+              </select>
             </label>
             <label className="flex flex-col gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
-              {t("elev.learnCare.appt.role.label")}
-              <input value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} placeholder={t("elev.learnCare.appt.role.placeholder")} className="rounded-xl px-3 py-2.5 text-sm min-h-[44px]" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
+              {t("elev.careNet.appt.name.label")}
+              <input value={form.who} onChange={(e) => setForm({ ...form, who: e.target.value })} placeholder={t("elev.learnCare.appt.who.placeholder")} dir="auto" className="rounded-xl px-3 py-2.5 text-sm min-h-[44px]" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
             </label>
             {/* LC-12: a real date, not prose — this is what makes ordering,
                 reminders and the calendar file possible at all. */}
@@ -207,7 +266,24 @@ export default function Appointments() {
               />
             </label>
           </div>
-          <button data-primary-move="add-appointment" onClick={addAppt} className="mt-3 inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-2.5 min-h-[44px]" style={{ background: "var(--arbor-clay)" }}>{t("elev.learnCare.appt.save")}</button>
+          <div role="radiogroup" aria-label={t("elev.careNet.appt.mode.label")} className="mt-3 flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] font-bold me-1" style={{ color: "var(--arbor-muted)" }}>{t("elev.careNet.appt.mode.label")}</span>
+            {(["In person", "Online"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                role="radio"
+                aria-checked={form.mode === m}
+                data-testid={m === "In person" ? "appt-mode-in-person" : "appt-mode-online"}
+                onClick={() => setForm({ ...form, mode: m })}
+                className="inline-flex items-center rounded-full px-3.5 min-h-11 text-xs font-bold"
+                style={form.mode === m ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
+              >
+                {m === "In person" ? t("elev.careNet.mode.inPerson") : t("elev.careNet.mode.online")}
+              </button>
+            ))}
+          </div>
+          <button data-testid="appt-save" onClick={addAppt} disabled={!form.profession} className="mt-3 inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-2.5 min-h-[44px] disabled:opacity-50" style={{ background: "var(--arbor-clay)" }}>{t("elev.learnCare.appt.save")}</button>
         </div>
       )}
 
@@ -221,7 +297,7 @@ export default function Appointments() {
           </p>
           {reminders.map((a) => (
             <p key={a.id} className="text-[13px] font-bold" dir="auto" style={{ color: "var(--arbor-ink)" }}>
-              {t("elev.learnCare.appt.reminder.line", { who: a.who, date: whenLabel(a) })}
+              {t("elev.learnCare.appt.reminder.line", { who: a.who.trim() || appointmentRoleLabel(a, t), date: whenLabel(a) })}
             </p>
           ))}
           <p className="text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
@@ -277,7 +353,7 @@ export default function Appointments() {
           {questions.map((qq) => (
             <li key={qq.id} className="flex items-start gap-2.5 text-sm" style={{ color: "var(--arbor-ink)" }}>
               <Icon name="check_circle" size={16} fill={1} className="mt-0.5" style={{ color: "var(--arbor-green-ink)" }} /> <span className="flex-1">{qq.text}</span>
-              <button onClick={() => void questionsCol.remove(qq.id)} aria-label={t("aria.removeQuestion")}><Icon name="close" size={16} style={{ color: "var(--arbor-muted)" }} /></button>
+              <button onClick={() => void questionsCol.remove(qq.id)} aria-label={t("aria.removeQuestion")} className="touch-target flex-shrink-0 -my-3"><Icon name="close" size={16} style={{ color: "var(--arbor-muted)" }} /></button>
             </li>
           ))}
         </ul>
@@ -317,6 +393,7 @@ function ApptRow({
   onRemove,
   onCalendar,
   onFollowUp,
+  onPrepare,
   t,
 }: {
   appt: Appointment;
@@ -326,6 +403,8 @@ function ApptRow({
   onRemove: () => void;
   onCalendar: () => void;
   onFollowUp: (note: string) => boolean;
+  /** B-CAREPRO-31: present only on an upcoming visit within 14 days. */
+  onPrepare?: () => void;
   t: (key: string, vars?: Record<string, string | number>) => string;
 }) {
   const [note, setNote] = useState("");
@@ -349,13 +428,25 @@ function ApptRow({
     <div className={`${cardCls} p-4 space-y-3`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="text-sm font-extrabold" dir="auto" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{appt.who}</h3>
-          <p className="text-xs" dir="auto" style={{ color: "var(--arbor-muted)" }}>{appt.role} · {modeLabel}</p>
+          <h3 className="text-sm font-extrabold" dir="auto" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{appt.who.trim() || appointmentRoleLabel(appt, t)}</h3>
+          <p className="text-xs" dir="auto" style={{ color: "var(--arbor-muted)" }}>{appointmentRoleLabel(appt, t)} · {modeLabel}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {/* The chip describes the BOOKING, never the child. */}
           <Chip tone={STATUS_TONE[status]}>{t(`elev.learnCare.appt.status.${status}`)}</Chip>
           <Chip tone="sky">{whenLabel}</Chip>
+          {onPrepare && (
+            <button
+              type="button"
+              data-testid="appt-prepare"
+              onClick={onPrepare}
+              aria-label={t("elev.careNet.appt.prepare.aria", { who: appt.who.trim() || appointmentRoleLabel(appt, t) })}
+              className="inline-flex items-center gap-1.5 text-[12px] font-bold rounded-xl px-3 min-h-[44px]"
+              style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
+            >
+              <Icon name="description" size={16} /> {t("elev.careNet.appt.prepare")}
+            </button>
+          )}
           {dated && (
             <button
               onClick={onCalendar}
