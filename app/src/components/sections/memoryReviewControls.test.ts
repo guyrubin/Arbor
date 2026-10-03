@@ -150,3 +150,101 @@ describe("GP-13 — every new control is translated (AI-11 rule holds)", () => {
     expect(Object.keys(waveR.he).length).toBe(Object.keys(waveR.en).length);
   });
 });
+
+/* ── B-CAREPRO-25 — memory review: one group per topic, pending first ─────── */
+import { groupPendingMemory, dismissGroup, memoryTopicOf } from "../../lib/memoryGroups";
+import { translate } from "../../lib/i18n";
+import type { MemoryReviewItem } from "../../types";
+
+/** Prod-shaped queue: 103 pending proposals, no `domains` stamp (they predate
+ *  B-GROWTH-29), the repetitive EN + HE wording a chat-fed proposer produces.
+ *  SYNTHETIC — the live queue is read by Fable's prod probe, not here. */
+const STEMS = [
+  "Dylan has a meltdown when it is time to leave the park",
+  "Dylan cries at bedtime unless the light stays on",
+  "Dylan says new words every week, mostly animal names",
+  "Dylan likes playing with friends but grabs toys from his sibling",
+  "Dylan is a picky eater and refuses vegetables",
+  "Dylan finds loud noise in the dining hall overwhelming",
+  "Dylan's teacher says he settles quickly in kindergarten",
+  "Dylan asks for the tablet after dinner",
+  "Dylan loves dinosaurs and knows all their names",
+  "Dylan needs help to focus on homework",
+  "דילן בוכה לפני השינה",
+  "דילן מדבר במשפטים של שלוש מילים",
+  "דילן משחק עם חברים בגן",
+];
+const PROD_SHAPED: MemoryReviewItem[] = Array.from({ length: 103 }, (_, i) => ({
+  memoryId: `m${i}`,
+  childId: "c1",
+  status: "pending",
+  fact: `${STEMS[i % STEMS.length]}${i >= STEMS.length ? ` (${["again", "most days", "this week", "lately"][i % 4]})` : ""}`,
+  source: "chat",
+  retention: "90 days",
+  createdAt: new Date(Date.UTC(2026, 5, 17) + i * 3_600_000).toISOString(),
+  latestEventId: `e${i}`,
+}));
+
+describe("B-CAREPRO-25 — the pending queue is grouped by topic", () => {
+  it("a prod-shaped queue of 103 becomes at most 12 groups; every fact lands in exactly one", () => {
+    const groups = groupPendingMemory(PROD_SHAPED);
+    expect(groups.length).toBeGreaterThan(1);
+    expect(groups.length).toBeLessThanOrEqual(12);
+    const ids = groups.flatMap((g) => g.items.map((m) => m.memoryId));
+    expect(ids).toHaveLength(103);
+    expect(new Set(ids).size).toBe(103);
+    // newest first inside a group, and groups ordered by their newest fact
+    for (const g of groups) for (let i = 1; i < g.items.length; i++) expect(g.items[i - 1].createdAt >= g.items[i].createdAt).toBe(true);
+    for (let i = 1; i < groups.length; i++) expect(groups[i - 1].items[0].createdAt >= groups[i].items[0].createdAt).toBe(true);
+  });
+
+  it("topic: the fact's own domains first, else the bilingual keyword table, else other", () => {
+    expect(memoryTopicOf({ fact: "anything", domains: ["talking"] })).toBe("talking");
+    expect(memoryTopicOf({ fact: "Dylan cries at bedtime" })).toBe("feelings");
+    expect(memoryTopicOf({ fact: "דילן מדבר במשפטים" })).toBe("talking");
+    expect(memoryTopicOf({ fact: "Dylan loves dinosaurs" })).toBe("other");
+    expect(memoryTopicOf({ fact: "x", domains: ["not-a-domain"] })).toBe("other");
+  });
+
+  it("Dismiss all writes ONE reject per fact (ledger: one event per fact); no bulk approve exists", async () => {
+    const [g] = groupPendingMemory(PROD_SHAPED).filter((x) => x.items.length > 1);
+    const calls: string[] = [];
+    const n = await dismissGroup(g, (id, status) => { calls.push(`${id}:${status}`); });
+    expect(n).toBe(g.items.length);
+    expect(calls).toEqual(g.items.map((m) => `${m.memoryId}:rejected`));
+    // a failing transition does not skip the rest
+    const seen: string[] = [];
+    await dismissGroup(g, (id) => { seen.push(id); if (seen.length === 1) throw new Error("x"); });
+    expect(seen).toHaveLength(g.items.length);
+    // G6: the group card has no approve-all path
+    expect(SRC).not.toMatch(/approveAll|approve-all|dismissGroup\([^)]*"approved"/);
+  });
+
+  it("the page renders groups: heading counts groups, lav tone, the newest row + See all + Dismiss all (confirmed)", () => {
+    expect(SRC).toContain("groupPendingMemory(pendingQueue)");
+    expect(SRC).toMatch(/"elev\.childmem\.pending\.groups"/);
+    expect(SRC).not.toMatch(/elev\.childmem\.pending\.title", \{ count: pendingQueue\.length \}/);
+    const pendingCard = /data-module="memory-pending"[\s\S]*?<\/SectionCard>/.exec(SRC)?.[0] ?? "";
+    expect(pendingCard, "pending card extracted").not.toBe("");
+    expect(pendingCard).toContain('tone="lav"');
+    expect(pendingCard).not.toContain('tone="yellow"');
+    const card = SRC.slice(SRC.indexOf("export function PendingGroupCard("), SRC.indexOf("export function MemoryRow("));
+    expect(card).toContain("group.items.slice(0, 1)");
+    expect(card).toContain('data-testid="memory-group-see-all"');
+    expect(card).toContain('data-testid="memory-group-dismiss-confirm"');
+    expect(card).toContain("dismissGroup(group");
+    expect((card.match(/className="touch-target/g) ?? []).length).toBe(4);
+  });
+
+  it("every group string exists in EN and HE", () => {
+    const keys = ["pending.groups", "pending.groups.one", "group.other", "group.similar", "group.seeAll", "group.seeLess", "group.dismissAll", "group.dismissConfirm", "group.dismissYes", "group.cancel"];
+    for (const k of keys) {
+      const key = `elev.childmem.${k}`;
+      expect(translate("en", key), key).not.toBe(key);
+      expect(translate("he", key), key).not.toBe(key);
+      expect(translate("he", key)).not.toBe(translate("en", key));
+    }
+    expect(translate("en", "elev.childmem.group.similar", { n: 4 })).toBe("4 similar notes");
+    expect(translate("he", "elev.childmem.group.similar", { n: 4 })).toBe("4 הערות דומות");
+  });
+});

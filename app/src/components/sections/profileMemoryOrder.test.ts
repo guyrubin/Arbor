@@ -38,7 +38,7 @@ const at = (src: string, marker: string) => {
 
 describe("Child Memory · the action queue comes first", () => {
   it("the pending queue renders before every celebration module", () => {
-    const queue = at(memory, "elev.childmem.pending.title");
+    const queue = at(memory, "elev.childmem.pending.groups"); // B-CAREPRO-25: the heading counts groups
     for (const later of ["<FirstsMoment />", "<ArborKnowsTile />", "<MonthKeepsake />"]) {
       expect(at(memory, later), `${later} must render after the queue`).toBeGreaterThan(queue);
     }

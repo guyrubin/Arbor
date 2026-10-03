@@ -138,8 +138,9 @@ describe("B-CAREPRO-06 · ChildMemory, ChildProfile and SafetyTab render scrubbe
 
   it("ChildMemory: the pending queue is the scrub survivors; rows display the plain-words text; Edit opens the stored text", () => {
     expect(MEMORY).toContain("scrubMemoryProposals(pendingMemoryItems)");
-    expect(MEMORY).toContain("{pendingQueue.map((m: MemoryReviewItem) => (");
-    expect(MEMORY).toContain('t("elev.childmem.pending.title", { count: pendingQueue.length })');
+    // B-CAREPRO-25: the survivors are grouped by topic (every row still a MemoryRow).
+    expect(MEMORY).toContain("groupPendingMemory(pendingQueue)");
+    expect(MEMORY).toContain('"elev.childmem.pending.groups"');
     expect(MEMORY).not.toContain("pendingMemoryItems.map(");
     expect(MEMORY).toContain("const shownFact = toParentWords(m.fact);");
     expect(MEMORY).toContain('{shownFact || t("elev.childmem.fact.unshown")}');

@@ -32,6 +32,9 @@ import { ContentWhyLine } from "../ui/ContentActionBar";
 import ArborKnowsTile from "./ArborKnowsTile";
 import FirstsMoment from "./FirstsMoment";
 import MonthKeepsake from "../weekly/MonthKeepsake";
+// B-CAREPRO-25: the pending queue reads as one group per topic (G6: no bulk approve).
+import { groupPendingMemory, dismissGroup, type PendingMemoryGroup } from "../../lib/memoryGroups";
+import { domainName } from "../../lib/domains/registry";
 
 const pick = (he: boolean, txt: { en: string; he: string }) => (he ? txt.he : txt.en);
 
@@ -51,6 +54,7 @@ export default function ChildMemory() {
     const kept = new Set(scrubMemoryProposals(pendingMemoryItems).map((p) => p.memoryId));
     return pendingMemoryItems.filter((m) => kept.has(m.memoryId));
   }, [pendingMemoryItems]);
+  const pendingGroups = useMemo(() => groupPendingMemory(pendingQueue), [pendingQueue]);
   // Saved Learn Library reads, newest first; stale bookmarks (removed cards) are dropped.
   const savedLearnCards = savedLearnIds
     .map((id) => learnCardById(id))
@@ -96,15 +100,20 @@ export default function ChildMemory() {
           surfaceContract.ts declares for this route. */}
       {!memoryReviewError && pendingQueue.length > 0 && (
         <div data-module="memory-pending" data-primary-move="approve-memory-fact" style={{ display: "contents" }}>
-        <SectionCard title={t("elev.childmem.pending.title", { count: pendingQueue.length })} icon={<Icon name="verified_user" size={20} />} tone="yellow">
+        {/* B-CAREPRO-25: one group per topic (newest fact shown, "See all N",
+            "Dismiss all N"); the heading counts groups; neutral lav tone. */}
+        <SectionCard
+          title={t(pendingGroups.length === 1 ? "elev.childmem.pending.groups.one" : "elev.childmem.pending.groups", { count: pendingGroups.length })}
+          icon={<Icon name="verified_user" size={20} />}
+          tone="lav"
+        >
           <div className="space-y-3">
-            {pendingQueue.map((m: MemoryReviewItem) => (
-              <MemoryRow
-                key={m.memoryId}
-                m={m}
-                busy={isMemoryUpdating === m.memoryId}
-                onApprove={() => handleMemoryDecision(m.memoryId, "approved")}
-                onReject={() => handleMemoryDecision(m.memoryId, "rejected")}
+            {pendingGroups.map((g) => (
+              <PendingGroupCard
+                key={g.topic}
+                group={g}
+                isMemoryUpdating={isMemoryUpdating}
+                onDecide={(id, status) => handleMemoryDecision(id, status)}
                 onEdited={retryMemoryReview}
               />
             ))}
@@ -244,6 +253,96 @@ export default function ChildMemory() {
         </div>
       )}
     </motion.div>
+  );
+}
+
+/** B-CAREPRO-25 — one topic of the pending queue. The newest fact renders as
+ *  a full MemoryRow (its own Approve / Dismiss / Edit — approval is always one
+ *  fact at a time, G6); "See all N" expands the rest, each with its own
+ *  controls; "Dismiss all N" asks once, then writes one reject per fact. */
+export function PendingGroupCard({ group, isMemoryUpdating, onDecide, onEdited }: {
+  group: PendingMemoryGroup;
+  isMemoryUpdating: string | null | undefined;
+  onDecide: (memoryId: string, status: "approved" | "rejected") => Promise<unknown> | unknown;
+  onEdited?: () => void;
+}) {
+  const { t } = useLanguage();
+  const [open, setOpen] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [dismissing, setDismissing] = useState(false);
+  const n = group.items.length;
+  const label = group.topic === "other" ? t("elev.childmem.group.other") : domainName(group.topic, t);
+  const shown = open ? group.items : group.items.slice(0, 1);
+  return (
+    <div data-testid="memory-group" data-topic={group.topic} className="rounded-2xl p-3 space-y-2" style={{ border: "1px solid var(--arbor-rule)", background: "var(--arbor-paper-elevated)" }}>
+      <p className="text-[12px] font-extrabold" style={{ color: "var(--arbor-lav-ink)" }}>
+        {label}
+        {n > 1 && <span className="font-bold" style={{ color: "var(--arbor-muted)" }}> · {t("elev.childmem.group.similar", { n })}</span>}
+      </p>
+      {shown.map((m) => (
+        <MemoryRow
+          key={m.memoryId}
+          m={m}
+          busy={isMemoryUpdating === m.memoryId || dismissing}
+          onApprove={() => onDecide(m.memoryId, "approved")}
+          onReject={() => onDecide(m.memoryId, "rejected")}
+          onEdited={onEdited}
+        />
+      ))}
+      {n > 1 && !confirming && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            data-testid="memory-group-see-all"
+            aria-expanded={open}
+            onClick={() => setOpen((v) => !v)}
+            className="touch-target px-3 rounded-xl text-[12px] font-bold"
+            style={{ color: "var(--arbor-lav-ink)", border: "1px solid var(--arbor-rule)" }}
+          >
+            {open ? t("elev.childmem.group.seeLess") : t("elev.childmem.group.seeAll", { n })}
+          </button>
+          <button
+            type="button"
+            data-testid="memory-group-dismiss-all"
+            onClick={() => setConfirming(true)}
+            disabled={dismissing}
+            className="touch-target px-3 rounded-xl text-[12px] font-bold disabled:opacity-60"
+            style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+          >
+            {t("elev.childmem.group.dismissAll", { n })}
+          </button>
+        </div>
+      )}
+      {n > 1 && confirming && (
+        <div role="group" data-testid="memory-group-dismiss-confirm" className="rounded-xl p-3 space-y-2" style={{ background: "var(--arbor-paper-sunk)" }}>
+          <p className="text-[12px] leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{t("elev.childmem.group.dismissConfirm", { n })}</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              data-testid="memory-group-dismiss-yes"
+              disabled={dismissing}
+              onClick={async () => {
+                setDismissing(true);
+                try { await dismissGroup(group, (id) => onDecide(id, "rejected")); } finally { setDismissing(false); setConfirming(false); }
+              }}
+              className="touch-target px-3 rounded-xl text-[12px] font-bold disabled:opacity-60"
+              style={{ color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule-strong)" }}
+            >
+              {t("elev.childmem.group.dismissYes")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirming(false)}
+              disabled={dismissing}
+              className="touch-target px-3 rounded-xl text-[12px] font-bold"
+              style={{ color: "var(--arbor-muted)" }}
+            >
+              {t("elev.childmem.group.cancel")}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

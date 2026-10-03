@@ -20,7 +20,17 @@ export const en: Record<string, string> = {
   "elev.childmem.eyebrow": "My Child",
   "elev.childmem.trustNote": "You control everything here. Nothing is shared without your approval.",
 
-  "elev.childmem.pending.title": "Pending your review ({count})",
+  // B-CAREPRO-25: the pending queue grouped by topic; the heading counts groups.
+  "elev.childmem.pending.groups": "Pending your review: {count} topics",
+  "elev.childmem.pending.groups.one": "Pending your review: 1 topic",
+  "elev.childmem.group.other": "Other notes",
+  "elev.childmem.group.similar": "{n} similar notes",
+  "elev.childmem.group.seeAll": "See all {n}",
+  "elev.childmem.group.seeLess": "Show fewer",
+  "elev.childmem.group.dismissAll": "Dismiss all {n}",
+  "elev.childmem.group.dismissConfirm": "Dismiss all {n} notes on this topic? Arbor will not remember them, and you can still approve new ones later.",
+  "elev.childmem.group.dismissYes": "Yes, dismiss all",
+  "elev.childmem.group.cancel": "Keep them",
   "elev.childmem.approved.title": "Approved memory",
 
   "elev.childmem.empty.title": "No memory yet",
@@ -43,7 +53,16 @@ export const he: Record<string, string> = {
   "elev.childmem.eyebrow": "הילד שלי",
   "elev.childmem.trustNote": "אתם שולטים בכל מה שכאן. שום דבר לא משותף בלי האישור שלכם.",
 
-  "elev.childmem.pending.title": "ממתין לאישורכם ({count})",
+  "elev.childmem.pending.groups": "ממתין לאישורכם: {count} נושאים",
+  "elev.childmem.pending.groups.one": "ממתין לאישורכם: נושא אחד",
+  "elev.childmem.group.other": "הערות נוספות",
+  "elev.childmem.group.similar": "{n} הערות דומות",
+  "elev.childmem.group.seeAll": "להציג את כל ה-{n}",
+  "elev.childmem.group.seeLess": "להציג פחות",
+  "elev.childmem.group.dismissAll": "כל ה-{n} לא רלוונטיות",
+  "elev.childmem.group.dismissConfirm": "לסמן את כל {n} ההערות בנושא הזה כלא רלוונטיות? ארבור לא יזכור אותן, ועדיין אפשר יהיה לאשר הערות חדשות בהמשך.",
+  "elev.childmem.group.dismissYes": "כן, לסמן את כולן",
+  "elev.childmem.group.cancel": "להשאיר אותן",
   "elev.childmem.approved.title": "זיכרון מאושר",
 
   "elev.childmem.empty.title": "עדיין אין זיכרון",
