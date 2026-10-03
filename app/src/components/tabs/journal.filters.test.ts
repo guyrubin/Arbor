@@ -12,7 +12,7 @@ import {
   firstGroupOfMonth, isHardMomentSignal, journalMonthKeys, journalSearchText, matchesJournalFilter, monthLabel,
   type JournalFilterContext,
 } from "../../lib/journalFilters";
-import { buildBehaviorExportHtml } from "../../lib/behaviorExport";
+import { buildBehaviorExportHtml, type BehaviorExportRow } from "../../lib/behaviorExport";
 import { en, he, translate } from "../../lib/i18n";
 import { behaviorTypeLabel } from "../../content/behaviorTaxonomy";
 import type { TimelineSignal } from "../../lib/signalTimeline";
@@ -38,7 +38,7 @@ const signals = [
 
 const ctx = (lang: "en" | "he", over: Partial<JournalFilterContext> = {}): JournalFilterContext => ({
   filter: "all", query: "", logsById: logs, keptIds: new Set(["moment-b"]),
-  labelOf: (s) => (s.kind === "moment" && s.refTitle ? behaviorTypeLabel(s.refTitle, (k, v) => translate(lang, k, v)) : s.refTitle ?? ""),
+  labelOf: (s) => (s.kind === "moment" && s.refTitle ? behaviorTypeLabel(s.refTitle, (k: string) => translate(lang, k)) : s.refTitle ?? ""),
   ...over,
 });
 const ids = (c: JournalFilterContext) => signals.filter((s) => matchesJournalFilter(s, c)).map((s) => s.id);
@@ -56,7 +56,7 @@ describe("B-ASKJB-14 — filter predicates (pure)", () => {
 
   it("HE search matches Hebrew text and the HE type label", () => {
     expect(ids(ctx("he", { query: "נעליים" }))).toEqual(["moment-c"]);
-    const heLabel = behaviorTypeLabel("Transition Refusal", (k, v) => translate("he", k, v));
+    const heLabel = behaviorTypeLabel("Transition Refusal", (k: string) => translate("he", k));
     expect(heLabel).not.toBe("Transition Refusal");
     expect(ids(ctx("he", { query: heLabel }))).toContain("moment-a");
   });
@@ -90,7 +90,7 @@ describe("B-ASKJB-14 — filter predicates (pure)", () => {
 
 describe("B-ASKJB-14 — the export moved with the function (same PDF as Behaviors)", () => {
   const t = (k: string, v?: Record<string, string | number>) => translate("en", k, v);
-  const row = { timestamp: "2026-09-20T10:00:00.000Z", behaviorType: "Tantrum", intensity: 3, durationMinutes: 5, resolved: false, trigger: "Shoes <b>", response: "Hug", context: "home<script>" };
+  const row = { timestamp: "2026-09-20T10:00:00.000Z", behaviorType: "Tantrum", intensity: 3, durationMinutes: 5, resolved: false, trigger: "Shoes <b>", response: "Hug", context: "home<script>" } as unknown as BehaviorExportRow;
 
   it("snapshot: one escaped row, the same headings, the generated-at count", () => {
     const html = buildBehaviorExportHtml([row], { t, lang: "en", now: Date.parse("2026-09-21T09:00:00.000Z") });
