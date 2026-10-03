@@ -89,3 +89,76 @@ describe("B-ASKJB-19 residue — the story's count sentences, EN + HE", () => {
     expect(s.paragraphs.join(" ")).not.toContain("40");
   });
 });
+
+describe("B-ASKJB-20 — the story card in the parent's language", () => {
+  const full: ChildStoryInput = {
+    ...base,
+    name: "נועה כהן",
+    ageYears: 4,
+    approvedFacts: [
+      { fact: "אוהבת דינוזאורים." },
+      { fact: "נרגעת מהר יותר עם אמבטיה בערב" },
+      { fact: "loves Lego" },
+    ],
+    momentsThisWeek: 3,
+    milestonesObserved: 2,
+    planWins: 1,
+    lang: "he",
+  };
+  const strip = (s: string) => s.replace(/[\u2066-\u2069]/g, "");
+
+  it("HE story: every sentence Hebrew; the only Latin is what the parent wrote", () => {
+    const s = composeChildStory(full);
+    const text = strip([s.title, ...s.paragraphs].join("\n"));
+    expect(s.title).toContain("הסיפור של");
+    // Facts stay verbatim (incl. the Latin one the parent typed).
+    expect(text).toContain("אוהבת דינוזאורים");
+    expect(text).toContain("loves Lego");
+    const withoutFacts = text.replace("loves Lego", "");
+    expect(withoutFacts).not.toMatch(/[A-Za-z]/);
+    expect(strip(s.paragraphs.join(" "))).toContain("השבוע שמתם לב ל-3 רגעים ששווה לשמור.");
+  });
+
+  it("HE snapshot (age, facts list, counts, closing) and the text export is the same output", () => {
+    const s = composeChildStory({ ...full, approvedFacts: full.approvedFacts.slice(0, 2) });
+    expect(s.paragraphs.map(strip)).toMatchInlineSnapshot(`
+      [
+        "זה הסיפור של נועה עד עכשיו, בגיל 4 — בנוי רק ממה שאישרתם.",
+        "שיתפתם כמה דברים על נועה: אוהבת דינוזאורים; וגם נרגעת מהר יותר עם אמבטיה בערב.",
+        "השבוע שמתם לב ל-3 רגעים ששווה לשמור.",
+        "יחד סימנתם 2 אבני דרך. חגגתם ניצחון קטן אחד בדרך.",
+        "כל זיכרון שאתם מאשרים הופך את ההכוונה של ארבור לכזו שמדברת באמת על נועה.",
+      ]
+    `);
+    expect(childStoryToText(s)).toBe([s.title, "", ...s.paragraphs].join("\n\n"));
+  });
+
+  it("HE empty state, one-year opening, many-memories line and fallback name are Hebrew", () => {
+    const empty = composeChildStory({ ...base, name: "", lang: "he" });
+    expect(empty.empty).toBe(true);
+    expect(strip(empty.title)).toBe("הסיפור של הילד שלכם");
+    expect(strip(empty.paragraphs[0])).not.toMatch(/[A-Za-z]/);
+    const one = composeChildStory({ ...full, ageYears: 1 });
+    expect(strip(one.paragraphs[0])).toContain("בגיל שנה");
+    const many = composeChildStory({ ...full, approvedFacts: Array.from({ length: 7 }, (_, n) => ({ fact: `עובדה ${n}` })) });
+    expect(strip(many.paragraphs.join(" "))).toContain("ארבור שומר בסך הכול 7 זיכרונות על נועה.");
+  });
+
+  it("EN bytes unchanged for the shapes the card showed before", () => {
+    const s = composeChildStory({ ...base, approvedFacts: [{ fact: "loves dinosaurs." }, { fact: "is kind" }, { fact: "sings" }], momentsThisWeek: 1 });
+    expect(s.paragraphs[1]).toBe("You've shared a few things that make Mia who they are: loves dinosaurs; is kind; and sings.");
+    expect(s.paragraphs[2]).toBe("This week you noticed 1 moment worth keeping.");
+    expect(composeChildStory({ ...base, approvedFacts: [{ fact: "x" }] }).paragraphs[0]).toBe("Here's Mia's story so far, at 4 years old — built only from what you've approved.");
+  });
+
+  it("no hard-coded English prose left in the composer (every sentence is a story.* key)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const path = await import("node:path");
+    const src = readFileSync(path.resolve(__dirname, "childStory.ts"), "utf8");
+    const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    // String/template literals that carry two+ English words are prose.
+    const literals = code.match(/(["'`])(?:(?!\1)[^\\n]|\.)*\1/g) ?? [];
+    const prose = literals.filter((l) => /[A-Za-z]{2,}\s+[A-Za-z]{2,}/.test(l));
+    expect(prose).toEqual([]);
+  });
+});

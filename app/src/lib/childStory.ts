@@ -12,7 +12,6 @@
  * "proven"), no clinical claim, no invented fact.
  */
 
-import { isolate } from "./bidi";
 import { translate, type UiLang } from "./i18n";
 
 export interface ChildStoryInput {
@@ -41,16 +40,39 @@ export interface ChildStory {
 }
 
 // N5/RES-BIDI: the story is display prose (rendered + shared as text, never a
-// key/seed) — possessive interpolations below route through isolate() so a
-// Hebrew name can't pull the "'s" out of order (no-op for LTR names).
-const firstNameOf = (name: string): string => (name?.trim().split(/\s+/)[0] || "Your child");
+// key/seed) — name and fact interpolations go through translate(), which
+// isolates a value in the other script so it can't reorder the sentence.
+const WHITESPACE = /\s+/;
+const WHITESPACE_G = /\s+/g;
+const TRAILING_DOTS = /[.]+$/;
+// B-ASKJB-20: the fallback name is keyed too ("Your child" / HE); a real name
+// is the first token of the profile name, verbatim.
+const firstNameOf = (name: string, lang: UiLang): string =>
+  (name?.trim().split(WHITESPACE)[0] || translate(lang, "story.fallbackName"));
 
 /** Trim a fact to a clean clause and strip a trailing period so it can be joined. */
-const clause = (fact: string): string => fact.trim().replace(/\s+/g, " ").replace(/[.]+$/, "");
+const clause = (fact: string): string => fact.trim().replace(WHITESPACE_G, " ").replace(TRAILING_DOTS, "");
 
+/** Facts joined with the locale's separators: "a; b; and c" / "a; b; וגם c". */
+const joinFacts = (lang: UiLang, items: readonly string[]): string =>
+  items.length <= 1
+    ? items.join("")
+    : items.slice(0, -1).join(translate(lang, "story.list.sep")) + translate(lang, "story.list.last") + items[items.length - 1];
+
+/**
+ * B-ASKJB-20: every sentence is built from `story.*` keys in the parent's
+ * language (EN + HE, singular/plural). Only the child's name and the
+ * parent-approved fact text are interpolated verbatim — a Hebrew story has no
+ * English words except what the parent wrote. The plain-text export
+ * (childStoryToText) renders this same output.
+ */
 export function composeChildStory(i: ChildStoryInput): ChildStory {
-  const first = firstNameOf(i.name);
-  const title = `The Story of ${first}`;
+  const lang: UiLang = i.lang ?? "en";
+  const first = firstNameOf(i.name, lang);
+  // N5/RES-BIDI: translate() isolates every interpolated value whose script
+  // runs opposite to the sentence (lib/bidi), so names and facts go in raw.
+  const name = first;
+  const title = translate(lang, "story.title", { name });
   const facts = i.approvedFacts.filter((f) => f.fact && f.fact.trim());
   const paragraphs: string[] = [];
 
@@ -61,55 +83,43 @@ export function composeChildStory(i: ChildStoryInput): ChildStory {
     i.planWins === 0;
 
   if (nothingYet) {
-    return {
-      title,
-      empty: true,
-      factCount: 0,
-      paragraphs: [
-        `${isolate(first)}'s story hasn't started yet. As you log moments, talk with Arbor, and approve what it learns, this becomes a living story — built only from what you choose to keep.`,
-      ],
-    };
+    return { title, empty: true, factCount: 0, paragraphs: [translate(lang, "story.empty", { name })] };
   }
 
   // Opening — frame the provenance (parent owns + approved everything here).
   paragraphs.push(
     i.ageYears != null
-      ? `Here's ${isolate(first)}'s story so far, at ${i.ageYears}${i.ageYears === 1 ? " year" : " years"} old — built only from what you've approved.`
-      : `Here's ${isolate(first)}'s story so far — built only from what you've approved.`,
+      ? i.ageYears === 1
+        ? translate(lang, "story.open.age.one", { name })
+        : translate(lang, "story.open.age.other", { name, n: i.ageYears })
+      : translate(lang, "story.open", { name }),
   );
 
-  // What Arbor has learned (the approved facts — the moat itself).
+  // What Arbor has learned (the approved facts — the moat itself), verbatim.
   if (facts.length) {
     const top = facts.slice(0, 5).map((f) => clause(f.fact));
     const lead =
       top.length === 1
-        ? `You've shared that ${top[0]}.`
-        : `You've shared a few things that make ${first} who they are: ${top.slice(0, -1).join("; ")}; and ${top[top.length - 1]}.`;
-    const more = facts.length > 5 ? ` Arbor is holding ${facts.length} memories about ${first} in all.` : "";
+        ? translate(lang, "story.facts.one", { fact: top[0] })
+        : translate(lang, "story.facts.many", { name, list: joinFacts(lang, top) });
+    const more = facts.length > 5 ? ` ${translate(lang, "story.facts.more", { n: facts.length, name })}` : "";
     paragraphs.push(lead + more);
   }
 
-  // Rhythm of attention this week + milestones tracked — observational, hedged.
-  // CI-22/23/24 firewall (Wave-3 clinical subtraction, 2026-06-26): the
-  // intensity-trend prose ("the harder moments have felt a little calmer" /
-  // "some moments have felt bigger lately") was a behavior-intensity verdict on
-  // a child metric rendered as narrative. Removed. The flat parent-log moment
-  // count stays — it emits nothing about the child as a verdict.
-  // The week-over-week clause that used to hang off this sentence (" — even more
-  // than the N the week before" / " — a quieter week than the N before") was the
-  // same Wave-3 mistake one line up, in prose: a comparison of the child's own
-  // windows, and "a quieter week" reads as an intensity verdict on top of it.
-  // Removed. The flat count of what the PARENT noticed stays.
-  const rhythmBits: string[] = [];
+  // Rhythm of attention this week — the flat count of what the PARENT noticed.
+  // CI-22/23/24 firewall (Wave-3 clinical subtraction, 2026-06-26): no
+  // intensity-trend prose and no week-over-week comparison ("more than the N
+  // the week before" / "a quieter week") — both were verdicts on the child's
+  // own windows. Only the count stays.
   if (i.momentsThisWeek > 0) {
-    rhythmBits.push(`This week you noticed ${i.momentsThisWeek} moment${i.momentsThisWeek === 1 ? "" : "s"} worth keeping`);
+    paragraphs.push(i.momentsThisWeek === 1
+      ? translate(lang, "story.moments.one")
+      : translate(lang, "story.moments.other", { n: i.momentsThisWeek }));
   }
-  if (rhythmBits.length) paragraphs.push(rhythmBits.join(" ") + ".");
 
   // B-ASKJB-19 residue (law 1): "tracking {observed} of {total} milestones"
   // was a denominator on a parent surface. Now two keyed count sentences
   // (EN + HE): the milestones the parent noticed, and the small wins.
-  const lang: UiLang = i.lang ?? "en";
   const closers: string[] = [];
   if (i.milestonesObserved > 0) {
     closers.push(i.milestonesObserved === 1
@@ -124,7 +134,7 @@ export function composeChildStory(i: ChildStoryInput): ChildStory {
   if (closers.length) paragraphs.push(closers.join(" "));
 
   // Closing — the moat compounds.
-  paragraphs.push(`Every memory you approve makes Arbor's guidance more truly about ${first}.`);
+  paragraphs.push(translate(lang, "story.close", { name }));
 
   return { title, paragraphs, factCount: facts.length, empty: false };
 }
