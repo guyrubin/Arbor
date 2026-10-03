@@ -193,7 +193,10 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // child data) and gains the language directive + past outcomes. No eval suite
   // pins these three yet.
   weekly_digest: { version: "1.0.0", sha256: "cb29becb347e53c4e681f547d714d1f5547345de85a750bb77396de016d76392" },
-  generate_plan: { version: "1.0.0", sha256: "18143fede1c79c553fdcf2b42ac69abe7b1e54e0aaa00a5602036ad72e57d1df" },
+  // 1.1.0 (B-ASKJB-25): the shared JSON language directive (jsonLanguageDirective)
+  // closes the "Return JSON" line — a Hebrew family gets a Hebrew plan; EN and
+  // absent stay byte-identical to 1.0.0. No eval suite pins it (live = Guy G5).
+  generate_plan: { version: "1.1.0", sha256: "93ce3f5af0c0b7b09e7e0ceefe825770abff718129fdd63b13e299bfb11a5efd" },
   // 1.1.0 (B-AI-13): the logs pass the shared allowlist (no notes / free
   // text, G-14) and triggerBreakdown asks for a whole-number count per trigger
   // (the schema's proportional field is gone; the server overwrites both count
@@ -509,17 +512,28 @@ export type GeneratePlanPromptArgs = {
   challengeTopic: unknown;
   approvedFacts?: readonly string[];
   pastSteps?: readonly CompanionStepLine[];
+  /** B-ASKJB-25: the shared /chat language directive ("" / absent for EN —
+   *  the 1.0.0 bytes). A Hebrew family gets a Hebrew plan. */
+  languageDirective?: string;
 };
 
+/** The ONE structured-JSON language directive (/chat, /analyze-behavior,
+ *  /generate-plan): HE asks for Hebrew human-readable values, keys stay
+ *  English; every other language renders "" (legacy bytes). */
+export const jsonLanguageDirective = (language: unknown): string =>
+  language === "he"
+    ? "\nIMPORTANT: Write every human-readable text value in the JSON response in natural, warm Hebrew (עברית). Keep JSON keys in English."
+    : "";
+
 /** /generate-plan — the structured action-plan prompt (moved out of routes/api.ts). */
-export const buildGeneratePlanPrompt = ({ developmentalFramework, childProfile, challengeTopic, approvedFacts, pastSteps }: GeneratePlanPromptArgs): string => `
+export const buildGeneratePlanPrompt = ({ developmentalFramework, childProfile, challengeTopic, approvedFacts, pastSteps, languageDirective }: GeneratePlanPromptArgs): string => `
 ${NON_DIAGNOSTIC_CONTRACT}
 ${developmentalFramework}
 
 Generate a structured, non-diagnostic Arbor action plan.
 Profile: ${JSON.stringify(promptProfile(childProfile))}
 Focus Challenge: "${challengeTopic}"
-${renderPlanContextBlock(approvedFacts, pastSteps)}Return JSON with title, issue, phases, scripts, and successIndicators.
+${renderPlanContextBlock(approvedFacts, pastSteps)}Return JSON with title, issue, phases, scripts, and successIndicators.${languageDirective ?? ""}
 `;
 
 export type AnalyzeBehaviorPromptArgs = {
@@ -681,6 +695,7 @@ export const promptFingerprint = (key: PromptKey): string => {
           challengeTopic: "«challenge»",
           approvedFacts: ["«approved-fact»"],
           pastSteps: CANONICAL.acceptedActions,
+          languageDirective: CANONICAL.languageDirective,
         }),
         buildGeneratePlanPrompt({ developmentalFramework: CANONICAL.framework, childProfile: CANONICAL.childProfile, challengeTopic: "«challenge»" }),
       ]));

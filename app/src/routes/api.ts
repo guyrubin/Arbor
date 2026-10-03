@@ -6,7 +6,7 @@ import { isAbortError, newAbortError, type ModelCallBudget, type ModelProvider }
 import { abortableIterate, raceWithAbort, isTransientModelError } from "../ai/modelRetry.js";
 import type { MemoryStore } from "../memory/types.js";
 import { createCoachResponseGeminiSchema, coachResponseZodSchema, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards, scrubHypothesisConfidence } from "../contracts/coach.js";
-import { PROMPT_VERSIONS, buildAnalyzeBehaviorPrompt, buildChatPrompt, buildCouncilSynthesisPrompt, buildExtractLogPrompt, buildGeneratePlanPrompt, buildTodaysFocusPrompt, buildVoiceReplyPrompt, promptProfile, ROUTINE_ESCALATION_GUIDANCE } from "../ai/prompts.js";
+import { PROMPT_VERSIONS, buildAnalyzeBehaviorPrompt, buildChatPrompt, buildCouncilSynthesisPrompt, buildExtractLogPrompt, buildGeneratePlanPrompt, buildTodaysFocusPrompt, jsonLanguageDirective, buildVoiceReplyPrompt, promptProfile, ROUTINE_ESCALATION_GUIDANCE } from "../ai/prompts.js";
 // Masterplan 1.3 — server-defensive sanitizers for the two OPTIONAL /chat body
 // fields (recentTurns transcript + counts-only weeklyContext). Both degrade to
 // the byte-identical legacy prompt on any malformed/absent input.
@@ -2753,7 +2753,8 @@ RULES:
   });
 
   router.post("/generate-plan", async (req, res) => {
-    const { challengeTopic, childProfile } = req.body;
+    // B-ASKJB-25: `language` reaches the prompt through the shared directive.
+    const { challengeTopic, childProfile, language } = req.body;
     const escalationMatch = screenForImmediateEscalation({ challengeTopic });
     if (escalationMatch) {
       res.status(409).json({
@@ -2774,6 +2775,7 @@ RULES:
         challengeTopic,
         approvedFacts: companion.approvedFacts.map((fact) => fact.text),
         pastSteps: companion.acceptedActions,
+        languageDirective: jsonLanguageDirective(language),
       });
       const privacy = createRedaction(childProfile?.name);
       const response = await modelProvider.generateJson({
