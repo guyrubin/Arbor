@@ -30,6 +30,7 @@ import * as growth from "../../lib/i18nElevation/growth";
 import { translate } from "../../lib/i18n";
 import * as authCopy from "../../lib/i18nElevation/auth";
 import { en as trustEn, he as trustHe } from "../../lib/i18nElevation/trustcenter";
+import { CHILD_DATA_ROWS } from "../../lib/childDataGroups";
 
 const SRC = path.resolve(__dirname, "..", "..");
 const read = (f: string) => readFileSync(path.join(SRC, f), "utf8");
@@ -122,7 +123,12 @@ describe("GP-25 · the Science page counts what it lists", () => {
   });
 
   it("the data-collection list includes the memory ledger, in both locales", () => {
-    expect(science).toContain('"screening", "coach", "memory"');
+    // B-CAREPRO-24 (a7b92e3): the page renders CHILD_DATA_ROWS (lib/childDataGroups)
+    // instead of a hand-picked id list; the memory ledger is one of its rows.
+    expect(science).toContain("{CHILD_DATA_ROWS.map((row) => (");
+    expect(science).toContain("tt(`elev.trust.data.${row.id}.label`)");
+    expect(CHILD_DATA_ROWS.map((r) => r.id)).toContain("memory");
+    expect(CHILD_DATA_ROWS.find((r) => r.id === "memory")?.elsewhere).toContain("server-memory");
     for (const key of ["elev.trust.data.memory.label", "elev.trust.data.memory.desc"]) {
       expect(trustEn[key], `${key} missing from en`).toBeTruthy();
       expect(HEBREW.test(trustHe[key] ?? ""), `${key} he is not transcreated`).toBe(true);
