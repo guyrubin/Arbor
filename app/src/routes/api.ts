@@ -17,6 +17,7 @@ import { assembleCompanionContext, createCompanionLedgerSource, lastRatedAction,
 import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../services/framework.js";
 import { screenForImmediateEscalation, renderEscalationMarkdown, escalationMatchForCategory } from "../safety/escalation.js";
 import { renderConditionQuestionReply, screenForConditionQuestion } from "../safety/conditionQuestion.js";
+import { seededEscalationLine, withVerbatimEscalation } from "../safety/seededEscalation.js";
 import { DEFAULT_MEMORY_RETENTION, appendMemoryProposals, enforceMemoryRetention, foldMemoryEvents, getApprovedMemoryContext, getApprovedMemoryContextDetail, toChildId, toFamilyId, transitionMemory } from "../memory/memoryService.js";
 import { loadKnowledgeCardsWithMetadata, renderKnowledgeContext, retrieveKnowledgeCards, loadCardsByIds } from "../knowledge/wiki.js";
 // AI-03: the retrieval keys the routes actually have. `childProfile.ageBand`
@@ -788,7 +789,15 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     // condition, or to name it while declining (which the output floor then
     // blocks into the generic fallback). No contract, no grade, no label.
     if (screenForConditionQuestion(message)) {
-      const payload = { text: renderConditionQuestionReply(language === "he" ? "he" : "en"), conditionQuestion: true };
+      // B-AI-14: a seeded conversation's governed escalation line rides the
+      // governed reply too (byte-identical, after it). The crisis path above
+      // stays the safety trip, untouched.
+      const conditionReply = renderConditionQuestionReply(language === "he" ? "he" : "en");
+      const seededLine = seededEscalationLine(message, recentTurns);
+      const payload = {
+        text: seededLine && !conditionReply.includes(seededLine) ? `${conditionReply}\n\n${seededLine}` : conditionReply,
+        conditionQuestion: true,
+      };
       if (streamResponse) {
         beginSse(res);
         writeSse(res, "done", payload);
@@ -966,6 +975,12 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // reaches the parent, and the rendered labels follow the session language.
       const renderLanguage = language === "he" ? "he" : "en";
       scrubHypothesisConfidence(structured, renderLanguage);
+
+      // B-AI-14: in a hard-moment seeded conversation the card's governed
+      // escalation sentence leads escalateIf byte-identical — appended by the
+      // server after generation, never left to the model (safety/seededEscalation).
+      const seededEscalation = seededEscalationLine(message, recentTurns);
+      if (seededEscalation) structured.escalateIf = withVerbatimEscalation(structured.escalateIf, seededEscalation);
 
       // AI-2: output-side safety screen (lexical floor + optional semantic classifier).
       const renderedText = renderCoachResponse(structured, renderLanguage);
