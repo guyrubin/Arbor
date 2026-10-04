@@ -82,3 +82,45 @@ describe("B-CAREPRO-27 · Free parent: a teacher brief on open, no paywall", () 
     });
   }
 });
+
+/* W2-CAREPRO r2 (law 8, P1 G0) — the Arbor-composed Hebrew overview reads in
+   Hebrew order. translate() already isolates the name (FSI…PDI), but the
+   paragraph was dir="auto", and the HTML dir=auto rule takes the first strong
+   letter WITHOUT skipping isolate content — the Latin name — so the line
+   resolved LTR and "Noa, 5" landed at the far end. The composed overview now
+   takes the UI direction; dir=auto stays only on parent-typed list items. */
+describe("W2-CAREPRO r2 · the HE overview is RTL with the name first", () => {
+  const FSI = "⁨";
+  const PDI = "⁩";
+  /** HTML dir=auto: the first strong letter in the text, isolates NOT skipped. */
+  const htmlAutoDirection = (text: string): "rtl" | "ltr" | null => {
+    for (const ch of text) {
+      if (/[֐-׿]/.test(ch)) return "rtl";
+      if (/[A-Za-z]/.test(ch)) return "ltr";
+    }
+    return null;
+  };
+  const overviewOf = (html: string) => {
+    const m = /<p data-testid="school-brief-overview" dir="(rtl|ltr|auto)"[^>]*>([^<]*)<\/p>/.exec(html);
+    return m ? { dir: m[1], text: m[2] } : null;
+  };
+
+  it("HE: the paragraph is dir=rtl and the isolated name comes first", () => {
+    harness.locale = "he";
+    const ov = overviewOf(renderToStaticMarkup(<SchoolBrief />))!;
+    expect(ov.dir).toBe("rtl");
+    expect(ov.text.startsWith(`${FSI}Noa${PDI}`)).toBe(true);
+    expect(ov.text).toContain("גן שקד");
+  });
+
+  it("negative control: under dir=auto this very line resolves LTR (the r2 defect)", () => {
+    harness.locale = "he";
+    const ov = overviewOf(renderToStaticMarkup(<SchoolBrief />))!;
+    expect(htmlAutoDirection(ov.text)).toBe("ltr");
+  });
+
+  it("EN: dir=ltr", () => {
+    harness.locale = "en";
+    expect(overviewOf(renderToStaticMarkup(<SchoolBrief />))!.dir).toBe("ltr");
+  });
+});

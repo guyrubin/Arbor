@@ -409,7 +409,11 @@ export default function SchoolBrief() {
                   style={{ color: INK, background: "var(--arbor-paper-sunk)", border: `1px solid ${RULE}` }}
                 />
               ) : (
-                <p dir="auto" className="t-base leading-relaxed" style={{ color: MUTED }}>{draft.overview}</p>
+                // W2-CAREPRO r2 (law 8): the composed overview takes the UI
+                // direction — dir=auto resolved LTR on the Latin name that
+                // opens it. Interpolated parts are FSI/PDI isolates
+                // (packet.resolveVars); dir=auto stays on parent-typed items.
+                <p data-testid="school-brief-overview" dir={uiLang === "he" ? "rtl" : "ltr"} className="t-base leading-relaxed" style={{ color: MUTED }}>{draft.overview}</p>
               )}
             </Section>
 
