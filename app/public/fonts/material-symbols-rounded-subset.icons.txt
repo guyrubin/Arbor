@@ -13,6 +13,7 @@ air
 anchor
 android
 arrow_back
+arrow_downward
 arrow_forward
 assessment
 assignment
@@ -118,6 +119,7 @@ feed
 feedback
 flag
 flatware
+folder_open
 format_quote
 forum
 forward
@@ -242,6 +244,7 @@ routine
 save
 scene
 schedule
+schema
 school
 science
 scooter
