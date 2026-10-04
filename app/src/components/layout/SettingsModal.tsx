@@ -30,7 +30,7 @@ import { fmtDay } from "../../lib/formatDate";
  *  notifications, billing, and account). */
 export default function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { uiLang, aiLang, setUiLang, setAiLang, t } = useLanguage();
-  const { showAiRail, setShowAiRail, setActiveTab } = useArbor();
+  const { setActiveTab } = useArbor();
   const { user, signOut, firebaseEnabled } = useAuth();
   const { toast } = useToast();
   // MOB-08: `loading` → skeleton row (never "Free" while unsure); `isFallback`
@@ -374,20 +374,8 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
 
         <Section title={t("set.section.privacyTrust")} sub={t("set.section.privacyTrustSub")}>
 
-        {/* AI Engines panel.
-            OBJ-SHELL-06 / PLAT-3: the rail itself is `hidden 2xl:flex` and
-            Shell only opens a third grid column at 2xl, so below 1536 px this
-            switch changed a value nothing could render. The Topbar toggle
-            already carries the same breakpoint; this row now matches it, which
-            is the whole of PLAT-3 applied to the one surface it missed. */}
-        <div className="hidden 2xl:block" data-testid="settings-rail-row">
-        <Row icon={<Icon name="auto_awesome" size={18} />} title={t("set.rail.title")} sub={t("set.rail.sub")}>
-          <button onClick={() => setShowAiRail(!showAiRail)} aria-pressed={showAiRail} className="w-11 min-h-11 h-11 flex items-center justify-center relative">
-            <span className="w-11 h-6 rounded-full transition block" style={{ background: showAiRail ? "var(--arbor-clay)" : "var(--arbor-rule-strong)" }} />
-            <span className={`absolute top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white transition-all ${showAiRail ? "end-[2px]" : "start-[2px]"}`} />
-          </button>
-        </Row>
-        </div>
+        {/* B-SHELL-01: the AI-rail switch is gone with the rail; Privacy &
+            trust is the PIN row only. */}
         {/* STORE-3: parent PIN management — the ONLY setup surface (the kid-mode
             challenge card can no longer mint the PIN). */}
         <div className="pt-1" data-testid="settings-pin-row">

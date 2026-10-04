@@ -182,7 +182,6 @@ const HEX_ALLOWLIST: Record<string, readonly string[]> = {
   "components/auth/LoginScreen.tsx": ["#1976d2", "#4caf50", "#ff3d00", "#ffc107"], // Google logo SVG
   "components/kidmode/KidDashboard.tsx": ["#58a6ff"],
   "components/layout/AdminDashboard.tsx": ["#fff"],
-  "components/layout/AiRail.tsx": ["#fff"],
   "components/layout/SettingsModal.tsx": ["#eef6f1"],
   "components/layout/Shell.tsx": ["#8a5326"],
   "components/layout/Sidebar.tsx": ["#fff"],

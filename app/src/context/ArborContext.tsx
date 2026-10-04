@@ -343,11 +343,6 @@ function useArborState() {
     seedCoach({ prompt: postCaptureCoachPrompt, source: "post-capture" });
     setPostCaptureCoachPrompt(null);
   };
-  // UC-wireframe: the right-hand AI "how Arbor helps" rail is a third column the
-  // wireframe does not have. Default it OFF (opt-in via the topbar toggle) so the
-  // content column breathes; the parent's choice still persists in localStorage.
-  const [showAiRail, setShowAiRail] = useState<boolean>(() => readLS("arbor.aiRail") === "true");
-
   // App Core States — persisted per child (Firestore when authed, localStorage in sandbox)
   const logsCol = useChildCollection<BehaviorLog>(childProfile.id, "behaviorLogs", {
     sandboxSeed: demoSeed.logs,
@@ -775,7 +770,9 @@ function useArborState() {
 
   // Persist UI preferences.
   useEffect(() => writeLS("arbor.activeTab", activeTab), [activeTab]);
-  useEffect(() => writeLS("arbor.aiRail", String(showAiRail)), [showAiRail]);
+  // B-SHELL-01: the static "how Arbor helps" rail is gone (trust moves to
+  // per-answer provenance, the Ask lane's item); drop its stored flag once.
+  useEffect(() => { try { localStorage.removeItem("arbor.aiRail"); } catch { /* ignore */ } }, []);
   useEffect(() => writeLS("arbor.lens", selectedLens), [selectedLens]);
 
   // Developmental COUNTS (never a score): windowed to the child's current CDC
@@ -1543,8 +1540,6 @@ function useArborState() {
     showSandboxBanner,
     activeTab,
     setActiveTab,
-    showAiRail,
-    setShowAiRail,
     childProfile,
     updateChild,
     behaviorLogs,

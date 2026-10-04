@@ -3,7 +3,7 @@
  * dead chrome controls.
  *
  * PLAT-1 (split-brain token scope): the shell chrome (Topbar, Sidebar,
- * MobileNav, AiRail, …) historically rendered OUTSIDE the .arbor-parent
+ * MobileNav, …) historically rendered OUTSIDE the .arbor-parent
  * token scope, so chrome resolved the legacy :root "glass" palette while
  * content resolved the flat clinical one — and --arbor-topbar-band was
  * undefined at its only usage. The fix hoisted the override block to
@@ -14,10 +14,10 @@
  * (:root or .arbor-app) — so a future token can never again be declared only
  * at a narrower scope and silently render as `unset` in the chrome.
  *
- * PLAT-3 (dead rail toggle): the Topbar "how Arbor helps" toggle, the AiRail
- * <aside> and Shell's third grid column must all gate on the SAME Tailwind
- * breakpoint, otherwise the toggle renders at widths where the rail cannot —
- * aria-pressed flips with zero visible change (the 1280-1535px silent no-op).
+ * PLAT-3 → B-SHELL-01 (no rail): the static "how Arbor helps" rail and its
+ * three toggles (Topbar, Settings, Today header) were removed; trust moves to
+ * per-answer provenance (Ask lane). The guard below pins that the Shell grid
+ * has no third track and that nothing in src renders or stores the rail.
  */
 import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -111,26 +111,42 @@ describe("PLAT-1 — every var() in layout chrome resolves at chrome scope", () 
   });
 });
 
-describe("PLAT-3 — rail toggle, AiRail and Shell grid share one breakpoint", () => {
-  const topbar = readFileSync(path.join(layoutDir, "Topbar.tsx"), "utf8");
-  const aiRail = readFileSync(path.join(layoutDir, "AiRail.tsx"), "utf8");
+describe("B-SHELL-01 — no rail: two columns at every width, no toggle, no stored flag", () => {
   const shell = readFileSync(path.join(layoutDir, "Shell.tsx"), "utf8");
+  const topbar = readFileSync(path.join(layoutDir, "Topbar.tsx"), "utf8");
+  const settings = readFileSync(path.join(layoutDir, "SettingsModal.tsx"), "utf8");
+  // Built from parts so this guard is not itself a hit for the grep it enforces.
+  const RAIL = new RegExp(["show" + "Ai" + "Rail", "Ai" + "Rail", "arbor\\.ai" + "Rail"].join("|"));
 
-  const railBp = aiRail.match(/hidden (2?xl|lg|md):flex/)?.[1];
-  const toggleBp = topbar.match(/hidden (2?xl|lg|md):inline-flex/)?.[1];
-  const gridBp = shell.match(/(2?xl|lg|md):grid-cols-\[[^\]]*_320px\]/)?.[1];
-
-  it("all three breakpoints are found by the guard (guard stays honest)", () => {
-    expect(railBp, "AiRail visibility breakpoint not found").toBeDefined();
-    expect(toggleBp, "Topbar rail-toggle visibility breakpoint not found").toBeDefined();
-    expect(gridBp, "Shell third-column breakpoint not found").toBeDefined();
+  it("the Shell grid has no 2xl third track (the 320px rail column)", () => {
+    expect(shell).toContain("page-shell grid grid-cols-1");
+    expect(shell).not.toMatch(/2xl:grid-cols-\[[^\]]*320px\]/);
+    expect(shell).not.toMatch(/grid-cols-\[[^\]]*_320px\]/);
+    // negative control: the pre-change class is caught by the same pattern
+    expect("2xl:grid-cols-[280px_minmax(0,1fr)_320px]").toMatch(/2xl:grid-cols-\[[^\]]*320px\]/);
   });
 
-  it("toggle is never visible at a width where the rail cannot render", () => {
-    expect(toggleBp).toBe(railBp);
+  it("the rail file is deleted and no chrome surface renders a toggle for it", () => {
+    expect(readdirSync(layoutDir)).not.toContain("Ai" + "Rail.tsx");
+    for (const src of [shell, topbar, settings]) expect(src).not.toMatch(RAIL);
+    expect(settings).not.toContain("settings-rail-row");
+    expect(topbar).not.toContain('t("top.howHelps")');
   });
 
-  it("Shell opens the third grid column at the same breakpoint the rail shows", () => {
-    expect(gridBp).toBe(railBp);
+  it("no source file outside the one-time migration line names the rail", () => {
+    const srcRoot = path.join(here, "..", "..");
+    const hits: string[] = [];
+    const walk = (dir: string) => {
+      for (const ent of readdirSync(dir, { withFileTypes: true })) {
+        const p = path.join(dir, ent.name);
+        if (ent.isDirectory()) { walk(p); continue; }
+        if (!/\.(tsx?|mjs)$/.test(ent.name) || /\.test\.tsx?$/.test(ent.name)) continue;
+        readFileSync(p, "utf8").split(/\r?\n/).forEach((line, i) => {
+          if (RAIL.test(line) && !/localStorage\.removeItem\("arbor\.ai/.test(line)) hits.push(`${path.relative(srcRoot, p)}:${i + 1}`);
+        });
+      }
+    };
+    walk(srcRoot);
+    expect(hits).toEqual([]);
   });
 });

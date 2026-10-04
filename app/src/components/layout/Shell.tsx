@@ -12,7 +12,6 @@ import KidModeButton from "./KidModeButton";
 // IA-01 / IA-18: the Safety life-ring takes the strip slot the duplicate Ask
 // door used to hold (Ask is already a primary MobileNav tab 8mm below).
 import SafetyRing from "./SafetyRing";
-import AiRail from "./AiRail";
 import ChildContextHeader from "./ChildContextHeader";
 import MobileNav from "./MobileNav";
 import { ErrorBoundary } from "../ErrorBoundary";
@@ -210,7 +209,7 @@ function SurfaceFrame({ route, children }: { route: ActiveTab; children: React.R
 }
 
 export default function Shell() {
-  const { activeTab, setActiveTab, showAiRail, setShowAiRail, showSandboxBanner, childProfile, captureSheet, closeCaptureSheet } = useArbor();
+  const { activeTab, setActiveTab, showSandboxBanner, childProfile, captureSheet, closeCaptureSheet } = useArbor();
   const { toast } = useToast();
   const { t } = useLanguage();
   const ActiveTabComponent = tabRegistry[activeTab];
@@ -341,11 +340,8 @@ export default function Shell() {
     {/* select-none removed: parents must be able to select/copy scripts and guidance (a11y + core utility) */}
     <div className="arbor-app min-h-screen text-sans antialiased overflow-x-hidden relative">
       <div
-        className={`page-shell grid grid-cols-1 lg:grid-cols-[248px_minmax(0,1fr)] ${
-          showAiRail
-            ? "xl:grid-cols-[280px_minmax(0,1fr)] 2xl:grid-cols-[280px_minmax(0,1fr)_320px]"
-            : "xl:grid-cols-[280px_minmax(0,1fr)]"
-        } min-h-screen relative z-10 transition-all duration-300 max-w-full overflow-x-hidden`}
+        // B-SHELL-01: two columns at every width — the third (AI rail) track is gone.
+        className="page-shell grid grid-cols-1 lg:grid-cols-[248px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)] min-h-screen relative z-10 transition-all duration-300 max-w-full overflow-x-hidden"
       >
         <Sidebar />
 
@@ -567,7 +563,6 @@ export default function Shell() {
         </main>
         </div>{/* end right column (AP-044: topbar + main) */}
 
-        {showAiRail && <AiRail />}
       </div>
 
       <MobileNav />

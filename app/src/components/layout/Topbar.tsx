@@ -4,7 +4,6 @@ import TopbarSearch from "../search/TopbarSearch";
 import KidModeButton from "./KidModeButton";
 import SafetyRing from "./SafetyRing"; // IA-01: canon Safety life-ring — first control in the band
 import OfflineChip from "../ui/OfflineChip"; // W0.6: renders only while offline
-import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { sectionForTab } from "../../lib/navigation";
@@ -23,7 +22,7 @@ import { sectionForTab } from "../../lib/navigation";
  * desktop entry point. All tokens are sourced from index.css; no raw hex.
  */
 export default function Topbar() {
-  const { activeTab, childProfile, showAiRail, setShowAiRail } = useArbor();
+  const { activeTab, childProfile } = useArbor();
   const { t } = useLanguage();
   const section = sectionForTab(activeTab);
 
@@ -98,23 +97,6 @@ export default function Topbar() {
         <div className="hidden lg:block flex-shrink-0">
           <KidModeButton />
         </div>
-        {/* PLAT-3: the rail toggle's visibility breakpoint must match AiRail's
-            (2xl) and Shell's third grid column (2xl) — at xl widths (1280-1535px)
-            the rail never renders, so a visible toggle there was a silent no-op
-            (aria-pressed flipped with no layout change). Guarded by
-            layoutTokens.test.ts breakpoint-alignment test. */}
-        <button
-          onClick={() => setShowAiRail(!showAiRail)}
-          aria-label={t("top.howHelps")}
-          aria-pressed={showAiRail}
-          title={t("top.howHelps")}
-          className="hidden 2xl:inline-flex items-center justify-center w-11 h-11 rounded-xl transition flex-shrink-0"
-          style={showAiRail
-            ? { background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }
-            : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
-        >
-          <Icon name="verified_user" size={18} />
-        </button>
         <div className="flex-shrink-0 min-w-0">
           <TopbarKidSwitcher />
         </div>

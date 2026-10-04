@@ -171,8 +171,8 @@ describe("UC-8a — the topbar title always gets usable width", () => {
         `${control} sits in a shrinkable wrapper — it can be squeezed narrower than its content`,
       ).toBe(true);
     }
-    // the rail toggle carries its own flex-shrink-0 on the button element
-    expect(topbar).toMatch(/2xl:inline-flex[^"]*flex-shrink-0/);
+    // B-SHELL-01: the rail toggle (which carried its own flex-shrink-0) is gone.
+    expect(topbar).not.toMatch(/2xl:inline-flex[^"]*flex-shrink-0/);
   });
 });
 
@@ -481,7 +481,6 @@ describe("R5 — every Settings control declares the 44 px floor", () => {
     ["Open Your data (B-CAREPRO-35)", () => settings, 'data-testid="settings-open-your-data"'],
     ["Support link", () => settings, 'data-testid="settings-support-link"'],
     ["AI-language switch", () => settings, 't("set.aiLang.toggle")'],
-    ["AI rail switch", () => settings, "setShowAiRail(!showAiRail)"],
     ["cadence toggle", () => settings, "onClick={() => setCadence(c)}"],
     ["upgrade to Plus", () => settings, 'startCheckout("plus", cadence, "settings")'],
     ["upgrade to Family", () => settings, 'startCheckout("family", cadence, "settings")'],
@@ -523,11 +522,12 @@ describe("R5 — every Settings control declares the 44 px floor", () => {
   });
 
   it("the switches keep their 24 px TRACK — the floor is the target, not the look", () => {
-    expect((settings.match(/w-11 h-6 rounded-full transition block/g) ?? [])).toHaveLength(2);
+    // B-SHELL-01: the AI-rail switch went with the rail — one switch remains.
+    expect((settings.match(/w-11 h-6 rounded-full transition block/g) ?? [])).toHaveLength(1);
     // …and the thumb now actually travels end-to-end (it read end-[22px] on a
     // 44 px track, which lands 2 px from the START — the same place as "off").
     expect(settings).not.toContain("end-[22px]");
-    expect((settings.match(/end-\[2px\]/g) ?? [])).toHaveLength(2);
-    expect((settings.match(/start-\[2px\]/g) ?? [])).toHaveLength(2);
+    expect((settings.match(/end-\[2px\]/g) ?? [])).toHaveLength(1);
+    expect((settings.match(/start-\[2px\]/g) ?? [])).toHaveLength(1);
   });
 });

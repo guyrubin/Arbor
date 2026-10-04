@@ -197,7 +197,6 @@ describe("OBJ-TODAY-01 — repo-wide ratchet", () => {
     "auth/LoginScreen.tsx",
     "auth/OnboardingFlow.tsx",
     "journal/JournalEntrySheet.tsx",
-    "layout/AiRail.tsx",
     "overview/ConfirmCaptureReview.tsx",
     "overview/DailyPlanCard.tsx",
     "overview/PromptCaptureCard.tsx",

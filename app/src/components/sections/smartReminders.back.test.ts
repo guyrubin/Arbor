@@ -9,10 +9,8 @@
  *    SECTIONS `today.tools`) and the label says Today.
  *  - The Settings "Gentle Reminders" row borrowed `set.data.open`, so its
  *    button read "Open profile".
- *  - The "How Arbor helps" rail toggle rendered at every width while AiRail is
- *    `hidden 2xl:flex` and Shell only opens the third grid column at 2xl — a
- *    switch that changed a value nothing could render. PLAT-3 already pins the
- *    Topbar toggle to that breakpoint; this row was the site it missed.
+ *  - The "How Arbor helps" rail switch changed a value nothing could render
+ *    below 2xl. B-SHELL-01 removed the rail and every switch for it.
  *
  * Source-level assertions: the vitest environment is node-only and these are
  * navigation targets, key identity and a Tailwind breakpoint — none of which a
@@ -28,7 +26,6 @@ import { SECTIONS } from "../../lib/navigation";
 const read = (rel: string) => fs.readFileSync(path.resolve(__dirname, rel), "utf8");
 const panel = read("SmartRemindersPanel.tsx");
 const settings = read("../layout/SettingsModal.tsx");
-const aiRail = read("../layout/AiRail.tsx");
 const shell = read("../layout/Shell.tsx");
 
 describe("1 · the back control goes where its label says", () => {
@@ -84,31 +81,11 @@ describe("2 · the Settings reminders row has its own verb", () => {
   });
 });
 
-describe("3 · the rail toggle exists only where the rail can render (PLAT-3)", () => {
-  const railBp = aiRail.match(/hidden (2?xl|lg|md):flex/)?.[1];
-  const gridBp = shell.match(/(2?xl|lg|md):grid-cols-\[[^\]]*_320px\]/)?.[1];
-  const rowBp = settings.match(/hidden (2?xl|lg|md):block" data-testid="settings-rail-row"/)?.[1];
-
-  it("the guard finds all three breakpoints (it stays honest)", () => {
-    expect(railBp, "AiRail breakpoint not found").toBeDefined();
-    expect(gridBp, "Shell third-column breakpoint not found").toBeDefined();
-    expect(rowBp, "Settings rail-row breakpoint not found").toBeDefined();
-  });
-
-  it("the Settings row shares the rail's breakpoint exactly", () => {
-    expect(rowBp).toBe(railBp);
-    expect(rowBp).toBe(gridBp);
-    expect(rowBp).toBe("2xl");
-  });
-
-  it("negative control: the shipped row carried no breakpoint at all", () => {
-    // As shipped the Row was a bare sibling of the other Section rows, so it
-    // rendered at 390 and 1280 where the rail cannot exist.
-    const bare = '<Row icon={<Icon name="auto_awesome" size={18} />} title={t("set.rail.title")}';
-    const idx = settings.indexOf(bare);
-    expect(idx).toBeGreaterThan(-1);
-    // …and it is now wrapped: the 2xl gate opens within the preceding lines.
-    expect(settings.slice(Math.max(0, idx - 400), idx)).toContain('hidden 2xl:block" data-testid="settings-rail-row"');
+describe("3 · the rail and its switch are gone (B-SHELL-01 supersedes PLAT-3)", () => {
+  it("Settings has no rail row and the Shell grid has no rail track", () => {
+    expect(settings).not.toContain("settings-rail-row");
+    expect(settings).not.toContain('t("set.rail.title")');
+    expect(shell).not.toMatch(/grid-cols-\[[^\]]*_320px\]/);
   });
 });
 

@@ -169,7 +169,7 @@ function settings(source = settingsSource) {
     "../referral/InviteCard": { default: "InviteCard", __esModule: true },
     "../billing/PlanPrices": { PlanPrices: "PlanPrices" }, "../billing/LegalLinks": { LegalLinks: "LegalLinks" },
     "../ui/Skeleton": { Skeleton: "Skeleton" }, "../ui/PlanBadge": { PlanBadge: "PlanBadge" },
-    "../../context/ArborContext": { useArbor: () => ({ showAiRail: false, setShowAiRail: vi.fn(), setActiveTab: vi.fn() }) },
+    "../../context/ArborContext": { useArbor: () => ({ setActiveTab: vi.fn() }) },
     "../../hooks/useEntitlement": { useEntitlement: () => ({ entitlement: { plan: "free", limits: { coachMessagesPerDay: 5 }, usage: { coachMessagesToday: 0 } } }) },
     "../../hooks/useCheckout": { useCheckout: () => ({}) },
     "../../lib/tokens": { T: {} },

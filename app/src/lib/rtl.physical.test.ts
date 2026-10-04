@@ -68,13 +68,11 @@ describe("CR-13 · no physical inline offsets on layout seams", () => {
     expect(offenders, `physical offsets found — use borderInlineEnd/Start, marginInlineStart/End:\n${offenders.join("\n")}`).toEqual([]);
   });
 
-  it("the Sidebar and AiRail seams are logical", () => {
+  it("the Sidebar seam is logical", () => {
+    // B-SHELL-01: the rail (the other seam) was removed.
     const sidebar = fs.readFileSync(path.join(COMPONENTS, "layout", "Sidebar.tsx"), "utf8");
-    const rail = fs.readFileSync(path.join(COMPONENTS, "layout", "AiRail.tsx"), "utf8");
     expect(sidebar).toContain('borderInlineEnd: "1px solid var(--arbor-rule)"');
     expect(sidebar).not.toContain("borderRight:");
-    expect(rail).toContain('borderInlineStart: "1px solid var(--arbor-rule)"');
-    expect(rail).not.toContain("borderLeft:");
   });
 
   /**
@@ -176,13 +174,6 @@ describe("CR-13 · directional glyph ratchet", () => {
       sites.length,
       `unmirrored directional glyphs rose to ${sites.length} (ceiling ${UNMIRRORED_CEILING}):\n${sites.join("\n")}`
     ).toBeLessThanOrEqual(UNMIRRORED_CEILING);
-  });
-
-  it("the AiRail glyphs are mirrored", () => {
-    const rail = fs.readFileSync(path.join(COMPONENTS, "layout", "AiRail.tsx"), "utf8");
-    for (const line of rail.split("\n")) {
-      if (DIRECTIONAL.test(line)) expect(MIRRORED.test(line), `unmirrored in AiRail: ${line.trim()}`).toBe(true);
-    }
   });
 });
 
