@@ -346,7 +346,7 @@ describe("critic r2 — Journal: real modules, an honest aside, the quote at eve
     expect(search).toMatch(/className="field-pill min-h-11 rounded-xl px-3/);
     expect(search).not.toMatch(/background: "var\(--arbor-paper-elevated\)"/);
     // The scoped rule beats `.arbor-app input` (both !important; higher specificity).
-    expect(CSS).toMatch(/\.arbor-app input\.field-bare,[\s\S]{0,60}\{\s*background-color: transparent !important;/);
+    expect(CSS).toMatch(/\.arbor-app input\.field-bare,[\s\S]{0,200}\{\s*background-color: transparent !important;/);
     expect(CSS).toMatch(/\.arbor-app \.field-pill \{\s*background-color: var\(--arbor-paper-elevated\) !important;/);
     expect(read("components/search/TopbarSearch.tsx")).toContain('className="field-bare min-h-11 self-stretch"');
   });

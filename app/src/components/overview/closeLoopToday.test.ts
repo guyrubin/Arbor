@@ -281,7 +281,10 @@ describe("B-ASKJB-26 — a plan-sourced step through accept → Today → outcom
           onTryIt: noop, onUndo: noop, onCheck: noop, onAdjust: noop,
         }));
       const html = r(basePlan, NOW);
-      expect(html).toContain(lang === "he" ? "יום 1 בתוכנית" : "Day 1 of Calmer exits");
+      // Plans critic r1 (d52e5e7): no "Day 1" beside done steps — the day
+      // count shows from Day 2; Day 1 reads "Today's step".
+      expect(html).toContain(lang === "he" ? "הצעד של היום · " : "Today&#x27;s step · ");
+      expect(html).not.toMatch(/Day 1 of|יום 1 בתוכנית/);
       expect(html).toContain("Give a two-minute warning.");
       expect(html).toContain(lang === "he" ? "אנסה את זה" : "I&#x27;ll try it");
       expect(html).toContain('data-testid="plan-weekly-check"');
