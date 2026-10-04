@@ -207,6 +207,10 @@ describe("OBJ-TODAY-01 — repo-wide ratchet", () => {
     "sections/Appointments.tsx",
     "sections/AskSpecialist.tsx",
     "sections/Masterclasses.tsx",
+    // W2-CAREPRO r1: the lead record's "Save this week's record" button carries
+    // data-primary-move="export-report" (surfaceContract reports.primaryMove) and
+    // is the only gradient in the file; exportSeam.test.ts pins the one stamp.
+    "sections/Reports.tsx",
     "sections/SchoolBrief.tsx",
     "sections/Screening.tsx",
     "sections/Strengths.tsx",
