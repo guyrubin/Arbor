@@ -18,6 +18,7 @@ import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../
 import { screenForImmediateEscalation, renderEscalationMarkdown, escalationMatchForCategory } from "../safety/escalation.js";
 import { renderConditionQuestionReply, screenForConditionQuestion } from "../safety/conditionQuestion.js";
 import { seededEscalationLine, withVerbatimEscalation } from "../safety/seededEscalation.js";
+import { captureLanguage, normalizeCaptureDraft } from "../server/captureDraft.js";
 import { DEFAULT_MEMORY_RETENTION, appendMemoryProposals, enforceMemoryRetention, foldMemoryEvents, getApprovedMemoryContext, getApprovedMemoryContextDetail, toChildId, toFamilyId, transitionMemory } from "../memory/memoryService.js";
 import { loadKnowledgeCardsWithMetadata, renderKnowledgeContext, retrieveKnowledgeCards, loadCardsByIds } from "../knowledge/wiki.js";
 // AI-03: the retrieval keys the routes actually have. `childProfile.ageBand`
@@ -1747,8 +1748,10 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // AI-CAP-2: mirror /chat's languageDirective — a Hebrew-speaking parent's
       // draft must come back in Hebrew. behaviorType/context stay per schema
       // (English/enum) so the AI-CAP-8 taxonomy mapping and clamps keep working.
+      // B-AI-15: Hebrew in → Hebrew out — a Hebrew capture gets the Hebrew
+      // directive even when the client did not send language: "he".
       const languageDirective =
-        language === "he"
+        captureLanguage(language, message) === "he"
           ? '\nIMPORTANT: The parent speaks Hebrew. Write "trigger", "response" and "notes" in natural, warm Hebrew (עברית). Keep "behaviorType" as a short English label and "context" exactly one of the schema values.'
           : "";
       // EVAL-6: version-pinned named builder (ai/prompts.ts) — the canonical
@@ -1783,7 +1786,8 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         }
       }), budget.signal);
       budget.settle();
-      await sendScreenedJson(res, privacy.restoreDeep(draft));
+      // B-AI-15: one log per capture, neutral about the parent (server/captureDraft).
+      await sendScreenedJson(res, normalizeCaptureDraft(privacy.restoreDeep(draft)));
     } catch (error: any) {
       budget.settle();
       if (budget.clientGone()) return;

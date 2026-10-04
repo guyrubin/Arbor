@@ -172,7 +172,11 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   council_synthesis: { version: "1.2.0", sha256: "428ed3513c47ba544b8e1afee8a4492140902d4b1210ec8cbb75893d8b77a00f" },
   voice_reply: { version: "1.6.0", sha256: "7c06dfda8297c50b0fd596f32a728689cd1503cb0662f9e10d3904e007be651b" },
   live_session: { version: "1.4.0", sha256: "a860d147a58a4be6f0adca9b9525925c76e3db86bf563f0ee6ad5590572fbe5c" },
-  extract_log: { version: "1.1.0", sha256: "4d30bdb29b6a9b09138e5438cdefb32235cb188b4559af09cca325bf58755b53" },
+  // 1.2.0 (B-AI-15, 2026-10-04): one capture = one log (first moment, never
+  // merged, never an array), notes copy the parent's own words, no adjective
+  // about the parent, Hebrew in → Hebrew out. Deterministic floor under it:
+  // server/captureDraft.ts. Re-pin: capture-extract-v1 (live tier).
+  extract_log: { version: "1.2.0", sha256: "fbad6b9dc903299846b64b6eb0834f67cadec8cc84b7874194f0d88347aecdf6" },
   // 1.0.0 (B-AI-01 ← B-TODAY-24 server half): the /todays-focus prompt left
   // the route handler. Byte-parity with the inline template it replaced is
   // pinned in prompts.test.ts; the only new text is the OPTIONAL approved-
@@ -442,8 +446,11 @@ Rules:
 - durationMinutes: best-guess integer (use 10 if unclear).
 - context: one of exactly Home, School, Transit, Public.
 - trigger: the immediate antecedent in a few words ("" if unknown).
-- response: what the parent did, if mentioned ("" if unknown).
-- notes: one short neutral sentence capturing anything else useful ("" if none).
+- response: what the parent did, if mentioned, as an action ("" if unknown).
+- notes: one short neutral sentence in the parent's own words — copy them from the description, in the description's language — for anything else about the child's moment ("" if none).
+One capture = one log: the description is ONE moment unless the parent says "and then" or "later". If it names several moments, draft only the most salient one (the first one described when unsure) and keep every field about that moment; never merge details from the other moments into its fields, never return an array.
+Never describe, grade, praise or comfort the parent: no adjectives about the parent and nothing about how the parent felt or coped, even when the description is self-blaming. Every field describes the child's moment.
+Write trigger, response and notes in the language of the description (Hebrew in, Hebrew out).
 Return only JSON matching the schema.${languageDirective}`;
 
 export type TodaysFocusPromptArgs = {

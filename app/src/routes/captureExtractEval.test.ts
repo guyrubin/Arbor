@@ -37,6 +37,8 @@ import { createWaitlistStore } from "../server/waitlist.js";
 import { NON_DIAGNOSTIC_CONTRACT } from "../contracts/coach.js";
 import { CANONICAL_BEHAVIOR_TYPES } from "../content/behaviorTaxonomy.js";
 import type { ModelProvider } from "../ai/modelRouter.js";
+import { PROMPT_VERSIONS } from "../ai/prompts.js";
+import { judgesParent } from "../server/captureDraft.js";
 
 const HEBREW = /[֐-׿]/;
 const CONTEXT_ENUM = ["Home", "School", "Transit", "Public"];
@@ -255,5 +257,78 @@ describe("capture-extract-v1 deterministic tier (real /api/extract-log, scripted
         "capture-empty-input",
       ].sort(),
     );
+  });
+});
+
+describe("B-AI-15 — one log per capture, neutral about the parent (deterministic floor, 6 fixtures)", () => {
+  it("the prompt carries the one-capture-one-log, parent's-own-words, no-parent-adjective and Hebrew-out rules (extract_log 1.2.0)", async () => {
+    draft = scenario("capture-happy-path-en").input.stubbedDraft;
+    await postExtract({ message: "He threw his cup.", childProfile: CHILD });
+    expect(lastPrompt).toContain("One capture = one log");
+    expect(lastPrompt).toContain("never merge details from the other moments");
+    expect(lastPrompt).toContain("in the parent's own words");
+    expect(lastPrompt).toContain("Never describe, grade, praise or comfort the parent");
+    expect(lastPrompt).toContain("Hebrew in, Hebrew out");
+    expect(suite.promptVersions.extract_log).toBe(PROMPT_VERSIONS.extract_log.version);
+  });
+
+  const FIXTURES: { id: string; message: string; draft: unknown; language?: string; expect: Record<string, unknown> }[] = [
+    {
+      id: "array of two logs collapses to the first",
+      message: scenario("capture-multi-behavior").input.message,
+      draft: [scenario("capture-multi-behavior").input.stubbedDraft, { ...scenario("capture-multi-behavior").input.stubbedDraft, behaviorType: "Food throwing" }],
+      expect: { behaviorType: "Aggression Toward Sibling" },
+    },
+    {
+      id: "a { logs: [...] } wrapper collapses to the first",
+      message: scenario("capture-multi-behavior").input.message,
+      draft: { logs: [{ ...scenario("capture-multi-behavior").input.stubbedDraft }, { behaviorType: "Bath refusal" }] },
+      expect: { behaviorType: "Aggression Toward Sibling" },
+    },
+    {
+      id: "an editorial adjective about the parent is dropped from notes (EN)",
+      message: scenario("capture-parent-emotion-neutral").input.message,
+      draft: { ...scenario("capture-parent-emotion-neutral").input.stubbedDraft, notes: "The overwhelmed mother lost her temper. Whining lasted the whole errand." },
+      expect: { notes: "Whining lasted the whole errand." },
+    },
+    {
+      id: "self-blame copied into a field is dropped, the child's moment stays (EN)",
+      message: scenario("capture-parent-emotion-neutral").input.message,
+      draft: { ...scenario("capture-parent-emotion-neutral").input.stubbedDraft, response: "I completely lost it.", notes: "I'm the worst mother. She whined all afternoon at the supermarket." },
+      expect: { response: "", notes: "She whined all afternoon at the supermarket." },
+    },
+    {
+      id: "self-blame is dropped in Hebrew too, and a Hebrew capture is a Hebrew session without language: he",
+      message: "אני האמא הכי גרועה. היא בכתה כל אחר הצהריים בסופר.",
+      draft: { behaviorType: "Whining", intensity: 3, durationMinutes: 10, context: "Public", trigger: "סופר", response: "", notes: "אני האמא הכי גרועה. היא בכתה כל אחר הצהריים." },
+      expect: { notes: "היא בכתה כל אחר הצהריים." },
+    },
+    {
+      id: "a clean draft passes through byte-identical (the child's own feelings are observations)",
+      message: scenario("capture-happy-path-en").input.message,
+      draft: { ...scenario("capture-happy-path-en").input.stubbedDraft, notes: "She was frustrated and calmed with quiet company." },
+      expect: { ...scenario("capture-happy-path-en").input.stubbedDraft, notes: "She was frustrated and calmed with quiet company." },
+    },
+  ];
+
+  it.each(FIXTURES)("$id", async (fixture) => {
+    draft = fixture.draft as Record<string, unknown>;
+    const { status, json } = await postExtract({ message: fixture.message, childProfile: CHILD, ...(fixture.language ? { language: fixture.language } : {}) });
+    expect(status).toBe(200);
+    expect(Array.isArray(json)).toBe(false);
+    expect(json).not.toHaveProperty("logs");
+    for (const [key, value] of Object.entries(fixture.expect)) expect(json[key], key).toEqual(value);
+    if (HEBREW.test(fixture.message)) expect(lastPrompt).toContain("עברית");
+    else expect(lastPrompt).not.toContain("IMPORTANT: The parent speaks Hebrew");
+    expect(modelInvocations).toBe(1);
+  });
+
+  it("judgesParent reads the parent, never the child", () => {
+    expect(judgesParent("I'm a bad mom")).toBe(true);
+    expect(judgesParent("Mom lost her temper at bedtime")).toBe(true);
+    expect(judgesParent("אבא היה מותש")).toBe(true);
+    expect(judgesParent("She was frustrated when the tablet went off")).toBe(false);
+    expect(judgesParent("I said she was overwhelmed by the noise")).toBe(false);
+    expect(judgesParent("היא בכתה כשכיביתי את הטאבלט")).toBe(false);
   });
 });
