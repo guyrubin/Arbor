@@ -284,7 +284,14 @@ describe("B-TODAY-17 — the drawer is gone: no feed, no check-in, no displaced 
       }
     };
     walk(SRC_ROOT);
-    expect(writers).toEqual(["lib/childData.ts"]);
+    // lib/childData.ts is the export/erase list (CHILD_SUBCOLLECTIONS);
+    // lib/childDataGroups.ts (B-CAREPRO-24) is its pure, import-free display
+    // grouping for the trust center — it NAMES wellness under "moments" so the
+    // parent sees everything Arbor keeps, and writes nothing.
+    expect(writers.sort()).toEqual(["lib/childData.ts", "lib/childDataGroups.ts"]);
+    const groups = read("lib/childDataGroups.ts");
+    expect(groups).not.toMatch(/^import /m);
+    expect(groups).not.toMatch(/\b(setDoc|addDoc|updateDoc|writeBatch|collection\()/);
   }, 60_000); // a whole-tree read; the default 5 s is too tight on a loaded machine
 
   it("#/daily-play stays reachable from Growth", () => {
