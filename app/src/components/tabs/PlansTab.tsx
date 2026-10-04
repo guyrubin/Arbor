@@ -75,6 +75,16 @@ export default function PlansTab() {
   // marks a top-level sibling module (what moduleBudget counts);
   // `data-primary-move` marks the ONE control that performs the move
   // surfaceContract.ts declares for this route.
+  // Critic r1 (W2-ASKJB plans, P1 G0 + G1): the contract stamp sat on the
+  // 2 000 px plans-active wrapper and the page's one gradient on the secondary
+  // Create. ONE object now carries both — the stamp and the primary fill — and
+  // lands on exactly one control: today's "I'll try it" on the first plan, or
+  // Create in the empty state (where creating IS the way to a step).
+  const hasPlan = actionPlans.length > 0;
+  const primaryStamp = {
+    "data-primary-move": "advance-plan-step",
+    style: { background: "var(--arbor-gradient-primary)", color: "var(--arbor-on-accent)", border: "1px solid transparent" },
+  } as const;
   const createCard = (
     <div data-module="plans-create" className={`${cardCls} p-6 space-y-4`}>
       <span className="text-xs font-extrabold tracking-wider uppercase block" style={{ color: "var(--arbor-green-ink)" }}>{t("plan.create")}</span>
@@ -144,8 +154,10 @@ export default function PlansTab() {
         <button
           onClick={handleGenerateActionPlan}
           disabled={isPlanGenerating}
-          className="text-white font-extrabold text-sm px-6 py-3.5 rounded-xl transition flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-60"
-          style={{ background: "var(--arbor-gradient-primary)" }}
+          className="min-h-11 font-extrabold text-sm px-6 py-3.5 rounded-xl transition flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-60"
+          {...(hasPlan
+            ? { style: { background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule-strong)" } }
+            : primaryStamp)}
         >
           {isPlanGenerating ? (<><Icon name="progress_activity" size={16} className="animate-spin" /> {t("plan.creating")}</>) : (<><Icon name="auto_awesome" size={16} /> {t("plan.createBtn")}</>)}
         </button>
@@ -156,13 +168,15 @@ export default function PlansTab() {
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-8">
       <div className="flex items-center gap-4">
-        {/* This child's plan — anchored by their own hero. */}
-        <HeroAvatar size={56} mood="happy" ring className="flex-shrink-0" />
+        {/* This child's plan — anchored by their own hero. Critic r1: while a
+            plan exists the mascot and the intro step aside so today's step
+            reads first; both stay for the empty state that teaches. */}
+        {!hasPlan && <HeroAvatar size={56} mood="happy" ring className="flex-shrink-0" />}
         <div className="flex-1 min-w-0">
           <PageHeader
             eyebrow={t("plan.eyebrow")}
             title={t("plan.title")}
-            subtitle={t("plan.subtitle")}
+            subtitle={hasPlan ? undefined : t("plan.subtitle")}
           />
         </div>
       </div>
@@ -204,14 +218,19 @@ export default function PlansTab() {
         />
       )}
 
-      <div data-module="plans-active" data-primary-move="advance-plan-step" className="space-y-8">
-        {actionPlans.map((plan) => {
+      <div data-module="plans-active" className="space-y-8">
+        {actionPlans.map((plan, planIdx) => {
           // B-ASKJB-26: today's step = the first not-done step of the current
           // phase; accept → action loop (source "plan"), outcome moves the step.
           const step = todaysPlanStep(plan, actionLoop, todayKey);
           return (
-          <div key={plan.id} className="space-y-3">
+          <div key={plan.id} data-testid="plan-tracks" className="space-y-3 lg:grid lg:grid-cols-[minmax(0,360px)_minmax(0,640px)] lg:items-start lg:gap-6 lg:space-y-0">
+            {/* Critic r1: at lg the track card sits in a sticky start track
+                and the step list in the end track (measure ≤ 640 px) — no
+                936 px phone column. */}
+            <div className="lg:sticky lg:top-4">
             <PlanTrackCard
+              primary={planIdx === 0 ? primaryStamp : undefined}
               plan={plan}
               step={step}
               today={activeTodayAction}
@@ -223,9 +242,10 @@ export default function PlansTab() {
               onAdjust={() => seedCoach({ prompt: planAdjustSeed(lang, plan.title, lastPlanOutcomes(plan.id, actionLoop)), source: "plans-adjust" })}
             />
 
+            </div>
             <PlanSteps plan={plan} todayStep={step} now={now} />
 
-            <div className={`${cardCls} p-6 space-y-5`}>
+            <div className={`${cardCls} p-6 space-y-5 lg:col-span-2`}>
               <div className="space-y-3 p-4 rounded-2xl" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
                 <h4 className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "var(--arbor-ink)" }}>
                   <Icon name="chat" size={14} style={{ color: "var(--arbor-peach-ink)" }} /> {t("plan.whatToSay")}
@@ -233,11 +253,11 @@ export default function PlansTab() {
                 <div className="space-y-3 text-xs">
                   {plan.scripts.map((sc, scIdx) => (
                     <div key={scIdx} className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-3 p-3 rounded-xl bg-white" style={{ border: "1px solid var(--arbor-rule)" }}>
-                      <div><strong className="block" style={{ color: "var(--arbor-green-ink)" }}>{sc.scenario}</strong></div>
+                      <div><strong dir="auto" className="block" style={{ color: "var(--arbor-green-ink)" }}>{sc.scenario}</strong></div>
                       <div className="min-w-0 space-y-1.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
                         {/* B-ASKJB-24: each plan script through the shared SayThis. */}
                         <SayThis text={sc.say} title={t("plan.say")} lang={uiLang === "he" ? "he" : "en"} copyLabel={t("coach.action.copy")} copiedLabel={t("coach.cards.copied")} />
-                        {sc.avoid && <p><b style={{ color: "var(--arbor-pink-ink)" }}>{t("plan.avoid")}</b> {sc.avoid}</p>}
+                        {sc.avoid && <p><b style={{ color: "var(--arbor-pink-ink)" }}>{t("plan.avoid")}</b> <bdi dir="auto">{sc.avoid}</bdi></p>}
                       </div>
                     </div>
                   ))}

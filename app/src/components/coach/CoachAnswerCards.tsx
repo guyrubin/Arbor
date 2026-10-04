@@ -40,13 +40,20 @@ export function tryItState(step: string, today: CoachTodayStep | null | undefine
 }
 
 /** B-ASKJB-04 — the control under step 1 that enters the action loop. */
-export function CoachTryIt({ step, today, lang, onTryIt, onUndo }: {
+/** Extra props a host surface puts on the "I'll try it" button — its own
+ *  contract stamp and, when the step IS that surface's primary move, the
+ *  primary fill (critic r1, W2-ASKJB plans). The host owns both spellings. */
+export type TryItButtonProps = { style?: React.CSSProperties } & { [attr: `data-${string}`]: string };
+
+export function CoachTryIt({ step, today, lang, onTryIt, onUndo, buttonProps }: {
   step: string;
   today: CoachTodayStep | null | undefined;
   lang: UiLang;
   onTryIt: (step: string) => void;
   onUndo: (id: string) => void;
+  buttonProps?: TryItButtonProps;
 }) {
+  const { style: hostStyle, ...hostAttrs } = buttonProps ?? {};
   const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars);
   const state = tryItState(step, today);
   if (state === "hidden") return null;
@@ -56,7 +63,7 @@ export function CoachTryIt({ step, today, lang, onTryIt, onUndo }: {
         <span className="inline-flex flex-1 min-w-0 items-center gap-1.5 text-[12px] font-bold" style={{ color: "var(--arbor-green-ink)" }}>
           <Icon name="check_circle" size={14} /> {t("coach.tryIt.accepted")}
         </span>
-        <button type="button" onClick={() => onUndo(today.id)} className="inline-flex min-h-11 items-center px-2 text-[12px] font-bold underline underline-offset-2" style={{ color: "var(--arbor-muted)" }}>
+        <button type="button" {...hostAttrs} onClick={() => onUndo(today.id)} className="inline-flex min-h-11 items-center px-2 text-[12px] font-bold underline underline-offset-2" style={{ color: "var(--arbor-muted)" }}>
           {t("coach.tryIt.undo")}
         </button>
       </div>
@@ -66,9 +73,10 @@ export function CoachTryIt({ step, today, lang, onTryIt, onUndo }: {
     <div data-testid="coach-try-it" data-state={state} className="mt-2 space-y-1 pt-2" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
       <button
         type="button"
+        {...hostAttrs}
         onClick={() => onTryIt(step)}
         className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 text-[13px] font-extrabold"
-        style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule-strong)" }}
+        style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule-strong)", ...hostStyle }}
       >
         <Icon name="flag" size={14} /> {state === "replace" ? t("coach.tryIt.replace") : t("coach.tryIt")}
       </button>

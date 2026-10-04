@@ -180,3 +180,74 @@ describe("TJB-16 — tokens only (law 4)", () => {
     expect((pre.match(/#[0-9a-fA-F]{3,8}\b|rgba?\(/g) ?? []).length).toBe(3);
   });
 });
+
+/**
+ * Critic r1 (W2-ASKJB plans). The step list and the track card:
+ *  · one icon family (Material Symbols), no lucide;
+ *  · type from the --t-* scale only (no text-[Npx], no text-xs/xl in these files);
+ *  · content nodes carry dir="auto"; the eyebrow isolates the plan title in <bdi>
+ *    and is never upper-cased;
+ *  · today's row says "Today" (clay), never "Not started";
+ *  · the contract stamp lands on a BUTTON (≤ one control), never a wrapper;
+ *  · "Day n" only from Day 2.
+ */
+describe("critic r1 — plans track card + step list", async () => {
+  const { default: PlanTrackCard } = await import("./PlanTrackCard");
+  const { planEyebrowKey } = await import("../../lib/plans");
+  const trackSrc = readFileSync(path.join(here, "PlanTrackCard.tsx"), "utf8");
+  const plansTab = readFileSync(path.join(here, "..", "tabs", "PlansTab.tsx"), "utf8");
+  const stamp = { "data-primary-move": "advance-plan-step", style: { background: "var(--arbor-gradient-primary)", color: "var(--arbor-on-accent)" } } as const;
+  const today = { planId: plan.id, phaseIdx: 0, stepIdx: 1, text: "Same three books.", day: 1, next: null, offerNext: false };
+  const card = (lang: "en" | "he", day = 1) => renderToStaticMarkup(React.createElement(PlanTrackCard, {
+    plan, step: { ...today, day }, today: null, lang, now: 1757000000000, primary: stamp,
+    onTryIt: () => {}, onUndo: () => {}, onCheck: () => {}, onAdjust: () => {},
+  }));
+
+  it("one icon family and the --t-* scale only", () => {
+    for (const f of [rawSrc, trackSrc]) {
+      expect(f).not.toMatch(/lucide-react/);
+      expect(f).not.toMatch(/text-\[\d+(\.\d+)?px\]/);
+    }
+    expect(src).not.toMatch(/className="[^"]*\btext-(xs|xl)\b[^"]*"[^>]*>\{(plan\.title|t\("elev\.plans)/);
+  });
+
+  it("Day n only from Day 2; Day 1 reads Today's step", () => {
+    expect(planEyebrowKey(1)).toBe("elev.plans.today.first");
+    expect(planEyebrowKey(2)).toBe("elev.plans.today.day");
+    expect(card("en", 1)).toContain("Today&#x27;s step");
+    expect(card("en", 1)).not.toMatch(/Day 1 of/);
+    expect(card("en", 3)).toMatch(/Day .*3.* of/);
+  });
+
+  it("the eyebrow isolates the title in <bdi>, never upper-case; step text dir=auto (HE)", () => {
+    const he = card("he");
+    expect(he).toMatch(/<p data-testid="plan-today-eyebrow"[^>]*>[^<]*<bdi dir="auto">Calmer bedtimes<\/bdi>/);
+    expect(he).not.toMatch(/plan-today-eyebrow"[^>]*uppercase/);
+    expect(he).toMatch(/<p dir="auto"[^>]*>Same three books\.<\/p>/);
+    expect(he).not.toContain("\u0000");
+  });
+
+  it("the stamp + primary fill sit on the 'I'll try it' button", () => {
+    const html = card("en");
+    expect(html).toMatch(/<button type="button" data-primary-move="advance-plan-step"[^>]*gradient-primary/);
+    expect((html.match(/data-primary-move=/g) || []).length).toBe(1);
+  });
+
+  it("PlansTab: the stamp is one object on a control, not the plans-active wrapper", () => {
+    expect(plansTab).not.toMatch(/data-module="plans-active"[^>]*data-primary-move/);
+    expect(plansTab).toContain('"data-primary-move": "advance-plan-step"');
+    expect(plansTab).toContain("primary={planIdx === 0 ? primaryStamp : undefined}");
+    // The gradient is spelled once, inside the stamp object.
+    expect((plansTab.match(/--arbor-gradient-primary/g) || []).length).toBe(1);
+  });
+
+  it("today's row reads Today (clay chip), not Not started", () => {
+    uiLang = "en";
+    const html = renderToStaticMarkup(React.createElement(PlanSteps, { plan, todayStep: { phaseIdx: 1, stepIdx: 0 }, now: 1757000000000 }));
+    const row = html.slice(html.indexOf('data-today-step="true"'));
+    expect(row).toMatch(/data-step-chip="today"[^>]*>Today</);
+    // Visible text only (the advance button's aria-label keeps the honest status).
+    expect(row.slice(0, row.indexOf("</li>")).replace(/aria-label="[^"]*"/g, "")).not.toContain("Not started");
+    expect(html).toMatch(/<h3 dir="auto"/);
+  });
+});

@@ -46,6 +46,8 @@ export const en: Record<string, string> = {
   // ── B-ASKJB-26: today's step, through the action loop
   "elev.plans.today.eyebrow": "From your plan",
   "elev.plans.today.day": "Day {n} of {plan}",
+  "elev.plans.today.first": "Today's step · {plan}",
+  "elev.plans.today.chip": "Today",
   "elev.plans.today.next": "Or try the next step instead",
   // ── B-ASKJB-26: the weekly check-in (the parent's answer, never a score)
   "elev.plans.check.q": "Signs it's working?",
@@ -87,6 +89,8 @@ export const he: Record<string, string> = {
 
   "elev.plans.today.eyebrow": "מתוך התוכנית שלכם",
   "elev.plans.today.day": "יום {n} בתוכנית {plan}",
+  "elev.plans.today.first": "הצעד של היום · {plan}",
+  "elev.plans.today.chip": "היום",
   "elev.plans.today.next": "או לנסות במקום זה את הצעד הבא",
   "elev.plans.check.q": "יש סימנים שזה עובד?",
   "elev.plans.check.yes": "כן",

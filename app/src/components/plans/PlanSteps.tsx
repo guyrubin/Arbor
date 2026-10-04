@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Trash2, Pencil, Circle, CircleDot, CircleCheckBig } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { Modal } from "../ui/Modal";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -26,25 +26,30 @@ const STATUS_LABEL: Record<StepStatus, string> = {
 /** TJB-16: one tap moves a step on by one status, and wraps. */
 export const NEXT_STATUS: Record<StepStatus, StepStatus> = { todo: "doing", doing: "done", done: "todo" };
 
-const STATUS_GLYPH: Record<StepStatus, typeof Circle> = {
-  todo: Circle,
-  doing: CircleDot,
-  done: CircleCheckBig,
+/** Critic r1: one icon family per surface (Material Symbols, as the track card). */
+const STATUS_GLYPH: Record<StepStatus, string> = {
+  todo: "radio_button_unchecked",
+  doing: "pending",
+  done: "check_circle",
 };
 
 function StepRow({ item, planId, isToday, onEdit }: { item: Item; planId: string; isToday: boolean; onEdit: (item: Item) => void }) {
   const { setPlanStepStatus } = useArbor();
   const { t } = useLanguage();
-  const Glyph = STATUS_GLYPH[item.status];
+  const glyph = STATUS_GLYPH[item.status];
   const statusLabel = t(STATUS_LABEL[item.status]);
+  // Critic r1: today's step is marked "Today" (clay chip + clay start border),
+  // never "Not started" beside the track card's "I'll try it".
+  const showToday = isToday && item.status !== "done";
   return (
     <li
       data-plan-step={`${item.phaseIdx}:${item.stepIdx}`}
       data-today-step={isToday ? "true" : undefined}
-      className="rounded-xl p-2 text-[12px] flex items-center gap-1.5"
+      className="rounded-xl p-2 t-sm flex items-center gap-1.5"
       style={{
         background: "var(--arbor-paper-elevated)",
-        border: isToday ? "1px solid var(--arbor-green-ink)" : "1px solid var(--arbor-rule)",
+        border: "1px solid var(--arbor-rule)",
+        borderInlineStart: showToday ? "3px solid var(--arbor-clay)" : "1px solid var(--arbor-rule)",
         color: "var(--arbor-ink)",
       }}
     >
@@ -57,14 +62,17 @@ function StepRow({ item, planId, isToday, onEdit }: { item: Item; planId: string
         aria-label={t("elev.plans.step.advance", { step: item.text, status: statusLabel })}
         data-step-status={item.status}
       >
-        <Glyph className="w-5 h-5" />
+        <Icon name={glyph} size={20} />
       </button>
-      <span className="flex-1 min-w-0" style={item.status === "done" ? { textDecoration: "line-through", color: "var(--arbor-muted)" } : undefined}>{item.text}</span>
+      <span dir="auto" className="flex-1 min-w-0" style={item.status === "done" ? { textDecoration: "line-through", color: "var(--arbor-muted)" } : undefined}>{item.text}</span>
       <span
-        className="text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
-        style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
+        data-step-chip={showToday ? "today" : item.status}
+        className="t-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0"
+        style={showToday
+          ? { background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-ink)" }
+          : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
       >
-        {statusLabel}
+        {showToday ? t("elev.plans.today.chip") : statusLabel}
       </span>
       <button
         type="button"
@@ -73,7 +81,7 @@ function StepRow({ item, planId, isToday, onEdit }: { item: Item; planId: string
         className="touch-target inline-flex items-center justify-center rounded-xl flex-shrink-0"
         style={{ minWidth: "var(--touch-min)", minHeight: "var(--touch-min)", color: "var(--arbor-muted)" }}
       >
-        <Pencil className="w-4 h-4" />
+        <Icon name="edit" size={16} />
       </button>
     </li>
   );
@@ -113,19 +121,22 @@ export default function PlanSteps({ plan, todayStep, now = Date.now() }: {
 
   return (
     <div className="rounded-3xl p-6 space-y-4" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }}>
-      <div className="flex justify-between items-start pb-4 gap-4" style={{ borderBottom: "1px solid var(--arbor-rule)" }}>
+      {/* Critic r1: below sm the header stacks — the title takes the full
+          width, the count + delete sit on one row beneath it, Focus clamps to
+          2 lines (it was 4–5 lines in a ~150 px column at 375). */}
+      <div data-testid="plan-header" className="flex flex-col gap-2 pb-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4" style={{ borderBottom: "1px solid var(--arbor-rule)" }}>
         <div className="min-w-0">
-          <h3 className="text-xl font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{plan.title}</h3>
-          <p className="text-xs mt-1" style={{ color: "var(--arbor-muted)" }}>{t("elev.plans.focusIssue", { issue: plan.issue })}</p>
+          <h3 dir="auto" className="t-xl font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{plan.title}</h3>
+          <p dir="auto" className="t-xs mt-1 line-clamp-2" style={{ color: "var(--arbor-muted)" }}>{t("elev.plans.focusIssue", { issue: plan.issue })}</p>
           {days !== null && (
-            <p className="text-[10px] mt-1" style={{ color: "var(--arbor-muted)" }}>
+            <p className="t-xs mt-1" style={{ color: "var(--arbor-muted)" }}>
               {days === 0 ? t("elev.plans.startedToday") : t("elev.plans.startedAgo", { n: days })}
             </p>
           )}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           {/* TJB-16: a count of steps done, never a completion share. */}
-          <span className="text-[11px] font-bold" style={{ color: "var(--arbor-green-ink)" }}>
+          <span className="t-xs font-bold" style={{ color: "var(--arbor-green-ink)" }}>
             {t("plan.stepsCount", { done, total })}
           </span>
           <button
@@ -135,7 +146,7 @@ export default function PlanSteps({ plan, todayStep, now = Date.now() }: {
             className="touch-target inline-flex items-center justify-center rounded-xl self-start"
             style={{ minWidth: "var(--touch-min)", minHeight: "var(--touch-min)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
           >
-            <Trash2 className="w-4 h-4" />
+            <Icon name="delete" size={16} />
           </button>
         </div>
       </div>
@@ -146,7 +157,7 @@ export default function PlanSteps({ plan, todayStep, now = Date.now() }: {
           if (rows.length === 0) return null;
           return (
             <div key={phaseIdx} className="space-y-2">
-              {ph.name && <p className="text-[10px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{ph.name}</p>}
+              {ph.name && <p dir="auto" className="t-xs font-extrabold" style={{ color: "var(--arbor-muted)" }}>{ph.name}</p>}
               <ol className="space-y-2" aria-label={t("elev.plans.steps.title")}>
                 {rows.map((it) => (
                   <React.Fragment key={it.id}>
@@ -164,7 +175,7 @@ export default function PlanSteps({ plan, todayStep, now = Date.now() }: {
         })}
       </div>
 
-      <p className="text-[10px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.plans.hint")}</p>
+      <p className="t-xs" style={{ color: "var(--arbor-muted)" }}>{t("elev.plans.hint")}</p>
 
       {/* window.prompt cannot be styled, translated, or mirrored in RTL. */}
       <Modal open={editing !== null} onClose={() => setEditing(null)} title={t("elev.plans.edit.title")} maxWidth="max-w-md">
@@ -183,7 +194,7 @@ export default function PlanSteps({ plan, todayStep, now = Date.now() }: {
           <button
             type="button"
             onClick={saveEdit}
-            className="touch-target flex-1 rounded-xl text-[13px] font-bold"
+            className="touch-target flex-1 rounded-xl t-sm font-bold"
             style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)", minHeight: "var(--touch-min)" }}
           >
             {t("elev.plans.edit.save")}
@@ -191,7 +202,7 @@ export default function PlanSteps({ plan, todayStep, now = Date.now() }: {
           <button
             type="button"
             onClick={() => setEditing(null)}
-            className="touch-target rounded-xl px-4 text-[13px] font-bold"
+            className="touch-target rounded-xl px-4 t-sm font-bold"
             style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)", minHeight: "var(--touch-min)" }}
           >
             {t("elev.plans.edit.cancel")}
@@ -206,7 +217,7 @@ export default function PlanSteps({ plan, todayStep, now = Date.now() }: {
           <button
             type="button"
             onClick={() => { deletePlan(plan.id); setConfirmDelete(false); }}
-            className="touch-target flex-1 rounded-xl text-[13px] font-bold"
+            className="touch-target flex-1 rounded-xl t-sm font-bold"
             style={{ background: "var(--arbor-peach-ink)", color: "var(--arbor-on-accent)", minHeight: "var(--touch-min)" }}
           >
             {t("elev.plans.delete.cta")}
@@ -214,7 +225,7 @@ export default function PlanSteps({ plan, todayStep, now = Date.now() }: {
           <button
             type="button"
             onClick={() => setConfirmDelete(false)}
-            className="touch-target rounded-xl px-4 text-[13px] font-bold"
+            className="touch-target rounded-xl px-4 t-sm font-bold"
             style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)", minHeight: "var(--touch-min)" }}
           >
             {t("elev.plans.edit.cancel")}

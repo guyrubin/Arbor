@@ -179,6 +179,15 @@ export function todaysPlanStep(
   };
 }
 
+/**
+ * Critic r1 (W2-ASKJB plans, Law 9 reader truth): "Day 1 of …" sat beside
+ * "3/7 steps done" — accurate to its definition, false to the reader. The day
+ * count shows only from Day 2; before that the eyebrow says "Today's step".
+ */
+export function planEyebrowKey(day: number): "elev.plans.today.day" | "elev.plans.today.first" {
+  return day >= 2 ? "elev.plans.today.day" : "elev.plans.today.first";
+}
+
 /** What a plan step's outcome does to the step: helped → done, somewhat →
  *  in progress (kept), not_today → nothing (it is tomorrow's step). */
 export function planStepStatusAfter(outcome: ActionOutcome): StepStatus | null {
