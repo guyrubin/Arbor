@@ -120,6 +120,16 @@ describe("hash aliases", () => {
     expect(ROUTE_IDS.length).toBe(43);
   });
 
+  it("B-PLAY-10: #/journey and #/growth-journey land on Practice; the id keeps its seat (ROUTE_IDS still 43)", () => {
+    expect(RETIRED_ROUTES.journey).toBe("practice");
+    expect(resolveRouteId("#/journey")).toBe("practice");
+    expect(resolveRouteId("journey")).toBe("practice");
+    expect(resolveRouteId("#/growth-journey")).toBe("practice");
+    expect(HASH_ALIASES["growth-journey"]).toBe("practice");
+    expect(ROUTE_IDS as readonly string[]).toContain("journey");
+    expect(ROUTE_IDS.length).toBe(43);
+  });
+
   it("unknown hashes still fall back exactly as before (null)", () => {
     for (const raw of ["", "#/", "#/nope", "nonsense", "#/OVERVIEW", "#/overview/extra", "#/care-team-x"]) {
       expect(resolveRouteId(raw), `"${raw}" should not resolve`).toBeNull();

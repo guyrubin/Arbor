@@ -86,7 +86,8 @@ export const HASH_ALIASES: Readonly<Record<string, ActiveTab>> = {
   // reads on screen is a name they can type. Aliases are cheap; a dead deep
   // link is not.
   "my-child": "profile",
-  "growth-journey": "journey",
+  // B-PLAY-10: #/journey retired to Practice; the label slug follows it.
+  "growth-journey": "practice",
   home: "overview",
   "ask-arbor": "coach",
   "care-network": "consult",
@@ -146,6 +147,13 @@ export const RETIRED_ROUTES: Readonly<Record<string, ActiveTab>> = {
   // with you?" sheet (ToneSheet). Like the two above, the id keeps its seat
   // in ROUTE_IDS (Shell renders the Ask leaf for it); only the hash moved.
   scholar: "coach",
+  // B-PLAY-10 (Guy companion #5): the daily-mission Journey retired to
+  // Practice. JourneyTab stays registered (the id keeps its ROUTE_IDS seat);
+  // missionRecords + journeyObjectives are untouched (export/erase). The
+  // mission / objectives / badge capability has no live door until lane-TODAY's
+  // single offer (B-AI-06) and lane-X's sticker book (B-KID-19) ship —
+  // accepted under Guy #5's default, recorded so it is not called an orphan.
+  journey: "practice",
 };
 
 export function resolveRouteId(raw: string): ActiveTab | null {

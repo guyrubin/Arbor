@@ -107,7 +107,8 @@ describe("GP-19 · the seven Development names", () => {
     }
     // …and each new label's slug is typeable, old links still land.
     expect(resolveRouteId("#/my-child")).toBe("profile");
-    expect(resolveRouteId("#/growth-journey")).toBe("journey");
+    // B-PLAY-10: the journey route retired to Practice; its label slug follows.
+    expect(resolveRouteId("#/growth-journey")).toBe("practice");
     expect(resolveRouteId("#/growth")).toBe("development");
     expect(resolveRouteId("#/milestones")).toBe("milestones");
     expect(resolveRouteId("#/development-profile")).toBe("profile");

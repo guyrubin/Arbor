@@ -140,6 +140,7 @@ export const UNSEARCHABLE_ROUTES: Partial<Record<ActiveTab, string>> = {
   attribution: "Legal/credits surface reached from Settings; not somewhere a parent navigates to by name.",
   science: "Evidence and credits, reached from a trust link in context rather than as a destination.",
   scholar: "Retired to Ask (B-ASKJB-12); each lens is searchable by name and opens Ask with that lens preselected.",
+  journey: "Retired to Practice (B-PLAY-10); the id keeps its seat, and 'Practice' is the searchable name of where it lands.",
 };
 
 function buildIndex(): readonly SearchEntry[] {

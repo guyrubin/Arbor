@@ -26,6 +26,7 @@ const DELIBERATELY_UNSEARCHABLE: Partial<Record<ActiveTab, string>> = {
   attribution: "Legal/credits surface reached from Settings; not a place a parent navigates to by name.",
   science: "Evidence/credits surface reached from a trust link in context, not a destination.",
   scholar: "Retired to Ask (B-ASKJB-12): the id keeps its seat, but the 7 lens entries are what a parent searches for, and each opens Ask with its lens preselected.",
+  journey: "Retired to Practice (B-PLAY-10): a 'Growth Journey' row would land on Practice under the wrong name; Practice is searchable by its own name.",
 };
 
 const indexedRoutes = new Set(
@@ -66,6 +67,10 @@ describe("IA-20 · search can reach every route the app has", () => {
       expect(indexedRoutes.has(id as ActiveTab)).toBe(false);
     }
     expect(Object.keys(DELIBERATELY_UNSEARCHABLE).length).toBeLessThanOrEqual(6);
+  });
+
+  it("B-PLAY-10: no search row targets the retired #/journey", () => {
+    expect(getSearchIndex().filter((e) => e.tab === "journey")).toEqual([]);
   });
 
   it("NEGATIVE CONTROL: the check fails for a route that is neither indexed nor excused", () => {
