@@ -51,6 +51,7 @@ import { planStepStatusAfter } from "../lib/plans";
 import { recentTypeCounts } from "../lib/planRecord";
 import { appendVoiceUser, applyVoiceDelta, settleVoiceTurn } from "../lib/voiceTranscript";
 import type { ConversationChangeRecord, ConversationProposal } from "../lib/conversationProposals";
+import { restorableMilestone } from "../lib/conversationProposals";
 import { appendChatUser, appendChatAck, applyChatDelta, settleChatTurn, abortChatStream, hasUserTurn } from "../lib/chatStream";
 import { buildChatContext, readWeeklyContextConsent } from "../ai/chatContext";
 import type { CaptureSource } from "../components/overview/ConfirmCaptureReview";
@@ -1477,8 +1478,18 @@ function useArborState() {
   const undoConversationChange = async (id: string) => {
     const record = conversationChangesCol.items.find((item) => item.id === id && item.status === "committed");
     if (!record?.commitRef) return;
+    if (record.commitRef.collection === "milestones" && record.previousValue) {
+      // B-DATA-08: only a whole Milestone of this id is written back; a
+      // malformed audit value is never upserted — the audit row stays
+      // "committed" and the parent is told the undo did not happen.
+      const restored = restorableMilestone(record.previousValue, record.commitRef.id);
+      if (!restored) {
+        toast(t("elev.keep.undoFailed"), "error");
+        return;
+      }
+      await milestonesCol.upsert(restored);
+    }
     if (record.commitRef.collection === "behaviorLogs") await logsCol.remove(record.commitRef.id);
-    if (record.commitRef.collection === "milestones" && record.previousValue) await milestonesCol.upsert(record.previousValue as Milestone);
     await conversationChangesCol.upsert({ ...record, status: "undone" });
     track("voice_proposal_undone", { target: record.target });
   };

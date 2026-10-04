@@ -25,6 +25,30 @@ export type ConversationProposal = {
   previousValue?: unknown;
 };
 
+const OBSERVATION_STATUSES: ReadonlySet<string> = new Set(["yes", "not_sure", "not_yet"]);
+
+/**
+ * B-DATA-08 — the shape check an Undo runs before it writes a milestone back.
+ * `previousValue` is an untrusted audit field (a Firestore document, or a
+ * localStorage row a stale client wrote); only a value that is still a whole
+ * Milestone of THIS record's id may be upserted. Anything else → null, and
+ * the caller keeps the audit row and says the undo did not happen.
+ */
+export function restorableMilestone(previous: unknown, expectedId: string): Milestone | null {
+  if (!previous || typeof previous !== "object" || Array.isArray(previous)) return null;
+  const m = previous as Record<string, unknown>;
+  if (typeof m.id !== "string" || m.id !== expectedId) return null;
+  if (typeof m.domain !== "string" || !m.domain) return null;
+  if (typeof m.ageGroup !== "string") return null;
+  if (typeof m.title !== "string" || !m.title.trim()) return null;
+  if (typeof m.description !== "string") return null;
+  if (typeof m.checked !== "boolean") return null;
+  if (m.observationStatus !== undefined && !OBSERVATION_STATUSES.has(String(m.observationStatus))) return null;
+  if (m.observationUpdatedAt !== undefined && typeof m.observationUpdatedAt !== "string") return null;
+  if (m.ageMonths !== undefined && (typeof m.ageMonths !== "number" || !Number.isFinite(m.ageMonths))) return null;
+  return m as unknown as Milestone;
+}
+
 export type ConversationChangeRecord = ConversationProposal & {
   id: string;
   status: "committed" | "undone";

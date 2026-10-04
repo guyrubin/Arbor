@@ -196,3 +196,49 @@ describe("B-ASKJB-03 — one voice Keep raises exactly one toast", () => {
     expect(block).toContain('toast(t("coach.voice.proposalSaveError"), "error");');
   });
 });
+
+describe("B-DATA-08 · Undo of a milestone change checks the restored shape", () => {
+  const good = {
+    id: "m1", domain: "motor", ageGroup: "Age 2", title: "Climbs stairs", description: "Most children climb stairs.",
+    checked: false, observationStatus: "not_sure", observationUpdatedAt: "2026-07-20T10:00:00.000Z",
+  };
+
+  it("a whole Milestone of THIS record's id is restorable", async () => {
+    const { restorableMilestone } = await import("../../lib/conversationProposals");
+    expect(restorableMilestone(good, "m1")).toEqual(good);
+    expect(restorableMilestone({ ...good, observationStatus: undefined, observationUpdatedAt: undefined }, "m1")).not.toBeNull();
+  });
+
+  it.each([
+    ["null", null],
+    ["a string", "m1"],
+    ["an array", [good]],
+    ["another milestone's id", { ...good, id: "m2" }],
+    ["no title", { ...good, title: "" }],
+    ["checked as a string", { ...good, checked: "true" }],
+    ["an unknown observation status", { ...good, observationStatus: "maybe" }],
+    ["no domain", { ...good, domain: undefined }],
+    ["a non-numeric age anchor", { ...good, ageMonths: "24" }],
+  ])("a malformed previousValue (%s) is never restorable", async (_label, value) => {
+    const { restorableMilestone } = await import("../../lib/conversationProposals");
+    expect(restorableMilestone(value, "m1")).toBeNull();
+  });
+
+  it("ArborContext writes only the checked value; on failure it toasts the keyed error and keeps the audit row (EN + HE)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const path = await import("node:path");
+    const src = readFileSync(path.join(__dirname, "..", "..", "context", "ArborContext.tsx"), "utf8").replace(/\r\n/g, "\n");
+    const start = src.indexOf("const undoConversationChange = async");
+    const block = src.slice(start, src.indexOf("\n  };", start));
+    expect(block).not.toContain("record.previousValue as Milestone");
+    expect(block).toContain("const restored = restorableMilestone(record.previousValue, record.commitRef.id);");
+    expect(block).toContain("await milestonesCol.upsert(restored);");
+    // The failure path returns BEFORE the audit row flips to "undone".
+    const failure = block.slice(block.indexOf("if (!restored)"), block.indexOf("await milestonesCol.upsert(restored)"));
+    expect(failure).toContain('toast(t("elev.keep.undoFailed"), "error");');
+    expect(failure).toContain("return;");
+    expect(block.indexOf("if (!restored)")).toBeLessThan(block.indexOf('status: "undone"'));
+    expect(journalEn["elev.keep.undoFailed"]).toBeTruthy();
+    expect(journalHe["elev.keep.undoFailed"]).toBeTruthy();
+  });
+});
