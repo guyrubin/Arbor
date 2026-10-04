@@ -15,7 +15,7 @@ import PlanTrackCard, { planAdjustSeed } from "../plans/PlanTrackCard";
 import RoutinesCard from "../plans/RoutinesCard";
 import { useChildCollection } from "../../hooks/useChildCollection";
 /* B-ASKJB-28: the routines row only counts docs; their shape stays RoutinesCard's. */
-import { lastPlanOutcomes, suggestedChallenges, todaysPlanStep } from "../../lib/plans";
+import { lastPlanOutcomes, planEcho, suggestedChallenges, todaysPlanStep } from "../../lib/plans";
 import { dayKey } from "../../practice/signals";
 import { HeroAvatar } from "../ui/HeroAvatar";
 
@@ -231,6 +231,8 @@ export default function PlansTab() {
             <div className="lg:sticky lg:top-4">
             <PlanTrackCard
               primary={planIdx === 0 ? primaryStamp : undefined}
+              echo={planEcho(plan.id, actionLoop, step, todayKey)}
+              childName={first}
               plan={plan}
               step={step}
               today={activeTodayAction}

@@ -239,3 +239,50 @@ export function lastPlanOutcomes(
     .slice(0, max)
     .map((r) => ({ step: r.recommendation, outcome: r.outcome! }));
 }
+
+/**
+ * B-ASKJB-NEW-1g/1h — the track card speaks back to the last outcome.
+ * Pure, on-device: reads the plan's own loop rows (step text + outcome enum),
+ * never a logged moment's text, no model call.
+ *  - the current step answered "not today" twice in a row → "not-yet-twice"
+ *    (the card offers Adjust in Ask);
+ *  - else the newest helped/somewhat outcome → that step, and whether it was
+ *    yesterday (else "last time" — the line never claims a day it can't keep);
+ *  - else, no outcome and no step taken yet → "first";
+ *  - else null (nothing to say).
+ */
+export type PlanEcho =
+  | { kind: "helped" | "somewhat"; step: string; yesterday: boolean }
+  | { kind: "not-yet-twice" }
+  | { kind: "first" }
+  | null;
+
+export function planEcho(
+  planId: string,
+  loop: readonly Pick<ActionLoopEntry, "recommendation" | "source" | "planId" | "phaseIdx" | "stepIdx" | "outcome" | "outcomeAt" | "status">[],
+  step: PlanStepRef | null,
+  todayKey: string,
+): PlanEcho {
+  const rows = loop.filter((r) => r.source === "plan" && r.planId === planId && r.status !== "superseded");
+  const answered = rows
+    .filter((r) => r.outcome)
+    .sort((a, b) => (b.outcomeAt ?? "").localeCompare(a.outcomeAt ?? ""));
+  if (step) {
+    const forStep = answered.filter((r) => sameStep(r, step));
+    if (forStep.length >= 2 && forStep[0].outcome === "not_today" && forStep[1].outcome === "not_today") return { kind: "not-yet-twice" };
+  }
+  const last = answered.find((r) => r.outcome === "helped" || r.outcome === "somewhat");
+  if (last) {
+    const y = new Date(Date.parse(`${todayKey}T12:00:00Z`) - DAY_MS).toISOString().slice(0, 10);
+    return { kind: last.outcome as "helped" | "somewhat", step: last.recommendation, yesterday: (last.outcomeAt ?? "").slice(0, 10) === y };
+  }
+  if (rows.length === 0) return { kind: "first" };
+  return null;
+}
+
+/** The keyed line for an echo (EN + HE in i18nElevation/plans.ts). */
+export function planEchoKey(echo: Exclude<PlanEcho, null>): string {
+  if (echo.kind === "not-yet-twice") return "elev.plans.echo.notYetTwice";
+  if (echo.kind === "first") return "elev.plans.echo.first";
+  return `elev.plans.echo.${echo.kind}.${echo.yesterday ? "yesterday" : "last"}`;
+}

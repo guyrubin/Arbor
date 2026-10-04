@@ -4,7 +4,7 @@ import type { ActionPlan, PlanCheckAnswer } from "../../types";
 import type { UiLang } from "../../lib/i18n";
 import { translate } from "../../lib/i18n";
 import { CoachTryIt, type CoachTodayStep, type TryItButtonProps } from "../coach/CoachAnswerCards";
-import { PLAN_CHECK_ANSWERS, offerPlanAdjust, planEyebrowKey, weeklyCheckDue, type TodaysPlanStep } from "../../lib/plans";
+import { PLAN_CHECK_ANSWERS, offerPlanAdjust, planEchoKey, planEyebrowKey, weeklyCheckDue, type PlanEcho, type TodaysPlanStep } from "../../lib/plans";
 import type { PlanStepRef } from "../../actionLoop/model";
 import { cardCls } from "../ui/kit";
 
@@ -33,7 +33,7 @@ export function PlanEyebrow({ template, title }: { template: string; title: stri
   return <>{before}<bdi dir="auto">{title}</bdi>{after}</>;
 }
 
-export default function PlanTrackCard({ plan, step, today, lang, now, onTryIt, onUndo, onCheck, onAdjust, primary }: {
+export default function PlanTrackCard({ plan, step, today, lang, now, onTryIt, onUndo, onCheck, onAdjust, primary, echo = null, childName = "" }: {
   plan: ActionPlan;
   step: TodaysPlanStep | null;
   today: CoachTodayStep | null | undefined;
@@ -45,6 +45,9 @@ export default function PlanTrackCard({ plan, step, today, lang, now, onTryIt, o
   onAdjust: () => void;
   /** The host's contract stamp + primary fill for today's "I'll try it". */
   primary?: TryItButtonProps;
+  /** B-ASKJB-NEW-1g/1h: what the last outcome says back (lib/plans planEcho). */
+  echo?: PlanEcho;
+  childName?: string;
 }) {
   const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars);
   const due = weeklyCheckDue(plan, now);
@@ -59,6 +62,27 @@ export default function PlanTrackCard({ plan, step, today, lang, now, onTryIt, o
           <p data-testid="plan-today-eyebrow" className="t-xs font-bold" style={{ color: "var(--arbor-green-ink)" }}>
             <PlanEyebrow template={t(planEyebrowKey(step.day), { n: step.day, plan: "\u0000" })} title={plan.title} />
           </p>
+          {/* B-ASKJB-NEW-1g/1h — the card speaks back to the last outcome: one
+              line, the plan's own step text + the parent's own answer, no
+              moment text, no model call, no day it cannot keep. The critic's
+              green dot on "helped" is NOT built: an outcome-coloured mark is a
+              chromatic verdict (Law 1; action rows share one tone). */}
+          {echo && echo.kind === "not-yet-twice" ? (
+            <button
+              type="button"
+              data-testid="plan-echo"
+              data-echo={echo.kind}
+              onClick={onAdjust}
+              className="inline-flex min-h-11 items-center t-sm font-bold underline underline-offset-2"
+              style={{ color: "var(--arbor-clay)" }}
+            >
+              {t(planEchoKey(echo))}
+            </button>
+          ) : echo ? (
+            <p data-testid="plan-echo" data-echo={echo.kind} dir="auto" className="t-sm leading-snug" style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink-soft)" }}>
+              <span className="min-w-0 line-clamp-2">{t(planEchoKey(echo), { step: echo.kind === "first" ? "" : echo.step, name: childName })}</span>
+            </p>
+          ) : null}
           <p dir="auto" className="t-md font-bold leading-snug" style={{ color: "var(--arbor-ink)" }}>{step.text}</p>
           <CoachTryIt step={step.text} today={today} lang={lang} onTryIt={(text) => onTryIt(text, ref(step))} onUndo={onUndo} buttonProps={primary} />
           {step.offerNext && step.next && (

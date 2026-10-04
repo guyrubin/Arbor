@@ -251,3 +251,40 @@ describe("critic r1 — plans track card + step list", async () => {
     expect(html).toMatch(/<h3 dir="auto"/);
   });
 });
+
+/** B-ASKJB-NEW-1g/1h — the track card speaks back to the last outcome. */
+describe("B-ASKJB-NEW-1g/1h — plan echo", async () => {
+  const { planEcho, planEchoKey } = await import("../../lib/plans");
+  const { default: PlanTrackCard } = await import("./PlanTrackCard");
+  const dict = await import("../../lib/i18nElevation/plans");
+  const ref = { planId: plan.id, phaseIdx: 0, stepIdx: 1 };
+  const row = (o: "helped" | "somewhat" | "not_today", at: string, step = ref) => ({
+    recommendation: "Same three books", source: "plan" as const, ...step, outcome: o, outcomeAt: at, status: "completed" as const,
+  });
+  it("yesterday's helped → the yesterday line; older → last time; none → first", () => {
+    expect(planEcho(plan.id, [row("helped", "2026-10-03T19:00:00Z")], ref, "2026-10-04")).toEqual({ kind: "helped", step: "Same three books", yesterday: true });
+    expect(planEcho(plan.id, [row("somewhat", "2026-09-30T19:00:00Z")], ref, "2026-10-04")).toEqual({ kind: "somewhat", step: "Same three books", yesterday: false });
+    expect(planEcho(plan.id, [], ref, "2026-10-04")).toEqual({ kind: "first" });
+    expect(planEcho(plan.id, [row("not_today", "2026-10-03T19:00:00Z")], ref, "2026-10-04")).toBeNull();
+  });
+  it("two not-todays on today's step → change this step (Adjust), never a streak or verdict", () => {
+    const e = planEcho(plan.id, [row("not_today", "2026-10-03T19:00:00Z"), row("not_today", "2026-10-02T19:00:00Z")], ref, "2026-10-04");
+    expect(e).toEqual({ kind: "not-yet-twice" });
+    const html = renderToStaticMarkup(React.createElement(PlanTrackCard, {
+      plan, step: { ...ref, text: "Same three books", day: 3, next: null, offerNext: false }, today: null, lang: "en", now: 0,
+      onTryIt: () => {}, onUndo: () => {}, onCheck: () => {}, onAdjust: () => {}, echo: e, childName: "Noa",
+    }));
+    expect(html).toMatch(/<button type="button" data-testid="plan-echo" data-echo="not-yet-twice"[^>]*min-h-11/);
+  });
+  it("every echo key exists EN + HE; no streak/score words; no colour on the line", () => {
+    const keys = [planEchoKey({ kind: "first" }), planEchoKey({ kind: "not-yet-twice" }),
+      ...(["helped", "somewhat"] as const).flatMap((k) => [true, false].map((y) => planEchoKey({ kind: k, step: "x", yesterday: y })))];
+    for (const d of [dict.en, dict.he]) for (const k of keys) {
+      expect(d[k], k).toBeTruthy();
+      expect(d[k]).not.toMatch(/streak|score|%|רצף|ציון/i);
+    }
+    const trackSrc = readFileSync(path.join(here, "PlanTrackCard.tsx"), "utf8").replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
+    const line = trackSrc.slice(trackSrc.indexOf('data-testid="plan-echo" data-echo={echo.kind} dir="auto"'), trackSrc.indexOf("</p>", trackSrc.indexOf('data-testid="plan-echo" data-echo={echo.kind} dir="auto"')));
+    expect(line).not.toMatch(/--arbor-green|--arbor-coral|--arbor-peach/);
+  });
+});
