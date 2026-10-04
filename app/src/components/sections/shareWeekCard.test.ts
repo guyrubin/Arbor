@@ -79,32 +79,51 @@ describe("B-CAREPRO-26 · the card on #/sharing (source)", () => {
     expect(sharing).toContain("const WEEK_ROLE: ShareRole = DEFAULT_ROLE;");
   });
 
-  it("two taps after the email: preview, then share (the confirm carries the ONE primary-move stamp)", () => {
+  it("W2-CAREPRO r2: ONE tap shares — the preview follows a valid email, the stamped button grants on its first tap", () => {
     const card = /data-testid="share-week-card"[\s\S]*?<\/section>/.exec(sharing)?.[0] ?? "";
     expect(card, "card extracted").not.toBe("");
     expect(card).toContain('data-testid="share-week-email"');
-    // W2-CAREPRO r1: ONE button carries the stamp at rest AND in preview —
-    // it opens the preview, then the same button confirms (sweep found
-    // primaryMove null at rest: the stamp lived only on the confirm).
-    expect(card).toContain('data-testid={weekPreviewing ? "share-week-confirm" : "share-week-preview-open"}');
+    // the preview is shown by a valid email, not by a tap
+    expect(sharing).toContain("const weekPreviewing = weekEmailValid;");
+    expect(sharing).not.toContain("setWeekPreviewing");
+    // one button, one testid, one label: the confirm IS the button at rest
+    expect(card).toContain('data-testid="share-week-confirm"');
+    expect(card).not.toContain("share-week-preview-open");
     expect(card).toContain('data-primary-move="grant-share"');
     const stamps = sharing.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\/.*$/gm, "").match(/\bdata-primary-move="/g) ?? [];
     expect(stamps).toHaveLength(1);
-    // the stamped element is rendered outside the {!weekPreviewing ? … : …} branch
     const stampAt = card.indexOf('data-primary-move="grant-share"');
-    const branchEnd = card.indexOf('<div className="flex flex-col sm:flex-row gap-2 sm:items-center">');
-    expect(branchEnd).toBeGreaterThan(-1);
-    expect(stampAt).toBeGreaterThan(branchEnd);
-    // the primary is the filled gradient, never an opacity-disabled ghost at rest
     const btn = card.slice(card.lastIndexOf("<button", stampAt), card.indexOf("</button>", stampAt));
     expect(btn).toContain("var(--gradient-cta)");
-    expect(btn).toContain("disabled={weekPreviewing && (");
     expect(btn).not.toMatch(/disabled=\{!weekEmailValid\}|disabled:opacity-40/);
-    // an invalid email focuses the field with an inline hint
-    expect(sharing).toMatch(/if \(!weekEmailValid\) \{ setWeekHint\(true\); weekEmailRef\.current\?\.focus\(\); return; \}/);
-    // NEGATIVE CONTROL: the pre-change confirm-only stamp is caught
-    const pre = `{!weekPreviewing ? (<button disabled={!weekEmailValid}>See</button>) : (<button data-primary-move="grant-share">Share</button>)}`;
-    expect(pre.indexOf('data-primary-move="grant-share"')).toBeLessThan(pre.lastIndexOf(")}"));
+    expect(btn).not.toContain('"visibility"');
+    // the handler: hint (focus) or grant — never a preview-only step
+    expect(sharing).toMatch(/const onWeekPrimary = \(\) => \{\s*if \(weekPrimaryAction\(weekEmail\) === "hint"\) \{ setWeekHint\(true\); weekEmailRef\.current\?\.focus\(\); return; \}\s*setWeekHint\(false\);\s*void shareWeek\(\);\s*\};/);
+    // shareWeek makes exactly one grant call with the week shape
+    const shareWeekFn = /const shareWeek = async \(\) => \{[\s\S]*?\n  \};/.exec(sharing)?.[0] ?? "";
+    expect((shareWeekFn.match(/\bgrant\(/g) ?? []).length).toBe(1);
+  });
+
+  it("W2-CAREPRO r2: weekPrimaryAction — valid email = grant, empty/invalid = hint (zero grants)", async () => {
+    const { weekPrimaryAction } = await import("./TrustedSharing");
+    expect(weekPrimaryAction("dana@example.com")).toBe("grant");
+    expect(weekPrimaryAction("  dana@example.com ")).toBe("grant");
+    for (const bad of ["", "   ", "dana", "dana@", "dana@example"]) expect(weekPrimaryAction(bad)).toBe("hint");
+    // NEGATIVE CONTROL: the r1 two-tap shape (a preview-open branch on the same label) is caught
+    const r1 = `data-testid={weekPreviewing ? "share-week-confirm" : "share-week-preview-open"}`;
+    expect(r1).toContain("share-week-preview-open");
+  });
+
+  it("W2-CAREPRO r2: two columns at lg; the trust line lives inside the card; an empty roster is one muted line", () => {
+    const card = /data-testid="share-week-card"[\s\S]*?<\/section>/.exec(sharing)?.[0] ?? "";
+    expect(card).toContain("lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]");
+    expect(card).toContain('data-testid="sharing-trust-line"');
+    expect(sharing).toMatch(/!loading && team\.length === 0 \? \(\s*<p data-testid="sharing-roster-empty"/);
+    expect(sharing).toMatch(/<PageHeader\s+flush/);
+    for (const lang of ["en", "he"] as const) {
+      const body = translate(lang, "elev.learnCare.share.week.body");
+      expect(body.split(/[.!?](\s|$)/).filter((x) => x && x.trim()).length, `${lang} one sentence`).toBe(1);
+    }
   });
 
   it("W2-CAREPRO r1: no clinical bar on #/sharing; the copy never claims a time box the week share does not have", () => {
@@ -143,7 +162,7 @@ describe("B-CAREPRO-26 · the card on #/sharing (source)", () => {
   });
 
   it("every card string exists in EN and HE", () => {
-    for (const k of ["title", "body", "email", "preview", "share", "edit", "custom"]) {
+    for (const k of ["title", "body", "email", "share", "custom"]) {
       const key = `elev.learnCare.share.week.${k}`;
       expect(translate("en", key), key).not.toBe(key);
       expect(translate("he", key), key).not.toBe(key);

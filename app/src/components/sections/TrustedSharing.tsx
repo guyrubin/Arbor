@@ -36,6 +36,13 @@ const ROLE_TONE: Record<ShareRole, PastelKey> = { co_parent: "mint", professiona
  *  former My Care Team here): the people coordinating around the child, derived
  *  from real, server-enforced share grants — scoped, time-boxed, revocable
  *  (incl. co-parents) — plus what's shared with you. */
+/** W2-CAREPRO r2 — what ONE tap on the week card's stamped button does: a
+ *  valid email grants (the preview is already on screen); anything else
+ *  focuses the field with the inline hint. There is no preview-only tap. */
+export function weekPrimaryAction(email: string): "grant" | "hint" {
+  return /^\S+@\S+\.\S+$/.test(email.trim()) ? "grant" : "hint";
+}
+
 export default function TrustedSharing() {
   const { childProfile, openPaywall, setActiveTab, behaviorLogs, milestones, actionPlans, approvedMemoryItems } = useArbor();
   const { user } = useAuth();
@@ -112,8 +119,12 @@ export default function TrustedSharing() {
      (`viewer` gives the identical read-only view on every plan). */
   const WEEK_ROLE: ShareRole = DEFAULT_ROLE;
   const [weekEmail, setWeekEmail] = useState("");
-  const [weekPreviewing, setWeekPreviewing] = useState(false);
-  const weekEmailValid = /^\S+@\S+\.\S+$/.test(weekEmail.trim());
+  const weekEmailValid = weekPrimaryAction(weekEmail) === "grant";
+  // W2-CAREPRO r2: ONE tap shares. The recipient preview renders inline as
+  // soon as the email is valid (no tap), so the stamped button grants on its
+  // first tap — a parent can no longer leave after a preview-only tap that
+  // used the same "Share {name}'s week" label and granted nothing.
+  const weekPreviewing = weekEmailValid;
   // W2-CAREPRO r1: ONE stamped button carries the card at rest and in preview.
   // At rest it opens the recipient preview (an empty/invalid email focuses the
   // field with an inline hint — never an opacity-disabled primary); in preview
@@ -222,15 +233,13 @@ export default function TrustedSharing() {
     if (!weekEmailValid) return;
     await grant({ email, role: WEEK_ROLE, scopes: [...WEEK_SHARE_SCOPES], duration: WEEK_SHARE_DURATION }, "week", () => {
       setWeekEmail("");
-      setWeekPreviewing(false);
     });
   };
 
   const onWeekPrimary = () => {
-    if (weekPreviewing) { void shareWeek(); return; }
-    if (!weekEmailValid) { setWeekHint(true); weekEmailRef.current?.focus(); return; }
+    if (weekPrimaryAction(weekEmail) === "hint") { setWeekHint(true); weekEmailRef.current?.focus(); return; }
     setWeekHint(false);
-    setWeekPreviewing(true);
+    void shareWeek();
   };
 
   const revoke = async (g: ShareGrant) => {
@@ -294,7 +303,9 @@ export default function TrustedSharing() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[920px] flex flex-col gap-6">
+      {/* W2-CAREPRO r2: flush — the column's gap-6 is the only rhythm. */}
       <PageHeader
+        flush
         eyebrow={t("nav.care")}
         title={t("sec.sharing.title")}
         subtitle={t("sec.sharing.sub", { name: first })}
@@ -323,13 +334,21 @@ export default function TrustedSharing() {
           they carry one stamp between them rather than competing as two. */}
       <div data-module="sharing-grant" style={{ display: "contents" }}>
       {!error && (
-        <section data-testid="share-week-card" className="rounded-[22px] p-5 space-y-3" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }}>
-          <div className="flex items-center gap-3">
-            <span className="inline-flex items-center justify-center w-10 h-10 rounded-xl flex-shrink-0" style={{ background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" }}><Icon name="diversity_3" size={20} /></span>
-            <h2 className="t-lg font-extrabold min-w-0" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("elev.learnCare.share.week.title", { name: first })}</h2>
+        <section data-testid="share-week-card" className="rounded-[22px] p-5 flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:gap-6" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }}>
+          {/* W2-CAREPRO r2: at lg the card is two columns — what is shared on
+              the start side, the email + the one tap on the end side (the email
+              field is capped at that column, not ~880 px). */}
+          <div className="flex flex-col gap-3 min-w-0">
+            <div className="flex items-center gap-3">
+              <span className="inline-flex items-center justify-center w-10 h-10 rounded-xl flex-shrink-0" style={{ background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" }}><Icon name="diversity_3" size={20} /></span>
+              <h2 className="t-lg font-extrabold min-w-0" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("elev.learnCare.share.week.title", { name: first })}</h2>
+            </div>
+            <p className="t-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.share.week.body")}</p>
+            {/* W2-CAREPRO r1: the server-enforcement sentence is the only trust
+                line on #/sharing. r2: inside the card, not a caption below it. */}
+            <p data-testid="sharing-trust-line" className="t-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.trustNote")}</p>
           </div>
-          <p className="t-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.share.week.body")}</p>
-          {!weekPreviewing ? (
+          <div className="flex flex-col gap-3 min-w-0">
             <div className="space-y-1.5">
               <input
                 ref={weekEmailRef}
@@ -350,13 +369,12 @@ export default function TrustedSharing() {
                 <p id="share-week-hint" role="alert" data-testid="share-week-hint" className="t-xs font-bold" style={{ color: "var(--arbor-ink)" }}>{t("elev.learnCare.share.week.needEmail")}</p>
               )}
             </div>
-          ) : (
-            <div className="space-y-3" aria-live="polite">
-              <p className="text-sm font-extrabold break-all" dir="auto" style={{ color: "var(--arbor-ink)" }}>{weekEmail.trim()}</p>
-              {/* The recipient's actual view — buildSharedScopePacket on the
-                  shared assembler, the same call server/sharedPacket.ts makes. */}
-              <div data-testid="share-week-preview" className="rounded-xl p-3.5 space-y-2.5" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-                <p className="t-xs font-bold uppercase tracking-wide" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.share.preview.title")}</p>
+            {weekPreviewing && (
+              /* The recipient's actual view — buildSharedScopePacket on the
+                 shared assembler, the same call server/sharedPacket.ts makes —
+                 shown with no tap once the email is valid. */
+              <div data-testid="share-week-preview" aria-live="polite" className="rounded-xl p-3.5 space-y-2.5" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+                <p className="t-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.share.preview.title")}</p>
                 {weekPreview.blocked ? (
                   <p role="alert" className="t-xs font-bold leading-relaxed" style={{ color: "var(--arbor-pink-ink)" }}>{t("elev.learnCare.share.preview.blocked")}</p>
                 ) : !weekPreview.sections || weekPreview.sections.length === 0 ? (
@@ -374,42 +392,31 @@ export default function TrustedSharing() {
                   ))
                 )}
               </div>
-            </div>
-          )}
-          <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-            {/* The route's ONE primary-move stamp, in both states (W2-CAREPRO r1). */}
-            <button
-              type="button"
-              data-primary-move="grant-share"
-              data-testid={weekPreviewing ? "share-week-confirm" : "share-week-preview-open"}
-              onClick={onWeekPrimary}
-              disabled={weekPreviewing && (busy === "week" || weekPreview.blocked)}
-              className="touch-target inline-flex items-center justify-center gap-2 font-extrabold text-sm rounded-xl px-5 min-h-11 disabled:cursor-not-allowed"
-              style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}
-            >
-              {weekPreviewing && busy === "week"
-                ? <><Icon name="progress_activity" size={16} className="animate-spin" /> {t("sec.sharing.review.working")}</>
-                : <><Icon name={weekPreviewing ? "check" : "visibility"} size={16} /> {t("elev.learnCare.share.week.share", { name: first })}</>}
-            </button>
-            {weekPreviewing ? (
-              <button type="button" onClick={() => setWeekPreviewing(false)} className="inline-flex items-center justify-center rounded-xl px-4 min-h-11 text-sm font-bold" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}>
-                {t("elev.learnCare.share.week.edit")}
+            )}
+            <div className="flex flex-col sm:flex-row lg:flex-col gap-2 sm:items-center lg:items-stretch">
+              {/* The route's ONE primary-move stamp: one tap grants (viewer,
+                  WEEK_SHARE_SCOPES, until revoked); no email = focus + hint. */}
+              <button
+                type="button"
+                data-primary-move="grant-share"
+                data-testid="share-week-confirm"
+                onClick={onWeekPrimary}
+                disabled={busy === "week" || (weekPreviewing && weekPreview.blocked)}
+                className="touch-target inline-flex items-center justify-center gap-2 font-extrabold text-sm rounded-xl px-5 min-h-11 disabled:cursor-not-allowed"
+                style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}
+              >
+                {busy === "week"
+                  ? <><Icon name="progress_activity" size={16} className="animate-spin" /> {t("sec.sharing.review.working")}</>
+                  : <><Icon name="check" size={16} /> {t("elev.learnCare.share.week.share", { name: first })}</>}
               </button>
-            ) : (
-              /* B-CAREPRO-26: the full wizard sits behind "Custom share" — a
-                 quiet text door inside the card (W2-CAREPRO r1: it was the
-                 strongest control above the fold, in the page header). */
+              {/* B-CAREPRO-26: the full wizard sits behind "Custom share" — a
+                  quiet text door inside the card (W2-CAREPRO r1). */}
               <button type="button" onClick={() => setAdding((a) => !a)} aria-expanded={adding} data-testid="sharing-custom-open" className="inline-flex items-center justify-center gap-1.5 rounded-xl px-3 min-h-11 text-sm font-bold" style={{ color: "var(--arbor-clay)" }}>
                 <Icon name="tune" size={16} /> {t("elev.learnCare.share.week.custom")}
               </button>
-            )}
+            </div>
           </div>
         </section>
-      )}
-      {!error && (
-        /* W2-CAREPRO r1: the server-enforcement sentence is the only trust line
-           on #/sharing — one muted caption under the card, not a clinical bar. */
-        <p data-testid="sharing-trust-line" className="t-xs leading-relaxed -mt-3" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.trustNote")}</p>
       )}
       {invite && (
         <div data-testid="share-invite" className="border-y py-4 flex flex-wrap items-center gap-3" style={{ borderColor: "var(--arbor-rule)" }}>
@@ -535,6 +542,11 @@ export default function TrustedSharing() {
 
       {!error && (
         <div data-module="sharing-roster" style={{ display: "contents" }}>
+        {/* W2-CAREPRO r2: with nobody on the roster, one muted line — not a
+            full card repeating the week card's ask. */}
+        {!loading && team.length === 0 ? (
+          <p data-testid="sharing-roster-empty" className="t-sm" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.active.empty")}</p>
+        ) : (
         <SectionCard title={t("sec.sharing.team.title", { name: first })} icon={<Icon name="diversity_3" size={20} fill={1} />} tone="mint">
           {loading ? (
             <p className="text-sm flex items-center gap-2" style={{ color: "var(--arbor-muted)" }}><Icon name="progress_activity" size={16} className="animate-spin" /> {t("sec.sharing.active.loading")}</p>
@@ -566,6 +578,7 @@ export default function TrustedSharing() {
             </div>
           )}
         </SectionCard>
+        )}
         </div>
       )}
 

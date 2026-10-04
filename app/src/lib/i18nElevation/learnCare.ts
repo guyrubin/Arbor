@@ -108,7 +108,7 @@ export const en: Record<string, string> = {
   "elev.learnCare.share.invite.hint": "Arbor does not email your recipient. Send the invite yourself so they know to look.",
   // B-CAREPRO-26: the first card on Sharing — the week, read-only, until revoked.
   "elev.learnCare.share.week.title": "Share {name}'s week with the other parent",
-  "elev.learnCare.share.week.body": "They see the weekly summary and the story timeline, read-only, until you stop sharing. Arbor does not email them; you send the invite.",
+  "elev.learnCare.share.week.body": "They read the weekly summary and the story timeline until you stop sharing; you send them the invite.",
   "elev.learnCare.share.week.email": "Their email",
   "elev.learnCare.share.week.preview": "See what they will see",
   "elev.learnCare.share.week.share": "Share {name}'s week",
@@ -212,7 +212,7 @@ export const he: Record<string, string> = {
     "שיתפתי אתכם בחלק מהרשומה של {child} בארבור. היכנסו לארבור עם כתובת המייל הזו ובדקו במסך השיתוף: {link}",
   "elev.learnCare.share.invite.hint": "ארבור לא שולח מייל למקבל. שלחו את ההזמנה בעצמכם כדי שידעו להיכנס.",
   "elev.learnCare.share.week.title": "לשתף את השבוע של {name} עם ההורה השני",
-  "elev.learnCare.share.week.body": "הם יראו את הסיכום השבועי ואת ציר הסיפור, לקריאה בלבד, עד שתפסיקו לשתף. ארבור לא שולח להם מייל; אתם שולחים את ההזמנה.",
+  "elev.learnCare.share.week.body": "הם קוראים את הסיכום השבועי ואת ציר הסיפור עד שתפסיקו לשתף; את ההזמנה אתם שולחים להם.",
   "elev.learnCare.share.week.email": "המייל שלהם",
   "elev.learnCare.share.week.preview": "לראות מה הם יראו",
   "elev.learnCare.share.week.share": "לשתף את השבוע של {name}",
