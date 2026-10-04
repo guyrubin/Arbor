@@ -1011,7 +1011,9 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         prompt: message,
         frameRouting: structured.frameRouting,
         // B-GROWTH-29: the fact carries the answer's registry domains
-        answerDomains: structured.domains
+        answerDomains: structured.domains,
+        // B-AI-07: the name is one token when near-duplicates are compared
+        childName: typeof childProfile?.name === "string" ? childProfile.name : null
       });
       budget.settle();
       const payload = { text: renderedText, contract: structured, memoryReviewItems };
@@ -1270,7 +1272,9 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         prompt: message,
         frameRouting: structured.frameRouting,
         // B-GROWTH-29: the fact carries the answer's registry domains
-        answerDomains: structured.domains
+        answerDomains: structured.domains,
+        // B-AI-07: the name is one token when near-duplicates are compared
+        childName: typeof childProfile?.name === "string" ? childProfile.name : null
       });
       budget.settle();
       const payload = { text: renderedText, contract: structured, council: restoredTakes, memoryReviewItems };

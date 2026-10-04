@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import type { CoachResponse } from "../contracts/coach.js";
 import type { MemoryLedgerEvent, MemoryReviewItem, MemoryStatus, MemoryStore } from "./types.js";
 import { DOMAIN_IDS, toDomains, type DomainId } from "../lib/domains/registry.js";
+import { domainsFromQuestion } from "../knowledge/retrievalKeys.js";
 
 /**
  * B-GROWTH-29 — an answer contract's `domains` (framework ids, model output)
@@ -46,6 +47,7 @@ export const foldMemoryEvents = (events: MemoryLedgerEvent[], childId?: string):
       prompt: event.prompt,
       frameRouting: event.frameRouting,
       ...withDomains(event.domains),
+      ...(event.topicKey ? { topicKey: event.topicKey } : {}),
       latestEventId: event.eventId
     });
   }
@@ -231,6 +233,105 @@ export const selectApprovedFacts = (
 export const getApprovedMemoryContext = async (store: MemoryStore, childId: string, maxFacts = 40) =>
   (await getApprovedMemoryContextDetail(store, childId, maxFacts)).context;
 
+/* ── B-AI-07 — near-duplicate merge before proposal ─────────────────────────
+ * A proposal is skipped when its normalised word set overlaps any PENDING,
+ * APPROVED or REJECTED fact of the same child by Jaccard ≥ DEDUPE_THRESHOLD.
+ * Rejected counts (B-CAREPRO-18 rule (a)): a fact the parent dismissed is
+ * never re-proposed, verbatim or paraphrased. The ledger stays append-only
+ * (F8): nothing is rewritten, the duplicate is simply not appended.
+ * Normalisation: lower case, punctuation out, Hebrew niqqud out, the child's
+ * name → one token (then dropped: it is every fact's subject), EN + HE
+ * stopwords out, a light suffix (EN) / one-letter prefix (HE) stem.
+ */
+export const DEDUPE_THRESHOLD = 0.6;
+export const CHILD_NAME_TOKEN = "<child>";
+
+const DEDUPE_STOPWORDS = new Set([
+  ...FACT_STOPWORDS,
+  "a", "an", "in", "on", "at", "of", "to", "is", "it", "be", "he", "as", "or", "by", "up", "very",
+  "every", "each", "always", "usually", "often", "sometimes", "really", "also", "still", "just", "again",
+  "של", "את", "על", "עם", "גם", "כל", "הוא", "היא", "זה", "זו", "יש", "אין", "מאוד", "תמיד", "בדרך", "כלל", "לפעמים", "שוב",
+]);
+const HEBREW_WORD = /[\u05D0-\u05EA]/;
+
+/** HE: one clitic prefix (ו ה ב ל מ ש כ) off a word long enough to keep a root.
+ *  EN: one ordered suffix rule, then a trailing "e" (refuses / refused /
+ *  refusing / refuse → refus; mornings / morning → morn; shoes → shoe). */
+const stemToken = (token: string): string => {
+  if (HEBREW_WORD.test(token)) return token.length >= 4 && /^[והבלמשכ]/.test(token) ? token.slice(1) : token;
+  let t = token;
+  if (t.length > 6 && t.endsWith("ings")) t = t.slice(0, -4);
+  else if (t.length > 5 && t.endsWith("ing")) t = t.slice(0, -3);
+  else if (t.length > 4 && t.endsWith("ies")) t = `${t.slice(0, -3)}y`;
+  else if (t.length > 4 && /(?:ss|x|z|ch|sh)es$/.test(t)) t = t.slice(0, -2);
+  else if (t.length > 4 && t.endsWith("ed")) t = t.slice(0, -2);
+  else if (t.length > 3 && t.endsWith("s") && !t.endsWith("ss")) t = t.slice(0, -1);
+  if (t.length > 4 && t.endsWith("e")) t = t.slice(0, -1);
+  return t;
+};
+
+/** The normalised word set a fact is compared on. */
+export const dedupeTokens = (fact: string, childName?: string | null): Set<string> => {
+  let text = String(fact || "").toLowerCase().replace(/[\u0591-\u05C7]/g, "");
+  const name = String(childName || "").trim().toLowerCase();
+  if (name) text = text.split(name).join(` ${CHILD_NAME_TOKEN} `);
+  const out = new Set<string>();
+  for (const raw of text.match(/[\p{L}\p{N}<>]+/gu) ?? []) {
+    if (raw === CHILD_NAME_TOKEN || DEDUPE_STOPWORDS.has(raw)) continue;
+    const token = stemToken(raw);
+    if (token.length >= 2 && !DEDUPE_STOPWORDS.has(token)) out.add(token);
+  }
+  return out;
+};
+
+export const jaccard = (a: ReadonlySet<string>, b: ReadonlySet<string>): number => {
+  if (a.size === 0 && b.size === 0) return 1;
+  let inter = 0;
+  for (const t of a) if (b.has(t)) inter += 1;
+  return inter / (a.size + b.size - inter);
+};
+
+/** True when `fact` near-duplicates any of `existing` (pending / approved / rejected). */
+export const isNearDuplicateFact = (
+  fact: string,
+  existing: readonly { fact: string; status: MemoryStatus }[],
+  childName?: string | null,
+): boolean => {
+  const tokens = dedupeTokens(fact, childName);
+  return existing.some(
+    (item) =>
+      (item.status === "pending" || item.status === "approved" || item.status === "rejected") &&
+      (item.fact.trim().toLowerCase() === fact.trim().toLowerCase() || jaccard(tokens, dedupeTokens(item.fact, childName)) >= DEDUPE_THRESHOLD),
+  );
+};
+
+/**
+ * B-AI-07 — the one-off queue cleanup's grouping (scripts/memory-dedupe-report.mjs).
+ * Pending items of ONE child, oldest first; each joins the first group whose
+ * head it near-duplicates, else opens a group. The head (oldest) is the fact
+ * that stays; every other member is a duplicate. Pure: the report prints it,
+ * and only `--apply` (after Guy reads the report) appends `rejected` events.
+ */
+export const groupNearDuplicates = <T extends { fact: string; createdAt: string; status: MemoryStatus }>(
+  items: readonly T[],
+  childName?: string | null,
+): { head: T; duplicates: T[] }[] => {
+  const groups: { head: T; tokens: Set<string>; duplicates: T[] }[] = [];
+  const pending = items.filter((i) => i.status === "pending").slice().sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  for (const item of pending) {
+    const tokens = dedupeTokens(item.fact, childName);
+    const home = groups.find(
+      (g) => g.head.fact.trim().toLowerCase() === item.fact.trim().toLowerCase() || jaccard(g.tokens, tokens) >= DEDUPE_THRESHOLD,
+    );
+    if (home) home.duplicates.push(item);
+    else groups.push({ head: item, tokens, duplicates: [] });
+  }
+  return groups.map(({ head, duplicates }) => ({ head, duplicates }));
+};
+
+/** B-AI-07: the fact's topic from the coach's own behaviour/domain keyword table. */
+export const memoryTopicKey = (fact: string): string | undefined => domainsFromQuestion(fact)[0];
+
 export const appendMemoryProposals = async (
   store: MemoryStore,
   childId: string,
@@ -241,6 +342,8 @@ export const appendMemoryProposals = async (
     frameRouting: CoachResponse["frameRouting"];
     /** B-GROWTH-29: the answer contract's `domains` (framework ids). */
     answerDomains?: readonly string[] | null;
+    /** B-AI-07: the child's name, normalised to one token before comparing. */
+    childName?: string | null;
   }
 ) => {
   if (proposals.length === 0) return foldMemoryEvents(await store.listEvents(childId), childId);
@@ -248,14 +351,13 @@ export const appendMemoryProposals = async (
   const current = foldMemoryEvents(await store.listEvents(childId), childId);
   const now = new Date().toISOString();
   const domains = memoryDomainsFrom(context.answerDomains);
+  // Proposals appended in THIS call count too (two paraphrases in one answer).
+  const seen: { fact: string; status: MemoryStatus }[] = current.map((item) => ({ fact: item.fact, status: item.status }));
 
   for (const proposal of proposals) {
-    const duplicate = current.find(
-      (item) =>
-        item.fact.trim().toLowerCase() === proposal.fact.trim().toLowerCase() &&
-        item.status !== "rejected"
-    );
-    if (duplicate) continue;
+    if (isNearDuplicateFact(proposal.fact, seen, context.childName)) continue;
+    seen.push({ fact: proposal.fact, status: "pending" });
+    const topicKey = memoryTopicKey(proposal.fact);
 
     await store.appendEvent({
       eventId: randomUUID(),
@@ -271,7 +373,8 @@ export const appendMemoryProposals = async (
       actor: "system",
       prompt: context.prompt,
       frameRouting: context.frameRouting,
-      ...withDomains(domains)
+      ...withDomains(domains),
+      ...(topicKey ? { topicKey } : {})
     });
   }
 
@@ -311,7 +414,9 @@ export const transitionMemory = async (
     prompt: current.prompt,
     frameRouting: current.frameRouting,
     // B-GROWTH-29: the tag survives approve / edit / reject / delete
-    ...withDomains(current.domains)
+    ...withDomains(current.domains),
+    // B-AI-07: so does the topic key
+    ...(current.topicKey ? { topicKey: current.topicKey } : {})
   });
 
   const nextEvents = await store.listEvents(current.childId);

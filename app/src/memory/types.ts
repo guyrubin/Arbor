@@ -25,6 +25,16 @@ export type MemoryLedgerEvent = {
    * proposals with no answer contract. Exported and erased with the event.
    */
   domains?: DomainId[];
+  /**
+   * B-AI-07: the fact's topic — the first domain of the coach's behaviour /
+   * domain keyword table (knowledge/retrievalKeys.ts) the fact names. Set at
+   * proposal time, carried through every transition; absent when no keyword
+   * matches. Groups the review queue; exported and erased with the event.
+   */
+  topicKey?: string;
+  /** B-AI-07: why a `rejected` event was appended by the system — "duplicate"
+   *  for the one-off queue cleanup (scripts/memory-dedupe-report.mjs --apply). */
+  reason?: "duplicate";
 };
 
 export type MemoryReviewItem = Omit<MemoryLedgerEvent, "eventId" | "eventType" | "actor"> & {
