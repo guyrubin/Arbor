@@ -212,7 +212,10 @@ export default function Appointments() {
   );
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[980px]">
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex flex-col gap-6 max-w-[720px]">
+      {/* W2-CAREPRO r1: flex gap (not space-y) — the display:contents module
+          wrappers swallowed the space-y margins and the cards touched (2 px);
+          the column is capped at ~720 px, not a 936 px stretched phone column. */}
       <PageHeader
         eyebrow={t("elev.careNet.eyebrow")}
         title={t("sec.appt.title")}
@@ -235,7 +238,7 @@ export default function Appointments() {
             <button onClick={() => setAdding(false)} aria-label={t("aria.cancel")} className="touch-target flex-shrink-0"><Icon name="close" size={17} style={{ color: "var(--arbor-muted)" }} /></button>
           </div>
           <div className="grid sm:grid-cols-3 gap-2">
-            <label className="flex flex-col gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+            <label className="flex flex-col gap-1 t-xs font-bold" style={{ color: "var(--arbor-muted)" }}>
               {t("elev.careNet.appt.profession.label")}
               <select
                 data-testid="appt-profession-select"
@@ -248,13 +251,13 @@ export default function Appointments() {
                 {APPOINTMENT_PROFESSIONS.map((p) => <option key={p} value={p}>{t(PROFESSION_KEY[p])}</option>)}
               </select>
             </label>
-            <label className="flex flex-col gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+            <label className="flex flex-col gap-1 t-xs font-bold" style={{ color: "var(--arbor-muted)" }}>
               {t("elev.careNet.appt.name.label")}
               <input value={form.who} onChange={(e) => setForm({ ...form, who: e.target.value })} placeholder={t("elev.learnCare.appt.who.placeholder")} dir="auto" className="rounded-xl px-3 py-2.5 text-sm min-h-[44px]" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
             </label>
             {/* LC-12: a real date, not prose — this is what makes ordering,
                 reminders and the calendar file possible at all. */}
-            <label className="flex flex-col gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+            <label className="flex flex-col gap-1 t-xs font-bold" style={{ color: "var(--arbor-muted)" }}>
               {t("elev.learnCare.appt.when.label")}
               <input
                 type="datetime-local"
@@ -267,7 +270,7 @@ export default function Appointments() {
             </label>
           </div>
           <div role="radiogroup" aria-label={t("elev.careNet.appt.mode.label")} className="mt-3 flex flex-wrap items-center gap-1.5">
-            <span className="text-[11px] font-bold me-1" style={{ color: "var(--arbor-muted)" }}>{t("elev.careNet.appt.mode.label")}</span>
+            <span className="t-xs font-bold me-1" style={{ color: "var(--arbor-muted)" }}>{t("elev.careNet.appt.mode.label")}</span>
             {(["In person", "Online"] as const).map((m) => (
               <button
                 key={m}
@@ -292,15 +295,15 @@ export default function Appointments() {
           Arbor; it is not a scheduled alert, and the honesty line says so. */}
       {reminders.length > 0 && (
         <div data-testid="appt-reminder-strip" className={`${cardCls} p-4 space-y-1.5`} style={{ background: "var(--arbor-sky-soft)" }}>
-          <p className="text-[12px] font-extrabold inline-flex items-center gap-1.5" style={{ color: "var(--arbor-sky-ink)" }}>
+          <p className="t-sm font-extrabold inline-flex items-center gap-1.5" style={{ color: "var(--arbor-sky-ink)" }}>
             <Icon name="schedule" size={16} /> {t("elev.learnCare.appt.reminder.title")}
           </p>
           {reminders.map((a) => (
-            <p key={a.id} className="text-[13px] font-bold" dir="auto" style={{ color: "var(--arbor-ink)" }}>
+            <p key={a.id} className="t-sm font-bold" dir="auto" style={{ color: "var(--arbor-ink)" }}>
               {t("elev.learnCare.appt.reminder.line", { who: a.who.trim() || appointmentRoleLabel(a, t), date: whenLabel(a) })}
             </p>
           ))}
-          <p className="text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+          <p className="t-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
             {t("elev.learnCare.appt.reminder.honesty")}
           </p>
         </div>
@@ -309,7 +312,9 @@ export default function Appointments() {
         {upcoming.length ? (
           <div className="space-y-3">{upcoming.map(row)}</div>
         ) : (
-          <p className="text-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.appt.none")}</p>
+          /* W2-CAREPRO r1: the empty state teaches the lifecycle (prepare before,
+             keep what they suggested after), named for the child — not a dead end. */
+          <p data-testid="appt-empty-lifecycle" className="t-sm leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}>{t("elev.learnCare.appt.none", { name: (childProfile.name || "").split(" ")[0] })}</p>
         )}
       </SectionCard>
       </div>
@@ -327,8 +332,8 @@ export default function Appointments() {
             <Icon name="history" size={18} />
           </span>
           <span className="min-w-0">
-            <span className="block text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.learnCare.appt.more.title")}</span>
-            <span className="block text-[12px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.appt.more.sub")}</span>
+            <span className="block t-md font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.learnCare.appt.more.title")}</span>
+            <span className="block t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.appt.more.sub")}</span>
           </span>
           <Icon name="expand_more" size={20} className="ms-auto" style={{ color: "var(--arbor-muted)" }} />
         </summary>
@@ -362,7 +367,7 @@ export default function Appointments() {
           <button onClick={addQ} className="inline-flex items-center gap-1 font-bold text-sm rounded-xl px-4 min-h-[44px]" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-green-ink)" }}><Icon name="add" size={18} /> {t("elev.learnCare.appt.questions.add")}</button>
         </div>
         {/* LC-12 + LC-20: the prepared questions ride into the consult summary. */}
-        <p className="text-[11.5px] mt-2.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+        <p className="t-xs mt-2.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
           {t("elev.learnCare.appt.questions.toPacket")}
         </p>
         {/* LC-09: "prepare a summary" is ONE door — the Consult flow. This used
@@ -441,7 +446,7 @@ function ApptRow({
               data-testid="appt-prepare"
               onClick={onPrepare}
               aria-label={t("elev.careNet.appt.prepare.aria", { who: appt.who.trim() || appointmentRoleLabel(appt, t) })}
-              className="inline-flex items-center gap-1.5 text-[12px] font-bold rounded-xl px-3 min-h-[44px]"
+              className="inline-flex items-center gap-1.5 t-sm font-bold rounded-xl px-3 min-h-[44px]"
               style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
             >
               <Icon name="description" size={16} /> {t("elev.careNet.appt.prepare")}
@@ -450,7 +455,7 @@ function ApptRow({
           {dated && (
             <button
               onClick={onCalendar}
-              className="inline-flex items-center gap-1.5 text-[12px] font-bold rounded-xl px-3 min-h-[44px]"
+              className="inline-flex items-center gap-1.5 t-sm font-bold rounded-xl px-3 min-h-[44px]"
               style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-green-ink)" }}
             >
               <Icon name="event" size={16} /> {t("elev.learnCare.appt.ics")}
@@ -465,7 +470,7 @@ function ApptRow({
       {followUps.length > 0 && (
         <ul className="space-y-1.5 ps-1">
           {followUps.map((f) => (
-            <li key={f.id} className="text-[13px] leading-relaxed flex items-start gap-2" dir="auto" style={{ color: "var(--arbor-ink)" }}>
+            <li key={f.id} className="t-sm leading-relaxed flex items-start gap-2" dir="auto" style={{ color: "var(--arbor-ink)" }}>
               <Icon name="chat_bubble" size={14} className="mt-1" style={{ color: "var(--arbor-lav-ink)" }} />
               <span className="flex-1">{f.note}</span>
             </li>
@@ -477,8 +482,8 @@ function ApptRow({
           own words. Written to the registered `apptFollowUps` sink. */}
       {followUpDue && (
         <div className="rounded-xl p-3 space-y-2" style={{ background: "var(--arbor-paper-deep)" }}>
-          <p className="text-[12.5px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.learnCare.appt.followUp.title")}</p>
-          <p className="text-[11.5px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.appt.followUp.hint")}</p>
+          <p className="t-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.learnCare.appt.followUp.title")}</p>
+          <p className="t-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.appt.followUp.hint")}</p>
           <textarea
             value={note}
             data-testid="appt-followup-input"
@@ -492,7 +497,7 @@ function ApptRow({
           <button
             onClick={() => { if (onFollowUp(note)) setNote(""); }}
             disabled={!note.trim()}
-            className="inline-flex items-center gap-1.5 text-[12.5px] font-bold rounded-xl px-4 min-h-[44px] disabled:opacity-40"
+            className="inline-flex items-center gap-1.5 t-sm font-bold rounded-xl px-4 min-h-[44px] disabled:opacity-40"
             style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
           >
             <Icon name="save" size={16} /> {t("elev.learnCare.appt.followUp.save")}
