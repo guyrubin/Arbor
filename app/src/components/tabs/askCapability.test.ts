@@ -58,13 +58,16 @@ describe("ASK-4 — anticipated follow-ups", () => {
     expect(councilSend).toContain("chatInput.trim() || lastUserTurn?.text");
   });
 
-  it("the Council button disables (with an honest hint) ONLY when no prior turn exists", () => {
-    expect(coach).toContain("disabled={isChatLoading || (!chatInput.trim() && !lastUserText)}");
-    expect(coach).toContain('t("coach.councilHint.empty")');
+  it("B-ASKJB-05: the council is convened from an ANSWER ('Go deeper' inside More), so a prior turn always exists", () => {
+    // The bottom-row Council button (and its empty-composer hint) left the
+    // composer; the only door is the answer card's "Go deeper", which renders
+    // only on an answer — i.e. after a turn — and re-asks that question.
+    expect(coach).not.toContain('t("coach.council")');
+    expect(coach).toMatch(/onGoDeeper=\{\(\) => handleCouncilSend\(\)\}/);
     for (const lang of ["en", "he"] as const) {
-      expect(translate(lang, "coach.councilHint.empty").trim()).not.toBe("");
+      expect(translate(lang, "coach.cards.goDeeper").trim()).not.toBe("");
     }
-    expect(translate("he", "coach.councilHint.empty")).not.toMatch(/[a-z]/i);
+    expect(translate("he", "coach.cards.goDeeper")).not.toMatch(/[a-z]/i);
   });
 });
 

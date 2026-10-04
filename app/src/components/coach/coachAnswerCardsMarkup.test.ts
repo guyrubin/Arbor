@@ -19,6 +19,12 @@
  *   OBJ-TODAY-04  that chip carries `touch-target` for the 44 px floor;
  *   OBJ-ASK/M     `isolate()` wraps Latin runs inside Hebrew copy in
  *                 FSI/PDI so a name cannot flip the sentence direction.
+ * B-ASKJB-05 re-pinned it a second time, on purpose: the answer became ONE
+ * recommendation — read · Try this (step 1 + "I'll try it") · Say this ·
+ * escalate · More (steps 2-3, why, avoid, watch-for, council, sources, chips,
+ * teacher note, the ONE "Turn into a plan" door) · footer. The KeepBar, the
+ * header "Save as plan" and the per-step tick boxes left the card; the block
+ * count below pins the shape so a sixth block cannot creep back.
  * No text node was lost, no frame was unwrapped and no verdict word entered;
  * the two matchers at the end of the negative-control block pin exactly those
  * three properties so the re-pin cannot silently absorb a fourth change.
@@ -78,7 +84,6 @@ function render(props: Partial<Parameters<typeof CoachAnswerCards>[0]> = {}): st
     React.createElement(CoachAnswerCards, {
       contract,
       onSaveToPlan: noop,
-      onCreateLog: noop,
       onAddToHandoff: noop,
       onManageMemory: noop,
       ...props,
@@ -138,7 +143,9 @@ describe("AI-17 negative controls — the structural matchers reject a regressed
     expect(mutant).not.toContain(SECTION_TITLE);
   });
 
-  it("a today-plan whose unchecked box lost its strong rule is rejected", () => {
+  it("an outline door that lost its strong rule is rejected", () => {
+    // B-ASKJB-05: the tick boxes left the card; the strong rule now frames the
+    // teacher-note and plan doors inside More.
     expect(html).toContain("border:1px solid var(--arbor-rule-strong)");
     const mutant = html.split("var(--arbor-rule-strong)").join("var(--arbor-rule)");
     expect(mutant).not.toContain("var(--arbor-rule-strong)");
@@ -179,7 +186,7 @@ describe("AI-17 — the four structured blocks are all present on the reference 
   const html = render({ lang: "en" });
 
   it("frames every section in the shared card tone", () => {
-    // Say this, Try today, Avoid, Watch for — four framed sections minimum.
+    // Try today, Say this, Avoid, Watch for — four framed sections minimum.
     const frames = html.split(CARD_FRAME).length - 1;
     expect(frames).toBeGreaterThanOrEqual(4);
   });
@@ -191,16 +198,45 @@ describe("AI-17 — the four structured blocks are all present on the reference 
     expect(html).toContain("Copy");
   });
 
-  it("renders the today-plan as an interactive checklist, one button per step", () => {
+  it("renders Try today as the FIRST step only; the rest sit inside More (B-ASKJB-05)", () => {
     expect(html).toContain("Try today");
     for (const step of contract.todayPlan) expect(html).toContain(step);
-    // Each step is its own toggle target.
-    expect(html.split('class="flex items-start gap-2 text-start w-full group"').length - 1).toBe(contract.todayPlan.length);
+    const more = html.indexOf('data-testid="coach-answer-more"');
+    expect(html.indexOf(contract.todayPlan[0])).toBeLessThan(more);
+    expect(html.indexOf(contract.todayPlan[1])).toBeGreaterThan(more);
+    // No ephemeral tick box: the step enters the loop through "I'll try it".
+    expect(html).not.toContain('class="flex items-start gap-2 text-start w-full group"');
   });
 
-  it("renders the keep row with the plan action and the hand-off action", () => {
-    expect(html).toContain("Save to plan");
+  it("renders ONE plan door and the hand-off action inside More (B-ASKJB-05)", () => {
+    expect(html.split('data-testid="coach-plan-door"').length - 1).toBe(1);
+    expect(html).toContain("Turn into a plan");
+    expect(html).not.toContain("Save to plan");
+    expect(html).not.toContain("Save as plan");
     expect(html).toContain("Teacher note");
+  });
+
+  it("B-ASKJB-05 block count: ≤5 top-level blocks + the footer, in order", () => {
+    for (const c of [contract, { ...contract, riskLevel: "moderate" }]) {
+      const out = render({ lang: "en", contract: c });
+      const root = out.indexOf(">", out.indexOf('data-testid="coach-answer-cards"')) + 1;
+      const kids: string[] = [];
+      let depth = 0;
+      const re = /<\/?([a-zA-Z][a-zA-Z0-9-]*)([^>]*?)(\/?)>/g;
+      re.lastIndex = root;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(out))) {
+        if (m[0].startsWith("</")) { if (depth === 0) break; depth -= 1; continue; }
+        if (depth === 0) kids.push(m[0]);
+        if (m[3] !== "/") depth += 1;
+      }
+      expect(kids.length).toBe(6); // read · try · say · escalate · More · footer
+      expect(kids[0]).toContain("flex flex-wrap items-center gap-1.5"); // read (trust link)
+      expect(kids[2]).toContain('data-testid="say-this"');
+      expect(kids[4]).toContain('data-testid="coach-answer-more"');
+      expect(kids[5]).toContain('data-testid="coach-answer-footer"');
+      expect(out).toMatch(/data-testid="coach-answer-more"[^>]*><button type="button" aria-expanded="false"/);
+    }
   });
 
   it("CLINICAL FIREWALL: the answer carries no score, percentage or graded verdict", () => {

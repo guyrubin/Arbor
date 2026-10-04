@@ -76,7 +76,6 @@ const renderCards = (lang: "en" | "he" = "en") =>
       lens: "Attachment",
       lang,
       onSaveToPlan: noop,
-      onCreateLog: noop,
       onAddToHandoff: noop,
     }),
   );

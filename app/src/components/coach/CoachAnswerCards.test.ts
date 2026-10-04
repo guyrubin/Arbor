@@ -106,7 +106,6 @@ function renderCards(riskLevel: string): string {
     React.createElement(CoachAnswerCards, {
       contract: makeContract(riskLevel),
       onSaveToPlan: noop,
-      onCreateLog: noop,
       onAddToHandoff: noop,
     })
   );
@@ -185,7 +184,6 @@ describe("citation drawer rendering (COACH-6)", () => {
       React.createElement(CoachAnswerCards, {
         contract,
         onSaveToPlan: noop,
-        onCreateLog: noop,
         onAddToHandoff: noop,
       })
     );
@@ -262,7 +260,6 @@ function renderCardsHe(riskLevel: string): string {
       council: [{ scholarId: "s1", name: "Dr. Ross Greene", concept: "CPS", takeaway: "Skill, not will.", suggestion: "Solve it together." }],
       lang: "he",
       onSaveToPlan: noop,
-      onCreateLog: noop,
       onAddToHandoff: noop,
     })
   );
@@ -273,11 +270,11 @@ describe("COACH-1 — uiLang=he renders zero English chrome", () => {
     "המועצה התייעצה",        // council panel title
     "למה זה אולי קורה",       // why this might be happening (ASK-3 disclosure)
     "לנסות היום",             // try today
-    "שמירה כתוכנית",          // save as plan
+    "להפוך לתוכנית",          // turn into a plan (B-ASKJB-05: the ONE plan door)
     "אפשר להגיד",             // say this
     "ממה להימנע",             // avoid
     "למה לשים לב",            // watch for
-    "שמירה לתוכנית",          // save to plan
+    "עוד",                    // More (B-ASKJB-05 disclosure)
     "פתק למורה",              // teacher note
   ];
   const EN_CHROME = [
@@ -290,6 +287,9 @@ describe("COACH-1 — uiLang=he renders zero English chrome", () => {
     "Watch for",
     "Developmental frame",
     "Save to plan",
+    "Turn into a plan",
+    "Go deeper",
+    "Next steps",
     "Teacher note",
     "Reach out for help if",
     "When to seek help",
@@ -316,11 +316,10 @@ describe("COACH-1 — uiLang=he renders zero English chrome", () => {
         contract: makeFullContract("low"),
         lang: "en",
         onSaveToPlan: noop,
-        onCreateLog: noop,
         onAddToHandoff: noop,
       })
     );
-    for (const s of ["Why this might be happening", "Try today", "Say this", "Watch for", "Save to plan", "Teacher note"]) {
+    for (const s of ["Why this might be happening", "Try today", "Say this", "Watch for", "Turn into a plan", "More", "Teacher note"]) {
       expect(html, `missing EN chrome "${s}"`).toContain(s);
     }
   });
@@ -367,7 +366,6 @@ describe("ASK-6 — memory footer rendering", () => {
         contract: { ...makeContract("low"), ...overrides },
         lang,
         onSaveToPlan: noop,
-        onCreateLog: noop,
         onAddToHandoff: noop,
         onManageMemory: noop,
       })
@@ -431,22 +429,23 @@ describe("ASK-3 — script + plan lead, hypotheses collapse, frames never render
         contract: makeFullContract("low"),
         lang: "en",
         onSaveToPlan: noop,
-        onCreateLog: noop,
         onAddToHandoff: noop,
       })
     );
   }
 
-  it("parentScript renders before todayPlan, and todayPlan before the hypotheses disclosure", () => {
+  it("B-ASKJB-05 order: Try this, then Say this, then More (which holds the hypotheses)", () => {
     const html = renderFullEn();
     const script = html.indexOf("Say this");
     const plan = html.indexOf("Try today");
+    const more = html.indexOf('data-testid="coach-answer-more"');
     const why = html.indexOf("Why this might be happening");
     expect(script).toBeGreaterThan(-1);
     expect(plan).toBeGreaterThan(-1);
     expect(why).toBeGreaterThan(-1);
-    expect(script, "script must lead the stack").toBeLessThan(plan);
-    expect(plan, "plan must precede the hypotheses disclosure").toBeLessThan(why);
+    expect(plan, "the one step leads the stack").toBeLessThan(script);
+    expect(script, "the script precedes More").toBeLessThan(more);
+    expect(more, "the hypotheses live inside More").toBeLessThan(why);
   });
 
   it("the frameRouting panel and its values are never visible to the parent", () => {
@@ -489,5 +488,144 @@ describe("B-ASKJB-04 — the try-it control renders per state, 44 px, EN + HE", 
     expect(r({ ...other, status: "completed" })).toBe("");
     expect(r(null, "he")).toContain("אנסה את זה");
     expect(r(other, "he")).toContain("שזה יהיה הצעד של היום");
+  });
+});
+
+/**
+ * B-ASKJB-05 — ONE recommendation. The card is read · Try this · Say this ·
+ * (escalate) · More, then the footer: at most five top-level blocks plus the
+ * footer, More collapsed by default, ONE plan door (inside More), escalation
+ * never inside More, every control ≥44 px, EN + HE.
+ */
+describe("B-ASKJB-05 — one-recommendation answer", () => {
+  const VOID = new Set(["br", "img", "input", "hr", "meta", "link", "source", "wbr"]);
+  /** Direct element children of the root (`data-testid="coach-answer-cards"`). */
+  function topLevelChildren(html: string): string[] {
+    const root = html.indexOf('data-testid="coach-answer-cards"');
+    expect(root, "root testid present").toBeGreaterThan(-1);
+    const start = html.indexOf(">", root) + 1;
+    const children: string[] = [];
+    let depth = 0;
+    const re = /<\/?([a-zA-Z][a-zA-Z0-9-]*)([^>]*?)(\/?)>/g;
+    re.lastIndex = start;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(html))) {
+      const closing = m[0].startsWith("</");
+      const selfClosing = m[3] === "/" || VOID.has(m[1].toLowerCase());
+      if (closing) {
+        if (depth === 0) break; // the root's own close
+        depth -= 1;
+        continue;
+      }
+      if (depth === 0) children.push(m[0]);
+      if (!selfClosing) depth += 1;
+    }
+    return children;
+  }
+  function full(riskLevel: string, extra: Partial<CoachContract> = {}): CoachContract {
+    return {
+      ...makeFullContract(riskLevel),
+      todayPlan: ["Give a two-minute warning before leaving.", "Name the next thing.", "Hold the hand at the door."],
+      sourceCardsUsed: ["transition-warnings"],
+      sourceCards: [{ id: "transition-warnings", title: "Transition warnings", type: "practice_card" }],
+      approvedMemoryFactsUsed: 2,
+      memoryProposals: [{ fact: "Leaves the park hard", source: "parent", retention: "long" }],
+      ...extra,
+    } as CoachContract;
+  }
+  function render(contract: CoachContract, lang: "en" | "he" = "en", props: Record<string, unknown> = {}): string {
+    return renderToStaticMarkup(
+      React.createElement(CoachAnswerCards, {
+        contract, lang, lens: "Dr. Becky Kennedy",
+        onSaveToPlan: noop, onAddToHandoff: noop, onManageMemory: noop, onGoDeeper: noop,
+        onTryIt: noop, onUndoTryIt: noop, todayStep: null,
+        ...props,
+      } as any)
+    );
+  }
+
+  for (const lang of ["en", "he"] as const) {
+    it(`[${lang}] a contract with all fields renders ≤5 blocks + footer; More is collapsed`, () => {
+      const html = render(full("low"), lang);
+      const kids = topLevelChildren(html);
+      expect(kids.length, kids.join("\n")).toBe(6);
+      expect(kids.length - 1, "blocks above the footer").toBeLessThanOrEqual(5);
+      expect(kids[4]).toContain('data-testid="coach-answer-more"');
+      expect(kids[5]).toContain('data-testid="coach-answer-footer"');
+      // More: one aria-expanded toggle, collapsed, its body hidden (not unmounted).
+      const more = html.slice(html.indexOf('data-testid="coach-answer-more"'));
+      expect(more).toMatch(/^[^]*?<button type="button" aria-expanded="false"/);
+      expect(more).toMatch(/<div hidden="" class="space-y-2\.5 px-3\.5/);
+    });
+
+    it(`[${lang}] prominent escalation renders OUTSIDE More, as its own block`, () => {
+      const html = render(full("moderate"), lang);
+      const kids = topLevelChildren(html);
+      expect(kids.length).toBe(6);
+      const headline = lang === "he" ? "פנו לעזרה מקצועית אם" : "Reach out for help if";
+      expect(html.indexOf(headline)).toBeGreaterThan(-1);
+      expect(html.indexOf(headline), "escalation precedes More").toBeLessThan(html.indexOf('data-testid="coach-answer-more"'));
+      expect(html).toContain(ESCALATE_ITEM);
+    });
+
+    it(`[${lang}] no escalation, no script → fewer blocks, More + footer still last`, () => {
+      const kids = topLevelChildren(render(full("low", { escalateIf: [], parentScript: "" }), lang));
+      expect(kids.length).toBe(4);
+      expect(kids[2]).toContain('data-testid="coach-answer-more"');
+    });
+
+    it(`[${lang}] exactly ONE plan door, inside More; no header "Save as plan", no KeepBar`, () => {
+      const html = render(full("low"), lang);
+      expect(html.split('data-testid="coach-plan-door"').length - 1).toBe(1);
+      const more = html.indexOf('data-testid="coach-answer-more"');
+      expect(html.indexOf('data-testid="coach-plan-door"')).toBeGreaterThan(more);
+      expect(html).toContain(lang === "he" ? "להפוך לתוכנית" : "Turn into a plan");
+      for (const old of ["Save as plan", "Save to plan", "שמירה כתוכנית", "שמירה לתוכנית"]) expect(html).not.toContain(old);
+    });
+
+    it(`[${lang}] Try this shows the FIRST step only; steps 2–3 sit inside More`, () => {
+      const html = render(full("low"), lang);
+      const more = html.indexOf('data-testid="coach-answer-more"');
+      expect(html.indexOf("Give a two-minute warning before leaving.")).toBeLessThan(more);
+      expect(html.indexOf("Name the next thing.")).toBeGreaterThan(more);
+      expect(html.indexOf("Hold the hand at the door.")).toBeGreaterThan(more);
+      expect(html).toContain(lang === "he" ? "הצעדים הבאים" : "Next steps");
+      expect(html).toContain(lang === "he" ? "אנסה את זה" : "I&#x27;ll try it");
+    });
+
+    it(`[${lang}] "Go deeper" only while no council exists; council takes replace it`, () => {
+      const label = lang === "he" ? "להעמיק" : "Go deeper";
+      expect(render(full("low"), lang)).toContain(label);
+      const withCouncil = render(full("low"), lang, { council: [{ scholarId: "s1", name: "Dr. Ross Greene", concept: "CPS", takeaway: "Skill, not will.", suggestion: "Solve it together." }] });
+      expect(withCouncil).not.toContain('data-testid="coach-go-deeper"');
+      expect(withCouncil).toContain("Dr. Ross Greene");
+      expect(render(full("low"), lang, { onGoDeeper: undefined })).not.toContain('data-testid="coach-go-deeper"');
+    });
+
+    it(`[${lang}] every control on the card is ≥44 px`, () => {
+      const html = render(full("low"), lang);
+      const buttons = html.match(/<button\b[^>]*>/g) ?? [];
+      expect(buttons.length).toBeGreaterThanOrEqual(10);
+      for (const b of buttons) {
+        expect(b, `under 44 px: ${b}`).toMatch(/min-h-11|min-h-\[44px\]|touch-target/);
+      }
+    });
+  }
+
+  it("the dead onCreateLog prop, the ML avatar and the bottom-row Council button are gone (source)", () => {
+    const fs = require("node:fs") as typeof import("node:fs");
+    const path = require("node:path") as typeof import("node:path");
+    const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1").replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
+    const cards = strip(fs.readFileSync(path.join(__dirname, "CoachAnswerCards.tsx"), "utf8"));
+    const tab = strip(fs.readFileSync(path.join(__dirname, "..", "tabs", "CoachTab.tsx"), "utf8"));
+    expect(cards).not.toContain("onCreateLog");
+    expect(cards).not.toContain("KeepBar");
+    expect(cards).not.toContain("coach.cards.saveAsPlan");
+    expect(tab).not.toContain("onCreateLog");
+    expect(tab).not.toMatch(/>\s*ML\s*</);
+    expect(tab).toContain('t("coach.coachName")');
+    // The council is convened from inside More ("Go deeper"), not a bottom-row button.
+    expect(tab).not.toContain('t("coach.council")');
+    expect(tab).toMatch(/onGoDeeper=\{\(\) => handleCouncilSend\(\)\}/);
   });
 });

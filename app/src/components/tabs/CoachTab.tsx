@@ -33,11 +33,10 @@ import { ShareButton } from "../ui/ShareButton";
 import { EvidenceChip } from "../ui/EvidenceChip";
 import ArborVision from "../coach/ArborVision";
 import { api, streamVoice, getAiLanguage, ApiError, EscalationRequiredError, PaywallError } from "../../lib/api";
-import { behaviorTypeLabel, normalizeExtractedLog } from "../../content/behaviorTaxonomy";
+import { behaviorTypeLabel } from "../../content/behaviorTaxonomy";
 import { recurringScenario } from "../../lib/patternEcho";
 import { localDayKey } from "../../lib/firstsKeepsake";
 import { handleVoiceDone } from "../../lib/voiceSafetyEvents";
-import type { BehaviorContext } from "../../types";
 import type { ChatMessage } from "../../context/ArborContext";
 import { startDictation, speechSupported } from "../../lib/speech";
 // AI-V2(a): the chip/orb tap contract (start / interrupt / stop) is a pure
@@ -155,12 +154,6 @@ export default function CoachTab() {
     setActiveTab,
     setPlanChallengeTopic,
     setNewLogNotes,
-    setNewLogType,
-    setNewLogIntensity,
-    setNewLogDuration,
-    setNewLogContext,
-    setNewLogTrigger,
-    setNewLogResponse,
     childProfile,
     conversations,
     activeConversationId,
@@ -1270,9 +1263,6 @@ export default function CoachTab() {
             visually subordinate so the conversation is the hero. Green primary —
             never the design's sapphire — per the parent color lock. */}
         <div className="px-4 py-2.5 flex items-center gap-3" style={{ background: "var(--arbor-paper-deep)", borderBottom: "1px solid var(--arbor-rule)" }}>
-          <span className="inline-flex items-center justify-center flex-shrink-0 rounded-full text-xs font-extrabold" style={{ width: 36, height: 36, background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }} aria-hidden>
-            ML
-          </span>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-extrabold leading-tight" style={{ color: "var(--arbor-ink)" }}>{t("coach.coachName")}</p>
             {/* AI-13 (honest AI, Law 4): no presence dot, no "always here" —
@@ -1451,43 +1441,9 @@ export default function CoachTab() {
                         setActiveTab("plans");
                         toast(t("coach.toast.planSeeded"), "info");
                       }}
-                      onCreateLog={async () => {
-                        const prior = chatMessages[idx - 1];
-                        const source = prior?.sender === "user" ? prior.text : msg.text;
-                        toast(t("coach.toast.draftingLog"), "info");
-                        try {
-                          const d = await api.extractLog({ message: source, childProfile, language: getAiLanguage() });
-                          // AI-CAP-8: clamp/validate through the ONE shared
-                          // taxonomy module — the Behaviors select always gets
-                          // a canonical type, free labels survive in notes.
-                          const n = normalizeExtractedLog(d, source.slice(0, 140));
-                          setNewLogType(n.behaviorType);
-                          setNewLogIntensity(n.intensity);
-                          setNewLogDuration(n.durationMinutes);
-                          setNewLogContext(n.context as BehaviorContext);
-                          setNewLogTrigger(n.trigger);
-                          setNewLogResponse(n.response || t("beh.extract.noResponse"));
-                          setNewLogNotes(n.notes);
-                          // AI-CAP-4: route the handoff through the existing
-                          // requestCapture seam — Behaviors opens the form
-                          // VISIBLE, review gate armed, factual 'ai-draft'
-                          // provenance; the only write path is confirmReview.
-                          openCaptureSheet({ review: "ai-draft" });
-                          toast(t("coach.toast.logDrafted"), "success");
-                        } catch (err) {
-                          // FAIL-CLOSED (same contract as AI-CAP-1): a 409 from
-                          // the extraction screen renders the full crisis
-                          // resources in the thread and writes ZERO draft fields.
-                          if (err instanceof EscalationRequiredError) {
-                            appendVoiceAiDelta(renderEscalationMarkdown(escalationMatchForCategory(err.category)));
-                            finalizeVoiceAiTurn();
-                            return;
-                          }
-                          setNewLogNotes(msg.contract!.nonDiagnosticHypotheses?.[0]?.rationale?.slice(0, 300) || source.slice(0, 300));
-                          openCaptureSheet({ review: "ai-draft" });
-                          toast(t("coach.toast.notePrefilled"), "info");
-                        }
-                      }}
+                      // B-ASKJB-05: "Go deeper" (inside More, only while no
+                      // council exists) convenes the council on this question.
+                      onGoDeeper={() => handleCouncilSend()}
                       // AI-05: the teacher note is CONSUMED, not dropped. The
                       // card handed a real note string and this callback threw
                       // it away, so "Teacher note" was a bare tab switch into an
@@ -1773,20 +1729,6 @@ export default function CoachTab() {
           />
         </div>
         <div className="flex flex-wrap items-center gap-2 px-4 py-2" style={{ borderTop: "1px solid var(--arbor-rule)", background: "var(--arbor-paper-deep)" }}>
-          <button
-            type="button"
-            // ASK-4: with an empty composer the council re-asks the parent's
-            // last question (handleCouncilSend falls back to it) — disabled,
-            // with an honest hint, ONLY when no prior turn exists to convene on.
-            onClick={() => handleCouncilSend()}
-            disabled={isChatLoading || (!chatInput.trim() && !lastUserText)}
-            title={chatInput.trim() || lastUserText ? t("coach.councilHint") : t("coach.councilHint.empty")}
-            aria-label={chatInput.trim() || lastUserText ? t("coach.councilHint") : t("coach.councilHint.empty")}
-            className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 min-h-[44px] rounded-lg transition disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-            style={{ color: "var(--arbor-muted)" }}
-          >
-            <Icon name="group" size={14} /> {t("coach.council")}
-          </button>
           <button
             type="button"
             onClick={() => { setActiveTab("consult"); toast(t("coach.specialist.toast"), "info"); }}

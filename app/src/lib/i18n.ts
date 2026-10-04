@@ -503,12 +503,16 @@ export const en: Dict = {
   // ASK-3 — hypotheses collapse into a calm disclosure below the script + plan.
   "coach.cards.why": "Why this might be happening",
   "coach.cards.tryToday": "Try today",
-  "coach.cards.saveAsPlan": "Save as plan",
+  // B-ASKJB-05 — one recommendation; everything else behind ONE "More".
+  "coach.cards.more": "More",
+  "coach.cards.less": "Less",
+  "coach.cards.moreSteps": "Next steps",
+  "coach.cards.goDeeper": "Go deeper",
+  "coach.cards.turnIntoPlan": "Turn into a plan",
   "coach.cards.sayThis": "Say this",
   "coach.cards.copied": "Copied",
   "coach.cards.avoid": "Avoid",
   "coach.cards.watchFor": "Watch for",
-  "coach.cards.saveToPlan": "Save to plan",
   "coach.cards.teacherNote": "Teacher note",
   "coach.cards.copiedNote": "Copied note",
   // COACH-1 — six-frame routing chip labels (FRAME_LABELS).
@@ -2869,12 +2873,16 @@ export const he: Dict = {
   // ASK-3 — ההשערות מתקפלות לגילוי רגוע מתחת לתסריט ולתוכנית.
   "coach.cards.why": "למה זה אולי קורה",
   "coach.cards.tryToday": "לנסות היום",
-  "coach.cards.saveAsPlan": "שמירה כתוכנית",
+  // B-ASKJB-05 — המלצה אחת; כל השאר מאחורי "עוד" אחד.
+  "coach.cards.more": "עוד",
+  "coach.cards.less": "פחות",
+  "coach.cards.moreSteps": "הצעדים הבאים",
+  "coach.cards.goDeeper": "להעמיק",
+  "coach.cards.turnIntoPlan": "להפוך לתוכנית",
   "coach.cards.sayThis": "אפשר להגיד",
   "coach.cards.copied": "הועתק",
   "coach.cards.avoid": "ממה להימנע",
   "coach.cards.watchFor": "למה לשים לב",
-  "coach.cards.saveToPlan": "שמירה לתוכנית",
   "coach.cards.teacherNote": "פתק למורה",
   "coach.cards.copiedNote": "הפתק הועתק",
   // COACH-1 — six-frame routing chip labels (he).

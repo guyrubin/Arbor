@@ -144,27 +144,14 @@ describe("AI-CAP-3 — QuickLogModal typed capture", () => {
   });
 });
 
-describe("AI-CAP-4 — coach Create-log lands in a VISIBLE, review-gated form", () => {
-  it("onCreateLog opens the capture sheet in review ('ai-draft') — never a bare tab switch (B-ASKJB-30)", () => {
-    // Success + note-prefill fallback + (AI-05) the overflow "Log" menu item
-    // and the Arbor Vision onGoBehaviors hand-off: all four open the ONE
-    // sheet in place, on its review step (the review gate is the only write).
-    expect(count(coach, /openCaptureSheet\(\{ review: "ai-draft" \}\)/g)).toBe(4);
+describe("AI-CAP-4 — coach AI drafts land in the review-gated sheet (B-ASKJB-05: the dead Create-log handler is gone)", () => {
+  it("the two live coach draft paths open the capture sheet in review ('ai-draft') — never a bare tab switch", () => {
+    // B-ASKJB-05 removed the never-called onCreateLog handler (and with it its
+    // extraction call); the overflow "Log" item and the Arbor Vision hand-off
+    // remain, and both open the ONE sheet on its review step (B-ASKJB-30).
+    expect(count(coach, /openCaptureSheet\(\{ review: "ai-draft" \}\)/g)).toBe(2);
     expect(coach).not.toContain('setActiveTab("behaviors")');
-  });
-
-  it("the extraction call threads the parent's AI language and clamps through the shared taxonomy", () => {
-    expect(coach).toMatch(/api\.extractLog\(\{ message: source, childProfile, language: getAiLanguage\(\) \}\)/);
-    expect(coach).toMatch(/normalizeExtractedLog\(d, source\.slice\(0, 140\)\)/);
-  });
-
-  it("FAIL-CLOSED: an escalation on the handoff writes ZERO draft fields and surfaces the resources in the thread", () => {
-    const branch = /if \(err instanceof EscalationRequiredError\) \{([\s\S]*?)\n\s*\}/.exec(coach)?.[1] ?? "";
-    expect(branch).toBeTruthy();
-    expect(branch).not.toMatch(/setNewLog/);
-    expect(branch).not.toMatch(/requestCapture/);
-    expect(branch).toMatch(/renderEscalationMarkdown\(escalationMatchForCategory\(err\.category\)\)/);
-    expect(branch).toMatch(/return;/);
+    expect(coach).not.toContain("onCreateLog");
   });
 
   it("the ArborContext capture seam accepts the 'ai-draft' mode", () => {
