@@ -175,8 +175,10 @@ export default function SchoolBrief() {
     return buildSchoolBriefExport(draft, {
       title: t("schoolBrief.title") + ` — ${firstName}`,
       date: new Date().toISOString().slice(0, 10),
+      // B-DIST-01: the demo family's brief says so on every egress.
+      ...(childProfile.demo === true ? { demoHeader: t("elev.demo.header") } : {}),
     });
-  }, [draft, t, firstName]);
+  }, [draft, t, firstName, childProfile.demo]);
 
   // Condition 1: every edit RESETS the per-export approval — the parent must
   // re-approve the edited brief before it can leave the app. The state machine

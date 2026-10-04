@@ -28,6 +28,7 @@ import { createWaitlistNotifierFromEnv, createWaitlistStore } from "./waitlist.j
 import { createPushTokenStore } from "./pushTokens.js";
 import { requestObservability, logger } from "./logger.js";
 import { requestContextMiddleware, bindUidToContext } from "./requestContext.js";
+import { createDemoFamilyRouter } from "./demoFamilyRoute.js";
 import { healthzHandler } from "./healthz.js";
 
 /**
@@ -165,6 +166,9 @@ export const createApp = (config: ArborConfig) => {
   // (RevenueCat carries its own shared-secret header, not a Firebase token) and
   // parses its own JSON body. It is the only writer of entitlements/{uid}.
   app.use("/webhooks/billing", createBillingWebhookRouter(config, entitlementStore));
+  // B-DIST-01: the sandbox's demo-family bundle — null (not mounted) in prod.
+  const demoFamilyRouter = createDemoFamilyRouter(config);
+  if (demoFamilyRouter) app.use(demoFamilyRouter);
   app.use("/api", rateLimit({
     windowMs: 60_000,
     limit: 30,

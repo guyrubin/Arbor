@@ -79,7 +79,10 @@ export interface RetentionRollupDoc {
   cohort: RetentionCohort;
 }
 
-export type RetentionCohort = "internal" | "family";
+/** B-DIST-01: "demo" = the sanitized demo family (scripts/seed-demo-family.mjs
+ *  tags its rollup once). Sticky: a session never re-tags a demo rollup, and
+ *  the cohort report always leaves it out. */
+export type RetentionCohort = "internal" | "family" | "demo";
 
 /** What a session knows about itself. Supplied by the caller so the module
  *  stays deterministic under test — no Date.now() hidden inside a branch. */
@@ -131,7 +134,8 @@ export function nextRollupDoc(
   if (!merged) return null;
 
   const prior = stored && typeof stored === "object" ? (stored as Record<string, unknown>) : null;
-  const cohort: RetentionCohort = ctx.cohort ?? (prior?.cohort === "internal" ? "internal" : "family");
+  const cohort: RetentionCohort =
+    prior?.cohort === "demo" ? "demo" : ctx.cohort ?? (prior?.cohort === "internal" ? "internal" : "family");
   const unchanged =
     prev !== null &&
     merged.firstSeen === prev.firstSeen &&

@@ -34,6 +34,8 @@ export interface PacketInputProfile {
   /** W2-CAREPRO r1: picks the gendered Hebrew verb only ("boy" | "girl";
    *  anything else reads neutral); never emitted as a field. */
   gender?: string;
+  /** B-DIST-01: the sanitized demo family — every egress carries the demo header. */
+  demo?: boolean;
 }
 export interface PacketInputLog {
   behaviorType: string;
@@ -199,7 +201,13 @@ export interface ConsultPacket {
   childLabel: string;
   generatedAt: string;
   sections: PacketSection[];
+  /** B-DIST-01: built from the demo family — every serializer leads with
+   *  DEMO_HEADER_KEY ("Demo family — invented data"). */
+  demo?: true;
 }
+
+/** B-DIST-01: the one header line every egress of a demo-family record carries. */
+export const DEMO_HEADER_KEY = "elev.demo.header";
 
 const DAY = 86_400_000;
 function toMs(ts: string | number): number {
@@ -282,6 +290,8 @@ export interface RawPacketProfile {
   factsAsOf?: { schoolContext?: string };
   /** W2-CAREPRO r1: `ChildProfile.gender` — read only to pick a gendered verb. */
   gender?: string;
+  /** B-DIST-01: `ChildProfile.demo` — the invented demo family. */
+  demo?: boolean;
 }
 /** Raw behaviour-log fields (a `BehaviorLog`, or a Firestore document). */
 export interface RawPacketLog {
@@ -378,6 +388,7 @@ export function buildPacketInput(record: RawChildRecord, nowMs: number): BuildPa
       activeGoals: rawGoals(p.activeGoals),
       factsAsOf: rawFactsAsOf(p.factsAsOf),
       gender: p.gender === "boy" || p.gender === "girl" ? p.gender : undefined,
+      ...(p.demo === true ? { demo: true } : {}),
     },
     logs: record.logs.map((l) => ({
       behaviorType: rawStr(l.behaviorType),
@@ -791,6 +802,7 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
     childLabel: profile.name,
     generatedAt: new Date(nowMs).toISOString().slice(0, 10),
     sections,
+    ...(profile.demo === true ? { demo: true as const } : {}),
   };
 }
 
@@ -816,6 +828,7 @@ export function serializePacket(packet: ConsultPacket, excludedIds: Set<string> 
   const lines: string[] = [
     `# ${translate(lang, "elev.packet.header", { name: packet.childLabel })}`,
     `_${translate(lang, "elev.packet.prepared", { date: packet.generatedAt })}_`,
+    ...(packet.demo ? [`**${translate(lang, DEMO_HEADER_KEY)}**`] : []),
     "",
   ];
   for (const section of packet.sections) {
@@ -1083,7 +1096,8 @@ export function presetPacketToPrintSections(
   lang: UiLang = "en"
 ): PresetPrintSection[] {
   const preset = CONSULT_PRESETS[audience];
-  const sections: PresetPrintSection[] = [];
+  // B-DIST-01: a demo-family record's PDF opens with the demo header.
+  const sections: PresetPrintSection[] = packet.demo ? [{ heading: translate(lang, DEMO_HEADER_KEY), body: [] }] : [];
   for (const section of capToPreset(preset, packet).sections) {
     const items = section.items.filter((it) => !excludedIds.has(it.id));
     if (items.length === 0) continue;

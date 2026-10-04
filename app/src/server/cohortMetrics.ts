@@ -139,7 +139,7 @@ export type StoredRollup = RetentionRollup & {
   source: string | null;
   market: string | null;
   uid?: string;
-  cohort?: "internal" | "family";
+  cohort?: "internal" | "family" | "demo";
 };
 
 export interface CohortMetricsStore {
@@ -208,7 +208,7 @@ export class FirestoreCohortMetricsStore implements CohortMetricsStore {
           source: typeof data.source === "string" ? data.source : null,
           market: typeof data.market === "string" ? data.market : null,
           uid: d.id,
-          cohort: data.cohort === "internal" ? "internal" : "family",
+          cohort: data.cohort === "internal" ? "internal" : data.cohort === "demo" ? "demo" : "family",
         });
       }
       return out;
@@ -389,6 +389,9 @@ export type CohortReport = {
   /** B-MEAS-01: internal families (founder, comped, smoke) left out of every
    *  number above, and whether the caller asked to keep them in. */
   internal: { excluded: number; included: boolean };
+  /** B-DIST-01: the demo family (invented data) — always left out, even with
+   *  includeInternal; also counted in `internal.excluded`. */
+  demo: { excluded: number };
   generatedAt: string;
 };
 
@@ -401,19 +404,23 @@ export function excludeInternal<E extends { uid: string }>(
   rollups: readonly StoredRollup[],
   events: readonly E[],
   includeInternal = false,
-): { rollups: StoredRollup[]; events: E[]; excluded: number } {
-  if (includeInternal) return { rollups: [...rollups], events: [...events], excluded: 0 };
-  const internalUids = new Set<string>();
+): { rollups: StoredRollup[]; events: E[]; excluded: number; demoExcluded: number } {
+  // B-DIST-01: a demo family is never a family — out even when internal is kept.
+  const dropped = new Set<string>();
   const kept: StoredRollup[] = [];
+  let demoExcluded = 0;
   for (const r of rollups) {
-    if (r.cohort === "internal") {
-      if (r.uid) internalUids.add(r.uid);
+    const drop = r.cohort === "demo" || (!includeInternal && r.cohort === "internal");
+    if (drop) {
+      if (r.cohort === "demo") demoExcluded += 1;
+      if (r.uid) dropped.add(r.uid);
     } else kept.push(r);
   }
   return {
     rollups: kept,
-    events: events.filter((e) => !internalUids.has(e.uid)),
+    events: events.filter((e) => !dropped.has(e.uid)),
     excluded: rollups.length - kept.length,
+    demoExcluded,
   };
 }
 
@@ -449,7 +456,7 @@ export async function buildCohortReport(
     store.listEvents(opts.since),
   ]);
   const includeInternal = opts.includeInternal === true;
-  const { rollups, events, excluded } = excludeInternal(allRollups, allEvents, includeInternal);
+  const { rollups, events, excluded, demoExcluded } = excludeInternal(allRollups, allEvents, includeInternal);
 
   const census = new Map<string, number>();
   for (const e of events) census.set(e.event, (census.get(e.event) ?? 0) + 1);
@@ -481,6 +488,7 @@ export async function buildCohortReport(
       .sort((a, b) => b.count - a.count || a.stage.localeCompare(b.stage)),
     scanned: { rollups: rollups.length, events: events.length, mode: store.mode },
     internal: { excluded, included: includeInternal },
+    demo: { excluded: demoExcluded },
     generatedAt: now.toISOString(),
   };
 }

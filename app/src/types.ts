@@ -89,6 +89,13 @@ export interface ChildProfile {
    */
   ageMonthsAsOf?: string;
   /**
+   * B-DIST-01 — the sanitized demo family (demo/demoFamily.ts). `true` only on
+   * the invented demo child: the child switcher shows a quiet "Demo" chip and
+   * every egress document carries "Demo family — invented data". Never set by
+   * a parent flow.
+   */
+  demo?: boolean;
+  /**
    * W1 1.1 — two-slot per-child visit tracking for the Today "Since your last
    * visit" strip (hooks/useLastVisit). Two slots so the open that stamps the
    * CURRENT visit never overwrites the timestamp the strip needs to read.
@@ -168,6 +175,8 @@ export interface SharedPacketView {
   /** B-CAREPRO-15: the server sends the full PacketSection — the keys let the
    *  viewer render headings in the reader's language (sectionTitle). */
   sections: { id: string; title: string; titleKey?: string; titleVars?: Record<string, string | number>; note?: string; noteKey?: string; items: { id: string; text: string }[] }[];
+  /** B-DIST-01: the shared record is the invented demo family. */
+  demo?: true;
 }
 
 /** M9: proof-of-deletion receipt returned by a full child-data erase. */

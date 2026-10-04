@@ -8,6 +8,8 @@ import {trackAppStart} from './lib/loopEvents';
 import {installApiBaseShim} from './lib/runtime';
 import {initNativeShell} from './lib/native';
 import {restoreTheme} from './lib/theme';
+import {firebaseEnabled} from './lib/firebase';
+import {hydrateDemoFamily} from './lib/demoFamilyHydrate';
 
 // AP-052: restore accent-theme preference before first render so there is no
 // flash-of-wrong-theme on load. Runs synchronously — no await needed.
@@ -25,11 +27,18 @@ const attribution = captureAttribution();
 setGlobalProps(() => attributionProps(attribution));
 trackAppStart();
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
+const renderApp = () =>
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  );
+
+// B-DIST-01: in the local sandbox (no Firebase) a seeded demo family is written
+// into the per-child storage keys BEFORE the first render; no bundle → the app
+// renders exactly as before. Never runs with Firebase (prod/stage/dev clouds).
+if (firebaseEnabled) renderApp();
+else void hydrateDemoFamily().catch(() => 'none').finally(renderApp);
 
 // First-party capture of uncaught errors / promise rejections.
 window.addEventListener('error', (e) => {

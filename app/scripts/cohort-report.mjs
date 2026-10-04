@@ -216,14 +216,17 @@ export function countFunnelChain(events, chain, groupBy) {
 /** B-MEAS-01: drop internal families (and their events) unless asked not to.
  *  Mirrors server/cohortMetrics.ts `excludeInternal`; the guard runs both. */
 export function excludeInternal(rollups, events, includeInternal = false) {
-  if (includeInternal) return { rollups: [...rollups], events: [...events], excluded: 0 };
-  const internalUids = new Set();
+  // B-DIST-01: the demo family (cohort "demo") is never a family — out even with --include-internal.
+  const dropped = new Set();
   const kept = [];
+  let demoExcluded = 0;
   for (const r of rollups) {
-    if (r.cohort === "internal") { if (r.uid) internalUids.add(r.uid); }
-    else kept.push(r);
+    if (r.cohort === "demo" || (!includeInternal && r.cohort === "internal")) {
+      if (r.cohort === "demo") demoExcluded += 1;
+      if (r.uid) dropped.add(r.uid);
+    } else kept.push(r);
   }
-  return { rollups: kept, events: events.filter((e) => !internalUids.has(e.uid)), excluded: rollups.length - kept.length };
+  return { rollups: kept, events: events.filter((e) => !dropped.has(e.uid)), excluded: rollups.length - kept.length, demoExcluded };
 }
 
 /** B-MEAS-02 — ISO-8601 week key (YYYY-Www), UTC. Mirrors cohortMetrics.isoWeekOf. */
@@ -315,7 +318,7 @@ async function fetchRollups(db) {
       source: typeof data.source === "string" ? data.source : null,
       market: typeof data.market === "string" ? data.market : null,
       uid: typeof d.id === "string" ? d.id : undefined,
-      cohort: data.cohort === "internal" ? "internal" : "family",
+      cohort: data.cohort === "internal" ? "internal" : data.cohort === "demo" ? "demo" : "family",
     });
   }
   return out;

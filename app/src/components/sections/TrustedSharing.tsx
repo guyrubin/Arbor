@@ -375,6 +375,10 @@ export default function TrustedSharing() {
                  shown with no tap once the email is valid. */
               <div data-testid="share-week-preview" aria-live="polite" className="rounded-xl p-3.5 space-y-2.5" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
                 <p className="t-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.share.preview.title")}</p>
+                {/* B-DIST-01: what the recipient reads opens with the demo header. */}
+                {childProfile.demo === true && (
+                  <p data-demo-header className="t-xs font-bold" dir="auto" style={{ color: "var(--arbor-ink)" }}>{t("elev.demo.header")}</p>
+                )}
                 {weekPreview.blocked ? (
                   <p role="alert" className="t-xs font-bold leading-relaxed" style={{ color: "var(--arbor-pink-ink)" }}>{t("elev.learnCare.share.preview.blocked")}</p>
                 ) : !weekPreview.sections || weekPreview.sections.length === 0 ? (
@@ -485,6 +489,10 @@ export default function TrustedSharing() {
                   guards, so this is the recipient's view and not a mock-up. */}
               <div data-testid="share-scope-preview" className="rounded-xl p-3.5 space-y-2.5" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}>
                 <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--arbor-green-ink)" }}>{t("elev.learnCare.share.preview.title")}</p>
+                {/* B-DIST-01: what the recipient reads opens with the demo header. */}
+                {childProfile.demo === true && (
+                  <p data-demo-header className="t-xs font-bold" dir="auto" style={{ color: "var(--arbor-ink)" }}>{t("elev.demo.header")}</p>
+                )}
                 {previewPacket.blocked ? (
                   <p role="alert" className="text-[12px] font-bold leading-relaxed" style={{ color: "var(--arbor-pink-ink)" }}>{t("elev.learnCare.share.preview.blocked")}</p>
                 ) : !previewPacket.sections || previewPacket.sections.length === 0 ? (
@@ -707,6 +715,9 @@ export default function TrustedSharing() {
                   {t("sec.sharing.viewer.readOnly", { owner: view.ownerEmail || "—" })}
                 </p>
               </div>
+              {view.demo === true && (
+                <p data-demo-header className="text-xs font-bold" dir="auto" style={{ color: "var(--arbor-ink)" }}>{t("elev.demo.header")}</p>
+              )}
               <div className="flex flex-wrap gap-1.5">
                 {view.scopes.map((scope) => <Chip key={scope} tone="sky">{scopeDisplayLabels([scope], t)[0] || scope}</Chip>)}
               </div>

@@ -94,6 +94,9 @@ export interface SchoolBriefExport {
   classroomChallenges: string[];
   languageSupportPlan: string[];
   suggestedTeacherStrategies: string[];
+  /** B-DIST-01: "Demo family — invented data" in the reader's language, only
+   *  when the brief is built from the demo family. Leads every egress. */
+  demoHeader?: string;
 }
 
 function cleanStrings(value: unknown): string[] {
@@ -113,7 +116,7 @@ function cleanStrings(value: unknown): string[] {
  */
 export function buildSchoolBriefExport(
   brief: Partial<SchoolBrief> | Record<string, unknown>,
-  opts: { title: string; date: string }
+  opts: { title: string; date: string; demoHeader?: string }
 ): SchoolBriefExport {
   const b = brief as Record<string, unknown>;
   const out: SchoolBriefExport = {
@@ -124,6 +127,7 @@ export function buildSchoolBriefExport(
     classroomChallenges: cleanStrings(b.classroomChallenges),
     languageSupportPlan: cleanStrings(b.languageSupportPlan),
     suggestedTeacherStrategies: cleanStrings(b.suggestedTeacherStrategies),
+    ...(opts.demoHeader ? { demoHeader: opts.demoHeader } : {}),
   };
   // W2-CAREPRO r1: a diagnosis term OR a severity grade blocks the teacher copy.
   const violation = findTeacherBlockedTerm(exportToText(out));
@@ -150,7 +154,7 @@ export function exportToText(ex: SchoolBriefExport): string {
 export function serializeSchoolBrief(ex: SchoolBriefExport, labels: {
   overview: string; strengths: string; challenges: string; language: string; strategies: string;
 }): string {
-  const lines: string[] = [`# ${ex.title}`, `_${ex.date}_`, ""];
+  const lines: string[] = [`# ${ex.title}`, `_${ex.date}_`, ...(ex.demoHeader ? [`**${ex.demoHeader}**`] : []), ""];
   if (ex.overview) { lines.push(`## ${labels.overview}`, ex.overview, ""); }
   const block = (title: string, items: string[]) => {
     if (!items.length) return;
@@ -189,7 +193,8 @@ export function schoolBriefToPrintSections(
   ex: SchoolBriefExport,
   labels: { overview: string; strengths: string; challenges: string; language: string; strategies: string }
 ): SchoolBriefPrintSection[] {
-  const sections: SchoolBriefPrintSection[] = [];
+  // B-DIST-01: a demo-family brief opens with the demo header.
+  const sections: SchoolBriefPrintSection[] = ex.demoHeader ? [{ heading: ex.demoHeader, body: [] }] : [];
   if (ex.overview.trim()) sections.push({ heading: labels.overview, body: [ex.overview] });
   const block = (heading: string, items: string[]) => {
     const kept = items.filter((i) => i.trim().length > 0);

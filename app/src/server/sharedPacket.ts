@@ -111,6 +111,8 @@ export async function resolveSharedPacket(opts: {
         scopes,
         generatedAt: packet.generatedAt,
         sections: packet.sections,
+        // B-DIST-01: the recipient's view of the demo family says so.
+        ...(packet.demo ? { demo: true as const } : {}),
       },
     };
   } catch (error) {

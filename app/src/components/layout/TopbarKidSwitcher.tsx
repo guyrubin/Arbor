@@ -8,6 +8,32 @@ import AddChildModal from "../profile/AddChildModal";
 import { ageLabel } from "../../lib/childAge";
 
 /**
+ * B-DIST-01: the quiet "Demo" tag beside the demo family's child (invented
+ * data). Parent register, neutral tokens only — a label, never a colour verdict.
+ */
+function DemoChip({ t }: { t: (key: string) => string }) {
+  return (
+    <span
+      data-demo-chip
+      aria-label={t("elev.demo.chipAria")}
+      style={{
+        flexShrink: 0,
+        fontSize: "10px",
+        fontWeight: 700,
+        lineHeight: "16px",
+        paddingInline: "6px",
+        borderRadius: "999px",
+        color: "var(--arbor-muted)",
+        background: "var(--arbor-paper-deep)",
+        border: "1px solid var(--arbor-rule)",
+      }}
+    >
+      {t("elev.demo.chip")}
+    </span>
+  );
+}
+
+/**
  * AP-047: Topbar kid-switcher chip.
  *
  * NEW ENTRY POINT ONLY — delegates entirely to the existing ProfileContext
@@ -93,6 +119,7 @@ export default function TopbarKidSwitcher({ maxWidth = "180px" }: { maxWidth?: s
         >
           {activeChild.name}
         </span>
+        {activeChild.demo === true && <DemoChip t={t} />}
         <Icon
           name="expand_more"
           size={16}
@@ -169,6 +196,7 @@ export default function TopbarKidSwitcher({ maxWidth = "180px" }: { maxWidth?: s
                   >
                     {p.name}
                   </span>
+                  {p.demo === true && <DemoChip t={t} />}
                   <span style={{ fontSize: "10px", color: "var(--arbor-muted)" }}>
                     {t("profile.ageLine", { age: ageLabel(p, t) })}
                   </span>
