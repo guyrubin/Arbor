@@ -32,6 +32,10 @@ import {
 
 /** B-CAREPRO-31: profession → its label key (literal keys, so the careNetwork
  *  coverage guard sees every one rendered). */
+/** B-CAREPRO-NEW-2g — the empty state's one-tap "Who does {name} see?" chips
+ *  (the G14 list without the catch-all "other", which the Add form keeps). */
+const EMPTY_STATE_PROFESSIONS: readonly AppointmentProfession[] = ["pediatrician", "slp", "ot", "pt", "psychologist", "teacher"];
+
 const PROFESSION_KEY: Record<AppointmentProfession, string> = {
   pediatrician: "elev.careNet.appt.profession.pediatrician",
   slp: "elev.careNet.appt.profession.slp",
@@ -216,12 +220,15 @@ export default function Appointments() {
       {/* W2-CAREPRO r1: flex gap (not space-y) — the display:contents module
           wrappers swallowed the space-y margins and the cards touched (2 px);
           the column is capped at ~720 px, not a 936 px stretched phone column. */}
+      {/* W2-CAREPRO r2: flush — the column's gap-6 is the only rhythm (mb-7 on
+          top of it left ~52 px between the lede and the first card). */}
       <PageHeader
+        flush
         eyebrow={t("elev.careNet.eyebrow")}
         title={t("sec.appt.title")}
         subtitle={t("sec.appt.sub")}
         action={
-          <button data-primary-move="add-appointment" onClick={() => setAdding((a) => !a)} aria-expanded={adding} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3 min-h-[44px]" style={{ background: "var(--arbor-gradient-primary)" }}>
+          <button data-primary-move="add-appointment" onClick={() => setAdding((a) => !a)} aria-expanded={adding} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3 min-h-[44px] whitespace-nowrap flex-shrink-0 self-start sm:self-auto" style={{ background: "var(--arbor-gradient-primary)" }}>
             <Icon name="add" size={18} /> {t("elev.careNet.appt.add")}
           </button>
         }
@@ -313,8 +320,28 @@ export default function Appointments() {
           <div className="space-y-3">{upcoming.map(row)}</div>
         ) : (
           /* W2-CAREPRO r1: the empty state teaches the lifecycle (prepare before,
-             keep what they suggested after), named for the child — not a dead end. */
-          <p data-testid="appt-empty-lifecycle" className="t-sm leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}>{t("elev.learnCare.appt.none", { name: (childProfile.name || "").split(" ")[0] })}</p>
+             keep what they suggested after), named for the child — not a dead end.
+             B-CAREPRO-NEW-2g: and it STARTS the lifecycle — "Who does {name}
+             see?" with one-tap profession chips that open the Add form
+             preselected (the header Add keeps the route's one stamp). */
+          <div className="space-y-3">
+            <p data-testid="appt-empty-lifecycle" className="t-sm leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}>{t("elev.learnCare.appt.none", { name: (childProfile.name || "").split(" ")[0] })}</p>
+            <p className="t-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{t("elev.learnCare.appt.whoSees", { name: (childProfile.name || "").split(" ")[0] })}</p>
+            <div data-testid="appt-empty-professions" className="flex flex-wrap gap-2">
+              {EMPTY_STATE_PROFESSIONS.map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  data-profession={p}
+                  onClick={() => { setForm({ who: "", profession: p, mode: "In person", when: "" }); setAdding(true); }}
+                  className="inline-flex items-center rounded-full px-3.5 min-h-[44px] t-sm font-bold"
+                  style={{ color: "var(--arbor-ink)", background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}
+                >
+                  {t(PROFESSION_KEY[p])}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
       </SectionCard>
       </div>
@@ -332,8 +359,11 @@ export default function Appointments() {
             <Icon name="history" size={18} />
           </span>
           <span className="min-w-0">
-            <span className="block t-md font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.learnCare.appt.more.title")}</span>
-            <span className="block t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.appt.more.sub")}</span>
+            {/* W2-CAREPRO r2: the demoted disclosure reads QUIETER than the live
+                "Upcoming" card in both locales — body face, bold (not 800),
+                t-base, and a one-line muted sub. */}
+            <span data-testid="appt-more-title" className="block t-base font-bold" style={{ color: "var(--arbor-ink)" }}>{t("elev.learnCare.appt.more.title")}</span>
+            <span className="block t-sm truncate" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.appt.more.sub")}</span>
           </span>
           <Icon name="expand_more" size={20} className="ms-auto" style={{ color: "var(--arbor-muted)" }} />
         </summary>
