@@ -91,3 +91,47 @@ export function paywallCta(args: { rows: PlanRow[]; selected: PaidPlan; cadence:
 export function disclosureText(t: Tr, platform: string, cadence: Cadence): string {
   return t("elev.storeshell.pw.disclosure", { period: t(periodKey(cadence)), store: t(storeLabelKey(platform)) });
 }
+
+/**
+ * B-SHELL-11 — the paywall sells understanding, per trigger.
+ *
+ * The eight capability ids a 402 (or a client gate) opens the paywall with.
+ * Five of them used to fall through to the one generic "Upgrade to keep going
+ * with unlimited coaching, professional reports…" line, so a parent who hit
+ * the second-child gate was told about coaching. Each now has its own body.
+ * Claim gate: every body names only something that ships (PLAN_LIMITS /
+ * the coach meter); no "What changed" / "Snapshot" lines.
+ */
+export const PAYWALL_FEATURES = [
+  "coach_unlimited",
+  "professionalReports",
+  "advancedPlans",
+  "avatarGenerate",
+  "heroComic",
+  "adventureGenerate",
+  "maxChildren",
+  "coParentSeats",
+] as const;
+export type PaywallFeature = (typeof PAYWALL_FEATURES)[number];
+
+/** Which dictionary a body key lives in: the base i18n (`t`, which fills
+ *  `{name}`) or the placeholder-free planclarity module the modal reads
+ *  directly. */
+export type PaywallBody = { key: string; source: "t" | "planclarity" };
+
+export function paywallBody(feature: string | undefined): PaywallBody {
+  switch (feature) {
+    case "coach_unlimited": return { key: "pw.bodyCoach", source: "t" };
+    // B-CAREPRO-08: the professionalReports gate guards ONE thing — the
+    // AI-drafted school note (/api/generate-handoff). Packets and PDFs are free.
+    case "professionalReports": return { key: "pw.bodySchoolNotes", source: "planclarity" };
+    case "advancedPlans": return { key: "pw.bodyPlans", source: "t" };
+    case "avatarGenerate":
+    case "heroComic":
+    case "adventureGenerate":
+    case "maxChildren":
+    case "coParentSeats":
+      return { key: `pw.body.${feature}`, source: "t" };
+    default: return { key: "pw.body", source: "t" };
+  }
+}

@@ -1301,6 +1301,20 @@ export const en: Dict = {
   "pw.bodyCoach": "You've reached today's free coaching. Arbor Plus removes the daily limit — keep the conversation going whenever you need it.",
   "pw.bodyReports": "Professional reports and school handoffs are an Arbor Plus feature. Upgrade to generate them.",
   "pw.bodyPlans": "Advanced growth plans are an Arbor Plus feature. Upgrade to let Arbor build them for you.",
+  // B-SHELL-11 — one body per trigger (claim gate: only what ships). The three
+  // drawing triggers ride the coach meter (server/aiQuota.ts): the free plan's
+  // daily limit, which Plus removes. coParentSeats = Family's one read-only
+  // co-parent invite (elev.plan.family.1, server/entitlements.ts).
+  "pw.body.avatarGenerate": "You've reached today's free limit. Arbor Plus removes the daily limit, so {name}'s hero can be drawn today.",
+  "pw.body.heroComic": "You've reached today's free limit. With Arbor Plus there is no daily limit, so {name}'s comic keeps drawing today.",
+  "pw.body.adventureGenerate": "You've reached today's free limit. With Arbor Plus there is no daily limit, so a new adventure starring {name} can start today.",
+  "pw.body.maxChildren": "The free plan keeps one child. Arbor Plus keeps up to six, each with their own journal, plans and answers.",
+  "pw.body.coParentSeats": "Sharing with the other parent is part of Arbor Family: one invite gives them a read-only view of what you choose to share, and you can revoke it any time.",
+  // The Plus list leads with what Arbor remembers — plus.1's claim (no daily
+  // limit), said through what the parent gets; approved memory is real today.
+  "pw.plusLead": "Answers that remember {name}, without the daily limit",
+  "pw.kept.one": "Arbor has kept 1 thing about {name}",
+  "pw.kept.many": "Arbor has kept {n} things about {name}",
   "pw.maybeLater": "Maybe later",
   "pw.activating": "Activating your subscription…",
   "pw.activated": "You're all set — welcome to Arbor.",
@@ -3664,6 +3678,14 @@ export const he: Dict = {
   "pw.bodyCoach": "הגעתם למכסת האימון החינמית של היום. ארבור פלוס מסיר את ההגבלה היומית — המשיכו בשיחה מתי שתצטרכו.",
   "pw.bodyReports": "דוחות מקצועיים והעברות לגן/בית ספר הם תכונת ארבור פלוס. שדרגו כדי ליצור אותם.",
   "pw.bodyPlans": "תוכניות צמיחה מתקדמות הן תכונת ארבור פלוס. שדרגו כדי שארבור יבנה אותן עבורכם.",
+  "pw.body.avatarGenerate": "הגעתם למכסה החינמית של היום. ארבור פלוס מסיר את המכסה היומית, כך שאפשר לצייר את הגיבור של {name} כבר היום.",
+  "pw.body.heroComic": "הגעתם למכסה החינמית של היום. בארבור פלוס אין מכסה יומית, כך שהקומיקס של {name} ממשיך להצטייר היום.",
+  "pw.body.adventureGenerate": "הגעתם למכסה החינמית של היום. בארבור פלוס אין מכסה יומית, כך שהרפתקה חדשה בכיכובו של {name} יכולה להתחיל היום.",
+  "pw.body.maxChildren": "התוכנית החינמית שומרת ילד אחד. ארבור פלוס שומר עד שישה, לכל אחד יומן, תוכניות ותשובות משלו.",
+  "pw.body.coParentSeats": "שיתוף עם ההורה השני הוא חלק מארבור משפחה: הזמנה אחת נותנת צפייה בלבד במה שתבחרו לשתף, וניתן לבטל אותה בכל רגע.",
+  "pw.plusLead": "תשובות שזוכרות את {name}, בלי המכסה היומית",
+  "pw.kept.one": "ארבור שמר דבר אחד על {name}",
+  "pw.kept.many": "ארבור שמר {n} דברים על {name}",
   "pw.maybeLater": "אולי מאוחר יותר",
   "pw.activating": "מפעילים את המנוי שלכם…",
   "pw.stillConfirming": "עדיין מאמתים את המנוי — בדקו בעוד רגע בהגדרות › תוכנית.",

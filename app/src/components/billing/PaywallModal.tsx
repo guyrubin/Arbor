@@ -14,7 +14,7 @@ import { trackPaywallView } from "../../lib/kpiEvents";
 import type { PaidPlan } from "../../lib/pricing";
 import { fmtStoreCurrency } from "./PlanPrices";
 import { LegalLinks } from "./LegalLinks";
-import { buildPlanRows, paywallCta, disclosureText, periodKey, type Cadence } from "./paywallModel";
+import { buildPlanRows, paywallCta, disclosureText, periodKey, paywallBody, type Cadence } from "./paywallModel";
 import { PlanBadge } from "../ui/PlanBadge";
 // Direct module import (3.6): planclarity IS registered in i18nElevation/index.ts;
 // the direct read is kept so this modal renders the split even if t() overrides drift.
@@ -33,10 +33,16 @@ import * as planclarity from "../../lib/i18nElevation/planclarity";
  * view-model is pure (paywallModel.ts) and pinned by PaywallModal.test.ts.
  */
 export default function PaywallModal() {
-  const { paywall, closePaywall } = useArbor();
+  const { paywall, closePaywall, childProfile, approvedMemoryItems } = useArbor();
   const { t, uiLang } = useLanguage();
   // 3.6 free-vs-Plus clarity strings (see import note above).
   const pc = (k: string) => (uiLang === "he" ? planclarity.he : planclarity.en)[`elev.plan.${k}`] ?? "";
+  // B-SHELL-11: the child's first name for the per-trigger body, the Plus lead
+  // line and the kept-count line (base i18n keys, filled by t()).
+  const firstName = (childProfile?.name || "").trim().split(" ")[0];
+  const name = firstName || t("learn.yourChild");
+  // A plain count of approved memory facts — never a %, hidden at 0.
+  const keptCount = approvedMemoryItems?.length ?? 0;
   const { busy, startCheckout, restorePurchases, isNative } = useCheckout();
   const nativePrices = useNativePrices();
   const [cadence, setCadence] = useState<Cadence>("monthly");
@@ -64,13 +70,11 @@ export default function PaywallModal() {
   const disclosure = disclosureText(t, nativePlatform, cadence);
 
   // Feature-specific body copy keeps the pitch relevant to what they just hit.
-  const body =
-    // B-CAREPRO-08: the professionalReports gate guards ONE thing — the
-    // AI-drafted school note (/api/generate-handoff). Packets and PDFs are free.
-    paywall.feature === "professionalReports" ? pc("pw.bodySchoolNotes")
-      : paywall.feature === "advancedPlans" ? t("pw.bodyPlans")
-        : paywall.feature === "coach_unlimited" ? t("pw.bodyCoach")
-          : t("pw.body");
+  // B-SHELL-11: one body per trigger (paywallModel.paywallBody covers all eight
+  // PaywallFeature ids); professionalReports stays B-CAREPRO-08's school-note
+  // line (pw.bodySchoolNotes).
+  const bodyRef = paywallBody(paywall.feature);
+  const body = bodyRef.source === "planclarity" ? pc(bodyRef.key) : t(bodyRef.key, { name });
 
   const Surface = useCompactSurface() ? Sheet : Modal;
 
@@ -98,9 +102,18 @@ export default function PaywallModal() {
             <p className="font-bold mb-1 flex items-center gap-1.5" style={{ color: "var(--arbor-ink)" }}>
               <PlanBadge plan="plus" />{pc("plusTitle")}
             </p>
+            {/* B-SHELL-11: lead with what Arbor remembers (the uncapped answers
+                — plus.1's claim, named through the child), then reports, plans,
+                children. plus.2 is lane-CAREPRO's key and is not edited here. */}
             <ul className="space-y-0.5 list-disc ps-4" style={{ color: "var(--arbor-muted)" }}>
-              {(["plus.1", "plus.2", "plus.3", "plus.4"] as const).map((k) => <li key={k}>{pc(k)}</li>)}
+              {firstName ? <li key="plus.lead">{t("pw.plusLead", { name })}</li> : <li key="plus.1">{pc("plus.1")}</li>}
+              {(["plus.2", "plus.3", "plus.4"] as const).map((k) => <li key={k}>{pc(k)}</li>)}
             </ul>
+            {keptCount > 0 && (
+              <p data-testid="paywall-kept-count" className="mt-1.5 text-[12px] font-semibold" style={{ color: "var(--arbor-ink)" }} dir="auto">
+                {t(keptCount === 1 ? "pw.kept.one" : "pw.kept.many", { n: keptCount, name })}
+              </p>
+            )}
             <p className="font-bold mt-2 mb-1 flex items-center gap-1.5" style={{ color: "var(--arbor-ink)" }}>
               <PlanBadge plan="family" />{pc("familyTitle")}
             </p>

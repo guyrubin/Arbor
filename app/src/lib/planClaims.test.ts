@@ -67,8 +67,12 @@ describe("B-CAREPRO-08 · every Plus bullet maps to a gate", () => {
   });
 
   it("the professionalReports paywall body is aligned to the same claim", () => {
+    // B-SHELL-11: the body is chosen by paywallModel.paywallBody; the
+    // professionalReports trigger still resolves to the school-note line.
+    const model = read("components/billing/paywallModel.ts");
+    expect(model).toContain('case "professionalReports": return { key: "pw.bodySchoolNotes", source: "planclarity" };');
     const modal = read("components/billing/PaywallModal.tsx");
-    expect(modal).toContain('paywall.feature === "professionalReports" ? pc("pw.bodySchoolNotes")');
+    expect(modal).toContain('bodyRef.source === "planclarity" ? pc(bodyRef.key)');
     expect(modal).not.toContain('t("pw.bodyReports")');
     expect(en["elev.plan.pw.bodySchoolNotes"]).not.toMatch(/report/i);
     expect(he["elev.plan.pw.bodySchoolNotes"]).toMatch(/[֐-׿]/);

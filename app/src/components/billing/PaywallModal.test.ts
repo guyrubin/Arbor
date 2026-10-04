@@ -11,7 +11,9 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { buildPlanRows, paywallCta, disclosureText, storeLabelKey, type Tr } from "./paywallModel";
+import { buildPlanRows, paywallCta, disclosureText, storeLabelKey, paywallBody, PAYWALL_FEATURES, type Tr } from "./paywallModel";
+import * as planclarity from "../../lib/i18nElevation/planclarity";
+import { en as baseEn, he as baseHe } from "../../lib/i18n";
 import { en as shellEn, he as shellHe } from "../../lib/i18nElevation/storeShell";
 import type { NativePriceMap } from "../../lib/nativeBilling";
 
@@ -125,5 +127,86 @@ describe("PaywallModal.tsx wiring (source contract)", () => {
 
   it("negative control: the pre-fix pattern is what the hex scan catches", () => {
     expect('style={{ background: "var(--arbor-clay)", color: "#fff" }}'.match(/#[0-9a-fA-F]{3,6}\b/g)).toEqual(["#fff"]);
+  });
+});
+
+/**
+ * B-SHELL-11 — the paywall sells understanding, per trigger. Each of the eight
+ * PaywallFeature ids resolves to its OWN body (never the generic `pw.body`),
+ * in EN and HE; the Plus list leads with what Arbor remembers; the kept-count
+ * line is a plain count, absent at 0.
+ */
+describe("B-SHELL-11 · one body per trigger, a plain kept count", () => {
+  const fill = (raw: string, vars: Record<string, string | number>) =>
+    raw.replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? String(vars[k]) : m));
+  const bodyText = (lang: "en" | "he", feature: string) => {
+    const ref = paywallBody(feature);
+    const dict = ref.source === "planclarity"
+      ? (lang === "he" ? planclarity.he : planclarity.en)[`elev.plan.${ref.key}`]
+      : (lang === "he" ? baseHe : baseEn)[ref.key];
+    return fill(dict ?? "", { name: lang === "he" ? "מיה" : "Mia" });
+  };
+
+  it("enumerates exactly the eight trigger ids", () => {
+    expect([...PAYWALL_FEATURES].sort()).toEqual([
+      "advancedPlans", "adventureGenerate", "avatarGenerate", "coParentSeats",
+      "coach_unlimited", "heroComic", "maxChildren", "professionalReports",
+    ]);
+  });
+
+  it("every trigger has a non-generic body key; unknown falls back to pw.body", () => {
+    for (const f of PAYWALL_FEATURES) expect(paywallBody(f).key, f).not.toBe("pw.body");
+    expect(paywallBody(undefined).key).toBe("pw.body");
+    expect(paywallBody("somethingNew").key).toBe("pw.body");
+    expect(paywallBody("professionalReports")).toEqual({ key: "pw.bodySchoolNotes", source: "planclarity" });
+  });
+
+  for (const lang of ["en", "he"] as const) {
+    it(`${lang}: the eight bodies are present and pairwise distinct, with no % and no stray placeholder`, () => {
+      const bodies = PAYWALL_FEATURES.map((f) => bodyText(lang, f));
+      for (const [i, b] of bodies.entries()) {
+        expect(b.length, PAYWALL_FEATURES[i]).toBeGreaterThan(20);
+        expect(b, PAYWALL_FEATURES[i]).not.toMatch(/%|\{\w+\}/);
+        if (lang === "he") expect(b).toMatch(/[֐-׿]/);
+      }
+      expect(new Set(bodies).size).toBe(8);
+    });
+  }
+
+  it("claim gate: the co-parent body names the read-only view; the child body names six", () => {
+    expect(bodyText("en", "coParentSeats")).toMatch(/read-only/);
+    expect(bodyText("en", "maxChildren")).toMatch(/six/);
+    for (const f of PAYWALL_FEATURES) expect(bodyText("en", f)).not.toMatch(/what changed|snapshot/i);
+  });
+
+  it("the Plus lead line is plus.1's claim (the daily limit), named through the child", () => {
+    expect(baseEn["pw.plusLead"]).toMatch(/remember \{name\}/);
+    expect(baseEn["pw.plusLead"]).toMatch(/daily limit/);
+    expect(baseHe["pw.plusLead"]).toContain("המכסה היומית");
+  });
+
+  const modal = stripComments(read("PaywallModal.tsx"));
+
+  it("the modal renders the per-trigger body through paywallBody", () => {
+    expect(modal).toContain("const bodyRef = paywallBody(paywall.feature);");
+    expect(modal).not.toMatch(/paywall\.feature === "advancedPlans"/);
+  });
+
+  it("Plus lines lead with the remember line, then reports, plans, children", () => {
+    const lead = modal.indexOf('t("pw.plusLead", { name })');
+    expect(lead).toBeGreaterThan(-1);
+    expect(lead).toBeLessThan(modal.indexOf('(["plus.2", "plus.3", "plus.4"] as const)'));
+  });
+
+  it("the kept-count line is a plain count of approved memory, hidden at 0", () => {
+    expect(modal).toContain("const keptCount = approvedMemoryItems?.length ?? 0;");
+    expect(modal).toMatch(/\{keptCount > 0 && \(/);
+    for (const dict of [baseEn, baseHe]) {
+      for (const k of ["pw.kept.one", "pw.kept.many"]) {
+        expect(dict[k]).toBeTruthy();
+        expect(dict[k]).not.toMatch(/%|of \{|מתוך/);
+      }
+    }
+    expect(fill(baseEn["pw.kept.many"], { n: 7, name: "Mia" })).toBe("Arbor has kept 7 things about Mia");
   });
 });
