@@ -6,6 +6,7 @@ import { abortableIterate, isAbortError, isTransientModelError, raceWithAbort, w
 import { recordUsage, startCallTimer } from "./usage.js";
 import { providerRegion, routePolicyFor, selectProvider, type ProviderCandidate } from "./capabilities/policy.js";
 import type { CapabilityRequest } from "./capabilities/contracts.js";
+import { MOCK_MODEL_ID, MockModelProvider } from "./mockProvider.js";
 
 export { withModelRetry, isAbortError, newAbortError, type ModelCallBudget } from "./modelRetry.js";
 
@@ -117,7 +118,8 @@ export const parseModelJson = (text: string | undefined, finishReason?: string):
   }
 };
 
-export type ProviderId = "gemini_dev" | "vertex_gemini" | "vertex_claude";
+/** B-INF-04: "mock" = ai/mockProvider.ts fixtures (sandbox only; prod refuses it in config/env.ts). */
+export type ProviderId = "gemini_dev" | "vertex_gemini" | "vertex_claude" | "mock";
 
 export type RouteDecision = {
   route: ModelRoute;
@@ -149,6 +151,7 @@ export type ModelProvider = {
  *  through modelForRoute / routeDecisionFor, which enforce the route policy. */
 const modelIdForRoute = (config: ArborConfig, route: ModelRoute) => {
   if (config.modelProvider === "gemini_dev") return config.geminiModel;
+  if (config.modelProvider === "mock") return MOCK_MODEL_ID;
 
   const map: Record<ModelRoute, string> = {
     coach_high_stakes: config.vertexModelChat,
@@ -171,6 +174,19 @@ const CANDIDATE_SCORE = { quality: 3, safety: 3, reliability: 3, latencyFitness:
 /** The single provider candidate the current config yields for a route,
  *  declared with its real residency/retention posture for the policy gate. */
 export const structuredTextCandidateFor = (config: ArborConfig, route: ModelRoute): ProviderCandidate => {
+  if (config.modelProvider === "mock") {
+    // B-INF-04: fixtures, no network. Declared "global" so even a mis-set prod
+    // config is denied by the EU-only route policy (env.ts refuses it first).
+    return {
+      ref: { provider: "mock", model: MOCK_MODEL_ID, region: "global" },
+      capabilities: ["structured_text", "text_stream"],
+      audiences: ["parent", "professional", "internal"],
+      dataClasses: ["public", "account", "child_profile"],
+      trainsOnCustomerData: false,
+      retentionDays: 0,
+      score: CANDIDATE_SCORE
+    };
+  }
   if (config.modelProvider === "gemini_dev") {
     return {
       // AI-Studio developer API has no regional endpoint — declared honestly as
@@ -566,5 +582,11 @@ export class VertexModelProvider implements ModelProvider {
 }
 
 export const createModelProvider = (config: ArborConfig): ModelProvider => {
+  if (config.modelProvider === "mock") {
+    // B-INF-04: refuse here too, independent of env.ts, so no code path can
+    // hand a production app the fixture provider.
+    if (config.arborEnv === "prod") throw new Error("MODEL_PROVIDER=mock is refused in production.");
+    return withDefaultModelDeadlines(new MockModelProvider());
+  }
   return withDefaultModelDeadlines(config.modelProvider === "vertex" ? new VertexModelProvider(config) : new GeminiDevProvider(config));
 };

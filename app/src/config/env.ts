@@ -1,7 +1,9 @@
 import { liveExceptionFromEnv } from "../ai/liveResidency.js";
 
 export type ArborEnvironment = "local" | "dev" | "stage" | "prod";
-export type ModelProviderKind = "gemini_dev" | "vertex";
+/** B-INF-04: "mock" = deterministic fixtures for the sandbox audit lanes
+ *  (ai/mockProvider.ts) — zero outbound model calls; refused in prod. */
+export type ModelProviderKind = "gemini_dev" | "vertex" | "mock";
 export type MemoryAdapterKind = "local" | "firestore";
 
 export type ArborConfig = {
@@ -121,8 +123,8 @@ const parseArborEnv = (value: string | undefined): ArborEnvironment => {
 
 const parseModelProvider = (value: string | undefined, arborEnv: ArborEnvironment): ModelProviderKind => {
   const normalized = (value || (arborEnv === "prod" ? "vertex" : "gemini_dev")).toLowerCase();
-  if (normalized === "gemini_dev" || normalized === "vertex") return normalized;
-  throw new Error(`Invalid MODEL_PROVIDER "${value}". Use gemini_dev or vertex.`);
+  if (normalized === "gemini_dev" || normalized === "vertex" || normalized === "mock") return normalized;
+  throw new Error(`Invalid MODEL_PROVIDER "${value}". Use gemini_dev, vertex or mock.`);
 };
 
 const parseMemoryAdapter = (value: string | undefined, arborEnv: ArborEnvironment): MemoryAdapterKind => {
@@ -176,7 +178,10 @@ export const loadConfig = (): ArborConfig => {
     modelProvider,
     geminiApiKey: process.env.GEMINI_API_KEY,
     geminiModel: process.env.GEMINI_MODEL || "gemini-2.5-flash",
-    liveEnabled: boolFromEnv(process.env.LIVE_ENABLED, false),
+    // B-INF-04: the mock provider means zero outbound model calls — the
+    // realtime Live path (its own token mint) is off, the client takes the
+    // existing browser-voice fallback.
+    liveEnabled: modelProvider !== "mock" && boolFromEnv(process.env.LIVE_ENABLED, false),
     liveModel: process.env.LIVE_MODEL || "gemini-3.8-live",
     liveGlobalExceptionUntil: liveExceptionFromEnv(process.env.LIVE_GLOBAL_EXCEPTION_UNTIL ?? process.env.LIVE_RESIDENCY_EXCEPTION_UNTIL),
     liveVertexEu: boolFromEnv(process.env.LIVE_VERTEX_EU, false),
@@ -207,6 +212,7 @@ export const loadConfig = (): ArborConfig => {
     billingManageUrl: process.env.BILLING_MANAGE_URL,
     childAsrProvider: (() => {
       const v = (process.env.CHILD_ASR_PROVIDER || "none").toLowerCase();
+      if (modelProvider === "mock") return "none"; // B-INF-04: no outbound ASR under mock
       return v === "gemini" || v === "soapbox" || v === "whisper" ? v : "none";
     })(),
     whisperApiUrl: process.env.WHISPER_API_URL,
@@ -217,13 +223,15 @@ export const loadConfig = (): ArborConfig => {
     ttsProvider: (process.env.TTS_PROVIDER || "none").toLowerCase() === "google" ? "google" : "none",
     ttsVoiceEn: process.env.TTS_VOICE_EN || "",
     ttsVoiceHe: process.env.TTS_VOICE_HE || "",
-    ttsDisabled: boolFromEnv(process.env.TTS_DISABLED, false),
+    ttsDisabled: modelProvider === "mock" || boolFromEnv(process.env.TTS_DISABLED, false), // B-INF-04: no outbound TTS under mock
     // No PII goes into the code; the salt only makes the code non-enumerable.
     referralSecret: process.env.REFERRAL_SECRET || "arbor-referral-dev-salt",
     referralMaxGrants: Number(process.env.REFERRAL_MAX_GRANTS || 5),
   };
 
   if (config.arborEnv === "prod") {
+    // B-INF-04: this is also the refusal of MODEL_PROVIDER=mock in prod
+    // (config/env.test.ts pins it) — fixtures never answer a real family.
     if (config.modelProvider !== "vertex") {
       throw new Error("Production Arbor requires MODEL_PROVIDER=vertex.");
     }

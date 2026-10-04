@@ -81,12 +81,15 @@ export const buildCapabilityRegistry = (config: ArborConfig, modelProvider: Mode
 
   const structuredText = (provider: string, model: string): CapabilityAdapter<"structured_text", GenerateJsonOptions, unknown> => ({
     capability: "structured_text",
-    provider: { provider, model, region: provider === "gemini_dev" ? "global" : region },
+    provider: { provider, model, region: provider === "gemini_dev" || provider === "mock" ? "global" : region },
     execute: (options) => modelProvider.generateJson(options),
   });
   if (config.modelProvider === "vertex") {
     registry.register(structuredText("vertex_claude", config.vertexModelChat));
     registry.register(structuredText("vertex_gemini", config.vertexModelAnalysis));
+  } else if (config.modelProvider === "mock") {
+    // B-INF-04: the registry names the fixtures honestly (sandbox only).
+    registry.register(structuredText("mock", "mock-fixtures"));
   } else {
     registry.register(structuredText("gemini_dev", config.geminiModel));
   }
