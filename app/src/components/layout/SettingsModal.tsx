@@ -9,6 +9,7 @@ import AdminDashboard from "./AdminDashboard";
 import ParentalGatePanel from "./ParentalGatePanel";
 import { consumeSettingsFocus, SETTINGS_FOCUS_ANCHOR } from "./settingsBus";
 import DeleteAccountModal from "./DeleteAccountModal";
+import YourDataSheet from "./YourDataSheet";
 import InviteCard from "../referral/InviteCard";
 import { PlanPrices } from "../billing/PlanPrices";
 import { LegalLinks } from "../billing/LegalLinks"; // MOB-01: Privacy · Terms · Support in the footer
@@ -41,6 +42,8 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
   const [cadence, setCadence] = useState<"monthly" | "annual">("monthly");
   const [adminOpen, setAdminOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  // B-CAREPRO-35: Settings › Your data — export / delete child / delete account.
+  const [dataOpen, setDataOpen] = useState(false);
   // STORE-2: all checkout/manage/restore actions go through the ONE platform-
   // gated hook — no inline `/api/billing/*` calls in this file (guard-tested).
   const { busy, startCheckout, openPortal, restorePurchases, isNative } = useCheckout();
@@ -65,8 +68,10 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
   // B-PLAY-06: a caller that opened Settings for one row (Practice's "Set a
   // PIN") lands with that row in view. Two frames: the sheet mounts, then lays out.
   useEffect(() => {
-    if (!open) return;
+    if (!open) { setDataOpen(false); return; } // a closed Settings never reopens on the sheet
     const focus = consumeSettingsFocus();
+    // B-CAREPRO-35: "Export or delete" from any surface opens the sheet itself.
+    if (focus === "data") setDataOpen(true);
     if (!focus || typeof window === "undefined") return;
     let raf2 = 0;
     const raf1 = window.requestAnimationFrame(() => {
@@ -456,12 +461,14 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
           </a>
         </Row>
 
-        {/* Data & privacy → profile editor (export / delete live there).
-            B-CAREPRO-24: the anchor The Science's manage link scrolls to. */}
+        {/* B-CAREPRO-35: Your data — ONE tap opens the one home for export,
+            child deletion (with its receipt) and account deletion. It used to
+            open #/profile, not the controls. B-CAREPRO-24: the anchor the
+            "Export or delete" links scroll to. */}
         <div data-testid="settings-data-row">
-        <Row icon={<Icon name="verified_user" size={18} />} title={t("set.data.title")} sub={t("set.data.sub")}>
-          <button onClick={() => { onClose(); setActiveTab("profile"); }} className="text-xs font-bold rounded-xl px-3 min-h-11" style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}>
-            {t("set.data.open")}
+        <Row icon={<Icon name="verified_user" size={18} />} title={t("elev.yourData.row.title")} sub={t("elev.yourData.row.sub")}>
+          <button onClick={() => setDataOpen(true)} data-testid="settings-open-your-data" aria-haspopup="dialog" className="text-xs font-bold rounded-xl px-3 min-h-11" style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}>
+            {t("elev.yourData.row.open")}
           </button>
         </Row>
         </div>
@@ -513,6 +520,11 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
     </Surface>
     {entitlement.isAdmin && <AdminDashboard open={adminOpen} onClose={() => setAdminOpen(false)} />}
     <DeleteAccountModal open={open && deleteOpen && firebaseEnabled && Boolean(user)} onClose={() => setDeleteOpen(false)} />
+    <YourDataSheet
+      open={open && dataOpen}
+      onClose={() => setDataOpen(false)}
+      onDeleteAccount={firebaseEnabled && user ? () => setDeleteOpen(true) : undefined}
+    />
     </>
   );
 }

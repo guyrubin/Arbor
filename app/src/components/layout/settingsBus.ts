@@ -19,8 +19,8 @@ export type SettingsFocus = "pin" | "data";
 /** The anchor each focus scrolls into view — a data-testid inside SettingsModal. */
 export const SETTINGS_FOCUS_ANCHOR: Record<SettingsFocus, string> = {
   pin: "settings-pin-row",
-  // B-CAREPRO-24: The Science's "Export or delete" lands on the data row
-  // (B-CAREPRO-35 makes it the one "Your data" home).
+  // B-CAREPRO-24/35: "Export or delete" (The Science, Sharing, the profile
+  // drawer) lands on the data row AND opens the Your-data sheet.
   data: "settings-data-row",
 };
 

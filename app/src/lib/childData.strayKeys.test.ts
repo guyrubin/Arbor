@@ -104,8 +104,9 @@ describe("LC-18 · the wiring is the shared sweep, not a second copy", () => {
   });
 
   it("the receipt surface shows the count to the parent", () => {
-    const sharing = read("components/sections/TrustedSharing.tsx");
-    expect(sharing).toContain('t("elev.learnCare.receipt.clientDocs")');
-    expect(sharing).toContain("receipt.counts.clientDocs ?? 0");
+    // B-CAREPRO-35: the receipt lives on the one delete path, Settings › Your data.
+    const sheet = read("components/layout/YourDataSheet.tsx");
+    expect(sheet).toContain('t("elev.learnCare.receipt.clientDocs")');
+    expect(sheet).toContain("receipt.counts.clientDocs ?? 0");
   });
 });

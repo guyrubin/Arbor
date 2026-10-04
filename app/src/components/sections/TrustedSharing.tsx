@@ -3,12 +3,11 @@ import { motion } from "motion/react";
 import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { useProfile } from "../../context/ProfileContext";
 import { useToast } from "../../context/ToastContext";
-import { downloadJson, exportChildData } from "../../lib/childData";
+import { requestOpenSettings } from "../layout/settingsBus";
 import { useAuth } from "../../context/AuthContext";
 import { api, ApiError, PaywallError, SEAT_IN_USE } from "../../lib/api";
-import type { DeletionReceipt, ShareGrant, ShareRole, SharedPacketView } from "../../types";
+import type { ShareGrant, ShareRole, SharedPacketView } from "../../types";
 import Modal from "../ui/Modal";
 import { PageHeader, SectionCard, cardCls, Chip, TrustSafetyBar, PASTEL, PastelKey, InitialsTile } from "../ui/kit";
 import { ErrorState } from "../ui/ErrorState";
@@ -39,7 +38,6 @@ const ROLE_TONE: Record<ShareRole, PastelKey> = { co_parent: "mint", professiona
  *  (incl. co-parents) — plus what's shared with you. */
 export default function TrustedSharing() {
   const { childProfile, openPaywall, setActiveTab, behaviorLogs, milestones, actionPlans, approvedMemoryItems } = useArbor();
-  const { deleteChild } = useProfile();
   const { user } = useAuth();
   const { toast } = useToast();
   const { t, uiLang } = useLanguage();
@@ -276,70 +274,10 @@ export default function TrustedSharing() {
     setViewError(null);
   };
 
-  // LC-02: "Export all data" exports ALL data — the same complete sweep
-  // (profile + every CHILD_SUBCOLLECTIONS sink + server memory ledger and
-  // share grants) that ProfileEditDrawer uses, never a hand-built subset. The
-  // parent-facing note rides along as a top-level field.
-  const [exporting, setExporting] = useState(false);
-  const exportData = async () => {
-    if (exporting) return;
-    setExporting(true);
-    try {
-      const data = await exportChildData(user?.uid, childProfile);
-      downloadJson(`arbor-${first.toLowerCase()}-data.json`, { ...data, exportNote: t("sec.sharing.data.exportNote") });
-      toast(t("sec.sharing.audit.exported", { name: first }), "success");
-    } catch {
-      toast(t("sec.sharing.data.export"), "error");
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  // CARE-1: REAL GDPR Art. 17 erasure — the old confirm/alert theater claimed a
-  // server-side deletion request that never left the browser. The flow now runs
-  // through the ONE tested erase seam: typed child-name confirmation in the app
-  // Modal → ProfileContext.deleteChild → eraseEverything (childData.ts) →
-  // POST /privacy/erase + full client wipe via the CHILD_SUBCOLLECTIONS
-  // allow-list → provable DeletionReceipt rendered as the done-state.
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [confirmName, setConfirmName] = useState("");
-  const [erasing, setErasing] = useState(false);
-  const [deleteFailed, setDeleteFailed] = useState(false);
-  const [receipt, setReceipt] = useState<DeletionReceipt | null>(null);
-  const [deletedName, setDeletedName] = useState("");
-
-  const nameMatches = confirmName.trim().toLowerCase() === first.trim().toLowerCase();
-
-  const closeDeleteModal = () => {
-    if (erasing) return; // never abandon an erasure mid-flight
-    setDeleteOpen(false);
-    setConfirmName("");
-    setDeleteFailed(false);
-    if (receipt) {
-      // The child no longer exists — route away from the deleted child's surfaces.
-      setReceipt(null);
-      setActiveTab("overview");
-    }
-  };
-
-  const confirmDelete = async () => {
-    if (!nameMatches || erasing) return;
-    setErasing(true);
-    setDeleteFailed(false);
-    const name = first;
-    const childId = childProfile.id;
-    try {
-      const r = await deleteChild(childId);
-      setDeletedName(name);
-      setReceipt(
-        r ?? { childId, erasedAt: new Date().toISOString(), counts: { memoryEvents: 0, shares: 0 } }
-      );
-    } catch {
-      setDeleteFailed(true);
-    } finally {
-      setErasing(false);
-    }
-  };
+  // B-CAREPRO-35: export and erasure live in ONE home — Settings › Your data
+  // (components/layout/YourDataSheet: the complete exportChildData sweep and
+  // the typed-name → eraseEverything → DeletionReceipt flow that used to sit
+  // here). This page links there.
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[920px] space-y-6">
@@ -673,10 +611,16 @@ export default function TrustedSharing() {
 
       <div data-module="sharing-data-and-history" data-module-demoted className="grid min-w-0 gap-4 sm:grid-cols-2">
         <SectionCard title={t("sec.sharing.data.title")} icon={<Icon name="download" size={20} />} tone="lav">
-          <div className="space-y-2">
-            <button onClick={exportData} className="w-full inline-flex items-center gap-2 text-sm font-bold rounded-xl px-4 py-3" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}><Icon name="download" size={18} /> {t("sec.sharing.data.export")}</button>
-            <button onClick={() => setDeleteOpen(true)} data-testid="delete-child-btn" className="w-full inline-flex items-center gap-2 text-sm font-bold rounded-xl px-4 py-3" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}><Icon name="delete" size={18} /> {t("sec.sharing.delete.btn")}</button>
-          </div>
+          <button
+            type="button"
+            data-testid="sharing-your-data-link"
+            onClick={() => requestOpenSettings({ focus: "data" })}
+            className="w-full inline-flex items-center justify-between gap-2 text-sm font-bold rounded-xl px-4 min-h-11"
+            style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}
+          >
+            <span className="inline-flex items-center gap-2"><Icon name="verified_user" size={18} /> {t("elev.yourData.link", { name: first })}</span>
+            <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
+          </button>
         </SectionCard>
         {/* CARE-6: REAL sharing history — rendered from the persistent grant
             records (created/expired/revoked with dates), not a session-ephemeral
@@ -764,77 +708,6 @@ export default function TrustedSharing() {
         </div>
       </Modal>
 
-      {/* CARE-1: typed-name confirmation → real erasure → deletion receipt. */}
-      <Modal
-        open={deleteOpen}
-        onClose={closeDeleteModal}
-        title={receipt ? t("sec.sharing.receipt.title") : t("sec.sharing.delete.title", { name: first })}
-      >
-        {!receipt ? (
-          <div className="space-y-4">
-            <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{t("sec.sharing.delete.body", { name: first })}</p>
-            <div className="space-y-1.5">
-              <label htmlFor="delete-confirm-input" className="block text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.delete.typeToConfirm", { name: first })}</label>
-              <input
-                id="delete-confirm-input"
-                data-testid="delete-confirm-input"
-                dir="auto"
-                value={confirmName}
-                onChange={(e) => setConfirmName(e.target.value)}
-                autoComplete="off"
-                className="w-full rounded-xl px-3 py-2.5 text-sm"
-                style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
-              />
-            </div>
-            {deleteFailed && (
-              <p role="alert" className="text-xs font-bold" style={{ color: "var(--arbor-pink-ink)" }}>{t("sec.sharing.delete.error")}</p>
-            )}
-            <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
-              <button onClick={closeDeleteModal} disabled={erasing} className="inline-flex items-center justify-center rounded-xl px-4 min-h-11 text-sm font-bold disabled:opacity-50" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}>{t("sec.sharing.delete.cancel")}</button>
-              <button
-                onClick={confirmDelete}
-                disabled={!nameMatches || erasing}
-                data-testid="delete-confirm-btn"
-                className="inline-flex items-center justify-center gap-2 rounded-xl px-4 min-h-11 text-sm font-bold disabled:opacity-40"
-                style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}
-              >
-                {erasing
-                  ? <><Icon name="progress_activity" size={16} className="animate-spin" /> {t("sec.sharing.delete.working")}</>
-                  : <><Icon name="delete_forever" size={16} /> {t("sec.sharing.delete.confirm")}</>}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-4" data-testid="delete-receipt" aria-live="polite">
-            <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-ink)" }}>
-              {t("sec.sharing.receipt.body", { name: deletedName, date: fmtDay(receipt.erasedAt, uiLang) })}
-            </p>
-            <div className="rounded-2xl p-4 space-y-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-              <div className="flex items-center justify-between gap-3 text-sm">
-                <span style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.receipt.memoryEvents")}</span>
-                <span className="font-extrabold" style={{ color: "var(--arbor-ink)" }}>{receipt.counts.memoryEvents}</span>
-              </div>
-              <div className="flex items-center justify-between gap-3 text-sm">
-                <span style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.receipt.shares")}</span>
-                <span className="font-extrabold" style={{ color: "var(--arbor-ink)" }}>{receipt.counts.shares}</span>
-              </div>
-              <div className="flex items-center justify-between gap-3 text-sm">
-                <span style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.receipt.consents")}</span>
-                <span className="font-extrabold" style={{ color: "var(--arbor-ink)" }}>{receipt.counts.consents ?? 0}</span>
-              </div>
-              {/* LC-18: the receipt counted only what the SERVER erased. The
-                  device the parent is holding was absent from their proof. */}
-              <div className="flex items-center justify-between gap-3 text-sm">
-                <span style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.receipt.clientDocs")}</span>
-                <span className="font-extrabold" style={{ color: "var(--arbor-ink)" }}>{receipt.counts.clientDocs ?? 0}</span>
-              </div>
-            </div>
-            <div className="flex sm:justify-end">
-              <button onClick={closeDeleteModal} className="w-full sm:w-auto rounded-xl px-4 py-2.5 text-sm font-bold text-white" style={{ background: "var(--arbor-gradient-primary)" }}>{t("sec.sharing.receipt.done")}</button>
-            </div>
-          </div>
-        )}
-      </Modal>
     </motion.div>
   );
 }

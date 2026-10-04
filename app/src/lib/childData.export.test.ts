@@ -63,10 +63,11 @@ describe("LC-02 — every downloadJson call site exports the complete child reco
   const files = walk(SRC).filter((f) => !f.endsWith(path.join("lib", "childData.ts")));
   const callers = files.filter((f) => /\bdownloadJson\s*\(/.test(readFileSync(f, "utf8")));
 
-  it("finds the export call sites (TrustedSharing + ProfileEditDrawer)", () => {
+  // B-CAREPRO-35: ONE export path — Settings › Your data (YourDataSheet).
+  // Sharing and the profile drawer link there instead of exporting.
+  it("finds the ONE export call site (Settings › Your data)", () => {
     const names = callers.map((f) => path.basename(f));
-    expect(names).toContain("TrustedSharing.tsx");
-    expect(names).toContain("ProfileEditDrawer.tsx");
+    expect(names).toEqual(["YourDataSheet.tsx"]);
   });
 
   it("each call site passes exportChildData's return (optionally spread with top-level extras)", () => {
@@ -75,8 +76,8 @@ describe("LC-02 — every downloadJson call site exports the complete child reco
     }
   });
 
-  it("TrustedSharing keeps the parent-facing exportNote as a top-level field", () => {
-    const src = readFileSync(path.join(SRC, "components", "sections", "TrustedSharing.tsx"), "utf8");
+  it("the Your-data export keeps the parent-facing exportNote as a top-level field", () => {
+    const src = readFileSync(path.join(SRC, "components", "layout", "YourDataSheet.tsx"), "utf8");
     expect(src).toMatch(/exportNote:\s*t\("sec\.sharing\.data\.exportNote"\)/);
   });
 

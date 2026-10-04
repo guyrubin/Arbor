@@ -478,7 +478,7 @@ describe("R5 — every Settings control declares the 44 px floor", () => {
     ["Open reminders", () => settings, 'data-testid="settings-open-smart-reminders"'],
     ["Day Windows", () => settings, 'data-testid="settings-open-day-windows"'],
     ["Read it (The Science)", () => settings, 'data-testid="settings-open-science"'],
-    ["Open profile", () => settings, 't("set.data.open")'],
+    ["Open Your data (B-CAREPRO-35)", () => settings, 'data-testid="settings-open-your-data"'],
     ["Support link", () => settings, 'data-testid="settings-support-link"'],
     ["AI-language switch", () => settings, 't("set.aiLang.toggle")'],
     ["AI rail switch", () => settings, "setShowAiRail(!showAiRail)"],

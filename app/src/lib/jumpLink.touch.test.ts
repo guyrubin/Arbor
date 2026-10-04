@@ -181,12 +181,17 @@ describe("GP-18 · the Level-5 delete no longer confirms in browser chrome", () 
     expect(drawer).not.toMatch(/window\.confirm\s*\(/);
   });
 
-  it("it runs the same typed-name confirmation the Care surface uses", () => {
-    expect(drawer).toContain('import { Modal } from "../ui/Modal";');
-    expect(drawer).toContain("nameMatches");
-    expect(drawer).toContain('t("sec.sharing.delete.typeToConfirm"');
+  // B-CAREPRO-35: the drawer no longer deletes — it links to Settings › Your
+  // data, whose typed-name confirmation (YourDataSheet) is the ONE delete path.
+  it("the one delete path runs the typed-name confirmation; the drawer links there", () => {
+    const sheet = readFileSync(path.join(SRC, "components/layout/YourDataSheet.tsx"), "utf8");
+    expect(drawer).toContain('requestOpenSettings({ focus: "data" })');
+    expect(drawer).not.toContain("deleteChild");
+    expect(sheet).toContain("nameMatches");
+    expect(sheet).toContain('t("sec.sharing.delete.typeToConfirm"');
+    expect(sheet).not.toMatch(/window\.confirm\s*\(/);
     // The destructive button cannot fire until the typed name matches.
-    expect(drawer).toContain("disabled={!nameMatches || busy}");
+    expect(sheet).toContain("disabled={!nameMatches || erasing}");
     // Reused keys, so both locales already exist.
     const dict = readFileSync(path.join(SRC, "lib/i18n.ts"), "utf8");
     for (const key of [

@@ -7,7 +7,8 @@
  *    with the childId and returns the server's DeletionReceipt counts
  *  - best-effort contract: a server failure still resolves with an honest
  *    zero-count receipt (client wipe proceeds, never a throw)
- *  - source contract: TrustedSharing.tsx has ZERO window.confirm/alert left,
+ *  - source contract: YourDataSheet.tsx (B-CAREPRO-35; was TrustedSharing.tsx)
+ *    has ZERO window.confirm/alert,
  *    uses the app Modal with typed child-name confirmation, runs through
  *    ProfileContext.deleteChild → eraseEverything (the ONE allow-listed erase
  *    seam), renders the DeletionReceipt done-state, and routes away after
@@ -77,9 +78,11 @@ describe("eraseEverything network contract (CARE-1)", () => {
   });
 });
 
-// ── Source contract — TrustedSharing is wired to the real seam ──────────────
-describe("TrustedSharing delete-control source contract (CARE-1)", () => {
-  const src = readSrc("components/sections/TrustedSharing.tsx");
+// ── Source contract — the ONE child-delete path is wired to the real seam ───
+// B-CAREPRO-35: the typed-name → eraseEverything → receipt flow moved from
+// TrustedSharing to Settings › Your data (components/layout/YourDataSheet).
+describe("Your-data delete-control source contract (CARE-1, B-CAREPRO-35)", () => {
+  const src = readSrc("components/layout/YourDataSheet.tsx");
 
   it("has ZERO window.confirm / alert() left in the file", () => {
     expect(src).not.toMatch(/window\.confirm/);

@@ -164,6 +164,8 @@ function settings(source = settingsSource) {
     // B-PLAY-06: Settings consumes a requested row focus on open.
     "./settingsBus": { consumeSettingsFocus: () => null, SETTINGS_FOCUS_ANCHOR: { pin: "settings-pin-row" } },
     "./DeleteAccountModal": { default: "DeleteAccountModal", __esModule: true },
+    // B-CAREPRO-35: Settings › Your data (export / delete child / delete account).
+    "./YourDataSheet": { default: "YourDataSheet", __esModule: true },
     "../referral/InviteCard": { default: "InviteCard", __esModule: true },
     "../billing/PlanPrices": { PlanPrices: "PlanPrices" }, "../billing/LegalLinks": { LegalLinks: "LegalLinks" },
     "../ui/Skeleton": { Skeleton: "Skeleton" }, "../ui/PlanBadge": { PlanBadge: "PlanBadge" },

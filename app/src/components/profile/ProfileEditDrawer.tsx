@@ -2,18 +2,17 @@ import React, { useEffect, useRef, useState } from "react";
 import { useDialog } from "../../hooks/useDialog";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Download, Trash2, Camera, Sparkles, Check, Plus } from "lucide-react";
+import { X, Camera, Sparkles, Check, Plus } from "lucide-react";
 import { useProfile } from "../../context/ProfileContext";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { exportChildData, downloadJson } from "../../lib/childData";
+import { requestOpenSettings } from "../layout/settingsBus";
 import { ChildProfile } from "../../types";
 import { Avatar } from "../ui/Avatar";
 import { fileToThumbnail } from "../../lib/image";
 import { uploadChildPhoto } from "../../lib/storage";
 import { sanitizeInterestToken } from "../../playbank/select";
-import { isolate } from "../../lib/i18n";
 import { fmtDay } from "../../lib/formatDate";
 // GP-03 / MOB-04: ONE age write ({ age, ageMonths, ageMonthsAsOf }, birthDate cleared) from a months
 // value, and the months-precise label shown live while editing (GP-01).
@@ -21,10 +20,8 @@ import { ageLabelForMonths, ageMonthsFromProfile, agePatchFromMonths } from "../
 import AvatarCreator from "./AvatarCreator";
 import RewardsCard from "./RewardsCard";
 import { stampChangedFacts } from "../../lib/factsAsOf";
-// GP-18: a Level-5 delete confirms in the app own dialog, never window.confirm.
-// Same primitive and the same typed-name pattern as the Care delete modal
-// (components/sections/TrustedSharing.tsx:570), including its i18n keys.
-import { Modal } from "../ui/Modal";
+// B-CAREPRO-35: the drawer no longer exports or deletes (GP-18's typed-name
+// delete moved, with its receipt, to Settings › Your data — YourDataSheet).
 
 // CI-29: The 12 curated interest suggestion keys (i18n-resolved at render).
 // Banned clinical/behavioral strings are never in this list (FIX 1 compliance).
@@ -44,11 +41,10 @@ const INTEREST_SUGGESTION_KEYS = [
 ] as const;
 
 export default function ProfileEditDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { activeChild, updateChild, deleteChild, profiles } = useProfile();
+  const { activeChild, updateChild } = useProfile();
   const { user } = useAuth();
   const { toast } = useToast();
   const { t, uiLang } = useLanguage();
-  const [busy, setBusy] = useState(false);
   const [name, setName] = useState(activeChild.name);
   // The edited age lives as TOTAL MONTHS (years + months inputs below); the
   // legacy whole-years field is derived at save time, never edited directly.
@@ -71,11 +67,6 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
   const [saving, setSaving] = useState(false);
   // GP-18: opening the drawer left focus on the trigger behind the overlay.
   const nameInputRef = useRef<HTMLInputElement | null>(null);
-  // GP-18: typed-name confirmation state for the Level-5 delete.
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [confirmName, setConfirmName] = useState("");
-  const firstName = activeChild.name.split(" ")[0];
-  const nameMatches = confirmName.trim().toLowerCase() === firstName.trim().toLowerCase();
 
   // CI-29: Interests state — suggestion toggles + custom additions.
   // Resolved suggestion labels (EN/HE) mapped from their i18n keys.
@@ -126,41 +117,12 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
     setInterestInput("");
   }, [open, activeChild]);
 
-  const handleExport = async () => {
-    setBusy(true);
-    try {
-      const data = await exportChildData(user?.uid, activeChild);
-      downloadJson(`arbor-${activeChild.name.toLowerCase().replace(/\s+/g, "-")}-export.json`, data);
-      toast("Data exported", "success");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  // GP-18: a Level-5, irreversible delete was gated by window.confirm — a
-  // browser chrome dialog outside the app language, tokens and focus trap,
-  // and dismissible with a stray Enter. It now runs the same typed-name
-  // confirmation the Care surface requires before erasure.
-  const openDelete = () => {
-    if (profiles.length <= 1) {
-      toast("Can't delete your only child profile", "error");
-      return;
-    }
-    setConfirmName("");
-    setDeleteOpen(true);
-  };
-
-  const handleDelete = async () => {
-    if (!nameMatches || busy) return;
-    setBusy(true);
-    try {
-      await deleteChild(activeChild.id);
-      toast(`${isolate(activeChild.name)}'s data was deleted`, "success");
-      setDeleteOpen(false);
-      onClose();
-    } finally {
-      setBusy(false);
-    }
+  // B-CAREPRO-35: export and delete live in ONE home — Settings › Your data
+  // (the drawer's own export, its receipt-less delete and its English toasts
+  // are gone). The drawer links there and closes.
+  const openYourData = () => {
+    onClose();
+    requestOpenSettings({ focus: "data" });
   };
 
   // CI-29: Toggle a suggestion chip on/off.
@@ -442,65 +404,15 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
               {/* A5: earned-through-play rewards */}
               <RewardsCard childId={activeChild.id} name={name || activeChild.name} />
 
-              {/* Data & privacy (GDPR) */}
+              {/* B-CAREPRO-35: data rights have ONE home — Settings › Your data. */}
               <div className="pt-4 mt-2 space-y-2" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
-                <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>Data & privacy</span>
-                <button onClick={handleExport} disabled={busy} className="w-full py-2.5 min-h-11 font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 disabled:opacity-60 bg-white" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}>
-                  <Download className="w-3.5 h-3.5" style={{ color: "var(--arbor-green-ink)" }} /> Export {isolate(activeChild.name)}&apos;s data (JSON)
-                </button>
-                <button onClick={openDelete} disabled={busy} data-testid="profile-delete-open" className="w-full py-2.5 min-h-11 font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 disabled:opacity-60" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}>
-                  <Trash2 className="w-3.5 h-3.5" /> Delete this child & all data
+                <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("elev.yourData.row.title")}</span>
+                <button type="button" onClick={openYourData} data-testid="profile-your-data-link" className="w-full py-2.5 min-h-11 font-bold text-xs rounded-xl transition flex items-center justify-center gap-2" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)", background: "var(--arbor-paper-elevated)" }}>
+                  {t("elev.yourData.link", { name: name || activeChild.name })}
                 </button>
               </div>
             </div>
           </motion.div>
-          {/* GP-18: typed-name confirmation for the Level-5 delete. Reuses the
-              Care surface keys, so no new copy and no new HE transcreation. */}
-          <Modal
-            open={deleteOpen}
-            onClose={() => { if (!busy) setDeleteOpen(false); }}
-            title={t("sec.sharing.delete.title", { name: firstName })}
-          >
-            <div className="space-y-4">
-              <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-ink)" }}>
-                {t("sec.sharing.delete.body", { name: firstName })}
-              </p>
-              <div className="space-y-1.5">
-                <label htmlFor="profile-delete-confirm-input" className="block text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>
-                  {t("sec.sharing.delete.typeToConfirm", { name: firstName })}
-                </label>
-                <input
-                  id="profile-delete-confirm-input"
-                  data-testid="profile-delete-confirm-input"
-                  dir="auto"
-                  value={confirmName}
-                  onChange={(e) => setConfirmName(e.target.value)}
-                  autoComplete="off"
-                  className="w-full min-h-11 rounded-xl px-3 py-2.5 text-sm"
-                  style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
-                />
-              </div>
-              <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
-                <button
-                  onClick={() => { if (!busy) setDeleteOpen(false); }}
-                  disabled={busy}
-                  className="rounded-xl px-4 py-2.5 min-h-11 text-sm font-bold disabled:opacity-50"
-                  style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
-                >
-                  {t("sec.sharing.delete.cancel")}
-                </button>
-                <button
-                  onClick={handleDelete}
-                  disabled={!nameMatches || busy}
-                  data-testid="profile-delete-confirm-btn"
-                  className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 min-h-11 text-sm font-bold disabled:opacity-40"
-                  style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}
-                >
-                  {busy ? t("sec.sharing.delete.working") : t("sec.sharing.delete.confirm")}
-                </button>
-              </div>
-            </div>
-          </Modal>
           <AvatarCreator
             parentDialogRef={dialogRef}
             open={showCreator}

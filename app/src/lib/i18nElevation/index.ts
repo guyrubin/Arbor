@@ -78,6 +78,7 @@ import * as wave2Knowledge from "./wave2Knowledge";
 import * as waveE from "./waveE";
 import * as waveR from "./waveR";
 import * as wow from "./wow";
+import * as yourData from "./yourData";
 
 // ── Module registry: ONE entry per line, same ALPHABETICAL order. ─────────────
 const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, string> }> = [
@@ -141,6 +142,7 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   waveE,
   waveR,
   wow,
+  yourData,
 ];
 
 /** Merged Elevation dictionaries, consumed once by src/lib/i18n.ts. */

@@ -26,6 +26,7 @@ const FILES = {
   learn: "components/sections/LearnLibrary.tsx",
   charter: "components/sections/FamilyFormation.tsx",
   sharing: "components/sections/TrustedSharing.tsx",
+  yourData: "components/layout/YourDataSheet.tsx", // B-CAREPRO-35: the one delete path
   reports: "components/sections/Reports.tsx",
   safety: "components/tabs/SafetyTab.tsx",
   consult: "components/sections/AskSpecialist.tsx",
@@ -46,7 +47,7 @@ const CONTROLS: { id: string; file: keyof typeof FILES; near: string }[] = [
   { id: "OBJ-CARE-03 sharing duration chips", file: "sharing", near: "setDraft({ ...draft, duration: d })" },
   { id: "OBJ-CARE-03 sharing review back", file: "sharing", near: "sec.sharing.review.back" },
   { id: "OBJ-CARE-03 sharing create", file: "sharing", near: "onClick={createShare}" },
-  { id: "OBJ-CARE-03 delete confirm", file: "sharing", near: 'data-testid="delete-confirm-btn"' },
+  { id: "OBJ-CARE-03 delete confirm", file: "yourData", near: 'data-testid="delete-confirm-btn"' },
   { id: "OBJ-CARE-03 reports PDF button", file: "reports", near: "elev.reports.exportAria" },
   { id: "LC-23 safety checklist row", file: "safety", near: "<label key={n}" },
   { id: "LC-23 mark reviewed", file: "safety", near: "onClick={markReviewed}" },

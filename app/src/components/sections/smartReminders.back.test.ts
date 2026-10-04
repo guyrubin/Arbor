@@ -74,10 +74,13 @@ describe("2 · the Settings reminders row has its own verb", () => {
     for (const lang of ["en", "he"] as const) expect(translate(lang, "elev.sr.open")).not.toBe("elev.sr.open");
   });
 
-  it("negative control: the borrowed key still reads 'Open profile'", () => {
-    expect(translate("en", "set.data.open")).toBe("Open profile");
-    // Which is still correct on the row it was written for.
-    expect(settings).toContain('t("set.data.open")');
+  it("the borrowed key is gone with the row it was written for (B-CAREPRO-35)", () => {
+    // The data row now opens Settings › Your data with its own verb; the
+    // 'Open profile' key it used to carry is retired EN + HE.
+    expect(translate("en", "set.data.open")).toBe("set.data.open");
+    expect(translate("he", "set.data.open")).toBe("set.data.open");
+    expect(settings).not.toContain('t("set.data.open")');
+    expect(settings).toContain('t("elev.yourData.row.open")');
   });
 });
 
