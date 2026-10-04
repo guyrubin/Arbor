@@ -100,6 +100,7 @@ eco
 edit
 edit_note
 email
+emergency
 emoji_events
 error
 event
@@ -148,7 +149,6 @@ interests
 ios
 ios_share
 iso
-keep
 key
 keyboard
 keyboard_return
@@ -161,7 +161,6 @@ lightbulb
 link
 list
 local_library
-location_on
 lock
 logout
 loop
@@ -208,6 +207,7 @@ pattern
 pending
 person
 person_add
+person_remove
 phone
 photo
 photo_camera
@@ -226,6 +226,7 @@ psychology
 public
 question_mark
 radio
+radio_button_unchecked
 record_voice_over
 redeem
 refresh
@@ -257,14 +258,12 @@ shadow
 shapes
 share
 shield
-shield_person
 sign_language
 skip_next
 snail
 soap
 source
 spa
-speed
 sports_esports
 star
 start
