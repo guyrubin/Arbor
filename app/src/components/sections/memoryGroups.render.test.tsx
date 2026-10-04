@@ -103,3 +103,41 @@ describe("W2-CAREPRO r1 · the stamp is the lead row's Approve, never a wrapper"
     expect(html).not.toContain(translate("en", "elev.childmem.group.other"));
   });
 });
+
+/* B-CAREPRO-NEW-2k / 2l — the lead row says where the fact came from (the
+   parent's own words), and an approval settles in place into one line that
+   says what changes next — no toast, no count, no confetti. */
+describe("B-CAREPRO-NEW-2k/2l · provenance on the lead row, an in-place settle line", () => {
+  for (const locale of ["en", "he"] as const) {
+    it(`${locale}: a chat-sourced lead fact carries 'From what you wrote on {date}'; a non-lead row does not`, () => {
+      harness.locale = locale;
+      const [group] = groupPendingMemory([fact(1, "Dylan cries at bedtime"), fact(2, "Dylan needs comfort at bedtime")]);
+      const lead = renderToStaticMarkup(<PendingGroupCard group={group} lead isMemoryUpdating={null} onDecide={vi.fn()} />);
+      const prov = /<p data-testid="memory-provenance"[^>]*>([^<]*)<\/p>/.exec(lead);
+      expect(prov).toBeTruthy();
+      expect(prov![1].startsWith(translate(locale, "elev.childmem.provenance", { date: "X" }).split("X")[0])).toBe(true);
+      expect(prov![0]).toContain("var(--arbor-paper-deep)");
+      const quiet = renderToStaticMarkup(<PendingGroupCard group={group} isMemoryUpdating={null} onDecide={vi.fn()} />);
+      expect(quiet).not.toContain('data-testid="memory-provenance"');
+    });
+  }
+
+  it("negative control: a non-parent source (digest) shows no provenance", () => {
+    harness.locale = "en";
+    const [group] = groupPendingMemory([{ ...fact(1, "Dylan cries at bedtime"), source: "digest" }]);
+    const html = renderToStaticMarkup(<PendingGroupCard group={group} lead isMemoryUpdating={null} onDecide={vi.fn()} />);
+    expect(html).not.toContain('data-testid="memory-provenance"');
+  });
+
+  it("source: approve sets the kept topic and the settle line is a status line in green-soft, EN + HE copy, no digits", async () => {
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync(new URL("./ChildMemory.tsx", import.meta.url), "utf8");
+    expect(src).toMatch(/if \(status === "approved"\) setKeptTopic\(g\.topic\);\s*return handleMemoryDecision\(id, status\);/);
+    expect(src).toMatch(/data-testid="memory-kept" role="status"[^>]*style=\{\{ background: "var\(--arbor-green-soft\)", color: "var\(--arbor-green-ink\)" \}\}/);
+    for (const locale of ["en", "he"] as const) {
+      const line = translate(locale, "elev.childmem.kept.topic", { topic: "T" });
+      expect(line).not.toMatch(/\d|%/);
+      expect(translate(locale, "elev.childmem.kept.any")).not.toBe("elev.childmem.kept.any");
+    }
+  });
+});

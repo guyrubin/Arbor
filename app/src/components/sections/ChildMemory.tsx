@@ -33,7 +33,7 @@ import ArborKnowsTile from "./ArborKnowsTile";
 import FirstsMoment from "./FirstsMoment";
 import MonthKeepsake from "../weekly/MonthKeepsake";
 // B-CAREPRO-25: the pending queue reads as one group per topic (G6: no bulk approve).
-import { groupPendingMemory, dismissGroup, type PendingMemoryGroup } from "../../lib/memoryGroups";
+import { groupPendingMemory, dismissGroup, type PendingMemoryGroup, type MemoryTopic } from "../../lib/memoryGroups";
 import { domainName } from "../../lib/domains/registry";
 
 const pick = (he: boolean, txt: { en: string; he: string }) => (he ? txt.he : txt.en);
@@ -57,6 +57,8 @@ export default function ChildMemory() {
   const pendingGroups = useMemo(() => groupPendingMemory(pendingQueue), [pendingQueue]);
   const soleOther = pendingGroups.length === 1 && pendingGroups[0].topic === "other";
   // Saved Learn Library reads, newest first; stale bookmarks (removed cards) are dropped.
+  // B-CAREPRO-NEW-2k: the topic of the fact the parent just kept (in-place settle line).
+  const [keptTopic, setKeptTopic] = useState(null as MemoryTopic | null);
   const savedLearnCards = savedLearnIds
     .map((id) => learnCardById(id))
     .filter((c): c is LearnCard => c !== undefined);
@@ -104,6 +106,13 @@ export default function ChildMemory() {
           marks a top-level sibling module (what moduleBudget counts);
           `data-primary-move` marks the ONE control that performs the move
           surfaceContract.ts declares for this route. */}
+      {keptTopic && (
+        <p data-testid="memory-kept" role="status" className="t-sm rounded-[14px] px-4 py-3 motion-safe:transition-opacity motion-safe:duration-200" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
+          {keptTopic === "other"
+            ? t("elev.childmem.kept.any")
+            : t("elev.childmem.kept.topic", { topic: domainName(keptTopic, t) })}
+        </p>
+      )}
       {!memoryReviewError && pendingQueue.length > 0 && (
         <div data-module="memory-pending" style={{ display: "contents" }}>
         {/* B-CAREPRO-25: one group per topic (newest fact shown, "See all N",
@@ -124,7 +133,12 @@ export default function ChildMemory() {
                 lead={gi === 0}
                 hideLabel={soleOther}
                 isMemoryUpdating={isMemoryUpdating}
-                onDecide={(id, status) => handleMemoryDecision(id, status)}
+                onDecide={(id, status) => {
+                  // B-CAREPRO-NEW-2k: an approval settles in place into one
+                  // line that says what changes next — no toast, no count.
+                  if (status === "approved") setKeptTopic(g.topic);
+                  return handleMemoryDecision(id, status);
+                }}
                 onEdited={retryMemoryReview}
               />
             ))}
@@ -376,6 +390,10 @@ export function PendingGroupCard({ group, isMemoryUpdating, onDecide, onEdited, 
  *  boxes. */
 const ROW_ACTION_CLS = "touch-target gap-1 px-2 font-bold";
 
+/** B-CAREPRO-NEW-2l — memory sources that are the parent's own words (a
+ *  conversation with the coach), so the lead row may say "From what you wrote". */
+const PARENT_MEMORY_SOURCES: ReadonlySet<string> = new Set(["chat", "coach", "conversation", "journal"]);
+
 export function MemoryRow({ m, busy, onApprove, onReject, onForget, onEdited, primary, nested }: {
   m: MemoryReviewItem;
   /** W2-CAREPRO r2: inside a pending group the row drops its own box. */
@@ -546,7 +564,16 @@ export function MemoryRow({ m, busy, onApprove, onReject, onForget, onEdited, pr
           </div>
         </div>
       ) : (
-        <p className="text-sm" dir="auto" style={{ color: shownFact ? "var(--arbor-ink)" : "var(--arbor-muted)" }}>{shownFact || t("elev.childmem.fact.unshown")}</p>
+        <>
+          {/* B-CAREPRO-NEW-2l: on the lead row, where the fact came from — the
+              parent's own words — when the source is a parent conversation. */}
+          {primary && dated && PARENT_MEMORY_SOURCES.has(m.source) && (
+            <p data-testid="memory-provenance" className="t-sm mb-1.5 px-3 py-2" style={{ background: "var(--arbor-paper-deep)", borderRadius: "var(--r)", color: "var(--arbor-ink)", fontFamily: uiLang === "he" ? "var(--font-display)" : "var(--font-editorial)" }}>
+              {t("elev.childmem.provenance", { date: dated })}
+            </p>
+          )}
+          <p className="text-sm max-w-[65ch]" dir="auto" style={{ color: shownFact ? "var(--arbor-ink)" : "var(--arbor-muted)" }}>{shownFact || t("elev.childmem.fact.unshown")}</p>
+        </>
       )}
       <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1.5 text-[11px]" style={{ color: "var(--arbor-muted)" }}>
         {/* W2-CAREPRO r1: no "source" link icon over raw model text with no

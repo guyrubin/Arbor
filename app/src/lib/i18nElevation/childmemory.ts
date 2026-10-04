@@ -41,6 +41,9 @@ export const en: Record<string, string> = {
 
   "elev.childmem.action.approve": "Approve",
   "elev.childmem.action.remember": "Remember this",
+  "elev.childmem.provenance": "From what you wrote on {date}:",
+  "elev.childmem.kept.topic": "Kept. Next time you ask about {topic}, Arbor will start from this.",
+  "elev.childmem.kept.any": "Kept. Arbor will start from this the next time you ask.",
   "elev.childmem.action.dismiss": "Dismiss",
   "elev.childmem.action.forget": "Forget",
 
@@ -73,6 +76,9 @@ export const he: Record<string, string> = {
 
   "elev.childmem.action.approve": "אישור",
   "elev.childmem.action.remember": "לזכור את זה",
+  "elev.childmem.provenance": "ממה שכתבתם ב־{date}:",
+  "elev.childmem.kept.topic": "נשמר. בפעם הבאה שתשאלו על {topic}, ארבור יתחיל מזה.",
+  "elev.childmem.kept.any": "נשמר. ארבור יתחיל מזה בפעם הבאה שתשאלו.",
   "elev.childmem.action.dismiss": "לא רלוונטי",
   "elev.childmem.action.forget": "לשכוח",
 
