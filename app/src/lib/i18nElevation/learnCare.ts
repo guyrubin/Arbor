@@ -135,6 +135,8 @@ export const en: Record<string, string> = {
   "elev.learnCare.appt.more.title": "Past visits and what to ask",
   "elev.learnCare.appt.more.sub": "History and your questions",
   "elev.learnCare.appt.whoSees": "Who does {name} see?",
+  "elev.learnCare.appt.worth.caption": "Worth bringing to the next visit · you noted this {date}",
+  "elev.learnCare.appt.worth.add": "Add to my questions",
   "elev.learnCare.appt.more.door": "Open the consult flow",
 };
 
@@ -239,5 +241,7 @@ export const he: Record<string, string> = {
   "elev.learnCare.appt.more.title": "ביקורים קודמים ומה לשאול",
   "elev.learnCare.appt.more.sub": "היסטוריה והשאלות שלכם",
   "elev.learnCare.appt.whoSees": "אצל מי אתם מבקרים עם {name}?",
+  "elev.learnCare.appt.worth.caption": "שווה להביא לביקור הבא · רשמתם את זה ב־{date}",
+  "elev.learnCare.appt.worth.add": "להוסיף לשאלות שלי",
   "elev.learnCare.appt.more.door": "פתחו את מסלול ההתייעצות",
 };

@@ -14,10 +14,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { translate } from "../../lib/i18n";
 
 const DAY = 86_400_000;
-const harness = vi.hoisted(() => ({ locale: "en" as "en" | "he", appts: [] as unknown[] }));
+const harness = vi.hoisted(() => ({ locale: "en" as "en" | "he", appts: [] as unknown[], logs: [] as unknown[] }));
 
 vi.mock("../../context/ArborContext", () => ({
-  useArbor: () => ({ childProfile: { id: "c1", name: "Dylan" }, setActiveTab: vi.fn(), requestConsultPrefill: vi.fn() }),
+  useArbor: () => ({ childProfile: { id: "c1", name: "Dylan" }, setActiveTab: vi.fn(), requestConsultPrefill: vi.fn(), behaviorLogs: harness.logs }),
 }));
 vi.mock("../../context/ToastContext", () => ({ useToast: () => ({ toast: vi.fn() }) }));
 vi.mock("../../context/LanguageContext", () => ({
@@ -42,7 +42,7 @@ const seeded = () => [
   { id: "a0", who: "", role: "Pediatrician", profession: "pediatrician", whenIso: new Date(Date.now() - 3 * DAY).toISOString(), when: "", mode: "In person", status: "confirmed" },
 ];
 
-beforeEach(() => { harness.locale = "en"; harness.appts = []; });
+beforeEach(() => { harness.locale = "en"; harness.appts = []; harness.logs = []; });
 
 describe("W2-CAREPRO r2 · the visit lifecycle renders from a seeded record", () => {
   for (const locale of ["en", "he"] as const) {
@@ -99,4 +99,42 @@ describe("B-CAREPRO-NEW-2g · the empty state starts the lifecycle", () => {
       expect(translate(locale, "elev.learnCare.appt.whoSees", { name: "Dylan" })).not.toMatch(/\//);
     });
   }
+});
+
+describe("B-CAREPRO-NEW-2h · worth bringing to the next visit", () => {
+  it("unit: the newest note wins; one already asked is skipped; none → null", async () => {
+    const { latestParentNote } = await import("./Appointments");
+    const logs = [
+      { timestamp: "2026-09-10T10:00:00Z", notes: "Older note" },
+      { timestamp: "2026-09-12T10:00:00Z", notes: "Shoes are where it shows" },
+      { timestamp: "2026-09-13T10:00:00Z" },
+    ];
+    expect(latestParentNote(logs, [])?.text).toBe("Shoes are where it shows");
+    expect(latestParentNote(logs, [{ text: "Shoes are where it shows" }])?.text).toBe("Older note");
+    expect(latestParentNote([{ timestamp: "2026-09-13T10:00:00Z" }], [])).toBeNull();
+  });
+
+  for (const locale of ["en", "he"] as const) {
+    it(`${locale}: the well quotes the parent's words under Upcoming (empty and booked), with a 44 px 'Add to my questions'`, () => {
+      harness.locale = locale;
+      harness.logs = [{ id: "l1", timestamp: new Date(Date.now() - 2 * DAY).toISOString(), behaviorType: "Moment", notes: "Shoes are where it shows" }];
+      for (const appts of [[], seeded()]) {
+        harness.appts = appts;
+        const html = renderToStaticMarkup(<Appointments />);
+        const well = html.slice(html.indexOf('data-testid="appt-worth-bringing"'), html.indexOf("</figure>"));
+        expect(well).toContain("Shoes are where it shows");
+        expect(well).toContain('dir="auto"');
+        expect(well).toContain("var(--arbor-paper-deep)");
+        expect(well).toContain(translate(locale, "elev.learnCare.appt.worth.add"));
+        expect(well).toContain("min-h-[44px]");
+        expect(well).not.toMatch(/\d+\s*%/);
+        expect((html.match(/data-primary-move="/g) ?? []).length).toBe(1);
+      }
+    });
+  }
+
+  it("no parent note → no well (never invented)", () => {
+    harness.logs = [{ id: "l1", timestamp: new Date().toISOString(), behaviorType: "Moment" }];
+    expect(renderToStaticMarkup(<Appointments />)).not.toContain('data-testid="appt-worth-bringing"');
+  });
 });

@@ -36,6 +36,19 @@ import {
  *  (the G14 list without the catch-all "other", which the Add form keeps). */
 const EMPTY_STATE_PROFESSIONS: readonly AppointmentProfession[] = ["pediatrician", "slp", "ot", "pt", "psychologist", "teacher"];
 
+/** B-CAREPRO-NEW-2h — the newest logged moment that carries the parent's own
+ *  words (a note), unless it is already one of their questions. Pure. */
+export function latestParentNote(
+  logs: readonly { timestamp: string; notes?: string }[],
+  questions: readonly { text: string }[],
+): { text: string; at: string } | null {
+  const asked = new Set(questions.map((q) => q.text.trim()));
+  const newest = logs
+    .filter((l) => (l.notes ?? "").trim() && !asked.has((l.notes ?? "").trim()))
+    .sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1))[0];
+  return newest ? { text: (newest.notes ?? "").trim(), at: newest.timestamp } : null;
+}
+
 const PROFESSION_KEY: Record<AppointmentProfession, string> = {
   pediatrician: "elev.careNet.appt.profession.pediatrician",
   slp: "elev.careNet.appt.profession.slp",
@@ -92,7 +105,7 @@ type PrepQuestion = { id: string; text: string };
  *  done), never the child. Nothing here scores, rates or colour-codes a child.
  */
 export default function Appointments() {
-  const { setActiveTab, childProfile, requestConsultPrefill } = useArbor();
+  const { setActiveTab, childProfile, requestConsultPrefill, behaviorLogs } = useArbor();
   const { t, uiLang } = useLanguage();
   const { toast } = useToast();
   const apptsCol = useChildCollection<Appointment>(childProfile.id, "appointments");
@@ -111,6 +124,10 @@ export default function Appointments() {
     [questionsCol.items]
   );
 
+  // B-CAREPRO-NEW-2h: the parent's most recent own words (a logged moment's
+  // note — never AI text), offered as something to bring to the next visit.
+  const worthBringing = useMemo(() => latestParentNote(behaviorLogs ?? [], questionsCol.items), [behaviorLogs, questionsCol.items]);
+  const addToQuestions = (text: string) => void questionsCol.upsert({ id: `q${Date.now()}`, text });
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState<{ who: string; profession: AppointmentProfession | ""; mode: AppointmentMode; when: string }>({ who: "", profession: "", mode: "In person", when: "" });
   const [q, setQ] = useState("");
@@ -199,6 +216,22 @@ export default function Appointments() {
     toast(t("elev.learnCare.appt.followUp.saved"), "success");
     return true;
   };
+
+  const worthWell = worthBringing ? (
+    <figure data-testid="appt-worth-bringing" className="mt-4 p-4" style={{ background: "var(--arbor-paper-deep)", borderRadius: "var(--r)" }}>
+      <figcaption className="t-xs" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.appt.worth.caption", { date: fmtDay(worthBringing.at, uiLang) })}</figcaption>
+      <blockquote dir="auto" className="t-md mt-1" style={{ color: "var(--arbor-ink)", fontFamily: uiLang === "he" ? "var(--font-display)" : "var(--font-editorial)" }}>“{worthBringing.text}”</blockquote>
+      <button
+        type="button"
+        data-testid="appt-worth-add"
+        onClick={() => addToQuestions(worthBringing.text)}
+        className="inline-flex items-center min-h-[44px] t-sm font-bold"
+        style={{ color: "var(--arbor-clay)" }}
+      >
+        {t("elev.learnCare.appt.worth.add")}
+      </button>
+    </figure>
+  ) : null;
 
   const row = (a: Appointment) => (
     <ApptRow
@@ -317,7 +350,7 @@ export default function Appointments() {
       )}
       <SectionCard title={t("elev.learnCare.appt.section.upcoming")} icon={<Icon name="calendar_month" size={20} />} tone="sky">
         {upcoming.length ? (
-          <div className="space-y-3">{upcoming.map(row)}</div>
+          <div className="space-y-3">{upcoming.map(row)}{worthWell}</div>
         ) : (
           /* W2-CAREPRO r1: the empty state teaches the lifecycle (prepare before,
              keep what they suggested after), named for the child — not a dead end.
@@ -341,6 +374,7 @@ export default function Appointments() {
                 </button>
               ))}
             </div>
+            {worthWell}
           </div>
         )}
       </SectionCard>
