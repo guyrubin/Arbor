@@ -80,7 +80,7 @@ export default function PlanTrackCard({ plan, step, today, lang, now, onTryIt, o
             </button>
           ) : echo ? (
             <p data-testid="plan-echo" data-echo={echo.kind} dir="auto" className="t-sm leading-snug" style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink-soft)" }}>
-              <span className="min-w-0 line-clamp-2">{t(planEchoKey(echo), { step: echo.kind === "first" ? "" : echo.step, name: childName })}</span>
+              <span className="min-w-0 line-clamp-2">{t(planEchoKey(echo), { step: "step" in echo ? echo.step : "", name: childName })}</span>
             </p>
           ) : null}
           <p dir="auto" className="t-md font-bold leading-snug" style={{ color: "var(--arbor-ink)" }}>{step.text}</p>
