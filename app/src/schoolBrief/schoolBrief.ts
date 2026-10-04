@@ -28,7 +28,7 @@
  */
 
 import type { SchoolBrief } from "../types";
-import { ClinicalLanguageError, findClinicalDiagnosisTerm } from "../lib/clinicalScan";
+import { ClinicalLanguageError, findTeacherBlockedTerm } from "../lib/clinicalScan";
 
 /* Conditions 2 + 3 field ceilings and the fail-closed clinical-term scan live
  * in the shared PURE module `src/lib/clinicalScan.ts` (extracted IA W4.1 so the
@@ -41,6 +41,7 @@ export {
   CLINICAL_DIAGNOSIS_TERMS,
   ClinicalLanguageError,
   findClinicalDiagnosisTerm,
+  findTeacherBlockedTerm,
 } from "../lib/clinicalScan";
 export type { CuratedField } from "../lib/clinicalScan";
 
@@ -124,7 +125,8 @@ export function buildSchoolBriefExport(
     languageSupportPlan: cleanStrings(b.languageSupportPlan),
     suggestedTeacherStrategies: cleanStrings(b.suggestedTeacherStrategies),
   };
-  const violation = findClinicalDiagnosisTerm(exportToText(out));
+  // W2-CAREPRO r1: a diagnosis term OR a severity grade blocks the teacher copy.
+  const violation = findTeacherBlockedTerm(exportToText(out));
   if (violation) {
     throw new ClinicalLanguageError(violation);
   }

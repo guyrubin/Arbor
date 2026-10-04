@@ -122,7 +122,7 @@ export default function SchoolBrief() {
       date: "",
       overview: [draft.overview, handedNote ?? ""].filter((s) => s.trim()).join("\n\n"),
       keyStrengths: draft.keyStrengths,
-      classroomChallenges: [],
+      classroomChallenges: draft.harderMoments,
       languageSupportPlan: [],
       suggestedTeacherStrategies: draft.suggestedTeacherStrategies,
       crisisEscalationTrigger: "",
@@ -154,8 +154,9 @@ export default function SchoolBrief() {
   const sectionLabels = useMemo(
     () => ({
       overview: t("schoolBrief.section.overview", { name: firstName }),
-      strengths: t("schoolBrief.section.calm", { name: firstName }),
-      challenges: t("schoolBrief.section.transitions"),
+      // W2-CAREPRO r1: the lists hold strengths and harder moments — the labels say so.
+      strengths: t("schoolBrief.section.strengths", { name: firstName }),
+      challenges: t("schoolBrief.section.harder", { name: firstName }),
       language: t("schoolBrief.section.language"),
       strategies: t("schoolBrief.section.strategies"),
     }),

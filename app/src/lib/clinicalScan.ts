@@ -96,6 +96,49 @@ export const CLINICAL_DIAGNOSIS_TERMS_BY_LANGUAGE = {
   he: CLINICAL_DIAGNOSIS_TERMS_HE,
 } as const;
 
+/** W2-CAREPRO critic round 1 — a teacher never receives a severity GRADE.
+ *  The diagnosis scan let "Severe transition anxiety" through to a teacher
+ *  draft printed under "never a diagnosis or a developmental verdict". A grade
+ *  word is a risk level (law 1), so the teacher scan refuses it too. English on
+ *  a word boundary; Hebrew as a substring (same reasoning as above: particles
+ *  glue to the word, and over-matching is the safe direction). */
+export const TEACHER_GRADE_TERMS = [
+  "severe", "severely", "severity",
+  "mild", "mildly",
+  "moderate", "moderately",
+  "extreme", "extremely",
+  "profound", "profoundly",
+  "high-risk", "high risk", "at-risk", "at risk",
+] as const;
+
+export const TEACHER_GRADE_TERMS_HE = [
+  // severe / severity
+  "חמור", "חמורה", "חומרה",
+  // extreme
+  "קיצוני", "קיצונית",
+  // graded ("in a mild/moderate degree")
+  "בדרגה", "דרגת",
+  // risk
+  "בסיכון", "סיכון גבוה",
+] as const;
+
+/** Return the first severity-grade term found, or null. */
+export function findTeacherGradeTerm(text: string): string | null {
+  for (const term of TEACHER_GRADE_TERMS) {
+    const re = new RegExp(`\\b${term.replace(/[-\s]/g, "[-\\s]")}\\b`, "i");
+    if (re.test(text)) return term;
+  }
+  for (const term of TEACHER_GRADE_TERMS_HE) {
+    if (text.includes(term)) return term;
+  }
+  return null;
+}
+
+/** The teacher egress scan: a diagnosis term OR a severity grade. */
+export function findTeacherBlockedTerm(text: string): string | null {
+  return findClinicalDiagnosisTerm(text) ?? findTeacherGradeTerm(text);
+}
+
 /** Return the first clinical-diagnosis term found, or null if the text is
  *  clean. English matches on a word boundary, case-insensitively, exactly as
  *  before; Hebrew matches as a substring, for the reasons above. The scan is

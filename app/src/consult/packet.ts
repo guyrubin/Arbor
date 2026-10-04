@@ -8,7 +8,7 @@
  * parent observations only, never a label or assessment.
  */
 
-import { ClinicalLanguageError, findClinicalDiagnosisTerm } from "../lib/clinicalScan";
+import { ClinicalLanguageError, findClinicalDiagnosisTerm, findTeacherBlockedTerm } from "../lib/clinicalScan";
 import { translate, type UiLang } from "../lib/i18n";
 import { DOMAIN_LABEL } from "../lib/screening";
 import { bandForAgeMonths, milestoneAgeWindow } from "../lib/milestoneData";
@@ -1204,18 +1204,34 @@ export function exportPrintSections(
 export interface TeacherBriefDraft {
   overview: string;
   keyStrengths: string[];
+  /** W2-CAREPRO r1: the parent's goals + challenges in their own words — a
+   *  plain list, never a "Current focus" line in the overview, and any line
+   *  carrying a severity grade or a diagnosis term is left out. */
+  harderMoments: string[];
   suggestedTeacherStrategies: string[];
 }
 
 export function teacherBriefDraft(input: BuildPacketInput, lang: UiLang = "en"): TeacherBriefDraft {
   const packet = capToPreset(CONSULT_PRESETS.teacher, buildConsultPacket(input));
   const items = (id: string) => packet.sections.find((s) => s.id === id)?.items ?? [];
-  const clean = (line: string) => line.trim().length > 0 && !findClinicalDiagnosisTerm(line);
+  // W2-CAREPRO r1: the teacher scan = diagnosis terms + severity grades.
+  const clean = (line: string) => line.trim().length > 0 && !findTeacherBlockedTerm(line);
+  const goals = input.profile.activeGoals ?? [];
+  const challenges = (input.profile.challenges ?? []).filter((c) => !goals.some((g) => g.label.toLowerCase() === c.toLowerCase()));
+  const goalLabel = (g: { goalId: string; label: string }) => {
+    const key = `elev.goal.tile.${g.goalId}`;
+    const v = translate(lang, key);
+    return v === key ? g.label : v;
+  };
   return {
-    // overview ← the teacher preset's "about" lines (strengths have their own list)
-    overview: items("about").filter((it) => it.id !== "about-strengths").map((it) => itemText(it, lang)).filter(clean).join(" "),
+    // overview ← the teacher preset's "about" lines: basics, then setting.
+    // Strengths have their own list; the "Current focus" line never reaches a
+    // teacher's overview (it read as a severity grade under "never a verdict").
+    overview: items("about").filter((it) => it.id !== "about-strengths" && it.id !== "about-focus").map((it) => itemText(it, lang)).filter(clean).join(" "),
     // keyStrengths ← the profile's strengths, as the parent wrote them
     keyStrengths: (input.profile.strengths ?? []).filter(clean),
+    // harderMoments ← goals + challenges as the parent wrote them, ungraded
+    harderMoments: [...goals.map(goalLabel), ...challenges].filter(clean),
     // suggestedTeacherStrategies ← what the family already tries
     suggestedTeacherStrategies: items("tried").map((it) => itemText(it, lang)).filter(clean),
   };
