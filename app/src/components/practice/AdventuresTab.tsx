@@ -297,8 +297,9 @@ export default function AdventuresTab() {
             // B-KID-04 (law 3): finishing the story lights every star.
             stars={scenario.scenes.length}
             starsTotal={scenario.scenes.length}
-            // KID-29: kid-register finish — the child is never told they were measured.
-            subtitle={t("elev.play.adventures.done.sub", { n: sessionCorrect, total: scenario.scenes.length })}
+            // KID-29 + B-KID-26 (law 3): kid-register finish — the child is never
+            // told they were measured: the line counts scenes finished, never right answers.
+            subtitle={t("elev.play.adventures.done.sub", { n: scenario.scenes.length })}
           >
             <PlayButton variant="soft" tone="lav" onClick={() => openScenario(scenario.id)}>
               <Icon name="replay" size={16} /> Play again

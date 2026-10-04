@@ -122,6 +122,30 @@ function gradedStarsHits(src: string): string[] {
   return hits;
 }
 
+/**
+ * B-KID-26 (law 3): no correctness count in kid copy. A line that interpolates
+ * a number AND names right / correct / first-try answers grades the child just
+ * as a partial star row does. Read from the literal in the file and from the
+ * RESOLVED value of every i18n key the file references, in BOTH locales.
+ */
+const CORRECTNESS_WORDS = /first[- ]try|(?<![-\w])correct\b|right answers?|נכונ|בניסיון הראשון/i;
+const INTERPOLATION = /\{\w+\}|\$\{[^}]+\}/;
+// The word must be COPY, outside the interpolated expression: a class list
+// like `${ok ? "play-correct" : ""}` is code, not a count the child reads.
+const correctnessCount = (text: string) =>
+  INTERPOLATION.test(text) && CORRECTNESS_WORDS.test(text.replace(/\$\{[^}]*\}/g, " "));
+function correctnessCountHits(src: string): string[] {
+  const hits: string[] = [];
+  for (const span of copySpans(src)) if (correctnessCount(span)) hits.push(span.trim());
+  for (const m of src.matchAll(/\bt\(\s*"([\w.]+)"/g)) {
+    for (const [lang, dict] of [["en", ALL_EN], ["he", ALL_HE_DICT]] as const) {
+      const value = dict[m[1]];
+      if (value && correctnessCount(value)) hits.push(`${lang} ${m[1]}: ${value}`);
+    }
+  }
+  return hits;
+}
+
 /** Shrink-only baseline: EXACT counts. Fixing a hit must lower the number. */
 const FROZEN: Partial<Record<string, Partial<Record<RuleId, { count: number; reason: string }>>>> = {
   "components/practice/EarlyReadingTrack.tsx": {
@@ -226,6 +250,7 @@ const ADULT_WORDS = /\b(?:tests?|scor(?:e|es|ed|ing)|assess\w*|privacy|judge|jud
 /** The full EN dictionary a kid surface can resolve: base keys + the kid
  *  register elevation module (base keys win on merge, as at runtime). */
 const ALL_EN: Record<string, string> = { ...kidEn, ...baseEn };
+const ALL_HE_DICT: Record<string, string> = { ...kidHe, ...baseHe };
 
 const CLINICAL = /\b(?:development|diagnos\w*|assess\w*|accuracy|video-modeling)\b/i;
 const CSS_LENGTH_CONTEXT = /(?:width|height|left|right|top|bottom|inset|translate|flex|basis)[A-Za-z]*\s*:\s*`[^`\n]*\}%`/;
@@ -243,7 +268,9 @@ const RULES: Record<RuleId, (src: string) => string[]> = {
   nav: (src) => [...src.matchAll(/\bsetActiveTab\(/g)].map((m) => m[0]),
   download: (src) => [...src.matchAll(/\bdownload[A-Za-z]*Canvas\(|<a\b[^>]*\sdownload(?:[\s=>])/g)].map((m) => m[0]),
   clinical: (src) => copySpans(src).filter((s) => CLINICAL.test(s)),
-  gradedStars: (src) => gradedStarsHits(src),
+  // B-KID-26: the same verdict in words — a done-screen line that interpolates
+  // a count of right / first-try answers ("{n} of {total} first-try answers").
+  gradedStars: (src) => [...gradedStarsHits(src), ...correctnessCountHits(src)],
   confetti: (src) => [...src.matchAll(/\bconfetti\(/g)].map((m) => m[0]),
   smallBtn: (src) =>
     // `(?<==)>` lets an arrow function's `=>` inside an attribute pass without ending the tag.
@@ -329,6 +356,10 @@ describe("kid-register scanner — positive controls (planted violations are see
     ["gradedStars", "<Celebrate title={x} stars={1} starsTotal={3}>"],
     ["gradedStars", "<Celebrate title={x} stars={gradeStars(avg)} starsTotal={3}>"],
     ["gradedStars", "<Celebrate\n  title={x}\n  stars={sessionCorrect}\n  starsTotal={scenario.scenes.length}\n>"],
+    // B-KID-26: the correctness count in words, literal EN + HE.
+    ["gradedStars", "subtitle={`${n} of ${total} first-try answers`}"],
+    ["gradedStars", '<p>{"{n} מתוך {total} תשובות נכונות"}</p>'],
+    ["gradedStars", 'const sub = "{n} of {total} correct";'],
     ["smallBtn", '<button onClick={() => x()} className="p-2 rounded-xl">'],
     ["smallBtn", '<button className="rounded-full px-3.5 py-1.5 text-[11.5px]">'],
     ["smallBtn", '<button\n  onClick={() => y()}\n  className="px-3 py-1 rounded-xl">'],
@@ -358,6 +389,8 @@ describe("kid-register scanner — negative controls (legitimate code passes)", 
     ["gradedStars", "<Celebrate title={x} stars={3} starsTotal={3}>"],
     ["gradedStars", "<Celebrate title={x} stars={pack.prompts.length} starsTotal={pack.prompts.length}>"],
     ["gradedStars", '<Stars n={stars} aria={t("elev.play.arcade.starsAria", { n: stars })} />'], // not a stars= prop
+    ["gradedStars", 'subtitle={t("elev.play.adventures.done.sub", { n: scenario.scenes.length })}'], // B-KID-26: scenes finished, EN + HE
+    ["gradedStars", "<p>That one was correct!</p>"], // praise with no count is not a grade
     ["smallBtn", '<button className="p-3 min-w-[44px] min-h-[44px] rounded-xl">'],
     ["smallBtn", '<button className="px-3.5 py-2.5 min-h-[44px]">'],
     ["smallBtn", '<span className="px-2.5 py-1">badge</span>'], // not a button

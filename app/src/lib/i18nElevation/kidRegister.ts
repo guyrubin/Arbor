@@ -100,7 +100,7 @@ export const en: Record<string, string> = {
   "elev.play.feelings.retry": "Good try — it might be {feeling}. Let's make that face together.",
 
   // ── elev.play.adventures — Story Quest finish (KID-29)
-  "elev.play.adventures.done.sub": "{n} of {total} first-try answers. The End — keep this story!",
+  "elev.play.adventures.done.sub": "You finished {n} scenes. The End — keep this story!",
 
   // ── elev.play.mimic — Mimic Studio child controls (W3, HE pending GD-6)
   "elev.play.mimic.effortNote": "Every attempt counts — trying is the win.",
@@ -260,7 +260,7 @@ export const he: Record<string, string> = {
   "elev.play.feelings.yes": "כן! זה נראה כמו {feeling}.",
   "elev.play.feelings.retry": "ניסיון יפה — אולי זה {feeling}. בואו נעשה את הפרצוף הזה ביחד.",
 
-  "elev.play.adventures.done.sub": "{n} מתוך {total} תשובות בניסיון הראשון. הסוף — שמרו את הסיפור הזה!",
+  "elev.play.adventures.done.sub": "סיימת {n} סצנות. הסוף — שמרו את הסיפור הזה!",
 
   "elev.play.mimic.effortNote": "כל ניסיון נחשב — עצם הניסיון הוא ההצלחה.",
   "elev.play.mimic.round": "{pack} — סיבוב {current} מתוך {total}",
