@@ -68,11 +68,12 @@ export function WowOnboarding() {
   // ── Step state — start at the first step the account hasn't done. ─────────
   // OnboardingFlow guarantees a child exists before the wow can trigger; an
   // avatar made there (or earlier) enters straight at the comic.
-  // MOB-09: a parent who declined the avatar in OnboardingFlow step 4 is NOT
-  // asked again — the overlay enters at the comic (lib/onboardingJourney
-  // wowEntryStep, pinned by onboardingJourney.test.ts).
+  // B-SHELL-09: OnboardingFlow has no avatar step any more — a hero-less child
+  // enters here at the avatar card (lib/onboardingJourney wowEntryStep, pinned
+  // by onboardingJourney.test.ts). Skipping it here is what shows the Sprout
+  // note on the comic.
   const [step, setStep] = useState<WowStep>(() => wowEntryStep(hero.hasHero));
-  const [avatarSkipped] = useState<boolean>(() => readJourney().avatarSkipped === true);
+  const [avatarSkipped, setAvatarSkipped] = useState(false);
   const [avatarOpen, setAvatarOpen] = useState(false);
   const [comic, setComic] = useState<{ url: string | null; fallback: boolean } | null>(null);
   // B-SHELL-10: a late first page may only land while the overlay is mounted.
@@ -306,7 +307,7 @@ export function WowOnboarding() {
               </button>
               <button
                 type="button"
-                onClick={() => setStep("comic")}
+                onClick={() => { setAvatarSkipped(true); setStep("comic"); }}
                 className="inline-flex min-h-[44px] items-center rounded-2xl px-5 py-3 text-[var(--t-sm)] font-bold transition"
                 style={ghostBtn}
               >

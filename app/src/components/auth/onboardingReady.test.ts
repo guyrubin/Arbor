@@ -38,7 +38,6 @@ const render = (showReplay: boolean) =>
       ageYears: 3,
       ageMonthsPart: 4,
       selectedDomains: [],
-      avatarResult: null,
       saving: false,
       onSubmit: () => undefined,
       onReplay: () => undefined,

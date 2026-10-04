@@ -232,7 +232,9 @@ describe("ENG-22 — the new call sites are LIVE (source pins + negative control
     const call = onboarding.match(/trackOnboardingCompleted\(\{[^}]*\}\)/)?.[0];
     expect(call).toBeTruthy();
     expect(call).toContain("domainCount: selectedDomains.length");
-    expect(call).toContain("hasAvatar: !!avatarResult");
+    // B-SHELL-09: onboarding has no avatar step, so the flag is false here
+    // (the hero is made in the wow); the prop keeps its shape.
+    expect(call).toContain("hasAvatar: false");
     // Free text must never ride along: no name/age/domain labels in the props.
     expect(call).not.toMatch(/name|ageYears|challenges|domainLabels/);
   });

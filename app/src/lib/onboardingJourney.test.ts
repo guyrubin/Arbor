@@ -157,48 +157,49 @@ describe("onboardingJourney — transitions", () => {
   });
 });
 
-// ── MOB-09 (wave T): the avatar is asked ONCE ────────────────────────────────
-import { clearAvatarSkipped, markAvatarSkipped, wowEntryStep } from "./onboardingJourney";
+// ── B-SHELL-09: onboarding has no avatar step; the wow asks once ─────────────
+import { wowEntryStep } from "./onboardingJourney";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-describe("MOB-09 — avatar skipped in OnboardingFlow → the wow enters at the comic", () => {
-  it("markAvatarSkipped persists the flag; wowEntryStep(hasHero=false) → comic", () => {
-    markAvatarSkipped();
-    expect(readJourney().avatarSkipped).toBe(true);
-    expect(JSON.parse(store.getItem("arbor.journey") as string).avatarSkipped).toBe(true);
-    expect(wowEntryStep(false)).toBe("comic");
-  });
+describe("B-SHELL-09 — four onboarding steps; a new child meets the hero question once, in the wow", () => {
+  const root = path.resolve(__dirname, "..");
+  const flow = fs.readFileSync(path.join(root, "components/auth/OnboardingFlow.tsx"), "utf8");
+  const wow = fs.readFileSync(path.join(root, "components/onboarding/WowOnboarding.tsx"), "utf8");
+  const journey = fs.readFileSync(path.join(root, "lib/onboardingJourney.ts"), "utf8");
 
-  it("negative control: never skipped + no hero → avatar card (the pre-fix entry)", () => {
-    expect(readJourney().avatarSkipped).toBeUndefined();
+  it("a hero-less new child enters the wow at the avatar card; a child with a hero at the comic", () => {
     expect(wowEntryStep(false)).toBe("avatar");
-  });
-
-  it("a child who already has a hero always enters at the comic", () => {
-    expect(wowEntryStep(true)).toBe("comic");
-    markAvatarSkipped();
     expect(wowEntryStep(true)).toBe("comic");
   });
 
-  it("clearAvatarSkipped (hero created after all) removes the flag; markWowDone clears it too", () => {
-    markAvatarSkipped();
-    clearAvatarSkipped();
-    expect(readJourney().avatarSkipped).toBeUndefined();
-    markAvatarSkipped();
+  it("a legacy avatarSkipped flag no longer diverts the wow; markWowDone still strips it", () => {
+    store.setItem("arbor.journey", JSON.stringify({ v: 1, wow: "pending", rail: {}, avatarSkipped: true }));
+    expect(wowEntryStep(false)).toBe("avatar");
     markWowDone({ comicShown: true });
     expect(readJourney().avatarSkipped).toBeUndefined();
     expect(readJourney().wow).toBe("done");
   });
 
-  it("wiring: OnboardingFlow marks the skip on step 4 and WowOnboarding uses wowEntryStep + the Sprout note", () => {
-    const root = path.resolve(__dirname, "..");
-    const flow = fs.readFileSync(path.join(root, "components/auth/OnboardingFlow.tsx"), "utf8");
-    const wow = fs.readFileSync(path.join(root, "components/onboarding/WowOnboarding.tsx"), "utf8");
-    expect(flow).toMatch(/onSkip=\{\(\) => \{\s*if \(!replaying\) markAvatarSkipped\(\);\s*goNext\(\);\s*\}\}/);
-    expect(flow).toContain("if (!replaying) clearAvatarSkipped();");
+  it("OnboardingFlow: 4 dots, no avatar step, no skip-flag writes", () => {
+    expect(flow).toContain("<ProgressDots step={step} total={4} />");
+    expect(flow).toContain("type Step = 1 | 2 | 3 | 4;");
+    expect(flow).toContain("Math.min(s + 1, 4)");
+    expect(flow).not.toMatch(/StepAvatar|AvatarCreator|markAvatarSkipped|clearAvatarSkipped/);
+    expect(flow).toMatch(/\{step === 4 && \(\s*<StepReady/);
+    expect(journey).not.toMatch(/export function (markAvatarSkipped|clearAvatarSkipped)/);
+  });
+
+  it("the wow is the one place the hero is asked: entry via wowEntryStep, its own skip shows the Sprout note", () => {
     expect(wow).toContain("useState<WowStep>(() => wowEntryStep(hero.hasHero))");
-    expect(wow).not.toContain('(!hero.hasHero ? "avatar" : "comic")');
+    expect(wow).toContain("onClick={() => { setAvatarSkipped(true); setStep(\"comic\"); }}");
+    expect(wow).not.toContain("readJourney().avatarSkipped");
     expect(wow).toContain('t("elev.storeshell.wow.sproutStars", { name })');
+  });
+
+  it("replay still makes zero writes: no avatar path exists in the flow to fire one", () => {
+    // the only writes left are addChild (guarded by `if (replaying)`) and the submit patch
+    expect(flow).toMatch(/if \(replaying\) \{\s*goNext\(\);\s*return;\s*\}/);
+    expect(flow).not.toContain("patch.photoUrl");
   });
 });

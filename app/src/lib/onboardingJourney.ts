@@ -35,9 +35,9 @@ export interface JourneyState {
   wow: "pending" | "done";
   rail: JourneyRailState;
   coachSeed?: string;
-  /** MOB-09: the parent declined the avatar in OnboardingFlow step 4 — the
-   *  wow overlay must NOT ask the same question again (enters at the comic).
-   *  Present only when true; cleared when the wow finishes. */
+  /** LEGACY (MOB-09, retired by B-SHELL-09): the OnboardingFlow avatar step
+   *  is gone, so nothing writes this any more; a stored copy is ignored by
+   *  wowEntryStep and stripped by markWowDone. */
   avatarSkipped?: true;
 }
 
@@ -158,27 +158,18 @@ export function markWowDone(opts: { comicShown: boolean }): void {
   writeJourney({ ...rest, wow: "done", rail });
 }
 
-// ── MOB-09: avatar asked once ──────────────────────────────────────────────
-
-/** OnboardingFlow step 4 "Skip for now" — remember so the wow enters at the comic. */
-export function markAvatarSkipped(): void {
-  writeJourney({ ...readJourney(), avatarSkipped: true });
-}
-
-/** The parent did create a hero after all (stepped back, or via the flow). */
-export function clearAvatarSkipped(): void {
-  const { avatarSkipped: _skipped, ...rest } = readJourney();
-  writeJourney(rest as JourneyState);
-}
+// ── B-SHELL-09: the hero is asked for once, in the wow ─────────────────────
 
 /**
- * Which card the wow overlay opens on. A child who already has a hero, or
- * whose parent just declined one, goes straight to the comic; only a hero-less
- * child whose parent was never asked sees the avatar card.
+ * Which card the wow overlay opens on. OnboardingFlow no longer has an avatar
+ * step, so the wow's first card IS the one place a new child's hero is asked
+ * for: a hero-less child enters at the avatar card (exactly once — the wow is
+ * one-shot), a child who already has a hero goes straight to the comic. A
+ * legacy `avatarSkipped` flag is ignored. `_journey` is kept for call-site
+ * compatibility.
  */
-export function wowEntryStep(hasHero: boolean, journey: JourneyState = readJourney()): "avatar" | "comic" {
-  if (hasHero) return "comic";
-  return journey.avatarSkipped ? "comic" : "avatar";
+export function wowEntryStep(hasHero: boolean, _journey?: JourneyState): "avatar" | "comic" {
+  return hasHero ? "comic" : "avatar";
 }
 
 export function setRailDismissed(): void {

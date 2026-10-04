@@ -8,7 +8,7 @@ import { useProfile } from "../../context/ProfileContext";
 import { findIncompleteOnboardingChild } from "../../lib/onboardingGate";
 import { ageLabelForMonths, ageMonthsFromProfile, isoDateOf } from "../../lib/childAge";
 import { translate, type UiLang } from "../../lib/i18n";
-import { markWowPending, setCoachSeed, markAvatarSkipped, clearAvatarSkipped } from "../../lib/onboardingJourney";
+import { markWowPending, setCoachSeed } from "../../lib/onboardingJourney";
 import { useEntitlement } from "../../hooks/useEntitlement"; // MOB-12: admin gate for the replay affordance
 import { LegalLinks } from "../billing/LegalLinks"; // MOB-01: policy links beside the consent checkbox
 import { useToast } from "../../context/ToastContext";
@@ -20,17 +20,12 @@ import { heroFirstName, prewarmFirstComic } from "../../lib/firstComic";
 import { promiseText } from "../../lib/i18nElevation/promise";
 import { track } from "../../lib/analytics";
 import { trackOnboardingCompleted } from "../../lib/kpiEvents";
-import AvatarCreator from "../profile/AvatarCreator";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-type Step = 1 | 2 | 3 | 4 | 5;
-
-type AvatarResult = {
-  dataUrl: string;
-  style: string;
-  source: "descriptor" | "photo";
-};
+// B-SHELL-09: four steps — the avatar step was removed; the hero is made in the
+// wow overlay's first card (every new child, once) or at the Kid Mode door.
+type Step = 1 | 2 | 3 | 4;
 
 // ── Step 3 domain tiles (AP-049; copy VERBATIM from GATED-CLEARANCES-CLINICAL §2) ─
 
@@ -558,91 +553,6 @@ export function StepDomains({
   );
 }
 
-// ── Step 4 — Avatar creation ───────────────────────────────────────────────
-
-function StepAvatar({
-  childId,
-  childName,
-  onAvatarCreated,
-  onSkip,
-  replayMode,
-}: {
-  childId: string;
-  childName: string;
-  onAvatarCreated: (result: AvatarResult) => void;
-  onSkip: () => void;
-  /** When true this is a no-persist replay — AvatarCreator must NOT open. */
-  replayMode?: boolean;
-}) {
-  const { t } = useLanguage();
-  const [avatarOpen, setAvatarOpen] = useState(false);
-
-  return (
-    <div className="space-y-5">
-      <div>
-        <h2 className="text-xl font-black tracking-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-          {t("ob.step.avatar.title", { name: childName })}
-        </h2>
-        <p className="text-sm mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
-          {t("ob.step.avatar.subtitle")}
-        </p>
-      </div>
-
-      {/*
-       * DEMO-MODE GUARD (AP-049 AC-1 replay):
-       * In replayMode the "Continue" button advances to the next step without
-       * opening AvatarCreator, so zero face_processing/consent/generate calls
-       * can fire during a replay. The real first-run path (replayMode=false) is
-       * unchanged — clicking "Continue" opens AvatarCreator as before.
-       */}
-      <button
-        type="button"
-        onClick={replayMode ? onSkip : () => setAvatarOpen(true)}
-        className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98]"
-        style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
-      >
-        {/* MOB-21: "Continue" promised the next step and opened a modal. The
-            label names the tap. */}
-        {t("elev.auth.avatar.cta", { name: childName })}
-      </button>
-
-      <button
-        type="button"
-        onClick={onSkip}
-        className="w-full text-xs font-bold py-2"
-        style={{ color: "var(--arbor-muted)", minHeight: 44 }}
-      >
-        {t("ob.step.avatar.skip")}
-      </button>
-
-      {/*
-       * BINDING SAFETY CONDITION AP-049 / F-NEW:
-       * AvatarCreator's existing gated path calls api.grantConsent({ childId, purpose: "face_processing" })
-       * BEFORE api.generateAvatar on the photo path (enforced via runAvatarGeneration in avatarGate.ts).
-       * We do NOT add any new photo-upload path here. The consent is handled entirely inside AvatarCreator.
-       * The reference photo is local-only: it is passed as a transient dataUrl and never written to
-       * Firestore or Storage — only the stylized avatar result is retained by the caller.
-       *
-       * replayMode suppresses the modal entirely (avatarOpen stays false and the
-       * button above calls onSkip directly), so this component never renders
-       * with open=true during a replay.
-       */}
-      {!replayMode && (
-        <AvatarCreator
-          open={avatarOpen}
-          childId={childId}
-          childName={childName}
-          onClose={() => setAvatarOpen(false)}
-          onCreated={(result) => {
-            setAvatarOpen(false);
-            onAvatarCreated(result);
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
 // ── First-run promise card (masterplan 1.6; mockup Row-2 #2, de-jargoned) ──
 // The FINAL card of the Ready step — the one screenful a parent sees ONCE at
 // the end of setup, before their first Today: the one-sentence promise, the
@@ -708,14 +618,13 @@ function PromiseCard({ name }: { name: string }) {
   );
 }
 
-// ── Step 5 — Ready ─────────────────────────────────────────────────────────
+// ── Step 4 — Ready ─────────────────────────────────────────────────────────
 
 export function StepReady({
   name,
   ageYears,
   ageMonthsPart,
   selectedDomains,
-  avatarResult,
   saving,
   onSubmit,
   onReplay,
@@ -725,7 +634,6 @@ export function StepReady({
   ageYears: number;
   ageMonthsPart: number;
   selectedDomains: string[];
-  avatarResult: AvatarResult | null;
   saving: boolean;
   onSubmit: () => void;
   /** Triggers a non-persisting replay of the full flow from Step 1. */
@@ -773,10 +681,6 @@ export function StepReady({
           t("ob.step.ready.labelDomains"),
           selectedDomains.length > 0 ? domainLabels : t("ob.step.ready.noDomains"),
         )}
-        {row(
-          t("ob.step.ready.labelAvatar"),
-          avatarResult ? t("ob.step.ready.avatarSet") : t("ob.step.ready.avatarSkipped"),
-        )}
       </div>
 
       {/* Masterplan 1.6 — the first-run promise, the FINAL card before the
@@ -815,10 +719,11 @@ export function StepReady({
 
 // ── Root component ─────────────────────────────────────────────────────────
 
-/** AP-049 — 5-step structured onboarding. Reskins the original single-screen stub
+/** AP-049 — 4-step structured onboarding. Reskins the original single-screen stub
  *  into a stepped flow with progress dots, back/continue/skip, and a demo mode.
  *  All child data writes go through ProfileContext.addChild (no schema change).
- *  Step 4 (Avatar) enforces face_processing consent via AvatarCreator's gated path. */
+ *  B-SHELL-09: four steps (welcome · child · domains · ready); the avatar step
+ *  was removed — the wow overlay asks for the hero once, for every new child. */
 export default function OnboardingFlow() {
   const { addChild, updateChild, profiles } = useProfile();
   const { toast } = useToast();
@@ -844,7 +749,7 @@ export default function OnboardingFlow() {
   /**
    * REPLAY / DEMO MODE (AP-049 AC-1):
    * When replaying=true the flow is a preview-only pass. No profile writes,
-   * no consent calls, and no AvatarCreator modal can fire. The real first-run
+   * no consent calls, and no avatar path exists in the flow (B-SHELL-09). The real first-run
    * path (replaying=false, profile created once in handleStep2Next) is unchanged.
    */
   const [replaying, setReplaying] = useState(false);
@@ -868,9 +773,7 @@ export default function OnboardingFlow() {
   // Step 3 state (domain multi-select)
   const [selectedDomains, setSelectedDomains] = useState<string[]>([]);
 
-  // Step 4 state (avatar)
-  const [avatarResult, setAvatarResult] = useState<AvatarResult | null>(null);
-  // childId is available after addChild; for Avatar step we create the profile first.
+  // childId is available after addChild (step 2 creates the profile).
   // On resume, preset it to the in-flight child so we never create a duplicate.
   const [createdChildId, setCreatedChildId] = useState<string | null>(resumeChild?.id ?? null);
 
@@ -880,7 +783,7 @@ export default function OnboardingFlow() {
   // owns the request, so the two sides cannot drift) and the overlay takes the
   // finished one. GATES: the PLAIN variant only — no avatar, therefore no photo
   // and no face_processing consent involved, and the prewarm key records that,
-  // so a parent who creates an avatar at step 4 gets a fresh generation instead.
+  // so a parent who creates an avatar in the wow gets a fresh generation instead.
   // Never in replay mode (a demo pass writes nothing and must cost nothing) and
   // never before a real child exists. Fire-and-forget: a failure is a miss.
   const prewarmStarted = useRef(false);
@@ -892,7 +795,7 @@ export default function OnboardingFlow() {
     prewarmFirstComic({ name: first, he: aiLang === "he" });
   }, [step, replaying, createdChildId, name, aiLang]);
 
-  // Step 5 state
+  // Step 4 (Ready) state
   const [saving, setSaving] = useState(false);
 
   // Derived
@@ -901,10 +804,10 @@ export default function OnboardingFlow() {
 
   // ── Step transitions ────────────────────────────────────────────────────
 
-  const goNext = () => setStep((s) => Math.min(s + 1, 5) as Step);
+  const goNext = () => setStep((s) => Math.min(s + 1, 4) as Step);
   const goBack = () => setStep((s) => Math.max(s - 1, 1) as Step);
 
-  // After step 2 confirmed: create the profile so we have a childId for AvatarCreator.
+  // After step 2 confirmed: create the profile so later steps have a childId.
   const handleStep2Next = async () => {
     if (!name.trim() || !controllerConsent || creating) return;
 
@@ -921,7 +824,7 @@ export default function OnboardingFlow() {
       return;
     }
 
-    // Create the child profile now so step 4 (AvatarCreator) has a real childId.
+    // Create the child profile now so the remaining steps have a real childId.
     // `creating` holds the button in a visible busy state for the duration of the
     // write and blocks the re-tap that would otherwise create a duplicate child.
     setCreating(true);
@@ -966,14 +869,14 @@ export default function OnboardingFlow() {
     setStep(1);
   };
 
-  // ── Final submit (step 5) ───────────────────────────────────────────────
+  // ── Final submit (step 4, Ready) ───────────────────────────────────────────────
 
   const submit = async () => {
-    // DEMO-MODE GUARD (AP-049 AC-1): the replay pass itself (steps 1–4) makes no
+    // DEMO-MODE GUARD (AP-049 AC-1): the replay pass itself (steps 1–3) makes no
     // writes. The final CTA is the demo's exit — it ends replay mode and falls
     // through to the REAL submit for the already-created profile. (Previously this
     // early-returned with replaying never reset, leaving the parent permanently
-    // stuck on step 5 with a dead button.)
+    // stuck on the Ready step with a dead button.)
     if (replaying) setReplaying(false);
 
     if (!createdChildId || saving) return;
@@ -985,7 +888,7 @@ export default function OnboardingFlow() {
         return d ? t(d.nameKey) : id;
       });
 
-      // Patch the existing profile with domain choices and avatar (if set), and
+      // Patch the existing profile with domain choices, and
       // P0.4: stamp explicit completion. This patch always has the two completion
       // keys, so the write always runs — flipping the gate from "in-flight" to done.
       const patch: Record<string, unknown> = {
@@ -993,19 +896,8 @@ export default function OnboardingFlow() {
         onboardingCompletedAt: new Date().toISOString(),
       };
       if (challenges.length) patch.challenges = challenges;
-      // W6.1 / ONB-1: persist the avatar in the canonical shape (photoUrl data
-      // URL + typed metadata — same patch as AvatarCreator's other callers).
-      // The old write stuffed the raw dataUrl string into the metadata-typed
-      // `avatar` field and never set photoUrl, so the first-run hero was
-      // invisible (useHeroAvatar reads comicAvatarUrl||photoUrl).
-      if (avatarResult) {
-        patch.photoUrl = avatarResult.dataUrl;
-        patch.avatar = {
-          style: avatarResult.style,
-          source: avatarResult.source,
-          createdAt: new Date().toISOString(),
-        };
-      }
+      // B-SHELL-09: no avatar is written here any more — the wow overlay's
+      // first card creates the hero (the avatar creator + the canonical patch).
 
       await updateChild(createdChildId, patch as Parameters<typeof updateChild>[1]);
 
@@ -1016,7 +908,7 @@ export default function OnboardingFlow() {
       // ENG-22: setup had `wow_onboarding_*` but no completion event for the
       // real flow, so the install → activated funnel had no middle. Counts and
       // a boolean only — never the name, the age, or the domain labels.
-      trackOnboardingCompleted({ domainCount: selectedDomains.length, hasAvatar: !!avatarResult });
+      trackOnboardingCompleted({ domainCount: selectedDomains.length, hasAvatar: false });
       markWowPending();
 
       // Seed the coach if domains were picked.
@@ -1074,7 +966,7 @@ export default function OnboardingFlow() {
             <div style={{ width: 44 }} />
           )}
           <div className="flex-1">
-            <ProgressDots step={step} total={5} />
+            <ProgressDots step={step} total={4} />
           </div>
           <div style={{ width: 44 }} />
         </div>
@@ -1116,32 +1008,12 @@ export default function OnboardingFlow() {
               />
             )}
 
-            {step === 4 && (createdChildId || replaying) && (
-              <StepAvatar
-                childId={createdChildId ?? ""}
-                childName={name.trim()}
-                onAvatarCreated={(result) => {
-                  setAvatarResult(result);
-                  if (!replaying) clearAvatarSkipped();
-                  goNext();
-                }}
-                // MOB-09: remember the skip so the wow overlay does not ask
-                // the same avatar question again (enters at the comic).
-                onSkip={() => {
-                  if (!replaying) markAvatarSkipped();
-                  goNext();
-                }}
-                replayMode={replaying}
-              />
-            )}
-
-            {step === 5 && (
+            {step === 4 && (
               <StepReady
                 name={name.trim()}
                 ageYears={ageYears}
                 ageMonthsPart={ageMonthsPart}
                 selectedDomains={selectedDomains}
-                avatarResult={avatarResult}
                 saving={saving}
                 onSubmit={submit}
                 onReplay={startReplay}
