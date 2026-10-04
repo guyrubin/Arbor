@@ -250,3 +250,25 @@ describe("B-CAREPRO-32 · Hebrew parent-record PDFs", () => {
     expect(flattenDoc(buildReport("weekly", CTX))).toContain("Most-logged: Transition Refusal");
   });
 });
+
+describe("W2-CAREPRO r1 (law 1) — no parent-record PDF carries a denominator", () => {
+  const DENOMINATOR = /\bof \d+\b|מתוך|age-appropriate|מתאימות לגיל/;
+  it("negative control: the retired line matches", () => {
+    expect(DENOMINATOR.test("6 of 10 age-appropriate milestones noticed")).toBe(true);
+    expect(DENOMINATOR.test("6 מתוך 10 אבני דרך מתאימות לגיל נצפו")).toBe(true);
+  });
+  for (const lang of ["en", "he"] as const) {
+    for (const type of ["weekly", "snapshot", "behavior", "language", "growth"] as const) {
+      it(`${lang} ${type}: no "of {total}" / "מתוך"`, () => {
+        const text = flattenDoc(buildReport(type, CTX, lang));
+        expect(text).not.toMatch(DENOMINATOR);
+      });
+    }
+    it(`${lang}: the milestone line is a plain count`, () => {
+      const text = flattenDoc(buildReport("weekly", CTX, lang));
+      expect(text).toContain(lang === "en" ? "6 milestones noticed so far" : "6 אבני דרך נצפו עד כה");
+      const one = flattenDoc(buildReport("weekly", { ...CTX, checkedMilestones: 1 }, lang));
+      expect(one).toContain(lang === "en" ? "1 milestone noticed so far" : "אבן דרך אחת נצפתה עד כה");
+    });
+  }
+});

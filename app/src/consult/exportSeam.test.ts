@@ -190,7 +190,8 @@ describe("B-CAREPRO-23 — Reports.tsx never calls exportReport with a professio
   it("the page renders PARENT_RECORD_REPORTS (5 cards) and nothing from the professional list", () => {
     expect(page.length).toBeGreaterThan(1500);
     expect(reportsSrc).toMatch(/export const PARENT_RECORD_REPORTS = REPORTS\.filter\(\n\s*\(r\)[^=]*=> !isProfessionalReportType\(r\.type\)\n\);/);
-    expect(page).toContain("{PARENT_RECORD_REPORTS.map((r) => (");
+    // W2-CAREPRO r1: the lead (PARENT_RECORD_REPORTS[0]) + the other four as rows = all five.
+    expect(page).toContain("{PARENT_RECORD_REPORTS.filter((r) => r.type !== lead.type).map((r) => (");
     expect(page).not.toMatch(/\{REPORTS\.map\(|CONSULT_MENU_REPORTS/);
     const parentTypes = ALL_REPORT_TYPES.filter((t) => !isProfessionalReportType(t));
     expect(parentTypes).toEqual(["weekly", "snapshot", "behavior", "language", "growth"]);
@@ -198,9 +199,11 @@ describe("B-CAREPRO-23 — Reports.tsx never calls exportReport with a professio
 
   it("every exportReport call on the page takes a parent-record card's type — no literal, no professional", () => {
     const calls = [...page.matchAll(/exportReport\(([^)]*)\)/g)].map((m) => m[1].trim());
-    expect(calls).toEqual(["r.type"]);
+    // W2-CAREPRO r1: the lead record's one Save button + the quiet rows.
+    expect(calls).toEqual(["lead.type", "r.type"]);
+    expect(page).toContain("const lead = PARENT_RECORD_REPORTS[0];");
     // the r it reads is the PARENT_RECORD_REPORTS iteration variable
-    const loop = page.slice(page.indexOf("{PARENT_RECORD_REPORTS.map((r) => ("));
+    const loop = page.slice(page.indexOf("{PARENT_RECORD_REPORTS.filter((r) => r.type !== lead.type).map((r) => ("));
     expect(loop.indexOf("exportReport(r.type)")).toBeGreaterThan(0);
     for (const pro of ["teacher", "therapist", "pediatrician", "slp", "behavioral_health"]) {
       expect(page).not.toContain(`exportReport("${pro}"`);
@@ -208,6 +211,24 @@ describe("B-CAREPRO-23 — Reports.tsx never calls exportReport with a professio
     // NEGATIVE CONTROL: the pre-change page iterated the full list.
     const pre = `{REPORTS.map((r) => (<button onClick={() => exportReport(r.type)}>PDF</button>))}`;
     expect(/\{REPORTS\.map\(/.test(pre)).toBe(true);
+  });
+
+  it("W2-CAREPRO r1: the stamp sits on ONE button, never a wrapper; the Consult door is outside it", () => {
+    const stamps = [...page.matchAll(/data-primary-move="export-report"/g)];
+    expect(stamps.length).toBe(1);
+    // the element carrying the stamp is a <button>, and no display:contents wrapper carries it
+    const before = page.slice(0, stamps[0].index);
+    expect(before.lastIndexOf("<button")).toBeGreaterThan(before.lastIndexOf("<div"));
+    expect(page).not.toMatch(/data-primary-move="export-report"[^>]*display: "contents"/);
+    // the stamped button comes before the door, and the door is not inside it
+    const stampAt = stamps[0].index!;
+    const closeAt = page.indexOf("</button>", stampAt);
+    expect(page.indexOf('data-testid="reports-consult-door"')).toBeGreaterThan(closeAt);
+    // one layer of chrome: no card class inside the SectionCard
+    expect(page).not.toContain("cardCls");
+    // NEGATIVE CONTROL: the pre-change wrapper shape is caught
+    const pre = `<div data-module="reports-catalogue" data-primary-move="export-report" style={{ display: "contents" }}>`;
+    expect(/data-primary-move="export-report"[^>]*display: "contents"/.test(pre)).toBe(true);
   });
 
   it("one door to Consult, through the prefill seam; no teacher card", () => {

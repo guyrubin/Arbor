@@ -146,7 +146,12 @@ function buildReportBody(type: ParentReportType, ctx: ReportContext, lang: UiLan
   const mo = recentLogs(logs, 28);
   const common = `${child.name}, ${age}`;
   const title = (t: ParentReportType, en: string) => tr(`elev.reports.${t}.title`, en);
-  const noticed = tr("elev.reports.line.milestonesNoticed", `${checkedMilestones} of ${totalMilestones} age-appropriate milestones noticed`, { done: checkedMilestones, total: totalMilestones });
+  // W2-CAREPRO r1 (law 1): milestones the parent noticed, as a count — never
+  // "{done} of {total} age-appropriate", a completeness score against a norm.
+  void totalMilestones;
+  const noticed = checkedMilestones === 1
+    ? tr("elev.reports.line.milestonesNoticed.one", "1 milestone noticed so far")
+    : tr("elev.reports.line.milestonesNoticed", `${checkedMilestones} milestones noticed so far`, { n: checkedMilestones });
   const momentsLogged = (n: number) => tr(n === 1 ? "elev.reports.line.momentsLogged.one" : "elev.reports.line.momentsLogged.other", `${n} moments logged`, { n });
   const moments = (n: number) => tr(n === 1 ? "elev.reports.line.moments.one" : "elev.reports.line.moments.other", `${n} moments`, { n });
   const resolved = (n: number) => tr("elev.reports.line.resolved", `${n} marked resolved`, { n });

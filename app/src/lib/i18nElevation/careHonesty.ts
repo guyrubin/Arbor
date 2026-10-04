@@ -131,7 +131,9 @@ export const en: Record<string, string> = {
   "elev.reports.h.parentAsks": "Where the parent asks for support",
   "elev.reports.h.schoolPhrases": "Phrases that help at school",
   "elev.reports.h.noPlans": "No active plans",
-  "elev.reports.line.milestonesNoticed": "{done} of {total} age-appropriate milestones noticed",
+  // W2-CAREPRO r1 (law 1): a count with no age-norm denominator.
+  "elev.reports.line.milestonesNoticed.one": "1 milestone noticed so far",
+  "elev.reports.line.milestonesNoticed": "{n} milestones noticed so far",
   "elev.reports.line.momentsLogged.one": "1 moment logged",
   "elev.reports.line.momentsLogged.other": "{n} moments logged",
   "elev.reports.line.moments.one": "1 moment",
@@ -179,6 +181,7 @@ export const en: Record<string, string> = {
   // ── Builder G · item 8 — Reports (ten cards, the page chrome, the PDF shell)
   "elev.reports.eyebrow": "Care Network",
   "elev.reports.section": "Exportable reports",
+  "elev.reports.lead.cta": "Save this week's record",
   "elev.reports.proDoor.title": "Prepare a summary for a professional",
   "elev.reports.proDoor.desc": "In Consult you choose what it includes and review it before anything leaves.",
   "elev.reports.exportAria": "Export {title} as PDF",
@@ -320,7 +323,8 @@ export const he: Record<string, string> = {
   "elev.reports.h.parentAsks": "איפה ההורים מבקשים תמיכה",
   "elev.reports.h.schoolPhrases": "משפטים שעוזרים בגן ובבית הספר",
   "elev.reports.h.noPlans": "אין תוכניות פעילות",
-  "elev.reports.line.milestonesNoticed": "{done} מתוך {total} אבני דרך מתאימות לגיל נצפו",
+  "elev.reports.line.milestonesNoticed.one": "אבן דרך אחת נצפתה עד כה",
+  "elev.reports.line.milestonesNoticed": "{n} אבני דרך נצפו עד כה",
   "elev.reports.line.momentsLogged.one": "רגע אחד תועד",
   "elev.reports.line.momentsLogged.other": "{n} רגעים תועדו",
   "elev.reports.line.moments.one": "רגע אחד",
@@ -367,6 +371,7 @@ export const he: Record<string, string> = {
   // ── Builder G · item 8 — Reports (ten cards, the page chrome, the PDF shell)
   "elev.reports.eyebrow": "רשת התמיכה",
   "elev.reports.section": "מסמכים לייצוא",
+  "elev.reports.lead.cta": "שמירת התיעוד של השבוע",
   "elev.reports.proDoor.title": "הכנת סיכום לאיש מקצוע",
   "elev.reports.proDoor.desc": "בהתייעצות בוחרים מה ייכלל בסיכום ובודקים אותו לפני שמשהו יוצא.",
   "elev.reports.exportAria": "ייצוא {title} כ-PDF",

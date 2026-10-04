@@ -2,7 +2,7 @@ import { ageLabel } from "../../lib/childAge";
 import React from "react";
 import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
-import { PageHeader, SectionCard, cardCls, PASTEL, PastelKey } from "../ui/kit";
+import { PageHeader, SectionCard, PASTEL, PastelKey } from "../ui/kit";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { buildReport, openPrintableReport, isProfessionalReportType, ReportDoc, ReportType, type ParentReportType } from "../../lib/reportExport";
@@ -108,6 +108,8 @@ export default function Reports() {
   const { childProfile, setActiveTab, requestConsultPrefill } = useArbor();
   const { t } = useLanguage();
   const exportReport = useReportExport();
+  // W2-CAREPRO r1: Weekly Insight leads; the other records are quiet rows.
+  const lead = PARENT_RECORD_REPORTS[0];
   // B-CAREPRO-28: the door names no audience — the parent picks the
   // profession in Consult's first step (their last choice is remembered).
   const openConsult = () => {
@@ -119,46 +121,69 @@ export default function Reports() {
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
       <PageHeader eyebrow={t("elev.reports.eyebrow")} title={t("sec.reports.title")} subtitle={t("sec.reports.sub", { name: childProfile.name.split(" ")[0] })} />
 
-      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
-          marks a top-level sibling module (what moduleBudget counts);
-          `data-primary-move` marks the ONE control that performs the move
-          surfaceContract.ts declares for this route. */}
-      <div data-module="reports-catalogue" data-primary-move="export-report" style={{ display: "contents" }}>
+      {/* Item 11 (IA-02): `data-module` marks the top-level sibling module
+          (what moduleBudget counts). W2-CAREPRO r1: `data-primary-move` sits
+          on the ONE control that performs the move — the lead record's Save
+          button — never on a display:contents wrapper around the catalogue. */}
+      <div data-module="reports-catalogue">
       <SectionCard title={t("elev.reports.section")} icon={<Icon name="assessment" size={20} />} tone="mint">
-        <div className="grid sm:grid-cols-2 gap-3">
-          {PARENT_RECORD_REPORTS.map((r) => (
-            <div key={r.type} className={`${cardCls} p-4 flex items-start gap-3`}>
-              <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0" style={{ background: PASTEL[r.tone].soft, color: PASTEL[r.tone].ink }}><Icon name="description" size={18} /></span>
-              <div className="min-w-0 flex-1">
-                <h3 className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t(r.titleKey)}</h3>
-                <p className="text-xs mt-0.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t(r.descKey)}</p>
-              </div>
-              <button
-                onClick={() => exportReport(r.type)}
-                className="flex-shrink-0 inline-flex items-center justify-center gap-1 text-xs font-bold rounded-lg px-3 min-h-11 min-w-11 transition hover:brightness-95"
-                style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-green-ink)" }}
-                aria-label={t("elev.reports.exportAria", { title: t(r.titleKey) })}
-              >
-                <Icon name="download" size={14} /> PDF
-              </button>
-            </div>
-          ))}
+        {/* The lead record: Weekly Insight, with the page's one gradient. */}
+        <div className="flex flex-col gap-3 pb-4" style={{ borderBlockEnd: "1px solid var(--arbor-rule)" }}>
+          <div className="min-w-0">
+            <h3 className="t-md font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t(lead.titleKey)}</h3>
+            <p className="t-sm mt-0.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t(lead.descKey)}</p>
+          </div>
+          <button
+            type="button"
+            data-primary-move="export-report"
+            onClick={() => exportReport(lead.type)}
+            className="touch-target self-start inline-flex items-center justify-center gap-2 t-sm font-extrabold rounded-xl px-5 min-h-11 transition hover:brightness-105"
+            style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}
+            aria-label={t("elev.reports.exportAria", { title: t(lead.titleKey) })}
+          >
+            <Icon name="download" size={16} /> {t("elev.reports.lead.cta")}
+          </button>
         </div>
         {/* B-CAREPRO-23: ONE door for a professional summary — Consult, where
-            the parent redacts, adds the reason and ticks the reviewed gate. */}
+            the parent redacts, adds the reason and ticks the reviewed gate.
+            W2-CAREPRO r1: a quiet text row directly under the lead (above the
+            fold at 375), outside the stamped move, no card chrome. */}
         <button
           type="button"
           onClick={openConsult}
           data-testid="reports-consult-door"
-          className={`${cardCls} w-full mt-3 p-4 flex items-center gap-3 min-h-11 text-start transition hover:brightness-95`}
+          className="w-full py-3 flex items-center gap-3 min-h-11 text-start transition hover:brightness-95"
+          style={{ borderBlockEnd: "1px solid var(--arbor-rule)" }}
         >
           <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0" style={{ background: PASTEL.lav.soft, color: PASTEL.lav.ink }}><Icon name="forum" size={18} /></span>
           <span className="min-w-0 flex-1">
-            <span className="block text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.reports.proDoor.title")}</span>
-            <span className="block text-xs mt-0.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.reports.proDoor.desc")}</span>
+            <span className="block t-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{t("elev.reports.proDoor.title")}</span>
+            <span className="block t-xs mt-0.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.reports.proDoor.desc")}</span>
           </span>
-          <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100 flex-shrink-0" style={{ color: "var(--arbor-green-ink)" }} />
+          <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100 flex-shrink-0" style={{ color: "var(--arbor-muted)" }} />
         </button>
+        {/* The other parent-record documents: one layer of chrome — hairline
+            rows inside the one SectionCard, never cards inside a card. */}
+        <ul>
+          {PARENT_RECORD_REPORTS.filter((r) => r.type !== lead.type).map((r) => (
+            <li key={r.type} className="py-3 flex items-center gap-3" style={{ borderBlockEnd: "1px solid var(--arbor-rule)" }}>
+              <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}><Icon name="description" size={18} /></span>
+              <div className="min-w-0 flex-1">
+                <h3 className="t-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{t(r.titleKey)}</h3>
+                <p className="t-xs mt-0.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t(r.descKey)}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => exportReport(r.type)}
+                className="touch-target flex-shrink-0 inline-flex items-center justify-center gap-1 t-xs font-bold rounded-lg px-3 min-h-11 min-w-11 transition hover:brightness-95"
+                style={{ background: "transparent", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}
+                aria-label={t("elev.reports.exportAria", { title: t(r.titleKey) })}
+              >
+                <Icon name="download" size={14} /> PDF
+              </button>
+            </li>
+          ))}
+        </ul>
       </SectionCard>
       </div>
 
