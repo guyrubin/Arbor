@@ -345,7 +345,9 @@ body {
    one surface, never a field inside a field. The higher specificity wins over
    the paper-deep fill above. */
 .arbor-app input.field-bare,
-.arbor-app input.field-bare:focus {
+.arbor-app input.field-bare:focus,
+.arbor-app textarea.field-bare,
+.arbor-app textarea.field-bare:focus {
   background-color: transparent !important;
   border: 0 !important;
   box-shadow: none !important;

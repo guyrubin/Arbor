@@ -160,7 +160,16 @@ describe("AI-24 — offline is said out loud, before the send", () => {
     // of every unresolved fill — T.gradientCta here — so the offline gate had
     // to live in the handler, not in this element's `disabled`. Pinned so a
     // later edit shows up as a deliberate choice, not a surprise ratchet break.
-    expect(coach).toMatch(/onClick=\{\(\) => handleChatSend\(\)\}\s*\n\s*disabled=\{isChatLoading \|\| !chatInput\.trim\(\)\}/);
+    // Critic r2 (deliberate change): the send is a rest/ready PAIR — the
+    // gradient renders only while there is text and no request in flight; at
+    // rest a disabled solid --arbor-clay-dim well. The offline gate still
+    // lives in the handler (handleChatSend), not in this element.
+    expect(coach).toMatch(/\{chatInput\.trim\(\) && !isChatLoading \? \(\s*<button\s+type="button"\s+data-testid="coach-send"\s+data-state="ready"\s+onClick=\{\(\) => handleChatSend\(\)\}/);
+    const rest = coach.slice(coach.indexOf('data-state="rest"'), coach.indexOf('data-state="rest"') + 500);
+    expect(rest).toMatch(/\bdisabled\b/);
+    expect(rest).toContain('background: "var(--arbor-clay-dim)", color: "var(--arbor-clay)"');
+    expect(rest).not.toMatch(/gradient|text-white|opacity-40/);
+    expect(coach).not.toMatch(/disabled:opacity-40/);
   });
 
   it("NEGATIVE CONTROL — the pre-change surface had no offline seam at all", () => {

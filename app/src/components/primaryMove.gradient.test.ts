@@ -229,6 +229,12 @@ describe("OBJ-TODAY-01 — repo-wide ratchet", () => {
     // declares as that route's ONE primary move, and it is the only gradient in
     // the file. storiesCover.test.ts pins the stamp and its position.
     "tabs/HeroJourneyTab.tsx",
+    // W2-ASKJB critic r2: the send arrow inside the composer stamped
+    // data-primary-move="ask" (surfaceContract coach.primaryMove). It always
+    // wore the gradient through the T.gradientCta alias, which this scan could
+    // not see; it now spells the literal, only while there is text to send
+    // (coachWaveL.test pins the rest/ready pair). Visible, not new.
+    "tabs/CoachTab.tsx",
     // W2-ASKJB critic r1: licensed above (the Text capture tile = capture-moment).
     "tabs/JournalTab.tsx",
     // (B-GROWTH-12: MilestonesTab left the ratchet — its only gradient was the

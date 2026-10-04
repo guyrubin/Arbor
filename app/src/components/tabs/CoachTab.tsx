@@ -954,41 +954,10 @@ export default function CoachTab() {
               </button>
             </div>
           )}
-          {weeklyNoticeShown && (
-            <div
-              data-testid="coach-weekly-notice"
-              role="note"
-              className="mb-2 flex flex-wrap items-center gap-x-2 rounded-xl ps-3 pe-1"
-              style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}
-            >
-              <p data-testid="coach-data-use" className="flex-1 min-w-0 py-2 text-[12px] leading-snug" style={{ color: "var(--arbor-ink)" }}>
-                {tcc("elev.coachcontract.notice.body")}{!composerDocked && <> {memoryLine}</>}
-              </p>
-              <button
-                type="button"
-                data-testid="coach-weekly-notice-change"
-                onClick={() => {
-                  closeWeeklyNotice();
-                  setContractOpen(true);
-                  requestAnimationFrame(() => contractToggleRef.current?.scrollIntoView({ block: "center", behavior: reducedMotion ? "auto" : "smooth" }));
-                }}
-                className="inline-flex min-h-11 items-center px-2 text-[12px] font-bold underline underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded-lg"
-                style={{ color: "var(--arbor-green-ink)" }}
-              >
-                {tcc("elev.coachcontract.notice.change")}
-              </button>
-              <button
-                type="button"
-                data-testid="coach-weekly-notice-dismiss"
-                onClick={closeWeeklyNotice}
-                className="inline-flex min-h-11 items-center px-2 text-[12px] font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded-lg"
-                style={{ color: "var(--arbor-muted)" }}
-              >
-                {tcc("elev.coachcontract.notice.dismiss")}
-              </button>
-            </div>
-          )}
-          <div className="flex items-end gap-2 rounded-[20px] p-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }}>
+          {/* Critic r2: the composer is raised (elevated paper, strong rule,
+              shadow-xs, --r-xl); the textarea is field-bare so the global
+              input fill never draws a field inside it. */}
+          <div data-testid="coach-composer-well" className="flex items-end gap-2 rounded-[var(--r-xl)] p-2" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule-strong)", boxShadow: "var(--shadow-xs)" }}>
             <textarea
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
@@ -1000,19 +969,37 @@ export default function CoachTab() {
               // disappears on first keystroke, and axe reports the field as
               // unlabelled). The label says what the field is FOR.
               aria-label={tcc("elev.coachcontract.composer.aria")}
-              className="flex-1 bg-transparent resize-none px-2.5 py-2 text-sm leading-relaxed focus:outline-none min-h-[58px]"
+              className="field-bare flex-1 resize-none px-2.5 py-2 text-sm leading-relaxed focus:outline-none min-h-[58px]"
               style={{ color: "var(--arbor-ink)" }}
             />
-            <button
-              type="button"
-              onClick={() => handleChatSend()}
-              disabled={isChatLoading || !chatInput.trim()}
-              aria-label={t("coach.send.aria")}
-              className="w-12 h-12 rounded-2xl flex items-center justify-center text-white flex-shrink-0 disabled:opacity-40 transition motion-safe:hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-              style={{ background: T.gradientCta }}
-            >
-              <Icon name={uiLang === "he" ? "arrow_back" : "arrow_forward"} size={20} />
-            </button>
+            {/* Critic r2: --gradient-cta appears only once there is something
+                to send; at rest the send is a solid --arbor-clay-dim well with
+                a clay arrow (no 40 % gradient that reads louder than nothing). */}
+            {chatInput.trim() && !isChatLoading ? (
+              <button
+                type="button"
+                data-testid="coach-send"
+                data-state="ready"
+                onClick={() => handleChatSend()}
+                aria-label={t("coach.send.aria")}
+                className="w-12 h-12 rounded-2xl flex items-center justify-center text-white flex-shrink-0 transition motion-safe:hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                style={{ background: "var(--gradient-cta)" }}
+              >
+                <Icon name={uiLang === "he" ? "arrow_back" : "arrow_forward"} size={20} />
+              </button>
+            ) : (
+              <button
+                type="button"
+                data-testid="coach-send"
+                data-state="rest"
+                disabled
+                aria-label={t("coach.send.aria")}
+                className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 cursor-not-allowed"
+                style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay)" }}
+              >
+                <Icon name={uiLang === "he" ? "arrow_back" : "arrow_forward"} size={20} />
+              </button>
+            )}
           </div>
           {/* AI-24: the honest offline line, on the composer itself, so the
               parent learns it before pressing send rather than after. */}
@@ -1052,6 +1039,42 @@ export default function CoachTab() {
                 Always visible on the Ask surface, never behind a toggle. */}
             <span className="ms-auto inline-flex items-center gap-1 text-[10px]" style={{ color: "var(--arbor-muted)" }}><Icon name="shield" size={13} /> {t("coach.aiDisclosure")}</span>
           </div>
+          {/* Critic r2 (coach design P1): the one-time data-use notice reads
+              AFTER the field and the capture chips, as a quiet --t-xs line with
+              no fill — the composer is the only raised object here. */}
+          {weeklyNoticeShown && (
+            <div
+              data-testid="coach-weekly-notice"
+              role="note"
+              className="mt-2 flex flex-wrap items-center gap-x-2"
+            >
+              <p data-testid="coach-data-use" className="flex-1 min-w-0 py-2 t-xs leading-snug" style={{ color: "var(--arbor-muted)" }}>
+                {tcc("elev.coachcontract.notice.body")}{!composerDocked && <> {memoryLine}</>}
+              </p>
+              <button
+                type="button"
+                data-testid="coach-weekly-notice-change"
+                onClick={() => {
+                  closeWeeklyNotice();
+                  setContractOpen(true);
+                  requestAnimationFrame(() => contractToggleRef.current?.scrollIntoView({ block: "center", behavior: reducedMotion ? "auto" : "smooth" }));
+                }}
+                className="inline-flex min-h-11 items-center px-2 t-xs font-bold underline underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded-lg"
+                style={{ color: "var(--arbor-green-ink)" }}
+              >
+                {tcc("elev.coachcontract.notice.change")}
+              </button>
+              <button
+                type="button"
+                data-testid="coach-weekly-notice-dismiss"
+                onClick={closeWeeklyNotice}
+                className="inline-flex min-h-11 items-center px-2 t-xs font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded-lg"
+                style={{ color: "var(--arbor-muted)" }}
+              >
+                {tcc("elev.coachcontract.notice.dismiss")}
+              </button>
+            </div>
+          )}
           {voiceNotice && voicePhase === "off" && <MicrophoneNotice message={voiceNotice} lang={uiLang} onRetry={() => void toggleVoice()} onDismiss={() => setVoiceNotice(null)} />}
         </section>
   );

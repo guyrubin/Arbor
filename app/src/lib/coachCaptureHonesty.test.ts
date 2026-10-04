@@ -99,3 +99,22 @@ describe("COACH-8 — Behaviors capture bar is an honest input", () => {
     expect(count(code, "handleAddLog(e)")).toBe(2);
   });
 });
+
+/**
+ * Critic r2 (W2-ASKJB coach P1 G1): the subtitle promised "and Arbor remembers
+ * for next time" 60 px above the data-use line "Arbor will ask before
+ * remembering anything new". Under the contract nothing is kept without Keep
+ * this — the subtitle promises only the job; memory is said once, in the
+ * data-use line.
+ */
+describe("critic r2 — Ask's subtitle promises the job, never memory", () => {
+  it("coach.subtitle in EN and HE carries no remember verb", async () => {
+    const { translate } = await import("./i18n");
+    const en = translate("en", "coach.subtitle");
+    const he = translate("he", "coach.subtitle");
+    expect(en).toBe("Tell Arbor what's happening. You'll get one calm next step and the words to say.");
+    expect(en).not.toMatch(/remember|memor|keep|save/i);
+    expect(he).not.toMatch(/יזכור|זוכר|לזכור|זיכרון|ישמור|שומר/);
+    expect(he).not.toMatch(/[A-Za-z]/);
+  });
+});

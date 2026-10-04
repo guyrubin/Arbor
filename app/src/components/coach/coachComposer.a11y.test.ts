@@ -122,10 +122,13 @@ describe("AI-04 · what is actually wired for a typed turn", () => {
   });
 });
 
-describe("B-ASKJB-07 · the one-time weekly-context notice above the composer", () => {
-  it("renders inside the composer, above the textarea, with 44 px Change + dismiss", () => {
-    const composer = coach.slice(coach.indexOf("const composerSection"), coach.indexOf("<textarea"));
+describe("B-ASKJB-07 · the one-time weekly-context notice in the composer", () => {
+  it("renders inside the composer, AFTER the field and the capture chips (critic r2), with 44 px Change + dismiss", () => {
+    const start = coach.indexOf("const composerSection");
+    const composer = coach.slice(start, coach.indexOf("{voiceNotice && voicePhase", start));
     const notice = composer.slice(composer.indexOf('data-testid="coach-weekly-notice"'));
+    expect(composer.indexOf('data-testid="coach-weekly-notice"')).toBeGreaterThan(composer.indexOf("<textarea"));
+    expect(composer.indexOf('data-testid="coach-weekly-notice"')).toBeGreaterThan(composer.indexOf('t("coach.photo")'));
     expect(notice.length).toBeGreaterThan(0);
     for (const id of ["coach-weekly-notice-change", "coach-weekly-notice-dismiss"]) {
       const at = notice.indexOf(`data-testid="${id}"`);
@@ -134,7 +137,11 @@ describe("B-ASKJB-07 · the one-time weekly-context notice above the composer", 
     }
     // Change opens the panel that holds the per-child off.
     expect(notice).toMatch(/setContractOpen\(true\)/);
-    expect(notice).toMatch(/ps-3 pe-1/); // logical padding only
+    // A quiet line: no fill, no border, --t-xs; never physical padding.
+    const open = notice.slice(0, notice.indexOf(">"));
+    expect(open).not.toMatch(/background|border/);
+    expect(notice).toMatch(/data-testid="coach-data-use" className="[^"]*\bt-xs\b/);
+    expect(notice).not.toMatch(/\b(pl|pr|ml|mr)-\d/);
   });
 
   it("the notice copy exists in EN and HE", () => {

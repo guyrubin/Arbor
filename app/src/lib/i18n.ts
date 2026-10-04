@@ -409,7 +409,7 @@ export const en: Dict = {
   "err.focus.title": "Today's focus didn't load",
   "err.focus.body": "That was a connection hiccup, not your data. Try again in a moment.",
   // coach
-  "coach.subtitle": "Tell Arbor what's happening. You'll get a calm next step and the words to say — and Arbor remembers for next time.",
+  "coach.subtitle": "Tell Arbor what's happening. You'll get one calm next step and the words to say.",
   "coach.contract.memoryBody": "Durable facts wait for your approval before becoming memory.",
   "coach.lens": "Active Scholar Lens",
   "coach.fastStart": "Fast start — pick a moment",
@@ -2800,7 +2800,7 @@ export const he: Dict = {
   "err.memory.body": "משהו הפריע לחיבור. העובדות שאושרו והפריטים לבדיקה בטוחים — נסו שוב.",
   "err.focus.title": "המיקוד של היום לא נטען",
   "err.focus.body": "זו הייתה תקלת חיבור, לא הנתונים שלכם. נסו שוב עוד רגע.",
-  "coach.subtitle": "ספרו לארבור מה קורה. תקבלו צעד הבא רגוע ומותאם לגיל ואת המילים המדויקות לומר, וארבור יזכור זאת לפעם הבאה.",
+  "coach.subtitle": "ספרו לארבור מה קורה. תקבלו צעד הבא אחד ורגוע ואת המילים לומר.",
   "coach.contract.memoryBody": "עובדות מתמשכות מחכות לאישורכם לפני שהן הופכות לזיכרון.",
   "coach.lens": "עדשת המומחה הפעילה",
   "coach.fastStart": "התחלה מהירה — בחרו רגע",
