@@ -700,15 +700,22 @@ export default function BehaviorsTab() {
           </div>
         )}
         {/* QuickLog mode tiles — Voice / Photo / Text */}
+        {/* W2-ASKJB critic r1: the capture card had no visible label (its only
+            words were a muted placeholder) and a one-line <input> clipped the
+            two-line copy mid-sentence. A display label now names the move, and
+            the field is a 2-row textarea (Enter still opens; Shift+Enter breaks). */}
         <div className="overflow-hidden rounded-[20px] bg-white" style={{ border: "1px solid var(--arbor-rule-strong)", boxShadow: "var(--shadow-sm)" }}>
-          <input
-            type="text"
+          <label htmlFor="behaviors-capture-text" data-testid="behaviors-capture-label" className="block px-4 pt-4 t-lg font-extrabold sm:px-5" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+            {t("beh.capture.label", { name: behFirst })}
+          </label>
+          <textarea
+            id="behaviors-capture-text"
+            rows={2}
             value={barText}
             onChange={(e) => { setBarText(e.target.value); openFromBar(e.target.value); }}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); openFromBarOrDraft(barText); } }}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); openFromBarOrDraft(barText); } }}
             placeholder={captureCopy.intro}
-            aria-label={captureCopy.open}
-            className="block min-h-[88px] w-full bg-transparent px-4 py-4 text-start text-sm focus:outline-none sm:px-5"
+            className="block min-h-[88px] w-full resize-none bg-transparent px-4 pb-4 pt-2 text-start text-sm focus:outline-none sm:px-5"
             style={{ color: "var(--arbor-ink)" }}
           />
           <div className="flex flex-wrap items-center gap-1 border-t px-2 py-2 sm:px-3" style={{ borderColor: "var(--arbor-rule)" }}>
@@ -851,7 +858,9 @@ export default function BehaviorsTab() {
                 <button onClick={exportPdf} className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-white px-3 py-2.5 text-xs font-bold transition sm:flex-none" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}>
                   <Icon name="download" size={15} style={{ color: "var(--arbor-green-ink)" }} /> {t("beh.exportPdf")}
                 </button>
-                <button onClick={handleAnalyzeBehaviors} disabled={isAnalyzingBehavior} className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-extrabold text-white transition disabled:opacity-60 sm:flex-none" style={{ background: T.gradientCta }}>
+                {/* W2-ASKJB critic r1: a secondary action — the send arrow keeps the
+                    page's only primary fill. Same outline recipe as Export. */}
+                <button onClick={handleAnalyzeBehaviors} disabled={isAnalyzingBehavior} data-testid="behaviors-find-pattern" className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-extrabold transition disabled:opacity-60 sm:flex-none" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}>
                   {isAnalyzingBehavior ? (<><Icon name="progress_activity" size={15} className="animate-spin" /> {t("beh.synthesizing")}</>) : (<><Icon name="psychology" size={15} /> {t("beh.analyze")}</>)}
                 </button>
               </div>

@@ -579,7 +579,8 @@ export const en: Dict = {
   "beh.logMoment": "Log a moment",
   "beh.editMoment": "Edit this moment",
   // COACH-5 — quick-capture composer copy (was an inline uiLang ternary table).
-  "beh.capture.intro": "Capture the moment in two lines. Add detail only when it will help later.",
+  "beh.capture.intro": "Two lines is enough — add detail only when it will help later.",
+  "beh.capture.label": "What happened with {name} today?",
   "beh.capture.open": "Quick capture",
   "beh.capture.close": "Close",
   "beh.capture.details": "Add context and details",
@@ -2965,7 +2966,8 @@ export const he: Dict = {
   "beh.logMoment": "תעדו רגע",
   "beh.editMoment": "עריכת הרגע",
   // COACH-5 — quick-capture composer copy (he; was an inline uiLang ternary table).
-  "beh.capture.intro": "תעדו את הרגע בשתי שורות. אפשר להוסיף פרטים רק אם הם יעזרו אחר כך.",
+  "beh.capture.intro": "שתי שורות מספיקות — פרטים רק אם יעזרו אחר כך.",
+  "beh.capture.label": "מה קרה היום עם {name}?",
   "beh.capture.open": "תיעוד מהיר",
   "beh.capture.close": "סגירה",
   "beh.capture.details": "הוספת הקשר ופרטים",

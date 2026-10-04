@@ -231,3 +231,38 @@ describe("hard-moment copy claims only what the pilot release can back", async (
     expect(i18n.he["hm.sub"]).toMatch(/פיילוט/);
   });
 });
+
+/**
+ * Critic r1 (W2-ASKJB behaviors, design P1 G1): the capture card names its
+ * move in a visible label, its field holds two lines (no mid-sentence clip),
+ * the send arrow keeps the page's only primary fill ("Find the pattern" is an
+ * outline secondary), and the hero's zero line is a quiet muted teach line.
+ */
+describe("critic r1 — behaviors capture reads first, one primary fill", async () => {
+  const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  const BEH = strip(read("components/tabs/BehaviorsTab.tsx"));
+  const HERO = strip(read("components/ui/HubHero.tsx"));
+  const i18n = await import("../../lib/i18n");
+  it("a visible label + a 2-row textarea, in both locales", () => {
+    expect(BEH).toMatch(/<label htmlFor="behaviors-capture-text"[^>]*>\s*\{t\("beh\.capture\.label", \{ name: behFirst \}\)\}/);
+    expect(BEH).toMatch(/<textarea\s+id="behaviors-capture-text"\s+rows=\{2\}/);
+    expect(i18n.en["beh.capture.label"]).toContain("{name}");
+    expect(i18n.he["beh.capture.label"]).toContain("{name}");
+    for (const d of [i18n.en, i18n.he]) expect(d["beh.capture.intro"].length).toBeLessThanOrEqual(64);
+  });
+  it("one primary fill: the send arrow; Find the pattern is outline", () => {
+    const find = BEH.slice(BEH.indexOf('data-testid="behaviors-find-pattern"') - 200, BEH.indexOf('data-testid="behaviors-find-pattern"') + 400);
+    expect(find).not.toMatch(/gradientCta|gradient-cta|gradient-primary/);
+    // At rest the send arrow is the one fill; the only other one is the
+    // opened inline form's own submit (the same move, completed).
+    const fills = BEH.split("\n").filter((l) => /<button\b/.test(l) && /T\.gradientCta/.test(l));
+    expect(fills).toHaveLength(2);
+    expect(fills[0]).toContain("onClick={() => focusForm()}");
+    expect(fills[1]).toContain('type="submit"');
+  });
+  it("the hero zero line is muted, regular weight", () => {
+    const zero = HERO.slice(HERO.indexOf("{allZero && zeroLine && ("), HERO.indexOf("{zeroLine}"));
+    expect(zero).toContain('color: "var(--arbor-muted)"');
+    expect(zero).not.toMatch(/font-bold|p\.ink/);
+  });
+});

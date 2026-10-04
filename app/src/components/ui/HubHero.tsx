@@ -163,9 +163,11 @@ export function HubHero({
         {allZero && zeroLine && (
           <p
             data-testid={testId ? `${testId}-zero-line` : undefined}
-            className="mt-4 text-[var(--t-sm)] font-bold"
-            style={{ color: p.ink }}
+            className="mt-4 text-[var(--t-sm)]"
+            style={{ color: "var(--arbor-muted)" }}
           >
+            {/* W2-ASKJB critic r1: the zero line is a quiet teach line —
+                muted, regular weight, never the hub's loudest (tone-ink) line. */}
             {zeroLine}
           </p>
         )}
