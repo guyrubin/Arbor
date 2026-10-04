@@ -23,6 +23,8 @@ export const en: Record<string, string> = {
   // B-CAREPRO-25: the pending queue grouped by topic; the heading counts groups.
   "elev.childmem.pending.groups": "Pending your review: {count} topics",
   "elev.childmem.pending.groups.one": "Pending your review: 1 topic",
+  "elev.childmem.pending.notes": "{count} notes waiting for you",
+  "elev.childmem.pending.notes.one": "1 note waiting for you",
   "elev.childmem.group.other": "Other notes",
   "elev.childmem.group.similar": "{n} similar notes",
   "elev.childmem.group.seeAll": "See all {n}",
@@ -40,6 +42,7 @@ export const en: Record<string, string> = {
 
 
   "elev.childmem.action.approve": "Approve",
+  "elev.childmem.action.remember": "Remember this",
   "elev.childmem.action.dismiss": "Dismiss",
   "elev.childmem.action.forget": "Forget",
 
@@ -55,6 +58,8 @@ export const he: Record<string, string> = {
 
   "elev.childmem.pending.groups": "ממתין לאישורכם: {count} נושאים",
   "elev.childmem.pending.groups.one": "ממתין לאישורכם: נושא אחד",
+  "elev.childmem.pending.notes": "{count} הערות מחכות לכם",
+  "elev.childmem.pending.notes.one": "הערה אחת מחכה לכם",
   "elev.childmem.group.other": "הערות נוספות",
   "elev.childmem.group.similar": "{n} הערות דומות",
   "elev.childmem.group.seeAll": "להציג את כל ה-{n}",
@@ -71,6 +76,7 @@ export const he: Record<string, string> = {
 
 
   "elev.childmem.action.approve": "אישור",
+  "elev.childmem.action.remember": "לזכור את זה",
   "elev.childmem.action.dismiss": "לא רלוונטי",
   "elev.childmem.action.forget": "לשכוח",
 

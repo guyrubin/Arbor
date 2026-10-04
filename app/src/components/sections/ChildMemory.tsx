@@ -4,7 +4,7 @@ import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import type { MemoryReviewItem } from "../../types";
-import { PageHeader, SectionCard, Chip, cardCls, TrustSafetyBar } from "../ui/kit";
+import { PageHeader, SectionCard, Chip, cardCls } from "../ui/kit";
 import { ErrorState } from "../ui/ErrorState";
 import { learnCardById } from "../../learn/learnCards";
 import { learnCategoryById, type LearnCard } from "../../learn/learnLibrary";
@@ -55,13 +55,14 @@ export default function ChildMemory() {
     return pendingMemoryItems.filter((m) => kept.has(m.memoryId));
   }, [pendingMemoryItems]);
   const pendingGroups = useMemo(() => groupPendingMemory(pendingQueue), [pendingQueue]);
+  const soleOther = pendingGroups.length === 1 && pendingGroups[0].topic === "other";
   // Saved Learn Library reads, newest first; stale bookmarks (removed cards) are dropped.
   const savedLearnCards = savedLearnIds
     .map((id) => learnCardById(id))
     .filter((c): c is LearnCard => c !== undefined);
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[920px]">
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex flex-col gap-6 max-w-[920px]">
       <PageHeader eyebrow={t("elev.childmem.eyebrow")} title={t("sec.mem.title")} subtitle={t("sec.mem.sub", { name: first })} />
 
       {/* AI-11: this is the surface where a parent APPROVES or FORGETS what
@@ -69,8 +70,13 @@ export default function ChildMemory() {
           — worst — its three decision buttons were hard-coded English, so a
           Hebrew-reading parent was asked to make a privacy decision in a
           language the app had promised not to use on them. */}
-      <TrustSafetyBar note={t("elev.childmem.trustNote")} />
-      <ContentWhyLine why={t("elev.waveR.why.memory")} trustLink surface="child-memory" />
+      {/* W2-CAREPRO r1: ONE quiet trust band, not three layers (the green
+          TrustSafetyBar with clinical chips that say nothing about memory, plus
+          the why-line) ahead of the decision the parent came to make. */}
+      <div className="flex flex-col gap-1">
+        <p data-testid="memory-trust-line" className="t-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.childmem.trustNote")}</p>
+        <ContentWhyLine why={t("elev.waveR.why.memory")} trustLink surface="child-memory" />
+      </div>
 
       {/* OWN-1: a failed ledger read renders an honest error + retry card (the
           TrustedSharing twin) INSTEAD of the pending/approved lists — an
@@ -99,19 +105,24 @@ export default function ChildMemory() {
           `data-primary-move` marks the ONE control that performs the move
           surfaceContract.ts declares for this route. */}
       {!memoryReviewError && pendingQueue.length > 0 && (
-        <div data-module="memory-pending" data-primary-move="approve-memory-fact" style={{ display: "contents" }}>
+        <div data-module="memory-pending" style={{ display: "contents" }}>
         {/* B-CAREPRO-25: one group per topic (newest fact shown, "See all N",
             "Dismiss all N"); the heading counts groups; neutral lav tone. */}
         <SectionCard
-          title={t(pendingGroups.length === 1 ? "elev.childmem.pending.groups.one" : "elev.childmem.pending.groups", { count: pendingGroups.length })}
+          // W2-CAREPRO r1: a sole catch-all group is not "1 topic" — it is notes waiting.
+          title={soleOther
+            ? t(pendingQueue.length === 1 ? "elev.childmem.pending.notes.one" : "elev.childmem.pending.notes", { count: pendingQueue.length })
+            : t(pendingGroups.length === 1 ? "elev.childmem.pending.groups.one" : "elev.childmem.pending.groups", { count: pendingGroups.length })}
           icon={<Icon name="verified_user" size={20} />}
           tone="lav"
         >
           <div className="space-y-3">
-            {pendingGroups.map((g) => (
+            {pendingGroups.map((g, gi) => (
               <PendingGroupCard
                 key={g.topic}
                 group={g}
+                lead={gi === 0}
+                hideLabel={soleOther}
                 isMemoryUpdating={isMemoryUpdating}
                 onDecide={(id, status) => handleMemoryDecision(id, status)}
                 onEdited={retryMemoryReview}
@@ -260,8 +271,12 @@ export default function ChildMemory() {
  *  a full MemoryRow (its own Approve / Dismiss / Edit — approval is always one
  *  fact at a time, G6); "See all N" expands the rest, each with its own
  *  controls; "Dismiss all N" asks once, then writes one reject per fact. */
-export function PendingGroupCard({ group, isMemoryUpdating, onDecide, onEdited }: {
+export function PendingGroupCard({ group, isMemoryUpdating, onDecide, onEdited, lead, hideLabel }: {
   group: PendingMemoryGroup;
+  /** W2-CAREPRO r1: the first group's newest row carries the route's ONE primary move. */
+  lead?: boolean;
+  /** W2-CAREPRO r1: the sole group is the catch-all — no "Other notes" junk-drawer label. */
+  hideLabel?: boolean;
   isMemoryUpdating: string | null | undefined;
   onDecide: (memoryId: string, status: "approved" | "rejected") => Promise<unknown> | unknown;
   onEdited?: () => void;
@@ -275,14 +290,17 @@ export function PendingGroupCard({ group, isMemoryUpdating, onDecide, onEdited }
   const shown = open ? group.items : group.items.slice(0, 1);
   return (
     <div data-testid="memory-group" data-topic={group.topic} className="rounded-2xl p-3 space-y-2" style={{ border: "1px solid var(--arbor-rule)", background: "var(--arbor-paper-elevated)" }}>
-      <p className="text-[12px] font-extrabold" style={{ color: "var(--arbor-lav-ink)" }}>
-        {label}
-        {n > 1 && <span className="font-bold" style={{ color: "var(--arbor-muted)" }}> · {t("elev.childmem.group.similar", { n })}</span>}
+      {(!hideLabel || n > 1) && (
+      <p className="t-xs font-extrabold" style={{ color: "var(--arbor-lav-ink)" }}>
+        {!hideLabel && label}
+        {n > 1 && <span className="font-bold" style={{ color: "var(--arbor-muted)" }}>{!hideLabel && " · "}{t("elev.childmem.group.similar", { n })}</span>}
       </p>
-      {shown.map((m) => (
+      )}
+      {shown.map((m, i) => (
         <MemoryRow
           key={m.memoryId}
           m={m}
+          primary={lead && i === 0}
           busy={isMemoryUpdating === m.memoryId || dismissing}
           onApprove={() => onDecide(m.memoryId, "approved")}
           onReject={() => onDecide(m.memoryId, "rejected")}
@@ -354,8 +372,12 @@ export function PendingGroupCard({ group, isMemoryUpdating, onDecide, onEdited }
  *  boxes. */
 const ROW_ACTION_CLS = "touch-target gap-1 px-2 font-bold";
 
-export function MemoryRow({ m, busy, onApprove, onReject, onForget, onEdited }: {
+export function MemoryRow({ m, busy, onApprove, onReject, onForget, onEdited, primary }: {
   m: MemoryReviewItem;
+  /** W2-CAREPRO r1: this row's Approve is the route's ONE primary move
+   *  (data-primary-move="approve-memory-fact"): the page's single gradient,
+   *  44 px, "Remember this"; Edit and Dismiss go quiet beside it. */
+  primary?: boolean;
   busy?: boolean;
   onApprove?: () => void;
   onReject?: () => void;
@@ -521,7 +543,8 @@ export function MemoryRow({ m, busy, onApprove, onReject, onForget, onEdited }: 
         <p className="text-sm" dir="auto" style={{ color: shownFact ? "var(--arbor-ink)" : "var(--arbor-muted)" }}>{shownFact || t("elev.childmem.fact.unshown")}</p>
       )}
       <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1.5 text-[11px]" style={{ color: "var(--arbor-muted)" }}>
-        {m.source && <span className="inline-flex items-center gap-1"><Icon name="link" size={12} /> {m.source}</span>}
+        {/* W2-CAREPRO r1: no "source" link icon over raw model text with no
+            destination (an unkeepable "Source-linked" claim, English in HE). */}
         {dated && <span className="inline-flex items-center gap-1"><Icon name="schedule" size={12} /> {dated}</span>}
         {showsExpiry && (
           <span data-testid="memory-expiry-chip">
@@ -540,12 +563,23 @@ export function MemoryRow({ m, busy, onApprove, onReject, onForget, onEdited }: 
             aria-label={t("elev.waveR.mem.edit.aria")}
             data-testid="memory-edit-open"
             className={ROW_ACTION_CLS}
-            style={{ color: "var(--arbor-lav-ink)" }}
+            style={{ color: primary ? "var(--arbor-muted)" : "var(--arbor-lav-ink)" }}
           >
             <Icon name="edit" size={14} /> {t("elev.waveR.mem.edit")}
           </button>
         )}
-        {onApprove && !busy && (
+        {onApprove && !busy && primary && (
+          <button
+            type="button"
+            data-primary-move="approve-memory-fact"
+            onClick={onApprove}
+            className="touch-target inline-flex items-center gap-1.5 rounded-xl px-4 t-sm font-extrabold"
+            style={{ minHeight: 44, background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}
+          >
+            <Icon name="check" size={16} /> {t("elev.childmem.action.remember")}
+          </button>
+        )}
+        {onApprove && !busy && !primary && (
           <button onClick={onApprove} className={ROW_ACTION_CLS} style={{ color: "var(--arbor-green-ink)" }}>
             <Icon name="check" size={14} /> {t("elev.childmem.action.approve")}
           </button>

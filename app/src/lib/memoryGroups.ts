@@ -44,7 +44,35 @@ export function memoryTopicOf(m: Pick<MemoryReviewItem, "fact" | "domains">): Me
     const d = toDomains("developmental", dev)[0];
     if (d) return d;
   }
-  return "other";
+  return supplementTopic(m.fact ?? "") ?? "other";
+}
+
+/** W2-CAREPRO r1 — memory-only keyword supplement (kept OUT of the coach
+ *  retrieval table): the classic transitions fact ("leaving the house is hard;
+ *  shoes are where it shows") fell through to "other" because the table has no
+ *  transition or routine words. Transitions → feelings (registry subArea
+ *  "transitions"); routines → family (subArea "routines"). English on a word
+ *  boundary; Hebrew as a substring (particles glue to the word). */
+export const MEMORY_TOPIC_SUPPLEMENT: readonly { topic: DomainId; en: readonly string[]; he: readonly string[] }[] = [
+  {
+    topic: "feelings",
+    en: ["transition", "transitions", "leaving the house", "leave the house", "leaving home", "goodbye", "goodbyes", "drop-off", "drop off", "separation", "change of plans", "changes", "switching activities"],
+    he: ["מעבר", "מעברים", "פרידה", "פרידות", "לצאת מהבית", "יציאה מהבית", "שינויים", "שינוי בתוכנית"],
+  },
+  {
+    topic: "family",
+    en: ["routine", "routines", "morning routine", "bedtime routine", "getting dressed", "get dressed", "shoes", "brushing teeth", "mornings"],
+    he: ["שגרה", "שגרת", "להתלבש", "התלבשות", "נעליים", "נעלי", "צחצוח שיניים", "בקרים"],
+  },
+];
+
+function supplementTopic(fact: string): DomainId | null {
+  const lower = fact.toLowerCase();
+  for (const row of MEMORY_TOPIC_SUPPLEMENT) {
+    if (row.en.some((w) => new RegExp(`\\b${w.replace(/[-\s]/g, "[-\\s]")}\\b`).test(lower))) return row.topic;
+    if (row.he.some((w) => fact.includes(w))) return row.topic;
+  }
+  return null;
 }
 
 /**

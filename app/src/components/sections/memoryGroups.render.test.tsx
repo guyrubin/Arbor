@@ -64,3 +64,42 @@ describe("B-CAREPRO-25 · a pending topic group (rendered)", () => {
     expect(html).not.toContain('data-testid="memory-group-dismiss-all"');
   });
 });
+
+describe("W2-CAREPRO r1 · the stamp is the lead row's Approve, never a wrapper", () => {
+  for (const locale of ["en", "he"] as const) {
+    it(`${locale}: lead group → ONE stamped gradient button "Remember this"; other groups unstamped`, () => {
+      harness.locale = locale;
+      const [group] = groupPendingMemory([fact(1, "Dylan cries at bedtime"), fact(2, "Dylan needs comfort at bedtime")]);
+      const lead = renderToStaticMarkup(<PendingGroupCard group={group} lead isMemoryUpdating={null} onDecide={vi.fn()} />);
+      const stamps = lead.match(/data-primary-move="approve-memory-fact"/g) ?? [];
+      expect(stamps).toHaveLength(1);
+      const at = lead.indexOf('data-primary-move="approve-memory-fact"');
+      expect(lead.lastIndexOf("<button", at)).toBeGreaterThan(lead.lastIndexOf(">", lead.lastIndexOf("<button", at) - 1) - 1);
+      const btn = lead.slice(lead.lastIndexOf("<button", at), lead.indexOf("</button>", at));
+      expect(btn).toContain("var(--gradient-cta)");
+      expect(btn).toContain(translate(locale, "elev.childmem.action.remember"));
+      const rest = renderToStaticMarkup(<PendingGroupCard group={group} isMemoryUpdating={null} onDecide={vi.fn()} />);
+      expect(rest).not.toContain("data-primary-move");
+    });
+  }
+
+  it("page source: no display:contents wrapper carries the stamp (negative control on the old shape)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync(new URL("./ChildMemory.tsx", import.meta.url), "utf8")
+      .replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+    expect(src).not.toMatch(/data-primary-move="approve-memory-fact"[^>]*display: "contents"/);
+    expect((src.match(/data-primary-move="/g) ?? []).length).toBe(1);
+    expect(src).not.toContain("<TrustSafetyBar");
+    const pre = `<div data-module="memory-pending" data-primary-move="approve-memory-fact" style={{ display: "contents" }}>`;
+    expect(/data-primary-move="approve-memory-fact"[^>]*display: "contents"/.test(pre)).toBe(true);
+  });
+
+  it("the transitions fact lands in a topic, not 'other' (EN + HE); the sole catch-all hides its label", () => {
+    expect(groupPendingMemory([fact(1, "Dylan finds leaving the house hard; shoes are where it shows")])[0].topic).not.toBe("other");
+    expect(groupPendingMemory([fact(1, "לדילן קשה לצאת מהבית, בעיקר עם הנעליים")])[0].topic).not.toBe("other");
+    expect(groupPendingMemory([fact(1, "Dylan loves dinosaurs")])[0].topic).toBe("other");
+    const [other] = groupPendingMemory([fact(1, "Dylan loves dinosaurs")]);
+    const html = renderToStaticMarkup(<PendingGroupCard group={other} hideLabel isMemoryUpdating={null} onDecide={vi.fn()} />);
+    expect(html).not.toContain(translate("en", "elev.childmem.group.other"));
+  });
+});

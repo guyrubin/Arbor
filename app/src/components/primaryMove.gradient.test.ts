@@ -206,6 +206,10 @@ describe("OBJ-TODAY-01 — repo-wide ratchet", () => {
     "profile/ProfileEditDrawer.tsx",
     "sections/Appointments.tsx",
     "sections/AskSpecialist.tsx",
+    // W2-CAREPRO r1: the lead pending row's "Remember this" carries
+    // data-primary-move="approve-memory-fact" (surfaceContract memory.primaryMove),
+    // the only gradient in the file; memoryGroups.render.test pins one stamp.
+    "sections/ChildMemory.tsx",
     "sections/Masterclasses.tsx",
     // W2-CAREPRO r1: the lead record's "Save this week's record" button carries
     // data-primary-move="export-report" (surfaceContract reports.primaryMove) and
