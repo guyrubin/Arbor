@@ -38,7 +38,11 @@ describe("masterplan 1.5 — SpineRibbon mounts", () => {
     expect(journal).not.toContain("journal-spine-ribbon");
     // The door it duplicated is still there: TimelineTab's density toggle.
     const timeline = read("tabs/TimelineTab.tsx");
-    expect(timeline).toContain('data-module="timeline-density"');
+    // Critic r2: stamped as a module on #/timeline; on #/journal it rides in
+    // journal-header (still rendered — the door to Story never goes away).
+    expect(timeline).toContain('data-module={story ? "timeline-density" : undefined}');
+    expect(timeline).toContain("densityToggle={densityToggle}");
+    expect(journal).toContain("{densityToggle}");
     expect(timeline).toContain("onClick={() => setActiveTab(d.tab)}");
   });
 

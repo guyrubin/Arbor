@@ -255,8 +255,10 @@ describe("critic r1 — the journal's primary move is the capture tiles", async 
   const dict = await import("../../lib/i18nElevation/journal");
 
   it("the stamp is spread on the tile grid, not the stream wrapper", () => {
-    expect(TIMELINE).toContain('<div data-module="timeline-stream">');
-    expect(TIMELINE).toContain("<JournalTab primaryMoveProps={primaryMove} />");
+    // Critic r2: the feed density's stream carries no stamp at all (the
+    // Journal's own three modules are the top level); Story keeps its wrapper.
+    expect(TIMELINE).toContain("<JournalTab primaryMoveProps={primaryMove} densityToggle={densityToggle} />");
+    expect(TIMELINE).toMatch(/story \? \(\s*<div data-module="timeline-stream">\s*<StoryTimelineTab \/>/);
     expect(JOURNAL).toContain('data-capture-bar {...primaryMoveProps}');
   });
 
@@ -287,5 +289,65 @@ describe("critic r1 — the journal's primary move is the capture tiles", async 
       expect(d["elev.journal.lastKept.next"]).toContain("{name}");
     }
     expect(JOURNAL).toContain('t("elev.journal.story.quietWeek", { title: signalTitle(lastKeptSignal, tt), date: lastKeptDate })');
+  });
+});
+
+/**
+ * Critic r2 (W2-ASKJB journal). What the round-2 render showed:
+ *  · the sweep counted 2 modules (density toggle + stream wrapper) while the
+ *    parent saw 4 — the budget gate measured a wrapper (Law 7);
+ *  · "This week in the story" headed a May moment beside "Nothing kept this
+ *    week" (a false claim, G0);
+ *  · the parent's own words hid below md — the phone read a type label;
+ *  · the search pill drew a field inside a field (global input fill).
+ */
+describe("critic r2 — Journal: real modules, an honest aside, the quote at every width, one search surface", async () => {
+  const JOURNAL = stripComments(read("components/tabs/JournalTab.tsx"));
+  const TIMELINE = stripComments(read("components/tabs/TimelineTab.tsx"));
+  const CSS = read("index.css");
+  const dict = await import("../../lib/i18nElevation/journal");
+  const { translate } = await import("../../lib/i18n");
+
+  it("on #/journal the density toggle rides in journal-header; the stream wrapper is unstamped", () => {
+    expect(TIMELINE).toContain('data-module={story ? "timeline-density" : undefined}');
+    expect(TIMELINE).toContain("{story && densityToggle}");
+    expect(TIMELINE.match(/data-module="timeline-stream"/g)?.length).toBe(1);
+    const header = JOURNAL.slice(JOURNAL.indexOf('data-module="journal-header"'), JOURNAL.indexOf("</header>"));
+    expect(header).toContain("{densityToggle}");
+    expect(header.indexOf("{densityToggle}")).toBeLessThan(header.indexOf('t("journal.title")'));
+  });
+
+  it("the aside says 'this week' only when the week has moments; a quiet week reads 'From the story' (EN + HE)", () => {
+    expect(JOURNAL).toContain('t(weekCount === 0 && lastKept ? "elev.journal.lastKept.title" : "journal.week.title")');
+    expect(dict.en["elev.journal.lastKept.title"]).toBe("From the story");
+    expect(dict.he["elev.journal.lastKept.title"]).toBe("מהסיפור");
+    for (const d of [dict.en, dict.he]) expect(d["elev.journal.lastKept.title"]).not.toMatch(/week|השבוע/i);
+    expect(translate("en", "journal.week.title")).toMatch(/week/i);
+  });
+
+  it("the quiet week quotes the parent in the story line at every width (no md-only quote), the type label is the fallback", () => {
+    expect(JOURNAL).toContain('const quotedLastKept = storyState === "quiet-week" && !!lastKept?.words;');
+    const line = JOURNAL.slice(JOURNAL.indexOf('data-story="quoted"'), JOURNAL.indexOf('data-story="quoted"') + 900);
+    expect(line).toContain('<bdi dir="auto">{lastKept!.words}</bdi>');
+    expect(line).toContain("var(--font-editorial)");
+    expect(line).toContain("line-clamp-2");
+    expect(line).not.toMatch(/hidden md:block/);
+    // The aside no longer repeats the quote.
+    const aside = JOURNAL.slice(JOURNAL.indexOf('data-testid="journal-last-kept"'), JOURNAL.indexOf("journal-week-zero-line"));
+    expect(aside).not.toContain("lastKept.words");
+    // One door per width: the story line's door is md:hidden, the aside is md+.
+    expect(JOURNAL).toContain('<div className="md:hidden">{lastKeptDoor("journal-story-door")}</div>');
+  });
+
+  it("the search pill is one surface: the input is field-bare, the pill and month select share field-pill", () => {
+    const search = JOURNAL.slice(JOURNAL.indexOf("field-pill flex min-h-11"), JOURNAL.indexOf("journal-filter-empty"));
+    expect(search).toMatch(/className="field-bare /);
+    expect(search).not.toMatch(/bg-transparent/);
+    expect(search).toMatch(/className="field-pill min-h-11 rounded-xl px-3/);
+    expect(search).not.toMatch(/background: "var\(--arbor-paper-elevated\)"/);
+    // The scoped rule beats `.arbor-app input` (both !important; higher specificity).
+    expect(CSS).toMatch(/\.arbor-app input\.field-bare,[\s\S]{0,60}\{\s*background-color: transparent !important;/);
+    expect(CSS).toMatch(/\.arbor-app \.field-pill \{\s*background-color: var\(--arbor-paper-elevated\) !important;/);
+    expect(read("components/search/TopbarSearch.tsx")).toContain('className="field-bare min-h-11 self-stretch"');
   });
 });

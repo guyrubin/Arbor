@@ -209,7 +209,7 @@ export default function TopbarSearch() {
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={handleKeyDown}
-          className="min-h-11 self-stretch"
+          className="field-bare min-h-11 self-stretch"
           style={{
             flex: 1,
             minWidth: 0,

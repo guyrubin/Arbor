@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { Skeleton } from "../ui/Skeleton";
@@ -248,7 +248,7 @@ function JournalRow({
 
 /** `primaryMoveProps`: TimelineTab's contract stamp (capture-moment), spread on
  *  the capture tiles — the control that performs the move, not the wrapper. */
-export default function JournalTab({ primaryMoveProps }: { primaryMoveProps?: Record<string, string> } = {}) {
+export default function JournalTab({ primaryMoveProps, densityToggle }: { primaryMoveProps?: Record<string, string>; densityToggle?: ReactNode } = {}) {
   const { milestones, playLogs, behaviorLogs, logsLoaded, pendingJournalFocusId, consumeJournalFocus, childProfile, openCaptureSheet, toggleLogResolved, deleteLog } = useArbor();
   const { t, uiLang } = useLanguage();
   const locale = uiLang === "he" ? "he" : "en";
@@ -453,25 +453,66 @@ export default function JournalTab({ primaryMoveProps }: { primaryMoveProps?: Re
       ? t("elev.journal.story.quietWeek", { title: signalTitle(lastKeptSignal, tt), date: lastKeptDate })
       : t("journal.story.empty");
   const feedCount = journalFeedCountKey(signals);
+  // Critic r2: the quiet week quotes the parent at every width when the row
+  // has words; the type label stays the fallback for a row without words.
+  const quotedLastKept = storyState === "quiet-week" && !!lastKept?.words;
+  const lastKeptDoor = (testId: string) => (
+    <button
+      type="button"
+      data-testid={testId}
+      onClick={() => composeRef.current?.querySelector<HTMLButtonElement>("[data-capture-bar] button")?.focus()}
+      className="inline-flex min-h-11 items-center t-sm font-bold underline underline-offset-2"
+      style={{ color: "var(--arbor-clay)" }}
+    >
+      {t("elev.journal.lastKept.next", { name: childFirstName })}
+    </button>
+  );
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto flex w-full min-w-0 max-w-[1080px] flex-col gap-5">
       <header data-module="journal-header" className="border-b pb-5" style={{ borderColor: "var(--arbor-rule)" }}>
         <div className="grid min-w-0 items-end gap-5 md:grid-cols-[minmax(0,1.25fr)_minmax(220px,.75fr)]">
           <div>
-            <span className="inline-flex items-center gap-1.5 t-xs font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-lav-ink)" }}>
-              <Icon name="auto_stories" size={16} fill={1} /> {t("journal.eyebrow")}
-            </span>
+            {/* Critic r2: TimelineTab's density toggle rides in the header on
+                #/journal (one module with the H1, not a stamp of its own). */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span className="inline-flex items-center gap-1.5 t-xs font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-lav-ink)" }}>
+                <Icon name="auto_stories" size={16} fill={1} /> {t("journal.eyebrow")}
+              </span>
+              {densityToggle}
+            </div>
             <h1 className="mt-2 t-2xl leading-[1.08] tracking-[-0.03em]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
               {t("journal.title")}
             </h1>
-            <p data-testid="journal-story-line" dir="auto" className="mt-3 max-w-2xl t-base leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>{storyCopy}</p>
+            {quotedLastKept ? (
+              /* Critic r2 (journal design P1 G2 + B-ASKJB-NEW-2d): the parent's
+                 own words are the story line at EVERY width — the date as the
+                 fact, the quote in the editorial face, then one door to the
+                 tiles (below md; at md+ the door sits in the aside). Real row
+                 text only, never generated; no new colour, gradient or chip. */
+              <div data-testid="journal-story-line" data-story="quoted" className="mt-3 max-w-2xl space-y-1">
+                <p className="t-sm" style={{ color: "var(--arbor-muted)" }}>
+                  {t("elev.journal.lastKept.caption", { date: lastKeptDate })}
+                </p>
+                <p dir="auto" className="t-lg leading-snug line-clamp-2" style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink)" }}>
+                  {"“"}<bdi dir="auto">{lastKept!.words}</bdi>{"”"}
+                </p>
+                <div className="md:hidden">{lastKeptDoor("journal-story-door")}</div>
+              </div>
+            ) : (
+              <p data-testid="journal-story-line" dir="auto" className="mt-3 max-w-2xl t-base leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>{storyCopy}</p>
+            )}
           </div>
           {/* Critic r1: below md the week aside steps out — the story line
               above already carries the week count or the last moment, and
               the capture tiles move up into the first viewport. */}
           <div data-testid="journal-week-aside" className="hidden border-t pt-4 md:block md:border-s md:border-t-0 md:ps-5 md:pt-0" style={{ borderColor: "var(--arbor-rule-strong)" }}>
-            <p className="t-xs font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("journal.week.title")}</p>
+            {/* Critic r2 (journal P1 G0): "This week in the story" sat over a
+                May moment beside "Nothing kept this week" — the heading names
+                the week only when the week has moments to show. */}
+            <p data-testid="journal-aside-title" className="t-xs font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>
+              {t(weekCount === 0 && lastKept ? "elev.journal.lastKept.title" : "journal.week.title")}
+            </p>
             {/* RUN-08 zero wall: at day 0 this printed a 3xl black "0" beside
                 "moments and insights kept in one calm place" — the loudest
                 object on the screen, saying nothing. Same rule as HubHero:
@@ -481,23 +522,14 @@ export default function JournalTab({ primaryMoveProps }: { primaryMoveProps?: Re
                  (real row text, never generated), and one door to the compose
                  card. No new colour, gradient or stat. */
               <div data-testid="journal-last-kept" className="mt-3 space-y-1.5">
-                <p className="t-xs" style={{ color: "var(--arbor-muted)" }}>
-                  {t("elev.journal.lastKept.caption", { date: lastKeptDate })}
-                </p>
-                {lastKept.words && (
-                  <p dir="auto" className="t-lg leading-snug line-clamp-2" style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink)" }}>
-                    {"“"}{lastKept.words}{"”"}
+                {/* The quote now leads the story line at every width; the
+                    aside keeps the date only when the line could not quote. */}
+                {!quotedLastKept && (
+                  <p className="t-xs" style={{ color: "var(--arbor-muted)" }}>
+                    {t("elev.journal.lastKept.caption", { date: lastKeptDate })}
                   </p>
                 )}
-                <button
-                  type="button"
-                  data-testid="journal-last-kept-next"
-                  onClick={() => composeRef.current?.querySelector<HTMLButtonElement>("[data-capture-bar] button")?.focus()}
-                  className="inline-flex min-h-11 items-center t-sm font-bold underline underline-offset-2"
-                  style={{ color: "var(--arbor-clay)" }}
-                >
-                  {t("elev.journal.lastKept.next", { name: childFirstName })}
-                </button>
+                {lastKeptDoor("journal-last-kept-next")}
               </div>
             ) : weekCount === 0 ? (
               <p
@@ -700,7 +732,11 @@ export default function JournalTab({ primaryMoveProps }: { primaryMoveProps?: Re
               )}
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <label className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-xl ps-3 pe-2" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}>
+              {/* Critic r2 (journal design P1): one surface — the global
+                  `.arbor-app input` paper-deep fill drew a field inside the
+                  pill; field-bare (index.css) keeps the input transparent and
+                  field-pill gives the pill and the month select one token. */}
+              <label className="field-pill flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-xl ps-3 pe-2">
                 <Icon name="search" size={16} style={{ color: "var(--arbor-muted)" }} />
                 <input
                   type="search"
@@ -710,7 +746,7 @@ export default function JournalTab({ primaryMoveProps }: { primaryMoveProps?: Re
                   placeholder={t("journal.filter.search")}
                   aria-label={t("journal.filter.search")}
                   dir="auto"
-                  className="min-h-11 min-w-0 flex-1 bg-transparent text-sm focus:outline-none"
+                  className="field-bare min-h-11 min-w-0 flex-1 t-sm focus:outline-none"
                   style={{ color: "var(--arbor-ink)" }}
                 />
               </label>
@@ -720,8 +756,8 @@ export default function JournalTab({ primaryMoveProps }: { primaryMoveProps?: Re
                   aria-label={t("journal.filter.month")}
                   value=""
                   onChange={(e) => { if (e.target.value) jumpToMonth(e.target.value); }}
-                  className="min-h-11 rounded-xl px-3 t-sm font-bold"
-                  style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}
+                  className="field-pill min-h-11 rounded-xl px-3 t-sm font-bold"
+                  style={{ color: "var(--arbor-ink)" }}
                 >
                   <option value="">{t("journal.filter.month")}</option>
                   {monthKeys.map((m) => <option key={m} value={m}>{monthLabel(m, locale)}</option>)}

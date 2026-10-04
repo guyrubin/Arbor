@@ -173,7 +173,8 @@ describe("TopbarSearch hit target is the whole 44 px pill", () => {
     expect(topbarSearch).toMatch(/<label\s+className="[^"]*\bmin-h-11\b/);
     expect(topbarSearch).toContain('height: "44px"');
     expect(topbarSearch).not.toContain('height: "40px"');
-    expect(topbarSearch).toMatch(/<input[\s\S]{0,1500}className="min-h-11 self-stretch"/);
+    // Critic r2: field-bare keeps the global input fill off (one surface).
+    expect(topbarSearch).toMatch(/<input[\s\S]{0,1500}className="field-bare min-h-11 self-stretch"/);
     // A 1px border would take 2 px from the input; the hairline is an inset shadow.
     expect(topbarSearch).not.toMatch(/border:\s*open/);
   });

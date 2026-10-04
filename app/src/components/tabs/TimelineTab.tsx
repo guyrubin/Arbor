@@ -46,12 +46,20 @@ export default function TimelineTab() {
   // exactly one, on the control that really performs the active route's move.
   const primaryMove = { "data-primary-move": density === "story" ? "switch-density" : "capture-moment" };
 
-  return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-      {/* Density toggle — one surface, two reading densities over one stream. */}
+  // Critic r2 (W2-ASKJB journal P1 G0, Law 7): on #/journal the toggle and
+  // the stream wrapper were the only two top-level stamps, so the sweep counted
+  // 2 against a budget of 3 while the parent saw 4 modules — the gate measured
+  // a wrapper and could not fail. In the feed density the toggle now rides in
+  // journal-header (the target pairs "density toggle, H1") and the stream
+  // wrapper carries no stamp, so Journal's real modules (header · compose ·
+  // thread) are the top level. #/timeline keeps its two stamps (budget 2).
+  const story = density === "story";
+  const densityToggle = (
+      /* Density toggle — one surface, two reading densities over one stream. */
       <div
-        data-module="timeline-density"
-        {...(density === "story" ? primaryMove : {})}
+        data-module={story ? "timeline-density" : undefined}
+        data-density-toggle=""
+        {...(story ? primaryMove : {})}
         className="inline-flex items-center gap-1 rounded-full p-1"
         role="tablist"
         aria-label={t("timeline.density.aria")}
@@ -79,6 +87,11 @@ export default function TimelineTab() {
           );
         })}
       </div>
+  );
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+      {story && densityToggle}
 
       {/*
         AI-04 (consent gate) — one quiet, always-true line, said once for both
@@ -98,9 +111,13 @@ export default function TimelineTab() {
       {/* Critic r1 (W2-ASKJB journal P1 G0): the capture-moment stamp sat on
           this 1 500 px wrapper, so the fold check measured the eyebrow and
           could not fail. It rides into JournalTab onto the capture tiles. */}
-      <div data-module="timeline-stream">
-        {density === "feed" ? <JournalTab primaryMoveProps={primaryMove} /> : <StoryTimelineTab />}
-      </div>
+      {story ? (
+        <div data-module="timeline-stream">
+          <StoryTimelineTab />
+        </div>
+      ) : (
+        <JournalTab primaryMoveProps={primaryMove} densityToggle={densityToggle} />
+      )}
     </motion.div>
   );
 }
