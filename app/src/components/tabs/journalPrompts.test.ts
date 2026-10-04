@@ -22,12 +22,16 @@ describe("W2 2.6 JournalTab prompt mount", () => {
     expect(src).toContain("dailyPromptKeys({ ageYears: childProfile.age, childId: childProfile.id");
   });
 
-  it("renders the chips ABOVE the capture triad (MODE_TILES)", () => {
+  // W2-ASKJB critic r1 (journal P1 G1, lane-ASKJB.md:324): the capture triad
+  // is the primary move and must sit above the fold at 375, so it now leads
+  // and the chips follow it as one snap row (the cue still renders above the
+  // compose card). Order flipped deliberately; this pins the new order.
+  it("renders the capture triad (MODE_TILES) ABOVE the chips", () => {
     const chips = src.indexOf('data-testid="journal-prompt-chips"');
     const tiles = src.indexOf("{MODE_TILES.map(");
     expect(chips).toBeGreaterThan(-1);
     expect(tiles).toBeGreaterThan(-1);
-    expect(chips).toBeLessThan(tiles);
+    expect(tiles).toBeLessThan(chips);
   });
 
   it("chips resolve through t() with the registered elev.prompt.* strings", () => {

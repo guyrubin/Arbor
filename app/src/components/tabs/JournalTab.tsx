@@ -28,6 +28,8 @@ import QuickLogModal from "../overview/QuickLogModal";
 import { provenanceForSignal, readCaptureProvenance, type KeptProvenance } from "../../lib/captureProvenance";
 import { JOURNAL_FILTERS, firstGroupOfMonth, isHardMomentSignal, journalMonthKeys, matchesJournalFilter, momentLogId, monthLabel, type JournalFilter } from "../../lib/journalFilters";
 import { exportBehaviorPdf } from "../../lib/behaviorExport";
+import { journalStoryState, lastKeptMoment } from "../../lib/journalLastKept";
+import { fmtDay } from "../../lib/formatDate";
 import { isIncidentType } from "../../content/behaviorTaxonomy";
 
 /**
@@ -169,7 +171,7 @@ function JournalRow({
       </span>
       <div className="min-w-0 flex-1">
         {/* W2: the parent-visible entry meaning leads; provenance/time remain readable metadata. */}
-        <p className="text-[14px] font-bold leading-relaxed" style={{ color: "var(--arbor-ink)" }} dir="auto">
+        <p className="t-base font-bold leading-relaxed" style={{ color: "var(--arbor-ink)" }} dir="auto">
           {title}
         </p>
         <div className="mt-1.5 flex items-center gap-2 flex-wrap">
@@ -196,7 +198,7 @@ function JournalRow({
           {originLabel && (
             <span
               data-testid="journal-row-origin"
-              className="inline-flex items-center gap-1 text-[12px] font-extrabold uppercase tracking-wide rounded-md px-1.5 py-0.5"
+              className="inline-flex items-center gap-1 t-sm font-extrabold uppercase tracking-wide rounded-md px-1.5 py-0.5"
               dir="auto"
               style={{ background: PASTEL.mint.soft, color: PASTEL.mint.ink }}
             >
@@ -206,7 +208,7 @@ function JournalRow({
           )}
           {/* B-DATA-10: a resolved moment carries a glyph + label, never a colour. */}
           {signal.resolved && (
-            <span data-testid="journal-row-resolved" className="inline-flex items-center gap-1 text-[12px] font-bold" style={{ color: "var(--arbor-ink-soft)" }}>
+            <span data-testid="journal-row-resolved" className="inline-flex items-center gap-1 t-sm font-bold" style={{ color: "var(--arbor-ink-soft)" }}>
               <Icon name="check" size={13} />
               {resolvedLabel}
             </span>
@@ -216,11 +218,11 @@ function JournalRow({
             <Chip tone={tone} icon={<Icon name={DOMAIN_MS[domain]} size={13} fill={1} />}>{domainLabel}</Chip>
           )}
           {when && (
-            <span className="text-[12px] font-bold ms-auto" style={{ color: "var(--arbor-muted)" }}>{when}</span>
+            <span className="t-sm font-bold ms-auto" style={{ color: "var(--arbor-muted)" }}>{when}</span>
           )}
         </div>
         {detail && (
-          <p className="text-[12.5px] mt-1 leading-snug line-clamp-2" style={{ color: "var(--arbor-muted)" }} dir="auto">
+          <p className="t-sm mt-1 leading-snug line-clamp-2" style={{ color: "var(--arbor-muted)" }} dir="auto">
             {detail}
           </p>
         )}
@@ -244,7 +246,9 @@ function JournalRow({
   );
 }
 
-export default function JournalTab() {
+/** `primaryMoveProps`: TimelineTab's contract stamp (capture-moment), spread on
+ *  the capture tiles — the control that performs the move, not the wrapper. */
+export default function JournalTab({ primaryMoveProps }: { primaryMoveProps?: Record<string, string> } = {}) {
   const { milestones, playLogs, behaviorLogs, logsLoaded, pendingJournalFocusId, consumeJournalFocus, childProfile, openCaptureSheet, toggleLogResolved, deleteLog } = useArbor();
   const { t, uiLang } = useLanguage();
   const locale = uiLang === "he" ? "he" : "en";
@@ -436,9 +440,18 @@ export default function JournalTab() {
   // came to carry "0 · 3 · 5 · 10".
   // B-ASKJB-13: the line says what it counts (moments this week) and claims
   // nothing Arbor does not do — no "Arbor is connecting".
+  // Critic r1 (journal P1 G1): an empty week is not an empty record. A
+  // returning parent with kept moments never reads "begin" / "the first
+  // moment"; the line names the last moment and its date instead.
+  const lastKept = useMemo(() => lastKeptMoment(signals), [signals]);
+  const lastKeptSignal = lastKept ? signals.find((s) => s.id === lastKept.id) : undefined;
+  const lastKeptDate = lastKept ? fmtDay(lastKept.at, uiLang === "he" ? "he" : "en") : "";
+  const storyState = journalStoryState(weekCount, lastKept);
   const storyCopy = weekCount
     ? t(weekCount === 1 ? "journal.story.body.one" : "journal.story.body", { count: weekCount })
-    : t("journal.story.empty");
+    : storyState === "quiet-week" && lastKeptSignal
+      ? t("elev.journal.story.quietWeek", { title: signalTitle(lastKeptSignal, tt), date: lastKeptDate })
+      : t("journal.story.empty");
   const feedCount = journalFeedCountKey(signals);
 
   return (
@@ -446,25 +459,51 @@ export default function JournalTab() {
       <header data-module="journal-header" className="border-b pb-5" style={{ borderColor: "var(--arbor-rule)" }}>
         <div className="grid min-w-0 items-end gap-5 md:grid-cols-[minmax(0,1.25fr)_minmax(220px,.75fr)]">
           <div>
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-lav-ink)" }}>
+            <span className="inline-flex items-center gap-1.5 t-xs font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-lav-ink)" }}>
               <Icon name="auto_stories" size={16} fill={1} /> {t("journal.eyebrow")}
             </span>
-            <h1 className="mt-2 text-[28px] sm:text-[34px] leading-[1.08] tracking-[-0.03em]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+            <h1 className="mt-2 t-2xl leading-[1.08] tracking-[-0.03em]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
               {t("journal.title")}
             </h1>
-            <p className="mt-3 max-w-2xl text-sm sm:text-[15px] leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>{storyCopy}</p>
+            <p data-testid="journal-story-line" dir="auto" className="mt-3 max-w-2xl t-base leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>{storyCopy}</p>
           </div>
-          <div className="border-t pt-4 md:border-s md:border-t-0 md:ps-5 md:pt-0" style={{ borderColor: "var(--arbor-rule-strong)" }}>
-            <p className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("journal.week.title")}</p>
+          {/* Critic r1: below md the week aside steps out — the story line
+              above already carries the week count or the last moment, and
+              the capture tiles move up into the first viewport. */}
+          <div data-testid="journal-week-aside" className="hidden border-t pt-4 md:block md:border-s md:border-t-0 md:ps-5 md:pt-0" style={{ borderColor: "var(--arbor-rule-strong)" }}>
+            <p className="t-xs font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("journal.week.title")}</p>
             {/* RUN-08 zero wall: at day 0 this printed a 3xl black "0" beside
                 "moments and insights kept in one calm place" — the loudest
                 object on the screen, saying nothing. Same rule as HubHero:
                 below one moment the teach line replaces the numeral. */}
-            {weekCount === 0 ? (
+            {weekCount === 0 && lastKept ? (
+              /* B-ASKJB-NEW-1d — "Last kept": the date, the parent's own words
+                 (real row text, never generated), and one door to the compose
+                 card. No new colour, gradient or stat. */
+              <div data-testid="journal-last-kept" className="mt-3 space-y-1.5">
+                <p className="t-xs" style={{ color: "var(--arbor-muted)" }}>
+                  {t("elev.journal.lastKept.caption", { date: lastKeptDate })}
+                </p>
+                {lastKept.words && (
+                  <p dir="auto" className="t-lg leading-snug line-clamp-2" style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink)" }}>
+                    {"“"}{lastKept.words}{"”"}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  data-testid="journal-last-kept-next"
+                  onClick={() => composeRef.current?.querySelector<HTMLButtonElement>("[data-capture-bar] button")?.focus()}
+                  className="inline-flex min-h-11 items-center t-sm font-bold underline underline-offset-2"
+                  style={{ color: "var(--arbor-clay)" }}
+                >
+                  {t("elev.journal.lastKept.next", { name: childFirstName })}
+                </button>
+              </div>
+            ) : weekCount === 0 ? (
               <p
                 data-testid="journal-week-zero-line"
-                className="mt-3 text-[13px] font-bold leading-snug"
-                style={{ color: "var(--arbor-lav-ink)" }}
+                className="mt-3 t-sm leading-snug"
+                style={{ color: "var(--arbor-ink-soft)" }}
                 dir="auto"
               >
                 {t("elev.journal.week.zero")}
@@ -484,13 +523,13 @@ export default function JournalTab() {
       {activePromptKey && (
         <div
           data-testid="journal-prompt-cue"
-          className="flex items-start gap-2.5 rounded-[14px] px-4 py-3"
+          className="flex items-start gap-2.5 rounded-[var(--r)] px-4 py-3"
           style={{ background: PASTEL.lav.soft, color: PASTEL.lav.ink }}
           dir="auto"
           aria-live="polite"
         >
           <Icon name="lightbulb" size={18} fill={1} className="flex-shrink-0 mt-0.5" />
-          <p className="text-[14px] font-bold leading-snug" style={{ fontFamily: "var(--font-display)" }}>
+          <p className="t-base font-bold leading-snug" style={{ fontFamily: "var(--font-display)" }}>
             {t(activePromptKey)}
           </p>
         </div>
@@ -499,25 +538,48 @@ export default function JournalTab() {
       {/* Compose card — "Log a moment" + three modality tiles. All three trigger the
           EXISTING capture flow (BehaviorsTab); the Voice/Photo/Text split is an
           entry affordance, not a new capture path. */}
-      <section ref={composeRef} data-module="journal-compose" className="rounded-[18px] p-4 sm:p-5" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-xs)" }}>
+      <section ref={composeRef} data-module="journal-compose" className="rounded-[var(--r-lg)] p-4 sm:p-5" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-xs)" }}>
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.16em]" style={{ color: "var(--arbor-lav-ink)" }}>{t("journal.compose.eyebrow")}</p>
-          <h2 className="mt-1 text-[18px] font-extrabold tracking-[-0.01em]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+            <p className="t-xs font-extrabold uppercase tracking-[0.16em]" style={{ color: "var(--arbor-lav-ink)" }}>{t("journal.compose.eyebrow")}</p>
+          <h2 className="mt-1 t-lg font-extrabold tracking-[-0.01em]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
             {t("journal.compose.title")}
           </h2>
           </div>
           <IconBadge tone="lav" size={34}><Icon name="edit_note" size={19} fill={1} /></IconBadge>
         </div>
 
+        {/* Critic r1 (journal P1 G0/G1): the tiles come FIRST (the primary
+            move above the fold at 375) and carry TimelineTab's contract stamp;
+            Text — the in-place default — is the ONE primary fill; Voice and
+            Photo are neutral. */}
+        <div className="grid grid-cols-3 gap-2" data-capture-bar {...primaryMoveProps}>
+          {MODE_TILES.map(({ ms, key }) => (
+            <button
+              key={key}
+              type="button"
+              data-capture-tile={key}
+              onClick={() => startCapture(key)}
+              className="flex min-h-[48px] items-center justify-center gap-2 px-3 py-3 t-sm font-extrabold transition motion-safe:hover:-translate-y-0.5"
+              style={key === "text"
+                ? { borderRadius: "var(--r)", background: "var(--gradient-cta)", border: "1px solid transparent", color: "var(--arbor-on-accent)" }
+                : { borderRadius: "var(--r)", background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
+            >
+              <Icon name={ms} size={21} fill={1} style={{ color: key === "text" ? "var(--arbor-on-accent)" : "var(--arbor-ink)" }} />
+              {t(`journal.mode.${key}`)}
+            </button>
+          ))}
+        </div>
         {/* W2 2.6 — three rotating promptBank chips above the capture triad
             (deterministic per child+day; elev.prompt.* strings, registered in
             i18nElevation/journal.ts). Tap toggles the writing cue above. */}
-        <div className="mb-3">
-          <p className="text-[11px] font-extrabold uppercase tracking-wider mb-1.5" style={{ color: "var(--arbor-muted)" }}>
+        <div className="mt-3">
+          <p className="t-xs font-extrabold uppercase tracking-wider mb-1.5" style={{ color: "var(--arbor-muted)" }}>
             {t("elev.prompt.lead")}
           </p>
-          <div className="flex flex-wrap gap-2" data-testid="journal-prompt-chips">
+          {/* Critic r1: below sm the chips are ONE horizontal snap row, not
+              three stacked rows. */}
+          <div className="-mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible" data-testid="journal-prompt-chips">
             {promptKeys.map((key) => {
               const active = key === activePromptKey;
               return (
@@ -527,7 +589,7 @@ export default function JournalTab() {
                   onClick={() => onPromptTap(key)}
                   aria-pressed={active}
                   dir="auto"
-                  className="min-h-[44px] rounded-full px-3.5 py-1.5 text-[12.5px] font-bold text-start transition active:scale-[0.98]"
+                  className="min-h-[44px] flex-shrink-0 snap-start rounded-full px-3.5 py-1.5 t-sm font-bold text-start transition active:scale-[0.98]"
                   style={
                     active
                       ? { background: PASTEL.lav.soft, color: PASTEL.lav.ink, border: `1px solid ${PASTEL.lav.ink}` }
@@ -541,20 +603,6 @@ export default function JournalTab() {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-2" data-capture-bar>
-          {MODE_TILES.map(({ ms, key }) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => startCapture(key)}
-              className="flex min-h-[48px] items-center justify-center gap-2 rounded-[13px] px-3 py-3 text-[12px] font-extrabold transition motion-safe:hover:-translate-y-0.5"
-              style={{ background: key === "voice" ? "var(--arbor-green-soft)" : "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
-            >
-              <Icon name={ms} size={21} fill={1} style={{ color: "var(--arbor-green-ink)" }} />
-              {t(`journal.mode.${key}`)}
-            </button>
-          ))}
-        </div>
       </section>
 
       {/* B-ASKJB-03: the typed-turn proposals tray moved to Ask, under the
@@ -619,8 +667,8 @@ export default function JournalTab() {
       ) : (
         <section aria-labelledby="journal-timeline-title">
           <div className="mb-1 flex items-center justify-between gap-3">
-            <h2 id="journal-timeline-title" className="text-[18px] font-extrabold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{t("journal.timeline.title")}</h2>
-            <span className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>{t(feedCount.key, { n: feedCount.n })}</span>
+            <h2 id="journal-timeline-title" className="t-lg font-extrabold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{t("journal.timeline.title")}</h2>
+            <span className="t-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t(feedCount.key, { n: feedCount.n })}</span>
           </div>
           <div data-testid="journal-filters" className="mb-3 space-y-2">
             <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t("journal.filter.aria")}>
@@ -631,7 +679,7 @@ export default function JournalTab() {
                   data-testid={`journal-filter-${f}`}
                   aria-pressed={journalFilter === f}
                   onClick={() => setJournalFilter(f)}
-                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full px-3.5 text-[13px] font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full px-3.5 t-sm font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
                   style={journalFilter === f
                     ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)" }
                     : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink-soft)", border: "1px solid var(--arbor-rule)" }}
@@ -644,7 +692,7 @@ export default function JournalTab() {
                   type="button"
                   data-testid="journal-export-pdf"
                   onClick={exportHardMoments}
-                  className="ms-auto inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-[12px] font-bold"
+                  className="ms-auto inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 t-sm font-bold"
                   style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)", background: "var(--arbor-paper-elevated)" }}
                 >
                   <Icon name="download" size={15} style={{ color: "var(--arbor-green-ink)" }} /> {t("beh.exportPdf")}
@@ -672,7 +720,7 @@ export default function JournalTab() {
                   aria-label={t("journal.filter.month")}
                   value=""
                   onChange={(e) => { if (e.target.value) jumpToMonth(e.target.value); }}
-                  className="min-h-11 rounded-xl px-3 text-[13px] font-bold"
+                  className="min-h-11 rounded-xl px-3 t-sm font-bold"
                   style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}
                 >
                   <option value="">{t("journal.filter.month")}</option>
@@ -703,7 +751,7 @@ export default function JournalTab() {
                 className="sticky top-0 z-[5] -mx-1 flex items-center gap-3 px-1 py-1.5"
                 style={{ background: "var(--arbor-paper)" }}
               >
-                <h3 className="text-[11px] font-extrabold uppercase tracking-wider text-start" style={{ color: "var(--arbor-muted)" }}>
+                <h3 className="t-xs font-extrabold uppercase tracking-wider text-start" style={{ color: "var(--arbor-muted)" }}>
                   {group.label}
                 </h3>
                 <span className="h-px flex-1" style={{ background: "var(--arbor-rule)" }} aria-hidden />

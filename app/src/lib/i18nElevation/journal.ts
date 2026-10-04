@@ -164,6 +164,10 @@ export const en: Record<string, string> = {
   //    beside "moments and insights kept in one calm place" was the loudest
   //    object on a new parent's screen and said nothing.
   "elev.journal.week.zero": "Nothing kept this week yet — the first moment you catch lands here.",
+  // Critic r1 + B-ASKJB-NEW-1d: an empty week with a non-empty record.
+  "elev.journal.story.quietWeek": "Nothing kept this week. Your last moment: {title}, {date}.",
+  "elev.journal.lastKept.caption": "Last kept · {date}",
+  "elev.journal.lastKept.next": "What happened with {name} today?",
 
   // ── N1-08 · Undo on Keep, and the provenance wording it shares ────────────
   //    The toast states who proposed the line and who confirmed it, then offers
@@ -331,6 +335,9 @@ export const he: Record<string, string> = {
 
   // ── Builder E2 · RUN-08
   "elev.journal.week.zero": "השבוע עוד לא נשמר כלום — הרגע הראשון שתתפסו יופיע כאן.",
+  "elev.journal.story.quietWeek": "השבוע עוד לא נשמר כלום. הרגע האחרון שלכם: {title}, {date}.",
+  "elev.journal.lastKept.caption": "נשמר לאחרונה · {date}",
+  "elev.journal.lastKept.next": "מה קרה היום עם {name}?",
 
   // ── N1-08 · ביטול שמירה
   "elev.keep.kept": "נשמר · ארבור הציעה, אתם אישרתם",

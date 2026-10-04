@@ -237,3 +237,55 @@ describe("B-ASKJB-30 · edit and review in place", () => {
     }
   });
 });
+
+/**
+ * Critic r1 (W2-ASKJB journal). Source guards for what the render showed:
+ *  · the capture-moment stamp rides on the capture tiles (data-capture-bar),
+ *    never on TimelineTab's 1 500 px timeline-stream wrapper;
+ *  · the tiles come BEFORE the prompt chips (primary move first at 375);
+ *  · exactly one gradient on the page, on the Text tile;
+ *  · type from the --t-* scale (no text-[Npx], no H1 breakpoint jump), radii
+ *    from --r tokens;
+ *  · an empty week with a non-empty record never says "begin"/"first".
+ */
+describe("critic r1 — the journal's primary move is the capture tiles", async () => {
+  const JOURNAL = stripComments(read("components/tabs/JournalTab.tsx"));
+  const TIMELINE = stripComments(read("components/tabs/TimelineTab.tsx"));
+  const { lastKeptMoment, journalStoryState } = await import("../../lib/journalLastKept");
+  const dict = await import("../../lib/i18nElevation/journal");
+
+  it("the stamp is spread on the tile grid, not the stream wrapper", () => {
+    expect(TIMELINE).toContain('<div data-module="timeline-stream">');
+    expect(TIMELINE).toContain("<JournalTab primaryMoveProps={primaryMove} />");
+    expect(JOURNAL).toContain('data-capture-bar {...primaryMoveProps}');
+  });
+
+  it("tiles come before the prompt chips; one gradient, on the Text tile", () => {
+    expect(JOURNAL.indexOf("data-capture-bar")).toBeLessThan(JOURNAL.indexOf('data-testid="journal-prompt-chips"'));
+    expect((JOURNAL.match(/--gradient-cta|--arbor-gradient-primary/g) || []).length).toBe(1);
+    expect(JOURNAL).toMatch(/key === "text"\s*\? \{ borderRadius: "var\(--r\)", background: "var\(--gradient-cta\)"/);
+    expect(JOURNAL).not.toContain('key === "voice" ? "var(--arbor-green-soft)"');
+  });
+
+  it("type from the scale, radii from tokens", () => {
+    expect(JOURNAL).not.toMatch(/text-\[\d+(\.\d+)?px\]/);
+    expect(JOURNAL).not.toMatch(/sm:text-\[/);
+    expect(JOURNAL).not.toMatch(/rounded-\[\d+px\]/);
+  });
+
+  it("an empty week with kept moments names the last moment, never 'begin'", () => {
+    const sig = (id: string, at: string, detail: string) => ({ id, kind: "moment" as const, at, detail, tone: "lav" as const });
+    const last = lastKeptMoment([sig("moment-a", "2026-05-20T08:00:00Z", "older"), sig("moment-b", "2026-05-23T08:00:00Z", "Setting off for preschool")]);
+    expect(last).toEqual({ id: "moment-b", at: "2026-05-23T08:00:00Z", words: "Setting off for preschool" });
+    expect(journalStoryState(0, last)).toBe("quiet-week");
+    expect(journalStoryState(0, null)).toBe("empty-record");
+    expect(journalStoryState(2, last)).toBe("week");
+    for (const d of [dict.en, dict.he]) {
+      expect(d["elev.journal.story.quietWeek"]).toBeTruthy();
+      expect(d["elev.journal.story.quietWeek"]).not.toMatch(/begin|first|הראשון|להתחיל/i);
+      expect(d["elev.journal.lastKept.caption"]).toContain("{date}");
+      expect(d["elev.journal.lastKept.next"]).toContain("{name}");
+    }
+    expect(JOURNAL).toContain('t("elev.journal.story.quietWeek", { title: signalTitle(lastKeptSignal, tt), date: lastKeptDate })');
+  });
+});

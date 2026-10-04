@@ -65,6 +65,11 @@ const ALLOWED = new Set([
   "ui/Button.tsx",
   "weekly/RecapStoryCards.tsx",
   "tabs/WeeklyTab.tsx",
+  // W2-ASKJB critic r1: the Text capture tile carries TimelineTab's
+  // data-primary-move="capture-moment" (surfaceContract journal.primaryMove,
+  // spread through primaryMoveProps) and is the only gradient in the file;
+  // journal.captureInPlace.test pins one gradient on the "text" tile.
+  "tabs/JournalTab.tsx",
 ]);
 
 /** Drop comments so prose about the rule cannot trip the scan. */
@@ -224,6 +229,8 @@ describe("OBJ-TODAY-01 — repo-wide ratchet", () => {
     // declares as that route's ONE primary move, and it is the only gradient in
     // the file. storiesCover.test.ts pins the stamp and its position.
     "tabs/HeroJourneyTab.tsx",
+    // W2-ASKJB critic r1: licensed above (the Text capture tile = capture-moment).
+    "tabs/JournalTab.tsx",
     // (B-GROWTH-12: MilestonesTab left the ratchet — its only gradient was the
     //  removed "Find next steps" analyzer button.)
     "tabs/PlansTab.tsx",

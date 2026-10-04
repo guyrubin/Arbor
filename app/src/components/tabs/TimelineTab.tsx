@@ -95,8 +95,11 @@ export default function TimelineTab() {
         </p>
       )}
 
-      <div data-module="timeline-stream" {...(density === "feed" ? primaryMove : {})}>
-        {density === "feed" ? <JournalTab /> : <StoryTimelineTab />}
+      {/* Critic r1 (W2-ASKJB journal P1 G0): the capture-moment stamp sat on
+          this 1 500 px wrapper, so the fold check measured the eyebrow and
+          could not fail. It rides into JournalTab onto the capture tiles. */}
+      <div data-module="timeline-stream">
+        {density === "feed" ? <JournalTab primaryMoveProps={primaryMove} /> : <StoryTimelineTab />}
       </div>
     </motion.div>
   );
