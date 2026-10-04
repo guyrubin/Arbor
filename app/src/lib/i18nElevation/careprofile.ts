@@ -18,6 +18,9 @@ export const en: Record<string, string> = {
   "elev.hero.ask.cta": "Ask a question",
 
   // ── E2 · Care Network hero (the redaction-controlled summary)
+  // W2-CAREPRO r1 (B-CAREPRO-36 hero part): Consult opens on the job.
+  "elev.consult.h1": "Prepare for a visit",
+  "elev.consult.forName": "for {name}",
   "elev.hero.care.eyebrow": "Care Network",
   "elev.hero.care.title": "One summary you control, ready for everyone who helps {name}.",
   "elev.hero.care.sub": "You choose what goes in — nothing is shared until you send it.",
@@ -44,6 +47,8 @@ export const he: Record<string, string> = {
   "elev.hero.ask.title": "צעד רגוע קדימה, בכל רגע שתצטרכו.",
   "elev.hero.ask.cta": "לשאול שאלה",
 
+  "elev.consult.h1": "מתכוננים לפגישה",
+  "elev.consult.forName": "עבור {name}",
   "elev.hero.care.eyebrow": "מעגל הטיפול",
   "elev.hero.care.title": "סיכום אחד בשליטתכם, מוכן לכל מי שמלווה את {name}.",
   "elev.hero.care.sub": "אתם בוחרים מה נכנס — שום דבר לא משותף עד שאתם שולחים.",

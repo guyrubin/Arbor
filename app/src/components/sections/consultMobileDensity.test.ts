@@ -22,13 +22,14 @@ describe("W2 Care — coherent purpose and share flow", () => {
    expect(body).not.toContain("sticky bottom-");
    expect(body).not.toContain("fixed bottom-");
    expect(body).toContain('id="consult-audience-row"');
-   expect(CONSULT).toContain('document.getElementById("consult-audience-row")');
+   // W2-CAREPRO r1: no hero CTA scrolls to the row any more — the row is step 1, under the H1.
+   expect(CONSULT).not.toContain("<HubHero");
  });
  it("the hub provides the only introduction without removing purpose hints", () => {
    expect(body).not.toContain('consult-section-header');
    expect(body).not.toMatch(/<h1[\s>]/);
    for (const key of ['elev.learnCare.reason.label','elev.learnCare.reason.hint','elev.learnCare.reason.placeholder','elev.learnCare.reason.missing']) expect(body).toContain(key);
-   expect(CONSULT).toContain('elev.wave2Knowledge.care.sub');
+   expect(CONSULT).toContain('elev.consult.h1');
  });
  it("all three contract promises remain in a single reusable disclosure", () => {
    expect(ASK).toContain('const CONTRACT_TILES = [');

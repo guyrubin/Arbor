@@ -15,6 +15,7 @@ import { ARBOR_PROFESSIONALS } from "../services/professionals";
 import { FAMILY_RITUALS } from "./familyRituals";
 import { en as careEn, he as careHe } from "./i18nElevation/careHonesty";
 import { en as acctEn, he as acctHe } from "./i18nElevation/accountSettings";
+import { translate } from "./i18n";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 /** Prose about a rule must never trip the scan for that rule (this file's own
@@ -88,11 +89,27 @@ describe("LC-16 → B-CAREPRO-19 · no directory verb; the trusted send is the m
 });
 
 describe("LC-28 / OBJ-CARE-02 · the packet, not the hero", () => {
-  it("the hub CTA targets the export bar's audience row and moves focus there", () => {
-    expect(CONSULT_TAB).toContain('document.getElementById("consult-audience-row")');
-    expect(CONSULT_TAB).toContain("target?.focus?.({ preventScroll: true })");
-    // It falls back to the flow when the bar is not mounted (day-0 empty state).
-    expect(CONSULT_TAB).toContain("?? flowRef.current");
+  it("W2-CAREPRO r1: no hero above the flow — the H1 is the job and step 1 sits under it", () => {
+    // The HubHero's CTA only scrolled ~60 px to a row already in view (a decoy
+    // primary); B-CAREPRO-36's hero part cuts it.
+    expect(CONSULT_TAB).not.toContain("<HubHero");
+    expect(CONSULT_TAB).toContain('data-testid="consult-h1"');
+    expect(CONSULT_TAB).toContain('t("elev.consult.h1")');
+    for (const lang of ["en", "he"] as const) {
+      expect(translate(lang, "elev.consult.h1")).not.toBe("elev.consult.h1");
+      expect(translate(lang, "elev.consult.forName", { name: "Dylan" })).toContain("Dylan");
+    }
+    // NEGATIVE CONTROL: the pre-change leaf mounted the hero.
+    expect("<HubHero compact zeroLine={t(\"x\")} />").toContain("<HubHero");
+  });
+
+  it("W2-CAREPRO r1: the stamp lands on the SELECTED audience chip, never the flow wrapper", () => {
+    const stampLines = CONSULT_TAB.split("\n").filter((l) => /\bdata-primary-move\b/.test(l) && !/^\s*(\/\/|\*|\/\*)/.test(l));
+    expect(stampLines).toHaveLength(1);
+    expect(stampLines[0]).toContain("const primaryMoveStamp = {");
+    expect(CONSULT_TAB).toContain("<AskSpecialist primaryMoveStamp={primaryMoveStamp} />");
+    expect(CONSULT_TAB).not.toMatch(/data-module="consult-packet"[^>]*data-primary-move/);
+    expect(CONSULT).toContain("{...(on ? primaryMoveStamp : undefined)}");
   });
 
   it("the audience row is focusable and scroll-anchored", () => {

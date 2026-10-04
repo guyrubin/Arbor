@@ -88,7 +88,9 @@ export function resolveConsultPrefill(p: ConsultPrefill): {
 
 type ExportBuild = { text: string; error: null } | { text: null; error: string };
 
-export default function AskSpecialist() {
+/** W2-CAREPRO r1: ConsultTab hands its route stamp here; it lands on the
+ *  selected audience chip (one 44 px button in step 1), never on a wrapper. */
+export default function AskSpecialist({ primaryMoveStamp }: { primaryMoveStamp?: Record<string, string> } = {}) {
   const { childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems, setActiveTab, pendingConsultPrefill, consumeConsultPrefill } = useArbor();
   const { toast } = useToast();
   const { t, uiLang } = useLanguage();
@@ -191,6 +193,8 @@ export default function AskSpecialist() {
     [childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems, reason, preparedQuestions, langObsCol.items, growthCol.items, audience]
   );
 
+  // W2-CAREPRO r1: the since-last-share counts, lifted to the head of step 2.
+  const sinceSection = packet.sections.find((sec) => sec.id === "since-last-visit");
   // LC-06: "about" is always emitted, so the honest emptiness test is
   // "nothing beyond about" — the authored empty state can finally mount.
   const isEmpty = isConsultPacketEmpty(packet);
@@ -264,8 +268,8 @@ export default function AskSpecialist() {
         <details className="rounded-[18px]" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
           <summary
             data-testid="consult-contract-summary"
-            className="touch-target !justify-start w-full cursor-pointer list-none gap-2 px-4 text-[12px] font-extrabold"
-            style={{ color: GREEN }}
+            className="touch-target !justify-start w-full cursor-pointer list-none gap-2 px-4 t-xs font-extrabold"
+            style={{ color: INK }}
           >
             <Icon name="verified_user" size={16} />
             <span className="min-w-0 flex-1">
@@ -276,7 +280,7 @@ export default function AskSpecialist() {
           <div className="grid grid-cols-1 gap-3 px-4 pb-4">
             {CONTRACT_TILES.map((item) => (
               <div key={item.icon}>
-                <span className="inline-flex items-center gap-2 text-[12px] font-extrabold" style={{ color: GREEN }}>
+                <span className="inline-flex items-center gap-2 t-xs font-extrabold" style={{ color: INK }}>
                   <Icon name={item.icon} size={16} /> {item.title}
                 </span>
                 <p className="text-xs leading-relaxed mt-1.5" style={{ color: MUTED }}>{item.body}</p>
@@ -289,8 +293,8 @@ export default function AskSpecialist() {
 
   /** Numbered step heading (the steps are the page's reading order). */
   const stepHeading = (n: number, label: string, id?: string) => (
-    <h2 id={id} className="flex items-center gap-2 text-[15px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: INK }}>
-      <span aria-hidden="true" className="inline-flex items-center justify-center w-6 h-6 rounded-full text-[12px] font-extrabold" style={{ background: GREEN_SOFT, color: GREEN }}>{n}</span>
+    <h2 id={id} className="flex items-center gap-2 t-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: INK }}>
+      <span aria-hidden="true" className="inline-flex items-center justify-center w-7 h-7 rounded-full t-sm font-extrabold" style={{ background: "var(--arbor-paper-deep)", color: INK }}>{n}</span>
       {label}
     </h2>
   );
@@ -320,9 +324,12 @@ export default function AskSpecialist() {
                 role="radio"
                 aria-checked={on}
                 onClick={() => setAudience(a)}
-                className="inline-flex items-center gap-1.5 text-[12.5px] font-bold rounded-xl px-3.5 py-2 min-h-[44px] transition"
+                {...(on ? primaryMoveStamp : undefined)}
+                className="inline-flex items-center gap-1.5 t-sm font-bold rounded-xl px-3.5 py-2 min-h-[44px] transition"
+                // W2-CAREPRO r1: the selected chip is the navy sub-tab pill —
+                // green-ink is a jewel text ink, never a solid fill.
                 style={on
-                  ? { background: GREEN, color: "var(--arbor-paper-elevated)" }
+                  ? { background: "var(--arbor-subtab-active)", color: "var(--arbor-subtab-on-ink)" }
                   : { background: "var(--arbor-paper-sunk)", color: INK, border: `1px solid ${RULE}` }}
               >
                 {on && <Icon name="check" size={14} weight={600} />}
@@ -341,10 +348,10 @@ export default function AskSpecialist() {
            this packet's text; the School Brief (classroom words, per-export
            approval, fail-closed scan) is the teacher branch. */
         <section data-testid="consult-teacher-branch" className="rounded-[22px] p-5" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-sm)" }}>
-          <h2 className="text-[15px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: INK }}>
+          <h2 className="t-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: INK }}>
             {t("elev.carehonesty.consult.teacher.title", { name: firstName })}
           </h2>
-          <p className="text-[13px] leading-relaxed mt-1.5" style={{ color: MUTED }}>{t("elev.carehonesty.consult.teacher.body")}</p>
+          <p className="t-sm leading-relaxed mt-1.5" style={{ color: MUTED }}>{t("elev.carehonesty.consult.teacher.body")}</p>
           {visionNote.trim() !== "" && (
             <p data-testid="consult-teacher-note-carried" className="text-xs mt-2 inline-flex items-center gap-1.5" style={{ color: GREEN }}>
               <Icon name="check_circle" size={14} fill={1} /> {t("elev.carehonesty.consult.teacher.noteCarried")}
@@ -365,7 +372,16 @@ export default function AskSpecialist() {
       {/* Step 2 · What changed — purpose first; the same builder carries it into every clinician packet. */}
       <section data-testid="consult-reason-section" className="border-t pt-5" style={{ borderColor: RULE }}>
         {stepHeading(2, t("elev.carehonesty.consult.step.changed"))}
-        <label htmlFor="consult-reason" className="inline-flex items-center gap-2 text-[14px] font-bold mt-3" style={{ color: GREEN }}>
+        {/* W2-CAREPRO r1: "what changed" is answered first — B-CAREPRO-17's
+            "Since you last shared with {audience}" counts head step 2 (counts
+            only; the same section rides the packet below). */}
+        {sinceSection && (
+          <div data-testid="consult-since-head" className="mt-3 rounded-[13px] p-3.5" style={{ background: "var(--arbor-paper-sunk)", border: `1px solid ${RULE}` }}>
+            <p className="t-sm font-bold" dir="auto" style={{ color: INK }}>{sectionTitle(sinceSection, uiLang)}</p>
+            <p className="t-xs leading-relaxed mt-1" dir="auto" style={{ color: MUTED }}>{sinceSection.items.map((it) => itemText(it, uiLang)).join(" · ")}</p>
+          </div>
+        )}
+        <label htmlFor="consult-reason" className="inline-flex items-center gap-2 t-sm font-bold mt-3" style={{ color: INK }}>
           <Icon name="help" size={16} /> {t("elev.learnCare.reason.label")}
         </label>
         <p className="text-sm leading-relaxed mt-1 max-w-[65ch]" style={{ color: MUTED }}>{t("elev.learnCare.reason.hint")}</p>
@@ -377,7 +393,7 @@ export default function AskSpecialist() {
           rows={2}
           dir="auto"
           placeholder={t("elev.learnCare.reason.placeholder")}
-          className="w-full text-[13.5px] leading-relaxed rounded-[13px] px-3 py-2.5 mt-2 resize-y min-h-[56px]"
+          className="w-full t-base leading-relaxed rounded-[13px] px-3 py-2.5 mt-2 resize-y min-h-[56px]"
           style={{ color: INK, background: "var(--arbor-paper-sunk)", border: `1px solid ${RULE}` }}
         />
         {reason.trim() === "" && (
@@ -393,10 +409,12 @@ export default function AskSpecialist() {
             Parent-only (outside the packet card and the preview), names only:
             no counts, no performance. */}
         {homeWorlds.length > 0 && (
-          <div data-testid="consult-home-practice" className="rounded-[13px] p-3.5 mt-4" style={{ background: "var(--arbor-paper-sunk)", border: `1px solid ${RULE}` }}>
-            <h3 className="inline-flex items-center gap-2 text-[13px] font-extrabold" style={{ color: INK }}>
-              <Icon name="home" size={16} style={{ color: GREEN }} /> {t("elev.carehonesty.consult.home.title")}
-            </h3>
+          /* W2-CAREPRO r1: demoted to a closed disclosure — the games panel no
+             longer interrupts "What changed" between the reason and the packet. */
+          <details data-testid="consult-home-practice" className="rounded-[13px] p-3.5 mt-4" style={{ background: "var(--arbor-paper-sunk)", border: `1px solid ${RULE}` }}>
+            <summary className="inline-flex items-center gap-2 t-sm font-extrabold cursor-pointer min-h-[44px]" style={{ color: INK }}>
+              <Icon name="home" size={16} style={{ color: MUTED }} /> {t("elev.carehonesty.consult.home.title")}
+            </summary>
             <p className="text-xs leading-relaxed mt-1 max-w-[65ch]" style={{ color: MUTED }}>{t("elev.carehonesty.consult.home.hint")}</p>
             <div className="flex flex-wrap gap-2 mt-2.5">
               {homeWorlds.map((w) => {
@@ -409,15 +427,15 @@ export default function AskSpecialist() {
                     data-world={w.id}
                     onClick={() => openHomePracticeWorld(w, { setActiveTab, openKidMode })}
                     aria-label={t("elev.carehonesty.consult.home.open", { world: name })}
-                    className="inline-flex items-center gap-2 text-[12.5px] font-bold rounded-xl px-3.5 py-2 min-h-[44px] transition"
+                    className="inline-flex items-center gap-2 t-sm font-bold rounded-xl px-3.5 py-2 min-h-[44px] transition"
                     style={{ background: "var(--arbor-paper-elevated)", color: INK, border: `1px solid ${RULE}` }}
                   >
-                    <Icon name={w.msIcon} size={16} style={{ color: GREEN }} /> {name}
+                    <Icon name={w.msIcon} size={16} style={{ color: MUTED }} /> {name}
                   </button>
                 );
               })}
             </div>
-          </div>
+          </details>
         )}
       </section>
 
@@ -428,7 +446,7 @@ export default function AskSpecialist() {
       {visionNote.trim() !== "" && (
         <section className="rounded-[18px] p-4" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
           <div className="flex items-center justify-between gap-2">
-            <span className="inline-flex items-center gap-2 text-[12px] font-extrabold" style={{ color: GREEN }}>
+            <span className="inline-flex items-center gap-2 t-xs font-extrabold" style={{ color: GREEN }}>
               <Icon name="description" size={16} /> {t("consult.visionNote.title")}
             </span>
             <button
@@ -459,7 +477,7 @@ export default function AskSpecialist() {
           <span className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mx-auto" style={{ background: GREEN_SOFT, color: GREEN }}>
             <Icon name="edit_note" size={26} />
           </span>
-          <h2 className="text-[17px] font-extrabold mt-3" style={{ fontFamily: "var(--font-display)", color: INK }}>{t("consult.empty.title")}</h2>
+          <h2 className="t-lg font-extrabold mt-3" style={{ fontFamily: "var(--font-display)", color: INK }}>{t("consult.empty.title")}</h2>
           <p className="text-sm mt-1.5 leading-relaxed max-w-[420px] mx-auto" style={{ color: MUTED }}>{t("consult.empty.body")}</p>
           <button
             onClick={() => setActiveTab("behaviors")}
@@ -477,8 +495,8 @@ export default function AskSpecialist() {
               row with an include-toggle. LC-07: rows render in FULL — the row
               is the line the parent approves, so it is never cut mid-sentence. */}
           <section className="rounded-[22px] p-5" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-sm)" }}>
-            <h3 className="text-[15px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: INK }}>{t("care.packet.title")}</h3>
-            <p className="text-[12px] font-semibold mt-1.5 leading-relaxed" style={{ color: MUTED }}>{t("care.lead", { name: firstName })}</p>
+            <h3 className="t-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: INK }}>{t("care.packet.title")}</h3>
+            <p className="t-xs font-semibold mt-1.5 leading-relaxed" style={{ color: MUTED }}>{t("care.lead", { name: firstName })}</p>
 
             <div className="flex flex-col gap-2.5 mt-4">
               {packet.sections.map((section) => (
@@ -503,7 +521,7 @@ export default function AskSpecialist() {
                           >
                             <span
                               className="w-5 h-5 rounded-md flex items-center justify-center"
-                              style={on ? { background: GREEN, color: "var(--arbor-paper-elevated)" } : { background: "var(--arbor-paper-sunk)", border: `1px solid ${RULE}` }}
+                              style={on ? { background: "var(--arbor-subtab-active)", color: "var(--arbor-subtab-on-ink)" } : { background: "var(--arbor-paper-sunk)", border: `1px solid ${RULE}` }}
                             >
                               {on && <Icon name="check" size={14} weight={600} />}
                             </span>
@@ -526,7 +544,7 @@ export default function AskSpecialist() {
                 audience chosen in step 1. A blocked build shows the reason
                 here instead of any text (fail closed). */}
             <details className="mt-3.5 rounded-[13px] px-3.5 py-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }}>
-              <summary className="cursor-pointer list-none min-h-[44px] flex items-center gap-2 text-[12.5px] font-extrabold" style={{ color: GREEN }}>
+              <summary className="cursor-pointer list-none min-h-[44px] flex items-center gap-2 t-sm font-extrabold" style={{ color: INK }}>
                 <Icon name="visibility" size={16} /> {t("elev.carehonesty.consult.preview.toggle")}
               </summary>
               <p className="text-xs leading-relaxed" style={{ color: MUTED }}>{t("elev.carehonesty.consult.preview.hint")}</p>
@@ -534,13 +552,13 @@ export default function AskSpecialist() {
                 <pre
                   dir="auto"
                   data-testid="consult-export-preview"
-                  className="whitespace-pre-wrap break-words text-[12px] leading-relaxed mt-2 mb-2 font-sans"
+                  className="whitespace-pre-wrap break-words t-xs leading-relaxed mt-2 mb-2 font-sans"
                   style={{ color: INK, fontFamily: "inherit" }}
                 >
                   {exportText}
                 </pre>
               ) : (
-                <p role="alert" className="text-[12px] font-bold leading-relaxed mt-2 mb-2" style={{ color: "var(--arbor-pink-ink)" }}>
+                <p role="alert" className="t-xs font-bold leading-relaxed mt-2 mb-2" style={{ color: "var(--arbor-pink-ink)" }}>
                   {exportBuild.error}
                 </p>
               )}
@@ -561,7 +579,7 @@ export default function AskSpecialist() {
               </span>
             )}
             <div className="flex flex-wrap items-center gap-3">
-              <span className="text-[13px] font-bold me-auto" style={{ color: MUTED }} aria-live="polite">
+              <span className="t-sm font-bold me-auto" style={{ color: MUTED }} aria-live="polite">
                 {t("consult.selected", { n: includedCount })}
               </span>
               <label className="flex items-start gap-2 min-w-[220px] min-h-[44px] text-xs font-bold leading-snug" style={{ color: MUTED }}>
@@ -594,7 +612,7 @@ export default function AskSpecialist() {
                 disabled={noneSelected}
                 data-testid="consult-send-trusted"
                 className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-4 py-3 transition disabled:opacity-50 min-h-[44px]"
-                style={{ background: "var(--arbor-paper-sunk)", color: GREEN, border: `1px solid ${RULE}` }}>
+                style={{ background: "var(--arbor-paper-sunk)", color: INK, border: `1px solid ${RULE}` }}>
                 <Icon name="mail" size={17} />
                 {t("elev.learnCare.trusted.send")}
               </button>

@@ -1,8 +1,5 @@
-import React, { useRef } from "react";
-import { useReducedMotion } from "motion/react";
-import { Stethoscope, ListChecks } from "lucide-react";
+import React from "react";
 import AskSpecialist from "../sections/AskSpecialist";
-import { HubHero } from "../ui/HubHero";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 
@@ -11,67 +8,40 @@ import { useLanguage } from "../../context/LanguageContext";
    handoff door are collapsed into a single linear flow (b3): a parent-redacted
    packet from the child's record with one action bar — Copy / Download /
    Export as PDF / Send to a professional. The flow itself lives in
-   AskSpecialist (the warm-handoff spine); reports and the directory fold in as
-   actions, not separate doors. Shell already lazy-loads + Suspense-wraps this
-   tab, so it renders the spine directly with no HubTabs sub-nav.
+   AskSpecialist (the warm-handoff spine). Shell already lazy-loads +
+   Suspense-wraps this tab.
 
-   E2: the hub opens with the shared HubHero (eyebrow · job sentence about the
-   redaction-controlled summary · ONE CTA that brings the live summary into
-   view). No stat trio here on purpose: context holds no share/pro/report
-   history, and we show fewer pills rather than invent counts (firewall). */
+   W2-CAREPRO critic round 1 (B-CAREPRO-36, hero part): the HubHero is CUT. Its
+   solid CTA "Review the summary" only scrolled ~60 px to the audience row that
+   was already visible under it, and it spent ~220 px above step 1. The page
+   now opens on the job: H1 "Prepare for a visit", "for {name}" as a muted
+   subline, and step 1 directly under it. */
 
 export default function ConsultTab() {
   const { childProfile, activeTab } = useArbor();
   const { t } = useLanguage();
-  const reduceMotion = useReducedMotion();
   const firstName = (childProfile.name || "").split(" ")[0];
 
-  // The packet builds itself live from the child record below — the hero CTA's
-  // honest job is to bring that summary into view (motion-gated scroll).
-  const flowRef = useRef<HTMLDivElement>(null);
+  /* Item 11 (IA-02): the surface contract reaches the DOM. TWO routes render
+     this one leaf — #/consult (build-share-packet) and #/handoff
+     (copy-handoff-brief) — so the stamp's VALUE follows the route. W2-CAREPRO
+     r1: the stamp no longer sits on the ~2000 px flow wrapper (its "y" was
+     the wrapper top); AskSpecialist puts it on the selected audience chip —
+     the move's first act, one 44 px button in step 1. */
+  const primaryMoveStamp = { "data-primary-move": activeTab === "handoff" ? "copy-handoff-brief" : "build-share-packet" };
 
   return (
     <div>
-      <HubHero
-        compact
-        zeroLine={t("elev.growthTruth.hero.empty")}
-        tone="sky"
-        icon={Stethoscope}
-        eyebrow={t("elev.hero.care.eyebrow")}
-        title={t("elev.hero.care.title", { name: firstName })}
-        subtitle={t("elev.wave2Knowledge.care.sub")}
-        cta={{
-          label: t("elev.hero.care.cta"),
-          icon: <ListChecks aria-hidden="true" size={16} strokeWidth={2.4} />,
-          // LC-28 / OBJ-CARE-02: the CTA used to scroll to the TOP of the flow,
-          // which at 390 still left the packet at ~1,320 px and the day-0 empty
-          // state at ~1,480. It now targets the export bar's audience row — the
-          // required first step — and moves focus there, so the packet and its
-          // one decision land together. Falls back to the flow when the row is
-          // not mounted (day-0 renders the empty state instead of the bar).
-          onClick: () => {
-            const target =
-              (document.getElementById("consult-audience-row") as HTMLElement | null) ?? flowRef.current;
-            target?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
-            target?.focus?.({ preventScroll: true });
-          },
-          testId: "care-hero-cta",
-        }}
-        testId="care-hub-hero"
-      />
-      {/* Item 11 (IA-02): the surface contract reaches the DOM. TWO routes
-          render this one leaf — #/consult (build-share-packet) and #/handoff
-          (copy-handoff-brief) — and both moves are performed by the same
-          control, the packet's action bar inside AskSpecialist. So the stamp
-          is one attribute whose VALUE follows the route, not two attributes:
-          the leaf declares exactly one primary move whichever door was used. */}
-      <div
-        ref={flowRef}
-        data-module="consult-packet"
-        data-primary-move={activeTab === "handoff" ? "copy-handoff-brief" : "build-share-packet"}
-        style={{ scrollMarginBlockStart: "0.75rem" }}
-      >
-        <AskSpecialist />
+      <header className="mb-5">
+        <h1 data-testid="consult-h1" className="t-xl font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)", textWrap: "balance" } as React.CSSProperties}>
+          {t("elev.consult.h1")}
+        </h1>
+        {firstName && (
+          <p className="t-sm mt-1" style={{ color: "var(--arbor-muted)" }}>{t("elev.consult.forName", { name: firstName })}</p>
+        )}
+      </header>
+      <div data-module="consult-packet">
+        <AskSpecialist primaryMoveStamp={primaryMoveStamp} />
       </div>
     </div>
   );

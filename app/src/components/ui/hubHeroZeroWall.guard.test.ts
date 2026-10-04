@@ -42,9 +42,11 @@ const mounts=listTsx(SRC).flatMap(file=>scan(fs.readFileSync(file,"utf8"),path.r
 const fixture=(jsx:string)=>{const result=scan("const element = ("+jsx+");");expect(result).toHaveLength(1);return result[0];};
 describe("RUN-08 — no statistical hub mounts an untranslated zero wall",()=>{
  it("finds four remaining mounts plus both real custom-header destinations",()=>{
-  expect(mounts.length).toBeGreaterThanOrEqual(4);
+  expect(mounts.length).toBeGreaterThanOrEqual(3);
   const files=new Set(mounts.map(m=>m.file));
-  for(const file of ["DevelopmentTab","BehaviorsTab","RoutinesTab","ConsultTab"])expect(files.has("components/tabs/"+file+".tsx"),file).toBe(true);
+  for(const file of ["DevelopmentTab","BehaviorsTab","RoutinesTab"])expect(files.has("components/tabs/"+file+".tsx"),file).toBe(true);
+  // W2-CAREPRO r1 (B-CAREPRO-36 hero part): Consult's hero is CUT — the H1 is the job.
+  expect(files.has("components/tabs/ConsultTab.tsx"),"ConsultTab").toBe(false);
   const profile=fs.readFileSync(path.join(SRC,"components/sections/ChildProfile.tsx"),"utf8");
   const academy=fs.readFileSync(path.join(SRC,"components/sections/Masterclasses.tsx"),"utf8");
   expect(profile).toContain('data-testid="profile-hub-hero"');expect(profile).toContain('profiles.length === 1');
