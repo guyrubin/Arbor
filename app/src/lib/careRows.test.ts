@@ -103,13 +103,18 @@ describe("LC-28 / OBJ-CARE-02 · the packet, not the hero", () => {
     expect("<HubHero compact zeroLine={t(\"x\")} />").toContain("<HubHero");
   });
 
-  it("W2-CAREPRO r1: the stamp lands on the SELECTED audience chip, never the flow wrapper", () => {
+  it("W2-CAREPRO r2: the stamp lands on a REAL act (Build the summary / Open the School Brief), never a chip or the flow wrapper", () => {
     const stampLines = CONSULT_TAB.split("\n").filter((l) => /\bdata-primary-move\b/.test(l) && !/^\s*(\/\/|\*|\/\*)/.test(l));
     expect(stampLines).toHaveLength(1);
     expect(stampLines[0]).toContain("const primaryMoveStamp = {");
-    expect(CONSULT_TAB).toContain("<AskSpecialist primaryMoveStamp={primaryMoveStamp} />");
+    expect(CONSULT_TAB).toContain("primaryMoveStamp={primaryMoveStamp}");
     expect(CONSULT_TAB).not.toMatch(/data-module="consult-packet"[^>]*data-primary-move/);
-    expect(CONSULT).toContain("{...(on ? primaryMoveStamp : undefined)}");
+    // r1's chip stamp is gone (its click was a no-op on the selected chip)
+    expect(CONSULT).not.toContain("{...(on ? primaryMoveStamp : undefined)}");
+    // the build button carries it and acts (scrolls + focuses step 3)
+    expect(CONSULT).toMatch(/data-testid="consult-build"\s+onClick=\{buildSummary\}\s+\{\.\.\.primaryMoveStamp\}/);
+    expect(CONSULT).toMatch(/const buildSummary = \(\) => \{[\s\S]*?scrollIntoView[\s\S]*?focus/);
+    expect(CONSULT).toMatch(/data-testid="consult-teacher-open"\s+\{\.\.\.primaryMoveStamp\}/);
   });
 
   it("the audience row is focusable and scroll-anchored", () => {

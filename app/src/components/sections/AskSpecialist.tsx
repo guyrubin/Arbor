@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { fmtDay } from "../../lib/formatDate";
 import { motion, useReducedMotion } from "motion/react";
 import Icon from "../ui/Icon";
 import { useArbor, type ConsultPrefill } from "../../context/ArborContext";
@@ -23,6 +24,7 @@ import { trackShareInitiated, trackShareCompleted } from "../../lib/loopEvents";
 import { getLastExportedAt, recordExport } from "../../consult/exportHistory";
 import { InsetRow } from "../ui/kit";
 import { useConsultPdf } from "./Reports";
+import { reportsLeadCounts } from "../../lib/recordCounts";
 import { handTeacherNote } from "../../schoolBrief/teacherHandoff";
 import { homePracticeWorlds, openHomePracticeWorld } from "../../consult/homePractice";
 import { useKidMode } from "../kidmode/KidModeContext";
@@ -55,6 +57,9 @@ const MUTED = "var(--arbor-muted)";
 const GREEN = "var(--arbor-green-ink)";
 const GREEN_SOFT = "var(--arbor-green-soft)";
 const RULE = "var(--arbor-rule)";
+/** W2-CAREPRO r2: with no prior share to this audience, "since" = 30 days
+ *  (the packet's own patterns window). */
+const SINCE_FALLBACK_MS = 30 * 86_400_000;
 
 /** Device-local memory of the parent's last audience choice (no child data). */
 const AUDIENCE_STORAGE_KEY = "arbor.consultExportAudience";
@@ -90,7 +95,12 @@ type ExportBuild = { text: string; error: null } | { text: null; error: string }
 
 /** W2-CAREPRO r1: ConsultTab hands its route stamp here; it lands on the
  *  selected audience chip (one 44 px button in step 1), never on a wrapper. */
-export default function AskSpecialist({ primaryMoveStamp }: { primaryMoveStamp?: Record<string, string> } = {}) {
+export default function AskSpecialist({ primaryMoveStamp, anchorAudience }: {
+  primaryMoveStamp?: Record<string, string>;
+  /** B-CAREPRO-NEW-2a: the audience of a visit due within 14 days
+   *  (consultAudienceForProfession) — applied once, never persisted. */
+  anchorAudience?: ExportAudience;
+} = {}) {
   const { childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems, setActiveTab, pendingConsultPrefill, consumeConsultPrefill } = useArbor();
   const { toast } = useToast();
   const { t, uiLang } = useLanguage();
@@ -101,7 +111,7 @@ export default function AskSpecialist({ primaryMoveStamp }: { primaryMoveStamp?:
   const [reviewed, setReviewed] = useState(false);
 
   // Step 1: the audience (= the preset); remembered per device.
-  const [audience, setAudienceState] = useState<ExportAudience>(readStoredAudience);
+  const [audience, setAudienceState] = useState<ExportAudience>(() => anchorAudience ?? readStoredAudience());
   const setAudience = (a: ExportAudience) => {
     // Consent applies to the exact outgoing audience. Clear it in this click
     // transaction, rather than waiting for the effect below, so an immediate
@@ -195,6 +205,33 @@ export default function AskSpecialist({ primaryMoveStamp }: { primaryMoveStamp?:
 
   // W2-CAREPRO r1: the since-last-share counts, lifted to the head of step 2.
   const sinceSection = packet.sections.find((sec) => sec.id === "since-last-visit");
+  // W2-CAREPRO r2: step 2 opens on record content on a FIRST visit too — a
+  // numerator-only sentence from the record (never the x-of-y development
+  // lines): "{moments} · {milestones} since {date}".
+  const nowMs = Date.now();
+  const sinceIso = getLastExportedAt(childProfile.id, audience) ?? new Date(nowMs - SINCE_FALLBACK_MS).toISOString();
+  const sinceCounts = reportsLeadCounts({ logs: behaviorLogs ?? [], milestones: milestones ?? [], sinceIso, nowMs });
+  const sinceSentence = t("elev.carehonesty.consult.since.counts", {
+    moments: t(sinceCounts.moments === 1 ? "elev.reports.line.momentsLogged.one" : "elev.reports.line.momentsLogged.other", { n: sinceCounts.moments }),
+    milestones: t(sinceCounts.milestones === 1 ? "elev.reports.lead.milestones.one" : "elev.reports.lead.milestones.other", { n: sinceCounts.milestones }),
+    date: fmtDay(sinceIso, uiLang),
+  });
+  // B-CAREPRO-NEW-2b: the parent's most recent words since that anchor — shown
+  // to the parent only; it reaches the packet ONLY if they start their note
+  // from it (the reason line, the existing redaction/preview/scan path).
+  const sinceMoment = useMemo(() => {
+    const since = new Date(sinceIso).getTime();
+    const withWords = (behaviorLogs ?? [])
+      .filter((l) => (l.notes ?? "").trim() && new Date(l.timestamp).getTime() > since)
+      .sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1));
+    return withWords[0] ? { quote: (withWords[0].notes ?? "").trim(), at: withWords[0].timestamp } : null;
+  }, [behaviorLogs, sinceIso]);
+  // W2-CAREPRO r2: the stamp's act — build the summary and land on step 3.
+  const buildSummary = () => {
+    const target = document.getElementById(isEmpty ? "consult-empty" : "consult-review-export");
+    target?.scrollIntoView?.({ block: "start", behavior: reduceMotion ? "auto" : "smooth" });
+    (target?.querySelector("h2") as HTMLElement | null)?.focus?.();
+  };
   // LC-06: "about" is always emitted, so the honest emptiness test is
   // "nothing beyond about" — the authored empty state can finally mount.
   const isEmpty = isConsultPacketEmpty(packet);
@@ -324,7 +361,6 @@ export default function AskSpecialist({ primaryMoveStamp }: { primaryMoveStamp?:
                 role="radio"
                 aria-checked={on}
                 onClick={() => setAudience(a)}
-                {...(on ? primaryMoveStamp : undefined)}
                 className="inline-flex items-center gap-1.5 t-sm font-bold rounded-xl px-3.5 py-2 min-h-[44px] transition"
                 // W2-CAREPRO r1: the selected chip is the navy sub-tab pill —
                 // green-ink is a jewel text ink, never a solid fill.
@@ -341,6 +377,23 @@ export default function AskSpecialist({ primaryMoveStamp }: { primaryMoveStamp?:
         <p className="text-xs leading-relaxed" style={{ color: MUTED }}>
           {t(`elev.carehonesty.consult.audience.hint.${audience}`)}
         </p>
+        {/* W2-CAREPRO r2: the route's ONE stamp sits on a real act — build the
+            summary for the chosen audience and land on step 3 (the verbatim
+            preview, the reviewed gate, Copy · PDF · Send). It was on the
+            already-selected chip, whose click was a no-op. */}
+        {!isTeacher && (
+          <button
+            type="button"
+            data-testid="consult-build"
+            onClick={buildSummary}
+            {...primaryMoveStamp}
+            className="self-start inline-flex items-center gap-2 t-sm font-extrabold rounded-xl px-4 min-h-[44px] mt-1 transition"
+            style={{ background: "var(--arbor-paper-elevated)", color: INK, border: "1px solid var(--arbor-rule-strong)" }}
+          >
+            {t("elev.carehonesty.consult.build")}
+            <Icon name="arrow_downward" size={16} />
+          </button>
+        )}
       </section>
 
       {isTeacher ? (
@@ -360,6 +413,7 @@ export default function AskSpecialist({ primaryMoveStamp }: { primaryMoveStamp?:
           <button
             type="button"
             data-testid="consult-teacher-open"
+            {...primaryMoveStamp}
             onClick={() => { handTeacherNote(visionNote); setActiveTab("school-brief"); }}
             className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-4 py-3 mt-4 min-h-[44px]"
             style={{ background: "var(--arbor-gradient-primary)", color: "var(--arbor-paper-elevated)", boxShadow: "var(--arbor-clay-glow)" }}
@@ -368,18 +422,48 @@ export default function AskSpecialist({ primaryMoveStamp }: { primaryMoveStamp?:
           </button>
         </section>
       ) : (
-        <>
+        /* W2-CAREPRO r2: at lg a two-pane fold — the builder column (steps 2,
+           the packet, the contract) and a sticky step-3 column carrying the
+           verbs, so the one gradient (Copy) is on screen at 1280x800. */
+        <div data-testid="consult-panes" className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-6 lg:items-start">
+        <div className="flex flex-col gap-5 min-w-0">
       {/* Step 2 · What changed — purpose first; the same builder carries it into every clinician packet. */}
       <section data-testid="consult-reason-section" className="border-t pt-5" style={{ borderColor: RULE }}>
         {stepHeading(2, t("elev.carehonesty.consult.step.changed"))}
         {/* W2-CAREPRO r1: "what changed" is answered first — B-CAREPRO-17's
             "Since you last shared with {audience}" counts head step 2 (counts
-            only; the same section rides the packet below). */}
-        {sinceSection && (
-          <div data-testid="consult-since-head" className="mt-3 rounded-[13px] p-3.5" style={{ background: "var(--arbor-paper-sunk)", border: `1px solid ${RULE}` }}>
-            <p className="t-sm font-bold" dir="auto" style={{ color: INK }}>{sectionTitle(sinceSection, uiLang)}</p>
-            <p className="t-xs leading-relaxed mt-1" dir="auto" style={{ color: MUTED }}>{sinceSection.items.map((it) => itemText(it, uiLang)).join(" · ")}</p>
-          </div>
+            only; the same section rides the packet below). r2: on a first
+            visit the head is a numerator-only sentence from the record. */}
+        <div data-testid="consult-since-head" className="mt-3 rounded-[13px] p-3.5" style={{ background: "var(--arbor-paper-sunk)", border: `1px solid ${RULE}` }}>
+          {sinceSection ? (
+            <>
+              <p className="t-sm font-bold" dir="auto" style={{ color: INK }}>{sectionTitle(sinceSection, uiLang)}</p>
+              <p className="t-xs leading-relaxed mt-1" dir="auto" style={{ color: MUTED }}>{sinceSection.items.map((it) => itemText(it, uiLang)).join(" · ")}</p>
+            </>
+          ) : (
+            <p data-testid="consult-since-counts" className="t-sm font-bold" style={{ color: INK }}>{sinceSentence}</p>
+          )}
+        </div>
+        {/* B-CAREPRO-NEW-2b: the moment that says the most — the parent's own
+            latest words since the anchor (the one warm accent). Nothing renders
+            when there is none. */}
+        {sinceMoment && (
+          <figure data-testid="consult-since-moment" className="mt-3 p-5" style={{ background: "var(--arbor-peach-soft)", borderRadius: "var(--r-lg)", border: `1px solid ${RULE}` }}>
+            <figcaption className="t-xs" style={{ color: "var(--arbor-peach-ink)" }}>{t("elev.carehonesty.consult.sinceMoment.label")}</figcaption>
+            <blockquote dir="auto" className="t-lg mt-1.5" style={{ color: INK, fontFamily: uiLang === "he" ? "var(--font-display)" : "var(--font-editorial)" }}>“{sinceMoment.quote}”</blockquote>
+            <p className="t-xs mt-1.5" style={{ color: "var(--arbor-peach-ink)" }}><bdi dir="ltr">{fmtDay(sinceMoment.at, uiLang)}</bdi> · {t("elev.carehonesty.consult.sinceMoment.logged")}</p>
+            {reason.trim() === "" && (
+              <button
+                type="button"
+                data-testid="consult-since-moment-seed"
+                onClick={() => setReason(sinceMoment.quote)}
+                className="inline-flex items-center gap-1.5 t-sm font-bold min-h-[44px] mt-1"
+                style={{ color: INK }}
+              >
+                <Icon name="edit_note" size={16} /> {t("elev.carehonesty.consult.sinceMoment.seed")}
+              </button>
+            )}
+          </figure>
         )}
         <label htmlFor="consult-reason" className="inline-flex items-center gap-2 t-sm font-bold mt-3" style={{ color: INK }}>
           <Icon name="help" size={16} /> {t("elev.learnCare.reason.label")}
@@ -411,9 +495,12 @@ export default function AskSpecialist({ primaryMoveStamp }: { primaryMoveStamp?:
         {homeWorlds.length > 0 && (
           /* W2-CAREPRO r1: demoted to a closed disclosure — the games panel no
              longer interrupts "What changed" between the reason and the packet. */
-          <details data-testid="consult-home-practice" className="rounded-[13px] p-3.5 mt-4" style={{ background: "var(--arbor-paper-sunk)", border: `1px solid ${RULE}` }}>
-            <summary className="inline-flex items-center gap-2 t-sm font-extrabold cursor-pointer min-h-[44px]" style={{ color: INK }}>
-              <Icon name="home" size={16} style={{ color: MUTED }} /> {t("elev.carehonesty.consult.home.title")}
+          /* W2-CAREPRO r2: the contract-disclosure pattern — list-none + a
+             trailing chevron that turns on [open]; a hairline row, not a slab. */
+          <details data-testid="consult-home-practice" className="group mt-4 border-t border-b" style={{ borderColor: RULE }}>
+            <summary className="list-none flex items-center gap-2 t-sm font-bold cursor-pointer min-h-[44px] [&::-webkit-details-marker]:hidden" style={{ color: INK }}>
+              <Icon name="home" size={16} style={{ color: MUTED }} /> <span className="flex-1">{t("elev.carehonesty.consult.home.title")}</span>
+              <Icon name="expand_more" size={18} className="transition-transform group-open:rotate-180" style={{ color: MUTED }} />
             </summary>
             <p className="text-xs leading-relaxed mt-1 max-w-[65ch]" style={{ color: MUTED }}>{t("elev.carehonesty.consult.home.hint")}</p>
             <div className="flex flex-wrap gap-2 mt-2.5">
@@ -473,7 +560,7 @@ export default function AskSpecialist({ primaryMoveStamp }: { primaryMoveStamp?:
       {isEmpty ? (
         /* Empty state — new profile with nothing to summarise yet. */
         <>
-        <div className="rounded-2xl p-8 text-center" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
+        <div id="consult-empty" className="rounded-2xl p-8 text-center" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
           <span className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mx-auto" style={{ background: GREEN_SOFT, color: GREEN }}>
             <Icon name="edit_note" size={26} />
           </span>
@@ -567,12 +654,18 @@ export default function AskSpecialist({ primaryMoveStamp }: { primaryMoveStamp?:
 
       {/* The complete data contract remains one labeled disclosure, after the packet and before export. */}
           {packetContract}
-
-          {/* Step 3 · What leaves — the review gate, then one set of verbs for
-              the chosen audience. Follows the packet in normal flow, without
-              covering unread text. */}
-          <div data-testid="consult-review-export" className="border-t pt-5 flex flex-col gap-4" style={{ borderColor: RULE }}>
-            {stepHeading(3, t("elev.carehonesty.consult.step.leaves"))}
+          </>
+      )}
+        </div>
+          {!isEmpty && (
+          /* Step 3 · What leaves — the review gate, then one set of verbs for
+             the chosen audience. Below lg it follows the packet in normal flow;
+             at lg it is the sticky end column. */
+          <div id="consult-review-export" data-testid="consult-review-export" className="border-t pt-5 flex flex-col gap-4 lg:sticky lg:top-4 lg:border-t-0 lg:pt-0 lg:rounded-[22px] lg:p-5" style={{ borderColor: RULE }}>
+            <h2 tabIndex={-1} className="flex items-center gap-2 t-lg font-extrabold focus:outline-none" style={{ fontFamily: "var(--font-display)", color: INK }}>
+              <span aria-hidden="true" className="inline-flex items-center justify-center w-7 h-7 rounded-full t-sm font-extrabold" style={{ background: "var(--arbor-paper-deep)", color: INK }}>3</span>
+              {t("elev.carehonesty.consult.step.leaves")}
+            </h2>
             {exportText == null && (
               <span role="alert" className="text-xs font-bold leading-relaxed" style={{ color: "var(--arbor-pink-ink)" }}>
                 {exportBuild.error}
@@ -618,9 +711,8 @@ export default function AskSpecialist({ primaryMoveStamp }: { primaryMoveStamp?:
               </button>
             </div>
           </div>
-        </>
-      )}
-        </>
+          )}
+        </div>
       )}
     </motion.div>
   );

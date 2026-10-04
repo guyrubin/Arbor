@@ -21,6 +21,11 @@ export const en: Record<string, string> = {
   "elev.carehonesty.consult.audience.hint.self": "Everything you selected, for your own files.",
   // B-CAREPRO-28: the three steps of preparing for a visit.
   "elev.carehonesty.consult.step.changed": "What changed",
+  "elev.carehonesty.consult.since.counts": "{moments} · {milestones} since {date}",
+  "elev.carehonesty.consult.build": "Build the one-page summary",
+  "elev.carehonesty.consult.sinceMoment.label": "Since you last shared, the moment that says the most:",
+  "elev.carehonesty.consult.sinceMoment.logged": "you logged this",
+  "elev.carehonesty.consult.sinceMoment.seed": "Start my note from this",
   "elev.carehonesty.consult.step.leaves": "What leaves",
   // B-CAREPRO-28: the teacher branch hands over to the School Brief (one teacher document).
   "elev.carehonesty.consult.teacher.title": "{name}'s teacher gets the School Brief",
@@ -243,6 +248,11 @@ export const he: Record<string, string> = {
   "elev.carehonesty.consult.audience.hint.teacher": "לגננת או למורה יוצא מכתב לגן: הקשר לכיתה בלבד, וכל שורה עוברת דרככם.",
   "elev.carehonesty.consult.audience.hint.self": "כל מה שבחרתם, לתיקים שלכם.",
   "elev.carehonesty.consult.step.changed": "מה השתנה",
+  "elev.carehonesty.consult.since.counts": "{moments} · {milestones} מאז {date}",
+  "elev.carehonesty.consult.build": "להכין את הסיכום בעמוד אחד",
+  "elev.carehonesty.consult.sinceMoment.label": "מאז השיתוף האחרון, הרגע שאומר הכי הרבה:",
+  "elev.carehonesty.consult.sinceMoment.logged": "תיעדתם את זה",
+  "elev.carehonesty.consult.sinceMoment.seed": "להתחיל את הפתק שלי מזה",
   "elev.carehonesty.consult.step.leaves": "מה יוצא",
   "elev.carehonesty.consult.teacher.title": "לגננת של {name} יוצא מכתב לגן",
   "elev.carehonesty.consult.teacher.body": "עמוד אחד במילים של כיתה: מה עוזר ומה כדאי לנסות. אתם עוברים על כל שורה, ושום דבר לא מודפס לפני שאישרתם.",

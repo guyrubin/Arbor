@@ -10,37 +10,17 @@ import type { ExportAudience, PresetPrintSection } from "../../consult/packet";
 import { useHeroAvatar } from "../ui/HeroAvatar";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import type { LangObservation } from "../../growth/vocabAgg";
-import type { BehaviorLog, Milestone } from "../../types";
+import type { BehaviorLog } from "../../types";
 import { getLastExportedAt, recordExport } from "../../consult/exportHistory";
 import { fmtDay } from "../../lib/formatDate";
 import { requestOpenSettings } from "../layout/settingsBus";
+import { reportsLeadCounts } from "../../lib/recordCounts";
+export { reportsLeadCounts };
 
 /** W2-CAREPRO r2 / B-CAREPRO-NEW-2e — the device-local export-history slot the
  *  lead "Save this week's record" writes (same store Consult's "since" reads). */
 export const REPORTS_WEEKLY_EXPORT_KEY = "reports-weekly";
 const WEEK_MS = 7 * 86_400_000;
-
-/** B-CAREPRO-NEW-2e — the lead line's counts, numerators only: moments logged
- *  and milestones the parent marked since the last save (else this week). No
- *  denominator, no delta, no direction word. */
-export function reportsLeadCounts(input: {
-  logs: readonly Pick<BehaviorLog, "timestamp">[];
-  milestones: readonly Pick<Milestone, "checked" | "observationUpdatedAt">[];
-  sinceIso: string | null;
-  nowMs: number;
-}): { moments: number; milestones: number; sinceMs: number } {
-  const since = input.sinceIso ? new Date(input.sinceIso).getTime() : NaN;
-  const sinceMs = Number.isFinite(since) ? since : input.nowMs - WEEK_MS;
-  const after = (iso?: string) => {
-    const t = iso ? new Date(iso).getTime() : NaN;
-    return Number.isFinite(t) && t > sinceMs && t <= input.nowMs;
-  };
-  return {
-    moments: input.logs.filter((l) => after(l.timestamp)).length,
-    milestones: input.milestones.filter((m) => m.checked && after(m.observationUpdatedAt)).length,
-    sinceMs,
-  };
-}
 
 /** B-CAREPRO-NEW-2f — the newest moment this week that carries the parent's
  *  own words (notes), else null. Read from the record already in memory. */

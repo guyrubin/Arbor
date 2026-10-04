@@ -418,3 +418,29 @@ export function makeFollowUp(apptId: string, note: string, nowMs: number): Appoi
   if (!text) return null;
   return { id: `f${nowMs}`, apptId, note: text, createdAt: new Date(nowMs).toISOString() };
 }
+
+/** B-CAREPRO-NEW-2a — the visit Consult anchors on: the soonest booking whose
+ *  Prepare window is open (isPrepareDue: dated, upcoming, not done, <=14 days). */
+export function nextPrepareVisit(appts: readonly Appointment[], nowMs: number): Appointment | null {
+  return appts
+    .filter((a) => isPrepareDue(a, nowMs))
+    .sort((a, b) => (appointmentStartMs(a) ?? 0) - (appointmentStartMs(b) ?? 0))[0] ?? null;
+}
+
+/** B-CAREPRO-NEW-2a — after the visit date, the ONE open loop: the most recent
+ *  visit in the last 14 days that is not marked done and has no follow-up yet
+ *  ("What did they suggest?"). Older visits never nag. */
+export const VISIT_OUTCOME_WINDOW_MS = 14 * 86_400_000;
+export function visitAwaitingOutcome(
+  appts: readonly Appointment[],
+  followUps: readonly AppointmentFollowUp[],
+  nowMs: number,
+): Appointment | null {
+  return appts
+    .filter((a) => {
+      const start = appointmentStartMs(a);
+      return start != null && start < nowMs && nowMs - start <= VISIT_OUTCOME_WINDOW_MS
+        && appointmentStatus(a) !== "done" && !followUps.some((f) => f.apptId === a.id);
+    })
+    .sort((a, b) => (appointmentStartMs(b) ?? 0) - (appointmentStartMs(a) ?? 0))[0] ?? null;
+}
