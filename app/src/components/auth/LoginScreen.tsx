@@ -5,6 +5,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { api } from "../../lib/api";
 import { ArborMark as ArborMarkIcon } from "../ui/ArborMark";
+import { LegalLinks } from "../billing/LegalLinks";
 
 function ArborMark() {
   return <ArborMarkIcon size={56} />;
@@ -109,6 +110,8 @@ export default function LoginScreen() {
           <p className="text-[11px] font-bold" style={{ color: "var(--arbor-faint)" }}>{t("elev.auth.evidence")}</p>
         </motion.div>
 
+        {/* B-SHELL-15: the card and the legal links under it share one column. */}
+        <div className="w-full max-w-md mx-auto space-y-3 relative z-10">
         <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -205,7 +208,7 @@ export default function LoginScreen() {
               {t("auth.signIn")}
             </button>
             <div className="flex items-center justify-between">
-              <button type="button" onClick={handleReset} className="text-[11px] transition" style={{ color: "var(--arbor-muted)" }}>
+              <button type="button" data-testid="login-forgot" onClick={handleReset} className="inline-flex items-center min-h-11 text-[11px] transition" style={{ color: "var(--arbor-muted)" }}>
                 {t("auth.forgot")}
               </button>
               {resetMsg && <span className="text-[10px]" style={{ color: "var(--arbor-green-ink)" }}>{resetMsg}</span>}
@@ -220,7 +223,8 @@ export default function LoginScreen() {
               type="button"
               onClick={handleAccessRequest}
               disabled={busy !== null}
-              className="font-bold hover:underline disabled:opacity-60"
+              data-testid="login-request-access"
+              className="inline-flex items-center min-h-11 font-bold hover:underline disabled:opacity-60"
               style={{ color: "var(--arbor-green-ink)" }}
             >
               {busy === "access" ? t("auth.requestingAccess") : t("auth.requestAccess")}
@@ -230,6 +234,10 @@ export default function LoginScreen() {
           {accessMsg && <p aria-live="polite" style={{ color: "var(--arbor-green-ink)" }}>{accessMsg}</p>}
         </div>
       </motion.div>
+      {/* B-SHELL-15 / MOB-01: Privacy · Terms · Support before sign-in too —
+          the fourth LegalLinks mount (44 px rows). */}
+      <LegalLinks align="center" />
+      </div>
       </div>
     </div>
   );

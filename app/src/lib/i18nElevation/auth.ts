@@ -4,10 +4,15 @@
  * Truthful-claims rule: research-anchored only, never professional review. */
 
 export const en: Record<string, string> = {
-  "elev.auth.headline": "Your child — the hero of the story",
-  "elev.auth.p1": "Stories and comics starring your child",
-  "elev.auth.p2": "A calm next step for every hard moment",
-  "elev.auth.p3": "Memories and milestones, kept for years",
+  // B-SHELL-15: companion-first. The promises lead with what a parent needs
+  // on a hard day, then what Arbor keeps and notices, then the stories —
+  // each one a thing that ships (Hard moment now, approved memory + "What
+  // changed since you left", hero stories). Parent register; no child name
+  // exists before sign-in.
+  "elev.auth.headline": "A companion that knows your child",
+  "elev.auth.p1": "A calm next step in a hard moment",
+  "elev.auth.p2": "Remembers what you choose, and notices what changes",
+  "elev.auth.p3": "Stories starring your child",
   "elev.auth.evidence": "Research-anchored · CDC/AAP 2022",
 
   // ── Builder F · MOB-21 · the avatar step's CTA said "Continue", which
@@ -20,10 +25,10 @@ export const en: Record<string, string> = {
 };
 
 export const he: Record<string, string> = {
-  "elev.auth.headline": "הילד שלכם — הגיבור של הסיפור",
-  "elev.auth.p1": "סיפורים וקומיקס שהילד שלכם מככב בהם",
-  "elev.auth.p2": "צעד הבא רגוע לכל רגע קשה",
-  "elev.auth.p3": "זיכרונות ואבני דרך שנשמרים לאורך שנים",
+  "elev.auth.headline": "מלווה שמכיר את הילד שלכם",
+  "elev.auth.p1": "צעד הבא רגוע ברגע קשה",
+  "elev.auth.p2": "זוכר את מה שתבחרו, ושם לב למה שמשתנה",
+  "elev.auth.p3": "סיפורים שהילד שלכם מככב בהם",
   "elev.auth.evidence": "מבוסס מחקר · CDC/AAP 2022",
 
   // ── Builder F · MOB-21

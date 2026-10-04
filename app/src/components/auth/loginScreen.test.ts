@@ -16,6 +16,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { AUTH_ERROR_CODES, authErrorKey, en as shellEn, he as shellHe } from "../../lib/i18nElevation/storeShell";
+import { en as authEn, he as authHe } from "../../lib/i18nElevation/auth";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const login = readFileSync(path.join(here, "LoginScreen.tsx"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
@@ -68,5 +69,55 @@ describe("auth errors are keys, resolved through t()", () => {
       expect(shellEn[key]).not.toMatch(/@arbor\./);
       expect(shellHe[key]).not.toMatch(/@arbor\./);
     }
+  });
+});
+
+/**
+ * B-SHELL-15 — companion-first promise, real targets, legal links on Login.
+ */
+describe("B-SHELL-15 · the front door promises the companion first", () => {
+  const PROMISE_KEYS = ["elev.auth.p1", "elev.auth.p2", "elev.auth.p3"] as const;
+
+  it("the promise list renders the three keys in order", () => {
+    expect(login).toContain('(["elev.auth.p1", "elev.auth.p2", "elev.auth.p3"] as const)');
+    expect(login).toContain('t("elev.auth.headline")');
+  });
+
+  it("order: a calm next step in a hard moment · remembers + notices · stories (EN)", () => {
+    expect(authEn["elev.auth.headline"]).toMatch(/companion that knows your child/i);
+    expect(authEn["elev.auth.p1"]).toMatch(/hard moment/i);
+    expect(authEn["elev.auth.p2"]).toMatch(/remembers/i);
+    expect(authEn["elev.auth.p2"]).toMatch(/notices what changes/i);
+    expect(authEn["elev.auth.p3"]).toMatch(/stories/i);
+  });
+
+  it("same order in Hebrew, transcreated (Hebrew script, distinct from EN)", () => {
+    expect(authHe["elev.auth.headline"]).toContain("מלווה");
+    expect(authHe["elev.auth.p1"]).toContain("רגע קשה");
+    expect(authHe["elev.auth.p2"]).toContain("זוכר");
+    expect(authHe["elev.auth.p3"]).toContain("סיפורים");
+    for (const k of [...PROMISE_KEYS, "elev.auth.headline"]) {
+      expect(authHe[k]).toMatch(/[֐-׿]/);
+      expect(authHe[k]).not.toBe(authEn[k]);
+    }
+  });
+
+  it("negative control: the pre-change order (stories first) fails the p1 rule", () => {
+    expect("Stories and comics starring your child").not.toMatch(/hard moment/i);
+  });
+
+  it("Forgot and Request access are 44 px targets", () => {
+    for (const id of ["login-forgot", "login-request-access"]) {
+      const at = login.indexOf(`data-testid="${id}"`);
+      expect(at, id).toBeGreaterThan(-1);
+      const tag = login.slice(login.lastIndexOf("<button", at), login.indexOf(">", login.indexOf("className", at)));
+      expect(tag, id).toContain("min-h-11");
+    }
+  });
+
+  it("LegalLinks is mounted under the card", () => {
+    expect(login).toContain('import { LegalLinks } from "../billing/LegalLinks"');
+    const card = login.lastIndexOf("</motion.div>");
+    expect(login.indexOf("<LegalLinks", card)).toBeGreaterThan(card);
   });
 });

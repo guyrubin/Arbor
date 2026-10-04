@@ -65,8 +65,9 @@ describe("openLegalLink — native opens the in-app browser, web opens a noopene
   });
 });
 
-describe("the three mounts (structural)", () => {
-  const MOUNTS = ["components/billing/PaywallModal.tsx", "components/layout/SettingsModal.tsx", "components/auth/OnboardingFlow.tsx"];
+describe("the four mounts (structural)", () => {
+  // B-SHELL-15: Login is the fourth mount (before sign-in).
+  const MOUNTS = ["components/billing/PaywallModal.tsx", "components/layout/SettingsModal.tsx", "components/auth/OnboardingFlow.tsx", "components/auth/LoginScreen.tsx"];
 
   it.each(MOUNTS)("%s imports and mounts <LegalLinks", (file) => {
     const src = stripComments(read(file));
