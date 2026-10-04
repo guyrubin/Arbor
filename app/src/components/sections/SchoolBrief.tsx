@@ -409,7 +409,7 @@ export default function SchoolBrief() {
                   style={{ color: INK, background: "var(--arbor-paper-sunk)", border: `1px solid ${RULE}` }}
                 />
               ) : (
-                <p className="text-[14px] leading-relaxed" style={{ color: MUTED }}>{draft.overview}</p>
+                <p dir="auto" className="t-base leading-relaxed" style={{ color: MUTED }}>{draft.overview}</p>
               )}
             </Section>
 
@@ -494,7 +494,9 @@ function ListSection({ icon, title, items }: { icon: React.ReactNode; title: str
   return (
     <Section icon={icon} title={title}>
       <ul className="list-disc ps-5 space-y-1" style={{ color: MUTED }}>
-        {items.map((it, i) => <li key={i} className="text-[14px] leading-relaxed">{it}</li>)}
+        {/* W2-CAREPRO r1: each item is its own bidi paragraph — a Latin
+            strength in the RTL list kept its period on the wrong edge. */}
+        {items.map((it, i) => <li key={i} dir="auto" className="t-base leading-relaxed">{it}</li>)}
       </ul>
     </Section>
   );

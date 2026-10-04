@@ -9,7 +9,7 @@
  */
 
 import { ClinicalLanguageError, findClinicalDiagnosisTerm, findTeacherBlockedTerm } from "../lib/clinicalScan";
-import { translate, type UiLang } from "../lib/i18n";
+import { isolate, translate, type UiLang } from "../lib/i18n";
 import { DOMAIN_LABEL } from "../lib/screening";
 import { bandForAgeMonths, milestoneAgeWindow } from "../lib/milestoneData";
 import { ageLabel, ageLabelForMonths, ageMonthsFromProfile } from "../lib/childAge";
@@ -31,6 +31,9 @@ export interface PacketInputProfile {
   activeGoals?: { goalId: string; label: string }[];
   /** B-CAREPRO-33: when the parent last wrote/confirmed the quoted facts. */
   factsAsOf?: { schoolContext?: string };
+  /** W2-CAREPRO r1: picks the gendered Hebrew verb only ("boy" | "girl";
+   *  anything else reads neutral); never emitted as a field. */
+  gender?: string;
 }
 export interface PacketInputLog {
   behaviorType: string;
@@ -107,6 +110,24 @@ export type PacketVar =
 export interface PacketItem { id: string; text: string; textKey?: string; vars?: Record<string, PacketVar> }
 
 const KNOWN_LANGUAGE_NAMES = ["hebrew", "english", "arabic", "russian", "french"] as const;
+/** W2-CAREPRO r1: the proficiency labels onboarding appends ("Hebrew (Native)",
+ *  "English (Transition)") — keyed, so a Hebrew reader never gets them in English. */
+const KNOWN_LANGUAGE_LEVELS = ["native", "transition", "fluent", "learning", "basic"] as const;
+
+/** W2-CAREPRO r1: Hebrew's "and" is a prefix glued to the next word; before a
+ *  Latin word it takes a maqaf ("ו־English"), and every Latin part is its own
+ *  bidi isolate so a mixed list never reorders across the RTL line. */
+function joinList(parts: string[], lang: UiLang, join: "and" | "comma" | "semicolon"): string {
+  if (lang !== "he") return parts.join(LIST_SEPARATOR[lang][join]);
+  const latin = (p: string) => /^[\s\u2066-\u2069]*[A-Za-z]/.test(p);
+  return parts
+    .map((p) => isolate(p, "he"))
+    .reduce((acc, p, i, all) => {
+      if (i === 0) return p;
+      if (join !== "and") return acc + LIST_SEPARATOR.he[join] + p;
+      return acc + LIST_SEPARATOR.he.and + (latin(parts[i]) ? "־" : "") + all[i];
+    }, "");
+}
 
 /** List separators per language. Hebrew's "and" is the prefix ו־, joined to
  *  the next word ("עברית ואנגלית"). */
@@ -125,14 +146,20 @@ function resolveVar(v: PacketVar, lang: UiLang): string | number {
   }
   if ("list" in v) {
     const parts = v.list.map((x) => String(resolveVar(x, lang)));
-    return parts.join(LIST_SEPARATOR[lang][v.join]);
+    return joinList(parts, lang, v.join);
   }
   if ("ageMonths" in v) return ageLabelForMonths(v.ageMonths, (k, vars) => translate(lang, k, vars));
   if ("momentType" in v) return behaviorTypeLabel(v.momentType, (k) => translate(lang, k), "full");
   if ("monthOf" in v) return factMonthLabel(v.monthOf, lang);
   const raw = v.languageName.trim();
-  const known = (KNOWN_LANGUAGE_NAMES as readonly string[]).find((n) => raw.toLowerCase() === n);
-  return known ? translate(lang, `ob.lang.${known}`) : raw;
+  // "Hebrew (Native)" → name + proficiency, each through its own key.
+  const m = /^(.+?)\s*\(([^)]+)\)$/.exec(raw);
+  const namePart = (m ? m[1] : raw).trim();
+  const known = (KNOWN_LANGUAGE_NAMES as readonly string[]).find((n) => namePart.toLowerCase() === n);
+  const name = known ? translate(lang, `ob.lang.${known}`) : namePart;
+  if (!m) return name;
+  const level = (KNOWN_LANGUAGE_LEVELS as readonly string[]).find((n) => m[2].trim().toLowerCase() === n);
+  return `${name} (${level ? translate(lang, `elev.packet.langLevel.${level}`) : m[2].trim()})`;
 }
 
 function resolveVars(vars: Record<string, PacketVar> | undefined, lang: UiLang): Record<string, string | number> | undefined {
@@ -253,6 +280,8 @@ export interface RawPacketProfile {
   activeGoals?: { goalId: string; label: string }[];
   /** B-CAREPRO-33: `ChildProfile.factsAsOf` (only the setting date is quoted). */
   factsAsOf?: { schoolContext?: string };
+  /** W2-CAREPRO r1: `ChildProfile.gender` — read only to pick a gendered verb. */
+  gender?: string;
 }
 /** Raw behaviour-log fields (a `BehaviorLog`, or a Firestore document). */
 export interface RawPacketLog {
@@ -348,6 +377,7 @@ export function buildPacketInput(record: RawChildRecord, nowMs: number): BuildPa
       challenges: rawStrArr(p.challenges),
       activeGoals: rawGoals(p.activeGoals),
       factsAsOf: rawFactsAsOf(p.factsAsOf),
+      gender: p.gender === "boy" || p.gender === "girl" ? p.gender : undefined,
     },
     logs: record.logs.map((l) => ({
       behaviorType: rawStr(l.behaviorType),
@@ -460,7 +490,8 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
       ? {
           id: "about-basics",
           text: `${profile.name}, ${ageLabel(profile)}, speaks ${profile.languages.join(" and ")}.`,
-          textKey: "elev.packet.item.basicsLangs",
+          // W2-CAREPRO r1: the gendered verb comes from the profile, never "מדבר/ת".
+          textKey: profile.gender === "boy" || profile.gender === "girl" ? `elev.packet.item.basicsLangs.${profile.gender}` : "elev.packet.item.basicsLangs",
           vars: { ...basicsVars, languages: { list: profile.languages.map((l) => ({ languageName: l })), join: "and" } },
         }
       : { id: "about-basics", text: `${profile.name}, ${ageLabel(profile)}.`, textKey: "elev.packet.item.basics", vars: basicsVars },
