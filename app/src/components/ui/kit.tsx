@@ -39,9 +39,11 @@ export function IconBadge({ tone = "mint", children, size = 44 }: { tone?: Paste
 // `eyebrow` is accepted for backward compat but no longer rendered: an uppercase
 // section kicker above every page is the saturated AI tell, and the sidebar
 // already shows the active section. Title carries the page on its own.
-export function PageHeader({ title, subtitle, action }: { eyebrow?: string; title: string; subtitle?: string; action?: React.ReactNode }) {
+// `flush` (W2-CAREPRO r2): inside a `flex gap-*` column the parent's gap owns
+// the rhythm; mb-7 stacked on gap-6 left a ~52 px blank band under the lede.
+export function PageHeader({ title, subtitle, action, flush }: { eyebrow?: string; title: string; subtitle?: string; action?: React.ReactNode; flush?: boolean }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-7">
+    <div className={`flex flex-col sm:flex-row sm:items-end justify-between gap-3 ${flush ? "" : "mb-7"}`}>
       <div>
         <h1 className="text-2xl md:text-[2rem] leading-[1.1]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{title}</h1>
         {subtitle && <p className="text-sm mt-2 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>{subtitle}</p>}

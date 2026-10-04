@@ -21,7 +21,7 @@ vi.mock("../../context/LanguageContext", () => ({
   }),
 }));
 
-import { PendingGroupCard } from "./ChildMemory";
+import { PendingGroupCard, MemoryRow } from "./ChildMemory";
 import { groupPendingMemory } from "../../lib/memoryGroups";
 
 const fact = (i: number, text: string): MemoryReviewItem => ({

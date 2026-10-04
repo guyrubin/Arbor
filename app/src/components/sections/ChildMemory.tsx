@@ -63,7 +63,7 @@ export default function ChildMemory() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex flex-col gap-6 max-w-[920px]">
-      <PageHeader eyebrow={t("elev.childmem.eyebrow")} title={t("sec.mem.title")} subtitle={t("sec.mem.sub", { name: first })} />
+      <PageHeader flush title={t("sec.mem.title")} subtitle={t("sec.mem.sub", { name: first })} />
 
       {/* AI-11: this is the surface where a parent APPROVES or FORGETS what
           Arbor may remember about their child. Its titles, its empty state and
@@ -73,10 +73,10 @@ export default function ChildMemory() {
       {/* W2-CAREPRO r1: ONE quiet trust band, not three layers (the green
           TrustSafetyBar with clinical chips that say nothing about memory, plus
           the why-line) ahead of the decision the parent came to make. */}
-      <div className="flex flex-col gap-1">
-        <p data-testid="memory-trust-line" className="t-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.childmem.trustNote")}</p>
-        <ContentWhyLine why={t("elev.waveR.why.memory")} trustLink surface="child-memory" />
-      </div>
+      {/* W2-CAREPRO r2 (P0): the approval promise is said ONCE — the subtitle
+          (sec.mem.sub carries "only what you approve; nothing shared without
+          you"). What stays here is the inline door to how Arbor decides. */}
+      <ContentWhyLine why="" trustLink surface="child-memory" className="-mt-3" />
 
       {/* OWN-1: a failed ledger read renders an honest error + retry card (the
           TrustedSharing twin) INSTEAD of the pending/approved lists — an
@@ -116,7 +116,7 @@ export default function ChildMemory() {
           icon={<Icon name="verified_user" size={20} />}
           tone="lav"
         >
-          <div className="space-y-3">
+          <div data-testid="memory-groups" className="flex flex-col">
             {pendingGroups.map((g, gi) => (
               <PendingGroupCard
                 key={g.topic}
@@ -289,7 +289,10 @@ export function PendingGroupCard({ group, isMemoryUpdating, onDecide, onEdited, 
   const label = group.topic === "other" ? t("elev.childmem.group.other") : domainName(group.topic, t);
   const shown = open ? group.items : group.items.slice(0, 1);
   return (
-    <div data-testid="memory-group" data-topic={group.topic} className="rounded-2xl p-3 space-y-2" style={{ border: "1px solid var(--arbor-rule)", background: "var(--arbor-paper-elevated)" }}>
+    // W2-CAREPRO r2: a group is a hairline-divided section of the pending
+    // card — no border or fill of its own (three nested boxes cut the fact
+    // measure to ~230 px at 375).
+    <div data-testid="memory-group" data-topic={group.topic} className="py-3 border-t first:border-t-0 first:pt-0 last:pb-0 space-y-2" style={{ borderColor: "var(--arbor-rule)" }}>
       {(!hideLabel || n > 1) && (
       <p className="t-xs font-extrabold" style={{ color: "var(--arbor-lav-ink)" }}>
         {!hideLabel && label}
@@ -300,6 +303,7 @@ export function PendingGroupCard({ group, isMemoryUpdating, onDecide, onEdited, 
         <MemoryRow
           key={m.memoryId}
           m={m}
+          nested
           primary={lead && i === 0}
           busy={isMemoryUpdating === m.memoryId || dismissing}
           onApprove={() => onDecide(m.memoryId, "approved")}
@@ -372,8 +376,10 @@ export function PendingGroupCard({ group, isMemoryUpdating, onDecide, onEdited, 
  *  boxes. */
 const ROW_ACTION_CLS = "touch-target gap-1 px-2 font-bold";
 
-export function MemoryRow({ m, busy, onApprove, onReject, onForget, onEdited, primary }: {
+export function MemoryRow({ m, busy, onApprove, onReject, onForget, onEdited, primary, nested }: {
   m: MemoryReviewItem;
+  /** W2-CAREPRO r2: inside a pending group the row drops its own box. */
+  nested?: boolean;
   /** W2-CAREPRO r1: this row's Approve is the route's ONE primary move
    *  (data-primary-move="approve-memory-fact"): the page's single gradient,
    *  44 px, "Remember this"; Edit and Dismiss go quiet beside it. */
@@ -471,7 +477,7 @@ export function MemoryRow({ m, busy, onApprove, onReject, onForget, onEdited, pr
   };
 
   return (
-    <div className={`${cardCls} p-4 ${busy ? "opacity-60" : ""}`} data-testid="memory-row">
+    <div className={`${nested ? "" : `${cardCls} p-4`} ${busy ? "opacity-60" : ""}`.trim()} data-testid="memory-row">
       {editing ? (
         <div className="space-y-2.5">
           <label className="block text-[11px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>

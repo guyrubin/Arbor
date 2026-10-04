@@ -118,6 +118,10 @@ const BedtimeStoriesTab = lazy(() => import("../tabs/BedtimeStoriesTab"));
 // Wireframe: Ready-made Routines — the research-backed routine library (Growth).
 const RoutinesTab = lazy(() => import("../tabs/RoutinesTab"));
 
+/** W2-CAREPRO r2 — routes where the phone hub one-liner stays quiet (the
+ *  route's first decision needs the fold; the pill row names the hub). */
+export const HUB_LINE_QUIET_TABS: ReadonlySet<string> = new Set(["memory", "sharing", "safety"]);
+
 const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   overview: OverviewTab,
   coach: CoachTab,
@@ -477,9 +481,15 @@ export default function Shell() {
               position relative to the content (immediately above it), rendered
               only where the topbar cannot. EN + HE already exist for all ten
               hubs in lib/i18n.ts — no new string, and none invented. */}
+          {/* W2-CAREPRO r2: on a route whose first decision must sit above the
+              phone tab bar (memory: Remember this; sharing: the live roster;
+              safety: the page's own promise is its subtitle) the hub line is
+              quiet — the pills already name the hub. */}
+          {!HUB_LINE_QUIET_TABS.has(activeTab) && (
           <p className="lg:hidden text-[11px] leading-snug mb-3 min-w-0" style={{ color: "var(--arbor-muted)" }}>
             {hubPulse ? t(hubPulse.key, hubPulse.params) : t("nav.sub." + section.id, { name: childProfile.name })}
           </p>
+          )}
 
           {/* W0.5+W0.6: global freshness banner — offline / sync-error, mounted
               ONCE here so 18 useChildCollection screens don't each grow one.

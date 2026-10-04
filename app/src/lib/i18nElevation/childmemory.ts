@@ -17,8 +17,6 @@
  */
 
 export const en: Record<string, string> = {
-  "elev.childmem.eyebrow": "My Child",
-  "elev.childmem.trustNote": "You control everything here. Nothing is shared without your approval.",
 
   // B-CAREPRO-25: the pending queue grouped by topic; the heading counts groups.
   "elev.childmem.pending.groups": "Pending your review: {count} topics",
@@ -53,8 +51,6 @@ export const en: Record<string, string> = {
 };
 
 export const he: Record<string, string> = {
-  "elev.childmem.eyebrow": "הילד שלי",
-  "elev.childmem.trustNote": "אתם שולטים בכל מה שכאן. שום דבר לא משותף בלי האישור שלכם.",
 
   "elev.childmem.pending.groups": "ממתין לאישורכם: {count} נושאים",
   "elev.childmem.pending.groups.one": "ממתין לאישורכם: נושא אחד",
