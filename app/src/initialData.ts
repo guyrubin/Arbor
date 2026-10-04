@@ -122,6 +122,98 @@ export const defaultActionPlans: ActionPlan[] = [
   }
 ];
 
+/**
+ * Critic r1 (W2-ASKJB journal + plans, Law 8): a Hebrew parent read the
+ * English demo record — log triggers, notes, the plan title, issue, phases,
+ * steps and scripts — with broken bidi. The sandbox demo seed is keyed by
+ * locale: same ids, types, timestamps, intensities and completion flags (so
+ * every count is identical), Hebrew free text. Proper names are kept.
+ * `behaviorType` stays the canonical taxonomy key (labelled through t()).
+ */
+const HE_LOG_TEXT: Record<string, Pick<BehaviorLog, "trigger" | "response" | "notes">> = {
+  "log-1": {
+    trigger: "יציאה לגן בבוקר",
+    response: "נשארנו איתנים על היציאה, וקראנו לרגש בשמו: 'אני יודע שקשה להיפרד.'",
+    notes: "מחה בתוקף וישב מאחורי הספה. היציאה התארכה ב-15 דקות.",
+  },
+  "log-2": {
+    trigger: "רעש חזק ואורות מהבהבים בקניון עמוס",
+    response: "עברנו לחדר משפחה שקט, הצענו חיבוקים עם לחץ עמוק וחיכינו בשקט.",
+    notes: "דילן התכרבל וכיסה את האוזניים. נרגע מהר אחרי שהרעש והאורות נעלמו.",
+  },
+  "log-3": {
+    trigger: "המעבר של ההתלבשות",
+    response: "השתמשנו בלוח שגרה מצויר והצענו שתי אפשרויות של מכנסיים.",
+    notes: "המחאה הייתה קלה. הבחירה קיצרה את ההתפרצות מ-25 דקות ל-10.",
+  },
+  "log-4": {
+    trigger: "כיבוי הטאבלט בשעת השינה",
+    response: "השתמשנו בטיימר ספירה לאחור, יחד עם תסריט מעבר פיזי.",
+    notes: "בכה וזרק כרית, ואז נרגע לבד בפינת הקריאה.",
+  },
+};
+
+export const sampleBehaviorLogsHe: BehaviorLog[] = sampleBehaviorLogs.map((l) => ({ ...l, ...(HE_LOG_TEXT[l.id] ?? {}) }));
+
+export const defaultActionPlansHe: ActionPlan[] = [
+  {
+    id: "plan-1",
+    title: "תוכנית מעבר לגן והגעה בבוקר",
+    issue: "חרדת מעבר שמתעוררת מלחץ היציאה ומהחיכוך בין שתי השפות כשעוזבים את הבית המוכר.",
+    phases: [
+      {
+        name: "שלב 1: יציאה רגועה מהבית",
+        description: "פחות הפתעות ביציאה, ושגרה צפויה.",
+        steps: [
+          { text: "לעדכן יחד עם דילן את מגנטי לוח הבוקר.", completed: true },
+          { text: "להציע 'בחירות מוגבלות' (חולצה אדומה או כחולה? ללכת לרכב או לקפוץ כמו ארנב?) כדי לתת תחושת שליטה.", completed: true },
+          { text: "להכניס הפסקת מוזיקה של 3 דקות לפני נעילת הנעליים.", completed: false },
+        ],
+      },
+      {
+        name: "שלב 2: טקס מעבר בדרך",
+        description: "הרגעה חושית ותחושת קרבה בזמן הנסיעה.",
+        steps: [
+          { text: "למסור את חפץ המעבר ('אבן האומץ' או בובת כיס).", completed: true },
+          { text: "לשחק משחק חזרה על משפט באנגלית לגן.", completed: false },
+        ],
+      },
+      {
+        name: "שלב 3: מסירה בדלת הכיתה",
+        description: "ויסות משותף במעבר מההורה לגננת.",
+        steps: [
+          { text: "לעשות בכניסה את טקס לחיצת היד הכפולה.", completed: false },
+          { text: "לעבור עם הגננת בעל פה על המסירה, כסימן למעבר בטוח.", completed: false },
+        ],
+      },
+    ],
+    scripts: [
+      {
+        scenario: "דילן יושב על הרצפה ומסרב לנעול נעליים",
+        say: "אני שומע אותך, דילן. נעים לך פה ואתה רוצה להישאר. הגיע הזמן לצאת. רוצה סקוטש או שרוכים היום?",
+        avoid: "לצעוק 'אנחנו מאחרים!', מה שרק מעמיק את הקיפאון.",
+      },
+      {
+        scenario: "בזמן הפרידה בדלת הכיתה",
+        say: "אני הולך עכשיו, ואני תמיד, תמיד חוזר. הגננת לינדה תשמור עליך עד הצהריים. בוא נעשה את חיבוק המנעול והמפתח.",
+        avoid: "להתגנב החוצה כשהוא מוסח, מה שפוגע באמון.",
+      },
+    ],
+    successIndicators: [
+      "בלי קיפאון או הסתתרות בזמן נעילת הנעליים ביציאה.",
+      "הבכי בפרידה נרגע תוך פחות מ-4 דקות עם ויסות משותף.",
+      "משתמש באופן פעיל באבן האומץ.",
+    ],
+  },
+];
+
+/** The sandbox demo seed for the parent's UI language (first load only). */
+export function demoSeedFor(lang: "en" | "he"): { logs: BehaviorLog[]; plans: ActionPlan[] } {
+  return lang === "he"
+    ? { logs: sampleBehaviorLogsHe, plans: defaultActionPlansHe }
+    : { logs: sampleBehaviorLogs, plans: defaultActionPlans };
+}
+
 export const sampleBedtimeStory: BedtimeStory = {
   title: "Alek the Bunny's Brave New Burrow",
   pages: [

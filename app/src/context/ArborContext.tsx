@@ -24,9 +24,8 @@ import type { ScoredActivity } from "../playbank/select";
 import type { PlayActivity } from "../playbank/content";
 import { ROUTE_IDS, resolveHash, FALLBACK_ROUTE, type ActiveTab } from "../lib/routes";
 import {
-  sampleBehaviorLogs,
   initialMilestones,
-  defaultActionPlans,
+  demoSeedFor,
   sampleBedtimeStory,
 } from "../initialData";
 import { useProfile } from "./ProfileContext";
@@ -206,7 +205,10 @@ function useArborState() {
   // ASK-1: honest streaming statuses + the acknowledgment bubble are localized
   // through the SAME i18n dictionaries as the rest of the UI — a Hebrew
   // session must never see an English status string.
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
+  // Critic r1 (Law 8): the sandbox demo record is seeded in the parent's
+  // language on first load (same ids and counts in both locales).
+  const demoSeed = demoSeedFor(uiLang === "he" ? "he" : "en");
   // TJB-01: every blocking alert() in this provider is gone — feedback goes
   // through the app toast (ToastProvider wraps ArborProvider in App.tsx; the
   // optional accessor keeps unit renders without a provider from throwing).
@@ -349,7 +351,7 @@ function useArborState() {
 
   // App Core States — persisted per child (Firestore when authed, localStorage in sandbox)
   const logsCol = useChildCollection<BehaviorLog>(childProfile.id, "behaviorLogs", {
-    sandboxSeed: sampleBehaviorLogs,
+    sandboxSeed: demoSeed.logs,
     orderByField: "timestamp",
     orderDir: "desc",
     max: 300,
@@ -358,7 +360,7 @@ function useArborState() {
     seed: initialMilestones,
     sandboxSeed: initialMilestones,
   });
-  const plansCol = useChildCollection<ActionPlan>(childProfile.id, "actionPlans", { sandboxSeed: defaultActionPlans });
+  const plansCol = useChildCollection<ActionPlan>(childProfile.id, "actionPlans", { sandboxSeed: demoSeed.plans });
   // c2 — Daily Play completions: a positive, synced "win" record (NOT a
   // BehaviorLog) that closes the moat loop into the Story timeline.
   const playLogCol = useChildCollection<PlayLog>(childProfile.id, "playLogs", {
