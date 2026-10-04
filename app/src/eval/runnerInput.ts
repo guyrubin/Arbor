@@ -9,7 +9,7 @@
 import type { EvalScenario } from "./acceptance.js";
 
 /** Routes the live runner can drive. */
-export const RUNNER_ROUTES = ["/api/chat", "/api/voice", "/api/live/turn", "/api/extract-log", "/api/generate-handoff", "/api/todays-focus"] as const;
+export const RUNNER_ROUTES = ["/api/chat", "/api/voice", "/api/live/turn", "/api/extract-log", "/api/generate-handoff", "/api/todays-focus", "/api/generate-plan"] as const;
 
 const DAY = 86_400_000;
 
@@ -35,6 +35,16 @@ export function runnerInputError(scenario: Pick<EvalScenario, "route" | "input" 
     if (!sig || typeof sig !== "object" || !Number.isFinite(Number(sig.count))) return "has no signals.count input for /api/todays-focus";
     if (input.approvedFacts !== undefined && !Array.isArray(input.approvedFacts)) return "has a non-array approvedFacts input";
     if (input.ledger !== undefined && !Array.isArray(input.ledger)) return "has a non-array ledger input";
+    return null;
+  }
+  // B-ASKJB-27 (plan-v1): the plan route posts the topic, the child and the
+  // behaviour counts; approved facts / a sibling seed are SEEDED by the runner.
+  if (route === "/api/generate-plan") {
+    const cp = input.childProfile as Record<string, unknown> | undefined;
+    if (!cp || typeof cp !== "object" || !String(cp.id ?? "")) return "has no childProfile.id input for /api/generate-plan";
+    if (!String(input.challengeTopic ?? "").trim()) return "has no challengeTopic input for /api/generate-plan";
+    if (input.recentTypeCounts !== undefined && !Array.isArray(input.recentTypeCounts)) return "has a non-array recentTypeCounts input";
+    if (input.approvedFacts !== undefined && !Array.isArray(input.approvedFacts)) return "has a non-array approvedFacts input";
     return null;
   }
   // Coach-seed scenarios build the message from the card seed + followUp.
@@ -95,5 +105,22 @@ export function todaysFocusWireBody(
       ...(last ? { lastActionRecommendation: String(last.recommendation), lastActionOutcome: String(last.outcome) } : {}),
     },
     language: input.language === "he" ? "he" : "en",
+  };
+}
+
+/** B-ASKJB-27 (plan-v1): the body PlansTab posts — topic, child, language,
+ *  the behaviour counts as written (the server's sanitizer is under test) and
+ *  privateMode when the scenario sets it. Approved facts are never posted. */
+export function planWireBody(
+  input: Record<string, unknown>,
+  fallbackProfile: Record<string, unknown>,
+): { challengeTopic: string; childProfile: Record<string, unknown>; language: "en" | "he"; recentTypeCounts?: unknown[]; privateMode?: true } {
+  const cp = input.childProfile && typeof input.childProfile === "object" ? (input.childProfile as Record<string, unknown>) : fallbackProfile;
+  return {
+    challengeTopic: String(input.challengeTopic ?? ""),
+    childProfile: cp,
+    language: input.language === "he" ? "he" : "en",
+    ...(Array.isArray(input.recentTypeCounts) ? { recentTypeCounts: input.recentTypeCounts } : {}),
+    ...(input.privateMode === true ? { privateMode: true as const } : {}),
   };
 }

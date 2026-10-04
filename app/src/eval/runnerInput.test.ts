@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { handoffWireBody, runnerInputError, todaysFocusWireBody } from "./runnerInput";
+import { handoffWireBody, planWireBody, runnerInputError, todaysFocusWireBody } from "./runnerInput";
 import type { EvalSuite } from "./acceptance";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -86,8 +86,19 @@ describe("the handoff wire body is what a School Brief client posts", () => {
 
   it("the runner calls the rule and has the handoff branch", () => {
     const runner = readFileSync(path.join(APP, "scripts", "eval-judge.mts"), "utf8").replace(/\r\n/g, "\n");
-    expect(runner).toContain('import { handoffWireBody, runnerInputError, todaysFocusWireBody } from "../src/eval/runnerInput.js";');
+    expect(runner).toContain('import { handoffWireBody, planWireBody, runnerInputError, todaysFocusWireBody } from "../src/eval/runnerInput.js";');
     expect(runner).toContain("const inputError = runnerInputError(scenario);");
     expect(runner).toMatch(/if \(route === "\/api\/generate-handoff"\) \{[\s\S]{0,400}handoffWireBody\(input, scenarioProfile\)/);
+    // B-ASKJB-27 (plan-v1): the plan branch posts the PlansTab body.
+    expect(runner).toMatch(/if \(route === "\/api\/generate-plan"\) \{[\s\S]{0,200}planWireBody\(input, scenarioProfile\)/);
+  });
+
+  it("B-ASKJB-27: the plan wire body carries topic, child, language, counts and privateMode — never approved facts", () => {
+    const body = planWireBody(
+      { challengeTopic: "Bedtime", childProfile: { id: "eval-p" }, language: "he", recentTypeCounts: [{ type: "Sleep Meltdown", count: 2 }], privateMode: true, approvedFacts: ["F"] },
+      { id: "fallback" },
+    );
+    expect(body).toEqual({ challengeTopic: "Bedtime", childProfile: { id: "eval-p" }, language: "he", recentTypeCounts: [{ type: "Sleep Meltdown", count: 2 }], privateMode: true });
+    expect(runnerInputError({ route: "/api/generate-plan", input: { childProfile: { id: "x" } } })).toMatch(/challengeTopic/);
   });
 });

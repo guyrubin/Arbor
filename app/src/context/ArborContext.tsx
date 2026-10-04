@@ -51,6 +51,7 @@ import { ageYearsFromProfile, ageMonthsFromProfile } from "../lib/childAge";
 import { ageWindowMilestones, comparisonAgeMonths } from "../lib/milestoneData";
 import { activeActionFor, planAcceptedAction, sortActionLoop, todayActionId, type PlanStepRef } from "../actionLoop/model";
 import { planStepStatusAfter } from "../lib/plans";
+import { recentTypeCounts } from "../lib/planRecord";
 import { appendVoiceUser, applyVoiceDelta, settleVoiceTurn } from "../lib/voiceTranscript";
 import type { ConversationChangeRecord, ConversationProposal } from "../lib/conversationProposals";
 import { appendChatUser, appendChatAck, applyChatDelta, settleChatTurn, abortChatStream, hasUserTurn } from "../lib/chatStream";
@@ -1349,7 +1350,10 @@ function useArborState() {
       // M4: wrap with start/success/error analytics ("plan_create_*") without
       // disturbing the context-wide loading/error/paywall handling below.
       const planData = await runInstrumented("plan_create", () =>
-        api.generatePlan({ challengeTopic: planChallengeTopic, childProfile }),
+        // B-ASKJB-27: the plan reads the record — behaviour COUNTS only (no
+        // moment text, Guy G6); approved facts + past outcomes come from the
+        // server's consent-checked CompanionContext.
+        api.generatePlan({ challengeTopic: planChallengeTopic, childProfile, recentTypeCounts: recentTypeCounts(behaviorLogs, Date.now()) }),
       );
       planData.id = `plan-${Date.now()}`;
       await plansCol.upsert(planData);

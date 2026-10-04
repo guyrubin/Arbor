@@ -391,7 +391,8 @@ export const api = {
   // never the parent's notes or other free text (lib/analyzeLogPayload).
   analyzeBehavior: (payload: { logs: BehaviorLog[]; childProfile: ChildProfile }) =>
     post<BehaviorAnalysis>("/api/analyze-behavior", { ...payload, logs: toAnalyzeLogInputs(payload.logs), language: getAiLanguage() }),
-  generatePlan: (payload: { challengeTopic: string; childProfile: ChildProfile }) =>
+  // B-ASKJB-27: + the behaviour counts (type -> count over 21 days, no text).
+  generatePlan: (payload: { challengeTopic: string; childProfile: ChildProfile; recentTypeCounts?: { type: string; count: number }[] }) =>
     // B-ASKJB-25: the family's language reaches the plan prompt.
     post<ActionPlan>("/api/generate-plan", { ...payload, language: getAiLanguage() }),
   generateStory: (payload: { childName: string; age: number; topic: string; moral: string }) =>

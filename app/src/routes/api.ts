@@ -73,6 +73,7 @@ import type { CapabilityRegistry } from "../ai/capabilities/registry.js";
 import { billingCheckoutUrl } from "../server/billing.js";
 import { buildLiveSystemInstruction, liveSpeechConfig, SPOKEN_COACH_PERSONA, spokenLanguageDirective } from "../lib/livePersona.js";
 import { countAnalyzeLogs, toAnalyzeLogInputs } from "../lib/analyzeLogPayload.js";
+import { sanitizeTypeCounts } from "../lib/planRecord.js";
 import { isAdmin } from "../server/admin.js";
 import type { AdminMetricsStore } from "../server/adminMetrics.js";
 import type { UsageCounterStore } from "../server/quotaStore.js";
@@ -418,9 +419,10 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   // B-AI-02: one call shape for the handlers that ground in CompanionContext
   // (/digest, /generate-plan, /analyze-behavior) — ownership-checked memory,
   // the caller's own ledgers, ≤5 facts ranked against `query`.
-  const companionFor = async (req: express.Request, purpose: CompanionPurpose, childProfile: unknown, query: string) => {
+  const companionFor = async (req: express.Request, purpose: CompanionPurpose, childProfile: unknown, query: string, privateMode = false) => {
     const childId = spokenChildId(childProfile);
-    const canReadMemory = !childId || await mayReadChildMemory(req, childId);
+    // B-ASKJB-27: a private-mode request reads no memory (same rule as /chat).
+    const canReadMemory = !privateMode && (!childId || await mayReadChildMemory(req, childId));
     return assembleCompanionContext({
       purpose, audience: "parent", childId, childProfile, memoryStore, ledgerSource,
       uid: actorOf(req).uid, query, canReadMemory, maxFacts: 5,
@@ -2754,7 +2756,9 @@ RULES:
 
   router.post("/generate-plan", async (req, res) => {
     // B-ASKJB-25: `language` reaches the prompt through the shared directive.
-    const { challengeTopic, childProfile, language } = req.body;
+    // B-ASKJB-27: + recentTypeCounts (behaviour type -> count, 21 days; no
+    // text, re-validated by sanitizeTypeCounts) and privateMode (no memory).
+    const { challengeTopic, childProfile, language, recentTypeCounts, privateMode } = req.body;
     const escalationMatch = screenForImmediateEscalation({ challengeTopic });
     if (escalationMatch) {
       res.status(409).json({
@@ -2768,7 +2772,7 @@ RULES:
     try {
       // B-AI-02: the plan is grounded in the parent's approved facts (ranked
       // against the topic) and what they already tried, from CompanionContext.
-      const companion = await companionFor(req, "generate-plan", childProfile, typeof challengeTopic === "string" ? challengeTopic : "");
+      const companion = await companionFor(req, "generate-plan", childProfile, typeof challengeTopic === "string" ? challengeTopic : "", privateMode === true);
       const prompt = buildGeneratePlanPrompt({
         developmentalFramework,
         childProfile,
@@ -2776,6 +2780,7 @@ RULES:
         approvedFacts: companion.approvedFacts.map((fact) => fact.text),
         pastSteps: companion.acceptedActions,
         languageDirective: jsonLanguageDirective(language),
+        recentTypeCounts: sanitizeTypeCounts(recentTypeCounts),
       });
       const privacy = createRedaction(childProfile?.name);
       const response = await modelProvider.generateJson({

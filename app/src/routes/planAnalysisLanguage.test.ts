@@ -88,7 +88,8 @@ describe("B-ASKJB-25 — the plan builder carries the shared language directive"
   });
 
   it("generate_plan is versioned past 1.0.0 (the directive changed the template)", () => {
-    expect(PROMPT_VERSIONS.generate_plan.version).toBe("1.1.0");
+    // 1.1.0 (B-ASKJB-25) → 1.2.0 (B-ASKJB-27: the record blocks; planPrompt.test.ts).
+    expect(PROMPT_VERSIONS.generate_plan.version).toBe("1.2.0");
   });
 });
 
@@ -98,7 +99,7 @@ describe("B-ASKJB-25 — /generate-plan answers in the family's language", () =>
     expect(res.status).toBe(200);
     const plan = await res.json();
     expect(seen.plan).toContain(jsonLanguageDirective("he"));
-    expect(seen.planVersion).toBe("1.1.0");
+    expect(seen.planVersion).toBe(PROMPT_VERSIONS.generate_plan.version);
     for (const text of [plan.title, plan.issue, ...plan.phases.map((p: { name: string }) => p.name), ...plan.successIndicators]) {
       expect(text).toMatch(HEBREW);
       expect(text).not.toMatch(LATIN_WORD);
