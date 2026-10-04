@@ -83,11 +83,44 @@ describe("B-CAREPRO-26 · the card on #/sharing (source)", () => {
     const card = /data-testid="share-week-card"[\s\S]*?<\/section>/.exec(sharing)?.[0] ?? "";
     expect(card, "card extracted").not.toBe("");
     expect(card).toContain('data-testid="share-week-email"');
-    expect(card).toContain('data-testid="share-week-preview-open"');
-    expect(card).toContain('data-testid="share-week-confirm"');
+    // W2-CAREPRO r1: ONE button carries the stamp at rest AND in preview —
+    // it opens the preview, then the same button confirms (sweep found
+    // primaryMove null at rest: the stamp lived only on the confirm).
+    expect(card).toContain('data-testid={weekPreviewing ? "share-week-confirm" : "share-week-preview-open"}');
     expect(card).toContain('data-primary-move="grant-share"');
     const stamps = sharing.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\/.*$/gm, "").match(/\bdata-primary-move="/g) ?? [];
     expect(stamps).toHaveLength(1);
+    // the stamped element is rendered outside the {!weekPreviewing ? … : …} branch
+    const stampAt = card.indexOf('data-primary-move="grant-share"');
+    const branchEnd = card.indexOf('<div className="flex flex-col sm:flex-row gap-2 sm:items-center">');
+    expect(branchEnd).toBeGreaterThan(-1);
+    expect(stampAt).toBeGreaterThan(branchEnd);
+    // the primary is the filled gradient, never an opacity-disabled ghost at rest
+    const btn = card.slice(card.lastIndexOf("<button", stampAt), card.indexOf("</button>", stampAt));
+    expect(btn).toContain("var(--gradient-cta)");
+    expect(btn).toContain("disabled={weekPreviewing && (");
+    expect(btn).not.toMatch(/disabled=\{!weekEmailValid\}|disabled:opacity-40/);
+    // an invalid email focuses the field with an inline hint
+    expect(sharing).toMatch(/if \(!weekEmailValid\) \{ setWeekHint\(true\); weekEmailRef\.current\?\.focus\(\); return; \}/);
+    // NEGATIVE CONTROL: the pre-change confirm-only stamp is caught
+    const pre = `{!weekPreviewing ? (<button disabled={!weekEmailValid}>See</button>) : (<button data-primary-move="grant-share">Share</button>)}`;
+    expect(pre.indexOf('data-primary-move="grant-share"')).toBeLessThan(pre.lastIndexOf(")}"));
+  });
+
+  it("W2-CAREPRO r1: no clinical bar on #/sharing; the copy never claims a time box the week share does not have", () => {
+    expect(sharing).not.toContain("<TrustSafetyBar");
+    expect(sharing).toContain('data-testid="sharing-trust-line"');
+    for (const lang of ["en", "he"] as const) {
+      for (const key of ["sec.sharing.sub", "sec.sharing.trustNote"]) {
+        const v = translate(lang, key, { name: "Noa" });
+        expect(v, `${lang} ${key}`).not.toMatch(/time-boxed|expires|מוגבל(ת)? בזמן|פקיעת/);
+      }
+    }
+    for (const k of ["needEmail"]) {
+      const key = `elev.learnCare.share.week.${k}`;
+      expect(translate("en", key)).not.toBe(key);
+      expect(translate("he", key)).not.toBe(key);
+    }
   });
 
   it("first card: before the invite hand-off, the wizard and the roster; the wizard is behind Custom share", () => {
@@ -102,7 +135,10 @@ describe("B-CAREPRO-26 · the card on #/sharing (source)", () => {
     expect(card).toBeLessThan(at('data-module="sharing-roster"'));
     expect(at('data-module="sharing-grant"')).toBeLessThan(card);
     const custom = /data-testid="sharing-custom-open"[\s\S]{0,400}?elev\.learnCare\.share\.week\.custom/.exec(sharing);
-    expect(custom, "the header door is Custom share").toBeTruthy();
+    expect(custom, "the wizard door is Custom share").toBeTruthy();
+    // W2-CAREPRO r1: the door lives inside the week card, not the page header
+    const weekCard = /data-testid="share-week-card"[\s\S]*?<\/section>/.exec(sharing)?.[0] ?? "";
+    expect(weekCard).toContain('data-testid="sharing-custom-open"');
     expect(sharing).not.toContain('t("sec.sharing.new")');
   });
 

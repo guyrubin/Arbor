@@ -109,7 +109,9 @@ export function TrustSafetyBar({ note, onEscalate, lang }: { /** @deprecated ign
       </span>
       <span style={{ color: "var(--arbor-muted)" }}>{t("kit.trust.nonDiagnostic")}</span>
       <span style={{ color: "var(--arbor-muted)" }}>{t("kit.trust.escalation")}</span>
-      {note && <span style={{ color: "var(--arbor-muted)" }}>· {note}</span>}
+      {/* W2-CAREPRO r1: the note is its own full-width line — a leading "·"
+          orphaned to line start whenever the row wrapped (memory, sharing). */}
+      {note && <span className="basis-full" style={{ color: "var(--arbor-muted)" }}>{note}</span>}
       {onEscalate && (
         <button onClick={onEscalate} className="ms-auto inline-flex items-center gap-1 font-extrabold rounded-full px-3 py-1" style={{ background: posture.ink, color: T.onAccent, minHeight: 44 }}>
           {t("kit.trust.talkPro")}

@@ -1050,11 +1050,11 @@ export const en: Dict = {
   "sec.strengths.title": "Strengths & challenges",
   "sec.strengths.sub": "What lights {name} up, and where a little support goes a long way.",
   "sec.sharing.title": "Trusted sharing",
-  "sec.sharing.sub": "You decide what about {name} is shared, with whom, and for how long. Every grant is time-boxed and revoked instantly, the moment it expires.",
+  "sec.sharing.sub": "You choose who sees what about {name}, for how long, and you can stop any share at any time.",
   // CARE-3 — Trusted Sharing fully localized; scope LABELS resolve from stable
   // scope IDs (lib/shareScopes.ts) at render — enforcement never reads labels.
   "sec.sharing.new": "New share",
-  "sec.sharing.trustNote": "Every share is parent-approved, time-boxed and fully revocable — enforced on the server.",
+  "sec.sharing.trustNote": "Every share is approved by you and can be stopped at any time — enforced on the server.",
   "sec.sharing.form.title": "Share {name}'s context",
   "sec.sharing.form.emailPlaceholder": "Recipient email (they sign in with this to see what you share)",
   "sec.sharing.form.role": "Their role",
@@ -3417,10 +3417,10 @@ export const he: Dict = {
   "sec.strengths.title": "חוזקות ואתגרים",
   "sec.strengths.sub": "מה מאיר את {name}, והיכן מעט תמיכה עושה הבדל גדול.",
   "sec.sharing.title": "שיתוף מהימן",
-  "sec.sharing.sub": "אתם מחליטים מה לגבי {name} משותף, עם מי, ולכמה זמן. כל הרשאה מוגבלת בזמן ומבוטלת מיד עם פקיעתה.",
+  "sec.sharing.sub": "אתם בוחרים מי רואה מה לגבי {name}, לכמה זמן, ואפשר להפסיק כל שיתוף בכל רגע.",
   // CARE-3 — מסך השיתוף מתורגם במלואו; תוויות היקף נפתרות ממזהים יציבים.
   "sec.sharing.new": "שיתוף חדש",
-  "sec.sharing.trustNote": "כל שיתוף מאושר על ידי ההורה, מוגבל בזמן וניתן לביטול מלא — נאכף בשרת.",
+  "sec.sharing.trustNote": "כל שיתוף מאושר על ידיכם ואפשר להפסיק אותו בכל רגע — נאכף בשרת.",
   "sec.sharing.form.title": "שיתוף ההקשר של {name}",
   "sec.sharing.form.emailPlaceholder": "אימייל הנמען/ת (איתו הם נכנסים כדי לראות את מה ששיתפתם)",
   "sec.sharing.form.role": "התפקיד שלהם",

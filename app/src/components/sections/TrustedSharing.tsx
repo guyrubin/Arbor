@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { motion } from "motion/react";
 import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
@@ -9,7 +9,7 @@ import { useAuth } from "../../context/AuthContext";
 import { api, ApiError, PaywallError, SEAT_IN_USE } from "../../lib/api";
 import type { ShareGrant, ShareRole, SharedPacketView } from "../../types";
 import Modal from "../ui/Modal";
-import { PageHeader, SectionCard, cardCls, Chip, TrustSafetyBar, PASTEL, PastelKey, InitialsTile } from "../ui/kit";
+import { PageHeader, SectionCard, cardCls, Chip, PASTEL, PastelKey, InitialsTile } from "../ui/kit";
 import { ErrorState } from "../ui/ErrorState";
 import { REPORTS } from "./Reports";
 import { isProfessionalReportType } from "../../lib/reportExport";
@@ -114,6 +114,12 @@ export default function TrustedSharing() {
   const [weekEmail, setWeekEmail] = useState("");
   const [weekPreviewing, setWeekPreviewing] = useState(false);
   const weekEmailValid = /^\S+@\S+\.\S+$/.test(weekEmail.trim());
+  // W2-CAREPRO r1: ONE stamped button carries the card at rest and in preview.
+  // At rest it opens the recipient preview (an empty/invalid email focuses the
+  // field with an inline hint — never an opacity-disabled primary); in preview
+  // the same button confirms the grant.
+  const weekEmailRef = useRef<HTMLInputElement>(null);
+  const [weekHint, setWeekHint] = useState(false);
   const weekPreview = React.useMemo(() => {
     if (!weekPreviewing) return { sections: null as null | { id: string; title: string; items: { id: string; text: string }[] }[], blocked: false };
     try {
@@ -220,6 +226,13 @@ export default function TrustedSharing() {
     });
   };
 
+  const onWeekPrimary = () => {
+    if (weekPreviewing) { void shareWeek(); return; }
+    if (!weekEmailValid) { setWeekHint(true); weekEmailRef.current?.focus(); return; }
+    setWeekHint(false);
+    setWeekPreviewing(true);
+  };
+
   const revoke = async (g: ShareGrant) => {
     setBusy(g.id);
     try {
@@ -280,23 +293,12 @@ export default function TrustedSharing() {
   // here). This page links there.
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[920px] space-y-6">
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[920px] flex flex-col gap-6">
       <PageHeader
         eyebrow={t("nav.care")}
         title={t("sec.sharing.title")}
         subtitle={t("sec.sharing.sub", { name: first })}
-        action={
-          <div className="flex flex-wrap items-center gap-3">
-            {/* B-CAREPRO-26: the full wizard sits behind "Custom share" (outline);
-                the week card below is the page's one primary move. */}
-            <button onClick={() => setAdding((a) => !a)} aria-expanded={adding} data-testid="sharing-custom-open" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold" style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)", background: "var(--arbor-paper-elevated)" }}>
-              <Icon name="tune" size={18} /> {t("elev.learnCare.share.week.custom")}
-            </button>
-          </div>
-        }
       />
-
-      <TrustSafetyBar note={t("sec.sharing.trustNote")} />
 
       {error && (
         <ErrorState
@@ -322,33 +324,31 @@ export default function TrustedSharing() {
       <div data-module="sharing-grant" style={{ display: "contents" }}>
       {!error && (
         <section data-testid="share-week-card" className="rounded-[22px] p-5 space-y-3" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }}>
-          <h2 className="text-[16px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("elev.learnCare.share.week.title", { name: first })}</h2>
-          <p className="text-[13px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.share.week.body")}</p>
+          <div className="flex items-center gap-3">
+            <span className="inline-flex items-center justify-center w-10 h-10 rounded-xl flex-shrink-0" style={{ background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" }}><Icon name="diversity_3" size={20} /></span>
+            <h2 className="t-lg font-extrabold min-w-0" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("elev.learnCare.share.week.title", { name: first })}</h2>
+          </div>
+          <p className="t-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.share.week.body")}</p>
           {!weekPreviewing ? (
-            <div className="flex flex-col sm:flex-row gap-2">
+            <div className="space-y-1.5">
               <input
+                ref={weekEmailRef}
                 value={weekEmail}
-                onChange={(e) => setWeekEmail(e.target.value)}
+                onChange={(e) => { setWeekEmail(e.target.value); setWeekHint(false); }}
                 placeholder={t("elev.learnCare.share.week.email")}
                 aria-label={t("elev.learnCare.share.week.email")}
+                aria-describedby={weekHint ? "share-week-hint" : undefined}
                 data-testid="share-week-email"
                 type="email"
                 inputMode="email"
                 autoComplete="email"
                 dir="auto"
-                className="min-w-0 flex-1 rounded-xl px-3 min-h-11 text-sm"
+                className="w-full min-w-0 rounded-xl px-3 min-h-11 text-sm"
                 style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }}
               />
-              <button
-                type="button"
-                data-testid="share-week-preview-open"
-                onClick={() => setWeekPreviewing(true)}
-                disabled={!weekEmailValid}
-                className="inline-flex items-center justify-center gap-2 rounded-xl px-4 min-h-11 text-sm font-bold disabled:opacity-40"
-                style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
-              >
-                <Icon name="visibility" size={16} /> {t("elev.learnCare.share.week.preview")}
-              </button>
+              {weekHint && (
+                <p id="share-week-hint" role="alert" data-testid="share-week-hint" className="t-xs font-bold" style={{ color: "var(--arbor-ink)" }}>{t("elev.learnCare.share.week.needEmail")}</p>
+              )}
             </div>
           ) : (
             <div className="space-y-3" aria-live="polite">
@@ -356,43 +356,60 @@ export default function TrustedSharing() {
               {/* The recipient's actual view — buildSharedScopePacket on the
                   shared assembler, the same call server/sharedPacket.ts makes. */}
               <div data-testid="share-week-preview" className="rounded-xl p-3.5 space-y-2.5" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-                <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--arbor-green-ink)" }}>{t("elev.learnCare.share.preview.title")}</p>
+                <p className="t-xs font-bold uppercase tracking-wide" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.share.preview.title")}</p>
                 {weekPreview.blocked ? (
-                  <p role="alert" className="text-[12px] font-bold leading-relaxed" style={{ color: "var(--arbor-pink-ink)" }}>{t("elev.learnCare.share.preview.blocked")}</p>
+                  <p role="alert" className="t-xs font-bold leading-relaxed" style={{ color: "var(--arbor-pink-ink)" }}>{t("elev.learnCare.share.preview.blocked")}</p>
                 ) : !weekPreview.sections || weekPreview.sections.length === 0 ? (
-                  <p className="text-[12px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.share.preview.empty")}</p>
+                  <p className="t-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.share.preview.empty")}</p>
                 ) : (
                   weekPreview.sections.map((section) => (
                     <div key={section.id}>
-                      <p className="text-[12.5px] font-extrabold" dir="auto" style={{ color: "var(--arbor-ink)" }}>{sectionTitle(section, uiLang)}</p>
+                      <p className="t-sm font-extrabold" dir="auto" style={{ color: "var(--arbor-ink)" }}>{sectionTitle(section, uiLang)}</p>
                       <ul className="list-disc ps-5 mt-1 space-y-0.5">
                         {section.items.map((it) => (
-                          <li key={it.id} className="text-[12px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-muted)" }}>{itemText(it, uiLang)}</li>
+                          <li key={it.id} className="t-xs leading-relaxed" dir="auto" style={{ color: "var(--arbor-muted)" }}>{itemText(it, uiLang)}</li>
                         ))}
                       </ul>
                     </div>
                   ))
                 )}
               </div>
-              <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
-                <button type="button" onClick={() => setWeekPreviewing(false)} className="inline-flex items-center justify-center rounded-xl px-4 min-h-11 text-sm font-bold" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}>
-                  {t("elev.learnCare.share.week.edit")}
-                </button>
-                <button
-                  type="button"
-                  data-primary-move="grant-share"
-                  data-testid="share-week-confirm"
-                  onClick={shareWeek}
-                  disabled={busy === "week" || weekPreview.blocked}
-                  className="inline-flex items-center justify-center gap-2 text-white font-bold text-sm rounded-xl px-4 min-h-11 disabled:opacity-60"
-                  style={{ background: "var(--arbor-gradient-primary)" }}
-                >
-                  {busy === "week" ? <><Icon name="progress_activity" size={16} className="animate-spin" /> {t("sec.sharing.review.working")}</> : t("elev.learnCare.share.week.share", { name: first })}
-                </button>
-              </div>
             </div>
           )}
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+            {/* The route's ONE primary-move stamp, in both states (W2-CAREPRO r1). */}
+            <button
+              type="button"
+              data-primary-move="grant-share"
+              data-testid={weekPreviewing ? "share-week-confirm" : "share-week-preview-open"}
+              onClick={onWeekPrimary}
+              disabled={weekPreviewing && (busy === "week" || weekPreview.blocked)}
+              className="touch-target inline-flex items-center justify-center gap-2 font-extrabold text-sm rounded-xl px-5 min-h-11 disabled:cursor-not-allowed"
+              style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}
+            >
+              {weekPreviewing && busy === "week"
+                ? <><Icon name="progress_activity" size={16} className="animate-spin" /> {t("sec.sharing.review.working")}</>
+                : <><Icon name={weekPreviewing ? "check" : "visibility"} size={16} /> {t("elev.learnCare.share.week.share", { name: first })}</>}
+            </button>
+            {weekPreviewing ? (
+              <button type="button" onClick={() => setWeekPreviewing(false)} className="inline-flex items-center justify-center rounded-xl px-4 min-h-11 text-sm font-bold" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}>
+                {t("elev.learnCare.share.week.edit")}
+              </button>
+            ) : (
+              /* B-CAREPRO-26: the full wizard sits behind "Custom share" — a
+                 quiet text door inside the card (W2-CAREPRO r1: it was the
+                 strongest control above the fold, in the page header). */
+              <button type="button" onClick={() => setAdding((a) => !a)} aria-expanded={adding} data-testid="sharing-custom-open" className="inline-flex items-center justify-center gap-1.5 rounded-xl px-3 min-h-11 text-sm font-bold" style={{ color: "var(--arbor-clay)" }}>
+                <Icon name="tune" size={16} /> {t("elev.learnCare.share.week.custom")}
+              </button>
+            )}
+          </div>
         </section>
+      )}
+      {!error && (
+        /* W2-CAREPRO r1: the server-enforcement sentence is the only trust line
+           on #/sharing — one muted caption under the card, not a clinical bar. */
+        <p data-testid="sharing-trust-line" className="t-xs leading-relaxed -mt-3" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.trustNote")}</p>
       )}
       {invite && (
         <div data-testid="share-invite" className="border-y py-4 flex flex-wrap items-center gap-3" style={{ borderColor: "var(--arbor-rule)" }}>
