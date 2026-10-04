@@ -194,7 +194,9 @@ describe("LC-11b · one teacher door — every door, not one named file", () => 
     // The page iterates the parent-record list — the teacher type (and every
     // professional preset) cannot appear as a card, so no ungated teacher PDF.
     const page = reports.slice(reports.indexOf("export default function Reports"));
-    expect(page).toContain("{PARENT_RECORD_REPORTS.map((r) => (");
+    // W2-CAREPRO r1: the lead record is PARENT_RECORD_REPORTS[0]; the rest are rows of the same list.
+    expect(page).toContain("const lead = PARENT_RECORD_REPORTS[0];");
+    expect(page).toContain("{PARENT_RECORD_REPORTS.filter((r) => r.type !== lead.type).map((r) => (");
     expect(page).not.toContain("reports-teacher-one-door");
     expect(page).not.toMatch(/\{REPORTS\.map\(/);
     // NEGATIVE CONTROL: the pre-change card exported every type unconditionally.
