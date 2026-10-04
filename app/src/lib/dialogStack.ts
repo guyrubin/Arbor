@@ -232,6 +232,15 @@ export function createDialogStack(env: Environment) {
       };
     },
     get depth() { return entries.length; },
+    /** B-SHELL-22: close the top dialog exactly as Escape does (same guard:
+     *  never while Kid Mode blocks the stack). true when one was asked to
+     *  close — the caller (Android back) then does nothing else. */
+    closeTop(): boolean {
+      const entry = top();
+      if (!entry || blocked() || entry.closing) return false;
+      close(entry);
+      return true;
+    },
   };
 }
 
@@ -244,4 +253,11 @@ export function registerDialog(options: DialogRegistration): DialogHandle {
     stacks.set(doc, stack);
   }
   return stack.register(options);
+}
+
+/** B-SHELL-22: Android back closes the open sheet/dialog before it changes the
+ *  tab. Returns false when no parent dialog is open (or Kid Mode blocks the
+ *  stack), so the caller falls through to its history behaviour. */
+export function closeTop(doc: Document = document): boolean {
+  return stacks.get(doc)?.closeTop() ?? false;
 }

@@ -293,3 +293,26 @@ describe("dialog focus, shielding and scroll contract", () => {
     expect(onClose).not.toHaveBeenCalled(); a.dispose(); f.flush();
   });
 });
+
+describe("B-SHELL-22 · closeTop (the Android back seam)", () => {
+  it("closes only the nested top, like one Escape; false when nothing is open", () => {
+    const f = fixture(), outer = f.layer(), inner = f.layer();
+    expect(f.stack.closeTop()).toBe(false);
+    const closeOuter = vi.fn();
+    f.stack.register({ root: html(outer.root), onClose: closeOuter }); f.flush();
+    const closeInner = vi.fn(() => b.dispose());
+    const b = f.stack.register({ root: html(inner.root), onClose: closeInner }); f.flush();
+    expect(f.stack.closeTop()).toBe(true); f.flush();
+    expect(closeInner).toHaveBeenCalledTimes(1);
+    expect(closeOuter).not.toHaveBeenCalled();
+  });
+
+  it("Kid Mode blocks it: no parent dialog closes, and the caller is told so", () => {
+    const f = fixture(), outer = f.layer();
+    const onClose = vi.fn();
+    f.stack.register({ root: html(outer.root), onClose }); f.flush();
+    f.block(true);
+    expect(f.stack.closeTop()).toBe(false);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+});

@@ -1,5 +1,6 @@
 import { isNativePlatform, nativePlatform } from "./runtime";
 import { isKidModeActive } from "./kidModeGate";
+import { closeTop } from "./dialogStack";
 
 /**
  * Native-shell bootstrap (Capacitor). All imports are dynamic so the web bundle
@@ -46,7 +47,11 @@ export async function initNativeShell(): Promise<void> {
     /* billing unavailable — purchase surfaces fall back to "coming soon" */
   }
 
-  // Android hardware/gesture back → previous tab (hash history), exit at root.
+  // Android hardware/gesture back → close the open sheet/dialog first
+  // (B-SHELL-22: the dialog stack's top, exactly as Escape), else previous tab
+  // (hash history), exit at root. The Learn reader is not a dialog: it pushed
+  // its own history entry, so with no dialog open one back reaches its
+  // popstate and closes only the reader.
   // iOS interactive edge-swipe-back is the webview system default and is left
   // unblocked (no left-edge gesture handlers anywhere). Non-fatal if absent.
   try {
@@ -56,6 +61,7 @@ export async function initNativeShell(): Promise<void> {
       // button must neither pop the parent hash history nor exit the app —
       // the parent gate (hold + challenge) is the only way out. No-op.
       if (isKidModeActive()) return;
+      if (closeTop()) return;
       if (window.history.length > 1 && canGoBack) window.history.back();
       else void App.exitApp();
     });
