@@ -39,6 +39,19 @@ const FILES = walk(SRC).map((f) => ({ rel: path.relative(SRC, f).split(path.sep)
 /** A read or write of the field on a CHILD PROFILE object. */
 const PROFILE_ACCESS = /\b(?:childProfile|activeChild|profile|child|p)\.riskLevel\b|\briskLevel:\s*["'](?:Low|Moderate|High)["']/;
 
+/**
+ * Files allowed to WRITE the CoachContract answer field (never a profile), with
+ * the reason. Only a CoachContract-shaped literal is waived there: `riskLevel`
+ * immediately followed by `nonDiagnosticHypotheses` (the answer object's next
+ * key). Any profile read or any other verdict literal in the file still fails.
+ */
+const CONTRACT_ANSWER_WRITERS: Record<string, string> = {
+  "ai/mockProvider.ts": "B-INF-04: the mock coach_chat fixture fills CoachContract.riskLevel, the model answer's own field",
+};
+const CONTRACT_ANSWER_LITERAL = /\briskLevel:\s*["'](?:Low|Moderate|High)["'],\s*nonDiagnosticHypotheses:/g;
+const violates = (rel: string, src: string): boolean =>
+  PROFILE_ACCESS.test(rel in CONTRACT_ANSWER_WRITERS ? src.replace(CONTRACT_ANSWER_LITERAL, "") : src);
+
 describe("B-CAREPRO-34 — no child-profile riskLevel anywhere in the app", () => {
   it("the scan read the real tree", () => {
     expect(FILES.length).toBeGreaterThan(300);
@@ -46,7 +59,7 @@ describe("B-CAREPRO-34 — no child-profile riskLevel anywhere in the app", () =
   });
 
   it("no source reads or writes riskLevel on a child profile", () => {
-    const hits = FILES.filter((f) => PROFILE_ACCESS.test(f.src)).map((f) => f.rel);
+    const hits = FILES.filter((f) => violates(f.rel, f.src)).map((f) => f.rel);
     expect(hits).toEqual([]);
     // NEGATIVE CONTROLS: the four pre-change sites are what the rule catches.
     for (const pre of [
@@ -57,6 +70,23 @@ describe("B-CAREPRO-34 — no child-profile riskLevel anywhere in the app", () =
     ]) {
       expect(PROFILE_ACCESS.test(pre) || /'Low' \| 'Moderate' \| 'High'/.test(pre), pre).toBe(true);
     }
+  });
+
+  it("the CoachContract-answer waiver is narrow: a profile-shaped use in an allowed file still fails", () => {
+    const mock = FILES.find((f) => f.rel === "ai/mockProvider.ts")!.src;
+    // The waiver is what the file needs today (it does contain the answer field)...
+    expect(PROFILE_ACCESS.test(mock)).toBe(true);
+    expect(violates("ai/mockProvider.ts", mock)).toBe(false);
+    // ...and nothing more. NEGATIVE CONTROLS: profile-shaped uses in the same file.
+    for (const injected of [
+      'const child = { name: "Noa", riskLevel: "Moderate", ageMonths: 40 };',
+      "const r = activeChild.riskLevel;",
+      'profile.riskLevel = "High";',
+    ]) {
+      expect(violates("ai/mockProvider.ts", `${mock}\n${injected}\n`), injected).toBe(true);
+    }
+    // The waiver is per-file: the answer-shaped literal anywhere else still fails.
+    expect(violates("components/Other.tsx", 'x = { riskLevel: "Low", nonDiagnosticHypotheses: [] };')).toBe(true);
   });
 
   it("ChildProfile no longer declares the field; CoachContract keeps its own", () => {
