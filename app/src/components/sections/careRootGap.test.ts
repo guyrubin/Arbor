@@ -60,3 +60,11 @@ describe("Appointments — empty state teaches the lifecycle; type on the fixed 
     expect(src).toContain('t("elev.learnCare.appt.none", { name:');
   });
 });
+
+describe("Appointments — 'Prepare' means one thing", () => {
+  it("the questions list is named for what it holds, EN + HE (the row's Prepare opens Consult)", () => {
+    expect(translate("en", "elev.learnCare.appt.prepare")).toBe("Questions for the next visit");
+    expect(translate("he", "elev.learnCare.appt.prepare")).toBe("שאלות לביקור הבא");
+    for (const lang of ["en", "he"] as const) expect(translate(lang, "elev.learnCare.appt.prepare")).not.toMatch(/^Prepare|^להכין/);
+  });
+});

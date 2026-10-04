@@ -49,7 +49,8 @@ export const en: Record<string, string> = {
   "elev.learnCare.appt.who.placeholder": "Professional name",
   "elev.learnCare.appt.save": "Save",
   "elev.learnCare.appt.none": "When {name}'s next visit is booked, it lands here. Two weeks before, you'll get a Prepare step; after it, a place to keep what they suggested.",
-  "elev.learnCare.appt.prepare": "Prepare your questions",
+  // W2-CAREPRO r1: one meaning of "Prepare" (the row button → Consult); this list is the questions.
+  "elev.learnCare.appt.prepare": "Questions for the next visit",
   "elev.learnCare.appt.questions.empty": "Add a question you want to ask at the next session.",
   "elev.learnCare.appt.questions.placeholder": "Add a question to ask…",
   "elev.learnCare.appt.questions.add": "Add",
@@ -258,7 +259,7 @@ export const he: Record<string, string> = {
   "elev.learnCare.appt.role.placeholder": "למשל קלינאית תקשורת",
   "elev.learnCare.appt.save": "שמירה",
   "elev.learnCare.appt.none": "כשהביקור הבא של {name} ייקבע, הוא יופיע כאן: שבועיים לפני תקבלו שלב הכנה, ואחריו מקום לשמור את מה שהמליצו.",
-  "elev.learnCare.appt.prepare": "להכין את השאלות",
+  "elev.learnCare.appt.prepare": "שאלות לביקור הבא",
   "elev.learnCare.appt.questions.empty": "הוסיפו שאלה שתרצו לשאול בפגישה הבאה.",
   "elev.learnCare.appt.questions.placeholder": "הוסיפו שאלה לשאול…",
   "elev.learnCare.appt.questions.add": "הוספה",
