@@ -166,3 +166,15 @@ describe("i18nElevation/searchnav — registration-ready module", () => {
     expect(idx).toMatch(/\r?\n\s+searchnav,\r?\n/);
   });
 });
+
+/* ── Critic r1 (W2-ASKJB): the topbar search hit target meets the 44 px floor ── */
+describe("TopbarSearch hit target is the whole 44 px pill", () => {
+  it("the pill is a <label> with min-h-11 / 44px and the input stretches to fill it", () => {
+    expect(topbarSearch).toMatch(/<label\s+className="[^"]*\bmin-h-11\b/);
+    expect(topbarSearch).toContain('height: "44px"');
+    expect(topbarSearch).not.toContain('height: "40px"');
+    expect(topbarSearch).toMatch(/<input[\s\S]{0,1500}className="min-h-11 self-stretch"/);
+    // A 1px border would take 2 px from the input; the hairline is an inset shadow.
+    expect(topbarSearch).not.toMatch(/border:\s*open/);
+  });
+});

@@ -157,19 +157,25 @@ export default function TopbarSearch() {
       aria-label={t("aria.globalSearch")}
     >
       {/* ── Input ────────────────────────────────────────────────────────── */}
-      <div
-        className="flex items-center rounded-xl px-3"
+      {/* Critic r1 (W2-ASKJB, every 1280 cell): the visible pill was 40 px and
+          the input inside it 18 px, so the hit target failed the 44 px floor.
+          The whole pill is now a <label> 44 px tall (min-h-11) and the input
+          stretches to fill it; the hairline is an inset shadow so it takes no
+          height from the input. */}
+      <label
+        className="flex min-h-11 items-stretch rounded-xl px-3"
         style={{
           width: "100%",
-          height: "40px",
+          height: "44px",
+          cursor: "text",
           background: "var(--arbor-paper-elevated)",
-          border: open
-            ? "1px solid var(--arbor-clay)"
-            : "1px solid var(--arbor-rule)",
+          boxShadow: open
+            ? "inset 0 0 0 1px var(--arbor-clay)"
+            : "inset 0 0 0 1px var(--arbor-rule)",
           color: "var(--arbor-faint)",
           fontSize: "var(--t-sm)",
           gap: "8px",
-          transition: "border-color 0.15s",
+          transition: "box-shadow 0.15s",
           boxSizing: "border-box",
         }}
       >
@@ -177,6 +183,7 @@ export default function TopbarSearch() {
           name="search"
           size={18}
           style={{
+            alignSelf: "center",
             color: open ? "var(--arbor-clay)" : "var(--arbor-faint)",
             transition: "color 0.15s",
           }}
@@ -202,14 +209,16 @@ export default function TopbarSearch() {
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={handleKeyDown}
+          className="min-h-11 self-stretch"
           style={{
             flex: 1,
             minWidth: 0,
+            height: "100%",
             border: "none",
             outline: "none",
             background: "transparent",
             color: "var(--arbor-ink)",
-            fontSize: "13px",
+            fontSize: "var(--t-sm)",
             lineHeight: "1",
             // Suppress browser-default search cancel button — we render our own.
             WebkitAppearance: "none",
@@ -218,8 +227,9 @@ export default function TopbarSearch() {
         {query && (
           <button
             aria-label={t("aria.clearSearch")}
-            onClick={() => { setQuery(""); setOpen(false); inputRef.current?.focus(); }}
+            onClick={(e) => { e.preventDefault(); setQuery(""); setOpen(false); inputRef.current?.focus(); }}
             style={{
+              alignSelf: "center",
               flexShrink: 0,
               background: "none",
               border: "none",
@@ -233,7 +243,7 @@ export default function TopbarSearch() {
             <Icon name="close" size={16} />
           </button>
         )}
-      </div>
+      </label>
 
       {/* ── Results overlay ───────────────────────────────────────────────── */}
       {showOverlay && (
