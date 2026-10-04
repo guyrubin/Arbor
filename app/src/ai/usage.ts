@@ -16,6 +16,7 @@ import { logger } from "../server/logger.js";
 import { currentRequestContext } from "../server/requestContext.js";
 import { recordUsageRollup } from "../server/usageRollup.js";
 import type { ModelRoute, ProviderId } from "./modelRouter.js";
+import { estimateCostUsd } from "./priceTable.js";
 
 export type TokenUsage = {
   promptTokens: number;
@@ -81,6 +82,10 @@ export type UsageMeta = {
   promptVersion?: string;
 };
 
+/** B-PROV-04: the call's estimated USD (undefined when unpriced / no usage). */
+const costOf = (meta: UsageMeta, usage: TokenUsage | null): number | undefined =>
+  usage ? estimateCostUsd(meta.resolvedModel ?? meta.model, usage) : undefined;
+
 /** The structured `ai.usage` event body. Pure so tests can pin the shape. */
 export const buildUsageEvent = (
   meta: UsageMeta,
@@ -101,6 +106,9 @@ export const buildUsageEvent = (
     promptTokens: usage?.promptTokens ?? 0,
     outputTokens: usage?.outputTokens ?? 0,
     totalTokens: usage?.totalTokens ?? 0,
+    // B-PROV-04: dated price table (ai/priceTable.ts) on the RESOLVED model.
+    // Absent — never 0 — when the model is unpriced or no tokens were reported.
+    ...(costOf(meta, usage) !== undefined ? { estimatedCostUsd: costOf(meta, usage) } : {}),
     ...(timing ? { totalMs: timing.totalMs } : {}),
     ...(timing?.firstChunkMs !== undefined ? { firstChunkMs: timing.firstChunkMs } : {}),
   };
@@ -128,6 +136,7 @@ export const recordUsage = (
       meta.provider,
       usage ?? { promptTokens: 0, outputTokens: 0, totalTokens: 0 },
       timing ? { route: meta.route, totalMs: timing.totalMs, firstChunkMs: timing.firstChunkMs } : undefined,
+      typeof event.estimatedCostUsd === "number" ? event.estimatedCostUsd : undefined,
     );
   } catch {
     /* telemetry must never break a request */

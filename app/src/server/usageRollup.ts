@@ -77,7 +77,7 @@ export const initUsageRollup = (config: ArborConfig): void => {
 };
 
 /** Increment today's rollup with one model call's tokens (+ EVAL-7 latency). Never throws. */
-export const recordUsageRollup = (provider: string, usage: RollupUsage, timing?: RollupTiming): void => {
+export const recordUsageRollup = (provider: string, usage: RollupUsage, timing?: RollupTiming, costUsd?: number): void => {
   if (!db) return;
   const date = usageDateKey();
   // EVAL-7: per-route latency histogram + sums. p50/p95 per route are derived
@@ -103,11 +103,15 @@ export const recordUsageRollup = (provider: string, usage: RollupUsage, timing?:
       promptTokens: FieldValue.increment(usage.promptTokens),
       outputTokens: FieldValue.increment(usage.outputTokens),
       totalTokens: FieldValue.increment(usage.totalTokens),
+      // B-PROV-04: priced calls only; `pricedCalls` lets the reader say how
+      // much of the day the estimate covers (an unpriced call adds nothing).
+      ...(costUsd !== undefined ? { estimatedCostUsd: FieldValue.increment(costUsd), pricedCalls: FieldValue.increment(1) } : {}),
       byProvider: {
         [provider]: {
           calls: FieldValue.increment(1),
           promptTokens: FieldValue.increment(usage.promptTokens),
           outputTokens: FieldValue.increment(usage.outputTokens),
+          ...(costUsd !== undefined ? { estimatedCostUsd: FieldValue.increment(costUsd) } : {}),
         },
       },
       ...routeLatency,

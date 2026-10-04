@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { buildUsageEvent, normalizeUsage, recordUsage, startCallTimer } from "./usage.js";
+import { PRICE_TABLE, PRICE_TABLE_AS_OF, estimateCostUsd, priceKeyFor } from "./priceTable.js";
+import { costPerActiveFamily, lastDayKeys } from "../server/adminMetrics.js";
 import { latencyBucketOf, percentileFromBuckets } from "../server/usageRollup.js";
 import { logger } from "../server/logger.js";
 
@@ -146,5 +148,66 @@ describe("usageRollup latency buckets → p50/p95", () => {
 
   it("returns null on an empty histogram", () => {
     expect(percentileFromBuckets({}, 50)).toBeNull();
+  });
+});
+
+// B-PROV-04: the dated price table fills `estimatedCostUsd`; €/active family
+// is readable on the admin overview. Unknown model → the field is ABSENT.
+describe("B-PROV-04 · estimatedCostUsd from the dated price table", () => {
+  it("a 2.7k/1.0k Gemini 2.5 Flash call logs ≈ $0.003", () => {
+    const event = buildUsageEvent(
+      { route: "analysis_structured", provider: "vertex_gemini", model: "gemini-2.5-flash" },
+      { promptTokens: 2700, outputTokens: 1000, totalTokens: 3700 },
+    );
+    expect(event?.estimatedCostUsd).toBeCloseTo(0.00331, 6);
+    expect(Number(event?.estimatedCostUsd)).toBeGreaterThan(0.0025);
+    expect(Number(event?.estimatedCostUsd)).toBeLessThan(0.0035);
+  });
+
+  it("an unknown model logs NO estimatedCostUsd (never 0); a timing-only event has none either", () => {
+    const unknown = buildUsageEvent(
+      { route: "analysis_structured", provider: "gemini_dev", model: "some-future-model" },
+      { promptTokens: 2700, outputTokens: 1000, totalTokens: 3700 },
+    );
+    expect(unknown).not.toHaveProperty("estimatedCostUsd");
+    expect(buildUsageEvent({ route: "analysis_structured", provider: "vertex_gemini", model: "gemini-2.5-flash" }, null, { totalMs: 90 })).not.toHaveProperty("estimatedCostUsd");
+  });
+
+  it("prices the RESOLVED model; the longest prefix wins; versions and paths are stripped", () => {
+    expect(priceKeyFor("claude-sonnet-5@20260101")).toBe("claude-sonnet-5");
+    expect(priceKeyFor("gemini-2.5-flash-lite-001")).toBe("gemini-2.5-flash-lite");
+    expect(priceKeyFor("publishers/google/models/gemini-2.5-flash")).toBe("gemini-2.5-flash");
+    expect(priceKeyFor("mock-fixtures")).toBeNull();
+    const event = buildUsageEvent(
+      { route: "coach_high_stakes", provider: "vertex_claude", model: "claude-sonnet-5@anthropic", resolvedModel: "claude-sonnet-5" },
+      { promptTokens: 1_000_000, outputTokens: 0, totalTokens: 1_000_000 },
+    );
+    expect(event?.estimatedCostUsd).toBe(PRICE_TABLE["claude-sonnet-5"].inputPerM);
+    expect(PRICE_TABLE_AS_OF).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(estimateCostUsd("gemini-2.5-flash", { promptTokens: 1_000_000, outputTokens: 0, audioInputTokens: 1_000_000 })).toBe(1);
+  });
+
+  it("admin overview: 30-day spend ÷ active families (internal + demo out; null when not answerable)", () => {
+    const now = new Date("2026-10-04T12:00:00.000Z");
+    const keys = lastDayKeys(now, 30);
+    const out = costPerActiveFamily({
+      now,
+      usageDays: [
+        { date: keys[0], calls: 10, pricedCalls: 8, estimatedCostUsd: 0.5 },
+        { date: keys[29], calls: 5, pricedCalls: 5, estimatedCostUsd: 0.25 },
+        { date: "2026-08-01", calls: 99, pricedCalls: 99, estimatedCostUsd: 99 },
+      ],
+      rollups: [
+        { activeDays: [keys[3]], cohort: "family" },
+        { activeDays: [keys[10]] },
+        { activeDays: ["2026-08-01"], cohort: "family" },
+        { activeDays: [keys[0]], cohort: "internal" },
+        { activeDays: [keys[0]], cohort: "demo" },
+      ],
+    });
+    expect(out).toMatchObject({ days: 30, estimatedCostUsd: 0.75, pricedCalls: 13, calls: 15, activeFamilies: 2, perActiveFamilyUsd: 0.375 });
+    const empty = costPerActiveFamily({ now, usageDays: [], rollups: [] });
+    expect(empty.estimatedCostUsd).toBeNull();
+    expect(empty.perActiveFamilyUsd).toBeNull();
   });
 });
