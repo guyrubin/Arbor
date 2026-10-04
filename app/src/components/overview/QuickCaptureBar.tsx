@@ -29,7 +29,7 @@ const AUX_MODES: { ms: string; key: Exclude<CaptureMode, "text">; label: string;
 /** Tile anatomy shared by all four tiles: icon over label below sm (each tile
  *  is ~89 px wide at 390), icon beside label from sm up; ≥48 px tall. */
 const TILE =
-  "min-w-0 inline-flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2.5 px-1.5 sm:px-3 py-1.5 sm:py-2.5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset";
+  "min-h-[48px] min-w-0 inline-flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2.5 px-1.5 sm:px-3 py-1.5 sm:py-2.5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset";
 const TILE_STYLE = (ink: string): React.CSSProperties =>
   ({ minHeight: 48, borderColor: RULE, color: ink, ["--tw-ring-color" as string]: GREEN }) as React.CSSProperties;
 const ICON = "flex h-8 w-8 sm:h-9 sm:w-9 flex-none items-center justify-center rounded-full";

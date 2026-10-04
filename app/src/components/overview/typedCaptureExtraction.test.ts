@@ -94,13 +94,16 @@ describe("AI-CAP-3 — BehaviorsTab typed capture goes through the extraction se
     expect(elseBranch).not.toMatch(/openFromBar/);
   });
 
-  it("the capture bar's Enter routes long input to extraction, short input to today's openFromBar", () => {
-    const router = /const openFromBarOrDraft = [\s\S]*?\n  };/.exec(behaviors)?.[0] ?? "";
-    expect(router).toBeTruthy();
-    expect(router).toMatch(/TYPED_EXTRACT_MIN_CHARS/);
-    expect(router).toMatch(/extractFromTyped/);
-    expect(router).toMatch(/openFromBar\(text\)/);
-    expect(behaviors).toMatch(/openFromBarOrDraft\(barText\)/);
+  it("W2-ASKJB critic r2: the hub's own capture bar is gone — typed extraction stays reachable through the inline form AND the one capture sheet", () => {
+    // The bar's 2-row field opened the inline form on every keystroke, so its
+    // Enter router was unreachable by typing. The hub now mounts Today's
+    // QuickCaptureBar (every tile opens the ONE capture sheet, which carries
+    // its own typed extraction); the inline form's long-text path stays.
+    expect(behaviors).not.toMatch(/openFromBarOrDraft|barText/);
+    expect(behaviors).toContain('onText={() => openCaptureSheet({ mode: "text" })}');
+    expect(behaviors).toMatch(/typed\.length > TYPED_EXTRACT_MIN_CHARS[\s\S]{0,120}void extractFromTyped\(typed\)/);
+    const sheet = read("components/overview/QuickLogModal.tsx");
+    expect(sheet).toContain("api.extractLog(");
   });
 
   it("the trigger input (where the bar redirects typing) also drafts on Enter for long fresh input only", () => {

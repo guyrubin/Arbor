@@ -71,23 +71,29 @@ describe("COACH-4 — CoachTab is one composer + one flowing thread", () => {
   });
 });
 
-describe("COACH-8 — Behaviors capture bar is an honest input", () => {
+describe("COACH-8 — Behaviors capture is an honest launcher (critic r2)", () => {
   const code = read("components/tabs/BehaviorsTab.tsx");
 
-  it("the bar is a real input, not a button styled as a text field", () => {
-    expect(code).toContain("placeholder={captureCopy.intro}");
-    expect(code).not.toMatch(/\{captureCopy\.intro\}\s*<\/button>/);
+  // W2-ASKJB critic r2 (behaviors P1 G1): the "real input" became a trap —
+  // onChange opened the inline form on EVERY keystroke, moved focus away and
+  // cleared the text, so the parent's typing landed in a different field. The
+  // honest affordance now is a launcher: Today's QuickCaptureBar, every tile
+  // opening the ONE capture sheet in place (its text field is where typing
+  // happens and stays). No field on the hub swallows keystrokes.
+  it("the hub's capture is QuickCaptureBar opening the one sheet — no hub field that moves the parent's typing", () => {
+    expect(code).toMatch(/<QuickCaptureBar\s+childName=\{behFirst\}\s+onText=\{\(\) => openCaptureSheet\(\{ mode: "text" \}\)\}\s+onMode=\{\(mode\) => openCaptureSheet\(\{ mode \}\)\}/);
+    expect(code).toContain("onHardMoment={guideLead.any ? () => openHardMomentNow() : undefined}");
+    expect(code).not.toContain('id="behaviors-capture-text"');
+    expect(code).not.toMatch(/onChange=\{\(e\) => \{ setBarText\(e\.target\.value\); openFromBar/);
+    // NEGATIVE CONTROL: the shipped r1 shape is recognised as the trap.
+    const r1 = `onChange={(e) => { setBarText(e.target.value); openFromBar(e.target.value); }}`;
+    expect(/onChange=\{\(e\) => \{ setBarText\(e\.target\.value\); openFromBar/.test(r1)).toBe(true);
   });
 
-  it("typing opens the form with the text prefilled into newLogTrigger and focus moved there", () => {
-    expect(code).toContain("openFromBar");
+  it("the inline form keeps its prefill seam (extraction fallback) — focus moves to the trigger field", () => {
     expect(code).toMatch(/const openFromBar = \(text: string\) => \{\s*if \(text\.trim\(\)\) setNewLogTrigger\(text\);/);
     expect(code).toContain("triggerInputRef.current");
     expect(code).toMatch(/el\.focus\(\)/);
-  });
-
-  it("Enter opens the form rather than submitting", () => {
-    expect(code).toMatch(/e\.key === "Enter"[\s\S]{0,60}preventDefault\(\);\s*openFromBar/);
   });
 
   it("zero new capture paths — saving still goes only through the one write seam", () => {

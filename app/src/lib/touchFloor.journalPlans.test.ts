@@ -28,6 +28,7 @@ const FILES = {
   entrySheet: "components/journal/JournalEntrySheet.tsx",
   behaviors: "components/tabs/BehaviorsTab.tsx",
   plans: "components/tabs/PlansTab.tsx",
+  captureBar: "components/overview/QuickCaptureBar.tsx",
   routines: "components/plans/RoutinesCard.tsx",
 } as const;
 
@@ -40,7 +41,9 @@ const CONTROLS: { id: string; file: keyof typeof FILES; near: string }[] = [
   { id: "OBJ-JOURNAL-02 prompt chips", file: "journal", near: "onPromptTap(key)" },
   { id: "OBJ-JOURNAL-02 compose tiles", file: "journal", near: "startCapture(key)" },
   { id: "OBJ-JOURNAL-02 entry-sheet edit", file: "entrySheet", near: 'data-testid="journal-entry-edit"' },
-  { id: "OBJ-BEH-06 capture tiles", file: "behaviors", near: "m.key === \"voice\" && listening" },
+  // W2-ASKJB critic r2: the hub's own Voice · Photo · Text tiles left; its
+  // capture is Today's QuickCaptureBar (48 px tiles), mounted in BehaviorsTab.
+  { id: "OBJ-BEH-06 capture tiles", file: "captureBar", near: "const TILE =" },
   { id: "OBJ-BEH-08 template chips", file: "plans", near: "setPlanChallengeTopic(tpl)" },
   { id: "OBJ-BEH-08 suggestion chips", file: "plans", near: "setPlanChallengeTopic(s.topic)" },
   { id: "OBJ-BEH-08 refine in coach", file: "plans", near: 'source: "plans-coreg"' },

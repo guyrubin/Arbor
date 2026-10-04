@@ -243,22 +243,22 @@ describe("critic r1 — behaviors capture reads first, one primary fill", async 
   const BEH = strip(read("components/tabs/BehaviorsTab.tsx"));
   const HERO = strip(read("components/ui/HubHero.tsx"));
   const i18n = await import("../../lib/i18n");
-  it("a visible label + a 2-row textarea, in both locales", () => {
-    expect(BEH).toMatch(/<label htmlFor="behaviors-capture-text"[^>]*>\s*\{t\("beh\.capture\.label", \{ name: behFirst \}\)\}/);
-    expect(BEH).toMatch(/<textarea\s+id="behaviors-capture-text"\s+rows=\{2\}/);
+  it("a visible heading names the move (the H1 on an empty week), in both locales", () => {
+    // Critic r2: the 2-row field is gone (it swallowed keystrokes); the
+    // heading is the page's H1 when the hero is absent (no data this week).
+    expect(BEH).toMatch(/\{hasWeek && \(\s*<HubHero/);
+    expect(BEH).toMatch(/<h1 data-testid="behaviors-capture-label"[^>]*>\s*\{t\("beh\.capture\.label", \{ name: behFirst \}\)\}/);
+    expect(BEH).toMatch(/<h2 data-testid="behaviors-capture-label"[^>]*>\s*\{t\("beh\.capture\.label", \{ name: behFirst \}\)\}/);
     expect(i18n.en["beh.capture.label"]).toContain("{name}");
     expect(i18n.he["beh.capture.label"]).toContain("{name}");
-    for (const d of [i18n.en, i18n.he]) expect(d["beh.capture.intro"].length).toBeLessThanOrEqual(64);
   });
-  it("one primary fill: the send arrow; Find the pattern is outline", () => {
+  it("one primary fill at rest: none on the hub's capture (QuickCaptureBar is neutral); Find the pattern is outline", () => {
     const find = BEH.slice(BEH.indexOf('data-testid="behaviors-find-pattern"') - 200, BEH.indexOf('data-testid="behaviors-find-pattern"') + 400);
     expect(find).not.toMatch(/gradientCta|gradient-cta|gradient-primary/);
-    // At rest the send arrow is the one fill; the only other one is the
-    // opened inline form's own submit (the same move, completed).
+    // The only fill left is the opened inline form's own submit.
     const fills = BEH.split("\n").filter((l) => /<button\b/.test(l) && /T\.gradientCta/.test(l));
-    expect(fills).toHaveLength(2);
-    expect(fills[0]).toContain("onClick={() => focusForm()}");
-    expect(fills[1]).toContain('type="submit"');
+    expect(fills).toHaveLength(1);
+    expect(fills[0]).toContain('type="submit"');
   });
   it("the hero zero line is muted, regular weight", () => {
     const zero = HERO.slice(HERO.indexOf("{allZero && zeroLine && ("), HERO.indexOf("{zeroLine}"));
@@ -271,15 +271,56 @@ describe("critic r1 — behaviors capture reads first, one primary fill", async 
 describe("B-ASKJB-NEW-1f — chosen-for note on the shelf", async () => {
   const i18n = await import("../../lib/i18n");
   const SHELF = read("components/behaviors/HardMomentsSection.tsx");
-  it("keyed EN + HE with {name}; peach tokens + --r; no verdict words", () => {
+  it("keyed EN + HE with {name}; muted under the tiles; no verdict words", () => {
     for (const d of [i18n.en, i18n.he]) {
       expect(d["hm.chosenFor"]).toContain("{name}");
       expect(d["hm.chosenFor"]).not.toMatch(/review|risk|score|נבדק|סיכון/i);
     }
     const note = SHELF.slice(SHELF.indexOf('data-testid="hard-moments-chosen"'), SHELF.indexOf("</p>", SHELF.indexOf('data-testid="hard-moments-chosen"')));
-    expect(note).toContain('background: "var(--arbor-peach-soft)"');
-    expect(note).toContain('color: "var(--arbor-peach-ink)"');
-    expect(note).toContain('borderRadius: "var(--r)"');
+    // Critic r2: the warm accent moved into the capture card; the shelf's
+    // note is a muted line under the tiles.
+    expect(note).toContain('color: "var(--arbor-muted)"');
+    expect(note).not.toMatch(/--arbor-peach/);
     expect(note).toContain('t("hm.chosenFor", { name: childFirst })');
+    expect(SHELF.indexOf('data-testid="hard-moment-tiles"')).toBeLessThan(SHELF.indexOf('data-testid="hard-moments-chosen"'));
+  });
+});
+
+/**
+ * Critic r2 (W2-ASKJB behaviors). Guide tiles above the fold at 375; the
+ * capture is the one sheet; one warm line; a 7/5 grid at lg.
+ */
+describe("critic r2 — behaviors: guides under the capture, one warm line, no stretched column", async () => {
+  const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  const BEH = strip(read("components/tabs/BehaviorsTab.tsx"));
+  const SHELF = strip(read("components/behaviors/HardMomentsSection.tsx"));
+  const i18n = await import("../../lib/i18n");
+  it("the shelf's tiles come right after its heading as a snap row, 'All {n} guides' trailing", () => {
+    expect(SHELF.indexOf('id="hard-moments-title"')).toBeLessThan(SHELF.indexOf('data-testid="hard-moment-tiles"'));
+    expect(SHELF.indexOf('data-testid="hard-moment-tiles"')).toBeLessThan(SHELF.indexOf('t("hm.sub")'));
+    expect(SHELF).toMatch(/flex snap-x snap-mandatory gap-2 overflow-x-auto/);
+    const at = SHELF.indexOf('data-testid="hard-moment-tiles"');
+    const row = SHELF.slice(at, SHELF.indexOf("{expanded && (", at));
+    expect(row).toContain('data-testid="hard-moments-door"');
+    expect(row).toContain('t("elev.closeloop.hm.allGuides", { n: cards.length })');
+    expect(SHELF).toMatch(/<h3 id="hard-moments-title" className="t-md"/);
+  });
+  it("at lg: a 7/5 grid — capture in the start column, the shelf as the end rail", () => {
+    expect(BEH).toContain("lg:grid lg:grid-cols-12");
+    expect(BEH).toMatch(/<div className="min-w-0 space-y-6 lg:col-span-7">\s*<section data-module="behaviors-capture"/);
+    expect(BEH).toContain('<div data-module="behaviors-hard-moments" className="min-w-0 lg:col-span-5"><HardMomentsSection /></div>');
+  });
+  it("one warm line in the capture card: the parent's own words (<= 70 chars) or the top guide by name, EN + HE", () => {
+    const at = BEH.indexOf('data-testid="behaviors-warm-line"');
+    const line = BEH.slice(at, BEH.indexOf("</p>", at));
+    expect(line).toContain("var(--font-editorial)");
+    expect(line).toContain('background: "var(--arbor-peach-soft)", color: "var(--arbor-peach-ink)"');
+    expect(BEH).toContain("words.length > 70 ? `${words.slice(0, 70).trimEnd()}");
+    for (const d of [i18n.en, i18n.he]) {
+      expect(d["beh.warm.quote"]).toContain("{words}");
+      expect(d["beh.warm.guide"]).toContain("{guide}");
+      expect(`${d["beh.warm.quote"]} ${d["beh.warm.guide"]}`).not.toMatch(/\d|%|streak|score|רצף|ציון/i);
+    }
+    for (const k of ["beh.warm.guide", "beh.warm.quote"]) expect(i18n.he[k].replace(/\{\w+\}/g, "")).not.toMatch(/[A-Za-z]/);
   });
 });

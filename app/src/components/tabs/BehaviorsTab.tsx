@@ -18,6 +18,10 @@ import { HubHero } from "../ui/HubHero";
 import { T } from "../../lib/tokens";
 import PatternInsights from "../behaviors/PatternInsights";
 import HardMomentsSection from "../behaviors/HardMomentsSection";
+import QuickCaptureBar from "../overview/QuickCaptureBar";
+import { availableHardMomentCards, matchToRecentBehaviors } from "../../content/selectCards";
+import { locText, recentBehaviorTypes } from "../../content/hardMomentSurface";
+import { ageMonthsFromProfile } from "../../lib/childAge";
 import { Modal } from "../ui/Modal";
 import ConfirmCaptureReview, { type CaptureSource } from "../overview/ConfirmCaptureReview";
 import { speechSupported, startDictation } from "../../lib/speech";
@@ -145,6 +149,8 @@ export default function BehaviorsTab() {
     startEditLog,
     cancelEditLog,
     logsLoaded,
+    openCaptureSheet,
+    openHardMomentNow,
   } = useArbor();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -241,7 +247,6 @@ export default function BehaviorsTab() {
   // Enter opens the form rather than submitting. Prefill of EXISTING form
   // state only — zero new capture paths (saving still goes through the one
   // form → submitLog → handleAddLog seam).
-  const [barText, setBarText] = useState("");
   const openFromBar = (text: string) => {
     if (text.trim()) setNewLogTrigger(text);
     setCaptureOpen(true);
@@ -254,7 +259,6 @@ export default function BehaviorsTab() {
           el.focus();
           el.setSelectionRange(el.value.length, el.value.length);
         }
-        setBarText("");
       });
     });
   };
@@ -383,18 +387,6 @@ export default function BehaviorsTab() {
     }
   };
 
-  // The capture bar's Enter router (COACH-8 affordance kept): a long typed
-  // description drafts through extraction; short inputs keep today's
-  // open-the-form-with-prefill behavior.
-  const openFromBarOrDraft = (text: string) => {
-    if (text.trim().length > TYPED_EXTRACT_MIN_CHARS) {
-      setBarText("");
-      void extractFromTyped(text.trim());
-    } else {
-      openFromBar(text);
-    }
-  };
-
   const toggleVoice = () => {
     if (listening) {
       stopRef.current?.();
@@ -485,6 +477,35 @@ export default function BehaviorsTab() {
       resolved: resolvedWeek,
     };
   }, [behaviorLogs]);
+  const hasWeek = heroStats.events > 0;
+
+  // Critic r2 (behaviors design P1 G2 / B-ASKJB-NEW-2f): the shelf's lead guide
+  // — the same deterministic match HardMomentsSection rests on (the parent's
+  // own logged types against the guide concerns; catalogue order otherwise).
+  const guideLead = useMemo(() => {
+    const now = new Date();
+    const locale = uiLang === "he" ? "he" : "en";
+    const ageMonths = ageMonthsFromProfile(childProfile, now);
+    const cards = availableHardMomentCards({ now, ageMonths, locale });
+    const matched = matchToRecentBehaviors(recentBehaviorTypes(behaviorLogs || [], now), cards, now, ageMonths, locale);
+    const top = (matched.length ? matched : cards)[0];
+    return { any: cards.length > 0, title: top ? locText(top.title, locale) : "" };
+  }, [childProfile, uiLang, behaviorLogs]);
+
+  // One warm line in the capture card: the parent's own last words (never
+  // generated; first 70 characters; the date is the fact), else — on day 0 —
+  // the child's top matched guide by name. No count, no verdict, no colour on
+  // a hard moment beyond the page's one peach accent.
+  const warmLine = useMemo((): { kind: "quote"; words: string; day: string } | { kind: "guide"; guide: string } | null => {
+    const latest = [...behaviorLogs]
+      .filter((l) => (l.trigger || "").trim())
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+    if (latest) {
+      const words = latest.trigger.trim();
+      return { kind: "quote", words: words.length > 70 ? `${words.slice(0, 70).trimEnd()}…` : words, day: fmtDayShort(latest.timestamp, uiLang) };
+    }
+    return guideLead.title ? { kind: "guide", guide: guideLead.title } : null;
+  }, [behaviorLogs, guideLead.title, uiLang]);
 
   // Per-type 30-day FLAT COUNT (Wave-3 clinical subtraction, 2026-06-26).
   // Replaces the prior 30-day intensity-over-time sparkline series — a behavior-
@@ -636,6 +657,10 @@ export default function BehaviorsTab() {
       {/* E2 — the shared hub-hero grammar (replaces PageHeader + the hand-rolled
           coral hero; same job, one kit). Warm tone; stat trio = this-week flat
           counts only — no averages, no trends (clinical firewall). */}
+      {/* Critic r2 (behaviors design P1 G1): the hero renders only when this
+          week has moments (counts only); on an empty week the capture heading
+          is the page's H1, so the primary move leads the first viewport. */}
+      {hasWeek && (
       <HubHero
         compact
         zeroLine={t("elev.growthTruth.hero.empty")}
@@ -651,6 +676,7 @@ export default function BehaviorsTab() {
         ]}
         testId="behaviors-hub-hero"
       />
+      )}
 
       {/* TJB-21 — the static "YOUR NEXT STEP" banner that stood here (213 px of
           `beh.next.*` copy rendered regardless of data) pushed the declared
@@ -666,6 +692,12 @@ export default function BehaviorsTab() {
           marks a top-level sibling module (what moduleBudget counts);
           `data-primary-move` marks the ONE control that performs the move
           surfaceContract.ts declares for this route. */}
+      {/* Critic r2 (behaviors design P1 G1): at lg a 7/5 grid — capture and
+          the pattern echo in the start column (≤ ~670 px, no 936 px phone
+          column), the guide shelf as a rail in the end column. Below lg the
+          shelf sits directly under the capture (its tiles a snap row). */}
+      <div className="min-w-0 space-y-6 lg:grid lg:grid-cols-12 lg:items-start lg:gap-6 lg:space-y-0">
+      <div className="min-w-0 space-y-6 lg:col-span-7">
       <section data-module="behaviors-capture" data-primary-move="log-behavior" className="min-w-0" aria-label={t("beh.captureTitle")}>
         {/* TJB-12 — the writing prompt the parent tapped in the Journal before
             arriving here. It used to die at the tab switch, leaving them in
@@ -699,44 +731,37 @@ export default function BehaviorsTab() {
             </button>
           </div>
         )}
-        {/* QuickLog mode tiles — Voice / Photo / Text */}
-        {/* W2-ASKJB critic r1: the capture card had no visible label (its only
-            words were a muted placeholder) and a one-line <input> clipped the
-            two-line copy mid-sentence. A display label now names the move, and
-            the field is a 2-row textarea (Enter still opens; Shift+Enter breaks). */}
-        <div className="overflow-hidden rounded-[20px] bg-white" style={{ border: "1px solid var(--arbor-rule-strong)", boxShadow: "var(--shadow-sm)" }}>
-          <label htmlFor="behaviors-capture-text" data-testid="behaviors-capture-label" className="block px-4 pt-4 t-lg font-extrabold sm:px-5" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-            {t("beh.capture.label", { name: behFirst })}
-          </label>
-          <textarea
-            id="behaviors-capture-text"
-            rows={2}
-            value={barText}
-            onChange={(e) => { setBarText(e.target.value); openFromBar(e.target.value); }}
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); openFromBarOrDraft(barText); } }}
-            placeholder={captureCopy.intro}
-            className="block min-h-[88px] w-full resize-none bg-transparent px-4 pb-4 pt-2 text-start text-sm focus:outline-none sm:px-5"
-            style={{ color: "var(--arbor-ink)" }}
+        {/* Critic r2 (behaviors P1 G1, front half of B-ASKJB-23): the hub's
+            own Voice · Photo · Text card is gone. Its 2-row field opened the
+            inline form on EVERY keystroke (one letter typed, focus moved, the
+            text cleared). The capture is now Today's QuickCaptureBar — every
+            tile opens the ONE capture sheet in place (typed extraction,
+            voice, photo and the review gate live there) and the Hard moment
+            tile opens the Hard moment now sheet. The heading names the move;
+            one warm line (the page's one warm accent) speaks to this family. */}
+        <div data-testid="behaviors-capture-card" className="min-w-0 space-y-3 rounded-[var(--r-xl)] p-4 sm:p-5" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule-strong)", boxShadow: "var(--shadow-sm)" }}>
+          {hasWeek ? (
+            <h2 data-testid="behaviors-capture-label" className="t-xl font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+              {t("beh.capture.label", { name: behFirst })}
+            </h2>
+          ) : (
+            <h1 data-testid="behaviors-capture-label" className="t-xl font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+              {t("beh.capture.label", { name: behFirst })}
+            </h1>
+          )}
+          {warmLine && (
+            <p data-testid="behaviors-warm-line" data-warm={warmLine.kind} dir="auto" className="px-3 py-2 t-sm leading-snug" style={{ borderRadius: "var(--r-sm)", fontFamily: "var(--font-editorial)", background: "var(--arbor-peach-soft)", color: "var(--arbor-peach-ink)" }}>
+              {warmLine.kind === "quote"
+                ? t("beh.warm.quote", { words: warmLine.words, day: warmLine.day })
+                : t("beh.warm.guide", { guide: warmLine.guide, name: behFirst })}
+            </p>
+          )}
+          <QuickCaptureBar
+            childName={behFirst}
+            onText={() => openCaptureSheet({ mode: "text" })}
+            onMode={(mode) => openCaptureSheet({ mode })}
+            onHardMoment={guideLead.any ? () => openHardMomentNow() : undefined}
           />
-          <div className="flex flex-wrap items-center gap-1 border-t px-2 py-2 sm:px-3" style={{ borderColor: "var(--arbor-rule)" }}>
-            {quickModes.map((m) => {
-              const p = PASTEL[m.tone];
-              const active = m.key === "voice" && listening;
-              return (
-                <button
-                  key={m.key}
-                  type="button"
-                  onClick={m.onClick}
-                  className={`inline-flex min-h-11 min-w-11 items-center gap-2 rounded-xl px-3 text-xs font-bold transition ${active ? "animate-pulse" : ""}`}
-                  style={{ color: p.ink }}
-                >
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full" style={{ background: p.soft }}><Icon name={m.icon} size={15} /></span>
-                  {m.label}
-                </button>
-              );
-            })}
-            <button type="button" onClick={() => focusForm()} aria-label={captureCopy.open} className="ms-auto flex h-11 w-11 items-center justify-center rounded-full text-white transition active:scale-95" style={{ background: T.gradientCta }}><Icon name="arrow_forward" size={18} className="rtl:rotate-180" /></button>
-          </div>
         </div>
 
         {voiceNotice && !captureOpen && <MicrophoneNotice message={voiceNotice} lang={uiLang} onRetry={toggleVoice} onDismiss={() => setVoiceNotice(null)} />}
@@ -842,7 +867,9 @@ export default function BehaviorsTab() {
           availableHardMomentCards(context) (HardMomentsSection), the catalogue
           filtered for this parent's locale and the child's age — not only
           publishedHardMomentCards as this comment used to claim. */}
-      <div data-module="behaviors-hard-moments" style={{ display: "contents" }}><HardMomentsSection /></div>
+      </div>
+      <div data-module="behaviors-hard-moments" className="min-w-0 lg:col-span-5"><HardMomentsSection /></div>
+      </div>
 
       {/* Row 2 — events main column + right rail (patterns) */}
       <div data-module="behaviors-record" className="grid min-w-0 grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">

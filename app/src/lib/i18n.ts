@@ -581,6 +581,8 @@ export const en: Dict = {
   // COACH-5 — quick-capture composer copy (was an inline uiLang ternary table).
   "beh.capture.intro": "Two lines is enough — add detail only when it will help later.",
   "beh.capture.label": "What happened with {name} today?",
+  "beh.warm.quote": "Last time you wrote: “{words}” · {day}",
+  "beh.warm.guide": "If today had a {guide} with {name}, there's a short guide for it right below.",
   "beh.capture.open": "Quick capture",
   "beh.capture.close": "Close",
   "beh.capture.details": "Add context and details",
@@ -2969,6 +2971,8 @@ export const he: Dict = {
   // COACH-5 — quick-capture composer copy (he; was an inline uiLang ternary table).
   "beh.capture.intro": "שתי שורות מספיקות — פרטים רק אם יעזרו אחר כך.",
   "beh.capture.label": "מה קרה היום עם {name}?",
+  "beh.warm.quote": "בפעם הקודמת כתבתם: „{words}” · {day}",
+  "beh.warm.guide": "אם היום היה רגע של {guide} עם {name}, יש לזה מדריך קצר ממש כאן למטה.",
   "beh.capture.open": "תיעוד מהיר",
   "beh.capture.close": "סגירה",
   "beh.capture.details": "הוספת הקשר ופרטים",

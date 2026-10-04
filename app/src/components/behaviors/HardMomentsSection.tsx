@@ -144,16 +144,14 @@ export default function HardMomentsSection() {
 
   return (
     <section lang={locale} dir={locale === "he" ? "rtl" : "ltr"} className={`${cardCls} min-w-0 p-5 space-y-4 text-start`} aria-labelledby="hard-moments-title" data-testid="hard-moments-section">
-      <div className="min-w-0">
-        <h3 id="hard-moments-title" className="text-lg" style={{ fontFamily: "var(--font-display)", fontWeight: 600, color: "var(--arbor-ink)" }}>{t("hm.title")}</h3>
-        <p className="mt-1 text-sm leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>{t("hm.sub")}</p>
-        {/* B-ASKJB-NEW-1f (4): the page's ONE warm accent names why these
-            guides are here — age first, then what the parent logs. */}
-        <p data-testid="hard-moments-chosen" dir="auto" className="mt-2 px-3 py-2 t-sm leading-snug" style={{ borderRadius: "var(--r)", background: "var(--arbor-peach-soft)", color: "var(--arbor-peach-ink)" }}>
-          {t("hm.chosenFor", { name: childFirst })}
-        </p>
-        {hasPilot && <p className="mt-2 text-xs font-semibold" style={{ color: "var(--arbor-green-ink)" }}>{copy.status}</p>}
-      </div>
+      {/* Critic r2 (behaviors P1 G1): the guides are what the parent came
+          for — the heading (one step below the capture heading), then the
+          three matched tiles as a snap row with "All {n} guides" as its
+          trailing tile, directly under the capture. The intro and the
+          chosen-for note follow the row; the note is muted now (the page's
+          one warm accent moved into the capture card). At lg the row is a
+          rail column. */}
+      <h3 id="hard-moments-title" className="t-md" style={{ fontFamily: "var(--font-display)", fontWeight: 600, color: "var(--arbor-ink)" }}>{t("hm.title")}</h3>
       {/* The category filter belongs to the OPEN catalogue: filtering three
           matched tiles is a control with nothing to control. */}
       {expanded && (
@@ -174,10 +172,16 @@ export default function HardMomentsSection() {
       {!expanded && matched.length > 0 && (
         <p className="text-xs font-bold" style={{ color: "var(--arbor-green-ink)" }}>{t("elev.closeloop.hm.matched")}</p>
       )}
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2" data-testid="hard-moment-tiles">
+      <div
+        data-testid="hard-moment-tiles"
+        data-layout={expanded ? "grid" : "row"}
+        className={expanded
+          ? "grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1"
+          : "-mx-5 flex snap-x snap-mandatory gap-2 overflow-x-auto px-5 pb-1 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0"}
+      >
         {visible.map((card) => (
           <button key={card.id} type="button" data-testid="hard-moment-tile" onClick={() => openHardMomentNow(card.id)}
-            className="flex min-h-[52px] min-w-0 items-center justify-between gap-2 rounded-xl px-3.5 py-3 text-start transition"
+            className={`flex min-h-[52px] min-w-0 items-center justify-between gap-2 rounded-xl px-3.5 py-3 text-start transition ${expanded ? "" : "w-[72%] flex-none snap-start sm:w-[44%] lg:w-auto"}`}
             style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
             <span className="min-w-0">
               <span className="block break-words text-base font-bold" style={{ color: "var(--arbor-ink)" }}>{locText(card.title, locale)}</span>
@@ -186,10 +190,24 @@ export default function HardMomentsSection() {
             <Icon name="arrow_forward" size={16} className="flex-shrink-0 rtl:-scale-x-100" style={{ color: "var(--arbor-green-ink)" }} />
           </button>
         ))}
+        {/* The door. Every guide stays one tap away in BOTH directions — this
+            is a disclosure, never a filter that can hide a card for good. At
+            rest it is the row's trailing tile. */}
+        {!expanded && cards.length > featured.length && (
+          <button
+            type="button"
+            data-testid="hard-moments-door"
+            onClick={() => { setExpanded((v) => !v); if (expanded) setCategory("all"); }}
+            aria-expanded={expanded}
+            className="inline-flex min-h-11 w-[44%] flex-none snap-start items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold transition sm:w-[30%] lg:w-full"
+            style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)", background: "var(--arbor-paper-elevated)" }}
+          >
+            <Icon name="expand_more" size={16} />
+            {t("elev.closeloop.hm.allGuides", { n: cards.length })}
+          </button>
+        )}
       </div>
-      {/* The door. Every guide stays one tap away in BOTH directions — this is
-          a disclosure, never a filter that can hide a card for good. */}
-      {cards.length > featured.length && (
+      {expanded && (
         <button
           type="button"
           data-testid="hard-moments-door"
@@ -198,10 +216,17 @@ export default function HardMomentsSection() {
           className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold transition"
           style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)", background: "var(--arbor-paper-elevated)" }}
         >
-          <Icon name={expanded ? "expand_less" : "expand_more"} size={16} />
-          {expanded ? t("elev.closeloop.hm.fewer") : t("elev.closeloop.hm.allGuides", { n: cards.length })}
+          <Icon name="expand_less" size={16} />
+          {t("elev.closeloop.hm.fewer")}
         </button>
       )}
+      <div className="min-w-0">
+        <p className="t-sm leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>{t("hm.sub")}</p>
+        <p data-testid="hard-moments-chosen" dir="auto" className="mt-1 t-sm leading-snug" style={{ color: "var(--arbor-muted)" }}>
+          {t("hm.chosenFor", { name: childFirst })}
+        </p>
+        {hasPilot && <p className="mt-2 text-xs font-semibold" style={{ color: "var(--arbor-green-ink)" }}>{copy.status}</p>}
+      </div>
     </section>
   );
 }
