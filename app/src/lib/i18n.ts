@@ -703,6 +703,7 @@ export const en: Dict = {
   // until named clinical review; these keys are UI chrome only.
   "hm.title": "Hard moments",
   "hm.sub": "Short guides for the moments that feel hardest at home. A pilot: adapt them to your child.",
+  "hm.chosenFor": "Chosen for {name}'s age. After a few moments, these follow what you log.",
   "hm.categoriesAria": "Filter hard moments by category",
   "hm.cat.all": "All",
   "hm.cat.big-feelings": "Big feelings",
@@ -3081,6 +3082,7 @@ export const he: Dict = {
   // Hard moments (hm.*) — CONT-2 / AR-CONT-01 chrome labels
   "hm.title": "רגעים קשים",
   "hm.sub": "מדריכים קצרים לרגעים שהכי קשים בבית. בפיילוט: התאימו לילד שלכם.",
+  "hm.chosenFor": "נבחרו לפי הגיל של {name}. אחרי כמה רגעים, הם יתאימו למה שאתם מתעדים.",
   "hm.categoriesAria": "סינון רגעים קשים לפי קטגוריה",
   "hm.cat.all": "הכול",
   "hm.cat.big-feelings": "רגשות גדולים",

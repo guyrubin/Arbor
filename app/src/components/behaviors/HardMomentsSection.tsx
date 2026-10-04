@@ -147,6 +147,11 @@ export default function HardMomentsSection() {
       <div className="min-w-0">
         <h3 id="hard-moments-title" className="text-lg" style={{ fontFamily: "var(--font-display)", fontWeight: 600, color: "var(--arbor-ink)" }}>{t("hm.title")}</h3>
         <p className="mt-1 text-sm leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>{t("hm.sub")}</p>
+        {/* B-ASKJB-NEW-1f (4): the page's ONE warm accent names why these
+            guides are here — age first, then what the parent logs. */}
+        <p data-testid="hard-moments-chosen" dir="auto" className="mt-2 px-3 py-2 t-sm leading-snug" style={{ borderRadius: "var(--r)", background: "var(--arbor-peach-soft)", color: "var(--arbor-peach-ink)" }}>
+          {t("hm.chosenFor", { name: childFirst })}
+        </p>
         {hasPilot && <p className="mt-2 text-xs font-semibold" style={{ color: "var(--arbor-green-ink)" }}>{copy.status}</p>}
       </div>
       {/* The category filter belongs to the OPEN catalogue: filtering three

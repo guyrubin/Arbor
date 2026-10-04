@@ -266,3 +266,20 @@ describe("critic r1 — behaviors capture reads first, one primary fill", async 
     expect(zero).not.toMatch(/font-bold|p\.ink/);
   });
 });
+
+/** B-ASKJB-NEW-1f (4) — the shelf names why its guides are here, in the page's one warm accent. */
+describe("B-ASKJB-NEW-1f — chosen-for note on the shelf", async () => {
+  const i18n = await import("../../lib/i18n");
+  const SHELF = read("components/behaviors/HardMomentsSection.tsx");
+  it("keyed EN + HE with {name}; peach tokens + --r; no verdict words", () => {
+    for (const d of [i18n.en, i18n.he]) {
+      expect(d["hm.chosenFor"]).toContain("{name}");
+      expect(d["hm.chosenFor"]).not.toMatch(/review|risk|score|נבדק|סיכון/i);
+    }
+    const note = SHELF.slice(SHELF.indexOf('data-testid="hard-moments-chosen"'), SHELF.indexOf("</p>", SHELF.indexOf('data-testid="hard-moments-chosen"')));
+    expect(note).toContain('background: "var(--arbor-peach-soft)"');
+    expect(note).toContain('color: "var(--arbor-peach-ink)"');
+    expect(note).toContain('borderRadius: "var(--r)"');
+    expect(note).toContain('t("hm.chosenFor", { name: childFirst })');
+  });
+});
