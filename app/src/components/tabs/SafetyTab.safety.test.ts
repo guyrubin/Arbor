@@ -316,3 +316,28 @@ describe("W2-CAREPRO r1 — both answers above the fold; the CTA says who answer
     expect(/\btruncate\b/.test(pre) && /opacity-\d/.test(pre)).toBe(true);
   });
 });
+
+describe("B-CAREPRO-NEW-1m / 1n — the crisis card names the child, shows the review date, and the family's own first call", () => {
+  it("1m: the numbers-checked line reads HELPLINES_REVIEWED_ON (no literal date) in EN + HE", () => {
+    expect(tabSource).toContain('data-testid="safety-numbers-checked"');
+    expect(tabSource).toContain("fmtDay(HELPLINES_REVIEWED_ON, uiLang)");
+    expect(tabSource).not.toMatch(/Numbers checked \d/);
+    expect(safetyEnRecord["elev.safety.numbersChecked" as keyof typeof safetyEnRecord]).toContain("{date}");
+    expect(safetyHeRecord["elev.safety.numbersChecked" as keyof typeof safetyHeRecord]).toContain("{date}");
+  });
+  it("1n: the kicker names the child (fallback to the generic kicker); the script uses the editorial face at 60ch", () => {
+    expect(tabSource).toContain('crisisFirstName ? t("elev.safety.crisis.kickerNamed", { name: crisisFirstName }) : t("elev.safety.crisis.kicker")');
+    expect(tabSource).toMatch(/max-w-\[60ch\]" style=\{\{ color: "var\(--arbor-ink\)", fontFamily: "var\(--font-editorial\)" \}\}/);
+    for (const rec of [safetyEnRecord, safetyHeRecord]) expect(rec["elev.safety.crisis.kickerNamed" as keyof typeof rec]).toContain("{name}");
+  });
+  it("1n: the first saved contact is a 44 px tel: row under the one tap — not a module, not a stamp", () => {
+    const at = tabSource.indexOf('data-testid="safety-first-contact"');
+    expect(at).toBeGreaterThan(tabSource.indexOf('data-primary-move="call-helpline"'));
+    expect(at).toBeLessThan(tabSource.indexOf('data-module="safety-crisis-language"'));
+    const row = tabSource.slice(tabSource.lastIndexOf("<a", at), tabSource.indexOf("</a>", at));
+    expect(row).toContain("min-h-[44px]");
+    expect(row).toContain("tel:${dialable(contacts[0].phone)}");
+    expect(row).not.toContain("data-module");
+    expect(row).toContain("<bdi");
+  });
+});

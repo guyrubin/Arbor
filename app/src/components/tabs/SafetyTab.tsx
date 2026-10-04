@@ -13,6 +13,7 @@ import {
   HELPLINE_EXPANDED_GROUPS,
   helplineOrderFor,
   dangerLineFor,
+  HELPLINES_REVIEWED_ON,
   type HelplineRegion,
 } from "../../safety/escalation";
 import { loadAttribution } from "../../lib/attribution";
@@ -54,6 +55,9 @@ export default function SafetyTab() {
   const primaryHelpline = HELPLINE_DIRECTORY.find((h) => h.region === helplineOrder[0]) ?? HELPLINE_DIRECTORY[0];
   // W2-CAREPRO r1: the crisis card's second call (emergency ↔ emotional line).
   const dangerLine = dangerLineFor(helplineOrder, primaryHelpline);
+  // B-CAREPRO-NEW-1n: the crisis card names the child; the family's own first
+  // contact sits under the one tap (only when the parent saved one with a phone).
+  const crisisFirstName = (childProfile.name || "").trim().split(" ")[0];
   const expandedGroups = helplineOrder.slice(0, HELPLINE_EXPANDED_GROUPS);
   const foldedGroups = helplineOrder.slice(HELPLINE_EXPANDED_GROUPS);
 
@@ -168,13 +172,27 @@ export default function SafetyTab() {
           <span className="t-sm font-bold">{t(`elev.safety.helpline.${primaryHelpline.id}`)}</span>
         </span>
       </a>
+      {contacts[0]?.phone && dialable(contacts[0].phone) && (
+        <a
+          data-testid="safety-first-contact"
+          href={`tel:${dialable(contacts[0].phone)}`}
+          onClick={() => track("safety_contact_tel_tap")}
+          className="flex items-center gap-2 rounded-xl px-4 min-h-[44px] t-sm font-bold"
+          style={{ color: "var(--arbor-ink)", background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}
+        >
+          <Icon name="person" size={16} /> {t("elev.safety.firstContact", { name: crisisFirstName || t("elev.safety.yourChild"), contact: contacts[0].name })}
+          <bdi className="ms-auto" dir="ltr">{contacts[0].phone}</bdi>
+        </a>
+      )}
 
       {/* Pinned crisis-language card */}
       <div data-module="safety-crisis-language" className="rounded-2xl p-6 space-y-2" style={{ background: "var(--arbor-pink-soft)" }}>
         <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "var(--arbor-pink-ink)" }}>
-          <Icon name="warning" size={16} /> {t("elev.safety.crisis.kicker")}
+          <Icon name="warning" size={16} /> {crisisFirstName ? t("elev.safety.crisis.kickerNamed", { name: crisisFirstName }) : t("elev.safety.crisis.kicker")}
         </span>
-        <p className="text-sm leading-relaxed italic" style={{ color: "var(--arbor-ink)" }}>
+        {/* B-CAREPRO-NEW-1n: the script names the child (kicker) and reads as
+            something to say, in the editorial face, at a readable measure. */}
+        <p className="t-base leading-relaxed italic max-w-[60ch]" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)" }}>
           {t("elev.safety.crisis.script")}
         </p>
         {/* W2-CAREPRO r1: the danger sentence is itself a 44 px call — to the
@@ -207,6 +225,10 @@ export default function SafetyTab() {
             )}
           </>
         )}
+        {/* B-CAREPRO-NEW-1m: the B-07 review date, visible — trust the parent can see. */}
+        <p data-testid="safety-numbers-checked" className="t-xs" style={{ color: "var(--arbor-muted)" }}>
+          {t("elev.safety.numbersChecked", { date: fmtDay(HELPLINES_REVIEWED_ON, uiLang) })}
+        </p>
       </div>
 
       {/* R25 (item 11) — #/safety rendered 7 top-level modules against a declared
