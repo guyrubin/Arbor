@@ -407,7 +407,8 @@ describe("B-CAREPRO-27 · the brief opens on a free draft from the teacher prese
     expect(brief).toContain("const [draft, setDraft] = useState<SchoolBriefData>(freeDraft);");
     expect(brief).toMatch(/teacherBriefDraft\(\n?\s*buildPacketInput\(/);
     // the AI path is a separate, labelled button; the free path calls no api
-    const freeDraftMemo = /const freeDraft = useMemo<SchoolBriefData>\(\(\) => \{[\s\S]*?\}, \[/.exec(brief);
+    // B-CAREPRO-NEW-2d: the memo also returns the opening line it built.
+    const freeDraftMemo = /const \{ freeDraft, openingLine \} = useMemo\(\(\) => \{[\s\S]*?\}, \[/.exec(brief);
     expect(freeDraftMemo).toBeTruthy();
     expect(freeDraftMemo![0]).not.toMatch(/api\.|fetch\(/);
     expect(brief).toContain('data-testid="school-brief-ai-draft"');

@@ -124,3 +124,62 @@ describe("W2-CAREPRO r2 · the HE overview is RTL with the name first", () => {
     expect(overviewOf(renderToStaticMarkup(<SchoolBrief />))!.dir).toBe("ltr");
   });
 });
+
+/* W2-CAREPRO r2 (P1 G1) + B-CAREPRO-NEW-2d — the fold at 375/390 holds the
+   overview and strengths: ONE action row (Save as PDF + the Plus draft), the
+   edit toggle is a 44 px pencil in the card header, the non-diagnostic promise
+   is a card-header caption (no green card above the document), and the note
+   opens on a "Start here" line built from the first curated strength. */
+describe("W2-CAREPRO r2 · one action row, promise in the card, a Start-here line", () => {
+  for (const locale of ["en", "he"] as const) {
+    it(`${locale}: the action row holds exactly the PDF move and the Plus draft; edit + promise live in the card header`, () => {
+      harness.locale = locale;
+      const html = renderToStaticMarkup(<SchoolBrief />);
+      const rowStart = html.indexOf('data-testid="school-brief-actions"');
+      const card = html.indexOf('data-module="brief-draft"');
+      const row = html.slice(rowStart, card);
+      expect(row).toContain("flex-nowrap");
+      expect((row.match(/<button/g) ?? []).length).toBe(2);
+      expect(row).toContain('data-primary-move="build-school-brief"');
+      expect(row).toContain('data-testid="school-brief-ai-draft"');
+      // nothing between the header and the action row: the green card is gone
+      expect(html.slice(html.indexOf("</header>"), rowStart)).not.toContain("arbor-green-soft");
+      const header = html.slice(html.indexOf('data-testid="school-brief-card-header"'), html.indexOf('data-testid="school-brief-overview"'));
+      expect(header).toContain('data-testid="school-brief-promise"');
+      expect(header).toContain(translate(locale, "schoolBrief.nonDiagnostic", { name: "Noa" }));
+      expect(header).toMatch(/data-testid="school-brief-edit"[^>]*w-11 h-11/);
+      expect(html.indexOf('data-testid="school-brief-edit"')).toBeGreaterThan(card);
+    });
+
+    it(`${locale}: "Start here" opens the note from the first strength, and the overview does not repeat it`, () => {
+      harness.locale = locale;
+      const html = renderToStaticMarkup(<SchoolBrief />);
+      const opening = translate(locale, "elev.teacherBrief.opening.neutral", { name: "Noa", strength: locale === "he" ? "בונה מגדלים" : "builds towers" });
+      const band = html.slice(html.indexOf('data-testid="school-brief-opening"'), html.indexOf('data-testid="school-brief-overview"'));
+      expect(band).toContain(translate(locale, "elev.learnCare.brief.startHere"));
+      expect(band).toContain(opening.replace(/'/g, "&#x27;"));
+      expect(band).toContain("var(--arbor-peach-soft)");
+      const overview = /<p data-testid="school-brief-overview"[^>]*>([^<]*)<\/p>/.exec(html)![1];
+      expect(overview).not.toContain(opening);
+      // the band sits under the card header, above the overview section
+      expect(html.indexOf('data-testid="school-brief-opening"')).toBeGreaterThan(html.indexOf('data-testid="school-brief-card-header"'));
+    });
+  }
+
+  it("unit: the opening line rides the curated overview first (prints first), follows gender, and is empty with no strength", async () => {
+    const { teacherBriefDraft, buildPacketInput } = await import("../../consult/packet");
+    const mk = (strengths: string[], gender?: string) => teacherBriefDraft(
+      buildPacketInput({ profile: { id: "c1", name: "Dylan Cohen", age: 5, languages: ["English"], schoolContext: "", strengths, challenges: [], interests: [], gender } as never, logs: [], milestones: [], plans: [], memory: [] }, Date.now()),
+      "en",
+    );
+    expect(mk(["Imaginative play"], "boy").openingLine).toBe("With Dylan, start from what he loves: imaginative play.");
+    expect(mk(["Imaginative play"], "girl").openingLine).toContain("she loves");
+    expect(mk([]).openingLine).toBe("");
+    const he = teacherBriefDraft(
+      buildPacketInput({ profile: { id: "c1", name: "Dylan", age: 5, languages: [], schoolContext: "", strengths: ["משחק דמיון"], challenges: [], interests: [], gender: "boy" } as never, logs: [], milestones: [], plans: [], memory: [] }, Date.now()),
+      "he",
+    );
+    expect(he.openingLine).toBe("עם ⁨Dylan⁩, הכי טוב להתחיל ממה שהוא אוהב: משחק דמיון.");
+    expect(he.openingLine).not.toMatch(/\//);
+  });
+});

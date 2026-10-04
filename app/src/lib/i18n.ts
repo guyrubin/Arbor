@@ -359,7 +359,7 @@ export const en: Dict = {
   // from the clinician consult packet above. Curated, non-diagnostic, <=1 page.
   "schoolBrief.eyebrow": "Care Network",
   "schoolBrief.title": "School Handoff Brief",
-  "schoolBrief.subtitle": "A short, warm note for {name}'s teacher — what {name} is great at, what helps, and how home and school languages fit together. Shared only when you approve it.",
+  "schoolBrief.subtitle": "A short, warm note for {name}'s teacher: what {name} is great at and what helps. Shared only when you approve it.",
   "schoolBrief.generating": "Writing the note…",
   "schoolBrief.section.overview": "About {name} at school",
   "schoolBrief.section.strengths": "What {name} is great at",
@@ -4124,7 +4124,7 @@ export const he: Dict = {
   // non-diagnostic. Flagged for arbor-localization native review before wide release.
   "schoolBrief.eyebrow": "רשת הטיפול",
   "schoolBrief.title": "דף מסירה לגן/בית הספר",
-  "schoolBrief.subtitle": "פתק קצר וחם למחנכת של {name} — החוזקות, מה שעוזר, ואיך שפת הבית ושפת הגן משתלבות. משותף רק לאחר אישור שלכם.",
+  "schoolBrief.subtitle": "פתק קצר וחם למחנכת של {name}: החוזקות ומה שעוזר. משותף רק לאחר אישור שלכם.",
   "schoolBrief.generating": "כותבים את הפתק…",
   "schoolBrief.section.overview": "על {name} בבית הספר",
   "schoolBrief.section.strengths": "החוזקות של {name}",

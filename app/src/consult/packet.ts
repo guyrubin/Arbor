@@ -1240,6 +1240,10 @@ export interface TeacherBriefDraft {
    *  carrying a severity grade or a diagnosis term is left out. */
   harderMoments: string[];
   suggestedTeacherStrategies: string[];
+  /** B-CAREPRO-NEW-2d: one sentence in the parent's voice that opens the note
+   *  ("Start with what Dylan loves: …"), built from the first curated
+   *  strength; empty when there is none. Prints as the brief's first line. */
+  openingLine: string;
 }
 
 export function teacherBriefDraft(input: BuildPacketInput, lang: UiLang = "en"): TeacherBriefDraft {
@@ -1265,5 +1269,20 @@ export function teacherBriefDraft(input: BuildPacketInput, lang: UiLang = "en"):
     harderMoments: [...goals.map(goalLabel), ...challenges].filter(clean),
     // suggestedTeacherStrategies ← what the family already tries
     suggestedTeacherStrategies: items("tried").map((it) => itemText(it, lang)).filter(clean),
+    openingLine: teacherOpeningLine(input, lang, clean),
   };
+}
+
+/** B-CAREPRO-NEW-2d — "Start here": the first curated strength as the way in.
+ *  The verb follows the profile's gender (never a slash); English keeps the
+ *  parent's casing except a leading capital on an ordinary word. */
+function teacherOpeningLine(input: BuildPacketInput, lang: UiLang, clean: (line: string) => boolean): string {
+  const strength = (input.profile.strengths ?? []).map((x) => x.trim()).find(clean);
+  if (!strength) return "";
+  const first = (input.profile.name || "").trim().split(/\s+/)[0];
+  if (!first) return "";
+  const g = input.profile.gender === "boy" || input.profile.gender === "girl" ? input.profile.gender : "neutral";
+  const shown = lang === "en" && /^[A-Z][a-z]/.test(strength) ? strength[0].toLowerCase() + strength.slice(1) : strength;
+  const line = translate(lang, `elev.teacherBrief.opening.${g}`, { name: first, strength: shown });
+  return clean(line) ? line : "";
 }

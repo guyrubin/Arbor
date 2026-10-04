@@ -96,7 +96,6 @@ type ListField = "keyStrengths" | "classroomChallenges" | "languageSupportPlan" 
 const INK = "var(--arbor-ink)";
 const MUTED = "var(--arbor-muted)";
 const GREEN = "var(--arbor-green-ink)";
-const GREEN_SOFT = "var(--arbor-green-soft)";
 const RULE = "var(--arbor-rule)";
 
 export default function SchoolBrief() {
@@ -112,21 +111,25 @@ export default function SchoolBrief() {
   // B-CAREPRO-27 — the FREE draft: the teacher preset's ceiling (about + what
   // the family already tries; never logs, milestones or memory), in the
   // parent's language. No network, no paywall.
-  const freeDraft = useMemo<SchoolBriefData>(() => {
+  const { freeDraft, openingLine } = useMemo(() => {
     const draft = teacherBriefDraft(
       buildPacketInput({ profile: childProfile, logs: behaviorLogs, milestones, plans: actionPlans, memory: [] }, Date.now()),
       uiLang,
     );
-    return {
+    // B-CAREPRO-NEW-2d: the opening line is the overview's first paragraph, so
+    // it rides the curated `overview` field (same scan, same egress) and
+    // prints as the brief's first line; the screen shows it as a band.
+    const data: SchoolBriefData = {
       title: "",
       date: "",
-      overview: [draft.overview, handedNote ?? ""].filter((s) => s.trim()).join("\n\n"),
+      overview: [draft.openingLine, draft.overview, handedNote ?? ""].filter((s) => s.trim()).join("\n\n"),
       keyStrengths: draft.keyStrengths,
       classroomChallenges: draft.harderMoments,
       languageSupportPlan: [],
       suggestedTeacherStrategies: draft.suggestedTeacherStrategies,
       crisisEscalationTrigger: "",
     };
+    return { freeDraft: data, openingLine: draft.openingLine };
   }, [childProfile, behaviorLogs, milestones, actionPlans, uiLang, handedNote]);
 
   // generate-and-present: the brief lives in component state only — no new
@@ -318,6 +321,11 @@ export default function SchoolBrief() {
     </section>
   ) : null;
 
+  // B-CAREPRO-NEW-2d: the band shows the opening line while the overview
+  // still starts with it (an AI draft or an edit that removes it ends the band).
+  const openingShown = !editing && !!openingLine && draft.overview.startsWith(openingLine);
+  const overviewRest = openingShown ? draft.overview.slice(openingLine.length).trim() : draft.overview;
+
   const motionProps = reduceMotion
     ? { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 0 } }
     : { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.2 } };
@@ -340,28 +348,23 @@ export default function SchoolBrief() {
         </p>
       </header>
 
-      {/* Non-diagnostic framing line. */}
-      <div className="flex items-start gap-3 rounded-2xl p-4" style={{ background: GREEN_SOFT }}>
-        <Icon name="favorite" size={20} fill={1} style={{ color: GREEN }} />
-        <p className="text-[13px] leading-relaxed" style={{ color: GREEN }}>
-          {t("schoolBrief.nonDiagnostic", { name: firstName })}
-        </p>
-      </div>
-
       {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
           marks a top-level sibling module (what moduleBudget counts);
           `data-primary-move` marks the ONE control that performs the move
           surfaceContract.ts declares for this route. */}
       <>
           {/* W2-CAREPRO r1 (school-brief P0): the one move sits ABOVE the
-              document, so Save as PDF is above the fold at 375 and 1280
-              (it was y=1185 / 846 under the draft card). */}
-          <div className="flex flex-wrap items-center gap-3">
+              document. r2: ONE row that fits 343 px — Save as PDF (the one
+              filled primary) + the Plus draft (outline); "Make adjustments"
+              moved into the card header as a 44 px pencil, and the green
+              non-diagnostic card folded into a card-header caption, so the
+              overview and strengths reach the fold at 375/390. */}
+          <div data-testid="school-brief-actions" className="flex flex-nowrap items-center gap-2 min-w-0">
             {/* Opening the review is NOT an export — export only fires after approve. */}
             <button
               {...primaryMove}
               onClick={() => setReviewOpen(true)}
-              className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-3 min-h-[44px]"
+              className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-3 min-h-[44px] whitespace-nowrap flex-shrink-0"
               style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
             >
               <Icon name="description" size={16} /> {t("elev.learnCare.brief.print")}
@@ -373,32 +376,50 @@ export default function SchoolBrief() {
               data-testid="school-brief-ai-draft"
               onClick={generate}
               disabled={generating}
-              className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-4 py-3 min-h-[44px] disabled:opacity-50"
-              style={{ background: "var(--arbor-paper-sunk)", color: INK, border: `1px solid ${RULE}` }}
+              className="inline-flex items-center gap-1.5 font-bold text-[13px] rounded-xl px-3 py-3 min-h-[44px] whitespace-nowrap min-w-0 disabled:opacity-50"
+              style={{ background: "transparent", color: INK, border: `1px solid ${RULE}` }}
             >
               {generating
                 ? (<><Icon name="progress_activity" size={16} className="animate-spin" /> {t("schoolBrief.generating")}</>)
-                : (<><Icon name="auto_awesome" size={16} /> {t("elev.learnCare.brief.aiDraft")}
+                : (<><Icon name="auto_awesome" size={16} className="hidden sm:inline-block" /> {t("elev.learnCare.brief.aiDraft")}
                     <span className="text-[11px] font-extrabold rounded-full px-2 py-0.5" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>{t("elev.learnCare.brief.plus")}</span></>)}
-            </button>
-            {/* Per-section edit toggle — keeps the default view calm; full edit power on demand. */}
-            <button
-              onClick={() => setEditing((e) => !e)}
-              aria-pressed={editing}
-              className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-4 py-3 min-h-[44px]"
-              style={{ background: "var(--arbor-paper-sunk)", color: INK, border: `1px solid ${RULE}` }}
-            >
-              {editing ? (<><Icon name="check" size={16} style={{ color: GREEN }} /> {t("schoolBrief.editDone")}</>) : (<><Icon name="edit" size={16} /> {t("schoolBrief.edit")}</>)}
             </button>
           </div>
 
           {/* The rendered brief — curated sections only (editable when `editing`). */}
           <div data-module="brief-draft" className="rounded-2xl p-5 md:p-6 space-y-5" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
-            {/* B-CAREPRO-27: where the draft came from, and what Plus adds — a
-                caption in the card header (W2-CAREPRO r1), not a preamble layer. */}
-            <p data-testid="school-brief-draft-hint" className="t-xs leading-relaxed" style={{ color: MUTED }}>
-              {editing ? t("schoolBrief.editHint") : t("elev.learnCare.brief.draftHint")}
-            </p>
+            {/* Card header: the non-diagnostic promise (kept, as a caption),
+                where the draft came from, and the per-section edit toggle. */}
+            <div data-testid="school-brief-card-header" className="flex items-start gap-2">
+              <div className="flex-1 min-w-0 space-y-1">
+                <p data-testid="school-brief-promise" className="t-xs font-bold inline-flex items-start gap-1.5" style={{ color: GREEN }}>
+                  <Icon name="favorite" size={14} fill={1} className="mt-0.5 flex-shrink-0" /> <span>{t("schoolBrief.nonDiagnostic", { name: firstName })}</span>
+                </p>
+                <p data-testid="school-brief-draft-hint" className="t-xs leading-relaxed" style={{ color: MUTED }}>
+                  {editing ? t("schoolBrief.editHint") : t("elev.learnCare.brief.draftHint")}
+                </p>
+              </div>
+              {/* Per-section edit toggle — keeps the default view calm; full edit power on demand. */}
+              <button
+                data-testid="school-brief-edit"
+                onClick={() => setEditing((e) => !e)}
+                aria-pressed={editing}
+                aria-label={editing ? t("schoolBrief.editDone") : t("elev.learnCare.brief.editAria")}
+                className="touch-target inline-flex items-center justify-center rounded-xl w-11 h-11 flex-shrink-0"
+                style={{ color: editing ? GREEN : INK, border: `1px solid ${RULE}` }}
+              >
+                <Icon name={editing ? "check" : "edit"} size={18} />
+              </button>
+            </div>
+            {/* B-CAREPRO-NEW-2d: "Start here" — the note's first line, in the
+                parent's voice, from the first curated strength. It is the first
+                paragraph of `overview` (edited there, printed first). */}
+            {openingShown && (
+              <div data-testid="school-brief-opening" className="p-4 border-s-[3px]" style={{ background: "var(--arbor-peach-soft)", borderColor: "var(--arbor-peach-ink)", borderRadius: "var(--r)" }}>
+                <p className="t-xs font-bold" style={{ color: "var(--arbor-peach-ink)" }}>{t("elev.learnCare.brief.startHere")}</p>
+                <p dir={uiLang === "he" ? "rtl" : "ltr"} className="t-lg leading-snug mt-1" style={{ fontFamily: uiLang === "he" ? "var(--font-display)" : "var(--font-editorial)", color: "var(--arbor-ink)" }}>{openingLine}</p>
+              </div>
+            )}
             <Section icon={<Icon name="assignment" size={16} />} title={sectionLabels.overview}>
               {editing ? (
                 <textarea
@@ -412,8 +433,8 @@ export default function SchoolBrief() {
                 // W2-CAREPRO r2 (law 8): the composed overview takes the UI
                 // direction — dir=auto resolved LTR on the Latin name that
                 // opens it. Interpolated parts are FSI/PDI isolates
-                // (packet.resolveVars); dir=auto stays on parent-typed items.
-                <p data-testid="school-brief-overview" dir={uiLang === "he" ? "rtl" : "ltr"} className="t-base leading-relaxed" style={{ color: MUTED }}>{draft.overview}</p>
+                // (translate()); dir=auto stays on parent-typed items.
+                <p data-testid="school-brief-overview" dir={uiLang === "he" ? "rtl" : "ltr"} className="t-base leading-relaxed whitespace-pre-line" style={{ color: MUTED }}>{overviewRest}</p>
               )}
             </Section>
 
