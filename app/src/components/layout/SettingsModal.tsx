@@ -30,7 +30,9 @@ import { fmtDay } from "../../lib/formatDate";
  *  notifications, billing, and account). */
 export default function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { uiLang, aiLang, setUiLang, setAiLang, t } = useLanguage();
-  const { setActiveTab } = useArbor();
+  const { setActiveTab, pendingMemoryItems, approvedMemoryItems } = useArbor();
+  // B-SHELL-13: the "What Arbor remembers" row counts pending + approved facts.
+  const memoryCount = (pendingMemoryItems?.length ?? 0) + (approvedMemoryItems?.length ?? 0);
   const { user, signOut, firebaseEnabled } = useAuth();
   const { toast } = useToast();
   // MOB-08: `loading` → skeleton row (never "Free" while unsure); `isFallback`
@@ -45,7 +47,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
   // B-CAREPRO-35: Settings › Your data — export / delete child / delete account.
   const [dataOpen, setDataOpen] = useState(false);
   // STORE-2: all checkout/manage/restore actions go through the ONE platform-
-  // gated hook — no inline `/api/billing/*` calls in this file (guard-tested).
+  // gated hook — no inline `/api/billing/…` calls in this file (guard-tested).
   const { busy, startCheckout, openPortal, restorePurchases, isNative } = useCheckout();
   const [accentTheme, setAccentTheme] = useState<AccentTheme>(getSavedTheme);
   const [draftUiLang, setDraftUiLang] = useState<UiLang>(uiLang);
@@ -145,6 +147,166 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
     <>
     <Surface open={open && !deleteOpen} onClose={onClose} title={t("set.title")}>
       <div className="space-y-5 text-sm">
+        {/* B-SHELL-13: section 1 is how Arbor works with you — language, AI
+            language, reminders (moved here, not duplicated) and what Arbor
+            remembers. Order: companion → Kid Mode & PIN → plan → your data →
+            account (pinned by settingsOrder.test.ts). */}
+        <Section title={t("set.section.companion")} sub={t("set.section.companionSub")}>
+        {/* App language */}
+        <Row icon={<Icon name="language" size={18} />} title={t("set.language.title")} sub={t("set.language.sub")}>
+          <div className="flex flex-col items-end gap-2">
+            <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+              {([["en", "EN"], ["he", "עב"]] as const).map(([k, label]) => (
+                <button
+                  key={k}
+                  onClick={() => setDraftUiLang(k)}
+                  aria-pressed={draftUiLang === k}
+                  className="min-h-[44px] min-w-[44px] px-3 rounded-lg text-xs font-bold transition"
+                  style={draftUiLang === k ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleCancelLanguage}
+                disabled={!languageDirty}
+                className="text-xs font-bold rounded-xl px-3 min-h-11 disabled:opacity-40"
+                style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+              >
+                {t("set.language.cancel")}
+              </button>
+              <button
+                onClick={handleSaveLanguage}
+                disabled={!languageDirty}
+                className="text-xs font-bold rounded-xl px-3 min-h-11 disabled:opacity-40"
+                style={{ background: "var(--arbor-clay)", color: T.onAccent }}
+              >
+                {t("set.language.save")}
+              </button>
+            </div>
+          </div>
+        </Row>
+
+        {/* LANG-ADV-OVERRIDE: advanced — let the AI answer in a different language than the UI */}
+        <Row icon={<Icon name="language" size={18} />} title={t("set.aiLang.title")} sub={t("set.aiLang.sub")}>
+          <div className="flex flex-col items-end gap-2">
+            {/* R5: the switch measured 42x23. The TRACK stays 44x24 — that is
+                the right visual — and the button around it is the 44 px target
+                the finger needs. */}
+            <button
+              onClick={() => setDraftAiDifferent((v) => !v)}
+              aria-pressed={draftAiDifferent}
+              aria-label={t("set.aiLang.toggle")}
+              className="w-11 min-h-11 h-11 flex items-center justify-center relative"
+            >
+              <span className="w-11 h-6 rounded-full transition block" style={{ background: draftAiDifferent ? "var(--arbor-clay)" : "var(--arbor-rule-strong)" }} />
+              <span className={`absolute top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white transition-all ${draftAiDifferent ? "end-[2px]" : "start-[2px]"}`} />
+            </button>
+            {draftAiDifferent && (
+              <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+                {([["en", "EN"], ["he", "עב"]] as const).map(([k, label]) => (
+                  <button
+                    key={k}
+                    onClick={() => setDraftAiLang(k)}
+                    aria-pressed={draftAiLang === k}
+                    className="min-h-[44px] min-w-[44px] px-3 rounded-lg text-xs font-bold transition"
+                    style={draftAiLang === k ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </Row>
+
+        {/* AP-052: Accent theme picker — rendered ONLY when there is a real
+            choice. It shipped offering three options whose palettes were
+            byte-identical after the CR-01 retint. Restoring a second theme to
+            ACCENT_THEMES brings this row back automatically. */}
+        {ACCENT_THEMES.length > 1 && (
+        <Row icon={<Icon name="palette" size={18} />} title={t("set.theme.title")} sub={t("set.theme.sub")}>
+          <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+            {(ACCENT_THEMES as readonly AccentTheme[]).map((theme) => (
+              <button
+                key={theme}
+                onClick={() => handleThemeChange(theme)}
+                aria-pressed={accentTheme === theme}
+                className="px-3 min-h-11 rounded-lg text-xs font-bold transition"
+                style={accentTheme === theme ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}
+              >
+                {t(`set.theme.${theme}`)}
+              </button>
+            ))}
+          </div>
+        </Row>
+        )}
+
+        {/* AP-058: Smart Reminders — parent nudge preferences over existing JITAI */}
+        <Row icon={<Icon name="notifications" size={18} />} title={t("sr.title")} sub={t("sr.subtitle")}>
+          <button
+            onClick={() => { onClose(); setActiveTab("smart-reminders"); }}
+            className="text-xs font-bold rounded-xl px-3 min-h-11"
+            style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}
+            data-testid="settings-open-smart-reminders"
+          >
+            {/* OBJ-SHELL-07: this row reused `set.data.open` — "Open profile" —
+                on the Gentle Reminders row. Its own key, its own sentence. */}
+            {t("elev.sr.open")}
+          </button>
+        </Row>
+
+        {/* TJB-25 / IA-07 + B-TODAY-13: Today's pill row collapses below
+            `md`, so this row is the always-present door to #/day-windows at
+            390; the other doors are the md+ pill and the rhythm line's "See
+            the hours" link when a PREP or CALM cue shows. Same open pattern,
+            its own shipped keys (dw.title / dw.subtitle / dw.cta, EN + HE). */}
+        <Row icon={<Icon name="schedule" size={18} />} title={t("dw.title")} sub={t("dw.subtitle")}>
+          <button
+            onClick={() => { onClose(); setActiveTab("day-windows"); }}
+            className="text-xs font-bold rounded-xl px-3 min-h-11"
+            style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}
+            data-testid="settings-open-day-windows"
+          >
+            {t("dw.cta")}
+          </button>
+        </Row>
+
+        {/* B-SHELL-13: What Arbor remembers — a plain count of the facts the
+            parent has approved plus the ones awaiting their review; opens the
+            memory ledger (Profile band 3 once lane-CAREPRO retires memory). */}
+        <Row
+          icon={<Icon name="psychology" size={18} />}
+          title={t("set.memory.title")}
+          sub={memoryCount > 0 ? t(memoryCount === 1 ? "set.memory.sub.one" : "set.memory.sub.many", { n: memoryCount }) : t("set.memory.sub.none")}
+        >
+          <button
+            onClick={() => { onClose(); setActiveTab("memory"); }}
+            className="text-xs font-bold rounded-xl px-3 min-h-11"
+            style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}
+            data-testid="settings-open-memory"
+          >
+            {t("set.memory.open")}
+          </button>
+        </Row>
+        </Section>
+
+        <Section title={t("set.section.kidModePin")} sub={t("set.section.kidModePinSub")}>
+
+        {/* B-SHELL-01: the AI-rail switch is gone with the rail; Privacy &
+            trust is the PIN row only. */}
+        {/* STORE-3: parent PIN management — the ONLY setup surface (the kid-mode
+            challenge card can no longer mint the PIN). */}
+        <div className="pt-1" data-testid="settings-pin-row">
+          <Row icon={<Icon name="lock" size={18} />} title={t("elev.gate.set.title")} sub={t("elev.gate.set.sub")}>
+            <span />
+          </Row>
+          <ParentalGatePanel />
+        </div>
+        </Section>
+
         <Section title={t("set.section.billing")} sub={t("set.section.billingSub")}>
         {/* Plan — read from the real entitlement endpoint (MON-1 / MON-2 billing) */}
         {/* m3-hex-sweep (resolved): the old green-tinted #eef6f1 wash now has a sapphire
@@ -276,147 +438,6 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
           </Row>
           <InviteCard />
         </div>
-        </Section>
-
-        <Section title={t("set.section.languageAppearance")} sub={t("set.section.languageAppearanceSub")}>
-        {/* App language */}
-        <Row icon={<Icon name="language" size={18} />} title={t("set.language.title")} sub={t("set.language.sub")}>
-          <div className="flex flex-col items-end gap-2">
-            <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-              {([["en", "EN"], ["he", "עב"]] as const).map(([k, label]) => (
-                <button
-                  key={k}
-                  onClick={() => setDraftUiLang(k)}
-                  aria-pressed={draftUiLang === k}
-                  className="min-h-[44px] min-w-[44px] px-3 rounded-lg text-xs font-bold transition"
-                  style={draftUiLang === k ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleCancelLanguage}
-                disabled={!languageDirty}
-                className="text-xs font-bold rounded-xl px-3 min-h-11 disabled:opacity-40"
-                style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
-              >
-                {t("set.language.cancel")}
-              </button>
-              <button
-                onClick={handleSaveLanguage}
-                disabled={!languageDirty}
-                className="text-xs font-bold rounded-xl px-3 min-h-11 disabled:opacity-40"
-                style={{ background: "var(--arbor-clay)", color: T.onAccent }}
-              >
-                {t("set.language.save")}
-              </button>
-            </div>
-          </div>
-        </Row>
-
-        {/* LANG-ADV-OVERRIDE: advanced — let the AI answer in a different language than the UI */}
-        <Row icon={<Icon name="language" size={18} />} title={t("set.aiLang.title")} sub={t("set.aiLang.sub")}>
-          <div className="flex flex-col items-end gap-2">
-            {/* R5: the switch measured 42x23. The TRACK stays 44x24 — that is
-                the right visual — and the button around it is the 44 px target
-                the finger needs. */}
-            <button
-              onClick={() => setDraftAiDifferent((v) => !v)}
-              aria-pressed={draftAiDifferent}
-              aria-label={t("set.aiLang.toggle")}
-              className="w-11 min-h-11 h-11 flex items-center justify-center relative"
-            >
-              <span className="w-11 h-6 rounded-full transition block" style={{ background: draftAiDifferent ? "var(--arbor-clay)" : "var(--arbor-rule-strong)" }} />
-              <span className={`absolute top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white transition-all ${draftAiDifferent ? "end-[2px]" : "start-[2px]"}`} />
-            </button>
-            {draftAiDifferent && (
-              <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-                {([["en", "EN"], ["he", "עב"]] as const).map(([k, label]) => (
-                  <button
-                    key={k}
-                    onClick={() => setDraftAiLang(k)}
-                    aria-pressed={draftAiLang === k}
-                    className="min-h-[44px] min-w-[44px] px-3 rounded-lg text-xs font-bold transition"
-                    style={draftAiLang === k ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </Row>
-
-        {/* AP-052: Accent theme picker — rendered ONLY when there is a real
-            choice. It shipped offering three options whose palettes were
-            byte-identical after the CR-01 retint. Restoring a second theme to
-            ACCENT_THEMES brings this row back automatically. */}
-        {ACCENT_THEMES.length > 1 && (
-        <Row icon={<Icon name="palette" size={18} />} title={t("set.theme.title")} sub={t("set.theme.sub")}>
-          <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-            {(ACCENT_THEMES as readonly AccentTheme[]).map((theme) => (
-              <button
-                key={theme}
-                onClick={() => handleThemeChange(theme)}
-                aria-pressed={accentTheme === theme}
-                className="px-3 min-h-11 rounded-lg text-xs font-bold transition"
-                style={accentTheme === theme ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}
-              >
-                {t(`set.theme.${theme}`)}
-              </button>
-            ))}
-          </div>
-        </Row>
-        )}
-        </Section>
-
-        <Section title={t("set.section.privacyTrust")} sub={t("set.section.privacyTrustSub")}>
-
-        {/* B-SHELL-01: the AI-rail switch is gone with the rail; Privacy &
-            trust is the PIN row only. */}
-        {/* STORE-3: parent PIN management — the ONLY setup surface (the kid-mode
-            challenge card can no longer mint the PIN). */}
-        <div className="pt-1" data-testid="settings-pin-row">
-          <Row icon={<Icon name="lock" size={18} />} title={t("elev.gate.set.title")} sub={t("elev.gate.set.sub")}>
-            <span />
-          </Row>
-          <ParentalGatePanel />
-        </div>
-        </Section>
-
-        <Section title={t("set.section.notifications")} sub={t("set.section.notificationsSub")}>
-
-        {/* AP-058: Smart Reminders — parent nudge preferences over existing JITAI */}
-        <Row icon={<Icon name="notifications" size={18} />} title={t("sr.title")} sub={t("sr.subtitle")}>
-          <button
-            onClick={() => { onClose(); setActiveTab("smart-reminders"); }}
-            className="text-xs font-bold rounded-xl px-3 min-h-11"
-            style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}
-            data-testid="settings-open-smart-reminders"
-          >
-            {/* OBJ-SHELL-07: this row reused `set.data.open` — "Open profile" —
-                on the Gentle Reminders row. Its own key, its own sentence. */}
-            {t("elev.sr.open")}
-          </button>
-        </Row>
-
-        {/* TJB-25 / IA-07 + B-TODAY-13: Today's pill row collapses below
-            `md`, so this row is the always-present door to #/day-windows at
-            390; the other doors are the md+ pill and the rhythm line's "See
-            the hours" link when a PREP or CALM cue shows. Same open pattern,
-            its own shipped keys (dw.title / dw.subtitle / dw.cta, EN + HE). */}
-        <Row icon={<Icon name="schedule" size={18} />} title={t("dw.title")} sub={t("dw.subtitle")}>
-          <button
-            onClick={() => { onClose(); setActiveTab("day-windows"); }}
-            className="text-xs font-bold rounded-xl px-3 min-h-11"
-            style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}
-            data-testid="settings-open-day-windows"
-          >
-            {t("dw.cta")}
-          </button>
-        </Row>
         </Section>
 
         <Section title={t("set.section.childData")} sub={t("set.section.childDataSub")}>
