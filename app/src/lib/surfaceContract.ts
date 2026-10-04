@@ -121,8 +121,17 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
     // in Ask, in the account, and on the GDPR export exactly as before.
     threadWrite: "consented",
   },
-  // B-ASKJB-12: the "scholar" entry left with its route — the lens library is
-  // Ask's ToneSheet ("How should Arbor talk with you?"); #/scholar → coach.
+  {
+    route: "scholar", hub: "ask", depth: 1,
+    job: "Browse the research lenses behind Arbor's answers.",
+    primaryMove: "ask", moduleBudget: 3, demotionTarget: "disclosure",
+    // B-ASKJB-12: retired to coach (RETIRED_ROUTES) — the lens library is Ask's
+    // ToneSheet ("How should Arbor talk with you?"). The id and this entry keep
+    // their seat like find-pro, and Shell renders the Ask leaf for it, so the
+    // move and budget are the Ask leaf's own (ScholarTab's open-lens / 2 left
+    // with ScholarTab). Read-only for the lens choice — no write.
+    threadWrite: "none",
+  },
 
   // ── JOURNAL ────────────────────────────────────────────────────────────────
   {

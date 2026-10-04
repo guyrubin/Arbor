@@ -25,6 +25,7 @@ import { getSearchIndex } from "./searchIndex";
 const DELIBERATELY_UNSEARCHABLE: Partial<Record<ActiveTab, string>> = {
   attribution: "Legal/credits surface reached from Settings; not a place a parent navigates to by name.",
   science: "Evidence/credits surface reached from a trust link in context, not a destination.",
+  scholar: "Retired to Ask (B-ASKJB-12): the id keeps its seat, but the 7 lens entries are what a parent searches for, and each opens Ask with its lens preselected.",
 };
 
 const indexedRoutes = new Set(

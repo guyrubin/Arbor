@@ -345,8 +345,10 @@ export const TAB_SECTION_FALLBACK: Record<string, string> = {
   // Profile to the Today hub (Heartwood D3).
   weekly: "today",
 
-  // Ask Arbor — coach is a first-class section. B-ASKJB-12: #/scholar left the
-  // route table; its lens choice is Ask's ToneSheet (RETIRED_ROUTES → coach).
+  // Ask Arbor — coach is a first-class section. B-ASKJB-12: #/scholar is
+  // retired to coach (RETIRED_ROUTES; its lens choice is Ask's ToneSheet) but
+  // keeps its seat, mapped to Ask so the sidebar highlights.
+  scholar: "ask",
 
   // Stories / Learn (Heartwood D2 Academy split) — Hero Comics is a Stories
   // tool (child-starring register); Family Formation a Learn tool (parent

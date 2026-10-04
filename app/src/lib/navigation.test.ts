@@ -207,7 +207,9 @@ describe("navigation IA", () => {
     expect(sectionForTab("adventures").id).toBe("practice");
     // Heartwood D3: Weekly Report re-homed from Profile to Today.
     expect(sectionForTab("weekly").id).toBe("today");
-    // B-ASKJB-12: #/scholar left the route table (RETIRED_ROUTES → coach, Ask).
+    // B-ASKJB-12: #/scholar retired to coach (RETIRED_ROUTES) — the id keeps
+    // its seat and still highlights Ask.
+    expect(sectionForTab("scholar").id).toBe("ask");
     expect(sectionForTab("coach").id).toBe("ask");
     expect(sectionForTab("reports").id).toBe("care");       // → Consult
     expect(sectionForTab("find-pro").id).toBe("care");

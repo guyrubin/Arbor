@@ -130,6 +130,9 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   plans: PlansTab,
   stories: HeroJourneyTab,
   weekly: WeeklyTab,
+  // B-ASKJB-12: retired to Ask (RETIRED_ROUTES) — the id keeps its seat and
+  // renders the Ask leaf (the lens choice is Ask's ToneSheet), like #/find-pro.
+  scholar: CoachTab,
   language: LanguageLabTab,
   // b3: the standalone handoff door is retired — deep-links to #/handoff now
   // resolve into the single Consult flow (its AI-brief job is covered by the
