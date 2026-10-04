@@ -269,3 +269,22 @@ describe("B-ASKJB-02 — the Live line names the global endpoint and the excepti
     expect(coachSrc).not.toMatch(/tcc\("elev\.coachcontract\.uses\.spokenLive"\)/);
   });
 });
+
+/**
+ * Critic r1 (W2-ASKJB coach, P1 G1): "Arbor will ask before remembering
+ * anything" sat directly above "Arbor now uses this week's counts" — two
+ * adjacent lines saying opposite things. ONE data-use line now: the memory
+ * caption renders alone only when the weekly notice is not showing; when it
+ * is, the memory clause rides inside the notice line.
+ */
+describe("critic r1 — one data-use line on Ask", () => {
+  it("the standalone memory caption is gated off while the weekly notice shows", () => {
+    expect(coachSrc).toContain("{!composerDocked && !weeklyNoticeShown && (");
+    expect(coachSrc).toMatch(/tcc\("elev\.coachcontract\.notice\.body"\)\}\{!composerDocked && <> \{memoryLine\}<\/>\}/);
+    expect((coachSrc.match(/data-testid="coach-data-use"/g) || []).length).toBe(2);
+  });
+  it("the two clauses agree: counts are used; only NEW memory is asked for", () => {
+    expect(honestyEn["elev.aihonesty.memory.none"]).toMatch(/anything new/);
+    expect(honestyHe["elev.aihonesty.memory.none"]).toMatch(/משהו חדש/);
+  });
+});

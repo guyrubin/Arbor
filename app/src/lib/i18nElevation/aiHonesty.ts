@@ -17,14 +17,14 @@
 
 export const en: Record<string, string> = {
   "elev.aihonesty.coachStatus": "AI guide",
-  "elev.aihonesty.memory.none": "Arbor will ask before remembering anything about {name}",
+  "elev.aihonesty.memory.none": "Arbor will ask before remembering anything new about {name}.",
   "elev.aihonesty.memory.one": "Grounded in 1 fact you approved about {name} · you control what is remembered",
   "elev.aihonesty.memory.some": "Grounded in {n} facts you approved about {name} · you control what is remembered",
 };
 
 export const he: Record<string, string> = {
   "elev.aihonesty.coachStatus": "עוזר בינה מלאכותית",
-  "elev.aihonesty.memory.none": "ארבור ישאל לפני שיזכור משהו על {name}",
+  "elev.aihonesty.memory.none": "ארבור ישאל לפני שיזכור משהו חדש על {name}.",
   "elev.aihonesty.memory.one": "מבוסס על עובדה אחת שאישרתם על {name} · אתם שולטים במה שנשמר",
   "elev.aihonesty.memory.some": "מבוסס על {n} עובדות שאישרתם על {name} · אתם שולטים במה שנשמר",
 };

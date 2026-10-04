@@ -78,7 +78,7 @@ export const en: Record<string, string> = {
   "elev.coachcontract.toggleHint":
     'On unless you turn it off. The coach sees counts and how your last step went — for example "4 moments this week, 2 milestones observed" — never your notes.',
   // ── B-ASKJB-07 · the one-time notice above the composer (per child)
-  "elev.coachcontract.notice.body": "Arbor now uses this week's counts and how your last step went.",
+  "elev.coachcontract.notice.body": "Arbor uses this week's counts and how your last step went.",
   "elev.coachcontract.notice.change": "Change",
   "elev.coachcontract.notice.dismiss": "Got it",
 
@@ -134,7 +134,7 @@ export const he: Record<string, string> = {
   "elev.coachcontract.toggle": "לאפשר למאמן לראות את הרגעים מהשבוע",
   "elev.coachcontract.toggleHint":
     'פועל, אלא אם תכבו אותו. המאמן רואה מספרים ואיך עבר הצעד האחרון — למשל "4 רגעים השבוע, 2 אבני דרך שנצפו" — אף פעם לא את ההערות שלכם.',
-  "elev.coachcontract.notice.body": "ארבור משתמש עכשיו במספרים מהשבוע ובאיך עבר הצעד האחרון שלכם.",
+  "elev.coachcontract.notice.body": "ארבור משתמש במספרים מהשבוע ובאיך עבר הצעד האחרון שלכם.",
   "elev.coachcontract.notice.change": "לשנות",
   "elev.coachcontract.notice.dismiss": "הבנתי",
 

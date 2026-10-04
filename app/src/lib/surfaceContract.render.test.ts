@@ -546,8 +546,15 @@ describe("B-ASKJB-06 — Ask's fresh stack meets moduleBudget 3", () => {
     expect(orientation).toContain("<TodayContinuation choice={askContinuation} isReturning>{askOfferSlot}</TodayContinuation>");
     expect(orientation).toContain('id="coach-scenarios"');
     expect(orientation).toContain('data-testid="coach-hard-moment-now"');
-    expect(orientation.indexOf("{askOfferSlot}")).toBeLessThan(orientation.indexOf("{!composerDocked && composerSection}"));
-    expect(orientation.indexOf("{!composerDocked && composerSection}")).toBeLessThan(orientation.indexOf('id="coach-scenarios"'));
+    // Critic r1: header < composer < continuation (the continuation sits
+    // UNDER the composer; it never pushes the primary move down).
+    expect(orientation.indexOf("<h1")).toBeLessThan(orientation.indexOf("{!composerDocked && composerSection}"));
+    expect(orientation.indexOf("{!composerDocked && composerSection}")).toBeLessThan(orientation.indexOf("{askOfferSlot}"));
+    expect(orientation.indexOf("{askOfferSlot}")).toBeLessThan(orientation.indexOf('id="coach-scenarios"'));
+    // Only the continuation kinds render on Ask: the slot mounts ONLY inside
+    // TodayContinuation (no bare `: askOfferSlot` fallback for other kinds).
+    expect(orientation).not.toMatch(/:\s*askOfferSlot\)/);
+    expect(orientation).toContain('askContinuation !== "none" && (');
     const thread = COACH.slice(COACH.indexOf('<div data-module="coach-thread"'));
     expect(thread).toContain("<ValuePreview");
     // The coordinator is the ONE arbiter: Today's chooser, never a second.
@@ -572,5 +579,12 @@ describe("B-ASKJB-06 — Ask's fresh stack meets moduleBudget 3", () => {
     ].join("\n");
     const pre = freshTopLevelModules(PRE);
     expect(pre.unstamped.length).toBeGreaterThan(1);
+  });
+});
+
+describe("critic r1 — Ask's coordinator hands the slot the continuation kinds only", async () => {
+  const { COACH_OFFER_KINDS } = await import("./companionOffer");
+  it("COACH_OFFER_KINDS is exactly follow-up + tomorrow-reason", () => {
+    expect([...COACH_OFFER_KINDS]).toEqual(["follow-up", "tomorrow-reason"]);
   });
 });

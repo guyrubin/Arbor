@@ -305,3 +305,33 @@ describe("B-TODAY-18 — tomorrow's reason is a coordinator candidate", () => {
     expect(hook).toContain("reasonForThisOpen(childId, now)");
   });
 });
+
+/**
+ * Critic r1 (W2-ASKJB coach). Two rules:
+ *  · the engagement reason never claims the parent turned the reminder on —
+ *    DEFAULT_PREFS has moments on, so with untouched prefs the claim is false;
+ *  · Ask's first state is the continuation object only (follow-up, tomorrow's
+ *    reason); reminders, bedtime doors and capture nudges stay on Today.
+ */
+describe("critic r1 — the offer says only what the app can keep", async () => {
+  const offerDict = await import("./i18nElevation/offer");
+  it("an engagement offer under DEFAULT_PREFS carries a reason with no 'you turned on' wording, EN + HE", () => {
+    expect(DEFAULT_PREFS.types.moments).toBe(true);
+    const offer = chooseOffer(empty({ nudge: nudge("log") }));
+    expect(offer?.kind).toBe("engagement");
+    for (const dict of [offerDict.en, offerDict.he]) {
+      const reason = dict[offer!.reasonKey];
+      expect(reason).toBeTruthy();
+      expect(reason).not.toMatch(/you turned on|you switched on|you enabled|שהפעלתם|הפעלתם/i);
+    }
+  });
+  it("on Ask, only the continuation kinds can render", () => {
+    for (const k of ["log", "practice", "bedtime", "prep", "calm"] as Nudge["kind"][]) {
+      expect(chooseOffer(empty({ surface: "coach", nudge: nudge(k) }))).toBeNull();
+      expect(chooseOffer(empty({ surface: "today", nudge: nudge(k) }))).not.toBeNull();
+    }
+    expect(chooseOffer(empty({ surface: "coach", appointment: { dayOffset: 1 } as OfferState["appointment"] }))).toBeNull();
+    expect(chooseOffer(empty({ surface: "coach", screeningRecheckDue: true }))).toBeNull();
+    expect(chooseOffer(empty({ surface: "coach", tomorrowReason: { kind: "moment" } }))?.kind).toBe("tomorrow-reason");
+  });
+});

@@ -899,20 +899,25 @@ export default function CoachTab() {
   // exactly when it mattered. composerSection is the ONE composer (COACH-4
   // single-input invariant, ASK-2 two positions), so stamping it puts exactly
   // one stamp in the DOM in either state, with one occurrence in source.
+  // AI-23: count-aware context stays reachable before the first question.
+  const memoryLine = approvedMemoryItems.length === 0
+    ? t("elev.aihonesty.memory.none", { name: childFirst })
+    : approvedMemoryItems.length === 1
+      ? t("elev.aihonesty.memory.one", { name: childFirst })
+      : t("elev.aihonesty.memory.some", { name: childFirst, n: approvedMemoryItems.length });
+  // Critic r1 (W2-ASKJB coach, P1 G1): the memory caption and the weekly
+  // notice said contradictory things on adjacent lines. ONE data-use line now:
+  // when the weekly notice shows, the memory clause rides inside it.
+  const weeklyNoticeShown = weeklyNotice && weeklyOn;
   const composerSection = (
         <section
           data-primary-move="ask"
           className={composerDocked ? "py-2.5" : "pt-3 pb-4 sm:pt-4 sm:pb-5"}
           aria-label={t("elev.hero.ask.cta")}
         >
-          {!composerDocked && (
-            <p className="mb-2 text-[12px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
-              {/* AI-23: count-aware context stays reachable before the first question. */}
-              {approvedMemoryItems.length === 0
-                ? t("elev.aihonesty.memory.none", { name: childFirst })
-                : approvedMemoryItems.length === 1
-                  ? t("elev.aihonesty.memory.one", { name: childFirst })
-                  : t("elev.aihonesty.memory.some", { name: childFirst, n: approvedMemoryItems.length })}
+          {!composerDocked && !weeklyNoticeShown && (
+            <p data-testid="coach-data-use" className="mb-2 text-[12px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+              {memoryLine}
             </p>
           )}
           {/* B-ASKJB-31: the guide the parent opened in the sheet, shown as a
@@ -949,15 +954,15 @@ export default function CoachTab() {
               </button>
             </div>
           )}
-          {weeklyNotice && weeklyOn && (
+          {weeklyNoticeShown && (
             <div
               data-testid="coach-weekly-notice"
               role="note"
               className="mb-2 flex flex-wrap items-center gap-x-2 rounded-xl ps-3 pe-1"
               style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}
             >
-              <p className="flex-1 min-w-0 py-2 text-[12px] leading-snug" style={{ color: "var(--arbor-ink)" }}>
-                {tcc("elev.coachcontract.notice.body")}
+              <p data-testid="coach-data-use" className="flex-1 min-w-0 py-2 text-[12px] leading-snug" style={{ color: "var(--arbor-ink)" }}>
+                {tcc("elev.coachcontract.notice.body")}{!composerDocked && <> {memoryLine}</>}
               </p>
               <button
                 type="button"
@@ -1067,23 +1072,24 @@ export default function CoachTab() {
           </div>
         </header>
 
-        {/* B-ASKJB-06 — Ask opens on the continuation. The ONE coordinator
-            (lib/companionOffer, via useCompanionOffer("coach")) picks the
-            offer; components/overview/continuation.chooseContinuation maps a
-            carry-over ask or tomorrow's reason into Today's own
-            TodayContinuation slot (same object, never a second card); any
-            other kind (RhythmCue, an appointment…) renders through the same
-            slot in place. Nothing renders when the coordinator stays quiet. */}
-        {!userTurnExists && (askContinuation !== "none"
-          ? <TodayContinuation choice={askContinuation} isReturning>{askOfferSlot}</TodayContinuation>
-          : askOfferSlot)}
-
         {/* Composer-first: the parent's question is the primary job on this page.
             COACH-4: this hero composer is the ONE input on the surface — the
             mirrored in-thread composer was removed; follow-up turns also send
             from here. ASK-2: once the thread has a user turn the SAME element
             docks sticky at the bottom of the page instead (see below). */}
         {!composerDocked && composerSection}
+
+        {/* B-ASKJB-06 + critic r1 — the thread's first state is the
+            continuation, UNDER the composer (header < composer < continuation).
+            The coordinator (lib/companionOffer, surface "coach") only hands Ask
+            the continuation kinds (COACH_OFFER_KINDS: a carry-over ask or
+            tomorrow's reason); chooseContinuation maps them into Today's own
+            TodayContinuation slot — never a second pinned card. Reminders,
+            bedtime doors and capture nudges stay on Today. Nothing renders
+            when the coordinator stays quiet. */}
+        {!userTurnExists && askContinuation !== "none" && (
+          <TodayContinuation choice={askContinuation} isReturning>{askOfferSlot}</TodayContinuation>
+        )}
 
         {/* Fast-start scenarios (IA-2) + the "Hard moment now" chip — ONE row under
             the composer, inside orientation (B-ASKJB-06). */}

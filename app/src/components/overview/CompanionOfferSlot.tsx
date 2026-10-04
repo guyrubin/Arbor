@@ -27,7 +27,7 @@ export interface OfferControls {
 }
 
 /** Kinds whose renderer already carries its own "not now" control. */
-const OWN_DISMISS: ReadonlySet<OfferKind> = new Set(["follow-up", "tomorrow-reason", "rhythm", "tonight", "engagement", "what-changed"]);
+export const OWN_DISMISS: ReadonlySet<OfferKind> = new Set(["follow-up", "tomorrow-reason", "rhythm", "tonight", "engagement", "what-changed"]);
 
 export function OfferFrame({
   offer,
@@ -64,7 +64,12 @@ export function OfferFrame({
         {t(offer.reasonKey, offer.reasonVars)}
       </p>
       {children}
-      <div className="mt-1 flex flex-wrap items-center justify-end gap-1">
+      {/* Critic r1 (W2-ASKJB): a renderer that owns its dismiss already says
+          "Not now" in its own action row; a second, orphan "Later" under it
+          stacked a double gap. The frame's controls render only for kinds
+          whose card has none. */}
+      {!OWN_DISMISS.has(offer.kind) && (
+      <div data-testid="offer-frame-controls" className="mt-1 flex flex-wrap items-center justify-end gap-1">
         <button
           type="button"
           onClick={() => act("later")}
@@ -74,18 +79,17 @@ export function OfferFrame({
         >
           {t("elev.offer.ctl.later")}
         </button>
-        {!OWN_DISMISS.has(offer.kind) && (
-          <button
-            type="button"
-            onClick={() => act("notToday")}
-            aria-label={t("elev.offer.ctl.notTodayAria")}
-            className="inline-flex min-h-[44px] items-center px-3 text-[12px] font-bold"
-            style={{ color: "var(--arbor-muted)" }}
-          >
-            {t("elev.offer.ctl.notToday")}
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => act("notToday")}
+          aria-label={t("elev.offer.ctl.notTodayAria")}
+          className="inline-flex min-h-[44px] items-center px-3 text-[12px] font-bold"
+          style={{ color: "var(--arbor-muted)" }}
+        >
+          {t("elev.offer.ctl.notToday")}
+        </button>
       </div>
+      )}
     </section>
   );
 }

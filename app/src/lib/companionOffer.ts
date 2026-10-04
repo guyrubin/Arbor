@@ -66,6 +66,15 @@ export type OfferKind = (typeof OFFER_PRECEDENCE)[number];
 
 export type OfferSurface = "today" | "coach";
 
+/**
+ * Critic r1 (W2-ASKJB coach, P1 G1): Ask's first state is the continuation
+ * object only — the carried-over step (follow-up) or tomorrow's reason. Every
+ * other offer (reminders, bedtime doors, capture nudges, appointments) sends
+ * the parent to another hub and stays on Today, never a second pinned card on
+ * "Help me right now".
+ */
+export const COACH_OFFER_KINDS: readonly OfferKind[] = ["follow-up", "tomorrow-reason"];
+
 /** Why a candidate in hand did not render (offer_suppressed). */
 export const OFFER_SUPPRESS_REASONS = ["quiet_hours", "ceiling", "snoozed", "dismissed", "suppressed_7d"] as const;
 export type OfferSuppressReason = (typeof OFFER_SUPPRESS_REASONS)[number];
@@ -304,7 +313,7 @@ export function offerCandidates(state: OfferState): CompanionOffer[] {
   if (n && (n.kind === "log" || n.kind === "practice")) {
     out.push({ kind: "engagement", reasonKey: "elev.offer.reason.reminder", cta: { labelKey: n.ctaKey, action: n.action }, ledgerKind: n.kind, nudge: n });
   }
-  return out;
+  return state.surface === "coach" ? out.filter((c) => COACH_OFFER_KINDS.includes(c.kind)) : out;
 }
 
 /**
