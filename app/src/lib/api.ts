@@ -1,4 +1,5 @@
 import { toAnalyzeLogInputs } from "./analyzeLogPayload";
+import { toDigestLogInputs, toDigestMilestoneInputs } from "./digestPayload";
 import type { ActionPlan, BedtimeStory, BehaviorAnalysis, SchoolBrief, ChildProfile, BehaviorLog, Milestone, HeroJourneyRender, CoachContract, CouncilTake, MemoryReviewItem, ShareGrant, ShareRole, SharedPacketView, ConsentGrant, ConsentPurpose, DeletionReceipt } from "../types";
 import type { AdventureScenario } from "../practice/content";
 
@@ -517,8 +518,10 @@ export const api = {
   // ADM-1: founder dashboard — users + paying-by-plan + today's token spend (403 if not admin).
   adminOverview: () => get<AdminOverview>("/api/admin/overview"),
   // RET-1: "{child}'s week" digest (stats are computed server-side from the data we send).
+  // B-AI-16: counts, types, contexts and outcomes only — no trigger / notes /
+  // response / photo leaves the device for the digest (lib/digestPayload).
   digest: (payload: { childProfile: ChildProfile; logs: BehaviorLog[]; milestones: Milestone[]; language?: "en" | "he" }) =>
-    post<WeeklyDigest>("/api/digest", payload),
+    post<WeeklyDigest>("/api/digest", { ...payload, logs: toDigestLogInputs(payload.logs), milestones: toDigestMilestoneInputs(payload.milestones) }),
   // CMP-2: GDPR server-side export + erasure.
   privacyExport: (childId: string) =>
     get<{ exportedAt: string; childId: string; serverData: { memoryEvents: unknown[]; shares: unknown[] } }>(`/api/privacy/export/${encodeURIComponent(childId)}`),

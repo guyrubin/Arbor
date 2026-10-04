@@ -339,3 +339,63 @@ describe("B-TODAY-14 — the week's report refreshes itself, at most once a loca
     expect(src).toMatch(/lang: aiLang/);
   });
 });
+
+describe("B-AI-16 · the weekly digest post carries no parent free text", () => {
+  const SENTINEL_LOG = {
+    id: "l1",
+    timestamp: "2026-10-01T08:00:00.000Z",
+    behaviorType: "Tantrum",
+    intensity: 4,
+    durationMinutes: 10,
+    trigger: "TRIGGER-SENTINEL the shoes again",
+    response: "RESP-SENTINEL we left the park",
+    notes: "NOTE-SENTINEL she said she hates me",
+    context: "Public" as const,
+    resolved: true,
+    resolutionNotes: "RES-SENTINEL",
+    photoAttachment: "data:image/png;base64,PHOTO-SENTINEL",
+    sourceExcerpt: "EXCERPT-SENTINEL",
+  };
+
+  it("api.digest posts counts, types, contexts and outcomes only (spied fetch), EN + HE", async () => {
+    const { vi } = await import("vitest");
+    const { api } = await import("../lib/api");
+    const { DIGEST_LOG_FIELDS } = await import("../lib/digestPayload");
+    for (const language of ["en", "he"] as const) {
+      const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => ({
+        ok: true,
+        status: 200,
+        headers: { get: () => null },
+        json: async () => ({ title: "t", subject: "s", preheader: "p", summary: "x", highlights: [], watchFor: [], tryThisWeek: "", stats: {}, generated: "ai" }),
+      }));
+      vi.stubGlobal("fetch", fetchMock);
+      try {
+        await api.digest({
+          childProfile: { id: "c1", name: "Noa" } as never,
+          logs: [SENTINEL_LOG],
+          milestones: [{ id: "m1", title: "MILESTONE-SENTINEL first word", checked: true } as never],
+          language,
+        });
+      } finally {
+        vi.unstubAllGlobals();
+      }
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(String(fetchMock.mock.calls[0][0])).toContain("/api/digest");
+      const body = String(fetchMock.mock.calls[0][1]?.body ?? "");
+      for (const sentinel of ["TRIGGER-SENTINEL", "NOTE-SENTINEL", "RESP-SENTINEL", "RES-SENTINEL", "PHOTO-SENTINEL", "EXCERPT-SENTINEL", "MILESTONE-SENTINEL"]) {
+        expect(body, `${language}: ${sentinel}`).not.toContain(sentinel);
+      }
+      const sent = JSON.parse(body);
+      expect(sent.language).toBe(language);
+      expect(sent.logs).toEqual([{ timestamp: SENTINEL_LOG.timestamp, behaviorType: "Tantrum", context: "Public", resolved: true }]);
+      expect(Object.keys(sent.logs[0]).every((k) => (DIGEST_LOG_FIELDS as readonly string[]).includes(k))).toBe(true);
+      expect(sent.milestones).toEqual([{ checked: true }]);
+    }
+  });
+
+  it("generate() goes through api.digest — the one builder that strips free text", () => {
+    const src = fs.readFileSync(path.join(__dirname, "useWeeklyRecap.ts"), "utf8");
+    expect(src).toMatch(/await api\.digest\(\{/);
+    expect(src).not.toMatch(/fetch\(\s*["'`]\/api\/digest/);
+  });
+});

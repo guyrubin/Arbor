@@ -12,19 +12,15 @@
 // fingerprints buildDigestPrompt, and importing lib/i18n here would close an
 // import cycle back through i18nElevation into ai/prompts.
 import { isolate } from "../lib/bidi.js";
+import type { DigestLogInput, DigestMilestoneInput } from "../lib/digestPayload.js";
 
-type DigestLog = {
-  timestamp: string;
-  behaviorType: string;
-  intensity: number;
-  durationMinutes: number;
-  trigger?: string;
-  response?: string;
-  context?: string;
-  resolved?: boolean;
-};
+// B-AI-16: the stats read exactly the allow-listed fields (lib/digestPayload)
+// — no trigger / response / notes / title text reaches this module.
+type DigestLog = DigestLogInput;
 
-type DigestMilestone = { title: string; checked: boolean; domain?: string };
+// title/domain are tolerated in the type (the scheduled job's rows carry
+// them) but never read: the stats count `checked` only.
+type DigestMilestone = DigestMilestoneInput & { title?: string; domain?: string };
 
 /**
  * Clinical firewall (JRNL-1): this payload is parent-visible (the whole stats

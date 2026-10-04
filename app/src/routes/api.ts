@@ -75,6 +75,8 @@ import type { CapabilityRegistry } from "../ai/capabilities/registry.js";
 import { billingCheckoutUrl } from "../server/billing.js";
 import { buildLiveSystemInstruction, liveSpeechConfig, SPOKEN_COACH_PERSONA, spokenLanguageDirective } from "../lib/livePersona.js";
 import { countAnalyzeLogs, toAnalyzeLogInputs } from "../lib/analyzeLogPayload.js";
+// B-AI-16: the digest routes drop every free-text field an older client still posts.
+import { toDigestLogInputs, toDigestMilestoneInputs } from "../lib/digestPayload.js";
 import { sanitizeTypeCounts } from "../lib/planRecord.js";
 import { isAdmin } from "../server/admin.js";
 import type { AdminMetricsStore } from "../server/adminMetrics.js";
@@ -3513,7 +3515,7 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
   router.post("/digest", async (req, res) => {
     const { childProfile, logs, milestones, language } = req.body;
     const childName = (childProfile?.name && String(childProfile.name)) || "Your child";
-    const stats = computeWeeklyDigestStats(Array.isArray(logs) ? logs : [], Array.isArray(milestones) ? milestones : []);
+    const stats = computeWeeklyDigestStats(toDigestLogInputs(logs), toDigestMilestoneInputs(milestones));
     const fallback = fallbackDigestNarrative(childName, stats);
     try {
       const privacy = createRedaction(childProfile?.name);
@@ -3599,7 +3601,7 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
   router.post("/digest/email-preview", (req, res) => {
     const { childProfile, logs, milestones, language } = req.body;
     const childName = (childProfile?.name && String(childProfile.name)) || "Your child";
-    const stats = computeWeeklyDigestStats(Array.isArray(logs) ? logs : [], Array.isArray(milestones) ? milestones : []);
+    const stats = computeWeeklyDigestStats(toDigestLogInputs(logs), toDigestMilestoneInputs(milestones));
     // Deterministic narrative on purpose: the preview must be cheap, instant,
     // and truthful with AI off — same fields the in-app digest fallback uses.
     const narrative = fallbackDigestNarrative(childName, stats);
@@ -3690,7 +3692,7 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
       }
       const { childProfile, logs, milestones } = req.body ?? {};
       const childName = (childProfile?.name && String(childProfile.name)) || "Your child";
-      const stats = computeWeeklyDigestStats(Array.isArray(logs) ? logs : [], Array.isArray(milestones) ? milestones : []);
+      const stats = computeWeeklyDigestStats(toDigestLogInputs(logs), toDigestMilestoneInputs(milestones));
       const narrative = fallbackDigestNarrative(childName, stats);
       const email = buildDigestEmail({ childName, language: decision.language, narrative, stats });
       const result = await sendDigestEmail({ to: decision.to, ...email });
