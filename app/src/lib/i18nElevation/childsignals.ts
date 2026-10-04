@@ -39,8 +39,8 @@ export const en: Record<string, string> = {
   "elev.childsignals.title.adventure.many": "Completed {count} adventure scenes",
   "elev.childsignals.title.mission.one": "Completed a daily mission",
   "elev.childsignals.title.mission.many": "Completed {count} daily missions",
-  "elev.childsignals.title.hero.one": "Finished a hero journey",
-  "elev.childsignals.title.hero.many": "Finished {count} hero journeys",
+  "elev.childsignals.title.hero.one": "Finished 1 hero story",
+  "elev.childsignals.title.hero.many": "Finished {count} hero stories",
 
   // ── "Over the months" spine — milestone crossings + cumulative totals only.
   "elev.childsignals.months.title": "Over the months",
@@ -105,8 +105,8 @@ export const he: Record<string, string> = {
   "elev.childsignals.title.adventure.many": "הושלמו {count} סצנות הרפתקה",
   "elev.childsignals.title.mission.one": "הושלמה משימה יומית",
   "elev.childsignals.title.mission.many": "הושלמו {count} משימות יומיות",
-  "elev.childsignals.title.hero.one": "הושלם מסע גיבורים",
-  "elev.childsignals.title.hero.many": "הושלמו {count} מסעות גיבורים",
+  "elev.childsignals.title.hero.one": "הושלם סיפור גיבור אחד",
+  "elev.childsignals.title.hero.many": "הושלמו {count} סיפורי גיבור",
 
   "elev.childsignals.months.title": "לאורך החודשים",
   "elev.childsignals.months.by": "עד {month}: {count} רגעים בסיפור",

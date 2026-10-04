@@ -35,6 +35,8 @@
  */
 import { useEffect, useRef } from "react";
 import { useArbor } from "../../context/ArborContext";
+import { useChildCollection } from "../../hooks/useChildCollection";
+import type { HeroJourneyRun } from "../../types";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { usePracticeData } from "../../practice/usePracticeData";
@@ -42,10 +44,13 @@ import { withChildSignals } from "../../lib/i18nElevation/childsignals";
 import { countsSince, kidExitRecapLine, type KidActivityLedgers } from "../../lib/kidExitRecap";
 
 export default function KidExitRecap() {
-  const { childProfile } = useArbor();
+  const { childProfile, addMoment } = useArbor();
   const { toast } = useToast();
   const { t, uiLang } = useLanguage();
   const practice = usePracticeData(childProfile.id);
+  // B-SHELL-04: hero stories are a ledger of their own (heroRuns), not part of
+  // usePracticeData — read here so a finished hero story is named on exit.
+  const heroRuns = useChildCollection<HeroJourneyRun>(childProfile.id, "heroRuns");
 
   // The baseline: when this child's Kid Mode session began. Device-local, in
   // memory only — nothing is persisted.
@@ -60,6 +65,7 @@ export default function KidExitRecap() {
     mission: practice.missions.items.map((x) => x.timestamp),
     adventure: practice.adventures.items.map((x) => x.timestamp),
     practice: practice.events.items.map((x) => x.timestamp),
+    hero: heroRuns.items.map((x) => x.completedAt || x.startedAt),
   };
   const speakRef = useRef<() => void>(() => undefined);
   speakRef.current = () => {
@@ -70,7 +76,17 @@ export default function KidExitRecap() {
       (childProfile.name || "").split(" ")[0]
     );
     // Nothing happened → no strip. An empty toast is worse than silence.
-    if (line) toast(line, "info");
+    // B-SHELL-04: the toast carries a Keep action, so it stays until the
+    // parent keeps it or dismisses it (ToastContext never auto-removes an
+    // action toast). The toast is queued while Kid Mode is active, so Keep can
+    // only be pressed by the parent after exit; it writes ONE parent moment.
+    if (line) {
+      const kept = line;
+      toast(line, "info", {
+        label: t("elev.learnCare.kidExit.keep"),
+        onClick: () => { addMoment(kept); },
+      });
+    }
   };
 
   useEffect(() => () => speakRef.current(), []);

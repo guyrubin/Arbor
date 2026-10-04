@@ -9,7 +9,8 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { countsSince, kidExitRecapLine, totalActivity, type KidActivityLedgers } from "./kidExitRecap";
+import { countsSince, kidExitRecapLine, totalActivity, KID_ACTIVITY_KINDS, type KidActivityKind, type KidActivityLedgers } from "./kidExitRecap";
+import type { ChildActivityType } from "./signalTimeline";
 import { withChildSignals } from "./i18nElevation/childsignals";
 import { elevationEn, elevationHe } from "./i18nElevation";
 import { en as baseEn, he as baseHe } from "./i18n";
@@ -148,5 +149,57 @@ describe("KID-12 · the strip is actually MOUNTED on the exit path", () => {
     for (const write of ["upsert(", "addDoc(", "setDoc(", "updateDoc(", "deleteDoc(", "writeBatch"]) {
       expect(recap).not.toContain(write);
     }
+  });
+});
+
+describe("B-SHELL-04 · the recap names hero stories and stays until kept or dismissed", () => {
+  // Type-level: every ChildActivityType is a KidActivityKind. If a new activity
+  // type is added to the timeline and not here, this line stops compiling.
+  type Missing = Exclude<ChildActivityType, KidActivityKind>;
+  const exhaustive: [Missing] extends [never] ? true : false = true;
+  // Runtime: a Record over ChildActivityType must list every member (tsc
+  // rejects a missing key), and every key must be in KID_ACTIVITY_KINDS.
+  const ALL_ACTIVITY_TYPES: Record<ChildActivityType, true> = {
+    practice: true, speech: true, mimic: true, adventure: true, mission: true, hero: true,
+  };
+
+  it("KID_ACTIVITY_KINDS ⊇ ChildActivityType (type-level + runtime list)", () => {
+    expect(exhaustive).toBe(true);
+    for (const kind of Object.keys(ALL_ACTIVITY_TYPES)) {
+      expect(KID_ACTIVITY_KINDS).toContain(kind);
+    }
+  });
+
+  it("one finished hero story reads '1 hero story' (EN) and is named in Hebrew", () => {
+    const counts = countsSince({ hero: [during(4)] }, OPENED);
+    expect(counts.hero).toBe(1);
+    expect(kidExitRecapLine(counts, tEn, "Mia")!).toContain("1 hero story");
+    const he1 = kidExitRecapLine(counts, tHe, "מיה")!;
+    expect(he1).toContain("סיפור גיבור");
+    expect(he1).not.toMatch(/[A-Za-z]{3}/);
+    expect(kidExitRecapLine(countsSince({ hero: [during(1), during(2)] }, OPENED), tEn, "Mia")!).toContain("2 hero stories");
+  });
+
+  const recap = read("components/kidmode/KidExitRecap.tsx");
+
+  it("the hero ledger is mirrored from heroRuns (completedAt || startedAt)", () => {
+    expect(recap).toMatch(/useChildCollection<HeroJourneyRun>\(childProfile\.id, "heroRuns"\)/);
+    expect(recap).toMatch(/hero: heroRuns\.items\.map\(\(x\) => x\.completedAt \|\| x\.startedAt\)/);
+  });
+
+  it("the toast carries a Keep action (so it never auto-removes) that writes one moment", () => {
+    expect(recap).toMatch(/toast\(line, "info", \{/);
+    expect(recap).toContain('t("elev.learnCare.kidExit.keep")');
+    expect((recap.match(/addMoment\(/g) ?? []).length).toBe(1);
+    const toastCtx = read("context/ToastContext.tsx");
+    // an action toast is never auto-removed; the kid lock queues it until exit
+    expect(toastCtx).toContain("if (!action) setTimeout(() => remove(id), 4000);");
+    expect(toastCtx).toMatch(/if \(isKidModeActive\(\)\) \{\s*queueRef\.current\.push/);
+  });
+
+  it("the Keep label exists in EN and HE", () => {
+    expect(en["elev.learnCare.kidExit.keep"]).toBeTruthy();
+    expect(he["elev.learnCare.kidExit.keep"]).toBeTruthy();
+    expect(he["elev.learnCare.kidExit.keep"]).not.toBe(en["elev.learnCare.kidExit.keep"]);
   });
 });

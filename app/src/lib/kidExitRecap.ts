@@ -22,10 +22,14 @@
  * follows. No percentage, no verdict, no colour meaning good or bad.
  */
 
-/** The activity kinds the exit strip can name (mirrors ChildActivityType). */
-export type KidActivityKind = "practice" | "speech" | "mimic" | "adventure" | "mission";
+/** The activity kinds the exit strip can name (mirrors ChildActivityType).
+ *  B-SHELL-04: `hero` joined — a finished hero story was the one thing a child
+ *  could do in Kid Mode that the exit recap never named. The guard in
+ *  kidExitRecap.test.ts pins KID_ACTIVITY_KINDS ⊇ ChildActivityType. */
+export type KidActivityKind = "practice" | "speech" | "mimic" | "adventure" | "mission" | "hero";
 
 export const KID_ACTIVITY_KINDS: readonly KidActivityKind[] = [
+  "hero",
   "speech",
   "mimic",
   "adventure",

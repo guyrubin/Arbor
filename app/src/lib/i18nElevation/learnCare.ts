@@ -125,6 +125,8 @@ export const en: Record<string, string> = {
   // ── KID-12 · The parent strip on Kid Mode exit ─────────────────────────────
   "elev.learnCare.kidExit.strip": "While you were away, {name}: {summary}",
   "elev.learnCare.kidExit.join": " · ",
+  // B-SHELL-04 — the recap toast stays until the parent keeps or dismisses it.
+  "elev.learnCare.kidExit.keep": "Keep in the journal",
 
   // Builder M — R25 — #/sharing (and #/care-team, same leaf) demotion disclosure and its door to #/consult.
   "elev.learnCare.share.more.title": "Shared with you, your data and the record",
@@ -231,6 +233,7 @@ export const he: Record<string, string> = {
   // ── KID-12 ─────────────────────────────────────────────────────────────────
   "elev.learnCare.kidExit.strip": "בזמן שלא הייתם, {name}: {summary}",
   "elev.learnCare.kidExit.join": " · ",
+  "elev.learnCare.kidExit.keep": "לשמור ביומן",
 
   // Builder M — R25 — #/sharing (and #/care-team, same leaf) demotion disclosure and its door to #/consult.
   "elev.learnCare.share.more.title": "מה שותף אתכם, הנתונים והרשומה",
