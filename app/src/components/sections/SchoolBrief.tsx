@@ -331,10 +331,8 @@ export default function SchoolBrief() {
   return (
     <motion.div {...motionProps} className="space-y-5 max-w-[760px]">
       <header>
-        <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: GREEN }}>
-          <Icon name="school" size={14} /> {t("schoolBrief.eyebrow")}
-        </span>
-        <h1 className="text-[1.6rem] font-extrabold leading-tight mt-0.5" style={{ fontFamily: "var(--font-display)", color: INK, textWrap: "balance" } as React.CSSProperties}>
+        {/* W2-CAREPRO r1: no page kicker — the hub (Care) already names it. */}
+        <h1 className="text-[1.6rem] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: INK, textWrap: "balance" } as React.CSSProperties}>
           {t("schoolBrief.title")}
         </h1>
         <p className="text-sm mt-1.5 leading-relaxed" style={{ color: MUTED, textWrap: "pretty" } as React.CSSProperties}>
@@ -355,13 +353,52 @@ export default function SchoolBrief() {
           `data-primary-move` marks the ONE control that performs the move
           surfaceContract.ts declares for this route. */}
       <>
-          {/* B-CAREPRO-27: where the draft came from, and what Plus adds. */}
-          <p data-testid="school-brief-draft-hint" className="text-[12px] leading-relaxed" style={{ color: MUTED }}>
-            {editing ? t("schoolBrief.editHint") : t("elev.learnCare.brief.draftHint")}
-          </p>
+          {/* W2-CAREPRO r1 (school-brief P0): the one move sits ABOVE the
+              document, so Save as PDF is above the fold at 375 and 1280
+              (it was y=1185 / 846 under the draft card). */}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Opening the review is NOT an export — export only fires after approve. */}
+            <button
+              {...primaryMove}
+              onClick={() => setReviewOpen(true)}
+              className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-3 min-h-[44px]"
+              style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
+            >
+              <Icon name="description" size={16} /> {t("elev.learnCare.brief.print")}
+            </button>
+            {/* B-CAREPRO-27 / G2: Plus = AI drafting only. A Free parent who taps
+                it gets the paywall (B-CAREPRO-16); the free draft above already
+                prints. */}
+            <button
+              data-testid="school-brief-ai-draft"
+              onClick={generate}
+              disabled={generating}
+              className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-4 py-3 min-h-[44px] disabled:opacity-50"
+              style={{ background: "var(--arbor-paper-sunk)", color: INK, border: `1px solid ${RULE}` }}
+            >
+              {generating
+                ? (<><Icon name="progress_activity" size={16} className="animate-spin" /> {t("schoolBrief.generating")}</>)
+                : (<><Icon name="auto_awesome" size={16} /> {t("elev.learnCare.brief.aiDraft")}
+                    <span className="text-[11px] font-extrabold rounded-full px-2 py-0.5" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>{t("elev.learnCare.brief.plus")}</span></>)}
+            </button>
+            {/* Per-section edit toggle — keeps the default view calm; full edit power on demand. */}
+            <button
+              onClick={() => setEditing((e) => !e)}
+              aria-pressed={editing}
+              className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-4 py-3 min-h-[44px]"
+              style={{ background: "var(--arbor-paper-sunk)", color: INK, border: `1px solid ${RULE}` }}
+            >
+              {editing ? (<><Icon name="check" size={16} style={{ color: GREEN }} /> {t("schoolBrief.editDone")}</>) : (<><Icon name="edit" size={16} /> {t("schoolBrief.edit")}</>)}
+            </button>
+          </div>
 
           {/* The rendered brief — curated sections only (editable when `editing`). */}
           <div data-module="brief-draft" className="rounded-2xl p-5 md:p-6 space-y-5" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
+            {/* B-CAREPRO-27: where the draft came from, and what Plus adds — a
+                caption in the card header (W2-CAREPRO r1), not a preamble layer. */}
+            <p data-testid="school-brief-draft-hint" className="t-xs leading-relaxed" style={{ color: MUTED }}>
+              {editing ? t("schoolBrief.editHint") : t("elev.learnCare.brief.draftHint")}
+            </p>
             <Section icon={<Icon name="assignment" size={16} />} title={sectionLabels.overview}>
               {editing ? (
                 <textarea
@@ -403,41 +440,6 @@ export default function SchoolBrief() {
               routed to Safety and support. */}
           {escalationCard}
 
-          <div className="flex flex-wrap items-center gap-3">
-            {/* B-CAREPRO-27 / G2: Plus = AI drafting only. A Free parent who taps
-                it gets the paywall (B-CAREPRO-16); the free draft above already
-                prints. */}
-            <button
-              data-testid="school-brief-ai-draft"
-              onClick={generate}
-              disabled={generating}
-              className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-4 py-3 min-h-[44px] disabled:opacity-50"
-              style={{ background: "var(--arbor-paper-sunk)", color: INK, border: `1px solid ${RULE}` }}
-            >
-              {generating
-                ? (<><Icon name="progress_activity" size={16} className="animate-spin" /> {t("schoolBrief.generating")}</>)
-                : (<><Icon name="auto_awesome" size={16} /> {t("elev.learnCare.brief.aiDraft")}
-                    <span className="text-[11px] font-extrabold rounded-full px-2 py-0.5" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>{t("elev.learnCare.brief.plus")}</span></>)}
-            </button>
-            {/* Per-section edit toggle — keeps the default view calm; full edit power on demand. */}
-            <button
-              onClick={() => setEditing((e) => !e)}
-              aria-pressed={editing}
-              className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-4 py-3 min-h-[44px]"
-              style={{ background: "var(--arbor-paper-sunk)", color: INK, border: `1px solid ${RULE}` }}
-            >
-              {editing ? (<><Icon name="check" size={16} style={{ color: GREEN }} /> {t("schoolBrief.editDone")}</>) : (<><Icon name="edit" size={16} /> {t("schoolBrief.edit")}</>)}
-            </button>
-            {/* Opening the review is NOT an export — export only fires after approve. */}
-            <button
-              {...primaryMove}
-              onClick={() => setReviewOpen(true)}
-              className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-3 min-h-[44px]"
-              style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
-            >
-              <Icon name="description" size={16} /> {t("elev.learnCare.brief.print")}
-            </button>
-          </div>
       </>
 
       {/* Approval screen (Condition 1 + 5) — the parent sees the exact brief,

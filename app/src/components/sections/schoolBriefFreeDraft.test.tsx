@@ -61,5 +61,24 @@ describe("B-CAREPRO-27 · Free parent: a teacher brief on open, no paywall", () 
       expect(harness.generateBrief).not.toHaveBeenCalled();
       expect(harness.openPaywall).not.toHaveBeenCalled();
     });
+
+    it(`${locale}: W2-CAREPRO r1 — Save as PDF comes before the document, no page kicker, labels name what the lists hold`, () => {
+      harness.locale = locale;
+      const html = renderToStaticMarkup(<SchoolBrief />);
+      // the one move precedes the draft card in document order (above the fold)
+      const move = html.indexOf('data-primary-move="build-school-brief"');
+      const card = html.indexOf('data-module="brief-draft"');
+      expect(move).toBeGreaterThan(-1);
+      expect(move).toBeLessThan(card);
+      // and it is the first control of its row
+      expect(html.indexOf('data-testid="school-brief-ai-draft"')).toBeGreaterThan(move);
+      // no "Care Network" kicker: the hub already names it
+      expect(html).not.toContain(translate(locale, "schoolBrief.eyebrow"));
+      // the draft hint is a caption INSIDE the card, not a preamble layer
+      expect(html.indexOf('data-testid="school-brief-draft-hint"')).toBeGreaterThan(card);
+      // strengths are labelled as strengths
+      expect(html).toContain(translate(locale, "schoolBrief.section.strengths", { name: "Noa" }));
+      expect(html).not.toContain(locale === "he" ? "מה מרגיע" : "What calms");
+    });
   }
 });
