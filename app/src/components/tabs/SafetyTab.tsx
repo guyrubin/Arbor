@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { Skeleton } from "../ui/Skeleton";
@@ -55,6 +55,15 @@ export default function SafetyTab() {
   const primaryHelpline = HELPLINE_DIRECTORY.find((h) => h.region === helplineOrder[0]) ?? HELPLINE_DIRECTORY[0];
   // W2-CAREPRO r1: the crisis card's second call (emergency ↔ emotional line).
   const dangerLine = dangerLineFor(helplineOrder, primaryHelpline);
+  // W2-CAREPRO r2: "Find the line for your country" opens the disclosure at
+  // the helpline groups (no foreign number is ever offered in its place).
+  const moreRef = useRef<HTMLDetailsElement>(null);
+  const openHelplines = () => {
+    const el = moreRef.current;
+    if (!el) return;
+    el.open = true;
+    el.scrollIntoView?.({ block: "start", behavior: "smooth" });
+  };
   // B-CAREPRO-NEW-1n: the crisis card names the child; the family's own first
   // contact sits under the one tap (only when the parent saved one with a phone).
   const crisisFirstName = (childProfile.name || "").trim().split(" ")[0];
@@ -153,6 +162,12 @@ export default function SafetyTab() {
           marks a top-level sibling module (what moduleBudget counts);
           `data-primary-move` marks the ONE control that performs the move
           surfaceContract.ts declares for this route. */}
+      {/* W2-CAREPRO r2: at lg the fold is two columns — the one-tap call (a
+          taller block) + the family's first call on the start side, the crisis
+          card at its 60ch measure on the end side; the disclosure spans both
+          below. Below lg it is the same single column as before. */}
+      <div data-testid="safety-fold" className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start">
+      <div className="flex flex-col gap-3">
       <a
         data-module="safety-one-tap"
         data-primary-move="call-helpline"
@@ -163,12 +178,12 @@ export default function SafetyTab() {
         // truncated (it was cut to "Emergency services (EU-wide; also f…" at
         // 375). The fill is the page's one CTA gradient (pink-ink is a text
         // ink, not a fill); no opacity hierarchy (CR-01).
-        className="w-full flex items-start gap-3 rounded-2xl min-h-[56px] px-5 py-3 text-start transition hover:brightness-105"
+        className="w-full flex items-start gap-3 rounded-2xl min-h-[56px] lg:min-h-[120px] px-5 py-3 lg:py-5 text-start transition hover:brightness-105"
         style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)", boxShadow: "var(--shadow-md)" }}
       >
         <Icon name="call" size={22} fill={1} className="mt-0.5 flex-shrink-0" />
         <span className="min-w-0 flex flex-col">
-          <span className="t-lg font-extrabold whitespace-nowrap">{t("elev.carehonesty.safety.callPrimary", { number: primaryHelpline.number })}</span>
+          <span className="t-lg lg:t-xl font-extrabold whitespace-nowrap">{t("elev.carehonesty.safety.callPrimary", { number: primaryHelpline.number })}</span>
           <span className="t-sm font-bold">{t(`elev.safety.helpline.${primaryHelpline.id}`)}</span>
         </span>
       </a>
@@ -185,14 +200,23 @@ export default function SafetyTab() {
         </a>
       )}
 
+      </div>
+
       {/* Pinned crisis-language card */}
       <div data-module="safety-crisis-language" className="rounded-2xl p-6 space-y-2" style={{ background: "var(--arbor-pink-soft)" }}>
-        <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "var(--arbor-pink-ink)" }}>
-          <Icon name="warning" size={16} /> {crisisFirstName ? t("elev.safety.crisis.kickerNamed", { name: crisisFirstName }) : t("elev.safety.crisis.kicker")}
+        <span className={`text-xs font-extrabold flex items-center gap-1.5 ${uiLang === "he" ? "" : "uppercase tracking-wider"}`} style={{ color: "var(--arbor-pink-ink)" }}>
+          <Icon name="warning" size={16} /> <span>{crisisFirstName ? t("elev.safety.crisis.kickerNamed", { name: `⁨${crisisFirstName}⁩` }) : t("elev.safety.crisis.kicker")}</span>
         </span>
         {/* B-CAREPRO-NEW-1n: the script names the child (kicker) and reads as
             something to say, in the editorial face, at a readable measure. */}
-        <p className="t-base leading-relaxed italic max-w-[60ch]" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)" }}>
+        {/* W2-CAREPRO r2: Hebrew has no italic convention and the editorial
+            face has no Hebrew glyphs (the browser faked an oblique) — HE reads
+            upright in the display face; EN keeps the editorial italic. */}
+        <p
+          data-testid="safety-crisis-script"
+          className={`t-base leading-relaxed max-w-[60ch] ${uiLang === "he" ? "" : "italic"}`}
+          style={{ color: "var(--arbor-ink)", fontFamily: uiLang === "he" ? "var(--font-display)" : "var(--font-editorial)" }}
+        >
           {t("elev.safety.crisis.script")}
         </p>
         {/* W2-CAREPRO r1: the danger sentence is itself a 44 px call — to the
@@ -212,7 +236,18 @@ export default function SafetyTab() {
         ) : (
           <>
             <p className="t-xs" style={{ color: "var(--arbor-muted)" }}>{t("elev.safety.crisis.danger")}</p>
-            {dangerLine && (
+            {dangerLine?.kind === "find" && (
+              <button
+                type="button"
+                data-testid="safety-find-line"
+                onClick={openHelplines}
+                className="inline-flex items-center gap-2 min-h-[44px] t-sm font-bold underline underline-offset-2 text-start"
+                style={{ color: "var(--arbor-ink)" }}
+              >
+                <Icon name="public" size={16} /> {t("elev.safety.crisis.findLine")}
+              </button>
+            )}
+            {dangerLine?.kind === "talk" && (
               <a
                 data-testid="safety-danger-call"
                 href={`tel:${dangerLine.entry.tel}`}
@@ -231,6 +266,8 @@ export default function SafetyTab() {
         </p>
       </div>
 
+      </div>
+
       {/* R25 (item 11) — #/safety rendered 7 top-level modules against a declared
           moduleBudget of 2. The tail below is DEMOTED, never removed: one
           collapsed disclosure on the pattern components/practice/SpeechCoachTab.tsx
@@ -238,7 +275,7 @@ export default function SafetyTab() {
           while the fold belongs to the primary move. Demoted modules keep their
           own `data-module` stamp and add `data-module-demoted`, which is what
           makes the budget rule countable: top-level = stamps minus demoted. */}
-      <details data-module-disclosure="safety-more" className={`${cardCls} p-0 overflow-hidden`}>
+      <details ref={moreRef} id="safety-more" data-module-disclosure="safety-more" className={`${cardCls} p-0 overflow-hidden`}>
         <summary className="cursor-pointer list-none px-6 py-4 min-h-[44px] flex items-center gap-3">
           <span className="grid place-items-center w-9 h-9 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}>
             <Icon name="call" size={18} />

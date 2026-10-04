@@ -282,14 +282,17 @@ describe("W2-CAREPRO r1 — both answers above the fold; the CTA says who answer
     expect(hePrimary.id).toBe("il_eran");
     const heLine = dangerLineFor(he, hePrimary)!;
     expect(heLine.kind).toBe("emergency");
+    if (heLine.kind === "find") throw new Error("HE must dial MDA");
     expect(heLine.entry.tel).toBe("101");
     expect(heLine.entry.tel).not.toBe(hePrimary.tel);
     const en = helplineOrderFor("en");
     const enPrimary = DIR.find((h) => h.region === en[0])!;
     expect(enPrimary.id).toBe("eu_112");
+    // W2-CAREPRO r2 (P0): the EU group holds only 112 — an unknown market is
+    // never handed Israel's ERAN under "EU-wide"; it gets the by-country door.
     const enLine = dangerLineFor(en, enPrimary)!;
-    expect(enLine.kind).toBe("talk");
-    expect(enLine.entry.tel).not.toBe(enPrimary.tel);
+    expect(enLine.kind).toBe("find");
+    expect("entry" in enLine).toBe(false);
   });
 
   it("the danger call is a 44 px tel: link in the crisis card, no second stamp", () => {
@@ -326,8 +329,9 @@ describe("B-CAREPRO-NEW-1m / 1n — the crisis card names the child, shows the r
     expect(safetyHeRecord["elev.safety.numbersChecked" as keyof typeof safetyHeRecord]).toContain("{date}");
   });
   it("1n: the kicker names the child (fallback to the generic kicker); the script uses the editorial face at 60ch", () => {
-    expect(tabSource).toContain('crisisFirstName ? t("elev.safety.crisis.kickerNamed", { name: crisisFirstName }) : t("elev.safety.crisis.kicker")');
-    expect(tabSource).toMatch(/max-w-\[60ch\]" style=\{\{ color: "var\(--arbor-ink\)", fontFamily: "var\(--font-editorial\)" \}\}/);
+    expect(tabSource).toContain('crisisFirstName ? t("elev.safety.crisis.kickerNamed", { name: `\u2068${crisisFirstName}\u2069` }) : t("elev.safety.crisis.kicker")');
+    expect(tabSource).toContain("max-w-[60ch]");
+    expect(tabSource).toContain('fontFamily: uiLang === "he" ? "var(--font-display)" : "var(--font-editorial)"');
     for (const rec of [safetyEnRecord, safetyHeRecord]) expect(rec["elev.safety.crisis.kickerNamed" as keyof typeof rec]).toContain("{name}");
   });
   it("1n: the first saved contact is a 44 px tel: row under the one tap — not a module, not a stamp", () => {

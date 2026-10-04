@@ -359,20 +359,28 @@ export const EMERGENCY_HELPLINE_IDS: ReadonlySet<string> = new Set(["il_mda", "i
  *  101, US 911, else EU 112); when the primary already IS the emergency number
  *  (EN → 112) it names the first emotional line in the family's market order.
  *  Pure; never returns the primary itself. */
+export type DangerLine =
+  | { kind: "emergency" | "talk"; entry: HelplineEntry }
+  /** W2-CAREPRO r2 (P0): the family's own region has no talk line (unknown
+   *  market → EU-wide 112). Never fall through to a foreign country's line;
+   *  the card offers "Find the line for your country" instead. */
+  | { kind: "find" };
+
 export function dangerLineFor(
   order: readonly HelplineRegion[],
   primary: HelplineEntry,
-): { kind: "emergency" | "talk"; entry: HelplineEntry } | null {
+): DangerLine | null {
   if (!EMERGENCY_HELPLINE_IDS.has(primary.id)) {
     const id = primary.region === "il" ? "il_mda" : primary.region === "us" ? "us_911" : "eu_112";
     const entry = HELPLINE_DIRECTORY.find((h) => h.id === id);
     return entry ? { kind: "emergency", entry } : null;
   }
-  for (const region of order) {
-    const entry = HELPLINE_DIRECTORY.find((h) => h.region === region && !EMERGENCY_HELPLINE_IDS.has(h.id));
-    if (entry) return { kind: "talk", entry };
-  }
-  return null;
+  // The talk line comes ONLY from the family's own region (the primary's
+  // region, which is order[0]). The EU group holds only 112, so an unknown
+  // market gets the by-country door — never Israel's ERAN under "EU-wide".
+  const own = order[0] ?? primary.region;
+  const entry = HELPLINE_DIRECTORY.find((h) => h.region === own && !EMERGENCY_HELPLINE_IDS.has(h.id));
+  return entry ? { kind: "talk", entry } : { kind: "find" };
 }
 
 /** International helpline directory — the FIND_LOCAL fallback, linkable. */

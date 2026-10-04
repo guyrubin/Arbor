@@ -13,8 +13,8 @@
 
 export const en: Record<string, string> = {
   // ── Header
-  "elev.safety.header.title": "Safety & Escalation",
-  "elev.safety.header.sub": "Emergency contacts and crisis language — ready the moment you need them.",
+  "elev.safety.header.title": "Safety & urgent help",
+  "elev.safety.header.sub": "One tap reaches a person. Nothing here is saved.",
 
   // ── Crisis script (pinned)
   "elev.safety.crisis.kicker": "Crisis script — say this",
@@ -26,6 +26,7 @@ export const en: Record<string, string> = {
   "elev.safety.crisis.danger": "If there is immediate danger to your child or others, contact local emergency services first.",
   "elev.safety.crisis.dangerCall": "In immediate danger? Call {number} · {name}",
   "elev.safety.crisis.talkLine": "Need to talk it through? {name} · {number}",
+  "elev.safety.crisis.findLine": "Need to talk it through? Find the line for your country",
 
   // ── Crisis helplines (tel: directory)
   "elev.safety.helplines.title": "Crisis helplines",
@@ -92,7 +93,7 @@ export const en: Record<string, string> = {
 export const he: Record<string, string> = {
   // ── Header
   "elev.safety.header.title": "בטיחות ועזרה מיידית",
-  "elev.safety.header.sub": "אנשי קשר לחירום ומילים לרגעי משבר — מוכנים בדיוק לרגע שבו תצטרכו אותם.",
+  "elev.safety.header.sub": "לחיצה אחת ואדם עונה. שום דבר כאן לא נשמר.",
 
   // ── Crisis script (pinned)
   "elev.safety.crisis.kicker": "מילים לרגע משבר — אמרו כך",
@@ -100,10 +101,11 @@ export const he: Record<string, string> = {
   "elev.safety.numbersChecked": "המספרים נבדקו ב־{date}",
   "elev.safety.firstContact": "השיחה הראשונה של {name}: {contact}",
   "elev.safety.yourChild": "הילד שלכם",
-  "elev.safety.crisis.script": "“אני כאן. אני איתך, ואני נשאר כאן. נעבור את הרגע הזה ביחד, ואחר כך נחשוב ביחד מה הצעד הבא — לא צריך להתמודד עם זה לבד.”",
+  "elev.safety.crisis.script": "„אני כאן. אני איתך, ואני נשאר כאן. נעבור את הרגע הזה ביחד, ואחר כך נחשוב ביחד מה הצעד הבא — לא צריך להתמודד עם זה לבד.”",
   "elev.safety.crisis.danger": "אם יש סכנה מיידית לילד או לאחרים, פנו קודם כול לשירותי החירום המקומיים.",
   "elev.safety.crisis.dangerCall": "סכנה מיידית? התקשרו ל־{number} · {name}",
   "elev.safety.crisis.talkLine": "צריכים לדבר על זה? {name} · {number}",
+  "elev.safety.crisis.findLine": "צריכים לדבר על זה? מצאו את הקו של המדינה שלכם",
 
   // ── Crisis helplines (tel: directory)
   "elev.safety.helplines.title": "קווי סיוע בשעת משבר",
