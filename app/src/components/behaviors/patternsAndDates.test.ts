@@ -28,6 +28,7 @@ const stripComments = (code: string) =>
   code.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 const BEH = stripComments(read("components/tabs/BehaviorsTab.tsx"));
 const PATTERNS = stripComments(read("components/behaviors/PatternInsights.tsx"));
+const EXPORT = stripComments(read("lib/behaviorExport.ts"));
 
 const WHEN = new Date("2026-07-09T16:15:00Z");
 
@@ -59,8 +60,16 @@ describe("TJB-22 · dates follow the APP's language", () => {
     expect(BEH).not.toContain("toLocaleString()");
     expect(BEH).not.toContain("toLocaleDateString(undefined");
     expect(BEH).not.toMatch(/toLocaleDateString\(uiLang === "he" \? "he-IL" : undefined/);
-    // …and the four sites now run through the one seam.
-    expect(BEH.match(/fmtDayTime\(/g)?.length).toBeGreaterThanOrEqual(3);
+    // …and the four sites now run through the one seam. B-ASKJB-14 (f49c6d7)
+    // moved the PDF export (row date + "generated" date) into lib/behaviorExport,
+    // which Behaviors and the Journal both print through: one site stays in the
+    // tab (row meta), two live in the shared export.
+    expect(BEH.match(/fmtDayTime\(/g)?.length).toBeGreaterThanOrEqual(1);
+    expect(BEH).toContain('from "../../lib/behaviorExport"');
+    expect(EXPORT).not.toContain("toLocaleString()");
+    expect(EXPORT).not.toContain("toLocaleDateString(undefined");
+    expect(EXPORT.match(/fmtDayTime\(/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(BEH.match(/fmtDayTime\(/g)!.length + EXPORT.match(/fmtDayTime\(/g)!.length).toBeGreaterThanOrEqual(3);
     expect(BEH).toMatch(/weekLabel\(weekKey, uiLang\)/);
     expect(BEH).toMatch(/fmtDayShort\(start, lang\)/);
   });
