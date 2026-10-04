@@ -325,7 +325,7 @@ describe("critic r2 — the echo reads both progress sources", async () => {
   it("PlansTab passes the plan's done count; no raw bg-white or off-scale text-[10px]", () => {
     const src = readFileSync(path.join(here, "..", "tabs", "PlansTab.tsx"), "utf8");
     expect(src).toContain("planDoneSteps(plan)");
-    expect(src).not.toMatch(/bg-white/);
+    expect(src).not.toMatch(/\bbg-white\b/);
     expect(src).not.toMatch(/text-\[10px\]/);
   });
 });
