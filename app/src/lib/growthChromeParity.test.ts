@@ -105,6 +105,8 @@ describe("the sites render through the keys", () => {
   const lang = read("components/tabs/LanguageLabTab.tsx");
   const course = read("components/overview/CourseCard.tsx");
   const coach = read("components/tabs/CoachTab.tsx");
+  // B-ASKJB-12: the lens picker is Ask's ToneSheet (ScholarTab deleted).
+  const tone = read("components/coach/ToneSheet.tsx");
 
   it("Strengths carries no hard-coded English chrome", () => {
     for (const literal of [
@@ -140,7 +142,13 @@ describe("the sites render through the keys", () => {
     expect(lang).not.toContain('time: "Daily"');
     expect(course).toContain("elev.growth.course.markNotDone");
     expect(course).not.toContain('aria-label={done ? "Mark not done" : "Mark done"}');
-    expect(coach).toContain("elev.coachcontract.lens.concept.${scholar.slug}");
+    // B-ASKJB-12: the lens picker moved into ToneSheet — each approach's name
+    // and one-line sentence render through keys (coach.tone.name.* /
+    // coach.tone.more.*; HE no-Latin guard in toneSheet.test.ts), never the
+    // catalogue's English concept.
+    expect(tone).toContain("t(`coach.tone.name.${m.slug}`)");
+    expect(tone).toContain("t(`coach.tone.more.${m.slug}`)");
+    expect(tone).not.toMatch(/\.concept/);
     expect(coach).not.toContain("(${scholar.concept})");
   });
 
