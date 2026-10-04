@@ -1,21 +1,29 @@
 import React, { useMemo, useState } from "react";
-import { DndContext, useDraggable, useDroppable, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
-import { GripVertical, Trash2, Pencil, Circle, CircleDot, CircleCheckBig } from "lucide-react";
+import { Trash2, Pencil, Circle, CircleDot, CircleCheckBig } from "lucide-react";
 import { Modal } from "../ui/Modal";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { ActionPlan, StepStatus } from "../../types";
+import { planStartedDays, planStepStatus } from "../../lib/plans";
+
+/**
+ * B-ASKJB-26 — the plan as a track: ONE step list replaces the three Kanban
+ * columns. Each row keeps TJB-16's 44 px tap-cycle (the primary move works on
+ * a phone) and states its status as a quiet text chip; drag is gone (the
+ * one-tap cycle covers every move it made). Edit and delete stay keyed Modals.
+ * The header reports "Started {n} days ago" — days since creation, said as
+ * such — and a count of steps done, never a share.
+ */
 
 type Item = { id: string; phaseIdx: number; stepIdx: number; text: string; status: StepStatus; phaseName: string };
 
-const COLUMNS: { status: StepStatus; labelKey: string; tint: string }[] = [
-  { status: "todo", labelKey: "elev.plans.col.todo", tint: "var(--arbor-muted)" },
-  { status: "doing", labelKey: "elev.plans.col.doing", tint: "var(--arbor-peach-ink)" },
-  { status: "done", labelKey: "elev.plans.col.done", tint: "var(--arbor-green-ink)" },
-];
+const STATUS_LABEL: Record<StepStatus, string> = {
+  todo: "elev.plans.col.todo",
+  doing: "elev.plans.col.doing",
+  done: "elev.plans.col.done",
+};
 
-/** TJB-16: one tap moves a step on by one status, and wraps. The board's
- *  primary move used to require a 4 px drag, which no phone parent can do. */
+/** TJB-16: one tap moves a step on by one status, and wraps. */
 export const NEXT_STATUS: Record<StepStatus, StepStatus> = { todo: "doing", doing: "done", done: "todo" };
 
 const STATUS_GLYPH: Record<StepStatus, typeof Circle> = {
@@ -24,34 +32,23 @@ const STATUS_GLYPH: Record<StepStatus, typeof Circle> = {
   done: CircleCheckBig,
 };
 
-function deriveStatus(step: { completed: boolean; status?: StepStatus }): StepStatus {
-  return step.status || (step.completed ? "done" : "todo");
-}
-
-function daysActive(planId: string): number | null {
-  const m = /(\d{10,})/.exec(planId);
-  if (!m) return null;
-  const ms = Number(m[1]);
-  if (!Number.isFinite(ms)) return null;
-  return Math.max(0, Math.floor((Date.now() - ms) / 86_400_000));
-}
-
-function StepCard({ item, onEdit }: { item: Item; onEdit: (item: Item) => void }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: item.id });
+function StepRow({ item, planId, isToday, onEdit }: { item: Item; planId: string; isToday: boolean; onEdit: (item: Item) => void }) {
   const { setPlanStepStatus } = useArbor();
   const { t } = useLanguage();
-  const planId = item.id.split("::")[0];
-  const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined;
   const Glyph = STATUS_GLYPH[item.status];
-  const statusLabel = t(COLUMNS.find((c) => c.status === item.status)!.labelKey);
+  const statusLabel = t(STATUS_LABEL[item.status]);
   return (
-    <div
-      ref={setNodeRef}
-      style={{ ...style, background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
-      className={`rounded-xl p-2 text-[11px] flex items-center gap-1.5 ${isDragging ? "opacity-60 ring-1 ring-[var(--arbor-clay)]/50" : ""}`}
+    <li
+      data-plan-step={`${item.phaseIdx}:${item.stepIdx}`}
+      data-today-step={isToday ? "true" : undefined}
+      className="rounded-xl p-2 text-[12px] flex items-center gap-1.5"
+      style={{
+        background: "var(--arbor-paper-elevated)",
+        border: isToday ? "1px solid var(--arbor-green-ink)" : "1px solid var(--arbor-rule)",
+        color: "var(--arbor-ink)",
+      }}
     >
-      {/* The primary move. 44 px, always visible, cycles on tap; the drag
-          handle beside it stays as a desktop enhancement. */}
+      {/* The primary move. 44 px, always visible, cycles on tap. */}
       <button
         type="button"
         onClick={() => setPlanStepStatus(planId, item.phaseIdx, item.stepIdx, NEXT_STATUS[item.status])}
@@ -62,7 +59,13 @@ function StepCard({ item, onEdit }: { item: Item; onEdit: (item: Item) => void }
       >
         <Glyph className="w-5 h-5" />
       </button>
-      <span className="flex-1" style={item.status === "done" ? { textDecoration: "line-through", color: "var(--arbor-muted)" } : undefined}>{item.text}</span>
+      <span className="flex-1 min-w-0" style={item.status === "done" ? { textDecoration: "line-through", color: "var(--arbor-muted)" } : undefined}>{item.text}</span>
+      <span
+        className="text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
+        style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
+      >
+        {statusLabel}
+      </span>
       <button
         type="button"
         onClick={() => onEdit(item)}
@@ -72,36 +75,18 @@ function StepCard({ item, onEdit }: { item: Item; onEdit: (item: Item) => void }
       >
         <Pencil className="w-4 h-4" />
       </button>
-      <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing hidden md:inline-flex flex-shrink-0" style={{ color: "var(--arbor-muted)" }} aria-label={t("aria.dragStep")}>
-        <GripVertical className="w-3.5 h-3.5" />
-      </button>
-    </div>
+    </li>
   );
 }
 
-function Column({ planId, status, label, tint, items, onEdit }: { planId: string; status: StepStatus; label: string; tint: string; items: Item[]; onEdit: (item: Item) => void }) {
-  const { setNodeRef, isOver } = useDroppable({ id: `col::${planId}::${status}` });
-  return (
-    <div ref={setNodeRef} className="flex-1 min-w-0 rounded-2xl p-3 space-y-2 transition" style={{ background: "var(--arbor-paper-deep)", border: isOver ? "1px solid var(--arbor-green-ink)" : "1px solid var(--arbor-rule)" }}>
-      <div className="flex items-center justify-between px-1">
-        <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: tint }}>{label}</span>
-        <span className="text-[10px]" style={{ color: "var(--arbor-muted)" }}>{items.length}</span>
-      </div>
-      <div className="space-y-2 min-h-[40px]">
-        {items.map((it) => (
-          <React.Fragment key={it.id}>
-            <StepCard item={it} onEdit={onEdit} />
-          </React.Fragment>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export default function PlanKanban({ plan }: { plan: ActionPlan }) {
-  const { setPlanStepStatus, deletePlan, updatePlanStepText } = useArbor();
+export default function PlanSteps({ plan, todayStep, now = Date.now() }: {
+  plan: ActionPlan;
+  /** The step the plan card names as today's (B-ASKJB-26), outlined in the list. */
+  todayStep?: { phaseIdx: number; stepIdx: number } | null;
+  now?: number;
+}) {
+  const { deletePlan, updatePlanStepText } = useArbor();
   const { t } = useLanguage();
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
   const [editing, setEditing] = useState<Item | null>(null);
   const [draft, setDraft] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -110,7 +95,7 @@ export default function PlanKanban({ plan }: { plan: ActionPlan }) {
     const out: Item[] = [];
     plan.phases.forEach((ph, phaseIdx) =>
       ph.steps.forEach((st, stepIdx) =>
-        out.push({ id: `${plan.id}::${phaseIdx}::${stepIdx}`, phaseIdx, stepIdx, text: st.text, status: deriveStatus(st), phaseName: ph.name })
+        out.push({ id: `${plan.id}::${phaseIdx}::${stepIdx}`, phaseIdx, stepIdx, text: st.text, status: planStepStatus(st), phaseName: ph.name })
       )
     );
     return out;
@@ -118,7 +103,7 @@ export default function PlanKanban({ plan }: { plan: ActionPlan }) {
 
   const total = items.length;
   const done = items.filter((i) => i.status === "done").length;
-  const days = daysActive(plan.id);
+  const days = planStartedDays(plan, now);
 
   const openEdit = (item: Item) => { setEditing(item); setDraft(item.text); };
   const saveEdit = () => {
@@ -126,26 +111,20 @@ export default function PlanKanban({ plan }: { plan: ActionPlan }) {
     setEditing(null);
   };
 
-  const onDragEnd = (e: DragEndEvent) => {
-    if (!e.over) return;
-    const [planId, phaseStr, stepStr] = String(e.active.id).split("::");
-    const overParts = String(e.over.id).split("::");
-    if (overParts[0] !== "col" || overParts[1] !== planId) return;
-    const status = overParts[2] as StepStatus;
-    setPlanStepStatus(planId, Number(phaseStr), Number(stepStr), status);
-  };
-
   return (
-    <div className="rounded-3xl p-6 space-y-5" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }}>
+    <div className="rounded-3xl p-6 space-y-4" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }}>
       <div className="flex justify-between items-start pb-4 gap-4" style={{ borderBottom: "1px solid var(--arbor-rule)" }}>
-        <div>
+        <div className="min-w-0">
           <h3 className="text-xl font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{plan.title}</h3>
           <p className="text-xs mt-1" style={{ color: "var(--arbor-muted)" }}>{t("elev.plans.focusIssue", { issue: plan.issue })}</p>
-          {days !== null && <p className="text-[10px] mt-1" style={{ color: "var(--arbor-muted)" }}>{t("elev.plans.daysActive", { n: days })}</p>}
+          {days !== null && (
+            <p className="text-[10px] mt-1" style={{ color: "var(--arbor-muted)" }}>
+              {days === 0 ? t("elev.plans.startedToday") : t("elev.plans.startedAgo", { n: days })}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          {/* TJB-16: the 43 % ring is gone. A plan the parent is running is
-              reported as a count of steps done, never a completion share. */}
+          {/* TJB-16: a count of steps done, never a completion share. */}
           <span className="text-[11px] font-bold" style={{ color: "var(--arbor-green-ink)" }}>
             {t("plan.stepsCount", { done, total })}
           </span>
@@ -161,22 +140,29 @@ export default function PlanKanban({ plan }: { plan: ActionPlan }) {
         </div>
       </div>
 
-      <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-        <div className="flex flex-col md:flex-row gap-3">
-          {COLUMNS.map((col) => (
-            <React.Fragment key={col.status}>
-              <Column
-                planId={plan.id}
-                status={col.status}
-                label={t(col.labelKey)}
-                tint={col.tint}
-                items={items.filter((i) => i.status === col.status)}
-                onEdit={openEdit}
-              />
-            </React.Fragment>
-          ))}
-        </div>
-      </DndContext>
+      <div className="space-y-4">
+        {plan.phases.map((ph, phaseIdx) => {
+          const rows = items.filter((i) => i.phaseIdx === phaseIdx);
+          if (rows.length === 0) return null;
+          return (
+            <div key={phaseIdx} className="space-y-2">
+              {ph.name && <p className="text-[10px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{ph.name}</p>}
+              <ol className="space-y-2" aria-label={t("elev.plans.steps.title")}>
+                {rows.map((it) => (
+                  <React.Fragment key={it.id}>
+                    <StepRow
+                      item={it}
+                      planId={plan.id}
+                      isToday={!!todayStep && todayStep.phaseIdx === it.phaseIdx && todayStep.stepIdx === it.stepIdx}
+                      onEdit={openEdit}
+                    />
+                  </React.Fragment>
+                ))}
+              </ol>
+            </div>
+          );
+        })}
+      </div>
 
       <p className="text-[10px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.plans.hint")}</p>
 

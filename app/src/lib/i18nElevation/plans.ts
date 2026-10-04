@@ -21,8 +21,7 @@ export const en: Record<string, string> = {
 
   // ── The step control: one tap moves a step on by one status
   "elev.plans.step.advance": "{step} — {status}. Tap to move it on.",
-  "elev.plans.hint":
-    "Tap a step to move it on: not started → in progress → done. On a computer you can also drag steps between the columns.",
+  "elev.plans.hint": "Tap a step's circle to move it on: not started → in progress → done.",
 
   // ── Edit a step (was window.prompt)
   "elev.plans.edit.title": "Edit step",
@@ -36,10 +35,31 @@ export const en: Record<string, string> = {
 
   // ── Board header
   "elev.plans.focusIssue": "Focus: {issue}",
-  "elev.plans.daysActive": "{n} days running",
+  // B-ASKJB-26: days since creation, said as such (was "{n} days running").
+  "elev.plans.startedAgo": "Started {n} days ago",
+  "elev.plans.startedToday": "Started today",
+  "elev.plans.steps.title": "Steps",
   // B-ASKJB-28: the one quiet routines row below the active plan.
   "elev.plans.routines.row": "Your routines ({n})",
   "elev.plans.routines.add": "Add a routine",
+
+  // ── B-ASKJB-26: today's step, through the action loop
+  "elev.plans.today.eyebrow": "From your plan",
+  "elev.plans.today.day": "Day {n} of {plan}",
+  "elev.plans.today.next": "Or try the next step instead",
+  // ── B-ASKJB-26: the weekly check-in (the parent's answer, never a score)
+  "elev.plans.check.q": "Signs it's working?",
+  "elev.plans.check.yes": "Yes",
+  "elev.plans.check.little": "A little",
+  "elev.plans.check.not_yet": "Not yet",
+  "elev.plans.check.signs": "What to look for:",
+  "elev.plans.check.saved": "Noted. We'll ask again in a week.",
+  "elev.plans.adjust": "Adjust the plan in Ask",
+  "elev.plans.adjust.seed": "Help me adjust our plan \"{title}\". Two weekly check-ins in a row said it isn't working yet.{outcomes}",
+  "elev.plans.adjust.outcomes": " Recent steps: {list}.",
+  "elev.plans.outcome.helped": "helped",
+  "elev.plans.outcome.somewhat": "helped a little",
+  "elev.plans.outcome.not_today": "not today",
 };
 
 export const he: Record<string, string> = {
@@ -48,8 +68,7 @@ export const he: Record<string, string> = {
   "elev.plans.col.done": "הושלם",
 
   "elev.plans.step.advance": "{step} — {status}. הקישו כדי לקדם.",
-  "elev.plans.hint":
-    "הקישו על צעד כדי לקדם אותו: טרם התחיל ← בתהליך ← הושלם. במחשב אפשר גם לגרור צעדים בין העמודות.",
+  "elev.plans.hint": "הקישו על העיגול של צעד כדי לקדם אותו: טרם התחיל ← בתהליך ← הושלם.",
 
   "elev.plans.edit.title": "עריכת צעד",
   "elev.plans.edit.label": "הצעד",
@@ -60,7 +79,25 @@ export const he: Record<string, string> = {
   "elev.plans.delete.cta": "מחיקת תוכנית",
 
   "elev.plans.focusIssue": "במוקד: {issue}",
-  "elev.plans.daysActive": "{n} ימים בתוקף",
+  "elev.plans.startedAgo": "התחלתם לפני {n} ימים",
+  "elev.plans.startedToday": "התחלתם היום",
+  "elev.plans.steps.title": "הצעדים",
   "elev.plans.routines.row": "השגרות שלכם ({n})",
   "elev.plans.routines.add": "הוספת שגרה",
+
+  "elev.plans.today.eyebrow": "מתוך התוכנית שלכם",
+  "elev.plans.today.day": "יום {n} בתוכנית {plan}",
+  "elev.plans.today.next": "או לנסות במקום זה את הצעד הבא",
+  "elev.plans.check.q": "יש סימנים שזה עובד?",
+  "elev.plans.check.yes": "כן",
+  "elev.plans.check.little": "קצת",
+  "elev.plans.check.not_yet": "עדיין לא",
+  "elev.plans.check.signs": "למה לשים לב:",
+  "elev.plans.check.saved": "נרשם. נשאל שוב בעוד שבוע.",
+  "elev.plans.adjust": "לכוונן את התוכנית עם ארבור",
+  "elev.plans.adjust.seed": "עזרו לי לכוונן את התוכנית שלנו \"{title}\". בשתי הבדיקות השבועיות האחרונות עוד לא ראינו שזה עובד.{outcomes}",
+  "elev.plans.adjust.outcomes": " הצעדים האחרונים: {list}.",
+  "elev.plans.outcome.helped": "עזר",
+  "elev.plans.outcome.somewhat": "עזר קצת",
+  "elev.plans.outcome.not_today": "לא היום",
 };

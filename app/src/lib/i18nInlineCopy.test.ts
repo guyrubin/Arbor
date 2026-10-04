@@ -548,7 +548,9 @@ describe("R22 — the practice domain names and the Full Picture body carry both
     const plans = stripComments(readSrc("components/tabs/PlansTab.tsx"));
     // No local re-implementation survives anywhere on this surface.
     expect(plans).not.toContain("isolateLatin");
-    expect(plans).toContain('t("plan.phaseProgress"');
+    // B-ASKJB-26 retired the "Focus this week" card that rendered this line on
+    // Plans (today's step + the step list replace it); the template — and the
+    // bidi property below, which every caller inherits — stays pinned.
 
     // The property itself, measured through the seam every translated string
     // uses: a Latin phase in the Hebrew template is isolated…

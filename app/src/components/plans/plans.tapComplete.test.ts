@@ -27,7 +27,8 @@ import { translate } from "../../lib/i18n";
 import type { ActionPlan, StepStatus } from "../../types";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const rawSrc = readFileSync(path.join(here, "PlanKanban.tsx"), "utf8");
+// B-ASKJB-26: PlanKanban became PlanSteps (one step list); the TJB-16 guards carry over.
+const rawSrc = readFileSync(path.join(here, "PlanSteps.tsx"), "utf8");
 /** Comments name the shapes that were removed; only live code is scanned. */
 const src = rawSrc
   .replace(/\{\/\*[\s\S]*?\*\/\}/g, "")
@@ -52,7 +53,7 @@ vi.mock("../ui/Modal", () => ({
     React.createElement("div", { "data-modal": title }, children),
 }));
 
-const { default: PlanKanban, NEXT_STATUS } = await import("./PlanKanban");
+const { default: PlanSteps, NEXT_STATUS } = await import("./PlanSteps");
 
 const step = (text: string, status: StepStatus) => ({ text, completed: status === "done", status });
 const plan: ActionPlan = {
@@ -67,7 +68,7 @@ const plan: ActionPlan = {
 
 const render = (lang: "en" | "he") => {
   uiLang = lang;
-  return renderToStaticMarkup(React.createElement(PlanKanban, { plan }));
+  return renderToStaticMarkup(React.createElement(PlanSteps, { plan, now: 1757000000000 + 3 * 86_400_000 }));
 };
 
 beforeEach(() => {
@@ -135,7 +136,7 @@ describe("TJB-16 — no browser dialogs", () => {
 describe("TJB-16 — both locales", () => {
   it("column labels, the hint and the dialogs are Hebrew in HE", () => {
     const html = render("he");
-    for (const hebrew of ["טרם התחיל", "בתהליך", "הושלם", "הקישו על צעד כדי לקדם אותו", "עריכת צעד", "מחיקת תוכנית"]) {
+    for (const hebrew of ["טרם התחיל", "בתהליך", "הושלם", "הקישו על העיגול של צעד כדי לקדם אותו", "עריכת צעד", "מחיקת תוכנית"]) {
       expect(html, `${hebrew} missing from the HE board`).toContain(hebrew);
     }
     for (const english of ["Not started", "In progress", "Drag steps between columns", "Focus Issue:"]) {
@@ -146,14 +147,32 @@ describe("TJB-16 — both locales", () => {
   it("negative control: the pre-fix column labels were untranslatable literals", () => {
     const pre = '{ status: "todo", label: "Not Started", tint: "text-[#69747f]" },';
     expect(pre).toContain('label: "Not Started"');
-    expect(src, "labels now come from a key, not a literal").toContain("labelKey");
+    expect(src, "labels now come from a key, not a literal").toContain('todo: "elev.plans.col.todo"');
+  });
+});
+
+describe("B-ASKJB-26 — one step list, no drag, 'Started {n} days ago'", () => {
+  it("the Kanban columns and the drag layer are gone; each row keeps the tap-cycle and a status chip", () => {
+    expect(src).not.toContain("@dnd-kit");
+    expect(src).not.toContain("useDraggable");
+    const html = render("en");
+    expect((html.match(/data-plan-step="/g) ?? []).length).toBe(3);
+    expect(html).toContain("In progress"); // the status chip on the "doing" row
+    expect(html).toContain("Started 3 days ago");
+    expect(html).not.toContain("days running");
+  });
+
+  it("HE: started line and hint in Hebrew", () => {
+    const html = render("he");
+    expect(html).toContain("התחלתם לפני");
+    expect(html).not.toContain("Started");
   });
 });
 
 describe("TJB-16 — tokens only (law 4)", () => {
   it("the board carries no raw hex or rgb literal", () => {
     const raw = src.match(/#[0-9a-fA-F]{3,8}\b|rgba?\(/g) ?? [];
-    expect(raw, `raw colour literal(s) in PlanKanban.tsx: ${raw.join(", ")}`).toEqual([]);
+    expect(raw, `raw colour literal(s) in PlanSteps.tsx: ${raw.join(", ")}`).toEqual([]);
   });
 
   it("negative control: the three literals that shipped are caught", () => {

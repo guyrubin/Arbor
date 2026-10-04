@@ -801,7 +801,7 @@ describe("hex-creep guard — src/lib + src/practice stay on the token allowlist
 const RAW_COLOUR_ZERO = [
   "components/sections/PhysicalGrowthCard.tsx",
   "components/practice/JourneyTab.tsx",
-  "components/plans/PlanKanban.tsx",
+  "components/plans/PlanSteps.tsx", // B-ASKJB-26: PlanKanban became the step list
   "components/tabs/DailyPlayTab.tsx",
 ] as const;
 

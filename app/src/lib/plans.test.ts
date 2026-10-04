@@ -92,3 +92,110 @@ describe("suggestedChallenges", () => {
     expect(suggestedChallenges(logs, today)).toEqual([]);
   });
 });
+
+/* ── B-ASKJB-26 — the plan as a track ────────────────────────────────────── */
+import {
+  lastPlanOutcomes,
+  offerPlanAdjust,
+  planStartedDays,
+  planStepStatusAfter,
+  todaysPlanStep,
+  weeklyCheckDue,
+} from "./plans";
+import type { ActionLoopEntry } from "../actionLoop/model";
+
+describe("B-ASKJB-26 — today's step selection", () => {
+  const st = (text: string, status: "todo" | "doing" | "done") => ({ text, completed: status === "done", status });
+  const p = (phases: ActionPlan["phases"], extra: Partial<ActionPlan> = {}): ActionPlan =>
+    ({ id: "plan-1759000000000", title: "Calmer exits", issue: "i", phases, scripts: [], successIndicators: [], ...extra });
+  const row = (over: Partial<ActionLoopEntry> & { id: string }): ActionLoopEntry => ({
+    recommendation: "x", source: "plan", capacity: "standard", status: "completed", acceptedAt: "2026-10-01T08:00:00.000Z",
+    planId: "plan-1759000000000", phaseIdx: 0, stepIdx: 0, ...over,
+  });
+
+  it("is the first not-done step of the current phase (in progress counts as not done)", () => {
+    const plan = p([
+      { name: "W1", description: "", steps: [st("a", "done"), st("b", "doing"), st("c", "todo")] },
+      { name: "W2", description: "", steps: [st("d", "todo")] },
+    ]);
+    const s = todaysPlanStep(plan, [], "2026-10-04")!;
+    expect(s).toMatchObject({ phaseIdx: 0, stepIdx: 1, text: "b", day: 1, offerNext: false });
+    expect(s.next?.text).toBe("c");
+  });
+
+  it("moves to the next phase once the current phase is done", () => {
+    const plan = p([
+      { name: "W1", description: "", steps: [st("a", "done")] },
+      { name: "W2", description: "", steps: [st("d", "todo")] },
+    ]);
+    expect(todaysPlanStep(plan, [], "2026-10-04")).toMatchObject({ phaseIdx: 1, stepIdx: 0, text: "d", next: null });
+  });
+
+  it("a complete plan has no step today", () => {
+    expect(todaysPlanStep(p([{ name: "W1", description: "", steps: [st("a", "done")] }]), [], "2026-10-04")).toBeNull();
+  });
+
+  it("not_today keeps the step as tomorrow's; somewhat keeps it AND offers the next", () => {
+    const plan = p([{ name: "W1", description: "", steps: [st("a", "todo"), st("b", "todo")] }]);
+    const notToday = [row({ id: "today.c.2026-10-03", outcome: "not_today", outcomeAt: "2026-10-03T20:00:00.000Z" })];
+    expect(todaysPlanStep(plan, notToday, "2026-10-04")).toMatchObject({ text: "a", offerNext: false, day: 2 });
+    const somewhat = [row({ id: "today.c.2026-10-03", outcome: "somewhat", outcomeAt: "2026-10-03T20:00:00.000Z" })];
+    expect(todaysPlanStep(plan, somewhat, "2026-10-04")).toMatchObject({ text: "a", offerNext: true });
+  });
+
+  it("Day n counts the distinct days a step of THIS plan entered the loop (today included once)", () => {
+    const plan = p([{ name: "W1", description: "", steps: [st("a", "todo")] }]);
+    const loop = [
+      row({ id: "today.c.2026-10-01" }),
+      row({ id: "today.c.2026-10-02" }),
+      row({ id: "today.c.2026-10-02.2" }),
+      row({ id: "today.c.2026-10-04", status: "accepted" }),
+      row({ id: "today.c.2026-09-30", planId: "other-plan" }),
+      row({ id: "today.c.2026-09-29", source: "coach" }),
+      row({ id: "today.c.2026-09-28", status: "superseded" }),
+    ];
+    expect(todaysPlanStep(plan, loop, "2026-10-04")!.day).toBe(3);
+  });
+
+  it("outcomes: helped → done, somewhat → in progress, not_today → unchanged", () => {
+    expect(planStepStatusAfter("helped")).toBe("done");
+    expect(planStepStatusAfter("somewhat")).toBe("doing");
+    expect(planStepStatusAfter("not_today")).toBeNull();
+  });
+});
+
+describe("B-ASKJB-26 — started days, weekly check-in, adjust", () => {
+  const created = 1759000000000;
+  const plan = (weeklyChecks?: ActionPlan["weeklyChecks"]) => ({ id: `plan-${created}`, weeklyChecks });
+  const day = (n: number) => created + n * 86_400_000;
+
+  it("'Started {n} days ago' counts days since creation", () => {
+    expect(planStartedDays(plan(), day(0))).toBe(0);
+    expect(planStartedDays(plan(), day(9) + 3600_000)).toBe(9);
+    expect(planStartedDays({ id: "no-timestamp" }, day(9))).toBeNull();
+  });
+
+  it("the check-in is due on day 7, then 7 days after the last answer", () => {
+    expect(weeklyCheckDue(plan(), day(6))).toBe(false);
+    expect(weeklyCheckDue(plan(), day(7))).toBe(true);
+    const answered = plan([{ at: new Date(day(7)).toISOString(), answer: "little" }]);
+    expect(weeklyCheckDue(answered, day(8))).toBe(false);
+    expect(weeklyCheckDue(answered, day(14))).toBe(true);
+  });
+
+  it("'Not yet' twice in a row offers the adjust door; anything else does not", () => {
+    const at = new Date(day(7)).toISOString();
+    expect(offerPlanAdjust(plan([{ at, answer: "not_yet" }]))).toBe(false);
+    expect(offerPlanAdjust(plan([{ at, answer: "not_yet" }, { at, answer: "not_yet" }]))).toBe(true);
+    expect(offerPlanAdjust(plan([{ at, answer: "not_yet" }, { at, answer: "little" }]))).toBe(false);
+  });
+
+  it("the adjust seed's outcomes are plan step text + outcome enum, newest first, ≤5", () => {
+    const rows = Array.from({ length: 7 }, (_, i) => ({
+      recommendation: `step ${i}`, source: "plan" as const, planId: "p", outcome: "not_today" as const, outcomeAt: `2026-10-0${i + 1}T08:00:00.000Z`,
+    }));
+    const out = lastPlanOutcomes("p", [...rows, { recommendation: "coach", source: "coach" as const, planId: "p", outcome: "helped" as const, outcomeAt: "2026-10-09T08:00:00.000Z" }]);
+    expect(out).toHaveLength(5);
+    expect(out[0]).toEqual({ step: "step 6", outcome: "not_today" });
+  });
+});

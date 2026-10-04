@@ -10,11 +10,13 @@ import { track } from "../../lib/analytics";
 import { PageHeader, cardCls } from "../ui/kit";
 import { ContentWhyLine } from "../ui/ContentActionBar";
 import { SayThis } from "../ui/AiBlock";
-import PlanKanban from "../plans/PlanKanban";
+import PlanSteps from "../plans/PlanSteps";
+import PlanTrackCard, { planAdjustSeed } from "../plans/PlanTrackCard";
 import RoutinesCard from "../plans/RoutinesCard";
 import { useChildCollection } from "../../hooks/useChildCollection";
 /* B-ASKJB-28: the routines row only counts docs; their shape stays RoutinesCard's. */
-import { planProgress, suggestedChallenges } from "../../lib/plans";
+import { lastPlanOutcomes, suggestedChallenges, todaysPlanStep } from "../../lib/plans";
+import { dayKey } from "../../practice/signals";
 import { HeroAvatar } from "../ui/HeroAvatar";
 
 /* R22g (Builder M) — Builder L's local isolate-Latin workaround is GONE, not moved.
@@ -37,8 +39,16 @@ export default function PlansTab() {
     actionPlans,
     plansLoaded,
     seedCoach,
+    actionLoop,
+    activeTodayAction,
+    acceptTodayAction,
+    removeTodayAction,
+    recordPlanWeeklyCheck,
   } = useArbor();
+  const now = Date.now();
+  const todayKey = dayKey(new Date(now));
   const { t, uiLang } = useLanguage();
+  const lang = uiLang === "he" ? "he" : "en";
   const first = childProfile.name.split(" ")[0];
   // B-ASKJB-28: the routines row's count (the same collection RoutinesCard reads).
   const routinesCol = useChildCollection<{ id: string }>(childProfile.id, "routines");
@@ -61,6 +71,88 @@ export default function PlansTab() {
     [behaviorLogs]
   );
 
+  // Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+  // marks a top-level sibling module (what moduleBudget counts);
+  // `data-primary-move` marks the ONE control that performs the move
+  // surfaceContract.ts declares for this route.
+  const createCard = (
+    <div data-module="plans-create" className={`${cardCls} p-6 space-y-4`}>
+      <span className="text-xs font-extrabold tracking-wider uppercase block" style={{ color: "var(--arbor-green-ink)" }}>{t("plan.create")}</span>
+
+      {/* Templates — start from a common challenge */}
+      <div className="flex flex-wrap gap-1.5">
+        <span className="text-[10px] font-bold self-center me-1" style={{ color: "var(--arbor-muted)" }}>{t("plan.templates")}</span>
+        {[
+          t("plan.template.morningDeparture"),
+          t("plan.template.screenShutdown"),
+          t("plan.template.siblingConflict"),
+          t("plan.template.bedtimeResistance"),
+          t("plan.template.foodRefusal"),
+          t("plan.template.separationAnxiety"),
+          t("plan.template.responsibilityLadder"),
+          t("plan.template.schoolAdaptation"),
+          t("plan.template.behaviorReset"),
+        ].map((tpl) => (
+          <button
+            key={tpl}
+            type="button"
+            onClick={() => setPlanChallengeTopic(tpl)}
+            className="inline-flex min-h-11 items-center px-3 py-1.5 rounded-lg text-[11px] font-bold transition"
+            style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
+          >
+            {tpl.split(" ").slice(0, 3).join(" ")}…
+          </button>
+        ))}
+      </div>
+
+      {/* Data-driven: suggestions from {name}'s recent logged behavior */}
+      {suggestions.length > 0 && (
+        /* TJB-30: the reason this topic was suggested lived in `title` — a
+           tooltip, which does not exist on touch. The parent saw a chip
+           proposing a plan for their child with no way to learn where it
+           came from. It is a visible ContentWhyLine now (the same
+           why-line primitive the growth cards use), so each suggestion
+           carries its own evidence: a COUNT of the parent's own logs. */
+        <div className="flex flex-col gap-2">
+          <span className="text-[10px] font-bold" style={{ color: "var(--arbor-green-ink)" }}>{t("plan.suggestedFor", { name: first })}</span>
+          {suggestions.map((s) => (
+            <div key={s.topic} className="flex flex-col items-start gap-1">
+              <button
+                type="button"
+                onClick={() => setPlanChallengeTopic(s.topic)}
+                className="min-h-11 px-3 py-1.5 rounded-lg text-[11px] font-bold transition inline-flex items-center gap-1.5 text-start"
+                style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)" }}
+              >
+                <Icon name="auto_awesome" size={12} /> <span dir="auto">{s.topic.split("—")[0].trim()}</span>
+              </button>
+              <ContentWhyLine why={s.reason} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex flex-col sm:flex-row gap-3">
+        <input
+          ref={topicInputRef}
+          type="text"
+          value={planChallengeTopic}
+          onChange={(e) => setPlanChallengeTopic(e.target.value)}
+          placeholder={t("plan.placeholder")}
+          className="flex-1 rounded-xl px-4 py-3 text-sm focus:outline-none"
+          style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
+        />
+        <button
+          onClick={handleGenerateActionPlan}
+          disabled={isPlanGenerating}
+          className="text-white font-extrabold text-sm px-6 py-3.5 rounded-xl transition flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-60"
+          style={{ background: "var(--arbor-gradient-primary)" }}
+        >
+          {isPlanGenerating ? (<><Icon name="progress_activity" size={16} className="animate-spin" /> {t("plan.creating")}</>) : (<><Icon name="auto_awesome" size={16} /> {t("plan.createBtn")}</>)}
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-8">
       <div className="flex items-center gap-4">
@@ -75,85 +167,9 @@ export default function PlansTab() {
         </div>
       </div>
 
-      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
-          marks a top-level sibling module (what moduleBudget counts);
-          `data-primary-move` marks the ONE control that performs the move
-          surfaceContract.ts declares for this route. */}
-      <div data-module="plans-create" className={`${cardCls} p-6 space-y-4`}>
-        <span className="text-xs font-extrabold tracking-wider uppercase block" style={{ color: "var(--arbor-green-ink)" }}>{t("plan.create")}</span>
-
-        {/* Templates — start from a common challenge */}
-        <div className="flex flex-wrap gap-1.5">
-          <span className="text-[10px] font-bold self-center me-1" style={{ color: "var(--arbor-muted)" }}>{t("plan.templates")}</span>
-          {[
-            t("plan.template.morningDeparture"),
-            t("plan.template.screenShutdown"),
-            t("plan.template.siblingConflict"),
-            t("plan.template.bedtimeResistance"),
-            t("plan.template.foodRefusal"),
-            t("plan.template.separationAnxiety"),
-            t("plan.template.responsibilityLadder"),
-            t("plan.template.schoolAdaptation"),
-            t("plan.template.behaviorReset"),
-          ].map((tpl) => (
-            <button
-              key={tpl}
-              type="button"
-              onClick={() => setPlanChallengeTopic(tpl)}
-              className="inline-flex min-h-11 items-center px-3 py-1.5 rounded-lg text-[11px] font-bold transition"
-              style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
-            >
-              {tpl.split(" ").slice(0, 3).join(" ")}…
-            </button>
-          ))}
-        </div>
-
-        {/* Data-driven: suggestions from {name}'s recent logged behavior */}
-        {suggestions.length > 0 && (
-          /* TJB-30: the reason this topic was suggested lived in `title` — a
-             tooltip, which does not exist on touch. The parent saw a chip
-             proposing a plan for their child with no way to learn where it
-             came from. It is a visible ContentWhyLine now (the same
-             why-line primitive the growth cards use), so each suggestion
-             carries its own evidence: a COUNT of the parent's own logs. */
-          <div className="flex flex-col gap-2">
-            <span className="text-[10px] font-bold" style={{ color: "var(--arbor-green-ink)" }}>{t("plan.suggestedFor", { name: first })}</span>
-            {suggestions.map((s) => (
-              <div key={s.topic} className="flex flex-col items-start gap-1">
-                <button
-                  type="button"
-                  onClick={() => setPlanChallengeTopic(s.topic)}
-                  className="min-h-11 px-3 py-1.5 rounded-lg text-[11px] font-bold transition inline-flex items-center gap-1.5 text-start"
-                  style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)" }}
-                >
-                  <Icon name="auto_awesome" size={12} /> <span dir="auto">{s.topic.split("—")[0].trim()}</span>
-                </button>
-                <ContentWhyLine why={s.reason} />
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="flex flex-col sm:flex-row gap-3">
-          <input
-            ref={topicInputRef}
-            type="text"
-            value={planChallengeTopic}
-            onChange={(e) => setPlanChallengeTopic(e.target.value)}
-            placeholder={t("plan.placeholder")}
-            className="flex-1 rounded-xl px-4 py-3 text-sm focus:outline-none"
-            style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
-          />
-          <button
-            onClick={handleGenerateActionPlan}
-            disabled={isPlanGenerating}
-            className="text-white font-extrabold text-sm px-6 py-3.5 rounded-xl transition flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-60"
-            style={{ background: "var(--arbor-gradient-primary)" }}
-          >
-            {isPlanGenerating ? (<><Icon name="progress_activity" size={16} className="animate-spin" /> {t("plan.creating")}</>) : (<><Icon name="auto_awesome" size={16} /> {t("plan.createBtn")}</>)}
-          </button>
-        </div>
-      </div>
+      {/* B-ASKJB-26: the active plan leads (today's step above the fold);
+          the create card follows it when a plan exists, and leads when none. */}
+      {actionPlans.length === 0 && createCard}
 
       {!plansLoaded && (
         /* Masterplan 4.3 — per-section skeleton reserving the plan cards'
@@ -190,49 +206,24 @@ export default function PlansTab() {
 
       <div data-module="plans-active" data-primary-move="advance-plan-step" className="space-y-8">
         {actionPlans.map((plan) => {
-          const prog = planProgress(plan);
+          // B-ASKJB-26: today's step = the first not-done step of the current
+          // phase; accept → action loop (source "plan"), outcome moves the step.
+          const step = todaysPlanStep(plan, actionLoop, todayKey);
           return (
           <div key={plan.id} className="space-y-3">
-            {/* Closed loop: where you are + what to focus on this week */}
-            {prog.totalSteps > 0 && (
-              <div className={`${cardCls} p-5`}>
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <p className="text-sm font-extrabold flex items-center gap-2" style={{ color: "var(--arbor-ink)" }}>
-                    {prog.planComplete
-                      ? <><Icon name="check_circle" size={16} style={{ color: "var(--arbor-green-ink)" }} /> {t("plan.complete")}</>
-                      : <><Icon name="checklist" size={16} style={{ color: "var(--arbor-green-ink)" }} /> {t("plan.focusThisWeek")}</>}
-                  </p>
-                  {/* TJB-16: a count, not a completion share. The 43 % bar that
-                      stood here graded the parent's own plan. */}
-                  <span className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>{t("plan.stepsCount", { done: prog.doneSteps, total: prog.totalSteps })}</span>
-                </div>
-                {prog.planComplete ? (
-                  <p className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>
-                    {t("plan.completeHint")}
-                  </p>
-                ) : (
-                  <>
-                    <p className="text-[11px] mb-2" style={{ color: "var(--arbor-muted)" }}>
-                      {t("plan.phaseProgress", {
-                        phase: prog.currentPhaseName || t("plan.phaseFallback", { n: prog.currentPhaseIndex + 1 }),
-                        current: prog.currentPhaseIndex + 1,
-                        total: prog.totalPhases,
-                      })}
-                    </p>
-                    <ul className="space-y-1.5">
-                      {prog.nextSteps.map((s, i) => (
-                        <li key={i} className="flex items-start gap-2 text-xs" style={{ color: "var(--arbor-ink)" }}>
-                          <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "var(--arbor-clay)" }} />
-                          {s}
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-              </div>
-            )}
+            <PlanTrackCard
+              plan={plan}
+              step={step}
+              today={activeTodayAction}
+              lang={lang}
+              now={now}
+              onTryIt={(text, ref) => acceptTodayAction(text, "standard", "plan", ref)}
+              onUndo={(id) => removeTodayAction(id)}
+              onCheck={(answer) => recordPlanWeeklyCheck(plan.id, answer)}
+              onAdjust={() => seedCoach({ prompt: planAdjustSeed(lang, plan.title, lastPlanOutcomes(plan.id, actionLoop)), source: "plans-adjust" })}
+            />
 
-            <PlanKanban plan={plan} />
+            <PlanSteps plan={plan} todayStep={step} now={now} />
 
             <div className={`${cardCls} p-6 space-y-5`}>
               <div className="space-y-3 p-4 rounded-2xl" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
@@ -265,17 +256,15 @@ export default function PlansTab() {
                 </div>
               </div>
 
-              <div className="space-y-2 text-xs">
-                <span className="font-bold block" style={{ color: "var(--arbor-ink)" }}>{t("plan.signs")}</span>
-                <ul className="list-disc ps-5 space-y-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
-                  {plan.successIndicators.map((sc, scIdx) => <li key={scIdx}>{sc}</li>)}
-                </ul>
-              </div>
+              {/* B-ASKJB-26: "Signs it's working" is asked weekly on the plan
+                  card (PlanTrackCard), not printed here as a static list. */}
             </div>
           </div>
           );
         })}
       </div>
+
+      {actionPlans.length > 0 && createCard}
 
       {/* B-ASKJB-28: routines fold into ONE quiet row BELOW the active plan —
           not a top-level module (no data-module stamp). "Your routines ({n})"

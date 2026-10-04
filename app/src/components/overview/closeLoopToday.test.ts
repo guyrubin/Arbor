@@ -221,3 +221,104 @@ describe("B-ASKJB-04 — a coach-sourced step through accept → outcome → car
     }
   });
 });
+
+describe("B-ASKJB-26 — a plan-sourced step through accept → Today → outcome → next step", () => {
+  const st = (text: string, status: "todo" | "doing" | "done") => ({ text, completed: status === "done", status });
+  const created = NOW - 7 * 86_400_000;
+  const basePlan = {
+    id: `plan-${created}`, title: "Calmer exits", issue: "Leaving the park",
+    phases: [{ name: "Week 1", description: "", steps: [st("Give a two-minute warning.", "todo"), st("Hand over the coat as the cue.", "todo")] }],
+    scripts: [], successIndicators: ["Fewer tears at the gate"],
+  };
+  const TODAY_KEY = TODAY_ID.split(".").pop()!;
+
+  it("accept → Today shows it → 'helped' marks it done → the next step is today's, one step per day holds", async () => {
+    const { planAcceptedAction, activeActionFor } = await import("../../actionLoop/model");
+    const { todaysPlanStep, planStepStatusAfter } = await import("../../lib/plans");
+    const { tryItState } = await import("../coach/CoachAnswerCards");
+
+    const step = todaysPlanStep(basePlan, [], TODAY_KEY)!;
+    expect(step).toMatchObject({ text: "Give a two-minute warning.", day: 1, phaseIdx: 0, stepIdx: 0 });
+
+    const { entry } = planAcceptedAction([], { recommendation: step.text, source: "plan", capacity: "standard", planStep: step }, TODAY_ID, new Date(NOW));
+    expect(entry).toMatchObject({ source: "plan", planId: basePlan.id, phaseIdx: 0, stepIdx: 0, status: "accepted" });
+    const active = activeActionFor([entry], TODAY_ID);
+    expect(active?.recommendation).toBe(step.text); // Today renders the plan step
+    expect(tryItState(step.text, active)).toBe("accepted");
+
+    // Outcome "helped" → the context writes the step done (planStepStatusAfter).
+    const rated = { ...entry, status: "completed" as const, outcome: "helped" as const, outcomeAt: new Date(NOW + 3600_000).toISOString() };
+    const status = planStepStatusAfter("helped")!;
+    const after = { ...basePlan, phases: [{ ...basePlan.phases[0], steps: basePlan.phases[0].steps.map((s, i) => (i === 0 ? { ...s, status, completed: true } : s)) }] };
+    const next = todaysPlanStep(after, [rated], TODAY_KEY)!;
+    expect(next.text).toBe("Hand over the coat as the cue.");
+    // One step per day: today's step already has an outcome, so no second accept today.
+    expect(tryItState(next.text, activeActionFor([rated], TODAY_ID))).toBe("hidden");
+    // Tomorrow it is offered, as day 2.
+    const tomorrowKey = "2099-01-01";
+    expect(todaysPlanStep(after, [rated], tomorrowKey)!.day).toBe(2);
+  });
+
+  it("replace-confirm (B-ASKJB-04) holds: a different step already accepted today offers replace", async () => {
+    const { planAcceptedAction } = await import("../../actionLoop/model");
+    const { tryItState } = await import("../coach/CoachAnswerCards");
+    const { entry: coachRow } = planAcceptedAction([], { recommendation: "Name the feeling.", source: "coach", capacity: "standard" }, TODAY_ID, new Date(NOW));
+    expect(tryItState("Give a two-minute warning.", coachRow)).toBe("replace");
+    const second = planAcceptedAction([coachRow], { recommendation: "Give a two-minute warning.", source: "plan", capacity: "standard", planStep: { planId: basePlan.id, phaseIdx: 0, stepIdx: 0 } }, TODAY_ID, new Date(NOW + 60_000));
+    expect(second.superseded.map((r) => r.status)).toEqual(["superseded"]);
+  });
+
+  for (const lang of ["en", "he"] as const) {
+    it(`[${lang}] the plan card renders Day n + the step + I'll try it, and the weekly check-in on day 7`, async () => {
+      const React = (await import("react")).default;
+      const { renderToStaticMarkup } = await import("react-dom/server");
+      const { default: PlanTrackCard } = await import("../plans/PlanTrackCard");
+      const { todaysPlanStep } = await import("../../lib/plans");
+      const noop = () => {};
+      const r = (plan: typeof basePlan & { weeklyChecks?: { at: string; answer: "yes" | "little" | "not_yet" }[] }, now: number) =>
+        renderToStaticMarkup(React.createElement(PlanTrackCard, {
+          plan, step: todaysPlanStep(plan, [], TODAY_KEY), today: null, lang, now,
+          onTryIt: noop, onUndo: noop, onCheck: noop, onAdjust: noop,
+        }));
+      const html = r(basePlan, NOW);
+      expect(html).toContain(lang === "he" ? "יום 1 בתוכנית" : "Day 1 of Calmer exits");
+      expect(html).toContain("Give a two-minute warning.");
+      expect(html).toContain(lang === "he" ? "אנסה את זה" : "I&#x27;ll try it");
+      expect(html).toContain('data-testid="plan-weekly-check"');
+      for (const a of ["yes", "little", "not_yet"]) expect(html).toContain(`data-check-answer="${a}"`);
+      expect(html).toContain(lang === "he" ? "יש סימנים שזה עובד?" : "Signs it&#x27;s working?");
+      expect(html).toContain("Fewer tears at the gate");
+      // Day 6: no check-in yet. No percentage anywhere.
+      expect(r(basePlan, NOW - 86_400_000)).not.toContain('data-testid="plan-weekly-check"');
+      expect(html).not.toMatch(/\d\s*%/);
+      // Every control ≥44 px.
+      for (const b of html.match(/<button\b[^>]*>/g) ?? []) expect(b).toMatch(/min-h-11/);
+      // "Not yet" twice → the adjust door.
+      const at = new Date(NOW).toISOString();
+      const twice = r({ ...basePlan, weeklyChecks: [{ at, answer: "not_yet" }, { at, answer: "not_yet" }] }, NOW);
+      expect(twice).toContain('data-testid="plan-adjust"');
+      expect(twice).toContain(lang === "he" ? "לכוונן את התוכנית" : "Adjust the plan in Ask");
+    });
+  }
+
+  it("the adjust seed carries the title and step outcomes only, in the parent's language", async () => {
+    const { planAdjustSeed } = await import("../plans/PlanTrackCard");
+    const en = planAdjustSeed("en", "Calmer exits", [{ step: "Give a two-minute warning.", outcome: "not_today" }]);
+    expect(en).toContain("Calmer exits");
+    expect(en).toContain("Give a two-minute warning.");
+    expect(en).toContain("not today");
+    const he = planAdjustSeed("he", "יציאות רגועות", [{ step: "אזהרה של שתי דקות.", outcome: "somewhat" }]);
+    expect(he.replace(/\{\w+\}/g, "")).not.toMatch(/[A-Za-z]/);
+    expect(he).toContain("עזר קצת");
+  });
+
+  it("wiring: Plans accepts with source 'plan' + the step ref; the context moves the step on the outcome; Today names the source", () => {
+    const here = path.dirname(fileURLToPath(import.meta.url));
+    const plansTab = readFileSync(path.resolve(here, "../tabs/PlansTab.tsx"), "utf8");
+    expect(plansTab).toContain('onTryIt={(text, ref) => acceptTodayAction(text, "standard", "plan", ref)}');
+    const ctx = readFileSync(path.resolve(here, "../../context/ArborContext.tsx"), "utf8");
+    expect(ctx).toMatch(/if \(item\.source === "plan" && item\.planId[^\n]*\r?\n\s*const next = planStepStatusAfter\(outcome\);\r?\n\s*if \(next\) setPlanStepStatus\(item\.planId, item\.phaseIdx, item\.stepIdx, next\);/);
+    const loop = readFileSync(path.resolve(here, "TodayActionLoop.tsx"), "utf8");
+    expect(loop).toContain('activeTodayAction.source === "plan" ? t("elev.plans.today.eyebrow")');
+  });
+});

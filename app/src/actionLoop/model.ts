@@ -53,6 +53,18 @@ export interface ActionLoopEntry {
   acceptedAt: string;
   outcome?: ActionOutcome;
   outcomeAt?: string;
+  /** B-ASKJB-26: a `plan`-sourced row names the step it came from, so its
+   *  outcome can move that step (helped → done; somewhat → in progress). */
+  planId?: string;
+  phaseIdx?: number;
+  stepIdx?: number;
+}
+
+/** B-ASKJB-26: the plan step an accept came from. */
+export interface PlanStepRef {
+  planId: string;
+  phaseIdx: number;
+  stepIdx: number;
 }
 
 export const capacityMinutes: Record<ActionCapacity, number> = { tiny: 2, standard: 5, roomy: 10 };
@@ -93,7 +105,7 @@ export function nextTodayActionId(items: readonly ActionLoopEntry[], todayId: st
  *  `superseded`. */
 export function planAcceptedAction(
   items: readonly ActionLoopEntry[],
-  input: { recommendation: string; source: ActionSource; capacity: ActionCapacity },
+  input: { recommendation: string; source: ActionSource; capacity: ActionCapacity; planStep?: PlanStepRef },
   todayId: string,
   at: Date = new Date(),
 ): { entry: ActionLoopEntry; superseded: ActionLoopEntry[] } {
@@ -104,6 +116,7 @@ export function planAcceptedAction(
     capacity: input.capacity,
     status: "accepted",
     acceptedAt: at.toISOString(),
+    ...(input.planStep ? { planId: input.planStep.planId, phaseIdx: input.planStep.phaseIdx, stepIdx: input.planStep.stepIdx } : {}),
   };
   const superseded = items
     .filter((item) => item.status === "accepted" && !item.outcome && isTodayActionId(item.id, todayId))

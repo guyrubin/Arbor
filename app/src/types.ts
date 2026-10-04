@@ -349,6 +349,15 @@ export interface ActionPlan {
   }[];
   scripts: { scenario: string; say: string; avoid: string }[];
   successIndicators: string[];
+  /** B-ASKJB-26: the weekly "Signs it's working?" answers, oldest first. */
+  weeklyChecks?: PlanWeeklyCheck[];
+}
+
+/** B-ASKJB-26: one weekly check-in on a plan — the parent's own answer, never a score. */
+export type PlanCheckAnswer = "yes" | "little" | "not_yet";
+export interface PlanWeeklyCheck {
+  at: string;
+  answer: PlanCheckAnswer;
 }
 
 export interface BedtimeStory {

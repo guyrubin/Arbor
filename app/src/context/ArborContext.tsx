@@ -16,6 +16,7 @@ import {
   ActionCapacity,
   ActionOutcome,
   InsightRecord,
+  PlanCheckAnswer,
 } from "../types";
 import { useToastOptional } from "./ToastContext";
 import { validateLogDraft, momentLogFields, buildMomentLog, isIncidentType, MOMENT_BEHAVIOR_TYPE } from "../content/behaviorTaxonomy";
@@ -48,7 +49,8 @@ import { isLearnPilotCard } from "../learn/learnPilotRelease";
 import { concernsForBehaviors } from "../content/selectCards";
 import { ageYearsFromProfile, ageMonthsFromProfile } from "../lib/childAge";
 import { ageWindowMilestones, comparisonAgeMonths } from "../lib/milestoneData";
-import { activeActionFor, planAcceptedAction, sortActionLoop, todayActionId } from "../actionLoop/model";
+import { activeActionFor, planAcceptedAction, sortActionLoop, todayActionId, type PlanStepRef } from "../actionLoop/model";
+import { planStepStatusAfter } from "../lib/plans";
 import { appendVoiceUser, applyVoiceDelta, settleVoiceTurn } from "../lib/voiceTranscript";
 import type { ConversationChangeRecord, ConversationProposal } from "../lib/conversationProposals";
 import { appendChatUser, appendChatAck, applyChatDelta, settleChatTurn, abortChatStream, hasUserTurn } from "../lib/chatStream";
@@ -438,8 +440,10 @@ function useArborState() {
   // the new row takes a `.{n}` id); only TODAY's unrated step becomes
   // `superseded` — a previous day's unrated step stays the carry-over question
   // until rated or MAX_CARRY_DAYS pass (framer ruling, 1 Oct).
-  const acceptTodayAction = (recommendation: string, capacity: ActionCapacity, source: ActionLoopEntry["source"] = "today-guidance") => {
-    const { entry: item, superseded } = planAcceptedAction(actionLoop, { recommendation, source, capacity }, todayActionId(childProfile.id));
+  // B-ASKJB-26: a plan step passes its PlanStepRef, stored on the row, so its
+  // outcome moves that step (recordTodayOutcome below).
+  const acceptTodayAction = (recommendation: string, capacity: ActionCapacity, source: ActionLoopEntry["source"] = "today-guidance", planStep?: PlanStepRef) => {
+    const { entry: item, superseded } = planAcceptedAction(actionLoop, { recommendation, source, capacity, ...(planStep ? { planStep } : {}) }, todayActionId(childProfile.id));
     for (const old of superseded) void actionLoopCol.upsert(old);
     void actionLoopCol.upsert(item);
     try { track("today_action_accepted", { capacity, source }); } catch { /* noop */ }
@@ -450,6 +454,13 @@ function useArborState() {
     const item = actionLoop.find((entry) => entry.id === id);
     if (!item) return;
     void actionLoopCol.upsert({ ...item, status: "completed", outcome, outcomeAt: new Date().toISOString() });
+    // B-ASKJB-26: a plan step's outcome moves the step — helped → done (the
+    // next step becomes today's), somewhat → in progress (kept, next offered),
+    // not_today → unchanged (tomorrow's step).
+    if (item.source === "plan" && item.planId && item.phaseIdx !== undefined && item.stepIdx !== undefined) {
+      const next = planStepStatusAfter(outcome);
+      if (next) setPlanStepStatus(item.planId, item.phaseIdx, item.stepIdx, next);
+    }
     try { track("today_action_outcome", todayOutcomeProps({ outcome, capacity: item.capacity, via, acceptedAt: item.acceptedAt })); } catch { /* noop */ }
   };
   const removeTodayAction = (id: string) => void actionLoopCol.remove(id);
@@ -1534,6 +1545,14 @@ function useArborState() {
     void plansCol.upsert({ ...plan, phases });
   };
 
+  // B-ASKJB-26: the weekly "Signs it's working?" answer, appended to the plan.
+  const recordPlanWeeklyCheck = (planId: string, answer: PlanCheckAnswer) => {
+    const plan = actionPlans.find((p) => p.id === planId);
+    if (!plan) return;
+    void plansCol.upsert({ ...plan, weeklyChecks: [...(plan.weeklyChecks ?? []), { at: new Date().toISOString(), answer }] });
+    try { track("plan_weekly_check", { answer }); } catch { /* noop */ }
+  };
+
   // Toggle checklist inside Action Phase
   const handleTogglePlanStep = (planId: string, phaseIdx: number, stepIdx: number) => {
     const plan = actionPlans.find((p) => p.id === planId);
@@ -1696,6 +1715,7 @@ function useArborState() {
     addCustomMilestone,
     handleTogglePlanStep,
     setPlanStepStatus,
+    recordPlanWeeklyCheck,
   };
 }
 
