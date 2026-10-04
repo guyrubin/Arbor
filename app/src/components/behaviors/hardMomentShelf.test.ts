@@ -204,3 +204,30 @@ describe("B-ASKJB-31 — the Hard moment now sheet and its doors", async () => {
     expect(he["hm.now.title"]).toBe("רגע קשה עכשיו");
   });
 });
+
+/**
+ * Critic round 1 (behaviors · product · P0) — the shelf called the guides
+ * "reviewed" while the content says the pilot guides have had no individual
+ * clinical review. While the release is an editorial pilot, no hm.* or
+ * elev.closeloop.hm.* string may claim review or approval, in either locale.
+ */
+describe("hard-moment copy claims only what the pilot release can back", async () => {
+  const { HARD_MOMENT_PILOT } = await import("../../content/pilotRelease");
+  const i18n = await import("../../lib/i18n");
+  const closeloop = await import("../../lib/i18nElevation/closeloop");
+  const CLAIM = /review|vetted|approved|נבדק|שנבדקו|מאושר|מאושרים/i;
+  it("no hm.* / elev.closeloop.hm.* string says reviewed, vetted, נבדק or מאושר", () => {
+    expect(HARD_MOMENT_PILOT.kind).toBe("editorial-pilot");
+    const offenders: string[] = [];
+    for (const dict of [i18n.en, i18n.he, closeloop.en, closeloop.he]) {
+      for (const [k, v] of Object.entries(dict)) {
+        if ((k.startsWith("hm.") || k.startsWith("elev.closeloop.hm.")) && CLAIM.test(String(v))) offenders.push(`${k}: ${v}`);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+  it("the shelf sub names the pilot in both locales", () => {
+    expect(i18n.en["hm.sub"]).toMatch(/pilot/i);
+    expect(i18n.he["hm.sub"]).toMatch(/פיילוט/);
+  });
+});

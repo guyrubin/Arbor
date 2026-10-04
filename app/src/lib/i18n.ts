@@ -701,7 +701,7 @@ export const en: Dict = {
   // itself is governed LocalizedText (content/hardMomentCards.ts), fail-closed
   // until named clinical review; these keys are UI chrome only.
   "hm.title": "Hard moments",
-  "hm.sub": "Short, reviewed guides for the moments that feel hardest at home.",
+  "hm.sub": "Short guides for the moments that feel hardest at home. A pilot: adapt them to your child.",
   "hm.categoriesAria": "Filter hard moments by category",
   "hm.cat.all": "All",
   "hm.cat.big-feelings": "Big feelings",
@@ -716,7 +716,7 @@ export const en: Dict = {
   "hm.section.observe": "What to notice",
   "hm.section.escalation": "When to seek more support",
   "hm.talkThrough": "Talk this through",
-  "hm.coach.heading": "Reviewed guides — talk one through",
+  "hm.coach.heading": "Pilot guides — talk one through",
   // B-ASKJB-31 — the "Hard moment now" sheet (neutral words, never "SOS").
   "hm.now.title": "Hard moment now",
   "hm.now.pick": "What's happening right now?",
@@ -3078,7 +3078,7 @@ export const he: Dict = {
   "confirm.deletePlan": "למחוק את התוכנית \"{title}\"?",
   // Hard moments (hm.*) — CONT-2 / AR-CONT-01 chrome labels
   "hm.title": "רגעים קשים",
-  "hm.sub": "מדריכים קצרים שנבדקו, לרגעים שהכי קשים בבית.",
+  "hm.sub": "מדריכים קצרים לרגעים שהכי קשים בבית. בפיילוט: התאימו לילד שלכם.",
   "hm.categoriesAria": "סינון רגעים קשים לפי קטגוריה",
   "hm.cat.all": "הכול",
   "hm.cat.big-feelings": "רגשות גדולים",
@@ -3093,7 +3093,7 @@ export const he: Dict = {
   "hm.section.observe": "למה לשים לב",
   "hm.section.escalation": "מתי לפנות לתמיכה נוספת",
   "hm.talkThrough": "לדבר על זה",
-  "hm.coach.heading": "מדריכים שנבדקו — לדבר על אחד מהם",
+  "hm.coach.heading": "מדריכים בפיילוט — לדבר על אחד מהם",
   "hm.now.title": "רגע קשה עכשיו",
   "hm.now.pick": "מה קורה עכשיו?",
   "hm.now.matched": "מתאים למה שתיעדתם",
