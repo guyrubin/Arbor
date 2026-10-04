@@ -20,6 +20,8 @@ export const en: Record<string, string> = {
   "elev.safety.crisis.kicker": "Crisis script — say this",
   "elev.safety.crisis.script": "“I am here. You are safe. I am not going anywhere. We will get through this moment together, and then we will figure out the next step — you don’t have to do it alone.”",
   "elev.safety.crisis.danger": "If there is immediate danger to your child or others, contact local emergency services first.",
+  "elev.safety.crisis.dangerCall": "In immediate danger? Call {number} · {name}",
+  "elev.safety.crisis.talkLine": "Need to talk it through? {name} · {number}",
 
   // ── Crisis helplines (tel: directory)
   "elev.safety.helplines.title": "Crisis helplines",
@@ -92,6 +94,8 @@ export const he: Record<string, string> = {
   "elev.safety.crisis.kicker": "מילים לרגע משבר — אמרו כך",
   "elev.safety.crisis.script": "“אני כאן. אני איתך, ואני נשאר כאן. נעבור את הרגע הזה ביחד, ואחר כך נחשוב ביחד מה הצעד הבא — לא צריך להתמודד עם זה לבד.”",
   "elev.safety.crisis.danger": "אם יש סכנה מיידית לילד או לאחרים, פנו קודם כול לשירותי החירום המקומיים.",
+  "elev.safety.crisis.dangerCall": "סכנה מיידית? התקשרו ל־{number} · {name}",
+  "elev.safety.crisis.talkLine": "צריכים לדבר על זה? {name} · {number}",
 
   // ── Crisis helplines (tel: directory)
   "elev.safety.helplines.title": "קווי סיוע בשעת משבר",

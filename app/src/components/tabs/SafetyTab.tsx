@@ -12,6 +12,7 @@ import {
   HELPLINE_DIRECTORY,
   HELPLINE_EXPANDED_GROUPS,
   helplineOrderFor,
+  dangerLineFor,
   type HelplineRegion,
 } from "../../safety/escalation";
 import { loadAttribution } from "../../lib/attribution";
@@ -51,6 +52,8 @@ export default function SafetyTab() {
     return helplineOrderFor(hint).filter((r) => HELPLINE_GROUPS.includes(r));
   }, [uiLang]);
   const primaryHelpline = HELPLINE_DIRECTORY.find((h) => h.region === helplineOrder[0]) ?? HELPLINE_DIRECTORY[0];
+  // W2-CAREPRO r1: the crisis card's second call (emergency ↔ emotional line).
+  const dangerLine = dangerLineFor(helplineOrder, primaryHelpline);
   const expandedGroups = helplineOrder.slice(0, HELPLINE_EXPANDED_GROUPS);
   const foldedGroups = helplineOrder.slice(HELPLINE_EXPANDED_GROUPS);
 
@@ -151,12 +154,19 @@ export default function SafetyTab() {
         data-primary-move="call-helpline"
         href={`tel:${primaryHelpline.tel}`}
         onClick={() => track("safety_helpline_tel_tap", { code: primaryHelpline.tel, primary: true })}
-        className="w-full flex items-center justify-center gap-3 rounded-2xl min-h-[56px] px-5 py-3 text-base font-extrabold transition hover:brightness-95"
-        style={{ background: "var(--arbor-pink-ink)", color: "var(--arbor-paper-elevated)", boxShadow: "var(--shadow-md)" }}
+        // W2-CAREPRO r1: a start-aligned two-line stack — "Call {n}" never
+        // wraps, and the line that says WHO answers wraps instead of being
+        // truncated (it was cut to "Emergency services (EU-wide; also f…" at
+        // 375). The fill is the page's one CTA gradient (pink-ink is a text
+        // ink, not a fill); no opacity hierarchy (CR-01).
+        className="w-full flex items-start gap-3 rounded-2xl min-h-[56px] px-5 py-3 text-start transition hover:brightness-105"
+        style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)", boxShadow: "var(--shadow-md)" }}
       >
-        <Icon name="call" size={22} fill={1} />
-        <span>{t("elev.carehonesty.safety.callPrimary", { number: primaryHelpline.number })}</span>
-        <span className="text-[12px] font-bold opacity-90 truncate">{t(`elev.safety.helpline.${primaryHelpline.id}`)}</span>
+        <Icon name="call" size={22} fill={1} className="mt-0.5 flex-shrink-0" />
+        <span className="min-w-0 flex flex-col">
+          <span className="t-lg font-extrabold whitespace-nowrap">{t("elev.carehonesty.safety.callPrimary", { number: primaryHelpline.number })}</span>
+          <span className="t-sm font-bold">{t(`elev.safety.helpline.${primaryHelpline.id}`)}</span>
+        </span>
       </a>
 
       {/* Pinned crisis-language card */}
@@ -167,7 +177,36 @@ export default function SafetyTab() {
         <p className="text-sm leading-relaxed italic" style={{ color: "var(--arbor-ink)" }}>
           {t("elev.safety.crisis.script")}
         </p>
-        <p className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.safety.crisis.danger")}</p>
+        {/* W2-CAREPRO r1: the danger sentence is itself a 44 px call — to the
+            market's emergency number when the one tap dials an emotional line
+            (HE: ער״ן), or naming the emotional line when the one tap already
+            is the emergency number (EN: 112). No second stamp, no new module. */}
+        {dangerLine?.kind === "emergency" ? (
+          <a
+            data-testid="safety-danger-call"
+            href={`tel:${dangerLine.entry.tel}`}
+            onClick={() => track("safety_helpline_tel_tap", { code: dangerLine.entry.tel, primary: false })}
+            className="inline-flex items-center gap-2 min-h-[44px] t-sm font-bold underline underline-offset-2"
+            style={{ color: "var(--arbor-ink)" }}
+          >
+            <Icon name="call" size={16} /> {t("elev.safety.crisis.dangerCall", { number: dangerLine.entry.number, name: t(`elev.safety.helpline.${dangerLine.entry.id}`) })}
+          </a>
+        ) : (
+          <>
+            <p className="t-xs" style={{ color: "var(--arbor-muted)" }}>{t("elev.safety.crisis.danger")}</p>
+            {dangerLine && (
+              <a
+                data-testid="safety-danger-call"
+                href={`tel:${dangerLine.entry.tel}`}
+                onClick={() => track("safety_helpline_tel_tap", { code: dangerLine.entry.tel, primary: false })}
+                className="inline-flex items-center gap-2 min-h-[44px] t-sm font-bold underline underline-offset-2"
+                style={{ color: "var(--arbor-ink)" }}
+              >
+                <Icon name="call" size={16} /> {t("elev.safety.crisis.talkLine", { number: dangerLine.entry.number, name: t(`elev.safety.helpline.${dangerLine.entry.id}`) })}
+              </a>
+            )}
+          </>
+        )}
       </div>
 
       {/* R25 (item 11) — #/safety rendered 7 top-level modules against a declared

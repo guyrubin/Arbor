@@ -227,6 +227,10 @@ describe("OBJ-TODAY-01 — repo-wide ratchet", () => {
     // (B-GROWTH-12: MilestonesTab left the ratchet — its only gradient was the
     //  removed "Find next steps" analyzer button.)
     "tabs/PlansTab.tsx",
+    // W2-CAREPRO r1: the one-tap call button carries data-primary-move="call-helpline"
+    // (surfaceContract safety.primaryMove) and is the only gradient in the file
+    // (it was a pink-ink fill — a text ink); SafetyTab.safety.test pins it.
+    "tabs/SafetyTab.tsx",
     "tabs/WeeklyTab.tsx",
     "ui/HubHero.tsx",
     "weekly/RecapStoryCards.tsx",

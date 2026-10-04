@@ -349,5 +349,31 @@ export const HELPLINE_DIRECTORY: readonly HelplineEntry[] = [
   { id: "us_911",    region: "us", number: "911",       tel: "911" },
 ];
 
+/** W2-CAREPRO r1 — the emergency-service numbers in the directory (the rest
+ *  are emotional / crisis-talk lines). */
+export const EMERGENCY_HELPLINE_IDS: ReadonlySet<string> = new Set(["il_mda", "il_police", "eu_112", "us_911"]);
+
+/** W2-CAREPRO r1 — the crisis card's second call, so the screen holds BOTH
+ *  answers above the fold: when the one-tap primary is an emotional line (HE →
+ *  ער״ן 1201) the danger sentence dials the market's emergency number (IL MDA
+ *  101, US 911, else EU 112); when the primary already IS the emergency number
+ *  (EN → 112) it names the first emotional line in the family's market order.
+ *  Pure; never returns the primary itself. */
+export function dangerLineFor(
+  order: readonly HelplineRegion[],
+  primary: HelplineEntry,
+): { kind: "emergency" | "talk"; entry: HelplineEntry } | null {
+  if (!EMERGENCY_HELPLINE_IDS.has(primary.id)) {
+    const id = primary.region === "il" ? "il_mda" : primary.region === "us" ? "us_911" : "eu_112";
+    const entry = HELPLINE_DIRECTORY.find((h) => h.id === id);
+    return entry ? { kind: "emergency", entry } : null;
+  }
+  for (const region of order) {
+    const entry = HELPLINE_DIRECTORY.find((h) => h.region === region && !EMERGENCY_HELPLINE_IDS.has(h.id));
+    if (entry) return { kind: "talk", entry };
+  }
+  return null;
+}
+
 /** International helpline directory — the FIND_LOCAL fallback, linkable. */
 export const FIND_A_HELPLINE_URL = "https://findahelpline.com";

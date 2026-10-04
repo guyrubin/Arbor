@@ -273,3 +273,46 @@ describe("B-CAREPRO-14 — Safety links to the memory ledger and greets a first 
     expect(safetyHeRecord["elev.safety.review.notYet"]).toMatch(/[֐-׿]/);
   });
 });
+
+describe("W2-CAREPRO r1 — both answers above the fold; the CTA says who answers", () => {
+  it("dangerLineFor: HE (ERAN first) → the danger call dials MDA 101; EN (112 first) → names an emotional line", async () => {
+    const { dangerLineFor, helplineOrderFor, HELPLINE_DIRECTORY: DIR } = await import("../../safety/escalation");
+    const he = helplineOrderFor("he");
+    const hePrimary = DIR.find((h) => h.region === he[0])!;
+    expect(hePrimary.id).toBe("il_eran");
+    const heLine = dangerLineFor(he, hePrimary)!;
+    expect(heLine.kind).toBe("emergency");
+    expect(heLine.entry.tel).toBe("101");
+    expect(heLine.entry.tel).not.toBe(hePrimary.tel);
+    const en = helplineOrderFor("en");
+    const enPrimary = DIR.find((h) => h.region === en[0])!;
+    expect(enPrimary.id).toBe("eu_112");
+    const enLine = dangerLineFor(en, enPrimary)!;
+    expect(enLine.kind).toBe("talk");
+    expect(enLine.entry.tel).not.toBe(enPrimary.tel);
+  });
+
+  it("the danger call is a 44 px tel: link in the crisis card, no second stamp", () => {
+    const card = tabSource.slice(tabSource.indexOf('data-module="safety-crisis-language"'), tabSource.indexOf('data-module-disclosure="safety-more"'));
+    expect((card.match(/data-testid="safety-danger-call"/g) ?? []).length).toBe(2);
+    expect(card).toContain("href={`tel:${dangerLine.entry.tel}`}");
+    expect(card).toContain("min-h-[44px]");
+    expect((tabSource.match(/data-primary-move="/g) ?? []).length).toBe(1);
+    for (const k of ["elev.safety.crisis.dangerCall", "elev.safety.crisis.talkLine"]) {
+      expect(safetyEnRecord[k as keyof typeof safetyEnRecord]).toContain("{number}");
+      expect(safetyHeRecord[k as keyof typeof safetyHeRecord]).toContain("{number}");
+    }
+  });
+
+  it("the primary CTA never truncates who answers, uses no opacity hierarchy and is the CTA gradient", () => {
+    const cta = tabSource.slice(tabSource.indexOf('data-primary-move="call-helpline"'), tabSource.indexOf("</a>", tabSource.indexOf('data-primary-move="call-helpline"')));
+    expect(cta).not.toMatch(/\btruncate\b/);
+    expect(cta).not.toMatch(/opacity-\d/);
+    expect(cta).toContain("var(--gradient-cta)");
+    expect(cta).not.toContain('background: "var(--arbor-pink-ink)"');
+    expect(cta).toContain("whitespace-nowrap");
+    // NEGATIVE CONTROL: the pre-change sub-label is caught
+    const pre = `<span className="text-[12px] font-bold opacity-90 truncate">{t(x)}</span>`;
+    expect(/\btruncate\b/.test(pre) && /opacity-\d/.test(pre)).toBe(true);
+  });
+});
