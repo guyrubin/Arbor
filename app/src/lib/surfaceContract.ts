@@ -121,13 +121,8 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
     // in Ask, in the account, and on the GDPR export exactly as before.
     threadWrite: "consented",
   },
-  {
-    route: "scholar", hub: "ask", depth: 1,
-    job: "Browse the research lenses behind Arbor's answers.",
-    primaryMove: "open-lens", moduleBudget: 2, demotionTarget: "coach",
-    // Canon: the lens library stays in the Ask hub. Read-only browse — no write.
-    threadWrite: "none",
-  },
+  // B-ASKJB-12: the "scholar" entry left with its route — the lens library is
+  // Ask's ToneSheet ("How should Arbor talk with you?"); #/scholar → coach.
 
   // ── JOURNAL ────────────────────────────────────────────────────────────────
   {

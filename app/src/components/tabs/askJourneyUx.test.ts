@@ -118,36 +118,35 @@ describe("ASK-8 — calm single error affordance", () => {
   });
 });
 
-describe("ASK-9 — lens machinery demoted below the fast-start scenarios", () => {
-  it("the radiogroup renders after the scenario chips, behind the Perspective affordance", () => {
-    const scenariosAt = coachRaw.indexOf('t("coach.fastStart")');
-    const lensAffordanceAt = coachRaw.indexOf('t("coach.perspective")');
-    const radiogroupAt = coachRaw.indexOf('role="radiogroup"');
-    expect(scenariosAt).toBeGreaterThan(-1);
-    expect(lensAffordanceAt).toBeGreaterThan(scenariosAt);
-    expect(radiogroupAt).toBeGreaterThan(lensAffordanceAt);
+describe("ASK-9 -> B-ASKJB-12: the lens is chosen in ONE sheet, from the identity strip", () => {
+  const sheet = fs.readFileSync(path.resolve(__dirname, "../coach/ToneSheet.tsx"), "utf8");
+
+  it("the Perspective row and its inline radiogroup are gone; 'Tone: {choice}' opens the ToneSheet", () => {
+    expect(coach).not.toContain('t("coach.perspective")');
+    expect(coach).not.toContain("lensOpen");
+    expect(coachRaw).not.toContain('role="radiogroup"');
+    expect(coach).toContain('data-testid="coach-tone"');
+    expect(coach).toContain("onClick={() => setToneOpen(true)}");
+    expect(coach).toContain("<ToneSheet open={toneOpen} onClose={() => setToneOpen(false)} selectedLens={selectedLens} onSelect={setSelectedLens} t={t} />");
   });
 
-  it("lens change stays <=2 taps: the affordance toggles the FULL radiogroup (no browse-all stage)", () => {
-    expect(coach).toContain("setLensOpen((v) => !v)");
-    expect(coach).toContain("lensOpen && (() => {");
-    expect(coach).not.toContain("showAllLenses");
-    // All lenses render inside the one radiogroup.
-    expect(coach).toContain('const lensNames = ["Integrated Balanced", ...scholarsInfo.map((s) => s.name)];');
+  it("lens change stays <=2 taps: open the sheet, tap a choice (it writes and closes)", () => {
+    expect(sheet).toContain("const pick = (lens: string) => { onSelect(lens); onClose(); };");
   });
 
-  it("arrow-key a11y is preserved on the radiogroup", () => {
-    expect(coach).toContain('e.key === "ArrowRight" || e.key === "ArrowDown"');
-    expect(coach).toContain('e.key === "ArrowLeft" || e.key === "ArrowUp"');
-    expect(coachRaw).toContain('role="radio"');
+  it("arrow-key a11y is preserved on the sheet's one radiogroup", () => {
+    expect(sheet).toContain('e.key === "ArrowRight" || e.key === "ArrowDown"');
+    expect(sheet).toContain('e.key === "ArrowLeft" || e.key === "ArrowUp"');
+    expect(sheet).toContain('role="radiogroup"');
+    expect(sheet).toContain('role="radio"');
   });
 
-  it("the Perspective affordance is localized in both languages", () => {
+  it("the Tone control is localized in both languages", () => {
     for (const lang of ["en", "he"] as const) {
-      expect(translate(lang, "coach.perspective").trim()).not.toBe("");
-      expect(translate(lang, "coach.perspective.change").trim()).not.toBe("");
+      expect(translate(lang, "coach.tone.label").trim()).not.toBe("");
+      expect(translate(lang, "coach.tone.change").trim()).not.toBe("");
     }
-    expect(translate("he", "coach.perspective")).not.toMatch(/[a-z]/i);
+    expect(translate("he", "coach.tone.label")).not.toMatch(/[a-z]/i);
   });
 });
 

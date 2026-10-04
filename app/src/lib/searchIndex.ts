@@ -83,6 +83,9 @@ export interface SearchEntry {
   /** Deep-link: the existing tab to navigate to on selection (tab-only —
    *  the app has no focus-param convention; see lib/routes.ts). */
   tab: ActiveTab;
+  /** B-ASKJB-12: a scholar entry opens Ask with this lens id preselected
+   *  (written to `selectedLens`, the ToneSheet's store) before navigating. */
+  lens?: string;
   /** Precomputed normalized haystacks (both languages, always searched). */
   normTitles: string[];
   normKeywords: string[];
@@ -127,7 +130,7 @@ function entry(
 }
 
 /** Consolidated views reachable only via search (labels: sm.extra.*). */
-const EXTRA_ROUTE_TABS: readonly ActiveTab[] = ["weekly", "handoff", "scholar"];
+const EXTRA_ROUTE_TABS: readonly ActiveTab[] = ["weekly", "handoff"];
 
 /** IA-20: routes deliberately NOT offered in search, each with the reason it
  *  would be wrong to surface. Absence is a product decision recorded here, not
@@ -249,15 +252,20 @@ function buildIndex(): readonly SearchEntry[] {
 
   // 5. Scholar frameworks (names are Latin-script canon; concept + theory
   //    as keywords — catalog carries no Hebrew, title falls back to EN).
+  //    B-ASKJB-12: #/scholar retired; each entry keeps its name and opens Ask
+  //    with that lens preselected (the ToneSheet's store, `selectedLens`).
   for (const scholar of scholarsInfo) {
-    entries.push(entry(
-      `scholar:${scholar.slug}`,
-      "scholar",
-      pair(scholar.name),
-      pair(scholar.concept),
-      { en: [scholar.theory, scholar.concept], he: [] },
-      "scholar",
-    ));
+    entries.push({
+      ...entry(
+        `scholar:${scholar.slug}`,
+        "scholar",
+        pair(scholar.name),
+        pair(scholar.concept),
+        { en: [scholar.theory, scholar.concept], he: [] },
+        "coach",
+      ),
+      lens: scholar.name,
+    });
   }
 
   // Hard-moment entries are resolved per call below, outside the static memo.

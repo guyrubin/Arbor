@@ -63,7 +63,7 @@ const KIND_ICON: Partial<Record<SearchKind, string>> = {
  *  active child's logs, conversations, milestones and plans. Full-screen-ish
  *  on mobile (375px: input top, scrollable results, 44px rows). */
 export default function SearchModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { behaviorLogs, milestones, actionPlans, conversations, childProfile, setActiveTab, openConversation, openCaptureSheet } = useArbor();
+  const { behaviorLogs, milestones, actionPlans, conversations, childProfile, setActiveTab, openConversation, openCaptureSheet, setSelectedLens } = useArbor();
   const { t, uiLang } = useLanguage();
   const heLang = uiLang === "he";
   const [q, setQ] = useState("");
@@ -94,7 +94,8 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
       ),
       label: pick(e.title),
       sub: pick(e.sub) || searchnavText("elev.searchnav.kind." + e.kind, heLang),
-      go: () => setActiveTab(e.tab),
+      // B-ASKJB-12: a scholar entry preselects its lens, then opens Ask.
+      go: () => { if (e.lens) setSelectedLens(e.lens); setActiveTab(e.tab); },
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [heLang, setActiveTab]);

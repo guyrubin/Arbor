@@ -22,7 +22,7 @@
 export const ROUTE_IDS = [
   // Core surfaces
   "overview", "coach", "behaviors", "milestones", "plans", "stories", "weekly",
-  "scholar", "language", "handoff", "safety",
+  "language", "handoff", "safety",
   // Child intelligence / IA-refactor capability views
   "profile", "memory", "strengths", "screening", "timeline", "journal",
   // Care Network
@@ -142,6 +142,10 @@ export const RETIRED_ROUTES: Readonly<Record<string, ActiveTab>> = {
   // consult requests 404. The route returns with the first real record; until
   // then #/find-pro lands on Consult, which prepares the same visit.
   "find-pro": "consult",
+  // B-ASKJB-12: the lens library retired into Ask's "How should Arbor talk
+  // with you?" sheet (ToneSheet). Unlike the two above, the id LEFT the route
+  // table with its tab (the sheet is not a route); the hash keeps its seat.
+  scholar: "coach",
 };
 
 export function resolveRouteId(raw: string): ActiveTab | null {

@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { ROUTE_IDS, HASH_ALIASES, RETIRED_ROUTES, resolveRouteId } from "./routes";
+
+/** B-ASKJB-12: retired ids whose tab was deleted (the hash keeps the seat). */
+const LEFT_THE_TABLE = new Set(["scholar"]);
 import { SECTIONS, TAB_SECTION_FALLBACK, primaryTabOf } from "./navigation";
 import { ALL_TABS } from "../context/ArborContext";
 
@@ -94,8 +97,12 @@ describe("hash aliases", () => {
     expect(Object.keys(RETIRED_ROUTES).length).toBeGreaterThan(0);
     for (const [retired, target] of Object.entries(RETIRED_ROUTES)) {
       // The id is STILL in the table — floors, the Shell registry and the nav
-      // guard all keep working; only the hash moved.
-      expect(ROUTE_IDS as readonly string[]).toContain(retired);
+      // guard all keep working; only the hash moved. B-ASKJB-12 is the one
+      // named exception: #/scholar's tab was deleted (its lens choice is Ask's
+      // ToneSheet, not a route), so its id left the table and the hash alone
+      // keeps the seat.
+      if (!LEFT_THE_TABLE.has(retired)) expect(ROUTE_IDS as readonly string[]).toContain(retired);
+      else expect(ROUTE_IDS as readonly string[]).not.toContain(retired);
       expect(ROUTE_IDS as readonly string[]).toContain(target);
       expect(resolveRouteId(`#/${retired}`)).toBe(target);
       expect(resolveRouteId(retired.toUpperCase())).toBe(target);
@@ -105,11 +112,18 @@ describe("hash aliases", () => {
     expect(resolveRouteId("#/strengths")).toBe("profile");
   });
 
-  it("B-CAREPRO-19: #/find-pro lands on Consult; the id keeps its seat (ROUTE_IDS still 43)", () => {
+  it("B-CAREPRO-19: #/find-pro lands on Consult; the id keeps its seat", () => {
     expect(RETIRED_ROUTES["find-pro"]).toBe("consult");
     expect(resolveRouteId("#/find-pro")).toBe("consult");
     expect(ROUTE_IDS as readonly string[]).toContain("find-pro");
-    expect(ROUTE_IDS.length).toBe(43);
+  });
+
+  it("B-ASKJB-12: #/scholar resolves to #/coach; the id left the table with its tab (43 → 42)", () => {
+    expect(RETIRED_ROUTES.scholar).toBe("coach");
+    expect(resolveRouteId("#/scholar")).toBe("coach");
+    expect(resolveRouteId("scholar")).toBe("coach");
+    expect(ROUTE_IDS as readonly string[]).not.toContain("scholar");
+    expect(ROUTE_IDS.length).toBe(42);
   });
 
   it("unknown hashes still fall back exactly as before (null)", () => {

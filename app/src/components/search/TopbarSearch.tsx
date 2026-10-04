@@ -54,7 +54,7 @@ const KIND_TOKEN: Partial<Record<SearchKind, string>> = {
 
 /** AP-045 global search input + results overlay (topbar slot 1). */
 export default function TopbarSearch() {
-  const { setActiveTab, childProfile } = useArbor();
+  const { setActiveTab, childProfile, setSelectedLens } = useArbor();
   const { t, uiLang } = useLanguage();
   const heLang = uiLang === "he";
   const [query, setQuery]       = useState("");
@@ -115,12 +115,14 @@ export default function TopbarSearch() {
   const navigate = useCallback(
     (entry: SearchEntry) => {
       track("search_result_tap", { kind: entry.kind });
+      // B-ASKJB-12: a scholar entry preselects its lens, then opens Ask.
+      if (entry.lens) setSelectedLens(entry.lens);
       setActiveTab(entry.tab);
       setOpen(false);
       setQuery("");
       inputRef.current?.blur();
     },
-    [setActiveTab]
+    [setActiveTab, setSelectedLens]
   );
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

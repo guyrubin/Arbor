@@ -112,8 +112,19 @@ describe("index coverage — every library, every item", () => {
         expect(byId.has(`route:${it.tab}`), `route:${it.tab}`).toBe(true);
       }
     }
-    for (const tab of ["weekly", "handoff", "scholar"]) {
+    for (const tab of ["weekly", "handoff"]) {
       expect(byId.has(`route:${tab}`), `route:${tab}`).toBe(true);
+    }
+    // B-ASKJB-12: #/scholar retired — no route entry; the 7 scholar entries remain.
+    expect(byId.has("route:scholar")).toBe(false);
+  });
+
+  it("B-ASKJB-12: every scholar entry keeps its name and opens Ask with its lens preselected", () => {
+    for (const s of scholarsInfo) {
+      const e = byId.get(`scholar:${s.slug}`)!;
+      expect(e.tab).toBe("coach");
+      expect(e.lens).toBe(s.name);
+      expect(e.title.en).toBe(s.name);
     }
   });
 

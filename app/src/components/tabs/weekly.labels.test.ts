@@ -182,15 +182,16 @@ describe("5 · B-TODAY-22 · one story, one secondary door", () => {
     expect(tab).not.toContain("bg-white");
   });
 
-  it("#/learn stays in its hub; #/scholar keeps its route seat and its search door", () => {
+  it("#/learn stays in its hub; #/scholar retired into Ask (B-ASKJB-12)", () => {
     const tabs = SECTIONS.flatMap((s) => [...s.items, ...(s.tools ?? [])].map((i) => i.tab));
     expect(tabs).toContain("learn");
     // Scholar (hub: ask) never had a nav item; the Weekly spotlight was its
-    // only in-page door. It stays a live route reachable from search until
-    // B-ASKJB-12 retires it (that item depends on this cut).
+    // only in-page door. B-ASKJB-12 (which depended on this cut) retired it:
+    // the hash resolves to #/coach and the search entries open Ask with the
+    // lens preselected.
     const search = fs.readFileSync(path.resolve(__dirname, "../../lib/searchIndex.ts"), "utf8");
-    expect(search).toMatch(/EXTRA_ROUTE_TABS[^\n]*"scholar"/);
+    expect(search).not.toMatch(/EXTRA_ROUTE_TABS[^\n]*"scholar"/);
     const routes = fs.readFileSync(path.resolve(__dirname, "../../lib/routes.ts"), "utf8");
-    expect(routes).toContain('"scholar"');
+    expect(routes).toMatch(/scholar: "coach"/);
   });
 });

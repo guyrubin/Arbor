@@ -513,7 +513,8 @@ describe("R22 — the practice domain names and the Full Picture body carry both
   it("the four other chrome residues resolve through a resolver that already shipped", () => {
     const coach = stripComments(readSrc("components/tabs/CoachTab.tsx"));
     expect(coach).toContain("const lensDisplay = ");
-    expect(coach).toContain("{lensDisplay(selectedLens)}");
+    // B-ASKJB-12: the identity strip reads "Tone: {choice}" through toneLabel (keyed, both languages).
+    expect(coach).toContain("{toneLabel(selectedLens, t)}");
     expect(coach).not.toContain('{t("coach.lensLabel")}: {selectedLens}');
 
     const ask = stripComments(readSrc("components/sections/AskSpecialist.tsx"));

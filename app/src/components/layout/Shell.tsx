@@ -61,7 +61,6 @@ const MilestonesTab = lazy(() => import("../tabs/MilestonesTab"));
 const PlansTab = lazy(() => import("../tabs/PlansTab"));
 const HeroJourneyTab = lazy(() => import("../tabs/HeroJourneyTab"));
 const WeeklyTab = lazy(() => import("../tabs/WeeklyTab"));
-const ScholarTab = lazy(() => import("../tabs/ScholarTab"));
 const LanguageLabTab = lazy(() => import("../tabs/LanguageLabTab"));
 const SafetyTab = lazy(() => import("../tabs/SafetyTab"));
 
@@ -127,7 +126,6 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   plans: PlansTab,
   stories: HeroJourneyTab,
   weekly: WeeklyTab,
-  scholar: ScholarTab,
   language: LanguageLabTab,
   // b3: the standalone handoff door is retired — deep-links to #/handoff now
   // resolve into the single Consult flow (its AI-brief job is covered by the

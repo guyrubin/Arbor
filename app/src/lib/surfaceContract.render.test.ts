@@ -535,11 +535,10 @@ describe("B-ASKJB-06 — Ask's fresh stack meets moduleBudget 3", () => {
     expect(fresh.stamped.length).toBeLessThanOrEqual(budget);
   });
 
-  it("no unstamped sibling renders on a fresh thread beyond the lens row B-ASKJB-12 retires", () => {
-    // B-ASKJB-12 replaces the lens row with the Tone control in the identity
-    // strip; its commit tightens this to [].
-    expect(fresh.unstamped.length).toBeLessThanOrEqual(1);
-    for (const u of fresh.unstamped) expect(u).toMatch(/^<div className="space-y-2">/);
+  it("no unstamped sibling renders on a fresh thread (B-ASKJB-12 retired the lens row)", () => {
+    // B-ASKJB-12 replaced the lens row with the Tone control in the identity
+    // strip; the trust chip moved inside coach-orientation. Tightened to [].
+    expect(fresh.unstamped).toEqual([]);
   });
 
   it("the continuation, the chip row and ValuePreview are inside modules, not siblings", () => {

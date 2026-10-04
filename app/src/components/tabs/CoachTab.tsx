@@ -11,7 +11,6 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useAuth } from "../../context/AuthContext";
 import { Avatar } from "../ui/Avatar";
 import { ArborMascot } from "../ui/ArborMascot";
-import { scholarsInfo } from "../../initialData";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { TrustSafetyBar, cardCls } from "../ui/kit";
 // Masterplan 1.3 — the Ask data-contract panel: TrustPanel (the one reusable
@@ -24,6 +23,7 @@ import { fmtDayLong } from "../../lib/formatDate";
 import { buildVoiceContext, dismissWeeklyContextNotice, readWeeklyContextConsent, shouldShowWeeklyContextNotice, writeWeeklyContextConsent } from "../../ai/chatContext";
 import { T } from "../../lib/tokens";
 import CoachAnswerCards from "../coach/CoachAnswerCards";
+import ToneSheet, { toneLabel } from "../coach/ToneSheet";
 // ENG-21: the in-context value preview — the quiet, dismissible free-vs-Plus
 // card shown BEFORE the coach meter's 402, never after it. Placement, timing
 // and frequency are owned entirely by components/billing/valuePreviewModel.ts; this
@@ -373,11 +373,11 @@ export default function CoachTab() {
   // Which answer's overflow ("…") menu is open. Only Copy stays inline; Log /
   // Plan / Share fold into this menu so a settled answer reads as calm text.
   const [openMenuIdx, setOpenMenuIdx] = useState<number | null>(null);
-  // ASK-9: the lens machinery is DEMOTED — collapsed to a single "Perspective:
-  // {lens} · change" affordance below the fast-start scenarios; one tap opens
-  // the full radiogroup (all lenses, arrow-key nav). Selection persistence and
-  // seedCoach lens steering are untouched.
-  const [lensOpen, setLensOpen] = useState(false);
+  // B-ASKJB-12: the lens is chosen in ONE sheet ("How should Arbor talk with
+  // you?"), opened from the "Tone: {choice}" control in the identity strip.
+  // Same store (selectedLens / arbor.lens → scholarLens); seedCoach lens
+  // steering is untouched.
+  const [toneOpen, setToneOpen] = useState(false);
   const [showAllScenarios, setShowAllScenarios] = useState(false);
   // B-ASKJB-10: deterministic, zero model calls — the recurrence rule is patternEcho's.
   const echoScenario = useMemo(
@@ -1147,84 +1147,12 @@ export default function CoachTab() {
             </div>
           </div>
         )}
-      </div>
-
-      {/* ASK-9: the lens machinery, DEMOTED below the fast-start scenarios —
-          prime mobile real estate belongs to the composer + scenarios. Default
-          is one calm affordance ("Perspective: Integrated · change"); one tap
-          opens the FULL radiogroup (arrow-key nav, RTL-safe logical props).
-          Selection persistence (arbor.lens) + seedCoach lens steering intact. */}
-      <div className="space-y-2">
+        {/* E8: the research-anchored trust chip, inside orientation. B-ASKJB-12
+            moved the lens choice out of this row into the ToneSheet ("Tone:
+            {choice}" in the identity strip), so no unstamped sibling remains. */}
         <div className="flex items-center gap-2 flex-wrap">
-          {/* E8: the research-anchored trust chip lives beside the lens affordance. */}
           <EvidenceChip />
-          <button
-            type="button"
-            onClick={() => setLensOpen((v) => !v)}
-            aria-expanded={lensOpen}
-            className="inline-flex items-center gap-1 min-h-[44px] text-[11px] font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded-lg"
-            style={{ color: "var(--arbor-muted)" }}
-          >
-            <span>
-              {t("coach.perspective")}: <span style={{ color: "var(--arbor-green-ink)" }}>{lensDisplay(selectedLens)}</span> · {t("coach.perspective.change")}
-            </span>
-            <Icon name={lensOpen ? "expand_less" : "expand_more"} size={14} />
-          </button>
         </div>
-        {lensOpen && (() => {
-          // Single-select lens control with proper radiogroup a11y + arrow-key nav.
-          const lensNames = ["Integrated Balanced", ...scholarsInfo.map((s) => s.name)];
-          const moveLens = (dir: 1 | -1) => {
-            const cur = lensNames.indexOf(selectedLens);
-            const next = ((cur < 0 ? 0 : cur) + dir + lensNames.length) % lensNames.length;
-            setSelectedLens(lensNames[next]);
-          };
-          const onKeyDown = (e: React.KeyboardEvent) => {
-            if (e.key === "ArrowRight" || e.key === "ArrowDown") { e.preventDefault(); moveLens(1); }
-            else if (e.key === "ArrowLeft" || e.key === "ArrowUp") { e.preventDefault(); moveLens(-1); }
-          };
-          const active = scholarsInfo.find((s) => s.name === selectedLens);
-          const hint = active?.useWhen
-            || (selectedLens === "Integrated Balanced" ? t("coach.lens.integratedHint") : null);
-          return (
-            <>
-              <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t("coach.lens")} onKeyDown={onKeyDown}>
-                {lensNames.map((name) => {
-                  const on = selectedLens === name;
-                  const scholar = scholarsInfo.find((s) => s.name === name);
-                  return (
-                    <button
-                      key={name}
-                      role="radio"
-                      aria-checked={on}
-                      tabIndex={on ? 0 : -1}
-                      onClick={() => setSelectedLens(name)}
-                      className="px-3 py-2 min-h-[44px] rounded-xl text-xs font-bold transition flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-                      style={on
-                        ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }
-                        : { background: T.paperElevated, color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
-                    >
-                      {scholar && (
-                        <span className="w-4 h-4 text-[9px] font-black rounded flex items-center justify-center" style={{ background: on ? T.paperElevated : "var(--arbor-paper-deep)", color: "var(--arbor-green-ink)" }} aria-hidden>
-                          {scholar.initial}
-                        </span>
-                      )}
-                      {/* OBJ-ASK-03: the scholar NAME is a proper name and stays
-                          as written; the concept beside it is chrome, keyed by slug. */}
-                      {scholar ? `${scholar.name} (${tcc(`elev.coachcontract.lens.concept.${scholar.slug}`)})` : t("coach.lens.integrated")}
-                    </button>
-                  );
-                })}
-              </div>
-              {/* "Use this lens when…" — makes the lens choice practical, not academic */}
-              {hint && (
-                <p className="text-[11px] leading-relaxed rounded-lg p-2.5 mt-1" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
-                  {hint}
-                </p>
-              )}
-            </>
-          );
-        })()}
       </div>
 
       {/* Conversation history stays available without reserving an empty tray. */}
@@ -1271,10 +1199,21 @@ export default function CoachTab() {
               {t("elev.aihonesty.coachStatus")}
             </p>
           </div>
-          <span className="text-[12px] font-bold flex items-center gap-1.5 flex-shrink-0" style={{ color: "var(--arbor-muted)" }}>
-            {isChatLoading && <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--arbor-clay)" }} aria-hidden />}
-            <span className="truncate max-w-[160px]">{t("coach.lensLabel")}: {lensDisplay(selectedLens)}</span>
-          </span>
+          {isChatLoading && <span className="w-1.5 h-1.5 rounded-full animate-pulse flex-shrink-0" style={{ background: "var(--arbor-clay)" }} aria-hidden />}
+          {/* B-ASKJB-12: "Tone: {choice}" opens the ONE ToneSheet. */}
+          <button
+            type="button"
+            data-testid="coach-tone"
+            onClick={() => setToneOpen(true)}
+            aria-haspopup="dialog"
+            aria-label={t("coach.tone.change")}
+            className="flex-shrink-0 inline-flex min-h-11 items-center gap-1 rounded-lg px-1.5 text-[12px] font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+            style={{ color: "var(--arbor-muted)" }}
+          >
+            <Icon name="tune" size={13} />
+            <span className="truncate max-w-[160px]">{t("coach.tone.label")}: <span style={{ color: "var(--arbor-green-ink)" }}>{toneLabel(selectedLens, t)}</span></span>
+          </button>
+          <ToneSheet open={toneOpen} onClose={() => setToneOpen(false)} selectedLens={selectedLens} onSelect={setSelectedLens} t={t} />
           {/* Masterplan 1.3: "What the coach sees" disclosure — opens the data
               contract panel below this strip. Parent register only. */}
           <button
