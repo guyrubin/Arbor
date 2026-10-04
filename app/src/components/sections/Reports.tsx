@@ -2,7 +2,7 @@ import { ageLabel } from "../../lib/childAge";
 import React from "react";
 import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
-import { PageHeader, SectionCard, PASTEL, PastelKey } from "../ui/kit";
+import { PageHeader, PASTEL, PastelKey } from "../ui/kit";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { buildReport, openPrintableReport, isProfessionalReportType, ReportDoc, ReportType, type ParentReportType } from "../../lib/reportExport";
@@ -10,6 +10,46 @@ import type { ExportAudience, PresetPrintSection } from "../../consult/packet";
 import { useHeroAvatar } from "../ui/HeroAvatar";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import type { LangObservation } from "../../growth/vocabAgg";
+import type { BehaviorLog, Milestone } from "../../types";
+import { getLastExportedAt, recordExport } from "../../consult/exportHistory";
+import { fmtDay } from "../../lib/formatDate";
+import { requestOpenSettings } from "../layout/settingsBus";
+
+/** W2-CAREPRO r2 / B-CAREPRO-NEW-2e — the device-local export-history slot the
+ *  lead "Save this week's record" writes (same store Consult's "since" reads). */
+export const REPORTS_WEEKLY_EXPORT_KEY = "reports-weekly";
+const WEEK_MS = 7 * 86_400_000;
+
+/** B-CAREPRO-NEW-2e — the lead line's counts, numerators only: moments logged
+ *  and milestones the parent marked since the last save (else this week). No
+ *  denominator, no delta, no direction word. */
+export function reportsLeadCounts(input: {
+  logs: readonly Pick<BehaviorLog, "timestamp">[];
+  milestones: readonly Pick<Milestone, "checked" | "observationUpdatedAt">[];
+  sinceIso: string | null;
+  nowMs: number;
+}): { moments: number; milestones: number; sinceMs: number } {
+  const since = input.sinceIso ? new Date(input.sinceIso).getTime() : NaN;
+  const sinceMs = Number.isFinite(since) ? since : input.nowMs - WEEK_MS;
+  const after = (iso?: string) => {
+    const t = iso ? new Date(iso).getTime() : NaN;
+    return Number.isFinite(t) && t > sinceMs && t <= input.nowMs;
+  };
+  return {
+    moments: input.logs.filter((l) => after(l.timestamp)).length,
+    milestones: input.milestones.filter((m) => m.checked && after(m.observationUpdatedAt)).length,
+    sinceMs,
+  };
+}
+
+/** B-CAREPRO-NEW-2f — the newest moment this week that carries the parent's
+ *  own words (notes), else null. Read from the record already in memory. */
+export function keptThisWeek(logs: readonly Pick<BehaviorLog, "timestamp" | "notes">[], nowMs: number): { quote: string; at: string } | null {
+  const fresh = logs
+    .filter((l) => (l.notes ?? "").trim() && nowMs - new Date(l.timestamp).getTime() <= WEEK_MS && new Date(l.timestamp).getTime() <= nowMs)
+    .sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1));
+  return fresh[0] ? { quote: (fresh[0].notes ?? "").trim(), at: fresh[0].timestamp } : null;
+}
 
 /** The 10 report definitions (5 parent-record documents, 5 professional
  *  presets) — the one source of their titles. #/reports renders the parent
@@ -105,9 +145,32 @@ export function useConsultPdf() {
  *  reviewed gate; the same documents are built in Consult behind that gate,
  *  so the page has ONE door there (through the B-CAREPRO-13 prefill seam). */
 export default function Reports() {
-  const { childProfile, setActiveTab, requestConsultPrefill } = useArbor();
-  const { t } = useLanguage();
+  const { childProfile, setActiveTab, requestConsultPrefill, behaviorLogs, milestones } = useArbor();
+  const { t, uiLang } = useLanguage();
   const exportReport = useReportExport();
+  const first = (childProfile.name || "").split(" ")[0];
+  // B-CAREPRO-NEW-2e: the record leads — counts since the last save on this
+  // device (else this week), from the same ctx buildReport reads.
+  const [lastSaved, setLastSaved] = React.useState<string | null>(() => getLastExportedAt(childProfile.id, REPORTS_WEEKLY_EXPORT_KEY));
+  const nowMs = Date.now();
+  const counts = reportsLeadCounts({ logs: behaviorLogs ?? [], milestones: milestones ?? [], sinceIso: lastSaved, nowMs });
+  const countText = (n: number, one: string, other: string) => t(n === 1 ? one : other, { n });
+  const momentsText = countText(counts.moments, "elev.reports.line.moments.one", "elev.reports.line.moments.other");
+  const milestonesText = countText(counts.milestones, "elev.reports.lead.milestones.one", "elev.reports.lead.milestones.other");
+  const kept = keptThisWeek(behaviorLogs ?? [], nowMs);
+  const saveLead = () => {
+    exportReport(lead.type);
+    const when = new Date().toISOString();
+    recordExport(childProfile.id, REPORTS_WEEKLY_EXPORT_KEY, when);
+    setLastSaved(when);
+  };
+  // One count clause per parent-record row, from the same record (law 1: counts only).
+  const allMoments = (behaviorLogs ?? []).length;
+  const noticed = (milestones ?? []).filter((m) => m.checked).length;
+  const rowCount: Partial<Record<ParentReportType, string>> = {
+    snapshot: t(noticed === 1 ? "elev.reports.line.milestonesNoticed.one" : "elev.reports.line.milestonesNoticed", { n: noticed }),
+    behavior: t(allMoments === 1 ? "elev.reports.line.momentsLogged.one" : "elev.reports.line.momentsLogged.other", { n: allMoments }),
+  };
   // W2-CAREPRO r1: Weekly Insight leads; the other records are quiet rows.
   const lead = PARENT_RECORD_REPORTS[0];
   // B-CAREPRO-28: the door names no audience — the parent picks the
@@ -118,25 +181,45 @@ export default function Reports() {
   };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
+    // W2-CAREPRO r2: a ~720 px reading measure at every width (it was a
+    // stretched 935 px phone column at 1280 with ~800 px of eye travel per row).
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[720px]">
       <PageHeader eyebrow={t("elev.reports.eyebrow")} title={t("sec.reports.title")} subtitle={t("sec.reports.sub", { name: childProfile.name.split(" ")[0] })} />
 
       {/* Item 11 (IA-02): `data-module` marks the top-level sibling module
           (what moduleBudget counts). W2-CAREPRO r1: `data-primary-move` sits
           on the ONE control that performs the move — the lead record's Save
           button — never on a display:contents wrapper around the catalogue. */}
-      <div data-module="reports-catalogue">
-      <SectionCard title={t("elev.reports.section")} icon={<Icon name="assessment" size={20} />} tone="mint">
+      {/* W2-CAREPRO r2: no "Exportable reports" card header — the H1 frames the
+          list; one plain surface (one layer of chrome). */}
+      <div data-module="reports-catalogue" className="rounded-[22px] p-5 md:p-6" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }}>
         {/* The lead record: Weekly Insight, with the page's one gradient. */}
         <div className="flex flex-col gap-3 pb-4" style={{ borderBlockEnd: "1px solid var(--arbor-rule)" }}>
           <div className="min-w-0">
-            <h3 className="t-md font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t(lead.titleKey)}</h3>
-            <p className="t-sm mt-0.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t(lead.descKey)}</p>
+            <h2 className="t-md font-extrabold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-sans)" }}>{t(lead.titleKey)}</h2>
+            {/* B-CAREPRO-NEW-2e: one counts-only line from the record. */}
+            <p data-testid="reports-lead-counts" className="t-sm mt-0.5 leading-relaxed" style={{ color: "var(--arbor-ink)" }}>
+              {lastSaved
+                ? t("elev.reports.lead.since", { date: fmtDay(lastSaved, uiLang), moments: momentsText, milestones: milestonesText })
+                : t("elev.reports.lead.first", { moments: momentsText, milestones: milestonesText })}
+            </p>
           </div>
+          {/* B-CAREPRO-NEW-2f: the parent's own words this week, quoted — the
+              page's one warm accent; nothing kept yet says so plainly. */}
+          {kept ? (
+            <figure data-testid="reports-kept" className="p-3" style={{ background: "var(--arbor-peach-soft)", borderRadius: "var(--r)" }}>
+              <figcaption className="t-xs" style={{ color: "var(--arbor-muted)" }}>{t("elev.reports.kept.label")}</figcaption>
+              <blockquote dir="auto" className="t-sm mt-0.5" style={{ color: "var(--arbor-peach-ink)", fontFamily: uiLang === "he" ? "var(--font-display)" : "var(--font-editorial)" }}>
+                “{kept.quote}” <span className="t-xs" style={{ fontFamily: "var(--font-sans)", color: "var(--arbor-muted)" }}>· <bdi>{fmtDay(kept.at, uiLang)}</bdi></span>
+              </blockquote>
+            </figure>
+          ) : (
+            <p data-testid="reports-kept-empty" className="t-xs" style={{ color: "var(--arbor-muted)" }}>{t("elev.reports.kept.empty")}</p>
+          )}
           <button
             type="button"
             data-primary-move="export-report"
-            onClick={() => exportReport(lead.type)}
+            onClick={saveLead}
             className="touch-target self-start inline-flex items-center justify-center gap-2 t-sm font-extrabold rounded-xl px-5 min-h-11 transition hover:brightness-105"
             style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}
             aria-label={t("elev.reports.exportAria", { title: t(lead.titleKey) })}
@@ -157,7 +240,7 @@ export default function Reports() {
         >
           <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0" style={{ background: PASTEL.lav.soft, color: PASTEL.lav.ink }}><Icon name="forum" size={18} /></span>
           <span className="min-w-0 flex-1">
-            <span className="block t-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{t("elev.reports.proDoor.title")}</span>
+            <span className="block t-sm font-bold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-sans)" }}>{t("elev.reports.proDoor.title")}</span>
             <span className="block t-xs mt-0.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.reports.proDoor.desc")}</span>
           </span>
           <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100 flex-shrink-0" style={{ color: "var(--arbor-muted)" }} />
@@ -169,8 +252,11 @@ export default function Reports() {
             <li key={r.type} className="py-3 flex items-center gap-3" style={{ borderBlockEnd: "1px solid var(--arbor-rule)" }}>
               <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}><Icon name="description" size={18} /></span>
               <div className="min-w-0 flex-1">
-                <h3 className="t-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{t(r.titleKey)}</h3>
-                <p className="t-xs mt-0.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t(r.descKey)}</p>
+                {/* W2-CAREPRO r2: every row title in ONE family (the body face,
+                    t-sm bold) — an h3 picked up the display face, and in HE
+                    Frank Ruhl's small x-height read smaller than its own desc. */}
+                <p data-testid="reports-row-title" className="t-sm font-bold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-sans)" }}>{t(r.titleKey)}</p>
+                <p className="t-xs mt-0.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t(r.descKey, { name: first })}{rowCount[r.type] ? <> · <span data-testid="reports-row-count">{rowCount[r.type]}</span></> : null}</p>
               </div>
               <button
                 type="button"
@@ -183,8 +269,22 @@ export default function Reports() {
               </button>
             </li>
           ))}
+          {/* W2-CAREPRO r2: the complete record keeps its ONE home (Settings >
+              Your data, B-CAREPRO-35); this page carries the door to it. */}
+          <li>
+            <button
+              type="button"
+              data-testid="reports-your-data"
+              onClick={() => requestOpenSettings({ focus: "data" })}
+              className="w-full py-3 flex items-center gap-3 min-h-11 text-start transition hover:brightness-95"
+            >
+              <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}><Icon name="folder_open" size={18} /></span>
+              <span className="min-w-0 flex-1 t-sm font-bold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-sans)" }}>{t("elev.reports.yourData", { name: first })}</span>
+              <span className="t-xs font-bold flex-shrink-0" style={{ color: "var(--arbor-clay)" }}>{t("elev.reports.yourData.cta")}</span>
+              <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100 flex-shrink-0" style={{ color: "var(--arbor-muted)" }} />
+            </button>
+          </li>
         </ul>
-      </SectionCard>
       </div>
 
       <p className="text-xs text-center" style={{ color: "var(--arbor-muted)" }}>{t("elev.reports.printHint")}</p>

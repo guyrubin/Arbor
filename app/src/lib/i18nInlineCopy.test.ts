@@ -158,7 +158,7 @@ describe("item 8 — no hardcoded English on the Learn·Care export surfaces", (
     const reports = fs.readFileSync(path.join(SRC_ROOT, "components/sections/Reports.tsx"), "utf8");
     expect(reports).toContain("titleKey: \"elev.reports.weekly.title\"");
     expect(reports).toContain("{t(r.titleKey)}");
-    expect(reports).toContain("{t(r.descKey)}");
+    expect(reports).toContain("{t(r.descKey, { name: first })}");
     expect(reports).not.toMatch(/>\{r\.title\}</);
   });
 
