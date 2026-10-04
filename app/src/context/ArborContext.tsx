@@ -4,7 +4,6 @@ import {
   BehaviorLog,
   Milestone,
   ActionPlan,
-  BedtimeStory,
   BehaviorAnalysis,
   MemoryReviewItem,
   BehaviorContext,
@@ -26,7 +25,6 @@ import { ROUTE_IDS, resolveHash, FALLBACK_ROUTE, type ActiveTab } from "../lib/r
 import {
   initialMilestones,
   demoSeedFor,
-  sampleBedtimeStory,
 } from "../initialData";
 import { useProfile } from "./ProfileContext";
 import { api, ApiError, authHeaders, getAiLanguage, PaywallError, streamCouncil } from "../lib/api";
@@ -500,8 +498,6 @@ function useArborState() {
     if (!alreadyDone) trackPlayCompleted(activity.domain, reason, source);
   };
 
-  const [currentStory, setCurrentStory] = useState<BedtimeStory>(sampleBedtimeStory);
-
   // Active Interactive / Selection States
   const [selectedLens, setSelectedLens] = useState<string>(() => readLS("arbor.lens") || "Integrated Balanced");
   // Onboarding → coach seeding: OnboardingFlow (which renders outside this
@@ -549,15 +545,6 @@ function useArborState() {
     "Screen time tantrums when tablet is turned off"
   );
   const [isPlanGenerating, setIsPlanGenerating] = useState<boolean>(false);
-
-  // Form states: Generated Story Book
-  const [storyTopic, setStoryTopic] = useState<string>("Fear of starting school");
-  const [storyMoral, setStoryMoral] = useState<string>(
-    "Courage in taking small steps and holding on to safe things"
-  );
-  const [isStoryGenerating, setIsStoryGenerating] = useState<boolean>(false);
-  const [activeStoryPage, setActiveStoryPage] = useState<number>(0);
-  const [storyReadingProgress, setStoryReadingProgress] = useState<number>(0);
 
   // Form states: Behavior Analysis
   const [behaviorAnalysis, setBehaviorAnalysis] = useState<BehaviorAnalysis | null>(null);
@@ -789,14 +776,6 @@ function useArborState() {
   useEffect(() => writeLS("arbor.activeTab", activeTab), [activeTab]);
   useEffect(() => writeLS("arbor.aiRail", String(showAiRail)), [showAiRail]);
   useEffect(() => writeLS("arbor.lens", selectedLens), [selectedLens]);
-
-  // Story reading progress calculation
-  useEffect(() => {
-    if (currentStory && currentStory.pages) {
-      const percentage = Math.round(((activeStoryPage + 1) / (currentStory.pages.length + 1)) * 100);
-      setStoryReadingProgress(percentage);
-    }
-  }, [activeStoryPage, currentStory]);
 
   // Developmental COUNTS (never a score): windowed to the child's current CDC
   // band + one earlier (Wave T, GP-08) — the same window Growth, Milestones
@@ -1384,28 +1363,6 @@ function useArborState() {
     }
   };
 
-  // Generate Book Bedtime Story
-  const handleGenerateStory = async () => {
-    setIsStoryGenerating(true);
-    setApiError(null);
-    try {
-      const newStory = await api.generateStory({
-        childName: childProfile.name,
-        age: childProfile.age,
-        topic: storyTopic,
-        moral: storyMoral + (getAiLanguage() === "he" ? " (Write the entire story in warm, natural Hebrew.)" : ""),
-      });
-      setCurrentStory(newStory);
-      setActiveStoryPage(0);
-      toast(t("ctx.toast.storyDone", { title: newStory.title }), "success");
-    } catch (err: any) {
-      console.error(err);
-      setApiError(err.message || "Failed to write story.");
-    } finally {
-      setIsStoryGenerating(false);
-    }
-  };
-
   // TJB-04: the latest persisted analysis for this child — what the Behaviors
   // card renders after a reload (session state wins while it exists).
   const behaviorAnalysisRecord = useMemo<InsightRecord | null>(
@@ -1604,8 +1561,6 @@ function useArborState() {
     closeHardMomentNow,
     askHardMomentRef,
     setAskHardMomentRef,
-    currentStory,
-    setCurrentStory,
     selectedLens,
     setSelectedLens,
     chatInput,
@@ -1670,14 +1625,6 @@ function useArborState() {
     planChallengeTopic,
     setPlanChallengeTopic,
     isPlanGenerating,
-    storyTopic,
-    setStoryTopic,
-    storyMoral,
-    setStoryMoral,
-    isStoryGenerating,
-    activeStoryPage,
-    setActiveStoryPage,
-    storyReadingProgress,
     behaviorAnalysis: behaviorAnalysisView,
     behaviorAnalysisRecord,
     keepBehaviorInsight,
@@ -1715,7 +1662,6 @@ function useArborState() {
     addMoment,
     handleAnalyzeBehaviors,
     handleGenerateActionPlan,
-    handleGenerateStory,
     handleToggleMilestone,
     setMilestoneObservation,
     addCustomMilestone,

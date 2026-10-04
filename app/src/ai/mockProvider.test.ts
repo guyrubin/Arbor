@@ -137,7 +137,7 @@ describe("B-INF-04 · a Today / Ask / Kid pass answers every AI route with zero 
     { name: "Plan · generate-plan", route: "/generate-plan", body: { childProfile: CHILD, challengeTopic: "transitions" }, answered: /"phases"/ },
     { name: "Care · generate-handoff", route: "/generate-handoff", body: { childProfile: CHILD, logs: LOGS, milestones: [] }, answered: /"overview"/ },
     { name: "Capture · extract-log", route: "/extract-log", body: { message: "He threw the cup when I turned off the tablet.", childProfile: CHILD }, answered: /"behaviorType"/ },
-    { name: "Kid · generate-story", route: "/generate-story", body: { childName: "Sam", age: 4, topic: "bedtime", moral: "rest" }, answered: /"pages"/ },
+    { name: "Kid · generate-bedtime-story", route: "/generate-bedtime-story", body: { childName: "Sam", age: 4, dayEvents: [{ kind: "moment", description: "Built a tall tower", time: "17:00" }] }, answered: /"pages"/ },
     { name: "Kid · generate-adventure", route: "/generate-adventure", body: { childProfile: CHILD }, answered: /"scenes"/ },
   ];
 

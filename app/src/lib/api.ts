@@ -396,8 +396,6 @@ export const api = {
   generatePlan: (payload: { challengeTopic: string; childProfile: ChildProfile; recentTypeCounts?: { type: string; count: number }[] }) =>
     // B-ASKJB-25: the family's language reaches the plan prompt.
     post<ActionPlan>("/api/generate-plan", { ...payload, language: getAiLanguage() }),
-  generateStory: (payload: { childName: string; age: number; topic: string; moral: string }) =>
-    post<BedtimeStory>("/api/generate-story", payload),
   // AP-057: Bedtime Stories — day-rooted, avatar-starring nightly story.
   // Runs escalation screen + redaction on the server; generate-and-discard (no library persistence).
   generateBedtimeStory: (payload: {

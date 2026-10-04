@@ -55,7 +55,6 @@ const cases = [
   ["extract-log", { message: "We waited together before leaving.", childProfile }, { notes: UNSAFE }],
   ["vision", { image, childProfile }, { observations: [UNSAFE] }],
   ["generate-plan", { challengeTopic: "Taking turns", childProfile }, { phases: [{ steps: [{ text: UNSAFE }] }] }],
-  ["generate-story", { childName: "Noa", age: 4, topic: "Taking turns", moral: "Sharing" }, { pages: [UNSAFE] }],
   ["generate-bedtime-story", { childName: "Noa", age: 4, dayEvents: [{ description: "Built a tower", tone: "positive" }] }, { pages: [UNSAFE] }],
   ["generate-adventure", { childProfile }, { title: "Play", scenes: [{ prompt: "Pick a block", skill: "logic", choices: [{ text: "Blue", correct: true, feedback: UNSAFE }, { text: "Red", correct: false, feedback: "Try again" }, { text: "Green", correct: false, feedback: "Try again" }] }] }],
 ] as const;

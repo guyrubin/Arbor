@@ -10,6 +10,8 @@ export const CHILD_SUBCOLLECTIONS = [
   "behaviorLogs",
   "milestones",
   "actionPlans",
+  // Legacy erase coverage (B-DATA-04): no writer or reader since the
+  // story-book surface left; kept so stored stories still export + erase.
   "savedStories",
   "contacts",
   "weeklyReports",
@@ -39,6 +41,8 @@ export const CHILD_SUBCOLLECTIONS = [
   "devScoreSnapshots",
   "routines",
   "goalObservations",
+  // Legacy erase coverage (B-DATA-04): no live sink; kept so stored goal
+  // records still export (Art. 15/20) and erase (Art. 17).
   "goals",
   "practiceEvents",
   "speechAttempts",

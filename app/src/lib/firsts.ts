@@ -52,8 +52,10 @@ export interface FirstsInput {
   momentCount: number;
   /** Milestones the parent has noticed (checked). */
   milestoneCount: number;
-  /** Stories or comics saved. */
-  storyCount: number;
+  /** Stories or comics saved. Optional since B-DATA-04: the story-book state
+   *  that fed it was cut (it was always 1 — a seeded sample — so "first
+   *  story" fired for every family). Absent reads 0. */
+  storyCount?: number;
   /** Distinct day keys ("YYYY-MM-DD") that carry at least one moment. */
   momentDays: readonly string[];
   /** Whole days since the family started (0 on the first day). */
@@ -84,7 +86,7 @@ export function detectFirsts(input: FirstsInput, state: FirstsState): FirstMomen
 
   const moments = Math.max(0, Math.trunc(input.momentCount) || 0);
   const milestones = Math.max(0, Math.trunc(input.milestoneCount) || 0);
-  const stories = Math.max(0, Math.trunc(input.storyCount) || 0);
+  const stories = Math.max(0, Math.trunc(input.storyCount ?? 0) || 0);
   const daysWithMoments = new Set(input.momentDays ?? []).size;
   const elapsed = Math.max(0, Math.trunc(input.daysSinceStart) || 0);
 

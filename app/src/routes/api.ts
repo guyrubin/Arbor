@@ -2863,48 +2863,9 @@ RULES:
     }
   });
 
-  router.post("/generate-story", async (req, res) => {
-    const { childName, age, topic, moral } = req.body;
-    const escalationMatch = screenForImmediateEscalation({ topic, moral });
-    if (escalationMatch) {
-      res.status(409).json({
-        error: "Professional support recommended",
-        details: `This story topic may require professional or urgent assessment before Arbor generates child-facing narrative support. Category: ${escalationMatch.category}.`,
-        escalationCategory: escalationMatch.category
-      });
-      return;
-    }
-
-    try {
-      const privacy = createRedaction(childName);
-      const prompt = `
-${NON_DIAGNOSTIC_CONTRACT}
-Create an Arbor transition story for ${childName}, age ${age}.
-Topic: ${topic}
-Moral / Target skill: ${moral}
-Return JSON with title, pages, illustrationPrompt, discussionQuestions, summary.
-`;
-      await sendScreenedJson(res, privacy.restoreDeep(await modelProvider.generateJson({
-        route: "creative_low_risk",
-        prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
-        schema: {
-          type: Type.OBJECT,
-          required: ["title", "pages", "illustrationPrompt", "discussionQuestions", "summary"],
-          properties: {
-            title: { type: Type.STRING },
-            pages: { type: Type.ARRAY, items: { type: Type.STRING } },
-            illustrationPrompt: { type: Type.STRING },
-            discussionQuestions: { type: Type.ARRAY, items: { type: Type.STRING } },
-            summary: { type: Type.STRING }
-          }
-        },
-        temperature: 0.7
-      })));
-    } catch (error: any) {
-      logger.error("Arbor Story Error", error, { requestId: requestIdOf(req) });
-      res.status(500).json({ error: "Failed to generate Arbor supportive story", details: error.message });
-    }
-  });
+  // B-DATA-04: the topic/moral story-book route was cut — no screen called it
+  // since the story-book surface left; /generate-bedtime-story and
+  // /generate-hero-journey are the two story routes.
 
   // Hero Journey: personalize a FIXED, vetted story spine to the child. The plot
   // comes from the catalog (lib/heroJourneys) — the model only writes narration.
@@ -3048,7 +3009,7 @@ ${languageDirective}`;
   });
 
   // AP-057: Bedtime Stories — day-rooted, avatar-starring nightly story.
-  // Distinct from /generate-story (topic/moral) and /generate-hero-journey (fixed spine).
+  // Distinct from /generate-hero-journey (fixed spine).
   // BINDING SAFETY CONDITIONS (all enforced here):
   //   1. ESCALATION SCREEN on raw day-event text BEFORE generation (→ 409 if triggered).
   //   2. REDACTION at the generation seam: createRedaction(childName) wraps the model call.
@@ -3069,7 +3030,7 @@ ${languageDirective}`;
     // ── SAFETY CONDITION 1: ESCALATION SCREEN on the actual day-derived input ──
     // Screen every event description. A logged injury / abuse disclosure /
     // regression event MUST never seed a cheerful bedtime story — return 409 before
-    // any generation, matching the same non-diagnostic contract as /generate-story.
+    // any generation, matching the same non-diagnostic contract as the other story routes.
     const { buildEscalationInput } = await import("../lib/bedtimeStories.js");
     const escalationInput = buildEscalationInput(
       dayEvents.map((e: Record<string, unknown>) => ({
@@ -3104,7 +3065,7 @@ ${languageDirective}`;
         language: language === "he" ? "he" : "en",
       });
 
-      // Prepend NON_DIAGNOSTIC_CONTRACT (same as /generate-story and /generate-hero-journey).
+      // Prepend NON_DIAGNOSTIC_CONTRACT (same as /generate-hero-journey).
       // OBJ-STORIES-01: the story's `summary` is the parent-facing "For the
       // family" line. Ask for plain parent words in the prompt AND enforce
       // them on the way out (below) — a clause is a request, not a guarantee.

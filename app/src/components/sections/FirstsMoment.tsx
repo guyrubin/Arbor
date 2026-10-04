@@ -60,7 +60,7 @@ function momentDaysOf(logs: ReadonlyArray<{ timestamp?: string }>): string[] {
 const DAY_MS = 86_400_000;
 
 export default function FirstsMoment() {
-  const { childProfile, behaviorLogs, milestones, currentStory } = useArbor();
+  const { childProfile, behaviorLogs, milestones } = useArbor();
   const { t } = useLanguage();
   const [dismissed, setDismissed] = useState(false);
 
@@ -89,14 +89,13 @@ export default function FirstsMoment() {
         {
           momentCount: behaviorLogs?.length ?? 0,
           milestoneCount: (milestones ?? []).filter((m) => m.checked).length,
-          storyCount: currentStory ? 1 : 0,
           momentDays,
           daysSinceStart,
         },
         loadState(childId),
       ),
     );
-  }, [childId, behaviorLogs, milestones, currentStory, momentDays, daysSinceStart]);
+  }, [childId, behaviorLogs, milestones, momentDays, daysSinceStart]);
 
   const dismiss = useCallback(() => {
     if (childId && first) {

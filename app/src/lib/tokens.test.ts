@@ -671,7 +671,6 @@ const RGBA_BASELINE: Record<string, number> = {
   "components/ui/HeroAvatar.tsx": 2,
   "components/ui/Modal.tsx": 1,
   "components/ui/playkit.tsx": 8,
-  "components/ui/ProgressRing.tsx": 1,
   "components/ui/ProvenanceBadge.tsx": 1,
   "context/ToastContext.tsx": 3,
   "index.css": 76,
