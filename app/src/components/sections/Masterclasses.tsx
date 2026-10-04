@@ -2,7 +2,6 @@ import React, { useEffect, useState, useSyncExternalStore } from "react";
 import { motion } from "motion/react";
 import { celebrate } from "../../lib/celebrate";
 import { Icon } from "../ui/Icon";
-import { SpineRibbon } from "../ui/SpineRibbon";
 import { EvidenceChip } from "../ui/EvidenceChip";
 import { cardCls, IconBadge, PASTEL, type PastelKey } from "../ui/kit";
 import { useLanguage } from "../../context/LanguageContext";
@@ -83,7 +82,7 @@ const loadReflection = (): Record<string, string> => {
  *  the parent's own competence (the calm, competent adult). Text-first, bilingual. */
 export default function Masterclasses() {
   const { t, aiLang } = useLanguage();
-  const { childProfile, setActiveTab, behaviorLogs, savedLearnIds, requestLearnRead } = useArbor();
+  const { childProfile, behaviorLogs, savedLearnIds, requestLearnRead } = useArbor();
   const he = aiLang === "he";
   const [openId, setOpenId] = useState<string | null>(null);
   const [done, setDone] = useState<Record<string, boolean>>({});
@@ -143,16 +142,12 @@ export default function Masterclasses() {
   if (open) return <Reader m={open} he={he} isDone={!!done[open.id]} onDone={() => markDone(open.id)} onBack={() => setOpenId(null)} frameLabel={frameLabel(open.frame)} tone={FRAME_TONE[open.frame]} reflection={reflection[open.id] || ""} onReflect={(val) => saveReflection(open.id, val)} />;
 
   // ── Catalog ──────────────────────────────────────────────────────────────
-  const doneCount = Object.values(done).filter(Boolean).length;
-  const total = MASTERCLASSES.length;
-  const allDone = doneCount >= total;
   const childName = (childProfile.name || "").split(" ")[0] || (he ? "ילדכם" : "your child");
 
-  // E2 hero — the next unfinished course drives the ONE CTA and the
-  // minutes-to-next count. CLINICAL FIREWALL: the stat trio is counts and a
-  // plain duration fact only (total courses / completed / minutes to next).
-  // There is no per-course "started" state in the app — we render the honest
-  // catalog count instead of fabricating one.
+  // E2 hero — the next unfinished course drives the fallback CTA.
+  // B-PLAY-18: the header stat trio (courses / completed / minutes) and the
+  // catalogue completion bar are gone — scorekeeping on a reading hub. "Done"
+  // stays on each card; the reading time of today's pick rides its own line.
   // W0.7: the ONE CTA points at the next unfinished course the parent can SEE
   // (the age-visible catalog), never at an age-hidden one.
   const nextCourse = catalog.find((m) => !done[m.id]);
@@ -203,15 +198,8 @@ export default function Masterclasses() {
           ? t("elev.learnCare.pick.why.focus", { name: childName })
           : t("elev.learnCare.pick.why.age", { name: childName });
 
-  const heroStats = [
-    { value: total, label: t("elev.hero.academy.stat.courses") },
-    { value: doneCount, label: t("elev.hero.academy.stat.completed") },
-    ...(todaysRead
-      ? [{ value: todaysRead.card.minutes, label: t("elev.learnCare.pick.stat.minutes") }]
-      : nextCourse
-        ? [{ value: nextCourse.durationMin, label: t("elev.hero.academy.stat.minNext") }]
-        : []),
-  ];
+  // A plain duration fact about the ONE move (never a completion count).
+  const pickMinutes = todaysRead ? todaysRead.card.minutes : nextCourse ? nextCourse.durationMin : null;
 
   // ── The Learning Map rail ───────────────────────────────────────
   // Declared ONCE and placed in exactly one of two mutually exclusive slots:
@@ -259,33 +247,14 @@ export default function Masterclasses() {
         </div>
       )}
 
-      {/* Catalog-wide progress — relocated beneath the Learning Map. Gentle
-          continuity, never gamified pressure. */}
-      {doneCount > 0 && (
-        <div className="flex items-center gap-3">
-          <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--arbor-paper-deep)" }}>
-            <div className="h-full rounded-full transition-all" style={{ width: `${(doneCount / total) * 100}%`, background: "var(--arbor-green-ink)" }} />
-          </div>
-          <span className="text-[12px] font-bold whitespace-nowrap" style={{ color: allDone ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>
-            {allDone ? t("master.progress.all") : t("master.progress.count", { done: doneCount, total })}
-          </span>
-        </div>
-      )}
+      {/* B-PLAY-18: the catalogue completion bar ("{done} of {total}") was
+          removed — a progress meter on parent reading is scorekeeping. */}
     </>
   );
 
-  // The spine ribbon travels with the rail: it is the same "what tunes this
-  // catalogue" material, and on a phone it was three more modules of it
-  // standing between the hero and the first course.
-  const spineRibbon = (
-      <SpineRibbon
-        tone="sky"
-        icon="account_tree"
-        text={t("elev.spine.academy")}
-        onFollow={() => setActiveTab("development")}
-        testId="academy-spine-ribbon"
-      />
-  );
+  // B-PLAY-18: the spine ribbon ("Courses follow what you notice on the
+  // Development Map") is removed — the claim is unverified (FU#23): the
+  // catalogue order does not read the map.
 
   return (
     <>
@@ -299,11 +268,11 @@ export default function Masterclasses() {
           passed to HubHero as a prop, so the stamp rides its wrapper. */}
       <header data-primary-move="open-todays-pick" data-testid="academy-hub-hero" className="mx-auto mb-6 w-full min-w-0 max-w-[1180px]">
         <h1 className="text-2xl sm:text-3xl leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("elev.hero.academy.title", { name: childName })}</h1>
-        <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs" style={{ color: "var(--arbor-muted)" }}>{heroStats.map((stat) => <li key={stat.label}>{stat.value} {stat.label}</li>)}</ul>
         {(todaysRead || nextCourse) && <section className="mt-4 border-y py-4 flex flex-wrap items-center justify-between gap-3" style={{ borderColor: "var(--arbor-rule)" }}>
           <div className="min-w-0 max-w-[65ch] flex-1 basis-[240px]">
             <h2 className="text-lg font-bold leading-snug" dir="auto" style={{ color: "var(--arbor-ink)" }}>{todaysRead ? (he ? todaysRead.card.title.he : todaysRead.card.title.en) : (he ? nextCourse!.titleHe : nextCourse!.title)}</h2>
             {todaysRead && <p data-testid="academy-pick-why" dir="auto" className="mt-1 text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{pickWhy}</p>}
+            {pickMinutes != null && <p data-testid="academy-pick-minutes" className="mt-1 text-xs" style={{ color: "var(--arbor-muted)" }}>{pickMinutes} {t(todaysRead ? "elev.learnCare.pick.stat.minutes" : "elev.hero.academy.stat.minNext")}</p>}
           </div>
           <button data-testid="academy-hero-cta" onClick={() => todaysRead ? requestLearnRead({ cardId: todaysRead.card.id, source: "learn-hub-todays-pick" }) : setOpenId(nextCourse!.id)} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold" style={{ background: "var(--arbor-green-ink)", color: "var(--arbor-paper-elevated)" }}><Icon name="menu_book" size={16} />{t(todaysRead ? "elev.learnCare.pick.cta" : "elev.hero.academy.cta")}</button>
         </section>}
@@ -327,7 +296,6 @@ export default function Masterclasses() {
           courses, on the surface whose ONE job is courses. Nothing is removed
           (law 6): below `md` the rail becomes one collapsed disclosure BELOW the
           gallery, and from `md` up it is the left column exactly as designed. */}
-      {!phone && <div data-module="academy-spine" style={{ display: "contents" }}>{spineRibbon}</div>}
 
       {/* Design's two-column shell: left = the Learning Map rail (the explicit
           development-map spine — courses matched to where the child is growing),
@@ -462,7 +430,6 @@ export default function Masterclasses() {
             {t("academy.rail.more")}
           </summary>
           <div className="space-y-5 pb-3 pt-4">
-            {spineRibbon}
             {railStack}
           </div>
         </details>

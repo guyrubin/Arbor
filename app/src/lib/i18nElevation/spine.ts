@@ -14,12 +14,10 @@ export const en: Record<string, string> = {
   "elev.spine.journal": "Saved moments join {name}'s weekly story",
   "elev.spine.behaviors": "Logged moments update the Development Map",
   "elev.spine.growth": "Skills you notice tune the Academy's recommendations",
-  "elev.spine.academy": "Courses follow what you notice on the Development Map",
 };
 
 export const he: Record<string, string> = {
   "elev.spine.journal": "רגעים שנשמרים מצטרפים לסיפור השבועי של {name}",
   "elev.spine.behaviors": "רגעים שתיעדתם מעדכנים את מפת ההתפתחות",
   "elev.spine.growth": "כישורים שאתם מבחינים בהם מכוונים את ההמלצות באקדמיה",
-  "elev.spine.academy": "הקורסים מותאמים למה שאתם מבחינים בו במפת ההתפתחות",
 };

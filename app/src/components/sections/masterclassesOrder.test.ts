@@ -79,26 +79,25 @@ describe("R17 · the Academy hub opens on courses", () => {
     for (const module of ["<AcademyForYou", "<ScholarHubCard", "{railStack}", "master.progress.count"]) {
       expect(between, `${module} is still above the gallery`).not.toContain(module);
     }
-    // The spine ribbon is above the gallery only on a wide viewport. H3b/R17
-    // wrapped it in its budget stamp, so the render site is the stamped div —
-    // the `!phone` gate is unchanged and is what this rule is about.
-    expect(between).toContain(
-      '{!phone && <div data-module="academy-spine" style={{ display: "contents" }}>{spineRibbon}</div>}',
-    );
-    // …and it is the ONLY ribbon mount above the gallery, so the gate cannot be
-    // sidestepped by a second, ungated one.
-    expect([...between.matchAll(/\{spineRibbon\}/g)]).toHaveLength(1);
+    // B-PLAY-18: no spine ribbon, no stat list, no completion bar — the
+    // hero, the pick (title, why-line, minutes) and the gallery only.
+    expect(between).not.toContain("academy-spine");
+    expect(between).not.toContain("{spineRibbon}");
     expect(between).not.toContain("<SpineRibbon");
+    expect(between).not.toContain("heroStats");
+    expect(between).toContain('data-testid="academy-pick-minutes"');
   });
 
-  it("NEGATIVE CONTROL: an ungated ribbon above the gallery fails the same rule", () => {
-    // What R17 measured at 1,675 px: the ribbon stacked into the phone's single
-    // column between the hero and the catalogue.
-    const body = hubBody(source);
-    const gallery = body.indexOf('data-testid="academy-courses"');
-    const between =
-      body.slice(body.indexOf('data-testid="academy-hub-hero"'), gallery) + "{spineRibbon}";
-    expect([...between.matchAll(/\{spineRibbon\}/g)].length).toBeGreaterThan(1);
+  it("B-PLAY-18: no scorekeeping anywhere on the hub — no stat list, no completion bar, no academy-spine module", () => {
+    expect(source).not.toMatch(/const heroStats = \[/);
+    expect(source).not.toContain("master.progress.count");
+    expect(source).not.toContain("master.progress.all");
+    expect(source).not.toMatch(/doneCount \/ total/);
+    expect(source).not.toContain('data-module="academy-spine"');
+    // "Done" stays on each card.
+    expect(source).toContain('t("master.done")');
+    // NEGATIVE CONTROL: the shipped bar trips the same rule.
+    expect('style={{ width: `${(doneCount / total) * 100}%`').toMatch(/doneCount \/ total/);
   });
 
   it("the desktop two-column shell is unchanged: rail left, gallery right at xl", () => {

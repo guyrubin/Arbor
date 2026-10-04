@@ -41,7 +41,8 @@ const PRE_CHANGE = `
 const RANKED_PICK = /todaysLearnPick\(\s*LEARN_CARDS/;
 const SEEDED_DAY = /dayKey:\s*pickDayKey\(/;
 const CTA_OPENS_PICK = /onClick=\{\(\) => todaysRead \? requestLearnRead\(\{ cardId: todaysRead\.card\.id/;
-const PICK_MINUTES = /value:\s*todaysRead\.card\.minutes/;
+// B-PLAY-18: the stat trio is gone; the pick's reading minutes ride its own line.
+const PICK_MINUTES = /const pickMinutes = todaysRead \? todaysRead\.card\.minutes/;
 const WHY_LINE = /data-testid="academy-pick-why"/;
 
 describe("LC-04 · the hub hero runs the real ranking", () => {
@@ -65,7 +66,8 @@ describe("LC-04 · the hub hero runs the real ranking", () => {
     expect(CTA_OPENS_PICK.exec(PRE_CHANGE)).toBeNull();
   });
 
-  it("the stat trio shows the pick's own reading minutes", () => {
+  it("the pick line shows the pick's own reading minutes (no stat trio)", () => {
+    expect(src).not.toMatch(/const heroStats = \[/);
     expect(PICK_MINUTES.exec(src)).toBeTruthy();
     expect(PICK_MINUTES.exec(PRE_CHANGE)).toBeNull();
   });

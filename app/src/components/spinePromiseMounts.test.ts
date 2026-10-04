@@ -3,7 +3,8 @@
  * Screening.firewall.test.ts style; node env, no DOM).
  *
  * 1.5 — SpineRibbon is mounted on Journal (→ weekly story) and Academy/
- *       Masterclasses (→ Development Map), each with its registered
+ *       Masterclasses (→ Development Map) — B-PLAY-18 removed the Masterclasses
+ *       mount (unverified claim, FU#23), each with its registered
  *       elev.spine.* string, placed BELOW the header/hero region.
  *       Rule A: SpineRibbon never mounts on Today (OverviewTab).
  * 1.6 — the first-run promise renders as the FINAL card of OnboardingFlow's
@@ -25,10 +26,10 @@ const overview = read("tabs/OverviewTab.tsx");
 const onboarding = read("auth/OnboardingFlow.tsx");
 
 describe("masterplan 1.5 — SpineRibbon mounts", () => {
-  it("the registered elev.spine.* strings cover both surfaces (en+he)", () => {
+  it("the registered elev.spine.* strings: journal kept, academy deleted with its mount (B-PLAY-18)", () => {
     for (const dict of [spineEn, spineHe]) {
       expect(dict["elev.spine.journal"]).toBeTruthy();
-      expect(dict["elev.spine.academy"]).toBeTruthy();
+      expect(dict["elev.spine.academy"]).toBeUndefined();
     }
   });
 
@@ -46,37 +47,13 @@ describe("masterplan 1.5 — SpineRibbon mounts", () => {
     expect(timeline).toContain("onClick={() => setActiveTab(d.tab)}");
   });
 
-  it("Masterclasses imports and mounts SpineRibbon with the academy spine string", () => {
-    expect(academy).toMatch(/import \{ SpineRibbon \} from "\.\.\/ui\/SpineRibbon"/);
-    expect(academy).toMatch(/<SpineRibbon\b/);
-    expect(academy).toContain('t("elev.spine.academy")');
-    expect(academy).toContain('testId="academy-spine-ribbon"');
-    // One-direction deep link → the Development Map that tunes the catalog.
-    expect(academy).toMatch(/onFollow=\{\(\) => setActiveTab\("development"\)\}/);
-  });
-
-  it("Academy ribbon follows the featured-read header and precedes the wide catalogue", () => {
-    // R17: the ribbon is now DECLARED above the return (`const spineRibbon`)
-    // so one definition can serve two mutually exclusive slots — the wide
-    // layout and the phone's disclosure. What this rule is about is where it
-    // RENDERS, so the index to compare is the render site, not the JSX literal.
-    // H3b/R17 additionally wrapped that render site in the leaf's budget stamp
-    // (`data-module="academy-spine"`), so the literal to find is the stamped
-    // div. The `!phone` gate and the placement it guards are unchanged.
-    const mount = academy.indexOf('{!phone && <div data-module="academy-spine"');
-    expect(mount, "the academy ribbon render site was not found").toBeGreaterThan(-1);
-    expect(mount).toBeGreaterThan(academy.indexOf('data-testid="academy-hub-hero"'));
-    expect(mount).toBeLessThan(academy.indexOf('data-module="academy-catalogue"'));
-    // NEGATIVE CONTROL for that gate: exactly one ribbon mount stands above the
-    // course gallery, and it is the phone-gated one. A second, ungated mount
-    // here is the 1,675 px phone regression R17 measured.
-    const gallery = academy.indexOf('data-testid="academy-courses"');
-    expect([...academy.slice(0, gallery).matchAll(/\{spineRibbon\}/g)]).toHaveLength(1);
-    // On a phone it is demoted further still — inside the disclosure that sits
-    // below the course gallery.
-    const disclosure = academy.indexOf('data-testid="academy-rail-disclosure"');
-    expect(disclosure).toBeGreaterThan(gallery);
-    expect(academy.lastIndexOf("{spineRibbon}")).toBeGreaterThan(disclosure);
+  it("B-PLAY-18: Masterclasses no longer imports or mounts SpineRibbon (no academy-spine module)", () => {
+    expect(academy.length).toBeGreaterThan(1000);
+    expect(academy).not.toMatch(/import \{ SpineRibbon \}/);
+    expect(academy).not.toMatch(/<SpineRibbon\b/);
+    expect(academy).not.toContain("academy-spine");
+    expect(academy).not.toContain("{spineRibbon}");
+    expect(academy).not.toContain('t("elev.spine.academy")');
   });
 
   it("Rule A — SpineRibbon never mounts on Today (OverviewTab)", () => {
@@ -98,7 +75,9 @@ describe("masterplan 1.6 — first-run promise in the Ready step", () => {
     expect(stepReady).toContain("<PromiseCard name={name} />");
     // FINAL card: after the summary rows, before the submit CTA.
     const mount = stepReady.indexOf("<PromiseCard");
-    expect(mount).toBeGreaterThan(stepReady.indexOf("ob.step.ready.labelAvatar"));
+    // B-SHELL-09: the last summary row is Domains (the Avatar row went with the step).
+    expect(stepReady.indexOf("ob.step.ready.labelDomains")).toBeGreaterThan(-1);
+    expect(mount).toBeGreaterThan(stepReady.indexOf("ob.step.ready.labelDomains"));
     expect(mount).toBeLessThan(stepReady.indexOf("onClick={onSubmit}"));
   });
 
