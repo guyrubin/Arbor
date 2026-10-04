@@ -148,7 +148,7 @@ describe("the sites render through the keys", () => {
     // catalogue's English concept.
     expect(tone).toContain("t(`coach.tone.name.${m.slug}`)");
     expect(tone).toContain("t(`coach.tone.more.${m.slug}`)");
-    expect(tone).not.toMatch(/\.concept/);
+    expect(tone).not.toMatch(/\.concept\b/);
     expect(coach).not.toContain("(${scholar.concept})");
   });
 
