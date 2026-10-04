@@ -899,7 +899,6 @@ export const en: Dict = {
   "sec.mem.sub": "The facts about {name} that Arbor remembers, only what you approve. Source-linked, time-stamped and forgettable, always.",
   "sec.family.title": "Family formation",
   "sec.family.sub": "The long game: values, rituals and stories that form a family over years, not days.",
-  "sec.findpro.sub": "A curated, Arbor-verified network of child-development specialists, coordinated around {name}, with your context ready to share.",
   "sec.master.eyebrow": "Parent learning",
   "sec.master.title": "Parent masterclasses",
   // ENG-07: "Our first lessons are in production; here's what's coming."
@@ -2014,7 +2013,7 @@ export const en: Dict = {
   "nav.sub.journal": "Small moments, remembered for you",
   "nav.sub.academy": "Expert courses, matched to where you are",
   "nav.sub.ask": "A coach who knows your child",
-  "nav.sub.care": "Share with a verified professional",
+  "nav.sub.care": "Bring {name}'s record to the people who help — you choose what leaves",
   "nav.sub.profile": "Who {name} is, and who's around them",
   "nav.sub.practice": "Playful practice worlds for {name}",
   "nav.sub.stories": "Stories starring {name}",
@@ -2294,7 +2293,7 @@ export const en: Dict = {
   "academy.rail.more": "Learning Map, this week’s concept and progress",
   "care.packet.title": "Your summary",
   "care.lead": "Built from {name}'s record. Uncheck anything you'd rather keep private.",
-  "care.trust": "Nothing leaves your device until you choose · GDPR/COPPA",
+  "care.trust": "Nothing leaves your device until you choose",
   /* ════ KID-1 — Kid Mode chrome (kid register, comic voice — NEVER referenced
      from parent surfaces; register separation is enforced by a test in
      components/kidmode/kidMode.test.ts). Values are the live EN copy moved out
@@ -3261,7 +3260,6 @@ export const he: Dict = {
   "sec.mem.sub": "העובדות על {name} שארבור זוכר, רק מה שאתם מאשרים. מקושר למקור, מתוארך, וניתן לשכוח תמיד.",
   "sec.family.title": "בניית משפחה",
   "sec.family.sub": "המשחק הארוך: ערכים, טקסים וסיפורים שמעצבים משפחה לאורך שנים, לא ימים.",
-  "sec.findpro.sub": "רשת אנשי מקצוע מובחרת ומאומתת בידי ארבור בתחום התפתחות הילד, מתואמת סביב {name}, עם ההקשר שלכם מוכן לשיתוף.",
   "sec.master.eyebrow": "למידה להורים",
   "sec.master.title": "מאסטרקלאס להורים",
   "sec.master.sub": "שיעורים קצרים ואיכותיים שהופכים רגעים קשים להורות בטוחה.",
@@ -4304,7 +4302,7 @@ export const he: Dict = {
   "nav.sub.journal": "רגעים קטנים, נשמרים בשבילכם",
   "nav.sub.academy": "קורסים ממומחים, מותאמים לאן שאתם נמצאים",
   "nav.sub.ask": "מאמן שמכיר את הילד שלכם",
-  "nav.sub.care": "לשתף עם איש מקצוע מאומת",
+  "nav.sub.care": "התיעוד של {name} לאנשים שעוזרים — אתם בוחרים מה יוצא",
   "nav.sub.profile": "מי {name}, ומי סביבו",
   "nav.sub.practice": "עולמות תרגול משחקיים עבור {name}",
   "nav.sub.stories": "סיפורים בכיכוב {name}",
@@ -4562,7 +4560,7 @@ export const he: Dict = {
   "academy.rail.more": "מפת הלמידה, מושג השבוע וההתקדמות",
   "care.packet.title": "הסיכום שלכם",
   "care.lead": "נבנה מהנתונים של {name}. בטלו סימון של כל מה שתעדיפו לשמור פרטי.",
-  "care.trust": "כלום לא יוצא מהמכשיר עד שתבחרו · GDPR/COPPA",
+  "care.trust": "כלום לא יוצא מהמכשיר עד שתבחרו",
   /* ════ KID-1 — Kid Mode chrome (HE) — FIRST-PASS HEBREW, GD-6/GD-7 STILL OPEN.
      Until 22 Sep 2026 every value here was the EN string, so an IL-first
      product shipped a fully English child home to a Hebrew-native five-year
