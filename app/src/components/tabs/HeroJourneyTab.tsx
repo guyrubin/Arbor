@@ -42,6 +42,7 @@ import { EmptyState } from "../ui/EmptyState";
 import { SectionSkeleton } from "../ui/Skeleton";
 import { statesText } from "../../lib/i18nElevation/states";
 import { HeroAvatar, resolveHeroUrl } from "../ui/HeroAvatar";
+import HeroCreateDialog from "../profile/HeroCreateDialog";
 import HeroCrest from "../ui/HeroCrest";
 import { ArborMascot } from "../ui/ArborMascot";
 import WorldScene from "../practice/WorldScene";
@@ -147,7 +148,9 @@ const METRIC_COLORS: Record<DevelopmentMetricId, string> = METRIC_VARS;
 
 
 export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: string } = {}) {
-  const { childProfile, setActiveTab } = useArbor();
+  const { childProfile } = useArbor();
+  // B-PLAY-15: the hero-first gate opens the shared create dialog in place.
+  const [heroDialogOpen, setHeroDialogOpen] = useState(false);
   // KID-05: hub tiles navigate the PARENT shell — rendered only while the
   // shell is reachable (null inside Kid Mode, where the call would be a
   // silent no-op and a dead button in front of the child).
@@ -700,9 +703,17 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                 ? `הסיפורים מצוירים סביב הדמות המאוירת של ${heroName} — לא סביב תמונה אמיתית.`
                 : `Stories are drawn around ${isolate(heroName)}'s illustrated character — never around a real photo.`}
             </p>
-            <PlayButton tone="clay" onClick={() => setActiveTab("profile")}>
+            {/* B-PLAY-15: create the hero IN PLACE (shared dialog) — the page
+                re-renders with the hero, no hub switch. */}
+            <PlayButton tone="clay" onClick={() => setHeroDialogOpen(true)}>
               <Icon name="auto_awesome" size={16} /> {he ? `צרו את הגיבור של ${isolate(heroName)}` : `Create ${isolate(heroName)}'s hero`}
             </PlayButton>
+            <HeroCreateDialog
+              open={heroDialogOpen}
+              childId={childProfile.id}
+              childName={heroName}
+              onClose={() => setHeroDialogOpen(false)}
+            />
           </PlayPanel>
         ) : null)}
         {/* STORY WORLDS — each card is an illustrated world starring the hero */}
@@ -980,9 +991,17 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                 ? `הסיפורים מצוירים סביב הדמות המאוירת של ${heroName} — לא סביב תמונה אמיתית.`
                 : `Stories are drawn around ${isolate(heroName)}'s illustrated character — never around a real photo.`}
             </p>
-            <PlayButton tone="clay" onClick={() => setActiveTab("profile")}>
+            {/* B-PLAY-15: create the hero IN PLACE (shared dialog) — the page
+                re-renders with the hero, no hub switch. */}
+            <PlayButton tone="clay" onClick={() => setHeroDialogOpen(true)}>
               <Icon name="auto_awesome" size={16} /> {he ? `צרו את הגיבור של ${isolate(heroName)}` : `Create ${isolate(heroName)}'s hero`}
             </PlayButton>
+            <HeroCreateDialog
+              open={heroDialogOpen}
+              childId={childProfile.id}
+              childName={heroName}
+              onClose={() => setHeroDialogOpen(false)}
+            />
           </PlayPanel>
         ) : null)}
         {/* B-PLAY-11: the pack filter and the whole catalogue sit behind ONE

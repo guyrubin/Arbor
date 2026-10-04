@@ -8,6 +8,7 @@ import { RegisterShell, PlayButton, PlayPanel } from "../ui/playkit";
 import { EmptyState, GhostBlock } from "../ui/EmptyState";
 import { statesText } from "../../lib/i18nElevation/states";
 import { HeroAvatar, useHeroAvatar } from "../ui/HeroAvatar";
+import HeroCreateDialog from "../profile/HeroCreateDialog";
 import { ComicReader } from "../stories/ComicReader";
 import SavedComicReader from "../stories/SavedComicReader";
 import {
@@ -108,7 +109,7 @@ const savedMetaFingerprint = (meta: SavedComicMeta): string =>
   JSON.stringify([meta.id, meta.adventureId, meta.lang, meta.createdAt, meta.pageCount, meta.identityVersion, meta.pageKeys]);
 
 export default function ComicsTab() {
-  const { childProfile, setActiveTab, openPaywall, milestones, behaviorLogs, playLogs } = useArbor();
+  const { childProfile, openPaywall, milestones, behaviorLogs, playLogs } = useArbor();
   const { user } = useAuth();
   const { aiLang, t } = useLanguage();
   const { url: heroUrl, hasHero, name } = useHeroAvatar();
@@ -154,6 +155,8 @@ export default function ComicsTab() {
   // books are ALWAYS shown regardless of age fit — the shelf is the child's
   // own library, never pruned by a filter.
   const [showAllAges, setShowAllAges] = useState<boolean>(() => loadShowAllAges("comics"));
+  // B-PLAY-15: the hero-first gate opens the shared create dialog in place.
+  const [heroDialogOpen, setHeroDialogOpen] = useState(false);
   const childMonths = ageMonthsFromProfile(childProfile);
   const toggleShowAllAges = () => {
     setShowAllAges((prev) => {
@@ -308,10 +311,18 @@ export default function ComicsTab() {
               ? `צרו ל${name} דמות מאוירת משלו — ומשם הוא מככב בכל סיפור, קומיקס והרפתקה באקדמיה של ארבור.`
               : `Create ${isolate(name)}'s own illustrated character — then they star in every Academy story, comic and adventure across Arbor.`}
           </p>
-          <PlayButton tone="clay" onClick={() => setActiveTab("profile")}>
+          {/* B-PLAY-15: the hero is created IN PLACE — the shared dialog, no
+              hub switch; once saved, hasHero flips and the shelf renders. */}
+          <PlayButton tone="clay" onClick={() => setHeroDialogOpen(true)}>
             <Icon name="auto_awesome" size={16} /> {he ? `צרו את הגיבור של ${isolate(name)}` : `Create ${isolate(name)}'s hero`}
           </PlayButton>
         </PlayPanel>
+        <HeroCreateDialog
+          open={heroDialogOpen}
+          childId={childProfile.id}
+          childName={name}
+          onClose={() => setHeroDialogOpen(false)}
+        />
       </RegisterShell>
     );
   }

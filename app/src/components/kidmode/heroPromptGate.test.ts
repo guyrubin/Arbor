@@ -130,7 +130,9 @@ describe("HeroFirstStep — parent register, never inside Kid Mode", () => {
   });
 
   it("reuses the existing creator and the existing gate wording family", () => {
-    expect(step).toContain('import AvatarCreator from "../profile/AvatarCreator"');
+    // B-PLAY-15: through the shared create dialog, which mounts AvatarCreator.
+    expect(step).toContain('import HeroCreateDialog from "../profile/HeroCreateDialog"');
+    expect(read("profile", "HeroCreateDialog.tsx")).toContain('import AvatarCreator from "./AvatarCreator"');
     expect(step).toContain('t("elev.hero.step.title"');
     // Same phrasing as the ComicsTab / HeroJourneyTab gates, from the registry.
     const en = read("..", "lib", "i18nElevation", "heroCreate.ts");

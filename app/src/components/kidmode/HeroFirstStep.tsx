@@ -2,12 +2,8 @@ import React, { useState } from "react";
 import { Modal } from "../ui/Modal";
 import { PlayButton, PlayPanel } from "../ui/playkit";
 import { Icon } from "../ui/Icon";
-import AvatarCreator from "../profile/AvatarCreator";
-import { persistHero } from "../profile/heroPersistence";
-import { useProfile } from "../../context/ProfileContext";
-import { useToast } from "../../context/ToastContext";
+import HeroCreateDialog from "../profile/HeroCreateDialog";
 import { useLanguage } from "../../context/LanguageContext";
-import type { AvatarResult } from "../profile/avatarGate";
 
 /**
  * HeroFirstStep — the ONE parent-side step before Kid Mode, for a child who has
@@ -27,9 +23,10 @@ import type { AvatarResult } from "../profile/avatarGate";
  *  - The child is never blocked — "Continue with Sprout" enters Kid Mode exactly
  *    as today, and the step is offered once per session per child
  *    (heroPromptGate), so hand-over never becomes a nag.
- *  - The generated hero is written with the SAME patch shape the profile drawer
- *    uses (heroPersistence), and a failed write is said out loud instead of
- *    being swallowed.
+ *  - B-PLAY-15: the creator + persist body is the shared HeroCreateDialog (the
+ *    Stories and Comics gates open the same dialog); the hero is written with
+ *    the SAME patch shape the profile drawer uses (heroPersistence), a failed
+ *    write is said out loud, and Kid Mode opens only past that guard.
  */
 export default function HeroFirstStep({
   open,
@@ -45,28 +42,12 @@ export default function HeroFirstStep({
   onEnterKidMode: () => void;
   onClose: () => void;
 }) {
-  const { updateChild } = useProfile();
-  const { toast } = useToast();
   const { t } = useLanguage();
   const [creatorOpen, setCreatorOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   // B-KID-05: today's drawing quota is spent. Say so, drop the create door
   // (nothing to retry today), and keep "Continue with Sprout" — never blocked.
   const [resting, setResting] = useState(false);
-
-  const saveHero = async (result: AvatarResult) => {
-    setSaving(true);
-    try {
-      const persisted = await persistHero(childId, result, { updateChild });
-      if (!persisted) {
-        toast(t("elev.hero.save.failed"), "error");
-        return;
-      }
-      onEnterKidMode();
-    } finally {
-      setSaving(false);
-    }
-  };
 
   return (
     <>
@@ -102,19 +83,18 @@ export default function HeroFirstStep({
         </PlayPanel>
       </Modal>
 
-      {/* The existing creator, mounted — not a second one. */}
-      <AvatarCreator
+      {/* The shared creator dialog (B-PLAY-15) — not a second one. Kid Mode
+          opens only once the hero is persisted (onSaved). */}
+      <HeroCreateDialog
         open={creatorOpen}
         childId={childId}
         childName={childName}
         onClose={() => setCreatorOpen(false)}
+        onSaved={onEnterKidMode}
+        onSavingChange={setSaving}
         onResting={() => {
           setResting(true);
           setCreatorOpen(false);
-        }}
-        onCreated={(result) => {
-          setCreatorOpen(false);
-          void saveHero(result);
         }}
       />
     </>

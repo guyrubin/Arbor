@@ -73,10 +73,13 @@ describe("a failed child-doc write is visible to the parent", () => {
   });
 
   it("the Kid Mode hero step raises an error toast and does not hand over on a lost save", () => {
+    // B-PLAY-15: the persist body lives in the shared HeroCreateDialog; the
+    // Kid Mode step hands over through its onSaved, reached only past the guard.
+    const dialog = read("profile", "HeroCreateDialog.tsx").replace(/\r\n/g, "\n");
+    expect(dialog).toMatch(/const persisted = await persistHero\(childId, result, \{ updateChild \}\);\s*\n\s*if \(!persisted\) \{\s*\n\s*toast\(t\("elev\.hero\.save\.failed"\), "error"\);\s*\n\s*return;/);
+    expect(dialog).toMatch(/return;\s*\n\s*\}\s*\n\s*onSaved\?\.\(\);/);
     const step = read("kidmode", "HeroFirstStep.tsx");
-    expect(step).toMatch(/const persisted = await persistHero\(childId, result, \{ updateChild \}\);\s*\n\s*if \(!persisted\) \{\s*\n\s*toast\(t\("elev\.hero\.save\.failed"\), "error"\);\s*\n\s*return;/);
-    // onEnterKidMode is reached only past that guard.
-    expect(step).toMatch(/return;\s*\n\s*\}\s*\n\s*onEnterKidMode\(\);/);
+    expect(step).toContain("onSaved={onEnterKidMode}");
   });
 
   it("the hero leaves the creator already inside the byte budget", () => {
