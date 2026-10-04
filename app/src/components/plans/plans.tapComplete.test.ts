@@ -262,13 +262,13 @@ describe("B-ASKJB-NEW-1g/1h — plan echo", async () => {
     recommendation: "Same three books", source: "plan" as const, ...step, outcome: o, outcomeAt: at, status: "completed" as const,
   });
   it("yesterday's helped → the yesterday line; older → last time; none → first", () => {
-    expect(planEcho(plan.id, [row("helped", "2026-10-03T19:00:00Z")], ref, "2026-10-04")).toEqual({ kind: "helped", step: "Same three books", yesterday: true });
-    expect(planEcho(plan.id, [row("somewhat", "2026-09-30T19:00:00Z")], ref, "2026-10-04")).toEqual({ kind: "somewhat", step: "Same three books", yesterday: false });
-    expect(planEcho(plan.id, [], ref, "2026-10-04")).toEqual({ kind: "first" });
-    expect(planEcho(plan.id, [row("not_today", "2026-10-03T19:00:00Z")], ref, "2026-10-04")).toBeNull();
+    expect(planEcho(plan.id, [row("helped", "2026-10-03T19:00:00Z")], ref, "2026-10-04", 1)).toEqual({ kind: "helped", step: "Same three books", yesterday: true });
+    expect(planEcho(plan.id, [row("somewhat", "2026-09-30T19:00:00Z")], ref, "2026-10-04", 0)).toEqual({ kind: "somewhat", step: "Same three books", yesterday: false });
+    expect(planEcho(plan.id, [], ref, "2026-10-04", 0)).toEqual({ kind: "first" });
+    expect(planEcho(plan.id, [row("not_today", "2026-10-03T19:00:00Z")], ref, "2026-10-04", 0)).toBeNull();
   });
   it("two not-todays on today's step → change this step (Adjust), never a streak or verdict", () => {
-    const e = planEcho(plan.id, [row("not_today", "2026-10-03T19:00:00Z"), row("not_today", "2026-10-02T19:00:00Z")], ref, "2026-10-04");
+    const e = planEcho(plan.id, [row("not_today", "2026-10-03T19:00:00Z"), row("not_today", "2026-10-02T19:00:00Z")], ref, "2026-10-04", 0);
     expect(e).toEqual({ kind: "not-yet-twice" });
     const html = renderToStaticMarkup(React.createElement(PlanTrackCard, {
       plan, step: { ...ref, text: "Same three books", day: 3, next: null, offerNext: false }, today: null, lang: "en", now: 0,
@@ -278,6 +278,7 @@ describe("B-ASKJB-NEW-1g/1h — plan echo", async () => {
   });
   it("every echo key exists EN + HE; no streak/score words; no colour on the line", () => {
     const keys = [planEchoKey({ kind: "first" }), planEchoKey({ kind: "not-yet-twice" }),
+      planEchoKey({ kind: "progress", done: 1 }), planEchoKey({ kind: "progress", done: 3 }),
       ...(["helped", "somewhat"] as const).flatMap((k) => [true, false].map((y) => planEchoKey({ kind: k, step: "x", yesterday: y })))];
     for (const d of [dict.en, dict.he]) for (const k of keys) {
       expect(d[k], k).toBeTruthy();
@@ -286,5 +287,45 @@ describe("B-ASKJB-NEW-1g/1h — plan echo", async () => {
     const trackSrc = readFileSync(path.join(here, "PlanTrackCard.tsx"), "utf8").replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
     const line = trackSrc.slice(trackSrc.indexOf('data-testid="plan-echo" data-echo={echo.kind} dir="auto"'), trackSrc.indexOf("</p>", trackSrc.indexOf('data-testid="plan-echo" data-echo={echo.kind} dir="auto"')));
     expect(line).not.toMatch(/--arbor-green|--arbor-coral|--arbor-peach/);
+  });
+});
+
+/** Critic r2 P0 (plans product + design): "Dylan's first step starts today."
+ *  sat above "3/7 steps done" — planEcho ignored steps done by tap. */
+describe("critic r2 — the echo reads both progress sources", async () => {
+  const { planEcho, planEchoKey, planDoneSteps } = await import("../../lib/plans");
+  const { default: PlanTrackCard } = await import("./PlanTrackCard");
+  const ref = { planId: plan.id, phaseIdx: 0, stepIdx: 1 };
+  it("done steps + zero loop rows never yields 'first' — the done count instead", () => {
+    expect(planEcho(plan.id, [], ref, "2026-10-04", 3)).toEqual({ kind: "progress", done: 3 });
+    expect(planEcho(plan.id, [], ref, "2026-10-04", 1)).toEqual({ kind: "progress", done: 1 });
+    expect(planEchoKey({ kind: "progress", done: 1 })).toBe("elev.plans.echo.progress.one");
+    expect(planEchoKey({ kind: "progress", done: 3 })).toBe("elev.plans.echo.progress.many");
+  });
+  it("planDoneSteps counts done steps across phases (status or legacy completed)", () => {
+    const p = { phases: [
+      { steps: [{ text: "a", status: "done" }, { text: "b", completed: true }, { text: "c", status: "doing" }] },
+      { steps: [{ text: "d", status: "done" }, { text: "e" }] },
+    ] } as unknown as Parameters<typeof planDoneSteps>[0];
+    expect(planDoneSteps(p)).toBe(3);
+    expect(planDoneSteps({ phases: [] } as unknown as Parameters<typeof planDoneSteps>[0])).toBe(0);
+  });
+  it("rendered EN + HE: 3/7 done with no loop rows → never the first-step line", () => {
+    for (const lang of ["en", "he"] as const) {
+      const html = renderToStaticMarkup(React.createElement(PlanTrackCard, {
+        plan, step: { ...ref, text: "Same three books", day: 1, next: null, offerNext: false }, today: null, lang, now: 0,
+        onTryIt: () => {}, onUndo: () => {}, onCheck: () => {}, onAdjust: () => {},
+        echo: planEcho(plan.id, [], ref, "2026-10-04", 3), childName: "Dylan",
+      }));
+      expect(html).toContain('data-echo="progress"');
+      expect(html).not.toMatch(/first step starts today|הצעד הראשון של/);
+      expect(html).toMatch(lang === "en" ? /3 steps done with Dylan so far/ : /כבר 3 צעדים עם ⁨?Dylan/);
+    }
+  });
+  it("PlansTab passes the plan's done count; no raw bg-white or off-scale text-[10px]", () => {
+    const src = readFileSync(path.join(here, "..", "tabs", "PlansTab.tsx"), "utf8");
+    expect(src).toContain("planDoneSteps(plan)");
+    expect(src).not.toMatch(/bg-white/);
+    expect(src).not.toMatch(/text-\[10px\]/);
   });
 });

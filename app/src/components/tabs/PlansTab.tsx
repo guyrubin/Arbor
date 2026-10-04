@@ -15,7 +15,7 @@ import PlanTrackCard, { planAdjustSeed } from "../plans/PlanTrackCard";
 import RoutinesCard from "../plans/RoutinesCard";
 import { useChildCollection } from "../../hooks/useChildCollection";
 /* B-ASKJB-28: the routines row only counts docs; their shape stays RoutinesCard's. */
-import { lastPlanOutcomes, planEcho, suggestedChallenges, todaysPlanStep } from "../../lib/plans";
+import { lastPlanOutcomes, planDoneSteps, planEcho, suggestedChallenges, todaysPlanStep } from "../../lib/plans";
 import { dayKey } from "../../practice/signals";
 import { HeroAvatar } from "../ui/HeroAvatar";
 
@@ -91,7 +91,7 @@ export default function PlansTab() {
 
       {/* Templates — start from a common challenge */}
       <div className="flex flex-wrap gap-1.5">
-        <span className="text-[10px] font-bold self-center me-1" style={{ color: "var(--arbor-muted)" }}>{t("plan.templates")}</span>
+        <span className="t-xs font-bold self-center me-1" style={{ color: "var(--arbor-muted)" }}>{t("plan.templates")}</span>
         {[
           t("plan.template.morningDeparture"),
           t("plan.template.screenShutdown"),
@@ -124,7 +124,7 @@ export default function PlansTab() {
            why-line primitive the growth cards use), so each suggestion
            carries its own evidence: a COUNT of the parent's own logs. */
         <div className="flex flex-col gap-2">
-          <span className="text-[10px] font-bold" style={{ color: "var(--arbor-green-ink)" }}>{t("plan.suggestedFor", { name: first })}</span>
+          <span className="t-xs font-bold" style={{ color: "var(--arbor-green-ink)" }}>{t("plan.suggestedFor", { name: first })}</span>
           {suggestions.map((s) => (
             <div key={s.topic} className="flex flex-col items-start gap-1">
               <button
@@ -166,7 +166,7 @@ export default function PlansTab() {
   );
 
   return (
-    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-8">
+    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
       <div className="flex items-center gap-4">
         {/* This child's plan — anchored by their own hero. Critic r1: while a
             plan exists the mascot and the intro step aside so today's step
@@ -177,6 +177,7 @@ export default function PlansTab() {
             eyebrow={t("plan.eyebrow")}
             title={t("plan.title")}
             subtitle={hasPlan ? undefined : t("plan.subtitle")}
+            flush
           />
         </div>
       </div>
@@ -231,7 +232,7 @@ export default function PlansTab() {
             <div className="lg:sticky lg:top-4">
             <PlanTrackCard
               primary={planIdx === 0 ? primaryStamp : undefined}
-              echo={planEcho(plan.id, actionLoop, step, todayKey)}
+              echo={planEcho(plan.id, actionLoop, step, todayKey, planDoneSteps(plan))}
               childName={first}
               plan={plan}
               step={step}
@@ -254,7 +255,7 @@ export default function PlansTab() {
                 </h4>
                 <div className="space-y-3 text-xs">
                   {plan.scripts.map((sc, scIdx) => (
-                    <div key={scIdx} className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-3 p-3 rounded-xl bg-white" style={{ border: "1px solid var(--arbor-rule)" }}>
+                    <div key={scIdx} className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-3 p-3 rounded-xl" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}>
                       <div><strong dir="auto" className="block" style={{ color: "var(--arbor-green-ink)" }}>{sc.scenario}</strong></div>
                       <div className="min-w-0 space-y-1.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
                         {/* B-ASKJB-24: each plan script through the shared SayThis. */}
@@ -270,7 +271,7 @@ export default function PlansTab() {
                     onClick={() => {
                       seedCoach({ prompt: t("seed.planCoreg", { title: plan.title }), source: "plans-coreg" });
                     }}
-                    className="min-h-11 text-[10px] font-extrabold uppercase tracking-wider px-3 py-1.5 rounded-xl transition inline-flex items-center gap-1.5 cursor-pointer"
+                    className="min-h-11 t-xs font-bold px-3 py-1.5 rounded-xl transition inline-flex items-center gap-1.5 cursor-pointer"
                     style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
                   >
                     <Icon name="auto_awesome" size={12} /> {t("plan.refine")}

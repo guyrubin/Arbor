@@ -55,6 +55,8 @@ export const en: Record<string, string> = {
   "elev.plans.echo.somewhat.last": "Last time “{step}” helped a little. Today, one small step more.",
   "elev.plans.echo.notYetTwice": "Twice not yet. Change this step?",
   "elev.plans.echo.first": "{name}'s first step starts today.",
+  "elev.plans.echo.progress.one": "One step done with {name} so far. Today, one small step more.",
+  "elev.plans.echo.progress.many": "{n} steps done with {name} so far. Today, one small step more.",
   "elev.plans.today.next": "Or try the next step instead",
   // ── B-ASKJB-26: the weekly check-in (the parent's answer, never a score)
   "elev.plans.check.q": "Signs it's working?",
@@ -104,6 +106,8 @@ export const he: Record<string, string> = {
   "elev.plans.echo.somewhat.last": "בפעם הקודמת „{step}” עזר קצת. היום — עוד צעד קטן.",
   "elev.plans.echo.notYetTwice": "פעמיים עדיין לא. לשנות את הצעד?",
   "elev.plans.echo.first": "הצעד הראשון של {name} מתחיל היום.",
+  "elev.plans.echo.progress.one": "כבר צעד אחד עם {name}. היום — עוד צעד קטן.",
+  "elev.plans.echo.progress.many": "כבר {n} צעדים עם {name}. היום — עוד צעד קטן.",
   "elev.plans.today.next": "או לנסות במקום זה את הצעד הבא",
   "elev.plans.check.q": "יש סימנים שזה עובד?",
   "elev.plans.check.yes": "כן",

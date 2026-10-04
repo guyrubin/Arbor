@@ -248,13 +248,17 @@ export function lastPlanOutcomes(
  *    (the card offers Adjust in Ask);
  *  - else the newest helped/somewhat outcome → that step, and whether it was
  *    yesterday (else "last time" — the line never claims a day it can't keep);
- *  - else, no outcome and no step taken yet → "first";
+ *  - else, no loop row AND no step marked done → "first";
+ *  - else, steps marked done (by tap, no loop outcome) → "progress" with the
+ *    done count (critic r2 P0: "first step starts today" sat above "3/7 steps
+ *    done" — planEcho must read BOTH progress sources);
  *  - else null (nothing to say).
  */
 export type PlanEcho =
   | { kind: "helped" | "somewhat"; step: string; yesterday: boolean }
   | { kind: "not-yet-twice" }
   | { kind: "first" }
+  | { kind: "progress"; done: number }
   | null;
 
 export function planEcho(
@@ -262,6 +266,8 @@ export function planEcho(
   loop: readonly Pick<ActionLoopEntry, "recommendation" | "source" | "planId" | "phaseIdx" | "stepIdx" | "outcome" | "outcomeAt" | "status">[],
   step: PlanStepRef | null,
   todayKey: string,
+  /** Steps marked done on the plan (tap-cycle or outcome) — planDoneSteps. */
+  doneSteps: number,
 ): PlanEcho {
   const rows = loop.filter((r) => r.source === "plan" && r.planId === planId && r.status !== "superseded");
   const answered = rows
@@ -276,13 +282,20 @@ export function planEcho(
     const y = new Date(Date.parse(`${todayKey}T12:00:00Z`) - DAY_MS).toISOString().slice(0, 10);
     return { kind: last.outcome as "helped" | "somewhat", step: last.recommendation, yesterday: (last.outcomeAt ?? "").slice(0, 10) === y };
   }
+  if (doneSteps > 0) return { kind: "progress", done: doneSteps };
   if (rows.length === 0) return { kind: "first" };
   return null;
+}
+
+/** Steps marked done on a plan, every phase (the "{done}/{total}" the card shows). */
+export function planDoneSteps(plan: Pick<ActionPlan, "phases">): number {
+  return (plan.phases ?? []).reduce((n, ph) => n + (ph.steps ?? []).filter((st) => planStepStatus(st) === "done").length, 0);
 }
 
 /** The keyed line for an echo (EN + HE in i18nElevation/plans.ts). */
 export function planEchoKey(echo: Exclude<PlanEcho, null>): string {
   if (echo.kind === "not-yet-twice") return "elev.plans.echo.notYetTwice";
   if (echo.kind === "first") return "elev.plans.echo.first";
+  if (echo.kind === "progress") return echo.done === 1 ? "elev.plans.echo.progress.one" : "elev.plans.echo.progress.many";
   return `elev.plans.echo.${echo.kind}.${echo.yesterday ? "yesterday" : "last"}`;
 }

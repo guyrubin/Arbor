@@ -126,7 +126,7 @@ export default function PlanSteps({ plan, todayStep, now = Date.now() }: {
           2 lines (it was 4–5 lines in a ~150 px column at 375). */}
       <div data-testid="plan-header" className="flex flex-col gap-2 pb-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4" style={{ borderBottom: "1px solid var(--arbor-rule)" }}>
         <div className="min-w-0">
-          <h3 dir="auto" className="t-xl font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{plan.title}</h3>
+          <h3 dir="auto" className="t-lg font-semibold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{plan.title}</h3>
           <p dir="auto" className="t-xs mt-1 line-clamp-2" style={{ color: "var(--arbor-muted)" }}>{t("elev.plans.focusIssue", { issue: plan.issue })}</p>
           {days !== null && (
             <p className="t-xs mt-1" style={{ color: "var(--arbor-muted)" }}>
