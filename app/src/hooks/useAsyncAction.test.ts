@@ -1,24 +1,38 @@
 import { describe, it, expect, vi } from "vitest";
-import { runInstrumented, failureReason } from "./useAsyncAction";
+import { runInstrumented, failureReason, FAILURE_REASONS } from "./useAsyncAction";
+import { ApiError, PaywallError } from "../lib/api";
 
-describe("failureReason", () => {
-  it("uses the Error message", () => {
-    expect(failureReason(new Error("quota exceeded"))).toBe("quota exceeded");
+describe("failureReason (B-MEAS-05: an enum, never provider text)", () => {
+  it("a 429 'prepayment credits' error is provider_credit", () => {
+    expect(failureReason(new ApiError("Your prepayment credits are depleted. Please go to AI Studio to manage your billing.", 429))).toBe("provider_credit");
   });
 
-  it("passes through plain strings", () => {
-    expect(failureReason("boom")).toBe("boom");
+  it.each([
+    [new ApiError("Too many requests", 429), "rate_limited"],
+    [new ApiError("RESOURCE_EXHAUSTED: quota exceeded for model", 429), "quota_exhausted"],
+    [new PaywallError("Free coach limit reached"), "quota_exhausted"],
+    [new ApiError("Gateway timeout", 504), "timeout"],
+    [new Error("The request timed out"), "timeout"],
+    [new TypeError("Failed to fetch"), "offline"],
+    [Object.assign(new Error("The operation was aborted."), { name: "AbortError" }), "aborted"],
+    [new ApiError("Internal error", 500), "server_error"],
+    [new ApiError("Bad request: child name Noa missing", 400), "other"],
+  ] as const)("%s → %s", (err, expected) => {
+    expect(failureReason(err)).toBe(expected);
   });
 
-  it("falls back to 'unknown' for empty / non-error values", () => {
-    expect(failureReason(undefined)).toBe("unknown");
-    expect(failureReason(new Error(""))).toBe("unknown");
-    expect(failureReason({})).toBe("unknown");
+  it("anything unknown is 'other' — empty, strings, objects, long prose", () => {
+    expect(failureReason(undefined)).toBe("other");
+    expect(failureReason(new Error(""))).toBe("other");
+    expect(failureReason({})).toBe("other");
+    expect(failureReason("boom")).toBe("other");
+    expect(failureReason(new Error("Noa said something private ".repeat(20)))).toBe("other");
   });
 
-  it("truncates very long messages so analytics stays bounded", () => {
-    const reason = failureReason(new Error("x".repeat(500)));
-    expect(reason.length).toBe(120);
+  it("every value it can return is in FAILURE_REASONS", () => {
+    for (const err of [undefined, "x", new Error("x"), new ApiError("x", 503), new ApiError("x", 429)]) {
+      expect(FAILURE_REASONS).toContain(failureReason(err));
+    }
   });
 });
 
@@ -51,7 +65,7 @@ describe("runInstrumented", () => {
     ).rejects.toBe(boom);
 
     expect(track).toHaveBeenCalledWith("plan_started", { topic: "sleep" });
-    expect(track).toHaveBeenCalledWith("plan_failed", { topic: "sleep", reason: "model down" });
+    expect(track).toHaveBeenCalledWith("plan_failed", { topic: "sleep", reason: "other" });
     expect(track).not.toHaveBeenCalledWith("plan_succeeded", expect.anything());
   });
 

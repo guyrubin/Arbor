@@ -155,3 +155,35 @@ describe("N1-01-R6 — analytics props are ids and counts, never prose", () => {
     expect(ctx).not.toMatch(/trackFirstPlan\(\{/);
   });
 });
+
+describe("B-MEAS-05 — a _failed event's reason is an enum value, never provider text", () => {
+  it("runInstrumented emits reason ∈ FAILURE_REASONS for every failure shape (incl. a 429 prepayment-credits error)", async () => {
+    const { runInstrumented, FAILURE_REASONS } = await import("../hooks/useAsyncAction");
+    const { ApiError } = await import("./api");
+    const errors: unknown[] = [
+      new ApiError("Your prepayment credits are depleted. Please go to AI Studio to manage your billing.", 429),
+      new ApiError("Too many requests", 429),
+      new Error("child Noa said: I hate school"),
+      "raw string",
+      undefined,
+      { status: 503 },
+    ];
+    const reasons: unknown[] = [];
+    for (const err of errors) {
+      await runInstrumented("x", async () => { throw err; }, (event, props) => {
+        if (event === "x_failed") reasons.push(props?.reason);
+      }).catch(() => undefined);
+    }
+    expect(reasons).toHaveLength(errors.length);
+    for (const r of reasons) expect(FAILURE_REASONS as readonly unknown[]).toContain(r);
+    expect(reasons[0]).toBe("provider_credit");
+    expect(JSON.stringify(reasons)).not.toMatch(/Noa|prepayment|billing/);
+  });
+
+  it("the hook emits failureReason(err) and failureReason is typed to the enum (no .slice of a message)", () => {
+    const src = strip(fs.readFileSync(path.join(SRC, "hooks", "useAsyncAction.ts"), "utf8"));
+    expect(src).toContain("reason: failureReason(err)");
+    expect(src).toMatch(/export function failureReason\(err: unknown\): FailureReason/);
+    expect(src).not.toMatch(/\.slice\(0,\s*120\)/);
+  });
+});
