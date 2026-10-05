@@ -167,18 +167,74 @@ describe("B-CAREPRO-NEW-2f · kept this week, in the parent's words", () => {
   }
 
   for (const locale of ["en", "he"] as const) {
-    it(`${locale}: the quote well is the one peach accent, dir=auto, date isolated; the empty line has no CTA`, () => {
+    it(`${locale}: the quote well is the one peach accent (FLAT wash), the quote isolated, the date in the caption; the empty line has no CTA`, () => {
       harness.locale = locale;
       const html = renderToStaticMarkup(<Reports />);
       const well = html.slice(html.indexOf('data-testid="reports-kept"'), html.indexOf("</figure>"));
       expect(well).toContain("I did the gate by myself.");
-      expect(well).toContain('dir="auto"');
-      expect(well).toContain("<bdi>");
-      expect((html.match(/var\(--arbor-peach-soft\)/g) ?? []).length).toBe(1);
+      // W2-CAREPRO c2 r2: the block keeps the UI direction; only the quote is a <bdi>.
+      expect(well).not.toContain('dir="auto"');
+      expect(well).toMatch(/<blockquote[^>]*><bdi>“I did the gate by myself.”<\/bdi><\/blockquote>/);
+      const caption = /<figcaption[^>]*>([\s\S]*?)<\/figcaption>/.exec(well)![1];
+      expect(caption).toMatch(/<bdi data-testid="reports-kept-date" class="whitespace-nowrap">[^<]+<\/bdi>/);
+      expect(well.slice(well.indexOf("<blockquote"))).not.toContain("reports-kept-date");
+      expect((html.match(/var\(--arbor-peach-wash\)/g) ?? []).length).toBe(1);
+      expect(html).not.toContain("--arbor-peach-soft");
+      // One gradient on the page: the stamped CTA. The Consult door chip is neutral.
+      expect((html.match(/gradient/g) ?? []).length).toBe(1);
+      const door = html.slice(html.indexOf('data-testid="reports-consult-door"'), html.indexOf("</button>", html.indexOf('data-testid="reports-consult-door"')));
+      expect(door).toContain("background:var(--arbor-paper-deep);color:var(--arbor-muted)");
       harness.logs = [];
       const empty = renderToStaticMarkup(<Reports />);
       expect(empty).toContain(translate(locale, "elev.reports.kept.empty"));
       expect(empty).not.toContain('data-testid="reports-kept"');
+    });
+  }
+});
+
+/* W2-CAREPRO c2 r2 (reports · product P1 G1): after the parent saves, the lead
+ * still names the whole record since it began — never "Since you last saved
+ * …: 0 moments" — and the second line appears only for n > 0 new moments. */
+describe("W2-CAREPRO c2 r2 · the lead is permanent after a save", () => {
+  function installLocalStorage() {
+    const store = new Map<string, string>();
+    (globalThis as unknown as { localStorage: Storage }).localStorage = {
+      getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
+      setItem: (k: string, v: string) => { store.set(k, String(v)); },
+      removeItem: (k: string) => { store.delete(k); },
+      clear: () => { store.clear(); },
+      key: (i: number) => Array.from(store.keys())[i] ?? null,
+      get length() { return store.size; },
+    } as Storage;
+  }
+  for (const locale of ["en", "he"] as const) {
+    it(`${locale}: saved just now → the whole-record line stays; no zero clause; the kept moment reads 'Saved with …'`, async () => {
+      harness.locale = locale;
+      installLocalStorage();
+      const { recordExport } = await import("../../consult/exportHistory");
+      const { REPORTS_WEEKLY_EXPORT_KEY } = await import("./Reports");
+      recordExport("c1", REPORTS_WEEKLY_EXPORT_KEY, new Date().toISOString());
+      const html = renderToStaticMarkup(<Reports />).replace(/&#x27;/g, "'");
+      const line = /<p data-testid="reports-lead-counts"[^>]*>([^<]*)<\/p>/.exec(html)![1];
+      const start = new Date(Date.now() - 40 * DAY).toISOString();
+      expect(line).toContain(fmtDay(start, locale));
+      expect(line).toContain(translate(locale, "elev.reports.line.moments.other", { n: 3 }));
+      expect(html).not.toMatch(/(?:^|[^\d])0 (?:moments|רגעים|milestones|אבני דרך)/);
+      expect(html).not.toContain('data-testid="reports-lead-new"');
+      expect(html).toContain(translate(locale, "elev.reports.kept.saved", { name: "Dylan" }));
+    });
+
+    it(`${locale}: saved 2 days ago → '1 new moment since you last opened it on …' (n > 0 only)`, async () => {
+      harness.locale = locale;
+      installLocalStorage();
+      const { recordExport } = await import("../../consult/exportHistory");
+      const { REPORTS_WEEKLY_EXPORT_KEY } = await import("./Reports");
+      const savedAt = new Date(Date.now() - 2 * DAY).toISOString();
+      recordExport("c1", REPORTS_WEEKLY_EXPORT_KEY, savedAt);
+      const html = renderToStaticMarkup(<Reports />).replace(/&#x27;/g, "'");
+      const extra = /<p data-testid="reports-lead-new"[^>]*>([^<]*)<\/p>/.exec(html)![1];
+      expect(extra).toBe(translate(locale, "elev.reports.lead.new.one", { n: 1, date: fmtDay(savedAt, locale) }));
+      expect(html.indexOf('data-testid="reports-lead-counts"')).toBeLessThan(html.indexOf('data-testid="reports-lead-new"'));
     });
   }
 });

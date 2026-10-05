@@ -2,7 +2,7 @@ import { ageLabel } from "../../lib/childAge";
 import React from "react";
 import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
-import { PageHeader, PASTEL, PastelKey } from "../ui/kit";
+import { PageHeader, PastelKey } from "../ui/kit";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { buildFullRecord, buildReport, openPrintableReport, isProfessionalReportType, ReportDoc, ReportType, type ParentReportType } from "../../lib/reportExport";
@@ -143,8 +143,6 @@ export default function Reports() {
   const nowMs = Date.now();
   const counts = reportsLeadCounts({ logs: behaviorLogs ?? [], milestones: milestones ?? [], sinceIso: lastSaved, nowMs });
   const countText = (n: number, one: string, other: string) => t(n === 1 ? one : other, { n });
-  const momentsText = countText(counts.moments, "elev.reports.line.moments.one", "elev.reports.line.moments.other");
-  const milestonesText = countText(counts.milestones, "elev.reports.lead.milestones.one", "elev.reports.lead.milestones.other");
   const kept = keptThisWeek(behaviorLogs ?? [], nowMs);
   // W2-CAREPRO c2 r1: before the first save the lead names the record, not
   // its absence — counts over the whole record since it began.
@@ -191,29 +189,44 @@ export default function Reports() {
           <div className="min-w-0">
             <h2 data-testid="reports-lead-title" className="t-md font-extrabold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-sans)" }}>{t("elev.reports.record.title", { name: first })}</h2>
             {/* B-CAREPRO-NEW-2e: one counts-only line from the record.
-                W2-CAREPRO c2 r1: never a "nothing" sentence above counts. */}
+                W2-CAREPRO c2 r2: the lead is PERMANENT — always the whole
+                record since it began (the H2 above names the child), never
+                replaced after a save. A second fact appears ONLY when new
+                moments exist since the parent last opened the PDF; it never
+                prints a zero. "Opened", not "saved": the print tab can be
+                cancelled and nothing listens for afterprint across windows. */}
             {startIso ? (
               <p data-testid="reports-lead-counts" className="t-sm mt-0.5 leading-relaxed" style={{ color: "var(--arbor-ink)" }}>
-                {lastSaved
-                  ? t("elev.reports.lead.since", { date: fmtDay(lastSaved, uiLang), moments: momentsText, milestones: milestonesText })
-                  : t("elev.reports.lead.first", {
-                      name: first,
-                      date: fmtDay(startIso, uiLang),
-                      moments: countText(recordMoments, "elev.reports.line.moments.one", "elev.reports.line.moments.other"),
-                      milestones: countText(recordNoticed, "elev.reports.lead.milestones.one", "elev.reports.lead.milestones.other"),
-                    })}
+                {t("elev.reports.lead.first", {
+                  date: fmtDay(startIso, uiLang),
+                  moments: countText(recordMoments, "elev.reports.line.moments.one", "elev.reports.line.moments.other"),
+                  milestones: countText(recordNoticed, "elev.reports.lead.milestones.one", "elev.reports.lead.milestones.other"),
+                })}
+              </p>
+            ) : null}
+            {lastSaved && counts.moments > 0 ? (
+              <p data-testid="reports-lead-new" className="t-xs mt-0.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+                {t(counts.moments === 1 ? "elev.reports.lead.new.one" : "elev.reports.lead.new.other", { n: counts.moments, date: fmtDay(lastSaved, uiLang) })}
               </p>
             ) : null}
           </div>
           {/* B-CAREPRO-NEW-2f: the parent's own words, quoted — this week's
-              newest, else the newest in the record, with its date; the page's
-              one warm accent. The empty line shows ONLY on an empty record. */}
+              newest, else the newest in the record. W2-CAREPRO c2 r2: a FLAT
+              --arbor-peach-wash (the CTA is the page's only gradient); the
+              blockquote keeps the UI direction and only the quote is isolated
+              (<bdi>), so a Latin quote never flips a Hebrew card; the date
+              lives in the caption as a no-wrap <bdi>. */}
           {kept ? (
-            <figure data-testid="reports-kept" className="p-3" style={{ background: "var(--arbor-peach-soft)", borderRadius: "var(--r)" }}>
-              <figcaption className="t-xs" style={{ color: "var(--arbor-muted)" }}>{t("elev.reports.kept.label")}</figcaption>
-              <blockquote dir="auto" className="t-sm mt-0.5" style={{ color: "var(--arbor-peach-ink)", fontFamily: uiLang === "he" ? "var(--font-display)" : "var(--font-editorial)" }}>
-                “{kept.quote}” <span className="t-xs" style={{ fontFamily: "var(--font-sans)", color: "var(--arbor-muted)" }}>· <bdi>{fmtDay(kept.at, uiLang)}</bdi></span>
+            <figure data-testid="reports-kept" className="p-3" style={{ background: "var(--arbor-peach-wash)", borderRadius: "var(--r)" }}>
+              <figcaption className="t-xs" style={{ color: "var(--arbor-muted)" }}>
+                {t("elev.reports.kept.label")} · <bdi data-testid="reports-kept-date" className="whitespace-nowrap">{fmtDay(kept.at, uiLang)}</bdi>
+              </figcaption>
+              <blockquote className="t-base mt-0.5" style={{ color: "var(--arbor-peach-ink)", fontFamily: uiLang === "he" ? "var(--font-display)" : "var(--font-editorial)" }}>
+                <bdi>“{kept.quote}”</bdi>
               </blockquote>
+              {lastSaved && kept.at <= lastSaved ? (
+                <p data-testid="reports-kept-saved" className="t-xs mt-1" style={{ color: "var(--arbor-muted)" }}>{t("elev.reports.kept.saved", { name: first })}</p>
+              ) : null}
             </figure>
           ) : recordMoments === 0 ? (
             <p data-testid="reports-kept-empty" className="t-xs" style={{ color: "var(--arbor-muted)" }}>{t("elev.reports.kept.empty")}</p>
@@ -240,7 +253,7 @@ export default function Reports() {
           className="w-full py-3 flex items-center gap-3 min-h-11 text-start transition hover:brightness-95"
           style={{ borderBlockEnd: "1px solid var(--arbor-rule)" }}
         >
-          <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0" style={{ background: PASTEL.lav.soft, color: PASTEL.lav.ink }}><Icon name="forum" size={18} /></span>
+          <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}><Icon name="forum" size={18} /></span>
           <span className="min-w-0 flex-1">
             <span className="block t-sm font-bold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-sans)" }}>{t("elev.reports.proDoor.title")}</span>
             <span className="block t-xs mt-0.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.reports.proDoor.desc")}</span>
