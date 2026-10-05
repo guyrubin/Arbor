@@ -7,7 +7,9 @@
  * (no Latin left behind), no nikud, no slash-gendering, short sentences.
  */
 import { describe, expect, it } from "vitest";
-import { HERO_STORIES, STORY_HE_REVIEW, getStorySpec, storyHasLanguage } from "./heroJourneys";
+import { HERO_STORIES, STORY_HE_REVIEW, getStorySpec, storiesForLanguage, storyHasLanguage } from "./heroJourneys";
+import { kidArt, storyCoverKey } from "./kidThemeManifest";
+import { pickTonightsStory } from "../components/kidmode/tonightsStory";
 
 const reviewed = Object.keys(STORY_HE_REVIEW);
 // U+05BE (maqaf) is punctuation, not nikud.
@@ -72,8 +74,27 @@ describe("B-KID-23: the AI-first-pass Hebrew stories", () => {
     }
   });
 
-  it("NEGATIVE CONTROL: a story outside the list that lacks Hebrew is not tellable in Hebrew", () => {
-    const untold = HERO_STORIES.filter((s) => !storyHasLanguage(s, "he"));
-    for (const s of untold) expect(reviewed, s.id).not.toContain(s.id);
+  it("NEGATIVE CONTROL: a listed story with one beat's Hebrew stripped is not tellable in Hebrew", () => {
+    const s = getStorySpec(reviewed[0])!;
+    const stripped = { ...s, beats: s.beats.map((b, i) => (i === 4 ? { ...b, spineHe: undefined } : b)) };
+    expect(storyHasLanguage(stripped, "he")).toBe(false);
+  });
+});
+
+describe("B-KID-23 + B-KID-46: a Hebrew child gets the illustrated stories again", () => {
+  it("every story with a film3d cover, and the whole catalogue, can be told in Hebrew", () => {
+    const covered = HERO_STORIES.filter((s) => kidArt("film3d", storyCoverKey(s.id)));
+    expect(covered.length).toBe(10);
+    for (const s of covered) expect(storyHasLanguage(s, "he"), s.id).toBe(true);
+    expect(storiesForLanguage(HERO_STORIES, "he")).toHaveLength(HERO_STORIES.length);
+  });
+  it("film3d, Hebrew, 30 nights: Tonight is an illustrated story (its cover shows the hero), never the cover-less fallback", () => {
+    const prefer = (s: { id: string }) => kidArt("film3d", storyCoverKey(s.id)) !== null;
+    for (let d = 1; d <= 30; d++) {
+      const day = `2026-12-${String(d).padStart(2, "0")}`;
+      const { story } = pickTonightsStory(day, "child-he", { prefer, lang: "he", ageMonths: 72 });
+      expect(story, day).not.toBeNull();
+      expect(kidArt("film3d", storyCoverKey(story!.id))?.hasHero, `${day} ${story!.id}`).toBe(true);
+    }
   });
 });
