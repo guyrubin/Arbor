@@ -39,7 +39,7 @@ export default function KidLibrary({ books, theme, lang, childProfile, loadingId
   return (
     <div className="space-y-6" data-testid="kid-library">
       {!readingComic && (books.length > 0 ? (
-        <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4" style={{ listStyle: "none", margin: 0, padding: 0 }} aria-busy={loadingId ? true : undefined}>
+        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(150px,220px))] sm:justify-center" data-kid-library-grid="" style={{ listStyle: "none", margin: 0, padding: 0 }} aria-busy={loadingId ? true : undefined}>
           {books.map((b) => (
             <li key={b.story.id} style={{ opacity: loadingId && loadingId !== b.story.id ? 0.6 : 1 }}>
               <KidBookCover

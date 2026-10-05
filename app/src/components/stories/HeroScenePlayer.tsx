@@ -22,10 +22,26 @@ import { ArborMascot } from "../ui/ArborMascot";
  *  so a book read on one cover still turns eight different pages. */
 export const BEAT_FOCUS = ["50% 22%", "30% 40%", "70% 35%", "50% 60%", "25% 25%", "75% 55%", "50% 45%", "50% 30%"] as const;
 
-/** B-KID-76 (b): the Kid Mode picture-book page. The art fills the top ~55 %
- *  of the screen edge to edge; the words sit below at the kid type scale
- *  (>= 18 px), three lines in view, scrolling when longer. */
-export const KID_BOOK_ART_BLOCK = "clamp(220px, 55dvh, 640px)";
+/** B-KID-76 (b): the Kid Mode picture-book page - the words at the kid type
+ *  scale (>= 18 px), three lines in view on a phone, scrolling when longer.
+ *  (The 55dvh full-width art block is gone: B-KID-128 below.) */
+
+/** B-KID-128: book pages keep the picture's proportions on every screen. The
+ *  covers are portrait 3:4; a full-width 55dvh block letterboxed them into a
+ *  1920x408 slice on a desktop (the whale's mouth and the top of the child's
+ *  hair). Below 640 px the art is full-bleed at 4:5 (at most ~6 % cropped off
+ *  top + bottom, the per-beat focal point as before); from 640 px the reader
+ *  is a two-column spread: the picture on the leading side at its own 3:4,
+ *  as tall as the screen allows (never a fixed height that can letterbox), the
+ *  words and Next/Back beside it, vertically centred at a reading measure.
+ *  Logical grid columns, so Hebrew mirrors the spread. */
+export const KID_BOOK_SPREAD_CLASS = "flex flex-col sm:grid sm:grid-cols-[auto_minmax(0,24rem)] sm:items-center sm:justify-center sm:gap-8 sm:px-6 sm:py-4";
+export const KID_BOOK_ART_CLASS = "relative w-full overflow-hidden aspect-[4/5] sm:w-auto sm:aspect-[3/4] sm:h-[min(80vh,calc(100dvh_-_140px))] sm:rounded-[24px] sm:[border:var(--comic-line)]";
+export const KID_BOOK_SIDE_CLASS = "flex min-w-0 flex-col sm:justify-center";
+/** B-KID-128: on the wide spread every page shows the WHOLE picture; the
+ *  per-beat variation is a gentle zoom toward that beat's focal point (max
+ *  1.15), so the hero's face stays in frame. Literal classes (Tailwind scans). */
+export const BEAT_SCALE_CLASS = ["sm:scale-100", "sm:scale-[1.06]", "sm:scale-[1.1]", "sm:scale-[1.04]", "sm:scale-[1.15]", "sm:scale-[1.08]", "sm:scale-[1.03]", "sm:scale-[1.12]"] as const;
 export const KID_BOOK_TEXT_PX = 20;
 export const KID_BOOK_TEXT_LINE = 1.45;
 
@@ -65,6 +81,7 @@ export function HeroScenePlayer({
   onPageResolved,
   layout = "card",
   textLang,
+  aside,
 }: {
   scene: HeroSceneRender;
   seed: string;
@@ -110,6 +127,9 @@ export function HeroScenePlayer({
    *  which let an English sentence opening with a Hebrew name run RTL. Absent →
    *  the AI language (the render's language before a run carried its own). */
   textLang?: "en" | "he";
+  /** B-KID-128: the book page's controls (Decision choices, Back/Next) - drawn
+   *  under the words, i.e. in the text column of the wide spread. */
+  aside?: React.ReactNode;
 }) {
   const [resolvedArt, setResolvedArt] = useState<{ key: string; url: string } | undefined>();
   const [artLoading, setArtLoading] = useState(false);
@@ -230,19 +250,20 @@ export function HeroScenePlayer({
     // cropped per beat; otherwise the seeded illustration. Never a smudged page
     // or a Redraw button in front of the child.
     return (
-      <div className="flex flex-col" data-kid-book-page="">
+      <div className={KID_BOOK_SPREAD_CLASS} data-kid-book-page="">
         <span className="sr-only">{kidsStoriesText("journey.beat", aiLang, { current: beatNumber, total: beatTotal })}</span>
-        <div className="relative w-full overflow-hidden" style={{ blockSize: KID_BOOK_ART_BLOCK, background: "var(--arbor-paper-deep)" }}>
+        <div className={KID_BOOK_ART_CLASS} data-kid-book-art="" style={{ background: "var(--arbor-paper-deep)" }}>
           {sceneArt ? (
             <img src={sceneArt} alt={kidsStoriesText("journey.pageAlt", aiLang, { number: beatNumber, title: scene.title })} className="absolute inset-0 h-full w-full object-cover" onError={() => { setResolvedArt(undefined); setArtError(true); }} />
           ) : fallbackArtUrl ? (
-            <img src={fallbackArtUrl} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: BEAT_FOCUS[(beatNumber - 1) % BEAT_FOCUS.length] }} />
+            <img src={fallbackArtUrl} alt="" aria-hidden="true" className={`absolute inset-0 h-full w-full object-cover ${BEAT_SCALE_CLASS[(beatNumber - 1) % BEAT_SCALE_CLASS.length]}`} style={{ objectPosition: BEAT_FOCUS[(beatNumber - 1) % BEAT_FOCUS.length], transformOrigin: BEAT_FOCUS[(beatNumber - 1) % BEAT_FOCUS.length] }} />
           ) : (
             <StoryIllustration seed={seed} className="absolute inset-0 h-full w-full" />
           )}
           {!sceneArt && !(fallbackArtUrl && fallbackArtHasHero) && cameo}
           {sceneArt && <ProvenanceBadge lang={uiLang === "he" ? "he" : "en"} className="absolute bottom-2 end-2" />}
         </div>
+        <div className={KID_BOOK_SIDE_CLASS}>
         {/* B-KID-124: keyed by the words, so a personalised render that lands
             while the child is on this page fades in (reduced motion: a swap);
             the block is a fixed three lines, so nothing below it moves. */}
@@ -254,11 +275,13 @@ export function HeroScenePlayer({
           lang={bookLang}
           dir={langDir(bookLang)}
           data-kid-book-text=""
-          className="font-bold"
-          style={{ margin: 0, paddingInline: 20, paddingBlockStart: 16, fontSize: KID_BOOK_TEXT_PX, lineHeight: KID_BOOK_TEXT_LINE, minBlockSize: `calc(3 * ${KID_BOOK_TEXT_LINE}em + 16px)`, maxBlockSize: `calc(3 * ${KID_BOOK_TEXT_LINE}em + 16px)`, overflowY: "auto", color: "var(--arbor-ink)", fontFamily: "var(--font-display), Georgia, serif" }}
+          className="font-bold min-h-[calc(3*1.45em_+_16px)] max-h-[calc(3*1.45em_+_16px)] sm:max-h-[50vh] sm:max-w-[32ch]"
+          style={{ margin: 0, paddingInline: 20, paddingBlockStart: 16, fontSize: KID_BOOK_TEXT_PX, lineHeight: KID_BOOK_TEXT_LINE, overflowY: "auto", color: "var(--arbor-ink)", fontFamily: "var(--font-display), Georgia, serif" }}
         >
           {narration}
         </motion.p>
+        {aside}
+        </div>
       </div>
     );
   }

@@ -72,7 +72,7 @@ import { autoReadPage } from "../kidmode/kidReadAloud";
 import { kidSfx } from "../kidmode/audio/kidAudio";
 import { KidFinishMoment } from "../kidmode/rewards/KidSouvenir";
 import { stopVoice } from "../../lib/voice";
-import { KID_BOOK_ART_BLOCK } from "../stories/HeroScenePlayer";
+import { KID_BOOK_ART_CLASS, KID_BOOK_SIDE_CLASS, KID_BOOK_SPREAD_CLASS } from "../stories/HeroScenePlayer";
 import { DecisionChoices } from "../stories/DecisionChoices";
 
 /** Comic-world skin per pack — bg + ink token + bilingual label (matches the
@@ -946,7 +946,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
       const pinTitle = uiLang === "he" ? refusedPin.titleHe : refusedPin.title;
       return kidMode ? (
         <div className="arbor-play flex flex-col items-center gap-4 text-center" data-kid-book-pin-cover={refusedPin.id} style={{ marginInline: -20, marginBlockStart: -24 }}>
-          <div className="relative w-full overflow-hidden" style={{ blockSize: KID_BOOK_ART_BLOCK, background: "var(--arbor-paper-deep)" }}>
+          <div className={KID_BOOK_ART_CLASS} style={{ background: "var(--arbor-paper-deep)" }}>
             {cover
               ? <img src={cover.src} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: cover.objectPosition }} />
               : <KidBookTitleCard title={pinTitle} pack={refusedPin.pack} />}
@@ -1628,7 +1628,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   if (kidMode) {
     const bookArt = coverArt.url ?? storyCover(activeStory.id)?.src;
     const bookArtBox = (
-      <div className="relative w-full overflow-hidden" style={{ blockSize: KID_BOOK_ART_BLOCK, background: "var(--arbor-paper-deep)" }}>
+      <div className={KID_BOOK_ART_CLASS} data-kid-book-art="" style={{ background: "var(--arbor-paper-deep)" }}>
         {bookArt
           ? <img src={bookArt} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: coverArt.url ? "50% 50%" : storyCover(activeStory.id)?.objectPosition }} />
           : <KidBookTitleCard title={render.title || activeStory.title} pack={activeStory.pack} />}
@@ -1648,54 +1648,9 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
       setOnCover(Boolean(heroAvatarUrl));
     };
     const bigButton = { minBlockSize: 56, borderRadius: 18, fontFamily: "var(--font-display)", fontWeight: 900, fontSize: 20, border: "var(--comic-line)", cursor: "pointer" } as const;
-    return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} data-kid-book-reader="" style={{ marginInline: -20, marginBlockStart: -24 }}>
-        <AnimatePresence mode="wait" initial={false}>
-          {atEnd ? (
-            <motion.div key="kid-book-end" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} data-kid-book-ending="">
-              {/* B-KID-94: the ONE finish moment — the hero cheers and the child
-                  keeps this book's sticker (its cover, die-cut), earned once. */}
-              <div className="pt-4"><KidFinishMoment childId={childProfile.id} kind="book" refId={activeStory.id} lang={uiLang === "he" ? "he" : "en"} /></div>
-              <div className="flex flex-col items-center gap-4 px-5 pt-5 text-center">
-                <p lang={uiLang === "he" ? "he" : "en"} dir={langDir(uiLang === "he" ? "he" : "en")} className="font-black" style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 32, color: "var(--arbor-ink)" }}>{kidsStoriesText("journey.end", uiLang === "he" ? "he" : "en")}</p>
-                <div className="flex w-full max-w-md flex-col gap-3">
-                  <button type="button" onClick={readAgain} style={{ ...bigButton, background: "var(--arbor-green-cta-start)", color: "var(--arbor-on-accent)" }}>{kidsStoriesText("reader.again", uiLang === "he" ? "he" : "en")}</button>
-                  <button type="button" onClick={exitJourney} style={{ ...bigButton, background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)" }}>{kidsStoriesText("kidBooks.title", uiLang === "he" ? "he" : "en")}</button>
-                </div>
-              </div>
-            </motion.div>
-          ) : onCover ? (
-            <motion.div key="kid-book-cover" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} data-kid-book-cover="">
-              {bookArtBox}
-              <p lang={renderLang} dir={langDir(renderLang)} data-kid-book-title="" className="font-black px-5 pt-4 text-center" style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 26, lineHeight: 1.2, color: "var(--arbor-ink)" }}>{isolateNameIn(render.title || activeStory.title, childProfile.name?.split(" ")[0], renderLang)}</p>
-            </motion.div>
-          ) : displayScene ? (
-            <motion.div key={`kid-book-${displayScene.beatId}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <HeroScenePlayer
-                layout="book"
-                scene={displayScene}
-                storyId={activeStory.id}
-                seed={`${activeStory.id}-${displayScene.beatId}-${childProfile.name}`}
-                beatNumber={sceneIndex + 1}
-                beatTotal={activeStory.beats.length}
-                cameoUrl={heroCameoUrl}
-                heroAvatarUrl={heroAvatarUrl}
-                heroAvatarStyle={heroAvatarStyle}
-                heroName={childProfile.name?.split(" ")[0]}
-                childIdentity={childProfile.id}
-                childId={childProfile.id}
-                onPageResolved={({ beatNumber, key }) => { comicPageKeys.current.set(beatNumber, key); void shelveWhenComplete(); }}
-                fallbackArtUrl={storyCover(activeStory.id)?.src}
-                fallbackArtHasHero={storyCover(activeStory.id)?.hasHero ?? false}
-                textLang={renderLang}
-              />
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
-
-        {!atEnd && !onCover && <div className="px-5 pt-4">{renderChoices()}</div>}
-
-        {!atEnd && (
+    // B-KID-128: the page's controls sit under the words - on the wide spread
+    // that is the text column beside the picture, never under a giant image.
+    const bookNav = (
           <div className="flex items-stretch gap-3 px-5 pb-5 pt-4" data-kid-book-nav="">
             <button
               type="button"
@@ -1718,7 +1673,61 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
               {isLastBeat ? kidsStoriesText("journey.end", uiLang === "he" ? "he" : "en") : kidsStoriesText("journey.next", uiLang === "he" ? "he" : "en")}
             </button>
           </div>
-        )}
+    );
+    const bookSide = (
+      <>
+        {!onCover && <div className="px-5 pt-4">{renderChoices()}</div>}
+        {bookNav}
+      </>
+    );
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} data-kid-book-reader="" style={{ marginInline: -20, marginBlockStart: -24 }}>
+        <AnimatePresence mode="wait" initial={false}>
+          {atEnd ? (
+            <motion.div key="kid-book-end" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} data-kid-book-ending="">
+              {/* B-KID-94: the ONE finish moment — the hero cheers and the child
+                  keeps this book's sticker (its cover, die-cut), earned once. */}
+              <div className="pt-4"><KidFinishMoment childId={childProfile.id} kind="book" refId={activeStory.id} lang={uiLang === "he" ? "he" : "en"} /></div>
+              <div className="flex flex-col items-center gap-4 px-5 pt-5 text-center">
+                <p lang={uiLang === "he" ? "he" : "en"} dir={langDir(uiLang === "he" ? "he" : "en")} className="font-black" style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 32, color: "var(--arbor-ink)" }}>{kidsStoriesText("journey.end", uiLang === "he" ? "he" : "en")}</p>
+                <div className="flex w-full max-w-md flex-col gap-3">
+                  <button type="button" onClick={readAgain} style={{ ...bigButton, background: "var(--arbor-green-cta-start)", color: "var(--arbor-on-accent)" }}>{kidsStoriesText("reader.again", uiLang === "he" ? "he" : "en")}</button>
+                  <button type="button" onClick={exitJourney} style={{ ...bigButton, background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)" }}>{kidsStoriesText("kidBooks.title", uiLang === "he" ? "he" : "en")}</button>
+                </div>
+              </div>
+            </motion.div>
+          ) : onCover ? (
+            <motion.div key="kid-book-cover" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} data-kid-book-cover="" className={KID_BOOK_SPREAD_CLASS}>
+              {bookArtBox}
+              <div className={KID_BOOK_SIDE_CLASS}>
+              <p lang={renderLang} dir={langDir(renderLang)} data-kid-book-title="" className="font-black px-5 pt-4 text-center" style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 26, lineHeight: 1.2, color: "var(--arbor-ink)" }}>{isolateNameIn(render.title || activeStory.title, childProfile.name?.split(" ")[0], renderLang)}</p>
+              {bookSide}
+              </div>
+            </motion.div>
+          ) : displayScene ? (
+            <motion.div key={`kid-book-${displayScene.beatId}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <HeroScenePlayer
+                layout="book"
+                scene={displayScene}
+                storyId={activeStory.id}
+                seed={`${activeStory.id}-${displayScene.beatId}-${childProfile.name}`}
+                beatNumber={sceneIndex + 1}
+                beatTotal={activeStory.beats.length}
+                cameoUrl={heroCameoUrl}
+                heroAvatarUrl={heroAvatarUrl}
+                heroAvatarStyle={heroAvatarStyle}
+                heroName={childProfile.name?.split(" ")[0]}
+                childIdentity={childProfile.id}
+                childId={childProfile.id}
+                onPageResolved={({ beatNumber, key }) => { comicPageKeys.current.set(beatNumber, key); void shelveWhenComplete(); }}
+                fallbackArtUrl={storyCover(activeStory.id)?.src}
+                fallbackArtHasHero={storyCover(activeStory.id)?.hasHero ?? false}
+                textLang={renderLang}
+                aside={bookSide}
+              />
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
       </motion.div>
     );
   }

@@ -39,13 +39,14 @@ describe("the book page (HeroScenePlayer layout=book)", () => {
   it("art edge to edge on top, cropped per beat from the story's cover", () => {
     expect(html).toContain("data-kid-book-page");
     expect(html).toContain(`object-position:${BEAT_FOCUS[1]}`);
-    expect(html).toContain("55dvh");
+    // B-KID-128 re-pin: full-bleed at 4:5 on a phone, 3:4 spread from 640 px (kidBookLayout.test).
+    expect(html).toContain("aspect-[4/5]");
   });
   it("the words sit below at the kid scale (>= 18 px), three lines then scroll", () => {
     expect(KID_BOOK_TEXT_PX).toBeGreaterThanOrEqual(18);
     expect(html).toMatch(/data-kid-book-text=""[^>]*font-size:20px/);
     expect(html).toContain("overflow-y:auto");
-    expect(html).toContain("calc(3 * 1.45em + 16px)");
+    expect(html).toContain("max-h-[calc(3*1.45em_+_16px)]"); // B-KID-128 re-pin: the 3-line cap is a phone-only class
     expect(html).toContain(scene.narration);
   });
   it("no meta row in front of the child: no Read aloud button, no Save, no smudged/Redraw page", () => {
