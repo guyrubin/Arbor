@@ -12,9 +12,9 @@
 import { Fragment, useState } from "react";
 import { KidToy } from "../kidmode/KidToy";
 import { setKidReadAloudMuted, useKidReadAloudMuted } from "../kidmode/audio/kidAudio";
-import { bookString } from "../../lib/library/bookStrings";
+import { bookString, type BookStringKey } from "../../lib/library/bookStrings";
 import { heroParts, labelFor, lineFor } from "../../lib/library/bookText";
-import type { Book, BookLang, HeGender } from "../../lib/library/types";
+import type { Book, BookLabel, BookLang, HeGender } from "../../lib/library/types";
 
 export function BookSoundToggle({ childId, lang }: { childId: string; lang: BookLang }) {
   const muted = useKidReadAloudMuted(childId);
@@ -60,6 +60,24 @@ function Named({ text, name }: { text: string; name: string }) {
   );
 }
 
+/** The parent panel's sections in reading order, with their heading keys:
+ *  the v2 panel (knows, whyNow, tomorrow, together) and the v1 one (builds,
+ *  why) share one list; a book shows the sections it has. */
+export function parentSections(pp: Book["parent"], lang: BookLang, gender: HeGender): [BookStringKey, string][] {
+  const out: [BookStringKey, string][] = [];
+  const label = (key: BookStringKey, l: BookLabel | undefined) => l && out.push([key, labelFor(l, lang)]);
+  label("grownUp.knows", pp.knows);
+  label("grownUp.builds", pp.builds);
+  label("grownUp.whyNow", pp.whyNow);
+  label("grownUp.why", pp.why);
+  label("grownUp.tomorrow", pp.tomorrow);
+  out.push(["grownUp.ask", lineFor(pp.askAfter, lang, gender)]);
+  if (pp.askAfterOptional) out.push(["grownUp.askMore", lineFor(pp.askAfterOptional, lang, gender)]);
+  label("grownUp.together", pp.together);
+  label("grownUp.source", pp.sourceNote);
+  return out;
+}
+
 export function BookEnd({
   book,
   lang,
@@ -69,6 +87,7 @@ export function BookEnd({
   typePx,
   onReadAgain,
   onClose,
+  initialGrownUp = false,
 }: {
   book: Book;
   lang: BookLang;
@@ -78,8 +97,10 @@ export function BookEnd({
   typePx?: number;
   onReadAgain: () => void;
   onClose: () => void;
+  /** Test seam: the grown-up panel starts open. */
+  initialGrownUp?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initialGrownUp);
   const last = book.pages[book.pages.length - 1];
   const pp = book.parent;
   const toggle = (
@@ -94,26 +115,14 @@ export function BookEnd({
       <section className="bk-end" data-book-end-screen="" data-grownup="">
         {toggle}
         <dl className="bk-grownup" data-book-grownup-panel="">
-          <dt>{bookString("grownUp.builds", lang)}</dt>
-          <dd>{labelFor(pp.builds, lang)}</dd>
-          <dt>{bookString("grownUp.why", lang)}</dt>
-          <dd>{labelFor(pp.why, lang)}</dd>
-          <dt>{bookString("grownUp.ask", lang)}</dt>
-          <dd>
-            <Named text={lineFor(pp.askAfter, lang, gender)} name={name} />
-          </dd>
-          {pp.askAfterOptional && (
-            <>
-              <dt>{bookString("grownUp.askMore", lang)}</dt>
+          {parentSections(pp, lang, gender).map(([key, text]) => (
+            <Fragment key={key}>
+              <dt data-grownup-section={key}>{bookString(key, lang)}</dt>
               <dd>
-                <Named text={lineFor(pp.askAfterOptional, lang, gender)} name={name} />
+                <Named text={text} name={name} />
               </dd>
-            </>
-          )}
-          <dt>{bookString("grownUp.source", lang)}</dt>
-          <dd>
-            <Named text={labelFor(pp.sourceNote, lang)} name={name} />
-          </dd>
+            </Fragment>
+          ))}
         </dl>
       </section>
     );

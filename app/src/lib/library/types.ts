@@ -159,6 +159,24 @@ export interface PlateOccluder {
   featherTop: number;
 }
 
+/** One ordered picture state of a page (manuscript v2, p9: the swing → the
+ *  dust → "the soldiers rise"). State 0 is the page as authored; each state
+ *  here comes after the previous one. An overlay that any state names is shown
+ *  only in the states that list it. */
+export interface ArtState {
+  id: string;
+  /** A plate that cross-fades in over the page's plate (the hero stays). A
+   *  state whose plate is not in the book's plate table is skipped. */
+  plateId?: string;
+  /** The overlay ids visible in this state. */
+  overlays: string[];
+  /** "narration" = the narration's reveal moment (REVEAL_LEAD_S before the
+   *  file ends; 5 s after the page shows when silent); timed = that long
+   *  after the previous state (`silentAfterMs` when the page is silent). A
+   *  tap on the picture or a Next press brings the next state at once. */
+  trigger: "narration" | { afterMs: number; silentAfterMs: number };
+}
+
 export type PageType = "facing" | "spread";
 
 export interface Page {
@@ -185,6 +203,9 @@ export interface Page {
   heroAlt?: Record<string, Slot>;
   audio?: PageAudio;
   touch?: TouchTarget[];
+  /** Ordered picture states after the page shows (v2). Absent = derived from
+   *  the overlays marked `reveal: "afterNarration"` (one state). */
+  artStates?: ArtState[];
 }
 
 export type ChoiceType = "hard" | "easy" | "third";
@@ -204,12 +225,24 @@ export interface Choice {
 }
 
 /** The parent panel (lane A §6.2): after the story, parent register, never
- *  read aloud and never shown to the child. */
+ *  read aloud and never shown to the child. v1 books carry builds + why; the
+ *  v2 panel (depth-pass §3.2) carries knows + whyNow + tomorrow (+ together).
+ *  The reader shows the sections a book has, in this order. */
 export interface ParentPanel {
-  builds: BookLabel;
-  why: BookLabel;
+  /** v2: "What the story knows". */
+  knows?: BookLabel;
+  /** v1: "What it builds". */
+  builds?: BookLabel;
+  /** v2: "Why it matters at five, this week". */
+  whyNow?: BookLabel;
+  /** v1: "Why it is built this way". */
+  why?: BookLabel;
+  /** v2: "One thing to do tomorrow". */
+  tomorrow?: BookLabel;
   askAfter: BookLine;
   askAfterOptional?: BookLine;
+  /** v2: a line for reading together (the choice to try on a re-read). */
+  together?: BookLabel;
   sourceNote: BookLabel;
 }
 
@@ -242,6 +275,10 @@ export interface Book {
   /** The first page every branch returns to. */
   rejoinPageId: string;
   parent: ParentPanel;
+  /** A pose the hero sheet does not have yet → the nearest pose it has (the
+   *  art agent's next round adds it). Used only when the sheet's manifest is
+   *  read and lacks the pose. */
+  poseFallbacks?: Record<Pose, Pose>;
 }
 
 /** The child the book is read for — display-time data only. */
