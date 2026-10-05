@@ -26,6 +26,7 @@ import { shieldShellSiblings } from "./kidModeShield";
 import { trapTabKey, type TrapRoot } from "./kidModeFocusTrap";
 import { readKidModeState, writeKidModeState } from "../../lib/kidModeGate";
 import { KidStageFallback } from "./KidStageFallback";
+import { useKidSurfaceTitle } from "./kidSurfaceTitle";
 import { useLanguage } from "../../context/LanguageContext";
 import KidDashboard, { type KidSurface } from "./KidDashboard";
 import { HoldExitButton } from "./HoldExitButton";
@@ -52,6 +53,7 @@ export default function KidModeOverlay() {
   const { isKidModeOpen, closeKidMode } = useKidMode();
   const { childProfile } = useArbor();
   const { t } = useLanguage();
+  const surfaceTitle = useKidSurfaceTitle();
   // KID-LOCK LEAK 1: rehydrate the surface in view from the persisted state so
   // a reload lands the child on the SAME kid surface (validated against
   // SURFACE_META — a stale/garbage view degrades to the home dashboard).
@@ -264,7 +266,8 @@ export default function KidModeOverlay() {
                   minWidth: 0,
                 }}
               >
-                {t(surface.labelKey)}
+                {/* B-KID-53: inside a world or a story the title is ITS name. */}
+                {surfaceTitle ?? t(surface.labelKey)}
               </span>
               <HoldExitButton onExit={closeKidMode} idleLabel={t("kid.exit.backToParent")} ariaIdle={t("kid.exit.backToParentAria")} />
             </header>

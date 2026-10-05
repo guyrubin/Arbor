@@ -10,6 +10,8 @@ import HeroCrest from "../ui/HeroCrest";
 import { ArborMascot } from "../ui/ArborMascot";
 import { TabSkeleton } from "../ui/Skeleton";
 import { KidStageFallback } from "../kidmode/KidStageFallback";
+import { setKidSurfaceTitle } from "../kidmode/kidSurfaceTitle";
+import { KID_GAME_TITLE_KEY } from "../kidmode/KidDashboard";
 import { useKidSafeNav } from "../kidmode/useKidSafeNav";
 import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
 
@@ -137,6 +139,14 @@ export default function HeroArcade({ initialWorldId }: { initialWorldId?: string
   const [openId, setOpenId] = useState<string | null>(
     () => (initialWorldId && WORLDS.some((w) => w.id === initialWorldId && !!w.Comp) ? initialWorldId : null),
   );
+  // B-KID-53: in Kid Mode the overlay header carries the open world's kid name
+  // (the same key as the home tile) — one title, and Home is the one back.
+  const openTitleKey = kidMode && openId ? KID_GAME_TITLE_KEY[openId] : undefined;
+  const openTitle = openTitleKey ? t(openTitleKey) : null;
+  React.useEffect(() => {
+    setKidSurfaceTitle(openTitle);
+    return () => setKidSurfaceTitle(null);
+  }, [openTitle]);
 
   // KID-02: every cosmetic metric is LIFETIME — nothing here can ever go down.
   const stats: CosmeticStats = useMemo(() => ({
@@ -170,11 +180,12 @@ export default function HeroArcade({ initialWorldId }: { initialWorldId?: string
             navigation only so active play never starts under duplicate titles. */}
         <div className="flex items-center">
           <span className="sr-only" role="status">{open.name}</span>
-          <button onClick={() => setOpenId(null)}
+          {/* B-KID-53: Kid Mode has ONE back (the overlay's Home); the parent arcade keeps "All worlds". */}
+          {!kidMode && <button onClick={() => setOpenId(null)}
             className="play-pressable inline-flex items-center gap-2 rounded-full px-4 min-h-[44px] text-[13px] font-extrabold"
             style={{ background: "var(--arbor-paper-elevated)", border: "var(--comic-line)", boxShadow: "var(--comic-pop)" }}>
             <Icon name="arrow_back" size={16} /> {t("elev.play.arcade.allWorlds")}
-          </button>
+          </button>}
         </div>
         <Suspense fallback={kidMode ? <KidStageFallback worldId={open.id} /> : <TabSkeleton />}><Comp /></Suspense>
       </div>

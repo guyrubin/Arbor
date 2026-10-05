@@ -123,6 +123,13 @@ const GAMES: GameDef[] = [
   { id: "story-quest", worldId: "adventures", accent: "peach", Icon: Map, imagePrompt: "an adventurous landscape with a treasure map and compass on a cliff" },
   { id: "mimic-studio", worldId: "mimic", accent: "clay", Icon: Smile, imagePrompt: "a playful mirror studio copying silly happy poses, sparkles all around" },
 ];
+/** B-KID-53: the kid name key of the world a tile opens (HeroArcade worldId →
+ *  kid.game.<id>.title), so the in-world header says the tile's own name. */
+export const KID_GAME_TITLE_KEY: Readonly<Record<string, string>> = {
+  // Spell Forge has no home tile (reached from the arcade grid) — its kid name.
+  reading: "elev.kids.reading.title",
+  ...Object.fromEntries(GAMES.map((g) => [g.worldId, `kid.game.${g.id}.title`])),
+};
 
 /** OBJ-KID-05: every tile on the kid home, with the destination it opens.
  *  `surface` plus `arg` IS the destination — the overlay renders a surface and

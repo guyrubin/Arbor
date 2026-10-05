@@ -53,6 +53,7 @@ import { ArborMascot } from "../ui/ArborMascot";
 import WorldScene from "../practice/WorldScene";
 import { useKidTheme } from "../../hooks/useKidTheme";
 import { kidArt, storyCoverKey } from "../../lib/kidThemeManifest";
+import { setKidSurfaceTitle } from "../kidmode/kidSurfaceTitle";
 import { pickTonightsStory, TONIGHT_AIM_REASON_KEY } from "../kidmode/tonightsStory";
 import { dayKey } from "../../practice/signals";
 import { PageHeader, cardCls } from "../ui/kit";
@@ -335,6 +336,14 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
 
   // B-KID-42: tonight's banner pins ONE story — open THAT book on arrival
   // (one tap from the kid home), once per mount; never a one-card catalogue.
+  // B-KID-53: in Kid Mode an open book's own title is the overlay title, and
+  // the overlay's Home is the one back (the reader drops its own back + title).
+  const kidStoryTitle = kidMode && activeStory && render ? (uiLang === "he" ? activeStory.titleHe : activeStory.title) : null;
+  useEffect(() => {
+    setKidSurfaceTitle(kidStoryTitle);
+    return () => setKidSurfaceTitle(null);
+  }, [kidStoryTitle]);
+
   const pinnedOpened = useRef(false);
   useEffect(() => {
     if (pinnedOpened.current || !initialStoryId) return;
@@ -1583,7 +1592,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
         {/* §3f row 4 — these two measured 20 px and 16 px tall: the way out of a
             story and the way into full screen, both under the touch floor. Both
             now clear 44 px, and both are keyed (they were English literals). */}
-        <button
+        {!kidMode && (<button
           onClick={exitJourney}
           className="inline-flex items-center gap-1.5 text-sm font-bold px-2 min-h-[44px]"
           style={{ color: "var(--arbor-muted)" }}
@@ -1593,8 +1602,8 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
               line it already has; the parent door keeps its own. */}
           <Icon name="arrow_back" size={16} style={uiLang === "he" ? { transform: "scaleX(-1)" } : undefined} />{" "}
           {kidMode ? kidsStoriesText("journey.backStories", aiLang) : t("elev.stories.reader.back")}
-        </button>
-        <span className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{render.title}</span>
+        </button>)}
+        {!kidMode && <span className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{render.title}</span>}
         <button
           ref={immersiveTriggerRef}
           onClick={() => setImmersive(true)}
