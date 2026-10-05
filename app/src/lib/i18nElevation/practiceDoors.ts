@@ -106,6 +106,10 @@ export const en: Record<string, string> = {
   "elev.stories.counts.stories.one": "1 story read together",
   // W2-SHELLPLAY critic r2: the quiet hero-first row inside the cover art band.
   "elev.stories.tonight.heroRow": "Give {name} a hero for these stories",
+  // W2-SHELLPLAY critic r2 (B-SHELL-NEW-2d): the one moment line above the cover.
+  "elev.stories.tonight.noted": "You noted today",
+  "elev.stories.tonight.noted.yesterday": "You noted yesterday",
+  "elev.stories.tonight.notedCta": "Make tonight's story from this",
   "elev.stories.catalogue.title": "Choose a different story",
   // B-PLAY-11: the one disclosure holding the pack filter + catalogue.
   "elev.stories.more": "More stories",
@@ -323,6 +327,9 @@ export const he: Record<string, string> = {
   "elev.stories.counts.stories": "{n} סיפורים שקראתם יחד",
   "elev.stories.counts.stories.one": "סיפור אחד שקראתם יחד",
   "elev.stories.tonight.heroRow": "תנו ל־{name} גיבור לסיפורים האלה",
+  "elev.stories.tonight.noted": "רשמתם היום",
+  "elev.stories.tonight.noted.yesterday": "רשמתם אתמול",
+  "elev.stories.tonight.notedCta": "להפוך את זה לסיפור של הלילה",
   "elev.stories.catalogue.title": "בחירת סיפור אחר",
   "elev.stories.more": "סיפורים נוספים",
   "elev.practice.door.when.day": "מאז {day}",

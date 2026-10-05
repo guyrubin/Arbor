@@ -26,6 +26,9 @@ import { contractFor } from "./surfaceContract";
 import { translate } from "./i18n";
 import { chooseTonightsStory } from "../components/kidmode/tonightsStory";
 import { HERO_STORIES } from "./heroJourneys";
+import { STORY_BUILDS_SHORT } from "./storyBuildsShort";
+import { latestNotedMoment } from "./bedtimeStories";
+import { MOMENT_BEHAVIOR_TYPE } from "../content/behaviorTaxonomy";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.resolve(here, "..");
@@ -313,5 +316,58 @@ describe("W2-SHELLPLAY r2 · #/stories — one filled button, honest 'starring',
   it("the reading line is plural-keyed in both locales", () => {
     expect(translate("en", "elev.stories.counts.stories.one", { n: 1 })).toBe("1 story read together");
     expect(translate("he", "elev.stories.counts.stories.one", { n: 1 })).not.toMatch(/[A-Za-z]/);
+  });
+});
+
+describe("W2-SHELLPLAY r2 · #/stories — Builds is a glance, and one moment line from the parent's own words", () => {
+  const parent = parentBranch(HERO);
+  const section = parent.slice(parent.indexOf('data-module="stories-tonight"'), parent.indexOf("</section>", parent.indexOf('data-module="stories-tonight"')));
+
+  it("every curated story has a Builds phrase of at most six words in EN and HE, never the 'The child learns' sentence", () => {
+    for (const s of HERO_STORIES) {
+      const row = STORY_BUILDS_SHORT[s.id];
+      expect(row, s.id).toBeTruthy();
+      for (const lang of ["en", "he"] as const) {
+        expect(row[lang].trim().split(/\s+/).length, `${s.id}/${lang}`).toBeLessThanOrEqual(6);
+        expect(row[lang]).not.toMatch(/child learns|children learn|הילד לומד|\/ה\b/i);
+      }
+      expect(row.he, s.id).not.toMatch(/[A-Za-z]/);
+    }
+    expect(section).toContain("{tonightBuildsShort ?? tonightBuilds}");
+    // NEGATIVE CONTROL: the r2 curriculum sentence is caught
+    expect("The child learns that the fastest, shiniest path is not always the right one".split(/\s+/).length).toBeGreaterThan(6);
+  });
+
+  it("the moment line quotes ONE parent-noted moment from today or yesterday, above the cover, with a link into From today", () => {
+    const line = section.slice(section.indexOf('data-testid="stories-tonight-noted"'), section.indexOf('data-testid="stories-cover"'));
+    expect(section.indexOf('data-testid="stories-tonight-noted"')).toBeGreaterThan(section.indexOf('data-testid="stories-tonight-mode"'));
+    expect(section.indexOf('data-testid="stories-tonight-noted"')).toBeLessThan(section.indexOf('data-testid="stories-cover"'));
+    expect(line).toContain('background: "var(--arbor-peach-wash)"');
+    expect(line).toContain('fontFamily: "var(--font-editorial)"');
+    expect(line).toContain("<bdi");
+    expect(line).toContain('onClick={() => setTonightMode("today")}');
+    expect(line).not.toMatch(/--gradient-cta|data-primary-move|data-module/);
+    expect(section).toContain('!kidMode && tonightMode !== "today" && notedMoment && (');
+    for (const k of ["elev.stories.tonight.noted", "elev.stories.tonight.noted.yesterday", "elev.stories.tonight.notedCta"]) {
+      expect(translate("en", k), k).not.toBe(k);
+      expect(translate("he", k), k).not.toMatch(/[A-Za-z]/);
+    }
+  });
+
+  it("latestNotedMoment: newest moment with the parent's words, today or yesterday only; never an incident, never older", () => {
+    const now = new Date(2026, 9, 5, 19, 0);
+    const at = (d: number, h: number) => new Date(2026, 9, d, h, 0).toISOString();
+    const M = MOMENT_BEHAVIOR_TYPE;
+    expect(latestNotedMoment([
+      { id: "a", timestamp: at(5, 9), behaviorType: M, trigger: "Sang the whole bath song" },
+      { id: "b", timestamp: at(5, 12), behaviorType: M, trigger: "Shared the red car" },
+      { id: "c", timestamp: at(5, 15), behaviorType: "tantrum", trigger: "Fell apart at the park" },
+    ], now)).toEqual({ id: "b", text: "Shared the red car", from: "today" });
+    expect(latestNotedMoment([{ id: "y", timestamp: at(4, 21), behaviorType: M, trigger: "Said thank you" }], now)?.from).toBe("yesterday");
+    // NEGATIVE CONTROLS: older, future, empty words and incidents give nothing
+    expect(latestNotedMoment([{ id: "o", timestamp: at(2, 10), behaviorType: M, trigger: "Old" }], now)).toBeNull();
+    expect(latestNotedMoment([{ id: "f", timestamp: at(5, 23), behaviorType: M, trigger: "Future" }], now)).toBeNull();
+    expect(latestNotedMoment([{ id: "e", timestamp: at(5, 10), behaviorType: M, trigger: "  " }], now)).toBeNull();
+    expect(latestNotedMoment([{ id: "i", timestamp: at(5, 10), behaviorType: "tantrum", trigger: "x" }], now)).toBeNull();
   });
 });

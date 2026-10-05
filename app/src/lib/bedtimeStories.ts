@@ -175,3 +175,34 @@ Return JSON with:
 ${languageDirective}
 `.trim();
 }
+
+/**
+ * W2-SHELLPLAY critic r2 (stories, B-SHELL-NEW-2d) — the one moment line on the
+ * Tonight cover. The newest PARENT-NOTED moment (a moment log with the parent's
+ * own words; never an incident, never a paraphrase) from the parent's local
+ * today or yesterday — nothing older, nothing in the future. Null otherwise, so
+ * the line is absent rather than empty.
+ */
+export function latestNotedMoment(
+  logs: ReadonlyArray<{ id: string; timestamp?: string; behaviorType?: string; trigger?: string }>,
+  now: Date,
+): { id: string; text: string; from: "today" | "yesterday" } | null {
+  const todayKey = localDayKey(now);
+  const y = new Date(now);
+  y.setDate(y.getDate() - 1);
+  const yesterdayKey = localDayKey(y);
+  let best: { id: string; text: string; from: "today" | "yesterday"; at: number } | null = null;
+  for (const l of logs) {
+    if (l.behaviorType !== MOMENT_BEHAVIOR_TYPE || !l.timestamp) continue;
+    const text = String(l.trigger ?? "").trim();
+    if (!text) continue;
+    const at = new Date(l.timestamp);
+    const ms = at.getTime();
+    if (Number.isNaN(ms) || ms > now.getTime()) continue;
+    const key = localDayKey(at);
+    const from = key === todayKey ? "today" : key === yesterdayKey ? "yesterday" : null;
+    if (!from) continue;
+    if (!best || ms > best.at) best = { id: l.id, text, from, at: ms };
+  }
+  return best ? { id: best.id, text: best.text, from: best.from } : null;
+}

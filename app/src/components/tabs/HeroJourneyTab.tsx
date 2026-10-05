@@ -5,6 +5,8 @@ import { AnimatePresence, motion } from "motion/react";
 import { celebrate } from "../../lib/celebrate";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
+import { latestNotedMoment } from "../../lib/bedtimeStories";
+import { storyBuildsShort } from "../../lib/storyBuildsShort";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
@@ -162,7 +164,7 @@ const METRIC_COLORS: Record<DevelopmentMetricId, string> = METRIC_VARS;
 
 
 export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: string } = {}) {
-  const { childProfile } = useArbor();
+  const { childProfile, behaviorLogs } = useArbor();
   // B-PLAY-15: the hero-first gate opens the shared create dialog in place.
   const [heroDialogOpen, setHeroDialogOpen] = useState(false);
   // B-PLAY-14: the Tonight cover's two options. The evening entry points ask
@@ -650,6 +652,12 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
     // W2-SHELLPLAY critic r1: the cover's "Builds · Ask after" well, in the UI
     // language only — a Hebrew row with no Hebrew text is not drawn.
     const tonightBuilds = tonightStory ? (uiLang === "he" ? tonightStory.learningObjectiveHe : tonightStory.learningObjective) ?? "" : "";
+    // W2-SHELLPLAY critic r2: the glanceable phrase (<= 6 words) when the story
+    // has one; the full sentence stays on the row's title.
+    const tonightBuildsShort = storyBuildsShort(tonightStory?.id, uiLang === "he" ? "he" : "en");
+    // W2-SHELLPLAY critic r2 (B-SHELL-NEW-2d): the parent's own words from today
+    // or yesterday, quoted once above the cover; absent when there are none.
+    const notedMoment = latestNotedMoment(behaviorLogs ?? [], new Date());
     const tonightAskAfter = tonightStory
       ? (uiLang === "he" ? tonightStory.parentReflection.questionsHe?.[0] : tonightStory.parentReflection.questions[0]) ?? ""
       : "";
@@ -975,6 +983,31 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
               all inside 812 px. ≥1024: two columns, art at inline-start, the
               text column held to 60ch. The archetype essay lives in the reader
               (reflection beat), not on the cover. */}
+          {/* W2-SHELLPLAY critic r2 (B-SHELL-NEW-2d): ONE moment line — the
+              parent's own words from today or yesterday, the screen's one warm
+              accent. Flat peach wash, quote in the editorial face, bidi-isolated.
+              Its quiet link opens "From today" (which seeds from that day).
+              Absent with no moment, and in "From today" (that body quotes it). */}
+          {!kidMode && tonightMode !== "today" && notedMoment && (
+            <div data-testid="stories-tonight-noted" className="mb-3 rounded-[14px] p-3" style={{ background: "var(--arbor-peach-wash)" }}>
+              <p className="m-0 t-xs font-bold" style={{ color: "var(--arbor-peach-ink)" }}>
+                {t(notedMoment.from === "today" ? "elev.stories.tonight.noted" : "elev.stories.tonight.noted.yesterday")}
+              </p>
+              <p className="m-0 mt-0.5 t-base leading-snug" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)" }}>
+                “<bdi dir="auto">{notedMoment.text}</bdi>”
+              </p>
+              <button
+                type="button"
+                data-testid="stories-tonight-noted-cta"
+                onClick={() => setTonightMode("today")}
+                className="inline-flex min-h-11 items-center gap-1 t-sm font-bold"
+                style={{ color: "var(--arbor-clay-ink)" }}
+              >
+                {t("elev.stories.tonight.notedCta")}
+                <Icon name="arrow_forward" size={15} className="rtl:-scale-x-100" />
+              </button>
+            </div>
+          )}
           {tonightMode === "today" ? <TonightFromToday /> : (
           <div data-testid="stories-cover" className={`${cardCls} w-full overflow-hidden p-0 lg:grid lg:grid-cols-[2fr_3fr]`}>
             <div
@@ -1021,7 +1054,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                       <dt className="font-extrabold flex-shrink-0" style={{ color: "var(--arbor-ink)" }}>{t("elev.stories.tonight.builds")} ·</dt>
                       {/* W2-SHELLPLAY critic r2: two lines at most below sm, so
                           Play stays clear of the bottom nav at 375. */}
-                      <dd className="m-0 line-clamp-2 sm:line-clamp-none" title={tonightBuilds} style={{ color: "var(--arbor-ink-soft)" }} dir="auto">{tonightBuilds}</dd>
+                      <dd className="m-0 line-clamp-2 sm:line-clamp-none" title={tonightBuilds} style={{ color: "var(--arbor-ink-soft)" }} dir="auto">{tonightBuildsShort ?? tonightBuilds}</dd>
                     </div>
                   )}
                   {tonightAskAfter && (
