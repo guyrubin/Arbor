@@ -356,8 +356,24 @@ describe("W2-CAREPRO c2 r1 — copy versus persistence; flat crisis wash", () =>
   const persists = (source: string) => /localStorage\.setItem|\.upsert\(|setDoc\(|addDoc\(/.test(source);
 
   it("the subtitle keeps its word in EN and HE", () => {
-    expect(safetyEnRecord["elev.safety.header.sub" as keyof typeof safetyEnRecord]).toBe("One tap reaches a person. Arbor never records the call.");
-    expect(safetyHeRecord["elev.safety.header.sub" as keyof typeof safetyHeRecord]).toBe("לחיצה אחת ואדם עונה. ארבור לא מתעדת את השיחה.");
+    expect(safetyEnRecord["elev.safety.header.sub" as keyof typeof safetyEnRecord]).toBe("One tap reaches a person.");
+    expect(safetyHeRecord["elev.safety.header.sub" as keyof typeof safetyHeRecord]).toBe("לחיצה אחת ואדם עונה.");
+  });
+
+  /* W2-CAREPRO c2 r2 (safety · product P1 G0): every safety tel tap writes a
+   * uid-attributed analytics event carrying the dialled code, so no Safety
+   * string may promise the call is not recorded while any track( call on the
+   * page passes `code:`. */
+  const NO_RECORD = /never records|not recorded|doesn't record|does not record|לא מתעד|לא מתועד|לא נרשם/i;
+  const tracksDialled = (source: string) => /track\([^)]*\bcode\s*:/.test(source);
+  it("no Safety string promises the call is never recorded while a track( call carries the dialled code", () => {
+    const hits = [safetyEnRecord, safetyHeRecord].flatMap((rec) => safetyCopy(rec as Record<string, string>).filter((l) => NO_RECORD.test(l)));
+    if (tracksDialled(tabSource)) expect(hits).toEqual([]);
+  });
+  it("NEGATIVE CONTROL: the r1 subtitle trips the no-record scan, and the page does track the dialled code", () => {
+    expect(NO_RECORD.test("One tap reaches a person. Arbor never records the call.")).toBe(true);
+    expect(NO_RECORD.test("לחיצה אחת ואדם עונה. ארבור לא מתעדת את השיחה.")).toBe(true);
+    expect(tracksDialled(tabSource), "SafetyTab tracks safety_*_tel_tap with code:").toBe(true);
   });
 
   it("no Safety string claims nothing is saved while SafetyTab persists anything", () => {
