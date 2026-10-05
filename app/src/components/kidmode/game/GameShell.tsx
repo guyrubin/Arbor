@@ -19,10 +19,9 @@
  * Outside Kid Mode (the parent Practice doors) the shell renders today's
  * PlayHeader unchanged, so the parent register does not move.
  */
-import React, { useEffect, useSyncExternalStore } from "react";
+import React, { createContext, useContext, useEffect, useSyncExternalStore } from "react";
 import { PlayButton, PlayHeader, celebrateBurst } from "../../ui/playkit";
 import type { MascotMood } from "../../ui/ArborMascot";
-import { HeroAvatar } from "../../ui/HeroAvatar";
 import { useLanguage } from "../../../context/LanguageContext";
 import { useArborOptional } from "../../../context/ArborContext";
 import { isKidModeActive, subscribeKidMode } from "../../../lib/kidModeGate";
@@ -32,6 +31,11 @@ import { setKidHearIt, useKidHome } from "../kidChrome";
 import { autoReadPage } from "../kidReadAloud";
 import { stopVoice } from "../../../lib/voice";
 import { kidSfx } from "../audio/kidAudio";
+import { KidFinishMoment } from "../rewards/KidSouvenir";
+
+/** B-KID-94: the world a finish screen belongs to (its souvenir), provided by
+ *  the shell so every GameFinish inside it knows without a prop. */
+const GameWorldContext = createContext<KidWorldTileId | null>(null);
 
 /** B-KID-73: a tap on any piece (a button) inside a kid game makes the soft
  *  tap sound — one shared seam, no per-world wiring. */
@@ -126,6 +130,7 @@ export function GameShell({ worldId, title, instruction, hearIt, progress, mood,
   return (
     // `.arbor-play`: the kid type scale, also when a surface mounts a game
     // directly (the overlay's feelings view), not only inside the arcade.
+    <GameWorldContext.Provider value={worldId}>
     <div data-game-shell={worldId} className="arbor-play relative" style={{ isolation: "isolate" }} onPointerDownCapture={onGamePiecePointerDown}>
       {/* Fable render (5 Oct): a full-area blurred backdrop sat under an opaque
           play card and was never seen. The world's card is now a banner strip
@@ -162,18 +167,25 @@ export function GameShell({ worldId, title, instruction, hearIt, progress, mood,
         {progress && <GameProgressDots index={progress.index} total={progress.total} />}
       </div>
     </div>
+    </GameWorldContext.Provider>
   );
 }
 
-/** The explicit finish screen of a kid game: the hero cheers; Play again and
- *  Home (the overlay's, when Kid Mode is open). No stars, no counts. */
-export function GameFinish({ title, subtitle, onPlayAgain, playAgainLabel, homeLabel }: { title: string; subtitle?: string; onPlayAgain: () => void; playAgainLabel: string; homeLabel: string }) {
+/** The explicit finish screen of a kid game — B-KID-94: the ONE finish moment.
+ *  The hero cheers, the world's souvenir sticker is awarded (once, kept for
+ *  good), the finish sound plays; Play again and Home (the overlay's, when
+ *  Kid Mode is open). No stars, no counts, no streak. */
+export function GameFinish({ title, subtitle, onPlayAgain, playAgainLabel, homeLabel, worldId }: { title: string; subtitle?: string; onPlayAgain: () => void; playAgainLabel: string; homeLabel: string; worldId?: KidWorldTileId }) {
   const goHome = useKidHome();
+  const shellWorld = useContext(GameWorldContext);
+  const world = worldId ?? shellWorld ?? undefined;
+  const childId = useArborOptional()?.childProfile?.id ?? "";
+  const { uiLang } = useLanguage();
   // B-KID-73: the finish fanfare with the burst (silent when Sound is off).
   useEffect(() => { celebrateBurst(); kidSfx("finish"); }, []);
   return (
     <div className="text-center py-6 play-pop-in" data-game-finish="">
-      <div className="mx-auto w-fit play-cheer"><HeroAvatar size={132} mood="cheer" animate /></div>
+      <KidFinishMoment childId={childId} kind="world" refId={world} lang={uiLang === "he" ? "he" : "en"} />
       <h2 className="text-[1.6rem] font-extrabold mt-2" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)", textWrap: "balance" }}>{title}</h2>
       {subtitle && <p className="mt-1 text-[16px] font-bold" style={{ color: "var(--arbor-ink-soft)" }}>{subtitle}</p>}
       <div className="mt-5 flex flex-wrap justify-center gap-3">

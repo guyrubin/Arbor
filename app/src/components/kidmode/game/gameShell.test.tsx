@@ -17,7 +17,9 @@ vi.mock("../../../lib/kidModeGate", () => ({ isKidModeActive: () => gate.kid, su
 vi.mock("../../../context/LanguageContext", () => ({ useLanguage: () => ({ uiLang: "en", aiLang: "en", t: (k: string) => k }) }));
 vi.mock("../../../context/ArborContext", () => ({ useArborOptional: () => ({ childProfile: { id: "c1", kidTheme: "film3d" } }), useArbor: () => ({ childProfile: { id: "c1" } }) }));
 vi.mock("../../../lib/voice", () => ({ speakText: vi.fn(), stopVoice: vi.fn(), voiceSupported: () => true }));
-vi.mock("../../ui/HeroAvatar", () => ({ HeroAvatar: () => <span data-hero="" /> }));
+vi.mock("../../ui/HeroAvatar", () => ({ HeroAvatar: () => <span data-hero="" />, useHeroAvatar: () => ({ url: null }) }));
+// B-KID-94: the finish moment reads the child's souvenir ledger (per-child store).
+vi.mock("../rewards/useKidSouvenirs", () => ({ useKidSouvenirs: () => ({ items: [], loaded: true, upsert: async () => {} }) }));
 
 import { GameShell, GameFinish, GameProgressDots } from "./GameShell";
 import { setKidHome } from "../kidChrome";
@@ -83,6 +85,16 @@ describe("GameFinish — the explicit end", () => {
     expect(html).toContain("Play again");
     expect(html).toContain("Home");
     expect(html).not.toMatch(/⭐|★|stars/);
+  });
+  it("B-KID-94: inside a world's shell the finish awards that world's sticker (its card, die-cut) under the hero", () => {
+    setKidHome(() => {});
+    gate.kid = true;
+    const html = renderToStaticMarkup(<GameShell worldId="memory" title="Mind Vault"><GameFinish title="Done" onPlayAgain={() => {}} playAgainLabel="Play again" homeLabel="Home" /></GameShell>);
+    expect(html).toContain('data-kid-finish-moment=""');
+    expect(html).toContain('data-kid-sticker="world:memory"');
+    expect(html).toContain("game-memory");
+    expect(html).toContain("A new sticker!");
+    expect(html).not.toMatch(/⭐|★/);
   });
   it("outside Kid Mode there is no Home to offer", () => {
     const html = renderToStaticMarkup(<GameFinish title="Done" onPlayAgain={() => {}} playAgainLabel="Play again" homeLabel="Home" />);

@@ -50,8 +50,11 @@ import { ageMonthsFromProfile } from "../../lib/childAge";
 import type { HeroJourneyRun } from "../../types";
 import { HERO_STORIES, storyLanguage } from "../../lib/heroJourneys";
 import { kidBooks } from "./kidBooks";
-import { KID_WORLDS, KID_WORLD_NAME_KEY, type KidWorldAccent } from "./kidWorlds";
+import { KID_WORLDS, KID_WORLD_NAME_KEY, kidWorldByWorldId, type KidWorldAccent } from "./kidWorlds";
 import { KidBookCover } from "./KidBookCover";
+import { KidStickerStrip } from "./rewards/KidSouvenir";
+import { useKidSouvenirs } from "./rewards/useKidSouvenirs";
+import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
 import { starEvents } from "../../practice/signals";
 
 export type KidSurface = "journeys" | "arcade" | "feelings" | "comics";
@@ -379,6 +382,8 @@ export default function KidDashboard({
   // charter's aims, the age view) so both name the same story; the reason line
   // is the parent's and is ignored here.
   const heroRunsCol = useChildCollection<HeroJourneyRun>(childProfile.id, "heroRuns");
+  // B-KID-96: the souvenirs the child kept (the "My stickers" strip).
+  const souvenirs = useKidSouvenirs(childProfile.id);
   const heroReadIds = useMemo(() => heroRunsCol.items.map((r) => r.storyId), [heroRunsCol.items]);
   const tonightsStoryId = useMemo(
     () => chooseTonightsStory(data.today, childProfile.id, {
@@ -558,6 +563,25 @@ export default function KidDashboard({
           ))}
         </div>
       </section>
+      {/* B-KID-96: "My stickers" — the souvenirs the child kept (hidden while none). */}
+      <KidStickerStrip
+        items={souvenirs.items}
+        lang={uiLang === "he" ? "he" : "en"}
+        nameOf={(s) => {
+          if (s.kind === "world") { const w = kidWorldByWorldId(s.refId); return w ? t(w.nameKey) : ""; }
+          const story = HERO_STORIES.find((x) => x.id === s.refId);
+          return story ? (uiLang === "he" ? story.titleHe : story.title) : "";
+        }}
+        onOpen={(s) => onOpenSurface(s.kind === "world" ? "arcade" : "journeys", s.refId)}
+        heading={
+          <div style={{ display: "flex", alignItems: "center", marginBlockEnd: `${KID_HOME_HEAD_GAP}px`, minHeight: `${KID_HOME_SECTION_HEAD_BLOCK}px` }}>
+            <h2 style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: KID_HOME_GAME_TITLE_SIZE, fontWeight: 900, color: "var(--arbor-ink)" }}>
+              <Star className="w-4 h-4" aria-hidden="true" style={{ color: "var(--arbor-peach-ink)" }} />
+              {kidIsolate(kidsStoriesText("kidReward.myStickers", uiLang === "he" ? "he" : "en"))}
+            </h2>
+          </div>
+        }
+      />
       {/* B-KID-85: no comics door — saved comics live in the library ("My
           books" › Made before), one shelf for every book the child has. */}
 

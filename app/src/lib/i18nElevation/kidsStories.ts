@@ -11,7 +11,8 @@ export type KidsStoriesKey =
   | "shelf.emptyNoHero" | "shelf.openStories"
   | "kidBooks.title" | "kidBooks.seeAll" | "kidBooks.readMark" | "kidBooks.madeBefore" | "kidBooks.empty" | "kidBooks.readAloud"
   | "kidGame.hearIt" | "kidGame.playAgain" | "kidGame.home"
-  | "kidAudio.sound";
+  | "kidAudio.sound"
+  | "kidReward.newSticker" | "kidReward.myStickers" | "kidReward.stickerAria";
 
 const EN: Record<KidsStoriesKey, string> = {
   "shelf.title": "Hero Comics",
@@ -76,6 +77,9 @@ const EN: Record<KidsStoriesKey, string> = {
   "kidGame.playAgain": "Play again",
   "kidGame.home": "Home",
   "kidAudio.sound": "Sound",
+  "kidReward.newSticker": "A new sticker!",
+  "kidReward.myStickers": "My stickers",
+  "kidReward.stickerAria": "{name} sticker",
 };
 
 const HE: Record<KidsStoriesKey, string> = {
@@ -141,6 +145,9 @@ const HE: Record<KidsStoriesKey, string> = {
   "kidGame.playAgain": "משחקים שוב",
   "kidGame.home": "הביתה",
   "kidAudio.sound": "צלילים",
+  "kidReward.newSticker": "מדבקה חדשה!",
+  "kidReward.myStickers": "המדבקות שלי",
+  "kidReward.stickerAria": "מדבקה: {name}",
 };
 
 /** Registry shape for the dictionary firewall (i18nElevation/index.ts MODULES). */

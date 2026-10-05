@@ -49,7 +49,7 @@ export const CHILD_DATA_ROWS: readonly ChildDataRow[] = [
     icon: "sports_esports",
     collections: [
       "playLogs", "practiceEvents", "speechAttempts", "mimicSessions", "missionRecords",
-      "heroRuns", "journeyObjectives", "adventureResults", "savedStories", "savedComics",
+      "heroRuns", "journeyObjectives", "adventureResults", "savedStories", "savedComics", "kidSouvenirs",
     ],
   },
   { id: "plans", icon: "checklist", collections: ["actionPlans", "actionLoops", "routines", "goals", "goalObservations", "savedLearn", "weeklyReports"] },

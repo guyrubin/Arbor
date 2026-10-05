@@ -50,6 +50,9 @@ export const CHILD_SUBCOLLECTIONS = [
   "mimicSessions",
   "missionRecords",
   "heroRuns",
+  // B-KID-96: the child's souvenir stickers (one per world / book, earned
+  // once, lifetime) — per-child data → export + erase sweep.
+  "kidSouvenirs",
   "journeyObjectives",
   "adventureResults",
   "bandSnapshots",

@@ -562,7 +562,11 @@ function ancestorPresentationReason(node: Opening): string {
   };
   const wrapper = WRAPPERS.find(item => imported(node.tagName, item.name, item.file) || localWrapper(item));
   const presence = imported(node.tagName, "AnimatePresence", "motion/react");
-  const contextProvider = tag === "KidModeContext.Provider" && source.fileName === "components/kidmode/KidModeContext.tsx";
+  // A context provider renders no element and carries no presentation. Each is
+  // named with its file: B-KID-94 adds GameShell's world context (the finish
+  // moment's souvenir id), the same no-DOM case as KidModeContext.
+  const contextProvider = (tag === "KidModeContext.Provider" && source.fileName === "components/kidmode/KidModeContext.tsx")
+    || (tag === "GameWorldContext.Provider" && source.fileName === "components/kidmode/game/GameShell.tsx");
   if (!/^[a-z][a-z0-9-]*$/.test(tag) && !isMotion && !wrapper && !presence && !contextProvider) return "component presentation is unverified";
   const entries: { name: string; value: ts.Node }[] = [];
   for (const attribute of node.attributes.properties) {

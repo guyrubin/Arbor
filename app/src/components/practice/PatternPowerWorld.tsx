@@ -51,7 +51,7 @@ export function PatternDoneView({
   homeLabel?: string;
 }) {
   if (isKidModeActive()) {
-    return <GameFinish title={title} subtitle={subtitle} onPlayAgain={onReplay} playAgainLabel={againLabel} homeLabel={homeLabel} />;
+    return <GameFinish worldId="pattern" title={title} subtitle={subtitle} onPlayAgain={onReplay} playAgainLabel={againLabel} homeLabel={homeLabel} />;
   }
   return (
     // B-KID-04 (law 3): a finished set earns all three stars — 0/6 included.

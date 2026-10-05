@@ -21,6 +21,8 @@ export const KID_ART_GAPS: Record<KidThemeId, readonly KidArtKey[]> = {
     "story.the-lantern-path.cover",
     "story.the-cloud-orchestra.cover",
     "story.the-little-bridge-builders.cover",
+    // B-KID-94: the finish moment's stock hero (film3d: commit the dylan-hero-avatar-480/1024 web derivatives, then map it here)
+    "hero.portrait",
   ],
   storybook: [
     "story.david-and-goliath.cover",
@@ -42,5 +44,7 @@ export const KID_ART_GAPS: Record<KidThemeId, readonly KidArtKey[]> = {
     "story.the-tyrant-and-the-town.cover",
     "story.the-friendly-monster.cover",
     "home.stage",
+    // B-KID-94: the finish moment's stock hero (film3d: commit the dylan-hero-avatar-480/1024 web derivatives, then map it here)
+    "hero.portrait",
   ],
 };

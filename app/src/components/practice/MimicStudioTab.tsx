@@ -16,6 +16,7 @@ import { usePracticeData } from "../../practice/usePracticeData";
 import MimicMatch from "./MimicMatch";
 import type { MimicSession } from "../../types";
 import { track } from "../../lib/analytics";
+import { KidFinishMoment } from "../kidmode/rewards/KidSouvenir";
 // AP-050: practice_stamp surface — download a branded hero card on pack completion.
 import { downloadPracticeStampCanvas } from "../../lib/heroAvatarCanvas";
 
@@ -309,9 +310,12 @@ export default function MimicStudioTab() {
           <Celebrate
             title={t("elev.play.mimic.packComplete.title")}
             subtitle={t("elev.play.mimic.packComplete.sub", { name: first, pack: wonPack.title })}
-            stars={wonPack.prompts.length}
-            starsTotal={wonPack.prompts.length}
+            // B-KID-94: no star row in front of the child — the pack's end
+            // gives Mimic's souvenir sticker instead (the parent door keeps stars).
+            stars={kidMode ? undefined : wonPack.prompts.length}
+            starsTotal={kidMode ? undefined : wonPack.prompts.length}
           >
+            {kidMode && <KidFinishMoment childId={childProfile.id} kind="world" refId="mimic" lang={uiLang === "he" ? "he" : "en"} hero={false} />}
             {MIMIC_PACKS.filter((p) => p.id !== wonPackId).slice(0, 1).map((p) => (
               <PlayButton key={p.id} onClick={() => { setPackId(p.id); setWonPackId(null); }} tone="clay" size="md">
                 {p.emoji} {t("elev.play.mimic.playPack", { pack: p.title })}

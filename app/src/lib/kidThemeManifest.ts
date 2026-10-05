@@ -42,7 +42,7 @@ export const KID_HOME_TILE_IDS = ["kid-playbank", "kid-hero", "kid-quest"] as co
 export type KidWorldTileId = KidWorldId | (typeof KID_HOME_TILE_IDS)[number];
 export const KID_WORLD_TILE_IDS: readonly KidWorldTileId[] = [...KID_WORLDS.map((w) => w.worldId), ...KID_HOME_TILE_IDS];
 
-export type KidArtKey = `world.${KidWorldTileId}.tile` | `story.${string}.cover` | "home.stage";
+export type KidArtKey = `world.${KidWorldTileId}.tile` | `story.${string}.cover` | "home.stage" | "hero.portrait";
 export const worldTileKey = (id: KidWorldTileId): KidArtKey => `world.${id}.tile`;
 export const storyCoverKey = (storyId: string): KidArtKey => `story.${storyId}.cover`;
 
@@ -51,6 +51,9 @@ export const KID_ART_KEYS: readonly KidArtKey[] = [
   ...KID_WORLD_TILE_IDS.map(worldTileKey),
   ...HERO_STORIES.map((s) => storyCoverKey(s.id)),
   "home.stage",
+  // B-KID-94: the theme's stock hero for a finish moment when the child has
+  // no generated hero (KidFinishHero; Sprout until a theme fills it).
+  "hero.portrait",
 ];
 
 /** The slots the app renders with NO non-art fallback: a theme must cover all

@@ -68,6 +68,7 @@ import { kidBooks } from "../kidmode/kidBooks";
 import { KidBookTitleCard } from "../kidmode/KidBookCover";
 import { autoReadPage } from "../kidmode/kidReadAloud";
 import { kidSfx } from "../kidmode/audio/kidAudio";
+import { KidFinishMoment } from "../kidmode/rewards/KidSouvenir";
 import { stopVoice } from "../../lib/voice";
 import { KID_BOOK_ART_BLOCK } from "../stories/HeroScenePlayer";
 import { DecisionChoices } from "../stories/DecisionChoices";
@@ -1410,6 +1411,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
     const toEnding = () => {
       setAtEnd(true);
       if (!saved) void finishJourney();
+      kidSfx("finish"); // B-KID-94: the ONE finish sound
     };
     const readAgain = () => {
       setAtEnd(false);
@@ -1423,7 +1425,9 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
         <AnimatePresence mode="wait" initial={false}>
           {atEnd ? (
             <motion.div key="kid-book-end" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} data-kid-book-ending="">
-              {bookArtBox}
+              {/* B-KID-94: the ONE finish moment — the hero cheers and the child
+                  keeps this book's sticker (its cover, die-cut), earned once. */}
+              <div className="pt-4"><KidFinishMoment childId={childProfile.id} kind="book" refId={activeStory.id} lang={uiLang === "he" ? "he" : "en"} /></div>
               <div className="flex flex-col items-center gap-4 px-5 pt-5 text-center">
                 <p dir="auto" className="font-black" style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 32, color: "var(--arbor-ink)" }}>{kidsStoriesText("journey.end", uiLang === "he" ? "he" : "en")}</p>
                 <div className="flex w-full max-w-md flex-col gap-3">
