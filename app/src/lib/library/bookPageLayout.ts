@@ -546,60 +546,79 @@ function layoutSpread(c: Ctx): BookPageLayout | null {
   };
 }
 
-const OPEN_ROW = 112;
-
-/** The cover as the book's front: the whole plate, the title set in its calm
- *  band (no card), ONE Open toy under the plate. Null when the title does not
- *  fit the band → a facing title page. `content.paras` = [cover line, name line]. */
+/** The cover as the book's front (fix round 2, ruling 4): the whole plate as
+ *  large as the inside pages' book (no row reserved under it); the title, the
+ *  name line and the cover line set in the plate's calm band (the cover line
+ *  >= 26 px at 1920); ONE Open toy over the plate's lower margin, on the side
+ *  away from the hero. Only a missing band falls back to a facing title page;
+ *  at >= 900 px the front is always used (the title scales to fit).
+ *  `content.paras` = [cover line, name line]. */
 function layoutCover(c: Ctx): BookPageLayout | null {
   const r = c.page.textRect;
   if (!r) return null;
-  const { artPage, art } = framedPlate(c, OPEN_ROW);
+  const { artPage, art } = framedPlate(c, 0);
   const zone = rectOnPlate(r, art);
   const pad = Math.round(clamp(zone.h * 0.08, 8, 20));
   const w = zone.w - 2 * pad;
   const [lineChars = 0, nameChars = 0] = c.content.paras;
   const titleChars = c.content.title ?? 0;
-  for (let titlePx = Math.round(clamp(art.h * 0.085, 40, 84)); titlePx >= 34; titlePx -= 2) {
-    const namePx = Math.round(titlePx * 0.5);
-    const linePx = Math.max(18, Math.round(titlePx * 0.36));
+  const linePx = Math.round(clamp(art.h * 0.029, 18, 32));
+  const fitsAt = (titlePx: number) => {
+    const namePx = Math.max(20, Math.round(titlePx * 0.5));
     const hTitle = Math.ceil(titleChars / Math.max(1, Math.floor(w / (titlePx * 0.56)))) * titlePx * 1.08;
     const hName = nameChars ? Math.ceil(nameChars / Math.max(1, Math.floor(w / (namePx * 0.56)))) * namePx * 1.25 : 0;
     const hLine = estimateTextHeight([lineChars], w, linePx, 1.35);
-    if (hTitle + hName + hLine + 2 * pad > zone.h) continue;
-    const anchor = anchorFor(c, c.slot);
-    const hero = heroRect(c.slot, art, art, anchor);
-    const openW = Math.round(clamp(art.w * 0.3, 260, 380));
-    return {
-      mode: "wide",
-      pageType: "cover",
-      dir: c.dir,
-      book: artPage,
-      artPage,
-      art,
-      plate: art,
-      crop: { x0: 0, x1: 1 },
-      textPage: zone,
-      text: { x: zone.x + pad, y: zone.y + pad, w, h: zone.h - 2 * pad },
-      pad: { inline: pad, block: pad },
-      typePx: linePx,
-      lineHeight: 1.35,
-      titlePx,
-      navPx: 0,
-      cardsPx: 0,
-      cardW: 0,
-      cardPicH: 0,
-      sheetOverlap: 0,
-      choicePlan: null,
-      openRect: { x: Math.round(art.x + (art.w - openW) / 2), y: artPage.y + artPage.h + 18, w: openW, h: 88 },
-      hero,
-      heroBody: bodyRect(c.slot, art, anchor),
-      shadow: shadowFor(c.slot, art, hero, anchor),
-      spine: c.dir === "ltr" ? "left" : "right",
-      fits: true,
-    };
+    return hTitle + hName + hLine + 2 * pad <= zone.h;
+  };
+  let titlePx = Math.round(clamp(art.h * 0.085, 40, 84));
+  while (titlePx > 26 && !fitsAt(titlePx)) titlePx -= 2;
+  const anchor = anchorFor(c, c.slot);
+  const hero = heroRect(c.slot, art, art, anchor);
+  const body = bodyRect(c.slot, art, anchor);
+  // the Open toy: over the lower margin, away from the hero
+  const openW = Math.round(clamp(art.w * 0.26, 260, 380));
+  const openH = 88;
+  const inset = Math.round(clamp(art.w * 0.025, 16, 36));
+  const heroCx = body ? body.x + body.w / 2 : art.x + art.w / 2;
+  const sides = heroCx < art.x + art.w / 2 ? ["end", "middle", "start"] : ["start", "middle", "end"];
+  let openRect: Rect | undefined;
+  for (const side of sides) {
+    const x = side === "end" ? art.x + art.w - inset - openW : side === "start" ? art.x + inset : art.x + (art.w - openW) / 2;
+    const cand: Rect = { x: Math.round(x), y: Math.round(art.y + art.h - inset - openH), w: openW, h: openH };
+    if (!body || overlapArea(cand, body) === 0) {
+      openRect = cand;
+      break;
+    }
   }
-  return null;
+  openRect ??= { x: Math.round(art.x + (art.w - openW) / 2), y: art.y + art.h - inset - openH, w: openW, h: openH };
+  return {
+    mode: "wide",
+    pageType: "cover",
+    dir: c.dir,
+    book: artPage,
+    artPage,
+    art,
+    plate: art,
+    crop: { x0: 0, x1: 1 },
+    textPage: zone,
+    text: { x: zone.x + pad, y: zone.y + pad, w, h: zone.h - 2 * pad },
+    pad: { inline: pad, block: pad },
+    typePx: linePx,
+    lineHeight: 1.35,
+    titlePx,
+    navPx: 0,
+    cardsPx: 0,
+    cardW: 0,
+    cardPicH: 0,
+    sheetOverlap: 0,
+    choicePlan: null,
+    openRect,
+    hero,
+    heroBody: body,
+    shadow: shadowFor(c.slot, art, hero, anchor),
+    spine: c.dir === "ltr" ? "left" : "right",
+    fits: fitsAt(titlePx),
+  };
 }
 
 /** The stacked art window is never narrower than this (fix round 1). */

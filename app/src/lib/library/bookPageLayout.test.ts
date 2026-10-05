@@ -282,21 +282,30 @@ describe("Five Smooth Stones (the proof): every page lays out at 1920, 1280 and 
     }
   });
 
-  it("the cover at 1920 is the book's front: title in the calm band, ONE Open toy under the plate; at 1280 a facing title page", () => {
-    for (const lang of LANGS) {
-      const content = { paras: [david.coverLine[lang].length, david.coverNameLine![lang].length + NAME.length], title: david.title[lang].length };
-      const plate = getPlate(david.id, "PL3")!;
-      const l = computeBookPageLayout(david.cover, SPREAD_BOXES[0], lang, { cover: true, content, plate });
-      expect(l.pageType).toBe("cover");
-      expect(l.titlePx).toBeGreaterThanOrEqual(44);
-      const r = david.cover.textRect!;
-      expect(l.textPage.x).toBeCloseTo(l.art.x + r[0] * l.art.w, 3);
-      expect(l.textPage.y + l.textPage.h).toBeLessThanOrEqual(l.art.y + r[3] * l.art.h + 0.01);
-      expect(l.openRect!.y).toBeGreaterThanOrEqual(l.artPage.y + l.artPage.h);
-      expect(l.openRect!.y + l.openRect!.h).toBeLessThanOrEqual(SPREAD_BOXES[0].height);
-      const small = computeBookPageLayout(david.cover, SPREAD_BOXES[1], lang, { cover: true, content, plate });
-      expect(["cover", "facing"]).toContain(small.pageType);
-      if (small.pageType === "facing") expect(overlapArea(small.textPage, small.art)).toBe(0);
+  it("fix round 2: the cover is the book's front at 1920 AND 1280 — title in the calm band, the cover line >= 26 px at 1920, as large as the inside book, ONE Open toy over the lower margin away from the hero", () => {
+    for (const box of SPREAD_BOXES) {
+      for (const lang of LANGS) {
+        const content = { paras: [david.coverLine[lang].length, david.coverNameLine![lang].length + NAME.length], title: david.title[lang].length };
+        const plate = getPlate(david.id, "PL3")!;
+        const l = computeBookPageLayout(david.cover, box, lang, { cover: true, content, plate });
+        const tag = `${box.width} ${lang}`;
+        expect(l.pageType, tag).toBe("cover");
+        expect(l.fits, tag).toBe(true);
+        expect(l.titlePx, tag).toBeGreaterThanOrEqual(30);
+        if (box.width >= 1920) expect(l.typePx, tag).toBeGreaterThanOrEqual(26);
+        const r = david.cover.textRect!;
+        expect(l.textPage.x).toBeCloseTo(l.art.x + r[0] * l.art.w, 3);
+        expect(l.textPage.y + l.textPage.h).toBeLessThanOrEqual(l.art.y + r[3] * l.art.h + 0.01);
+        // as large as the inside book: the cover's art is at least as tall as p1's art page
+        const p1 = dPages.find((p) => p.id === "p1")!;
+        const inside = computeBookPageLayout(p1, box, lang, { plate: getPlate(david.id, "PL1")!, content: { paras: [100] } });
+        expect(l.art.h, tag).toBeGreaterThanOrEqual(inside.art.h);
+        // the Open toy sits inside the plate's lower margin and never on the hero
+        const o = l.openRect!;
+        expect(o.y + o.h).toBeLessThanOrEqual(l.art.y + l.art.h);
+        expect(o.y).toBeGreaterThan(l.art.y + l.art.h * 0.6);
+        expect(overlapArea(o, l.heroBody!), tag).toBe(0);
+      }
     }
   });
 
