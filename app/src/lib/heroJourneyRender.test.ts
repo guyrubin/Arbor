@@ -10,7 +10,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { authoredChoice, authoredScene, completeRender, nameTheHero } from "./heroJourneyRender";
 import { getStorySpec } from "./heroJourneys";
-import type { HeroJourneyRender } from "../types";
+import type { HeroBeat, HeroChoice, HeroJourneyRender } from "../types";
 
 const david = getStorySpec("david-and-goliath")!;
 const HEBREW = /[א-ת]/;
@@ -142,6 +142,42 @@ describe("B-KID-76 (a): the authored text names the child as the hero", () => {
   it("NEGATIVE CONTROL: the pre-fix render said 'The hero is a small shepherd' to a named child", () => {
     expect(david.beats[0].spine.startsWith("The hero is")).toBe(true);
     expect(authoredScene(david.beats[0], "en", undefined, dana).narration.startsWith("The hero")).toBe(false);
+  });
+  it("B-KID-132 (a) — EN / HE boy / HE girl: a girl reads the feminine text, named; a boy the masculine, named", () => {
+    const beat: HeroBeat = {
+      id: "fear", title: "The Fear", titleHe: "הפחד",
+      spine: "The hero's heart goes thump-thump. Bun hides in the hero's coat.",
+      spineHe: "הלב של הגיבור עושה בום־בום. ארנבוני מתחבא במעיל של הגיבור, והגיבור נושם.",
+      spineHeF: "הלב של הגיבורה עושה בום־בום. ארנבוני מתחבא במעיל של הגיבורה, והגיבורה נושמת.",
+    };
+    const choice: HeroChoice = {
+      id: "a", label: "Breathe", labelHe: "לנשום", labelHeF: "לנשום עמוק",
+      outcomeHint: "The hero breathes.", outcomeHintHe: "הגיבור נושם לאט.", outcomeHintHeF: "הגיבורה נושמת לאט.", metricDeltas: {},
+    };
+    const maya = { name: "מאיה", gender: "girl" as const };
+    const noam = { name: "נועם", gender: "boy" as const };
+    expect(authoredScene(beat, "en", undefined, { name: "Maya", gender: "girl" }).narration).toBe("Maya's heart goes thump-thump. Bun hides in Maya's coat.");
+    expect(authoredScene(beat, "he", undefined, noam).narration).toBe("הלב של נועם עושה בום־בום. ארנבוני מתחבא במעיל של נועם, ונועם נושם.");
+    expect(authoredScene(beat, "he", undefined, maya).narration).toBe("הלב של מאיה עושה בום־בום. ארנבוני מתחבא במעיל של מאיה, ומאיה נושמת.");
+    expect(authoredChoice(choice, "he", maya)).toEqual({ id: "a", label: "לנשום עמוק", consequence: "מאיה נושמת לאט." });
+    expect(authoredChoice(choice, "he", noam)).toEqual({ id: "a", label: "לנשום", consequence: "נועם נושם לאט." });
+    expect(authoredChoice(choice, "en", maya).label).toBe("Breathe");
+    // a nameless girl reads the feminine text with its own token; unspecified gender reads the masculine
+    expect(authoredScene(beat, "he", undefined, { name: "", gender: "girl" }).narration).toBe(beat.spineHeF);
+    expect(authoredScene(beat, "he", undefined, { name: "דנה" }).narration).toContain("ודנה נושם");
+    // a girl without feminine text keeps the authored masculine text, un-named (never a name in masculine verbs)
+    const mascOnly: HeroBeat = { id: beat.id, title: beat.title, titleHe: beat.titleHe, spine: beat.spine, spineHe: beat.spineHe };
+    expect(authoredScene(mascOnly, "he", undefined, maya).narration).toBe(beat.spineHe);
+  });
+  it("B-KID-132 (a): הגיבורה takes the same prefixes as הגיבור; the indefinite and plural stay", () => {
+    const maya = { name: "מאיה", gender: "girl" as const };
+    expect(nameTheHero("והגיבורה קמה, כשהגיבורה הולכת, מריעים לגיבורה שהגיבורה מהגיבורה", "he", maya))
+      .toBe("ומאיה קמה, כשמאיה הולכת, מריעים למאיה שמאיה ממאיה");
+    expect(nameTheHero("הגיבורה הילדה ושתי חברות", "he", maya)).toBe("מאיה ושתי חברות");
+    expect(nameTheHero("גיבורה אמיצה; הגיבורות", "he", maya)).toBe("גיבורה אמיצה; הגיבורות");
+    expect(nameTheHero("והגיבורה קמה", "he", { name: "Maya", gender: "girl" })).toBe("ו-Maya קמה");
+    // the masculine token is never named for a girl
+    expect(nameTheHero("הגיבור קם", "he", maya)).toBe("הגיבור קם");
   });
   it("the reader passes the child (name + gender) to the authored fallback", () => {
     const tab = readFileSync(path.resolve(__dirname, "..", "components", "tabs", "HeroJourneyTab.tsx"), "utf8");

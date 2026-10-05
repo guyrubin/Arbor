@@ -28,28 +28,39 @@ const EN_HERO = /\b[Tt]he (?:(?:small|little|dependable|brave|child) ){0,2}hero(
 // HE: "הגיבור" with its attached prefixes (ו / ש / כש / מ, then ה or ל), never
 // "גיבור" (indefinite) or "הגיבורים" (plural). "הגיבור הילד" drops "הילד".
 const HE_HERO = /(^|[^א-ת])(ו|ש|כש|מ|וכש)?(ה|ל)גיבור(?![א-ת])( הילד(?![א-ת]))?/g;
+// B-KID-132 (a): the feminine token "הגיבורה" (the girl's text, `spineHeF` /
+// `outcomeHintHeF`), with the same prefixes; "הגיבורה הילדה" drops "הילדה".
+const HE_HERO_F = /(^|[^א-ת])(ו|ש|כש|מ|וכש)?(ה|ל)גיבורה(?![א-ת])( הילדה(?![א-ת]))?/g;
 
 /** B-KID-76 (a): the authored story text names the CHILD as its hero (the
  *  model path does the same — `/generate-hero-journey` writes "Make {name}
  *  the hero, by name"). EN: every "the hero" becomes the first name (the
  *  possessive keeps its 's). HE: "הגיבור" becomes the name with its prefix
  *  letters attached ("והגיבור" → "ודנה", "לגיבור" → "לדנה"; a Latin-script
- *  name takes a hyphen, "ו-Dana"). The authored Hebrew text is written in the
- *  masculine (as the existing HE stories write it), so a child recorded as a
- *  girl keeps the authored "הגיבור" until the feminine text exists — a name
- *  inside masculine verbs is a grammar error read aloud. A nameless child
+ *  name takes a hyphen, "ו-Dana"). B-KID-132 (a): a child recorded as a girl
+ *  reads the feminine text where it exists (`spineHeF`, `outcomeHintHeF`,
+ *  picked by `heText`), and its token "הגיבורה" becomes her name the same way;
+ *  where only the masculine text exists she keeps the authored "הגיבור" — a
+ *  name inside masculine verbs is a grammar error read aloud. A nameless child
  *  keeps "the hero". Text only: image prompts never pass through here
  *  (B-KID-40). */
 export function nameTheHero(text: string, lang: "en" | "he", hero?: StoryHero): string {
   const name = heroFirstName(hero);
   if (!name || !text) return text;
   if (lang === "en") return text.replace(EN_HERO, (_m, poss: string | undefined) => (poss ? `${isolate(name)}'s` : name));
-  if (hero?.gender === "girl") return text;
   const hebrewName = /^[א-ת]/.test(name);
-  return text.replace(HE_HERO, (_m, lead: string, prefix: string | undefined, article: string) => {
+  const withName = (_m: string, lead: string, prefix: string | undefined, article: string) => {
     const attach = `${prefix ?? ""}${article === "ל" ? "ל" : ""}`;
     return `${lead}${attach ? (hebrewName ? attach : `${attach}-`) : ""}${name}`;
-  });
+  };
+  const named = text.replace(HE_HERO_F, withName);
+  return hero?.gender === "girl" ? named : named.replace(HE_HERO, withName);
+}
+
+/** B-KID-132 (a): the Hebrew text for this child — the feminine authored text
+ *  for a child recorded as a girl when it exists, else the (masculine) text. */
+function heText(masculine: string | undefined, feminine: string | undefined, hero?: StoryHero): string | undefined {
+  return hero?.gender === "girl" && feminine ? feminine : masculine;
 }
 
 /** ONE authored scene for a beat, in the story's language (the authored render
@@ -64,7 +75,7 @@ export function authoredScene(beat: HeroBeat, lang: "en" | "he", artTheme?: stri
   return {
     beatId: beat.id,
     title: he ? (beat.titleHe ?? beat.title) : beat.title,
-    narration: nameTheHero(he ? (beat.spineHe ?? beat.spine) : beat.spine, lang, hero),
+    narration: nameTheHero(he ? (heText(beat.spineHe, beat.spineHeF, hero) ?? beat.spine) : beat.spine, lang, hero),
     imagePrompt: artTheme ? `${artTheme} — ${beat.spine}` : "",
   };
 }
@@ -74,8 +85,8 @@ export function authoredChoice(choice: HeroChoice, lang: "en" | "he", hero?: Sto
   const he = lang === "he";
   return {
     id: choice.id,
-    label: he ? (choice.labelHe ?? choice.label) : choice.label,
-    consequence: nameTheHero(he ? (choice.outcomeHintHe ?? choice.outcomeHint) : choice.outcomeHint, lang, hero),
+    label: he ? (heText(choice.labelHe, choice.labelHeF, hero) ?? choice.label) : choice.label,
+    consequence: nameTheHero(he ? (heText(choice.outcomeHintHe, choice.outcomeHintHeF, hero) ?? choice.outcomeHint) : choice.outcomeHint, lang, hero),
   };
 }
 

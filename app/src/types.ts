@@ -408,9 +408,14 @@ export interface HeroChoice {
   /** Fallback label (English); the AI personalizes the rendered label. */
   label: string;
   labelHe?: string;
+  /** B-KID-132: the feminine Hebrew label, read to a child recorded as a girl
+   *  (absent = labelHe is already gender-neutral). */
+  labelHeF?: string;
   /** Short consequence cue the AI expands into the Consequence beat. */
   outcomeHint: string;
   outcomeHintHe?: string;
+  /** B-KID-132: the feminine Hebrew consequence (token הגיבורה). */
+  outcomeHintHeF?: string;
   metricDeltas: Partial<DevelopmentMetrics>;
 }
 
@@ -432,6 +437,9 @@ export interface HeroBeat {
   /** Canonical one-line beat summary the AI must follow (English). */
   spine: string;
   spineHe?: string;
+  /** B-KID-132: the feminine Hebrew page, read to a child recorded as a girl
+   *  (token הגיבורה). Absent = the page names no hero, or has no feminine text yet. */
+  spineHeF?: string;
   choices?: HeroChoice[];
 }
 
