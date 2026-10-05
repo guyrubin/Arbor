@@ -25,7 +25,8 @@ import { track } from "../../lib/analytics";
 import { requestOpenSettings } from "../layout/settingsBus";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { withChildSignals } from "../../lib/i18nElevation/childsignals";
-import { SINCE_LAST_PLAY_FALLBACK_MS, sinceLastPlayLine } from "../../lib/kidExitRecap";
+import { SINCE_LAST_PLAY_FALLBACK_MS, doorSinceSentence } from "../../lib/kidExitRecap";
+import { runTitle } from "../../lib/heroJourneys";
 import { lastKidSessionStartedAt } from "../../lib/kidModeGate";
 import type { HeroJourneyRun } from "../../types";
 
@@ -41,26 +42,37 @@ export default function PracticeStudioTab() {
   const data = usePracticeData(childProfile.id);
   const heroRuns = useChildCollection<HeroJourneyRun>(childProfile.id, "heroRuns");
 
-  // B-PLAY-05: ONE "since last play" line inside the Kid Mode door (no new
-  // module): what the child did since the latest Kid Mode session began (7
-  // days when this tab has seen none) — the exit strip's counts plus finished
-  // story titles. Hidden when nothing happened.
-  const sinceLine = React.useMemo(() => {
-    const sinceMs = lastKidSessionStartedAt() ?? Date.now() - SINCE_LAST_PLAY_FALLBACK_MS;
-    return sinceLastPlayLine({
+  // B-PLAY-05 + W2-SHELLPLAY critic r1: ONE sentence inside the Kid Mode door
+  // (no new module): what the child played since the latest Kid Mode session
+  // began (the last 7 days when this tab has seen none), in ONE unit (rounds)
+  // with the window named, plus one finished story — its title resolved in
+  // the UI language. Hidden when nothing happened. The phone hub line is
+  // quiet on #/practice (Shell HUB_LINE_QUIET_TABS), so this is the screen's
+  // only count of play.
+  const lang: "en" | "he" = uiLang === "he" ? "he" : "en";
+  const since = React.useMemo(() => {
+    const known = lastKidSessionStartedAt();
+    const sinceMs = known ?? Date.now() - SINCE_LAST_PLAY_FALLBACK_MS;
+    return doorSinceSentence({
       ledgers: {
         speech: data.speech.items.map((x) => x.timestamp),
         mimic: data.mimic.items.map((x) => x.timestamp),
         mission: data.missions.items.map((x) => x.timestamp),
         adventure: data.adventures.items.map((x) => x.timestamp),
-        practice: data.events.items.map((x) => x.timestamp),
+        // A Mood Mountain check-in is the child saying how they feel, not a
+        // round played (practiceWeekCount's rule).
+        practice: data.events.items.filter((x) => x.kind !== "mood-checkin").map((x) => x.timestamp),
       },
-      stories: heroRuns.items,
+      stories: heroRuns.items.map((r) => ({ title: runTitle(r, lang), completedAt: r.completedAt })),
       sinceMs,
-      t: withChildSignals(t, uiLang === "he"),
+      sinceIsFallback: known == null,
+      nowMs: Date.now(),
+      uiLang: lang,
+      gender: childProfile.gender,
+      t: withChildSignals(t, lang === "he"),
       childName: firstName,
     });
-  }, [data.speech.items, data.mimic.items, data.missions.items, data.adventures.items, data.events.items, heroRuns.items, t, uiLang, firstName]);
+  }, [data.speech.items, data.mimic.items, data.missions.items, data.adventures.items, data.events.items, heroRuns.items, t, lang, firstName, childProfile.gender]);
 
   // KID-21: this session's parent area was reached by answering the math
   // question, and no PIN is set. Say so ONCE, here on the parent door next to
@@ -84,59 +96,68 @@ export default function PracticeStudioTab() {
           {t("practice.studio.title")}
         </h1>
         <p className="text-[13px] mt-1 max-w-[62ch]" style={{ color: "var(--arbor-muted)" }}>
-          {t("practice.studio.subtitle", { name: firstName || t("learn.yourChild") })}
+          {t("elev.practice.studio.subtitle", { name: firstName || t("learn.yourChild") })}
         </p>
       </div>
 
-      {/* Kid Mode — the safe play space, one clear primary action */}
+      {/* Kid Mode — the safe play space. W2-SHELLPLAY critic r1: a flat
+          paper-deep door whose CTA is SECONDARY (outline): the page's declared
+          move is start-world, stamped on the first world tile below. At phone
+          width the icon sits inline before the title (40 px) and the copy,
+          chips and CTA share ONE start edge. */}
       <section
         data-module="practice-kidmode-door"
-        className="rounded-[22px] p-5 flex flex-wrap items-center justify-between gap-4"
-        style={{ background: "var(--arbor-coach-grad, var(--arbor-paper-deep))", border: "1px solid var(--arbor-rule)" }}
+        className="rounded-[22px] p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4"
+        style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}
         aria-label={t("practice.studio.kidmode.title")}
       >
-        <div className="flex items-center gap-3 min-w-0">
-          <span
-            className="inline-flex items-center justify-center rounded-2xl flex-shrink-0"
-            style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-clay-deep)", width: 48, height: 48, boxShadow: "var(--shadow-xs)" }}
-          >
-            <Icon name="sports_esports" size={24} />
-          </span>
-          <div className="min-w-0">
-            <h2 className="text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>
-              {t("practice.studio.kidmode.title")}
-            </h2>
-            <p className="text-[12.5px]" style={{ color: "var(--arbor-ink-soft)" }}>
-              {t("practice.studio.kidmode.sub")}
+        <div className="min-w-0 flex-1">
+          <h2 className="flex items-center gap-2.5 text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>
+            <span
+              aria-hidden="true"
+              className="inline-flex items-center justify-center rounded-xl flex-shrink-0"
+              style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-clay-deep)", width: 40, height: 40, boxShadow: "var(--shadow-xs)" }}
+            >
+              <Icon name="sports_esports" size={22} />
+            </span>
+            {t("practice.studio.kidmode.title")}
+          </h2>
+          <p className="text-[12.5px] mt-1.5" style={{ color: "var(--arbor-ink-soft)" }}>
+            {t("practice.studio.kidmode.sub")}
+          </p>
+          {since && (
+            <p data-testid="practice-since-last-play" className="text-[13px] mt-1.5 leading-snug" style={{ color: "var(--arbor-ink)" }} dir="auto">
+              {since.before}
+              {since.title && (
+                <i style={{ fontFamily: "var(--font-editorial)" }}>
+                  <bdi>{since.title}</bdi>
+                </i>
+              )}
+              {since.after}
             </p>
-            {sinceLine && (
-              <p data-testid="practice-since-last-play" className="text-[12.5px] font-bold mt-1" style={{ color: "var(--arbor-ink)" }} dir="auto">
-                {sinceLine}
-              </p>
-            )}
-            {/* KID-20 / RUN-04: the three reassurance chips are PARENT copy, so
-                they live here on the door — not in the child's first viewport. */}
-            <ul aria-label={t("elev.practice.door.aria")} className="flex flex-wrap gap-1.5 mt-2 list-none p-0 m-0">
-              {(["elev.practice.door.locked", "elev.practice.door.private", "elev.practice.door.stars"] as const).map((key) => (
-                <li
-                  key={key}
-                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold"
-                  style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink-soft)", border: "1px solid var(--arbor-rule)" }}
-                >
-                  <Icon name="verified_user" size={12} style={{ color: "var(--arbor-green-ink)" }} />
-                  {t(key)}
-                </li>
-              ))}
-            </ul>
-          </div>
+          )}
+          {/* KID-20 / RUN-04: the three reassurance chips are PARENT copy, so
+              they live here on the door — not in the child's first viewport. */}
+          <ul aria-label={t("elev.practice.door.aria")} className="flex flex-wrap gap-1.5 mt-2 list-none p-0 m-0">
+            {(["elev.practice.door.locked", "elev.practice.door.private", "elev.practice.door.stars"] as const).map((key) => (
+              <li
+                key={key}
+                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold"
+                style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink-soft)", border: "1px solid var(--arbor-rule)" }}
+              >
+                <Icon name="verified_user" size={12} style={{ color: "var(--arbor-green-ink)" }} />
+                {t(key)}
+              </li>
+            ))}
+          </ul>
         </div>
         <button
           onClick={() => {
             try { track("practice_studio_open", { world: "kidmode", via: "hero" }); } catch { /* noop */ }
             openKidMode();
           }}
-          className="inline-flex items-center gap-1.5 font-bold text-[13px] rounded-xl px-4 py-2.5 min-h-[44px] transition active:scale-[0.98] focus:outline-none focus-visible:ring-2"
-          style={{ background: "var(--gradient-cta, var(--arbor-clay))", color: "var(--arbor-subtab-on-ink)" }}
+          className="self-start sm:self-center inline-flex items-center gap-1.5 font-bold text-[13px] rounded-xl px-4 py-2.5 min-h-[44px] transition active:scale-[0.98] focus:outline-none focus-visible:ring-2"
+          style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-clay-deep)", border: "1px solid var(--arbor-rule)" }}
         >
           <Icon name="play_arrow" size={18} fill={1} />
           {t("practice.studio.kidmode.cta")}
@@ -175,9 +196,10 @@ export default function PracticeStudioTab() {
             {t("practice.studio.count", { n: STUDIO_WORLDS.length })}
           </span>
         </div>
-        {/* The declared primaryMove for #/practice ("start-world"): the grid of
-            world tiles. Stamped once, on the control group. */}
-        <div className="grid sm:grid-cols-2 gap-4" data-primary-move="start-world">
+        {/* The declared primaryMove for #/practice ("start-world"). W2-SHELLPLAY
+            critic r1: stamped on ONE control — the first world tile — not on
+            the grid container (a 1373 px region is not a move). */}
+        <div className="grid sm:grid-cols-2 gap-4">
           {STUDIO_WORLDS.map((world, i) => {
             const tone = PASTEL[world.tone];
             const sessions = world.count(data);
@@ -188,6 +210,7 @@ export default function PracticeStudioTab() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: Math.min(i * 0.03, 0.24) }}
                 onClick={() => openWorld(world)}
+                data-primary-move={i === 0 ? "start-world" : undefined}
                 className={`${cardCls} w-full flex items-start gap-3.5 p-4 text-start transition motion-safe:hover:-translate-y-0.5 active:scale-[0.99] focus:outline-none focus-visible:ring-2`}
               >
                 <span
@@ -213,7 +236,11 @@ export default function PracticeStudioTab() {
                   <span className="block text-[12.5px] leading-relaxed mt-0.5" style={{ color: "var(--arbor-muted)" }}>
                     {t(`practice.world.${world.key}.skill`)}
                   </span>
-                  <span className="mt-1.5 flex items-center gap-1 text-[11.5px] font-bold" style={{ color: world.tab ? "var(--arbor-clay-deep)" : "var(--arbor-lav-ink)" }}>
+                  {/* W2-SHELLPLAY critic r1: one label pattern in one ink. A
+                      kid-only tile says only "Opens Kid Mode" — the tap opens
+                      Kid Mode at home, not the named world, until the lane-X
+                      B-KID-11 seam (requestKidMode({view, worldId})) lands. */}
+                  <span className="mt-1.5 flex items-center gap-1 text-[11.5px] font-bold" style={{ color: "var(--arbor-clay-deep)" }}>
                     {/* CR-13: the arrow used `rtl:-scale-x-100`, a variant this
                         build never emitted — the glyph pointed right on a
                         right-to-left page, i.e. backwards. `isRtl` is already
@@ -228,7 +255,7 @@ export default function PracticeStudioTab() {
                       ? world.tabNameKey
                         ? t("practice.studio.openIn", { tab: t(world.tabNameKey) })
                         : t("practice.studio.openDirect")
-                      : t("practice.studio.openKidmode", { world: t(world.kidNameKey) })}
+                      : t("elev.practice.studio.opensKidmode")}
                   </span>
                 </span>
               </motion.button>

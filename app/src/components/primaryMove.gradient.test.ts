@@ -205,7 +205,8 @@ describe("OBJ-TODAY-01 — repo-wide ratchet", () => {
     // B-TODAY-26: licensed above (Today's do-today-action, evening state).
     "overview/TonightCard.tsx",
     "practice/GoalBuilderModal.tsx",
-    "practice/PracticeStudioTab.tsx",
+    // (W2-SHELLPLAY critic r1: PracticeStudioTab left the ratchet — the Kid
+    //  Mode door CTA is secondary; the declared move is the first world tile.)
     "profile/AvatarCreator.tsx",
     "profile/ProfileEditDrawer.tsx",
     "sections/Appointments.tsx",

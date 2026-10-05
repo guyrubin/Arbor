@@ -80,9 +80,29 @@ export const en: Record<string, string> = {
   "elev.stories.catalogue.title": "Choose a different story",
   // B-PLAY-11: the one disclosure holding the pack filter + catalogue.
   "elev.stories.more": "More stories",
-  // B-PLAY-05: the Practice door's one "since last play" line (counts + titles).
-  "elev.practice.door.since": "Since the last play, {name}: {summary}",
-  "elev.practice.door.since.story": "finished “{title}”",
+  // B-PLAY-05 + W2-SHELLPLAY critic r1: the Practice door's ONE sentence —
+  // one unit (rounds), one stated window, at most one finished story title
+  // (rendered bidi-isolated). Gender variants exist for Hebrew; English is the
+  // same sentence for every child.
+  "elev.practice.door.when.day": "Since {day}",
+  "elev.practice.door.when.today": "Today",
+  "elev.practice.door.when.week": "In the last 7 days",
+  "elev.practice.door.rounds.one": "1 round",
+  "elev.practice.door.rounds.many": "{n} rounds",
+  "elev.practice.door.sentence.played.boy": "{when}, {name} played {rounds}.",
+  "elev.practice.door.sentence.played.girl": "{when}, {name} played {rounds}.",
+  "elev.practice.door.sentence.played.neutral": "{when}, {name} played {rounds}.",
+  "elev.practice.door.sentence.playedFinished.boy": "{when}, {name} played {rounds} and finished {title}.",
+  "elev.practice.door.sentence.playedFinished.girl": "{when}, {name} played {rounds} and finished {title}.",
+  "elev.practice.door.sentence.playedFinished.neutral": "{when}, {name} played {rounds} and finished {title}.",
+  "elev.practice.door.sentence.finished.boy": "{when}, {name} finished {title}.",
+  "elev.practice.door.sentence.finished.girl": "{when}, {name} finished {title}.",
+  "elev.practice.door.sentence.finished.neutral": "{when}, {name} finished {title}.",
+  // W2-SHELLPLAY critic r1: a kid-only tile promises only what the tap does
+  // (Kid Mode opens at home until the lane-X B-KID-11 world seam lands).
+  "elev.practice.studio.opensKidmode": "Opens Kid Mode",
+  // W2-SHELLPLAY critic r1: the subtitle names the one move (pick a world).
+  "elev.practice.studio.subtitle": "Ten skill worlds {name} plays as the hero. Pick one to start.",
   "elev.stories.library.title": "Your library",
   "elev.stories.reader.back": "All journeys",
   "elev.stories.reader.immersive": "Immersive",
@@ -193,8 +213,22 @@ export const he: Record<string, string> = {
   "elev.stories.counts.stories": "{n} סיפורים שקראתם יחד",
   "elev.stories.catalogue.title": "בחירת סיפור אחר",
   "elev.stories.more": "סיפורים נוספים",
-  "elev.practice.door.since": "מאז המשחק האחרון, {name}: {summary}",
-  "elev.practice.door.since.story": "סיים/ה את „{title}”",
+  "elev.practice.door.when.day": "מאז {day}",
+  "elev.practice.door.when.today": "היום",
+  "elev.practice.door.when.week": "בשבעת הימים האחרונים",
+  "elev.practice.door.rounds.one": "סבב אחד",
+  "elev.practice.door.rounds.many": "{n} סבבים",
+  "elev.practice.door.sentence.played.boy": "{when}, {name} שיחק {rounds}.",
+  "elev.practice.door.sentence.played.girl": "{when}, {name} שיחקה {rounds}.",
+  "elev.practice.door.sentence.played.neutral": "{when}, נרשמו {rounds} במשחק של {name}.",
+  "elev.practice.door.sentence.playedFinished.boy": "{when}, {name} שיחק {rounds} וסיים את {title}.",
+  "elev.practice.door.sentence.playedFinished.girl": "{when}, {name} שיחקה {rounds} וסיימה את {title}.",
+  "elev.practice.door.sentence.playedFinished.neutral": "{when}, נרשמו {rounds} במשחק של {name}, והסיפור {title} הושלם.",
+  "elev.practice.door.sentence.finished.boy": "{when}, {name} סיים את {title}.",
+  "elev.practice.door.sentence.finished.girl": "{when}, {name} סיימה את {title}.",
+  "elev.practice.door.sentence.finished.neutral": "{when}, הסיפור {title} של {name} הושלם.",
+  "elev.practice.studio.opensKidmode": "נפתח במצב ילדים",
+  "elev.practice.studio.subtitle": "עשרה עולמות מיומנות ש{name} משחק בהם כגיבור. בחרו אחד כדי להתחיל.",
   "elev.stories.library.title": "הספרייה שלכם",
   "elev.stories.reader.back": "כל המסעות",
   "elev.stories.reader.immersive": "מסך מלא",

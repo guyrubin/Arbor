@@ -105,29 +105,68 @@ export function kidExitRecapLine(
 export const SINCE_LAST_PLAY_FALLBACK_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
- * B-PLAY-05 — the Practice door's "since last play" line: the same counts as
- * the exit strip since the latest Kid Mode session began, plus the titles of
- * stories finished in that window (at most two, the parent's own record).
- * null when nothing happened, so day 0 renders nothing. Counts only — no
- * correctness, no score, no streak.
+ * B-PLAY-05 + W2-SHELLPLAY critic r1 — the Practice door's ONE sentence:
+ * "Since Tuesday, Dylan played 3 rounds and finished <title>."
+ *
+ * One unit ("rounds": every ledger row is one round played), one stated window
+ * (the weekday the latest Kid Mode session began; "In the last 7 days" when
+ * none is known — the fallback window), and at most one finished story title,
+ * which the caller renders bidi-isolated in the editorial face. Hebrew takes
+ * the verb's gender from the child's profile; with no gender on file it uses
+ * an impersonal form — never a slash. null when nothing happened, so day 0
+ * renders nothing. Counts only — no correctness, no score, no streak.
  */
-export function sinceLastPlayLine(input: {
+export interface DoorSinceSentence {
+  /** Text before the story title (or the whole sentence when there is none). */
+  before: string;
+  /** The finished story's title, or null. Render inside a bidi isolate. */
+  title: string | null;
+  after: string;
+  rounds: number;
+}
+
+/** The sentinel split around the title, so the title can be its own node. */
+const TITLE_SLOT = "[[title]]";
+
+export function doorSinceSentence(input: {
   ledgers: KidActivityLedgers;
   stories: ReadonlyArray<{ title: string; completedAt?: string | null }>;
   sinceMs: number;
+  /** true when sinceMs is the 7-day fallback, not a known session start. */
+  sinceIsFallback: boolean;
+  nowMs: number;
+  uiLang: "en" | "he";
+  gender?: string | null;
   t: Translate;
   childName: string;
-}): string | null {
-  const counts = countsSince(input.ledgers, input.sinceMs);
-  const titles = input.stories
-    .filter((s) => {
-      const ms = msOf(s.completedAt ?? null);
-      return ms != null && ms >= input.sinceMs && !!s.title?.trim();
-    })
-    .slice(0, 2)
-    .map((s) => input.t("elev.practice.door.since.story", { title: s.title.trim() }));
-  return kidExitRecapLine(counts, input.t, input.childName, {
-    extraParts: titles,
-    stripKey: "elev.practice.door.since",
+}): DoorSinceSentence | null {
+  const rounds = totalActivity(countsSince(input.ledgers, input.sinceMs));
+  const story = input.stories.find((s) => {
+    const ms = msOf(s.completedAt ?? null);
+    return ms != null && ms >= input.sinceMs && !!s.title?.trim();
   });
+  if (rounds === 0 && !story) return null;
+
+  const locale = input.uiLang === "he" ? "he-IL" : "en-GB";
+  const sameDay = new Date(input.sinceMs).toDateString() === new Date(input.nowMs).toDateString();
+  const when = input.sinceIsFallback
+    ? input.t("elev.practice.door.when.week")
+    : sameDay
+    ? input.t("elev.practice.door.when.today")
+    : input.t("elev.practice.door.when.day", {
+        day: new Intl.DateTimeFormat(locale, { weekday: "long" }).format(new Date(input.sinceMs)),
+      });
+  const g = input.gender === "boy" || input.gender === "girl" ? input.gender : "neutral";
+  const shape = rounds > 0 && story ? "playedFinished" : rounds > 0 ? "played" : "finished";
+  const name = input.childName.trim() || input.t("elev.childsignals.prov.fallback");
+  const roundsText = rounds > 0 ? input.t(rounds === 1 ? "elev.practice.door.rounds.one" : "elev.practice.door.rounds.many", { n: rounds }) : "";
+  const full = input.t(`elev.practice.door.sentence.${shape}.${g}`, {
+    when,
+    name,
+    rounds: roundsText,
+    title: story ? TITLE_SLOT : "",
+  });
+  if (!story) return { before: full, title: null, after: "", rounds };
+  const [before, after = ""] = full.split(TITLE_SLOT);
+  return { before, title: story.title.trim(), after, rounds };
 }

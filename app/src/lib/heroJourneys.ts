@@ -898,6 +898,24 @@ export const HERO_STORIES: HeroStorySpec[] = [
 export const getStorySpec = (id: string): HeroStorySpec | undefined =>
   HERO_STORIES.find((s) => s.id === id);
 
+/**
+ * W2-SHELLPLAY critic r1 (law 8): the title a parent reads for a stored run.
+ * A run keeps the title it was told in (`run.language`). Read in that same
+ * language it stays — it is the personalised retelling the child heard. Read
+ * in the OTHER language it resolves through the catalogue by `storyId`
+ * (`titleHe` / `title`), so a Hebrew library never shows an English title.
+ * Only a run with no catalogue spec falls back to its stored title.
+ */
+export const runTitle = (
+  run: { storyId: string; title: string; language?: "en" | "he" },
+  uiLang: "en" | "he",
+): string => {
+  if (run.language === uiLang && run.title?.trim()) return run.title;
+  const spec = getStorySpec(run.storyId);
+  if (spec) return uiLang === "he" ? spec.titleHe || spec.title : spec.title;
+  return run.title;
+};
+
 /** Stories belonging to a pack, in catalog order. */
 export const storiesInPack = (pack: HeroPackId): HeroStorySpec[] =>
   HERO_STORIES.filter((s) => s.pack === pack);

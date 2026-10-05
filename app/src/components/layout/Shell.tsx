@@ -118,8 +118,11 @@ const BedtimeStoriesTab = lazy(() => import("../tabs/BedtimeStoriesTab"));
 const RoutinesTab = lazy(() => import("../tabs/RoutinesTab"));
 
 /** W2-CAREPRO r2 — routes where the phone hub one-liner stays quiet (the
- *  route's first decision needs the fold; the pill row names the hub). */
-export const HUB_LINE_QUIET_TABS: ReadonlySet<string> = new Set(["memory", "sharing", "safety", "school-brief"]);
+ *  route's first decision needs the fold; the pill row names the hub).
+ *  W2-SHELLPLAY critic r1: practice / feelings / adventures — the Practice
+ *  hub's "N rounds played this week" count disagreed with each page's own
+ *  count of play (the door sentence, the feelings line); one count per screen. */
+export const HUB_LINE_QUIET_TABS: ReadonlySet<string> = new Set(["memory", "sharing", "safety", "school-brief", "practice", "feelings", "adventures"]);
 
 const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   overview: OverviewTab,

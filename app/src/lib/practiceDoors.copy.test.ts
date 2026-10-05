@@ -335,52 +335,106 @@ describe("B-PLAY-02 · per-world count and unit", () => {
   });
 });
 
-describe("B-PLAY-05 — 'Since last play' line on the Practice door", () => {
+describe("B-PLAY-05 + W2-SHELLPLAY critic r1 — ONE sentence on the Practice door", () => {
   const studio = readFileSync(path.join(here, "..", "components", "practice", "PracticeStudioTab.tsx"), "utf8");
   const tEn = (key: string, vars?: Record<string, string | number>) => translate("en", key, vars);
   const tHe = (key: string, vars?: Record<string, string | number>) => translate("he", key, vars);
+  // Thursday 1 Oct 2026, 16:00 UTC; "now" is the next day.
   const T0 = Date.parse("2026-10-01T16:00:00Z");
+  const NOW = T0 + 26 * 3_600_000;
   const after = (min: number) => new Date(T0 + min * 60_000).toISOString();
+  const base = {
+    ledgers: { speech: [after(1), after(2)], practice: [after(4)] },
+    stories: [{ title: "Little David", completedAt: after(9) }],
+    sinceMs: T0,
+    sinceIsFallback: false,
+    nowMs: NOW,
+    childName: "Maya",
+  };
 
-  it("3 speech tries + 1 finished story read as ONE sentence with both (EN + HE)", async () => {
-    const { sinceLastPlayLine } = await import("./kidExitRecap");
+  it("one unit, a named day, one isolated title (EN)", async () => {
+    const { doorSinceSentence } = await import("./kidExitRecap");
     const { withChildSignals } = await import("./i18nElevation/childsignals");
-    const input = {
-      ledgers: { speech: [after(1), after(2), after(3)] },
-      stories: [{ title: "Little David", completedAt: after(9) }],
-      sinceMs: T0,
-      childName: "Maya",
-    };
-    const en = sinceLastPlayLine({ ...input, t: withChildSignals(tEn, false) })!;
-    expect(en).toContain("Maya");
-    expect(en).toContain("3 speech practice rounds");
-    expect(en).toContain("Little David");
-    expect(en.split(/[.!?]\s/).length).toBe(1);
-    const he = sinceLastPlayLine({ ...input, t: withChildSignals(tHe, true) })!;
-    expect(he).toContain("Little David");
-    expect(he).toContain("3");
-    expect(he).not.toMatch(/speech|Since/);
+    const s = doorSinceSentence({ ...base, uiLang: "en", gender: "girl", t: withChildSignals(tEn, false) })!;
+    expect(s.rounds).toBe(3);
+    expect(s.title).toBe("Little David");
+    const text = s.before + s.title + s.after;
+    expect(text).toBe("Since Thursday, Maya played 3 rounds and finished Little David.");
+    // never the old log-entry shape ("Maya: Completed 3 …") or mixed units
+    expect(text).not.toMatch(/: Completed|games|speech practice/);
+  });
+
+  it("Hebrew takes the verb's gender from the profile — never a slash", async () => {
+    const { doorSinceSentence } = await import("./kidExitRecap");
+    const { withChildSignals } = await import("./i18nElevation/childsignals");
+    const t = withChildSignals(tHe, true);
+    const he = { ...base, childName: "מאיה", uiLang: "he" as const, t };
+    const girl = doorSinceSentence({ ...he, gender: "girl" })!;
+    const boy = doorSinceSentence({ ...he, gender: "boy" })!;
+    const none = doorSinceSentence({ ...he, gender: undefined })!;
+    expect(girl.before).toContain("שיחקה");
+    expect(girl.before).toContain("וסיימה");
+    expect(boy.before).toContain("שיחק ");
+    for (const s of [girl, boy, none]) {
+      const text = s.before + s.after;
+      expect(text).not.toMatch(/\//);
+      expect(text).not.toMatch(/[A-Za-z]/);
+      expect(s.title).toBe("Little David");
+    }
+  });
+
+  it("the window is named: fallback = the last 7 days; same day = today", async () => {
+    const { doorSinceSentence } = await import("./kidExitRecap");
+    const fb = doorSinceSentence({ ...base, sinceIsFallback: true, uiLang: "en", t: tEn })!;
+    expect(fb.before.startsWith("In the last 7 days, ")).toBe(true);
+    const today = doorSinceSentence({ ...base, nowMs: T0 + 60 * 60_000, uiLang: "en", t: tEn })!;
+    expect(today.before.startsWith("Today, ")).toBe(true);
   });
 
   it("day 0 (or nothing since the session began) renders nothing", async () => {
-    const { sinceLastPlayLine } = await import("./kidExitRecap");
-    expect(sinceLastPlayLine({ ledgers: {}, stories: [], sinceMs: T0, t: tEn, childName: "Maya" })).toBeNull();
-    expect(sinceLastPlayLine({ ledgers: { speech: [after(-5)] }, stories: [{ title: "Old", completedAt: after(-60) }], sinceMs: T0, t: tEn, childName: "Maya" })).toBeNull();
+    const { doorSinceSentence } = await import("./kidExitRecap");
+    const quiet = { ...base, uiLang: "en" as const, t: tEn };
+    expect(doorSinceSentence({ ...quiet, ledgers: {}, stories: [] })).toBeNull();
+    expect(doorSinceSentence({ ...quiet, ledgers: { speech: [after(-5)] }, stories: [{ title: "Old", completedAt: after(-60) }] })).toBeNull();
   });
 
   it("count-only keys: no score, %, streak or correctness in the new copy", () => {
     for (const dict of [doorsEn, doorsHe]) {
-      for (const key of ["elev.practice.door.since", "elev.practice.door.since.story"]) {
-        expect(dict[key], key).toBeTruthy();
-        expect(dict[key]).not.toMatch(/%|score|streak|correct|right|wrong|ציון|רצף|נכון/i);
-      }
+      const keys = Object.keys(dict).filter((k) => k.startsWith("elev.practice.door.sentence.") || k.startsWith("elev.practice.door.when.") || k.startsWith("elev.practice.door.rounds."));
+      expect(keys.length).toBe(14);
+      for (const key of keys) expect(dict[key]).not.toMatch(/%|score|streak|correct|right|wrong|ציון|רצף|נכון/i);
     }
   });
 
-  it("the line lives INSIDE the kid-mode door (no new module); the page still stamps 2", () => {
+  it("the sentence lives INSIDE the kid-mode door (no new module), title bidi-isolated; the page still stamps 2", () => {
     const door = studio.slice(studio.indexOf('data-module="practice-kidmode-door"'), studio.indexOf("</section>", studio.indexOf('data-module="practice-kidmode-door"')));
     expect(door).toContain('data-testid="practice-since-last-play"');
+    expect(door).toMatch(/<bdi>\{since\.title\}<\/bdi>/);
     expect((studio.match(/\bdata-module="/g) || []).length).toBe(2);
-    expect(studio).toContain("lastKidSessionStartedAt() ?? Date.now() - SINCE_LAST_PLAY_FALLBACK_MS");
+    expect(studio).toContain("known ?? Date.now() - SINCE_LAST_PLAY_FALLBACK_MS");
+    // the story title is resolved in the UI language, never the stored run title
+    expect(studio).toContain("runTitle(r, lang)");
+  });
+
+  it("the door CTA is secondary and the move is stamped on the first tile, not the grid", () => {
+    const src = stripComments(studio);
+    expect(src).not.toMatch(/--gradient-cta|--arbor-gradient-primary/);
+    expect(src).toContain('data-primary-move={i === 0 ? "start-world" : undefined}');
+    expect(src).not.toMatch(/className="grid[^"]*"\s+data-primary-move/);
+  });
+
+  it("one count of play per screen: the phone hub line is quiet on practice / feelings / adventures", () => {
+    const shell = read("components/layout/Shell.tsx");
+    for (const route of ["practice", "feelings", "adventures"]) {
+      expect(shell).toMatch(new RegExp(String.raw`HUB_LINE_QUIET_TABS: ReadonlySet<string> = new Set\(\[[^\]]*"${route}"`));
+    }
+  });
+
+  it("a kid-only tile promises nothing the tap does not deliver (no world name until B-KID-11)", () => {
+    const src = stripComments(studio);
+    expect(src).not.toContain("practice.studio.openKidmode");
+    expect(src).toContain('t("elev.practice.studio.opensKidmode")');
+    expect(translate("en", "elev.practice.studio.opensKidmode")).toBe("Opens Kid Mode");
+    expect(translate("he", "elev.practice.studio.opensKidmode")).not.toMatch(/[A-Za-z]/);
   });
 });
