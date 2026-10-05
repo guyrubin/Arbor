@@ -12,58 +12,30 @@
  *   same engine SpeakButton uses). If speech is unavailable nothing renders
  *   broken: the toggle hides and pages simply stay silent.
  */
-import { useSyncExternalStore } from "react";
-import { speakText, stopVoice, voiceSupported } from "../../lib/voice";
+import { speakText, voiceSupported } from "../../lib/voice";
 import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
 import { useKidHearIt } from "./kidChrome";
+import { isKidReadAloudMuted, kidSay, pageHasUserGesture, setKidReadAloudMuted, useKidReadAloudMuted } from "./audio/kidAudio";
 
-const KEY = (childId: string) => `arbor.kid.readAloud.muted.${childId}`;
-const memory = new Map<string, boolean>();
-const listeners = new Set<() => void>();
-const emit = () => listeners.forEach((fn) => fn());
-
-export function isKidReadAloudMuted(childId: string): boolean {
-  if (memory.has(childId)) return memory.get(childId)!;
-  let muted = false;
-  try { muted = globalThis.localStorage?.getItem(KEY(childId)) === "1"; } catch { /* storage blocked: default on */ }
-  memory.set(childId, muted);
-  return muted;
-}
-
-export function setKidReadAloudMuted(childId: string, muted: boolean): void {
-  memory.set(childId, muted);
-  try { globalThis.localStorage?.setItem(KEY(childId), muted ? "1" : "0"); } catch { /* in-memory only */ }
-  if (muted) stopVoice();
-  emit();
-}
-
-const subscribe = (fn: () => void) => { listeners.add(fn); return () => { listeners.delete(fn); }; };
-
-export function useKidReadAloudMuted(childId: string): boolean {
-  const read = () => isKidReadAloudMuted(childId);
-  return useSyncExternalStore(subscribe, read, read);
-}
-
-/** True once the page has had a user gesture (sticky activation). Browsers
- *  without the API: assume the opening tap happened (a refused utterance is
- *  silent, never an error the child sees). */
-export function pageHasUserGesture(): boolean {
-  const ua = (globalThis.navigator as (Navigator & { userActivation?: { hasBeenActive: boolean } }) | undefined)?.userActivation;
-  return ua ? ua.hasBeenActive : true;
-}
+// B-KID-73: the per-child mute store and the voice path live in the ONE kid
+// audio module (audio/kidAudio.ts); these names stay for their callers.
+export { isKidReadAloudMuted, pageHasUserGesture, setKidReadAloudMuted, useKidReadAloudMuted };
 
 /** Speak a page when read-aloud is on, the device can speak and a gesture has
- *  happened. Returns the utterance id (0 = not spoken). */
-export function autoReadPage(childId: string, text: string, lang: "en" | "he"): number {
-  if (!text.trim() || isKidReadAloudMuted(childId) || !voiceSupported() || !pageHasUserGesture()) return 0;
-  return speakText(text, {}, lang);
+ *  happened. Returns the utterance id (0 = not spoken). B-KID-73: the ONE
+ *  kid voice path (kidSay); a list of lines is spoken as a queue. */
+export function autoReadPage(childId: string, text: string | readonly string[], lang: "en" | "he"): number {
+  return kidSay(childId, text, lang);
 }
 
-/** The top-bar toggle (44 px). Hidden when the device cannot speak. */
-export function KidReadAloudToggle({ childId, lang }: { childId: string; lang: "en" | "he" }) {
+/** B-KID-73: the ONE per-child Sound control in the kid top bar (44 px):
+ *  off silences the voice AND the effects, and persists. Hidden only when the
+ *  device can neither speak nor play audio. */
+export function KidSoundToggle({ childId, lang }: { childId: string; lang: "en" | "he" }) {
   const muted = useKidReadAloudMuted(childId);
-  if (!voiceSupported()) return null;
-  const label = kidsStoriesText("kidBooks.readAloud", lang);
+  const canAudio = typeof (globalThis as { AudioContext?: unknown }).AudioContext !== "undefined";
+  if (!voiceSupported() && !canAudio) return null;
+  const label = kidsStoriesText("kidAudio.sound", lang);
   return (
     <button
       type="button"
@@ -71,6 +43,7 @@ export function KidReadAloudToggle({ childId, lang }: { childId: string; lang: "
       aria-pressed={!muted}
       aria-label={label}
       data-kid-read-aloud=""
+      data-kid-sound=""
       style={{ appearance: "none", display: "inline-grid", placeItems: "center", inlineSize: 44, blockSize: 44, borderRadius: 999, cursor: "pointer", background: muted ? "var(--arbor-paper-deep)" : "var(--arbor-sky-soft)", color: muted ? "var(--arbor-muted)" : "var(--arbor-sky-ink)", border: "2px solid var(--comic-ink)", flexShrink: 0 }}
     >
       <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
@@ -82,6 +55,9 @@ export function KidReadAloudToggle({ childId, lang }: { childId: string; lang: "
     </button>
   );
 }
+
+/** The read-aloud toggle IS the Sound control (B-KID-73). */
+export const KidReadAloudToggle = KidSoundToggle;
 
 /** B-KID-74 (KC-01): the top bar's ONE hear-it while a game is open — replays
  *  the game's instruction (an explicit tap, so no mute or gesture check). */

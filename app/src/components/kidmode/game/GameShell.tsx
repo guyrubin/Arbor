@@ -31,6 +31,14 @@ import { kidArt, kidArtSrcSet, worldTileKey, type KidWorldTileId } from "../../.
 import { setKidHearIt, useKidHome } from "../kidChrome";
 import { autoReadPage } from "../kidReadAloud";
 import { stopVoice } from "../../../lib/voice";
+import { kidSfx } from "../audio/kidAudio";
+
+/** B-KID-73: a tap on any piece (a button) inside a kid game makes the soft
+ *  tap sound — one shared seam, no per-world wiring. */
+export function onGamePiecePointerDown(e: { target: EventTarget | null }): void {
+  const el = e.target as (Element & { closest?: (s: string) => Element | null }) | null;
+  if (el?.closest?.("button:not([disabled])")) kidSfx("tap");
+}
 
 export interface GameShellProps {
   /** The world (art key + identity). */
@@ -118,7 +126,7 @@ export function GameShell({ worldId, title, instruction, hearIt, progress, mood,
   return (
     // `.arbor-play`: the kid type scale, also when a surface mounts a game
     // directly (the overlay's feelings view), not only inside the arcade.
-    <div data-game-shell={worldId} className="arbor-play relative" style={{ isolation: "isolate" }}>
+    <div data-game-shell={worldId} className="arbor-play relative" style={{ isolation: "isolate" }} onPointerDownCapture={onGamePiecePointerDown}>
       {/* Fable render (5 Oct): a full-area blurred backdrop sat under an opaque
           play card and was never seen. The world's card is now a banner strip
           at the top of the shell (~30 % of the viewport, focal point near the
@@ -161,7 +169,8 @@ export function GameShell({ worldId, title, instruction, hearIt, progress, mood,
  *  Home (the overlay's, when Kid Mode is open). No stars, no counts. */
 export function GameFinish({ title, subtitle, onPlayAgain, playAgainLabel, homeLabel }: { title: string; subtitle?: string; onPlayAgain: () => void; playAgainLabel: string; homeLabel: string }) {
   const goHome = useKidHome();
-  useEffect(() => { celebrateBurst(); }, []);
+  // B-KID-73: the finish fanfare with the burst (silent when Sound is off).
+  useEffect(() => { celebrateBurst(); kidSfx("finish"); }, []);
   return (
     <div className="text-center py-6 play-pop-in" data-game-finish="">
       <div className="mx-auto w-fit play-cheer"><HeroAvatar size={132} mood="cheer" animate /></div>

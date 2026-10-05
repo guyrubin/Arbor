@@ -88,11 +88,13 @@ describe("read-to-me (kidReadAloud)", () => {
     voice.supported = true;
     const on = renderToStaticMarkup(<KidReadAloudToggle childId="child-a" lang="he" />);
     expect(on).toContain('aria-pressed="true"');
-    expect(on).toContain('aria-label="הקריאו לי"');
+    // B-KID-73 re-pin: the read-to-me toggle IS the ONE Sound control (voice + effects).
+    expect(on).toContain('aria-label="צלילים"');
     expect(on).toMatch(/width:44px|inline-size:44px/);
   });
-  it("the top bar carries the toggle while a book is open", () => {
-    expect(overlay).toContain('{view === "journeys" && surfaceTitle && <KidReadAloudToggle childId={childProfile.id}');
+  it("the top bar carries the toggle while a book is open (B-KID-73: on every kid view)", () => {
+    expect(overlay).toContain('<KidSoundToggle childId={childProfile.id} lang={uiLang === "he" ? "he" : "en"} />');
+    expect(overlay).not.toContain('{view === "journeys" && surfaceTitle && <KidReadAloudToggle');
   });
 });
 
@@ -111,8 +113,10 @@ describe("the Kid Mode reader (HeroJourneyTab)", () => {
     expect((kidReader.match(/<button\b/g) ?? []).length).toBe(4); // back, next, read again, my books
   });
   it("each page reads itself on open; the Decision page reads its question; the cards are the large stacked list", () => {
-    expect(tab).toContain('isDecision && !choiceId && displayScene\n          ? `${displayScene.narration} ${kidsStoriesText("journey.decision", aiLang');
-    expect(tab).toContain("autoReadPage(childProfile.id, kidSpeech, aiLang === \"he\" ? \"he\" : \"en\")");
+    // B-KID-73 re-pin: the question, then each choice label, as one voice queue.
+    expect(tab).toContain('? [`${displayScene.narration} ${kidsStoriesText("journey.decision", aiLang');
+    expect(tab).toContain("...choices.map((c) => c.label)].join(\"\\n\")");
+    expect(tab).toContain("autoReadPage(childProfile.id, kidSpeech.split(\"\\n\"), aiLang === \"he\" ? \"he\" : \"en\")");
     expect(kidReader).toContain("renderChoices()");
     expect(tab).toContain("<DecisionChoices choices={choices}");
   });

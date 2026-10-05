@@ -33,7 +33,8 @@ import { HoldExitButton } from "./HoldExitButton";
 import { KidErrorBoundary } from "./KidErrorBoundary";
 import { ArborMascot } from "../ui/ArborMascot";
 import { useArbor } from "../../context/ArborContext";
-import { KidHearItButton, KidReadAloudToggle } from "./kidReadAloud";
+import { KidHearItButton, KidSoundToggle } from "./kidReadAloud";
+import { closeKidAudio, kidAudioVisibility, kidHush, setKidAudioChild } from "./audio/kidAudio";
 import { setKidHome } from "./kidChrome";
 
 // ── EXISTING surfaces — imported unchanged, never forked ──────────────────────
@@ -141,6 +142,22 @@ export default function KidModeOverlay() {
     setKidHome(() => setView("home"));
     return () => setKidHome(null);
   }, [isKidModeOpen]);
+
+  // B-KID-73: the ONE kid audio bus lives while Kid Mode is open — the active
+  // child's Sound setting gates every effect; a hidden tab pauses it; closing
+  // Kid Mode closes the shared AudioContext and stops the voice.
+  useEffect(() => {
+    if (!isKidModeOpen) return;
+    setKidAudioChild(childProfile.id);
+    const onVisibility = () => kidAudioVisibility(document.visibilityState === "hidden");
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      closeKidAudio();
+    };
+  }, [isKidModeOpen, childProfile.id]);
+  // Navigation cancels whatever was being said (the next view speaks its own).
+  useEffect(() => { kidHush(); }, [view, arcadeWorldId]);
 
   // KID-LOCK LEAK 1: persist the current kid surface while open, so the next
   // reload restores it. Device-local UI state only — no child data.
@@ -333,11 +350,11 @@ export default function KidModeOverlay() {
                 {/* B-KID-53: inside a world or a story the title is ITS name. */}
                 {barTitle}
               </span>
-              {/* B-KID-76 (b): an open book (its title is the surface title) gets
-                  the per-child read-to-me mute in the top bar. */}
               {/* B-KID-74: inside a game the bar carries the game's ONE hear-it. */}
               {view === "arcade" && <KidHearItButton />}
-              {view === "journeys" && surfaceTitle && <KidReadAloudToggle childId={childProfile.id} lang={uiLang === "he" ? "he" : "en"} />}
+              {/* B-KID-73: the ONE per-child Sound control (voice + effects) on
+                  every kid view's bar (was: read-to-me, in an open book only). */}
+              <KidSoundToggle childId={childProfile.id} lang={uiLang === "he" ? "he" : "en"} />
               <HoldExitButton onExit={closeKidMode} idleLabel={t("kid.exit.backToParent")} ariaIdle={t("kid.exit.backToParentAria")} />
             </header>
           )}

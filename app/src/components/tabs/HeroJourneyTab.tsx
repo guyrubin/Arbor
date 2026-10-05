@@ -67,6 +67,7 @@ import KidLibrary from "../kidmode/KidLibrary";
 import { kidBooks } from "../kidmode/kidBooks";
 import { KidBookTitleCard } from "../kidmode/KidBookCover";
 import { autoReadPage } from "../kidmode/kidReadAloud";
+import { kidSfx } from "../kidmode/audio/kidAudio";
 import { stopVoice } from "../../lib/voice";
 import { KID_BOOK_ART_BLOCK } from "../stories/HeroScenePlayer";
 import { DecisionChoices } from "../stories/DecisionChoices";
@@ -313,11 +314,13 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
       : onCover
         ? (render.title || activeStory.title)
         : isDecision && !choiceId && displayScene
-          ? `${displayScene.narration} ${kidsStoriesText("journey.decision", aiLang, { name: childProfile.name?.split(" ")[0] ?? "" })}`
+          // B-KID-73: the Decision page speaks its question, then each choice
+          // (one line each — the kid voice queue reads them in turn).
+          ? [`${displayScene.narration} ${kidsStoriesText("journey.decision", aiLang, { name: childProfile.name?.split(" ")[0] ?? "" })}`, ...choices.map((c) => c.label)].join("\n")
           : displayScene?.narration ?? "";
   useEffect(() => {
     if (!kidSpeech) return;
-    const timer = setTimeout(() => { autoReadPage(childProfile.id, kidSpeech, aiLang === "he" ? "he" : "en"); }, 400);
+    const timer = setTimeout(() => { autoReadPage(childProfile.id, kidSpeech.split("\n"), aiLang === "he" ? "he" : "en"); }, 400);
     return () => { clearTimeout(timer); stopVoice(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kidSpeech]);
@@ -610,12 +613,14 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
   const atFirstPage = onCover || (sceneIndex === 0 && !hasCoverPage);
   const goBack = () => {
     if (onCover) return;
+    kidSfx("pageTurn"); // B-KID-73: silent outside Kid Mode / with Sound off
     if (sceneIndex === 0) { if (hasCoverPage) setOnCover(true); return; }
     setSceneIndex((i) => Math.max(0, i - 1));
   };
   // Turning off the cover never waits for its art: a cover still drawing is a
   // framed loading page the child can read past.
   const goNext = () => {
+    if (onCover || canAdvance) kidSfx("pageTurn"); // B-KID-73
     if (onCover) { setOnCover(false); return; }
     if (canAdvance) setSceneIndex((i) => Math.min(scenes.length - 1, i + 1));
   };

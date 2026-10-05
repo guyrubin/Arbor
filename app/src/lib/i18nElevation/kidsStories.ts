@@ -10,7 +10,8 @@ export type KidsStoriesKey =
   | "comic.error" | "comic.tryAgain" | "comic.back" | "comic.end" | "comic.endBody" | "comic.save" | "comic.share" | "comic.another" | "comic.aria" | "comic.bookshelf" | "comic.brand" | "comic.read" | "comic.finish" | "comic.shareText" | "comic.pageTitle"
   | "shelf.emptyNoHero" | "shelf.openStories"
   | "kidBooks.title" | "kidBooks.seeAll" | "kidBooks.readMark" | "kidBooks.madeBefore" | "kidBooks.empty" | "kidBooks.readAloud"
-  | "kidGame.hearIt" | "kidGame.playAgain" | "kidGame.home";
+  | "kidGame.hearIt" | "kidGame.playAgain" | "kidGame.home"
+  | "kidAudio.sound";
 
 const EN: Record<KidsStoriesKey, string> = {
   "shelf.title": "Hero Comics",
@@ -74,6 +75,7 @@ const EN: Record<KidsStoriesKey, string> = {
   "kidGame.hearIt": "Hear it again",
   "kidGame.playAgain": "Play again",
   "kidGame.home": "Home",
+  "kidAudio.sound": "Sound",
 };
 
 const HE: Record<KidsStoriesKey, string> = {
@@ -138,6 +140,7 @@ const HE: Record<KidsStoriesKey, string> = {
   "kidGame.hearIt": "לשמוע שוב",
   "kidGame.playAgain": "משחקים שוב",
   "kidGame.home": "הביתה",
+  "kidAudio.sound": "צלילים",
 };
 
 /** Registry shape for the dictionary firewall (i18nElevation/index.ts MODULES). */

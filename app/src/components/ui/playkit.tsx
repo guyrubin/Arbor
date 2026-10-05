@@ -6,6 +6,7 @@ import { HeroAvatar } from "./HeroAvatar";
 import { useLanguage } from "../../context/LanguageContext";
 import { PageHeader } from "./kit";
 import { TONE_INK, TONE_SOFT, T, type PlayTone } from "../../lib/tokens";
+import { kidSfx } from "../kidmode/audio/kidAudio";
 
 /* ════════════════════════════════════════════════════════════════════════════
    PlayKit — the child-facing primitive set for Practice Studio.
@@ -260,6 +261,12 @@ export function ChoiceTile({
   disabled?: boolean;
   state?: "idle" | "correct" | "wrong" | "dim";
 }) {
+  // B-KID-73: a piece turning right / not-yet chimes once in Kid Mode (a gentle
+  // try-again, never a buzzer); kidSfx is silent outside Kid Mode.
+  React.useEffect(() => {
+    if (state === "correct") kidSfx("correct");
+    else if (state === "wrong") kidSfx("tryAgain");
+  }, [state]);
   const ring =
     state === "correct"
       ? "var(--arbor-clay)"
