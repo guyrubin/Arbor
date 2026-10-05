@@ -26,6 +26,8 @@ export default function Topbar() {
   const { t } = useLanguage();
   const section = sectionForTab(activeTab);
 
+  // One key per hub; a hero-less child gets the Stories line that does not promise "starring {name}".
+  const hubSubKey = section.id === "stories" && !childProfile.avatar ? "stories.noHero" : section.id;
   return (
     <header
       className="hidden lg:flex items-center gap-4 px-5 xl:px-7 flex-none min-w-0"
@@ -62,7 +64,7 @@ export default function Topbar() {
         </span>
         <span className="text-[12px] truncate" style={{ color: "var(--arbor-muted)" }}>
           {/* W2-SHELLPLAY critic r2: "starring" only once a hero exists. */}
-          {t(section.id === "stories" && !childProfile.avatar ? "nav.sub.stories.noHero" : "nav.sub." + section.id, { name: childProfile.name })}
+          {t("nav.sub." + hubSubKey, { name: childProfile.name })}
         </span>
       </div>
 

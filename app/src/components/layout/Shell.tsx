@@ -235,6 +235,8 @@ export default function Shell() {
   const pulses = usePulses();
   const countedPulse = pulses[section.id];
   const hubPulse = countedPulse && typeof countedPulse.count === "number" && countedPulse.count > 0 ? countedPulse : null;
+  // One key per hub; a hero-less child gets the Stories line that does not promise "starring {name}".
+  const hubSubKey = section.id === "stories" && !childProfile.avatar ? "stories.noHero" : section.id;
   // F-02: <main> is the desktop scrollport (overflow-y-auto below), so a tab
   // switch kept the previous tab's scroll offset and showed the new tab
   // mid-page (plus a ghost frame of clipped old content during the exit).
@@ -500,7 +502,7 @@ export default function Shell() {
               quiet — the pills already name the hub. */}
           {!HUB_LINE_QUIET_TABS.has(activeTab) && (
           <p className="lg:hidden text-[11px] leading-snug mb-3 min-w-0" style={{ color: "var(--arbor-muted)" }}>
-            {hubPulse ? t(hubPulse.key, hubPulse.params) : t(section.id === "stories" && !childProfile.avatar ? "nav.sub.stories.noHero" : "nav.sub." + section.id, { name: childProfile.name })}
+            {hubPulse ? t(hubPulse.key, hubPulse.params) : t("nav.sub." + hubSubKey, { name: childProfile.name })}
           </p>
           )}
 

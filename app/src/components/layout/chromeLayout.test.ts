@@ -313,11 +313,11 @@ describe("IA-04 / IA-17 — exactly one child switcher at every width", () => {
 describe("IA-21 — hub one-liners are no longer desktop-only", () => {
   it("Shell renders nav.sub.<hub> below lg, where there is no topbar to carry it", () => {
     const src = stripComments(shell);
-    expect(src).toMatch(/<p className="lg:hidden[^"]*"[\s\S]{0,200}t\("nav\.sub\." \+ section\.id, \{ name: childProfile\.name \}\)/);
+    expect(src).toMatch(/<p className="lg:hidden[^"]*"[\s\S]{0,200}t\("nav\.sub\." \+ hubSubKey, \{ name: childProfile\.name \}\)/);
   });
 
   it("it is the SAME key the topbar uses — one sentence per hub, not two", () => {
-    expect(stripComments(topbar)).toContain('t("nav.sub." + section.id, { name: childProfile.name })');
+    expect(stripComments(topbar)).toContain('t("nav.sub." + hubSubKey, { name: childProfile.name })');
   });
 
   it("EN and HE exist for all ten hubs, so nothing falls back to a raw key", () => {

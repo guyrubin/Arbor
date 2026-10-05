@@ -346,7 +346,7 @@ export function buildFullRecord(ctx: ReportContext, lang: UiLang = "en"): Report
     sections.push({ heading: doc.title, body: [] }, ...doc.sections);
   }
   return {
-    title: tr("elev.reports.record.title", `${ctx.child.name}'s record`, { name: ctx.child.name }),
+    title: translate(lang, "elev.reports.record.title", { name: ctx.child.name }),
     subtitle,
     sections,
     heroImageUrl: ctx.heroImageUrl,
