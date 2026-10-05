@@ -7,6 +7,13 @@ import { useLanguage } from "../../context/LanguageContext";
 import { PageHeader } from "./kit";
 import { TONE_INK, TONE_SOFT, T, type PlayTone } from "../../lib/tokens";
 import { kidSfx } from "../kidmode/audio/kidAudio";
+import { KidToy } from "../kidmode/KidToy";
+import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
+
+/** B-KID-133: the kid register is on (Kid Mode open) — kid branches only. */
+export function useKidModeOn(): boolean {
+  return React.useSyncExternalStore(subscribeKidMode, isKidModeActive, isKidModeActive);
+}
 
 /* ════════════════════════════════════════════════════════════════════════════
    PlayKit — the child-facing primitive set for Practice Studio.
@@ -226,6 +233,16 @@ export function PlayButton({
   type?: "button" | "submit";
   className?: string;
 }) {
+  // B-KID-133 (D-02): inside Kid Mode every PlayButton is a toy — primary =
+  // the yellow GO toy, soft/ghost = a paper toy. The parent register is unchanged.
+  const kid = useKidModeOn();
+  if (kid) {
+    return (
+      <KidToy type={type} onClick={onClick} disabled={disabled} aria-label={ariaLabel} tone={variant === "primary" ? "go" : "paper"} className={className}>
+        {children}
+      </KidToy>
+    );
+  }
   const pad = size === "lg" ? "px-7 min-h-[54px] text-[16px]" : "px-5 min-h-[46px] text-[14px]";
   const style: React.CSSProperties =
     variant === "primary"

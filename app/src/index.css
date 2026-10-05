@@ -774,6 +774,137 @@ body {
    Tokens only (mask literals use var(--arbor-ink) as opaque alpha).
    ════════════════════════════════════════════════════════════════════════════ */
 
+/* ── D-02 · Shape + motion tokens (§2.3, §2.7) ─────────────────────────── */
+.arbor-play {
+  --kid-r-s: 14px;
+  --kid-r-m: 22px;
+  --kid-r-l: 32px;
+  --kid-r-book: 4px 14px 14px 4px;
+  --kid-dur-press: 90ms;
+  --kid-dur-release: 220ms;
+  --kid-dur-enter: 420ms;
+  --kid-dur-page: 520ms;
+  --kid-dur-flip: 380ms;
+  --kid-dur-celebrate: 1200ms;
+  --kid-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --kid-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* +1 = left-to-right reading; HE flips every book tilt, page block and turn. */
+  --book-x: 1;
+}
+html[lang="he"] .arbor-play,
+[dir="rtl"] .arbor-play { --kid-r-book: 14px 4px 4px 14px; --book-x: -1; }
+
+/* M1 — card pop-in stagger (set --i inline; capped at 8 steps = 350 ms). */
+@keyframes kid-pop-in {
+  0%   { opacity: 0; transform: translateY(16px) scale(0.92); }
+  70%  { opacity: 1; transform: translateY(-2px) scale(1.03); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes kid-fade-in { from { opacity: 0; } to { opacity: 1; } }
+/* M6 — hero bob: ONE element per screen. */
+@keyframes kid-bob {
+  0%, 100% { transform: translateY(0) rotate(var(--tilt, 0deg)); }
+  50%      { transform: translateY(-6px) rotate(var(--tilt, 0deg)); }
+}
+/* M5 — a sticker / coin drops in on a spring. */
+@keyframes kid-drop {
+  0%   { transform: translateY(-40px) scale(0.4) rotate(-12deg); opacity: 0; }
+  60%  { transform: translateY(4px) scale(1.12) rotate(4deg); opacity: 1; }
+  100% { transform: rotate(6deg) scale(1); opacity: 1; }
+}
+/* "Not yet": a one-cycle head-tilt (a shake reads as "no!"). */
+@keyframes kid-wobble {
+  0%, 100% { transform: rotate(0deg); }
+  33%      { transform: rotate(-3deg); }
+  66%      { transform: rotate(3deg); }
+}
+.arbor-play .kid-pop-in {
+  animation: kid-pop-in var(--kid-dur-enter) var(--kid-ease-out) both;
+  animation-delay: calc(min(var(--i, 0), 7) * 50ms);
+}
+.arbor-play .kid-bob { animation: kid-bob 3.2s ease-in-out infinite; }
+.arbor-play .kid-drop { animation: kid-drop 600ms var(--kid-ease-spring) both; }
+.arbor-play .kid-wobble { animation: kid-wobble 300ms var(--kid-ease-out) 1; }
+@media (prefers-reduced-motion: reduce) {
+  .arbor-play .kid-pop-in { animation: kid-fade-in 160ms var(--kid-ease-out) both; animation-delay: 0ms; }
+  .arbor-play .kid-bob,
+  .arbor-play .kid-wobble { animation: none; }
+  .arbor-play .kid-drop { animation: kid-fade-in 160ms var(--kid-ease-out) both; }
+}
+
+/* ── D-02 · The toy (§2.3): the one button / piece primitive ──────────── */
+.arbor-play .kid-toy {
+  --toy-face: var(--arbor-paper-elevated);
+  --toy-lip: color-mix(in oklab, var(--arbor-ink) 16%, var(--arbor-paper-elevated));
+  --toy-ink: var(--arbor-ink);
+  --toy-depth: 6px;
+  position: relative;
+  display: inline-grid;
+  grid-auto-flow: column;
+  place-items: center;
+  place-content: center;
+  gap: 8px;
+  min-block-size: 64px;
+  min-inline-size: 64px;
+  padding-inline: 28px;
+  border: 0;
+  border-radius: var(--kid-r-m);
+  color: var(--toy-ink);
+  font: 800 var(--kid-t-label, 18px)/1.1 var(--font-sans);
+  letter-spacing: 0;
+  background:
+    linear-gradient(to bottom, color-mix(in oklab, var(--arbor-paper-elevated) 42%, transparent) 0, transparent 48%),
+    var(--toy-face);
+  box-shadow:
+    inset 0 2px 0 color-mix(in oklab, var(--arbor-paper-elevated) 60%, transparent),
+    inset 0 -3px 0 color-mix(in oklab, var(--toy-lip) 60%, transparent),
+    0 var(--toy-depth) 0 var(--toy-lip),
+    0 calc(var(--toy-depth) + 10px) 18px -8px color-mix(in oklab, var(--arbor-ink) 50%, transparent);
+  transform: translateY(0) scale(1);
+  transition: transform var(--kid-dur-release) var(--kid-ease-spring), box-shadow 120ms var(--kid-ease-out);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  margin-block-end: var(--toy-depth);
+}
+.arbor-play .kid-toy:active {
+  transform: translateY(calc(var(--toy-depth) - 1px)) scale(1.03, 0.94);
+  transition-duration: var(--kid-dur-press), var(--kid-dur-press);
+  box-shadow:
+    inset 0 2px 0 color-mix(in oklab, var(--arbor-paper-elevated) 60%, transparent),
+    inset 0 -2px 0 color-mix(in oklab, var(--toy-lip) 60%, transparent),
+    0 1px 0 var(--toy-lip),
+    0 4px 8px -4px color-mix(in oklab, var(--arbor-ink) 45%, transparent);
+}
+.arbor-play .kid-toy:focus-visible { outline: 3px solid var(--arbor-sky); outline-offset: 4px; }
+.arbor-play .kid-toy[data-tone="go"] { --toy-face: var(--arbor-yellow); --toy-lip: var(--arbor-ochre); }
+.arbor-play .kid-toy[data-tone="sapphire"] {
+  --toy-face: var(--arbor-clay);
+  --toy-lip: color-mix(in oklab, var(--arbor-clay-deep) 65%, var(--arbor-ink));
+  --toy-ink: var(--arbor-on-accent);
+}
+.arbor-play .kid-toy[data-state="correct"] { --toy-face: var(--arbor-green-soft); --toy-lip: var(--arbor-success); --toy-ink: var(--arbor-green-ink); }
+.arbor-play .kid-toy[data-state="not-yet"] { --toy-face: var(--arbor-lav-wash); --toy-lip: var(--arbor-lav); --toy-ink: var(--arbor-lav-ink); }
+.arbor-play .kid-toy[data-size="s"] { --toy-depth: 4px; min-block-size: 48px; min-inline-size: 48px; padding-inline: 16px; }
+.arbor-play .kid-toy[data-size="l"] { --toy-depth: 8px; min-block-size: 80px; padding-inline: 32px; font-size: var(--kid-t-title, 24px); }
+.arbor-play .kid-toy[data-shape="round"] {
+  border-radius: 999px;
+  padding: 0;
+  inline-size: var(--toy-size, 64px);
+  block-size: var(--toy-size, 64px);
+  min-inline-size: 0;
+  min-block-size: 0;
+}
+.arbor-play .kid-toy[data-shape="round"][data-size="s"] { --toy-size: 48px; }
+.arbor-play .kid-toy[data-shape="round"][data-size="l"] { --toy-size: 80px; }
+.arbor-play .kid-toy:disabled { filter: saturate(0.4); opacity: 0.6; transform: none; cursor: default; }
+.arbor-play .kid-toy .kid-toy-glyph { font-size: 28px; line-height: 1; }
+.arbor-play .kid-toy[data-size="l"] .kid-toy-glyph { font-size: 34px; }
+@media (prefers-reduced-motion: reduce) {
+  .arbor-play .kid-toy,
+  .arbor-play .kid-toy:active { transition: box-shadow 1ms; }
+  .arbor-play .kid-toy:active { transform: translateY(calc(var(--toy-depth) - 1px)); }
+}
+
 /* ── D-01 · The Stage (§2.4.1) ─────────────────────────────────────────── */
 /* The staged overlay paints no four-blob wash: the stage IS the background. */
 .arbor-play[data-kid-staged]::before { display: none; }

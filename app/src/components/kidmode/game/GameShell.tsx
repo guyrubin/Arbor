@@ -20,7 +20,8 @@
  * PlayHeader unchanged, so the parent register does not move.
  */
 import React, { createContext, useContext, useEffect, useSyncExternalStore } from "react";
-import { PlayButton, PlayHeader, celebrateBurst } from "../../ui/playkit";
+import { PlayHeader, celebrateBurst } from "../../ui/playkit";
+import { KidToy } from "../KidToy";
 import type { MascotMood } from "../../ui/ArborMascot";
 import { useLanguage } from "../../../context/LanguageContext";
 import { useArborOptional } from "../../../context/ArborContext";
@@ -170,9 +171,10 @@ export function GameFinish({ title, subtitle, onPlayAgain, playAgainLabel, homeL
       <KidFinishMoment childId={childId} kind="world" refId={world} lang={uiLang === "he" ? "he" : "en"} />
       <h2 className="text-[1.6rem] font-extrabold mt-2" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)", textWrap: "balance" }}>{title}</h2>
       {subtitle && <p className="mt-1 text-[16px] font-bold" style={{ color: "var(--arbor-ink-soft)" }}>{subtitle}</p>}
-      <div className="mt-5 flex flex-wrap justify-center gap-3">
-        <PlayButton tone="clay" onClick={onPlayAgain}>{playAgainLabel}</PlayButton>
-        {goHome && <PlayButton tone="clay" variant="soft" onClick={goHome}>{homeLabel}</PlayButton>}
+      <div className="mt-5 flex flex-wrap items-start justify-center gap-4">
+        {/* B-KID-133 (D-02): Play again = the GO toy; Home = a paper toy. */}
+        <KidToy tone="go" size="l" glyph="replay" onClick={onPlayAgain} data-kid-finish-again="">{playAgainLabel}</KidToy>
+        {goHome && <KidToy tone="paper" glyph="home" onClick={goHome} data-kid-finish-home="">{homeLabel}</KidToy>}
       </div>
     </div>
   );
