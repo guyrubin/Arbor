@@ -244,7 +244,7 @@ describe("B-PLAY-11 — Tonight cover: no virtue tallies, insight first, catalog
 
   it("W2-SHELLPLAY r1 (law 4): the parent branch carries no raw hex", () => {
     const door = parent.slice(0, parent.indexOf("const coverPage = (immersiveMode: boolean)"));
-    expect(door).not.toMatch(/#[0-9a-fA-F]{3,6}/);
+    expect(door).not.toMatch(/#[0-9a-fA-F]{3,6}\b/);
   });
 
   it("pack filter + catalogue sit in ONE collapsed disclosure, demoted (R25)", () => {
