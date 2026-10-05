@@ -329,3 +329,47 @@ describe("law 1 — no denominators on the Behaviors patterns card (B-ASKJB-22 r
     expect(DENOMINATOR.test("{count} מתוך {total} רגעים")).toBe(true);
   });
 });
+
+/* W2-CAREPRO c2 r1 (sharing P0) — the same DENOMINATOR scan over the consult
+ * packet's dictionary keys and the week share a co-parent/viewer receives. */
+describe("law 1 — no denominators in the packet keys or a viewer's week share (W2-CAREPRO c2 r1)", () => {
+  it("every elev.packet.* key (EN + HE) is denominator-free", async () => {
+    const care = await import("./i18nElevation/careHonesty");
+    const keys = Object.keys(care.en).filter((k) => k.startsWith("elev.packet."));
+    expect(keys.length).toBeGreaterThan(40);
+    for (const k of keys) {
+      expect(DENOMINATOR.test(care.en[k]), `en ${k}`).toBe(false);
+      expect(DENOMINATOR.test(care.he[k] ?? ""), `he ${k}`).toBe(false);
+    }
+  });
+
+  it("resolveSharedPacket for a viewer week grant renders no '{n} of {total}' in EN or HE", async () => {
+    const { buildGrant, LocalShareStore } = await import("../sharing/shares");
+    const { resolveSharedPacket } = await import("../server/sharedPacket");
+    const { itemText, sectionTitle } = await import("../consult/packet");
+    const { WEEK_SHARE_SCOPES, WEEK_SHARE_DURATION } = await import("./shareScopes");
+    const NOW = Date.parse("2026-10-05T09:00:00.000Z");
+    const store = new LocalShareStore();
+    const g = await store.create(buildGrant({ ownerUid: "u1", ownerEmail: "me@x.io", childId: "c1", childName: "Dylan", recipientEmail: "dana@x.io", role: "viewer", scopes: [...WEEK_SHARE_SCOPES], duration: WEEK_SHARE_DURATION }, NOW));
+    const record = {
+      profile: { name: "Dylan", age: 3, languages: ["English"] },
+      logs: [{ behaviorType: "Moment", intensity: 1, timestamp: new Date(NOW - 86_400_000).toISOString(), trigger: "Sang the bath song" }],
+      milestones: [
+        { domain: "language_communication", title: "Says two words together", checked: true, observationStatus: "yes", observationUpdatedAt: new Date(NOW - 2 * 86_400_000).toISOString(), ageMonths: 24 },
+        { domain: "language_communication", title: "Talks in conversation", checked: false, ageMonths: 36 },
+      ],
+      plans: [],
+      memory: [],
+    };
+    const r = await resolveSharedPacket({ grantId: g.id, recipientEmail: "dana@x.io", shareStore: store, source: { load: async () => record } as never, now: NOW });
+    if (r.status !== 200) throw new Error("unreachable");
+    for (const lang of ["en", "he"] as const) {
+      const text = r.view.sections.flatMap((s) => [sectionTitle(s as never, lang), ...s.items.map((i) => itemText(i as never, lang))]).join("\n");
+      expect(text.length).toBeGreaterThan(20);
+      expect(DENOMINATOR.test(text), text).toBe(false);
+    }
+    // NEGATIVE CONTROL: the pre-fix lines trip the scan.
+    expect(DENOMINATOR.test("0 of 21 milestones on the 3 years checklists noticed so far")).toBe(true);
+    expect(DENOMINATOR.test("{done} מתוך {total} אבני דרך")).toBe(true);
+  });
+});

@@ -148,6 +148,32 @@ export default function TrustedSharing() {
     }
   }, [weekPreviewing, childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems]);
 
+  // W2-CAREPRO c2 r1 (B-CAREPRO-NEW-c2-1j): what the co-parent will read this
+  // week, AT REST — the newest of the parent's own moment words the week grant
+  // releases (story_timeline → the packet's 7-day moments section, same builder
+  // and same scan as the server), with its weekday. Never AI text, no counts.
+  const weekAtRest = React.useMemo(() => {
+    try {
+      const packet = buildSharedScopePacket(
+        [...WEEK_SHARE_SCOPES],
+        false,
+        buildPacketInput(
+          { profile: childProfile, logs: behaviorLogs, milestones, plans: actionPlans, memory: approvedMemoryItems },
+          Date.now()
+        )
+      );
+      const first = packet.sections.find((s) => s.id === "moments")?.items.find((it) => it.id.startsWith("moment-"));
+      const quote = first && typeof first.vars?.quote === "string" ? first.vars.quote : null;
+      const day = first?.vars?.date;
+      const iso = day && typeof day === "object" && "dayOf" in day ? day.dayOf : null;
+      return quote ? { quote, iso } : null;
+    } catch {
+      return null;
+    }
+  }, [childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems]);
+  const weekday = (iso: string | null) =>
+    iso ? new Intl.DateTimeFormat(uiLang === "he" ? "he-IL" : "en-GB", { weekday: "short", timeZone: "UTC" }).format(Date.parse(`${iso}T12:00:00Z`)) : "";
+
   /** LC-17: a prefilled invite the PARENT sends. Arbor sends no email. */
   const inviteHref = (email: string): string => {
     const link = `${typeof window === "undefined" ? "" : window.location.origin}/#/sharing`;
@@ -334,21 +360,36 @@ export default function TrustedSharing() {
           they carry one stamp between them rather than competing as two. */}
       <div data-module="sharing-grant" style={{ display: "contents" }}>
       {!error && (
-        <section data-testid="share-week-card" className="rounded-[22px] p-5 flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:gap-6" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }}>
+        <section data-testid="share-week-card" className="rounded-[22px] p-5 flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:gap-x-6 lg:gap-y-4" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }}>
           {/* W2-CAREPRO r2: at lg the card is two columns — what is shared on
               the start side, the email + the one tap on the end side (the email
               field is capped at that column, not ~880 px). */}
-          <div className="flex flex-col gap-3 min-w-0">
+          <div className="flex flex-col gap-3 min-w-0 lg:col-start-1 lg:row-start-1">
             <div className="flex items-center gap-3">
               <span className="inline-flex items-center justify-center w-10 h-10 rounded-xl flex-shrink-0" style={{ background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" }}><Icon name="diversity_3" size={20} /></span>
               <h2 className="t-lg font-extrabold min-w-0" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("elev.learnCare.share.week.title", { name: first })}</h2>
             </div>
             <p className="t-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.share.week.body")}</p>
+            {/* W2-CAREPRO c2 r1: "What they'll read this week" — the parent's own
+                newest words the grant releases, at rest (the card's one warm
+                accent beside the one gradient); an honest line when there are none. */}
+            <figure data-testid="share-week-atrest" className="p-3" style={{ background: "var(--arbor-paper-deep)", borderRadius: "var(--r)", borderInlineStart: "2px solid var(--arbor-sky-ink)" }}>
+              <figcaption className="t-xs" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.share.week.atRest")}</figcaption>
+              {weekAtRest ? (
+                <p className="t-sm mt-0.5 line-clamp-2" style={{ color: "var(--arbor-ink)", fontFamily: uiLang === "he" ? "var(--font-display)" : "var(--font-editorial)" }}>
+                  <q dir="auto">{weekAtRest.quote}</q>{weekAtRest.iso ? <> · <bdi>{weekday(weekAtRest.iso)}</bdi></> : null}
+                </p>
+              ) : (
+                <p data-testid="share-week-atrest-empty" className="t-sm mt-0.5" style={{ color: "var(--arbor-ink)" }}>{t("elev.learnCare.share.week.atRestEmpty")}</p>
+              )}
+            </figure>
             {/* W2-CAREPRO r1: the server-enforcement sentence is the only trust
                 line on #/sharing. r2: inside the card, not a caption below it. */}
             <p data-testid="sharing-trust-line" className="t-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.trustNote")}</p>
           </div>
-          <div className="flex flex-col gap-3 min-w-0">
+          {/* W2-CAREPRO c2 r1: at lg the email + the one tap are a sticky end
+              column spanning both rows, beside the preview it confirms. */}
+          <div className="flex flex-col gap-3 min-w-0 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-6 lg:self-start">
             <div className="space-y-1.5">
               <input
                 ref={weekEmailRef}
@@ -369,34 +410,6 @@ export default function TrustedSharing() {
                 <p id="share-week-hint" role="alert" data-testid="share-week-hint" className="t-xs font-bold" style={{ color: "var(--arbor-ink)" }}>{t("elev.learnCare.share.week.needEmail")}</p>
               )}
             </div>
-            {weekPreviewing && (
-              /* The recipient's actual view — buildSharedScopePacket on the
-                 shared assembler, the same call server/sharedPacket.ts makes —
-                 shown with no tap once the email is valid. */
-              <div data-testid="share-week-preview" aria-live="polite" className="rounded-xl p-3.5 space-y-2.5" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-                <p className="t-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.share.preview.title")}</p>
-                {/* B-DIST-01: what the recipient reads opens with the demo header. */}
-                {childProfile.demo === true && (
-                  <p data-demo-header className="t-xs font-bold" dir="auto" style={{ color: "var(--arbor-ink)" }}>{t("elev.demo.header")}</p>
-                )}
-                {weekPreview.blocked ? (
-                  <p role="alert" className="t-xs font-bold leading-relaxed" style={{ color: "var(--arbor-pink-ink)" }}>{t("elev.learnCare.share.preview.blocked")}</p>
-                ) : !weekPreview.sections || weekPreview.sections.length === 0 ? (
-                  <p className="t-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.share.preview.empty")}</p>
-                ) : (
-                  weekPreview.sections.map((section) => (
-                    <div key={section.id}>
-                      <p className="t-sm font-extrabold" dir="auto" style={{ color: "var(--arbor-ink)" }}>{sectionTitle(section, uiLang)}</p>
-                      <ul className="list-disc ps-5 mt-1 space-y-0.5">
-                        {section.items.map((it) => (
-                          <li key={it.id} className="t-xs leading-relaxed" dir="auto" style={{ color: "var(--arbor-muted)" }}>{itemText(it, uiLang)}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
             <div className="flex flex-col sm:flex-row lg:flex-col gap-2 sm:items-center lg:items-stretch">
               {/* The route's ONE primary-move stamp: one tap grants (viewer,
                   WEEK_SHARE_SCOPES, until revoked); no email = focus + hint. */}
@@ -422,6 +435,39 @@ export default function TrustedSharing() {
               </button>
             </div>
           </div>
+          {weekPreviewing && (
+            /* The recipient's actual view — buildSharedScopePacket on the
+               shared assembler, the same call server/sharedPacket.ts makes —
+               shown with no tap once the email is valid. W2-CAREPRO c2 r1:
+               at lg it takes the START column (row 2) at a 60ch measure, not
+               the 22rem end column; below lg it follows the email. */
+            <div data-testid="share-week-preview" aria-live="polite" className="rounded-xl p-3.5 space-y-2.5 lg:col-start-1 lg:row-start-2 lg:max-w-[60ch]" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+              <p className="t-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.share.preview.title")}</p>
+              {/* B-DIST-01: what the recipient reads opens with the demo header. */}
+              {childProfile.demo === true && (
+                <p data-demo-header className="t-xs font-bold" dir="auto" style={{ color: "var(--arbor-ink)" }}>{t("elev.demo.header")}</p>
+              )}
+              {weekPreview.blocked ? (
+                <p role="alert" className="t-xs font-bold leading-relaxed" style={{ color: "var(--arbor-pink-ink)" }}>{t("elev.learnCare.share.preview.blocked")}</p>
+              ) : !weekPreview.sections || weekPreview.sections.length === 0 ? (
+                <p className="t-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.share.preview.empty")}</p>
+              ) : (
+                weekPreview.sections.map((section) => (
+                  <div key={section.id}>
+                    <p className="t-sm font-extrabold" dir={uiLang === "he" ? "rtl" : "ltr"} style={{ color: "var(--arbor-ink)" }}>{sectionTitle(section, uiLang)}</p>
+                    {/* W2-CAREPRO c2 r1: one direction per list (the UI's);
+                        itemText isolates every Latin title/quote and HE dates
+                        are Hebrew dates — never a raw ISO day in an RTL line. */}
+                    <ul dir={uiLang === "he" ? "rtl" : "ltr"} className="list-disc ps-5 mt-1 space-y-0.5">
+                      {section.items.map((it) => (
+                        <li key={it.id} className="t-xs leading-relaxed" dir={uiLang === "he" ? "rtl" : "ltr"} style={{ color: "var(--arbor-muted)" }}>{itemText(it, uiLang)}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </section>
       )}
       {invite && (

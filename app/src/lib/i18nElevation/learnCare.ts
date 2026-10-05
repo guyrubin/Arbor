@@ -111,6 +111,9 @@ export const en: Record<string, string> = {
   // B-CAREPRO-26: the first card on Sharing — the week, read-only, until revoked.
   "elev.learnCare.share.week.title": "Share {name}'s week with the other parent",
   "elev.learnCare.share.week.body": "They read the weekly summary and the story timeline until you stop sharing; you send them the invite.",
+  // W2-CAREPRO c2 r1: the at-rest strip (the parent's own newest words this week).
+  "elev.learnCare.share.week.atRest": "What they'll read this week",
+  "elev.learnCare.share.week.atRestEmpty": "Their first look will be this week's summary.",
   "elev.learnCare.share.week.email": "Their email",
   "elev.learnCare.share.week.preview": "See what they will see",
   "elev.learnCare.share.week.share": "Share {name}'s week",
@@ -220,6 +223,8 @@ export const he: Record<string, string> = {
   "elev.learnCare.share.invite.hint": "ארבור לא שולח מייל למקבל. שלחו את ההזמנה בעצמכם כדי שידעו להיכנס.",
   "elev.learnCare.share.week.title": "לשתף את השבוע של {name} עם ההורה השני",
   "elev.learnCare.share.week.body": "הם קוראים את הסיכום השבועי ואת ציר הסיפור עד שתפסיקו לשתף; את ההזמנה אתם שולחים להם.",
+  "elev.learnCare.share.week.atRest": "מה הם יקראו השבוע",
+  "elev.learnCare.share.week.atRestEmpty": "המבט הראשון שלהם יהיה הסיכום השבועי.",
   "elev.learnCare.share.week.email": "המייל שלהם",
   "elev.learnCare.share.week.preview": "לראות מה הם יראו",
   "elev.learnCare.share.week.share": "לשתף את השבוע של {name}",

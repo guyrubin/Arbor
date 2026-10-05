@@ -174,3 +174,67 @@ describe("B-CAREPRO-26 · the card on #/sharing (source)", () => {
     expect(translate("he", "elev.learnCare.share.week.title", { name: "נועה" })).toContain("נועה");
   });
 });
+
+/* W2-CAREPRO c2 r1 — sharing critics (product P0 G0 + P1 G0/G1/G2, design P1 G1/G2). */
+describe("W2-CAREPRO c2 r1 · the week is true, at rest and in the preview", () => {
+  const withMoments: RawChildRecord = {
+    ...RAW,
+    logs: [
+      ...RAW.logs,
+      { behaviorType: "Moment", intensity: 1, timestamp: new Date(NOW - 2 * DAY).toISOString(), trigger: "He called the tower Grandpa's house" },
+      { behaviorType: "Moment", intensity: 1, timestamp: new Date(NOW - 20 * DAY).toISOString(), trigger: "Old moment outside the week" },
+    ],
+    milestones: [
+      ...RAW.milestones,
+      { domain: "social_development", title: "Notices others' feelings", checked: true, observationStatus: "yes", observationUpdatedAt: new Date(NOW - 5 * DAY).toISOString() },
+    ],
+  };
+  const DENOM = /\d+\s*(of|\/|מתוך)\s*\d+/;
+
+  for (const lang of ["en", "he"] as const) {
+    it(`${lang}: the viewer's week = the parent's own 7-day moments + a numerator-only milestone line; no denominator, no 30-day window`, async () => {
+      const { itemText, sectionTitle } = await import("../../consult/packet");
+      const p = buildSharedScopePacket([...WEEK_SHARE_SCOPES], false, buildPacketInput(withMoments, NOW));
+      const text = p.sections.flatMap((s) => [sectionTitle(s, lang), ...s.items.map((i) => itemText(i, lang))]).join("\n");
+      expect(text).not.toMatch(DENOM);
+      expect(text).toContain("He called the tower Grandpa's house");
+      expect(text).not.toContain("Old moment outside the week");
+      expect(text).not.toMatch(/last 30 days|30 הימים/);
+      const dev = p.sections.find((s) => s.id === "development")!;
+      expect(dev.items[0].id).toBe("dev-noticed");
+      expect(dev.items[0].vars?.n).toBe(2);
+      expect(dev.items.find((i) => i.id === "dev-observed")!.vars?.n).toBe(2); // one count source
+      if (lang === "he") {
+        for (const s of p.sections) for (const it of s.items) {
+          const line = itemText(it, "he");
+          expect(/[\u0590-\u05FF]/.test(line) && /\d{4}-\d{2}-\d{2}/.test(line), line).toBe(false);
+        }
+      }
+    });
+  }
+
+  it("source: the at-rest strip quotes the grant's own moments section with a weekday, inside the start column, before the trust line", () => {
+    const at = sharing.indexOf('data-testid="share-week-atrest"');
+    expect(at).toBeGreaterThan(0);
+    expect(at).toBeLessThan(sharing.indexOf('data-testid="sharing-trust-line"'));
+    expect(sharing).toMatch(/packet\.sections\.find\(\(s\) => s\.id === "moments"\)/);
+    expect(sharing.slice(at, at + 1200)).toContain('<q dir="auto">');
+    expect(sharing.slice(at, at + 1200)).toContain("<bdi>");
+    expect(sharing.slice(at, at + 1200)).toContain('borderInlineStart: "2px solid var(--arbor-sky-ink)"');
+    for (const lang of ["en", "he"] as const) {
+      expect(translate(lang, "elev.learnCare.share.week.atRest")).not.toBe("elev.learnCare.share.week.atRest");
+      expect(translate(lang, "elev.learnCare.share.week.atRestEmpty")).not.toBe("elev.learnCare.share.week.atRestEmpty");
+    }
+  });
+
+  it("source: at lg the preview is a direct grid child in the START column at a 60ch measure; the email + one tap are a sticky end column", () => {
+    const card = sharing.slice(sharing.indexOf('data-testid="share-week-card"'), sharing.indexOf("</section>", sharing.indexOf('data-testid="share-week-card"')));
+    const preview = card.indexOf('data-testid="share-week-preview"');
+    expect(card.slice(preview, preview + 260)).toContain("lg:col-start-1 lg:row-start-2 lg:max-w-[60ch]");
+    expect(card).toContain("lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-6 lg:self-start");
+    // the preview is AFTER the end column closes (a grid child, not nested in it)
+    expect(preview).toBeGreaterThan(card.indexOf('data-testid="sharing-custom-open"'));
+    // one list direction, never dir=auto per li
+    expect(card).not.toMatch(/<li key=\{it\.id\}[^>]*dir="auto"/);
+  });
+});
