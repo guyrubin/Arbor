@@ -229,6 +229,12 @@ describe("OBJ-TODAY-01 — repo-wide ratchet", () => {
     // declares as that route's ONE primary move, and it is the only gradient in
     // the file. storiesCover.test.ts pins the stamp and its position.
     "tabs/HeroJourneyTab.tsx",
+    // W2-SHELLPLAY critic r1: the Generate button carries
+    // data-primary-move="generate-bedtime-story" (surfaceContract
+    // bedtime-stories.primaryMove) and is the only gradient in the file (it was
+    // a private clay→green-ink gradient this scan could not see);
+    // bedtimeReader.test pins it.
+    "tabs/BedtimeStoriesTab.tsx",
     // W2-ASKJB critic r2: the send arrow inside the composer stamped
     // data-primary-move="ask" (surfaceContract coach.primaryMove). It always
     // wore the gradient through the T.gradientCta alias, which this scan could

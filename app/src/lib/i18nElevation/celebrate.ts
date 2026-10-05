@@ -23,6 +23,13 @@ export const en: Record<string, string> = {
   "elev.bedtime.keep.done": "Kept in the journal.",
   "elev.bedtime.keep.line": "{question} {name} said: {answer}",
   "elev.bedtime.generate.failed": "The story could not be made just now. Your moments are still here.",
+  // W2-SHELLPLAY critic r1 (law 8): the reader header, keyed — the Hebrew line
+  // carried an English possessive ("{name}'s ·  סיפור לילה").
+  "elev.bedtime.reader.header": "{name}'s bedtime story · {n} of {total}",
+  // W2-SHELLPLAY critic r1: an empty day falls back to the latest day's own
+  // moments, labelled — the primary move stays live.
+  "elev.bedtime.prefill.yesterday": "From yesterday",
+  "elev.bedtime.prefill.day": "From {day}",
   "elev.stories.tonight.mode.label": "Tonight's story",
   "elev.stories.tonight.mode.today": "From today",
   "elev.stories.tonight.mode.hero": "A hero adventure",
@@ -49,6 +56,9 @@ export const he: Record<string, string> = {
   "elev.bedtime.keep.done": "נשמר ביומן.",
   "elev.bedtime.keep.line": "{question} {name} ענה/תה: {answer}",
   "elev.bedtime.generate.failed": "לא הצלחנו ליצור את הסיפור כרגע. הרגעים שלכם עדיין כאן.",
+  "elev.bedtime.reader.header": "סיפור הלילה של {name} · {n} מתוך {total}",
+  "elev.bedtime.prefill.yesterday": "מאתמול",
+  "elev.bedtime.prefill.day": "מ{day}",
   "elev.stories.tonight.mode.label": "הסיפור של הלילה",
   "elev.stories.tonight.mode.today": "מהיום שלנו",
   "elev.stories.tonight.mode.hero": "הרפתקת גיבורים",

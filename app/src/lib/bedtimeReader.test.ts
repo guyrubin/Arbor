@@ -137,7 +137,7 @@ describe("B-PLAY-13 · the prefill tells the truth about today", () => {
   });
 
   it("the page reads its prefill from the helper — no UTC day slice, no type join", () => {
-    expect(src).toContain("bedtimePrefill(behaviorLogs, new Date(), t)");
+    expect(src).toContain("bedtimePrefillLatest(behaviorLogs, new Date(), t)");
     expect(src).not.toMatch(/toISOString\(\)\.slice\(0,\s*10\)/);
     expect(src).not.toMatch(/\[l\.behaviorType, l\.trigger\]/);
   });
@@ -233,5 +233,63 @@ describe("B-PLAY-14 · the shared bedtime body", () => {
       expect(lang["elev.bedtime.keep.label"]).toContain("{name}");
       expect(lang["elev.bedtime.keep.line"]).toMatch(/\{question\}[\s\S]*\{answer\}/);
     }
+  });
+});
+
+/**
+ * W2-SHELLPLAY critic r1 — the bedtime page: the reader header keyed in both
+ * languages, an empty day falls back to the latest day's moments (labelled)
+ * so the CTA is live on arrival, the ONE --gradient-cta with on-accent ink,
+ * the kit PageHeader (no header card) and a reading measure.
+ */
+describe("W2-SHELLPLAY r1 · bedtime-stories", () => {
+  const t = (k: string) => k;
+  const now = new Date(2026, 9, 5, 18, 0);
+  const daysAgo = (d: number, h = 17) => new Date(2026, 9, 5 - d, h, 30).toISOString();
+
+  it("the reader header is keyed: no English possessive in Hebrew, no double space", () => {
+    expect(src).not.toMatch(/'s ·  סיפור לילה/);
+    expect(src).toContain('t("elev.bedtime.reader.header", { name, n: pageIndex + 1, total: pages.length })');
+    expect(en["elev.bedtime.reader.header"]).toBe("{name}'s bedtime story · {n} of {total}");
+    expect(he["elev.bedtime.reader.header"]).toBe("סיפור הלילה של {name} · {n} מתוך {total}");
+    expect(he["elev.bedtime.reader.header"].replace(/\{\w+\}/g, "ש")).not.toMatch(/'s|[A-Za-z]|  /);
+  });
+
+  it("today's moments win; an empty today falls back to yesterday's, labelled", async () => {
+    const { bedtimePrefillLatest } = await import("./bedtimeStories");
+    const today = bedtimePrefillLatest([{ id: "t", timestamp: daysAgo(0, 9), behaviorType: "Moment", trigger: "sang the bath song" }], now, t);
+    expect(today.from).toBe("today");
+    expect(today.lines.map((l) => l.description)).toEqual(["sang the bath song"]);
+    const y = bedtimePrefillLatest([
+      { id: "y1", timestamp: daysAgo(1), behaviorType: "Moment", trigger: "waited for the slide" },
+      { id: "old", timestamp: daysAgo(4), behaviorType: "Moment", trigger: "older" },
+    ], now, t);
+    expect(y.from).toBe("yesterday");
+    expect(y.lines.map((l) => l.description)).toEqual(["waited for the slide"]);
+    const earlier = bedtimePrefillLatest([{ id: "o", timestamp: daysAgo(3), behaviorType: "Moment", trigger: "older one" }], now, t);
+    expect(earlier.from).toBe("earlier");
+    expect(bedtimePrefillLatest([], now, t)).toEqual({ lines: [], from: null, day: null });
+    for (const lang of [en, he]) {
+      expect(lang["elev.bedtime.prefill.yesterday"]).toBeTruthy();
+      expect(lang["elev.bedtime.prefill.day"]).toContain("{day}");
+    }
+  });
+
+  it("logs that hydrate after mount still seed the form until the parent types", () => {
+    expect(src).toMatch(/useEffect\(\(\) => \{\s*if \(typedRef\.current \|\| !prefillKey\) return;/);
+    expect(src).toContain('data-testid="bedtime-prefill-from"');
+  });
+
+  it("the CTA is the ONE --gradient-cta with on-accent ink; disabled is a settled fill, not opacity", () => {
+    const cta = src.slice(src.indexOf('data-primary-move={embedded ? undefined : "generate-bedtime-story"}'), src.indexOf('data-testid="bedtime-generate-btn"'));
+    expect(cta).toContain('{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }');
+    expect(cta).toContain('{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)"');
+    expect(cta).not.toMatch(/disabled:opacity-50|text-white|var\(--arbor-green-ink\) 100%/);
+  });
+
+  it("the header is the kit PageHeader (no card) and the page holds a reading measure", () => {
+    expect(src).toMatch(/\{!embedded && \(\s*<PageHeader/);
+    expect(src).not.toContain("Tell Arbor what happened today, and Arbor will create");
+    expect(src).toContain('embedded ? "space-y-5" : "space-y-5 max-w-[40rem]"');
   });
 });

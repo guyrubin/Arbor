@@ -64,6 +64,35 @@ export function bedtimePrefill(
   return out;
 }
 
+/**
+ * W2-SHELLPLAY critic r1 — the form never arrives blank when the record has
+ * something: today's moments (bedtimePrefill), else the most recent earlier
+ * local day's moments, labelled by `from` so the parent sees which day it is.
+ * `from` is null when the record holds nothing at all.
+ */
+export function bedtimePrefillLatest(
+  logs: ReadonlyArray<{ id: string; timestamp?: string; behaviorType?: string; trigger?: string }>,
+  now: Date,
+  t: (key: string) => string,
+): { lines: BedtimePrefillLine[]; from: "today" | "yesterday" | "earlier" | null; day: Date | null } {
+  const today = bedtimePrefill(logs, now, t);
+  if (today.length > 0) return { lines: today, from: "today", day: now };
+  const todayKey = localDayKey(now);
+  let latest: Date | null = null;
+  for (const l of logs) {
+    if (!l.timestamp) continue;
+    const at = new Date(l.timestamp);
+    if (Number.isNaN(at.getTime()) || at.getTime() > now.getTime() || localDayKey(at) === todayKey) continue;
+    if (!latest || at.getTime() > latest.getTime()) latest = at;
+  }
+  if (!latest) return { lines: [], from: null, day: null };
+  const lines = bedtimePrefill(logs, latest, t);
+  if (lines.length === 0) return { lines: [], from: null, day: null };
+  const y = new Date(now);
+  y.setDate(y.getDate() - 1);
+  return { lines, from: localDayKey(latest) === localDayKey(y) ? "yesterday" : "earlier", day: latest };
+}
+
 /** A single logged day event passed as seed data for the story. */
 export interface DayEvent {
   /** Human-readable description of the event, e.g. "Refused to put on shoes at 8 am". */

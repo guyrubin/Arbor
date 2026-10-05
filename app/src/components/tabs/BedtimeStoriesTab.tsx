@@ -21,7 +21,7 @@
  * UI: var(--arbor-*) tokens only. HE/EN + RTL. Touch targets >= 44px.
  */
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useAsyncAction } from "../../hooks/useAsyncAction";
 import { PaywallError } from "../../lib/api";
 import { motion, AnimatePresence } from "motion/react";
@@ -31,9 +31,9 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
 import { api, EscalationRequiredError } from "../../lib/api";
 import { isolate } from "../../lib/i18n";
-import { bedtimePrefill } from "../../lib/bedtimeStories";
+import { bedtimePrefillLatest } from "../../lib/bedtimeStories";
 import type { BedtimeStory } from "../../types";
-import { cardCls } from "../ui/kit";
+import { cardCls, PageHeader } from "../ui/kit";
 import { ShareButton } from "../ui/ShareButton";
 import { SpeakButton } from "../ui/SpeakButton";
 import type { ShareCardOpts } from "../../lib/shareCard";
@@ -76,13 +76,28 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
   // B-PLAY-13: the parent's LOCAL day (never the UTC slice), moments as their
   // own words, at most one incident by its localized label. Editable before
   // generating.
-  const todayLogs = bedtimePrefill(behaviorLogs, new Date(), t).map(
-    (p): LocalDayEvent => ({ id: `log-${p.id}`, description: p.description }),
-  );
-
-  const [events, setEvents] = useState<LocalDayEvent[]>(
-    todayLogs.length > 0 ? todayLogs : [emptyEvent()]
-  );
+  // W2-SHELLPLAY critic r1: an empty day falls back to the latest earlier
+  // day's moments, labelled ("From yesterday"), so the primary move is live on
+  // arrival; and logs that hydrate AFTER mount still seed the form as long as
+  // the parent has not typed.
+  const prefill = bedtimePrefillLatest(behaviorLogs, new Date(), t);
+  const seedEvents = (): LocalDayEvent[] =>
+    prefill.lines.length > 0
+      ? prefill.lines.map((p): LocalDayEvent => ({ id: `log-${p.id}`, description: p.description }))
+      : [emptyEvent()];
+  const [events, setEvents] = useState<LocalDayEvent[]>(seedEvents);
+  const [prefillFrom, setPrefillFrom] = useState(prefill.from);
+  const [prefillDay, setPrefillDay] = useState(prefill.day);
+  const typedRef = useRef(false);
+  const prefillKey = prefill.lines.map((l) => l.id).join("|");
+  useEffect(() => {
+    if (typedRef.current || !prefillKey) return;
+    setEvents(seedEvents());
+    setPrefillFrom(prefill.from);
+    setPrefillDay(prefill.day);
+    // seedEvents/prefill derive from prefillKey's inputs
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefillKey]);
   const [story, setStory] = useState<BedtimeStory | null>(null);
   const [escalated, setEscalated] = useState(false);
   // B-PLAY-14: what the child answered to each goodnight question, and which
@@ -97,10 +112,12 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
       ? ((childProfile as unknown as Record<string, unknown>).avatar as Record<string, string> | null)?.style ?? undefined
       : undefined;
 
-  const addEvent = () => setEvents((es) => [...es, emptyEvent()]);
-  const removeEvent = (id: string) => setEvents((es) => es.filter((e) => e.id !== id));
-  const updateEvent = (id: string, description: string) =>
+  const addEvent = () => { typedRef.current = true; setEvents((es) => [...es, emptyEvent()]); };
+  const removeEvent = (id: string) => { typedRef.current = true; setEvents((es) => es.filter((e) => e.id !== id)); };
+  const updateEvent = (id: string, description: string) => {
+    typedRef.current = true;
     setEvents((es) => es.map((e) => (e.id === id ? { ...e, description } : e)));
+  };
 
   const validEvents = events.filter((e) => e.description.trim().length > 0);
 
@@ -287,9 +304,7 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
             </h1>
           </div>
           <p className="text-[11px] uppercase tracking-widest font-bold" style={{ color: "var(--arbor-muted)" }}>
-            {he
-              ? `${isolate(name)}'s ·  סיפור לילה · ${pageIndex + 1} מתוך ${pages.length}`
-              : `${isolate(name)}'s bedtime story · ${pageIndex + 1} of ${pages.length}`}
+            {t("elev.bedtime.reader.header", { name, n: pageIndex + 1, total: pages.length })}
           </p>
         </div>
 
@@ -347,7 +362,7 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
               style={{
                 background: "var(--arbor-green-soft)",
                 color: "var(--arbor-green-ink)",
-                border: "1px solid rgba(52,178,119,0.25)",
+                border: "1px solid var(--arbor-rule)",
               }}
               data-testid="bedtime-story-done"
             >
@@ -361,7 +376,7 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
               style={{
                 background: "var(--arbor-green-soft)",
                 color: "var(--arbor-green-ink)",
-                border: "1px solid rgba(52,178,119,0.25)",
+                border: "1px solid var(--arbor-rule)",
               }}
               aria-label={he ? "עמוד הבא" : "Next page"}
             >
@@ -467,47 +482,20 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-5"
+      className={embedded ? "space-y-5" : "space-y-5 max-w-[40rem]"}
       data-testid="bedtime-stories-form"
     >
-      {/* Header — the page's own; the Stories cover is the header when embedded. */}
+      {/* Header — the page's own; the Stories cover is the header when embedded.
+          W2-SHELLPLAY critic r1: the kit PageHeader (no card), the H1 at the
+          display step, ONE subtitle line — the duplicate paragraph is gone, so
+          the form and its CTA rise toward the fold. */}
       {!embedded && (
-      <div
-        className={`${cardCls} p-5`}
-        style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}
-      >
-        <div className="flex items-center gap-3 mb-3">
-          <span
-            className="inline-flex items-center justify-center rounded-2xl flex-shrink-0"
-            style={{
-              background: "var(--arbor-sky-soft, var(--arbor-green-soft))",
-              color: "var(--arbor-sky-ink, var(--arbor-green-ink))",
-              width: 40,
-              height: 40,
-            }}
-          >
-            <Icon name="bedtime" size={20} />
-          </span>
-          <div>
-            <h1
-              className="text-[16px] font-extrabold leading-snug"
-              style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}
-            >
-              {he ? `סיפור הלילה של ${isolate(name)}` : `${isolate(name)}'s Bedtime Story`}
-            </h1>
-            <p className="text-[12px] mt-0.5" style={{ color: "var(--arbor-muted)" }} dir="auto">
-              {he
-                ? "סיפור מותאם אישית שנולד מהיום שלכם — לקריאה משותפת לפני השינה"
-                : "A personalised story born from today — read together at bedtime"}
-            </p>
-          </div>
-        </div>
-        <p className="text-[12.5px] leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }} dir="auto">
-          {he
-            ? `ספרו ל-Arbor מה קרה היום, ו-Arbor ייצור סיפור לילה חמים שבו ${isolate(name)} הוא הגיבור.`
-            : `Tell Arbor what happened today, and Arbor will create a warm bedtime story where ${isolate(name)} is the hero.`}
-        </p>
-      </div>
+        <PageHeader
+          title={he ? `סיפור הלילה של ${isolate(name)}` : `${isolate(name)}'s Bedtime Story`}
+          subtitle={he
+            ? "סיפור מותאם אישית שנולד מהיום שלכם — לקריאה משותפת לפני השינה"
+            : "A personalised story born from today — read together at bedtime"}
+        />
       )}
 
       {/* item 11 (IA-02): the surface contract reaches the DOM. `data-module`
@@ -527,6 +515,13 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
         >
           {he ? `מה קרה היום עם ${isolate(name)}?` : `What happened today with ${isolate(name)}?`}
         </p>
+        {prefillFrom && prefillFrom !== "today" && prefillDay && (
+          <p data-testid="bedtime-prefill-from" className="text-[12px] font-bold -mt-2" style={{ color: "var(--arbor-ink-soft)" }}>
+            {prefillFrom === "yesterday"
+              ? t("elev.bedtime.prefill.yesterday")
+              : t("elev.bedtime.prefill.day", { day: new Intl.DateTimeFormat(he ? "he-IL" : "en-GB", { weekday: "long" }).format(prefillDay) })}
+          </p>
+        )}
 
         <div className="space-y-3" data-testid="bedtime-events-list">
           {events.map((evt) => (
@@ -565,7 +560,7 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
           style={{
             color: "var(--arbor-green-ink)",
             background: "var(--arbor-green-soft)",
-            border: "1px solid rgba(52,178,119,0.25)",
+            border: "1px solid var(--arbor-rule)",
           }}
           data-testid="bedtime-add-event"
         >
@@ -580,10 +575,15 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
         data-primary-move={embedded ? undefined : "generate-bedtime-story"}
         onClick={generate}
         disabled={loading || validEvents.length === 0}
-        className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-extrabold text-[15px] text-white disabled:opacity-50 transition active:scale-[0.98] min-h-[52px]"
-        style={{
-          background: "linear-gradient(135deg, var(--arbor-clay) 0%, var(--arbor-green-ink) 100%)",
-        }}
+        className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-extrabold text-[15px] transition active:scale-[0.98] min-h-[52px]"
+        style={
+          // W2-SHELLPLAY critic r1: the ONE --gradient-cta with on-accent ink;
+          // disabled = the settled paper-deep fill + muted label (never an
+          // opacity wash over a gradient).
+          validEvents.length === 0 && !loading
+            ? { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }
+            : { background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }
+        }
         data-testid="bedtime-generate-btn"
       >
         {loading ? (
