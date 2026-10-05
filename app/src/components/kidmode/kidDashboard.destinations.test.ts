@@ -129,7 +129,8 @@ describe("OBJ-KID-05 / KID-25 — the banner opens exactly one story", () => {
     const overlay = read("KidModeOverlay.tsx");
     const hero = read("..", "tabs", "HeroJourneyTab.tsx");
     expect(dash).toContain('onOpenSurface("journeys", tonightsStoryId)');
-    expect(overlay).toContain("<HeroJourneyTab initialStoryId={arcadeWorldId ?? undefined} />");
+    // B-KID-124 re-pin: plus a per-tap nonce (the same book opens again after Home).
+    expect(overlay).toContain("<HeroJourneyTab initialStoryId={arcadeWorldId ?? undefined} pinNonce={pinNonce} />");
     expect(hero).toContain("const displayStories = pinned ? [pinned] : ageCandidates;");
   });
 

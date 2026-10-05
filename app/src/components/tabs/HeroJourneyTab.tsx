@@ -65,7 +65,7 @@ import { fmtDay } from "../../lib/formatDate";
 import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
 import { authoredChoice, authoredScene, completeRender, type StoryHero } from "../../lib/heroJourneyRender";
 import KidLibrary from "../kidmode/KidLibrary";
-import { kidBooks } from "../kidmode/kidBooks";
+import { kidBookOpenable, kidBooks } from "../kidmode/kidBooks";
 import { KidBookTitleCard } from "../kidmode/KidBookCover";
 import { autoReadPage } from "../kidmode/kidReadAloud";
 import { kidSfx } from "../kidmode/audio/kidAudio";
@@ -167,10 +167,47 @@ export function clearJourneyMemo(): void {
   journeyMemo.clear();
 }
 
+/**
+ * B-KID-124 (B-KID-10, P0) — what a Kid Mode book opens on, AT ONCE: today's
+ * personalised render when it is already memoised, else the authored text in
+ * the story language (the child named by nameTheHero). Never a network call:
+ * the child tapped a cover and must see that book in the same frame, not the
+ * "My books" grid for the ~7 s the model takes.
+ */
+/** B-KID-124: the reader's pin identity - the story id AND the overlay's per-tap
+ *  nonce, so a second book, or the same book tapped again, is a new pin. */
+export function kidPinKey(storyId: string, nonce: number): string {
+  return `${storyId}#${nonce}`;
+}
+
+/** B-KID-124: a personalised render that arrives late replaces the authored
+ *  words only for the SAME open, while the child is still on the first page
+ *  (no Next, Back or choice yet) and the page is not being read aloud. */
+export function kidLateRenderApplies(s: { openSeq: number; requestSeq: number; pageMoved: boolean; narrationSpoken: boolean }): boolean {
+  return s.openSeq === s.requestSeq && !s.pageMoved && !s.narrationSpoken;
+}
+
+export function kidBookOpening(
+  story: HeroStorySpec,
+  childId: string,
+  lang: "en" | "he",
+  artTheme: string | undefined,
+  hero: StoryHero,
+  day: string,
+): { render: HeroJourneyRender; personalised: boolean } {
+  const memoed = journeyMemo.get(journeyMemoKey(childId, story.id, lang, day));
+  return memoed ? { render: memoed, personalised: true } : { render: authoredJourneyRender(story, lang, artTheme, hero), personalised: false };
+}
+
 const METRIC_COLORS: Record<DevelopmentMetricId, string> = METRIC_VARS;
 
 
-export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: string } = {}) {
+export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
+  initialStoryId?: string;
+  /** B-KID-124: a fresh value on every tap of a cover, so the SAME book tapped
+   *  again (after Home) opens again even when this tab stayed mounted. */
+  pinNonce?: number;
+} = {}) {
   const { childProfile, behaviorLogs } = useArbor();
   // B-PLAY-15: the hero-first gate opens the shared create dialog in place.
   const [heroDialogOpen, setHeroDialogOpen] = useState(false);
@@ -219,8 +256,25 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
   // reader's opening page — same ComicPage primitive, same framed loading and
   // smudged/Redraw states as a beat, and it never blocks: the child can turn
   // past a cover that is still drawing.
+  // B-KID-124: a pinned book in Kid Mode is open on the FIRST paint - the
+  // authored text (or today's memoised personalised run) in the story language,
+  // never the catalogue grid while a model call runs. Computed once per mount.
+  const kidTellLang: "en" | "he" = aiLang === "he" ? "he" : "en";
+  const kidArtTheme = (story: HeroStorySpec) =>
+    childProfile.avatar && (childProfile as unknown as { photoUrl?: string }).photoUrl?.startsWith("data:") ? (STORY_COMIC[story.id]?.theme ?? story.theme) : undefined;
+  const kidPinInit = useRef<{ story: HeroStorySpec; refused: boolean; render?: HeroJourneyRender; personalised?: boolean; lang: "en" | "he" } | null | undefined>(undefined);
+  if (kidPinInit.current === undefined) {
+    const story = isKidModeActive() && initialStoryId ? getStorySpec(initialStoryId) : undefined;
+    if (!story) kidPinInit.current = null;
+    else if (!kidBookOpenable(story, { lang: storyLang, ageMonths: ageMonthsFromProfile(childProfile), showAllAges: loadShowAllAges("hero-journeys") })) kidPinInit.current = { story, refused: true, lang: kidTellLang };
+    else {
+      const opening = kidBookOpening(story, childProfile.id, kidTellLang, kidArtTheme(story), { name: childProfile.name, gender: childProfile.gender }, dayKey(new Date()));
+      kidPinInit.current = { story, refused: false, render: opening.render, personalised: opening.personalised, lang: kidTellLang };
+    }
+  }
+  const kidPinOpen = kidPinInit.current && !kidPinInit.current.refused ? kidPinInit.current : null;
   const [coverArt, setCoverArt] = useState<{ url?: string; loading: boolean; error: boolean }>({ loading: false, error: false });
-  const [onCover, setOnCover] = useState(false);
+  const [onCover, setOnCover] = useState(() => Boolean(kidPinOpen && childProfile.avatar && (childProfile as unknown as { photoUrl?: string }).photoUrl?.startsWith("data:")));
   const coverRun = useRef(0);
   // R2: the shelf entry belongs to reading the book to its end, not to the
   // Finish button (a re-read has none). These three keep that idempotent.
@@ -256,12 +310,15 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
       return next;
     });
   };
-  const [activeStory, setActiveStory] = useState<HeroStorySpec | null>(null);
-  const [render, setRender] = useState<HeroJourneyRender | null>(null);
+  const [activeStory, setActiveStory] = useState<HeroStorySpec | null>(() => kidPinOpen?.story ?? null);
+  const [render, setRender] = useState<HeroJourneyRender | null>(() => kidPinOpen?.render ?? null);
+  // B-KID-124: a pinned book the gate refuses lands on ITS cover with Read,
+  // never on a bare grid.
+  const [refusedPin, setRefusedPin] = useState<HeroStorySpec | null>(() => (kidPinInit.current?.refused ? kidPinInit.current.story : null));
   // B-KID-120: the language the open render is WRITTEN in. The page text, the
   // title, the Decision question and the choices take lang + dir from it
   // (never dir="auto"), and the child's name inside it is isolated.
-  const [renderLang, setRenderLang] = useState<"en" | "he">("en");
+  const [renderLang, setRenderLang] = useState<"en" | "he">(() => kidPinOpen?.lang ?? "en");
   const [sceneIndex, setSceneIndex] = useState(0);
   const [choiceId, setChoiceId] = useState<string | undefined>(undefined);
   const [loadingId, setLoadingId] = useState<string | null>(null);
@@ -326,7 +383,12 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
           : displayScene?.narration ?? "";
   useEffect(() => {
     if (!kidSpeech) return;
-    const timer = setTimeout(() => { autoReadPage(childProfile.id, kidSpeech.split("\n"), atEnd ? (aiLang === "he" ? "he" : "en") : renderLang); }, 400);
+    const timer = setTimeout(() => {
+      const spoke = autoReadPage(childProfile.id, kidSpeech.split("\n"), atEnd ? (aiLang === "he" ? "he" : "en") : renderLang);
+      // B-KID-124: once a page's words are being read aloud, a late
+      // personalised render no longer replaces them on this read.
+      if (spoke && !onCover && !atEnd) kidNarrationSpoken.current = true;
+    }, 400);
     return () => { clearTimeout(timer); stopVoice(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kidSpeech]);
@@ -394,22 +456,80 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
     return () => setKidSurfaceTitle(null);
   }, [kidStoryTitle]);
 
-  const pinnedOpened = useRef(false);
+  // ── B-KID-124 (P0): a tapped book always opens THAT book, at once ─────────
+  // The pin is keyed by story id + the overlay's per-tap nonce (it was a
+  // once-per-mount boolean: only the first pinned book of a mounted tab ever
+  // opened, and the grid stayed behind every later tap). In Kid Mode the book
+  // opens on its authored text in the same frame; the personalised words are
+  // asked for in the background and replace page 1 only while the child is
+  // still on the first page and its words are not being read aloud; otherwise
+  // they are cached for the next open. A failure changes nothing on screen.
+  const pinKey = initialStoryId ? kidPinKey(initialStoryId, pinNonce) : null;
+  const pinRef = useRef<string | null>(kidPinInit.current ? pinKey : null);
+  const kidOpenSeq = useRef(0);
+  const kidPageMoved = useRef(false);
+  const kidNarrationSpoken = useRef(false);
+  const kidPersonalise = (story: HeroStorySpec, lang: "en" | "he", seq: number) => {
+    const memoKey = journeyMemoKey(childProfile.id, story.id, lang, dayKey(new Date()));
+    api.generateHeroJourney({ storyId: story.id, childName: childProfile.name, age: childProfile.age, language: lang })
+      .then((r) => {
+        journeyMemo.set(memoKey, r);
+        if (!kidLateRenderApplies({ openSeq: kidOpenSeq.current, requestSeq: seq, pageMoved: kidPageMoved.current, narrationSpoken: kidNarrationSpoken.current })) return;
+        setRender(r);
+      })
+      .catch(() => { /* the authored book stays exactly as it is */ });
+  };
+  const openKidBook = (story: HeroStorySpec, gated: boolean) => {
+    if (gated && !kidBookOpenable(story, { lang: storyLang, ageMonths: childMonths, showAllAges })) {
+      exitJourney();
+      setRefusedPin(story);
+      return;
+    }
+    const opening = kidBookOpening(story, childProfile.id, kidTellLang, kidArtTheme(story), storyHero, dayKey(new Date()));
+    const seq = ++kidOpenSeq.current;
+    kidPageMoved.current = false;
+    kidNarrationSpoken.current = false;
+    startedAtRef.current = new Date().toISOString();
+    setRefusedPin(null);
+    setActiveStory(story);
+    setRender(opening.render);
+    setRenderLang(kidTellLang);
+    setSceneIndex(0);
+    setChoiceId(undefined);
+    setQuestionsChecked({});
+    setSaved(false);
+    setFinishing(false);
+    finishingRef.current = false;
+    setAtEnd(false);
+    setOnCover(Boolean(heroAvatarUrl));
+    if (!opening.personalised) kidPersonalise(story, kidTellLang, seq);
+  };
   useEffect(() => {
-    if (pinnedOpened.current || !initialStoryId) return;
+    if (!initialStoryId || !pinKey) return;
     const story = getStorySpec(initialStoryId);
     if (!story) return;
-    // B-KID-46: a pin never opens a story that cannot be told in this language.
+    if (pinRef.current === pinKey) {
+      // Opened on the first paint (above): only the background request is left.
+      const init = kidPinInit.current;
+      if (init && !init.refused && kidOpenSeq.current === 0) {
+        const seq = ++kidOpenSeq.current;
+        startedAtRef.current = new Date().toISOString();
+        if (!init.personalised) kidPersonalise(story, init.lang, seq);
+      }
+      return;
+    }
+    pinRef.current = pinKey;
+    if (kidMode) { openKidBook(story, true); return; }
+    // Parent door: unchanged - B-KID-46 language gate, W0.7 age view, then
+    // the generate-then-open flow.
     if (!storyHasLanguage(story, storyLang)) return;
-    // W0.7: a pin never bypasses the age view — the same rule the catalogue's
-    // `pinned` lookup applies (it searches the age-filtered list only).
     if (!showAllAges && filterByAge([story], (s) => windowFromRange(s.ageRange), childMonths).visible.length === 0) return;
-    pinnedOpened.current = true;
     void startJourney(story);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialStoryId]);
+  }, [pinKey]);
 
   const chooseOption = (id: string) => {
+    kidPageMoved.current = true;
     setChoiceId(id);
     celebrate({ kind: "choice" });
     setSceneIndex((i) => Math.min(scenes.length - 1, i + 1));
@@ -595,6 +715,8 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
   };
 
   const exitJourney = () => {
+    kidOpenSeq.current += 1; // B-KID-124: a late personalised render lands nowhere
+    setRefusedPin(null);
     setActiveStory(null);
     setRender(null);
     setAtEnd(false);
@@ -622,6 +744,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
   const atFirstPage = onCover || (sceneIndex === 0 && !hasCoverPage);
   const goBack = () => {
     if (onCover) return;
+    kidPageMoved.current = true;
     kidSfx("pageTurn"); // B-KID-73: silent outside Kid Mode / with Sound off
     if (sceneIndex === 0) { if (hasCoverPage) setOnCover(true); return; }
     setSceneIndex((i) => Math.max(0, i - 1));
@@ -629,6 +752,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
   // Turning off the cover never waits for its art: a cover still drawing is a
   // framed loading page the child can read past.
   const goNext = () => {
+    kidPageMoved.current = true;
     if (onCover || canAdvance) kidSfx("pageTurn"); // B-KID-73
     if (onCover) { setOnCover(false); return; }
     if (canAdvance) setSceneIndex((i) => Math.min(scenes.length - 1, i + 1));
@@ -742,6 +866,25 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
     // in the wrapper. Kid Mode keeps the comic academy (crest, mascot, world
     // grid). The parent door opens on ONE cover for tonight, with the shelf and
     // the library below it as their own modules (moduleBudget 3).
+    // B-KID-124: a refused pin shows THAT book's cover with Read (never the grid).
+    if (refusedPin) {
+      const cover = storyCover(refusedPin.id);
+      const pinTitle = uiLang === "he" ? refusedPin.titleHe : refusedPin.title;
+      return kidMode ? (
+        <div className="arbor-play flex flex-col items-center gap-4 text-center" data-kid-book-pin-cover={refusedPin.id} style={{ marginInline: -20, marginBlockStart: -24 }}>
+          <div className="relative w-full overflow-hidden" style={{ blockSize: KID_BOOK_ART_BLOCK, background: "var(--arbor-paper-deep)" }}>
+            {cover
+              ? <img src={cover.src} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: cover.objectPosition }} />
+              : <KidBookTitleCard title={pinTitle} pack={refusedPin.pack} />}
+          </div>
+          <p lang={uiLang === "he" ? "he" : "en"} dir={langDir(uiLang === "he" ? "he" : "en")} className="font-black px-5" style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 26, lineHeight: 1.2, color: "var(--arbor-ink)" }}>{pinTitle}</p>
+          <div className="flex w-full max-w-md flex-col gap-3 px-5 pb-5">
+            <button type="button" data-kid-book-pin-read="" onClick={() => openKidBook(refusedPin, false)} style={{ minBlockSize: 56, borderRadius: 18, fontFamily: "var(--font-display)", fontWeight: 900, fontSize: 20, border: "var(--comic-line)", cursor: "pointer", background: "var(--arbor-green-cta-start)", color: "var(--arbor-on-accent)" }}>{kidsStoriesText("shelf.read", uiLang === "he" ? "he" : "en")}</button>
+            <button type="button" onClick={() => setRefusedPin(null)} style={{ minBlockSize: 56, borderRadius: 18, fontFamily: "var(--font-display)", fontWeight: 900, fontSize: 20, border: "var(--comic-line)", cursor: "pointer", background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)" }}>{kidsStoriesText("kidBooks.title", uiLang === "he" ? "he" : "en")}</button>
+          </div>
+        </div>
+      ) : null;
+    }
     return kidMode ? (
       <motion.div
         initial={{ opacity: 0, y: 12 }}
@@ -761,7 +904,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
           lang={uiLang === "he" ? "he" : "en"}
           childProfile={childProfile}
           loadingId={loadingId}
-          onOpen={(story) => { void startJourney(story); }}
+          onOpen={(story) => { openKidBook(story, false); }}
         />
       </motion.div>
     ) : (
@@ -1424,6 +1567,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
       kidSfx("finish"); // B-KID-94: the ONE finish sound
     };
     const readAgain = () => {
+      kidPageMoved.current = true;
       setAtEnd(false);
       setChoiceId(undefined);
       setSceneIndex(0);

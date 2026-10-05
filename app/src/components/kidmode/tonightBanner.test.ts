@@ -46,21 +46,24 @@ describe("B-KID-70 (R-2b): a portrait theme is image-led", () => {
   });
 });
 
-describe("B-KID-42: a pinned story opens the book on arrival", () => {
-  const effect = tab.slice(tab.indexOf("const pinnedOpened = useRef(false);"));
-  it("auto-starts the pinned story once, after startJourney is declared", () => {
-    expect(tab.indexOf("const pinnedOpened = useRef(false);")).toBeGreaterThan(tab.indexOf("const startJourney = async"));
-    expect(effect).toMatch(/if \(pinnedOpened\.current \|\| !initialStoryId\) return;\s+const story = getStorySpec\(initialStoryId\);\s+if \(!story\) return;[\s\S]{0,600}?pinnedOpened\.current = true;\s+void startJourney\(story\);/);
-    // W0.7: the auto-open honours the age view, like the catalogue's pinned lookup.
-    expect(effect.slice(0, 900)).toContain("if (!showAllAges && filterByAge([story], (s) => windowFromRange(s.ageRange), childMonths).visible.length === 0) return;");
-    // B-KID-46: nor a story that cannot be told in the child's language.
-    expect(effect.slice(0, 900)).toContain("if (!storyHasLanguage(story, storyLang)) return;");
-    expect(effect.slice(0, 1100)).toContain("}, [initialStoryId]);");
+describe("B-KID-42 / B-KID-124: a pinned story opens the book on arrival", () => {
+  // B-KID-124 re-pin: the pin is keyed by story id + per-tap nonce (was a
+  // once-per-mount boolean); Kid Mode opens the book at once through
+  // openKidBook (gate: kidBookOpenable = language + age view); the parent door
+  // keeps both gates and the generate-then-open startJourney.
+  const effect = tab.slice(tab.indexOf("const pinKey = initialStoryId ? kidPinKey(initialStoryId, pinNonce) : null;"));
+  it("auto-opens the pinned story per pin, after startJourney is declared", () => {
+    expect(tab.indexOf("const pinKey = initialStoryId ? kidPinKey(")).toBeGreaterThan(tab.indexOf("const startJourney = async"));
+    expect(effect).toMatch(/pinRef\.current = pinKey;\s+if \(kidMode\) \{ openKidBook\(story, true\); return; \}/);
+    expect(tab).toMatch(/if \(gated && !kidBookOpenable\(story, \{ lang: storyLang, ageMonths: childMonths, showAllAges \}\)\)/);
+    // W0.7 + B-KID-46 on the parent door, unchanged.
+    expect(effect).toContain("if (!showAllAges && filterByAge([story], (s) => windowFromRange(s.ageRange), childMonths).visible.length === 0) return;");
+    expect(effect).toContain("if (!storyHasLanguage(story, storyLang)) return;");
+    expect(effect).toContain("}, [pinKey]);");
   });
-  it("negative control: the pre-fix tab (pin = filter only) has no auto-open", () => {
-    const pre = tab.replace(/const pinnedOpened[\s\S]*?\}, \[initialStoryId\]\);/, "");
-    expect(pre).not.toMatch(/startJourney\(story\);\s*\/\/ eslint[^\n]*\n\s*\}, \[initialStoryId\]\)/);
-    expect(pre).not.toContain("pinnedOpened");
+  it("negative control: the once-per-mount boolean pin is gone", () => {
+    expect(tab).not.toContain("pinnedOpened");
+    expect(tab).not.toMatch(/\}, \[initialStoryId\]\);/);
   });
 });
 

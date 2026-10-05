@@ -4,7 +4,7 @@ import { HeroAvatar } from "../ui/HeroAvatar";
 import { usePrefersReducedMotion } from "../ui/playkit";
 import { worldArtwork } from "../practice/worldArtwork";
 import { useKidTheme } from "../../hooks/useKidTheme";
-import { kidArt, kidArtSrcSet } from "../../lib/kidThemeManifest";
+import { kidArt, kidArtSrcSet, storyCoverKey } from "../../lib/kidThemeManifest";
 
 /**
  * B-KID-47 + B-KID-79 (KA-23) — the ONE kid loading state. What a child sees
@@ -15,14 +15,17 @@ import { kidArt, kidArtSrcSet } from "../../lib/kidThemeManifest";
  * TabSkeleton. The idle is a slow bob, still under prefers-reduced-motion.
  * Decorative and transient (aria-hidden); the surface announces itself.
  */
-export function KidStageFallback({ worldId }: { worldId?: string }) {
+export function KidStageFallback({ worldId, storyId }: { worldId?: string; storyId?: string }) {
   const theme = useKidTheme();
   const reduced = usePrefersReducedMotion();
   const world = worldId ? worldArtwork(worldId, theme) : undefined;
-  const stage = !world ? kidArt(theme, "home.stage") : null;
+  // B-KID-124: while the reader's chunk loads, a tapped book shows ITS cover.
+  const cover = !world && storyId ? kidArt(theme, storyCoverKey(storyId)) : null;
+  const stage = !world && !cover ? kidArt(theme, "home.stage") : null;
+  const still = cover ?? stage;
   const art = world
     ? { src: world.src, srcSet: world.srcSet, objectPosition: world.objectPosition, hasHero: world.hasHero }
-    : stage ? { src: stage.src, srcSet: kidArtSrcSet(stage), objectPosition: stage.objectPosition, hasHero: stage.hasHero } : undefined;
+    : still ? { src: still.src, srcSet: kidArtSrcSet(still), objectPosition: still.objectPosition, hasHero: still.hasHero } : undefined;
   return (
     <div
       aria-hidden="true"

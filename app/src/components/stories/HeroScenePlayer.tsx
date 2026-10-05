@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { AnimatePresence } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { Download } from "lucide-react";
 import { StoryIllustration } from "./StoryIllustration";
 import { ComicPage } from "../ui/playkit";
@@ -120,6 +120,8 @@ export function HeroScenePlayer({
   const [retryTick, setRetryTick] = useState(0);
   const { uiLang, aiLang, t } = useLanguage();
   const effectiveStyle = heroAvatarStyle ?? "comichero";
+  // B-KID-124: read once per render, not a hook (the page is remounted per beat).
+  const reducedMotion = typeof window !== "undefined" && Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
   // B-KID-120: the text's own language and direction; the child's name inside
   // it is isolated at display time (a Hebrew name in an English sentence, a
   // Latin name in a Hebrew one), so it never reorders the words around it.
@@ -240,15 +242,22 @@ export function HeroScenePlayer({
           {!sceneArt && !(fallbackArtUrl && fallbackArtHasHero) && cameo}
           {sceneArt && <ProvenanceBadge lang={uiLang === "he" ? "he" : "en"} className="absolute bottom-2 end-2" />}
         </div>
-        <p
+        {/* B-KID-124: keyed by the words, so a personalised render that lands
+            while the child is on this page fades in (reduced motion: a swap);
+            the block is a fixed three lines, so nothing below it moves. */}
+        <motion.p
+          key={narration}
+          initial={reducedMotion ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.35 }}
           lang={bookLang}
           dir={langDir(bookLang)}
           data-kid-book-text=""
           className="font-bold"
-          style={{ margin: 0, paddingInline: 20, paddingBlockStart: 16, fontSize: KID_BOOK_TEXT_PX, lineHeight: KID_BOOK_TEXT_LINE, maxBlockSize: `calc(3 * ${KID_BOOK_TEXT_LINE}em + 16px)`, overflowY: "auto", color: "var(--arbor-ink)", fontFamily: "var(--font-display), Georgia, serif" }}
+          style={{ margin: 0, paddingInline: 20, paddingBlockStart: 16, fontSize: KID_BOOK_TEXT_PX, lineHeight: KID_BOOK_TEXT_LINE, minBlockSize: `calc(3 * ${KID_BOOK_TEXT_LINE}em + 16px)`, maxBlockSize: `calc(3 * ${KID_BOOK_TEXT_LINE}em + 16px)`, overflowY: "auto", color: "var(--arbor-ink)", fontFamily: "var(--font-display), Georgia, serif" }}
         >
           {narration}
-        </p>
+        </motion.p>
       </div>
     );
   }

@@ -13,7 +13,7 @@
  *
  * Pure: no clock, no storage, no model call. The caller passes the runs.
  */
-import { HERO_STORIES, storiesForLanguage } from "../../lib/heroJourneys";
+import { HERO_STORIES, storiesForLanguage, storyHasLanguage } from "../../lib/heroJourneys";
 import { filterByAge, windowFromRange } from "../../lib/ageFilter";
 import type { HeroStorySpec } from "../../types";
 
@@ -59,4 +59,20 @@ export function kidBooks(input: KidBooksInput): KidBook[] {
     ...openedStories.map((story) => ({ story, state: opened.get(story.id)!.state })),
     ...fresh.map((story) => ({ story, state: "new" as const })),
   ];
+}
+
+/**
+ * B-KID-124: the ONE gate a tapped or pinned book passes before the reader
+ * opens it - the same two rules as the list (language, then the age view).
+ * Every id the home row, the Tonight banner and the library grid show passes
+ * it (guard: kidBookPin.test), so a cover never opens anything but its book.
+ * A single story is judged on its own: a near-band story the full list hides
+ * (enough in-band books) still opens when pinned, never the reverse.
+ */
+export function kidBookOpenable(
+  story: HeroStorySpec,
+  ctx: { lang: "en" | "he"; ageMonths: number | null; showAllAges: boolean },
+): boolean {
+  if (!storyHasLanguage(story, ctx.lang)) return false;
+  return ctx.showAllAges || filterByAge([story], (s) => windowFromRange(s.ageRange), ctx.ageMonths).visible.length > 0;
 }

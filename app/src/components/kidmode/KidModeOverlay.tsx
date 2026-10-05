@@ -115,8 +115,12 @@ export default function KidModeOverlay() {
   // mounted view and restored when the child comes back to it.
   const homeScrollRef = useRef(0);
 
+  // B-KID-124: every tap of a book is a fresh pin (the same book tapped again
+  // after Home opens again even if the reader tab stayed mounted).
+  const [pinNonce, setPinNonce] = useState(0);
   const openSurface = (s: KidSurface, worldId?: string) => {
     setArcadeWorldId(worldId ?? null);
+    setPinNonce((n) => n + 1);
     setView(s);
   };
 
@@ -402,8 +406,8 @@ export default function KidModeOverlay() {
                       <PracticeHubTab initialWorldId={arcadeWorldId ?? undefined} />
                     </Suspense>
                   ) : view === "journeys" ? (
-                    <Suspense fallback={<KidStageFallback />}>
-                      <HeroJourneyTab initialStoryId={arcadeWorldId ?? undefined} />
+                    <Suspense fallback={<KidStageFallback storyId={arcadeWorldId ?? undefined} />}>
+                      <HeroJourneyTab initialStoryId={arcadeWorldId ?? undefined} pinNonce={pinNonce} />
                     </Suspense>
                   ) : view === "comics" ? (
                     <Suspense fallback={<KidStageFallback />}>
