@@ -89,6 +89,19 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
   const [prefillFrom, setPrefillFrom] = useState(prefill.from);
   const [prefillDay, setPrefillDay] = useState(prefill.day);
   const typedRef = useRef(false);
+  // B-SHELL-NEW-1f: the newest prefilled moment (the first line), with the
+  // clock time the parent logged it.
+  const quote = (() => {
+    const first = prefill.lines[0];
+    if (!first || !prefillFrom) return null;
+    const log = behaviorLogs.find((l) => l.id === first.id);
+    const at = log?.timestamp ? new Date(log.timestamp) : null;
+    if (!at || Number.isNaN(at.getTime())) return null;
+    return {
+      text: first.description,
+      time: new Intl.DateTimeFormat(uiLang === "he" ? "he-IL" : "en-GB", { hour: "2-digit", minute: "2-digit" }).format(at),
+    };
+  })();
   const prefillKey = prefill.lines.map((l) => l.id).join("|");
   useEffect(() => {
     if (typedRef.current || !prefillKey) return;
@@ -522,6 +535,24 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
               : t("elev.bedtime.prefill.day", { day: new Intl.DateTimeFormat(he ? "he-IL" : "en-GB", { weekday: "long" }).format(prefillDay) })}
           </p>
         )}
+
+        {/* B-SHELL-NEW-1f: the screen's one warm accent — the newest moment the
+            parent noted, in their own words, before the editable rows. Empty
+            day: an open question instead (never a disabled wall). */}
+        {quote ? (
+          <figure data-testid="bedtime-quote-well" className="m-0 rounded-[14px] p-4" style={{ background: "var(--arbor-peach-soft)", border: "1px solid var(--arbor-rule)" }}>
+            <blockquote className="m-0 text-[18px] leading-snug" dir="auto" style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink)" }}>
+              “{quote.text}”
+            </blockquote>
+            <figcaption className="mt-1.5 text-[11.5px] font-bold" style={{ color: "var(--arbor-peach-ink)" }}>
+              {t(prefillFrom === "today" ? "elev.bedtime.quote.today" : "elev.bedtime.quote.earlier", { time: quote.time })}
+            </figcaption>
+          </figure>
+        ) : prefillFrom === null ? (
+          <p data-testid="bedtime-quote-empty" className="rounded-[14px] p-4 text-[15px] leading-snug" style={{ background: "var(--arbor-peach-soft)", border: "1px solid var(--arbor-rule)", fontFamily: "var(--font-editorial)", color: "var(--arbor-ink)" }}>
+            {t("elev.bedtime.quote.empty", { name })}
+          </p>
+        ) : null}
 
         <div className="space-y-3" data-testid="bedtime-events-list">
           {events.map((evt) => (

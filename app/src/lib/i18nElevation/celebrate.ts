@@ -30,6 +30,10 @@ export const en: Record<string, string> = {
   // moments, labelled — the primary move stays live.
   "elev.bedtime.prefill.yesterday": "From yesterday",
   "elev.bedtime.prefill.day": "From {day}",
+  // B-SHELL-NEW-1f: the From-today quote well.
+  "elev.bedtime.quote.today": "You noted this at {time} · it's in tonight's story",
+  "elev.bedtime.quote.earlier": "You noted this at {time} · it can seed tonight's story",
+  "elev.bedtime.quote.empty": "Nothing noted today yet. What made {name} laugh?",
   "elev.stories.tonight.mode.label": "Tonight's story",
   "elev.stories.tonight.mode.today": "From today",
   "elev.stories.tonight.mode.hero": "A hero adventure",
@@ -59,6 +63,9 @@ export const he: Record<string, string> = {
   "elev.bedtime.reader.header": "סיפור הלילה של {name} · {n} מתוך {total}",
   "elev.bedtime.prefill.yesterday": "מאתמול",
   "elev.bedtime.prefill.day": "מ{day}",
+  "elev.bedtime.quote.today": "רשמתם את זה ב-{time} · זה בסיפור של הלילה",
+  "elev.bedtime.quote.earlier": "רשמתם את זה ב-{time} · זה יכול להיות הזרע לסיפור של הלילה",
+  "elev.bedtime.quote.empty": "עוד לא נרשם כלום היום. מה הצחיק את {name}?",
   "elev.stories.tonight.mode.label": "הסיפור של הלילה",
   "elev.stories.tonight.mode.today": "מהיום שלנו",
   "elev.stories.tonight.mode.hero": "הרפתקת גיבורים",

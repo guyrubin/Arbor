@@ -293,3 +293,24 @@ describe("W2-SHELLPLAY r1 · bedtime-stories", () => {
     expect(src).toContain('embedded ? "space-y-5" : "space-y-5 max-w-[40rem]"');
   });
 });
+
+describe("B-SHELL-NEW-1f · the From-today quote well", () => {
+  it("quotes the newest prefilled moment in the editorial face, with the time it was noted", () => {
+    const well = src.slice(src.indexOf('data-testid="bedtime-quote-well"'), src.indexOf("</figure>", src.indexOf('data-testid="bedtime-quote-well"')));
+    expect(well).toContain('fontFamily: "var(--font-editorial)"');
+    expect(well).toContain('background: "var(--arbor-peach-soft)"');
+    expect(well).toContain("{quote.text}");
+    expect(src).toContain("const log = behaviorLogs.find((l) => l.id === first.id);");
+    // it sits before the editable rows, and no new module or gradient arrives with it
+    expect(src.indexOf('data-testid="bedtime-quote-well"')).toBeLessThan(src.indexOf('data-testid="bedtime-events-list"'));
+    expect(well).not.toMatch(/data-module|--gradient-cta/);
+  });
+  it("an empty record asks an open question instead of showing a wall; keys in both locales", () => {
+    expect(src).toContain('t("elev.bedtime.quote.empty", { name })');
+    for (const k of ["elev.bedtime.quote.today", "elev.bedtime.quote.earlier", "elev.bedtime.quote.empty"]) {
+      expect(en[k], k).toBeTruthy();
+      expect(he[k], k).toMatch(/[֐-׿]/);
+    }
+    expect(en["elev.bedtime.quote.today"]).toContain("{time}");
+  });
+});
