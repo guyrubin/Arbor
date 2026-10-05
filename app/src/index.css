@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Heebo:wght@400;500;600;700;800&family=Frank+Ruhl+Libre:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Baloo+2:wght@500;600;700&family=Instrument+Serif:ital@0;1&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Heebo:wght@400;500;600;700;800&family=Frank+Ruhl+Libre:wght@500;600;700&family=Instrument+Serif:ital@0;1&display=swap');
 @import "tailwindcss";
 
 /* ─── Design Tokens — Arbor 2035 Sapphire ────────────────────────────────────
@@ -122,9 +122,10 @@
   --arbor-pack-truth:           #4f6ae6;
   --arbor-metric-truth:         #4f6ae6;
 
-  /* UC-2 visual-match: Baloo 2 rounded display + Plus Jakarta Sans UI +
-     Instrument Serif editorial accents (mock font system). Fraunces/Nunito kept
-     as graceful fallbacks; Hebrew swaps to Heebo/Frank Ruhl Libre below. */
+  /* Type system: Fraunces display · Nunito UI · Instrument Serif editorial
+     accents; Hebrew swaps to Heebo/Frank Ruhl Libre below. B-SHELL-24: the
+     Google import at the top loads ONLY the families these tokens name (Baloo 2
+     and Plus Jakarta Sans were imported but named by no token — dropped). */
   --font-display:   'Fraunces', 'Frank Ruhl Libre', Georgia, 'Times New Roman', serif;
   --font-sans:      'Nunito', 'Heebo', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font-editorial: 'Instrument Serif', Georgia, serif;
@@ -244,7 +245,7 @@ body {
   background-attachment: fixed;
 }
 
-/* ─── Typography — Baloo 2 rounded display, Plus Jakarta Sans body ───────── */
+/* ─── Typography — display face on h1–h3, UI face on h4–h6 ─────────────── */
 .arbor-app h1,
 .arbor-app h2,
 .arbor-app h3 {
