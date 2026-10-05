@@ -16,7 +16,7 @@
  *     search_result_tap({kind}) on both result surfaces.
  *  5. i18nElevation/searchnav module shape (registration-ready en/he records).
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -177,5 +177,87 @@ describe("TopbarSearch hit target is the whole 44 px pill", () => {
     expect(topbarSearch).toMatch(/<input[\s\S]{0,1500}className="field-bare min-h-11 self-stretch"/);
     // A 1px border would take 2 px from the input; the hairline is an inset shadow.
     expect(topbarSearch).not.toMatch(/border:\s*open/);
+  });
+});
+
+/* ── B-SHELL-14: one search result model + "Ask Arbor about …" ───────────── */
+vi.mock("../../context/ArborContext", () => ({ useArbor: () => ({}) }));
+vi.mock("../../context/LanguageContext", () => ({ useLanguage: () => ({ t: (k: string) => k, uiLang: "en" }) }));
+
+describe("B-SHELL-14 · both surfaces render ONE hook", () => {
+  const hook = readSrc("components", "search", "useSearchResults.ts");
+
+  it("SearchModal and TopbarSearch both call useSearchResults with the same limits; neither owns a model", () => {
+    for (const src of [searchModal, topbarSearch]) {
+      expect(src).toContain('import { useSearchResults, type SearchRow } from "./useSearchResults";');
+      expect(src).toContain("useSearchResults(");
+      expect(src).toContain("catalogLimit: 12, recordLimit: 12");
+      expect(src).not.toContain('import("../../lib/searchIndex")');
+      expect(src).not.toContain("behaviorLogs");
+      expect(src).not.toContain("searchCatalog(");
+    }
+    // the lazy import contract moved into the hook — still a dynamic import()
+    expect(hook).toContain('import("../../lib/searchIndex")');
+    expect(hook).toMatch(/import type \{ SearchEntry, SearchKind \} from "\.\.\/\.\.\/lib\/searchIndex";/);
+  });
+
+  it("record rows stay on-device: the hook never writes to searchIndex", () => {
+    expect(hook).not.toMatch(/getSearchIndex\(\)\.push|addToIndex|registerEntry/);
+    expect(readSrc("lib", "searchIndex.ts")).not.toContain("behaviorLogs");
+  });
+
+  it("a log row reads in place on #/journal, focused — no Behaviors switch, no capture sheet", () => {
+    const log = hook.slice(hook.indexOf("for (const l of behaviorLogs)"), hook.indexOf("for (const c of conversations)"));
+    expect(log).toContain('requestJournalFocus("moment-" + l.id); setActiveTab("journal");');
+    expect(log).not.toMatch(/setActiveTab\("behaviors"\)|openCaptureSheet/);
+  });
+
+  it("the ask row seeds the composer (prefill only) and opens Ask; first on '?'", () => {
+    expect(hook).toContain('seedCoach({ prompt: term, source: "search" }); setActiveTab("coach");');
+    expect(hook).toMatch(/ask && askFirst\(term\) \? \[ask, \.\.\.catalog, \.\.\.record\] : \[\.\.\.catalog, \.\.\.record, \.\.\.\(ask \? \[ask\] : \[\]\)\]/);
+  });
+
+  it("analytics carry the kind only — never the query", () => {
+    expect(searchModal).toContain('track("search_result_tap", { kind: r.kind })');
+    expect(topbarSearch).toContain('track("search_result_tap", { kind: entry.kind })');
+    for (const src of [searchModal, topbarSearch, hook]) {
+      expect(src).not.toMatch(/track\([^)]*\b(q|query|term)\b[^)]*\)/);
+    }
+  });
+});
+
+describe("B-SHELL-14 · localized record matching + the ask copy (EN + HE)", () => {
+  it("a Hebrew query matches a log whose stored behaviorType is English", async () => {
+    const { logSearchText } = await import("./useSearchResults");
+    const { translate } = await import("../../lib/i18n");
+    const { BEHAVIOR_TYPES } = await import("../../content/behaviorTaxonomy");
+    const sensory = BEHAVIOR_TYPES.find((b) => b.value === "Sensory Overload")!;
+    const heLabel = translate("he", sensory.labelKey);
+    expect(/[\u0590-\u05FF]/.test(heLabel)).toBe(true);
+    const text = logSearchText({ behaviorType: "Sensory Overload", trigger: "loud mall", response: "", notes: "" });
+    expect(text).toContain(heLabel.toLowerCase());
+    expect(text).toContain("sensory overload");
+    expect(text).toContain("loud mall");
+    // NEGATIVE CONTROL: the pre-change haystack (raw fields only) misses the Hebrew query.
+    const pre = "Sensory Overload loud mall  ".toLowerCase();
+    expect(pre.includes(heLabel.toLowerCase())).toBe(false);
+  });
+
+  it("askFirst only when the query ends with '?'", async () => {
+    const { askFirst } = await import("./useSearchResults");
+    expect(askFirst("sleep?")).toBe(true);
+    expect(askFirst("  שינה? ")).toBe(true);
+    expect(askFirst("sleep")).toBe(false);
+  });
+
+  it("'Ask Arbor about …' exists in both languages, and a Hebrew query is isolated in the English line", async () => {
+    const { translate } = await import("../../lib/i18n");
+    expect(translate("en", "sm.askAbout", { q: "sleep" })).toBe("Ask Arbor about “sleep”");
+    expect(translate("en", "sm.askAbout", { q: "שינה" })).toBe("Ask Arbor about “\u2068שינה\u2069”");
+    expect(translate("he", "sm.askAbout", { q: "שינה" })).toContain("שינה");
+    for (const key of ["sm.askAbout", "sm.askAbout.sub", "sm.kind.ask"]) {
+      expect(/[\u0590-\u05FF]/.test(translate("he", key)), key).toBe(true);
+      expect(translate("en", key)).not.toBe(key);
+    }
   });
 });

@@ -250,9 +250,14 @@ describe("lazy contract — index builds once, on demand; consumers dynamic-impo
   });
 
   it("SearchModal and TopbarSearch load the module via dynamic import() only", () => {
+    // B-SHELL-14: both surfaces render ONE hook (useSearchResults), which owns
+    // the dynamic import; the surfaces themselves import nothing from searchIndex.
+    const hook = readSrc("components", "search", "useSearchResults.ts");
+    expect(hook).toContain('import("../../lib/searchIndex")');
+    for (const line of hook.match(/^import .*from "\.\.\/\.\.\/lib\/searchIndex";?$/gm) ?? []) expect(line, "useSearchResults.ts").toContain("import type");
     for (const file of ["SearchModal.tsx", "TopbarSearch.tsx"]) {
       const src = readSrc("components", "search", file);
-      expect(src, file).toContain('import("../../lib/searchIndex")');
+      expect(src, file).toContain('from "./useSearchResults"');
       // Only type-only static imports are allowed (erased at build).
       const staticImports = src.match(/^import .*from "\.\.\/\.\.\/lib\/searchIndex";?$/gm) ?? [];
       for (const line of staticImports) expect(line, file).toContain("import type");

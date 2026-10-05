@@ -2,10 +2,10 @@
  * AP-045 + W2.4: Global search input for the Topbar right-zone (slot 1 of 3).
  *
  * - Opens a results overlay on focus.
- * - Searches the STATIC content-catalog index only (AC-6: no child-record
- *   fields) — now the FULL catalog (routes, Learn, Masterclasses, Routines,
- *   Scholars, published hard moments, activities, milestones, journeys,
- *   worlds) with forgiving HE+EN matching (lib/searchIndex).
+ * - B-SHELL-14: renders the SAME result model as SearchModal
+ *   (useSearchResults): the static catalogue, then the active child's own
+ *   records (matched on-device, never added to searchIndex), then "Ask Arbor
+ *   about …" (first when the query ends with "?"). Same query, same rows.
  * - LAZY CONTRACT: the index module is dynamic-import()ed on first open —
  *   only a type import lives here, so catalogs stay out of the initial parse.
  * - Ctrl/Cmd+K is owned by Shell (kid-lock-gated SearchModal hotkey); the
@@ -22,41 +22,17 @@
 import React, {
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
-import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { ageMonthsFromProfile } from "../../lib/childAge";
-import type { HardMomentContext } from "../../content/pilotRelease";
 import { track } from "../../lib/analytics";
-import { searchnavText } from "../../lib/i18nElevation/searchnav";
-import type { SearchEntry, SearchKind } from "../../lib/searchIndex";
 import { Icon } from "../ui/Icon";
-
-type SearchIndexModule = {
-  searchCatalog: (query: string, limit?: number, context?: HardMomentContext) => SearchEntry[];
-};
-
-const KIND_TOKEN: Partial<Record<SearchKind, string>> = {
-  route: "var(--arbor-green-ink)",
-  learn: "var(--arbor-sky-ink)",
-  masterclass: "var(--arbor-lav-ink)",
-  routine: "var(--arbor-peach-ink)",
-  scholar: "var(--arbor-green-ink)",
-  "hard-moment": "var(--arbor-clay-deep)",
-  activity: "var(--arbor-green-ink)",
-  milestone: "var(--arbor-sky-ink)",
-  journey: "var(--arbor-lav-ink)",
-  world: "var(--arbor-peach-ink)",
-};
+import { useSearchResults, type SearchRow } from "./useSearchResults";
 
 /** AP-045 global search input + results overlay (topbar slot 1). */
 export default function TopbarSearch() {
-  const { setActiveTab, childProfile, setSelectedLens } = useArbor();
-  const { t, uiLang } = useLanguage();
-  const heLang = uiLang === "he";
+  const { t } = useLanguage();
   const [query, setQuery]       = useState("");
   const [open, setOpen]         = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -65,17 +41,6 @@ export default function TopbarSearch() {
   const overlayRef  = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // W2.4 lazy index: load the catalog module on first open.
-  const [indexMod, setIndexMod] = useState<SearchIndexModule | null>(null);
-  useEffect(() => {
-    if (!open || indexMod) return;
-    let alive = true;
-    import("../../lib/searchIndex")
-      .then((m) => { if (alive) setIndexMod(m); })
-      .catch(() => { /* overlay simply shows no matches */ });
-    return () => { alive = false; };
-  }, [open, indexMod]);
-
   // Analytics: one search_open per closed→open transition.
   const wasOpen = useRef(false);
   useEffect(() => {
@@ -83,18 +48,9 @@ export default function TopbarSearch() {
     wasOpen.current = open;
   }, [open]);
 
-  // Same child context as SearchModal — the hard-moment catalogue is
-  // fail-closed on age + locale and stays invisible without it.
-  const results = useMemo(
-    () => {
-      if (!indexMod || !query.trim()) return [];
-      const now = new Date();
-      return indexMod.searchCatalog(query, 10, {
-        locale: heLang ? "he" : "en", now, ageMonths: ageMonthsFromProfile(childProfile, now),
-      });
-    },
-    [indexMod, query, heLang, childProfile],
-  );
+  // B-SHELL-14: the one result model (catalogue · records · ask), same limits
+  // as the modal so the same query returns the same rows on both surfaces.
+  const { ordered: results, kindLabel } = useSearchResults(query, { enabled: open, catalogLimit: 12, recordLimit: 12 });
 
   // Reset active index whenever results change.
   useEffect(() => { setActiveIdx(0); }, [results.length]);
@@ -113,16 +69,15 @@ export default function TopbarSearch() {
   }, [open]);
 
   const navigate = useCallback(
-    (entry: SearchEntry) => {
+    (entry: SearchRow) => {
+      // Analytics carry the kind only — never the query text.
       track("search_result_tap", { kind: entry.kind });
-      // B-ASKJB-12: a scholar entry preselects its lens, then opens Ask.
-      if (entry.lens) setSelectedLens(entry.lens);
-      setActiveTab(entry.tab);
+      entry.go();
       setOpen(false);
       setQuery("");
       inputRef.current?.blur();
     },
-    [setActiveTab, setSelectedLens]
+    []
   );
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -146,9 +101,6 @@ export default function TopbarSearch() {
   };
 
   const showOverlay = open && query.trim().length > 0;
-  const pick = (p: { en: string; he: string }) => (heLang ? p.he : p.en);
-  const kindLabel = (k: SearchKind) => searchnavText("elev.searchnav.kind." + k, heLang);
-  const kindColor = (k: SearchKind) => KIND_TOKEN[k] ?? "var(--arbor-green-ink)";
 
   return (
     <div
@@ -282,7 +234,8 @@ export default function TopbarSearch() {
             results.map((entry, i) => (
               <div
                 id={`search-result-${i}`}
-                key={entry.id}
+                key={entry.kind + ":" + entry.id}
+                data-testid={entry.kind === "ask" ? "search-ask-row" : undefined}
                 role="option"
                 aria-selected={i === activeIdx}
                 onClick={() => navigate(entry)}
@@ -303,17 +256,8 @@ export default function TopbarSearch() {
                   userSelect: "none",
                 }}
               >
-                {/* Kind dot */}
-                <span
-                  aria-hidden="true"
-                  style={{
-                    width: "7px",
-                    height: "7px",
-                    borderRadius: "50%",
-                    flexShrink: 0,
-                    background: kindColor(entry.kind),
-                  }}
-                />
+                {/* Kind icon — the same glyph + token the modal shows */}
+                <Icon name={entry.icon} size={16} style={{ color: entry.color, flexShrink: 0 }} />
 
                 {/* Text block */}
                 <span style={{ flex: 1, minWidth: 0 }}>
@@ -328,7 +272,7 @@ export default function TopbarSearch() {
                       whiteSpace: "nowrap",
                     }}
                   >
-                    {pick(entry.title)}
+                    {entry.label}
                   </span>
                   <span
                     style={{
@@ -340,7 +284,7 @@ export default function TopbarSearch() {
                       whiteSpace: "nowrap",
                     }}
                   >
-                    {pick(entry.sub) || kindLabel(entry.kind)}
+                    {entry.sub || kindLabel(entry.kind)}
                   </span>
                 </span>
 
@@ -352,7 +296,7 @@ export default function TopbarSearch() {
                     textTransform: "uppercase",
                     letterSpacing: "0.05em",
                     flexShrink: 0,
-                    color: kindColor(entry.kind),
+                    color: entry.color,
                   }}
                 >
                   {kindLabel(entry.kind)}
