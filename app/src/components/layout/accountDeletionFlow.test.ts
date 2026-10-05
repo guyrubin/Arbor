@@ -176,6 +176,8 @@ function settings(source = settingsSource) {
     "../../hooks/useCheckout": { useCheckout: () => ({}) },
     "../../lib/tokens": { T: {} },
     "../../lib/theme": { ACCENT_THEMES: ["green", "teal", "blue"], getSavedTheme: () => "green", setTheme: vi.fn() },
+    // B-KID-70 (R-5): one selectable look → the Kid Mode Look row stays hidden here.
+    "../../lib/kidThemeManifest": { selectableThemes: () => ["film3d"], resolveKidTheme: () => "film3d" },
     "../../lib/formatDate": { fmtDay: () => "" },
     "../../lib/i18n": { translate: (_lang: string, key: string) => key },
     // MOB-20 / B-INF-05: the About row reads the stamped build identity.

@@ -24,6 +24,7 @@ import { useEntitlement } from "../../hooks/useEntitlement";
 import { useCheckout } from "../../hooks/useCheckout";
 import { T } from "../../lib/tokens";
 import { ACCENT_THEMES, getSavedTheme, setTheme, type AccentTheme } from "../../lib/theme";
+import { resolveKidTheme, selectableThemes } from "../../lib/kidThemeManifest";
 import { translate, type UiLang } from "../../lib/i18n";
 import { fmtDay } from "../../lib/formatDate";
 
@@ -31,7 +32,11 @@ import { fmtDay } from "../../lib/formatDate";
  *  notifications, billing, and account). */
 export default function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { uiLang, aiLang, setUiLang, setAiLang, t } = useLanguage();
-  const { setActiveTab, pendingMemoryItems, approvedMemoryItems, selectedLens, setSelectedLens } = useArbor();
+  const { setActiveTab, pendingMemoryItems, approvedMemoryItems, selectedLens, setSelectedLens, childProfile, updateChild } = useArbor();
+  // B-KID-70 (R-5): the active child's Kid Mode look; the row exists only when
+  // more than one theme covers every slot the app renders (the lib/theme.ts rule).
+  const kidLooks = selectableThemes();
+  const kidLook = resolveKidTheme(childProfile?.kidTheme);
   // B-PLAY-21: the ONE tone sheet, opened from section 1 (same store as Ask).
   const [toneOpen, setToneOpen] = useState(false);
   // B-SHELL-13: the "What Arbor remembers" row counts pending + approved facts.
@@ -315,6 +320,26 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
             trust is the PIN row only. */}
         {/* STORE-3: parent PIN management — the ONLY setup surface (the kid-mode
             challenge card can no longer mint the PIN). */}
+        {kidLooks.length > 1 && childProfile && (
+        <div data-testid="settings-kid-look">
+        <Row icon={<Icon name="palette" size={18} />} title={t("set.kidLook.title", { name: childProfile.name?.split(" ")[0] ?? "" })} sub={t("set.kidLook.sub")}>
+          <div role="radiogroup" aria-label={t("set.kidLook.title", { name: childProfile.name?.split(" ")[0] ?? "" })} className="flex items-center gap-1 rounded-xl p-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+            {kidLooks.map((look) => (
+              <button
+                key={look}
+                role="radio"
+                aria-checked={kidLook === look}
+                onClick={() => { if (kidLook !== look) void updateChild(childProfile.id, { kidTheme: look }); }}
+                className="px-3 min-h-11 rounded-lg text-xs font-bold transition"
+                style={kidLook === look ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}
+              >
+                {t(`set.kidLook.${look}`)}
+              </button>
+            ))}
+          </div>
+        </Row>
+        </div>
+        )}
         <div className="pt-1" data-testid="settings-pin-row">
           <Row icon={<Icon name="lock" size={18} />} title={t("elev.gate.set.title")} sub={t("elev.gate.set.sub")}>
             <span />
