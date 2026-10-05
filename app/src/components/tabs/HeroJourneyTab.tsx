@@ -19,7 +19,10 @@ import {
   applyChoice,
   getStorySpec,
   runTitle,
+  storiesForLanguage,
   storiesInPack,
+  storyHasLanguage,
+  storyLanguage,
 } from "../../lib/heroJourneys";
 import type {
   DevelopmentMetricId,
@@ -190,6 +193,15 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
 
   const runsCol = useChildCollection<HeroJourneyRun>(childProfile.id, "heroRuns");
   const runs = runsCol.items;
+  // B-KID-46 (KB-03): the language a story is told in. A story that cannot be
+  // told in it (no Hebrew beats) is not listed — catalogue, Tonight pick and
+  // the Library shelf alike; the pick's order is language → age → illustrated.
+  const storyLang = storyLanguage(uiLang, aiLang);
+  const isTellable = (storyId: string) => {
+    const spec = getStorySpec(storyId);
+    return !spec || storyHasLanguage(spec, storyLang);
+  };
+  const shelfRuns = runs.filter((r) => isTellable(r.storyId));
   // G2 (22 Sep 2026): every story read with a hero is a comic. Page keys are
   // collected as the child turns pages (cover = 0, beats = 1..N); a complete
   // set is saved as a book on the child's shelf when the story finishes.
@@ -288,8 +300,10 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
       : scenes[sceneIndex]
     : undefined;
 
-  const visibleStories =
-    packFilter === "all" ? HERO_STORIES : storiesInPack(packFilter);
+  const visibleStories = storiesForLanguage(
+    packFilter === "all" ? HERO_STORIES : storiesInPack(packFilter),
+    storyLang,
+  );
 
   const startJourney = async (story: HeroStorySpec) => {
     setLoadingId(story.id);
@@ -349,6 +363,8 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
     if (pinnedOpened.current || !initialStoryId) return;
     const story = getStorySpec(initialStoryId);
     if (!story) return;
+    // B-KID-46: a pin never opens a story that cannot be told in this language.
+    if (!storyHasLanguage(story, storyLang)) return;
     // W0.7: a pin never bypasses the age view — the same rule the catalogue's
     // `pinned` lookup applies (it searches the age-filtered list only).
     if (!showAllAges && filterByAge([story], (s) => windowFromRange(s.ageRange), childMonths).visible.length === 0) return;
@@ -663,6 +679,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
     const tonightPick = pickTonightsStory(dayKey(new Date()), childProfile.id, {
       readIds: runs.map((r) => r.storyId), aims, ageMonths: childMonths, showAllAges,
       prefer: (s) => storyCover(s.id) !== null,
+      lang: storyLang,
     });
     const tonightStory = pinned ?? tonightPick.story ?? undefined;
     const tonightReason = pinned ? null : tonightPick.reason;
@@ -924,14 +941,14 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
         {/* JOURNEY LIBRARY */}
         <div>
           <h2 className="font-black mb-3 inline-flex items-center gap-2" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(18px,3.4vw,24px)" }}>
-            <Icon name="auto_stories" size={20} /> {kidMode ? (he ? `הספרייה (${runs.length})` : `Library (${runs.length})`) : `${t("elev.stories.library.title")} (${runs.length})`}
+            <Icon name="auto_stories" size={20} /> {kidMode ? (he ? `הספרייה (${shelfRuns.length})` : `Library (${shelfRuns.length})`) : `${t("elev.stories.library.title")} (${shelfRuns.length})`}
           </h2>
           {!runsCol.loaded ? (
             /* Masterplan 4.3 — per-section skeleton mimicking the library tile
                grid (reserves real dimensions; ~10s → inline retry wired to the
                W0 syncStore, which re-mounts this runsCol listener). */
             <SectionSkeleton title={false} rows={2} rowClassName="h-[120px]" loaded={runsCol.loaded} testId="hero-library-skeleton" />
-          ) : runs.length === 0 ? (
+          ) : shelfRuns.length === 0 ? (
             <div className="comic-panel p-5">
               <EmptyState
                 headline={he ? "עדיין אין מסעות" : "No quests yet"}
@@ -940,7 +957,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
             </div>
           ) : (
             <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))" }}>
-              {runs.map((run) => {
+              {shelfRuns.map((run) => {
                 const spec = getStorySpec(run.storyId);
                 const w = spec ? PACK_WORLD[spec.pack] : PACK_WORLD.courage;
                 const art = STORY_ART[run.storyId] ?? { emoji: "⭐", sfx: "POW!", sfxHe: "פאו!" };
@@ -1315,14 +1332,14 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
         {/* JOURNEY LIBRARY */}
         <div>
           <h2 className="font-black mb-3 inline-flex items-center gap-2" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(18px,3.4vw,24px)" }}>
-            <Icon name="auto_stories" size={20} /> {kidMode ? (he ? `הספרייה (${runs.length})` : `Library (${runs.length})`) : `${t("elev.stories.library.title")} (${runs.length})`}
+            <Icon name="auto_stories" size={20} /> {kidMode ? (he ? `הספרייה (${shelfRuns.length})` : `Library (${shelfRuns.length})`) : `${t("elev.stories.library.title")} (${shelfRuns.length})`}
           </h2>
           {!runsCol.loaded ? (
             /* Masterplan 4.3 — per-section skeleton mimicking the library tile
                grid (reserves real dimensions; ~10s → inline retry wired to the
                W0 syncStore, which re-mounts this runsCol listener). */
             <SectionSkeleton title={false} rows={2} rowClassName="h-[120px]" loaded={runsCol.loaded} testId="hero-library-skeleton" />
-          ) : runs.length === 0 ? (
+          ) : shelfRuns.length === 0 ? (
             <div className={`${cardCls} p-5`}>
               <EmptyState
                 headline={he ? "עדיין אין מסעות" : "No quests yet"}
@@ -1331,7 +1348,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
             </div>
           ) : (
             <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))" }}>
-              {runs.map((run) => {
+              {shelfRuns.map((run) => {
                 const spec = getStorySpec(run.storyId);
                 const w = spec ? PACK_WORLD[spec.pack] : PACK_WORLD.courage;
                 const art = STORY_ART[run.storyId] ?? { emoji: "⭐", sfx: "POW!", sfxHe: "פאו!" };

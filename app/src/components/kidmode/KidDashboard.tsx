@@ -47,7 +47,7 @@ import { aimVirtues, loadCharter } from "../../lib/becoming";
 import { loadShowAllAges } from "../../lib/ageFilter";
 import { ageMonthsFromProfile } from "../../lib/childAge";
 import type { HeroJourneyRun } from "../../types";
-import { HERO_STORIES } from "../../lib/heroJourneys";
+import { HERO_STORIES, storyLanguage } from "../../lib/heroJourneys";
 import { starEvents } from "../../practice/signals";
 
 export type KidSurface = "journeys" | "arcade" | "feelings" | "comics";
@@ -359,7 +359,7 @@ export default function KidDashboard({
   onExit: () => void;
 }) {
   const { childProfile } = useArbor();
-  const { t, uiLang } = useLanguage();
+  const { t, uiLang, aiLang } = useLanguage();
   const hero = useHeroAvatar();
   const kidTheme = useKidTheme();
   // B-KID-47: warm every world's code on idle so a tap never waits on a chunk.
@@ -392,9 +392,11 @@ export default function KidDashboard({
       showAllAges: loadShowAllAges("hero-journeys"),
       // R-4b: lead with stories illustrated in this child's theme.
       prefer: (s) => kidArt(kidTheme, storyCoverKey(s.id)) !== null,
+      // B-KID-46: only stories that can be told in the child's language (FIRST).
+      lang: storyLanguage(uiLang, aiLang),
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data.today, childProfile.id, heroReadIds, kidTheme],
+    [data.today, childProfile.id, heroReadIds, kidTheme, uiLang, aiLang],
   );
   // B-KID-06: the banner names the one story it opens (HE title in Hebrew),
   // instead of "Start a hero story / Pick a world" on a door with no choice.

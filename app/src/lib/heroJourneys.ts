@@ -919,3 +919,26 @@ export const runTitle = (
 /** Stories belonging to a pack, in catalog order. */
 export const storiesInPack = (pack: HeroPackId): HeroStorySpec[] =>
   HERO_STORIES.filter((s) => s.pack === pack);
+
+/**
+ * B-KID-46 (KB-03) — a story is offered in a language only when it can be TOLD
+ * in that language: in Hebrew, every beat has `spineHe` and every Decision
+ * choice has `labelHe` + `outcomeHintHe` (the authored fallback,
+ * `authoredJourneyRender`, otherwise shows the English spine to a Hebrew
+ * child). English is the authoring language, so every story qualifies.
+ */
+export const storyHasLanguage = (story: HeroStorySpec, lang: "en" | "he"): boolean =>
+  lang !== "he" ||
+  story.beats.every(
+    (b) => Boolean(b.spineHe?.trim()) && (b.choices ?? []).every((c) => Boolean(c.labelHe?.trim() && c.outcomeHintHe?.trim())),
+  );
+
+/** The language a story is offered in: Hebrew when either the UI or the story
+ *  (AI) language is Hebrew — a Hebrew UI never lists an English-only story, and
+ *  a Hebrew narration never falls back to English text. */
+export const storyLanguage = (uiLang: string, aiLang: string): "en" | "he" =>
+  uiLang === "he" || aiLang === "he" ? "he" : "en";
+
+/** `list` narrowed to the stories that can be told in `lang` (order kept). */
+export const storiesForLanguage = <S extends HeroStorySpec>(list: readonly S[], lang: "en" | "he"): S[] =>
+  list.filter((s) => storyHasLanguage(s, lang));

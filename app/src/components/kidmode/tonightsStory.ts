@@ -21,7 +21,7 @@
  * Pure — no clock, no storage, no model call: the caller passes `today`, the
  * read ids, the aims and the child's age.
  */
-import { HERO_STORIES } from "../../lib/heroJourneys";
+import { HERO_STORIES, storiesForLanguage } from "../../lib/heroJourneys";
 import { filterByAge, windowFromRange } from "../../lib/ageFilter";
 import type { HeroStorySpec, DevelopmentMetricId } from "../../types";
 
@@ -57,6 +57,10 @@ export interface TonightContext {
    *  theme. Applied after the age view: when at least one age-visible story
    *  qualifies, the rest of the pick runs inside that subset. */
   prefer?: (s: HeroStorySpec) => boolean;
+  /** B-KID-46: the language the story will be told in (lib/heroJourneys
+   *  `storyLanguage`). Applied FIRST: a story that cannot be told in it is
+   *  never picked — not even when it is the only illustrated one. */
+  lang?: "en" | "he";
 }
 
 /** The reason line's key per aimed virtue — static keys, EN + HE in celebrate.ts. */
@@ -75,7 +79,9 @@ export function pickTonightsStory(
   seed = "",
   ctx: TonightContext = {},
 ): { story: HeroStorySpec | null; reason: TonightReason } {
-  const all = ctx.stories ?? HERO_STORIES;
+  // B-KID-46: rule order — language availability, then the age view, then
+  // illustrated-first (prefer), then the family logic below.
+  const all = storiesForLanguage(ctx.stories ?? HERO_STORIES, ctx.lang ?? "en");
   const ageVisible =
     ctx.showAllAges || ctx.ageMonths == null
       ? [...all]
