@@ -125,8 +125,14 @@ export const fiveSmoothStonesPlates: PlateTable = {
   "PL7-dust": plate("PL7-dust", "day"), // full-plate BOOM alternative — NOT used (the edit re-framed; the dust overlay is used)
   // v2 (round 3): registered only when the geometry has them
   ...(G.plates.PL3e ? { PL3e: plate("PL3e", "morning") } : {}), // p3b: Eliab standing by the bread basket
+  ...(G.plates.PL3w2 ? { PL3w2: plate("PL3w2", "day") } : {}), // p6c: Goliath wading in the brook, twice the size
+  ...(G.plates.PL3w3 ? { PL3w3: plate("PL3w3", "day") } : {}), // p7c: the two nearest soldiers lift their heads
   ...(G.plates["PL7-rise"] ? { "PL7-rise": plate("PL7-rise", "day") } : {}), // p9 state 3: the soldiers stand
 };
+
+/** The plate the geometry gives a page (round 3 put p3b on PL3e, p6c on PL3w2,
+ *  p7c on PL3w3); `fallback` = the manuscript's plate. */
+const plateOf = (pageId: string, fallback: string): string => G.pages[pageId]?.plate ?? fallback;
 
 /** A line that is the same for both Hebrew genders (CAST: spoken of David). */
 const same = (en: string, he: string): BookLine => ({ en, he: { m: he, f: he } });
@@ -142,7 +148,7 @@ export const ART_PENDING = new Set<string>(G.pages.p3b ? [] : ["p3b"]);
 
 const cover: Page = {
   id: "cover",
-  plateId: "PL3",
+  plateId: plateOf("cover", "PL3"),
   type: "spread",
   hero: heroOf("cover", "walk-bag"),
   ...artOf("cover"),
@@ -151,7 +157,7 @@ const cover: Page = {
 
 const p1: Page = {
   id: "p1",
-  plateId: "PL1",
+  plateId: plateOf("p1", "PL1"),
   hero: heroOf("p1", "sling-swing"),
   ...artOf("p1"),
   text: {
@@ -165,7 +171,7 @@ const p1: Page = {
 
 const p2: Page = {
   id: "p2",
-  plateId: "PL1b",
+  plateId: plateOf("p2", "PL1b"),
   hero: heroOf("p2", "run-staff"),
   ...artOf("p2"),
   text: same(
@@ -176,7 +182,7 @@ const p2: Page = {
 
 const p3: Page = {
   id: "p3",
-  plateId: "PL3",
+  plateId: plateOf("p3", "PL3"),
   hero: heroOf("p3", "look-up"),
   ...artOf("p3"),
   text: same(
@@ -189,7 +195,7 @@ const p3: Page = {
 // geometry, the valley plate and p3's slot with `look-across` stand in.
 const p3b: Page = {
   id: "p3b",
-  plateId: G.plates.PL3e ? "PL3e" : "PL3",
+  plateId: plateOf("p3b", "PL3"),
   hero: G.pages.p3b?.hero ?? withPose(G.pages.p3?.hero ?? heroOf("p3", "look-across"), "look-across"),
   ...(G.pages.p3b ? artOf("p3b") : { phoneCrop: G.pages.p3?.phoneCrop }),
   text: same(
@@ -200,7 +206,7 @@ const p3b: Page = {
 
 const p4: Page = {
   id: "p4",
-  plateId: "PL4",
+  plateId: plateOf("p4", "PL4"),
   hero: withPose(heroOf("p4", "stand-tall-hand"), "stand-tall-hand"),
   ...artOf("p4"),
   text: same(
@@ -211,7 +217,7 @@ const p4: Page = {
 
 const p5: Page = {
   id: "p5",
-  plateId: "PL4",
+  plateId: plateOf("p5", "PL4"),
   type: "spread",
   hero: heroOf("p5", "worried"),
   ...artOf("p5"),
@@ -224,7 +230,7 @@ const p5: Page = {
 // ── Branch A — HARD: "Go as I am" (1 page) ────────────────────────────────────
 const p6a: Page = {
   id: "p6a",
-  plateId: "PL3",
+  plateId: plateOf("p6a", "PL3"),
   hero: heroOf("p6a", "run-staff"),
   ...artOf("p6a"),
   text: same(
@@ -236,7 +242,7 @@ const p6a: Page = {
 // ── Branch B — EASY: "Wear the king's armour" (2 pages) ───────────────────────
 const p6b: Page = {
   id: "p6b",
-  plateId: "PL4e",
+  plateId: plateOf("p6b", "PL4e"),
   hero: heroOf("p6b", "armour-stuck"),
   ...artOf("p6b"),
   text: same(
@@ -247,7 +253,7 @@ const p6b: Page = {
 
 const p7b: Page = {
   id: "p7b",
-  plateId: "PL4e",
+  plateId: plateOf("p7b", "PL4e"),
   hero: heroOf("p7b", "armour-stuck"),
   ...artOf("p7b"),
   text: same(`"I cannot go with these," says David, "for I have not tried them."`, `"לֹא אוּכַל לָלֶכֶת בָּאֵלֶּה, כִּי לֹא נִסִּיתִי," אומר דוד.`),
@@ -269,7 +275,7 @@ const p7b: Page = {
 // ── Branch C — THIRD: "Wait for someone bigger" (2 pages) ─────────────────────
 const p6c: Page = {
   id: "p6c",
-  plateId: "PL3w",
+  plateId: plateOf("p6c", "PL3w"),
   hero: withPose(heroOf("p6c", "sit-hunched"), "sit-hunched"),
   ...artOf("p6c"),
   text: same(
@@ -280,7 +286,7 @@ const p6c: Page = {
 
 const p7c: Page = {
   id: "p7c",
-  plateId: "PL3w",
+  plateId: plateOf("p7c", "PL3w"),
   hero: withPose(heroOf("p7c", "sit-hunched"), "sit-hunched"),
   ...artOf("p7c"),
   text: same(`Nobody. Not one.`, `אף אחד. אפילו לא אחד.`),
@@ -299,7 +305,7 @@ const p7c: Page = {
 // ── Rejoin, climax, ending ────────────────────────────────────────────────────
 const p8: Page = {
   id: "p8",
-  plateId: "PL6",
+  plateId: plateOf("p8", "PL6"),
   hero: heroOf("p8", "kneel"),
   ...artOf("p8"),
   text: same(
@@ -323,7 +329,7 @@ const p9States: NonNullable<Page["artStates"]> = [
 
 const p9: Page = {
   id: "p9",
-  plateId: "PL7",
+  plateId: plateOf("p9", "PL7"),
   type: "spread",
   hero: heroOf("p9", "sling-swing"),
   ...artOf("p9"),
@@ -336,7 +342,7 @@ const p9: Page = {
 
 const p10: Page = {
   id: "p10",
-  plateId: "PL1d",
+  plateId: plateOf("p10", "PL1d"),
   type: "spread",
   hero: heroOf("p10", "sit"),
   ...artOf("p10"),

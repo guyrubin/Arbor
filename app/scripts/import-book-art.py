@@ -45,11 +45,12 @@ OVERLAYS_OUT = PLATES_OUT / "overlays"
 SHEET_OUT = APP / "public" / "_dev" / "hero-sheets" / args.sheet
 G = json.load(open(SRC / args.plates, encoding="utf-8"))
 
-# Art rounds add plate VERSIONS (PL3-r2b, PL7-r2c ...). The book keeps stable
-# plate ids (PL3, PL7 ...); the version a page names is shipped under the stable
-# name. Pages whose id carries a suffix (p5-tunic, p9-boom, p8-squat ...) are
-# variants / alternatives, not book pages.
-VERSION = re.compile(r"-r\d+[a-z]?$")
+# Art rounds add plate VERSIONS (PL3-r2b, PL7-r2c, PL1-v2 ...). The book keeps
+# stable plate ids (PL3, PL7, PL1 ...); the version a page names is shipped under
+# the stable name. New compositions (PL3e, PL3w2, PL3w3, PL7-rise) are plates of
+# their own. Pages whose id carries a suffix (p5-tunic, p9-boom, p9-rise,
+# p8-squat, card-c ...) are variants / states / card compositions, not pages.
+VERSION = re.compile(r"-(r\d+[a-z]?|v\d+)$")
 
 
 def base_plate(pid: str) -> str:
@@ -60,9 +61,11 @@ BOOK_PAGES = {k: v for k, v in G["pages"].items() if "-" not in k}
 PLATE_VERSION = {}
 for _pg in BOOK_PAGES.values():
     PLATE_VERSION[base_plate(_pg["plate"])] = _pg["plate"]
+_named = set(PLATE_VERSION)
 for _pid in G["plates"]:
-    if base_plate(_pid) == _pid:
-        PLATE_VERSION.setdefault(_pid, _pid)
+    # a plate no page names (PL3w after v2, PL7-dust): its LATEST listed version
+    if base_plate(_pid) not in _named:
+        PLATE_VERSION[base_plate(_pid)] = _pid
 
 
 def alpha_meta(path: Path):
@@ -136,20 +139,31 @@ def prints():
     out_dir = SHEET_OUT / "prints"
     out_dir.mkdir(parents=True, exist_ok=True)
     found = {}
-    # the latest round's prints only (a page whose plate changed and was not
-    # re-printed shows the live composite); stale print files are removed
+    # the latest r-round's prints (pages/<id>-rN-print.jpg), then the pages that
+    # name a newer print in plates.json ("print": app/prints/<id>-v2-print.webp)
+    # replace theirs; a page whose plate changed and was not re-printed shows the
+    # live composite. Stale print files are removed.
     files = sorted((SRC / "pages").glob("*-print.jpg"))
     rounds = sorted({m.group(1) for f in files for m in [re.search(r"-(r\d+)-print$", f.stem)] if m})
     latest = rounds[-1] if rounds else None
     files = [f for f in files if (latest and f.stem.endswith(f"-{latest}-print")) or (not latest)]
+    chosen = {re.sub(r"(-r\d+)?-print$", "", f.stem): f for f in files}
+    for pid, pg in BOOK_PAGES.items():
+        if pg.get("print"):
+            chosen[pid] = SRC / pg["print"]
+    for pid, pg in BOOK_PAGES.items():
+        # a page on a v2 plate with no v2 print: its old print shows the old plate
+        if pid in chosen and VERSION.sub("", pg["plate"]) != pg["plate"] and pg["plate"].endswith("-v2") and not pg.get("print"):
+            del chosen[pid]
     for old in out_dir.glob("*.webp"):
         old.unlink()
-    for f in files:
-        pid = re.sub(r"(-r\d+)?-print$", "", f.stem)
+    for pid, f in sorted(chosen.items()):
+        if pid not in BOOK_PAGES:
+            continue
         im = Image.open(f).convert("RGB")
         im.save(out_dir / f"{pid}.webp", "WEBP", quality=85, method=6)
         found[pid] = {"file": f"prints/{pid}.webp", "w": im.width, "h": im.height}
-        print("print", pid, (out_dir / f"{pid}.webp").stat().st_size)
+        print("print", pid, "<-", f.name, (out_dir / f"{pid}.webp").stat().st_size)
     man_path = SHEET_OUT / "manifest.json"
     man = json.load(open(man_path, encoding="utf-8")) if man_path.exists() else {"id": args.sheet, "poses": {}}
     man["prints"] = found
@@ -280,7 +294,7 @@ def geometry():
         "sword": {"x": sw["x"], "y": r4(sw["y"] - sw["scale"] * 0.5), "to": {"x": r4(ri["sword"][0]), "y": r4(ri["sword"][1])}},
     }
 
-    # p7c: plates.json gives the AFTER state (running down); before = p6c's seated slot.
+    # p7c: plates.json gives the AFTER state (v2: standing tall); before = p6c's seated slot.
     p7c = pages["p7c"]
     p7c["heroAfter"] = p7c["hero"]
     p7c["hero"] = dict(pages["p6c"]["hero"])
@@ -290,12 +304,18 @@ def geometry():
     boom = [l for l in G["pages"]["p9-boom"]["layers"] if "dust-cloud" in l["file"]][0]
     oid, o = overlay_of(boom, "dust-cloud", {"reveal": "afterNarration", "z": "under"})
     pages["p9"].setdefault("overlays", {})[oid] = o
+    # v2: p9's states [p9, p9-boom, p9-rise] - the rise plate is a plate of its
+    # own (the book's artStates name it; the hero slot is unchanged)
+    for st in G["pages"]["p9"].get("states", []):
+        sp = G["pages"].get(st, {}).get("plate")
+        if sp and sp != G["pages"]["p9"]["plate"] and base_plate(sp) not in plates:
+            print("WARNING: p9 state plate not shipped:", sp)
 
     scene_choices = PLATES_OUT / "choices"
     choice_art = {f.stem: f"choices/{f.name}" for f in sorted(scene_choices.glob("*.webp"))} if scene_choices.exists() else {}
     out = {
         **({"choiceArt": choice_art} if choice_art else {}),
-        "_note": "GENERATED by app/scripts/import-book-art.py from proof-art/david/plates.json (art agent, 5 Oct). Fractions of the 3:2 master. Schema: src/lib/library/bookGeometry.ts. Re-run the script; do not hand-edit.",
+        "_note": "GENERATED by app/scripts/import-book-art.py from proof-art/david/app/plates.json (art agent, round 3 / manuscript v2, 6 Oct). Fractions of the 3:2 master. Schema: src/lib/library/bookGeometry.ts. Re-run the script; do not hand-edit.",
         "plates": plates,
         "pages": pages,
     }

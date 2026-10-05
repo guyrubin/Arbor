@@ -281,13 +281,11 @@ describe("Five Smooth Stones (the proof) — manuscript specifics", () => {
     expect(spreads).toEqual(["cover", "p10", "p5", "p9"]);
   });
 
-  it("uses the 9 plates of §5.1 (4 of them edits) and the 9 poses of §5.2", () => {
-    const plateIds = new Set(pagesOf.map((p) => p.plateId));
-    plateIds.delete("PL3e"); // v2 round 3 (p3b), once delivered
-    expect(plateIds).toEqual(new Set(["PL1", "PL1b", "PL1d", "PL3", "PL3w", "PL4", "PL4e", "PL6", "PL7"]));
-    const variants = Object.values(BOOK_PLATES[book.id]).filter((p) => p.variantOf && p.id !== "PL3e" && p.id !== "PL7-rise").map((p) => p.id).sort();
-    // + PL7-dust, registered but unused (the edit re-framed; the dust overlay is used)
-    expect(variants).toEqual(["PL1b", "PL1d", "PL3w", "PL4e", "PL7-dust"]);
+  it("round 3 (v2): the plates the pages name, the edits, and the poses", () => {
+    expect(new Set(pagesOf.map((p) => p.plateId))).toEqual(new Set(["PL1", "PL1b", "PL1d", "PL3", "PL3e", "PL3w2", "PL3w3", "PL4", "PL4e", "PL6", "PL7"]));
+    const variants = Object.values(BOOK_PLATES[book.id]).filter((p) => p.variantOf).map((p) => p.id).sort();
+    // + PL3w (the r2 day plate, now unused), PL7-dust (registered, unused) and PL7-rise (p9's third art state)
+    expect(variants).toEqual(["PL1b", "PL1d", "PL3e", "PL3w", "PL3w2", "PL3w3", "PL4e", "PL7-dust", "PL7-rise"]);
     const poses = new Set(pagesOf.flatMap((p) => slots(p).map((s) => s.pose)));
     // the art agent's poses (LOG.md §1 + Round 2): left-facing variants keep the
     // key light upper-left; round 2 added look-across (cover), sling-swing-face-right (p9), squat-look (p8)
