@@ -36,6 +36,9 @@ export const en: Record<string, string> = {
   "elev.kids.memory.done.sub": "You found every pair.",
   "elev.kids.memory.again": "Play again",
   "elev.kids.memory.hiddenCard": "Hidden card",
+  // B-KID-48 (KA-25): the hero picture's alt (shared HeroAvatar — parent + kid).
+  "elev.kids.hero.alt": "{name}, the hero",
+  "elev.kids.hero.altUnnamed": "Your hero",
   "elev.kids.reading.title": "Spell Forge",
   "elev.kids.reading.say": "Trace a letter, build its sound, and read it like a hero.",
   "elev.kids.arcade.chooseSay": "Pick a world and start playing.",
@@ -96,6 +99,8 @@ export const he: Record<string, string> = {
   "elev.kids.memory.done.sub": "מצאתם כל זוג וזוג.",
   "elev.kids.memory.again": "לשחק שוב",
   "elev.kids.memory.hiddenCard": "קלף הפוך",
+  "elev.kids.hero.alt": "הדמות של {name}",
+  "elev.kids.hero.altUnnamed": "הדמות שלכם",
   "elev.kids.reading.title": "נפחיית המילים",
   "elev.kids.reading.say": "עוברים על אות, בונים את הצליל שלה וקוראים כמו גיבורים.",
   "elev.kids.arcade.chooseSay": "בוחרים עולם ומתחילים לשחק.",

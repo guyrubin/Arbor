@@ -28,6 +28,8 @@
 export const en: Record<string, string> = {
   // ── elev.kid — Kid Mode shell (RUN-21 greeting, KID-22 crash fallback)
   "elev.kid.greeting.ready": "Ready for today's adventure?",
+  // B-KID-48 (KA-25): a child with no first name is greeted without one.
+  "elev.kid.greeting.noName": "Hi there!",
   "elev.kid.greeting.playedYesterday": "You played {world} yesterday",
   "elev.kid.crash.title": "Oops — let's go back to the map",
   "elev.kid.crash.home": "Home",
@@ -186,6 +188,7 @@ export const en: Record<string, string> = {
 
 export const he: Record<string, string> = {
   "elev.kid.greeting.ready": "מוכנים להרפתקה של היום?",
+  "elev.kid.greeting.noName": "היי!",
   "elev.kid.greeting.playedYesterday": "אתמול שיחקתם ב{world}",
   "elev.kid.crash.title": "אופס — בואו נחזור למפה",
   "elev.kid.crash.home": "בית",

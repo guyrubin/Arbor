@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { useArbor } from "../../context/ArborContext";
+import { translate } from "../../lib/i18n";
+import { HERO_NAME_FALLBACK } from "../../lib/heroNameFallback";
 import { ArborMascot, type MascotMood } from "./ArborMascot";
 import { normalizeAvatarStyle } from "../../lib/avatarStyle";
 
@@ -52,7 +54,7 @@ export function useHeroAvatar() {
   // `isGenerated` = a stylized, privacy-safe hero (descriptor) — safe to embed in
   // shareable/clinical documents; a real `photo` avatar is never auto-embedded.
   const isGenerated = childProfile.avatar?.source === "descriptor";
-  return { url, style: normalizeAvatarStyle(childProfile.avatar?.style), isGenerated, hasHero: !!url, name: childProfile.name?.split(" ")[0] || "your child" };
+  return { url, style: normalizeAvatarStyle(childProfile.avatar?.style), isGenerated, hasHero: !!url, name: childProfile.name?.split(" ")[0] || HERO_NAME_FALLBACK };
 }
 
 export function HeroAvatar({
@@ -79,6 +81,8 @@ export function HeroAvatar({
   className?: string;
 }) {
   const { url, name } = useHeroAvatar();
+  // The document language LanguageContext sets (uiLang); English where there is no DOM.
+  const lang = typeof document !== "undefined" && document.documentElement.lang === "he" ? "he" : "en";
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
 
   // No generated hero yet → Sprout keeps the surface warm.
@@ -109,7 +113,7 @@ export function HeroAvatar({
           key={url}
           src={url}
           onError={() => setFailedUrl(url)}
-          alt={decorative ? "" : alt || `${name}, the hero`}
+          alt={decorative ? "" : alt || (name === HERO_NAME_FALLBACK ? translate(lang, "elev.kids.hero.altUnnamed") : translate(lang, "elev.kids.hero.alt", { name }))}
           aria-hidden={decorative || undefined}
           referrerPolicy="no-referrer"
           className="w-full h-full rounded-full object-cover"

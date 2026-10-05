@@ -63,7 +63,7 @@ const EN: Record<KidsStoriesKey, string> = {
 };
 
 const HE: Record<KidsStoriesKey, string> = {
-  "shelf.title": "קומיקס הגיבורים",
+  "shelf.title": "קומיקס גיבורים",
   "shelf.subtitle": "הקומיקסים שלכם — פתחו אחד וקראו שוב",
   "shelf.empty": "מדף הקומיקס שלכם מחכה",
   "shelf.emptyHint": "קראו סיפור גיבורים והקומיקס שלכם יופיע כאן.",

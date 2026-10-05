@@ -33,6 +33,7 @@ import { useArbor } from "../../context/ArborContext";
 import type { AvatarStyle } from "../../lib/api";
 import { useLanguage } from "../../context/LanguageContext";
 import { useHeroAvatar, HeroAvatar } from "../ui/HeroAvatar";
+import { HERO_NAME_FALLBACK } from "../../lib/heroNameFallback";
 import { usePracticeData } from "../../practice/usePracticeData";
 import WorldScene from "../practice/WorldScene";
 import { useKidTheme } from "../../hooks/useKidTheme";
@@ -436,7 +437,7 @@ export default function KidDashboard({
         <HeroAvatar size={KID_HOME_HEADER_BLOCK} mood="wave" ring decorative />
         <div style={{ minInlineSize: 0 }}>
           <div style={{ fontFamily: "var(--font-display)", fontWeight: 900, fontSize: "var(--t-2xl)", color: "var(--arbor-sky-ink)", lineHeight: 1.05 }}>
-            {kt("kid.greeting", { name: hero.name })}
+            {hero.name === HERO_NAME_FALLBACK ? kt("elev.kid.greeting.noName") : kt("kid.greeting", { name: hero.name })}
           </div>
           <div style={{ fontSize: "var(--t-sm)", color: "var(--arbor-muted)" }}>{greetingSub}</div>
         </div>
