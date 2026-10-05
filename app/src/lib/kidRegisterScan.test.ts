@@ -337,7 +337,10 @@ describe("kid-register scanner — positive controls (planted violations are see
     ["adultWords", '<Icon name="photo_camera" size={16} /> Turn on mirror'],
     ["adultWords", '<Icon name="photo_camera" size={32} className="mx-auto mb-3" />'],
     ["adultWords", '<p>use the mirror game above and you be the judge!</p>'],
-    ["adultWords", 'say={t("prac.adventures.sub", { name: first })}'], // the KEY resolves to "…never feels like a test."
+    // The key-resolution half: a parent key leaking into a kid branch. The original planted key
+    // (prac.adventures.sub, "…It never feels like a test.") lost that clause in 955941c, so the
+    // control now plants a key whose value still carries the grown-up words.
+    ["adultWords", 'say={t("prac.mimic.face.sub", { name: first })}'], // the KEY resolves to "…camera scores the shape…"
     ["lockGlyph", '<Icon name="lock" size={14} /> {cosmeticLabel(next.cosmetic.id)}'],
     ["lockGlyph", "<span>🔒 All-rounder - Play in all 5 areas</span>"],
     ["pct", "<span>{powerPct}%</span>"],
