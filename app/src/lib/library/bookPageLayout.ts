@@ -227,7 +227,7 @@ interface Ctx {
   floors: number[];
 }
 
-/** Largest type in [max, floor] whose words fit in `room` at `width`. */
+/** Largest type in [max, floor] whose words fit in the room left at this width. */
 function fitType(c: Ctx, width: number, room: (type: number) => number, max: number, floor: number): number {
   for (let type = max; type >= floor; type--) if (estimateTextHeight(c.content.paras, width, type, c.lineHeight) <= room(type)) return type;
   return 0;

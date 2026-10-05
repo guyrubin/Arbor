@@ -64,7 +64,7 @@ export function makePlate(
   bookId: string,
   id: string,
   light: LightRig,
-  extra: Partial<Pick<BookPlate, "variantOf" | "window" | "textZone" | "focus" | "fg" | "width" | "height">> = {},
+  extra: Partial<Omit<BookPlate, "id" | "bookId" | "file" | "light" | "provenance">> = {},
 ): BookPlate {
   return {
     id,
@@ -99,7 +99,7 @@ export function overlaySources(bookId: string, overlay: { id: string; file: stri
 
 /** CSS background geometry that shows `rect` of a plate inside a box of
  *  `boxW` x `boxH` px (cover-fit, centred on the rect, never stretched). */
-export function focusBackground(p: Pick<BookPlate, "width" | "height">, rect: PlateRect, boxW: number, boxH: number): { size: string; position: string } {
+export function focusBackground(p: { width: number; height: number }, rect: PlateRect, boxW: number, boxH: number): { size: string; position: string } {
   const rw = rect.w * p.width;
   const rh = rect.h * p.height;
   const scale = Math.max(boxW / rw, boxH / rh);
