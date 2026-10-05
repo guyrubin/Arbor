@@ -489,11 +489,11 @@ describe("RUN-01 — the development snapshot never reads as a deficit list", ()
     for (const title of infantTitles) expect(md, `infant milestone leaked: ${title}`).not.toContain(title);
   });
 
-  it("windows the denominator to the 4- and 5-year checklists and uses Development's human labels", () => {
+  it("W2-CAREPRO c2 r1: the snapshot is numerator-only and uses Development's human labels", () => {
     const md = text();
-    const inWindow = ALL_MILESTONES.filter((m) => typeof m.ageMonths === "number" && m.ageMonths >= 48 && m.ageMonths < 72);
-    expect(md).toContain(`1 of ${inWindow.length} milestones on the 5 years checklists noticed so far.`);
-    expect(md).toContain("Thinking & attention:");
+    expect(md).toContain("1 milestone noticed so far (most recent 2026-06-10).");
+    expect(md).not.toMatch(/\d+ of \d+/);
+    expect(md).not.toContain("checklists");
     expect(md).toContain(`Observed (1): ${fourYearItem.title} (${humanDomainLabel(fourYearItem.domain)}, 2026-06-10)`);
     expect(md).not.toContain(`of ${ALL_MILESTONES.length} `);
   });

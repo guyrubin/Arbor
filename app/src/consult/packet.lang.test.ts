@@ -186,7 +186,7 @@ const latinLeft = (text: string) => {
 describe("B-CAREPRO-32 · Hebrew packet items", () => {
   it("non-vacuity: the fixture fills every keyed item kind", () => {
     const ids = hePacket.sections.flatMap((s) => s.items.map((i) => i.id));
-    for (const id of ["about-basics", "about-school", "about-strengths", "about-focus", "pattern-0", "dev-overall", "dev-observed", "dev-not-sure", "dev-0", "tried-0", "lang-0", "growth-0", "trigger-0", "delta-logs", "delta-plans", "delta-milestones"]) {
+    for (const id of ["about-basics", "about-school", "about-strengths", "about-focus", "pattern-0", "dev-noticed", "dev-observed", "dev-not-sure", "tried-0", "lang-0", "growth-0", "trigger-0", "delta-logs", "delta-plans", "delta-milestones"]) {
       expect(ids, id).toContain(id);
     }
   });

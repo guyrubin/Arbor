@@ -11,9 +11,9 @@
 import { ClinicalLanguageError, findClinicalDiagnosisTerm, findTeacherBlockedTerm } from "../lib/clinicalScan";
 import { isolate, translate, type UiLang } from "../lib/i18n";
 import { DOMAIN_LABEL } from "../lib/screening";
-import { bandForAgeMonths, milestoneAgeWindow } from "../lib/milestoneData";
+import { milestoneAgeWindow } from "../lib/milestoneData";
 import { ageLabel, ageLabelForMonths, ageMonthsFromProfile } from "../lib/childAge";
-import { behaviorTypeLabel } from "../content/behaviorTaxonomy";
+import { MOMENT_BEHAVIOR_TYPE, behaviorTypeLabel, isIncidentType } from "../content/behaviorTaxonomy";
 import { factMonthLabel } from "../lib/factsAsOf";
 
 export interface PacketInputProfile {
@@ -104,7 +104,10 @@ export type PacketVar =
   | { momentType: string }
   | { languageName: string }
   /** B-CAREPRO-33: an ISO date rendered as its month + year in the reader's language. */
-  | { monthOf: string };
+  | { monthOf: string }
+  /** W2-CAREPRO c2 r1: an ISO day rendered in the reader's language ("12 בספט׳
+   *  2026") — a raw "2026-09-12" splits and reverses inside a Hebrew line. */
+  | { dayOf: string };
 
 /** LC-13 / B-CAREPRO-32: `text` is the English line (every existing reader
  *  keeps working and English output is byte-identical); `textKey` + `vars`
@@ -153,6 +156,7 @@ function resolveVar(v: PacketVar, lang: UiLang): string | number {
   if ("ageMonths" in v) return ageLabelForMonths(v.ageMonths, (k, vars) => translate(lang, k, vars));
   if ("momentType" in v) return behaviorTypeLabel(v.momentType, (k) => translate(lang, k), "full");
   if ("monthOf" in v) return factMonthLabel(v.monthOf, lang);
+  if ("dayOf" in v) return readerDay(v.dayOf, lang);
   const raw = v.languageName.trim();
   // "Hebrew (Native)" → name + proficiency, each through its own key.
   const m = /^(.+?)\s*\(([^)]+)\)$/.exec(raw);
@@ -179,6 +183,17 @@ export function itemText(item: PacketItem, lang: UiLang = "en"): string {
   if (lang === "en" || !item.textKey) return item.text;
   return translate(lang, item.textKey, resolveVars(item.vars, lang));
 }
+
+/** W2-CAREPRO c2 r1 — an ISO day (YYYY-MM-DD) as the reader reads a date.
+ *  English keeps the ISO form (byte-identical exports); Hebrew gets
+ *  "12 בספט׳ 2026", which never reorders inside an RTL line. */
+function readerDay(iso: string, lang: UiLang): string {
+  if (lang === "en") return iso;
+  const t = Date.parse(`${iso.slice(0, 10)}T12:00:00Z`);
+  if (!Number.isFinite(t)) return iso;
+  return new Intl.DateTimeFormat("he-IL", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(t);
+}
+const dayVar = (iso: string): PacketVar => ({ dayOf: iso });
 
 /** "N time(s)" in the reader's language. */
 const timesVar = (n: number): PacketVar => ({ key: n === 1 ? "elev.packet.times.one" : "elev.packet.times.other", vars: { n } });
@@ -222,6 +237,8 @@ export interface BuildPacketInput {
   memory: PacketInputMemory[];
   nowMs: number;
   windowDays?: number;
+  /** W2-CAREPRO c2 r1: the moments section's own window (the week share = 7). */
+  momentsWindowDays?: number;
   /** CARE-7: when this audience last received an export (ISO or ms). Present
    *  ⇒ the packet gains a computed, counts-only "Since the last export" delta
    *  section. Absent (no prior export) ⇒ no delta section — fail quiet. */
@@ -532,9 +549,13 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
   sections.push({ id: "about", title: `About ${profile.name}`, titleKey: "elev.packet.section.about", titleVars: { name: profile.name }, items: aboutItems });
 
   // 2) What's been happening — top recent concerns by frequency.
-  if (recent.length) {
+  //    W2-CAREPRO c2 r1: a joyful Moment is never a behaviour-pattern row
+  //    ("Moment: 12 times" beside Transition Refusal) — moments get their own
+  //    numerator line and the parent's quotes in section 2b below.
+  const recentConcerns = recent.filter((l) => l.behaviorType !== MOMENT_BEHAVIOR_TYPE);
+  if (recentConcerns.length) {
     const counts = new Map<string, { n: number; maxIntensity: number }>();
-    for (const l of recent) {
+    for (const l of recentConcerns) {
       const c = counts.get(l.behaviorType) ?? { n: 0, maxIntensity: 0 };
       c.n += 1; c.maxIntensity = Math.max(c.maxIntensity, l.intensity);
       counts.set(l.behaviorType, c);
@@ -559,6 +580,39 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
     });
   }
 
+  // 2b) W2-CAREPRO c2 r1 — the everyday moments, as moments: one numerator
+  //     line and the parent's own words (newest first, dated), never AI text.
+  //     The week share (story_timeline) releases exactly this section.
+  const momentsWindow = input.momentsWindowDays ?? windowDays;
+  const momentsSince = nowMs - momentsWindow * DAY;
+  const moments = logs
+    .filter((l) => l.behaviorType === MOMENT_BEHAVIOR_TYPE && toMs(l.timestamp) >= momentsSince)
+    .sort((a, b) => toMs(b.timestamp) - toMs(a.timestamp));
+  if (moments.length) {
+    const quoted = moments
+      .map((l) => ({ words: (l.trigger ?? "").trim(), day: isoDay(l.timestamp) }))
+      .filter((q) => q.words)
+      .slice(0, 3);
+    sections.push({
+      id: "moments",
+      title: "Everyday moments",
+      titleKey: "elev.packet.section.moments",
+      note: "The parent's own words, as kept at home.",
+      noteKey: "elev.packet.note.moments",
+      items: [
+        {
+          id: "moments-count",
+          text: `${moments.length} moment${moments.length === 1 ? "" : "s"} kept in the last ${momentsWindow} days.`,
+          textKey: moments.length === 1 ? "elev.packet.item.momentsOne" : "elev.packet.item.moments",
+          vars: { n: moments.length, days: momentsWindow },
+        },
+        ...quoted.map((q, i): PacketItem => (q.day
+          ? { id: `moment-${i}`, text: `"${q.words}" (${q.day})`, textKey: "elev.packet.item.momentQuoteDated", vars: { quote: q.words, date: dayVar(q.day) } }
+          : { id: `moment-${i}`, text: `"${q.words}"`, textKey: "elev.packet.item.momentQuote", vars: { quote: q.words } })),
+      ],
+    });
+  }
+
   // 3) Development snapshot — milestone coverage in the parent's OWN response
   //    groups (UND-4 / AR-CAP-08: the packet preserves observed / not sure,
   //    with observation dates — for a provider, "parent is unsure" is a useful
@@ -572,9 +626,6 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
   const observed = milestones.filter((m) => effectiveObservation(m) === "yes");
   const notSure = milestones.filter((m) => effectiveObservation(m) === "not_sure");
   if (observed.length || notSure.length) {
-    const childMonths = childAgeMonthsOf(profile);
-    const inWindow = milestones.filter((m) => milestoneInAgeWindow(m.ageMonths, childMonths));
-    const observedInWindow = inWindow.filter((m) => effectiveObservation(m) === "yes");
     const MAX_LISTED = 6;
     const groupLine = (id: string, label: string, labelKey: string, group: PacketInputMilestone[]): PacketItem | null => {
       if (group.length === 0) return null;
@@ -589,7 +640,7 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
       const entries: PacketVar[] = shown.map((m) => {
         const date = isoDay(m.observedAt);
         return date
-          ? { key: "elev.packet.item.milestoneDated", vars: { title: m.title, domain: domainVar(m.domain), date } }
+          ? { key: "elev.packet.item.milestoneDated", vars: { title: m.title, domain: domainVar(m.domain), date: dayVar(date) } }
           : { key: "elev.packet.item.milestone", vars: { title: m.title, domain: domainVar(m.domain) } };
       });
       return {
@@ -599,35 +650,33 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
         vars: { label: { key: labelKey }, n: group.length, list: { list: entries, join: "semicolon" }, ...(group.length > MAX_LISTED ? { more: group.length - MAX_LISTED } : {}) },
       };
     };
-    const byDomain = new Map<string, { done: number; total: number }>();
-    for (const m of inWindow) {
-      const d = byDomain.get(m.domain) ?? { done: 0, total: 0 };
-      d.total += 1; if (effectiveObservation(m) === "yes") d.done += 1;
-      byDomain.set(m.domain, d);
-    }
-    const band = bandForAgeMonths(childMonths);
-    const windowLabel = band.label;
-    const overallTotal = observed.length !== observedInWindow.length;
+    // W2-CAREPRO c2 r1 (law 1): the snapshot is NUMERATOR-ONLY. The old
+    // "{done} of {total} milestones on the {band} checklists" line and the
+    // per-domain "{domain}: 0 of N noticed" rows were an x-of-y scoreboard
+    // (whatChangedEvents' own firewall calls "of {total}" / "מתוך" a verdict),
+    // and they were false: an unmarked item is "never asked", and a window-
+    // scoped "0 of 8" sat under an observed language milestone. One count
+    // source — the observed list — heads the section and equals its length.
+    const latest = observed
+      .map((m) => isoDay(m.observedAt))
+      .filter((d): d is string => d !== null)
+      .sort()
+      .pop();
+    const n = observed.length;
+    const noticedText = n === 1 ? "1 milestone noticed so far" : `${n} milestones noticed so far`;
     const items: PacketItem[] = [
-      {
-        id: "dev-overall",
-        text: `${observedInWindow.length} of ${inWindow.length} milestones on the ${windowLabel} checklists noticed so far` +
-          (overallTotal ? ` (${observed.length} noticed in total).` : "."),
-        textKey: overallTotal ? "elev.packet.item.devOverallTotal" : "elev.packet.item.devOverall",
-        vars: { done: observedInWindow.length, total: inWindow.length, band: { ageMonths: band.months }, all: observed.length },
-      },
+      ...(n > 0
+        ? [{
+            id: "dev-noticed",
+            text: latest ? `${noticedText} (most recent ${latest}).` : `${noticedText}.`,
+            textKey: `elev.packet.item.devNoticed${n === 1 ? "One" : ""}${latest ? "Dated" : ""}`,
+            vars: { n, ...(latest ? { date: dayVar(latest) } : {}) },
+          }]
+        : []),
       ...[
         groupLine("dev-observed", "Observed", "elev.packet.item.observed", observed),
         groupLine("dev-not-sure", "Not sure yet", "elev.packet.item.notSure", notSure),
       ].filter((it): it is PacketItem => it !== null),
-      ...[...byDomain.entries()]
-        .filter(([, d]) => d.total > 0)
-        .map(([domain, d], i) => ({
-          id: `dev-${i}`,
-          text: `${humanDomainLabel(domain)}: ${d.done} of ${d.total} noticed.`,
-          textKey: "elev.packet.item.devDomain",
-          vars: { domain: domainVar(domain), done: d.done, total: d.total },
-        })),
     ];
     sections.push({ id: "development", title: "Development snapshot", titleKey: "elev.packet.section.development", items });
   }
@@ -667,7 +716,7 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
         id: `lang-${i}`,
         text,
         textKey: `elev.packet.item.phrase${o.language ? "Lang" : ""}${day ? "Dated" : ""}`,
-        vars: { phrase: o.phrase, language: { languageName: o.language ?? "" }, date: day ?? "" },
+        vars: { phrase: o.phrase, language: { languageName: o.language ?? "" }, date: day ? dayVar(day) : "" },
       };
     });
     sections.push({
@@ -699,7 +748,7 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
           id: `growth-${i}`,
           text: `${isoDay(g.date) ?? g.date}: ${parts.join(", ")}`,
           textKey: "elev.packet.item.measurement",
-          vars: { date: isoDay(g.date) ?? g.date, parts: { list: partVars, join: "comma" as const } },
+          vars: { date: dayVar(isoDay(g.date) ?? g.date), parts: { list: partVars, join: "comma" as const } },
         };
       })
       .filter((it) => !/: $/.test(it.text));
@@ -717,8 +766,12 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
   // 5d) LC-20 — behavioural evidence: what the parent noticed came BEFORE the
   //     hard moments, in their own words, with counts. Only the behavioral
   //     health preset's ceiling includes it.
+  //     W2-CAREPRO c2 r1: ONLY incident-shaped logs — a moment stores its
+  //     words in `trigger` too (buildMomentLog), and "Shared the red car" is
+  //     not what preceded a hard moment.
   const triggerCounts = new Map<string, number>();
   for (const l of recent) {
+    if (!isIncidentType(l.behaviorType)) continue;
     const trigger = (l.trigger ?? "").trim();
     if (trigger) triggerCounts.set(trigger, (triggerCounts.get(trigger) ?? 0) + 1);
   }
@@ -927,7 +980,7 @@ const PARENT_VOICE_SECTIONS = ["reason", "questions"] as const;
  *  then adds the ONE evidence section its own discipline actually reads
  *  (LC-20: four "professional" reports used to be byte-identical documents
  *  that differed only in their title). */
-const CLINICIAN_SECTIONS = ["about", "patterns", "development", "tried", "memory", "since-last-visit"] as const;
+const CLINICIAN_SECTIONS = ["about", "patterns", "moments", "development", "tried", "memory", "since-last-visit"] as const;
 const CLINICIAN_CEILING = { logDerivedPatterns: true, approvedMemoryFacts: true } as const;
 const clinicianPreset = (audience: ConsultAudience, extraSections: readonly string[] = []): ConsultPreset => ({
   audience,
@@ -1042,7 +1095,9 @@ export function serializePresetPacket(
  *  scope not in this map (e.g. an unmigrated legacy string) unlocks nothing.
  *  The report_* scopes mirror their audience preset ceilings exactly. */
 export const SHARED_SCOPE_SECTIONS: Record<string, readonly string[]> = {
-  story_timeline: ["patterns"],
+  // W2-CAREPRO c2 r1: the week card promises "the story timeline" — it now
+  // releases the parent's own moments (7-day window for the week grant).
+  story_timeline: ["moments"],
   weekly_insight: ["patterns", "development"],
   behavior_patterns: ["patterns"],
   milestones: ["development"],
@@ -1070,8 +1125,21 @@ export function buildSharedScopePacket(
   for (const scope of scopes) {
     for (const sectionId of SHARED_SCOPE_SECTIONS[scope] ?? []) allowed.add(sectionId);
   }
-  const packet = buildConsultPacket(input);
-  const capped: ConsultPacket = { ...packet, sections: packet.sections.filter((s) => allowed.has(s.id)) };
+  // W2-CAREPRO c2 r1: the week grant ("Share {name}'s week") reads the week —
+  // a 7-day window for its patterns and moments, never 30-day counts.
+  const weekGrant = scopes.includes("story_timeline") && scopes.every((s) => s === "story_timeline" || s === "weekly_insight");
+  const packet = buildConsultPacket(weekGrant ? { ...input, windowDays: 7, momentsWindowDays: 7 } : input);
+  // A parent's own moment words are quoted, never scanned into a blocked view:
+  // for a non-clinician recipient a quote that trips the diagnosis-term scan
+  // is dropped (fail closed on the line, not on the whole share).
+  const keepItem = (sectionId: string, it: PacketItem) =>
+    recipientIsClinician || sectionId !== "moments" || !it.id.startsWith("moment-") || !findClinicalDiagnosisTerm(it.text);
+  const capped: ConsultPacket = {
+    ...packet,
+    sections: packet.sections
+      .filter((s) => allowed.has(s.id))
+      .map((s) => ({ ...s, items: s.items.filter((it) => keepItem(s.id, it)) })),
+  };
   const guardPreset: ConsultPreset = recipientIsClinician
     ? CONSULT_PRESETS.therapist
     : { audience: "teacher", sections: [...allowed], dataCeiling: CONSULT_PRESETS.teacher.dataCeiling, clinicalTermScan: true };

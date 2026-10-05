@@ -31,6 +31,8 @@ const record = (over: Partial<SharedChildRecord> = {}): SharedChildRecord => ({
   logs: [
     { behaviorType: "Morning refusal", intensity: 2, timestamp: new Date(NOW - 2 * 86400000).toISOString(), trigger: RAW_TRIGGER, response: RAW_RESPONSE, resolved: true },
     { behaviorType: "Morning refusal", intensity: 3, timestamp: new Date(NOW - 3 * 86400000).toISOString(), trigger: RAW_TRIGGER },
+    // W2-CAREPRO c2 r1: a plain moment — the week share's story timeline quotes it.
+    { behaviorType: "Moment", intensity: 1, timestamp: new Date(NOW - 1 * 86400000).toISOString(), trigger: "Sang the whole bath song", resolved: true },
   ],
   milestones: [
     { domain: "Language", title: "Uses full sentences", checked: true },
@@ -124,8 +126,18 @@ describe("CARE-2 resolveSharedPacket — the recipient sees EXACTLY the granted 
     return r.view.sections.map((s) => s.id);
   };
 
-  it("story_timeline → the counts-only patterns section, nothing else", async () => {
-    expect(await sectionIds(["story_timeline"])).toEqual(["patterns"]);
+  it("story_timeline → the parent's moments section, nothing else (W2-CAREPRO c2 r1)", async () => {
+    expect(await sectionIds(["story_timeline"])).toEqual(["moments"]);
+  });
+
+  it("story_timeline quotes a Moment's words and never an incident trigger", async () => {
+    const store = new LocalShareStore();
+    const g = await makeGrant(store, { scopes: ["story_timeline"] });
+    const r = await resolve(store, g.id, RECIPIENT);
+    if (r.status !== 200) throw new Error("unreachable");
+    const text = r.view.sections.flatMap((s) => s.items.map((i) => i.text)).join(" | ");
+    expect(text).toContain("Sang the whole bath song");
+    expect(text).not.toContain(RAW_TRIGGER);
   });
 
   it("behavior_patterns → patterns only", async () => {
@@ -145,7 +157,7 @@ describe("CARE-2 resolveSharedPacket — the recipient sees EXACTLY the granted 
   });
 
   it("report_therapist (professional) → the clinician preset ceiling", async () => {
-    expect(await sectionIds(["report_therapist"], "professional")).toEqual(["about", "patterns", "development", "tried", "memory"]);
+    expect(await sectionIds(["report_therapist"], "professional")).toEqual(["about", "patterns", "moments", "development", "tried", "memory"]);
   });
 
   it("pre-CARE-3 legacy English labels resolve through the fail-closed map", async () => {
@@ -155,7 +167,7 @@ describe("CARE-2 resolveSharedPacket — the recipient sees EXACTLY the granted 
     expect(r.status).toBe(200);
     if (r.status !== 200) throw new Error("unreachable");
     expect(r.view.scopes).toEqual(["story_timeline"]);
-    expect(r.view.sections.map((s) => s.id)).toEqual(["patterns"]);
+    expect(r.view.sections.map((s) => s.id)).toEqual(["moments"]);
   });
 });
 
@@ -186,7 +198,7 @@ describe("CARE-2 — no raw subcollection documents ever reach a recipient", () 
     }
   });
 
-  it("counts-only by construction: patterns lines are frequency counts, development lines are x/y counts", async () => {
+  it("counts-only by construction: patterns lines are frequency counts, development lines are numerators (W2-CAREPRO c2 r1)", async () => {
     const store = new LocalShareStore();
     const g = await makeGrant(store, { scopes: ["behavior_patterns", "milestones"] });
     const r = await resolve(store, g.id, RECIPIENT);
@@ -194,7 +206,8 @@ describe("CARE-2 — no raw subcollection documents ever reach a recipient", () 
     if (r.status !== 200) throw new Error("unreachable");
     const text = r.view.sections.flatMap((s) => s.items.map((i) => i.text)).join("\n");
     expect(text).toContain("2 times");            // derived frequency count
-    expect(text).toContain("1 of 2");             // derived milestone count
+    expect(text).toContain("1 milestone noticed so far"); // derived milestone count, numerator only
+    expect(text).not.toMatch(/\d+\s*(of|\/|מתוך)\s*\d+/); // law 1: never x-of-y
     expect(text).not.toMatch(/\d+(\.\d+)?\s*%/);  // never a percentage
   });
 });
@@ -258,6 +271,6 @@ describe("CARE-2 buildSharedScopePacket — scope→section mapping fails closed
 
   it("scopes union without duplication", () => {
     const p = buildSharedScopePacket(["story_timeline", "behavior_patterns", "milestones"], false, input);
-    expect(p.sections.map((s) => s.id)).toEqual(["patterns", "development"]);
+    expect(p.sections.map((s) => s.id)).toEqual(["patterns", "moments", "development"]);
   });
 });
