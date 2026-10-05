@@ -15,7 +15,6 @@ import { usePracticeData } from "../../practice/usePracticeData";
 import MimicMatch from "./MimicMatch";
 import type { MimicSession } from "../../types";
 import { track } from "../../lib/analytics";
-import { isolate } from "../../lib/i18n";
 // AP-050: practice_stamp surface — download a branded hero card on pack completion.
 import { downloadPracticeStampCanvas } from "../../lib/heroAvatarCanvas";
 
@@ -85,7 +84,7 @@ export default function MimicStudioTab() {
       // OBJ-KID-03: the parent gets the diagnosis, the child gets a kid line.
       // No device words, no instruction written for the grown-up in the room.
       let msg = t("elev.play.mimic.mirrorRest");
-      if (!kidMode) { msg = "Camera unavailable — the game works just as well face-to-face. You be the mirror!"; }
+      if (!kidMode) { msg = t("prac.mimic.camUnavailable"); }
       setCamError(msg);
     }
   };
@@ -141,9 +140,9 @@ export default function MimicStudioTab() {
   let headerSay = t("elev.play.mimic.say", { name: first });
   if (!kidMode) { headerSay = t("prac.mimic.sub", { name: first }); }
   let mirrorInvite = t("elev.play.mimic.mirrorSay");
-  if (!kidMode) { mirrorInvite = `Turn on the mirror so ${first} can watch their own mouth while copying you. Local-only — never recorded.`; }
+  if (!kidMode) { mirrorInvite = t("prac.mimic.mirrorInvite", { name: first }); }
   let rateAsk = t("elev.play.mimic.rateAsk");
-  if (!kidMode) { rateAsk = `How did ${isolate(first)}'s copy go?`; }
+  if (!kidMode) { rateAsk = t("prac.mimic.rateAsk", { name: first }); }
   // OBJ-KID-03 fixup (law 2): a Material Symbols LIGATURE is the span's own text
   // content — the font paints a glyph, but innerText (and anything that reads the
   // page as text) returns "photo_camera". The rendered check found five camera

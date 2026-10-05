@@ -1156,6 +1156,10 @@ export const en: Dict = {
   "prac.speech.sub": "Playful articulation practice for {name}: how single sounds and words are formed, one sound at a time. For building more than one language, that's Language & Communication.",
   "prac.mimic.title": "Mimic Studio",
   "prac.mimic.sub": "\"Can you do what I do?\" — face, mouth and sound imitation games for {name}. You model it, {name} mirrors it.",
+  // B-PLAY-08: the three parent-branch Mimic literals, keyed.
+  "prac.mimic.camUnavailable": "Camera unavailable — the game works just as well face-to-face. You be the mirror!",
+  "prac.mimic.mirrorInvite": "Turn on the mirror so {name} can watch their own mouth while copying you. Local-only — never recorded.",
+  "prac.mimic.rateAsk": "How did {name}'s copy go?",
   // mimic studio + speech coach — celebratory win beats (PlayKit Celebrate)
   "prac.mimic.packWin.title": "Pack complete!",
   "prac.mimic.packWin.sub": "{name} played every round in {pack}. That was a good round.",
@@ -3565,6 +3569,9 @@ export const he: Dict = {
   "prac.speech.sub": "תרגול הגייה משחקי ל־{name}: כיצד נוצרים צלילים ומילים בודדים, צליל אחד בכל פעם. לבניית יותר משפה אחת, זה בשפה ותקשורת.",
   "prac.mimic.title": "סטודיו חיקוי",
   "prac.mimic.sub": "\"אפשר לעשות כמוני?\" — משחקי חיקוי של פנים, פה וצלילים ל־{name}. אתם מדגימים, {name} מחקה.",
+  "prac.mimic.camUnavailable": "המצלמה לא זמינה — המשחק עובד באותה מידה פנים מול פנים. אתם המראה!",
+  "prac.mimic.mirrorInvite": "הדליקו את המראה כדי ש{name} יראה/תראה את הפה שלו/ה בזמן החיקוי. מקומי בלבד — לעולם לא מוקלט.",
+  "prac.mimic.rateAsk": "איך הלך החיקוי של {name}?",
   // סטודיו חיקוי + מאמן דיבור — רגעי ניצחון חגיגיים (Celebrate של PlayKit)
   "prac.mimic.packWin.title": "החבילה הושלמה!",
   "prac.mimic.packWin.sub": "{name} שיחק/ה את כל הסבבים ב{pack}. זה היה סבב טוב.",

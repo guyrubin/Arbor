@@ -627,3 +627,29 @@ describe("B-SHELL-23 — no English title= literal in the shell chrome or the pr
     expect(TITLE_LITERAL.test('          title={t("aria.editChildProfile")}')).toBe(false);
   });
 });
+
+describe("B-PLAY-08 (part) — Mimic's parent branch carries no English literal", () => {
+  const mimic = stripComments(readSrc("components/practice/MimicStudioTab.tsx"));
+
+  it("the three parent-branch assignments resolve through t()", () => {
+    expect(mimic).toContain('if (!kidMode) { msg = t("prac.mimic.camUnavailable"); }');
+    expect(mimic).toContain('if (!kidMode) { mirrorInvite = t("prac.mimic.mirrorInvite", { name: first }); }');
+    expect(mimic).toContain('if (!kidMode) { rateAsk = t("prac.mimic.rateAsk", { name: first }); }');
+    // no `if (!kidMode) { x = "English prose" }` / template literal left (icon ligature names have no space)
+    expect(mimic).not.toMatch(/if \(!kidMode\) \{ \w+ = ["`][^"`]*[A-Za-z]{3}[^"`]*\s[^"`]*["`]/);
+  });
+
+  it("each key exists in EN and HE with the name slot", () => {
+    for (const key of ["prac.mimic.camUnavailable", "prac.mimic.mirrorInvite", "prac.mimic.rateAsk"]) {
+      expect(translate("en", key), key).not.toBe(key);
+      expect(HEBREW_SCRIPT.test(translate("he", key)), `${key} HE`).toBe(true);
+    }
+    expect(translate("en", "prac.mimic.rateAsk", { name: "Noa" })).toBe("How did Noa's copy go?");
+    expect(translate("he", "prac.mimic.mirrorInvite", { name: "נועה" })).toContain("נועה");
+  });
+
+  it("NEGATIVE CONTROL: the pre-fix literal trips the scan", () => {
+    const pre = 'if (!kidMode) { rateAsk = `How did ${isolate(first)}\'s copy go?`; }';
+    expect(pre).toMatch(/if \(!kidMode\) \{ \w+ = ["`][^"`]*[A-Za-z]{3}[^"`]*\s[^"`]*["`]/);
+  });
+});
