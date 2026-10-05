@@ -71,7 +71,8 @@ describe("AIX-S3(a) — AskSpecialist: parent-editable prefill, explicit-act sha
     // so changing it re-arms the gate too.
     // LC-20: and so is the reason-for-visit line — it is parent-authored text
     // that rides into every export, so editing it must re-arm the gate as well.
-    const deps = /setReviewed\(false\); \}, \[([^\]]+)\]/.exec(code);
+    // W2-CAREPRO c2 r1: the same effect also collapses the phone preview.
+    const deps = /setReviewed\(false\);(?: setPreviewAll\(false\);)? \}, \[([^\]]+)\]/.exec(code);
     expect(deps).toBeTruthy();
     for (const dep of ["excluded", "visionNote", "reason", "audience", "childProfile.id"]) {
       expect(deps![1]).toContain(dep);

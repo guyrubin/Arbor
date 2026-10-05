@@ -70,7 +70,7 @@ describe("B-CAREPRO-17 · Consult shows 'Since you last shared'", () => {
       recordExport("c1", "pediatrician", new Date(Date.now() - 5 * 86_400_000).toISOString());
       const html = renderToStaticMarkup(<AskSpecialist />);
       const heading = locale === "en" ? "Since you last shared with the pediatrician" : "מאז ששיתפתם בפעם האחרונה עם רופא/ת הילדים";
-      const preview = /data-testid="consult-export-preview"[^>]*>([\s\S]*?)<\/pre>/.exec(html);
+      const preview = /data-testid="consult-export-preview"[^>]*>([\s\S]*?)<\/div>/.exec(html);
       expect(preview, "preview rendered").toBeTruthy();
       expect(preview![1]).toContain(heading);
       // B-CAREPRO-32: the three counts are keyed lines in the reader's language.

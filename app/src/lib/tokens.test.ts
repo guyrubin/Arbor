@@ -454,6 +454,8 @@ const W2_CAREPRO_FLAT_WASHES: Readonly<Record<string, string>> = {
   "--arbor-peach-wash": "#fef2ea",
   "--arbor-lav-wash": "#f7f5ff",
   "--arbor-pink-wash": "#fdeff6",
+  // The one shell token for sticky offsets inside <main> (sub-nav rail + 16px).
+  "--sticky-offset": "calc(1rem + 44px + 16px)",
 };
 
 /** Exact replacements, not permission to change these tokens arbitrarily.

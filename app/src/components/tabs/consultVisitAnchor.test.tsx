@@ -22,13 +22,14 @@ const harness = vi.hoisted(() => ({
   locale: "en" as "en" | "he",
   appts: [] as unknown[],
   followUps: [] as unknown[],
+  logs: null as unknown[] | null,
 }));
 
 vi.mock("../../context/ArborContext", () => ({
   useArbor: () => ({
     childProfile: { id: "c1", name: "Dylan", age: 5, languages: ["English"], schoolContext: "Gan", challenges: [], strengths: ["curious"], interests: [] },
     activeTab: "consult",
-    behaviorLogs: [
+    behaviorLogs: harness.logs ?? [
       { id: "l1", behaviorType: "Moment", intensity: 1, timestamp: new Date(Date.now() - 2 * DAY).toISOString(), notes: "He said 'big truck go' all the way to gan." },
       { id: "l2", behaviorType: "Transition Refusal", intensity: 3, timestamp: new Date(Date.now() - 4 * DAY).toISOString() },
     ],
@@ -80,6 +81,7 @@ beforeEach(() => {
   harness.locale = "en";
   harness.appts = [];
   harness.followUps = [];
+  harness.logs = null;
   installLocalStorage();
 });
 
@@ -130,7 +132,7 @@ describe("W2-CAREPRO r2 · step 2 opens on the record", () => {
       expect(fig).toContain(translate(locale, "elev.carehonesty.consult.sinceMoment.seed"));
       expect(fig).toContain("var(--arbor-peach-soft)");
       expect(fig).toContain("<bdi");
-      const preview = /data-testid="consult-export-preview"[^>]*>([\s\S]*?)<\/pre>/.exec(html)?.[1] ?? "";
+      const preview = /data-testid="consult-export-preview"[^>]*>([\s\S]*?)<\/div>/.exec(html)?.[1] ?? "";
       expect(decode(preview)).not.toContain("big truck go");
     });
   }
@@ -188,5 +190,106 @@ describe("B-CAREPRO-NEW-2a · Consult anchors on the next visit", () => {
     const html = renderToStaticMarkup(<ConsultTab />);
     expect(h1Of(html)).toBe(translate("en", "elev.consult.h1"));
     expect(html).not.toContain('data-testid="consult-visit-outcome"');
+  });
+});
+
+/* W2-CAREPRO c2 r1 — consult critics (product P1 G1 x4, design P1 G0/G1 x6). */
+describe("W2-CAREPRO c2 r1 · a named anchor, the parent's words, step 3 reads first", () => {
+  const donePed = { id: "a9", who: "", role: "Pediatrician", profession: "pediatrician", whenIso: new Date(Date.now() - 16 * DAY).toISOString(), when: "", mode: "In person", status: "done" };
+  const note = { id: "f9", apptId: "a9", note: "Keep reading together in the evening and come back in six months.", createdAt: new Date(Date.now() - 16 * DAY).toISOString() };
+  const decodeHtml = (x: string) => x.replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
+
+  for (const locale of ["en", "he"] as const) {
+    it(`${locale}: a done visit with this audience's profession anchors step 2 — named, with what they said`, () => {
+      harness.locale = locale;
+      harness.appts = [donePed];
+      harness.followUps = [note];
+      localStorage.setItem("arbor.consultExportAudience", "pediatrician");
+      const html = decodeHtml(renderToStaticMarkup(<ConsultTab />));
+      expect(html).toContain('data-anchor="visit"');
+      const line = /<p data-testid="consult-since-counts"[^>]*>([^<]*)<\/p>/.exec(html)![1];
+      const prof = translate(locale, "elev.careNet.appt.profession.pediatrician");
+      expect(line).toContain(locale === "en" ? prof.toLowerCase() : prof);
+      expect(line).toContain(locale === "en" ? "visit on" : "מאז הביקור");
+      expect(line).not.toMatch(/%|\bof\b|מתוך/);
+      const fig = html.slice(html.indexOf('data-testid="consult-visit-note"'));
+      expect(fig).toContain(note.note);
+      expect(fig).toContain(translate(locale, "elev.carehonesty.consult.since.visitNote"));
+    });
+
+    it(`${locale}: no visit and no share → "since you started" on the record's first day; never a bare synthetic date`, () => {
+      harness.locale = locale;
+      const html = renderToStaticMarkup(<ConsultTab />);
+      expect(html).toContain('data-anchor="start"');
+      const line = /<p data-testid="consult-since-counts"[^>]*>([^<]*)<\/p>/.exec(html)![1];
+      expect(line.startsWith(locale === "en" ? "Since you started on" : "מאז שהתחלתם")).toBe(true);
+    });
+
+    it(`${locale}: a capture-sheet moment (words in trigger, no notes) renders consult-since-moment`, async () => {
+      harness.locale = locale;
+      const { buildMomentLog } = await import("../../content/behaviorTaxonomy");
+      const m = buildMomentLog(locale === "he" ? "שר לבד את כל שיר האמבטיה" : "Sang the whole bath song on his own", "Home", {}, new Date(Date.now() - DAY))!;
+      harness.logs = [m];
+      const html = renderToStaticMarkup(<ConsultTab />);
+      const fig = html.slice(html.indexOf('data-testid="consult-since-moment"'), html.indexOf("</figure>", html.indexOf('data-testid="consult-since-moment"')));
+      expect(fig).toContain(m.trigger);
+    });
+
+    it(`${locale}: step 3 = the verbatim preview, then the 44 px reviewed toggle, then Copy · PDF · Send; nothing previewed in step 2`, () => {
+      harness.locale = locale;
+      localStorage.setItem("arbor.consultExportAudience", "pediatrician");
+      const html = renderToStaticMarkup(<ConsultTab />);
+      const step3 = html.indexOf('id="consult-review-export"');
+      const preview = html.indexOf('data-testid="consult-preview"');
+      const reviewed = html.indexOf('data-testid="consult-reviewed"');
+      const copy = html.indexOf('data-testid="consult-copy"');
+      expect(step3).toBeGreaterThan(0);
+      expect(preview).toBeGreaterThan(step3);
+      expect(reviewed).toBeGreaterThan(preview);
+      expect(copy).toBeGreaterThan(reviewed);
+      expect(html).not.toMatch(/<input[^>]*type="checkbox"/);
+      const toggle = html.slice(reviewed, html.indexOf("</button>", reviewed));
+      expect(toggle).toContain('aria-pressed="false"');
+      expect(toggle).toContain("w-11 h-11");
+      expect(html).toContain("lg:top-[var(--sticky-offset)]");
+    });
+
+    it(`${locale}: the preview is clean plain text, one block per line in the reader's direction`, () => {
+      harness.locale = locale;
+      localStorage.setItem("arbor.consultExportAudience", "pediatrician");
+      const html = renderToStaticMarkup(<ConsultTab />);
+      const body = /data-testid="consult-export-preview"[^>]*>([\s\S]*?)<\/div>/.exec(html)![1];
+      const lines = [...body.matchAll(/<p data-line-role="(\w+)" dir="(\w+)"[^>]*>([^<]*)<\/p>/g)];
+      expect(lines.length).toBeGreaterThan(6);
+      expect(lines[0][1]).toBe("title");
+      for (const [, , dir, text] of lines) {
+        expect(dir).toBe(locale === "he" ? "rtl" : "ltr");
+        expect(text).not.toMatch(/^#|\*\*|^_|_$/);
+      }
+      expect(lines.some(([, role, , text]) => role === "item" && text.startsWith("• "))).toBe(true);
+    });
+
+    it(`${locale}: ONE gradient — Build carries it (the stamp); Copy is a solid clay secondary`, () => {
+      harness.locale = locale;
+      localStorage.setItem("arbor.consultExportAudience", "pediatrician");
+      const html = renderToStaticMarkup(<ConsultTab />);
+      const build = html.slice(html.lastIndexOf("<button", html.indexOf('data-testid="consult-build"')), html.indexOf("</button>", html.indexOf('data-testid="consult-build"')));
+      expect(build).toContain("background:var(--gradient-cta)");
+      expect(build).toContain("w-full sm:w-auto");
+      const copy = html.slice(html.lastIndexOf("<button", html.indexOf('data-testid="consult-copy"')), html.indexOf("</button>", html.indexOf('data-testid="consult-copy"')));
+      expect(copy).toContain("background:var(--arbor-clay)");
+      expect((html.match(/gradient-cta|arbor-gradient-primary/g) ?? []).length).toBe(1);
+    });
+  }
+
+  it("exportPlainLines: Markdown scaffold → plain lines with roles (NEGATIVE CONTROL: the raw Markdown trips the scan)", async () => {
+    const { exportPlainLines, exportPlainText } = await import("../../consult/plainText");
+    const md = "# Dylan — context\n_Prepared 2026-10-05_\n**Demo family — invented data**\n\n## About Dylan\n- Dylan, 3 years.\n\n## Parent note\n\nHe sleeps better.\n";
+    expect(/^#|\*\*|^_/m.test(md)).toBe(true);
+    const lines = exportPlainLines(md);
+    expect(lines.map((l) => l.role)).toEqual(["title", "note", "note", "blank", "head", "item", "blank", "head", "blank", "body"]);
+    const text = exportPlainText(md);
+    expect(/^#|\*\*|^_/m.test(text)).toBe(false);
+    expect(text).toContain("• Dylan, 3 years.");
   });
 });

@@ -57,7 +57,7 @@ const render = (audience: string) => {
   return renderToStaticMarkup(<AskSpecialist />);
 };
 const panelOf = (html: string) => /data-testid="consult-home-practice"[\s\S]*?(?=<section|<div data-testid="consult-review-export")/.exec(html)?.[0] ?? "";
-const previewOf = (html: string) => /data-testid="consult-export-preview"[^>]*>([\s\S]*?)<\/pre>/.exec(html)?.[1] ?? "";
+const previewOf = (html: string) => /data-testid="consult-export-preview"[^>]*>([\s\S]*?)<\/div>/.exec(html)?.[1] ?? "";
 
 beforeEach(() => { harness.locale = "en"; });
 afterEach(() => { delete (globalThis as unknown as { localStorage?: Storage }).localStorage; });

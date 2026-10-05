@@ -46,7 +46,7 @@ describe("W2 Care — coherent purpose and share flow", () => {
  it("purpose still uses the same packet builder and edits reset review consent", () => {
    expect(ASK).toContain("buildPacketInput");
    expect(ASK).toContain("reason,");
-   expect(ASK).toContain('setReviewed(false); }, [excluded, visionNote, reason, audience, childProfile.id]');
+   expect(ASK).toContain('setReviewed(false); setPreviewAll(false); }, [excluded, visionNote, reason, audience, childProfile.id]');
    expect(ASK).toContain('const noneSelected = includedCount === 0 || !reviewed || exportText == null');
  });
  it("withdraws review synchronously when the outgoing audience changes", () => {

@@ -14,7 +14,7 @@ import type { BehaviorLog } from "../../types";
 import { getLastExportedAt, recordExport } from "../../consult/exportHistory";
 import { fmtDay } from "../../lib/formatDate";
 import { requestOpenSettings } from "../layout/settingsBus";
-import { parentWords, reportsLeadCounts } from "../../lib/recordCounts";
+import { parentWords, recordStartIso, reportsLeadCounts } from "../../lib/recordCounts";
 export { reportsLeadCounts };
 
 /** W2-CAREPRO r2 / B-CAREPRO-NEW-2e — the device-local export-history slot the
@@ -35,15 +35,7 @@ export function keptThisWeek(logs: readonly { timestamp: string; notes?: string;
   return { quote: parentWords(newest), at: newest.timestamp, thisWeek: nowMs - new Date(newest.timestamp).getTime() <= WEEK_MS };
 }
 
-/** W2-CAREPRO c2 r1 — when the record starts: the earliest log or noticed
- *  milestone, else null (an empty record). */
-export function recordStartIso(logs: readonly Pick<BehaviorLog, "timestamp">[], milestones: readonly { checked?: boolean; observationUpdatedAt?: string }[]): string | null {
-  const times = [
-    ...logs.map((l) => l.timestamp),
-    ...milestones.filter((m) => m.checked && m.observationUpdatedAt).map((m) => m.observationUpdatedAt as string),
-  ].map((x) => new Date(x).getTime()).filter((x) => Number.isFinite(x));
-  return times.length ? new Date(Math.min(...times)).toISOString() : null;
-}
+export { recordStartIso };
 
 /** The 10 report definitions (5 parent-record documents, 5 professional
  *  presets) — the one source of their titles. #/reports renders the parent
