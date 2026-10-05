@@ -119,7 +119,7 @@ describe("the stage reads nothing; the bar's title is one line", () => {
     expect(src).not.toContain("data-sneak-hint");
     expect(src).not.toContain("sneak-freeze.hint");
     expect(src).toContain("aria-label={stageAria}");
-    expect(src).toContain("<HandGlyph size={size} />");
+    expect(src).toContain("<HandGlyph size={size} mode={v.hand} />");
   });
 
   it("the kid bar title is ONE line for this game only (step-down token, capped by the viewport)", () => {

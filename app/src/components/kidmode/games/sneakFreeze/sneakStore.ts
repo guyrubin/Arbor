@@ -38,3 +38,24 @@ export function writePlayLevel(childId: string, v: PlayLevel, storage?: Pick<Sto
     /* storage unavailable: the next sitting starts from the age default */
   }
 }
+
+/** B-GAME-07e: the demonstration plays on a device's first sitting only. */
+export const DEMO_SEEN_KEY = "arbor.sneakFreeze.demoSeen";
+
+export function demoSeen(storage?: Pick<Storage, "getItem"> | null): boolean {
+  try {
+    const store = storage ?? (typeof localStorage !== "undefined" ? localStorage : null);
+    return store?.getItem(DEMO_SEEN_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function markDemoSeen(storage?: Pick<Storage, "setItem"> | null): void {
+  try {
+    const store = storage ?? (typeof localStorage !== "undefined" ? localStorage : null);
+    store?.setItem(DEMO_SEEN_KEY, "1");
+  } catch {
+    /* storage unavailable: the demonstration plays again next time (harmless) */
+  }
+}

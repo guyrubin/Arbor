@@ -60,6 +60,7 @@ export const SNEAK_SOUNDS: Readonly<Record<SneakEventId, SneakSound>> = {
   hint: { voice: ["hint"], foley: [], note: "a whisper: 'Psst — hold to sneak!'" },
   waiting: { voice: ["waiting"], foley: [], note: "the cat sits down: 'I'll wait'" },
   done: { voice: [], foley: ["finish"], note: "end of the sitting" },
+  "demo-statue": { voice: ["statue2"], foley: [], note: "the demonstration's statue: 'What a lovely statue...' (the shortest statue line, 2.8 s, before the hand-over)" },
 };
 
 export interface SneakSounds {

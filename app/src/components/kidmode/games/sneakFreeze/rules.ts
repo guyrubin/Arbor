@@ -35,6 +35,15 @@
  * caught on every look and so never banks a cover; a child who lets go at
  * every tell banks one every cycle (rules.test.ts proves the difference).
  *
+ * The first sitting on a device opens with a DEMONSTRATION (B-GAME-07e,
+ * phase "intro", <= 7 s, nothing to read): the cat covers its eyes and counts
+ * two words while the hero tiptoes two steps by himself (the hand glyph
+ * pressing); the cat calls the game's name and turns (the hand lifts, the
+ * hero freezes); the cat admires the statue - then control passes to the
+ * child (the hand pulses once). Any touch during it takes control at once and
+ * the game simply goes on from there. The first chant of every sitting is two
+ * beats long, so the child's first statue comes within five seconds.
+ *
  * Reaching the watcher while it counts (or while it is blind) is a TAG. Three
  * tags end the sitting. No state carries a score, points or right/wrong; the
  * level lives here for the rules only and is never part of the view.
@@ -53,7 +62,13 @@ export type Experience = "sunglasses" | "fake-turn" | "dash";
 export type SneakEventId =
   | "beat" | "step" | "tell" | "fake" | "fooled" | "look" | "sunglasses"
   | "statue" | "caught" | "still" | "blind"
-  | "tag" | "prize" | "hint" | "waiting" | "done";
+  | "tag" | "prize" | "hint" | "waiting" | "done"
+  | "demo-statue";
+/** The demonstration's beats (view.demo). */
+export type DemoStep = "count" | "tell" | "look" | "statue";
+/** The hand glyph: pressing / lifted in the demo, one pulse at the hand-over,
+ *  the idle hint's pulsing. */
+export type HandCue = "press" | "lift" | "pulse" | "hint";
 
 export const PRIZES: readonly PrizeId[] = ["lemon", "wool", "bell"];
 export const TAGS_PER_SITTING = 3;
@@ -63,9 +78,15 @@ export const PATH_STEPS: Readonly<Record<Track, number>> = { A: 18, B: 26 };
 export const COVER_FRACTIONS: readonly number[] = [0.28, 0.52, 0.76];
 
 export const TIMING = {
-  introMs: 4000,
-  /** The demo: the cat watches the courtyard, then turns its back to it. */
-  introLookMs: 1400,
+  /** B-GAME-07e: the demonstration (first sitting on a device), ms from its
+   *  start: the hand presses, two count words with a step each, the call +
+   *  ear flick (the hand lifts, the hero freezes), the turn, the statue line
+   *  ("What a lovely statue...", 2.8 s) - then the hand-over. */
+  demo: { pressAt: 300, beatAt: [500, 1400] as readonly number[], tellAt: 2300, lookAt: 2900, statueAt: 3700, endAt: 6500 },
+  /** The hand glyph's one pulse when control passes to the child. */
+  handoverCueMs: 1200,
+  /** The first chant of a sitting: two beats (first fun within five seconds). */
+  firstChantBeats: 2,
   readyMs: 900,
   /** One count word per beat (B-GAME-08a): a rendered count word is 450-800
    *  ms, so a beat is never under 900 ms (the next word cuts the last). */
@@ -75,8 +96,9 @@ export const TIMING = {
   /** The tell is never shorter than this: a stopping game, not a reflex test. */
   tellMinMs: 450,
   graceMs: { A: 400, B: 200 } as Readonly<Record<Track, number>>,
-  /** How long the watcher keeps looking after the grace. */
-  lookMs: 1500,
+  /** How long the watcher keeps looking after the grace (B-GAME-07e: 1.1 s;
+   *  the comic beat lives in the statue verdict). */
+  lookMs: 1100,
   verdictMs: { statue: 2200, caught: 700, still: 900, blind: 1200 } as Readonly<Record<Verdict, number>>,
   /** A fake turn = a tell that ends in a giggle instead of a look. */
   fakeLaughMs: 500,
@@ -156,6 +178,10 @@ export interface SneakState {
   experiences: readonly Experience[];
   idleMs: number;
   hinted: boolean;
+  /** The hand's one pulse after the demonstration hands over (ms left). */
+  cueMs: number;
+  /** Where a caught hero tumbled (the view scoots him back from there). */
+  caughtFrom: number;
   elapsedMs: number;
   events: readonly SneakEventId[];
 }
@@ -168,8 +194,11 @@ export interface SneakView {
   lurch: number;
   heroPose: HeroPose;
   watcher: { pose: WatcherPose; sunglasses: boolean; beat: number };
-  /** Hand glyph pulses in the thumb zone (intro demo, idle hint). */
+  /** Hand glyph in the thumb zone (demo, hand-over, idle hint). */
   showHand: boolean;
+  hand: HandCue | null;
+  /** The demonstration's beat, or null. */
+  demo: DemoStep | null;
   /** The prize held up after a tag. */
   prize: PrizeId | null;
   done: boolean;
@@ -212,7 +241,7 @@ export interface SittingOptions {
   seed: string;
   track: Track;
   level: Level;
-  /** First sitting of a visit: the watcher demonstrates (4 s, no reading). */
+  /** First sitting on the device: the demonstration (<= 7 s, no reading). */
   intro?: boolean;
   /** Play again: the previous sitting's first prize; this one opens on another. */
   after?: PrizeId;
@@ -230,7 +259,7 @@ export function startSitting(o: SittingOptions): SneakState {
     covers,
     phase: o.intro ? "intro" : "ready",
     phaseMs: 0,
-    phaseDur: o.intro ? TIMING.introMs : TIMING.readyMs,
+    phaseDur: o.intro ? TIMING.demo.endAt : TIMING.readyMs,
     beats: 0,
     beatIndex: 0,
     beatMs: TIMING.beatMs[o.level],
@@ -267,6 +296,8 @@ export function startSitting(o: SittingOptions): SneakState {
     experiences: [],
     idleMs: 0,
     hinted: false,
+    cueMs: 0,
+    caughtFrom: 0,
     elapsedMs: 0,
     events: [],
   };
@@ -302,7 +333,9 @@ function enter(s: SneakState, phase: Phase, dur: number): void {
 }
 
 function beginCounting(s: SneakState): void {
-  s.beats = s.level === 1 ? s.steadyBeats : randInt(s, 2, 5);
+  const drawn = s.level === 1 ? s.steadyBeats : randInt(s, 2, 5);
+  // The sitting's first chant is short: the first statue comes quickly.
+  s.beats = s.round === 0 && s.looksThisRound === 0 ? TIMING.firstChantBeats : drawn;
   s.beatMs = TIMING.beatMs[s.level];
   s.beatIndex = 0;
   s.chantMs = 0;
@@ -365,6 +398,7 @@ function startVerdict(s: SneakState, v: Verdict): void {
     bankCover(s);
   } else if (v === "caught") {
     s.catchesThisRound += 1;
+    s.caughtFrom = s.pos;
     s.pos = s.lastCover;
     s.holdMs = 0;
     s.dashing = false;
@@ -422,15 +456,32 @@ function untilBoundary(s: SneakState): number {
   }
   if (s.phase === "tagged" && !s.prizeShown) until = Math.min(until, TIMING.tagCheerMs - s.phaseMs);
   if (s.phase === "fake" && s.phaseMs < s.tellDur) until = Math.min(until, s.tellDur - s.phaseMs);
+  if (s.phase === "intro") {
+    const D = TIMING.demo;
+    for (const at of [D.pressAt, ...D.beatAt, D.tellAt, D.lookAt, D.statueAt]) if (at > s.phaseMs) { until = Math.min(until, at - s.phaseMs); break; }
+  }
   if (s.skidMs > 0) until = Math.min(until, s.skidMs);
   return Math.max(0, until);
+}
+
+/** The demonstration ends (its time is up, or the child touched): the game
+ *  goes on from where the hero stands; the demo's steps are no statue. */
+function handOver(s: SneakState): void {
+  s.movedSinceVerdict = false;
+  s.freezeMs = 0;
+  s.idleMs = 0;
+  s.cueMs = s.holding ? 0 : TIMING.handoverCueMs;
+  beginCounting(s); // lurches when the child is already holding
 }
 
 function onPress(s: SneakState): void {
   s.idleMs = 0;
   s.hinted = false;
+  s.cueMs = 0;
   switch (s.phase) {
     case "intro":
+      handOver(s);
+      break;
     case "waiting":
       beginCounting(s); // lurches: holding is already true
       break;
@@ -458,10 +509,32 @@ function advance(s: SneakState, ms: number): void {
   s.elapsedMs += ms;
   s.sinceLurchMs += ms;
   if (s.skidMs > 0) s.skidMs = Math.max(0, s.skidMs - ms);
+  if (s.cueMs > 0) s.cueMs = Math.max(0, s.cueMs - ms);
+
+  // B-GAME-07e: the demonstration, scripted on its own clock.
+  if (s.phase === "intro") {
+    const D = TIMING.demo;
+    const was = s.phaseMs - ms;
+    const crossed = (at: number) => was < at && s.phaseMs >= at;
+    D.beatAt.forEach((at, i) => {
+      if (!crossed(at)) return;
+      s.beatIndex = i;
+      emit(s, "beat");
+      s.pos = Math.min(s.pathSteps - 1, s.pos + 1);
+      s.lurchSerial += 1;
+      emit(s, "step");
+    });
+    if (crossed(D.tellAt)) emit(s, "tell");
+    if (crossed(D.lookAt)) emit(s, "look");
+    if (crossed(D.statueAt)) emit(s, "demo-statue");
+    if (s.phaseMs >= s.phaseDur) handOver(s);
+    return;
+  }
   if (!s.holding && s.movedSinceVerdict && s.phase !== "verdict") s.freezeMs += ms;
   if (s.phase === "verdict" && s.verdict === "statue") s.freezeMs += ms;
 
   // Idle prompts: a hint at 8 s, the chant pauses at 30 s. No penalty, no timeout.
+  // (Counted from the hand-over: the demonstration is the cat's turn.)
   if (!s.holding && s.phase !== "tagged" && s.phase !== "done" && s.phase !== "waiting") {
     s.idleMs += ms;
     if (!s.hinted && s.idleMs >= TIMING.hintAfterMs) {
@@ -539,7 +612,6 @@ function advance(s: SneakState, ms: number): void {
   if (s.phaseMs < s.phaseDur) return;
 
   switch (s.phase) {
-    case "intro":
     case "ready":
       beginCounting(s);
       break;
@@ -601,7 +673,14 @@ export function step(state: SneakState, dtMs: number, input: { holding: boolean 
 
 // ── derived view ───────────────────────────────────────────────────────────
 
+function demoStepOf(s: SneakState): DemoStep | null {
+  if (s.phase !== "intro") return null;
+  const D = TIMING.demo;
+  return s.phaseMs < D.tellAt ? "count" : s.phaseMs < D.lookAt ? "tell" : s.phaseMs < D.statueAt ? "look" : "statue";
+}
+
 function heroPoseOf(s: SneakState): HeroPose {
+  if (s.phase === "intro") return s.phaseMs < TIMING.demo.pressAt ? "idle" : s.phaseMs < TIMING.demo.tellAt ? "tiptoe" : s.freezePose;
   if (s.phase === "done") return "hold-up";
   if (s.phase === "tagged") return s.phaseMs < TIMING.tagCheerMs ? "cheer" : "hold-up";
   if (s.phase === "verdict") {
@@ -617,8 +696,10 @@ function heroPoseOf(s: SneakState): HeroPose {
 
 function watcherPoseOf(s: SneakState): WatcherPose {
   switch (s.phase) {
-    case "intro":
-      return s.phaseMs < TIMING.introLookMs ? "looking" : "counting";
+    case "intro": {
+      const d = demoStepOf(s);
+      return d === "count" ? "counting" : d === "tell" ? "tell" : "looking";
+    }
     case "tell":
       return "tell";
     case "fake":
@@ -637,6 +718,13 @@ function watcherPoseOf(s: SneakState): WatcherPose {
   }
 }
 
+function handOf(s: SneakState): HandCue | null {
+  if (s.phase === "intro") return s.phaseMs >= TIMING.demo.pressAt && s.phaseMs < TIMING.demo.tellAt ? "press" : "lift";
+  if (s.phase === "waiting" || s.hinted) return "hint";
+  if (s.cueMs > 0 && !s.holding) return "pulse";
+  return null;
+}
+
 export function view(s: SneakState): SneakView {
   const shades = s.sunglasses && (s.phase === "counting" || s.phase === "fake" || s.phase === "tell" || s.phase === "looking" || (s.phase === "verdict" && s.verdict === "blind"));
   return {
@@ -645,7 +733,9 @@ export function view(s: SneakState): SneakView {
     lurch: s.lurchSerial,
     heroPose: heroPoseOf(s),
     watcher: { pose: watcherPoseOf(s), sunglasses: shades, beat: s.phase === "counting" ? s.beatIndex : -1 },
-    showHand: s.phase === "intro" || s.phase === "waiting" || s.hinted,
+    showHand: handOf(s) !== null,
+    hand: handOf(s),
+    demo: demoStepOf(s),
     prize: s.phase === "tagged" && s.prizeShown ? s.prizes[s.prizes.length - 1] ?? null : s.phase === "done" ? s.prizes[s.prizes.length - 1] ?? null : null,
     done: s.phase === "done",
     events: s.events,

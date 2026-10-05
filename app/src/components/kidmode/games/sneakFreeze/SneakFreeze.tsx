@@ -9,9 +9,12 @@
  * stepped at once (dt 0) so the hero lurches in the same frame.
  *
  * On screen: the place, the cat, the hero, three cover objects, a prize (held
- * up in the hero's hands after a tag) and — in the intro / after an idle hint
- * — one pulsing hand glyph in the thumb zone; the hint itself is the cat's
- * whispered voice line. Nothing on screen needs reading (the sentence is the
+ * up in the hero's hands after a tag) and — in the demonstration, at the
+ * hand-over, after an idle hint — one hand glyph in the thumb zone (pressing
+ * and lifting in the demo, one pulse at the hand-over, pulsing for the hint);
+ * the hint itself is the cat's whispered voice line. B-GAME-07e: the first
+ * sitting on a device opens with the hero DEMONSTRATING the game (rules.ts);
+ * any touch takes over at once. Nothing on screen needs reading (the sentence is the
  * stage's aria-label). No instruction paragraph, no progress dots, no digits,
  * no timer, no level. Mounted inside GameShell's
  * fullBleed: the overlay's top bar is the only chrome.
@@ -27,12 +30,12 @@ import { HeroFigure, prefersReducedMotion, useHeroSheet } from "../../hero/HeroF
 import { kidIsolate } from "../../kidText";
 import { SNEAK_FREEZE_WORLD, sneakFreezeFlagOn } from "../../kidWorlds";
 import { useKidHome } from "../../kidChrome";
-import { startFor, startSitting, step, view as viewOf, type SneakState, type SneakView } from "./rules";
+import { startFor, startSitting, step, view as viewOf, type HandCue, type SneakState, type SneakView } from "./rules";
 import { proofVisit } from "../../proofVisit";
 import { artUrls, loadProofArt, readSneakArt, type SneakArt } from "./sneakArt";
 import { loadProofHeroSheet, type HeroSheet } from "../../hero/heroSheet";
 import { preloadImages } from "../../proofAssets";
-import { readPlayLevel, writePlayLevel } from "./sneakStore";
+import { demoSeen, markDemoSeen, readPlayLevel, writePlayLevel } from "./sneakStore";
 import { createSneakSounds, type SneakSounds } from "./sounds";
 import { kidAudioContext } from "../../audio/kidAudio";
 import { Watcher } from "./Watcher";
@@ -49,7 +52,7 @@ export function formKey(base: string, gender: string | undefined): string {
 export function sameView(a: SneakView, b: SneakView): boolean {
   return a.phase === b.phase && a.progress === b.progress && a.lurch === b.lurch && a.heroPose === b.heroPose
     && a.watcher.pose === b.watcher.pose && a.watcher.sunglasses === b.watcher.sunglasses && a.watcher.beat === b.watcher.beat
-    && a.showHand === b.showHand && a.prize === b.prize && a.done === b.done;
+    && a.showHand === b.showHand && a.hand === b.hand && a.demo === b.demo && a.prize === b.prize && a.done === b.done;
 }
 
 const LAYOUTS: Record<FieldOrientation, SneakLayout> = { landscape: sneakLayout("landscape"), portrait: sneakLayout("portrait") };
@@ -73,23 +76,38 @@ function safeAge(profile: Parameters<typeof ageYearsFromProfile>[0]): number | n
   }
 }
 
-/** The pulsing hand in the thumb zone (authored glyph, token colours). */
-function HandGlyph({ size }: { size: number }) {
+/** The hand in the thumb zone (authored glyph, token colours). B-GAME-07e:
+ *  `press` = pushed down and holding (a ring blooms under the fingertip),
+ *  `lift` = raised off the screen, `pulse` = ONE pulse at the hand-over,
+ *  `hint` = the idle hint's pulsing. Transform / opacity only. */
+function HandGlyph({ size, mode }: { size: number; mode: HandCue }) {
   const ref = useRef<SVGSVGElement | null>(null);
+  const ringRef = useRef<SVGCircleElement | null>(null);
   useLayoutEffect(() => {
     const el = ref.current as unknown as HTMLElement | null;
     if (!el || prefersReducedMotion() || typeof el.animate !== "function") return;
-    const a = el.animate([{ transform: "scale(1)" }, { transform: "scale(0.86)" }, { transform: "scale(1)" }], { duration: 1000, iterations: Infinity, easing: "ease-in-out" });
-    return () => a.cancel();
-  }, []);
+    if (mode === "hint" || mode === "pulse") {
+      const a = el.animate([{ transform: "scale(1)" }, { transform: "scale(0.84)" }, { transform: "scale(1)" }], { duration: mode === "pulse" ? 800 : 1000, iterations: mode === "pulse" ? 1 : Infinity, easing: "ease-in-out" });
+      return () => a.cancel();
+    }
+    const ring = ringRef.current as unknown as HTMLElement | null;
+    if (mode === "press" && ring && typeof ring.animate === "function") {
+      const a = ring.animate([{ transform: "scale(0.6)", opacity: 0.9 }, { transform: "scale(1.5)", opacity: 0 }], { duration: 900, iterations: Infinity, easing: "ease-out" });
+      return () => a.cancel();
+    }
+    return undefined;
+  }, [mode]);
+  const pose = mode === "press" ? `translateY(${size * 0.1}px) scale(0.88)` : mode === "lift" ? `translateY(${-size * 0.18}px) rotate(-8deg)` : "none";
   return (
+    <div data-sneak-hand-mode={mode} style={{ transform: pose, transformOrigin: "50% 100%", transition: prefersReducedMotion() ? undefined : "transform 180ms cubic-bezier(0.22, 1, 0.36, 1)" }}>
     <svg ref={ref} viewBox="0 0 64 64" width={size} height={size} aria-hidden="true" style={{ display: "block", overflow: "visible" }}>
-      <circle cx="30" cy="16" r="13" style={{ fill: "none", stroke: "var(--arbor-paper-elevated)", strokeWidth: 3, opacity: 0.8 }} />
+      <circle ref={ringRef} cx="30" cy="16" r="13" style={{ fill: "none", stroke: "var(--arbor-paper-elevated)", strokeWidth: 3, opacity: mode === "lift" ? 0 : 0.8, transformBox: "fill-box", transformOrigin: "center" }} />
       <path
         d="M26 16 C26 12 32 12 32 16 V30 C32 27 38 27 38 30 V33 C38 30 44 30 44 33 V36 C44 33 50 33 50 37 V48 C50 56 44 60 37 60 H33 C27 60 24 57 20 51 L13 40 C11 36 15 33 18 36 L26 44 Z"
         style={{ fill: "var(--arbor-paper-elevated)", stroke: "var(--arbor-ink)", strokeWidth: 2.5, strokeLinejoin: "round" }}
       />
     </svg>
+    </div>
   );
 }
 
@@ -129,8 +147,8 @@ function Scene({ ctx, v, art, sheet, prevProgress }: { ctx: PlayFieldContext; v:
   const reduced = prefersReducedMotion();
   const frozen = v.heroPose === "freeze-a" || v.heroPose === "freeze-b";
   // The statue's comic beat wobbles; while the cat looks, a held-breath tremble
-  // (B-GAME-07d: the look is never a dead 1.7 s).
-  const statue: boolean | "tremble" = frozen && v.phase === "verdict" ? true : frozen && v.phase === "looking" ? "tremble" : false;
+  // (B-GAME-07d: the look is never a dead 1.7 s). The demonstration too.
+  const statue: boolean | "tremble" = frozen && (v.phase === "verdict" || v.demo === "statue") ? true : frozen && (v.phase === "looking" || v.demo === "look") ? "tremble" : false;
   // B-GAME-07c: in hold-up the prize is IN the hero's hands (HeroFigure).
   const carried = v.prize && v.heroPose === "hold-up" ? v.prize : null;
   return (
@@ -163,7 +181,7 @@ function Scene({ ctx, v, art, sheet, prevProgress }: { ctx: PlayFieldContext; v:
         pose={v.watcher.pose}
         sunglasses={v.watcher.sunglasses}
         beat={v.watcher.beat}
-        lean={v.phase === "verdict" && v.watcher.pose === "looking"}
+        lean={(v.phase === "verdict" || v.demo === "statue") && v.watcher.pose === "looking"}
         feet={layout.watcher.feet}
         height={layout.watcher.h}
         zIndex={Math.round(layout.watcher.feet.y)}
@@ -267,7 +285,8 @@ function SneakFreezeGame({ art, sheet }: { art: SneakArt; sheet: HeroSheet }) {
 
   const [sitting, setSitting] = useState(0);
   const stateRef = useRef<SneakState | null>(null);
-  if (!stateRef.current) stateRef.current = startSitting({ seed: newSeed(childId, 0), track: start.track, level: start.level, intro: true });
+  // B-GAME-07e: the demonstration on the device's first sitting only.
+  if (!stateRef.current) stateRef.current = startSitting({ seed: newSeed(childId, 0), track: start.track, level: start.level, intro: !demoSeen() });
   const [v, setV] = useState<SneakView>(() => viewOf(stateRef.current as SneakState));
   const prevProgress = useRef(0);
   const shownProgress = useRef(v.progress);
@@ -283,7 +302,6 @@ function SneakFreezeGame({ art, sheet }: { art: SneakArt; sheet: HeroSheet }) {
   useEffect(() => {
     const sounds = createSneakSounds(lang);
     soundsRef.current = sounds;
-    let alive = true;
     // B-GAME-12a: proof-run counters (flag on only; numbers, never child data).
     if (sneakFreezeFlagOn() && typeof window !== "undefined") {
       (window as unknown as { __sneakDebug?: unknown }).__sneakDebug = {
@@ -294,12 +312,10 @@ function SneakFreezeGame({ art, sheet }: { art: SneakArt; sheet: HeroSheet }) {
         },
       };
     }
-    void sounds.load().then(() => {
-      // The cat's first line, once, while the first sitting's demo still runs.
-      if (alive && stateRef.current?.phase === "intro") sounds.intro();
-    });
+    // B-GAME-07e: the demonstration speaks for itself (count words, the call,
+    // the statue line); no spoken instruction over it.
+    void sounds.load();
     return () => {
-      alive = false;
       sounds.dispose();
       if (soundsRef.current === sounds) soundsRef.current = null;
     };
@@ -312,6 +328,7 @@ function SneakFreezeGame({ art, sheet }: { art: SneakArt; sheet: HeroSheet }) {
     if (!cur) return;
     const next = step(cur, dt, { holding: holding() });
     stateRef.current = next;
+    if (cur.phase === "intro" && next.phase !== "intro") markDemoSeen();
     if (next.events.length) soundsRef.current?.events(next.events, next);
     const nv = viewOf(next);
     setV((prev) => (sameView(prev, nv) ? prev : nv));
@@ -447,6 +464,7 @@ function SneakFreezeGame({ art, sheet }: { art: SneakArt; sheet: HeroSheet }) {
           needFor={(o) => LAYOUTS[o].need}
           data-sneak-stage=""
           data-sneak-phase={v.phase}
+          data-sneak-demo={v.demo ?? undefined}
           role="button"
           tabIndex={0}
           aria-label={stageAria}
@@ -467,13 +485,13 @@ function SneakFreezeGame({ art, sheet }: { art: SneakArt; sheet: HeroSheet }) {
             return <TagBurst key={`tag-${stateRef.current?.tags ?? 0}`} x={lay.prize.x} y={lay.prize.y} size={lay.prize.size * 1.6} />;
           }}
           controls={(ctx) => {
-            if (!v.showHand) return null;
+            if (!v.hand) return null;
             const lay = LAYOUTS[ctx.fit.orientation];
             const at = toPx(ctx.fit, lay.hand, rtl);
             const size = 76;
             return (
               <div data-sneak-hand="" style={{ position: "absolute", left: at.x - size / 2, top: at.y - size / 2, width: size, height: size }}>
-                <HandGlyph size={size} />
+                <HandGlyph size={size} mode={v.hand} />
               </div>
             );
           }}

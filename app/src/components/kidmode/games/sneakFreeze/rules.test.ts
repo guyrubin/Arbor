@@ -287,12 +287,14 @@ describe("Sneak & Freeze rules — response, idle, no score", () => {
     expect(hint?.[0]).toBeGreaterThanOrEqual(TIMING.hintAfterMs);
     expect(wait?.[0]).toBeGreaterThanOrEqual(TIMING.waitAfterMs);
     expect(final.phase).toBe("waiting");
-    expect(final.pos).toBe(0);
+    // Only the demonstration's two steps: the child never moved.
+    expect(final.pos).toBe(TIMING.demo.beatAt.length);
     expect(events.some(([, e]) => e === "caught")).toBe(false);
     expect(view(final).showHand).toBe(true);
+    expect(view(final).hand).toBe("hint");
     const back = step(final, DT, { holding: true });
     expect(back.phase).toBe("counting");
-    expect(back.pos).toBe(1);
+    expect(back.pos).toBe(final.pos + 1);
   });
 
   it("no state or view ever exposes a score, points, stars, right/wrong or a level", () => {
@@ -344,5 +346,84 @@ describe("Sneak & Freeze rules — sound beats (B-GAME-08a)", () => {
       }
     }
     expect(seen).toBeGreaterThan(0);
+  });
+});
+
+describe("Sneak & Freeze rules — B-GAME-07e the demonstration and first fun", () => {
+  it("the hero demonstrates in <= 7 s: two count words with a step each (the hand pressing), the call, the turn, the statue line, the hand lifting — then a hand-over with ONE pulse", () => {
+    const seen: [number, SneakEventId][] = [];
+    const hands: [number, string | null][] = [];
+    let s = startSitting({ seed: "demo", track: "A", level: 1, intro: true });
+    expect(view(s).demo).toBe("count");
+    for (let t = 0; t < 9000; t += DT) {
+      s = step(s, DT, { holding: false });
+      for (const e of s.events) seen.push([s.elapsedMs, e]);
+      const h = view(s).hand;
+      if (!hands.length || hands[hands.length - 1][1] !== h) hands.push([s.elapsedMs, h]);
+    }
+    const D = TIMING.demo;
+    expect(D.endAt).toBeLessThanOrEqual(7000);
+    const demoEvents = seen.filter(([at]) => at <= D.endAt).map(([, e]) => e);
+    expect(demoEvents.slice(0, 7)).toEqual(["beat", "step", "beat", "step", "tell", "look", "demo-statue"]);
+    // The demonstration's statue is not the child's: nothing recorded, nothing banked.
+    expect(s.statues).toHaveLength(0);
+    expect(s.lastCover).toBe(0);
+    expect(s.pos).toBe(D.beatAt.length);
+    // The hand: lifted, pressing through the two steps, lifted at the call, one pulse after the hand-over, then gone.
+    expect(hands.map(([, h]) => h)).toEqual(["lift", "press", "lift", "pulse", null]);
+    const press = hands.find(([, h]) => h === "press")![0];
+    const lift = hands.filter(([, h]) => h === "lift")[1][0];
+    expect(press).toBeLessThan(D.beatAt[0]);
+    expect(lift).toBeGreaterThanOrEqual(D.tellAt);
+    const handover = hands.find(([, h]) => h === "pulse")![0];
+    expect(handover).toBeGreaterThanOrEqual(D.endAt);
+    expect(handover).toBeLessThanOrEqual(D.endAt + DT);
+    expect(hands[hands.length - 1][0] - handover).toBeLessThanOrEqual(TIMING.handoverCueMs + DT);
+  });
+
+  it("any touch during the demonstration takes control at once: the chant starts and the hero lurches from where he stands", () => {
+    for (const at of [100, 900, 2000, 2600, 3200, 5000]) {
+      let s = startSitting({ seed: `take-${at}`, track: "A", level: 1, intro: true });
+      for (let t = 0; t < at; t += DT) s = step(s, DT, { holding: false });
+      const pos = s.pos;
+      s = step(s, 0, { holding: true });
+      expect(s.phase, `touch at ${at}`).toBe("counting");
+      expect(s.pos).toBe(pos + 1);
+      expect(view(s).demo).toBeNull();
+      expect(view(s).hand).toBeNull();
+      expect(view(s).heroPose).toBe("tiptoe");
+    }
+  });
+
+  it("no demonstration from the second sitting: the first count starts within 1.5 s", () => {
+    let s = startSitting({ seed: "second", track: "B", level: 2, intro: false });
+    let firstBeat: number | null = null;
+    for (let t = 0; t < 3000 && firstBeat === null; t += DT) {
+      s = step(s, DT, { holding: false });
+      if (s.events.includes("beat")) firstBeat = s.elapsedMs;
+    }
+    expect(view(startSitting({ seed: "second", track: "B", level: 2, intro: false })).demo).toBeNull();
+    expect(firstBeat).not.toBeNull();
+    expect(firstBeat!).toBeLessThanOrEqual(1500);
+  });
+
+  it("first fun in five seconds: from the hand-over (the first chant) to the first statue verdict <= 5 s on L1 and L2 (a child who holds while the cat counts)", () => {
+    for (const [track, level] of [["A", 1], ["B", 2]] as const) {
+      for (const intro of [true, false]) {
+        for (let n = 0; n < 12; n++) {
+          let s = startSitting({ seed: `fun-${track}${level}-${intro}-${n}`, track, level, intro });
+          // Control = the first chant starts (the demo's hand-over, or the end of "ready").
+          let control: number | null = null;
+          let statueAt: number | null = null;
+          for (let t = 0; t < 20000 && statueAt === null; t += DT) {
+            s = step(s, DT, { holding: s.phase === "counting" });
+            if (control === null && s.phase === "counting") control = s.elapsedMs;
+            if (s.events.includes("statue")) statueAt = s.elapsedMs;
+          }
+          expect(statueAt, `${track}${level} ${intro} ${n}`).not.toBeNull();
+          expect(statueAt! - control!, `${track}${level} ${intro} ${n}`).toBeLessThanOrEqual(5000);
+        }
+      }
+    }
   });
 });
