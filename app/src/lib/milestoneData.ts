@@ -519,3 +519,87 @@ export function explainMilestonePrompt(title: string, chronoMonths: number): str
     : `${Math.floor(safeMonths / 12)}-year-old`;
   return `Briefly explain the developmental milestone "${title}" for a ${ageDescriptor}. Cover: typical age range, what it looks like in everyday life, and 2 concrete ways a parent can support it. Non-diagnostic, warm, short. Use the headings ### Typical age, ### What it looks like, ### How to support.`;
 }
+
+/* ───────────────────────────── Catalogue text by stable id (B-GROWTH-11) ───────────────────────────── */
+
+/**
+ * Review state of the Hebrew catalogue text (i18nElevation/milestoneCatalogue.ts).
+ * "ai-first-pass" = an AI first pass shipped under Guy's G8; native review is
+ * pending (GD-6). The Science page prints one line from it (key
+ * `ms.heReview.note`); flip to "native-reviewed" only when GD-6 signs off.
+ */
+export const MILESTONE_HE_REVIEW: "ai-first-pass" | "native-reviewed" = "ai-first-pass";
+
+/** The three catalogue text fields, as keyed in the dictionaries. */
+export type MilestoneTextField = "title" | "desc" | "looks";
+
+/** The description the app writes onto a parent-added milestone
+ *  (context/ArborContext addCustomMilestone) — app copy, not parent text. */
+export const CUSTOM_MILESTONE_DESC = "Custom milestone added by parent.";
+/** The ageGroup the app writes onto a parent-added milestone. */
+export const CUSTOM_MILESTONE_AGE_GROUP = "Custom";
+
+const CATALOGUE_IDS: ReadonlySet<string> = new Set(ALL_MILESTONES.map((m) => m.id));
+
+/** True for a seeded catalogue row (CDC / ASHA / Arbor id), never for a
+ *  parent-added one — those keep the parent's own words. */
+export const isCatalogueMilestone = (m: { id: string; custom?: boolean }): boolean =>
+  !m.custom && CATALOGUE_IDS.has(m.id);
+
+export const milestoneTextKey = (id: string, field: MilestoneTextField): string => `ms.item.${id}.${field}`;
+export const milestoneBandKey = (months: number): string => `ms.band.${months}`;
+
+/** Catalogue ageGroup strings → their dictionary key. A label that equals a
+ *  band label reuses the band key; the Arbor "Age 4-5" style labels get their
+ *  own `ms.ageGroup.<slug>` key. */
+export const MILESTONE_AGE_GROUP_KEYS: ReadonlyMap<string, string> = (() => {
+  const byLabel = new Map<string, string>();
+  for (const b of MILESTONE_AGE_BANDS) byLabel.set(b.label, milestoneBandKey(b.months));
+  for (const m of ALL_MILESTONES) {
+    if (byLabel.has(m.ageGroup)) continue;
+    const slug = m.ageGroup.toLowerCase().replace(/^age\s*/, "").trim().replace(/\s+/g, "-");
+    byLabel.set(m.ageGroup, `ms.ageGroup.${slug}`);
+  }
+  return byLabel;
+})();
+
+/** Structural `t()` — keeps this module free of the i18n import. */
+type MilestoneT = (key: string, vars?: Record<string, string | number>) => string;
+
+const resolved = (t: MilestoneT, key: string): string | null => {
+  const v = t(key);
+  return v && v !== key ? v : null;
+};
+
+/**
+ * THE render seam for milestone text. A catalogue row resolves by its stable
+ * id in the page language (the stored doc carries the English seed text, copied
+ * at seed time, so the lookup must be by id at render). A parent-added row
+ * returns the parent's own words — except the app's own placeholder
+ * description, which is UI copy and is translated.
+ */
+export function milestoneText(
+  m: { id: string; title: string; description?: string; skillLooksLike?: string; custom?: boolean },
+  field: MilestoneTextField,
+  t: MilestoneT,
+): string {
+  const stored = field === "title" ? m.title : field === "desc" ? m.description ?? "" : m.skillLooksLike ?? "";
+  if (isCatalogueMilestone(m)) return resolved(t, milestoneTextKey(m.id, field)) ?? stored;
+  if (field === "desc" && m.description === CUSTOM_MILESTONE_DESC) return resolved(t, "ms.customDesc") ?? stored;
+  return stored;
+}
+
+/** A milestone's age label in the page language (`ageGroup` is stored English). */
+export function milestoneAgeGroupText(m: { ageGroup?: string; custom?: boolean }, t: MilestoneT): string {
+  const ageGroup = m.ageGroup ?? "";
+  if (!ageGroup) return "";
+  if (ageGroup === CUSTOM_MILESTONE_AGE_GROUP) return resolved(t, "ms.custom") ?? ageGroup;
+  const key = MILESTONE_AGE_GROUP_KEYS.get(ageGroup);
+  return (key && resolved(t, key)) || ageGroup;
+}
+
+/** A milestone band's label in the page language. */
+export function milestoneBandLabel(months: number, t: MilestoneT): string {
+  const fallback = MILESTONE_AGE_BANDS.find((b) => b.months === months)?.label ?? "";
+  return resolved(t, milestoneBandKey(months)) ?? fallback;
+}

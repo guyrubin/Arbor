@@ -55,6 +55,7 @@ import * as kidsStories from "./kidsStories";
 import * as learnCare from "./learnCare";
 import * as lifecycle from "./lifecycle";
 import * as memorydisclosure from "./memorydisclosure";
+import * as milestoneCatalogue from "./milestoneCatalogue";
 import * as offer from "./offer";
 import * as personal from "./personal";
 import * as planclarity from "./planclarity";
@@ -120,6 +121,7 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   learnCare,
   lifecycle,
   memorydisclosure,
+  milestoneCatalogue,
   offer,
   personal,
   planclarity,
