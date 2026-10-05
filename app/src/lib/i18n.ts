@@ -4748,23 +4748,25 @@ export const he: Dict = {
   // name is exactly what the child sees on the surface it opens (honest
   // navigation; kidMode.test.ts locks the pairing). The old fantasy-named
   // tiles (Memory Match, Feelings Detective, Calm Builder, …) promised games
-  // that did not exist by those names. World names stay EN in both maps until
-  // the arcade itself localizes (GD-6 native transcreation gate).
-  "kid.game.sound-lab.title": "Sound Lab",
+  // that did not exist by those names. B-KID-48 scope (5 Oct): the HE kid home
+  // uses the Hebrew world names the parent doors already ship
+  // (elev.practice.world.kid.* in practiceDoors.ts) — one name per world,
+  // pinned equal by kidHebrewCoverage.test.ts. Native GD-6 review still owed.
+  "kid.game.sound-lab.title": "מעבדת הצלילים",
   "kid.game.sound-lab.sub": "מדברים ומשחקים",
-  "kid.game.mood-mountain.title": "Mood Mountain",
+  "kid.game.mood-mountain.title": "הר הרגשות",
   "kid.game.mood-mountain.sub": "מזהים את הרגש",
-  "kid.game.mind-vault.title": "Mind Vault",
+  "kid.game.mind-vault.title": "כספת הזיכרון",
   "kid.game.mind-vault.sub": "מוצאים את הזוגות",
-  "kid.game.beat-keeper.title": "Beat Keeper",
+  "kid.game.beat-keeper.title": "שומר הקצב",
   "kid.game.beat-keeper.sub": "מתופפים יחד",
-  "kid.game.hero-pose.title": "Hero Pose",
+  "kid.game.hero-pose.title": "תנוחת הגיבור",
   "kid.game.hero-pose.sub": "עושים תנוחה",
-  "kid.game.pattern-power.title": "Pattern Power",
+  "kid.game.pattern-power.title": "כוח התבניות",
   "kid.game.pattern-power.sub": "מה בא אחר כך?",
-  "kid.game.story-quest.title": "Story Quest",
+  "kid.game.story-quest.title": "מסע הסיפור",
   "kid.game.story-quest.sub": "בוחרים את הדרך",
-  "kid.game.mimic-studio.title": "Mimic Studio",
+  "kid.game.mimic-studio.title": "אולפן החיקוי",
   "kid.game.mimic-studio.sub": "מחקים את התנועות",
   // AIX-S1 — Arbor Vision modal (HE; flagged for arbor-localization native review).
   "vis.title.observe": "הראו לארבור תמונה",

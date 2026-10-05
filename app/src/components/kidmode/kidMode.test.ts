@@ -370,11 +370,9 @@ describe("KID-1: kid.* i18n keys exist in BOTH language maps", () => {
      The ONLY thing still English is an arcade world's NAME: those are EN
      literals in HeroArcade's WORLDS table and the test above locks each tile to
      its world verbatim, so a tile cannot localize before the table does. */
-  const EN_BY_DESIGN: Record<string, string> = Object.fromEntries(
-    Object.keys(en)
-      .filter((k) => /^kid\.game\..+\.title$/.test(k))
-      .map((k) => [k, "an arcade world name, locked verbatim to the tile by the test above"]),
-  );
+  // B-KID-48 scope (5 Oct): the arcade world names are Hebrew now too (the
+  // parent doors' names, kidHebrewCoverage.test.ts) — nothing is EN by design.
+  const EN_BY_DESIGN: Record<string, string> = {};
 
   it("every kid.* HE value is Hebrew, except the documented proper nouns", () => {
     const english = Object.keys(en)
@@ -746,7 +744,10 @@ describe("KID-4: kid-dashboard game tiles match their HeroArcade destination", (
       const worldName = worldNames.get(worldId as string);
       expect(worldName, `no HeroArcade world with id "${worldId}"`).toBeTruthy();
       expect(en[`kid.game.${id}.title`]).toBe(worldName);
-      expect(he[`kid.game.${id}.title`]).toBe(worldName); // EN placeholder until GD-6
+      // B-KID-48 scope (5 Oct): HE = the Hebrew world name the parent doors ship
+      // (kidHebrewCoverage.test.ts pins the equality); never the EN name.
+      expect(he[`kid.game.${id}.title`]).not.toBe(worldName);
+      expect(he[`kid.game.${id}.title`]).toMatch(/[֐-׿]/);
     },
   );
 
