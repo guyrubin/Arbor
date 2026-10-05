@@ -29,7 +29,8 @@ type Step = 1 | 2 | 3 | 4;
 
 // ── Step 3 domain tiles (AP-049; copy VERBATIM from GATED-CLEARANCES-CLINICAL §2) ─
 
-const DOMAINS: { id: string; nameKey: string; subKey: string; icon: React.ReactNode }[] = [
+/** Exported for Add child (B-SHELL-17): the same domain list, the same names. */
+export const DOMAINS: { id: string; nameKey: string; subKey: string; icon: React.ReactNode }[] = [
   { id: "feelings", nameKey: "ob.step.domains.feelings", subKey: "ob.step.domains.feelings.sub", icon: <Heart className="w-5 h-5" /> },
   { id: "language", nameKey: "ob.step.domains.language", subKey: "ob.step.domains.language.sub", icon: <MessageCircle className="w-5 h-5" /> },
   { id: "social", nameKey: "ob.step.domains.social", subKey: "ob.step.domains.social.sub", icon: <Users className="w-5 h-5" /> },

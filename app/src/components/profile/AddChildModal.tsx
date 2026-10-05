@@ -1,16 +1,20 @@
 import React, { useState } from "react";
 import { Sparkles } from "lucide-react";
 import { Modal } from "../ui/Modal";
-import { Button } from "../ui/Button";
+import { Sheet } from "../ui/Sheet";
 import { useProfile } from "../../context/ProfileContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useArbor } from "../../context/ArborContext";
 import { useEntitlement, childLimitReached, PAID_PLAN_LIMITS } from "../../hooks/useEntitlement";
-import { buildNewChildInput, type ChildGender } from "../../lib/childProfileInput";
+import { buildNewChildInput } from "../../lib/childProfileInput";
 import { PlanBadge } from "../ui/PlanBadge";
-
-const LANGUAGE_OPTIONS = ["Hebrew", "English", "Arabic", "Russian", "French", "Other"];
+// B-SHELL-17: Add child IS onboarding steps 2–3 — the SAME StepChild (one age
+// field: years + months, the controller-consent affirmation, LegalLinks) and
+// the SAME StepDomains, rendered in a Sheet. No second form, no second age
+// control. Strengths live in the profile drawer (ProfileEditDrawer), their
+// named home; the avatar is out of scope (made in Wow / at the Kid Mode door).
+import { StepChild, StepDomains, DOMAINS } from "../auth/OnboardingFlow";
 
 export default function AddChildModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { addChild, profiles } = useProfile();
@@ -22,23 +26,25 @@ export default function AddChildModal({ open, onClose }: { open: boolean; onClos
   // MOB-08: never hard-gate on the client fallback / while loading — a Plus
   // family on a flaky connection must not be told "one child only".
   const atChildLimit = childLimitReached({ entitlement, loading: entitlementLoading, childCount: profiles.length });
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState<"child" | "domains">("child");
   const [name, setName] = useState("");
-  const [ageMonths, setAgeMonths] = useState<number>(48);
-  const [gender, setGender] = useState<ChildGender>("unspecified");
+  const [ageYears, setAgeYears] = useState(4);
+  const [ageMonthsPart, setAgeMonthsPart] = useState(0);
+  const [birthDate, setBirthDate] = useState("");
   const [languages, setLanguages] = useState<string[]>([]);
-  const [strengths, setStrengths] = useState("");
-  const [challenges, setChallenges] = useState("");
+  const [controllerConsent, setControllerConsent] = useState(false);
+  const [selectedDomains, setSelectedDomains] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   const reset = () => {
-    setStep(1);
+    setStep("child");
     setName("");
-    setAgeMonths(48);
-    setGender("unspecified");
+    setAgeYears(4);
+    setAgeMonthsPart(0);
+    setBirthDate("");
     setLanguages([]);
-    setStrengths("");
-    setChallenges("");
+    setControllerConsent(false);
+    setSelectedDomains([]);
     setSaving(false);
   };
 
@@ -47,23 +53,28 @@ export default function AddChildModal({ open, onClose }: { open: boolean; onClos
     onClose();
   };
 
-  const toggleLanguage = (lang: string) =>
-    setLanguages((prev) => (prev.includes(lang) ? prev.filter((l) => l !== lang) : [...prev, lang]));
-
+  /** Step 3's choices become the profile's focus areas, named exactly as onboarding names them. */
   const finish = async () => {
+    // StepChild already refuses to advance without a name and the consent box.
+    if (!name.trim() || !controllerConsent || saving) return;
     setSaving(true);
     try {
-      const input = buildNewChildInput({ name, ageMonths, gender, languages, strengthsText: strengths, challengesText: challenges });
+      const challenges = selectedDomains.map((id) => {
+        const d = DOMAINS.find((x) => x.id === id);
+        return d ? t(d.nameKey) : id;
+      });
+      const input = buildNewChildInput({
+        name, ageMonths: ageYears * 12 + ageMonthsPart, gender: "unspecified", languages,
+        strengthsText: "", challengesText: challenges.join("\n"),
+      });
       const childName = input.name;
-      await addChild(input);
+      await addChild({ ...input, ...(birthDate ? { birthDate } : {}) });
       toast(t("ac.addedToast", { name: childName }), "success");
       close();
     } finally {
       setSaving(false);
     }
   };
-
-  const canAdvance = step === 1 ? name.trim().length > 0 : true;
 
   if (atChildLimit) {
     return (
@@ -95,115 +106,28 @@ export default function AddChildModal({ open, onClose }: { open: boolean; onClos
   }
 
   return (
-    <Modal open={open} onClose={close} title={t("ac.titleStep", { step })}>
-      <div className="space-y-5 text-sm">
-        {/* Step progress */}
-        <div className="flex gap-1.5">
-          {[1, 2, 3].map((s) => (
-            <div key={s} className="h-1 flex-1 rounded-full" style={{ background: s <= step ? "var(--arbor-clay)" : "var(--arbor-rule-strong)" }} />
-          ))}
-        </div>
-
-        {step === 1 && (
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ac.name")}</label>
-              <input
-                autoFocus
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={t("ac.namePh")}
-                className="w-full rounded-xl px-4 py-2.5 focus:outline-none"
-                style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ac.ageMonths")}</label>
-              <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  max={216}
-                  value={ageMonths}
-                  onChange={(e) => setAgeMonths(Math.max(0, Math.min(216, Number(e.target.value) || 0)))}
-                  className="w-full rounded-xl px-4 py-2.5 focus:outline-none"
-                  style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
-                />
-                <span className="text-xs font-bold whitespace-nowrap" style={{ color: "var(--arbor-green-ink)" }}>{t("ac.agePreview", { years: Math.floor(ageMonths / 12), months: ageMonths % 12 })}</span>
-              </div>
-              <p className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>{t("ac.ageHelp")}</p>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ac.gender")}</label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {(["girl", "boy", "other", "unspecified"] as const).map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() => setGender(option)}
-                    className="px-3 py-2 rounded-xl text-xs font-bold transition"
-                    style={gender === option
-                      ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.40)" }
-                      : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
-                  >
-                    {t(`ac.gender.${option}`)}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
+    <Sheet open={open} onClose={close} title={t("ac.title")}>
+      <div data-testid="add-child-sheet">
+        {step === "child" ? (
+          <StepChild
+            name={name} setName={setName}
+            ageYears={ageYears} setAgeYears={setAgeYears}
+            ageMonthsPart={ageMonthsPart} setAgeMonthsPart={setAgeMonthsPart}
+            birthDate={birthDate} setBirthDate={setBirthDate}
+            languages={languages} setLanguages={setLanguages}
+            controllerConsent={controllerConsent} setControllerConsent={setControllerConsent}
+            creating={saving}
+            onNext={() => setStep("domains")}
+          />
+        ) : (
+          <StepDomains
+            selectedDomains={selectedDomains}
+            setSelectedDomains={setSelectedDomains}
+            onNext={() => void finish()}
+            onSkip={() => void finish()}
+          />
         )}
-
-        {step === 2 && (
-          <div className="space-y-3">
-            <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>{t("ac.langs")}</label>
-            <div className="flex flex-wrap gap-2">
-              {LANGUAGE_OPTIONS.map((lang) => (
-                <button
-                  key={lang}
-                  type="button"
-                  onClick={() => toggleLanguage(lang)}
-                  className="px-3 py-2 rounded-xl text-xs font-bold transition"
-                  style={languages.includes(lang)
-                    ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.40)" }
-                    : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
-                >
-                  {t("ob.lang." + lang.toLowerCase())}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {step === 3 && (
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ac.strengths")} <span style={{ opacity: 0.7 }}>{t("ac.optLines")}</span></label>
-              <textarea value={strengths} onChange={(e) => setStrengths(e.target.value)} rows={3} className="w-full rounded-xl px-4 py-2.5 text-xs focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ac.challenges")} <span style={{ opacity: 0.7 }}>{t("ac.optLines")}</span></label>
-              <textarea value={challenges} onChange={(e) => setChallenges(e.target.value)} rows={3} className="w-full rounded-xl px-4 py-2.5 text-xs focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
-            </div>
-          </div>
-        )}
-
-        <div className="flex justify-between gap-3 pt-2">
-          <Button variant="ghost" size="sm" onClick={step === 1 ? close : () => setStep((s) => s - 1)}>
-            {step === 1 ? t("ac.cancel") : t("ac.back")}
-          </Button>
-          {step < 3 ? (
-            <Button size="sm" disabled={!canAdvance} onClick={() => setStep((s) => s + 1)}>
-              {t("ac.next")}
-            </Button>
-          ) : (
-            <Button size="sm" disabled={saving} onClick={finish}>
-              {saving ? t("ac.adding") : t("ac.add")}
-            </Button>
-          )}
-        </div>
       </div>
-    </Modal>
+    </Sheet>
   );
 }
