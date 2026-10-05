@@ -57,7 +57,9 @@ describe("B-KID-23 F-1: the reader completes a partial render in the story's lan
   });
   it("English: a missing beat is the English authored scene", () => {
     const { scenes } = completeRender(david, { ...partialHe, scenes: [] }, "en");
-    expect(scenes[0]).toEqual({ beatId: "call", title: "The Call", narration: david.beats[0].spine, imagePrompt: "" });
+    // B-KID-132 re-pin: the beat titles are the picture-book page titles now.
+    expect(scenes[0]).toEqual({ beatId: "call", title: david.beats[0].title, narration: david.beats[0].spine, imagePrompt: "" });
+    expect(scenes[0].title).toBe("On the Golden Hill");
   });
   it("NEGATIVE CONTROL: the pre-fix fill (title + spine) put English inside the Hebrew reader", () => {
     const b = david.beats[0];
@@ -92,8 +94,9 @@ describe("B-KID-45 (KB-02): the authored fallback keeps its art", () => {
 describe("B-KID-76 (a): the authored text names the child as the hero", () => {
   const dana = { name: "Dana Cohen", gender: "boy" as const };
   it("EN: sentence-initial, mid-sentence, possessive and the authored epithets become the first name", () => {
-    expect(authoredScene(david.beats[0], "en", undefined, dana).narration).toBe("Dana is a small shepherd who hears that a giant named Goliath is frightening everyone in the valley.");
-    expect(authoredScene(david.beats.find((b) => b.id === "fear")!, "en", undefined, dana).narration).toBe("Dana's heart pounds — Goliath is enormous and Dana is so small. Fear says 'you can't'.");
+    // B-KID-132 re-pin: the read-aloud text of the book.
+    expect(authoredScene(david.beats[0], "en", undefined, dana).narration).toBe("On a golden hill, Dana takes care of the sheep. Baa, baa! Dana is small, and so is the sling, but every sheep is safe.");
+    expect(authoredScene(david.beats.find((b) => b.id === "fear")!, "en", undefined, dana).narration).toBe("Dana's heart goes thump-thump, thump-thump. \"You're too small,\" say the big brothers. Bun hides inside Dana's coat.");
     expect(nameTheHero("everyone watches what the small hero does next.", "en", dana)).toBe("everyone watches what Dana does next.");
     expect(nameTheHero("At dusk, the child hero notices", "en", dana)).toBe("At dusk, Dana notices");
     expect(nameTheHero("thank the dependable little hero.", "en", dana)).toBe("thank Dana.");
@@ -102,7 +105,7 @@ describe("B-KID-76 (a): the authored text names the child as the hero", () => {
   });
   it("HE: הגיבור with its prefix letters becomes the name; the indefinite and plural stay", () => {
     const he = { name: "דנה", gender: "unspecified" as const };
-    expect(authoredScene(david.beats[0], "he", undefined, he).narration).toBe("דנה הוא רועה צאן קטן. הוא שומע שענק בשם גוליית מפחיד את כל מי שגר בעמק.");
+    expect(authoredScene(david.beats[0], "he", undefined, he).narration).toBe("על הגבעה הזהובה, דנה שומר על הכבשים. מההה, מההה! דנה קטן, וגם הקלע שלו קטן, אבל כל הכבשים בטוחות."); // B-KID-132 re-pin
     expect(nameTheHero("הלב של הגיבור דופק. והגיבור קם, כשהגיבור הולך, מריעים לגיבור הקטן שהגיבור", "he", he))
       .toBe("הלב של דנה דופק. ודנה קם, כשדנה הולך, מריעים לדנה הקטן שדנה");
     expect(nameTheHero("הגיבור הילד ושלושה חברים", "he", he)).toBe("דנה ושלושה חברים");
@@ -118,13 +121,14 @@ describe("B-KID-76 (a): the authored text names the child as the hero", () => {
     }
     for (const c of david.beats[3].choices!) expect(authoredChoice(c, "he", he).consequence).not.toContain("הגיבור");
   });
-  it("a nameless child keeps 'the hero' (EN + HE); a girl keeps the authored masculine Hebrew text", () => {
+  it("a nameless child keeps 'the hero' (EN + HE); a girl reads the feminine Hebrew text, named (B-KID-132)", () => {
     expect(authoredScene(david.beats[0], "en", undefined, { name: "" }).narration).toBe(david.beats[0].spine);
     expect(authoredScene(david.beats[0], "en", undefined, { name: "your child" }).narration).toBe(david.beats[0].spine);
     expect(authoredScene(david.beats[0], "he").narration).toBe(david.beats[0].spineHe);
-    expect(authoredScene(david.beats[0], "he", undefined, { name: "מיה", gender: "girl" }).narration).toBe(david.beats[0].spineHe);
+    // B-KID-132 re-pin: david has feminine text now (a girl WITHOUT it keeps the masculine, un-named: see the B-KID-132 (a) test).
+    expect(authoredScene(david.beats[0], "he", undefined, { name: "מיה", gender: "girl" }).narration).toBe("על הגבעה הזהובה, מיה שומרת על הכבשים. מההה, מההה! מיה קטנה, וגם הקלע שלה קטן, אבל כל הכבשים בטוחות.");
     // English for a girl is named (the English text is gender-neutral)
-    expect(authoredScene(david.beats[0], "en", undefined, { name: "Maya", gender: "girl" }).narration.startsWith("Maya is")).toBe(true);
+    expect(authoredScene(david.beats[0], "en", undefined, { name: "Maya", gender: "girl" }).narration).toContain("Maya takes care"); // B-KID-132 re-pin
   });
   it("B-KID-40 stays: the image prompt never carries the name", () => {
     for (const b of david.beats) {
@@ -136,12 +140,14 @@ describe("B-KID-76 (a): the authored text names the child as the hero", () => {
   it("the model's own beats are never rewritten; only the authored fill is named", () => {
     const { scenes, choices } = completeRender(david, partialHe, "he", { name: "דנה" });
     expect(scenes.find((s) => s.beatId === "fear")!.narration).toBe("טקסט מהמודל.");
-    expect(scenes.find((s) => s.beatId === "call")!.narration.startsWith("דנה")).toBe(true);
-    expect(choices[1].consequence.startsWith("דנה")).toBe(true);
+    // B-KID-132 re-pin: the name now lands mid-sentence.
+    expect(scenes.find((s) => s.beatId === "call")!.narration).toContain(", דנה שומר");
+    expect(choices[1].consequence).toContain("ודנה מרגיש");
   });
   it("NEGATIVE CONTROL: the pre-fix render said 'The hero is a small shepherd' to a named child", () => {
-    expect(david.beats[0].spine.startsWith("The hero is")).toBe(true);
-    expect(authoredScene(david.beats[0], "en", undefined, dana).narration.startsWith("The hero")).toBe(false);
+    // B-KID-132 re-pin: the authored page still says "the hero"; the named page never does.
+    expect(david.beats[0].spine).toContain("the hero takes care");
+    expect(authoredScene(david.beats[0], "en", undefined, dana).narration).not.toMatch(/hero/i);
   });
   it("B-KID-132 (a) — EN / HE boy / HE girl: a girl reads the feminine text, named; a boy the masculine, named", () => {
     const beat: HeroBeat = {

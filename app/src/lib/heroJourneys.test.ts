@@ -141,6 +141,7 @@ describe("metric helpers", () => {
 // replaces: after naming, no "hero" / "גיבור" is left for a boy or a girl.
 const READ_ALOUD_IDS = [
   "the-lion-who-was-afraid", "noahs-ark", "the-garden-of-forgotten-seeds",
+  "david-and-goliath", "the-dragon-of-responsibility", "jonah-and-the-great-fish",
 ];
 
 describe("B-KID-132: the read-aloud books name the child on every page", () => {
