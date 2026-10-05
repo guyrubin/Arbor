@@ -15,6 +15,7 @@
 import { speakText, voiceSupported } from "../../lib/voice";
 import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
 import { useKidHearIt } from "./kidChrome";
+import { Icon } from "../ui/Icon";
 import { isKidReadAloudMuted, kidSay, pageHasUserGesture, setKidReadAloudMuted, useKidReadAloudMuted } from "./audio/kidAudio";
 
 // B-KID-73: the per-child mute store and the voice path live in the ONE kid
@@ -44,6 +45,7 @@ export function KidSoundToggle({ childId, lang }: { childId: string; lang: "en" 
       aria-label={label}
       data-kid-read-aloud=""
       data-kid-sound=""
+      data-muted={muted ? "" : undefined}
       style={{ appearance: "none", display: "inline-grid", placeItems: "center", inlineSize: 44, blockSize: 44, borderRadius: 999, cursor: "pointer", background: muted ? "var(--arbor-paper-deep)" : "var(--arbor-sky-soft)", color: muted ? "var(--arbor-muted)" : "var(--arbor-sky-ink)", border: "2px solid var(--comic-ink)", flexShrink: 0 }}
     >
       <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
@@ -59,8 +61,11 @@ export function KidSoundToggle({ childId, lang }: { childId: string; lang: "en" 
 /** The read-aloud toggle IS the Sound control (B-KID-73). */
 export const KidReadAloudToggle = KidSoundToggle;
 
-/** B-KID-74 (KC-01): the top bar's ONE hear-it while a game is open — replays
- *  the game's instruction (an explicit tap, so no mute or gesture check). */
+/** B-KID-74 (KC-01) + B-KID-73: the game's ONE hear-it — replays the
+ *  instruction (an explicit tap, so no mute or gesture check). It sits in the
+ *  instruction bubble (GameShell) with its own glyph — a person speaking
+ *  (record_voice_over), never the Sound control's speaker — so a pre-reader
+ *  can tell "say it again" from "sound on/off". */
 export function KidHearItButton() {
   const hearIt = useKidHearIt();
   if (!hearIt || !voiceSupported()) return null;
@@ -70,12 +75,9 @@ export function KidHearItButton() {
       onClick={() => { speakText(hearIt.text, {}, hearIt.lang); }}
       aria-label={kidsStoriesText("kidGame.hearIt", hearIt.lang)}
       data-kid-hear-it=""
-      style={{ appearance: "none", display: "inline-grid", placeItems: "center", inlineSize: 44, blockSize: 44, borderRadius: 999, cursor: "pointer", background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)", border: "2px solid var(--comic-ink)", flexShrink: 0 }}
+      style={{ appearance: "none", display: "inline-grid", placeItems: "center", inlineSize: 44, blockSize: 44, borderRadius: 999, cursor: "pointer", background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)", border: "2px solid var(--comic-ink)", flexShrink: 0 }}
     >
-      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
-        <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor" />
-        <path d="M15.5 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" />
-      </svg>
+      <Icon name="record_voice_over" size={24} fill={1} />
     </button>
   );
 }

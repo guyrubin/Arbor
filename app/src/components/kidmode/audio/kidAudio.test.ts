@@ -171,6 +171,26 @@ describe("wiring", () => {
     expect(overlay).toContain("useEffect(() => { kidHush(); }, [view, arcadeWorldId]);");
     expect(overlay.match(/<KidSoundToggle /g)?.length).toBe(1);
   });
+  it("Fable render: hear-it and Sound are different buttons — Sound at the far side by the exit, hear-it in the instruction bubble with its own glyph", () => {
+    const overlay = read("..", "KidModeOverlay.tsx");
+    const bar = overlay.slice(overlay.indexOf("data-kid-bar-title"), overlay.indexOf("</header>"));
+    expect(bar).not.toContain("<KidHearItButton");
+    // the Sound control is the last control before the grown-ups exit
+    expect(bar).toMatch(/<KidSoundToggle [^>]*\/>\s*<HoldExitButton /);
+    const ra = read("..", "kidReadAloud.tsx");
+    const hear = ra.slice(ra.indexOf("export function KidHearItButton"));
+    expect(hear).toContain('<Icon name="record_voice_over"');
+    expect(hear).not.toContain("M4 9.5h3.5L12 5.5v13l-4.5-4H4z"); // not the speaker
+    const toggle = ra.slice(ra.indexOf("export function KidSoundToggle"), ra.indexOf("export const KidReadAloudToggle"));
+    expect(toggle).toContain("aria-pressed={!muted}");
+    expect(toggle).toContain('data-muted={muted ? "" : undefined}');
+    // at 375 px the title keeps >= 40 % of the bar: Home 44 + Sound 44 + exit
+    // (56 px ring, "Back to parent" label <= 96 px) + 3 gaps of 8, padding 12 x 2
+    const barWidth = 375 - 24;
+    const title = barWidth - 44 - 44 - 96 - 3 * 8;
+    expect(title / barWidth).toBeGreaterThanOrEqual(0.4);
+    expect(overlay).toContain('gap: "8px"');
+  });
   it("GameShell taps + finish, the reader's page turn, choice tiles, and ONE voice path", () => {
     const shell = read("..", "game", "GameShell.tsx");
     expect(shell).toContain("onPointerDownCapture={onGamePiecePointerDown}");

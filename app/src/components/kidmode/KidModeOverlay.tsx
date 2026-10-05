@@ -33,7 +33,7 @@ import { HoldExitButton } from "./HoldExitButton";
 import { KidErrorBoundary } from "./KidErrorBoundary";
 import { ArborMascot } from "../ui/ArborMascot";
 import { useArbor } from "../../context/ArborContext";
-import { KidHearItButton, KidSoundToggle } from "./kidReadAloud";
+import { KidSoundToggle } from "./kidReadAloud";
 import { closeKidAudio, kidAudioVisibility, kidHush, setKidAudioChild } from "./audio/kidAudio";
 import { setKidHome } from "./kidChrome";
 
@@ -350,10 +350,11 @@ export default function KidModeOverlay() {
                 {/* B-KID-53: inside a world or a story the title is ITS name. */}
                 {barTitle}
               </span>
-              {/* B-KID-74: inside a game the bar carries the game's ONE hear-it. */}
-              {view === "arcade" && <KidHearItButton />}
-              {/* B-KID-73: the ONE per-child Sound control (voice + effects) on
-                  every kid view's bar (was: read-to-me, in an open book only). */}
+              {/* B-KID-73 (Fable render): the game's hear-it lives in its
+                  instruction bubble (GameShell), not here — two speaker buttons
+                  side by side were ambiguous and squeezed the title. The bar
+                  keeps ONE per-child Sound control (voice + effects), at the
+                  far side beside the grown-ups exit. */}
               <KidSoundToggle childId={childProfile.id} lang={uiLang === "he" ? "he" : "en"} />
               <HoldExitButton onExit={closeKidMode} idleLabel={t("kid.exit.backToParent")} ariaIdle={t("kid.exit.backToParentAria")} />
             </header>

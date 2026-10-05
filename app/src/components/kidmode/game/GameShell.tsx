@@ -28,7 +28,7 @@ import { isKidModeActive, subscribeKidMode } from "../../../lib/kidModeGate";
 import { useKidTheme } from "../../../hooks/useKidTheme";
 import { kidArt, kidArtSrcSet, worldTileKey, type KidWorldTileId } from "../../../lib/kidThemeManifest";
 import { setKidHearIt, useKidHome } from "../kidChrome";
-import { autoReadPage } from "../kidReadAloud";
+import { autoReadPage, KidHearItButton } from "../kidReadAloud";
 import { stopVoice } from "../../../lib/voice";
 import { kidSfx } from "../audio/kidAudio";
 import { KidFinishMoment } from "../rewards/KidSouvenir";
@@ -158,9 +158,11 @@ export function GameShell({ worldId, title, instruction, hearIt, progress, mood,
             dir="auto"
             data-game-instruction=""
             className="font-extrabold"
-            style={{ margin: 0, fontSize: 18, lineHeight: 1.35, color: "var(--arbor-ink)", background: "var(--arbor-paper-elevated)", border: "var(--comic-line)", borderRadius: 18, paddingInline: 16, paddingBlock: 10 }}
+            style={{ margin: 0, fontSize: 18, lineHeight: 1.35, color: "var(--arbor-ink)", background: "var(--arbor-paper-elevated)", border: "var(--comic-line)", borderRadius: 18, paddingInline: 16, paddingBlock: 10, display: "flex", alignItems: "center", gap: 10 }}
           >
-            {instruction}
+            <span style={{ flex: "1 1 0%", minInlineSize: 0 }}>{instruction}</span>
+            {/* B-KID-73: hear-it beside the words it repeats (its own glyph). */}
+            <KidHearItButton />
           </p>
         )}
         {children}

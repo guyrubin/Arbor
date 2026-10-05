@@ -134,8 +134,9 @@ describe("Fable render: the bar names the world reached from the home tile", () 
 
 describe("the one top bar + migrated worlds", () => {
   const overlay = read("..", "KidModeOverlay.tsx");
-  it("the overlay bar carries hear-it inside a game and registers Home for the finish", () => {
-    expect(overlay).toContain('{view === "arcade" && <KidHearItButton />}');
+  it("hear-it sits in the game's instruction bubble (B-KID-73: not a second speaker in the bar); the overlay registers Home for the finish", () => {
+    expect(overlay).not.toContain("<KidHearItButton");
+    expect(read("GameShell.tsx")).toMatch(/data-game-instruction=""[\s\S]*?<KidHearItButton \/>[\s\S]*?<\/p>/);
     expect(overlay).toContain('setKidHome(() => setView("home"));');
   });
   it.each([["MindVaultWorld.tsx", "memory"], ["PatternPowerWorld.tsx", "pattern"], ["FeelingsLabTab.tsx", "feelings"], ["BeatKeeperWorld.tsx", "beat"], ["HeroPoseWorld.tsx", "pose"], ["SpellForgeWorld.tsx", "reading"], ["AdventuresTab.tsx", "adventures"], ["MimicStudioTab.tsx", "mimic"], ["SpeechCoachTab.tsx", "speech"]])("%s is on the shell (no PlayHeader of its own)", (file, worldId) => {
