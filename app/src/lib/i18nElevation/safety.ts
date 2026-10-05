@@ -14,7 +14,7 @@
 export const en: Record<string, string> = {
   // ── Header
   "elev.safety.header.title": "Safety & urgent help",
-  "elev.safety.header.sub": "One tap reaches a person. Nothing here is saved.",
+  "elev.safety.header.sub": "One tap reaches a person. Arbor never records the call.",
 
   // ── Crisis script (pinned)
   "elev.safety.crisis.kicker": "Crisis script — say this",
@@ -93,7 +93,7 @@ export const en: Record<string, string> = {
 export const he: Record<string, string> = {
   // ── Header
   "elev.safety.header.title": "בטיחות ועזרה מיידית",
-  "elev.safety.header.sub": "לחיצה אחת ואדם עונה. שום דבר כאן לא נשמר.",
+  "elev.safety.header.sub": "לחיצה אחת ואדם עונה. ארבור לא מתעדת את השיחה.",
 
   // ── Crisis script (pinned)
   "elev.safety.crisis.kicker": "מילים לרגע משבר — אמרו כך",

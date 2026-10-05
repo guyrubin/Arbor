@@ -345,3 +345,46 @@ describe("B-CAREPRO-NEW-1m / 1n — the crisis card names the child, shows the r
     expect(row).toContain("<bdi");
   });
 });
+
+/* W2-CAREPRO c2 r1 (safety product P1 G0 + design P1 G1) — the page promises
+ * only what it keeps, and paints one gradient (the CTA). "Nothing here is
+ * saved" sat above saved contacts and localStorage-persisted ticks. */
+describe("W2-CAREPRO c2 r1 — copy versus persistence; flat crisis wash", () => {
+  const NOTHING_SAVED = /nothing[^.]*(saved|kept|stored)|לא נשמר|לא נשמרים/i;
+  const safetyCopy = (rec: Record<string, string>) =>
+    Object.entries(rec).filter(([k]) => k.startsWith("elev.safety.")).map(([k, v]) => `${k}: ${v}`);
+  const persists = (source: string) => /localStorage\.setItem|\.upsert\(|setDoc\(|addDoc\(/.test(source);
+
+  it("the subtitle keeps its word in EN and HE", () => {
+    expect(safetyEnRecord["elev.safety.header.sub" as keyof typeof safetyEnRecord]).toBe("One tap reaches a person. Arbor never records the call.");
+    expect(safetyHeRecord["elev.safety.header.sub" as keyof typeof safetyHeRecord]).toBe("לחיצה אחת ואדם עונה. ארבור לא מתעדת את השיחה.");
+  });
+
+  it("no Safety string claims nothing is saved while SafetyTab persists anything", () => {
+    expect(persists(tabSource), "the screen does persist (contacts, review date)").toBe(true);
+    for (const rec of [safetyEnRecord, safetyHeRecord] as Record<string, string>[]) {
+      const hits = safetyCopy(rec).filter((line) => NOTHING_SAVED.test(line));
+      expect(hits).toEqual([]);
+    }
+  });
+
+  it("NEGATIVE CONTROL: the pre-fix subtitle trips the scan in both locales", () => {
+    expect(NOTHING_SAVED.test("One tap reaches a person. Nothing here is saved.")).toBe(true);
+    expect(NOTHING_SAVED.test("לחיצה אחת ואדם עונה. שום דבר כאן לא נשמר.")).toBe(true);
+  });
+
+  it("the warning-sign ticks are session-only: never written, never read back", () => {
+    expect(tabSource).not.toContain("arbor.safetyChecklist");
+    expect(tabSource).not.toMatch(/localStorage\.setItem\(checklistKey/);
+    const writes = [...tabSource.matchAll(/localStorage\.setItem\((\w+)/g)].map((m) => m[1]);
+    expect(writes).toEqual(["reviewedKey"]);
+  });
+
+  it("the crisis card and its chip are a flat wash — the CTA is the page's one gradient", () => {
+    expect(tabSource).not.toContain("var(--arbor-pink-soft)");
+    expect((tabSource.match(/var\(--arbor-pink-wash\)/g) ?? []).length).toBe(2);
+    const css = readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "index.css"), "utf8");
+    const wash = /--arbor-pink-wash:\s*([^;]+);/.exec(css);
+    expect(wash?.[1].trim()).toMatch(/^#[0-9a-f]{6}$/i);
+  });
+});

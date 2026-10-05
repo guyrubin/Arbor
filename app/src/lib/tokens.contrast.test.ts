@@ -180,7 +180,9 @@ function samplesOf(value: string): Color[] {
 const PAPER = ["--arbor-paper", "--arbor-paper-elevated", "--arbor-paper-deep", "--arbor-paper-sunk"];
 const TINTS = ["--arbor-paper-tinted", "--arbor-clay-dim", "--arbor-clay-soft",
   "--arbor-green-soft", "--arbor-peach-soft", "--arbor-lav-soft",
-  "--arbor-yellow-soft", "--arbor-pink-soft", "--arbor-sky-soft"];
+  "--arbor-yellow-soft", "--arbor-pink-soft", "--arbor-sky-soft",
+  // W2-CAREPRO c2 r1: the flat washes (crisis card, Start-here band, Plus chip).
+  "--arbor-peach-wash", "--arbor-lav-wash", "--arbor-pink-wash"];
 const TEXT = ["--arbor-ink", "--arbor-ink-soft", "--arbor-muted", "--arbor-faint",
   "--arbor-muted-alt", "--arbor-clay", "--arbor-clay-deep", "--arbor-clay-ink"];
 const FUNCTIONAL = ["green", "peach", "lav", "yellow", "pink", "sky"];
@@ -212,7 +214,7 @@ function declaredPairs(scope: Scope): Pair[] {
   }
   for (const tone of FUNCTIONAL) {
     for (const surface of surfaces.filter((s) => PAPER.includes(s.name) ||
-      s.name.startsWith("--arbor-paper-tinted[") || s.name.startsWith("--arbor-" + tone + "-soft["))) {
+      s.name.startsWith("--arbor-paper-tinted[") || s.name.startsWith("--arbor-" + tone + "-soft[") || s.name.startsWith("--arbor-" + tone + "-wash["))) {
       add("--arbor-" + tone + "-ink", surface);
     }
   }

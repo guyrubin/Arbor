@@ -22,8 +22,10 @@ import { PageHeader, SectionCard, cardCls, PASTEL, PastelKey } from "../ui/kit";
 type Contact = { id: string; name: string; role: string; phone: string; notes: string };
 
 /** Warning-sign checklist rows — i18n key suffixes (elev.safety.sign.N); the
- *  numeric index doubles as the persisted-checkbox key, matching the legacy
- *  localStorage shape. */
+ *  numeric index is the checkbox key. W2-CAREPRO c2 r1: the ticks are
+ *  SESSION-ONLY (component state, never written) — a crisis page leaves no
+ *  trace on a shared device, and the header's promise stays true. The legacy
+ *  checklist key is only ever erased (lib/childData stray keys). */
 const WARNING_SIGN_KEYS = [1, 2, 3, 4, 5, 6] as const;
 
 /** Render order for the helpline directory groups. */
@@ -71,10 +73,10 @@ export default function SafetyTab() {
   const foldedGroups = helplineOrder.slice(HELPLINE_EXPANDED_GROUPS);
 
   const reviewedKey = useMemo(() => `arbor.safetyReviewed.${childProfile.id}`, [childProfile.id]);
-  const checklistKey = useMemo(() => `arbor.safetyChecklist.${childProfile.id}`, [childProfile.id]);
 
-  // Saved contacts persist to Firestore (per child); checklist + last-reviewed
-  // are lightweight device-local notes.
+  // Saved contacts persist to Firestore (per child) and the screen says so
+  // ("your saved contacts"); the last-reviewed date is a device-local note;
+  // the warning-sign ticks are never written (session-only).
   const contactsCol = useChildCollection<Contact>(childProfile.id, "contacts");
   const contacts = contactsCol.items;
   const [checked, setChecked] = useState<Record<number, boolean>>({});
@@ -82,13 +84,13 @@ export default function SafetyTab() {
   const [form, setForm] = useState<Contact>({ id: "", name: "", role: "", phone: "", notes: "" });
 
   useEffect(() => {
+    setChecked({});
     try {
-      setChecked(JSON.parse(localStorage.getItem(checklistKey) || "{}"));
       setLastReviewed(localStorage.getItem(reviewedKey));
     } catch {
-      setChecked({});
+      setLastReviewed(null);
     }
-  }, [reviewedKey, checklistKey]);
+  }, [reviewedKey]);
 
   const anySignTicked = WARNING_SIGN_KEYS.some((_, i) => !!checked[i]);
 
@@ -102,9 +104,7 @@ export default function SafetyTab() {
   };
 
   const toggleSign = (i: number) => {
-    const next = { ...checked, [i]: !checked[i] };
-    setChecked(next);
-    try { localStorage.setItem(checklistKey, JSON.stringify(next)); } catch { /* ignore */ }
+    setChecked((prev) => ({ ...prev, [i]: !prev[i] }));
   };
 
   const addContact = (e: React.FormEvent) => {
@@ -203,7 +203,7 @@ export default function SafetyTab() {
       </div>
 
       {/* Pinned crisis-language card */}
-      <div data-module="safety-crisis-language" className="rounded-2xl p-6 space-y-2" style={{ background: "var(--arbor-pink-soft)" }}>
+      <div data-module="safety-crisis-language" className="rounded-2xl p-6 space-y-2" style={{ background: "var(--arbor-pink-wash)" }}>
         <span className={`text-xs font-extrabold flex items-center gap-1.5 ${uiLang === "he" ? "" : "uppercase tracking-wider"}`} style={{ color: "var(--arbor-pink-ink)" }}>
           <Icon name="warning" size={16} /> <span>{crisisFirstName ? t("elev.safety.crisis.kickerNamed", { name: `⁨${crisisFirstName}⁩` }) : t("elev.safety.crisis.kicker")}</span>
         </span>
@@ -277,7 +277,7 @@ export default function SafetyTab() {
           makes the budget rule countable: top-level = stamps minus demoted. */}
       <details ref={moreRef} id="safety-more" data-module-disclosure="safety-more" className={`${cardCls} p-0 overflow-hidden`}>
         <summary className="cursor-pointer list-none px-6 py-4 min-h-[44px] flex items-center gap-3">
-          <span className="grid place-items-center w-9 h-9 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}>
+          <span className="grid place-items-center w-9 h-9 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-pink-wash)", color: "var(--arbor-pink-ink)" }}>
             <Icon name="call" size={18} />
           </span>
           <span className="min-w-0">

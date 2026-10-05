@@ -58,6 +58,12 @@
   --arbor-yellow-glow: 0 0 16px rgba(251,191,36,0.2);
   --arbor-pink:        #ec4899;
   --arbor-pink-soft:   linear-gradient(135deg, rgba(236,72,153,0.15), rgba(236,72,153,0.05));
+  /* W2-CAREPRO c2 r1 — FLAT washes (one gradient per page: the primary CTA).
+     Each = color-mix(in srgb, var(--arbor-<tone>) 9%, var(--arbor-paper-elevated)),
+     resolved to a literal so the contrast suite can read it. */
+  --arbor-peach-wash:  #fef2ea;
+  --arbor-lav-wash:    #f7f5ff;
+  --arbor-pink-wash:   #fdeff6;
   --arbor-pink-ink:    #9d174d;
   --arbor-pink-glow:   0 0 16px rgba(236,72,153,0.2);
   --arbor-sky:         #0ea5e9;
@@ -944,6 +950,12 @@ body {
   --arbor-yellow-glow: 0 0 16px rgba(251,191,36,0.2);
   --arbor-pink:        #ec4899;
   --arbor-pink-soft:   linear-gradient(135deg, rgba(236,72,153,0.15), rgba(236,72,153,0.05));
+  /* W2-CAREPRO c2 r1 — FLAT washes (one gradient per page: the primary CTA).
+     Each = color-mix(in srgb, var(--arbor-<tone>) 9%, var(--arbor-paper-elevated)),
+     resolved to a literal so the contrast suite can read it. */
+  --arbor-peach-wash:  #fef2ea;
+  --arbor-lav-wash:    #f7f5ff;
+  --arbor-pink-wash:   #fdeff6;
   --arbor-pink-ink:    #9d174d;
   --arbor-pink-glow:   0 0 16px rgba(236,72,153,0.2);
   --arbor-sky:         #0ea5e9;

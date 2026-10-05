@@ -447,6 +447,15 @@ const PRE_CR01_FLAT_BASELINE: Readonly<Record<string, string>> = {
   "--gradient-cta": "linear-gradient(135deg, #58a6ff, #58a6ff 60%, #1f6feb)"
 };
 
+/** W2-CAREPRO c2 r1 — three exact ADDITIONS (both scopes): flat 9% washes of
+ *  peach/lav/pink over paper-elevated, so a page's only gradient is its CTA.
+ *  Contrast-pinned in tokens.contrast.test.ts (TINTS). */
+const W2_CAREPRO_FLAT_WASHES: Readonly<Record<string, string>> = {
+  "--arbor-peach-wash": "#fef2ea",
+  "--arbor-lav-wash": "#f7f5ff",
+  "--arbor-pink-wash": "#fdeff6",
+};
+
 /** Exact replacements, not permission to change these tokens arbitrarily.
  * Root progress changes representation only: its pre-change resolved colours
  * stay pinned by the existing decorative-progress assertion. */
@@ -463,7 +472,8 @@ const CR01_APPROVED_ROOT: Readonly<Record<string, string>> = {
   "--arbor-pink-ink": "#9d174d",
   "--arbor-sky-ink": "#075985",
   "--arbor-green-cta-start": "#1a6be8",
-  "--arbor-muted-alt": "var(--arbor-muted)"
+  "--arbor-muted-alt": "var(--arbor-muted)",
+  ...W2_CAREPRO_FLAT_WASHES
 };
 
 const CR01_APPROVED_FLAT: Readonly<Record<string, string>> = {
@@ -481,7 +491,8 @@ const CR01_APPROVED_FLAT: Readonly<Record<string, string>> = {
   "--arbor-sky-ink": "#075985",
   "--arbor-green-cta-start": "#1a6be8",
   "--arbor-muted-alt": "var(--arbor-muted)",
-  "--gradient-cta": "linear-gradient(135deg, #1a6be8, #1558c0 60%, #124da8)"
+  "--gradient-cta": "linear-gradient(135deg, #1a6be8, #1558c0 60%, #124da8)",
+  ...W2_CAREPRO_FLAT_WASHES
 };
 
 function tokenBaselineDrift(
