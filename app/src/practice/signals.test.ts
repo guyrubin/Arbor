@@ -176,13 +176,15 @@ describe("domainBands + recommend", () => {
     expect(langWith.basis).not.toContain("Words & Express practice");
   });
 
-  it("folds real letter-trace coverage scores into the language signal", () => {
+  // B-KID-90 re-pin (RULINGS R6 / G-C1: stop): letter-trace coverage is a kid
+  // game's score — it used to lift the language band; it no longer moves it.
+  it("letter-trace coverage scores no longer move the language signal (kid-game score)", () => {
     const lowMs: Milestone[] = [ms("language_communication", false), ms("language_communication", false)];
     const strongTrace = [ev("letter-trace", true, 100), ev("letter-trace", true, 100)];
     const base = domainBands(lowMs, [], [], [], []).find((b) => b.domain === "language")!;
     const lifted = domainBands(lowMs, [], [], [], strongTrace).find((b) => b.domain === "language")!;
-    expect(lifted.signal).toBeGreaterThan(base.signal);
-    expect(lifted.basis).toContain("Letter tracing");
+    expect(lifted).toEqual(base);
+    expect(lifted.basis).not.toContain("Letter tracing");
   });
 
   // OBJ-GROWTH-05: this used to assert "recommends the WEAKEST domain" — the
@@ -521,5 +523,61 @@ describe("W2-SHELLPLAY r2 · no reader of adventures.items touches .correct", ()
   it("NEGATIVE CONTROL: the pre-fix reads are caught", () => {
     expect("const advCorrect = data.adventures.items.filter((a) => a.correct).length;").toMatch(READ_CORRECT);
     expect("(adventures.filter((a) => a.correct).length / adventures.length) * 100").toMatch(READ_CORRECT);
+  });
+});
+
+/* B-KID-90 (KC-07; RULINGS R6, G-C1: stop) — kid-game answers never move a
+   developmental band. Right/wrong and scores from Mind Vault, Pattern Power,
+   the Feelings quiz, Spell Forge tracing/phonics are play; only their COUNTS
+   reach the parent (observation volume — domainConfidence). */
+describe("B-KID-90 · kid-game accuracy stops feeding the developmental bands", async () => {
+  const { KID_GAME_EVENT_KINDS, domainConfidence } = await import("./signals");
+  const at0 = new Date().toISOString();
+  const kev = (kind: PracticeEventKind, correct?: boolean, score?: number): PracticeEvent => ({
+    id: `${kind}-${Math.random()}`, kind, domain: "cognition", correct, score, timestamp: at0,
+  });
+  const mss: Milestone[] = [
+    { id: "m1", domain: "cognition_executive_function", title: "a", checked: true } as Milestone,
+    { id: "m2", domain: "attachment_regulation", title: "b", checked: false } as Milestone,
+    { id: "m3", domain: "language_communication", title: "c", checked: true } as Milestone,
+  ];
+  const strip = (bands: ReturnType<typeof domainBands>) => bands.map((b) => ({ domain: b.domain, signal: b.signal, band: b.band, basis: b.basis }));
+  const baseline = strip(domainBands(mss, [], [], [], []));
+
+  it("20 wrong Pattern Power answers change no band", () => {
+    const wrong = Array.from({ length: 20 }, () => kev("pattern", false, 0));
+    expect(strip(domainBands(mss, [], [], [], wrong))).toEqual(baseline);
+  });
+
+  it("perfect or failing Mind Vault, Feelings quiz, tracing and phonics rounds change no band either way", () => {
+    for (const [correct, score] of [[true, 100], [false, 0]] as const) {
+      const rounds = (["memory", "pattern", "emotion-id", "emotion-why", "letter-trace", "phonics", "sight-word"] as PracticeEventKind[])
+        .flatMap((k) => Array.from({ length: 6 }, () => kev(k, correct, score)));
+      expect(strip(domainBands(mss, [], [], [], rounds)), `correct=${correct}`).toEqual(baseline);
+    }
+  });
+
+  it("the play still counts: the same rounds raise the observation volume (confidence), never the band", () => {
+    const rounds = Array.from({ length: 20 }, () => kev("memory", false, 0));
+    expect(domainConfidence("cognition", [], [], [], rounds, [])).toBe("high");
+    expect(domainConfidence("cognition", [], [], [], [], [])).toBe("low");
+  });
+
+  it("every kid game kind is in the stop list; the parent-register Words & Express practice still contributes", () => {
+    for (const k of ["memory", "pattern", "rhythm", "pose", "emotion-id", "emotion-why", "letter-trace", "phonics", "sight-word"] as PracticeEventKind[]) {
+      expect(KID_GAME_EVENT_KINDS.has(k), k).toBe(true);
+    }
+    for (const k of ["vocab-naming", "vocab-category", "expressive", "lang-strategy"] as PracticeEventKind[]) expect(KID_GAME_EVENT_KINDS.has(k), k).toBe(false);
+    const words = Array.from({ length: 4 }, () => kev("vocab-naming", true));
+    const lang = domainBands(mss, [], [], [], words).find((b) => b.domain === "language")!;
+    expect(lang.basis).toContain("Words & Express practice");
+  });
+
+  it("source pin: domainBands reads no score/correct of a kid-game kind", () => {
+    const src = readFileSync(nodePath.resolve(__dirname, "signals.ts"), "utf8");
+    const body = src.slice(src.indexOf("export function domainBands("), src.indexOf("/* ---------------- Assessment depth"));
+    expect(body).not.toMatch(/kind === "(memory|pattern|letter-trace)" && e\.score/);
+    expect(body).not.toMatch(/\["emotion-id", "emotion-why"\]/);
+    expect(body).not.toMatch(/Memory Match|"Pattern Power"|"Letter tracing"|"Feelings Lab"/);
   });
 });

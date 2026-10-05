@@ -15,14 +15,16 @@ const ms = (domain: Milestone["domain"], checked: boolean): Milestone => ({
 });
 
 describe("bands with practice events + hero metrics", () => {
-  it("blends Feelings Lab accuracy into the emotional band", () => {
+  // B-KID-90 re-pin (RULINGS R6 / G-C1: stop): the Feelings quiz is a kid
+  // game — its right answers no longer lift the emotional band.
+  it("Feelings Lab quiz accuracy no longer moves the emotional band", () => {
     const withEvents = domainBands([ms("attachment_regulation", false)], [], [], [],
       [ev("emotion-id", "emotional", true), ev("emotion-id", "emotional", true), ev("emotion-id", "emotional", true)]);
     const without = domainBands([ms("attachment_regulation", false)], [], [], []);
     const e1 = withEvents.find((b) => b.domain === "emotional")!;
     const e0 = without.find((b) => b.domain === "emotional")!;
-    expect(e1.signal).toBeGreaterThan(e0.signal);
-    expect(e1.basis).toContain("Feelings Lab");
+    expect(e1.signal).toBe(e0.signal);
+    expect(e1.basis).not.toContain("Feelings Lab");
   });
 
   it("nudges social from story-choice empathy, capped", () => {
@@ -32,9 +34,12 @@ describe("bands with practice events + hero metrics", () => {
     expect(social.signal).toBeLessThanOrEqual(58 + 10); // 50 base + 8 cap (+rounding)
   });
 
-  it("blends memory scores into cognition", () => {
+  // B-KID-90 re-pin: Mind Vault scores are play, not a cognition input.
+  it("memory scores no longer blend into cognition", () => {
     const bands = domainBands([], [], [], [], [ev("memory", "cognition", undefined, 90), ev("memory", "cognition", undefined, 80)]);
-    expect(bands.find((b) => b.domain === "cognition")!.basis).toContain("Memory Match");
+    const cog = bands.find((b) => b.domain === "cognition")!;
+    expect(cog.basis).not.toContain("Memory Match");
+    expect(cog).toEqual(domainBands([], [], [], []).find((b) => b.domain === "cognition"));
   });
 });
 

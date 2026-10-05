@@ -219,6 +219,19 @@ export const isMoodCheckin = (e: Pick<PracticeEvent, "kind" | "meta">): boolean 
 export const starEvents = <T extends Pick<PracticeEvent, "kind" | "meta">>(events: T[]): T[] =>
   events.filter((e) => !isMoodCheckin(e));
 
+/**
+ * B-KID-90 (KC-07, RULINGS R6 / G-C1: stop). The kinds a child writes by
+ * PLAYING a kid game: Mind Vault, Pattern Power, Beat Keeper, Hero Pose, the
+ * Feelings quiz, Spell Forge's tracing/phonics. Their right/wrong (`correct`)
+ * and `score` never move a developmental band, level or signal a parent sees —
+ * games are play. Their COUNTS still reach the parent side (rounds, sittings,
+ * which worlds) and still count as observation volume (domainConfidence).
+ * Difficulty engines may read their own history locally (MemoryMatch).
+ */
+export const KID_GAME_EVENT_KINDS: ReadonlySet<PracticeEvent["kind"]> = new Set<PracticeEvent["kind"]>([
+  "memory", "pattern", "rhythm", "pose", "emotion-id", "emotion-why", "letter-trace", "phonics", "sight-word",
+]);
+
 function eventAccuracy(events: PracticeEvent[], kinds: PracticeEvent["kind"][], minN = 3): number | null {
   const graded = events.filter((e) => kinds.includes(e.kind) && e.correct !== undefined);
   if (graded.length < minN) return null;
@@ -266,26 +279,12 @@ export function domainBands(
     return Math.min(done * 2, 10); // sustained practice nudges the band, max +10
   };
 
-  // B-KID-02: self check-ins (incl. legacy `self:` rows) are not answers.
-  const emotionAcc = eventAccuracy(events.filter((e) => !isMoodCheckin(e)), ["emotion-id", "emotion-why"]);
-  // phonics/sight-word are parent-confirmed taps always logged correct=true, so
-  // they are exposure (confidence) signals — not accuracy — and are excluded here
-  // to avoid inflating the language band that feeds the provider-shared trend.
-  // letter-trace carries a real score (trace coverage) and is folded in below.
-  const languageAcc = eventAccuracy(events, ["vocab-naming", "vocab-category", "expressive"]);
-  const traceScores = events.filter((e) => e.kind === "letter-trace" && e.score !== undefined);
-  const traceAcc = traceScores.length >= 2
-    ? traceScores.reduce((s, e) => s + (e.score ?? 0), 0) / traceScores.length
-    : null;
-  const memoryScores = events.filter((e) => e.kind === "memory" && e.score !== undefined);
-  const memoryAcc = memoryScores.length >= 2
-    ? memoryScores.reduce((s, e) => s + (e.score ?? 0), 0) / memoryScores.length
-    : null;
+  // B-KID-90 (G-C1: stop): kid-game answers — the Feelings quiz, letter-trace
+  // coverage, Mind Vault efficiency, Pattern Power correctness — no longer
+  // blend into any band. Only the parent-register Words & Express practice
+  // (Word World, parentOnly) still contributes accuracy. Counts stay below.
+  const languageAcc = eventAccuracy(events.filter((e) => !KID_GAME_EVENT_KINDS.has(e.kind)), ["vocab-naming", "vocab-category", "expressive"]);
   const calmCount = events.filter((e) => e.kind === "calm").length;
-  const patternScores = events.filter((e) => e.kind === "pattern" && e.score !== undefined);
-  const patternAcc = patternScores.length >= 2
-    ? patternScores.reduce((s, e) => s + (e.score ?? 0), 0) / patternScores.length
-    : null;
   const rhythmCount = events.filter((e) => e.kind === "rhythm").length;
   const poseCount = events.filter((e) => e.kind === "pose").length;
   // Story-choice metrics: empathy reads as social signal; courage/resilience as
@@ -309,30 +308,11 @@ export function domainBands(
       const ms = milestonePct.get(domain);
       signal = ms ?? 50;
       basis.push(ms !== undefined ? "milestone checklist" : "no milestone data yet");
-      if (domain === "cognition") {
-        if (memoryAcc !== null) {
-          signal = signal * 0.75 + memoryAcc * 0.25;
-          basis.push("Memory Match");
-        }
-        if (patternAcc !== null) {
-          signal = signal * 0.8 + patternAcc * 0.2;
-          basis.push("Pattern Power");
-        }
-      }
       if (domain === "language" && languageAcc !== null) {
         signal = signal * 0.6 + languageAcc * 0.4;
         basis.push("Words & Express practice");
       }
-      if (domain === "language" && traceAcc !== null) {
-        // Real trace coverage (a graded score), blended as a lighter input.
-        signal = signal * 0.8 + traceAcc * 0.2;
-        basis.push("Letter tracing");
-      }
       if (domain === "emotional") {
-        if (emotionAcc !== null) {
-          signal = signal * 0.6 + emotionAcc * 0.4;
-          basis.push("Feelings Lab");
-        }
         if (calmCount > 0 || rhythmCount > 0) {
           signal += Math.min(calmCount + rhythmCount, 5);
           basis.push(rhythmCount > 0 ? "calm + Beat Keeper" : "calm-down practice");
