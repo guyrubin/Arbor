@@ -71,6 +71,7 @@ import {
 import { buildConsultRequest, type ConsultStore } from "../server/consultRequests.js";
 import { IMAGE_ALLOWANCE, imageFailureResponse } from "../server/imageQuota.js";
 import { childNamesFrom, letteredWithoutNames, replaceNames } from "../server/imagePromptNames.js";
+import { createHeroPoseHandler, createHeroPoseSource, type HeroPoseSource } from "../server/heroPoseRoute.js";
 import { decideLive, LIVE_VERTEX_EU_PROVIDER } from "../ai/liveResidency.js";
 import { cohortTagFor, resolveEntitlement, COACH_METER, type EntitlementStore } from "../server/entitlements.js";
 import type { ReferralStore } from "../server/referral.js";
@@ -135,6 +136,9 @@ type ApiDeps = {
    *  via createApp), /api/tts resolves synthesis through
    *  registry.get("speech_synthesis", ...) — the live dispatch seam. */
   aiCapabilityRegistry?: CapabilityRegistry;
+  /** B-GAME-13b: where /hero-pose reads the child's stored hero (Firestore in
+   *  prod; locally, the heroes this server generated). Injectable for tests. */
+  heroPoseSource?: HeroPoseSource;
 };
 
 /** Redact PII from a profile object by round-tripping its JSON through the redactor. */
@@ -379,7 +383,7 @@ export const allowListHandoffInput = (
   return { logs: safeLogs, milestones: safeMilestones };
 };
 
-export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, sharedChildSource, companionLedgerSource, cohortMetricsStore, digestOptInStore, verifiedEmailResolver, digestEmailSender, digestJobSource, jobCallerVerifier, aiCapabilityRegistry }: ApiDeps) => {
+export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, sharedChildSource, companionLedgerSource, cohortMetricsStore, digestOptInStore, verifiedEmailResolver, digestEmailSender, digestJobSource, jobCallerVerifier, aiCapabilityRegistry, heroPoseSource }: ApiDeps) => {
   const router = express.Router();
   // CARE-2: the recipient shared-view read seam (Firestore in prod, null locally).
   const sharedSource = sharedChildSource ?? createSharedChildRecordSource(config, memoryStore);
@@ -406,6 +410,8 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   // B-BOOK release: a child's private book files (hero sheet, prints, narration)
   // — read only through this owner-checked proxy (server/bookAssets.ts).
   router.use(createBookAssetsRouter({ getBucket: () => defaultBookAssetBucket(config.storageBucket), requireOwnership }));
+  // B-GAME-13b: the stored-hero read behind /hero-pose.
+  const heroSource = heroPoseSource ?? createHeroPoseSource(config);
   const sendImageFailure = (res: express.Response, error: unknown, fallback: string): void => {
     // B-KID-05: quota exhaustion → 429 image_resting (no Retry-After);
     // transient → 503 + Retry-After 15; anything else → 500 with the fallback.
@@ -2713,6 +2719,13 @@ Framing: head-and-shoulders portrait, centered, simple soft background, warm and
       budget.settle();
       // The reference photo (referenceImage) is intentionally discarded here — it is
       // never written to storage, logs, or the response.
+      // B-GAME-13b (sandbox only): remember the hero THIS server drew, so
+      // /hero-pose can read it without the device ever sending an image.
+      if (typeof req.body?.childId === "string" && req.body.childId) {
+        heroSource.remember?.((req as any).user?.uid || "local-sandbox", req.body.childId, {
+          hero: { dataUrl: `data:${image.mimeType};base64,${image.data}`, source: referenceImage ? "photo" : "descriptor" },
+        });
+      }
       res.json({
         dataUrl: `data:${image.mimeType};base64,${image.data}`,
         style: style ?? "storybook",
@@ -2730,6 +2743,34 @@ Framing: head-and-shoulders portrait, centered, simple soft background, warm and
       sendImageFailure(res, error, "Couldn't create that avatar — please try again");
     }
   });
+
+  // B-GAME-13b: one pose of the child's hero sheet, drawn from the STORED
+  // generated hero (never an upload, never a photo-styled hero, never a name).
+  // Own allowance + breaker (imageQuota.chargeHeroSheetCall); not on the scene
+  // buckets' createImageQuota path list.
+  router.post("/hero-pose", requireOwnership, createHeroPoseHandler({
+    source: heroSource,
+    counters,
+    entitlements: entitlementStore,
+    requireUid: config.memoryAdapter === "firestore",
+    generate: async (_req, res, input) => {
+      const budget = createRouteBudget(res, "image");
+      try {
+        return await raceWithAbort(modelProvider.generateImage({ prompt: input.prompt, images: input.images, budget: budget.budget }), budget.signal);
+      } finally {
+        budget.settle();
+      }
+    },
+    fail: (res, error) => {
+      if (isAbortError(error)) {
+        logger.warn("Arbor hero pose deadline exceeded");
+        res.status(504).json(DEADLINE_ERROR);
+        return;
+      }
+      logger.error("Arbor hero pose error", error);
+      sendImageFailure(res, error, "Couldn't draw that pose — please try again");
+    },
+  }));
 
   // AVA-3: Child-as-hero. Render a storybook SCENE for one story beat, featuring the
   // child's own stylized character (passed as a reference for cross-scene consistency).
