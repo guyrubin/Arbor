@@ -16,6 +16,7 @@
  * need to be created: `KID_ART_GAPS` (kidArtGaps.ts), pinned by the test.
  */
 import { HERO_STORIES } from "./heroJourneys";
+import { KID_WORLDS, type KidWorldId } from "../components/kidmode/kidWorlds";
 
 export const KID_THEME_IDS = ["film3d", "storybook"] as const;
 export type KidThemeId = (typeof KID_THEME_IDS)[number];
@@ -31,13 +32,15 @@ export function isKidThemeId(v: unknown): v is KidThemeId {
   return typeof v === "string" && (KID_THEME_IDS as readonly string[]).includes(v);
 }
 
-/** World tiles rendered today (KidDashboard game + adventure tiles, the
- *  Tonight banner, HeroArcade's world picker) — ids = worldArtwork ids. */
-export const KID_WORLD_TILE_IDS = [
-  "speech", "feelings", "memory", "beat", "pose", "pattern", "adventures", "mimic", "reading",
-  "kid-playbank", "kid-hero", "kid-quest",
-] as const;
-export type KidWorldTileId = (typeof KID_WORLD_TILE_IDS)[number];
+/** Home-only tiles that are not kid worlds (the Tonight banner fallback and
+ *  the retired adventure tiles' art). */
+export const KID_HOME_TILE_IDS = ["kid-playbank", "kid-hero", "kid-quest"] as const;
+/** World tiles rendered today (KidDashboard game tiles, the Tonight banner,
+ *  HeroArcade's world picker) — ids = worldArtwork ids. B-KID-68: the kid
+ *  worlds' ids come from the ONE registry (components/kidmode/kidWorlds.ts),
+ *  in its slot order; only the home-only tiles are named here. */
+export type KidWorldTileId = KidWorldId | (typeof KID_HOME_TILE_IDS)[number];
+export const KID_WORLD_TILE_IDS: readonly KidWorldTileId[] = [...KID_WORLDS.map((w) => w.worldId), ...KID_HOME_TILE_IDS];
 
 export type KidArtKey = `world.${KidWorldTileId}.tile` | `story.${string}.cover` | "home.stage";
 export const worldTileKey = (id: KidWorldTileId): KidArtKey => `world.${id}.tile`;

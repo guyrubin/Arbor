@@ -12,7 +12,8 @@ import { KID_GAME_TITLE_KEY, KID_HOME_GAMES } from "./KidDashboard";
 import { KID_WORLDS as ARCADE_KID_WORLDS } from "../practice/HeroArcade";
 import { STUDIO_WORLDS } from "../practice/studioWorlds";
 import { translate } from "../../lib/i18n";
-import { KID_THEME_IDS, kidArt, worldTileKey } from "../../lib/kidThemeManifest";
+import { KID_HOME_TILE_IDS, KID_THEME_IDS, KID_WORLD_TILE_IDS, kidArt, worldTileKey } from "../../lib/kidThemeManifest";
+import { worldArtwork } from "../practice/worldArtwork";
 import { greetingWorldNameKey, lastPlayedWorldYesterday } from "./kidGreeting";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -85,5 +86,19 @@ describe("B-KID-68: the greeting reads the registry", () => {
     expect(greet).not.toMatch(/"mood-mountain"|"sound-lab"|"pattern-power"/);
     const dash = readFileSync(path.join(__dirname, "KidDashboard.tsx"), "utf8");
     expect(dash).not.toContain("t(`kid.game.${yesterdayWorld}.title`)");
+  });
+});
+
+describe("B-KID-68: art ids come from the registry", () => {
+  it("the manifest's world tile ids = the registry's worldIds (slot order) + the home-only tiles", () => {
+    expect([...KID_WORLD_TILE_IDS]).toEqual([...KID_WORLDS.map((w) => w.worldId), ...KID_HOME_TILE_IDS]);
+    const manifest = readFileSync(path.join(__dirname, "..", "..", "lib", "kidThemeManifest.ts"), "utf8");
+    expect(manifest).toContain('import { KID_WORLDS, type KidWorldId } from "../components/kidmode/kidWorlds";');
+    expect(manifest).not.toMatch(/"speech", "feelings", "memory"/);
+  });
+  it("worldArtwork resolves every registry world in every theme; the registry imports nothing at runtime", () => {
+    for (const theme of KID_THEME_IDS) for (const w of KID_WORLDS) expect(worldArtwork(w.worldId, theme)?.src, `${theme} ${w.worldId}`).toBeTruthy();
+    const reg = readFileSync(path.join(__dirname, "kidWorlds.ts"), "utf8");
+    expect(reg).not.toMatch(/^import\s/m);
   });
 });

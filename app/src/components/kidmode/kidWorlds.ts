@@ -12,8 +12,11 @@
  *
  * Presentation that belongs to one surface stays there (the home's lucide
  * glyphs and scene prompts; the parent tile's Material glyph and tone).
+ *
+ * This module imports nothing at runtime: the art manifest derives its world
+ * tile ids FROM it (KID_WORLD_TILE_IDS = these worldIds + the home-only tiles),
+ * so worldArtwork and every art lookup key off the same ids (B-KID-68 5/n).
  */
-import type { KidWorldTileId } from "../../lib/kidThemeManifest";
 
 export type KidWorldAccent = "green" | "clay" | "lav" | "peach" | "sky" | "pink";
 export type KidWorldUnit = "tries" | "rounds" | "stories";
@@ -22,7 +25,7 @@ export interface KidWorld {
   /** Home tile id (the `kid.game.<id>.*` key family). */
   id: string;
   /** Arcade world id = routing arg = art key (`world.<worldId>.tile`). */
-  worldId: KidWorldTileId;
+  worldId: string;
   /** The ONE kid name (tile, in-world bar title, greeting). */
   nameKey: string;
   subKey: string;
@@ -34,7 +37,7 @@ export interface KidWorld {
 
 /** Home slot order. Face Match and the archived virtue worlds are not kid
  *  worlds (G-C4: retired); Word World is parent-only (HeroArcade parentOnly). */
-export const KID_WORLDS: readonly KidWorld[] = [
+export const KID_WORLDS = [
   { id: "sound-lab", worldId: "speech", nameKey: "kid.game.sound-lab.title", subKey: "kid.game.sound-lab.sub", doorNameKey: "elev.practice.world.kid.speech", accent: "sky", unit: "tries" },
   { id: "mood-mountain", worldId: "feelings", nameKey: "kid.game.mood-mountain.title", subKey: "kid.game.mood-mountain.sub", doorNameKey: "elev.practice.world.kid.feelings", accent: "lav", unit: "rounds" },
   { id: "mind-vault", worldId: "memory", nameKey: "kid.game.mind-vault.title", subKey: "kid.game.mind-vault.sub", doorNameKey: "elev.practice.world.kid.memory", accent: "pink", unit: "rounds" },
@@ -45,11 +48,14 @@ export const KID_WORLDS: readonly KidWorld[] = [
   { id: "mimic-studio", worldId: "mimic", nameKey: "kid.game.mimic-studio.title", subKey: "kid.game.mimic-studio.sub", doorNameKey: "elev.practice.world.kid.mimic", accent: "clay", unit: "tries" },
   // Spell Forge keeps its ONE kid name (elev.kids.reading.title, kidHebrewCoverage).
   { id: "spell-forge", worldId: "reading", nameKey: "elev.kids.reading.title", subKey: "elev.kids.reading.sub", doorNameKey: "elev.practice.world.kid.reading", accent: "peach", unit: "tries" },
-];
+] as const satisfies readonly KidWorld[];
+
+/** A kid world's routing id (= its art key id), from the entries above. */
+export type KidWorldId = (typeof KID_WORLDS)[number]["worldId"];
 
 /** The registry entry for an arcade / routing id, or undefined. */
 export function kidWorldByWorldId(worldId: string): KidWorld | undefined {
-  return KID_WORLDS.find((w) => w.worldId === worldId);
+  return (KID_WORLDS as readonly KidWorld[]).find((w) => w.worldId === worldId);
 }
 
 /** worldId → the ONE kid name key (the in-world bar title). */
