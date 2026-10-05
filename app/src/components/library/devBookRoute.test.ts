@@ -20,6 +20,15 @@ describe("parseDevBookParams", () => {
     expect(p.lang).toBe("en");
     expect(p.child).toMatchObject({ gender: "boy", heroSheetId: "dylan-v2" });
     expect(p.narration).toBe("probe");
+    expect(p.prints).toBe(true);
+    expect(p.costume).toBeNull();
+  });
+
+  it("prints=0 turns the printed pages off; costume=tunic is the p5 A/B", () => {
+    const p = parseDevBookParams("?book=five-smooth-stones&prints=0&costume=tunic");
+    expect(p.prints).toBe(false);
+    expect(p.costume).toBe("tunic");
+    expect(parseDevBookParams("?book=x&costume=cape").costume).toBeNull();
   });
 
   it("reads book, hero, lang, gender, name; unknown or unsafe values fall back", () => {

@@ -20,6 +20,7 @@ import { bookFlowReducer, initialBookFlow, type BookFlowAction, type BookFlowSta
 import { fiveSmoothStones as book } from "../../lib/library/books/fiveSmoothStones";
 import type { Box } from "../../lib/library/bookPageLayout";
 import type { BookLang, BookReaderChild } from "../../lib/library/types";
+import type { HeroSheet } from "../../lib/library/heroSheet";
 
 const BOY: BookReaderChild = { id: "child-1", name: "Dylan", gender: "boy", heroSheetId: "placeholder" };
 const GIRL: BookReaderChild = { id: "child-2", name: "נועה", gender: "girl" };
@@ -109,7 +110,7 @@ describe("each branch reaches the rejoin with its own echo", () => {
   it("EASY: p6b (helmet + sword overlays) → p7b holds until every piece is off, any order", () => {
     let s = run(...toDecision, { type: "choose", choiceId: "b" }, { type: "go" });
     const p6b = render(s);
-    expect(p6b).toContain('data-book-overlay="helmet"');
+    expect(p6b).toContain('data-book-overlay="helmet-worn"');
     expect(p6b).toContain('data-book-overlay="sword"');
     s = bookFlowReducer(book, s, { type: "next" });
     let html = render(s);
@@ -120,8 +121,13 @@ describe("each branch reaches the rejoin with its own echo", () => {
     expect(html).not.toContain("data-book-next");
     // the page cannot turn yet
     expect(bookFlowReducer(book, s, { type: "next" }).at).toBe("p7b");
+    // before: the worn helmet and the sword on the rug show, the heap pieces wait
+    expect(html).not.toMatch(/data-book-overlay="helmet-worn"[^>]*data-hidden/);
+    expect(html).toMatch(/data-book-overlay="helmet-heap"[^>]*data-hidden=""/);
     s = bookFlowReducer(book, s, { type: "repair", itemId: "sword" });
     html = render(s);
+    expect(html).toMatch(/data-book-overlay="sword-rug"[^>]*data-hidden=""/);
+    expect(html).toMatch(/data-book-overlay="sword-heap" data-hop=""/);
     expect(html).toContain("Off comes the sword.");
     expect(html).toMatch(/data-book-item="sword"[^>]*data-done=""/);
     expect(html).not.toContain("data-book-next");
@@ -182,7 +188,52 @@ describe("the ending", () => {
     const s = atEnd("a");
     const p9 = render(bookFlowReducer(book, s, { type: "back" }));
     expect(pageOf(p9)).toBe("p9");
-    expect(p9).toMatch(/data-book-overlay="dust"[^>]*data-hidden=""/);
+    expect(p9).toMatch(/data-book-overlay="dust-cloud"[^>]*data-hidden=""/);
+  });
+});
+
+describe("real art: prints, shadow + grade, occluder, costume", () => {
+  const sheet: HeroSheet = {
+    id: "placeholder",
+    poses: {},
+    base: "/_dev/hero-sheets/placeholder",
+    anchors: { "walk-bag-left": { aspect: 0.5, footX: 0.45, footW: 0.5 } },
+    prints: { cover: { url: "/_dev/hero-sheets/placeholder/prints/cover.webp", width: 1920, height: 1280 } },
+  };
+  const withSheet = (state: BookFlowState, extra: Partial<React.ComponentProps<typeof BookReader>> = {}) =>
+    renderToStaticMarkup(
+      <div className="arbor-play">
+        <BookReader book={book} lang="en" child={BOY} onClose={() => {}} dev narration="off" initialState={state} initialBox={WIDE} sheet={sheet} {...extra} />
+      </div>,
+    );
+
+  it("a printed page shows the print in place of plate + sprite; prints off shows the composite", () => {
+    const html = withSheet(initialBookFlow());
+    expect(html).toContain('src="/_dev/hero-sheets/placeholder/prints/cover.webp"');
+    expect(html).toContain("data-printed");
+    expect(html).not.toContain("data-book-hero");
+    const off = withSheet(initialBookFlow(), { prints: false });
+    expect(off).not.toContain("prints/cover.webp");
+    expect(off).toContain('src="/_dev/hero-sheets/placeholder/walk-bag-left.webp"');
+    expect(off).toContain('data-book-shadow="core"');
+    expect(off).toContain('data-book-shadow="spill"');
+    // the grade layer is masked by the sprite itself
+    expect(off).toMatch(/bk-hero-tint[^>]*mask-image:url\(&quot;\/_dev\/hero-sheets\/placeholder\/walk-bag-left\.webp/);
+  });
+
+  it("p8 draws the water occluder over the hero", () => {
+    const s = run(...toDecision, { type: "choose", choiceId: "a" }, { type: "go" }, { type: "next" });
+    const html = render(s);
+    expect(pageOf(html)).toBe("p8");
+    expect(html).toContain("data-book-occluder");
+    expect(html.indexOf("data-book-hero")).toBeLessThan(html.indexOf("data-book-occluder"));
+  });
+
+  it("costume=tunic swaps p5's pose to worried-tunic (the BR5 A/B)", () => {
+    const s = run(...toDecision);
+    expect(render(s)).toContain("/worried.webp");
+    const tunic = withSheet(s, { costume: "tunic" });
+    expect(tunic).toContain("/worried-tunic.webp");
   });
 });
 

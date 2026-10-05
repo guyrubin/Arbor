@@ -4,13 +4,18 @@
  * already says the child's name (no stitched name clip), so it is keyed by the
  * voice target as well as the page:
  *
- *   <root>/<bookId>/<voiceKey>/<en | he-m | he-f>/<pageId>[.<choiceId>].m4a
+ *   <root>/<bookId>/<voiceKey>/<en | he-m | he-f>/<pageId>[.<choiceId>].mp3
  *
  * - root: `/audio/books` (product) or `/_dev/narration` (DEV, git-ignored).
  * - voiceKey: the hero sheet id, else the child id (whose name is spoken).
  * - choiceId: only for a page whose text carries an echo line for that path.
+ * - The cover reads as pageId `cover` (title, name line, cover line).
  * - A choice card's spoken label uses pageId `<decisionPageId>-choice` and the
- *   choice id; a repair page's after-text uses `<pageId>-after`.
+ *   choice id (`p5-choice.a.mp3`).
+ * - A repair page plays in three parts: the before-text (`<pageId>.mp3`) on
+ *   page show, each item's line when the child taps it (`<pageId>-<itemId>.mp3`),
+ *   and the after-text once every item is done (`<pageId>-after.mp3`).
+ * - The full list for a book: scripts/book-narration-list.mts.
  *
  * Files can be dropped in later without code changes. The reader never calls
  * a voice service: no file = silence.
@@ -37,7 +42,7 @@ export function narrationKey(k: NarrationKey, root: string = NARRATION_ROOT): st
   const segs = [k.bookId, k.voiceKey, k.pageId, ...(k.choiceId ? [k.choiceId] : [])];
   if (!segs.every((s) => SEGMENT.test(s))) return null;
   const voice = k.lang === "he" ? `he-${k.gender}` : "en";
-  return `${root}/${k.bookId}/${k.voiceKey}/${voice}/${k.pageId}${k.choiceId ? `.${k.choiceId}` : ""}.m4a`;
+  return `${root}/${k.bookId}/${k.voiceKey}/${voice}/${k.pageId}${k.choiceId ? `.${k.choiceId}` : ""}.mp3`;
 }
 
 /** A declared file in an AudioSet for this language / gender. */

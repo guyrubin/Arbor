@@ -5,7 +5,7 @@
  * family, and the production build never contains it (the branch is
  * constant-folded away with its dynamic import).
  *
- *   /?book=five-smooth-stones&hero=dylan-v2&lang=he&gender=f&name=Noa
+ *   /?book=five-smooth-stones&hero=dylan-v2&lang=he&gender=f&name=Noa&prints=0&costume=tunic
  *
  * - book   : a library or fixture book id (unknown / empty → the default
  *            review book, "five-smooth-stones").
@@ -15,7 +15,11 @@
  * - gender : m | f (the Hebrew text variant).
  * - name   : the child's display name (default Noa).
  * - narration : probe (default) | off — probe tries
- *            public/_dev/narration/<book>/<hero or child>/<en|he-m|he-f>/<page>[.<choice>].m4a
+ *            public/_dev/narration/<book>/<hero or child>/<en|he-m|he-f>/<page>[.<choice>].mp3
+ * - prints : 0 = show the live composite on every page (default: the sheet's
+ *            printed pages where it has them).
+ * - costume: tunic = the p5 A/B (BR5): p5 shows `worried-tunic`.
+ * The hero sheet's manifest.json is read before the reader mounts.
  *
  * Wrapped in `.arbor-play` so the kid tokens apply. Closing the book returns
  * to its cover (the route has nowhere else to go).
@@ -25,6 +29,7 @@ import { createRoot } from "react-dom/client";
 import { BookReader } from "./BookReader";
 import { DEFAULT_REVIEW_BOOK, getLibraryBook } from "../../lib/library/books";
 import { closeKidAudio, setKidAudioChild } from "../kidmode/audio/kidAudio";
+import { loadHeroSheet, type HeroSheet } from "../../lib/library/heroSheet";
 import type { BookLang, BookReaderChild } from "../../lib/library/types";
 
 export interface DevBookParams {
@@ -32,6 +37,8 @@ export interface DevBookParams {
   lang: BookLang;
   child: BookReaderChild;
   narration: "probe" | "off";
+  prints: boolean;
+  costume: string | null;
 }
 
 const SEGMENT = /^[A-Za-z0-9_-]{1,64}$/;
@@ -51,12 +58,22 @@ export function parseDevBookParams(search: string): DevBookParams {
     lang,
     child: { id: "dev-review-child", name, gender, heroSheetId },
     narration: q.get("narration") === "off" ? "off" : "probe",
+    prints: q.get("prints") !== "0",
+    costume: q.get("costume") === "tunic" ? "tunic" : null,
   };
 }
 
 export function DevBookRoute({ params }: { params: DevBookParams }) {
   const book = getLibraryBook(params.bookId)!;
   const [opening, setOpening] = useState(0);
+  const [sheet, setSheet] = useState<HeroSheet | null | undefined>(undefined);
+  useEffect(() => {
+    let live = true;
+    void loadHeroSheet(params.child, { dev: true }).then((s) => live && setSheet(s));
+    return () => {
+      live = false;
+    };
+  }, [params.child]);
   useEffect(() => {
     const html = document.documentElement;
     html.lang = params.lang;
@@ -69,7 +86,20 @@ export function DevBookRoute({ params }: { params: DevBookParams }) {
   }, [params, book]);
   return (
     <div className="arbor-play" data-dev-book-route="">
-      <BookReader key={opening} book={book} lang={params.lang} child={params.child} narration={params.narration} dev onClose={() => setOpening((n) => n + 1)} />
+      {sheet !== undefined && (
+        <BookReader
+          key={opening}
+          book={book}
+          lang={params.lang}
+          child={params.child}
+          narration={params.narration}
+          sheet={sheet}
+          prints={params.prints}
+          costume={params.costume}
+          dev
+          onClose={() => setOpening((n) => n + 1)}
+        />
+      )}
     </div>
   );
 }

@@ -82,11 +82,12 @@
 .arbor-play .bk-fill { display: block; inline-size: 100%; block-size: 100%; object-fit: fill; animation: bk-fade 260ms var(--kid-ease-out, ease-out) both; }
 .arbor-play .bk-fill-contain { display: block; inline-size: 100%; block-size: 100%; object-fit: contain; object-position: 50% 100%; }
 
+/* contact shadow = compose.py: solid warm-dark ellipses, Gaussian-blurred
+   (blur radius + opacity come inline from the layout). No halo, no float. */
 .arbor-play .bk-shadow {
   position: absolute;
   border-radius: 50%;
-  background: radial-gradient(closest-side, color-mix(in oklab, var(--comic-ink) 34%, transparent), transparent);
-  mix-blend-mode: multiply;
+  background: color-mix(in oklab, var(--comic-ink) 82%, var(--arbor-ochre));
   pointer-events: none;
 }
 
@@ -99,7 +100,12 @@
 .arbor-play .bk-hero-breathe { inline-size: 100%; block-size: 100%; }
 .arbor-play .bk-hero-enter { animation: bk-hero-enter 280ms var(--kid-ease-out) 120ms both; }
 .arbor-play .bk-hero-breathe { transform-origin: 50% 100%; animation: bk-breathe 3.2s ease-in-out 400ms infinite alternate; }
+.arbor-play .bk-hero-art { position: relative; inline-size: 100%; block-size: 100%; }
+/* grade (compose.py): a 12 % pull toward the plate's colour under the hero,
+   luminance kept (blend: color), and a small desaturation */
+.arbor-play .bk-hero-tint { position: absolute; inset: 0; mix-blend-mode: color; opacity: 0.12; pointer-events: none; }
 .arbor-play .bk-hero-img {
+  filter: saturate(0.93);
   display: block;
   inline-size: 100%;
   block-size: 100%;
@@ -108,12 +114,17 @@
   animation: bk-fade 300ms var(--kid-ease-out) both;
 }
 
+.arbor-play .bk-overlay-wrap { display: contents; }
 .arbor-play .bk-overlay {
   position: absolute;
   pointer-events: none;
-  transition: left 520ms var(--kid-ease-spring), top 520ms var(--kid-ease-spring), opacity 600ms var(--kid-ease-out);
+  transition: opacity 420ms var(--kid-ease-out);
 }
-.arbor-play .bk-overlay[data-hidden] { opacity: 0; }
+.arbor-play .bk-overlay img { filter: saturate(0.95); }
+.arbor-play .bk-overlay-wrap[data-hidden] > * { opacity: 0; transition: opacity 260ms var(--kid-ease-out); }
+/* a repaired piece lands on the heap with a small hop */
+.arbor-play .bk-overlay-wrap[data-hop] > .bk-overlay { animation: bk-hop 520ms var(--kid-ease-spring) both; }
+.arbor-play .bk-occluder { position: absolute; pointer-events: none; background-repeat: no-repeat; }
 
 /* repair tap targets: a soft glowing sky ring over the painted thing */
 .arbor-play .bk-item {
@@ -295,6 +306,7 @@
 }
 
 @keyframes bk-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes bk-hop { 0% { opacity: 0; transform: translateY(-28px) scale(0.9); } 60% { opacity: 1; transform: translateY(4px) scale(1.02); } 100% { opacity: 1; transform: none; } }
 @keyframes bk-hero-enter { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 @keyframes bk-breathe { from { transform: scale(1); } to { transform: scale(1.012); } }
 @keyframes bk-ring { 0%, 100% { transform: scale(0.94); opacity: 0.85; } 50% { transform: scale(1.06); opacity: 1; } }
@@ -310,6 +322,7 @@
 @media (prefers-reduced-motion: reduce) {
   .arbor-play .bk-hero-breathe,
   .arbor-play .bk-item-ring { animation: none; }
+  .arbor-play .bk-overlay-wrap[data-hop] > .bk-overlay { animation: bk-fade 200ms linear both; }
   .arbor-play .bk-hero-enter { animation: bk-fade 200ms linear both; }
   .arbor-play .bk-leaf { display: none; }
   .arbor-play .bk-hero,
