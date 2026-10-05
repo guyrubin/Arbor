@@ -414,10 +414,9 @@ import { en as kidsStoriesEn, he as kidsStoriesHe } from "../../lib/i18nElevatio
 describe("F4: every kid-facing dictionary speaks Hebrew in its he export", () => {
   const HEBREW_SCRIPT = /[֐-׿]/;
 
-  /** Exact keys that stay English, each with the reason. Arcade WORLD names are
-   *  EN literals in HeroArcade's WORLDS table; the kid home tile is locked to
-   *  them verbatim, so translating only the arrival header would mean tapping
-   *  "Sound Lab" and landing on a differently named screen (KID-4). */
+  /** Exact keys that stay English, each with the reason. These game-header
+   *  keys are the parent-door world names (the kid surfaces name a world
+   *  through the registry's kid key, B-KID-68; KID-4 pins tile = arrival). */
   const WORLD_NAME = "an arcade world name — EN literal in HeroArcade's WORLDS table; the tile is locked to it verbatim";
   const EN_BY_DESIGN: Record<string, string> = {
     "elev.play.soundlab.title": WORLD_NAME,
@@ -713,60 +712,53 @@ describe("RUN-21: the sub-greeting derives from real state", () => {
 });
 
 // ── KID-4: honest navigation — game tiles are named after the worlds they open ─
-// Static cross-file contract: every KidDashboard GAMES tile carries the id of a
-// live HeroArcade world, and the tile's EN title is VERBATIM that world's name.
-// (The arcade also renders `open.name` as the opened panel's heading, so the
-// title the child tapped is the title they land on.)
+// Cross-file contract: every KidDashboard GAMES tile carries the id of a live
+// HeroArcade world, and the tile's title is that world's name, EN and HE.
+// (The arcade also announces the opened world's name, so the title the child
+// tapped is the title they land on.) B-KID-68 re-pin: the arcade no longer
+// keeps an EN name table — its kid worlds ARE the registry's entries and each
+// name is the registry's door key (same value as the tile, both locales).
 describe("KID-4: kid-dashboard game tiles match their HeroArcade destination", () => {
-  // B-KID-68: the tiles are the registry's entries.
   const dashSrc = stripComments(readSelf("kidWorlds.ts"));
   const arcadeSrc = stripComments(
     readFileSync(path.join(__dirname, "..", "practice", "HeroArcade.tsx"), "utf8"),
   );
 
-  // HeroArcade world registry: id → display name.
-  const worldNames = new Map(
-    [...arcadeSrc.matchAll(/\{ id: "([a-z-]+)", name: "([^"]+)"/g)].map((m) => [m[1], m[2]]),
-  );
-
-  // KidDashboard tile defs carrying a worldId. Game tiles reference arcade
-  // world ids directly; adventure tiles use "kid-*" scene ids (not arcade
-  // destinations) and are excluded.
   const gameTiles = [...dashSrc.matchAll(/\{ id: "([a-z-]+)", worldId: "([a-z-]+)"/g)]
     .map((m) => ({ id: m[1], worldId: m[2] }))
     .filter((tile) => !tile.worldId.startsWith("kid-"));
 
-  it("finds the 9 game tiles and the arcade world registry", () => {
+  it("finds the 9 game tiles; the arcade keeps no name table of its own", async () => {
+    const { KID_WORLDS: ARCADE } = await import("../practice/HeroArcade");
     expect(gameTiles.length).toBe(9);
-    expect(worldNames.size).toBeGreaterThanOrEqual(9);
+    expect(ARCADE.length).toBe(9);
+    expect(arcadeSrc).not.toMatch(/\{ id: "[a-z-]+", name: "/);
+    expect(arcadeSrc).toContain("...KID_WORLD_REGISTRY.map((w): World => ({ id: w.worldId, nameKey: w.doorNameKey, color: w.accent, ...PLAY[w.worldId] }))");
   });
 
   it.each(gameTiles.map((g) => [g.id, g.worldId]))(
-    "tile %s → world %s: title is the world's name, verbatim",
-    (id, worldId) => {
-      const worldName = worldNames.get(worldId as string);
-      expect(worldName, `no HeroArcade world with id "${worldId}"`).toBeTruthy();
-      // B-KID-88: the tile's own name key (Spell Forge = elev.kids.reading.title).
+    "tile %s → world %s: title is the world's name, EN and HE",
+    async (id, worldId) => {
+      const { KID_WORLDS: ARCADE } = await import("../practice/HeroArcade");
+      const world = ARCADE.find((w) => w.id === worldId);
+      expect(world, `no HeroArcade world with id "${worldId}"`).toBeTruthy();
       const titleKey = KID_HOME_GAMES.find((g) => g.id === id)!.titleKey;
-      expect(translate("en", titleKey)).toBe(worldName);
-      // B-KID-48 scope (5 Oct): HE = the Hebrew world name the parent doors ship
-      // (kidHebrewCoverage.test.ts pins the equality); never the EN name.
-      expect(translate("he", titleKey)).not.toBe(worldName);
+      expect(translate("en", titleKey)).toBe(translate("en", world!.nameKey));
+      // HE: the arrival name is the tile's Hebrew name (was the EN literal before B-KID-68).
+      expect(translate("he", titleKey)).toBe(translate("he", world!.nameKey));
       expect(translate("he", titleKey)).toMatch(/[֐-׿]/);
     },
   );
 
   it("the opened world panel announces its own name (verbatim arrival)", () => {
-    // The open-world branch renders the world's name as a heading.
-    expect(arcadeSrc).toContain("{open.name}");
+    expect(arcadeSrc).toContain("{t(open.nameKey)}");
   });
 
-  it("every pre-selectable world is live (has a component)", () => {
+  it("every pre-selectable world is live (has a component)", async () => {
+    const { KID_WORLDS: ARCADE } = await import("../practice/HeroArcade");
     for (const { worldId } of gameTiles) {
-      // The world entry declares a Comp — a tile may never point at a
-      // name-only world (that is the broken promise KID-4 removes).
-      const entry = arcadeSrc.slice(arcadeSrc.indexOf(`{ id: "${worldId}", name:`));
-      expect(entry.slice(0, entry.indexOf("\n")), `world ${worldId} must be live`).toMatch(/Comp: \w+/);
+      // a tile may never point at a name-only world (the broken promise KID-4 removes)
+      expect(ARCADE.find((w) => w.id === worldId)?.Comp, `world ${worldId} must be live`).toBeTruthy();
     }
   });
 });

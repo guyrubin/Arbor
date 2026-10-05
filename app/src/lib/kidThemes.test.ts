@@ -1,7 +1,8 @@
 /**
  * kidThemes.test.ts — the P2 theme registry stays a faithful, deterministic
  * data lift of its two live sources:
- *   - HeroArcade.tsx WORLDS[]  (parsed from source — ids/names/colors verbatim)
+ *   - HeroArcade.tsx WORLDS[]  (imported — B-KID-68: both now read the ONE
+ *     kid world registry, so ids/names/colors agree by construction)
  *   - heroJourneys.ts PACKS[]  (imported — ids/titles/titleHe/blurbs verbatim)
  *
  * Firewall contract under test:
@@ -17,6 +18,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { KID_THEMES, getKidTheme, type KidTheme } from "./kidThemes";
 import { PACKS } from "./heroJourneys";
+import { translate } from "./i18n";
+import { ARCADE_WORLDS as ARCADE_WORLD_LIST } from "../components/practice/HeroArcade";
+import { KID_WORLDS as KID_WORLD_REGISTRY } from "../components/kidmode/kidWorlds";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -24,18 +28,15 @@ function stripComments(src: string): string {
   return src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
 }
 
-const arcadeSrc = stripComments(
-  readFileSync(path.join(__dirname, "..", "components", "practice", "HeroArcade.tsx"), "utf8"),
-);
+const kidThemesSrc = stripComments(readFileSync(path.join(__dirname, "kidThemes.ts"), "utf8"));
 
-/** HeroArcade world registry parsed from source: id → { name, color }. */
+/** HeroArcade's worlds (B-KID-68 re-pin: imported, no longer parsed from an
+ *  EN literal table — the arcade reads the registry): id → { name, color, tag }. */
 const ARCADE_WORLDS = new Map(
-  [...arcadeSrc.matchAll(/\{ id: "([a-z-]+)", name: "([^"]+)", tag: "([^"]+)", icon: "[^"]+", color: "([a-z]+)"/g)].map(
-    (m) => [m[1], { name: m[2], tag: m[3], color: m[4] }],
-  ),
+  ARCADE_WORLD_LIST.map((w) => [w.id, { name: translate("en", w.nameKey), nameHe: translate("he", w.nameKey), tag: w.tag, color: w.color }]),
 );
 
-const TOKEN_ACCENTS = ["sky", "lav", "pink", "peach", "yellow", "clay"];
+const TOKEN_ACCENTS = ["sky", "lav", "pink", "peach", "yellow", "clay", "green"];
 const HERO_TEMPLATES = ["story", "comic", "hero_card", "practice_stamp", "milestone"];
 const SURFACES = ["journeys", "arcade", "feelings", "studio"];
 
@@ -72,9 +73,20 @@ describe("kidThemes registry — verbatim lift", () => {
   it("world themes carry the world's name and color token verbatim", () => {
     for (const [worldId, world] of ARCADE_WORLDS) {
       const theme = getKidTheme(worldId)!;
-      expect(theme.title, `title of "${worldId}"`).toBe(world.name);
+      expect(translate("en", theme.titleKey!), `title of "${worldId}"`).toBe(world.name);
       expect(theme.accent, `accent of "${worldId}"`).toBe(world.color);
       expect(theme.blurb, `blurb of "${worldId}" is the world tag`).toBe(world.tag);
+    }
+  });
+
+  it("B-KID-68: the world half is derived from the ONE kid world registry (no second name/accent table)", () => {
+    expect(kidThemesSrc).toContain("...KID_WORLDS.map((w) => worldTheme(w.worldId, w.doorNameKey, WORLD_BLURB[w.worldId]");
+    expect(kidThemesSrc).not.toMatch(/title: "Sound Lab"|title: "Spell Forge"/);
+    for (const w of KID_WORLD_REGISTRY) {
+      const theme = getKidTheme(w.worldId)!;
+      expect(theme.accent).toBe(w.accent);
+      expect(translate("he", theme.titleKey!), `${w.worldId} has its Hebrew name`).toMatch(/[֐-׿]/);
+      expect(translate("he", theme.titleKey!)).toBe(ARCADE_WORLDS.get(w.worldId)!.nameHe);
     }
   });
 
@@ -89,7 +101,8 @@ describe("kidThemes registry — verbatim lift", () => {
 
   it("every titleHe/blurbHe is present (EN placeholder allowed until GD-6)", () => {
     for (const theme of KID_THEMES) {
-      expect(theme.titleHe, `${theme.id} titleHe`).toBeTruthy();
+      // B-KID-68: a world's HE name is its registry key's HE value
+      expect(theme.titleHe ?? (theme.titleKey && translate("he", theme.titleKey)), `${theme.id} titleHe`).toBeTruthy();
       expect(theme.blurbHe, `${theme.id} blurbHe`).toBeTruthy();
     }
   });
@@ -151,8 +164,14 @@ describe("kidThemes registry — token accents, valid templates, no collectibles
     const imports = [...src.matchAll(/^import\s+(.+?)\s+from\s+"[^"]+";?$/gm)].map((m) => m[1]);
     expect(imports.length).toBeGreaterThan(0);
     for (const clause of imports) {
+      // B-KID-68: the ONE value import is the kid world registry, itself pure
+      // data (checked below to import only types).
+      if (clause === "{ KID_WORLDS, type KidWorldAccent }") continue;
       expect(clause.startsWith("type "), `non-type import: ${clause}`).toBe(true);
     }
+    expect(src).toContain('import { KID_WORLDS, type KidWorldAccent } from "../components/kidmode/kidWorlds";');
+    const registry = stripComments(readFileSync(path.join(__dirname, "..", "components", "kidmode", "kidWorlds.ts"), "utf8"));
+    for (const m of registry.matchAll(/^import\s+(.+?)\s+from\s+"[^"]+";?$/gm)) expect(m[1].startsWith("type "), `kidWorlds non-type import: ${m[1]}`).toBe(true);
     expect(src).not.toMatch(/from "firebase/);
   });
 });

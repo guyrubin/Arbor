@@ -80,7 +80,8 @@ describe("OBJ-KID-05 — one tile, one destination", () => {
     // The "feelings" KidSurface renders FeelingsLabTab…
     expect(overlay).toContain('feelings: { labelKey: "kid.surface.feelings", Comp: FeelingsLabTab }');
     // …and so does the arcade world with id "feelings".
-    expect(arcade).toMatch(/\{ id: "feelings",[^\n]*Comp: FeelingsLabTab/);
+    // (B-KID-68: the arcade's per-world play row is keyed by world id.)
+    expect(arcade).toMatch(/\n\s*feelings: \{[^\n]*Comp: FeelingsLabTab/);
     // So no adventure tile may claim the "feelings" surface any more.
     const adventuresBlock = dash.slice(dash.indexOf("const ADVENTURES"), dash.indexOf("// Games grid"));
     expect(adventuresBlock).not.toContain('surface: "feelings"');

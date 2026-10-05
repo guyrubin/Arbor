@@ -12,6 +12,7 @@ import { TabSkeleton } from "../ui/Skeleton";
 import { KidStageFallback } from "../kidmode/KidStageFallback";
 import { setKidSurfaceTitle } from "../kidmode/kidSurfaceTitle";
 import { KID_GAME_TITLE_KEY } from "../kidmode/KidDashboard";
+import { KID_WORLDS as KID_WORLD_REGISTRY, type KidWorldAccent } from "../kidmode/kidWorlds";
 import { useKidSafeNav } from "../kidmode/useKidSafeNav";
 import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
 
@@ -43,15 +44,16 @@ const WordWorldTab = lazy(() => import("./WordWorldTab"));
 
 const READING_KINDS = new Set(["phonics", "sight-word", "letter-trace"]);
 
-type WorldColor = "sky" | "lav" | "pink" | "peach" | "yellow" | "clay";
-
 interface World {
   id: string;
-  name: string;
+  /** B-KID-68: the world's ONE name, as a key (kid worlds: the registry's
+   *  parent-door key — same value as the kid tile, EN + HE). */
+  nameKey: string;
   tag: string;
   /** Material Symbols glyph name for the world's icon. */
   icon: string;
-  color: WorldColor;
+  /** B-KID-68: the registry's accent (kid worlds), so the arcade and the home agree. */
+  color: KidWorldAccent;
   /** Scene description for the illustrated card — the hero is composited in (I1). */
   imagePrompt: string;
   Comp?: React.ComponentType;
@@ -64,31 +66,42 @@ interface World {
   parentOnly?: boolean;
 }
 
-const COLOR: Record<WorldColor, { bg: string; ink: string }> = {
+const COLOR: Record<KidWorldAccent, { bg: string; ink: string }> = {
   sky: { bg: "var(--arbor-sky)", ink: "var(--arbor-sky-ink)" },
   lav: { bg: "var(--arbor-lav)", ink: "var(--arbor-lav-ink)" },
   pink: { bg: "var(--arbor-pink)", ink: "var(--arbor-pink-ink)" },
   peach: { bg: "var(--arbor-peach)", ink: "var(--arbor-peach-ink)" },
-  yellow: { bg: "var(--arbor-yellow)", ink: "var(--arbor-yellow-ink)" },
+  green: { bg: "var(--arbor-green-mid)", ink: "var(--arbor-green-ink)" },
   clay: { bg: "var(--arbor-clay)", ink: "var(--arbor-clay-deep)" },
 };
 
+/** Arcade-local play wiring per kid world (tag, glyph, scene, component,
+ *  count). Identity — the slot order, the ONE name, the accent — comes from
+ *  the kid world registry (B-KID-68), never from a second table here. */
+type WorldPlay = Omit<World, "id" | "nameKey" | "color">;
+const PLAY: Record<string, WorldPlay> = {
+  speech: { tag: "Speech", icon: "mic", imagePrompt: "a bright sound-and-music studio with a big microphone, floating letters and musical notes", Comp: SpeechCoachTab, count: (d) => d.speech.items.length },
+  feelings: { tag: "Feelings", icon: "favorite", imagePrompt: "a friendly mountain landscape with cheerful emotion characters (happy, sad, calm) and a warm sky", Comp: FeelingsLabTab, count: (d) => starEvents(d.events.items).length },
+  adventures: { tag: "Adventure", icon: "map", imagePrompt: "an adventurous landscape with a treasure map and compass on a cliff", Comp: AdventuresTab, count: (d) => d.adventures.items.length },
+  mimic: { tag: "Mimic", icon: "mood", imagePrompt: "a playful mirror studio making a silly happy face, sparkles around", Comp: MimicStudioTab, count: (d) => d.mimic.items.length },
+  memory: { tag: "Memory", icon: "psychology", imagePrompt: "opening a glowing memory vault full of colorful matching cards", Comp: MindVaultWorld, count: (d) => d.events.items.filter((e) => e.kind === "memory").length },
+  reading: { tag: "Reading", icon: "menu_book", imagePrompt: "a magical letter forge where glowing letters become words", Comp: SpellForgeWorld, count: (d) => d.events.items.filter((e) => READING_KINDS.has(e.kind)).length },
+  beat: { tag: "Rhythm", icon: "music_note", imagePrompt: "a colorful music stage with drums, rhythm bars and bouncing musical notes", isNew: true, Comp: BeatKeeperWorld, count: (d) => d.events.items.filter((e) => e.kind === "rhythm").length },
+  pose: { tag: "Move", icon: "accessibility_new", imagePrompt: "a joyful movement pose with sweeping motion lines", isNew: true, Comp: HeroPoseWorld, count: (d) => d.events.items.filter((e) => e.kind === "pose").length },
+  pattern: { tag: "Logic", icon: "category", imagePrompt: "a puzzle world of glowing shapes arranged in patterns", isNew: true, Comp: PatternPowerWorld, count: (d) => d.events.items.filter((e) => e.kind === "pattern").length },
+};
+
 const WORLDS: World[] = [
-  { id: "speech", name: "Sound Lab", tag: "Speech", icon: "mic", color: "sky", imagePrompt: "a bright sound-and-music studio with a big microphone, floating letters and musical notes", Comp: SpeechCoachTab, count: (d) => d.speech.items.length },
-  { id: "feelings", name: "Mood Mountain", tag: "Feelings", icon: "favorite", color: "lav", imagePrompt: "a friendly mountain landscape with cheerful emotion characters (happy, sad, calm) and a warm sky", Comp: FeelingsLabTab, count: (d) => starEvents(d.events.items).length },
-  { id: "adventures", name: "Story Quest", tag: "Adventure", icon: "map", color: "peach", imagePrompt: "an adventurous landscape with a treasure map and compass on a cliff", Comp: AdventuresTab, count: (d) => d.adventures.items.length },
-  { id: "mimic", name: "Mimic Studio", tag: "Mimic", icon: "mood", color: "clay", imagePrompt: "a playful mirror studio making a silly happy face, sparkles around", Comp: MimicStudioTab, count: (d) => d.mimic.items.length },
-  { id: "memory", name: "Mind Vault", tag: "Memory", icon: "psychology", color: "pink", imagePrompt: "opening a glowing memory vault full of colorful matching cards", Comp: MindVaultWorld, count: (d) => d.events.items.filter((e) => e.kind === "memory").length },
-  { id: "reading", name: "Spell Forge", tag: "Reading", icon: "menu_book", color: "yellow", imagePrompt: "a magical letter forge where glowing letters become words", Comp: SpellForgeWorld, count: (d) => d.events.items.filter((e) => READING_KINDS.has(e.kind)).length },
-  { id: "beat", name: "Beat Keeper", tag: "Rhythm", icon: "music_note", color: "clay", imagePrompt: "a colorful music stage with drums, rhythm bars and bouncing musical notes", isNew: true, Comp: BeatKeeperWorld, count: (d) => d.events.items.filter((e) => e.kind === "rhythm").length },
-  { id: "pose", name: "Hero Pose", tag: "Move", icon: "accessibility_new", color: "sky", imagePrompt: "a joyful movement pose with sweeping motion lines", isNew: true, Comp: HeroPoseWorld, count: (d) => d.events.items.filter((e) => e.kind === "pose").length },
-  { id: "pattern", name: "Pattern Power", tag: "Logic", icon: "category", color: "lav", imagePrompt: "a puzzle world of glowing shapes arranged in patterns", isNew: true, Comp: PatternPowerWorld, count: (d) => d.events.items.filter((e) => e.kind === "pattern").length },
-  { id: "word-world", name: "Word World", tag: "Language", icon: "menu_book", color: "sky", imagePrompt: "a warm cozy reading nook with open books, speech bubbles, and colorful letters floating gently", isNew: true, parentOnly: true, Comp: WordWorldTab, count: (d) => d.events.items.filter((e) => e.kind === "lang-strategy").length },
+  // B-KID-68: every kid world, in the registry's slot order, with its door name and accent.
+  ...KID_WORLD_REGISTRY.map((w): World => ({ id: w.worldId, nameKey: w.doorNameKey, color: w.accent, ...PLAY[w.worldId] })),
+  { id: "word-world", nameKey: "elev.practice.world.kid.words", tag: "Language", icon: "menu_book", color: "sky", imagePrompt: "a warm cozy reading nook with open books, speech bubbles, and colorful letters floating gently", isNew: true, parentOnly: true, Comp: WordWorldTab, count: (d) => d.events.items.filter((e) => e.kind === "lang-strategy").length },
 ];
 
 /** The worlds a child can reach: everything except the parent-register one.
  *  Exported so the guard counts the same list the grid renders. */
 export const KID_WORLDS: World[] = WORLDS.filter((w) => !w.parentOnly);
+/** Every arcade world incl. the parent-only one (the theme registry's guard reads it). */
+export const ARCADE_WORLDS: readonly World[] = WORLDS;
 
 /** Sessions per level — the level is monotonic; the pips fill toward the next. */
 const SESSIONS_PER_LEVEL = 5;
@@ -179,7 +192,7 @@ export default function HeroArcade({ initialWorldId }: { initialWorldId?: string
         {/* The world component owns the single visible h1. Keep this control as
             navigation only so active play never starts under duplicate titles. */}
         <div className="flex items-center">
-          <span className="sr-only" role="status">{open.name}</span>
+          <span className="sr-only" role="status">{t(open.nameKey)}</span>
           {/* B-KID-53: Kid Mode has ONE back (the overlay's Home); the parent arcade keeps "All worlds". */}
           {!kidMode && <button onClick={() => setOpenId(null)}
             className="play-pressable inline-flex items-center gap-2 rounded-full px-4 min-h-[44px] text-[13px] font-extrabold"
@@ -270,9 +283,10 @@ export default function HeroArcade({ initialWorldId }: { initialWorldId?: string
             const live = !!w.Comp;
             const stars = w.count ? Math.min(3, Math.floor(w.count(data) / 3)) : 0;
             const c = COLOR[w.color];
+            const name = t(w.nameKey);
             return (
               <button key={w.id} className="world-tile text-start relative" aria-disabled={!live}
-                aria-label={live ? t("elev.play.arcade.worldAria", { world: w.name, tag: w.tag }) : t("elev.play.arcade.comingSoonAria", { world: w.name, tag: w.tag })}
+                aria-label={live ? t("elev.play.arcade.worldAria", { world: name, tag: w.tag }) : t("elev.play.arcade.comingSoonAria", { world: name, tag: w.tag })}
                 onClick={() => live && setOpenId(w.id)}>
                 {w.isNew && (
                   <span className="absolute top-0 left-0 z-[2] text-[11px] font-black px-2.5 py-1"
@@ -284,7 +298,7 @@ export default function HeroArcade({ initialWorldId }: { initialWorldId?: string
                   </WorldScene>
                 </div>
                 <div className="p-3">
-                  <p className="font-black text-[20px] leading-snug mb-2" style={{ fontFamily: "var(--font-display)" }}>{w.name}</p>
+                  <p className="font-black text-[20px] leading-snug mb-2" style={{ fontFamily: "var(--font-display)" }}>{name}</p>
                   <span className="inline-block text-[10.5px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full"
                     style={{ border: "2px solid var(--comic-ink)", color: c.ink }}>{w.tag}</span>
                   {/* OBJ-KID-02: no padlock ever renders inside `.arbor-play`.

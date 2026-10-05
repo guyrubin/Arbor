@@ -178,16 +178,18 @@ describe("KID-06 — the arcade grid lists the same games the home does", () => 
     // Nine kid worlds; Word World is parent-register by its own header and is
     // the ONLY exclusion (kidRegisterScan lists it in EXCLUDED for the same
     // reason). A new world must appear here deliberately, not by accident.
+    // B-KID-68 re-pin: the grid lists the registry's worlds in its slot order
+    // (the home's order), no longer a second hand-kept order.
     expect(KID_WORLDS.map((w) => w.id)).toEqual([
       "speech",
       "feelings",
-      "adventures",
-      "mimic",
       "memory",
-      "reading",
       "beat",
       "pose",
       "pattern",
+      "adventures",
+      "mimic",
+      "reading",
     ]);
     expect(KID_WORLDS.some((w) => w.id === "word-world")).toBe(false);
   });

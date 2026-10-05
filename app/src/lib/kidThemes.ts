@@ -25,9 +25,11 @@
  */
 import type { HeroTemplate } from "./heroAvatarCanvas";
 import type { HeroPackId } from "../types";
+import { KID_WORLDS, type KidWorldAccent } from "../components/kidmode/kidWorlds";
 
-/** The six --arbor accent token families (see HeroArcade's COLOR map). */
-export type KidThemeAccent = "sky" | "lav" | "pink" | "peach" | "yellow" | "clay";
+/** The --arbor accent token families: the kid world registry's accents
+ *  (B-KID-68) plus yellow, which only journey packs use. */
+export type KidThemeAccent = KidWorldAccent | "yellow";
 
 /** The kid surfaces a theme can belong to. */
 export type KidThemeSurface = "journeys" | "arcade" | "feelings" | "studio";
@@ -44,9 +46,12 @@ export type KidThemeUnlock =
 export interface KidTheme {
   /** Stable id — for worlds this is the HeroArcade world id, VERBATIM. */
   id: string;
-  title: string;
-  /** Hebrew title. EN placeholder for worlds until GD-6 clears. */
-  titleHe: string;
+  /** B-KID-68: a world names itself with the kid world registry's key (its
+   *  ONE name; t() resolves EN + HE at render). Packs carry literal titles. */
+  titleKey?: string;
+  title?: string;
+  /** Hebrew title (packs). */
+  titleHe?: string;
   blurb: string;
   /** Hebrew blurb. EN placeholder until GD-6 clears. */
   blurbHe: string;
@@ -62,21 +67,22 @@ export interface KidTheme {
   collectible: boolean;
 }
 
-/* ── Arcade world themes — lifted 1:1 from HeroArcade.tsx WORLDS[] ──────────
-   id, title (= world name), accent (= world color) are verbatim; blurb is the
-   world's tag line. Every world is reachable today, so every unlock is
-   "default" (zero behavior change). */
+/* ── Arcade world themes — B-KID-68: derived from the ONE kid world registry
+   (components/kidmode/kidWorlds.ts): id, slot order, titleKey (the world's ONE
+   name key, EN + HE — no EN placeholder in HE any more) and accent are the
+   registry's; blurb is the arcade's tag line. Word World is
+   parent-only (not a kid world) and keeps its own row. Every world is
+   reachable today, so every unlock is "default". */
+const WORLD_BLURB: Readonly<Record<string, string>> = {
+  speech: "Speech", feelings: "Feelings", memory: "Memory", beat: "Rhythm", pose: "Move",
+  pattern: "Logic", adventures: "Adventure", mimic: "Mimic", reading: "Reading",
+};
+const worldTheme = (id: string, titleKey: string, blurb: string, accent: KidThemeAccent): KidTheme => ({
+  id, titleKey, blurb, blurbHe: blurb, accent, backdropTemplate: "practice_stamp", scenePromptSlug: id, surface: "arcade", unlock: { kind: "default" }, collectible: false,
+});
 const WORLD_THEMES: KidTheme[] = [
-  { id: "speech", title: "Sound Lab", titleHe: "Sound Lab", blurb: "Speech", blurbHe: "Speech", accent: "sky", backdropTemplate: "practice_stamp", scenePromptSlug: "speech", surface: "arcade", unlock: { kind: "default" }, collectible: false },
-  { id: "feelings", title: "Mood Mountain", titleHe: "Mood Mountain", blurb: "Feelings", blurbHe: "Feelings", accent: "lav", backdropTemplate: "practice_stamp", scenePromptSlug: "feelings", surface: "arcade", unlock: { kind: "default" }, collectible: false },
-  { id: "adventures", title: "Story Quest", titleHe: "Story Quest", blurb: "Adventure", blurbHe: "Adventure", accent: "peach", backdropTemplate: "practice_stamp", scenePromptSlug: "adventures", surface: "arcade", unlock: { kind: "default" }, collectible: false },
-  { id: "mimic", title: "Mimic Studio", titleHe: "Mimic Studio", blurb: "Mimic", blurbHe: "Mimic", accent: "clay", backdropTemplate: "practice_stamp", scenePromptSlug: "mimic", surface: "arcade", unlock: { kind: "default" }, collectible: false },
-  { id: "memory", title: "Mind Vault", titleHe: "Mind Vault", blurb: "Memory", blurbHe: "Memory", accent: "pink", backdropTemplate: "practice_stamp", scenePromptSlug: "memory", surface: "arcade", unlock: { kind: "default" }, collectible: false },
-  { id: "reading", title: "Spell Forge", titleHe: "Spell Forge", blurb: "Reading", blurbHe: "Reading", accent: "yellow", backdropTemplate: "practice_stamp", scenePromptSlug: "reading", surface: "arcade", unlock: { kind: "default" }, collectible: false },
-  { id: "beat", title: "Beat Keeper", titleHe: "Beat Keeper", blurb: "Rhythm", blurbHe: "Rhythm", accent: "clay", backdropTemplate: "practice_stamp", scenePromptSlug: "beat", surface: "arcade", unlock: { kind: "default" }, collectible: false },
-  { id: "pose", title: "Hero Pose", titleHe: "Hero Pose", blurb: "Move", blurbHe: "Move", accent: "sky", backdropTemplate: "practice_stamp", scenePromptSlug: "pose", surface: "arcade", unlock: { kind: "default" }, collectible: false },
-  { id: "pattern", title: "Pattern Power", titleHe: "Pattern Power", blurb: "Logic", blurbHe: "Logic", accent: "lav", backdropTemplate: "practice_stamp", scenePromptSlug: "pattern", surface: "arcade", unlock: { kind: "default" }, collectible: false },
-  { id: "word-world", title: "Word World", titleHe: "Word World", blurb: "Language", blurbHe: "Language", accent: "sky", backdropTemplate: "practice_stamp", scenePromptSlug: "word-world", surface: "arcade", unlock: { kind: "default" }, collectible: false },
+  ...KID_WORLDS.map((w) => worldTheme(w.worldId, w.doorNameKey, WORLD_BLURB[w.worldId] ?? "", w.accent)),
+  worldTheme("word-world", "elev.practice.world.kid.words", "Language", "sky"),
 ];
 
 /* ── Journey pack themes — lifted 1:1 from heroJourneys.ts PACKS[] ──────────

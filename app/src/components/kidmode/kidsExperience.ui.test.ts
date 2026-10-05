@@ -11,8 +11,9 @@ describe("Kids experience visual and session contract", () => {
   it("keeps one active-world heading and the All worlds action", () => {
     const arcade = read("../practice/HeroArcade.tsx");
     const active = arcade.slice(arcade.indexOf("if (open?.Comp)"), arcade.indexOf("return (", arcade.indexOf("if (open?.Comp)") + 80));
-    expect(active).not.toMatch(/<h1[^>]*>\s*\{open\.name\}/);
-    expect(active).toContain('<span className="sr-only" role="status">{open.name}</span>');
+    // B-KID-68 re-pin: the world's name is its registry key, resolved by t().
+    expect(active).not.toMatch(/<h1[^>]*>\s*\{(open\.name|t\(open\.nameKey\))\}/);
+    expect(active).toContain('<span className="sr-only" role="status">{t(open.nameKey)}</span>');
     expect(arcade).toContain('t("elev.play.arcade.allWorlds")');
   });
 
