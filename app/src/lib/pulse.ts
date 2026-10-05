@@ -136,12 +136,18 @@ export function usePulses(): HubPulses {
       today = { key: "elev.pulse.today.empty", params: { name } };
     }
 
-    // ── Journal: all captured moments (logs + play wins) in the last 7 days.
+    // ── Journal: what the parent CAPTURED in the last 7 days — the moment
+    //    logs (lib/signalTimeline weekMomentCount's behaviorLogs half; play is
+    //    the child's, never a "moment"). NEXTLEVEL critic r1 (P0, Law 9): NO
+    //    `count`, so the shell never prints this pulse ABOVE #/journal's own
+    //    H1 — "5 moments this week" sat over the page's "6 moments this week".
+    //    #/journal says its number once (weekMomentCount); the More-sheet row
+    //    keeps this text.
     const weekAgo = nowMs - WEEK_MS;
-    const journalWeek = countSince(behaviorLogs, weekAgo, nowMs) + countSince(playLogs, weekAgo, nowMs);
+    const journalWeek = countSince(behaviorLogs, weekAgo, nowMs);
     const journal: HubPulse =
       journalWeek > 0
-        ? { key: pickCountKey("elev.pulse.journal.week", journalWeek), params: { count: journalWeek }, count: journalWeek }
+        ? { key: pickCountKey("elev.pulse.journal.week", journalWeek), params: { count: journalWeek } }
         : { key: "elev.pulse.journal.empty" };
 
     // ── Behaviors: logged moments this week (a count, never a verdict). ────

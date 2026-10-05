@@ -505,23 +505,22 @@ export default function JournalTab({ primaryMoveProps, densityToggle }: { primar
           </div>
           {/* Critic r1: below md the week aside steps out — the story line
               above already carries the week count or the last moment, and
-              the capture tiles move up into the first viewport. */}
+              the capture tiles move up into the first viewport.
+              NEXTLEVEL critic r1 (P1, Law 9): the aside never prints a
+              numeral — the week count is said ONCE, in the story line; the
+              old lavender "6 · moments and insights" tile repeated it 600 px
+              away and did not say what it counted. The aside keeps only the
+              door to the parent's last kept words, or the day-0 teach line. */}
+          {(lastKept || weekCount === 0) && (
           <div data-testid="journal-week-aside" className="hidden border-t pt-4 md:block md:border-s md:border-t-0 md:ps-5 md:pt-0" style={{ borderColor: "var(--arbor-rule-strong)" }}>
-            {/* Critic r2 (journal P1 G0): "This week in the story" sat over a
-                May moment beside "Nothing kept this week" — the heading names
-                the week only when the week has moments to show. */}
-            <p data-testid="journal-aside-title" className="t-xs font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>
-              {t(weekCount === 0 && lastKept ? "elev.journal.lastKept.title" : "journal.week.title")}
-            </p>
-            {/* RUN-08 zero wall: at day 0 this printed a 3xl black "0" beside
-                "moments and insights kept in one calm place" — the loudest
-                object on the screen, saying nothing. Same rule as HubHero:
-                below one moment the teach line replaces the numeral. */}
-            {weekCount === 0 && lastKept ? (
+            {lastKept ? (
               /* B-ASKJB-NEW-1d — "Last kept": the date, the parent's own words
                  (real row text, never generated), and one door to the compose
                  card. No new colour, gradient or stat. */
-              <div data-testid="journal-last-kept" className="mt-3 space-y-1.5">
+              <div data-testid="journal-last-kept" className="space-y-1.5">
+                <p data-testid="journal-aside-title" className="t-sm font-bold" style={{ color: "var(--arbor-muted)" }}>
+                  {t("elev.journal.lastKept.title")}
+                </p>
                 {/* The quote now leads the story line at every width; the
                     aside keeps the date only when the line could not quote. */}
                 {!quotedLastKept && (
@@ -531,22 +530,18 @@ export default function JournalTab({ primaryMoveProps, densityToggle }: { primar
                 )}
                 {lastKeptDoor("journal-last-kept-next")}
               </div>
-            ) : weekCount === 0 ? (
+            ) : (
               <p
                 data-testid="journal-week-zero-line"
-                className="mt-3 t-sm leading-snug"
+                className="t-sm leading-snug"
                 style={{ color: "var(--arbor-ink-soft)" }}
                 dir="auto"
               >
                 {t("elev.journal.week.zero")}
               </p>
-            ) : (
-              <div className="mt-3 flex items-center gap-3">
-                <span className="text-3xl font-black" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-lav-ink)" }}>{weekCount}</span>
-                <span className="text-xs leading-snug" style={{ color: "var(--arbor-muted)" }}>{t("journal.week.sub")}</span>
-              </div>
             )}
           </div>
+          )}
         </div>
       </header>
       {/* W2 2.6 — active writing cue: the tapped guiding question, visible

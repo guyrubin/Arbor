@@ -317,8 +317,13 @@ describe("critic r2 — Journal: real modules, an honest aside, the quote at eve
     expect(header.indexOf("{densityToggle}")).toBeLessThan(header.indexOf('t("journal.title")'));
   });
 
-  it("the aside says 'this week' only when the week has moments; a quiet week reads 'From the story' (EN + HE)", () => {
-    expect(JOURNAL).toContain('t(weekCount === 0 && lastKept ? "elev.journal.lastKept.title" : "journal.week.title")');
+  it("NEXTLEVEL critic r1 (Law 9): the aside never prints a numeral — the week count is said once, in the story line; its title is 'From the story' (EN + HE), sentence case", () => {
+    const aside = JOURNAL.slice(JOURNAL.indexOf('data-testid="journal-week-aside"'), JOURNAL.indexOf("</header>"));
+    expect(aside).not.toContain("{weekCount}");
+    expect(aside).not.toContain('"journal.week.sub"');
+    expect(aside).not.toContain('"journal.week.title"');
+    expect(aside).not.toMatch(/\buppercase\b|tracking-/);
+    expect(aside).toContain('t("elev.journal.lastKept.title")');
     expect(dict.en["elev.journal.lastKept.title"]).toBe("From the story");
     expect(dict.he["elev.journal.lastKept.title"]).toBe("מהסיפור");
     for (const d of [dict.en, dict.he]) expect(d["elev.journal.lastKept.title"]).not.toMatch(/week|השבוע/i);

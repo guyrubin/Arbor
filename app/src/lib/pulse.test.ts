@@ -117,6 +117,15 @@ describe("B-SHELL-19 · pulses carry no denominator; the hub line and the strip 
     expect('params: { count: noticed }, count: noticed }').toMatch(/\},\s*count:\s*noticed\b/);
   });
 
+  it("NEXTLEVEL critic r1 (Law 9): the Journal pulse carries no `count` and no play logs, so no second 'moments this week' sits above #/journal's H1", () => {
+    const src = readFileSync(path.join(here, "pulse.ts"), "utf8").replace(/\r\n/g, "\n");
+    const journal = src.slice(src.indexOf("const journalWeek ="), src.indexOf("const behaviorsWeek ="));
+    expect(journal).toContain('"elev.pulse.journal.week"');
+    expect(journal).not.toMatch(/\},\s*count:\s*journalWeek\b/);
+    expect(journal).not.toMatch(/countSince\(playLogs/);
+    expect('params: { count: journalWeek }, count: journalWeek }').toMatch(/\},\s*count:\s*journalWeek\b/);
+  });
+
   it("W2-GROWTH r2: the Profile pulse is what Arbor remembers — no album moment total, no `count` above the H1", () => {
     const src = readFileSync(path.join(here, "pulse.ts"), "utf8").replace(/\r\n/g, "\n");
     const profile = src.slice(src.indexOf("const remembered ="), src.indexOf("return { today, journal"));
