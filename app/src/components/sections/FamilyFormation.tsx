@@ -49,7 +49,7 @@ export default function FamilyFormation() {
   // no way to actually start one. "Start" accepts the ritual's FIRST step
   // into today through the existing action loop (the same seam the Learn
   // reader's "Add to today" uses), so the practice reaches the day.
-  const { acceptTodayAction, actionLoop, selectedLens, setSelectedLens } = useArbor();
+  const { acceptTodayAction, actionLoop, selectedLens, setSelectedLens, childProfile } = useArbor();
   const [toneOpen, setToneOpen] = useState(false);
   const { toast } = useToast();
   const he = aiLang === "he";
@@ -167,7 +167,7 @@ export default function FamilyFormation() {
         {/* B-GROWTH-03 / ENG-25 — the ritual whose turn has come round, beside
             the rituals it belongs to (moved from #/development). Renders
             nothing when no ritual is due. */}
-        <div className="mb-4 empty:hidden"><RitualTurnCard onStart={startRitual} started={ritualStarted} primaryMoveProps={RITUAL_MOVE} onTurnChange={onTurnChange} /></div>
+        <div className="mb-4 empty:hidden"><RitualTurnCard onStart={startRitual} started={ritualStarted} primaryMoveProps={RITUAL_MOVE} onTurnChange={onTurnChange} charterValues={values} childName={childProfile?.name} childAge={childProfile?.age} /></div>
         <div className="grid sm:grid-cols-2 gap-4">
           {FAMILY_RITUALS.filter((r) => r.id !== turnId).map((r) => {
             const glyph = RITUAL_ICON[r.id] ?? "history_edu";

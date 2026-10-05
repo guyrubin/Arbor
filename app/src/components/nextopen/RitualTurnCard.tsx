@@ -24,6 +24,24 @@ import {
   type RitualRecord,
 } from "../../lib/familyRitualsCadence";
 import { FAMILY_RITUALS, type FamilyRitual } from "../../lib/familyRituals";
+import { translate } from "../../lib/i18n";
+
+/** W2-SHELLPLAY critic r2 (B-SHELL-NEW-2l): the charter value each ritual
+ *  practises. A ritual not listed keeps the plain cadence reason. */
+export const RITUAL_VALUE_KEY: Readonly<Record<string, string>> = {
+  "truth-practice-weekly": "elev.charter.default.honesty",
+  "responsibility-ladder": "elev.charter.default.responsibility",
+};
+
+/** The family's own word for a ritual's value when it is on their charter
+ *  (matched against the keyed default in either language, case-insensitive),
+ *  else null. Pure; exported for the guard. */
+export function charterValueFor(ritualId: string, charter: readonly string[]): string | null {
+  const key = RITUAL_VALUE_KEY[ritualId];
+  if (!key) return null;
+  const words = new Set([translate("en", key), translate("he", key)].map((w) => w.trim().toLowerCase()));
+  return charter.find((v) => words.has(v.trim().toLowerCase())) ?? null;
+}
 
 /** Each ritual's glyph — kept in step with the Family Formation surface. */
 const RITUAL_GLYPH: Record<string, string> = {
@@ -48,9 +66,14 @@ export interface RitualTurnCardProps {
   /** W2-SHELLPLAY critic r2: tells the host which ritual the card shows (or
    *  null when none is due), so the ritual library never renders it twice. */
   onTurnChange?: (ritualId: string | null) => void;
+  /** W2-SHELLPLAY critic r2: the family's charter values and the child, so a
+   *  first-time turn names the value and the child instead of a deficit line. */
+  charterValues?: readonly string[];
+  childName?: string;
+  childAge?: number;
 }
 
-export default function RitualTurnCard({ nowMs, onStart, started, primaryMoveProps, onTurnChange }: RitualTurnCardProps) {
+export default function RitualTurnCard({ nowMs, onStart, started, primaryMoveProps, onTurnChange, charterValues, childName, childAge }: RitualTurnCardProps) {
   const { t, uiLang } = useLanguage();
   const he = uiLang === "he";
   const now = nowMs ?? Date.now();
@@ -112,6 +135,12 @@ export default function RitualTurnCard({ nowMs, onStart, started, primaryMovePro
   }
 
   const { ritual, firstTime } = turn;
+  const charterValue = charterValueFor(ritual.id, charterValues ?? []);
+  const valueSentence =
+    firstTime && RITUAL_VALUE_KEY[ritual.id] && childName && typeof childAge === "number" && childAge > 0
+      ? t(`elev.rh.ritual.value.${ritual.id}`, { name: childName, age: childAge })
+      : "";
+  const closingKey = ritual.id === "truth-practice-weekly" ? "elev.rh.ritual.closing.truth-practice-weekly" : "";
   const cadence = cadenceLabel(ritual);
   const steps = he ? ritual.stepsHe : ritual.steps;
 
@@ -153,11 +182,37 @@ export default function RitualTurnCard({ nowMs, onStart, started, primaryMovePro
           </h3>
           <p className="mt-1 t-sm" dir="auto" style={{ color: "var(--arbor-muted)" }}>
             <span data-testid="ritual-turn-cadence">{t(cadence.key, cadence.vars)}</span>
-            {" · "}
-            <span data-testid="ritual-turn-reason">
-              {firstTime ? t("elev.rh.ritual.first") : t("elev.rh.ritual.turn")}
-            </span>
+            {!valueSentence && (
+              <>
+                {" · "}
+                <span data-testid="ritual-turn-reason">
+                  {firstTime ? t("elev.rh.ritual.first") : t("elev.rh.ritual.turn")}
+                </span>
+              </>
+            )}
           </p>
+          {/* W2-SHELLPLAY critic r2 (B-SHELL-NEW-2l): first time, the reason is
+              the family's own value (their charter word, in the charter's chip
+              pair) and the child by name and age — never "not run yet". With
+              no matching value the sentence drops its first clause. */}
+          {valueSentence && (
+            <p data-testid="ritual-turn-value" className="mt-2 t-sm" dir="auto" style={{ color: "var(--arbor-ink-soft)" }}>
+              {charterValue && (
+                <>
+                  <span className="inline-flex items-center rounded-full px-2.5 font-bold" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
+                    <bdi>{charterValue}</bdi>
+                  </span>{" "}
+                  {t("elev.rh.ritual.value.onCharter")}{" "}
+                </>
+              )}
+              {valueSentence}
+            </p>
+          )}
+          {valueSentence && closingKey && (
+            <p data-testid="ritual-turn-closing" className="mt-1.5 t-base" dir="auto" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)" }}>
+              “{t(closingKey)}”
+            </p>
+          )}
         </div>
       </div>
 

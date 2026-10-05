@@ -27,6 +27,9 @@ import {
   ritualOfTheMoment,
 } from "./familyRitualsCadence";
 import { en, he } from "./i18nElevation/returnhooks";
+import { charterValueFor, RITUAL_VALUE_KEY } from "../components/nextopen/RitualTurnCard";
+import { translate } from "./i18n";
+const translateHe = (k: string) => translate("he", k);
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const read = (rel: string) => readFileSync(path.join(here, rel), "utf8").replace(/\r\n/g, "\n");
@@ -175,7 +178,8 @@ describe("ENG-25 → B-GROWTH-03 — the cadence is surfaced on #/family", () =>
   it("#/family mounts the card inside the start-family-ritual module, and the card runs the cadence + records a run", () => {
     // W2-SHELLPLAY r1: the card is mounted inside the rituals module and
     // carries the route's ONE stamp on its start control (spread from the leaf).
-    expect(growth).toMatch(/<RitualTurnCard onStart=\{startRitual\} started=\{ritualStarted\} primaryMoveProps=\{RITUAL_MOVE\} onTurnChange=\{onTurnChange\} \/>/);
+    // W2-SHELLPLAY r2 (B-SHELL-NEW-2l): the host also passes the charter and the child
+    expect(growth).toMatch(/<RitualTurnCard onStart=\{startRitual\} started=\{ritualStarted\} primaryMoveProps=\{RITUAL_MOVE\} onTurnChange=\{onTurnChange\} charterValues=\{values\} childName=\{childProfile\?\.name\} childAge=\{childProfile\?\.age\} \/>/);
     const mod = growth.indexOf('data-module="family-rituals"');
     expect(mod).toBeGreaterThan(-1);
     expect(growth.indexOf("<RitualTurnCard")).toBeGreaterThan(mod);
@@ -258,5 +262,35 @@ describe("W2-SHELLPLAY r2 — #/family always has ONE move, and nothing renders 
     expect(card).toMatch(/<h3\s+id="ritual-turn-title"\s+className="mt-1 break-words t-md/);
     expect(family).toContain('<h3 className="t-base font-extrabold flex');
     expect(card).not.toMatch(/text-\[1[57]px\]/);
+  });
+});
+
+describe("W2-SHELLPLAY r2 · B-SHELL-NEW-2l — the first turn names the family's value and the child, never a deficit", () => {
+  it("charterValueFor matches the family's own word in either language; nothing for an unmapped ritual or an absent value", () => {
+    expect(charterValueFor("truth-practice-weekly", ["Courage", "honesty"])).toBe("honesty");
+    expect(charterValueFor("responsibility-ladder", [translateHe("elev.charter.default.responsibility")])).toBe(translateHe("elev.charter.default.responsibility"));
+    // NEGATIVE CONTROLS
+    expect(charterValueFor("truth-practice-weekly", ["Courage", "Kindness"])).toBeNull();
+    expect(charterValueFor("family-story-canon", ["Honesty"])).toBeNull();
+    expect(Object.keys(RITUAL_VALUE_KEY).every((id) => FAMILY_RITUALS.some((r) => r.id === id))).toBe(true);
+  });
+
+  it("the value sentence replaces the deficit reason in the first-time state; EN+HE keyed, HE carries no Latin and no slash-gendering", () => {
+    const cardSrc = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "components", "nextopen", "RitualTurnCard.tsx"), "utf8").replace(/\r\n/g, "\n");
+    expect(cardSrc).toContain("{!valueSentence && (");
+    expect(cardSrc).toContain('data-testid="ritual-turn-value"');
+    expect(cardSrc).toContain('background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)"');
+    expect(cardSrc).toContain('fontFamily: "var(--font-editorial)"');
+    for (const k of ["elev.rh.ritual.value.onCharter", "elev.rh.ritual.value.truth-practice-weekly", "elev.rh.ritual.value.responsibility-ladder", "elev.rh.ritual.closing.truth-practice-weekly"]) {
+      expect(en[k], k).toBeTruthy();
+      expect(he[k], k).toBeTruthy();
+      expect(he[k].replace(/\{(name|age)\}/g, "")).not.toMatch(/[A-Za-z]|\/ה\b|\/ת\b/);
+    }
+    for (const id of Object.keys(RITUAL_VALUE_KEY)) {
+      expect(en[`elev.rh.ritual.value.${id}`]).toContain("{name}");
+      expect(en[`elev.rh.ritual.value.${id}`]).not.toMatch(/not run|yet|missed|streak|%/i);
+    }
+    // NEGATIVE CONTROL: the old first-time line is the deficit the guard keeps off the value path
+    expect(en["elev.rh.ritual.first"]).toMatch(/not run/);
   });
 });

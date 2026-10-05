@@ -48,6 +48,12 @@ export const en: Record<string, string> = {
   "elev.rh.ritual.eyebrow": "Your family ritual",
   "elev.rh.ritual.first": "You have not run this one yet.",
   "elev.rh.ritual.turn": "It is this one's turn again.",
+  // W2-SHELLPLAY critic r2 (B-SHELL-NEW-2l): the first-time reason names the
+  // family's own value and the child — never a deficit line.
+  "elev.rh.ritual.value.onCharter": "is on your charter.",
+  "elev.rh.ritual.value.truth-practice-weekly": "For {name}, at {age}, it starts with one small truth at the table this week.",
+  "elev.rh.ritual.value.responsibility-ladder": "For {name}, at {age}, it starts with one small job handed over completely this week.",
+  "elev.rh.ritual.closing.truth-practice-weekly": "We tell the truth and we fix things.",
   "elev.rh.ritual.every.week": "Once a week",
   "elev.rh.ritual.every.month": "Once a month",
   "elev.rh.ritual.every.days": "Every {n} days",
@@ -126,6 +132,10 @@ export const he: Record<string, string> = {
   "elev.rh.ritual.eyebrow": "הטקס המשפחתי שלכם",
   "elev.rh.ritual.first": "את זה עוד לא עשיתם.",
   "elev.rh.ritual.turn": "הגיע שוב תורו של הטקס הזה.",
+  "elev.rh.ritual.value.onCharter": "כתוב במגילה שלכם.",
+  "elev.rh.ritual.value.truth-practice-weekly": "אצל {name}, בגיל {age}, זה מתחיל באמת קטנה אחת ליד השולחן השבוע.",
+  "elev.rh.ritual.value.responsibility-ladder": "אצל {name}, בגיל {age}, זה מתחיל במשימה קטנה אחת שעוברת השבוע לגמרי לידיים קטנות.",
+  "elev.rh.ritual.closing.truth-practice-weekly": "אנחנו אומרים את האמת ומתקנים דברים.",
   "elev.rh.ritual.every.week": "פעם בשבוע",
   "elev.rh.ritual.every.month": "פעם בחודש",
   "elev.rh.ritual.every.days": "כל {n} ימים",
