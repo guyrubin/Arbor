@@ -51,7 +51,7 @@ describe("B-TODAY-28 — the record card (rendered)", () => {
 
   it("user text is bidi-isolated (a Hebrew name at the start never flips an English sentence)", () => {
     const html = renderToStaticMarkup(<FromRecordCard opener={factOpener} onAnswer={() => {}} />);
-    expect(html).toMatch(/<blockquote dir="auto"[^>]*><bdi>דילן started/);
+    expect(html).toMatch(/<blockquote[^>]*><bdi dir="auto" data-free-text=""><bdi>דילן<\/bdi> started/);
     expect(html).toContain(translate("en", "today.record.q.fact"));
     expect(html).toContain(translate("en", "today.record.a.fact.hard_again"));
   });

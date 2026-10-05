@@ -31,6 +31,7 @@ import GoalBuilderModal from "../practice/GoalBuilderModal";
 import { goalLabel, type ActiveGoal } from "../../practice/goalBuilder";
 // B-CAREPRO-33: the quoted facts carry an as-of date and ask "Still true?" after 90 days.
 import { confirmFact, factMonthLabel, isFactStale, type FactField } from "../../lib/factsAsOf";
+import { FreeText } from "../ui/FreeText";
 
 /**
  * Child Intelligence › Development Profile — ONE scrolling narrative ("My Child"
@@ -165,7 +166,8 @@ export default function ChildProfile() {
       <span aria-hidden="true" className="mt-2 inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ background: "var(--arbor-clay)" }} />
       <p className="t-md min-w-0" style={{ fontFamily: "var(--font-editorial)", fontWeight: 400, color: "var(--arbor-ink)" }}>
         {first ? t("elev.profile.knows.leadNamed", { name: first }) : t("elev.profile.knows.lead")}{" "}
-        <bdi dir="auto">{toParentWords(latestApproved.fact)}</bdi>
+        {/* B-SHELL-28: the parent's words never flip on a leading name. */}
+        <FreeText text={toParentWords(latestApproved.fact)} />
         {latestApproved.createdAt && (
           <span className="t-sm" style={{ color: "var(--arbor-muted)" }}>
             {" — "}{t("elev.profile.knows.since", { month: factMonthLabel(latestApproved.createdAt, uiLang === "he" ? "he" : "en") })}
@@ -278,7 +280,7 @@ export default function ChildProfile() {
                 {m.createdAt && (
                   <p className="t-xs" style={{ color: "var(--arbor-muted)" }}>{t("elev.childmem.provenance", { date: fmtDay(m.createdAt, uiLang) })}</p>
                 )}
-                <p className="mt-1 text-sm" dir="auto" style={{ fontFamily: "var(--font-editorial)", fontSize: "var(--t-md)", color: "var(--arbor-ink)" }}>{toParentWords(m.fact)}</p>
+                <p className="mt-1 text-sm" style={{ fontFamily: "var(--font-editorial)", fontSize: "var(--t-md)", color: "var(--arbor-ink)" }}><FreeText text={toParentWords(m.fact)} /></p>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <button
                     type="button"
@@ -504,7 +506,7 @@ export default function ChildProfile() {
           <ul className="space-y-1.5 text-sm" style={{ color: "var(--arbor-ink)" }}>
             {shownApproved.slice(0, 5).map((shown) => (
               <li key={shown.memoryId} className="flex items-start gap-2">
-                <span className="mt-2 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "var(--arbor-lav-ink)" }} /> {shown.fact}
+                <span className="mt-2 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "var(--arbor-lav-ink)" }} /> <FreeText text={shown.fact} />
               </li>
             ))}
           </ul>

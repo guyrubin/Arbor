@@ -522,7 +522,8 @@ describe("R22 — the practice domain names and the Full Picture body carry both
     expect(ask).not.toContain("label={section.title}");
 
     const ms = stripComments(readSrc("components/tabs/MilestonesTab.tsx"));
-    expect(ms).toContain('const domainLabel = (id: string) => registryDomainLabel("developmental", id, t);');
+    // B-SHELL-28: still the registry resolver — its one-name-per-row form.
+    expect(ms).toContain('const domainLabel = (id: string) => primaryDomainLabel("developmental", id, t);');
     expect(ms).toContain("{domainLabel(dom.id)}");
     expect(ms).not.toMatch(/>\{dom\.label\}</);
     expect(ms).not.toContain('title="Celebrate"');

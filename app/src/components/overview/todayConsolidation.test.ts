@@ -156,7 +156,9 @@ describe("W2 Today supporting presentation", () => {
     const prompt = stripComments(read("components/overview/PromptCaptureCard.tsx"));
     const cue = stripComments(read("components/coach/RhythmCue.tsx"));
     const rail = stripComments(read("components/onboarding/FirstStepsRail.tsx"));
-    expect(prompt).toContain('{t("today.intent.captureTitle")}');
+    // B-SHELL-28: the capture label is said once (the bar); the card's door is "Write it down".
+    expect(prompt).toContain('{t("today.prompt.write")}');
+    expect(prompt).toContain("onClick={onCapture}");
     expect(prompt).not.toContain('t("today.intent.doNow")');
     expect(prompt).toContain('promptKey ? t(promptKey) : t("elev.prompt.lead")');
     expect(cue).not.toContain('elev.evening.card.eyebrow');

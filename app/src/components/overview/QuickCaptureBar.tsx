@@ -65,7 +65,6 @@ export default function QuickCaptureBar({
     >
       <div className="hidden lg:flex flex-col justify-center px-5 py-3">
         <span className="text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{t("today.capture.cta")}</span>
-        <span className="mt-0.5 text-[11.5px]" style={{ color: "var(--arbor-muted)" }}>{t("today.capture.aria", { name: childName })}</span>
       </div>
       <button
         type="button"

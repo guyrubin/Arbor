@@ -54,7 +54,7 @@ import {
   type KeepsakeDoc, type KeepsakeDraft,
 } from "../../lib/firstsKeepsake";
 import { useChildCollection } from "../../hooks/useChildCollection";
-import { DEVELOPMENTAL_DOMAIN_IDS, domainLabel as registryDomainLabel } from "../../lib/domains/registry";
+import { DEVELOPMENTAL_DOMAIN_IDS, domainLabel as registryDomainLabel, primaryDomainLabel } from "../../lib/domains/registry";
 import { DevelopmentalDomainId, Milestone } from "../../types";
 
 function celebrate() {
@@ -87,7 +87,8 @@ export default function MilestonesTab() {
      lib/i18nElevation/domains.ts): the same names Growth and Science print.
      No framework.json label, no screen.domain.* private dictionary. */
   const domainOptions = useMemo(() => DEVELOPMENTAL_DOMAIN_IDS.map((id) => ({ id })), []);
-  const domainLabel = (id: string) => registryDomainLabel("developmental", id, t);
+  // B-SHELL-28: one label per map row — the primary domain, never the cross-tag.
+  const domainLabel = (id: string) => primaryDomainLabel("developmental", id, t);
   // openDomain === null → the "all domains" master list (the closed Map);
   // set → the single-domain drill-in detail pane.
   const [openDomain, setOpenDomain] = useState<string | null>(null);

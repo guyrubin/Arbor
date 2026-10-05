@@ -343,6 +343,15 @@ export function domainLabel(vocab: Vocab, id: string, t: T, fallback?: string): 
   return sub ? `${base} · ${t(`elev.domains.sub.${sub}`)}` : base;
 }
 
+/** B-SHELL-28: ONE name per row — the PRIMARY registry domain of a legacy id
+ *  (the first of toDomains), never the " · " cross-tag. For lists that already
+ *  show each domain as its own row (the Milestones development map), where
+ *  "Moving · Hands, senses & self-care" sat beside "Hands, senses & self-care". */
+export function primaryDomainLabel(vocab: Vocab, id: string, t: T, fallback?: string): string {
+  const doms = toDomains(vocab, id);
+  return doms.length === 0 ? fallback ?? id : domainName(doms[0], t);
+}
+
 /** The ENGLISH label of a legacy id — for data modules with no reader language
  *  (watch rows, the clinician export). Rendered surfaces use `domainLabel`. */
 export function domainLabelEn(vocab: Vocab, id: string, fallback?: string): string {

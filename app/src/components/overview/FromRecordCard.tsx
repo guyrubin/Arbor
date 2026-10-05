@@ -1,6 +1,7 @@
 import React from "react";
 import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
+import { FreeText } from "../ui/FreeText";
 import { useLanguage } from "../../context/LanguageContext";
 import {
   FROM_RECORD_ANSWERS,
@@ -29,7 +30,7 @@ export function recordDate(iso: string | null, lang: string): string {
  *
  * Parent register; tokens only; logical properties (border-s / ps) so the
  * rule sits on the reading side in both locales. The quote is user text:
- * `dir="auto"` + <bdi> so a Hebrew name at the start never flips an English
+ * FreeText (B-SHELL-28) so a Hebrew name at the start never flips an English
  * sentence (and the reverse).
  */
 export default function FromRecordCard({
@@ -52,19 +53,18 @@ export default function FromRecordCard({
       style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}
     >
       {opener.topic && (
-        <p dir="auto" data-testid="today-record-topic" className="text-[13px] font-semibold" style={{ color: "var(--arbor-muted)" }}>
-          <bdi>{opener.topic}</bdi>
+        <p data-testid="today-record-topic" className="text-[13px] font-semibold" style={{ color: "var(--arbor-muted)" }}>
+          <FreeText text={opener.topic} />
         </p>
       )}
       {opener.quote && (
         <figure className={opener.topic ? "mt-2" : ""}>
           <blockquote
-            dir="auto"
             data-testid="today-record-quote"
             className="border-s-2 ps-3 text-[17px] leading-snug sm:text-[19px]"
             style={{ borderColor: "var(--arbor-rule-strong)", color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)" }}
           >
-            <bdi>{opener.quote}</bdi>
+            <FreeText text={opener.quote} />
           </blockquote>
           {metaKey && date && (
             <figcaption data-testid="today-record-meta" className="mt-1.5 ps-3 text-[12px]" style={{ color: "var(--arbor-muted)" }}>

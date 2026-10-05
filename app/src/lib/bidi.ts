@@ -50,6 +50,32 @@ export function isolate(value: string, lang: IsolateLang = "en"): string {
   return foreign ? `⁨${value}⁩` : value;
 }
 
+/**
+ * B-SHELL-28 — free text a parent wrote (memory facts, quotes) has no known
+ * language, so its paragraph takes `dir="auto"` (first strong character).
+ * That is the bug when the text OPENS with a name in the other script:
+ * "דילן is choosing…" laid out right-to-left, full stop at the left edge.
+ * `leadingForeignRun` splits off that opening run (whole words, while their
+ * script is the minority one) so the caller wraps it in its own <bdi>: per
+ * the HTML spec, dir="auto" skips <bdi> descendants, so the paragraph takes
+ * the direction of the words that follow. Text with no such run → lead "".
+ */
+export function leadingForeignRun(text: string): { lead: string; rest: string } {
+  const rtl = (text.match(/[֐-׿؀-ۿ܀-ݏ]/g) ?? []).length;
+  const ltr = (text.match(/[A-Za-zÀ-ʯͰ-ӿ]/g) ?? []).length;
+  if (rtl === 0 || ltr === 0) return { lead: "", rest: text };
+  const minority = rtl < ltr ? RTL_CHARS : LTR_CHARS;
+  const majority = rtl < ltr ? LTR_CHARS : RTL_CHARS;
+  const words = text.split(/(\s+)/);
+  let i = 0;
+  // the opening words that carry the minority script and none of the majority
+  while (i < words.length && (/^\s*$/.test(words[i]) || (minority.test(words[i]) && !majority.test(words[i])))) i += 1;
+  // never leave trailing whitespace inside the lead
+  while (i > 0 && /^\s*$/.test(words[i - 1])) i -= 1;
+  if (i === 0) return { lead: "", rest: text };
+  return { lead: words.slice(0, i).join(""), rest: words.slice(i).join("") };
+}
+
 /** B-KID-120: the paragraph direction of a text in `lang` - never "auto".
  *  A paragraph's direction comes from the language the text is WRITTEN in;
  *  `dir="auto"` takes it from the first strong character instead, so an

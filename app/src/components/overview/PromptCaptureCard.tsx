@@ -58,11 +58,10 @@ export default function PromptCaptureCard({
         className="text-[20px] font-extrabold leading-[1.15] sm:text-[22px]"
         style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)", textWrap: "balance" } as React.CSSProperties}
       >
-        {t("today.intent.captureTitle")}
-      </h2>
-      <p dir="auto" className="mt-1.5 text-[14px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+        {/* B-SHELL-28: the question IS the heading; the capture label lives
+            once, on the capture bar ("Tell Arbor what's happening"). */}
         {uiLang === "en" ? genderedEn(prompt, gender) : prompt}
-      </p>
+      </h2>
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <button
           type="button"
@@ -71,12 +70,9 @@ export default function PromptCaptureCard({
           className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 py-2.5 text-[13px] font-extrabold text-white transition active:scale-[0.98]"
           style={{ background: "var(--arbor-gradient-primary)" }}
         >
-          {t("today.intent.captureTitle")}
+          {t("today.prompt.write")}
           <Icon name="arrow_forward" size={17} className="rtl:-scale-x-100" />
         </button>
-        <span className="text-[11px] font-semibold" style={{ color: "var(--arbor-faint)" }}>
-          {t("today.capture.aria", { name: childName })}
-        </span>
       </div>
       {/* W1 1.2 why-line: the authored "Why this fits" strings, mounted.
           Masterplan 3.1: the TrustLink chip closes the why → Trust Center
