@@ -13,6 +13,7 @@ import { KID_WORLDS as ARCADE_KID_WORLDS } from "../practice/HeroArcade";
 import { STUDIO_WORLDS } from "../practice/studioWorlds";
 import { translate } from "../../lib/i18n";
 import { KID_THEME_IDS, kidArt, worldTileKey } from "../../lib/kidThemeManifest";
+import { greetingWorldNameKey, lastPlayedWorldYesterday } from "./kidGreeting";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const HEBREW = /[א-ת]/;
@@ -62,5 +63,27 @@ describe("B-KID-68: consumers read the registry", () => {
     }
     const studio = readFileSync(path.join(__dirname, "..", "practice", "studioWorlds.ts"), "utf8");
     expect(studio).toContain('from "../kidmode/kidWorlds"');
+  });
+});
+
+describe("B-KID-68: the greeting reads the registry", () => {
+  const none = { speech: [], mimic: [], adventures: [], events: [] };
+  const y = "2026-09-02T12:00:00";
+  it("the world played yesterday is a registry tile, named by its own key", () => {
+    const w = lastPlayedWorldYesterday({ ...none, events: [{ timestamp: y, kind: "rhythm" as const }] }, "2026-09-03");
+    expect(w).toBe(kidWorldByWorldId("beat")!.id);
+    expect(greetingWorldNameKey(w!)).toBe(kidWorldByWorldId("beat")!.nameKey);
+  });
+  it("Spell Forge is greeted too, with its own name key (not a kid.game.* guess)", () => {
+    const w = lastPlayedWorldYesterday({ ...none, events: [{ timestamp: y, kind: "phonics" as const }] }, "2026-09-03");
+    expect(w).toBe("spell-forge");
+    expect(greetingWorldNameKey(w!)).toBe("elev.kids.reading.title");
+    expect(translate("he", greetingWorldNameKey(w!)!)).toMatch(HEBREW);
+  });
+  it("no tile-id union or kid.game.* template is restated", () => {
+    const greet = readFileSync(path.join(__dirname, "kidGreeting.ts"), "utf8");
+    expect(greet).not.toMatch(/"mood-mountain"|"sound-lab"|"pattern-power"/);
+    const dash = readFileSync(path.join(__dirname, "KidDashboard.tsx"), "utf8");
+    expect(dash).not.toContain("t(`kid.game.${yesterdayWorld}.title`)");
   });
 });

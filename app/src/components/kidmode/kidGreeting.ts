@@ -12,6 +12,7 @@
  */
 import type { PracticeEventKind } from "../../types";
 import { dayKey } from "../../practice/signals";
+import { KID_WORLDS, kidWorldByWorldId, type KidWorld } from "./kidWorlds";
 
 /** The minimal ledger shape the greeting reads (a structural subset of
  *  usePracticeData, so the helper stays node-testable). */
@@ -22,26 +23,32 @@ export interface GreetingLedgers {
   events: { timestamp: string; kind: PracticeEventKind }[];
 }
 
-/** KidDashboard GAMES tile ids (kid.game.<id>.title) reachable from the ledgers. */
-export type GreetingWorldId =
-  | "sound-lab"
-  | "mood-mountain"
-  | "mind-vault"
-  | "beat-keeper"
-  | "hero-pose"
-  | "pattern-power"
-  | "story-quest"
-  | "mimic-studio";
+/** B-KID-68: a kid home tile id from the ONE kid world registry (the copy
+ *  names the world with that entry's own name key). */
+export type GreetingWorldId = KidWorld["id"];
 
-const EVENT_WORLD: Partial<Record<PracticeEventKind, GreetingWorldId>> = {
-  "emotion-id": "mood-mountain",
-  "emotion-why": "mood-mountain",
-  calm: "mood-mountain",
-  memory: "mind-vault",
-  rhythm: "beat-keeper",
-  pose: "hero-pose",
-  pattern: "pattern-power",
+/** Which world (registry routing id) an event kind was played in. The world's
+ *  identity — tile id, name — is the registry's, never restated here. */
+const EVENT_WORLD: Partial<Record<PracticeEventKind, string>> = {
+  "emotion-id": "feelings",
+  "emotion-why": "feelings",
+  calm: "feelings",
+  memory: "memory",
+  rhythm: "beat",
+  pose: "pose",
+  pattern: "pattern",
+  phonics: "reading",
+  "sight-word": "reading",
+  "letter-trace": "reading",
 };
+
+/** The registry tile id for a routing id (undefined = not a kid world). */
+const tileOf = (worldId: string): GreetingWorldId | undefined => kidWorldByWorldId(worldId)?.id;
+
+/** The ONE name key of a greeting world (the tile's own title key). */
+export function greetingWorldNameKey(id: GreetingWorldId): string | undefined {
+  return KID_WORLDS.find((w) => w.id === id)?.nameKey;
+}
 
 /** YYYY-MM-DD of the calendar day before `today` (local-date arithmetic on the string). */
 export function dayBefore(today: string): string {
@@ -63,13 +70,14 @@ export function lastPlayedWorldYesterday(ledgers: GreetingLedgers, today: string
   // rest of the practice lane uses (practice/signals.ts dayKey).
   const onDay = (ts: string) => dayKey(new Date(ts)) === yesterday;
   const candidates: { ts: string; world: GreetingWorldId }[] = [];
-  for (const s of ledgers.speech) if (onDay(s.timestamp)) candidates.push({ ts: s.timestamp, world: "sound-lab" });
-  for (const m of ledgers.mimic) if (onDay(m.timestamp)) candidates.push({ ts: m.timestamp, world: "mimic-studio" });
-  for (const a of ledgers.adventures) if (onDay(a.timestamp)) candidates.push({ ts: a.timestamp, world: "story-quest" });
-  for (const e of ledgers.events) {
-    const world = EVENT_WORLD[e.kind];
-    if (world && onDay(e.timestamp)) candidates.push({ ts: e.timestamp, world });
-  }
+  const add = (ts: string, worldId: string | undefined) => {
+    const world = worldId ? tileOf(worldId) : undefined;
+    if (world && onDay(ts)) candidates.push({ ts, world });
+  };
+  for (const s of ledgers.speech) add(s.timestamp, "speech");
+  for (const m of ledgers.mimic) add(m.timestamp, "mimic");
+  for (const a of ledgers.adventures) add(a.timestamp, "adventures");
+  for (const e of ledgers.events) add(e.timestamp, EVENT_WORLD[e.kind]);
   if (candidates.length === 0) return null;
   candidates.sort((a, b) => (a.ts < b.ts ? 1 : a.ts > b.ts ? -1 : 0));
   return candidates[0].world;

@@ -41,7 +41,7 @@ import { prefetchKidSurfaces } from "./kidPrefetch";
 import { KID_THEME_TILE_SHAPE, kidArt, storyCoverKey, worldTileKey, type KidThemeId } from "../../lib/kidThemeManifest";
 import { HoldExitButton } from "./HoldExitButton";
 import { kidIsolate } from "./kidText";
-import { lastPlayedWorldYesterday } from "./kidGreeting";
+import { greetingWorldNameKey, lastPlayedWorldYesterday } from "./kidGreeting";
 import { chooseTonightsStory } from "./tonightsStory";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { aimVirtues, loadCharter } from "../../lib/becoming";
@@ -420,8 +420,10 @@ export default function KidDashboard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [uiLang, aiLang, childProfile.id, kidTheme, heroRunsCol.items, tonightsStoryId],
   );
-  const greetingSub = yesterdayWorld
-    ? kt("elev.kid.greeting.playedYesterday", { world: t(`kid.game.${yesterdayWorld}.title`) })
+  // B-KID-68: the world is named by the registry's own key (Spell Forge too).
+  const yesterdayNameKey = yesterdayWorld ? greetingWorldNameKey(yesterdayWorld) : undefined;
+  const greetingSub = yesterdayNameKey
+    ? kt("elev.kid.greeting.playedYesterday", { world: t(yesterdayNameKey) })
     : kt("elev.kid.greeting.ready");
 
   // Monotonic star total — lifetime sessions across modules. Never a streak.
