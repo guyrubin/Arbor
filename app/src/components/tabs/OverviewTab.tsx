@@ -456,8 +456,11 @@ export default function OverviewTab() {
   const weekday = now0.toLocaleDateString(uiLang === "he" ? "he-IL" : "en-GB", { weekday: "long" });
   // GP-01: the one parent-facing age path (ageLabel), never `profile.age`.
   const ageText = ageLabel(childProfile, t);
+  // Critic r1: each segment is one unbreakable phrase (no-break spaces), so
+  // "3 years 2 months" never splits as "3 שנים ו-2 / חודשים".
+  const nowrap = (s: string) => s.replace(/ /g, " ");
   const identityLine = ageText
-    ? t("today.identity", { name: firstName, age: ageText, when: t(whenKey, { weekday }) })
+    ? t("today.identity", { name: firstName, age: nowrap(ageText), when: t(whenKey, { weekday }) })
     : t("today.identity.noAge", { name: firstName, when: t(whenKey, { weekday }) });
 
   // B-TODAY-28 — "From your record": ONE opener drawn from what the family
@@ -687,8 +690,13 @@ export default function OverviewTab() {
           {/* B-SHELL-27: the same face as the sidebar/switcher (lib/childPicture), a 28 px circle in the identity line only. */}
           <div className="flex items-center gap-2.5">
             <Avatar name={childProfile.name} photoURL={childPicture(childProfile).url} size={28} />
-            <h1 data-testid="today-identity" dir="auto" className="text-[17px] font-semibold leading-tight sm:text-[19px]" style={{ color: "var(--arbor-ink)" }}>
-              <bdi>{identityLine}</bdi>
+            {/* Critic r1 (P0, Law 8): NO dir="auto" and no outer <bdi> — auto
+                direction skipped the bdi and resolved LTR in every locale, so a
+                Hebrew page read "Dylan · 3 2-ו שנים". The h1 inherits the
+                document direction; t() already FSI/PDI-isolates {name}, and the
+                age travels with no-break spaces so it never splits across the wrap. */}
+            <h1 data-testid="today-identity" className="font-semibold leading-tight text-start" style={{ color: "var(--arbor-ink)", fontSize: "var(--t-lg)" }}>
+              {identityLine}
             </h1>
           </div>
         </div>

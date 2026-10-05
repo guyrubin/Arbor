@@ -85,6 +85,14 @@ describe("B-TODAY-28 — OverviewTab wiring (source pin)", () => {
     expect(SRC).toMatch(/"today\.identity"/);
   });
 
+  it("critic r1 (Law 8): the identity h1 inherits the page direction — no dir=auto, no outer bdi", () => {
+    const at = SRC.indexOf('data-testid="today-identity"');
+    const h1 = SRC.slice(SRC.lastIndexOf("<h1", at), SRC.indexOf("</h1>", at));
+    expect(h1).not.toMatch(/dir=/);
+    expect(h1).not.toMatch(/<bdi/);
+    expect(h1).toMatch(/var\(--t-lg\)/);
+  });
+
   it("the record card is the FIRST thing inside the primary move", () => {
     const anchor = SRC.slice(SRC.indexOf('data-primary-move="do-today-action"'));
     expect(anchor.indexOf("<FromRecordCard")).toBeGreaterThan(-1);
