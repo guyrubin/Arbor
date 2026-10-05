@@ -123,6 +123,9 @@ export const en: Record<string, string> = {
   // W2-SHELLPLAY critic r1: a kid-only tile promises only what the tap does
   // (Kid Mode opens at home until the lane-X B-KID-11 world seam lands).
   "elev.practice.studio.opensKidmode": "Opens Kid Mode",
+  // B-SHELL-NEW-1b: keep the door sentence as one journal moment.
+  "elev.practice.door.keep": "Keep it in the journal",
+  "elev.practice.door.kept": "Kept in the journal",
   // W2-SHELLPLAY critic r1 · #/adventures — every literal keyed (18 English
   // strings rendered under lang=he). The parent lines talk ABOUT the story and
   // the child, never TO the child (law 2).
@@ -311,6 +314,8 @@ export const he: Record<string, string> = {
   "elev.practice.door.sentence.finished.girl": "{when}, {name} סיימה את {title}.",
   "elev.practice.door.sentence.finished.neutral": "{when}, הסיפור {title} של {name} הושלם.",
   "elev.practice.studio.opensKidmode": "נפתח במצב ילדים",
+  "elev.practice.door.keep": "לשמור ביומן",
+  "elev.practice.door.kept": "נשמר ביומן",
   "elev.practice.adventures.gen.title": "ליצור הרפתקה חדשה לגמרי",
   "elev.practice.adventures.gen.sub": "סיפור הבנה חדש, שנוצר במיוחד בשביל {name}.",
   "elev.practice.adventures.gen.create": "ליצור",

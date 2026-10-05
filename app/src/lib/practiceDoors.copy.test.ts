@@ -491,3 +491,18 @@ describe("W2-SHELLPLAY r1 · #/speech — the round is scored on the fold, in on
     expect(speech).not.toMatch(/#[0-9a-fA-F]{3,6}\b|rgba\(88,166,255/);
   });
 });
+
+describe("B-SHELL-NEW-1b · the door sentence can be kept as ONE journal moment", () => {
+  const studio = stripComments(read("components/practice/PracticeStudioTab.tsx"));
+  it("Keep writes through addMoment (the B-SHELL-04 path), once per sentence, 44 px", () => {
+    expect(studio).toContain("if (addMoment(sinceText)) setKeptLine(sinceText);");
+    expect(studio).toContain("if (!sinceText || keptLine === sinceText) return;");
+    const btn = studio.slice(studio.indexOf('data-testid="practice-since-keep"'), studio.indexOf("</button>", studio.indexOf('data-testid="practice-since-keep"')));
+    expect(btn).toContain("min-h-11");
+    expect(btn).not.toMatch(/--gradient-cta/);
+    for (const lang of ["en", "he"] as const) {
+      expect(translate(lang, "elev.practice.door.keep")).not.toBe("elev.practice.door.keep");
+      expect(translate(lang, "elev.practice.door.kept")).not.toBe("elev.practice.door.kept");
+    }
+  });
+});

@@ -34,7 +34,7 @@ import type { HeroJourneyRun } from "../../types";
 // components/practice/studioWorlds module (fixture-testable without React).
 
 export default function PracticeStudioTab() {
-  const { childProfile, setActiveTab } = useArbor();
+  const { childProfile, setActiveTab, addMoment } = useArbor();
   const { t, uiLang } = useLanguage();
   const { openKidMode } = useKidMode();
   const isRtl = uiLang === "he";
@@ -73,6 +73,16 @@ export default function PracticeStudioTab() {
       childName: firstName,
     });
   }, [data.speech.items, data.mimic.items, data.missions.items, data.adventures.items, data.events.items, heroRuns.items, t, lang, firstName, childProfile.gender]);
+
+  // B-SHELL-NEW-1b: the door sentence can be kept as ONE parent moment, through
+  // the same addMoment path as the exit strip's Keep (B-SHELL-04). Once per
+  // sentence: the kept text is remembered, so a second tap writes nothing.
+  const [keptLine, setKeptLine] = React.useState<string | null>(null);
+  const sinceText = since ? `${since.before}${since.title ?? ""}${since.after}` : "";
+  const keepSince = () => {
+    if (!sinceText || keptLine === sinceText) return;
+    if (addMoment(sinceText)) setKeptLine(sinceText);
+  };
 
   // KID-21: this session's parent area was reached by answering the math
   // question, and no PIN is set. Say so ONCE, here on the parent door next to
@@ -135,6 +145,19 @@ export default function PracticeStudioTab() {
               )}
               {since.after}
             </p>
+          )}
+          {since && (
+            <button
+              type="button"
+              data-testid="practice-since-keep"
+              onClick={keepSince}
+              disabled={keptLine === sinceText}
+              className="inline-flex min-h-11 items-center gap-1 text-[12px] font-bold underline-offset-2 hover:underline disabled:no-underline"
+              style={{ color: "var(--arbor-muted)" }}
+            >
+              <Icon name={keptLine === sinceText ? "check" : "bookmark_add"} size={14} />
+              {keptLine === sinceText ? t("elev.practice.door.kept") : t("elev.practice.door.keep")}
+            </button>
           )}
           {/* KID-20 / RUN-04: the three reassurance chips are PARENT copy, so
               they live here on the door — not in the child's first viewport. */}
