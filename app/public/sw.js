@@ -9,6 +9,19 @@
    tabs once — so users always get the latest build instead of a stale shell. */
 const CACHE = "arbor-shell-__BUILD_ID__";
 
+/* B-KID-78 (KB-42): kid books work offline. Kid art lives in its OWN cache,
+   versioned by hand (bump ART_VERSION when the art set changes shape), so a
+   deploy — which replaces the shell cache above — does not throw away the
+   covers a child reads in the car. The page posts the urls to keep
+   ("kid-art-precache": Tonight's cover, the last 3 opened books' covers, the
+   home tile art of the active theme); only web-sized webp under /visuals/ is
+   accepted, at most ART_MAX per message. Every /visuals/** request is
+   cache-first from this cache. */
+const ART_VERSION = "v1";
+const ART_CACHE = `arbor-kid-art-${ART_VERSION}`;
+const ART_MAX = 40;
+const isKidArt = (path) => typeof path === "string" && /^\/visuals\/[\w\/.-]+\.webp$/.test(path) && !path.includes("..");
+
 /* Install-time precache. The runtime cache-first branch below only ever holds
    what a previous ONLINE paint happened to request, which is not good enough
    for two assets:
@@ -36,7 +49,20 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim())
+    // The shell cache of this build and the current kid-art cache survive;
+    // older shells and older art versions go.
+    caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE && k !== ART_CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener("message", (event) => {
+  const data = event.data;
+  if (!data || data.type !== "kid-art-precache" || !Array.isArray(data.urls)) return;
+  const urls = data.urls.filter(isKidArt).slice(0, ART_MAX);
+  event.waitUntil?.(
+    caches.open(ART_CACHE).then((c) =>
+      Promise.all(urls.map((u) => c.match(u, { ignoreVary: true }).then((hit) => hit || c.add(u).catch(() => undefined)))),
+    ),
   );
 });
 
@@ -57,6 +83,25 @@ self.addEventListener("fetch", (event) => {
           return res;
         })
         .catch(() => caches.match("/index.html", { ignoreVary: true }))
+    );
+    return;
+  }
+
+  // B-KID-78: kid art — cache-first from the kid-art cache, network fills it.
+  if (url.pathname.startsWith("/visuals/")) {
+    event.respondWith(
+      caches.open(ART_CACHE).then((c) =>
+        c.match(req, { ignoreVary: true }).then(
+          (cached) =>
+            cached ||
+            fetch(req)
+              .then((res) => {
+                if (res.ok) c.put(req, res.clone());
+                return res;
+              })
+              .catch(() => caches.match(req, { ignoreVary: true })),
+        ),
+      ),
     );
     return;
   }

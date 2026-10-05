@@ -53,6 +53,7 @@ import { kidBooks } from "./kidBooks";
 import { KID_WORLDS, KID_WORLD_NAME_KEY, kidWorldByWorldId, type KidWorldAccent } from "./kidWorlds";
 import { KidBookCover } from "./KidBookCover";
 import { KidStickerStrip } from "./rewards/KidSouvenir";
+import { kidOfflineArtUrls, precacheKidArt, recentlyOpenedStoryIds } from "../../lib/kidOfflineArt";
 import { useKidSouvenirs } from "./rewards/useKidSouvenirs";
 import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
 import { starEvents } from "../../practice/signals";
@@ -399,6 +400,13 @@ export default function KidDashboard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [data.today, childProfile.id, heroReadIds, kidTheme, uiLang, aiLang],
   );
+  // B-KID-78: keep tonight's cover, the last 3 opened books and this theme's
+  // tile art in the service worker's kid-art cache (books work offline).
+  const offlineArtKey = useMemo(
+    () => kidOfflineArtUrls(kidTheme, tonightsStoryId, recentlyOpenedStoryIds(heroRunsCol.items)).join("|"),
+    [kidTheme, tonightsStoryId, heroRunsCol.items],
+  );
+  useEffect(() => { precacheKidArt(offlineArtKey ? offlineArtKey.split("|") : []); }, [offlineArtKey]);
   // B-KID-06: the banner names the one story it opens (HE title in Hebrew),
   // instead of "Start a hero story / Pick a world" on a door with no choice.
   const tonightsStory = HERO_STORIES.find((s) => s.id === tonightsStoryId);
