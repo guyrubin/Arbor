@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { FreeText } from "../ui/FreeText";
 import { fmtDay } from "../../lib/formatDate";
 import { motion, useReducedMotion } from "motion/react";
 import Icon from "../ui/Icon";
@@ -250,6 +251,14 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, onAudi
   const countFromIso = anchor.kind === "start" ? new Date(new Date(anchor.iso).getTime() - 1).toISOString() : sinceIso;
   const sinceCounts = reportsLeadCounts({ logs: behaviorLogs ?? [], milestones: milestones ?? [], sinceIso: countFromIso, nowMs });
   const lower = (x: string) => (uiLang === "en" ? x.toLowerCase() : x);
+  // W2-CAREPRO c2 r1: a packet line takes the reader's direction (a Latin
+  // child name first must not flip a Hebrew line); translate() isolates every
+  // Latin interpolation inside it. NEXTLEVEL critic r1: the item BODY is
+  // isolated text too (B-SHELL-28 FreeText) — an English fact in a Hebrew
+  // packet kept its full stop at the wrong end (".page").
+  const packetLine = (it: Parameters<typeof itemText>[0]) => (
+    <span dir={uiLang === "he" ? "rtl" : "ltr"} className="block"><FreeText text={itemText(it, uiLang)} /></span>
+  );
   const countVars = {
     moments: t(sinceCounts.moments === 1 ? "elev.reports.line.momentsLogged.one" : "elev.reports.line.momentsLogged.other", { n: sinceCounts.moments }),
     milestones: t(sinceCounts.milestones === 1 ? "elev.reports.lead.milestones.one" : "elev.reports.lead.milestones.other", { n: sinceCounts.milestones }),
@@ -651,10 +660,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, onAudi
                       <InsetRow
                         key={it.id}
                         label={sectionTitle(section, uiLang)}
-                        // W2-CAREPRO c2 r1: the line takes the reader's direction
-                        // (a Latin child name first must not flip a Hebrew line);
-                        // translate() isolates every Latin interpolation inside it.
-                        value={<span dir={uiLang === "he" ? "rtl" : "ltr"} className="block">{itemText(it, uiLang)}</span>}
+                        value={packetLine(it)}
                         excluded={!on}
                         multiline
                         testId="consult-packet-item"
@@ -736,7 +742,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, onAudi
                         className={`whitespace-pre-wrap break-words ${PREVIEW_ROLE_CLS[line.role]}${!previewAll && i >= PREVIEW_PHONE_LINES ? " hidden lg:block" : ""}`}
                         style={{ color: line.role === "note" ? MUTED : INK }}
                       >
-                        {line.text}
+                        <FreeText text={line.text} />
                       </p>
                     ))}
                   </div>

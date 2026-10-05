@@ -261,7 +261,8 @@ describe("W2-CAREPRO c2 r1 · a named anchor, the parent's words, step 3 reads f
       localStorage.setItem("arbor.consultExportAudience", "pediatrician");
       const html = renderToStaticMarkup(<ConsultTab />);
       const body = /data-testid="consult-export-preview"[^>]*>([\s\S]*?)<\/div>/.exec(html)![1];
-      const lines = [...body.matchAll(/<p data-line-role="(\w+)" dir="(\w+)"[^>]*>([^<]*)<\/p>/g)];
+      // NEXTLEVEL r1: each line's text sits inside FreeText's <bdi> — strip tags.
+      const lines = [...body.matchAll(/<p data-line-role="(\w+)" dir="(\w+)"[^>]*>([\s\S]*?)<\/p>/g)].map((m) => [m[0], m[1], m[2], m[3].replace(/<[^>]+>/g, "")] as const);
       expect(lines.length).toBeGreaterThan(6);
       expect(lines[0][1]).toBe("title");
       for (const [, , dir, text] of lines) {
@@ -308,7 +309,7 @@ describe("W2-CAREPRO c2 r2 · one egress set per audience", () => {
   const rows = (html: string) => (html.match(/data-testid="consult-packet-item"/g) ?? []).length;
   const bullets = (html: string) => {
     const body = /data-testid="consult-export-preview"[^>]*>([\s\S]*?)<\/div>/.exec(html)![1];
-    return [...body.matchAll(/<p data-line-role="item"[^>]*>([^<]*)<\/p>/g)].map((m) => decode(m[1]));
+    return [...body.matchAll(/<p data-line-role="item"[^>]*>([\s\S]*?)<\/p>/g)].map((m) => decode(m[1].replace(/<[^>]+>/g, "")));
   };
   const selected = (html: string, locale: "en" | "he") => {
     const n = /(\d+)/.exec(decode(html.slice(html.indexOf('aria-live="polite"'), html.indexOf("</span>", html.indexOf('aria-live="polite"')))))![1];

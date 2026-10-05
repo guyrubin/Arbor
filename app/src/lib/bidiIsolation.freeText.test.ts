@@ -22,6 +22,16 @@ describe("B-SHELL-28 — leadingForeignRun", () => {
   });
 });
 
+describe("NEXTLEVEL critic r1 — Consult's packet rows and preview lines are isolated text", () => {
+  it("every summary-item body and every preview line renders through FreeText", () => {
+    const src = fs.readFileSync(path.resolve(__dirname, "../components/sections/AskSpecialist.tsx"), "utf8");
+    expect(src).toContain("<FreeText text={itemText(it, uiLang)} />");
+    expect(src).toContain("value={packetLine(it)}");
+    expect(src).toContain("<FreeText text={line.text} />");
+    expect(src).not.toMatch(/className="block">\{itemText\(it, uiLang\)\}<\/span>/);
+  });
+});
+
 describe("B-SHELL-28 — FreeText renders inside a bdi with dir=auto, the name isolated", () => {
   it("'דילן is choosing…' → <bdi dir=auto><bdi>דילן</bdi> is choosing…</bdi>", () => {
     const html = renderToStaticMarkup(React.createElement(FreeText, { text: "דילן is choosing to speak only English at home." }));
