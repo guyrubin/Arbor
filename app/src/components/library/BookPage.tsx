@@ -158,7 +158,9 @@ export function BookPage({ layout, plateSrcs, printed = false, fgSrc, heroSrc, h
   return (
     <div className="bk-art" data-book-art="" data-printed={printed ? "" : undefined} onClick={onArtTap} style={{ left: px(art.x), top: px(art.y), width: px(art.w), height: px(art.h) }}>
       <div className="bk-plate" data-book-plate="" role="img" aria-label={pictureLabel} style={rel(plate, art)}>
-        <FallbackImg srcs={plateSrcs} className="bk-fill" />
+        {/* a print is drawn "cover" into the PLATE's rect (its 3:2 vs the plate's
+            1.49 differs by < 1 %): the frame never jumps between print and composite */}
+        <FallbackImg srcs={plateSrcs} className={printed ? "bk-fill-cover" : "bk-fill"} />
       </div>
       {overlays.filter((o) => o.z === "under").map(renderOverlay)}
       {showHero && shadow && (
