@@ -10,6 +10,7 @@ import {
   buildPacketInput,
   countIncluded,
   isConsultPacketEmpty,
+  presetPacket,
   sectionTitle,
   itemText,
   serializeForExport,
@@ -194,7 +195,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience }: {
     catch { toast(t("elev.packet.copyFailed"), "error"); }
   };
 
-  const packet = useMemo(
+  const fullPacket = useMemo(
     () => buildConsultPacket({
       // LC-17b: the SHARED input assembler (consult/packet.buildPacketInput) —
       // one mapping for this surface and both sides of a share.
@@ -217,6 +218,10 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience }: {
     }),
     [childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems, reason, preparedQuestions, langObsCol.items, growthCol.items, audience]
   );
+  // W2-CAREPRO c2 r2: ONE egress set — the card the parent curates, the
+  // step-3 count, the empty test and Copy/PDF/Send all read the audience-capped
+  // packet, so switching the chip re-shapes step 2 and every row shown can leave.
+  const packet = useMemo(() => presetPacket(audience, fullPacket), [audience, fullPacket]);
 
   // W2-CAREPRO c2 r1: "What changed" is measured from a NAMED anchor — the
   // last visit with this audience's profession (with what they said), else
@@ -684,9 +689,14 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience }: {
           /* Step 3 · What leaves — the review gate, then one set of verbs for
              the chosen audience. Below lg it follows the packet in normal flow;
              at lg it is the sticky end column. */
-          /* W2-CAREPRO c2 r1: the sticky column clears the sticky sub-nav rail
-             (--sticky-offset, one shell token) and scrolls inside itself. */
-          <div id="consult-review-export" data-testid="consult-review-export" className="border-t pt-5 flex flex-col gap-4 lg:sticky lg:top-[var(--sticky-offset)] lg:max-h-[calc(100dvh-var(--sticky-offset)-2rem)] lg:overflow-y-auto lg:border-t-0 lg:pt-0 lg:rounded-[22px] lg:p-5" style={{ borderColor: RULE }}>
+          /* W2-CAREPRO c2 r2: a FIXED frame at lg — the column clears the
+             sticky sub-nav rail (--sticky-offset, inside <main>, the
+             scrollport) and is never taller than <main>'s visible height
+             (100dvh minus the shell topbar, --shell-topbar-h). It has NO
+             column-level scroll: only the preview scrolls inside itself, so
+             the H2, the count, the 44 px reviewed toggle and Copy · PDF · Send
+             always stay in view. */
+          <div id="consult-review-export" data-testid="consult-review-export" className="border-t pt-5 flex flex-col gap-4 lg:sticky lg:top-[var(--sticky-offset)] lg:max-h-[calc(100dvh-var(--shell-topbar-h)-var(--sticky-offset)-1rem)] lg:border-t-0 lg:pt-0 lg:rounded-[22px] lg:p-5" style={{ borderColor: RULE }}>
             <h2 tabIndex={-1} className="flex items-center gap-2 t-lg font-extrabold focus:outline-none" style={{ fontFamily: "var(--font-display)", color: INK }}>
               <span aria-hidden="true" className="inline-flex items-center justify-center w-7 h-7 rounded-full t-sm font-extrabold" style={{ background: "var(--arbor-paper-deep)", color: INK }}>3</span>
               {t("elev.carehonesty.consult.step.leaves")}
@@ -701,7 +711,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience }: {
                 tick "I reviewed" about text that was never on screen. Open at
                 lg; the first lines + "Show all" below lg. A blocked build shows
                 the reason instead (fail closed). */}
-            <section data-testid="consult-preview" aria-label={t("elev.carehonesty.consult.preview.toggle")} className="rounded-[13px] px-3.5 py-3" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }}>
+            <section data-testid="consult-preview" aria-label={t("elev.carehonesty.consult.preview.toggle")} tabIndex={0} className="rounded-[13px] px-3.5 py-3 lg:min-h-0 lg:max-h-[min(26rem,50dvh)] lg:overflow-y-auto" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }}>
               <p className="inline-flex items-center gap-2 t-sm font-extrabold" style={{ color: INK }}>
                 <Icon name="visibility" size={16} /> {t("elev.carehonesty.consult.preview.toggle")}
               </p>

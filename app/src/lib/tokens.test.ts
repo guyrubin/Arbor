@@ -456,6 +456,8 @@ const W2_CAREPRO_FLAT_WASHES: Readonly<Record<string, string>> = {
   "--arbor-pink-wash": "#fdeff6",
   // The one shell token for sticky offsets inside <main> (sub-nav rail + 16px).
   "--sticky-offset": "calc(1rem + 44px + 16px)",
+  // W2-CAREPRO c2 r2: the lg topbar band outside <main> (Topbar.tsx height).
+  "--shell-topbar-h": "74px",
 };
 
 /** Exact replacements, not permission to change these tokens arbitrarily.

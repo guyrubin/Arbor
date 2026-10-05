@@ -27,6 +27,10 @@
      (the scrollport): the sticky sub-nav pill rail (0.5rem + 44px pill +
      0.5rem) plus a 16px gap, so a sticky column never slides under it. */
   --sticky-offset:        calc(1rem + 44px + 16px);
+  /* W2-CAREPRO c2 r2 — the lg shell topbar sits OUTSIDE <main> (the
+     scrollport), so a sticky frame's height is 100dvh minus this band
+     (mirrors components/layout/Topbar.tsx height). */
+  --shell-topbar-h:       74px;
 
   /* Primary — sapphire blue (repurposes the clay token name; backward-compatible) */
   --arbor-clay:           #1558c0;   /* AA normal text on paper and tinted wells; solid CTA fill */
@@ -937,6 +941,10 @@ body {
      (the scrollport): the sticky sub-nav pill rail (0.5rem + 44px pill +
      0.5rem) plus a 16px gap, so a sticky column never slides under it. */
   --sticky-offset:        calc(1rem + 44px + 16px);
+  /* W2-CAREPRO c2 r2 — the lg shell topbar sits OUTSIDE <main> (the
+     scrollport), so a sticky frame's height is 100dvh minus this band
+     (mirrors components/layout/Topbar.tsx height). */
+  --shell-topbar-h:       74px;
   --arbor-clay-soft:      linear-gradient(135deg, rgba(88,166,255,0.15), rgba(88,166,255,0.05));
   --arbor-clay-glow:      0 0 20px rgba(88, 166, 255, 0.3);
   --arbor-sage:           #10b981;

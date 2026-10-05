@@ -1061,6 +1061,17 @@ function capToPreset(preset: ConsultPreset, packet: ConsultPacket): ConsultPacke
   return { ...packet, sections: packet.sections.filter((s) => allowed.has(s.id)) };
 }
 
+/** W2-CAREPRO c2 r2 — ONE egress set. The packet the parent curates on the
+ *  Consult screen (the step-2 card, the "N details selected" count, the empty
+ *  test) is the SAME capped packet Copy / PDF / Send carry, so a row the
+ *  parent toggles is a row that can leave. Clinician audiences cap to their
+ *  preset; "self" carries the whole record; "teacher" builds no packet export
+ *  (the School Brief is the teacher egress) and keeps the full card. */
+export function presetPacket(audience: ExportAudience, packet: ConsultPacket): ConsultPacket {
+  if (audience === "self" || audience === "teacher") return packet;
+  return capToPreset(CONSULT_PRESETS[audience], packet);
+}
+
 /** Fail-closed egress guards: forbidden tokens block EVERY audience; the
  *  clinical-diagnosis-term scan blocks non-clinician audiences only. */
 function assertWithinCeiling(preset: ConsultPreset, text: string): void {

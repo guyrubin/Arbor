@@ -293,3 +293,82 @@ describe("W2-CAREPRO c2 r1 · a named anchor, the parent's words, step 3 reads f
     expect(text).toContain("• Dylan, 3 years.");
   });
 });
+
+/* W2-CAREPRO c2 r2 — ONE egress set (consult · product P1 G1). The card the
+ * parent curates, the step-3 count and the export all read the SAME
+ * audience-capped packet: a row the parent toggles is a row that can leave. */
+describe("W2-CAREPRO c2 r2 · one egress set per audience", () => {
+  const incidentLogs = () => [
+    { id: "m1", behaviorType: "Moment", intensity: 1, timestamp: new Date(Date.now() - 2 * DAY).toISOString(), notes: "He said 'big truck go' all the way to gan.", trigger: "big truck go" },
+    { id: "t1", behaviorType: "Transition Refusal", intensity: 3, timestamp: new Date(Date.now() - 4 * DAY).toISOString(), trigger: "Leaving the park" },
+    { id: "t2", behaviorType: "Transition Refusal", intensity: 3, timestamp: new Date(Date.now() - 5 * DAY).toISOString(), trigger: "Leaving the park" },
+  ];
+  const rows = (html: string) => (html.match(/data-testid="consult-packet-item"/g) ?? []).length;
+  const bullets = (html: string) => {
+    const body = /data-testid="consult-export-preview"[^>]*>([\s\S]*?)<\/div>/.exec(html)![1];
+    return [...body.matchAll(/<p data-line-role="item"[^>]*>([^<]*)<\/p>/g)].map((m) => decode(m[1]));
+  };
+  const selected = (html: string, locale: "en" | "he") => {
+    const n = /(\d+)/.exec(decode(html.slice(html.indexOf('aria-live="polite"'), html.indexOf("</span>", html.indexOf('aria-live="polite"')))))![1];
+    expect(decode(html)).toContain(translate(locale, "consult.selected", { n }));
+    return Number(n);
+  };
+
+  for (const locale of ["en", "he"] as const) {
+    for (const audience of ["pediatrician", "slp", "behavioral_health", "therapist"] as const) {
+      it(`${locale} · ${audience}: rendered rows = exported bullets = the step-3 count`, () => {
+        harness.locale = locale;
+        harness.logs = incidentLogs();
+        localStorage.setItem("arbor.consultExportAudience", audience);
+        const html = renderToStaticMarkup(<ConsultTab />);
+        const n = rows(html);
+        expect(n).toBeGreaterThan(0);
+        expect(bullets(html).length).toBe(n);
+        expect(selected(html, locale)).toBe(n);
+      });
+    }
+
+    it(`${locale}: NEGATIVE CONTROL — Pediatrician renders no 'What we noticed came first' row; Behavioral health does`, () => {
+      harness.locale = locale;
+      harness.logs = incidentLogs();
+      const triggerTitle = translate(locale, "elev.packet.section.triggers");
+      localStorage.setItem("arbor.consultExportAudience", "pediatrician");
+      const ped = decode(renderToStaticMarkup(<ConsultTab />));
+      localStorage.setItem("arbor.consultExportAudience", "behavioral_health");
+      const bh = decode(renderToStaticMarkup(<ConsultTab />));
+      expect(bh).toContain("Leaving the park");
+      expect(ped).not.toContain("Leaving the park");
+      if (!triggerTitle.startsWith("elev.")) {
+        expect(bh).toContain(triggerTitle);
+        expect(ped).not.toContain(triggerTitle);
+      }
+      expect(rows(bh)).toBe(rows(ped) + 1);
+    });
+  }
+
+  it("presetPacket caps clinicians to their preset; self and teacher keep the whole card", async () => {
+    const { presetPacket, CONSULT_PRESETS } = await import("../../consult/packet");
+    const packet = { sections: ["about", "triggers", "language-observations", "growth-measurements"].map((id) => ({ id, title: id, items: [{ id: `${id}-0`, text: id }] })) } as never;
+    for (const a of ["pediatrician", "slp", "behavioral_health", "therapist"] as const) {
+      const ids = presetPacket(a, packet).sections.map((s) => s.id);
+      for (const id of ids) expect(CONSULT_PRESETS[a].sections).toContain(id);
+    }
+    expect(presetPacket("pediatrician", packet).sections.map((s) => s.id)).toEqual(["about", "growth-measurements"]);
+    expect(presetPacket("self", packet).sections).toHaveLength(4);
+  });
+
+  it("design P1: the lg step-3 column is a fixed frame — no column-level scroll; only the preview scrolls", () => {
+    localStorage.setItem("arbor.consultExportAudience", "pediatrician");
+    const html = renderToStaticMarkup(<ConsultTab />);
+    const step3 = /<div id="consult-review-export" data-testid="consult-review-export" class="([^"]*)"/.exec(html)![1];
+    expect(step3).not.toContain("overflow-y-auto");
+    expect(step3).toContain("lg:max-h-[calc(100dvh-var(--shell-topbar-h)-var(--sticky-offset)-1rem)]");
+    const preview = /<section data-testid="consult-preview"[^>]*class="([^"]*)"/.exec(html)![1];
+    expect(preview).toContain("lg:overflow-y-auto");
+    expect(preview).toContain("lg:max-h-[min(26rem,50dvh)]");
+    // the verbs follow the scrolling preview, outside it
+    const previewEnd = html.indexOf("</section>", html.indexOf('data-testid="consult-preview"'));
+    expect(html.indexOf('data-testid="consult-copy"')).toBeGreaterThan(previewEnd);
+    expect(html.indexOf('data-testid="consult-reviewed"')).toBeGreaterThan(previewEnd);
+  });
+});
