@@ -12,7 +12,7 @@ import type { AdventureResult, MimicSession, PracticeEvent, SpeechAttempt } from
 import type { ActiveTab } from "../../lib/routes";
 import type { PASTEL } from "../../lib/tokens";
 import type { DomainId } from "../../lib/domains/registry";
-import { kidWorldByWorldId } from "../kidmode/kidWorlds";
+import { kidWorldByWorldId, type KidWorldAccent } from "../kidmode/kidWorlds";
 
 /** The slice of PracticeData a tile count reads. */
 export interface StudioCountSource {
@@ -58,25 +58,32 @@ export const FEELINGS_KINDS = new Set<string>(["emotion-id", "emotion-why", "cal
 const eventsOf = (d: StudioCountSource, pred: (kind: string) => boolean) =>
   d.events.items.filter((e) => pred(e.kind)).length;
 
-/** B-KID-68: a kid world's name (the parent door's key for the ONE kid name)
- *  and its counted unit come from the kid world registry — never a second map. */
-function kidSeat(worldId: string): { kidNameKey: string; unit: StudioCountUnit } {
+/** B-KID-68 (C-02): the parent tile's pastel for each registry accent, so a
+ *  world wears the same colour family on the parent door as on the kid home. */
+export const PASTEL_OF_ACCENT: Record<KidWorldAccent, keyof typeof PASTEL> = {
+  sky: "sky", lav: "lav", pink: "pink", peach: "yellow", clay: "coral", green: "mint",
+};
+
+/** B-KID-68: a kid world's name (the parent door's key for the ONE kid name),
+ *  its counted unit and its tone come from the kid world registry — never a
+ *  second map. */
+function kidSeat(worldId: string): { kidNameKey: string; unit: StudioCountUnit; tone: keyof typeof PASTEL } {
   const w = kidWorldByWorldId(worldId);
   if (!w) throw new Error(`no kid world ${worldId}`);
-  return { kidNameKey: w.doorNameKey, unit: w.unit };
+  return { kidNameKey: w.doorNameKey, unit: w.unit, tone: PASTEL_OF_ACCENT[w.accent] };
 }
 
 export const STUDIO_WORLDS: StudioWorld[] = [
-  { id: "speech", key: "speech", ...kidSeat("speech"), msIcon: "mic", tone: "sky", tab: "speech", fallbackTabNameKey: "nav.tab.speech", count: (d) => d.speech.items.length, domains: ["talking"] },
+  { id: "speech", key: "speech", ...kidSeat("speech"), msIcon: "mic", tab: "speech", fallbackTabNameKey: "nav.tab.speech", count: (d) => d.speech.items.length, domains: ["talking"] },
   { id: "word-world", key: "words", kidNameKey: "elev.practice.world.kid.words", msIcon: "menu_book", tone: "sky", tab: "language", tabNameKey: "nav.tab.language", unit: "tries", count: (d) => eventsOf(d, (k) => k === "lang-strategy"), domains: ["talking"] },
-  { id: "feelings", key: "feelings", ...kidSeat("feelings"), msIcon: "favorite", tone: "pink", tab: "feelings", count: (d) => eventsOf(d, (k) => FEELINGS_KINDS.has(k)), domains: ["feelings", "playing"] },
-  { id: "mimic", key: "mimic", ...kidSeat("mimic"), msIcon: "mood", tone: "coral", tab: "mimic", count: (d) => d.mimic.items.length, domains: ["hands", "playing"] },
-  { id: "adventures", key: "adventures", ...kidSeat("adventures"), msIcon: "map", tone: "yellow", tab: "adventures", count: (d) => d.adventures.items.length, domains: ["thinking", "feelings"] },
-  { id: "memory", key: "memory", ...kidSeat("memory"), msIcon: "psychology", tone: "lav", count: (d) => eventsOf(d, (k) => k === "memory"), domains: ["thinking"] },
-  { id: "reading", key: "reading", ...kidSeat("reading"), msIcon: "auto_stories", tone: "yellow", count: (d) => eventsOf(d, (k) => READING_KINDS.has(k)), domains: ["thinking"] },
-  { id: "beat", key: "rhythm", ...kidSeat("beat"), msIcon: "music_note", tone: "coral", count: (d) => eventsOf(d, (k) => k === "rhythm"), domains: ["moving"] },
-  { id: "pose", key: "movement", ...kidSeat("pose"), msIcon: "accessibility_new", tone: "mint", count: (d) => eventsOf(d, (k) => k === "pose"), domains: ["moving"] },
-  { id: "pattern", key: "logic", ...kidSeat("pattern"), msIcon: "category", tone: "lav", count: (d) => eventsOf(d, (k) => k === "pattern"), domains: ["thinking"] },
+  { id: "feelings", key: "feelings", ...kidSeat("feelings"), msIcon: "favorite", tab: "feelings", count: (d) => eventsOf(d, (k) => FEELINGS_KINDS.has(k)), domains: ["feelings", "playing"] },
+  { id: "mimic", key: "mimic", ...kidSeat("mimic"), msIcon: "mood", tab: "mimic", count: (d) => d.mimic.items.length, domains: ["hands", "playing"] },
+  { id: "adventures", key: "adventures", ...kidSeat("adventures"), msIcon: "map", tab: "adventures", count: (d) => d.adventures.items.length, domains: ["thinking", "feelings"] },
+  { id: "memory", key: "memory", ...kidSeat("memory"), msIcon: "psychology", count: (d) => eventsOf(d, (k) => k === "memory"), domains: ["thinking"] },
+  { id: "reading", key: "reading", ...kidSeat("reading"), msIcon: "auto_stories", count: (d) => eventsOf(d, (k) => READING_KINDS.has(k)), domains: ["thinking"] },
+  { id: "beat", key: "rhythm", ...kidSeat("beat"), msIcon: "music_note", count: (d) => eventsOf(d, (k) => k === "rhythm"), domains: ["moving"] },
+  { id: "pose", key: "movement", ...kidSeat("pose"), msIcon: "accessibility_new", count: (d) => eventsOf(d, (k) => k === "pose"), domains: ["moving"] },
+  { id: "pattern", key: "logic", ...kidSeat("pattern"), msIcon: "category", count: (d) => eventsOf(d, (k) => k === "pattern"), domains: ["thinking"] },
 ];
 
 /** B-KID-11: a tile opens its world in Kid Mode unless the world has no Kid

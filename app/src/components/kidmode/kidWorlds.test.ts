@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 import { KID_WORLDS, KID_WORLD_NAME_KEY, kidWorldByWorldId } from "./kidWorlds";
 import { KID_GAME_TITLE_KEY, KID_HOME_GAMES } from "./KidDashboard";
 import { KID_WORLDS as ARCADE_KID_WORLDS } from "../practice/HeroArcade";
-import { STUDIO_WORLDS } from "../practice/studioWorlds";
+import { PASTEL_OF_ACCENT, STUDIO_WORLDS } from "../practice/studioWorlds";
 import { translate } from "../../lib/i18n";
 import { KID_HOME_TILE_IDS, KID_THEME_IDS, KID_WORLD_TILE_IDS, kidArt, worldTileKey } from "../../lib/kidThemeManifest";
 import { worldArtwork } from "../practice/worldArtwork";
@@ -61,9 +61,12 @@ describe("B-KID-68: consumers read the registry", () => {
       if (!k) continue; // Word World: parent-only
       expect(s.kidNameKey, s.id).toBe(k.doorNameKey);
       expect(s.unit, s.id).toBe(k.unit);
+      // C-02: the parent tile's tone is the registry accent's pastel
+      expect(s.tone, s.id).toBe(PASTEL_OF_ACCENT[k.accent]);
     }
     const studio = readFileSync(path.join(__dirname, "..", "practice", "studioWorlds.ts"), "utf8");
     expect(studio).toContain('from "../kidmode/kidWorlds"');
+    expect(studio.split("\n").filter((l) => l.includes("...kidSeat(") && /tone: "/.test(l))).toEqual([]);
   });
 });
 
