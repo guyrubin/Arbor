@@ -83,7 +83,7 @@ export default function PracticeStudioTab() {
       total: counts.total,
       uiLang: lang,
       gender: childProfile.gender,
-      t: withChildSignals(t, lang === "he"),
+      t: withChildSignals(t, uiLang === "he"),
       childName: firstName,
     });
   }, [data.speech.items, data.mimic.items, data.missions.items, data.adventures.items, data.events.items, heroRuns.items, t, lang, firstName, childProfile.gender, playWindow, counts.total]);
