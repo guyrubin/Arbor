@@ -66,16 +66,16 @@ describe("OBJ-KID-04 — the Hero Story Play failure answers the child", () => {
     expect(hero).toContain("useSyncExternalStore(subscribeKidMode, isKidModeActive, isKidModeActive)");
   });
 
-  it("renders the kid line as an announced MascotSay inside the play surface", () => {
-    expect(hero).toMatch(/storyResting && \(\s*\n\s*<div role="status" aria-live="polite"/);
-    expect(hero).toContain('<MascotSay mood="think" tone="yellow">{t("elev.play.hero.rest")}</MascotSay>');
-    // The catalog view it sits in is the `.arbor-play` branch.
+  it("B-KID-81 (KB-14) re-pin: the resting line was dead (storyResting was never set true) and is gone; the fallback story IS the answer", () => {
+    expect(hero).not.toMatch(/storyResting|setStoryResting/);
+    expect(hero).not.toContain('{t("elev.play.hero.rest")}');
+    // The catalog view the kid sees is the `.arbor-play` branch.
     expect(hero).toContain('className="arbor-play space-y-6"');
   });
 
-  it("a retry is possible: the state resets on the next start and the card leaves loading", () => {
+  it("a retry is possible: the card leaves loading on every outcome", () => {
     const start = hero.slice(hero.indexOf("const startJourney = async"));
-    expect(start.slice(0, start.indexOf("try {"))).toContain("setStoryResting(false);");
+    expect(start.slice(0, start.indexOf("try {"))).toContain("setLoadingId(story.id);");
     expect(start).toContain("setLoadingId(null);");
   });
 

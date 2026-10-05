@@ -127,3 +127,25 @@ describe("storyOpenRequest — one-shot", () => {
     expect(consumeStoryOpen()).toBeNull();
   });
 });
+
+describe("B-KID-81 (KB-14) — one story card, one pack table, no dead story state", () => {
+  it("the per-file pack/emoji tables are gone: HeroJourneyTab and ComicsTab read the ONE module", () => {
+    for (const [name, src] of [["HeroJourneyTab", HERO], ["ComicsTab", COMICS]] as const) {
+      expect(src, name).not.toMatch(/const (PACK_WORLD|PACK_SOFT|STORY_ART|STORY_EMOJI)\b/);
+      expect(src, name).toMatch(/import \{[^}]*STORY_PACK_LABEL[^}]*STORY_PACK_SOFT[^}]*\} from "\.\.\/stories\/StoryCard";/);
+    }
+    // No emoji motif left on either parent story surface's cards.
+    expect(COMICS).not.toMatch(/\{emoji\}|art\.emoji/);
+    expect(HERO).not.toMatch(/art\.emoji|STORY_ART\[/);
+  });
+
+  it("the never-set resting state is gone (it could only ever render false)", () => {
+    expect(HERO).not.toMatch(/storyResting/);
+  });
+
+  it("one catalogue per register: the parent grid is StoryCard, the kid grid is KidLibrary", () => {
+    expect((HERO.match(/<StoryCard\b/g) || []).length).toBe(1);
+    expect((HERO.match(/<KidLibrary\b/g) || []).length).toBe(1);
+    expect((COMICS.match(/<StoryCard\b/g) || []).length).toBe(1);
+  });
+});

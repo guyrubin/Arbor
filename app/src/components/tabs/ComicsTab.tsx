@@ -34,7 +34,8 @@ import { classifyAgeFit, loadShowAllAges, saveShowAllAges, windowFromRange } fro
 import { agefilterText } from "../../lib/i18nElevation/agefilter";
 import { ageMonthsFromProfile } from "../../lib/childAge";
 import { getStorySpec, HERO_STORIES, storiesForLanguage, storyLanguage } from "../../lib/heroJourneys";
-import { StoryCard } from "../stories/StoryCard";
+import { StoryCard, STORY_PACK_LABEL, STORY_PACK_SOFT } from "../stories/StoryCard";
+import { kidArt, storyCoverKey } from "../../lib/kidThemeManifest";
 import { useKidTheme } from "../../hooks/useKidTheme";
 import { useKidSafeNav } from "../kidmode/useKidSafeNav";
 import { requestStoryOpen } from "../../lib/storyOpenRequest";
@@ -82,31 +83,9 @@ import { comicShelfReadIsCurrent } from "../../lib/comicShelfScope";
  * durability stays the separate Guy-gated Firebase Storage decision (GG-6).
  */
 
-/** Comic-world skin per pack (matches HeroJourneyTab + the Hero Arcade layer). */
-const PACK_WORLD: Record<HeroPackId, { bg: string; ink: string; label: string; labelHe: string }> = {
-  courage: { bg: "var(--arbor-peach)", ink: "var(--arbor-peach-ink)", label: "Courage", labelHe: "אומץ" },
-  responsibility: { bg: "var(--arbor-yellow)", ink: "var(--arbor-yellow-ink)", label: "Responsibility", labelHe: "אחריות" },
-  growth: { bg: "var(--arbor-clay)", ink: "var(--arbor-clay-deep)", label: "Growth", labelHe: "צמיחה" },
-  wisdom: { bg: "var(--arbor-sky)", ink: "var(--arbor-sky-ink)", label: "Wisdom", labelHe: "חוכמה" },
-  truth: { bg: "var(--arbor-pack-truth)", ink: "var(--arbor-pack-truth)", label: "Truth", labelHe: "אמת" },
-};
-
-/** Per-story scene prop, so an unread book still shows the hero in-world. */
-const STORY_EMOJI: Record<string, string> = {
-  "david-and-goliath": "🛡️",
-  "moses-and-pharaoh": "👑",
-  "the-lion-who-was-afraid": "🦁",
-  "noahs-ark": "🌈",
-  "jonah-and-the-great-fish": "🐋",
-  "the-dragon-of-responsibility": "🐉",
-  "joseph-and-his-brothers": "🧥",
-  "jacob-wrestling-the-angel": "🌅",
-  "the-garden-of-forgotten-seeds": "🌻",
-  "king-solomons-choice": "⚖️",
-  "the-lantern-path": "🏮",
-  "the-cloud-orchestra": "🎼",
-  "the-little-bridge-builders": "🌉",
-};
+/** B-KID-81 (KB-14): the pack tint + label come from the ONE story module
+ *  (StoryCard: STORY_PACK_SOFT / STORY_PACK_LABEL); an unbuilt book's face is
+ *  the book's own cover from the kid theme manifest, never an emoji motif. */
 
 const savedMetaFingerprint = (meta: SavedComicMeta): string =>
   JSON.stringify([meta.id, meta.adventureId, meta.lang, meta.createdAt, meta.pageCount, meta.identityVersion, meta.pageKeys]);
@@ -567,8 +546,8 @@ export default function ComicsTab() {
           the shelf. Stamped once, on the shelf itself. */}
       <div data-module="comics-shelf" data-primary-move="open-comic" className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))" }}>
         {shelfAdventures.map((a) => {
-          const w = PACK_WORLD[a.pack];
-          const emoji = STORY_EMOJI[a.adventureId] ?? "⭐";
+          const w = { bg: STORY_PACK_SOFT[a.pack], ink: STORY_PACK_LABEL[a.pack].ink, label: STORY_PACK_LABEL[a.pack].en, labelHe: STORY_PACK_LABEL[a.pack].he };
+          const bookCover = kidArt(kidTheme, storyCoverKey(a.adventureId));
           const saved = a.meta;
           // Cover thumbnail read from the device store for this exact slot.
           const coverThumb = saved ? scopedCovers[a.id] : undefined;
@@ -598,12 +577,13 @@ export default function ComicsTab() {
               {coverThumb ? (
                 <img src={coverThumb} alt="" className="absolute inset-0 w-full h-full object-cover" />
               ) : (
-                <div className="comic-halftone absolute inset-0 grid place-items-center">
-                  <div className="flex items-center gap-1.5">
+                bookCover ? (
+                  <img src={bookCover.src480} alt="" aria-hidden="true" loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: bookCover.objectPosition }} />
+                ) : (
+                  <div className="comic-halftone absolute inset-0 grid place-items-center">
                     <HeroAvatar size={74} ring animate={false} decorative />
-                    <span style={{ fontSize: 42, filter: "drop-shadow(2px 2px 0 rgba(23,27,34,.3))" }} aria-hidden="true">{emoji}</span>
                   </div>
-                </div>
+                )
               )}
               <span
                 className="absolute bottom-2 inline-flex items-center gap-1 text-[12px] font-black rounded-full px-3 py-1"

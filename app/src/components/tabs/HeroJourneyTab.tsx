@@ -45,7 +45,7 @@ import { ProvenanceBadge } from "../ui/ProvenanceBadge";
 import { STORY_COMIC, clearJourneyPageFailure, generateJourneyPage, journeyPageKey, shelveBookPages, toSavedComicMeta, type SavedComicMeta } from "../../lib/heroComics";
 import { useKidSafeNav } from "../kidmode/useKidSafeNav";
 import { isKidModeActive, noteKidActivity, subscribeKidMode } from "../../lib/kidModeGate";
-import { ComicPage, MascotSay, usePrefersReducedMotion } from "../ui/playkit";
+import { ComicPage, usePrefersReducedMotion } from "../ui/playkit";
 import { EmptyState } from "../ui/EmptyState";
 import { SectionSkeleton } from "../ui/Skeleton";
 import { statesText } from "../../lib/i18nElevation/states";
@@ -55,7 +55,7 @@ import TonightFromToday from "../stories/TonightFromToday";
 import { consumeTonightMode, type TonightMode } from "../../lib/tonightMode";
 import { useKidTheme } from "../../hooks/useKidTheme";
 import { kidArt, kidArtSrcSet, storyCoverKey } from "../../lib/kidThemeManifest";
-import { StoryCard, STORY_PACK_LABEL } from "../stories/StoryCard";
+import { StoryCard, STORY_PACK_LABEL, STORY_PACK_SOFT } from "../stories/StoryCard";
 import { consumeStoryOpen } from "../../lib/storyOpenRequest";
 import { setKidSurfaceTitle } from "../kidmode/kidSurfaceTitle";
 import { pickTonightsStory, TONIGHT_AIM_REASON_KEY } from "../kidmode/tonightsStory";
@@ -76,51 +76,10 @@ import { stopVoice } from "../../lib/voice";
 import { KID_BOOK_ART_CLASS, KID_BOOK_SIDE_CLASS, KID_BOOK_SPREAD_CLASS } from "../stories/HeroScenePlayer";
 import { DecisionChoices } from "../stories/DecisionChoices";
 
-/** Comic-world skin per pack — bg + ink token + bilingual label (matches the
- *  Hero Arcade design layer so the Academy reads as the same comic universe). */
-/** W2-SHELLPLAY critic r1: the parent cover's art band — the pack's -soft
- *  tint (the saturated PACK_WORLD.bg is the kid register's). */
-const PACK_SOFT: Record<HeroPackId, string> = {
-  courage: "var(--arbor-peach-soft)",
-  responsibility: "var(--arbor-yellow-soft)",
-  growth: "var(--arbor-clay-soft)",
-  wisdom: "var(--arbor-sky-soft)",
-  truth: "var(--arbor-lav-soft)",
-};
-
-const PACK_WORLD: Record<HeroPackId, { bg: string; ink: string; label: string; labelHe: string }> = {
-  courage: { bg: "var(--arbor-peach)", ink: "var(--arbor-peach-ink)", label: "Courage", labelHe: "אומץ" },
-  responsibility: { bg: "var(--arbor-yellow)", ink: "var(--arbor-yellow-ink)", label: "Responsibility", labelHe: "אחריות" },
-  growth: { bg: "var(--arbor-clay)", ink: "var(--arbor-clay-deep)", label: "Growth", labelHe: "צמיחה" },
-  wisdom: { bg: "var(--arbor-sky)", ink: "var(--arbor-sky-ink)", label: "Wisdom", labelHe: "חוכמה" },
-  truth: { bg: "var(--arbor-pack-truth)", ink: "var(--arbor-pack-truth)", label: "Truth", labelHe: "אמת" },
-};
-
-/** Per-story scene motif: a big emoji prop + a comic SFX burst (EN/HE), so every
- *  card is its own illustrated world with the child's hero standing inside it. */
-const STORY_ART: Record<string, { emoji: string; sfx: string; sfxHe: string }> = {
-  "david-and-goliath": { emoji: "🛡️", sfx: "BOOM!", sfxHe: "בום!" },
-  "moses-and-pharaoh": { emoji: "👑", sfx: "ECHO!", sfxHe: "הד!" },
-  "the-lion-who-was-afraid": { emoji: "🦁", sfx: "ROAR!", sfxHe: "שאגה!" },
-  "noahs-ark": { emoji: "🌈", sfx: "SPLASH!", sfxHe: "שלאמפ!" },
-  "jonah-and-the-great-fish": { emoji: "🐋", sfx: "GULP!", sfxHe: "גלופ!" },
-  "the-dragon-of-responsibility": { emoji: "🐉", sfx: "FWOOSH!", sfxHe: "פוווש!" },
-  "joseph-and-his-brothers": { emoji: "🧥", sfx: "SHINE!", sfxHe: "ברק!" },
-  "jacob-wrestling-the-angel": { emoji: "🌅", sfx: "HOLD ON!", sfxHe: "חזק!" },
-  "the-garden-of-forgotten-seeds": { emoji: "🌻", sfx: "BLOOM!", sfxHe: "פריחה!" },
-  "king-solomons-choice": { emoji: "⚖️", sfx: "AHA!", sfxHe: "אהה!" },
-  "the-broken-music-box": { emoji: "🎵", sfx: "TING!", sfxHe: "טינג!" },
-  "the-found-acorn-crown": { emoji: "🌰", sfx: "SHINE!", sfxHe: "נצנוץ!" },
-  "the-two-gifts": { emoji: "🎁", sfx: "KNOCK!", sfxHe: "טוק!" },
-  "leave-the-tent": { emoji: "⛺", sfx: "WHOOSH!", sfxHe: "ואוש!" },
-  "the-two-paths-through-the-meadow": { emoji: "🌿", sfx: "HMM!", sfxHe: "המ!" },
-  "the-two-mothers-and-the-quiet-judge": { emoji: "🤝", sfx: "SHH…", sfxHe: "ששש…" },
-  "the-tyrant-and-the-town": { emoji: "📢", sfx: "STOP!", sfxHe: "די!" },
-  "the-friendly-monster": { emoji: "👾", sfx: "GRRAH!", sfxHe: "גראח!" },
-  "the-lantern-path": { emoji: "🏮", sfx: "GLOW!", sfxHe: "זוהר!" },
-  "the-cloud-orchestra": { emoji: "🎼", sfx: "BOOM!", sfxHe: "בום!" },
-  "the-little-bridge-builders": { emoji: "🌉", sfx: "CLICK!", sfxHe: "קליק!" },
-};
+/** B-KID-81 (KB-14): the pack tint + label tables live in ONE module
+ *  (components/stories/StoryCard: STORY_PACK_SOFT, STORY_PACK_LABEL), shared
+ *  with #/comics. The per-story emoji/SFX motif table left with the last card
+ *  that drew it (the library cards show the book's own cover). */
 
 /** Immediate, authored, provider-free render. Used only when the personalized
  * route is unavailable; preserves all eight beats, localized copy and exact
@@ -246,8 +205,6 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   // inside Kid Mode was silent — the child tapped Play and nothing moved. Branch
   // at the call site (never in ToastContext, which the parent shell relies on).
   const kidMode = useSyncExternalStore(subscribeKidMode, isKidModeActive, isKidModeActive);
-  /** Kid-register answer to a failed generate: the story is resting. */
-  const [storyResting, setStoryResting] = useState(false);
 
   const runsCol = useChildCollection<HeroJourneyRun>(childProfile.id, "heroRuns");
   // B-KID-127: the child's personalised renders, kept per story + language
@@ -444,7 +401,6 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
 
   const startJourney = async (story: HeroStorySpec) => {
     setLoadingId(story.id);
-    setStoryResting(false);
     try {
       // KID-25: a second Play of tonight's story makes NO network call.
       // B-KID-121: the memo, the request and the render all carry the story language.
@@ -1043,7 +999,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
                 148 px column) — so Play clears the fixed bottom nav at 375. */}
             <div
               className="flex flex-row sm:flex-col items-center justify-center gap-3 sm:gap-1 w-full min-h-[96px] sm:min-h-[168px] lg:h-full lg:min-h-[220px] py-2 px-3"
-              style={{ background: tonightStory ? PACK_SOFT[tonightStory.pack] : "var(--arbor-paper-deep)" }}
+              style={{ background: tonightStory ? STORY_PACK_SOFT[tonightStory.pack] : "var(--arbor-paper-deep)" }}
             >
               {/* B-KID-87 (KB-29): the cover shows the BOOK — its own cover in
                   the child's one kid theme (the same file the kid banner and
@@ -1133,8 +1089,8 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
               )}
               <div className="flex flex-wrap items-center gap-2 mt-3">
                 {tonightStory && (
-                  <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[11.5px] font-bold" style={{ background: "var(--arbor-paper-deep)", color: PACK_WORLD[tonightStory.pack].ink }}>
-                    {he ? PACK_WORLD[tonightStory.pack].labelHe : PACK_WORLD[tonightStory.pack].label}
+                  <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[11.5px] font-bold" style={{ background: "var(--arbor-paper-deep)", color: STORY_PACK_LABEL[tonightStory.pack].ink }}>
+                    {he ? STORY_PACK_LABEL[tonightStory.pack].he : STORY_PACK_LABEL[tonightStory.pack].en}
                   </span>
                 )}
                 <button
@@ -1195,7 +1151,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
         <div className="flex flex-wrap gap-2" role="tablist" aria-label={he ? "סינון לפי כוח" : "Filter by power"}>
           {[{ id: "all" as const, label: he ? "הכול" : "All" }, ...PACKS.map((p) => ({ id: p.id, label: he ? p.titleHe : p.title }))].map((p) => {
             const active = packFilter === p.id;
-            const w = p.id === "all" ? null : PACK_WORLD[p.id as HeroPackId];
+            const w = p.id === "all" ? null : STORY_PACK_LABEL[p.id as HeroPackId];
             return (
               <button
                 key={p.id}
@@ -1205,7 +1161,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
                 className="px-3.5 py-2.5 min-h-[44px] rounded-full text-[13px] font-black transition"
                 style={
                   active
-                    ? { background: w ? PACK_SOFT[p.id as HeroPackId] : "var(--arbor-clay-soft)", color: w ? w.ink : "var(--arbor-clay-deep)", border: "1px solid var(--arbor-rule-strong)", boxShadow: "var(--shadow-sm)" }
+                    ? { background: w ? STORY_PACK_SOFT[p.id as HeroPackId] : "var(--arbor-clay-soft)", color: w ? w.ink : "var(--arbor-clay-deep)", border: "1px solid var(--arbor-rule-strong)", boxShadow: "var(--shadow-sm)" }
                     : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink-soft)", border: "1px solid var(--arbor-rule)" }
                 }
               >
@@ -1250,15 +1206,6 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
               </span>
             )}
           </div>
-          {/* OBJ-KID-04 — a failed generate ANSWERS the child, inside
-              `.arbor-play`, in the kid register. role=status so the line is
-              announced; the tapped card is already back in its idle state
-              (setLoadingId(null) in the finally), so a second tap retries. */}
-          {storyResting && (
-            <div role="status" aria-live="polite" className="mb-3">
-              <MascotSay mood="think" tone="yellow">{t("elev.play.hero.rest")}</MascotSay>
-            </div>
-          )}
           {/* W0.7 — honest empty state: the catalog is written for older ages. */}
           {displayStories.length === 0 && ageHiddenStories.length > 0 && (
             <div className={`${cardCls} p-5 text-center`} data-testid="agefilter-empty-hero-journeys">
@@ -1357,13 +1304,11 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
             <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))" }}>
               {shelfRuns.map((run) => {
                 const spec = getStorySpec(run.storyId);
-                const w = spec ? PACK_WORLD[spec.pack] : PACK_WORLD.courage;
-                const art = STORY_ART[run.storyId] ?? { emoji: "⭐", sfx: "POW!", sfxHe: "פאו!" };
                 const cover = storyCover(run.storyId);
                 return (
                   <button key={run.id} onClick={() => replay(run)} className="world-tile text-start" aria-label={runTitle(run, uiLang === "he" ? "he" : "en")}>
-                    <div className="grid place-items-center overflow-hidden" style={{ height: 72, background: w.bg, borderBottom: "1px solid var(--arbor-rule)" }}>
-                      {cover ? <img src={cover.src480} alt="" aria-hidden="true" loading="lazy" decoding="async" className="h-full w-full object-cover" style={{ objectPosition: cover.objectPosition }} /> : <span style={{ fontSize: 34 }} aria-hidden="true">{art.emoji}</span>}
+                    <div className="grid place-items-center overflow-hidden" style={{ height: 72, background: spec ? STORY_PACK_SOFT[spec.pack] : "var(--arbor-paper-deep)", borderBottom: "1px solid var(--arbor-rule)" }}>
+                      {cover ? <img src={cover.src480} alt="" aria-hidden="true" loading="lazy" decoding="async" className="h-full w-full object-cover" style={{ objectPosition: cover.objectPosition }} /> : <Icon name="auto_stories" size={28} style={{ color: "var(--arbor-muted)" }} />}
                     </div>
                     <div className="p-2.5">
                       <span className="text-[12.5px] font-black block leading-tight line-clamp-2" style={{ color: "var(--arbor-ink)" }} dir="auto">{runTitle(run, uiLang === "he" ? "he" : "en")}</span>
