@@ -136,3 +136,39 @@ describe("hash aliases", () => {
     }
   });
 });
+
+describe("B-SHELL-20 (b) · an alias follows a retirement", () => {
+  it("resolveRouteId('#/growth-journey') lands where #/journey lands (journey is retired)", () => {
+    expect(RETIRED_ROUTES.journey).toBe("practice");
+    expect(resolveRouteId("#/growth-journey")).toBe(resolveRouteId("#/journey"));
+    expect(resolveRouteId("#/growth-journey")).toBe("practice");
+  });
+
+  it("no alias ever resolves to a retired id — every alias = RETIRED_ROUTES[target] ?? target", () => {
+    for (const [alias, target] of Object.entries(HASH_ALIASES)) {
+      if ((ROUTE_IDS as readonly string[]).includes(alias) || alias in RETIRED_ROUTES) continue;
+      const resolved = resolveRouteId("#/" + alias);
+      expect(resolved, alias).toBe(RETIRED_ROUTES[target] ?? target);
+      expect(resolved && resolved in RETIRED_ROUTES, alias).toBeFalsy();
+    }
+  });
+
+  it("the alias branch routes through RETIRED_ROUTES (source pin — the rule, not one alias)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync(new URL("./routes.ts", import.meta.url), "utf8");
+    expect(src).toMatch(/const aliased = HASH_ALIASES\[key\.toLowerCase\(\)\];\s*if \(!aliased\) return null;\s*return RETIRED_ROUTES\[aliased\] \?\? aliased;/);
+  });
+});
+
+describe("B-SHELL-20 (c) · TAB_SECTION_FALLBACK is typed by the manifest", () => {
+  it("every fallback value is a hub id and every key a route", async () => {
+    const { HUB_IDS } = await import("./surfaceContract");
+    for (const [tab, hub] of Object.entries(TAB_SECTION_FALLBACK)) {
+      expect(ROUTE_IDS as readonly string[], tab).toContain(tab);
+      expect(HUB_IDS as readonly string[], tab).toContain(hub);
+    }
+    const { readFileSync } = await import("node:fs");
+    const nav = readFileSync(new URL("./navigation.ts", import.meta.url), "utf8");
+    expect(nav).toContain("export const TAB_SECTION_FALLBACK: Partial<Record<ActiveTab, HubId>> = {");
+  });
+});

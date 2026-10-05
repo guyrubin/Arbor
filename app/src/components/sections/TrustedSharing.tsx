@@ -44,7 +44,7 @@ export function weekPrimaryAction(email: string): "grant" | "hint" {
 }
 
 export default function TrustedSharing() {
-  const { childProfile, openPaywall, setActiveTab, behaviorLogs, milestones, actionPlans, approvedMemoryItems } = useArbor();
+  const { childProfile, openPaywall, setActiveTab, activeTab, behaviorLogs, milestones, actionPlans, approvedMemoryItems } = useArbor();
   const { user } = useAuth();
   const { toast } = useToast();
   const { t, uiLang } = useLanguage();
@@ -402,7 +402,9 @@ export default function TrustedSharing() {
                   WEEK_SHARE_SCOPES, until revoked); no email = focus + hint. */}
               <button
                 type="button"
-                data-primary-move="grant-share"
+                // B-SHELL-20 (a): this leaf serves #/sharing AND #/care-team, so
+                // the stamp's VALUE follows the route (ConsultTab pattern).
+                data-primary-move={activeTab === "care-team" ? "open-care-roster" : "grant-share"}
                 data-testid="share-week-confirm"
                 onClick={onWeekPrimary}
                 disabled={busy === "week" || (weekPreviewing && weekPreview.blocked)}

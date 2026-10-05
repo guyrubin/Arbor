@@ -588,3 +588,37 @@ describe("critic r1 — Ask's coordinator hands the slot the continuation kinds 
     expect([...COACH_OFFER_KINDS]).toEqual(["follow-up", "tomorrow-reason"]);
   });
 });
+
+/* B-SHELL-20 (a) — check:framework requires each leaf's data-primary-move
+   literal set to contain its route's declared primaryMove. */
+describe("B-SHELL-20 (a) · the stamp must match the contract", () => {
+  it("extracts literals from every stamp shape the leaves use", async () => {
+    const { primaryMoveLiterals } = await import("../../scripts/primaryMoveLiterals.mjs");
+    expect([...primaryMoveLiterals('<button data-primary-move="grant-share">')]).toEqual(["grant-share"]);
+    expect([...primaryMoveLiterals('<b data-primary-move={activeTab === "care-team" ? "open-care-roster" : "grant-share"} />')].sort()).toEqual(["grant-share", "open-care-roster"]);
+    expect([...primaryMoveLiterals('const s = { "data-primary-move": activeTab === "handoff" ? "copy-handoff-brief" : "build-share-packet" };')].sort()).toEqual(["build-share-packet", "copy-handoff-brief"]);
+    expect([...primaryMoveLiterals('<b data-primary-move={embedded ? undefined : "generate-bedtime-story"} />')]).toEqual(["generate-bedtime-story"]);
+  });
+
+  it("NEGATIVE: a synthetic leaf whose stamp differs from its contract is caught", async () => {
+    const { primaryMoveLiterals, contractMoves } = await import("../../scripts/primaryMoveLiterals.mjs");
+    const contract = contractMoves('{\n    route: "care-team", hub: "care", depth: 1,\n    job: "x",\n    primaryMove: "open-care-roster", moduleBudget: 2,\n  }');
+    expect(contract.get("care-team")).toBe("open-care-roster");
+    const preFix = '<button data-primary-move="grant-share" />';
+    expect(primaryMoveLiterals(preFix).has(contract.get("care-team")!)).toBe(false);
+  });
+
+  it("the real tree passes: every non-retired leaf stamps its declared move (care-team included)", async () => {
+    const { primaryMoveLiterals, contractMoves, retiredRouteIds } = await import("../../scripts/primaryMoveLiterals.mjs");
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const root = path.resolve(__dirname, "..");
+    const moves = contractMoves(fs.readFileSync(path.join(root, "lib", "surfaceContract.ts"), "utf8"));
+    const retired = retiredRouteIds(fs.readFileSync(path.join(root, "lib", "routes.ts"), "utf8"));
+    expect(moves.size).toBeGreaterThan(40);
+    expect([...retired]).toEqual(expect.arrayContaining(["strengths", "find-pro", "scholar", "journey"]));
+    const sharing = fs.readFileSync(path.join(root, "components", "sections", "TrustedSharing.tsx"), "utf8");
+    expect(primaryMoveLiterals(sharing).has(moves.get("care-team")!)).toBe(true);
+    expect(primaryMoveLiterals(sharing).has(moves.get("sharing")!)).toBe(true);
+  });
+});

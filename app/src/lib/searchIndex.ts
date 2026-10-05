@@ -35,7 +35,7 @@
  * `import type` is fine (erased at build).
  */
 
-import { ROUTE_IDS } from "./routes";
+import { ROUTE_IDS, RETIRED_ROUTES } from "./routes";
 import { PLAY_ACTIVITIES } from "../playbank/content";
 import { ALL_MILESTONES } from "./milestoneData";
 import { HERO_STORIES } from "./heroJourneys";
@@ -139,9 +139,12 @@ const EXTRA_ROUTE_TABS: readonly ActiveTab[] = ["weekly", "handoff"];
 export const UNSEARCHABLE_ROUTES: Partial<Record<ActiveTab, string>> = {
   attribution: "Legal/credits surface reached from Settings; not somewhere a parent navigates to by name.",
   science: "Evidence and credits, reached from a trust link in context rather than as a destination.",
-  scholar: "Retired to Ask (B-ASKJB-12); each lens is searchable by name and opens Ask with that lens preselected.",
-  journey: "Retired to Practice (B-PLAY-10); the id keeps its seat, and 'Practice' is the searchable name of where it lands.",
 };
+// B-SHELL-20 (f): a RETIRED_ROUTES id is never a search row — one rule for
+// every retirement (strengths, find-pro, scholar, journey, and the ones to
+// come), instead of a per-route UNSEARCHABLE entry. Its row would land on a
+// different hub under the retired name.
+const isRetired = (tab: string): boolean => tab in RETIRED_ROUTES;
 
 function buildIndex(): readonly SearchEntry[] {
   const entries: SearchEntry[] = [];
@@ -151,7 +154,7 @@ function buildIndex(): readonly SearchEntry[] {
   const seenTabs = new Set<ActiveTab>();
   for (const sec of SECTIONS) {
     for (const it of sec.items) {
-      if (seenTabs.has(it.tab)) continue;
+      if (seenTabs.has(it.tab) || isRetired(it.tab)) continue;
       seenTabs.add(it.tab);
       entries.push(entry(
         `route:${it.tab}`,
@@ -168,7 +171,7 @@ function buildIndex(): readonly SearchEntry[] {
     }
   }
   for (const tab of EXTRA_ROUTE_TABS) {
-    if (seenTabs.has(tab)) continue;
+    if (seenTabs.has(tab) || isRetired(tab)) continue;
     seenTabs.add(tab);
     entries.push(entry(
       `route:${tab}`,
@@ -194,7 +197,7 @@ function buildIndex(): readonly SearchEntry[] {
   // either gets a name or gets an explicit decision, and cannot quietly
   // become unfindable.
   for (const tab of ROUTE_IDS) {
-    if (seenTabs.has(tab) || tab in UNSEARCHABLE_ROUTES) continue;
+    if (seenTabs.has(tab) || tab in UNSEARCHABLE_ROUTES || isRetired(tab)) continue;
     const en = translate("en", "nav.tab." + tab);
     const he = translate("he", "nav.tab." + tab);
     // translate() falls back to the KEY when a string is missing, which would

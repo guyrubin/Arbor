@@ -16,10 +16,18 @@ import type { SignalSource } from "./signalTimeline";
  * `"none"` — always with a one-line justification in the contract literal
  * (SC-4: no silent dead-ends).
  *
- * DECLARATION ONLY — no component imports this yet; guards live in
- * surfaceContract.test.ts (SC-1 completeness · SC-3 demotion · SC-4 thread
- * integrity; SC-2 render-count budgets are the declared follow-up, prototyped
- * by components/overview/todayModules.ts).
+ * THE READ MANIFEST (B-SHELL-20 (e)) — not a declaration on paper. Its readers:
+ *  · components/layout/Shell.tsx — `contractFor(route)` stamps every leaf's
+ *    SurfaceFrame (job, hub, depth) at runtime;
+ *  · lib/navigation.ts — `HubId` types the section ids and TAB_SECTION_FALLBACK;
+ *  · lib/pulse.ts — `HubId` keys the hub pulse;
+ *  · scripts/framework-check.mjs (`npm run check:framework`) — parses
+ *    `moduleBudget` (R25: top-level stamps ≤ budget) and `primaryMove` (the
+ *    leaf's data-primary-move literal set must contain it), so a stamp that
+ *    drifts from its contract fails the build;
+ *  · surfaceContract.test.ts (SC-1 completeness · SC-3 demotion · SC-4 thread
+ *    integrity) and surfaceContract.render.test.ts (rendered budgets).
+ * Change a route's primary move or budget HERE and in its stamp together.
  */
 
 /**

@@ -318,7 +318,7 @@ export const SECTIONS: NavSection[] = [
  * of those views opens by deep link or programmatic navigation. The guard test
  * (navigation.test.ts) asserts sectionForTab() resolves for EVERY ActiveTab.
  */
-export const TAB_SECTION_FALLBACK: Record<string, string> = {
+export const TAB_SECTION_FALLBACK: Partial<Record<ActiveTab, HubId>> = {
   // Growth — the development hub absorbs copilot/screening; strengths is
   // folded into the Development Profile but resolves to Growth's map spine.
   // Copilot stays homed in Growth per canon (NOT the Practice hub).

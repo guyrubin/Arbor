@@ -14,7 +14,7 @@
  * A new route is then unsearchable only if someone SAYS so, in writing, here.
  */
 import { describe, expect, it } from "vitest";
-import { ROUTE_IDS, type ActiveTab } from "./routes";
+import { ROUTE_IDS, RETIRED_ROUTES, type ActiveTab } from "./routes";
 import { getSearchIndex } from "./searchIndex";
 
 /**
@@ -25,9 +25,11 @@ import { getSearchIndex } from "./searchIndex";
 const DELIBERATELY_UNSEARCHABLE: Partial<Record<ActiveTab, string>> = {
   attribution: "Legal/credits surface reached from Settings; not a place a parent navigates to by name.",
   science: "Evidence/credits surface reached from a trust link in context, not a destination.",
-  scholar: "Retired to Ask (B-ASKJB-12): the id keeps its seat, but the 7 lens entries are what a parent searches for, and each opens Ask with its lens preselected.",
-  journey: "Retired to Practice (B-PLAY-10): a 'Growth Journey' row would land on Practice under the wrong name; Practice is searchable by its own name.",
 };
+
+/** B-SHELL-20 (f): a retired id is covered by its retirement (RETIRED_ROUTES),
+ *  not by a per-route entry above — one guard for every retirement. */
+const retired = (id: string) => id in RETIRED_ROUTES;
 
 const indexedRoutes = new Set(
   getSearchIndex()
@@ -48,7 +50,7 @@ describe("IA-20 · search can reach every route the app has", () => {
 
   it("every route is indexed, or is listed as deliberately unsearchable", () => {
     const unreachable = ROUTE_IDS.filter(
-      (id) => !indexedRoutes.has(id) && !(id in DELIBERATELY_UNSEARCHABLE),
+      (id) => !indexedRoutes.has(id) && !(id in DELIBERATELY_UNSEARCHABLE) && !retired(id),
     );
     expect(
       unreachable,
@@ -71,6 +73,14 @@ describe("IA-20 · search can reach every route the app has", () => {
 
   it("B-PLAY-10: no search row targets the retired #/journey", () => {
     expect(getSearchIndex().filter((e) => e.tab === "journey")).toEqual([]);
+  });
+
+  it("B-SHELL-20 (f): search offers no row whose tab is a RETIRED_ROUTES key (strengths included)", () => {
+    const retiredIds = Object.keys(RETIRED_ROUTES);
+    expect(retiredIds).toEqual(expect.arrayContaining(["strengths", "find-pro", "scholar", "journey"]));
+    expect(getSearchIndex().filter((e) => e.tab && retiredIds.includes(e.tab)).map((e) => e.id)).toEqual([]);
+    // retired ids are covered by the rule, not by the deliberate-absence list
+    for (const id of retiredIds) expect(id in DELIBERATELY_UNSEARCHABLE, id).toBe(false);
   });
 
   it("NEGATIVE CONTROL: the check fails for a route that is neither indexed nor excused", () => {

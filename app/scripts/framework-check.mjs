@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { primaryMoveLiterals, contractMoves, retiredRouteIds } from "./primaryMoveLiterals.mjs";
 
 const appRoot = process.cwd();
 const repoRoot = path.resolve(appRoot, "..");
@@ -115,6 +116,16 @@ if (leaves.size < 40) {
   failures.push(`Surface-contract rule: only ${leaves.size} routes resolved from Shell's tabRegistry — the parser has drifted from the source`);
 }
 
+// B-SHELL-20 (a): the manifest ENFORCES its declared move — the leaf's
+// data-primary-move literal set must contain the route's contract primaryMove.
+const declaredMoves = contractMoves(fs.readFileSync(path.join(appRoot, "src", "lib", "surfaceContract.ts"), "utf8"));
+// A retired id keeps its ROUTE_IDS seat but redirects (RETIRED_ROUTES), so its
+// leaf never renders for it — the move check skips it; the stamp count does not.
+const retiredIds = retiredRouteIds(fs.readFileSync(path.join(appRoot, "src", "lib", "routes.ts"), "utf8"));
+if (declaredMoves.size < 40) {
+  failures.push(`Surface-contract moves: only ${declaredMoves.size} primaryMove values parsed from surfaceContract.ts — the parser has drifted from the source`);
+}
+
 const staleExemptions = [];
 const measured = new Map();
 for (const [route, file] of leaves) {
@@ -135,6 +146,10 @@ for (const [route, file] of leaves) {
   }
   if (moves !== 1) {
     failures.push(`Surface-contract rule: route "${route}" (${path.relative(appRoot, file)}) has ${moves} data-primary-move stamps, expected exactly 1`);
+  }
+  const declared = declaredMoves.get(route);
+  if (declared && moves === 1 && !retiredIds.has(route) && !primaryMoveLiterals(source).has(declared)) {
+    failures.push(`Surface-contract moves: route "${route}" (${path.relative(appRoot, file)}) stamps data-primary-move ${JSON.stringify([...primaryMoveLiterals(source)])} but its contract declares "${declared}" — change the stamp and the contract together`);
   }
   // R25: a demoted module carries BOTH `data-module` and `data-module-demoted`,
   // so the top-level count — what moduleBudget actually caps — is the difference.
@@ -169,6 +184,12 @@ for (const route of KNOWN_UNSTAMPED) {
    any leaf reach its budget by going quiet, which is the failure mode that made
    these ten invisible in the first place. Here, folding a module away is
    RECORDED, and the only way to lower the number is to actually demote.
+
+   WHERE A DEMOTED MODULE SITS (framer ruling B-TODAY-22). Demoted modules may
+   render below the story OUTSIDE the one collapsed disclosure — the rule is the
+   count (top-level = stamped − demoted ≤ budget) and exactly ONE
+   data-module-disclosure wrapper per leaf that demotes anything, not that every
+   demoted module is a DOM child of that wrapper.
 
    It is a CEILING, as the source counts already were: a module inside a
    conditional branch renders sometimes and never raises the total, so a leaf

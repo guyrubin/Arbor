@@ -89,10 +89,12 @@ describe("B-CAREPRO-26 · the card on #/sharing (source)", () => {
     // one button, one testid, one label: the confirm IS the button at rest
     expect(card).toContain('data-testid="share-week-confirm"');
     expect(card).not.toContain("share-week-preview-open");
-    expect(card).toContain('data-primary-move="grant-share"');
-    const stamps = sharing.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\/.*$/gm, "").match(/\bdata-primary-move="/g) ?? [];
+    // B-SHELL-20 (a): the leaf serves #/sharing and #/care-team; the stamp's value follows the route.
+    const STAMP = 'data-primary-move={activeTab === "care-team" ? "open-care-roster" : "grant-share"}';
+    expect(card).toContain(STAMP);
+    const stamps = sharing.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\/.*$/gm, "").match(/\bdata-primary-move=/g) ?? [];
     expect(stamps).toHaveLength(1);
-    const stampAt = card.indexOf('data-primary-move="grant-share"');
+    const stampAt = card.indexOf(STAMP);
     const btn = card.slice(card.lastIndexOf("<button", stampAt), card.indexOf("</button>", stampAt));
     expect(btn).toContain("var(--gradient-cta)");
     expect(btn).not.toMatch(/disabled=\{!weekEmailValid\}|disabled:opacity-40/);

@@ -163,7 +163,12 @@ export function resolveRouteId(raw: string): ActiveTab | null {
   const retired = RETIRED_ROUTES[key.toLowerCase()];
   if (retired) return retired;
   if (ROUTE_ID_SET.has(key)) return key as ActiveTab;
-  return HASH_ALIASES[key.toLowerCase()] ?? null;
+  // B-SHELL-20 (b): an alias that points at a retired id follows the
+  // retirement too — so `#/growth-journey` lands where `#/journey` lands, and
+  // re-pointing a retirement never needs every alias edited by hand.
+  const aliased = HASH_ALIASES[key.toLowerCase()];
+  if (!aliased) return null;
+  return RETIRED_ROUTES[aliased] ?? aliased;
 }
 
 /**
