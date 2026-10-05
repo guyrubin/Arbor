@@ -360,7 +360,7 @@ describe("B-PLAY-05 + W2-SHELLPLAY critic r1 — ONE sentence on the Practice do
     expect(s.rounds).toBe(3);
     expect(s.title).toBe("Little David");
     const text = s.before + s.title + s.after;
-    expect(text).toBe("Since Thursday, Maya played 3 rounds and finished Little David.");
+    expect(text).toBe("Since Thursday, Maya played 3 times and finished Little David.");
     // never the old log-entry shape ("Maya: Completed 3 …") or mixed units
     expect(text).not.toMatch(/: Completed|games|speech practice/);
   });
@@ -417,10 +417,10 @@ describe("B-PLAY-05 + W2-SHELLPLAY critic r1 — ONE sentence on the Practice do
     expect(studio).toContain("runTitle(r, lang)");
   });
 
-  it("the door CTA is secondary and the move is stamped on the first tile, not the grid", () => {
+  it("the door CTA is secondary and the move is stamped on ONE tile (the first that works in the UI language), not the grid", () => {
     const src = stripComments(studio);
     expect(src).not.toMatch(/--gradient-cta|--arbor-gradient-primary/);
-    expect(src).toContain('data-primary-move={i === 0 ? "start-world" : undefined}');
+    expect(src).toContain('data-primary-move={world.id === stampId ? "start-world" : undefined}');
     expect(src).not.toMatch(/className="grid[^"]*"\s+data-primary-move/);
   });
 
@@ -431,13 +431,88 @@ describe("B-PLAY-05 + W2-SHELLPLAY critic r1 — ONE sentence on the Practice do
     }
   });
 
-  it("a kid-only tile promises nothing the tap does not deliver (no world name until B-KID-11)", () => {
+  it("B-KID-11: a kid-capable tile opens ITS world through the seam and says so; Word World alone opens a parent tab", async () => {
     const src = stripComments(studio);
     expect(src).not.toContain("practice.studio.openKidmode");
-    expect(src).toContain('t("elev.practice.studio.opensKidmode")');
-    expect(translate("en", "elev.practice.studio.opensKidmode")).toBe("Opens Kid Mode");
-    expect(translate("he", "elev.practice.studio.opensKidmode")).not.toMatch(/[A-Za-z]/);
+    expect(src).not.toMatch(/\bopenKidMode\(/);
+    expect(src).toContain('requestKidMode({ view: "arcade", worldId: world.id })');
+    expect(src).toContain('t("elev.practice.studio.opensWorld", { world: t(world.kidNameKey) })');
+    expect(translate("en", "elev.practice.studio.opensWorld", { world: "Sound Lab" })).toBe("Opens Sound Lab in Kid Mode");
+    expect(translate("he", "elev.practice.studio.opensWorld", { world: "מעבדת הצלילים" })).not.toMatch(/[A-Za-z]/);
+    const { opensInKidMode } = await import("../components/practice/studioWorlds");
+    const parentTab = STUDIO_WORLDS.filter((w) => !opensInKidMode(w)).map((w) => w.id);
+    expect(parentTab).toEqual(["word-world"]);
+    // NEGATIVE CONTROL: a tile that names a parent tab is never sent to Kid Mode
+    expect(opensInKidMode({ ...STUDIO_WORLDS[0], tabNameKey: "nav.tab.language" })).toBe(false);
   });
+
+  it("the start-world stamp never lands on a world that cannot keep its promise in Hebrew", async () => {
+    const { worksInLanguage } = await import("../components/practice/studioWorlds");
+    const first = (lang: "en" | "he") => STUDIO_WORLDS.find((w) => worksInLanguage(w, lang))!.id;
+    expect(first("en")).toBe("speech");
+    expect(first("he")).not.toBe("speech");
+  });
+});
+
+describe("W2-SHELLPLAY r2 · practice — the door tells the truth about the gate and the tiles", () => {
+  const studio = stripComments(read("components/practice/PracticeStudioTab.tsx"));
+  const button = stripComments(read("components/layout/KidModeButton.tsx"));
+  const CANT_EXIT = /can't exit|cannot exit|לא יכול לצאת|לא יכולה לצאת/;
+
+  it("G0: no can't-exit claim renders while no PIN is set (door sub, chip, topbar pill)", () => {
+    for (const lang of ["en", "he"] as const) {
+      expect(translate(lang, "practice.studio.kidmode.sub")).not.toMatch(CANT_EXIT);
+      expect(translate(lang, "elev.practice.door.gated")).not.toMatch(CANT_EXIT);
+      expect(translate(lang, "elev.kidmode.gated")).not.toMatch(CANT_EXIT);
+    }
+    expect(translate("en", "elev.practice.door.gated")).toBe("Grown-up gate");
+    expect(studio).toContain('t(pinSet ? "practice.studio.kidmode.subLocked" : "practice.studio.kidmode.sub")');
+    expect(studio).toContain('pinSet ? "elev.practice.door.locked" : "elev.practice.door.gated"');
+    expect(studio).toContain("const pinSet = Boolean(readParentPin());");
+    expect(button).toContain('t(readParentPin() ? "elev.kidmode.locked" : "elev.kidmode.gated")');
+    // NEGATIVE CONTROL: the locked variants DO carry the claim — rendering them
+    // unconditionally is exactly the defect.
+    expect(translate("en", "practice.studio.kidmode.subLocked")).toMatch(CANT_EXIT);
+    expect(translate("he", "elev.kidmode.locked")).toMatch(CANT_EXIT);
+  });
+
+  it("no world skill line promises instant feedback (both locales)", () => {
+    const INSTANT = /instant|immediate|feedback|מיידי|משוב/i;
+    for (const w of STUDIO_WORLDS) {
+      for (const lang of ["en", "he"] as const) {
+        expect(translate(lang, `practice.world.${w.key}.skill`), `${lang} ${w.key}`).not.toMatch(INSTANT);
+      }
+    }
+    expect("Articulation and sound practice with instant, friendly feedback.").toMatch(INSTANT); // negative control
+  });
+
+  it("one counter: the door total is the sum of the tile chips over ONE window; orphan kinds are in neither", async () => {
+    const { studioCountsSince } = await import("../components/practice/studioWorlds");
+    const T = Date.parse("2026-10-01T10:00:00Z");
+    const at = (min: number) => new Date(T + min * 60_000).toISOString();
+    const ev = (kind: string, min: number) => ({ kind, timestamp: at(min) }) as never;
+    const d = {
+      speech: { items: [{ timestamp: at(5) }, { timestamp: at(-60) }] as never[] },
+      mimic: { items: [] as never[] },
+      adventures: { items: [] as never[] },
+      events: { items: [ev("emotion-id", 1), ev("vocab-naming", 2), ev("rhythm", 3), ev("mood-checkin", 4), ev("rhythm", -10)] },
+    } as StudioCountSource;
+    const c = studioCountsSince(d, T);
+    expect(c.byWorld.feelings).toBe(1);
+    expect(c.byWorld.beat).toBe(1);
+    expect(c.byWorld.speech).toBe(1);
+    expect(c.total).toBe(Object.values(c.byWorld).reduce((a, b) => a + b, 0));
+    expect(c.total).toBe(3); // vocab-naming + mood-checkin are no world's — in neither
+    // the page reads the chips AND the door from this one counter
+    expect(studio).toContain("const sessions = counts.byWorld[world.id] ?? 0;");
+    expect(studio).toContain("total: counts.total,");
+    expect(studio).not.toContain("world.count(data)");
+  });
+
+  it("the type scale: no orphan text-[…] sizes on the Practice screen", () => {
+    expect(studio).not.toMatch(/text-\[\d/);
+  });
+
 });
 
 describe("W2-SHELLPLAY r1 · #/speech — the round is scored on the fold, in one neutral treatment", () => {

@@ -13,7 +13,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { STUDIO_WORLDS } from "./studioWorlds";
+import { STUDIO_WORLDS, opensInKidMode } from "./studioWorlds";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const arcade = readFileSync(path.join(__dirname, "HeroArcade.tsx"), "utf8").replace(/\r\n/g, "\n");
@@ -45,6 +45,21 @@ describe("B-PLAY-03 · every STUDIO_WORLDS tile has a tab or a KID_WORLDS id", (
     const words = STUDIO_WORLDS.find((w) => w.id === "word-world")!;
     expect(words.tab).toBe("language");
     expect(words.tabNameKey).toBe("nav.tab.language");
+  });
+
+  // W2-SHELLPLAY critic r2 (B-KID-11): tightened from "a tab OR a kid world" to
+  // "a kid world unless word-world" — a kid-capable tile never opens a parent drill.
+  it("every tile except Word World opens its OWN Kid Mode world through the seam", () => {
+    for (const world of STUDIO_WORLDS) {
+      if (world.id === "word-world") {
+        expect(opensInKidMode(world)).toBe(false);
+        continue;
+      }
+      expect(opensInKidMode(world), `${world.id} must open in Kid Mode`).toBe(true);
+      expect(KID_WORLD_IDS.has(world.id), `${world.id} has no Kid Mode seat`).toBe(true);
+    }
+    // NEGATIVE CONTROL: a kid-capable world given a parent tab name is caught
+    expect(opensInKidMode({ ...STUDIO_WORLDS[0], tabNameKey: "nav.tab.speech" })).toBe(false);
   });
 
   it("NEGATIVE CONTROL: an arcade-only tile for a parentOnly world is caught", () => {

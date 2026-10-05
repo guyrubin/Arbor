@@ -67,6 +67,55 @@ export const STUDIO_WORLDS: StudioWorld[] = [
   { id: "pattern", key: "logic", kidNameKey: "elev.practice.world.kid.logic", msIcon: "category", tone: "lav", unit: "rounds", count: (d) => eventsOf(d, (k) => k === "pattern"), domains: ["thinking"] },
 ];
 
+/** B-KID-11: a tile opens its world in Kid Mode unless the world has no Kid
+ *  Mode seat (Word World is parentOnly in HeroArcade — it alone names a parent tab). */
+export const opensInKidMode = (world: StudioWorld): boolean => !world.tabNameKey;
+
+/** Sound Lab's drill is English-only today; every other world works in both. */
+export const worksInLanguage = (world: StudioWorld, lang: "en" | "he"): boolean =>
+  !(lang === "he" && world.id === "speech");
+
 /** The chip's i18n key for `n` records of a world (`.one` for exactly 1). */
 export const studioCountKey = (unit: StudioCountUnit, n: number): string =>
   `practice.studio.count.${unit}${n === 1 ? ".one" : ""}`;
+
+const stampMs = (stamp: unknown): number | null => {
+  if (stamp == null || stamp === "") return null;
+  const ms = typeof stamp === "number" ? stamp : typeof stamp === "string" ? Date.parse(stamp) : NaN;
+  return Number.isFinite(ms) ? ms : null;
+};
+const since = <T extends { timestamp?: unknown }>(rows: T[], sinceMs: number): T[] =>
+  rows.filter((r) => {
+    const ms = stampMs(r.timestamp);
+    return ms != null && ms >= sinceMs;
+  });
+
+/**
+ * W2-SHELLPLAY critic r2 — ONE counter for the Practice page. The tiles and
+ * the door sentence both read this window (the latest Kid Mode session, else
+ * the last 7 days): each tile counts its own records in its own unit, and the
+ * door's number is the SUM of the tile chips. A ledger row no world claims
+ * (a mission, a vocab-naming event, a mood check-in) is in neither — the door
+ * can never say more than the tiles show (guard: practiceDoors.copy.test).
+ */
+export function studioSourceSince(d: StudioCountSource, sinceMs: number): StudioCountSource {
+  return {
+    speech: { items: since(d.speech.items, sinceMs) },
+    mimic: { items: since(d.mimic.items, sinceMs) },
+    adventures: { items: since(d.adventures.items, sinceMs) },
+    events: { items: since(d.events.items, sinceMs) },
+  };
+}
+
+/** Each world's chip count over the window, and their sum (the door total). */
+export function studioCountsSince(d: StudioCountSource, sinceMs: number): { byWorld: Record<string, number>; total: number } {
+  const windowed = studioSourceSince(d, sinceMs);
+  const byWorld: Record<string, number> = {};
+  let total = 0;
+  for (const w of STUDIO_WORLDS) {
+    const n = w.count(windowed);
+    byWorld[w.id] = n;
+    total += n;
+  }
+  return { byWorld, total };
+}

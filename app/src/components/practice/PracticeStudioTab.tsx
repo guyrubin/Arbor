@@ -17,15 +17,15 @@ import { cardCls } from "../ui/kit";
 import { PASTEL } from "../../lib/tokens";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { useKidMode } from "../kidmode/KidModeContext";
-import { markPinNudgeShown, shouldNudgeForPin } from "../kidmode/parentGate";
+import { useKidModeEntry } from "../kidmode/useKidModeEntry";
+import { markPinNudgeShown, readParentPin, shouldNudgeForPin } from "../kidmode/parentGate";
 import { usePracticeData } from "../../practice/usePracticeData";
-import { STUDIO_WORLDS, studioCountKey, type StudioWorld } from "./studioWorlds";
+import { STUDIO_WORLDS, opensInKidMode, studioCountKey, studioCountsSince, worksInLanguage, type StudioWorld } from "./studioWorlds";
 import { track } from "../../lib/analytics";
 import { requestOpenSettings } from "../layout/settingsBus";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { withChildSignals } from "../../lib/i18nElevation/childsignals";
-import { SINCE_LAST_PLAY_FALLBACK_MS, doorSinceSentence } from "../../lib/kidExitRecap";
+import { SINCE_LAST_PLAY_FALLBACK_MS, doorSinceSentence, doorWindowLabel } from "../../lib/kidExitRecap";
 import { runTitle } from "../../lib/heroJourneys";
 import { lastKidSessionStartedAt } from "../../lib/kidModeGate";
 import type { HeroJourneyRun } from "../../types";
@@ -36,7 +36,9 @@ import type { HeroJourneyRun } from "../../types";
 export default function PracticeStudioTab() {
   const { childProfile, setActiveTab, addMoment } = useArbor();
   const { t, uiLang } = useLanguage();
-  const { openKidMode } = useKidMode();
+  // B-KID-11: the ONE entry seam — hero-first once per session, then Kid Mode
+  // opens on the world the parent tapped (never the home dashboard).
+  const { request: requestKidMode, step: heroStep } = useKidModeEntry();
   const isRtl = uiLang === "he";
   const firstName = (childProfile.name || "").split(" ")[0];
   const data = usePracticeData(childProfile.id);
@@ -50,9 +52,20 @@ export default function PracticeStudioTab() {
   // quiet on #/practice (Shell HUB_LINE_QUIET_TABS), so this is the screen's
   // only count of play.
   const lang: "en" | "he" = uiLang === "he" ? "he" : "en";
-  const since = React.useMemo(() => {
+  // W2-SHELLPLAY critic r2: ONE window and ONE counter for the door and the
+  // tiles. The door's number is the sum of the tile chips (studioCountsSince),
+  // so a ledger row no world claims is counted by neither.
+  const playWindow = React.useMemo(() => {
     const known = lastKidSessionStartedAt();
-    const sinceMs = known ?? Date.now() - SINCE_LAST_PLAY_FALLBACK_MS;
+    return { sinceMs: known ?? Date.now() - SINCE_LAST_PLAY_FALLBACK_MS, isFallback: known == null };
+  }, []);
+  const counts = React.useMemo(
+    () => studioCountsSince({ speech: data.speech, mimic: data.mimic, adventures: data.adventures, events: data.events }, playWindow.sinceMs),
+    [data.speech, data.mimic, data.adventures, data.events, playWindow.sinceMs],
+  );
+  const windowLabel = doorWindowLabel({ sinceMs: playWindow.sinceMs, sinceIsFallback: playWindow.isFallback, nowMs: Date.now(), uiLang: lang, t });
+  const since = React.useMemo(() => {
+    const sinceMs = playWindow.sinceMs;
     return doorSinceSentence({
       ledgers: {
         speech: data.speech.items.map((x) => x.timestamp),
@@ -65,14 +78,15 @@ export default function PracticeStudioTab() {
       },
       stories: heroRuns.items.map((r) => ({ title: runTitle(r, lang), completedAt: r.completedAt })),
       sinceMs,
-      sinceIsFallback: known == null,
+      sinceIsFallback: playWindow.isFallback,
       nowMs: Date.now(),
+      total: counts.total,
       uiLang: lang,
       gender: childProfile.gender,
       t: withChildSignals(t, lang === "he"),
       childName: firstName,
     });
-  }, [data.speech.items, data.mimic.items, data.missions.items, data.adventures.items, data.events.items, heroRuns.items, t, lang, firstName, childProfile.gender]);
+  }, [data.speech.items, data.mimic.items, data.missions.items, data.adventures.items, data.events.items, heroRuns.items, t, lang, firstName, childProfile.gender, playWindow, counts.total]);
 
   // B-SHELL-NEW-1b: the door sentence can be kept as ONE parent moment, through
   // the same addMoment path as the exit strip's Keep (B-SHELL-04). Once per
@@ -92,20 +106,34 @@ export default function PracticeStudioTab() {
     if (nudgePin) markPinNudgeShown();
   }, [nudgePin]);
 
+  // W2-SHELLPLAY critic r2 (G0): the trust line says what the exit gate does.
+  // Without a PIN it is a hold + a grown-up question (parentGate.ts: "a
+  // friction barrier, not a security boundary") — "Parent locked" and the
+  // can't-exit clause render only once a PIN is set.
+  const pinSet = Boolean(readParentPin());
+
+  // B-KID-11 / B-PLAY-03: every kid-capable tile opens ITS world in Kid Mode
+  // through the seam; Word World (no Kid Mode seat) is the only parent-tab tile.
   const openWorld = (world: StudioWorld) => {
-    try { track("practice_studio_open", { world: world.id, via: world.tab ? "direct" : "kidmode" }); } catch { /* noop */ }
-    if (world.tab) setActiveTab(world.tab);
-    else openKidMode();
+    const kid = opensInKidMode(world);
+    try { track("practice_studio_open", { world: world.id, via: kid ? "kidmode" : "direct" }); } catch { /* noop */ }
+    if (!kid && world.tab) setActiveTab(world.tab);
+    else requestKidMode({ view: "arcade", worldId: world.id });
   };
+  // The start-world stamp sits on the first tile that works in the UI
+  // language: Sound Lab has no Hebrew sound set yet (SpeechCoachTab's honest
+  // Hebrew door), so a Hebrew parent's primary move is never a promise the
+  // destination says it cannot keep.
+  const stampId = (STUDIO_WORLDS.find((w) => worksInLanguage(w, lang)) ?? STUDIO_WORLDS[0]).id;
 
   return (
     <div dir={isRtl ? "rtl" : "ltr"} className="space-y-5 max-w-[980px]">
       {/* Header */}
       <div>
-        <h1 className="text-[1.6rem] leading-tight tracking-tight" style={{ color: "var(--arbor-ink)" }}>
+        <h1 className="t-2xl leading-tight tracking-tight" style={{ color: "var(--arbor-ink)" }}>
           {t("practice.studio.title")}
         </h1>
-        <p className="text-[13px] mt-1 max-w-[62ch]" style={{ color: "var(--arbor-muted)" }}>
+        <p className="t-sm mt-1 max-w-[62ch]" style={{ color: "var(--arbor-muted)" }}>
           {t("elev.practice.studio.subtitle", { name: firstName || t("learn.yourChild") })}
         </p>
       </div>
@@ -122,7 +150,7 @@ export default function PracticeStudioTab() {
         aria-label={t("practice.studio.kidmode.title")}
       >
         <div className="min-w-0 flex-1">
-          <h2 className="flex items-center gap-2.5 text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>
+          <h2 className="flex items-center gap-2.5 t-base font-extrabold" style={{ color: "var(--arbor-ink)" }}>
             <span
               aria-hidden="true"
               className="inline-flex items-center justify-center rounded-xl flex-shrink-0"
@@ -132,14 +160,14 @@ export default function PracticeStudioTab() {
             </span>
             {t("practice.studio.kidmode.title")}
           </h2>
-          <p className="text-[12.5px] mt-1.5" style={{ color: "var(--arbor-ink-soft)" }}>
-            {t("practice.studio.kidmode.sub")}
+          <p data-testid="practice-kidmode-sub" className="t-sm mt-1.5" style={{ color: "var(--arbor-ink-soft)" }}>
+            {t(pinSet ? "practice.studio.kidmode.subLocked" : "practice.studio.kidmode.sub")}
           </p>
           {since && (
-            <p data-testid="practice-since-last-play" className="text-[13px] mt-1.5 leading-snug" style={{ color: "var(--arbor-ink)" }} dir="auto">
+            <p data-testid="practice-since-last-play" className="t-sm mt-1.5 leading-snug" style={{ color: "var(--arbor-ink)" }} dir="auto">
               {since.before}
               {since.title && (
-                <i style={{ fontFamily: "var(--font-editorial)" }}>
+                <i style={{ fontFamily: "var(--font-editorial)", fontWeight: lang === "he" ? 600 : undefined }}>
                   <bdi>{since.title}</bdi>
                 </i>
               )}
@@ -152,7 +180,7 @@ export default function PracticeStudioTab() {
               data-testid="practice-since-keep"
               onClick={keepSince}
               disabled={keptLine === sinceText}
-              className="inline-flex min-h-11 items-center gap-1 text-[12px] font-bold underline-offset-2 hover:underline disabled:no-underline"
+              className="inline-flex min-h-11 items-center gap-1 t-xs font-bold underline-offset-2 hover:underline disabled:no-underline"
               style={{ color: "var(--arbor-muted)" }}
             >
               <Icon name={keptLine === sinceText ? "check" : "bookmark_add"} size={14} />
@@ -162,10 +190,10 @@ export default function PracticeStudioTab() {
           {/* KID-20 / RUN-04: the three reassurance chips are PARENT copy, so
               they live here on the door — not in the child's first viewport. */}
           <ul aria-label={t("elev.practice.door.aria")} className="flex flex-wrap gap-1.5 mt-2 list-none p-0 m-0">
-            {(["elev.practice.door.locked", "elev.practice.door.private", "elev.practice.door.stars"] as const).map((key) => (
+            {([pinSet ? "elev.practice.door.locked" : "elev.practice.door.gated", "elev.practice.door.private", "elev.practice.door.stars"] as const).map((key) => (
               <li
                 key={key}
-                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold"
+                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 t-xs font-bold"
                 style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink-soft)", border: "1px solid var(--arbor-rule)" }}
               >
                 <Icon name="verified_user" size={12} style={{ color: "var(--arbor-green-ink)" }} />
@@ -174,12 +202,13 @@ export default function PracticeStudioTab() {
             ))}
           </ul>
         </div>
+        {heroStep}
         <button
           onClick={() => {
             try { track("practice_studio_open", { world: "kidmode", via: "hero" }); } catch { /* noop */ }
-            openKidMode();
+            requestKidMode();
           }}
-          className="self-start sm:self-center inline-flex items-center gap-1.5 font-bold text-[13px] rounded-xl px-4 py-2.5 min-h-[44px] transition active:scale-[0.98] focus:outline-none focus-visible:ring-2"
+          className="self-start sm:self-center inline-flex items-center gap-1.5 font-bold t-sm rounded-xl px-4 py-2.5 min-h-[44px] transition active:scale-[0.98] focus:outline-none focus-visible:ring-2"
           style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-clay-deep)", border: "1px solid var(--arbor-rule)" }}
         >
           <Icon name="play_arrow" size={18} fill={1} />
@@ -195,7 +224,7 @@ export default function PracticeStudioTab() {
           type="button"
           data-testid="gate-pin-nudge"
           onClick={() => requestOpenSettings({ focus: "pin" })}
-          className="w-full min-h-11 rounded-2xl px-4 py-3 text-start text-[12.5px] leading-relaxed transition focus:outline-none focus-visible:ring-2"
+          className="w-full min-h-11 rounded-2xl px-4 py-3 text-start t-sm leading-relaxed transition focus:outline-none focus-visible:ring-2"
           style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink-soft)", border: "1px solid var(--arbor-rule)" }}
         >
           <span className="flex items-center gap-3">
@@ -212,11 +241,14 @@ export default function PracticeStudioTab() {
       {/* World grid */}
       <section data-module="practice-worlds" aria-label={t("practice.studio.worlds")}>
         <div className="flex items-baseline justify-between mb-2.5">
-          <h2 className="text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>
+          <h2 className="t-base font-extrabold" style={{ color: "var(--arbor-ink)" }}>
             {t("practice.studio.worlds")}
           </h2>
-          <span className="text-[11.5px] font-bold" style={{ color: "var(--arbor-muted)" }}>
-            {t("practice.studio.count", { n: STUDIO_WORLDS.length })}
+          {/* The chips count ONE window — the door's — and say which. */}
+          <span data-testid="practice-count-window" className="t-xs font-bold" style={{ color: "var(--arbor-muted)" }}>
+            {counts.total > 0
+              ? t("elev.practice.studio.window", { when: windowLabel })
+              : t("practice.studio.count", { n: STUDIO_WORLDS.length })}
           </span>
         </div>
         {/* The declared primaryMove for #/practice ("start-world"). W2-SHELLPLAY
@@ -225,7 +257,8 @@ export default function PracticeStudioTab() {
         <div className="grid sm:grid-cols-2 gap-4">
           {STUDIO_WORLDS.map((world, i) => {
             const tone = PASTEL[world.tone];
-            const sessions = world.count(data);
+            const sessions = counts.byWorld[world.id] ?? 0;
+            const kid = opensInKidMode(world);
             return (
               <motion.button
                 key={world.id}
@@ -233,7 +266,7 @@ export default function PracticeStudioTab() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: Math.min(i * 0.03, 0.24) }}
                 onClick={() => openWorld(world)}
-                data-primary-move={i === 0 ? "start-world" : undefined}
+                data-primary-move={world.id === stampId ? "start-world" : undefined}
                 className={`${cardCls} w-full flex items-start gap-3.5 p-4 text-start transition motion-safe:hover:-translate-y-0.5 active:scale-[0.99] focus:outline-none focus-visible:ring-2`}
               >
                 <span
@@ -244,41 +277,39 @@ export default function PracticeStudioTab() {
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[14.5px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>
+                    <span className="t-base font-extrabold" style={{ color: "var(--arbor-ink)" }}>
                       {t(`practice.world.${world.key}.name`)}
                     </span>
                     {sessions > 0 && (
                       <span
-                        className="rounded-full px-2 py-0.5 text-[10.5px] font-bold"
+                        className="rounded-full px-2 py-0.5 t-xs font-bold"
                         style={{ background: tone.soft, color: tone.ink }}
                       >
                         {t(studioCountKey(world.unit, sessions), { n: sessions })}
                       </span>
                     )}
                   </span>
-                  <span className="block text-[12.5px] leading-relaxed mt-0.5" style={{ color: "var(--arbor-muted)" }}>
+                  <span className="block t-sm leading-relaxed mt-0.5" style={{ color: "var(--arbor-muted)" }}>
                     {t(`practice.world.${world.key}.skill`)}
                   </span>
-                  {/* W2-SHELLPLAY critic r1: one label pattern in one ink. A
-                      kid-only tile says only "Opens Kid Mode" — the tap opens
-                      Kid Mode at home, not the named world, until the lane-X
-                      B-KID-11 seam (requestKidMode({view, worldId})) lands. */}
-                  <span className="mt-1.5 flex items-center gap-1 text-[11.5px] font-bold" style={{ color: "var(--arbor-clay-deep)" }}>
+                  {/* One label pattern in one ink. With the B-KID-11 seam a
+                      kid-capable tile names the world the tap really opens. */}
+                  <span className="mt-1.5 flex items-center gap-1 t-xs font-bold" style={{ color: "var(--arbor-clay-deep)" }}>
                     {/* CR-13: the arrow used `rtl:-scale-x-100`, a variant this
                         build never emitted — the glyph pointed right on a
                         right-to-left page, i.e. backwards. `isRtl` is already
                         resolved above from the UI language, so mirror inline
                         where nothing can drop the rule. */}
                     <Icon
-                      name={world.tab ? "arrow_forward" : "sports_esports"}
+                      name={kid ? "sports_esports" : "arrow_forward"}
                       size={13}
-                      style={world.tab && isRtl ? { transform: "scaleX(-1)" } : undefined}
+                      style={!kid && isRtl ? { transform: "scaleX(-1)" } : undefined}
                     />
-                    {world.tab
-                      ? world.tabNameKey
-                        ? t("practice.studio.openIn", { tab: t(world.tabNameKey) })
-                        : t("practice.studio.openDirect")
-                      : t("elev.practice.studio.opensKidmode")}
+                    {kid
+                      ? t("elev.practice.studio.opensWorld", { world: t(world.kidNameKey) })
+                      : world.tabNameKey
+                      ? t("practice.studio.openIn", { tab: t(world.tabNameKey) })
+                      : t("practice.studio.openDirect")}
                   </span>
                 </span>
               </motion.button>
@@ -295,7 +326,7 @@ export default function PracticeStudioTab() {
           own hub door in the sidebar and the More sheet. Deleted, not hidden —
           nothing became unreachable (routeReachability.test.ts). */}
       {/* Register note — what practice is and is not */}
-      <p className="text-[11px]" style={{ color: "var(--arbor-faint)" }}>
+      <p className="t-xs" style={{ color: "var(--arbor-faint)" }}>
         {t("practice.studio.note")}
       </p>
     </div>

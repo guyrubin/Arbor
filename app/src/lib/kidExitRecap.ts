@@ -125,6 +125,20 @@ export interface DoorSinceSentence {
   rounds: number;
 }
 
+/** The window the door sentence and the Practice tiles share, named once:
+ *  "In the last 7 days" (fallback) · "Today" · "Since {weekday}". */
+export function doorWindowLabel(input: { sinceMs: number; sinceIsFallback: boolean; nowMs: number; uiLang: "en" | "he"; t: Translate }): string {
+  const locale = input.uiLang === "he" ? "he-IL" : "en-GB";
+  const sameDay = new Date(input.sinceMs).toDateString() === new Date(input.nowMs).toDateString();
+  return input.sinceIsFallback
+    ? input.t("elev.practice.door.when.week")
+    : sameDay
+    ? input.t("elev.practice.door.when.today")
+    : input.t("elev.practice.door.when.day", {
+        day: new Intl.DateTimeFormat(locale, { weekday: "long" }).format(new Date(input.sinceMs)),
+      });
+}
+
 /** The sentinel split around the title, so the title can be its own node. */
 const TITLE_SLOT = "[[title]]";
 
@@ -139,23 +153,18 @@ export function doorSinceSentence(input: {
   gender?: string | null;
   t: Translate;
   childName: string;
+  /** W2-SHELLPLAY critic r2: the Practice page passes the SUM of its tile
+   *  chips (studioCountsSince), so the door never counts what no tile shows. */
+  total?: number;
 }): DoorSinceSentence | null {
-  const rounds = totalActivity(countsSince(input.ledgers, input.sinceMs));
+  const rounds = input.total ?? totalActivity(countsSince(input.ledgers, input.sinceMs));
   const story = input.stories.find((s) => {
     const ms = msOf(s.completedAt ?? null);
     return ms != null && ms >= input.sinceMs && !!s.title?.trim();
   });
   if (rounds === 0 && !story) return null;
 
-  const locale = input.uiLang === "he" ? "he-IL" : "en-GB";
-  const sameDay = new Date(input.sinceMs).toDateString() === new Date(input.nowMs).toDateString();
-  const when = input.sinceIsFallback
-    ? input.t("elev.practice.door.when.week")
-    : sameDay
-    ? input.t("elev.practice.door.when.today")
-    : input.t("elev.practice.door.when.day", {
-        day: new Intl.DateTimeFormat(locale, { weekday: "long" }).format(new Date(input.sinceMs)),
-      });
+  const when = doorWindowLabel(input);
   const g = input.gender === "boy" || input.gender === "girl" ? input.gender : "neutral";
   const shape = rounds > 0 && story ? "playedFinished" : rounds > 0 ? "played" : "finished";
   const name = input.childName.trim() || input.t("elev.childsignals.prov.fallback");

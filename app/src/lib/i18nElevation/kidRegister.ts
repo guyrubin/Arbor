@@ -157,6 +157,7 @@ export const en: Record<string, string> = {
   // ── elev.practice — PARENT register (moved out of the kid register)
   "elev.practice.door.aria": "What Kid Mode promises",
   "elev.practice.door.locked": "Parent locked",
+  "elev.practice.door.gated": "Grown-up gate",
   "elev.practice.door.private": "Private by default",
   "elev.practice.door.stars": "Stars, never streaks",
   "elev.practice.journey.missionsDone": "Missions done",
@@ -308,6 +309,7 @@ export const he: Record<string, string> = {
 
   "elev.practice.door.aria": "מה מצב ילדים מבטיח",
   "elev.practice.door.locked": "נעול להורים",
+  "elev.practice.door.gated": "שער להורים",
   "elev.practice.door.private": "פרטי כברירת מחדל",
   "elev.practice.door.stars": "כוכבים, אף פעם לא רצפים",
   "elev.practice.journey.missionsDone": "משימות שהושלמו",
