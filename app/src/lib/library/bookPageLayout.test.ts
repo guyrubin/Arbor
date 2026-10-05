@@ -15,7 +15,7 @@ import { describe, expect, it } from "vitest";
 import { abramsLongRoad } from "./books/abramsLongRoad";
 import { fiveSmoothStones } from "./books/fiveSmoothStones";
 import { getPlate } from "./books";
-import { computeBookPageLayout, estimateTextHeight, kidBookTokenPx, overlapArea, phoneWindow, platePoint, type Box, type LayoutContent } from "./bookPageLayout";
+import { computeBookPageLayout, estimateTextHeight, kidBookTokenPx, overlapArea, phoneWindow, planChoices, plansHeight, platePoint, type Box, type LayoutContent } from "./bookPageLayout";
 import { heroDisplayName, pageParagraphs, paragraphChars } from "./bookText";
 import type { BookLang, Page } from "./types";
 
@@ -150,8 +150,9 @@ describe("stacked at 375x812: a 3:4 window that holds the hero and the repair it
           expect(l.art.x).toBeGreaterThanOrEqual(0);
           expect(l.art.x + l.art.w).toBeLessThanOrEqual(PHONE.width);
           expect(l.textPage.y + l.textPage.h).toBeLessThanOrEqual(PHONE.height);
-          if (page.id !== book.decision.pageId) expect(overlapArea(l.textPage, l.art)).toBe(0);
-          else expect(l.textPage.y).toBeGreaterThanOrEqual(l.art.y + l.art.h - l.cardsPx);
+          // fix round 2: nothing rides over the art any more, the decision page included
+          expect(overlapArea(l.textPage, l.art)).toBe(0);
+          expect(l.sheetOverlap).toBe(0);
           expect(l.art.w).toBeGreaterThanOrEqual(300);
         }
       }
@@ -255,8 +256,7 @@ describe("Five Smooth Stones (the proof): every page lays out at 1920, 1280 and 
               const tag = `${box.width} ${lang} ${page.id} done=${done.length}`;
               expect(l.fits, tag).toBe(true);
               if (l.hero) expect(l.hero.inWindow, tag).toBe(true);
-              if (l.mode === "stacked" && l.sheetOverlap > 0) expect(page.id, tag).toBe(david.decision.pageId);
-              else if (l.pageType === "facing" || l.mode === "stacked") expect(overlapArea(l.textPage, l.art), tag).toBe(0);
+              if (l.pageType === "facing" || l.mode === "stacked") expect(overlapArea(l.textPage, l.art), tag).toBe(0);
               else if (l.heroBody) expect(overlapArea(l.textPage, l.heroBody), tag).toBe(0);
               for (const it of page.repair?.items ?? []) {
                 const p = platePoint(l, it.x, it.y);
@@ -300,20 +300,42 @@ describe("Five Smooth Stones (the proof): every page lays out at 1920, 1280 and 
     }
   });
 
-  it("the decision page at 1920 holds three LARGE picture cards (>= 300 px wide, picture >= 190 tall) at >= the type token", () => {
-    const p5 = dPages.find((p) => p.id === "p5")!;
-    for (const lang of LANGS) {
-      const paras = paragraphChars(pageParagraphs(p5, { lang, gender: "f", choiceId: null, repaired: [] }), NAME);
-      const l = computeBookPageLayout(p5, SPREAD_BOXES[0], lang, { content: { paras, choices: 3 }, plate: getPlate(david.id, "PL4")! });
-      expect(l.cardW).toBeGreaterThanOrEqual(300);
-      expect(l.cardPicH).toBeGreaterThanOrEqual(190);
-      expect(3 * l.cardW + 2 * 16).toBeLessThanOrEqual(l.text.w + 0.5);
-      expect(l.typePx).toBeGreaterThanOrEqual(Math.ceil(kidBookTokenPx(1920)));
-      expect(l.fits).toBe(true);
+  it("fix round 2: the decision page is the SAME book as p4/p6 (art, column, type) at 1920 and 1280; its cards fill a second state", () => {
+    const at = (id: string, box: Box, lang: BookLang) => {
+      const page = dPages.find((p) => p.id === id)!;
+      const paras = paragraphChars(pageParagraphs(page, { lang, gender: "f", choiceId: "a", repaired: [] }), NAME);
+      return computeBookPageLayout(page, box, lang, { content: { paras, choices: id === "p5" ? 3 : undefined }, plate: getPlate(david.id, page.plateId)! });
+    };
+    for (const box of SPREAD_BOXES) {
+      for (const lang of LANGS) {
+        const p4 = at("p4", box, lang);
+        const p5 = at("p5", box, lang);
+        expect(p5.art, `${box.width} ${lang}`).toEqual(p4.art);
+        expect(p5.textPage).toEqual(p4.textPage);
+        expect(p5.book).toEqual(p4.book);
+        expect(p5.typePx).toBeGreaterThanOrEqual(Math.ceil(kidBookTokenPx(box.width)) - (box.width < 1920 ? 4 : 0));
+        expect(p5.choicePlan).not.toBeNull();
+        const plan = p5.choicePlan!;
+        // the cards fit the text page (in their state's padding)
+        const padI = plan.pad?.inline ?? p5.pad.inline;
+        const padB = plan.pad?.block ?? p5.pad.block;
+        expect(plan.cardW).toBeLessThanOrEqual(p5.textPage.w - 2 * padI + 0.5);
+        expect(plansHeight(plan)).toBeLessThanOrEqual(p5.textPage.h - 2 * padB);
+        expect(plan.picH / plan.picW).toBeCloseTo(0.75, 1);
+        if (box.width >= 1920) {
+          // 1920: the words fill the page at the book's type, so the cards take a
+          // second state with LARGE pictures (>= 300 px wide)
+          expect(p5.art.w).toBe(1242);
+          expect(p5.art.h).toBe(833);
+          expect(p5.typePx).toBe(38);
+          if (plan.mode === "second") expect(plan.picW).toBeGreaterThanOrEqual(300);
+          else expect(plan.picH).toBeGreaterThanOrEqual(150);
+        }
+      }
     }
   });
 
-  it("at 375 the art window is never under 300 px wide (p5's cards ride over its lower edge; p10's words fit)", () => {
+  it("at 375 the art window is never under 300 px wide and the cards never cover it (p5 two states; p10)", () => {
     for (const lang of LANGS) {
       for (const id of ["p5", "p10"]) {
         const page = dPages.find((p) => p.id === id)!;
@@ -322,9 +344,20 @@ describe("Five Smooth Stones (the proof): every page lays out at 1920, 1280 and 
           const l = computeBookPageLayout(page, PHONE, lang, { content: { paras, choices: id === "p5" ? 3 : undefined }, plate: getPlate(david.id, page.plateId)! });
           expect(l.art.w, `${lang} ${id}`).toBeGreaterThanOrEqual(300);
           expect(l.fits, `${lang} ${id}`).toBe(true);
-          if (id === "p10") expect(l.sheetOverlap).toBe(0);
+          expect(l.sheetOverlap).toBe(0);
+          expect(overlapArea(l.textPage, l.art)).toBe(0);
+          if (id === "p5") {
+            expect(l.choicePlan?.mode).toBe("second");
+            expect(plansHeight(l.choicePlan!)).toBeLessThanOrEqual(l.text.h);
+          }
         }
       }
     }
+  });
+
+  it("planChoices picks the arrangement with the largest picture", () => {
+    expect(planChoices(466, 700, "second")!.arrangement).toBe("stack");
+    expect(planChoices(1000, 260, "below")!.arrangement).toBe("row");
+    expect(planChoices(0, 100, "second")).toBeNull();
   });
 });

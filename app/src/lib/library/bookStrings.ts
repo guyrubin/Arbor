@@ -14,6 +14,7 @@ export type BookStringKey =
   | "back"
   | "close"
   | "go"
+  | "choose"
   | "theEnd"
   | "readAgain"
   | "choices.aria"
@@ -38,6 +39,7 @@ const EN: Record<BookStringKey, string> = {
   back: "Previous page",
   close: "Close the book",
   go: "This one!",
+  choose: "Choose",
   theEnd: "The End",
   readAgain: "Read again",
   "choices.aria": "What will happen next?",
@@ -63,6 +65,7 @@ const HE: Record<BookStringKey, string> = {
   back: "לעמוד הקודם",
   close: "לסגור את הספר",
   go: "את זה!",
+  choose: "לבחור",
   theEnd: "הסוף",
   readAgain: "לקרוא שוב",
   "choices.aria": "מה יקרה עכשיו?",

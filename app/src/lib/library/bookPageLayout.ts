@@ -14,6 +14,11 @@
  * - spread: honoured ONLY when the words (and the page controls) fit entirely
  *   inside the plate's authored calm `textRect`; otherwise facing (fix round
  *   1: a card floating over the art read as a slideshow).
+ * - the decision page (fix round 2) is the SAME book as every other page: the
+ *   same art page, text column and type rule. Its choice cards go BELOW the
+ *   words when they fit there with pictures >= ~150 px tall ("below"); else
+ *   the page has a second state ("second"): first the words with a Choose toy,
+ *   then the same page with the three cards filling the text page.
  * - cover: the whole plate is the book's front; the title, the name line and
  *   the cover line are set in the plate's calm band (`textRect`) with no card,
  *   and ONE Open toy sits under the plate. If the title does not fit the band
@@ -25,8 +30,8 @@
  * top (never under 300 px wide), the words on a paper sheet below. The window
  * centre is the page's phoneCrop (else the plate's authored window), moved
  * only as far as needed to hold the hero, the after-repair hero and every
- * repair item. The decision page's cards may ride up over the art's lower
- * edge (`sheetOverlap`) rather than shrink the picture below the floor.
+ * repair item. The decision page's cards never cover the art (or the hero):
+ * on a phone they take the sheet's place after the words (two states).
  */
 import type { BookLang, Page, Slot } from "./types";
 
@@ -87,6 +92,23 @@ export interface SpriteAnchor {
 }
 export type AnchorOf = (pose: string) => SpriteAnchor | undefined;
 
+/** How the choice cards sit on the text page. "below" = under the words;
+ *  "second" = a second state of the page (words first, then the cards). The
+ *  arrangement: "stack" = three-down, picture beside the label; "grid21" = two
+ *  over one, label under the picture; "row" = three across. */
+export interface ChoicePlan {
+  mode: "below" | "second";
+  arrangement: "stack" | "grid21" | "row";
+  picW: number;
+  picH: number;
+  cardW: number;
+  cardH: number;
+  gap: number;
+  /** "second": the text page's padding in that state (tighter, so the cards
+   *  can be large); the reader applies it while the cards show. */
+  pad?: { inline: number; block: number };
+}
+
 export interface ShadowEllipse {
   cx: number;
   cy: number;
@@ -133,8 +155,10 @@ export interface BookPageLayout {
   cardsPx: number;
   cardW: number;
   cardPicH: number;
-  /** Stacked: how far the sheet (its card row first) rides up over the art. */
+  /** Stacked: how far the sheet rides up over the art (0 since fix round 2). */
   sheetOverlap: number;
+  /** The decision page's cards: where they go and how big they are. */
+  choicePlan: ChoicePlan | null;
   /** Cover: the rect of the ONE Open toy (under the plate). */
   openRect?: Rect;
   hero: HeroRect | null;
@@ -306,16 +330,60 @@ function fitType(c: Ctx, width: number, room: (type: number) => number, max: num
   return 0;
 }
 
-/** Card sizing at this viewport: >= 300 px at 1920, never under 140. */
-function cardSizes(W: number): number[] {
-  const top = Math.round(clamp(W * 0.165, 140, 320));
-  const out: number[] = [];
-  for (let w = top; w >= 140; w -= 20) out.push(w);
-  return out;
+const PLAN_GAP = 10;
+const PLAN_PAD = 4;
+const PLAN_LABEL_W = 120;
+const PLAN_LABEL_H = 54;
+const PIC_ASPECT = 3 / 4; // pictures are 4:3
+
+/** The largest picture three choice cards can have in a w x h box. */
+export function planChoices(w: number, h: number, mode: ChoicePlan["mode"], n = 3): ChoicePlan | null {
+  if (w <= 0 || h <= 0) return null;
+  const g = PLAN_GAP;
+  const pd = PLAN_PAD;
+  const cand: ChoicePlan[] = [];
+  // three-down, picture beside the label
+  {
+    const byH = ((h - (n - 1) * g) / n - 2 * pd) / PIC_ASPECT;
+    const byW = w - PLAN_LABEL_W - 3 * pd;
+    const picW = Math.floor(Math.min(byH, byW));
+    if (picW > 0) cand.push({ mode, arrangement: "stack", picW, picH: Math.floor(picW * PIC_ASPECT), cardW: Math.floor(w), cardH: Math.ceil(picW * PIC_ASPECT + 2 * pd), gap: g });
+  }
+  // two over one, label under the picture
+  if (n === 3) {
+    const byW = (w - g) / 2 - 2 * pd;
+    const byH = ((h - g) / 2 - 2 * pd - PLAN_LABEL_H) / PIC_ASPECT;
+    const picW = Math.floor(Math.min(byW, byH));
+    if (picW > 0) cand.push({ mode, arrangement: "grid21", picW, picH: Math.floor(picW * PIC_ASPECT), cardW: picW + 2 * pd, cardH: Math.ceil(picW * PIC_ASPECT + 2 * pd + PLAN_LABEL_H), gap: g });
+  }
+  // three across
+  {
+    const byW = (w - (n - 1) * g) / n - 2 * pd;
+    const byH = (h - 2 * pd - PLAN_LABEL_H) / PIC_ASPECT;
+    const picW = Math.floor(Math.min(byW, byH));
+    if (picW > 0) cand.push({ mode, arrangement: "row", picW, picH: Math.floor(picW * PIC_ASPECT), cardW: picW + 2 * pd, cardH: Math.ceil(picW * PIC_ASPECT + 2 * pd + PLAN_LABEL_H), gap: g });
+  }
+  return cand.sort((a, b) => b.picW - a.picW)[0] ?? null;
 }
-const CARD_GAP = 16;
-const CARD_LABEL_PX = 64; // two label lines + the card's padding
-const cardPic = (w: number) => Math.round(w * 0.64);
+
+/** The second state's controls row (the "This one!" toy). */
+const SECOND_NAV = 88;
+const SECOND_PAD = 24;
+
+/** The decision page's plan: below the words when the pictures can be at
+ *  least `minPicH` tall there, else the page's second state — the whole
+ *  text page (tighter padding) for the cards. */
+function decisionPlan(content: LayoutContent, textW: number, textH: number, navPx: number, wordsH: number, minPicH: number, allowBelow: boolean, page?: { w: number; h: number }): ChoicePlan | null {
+  if (!content.choices) return null;
+  const roomBelow = textH - navPx - wordsH - 24;
+  const below = allowBelow ? planChoices(textW, roomBelow, "below", content.choices) : null;
+  if (below && below.picH >= minPicH) return below;
+  if (page) {
+    const second = planChoices(page.w - 2 * SECOND_PAD, page.h - 2 * SECOND_PAD - SECOND_NAV, "second", content.choices);
+    return second ? { ...second, pad: { inline: SECOND_PAD, block: SECOND_PAD } } : null;
+  }
+  return planChoices(textW, textH - navPx - 8, "second", content.choices);
+}
 
 function layoutFacing(c: Ctx): BookPageLayout {
   const { box, aspect, dir, content } = c;
@@ -325,103 +393,83 @@ function layoutFacing(c: Ctx): BookPageLayout {
   const availW = W - 2 * m;
   const availH = H - 2 * m;
   let best: BookPageLayout | null = null;
-  // The decision page: the text page must hold three cards in a row.
-  const cardOptions = content.choices ? cardSizes(W) : [0];
+  // Fix round 2: the decision page is laid out exactly like every other page
+  // (same art page, column and type rule — its cards never size the page);
+  // its cards are planned into the text box afterwards.
   for (const floor of c.floors) {
-    for (const cardW of cardOptions) {
-      const ts = content.choices ? [0] : [0.66, 0.74, 0.82, 0.9, 1.0];
-      for (const t of ts) {
-        let P = availH;
-        let pm = Math.round(clamp(P * 0.016, 8, 16));
-        let textW: number;
-        if (content.choices) {
-          const padGuess = Math.round(clamp(W * 0.022, 24, 44));
-          textW = 3 * cardW + 2 * CARD_GAP + 2 * padGuess;
-          // the art page takes the rest of the width (whole plate, its own aspect)
-          P = Math.min(availH, Math.floor((availW - textW - 2 * pm) / aspect + 2 * pm));
-          pm = Math.round(clamp(P * 0.016, 8, 16));
-        } else {
-          const widthAt = (p: number, margin: number) => (p - 2 * margin) * aspect + 2 * margin + t * p;
-          if (widthAt(P, pm) > availW) {
-            P = (availW + 2 * pm * aspect - 2 * pm) / (aspect + t);
-            pm = Math.round(clamp(P * 0.016, 8, 16));
-            P = (availW + 2 * pm * aspect - 2 * pm) / (aspect + t);
-          }
-          P = Math.floor(P);
-          textW = 0;
-        }
-        const plateH = P - 2 * pm;
-        const plateW = Math.round(plateH * aspect);
-        const artPageW = plateW + 2 * pm;
-        if (!content.choices) textW = Math.floor(Math.min(t * P, availW - artPageW));
-        textW = Math.min(textW, availW - artPageW);
-        // the decision page may need more height than the art: the text page grows
-        const padI = content.choices ? Math.round(clamp(W * 0.022, 24, 44)) : Math.round(clamp(textW * 0.09, 24, 56));
-        const navPx = 96;
-        // the cards take the text box's real width (rounding may trim a few px)
-        const effCardW = content.choices ? Math.floor((textW - 2 * padI - 2 * CARD_GAP) / 3) : 0;
-        const picH = content.choices ? cardPic(effCardW) : 0;
-        const cardsPx = content.choices ? picH + CARD_LABEL_PX : 0;
-        const promptPx = content.prompt ? 72 : 0;
-        const titlePx = Math.round(clamp(P * 0.062, 34, 60));
-        const fixedOf = (textBoxW: number) => navPx + (cardsPx ? cardsPx + 24 : 0) + promptPx + titleHeight(content.title ?? 0, textBoxW, titlePx);
-        let pageH = P;
-        const padB0 = Math.round(clamp(P * 0.065, 24, 60));
-        const textBoxW = textW - 2 * padI;
-        const maxType = Math.round(clamp(P * 0.044, c.tokenPx, 40));
-        let typePx = fitType(c, textBoxW, () => pageH - 2 * padB0 - fixedOf(textBoxW), maxType, floor);
-        if (!typePx && content.choices) {
-          // grow the text page's height (up to the stage) before shrinking cards
-          const need = 2 * padB0 + fixedOf(textBoxW) + estimateTextHeight(content.paras, textBoxW, floor, c.lineHeight);
-          if (need <= availH) {
-            pageH = Math.ceil(need);
-            typePx = fitType(c, textBoxW, () => pageH - 2 * padB0 - fixedOf(textBoxW), maxType, floor);
-          }
-        }
-        const fits = typePx > 0;
-        const bookH = Math.max(P, pageH);
-        const bookW = artPageW + textW;
-        const bx = Math.round((W - bookW) / 2);
-        const by = Math.round((H - bookH) / 2);
-        // both paper pages are the book's height; a taller text page (the
-        // decision page) leaves the plate centred on its paper page
-        const artPage: Rect = dir === "ltr" ? { x: bx, y: by, w: artPageW, h: bookH } : { x: bx + textW, y: by, w: artPageW, h: bookH };
-        const textPage: Rect = dir === "ltr" ? { x: bx + artPageW, y: by, w: textW, h: bookH } : { x: bx, y: by, w: textW, h: bookH };
-        const art: Rect = { x: artPage.x + pm, y: by + Math.round((bookH - plateH) / 2), w: plateW, h: plateH };
-        const text: Rect = { x: textPage.x + padI, y: textPage.y + padB0, w: textBoxW, h: bookH - 2 * padB0 };
-        const anchor = anchorFor(c, c.slot);
-        const hero = heroRect(c.slot, art, art, anchor);
-        best = {
-          mode: "wide",
-          pageType: "facing",
-          dir,
-          book: { x: bx, y: by, w: bookW, h: bookH },
-          artPage,
-          art,
-          plate: art,
-          crop: { x0: 0, x1: 1 },
-          textPage,
-          text,
-          pad: { inline: padI, block: padB0 },
-          typePx: fits ? typePx : floor,
-          lineHeight: c.lineHeight,
-          titlePx,
-          navPx,
-          cardsPx,
-          cardW: effCardW,
-          cardPicH: picH,
-          sheetOverlap: 0,
-          hero,
-          heroBody: bodyRect(c.slot, art, anchor),
-          shadow: shadowFor(c.slot, art, hero, anchor),
-          spine: dir === "ltr" ? "left" : "right",
-          fits,
-        };
-        if (fits) return best;
+    for (const t of [0.66, 0.74, 0.82, 0.9, 1.0]) {
+      let P = availH;
+      let pm = Math.round(clamp(P * 0.016, 8, 16));
+      const widthAt = (p: number, margin: number) => (p - 2 * margin) * aspect + 2 * margin + t * p;
+      if (widthAt(P, pm) > availW) {
+        P = (availW + 2 * pm * aspect - 2 * pm) / (aspect + t);
+        pm = Math.round(clamp(P * 0.016, 8, 16));
+        P = (availW + 2 * pm * aspect - 2 * pm) / (aspect + t);
       }
+      P = Math.floor(P);
+      const plateH = P - 2 * pm;
+      const plateW = Math.round(plateH * aspect);
+      const artPageW = plateW + 2 * pm;
+      const textW = Math.floor(Math.min(t * P, availW - artPageW));
+      const padI = Math.round(clamp(textW * 0.09, 24, 56));
+      const padB = Math.round(clamp(P * 0.065, 24, 60));
+      const navPx = 96;
+      const promptPx = content.prompt ? 72 : 0;
+      const titlePx = Math.round(clamp(P * 0.062, 34, 60));
+      const textBoxW = textW - 2 * padI;
+      const fixed = navPx + promptPx + titleHeight(content.title ?? 0, textBoxW, titlePx);
+      const maxType = Math.round(clamp(P * 0.044, c.tokenPx, 40));
+      const typePx = fitType(c, textBoxW, () => P - 2 * padB - fixed, maxType, floor);
+      const fits = typePx > 0;
+      const wordsH = estimateTextHeight(content.paras, textBoxW, fits ? typePx : floor, c.lineHeight);
+      const plan = decisionPlan(content, textBoxW, P - 2 * padB, navPx, wordsH, Math.max(110, Math.round(plateH * 0.18)), true, { w: textW, h: P });
+      const bookW = artPageW + textW;
+      const bx = Math.round((W - bookW) / 2);
+      const by = Math.round((H - P) / 2);
+      const artPage: Rect = dir === "ltr" ? { x: bx, y: by, w: artPageW, h: P } : { x: bx + textW, y: by, w: artPageW, h: P };
+      const textPage: Rect = dir === "ltr" ? { x: bx + artPageW, y: by, w: textW, h: P } : { x: bx, y: by, w: textW, h: P };
+      const art: Rect = { x: artPage.x + pm, y: artPage.y + pm, w: plateW, h: plateH };
+      const text: Rect = { x: textPage.x + padI, y: textPage.y + padB, w: textBoxW, h: P - 2 * padB };
+      const anchor = anchorFor(c, c.slot);
+      const hero = heroRect(c.slot, art, art, anchor);
+      best = {
+        mode: "wide",
+        pageType: "facing",
+        dir,
+        book: { x: bx, y: by, w: bookW, h: P },
+        artPage,
+        art,
+        plate: art,
+        crop: { x0: 0, x1: 1 },
+        textPage,
+        text,
+        pad: { inline: padI, block: padB },
+        typePx: fits ? typePx : floor,
+        lineHeight: c.lineHeight,
+        titlePx,
+        navPx,
+        cardsPx: plan ? plansHeight(plan) : 0,
+        cardW: plan?.cardW ?? 0,
+        cardPicH: plan?.picH ?? 0,
+        sheetOverlap: 0,
+        choicePlan: plan,
+        hero,
+        heroBody: bodyRect(c.slot, art, anchor),
+        shadow: shadowFor(c.slot, art, hero, anchor),
+        spine: dir === "ltr" ? "left" : "right",
+        fits,
+      };
+      if (fits) return best;
     }
   }
   return best!;
+}
+
+/** The height a choice plan takes. */
+export function plansHeight(plan: ChoicePlan): number {
+  if (plan.arrangement === "stack") return 3 * plan.cardH + 2 * plan.gap;
+  if (plan.arrangement === "grid21") return 2 * plan.cardH + plan.gap;
+  return plan.cardH;
 }
 
 /** Area of the intersection of two rects (0 when they only touch). */
@@ -489,6 +537,7 @@ function layoutSpread(c: Ctx): BookPageLayout | null {
     cardW: 0,
     cardPicH: 0,
     sheetOverlap: 0,
+    choicePlan: null,
     hero,
     heroBody: body,
     shadow: shadowFor(c.slot, art, hero, anchor),
@@ -541,6 +590,7 @@ function layoutCover(c: Ctx): BookPageLayout | null {
       cardW: 0,
       cardPicH: 0,
       sheetOverlap: 0,
+      choicePlan: null,
       openRect: { x: Math.round(art.x + (art.w - openW) / 2), y: artPage.y + artPage.h + 18, w: openW, h: 88 },
       hero,
       heroBody: bodyRect(c.slot, art, anchor),
@@ -565,9 +615,9 @@ function layoutStacked(c: Ctx): BookPageLayout {
   const padB = 16;
   const navPx = 84;
   const textW = colW - 2 * padI;
-  const cardW = content.choices ? Math.floor((textW - 2 * 10) / 3) : 0;
-  const picH = content.choices ? cardPic(cardW) : 0;
-  const cardsPx = content.choices ? picH + CARD_LABEL_PX : 0;
+  // the decision page's cards replace the words in a second state: the sheet is
+  // sized by the words, never by the cards (they never ride over the hero)
+  const cardsPx = 0;
   const promptPx = content.prompt ? 56 : 0;
   const titlePx = Math.round(clamp(W * 0.085, 30, 40));
   const fixed = navPx + (cardsPx ? cardsPx + 12 : 0) + promptPx + titleHeight(content.title ?? 0, textW, titlePx) + 2 * padB;
@@ -583,13 +633,12 @@ function layoutStacked(c: Ctx): BookPageLayout {
   for (let type = Math.max(maxType, floorType); type >= floorType; type--) types.push(type);
   // under the floor, a non-decision page may set its words at 18 px rather
   // than shrink the picture under 300 px
-  const lowTypes = content.choices ? [] : [floorType - 1, 18].filter((t) => t >= 18 && t < floorType);
+  const lowTypes = [floorType - 1, 18].filter((t) => t >= 18 && t < floorType);
   const typePx = types.find((t) => artAt(t) >= targetArtH) ?? types.find((t) => artAt(t) >= floorArtH) ?? lowTypes.find((t) => artAt(t) >= floorArtH) ?? floorType;
   const natural = artAt(typePx);
   const artH = Math.floor(Math.max(natural, floorArtH));
-  // the decision page lets its card row ride up over the art's lower edge
-  const sheetOverlap = content.choices && natural < floorArtH ? Math.min(Math.ceil(floorArtH - natural), cardsPx) : 0;
-  const fits = natural + sheetOverlap >= floorArtH - 0.5;
+  const sheetOverlap = 0;
+  const fits = natural >= floorArtH - 0.5;
   const artW = Math.floor(artH * PHONE_WINDOW);
   const art: Rect = { x: Math.round((W - artW) / 2), y: 0, w: artW, h: artH };
   const crop = phoneWindow(page, c.slot, c.plate, c.anchorOf);
@@ -598,6 +647,7 @@ function layoutStacked(c: Ctx): BookPageLayout {
   const sheetY = artH - sheetOverlap;
   const textPage: Rect = { x: colX, y: sheetY, w: colW, h: Math.max(0, H - sheetY) };
   const text: Rect = { x: colX + padI, y: sheetY + padB, w: textW, h: Math.max(0, H - sheetY - 2 * padB) };
+  const plan = decisionPlan(content, textW, text.h, navPx, 0, 0, false);
   const anchor = anchorFor(c, c.slot);
   const hero = heroRect(c.slot, plate, art, anchor);
   return {
@@ -618,9 +668,10 @@ function layoutStacked(c: Ctx): BookPageLayout {
     titlePx,
     navPx,
     cardsPx,
-    cardW,
-    cardPicH: picH,
+    cardW: plan?.cardW ?? 0,
+    cardPicH: plan?.picH ?? 0,
     sheetOverlap,
+    choicePlan: plan,
     hero,
     heroBody: bodyRect(c.slot, plate, anchor),
     shadow: shadowFor(c.slot, plate, hero, anchor),
