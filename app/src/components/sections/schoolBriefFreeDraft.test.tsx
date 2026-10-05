@@ -271,3 +271,40 @@ describe("W2-CAREPRO c2 r1 · real moves for a teacher, one gradient, one list d
     expect(/anxiety/i.test(pre)).toBe(true);
   });
 });
+
+/* W2-CAREPRO c2 r2 — B-CAREPRO-NEW-2d: "Start here" carries the parent's own
+ * working move (a COMPLETED plan step only) and a screen-only provenance
+ * caption; never the plan's issue, never invented. */
+describe("W2-CAREPRO c2 r2 · Start here: what already works at home, from what you wrote", () => {
+  const plan = (he: boolean, done: boolean) => ({
+    id: "plan-1",
+    title: he ? "תוכנית בוקר" : "Morning plan",
+    issue: he ? "חרדת מעבר" : "Transition anxiety",
+    phases: [{ name: he ? "שלב 1: בבית" : "Phase 1: At home", description: "", steps: [
+      { text: he ? "להחזיק אבן אומץ בכיס בדרך החוצה" : "Hold the courage pebble on the way out", completed: done },
+    ] }],
+  });
+  for (const locale of ["en", "he"] as const) {
+    it(`${locale}: a completed step → one 'what already works at home' line inside the band, then the provenance caption`, () => {
+      harness.locale = locale;
+      harness.strengths = ["Builds towers"];
+      harness.plans = [plan(locale === "he", true)];
+      const html = renderToStaticMarkup(<SchoolBrief />).replace(/&#x27;/g, "'");
+      const band = html.slice(html.indexOf('data-testid="school-brief-opening"'), html.indexOf("</div>", html.indexOf('data-testid="school-brief-provenance"')));
+      const step = plan(locale === "he", true).phases[0].steps[0].text;
+      expect(band).toContain(translate(locale, "elev.learnCare.brief.homeWorks", { step }));
+      expect(band).toContain(translate(locale, "elev.learnCare.brief.provenance", { name: "Noa" }));
+      expect(band.indexOf('data-testid="school-brief-home-works"')).toBeLessThan(band.indexOf('data-testid="school-brief-provenance"'));
+      expect(band).not.toMatch(/anxiety|חרדת/i);
+    });
+
+    it(`${locale}: NEGATIVE CONTROL — no completed step → no home line (nothing invented)`, () => {
+      harness.locale = locale;
+      harness.strengths = ["Builds towers"];
+      harness.plans = [plan(locale === "he", false)];
+      const html = renderToStaticMarkup(<SchoolBrief />);
+      expect(html).not.toContain('data-testid="school-brief-home-works"');
+      expect(html).toContain('data-testid="school-brief-provenance"');
+    });
+  }
+});

@@ -1441,6 +1441,17 @@ export function teacherStrategies(plans: readonly PacketInputPlan[], clean: (lin
   return out.slice(0, cap);
 }
 
+/** B-CAREPRO-NEW-2d (W2-CAREPRO c2 r2) — "what already works at home": the
+ *  first COMPLETED plan step, as the family wrote it, through the same teacher
+ *  scan. Never the plan's `issue`, never invented; "" when no step is done. */
+export function teacherHomeStep(plans: readonly PacketInputPlan[]): string {
+  for (const p of plans) for (const st of p.steps ?? []) {
+    const v = (st.text ?? "").trim();
+    if (st.completed && v && !findTeacherBlockedTerm(v)) return v;
+  }
+  return "";
+}
+
 /** B-CAREPRO-NEW-2d — "Start here": the first curated strength as the way in.
  *  The verb follows the profile's gender (never a slash); English keeps the
  *  parent's casing except a leading capital on an ordinary word. */

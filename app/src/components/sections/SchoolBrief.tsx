@@ -7,7 +7,7 @@ import { useToast } from "../../context/ToastContext";
 import { api, PaywallError, EscalationRequiredError } from "../../lib/api";
 import type { BehaviorLog, Milestone, SchoolBrief as SchoolBriefData } from "../../types";
 import type { HandoffLogInput, HandoffMilestoneInput } from "../../lib/api";
-import { buildPacketInput, milestoneInAgeWindow, teacherBriefDraft } from "../../consult/packet";
+import { buildPacketInput, milestoneInAgeWindow, teacherBriefDraft, teacherHomeStep } from "../../consult/packet";
 import { takeTeacherNote } from "../../schoolBrief/teacherHandoff";
 import { ageMonthsFromProfile } from "../../lib/childAge";
 import { screenForImmediateEscalation } from "../../safety/escalation";
@@ -111,11 +111,9 @@ export default function SchoolBrief() {
   // B-CAREPRO-27 — the FREE draft: the teacher preset's ceiling (about + what
   // the family already tries; never logs, milestones or memory), in the
   // parent's language. No network, no paywall.
-  const { freeDraft, openingLine } = useMemo(() => {
-    const draft = teacherBriefDraft(
-      buildPacketInput({ profile: childProfile, logs: behaviorLogs, milestones, plans: actionPlans, memory: [] }, Date.now()),
-      uiLang,
-    );
+  const { freeDraft, openingLine, homeStep } = useMemo(() => {
+    const input = buildPacketInput({ profile: childProfile, logs: behaviorLogs, milestones, plans: actionPlans, memory: [] }, Date.now());
+    const draft = teacherBriefDraft(input, uiLang);
     // B-CAREPRO-NEW-2d: the opening line is the overview's first paragraph, so
     // it rides the curated `overview` field (same scan, same egress) and
     // prints as the brief's first line; the screen shows it as a band.
@@ -129,7 +127,7 @@ export default function SchoolBrief() {
       suggestedTeacherStrategies: draft.suggestedTeacherStrategies,
       crisisEscalationTrigger: "",
     };
-    return { freeDraft: data, openingLine: draft.openingLine };
+    return { freeDraft: data, openingLine: draft.openingLine, homeStep: teacherHomeStep(input.plans) };
   }, [childProfile, behaviorLogs, milestones, actionPlans, uiLang, handedNote]);
 
   // generate-and-present: the brief lives in component state only — no new
@@ -421,6 +419,15 @@ export default function SchoolBrief() {
               <div data-testid="school-brief-opening" className="p-4 border-s-[3px]" style={{ background: "var(--arbor-peach-wash)", borderColor: "var(--arbor-peach-ink)", borderRadius: "var(--r)" }}>
                 <p className="t-xs font-bold" style={{ color: "var(--arbor-peach-ink)" }}>{t("elev.learnCare.brief.startHere")}</p>
                 <p dir={uiLang === "he" ? "rtl" : "ltr"} className="t-lg leading-snug mt-1" style={{ fontFamily: uiLang === "he" ? "var(--font-display)" : "var(--font-editorial)", color: "var(--arbor-ink)" }}>{openingLine}</p>
+                {/* W2-CAREPRO c2 r2 (B-CAREPRO-NEW-2d): the parent's own working
+                    move, from a COMPLETED plan step only (no issue label,
+                    nothing invented), then a screen-only provenance caption. */}
+                {homeStep && (
+                  <p data-testid="school-brief-home-works" dir={uiLang === "he" ? "rtl" : "ltr"} className="t-base leading-relaxed mt-2" style={{ color: "var(--arbor-ink)" }}>
+                    {t("elev.learnCare.brief.homeWorks", { step: homeStep })}
+                  </p>
+                )}
+                <p data-testid="school-brief-provenance" className="t-xs mt-2" style={{ color: "var(--arbor-peach-ink)" }}>{t("elev.learnCare.brief.provenance", { name: firstName })}</p>
               </div>
             )}
             <Section icon={<Icon name="assignment" size={16} />} title={sectionLabels.overview}>

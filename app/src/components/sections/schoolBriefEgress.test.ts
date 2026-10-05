@@ -409,10 +409,13 @@ describe("B-CAREPRO-27 · the brief opens on a free draft from the teacher prese
 
   it("the editor seeds from the free draft — no network, no paywall — and Plus is the AI draft", () => {
     expect(brief).toContain("const [draft, setDraft] = useState<SchoolBriefData>(freeDraft);");
-    expect(brief).toMatch(/teacherBriefDraft\(\n?\s*buildPacketInput\(/);
+    // W2-CAREPRO c2 r2: one shared assembler input feeds the draft AND the
+    // home-step line (teacherHomeStep), so both read the same plans.
+    expect(brief).toMatch(/const input = buildPacketInput\(\{ profile: childProfile, logs: behaviorLogs, milestones, plans: actionPlans, memory: \[\] \}, Date\.now\(\)\);\s*const draft = teacherBriefDraft\(input, uiLang\);/);
+    expect(brief).toContain("homeStep: teacherHomeStep(input.plans)");
     // the AI path is a separate, labelled button; the free path calls no api
     // B-CAREPRO-NEW-2d: the memo also returns the opening line it built.
-    const freeDraftMemo = /const \{ freeDraft, openingLine \} = useMemo\(\(\) => \{[\s\S]*?\}, \[/.exec(brief);
+    const freeDraftMemo = /const \{ freeDraft, openingLine, homeStep \} = useMemo\(\(\) => \{[\s\S]*?\}, \[/.exec(brief);
     expect(freeDraftMemo).toBeTruthy();
     expect(freeDraftMemo![0]).not.toMatch(/api\.|fetch\(/);
     expect(brief).toContain('data-testid="school-brief-ai-draft"');

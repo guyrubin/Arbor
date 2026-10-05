@@ -87,6 +87,8 @@ export const en: Record<string, string> = {
   "elev.learnCare.brief.aiDraft": "Draft with Arbor",
   // B-CAREPRO-NEW-2d — the note's opening line ("Start here").
   "elev.learnCare.brief.startHere": "Start here",
+  "elev.learnCare.brief.homeWorks": "At home, this already works: {step}",
+  "elev.learnCare.brief.provenance": "From what you wrote about {name}",
   "elev.teacherBrief.opening.boy": "With {name}, start from what he loves: {strength}.",
   "elev.teacherBrief.opening.girl": "With {name}, start from what she loves: {strength}.",
   "elev.teacherBrief.opening.neutral": "With {name}, start from what they love: {strength}.",
@@ -206,6 +208,8 @@ export const he: Record<string, string> = {
   "elev.learnCare.brief.caption": "ממה שתיעדתם — מה שעוזר, לעולם לא אבחנה.",
   "elev.learnCare.brief.aiDraft": "לנסח עם ארבור",
   "elev.learnCare.brief.startHere": "להתחיל מכאן",
+  "elev.learnCare.brief.homeWorks": "בבית זה כבר עובד: {step}",
+  "elev.learnCare.brief.provenance": "ממה שכתבתם על {name}",
   "elev.teacherBrief.opening.boy": "עם {name}, הכי טוב להתחיל ממה שהוא אוהב: {strength}.",
   "elev.teacherBrief.opening.girl": "עם {name}, הכי טוב להתחיל ממה שהיא אוהבת: {strength}.",
   "elev.teacherBrief.opening.neutral": "עם {name}, הכי טוב להתחיל מהדברים האהובים: {strength}.",
