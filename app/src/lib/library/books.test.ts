@@ -9,7 +9,7 @@
  * paths reach the same ending. Plus the fixture's lane A specifics (C8 fix).
  */
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { allBooks, BOOK_PLATES, DEFAULT_REVIEW_BOOK, getLibraryBook, getPlate, LIBRARY_BOOKS } from "./books";
@@ -196,6 +196,16 @@ describe.each(allBooks())("book $id", (book) => {
   it("Hebrew is NFC-normalised (nikud kept as written)", () => {
     for (const page of allPages(book)) for (const l of lines(page)) for (const t of [l.he.m, l.he.f]) expect(t, page.id).toBe(t.normalize("NFC"));
     expect(book.title.he).toBe(book.title.he.normalize("NFC"));
+  });
+
+  it("fix round 2: every pose id the book names exists in every hero-sheet manifest under test fixtures", () => {
+    const fixtures = readdirSync(path.join(here, "__fixtures__")).filter((f) => f.endsWith(".manifest.json"));
+    expect(fixtures.length).toBeGreaterThan(0);
+    const poses = new Set(allPages(book).flatMap((p) => [...slots(p), ...Object.values(p.heroAlt ?? {})].map((s) => s.pose)));
+    for (const f of fixtures) {
+      const man = JSON.parse(readFileSync(path.join(here, "__fixtures__", f), "utf8")) as { poses: Record<string, unknown> };
+      for (const pose of poses) expect(Object.keys(man.poses), `${f} lacks ${pose}`).toContain(pose);
+    }
   });
 
   it("the parent panel is complete in both languages", () => {
