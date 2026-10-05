@@ -112,8 +112,9 @@ describe("GP-07 / GP-10 — noticing a milestone leaves a visible, dated trace",
     const html = await render();
     expect(html).toContain('data-testid="growth-new-since"');
     expect(html).toContain("elev.growth.newSince.noticed|First two-word phrase");
-    const { fmtDay } = await import("../../lib/formatDate");
-    expect(html).toContain(fmtDay(at, "en"));
+    // B-GROWTH-NEW-2B: a this-week row carries no year (fmtDayShort).
+    const { fmtDayShort } = await import("../../lib/formatDate");
+    expect(html).toContain(fmtDayShort(at, "en"));
   });
 
   it("NEGATIVE CONTROL: an unmarked milestone leaves no trace, and an undated mark is not invented", async () => {

@@ -155,6 +155,41 @@ describe("#/development Hebrew screen — no Latin chrome (Law 8)", () => {
   });
 });
 
+describe("B-GROWTH-NEW-2B — the child's word leads New since; a count never leads", () => {
+  it("rows: words → milestone → moment; the word row names the child (EN + HE); no year on a row", async () => {
+    for (const lang of ["en", "he"] as const) {
+      const t = (k: string, v?: Record<string, string | number>) => translate(lang, k, v);
+      const rows = buildNewSince({
+        sinceMs: NOW - 7 * DAY, milestones: h.state.milestones as Milestone[], langObs: h.langObs,
+        behaviorLogs: h.state.behaviorLogs as BehaviorLog[], milestoneTitle: (m) => m.title, t, name: "Dylan",
+      });
+      expect(rows.map((r) => r.kind)).toEqual(["words", "milestone", "moment"]);
+      expect(rows[0].text).toContain(lang === "en" ? "Dylan's new words in English:" : "המילים החדשות של");
+    }
+    const t = (k: string, v?: Record<string, string | number>) => translate("en", k, v);
+    const one = buildNewSince({
+      sinceMs: NOW - 7 * DAY, milestones: [], langObs: [h.langObs[0]], behaviorLogs: h.state.behaviorLogs as BehaviorLog[],
+      milestoneTitle: (m) => m.title, t, name: "Dylan",
+    });
+    expect(one[0].text).toBe("Dylan's new word:");
+    expect(one[0].quote).toBe("“moon”");
+    expect(translate("he", "elev.growth.newSince.word.oneNamed", { name: "Dylan" })).toContain("המילה החדשה של");
+    // with no word and no milestone the moments row is alone; with a milestone it never leads
+    const noWord = buildNewSince({
+      sinceMs: NOW - 7 * DAY, milestones: h.state.milestones as Milestone[], langObs: [], behaviorLogs: h.state.behaviorLogs as BehaviorLog[],
+      milestoneTitle: (m) => m.title, t,
+    });
+    expect(noWord[0].kind).toBe("milestone");
+    h.locale = "en";
+    const html = await render();
+    const well = html.slice(html.indexOf('data-testid="growth-new-since"'), html.indexOf('data-module="growth-weekly-focus"'));
+    expect(well).toBeTruthy();
+    expect(well).not.toMatch(/\b20\d\d\b/);
+    expect(SRC).toMatch(/data-testid="growth-focus-hint"/);
+    expect(SRC.match(/<p[^>]*data-testid="growth-focus-hint"[^>]*>/)?.[0] ?? "").toContain("var(--arbor-muted)");
+  });
+});
+
 describe("#/development Hebrew takes the child's gender from the profile — never a slash (W2-GROWTH r2, Law 8)", () => {
   const SLASH = /[א-ת]\/[א-ת]/;
   const setCatalogue = (gender?: string) => {

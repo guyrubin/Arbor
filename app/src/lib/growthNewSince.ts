@@ -60,8 +60,10 @@ export function buildNewSince(input: {
   behaviorLogs: BehaviorLog[];
   milestoneTitle: (m: Milestone) => string;
   t: T;
+  /** The child's first name — the words row reads "{name}'s new word" (B-GROWTH-NEW-2B). */
+  name?: string;
 }): NewSinceRow[] {
-  const { sinceMs, milestones, langObs, behaviorLogs, milestoneTitle, t } = input;
+  const { sinceMs, milestones, langObs, behaviorLogs, milestoneTitle, t, name } = input;
   const after = (iso: string | undefined) => {
     const ms = iso ? Date.parse(iso) : NaN;
     return Number.isFinite(ms) && ms >= sinceMs ? ms : null;
@@ -96,7 +98,14 @@ export function buildNewSince(input: {
       id: `words-${lang || "none"}`,
       kind: "words",
       at: Date.parse(sorted[0].timestamp),
-      text: n === 1
+      // B-GROWTH-NEW-2B: the child's word, named as the child's ("Dylan's new
+      // word: “moon”"), not a log entry; the language rides along only when
+      // there are several words in it. No count leads.
+      text: name
+        ? n === 1
+          ? t("elev.growth.newSince.word.oneNamed", { name })
+          : t(language ? "elev.growth.newSince.word.manyNamed" : "elev.growth.newSince.word.manyNamedNoLang", { name, language })
+        : n === 1
         ? t(language ? "elev.growth.newSince.word.one" : "elev.growth.newSince.word.oneNoLang", { language })
         : t(language ? "elev.growth.newSince.word.many" : "elev.growth.newSince.word.manyNoLang", { n, language }),
       quote: words,
@@ -122,5 +131,11 @@ export function buildNewSince(input: {
     });
   }
 
-  return rows.sort((a, b) => b.at - a.at).slice(0, NEW_SINCE_MAX);
+  // B-GROWTH-NEW-2B: the child's own word leads, then what the parent marked
+  // seen, then the moments count — a count never leads while a word or a
+  // milestone exists. Newest first inside a kind.
+  return rows.sort((a, b) => KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || b.at - a.at).slice(0, NEW_SINCE_MAX);
 }
+
+/** Row order (B-GROWTH-NEW-2B): words → milestone → moment. */
+export const KIND_ORDER: Readonly<Record<NewSinceKind, number>> = { words: 0, milestone: 1, moment: 2 };

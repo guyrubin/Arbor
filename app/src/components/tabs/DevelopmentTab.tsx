@@ -20,7 +20,7 @@ import { clearWatchFocus, resolveWatchFocus } from "../../lib/screeningWatch";
 import { closeDay, deriveReturnSignals } from "../../lib/tomorrowReason";
 import { readRitualRecord } from "../../lib/familyRitualsCadence";
 import { ADVENTURES, type SavedComicMeta } from "../../lib/heroComics";
-import { fmtDay } from "../../lib/formatDate";
+import { fmtDay, fmtDayShort } from "../../lib/formatDate";
 // W2-GROWTH r1 / B-GROWTH-NEW-1A — the "Recent observations" column (log
 // types as titles, the stored English context in the meta) merged into the
 // New-since rows: the parent's own words, dated, in the reader's language.
@@ -152,8 +152,8 @@ export default function DevelopmentTab() {
   const previousVisitAt = childProfile.lastVisitPreviousAt ?? null;
   const sinceMs = useMemo(() => newSinceAnchor(previousVisitAt, Date.now()), [previousVisitAt]);
   const newSince = useMemo(
-    () => buildNewSince({ sinceMs, milestones, langObs: langObs.items, behaviorLogs, milestoneTitle: (m) => milestoneText(m, "title", t, heGender), t }),
-    [sinceMs, milestones, langObs.items, behaviorLogs, t, heGender],
+    () => buildNewSince({ sinceMs, milestones, langObs: langObs.items, behaviorLogs, milestoneTitle: (m) => milestoneText(m, "title", t, heGender), t, name: firstName || undefined }),
+    [sinceMs, milestones, langObs.items, behaviorLogs, t, heGender, firstName],
   );
   const sinceLabel = previousVisitAt
     ? t("elev.growth.newSince.label", { date: fmtDay(new Date(sinceMs).toISOString(), uiLang) })
@@ -265,7 +265,8 @@ export default function DevelopmentTab() {
                       </>
                     )}
                   </span>
-                  <span className="text-xs" style={{ color: "var(--arbor-muted)" }}>· {fmtDay(row.dateIso, uiLang)}</span>
+                  {/* B-GROWTH-NEW-2B: a note, not a log — no year on a this-week row. */}
+                  <span className="text-xs" style={{ color: "var(--arbor-muted)" }}>· {fmtDayShort(row.dateIso, uiLang)}</span>
                 </li>
               ))}
             </ul>
@@ -284,7 +285,9 @@ export default function DevelopmentTab() {
             {/* W2-GROWTH r1: the H2 steps down to --t-xl under the --t-2xl H1. */}
             <h2 id="growth-weekly-focus" className="mt-1.5 break-words font-semibold leading-tight" style={{ fontFamily: "var(--font-display)", fontSize: "var(--t-xl)", color: "var(--arbor-ink)" }}>{weeklyFocus.title}</h2>
             {weeklyFocus.hint && (
-              <p className="mt-1 text-[12px] font-bold" style={{ color: "var(--arbor-green-ink)" }}>{weeklyFocus.hint}</p>
+              // B-GROWTH-NEW-2B: a "not noticed yet" status is neutral ink —
+              // green stays the post-tap "Kept in {name}'s record" line alone.
+              <p className="mt-1 text-xs" style={{ color: "var(--arbor-muted)" }} data-testid="growth-focus-hint">{weeklyFocus.hint}</p>
             )}
             <p className="mt-1.5 max-w-2xl break-words text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{weeklyFocus.body}</p>
             {/* GP-06 — the observe row: the hub's primary move, in place.
@@ -354,8 +357,8 @@ export default function DevelopmentTab() {
                 {!weeklyFocus.milestoneId ? null : justNoticedId === weeklyFocus.milestoneId ? (
                   <p className="mt-1.5 text-xs font-bold" style={{ color: "var(--arbor-green-ink)" }} data-testid="growth-observe-kept" aria-live="polite">
                     {firstName
-                      ? t("elev.growth.observe.kept", { name: firstName, date: fmtDay(new Date().toISOString(), uiLang) })
-                      : t("elev.growth.observe.keptGeneric", { date: fmtDay(new Date().toISOString(), uiLang) })}
+                      ? t("elev.growth.observe.kept", { name: firstName, date: fmtDayShort(new Date().toISOString(), uiLang) })
+                      : t("elev.growth.observe.keptGeneric", { date: fmtDayShort(new Date().toISOString(), uiLang) })}
                   </p>
                 ) : weeklyFocus.observationStatus === "not_sure" && weeklyFocus.observationUpdatedAt ? (
                   <p className="mt-1.5 text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }} data-testid="growth-observe-again">
