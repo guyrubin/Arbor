@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
-import { PlayHeader, MascotSay, ProgressPips, PlayButton, Celebrate, ChoiceTile, PlayPanel } from "../ui/playkit";
+import { MascotSay, ProgressPips, PlayButton, Celebrate, ChoiceTile, PlayPanel } from "../ui/playkit";
+import { GameFinish, GameShell } from "../kidmode/game/GameShell";
 import { useArcadeLogger } from "../../practice/useArcadeLogger";
 import { BEAT_SETS, scoreBeatTaps } from "../../practice/newGames";
 import { SpeakButton } from "../ui/SpeakButton";
 import { useLanguage } from "../../context/LanguageContext";
 import { selectionHaptic } from "../../lib/native";
-import { noteKidActivity } from "../../lib/kidModeGate";
+import { isKidModeActive, noteKidActivity } from "../../lib/kidModeGate";
 import { beatClick, closeBeatAudio } from "../../practice/beatAudio";
 
 /* Beat Keeper — tap on the beat. A rhythm/timing game (regulation): the drum
@@ -44,18 +45,21 @@ export default function BeatKeeperWorld() {
   const selectedSet = BEAT_SETS.find((set) => set.id === selectedSetId) ?? null;
   const rounds = selectedSet?.rounds ?? [];
   const setLabel = selectedSet ? selectedSet.label[uiLang === "he" ? "he" : "en"] : "";
+  // B-KID-74: Beat Keeper on the one kid game shell (Kid Mode: the bar names
+  // the game + carries hear-it; dots for the rounds; GameFinish at the end).
+  const kid = isKidModeActive();
 
   if (!selectedSet) {
     const emoji: Record<string, string> = { "gentle-rain": "🌧️", "walking-parade": "🥁", "star-signals": "✨" };
     return (
-      <div className="space-y-6">
-        <PlayHeader
-          title={t("elev.play.beat.title")}
-          say={t("elev.kids.beat.choose.say")}
-          mood="happy"
-          worldId="beat"
-          eyebrow={t("elev.kids.beat.choose.title")}
-        />
+      <GameShell
+        worldId="beat"
+        title={t("elev.play.beat.title")}
+        instruction={t("elev.kids.beat.choose.say")}
+        mood="happy"
+        variant="entry"
+        eyebrow={t("elev.kids.beat.choose.title")}
+      >
         <PlayPanel tone="clay">
           <div className="grid gap-3 sm:grid-cols-3">
             {BEAT_SETS.map((set) => {
@@ -77,7 +81,7 @@ export default function BeatKeeperWorld() {
             })}
           </div>
         </PlayPanel>
-      </div>
+      </GameShell>
     );
   }
 
@@ -85,6 +89,20 @@ export default function BeatKeeperWorld() {
   if (done) {
     // B-KID-04 (law 3): finishing IS the achievement — flat full stars, never
     // a grade of how close the taps were to the beat.
+    const chooseAnother = () => { setSelectedSetId(null); setRoundIdx(0); setScores([]); setPhase("ready"); setPulse(-1); };
+    if (kid) {
+      return (
+        <GameShell worldId="beat" title={t("elev.play.beat.title")}>
+          <GameFinish
+            title={t("elev.play.beat.complete.title", { name: first })}
+            subtitle={t("elev.play.beat.complete.sub")}
+            onPlayAgain={chooseAnother}
+            playAgainLabel={t("elev.kids.beat.choose.again")}
+            homeLabel={t("kidGame.home")}
+          />
+        </GameShell>
+      );
+    }
     return (
       <Celebrate title={t("elev.play.beat.complete.title", { name: first })} subtitle={t("elev.play.beat.complete.sub")} stars={3} starsTotal={3}>
         <PlayButton onClick={() => { setSelectedSetId(null); setRoundIdx(0); setScores([]); setPhase("ready"); setPulse(-1); }}>{t("elev.kids.beat.choose.again")}</PlayButton>
@@ -138,17 +156,16 @@ export default function BeatKeeperWorld() {
   };
 
   return (
-    <div className="space-y-6">
-      <PlayHeader
-        title={t("elev.play.beat.title")}
-        say={t("elev.play.beat.say")}
-        mood="happy"
-        worldId="beat"
-        variant="compact"
-        eyebrow={setLabel}
-        action={<SpeakButton text={t("elev.play.beat.say")} lang={uiLang} label={t("elev.play.speak.label")} size="md" className="min-w-[44px] min-h-[44px] justify-center" />}
-      />
-      <ProgressPips total={rounds.length} current={roundIdx} tone="clay" />
+    <GameShell
+      worldId="beat"
+      title={t("elev.play.beat.title")}
+      instruction={t("elev.play.beat.say")}
+      mood="happy"
+      eyebrow={setLabel}
+      action={<SpeakButton text={t("elev.play.beat.say")} lang={uiLang} label={t("elev.play.speak.label")} size="md" className="min-w-[44px] min-h-[44px] justify-center" />}
+      progress={{ index: roundIdx, total: rounds.length }}
+    >
+      {!kid && <ProgressPips total={rounds.length} current={roundIdx} tone="clay" />}
 
       <div className="rounded-[var(--play-radius)] p-6 grid place-items-center comic-panel" style={{ background: "var(--arbor-green-soft)", minHeight: 220 }}>
         <button
@@ -183,9 +200,11 @@ export default function BeatKeeperWorld() {
         </>
       )}
 
+      {!kid && (
       <p className="flex items-center justify-center gap-1.5 text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }}>
         <Icon name="music_note" size={14} /> {t("elev.play.beat.support")}
       </p>
-    </div>
+      )}
+    </GameShell>
   );
 }
