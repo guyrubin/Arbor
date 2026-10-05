@@ -24,6 +24,12 @@ describe("parseDevBookParams", () => {
     expect(p.costume).toBeNull();
   });
 
+  it("voice=<set> picks the narration folder (default: the hero sheet's); unsafe values fall back", () => {
+    expect(parseDevBookParams("?book=").voiceSet).toBeNull();
+    expect(parseDevBookParams("?book=&voice=dylan-v2-expressive").voiceSet).toBe("dylan-v2-expressive");
+    expect(parseDevBookParams("?book=&voice=../x").voiceSet).toBeNull();
+  });
+
   it("prints=0 turns the printed pages off; costume=tunic is the p5 A/B", () => {
     const p = parseDevBookParams("?book=five-smooth-stones&prints=0&costume=tunic");
     expect(p.prints).toBe(false);

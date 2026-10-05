@@ -19,6 +19,9 @@
  * - prints : 0 = show the live composite on every page (default: the sheet's
  *            printed pages where it has them).
  * - costume: tunic = the p5 A/B (BR5): p5 shows `worried-tunic`.
+ * - voice  : the narration set (folder under /_dev/narration/<book>/), default
+ *            the hero sheet id (dylan-v2) — e.g. dylan-v2-expressive, to
+ *            compare a performed reading without replacing files.
  * The hero sheet's manifest.json is read before the reader mounts.
  *
  * Wrapped in `.arbor-play` so the kid tokens apply. Closing the book returns
@@ -39,6 +42,8 @@ export interface DevBookParams {
   narration: "probe" | "off";
   prints: boolean;
   costume: string | null;
+  /** The narration set (folder), or null = the hero sheet id. */
+  voiceSet: string | null;
 }
 
 const SEGMENT = /^[A-Za-z0-9_-]{1,64}$/;
@@ -60,6 +65,7 @@ export function parseDevBookParams(search: string): DevBookParams {
     narration: q.get("narration") === "off" ? "off" : "probe",
     prints: q.get("prints") !== "0",
     costume: q.get("costume") === "tunic" ? "tunic" : null,
+    voiceSet: SEGMENT.test(q.get("voice") ?? "") ? q.get("voice") : null,
   };
 }
 
@@ -93,6 +99,7 @@ export function DevBookRoute({ params }: { params: DevBookParams }) {
           lang={params.lang}
           child={params.child}
           narration={params.narration}
+          voiceSet={params.voiceSet}
           sheet={sheet}
           prints={params.prints}
           costume={params.costume}
