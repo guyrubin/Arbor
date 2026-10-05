@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ageMonthsFromProfile, ageYearsFromProfile } from "../../lib/childAge";
+import { ageLabel, ageMonthsFromProfile, ageYearsFromProfile } from "../../lib/childAge";
 import { availableHardMomentCards } from "../../content/selectCards";
 import { escalationText, locText } from "../../content/hardMomentSurface";
 import { acceptHardMomentStep, hardMomentStepFor } from "../overview/hardMomentStep";
@@ -11,7 +11,6 @@ import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
-import { useAuth } from "../../context/AuthContext";
 import DailyPlayCard from "../overview/DailyPlayCard";
 import QuickCaptureBar from "../overview/QuickCaptureBar";
 import TodayRecommendation from "../overview/TodayRecommendation";
@@ -30,6 +29,8 @@ import WhatChanged from "../overview/WhatChanged";
 import { composeWhatChanged, type WhatChangedLine } from "../overview/whatChangedEvents";
 import { firstsStorageKey, type FirstsState } from "../../lib/firsts";
 import PromptCaptureCard from "../overview/PromptCaptureCard";
+import FromRecordCard, { FromRecordReceipt } from "../overview/FromRecordCard";
+import { answeredToday, selectFromRecord } from "../../lib/today/fromRecord";
 import { ErrorState } from "../ui/ErrorState";
 import ArborNoticedCard, { todayNoticedSignal } from "../sections/ArborNoticedCard";
 import type { CaptureMode } from "../../context/ArborContext";
@@ -108,10 +109,10 @@ export default function OverviewTab() {
     donePlayIds, logPlayCompletion, playLogs, actionLoop,
     activeTodayAction, acceptTodayAction, requestJournalFocus, approvedMemoryItems,
     pendingCaptureMode, consumeCaptureRequest, openHardMomentNow,
+    actionPlans, memoryReviewItems, recordFromRecordAnswer,
   } = useArbor();
 
   const { t, uiLang } = useLanguage();
-  const { user } = useAuth();
   const { toast } = useToast();
   // W6.2 ambient capture → B-TODAY-19: every tile (text · voice · photo)
   // opens the ONE capture sheet in place (QuickLogModal portals to body), so
@@ -148,7 +149,6 @@ export default function OverviewTab() {
   const goalDomains = useMemo(() => activeGoalDomains(activeGoals), [activeGoals]);
 
   const firstName = (childProfile.name || "your child").split(" ")[0];
-  const parentFirstName = (user?.displayName || t("nav.parent")).split(" ")[0];
 
   // ── W1 1.1: two-slot visit tracking (mounted ONCE, here) ──
   const { previousVisitAt, isReturning } = useLastVisit(childProfile);
@@ -444,10 +444,36 @@ export default function OverviewTab() {
     return availableHardMomentCards({ now, ageMonths: ageMonthsFromProfile(childProfile, now), locale: uiLang === "he" ? "he" : "en" }).length > 0;
   }, [childProfile, uiLang]);
 
-  // CODEX-2: time-of-day-aware greeting (was hardcoded to the morning copy).
-  const hour = new Date().getHours();
-  const greetingKey =
-    hour < 12 ? "today.greeting.morning" : hour < 18 ? "today.greeting.afternoon" : "today.greeting.evening";
+  // B-TODAY-28: the child leads — the top line is the child's name, age and
+  // the local weekday + part of day ("Dylan · 5 · Tuesday morning"); the
+  // greeting to the parent is gone (CODEX-2's local-time rule stands).
+  const now0 = new Date();
+  const hour = now0.getHours();
+  const whenKey =
+    hour < 12 ? "today.when.morning" : hour < 18 ? "today.when.afternoon" : "today.when.evening";
+  const weekday = now0.toLocaleDateString(uiLang === "he" ? "he-IL" : "en-GB", { weekday: "long" });
+  // GP-01: the one parent-facing age path (ageLabel), never `profile.age`.
+  const ageText = ageLabel(childProfile, t);
+  const identityLine = ageText
+    ? t("today.identity", { name: firstName, age: ageText, when: t(whenKey, { weekday }) })
+    : t("today.identity.noAge", { name: firstName, when: t(whenKey, { weekday }) });
+
+  // B-TODAY-28 — "From your record": ONE opener drawn from what the family
+  // already told Arbor (active plan → old note → a remembered fact with a
+  // time in it). Pure, zero model calls. When it speaks (or was answered
+  // today), the generic capture prompt card does not render.
+  const recordOpener = useMemo(
+    () => selectFromRecord({
+      now: new Date(),
+      plans: actionPlans,
+      loop: actionLoop,
+      logs: behaviorLogs,
+      facts: memoryReviewItems.map((m) => ({ id: m.memoryId, fact: m.fact, createdAt: m.createdAt, status: m.status })),
+    }),
+    [actionPlans, actionLoop, behaviorLogs, memoryReviewItems]
+  );
+  const recordAnswered = useMemo(() => answeredToday(actionLoop, childProfile.id), [actionLoop, childProfile.id]);
+  const recordSpeaks = !!recordOpener || !!recordAnswered;
 
   // The step card's ONE seeded ask: the focus text, or (B-TODAY-12) the
   // matched guide's doNow when that is the step.
@@ -653,17 +679,12 @@ export default function OverviewTab() {
               phone that duplicate cost 21px of the ~360px the greeting block
               leaves the primary CTA before the 812px fold. One eyebrow, on the
               card it labels. */}
-          <h1 className="text-[30px] sm:text-[38px] leading-tight" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)", fontWeight: 700 }}>
-            {t(greetingKey, { name: parentFirstName })}
+          {/* B-TODAY-28: no greeting, no "What would help today?" — the
+              child's identity line is the page title; the record speaks
+              first in the card below. */}
+          <h1 data-testid="today-identity" dir="auto" className="text-[17px] font-semibold leading-tight sm:text-[19px]" style={{ color: "var(--arbor-ink)" }}>
+            <bdi>{identityLine}</bdi>
           </h1>
-          <p className="mt-2 text-[19px] font-bold" style={{ color: "var(--arbor-ink-soft)", fontFamily: "var(--font-display)" }}>{t("today.header.prompt")}</p>
-          {/* P1-A headroom, phones only: this two-line explainer duplicates the
-              pinned QuickCaptureBar's own label ("Capture a moment in …'s
-              story" + mic/photo/text), which is permanently visible on < md.
-              Dropping it below sm buys 47px, which is what makes the fold hold
-              for ANY headline the 150-char focus clamp can produce — with it,
-              a maximally long AI first sentence pushed the CTA past 812px. */}
-          <p className="mt-1 text-[14px] hidden sm:block" style={{ color: "var(--arbor-muted)" }}>{t("today.header.sub")}</p>
         </div>
       </header>
 
@@ -713,6 +734,16 @@ export default function OverviewTab() {
                so it can never be persisted into actionLoops nor injected into
                the next focus prompt. */}
         <div data-primary-move="do-today-action" className="min-w-0">
+          {/* B-TODAY-28: the record speaks first — the parent's own words, one
+              question, three answers (the first chip row of the primary
+              move); after an answer, a one-line receipt. */}
+          {recordAnswered ? (
+            <div className="mb-3"><FromRecordReceipt /></div>
+          ) : recordOpener ? (
+            <div className="mb-4">
+              <FromRecordCard opener={recordOpener} onAnswer={(answer) => recordFromRecordAnswer(recordOpener, answer)} />
+            </div>
+          ) : null}
           {/* B-TODAY-18: the continuation slot ABOVE the step — exactly one of
               the carry-over outcome ask or tomorrow's reason, or nothing, as
               the coordinator decided (chooseContinuation maps its winner to
@@ -784,8 +815,9 @@ export default function OverviewTab() {
             />
           ) : todayChoice.kind === "play" ? (
             playSection
-          ) : (
+          ) : recordSpeaks ? null : (
             <PromptCaptureCard
+              gender={childProfile.gender}
               promptKey={todayChoice.kind === "prompt" ? todayChoice.promptKey : null}
               childName={firstName}
               onCapture={() => startCapture("text", todayChoice.kind === "prompt" ? todayChoice.promptKey : null)}

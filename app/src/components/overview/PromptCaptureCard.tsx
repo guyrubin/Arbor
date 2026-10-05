@@ -2,6 +2,7 @@ import React from "react";
 import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
 import { TrustLink } from "../trust/TrustLink";
+import { genderedEn, type ChildGender } from "../../lib/today/fromRecord";
 
 /**
  * PromptCaptureCard — W1 1.2, the guaranteed-action fallback when no AI focus
@@ -24,6 +25,7 @@ export default function PromptCaptureCard({
   childName,
   onCapture,
   whyLine,
+  gender,
 }: {
   /** Today's promptBank i18n key (elev.prompt.<band>.<n>), or null for the bare floor. */
   promptKey: string | null;
@@ -39,8 +41,12 @@ export default function PromptCaptureCard({
    * mount the card bare; absent, the card says nothing rather than a claim.
    */
   whyLine?: string;
+  /** B-TODAY-28: the profile gender — boy/girl read "he"/"she" in EN prompts
+   *  (HE prompts are impersonal by construction); other/unspecified stay neutral. */
+  gender?: ChildGender;
 }) {
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
+  const prompt = promptKey ? t(promptKey) : t("elev.prompt.lead");
 
   return (
     <section
@@ -55,7 +61,7 @@ export default function PromptCaptureCard({
         {t("today.intent.captureTitle")}
       </h2>
       <p dir="auto" className="mt-1.5 text-[14px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
-        {promptKey ? t(promptKey) : t("elev.prompt.lead")}
+        {uiLang === "en" ? genderedEn(prompt, gender) : prompt}
       </p>
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <button

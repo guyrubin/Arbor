@@ -117,10 +117,12 @@ describe("OverviewTab wiring (TODAY-1 + CODEX-2)", () => {
     expect(src).not.toMatch(/focus\?\.text\?\.trim\(\)\s*\|\|\s*t\("ov\.recoEmpty"/);
   });
 
-  it("greets by local time of day via i18n keys (no hardcoded Good morning)", () => {
-    expect(src).toContain('"today.greeting.morning"');
-    expect(src).toContain('"today.greeting.afternoon"');
-    expect(src).toContain('"today.greeting.evening"');
+  it("names the local part of day via i18n keys (no hardcoded Good morning)", () => {
+    // B-TODAY-28: the greeting became the child's identity line
+    // ("Dylan · 5 years · Tuesday morning"); CODEX-2's local-time rule stands.
+    expect(src).toContain('"today.when.morning"');
+    expect(src).toContain('"today.when.afternoon"');
+    expect(src).toContain('"today.when.evening"');
     expect(src).toContain("getHours()");
     expect(src).not.toContain("Good morning");
     expect(src).not.toContain("בוקר טוב");

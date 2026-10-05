@@ -90,6 +90,7 @@ const ACTION_SOURCE_SET: { [K in ActionSource]: true } = {
   plan: true,
   vision: true,
   "hard-moment": true,
+  "from-record": true,
 };
 const OUTCOMES = new Set(["helped", "somewhat", "not_today"]);
 
@@ -107,6 +108,9 @@ export const projectAcceptedActions = (rows: readonly unknown[]): CompanionActio
     const recommendation = clean(r.recommendation, ACTION_TEXT_CAP);
     if (!recommendation || !validIso(r.acceptedAt)) continue;
     if (r.status !== "accepted" && r.status !== "completed") continue;
+    // B-TODAY-28: a "From your record" answer is the parent's read of how
+    // things are, not a step tried — it never reaches the companion context.
+    if (r.source === "from-record") continue;
     const source = typeof r.source === "string" && r.source in ACTION_SOURCE_SET ? (r.source as ActionSource) : "today-guidance";
     const action: CompanionAction = { recommendation, source, status: r.status, acceptedAt: r.acceptedAt };
     if (r.status === "completed" && typeof r.outcome === "string" && OUTCOMES.has(r.outcome)) {

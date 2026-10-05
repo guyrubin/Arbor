@@ -48,6 +48,7 @@ import { ageYearsFromProfile, ageMonthsFromProfile } from "../lib/childAge";
 import { ageWindowMilestones, comparisonAgeMonths } from "../lib/milestoneData";
 import { activeActionFor, planAcceptedAction, sortActionLoop, todayActionId, type PlanStepRef } from "../actionLoop/model";
 import { planStepStatusAfter } from "../lib/plans";
+import { fromRecordEntry, type FromRecordAnswer, type FromRecordOpener } from "../lib/today/fromRecord";
 import { recentTypeCounts } from "../lib/planRecord";
 import { appendVoiceUser, applyVoiceDelta, settleVoiceTurn } from "../lib/voiceTranscript";
 import type { ConversationChangeRecord, ConversationProposal } from "../lib/conversationProposals";
@@ -466,6 +467,13 @@ function useArborState() {
     try { track("today_action_outcome", todayOutcomeProps({ outcome, capacity: item.capacity, via, acceptedAt: item.acceptedAt })); } catch { /* noop */ }
   };
   const removeTodayAction = (id: string) => void actionLoopCol.remove(id);
+  // B-TODAY-28 — Today's "From your record" answer: ONE row on the same
+  // actionLoops ledger (source "from-record", the parent's reflection), never
+  // a new collection. ids/enums only in the event.
+  const recordFromRecordAnswer = (opener: FromRecordOpener, answer: FromRecordAnswer) => {
+    void actionLoopCol.upsert(fromRecordEntry(opener, answer, childProfile.id));
+    try { track("today_record_answer", { kind: opener.kind, answer }); } catch { /* noop */ }
+  };
   // B-ASKJB-31 — the ONE "Hard moment now" sheet (mounted once in Shell).
   // Doors: Ask's fast-start chip, a Behaviors shelf card (opens on that card),
   // Today's capture-bar tile (B-TODAY-10). `askHardMomentRef` is the card the
@@ -1578,6 +1586,7 @@ function useArborState() {
     acceptTodayAction,
     recordTodayOutcome,
     removeTodayAction,
+    recordFromRecordAnswer,
     captureSheet,
     openCaptureSheet,
     closeCaptureSheet,

@@ -23,7 +23,8 @@ export type ActionSource =
   | "coach"
   | "plan"
   | "vision"
-  | "hard-moment";
+  | "hard-moment"
+  | "from-record";
 
 /** Runtime registry of every ActionSource. The mapped type fails to compile
  *  when a source is added to the union and not listed here (exhaustiveness
@@ -37,6 +38,7 @@ const ACTION_SOURCE_MAP: { [K in ActionSource]: true } = {
   plan: true,
   vision: true,
   "hard-moment": true,
+  "from-record": true,
 };
 export const ACTION_SOURCES = Object.keys(ACTION_SOURCE_MAP) as readonly ActionSource[];
 
@@ -58,6 +60,11 @@ export interface ActionLoopEntry {
   planId?: string;
   phaseIdx?: number;
   stepIdx?: number;
+  /** B-TODAY-28: a `from-record` row names what Today asked about
+   *  (`plan:<id>` · `note:<id>` · `fact:<id>`) and the parent's answer.
+   *  The reflection is the parent's read, never a score; `outcome` stays unset. */
+  recordKey?: string;
+  reflection?: "easier" | "hard_again" | "other";
 }
 
 /** B-ASKJB-26: the plan step an accept came from. */

@@ -142,7 +142,7 @@ describe("TJB-05 — the source is registered and the contract admits it", () =>
 describe("B-AI-05 — every ActionSource writes the thread", () => {
   it("ACTION_SOURCES lists the companion sources (exhaustive over the union)", () => {
     expect([...ACTION_SOURCES].sort()).toEqual(
-      ["coach", "digest", "family-ritual", "hard-moment", "learn-read", "plan", "today-guidance", "vision"],
+      ["coach", "digest", "family-ritual", "from-record", "hard-moment", "learn-read", "plan", "today-guidance", "vision"],
     );
   });
 
