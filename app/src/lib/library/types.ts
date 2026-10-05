@@ -131,8 +131,9 @@ export interface PageOverlay {
   revealAt?: number;
   /** Drawn over the hero (default) or behind it. */
   z?: "over" | "under";
-  /** "feet" (default): (x, y) is the centre of the lowest opaque band, at
-   *  `footX` of the image width; "center": (x, y) is the image centre. */
+  /** (x, y) is always the BOTTOM edge of the image (as compose.py places it);
+   *  "feet" (default) puts the lowest opaque band's centre (`footX` of the
+   *  width) on x, "center" puts the image's horizontal centre on x. */
   anchor?: "feet" | "center";
   footX?: number;
   /** Degrees, clockwise. */
