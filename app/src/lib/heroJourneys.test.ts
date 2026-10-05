@@ -8,7 +8,10 @@ import {
   applyChoice,
   getStorySpec,
   storiesInPack,
+  storyHasLanguage,
+  STORY_HE_REVIEW,
 } from "./heroJourneys";
+import { authoredChoice, authoredScene, type StoryHero } from "./heroJourneyRender";
 import type { DevelopmentMetricId, HeroBeatId } from "../types";
 
 const SPINE_ORDER: HeroBeatId[] = [
@@ -130,5 +133,49 @@ describe("metric helpers", () => {
   it("getStorySpec returns undefined for unknown ids", () => {
     expect(getStorySpec("does-not-exist")).toBeUndefined();
     expect(getStorySpec("king-solomons-choice")?.pack).toBe("wisdom");
+  });
+});
+
+// B-KID-132: the illustrated books read as picture-book text (EN + HE, with the
+// feminine Hebrew for a girl). Every hero mention is a token nameTheHero
+// replaces: after naming, no "hero" / "גיבור" is left for a boy or a girl.
+const READ_ALOUD_IDS = [
+  "the-lion-who-was-afraid", "noahs-ark", "the-garden-of-forgotten-seeds",
+];
+
+describe("B-KID-132: the read-aloud books name the child on every page", () => {
+  const boy = { name: "Noam", gender: "boy" as const };
+  const boyHe = { name: "נועם", gender: "boy" as const };
+  const girlHe = { name: "מאיה", gender: "girl" as const };
+  const pages = (id: string, lang: "en" | "he", hero: StoryHero) => {
+    const s = getStorySpec(id)!;
+    const decision = s.beats.find((b) => b.id === "decision")!;
+    return [
+      ...s.beats.map((b) => authoredScene(b, lang, undefined, hero).narration),
+      ...decision.choices!.map((c) => authoredChoice(c, lang, hero).consequence),
+    ];
+  };
+  it("exactly the rewritten books carry feminine Hebrew text, and keep the Hebrew review marker", () => {
+    expect(HERO_STORIES.filter((s) => s.beats.some((b) => b.spineHeF)).map((s) => s.id).sort()).toEqual([...READ_ALOUD_IDS].sort());
+    for (const id of READ_ALOUD_IDS) {
+      expect(STORY_HE_REVIEW[id], id).toBe("ai-first-pass");
+      expect(storyHasLanguage(getStorySpec(id)!, "he"), id).toBe(true);
+    }
+  });
+  it.each(READ_ALOUD_IDS.map((id) => [id]))("%s: EN, HE boy and HE girl leave no un-named hero", (id) => {
+    for (const p of pages(id, "en", boy)) expect(p, p).not.toMatch(/\bhero/i);
+    for (const p of pages(id, "he", boyHe)) expect(p, p).not.toMatch(/גיבור/);
+    for (const p of pages(id, "he", girlHe)) expect(p, p).not.toMatch(/גיבור/);
+    expect(pages(id, "en", boy).some((p) => p.includes("Noam"))).toBe(true);
+    expect(pages(id, "he", girlHe).some((p) => p.includes("מאיה"))).toBe(true);
+  });
+  it.each(READ_ALOUD_IDS.map((id) => [id]))("%s: the feminine text is the girl's twin of the masculine page", (id) => {
+    for (const b of getStorySpec(id)!.beats) {
+      if (b.spineHeF) {
+        expect(b.spineHe, `${id} ${b.id}`).toMatch(/גיבור(?!ה)/);
+        expect(b.spineHeF, `${id} ${b.id}`).toMatch(/גיבורה/);
+      }
+      for (const c of b.choices ?? []) if (c.outcomeHintHeF) expect(c.outcomeHintHeF, `${id} ${c.id}`).toMatch(/גיבורה/);
+    }
   });
 });
