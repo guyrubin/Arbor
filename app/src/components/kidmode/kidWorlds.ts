@@ -60,3 +60,40 @@ export function kidWorldByWorldId(worldId: string): KidWorld | undefined {
 
 /** worldId → the ONE kid name key (the in-world bar title). */
 export const KID_WORLD_NAME_KEY: Readonly<Record<string, string>> = Object.fromEntries(KID_WORLDS.map((w) => [w.worldId, w.nameKey]));
+
+/**
+ * B-GAME-07b — Sneak & Freeze / "דג מלוח", the G0 proof game, ON by default since
+ * 6 Oct 2026 (device opt-out: localStorage["arbor.flags.sneakFreeze"] = "0",
+ * read once, try/catch). It is NOT in KID_WORLDS, so the registry-derived art
+ * keys and every existing consumer are exactly as before. No parent door, no art key, no souvenir yet.
+ */
+export const SNEAK_FREEZE_FLAG_KEY = "arbor.flags.sneakFreeze";
+export const SNEAK_FREEZE_WORLD = { worldId: "sneak", id: "sneak-freeze", nameKey: "kid.game.sneak-freeze.title", subKey: "kid.game.sneak-freeze.sub", accent: "green" } as const;
+export type SneakFreezeWorldId = (typeof SNEAK_FREEZE_WORLD)["worldId"];
+
+let sneakFlag: boolean | null = null;
+/**
+ * True unless the device flag turns Sneak & Freeze OFF (read once per page
+ * load). Guy, 6 Oct 2026, after playing the proof: "Looks good" → "put it in
+ * production" — the game is ON by default; localStorage["arbor.flags.sneakFreeze"]
+ * = "0" hides it on a device (the old "1" still means on).
+ */
+export function sneakFreezeFlagOn(): boolean {
+  if (sneakFlag !== null) return sneakFlag;
+  try {
+    sneakFlag = typeof localStorage === "undefined" || localStorage.getItem(SNEAK_FREEZE_FLAG_KEY) !== "0";
+  } catch {
+    sneakFlag = true;
+  }
+  return sneakFlag;
+}
+
+/** Tests only: forget the cached flag so the next read goes to localStorage. */
+export function resetSneakFreezeFlagForTests(): void {
+  sneakFlag = null;
+}
+
+/** The flagged world's name key for an arcade id, only while the flag is on. */
+export function flaggedWorldNameKey(worldId: string): string | undefined {
+  return worldId === SNEAK_FREEZE_WORLD.worldId && sneakFreezeFlagOn() ? SNEAK_FREEZE_WORLD.nameKey : undefined;
+}

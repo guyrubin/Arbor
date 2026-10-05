@@ -27,6 +27,7 @@ import { useLanguage } from "../../../context/LanguageContext";
 import { useArborOptional } from "../../../context/ArborContext";
 import { isKidModeActive, subscribeKidMode } from "../../../lib/kidModeGate";
 import type { KidWorldTileId } from "../../../lib/kidThemeManifest";
+import type { SneakFreezeWorldId } from "../kidWorlds";
 import { setKidHearIt, setKidStage, useKidHome } from "../kidChrome";
 import { autoReadPage, KidHearItButton } from "../kidReadAloud";
 import { stopVoice } from "../../../lib/voice";
@@ -45,8 +46,8 @@ export function onGamePiecePointerDown(e: { target: EventTarget | null }): void 
 }
 
 export interface GameShellProps {
-  /** The world (art key + identity). */
-  worldId: KidWorldTileId;
+  /** The world (art key + identity). B-GAME-07b: or the flagged proof game. */
+  worldId: KidWorldTileId | SneakFreezeWorldId;
   /** The game's name — the parent header's title (Kid Mode: the top bar's). */
   title: string;
   /** Spoken once on arrival and replayed by the top bar's hear-it. */
@@ -64,6 +65,11 @@ export interface GameShellProps {
   action?: React.ReactNode;
   variant?: "entry" | "compact";
   heroDecorative?: boolean;
+  /** B-GAME-06/07b (ruling G7): the scene IS the screen. In Kid Mode the shell
+   *  renders ONLY the overlay's top bar around the game: no instruction
+   *  paragraph, no padding, no progress dots — the child fills the view.
+   *  Default false: every existing game is unchanged. */
+  fullBleed?: boolean;
   children: React.ReactNode;
 }
 
@@ -90,7 +96,7 @@ export function GameProgressDots({ index, total }: { index: number; total: numbe
   );
 }
 
-export function GameShell({ worldId, title, instruction, hearIt, progress, mood, eyebrow, action, variant = "compact", heroDecorative, children }: GameShellProps) {
+export function GameShell({ worldId, title, instruction, hearIt, progress, mood, eyebrow, action, variant = "compact", heroDecorative, fullBleed = false, children }: GameShellProps) {
   const kid = useKidModeOn();
   const { uiLang } = useLanguage();
   const arbor = useArborOptional();
@@ -119,10 +125,21 @@ export function GameShell({ worldId, title, instruction, hearIt, progress, mood,
     return () => { clearTimeout(timer); stopVoice(); };
   }, [kid, instruction, lang, childId]);
 
+  // The flagged proof game has no parent door, art key or souvenir.
+  const tileWorld: KidWorldTileId | null = worldId === "sneak" ? null : worldId;
+
   if (!kid) {
     return (
       <div className="space-y-6">
-        <PlayHeader title={title} say={instruction} mood={mood} worldId={worldId} variant={variant} eyebrow={eyebrow} action={action} heroDecorative={heroDecorative} />
+        {tileWorld && <PlayHeader title={title} say={instruction} mood={mood} worldId={tileWorld} variant={variant} eyebrow={eyebrow} action={action} heroDecorative={heroDecorative} />}
+        {children}
+      </div>
+    );
+  }
+
+  if (fullBleed) {
+    return (
+      <div data-game-shell={worldId} data-full-bleed="" className="arbor-play relative" style={{ isolation: "isolate", blockSize: "100%", inlineSize: "100%" }} onPointerDownCapture={onGamePiecePointerDown}>
         {children}
       </div>
     );
@@ -131,7 +148,7 @@ export function GameShell({ worldId, title, instruction, hearIt, progress, mood,
   return (
     // `.arbor-play`: the kid type scale, also when a surface mounts a game
     // directly (the overlay's feelings view), not only inside the arcade.
-    <GameWorldContext.Provider value={worldId}>
+    <GameWorldContext.Provider value={tileWorld}>
     <div data-game-shell={worldId} className="arbor-play relative" style={{ isolation: "isolate" }} onPointerDownCapture={onGamePiecePointerDown}>
       <div className="relative space-y-4 p-1">
         {instruction && (

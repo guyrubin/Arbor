@@ -1489,3 +1489,23 @@ html[lang="he"] .arbor-parent em { font-style: normal; }
     --arbor-main-pt: 2rem;
   }
 }
+
+/* B-GAME-06b: Sneak & Freeze's transparent kid bar (KidModeOverlay
+   SNEAK_BAR_FLOAT). Its controls float over the scene as toy buttons with
+   their own soft shadows; the grown-ups label sits on a small paper pill;
+   only the controls take presses (the empty bar lets them reach the stage). */
+[data-kid-bar-float] > * { pointer-events: auto; }
+[data-kid-bar-float] button {
+  box-shadow:
+    0 3px 0 color-mix(in oklab, var(--arbor-ink) 14%, var(--arbor-paper-elevated)),
+    0 10px 20px -8px color-mix(in oklab, var(--arbor-ink) 55%, transparent);
+}
+[data-kid-bar-float] > div > span {
+  background: var(--arbor-paper-elevated);
+  border-radius: 999px;
+  padding: 2px 9px;
+  box-shadow: 0 6px 14px -8px color-mix(in oklab, var(--arbor-ink) 60%, transparent);
+}
+/* The Sound toy's soft sky face sits on paper over the scene (its translucent
+   wash alone would take the scene's colour). */
+[data-kid-bar-float] button[aria-pressed] { background-color: var(--arbor-paper-elevated) !important; }

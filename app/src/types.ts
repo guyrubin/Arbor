@@ -629,7 +629,8 @@ export type PracticeEventKind =
   | 'pattern'           // continued a sequence in Pattern Power (logic)
   | 'pose'              // copied a hero action pose in Hero Pose (body imitation)
   | 'lang-strategy'     // LANG-15: parent logged a serve-and-return / narrated-play / shared-reading moment
-  | 'mood-checkin';     // B-KID-02: the child said how THEY feel — never correct/incorrect, never accuracy or stars
+  | 'mood-checkin'      // B-KID-02: the child said how THEY feel — never correct/incorrect, never accuracy or stars
+  | 'stop-signal';      // B-GAME-11: one Sneak & Freeze sitting — counts and experiences only, never right/wrong
 
 export interface PracticeEvent {
   id: string;
@@ -643,6 +644,15 @@ export interface PracticeEvent {
   /** B-KID-02 (`mood-checkin` only): the feeling the child picked for
    *  themselves. Carries no `correct` — a feeling is not an answer. */
   emotion?: string;
+  /** B-GAME-11 (`stop-signal` only): one record per kid-game sitting. No
+   *  `correct`, no `score`, no level or band (rulings G9/G10). */
+  game?: string;
+  skill?: string;
+  day?: string;
+  durationBucket?: string;
+  rounds?: number;
+  experiences?: string[];
+  prizes?: string[];
   timestamp: string;
 }
 

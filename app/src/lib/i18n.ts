@@ -2470,6 +2470,38 @@ export const en: Dict = {
   "kid.game.story-quest.sub": "Choose the way",
   "kid.game.mimic-studio.title": "Mimic Studio",
   "kid.game.mimic-studio.sub": "Copy the moves",
+  // B-GAME-07b: Sneak & Freeze, the G0 proof game (offered only behind the
+  // arbor.flags.sneakFreeze device flag). Lines addressed to the child have
+  // .boy / .girl variants (HE differs; EN repeats the base); the base is the
+  // plural / unspecified form.
+  "kid.game.sneak-freeze.title": "Sneak & Freeze",
+  "kid.game.sneak-freeze.sub": "Sneak up on the cat",
+  "kid.game.sneak-freeze.stageAria": "Hold anywhere to sneak. Let go to freeze.",
+  "kid.game.sneak-freeze.stageAria.boy": "Hold anywhere to sneak. Let go to freeze.",
+  "kid.game.sneak-freeze.stageAria.girl": "Hold anywhere to sneak. Let go to freeze.",
+  // B-GAME-09: the statue picture's caption ({name} is isolated by t()).
+  "kid.game.sneak-freeze.caption": "The cat looked… and {name} didn't move!",
+  "kid.game.sneak-freeze.caption.boy": "The cat looked… and {name} didn't move!",
+  "kid.game.sneak-freeze.caption.girl": "The cat looked… and {name} didn't move!",
+  "kid.game.sneak-freeze.caption.noName": "The cat looked… and nobody moved!",
+  "kid.game.sneak-freeze.pictureAlt": "{name} as a statue, with the cat squinting",
+  // B-GAME-10: the hand-back card (PARENT register) after Sneak & Freeze. One count only: times the child reached the cat.
+  "handBack.sneakFreeze.label": "From Kid Mode: Sneak & Freeze",
+  "handBack.sneakFreeze.reached.one": "{name} reached the cat once",
+  "handBack.sneakFreeze.reached.other": "{name} reached the cat {count} times",
+  "handBack.sneakFreeze.reached.one.boy": "{name} reached the cat once",
+  "handBack.sneakFreeze.reached.other.boy": "{name} reached the cat {count} times",
+  "handBack.sneakFreeze.reached.one.girl": "{name} reached the cat once",
+  "handBack.sneakFreeze.reached.other.girl": "{name} reached the cat {count} times",
+  "handBack.sneakFreeze.reached.noName.one": "Reached the cat once",
+  "handBack.sneakFreeze.reached.noName.other": "Reached the cat {count} times",
+  "handBack.sneakFreeze.playReal": "Play it for real tonight — in the living room, {name} is the cat",
+  "handBack.sneakFreeze.playReal.boy": "Play it for real tonight — in the living room, {name} is the cat",
+  "handBack.sneakFreeze.playReal.girl": "Play it for real tonight — in the living room, {name} is the cat",
+  "handBack.sneakFreeze.playReal.noName": "Play it for real tonight — in the living room, your child is the cat",
+  "handBack.sneakFreeze.share": "Share the picture",
+  "handBack.sneakFreeze.pictureAlt": "{name} as a statue in Sneak & Freeze",
+  "handBack.sneakFreeze.pictureAlt.noName": "A statue from Sneak & Freeze",
   // AIX-S1 — Arbor Vision modal (was hardcoded EN end-to-end on the flagship
   // "wow" surface; the /vision prompt now carries the same language directive).
   "vis.title.observe": "Show Arbor a photo",
@@ -4857,6 +4889,36 @@ export const he: Dict = {
   "kid.game.story-quest.sub": "בוחרים את הדרך",
   "kid.game.mimic-studio.title": "אולפן החיקוי",
   "kid.game.mimic-studio.sub": "מחקים את התנועות",
+  // B-GAME-07b: דג מלוח (רק מאחורי הדגל arbor.flags.sneakFreeze). שורות שפונות
+  // לילד: הבסיס ברבים, ו-.boy / .girl בזכר / בנקבה.
+  "kid.game.sneak-freeze.title": "דג מלוח",
+  "kid.game.sneak-freeze.sub": "מתגנבים אל החתול",
+  "kid.game.sneak-freeze.stageAria": "לחצו בכל מקום כדי להתגנב. עזבו כדי לקפוא.",
+  "kid.game.sneak-freeze.stageAria.boy": "לחץ בכל מקום כדי להתגנב. עזוב כדי לקפוא.",
+  "kid.game.sneak-freeze.stageAria.girl": "לחצי בכל מקום כדי להתגנב. עזבי כדי לקפוא.",
+  // B-GAME-09: כיתוב תמונת הפסל (השם מבודד ב-t()). בלי מגדר: "— פסל!".
+  "kid.game.sneak-freeze.caption": "החתול הסתכל… אבל {name} — פסל!",
+  "kid.game.sneak-freeze.caption.boy": "החתול הסתכל… אבל {name} לא זז!",
+  "kid.game.sneak-freeze.caption.girl": "החתול הסתכל… אבל {name} לא זזה!",
+  "kid.game.sneak-freeze.caption.noName": "החתול הסתכל… ואף אחד לא זז!",
+  "kid.game.sneak-freeze.pictureAlt": "{name} בתור פסל, והחתול מצמצם עיניים",
+  // B-GAME-10: כרטיס ההחזרה להורה אחרי דג מלוח. ספירה אחת בלבד: כמה פעמים הילד הגיע לחתול.
+  "handBack.sneakFreeze.label": "ממצב ילדים: דג מלוח",
+  "handBack.sneakFreeze.reached.one": "{name}: פעם אחת עד החתול",
+  "handBack.sneakFreeze.reached.other": "{name}: {count} פעמים עד החתול",
+  "handBack.sneakFreeze.reached.one.boy": "{name} הגיע לחתול פעם אחת",
+  "handBack.sneakFreeze.reached.other.boy": "{name} הגיע לחתול {count} פעמים",
+  "handBack.sneakFreeze.reached.one.girl": "{name} הגיעה לחתול פעם אחת",
+  "handBack.sneakFreeze.reached.other.girl": "{name} הגיעה לחתול {count} פעמים",
+  "handBack.sneakFreeze.reached.noName.one": "פעם אחת עד החתול",
+  "handBack.sneakFreeze.reached.noName.other": "{count} פעמים עד החתול",
+  "handBack.sneakFreeze.playReal": "שחקו בזה באמת הערב — בסלון, {name} בתפקיד החתול",
+  "handBack.sneakFreeze.playReal.boy": "שחקו בזה באמת הערב — בסלון, {name} הוא החתול",
+  "handBack.sneakFreeze.playReal.girl": "שחקו בזה באמת הערב — בסלון, {name} היא החתולה",
+  "handBack.sneakFreeze.playReal.noName": "שחקו בזה באמת הערב — בסלון, הילד או הילדה בתפקיד החתול",
+  "handBack.sneakFreeze.share": "לשתף את התמונה",
+  "handBack.sneakFreeze.pictureAlt": "{name} בתור פסל בדג מלוח",
+  "handBack.sneakFreeze.pictureAlt.noName": "פסל מדג מלוח",
   // AIX-S1 — Arbor Vision modal (HE; flagged for arbor-localization native review).
   "vis.title.observe": "הראו לארבור תמונה",
   "vis.title.document": "סריקת מסמך",
