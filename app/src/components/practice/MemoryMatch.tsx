@@ -166,8 +166,11 @@ export default function MemoryMatch({ data, childAge, embedded = false }: { data
   // finish is the shell's (Play again / Home); the parent door is unchanged.
   const inKidShell = embedded && isKidModeActive();
 
+  // B-KID-133 (D-04): in the kid shell the board plays on the stage (no white
+  // panel) and the cards are toy cards that flip (M4).
+  const Frame: React.ComponentType<{ children: React.ReactNode }> = inKidShell ? KidBoard : PlayPanel;
   return (
-    <PlayPanel>
+    <Frame>
       {!inKidShell && (
       <div className={`flex items-center gap-3 mb-2 ${embedded ? "justify-end" : ""}`}>
         {!embedded && (
@@ -228,6 +231,22 @@ export default function MemoryMatch({ data, childAge, embedded = false }: { data
         </Celebrate>
       ) : (
         <>
+          {inKidShell ? (
+          <div className="grid mx-auto" data-kid-memory-board="" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap: "clamp(12px, 2vw, 20px)", maxInlineSize: `min(100%, ${cols * 148}px)` }}>
+            {deck.map((c) => {
+              const face = c.flipped || c.matched;
+              return (
+                <button key={c.uid} type="button" onClick={() => flip(c.uid)} aria-label={face ? c.emoji : t("elev.kids.memory.hiddenCard")}
+                  className="kid-card" data-face={face ? "" : undefined} data-matched={c.matched ? "" : undefined}>
+                  <span className="kid-card-inner" aria-hidden="true">
+                    <span className="kid-card-side kid-card-back" />
+                    <span className="kid-card-side kid-card-front"><span className="kid-coin-glyph">{c.emoji}</span></span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          ) : (
           <div className="grid gap-3 mx-auto" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, maxWidth: 460 }}>
             {deck.map((c) => {
               const face = c.flipped || c.matched;
@@ -245,6 +264,7 @@ export default function MemoryMatch({ data, childAge, embedded = false }: { data
               );
             })}
           </div>
+          )}
           <div className="text-center mt-5">
             <PlayButton variant="ghost" size="md" onClick={() => reset()}>
               <Icon name="refresh" size={16} /> Shuffle &amp; restart
@@ -252,6 +272,11 @@ export default function MemoryMatch({ data, childAge, embedded = false }: { data
           </div>
         </>
       )}
-    </PlayPanel>
+    </Frame>
   );
+}
+
+/** The kid shell's board frame: no panel — the world's stage is the table. */
+function KidBoard({ children }: { children: React.ReactNode }) {
+  return <div className="space-y-2" data-kid-board="">{children}</div>;
 }

@@ -6,6 +6,7 @@ import { patternRound, selectPatternSession, type PatternPuzzle } from "../../pr
 import { dayKey } from "../../practice/signals";
 import { isKidModeActive, noteKidActivity } from "../../lib/kidModeGate";
 import { GameFinish, GameShell } from "../kidmode/game/GameShell";
+import { KidCoin } from "../kidmode/KidCoin";
 import { SpeakButton } from "../ui/SpeakButton";
 import { useLanguage } from "../../context/LanguageContext";
 
@@ -116,6 +117,19 @@ export function PatternRoundView({
     >
       {!kid && <ProgressPips total={total} current={idx} tone="lav" />}
 
+      {kid ? (
+        // B-KID-133 (D-04): the run sits on a paper track as coins; the missing
+        // slot is a glowing socket the chosen coin pops into. The track follows
+        // the reading direction (flex), so Hebrew reads right-to-left.
+        <div className="pattern-sequence kid-track" role="img" aria-label={patternAria} data-kid-track="">
+          {puzzle.shown.map((g, i) => (
+            <KidCoin key={i} emoji={g} wash="lav" />
+          ))}
+          <span className="kid-socket" data-filled={picked ? "" : undefined}>
+            {picked && <KidCoin emoji={picked} wash={picked === puzzle.answer ? "green" : "lav"} className="kid-pop-in" />}
+          </span>
+        </div>
+      ) : (
       <div className="pattern-sequence" role="img" aria-label={patternAria}>
         {puzzle.shown.map((g, i) => (
           <span key={i} className="pattern-sequence-glyph">{g}</span>
@@ -125,12 +139,13 @@ export function PatternRoundView({
           {picked ?? "?"}
         </span>
       </div>
+      )}
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className={kid ? "kid-piece-grid" : "grid grid-cols-3 gap-3"}>
         {options.map((opt) => (
           <ChoiceTile key={opt} emoji={opt} label=""
             state={!picked ? (missed.includes(opt) ? "wrong" : "idle") : opt === puzzle.answer ? "correct" : opt === picked || missed.includes(opt) ? "wrong" : "dim"}
-            onClick={() => onChoose(opt)} disabled={!!picked || missed.includes(opt)} />
+            wash="lav" onClick={() => onChoose(opt)} disabled={!!picked || missed.includes(opt)} />
         ))}
       </div>
 

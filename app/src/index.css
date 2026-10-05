@@ -928,6 +928,201 @@ html[lang="he"] .arbor-play,
   .arbor-play .kid-toy:active { transform: translateY(calc(var(--toy-depth) - 1px)); }
 }
 
+/* ── D-04 · Game pieces = moulded coins (§2.6, §3.6) ───────────────────
+   One sizing rule for every game at every width: a piece is a SQUARE coin
+   96-168 px, the emoji embossed at 58 % of it, a label (when the game needs
+   one) on a paper tag under the coin, never a stretched bar. */
+.arbor-play { --piece: clamp(96px, min(24vw, 18dvh), 168px); }
+.arbor-play .kid-coin {
+  --coin-face: var(--arbor-paper-elevated);
+  --coin-lip: color-mix(in oklab, var(--arbor-ink) 16%, var(--coin-face));
+  --coin-depth: 6px;
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  inline-size: var(--coin-size, var(--piece));
+  aspect-ratio: 1;
+  border-radius: 999px;
+  container-type: inline-size;
+  background:
+    linear-gradient(to bottom, color-mix(in oklab, var(--arbor-paper-elevated) 45%, transparent) 0, transparent 50%),
+    var(--coin-face);
+  box-shadow:
+    inset 0 2px 0 color-mix(in oklab, var(--arbor-paper-elevated) 70%, transparent),
+    inset 0 -3px 0 color-mix(in oklab, var(--coin-lip) 60%, transparent),
+    0 var(--coin-depth) 0 var(--coin-lip),
+    0 calc(var(--coin-depth) + 10px) 18px -8px color-mix(in oklab, var(--arbor-ink) 50%, transparent);
+  transition: transform var(--kid-dur-release) var(--kid-ease-spring), box-shadow 120ms var(--kid-ease-out);
+}
+/* The recessed well the emoji sits in. */
+.arbor-play .kid-coin::before {
+  content: "";
+  position: absolute;
+  inset: 9%;
+  border-radius: 999px;
+  box-shadow: inset 0 3px 6px color-mix(in oklab, var(--arbor-ink) 18%, transparent);
+  pointer-events: none;
+}
+.arbor-play .kid-coin-glyph {
+  position: relative;
+  font-size: calc(var(--coin-size, var(--piece)) * 0.58);
+  font-size: 58cqi;
+  line-height: 1;
+  filter: drop-shadow(0 3px 0 color-mix(in oklab, var(--arbor-ink) 22%, transparent));
+}
+/* Flat world washes for coin faces (never a -soft gradient token). */
+.arbor-play .kid-coin[data-wash="sky"]    { --coin-face: color-mix(in oklab, var(--arbor-sky) 12%, var(--arbor-paper-elevated)); }
+.arbor-play .kid-coin[data-wash="lav"]    { --coin-face: var(--arbor-lav-wash); }
+.arbor-play .kid-coin[data-wash="pink"]   { --coin-face: var(--arbor-pink-wash); }
+.arbor-play .kid-coin[data-wash="peach"]  { --coin-face: var(--arbor-peach-wash); }
+.arbor-play .kid-coin[data-wash="clay"]   { --coin-face: var(--arbor-tint); }
+.arbor-play .kid-coin[data-wash="green"]  { --coin-face: var(--arbor-green-soft); }
+.arbor-play .kid-coin[data-wash="yellow"] { --coin-face: color-mix(in oklab, var(--arbor-yellow) 18%, var(--arbor-paper-elevated)); }
+
+/* A tappable piece: the coin + its paper tag. */
+.arbor-play .kid-piece {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 12px;
+  inline-size: var(--piece);
+  color: var(--arbor-ink);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 160ms var(--kid-ease-out);
+}
+.arbor-play .kid-piece:active .kid-coin {
+  transform: translateY(calc(var(--coin-depth) - 1px)) scale(1.03, 0.94);
+  transition-duration: var(--kid-dur-press), var(--kid-dur-press);
+  box-shadow:
+    inset 0 2px 0 color-mix(in oklab, var(--arbor-paper-elevated) 70%, transparent),
+    0 1px 0 var(--coin-lip),
+    0 4px 8px -4px color-mix(in oklab, var(--arbor-ink) 45%, transparent);
+}
+.arbor-play .kid-piece:focus-visible { outline: none; }
+.arbor-play .kid-piece:focus-visible .kid-coin { outline: 3px solid var(--arbor-sky); outline-offset: 4px; }
+.arbor-play .kid-piece[data-state="correct"] .kid-coin { --coin-face: var(--arbor-green-soft); --coin-lip: var(--arbor-success); }
+.arbor-play .kid-piece[data-state="not-yet"] .kid-coin { --coin-face: var(--arbor-lav-wash); --coin-lip: var(--arbor-lav); }
+.arbor-play .kid-piece[data-state="not-yet"] .kid-coin { animation: kid-wobble 300ms var(--kid-ease-out) 1; }
+.arbor-play .kid-piece[data-dim] { opacity: 0.5; }
+.arbor-play .kid-piece:disabled { cursor: default; }
+.arbor-play .kid-piece-tag {
+  max-inline-size: calc(var(--piece) + 24px);
+  padding: 6px 12px;
+  border-radius: var(--kid-r-s);
+  background: var(--arbor-paper-elevated);
+  color: var(--arbor-ink);
+  font: 800 var(--kid-t-label)/1.15 var(--font-sans);
+  text-align: center;
+  overflow-wrap: anywhere;
+  box-shadow: 0 6px 14px -8px color-mix(in oklab, var(--arbor-ink) 55%, transparent);
+}
+.arbor-play .kid-piece[data-state="correct"] .kid-piece-tag { color: var(--arbor-green-ink); }
+.arbor-play .kid-piece[data-state="not-yet"] .kid-piece-tag { color: var(--arbor-lav-ink); }
+/* The choice grid: square tracks, centred; three always fit one row at 375. */
+.arbor-play .kid-piece-grid,
+.arbor-play :is(.grid, [class*="grid-cols"]):has(> .kid-piece) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, var(--piece));
+  justify-content: center;
+  align-items: start;
+  gap: clamp(12px, 2vw, 24px);
+}
+/* Pattern Power: the run sits on a paper track; the missing slot is a socket. */
+.arbor-play .kid-track {
+  gap: clamp(6px, 1.2vw, 12px);
+  padding: 12px clamp(10px, 2vw, 20px);
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  margin-inline: auto;
+  border-radius: 999px;
+  background: var(--arbor-paper-elevated);
+  box-shadow: 0 2px 0 color-mix(in oklab, var(--arbor-ink) 10%, transparent), 0 18px 36px -20px color-mix(in oklab, var(--arbor-ink) 55%, transparent);
+}
+.arbor-play .kid-track .kid-coin { --coin-depth: 4px; flex: 0 1 max(56px, calc(var(--piece) * 0.62)); inline-size: auto; min-inline-size: 36px; }
+.arbor-play .kid-socket {
+  display: grid;
+  place-items: center;
+  flex: 0 1 max(56px, calc(var(--piece) * 0.62));
+  min-inline-size: 36px;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  border: 3px dashed var(--arbor-sky);
+  box-shadow: 0 0 0 0 color-mix(in oklab, var(--arbor-sky) 45%, transparent);
+  animation: kid-socket-glow 1.6s var(--kid-ease-out) infinite;
+}
+.arbor-play .kid-socket[data-filled] { border-color: transparent; animation: none; }
+.arbor-play .kid-socket .kid-coin { inline-size: 100%; flex: none; }
+@keyframes kid-socket-glow {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--arbor-sky) 45%, transparent); }
+  50%      { box-shadow: 0 0 0 8px color-mix(in oklab, var(--arbor-sky) 0%, transparent); }
+}
+/* Mind Vault: toy cards that flip (M4); backs = the world wash, embossed dots. */
+.arbor-play .kid-card {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  background: none;
+  position: relative;
+  aspect-ratio: 1;
+  inline-size: 100%;
+  perspective: 900px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.arbor-play .kid-card-inner {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: transform var(--kid-dur-flip) var(--kid-ease-out);
+}
+.arbor-play .kid-card[data-face] .kid-card-inner { transform: rotateY(180deg); }
+.arbor-play .kid-card[data-matched] .kid-card-inner { transform: rotateY(180deg) translateY(-6px); }
+.arbor-play .kid-card-side {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: var(--kid-r-m);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  container-type: inline-size;
+  box-shadow:
+    inset 0 2px 0 color-mix(in oklab, var(--arbor-paper-elevated) 60%, transparent),
+    0 6px 0 var(--card-lip, color-mix(in oklab, var(--arbor-ink) 16%, var(--arbor-paper-elevated))),
+    0 16px 18px -8px color-mix(in oklab, var(--arbor-ink) 50%, transparent);
+}
+.arbor-play .kid-card-back {
+  --card-lip: var(--arbor-lav);
+  background:
+    radial-gradient(circle, color-mix(in oklab, var(--arbor-paper-elevated) 55%, transparent) 2px, transparent 2.5px) 0 0 / 14px 14px,
+    var(--arbor-lav-wash);
+}
+.arbor-play .kid-card-front { background: var(--arbor-paper-elevated); transform: rotateY(180deg); }
+.arbor-play .kid-card[data-matched] .kid-card-front { --card-lip: var(--arbor-success); background: var(--arbor-green-soft); }
+.arbor-play .kid-card-front .kid-coin-glyph { font-size: 58cqi; }
+.arbor-play .kid-card:focus-visible { outline: 3px solid var(--arbor-sky); outline-offset: 4px; border-radius: var(--kid-r-m); }
+@media (prefers-reduced-motion: reduce) {
+  .arbor-play .kid-coin,
+  .arbor-play .kid-piece:active .kid-coin { transition: box-shadow 1ms; }
+  .arbor-play .kid-piece:active .kid-coin { transform: translateY(calc(var(--coin-depth) - 1px)); }
+  .arbor-play .kid-piece[data-state="not-yet"] .kid-coin,
+  .arbor-play .kid-socket { animation: none; }
+  /* M4 reduced: a 150 ms cross-fade between faces, no rotation. */
+  .arbor-play .kid-card-inner,
+  .arbor-play .kid-card[data-face] .kid-card-inner,
+  .arbor-play .kid-card[data-matched] .kid-card-inner { transform: none; transition: none; }
+  .arbor-play .kid-card-side { backface-visibility: visible; transition: opacity 150ms var(--kid-ease-out); }
+  .arbor-play .kid-card-front { transform: none; opacity: 0; }
+  .arbor-play .kid-card[data-face] .kid-card-front { opacity: 1; }
+  .arbor-play .kid-card[data-face] .kid-card-back { opacity: 0; }
+}
+
 /* ── D-01 · The Stage (§2.4.1) ─────────────────────────────────────────── */
 /* The staged overlay paints no four-blob wash: the stage IS the background. */
 .arbor-play[data-kid-staged]::before { display: none; }

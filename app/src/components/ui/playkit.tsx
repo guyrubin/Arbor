@@ -8,6 +8,7 @@ import { PageHeader } from "./kit";
 import { TONE_INK, TONE_SOFT, T, type PlayTone } from "../../lib/tokens";
 import { kidSfx } from "../kidmode/audio/kidAudio";
 import { KidToy } from "../kidmode/KidToy";
+import { KidCoin, type KidCoinWash } from "../kidmode/KidCoin";
 import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
 
 /** B-KID-133: the kid register is on (Kid Mode open) — kid branches only. */
@@ -198,6 +199,19 @@ export function MascotSay({
   tone?: PlayTone;
   size?: number;
 }) {
+  // B-KID-133 (D-04): in Kid Mode the words sit on a paper bubble (never a
+  // translucent -soft tint over the stage), in the toy voice.
+  const kid = useKidModeOn();
+  if (kid) {
+    return (
+      <div className="flex items-center gap-3 kid-pop-in" data-kid-say="">
+        <ArborMascot size={size} mood={mood} className="flex-shrink-0" />
+        <div className="kid-plate kid-type-label relative flex-1 px-4 py-3" style={{ borderRadius: "var(--kid-r-m)" }}>
+          {children}
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="flex items-center gap-3 play-pop-in">
       <ArborMascot size={size} mood={mood} className="flex-shrink-0" />
@@ -271,12 +285,15 @@ export function ChoiceTile({
   onClick,
   disabled,
   state = "idle",
+  wash,
 }: {
   emoji?: React.ReactNode;
   label: string;
   onClick?: () => void;
   disabled?: boolean;
   state?: "idle" | "correct" | "wrong" | "dim";
+  /** B-KID-133 (D-04): the coin's flat world wash in Kid Mode. */
+  wash?: KidCoinWash;
 }) {
   // B-KID-73: a piece turning right / not-yet chimes once in Kid Mode (a gentle
   // try-again, never a buzzer); kidSfx is silent outside Kid Mode.
@@ -284,6 +301,27 @@ export function ChoiceTile({
     if (state === "correct") kidSfx("correct");
     else if (state === "wrong") kidSfx("tryAgain");
   }, [state]);
+  // B-KID-133 (D-04): in Kid Mode a choice is a SQUARE moulded coin (96-168 px,
+  // the shared --piece rule) with its label on a paper tag under it; a wrong
+  // tap turns it lavender "not yet" with a head-tilt (never pink, never a shake).
+  const kid = useKidModeOn();
+  if (kid) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled}
+        aria-pressed={state === "correct" || state === "wrong"}
+        aria-label={label ? undefined : typeof emoji === "string" ? emoji : undefined}
+        className="kid-piece"
+        data-state={state === "correct" ? "correct" : state === "wrong" ? "not-yet" : undefined}
+        data-dim={state === "dim" ? "" : undefined}
+      >
+        <KidCoin emoji={emoji ?? null} wash={state === "idle" || state === "dim" ? wash : undefined} />
+        {label && <span className="kid-piece-tag">{label}</span>}
+      </button>
+    );
+  }
   const ring =
     state === "correct"
       ? "var(--arbor-clay)"

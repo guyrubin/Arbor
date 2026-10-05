@@ -19,7 +19,7 @@ import { PlayButton } from "../ui/playkit";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(path.join(__dirname, "..", "..", "index.css"), "utf8");
-const toyCss = css.slice(css.indexOf("── D-02 · The toy"), css.indexOf("── D-01 · The Stage"));
+const toyCss = css.slice(css.indexOf("── D-02 · The toy"), css.indexOf("── D-04 · Game pieces"));
 const shell = readFileSync(path.join(__dirname, "game", "GameShell.tsx"), "utf8");
 
 afterEach(() => { gate.kid = true; });
@@ -63,7 +63,9 @@ describe("the toy recipe (index.css, .arbor-play only)", () => {
     const block = css.slice(css.indexOf("KID UI LANGUAGE v1"), css.indexOf("NATIVE SAFE AREAS"));
     const selectors = [...block.matchAll(/^\s*([^@{}\n/][^{}\n]*)\{/gm)].map((m) => m[1].trim()).filter((s) => !/^(from|to|\d+%)/.test(s));
     expect(selectors.length).toBeGreaterThan(20);
-    for (const sel of selectors) for (const part of sel.split(",")) expect(part.trim(), part).toMatch(/\.arbor-play/);
+    // split on top-level commas only (a comma inside :is()/:has() is one selector)
+    const topLevel = (sel: string) => { const out: string[] = []; let depth = 0, cur = ""; for (const ch of sel) { if (ch === "(") depth++; if (ch === ")") depth--; if (ch === "," && depth === 0) { out.push(cur); cur = ""; } else cur += ch; } out.push(cur); return out; };
+    for (const sel of selectors) for (const part of topLevel(sel)) expect(part.trim(), part).toMatch(/\.arbor-play/);
     expect(block).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
   });
 });

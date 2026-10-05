@@ -15,6 +15,13 @@ import { beatClick, closeBeatAudio } from "../../practice/beatAudio";
    click IS beat 1), the child taps along. Tap timing is logged for the parent
    record only; the child hears one warm line whatever the timing. */
 
+/** B-KID-133 (D-04): the beat coins' faces, by position. */
+const BEAT_WASH = ["sky", "peach", "lav"] as const;
+/** The parent door keeps its panel; Kid Mode plays on the stage. */
+function KidPanel({ kid, children }: { kid: boolean; children: React.ReactNode }) {
+  return kid ? <div data-kid-beat-pick="">{children}</div> : <PlayPanel tone="clay">{children}</PlayPanel>;
+}
+
 export default function BeatKeeperWorld() {
   const { first, log } = useArcadeLogger();
   const { t, uiLang } = useLanguage();
@@ -60,15 +67,19 @@ export default function BeatKeeperWorld() {
         variant="entry"
         eyebrow={t("elev.kids.beat.choose.title")}
       >
-        <PlayPanel tone="clay">
-          <div className="grid gap-3 sm:grid-cols-3">
-            {BEAT_SETS.map((set) => {
+        {/* B-KID-133 (D-04): in Kid Mode the beats are coins on the world's glow
+            (no white panel); the coin IS the play, so its tag is the beat's
+            name alone ("Gentle rain", never "Play Gentle rain"). */}
+        <KidPanel kid={kid}>
+          <div className={kid ? "kid-piece-grid" : "grid gap-3 sm:grid-cols-3"}>
+            {BEAT_SETS.map((set, i) => {
               const label = set.label[uiLang === "he" ? "he" : "en"];
               return (
                 <ChoiceTile
                   key={set.id}
                   emoji={emoji[set.id] ?? "🎵"}
-                  label={t("elev.kids.beat.choose.cta", { name: label })}
+                  wash={BEAT_WASH[i % BEAT_WASH.length]}
+                  label={kid ? label : t("elev.kids.beat.choose.cta", { name: label })}
                   onClick={() => {
                     setSelectedSetId(set.id);
                     setRoundIdx(0);
@@ -80,7 +91,7 @@ export default function BeatKeeperWorld() {
               );
             })}
           </div>
-        </PlayPanel>
+        </KidPanel>
       </GameShell>
     );
   }

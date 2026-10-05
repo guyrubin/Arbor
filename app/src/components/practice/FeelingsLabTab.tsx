@@ -3,7 +3,8 @@ import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { SectionCard, TrustSafetyBar, cardCls } from "../ui/kit";
-import { RegisterShell, ChoiceTile, MascotSay, PlayButton, PlayPanel } from "../ui/playkit";
+import { RegisterShell, ChoiceTile, MascotSay, PlayButton } from "../ui/playkit";
+import { KidCoin, type KidCoinWash } from "../kidmode/KidCoin";
 import { GameFinish, GameShell } from "../kidmode/game/GameShell";
 import { BREATHING_PATTERNS, CALM_TOOLS, EMOTION_SCENARIOS, EMOTIONS, type Emotion } from "../../practice/playContent";
 import { usePracticeData } from "../../practice/usePracticeData";
@@ -36,6 +37,16 @@ const EMOTION_TONE: Record<string, string> = {
   afraid: "var(--arbor-lav-ink)",
   angry: "var(--arbor-pink-ink)",
   frustrated: "var(--arbor-pink-ink)",
+};
+
+/** B-KID-133 (D-04): each feeling's coin face in Kid Mode (flat washes). */
+const EMOTION_WASH: Record<string, KidCoinWash> = {
+  happy: "yellow",
+  excited: "pink",
+  sad: "clay",
+  afraid: "lav",
+  angry: "peach",
+  frustrated: "lav",
 };
 
 export default function FeelingsLabTab() {
@@ -163,6 +174,7 @@ export default function FeelingsLabTab() {
         onClick={() => chooseEmotion(emotion.id)}
         disabled={!!pickedEmotion}
         state={state}
+        wash={EMOTION_WASH[emotion.id]}
       />
     );
   });
@@ -333,11 +345,14 @@ export default function FeelingsLabTab() {
       progress={{ index: kidStep, total: MOOD_CLIMB }}
     >
 
-      <PlayPanel tone="yellow">
+      {/* B-KID-133 (D-04): no white play card — the stage shows the world; the
+          scenario sits on its own paper plate, the feelings are coins on the glow. */}
+      <div className="space-y-5" data-kid-mood-play="">
 
-        <div className="rounded-[var(--play-radius)] p-6 my-4" style={{ background: "var(--arbor-paper-elevated)", boxShadow: "var(--shadow-sm)" }}>
-          <p className="text-5xl mb-3">{scenario.emoji}</p>
-          <p className="text-[1.35rem] font-extrabold leading-snug" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+        <div className="kid-plate p-5 my-2 flex items-start gap-4">
+          <KidCoin emoji={scenario.emoji} wash="yellow" size={64} />
+          <div className="min-w-0 flex-1">
+          <p className="kid-type-say" style={{ color: "var(--arbor-ink)" }}>
             {scenarioText}
           </p>
           {/* KID-09: a child who cannot yet read the scenario can hear it. */}
@@ -348,8 +363,9 @@ export default function FeelingsLabTab() {
             size="md"
             className="min-w-[44px] min-h-[44px] justify-center mt-3"
           />
+          </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="kid-piece-grid">
           {emotionTiles}
         </div>
         {pickedEmotion && (
@@ -368,7 +384,7 @@ export default function FeelingsLabTab() {
         {/* The child can first notice the scene, listen, and choose. Their own
             feelings stay visible below as a separate self-check, not a clue or
             a result from the scenario. */}
-        <div className="mt-5 flex items-center gap-4 rounded-2xl p-4" style={{ background: "var(--arbor-paper-deep)" }}>
+        <div className="kid-plate mt-5 flex items-center gap-4 p-4">
           <EmotionAvatar
             name={first}
             photoURL={heroUrl}
@@ -379,7 +395,7 @@ export default function FeelingsLabTab() {
             size={64}
           />
           <div className="flex-1 min-w-0">
-            <p className="text-[15px] font-extrabold mb-2" style={{ color: "var(--arbor-ink)" }}>{t("elev.kids.feelings.selfCheck", { name: first })}</p>
+            <p className="kid-type-label mb-2" style={{ color: "var(--arbor-ink)" }}>{t("elev.kids.feelings.selfCheck", { name: first })}</p>
             <div className="flex flex-wrap gap-2">
               {EMOTIONS.map((e) => {
                 const on = feltEmotion === e.id;
@@ -389,19 +405,19 @@ export default function FeelingsLabTab() {
                     onClick={() => feel(e.id)}
                     aria-pressed={on}
                     aria-label={emotionLabelFor(e, uiLang)}
-                    className="play-pressable rounded-full min-w-[48px] min-h-[48px] px-3 text-2xl transition"
+                    className="play-pressable rounded-full min-w-[48px] min-h-[48px] grid place-items-center transition"
                     style={on
-                      ? { background: "var(--arbor-paper-elevated)", boxShadow: `0 0 0 3px ${EMOTION_TONE[e.id] ?? "var(--arbor-clay)"}` }
-                      : { background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}
+                      ? { background: "transparent", boxShadow: `0 0 0 3px ${EMOTION_TONE[e.id] ?? "var(--arbor-clay)"}` }
+                      : { background: "transparent", border: 0 }}
                   >
-                    {e.emoji}
+                    <KidCoin emoji={e.emoji} wash={EMOTION_WASH[e.id]} size={48} />
                   </button>
                 );
               })}
             </div>
           </div>
         </div>
-      </PlayPanel>
+      </div>
     </GameShell>
   );
 }
