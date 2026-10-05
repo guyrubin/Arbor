@@ -768,7 +768,10 @@ describe("KID-4: kid-dashboard game tiles match their HeroArcade destination", (
 
 // ── KID-7: coherent art — no two visible tiles share an art file ─────────────
 describe("KID-7: kid-dashboard art is unique per visible tile", () => {
-  it("every visible role resolves distinct reviewed art, with no legacy stock-child source", async () => {
+  // B-KID-70: the glossy-3D cards stay (Guy, 5 Oct); the old "/visuals/cards/"
+  // ban is re-pinned to the seam — the home names NO art path; every file comes
+  // through the kid theme manifest (tree-wide scan: lib/kidThemeManifest.test.ts).
+  it("every visible role resolves distinct reviewed art, referenced only through the theme manifest", async () => {
     const { worldArtwork } = await import("../practice/worldArtwork");
     const src = stripComments(readSelf("KidDashboard.tsx"));
     const ids = [...src.matchAll(/\{ id: "[a-z-]+", worldId: "([a-z-]+)"/g)].map(m=>m[1]);
@@ -777,7 +780,7 @@ describe("KID-7: kid-dashboard art is unique per visible tile", () => {
     const arts=ids.map(id=>worldArtwork(id)?.src);
     expect(arts.every(Boolean)).toBe(true);
     expect(new Set(arts).size).toBe(11);
-    expect(src).not.toContain("/visuals/cards/");
+    expect(src).not.toContain("/visuals/");
   });
   it("the banner retains its distinct story role rather than recycling a game", async () => {
     const { worldArtwork } = await import("../practice/worldArtwork");

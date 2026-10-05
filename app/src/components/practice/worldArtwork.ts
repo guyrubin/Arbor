@@ -1,25 +1,17 @@
 /** Presentation-only static art; IDs and destinations remain in their live consumers.
- * Actual image provenance/approval: docs/design/world-art-v2.json. */
+ * B-KID-70: every file comes from the kid theme manifest (lib/kidThemeManifest.ts);
+ * this module only adapts a manifest entry to the <img> shape its callers use.
+ * Storybook provenance/approval: docs/design/world-art-v2.json. */
+import { KID_WORLD_TILE_IDS, kidArt, kidArtSrcSet, worldTileKey, type KidThemeId, type KidWorldTileId } from "../../lib/kidThemeManifest";
 export interface WorldArtwork { src: string; srcSet: string; objectPosition: string; provenanceId: string }
-const scene=(name:string,objectPosition:string):WorldArtwork=>({
- src: `/visuals/worlds/v2/${name}-v2-480.webp`,
- srcSet: `/visuals/worlds/v2/${name}-v2-480.webp 480w, /visuals/worlds/v2/${name}-v2.webp 960w`,
- objectPosition,provenanceId:`world-art-v2:${name}`,
-});
-export const WORLD_ARTWORK = {
- "speech":scene("sound-lab","48% 40%"),
- "feelings":scene("mood-mountain","50% 40%"),
- "memory":scene("mind-vault","45% 42%"),
- "beat":scene("beat-keeper","50% 42%"),
- "pose":scene("hero-pose","50% 40%"),
- "pattern":scene("pattern-power","50% 38%"),
- "adventures":scene("story-quest","50% 48%"),
- "mimic":scene("mimic-studio","50% 38%"),
- "reading":scene("spell-forge","50% 42%"),
- "kid-playbank":scene("play-together","50% 35%"),
- "kid-hero":scene("hero-stories","50% 38%"),
- "kid-quest":scene("tonight-story","50% 30%"),
-} as const satisfies Record<string,WorldArtwork>;
-export function worldArtwork(worldId:string):WorldArtwork|undefined {
- return (WORLD_ARTWORK as Record<string,WorldArtwork>)[worldId];
+const adapt=(theme:KidThemeId,id:KidWorldTileId):WorldArtwork|undefined=>{
+ const art=kidArt(theme,worldTileKey(id));
+ return art?{src:art.src480,srcSet:kidArtSrcSet(art),objectPosition:art.objectPosition,provenanceId:art.provenanceId}:undefined;
+};
+/** The storybook (painted v2) set, kept as the reviewed-bytes export. */
+export const WORLD_ARTWORK:Record<KidWorldTileId,WorldArtwork>=Object.fromEntries(
+ KID_WORLD_TILE_IDS.map(id=>[id,adapt("storybook",id)!]),
+) as Record<KidWorldTileId,WorldArtwork>;
+export function worldArtwork(worldId:string,theme:KidThemeId="storybook"):WorldArtwork|undefined {
+ return (KID_WORLD_TILE_IDS as readonly string[]).includes(worldId)?adapt(theme,worldId as KidWorldTileId):undefined;
 }

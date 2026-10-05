@@ -107,6 +107,14 @@ export interface ChildProfile {
    */
   lastVisitAt?: string;
   lastVisitPreviousAt?: string;
+  /**
+   * B-KID-70 — the child's ONE kid-mode look ('film3d' default | 'storybook'),
+   * picked by the parent in Settings › Kid Mode. A field ON the profile
+   * document, so it rides the existing profile sync/export/erase paths (no
+   * subcollection). Read only through `useKidTheme()` / `resolveKidTheme()`,
+   * which ignore a value that is not a selectable theme.
+   */
+  kidTheme?: import('./lib/kidThemeManifest').KidThemeId;
 }
 
 export type BehaviorContext = 'Home' | 'School' | 'Transit' | 'Public';
