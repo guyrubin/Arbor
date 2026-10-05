@@ -1,0 +1,127 @@
+/**
+ * B-GAME-07b — Sneak & Freeze on a rendered stage (react-dom/server; no jsdom
+ * in this repo), behind its flag, with its sound table and art slots.
+ */
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("../../../../lib/kidModeGate", () => ({ isKidModeActive: () => true, subscribeKidMode: () => () => {}, noteKidActivity: () => {} }));
+vi.mock("../../../../context/LanguageContext", () => ({ useLanguage: () => ({ uiLang: "en", aiLang: "en", t: (k: string) => k }) }));
+vi.mock("../../../../context/ArborContext", () => ({
+  useArborOptional: () => ({ childProfile: { id: "c1", name: "Dylan", gender: "boy", age: 5 } }),
+  useArbor: () => ({ childProfile: { id: "c1", name: "Dylan", gender: "boy", age: 5 } }),
+}));
+vi.mock("../../../../lib/voice", () => ({ speakText: vi.fn(), stopVoice: vi.fn(), voiceSupported: () => true }));
+
+import SneakFreeze, { formKey } from "./SneakFreeze";
+import { SNEAK_SOUNDS } from "./sounds";
+import { mergeArt, readSneakArt, watcherSprite } from "./sneakArt";
+import { devPlaceholderArt } from "./devPlaceholderArt";
+import { KID_WORLDS, SNEAK_FREEZE_WORLD, flaggedWorldNameKey, sneakFreezeFlagOn } from "../../kidWorlds";
+import { translate } from "../../../../lib/i18n";
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const read = (...p: string[]) => readFileSync(path.join(here, ...p), "utf8");
+const textOf = (html: string) => html.replace(/<[^>]*>/g, " ");
+const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
+
+describe("Sneak & Freeze — the stage", () => {
+  const html = renderToStaticMarkup(<SneakFreeze />);
+
+  it("is a full-bleed play field: plate, three cover objects, the cat, the hero", () => {
+    expect(html).toContain('data-full-bleed=""');
+    expect(html).toMatch(/data-play-field="(portrait|landscape)"/);
+    expect(html).toContain("data-sneak-plate");
+    expect((html.match(/data-cover="/g) ?? []).length).toBe(3);
+    expect(html).toContain("data-watcher=");
+    expect(html).toContain('data-hero-figure="idle"');
+    expect(html).toContain('data-sneak-stage=""');
+    expect(html).toContain('role="button"');
+    expect(html).toMatch(/aria-label="[^"]*kid\.game\.sneak-freeze\.stageAria\.boy[^"]*"/);
+  });
+
+  it("shows no instruction paragraph, no progress dots, no digit, no emoji; the intro shows the hand, not words", () => {
+    expect(html).not.toContain("data-game-instruction");
+    expect(html).not.toContain("data-game-progress");
+    expect(textOf(html)).not.toMatch(/[0-9]/);
+    expect(textOf(html)).not.toMatch(EMOJI);
+    expect(html).toContain('data-sneak-hand=""');
+    expect(html).not.toContain("data-sneak-hint");
+  });
+
+  it("the source carries no score, star, streak, timer or level text and no emoji", () => {
+    for (const f of ["SneakFreeze.tsx", "Watcher.tsx"]) {
+      const src = read(f).replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
+      expect(src, f).not.toMatch(EMOJI);
+      expect(src, f).not.toMatch(/\b(score|stars?|streak|timer|countdown)\b/i);
+    }
+  });
+
+  it("one rAF loop that pauses while hidden; a touch is stepped at once", () => {
+    const src = read("SneakFreeze.tsx");
+    expect((src.match(/requestAnimationFrame\(tick\)/g) ?? []).length).toBe(2);
+    expect(src).toContain("document.hidden ? stopLoop() : startLoop()");
+    expect(src).toMatch(/const press = [\s\S]*?pump\(0\);/);
+    expect(src).not.toMatch(/setInterval\(/);
+  });
+});
+
+describe("Sneak & Freeze — behind its flag", () => {
+  it("is off by default and never part of the registry", () => {
+    expect(sneakFreezeFlagOn()).toBe(false);
+    expect(KID_WORLDS.some((w) => (w.worldId as string) === SNEAK_FREEZE_WORLD.worldId)).toBe(false);
+    expect(flaggedWorldNameKey("sneak")).toBeUndefined();
+  });
+
+  it("has its name and lines in EN and HE, Hebrew addressed by form", () => {
+    expect(translate("en", "kid.game.sneak-freeze.title")).toBe("Sneak & Freeze");
+    expect(translate("he", "kid.game.sneak-freeze.title")).toBe("דג מלוח");
+    for (const base of ["kid.game.sneak-freeze.hint", "kid.game.sneak-freeze.stageAria"]) {
+      const forms = ["", ".boy", ".girl"].map((f) => translate("he", base + f));
+      expect(new Set(forms).size).toBe(3);
+      for (const f of forms) expect(f).toMatch(/[א-ת]/);
+      for (const f of ["", ".boy", ".girl"]) expect(translate("en", base + f)).not.toBe(base + f);
+    }
+    expect(formKey("x", "girl")).toBe("x.girl");
+    expect(formKey("x", "other")).toBe("x");
+    expect(formKey("x", undefined)).toBe("x");
+  });
+});
+
+describe("Sneak & Freeze — sounds and art slots", () => {
+  it("every rules event has one row in the sound table; no device speech in the scene", () => {
+    const rules = read("rules.ts");
+    const union = rules.slice(rules.indexOf("export type SneakEventId"), rules.indexOf(";", rules.indexOf("export type SneakEventId")));
+    const ids = [...union.matchAll(/"([a-z-]+)"/g)].map((m) => m[1]);
+    expect(ids.length).toBeGreaterThan(10);
+    expect(Object.keys(SNEAK_SOUNDS).sort()).toEqual([...ids].sort());
+    expect(read("sounds.ts")).not.toMatch(/kidSay|speakText|speechSynthesis/);
+  });
+
+  it("the placeholder fills every slot; injected art merges slot by slot and rejects unsafe urls", () => {
+    const base = devPlaceholderArt();
+    expect(base.source).toBe("dev-placeholder");
+    for (const s of ["counting", "tell", "looking", "laughing", "sunglasses"] as const) expect(base.watcher[s]?.url).toMatch(/^data:image\/svg\+xml/);
+    const merged = mergeArt(base, {
+      plate: { landscape: "data:image/webp;base64,AAA", portrait: "javascript:x" },
+      watcher: { looking: { url: "data:image/webp;base64,BBB", w: 600, h: 800, anchor: { x: 300, y: 790 } } },
+      prizes: { bell: { url: "/x.webp", w: 10, h: 10, anchor: { x: 5, y: 5 } }, spoon: { url: "/y.webp", w: 1, h: 1, anchor: { x: 0, y: 0 } } },
+    });
+    expect(merged.source).toBe("injected");
+    expect(merged.plate.landscape).toBe("data:image/webp;base64,AAA");
+    expect(merged.plate.portrait).toBe(base.plate.portrait);
+    expect(merged.watcher.looking?.w).toBe(600);
+    expect(merged.prizes.bell.url).toBe("/x.webp");
+    expect(merged.prizes).not.toHaveProperty("spoon");
+    expect(readSneakArt({ getItem: () => "{bad" }).source).toBe("dev-placeholder");
+    expect(watcherSprite(base, "looking", true).slot).toBe("sunglasses");
+    expect(watcherSprite(base, "laughing", true).slot).toBe("laughing");
+    const noShades = { ...base, watcher: { counting: base.watcher.counting, looking: base.watcher.looking } };
+    expect(watcherSprite(noShades, "looking", true).slot).toBe("looking");
+    expect(watcherSprite(noShades, "waiting", false).slot).toBe("counting");
+  });
+});

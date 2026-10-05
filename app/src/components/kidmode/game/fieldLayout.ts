@@ -164,7 +164,7 @@ const COURTYARD: Readonly<Record<FieldOrientation, CourtyardSpec>> = {
 /** Watcher (cat on its stool) height as a fraction of the hero's height at the tag. */
 const WATCHER_REL_H = 0.78;
 /** Cover object height relative to a hero standing at the same depth. */
-const COVER_REL_H = 1.25;
+const COVER_REL_H: Readonly<Record<CoverId, number>> = { "lemon-tree": 1.35, bench: 0.55, lantern: 1.45 };
 /** A hero's width relative to its height (front three-quarter, arms in). */
 export const HERO_ASPECT = 0.62;
 
@@ -224,7 +224,7 @@ export function sneakLayout(orientation: FieldOrientation): SneakLayout {
   const covers = spec.covers.map((c) => {
     const onPath = pointOnPath(heroPath, c.at);
     const feet = { x: onPath.x + c.dx, y: onPath.y };
-    return { id: c.id, at: c.at, feet, h: Math.round(depthAt(spec, feet).h * COVER_REL_H) };
+    return { id: c.id, at: c.at, feet, h: Math.round(depthAt(spec, feet).h * COVER_REL_H[c.id]) };
   });
   const watcher = { feet: spec.watcher, h: Math.round(tagPoint.h * WATCHER_REL_H) };
   const prizeSize = Math.round(tagPoint.h * 0.22);

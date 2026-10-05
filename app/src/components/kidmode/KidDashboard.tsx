@@ -28,7 +28,7 @@
  * streak. Styling is token-only and RTL-safe (logical CSS properties).
  */
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, Brain, Gamepad2, Heart, Map, Mic, Music, PersonStanding, Shapes, Smile, Sparkles, Star, ChevronRight, Type } from "lucide-react";
+import { BookOpen, Brain, Footprints, Gamepad2, Heart, Map, Mic, Music, PersonStanding, Shapes, Smile, Sparkles, Star, ChevronRight, Type } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import type { AvatarStyle } from "../../lib/api";
 import { useLanguage } from "../../context/LanguageContext";
@@ -50,7 +50,7 @@ import { ageMonthsFromProfile } from "../../lib/childAge";
 import type { HeroJourneyRun } from "../../types";
 import { HERO_STORIES, storyLanguage } from "../../lib/heroJourneys";
 import { kidBooks } from "./kidBooks";
-import { KID_WORLDS, KID_WORLD_NAME_KEY, kidWorldByWorldId, type KidWorldAccent } from "./kidWorlds";
+import { KID_WORLDS, KID_WORLD_NAME_KEY, SNEAK_FREEZE_WORLD, kidWorldByWorldId, sneakFreezeFlagOn, type KidWorldAccent } from "./kidWorlds";
 import { KID_BOOK_EAGER_COUNT, KidBookCover } from "./KidBookCover";
 import { KidStickerStrip } from "./rewards/KidSouvenir";
 import { kidOfflineArtUrls, precacheKidArt, recentlyOpenedStoryIds } from "../../lib/kidOfflineArt";
@@ -570,6 +570,12 @@ export default function KidDashboard({
           {GAMES.map((g, i) => (
             <SceneTile key={g.id} worldId={g.worldId} accent={g.accent} Icon={g.Icon} title={kt(g.nameKey)} sub={kt(g.subKey)} imagePrompt={g.imagePrompt} heroUrl={hero.url ?? undefined} heroStyle={hero.style} theme={kidTheme} index={i} onClick={() => onOpenSurface("arcade", g.worldId)} />
           ))}
+          {/* B-GAME-07b: the G0 proof game, only behind its device flag. No
+              tile art yet (dev placeholder = the accent + glyph); no hero url,
+              so no scene is generated. */}
+          {sneakFreezeFlagOn() && (
+            <SceneTile key={SNEAK_FREEZE_WORLD.id} worldId={SNEAK_FREEZE_WORLD.worldId} accent={SNEAK_FREEZE_WORLD.accent} Icon={Footprints} title={kt(SNEAK_FREEZE_WORLD.nameKey)} sub={kt(SNEAK_FREEZE_WORLD.subKey)} imagePrompt="" theme={kidTheme} index={GAMES.length} onClick={() => onOpenSurface("arcade", SNEAK_FREEZE_WORLD.worldId)} />
+          )}
         </div>
       </section>
       {/* B-KID-96: "My stickers" — the souvenirs the child kept (hidden while none). */}

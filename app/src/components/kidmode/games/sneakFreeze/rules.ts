@@ -64,6 +64,8 @@ export const COVER_FRACTIONS: readonly number[] = [0.28, 0.52, 0.76];
 
 export const TIMING = {
   introMs: 4000,
+  /** The demo: the cat watches the courtyard, then turns its back to it. */
+  introLookMs: 1400,
   readyMs: 900,
   beatMs: { 1: 900, 2: 800, 3: 720 } as Readonly<Record<Level, number>>,
   tellMs: { 1: 900, 2: 650, 3: 550 } as Readonly<Record<Level, number>>,
@@ -604,6 +606,8 @@ function heroPoseOf(s: SneakState): HeroPose {
 
 function watcherPoseOf(s: SneakState): WatcherPose {
   switch (s.phase) {
+    case "intro":
+      return s.phaseMs < TIMING.introLookMs ? "looking" : "counting";
     case "tell":
       return "tell";
     case "fake":

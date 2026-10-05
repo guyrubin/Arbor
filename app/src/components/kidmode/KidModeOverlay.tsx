@@ -39,12 +39,15 @@ import { hydrateHeroRenders } from "../../lib/heroRenderStore";
 import { setKidHome, useKidStage } from "./kidChrome";
 import { KidStage } from "./KidStage";
 import { kidStageFor } from "./kidStageArt";
+import { SNEAK_FREEZE_WORLD, flaggedWorldNameKey, sneakFreezeFlagOn } from "./kidWorlds";
 
 // ── EXISTING surfaces — imported unchanged, never forked ──────────────────────
 const HeroJourneyTab = lazy(() => import("../tabs/HeroJourneyTab"));
 const PracticeHubTab = lazy(() => import("../practice/PracticeHubTab"));
 const FeelingsLabTab = lazy(() => import("../practice/FeelingsLabTab"));
 const KidComicsShelf = lazy(() => import("./KidComicsShelf"));
+// B-GAME-07b: the G0 proof game — its chunk loads only when the flagged tile opens it.
+const SneakFreeze = lazy(() => import("./games/sneakFreeze/SneakFreeze"));
 
 // KID-1: labels are i18n keys (kid.* namespace) resolved with t() at render.
 const SURFACE_META: Record<KidSurface, { labelKey: string; Comp?: React.ComponentType }> = {
@@ -70,7 +73,7 @@ export function kidBarTitle(
   t: (key: string) => string,
 ): string | null {
   if (view === "home") return null;
-  const worldKey = view === "arcade" && arcadeWorldId ? KID_GAME_TITLE_KEY[arcadeWorldId] : undefined;
+  const worldKey = view === "arcade" && arcadeWorldId ? KID_GAME_TITLE_KEY[arcadeWorldId] ?? flaggedWorldNameKey(arcadeWorldId) : undefined;
   if (worldKey) return t(worldKey);
   return surfaceTitle ?? t(SURFACE_META[view].labelKey);
 }
@@ -252,6 +255,9 @@ export default function KidModeOverlay() {
   // (a mounted game/book page may name a more exact one via setKidStage).
   const stageOverride = useKidStage();
   const stageScene = stageOverride ?? kidStageFor(view, arcadeWorldId);
+  // B-GAME-07b (ruling G7): the flagged proof game fills the content area —
+  // no padding, no scroll; its scene is the screen under the one top bar.
+  const sneakOpen = view === "arcade" && arcadeWorldId === SNEAK_FREEZE_WORLD.worldId && sneakFreezeFlagOn();
 
   return (
     // KID-LOCK LEAK 1: initial={false} — on a rehydrated mount (reload while
@@ -392,6 +398,7 @@ export default function KidModeOverlay() {
               overflowX: "hidden",
               paddingInline: "20px",
               paddingBlock: "24px",
+              ...(sneakOpen ? { overflowY: "hidden" as const, paddingInline: 0, paddingBlock: 0, display: "flex", flexDirection: "column" as const } : null),
             }}
           >
             {/* KID-22: Kid Mode's own boundary. It wraps the SURFACE AREA only —
@@ -416,12 +423,14 @@ export default function KidModeOverlay() {
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.14 }}
+                  style={sneakOpen ? { flex: 1, minBlockSize: 0, position: "relative" } : undefined}
                 >
                   {view === "home" ? (
                     <KidDashboard onOpenSurface={openSurface} onExit={closeKidMode} />
                   ) : view === "arcade" ? (
                     <Suspense fallback={<KidStageFallback worldId={arcadeWorldId ?? undefined} />}>
-                      <PracticeHubTab initialWorldId={arcadeWorldId ?? undefined} />
+                      {/* B-GAME-07b: the flagged proof game, in the arcade's own Suspense. */}
+                      {sneakOpen ? <SneakFreeze /> : <PracticeHubTab initialWorldId={arcadeWorldId ?? undefined} />}
                     </Suspense>
                   ) : view === "journeys" ? (
                     <Suspense fallback={<KidStageFallback storyId={arcadeWorldId ?? undefined} />}>

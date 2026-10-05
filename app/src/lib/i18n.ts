@@ -2428,6 +2428,18 @@ export const en: Dict = {
   "kid.game.story-quest.sub": "Choose the way",
   "kid.game.mimic-studio.title": "Mimic Studio",
   "kid.game.mimic-studio.sub": "Copy the moves",
+  // B-GAME-07b: Sneak & Freeze, the G0 proof game (offered only behind the
+  // arbor.flags.sneakFreeze device flag). Lines addressed to the child have
+  // .boy / .girl variants (HE differs; EN repeats the base); the base is the
+  // plural / unspecified form.
+  "kid.game.sneak-freeze.title": "Sneak & Freeze",
+  "kid.game.sneak-freeze.sub": "Sneak up on the cat",
+  "kid.game.sneak-freeze.stageAria": "Hold anywhere to sneak. Let go to freeze.",
+  "kid.game.sneak-freeze.stageAria.boy": "Hold anywhere to sneak. Let go to freeze.",
+  "kid.game.sneak-freeze.stageAria.girl": "Hold anywhere to sneak. Let go to freeze.",
+  "kid.game.sneak-freeze.hint": "Hold to sneak. Let go to freeze!",
+  "kid.game.sneak-freeze.hint.boy": "Hold to sneak. Let go to freeze!",
+  "kid.game.sneak-freeze.hint.girl": "Hold to sneak. Let go to freeze!",
   // AIX-S1 — Arbor Vision modal (was hardcoded EN end-to-end on the flagship
   // "wow" surface; the /vision prompt now carries the same language directive).
   "vis.title.observe": "Show Arbor a photo",
@@ -4774,6 +4786,16 @@ export const he: Dict = {
   "kid.game.story-quest.sub": "בוחרים את הדרך",
   "kid.game.mimic-studio.title": "אולפן החיקוי",
   "kid.game.mimic-studio.sub": "מחקים את התנועות",
+  // B-GAME-07b: דג מלוח (רק מאחורי הדגל arbor.flags.sneakFreeze). שורות שפונות
+  // לילד: הבסיס ברבים, ו-.boy / .girl בזכר / בנקבה.
+  "kid.game.sneak-freeze.title": "דג מלוח",
+  "kid.game.sneak-freeze.sub": "מתגנבים אל החתול",
+  "kid.game.sneak-freeze.stageAria": "לחצו בכל מקום כדי להתגנב. עזבו כדי לקפוא.",
+  "kid.game.sneak-freeze.stageAria.boy": "לחץ בכל מקום כדי להתגנב. עזוב כדי לקפוא.",
+  "kid.game.sneak-freeze.stageAria.girl": "לחצי בכל מקום כדי להתגנב. עזבי כדי לקפוא.",
+  "kid.game.sneak-freeze.hint": "לחצו כדי להתגנב, עזבו כדי לקפוא!",
+  "kid.game.sneak-freeze.hint.boy": "לחץ כדי להתגנב, עזוב כדי לקפוא!",
+  "kid.game.sneak-freeze.hint.girl": "לחצי כדי להתגנב, עזבי כדי לקפוא!",
   // AIX-S1 — Arbor Vision modal (HE; flagged for arbor-localization native review).
   "vis.title.observe": "הראו לארבור תמונה",
   "vis.title.document": "סריקת מסמך",

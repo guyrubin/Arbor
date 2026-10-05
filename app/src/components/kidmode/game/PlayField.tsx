@@ -30,6 +30,8 @@ export interface PlayFieldProps extends Omit<React.HTMLAttributes<HTMLDivElement
   actors?: (ctx: PlayFieldContext) => React.ReactNode;
   effects?: (ctx: PlayFieldContext) => React.ReactNode;
   controls?: (ctx: PlayFieldContext) => React.ReactNode;
+  /** The root element (the hold surface), for focus. */
+  rootRef?: (el: HTMLDivElement | null) => void;
 }
 
 function initialSize(): { w: number; h: number } {
@@ -43,7 +45,7 @@ export function artTransform(fit: FieldFit, rtl: boolean): string {
   return rtl ? `${base} translateX(${fit.design.w}px) scaleX(-1)` : base;
 }
 
-export function PlayField({ rtl, needFor, plate, actors, effects, controls, style, ...rest }: PlayFieldProps) {
+export function PlayField({ rtl, needFor, plate, actors, effects, controls, rootRef, style, ...rest }: PlayFieldProps) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [size, setSize] = useState(initialSize);
 
@@ -71,7 +73,10 @@ export function PlayField({ rtl, needFor, plate, actors, effects, controls, styl
 
   return (
     <div
-      ref={ref}
+      ref={(el) => {
+        ref.current = el;
+        rootRef?.(el);
+      }}
       data-play-field={orientation}
       data-rtl={rtl ? "" : undefined}
       {...rest}

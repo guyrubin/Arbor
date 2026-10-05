@@ -60,3 +60,31 @@ export function kidWorldByWorldId(worldId: string): KidWorld | undefined {
 
 /** worldId → the ONE kid name key (the in-world bar title). */
 export const KID_WORLD_NAME_KEY: Readonly<Record<string, string>> = Object.fromEntries(KID_WORLDS.map((w) => [w.worldId, w.nameKey]));
+
+/**
+ * B-GAME-07b — Sneak & Freeze / "דג מלוח", the G0 proof game, offered ONLY
+ * behind a device flag: localStorage["arbor.flags.sneakFreeze"] === "1"
+ * (read once, try/catch). It is NOT in KID_WORLDS, so with the flag off the
+ * kid home, the registry-derived art keys and every existing consumer are
+ * exactly as before. No parent door, no art key, no souvenir yet.
+ */
+export const SNEAK_FREEZE_FLAG_KEY = "arbor.flags.sneakFreeze";
+export const SNEAK_FREEZE_WORLD = { worldId: "sneak", id: "sneak-freeze", nameKey: "kid.game.sneak-freeze.title", subKey: "kid.game.sneak-freeze.sub", accent: "green" } as const;
+export type SneakFreezeWorldId = (typeof SNEAK_FREEZE_WORLD)["worldId"];
+
+let sneakFlag: boolean | null = null;
+/** True when the device flag offers Sneak & Freeze (read once per page load). */
+export function sneakFreezeFlagOn(): boolean {
+  if (sneakFlag !== null) return sneakFlag;
+  try {
+    sneakFlag = typeof localStorage !== "undefined" && localStorage.getItem(SNEAK_FREEZE_FLAG_KEY) === "1";
+  } catch {
+    sneakFlag = false;
+  }
+  return sneakFlag;
+}
+
+/** The flagged world's name key for an arcade id, only while the flag is on. */
+export function flaggedWorldNameKey(worldId: string): string | undefined {
+  return worldId === SNEAK_FREEZE_WORLD.worldId && sneakFreezeFlagOn() ? SNEAK_FREEZE_WORLD.nameKey : undefined;
+}

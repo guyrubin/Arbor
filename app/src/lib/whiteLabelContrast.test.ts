@@ -251,7 +251,7 @@ const WRAPPERS = [
   // B-KID-74: the one kid game shell the nine worlds mount (parent door: a
   // plain div + PlayHeader; Kid Mode: .arbor-play + token surfaces). Every
   // white label in a world sits inside it, so it is audited on the same terms.
-  { name: "GameShell", file: "components/kidmode/game/GameShell.tsx", slots: ["children"], params: ["worldId", "title", "instruction", "hearIt", "progress", "mood", "eyebrow", "action", "variant", "heroDecorative", "children"] },
+  { name: "GameShell", file: "components/kidmode/game/GameShell.tsx", slots: ["children"], params: ["worldId", "title", "instruction", "hearIt", "progress", "mood", "eyebrow", "action", "variant", "heroDecorative", "fullBleed", "children"] },
 ] as const;
 function importsModule(source: ts.SourceFile, statement: ts.ImportDeclaration, module: string): boolean {
   if (!ts.isStringLiteral(statement.moduleSpecifier)) return false;
