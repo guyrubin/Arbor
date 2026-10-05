@@ -35,6 +35,8 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useHeroAvatar, HeroAvatar } from "../ui/HeroAvatar";
 import { usePracticeData } from "../../practice/usePracticeData";
 import WorldScene from "../practice/WorldScene";
+import { useKidTheme } from "../../hooks/useKidTheme";
+import type { KidThemeId } from "../../lib/kidThemeManifest";
 import { HoldExitButton } from "./HoldExitButton";
 import { kidIsolate } from "./kidText";
 import { lastPlayedWorldYesterday } from "./kidGreeting";
@@ -260,6 +262,7 @@ function SceneTile({
   imagePrompt,
   heroUrl,
   heroStyle,
+  theme,
   onClick,
   big,
   index,
@@ -272,6 +275,8 @@ function SceneTile({
   imagePrompt: string;
   heroUrl?: string;
   heroStyle?: AvatarStyle;
+  /** B-KID-70: the child's one kid look — every tile on the screen shares it. */
+  theme: KidThemeId;
   onClick: () => void;
   big?: boolean;
   index: number;
@@ -295,7 +300,7 @@ function SceneTile({
       }}
     >
       <div className="relative" style={{ minBlockSize: big ? 60 : KID_HOME_GAME_TILE_IMAGE_BLOCK }}>
-        <WorldScene worldId={worldId} imagePrompt={imagePrompt} heroUrl={heroUrl} heroStyle={heroStyle} sizes={big ? "(max-width: 639px) 100vw, 33vw" : "(max-width: 359px) 100vw, (max-width: 639px) 50vw, 25vw"}>
+        <WorldScene worldId={worldId} theme={theme} imagePrompt={imagePrompt} heroUrl={heroUrl} heroStyle={heroStyle} sizes={big ? "(max-width: 639px) 100vw, 33vw" : "(max-width: 359px) 100vw, (max-width: 639px) 50vw, 25vw"}>
           <span aria-hidden="true" className="grid h-full w-full place-items-center" style={{ color: ACCENT_INK[accent] }}><Icon className="w-10 h-10" /></span>
         </WorldScene>
 
@@ -327,6 +332,7 @@ export default function KidDashboard({
   const { childProfile } = useArbor();
   const { t, uiLang } = useLanguage();
   const hero = useHeroAvatar();
+  const kidTheme = useKidTheme();
   const data = usePracticeData(childProfile.id);
   // RUN-03: every kid-register string renders through the bidi isolate so an
   // EN placeholder inside a Hebrew (RTL) shell keeps its own direction —
@@ -416,7 +422,7 @@ export default function KidDashboard({
         }}
       >
         <div className="relative flex-shrink-0" style={{ inlineSize: "45%", maxInlineSize: 300, minBlockSize: KID_HOME_BANNER_BLOCK }}>
-          <WorldScene worldId="kid-quest" imagePrompt="an epic castle scene on a hill with a glowing open magic book" heroUrl={hero.url ?? undefined} heroStyle={hero.style} sizes="(max-width: 639px) 45vw, 300px">
+          <WorldScene worldId="kid-quest" theme={kidTheme} imagePrompt="an epic castle scene on a hill with a glowing open magic book" heroUrl={hero.url ?? undefined} heroStyle={hero.style} sizes="(max-width: 639px) 45vw, 300px">
             <Sparkles aria-hidden="true" className="w-10 h-10" style={{ color: "var(--arbor-sky-ink)" }} />
           </WorldScene>
           <span className="absolute bottom-2 end-2 z-[2] rounded-2xl" style={{ background: "var(--arbor-paper-elevated)", border: "2px solid var(--comic-ink)", boxShadow: "2px 2px 0 var(--comic-ink)" }}>
@@ -452,7 +458,7 @@ export default function KidDashboard({
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(160px, 100%), 1fr))", gap: `${KID_HOME_TILE_GAP}px` }}>
           {GAMES.map((g, i) => (
-            <SceneTile key={g.id} worldId={g.worldId} accent={g.accent} Icon={g.Icon} title={kt(`kid.game.${g.id}.title`)} sub={kt(`kid.game.${g.id}.sub`)} imagePrompt={g.imagePrompt} heroUrl={hero.url ?? undefined} heroStyle={hero.style} index={i} onClick={() => onOpenSurface("arcade", g.worldId)} />
+            <SceneTile key={g.id} worldId={g.worldId} accent={g.accent} Icon={g.Icon} title={kt(`kid.game.${g.id}.title`)} sub={kt(`kid.game.${g.id}.sub`)} imagePrompt={g.imagePrompt} heroUrl={hero.url ?? undefined} heroStyle={hero.style} theme={kidTheme} index={i} onClick={() => onOpenSurface("arcade", g.worldId)} />
           ))}
         </div>
       </section>
@@ -464,7 +470,7 @@ export default function KidDashboard({
         </h2>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: `${KID_HOME_TILE_GAP}px` }}>
           {ADVENTURES.map((a, i) => (
-            <SceneTile key={a.id} worldId={a.worldId} accent={a.accent} Icon={a.Icon} title={kt(`kid.adv.${a.id}.title`)} sub={kt(`kid.adv.${a.id}.sub`)} imagePrompt={a.imagePrompt} heroUrl={hero.url ?? undefined} heroStyle={hero.style} big index={i} onClick={() => onOpenSurface(a.surface)} />
+            <SceneTile key={a.id} worldId={a.worldId} accent={a.accent} Icon={a.Icon} title={kt(`kid.adv.${a.id}.title`)} sub={kt(`kid.adv.${a.id}.sub`)} imagePrompt={a.imagePrompt} heroUrl={hero.url ?? undefined} heroStyle={hero.style} theme={kidTheme} big index={i} onClick={() => onOpenSurface(a.surface)} />
           ))}
         </div>
       </section>

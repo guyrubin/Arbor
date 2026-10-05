@@ -49,6 +49,7 @@ import { consumeTonightMode, type TonightMode } from "../../lib/tonightMode";
 import HeroCrest from "../ui/HeroCrest";
 import { ArborMascot } from "../ui/ArborMascot";
 import WorldScene from "../practice/WorldScene";
+import { useKidTheme } from "../../hooks/useKidTheme";
 import { pickTonightsStory, TONIGHT_AIM_REASON_KEY } from "../kidmode/tonightsStory";
 import { dayKey } from "../../practice/signals";
 import { PageHeader, cardCls } from "../ui/kit";
@@ -214,6 +215,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
   // never a raw face photo or a remote URL — so scenes stay consistent and privacy-safe.
   const heroAvatarUrl = childProfile.avatar && photoUrl?.startsWith("data:") ? photoUrl : undefined;
   const heroAvatarStyle = normalizeAvatarStyle(childProfile.avatar?.style);
+  const kidTheme = useKidTheme();
   // B-KID-01: the fallback-page cameo is the generated hero or Sprout — a
   // photo-only child (photoUrl, no avatar) resolves to null here, never the photo.
   const heroCameoUrl = resolveHeroUrl(childProfile) ?? undefined;
@@ -831,7 +833,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                     {/* The story's world, with the child's hero generated into the scene
                         (same pipeline as the Practice world-cards). Falls back to the
                         hero + emoji motif while loading / with no hero / on error. */}
-                    <WorldScene worldId={`story-${story.id}`} imagePrompt={`${story.title} — ${story.theme}`} heroUrl={heroAvatarUrl} heroStyle={heroAvatarStyle}>
+                    <WorldScene worldId={`story-${story.id}`} theme={kidTheme} imagePrompt={`${story.title} — ${story.theme}`} heroUrl={heroAvatarUrl} heroStyle={heroAvatarStyle}>
                       <div className="flex items-center gap-1.5">
                         <HeroAvatar size={80} ring animate={false} />
                         <span style={{ fontSize: 46, filter: "drop-shadow(2px 2px 0 rgba(23,27,34,.3))" }} aria-hidden="true">
@@ -1199,7 +1201,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                     {/* The story's world, with the child's hero generated into the scene
                         (same pipeline as the Practice world-cards). Falls back to the
                         hero + emoji motif while loading / with no hero / on error. */}
-                    <WorldScene worldId={`story-${story.id}`} imagePrompt={`${story.title} — ${story.theme}`} heroUrl={heroAvatarUrl} heroStyle={heroAvatarStyle}>
+                    <WorldScene worldId={`story-${story.id}`} theme={kidTheme} imagePrompt={`${story.title} — ${story.theme}`} heroUrl={heroAvatarUrl} heroStyle={heroAvatarStyle}>
                       <div className="flex items-center gap-1.5">
                         <HeroAvatar size={80} ring animate={false} />
                         <span style={{ fontSize: 46, filter: "drop-shadow(2px 2px 0 rgba(23,27,34,.3))" }} aria-hidden="true">

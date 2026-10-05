@@ -3,6 +3,7 @@ import { api, type AvatarStyle } from "../../lib/api";
 import { normalizeAvatarStyle } from "../../lib/avatarStyle";
 import { dedupeScene, getScene } from "../../lib/sceneCache";
 import { worldArtwork } from "./worldArtwork";
+import type { KidThemeId } from "../../lib/kidThemeManifest";
 import { runInstrumented } from "../../hooks/useAsyncAction";
 
 /* WorldScene — one visual identity for every child world.
@@ -45,6 +46,7 @@ const WORLD_SCENE_REQUIREMENTS = [
 
 export default function WorldScene({
   worldId,
+  theme,
   imagePrompt,
   heroUrl,
   heroStyle,
@@ -52,6 +54,9 @@ export default function WorldScene({
   sizes = "(max-width: 639px) 50vw, (max-width: 1023px) 33vw, 240px",
 }: {
   worldId: string;
+  /** B-KID-70: the child's ONE kid look (useKidTheme()); the static art comes
+   *  from that theme only, never another. */
+  theme: KidThemeId;
   imagePrompt: string;
   heroUrl?: string;
   heroStyle?: AvatarStyle;
@@ -70,7 +75,7 @@ export default function WorldScene({
   // A previous key's result is never displayed, even before effect cleanup runs.
   const art = key ? (resolved?.key === key ? resolved.url : getScene(key)) : undefined;
   const generated = art && !(failedGenerated?.key === key && failedGenerated.url === art) ? art : undefined;
-  const fallback = worldArtwork(worldId);
+  const fallback = worldArtwork(worldId, theme);
 
   useEffect(() => {
     if (!heroUrl || !key) return;

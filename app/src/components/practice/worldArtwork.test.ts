@@ -7,8 +7,8 @@ const manifest=JSON.parse(readFileSync(new URL("../../../../docs/design/world-ar
 describe("reviewed world-art delivery map",()=>{
  it("covers all nine child worlds plus two adventures and banner, with twelve unique scenes",()=>{
   expect(Object.keys(WORLD_ARTWORK)).toHaveLength(12);
-  for(const w of KID_WORLDS)expect(worldArtwork(w.id),w.id).toBeDefined();
-  expect(KID_WORLDS).toHaveLength(9);expect(worldArtwork("word-world")).toBeUndefined();
+  for(const w of KID_WORLDS)for(const t of ["film3d","storybook"] as const)expect(worldArtwork(w.id,t),`${t} ${w.id}`).toBeDefined();
+  expect(KID_WORLDS).toHaveLength(9);expect(worldArtwork("word-world","storybook")).toBeUndefined();
   expect(new Set(Object.values(WORLD_ARTWORK).map(a=>a.src)).size).toBe(12);
  });
  it("uses the exact approved bytes and responsive derivatives within budget",()=>{
@@ -25,7 +25,7 @@ describe("reviewed world-art delivery map",()=>{
   }
  });
  it("does not invent navigation or substitute a child portrait",()=>{
-  expect(worldArtwork("unknown")).toBeUndefined();
+  expect(worldArtwork("unknown","film3d")).toBeUndefined();
   for(const art of Object.values(WORLD_ARTWORK))expect(art.src).toMatch(/worlds\/v2\/.*-v2-480\.webp$/);
  });
 });

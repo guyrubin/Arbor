@@ -29,6 +29,7 @@ const MimicStudioTab = lazy(() => import("./MimicStudioTab"));
 const FeelingsLabTab = lazy(() => import("./FeelingsLabTab"));
 const AdventuresTab = lazy(() => import("./AdventuresTab"));
 import WorldScene from "./WorldScene";
+import { useKidTheme } from "../../hooks/useKidTheme";
 import { starEvents } from "../../practice/signals";
 const MindVaultWorld = lazy(() => import("./MindVaultWorld"));
 const SpellForgeWorld = lazy(() => import("./SpellForgeWorld"));
@@ -118,6 +119,7 @@ export default function HeroArcade({ initialWorldId }: { initialWorldId?: string
   const { t } = useLanguage();
   const data = usePracticeData(childProfile.id);
   const hero = useHeroAvatar();
+  const kidTheme = useKidTheme();
   // KID-05: the comics CTA needs the parent shell; while Kid Mode is active the
   // navigator is null and the CTA is not rendered at all (never a dead button).
   const nav = useKidSafeNav();
@@ -265,7 +267,7 @@ export default function HeroArcade({ initialWorldId }: { initialWorldId?: string
                     style={{ background: "var(--arbor-pink)", color: "var(--arbor-on-accent)", border: "var(--comic-line)", borderTopLeftRadius: "var(--play-radius)", borderBottomRightRadius: "12px" }}>{t("elev.play.arcade.new")}</span>
                 )}
                 <div className="comic-halftone relative overflow-hidden" style={{ height: 120, background: c.bg, borderBottom: "var(--comic-line)" }}>
-                  <WorldScene worldId={w.id} imagePrompt={w.imagePrompt} heroUrl={hero.url ?? undefined} heroStyle={hero.style} sizes="(max-width: 639px) 50vw, (max-width: 1023px) 33vw, 240px">
+                  <WorldScene worldId={w.id} theme={kidTheme} imagePrompt={w.imagePrompt} heroUrl={hero.url ?? undefined} heroStyle={hero.style} sizes="(max-width: 639px) 50vw, (max-width: 1023px) 33vw, 240px">
                     <Icon name={glyph} size={48} fill={1} style={{ color: "var(--arbor-on-accent)", filter: "drop-shadow(2px 2px 0 rgba(23,27,34,.35))" }} />
                   </WorldScene>
                 </div>

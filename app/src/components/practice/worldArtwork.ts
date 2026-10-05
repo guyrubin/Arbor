@@ -12,6 +12,7 @@ const adapt=(theme:KidThemeId,id:KidWorldTileId):WorldArtwork|undefined=>{
 export const WORLD_ARTWORK:Record<KidWorldTileId,WorldArtwork>=Object.fromEntries(
  KID_WORLD_TILE_IDS.map(id=>[id,adapt("storybook",id)!]),
 ) as Record<KidWorldTileId,WorldArtwork>;
-export function worldArtwork(worldId:string,theme:KidThemeId="storybook"):WorldArtwork|undefined {
+/** B-KID-70: the theme is required — a caller never gets another theme's art by omission. */
+export function worldArtwork(worldId:string,theme:KidThemeId):WorldArtwork|undefined {
  return (KID_WORLD_TILE_IDS as readonly string[]).includes(worldId)?adapt(theme,worldId as KidWorldTileId):undefined;
 }

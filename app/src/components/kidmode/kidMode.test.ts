@@ -777,14 +777,17 @@ describe("KID-7: kid-dashboard art is unique per visible tile", () => {
     const ids = [...src.matchAll(/\{ id: "[a-z-]+", worldId: "([a-z-]+)"/g)].map(m=>m[1]);
     ids.push("kid-quest");
     expect(ids).toHaveLength(11);
-    const arts=ids.map(id=>worldArtwork(id)?.src);
-    expect(arts.every(Boolean)).toBe(true);
-    expect(new Set(arts).size).toBe(11);
+    for (const theme of ["film3d", "storybook"] as const) {
+      const arts=ids.map(id=>worldArtwork(id, theme)?.src);
+      expect(arts.every(Boolean), theme).toBe(true);
+      expect(new Set(arts).size, theme).toBe(11);
+    }
     expect(src).not.toContain("/visuals/");
   });
   it("the banner retains its distinct story role rather than recycling a game", async () => {
     const { worldArtwork } = await import("../practice/worldArtwork");
-    expect(worldArtwork("kid-quest")!.provenanceId).toBe("world-art-v2:tonight-story");
+    expect(worldArtwork("kid-quest", "storybook")!.provenanceId).toBe("world-art-v2:tonight-story");
+    expect(worldArtwork("kid-quest", "film3d")!.provenanceId).toBe("film3d-card:arbor-academy-play-hero-bg");
     expect(readSelf("KidDashboard.tsx")).toContain('worldId="kid-quest"');
   });
 });

@@ -13,7 +13,7 @@ vi.mock("react",async(original)=>{
 });
 vi.mock("../../lib/api",()=>({api:{generateScene:h.generate}}));
 vi.mock("../../hooks/useAsyncAction",()=>({runInstrumented:(_name:string,run:()=>unknown)=>run()}));
-const props=(over:Partial<React.ComponentProps<typeof WorldScene>>={})=>({worldId:"feelings",imagePrompt:"same world prompt",heroUrl:"data:hero-A",children:<span>icon fallback</span>,...over});
+const props=(over:Partial<React.ComponentProps<typeof WorldScene>>={})=>({worldId:"feelings",theme:"storybook" as const,imagePrompt:"same world prompt",heroUrl:"data:hero-A",children:<span>icon fallback</span>,...over});
 function render(over:Partial<React.ComponentProps<typeof WorldScene>>={}){h.at=0;const tree=WorldScene(props(over));h.effects.splice(0).forEach(run=>run());return tree;}
 function nodes(node:React.ReactNode):React.ReactElement<Record<string,any>>[]{if(!React.isValidElement(node))return[];const el=node as React.ReactElement<Record<string,any>>;return[el,...React.Children.toArray(el.props.children).flatMap(nodes)];}
 function image(tree:React.ReactNode){return nodes(tree).find(el=>el.type==="img");}
@@ -30,6 +30,11 @@ describe("WorldScene current-key lifecycle and decorative fallback",()=>{
  it("shows responsive static art with no avatar and never calls a provider",()=>{
   const tree=render({heroUrl:undefined});const img=image(tree)!;
   expect(img.props.src).toContain("mood-mountain-v2-480.webp");expect(img.props.srcSet).toContain("960w");expect(img.props.loading).toBe("lazy");expect(img.props.alt).toBe("");expect(img.props["aria-hidden"]).toBe("true");expect(h.generate).not.toHaveBeenCalled();
+ });
+ it("B-KID-70: film3d shows the theme's own card, top-focused, never the storybook tile",()=>{
+  const img=image(render({heroUrl:undefined,theme:"film3d"}))!;
+  expect(img.props.src).toContain("/cards/web/game-feelings-480.webp");expect(img.props.srcSet).toContain("1024w");
+  expect(img.props.src).not.toContain("mood-mountain");expect(img.props.style.objectPosition).toBe("50% 22%");
  });
  it("hides the whole decorative slot, including a covered named fallback and ultimate icon",()=>{
   const labelledFallback=<span role="img" aria-label="Dylan, the hero">hero fallback</span>;
