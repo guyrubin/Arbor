@@ -24,13 +24,13 @@ import { pointOnPath, sneakLayout, toPx, type FieldOrientation, type SneakLayout
 import { HeroFigure, prefersReducedMotion, useHeroSheet } from "../../hero/HeroFigure";
 import { kidIsolate } from "../../kidText";
 import { SNEAK_FREEZE_WORLD } from "../../kidWorlds";
-import { KidToy } from "../../KidToy";
 import { useKidHome } from "../../kidChrome";
 import { startSitting, step, view as viewOf, type SneakState, type SneakView } from "./rules";
 import { readSneakArt, type SneakArt } from "./sneakArt";
 import { readPlayLevel, writePlayLevel } from "./sneakStore";
 import { sneakSound } from "./sounds";
 import { Watcher } from "./Watcher";
+import { Ending, captionKey } from "./Ending";
 
 /** HE lines addressed to the child: `.boy` / `.girl`, else the plural base. */
 export function formKey(base: string, gender: string | undefined): string {
@@ -298,18 +298,27 @@ export default function SneakFreeze() {
   };
 
   const title = t(SNEAK_FREEZE_WORLD.nameKey);
+  const firstName = (childProfile?.name ?? "").trim().split(/\s+/)[0] ?? "";
   const hintLine = kidIsolate(t(formKey("kid.game.sneak-freeze.hint", gender)));
   const stageAria = kidIsolate(t(formKey("kid.game.sneak-freeze.stageAria", gender)));
 
   return (
     <GameShell worldId={SNEAK_FREEZE_WORLD.worldId} title={title} fullBleed>
-      {v.done ? (
-        <div data-sneak-finish="" style={{ display: "grid", placeItems: "center", blockSize: "100%", padding: 24 }}>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 16, justifyContent: "center" }}>
-            <KidToy tone="go" size="l" glyph="replay" onClick={playAgain}>{kidIsolate(t("kidGame.playAgain"))}</KidToy>
-            {goHome && <KidToy tone="paper" glyph="home" onClick={goHome}>{kidIsolate(t("kidGame.home"))}</KidToy>}
-          </div>
-        </div>
+      {v.done && stateRef.current ? (
+        <Ending
+          key={stateRef.current.seed}
+          state={stateRef.current}
+          art={art}
+          sheet={sheet}
+          childId={childId}
+          rtl={rtl}
+          caption={t(captionKey(firstName, gender), { name: firstName })}
+          pictureAlt={t("kid.game.sneak-freeze.pictureAlt", { name: firstName || title })}
+          playAgainLabel={t("kidGame.playAgain")}
+          homeLabel={t("kidGame.home")}
+          onPlayAgain={playAgain}
+          onHome={goHome}
+        />
       ) : (
         <PlayField
           rootRef={(el) => { stageRef.current = el; }}

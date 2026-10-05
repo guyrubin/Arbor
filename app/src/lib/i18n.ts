@@ -2440,6 +2440,12 @@ export const en: Dict = {
   "kid.game.sneak-freeze.hint": "Hold to sneak. Let go to freeze!",
   "kid.game.sneak-freeze.hint.boy": "Hold to sneak. Let go to freeze!",
   "kid.game.sneak-freeze.hint.girl": "Hold to sneak. Let go to freeze!",
+  // B-GAME-09: the statue picture's caption ({name} is isolated by t()).
+  "kid.game.sneak-freeze.caption": "The cat looked… and {name} didn't move!",
+  "kid.game.sneak-freeze.caption.boy": "The cat looked… and {name} didn't move!",
+  "kid.game.sneak-freeze.caption.girl": "The cat looked… and {name} didn't move!",
+  "kid.game.sneak-freeze.caption.noName": "The cat looked… and nobody moved!",
+  "kid.game.sneak-freeze.pictureAlt": "{name} as a statue, with the cat squinting",
   // AIX-S1 — Arbor Vision modal (was hardcoded EN end-to-end on the flagship
   // "wow" surface; the /vision prompt now carries the same language directive).
   "vis.title.observe": "Show Arbor a photo",
@@ -4796,6 +4802,12 @@ export const he: Dict = {
   "kid.game.sneak-freeze.hint": "לחצו כדי להתגנב, עזבו כדי לקפוא!",
   "kid.game.sneak-freeze.hint.boy": "לחץ כדי להתגנב, עזוב כדי לקפוא!",
   "kid.game.sneak-freeze.hint.girl": "לחצי כדי להתגנב, עזבי כדי לקפוא!",
+  // B-GAME-09: כיתוב תמונת הפסל (השם מבודד ב-t()). בלי מגדר: "— פסל!".
+  "kid.game.sneak-freeze.caption": "החתול הסתכל… אבל {name} — פסל!",
+  "kid.game.sneak-freeze.caption.boy": "החתול הסתכל… אבל {name} לא זז!",
+  "kid.game.sneak-freeze.caption.girl": "החתול הסתכל… אבל {name} לא זזה!",
+  "kid.game.sneak-freeze.caption.noName": "החתול הסתכל… ואף אחד לא זז!",
+  "kid.game.sneak-freeze.pictureAlt": "{name} בתור פסל, והחתול מצמצם עיניים",
   // AIX-S1 — Arbor Vision modal (HE; flagged for arbor-localization native review).
   "vis.title.observe": "הראו לארבור תמונה",
   "vis.title.document": "סריקת מסמך",

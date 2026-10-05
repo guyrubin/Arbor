@@ -99,6 +99,8 @@ export interface StatueRecord {
   /** How long this pose was held, ms (the Ending shows the longest). */
   heldMs: number;
   round: number;
+  /** Where along the run the hero stood, 0..1 (the Ending's picture). */
+  at: number;
 }
 
 export interface SneakState {
@@ -349,7 +351,7 @@ function bankCover(s: SneakState): void {
 function startVerdict(s: SneakState, v: Verdict): void {
   s.verdict = v;
   if (v === "statue") {
-    s.statues = [...s.statues, { pose: s.freezePose, heldMs: Math.round(s.freezeMs), round: s.round }];
+    s.statues = [...s.statues, { pose: s.freezePose, heldMs: Math.round(s.freezeMs), round: s.round, at: s.pathSteps > 0 ? s.pos / s.pathSteps : 0 }];
     s.statuesThisRound += 1;
     if (s.sunglasses) meet(s, "sunglasses");
     bankCover(s);
