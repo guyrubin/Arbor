@@ -222,8 +222,11 @@ describe("B-PLAY-11 — Tonight cover: no virtue tallies, insight first, catalog
     // the stamped element is the button whose label is the CTA
     expect(cover.slice(btnOpen, cover.indexOf("</button>", stamp))).toContain('t("elev.stories.tonight.cta")');
     expect(cover.slice(btnOpen, cover.indexOf("</button>", stamp))).not.toContain("tonightStory.titleHe");
-    // W2-SHELLPLAY r2: the art band is a min-height (it now holds the hero row)
-    expect(cover).toContain("min-h-[112px] sm:min-h-[168px]");
+    // W2-SHELLPLAY r2: the art band is a min-height (it now holds the hero row).
+    // SHIP-FIX r3: below sm it is ONE row (avatar + hero row side by side, 100 px)
+    expect(cover).toContain("flex flex-row sm:flex-col items-center justify-center gap-3 sm:gap-1 w-full min-h-[96px] sm:min-h-[168px]");
+    // NEGATIVE CONTROL: the r3 148 px column band is caught
+    expect(cover).not.toContain("flex flex-col items-center justify-center gap-1 w-full min-h-[112px]");
     expect(cover).toContain("lg:grid-cols-[2fr_3fr]");
     expect(cover).toContain("lg:max-w-[60ch]");
     // the CTA is the one gradient, with the on-accent ink
@@ -338,17 +341,25 @@ describe("W2-SHELLPLAY r2 · #/stories — Builds is a glance, and one moment li
     expect("The child learns that the fastest, shiniest path is not always the right one".split(/\s+/).length).toBeGreaterThan(6);
   });
 
-  it("the moment line quotes ONE parent-noted moment from today or yesterday, above the cover, with a link into From today", () => {
-    const line = section.slice(section.indexOf('data-testid="stories-tonight-noted"'), section.indexOf('data-testid="stories-cover"'));
-    expect(section.indexOf('data-testid="stories-tonight-noted"')).toBeGreaterThan(section.indexOf('data-testid="stories-tonight-mode"'));
-    expect(section.indexOf('data-testid="stories-tonight-noted"')).toBeLessThan(section.indexOf('data-testid="stories-cover"'));
-    expect(line).toContain('background: "var(--arbor-peach-wash)"');
+  it("SHIP-FIX r3: the moment line quotes ONE parent-noted moment INSIDE the cover text column, above the title — no band above the cover, no second door into From today", () => {
+    const at = section.indexOf('data-testid="stories-tonight-noted"');
+    const line = section.slice(at, section.indexOf("</p>", at));
+    // inside the cover, after the art band, before the title and Play
+    expect(at).toBeGreaterThan(section.indexOf('data-testid="stories-cover"'));
+    expect(at).toBeGreaterThan(section.indexOf('data-testid="hero-first-gate"'));
+    expect(at).toBeLessThan(section.indexOf("tonightStory.titleHe"));
+    expect(at).toBeLessThan(section.indexOf('data-primary-move="read-tonights-story"'));
+    expect(line).toContain('borderInlineStart: "3px solid var(--arbor-peach-ink)"');
+    expect(line).toContain("line-clamp-2");
     expect(line).toContain('fontFamily: "var(--font-editorial)"');
-    expect(line).toContain("<bdi");
-    expect(line).toContain('onClick={() => setTonightMode("today")}');
-    expect(line).not.toMatch(/--gradient-cta|data-primary-move|data-module/);
+    // the quote glyphs sit INSIDE the bdi (RTL no longer reverses them)
+    expect(line).toContain("“{notedMoment.text}”</bdi>");
+    expect(line).not.toMatch(/--gradient-cta|data-primary-move|data-module|<button|onClick/);
     expect(section).toContain('!kidMode && tonightMode !== "today" && notedMoment && (');
-    for (const k of ["elev.stories.tonight.noted", "elev.stories.tonight.noted.yesterday", "elev.stories.tonight.notedCta"]) {
+    // NEGATIVE CONTROL: the r3 band's second door is gone
+    expect(section).not.toContain("stories-tonight-noted-cta");
+    expect(section).not.toContain("elev.stories.tonight.notedCta");
+    for (const k of ["elev.stories.tonight.noted", "elev.stories.tonight.noted.yesterday"]) {
       expect(translate("en", k), k).not.toBe(k);
       expect(translate("he", k), k).not.toMatch(/[A-Za-z]/);
     }

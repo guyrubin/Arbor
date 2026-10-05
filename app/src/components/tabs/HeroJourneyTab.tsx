@@ -1005,35 +1005,13 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
               all inside 812 px. ≥1024: two columns, art at inline-start, the
               text column held to 60ch. The archetype essay lives in the reader
               (reflection beat), not on the cover. */}
-          {/* W2-SHELLPLAY critic r2 (B-SHELL-NEW-2d): ONE moment line — the
-              parent's own words from today or yesterday, the screen's one warm
-              accent. Flat peach wash, quote in the editorial face, bidi-isolated.
-              Its quiet link opens "From today" (which seeds from that day).
-              Absent with no moment, and in "From today" (that body quotes it). */}
-          {!kidMode && tonightMode !== "today" && notedMoment && (
-            <div data-testid="stories-tonight-noted" className="mb-3 rounded-[14px] p-3" style={{ background: "var(--arbor-peach-wash)" }}>
-              <p className="m-0 t-xs font-bold" style={{ color: "var(--arbor-peach-ink)" }}>
-                {t(notedMoment.from === "today" ? "elev.stories.tonight.noted" : "elev.stories.tonight.noted.yesterday")}
-              </p>
-              <p className="m-0 mt-0.5 t-base leading-snug" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)" }}>
-                “<bdi dir="auto">{notedMoment.text}</bdi>”
-              </p>
-              <button
-                type="button"
-                data-testid="stories-tonight-noted-cta"
-                onClick={() => setTonightMode("today")}
-                className="inline-flex min-h-11 items-center gap-1 t-sm font-bold"
-                style={{ color: "var(--arbor-clay-ink)" }}
-              >
-                {t("elev.stories.tonight.notedCta")}
-                <Icon name="arrow_forward" size={15} className="rtl:-scale-x-100" />
-              </button>
-            </div>
-          )}
           {tonightMode === "today" ? <TonightFromToday /> : (
           <div data-testid="stories-cover" className={`${cardCls} w-full overflow-hidden p-0 lg:grid lg:grid-cols-[2fr_3fr]`}>
+            {/* SHIP-FIX (W2-SHELLPLAY r3 F1): below sm the art band is ONE row —
+                avatar at inline-start, the hero row beside it (100 px, was a
+                148 px column) — so Play clears the fixed bottom nav at 375. */}
             <div
-              className="flex flex-col items-center justify-center gap-1 w-full min-h-[112px] sm:min-h-[168px] lg:h-full lg:min-h-[220px] py-2"
+              className="flex flex-row sm:flex-col items-center justify-center gap-3 sm:gap-1 w-full min-h-[96px] sm:min-h-[168px] lg:h-full lg:min-h-[220px] py-2 px-3"
               style={{ background: tonightStory ? PACK_SOFT[tonightStory.pack] : "var(--arbor-paper-deep)" }}
             >
               <span aria-hidden="true"><HeroAvatar size={84} ring animate={false} /></span>
@@ -1046,7 +1024,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                   type="button"
                   data-testid="hero-first-gate"
                   onClick={() => setHeroDialogOpen(true)}
-                  className="inline-flex min-h-11 items-center gap-1 px-2 t-sm font-bold"
+                  className="inline-flex min-h-11 items-center gap-1 px-2 t-sm font-bold text-start"
                   style={{ color: "var(--arbor-clay-ink)" }}
                   dir="auto"
                 >
@@ -1056,6 +1034,21 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
               )}
             </div>
             <div className="p-4 sm:p-5 lg:max-w-[60ch]">
+              {/* W2-SHELLPLAY critic r2 (B-SHELL-NEW-2d) → SHIP-FIX r3 F1/F2: ONE
+                  moment line — the parent's own words from today or yesterday,
+                  the screen's one warm accent — now INSIDE the cover text column
+                  (the 108 px band above the cover pushed Play under the nav).
+                  Peach inline-start rule, quote in the editorial face with its
+                  glyphs inside the <bdi>. No link: the "From today" switch is the
+                  one door into that mode. Absent with no moment. */}
+              {!kidMode && tonightMode !== "today" && notedMoment && (
+                <p data-testid="stories-tonight-noted" className="m-0 mb-2 ps-2.5 t-sm leading-snug line-clamp-2" style={{ borderInlineStart: "3px solid var(--arbor-peach-ink)", color: "var(--arbor-ink)" }}>
+                  <span className="t-xs font-bold" style={{ color: "var(--arbor-peach-ink)" }}>
+                    {t(notedMoment.from === "today" ? "elev.stories.tonight.noted" : "elev.stories.tonight.noted.yesterday")}
+                  </span>{" "}
+                  <bdi dir="auto" style={{ fontFamily: "var(--font-editorial)" }}>“{notedMoment.text}”</bdi>
+                </p>
+              )}
               <h2 className="text-[1.35rem] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
                 {tonightStory ? (he ? tonightStory.titleHe : tonightStory.title) : t("elev.stories.catalogue.title")}
               </h2>
