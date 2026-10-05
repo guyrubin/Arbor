@@ -39,7 +39,7 @@ function run(...actions: BookFlowAction[]): BookFlowState {
   return actions.reduce((s, a) => bookFlowReducer(book, s, a), initialBookFlow());
 }
 
-function render(state: BookFlowState, opts: { lang?: BookLang; child?: BookReaderChild; box?: Box; revealed?: boolean; choosing?: boolean } = {}): string {
+function render(state: BookFlowState, opts: { lang?: BookLang; child?: BookReaderChild; box?: Box; revealed?: boolean | number; choosing?: boolean } = {}): string {
   return renderToStaticMarkup(
     <div className="arbor-play">
       <BookReader book={book} lang={opts.lang ?? "en"} child={opts.child ?? BOY} onClose={() => {}} dev narration="off" initialState={state} initialBox={opts.box ?? WIDE} initialRevealed={opts.revealed} initialChoosing={opts.choosing} />
@@ -275,8 +275,12 @@ describe("the ending", () => {
     expect(nextIntent(true, true, true)).toBe("hold");
     expect(nextIntent(true, true, false)).toBe("turn");
     expect(nextIntent(false, false, false)).toBe("turn");
-    const shown = render(s, { revealed: true });
+    const shown = render(s, { revealed: 1 });
     expect(shown).not.toMatch(/data-book-overlay="dust-cloud"[^>]*data-hidden=""/);
+    // round 3 delivered PL7-rise: the last state is the soldiers rising
+    const all = render(s, { revealed: true });
+    expect(all).toContain('data-book-state-plate="PL7-rise"');
+    expect(all).toMatch(/data-book-overlay="dust-cloud"[^>]*data-hidden=""/);
   });
 
   it("v2 art states: p9 = swing → dust → 'the soldiers rise' plate cross-fading in over PL7 (the hero stays, the dust goes)", () => {
@@ -287,8 +291,9 @@ describe("the ending", () => {
     ];
     const riseBook = { ...book, pages: book.pages.map((p) => (p.id === "p9" ? { ...p, artStates: RISE } : p)) };
     const plates = { ...BOOK_PLATES[book.id], "PL7-rise": makePlate(book.id, "PL7-rise", "day", { width: 1920, height: 1280 }) };
+    const { "PL7-rise": _rise, ...withoutRise } = plates;
     const at = (stage: number | boolean, withPlate = true) =>
-      renderToStaticMarkup(<BookReader book={riseBook} lang="en" child={BOY} onClose={() => {}} dev narration="off" initialState={s} initialBox={WIDE} plates={withPlate ? plates : undefined} initialRevealed={stage} />);
+      renderToStaticMarkup(<BookReader book={riseBook} lang="en" child={BOY} onClose={() => {}} dev narration="off" initialState={s} initialBox={WIDE} plates={withPlate ? plates : withoutRise} initialRevealed={stage} />);
     const s0 = at(0);
     expect(s0).toMatch(/data-book-overlay="dust-cloud"[^>]*data-hidden=""/);
     expect(s0).not.toContain("data-book-state-plate");
