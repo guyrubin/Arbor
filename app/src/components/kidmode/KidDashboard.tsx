@@ -36,6 +36,7 @@ import { useHeroAvatar, HeroAvatar } from "../ui/HeroAvatar";
 import { usePracticeData } from "../../practice/usePracticeData";
 import WorldScene from "../practice/WorldScene";
 import { useKidTheme } from "../../hooks/useKidTheme";
+import { prefetchKidSurfaces } from "./kidPrefetch";
 import { KID_THEME_TILE_SHAPE, kidArt, storyCoverKey, worldTileKey, type KidThemeId } from "../../lib/kidThemeManifest";
 import { HoldExitButton } from "./HoldExitButton";
 import { kidIsolate } from "./kidText";
@@ -354,6 +355,8 @@ export default function KidDashboard({
   const { t, uiLang } = useLanguage();
   const hero = useHeroAvatar();
   const kidTheme = useKidTheme();
+  // B-KID-47: warm every world's code on idle so a tap never waits on a chunk.
+  useEffect(() => { prefetchKidSurfaces(); }, []);
   const data = usePracticeData(childProfile.id);
   // RUN-03: every kid-register string renders through the bidi isolate so an
   // EN placeholder inside a Hebrew (RTL) shell keeps its own direction —

@@ -54,6 +54,7 @@ const KID_SURFACE_GRAPH = [
   "components/kidmode/KidErrorBoundary.tsx",
   "components/kidmode/HoldExitButton.tsx",
   "components/kidmode/ParentChallenge.tsx",
+  "components/kidmode/KidStageFallback.tsx",
   // arcade surface (KidSurface "arcade")
   "components/practice/PracticeHubTab.tsx",
   "components/practice/WeeklyMissionsStrip.tsx",

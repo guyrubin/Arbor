@@ -9,6 +9,7 @@ import { isolate } from "../../lib/i18n";
 import HeroCrest from "../ui/HeroCrest";
 import { ArborMascot } from "../ui/ArborMascot";
 import { TabSkeleton } from "../ui/Skeleton";
+import { KidStageFallback } from "../kidmode/KidStageFallback";
 import { useKidSafeNav } from "../kidmode/useKidSafeNav";
 import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
 
@@ -175,7 +176,7 @@ export default function HeroArcade({ initialWorldId }: { initialWorldId?: string
             <Icon name="arrow_back" size={16} /> {t("elev.play.arcade.allWorlds")}
           </button>
         </div>
-        <Suspense fallback={<TabSkeleton />}><Comp /></Suspense>
+        <Suspense fallback={kidMode ? <KidStageFallback worldId={open.id} /> : <TabSkeleton />}><Comp /></Suspense>
       </div>
     );
   }

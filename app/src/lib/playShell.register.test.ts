@@ -70,6 +70,8 @@ const KID_ONLY_SURFACES: Record<string, string> = {
   "components/kidmode/KidModeOverlay.tsx": "the Kid Mode shell; it IS the kid register",
   "components/practice/HeroArcade.tsx":
     "mounted only by PracticeHubTab, which only KidModeOverlay renders (#/practice is PracticeStudioTab)",
+  "components/kidmode/KidStageFallback.tsx":
+    "B-KID-47: the Suspense fallback of KidModeOverlay and of HeroArcade's kidMode branch only (kidEntry.test pins both call sites)",
 };
 
 /** Every non-test source file under `src/`, as a path relative to `src/`. */

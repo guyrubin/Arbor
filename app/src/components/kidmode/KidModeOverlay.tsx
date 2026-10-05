@@ -25,7 +25,7 @@ import { useKidMode } from "./KidModeContext";
 import { shieldShellSiblings } from "./kidModeShield";
 import { trapTabKey, type TrapRoot } from "./kidModeFocusTrap";
 import { readKidModeState, writeKidModeState } from "../../lib/kidModeGate";
-import { TabSkeleton } from "../ui/Skeleton";
+import { KidStageFallback } from "./KidStageFallback";
 import { useLanguage } from "../../context/LanguageContext";
 import KidDashboard, { type KidSurface } from "./KidDashboard";
 import { HoldExitButton } from "./HoldExitButton";
@@ -291,7 +291,9 @@ export default function KidModeOverlay() {
               title={t("elev.kid.crash.title")}
               homeLabel={t("elev.kid.crash.home")}
             >
-              <AnimatePresence mode="wait">
+              {/* B-KID-47: popLayout, not "wait" — the next view mounts at once (no
+                  140 ms hold on an empty stage while the old one exits). */}
+              <AnimatePresence mode="popLayout">
                 <motion.div
                   key={view === "arcade" ? `arcade:${arcadeWorldId ?? ""}` : view}
                   initial={{ opacity: 0, y: 8 }}
@@ -302,19 +304,19 @@ export default function KidModeOverlay() {
                   {view === "home" ? (
                     <KidDashboard onOpenSurface={openSurface} onExit={closeKidMode} />
                   ) : view === "arcade" ? (
-                    <Suspense fallback={<TabSkeleton />}>
+                    <Suspense fallback={<KidStageFallback worldId={arcadeWorldId ?? undefined} />}>
                       <PracticeHubTab initialWorldId={arcadeWorldId ?? undefined} />
                     </Suspense>
                   ) : view === "journeys" ? (
-                    <Suspense fallback={<TabSkeleton />}>
+                    <Suspense fallback={<KidStageFallback />}>
                       <HeroJourneyTab initialStoryId={arcadeWorldId ?? undefined} />
                     </Suspense>
                   ) : view === "comics" ? (
-                    <Suspense fallback={<TabSkeleton />}>
+                    <Suspense fallback={<KidStageFallback />}>
                       <KidComicsShelf key={childProfile.id} childProfile={childProfile} onBack={() => setView("home")} />
                     </Suspense>
                   ) : (
-                    <Suspense fallback={<TabSkeleton />}>{surface?.Comp ? <surface.Comp /> : null}</Suspense>
+                    <Suspense fallback={<KidStageFallback />}>{surface?.Comp ? <surface.Comp /> : null}</Suspense>
                   )}
                 </motion.div>
               </AnimatePresence>
