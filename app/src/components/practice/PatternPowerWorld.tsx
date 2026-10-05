@@ -194,9 +194,9 @@ export default function PatternPowerWorld() {
     // A second miss reveals the answer (pulse on its tile, the slot fills).
     if (!correct) setRevealed(true);
     setPicked(correct ? opt : puzzle.answer);
-    // N1-01-R5: one completed kid activity. A COUNT and nothing else —
-    // a no-op outside Kid Mode, so a parent using this screen cannot inflate it.
-    noteKidActivity();
+    // B-KID-51 (KC-08): ONE kid activity per finished sitting — the
+    // set's last round, never per pick. A COUNT, a no-op outside Kid Mode.
+    if (idx + 1 >= puzzles.length) noteKidActivity();
     advanceTimerRef.current = window.setTimeout(() => {
       setScores((s) => [...s, score]);
       setPicked(null);

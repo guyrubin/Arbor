@@ -49,9 +49,9 @@ export default function HeroPoseWorld() {
   const poseSay = t("elev.kids.pose.say");
   const didIt = () => {
     log("pose", "social", { correct: true, meta: pose.id });
-    // N1-01-R5: one completed kid activity. A COUNT and nothing else —
-    // a no-op outside Kid Mode, so a parent using this screen cannot inflate it.
-    noteKidActivity();
+    // B-KID-51 (KC-08): ONE kid activity per finished sitting — the
+    // last pose of the set, never per pose. A COUNT, a no-op outside Kid Mode.
+    if (idx + 1 >= poses.length) noteKidActivity();
     setCheer(true);
     advanceTimerRef.current = window.setTimeout(() => { setCheer(false); setIdx((i) => i + 1); }, 1000);
   };

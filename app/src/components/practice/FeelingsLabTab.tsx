@@ -93,10 +93,6 @@ export default function FeelingsLabTab() {
     if (pickedEmotion) return;
     setPickedEmotion(id);
     record("emotion-id", id === scenario.answer, scenario.id);
-    // N1-01-R5: one completed kid activity, counted on the naming that landed.
-    // A COUNT and nothing else — the emotion, the scenario and the child's
-    // answer stay here. A no-op outside Kid Mode.
-    if (id === scenario.answer) noteKidActivity();
   };
 
   // Self-check: the child says how THEY feel; their avatar mirrors it (A4).
@@ -127,6 +123,10 @@ export default function FeelingsLabTab() {
   const nextScenario = () => {
     setScenarioIdx((i) => (i + 1) % EMOTION_SCENARIOS.length);
     setPickedEmotion(null);
+    // B-KID-51 (KC-08): ONE kid activity per finished sitting — the
+    // climb's last answer, right or wrong (it was counted only on a right
+    // naming, per answer). A COUNT, a no-op outside Kid Mode.
+    if (kidStep + 1 === MOOD_CLIMB) noteKidActivity();
     setKidStep((n) => n + 1);
   };
 

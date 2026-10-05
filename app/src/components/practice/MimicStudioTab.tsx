@@ -5,7 +5,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { cardCls } from "../ui/kit";
 import { RegisterShell, PlayButton, ProgressPips, Celebrate, PlayPanel } from "../ui/playkit";
-import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
+import { isKidModeActive, noteKidActivity, subscribeKidMode } from "../../lib/kidModeGate";
 import { SpeakButton } from "../ui/SpeakButton";
 import { mediaControlHidden, resolveMediaPermission, type MediaPermission } from "../../practice/mediaPermission";
 import { useHeroAvatar } from "../ui/HeroAvatar";
@@ -96,6 +96,7 @@ export default function MimicStudioTab() {
 
   // ---- Rating + pack progress (feature 5) ----
   const [justRated, setJustRated] = useState<number | null>(null);
+  const sittingCounted = useRef(false);
   // Fire the pack-complete Celebrate once per pack per mount (no nag loop).
   const [celebratedPacks, setCelebratedPacks] = useState<Set<string>>(new Set());
   const [wonPackId, setWonPackId] = useState<string | null>(null);
@@ -114,6 +115,9 @@ export default function MimicStudioTab() {
       timestamp: new Date().toISOString(),
     };
     void data.mimic.upsert(session);
+    // B-KID-51 (KC-08): ONE kid activity per finished sitting: the
+    // first round played in this visit counts (it counted nothing before).
+    if (!sittingCounted.current) { sittingCounted.current = true; noteKidActivity(); }
     setJustRated(rating);
     track("mimic_round", { pack: pack.id, prompt: prompt.id, rating });
     // Did this rating complete the pack? Include the just-rated prompt since the

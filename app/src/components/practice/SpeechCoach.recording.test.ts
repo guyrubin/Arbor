@@ -28,7 +28,7 @@ function harness(mediaFails = false, consent = "granted") {
     getRecognitionCtor: () => class { start = recognitionStart; }, recognitionLangFor: () => "en-US", aiLang: "en",
     target: "sun", sound: { id: "s" }, kidMode: false, t: (key: string) => key,
     // B-KID-41: the record path runs only with the control shown (micHidden false).
-    micHidden: false,
+    micHidden: false, sittingCounted: { current: false },
   };
   const compiled = ts.transpileModule(`return (${body});`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
   const start = new Function(...Object.keys(scope), compiled)(...Object.values(scope));
@@ -83,7 +83,7 @@ async function kidRound(kidMode: boolean) {
     getRecognitionCtor: () => class { start = recognitionStart; }, recognitionLangFor: () => "en-US", aiLang: "en",
     target: "sun", sound: { id: "s" }, kidMode, t: (key: string) => key, noteKidActivity,
     // B-KID-41: an already-granted mic in Kid Mode (the record button is shown).
-    micHidden: false,
+    micHidden: false, sittingCounted: { current: false },
   };
   const compiled = ts.transpileModule(`return (${body});`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
   const start = new Function(...Object.keys(scope), compiled)(...Object.values(scope));

@@ -111,6 +111,7 @@ export default function SpeechCoachTab() {
   const [micError, setMicError] = useState<string | null>(null);
   const [lastSaved, setLastSaved] = useState<SpeechAttempt["result"] | null>(null);
   const mediaRef = useRef<MediaRecorder | null>(null);
+  const sittingCounted = useRef(false);
   const chunksRef = useRef<Blob[]>([]);
   const recogRef = useRef<SpeechRecognitionLike | null>(null);
   const recognitionAvailable = useMemo(() => getRecognitionCtor() !== null, []);
@@ -210,9 +211,10 @@ export default function SpeechCoachTab() {
         const blob = new Blob(chunksRef.current, { type: rec.mimeType || "audio/webm" });
         setAudioUrl(URL.createObjectURL(blob));
         setRecState("review");
-        // B-KID-03: in Kid Mode the round IS hear → say → hear yourself; a
-        // finished recording is the one completed kid activity (a count only).
-        if (kidMode) noteKidActivity();
+        // B-KID-03: in Kid Mode the round IS hear → say → hear yourself.
+        // B-KID-51 (KC-08): ONE kid activity per finished sitting: the
+        // first finished recording of this visit counts; more rounds do not.
+        if (kidMode && !sittingCounted.current) { sittingCounted.current = true; noteKidActivity(); }
         // Cloud upgrade: if a child-ASR provider (SoapBox/Whisper) is configured,
         // score the recording for a more accurate result. Otherwise the on-device
         // Web Speech transcript above remains the result; parent scoring is the floor.

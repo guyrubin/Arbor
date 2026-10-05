@@ -99,9 +99,9 @@ export default function BeatKeeperWorld() {
     setScores((p) => [...p, s]);
     setPhase("scored");
     log("rhythm", "emotional", { correct: s >= 50, score: s, meta: `${selectedSet.id}:${round.beats}@${round.intervalMs}` });
-    // N1-01-R5: one completed kid activity. A COUNT and nothing else —
-    // a no-op outside Kid Mode, so a parent using this screen cannot inflate it.
-    noteKidActivity();
+    // B-KID-51 (KC-08): ONE kid activity per finished sitting — the
+    // last round of the set, never per round. A COUNT, a no-op outside Kid Mode.
+    if (roundIdx + 1 >= rounds.length) noteKidActivity();
   };
 
   const start = () => {
