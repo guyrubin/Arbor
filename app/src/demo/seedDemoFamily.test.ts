@@ -89,7 +89,9 @@ describe("B-DIST-01 · the invented record", () => {
       expect(f.collections.actionLoops.filter((a) => a.outcome === "helped")).toHaveLength(1);
       expect(f.collections.practiceEvents.length).toBeGreaterThan(0);
       expect(f.collections.heroRuns).toHaveLength(1);
-      expect(f.collections.appointments).toHaveLength(1);
+      // W2-CAREPRO c2 r1: a done visit + one booked inside the 14-day Prepare window.
+      expect(f.collections.appointments).toHaveLength(2);
+      expect(f.collections.appointments.filter((a) => a.status === "done")).toHaveLength(1);
       expect(f.collections.apptFollowUps).toHaveLength(1);
       expect(f.memory.approved.fact).not.toEqual(f.memory.pending.fact);
       expect(f.child.demo).toBe(true);
@@ -157,7 +159,7 @@ describe("B-DIST-01 · the sandbox run", () => {
     storage.setItem("arbor.children", JSON.stringify([{ id: "other-child", name: "Other" }]));
     expect(await hydrateDemoFamily({ fetchImpl: okFetch, storage })).toBe("seeded");
     expect(JSON.parse(storage.getItem(`arbor.behaviorLogs.${DEMO_CHILD_ID}`)!)).toHaveLength(17);
-    expect(JSON.parse(storage.getItem(`arbor.appointments.${DEMO_CHILD_ID}`)!)).toHaveLength(1);
+    expect(JSON.parse(storage.getItem(`arbor.appointments.${DEMO_CHILD_ID}`)!)).toHaveLength(2); // W2-CAREPRO c2 r1: done + one booked
     expect(storage.getItem(`arbor.notRegistered.${DEMO_CHILD_ID}`)).toBeNull();
     const profiles = JSON.parse(storage.getItem("arbor.children")!);
     expect(profiles.map((p: { id: string }) => p.id)).toEqual([DEMO_CHILD_ID, "other-child"]);

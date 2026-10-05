@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { parentWords } from "../../lib/recordCounts";
 import { motion } from "motion/react";
 import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
@@ -37,16 +38,18 @@ import {
 const EMPTY_STATE_PROFESSIONS: readonly AppointmentProfession[] = ["pediatrician", "slp", "ot", "pt", "psychologist", "teacher"];
 
 /** B-CAREPRO-NEW-2h — the newest logged moment that carries the parent's own
- *  words (a note), unless it is already one of their questions. Pure. */
+ *  words, unless it is already one of their questions. Pure. W2-CAREPRO c2 r1:
+ *  the words are read where capture stores them (lib/recordCounts.parentWords:
+ *  notes, else a Moment's trigger) — a notes-only filter never filled. */
 export function latestParentNote(
-  logs: readonly { timestamp: string; notes?: string }[],
+  logs: readonly { timestamp: string; notes?: string; trigger?: string; behaviorType?: string }[],
   questions: readonly { text: string }[],
 ): { text: string; at: string } | null {
   const asked = new Set(questions.map((q) => q.text.trim()));
   const newest = logs
-    .filter((l) => (l.notes ?? "").trim() && !asked.has((l.notes ?? "").trim()))
+    .filter((l) => parentWords(l) && !asked.has(parentWords(l)))
     .sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1))[0];
-  return newest ? { text: (newest.notes ?? "").trim(), at: newest.timestamp } : null;
+  return newest ? { text: parentWords(newest), at: newest.timestamp } : null;
 }
 
 const PROFESSION_KEY: Record<AppointmentProfession, string> = {
@@ -387,7 +390,10 @@ export default function Appointments() {
           while the fold belongs to the primary move. Demoted modules keep their
           own `data-module` stamp and add `data-module-demoted`, which is what
           makes the budget rule countable: top-level = stamps minus demoted. */}
-      <details data-module-disclosure="appointments-more" className={`${cardCls} p-0 overflow-hidden`}>
+      {/* W2-CAREPRO c2 r1: ONE demoted stamp on the disclosure itself
+          (appt-more). appt-past / appt-prepare stay stamped but NESTED, so
+          they are no longer top-level siblings — moduleCount 2 = the budget. */}
+      <details data-module="appt-more" data-module-demoted data-module-disclosure="appointments-more" className={`${cardCls} p-0 overflow-hidden`}>
         <summary className="cursor-pointer list-none px-6 py-4 min-h-[44px] flex items-center gap-3">
           <span className="grid place-items-center w-9 h-9 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
             <Icon name="history" size={18} />
@@ -497,13 +503,15 @@ function ApptRow({
     <div className={`${cardCls} p-4 space-y-3`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="text-sm font-extrabold" dir="auto" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{appt.who.trim() || appointmentRoleLabel(appt, t)}</h3>
-          <p className="text-xs" dir="auto" style={{ color: "var(--arbor-muted)" }}>{appointmentRoleLabel(appt, t)} · {modeLabel}</p>
+          {/* W2-CAREPRO c2 r1: the record reads first — title t-md display,
+              meta t-sm muted with the date in a nowrap <bdi>; ONE status chip
+              (the date chip made a ~120 px pill tower at 375 before the content). */}
+          <h3 data-testid="appt-row-title" className="t-md font-extrabold" dir="auto" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{appt.who.trim() || appointmentRoleLabel(appt, t)}</h3>
+          <p data-testid="appt-row-meta" className="t-sm" dir="auto" style={{ color: "var(--arbor-muted)" }}>{appointmentRoleLabel(appt, t)} · {modeLabel} · <bdi className="whitespace-nowrap">{whenLabel}</bdi></p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {/* The chip describes the BOOKING, never the child. */}
           <Chip tone={STATUS_TONE[status]}>{t(`elev.learnCare.appt.status.${status}`)}</Chip>
-          <Chip tone="sky">{whenLabel}</Chip>
           {onPrepare && (
             <button
               type="button"

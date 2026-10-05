@@ -21,7 +21,7 @@ import type { PastelKey } from "../../lib/tokens";
 export function Chip({ tone = "mint", icon, children }: { tone?: PastelKey; icon?: React.ReactNode; children: React.ReactNode }) {
   const p = PASTEL[tone];
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[var(--t-xs)] font-bold" style={{ background: p.soft, color: p.ink }}>
+    <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[length:var(--t-xs)] font-bold" style={{ background: p.soft, color: p.ink }}>
       {icon}{children}
     </span>
   );

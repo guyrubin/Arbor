@@ -253,6 +253,19 @@ export function buildDemoFamily({
       mode: "in-person",
       status: "done",
     },
+    // W2-CAREPRO c2 r1: one BOOKED visit inside the 14-day Prepare window, so
+    // the Upcoming row, its Prepare door and the reminder strip render on the
+    // demo family (EN + HE). No note — nothing has happened yet.
+    {
+      id: "demo-appt-2",
+      who: lang === "he" ? "קלינאית התקשורת" : "The speech therapist",
+      role: lang === "he" ? "פגישת היכרות" : "First meeting",
+      profession: "slp",
+      when: at(now, -9, 10).slice(0, 10),
+      whenIso: at(now, -9, 10),
+      mode: "in-person",
+      status: "confirmed",
+    },
   ];
   const apptFollowUps: AppointmentFollowUp[] = [
     {

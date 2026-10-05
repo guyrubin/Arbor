@@ -138,3 +138,76 @@ describe("B-CAREPRO-NEW-2h · worth bringing to the next visit", () => {
     expect(renderToStaticMarkup(<Appointments />)).not.toContain('data-testid="appt-worth-bringing"');
   });
 });
+
+/* W2-CAREPRO c2 r1 — appointments critics (design P1 G0 module budget, design
+ * P1 G1 row hierarchy + chip size, design P1 G2 worth-bringing well, product P1
+ * G1 Prepare evidence on the demo family). */
+describe("W2-CAREPRO c2 r1 · budget, record hierarchy, the parent's words, a booked demo visit", () => {
+  const topLevelModules = (html: string) => {
+    // Top-level = a data-module element with no data-module ancestor (the sweep's rule).
+    const tags = [...html.matchAll(/<(\/?)(\w+)([^>]*)>/g)];
+    const stack: boolean[] = [];
+    const out: string[] = [];
+    for (const [, close, , attrs] of tags) {
+      if (close) { stack.pop(); continue; }
+      const mod = /data-module="([^"]+)"/.exec(attrs)?.[1];
+      if (mod && !stack.some(Boolean)) out.push(mod);
+      if (!/\/$/.test(attrs.trim())) stack.push(!!mod);
+    }
+    return out;
+  };
+
+  for (const locale of ["en", "he"] as const) {
+    it(`${locale}: top-level modules = 2 (upcoming + ONE demoted disclosure); past/prepare are nested`, () => {
+      harness.locale = locale;
+      harness.appts = seeded();
+      const html = renderToStaticMarkup(<Appointments />);
+      expect(html).toContain('data-module="appt-past"');
+      expect(html).toContain('data-module="appt-prepare"');
+      const mods = topLevelModules(html.replace(/<(input|img|br|hr|meta|link)\b[^>]*>/g, ""));
+      expect(mods).toEqual(["appt-upcoming", "appt-more"]);
+      expect(html).toMatch(/<details data-module="appt-more" data-module-demoted="[^"]*"/);
+    });
+
+    it(`${locale}: the row title is t-md, the meta is t-sm with the date in a nowrap bdi; one status chip`, () => {
+      harness.locale = locale;
+      harness.appts = [seeded()[0]];
+      const html = renderToStaticMarkup(<Appointments />);
+      expect(html).toMatch(/data-testid="appt-row-title" class="t-md font-extrabold"/);
+      const meta = html.slice(html.indexOf('data-testid="appt-row-meta"'), html.indexOf("</p>", html.indexOf('data-testid="appt-row-meta"')));
+      expect(meta).toContain('class="t-sm"');
+      expect(meta).toContain('<bdi class="whitespace-nowrap">');
+      const card = html.slice(html.indexOf('data-testid="appt-row-title"'), html.indexOf('data-testid="appt-prepare"'));
+      expect((card.match(/rounded-full px-2\.5 py-1/g) ?? []).length).toBe(1);
+    });
+
+    it(`${locale}: a capture-sheet moment (words in trigger, no notes) fills 'Worth bringing to the next visit'`, async () => {
+      harness.locale = locale;
+      harness.appts = [seeded()[0]];
+      const { buildMomentLog } = await import("../../content/behaviorTaxonomy");
+      const m = buildMomentLog(locale === "he" ? "שר לבד את כל שיר האמבטיה" : "Sang the whole bath song on his own", "Home", {}, new Date(Date.now() - DAY))!;
+      harness.logs = [m];
+      const html = renderToStaticMarkup(<Appointments />);
+      expect(html).toContain(m.trigger);
+    });
+  }
+
+  it("kit Chip sizes its text with a LENGTH arbitrary value (text-[var(--t-xs)] is read as a colour)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const kit = readFileSync(new URL("../ui/kit.tsx", import.meta.url), "utf8");
+    expect(kit).toContain("text-[length:var(--t-xs)]");
+    expect(kit).not.toMatch(/function Chip[\s\S]{0,400}text-\[var\(--t-xs\)\]/);
+  });
+
+  for (const lang of ["en", "he"] as const) {
+    it(`${lang}: the demo family carries one booked visit inside the 14-day Prepare window`, async () => {
+      const { buildDemoFamily } = await import("../../demo/demoFamily");
+      const { isPrepareDue } = await import("../../lib/careTrack");
+      const now = Date.UTC(2026, 9, 5, 12);
+      const f = buildDemoFamily({ lang, now });
+      const due = f.collections.appointments.filter((a) => isPrepareDue(a, now));
+      expect(due).toHaveLength(1);
+      expect(due[0].profession).toBe("slp");
+    });
+  }
+});
