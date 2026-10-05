@@ -3,7 +3,8 @@ import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { SectionCard, TrustSafetyBar, cardCls } from "../ui/kit";
-import { RegisterShell, Celebrate, ChoiceTile, MascotSay, PlayButton, PlayPanel, ProgressPips } from "../ui/playkit";
+import { RegisterShell, ChoiceTile, MascotSay, PlayButton, PlayPanel } from "../ui/playkit";
+import { GameFinish, GameShell } from "../kidmode/game/GameShell";
 import { BREATHING_PATTERNS, CALM_TOOLS, EMOTION_SCENARIOS, EMOTIONS, type Emotion } from "../../practice/playContent";
 import { usePracticeData } from "../../practice/usePracticeData";
 import { EmotionAvatar } from "../ui/EmotionAvatar";
@@ -308,28 +309,31 @@ export default function FeelingsLabTab() {
   // KID-04: the KID register — Mood Mountain. Self-check → scenario → tiles →
   // next. Counts never verdicts: progress is pips, feedback is words.
   // B-KID-29: five answers, then a finish — the mountain ends.
+  // B-KID-74: Mood Mountain on the one kid game shell — the bar names the game
+  // and carries hear-it; the climb is the shell's dots; the end is GameFinish.
   if (kidStep >= MOOD_CLIMB) {
     return (
-      <RegisterShell kidMode title={t("elev.play.feelings.title")} mood="happy" worldId="feelings" headerVariant="compact">
-        <Celebrate title={t("elev.kids.feelings.done.title", { name: first })} subtitle={t("elev.kids.feelings.done.sub")}>
-          <PlayButton tone="yellow" onClick={() => setKidStep(0)}>{t("elev.kids.feelings.again")}</PlayButton>
-        </Celebrate>
-      </RegisterShell>
+        <GameShell worldId="feelings" title={t("elev.play.feelings.title")}>
+          <GameFinish
+            title={t("elev.kids.feelings.done.title", { name: first })}
+            subtitle={t("elev.kids.feelings.done.sub")}
+            onPlayAgain={() => setKidStep(0)}
+            playAgainLabel={t("elev.kids.feelings.again")}
+            homeLabel={t("kidGame.home")}
+          />
+        </GameShell>
     );
   }
   return (
-    <RegisterShell
-      kidMode
-      title={t("elev.play.feelings.title")}
-      say={t("elev.play.feelings.say", { name: first })}
-      mood="happy"
+    <GameShell
       worldId="feelings"
-      headerVariant="compact"
-      eyebrow={t("elev.kids.mission")}
+      title={t("elev.play.feelings.title")}
+      instruction={t("elev.play.feelings.say", { name: first })}
+      mood="happy"
+      progress={{ index: kidStep, total: MOOD_CLIMB }}
     >
 
       <PlayPanel tone="yellow">
-        <ProgressPips total={MOOD_CLIMB} current={kidStep} tone="yellow" />
 
         <div className="rounded-[var(--play-radius)] p-6 my-4" style={{ background: "var(--arbor-paper-elevated)", boxShadow: "var(--shadow-sm)" }}>
           <p className="text-5xl mb-3">{scenario.emoji}</p>
@@ -398,6 +402,6 @@ export default function FeelingsLabTab() {
           </div>
         </div>
       </PlayPanel>
-    </RegisterShell>
+    </GameShell>
   );
 }

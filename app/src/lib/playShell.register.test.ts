@@ -72,6 +72,8 @@ const KID_ONLY_SURFACES: Record<string, string> = {
     "mounted only by PracticeHubTab, which only KidModeOverlay renders (#/practice is PracticeStudioTab)",
   "components/kidmode/KidStageFallback.tsx":
     "B-KID-47: the Suspense fallback of KidModeOverlay and of HeroArcade's kidMode branch only (kidEntry.test pins both call sites)",
+  "components/kidmode/game/GameShell.tsx":
+    "B-KID-74: the class mounts only after the parent return (`if (!kid) return <PlayHeader ...>`); a parent door gets the plain PlayHeader (gameShell.test renders both)",
 };
 
 /** Every non-test source file under `src/`, as a path relative to `src/`. */

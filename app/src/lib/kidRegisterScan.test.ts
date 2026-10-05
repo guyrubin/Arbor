@@ -455,7 +455,9 @@ describe("kid-register scan scope", () => {
       // (playkit), which mounts PlayShell + PlayHeader under `kidMode` and the
       // parent register otherwise. The header itself lives one file away;
       // `playShell.register.test.ts` owns the register rule.
-      expect(src, `${rel} kid remainder must still render its own shell`).toContain("<RegisterShell");
+      // B-KID-74: Mood Mountain's kid remainder renders through the kid
+      // GameShell (components/kidmode/game) — still its own shell.
+      expect(src, `${rel} kid remainder must still render its own shell`).toMatch(/<RegisterShell|<GameShell/);
     }
   });
 });

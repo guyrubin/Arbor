@@ -90,7 +90,7 @@ describe("the one top bar + migrated worlds", () => {
     expect(overlay).toContain('{view === "arcade" && <KidHearItButton />}');
     expect(overlay).toContain('setKidHome(() => setView("home"));');
   });
-  it.each([["MindVaultWorld.tsx", "memory"], ["PatternPowerWorld.tsx", "pattern"]])("%s is on the shell (no PlayHeader of its own)", (file, worldId) => {
+  it.each([["MindVaultWorld.tsx", "memory"], ["PatternPowerWorld.tsx", "pattern"], ["FeelingsLabTab.tsx", "feelings"]])("%s is on the shell (no PlayHeader of its own)", (file, worldId) => {
     const src = read("..", "..", "practice", file);
     expect(src).toContain("<GameShell");
     expect(src).toContain(`worldId="${worldId}"`);

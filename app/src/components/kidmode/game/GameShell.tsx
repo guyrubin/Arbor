@@ -102,7 +102,9 @@ export function GameShell({ worldId, title, instruction, progress, mood, eyebrow
 
   const art = kidArt(theme, worldTileKey(worldId));
   return (
-    <div data-game-shell={worldId} className="relative" style={{ isolation: "isolate" }}>
+    // `.arbor-play`: the kid type scale, also when a surface mounts a game
+    // directly (the overlay's feelings view), not only inside the arcade.
+    <div data-game-shell={worldId} className="arbor-play relative" style={{ isolation: "isolate" }}>
       {art && (
         <div aria-hidden="true" data-game-backdrop="" className="pointer-events-none absolute inset-0 overflow-hidden" style={{ zIndex: -1, borderRadius: 28 }}>
           <img
