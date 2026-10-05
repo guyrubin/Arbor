@@ -3,25 +3,31 @@ import { AnimatePresence, motion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { fillTemplate, scenariosForAge, type AdventureScenario } from "../../practice/content";
+import { ADVENTURE_SCENARIOS, fillTemplate, scenariosForAge, type AdventureScenario } from "../../practice/content";
 import { usePracticeData } from "../../practice/usePracticeData";
 import type { AdventureResult } from "../../types";
 import { api } from "../../lib/api";
 import { track } from "../../lib/analytics";
 import { useAsyncAction } from "../../hooks/useAsyncAction";
-import { isolate } from "../../lib/i18n";
 import { RegisterShell, PlayButton, PlayPanel, ChoiceTile, ProgressPips, MascotSay, Celebrate } from "../ui/playkit";
 import { SpeakButton } from "../ui/SpeakButton";
 import { useKidSafeNav } from "../kidmode/useKidSafeNav";
 import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
 
-const SKILL_LABEL: Record<string, string> = {
-  vocabulary: "Vocabulary",
-  logic: "Logic",
-  sequencing: "Sequencing",
-  instructions: "Following instructions",
-  abstract: "Abstract thinking",
+/** W2-SHELLPLAY critic r1 (law 8): the skill chip is keyed (was English). */
+const SKILL_KEY: Record<string, string> = {
+  vocabulary: "elev.practice.adventures.skill.vocabulary",
+  logic: "elev.practice.adventures.skill.logic",
+  sequencing: "elev.practice.adventures.skill.sequencing",
+  instructions: "elev.practice.adventures.skill.instructions",
+  abstract: "elev.practice.adventures.skill.abstract",
 };
+
+/** W2-SHELLPLAY critic r1: the curated scenarios' titles and their PARENT-
+ *  register lines, keyed by id (the stored intro addresses the child — law 2 —
+ *  so the parent picker never shows it). A generated scenario has no key and
+ *  keeps the title it was made with. */
+const CURATED_IDS: ReadonlySet<string> = new Set(ADVENTURE_SCENARIOS.map((s) => s.id));
 
 /**
  * Cognitive Adventures — MITA-style comprehension play wrapped in stories.
@@ -41,6 +47,8 @@ export default function AdventuresTab() {
   const data = usePracticeData(childProfile.id);
   const first = childProfile.name.split(" ")[0];
   const vars = { name: first, age: childProfile.age };
+  const scenarioTitle = (s: AdventureScenario) =>
+    CURATED_IDS.has(s.id) ? t(`elev.practice.adventures.title.${s.id}`) : s.title;
 
   const ageScenarios = useMemo(() => scenariosForAge(childProfile.age), [childProfile.age]);
   // Generated adventures (this session) sit alongside the curated ones.
@@ -151,11 +159,13 @@ export default function AdventuresTab() {
             <Icon name="auto_fix_high" size={28} />
           </span>
           <div className="flex-1 min-w-[200px]">
-            <p className="text-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Make a brand-new adventure</p>
-            <p className="text-[13px] font-semibold" style={{ color: "var(--arbor-muted)" }}>A fresh comprehension story, made just for {first}.</p>
+            <p className="text-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("elev.practice.adventures.gen.title")}</p>
+            <p className="text-[13px] font-semibold" style={{ color: "var(--arbor-muted)" }}>{t("elev.practice.adventures.gen.sub", { name: first })}</p>
           </div>
-          <PlayButton onClick={createAdventure} disabled={generating} tone="lav">
-            <Icon name="auto_awesome" size={16} /> {generating ? "Creating…" : "Create"}
+          {/* W2-SHELLPLAY critic r1: on the parent page the generator is a soft
+              secondary — never the page's dominant control. */}
+          <PlayButton onClick={createAdventure} disabled={generating} tone="lav" variant={kidMode ? "primary" : "soft"}>
+            <Icon name="auto_awesome" size={16} /> {generating ? t("elev.practice.adventures.gen.creating") : t("elev.practice.adventures.gen.create")}
           </PlayButton>
           {genError &&
             (kidMode ? (
@@ -185,16 +195,23 @@ export default function AdventuresTab() {
               <button
                 key={s.id}
                 onClick={() => openScenario(s.id)}
-                className="play-pressable rounded-[var(--play-radius-lg)] p-5 text-start bg-white shadow-[0_4px_20px_rgba(41,51,63,0.06)] flex items-start gap-4"
+                className="play-pressable rounded-[var(--play-radius-lg)] p-5 text-start flex items-start gap-4"
+                style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }}
               >
                 <span className="grid place-items-center w-16 h-16 rounded-2xl text-4xl flex-shrink-0" style={{ background: "var(--arbor-lav-soft)" }}>{s.emoji}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-lg font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{s.title}</p>
-                  <p className="text-[13px] mt-1 leading-relaxed font-medium" style={{ color: "var(--arbor-muted)" }}>{fillTemplate(s.intro, vars)}</p>
+                  <p className="text-lg font-extrabold leading-tight" dir="auto" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{scenarioTitle(s)}</p>
+                  {/* Law 2: the child-addressed intro is the KID register's; the
+                      parent reads one line ABOUT the story (curated only). */}
+                  {kidMode ? (
+                    <p className="text-[13px] mt-1 leading-relaxed font-medium" style={{ color: "var(--arbor-muted)" }}>{fillTemplate(s.intro, vars)}</p>
+                  ) : CURATED_IDS.has(s.id) ? (
+                    <p className="text-[13px] mt-1 leading-relaxed font-medium" dir="auto" style={{ color: "var(--arbor-muted)" }}>{t(`elev.practice.adventures.parent.${s.id}`, { name: first })}</p>
+                  ) : null}
                   <div className="flex flex-wrap gap-2 mt-3">
-                    <PlayPill tone="sky">Ages {s.ageBand[0]}–{s.ageBand[1]}</PlayPill>
-                    <PlayPill tone="lav">{s.scenes.length} choices</PlayPill>
-                    {played && <PlayPill tone="clay">Played ✓</PlayPill>}
+                    <PlayPill tone="sky">{t("elev.practice.adventures.ages", { from: s.ageBand[0], to: s.ageBand[1] })}</PlayPill>
+                    <PlayPill tone="lav">{t(s.scenes.length === 1 ? "elev.practice.adventures.choices.one" : "elev.practice.adventures.choices.many", { n: s.scenes.length })}</PlayPill>
+                    {played && <PlayPill tone="clay">{t("elev.practice.adventures.played")}</PlayPill>}
                   </div>
                 </div>
               </button>
@@ -230,7 +247,7 @@ export default function AdventuresTab() {
 
           <div className="flex items-center gap-3 mb-6">
             <ProgressPips total={scenario.scenes.length} current={sceneIdx} tone="lav" />
-            <span className="text-[12px] font-extrabold" style={{ color: "var(--arbor-lav-ink)" }}>{SKILL_LABEL[scene.skill]}</span>
+            <span className="text-[12px] font-extrabold" style={{ color: "var(--arbor-lav-ink)" }}>{SKILL_KEY[scene.skill] ? t(SKILL_KEY[scene.skill]) : ""}</span>
           </div>
 
           <AnimatePresence mode="wait">
@@ -275,10 +292,10 @@ export default function AdventuresTab() {
                   <div className="mt-4 flex flex-wrap items-center gap-3">
                     {pickedChoice.correct ? (
                       <PlayButton onClick={next} tone="clay">
-                        {sceneIdx < scenario.scenes.length - 1 ? "Keep going →" : "Finish the adventure 🎉"}
+                        {sceneIdx < scenario.scenes.length - 1 ? t("elev.practice.adventures.keepGoing") : t("elev.practice.adventures.finish")}
                       </PlayButton>
                     ) : (
-                      <span className="text-[13px] font-bold" style={{ color: "var(--arbor-yellow-ink)" }}>Try another one — thinking out loud together is the whole game.</span>
+                      <span className="text-[13px] font-bold" style={{ color: "var(--arbor-yellow-ink)" }}>{t("elev.practice.adventures.tryAnother")}</span>
                     )}
                   </div>
                 </div>
@@ -293,7 +310,7 @@ export default function AdventuresTab() {
       {scenario && finished && (
         <PlayPanel>
           <Celebrate
-            title={`${isolate(first)} finished “${scenario.title}”!`}
+            title={t("elev.practice.adventures.done.title", { name: first, title: scenarioTitle(scenario) })}
             // B-KID-04 (law 3): finishing the story lights every star.
             stars={scenario.scenes.length}
             starsTotal={scenario.scenes.length}
@@ -302,14 +319,14 @@ export default function AdventuresTab() {
             subtitle={t("elev.play.adventures.done.sub", { n: scenario.scenes.length })}
           >
             <PlayButton variant="soft" tone="lav" onClick={() => openScenario(scenario.id)}>
-              <Icon name="replay" size={16} /> Play again
+              <Icon name="replay" size={16} /> {t("elev.practice.adventures.playAgain")}
             </PlayButton>
             <PlayButton variant="soft" tone="clay" onClick={() => setActiveId(null)}>
-              <Icon name="explore" size={16} /> More adventures
+              <Icon name="explore" size={16} /> {t("elev.practice.adventures.more")}
             </PlayButton>
             {nav && (
               <PlayButton tone="lav" onClick={() => nav("comics")}>
-                <Icon name="auto_awesome" size={16} /> Make a hero comic
+                <Icon name="auto_awesome" size={16} /> {t("elev.practice.adventures.comic")}
               </PlayButton>
             )}
           </Celebrate>

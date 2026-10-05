@@ -702,3 +702,41 @@ describe("W2-SHELLPLAY r1 — the Feelings Lab parent branch speaks the parent's
     expect(parent).toMatch(/\{\(emotionRounds > 0 \|\| calmRounds > 0\) && \(/);
   });
 });
+
+/* ── W2-SHELLPLAY critic r1 — #/adventures, keyed; the parent never addressed ─
+ * The sweep counted 18 Latin strings on the Hebrew parent page (generator copy,
+ * Create, Ages/choices, scenario titles and intros), and the intros addressed
+ * the child by name on the parent register ("Can you help him, Dylan?"). */
+describe("W2-SHELLPLAY r1 — Cognitive Adventures speaks the parent's language, to the parent", () => {
+  const adv = readSrc("components/practice/AdventuresTab.tsx");
+
+  it("zero English literal lines (no freeze entry: 0 allowance)", () => {
+    expect(englishLines("components/practice/AdventuresTab.tsx")).toEqual([]);
+    expect(adv).not.toMatch(/>\s*(Make a brand-new adventure|Play again|More adventures|Make a hero comic)\s*</);
+    expect(adv).not.toMatch(/"Creating…"|"Create"|Ages \{s\.ageBand|choices<\/PlayPill>|"Keep going →"|SKILL_LABEL/);
+  });
+
+  it("law 2: the stored child-addressed intro renders only in Kid Mode; the parent reads a line ABOUT the story", () => {
+    expect(adv).toMatch(/\{kidMode \? \(\s*<p[^>]*>\{fillTemplate\(s\.intro, vars\)\}<\/p>\s*\) : CURATED_IDS\.has\(s\.id\) \? \(/);
+    expect(adv).toContain("t(`elev.practice.adventures.parent.${s.id}`, { name: first })");
+  });
+
+  it("every key is bilingual, the HE values carry no slash-gendering", () => {
+    const keys = Object.keys(doorsEn).filter((k) => k.startsWith("elev.practice.adventures."));
+    expect(keys.length).toBe(28);
+    expectBilingual(keys, doorsEn, doorsHe, "adventures");
+    for (const k of keys) expect(doorsHe[k], k).not.toMatch(/\/ה\b|\/ת\b/);
+  });
+
+  it("law 4: the picker cards are tokens (no bg-white, no rgba shadow)", () => {
+    expect(adv).not.toMatch(/bg-white|shadow-\[0_4px_20px_rgba/);
+  });
+});
+
+describe("W2-SHELLPLAY r1 — every curated adventure has its keyed title + parent line", () => {
+  it("one title and one parent line per ADVENTURE_SCENARIOS id, both locales", async () => {
+    const { ADVENTURE_SCENARIOS } = await import("../practice/content");
+    const keys = ADVENTURE_SCENARIOS.flatMap((s) => [`elev.practice.adventures.title.${s.id}`, `elev.practice.adventures.parent.${s.id}`]);
+    expectBilingual(keys, doorsEn, doorsHe, "adventures curated");
+  });
+});
