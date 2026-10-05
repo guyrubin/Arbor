@@ -107,11 +107,13 @@ type ExportBuild = { text: string; error: null } | { text: null; error: string }
 
 /** W2-CAREPRO r1: ConsultTab hands its route stamp here; it lands on the
  *  selected audience chip (one 44 px button in step 1), never on a wrapper. */
-export default function AskSpecialist({ primaryMoveStamp, anchorAudience }: {
+export default function AskSpecialist({ primaryMoveStamp, anchorAudience, onAudienceChange }: {
   primaryMoveStamp?: Record<string, string>;
   /** B-CAREPRO-NEW-2a: the audience of a visit due within 14 days
    *  (consultAudienceForProfession) — applied once, never persisted. */
   anchorAudience?: ExportAudience;
+  /** NEXTLEVEL critic r1: the page H1 follows the chosen audience. */
+  onAudienceChange?: (a: ExportAudience) => void;
 } = {}) {
   const { childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems, actionLoop, setActiveTab, pendingConsultPrefill, consumeConsultPrefill } = useArbor();
   const { toast } = useToast();
@@ -134,6 +136,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience }: {
     try { localStorage.setItem(AUDIENCE_STORAGE_KEY, a); } catch { /* metadata only */ }
   };
   const isTeacher = audience === "teacher";
+  useEffect(() => { onAudienceChange?.(audience); }, [audience, onAudienceChange]);
   // B-CAREPRO-20: the worlds that work the chosen professional's domain —
   // parent-only, names only, never part of any packet.
   // B-KID-11: through the ONE entry seam (hero-first, then the named world).

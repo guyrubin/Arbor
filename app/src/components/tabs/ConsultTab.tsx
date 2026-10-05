@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import AskSpecialist from "../sections/AskSpecialist";
+import type { ExportAudience } from "../../consult/packet";
 import { appointmentRoleLabel } from "../sections/Appointments";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -39,6 +40,17 @@ import {
    visit's follow-up (the same apptFollowUps record Appointments keeps), which
    closes the booking. No push, no reminder, no count. */
 
+/** NEXTLEVEL critic r1 — which H1 the Consult page shows. The visit names it
+ *  while the chosen audience IS the visit's; any other professional names
+ *  the H1 by audience ("self" and nothing chosen keep the generic line). */
+export function consultHeading(input: { visitAudience?: ExportAudience; hasVisit: boolean; chosen?: ExportAudience }): "visit" | "audience" | "generic" {
+  if (input.hasVisit && (input.chosen === undefined || input.chosen === input.visitAudience)) return "visit";
+  if (input.chosen && input.chosen !== "self") return "audience";
+  return "generic";
+}
+
+const lowerFor = (lang: string, x: string) => (lang === "en" ? x.toLowerCase() : x);
+
 export default function ConsultTab() {
   const { childProfile, activeTab } = useArbor();
   const { t, uiLang } = useLanguage();
@@ -51,6 +63,11 @@ export default function ConsultTab() {
   const awaiting = useMemo(() => visitAwaitingOutcome(apptsCol.items, followUpsCol.items, nowMs), [apptsCol.items, followUpsCol.items, nowMs]);
   const anchorAudience = visit?.profession ? consultAudienceForProfession(visit.profession) : undefined;
   const [outcome, setOutcome] = useState("");
+  // NEXTLEVEL critic r1 (P1): the H1 names the audience the parent CHOSE.
+  // "Prepare for the speech therapist on 14 Oct" stayed on screen after
+  // Pediatrician was picked, so the two loudest lines named two people.
+  const [chosen, setChosen] = useState<ExportAudience | undefined>(anchorAudience);
+  const heading = consultHeading({ visitAudience: anchorAudience, hasVisit: !!visit, chosen });
 
   const saveOutcome = () => {
     if (!awaiting) return;
@@ -73,10 +90,17 @@ export default function ConsultTab() {
     <div>
       <header className="mb-5">
         <h1 data-testid="consult-h1" className="t-xl font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)", textWrap: "balance" } as React.CSSProperties}>
-          {visit
+          {heading === "visit" && visit
             ? t("elev.consult.h1.visit", { profession: appointmentRoleLabel(visit, t), date: fmtDay(visit.whenIso!, uiLang) })
+            : heading === "audience" && chosen
+            ? t("elev.consult.h1.audience", { audience: lowerFor(uiLang, t(`elev.carehonesty.consult.audience.${chosen}`)) })
             : t("elev.consult.h1")}
         </h1>
+        {visit && heading !== "visit" && (
+          <p data-testid="consult-visit-line" className="t-sm mt-1" style={{ color: "var(--arbor-muted)" }}>
+            {t("elev.consult.visitLine", { profession: appointmentRoleLabel(visit, t), date: fmtDay(visit.whenIso!, uiLang) })}
+          </p>
+        )}
         {firstName && (
           <p className="t-sm mt-1" style={{ color: "var(--arbor-muted)" }}>{t("elev.consult.forName", { name: firstName })}</p>
         )}
@@ -110,7 +134,7 @@ export default function ConsultTab() {
             </div>
           </section>
         )}
-        <AskSpecialist key={anchorAudience ?? "no-visit"} primaryMoveStamp={primaryMoveStamp} anchorAudience={anchorAudience} />
+        <AskSpecialist key={anchorAudience ?? "no-visit"} primaryMoveStamp={primaryMoveStamp} anchorAudience={anchorAudience} onAudienceChange={setChosen} />
       </div>
     </div>
   );

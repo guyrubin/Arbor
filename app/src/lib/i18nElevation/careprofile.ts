@@ -21,6 +21,10 @@ export const en: Record<string, string> = {
   // W2-CAREPRO r1 (B-CAREPRO-36 hero part): Consult opens on the job.
   "elev.consult.h1": "Prepare for a visit",
   "elev.consult.h1.visit": "Prepare for {profession} on {date}",
+  // NEXTLEVEL critic r1: the H1 follows the CHOSEN audience; the booked visit
+  // stays one quiet line when the parent picks someone else.
+  "elev.consult.h1.audience": "Prepare for the {audience}",
+  "elev.consult.visitLine": "Your next visit: {profession} on {date}",
   "elev.consult.visitOutcome.q": "What did they suggest? {profession}, {date}",
   "elev.consult.forName": "for {name}",
   "elev.hero.care.eyebrow": "Care Network",
@@ -65,6 +69,9 @@ export const he: Record<string, string> = {
 
   "elev.consult.h1": "מתכוננים לפגישה",
   "elev.consult.h1.visit": "מתכוננים לפגישה עם {profession} ב־{date}",
+  // NEXTLEVEL critic r1: the H1 follows the CHOSEN audience.
+  "elev.consult.h1.audience": "מתכוננים לפגישה עם {audience}",
+  "elev.consult.visitLine": "הפגישה הבאה: {profession} ב־{date}",
   "elev.consult.visitOutcome.q": "מה המליצו? {profession}, {date}",
   "elev.consult.forName": "עבור {name}",
   "elev.hero.care.eyebrow": "מעגל הטיפול",

@@ -62,7 +62,7 @@ vi.mock("../../hooks/useChildCollection", () => ({
 vi.mock("../../lib/loopEvents", () => ({ trackShareInitiated: vi.fn(), trackShareCompleted: vi.fn() }));
 vi.mock("../sections/Reports", () => ({ REPORTS: [], useReportExport: () => vi.fn(), useConsultPdf: () => vi.fn() }));
 
-import ConsultTab from "./ConsultTab";
+import ConsultTab, { consultHeading } from "./ConsultTab";
 
 const upcomingSlp = { id: "a1", who: "", role: "Speech therapist", profession: "slp", whenIso: new Date(Date.now() + 5 * DAY).toISOString(), when: "", mode: "In person", status: "confirmed" };
 const pastPed = { id: "a0", who: "", role: "Pediatrician", profession: "pediatrician", whenIso: new Date(Date.now() - 3 * DAY).toISOString(), when: "", mode: "In person", status: "confirmed" };
@@ -372,5 +372,26 @@ describe("W2-CAREPRO c2 r2 · one egress set per audience", () => {
     const previewEnd = html.indexOf("</section>", html.indexOf('data-testid="consult-preview"'));
     expect(html.indexOf('data-testid="consult-copy"')).toBeGreaterThan(previewEnd);
     expect(html.indexOf('data-testid="consult-reviewed"')).toBeGreaterThan(previewEnd);
+  });
+});
+
+/* NEXTLEVEL critic r1 (consult product P1): the H1 follows the chosen audience. */
+describe("NEXTLEVEL r1 · the H1 names the audience the parent chose", () => {
+  it("the visit names the H1 only while its own audience is chosen", () => {
+    expect(consultHeading({ visitAudience: "slp", hasVisit: true, chosen: undefined })).toBe("visit");
+    expect(consultHeading({ visitAudience: "slp", hasVisit: true, chosen: "slp" })).toBe("visit");
+    expect(consultHeading({ visitAudience: "slp", hasVisit: true, chosen: "pediatrician" })).toBe("audience");
+    expect(consultHeading({ visitAudience: "slp", hasVisit: true, chosen: "self" })).toBe("generic");
+    expect(consultHeading({ hasVisit: false, chosen: "pediatrician" })).toBe("audience");
+    expect(consultHeading({ hasVisit: false })).toBe("generic");
+  });
+
+  it("the audience H1 and the quiet visit line exist in EN + HE and name their subject", () => {
+    for (const locale of ["en", "he"] as const) {
+      expect(translate(locale, "elev.consult.h1.audience", { audience: "X" })).toContain("X");
+      const line = translate(locale, "elev.consult.visitLine", { profession: "P", date: "D" });
+      expect(line).toContain("P");
+      expect(line).toContain("D");
+    }
   });
 });
