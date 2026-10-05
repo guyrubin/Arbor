@@ -43,12 +43,18 @@ describe("GameShell in Kid Mode", () => {
     expect((html.match(/Find the pairs\./g) ?? []).length).toBe(1);
     expect(html).toMatch(/data-game-instruction=""[^>]*background:var\(--arbor-paper-elevated\)/);
   });
-  it("the world's own card is a soft decorative backdrop (aria-hidden, blurred, dimmed, absolute)", () => {
+  it("the world's own card is a VISIBLE banner strip (decorative, ~30 % of the viewport, focal point top); the play surface overlaps its faded edge", () => {
     expect(html).toMatch(/aria-hidden="true" data-game-backdrop=""/);
     expect(html).toContain("game-memory-480.webp");
-    expect(html).toContain("blur(14px)");
-    expect(html).toContain("opacity:0.3");
-    expect(html).toMatch(/data-game-backdrop=""[^>]*class="pointer-events-none absolute inset-0/);
+    expect(html).toContain("game-memory-1024.webp 1024w");
+    expect(html).toContain("clamp(150px, 30dvh, 300px)");
+    expect(html).toContain("object-position:50% 22%");
+    // not hidden behind the play card: no blur, no dimming, not absolutely behind
+    expect(html).not.toContain("blur(");
+    expect(html).not.toMatch(/data-game-backdrop=""[^>]*absolute inset-0/);
+    expect(html).toContain("margin-block-start:-56px");
+    // text sits on the solid instruction surface, after the banner
+    expect(html.indexOf("data-game-backdrop")).toBeLessThan(html.indexOf("data-game-instruction"));
   });
   it("progress is dots — never numerals", () => {
     const dots = renderToStaticMarkup(<GameProgressDots index={2} total={5} />);
@@ -81,6 +87,36 @@ describe("GameFinish — the explicit end", () => {
   it("outside Kid Mode there is no Home to offer", () => {
     const html = renderToStaticMarkup(<GameFinish title="Done" onPlayAgain={() => {}} playAgainLabel="Play again" homeLabel="Home" />);
     expect(html).not.toContain(">Home<");
+  });
+});
+
+describe("Fable render: the bar names the world reached from the home tile", () => {
+  it("the home tile's path (arcade + its world id) titles the bar with the world's kid name, never 'Playbank'", async () => {
+    const { kidBarTitle } = await import("../KidModeOverlay");
+    const { kidDestinations } = await import("../KidDashboard");
+    const { translate } = await import("../../../lib/i18n");
+    for (const lang of ["en", "he"] as const) {
+      const t = (k: string) => translate(lang, k);
+      for (const d of kidDestinations("noahs-ark").filter((x) => x.surface === "arcade")) {
+        const title = kidBarTitle("arcade", d.arg, null, t)!;
+        expect(title, `${lang} ${d.tile}`).not.toBe(t("kid.surface.arcade"));
+        expect(title).not.toMatch(/Playbank|ארגז המשחקים/);
+      }
+      expect(kidBarTitle("arcade", "memory", "stale", t)).toBe(t("kid.game.mind-vault.title"));
+    }
+    expect(kidBarTitle("arcade", "memory", null, (k) => k)).toBe("kid.game.mind-vault.title");
+    expect(kidBarTitle("journeys", null, "Noah's Ark", (k) => k)).toBe("Noah's Ark");
+    expect(kidBarTitle("home", null, null, (k) => k)).toBeNull();
+  });
+  it("the visible title node renders that title and takes the remaining width", () => {
+    const overlay = read("..", "KidModeOverlay.tsx");
+    expect(overlay).toContain("const barTitle = kidBarTitle(view, arcadeWorldId, surfaceTitle, t);");
+    const node = overlay.slice(overlay.indexOf("data-kid-bar-title"), overlay.indexOf("{barTitle}") + 10);
+    expect(node).toContain('flex: "1 1 0%"');
+    expect(node).toContain("minWidth: 0");
+    expect(node).toContain("WebkitLineClamp: 2");
+    // the Home label folds to icon-only below sm, so the name keeps the width
+    expect(overlay).toContain('<span className="hidden sm:inline">{t("kid.back.home")}</span>');
   });
 });
 

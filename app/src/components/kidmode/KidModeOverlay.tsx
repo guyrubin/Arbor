@@ -28,7 +28,7 @@ import { readKidModeState, writeKidModeState } from "../../lib/kidModeGate";
 import { KidStageFallback } from "./KidStageFallback";
 import { useKidSurfaceTitle } from "./kidSurfaceTitle";
 import { useLanguage } from "../../context/LanguageContext";
-import KidDashboard, { type KidSurface } from "./KidDashboard";
+import KidDashboard, { KID_GAME_TITLE_KEY, type KidSurface } from "./KidDashboard";
 import { HoldExitButton } from "./HoldExitButton";
 import { KidErrorBoundary } from "./KidErrorBoundary";
 import { useArbor } from "../../context/ArborContext";
@@ -51,6 +51,24 @@ const SURFACE_META: Record<KidSurface, { labelKey: string; Comp?: React.Componen
 };
 
 type View = "home" | KidSurface;
+
+/** B-KID-74 (Fable render, 5 Oct): the ONE top bar names where the child is.
+ *  Inside the arcade view with a world open, the title is that world's kid
+ *  name, read from the overlay's own state (the world id the home tile
+ *  passed) — never the surface label "Playbank", and never dependent on the
+ *  world's chunk having mounted. Otherwise the surface's own title (a story
+ *  sets it) or the surface label. Pure, so a test reads the home-tile path. */
+export function kidBarTitle(
+  view: View,
+  arcadeWorldId: string | null,
+  surfaceTitle: string | null,
+  t: (key: string) => string,
+): string | null {
+  if (view === "home") return null;
+  const worldKey = view === "arcade" && arcadeWorldId ? KID_GAME_TITLE_KEY[arcadeWorldId] : undefined;
+  if (worldKey) return t(worldKey);
+  return surfaceTitle ?? t(SURFACE_META[view].labelKey);
+}
 
 export default function KidModeOverlay() {
   const { isKidModeOpen, closeKidMode } = useKidMode();
@@ -181,6 +199,7 @@ export default function KidModeOverlay() {
   }, [isKidModeOpen]);
 
   const surface = view === "home" ? null : SURFACE_META[view];
+  const barTitle = kidBarTitle(view, arcadeWorldId, surfaceTitle, t);
 
   return (
     // KID-LOCK LEAK 1: initial={false} — on a rehydrated mount (reload while
@@ -235,8 +254,9 @@ export default function KidModeOverlay() {
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: "12px",
-                paddingInline: "20px",
+                // B-KID-74: the title takes the remaining width at 375 px.
+                gap: "8px",
+                paddingInline: "12px",
                 paddingBlock: "10px",
                 flexShrink: 0,
                 background: "var(--arbor-paper-elevated)",
@@ -251,9 +271,11 @@ export default function KidModeOverlay() {
                   display: "inline-flex",
                   alignItems: "center",
                   gap: "6px",
-                  paddingInline: "14px",
+                  paddingInline: "12px",
                   paddingBlock: "10px",
                   minHeight: "44px",
+                  minWidth: "44px",
+                  flexShrink: 0,
                   borderRadius: "var(--r)",
                   fontWeight: 800,
                   fontSize: "var(--t-sm)",
@@ -263,10 +285,13 @@ export default function KidModeOverlay() {
                   cursor: "pointer",
                 }}
               >
-                <ChevronLeft className="w-4 h-4" aria-hidden="true" />
-                {t("kid.back.home")}
+                <ChevronLeft className="w-4 h-4 rtl:-scale-x-100" aria-hidden="true" />
+                {/* B-KID-74: icon-only below sm (the aria-label names it) so the
+                    world's name keeps the bar's width. */}
+                <span className="hidden sm:inline">{t("kid.back.home")}</span>
               </button>
               <span
+                data-kid-bar-title=""
                 style={{
                   fontFamily: "var(--font-display)",
                   fontWeight: 900,
@@ -279,12 +304,12 @@ export default function KidModeOverlay() {
                   WebkitLineClamp: 2,
                   overflow: "hidden",
                   color: "var(--arbor-clay)",
-                  flex: 1,
+                  flex: "1 1 0%",
                   minWidth: 0,
                 }}
               >
                 {/* B-KID-53: inside a world or a story the title is ITS name. */}
-                {surfaceTitle ?? t(surface.labelKey)}
+                {barTitle}
               </span>
               {/* B-KID-76 (b): an open book (its title is the surface title) gets
                   the per-child read-to-me mute in the top bar. */}

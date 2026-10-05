@@ -27,7 +27,7 @@ import { useLanguage } from "../../../context/LanguageContext";
 import { useArborOptional } from "../../../context/ArborContext";
 import { isKidModeActive, subscribeKidMode } from "../../../lib/kidModeGate";
 import { useKidTheme } from "../../../hooks/useKidTheme";
-import { kidArt, worldTileKey, type KidWorldTileId } from "../../../lib/kidThemeManifest";
+import { kidArt, kidArtSrcSet, worldTileKey, type KidWorldTileId } from "../../../lib/kidThemeManifest";
 import { setKidHearIt, useKidHome } from "../kidChrome";
 import { autoReadPage } from "../kidReadAloud";
 import { stopVoice } from "../../../lib/voice";
@@ -51,6 +51,11 @@ export interface GameShellProps {
   heroDecorative?: boolean;
   children: React.ReactNode;
 }
+
+/** The world-card banner at the top of a kid game (~30 % of the viewport) and
+ *  how far the play surface rides up over its faded lower edge. */
+export const GAME_BANNER_BLOCK = "clamp(150px, 30dvh, 300px)";
+export const GAME_BANNER_OVERLAP = -56;
 
 function useKidModeOn(): boolean {
   return useSyncExternalStore(subscribeKidMode, isKidModeActive, isKidModeActive);
@@ -105,17 +110,27 @@ export function GameShell({ worldId, title, instruction, progress, mood, eyebrow
     // `.arbor-play`: the kid type scale, also when a surface mounts a game
     // directly (the overlay's feelings view), not only inside the arcade.
     <div data-game-shell={worldId} className="arbor-play relative" style={{ isolation: "isolate" }}>
+      {/* Fable render (5 Oct): a full-area blurred backdrop sat under an opaque
+          play card and was never seen. The world's card is now a banner strip
+          at the top of the shell (~30 % of the viewport, focal point near the
+          top, fading into the paper), and the instruction + play surface
+          overlap its lower edge — the scene is visible, the text stays on
+          solid token surfaces. Decorative, aria-hidden, fixed block size (no
+          layout shift), no motion. */}
       {art && (
-        <div aria-hidden="true" data-game-backdrop="" className="pointer-events-none absolute inset-0 overflow-hidden" style={{ zIndex: -1, borderRadius: 28 }}>
+        <div aria-hidden="true" data-game-backdrop="" className="pointer-events-none relative overflow-hidden" style={{ blockSize: GAME_BANNER_BLOCK, borderRadius: 24 }}>
           <img
             src={art.src480}
+            srcSet={kidArtSrcSet(art)}
+            sizes="(max-width: 767px) 100vw, 1100px"
             alt=""
             className="absolute inset-0 h-full w-full object-cover"
-            style={{ objectPosition: art.objectPosition, filter: "blur(14px) saturate(0.9)", opacity: 0.3, transform: "scale(1.12)" }}
+            style={{ objectPosition: art.objectPosition }}
           />
+          <span className="absolute inset-0" style={{ background: "linear-gradient(to bottom, transparent 45%, var(--arbor-paper) 100%)" }} />
         </div>
       )}
-      <div className="space-y-4 p-1">
+      <div className="relative space-y-4 p-1" style={art ? { marginBlockStart: GAME_BANNER_OVERLAP } : undefined}>
         {instruction && (
           <p
             dir="auto"

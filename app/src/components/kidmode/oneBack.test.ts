@@ -18,7 +18,10 @@ const tab = read("tabs/HeroJourneyTab.tsx");
 describe("B-KID-53: one title — the destination's own name", () => {
   it("the overlay title is the surface's name while one is open", () => {
     expect(overlay).toContain("const surfaceTitle = useKidSurfaceTitle();");
-    expect(overlay).toContain("{surfaceTitle ?? t(surface.labelKey)}");
+    // B-KID-74 (Fable render): one seam - kidBarTitle (an open world's kid name
+    // from the overlay's own state, else the surface's own title, else its label).
+    expect(overlay).toContain("return surfaceTitle ?? t(SURFACE_META[view].labelKey);");
+    expect(overlay).toContain("{barTitle}");
   });
   it("every kid world has the home tile's own name key, in EN and HE", () => {
     for (const w of KID_WORLDS) {
