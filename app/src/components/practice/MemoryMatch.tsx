@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { PlayPanel, PlayButton, Celebrate } from "../ui/playkit";
+import { GameFinish } from "../kidmode/game/GameShell";
+import { isKidModeActive } from "../../lib/kidModeGate";
 import { SpeakButton } from "../ui/SpeakButton";
 import { useLanguage } from "../../context/LanguageContext";
 import { MEMORY_THEMES } from "../../practice/playContent";
@@ -160,8 +162,13 @@ export default function MemoryMatch({ data, childAge, embedded = false }: { data
 
   const cols = size === 6 ? 3 : size === 8 ? 4 : 4;
 
+  // B-KID-74: inside the kid game shell the top bar carries hear-it and the
+  // finish is the shell's (Play again / Home); the parent door is unchanged.
+  const inKidShell = embedded && isKidModeActive();
+
   return (
     <PlayPanel>
+      {!inKidShell && (
       <div className={`flex items-center gap-3 mb-2 ${embedded ? "justify-end" : ""}`}>
         {!embedded && (
           <>
@@ -180,6 +187,7 @@ export default function MemoryMatch({ data, childAge, embedded = false }: { data
           <SpeakButton text={memorySay} lang={uiLang} label={t("elev.play.speak.label")} size="md" className="min-w-[44px] min-h-[44px] justify-center" />
         </div>
       </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2 mb-5 mt-3">
         {MEMORY_THEMES.map((s, i) => {
@@ -196,7 +204,15 @@ export default function MemoryMatch({ data, childAge, embedded = false }: { data
         })}
       </div>
 
-      {won ? (
+      {won && inKidShell ? (
+        <GameFinish
+          title={t("elev.kids.memory.done.title")}
+          subtitle={t("elev.kids.memory.done.sub")}
+          onPlayAgain={() => reset()}
+          playAgainLabel={t("elev.kids.memory.again")}
+          homeLabel={t("kidGame.home")}
+        />
+      ) : won ? (
         <Celebrate
           title={t("elev.kids.memory.done.title")}
           // B-KID-04 (law 3): solving the board earns all three stars.

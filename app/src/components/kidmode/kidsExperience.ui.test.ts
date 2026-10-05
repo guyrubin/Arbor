@@ -30,7 +30,9 @@ describe("Kids experience visual and session contract", () => {
     ];
     for (const file of files) {
       const source = read(`../practice/${file}`);
-      expect(source, file).toMatch(/(?:headerVariant|variant)="compact"/);
+      // B-KID-74: a world on the GameShell gets the compact parent header by
+      // default (GameShell variant="compact"); the rest still say it.
+      if (!source.includes("<GameShell")) expect(source, file).toMatch(/(?:headerVariant|variant)="compact"/);
       expect(source, file).toMatch(/worldId="[a-z-]+"/);
     }
   });

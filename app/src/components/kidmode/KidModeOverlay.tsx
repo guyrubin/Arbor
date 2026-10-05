@@ -32,7 +32,8 @@ import KidDashboard, { type KidSurface } from "./KidDashboard";
 import { HoldExitButton } from "./HoldExitButton";
 import { KidErrorBoundary } from "./KidErrorBoundary";
 import { useArbor } from "../../context/ArborContext";
-import { KidReadAloudToggle } from "./kidReadAloud";
+import { KidHearItButton, KidReadAloudToggle } from "./kidReadAloud";
+import { setKidHome } from "./kidChrome";
 
 // ── EXISTING surfaces — imported unchanged, never forked ──────────────────────
 const HeroJourneyTab = lazy(() => import("../tabs/HeroJourneyTab"));
@@ -93,6 +94,13 @@ export default function KidModeOverlay() {
       setArcadeWorldId(asked === "home" ? null : p.worldId ?? null);
     }
     wasOpenRef.current = isKidModeOpen;
+  }, [isKidModeOpen]);
+
+  // B-KID-74: a game's finish screen offers Home through the ONE overlay home.
+  useEffect(() => {
+    if (!isKidModeOpen) return;
+    setKidHome(() => setView("home"));
+    return () => setKidHome(null);
   }, [isKidModeOpen]);
 
   // KID-LOCK LEAK 1: persist the current kid surface while open, so the next
@@ -280,6 +288,8 @@ export default function KidModeOverlay() {
               </span>
               {/* B-KID-76 (b): an open book (its title is the surface title) gets
                   the per-child read-to-me mute in the top bar. */}
+              {/* B-KID-74: inside a game the bar carries the game's ONE hear-it. */}
+              {view === "arcade" && <KidHearItButton />}
               {view === "journeys" && surfaceTitle && <KidReadAloudToggle childId={childProfile.id} lang={uiLang === "he" ? "he" : "en"} />}
               <HoldExitButton onExit={closeKidMode} idleLabel={t("kid.exit.backToParent")} ariaIdle={t("kid.exit.backToParentAria")} />
             </header>

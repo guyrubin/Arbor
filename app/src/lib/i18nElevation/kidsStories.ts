@@ -9,7 +9,8 @@ export type KidsStoriesKey =
   | "journey.comicSaved" | "page.smudged" | "page.redraw" | "page.drawing"
   | "comic.error" | "comic.tryAgain" | "comic.back" | "comic.end" | "comic.endBody" | "comic.save" | "comic.share" | "comic.another" | "comic.aria" | "comic.bookshelf" | "comic.brand" | "comic.read" | "comic.finish" | "comic.shareText" | "comic.pageTitle"
   | "shelf.emptyNoHero" | "shelf.openStories"
-  | "kidBooks.title" | "kidBooks.seeAll" | "kidBooks.readMark" | "kidBooks.madeBefore" | "kidBooks.empty" | "kidBooks.readAloud";
+  | "kidBooks.title" | "kidBooks.seeAll" | "kidBooks.readMark" | "kidBooks.madeBefore" | "kidBooks.empty" | "kidBooks.readAloud"
+  | "kidGame.hearIt" | "kidGame.playAgain" | "kidGame.home";
 
 const EN: Record<KidsStoriesKey, string> = {
   "shelf.title": "Hero Comics",
@@ -70,6 +71,9 @@ const EN: Record<KidsStoriesKey, string> = {
   "kidBooks.madeBefore": "Made before",
   "kidBooks.empty": "No books here for you yet. A grown-up can find one with you.",
   "kidBooks.readAloud": "Read to me",
+  "kidGame.hearIt": "Hear it again",
+  "kidGame.playAgain": "Play again",
+  "kidGame.home": "Home",
 };
 
 const HE: Record<KidsStoriesKey, string> = {
@@ -131,6 +135,9 @@ const HE: Record<KidsStoriesKey, string> = {
   "kidBooks.madeBefore": "יצרנו קודם",
   "kidBooks.empty": "עוד אין כאן ספרים בשבילכם. מבוגר יכול למצוא איתכם ספר.",
   "kidBooks.readAloud": "הקריאו לי",
+  "kidGame.hearIt": "לשמוע שוב",
+  "kidGame.playAgain": "משחקים שוב",
+  "kidGame.home": "הביתה",
 };
 
 /** Registry shape for the dictionary firewall (i18nElevation/index.ts MODULES). */

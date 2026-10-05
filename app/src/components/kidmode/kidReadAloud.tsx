@@ -15,6 +15,7 @@
 import { useSyncExternalStore } from "react";
 import { speakText, stopVoice, voiceSupported } from "../../lib/voice";
 import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
+import { useKidHearIt } from "./kidChrome";
 
 const KEY = (childId: string) => `arbor.kid.readAloud.muted.${childId}`;
 const memory = new Map<string, boolean>();
@@ -77,6 +78,27 @@ export function KidReadAloudToggle({ childId, lang }: { childId: string; lang: "
         {muted
           ? <path d="M16 9.5l5 5M21 9.5l-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" />
           : <path d="M15.5 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" />}
+      </svg>
+    </button>
+  );
+}
+
+/** B-KID-74 (KC-01): the top bar's ONE hear-it while a game is open — replays
+ *  the game's instruction (an explicit tap, so no mute or gesture check). */
+export function KidHearItButton() {
+  const hearIt = useKidHearIt();
+  if (!hearIt || !voiceSupported()) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => { speakText(hearIt.text, {}, hearIt.lang); }}
+      aria-label={kidsStoriesText("kidGame.hearIt", hearIt.lang)}
+      data-kid-hear-it=""
+      style={{ appearance: "none", display: "inline-grid", placeItems: "center", inlineSize: 44, blockSize: 44, borderRadius: 999, cursor: "pointer", background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)", border: "2px solid var(--comic-ink)", flexShrink: 0 }}
+    >
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+        <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor" />
+        <path d="M15.5 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" />
       </svg>
     </button>
   );
