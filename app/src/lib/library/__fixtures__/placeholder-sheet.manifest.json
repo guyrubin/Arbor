@@ -1,0 +1,120 @@
+{
+ "id": "placeholder",
+ "poses": {
+  "armour-stuck": {
+   "file": "armour-stuck.webp",
+   "aspect": 0.6269,
+   "footX": 0.5,
+   "footW": 0.3238
+  },
+  "arms-wide": {
+   "file": "arms-wide.webp",
+   "aspect": 0.6269,
+   "footX": 0.5,
+   "footW": 0.3238
+  },
+  "free-stretch": {
+   "file": "free-stretch.webp",
+   "aspect": 0.6269,
+   "footX": 0.5,
+   "footW": 0.3238
+  },
+  "kneel": {
+   "file": "kneel.webp",
+   "aspect": 0.4784,
+   "footX": 0.5,
+   "footW": 0.9741
+  },
+  "look-across": {
+   "file": "look-across.webp",
+   "aspect": 0.3343,
+   "footX": 0.5,
+   "footW": 0.4464
+  },
+  "look-up": {
+   "file": "look-up.webp",
+   "aspect": 0.3343,
+   "footX": 0.5,
+   "footW": 0.4464
+  },
+  "run": {
+   "file": "run.webp",
+   "aspect": 0.3582,
+   "footX": 0.4938,
+   "footW": 0.9542
+  },
+  "run-staff": {
+   "file": "run-staff.webp",
+   "aspect": 0.3582,
+   "footX": 0.4938,
+   "footW": 0.9542
+  },
+  "run-staff-left": {
+   "file": "run-staff-left.webp",
+   "aspect": 0.3582,
+   "footX": 0.5021,
+   "footW": 0.9542
+  },
+  "sit": {
+   "file": "sit.webp",
+   "aspect": 0.5567,
+   "footX": 0.5,
+   "footW": 0.9778
+  },
+  "sling-swing": {
+   "file": "sling-swing.webp",
+   "aspect": 0.3642,
+   "footX": 0.459,
+   "footW": 0.4098
+  },
+  "sling-swing-face-right": {
+   "file": "sling-swing-face-right.webp",
+   "aspect": 0.3642,
+   "footX": 0.459,
+   "footW": 0.4098
+  },
+  "squat-look": {
+   "file": "squat-look.webp",
+   "aspect": 0.4784,
+   "footX": 0.5,
+   "footW": 0.9741
+  },
+  "stand": {
+   "file": "stand.webp",
+   "aspect": 0.3343,
+   "footX": 0.5,
+   "footW": 0.4464
+  },
+  "walk": {
+   "file": "walk.webp",
+   "aspect": 0.3582,
+   "footX": 0.5062,
+   "footW": 0.6875
+  },
+  "walk-bag": {
+   "file": "walk-bag.webp",
+   "aspect": 0.3582,
+   "footX": 0.5062,
+   "footW": 0.6875
+  },
+  "wave": {
+   "file": "wave.webp",
+   "aspect": 0.3642,
+   "footX": 0.459,
+   "footW": 0.4098
+  },
+  "worried": {
+   "file": "worried.webp",
+   "aspect": 0.3343,
+   "footX": 0.5,
+   "footW": 0.4464
+  },
+  "worried-tunic": {
+   "file": "worried-tunic.webp",
+   "aspect": 0.3343,
+   "footX": 0.5,
+   "footW": 0.4464
+  }
+ },
+ "prints": {}
+}
