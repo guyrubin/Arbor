@@ -189,12 +189,16 @@ def geometry():
         p = G["plates"].get(version, {})
         p0 = G["plates"].get(base, {})
         f = PLATES_OUT / f"{base}.webp"
-        size = Image.open(f).size if f.exists() else (G["master"]["w"], G["master"]["h"])
+        if not f.exists():
+            # a version the art agent did not ship (a rejected base such as
+            # PLR / PL4g): not a plate of the book
+            continue
+        size = Image.open(f).size
         plates[base] = {
             "size": {"w": size[0], "h": size[1]},
             "light": light_of(p.get("light", p0.get("light", ""))),
             "provenance": {"childFree": True, "textFree": True, "reviewedBy": f"art-agent QC ({version}; proof-art/david/LOG.md); Fable full-size review owed"},
-            **({"variantOf": base_plate(p0["variantOf"])} if p0.get("variantOf") else {}),
+            **({"variantOf": base_plate(p0["variantOf"])} if p0.get("variantOf") and (PLATES_OUT / f"{base_plate(p0['variantOf'])}.webp").exists() else {}),
         }
     master_w, master_h = G["master"]["w"], G["master"]["h"]
 

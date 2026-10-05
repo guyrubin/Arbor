@@ -112,7 +112,7 @@ function plate(id: string, light: LightRig): BookPlate {
   });
 }
 
-export const fiveSmoothStonesPlates: PlateTable = {
+const namedPlates: PlateTable = {
   PL1: plate("PL1", "morning"), // Bethlehem hills
   PL1b: plate("PL1b", "day"), // midday, the lion fleeing
   PL1d: plate("PL1d", "dusk"), // the same hills at dusk (not night)
@@ -128,8 +128,13 @@ export const fiveSmoothStonesPlates: PlateTable = {
   ...(G.plates.PL3w2 ? { PL3w2: plate("PL3w2", "day") } : {}), // p6c: Goliath wading in the brook, twice the size
   ...(G.plates.PL3w3 ? { PL3w3: plate("PL3w3", "day") } : {}), // p7c: the two nearest soldiers lift their heads
   ...(G.plates["PL7-rise"] ? { "PL7-rise": plate("PL7-rise", "day") } : {}), // the soldiers stand (p9's quiet / p9b until round 4)
-  ...(G.plates["PL7-flight"] ? { "PL7-flight": plate("PL7-flight", "day") } : {}), // v3 p9 state 1: the stone in flight
-  ...(G.plates["PL7-quiet"] ? { "PL7-quiet": plate("PL7-quiet", "day") } : {}), // v3 p9 state 3: the quiet
+};
+
+/** Every plate the geometry ships (round 4 added PL3-cover, PLR-b, PL4g-b,
+ *  PL7-flight2, PL7-after): the named ones with their light, the rest by day. */
+export const fiveSmoothStonesPlates: PlateTable = {
+  ...Object.fromEntries(Object.keys(G.plates).filter((id) => !(id in namedPlates)).map((id) => [id, plate(id, "day")])),
+  ...namedPlates,
 };
 
 /** The plate the geometry gives a page (round 3 put p3b on PL3e, p6c on PL3w2,
@@ -357,11 +362,12 @@ const p8: Page = {
  *  from the per-voice `p9.cues.json` sidecar ({ flight, boom } ms), else 0.80 /
  *  0.93 of the file; Sound off: 4 s, +1.5 s, +3 s. A state whose plate is not
  *  delivered yet (round 4) is skipped. */
-const QUIET_PLATE = G.plates["PL7-quiet"] ? "PL7-quiet" : "PL7-rise";
+// round 4 (plates.json p9.artStates): flight on PL7-flight2 (+ sling-release),
+// the dust back on the duel plate with the swing pose, the quiet on PL7-rise
 const p9States: NonNullable<Page["artStates"]> = [
-  { id: "flight", plateId: "PL7-flight", pose: "sling-release", overlays: [], cue: { atFraction: 0.8 }, cueKey: "flight", silentAfterMs: 4000 },
-  { id: "dust", overlays: ["dust-cloud"], cue: { atFraction: 0.93 }, cueKey: "boom", silentAfterMs: 1500 },
-  { id: "quiet", plateId: QUIET_PLATE, overlays: [], cue: "audioEnd", silentAfterMs: 3000 },
+  { id: "flight", plateId: "PL7-flight2", pose: "sling-release", overlays: [], cue: { atFraction: 0.8 }, cueKey: "flight", silentAfterMs: 4000 },
+  { id: "dust", plateId: "PL7", pose: "sling-swing-face-right", overlays: ["dust-cloud"], cue: { atFraction: 0.93 }, cueKey: "boom", silentAfterMs: 1500 },
+  { id: "quiet", plateId: "PL7-rise", pose: "sling-swing-face-right", overlays: [], cue: "audioEnd", silentAfterMs: 3000 },
 ];
 
 const p9: Page = {
@@ -439,7 +445,7 @@ export const fiveSmoothStones: Book = {
   ],
   ageBand: "4-7",
   /** v2 poses the hero sheet may not have yet (round 3): the nearest pose it has. */
-  poseFallbacks: { "stand-tall-hand": "look-up", "stand-tall": "look-up", "sit-hunched": "sit", "sling-release": "sling-swing-face-right", "squat-stones": "squat-look" },
+  poseFallbacks: { "stand-tall-hand": "look-up", "stand-tall": "look-up", "sit-hunched": "sit", "sling-release": "sling-swing-face-right" },
   cover,
   pages: [p1, p2, p2b, p3, p3b, p4, p4b, p5, p8, p9, p9b, p10],
   decision: {

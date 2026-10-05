@@ -37,6 +37,12 @@
    "footX": 0.5,
    "footW": 0.4464
   },
+  "look-up-unsure": {
+   "file": "look-up-unsure.webp",
+   "aspect": 0.3343,
+   "footX": 0.5,
+   "footW": 0.4464
+  },
   "run": {
    "file": "run.webp",
    "aspect": 0.3582,
@@ -67,6 +73,12 @@
    "footX": 0.5,
    "footW": 0.9778
   },
+  "sling-release": {
+   "file": "sling-release.webp",
+   "aspect": 0.3642,
+   "footX": 0.459,
+   "footW": 0.4098
+  },
   "sling-swing": {
    "file": "sling-swing.webp",
    "aspect": 0.3642,
@@ -79,8 +91,8 @@
    "footX": 0.459,
    "footW": 0.4098
   },
-  "squat-look": {
-   "file": "squat-look.webp",
+  "squat-stones": {
+   "file": "squat-stones.webp",
    "aspect": 0.4784,
    "footX": 0.5,
    "footW": 0.9741
@@ -111,6 +123,12 @@
   },
   "walk-bag": {
    "file": "walk-bag.webp",
+   "aspect": 0.3582,
+   "footX": 0.5062,
+   "footW": 0.6875
+  },
+  "walk-bread": {
+   "file": "walk-bread.webp",
    "aspect": 0.3582,
    "footX": 0.5062,
    "footW": 0.6875

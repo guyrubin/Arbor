@@ -17,6 +17,7 @@ import { abramsLongRoad } from "./books/abramsLongRoad";
 import { ART_PENDING, fiveSmoothStones, fiveSmoothStonesGeometry, GEOMETRY_FALLBACKS } from "./books/fiveSmoothStones";
 import { readFileSync as readJson, existsSync } from "node:fs";
 import { readPath } from "./bookFlow";
+import { pageArtStates } from "./bookArtStates";
 import type { Book, BookLine, Page, Slot } from "./types";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -253,7 +254,7 @@ describe("Five Smooth Stones (the proof) — manuscript specifics", () => {
     expect(byId.p6c.hero!.pose).toBe("sit-hunched");
     expect(byId.p7c.hero!.pose).toBe("sit-hunched");
     expect(byId.p7c.repair!.heroAfter!.pose).toBe("stand-tall");
-    expect(book.poseFallbacks).toEqual({ "stand-tall-hand": "look-up", "stand-tall": "look-up", "sit-hunched": "sit", "sling-release": "sling-swing-face-right", "squat-stones": "squat-look" });
+    expect(book.poseFallbacks).toEqual({ "stand-tall-hand": "look-up", "stand-tall": "look-up", "sit-hunched": "sit", "sling-release": "sling-swing-face-right" });
   });
 
   it("manuscript v3: p9 has four picture states cued by the words (flight on 'The stone flew', dust on 'BOOM', quiet at the end)", () => {
@@ -263,7 +264,9 @@ describe("Five Smooth Stones (the proof) — manuscript specifics", () => {
       ["dust", "boom", 1500],
       ["quiet", null, 3000],
     ]);
-    expect(states[0]).toMatchObject({ plateId: "PL7-flight", pose: "sling-release", cue: { atFraction: 0.8 } });
+    expect(states[0]).toMatchObject({ plateId: "PL7-flight2", pose: "sling-release", cue: { atFraction: 0.8 } });
+    // round 4 delivered every state plate: none is skipped
+    expect(pageArtStates(byId.p9, (id) => !!getPlate(book.id, id)).map((st) => st.id)).toEqual(["flight", "dust", "quiet"]);
     expect(states[1]).toMatchObject({ overlays: ["dust-cloud"], cue: { atFraction: 0.93 } });
     expect(states[2].cue).toBe("audioEnd");
     expect(getPlate(book.id, states[2].plateId!)).toBeDefined();
@@ -285,21 +288,13 @@ describe("Five Smooth Stones (the proof) — manuscript specifics", () => {
     expect(spreads).toEqual(["cover", "p10", "p5", "p9"]);
   });
 
-  it("round 3 (v2): the plates the pages name, the edits, and the poses", () => {
-    const named = new Set(pagesOf.map((p) => p.plateId));
-    for (const id of ["p2b", "p4b", "p9b"]) if (!ART_PENDING.has(id)) named.delete(byId[id].plateId); // v3 round 4 plates, once delivered
-    named.delete("PL7-rise"); // p9b's stand-in until round 4
-    expect(named).toEqual(new Set(["PL1", "PL1b", "PL1d", "PL3", "PL3e", "PL3w2", "PL3w3", "PL4", "PL4e", "PL6", "PL7"]));
+  it("round 4 (v3): the plates the pages name, the edits, and the poses", () => {
+    expect(new Set(pagesOf.map((p) => p.plateId))).toEqual(new Set(["PL1", "PL1b", "PL1d", "PL3", "PL3-cover", "PL3e", "PL3w2", "PL3w3", "PL4", "PL4e", "PL4g-b", "PL6", "PL7", "PL7-after", "PLR-b"]));
     const variants = Object.values(BOOK_PLATES[book.id]).filter((p) => p.variantOf).map((p) => p.id).sort();
-    // + PL3w (the r2 day plate, now unused), PL7-dust (registered, unused) and PL7-rise (p9's third art state)
-    expect(variants).toEqual(["PL1b", "PL1d", "PL3e", "PL3w", "PL3w2", "PL3w3", "PL4e", "PL7-dust", "PL7-rise"]);
+    // + PL3w (the r2 day plate, unused), PL7-dust (unused), PL7-flight2 and PL7-rise (p9's art states)
+    expect(variants).toEqual(["PL1b", "PL1d", "PL3e", "PL3w", "PL3w2", "PL3w3", "PL4e", "PL7-after", "PL7-dust", "PL7-flight2", "PL7-rise"]);
     const poses = new Set(pagesOf.flatMap((p) => slots(p).map((s) => s.pose)));
-    // the art agent's poses (LOG.md §1 + Round 2): left-facing variants keep the
-    // key light upper-left; round 2 added look-across (cover), sling-swing-face-right (p9), squat-look (p8)
-    // v2: stand-tall-hand (p4), sit-hunched (p6c, p7c), stand-tall (p7c after)
-    // v3: walk-bag (p2b's stand-in until round 4)
-    for (const extra of ["walk-bag"]) poses.delete(extra);
-    expect([...poses].sort()).toEqual(["armour-stuck", "free-stretch", "look-across", "look-up", "run-staff", "run-staff-left", "sit", "sit-hunched", "sling-swing", "sling-swing-face-right", "squat-look", "stand-tall", "stand-tall-hand", "worried"]);
+    expect([...poses].sort()).toEqual(["armour-stuck", "free-stretch", "look-across", "look-up", "look-up-unsure", "run-staff", "run-staff-left", "sit", "sit-hunched", "sling-swing", "sling-swing-face-right", "squat-stones", "stand-tall", "stand-tall-hand", "walk-bread", "worried"]);
     expect(byId.p5.heroAlt?.tunic?.pose).toBe("worried-tunic");
     expect(Object.keys(getPlate(book.id, "PL4")!.focus ?? {}).sort()).toEqual(["a", "b", "c"]);
   });
