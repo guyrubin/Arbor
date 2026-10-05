@@ -23,7 +23,7 @@ import { track } from "../../lib/analytics";
 
 /** The kid-register fallback. Exported so the node harness can render it
  *  directly (react-dom/server does not run class boundaries). */
-export function KidCrashFallback({ title, homeLabel, onHome }: { title: string; homeLabel: string; onHome: () => void }) {
+export function KidCrashFallback({ title, homeLabel, onHome, guide }: { title: string; homeLabel: string; onHome: () => void; guide?: React.ReactNode }) {
   return (
     <div
       role="alert"
@@ -44,7 +44,11 @@ export function KidCrashFallback({ title, homeLabel, onHome }: { title: string; 
         gap: "18px",
       }}
     >
-      <span aria-hidden="true" style={{ fontSize: "3rem", lineHeight: 1 }}>🗺️</span>
+      {/* B-KID-79 (KA-23): the kid error state is Sprout + Home — the guide
+          character (passed in by the overlay, which sits inside the language
+          provider; the fallback itself needs no context), never an emoji
+          glyph and never an error message. */}
+      {guide && <span aria-hidden="true" data-kid-crash-sprout="">{guide}</span>}
       <p style={{ fontFamily: "var(--font-display)", fontWeight: 900, fontSize: "var(--t-xl)", color: "var(--arbor-ink)", margin: 0 }}>
         {title}
       </p>
@@ -76,6 +80,8 @@ export function KidCrashFallback({ title, homeLabel, onHome }: { title: string; 
 interface Props {
   /** Routes the child back to the dashboard. The ONLY action the fallback offers. */
   onHome: () => void;
+  /** B-KID-79: the guide character drawn above the line (Sprout). */
+  guide?: React.ReactNode;
   title: string;
   homeLabel: string;
   /** Changing this (e.g. the surface in view) clears a caught error. */
@@ -119,7 +125,7 @@ export class KidErrorBoundary extends React.Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
-      return <KidCrashFallback title={this.props.title} homeLabel={this.props.homeLabel} onHome={this.goHome} />;
+      return <KidCrashFallback title={this.props.title} homeLabel={this.props.homeLabel} onHome={this.goHome} guide={this.props.guide} />;
     }
     return this.props.children;
   }

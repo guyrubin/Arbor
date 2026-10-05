@@ -31,6 +31,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import KidDashboard, { KID_GAME_TITLE_KEY, type KidSurface } from "./KidDashboard";
 import { HoldExitButton } from "./HoldExitButton";
 import { KidErrorBoundary } from "./KidErrorBoundary";
+import { ArborMascot } from "../ui/ArborMascot";
 import { useArbor } from "../../context/ArborContext";
 import { KidHearItButton, KidReadAloudToggle } from "./kidReadAloud";
 import { setKidHome } from "./kidChrome";
@@ -340,6 +341,7 @@ export default function KidModeOverlay() {
               resetKey={view === "arcade" ? `arcade:${arcadeWorldId ?? ""}` : view}
               title={t("elev.kid.crash.title")}
               homeLabel={t("elev.kid.crash.home")}
+              guide={<ArborMascot size={96} mood="think" />}
             >
               {/* B-KID-47: popLayout, not "wait" — the next view mounts at once (no
                   140 ms hold on an empty stage while the old one exits). */}

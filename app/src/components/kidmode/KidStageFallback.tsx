@@ -1,17 +1,28 @@
 import React from "react";
+import { motion } from "motion/react";
 import { HeroAvatar } from "../ui/HeroAvatar";
+import { usePrefersReducedMotion } from "../ui/playkit";
 import { worldArtwork } from "../practice/worldArtwork";
 import { useKidTheme } from "../../hooks/useKidTheme";
+import { kidArt, kidArtSrcSet } from "../../lib/kidThemeManifest";
 
 /**
- * B-KID-47 — what a child sees while a world's code arrives: the world's own
- * art in the child's theme (the same picture as the tile they tapped) + the
- * hero standing still. Never the parent grey TabSkeleton. Decorative and
- * transient (aria-hidden); the surface it stands in for announces itself.
+ * B-KID-47 + B-KID-79 (KA-23) — the ONE kid loading state. What a child sees
+ * while a surface's code arrives: the world's own art in the child's theme
+ * (the same picture as the tile they tapped) or, for any other kid surface
+ * (the library, a book, the comics shelf), the theme's home stage — with the
+ * hero (Sprout when there is none) idling in front. Never the parent grey
+ * TabSkeleton. The idle is a slow bob, still under prefers-reduced-motion.
+ * Decorative and transient (aria-hidden); the surface announces itself.
  */
 export function KidStageFallback({ worldId }: { worldId?: string }) {
   const theme = useKidTheme();
-  const art = worldId ? worldArtwork(worldId, theme) : undefined;
+  const reduced = usePrefersReducedMotion();
+  const world = worldId ? worldArtwork(worldId, theme) : undefined;
+  const stage = !world ? kidArt(theme, "home.stage") : null;
+  const art = world
+    ? { src: world.src, srcSet: world.srcSet, objectPosition: world.objectPosition, hasHero: world.hasHero }
+    : stage ? { src: stage.src, srcSet: kidArtSrcSet(stage), objectPosition: stage.objectPosition, hasHero: stage.hasHero } : undefined;
   return (
     <div
       aria-hidden="true"
@@ -23,9 +34,14 @@ export function KidStageFallback({ worldId }: { worldId?: string }) {
         <img src={art.src} srcSet={art.srcSet} sizes="100vw" alt="" decoding="async" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: art.objectPosition }} />
       )}
       {!art?.hasHero && (
-        <span className="relative">
+        <motion.span
+          className="relative"
+          data-kid-idle=""
+          animate={reduced ? undefined : { y: [0, -8, 0] }}
+          transition={reduced ? undefined : { duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+        >
           <HeroAvatar size={120} mood="calm" animate={false} decorative />
-        </span>
+        </motion.span>
       )}
     </div>
   );

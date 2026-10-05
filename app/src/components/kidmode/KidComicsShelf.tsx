@@ -20,6 +20,7 @@ import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
 import { PlayButton, PlayPanel } from "../ui/playkit";
 import { HeroAvatar } from "../ui/HeroAvatar";
 import SavedComicReader, { type SavedComicPage } from "../stories/SavedComicReader";
+import { KidStageFallback } from "./KidStageFallback";
 
 type ShelfState = "checking" | "available" | "unavailable";
 type OpenBook = {
@@ -268,7 +269,8 @@ export default function KidComicsShelf({
       </div>
 
       {!partitionReady || !saved.loaded || (books.length > 0 && !probeReady) ? (
-        <PlayPanel tone="lav" className="text-center">{kidsStoriesText("shelf.loading", aiLang)}</PlayPanel>
+        // B-KID-79: the one kid loading state (stage + idle hero), not a text panel.
+        <KidStageFallback />
       ) : openableBooks.length === 0 ? (
         <PlayPanel tone="lav" className="text-center">
           <div className="mx-auto mb-3 w-fit"><HeroAvatar size={88} mood="think" animate={false} /></div>
