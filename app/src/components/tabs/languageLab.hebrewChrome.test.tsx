@@ -131,6 +131,36 @@ describe("#/language primary move — the Add button cannot be clipped at 375", 
     expect(SRC.match(/--gradient-cta|T\.gradientCta/g)).toHaveLength(1);
     expect(SRC).not.toMatch(/background: T\.greenInk, color: T\.onAccent/);
   });
+  it("W2-GROWTH r2: Add phrase wears the gradient AT REST; aria-disabled, never disabled; an empty tap focuses the input", () => {
+    for (const lang of ["en", "he"] as const) {
+      const html = renderToStaticMarkup(
+        <PhraseLogForm childId="c1" languages={["Hebrew", "English"]} onAdded={() => {}} t={(k, v) => translate(lang, k, v)} />,
+      );
+      const btn = /<button[^>]*data-testid="vl-log-add"[^>]*>/.exec(html)?.[0] ?? "";
+      expect(btn).toBeTruthy();
+      expect(btn).toContain("var(--gradient-cta)");
+      expect(btn).toContain('aria-disabled="true"');
+      expect(btn).not.toMatch(/\sdisabled(=|\s|>)/);
+      expect(translate(lang, "vl.logEmptyHint")).not.toBe("vl.logEmptyHint");
+    }
+    const add = SRC.slice(SRC.indexOf("const handleAdd = () => {"), SRC.indexOf("return (", SRC.indexOf("const handleAdd = () => {")));
+    expect(add).toContain("inputRef.current?.focus()");
+    expect(SRC).not.toMatch(/disabled=\{!phrase\.trim\(\)\}/);
+  });
+});
+
+describe("#/language bilingual note — after the words, never above them (W2-GROWTH r2)", () => {
+  it("first view: the newest word and the words list precede the note in the DOM (EN + HE)", () => {
+    for (const lang of ["en", "he"] as const) {
+      h.locale = lang;
+      const html = renderToStaticMarkup(<WordsList />);
+      const newest = html.indexOf('data-testid="vl-newest-word"');
+      const note = html.indexOf('data-testid="vl-disclaimer"');
+      expect(newest).toBeGreaterThan(-1);
+      expect(note).toBeGreaterThan(html.indexOf('data-testid="vl-latest-words"'));
+      expect(note).toBeGreaterThan(newest);
+    }
+  });
 });
 
 describe("#/language bilingual note — first view only, inline", () => {

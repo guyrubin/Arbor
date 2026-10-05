@@ -28,7 +28,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { SectionCard, cardCls, Chip } from "../ui/kit";
 import { T } from "../../lib/tokens";
-import { fmtDay } from "../../lib/formatDate";
+import { fmtDay, fmtDayShort } from "../../lib/formatDate";
 import { languageName } from "../../lib/languageName";
 import { childScopedKey } from "../../lib/childLocalState";
 import {
@@ -114,10 +114,21 @@ export function PhraseLogForm({
 
   const [phrase, setPhrase] = useState("");
   const [lang, setLang] = useState(languages[0] ?? "");
+  // W2-GROWTH r2: Add phrase is ALIVE at rest (the page's one CTA gradient);
+  // an empty tap focuses the input and names what to write — aria-disabled,
+  // never `disabled`, so the primary move never reads as a dead paper well.
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [emptyHint, setEmptyHint] = useState(false);
+  const empty = !phrase.trim();
 
   const handleAdd = () => {
     const trimmed = phrase.trim();
-    if (!trimmed || !lang) return;
+    if (!trimmed) {
+      setEmptyHint(true);
+      inputRef.current?.focus();
+      return;
+    }
+    if (!lang) return;
     const id = `${lang}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const obs: LangObservation = {
       id,
@@ -141,8 +152,10 @@ export function PhraseLogForm({
           and Add share the second row; from sm up it is one row again. */}
       <div className="flex flex-wrap sm:flex-nowrap gap-2" data-testid="vl-log-row">
         <input
+          ref={inputRef}
           value={phrase}
-          onChange={(e) => setPhrase(e.target.value)}
+          onChange={(e) => { setPhrase(e.target.value); if (emptyHint) setEmptyHint(false); }}
+          aria-describedby={emptyHint ? "vl-log-empty-hint" : undefined}
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAdd(); } }}
           placeholder={t("vl.logPlaceholder")}
           className="basis-full sm:basis-auto flex-1 min-w-0 rounded-xl px-3 py-2 text-xs min-h-[44px] focus:outline-none"
@@ -171,17 +184,16 @@ export function PhraseLogForm({
           ))}
         </select>
         <button
+          type="button"
           onClick={handleAdd}
-          disabled={!phrase.trim()}
+          aria-disabled={empty || undefined}
           // Item 9: the row's flex-1 input squeezed this to 32 px wide even
           // though min-h-[44px] was already set — a height floor is not a hit
           // box. shrink-0 + the width floor keep the primary move tappable.
-          // W2-GROWTH r1: the page's ONE gradient CTA; disabled is a settled
-          // paper fill, never a washed-out opacity slab.
+          // W2-GROWTH r2: the page's ONE gradient CTA, at rest too — the
+          // primary move reads first; an empty tap focuses the input instead.
           className="inline-flex flex-1 sm:flex-none shrink-0 items-center justify-center gap-1 text-xs font-bold px-4 min-w-11 rounded-xl min-h-[44px] transition"
-          style={phrase.trim()
-            ? { background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }
-            : { background: T.paperDeep, color: T.muted, border: `1px solid var(--arbor-rule)` }}
+          style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}
           data-testid="vl-log-add"
           aria-label={t("vl.logSave")}
         >
@@ -189,6 +201,11 @@ export function PhraseLogForm({
           {t("vl.logSave")}
         </button>
       </div>
+      {emptyHint && (
+        <p id="vl-log-empty-hint" className="text-xs" style={{ color: T.muted }} role="status" data-testid="vl-log-empty-hint">
+          {t("vl.logEmptyHint")}
+        </p>
+      )}
     </div>
   );
 }
@@ -224,6 +241,7 @@ export function WordsList() {
   // confirmation names where it goes; no confetti, no count delta.
   const mountedAt = useRef(Date.now());
   const languages = (childProfile.languages ?? []).map((l) => l.trim()).filter(Boolean);
+  const bilingual = languages.length >= 2;
   const first = childProfile.name.split(" ")[0];
   const obsCol = useChildCollection<LangObservation>(childProfile.id, "langObs", {
     orderByField: "timestamp",
@@ -241,16 +259,11 @@ export function WordsList() {
 
   return (
     <div className="space-y-3" data-testid="lang-words-list">
-      <AnimatePresence>
-        {showDisclaimer && total > 0 && (
-          <DisclaimerPanel t={t} onClose={closeDisclaimer} />
-        )}
-      </AnimatePresence>
       <SectionCard
         title={t("vl.sectionTitle")}
         icon={<Icon name="menu_book" size={20} />}
         tone="sky"
-        action={!showDisclaimer && total > 0 ? (
+        action={!showDisclaimer && total > 0 && bilingual ? (
           <button
             onClick={() => setShowDisclaimer(true)}
             className="inline-flex items-center gap-1.5 text-xs font-bold min-h-11"
@@ -292,11 +305,11 @@ export function WordsList() {
                     <p className="text-xs font-bold" style={{ color: justAdded ? T.greenInk : T.muted }}>
                       {justAdded ? t("vl.newest.added", { first }) : t("vl.newest.label", { first })}
                     </p>
-                    <p style={{ fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)", color: T.ink }}>
+                    <p style={{ fontFamily: "var(--font-editorial)", fontSize: "var(--t-xl)", color: T.ink }}>
                       <bdi dir="auto">“{w.phrase}”</bdi>
                     </p>
                     <p className="text-xs" style={{ color: T.muted }}>
-                      {languageName(w.language, t)} · {fmtDay(w.timestamp, uiLang)}
+                      {languageName(w.language, t)} · {fmtDayShort(w.timestamp, uiLang)}
                     </p>
                   </div>
                 );
@@ -337,6 +350,15 @@ export function WordsList() {
                   ))}
                 </ul>
               </div>}
+              {/* W2-GROWTH r2: the REQUIRED first-view note (re-accessible via
+                  vl.disclaimerToggle) comes AFTER the child's words — it filled
+                  the 375 fold above them, so "words first" was false on the
+                  first view. Only when the profile carries 2+ languages. */}
+              <AnimatePresence>
+                {showDisclaimer && bilingual && (
+                  <DisclaimerPanel t={t} onClose={closeDisclaimer} />
+                )}
+              </AnimatePresence>
             </>
           )}
           <p className="text-[11px] leading-relaxed" style={{ color: T.faint }} data-testid="vl-provenance">
