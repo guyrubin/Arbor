@@ -186,12 +186,18 @@ describe("KidDashboard stars stay monotonic (exact useMemo anchor)", () => {
       // B-KID-02: self check-ins (mood-checkin) earn no star. Still monotonic —
       // a filter over an append-only log can only grow.
       "starEvents(data.events.items).length + " +
-      "data.missions.items.filter((m) => m.completed).length, " +
-      "[data.speech.items, data.mimic.items, data.adventures.items, data.events.items, data.missions.items], );";
+      "data.missions.items.filter((m) => m.completed).length + " +
+      // B-KID-43: finished stories (completedAt set once, never unset) — still monotonic.
+      "heroRunsCol.items.filter((r) => r.completedAt).length, " +
+      "[data.speech.items, data.mimic.items, data.adventures.items, data.events.items, data.missions.items, heroRunsCol.items], );";
     expect(
       normalized,
       "the star derivation changed — a rewrite must stay monotonic (lengths of saved logs only) and update this anchor consciously",
     ).toContain(EXACT_DERIVATION);
+  });
+
+  it("B-KID-43: the chip hides at 0 (no zero badge on day one)", () => {
+    expect(raw).toContain("{stars > 0 && <StarMeter value={stars} />}");
   });
 
   it("keeps the monotonic design note next to the derivation", () => {

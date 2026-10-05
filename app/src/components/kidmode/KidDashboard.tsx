@@ -412,8 +412,10 @@ export default function KidDashboard({
       data.adventures.items.length +
       // B-KID-02: a self check-in is not an achievement — no star.
       starEvents(data.events.items).length +
-      data.missions.items.filter((m) => m.completed).length,
-    [data.speech.items, data.mimic.items, data.adventures.items, data.events.items, data.missions.items],
+      data.missions.items.filter((m) => m.completed).length +
+      // B-KID-43: a finished story is the kid's main achievement — it counts.
+      heroRunsCol.items.filter((r) => r.completedAt).length,
+    [data.speech.items, data.mimic.items, data.adventures.items, data.events.items, data.missions.items, heroRunsCol.items],
   );
 
   return (
@@ -428,7 +430,8 @@ export default function KidDashboard({
           <div style={{ fontSize: "var(--t-sm)", color: "var(--arbor-muted)" }}>{greetingSub}</div>
         </div>
         <div style={{ marginInlineStart: "auto", display: "flex", alignItems: "center", gap: "12px" }}>
-          <StarMeter value={stars} />
+          {/* B-KID-43: no "0" chip on day one — the meter appears with the first star. */}
+          {stars > 0 && <StarMeter value={stars} />}
           <HoldExitButton onExit={onExit} idleLabel={t("kid.exit.backToParent")} ariaIdle={t("kid.exit.backToParentAria")} />
         </div>
       </header>
