@@ -688,7 +688,8 @@ describe("W2-SHELLPLAY r2 · #/feelings — the parent page is the co-play door 
 
 describe("W2-SHELLPLAY r2 · #/adventures — ONE door into Story Quest (B-PLAY-09, laws 2 + 7)", () => {
   const adv = stripComments(read("components/practice/AdventuresTab.tsx"));
-  const parent = adv.slice(adv.indexOf("const latest = [...data.adventures.items]"), adv.indexOf("kidMode={kidMode}"));
+  // B-KID-74: the parent door ends where the shared kid/parent body begins.
+  const parent = adv.slice(adv.indexOf("const latest = [...data.adventures.items]"), adv.indexOf("const body = ("));
   const KID = /<ChoiceTile|<MascotSay|<Celebrate|<PlayButton|<PlayPanel|createAdventure|generateAdventure|play-radius/;
 
   it("the parent branch is one door: one module, one stamp, one gradient, through the seam", () => {

@@ -8,6 +8,7 @@ import { usePracticeData } from "../../practice/usePracticeData";
 import type { AdventureResult } from "../../types";
 import { track } from "../../lib/analytics";
 import { RegisterShell, PlayButton, PlayPanel, ChoiceTile, ProgressPips, MascotSay, Celebrate } from "../ui/playkit";
+import { GameFinish, GameShell } from "../kidmode/game/GameShell";
 import { SpeakButton } from "../ui/SpeakButton";
 import { useKidSafeNav } from "../kidmode/useKidSafeNav";
 import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
@@ -178,17 +179,11 @@ export default function AdventuresTab() {
 
   // IA-08 / RUN-12: one route, two registers — the play wash mounts under Kid
   // Mode only; the parent door is kit chrome (PageHeader + tokens).
-  return (
-    <RegisterShell
-      kidMode={kidMode}
-      title={kidMode ? t("elev.kids.adventures.title") : t("prac.adventures.title")}
-      say={headerSay}
-      subtitle={headerSay}
-      mood="wave"
-      worldId="adventures"
-      headerVariant="compact"
-      eyebrow={kidMode ? t("elev.kids.mission") : undefined}
-    >
+  // B-KID-74: one body, two shells — Kid Mode plays inside the kid GameShell
+  // (bar title + hear-it, instruction once, world banner); the parent door
+  // keeps RegisterShell (kit chrome).
+  const body = (
+    <>
 
       {/* item 11 (IA-02): the surface contract reaches the DOM. `data-module`
           marks a top-level sibling module (counted against the route's
@@ -250,7 +245,8 @@ export default function AdventuresTab() {
               className="inline-flex items-center gap-1 text-[13px] font-bold flex-shrink-0 px-3 min-h-[44px] rounded-xl"
               style={{ color: "var(--arbor-muted)" }}
             >
-              <Icon name="arrow_back" size={16} style={isRtl ? { transform: "scaleX(-1)" } : undefined} /> {t("elev.play.arcade.allWorlds")}
+              {/* B-KID-74: in Kid Mode this is the story picker, not "All worlds". */}
+              <Icon name="arrow_back" size={16} style={isRtl ? { transform: "scaleX(-1)" } : undefined} /> {kidMode ? t("elev.practice.adventures.more") : t("elev.play.arcade.allWorlds")}
             </button>
           </div>
 
@@ -316,7 +312,16 @@ export default function AdventuresTab() {
       )}
 
       {/* Finished */}
-      {scenario && finished && (
+      {scenario && finished && kidMode && (
+        <GameFinish
+          title={t("elev.practice.adventures.done.title", { name: first, title: scenarioTitle(scenario) })}
+          subtitle={t("elev.play.adventures.done.sub", { n: scenario.scenes.length })}
+          onPlayAgain={() => openScenario(scenario.id)}
+          playAgainLabel={t("elev.practice.adventures.playAgain")}
+          homeLabel={t("kidGame.home")}
+        />
+      )}
+      {scenario && finished && !kidMode && (
         <PlayPanel>
           <Celebrate
             title={t("elev.practice.adventures.done.title", { name: first, title: scenarioTitle(scenario) })}
@@ -341,6 +346,23 @@ export default function AdventuresTab() {
           </Celebrate>
         </PlayPanel>
       )}
+    </>
+  );
+  return kidMode ? (
+    <GameShell worldId="adventures" title={t("elev.kids.adventures.title")} instruction={headerSay} mood="wave">
+      {body}
+    </GameShell>
+  ) : (
+    <RegisterShell
+      kidMode={false}
+      title={t("prac.adventures.title")}
+      say={headerSay}
+      subtitle={headerSay}
+      mood="wave"
+      worldId="adventures"
+      headerVariant="compact"
+    >
+      {body}
     </RegisterShell>
   );
 }

@@ -645,7 +645,11 @@ describe("B-KID-04 · flat stars on completion in the kid register", () => {
       expect(src, rel).not.toContain("gradeStars");
       expect(RULES.gradedStars(src), rel).toEqual([]);
     }
-    expect(read("components/practice/AdventuresTab.tsx")).toContain("stars={scenario.scenes.length}");
+    // B-KID-74: Story Quest's kid finish is the shell's GameFinish — no star
+    // row at all (the parent door keeps its Celebrate).
+    const sq = read("components/practice/AdventuresTab.tsx");
+    expect(sq).toContain("{scenario && finished && kidMode && (\n        <GameFinish");
+    expect(RULES.gradedStars(sq)).toEqual([]);
   });
 
   it("the Celebrate aria is keyed EN + HE: '3 of 3 stars'", async () => {
