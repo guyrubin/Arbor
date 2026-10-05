@@ -180,7 +180,10 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
   {
     route: "development", hub: "growth", depth: 0,
     job: "Watch her record grow.",
-    primaryMove: "notice-milestone", moduleBudget: 4, demotionTarget: "milestones",
+    // W2-GROWTH r2 (Law 7): the tail is demoted IN PAGE — the `growth-more`
+    // disclosure holds MonthInReview + the Full Picture (IA-homed on this hub,
+    // never on #/milestones), so the target is the disclosure, not a route.
+    primaryMove: "notice-milestone", moduleBudget: 4, demotionTarget: "disclosure",
     // Count moves + the tree gains a leaf, same frame; months layer is
     // monotonic cumulative only.
     threadWrite: "milestones",

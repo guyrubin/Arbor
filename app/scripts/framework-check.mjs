@@ -218,7 +218,28 @@ function surfaceBudgets() {
  */
 const RUNTIME_BUDGETED = new Set(["overview"]);
 
+/** route → demotionTarget, parsed the same way (W2-GROWTH r2). */
+function surfaceDemotionTargets() {
+  const src = fs.readFileSync(path.join(appRoot, "src", "lib", "surfaceContract.ts"), "utf8");
+  const out = new Map();
+  for (const m of src.matchAll(/route: "([a-zA-Z-]+)",[\s\S]{0,700}?demotionTarget: "([a-zA-Z-]+)"/g)) {
+    out.set(m[1], m[2]);
+  }
+  return out;
+}
+
+/**
+ * W2-GROWTH r2 (Law 7) — a leaf that demotes INTO an in-page disclosure must
+ * say so in its contract (`demotionTarget: "disclosure"`). #/development fit its
+ * budget through `growth-more` while the manifest still named #/milestones,
+ * and nothing compared the wrapper with the declaration. These leaves carried a
+ * disclosure under a route target before the rule existed — SHRINK-ONLY: a
+ * route leaves when its contract or its markup is reconciled, none is added.
+ */
+const LEGACY_DISCLOSURE_TARGET = new Set(["copilot", "appointments", "memory", "sharing", "weekly", "strengths", "care-team"]);
+
 const budgets = surfaceBudgets();
+const demotionTargets = surfaceDemotionTargets();
 if (budgets.size < 40) {
   failures.push(`Surface-contract budgets: only ${budgets.size} moduleBudget values parsed from surfaceContract.ts — the parser has drifted from the source`);
 }
@@ -231,6 +252,14 @@ for (const [route, m] of measured) {
   }
   if (m.demoted > 0 && m.disclosures !== 1) {
     failures.push(`Surface-contract budgets: route "${route}" (${path.relative(appRoot, m.file)}) demotes ${m.demoted} module(s) but carries ${m.disclosures} data-module-disclosure wrappers — demoted modules live in exactly ONE collapsed disclosure`);
+  }
+  const target = demotionTargets.get(route);
+  if (m.disclosures > 0 && target !== "disclosure") {
+    if (!LEGACY_DISCLOSURE_TARGET.has(route)) {
+      failures.push(`Surface-contract budgets: route "${route}" (${path.relative(appRoot, m.file)}) carries a data-module-disclosure wrapper but its contract declares demotionTarget ${JSON.stringify(target)} — a leaf that demotes in page declares demotionTarget "disclosure"; change the contract and the stamps together`);
+    }
+  } else if (LEGACY_DISCLOSURE_TARGET.has(route)) {
+    failures.push(`Surface-contract budgets: route "${route}" is reconciled (disclosure ↔ demotionTarget) — drop it from LEGACY_DISCLOSURE_TARGET (shrink-only)`);
   }
   if (RUNTIME_BUDGETED.has(route)) continue;
   if (m.topLevel > budget) {

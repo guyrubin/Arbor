@@ -277,18 +277,24 @@ export default function DevelopmentTab() {
                 W2-GROWTH r1: the answers carry the card's weight (elevated
                 paper, strong rule, ink label) — they read as alive, not
                 disabled, and nothing below them is louder. */}
-            {weeklyFocus.milestoneId && (
-              <div className="mt-4" data-testid="growth-observe-row">
-                <p className="text-[12px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>
-                  {t("elev.waveR.growth.observe.prompt")}
-                </p>
+            {/* W2-GROWTH r2 (Law 7): ONE data-primary-move literal in this file
+                (check:framework). With a focus milestone it is the observe
+                group; with none, the same element holds "Review milestones" —
+                noticing happens on the Milestones map — and that control wears
+                the page's one --gradient-cta. */}
+            <div className="mt-4" data-testid="growth-observe-row">
+                {weeklyFocus.milestoneId && (
+                  <p className="text-xs font-extrabold" style={{ color: "var(--arbor-ink)" }}>
+                    {t("elev.waveR.growth.observe.prompt")}
+                  </p>
+                )}
                 <div
-                  className="mt-2 grid max-w-md grid-cols-3 gap-2"
-                  role="group"
-                  aria-label={t("elev.waveR.growth.observe.aria")}
+                  className={weeklyFocus.milestoneId ? "mt-2 grid max-w-md grid-cols-3 gap-2" : "flex"}
+                  role={weeklyFocus.milestoneId ? "group" : undefined}
+                  aria-label={weeklyFocus.milestoneId ? t("elev.waveR.growth.observe.aria") : undefined}
                   data-primary-move="notice-milestone"
                 >
-                  {([
+                  {weeklyFocus.milestoneId ? ([
                     ["yes", tGCare(uiLang, "elev.gcare.ms.observe.yes")],
                     ["not_sure", t("ms.observe.notSure")],
                     ["not_yet", t("ms.observe.notYet")],
@@ -311,12 +317,22 @@ export default function DevelopmentTab() {
                         {label}
                       </button>
                     );
-                  })}
+                  }) : (
+                    <button
+                      type="button"
+                      data-testid="growth-focus-review"
+                      onClick={() => setActiveTab("milestones")}
+                      className="inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-extrabold transition active:scale-[0.98]"
+                      style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}
+                    >
+                      <Icon name="edit_note" size={18} /> {t("growth.focus.review")}
+                    </button>
+                  )}
                 </div>
                 {/* The felt response (B-GROWTH-NEW-1B): after "Seen it" the line
                     names where it went; after "Not sure" it is an open loop the
                     parent can come back to close — a date, never a nudge. */}
-                {justNoticedId === weeklyFocus.milestoneId ? (
+                {!weeklyFocus.milestoneId ? null : justNoticedId === weeklyFocus.milestoneId ? (
                   <p className="mt-1.5 text-xs font-bold" style={{ color: "var(--arbor-green-ink)" }} data-testid="growth-observe-kept" aria-live="polite">
                     {firstName
                       ? t("elev.growth.observe.kept", { name: firstName, date: fmtDay(new Date().toISOString(), uiLang) })
@@ -331,8 +347,7 @@ export default function DevelopmentTab() {
                     {t("elev.waveR.growth.observe.hint")}
                   </p>
                 )}
-              </div>
-            )}
+            </div>
             {/* W2-GROWTH r1: one filled CTA per page, and it spells the
                 contract's primaryMove. With a focus milestone the observe row
                 is the move and everything here is a link; with none, noticing
@@ -350,21 +365,11 @@ export default function DevelopmentTab() {
                   {t("growth.focus.try")}
                 </button>
               )}
-              <button
-                type="button"
-                onClick={() => setActiveTab("milestones")}
-                // With no focus milestone, noticing happens on the Milestones map:
-                // the stamp moves here (the contract's zero-focus state).
-                data-primary-move={weeklyFocus.milestoneId ? undefined : "notice-milestone"}
-                className={weeklyFocus.milestoneId
-                  ? "inline-flex min-h-11 items-center gap-1.5 text-sm font-bold transition"
-                  : "inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-extrabold transition active:scale-[0.98]"}
-                style={weeklyFocus.milestoneId
-                  ? { color: "var(--arbor-ink)" }
-                  : { background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}
-              >
-                <Icon name="edit_note" size={18} /> {t("growth.focus.review")}
-              </button>
+              {weeklyFocus.milestoneId && (
+                <button type="button" onClick={() => setActiveTab("milestones")} className="inline-flex min-h-11 items-center gap-1.5 text-sm font-bold transition" style={{ color: "var(--arbor-ink)" }}>
+                  <Icon name="edit_note" size={18} /> {t("growth.focus.review")}
+                </button>
+              )}
               {/* A choice the parent made has to be a choice they can unmake. */}
               {weeklyFocus.chosen && (
                 <button type="button" data-testid="growth-focus-unwatch" onClick={() => { clearWatchFocus(childProfile.id); setWatchTick((n) => n + 1); }} className="inline-flex min-h-11 items-center gap-2 text-sm font-bold transition" style={{ color: "var(--arbor-muted)" }}>

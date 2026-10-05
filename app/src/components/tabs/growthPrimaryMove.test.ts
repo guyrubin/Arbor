@@ -77,11 +77,20 @@ describe("GP-06 — the hub's declared primaryMove is the observe row", () => {
     expect(heroCtaBlock(DEV_TAB)).toBe("");
     expect(DEV_TAB).not.toContain("focusObserveRow");
     const stamps = DEV_TAB.match(/data-primary-move=/g) ?? [];
-    // one on the observe group + the zero-focus fallback on Review milestones
-    expect(stamps).toHaveLength(2);
-    expect(DEV_TAB).toMatch(/role="group"\s+aria-label=\{t\("elev\.waveR\.growth\.observe\.aria"\)\}\s+data-primary-move="notice-milestone"/);
+    // W2-GROWTH r2 (Law 7): ONE literal — check:framework counts the source.
+    // The same element is the observe group, or (zero-focus) holds Review milestones.
+    expect(stamps).toHaveLength(1);
+    expect(DEV_TAB).toMatch(/role=\{weeklyFocus\.milestoneId \? "group" : undefined\}\s+aria-label=\{weeklyFocus\.milestoneId \? t\("elev\.waveR\.growth\.observe\.aria"\) : undefined\}\s+data-primary-move="notice-milestone"/);
     expect(DEV_TAB).not.toMatch(/<section[^>]*data-primary-move/);
-    expect(DEV_TAB).toContain('data-primary-move={weeklyFocus.milestoneId ? undefined : "notice-milestone"}');
+  });
+
+  it("Law 7: the contract names the in-page disclosure the hub demotes into", () => {
+    const dev = SURFACE_CONTRACTS.find((c) => c.route === "development");
+    expect(dev?.demotionTarget).toBe("disclosure");
+    expect(DEV_TAB).toContain('data-module-disclosure="growth-more"');
+    const fc = readFileSync(path.join(app, "..", "scripts", "framework-check.mjs"), "utf8");
+    expect(fc).toContain('a leaf that demotes in page declares demotionTarget "disclosure"');
+    expect(fc).not.toMatch(/LEGACY_DISCLOSURE_TARGET = new Set\([^)]*"development"/);
   });
 
   it("the observe answers carry the card's weight; nothing below them is a filled button", () => {
@@ -95,7 +104,7 @@ describe("GP-06 — the hub's declared primaryMove is the observe row", () => {
     expect(tryBtn).not.toMatch(/background:/);
     // one --gradient-cta on the page, on the zero-focus stamped control; no clay fills
     expect(DEV_TAB.match(/var\(--gradient-cta\)/g)).toHaveLength(1);
-    expect(DEV_TAB).toMatch(/data-primary-move=\{weeklyFocus\.milestoneId \? undefined : "notice-milestone"\}[\s\S]{0,500}?var\(--gradient-cta\)/);
+    expect(DEV_TAB).toMatch(/data-primary-move="notice-milestone"[\s\S]{0,2500}?data-testid="growth-focus-review"[\s\S]{0,300}?var\(--gradient-cta\)/);
     expect(DEV_TAB).not.toContain('background: "var(--arbor-clay)"');
   });
 
