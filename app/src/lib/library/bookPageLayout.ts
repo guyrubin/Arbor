@@ -94,11 +94,11 @@ export type AnchorOf = (pose: string) => SpriteAnchor | undefined;
 
 /** How the choice cards sit on the text page. "below" = under the words;
  *  "second" = a second state of the page (words first, then the cards). The
- *  arrangement: "stack" = three-down, picture beside the label; "grid21" = two
+ *  arrangement: "threeDown" = three-down, picture beside the label; "grid21" = two
  *  over one, label under the picture; "row" = three across. */
 export interface ChoicePlan {
   mode: "below" | "second";
-  arrangement: "stack" | "grid21" | "row";
+  arrangement: "threeDown" | "grid21" | "row";
   picW: number;
   picH: number;
   cardW: number;
@@ -347,7 +347,7 @@ export function planChoices(w: number, h: number, mode: ChoicePlan["mode"], n = 
     const byH = ((h - (n - 1) * g) / n - 2 * pd) / PIC_ASPECT;
     const byW = w - PLAN_LABEL_W - 3 * pd;
     const picW = Math.floor(Math.min(byH, byW));
-    if (picW > 0) cand.push({ mode, arrangement: "stack", picW, picH: Math.floor(picW * PIC_ASPECT), cardW: Math.floor(w), cardH: Math.ceil(picW * PIC_ASPECT + 2 * pd), gap: g });
+    if (picW > 0) cand.push({ mode, arrangement: "threeDown", picW, picH: Math.floor(picW * PIC_ASPECT), cardW: Math.floor(w), cardH: Math.ceil(picW * PIC_ASPECT + 2 * pd), gap: g });
   }
   // two over one, label under the picture
   if (n === 3) {
@@ -467,7 +467,7 @@ function layoutFacing(c: Ctx): BookPageLayout {
 
 /** The height a choice plan takes. */
 export function plansHeight(plan: ChoicePlan): number {
-  if (plan.arrangement === "stack") return 3 * plan.cardH + 2 * plan.gap;
+  if (plan.arrangement === "threeDown") return 3 * plan.cardH + 2 * plan.gap;
   if (plan.arrangement === "grid21") return 2 * plan.cardH + plan.gap;
   return plan.cardH;
 }
@@ -653,7 +653,9 @@ function layoutStacked(c: Ctx): BookPageLayout {
   // under the floor, a non-decision page may set its words at 18 px rather
   // than shrink the picture under 300 px
   const lowTypes = [floorType - 1, 18].filter((t) => t >= 18 && t < floorType);
-  const typePx = types.find((t) => artAt(t) >= targetArtH) ?? types.find((t) => artAt(t) >= floorArtH) ?? lowTypes.find((t) => artAt(t) >= floorArtH) ?? floorType;
+  // nothing fits: the smallest allowed type (the art keeps its 300 px floor;
+  // the reader's DOM net shrinks further only if it must) — never the token
+  const typePx = types.find((t) => artAt(t) >= targetArtH) ?? types.find((t) => artAt(t) >= floorArtH) ?? lowTypes.find((t) => artAt(t) >= floorArtH) ?? lowTypes[lowTypes.length - 1] ?? floorType;
   const natural = artAt(typePx);
   const artH = Math.floor(Math.max(natural, floorArtH));
   const sheetOverlap = 0;
