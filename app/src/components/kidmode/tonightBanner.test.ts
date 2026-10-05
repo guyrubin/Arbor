@@ -50,8 +50,10 @@ describe("B-KID-42: a pinned story opens the book on arrival", () => {
   const effect = tab.slice(tab.indexOf("const pinnedOpened = useRef(false);"));
   it("auto-starts the pinned story once, after startJourney is declared", () => {
     expect(tab.indexOf("const pinnedOpened = useRef(false);")).toBeGreaterThan(tab.indexOf("const startJourney = async"));
-    expect(effect).toMatch(/if \(pinnedOpened\.current \|\| !initialStoryId\) return;\s+const story = getStorySpec\(initialStoryId\);\s+if \(!story\) return;\s+pinnedOpened\.current = true;\s+void startJourney\(story\);/);
-    expect(effect.slice(0, 600)).toContain("}, [initialStoryId]);");
+    expect(effect).toMatch(/if \(pinnedOpened\.current \|\| !initialStoryId\) return;\s+const story = getStorySpec\(initialStoryId\);\s+if \(!story\) return;[\s\S]{0,400}?pinnedOpened\.current = true;\s+void startJourney\(story\);/);
+    // W0.7: the auto-open honours the age view, like the catalogue's pinned lookup.
+    expect(effect.slice(0, 700)).toContain("if (!showAllAges && filterByAge([story], (s) => windowFromRange(s.ageRange), childMonths).visible.length === 0) return;");
+    expect(effect.slice(0, 900)).toContain("}, [initialStoryId]);");
   });
   it("negative control: the pre-fix tab (pin = filter only) has no auto-open", () => {
     const pre = tab.replace(/const pinnedOpened[\s\S]*?\}, \[initialStoryId\]\);/, "");

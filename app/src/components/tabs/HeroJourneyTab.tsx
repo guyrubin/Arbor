@@ -349,6 +349,9 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
     if (pinnedOpened.current || !initialStoryId) return;
     const story = getStorySpec(initialStoryId);
     if (!story) return;
+    // W0.7: a pin never bypasses the age view — the same rule the catalogue's
+    // `pinned` lookup applies (it searches the age-filtered list only).
+    if (!showAllAges && filterByAge([story], (s) => windowFromRange(s.ageRange), childMonths).visible.length === 0) return;
     pinnedOpened.current = true;
     void startJourney(story);
     // eslint-disable-next-line react-hooks/exhaustive-deps
