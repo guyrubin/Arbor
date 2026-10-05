@@ -55,6 +55,14 @@ export const en: Record<string, string> = {
   "elev.rh.ritual.did": "We did this",
   // W2-SHELLPLAY critic r1: the turn card's one start move on #/family.
   "elev.rh.ritual.startWeek": "Start it this week",
+  // W2-SHELLPLAY critic r2: nothing due — the one move plans the next ritual.
+  "elev.rh.ritual.planNext": "Plan the next one: {title}",
+  // W2-SHELLPLAY critic r2 (B-PLAY-21): the compact "Our family's way" line.
+  "elev.family.way.title": "Our family's way",
+  "elev.family.way.empty": "No values named yet — add the first one.",
+  "elev.family.way.tone": "Arbor talks with you: {tone}",
+  "elev.family.way.edit": "Edit",
+  "elev.family.way.done": "Done",
   "elev.rh.ritual.open": "Open Family Formation",
   "elev.rh.ritual.next": "Back in {n} days.",
   "elev.rh.ritual.nextTomorrow": "Back tomorrow.",
@@ -124,6 +132,12 @@ export const he: Record<string, string> = {
   "elev.rh.ritual.steps": "איך זה הולך",
   "elev.rh.ritual.did": "עשינו את זה",
   "elev.rh.ritual.startWeek": "להתחיל השבוע",
+  "elev.rh.ritual.planNext": "לתכנן את הבא: {title}",
+  "elev.family.way.title": "הדרך של המשפחה שלנו",
+  "elev.family.way.empty": "עוד לא נבחרו ערכים — הוסיפו את הראשון.",
+  "elev.family.way.tone": "ארבור מדברת איתכם: {tone}",
+  "elev.family.way.edit": "עריכה",
+  "elev.family.way.done": "סיום",
   "elev.rh.ritual.open": "פתחו את בניית המשפחה",
   "elev.rh.ritual.next": "חוזר בעוד {n} ימים.",
   "elev.rh.ritual.nextTomorrow": "חוזר מחר.",

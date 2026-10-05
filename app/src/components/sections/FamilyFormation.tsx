@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import { motion } from "motion/react";
 import Icon from "../ui/Icon";
 import { PageHeader, SectionCard, cardCls, IconBadge, type PastelKey } from "../ui/kit";
@@ -56,6 +56,11 @@ export default function FamilyFormation() {
   const [values, setValues] = useState<string[]>(() => initialCharterValues(undefined, uiLang));
   const [input, setInput] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
+  // W2-SHELLPLAY critic r2: the ritual the turn card shows is not repeated in
+  // the library below it; "Our family's way" opens its editor in place.
+  const [turnId, setTurnId] = useState<string | null>(null);
+  const onTurnChange = useCallback((id: string | null) => setTurnId(id), []);
+  const [wayOpen, setWayOpen] = useState(false);
 
   // Persist on the edit, and render exactly what a reload will show.
   const commit = (next: string[]) => setValues(saveFamilyCharter(next));
@@ -77,18 +82,94 @@ export default function FamilyFormation() {
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
       <PageHeader title={t("sec.family.title")} subtitle={t("sec.family.sub")} />
 
+      {/* Family Charter — the real, editable tool (names the family's aim) */}
+      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (what moduleBudget counts);
+          `data-primary-move` marks the ONE control that performs the move
+          surfaceContract.ts declares for this route. */}
+      {/* W2-SHELLPLAY critic r1: a real block (display:contents rendered no
+          box, so space-y-6 collapsed to ~6 px above the rituals). */}
+      <div data-module="family-charter">
+      {/* W2-SHELLPLAY critic r2 (B-PLAY-21 target order): ONE compact "Our
+          family's way" line between the header and the ritual turn — the
+          charter values as text, the current tone, and a 44 px Edit that opens
+          the charter editor + the tone row in place. Device-local until Guy's
+          gate §8 rules on the synced charter; the line claims nothing more. */}
+      <section data-testid="family-way" className={`${cardCls} p-4`} aria-labelledby="family-way-title">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 id="family-way-title" className="t-xs font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("elev.family.way.title")}</h2>
+            <p className="t-sm font-bold mt-1" dir="auto" style={{ color: "var(--arbor-ink)" }}>
+              {values.length > 0 ? <bdi>{values.join(" · ")}</bdi> : t("elev.family.way.empty")}
+            </p>
+            <p className="t-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>{t("elev.family.way.tone", { tone: toneLabel(selectedLens, t) })}</p>
+          </div>
+          <button
+            type="button"
+            data-testid="family-way-edit"
+            aria-expanded={wayOpen}
+            onClick={() => setWayOpen((v) => !v)}
+            className="inline-flex min-h-11 items-center gap-1 rounded-xl px-3 t-sm font-bold flex-shrink-0"
+            style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}
+          >
+            <Icon name={wayOpen ? "expand_less" : "edit"} size={16} /> {t(wayOpen ? "elev.family.way.done" : "elev.family.way.edit")}
+          </button>
+        </div>
+      </section>
+      {wayOpen && (
+      <div className="mt-3">
+      <SectionCard title={he ? "מגילת המשפחה" : "Family Charter"} icon={<Icon name="history_edu" size={20} />} tone="mint">
+        <p className="text-sm mb-4" dir="auto" style={{ color: "var(--arbor-muted)" }}>
+          {he
+            ? "תנו שם לערכים שאתם מגדלים סביבם את המשפחה. ארבור משתמש בהם כדי לשמור שההכוונה והסיפורים נשארים מחוברים למה שחשוב לכם."
+            : "Name the values you're forming your family around. Arbor uses these to keep guidance and stories aligned with what matters to you."}
+        </p>
+        <div className="flex flex-wrap gap-2 mb-4">
+          {values.map((v) => (
+            <span key={v} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold" dir="auto" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
+              {v}
+              <button onClick={() => remove(v)} aria-label={t("elev.charter.remove", { value: v })} className="inline-flex items-center justify-center min-h-11 min-w-11 -my-2.5 -me-2"><Icon name="close" size={14} /></button>
+            </span>
+          ))}
+          {values.length === 0 && <span className="text-sm" style={{ color: "var(--arbor-muted)" }}>{he ? "הוסיפו ערך כדי להתחיל." : "Add a value to begin your charter."}</span>}
+        </div>
+        <div className="flex gap-2 max-w-md">
+          <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} placeholder={he ? "הוסיפו ערך (למשל סבלנות)…" : "Add a value (e.g. Patience)…"} dir="auto" className="flex-1 min-h-11 rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} />
+          {/* W2-SHELLPLAY critic r1: 44 px, and a ghost — the page's one
+              filled CTA is the ritual start above. */}
+          <button onClick={add} className="inline-flex min-h-11 items-center gap-1 font-bold text-sm rounded-xl px-4" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-clay-deep)", border: "1px solid var(--arbor-rule)" }}><Icon name="add" size={16} /> {he ? "הוסיפו" : "Add"}</button>
+        </div>
+        {/* B-PLAY-21: "Our family's way" — how Arbor talks with you sits beside
+            the charter. The SAME sheet Ask opens, writing the same selectedLens
+            the companion prompt already reads. */}
+        <div className="mt-5 pt-4 flex flex-wrap items-center justify-between gap-3" style={{ borderTop: "1px solid var(--arbor-rule)" }} data-testid="family-tone-row">
+          <div className="min-w-0">
+            <p className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{t("coach.tone.title")}</p>
+            <p className="text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>{toneLabel(selectedLens, t)}</p>
+          </div>
+          <button type="button" onClick={() => setToneOpen(true)} className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3.5 text-[13px] font-bold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}>
+            <Icon name="tune" size={16} /> {t("coach.tone.change")}
+          </button>
+        </div>
+      </SectionCard>
+      </div>
+      )}
+      <ToneSheet open={toneOpen} onClose={() => setToneOpen(false)} selectedLens={selectedLens} onSelect={setSelectedLens} t={t} />
+
+      </div>
+
       {/* Family rituals — real, repeatable practices. W2-SHELLPLAY critic r1:
           the module leads the page (the charter follows), and the declared
           move is stamped on ONE real control — the turn card's "Start it this
           week" — not on this wrapper. */}
       <div data-module="family-rituals">
-        <h2 className="text-[15px] font-extrabold mb-3" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{he ? "טקסי משפחה" : "Family rituals"}</h2>
+        <h2 className="t-lg font-extrabold mb-3" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{he ? "טקסי משפחה" : "Family rituals"}</h2>
         {/* B-GROWTH-03 / ENG-25 — the ritual whose turn has come round, beside
             the rituals it belongs to (moved from #/development). Renders
             nothing when no ritual is due. */}
-        <div className="mb-4 empty:hidden"><RitualTurnCard onStart={startRitual} started={ritualStarted} primaryMoveProps={RITUAL_MOVE} /></div>
+        <div className="mb-4 empty:hidden"><RitualTurnCard onStart={startRitual} started={ritualStarted} primaryMoveProps={RITUAL_MOVE} onTurnChange={onTurnChange} /></div>
         <div className="grid sm:grid-cols-2 gap-4">
-          {FAMILY_RITUALS.map((r) => {
+          {FAMILY_RITUALS.filter((r) => r.id !== turnId).map((r) => {
             const glyph = RITUAL_ICON[r.id] ?? "history_edu";
             const isOpen = openId === r.id;
             return (
@@ -101,7 +182,7 @@ export default function FamilyFormation() {
                 >
                   <IconBadge tone={FRAME_TONE[r.frame]}><Icon name={glyph} size={20} /></IconBadge>
                   <div className="min-w-0 flex-1">
-                    <h3 className="text-[15px] font-extrabold flex items-center justify-between gap-2" dir="auto" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+                    <h3 className="t-base font-extrabold flex items-center justify-between gap-2" dir="auto" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
                       <span>{he ? r.titleHe : r.title}</span>
                       <Icon name="expand_more" size={16} className={`flex-shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} style={{ color: "var(--arbor-muted)" }} />
                     </h3>
@@ -142,52 +223,6 @@ export default function FamilyFormation() {
             );
           })}
         </div>
-      </div>
-
-      {/* Family Charter — the real, editable tool (names the family's aim) */}
-      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
-          marks a top-level sibling module (what moduleBudget counts);
-          `data-primary-move` marks the ONE control that performs the move
-          surfaceContract.ts declares for this route. */}
-      {/* W2-SHELLPLAY critic r1: a real block (display:contents rendered no
-          box, so space-y-6 collapsed to ~6 px above the rituals). */}
-      <div data-module="family-charter">
-      <SectionCard title={he ? "מגילת המשפחה" : "Family Charter"} icon={<Icon name="history_edu" size={20} />} tone="mint">
-        <p className="text-sm mb-4" dir="auto" style={{ color: "var(--arbor-muted)" }}>
-          {he
-            ? "תנו שם לערכים שאתם מגדלים סביבם את המשפחה. ארבור משתמש בהם כדי לשמור שההכוונה והסיפורים נשארים מחוברים למה שחשוב לכם."
-            : "Name the values you're forming your family around. Arbor uses these to keep guidance and stories aligned with what matters to you."}
-        </p>
-        <div className="flex flex-wrap gap-2 mb-4">
-          {values.map((v) => (
-            <span key={v} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold" dir="auto" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
-              {v}
-              <button onClick={() => remove(v)} aria-label={t("elev.charter.remove", { value: v })} className="inline-flex items-center justify-center min-h-11 min-w-11 -my-2.5 -me-2"><Icon name="close" size={14} /></button>
-            </span>
-          ))}
-          {values.length === 0 && <span className="text-sm" style={{ color: "var(--arbor-muted)" }}>{he ? "הוסיפו ערך כדי להתחיל." : "Add a value to begin your charter."}</span>}
-        </div>
-        <div className="flex gap-2 max-w-md">
-          <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} placeholder={he ? "הוסיפו ערך (למשל סבלנות)…" : "Add a value (e.g. Patience)…"} dir="auto" className="flex-1 min-h-11 rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} />
-          {/* W2-SHELLPLAY critic r1: 44 px, and a ghost — the page's one
-              filled CTA is the ritual start above. */}
-          <button onClick={add} className="inline-flex min-h-11 items-center gap-1 font-bold text-sm rounded-xl px-4" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-clay-deep)", border: "1px solid var(--arbor-rule)" }}><Icon name="add" size={16} /> {he ? "הוסיפו" : "Add"}</button>
-        </div>
-        {/* B-PLAY-21: "Our family's way" — how Arbor talks with you sits beside
-            the charter. The SAME sheet Ask opens, writing the same selectedLens
-            the companion prompt already reads. */}
-        <div className="mt-5 pt-4 flex flex-wrap items-center justify-between gap-3" style={{ borderTop: "1px solid var(--arbor-rule)" }} data-testid="family-tone-row">
-          <div className="min-w-0">
-            <p className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{t("coach.tone.title")}</p>
-            <p className="text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>{toneLabel(selectedLens, t)}</p>
-          </div>
-          <button type="button" onClick={() => setToneOpen(true)} className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3.5 text-[13px] font-bold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}>
-            <Icon name="tune" size={16} /> {t("coach.tone.change")}
-          </button>
-        </div>
-        <ToneSheet open={toneOpen} onClose={() => setToneOpen(false)} selectedLens={selectedLens} onSelect={setSelectedLens} t={t} />
-      </SectionCard>
-
       </div>
 
     </motion.div>

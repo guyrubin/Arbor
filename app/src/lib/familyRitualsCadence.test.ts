@@ -175,7 +175,7 @@ describe("ENG-25 → B-GROWTH-03 — the cadence is surfaced on #/family", () =>
   it("#/family mounts the card inside the start-family-ritual module, and the card runs the cadence + records a run", () => {
     // W2-SHELLPLAY r1: the card is mounted inside the rituals module and
     // carries the route's ONE stamp on its start control (spread from the leaf).
-    expect(growth).toMatch(/<RitualTurnCard onStart=\{startRitual\} started=\{ritualStarted\} primaryMoveProps=\{RITUAL_MOVE\} \/>/);
+    expect(growth).toMatch(/<RitualTurnCard onStart=\{startRitual\} started=\{ritualStarted\} primaryMoveProps=\{RITUAL_MOVE\} onTurnChange=\{onTurnChange\} \/>/);
     const mod = growth.indexOf('data-module="family-rituals"');
     expect(mod).toBeGreaterThan(-1);
     expect(growth.indexOf("<RitualTurnCard")).toBeGreaterThan(mod);
@@ -211,8 +211,9 @@ describe("W2-SHELLPLAY r1 — #/family: the ritual start reads first, on a real 
     expect(start).toContain("minHeight: 44");
   });
 
-  it("the rituals module leads; the charter follows on a real block (no display:contents)", () => {
-    expect(family.indexOf('data-module="family-rituals"')).toBeLessThan(family.indexOf('data-module="family-charter"'));
+  it("critic r2: 'Our family's way' leads (header -> charter line -> ritual turn), on a real block", () => {
+    expect(family.indexOf('data-module="family-charter"')).toBeLessThan(family.indexOf('data-module="family-rituals"'));
+    expect(family.indexOf('data-testid="family-way"')).toBeLessThan(family.indexOf("<RitualTurnCard"));
     expect(family).not.toContain('display: "contents"');
   });
 
@@ -226,5 +227,36 @@ describe("W2-SHELLPLAY r1 — #/family: the ritual start reads first, on a real 
   it("no dead self-door: the card on #/family does not offer 'Open Family Formation'", () => {
     expect(card).not.toContain('setActiveTab("family")');
     expect(card).not.toContain("elev.rh.ritual.open");
+  });
+});
+
+describe("W2-SHELLPLAY r2 — #/family always has ONE move, and nothing renders twice", () => {
+  const family = read("../components/sections/FamilyFormation.tsx");
+  const card = read("../components/nextopen/RitualTurnCard.tsx");
+  const settled = card.slice(card.indexOf("if (!turn) {"), card.indexOf("const { ritual, firstTime } = turn;"));
+  const active = card.slice(card.indexOf("const { ritual, firstTime } = turn;"));
+
+  it("G0: the stamp is spread in BOTH card states (a due ritual, and nothing due)", () => {
+    expect(settled).toContain('data-testid="ritual-turn-settled"');
+    expect(settled).toContain("{...primaryMoveProps}");
+    expect(settled).toContain('t("elev.rh.ritual.planNext"');
+    expect(active).toContain("{...primaryMoveProps}");
+    expect((settled.match(/\{\.\.\.primaryMoveProps\}/g) || []).length).toBe(1);
+    expect((active.match(/\{\.\.\.primaryMoveProps\}/g) || []).length).toBe(1);
+    // NEGATIVE CONTROL: the r1 settled state (a bare line, no control) has no stamp
+    const r1 = '<p data-testid="ritual-turn-settled">{t("elev.rh.ritual.settled")}</p>';
+    expect(r1).not.toContain("primaryMoveProps");
+  });
+
+  it("the turn ritual is excluded from the library below it", () => {
+    expect(family).toContain("FAMILY_RITUALS.filter((r) => r.id !== turnId).map((r) => {");
+    expect(card).toContain("useEffect(() => { onTurnChange?.(turnId); }, [turnId, onTurnChange]);");
+  });
+
+  it("the heading ladder: module h2 t-lg > card h3 t-md > library h3 t-base; no orphan sizes", () => {
+    expect(family).toContain('<h2 className="t-lg font-extrabold mb-3"');
+    expect(card).toMatch(/<h3\s+id="ritual-turn-title"\s+className="mt-1 break-words t-md/);
+    expect(family).toContain('<h3 className="t-base font-extrabold flex');
+    expect(card).not.toMatch(/text-\[1[57]px\]/);
   });
 });

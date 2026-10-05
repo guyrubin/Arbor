@@ -12,17 +12,18 @@
  * CLINICAL FIREWALL: this is a family practice, not a measure. Nothing here
  * counts what the family skipped, scores anything, or reports on the child.
  */
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
 import {
   cadenceLabel,
+  daysUntilNextTurn,
   markRitualPractised,
   readRitualRecord,
   ritualOfTheMoment,
   type RitualRecord,
 } from "../../lib/familyRitualsCadence";
-import type { FamilyRitual } from "../../lib/familyRituals";
+import { FAMILY_RITUALS, type FamilyRitual } from "../../lib/familyRituals";
 
 /** Each ritual's glyph — kept in step with the Family Formation surface. */
 const RITUAL_GLYPH: Record<string, string> = {
@@ -44,9 +45,12 @@ export interface RitualTurnCardProps {
   /** The host's primary-move stamp (spread onto the start control), so the
    *  route's leaf file keeps the one stamp check:framework counts. */
   primaryMoveProps?: Record<string, string>;
+  /** W2-SHELLPLAY critic r2: tells the host which ritual the card shows (or
+   *  null when none is due), so the ritual library never renders it twice. */
+  onTurnChange?: (ritualId: string | null) => void;
 }
 
-export default function RitualTurnCard({ nowMs, onStart, started, primaryMoveProps }: RitualTurnCardProps) {
+export default function RitualTurnCard({ nowMs, onStart, started, primaryMoveProps, onTurnChange }: RitualTurnCardProps) {
   const { t, uiLang } = useLanguage();
   const he = uiLang === "he";
   const now = nowMs ?? Date.now();
@@ -55,6 +59,20 @@ export default function RitualTurnCard({ nowMs, onStart, started, primaryMovePro
   const [stepsOpen, setStepsOpen] = useState(false);
 
   const turn = useMemo(() => ritualOfTheMoment(now, record), [now, record]);
+  const turnId = turn?.ritual.id ?? null;
+  useEffect(() => { onTurnChange?.(turnId); }, [turnId, onTurnChange]);
+  // W2-SHELLPLAY critic r2 (law 7): when nothing is due the page still has ONE
+  // move — plan the ritual whose turn comes round next.
+  const nextUp = useMemo(() => {
+    if (turn) return null;
+    let best: FamilyRitual | null = null;
+    let bestLeft = Infinity;
+    for (const r of FAMILY_RITUALS) {
+      const left = daysUntilNextTurn(r, now, record) ?? 0;
+      if (left < bestLeft) { best = r; bestLeft = left; }
+    }
+    return best;
+  }, [turn, now, record]);
 
   const markPractised = useCallback(() => {
     if (!turn) return;
@@ -65,15 +83,31 @@ export default function RitualTurnCard({ nowMs, onStart, started, primaryMovePro
   // Nothing waiting is a real, calm answer — say it once rather than render an
   // empty slot the parent has to interpret.
   if (!turn) {
+    const nextStarted = nextUp ? Boolean(started?.(nextUp)) : false;
     return (
-      <p
-        data-testid="ritual-turn-settled"
-        className="px-1 text-[12px]"
-        dir="auto"
-        style={{ color: "var(--arbor-muted)" }}
-      >
-        {t("elev.rh.ritual.settled")}
-      </p>
+      <div data-testid="ritual-turn-settled" className="space-y-2">
+        <p className="px-1 t-sm" dir="auto" style={{ color: "var(--arbor-muted)" }}>
+          {t("elev.rh.ritual.settled")}
+        </p>
+        {onStart && nextUp && (
+          <button
+            type="button"
+            {...primaryMoveProps}
+            data-testid="ritual-plan-next"
+            onClick={() => onStart(nextUp)}
+            disabled={nextStarted}
+            className="inline-flex items-center gap-2 rounded-2xl px-5 t-sm font-extrabold transition active:scale-[0.97] disabled:cursor-default"
+            style={
+              nextStarted
+                ? { minHeight: 44, background: "var(--arbor-paper-deep)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }
+                : { minHeight: 44, background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }
+            }
+          >
+            <Icon name={nextStarted ? "check_circle" : "event_upcoming"} size={16} fill={nextStarted ? 1 : 0} />
+            {nextStarted ? t("elev.learnCare.ritual.started") : t("elev.rh.ritual.planNext", { title: he ? nextUp.titleHe : nextUp.title })}
+          </button>
+        )}
+      </div>
     );
   }
 
@@ -102,20 +136,22 @@ export default function RitualTurnCard({ nowMs, onStart, started, primaryMovePro
         </span>
         <div className="min-w-0 flex-1">
           <span
-            className="text-[11px] font-extrabold uppercase tracking-[0.16em]"
+            className="t-xs font-extrabold uppercase tracking-[0.16em]"
             style={{ color: "var(--arbor-green-ink)" }}
           >
             {t("elev.rh.ritual.eyebrow")}
           </span>
-          <h2
+          {/* W2-SHELLPLAY critic r2: the heading ladder — the card title is an
+              h3 at t-md under the module's t-lg h2 (grid titles: t-base h3). */}
+          <h3
             id="ritual-turn-title"
-            className="mt-1 break-words text-[17px] font-extrabold leading-tight"
+            className="mt-1 break-words t-md font-extrabold leading-tight"
             dir="auto"
             style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}
           >
             {he ? ritual.titleHe : ritual.title}
-          </h2>
-          <p className="mt-1 text-[12.5px]" dir="auto" style={{ color: "var(--arbor-muted)" }}>
+          </h3>
+          <p className="mt-1 t-sm" dir="auto" style={{ color: "var(--arbor-muted)" }}>
             <span data-testid="ritual-turn-cadence">{t(cadence.key, cadence.vars)}</span>
             {" · "}
             <span data-testid="ritual-turn-reason">
