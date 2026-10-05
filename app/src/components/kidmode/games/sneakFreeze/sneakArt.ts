@@ -42,7 +42,7 @@ export interface ArtSprite {
   anchor: { x: number; y: number };
 }
 
-export type WatcherSlot = WatcherPose;
+export type WatcherSlot = WatcherPose | "sunglasses";
 
 export interface SneakArt {
   source: "proof" | "injected" | "dev-placeholder";

@@ -670,7 +670,8 @@ export function step(state: SneakState, dtMs: number, input: { holding: boolean 
     const slice = Math.min(remaining, TIMING.maxSliceMs, Math.max(0.5, untilBoundary(s)));
     advance(s, slice);
     remaining -= slice;
-    if (s.phase === "done") break;
+    // advance() mutates s; re-read the phase without the narrowing TS carried past the call
+    if ((s.phase as Phase) === "done") break;
     // A phase entered with the button already held may owe its first lurch.
     if (s.phase !== phaseBefore && s.phase === "looking" && s.sunglasses && s.holding && !s.lurchedThisBeat) lurch(s);
   }
