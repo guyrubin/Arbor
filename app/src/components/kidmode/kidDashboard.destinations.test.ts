@@ -115,7 +115,11 @@ describe("OBJ-KID-05 / KID-25 — the banner opens exactly one story", () => {
 
   it("negative control — with no story id the full catalogue is still reachable", () => {
     const hero = read("..", "tabs", "HeroJourneyTab.tsx");
-    expect(hero).toContain("const ageCandidates = showAllAges ? orderedStories : ageVisibleStories;");
+    // B-KID-70 (R-4b): the age rule is unchanged — show-all-ages lifts it, else
+    // the age-visible list — and illustrated stories only LEAD (a partition:
+    // same members, reordered), so no story is added or dropped.
+    expect(hero).toContain("const ageCandidates = illustratedFirst(showAllAges ? orderedStories : ageVisibleStories);");
+    expect(hero).toContain("const illustratedFirst = (list: HeroStorySpec[]) => [...list.filter((s) => storyCover(s.id)), ...list.filter((s) => !storyCover(s.id))];");
     // The "hero" adventure tile opens journeys with no arg — the catalogue door.
     expect(destinations.find((d) => d.tile === "adv:hero")).toEqual({
       tile: "adv:hero",
