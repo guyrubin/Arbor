@@ -383,10 +383,11 @@ function layoutFacing(c: Ctx): BookPageLayout {
         const bookW = artPageW + textW;
         const bx = Math.round((W - bookW) / 2);
         const by = Math.round((H - bookH) / 2);
-        const artY = by + Math.round((bookH - P) / 2);
-        const artPage: Rect = dir === "ltr" ? { x: bx, y: artY, w: artPageW, h: P } : { x: bx + textW, y: artY, w: artPageW, h: P };
+        // both paper pages are the book's height; a taller text page (the
+        // decision page) leaves the plate centred on its paper page
+        const artPage: Rect = dir === "ltr" ? { x: bx, y: by, w: artPageW, h: bookH } : { x: bx + textW, y: by, w: artPageW, h: bookH };
         const textPage: Rect = dir === "ltr" ? { x: bx + artPageW, y: by, w: textW, h: bookH } : { x: bx, y: by, w: textW, h: bookH };
-        const art: Rect = { x: artPage.x + pm, y: artPage.y + pm, w: plateW, h: plateH };
+        const art: Rect = { x: artPage.x + pm, y: by + Math.round((bookH - plateH) / 2), w: plateW, h: plateH };
         const text: Rect = { x: textPage.x + padI, y: textPage.y + padB0, w: textBoxW, h: bookH - 2 * padB0 };
         const anchor = anchorFor(c, c.slot);
         const hero = heroRect(c.slot, art, art, anchor);
@@ -601,7 +602,8 @@ function layoutStacked(c: Ctx): BookPageLayout {
   const hero = heroRect(c.slot, plate, art, anchor);
   return {
     mode: "stacked",
-    pageType: c.cover ? "cover" : page.type ?? "facing",
+    // a phone shows every page (the cover too) as picture-over-sheet
+    pageType: "facing",
     dir,
     book: { x: colX, y: 0, w: colW, h: H },
     artPage: art,
