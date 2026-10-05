@@ -178,12 +178,14 @@ export function usePulses(): HubPulses {
     const stories: HubPulse = { key: "elev.pulse.stories.empty", params: { name } };
     const learn: HubPulse = { key: "elev.pulse.learn.empty" };
 
-    // ── Ask Arbor: review queue → last conversation → open invitation. ─────
+    // ── Ask Arbor: last conversation → open invitation. B-SHELL-26: the
+    //    "n notes awaiting your review" line is gone — parent-written facts
+    //    are kept on creation and inferences are asked inline (B-AI-07), so
+    //    there is no queue to announce. `unreadCoachCount` stays an input.
     const lastConv = conversations[0]; // already sorted by updatedAt desc
+    void unreadCoachCount;
     const ask: HubPulse =
-      unreadCoachCount > 0
-        ? { key: pickCountKey("elev.pulse.ask.review", unreadCoachCount), params: { count: unreadCoachCount }, count: unreadCoachCount }
-        : lastConv
+      lastConv
         ? { key: "elev.pulse.ask.continue", params: { title: lastConv.title } }
         : { key: "elev.pulse.ask.empty", params: { name } };
 

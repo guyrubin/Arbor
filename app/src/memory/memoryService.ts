@@ -332,6 +332,27 @@ export const groupNearDuplicates = <T extends { fact: string; createdAt: string;
 /** B-AI-07: the fact's topic from the coach's own behaviour/domain keyword table. */
 export const memoryTopicKey = (fact: string): string | undefined => domainsFromQuestion(fact)[0];
 
+/**
+ * B-SHELL-26 — provenance class of a proposed fact. "parent_written" when the
+ * fact restates the parent's OWN message: ≥ 80 % of the fact's content tokens
+ * (dedupeTokens: stopwords and the child's name out, stems in) appear in the
+ * prompt the parent typed or dictated. Everything else — a pattern the model
+ * inferred, a system-made prompt ("rhythm:…") — is an "inference" and waits
+ * for the parent's approval, asked inline in the conversation (B-AI-07).
+ * Pure; zero model calls.
+ */
+export type MemoryProvenanceClass = "parent_written" | "inference";
+export const PARENT_WRITTEN_CONTAINMENT = 0.8;
+export const memoryProvenanceClass = (fact: string, prompt: string | null | undefined, childName?: string | null): MemoryProvenanceClass => {
+  if (typeof prompt !== "string" || !prompt.trim() || /^[a-z-]+:[a-z-]+$/i.test(prompt.trim())) return "inference";
+  const factTokens = dedupeTokens(fact, childName);
+  if (factTokens.size === 0) return "inference";
+  const said = dedupeTokens(prompt, childName);
+  let inside = 0;
+  for (const tok of factTokens) if (said.has(tok)) inside += 1;
+  return inside / factTokens.size >= PARENT_WRITTEN_CONTAINMENT ? "parent_written" : "inference";
+};
+
 export const appendMemoryProposals = async (
   store: MemoryStore,
   childId: string,
@@ -356,7 +377,10 @@ export const appendMemoryProposals = async (
 
   for (const proposal of proposals) {
     if (isNearDuplicateFact(proposal.fact, seen, context.childName)) continue;
-    seen.push({ fact: proposal.fact, status: "pending" });
+    // B-SHELL-26: the parent's own words are kept on creation (one event,
+    // status approved — never a queue item); inferences stay pending.
+    const status: MemoryStatus = memoryProvenanceClass(proposal.fact, context.prompt, context.childName) === "parent_written" ? "approved" : "pending";
+    seen.push({ fact: proposal.fact, status });
     const topicKey = memoryTopicKey(proposal.fact);
 
     await store.appendEvent({
@@ -365,7 +389,7 @@ export const appendMemoryProposals = async (
       familyId: context.familyId,
       childId,
       eventType: "proposed",
-      status: "pending",
+      status,
       fact: proposal.fact,
       source: proposal.source,
       retention: proposal.retention,

@@ -10,17 +10,21 @@ import { requestOpenSettings } from "./settingsBus";
 import { SECTIONS, sectionForTab, primaryTabOf, type NavBadge } from "../../lib/navigation";
 
 /** Resolve the generalized sidebar badge to its display string from app state.
- *  Returns "" when the badge should not render. Clinical firewall: the milestone
- *  badge is a COUNT of parent-noticed milestones, never a percentage/score. */
+ *  Returns "" when the badge should not render.
+ *
+ *  B-SHELL-26: NO badges in parent mode. "Ask Arbor 103" read as 103 unread
+ *  messages (it was a queue of notes to review — parent-written facts are now
+ *  kept on creation and inferences are asked inline, B-AI-07), and "Growth 6"
+ *  was a count with nothing new behind it. The plumbing (NavBadge, the state
+ *  the callers pass) stays so a visit-due marker (Care, within 48 h) can use
+ *  it; no data is deleted. */
 export function badgeText(
   badge: NavBadge | undefined,
   state: { milestonesNoticed: number; plansCount: number; pendingReviewCount: number }
 ): string {
-  if (!badge) return "";
-  if (badge === "milestone") return state.milestonesNoticed ? String(state.milestonesNoticed) : "";
-  if (badge === "plans") return state.plansCount ? String(state.plansCount) : "";
-  if (badge.kind === "count") return state.pendingReviewCount ? String(state.pendingReviewCount) : "";
-  return ""; // { kind: "dot" } handled by the caller
+  void badge;
+  void state;
+  return "";
 }
 
 export default function Sidebar() {
