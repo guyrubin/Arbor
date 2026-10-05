@@ -107,23 +107,25 @@ export const HERO_STORIES: HeroStorySpec[] = [
       ],
     },
     beats: [
-      { id: "call", title: "The Call", spine: "The hero is a small shepherd who hears that a giant named Goliath is frightening everyone in the valley." },
-      { id: "challenge", title: "The Challenge", spine: "The giant towers over the whole army; no grown-up is brave enough to face him." },
-      { id: "fear", title: "The Fear", spine: "The hero's heart pounds — Goliath is enormous and the hero is so small. Fear says 'you can't'." },
+      { id: "call", title: "The Call", titleHe: "הקריאה", spine: "The hero is a small shepherd who hears that a giant named Goliath is frightening everyone in the valley.", spineHe: "הגיבור הוא רועה צאן קטן. הוא שומע שענק בשם גוליית מפחיד את כל מי שגר בעמק." },
+      { id: "challenge", title: "The Challenge", titleHe: "האתגר", spine: "The giant towers over the whole army; no grown-up is brave enough to face him.", spineHe: "הענק גבוה יותר מכל הצבא. אף מבוגר לא מעז לעמוד מולו." },
+      { id: "fear", title: "The Fear", titleHe: "הפחד", spine: "The hero's heart pounds — Goliath is enormous and the hero is so small. Fear says 'you can't'.", spineHe: "הלב של הגיבור דופק חזק. גוליית ענק, והגיבור כל כך קטן. הפחד לוחש: 'זה גדול עליך.'" },
       {
         id: "decision",
         title: "The Decision",
+        titleHe: "ההחלטה",
         spine: "The hero must decide what to do about the giant.",
+        spineHe: "עכשיו הגיבור צריך להחליט מה לעשות עם הענק.",
         choices: [
-          { id: "a", label: "Walk quietly away", outcomeHint: "The hero steps back and watches; the fear stays but so does a quiet wish to have tried.", metricDeltas: {} },
-          { id: "b", label: "Ask a friend for help first", outcomeHint: "The hero gathers courage by asking a trusted friend, then steps forward together-in-spirit.", metricDeltas: { empathy: 1, courage: 1 } },
-          { id: "c", label: "Face the giant with my sling", outcomeHint: "The hero breathes deep, picks up a small smooth stone, and walks toward the giant.", metricDeltas: { courage: 2, resilience: 1 } },
+          { id: "a", label: "Walk quietly away", labelHe: "ללכת משם בשקט", outcomeHint: "The hero steps back and watches; the fear stays but so does a quiet wish to have tried.", outcomeHintHe: "הגיבור נסוג לאחור ומסתכל. הפחד נשאר, ואיתו גם משאלה שקטה: הלוואי שהייתי מנסה.", metricDeltas: {} },
+          { id: "b", label: "Ask a friend for help first", labelHe: "לבקש קודם עזרה מחבר", outcomeHint: "The hero gathers courage by asking a trusted friend, then steps forward together-in-spirit.", outcomeHintHe: "הגיבור מבקש עזרה מחבר טוב ומקבל ממנו אומץ. ואז הוא צועד קדימה, והחבר איתו בלב.", metricDeltas: { empathy: 1, courage: 1 } },
+          { id: "c", label: "Face the giant with my sling", labelHe: "לעמוד מול הענק עם הקלע", outcomeHint: "The hero breathes deep, picks up a small smooth stone, and walks toward the giant.", outcomeHintHe: "הגיבור נושם עמוק, מרים אבן קטנה וחלקה, והולך לעבר הענק.", metricDeltas: { courage: 2, resilience: 1 } },
         ],
       },
-      { id: "consequence", title: "What Happened", spine: "Because of the choice, the valley goes quiet and everyone watches what the small hero does next." },
-      { id: "growth", title: "Growing", spine: "The hero learns that courage isn't being un-afraid — it's taking one brave step while the fear is still there." },
-      { id: "victory", title: "Victory", spine: "The giant problem becomes small; the people cheer the small hero who dared." },
-      { id: "reflection", title: "Reflection", spine: "The hero rests, proud, and remembers: I am braver than I knew." },
+      { id: "consequence", title: "What Happened", titleHe: "מה קרה", spine: "Because of the choice, the valley goes quiet and everyone watches what the small hero does next.", spineHe: "בגלל הבחירה, העמק כולו משתתק. כולם מסתכלים מה הגיבור הקטן יעשה עכשיו." },
+      { id: "growth", title: "Growing", titleHe: "צומחים", spine: "The hero learns that courage isn't being un-afraid — it's taking one brave step while the fear is still there.", spineHe: "הגיבור לומד משהו חשוב: גם אמיצים מפחדים. אומץ זה לעשות צעד אחד, גם כשהפחד עוד שם." },
+      { id: "victory", title: "Victory", titleHe: "הניצחון", spine: "The giant problem becomes small; the people cheer the small hero who dared.", spineHe: "הבעיה הענקית נהיית קטנה. כולם מריעים לגיבור הקטן שהעז." },
+      { id: "reflection", title: "Reflection", titleHe: "רגע לחשוב", spine: "The hero rests, proud, and remembers: I am braver than I knew.", spineHe: "הגיבור נח, גאה, וזוכר: אני אמיץ יותר ממה שחשבתי." },
     ],
   },
   {
@@ -147,23 +149,25 @@ export const HERO_STORIES: HeroStorySpec[] = [
       ],
     },
     beats: [
-      { id: "call", title: "The Call", spine: "The hero sees that many people are tired and treated unfairly, and feels a tug to help them." },
-      { id: "challenge", title: "The Challenge", spine: "Only the most powerful king in the land can set the people free — and he says no." },
-      { id: "fear", title: "The Fear", spine: "The hero's voice shakes; the king is mighty and the palace is huge. What if no one listens?" },
+      { id: "call", title: "The Call", titleHe: "הקריאה", spine: "The hero sees that many people are tired and treated unfairly, and feels a tug to help them.", spineHe: "הגיבור רואה שהרבה אנשים עייפים, ושמתנהגים אליהם לא בצדק. משהו בלב שלו אומר: צריך לעזור להם." },
+      { id: "challenge", title: "The Challenge", titleHe: "האתגר", spine: "Only the most powerful king in the land can set the people free — and he says no.", spineHe: "רק המלך החזק ביותר בארץ יכול לשחרר את האנשים. והמלך אומר: לא." },
+      { id: "fear", title: "The Fear", titleHe: "הפחד", spine: "The hero's voice shakes; the king is mighty and the palace is huge. What if no one listens?", spineHe: "הקול של הגיבור רועד. המלך חזק מאוד, והארמון ענק. ומה אם אף אחד לא יקשיב?" },
       {
         id: "decision",
         title: "The Decision",
+        titleHe: "ההחלטה",
         spine: "The hero must decide whether to speak up to the king.",
+        spineHe: "הגיבור צריך להחליט: לדבר אל המלך, או לשתוק.",
         choices: [
-          { id: "a", label: "Stay quiet and hope it changes", outcomeHint: "The hero waits, but the people stay tired, and the hero's heart aches to do more.", metricDeltas: {} },
-          { id: "b", label: "Find others to stand with me", outcomeHint: "The hero gathers brave helpers so they can speak together with stronger voices.", metricDeltas: { empathy: 1, responsibility: 1 } },
-          { id: "c", label: "Stand tall and say 'Let them go'", outcomeHint: "The hero steps before the king, steadies their breath, and speaks the brave true words.", metricDeltas: { courage: 2, responsibility: 1 } },
+          { id: "a", label: "Stay quiet and hope it changes", labelHe: "לשתוק ולקוות שמשהו ישתנה", outcomeHint: "The hero waits, but the people stay tired, and the hero's heart aches to do more.", outcomeHintHe: "הגיבור מחכה, אבל האנשים נשארים עייפים. והלב של הגיבור כואב, כי הוא רוצה לעשות יותר.", metricDeltas: {} },
+          { id: "b", label: "Find others to stand with me", labelHe: "למצוא חברים שיעמדו לצידי", outcomeHint: "The hero gathers brave helpers so they can speak together with stronger voices.", outcomeHintHe: "הגיבור אוסף עוזרים אמיצים. ביחד, הקולות שלהם חזקים יותר.", metricDeltas: { empathy: 1, responsibility: 1 } },
+          { id: "c", label: "Stand tall and say 'Let them go'", labelHe: "לעמוד זקוף ולומר: 'תן להם ללכת'", outcomeHint: "The hero steps before the king, steadies their breath, and speaks the brave true words.", outcomeHintHe: "הגיבור נעמד מול המלך, נושם לאט, ואומר את המילים האמיצות והאמיתיות.", metricDeltas: { courage: 2, responsibility: 1 } },
         ],
       },
-      { id: "consequence", title: "What Happened", spine: "The hero's words ripple through the palace; the king must finally reckon with what is right." },
-      { id: "growth", title: "Growing", spine: "The hero learns that one steady, truthful voice can move even the mightiest." },
-      { id: "victory", title: "Victory", spine: "The people walk free toward a new beginning, led by the hero who dared to speak." },
-      { id: "reflection", title: "Reflection", spine: "The hero looks back at the long road and knows: speaking up was worth it." },
+      { id: "consequence", title: "What Happened", titleHe: "מה קרה", spine: "The hero's words ripple through the palace; the king must finally reckon with what is right.", spineHe: "המילים של הגיבור מהדהדות בכל הארמון. עכשיו המלך חייב לחשוב מה נכון." },
+      { id: "growth", title: "Growing", titleHe: "צומחים", spine: "The hero learns that one steady, truthful voice can move even the mightiest.", spineHe: "הגיבור לומד שקול אחד, שקט ואמיתי, יכול להזיז גם את החזק מכולם." },
+      { id: "victory", title: "Victory", titleHe: "הניצחון", spine: "The people walk free toward a new beginning, led by the hero who dared to speak.", spineHe: "האנשים יוצאים לחופשי, אל התחלה חדשה. בראש הולך הגיבור שהעז לדבר." },
+      { id: "reflection", title: "Reflection", titleHe: "רגע לחשוב", spine: "The hero looks back at the long road and knows: speaking up was worth it.", spineHe: "הגיבור מביט אחורה על הדרך הארוכה ויודע: היה שווה לדבר." },
     ],
   },
   {
@@ -187,23 +191,25 @@ export const HERO_STORIES: HeroStorySpec[] = [
       ],
     },
     beats: [
-      { id: "call", title: "The Call", spine: "A young lion with a big soft mane lives in the tall grass but is afraid of the dark beyond the hill." },
-      { id: "challenge", title: "The Challenge", spine: "A little cub is lost on the far side of the dark hill and needs someone brave to find them." },
-      { id: "fear", title: "The Fear", spine: "The lion's paws feel wobbly; the dark looks enormous and full of unknown sounds." },
+      { id: "call", title: "The Call", titleHe: "הקריאה", spine: "A young lion with a big soft mane lives in the tall grass but is afraid of the dark beyond the hill.", spineHe: "אריה צעיר עם רעמה גדולה ורכה גר בין העשבים הגבוהים. אבל הוא מפחד מהחושך שמעבר לגבעה." },
+      { id: "challenge", title: "The Challenge", titleHe: "האתגר", spine: "A little cub is lost on the far side of the dark hill and needs someone brave to find them.", spineHe: "גור קטן הלך לאיבוד בצד השני של הגבעה החשוכה. מישהו אמיץ צריך למצוא אותו." },
+      { id: "fear", title: "The Fear", titleHe: "הפחד", spine: "The lion's paws feel wobbly; the dark looks enormous and full of unknown sounds.", spineHe: "הכפות של האריה רועדות. החושך נראה ענק, ומלא קולות שהוא לא מכיר." },
       {
         id: "decision",
         title: "The Decision",
+        titleHe: "ההחלטה",
         spine: "The lion must decide what to do about the dark hill and the lost cub.",
+        spineHe: "האריה צריך להחליט מה לעשות עם הגבעה החשוכה ועם הגור שאבד.",
         choices: [
-          { id: "a", label: "Wait for morning light", outcomeHint: "The lion waits, but the cub is alone and cold, and the lion wishes it had gone.", metricDeltas: {} },
-          { id: "b", label: "Bring a friend and a lantern", outcomeHint: "The lion finds a firefly friend whose glow makes the dark feel smaller, and they go together.", metricDeltas: { empathy: 1, courage: 1 } },
-          { id: "c", label: "Take one brave step into the dark", outcomeHint: "The lion takes a slow breath, lifts one paw, and steps into the dark to find the cub.", metricDeltas: { courage: 2, resilience: 1 } },
+          { id: "a", label: "Wait for morning light", labelHe: "לחכות לאור הבוקר", outcomeHint: "The lion waits, but the cub is alone and cold, and the lion wishes it had gone.", outcomeHintHe: "האריה מחכה, אבל הגור לבד וקר לו. והאריה מצטער שלא הלך.", metricDeltas: {} },
+          { id: "b", label: "Bring a friend and a lantern", labelHe: "להביא חבר ופנס", outcomeHint: "The lion finds a firefly friend whose glow makes the dark feel smaller, and they go together.", outcomeHintHe: "האריה מוצא חברה גחלילית. האור שלה הופך את החושך לקטן יותר, והם הולכים ביחד.", metricDeltas: { empathy: 1, courage: 1 } },
+          { id: "c", label: "Take one brave step into the dark", labelHe: "לעשות צעד אמיץ אחד אל תוך החושך", outcomeHint: "The lion takes a slow breath, lifts one paw, and steps into the dark to find the cub.", outcomeHintHe: "האריה נושם לאט, מרים כף אחת, וצועד אל החושך כדי למצוא את הגור.", metricDeltas: { courage: 2, resilience: 1 } },
         ],
       },
-      { id: "consequence", title: "What Happened", spine: "Each step the lion takes, the dark turns out to be smaller and kinder than the fear had said." },
-      { id: "growth", title: "Growing", spine: "The lion learns that fear shrinks when you walk toward it with a kind, steady heart." },
-      { id: "victory", title: "Victory", spine: "The lost cub is found and carried home, snuggled safe in the lion's warm mane." },
-      { id: "reflection", title: "Reflection", spine: "The lion curls up under the stars, no longer afraid of the dark it crossed." },
+      { id: "consequence", title: "What Happened", titleHe: "מה קרה", spine: "Each step the lion takes, the dark turns out to be smaller and kinder than the fear had said.", spineHe: "בכל צעד שהאריה עושה, החושך מתגלה קטן ונעים יותר ממה שהפחד אמר." },
+      { id: "growth", title: "Growing", titleHe: "צומחים", spine: "The lion learns that fear shrinks when you walk toward it with a kind, steady heart.", spineHe: "האריה לומד שהפחד מתכווץ כשהולכים לקראתו עם לב רגוע וטוב." },
+      { id: "victory", title: "Victory", titleHe: "הניצחון", spine: "The lost cub is found and carried home, snuggled safe in the lion's warm mane.", spineHe: "הגור שאבד נמצא. האריה נושא אותו הביתה, מכורבל ובטוח ברעמה החמה." },
+      { id: "reflection", title: "Reflection", titleHe: "רגע לחשוב", spine: "The lion curls up under the stars, no longer afraid of the dark it crossed.", spineHe: "האריה מתכרבל מתחת לכוכבים. הוא כבר לא מפחד מהחושך שעבר בו." },
     ],
   },
 
@@ -938,6 +944,20 @@ export const storyHasLanguage = (story: HeroStorySpec, lang: "en" | "he"): boole
  *  a Hebrew narration never falls back to English text. */
 export const storyLanguage = (uiLang: string, aiLang: string): "en" | "he" =>
   uiLang === "he" || aiLang === "he" ? "he" : "en";
+
+/**
+ * B-KID-23 — ⚠ REVIEW STATE: the Hebrew beat titles, beats, choices and
+ * endings of the stories listed here are an AI FIRST PASS (5 Oct 2026, read
+ * aloud to 3–7-year-olds: short sentences, no nikud), shipped the way the
+ * B-GROWTH-11 milestone catalogue was (`MILESTONE_HE_REVIEW`). Native
+ * editorial review is owed (GD-6 / G-02); remove an id once a native Hebrew
+ * editor has signed that story off. Guard: lib/storyHebrew.test.ts.
+ */
+export const STORY_HE_REVIEW: Readonly<Record<string, "ai-first-pass">> = {
+  "david-and-goliath": "ai-first-pass",
+  "moses-and-pharaoh": "ai-first-pass",
+  "the-lion-who-was-afraid": "ai-first-pass",
+};
 
 /** `list` narrowed to the stories that can be told in `lang` (order kept). */
 export const storiesForLanguage = <S extends HeroStorySpec>(list: readonly S[], lang: "en" | "he"): S[] =>
