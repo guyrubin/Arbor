@@ -39,6 +39,10 @@ const FRAME_TONE: Record<FrameId, PastelKey> = {
  *     check, so anything that was not an array of strings made `values.map`
  *     throw and killed the only screen that could have repaired the charter.
  *     `initialCharterValues` always returns an array. */
+/** W2-SHELLPLAY critic r1: the route's ONE primary-move stamp, spread onto the
+ *  turn card's start control (check:framework counts it in this leaf). */
+const RITUAL_MOVE = { "data-primary-move": "start-family-ritual" } as const;
+
 export default function FamilyFormation() {
   const { t, aiLang, uiLang } = useLanguage();
   // LC-22: the rituals were read-only prose — four repeatable practices with
@@ -73,55 +77,16 @@ export default function FamilyFormation() {
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
       <PageHeader title={t("sec.family.title")} subtitle={t("sec.family.sub")} />
 
-      {/* Family Charter — the real, editable tool (names the family's aim) */}
-      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
-          marks a top-level sibling module (what moduleBudget counts);
-          `data-primary-move` marks the ONE control that performs the move
-          surfaceContract.ts declares for this route. */}
-      <div data-module="family-charter" style={{ display: "contents" }}>
-      <SectionCard title={he ? "מגילת המשפחה" : "Family Charter"} icon={<Icon name="history_edu" size={20} />} tone="mint">
-        <p className="text-sm mb-4" dir="auto" style={{ color: "var(--arbor-muted)" }}>
-          {he
-            ? "תנו שם לערכים שאתם מגדלים סביבם את המשפחה. ארבור משתמש בהם כדי לשמור שההכוונה והסיפורים נשארים מחוברים למה שחשוב לכם."
-            : "Name the values you're forming your family around. Arbor uses these to keep guidance and stories aligned with what matters to you."}
-        </p>
-        <div className="flex flex-wrap gap-2 mb-4">
-          {values.map((v) => (
-            <span key={v} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold" dir="auto" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
-              {v}
-              <button onClick={() => remove(v)} aria-label={t("elev.charter.remove", { value: v })} className="inline-flex items-center justify-center min-h-11 min-w-11 -my-2.5 -me-2"><Icon name="close" size={14} /></button>
-            </span>
-          ))}
-          {values.length === 0 && <span className="text-sm" style={{ color: "var(--arbor-muted)" }}>{he ? "הוסיפו ערך כדי להתחיל." : "Add a value to begin your charter."}</span>}
-        </div>
-        <div className="flex gap-2 max-w-md">
-          <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} placeholder={he ? "הוסיפו ערך (למשל סבלנות)…" : "Add a value (e.g. Patience)…"} dir="auto" className="flex-1 rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} />
-          <button onClick={add} className="inline-flex items-center gap-1 font-bold text-sm rounded-xl px-4 text-white" style={{ background: "var(--arbor-clay)" }}><Icon name="add" size={16} /> {he ? "הוסיפו" : "Add"}</button>
-        </div>
-        {/* B-PLAY-21: "Our family's way" — how Arbor talks with you sits beside
-            the charter. The SAME sheet Ask opens, writing the same selectedLens
-            the companion prompt already reads. */}
-        <div className="mt-5 pt-4 flex flex-wrap items-center justify-between gap-3" style={{ borderTop: "1px solid var(--arbor-rule)" }} data-testid="family-tone-row">
-          <div className="min-w-0">
-            <p className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{t("coach.tone.title")}</p>
-            <p className="text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>{toneLabel(selectedLens, t)}</p>
-          </div>
-          <button type="button" onClick={() => setToneOpen(true)} className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3.5 text-[13px] font-bold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}>
-            <Icon name="tune" size={16} /> {t("coach.tone.change")}
-          </button>
-        </div>
-        <ToneSheet open={toneOpen} onClose={() => setToneOpen(false)} selectedLens={selectedLens} onSelect={setSelectedLens} t={t} />
-      </SectionCard>
-
-      {/* Family rituals — real, repeatable practices */}
-      </div>
-
-      <div data-module="family-rituals" data-primary-move="start-family-ritual">
+      {/* Family rituals — real, repeatable practices. W2-SHELLPLAY critic r1:
+          the module leads the page (the charter follows), and the declared
+          move is stamped on ONE real control — the turn card's "Start it this
+          week" — not on this wrapper. */}
+      <div data-module="family-rituals">
         <h2 className="text-[15px] font-extrabold mb-3" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{he ? "טקסי משפחה" : "Family rituals"}</h2>
         {/* B-GROWTH-03 / ENG-25 — the ritual whose turn has come round, beside
             the rituals it belongs to (moved from #/development). Renders
             nothing when no ritual is due. */}
-        <div className="mb-4 empty:hidden"><RitualTurnCard /></div>
+        <div className="mb-4 empty:hidden"><RitualTurnCard onStart={startRitual} started={ritualStarted} primaryMoveProps={RITUAL_MOVE} /></div>
         <div className="grid sm:grid-cols-2 gap-4">
           {FAMILY_RITUALS.map((r) => {
             const glyph = RITUAL_ICON[r.id] ?? "history_edu";
@@ -150,7 +115,7 @@ export default function FamilyFormation() {
                     <ol className="space-y-2">
                       {(he ? r.stepsHe : r.steps).map((s, i) => (
                         <li key={i} className="flex items-start gap-2.5 text-[13px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink-soft)" }}>
-                          <span className="mt-0.5 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-extrabold text-white" style={{ background: "var(--arbor-clay)" }}>{i + 1}</span>
+                          <span className="mt-0.5 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-extrabold" style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}>{i + 1}</span>
                           <span>{s}</span>
                         </li>
                       ))}
@@ -178,6 +143,53 @@ export default function FamilyFormation() {
           })}
         </div>
       </div>
+
+      {/* Family Charter — the real, editable tool (names the family's aim) */}
+      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (what moduleBudget counts);
+          `data-primary-move` marks the ONE control that performs the move
+          surfaceContract.ts declares for this route. */}
+      {/* W2-SHELLPLAY critic r1: a real block (display:contents rendered no
+          box, so space-y-6 collapsed to ~6 px above the rituals). */}
+      <div data-module="family-charter">
+      <SectionCard title={he ? "מגילת המשפחה" : "Family Charter"} icon={<Icon name="history_edu" size={20} />} tone="mint">
+        <p className="text-sm mb-4" dir="auto" style={{ color: "var(--arbor-muted)" }}>
+          {he
+            ? "תנו שם לערכים שאתם מגדלים סביבם את המשפחה. ארבור משתמש בהם כדי לשמור שההכוונה והסיפורים נשארים מחוברים למה שחשוב לכם."
+            : "Name the values you're forming your family around. Arbor uses these to keep guidance and stories aligned with what matters to you."}
+        </p>
+        <div className="flex flex-wrap gap-2 mb-4">
+          {values.map((v) => (
+            <span key={v} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold" dir="auto" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
+              {v}
+              <button onClick={() => remove(v)} aria-label={t("elev.charter.remove", { value: v })} className="inline-flex items-center justify-center min-h-11 min-w-11 -my-2.5 -me-2"><Icon name="close" size={14} /></button>
+            </span>
+          ))}
+          {values.length === 0 && <span className="text-sm" style={{ color: "var(--arbor-muted)" }}>{he ? "הוסיפו ערך כדי להתחיל." : "Add a value to begin your charter."}</span>}
+        </div>
+        <div className="flex gap-2 max-w-md">
+          <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} placeholder={he ? "הוסיפו ערך (למשל סבלנות)…" : "Add a value (e.g. Patience)…"} dir="auto" className="flex-1 min-h-11 rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} />
+          {/* W2-SHELLPLAY critic r1: 44 px, and a ghost — the page's one
+              filled CTA is the ritual start above. */}
+          <button onClick={add} className="inline-flex min-h-11 items-center gap-1 font-bold text-sm rounded-xl px-4" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-clay-deep)", border: "1px solid var(--arbor-rule)" }}><Icon name="add" size={16} /> {he ? "הוסיפו" : "Add"}</button>
+        </div>
+        {/* B-PLAY-21: "Our family's way" — how Arbor talks with you sits beside
+            the charter. The SAME sheet Ask opens, writing the same selectedLens
+            the companion prompt already reads. */}
+        <div className="mt-5 pt-4 flex flex-wrap items-center justify-between gap-3" style={{ borderTop: "1px solid var(--arbor-rule)" }} data-testid="family-tone-row">
+          <div className="min-w-0">
+            <p className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{t("coach.tone.title")}</p>
+            <p className="text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>{toneLabel(selectedLens, t)}</p>
+          </div>
+          <button type="button" onClick={() => setToneOpen(true)} className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3.5 text-[13px] font-bold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}>
+            <Icon name="tune" size={16} /> {t("coach.tone.change")}
+          </button>
+        </div>
+        <ToneSheet open={toneOpen} onClose={() => setToneOpen(false)} selectedLens={selectedLens} onSelect={setSelectedLens} t={t} />
+      </SectionCard>
+
+      </div>
+
     </motion.div>
   );
 }

@@ -204,6 +204,10 @@ describe("OBJ-TODAY-01 — repo-wide ratchet", () => {
     "overview/TodayRecommendation.tsx",
     // B-TODAY-26: licensed above (Today's do-today-action, evening state).
     "overview/TonightCard.tsx",
+    // W2-SHELLPLAY critic r1: "Start it this week" carries the #/family move
+    // (data-primary-move="start-family-ritual", spread from FamilyFormation) —
+    // the only gradient on that page; familyRitualsCadence.test pins it.
+    "nextopen/RitualTurnCard.tsx",
     "practice/GoalBuilderModal.tsx",
     // (W2-SHELLPLAY critic r1: PracticeStudioTab left the ratchet — the Kid
     //  Mode door CTA is secondary; the declared move is the first world tile.)

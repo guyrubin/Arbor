@@ -173,8 +173,10 @@ describe("ENG-25 → B-GROWTH-03 — the cadence is surfaced on #/family", () =>
   });
 
   it("#/family mounts the card inside the start-family-ritual module, and the card runs the cadence + records a run", () => {
-    expect(growth).toMatch(/<RitualTurnCard\s*\/>/);
-    const mod = growth.indexOf('data-primary-move="start-family-ritual"');
+    // W2-SHELLPLAY r1: the card is mounted inside the rituals module and
+    // carries the route's ONE stamp on its start control (spread from the leaf).
+    expect(growth).toMatch(/<RitualTurnCard onStart=\{startRitual\} started=\{ritualStarted\} primaryMoveProps=\{RITUAL_MOVE\} \/>/);
+    const mod = growth.indexOf('data-module="family-rituals"');
     expect(mod).toBeGreaterThan(-1);
     expect(growth.indexOf("<RitualTurnCard")).toBeGreaterThan(mod);
     expect(read("../components/tabs/DevelopmentTab.tsx")).not.toMatch(/RitualTurnCard/);
@@ -191,5 +193,38 @@ describe("ENG-25 → B-GROWTH-03 — the cadence is surfaced on #/family", () =>
     expect(card).not.toMatch(/\bstreak\b/i);
     expect(card).not.toMatch(/\{[^}]*\}%/);
     expect(card).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+  });
+});
+
+describe("W2-SHELLPLAY r1 — #/family: the ritual start reads first, on a real control", () => {
+  const family = read("../components/sections/FamilyFormation.tsx");
+  const card = read("../components/nextopen/RitualTurnCard.tsx");
+  const code = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`])\/\/.*$/gm, "$1");
+
+  it("the stamp is on the card's start BUTTON (via the leaf's one spread), never a wrapper div", () => {
+    expect(family).toContain('const RITUAL_MOVE = { "data-primary-move": "start-family-ritual" } as const;');
+    expect((code(family).match(/\bdata-primary-move\b(?!-)/g) || []).length).toBe(1);
+    expect(code(family)).not.toMatch(/<div[^>]*data-primary-move/);
+    const start = card.slice(card.lastIndexOf("<button", card.indexOf('data-testid="ritual-turn-start"')), card.indexOf("</button>", card.indexOf('data-testid="ritual-turn-start"')));
+    expect(start).toContain("{...primaryMoveProps}");
+    expect(start).toContain('background: "var(--gradient-cta)", color: "var(--arbor-on-accent)"');
+    expect(start).toContain("minHeight: 44");
+  });
+
+  it("the rituals module leads; the charter follows on a real block (no display:contents)", () => {
+    expect(family.indexOf('data-module="family-rituals"')).toBeLessThan(family.indexOf('data-module="family-charter"'));
+    expect(family).not.toContain('display: "contents"');
+  });
+
+  it("the charter input and Add are 44 px, and Add is a ghost, not a second filled CTA", () => {
+    expect(family).toContain('className="flex-1 min-h-11 rounded-xl px-3 py-2.5 text-sm"');
+    const add = family.slice(family.indexOf("<button onClick={add}"), family.indexOf("</button>", family.indexOf("<button onClick={add}")));
+    expect(add).toContain("min-h-11");
+    expect(add).not.toMatch(/text-white|background: "var\(--arbor-clay\)"/);
+  });
+
+  it("no dead self-door: the card on #/family does not offer 'Open Family Formation'", () => {
+    expect(card).not.toContain('setActiveTab("family")');
+    expect(card).not.toContain("elev.rh.ritual.open");
   });
 });

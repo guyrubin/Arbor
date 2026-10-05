@@ -335,7 +335,8 @@ describe("B-PLAY-21 · the tone preference beside the charter", () => {
   });
 
   it("Family sits it inside the charter module (family budget 2 unchanged)", () => {
-    const charter = family.slice(family.indexOf('data-module="family-charter"'), family.indexOf('data-module="family-rituals"'));
+    // W2-SHELLPLAY r1: the rituals module leads now; the charter is the last module.
+    const charter = family.slice(family.indexOf('data-module="family-charter"'));
     expect(charter).toContain('data-testid="family-tone-row"');
     expect((family.match(/data-module="/g) ?? []).length).toBe(2);
   });

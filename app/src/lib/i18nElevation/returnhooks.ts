@@ -53,6 +53,8 @@ export const en: Record<string, string> = {
   "elev.rh.ritual.every.days": "Every {n} days",
   "elev.rh.ritual.steps": "How it goes",
   "elev.rh.ritual.did": "We did this",
+  // W2-SHELLPLAY critic r1: the turn card's one start move on #/family.
+  "elev.rh.ritual.startWeek": "Start it this week",
   "elev.rh.ritual.open": "Open Family Formation",
   "elev.rh.ritual.next": "Back in {n} days.",
   "elev.rh.ritual.nextTomorrow": "Back tomorrow.",
@@ -121,6 +123,7 @@ export const he: Record<string, string> = {
   "elev.rh.ritual.every.days": "כל {n} ימים",
   "elev.rh.ritual.steps": "איך זה הולך",
   "elev.rh.ritual.did": "עשינו את זה",
+  "elev.rh.ritual.startWeek": "להתחיל השבוע",
   "elev.rh.ritual.open": "פתחו את בניית המשפחה",
   "elev.rh.ritual.next": "חוזר בעוד {n} ימים.",
   "elev.rh.ritual.nextTomorrow": "חוזר מחר.",

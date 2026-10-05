@@ -15,7 +15,6 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
-import { useArbor } from "../../context/ArborContext";
 import {
   cadenceLabel,
   markRitualPractised,
@@ -23,6 +22,7 @@ import {
   ritualOfTheMoment,
   type RitualRecord,
 } from "../../lib/familyRitualsCadence";
+import type { FamilyRitual } from "../../lib/familyRituals";
 
 /** Each ritual's glyph — kept in step with the Family Formation surface. */
 const RITUAL_GLYPH: Record<string, string> = {
@@ -35,11 +35,19 @@ const RITUAL_GLYPH: Record<string, string> = {
 export interface RitualTurnCardProps {
   /** Injected in tests; the live surface reads the clock. */
   nowMs?: number;
+  /** W2-SHELLPLAY critic r1: the host's ONE "start" move for the ritual whose
+   *  turn it is (Family Formation: acceptTodayAction of its first step). When
+   *  given, "Start it this week" is the card's primary control. */
+  onStart?: (ritual: FamilyRitual) => void;
+  /** Whether that ritual's first step is already on today's list. */
+  started?: (ritual: FamilyRitual) => boolean;
+  /** The host's primary-move stamp (spread onto the start control), so the
+   *  route's leaf file keeps the one stamp check:framework counts. */
+  primaryMoveProps?: Record<string, string>;
 }
 
-export default function RitualTurnCard({ nowMs }: RitualTurnCardProps) {
+export default function RitualTurnCard({ nowMs, onStart, started, primaryMoveProps }: RitualTurnCardProps) {
   const { t, uiLang } = useLanguage();
-  const { setActiveTab } = useArbor();
   const he = uiLang === "he";
   const now = nowMs ?? Date.now();
 
@@ -151,30 +159,39 @@ export default function RitualTurnCard({ nowMs }: RitualTurnCardProps) {
         </ol>
       )}
 
+      {/* W2-SHELLPLAY critic r1: ONE primary control — "Start it this week"
+          puts the ritual's first step on Today (the host's move, stamped by
+          the host) on the page's single --gradient-cta. "We did this" is the
+          quiet secondary that restarts the clock. The "Open Family Formation"
+          door is gone: this card lives ON #/family, where it did nothing. */}
       <div className="mt-4 flex flex-wrap items-center gap-2">
+        {onStart && (
+          <button
+            type="button"
+            {...primaryMoveProps}
+            data-testid="ritual-turn-start"
+            onClick={() => onStart(ritual)}
+            disabled={started?.(ritual)}
+            className="inline-flex items-center gap-2 rounded-2xl px-5 text-[13px] font-extrabold transition active:scale-[0.97] disabled:cursor-default"
+            style={
+              started?.(ritual)
+                ? { minHeight: 44, background: "var(--arbor-paper-deep)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }
+                : { minHeight: 44, background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }
+            }
+          >
+            <Icon name={started?.(ritual) ? "check_circle" : "add_task"} size={16} fill={started?.(ritual) ? 1 : 0} />
+            {started?.(ritual) ? t("elev.learnCare.ritual.started") : t("elev.rh.ritual.startWeek")}
+          </button>
+        )}
         <button
           type="button"
           data-testid="ritual-turn-practised"
           onClick={markPractised}
           className="inline-flex items-center gap-2 rounded-2xl px-5 text-[13px] font-extrabold transition active:scale-[0.97]"
-          style={{ minHeight: 44, background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}
+          style={{ minHeight: 44, background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}
         >
           <Icon name="task_alt" size={16} />
           {t("elev.rh.ritual.did")}
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("family")}
-          className="inline-flex items-center gap-1.5 rounded-2xl px-4 text-[13px] font-bold"
-          style={{
-            minHeight: 44,
-            background: "var(--arbor-paper-elevated)",
-            border: "1px solid var(--arbor-rule)",
-            color: "var(--arbor-muted)",
-          }}
-        >
-          {t("elev.rh.ritual.open")}
-          <Icon name="chevron_right" size={16} className="rtl:rotate-180" />
         </button>
       </div>
     </section>
