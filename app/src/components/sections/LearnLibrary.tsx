@@ -306,37 +306,9 @@ export default function LearnLibrary() {
         </label>
       </div>
 
-      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
-          marks a top-level sibling module (what moduleBudget counts);
-          `data-primary-move` marks the ONE control that performs the move
-          surfaceContract.ts declares for this route. */}
-      {/* Category pills */}
-      <div data-module="learn-filters" className="flex flex-wrap gap-2" role="tablist" aria-label={t("learn.title")}>
-        <FilterPill active={filter === "all"} onClick={() => setFilter("all")} label={t("learn.all")} />
-        <FilterPill
-          active={filter === "saved"}
-          onClick={() => setFilter("saved")}
-          label={`${t("learn.saved")}${savedLearnIds.length > 0 ? ` · ${savedLearnIds.length}` : ""}`}
-          msIcon="bookmark"
-        />
-        <FilterPill
-          active={filter === "courses"}
-          onClick={() => setFilter(filter === "courses" ? "all" : "courses")}
-          label={t("learn.courses")}
-          msIcon="school"
-        />
-        {LEARN_CATEGORIES.map((c) => (
-          <FilterPill
-            key={c.id}
-            active={filter === c.id}
-            onClick={() => setFilter(filter === c.id ? "all" : c.id)}
-            label={pick(he, c.label)}
-            msIcon={c.msIcon}
-          />
-        ))}
-      </div>
-
-      {/* Picked-for-you rail — explainable personalization, opportunity framing */}
+      {/* Picked-for-you rail — explainable personalization, opportunity framing.
+          W2-SHELLPLAY critic r1: the FIRST module under the H1 and search, at
+          every width — its first card carries the page's move. */}
       {browsing && featured.length > 0 && (
         <section data-module="learn-picked" aria-label={t("learn.pickedTitle", { name: firstName || t("learn.yourChild") })}>
           <div className="flex items-baseline gap-2 flex-wrap mb-2.5">
@@ -386,6 +358,7 @@ export default function LearnLibrary() {
                 card={card}
                 he={he}
                 featured
+                primary={i === 0}
                 index={i}
                 saved={savedLearnIds.includes(card.id)}
                 read={readIds.includes(card.id)}
@@ -397,6 +370,41 @@ export default function LearnLibrary() {
           </div>
         </section>
       )}
+
+      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (what moduleBudget counts);
+          `data-primary-move` marks the ONE control that performs the move
+          surfaceContract.ts declares for this route. */}
+      {/* Category pills */}
+      {/* W2-SHELLPLAY critic r1: below sm the pills are ONE row that scrolls
+          sideways (every pill kept — law 6), so the first read reaches the
+          phone fold; they wrap again from sm up. The Courses pill carries the
+          Masterclasses tab's own name, so the two doors to the same ten
+          courses read as one place until the B-PLAY-19 redirect lands. */}
+      <div data-module="learn-filters" className="flex flex-nowrap overflow-x-auto snap-x sm:flex-wrap sm:overflow-visible gap-2 pb-1 -mx-1 px-1" role="tablist" aria-label={t("learn.title")}>
+        <FilterPill active={filter === "all"} onClick={() => setFilter("all")} label={t("learn.all")} />
+        <FilterPill
+          active={filter === "saved"}
+          onClick={() => setFilter("saved")}
+          label={`${t("learn.saved")}${savedLearnIds.length > 0 ? ` · ${savedLearnIds.length}` : ""}`}
+          msIcon="bookmark"
+        />
+        <FilterPill
+          active={filter === "courses"}
+          onClick={() => setFilter(filter === "courses" ? "all" : "courses")}
+          label={t("nav.tab.masterclasses")}
+          msIcon="school"
+        />
+        {LEARN_CATEGORIES.map((c) => (
+          <FilterPill
+            key={c.id}
+            active={filter === c.id}
+            onClick={() => setFilter(filter === c.id ? "all" : c.id)}
+            label={pick(he, c.label)}
+            msIcon={c.msIcon}
+          />
+        ))}
+      </div>
 
       {/* B-PLAY-17: Courses — the Masterclasses, opened in the same course reader. */}
       {filter === "courses" ? (
@@ -433,10 +441,11 @@ export default function LearnLibrary() {
             </span>
           </div>
           <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {courses.map((m) => (
+            {courses.map((m, i) => (
               <li key={m.id}>
                 <button
                   type="button"
+                  {...(i === 0 ? LEARN_MOVE_STAMP : {})}
                   onClick={() => setOpenCourseId(m.id)}
                   data-testid="learn-course-row"
                   className={`${cardCls} w-full min-h-11 p-4 text-start transition`}
@@ -453,7 +462,7 @@ export default function LearnLibrary() {
           </ul>
         </section>
       ) : gridCards.length > 0 ? (
-        <section data-module="learn-shelf" data-primary-move="open-learn-card" aria-label={t("learn.allReads")}>
+        <section data-module="learn-shelf" aria-label={t("learn.allReads")}>
           {browsing && (
             /* R12 → R20: this row did not wrap, so at 390 the "Show all ages"
                switch sat outside the viewport and the age control read as
@@ -509,6 +518,7 @@ export default function LearnLibrary() {
                 key={card.id}
                 card={card}
                 he={he}
+                primary={!(browsing && featured.length > 0) && i === 0}
                 index={i}
                 saved={savedLearnIds.includes(card.id)}
                 read={readIds.includes(card.id)}
@@ -602,6 +612,12 @@ function FilterPill({
   );
 }
 
+/** W2-SHELLPLAY critic r1: the page's ONE primary-move stamp (check:framework
+ *  counts exactly one in source), spread onto the first rendered card's open
+ *  control — the first Picked card, else the first shelf card, or the first
+ *  course row under Courses. Never a section. */
+const LEARN_MOVE_STAMP = { "data-primary-move": "open-learn-card" } as const;
+
 /* ── Grid card ──────────────────────────────────────────────────────────── */
 
 function LearnGridCard({
@@ -610,6 +626,7 @@ function LearnGridCard({
   saved,
   read,
   featured,
+  primary,
   index,
   onOpen,
   onToggleSave,
@@ -621,6 +638,9 @@ function LearnGridCard({
   /** LC-21 — the parent already opened this read on this device. */
   read?: boolean;
   featured?: boolean;
+  /** W2-SHELLPLAY critic r1: this card's open control carries the page's ONE
+   *  data-primary-move (the first rendered card). */
+  primary?: boolean;
   index: number;
   onOpen: () => void;
   onToggleSave: () => void;
@@ -637,6 +657,7 @@ function LearnGridCard({
     >
       <button
         onClick={onOpen}
+        {...(primary ? LEARN_MOVE_STAMP : {})}
         className={`${cardCls} w-full h-full flex flex-col text-start overflow-hidden transition motion-safe:hover:-translate-y-0.5 active:scale-[0.99] focus:outline-none focus-visible:ring-2`}
       >
         {/* Body */}
