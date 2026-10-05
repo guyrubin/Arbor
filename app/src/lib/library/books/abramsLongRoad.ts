@@ -1,6 +1,7 @@
 /**
- * "Abram's Long Road" — B-BOOK-02: the proof book of the new kid library, as
- * data. Source of record: execution/2026-10-06--kids-books/lane-A-story-craft.md
+ * "Abram's Long Road" — B-BOOK-02: the ENGINE'S TEST FIXTURE (RULINGS BR1:
+ * the proof book is David and Goliath, delivered later as its own file;
+ * Abram is book 2 and is not polished further here). As data. Source of record: execution/2026-10-06--kids-books/lane-A-story-craft.md
  * §6 (manuscript, slots, plate ledger) and §6.2 (parent panel), with lane A's
  * own C8 fix applied: "Abram is waiting." / "אברם מחכה." is cut from p7b's
  * before-text (it stays in the picture only).
@@ -12,15 +13,36 @@
  * manuscript's direction words (sprites are authored facing right). Two values
  * are the builder's, not the manuscript's: every `phoneCrop` (the 3:4 window
  * centre, chosen to hold the slot; the layout function guarantees it) and
- * p7b's `heroAfter` (the hero runs out of the barley toward the road).
+ * p7b's repair items and `heroAfter` (the hero runs out of the barley).
  */
+import { makePlate, type PlateTable } from "../bookPlates";
 import type { Book, Page } from "../types";
 
 const BOOK_ID = "abrams-long-road";
 
+/** Lane A §6.3 plate ledger: 9 plates. Windows, text zones and focus rects are
+ *  the builder's placeholders until the plate author sets them (BR6). */
+export const abramsLongRoadPlates: PlateTable = {
+  P1e: makePlate(BOOK_ID, "P1e", "dusk", { window: { cx: 0.5 } }), // Haran by the well, evening
+  P1m: makePlate(BOOK_ID, "P1m", "morning", {
+    window: { cx: 0.5 },
+    textZone: "inline-end",
+    // decision plate: the waiting caravan · the well and the friend · the packing by the tent
+    focus: { a: { x: 0.66, y: 0.36, w: 0.3, h: 0.44 }, b: { x: 0.04, y: 0.4, w: 0.28, h: 0.46 }, c: { x: 0.34, y: 0.28, w: 0.26, h: 0.4 } },
+  }), // the same, morning, packing
+  P1b: makePlate(BOOK_ID, "P1b", "day", { variantOf: "P1m", window: { cx: 0.5 } }), // + the line waiting, goats in the barley
+  P1c: makePlate(BOOK_ID, "P1c", "morning", { variantOf: "P1m", window: { cx: 0.5 } }), // + the donkey and the pile
+  P2: makePlate(BOOK_ID, "P2", "night", { window: { cx: 0.3 } }), // Haran at night, tent flap and star field
+  P3: makePlate(BOOK_ID, "P3", "morning", { window: { cx: 0.36 }, textZone: "inline-end" }), // the road at sunrise
+  P4: makePlate(BOOK_ID, "P4", "day", { window: { cx: 0.42 }, textZone: "inline-end" }), // the great river
+  P5: makePlate(BOOK_ID, "P5", "golden", { window: { cx: 0.58 } }), // the hill with the great oak
+  P6: makePlate(BOOK_ID, "P6", "dusk", { window: { cx: 0.5 }, textZone: "inline-start" }), // the new tent and altar
+};
+
 const cover: Page = {
   id: "cover",
   plateId: "P3",
+  type: "spread",
   phoneCrop: 0.36,
   hero: { pose: "walk", x: 0.3, y: 0.88, scale: 0.4, facing: "right", z: "fr" },
   text: {
@@ -91,6 +113,7 @@ const p4: Page = {
 const p5: Page = {
   id: "p5",
   plateId: "P1m",
+  type: "spread",
   phoneCrop: 0.5,
   hero: { pose: "stand", x: 0.48, y: 0.92, scale: 0.4, facing: "right", z: "fr" },
   text: {
@@ -155,8 +178,15 @@ const p7b: Page = {
     en: `{hero} stops. Everyone is waiting.`,
     he: { m: `{hero} נעצר. כולם מחכים.`, f: `{hero} נעצרת. כולם מחכים.` },
   },
-  actionTap: {
-    label: { en: `Bring the goats!`, he: `להביא את הגדיים!` },
+  // BR3: the child brings back EACH goat (tap each; nothing can fail).
+  repair: {
+    promptLabel: { en: `Bring the goats!`, he: `להביא את הגדיים!` },
+    items: [
+      { id: "goat-1", x: 0.32, y: 0.84, to: { x: 0.76, y: 0.66 } },
+      { id: "goat-2", x: 0.36, y: 0.8, to: { x: 0.8, y: 0.64 } },
+      { id: "goat-3", x: 0.4, y: 0.86, to: { x: 0.84, y: 0.66 } },
+      { id: "goat-4", x: 0.44, y: 0.78, to: { x: 0.88, y: 0.64 } },
+    ],
     textAfter: {
       en: `{hero} runs into the barley. “Come, goats, come!” One, two, three, four. Now the line can go. The sun is high, the road is hot. They start late.`,
       he: {
@@ -164,7 +194,7 @@ const p7b: Page = {
         f: `{hero} רצה לתוך השעורים. "בואו, גדיים, בואו!" אחד, שניים, שלושה, ארבעה. עכשיו השיירה יכולה לצאת. השמש כבר גבוהה, הדרך חמה. הם יוצאים מאוחר.`,
       },
     },
-    heroAfter: { pose: "run", x: 0.72, y: 0.88, scale: 0.38, facing: "right", z: "fr" },
+    heroAfter: { pose: "run", x: 0.62, y: 0.88, scale: 0.38, facing: "right", z: "fr" },
   },
 };
 
@@ -201,6 +231,7 @@ const p7c: Page = {
 const p8: Page = {
   id: "p8",
   plateId: "P4",
+  type: "spread",
   phoneCrop: 0.42,
   hero: { pose: "arms-wide", x: 0.45, y: 0.8, scale: 0.34, facing: "left", z: "fr" },
   text: {
@@ -234,6 +265,7 @@ const p9: Page = {
 const p10: Page = {
   id: "p10",
   plateId: "P6",
+  type: "spread",
   phoneCrop: 0.5,
   hero: { pose: "sit", x: 0.52, y: 0.9, scale: 0.36, facing: "right", z: "fr" },
   text: {

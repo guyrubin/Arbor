@@ -1,19 +1,20 @@
 /**
  * B-BOOK-02 — the authored books are complete, bounded and every path ends.
- * "Abram's Long Road" is lane A §6 as data: every page has EN + HE m + HE f,
- * every plate is registered, every slot sits inside the plate, no page carries
- * more than 40 English words (echo + closing + after-tap text included), the
- * decision offers exactly 3 typed choices of 1-2 branch pages, and all three
- * paths reach the same ending. Plus lane A's C8 fix and the label caps.
+ * Runs on every book the library knows (real + the Abram fixture): every page
+ * has EN + HE m + HE f, every plate is registered (window, variants, focus
+ * rects), every slot and repair item sits inside the plate, words per page are
+ * capped (EN <= 40, HE <= 34 — RULINGS BR9; echo, closing and after-repair
+ * text included), the decision offers exactly 3 typed choices of 1-2 branch
+ * pages with a picture each, only the EASY branch repairs, and all three
+ * paths reach the same ending. Plus the fixture's lane A specifics (C8 fix).
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { LIBRARY_BOOKS, getLibraryBook } from "./books";
+import { allBooks, BOOK_PLATES, getLibraryBook, getPlate } from "./books";
 import { abramsLongRoad } from "./books/abramsLongRoad";
-import { getPlate, PLATE_MASTER } from "./bookPlates";
-import { HERO_POSES } from "./heroSheet";
+import { PLATE_MASTER } from "./bookPlates";
 import { readPath } from "./bookFlow";
 import type { Book, BookLine, Page, Slot } from "./types";
 
@@ -25,6 +26,11 @@ const iconSubset = new Set(
     .filter(Boolean),
 );
 
+/** The Abram fixture is not polished further (RULINGS BR1); its two HE pages
+ *  over the BR9 cap are frozen here so the cap stays strict for real books.
+ *  FROZEN: entries may only shrink. */
+const FIXTURE_HE_OVER: Record<string, Record<string, number>> = { "abrams-long-road": { p3: 35, p4: 36 } };
+
 const words = (text: string) => text.split(/\s+/).filter((w) => /[\p{L}\p{N}]|\{hero\}/u.test(w)).length;
 
 function allPages(book: Book): Page[] {
@@ -32,20 +38,21 @@ function allPages(book: Book): Page[] {
 }
 
 function lines(page: Page): BookLine[] {
-  return [page.text, ...Object.values(page.echo ?? {}), ...(page.closing ? [page.closing] : []), ...(page.actionTap ? [page.actionTap.textAfter] : [])];
+  return [page.text, ...Object.values(page.echo ?? {}), ...(page.closing ? [page.closing] : []), ...(page.repair ? [page.repair.textAfter] : [])];
 }
 
 function slots(page: Page): Slot[] {
-  return [page.hero, page.actionTap?.heroAfter].filter((s): s is Slot => !!s);
+  return [page.hero, page.repair?.heroAfter].filter((s): s is Slot => !!s);
 }
 
-describe.each(Object.values(LIBRARY_BOOKS))("book $id", (book) => {
+describe.each(allBooks())("book $id", (book) => {
   it("is registered under its own id", () => {
     expect(getLibraryBook(book.id)).toBe(book);
     expect(getLibraryBook("no-such-book")).toBeUndefined();
+    expect(getLibraryBook("constructor")).toBeUndefined();
   });
 
-  it("every page has EN + HE m + HE f text (echo, closing and after-tap lines too)", () => {
+  it("every page has EN + HE m + HE f text (echo, closing and after-repair lines too)", () => {
     for (const page of allPages(book)) {
       for (const line of lines(page)) {
         expect(line.en.trim(), `${page.id} EN`).not.toBe("");
@@ -63,21 +70,32 @@ describe.each(Object.values(LIBRARY_BOOKS))("book $id", (book) => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("every plateId is registered at the 3:2 master size", () => {
+  it("every plateId is registered at the 3:2 master size, with a window, valid variants and focus rects", () => {
     for (const page of allPages(book)) {
       const plate = getPlate(book.id, page.plateId);
       expect(plate, `${page.id} → ${page.plateId}`).toBeDefined();
       expect(plate!.width / plate!.height).toBeCloseTo(PLATE_MASTER.width / PLATE_MASTER.height, 6);
       expect(plate!.file).toBe(`/visuals/books/${book.id}/${page.plateId}.webp`);
+      expect(plate!.window.cx).toBeGreaterThanOrEqual(0);
+      expect(plate!.window.cx).toBeLessThanOrEqual(1);
+    }
+    for (const plate of Object.values(BOOK_PLATES[book.id])) {
+      if (plate.variantOf) expect(BOOK_PLATES[book.id][plate.variantOf], `${plate.id} variantOf`).toBeDefined();
+      for (const [cid, r] of Object.entries(plate.focus ?? {})) {
+        expect(book.decision.choices.some((c) => c.id === cid), `${plate.id} focus ${cid}`).toBe(true);
+        expect(r.x >= 0 && r.y >= 0 && r.w > 0 && r.h > 0 && r.x + r.w <= 1 && r.y + r.h <= 1, `${plate.id} focus ${cid} inside`).toBe(true);
+      }
     }
   });
 
-  it("every slot is inside the plate (0..1), uses a sheet pose, keeps head room; phoneCrop is a fraction", () => {
+  it("every slot and repair item is inside the plate (0..1); slots keep head room; poses are path-safe ids", () => {
     for (const page of allPages(book)) {
-      expect(page.phoneCrop, page.id).toBeGreaterThanOrEqual(0);
-      expect(page.phoneCrop, page.id).toBeLessThanOrEqual(1);
+      if (page.phoneCrop != null) {
+        expect(page.phoneCrop, page.id).toBeGreaterThanOrEqual(0);
+        expect(page.phoneCrop, page.id).toBeLessThanOrEqual(1);
+      }
       for (const s of slots(page)) {
-        expect(HERO_POSES).toContain(s.pose);
+        expect(s.pose, page.id).toMatch(/^[A-Za-z0-9_-]+$/);
         for (const v of [s.x, s.y]) {
           expect(v, page.id).toBeGreaterThan(0);
           expect(v, page.id).toBeLessThan(1);
@@ -87,20 +105,35 @@ describe.each(Object.values(LIBRARY_BOOKS))("book $id", (book) => {
         expect(s.y - s.scale, `${page.id} head inside the plate`).toBeGreaterThan(0);
         expect(["left", "right"]).toContain(s.facing);
       }
+      for (const it of page.repair?.items ?? []) {
+        for (const v of [it.x, it.y, it.to?.x ?? 0.5, it.to?.y ?? 0.5]) {
+          expect(v, `${page.id} ${it.id}`).toBeGreaterThan(0);
+          expect(v, `${page.id} ${it.id}`).toBeLessThan(1);
+        }
+      }
     }
   });
 
-  it("no page carries more than 40 English words (echo, closing and after-tap text included)", () => {
+  it("words per page (echo, closing and after-repair text included): EN <= 40, HE <= 34 (RULINGS BR9)", () => {
+    const count = (page: Page, pick: (l: BookLine) => string) => {
+      const echoMax = Math.max(0, ...Object.values(page.echo ?? {}).map((e) => words(pick(e))));
+      return words(pick(page.text)) + echoMax + (page.closing ? words(pick(page.closing)) : 0) + (page.repair ? words(pick(page.repair.textAfter)) : 0);
+    };
     for (const page of allPages(book)) {
-      const echoMax = Math.max(0, ...Object.values(page.echo ?? {}).map((e) => words(e.en)));
-      const total = words(page.text.en) + echoMax + (page.closing ? words(page.closing.en) : 0) + (page.actionTap ? words(page.actionTap.textAfter.en) : 0);
-      expect(total, `${page.id}: ${total} words`).toBeLessThanOrEqual(40);
+      const en = count(page, (l) => l.en);
+      expect(en, `${page.id}: ${en} EN words`).toBeLessThanOrEqual(40);
+      for (const g of ["m", "f"] as const) {
+        const he = count(page, (l) => l.he[g]);
+        expect(he, `${page.id}: ${he} HE-${g} words`).toBeLessThanOrEqual(FIXTURE_HE_OVER[book.id]?.[page.id] ?? 34);
+      }
     }
   });
 
-  it("the decision offers exactly 3 typed choices, each with 1-2 branch pages, a <= 5-word label and a shipped icon", () => {
+  it("the decision offers exactly 3 typed choices, each with 1-2 branch pages, a <= 5-word label and a picture", () => {
     const { choices, pageId } = book.decision;
-    expect(book.pages.some((p) => p.id === pageId)).toBe(true);
+    const decisionPage = book.pages.find((p) => p.id === pageId);
+    expect(decisionPage).toBeDefined();
+    const decisionPlate = getPlate(book.id, decisionPage!.plateId)!;
     expect(choices).toHaveLength(3);
     expect(choices.map((c) => c.type).sort()).toEqual(["easy", "hard", "third"]);
     for (const c of choices) {
@@ -108,7 +141,9 @@ describe.each(Object.values(LIBRARY_BOOKS))("book $id", (book) => {
       expect(c.branch.length).toBeLessThanOrEqual(2);
       expect(words(c.label.en)).toBeLessThanOrEqual(5);
       expect(words(c.label.he)).toBeLessThanOrEqual(6);
-      expect(iconSubset.has(c.icon), `${c.icon} is in the shipped icon subset`).toBe(true);
+      // a focus crop of the decision plate, else a shipped icon
+      expect(!!decisionPlate.focus?.[c.id] || !!c.icon, `${c.id} has a picture`).toBe(true);
+      if (c.icon) expect(iconSubset.has(c.icon), `${c.icon} is in the shipped icon subset`).toBe(true);
     }
     // Branches differ by at most one page (length never signals the answer).
     const lens = choices.map((c) => c.branch.length);
@@ -139,12 +174,17 @@ describe.each(Object.values(LIBRARY_BOOKS))("book $id", (book) => {
     }
   });
 
-  it("only the EASY branch has a repair page, with exactly one action tap", () => {
+  it("only the EASY branch has a repair page; its items are unique and >= 1", () => {
     for (const c of book.decision.choices) {
-      const taps = c.branch.filter((p) => p.actionTap);
-      expect(taps.length, c.id).toBe(c.type === "easy" ? 1 : 0);
+      const repairs = c.branch.filter((p) => p.repair);
+      expect(repairs.length, c.id).toBe(c.type === "easy" ? 1 : 0);
+      for (const p of repairs) {
+        const ids = p.repair!.items.map((it) => it.id);
+        expect(ids.length).toBeGreaterThanOrEqual(1);
+        expect(new Set(ids).size).toBe(ids.length);
+      }
     }
-    expect(book.pages.some((p) => p.actionTap)).toBe(false);
+    expect(book.pages.some((p) => p.repair)).toBe(false);
   });
 
   it("the parent panel is complete in both languages", () => {
@@ -154,7 +194,7 @@ describe.each(Object.values(LIBRARY_BOOKS))("book $id", (book) => {
   });
 });
 
-describe("Abram's Long Road — lane A specifics", () => {
+describe("Abram's Long Road (engine fixture) — lane A specifics", () => {
   const p7b = abramsLongRoad.decision.choices.find((c) => c.id === "b")!.branch[1];
 
   it("C8 fix: p7b's before-text no longer says Abram is waiting (EN + HE m/f)", () => {
@@ -163,14 +203,15 @@ describe("Abram's Long Road — lane A specifics", () => {
     expect(p7b.text.en).not.toContain("Abram is waiting");
     expect(p7b.text.he.m).not.toContain("אברם מחכה");
     expect(p7b.text.he.f).not.toContain("אברם מחכה");
-    expect(p7b.actionTap?.label).toEqual({ en: "Bring the goats!", he: "להביא את הגדיים!" });
+    expect(p7b.repair?.promptLabel).toEqual({ en: "Bring the goats!", he: "להביא את הגדיים!" });
+    expect(p7b.repair?.items).toHaveLength(4);
   });
 
-  it("uses the 9 plates of the ledger (§6.3) and the 6 poses", () => {
+  it("uses the 9 plates of the ledger (§6.3) and 6 poses", () => {
     const used = new Set(allPages(abramsLongRoad).map((p) => p.plateId));
     expect([...used].sort()).toEqual(["P1b", "P1c", "P1e", "P1m", "P2", "P3", "P4", "P5", "P6"]);
     const poses = new Set(allPages(abramsLongRoad).flatMap((p) => slots(p).map((s) => s.pose)));
-    expect([...poses].sort()).toEqual([...HERO_POSES].sort());
+    expect([...poses].sort()).toEqual(["arms-wide", "run", "sit", "stand", "walk", "wave"]);
   });
 
   it("slots match the manuscript (spot checks)", () => {
