@@ -10,9 +10,10 @@ import { describe, expect, it } from "vitest";
 import { HERO_STORIES, STORY_HE_REVIEW, getStorySpec, storyHasLanguage } from "./heroJourneys";
 
 const reviewed = Object.keys(STORY_HE_REVIEW);
-const NIKUD = /[֑-ׇ]/;
+// U+05BE (maqaf) is punctuation, not nikud.
+const NIKUD = /[\u0591-\u05BD\u05BF-\u05C7]/;
 const LATIN = /[A-Za-z]/;
-const HEBREW = /[א-ת]/;
+const HEBREW = /[\u05D0-\u05EA]/;
 
 function hebrewFields(id: string): { where: string; text: string }[] {
   const s = getStorySpec(id)!;
@@ -52,7 +53,7 @@ describe("B-KID-23: the AI-first-pass Hebrew stories", () => {
         expect(HEBREW.test(f.text), where).toBe(true);
         expect(LATIN.test(f.text), where).toBe(false);
         expect(NIKUD.test(f.text), where).toBe(false);
-        expect(f.text, where).not.toMatch(/[א-ת]\/[א-ת]/);
+        expect(f.text, where).not.toMatch(/[\u05D0-\u05EA]\/[\u05D0-\u05EA]/);
         for (const sentence of f.text.split(/[.!?:]/)) {
           expect(sentence.trim().split(/\s+/).length, where).toBeLessThanOrEqual(16);
         }
