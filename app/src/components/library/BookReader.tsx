@@ -61,7 +61,7 @@ import { bookString } from "../../lib/library/bookStrings";
 import { TURN_GLYPHS } from "../../lib/library/bookGlyphs";
 import { heGender, heroDisplayName, heroParts, labelFor, lineFor, pageParagraphs, paragraphChars } from "../../lib/library/bookText";
 import { choicePictureSources, heroPrint, heroSpriteUrl, resolveHeroSheet, resolvePose, sheetAnchorOf, type HeroSheet } from "../../lib/library/heroSheet";
-import { declaredAudio, DEV_NARRATION_ROOT, NARRATION_ROOT, narrationKey, pageNarrationSrc } from "../../lib/library/narration";
+import { declaredAudio, DEV_NARRATION_ROOT, NARRATION_ROOT, narrationKey, narrationSetsPath, pageNarrationSrc, pickNarrationSet } from "../../lib/library/narration";
 import type { Book, BookLang, BookReaderChild, Page } from "../../lib/library/types";
 import "./bookReader.css";
 
@@ -238,8 +238,21 @@ export function BookReader({
       };
 
   // ── narration ──────────────────────────────────────────────────────────────
-  const voiceKey = voiceSet?.trim() || child.heroSheetId?.trim() || child.id;
   const root = dev ? DEV_NARRATION_ROOT : NARRATION_ROOT;
+  // the book's preferred narration set (sets.json, read once at open); the
+  // `voiceSet` prop (&voice=) overrides it; without either, the hero sheet id
+  const [preferredSet, setPreferredSet] = useState<string | null>(null);
+  useEffect(() => {
+    if (narration === "off" || voiceSet) return;
+    const path = narrationSetsPath(book.id, root);
+    if (!path) return;
+    let live = true;
+    void loadStaticJson(path).then((raw) => live && setPreferredSet(pickNarrationSet(raw)));
+    return () => {
+      live = false;
+    };
+  }, [book.id, root, narration, voiceSet]);
+  const voiceKey = voiceSet?.trim() || preferredSet || child.heroSheetId?.trim() || child.id;
   const keyBase = { bookId: book.id, lang, gender, voiceKey };
   const probe = narration === "probe";
   // The cover is read only when the child taps the picture (ruling 9).

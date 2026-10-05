@@ -63,3 +63,18 @@ export function pageNarrationSrc(
   if (declared) return declared;
   return opts.probe ? narrationKey({ ...k, pageId: page.id, choiceId: pathChoice }, opts.root) : null;
 }
+
+/** The narration sets of a book, in preference order: `<root>/<book>/sets.json`
+ *  = ["dylan-v3", "dylan-v2-expressive", "dylan-v2"] (written next to the
+ *  sets by the audio copy step). Read once when the book opens. */
+export function narrationSetsPath(bookId: string, root: string = NARRATION_ROOT): string | null {
+  return SEGMENT.test(bookId) ? `${root}/${bookId}/sets.json` : null;
+}
+
+/** The preferred set from a sets.json (untrusted JSON): the first valid id,
+ *  else null (the reader keeps its own default: the hero sheet id). */
+export function pickNarrationSet(raw: unknown): string | null {
+  if (!Array.isArray(raw)) return null;
+  for (const v of raw) if (typeof v === "string" && SEGMENT.test(v)) return v;
+  return null;
+}

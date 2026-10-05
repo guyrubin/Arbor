@@ -4,11 +4,22 @@
  */
 import { describe, expect, it } from "vitest";
 import { fiveSmoothStones as book } from "./books/fiveSmoothStones";
-import { DEV_NARRATION_ROOT, narrationKey, pageNarrationSrc } from "./narration";
+import { DEV_NARRATION_ROOT, narrationKey, narrationSetsPath, pageNarrationSrc, pickNarrationSet } from "./narration";
 
 const base = { bookId: book.id, voiceKey: "dylan-v2" };
 const page = (id: string) => [book.cover, ...book.pages, ...book.decision.choices.flatMap((c) => c.branch)].find((p) => p.id === id)!;
 const probe = { probe: true, root: DEV_NARRATION_ROOT };
+
+describe("narration sets (sets.json, preference order)", () => {
+  it("the default set is the first valid id in <root>/<book>/sets.json; none = the reader's own default", () => {
+    expect(narrationSetsPath(book.id, DEV_NARRATION_ROOT)).toBe("/_dev/narration/five-smooth-stones/sets.json");
+    expect(narrationSetsPath("../x")).toBeNull();
+    expect(pickNarrationSet(["dylan-v3", "dylan-v2-expressive", "dylan-v2"])).toBe("dylan-v3");
+    expect(pickNarrationSet(["../evil", 3, "dylan-v2"])).toBe("dylan-v2");
+    expect(pickNarrationSet(null)).toBeNull();
+    expect(pickNarrationSet({ sets: ["dylan-v3"] })).toBeNull();
+  });
+});
 
 describe("narration paths", () => {
   it("a plain page: /_dev/narration/<book>/<voiceKey>/<lang[-gender]>/<page>.mp3", () => {
