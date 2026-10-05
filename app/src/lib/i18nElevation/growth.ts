@@ -77,7 +77,6 @@ export const en: Record<string, string> = {
 
   // B-GROWTH-30 — the Record by area (spine Option A). Counts of things the
   // parent noticed and dates only; never a share, a total or a trend.
-  "elev.growth.record.title": "What we know about {name}, by area",
   "elev.growth.record.sub": "Everything you've noted, grouped by area. Tap an area for its dated list.",
   "elev.growth.record.empty": "As you note moments, words and milestones, they gather here by area.",
   "elev.growth.record.count.one": "1 thing noticed in the last 4 weeks",
@@ -176,7 +175,6 @@ export const he: Record<string, string> = {
   "elev.growth.play.setFocusOptional": "הגדירו מיקוד כדי להתאים אותה למה שאתם עובדים עליו",
 
   // B-GROWTH-30 — התיעוד לפי תחום
-  "elev.growth.record.title": "מה אנחנו יודעים על {name}, לפי תחום",
   "elev.growth.record.sub": "כל מה שרשמתם, מקובץ לפי תחום. הקישו על תחום לרשימה עם תאריכים.",
   "elev.growth.record.empty": "כשתרשמו רגעים, מילים ואבני דרך, הם יתקבצו כאן לפי תחום.",
   "elev.growth.record.count.one": "דבר אחד שנרשם ב-4 השבועות האחרונים",

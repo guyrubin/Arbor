@@ -56,7 +56,7 @@ describe("B-GROWTH-30 — RecordByDomain", () => {
     const html = render("en");
     expect(rowOrder(html)).toEqual(["talking", "feelings", "body"]);
     expect(html).toContain("data-module=\"growth-record\"");
-    expect(html).toContain("What we know about Maya, by area");
+    expect(html).toContain("Maya&#x27;s record");
     expect(html).toContain("Talking &amp; understanding");
     expect(html).toContain("3 things noticed in the last 4 weeks");
     // feelings: one in the window, one older — the window count only
