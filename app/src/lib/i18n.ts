@@ -2355,8 +2355,7 @@ export const en: Dict = {
   "timeline.playdomain.motor": "motor skills",
   "timeline.playdomain.cognitive": "thinking skills",
   "timeline.playdomain.social": "social skills",
-  "academy.learnMap.title": "Learning Map",
-  "academy.learnMap.sub": "Courses matched to where {name} is growing.",
+  "academy.learnMap.title": "Picked for {name}",
   "academy.courses.title": "All courses",
   // R17: on a phone the Learning Map rail is one collapsed disclosure below
   // the gallery. The summary names what is inside it, so nothing is hidden
@@ -4684,8 +4683,7 @@ export const he: Dict = {
   "timeline.playdomain.motor": "מיומנויות מוטוריות",
   "timeline.playdomain.cognitive": "מיומנויות חשיבה",
   "timeline.playdomain.social": "מיומנויות חברתיות",
-  "academy.learnMap.title": "מפת הלמידה",
-  "academy.learnMap.sub": "קורסים מותאמים לאן ש{name} מתפתח.",
+  "academy.learnMap.title": "נבחר בשביל {name}",
   "academy.courses.title": "כל הקורסים",
   "academy.rail.more": "מפת הלמידה, מושג השבוע וההתקדמות",
   "care.packet.title": "הסיכום שלכם",

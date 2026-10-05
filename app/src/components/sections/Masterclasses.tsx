@@ -209,20 +209,20 @@ export default function Masterclasses() {
   // drift into two different rails.
   const railStack = (
     <>
-      <p className="text-lg font-bold px-1" style={{ color: "var(--arbor-green-ink)" }}>
-        {t("academy.learnMap.title")}
-        <span className="block normal-case tracking-normal text-[12px] font-medium mt-1" style={{ color: "var(--arbor-muted)" }} dir="auto">
-          {t("academy.learnMap.sub", { name: childName })}
-        </span>
-      </p>
-
       {/* W2-SHELLPLAY critic r1: with no noticed milestone, For You and Scholar
           Hub both rendered the same empty state ("Check off a few milestones"),
           which also contradicted the pick's "from what you noted". One muted
           line with a 44 px door to Growth stands in for both until the map has
           a signal; then the two cards render as before. */}
+      {/* W2-SHELLPLAY critic r2 (G0): the rail heading claims a match only
+          where one exists — it renders inside the signal branch, and it says
+          "Picked for {name}" (the Map itself lives in Growth; no second map
+          name in Learn, no "matched to where {name} is growing" over nothing). */}
       {devMapHasSignal(devScore) ? (
         <>
+          <p data-testid="academy-rail-title" className="t-lg font-bold px-1" dir="auto" style={{ color: "var(--arbor-green-ink)" }}>
+            {t("academy.learnMap.title", { name: childName })}
+          </p>
           {/* AP-053: Academy "For You" — the copilot pick. Pure frontend join;
               no new AI call; no new Firestore read. */}
           <AcademyForYou />

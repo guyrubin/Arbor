@@ -143,3 +143,32 @@ describe("W2 — reading catalogue hierarchy", () => {
     expect(body).toContain("catalog.map((c)");
   });
 });
+
+/* W2-SHELLPLAY critic r2 (G0): the rail heading said "Learning Map — Courses
+ * matched to where Dylan is growing." over the no-signal branch, where nothing
+ * is matched (the FU#23 claim B-PLAY-18 cut from the SpineRibbon). */
+describe("W2-SHELLPLAY r2 · the rail heading claims a match only where one exists", () => {
+  const code = source.replace(/\r\n/g, "\n").replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
+  const signal = code.indexOf("devMapHasSignal(devScore) ? (");
+  const noSignal = code.indexOf('data-testid="academy-rail-nosignal"');
+  const title = code.indexOf('t("academy.learnMap.title"');
+
+  it("the title renders inside the signal branch, never above the no-signal door", () => {
+    expect(signal).toBeGreaterThan(-1);
+    expect(title).toBeGreaterThan(signal);
+    expect(title).toBeLessThan(noSignal);
+    expect(code.split('t("academy.learnMap.title"').length - 1).toBe(1);
+    expect(code).not.toContain("academy.learnMap.sub");
+  });
+
+  it("it names the pick, not a second map: 'Picked for {name}' in both locales", () => {
+    expect(en["academy.learnMap.title"]).toBe("Picked for {name}");
+    expect(he["academy.learnMap.title"]).toContain("{name}");
+    for (const d of [en, he]) {
+      expect(d["academy.learnMap.title"]).not.toMatch(/Map|מפת/);
+      expect(d["academy.learnMap.sub"]).toBeUndefined();
+    }
+    // NEGATIVE CONTROL: the r1 heading is caught
+    expect("Learning Map").toMatch(/Map|מפת/);
+  });
+});
