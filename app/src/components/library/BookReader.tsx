@@ -59,7 +59,7 @@ import { BOOK_PLATES } from "../../lib/library/books";
 import { bookString } from "../../lib/library/bookStrings";
 import { TURN_GLYPHS } from "../../lib/library/bookGlyphs";
 import { heGender, heroDisplayName, heroParts, labelFor, lineFor, pageParagraphs, paragraphChars } from "../../lib/library/bookText";
-import { choicePictureSources, heroPrint, heroSpriteUrl, resolveHeroSheet, sheetAnchorOf, type HeroSheet } from "../../lib/library/heroSheet";
+import { choicePictureSources, heroPrint, heroSpriteUrl, resolveHeroSheet, resolvePose, sheetAnchorOf, type HeroSheet } from "../../lib/library/heroSheet";
 import { declaredAudio, DEV_NARRATION_ROOT, NARRATION_ROOT, narrationKey, pageNarrationSrc } from "../../lib/library/narration";
 import type { Book, BookLang, BookReaderChild, Page } from "../../lib/library/types";
 import "./bookReader.css";
@@ -199,7 +199,10 @@ export function BookReader({
   const doneOrder = useMemo(() => state.repaired.filter((k) => k.startsWith(`${page.id}:`)).map((k) => k.slice(page.id.length + 1)), [state.repaired, page.id]);
   const paras = story ? pageParagraphs(page, { lang, gender, choiceId: state.choiceId, repaired: doneOrder }) : [];
   const baseSlot = (costume && page.heroAlt?.[costume]) || page.hero;
-  const slot = repaired && repair?.heroAfter ? repair.heroAfter : baseSlot;
+  const authoredSlot = repaired && repair?.heroAfter ? repair.heroAfter : baseSlot;
+  // v2 poses the sheet does not have yet show their stopgap (Book.poseFallbacks)
+  const shownPose = authoredSlot ? resolvePose(sheet, authoredSlot.pose, book.poseFallbacks) : null;
+  const slot = authoredSlot && shownPose !== authoredSlot.pose ? { ...authoredSlot, pose: shownPose! } : authoredSlot;
 
   const endFrame = atEnd && lastPage.closing ? lineFor(lastPage.closing, lang, gender) : "";
   const content: LayoutContent = atEnd

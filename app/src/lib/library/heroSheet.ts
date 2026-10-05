@@ -62,6 +62,17 @@ export function heroSpriteUrl(sheet: HeroSheet | null, pose: Pose | undefined): 
   return sheet.base && SEGMENT.test(pose) ? `${sheet.base}/${pose}.webp` : null;
 }
 
+/** The pose to draw: the book's pose, or its stopgap (`Book.poseFallbacks`)
+ *  when the sheet's manifest has been read and lacks it but has the stopgap.
+ *  A sheet without a manifest (the file convention only) keeps the pose. */
+export function resolvePose(sheet: HeroSheet | null, pose: Pose, fallbacks: Record<Pose, Pose> | undefined): Pose {
+  if (!sheet || !fallbacks || Object.keys(sheet.poses).length === 0) return pose;
+  const has = (p: Pose) => Object.prototype.hasOwnProperty.call(sheet.poses, p);
+  if (has(pose)) return pose;
+  const to = Object.prototype.hasOwnProperty.call(fallbacks, pose) ? fallbacks[pose] : undefined;
+  return to && has(to) ? to : pose;
+}
+
 /** The layout's anchor lookup for this sheet (undefined pose → no anchor). */
 export function sheetAnchorOf(sheet: HeroSheet | null): AnchorOf {
   return (pose) => (sheet?.anchors && Object.prototype.hasOwnProperty.call(sheet.anchors, pose) ? sheet.anchors[pose] : undefined);
