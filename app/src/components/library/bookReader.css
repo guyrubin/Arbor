@@ -244,9 +244,21 @@
 }
 .arbor-play .bk-cover-title .bk-title { font-weight: 700; letter-spacing: -0.015em; }
 .arbor-play .bk-cover-title .bk-name-line { color: var(--arbor-clay); font-weight: 700; }
-.arbor-play .bk-cover-title .bk-cover-line { color: color-mix(in oklab, var(--arbor-ink) 85%, transparent); }
-.arbor-play .bk-open-row { position: absolute; display: flex; justify-content: center; align-items: center; }
-.arbor-play .bk-open-row .kid-toy { min-inline-size: 100%; }
+.arbor-play .bk-cover-title .bk-cover-line { color: color-mix(in oklab, var(--arbor-ink) 88%, transparent); font-weight: 600; }
+/* a soft paper-tinted backing behind the words so they read on a bright sky
+   (EN and HE) — a feathered glow, not a card */
+.arbor-play .bk-cover-title::before {
+  content: "";
+  position: absolute;
+  inset: -6% -4%;
+  z-index: -1;
+  border-radius: 40px;
+  background: radial-gradient(closest-side, color-mix(in oklab, var(--arbor-paper-elevated) 62%, transparent) 55%, transparent);
+  pointer-events: none;
+}
+.arbor-play .bk-cover-title { isolation: isolate; }
+.arbor-play .bk-open-row { position: absolute; display: flex; justify-content: center; align-items: center; z-index: 2; }
+.arbor-play .bk-open-row .kid-toy { min-inline-size: 100%; white-space: nowrap; }
 
 /* ── choice cards (fix round 2): picture + label, sized by the layout's
    plan (--card-w, --pic-w, --pic-h); "stack" = three-down with the label
