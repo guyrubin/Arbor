@@ -52,7 +52,9 @@ export const en: Record<string, string> = {
   "elev.growthTruth.focus.why.practised": "Picked from what you have practised with {name} lately. Small daily reps are what move it.",
   "elev.growthTruth.focus.why.day0": "Picked for {name}'s age — practise anything and this gets sharper.",
   "elev.growthTruth.learn.header": "Where to put your energy this week",
-  "elev.growthTruth.learn.why.explored": "Picked from the courses you have opened so far — an editorial suggestion, not a reading of {name}.",
+  "elev.growthTruth.learn.why.explored": "Picked for {name}'s age and the milestones you've noticed — an editorial suggestion, not a reading of {name}.",
+  // W2-SHELLPLAY critic r1: the Learning Map rail before any milestone is noticed.
+  "elev.growthTruth.learn.rail.noSignal": "Notice a milestone on Growth and these suggestions follow {name}",
 
   // ── GP-15 / RUN-20 · Profile hub CTA = the contract's primary move
   "elev.growthTruth.profile.cta.review": "Review what Arbor remembers",
@@ -142,7 +144,8 @@ export const he: Record<string, string> = {
   "elev.growthTruth.focus.why.practised": "נבחר לפי מה שתרגלתם עם {name} לאחרונה. חזרות קטנות ויומיומיות הן מה שמזיז את זה.",
   "elev.growthTruth.focus.why.day0": "נבחר לפי הגיל של {name} — תרגלו משהו, וזה יתחדד.",
   "elev.growthTruth.learn.header": "לאן להפנות אנרגיה השבוע",
-  "elev.growthTruth.learn.why.explored": "נבחר לפי הקורסים שפתחתם עד כה — המלצה עורכת, לא קריאה של {name}.",
+  "elev.growthTruth.learn.why.explored": "נבחר לפי הגיל של {name} ואבני הדרך שסימנתם — המלצה עורכת, לא קריאה של {name}.",
+  "elev.growthTruth.learn.rail.noSignal": "סמנו אבן דרך בצמיחה, וההצעות כאן יתאימו את עצמן ל{name}",
 
   "elev.growthTruth.profile.cta.review": "לסקור מה ארבור זוכרת",
   "elev.growthTruth.profile.cta.addFact": "להוסיף עובדה על {name}",

@@ -19,7 +19,7 @@
  * Data sources:
  *  - focusDomain: computeDevScore from existing milestones (same path as DevScoreCard /
  *    ScholarHubCard — no new read, no new write).
- *  - course progress: MASTERCLASSES catalogue + localStorage "arbor.masterclasses.done"
+ *  - (W2-SHELLPLAY r1: the course-progress roll-up is retired — no scorekeeping)
  *    (same key used by Masterclasses.tsx, read-only here).
  *
  * B-PLAY-01 (law 1, overrides AP-053's verbatim copy): the lowest-score
@@ -33,14 +33,12 @@
  * Logical CSS for HE/RTL. Touch targets >= 44px.
  */
 
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useDevScore } from "../../hooks/useDevScore";
-import { MASTERCLASSES, FRAME_LABELS } from "../../lib/masterclasses";
-import type { FrameId } from "../../lib/masterclasses";
 import { domainLabel } from "../../lib/domains/registry";
 import { cardCls } from "../ui/kit";
 import { TrustLink } from "../trust/TrustLink";
@@ -55,69 +53,10 @@ import { TrustLink } from "../trust/TrustLink";
  */
 const labelFor = (id: string, t: (key: string) => string) => domainLabel("developmental", id, t);
 
-// ── Course-progress read ───────────────────────────────────────────────────────
-
-const DONE_KEY = "arbor.masterclasses.done";
-
-function loadExplored(): Record<string, boolean> {
-  try {
-    return JSON.parse(localStorage.getItem(DONE_KEY) || "{}");
-  } catch {
-    return {};
-  }
-}
-
-/**
- * Map each masterclass to a domain. We derive this from MASTERCLASS_VIRTUES
- * (defined in Masterclasses.tsx) — but here we use a frame → domain mapping
- * so the component stays self-contained and independent.
- *
- * Masterclass frames map to primary developmental domains:
- *   aim      → independence_adaptive_skills (responsibility / competence)
- *   twoAxes  → attachment_regulation        (warmth & structure / co-regulation)
- *   story    → social_development           (narrative, courage in social context)
- *   shadow   → attachment_regulation        (hard feelings / regulation)
- *   marriage → ecosystem_stressors          (co-parenting / family context)
- *   shepherd → independence_adaptive_skills (next steward / autonomy ladder)
- *
- * This is an editorial mapping for the "explore" surface only — not a
- * developmental claim about the child. No diagnostic content here.
- */
-const FRAME_TO_DOMAIN: Record<FrameId, string> = {
-  aim: "independence_adaptive_skills",
-  twoAxes: "attachment_regulation",
-  story: "social_development",
-  shadow: "attachment_regulation",
-  marriage: "ecosystem_stressors",
-  shepherd: "independence_adaptive_skills",
-};
-
-interface DomainCourseRow {
-  domainId: string;
-  explored: number;
-  available: number;
-}
-
-function buildDomainRows(explored: Record<string, boolean>): DomainCourseRow[] {
-  // Count masterclasses per domain and how many explored
-  const map = new Map<string, { explored: number; available: number }>();
-
-  for (const mc of MASTERCLASSES) {
-    const domainId = FRAME_TO_DOMAIN[mc.frame];
-    const existing = map.get(domainId) ?? { explored: 0, available: 0 };
-    existing.available += 1;
-    if (explored[mc.id]) existing.explored += 1;
-    map.set(domainId, existing);
-  }
-
-  return Array.from(map.entries())
-    .map(([domainId, { explored: ex, available: av }]) => ({
-      domainId,
-      explored: ex,
-      available: av,
-    }))
-    .sort((a, b) => a.domainId.localeCompare(b.domainId));
-}
+// W2-SHELLPLAY critic r1: the course roll-up ("{x} of {y} explored", per
+// domain and across the catalogue) is gone — the same {done}/{total}
+// scorekeeping B-PLAY-18 cut from the catalogue, and the per-domain row
+// singled out the lowest-scored domain (law 1). Its helpers went with it.
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -133,12 +72,6 @@ export default function AcademyForYou({ onNavigateToMasterclasses }: { onNavigat
   // The ONE shared dev-score derivation (hooks/useDevScore) — the same result
   // DevScoreCard and ScholarHubCard read. Only focusDomain is required here.
   const score = useDevScore();
-
-  // Course exploration state from localStorage (same key as Masterclasses.tsx).
-  const explored = useMemo(() => loadExplored(), []);
-
-  // Domain rows for the course roll-up
-  const domainRows = useMemo(() => buildDomainRows(explored), [explored]);
 
   // The recommended domain label
   const focusDomain = score.focusDomain;
@@ -188,8 +121,6 @@ export default function AcademyForYou({ onNavigateToMasterclasses }: { onNavigat
   }
 
   // ── Main view ─────────────────────────────────────────────────────────────
-  // Find the domain row for the recommended domain
-  const recommendedRow = domainRows.find((r) => r.domainId === focusDomain);
 
   return (
     <motion.div
@@ -284,35 +215,6 @@ export default function AcademyForYou({ onNavigateToMasterclasses }: { onNavigat
           </AnimatePresence>
         </div>
 
-        {/* Course roll-up for the recommended domain */}
-        {recommendedRow && (
-          <div
-            className="mt-5 rounded-xl px-4 py-3"
-            style={{
-              background: "var(--arbor-paper-deep)",
-              border: "1px solid var(--arbor-rule)",
-            }}
-          >
-            <p
-              className="text-[11px] uppercase tracking-widest font-bold mb-1"
-              style={{ color: "var(--arbor-muted)" }}
-            >
-              {/* B-PLAY-01: the label never names the (lowest-ranked) domain. */}
-              {t("foryou.coursesLabel")}
-            </p>
-            <p
-              className="text-[14px] font-extrabold"
-              style={{ color: "var(--arbor-ink)" }}
-              data-testid="academy-foryou-progress"
-            >
-              {/* "[X] of [Y] explored" — VERBATIM cleared copy (NOT "% complete") */}
-              {t("foryou.progress", {
-                x: recommendedRow.explored,
-                y: recommendedRow.available,
-              })}
-            </p>
-          </div>
-        )}
 
         {/* CTA to open masterclasses */}
         {onNavigateToMasterclasses && (
@@ -332,22 +234,6 @@ export default function AcademyForYou({ onNavigateToMasterclasses }: { onNavigat
         )}
       </div>
 
-      {/* B-PLAY-01: the per-domain Learning Map (ring + one bar and one domain
-          label per row) left this card — the Map lives in Growth. What stays
-          is the family's own course count across the catalogue, as text. */}
-      {domainRows.length > 0 && (
-        <p
-          className="text-[13px] leading-relaxed px-1"
-          style={{ color: "var(--arbor-ink-soft)" }}
-          data-testid="academy-foryou-total"
-          dir="auto"
-        >
-          {t("foryou.progress", {
-            x: domainRows.reduce((n, r) => n + r.explored, 0),
-            y: domainRows.reduce((n, r) => n + r.available, 0),
-          })}
-        </p>
-      )}
 
       {/* Non-diagnostic provenance note */}
       <p className="text-[11.5px] px-1" style={{ color: "var(--arbor-faint)" }}>

@@ -25,6 +25,7 @@
 
 import { describe, it, expect } from "vitest";
 import { en, he } from "../../lib/i18n";
+import { en as enElev, he as heElev } from "../../lib/i18nElevation/growthTruth";
 
 // ── Verbatim cleared copy assertions ─────────────────────────────────────────
 
@@ -47,45 +48,34 @@ describe("B-PLAY-01 — the For You title names what the pick is built from", ()
   });
 });
 
-// ── Progress label: "X of Y explored" (NOT "% complete") ─────────────────────
+// ── W2-SHELLPLAY r1: no scorekeeping on For You ─────────────────────────────
+// The "{x} of {y} explored" roll-up (per recommended domain, and across the
+// catalogue) is the {done}/{total} shape B-PLAY-18 cut from the catalogue; the
+// per-domain row also singled out the lowest-scored domain (law 1).
+import { readFileSync } from "node:fs";
+import path from "node:path";
+const FORYOU_SRC = readFileSync(path.join(__dirname, "AcademyForYou.tsx"), "utf8");
 
-describe("AP-053 progress label — foryou.progress", () => {
-  it('EN foryou.progress contains "explored" (not "complete")', () => {
-    const prog = en["foryou.progress"] ?? "";
-    expect(prog.toLowerCase()).toContain("explored");
-    expect(prog.toLowerCase()).not.toContain("complete");
-    expect(prog).not.toContain("%");
+describe("W2-SHELLPLAY r1 — For You keeps no score", () => {
+  it("the roll-up and the catalogue total are gone from the card", () => {
+    expect(FORYOU_SRC).not.toContain("academy-foryou-progress");
+    expect(FORYOU_SRC).not.toContain("academy-foryou-total");
+    expect(FORYOU_SRC).not.toMatch(/foryou\.progress|foryou\.coursesLabel|recommendedRow|buildDomainRows/);
   });
-
-  it("EN foryou.progress uses {x} of {y} placeholder pattern", () => {
-    const prog = en["foryou.progress"] ?? "";
-    expect(prog).toContain("{x}");
-    expect(prog).toContain("{y}");
-    expect(prog).toContain("of");
+  it("the retired keys are gone from both dictionaries", () => {
+    for (const k of ["foryou.progress", "foryou.coursesLabel"]) {
+      expect(en[k], k).toBeUndefined();
+      expect(he[k], k).toBeUndefined();
+    }
   });
-
-  it('HE foryou.progress does not contain "%" or "complete"', () => {
-    const prog = he["foryou.progress"] ?? "";
-    expect(prog).not.toContain("%");
-    // "complete" in Latin characters should not appear in Hebrew value
-    expect(prog.toLowerCase()).not.toContain("complete");
-  });
-});
-
-// ── Courses label: "explore" (not "complete") ────────────────────────────────
-
-describe("AP-053 courses label — foryou.coursesLabel", () => {
-  it('EN foryou.coursesLabel contains "explore" and never a {domain} (B-PLAY-01)', () => {
-    const label = en["foryou.coursesLabel"] ?? "";
-    expect(label.toLowerCase()).toContain("explore");
-    expect(label).not.toContain("{domain}");
-    expect(he["foryou.coursesLabel"]).not.toContain("{domain}");
-  });
-
-  it('EN foryou.coursesLabel does not contain "complete" or "finish"', () => {
-    const label = en["foryou.coursesLabel"] ?? "";
-    expect(label.toLowerCase()).not.toContain("complete");
-    expect(label.toLowerCase()).not.toContain("finish");
+  it("the why-line names what the pick is built from (age + noticed milestones), never opened courses", () => {
+    const why = enElev["elev.growthTruth.learn.why.explored"];
+    expect(why).toContain("age");
+    expect(why).toContain("milestones you've noticed");
+    expect(why).not.toMatch(/courses you have opened/);
+    expect(heElev["elev.growthTruth.learn.why.explored"]).not.toMatch(/הקורסים שפתחתם/);
+    // HE "why" toggle asks about the picks, not a place
+    expect(he["foryou.whyToggle"]).toBe("למה אלה?");
   });
 });
 

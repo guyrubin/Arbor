@@ -82,8 +82,8 @@ const loadReflection = (): Record<string, string> => {
 /** Arbor Academy › Parent Masterclasses — short, frame-routed lessons that build
  *  the parent's own competence (the calm, competent adult). Text-first, bilingual. */
 export default function Masterclasses() {
-  const { t, aiLang } = useLanguage();
-  const { childProfile, behaviorLogs, savedLearnIds, requestLearnRead } = useArbor();
+  const { t, aiLang, uiLang } = useLanguage();
+  const { childProfile, behaviorLogs, savedLearnIds, requestLearnRead, setActiveTab } = useArbor();
   const he = aiLang === "he";
   const [openId, setOpenId] = useState<string | null>(null);
   const [done, setDone] = useState<Record<string, boolean>>({});
@@ -216,14 +216,34 @@ export default function Masterclasses() {
         </span>
       </p>
 
-      {/* AP-053: Academy "For You" — copilot focus recommendation + per-domain
-          Learning Map roll-up (ring + count bars). Pure frontend join; no new
-          AI call; no new Firestore read. Least-explored framing (board-cleared). */}
-      <AcademyForYou />
+      {/* W2-SHELLPLAY critic r1: with no noticed milestone, For You and Scholar
+          Hub both rendered the same empty state ("Check off a few milestones"),
+          which also contradicted the pick's "from what you noted". One muted
+          line with a 44 px door to Growth stands in for both until the map has
+          a signal; then the two cards render as before. */}
+      {devMapHasSignal(devScore) ? (
+        <>
+          {/* AP-053: Academy "For You" — the copilot pick. Pure frontend join;
+              no new AI call; no new Firestore read. */}
+          <AcademyForYou />
 
-      {/* AP-055: Scholar Hub — one developmental concept per week, auto-matched
-          to the child's least-explored domain. Non-diagnostic, editorial. */}
-      <ScholarHubCard />
+          {/* AP-055: Scholar Hub — one developmental concept per week.
+              Non-diagnostic, editorial. */}
+          <ScholarHubCard />
+        </>
+      ) : (
+        <button
+          type="button"
+          data-testid="academy-rail-nosignal"
+          onClick={() => setActiveTab("milestones")}
+          className="inline-flex min-h-11 items-center gap-1.5 px-1 text-start text-[13px] font-semibold"
+          style={{ color: "var(--arbor-muted)" }}
+          dir="auto"
+        >
+          {t("elev.growthTruth.learn.rail.noSignal", { name: childName })}
+          <Icon name="arrow_forward" size={15} style={uiLang === "he" ? { transform: "scaleX(-1)" } : undefined} />
+        </button>
+      )}
 
       {/* Recommended-by-Family-Charter strip — relocated into the rail. */}
       {recommended.length > 0 && (
@@ -271,11 +291,11 @@ export default function Masterclasses() {
         <h1 className="text-2xl sm:text-3xl leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("elev.hero.academy.title", { name: childName })}</h1>
         {(todaysRead || nextCourse) && <section className="mt-4 border-y py-4 flex flex-wrap items-center justify-between gap-3" style={{ borderColor: "var(--arbor-rule)" }}>
           <div className="min-w-0 max-w-[65ch] flex-1 basis-[240px]">
-            <h2 className="text-lg font-bold leading-snug" dir="auto" style={{ color: "var(--arbor-ink)" }}>{todaysRead ? (he ? todaysRead.card.title.he : todaysRead.card.title.en) : (he ? nextCourse!.titleHe : nextCourse!.title)}</h2>
+            <h2 className="text-xl font-bold leading-snug" dir="auto" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{todaysRead ? (he ? todaysRead.card.title.he : todaysRead.card.title.en) : (he ? nextCourse!.titleHe : nextCourse!.title)}</h2>
             {todaysRead && <p data-testid="academy-pick-why" dir="auto" className="mt-1 text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{pickWhy}</p>}
             {pickMinutes != null && <p data-testid="academy-pick-minutes" className="mt-1 text-xs" style={{ color: "var(--arbor-muted)" }}>{pickMinutes} {t(todaysRead ? "elev.learnCare.pick.stat.minutes" : "elev.hero.academy.stat.minNext")}</p>}
           </div>
-          <button data-testid="academy-hero-cta" onClick={() => todaysRead ? requestLearnRead({ cardId: todaysRead.card.id, source: "learn-hub-todays-pick" }) : setOpenId(nextCourse!.id)} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold" style={{ background: "var(--arbor-green-ink)", color: "var(--arbor-paper-elevated)" }}><Icon name="menu_book" size={16} />{t(todaysRead ? "elev.learnCare.pick.cta" : "elev.hero.academy.cta")}</button>
+          <button data-testid="academy-hero-cta" onClick={() => todaysRead ? requestLearnRead({ cardId: todaysRead.card.id, source: "learn-hub-todays-pick" }) : setOpenId(nextCourse!.id)} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold" style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}><Icon name="menu_book" size={16} />{t(todaysRead ? "elev.learnCare.pick.cta" : "elev.hero.academy.cta")}</button>
         </section>}
         <div className="mt-3"><EvidenceChip /></div>
       </header>
@@ -308,7 +328,7 @@ export default function Masterclasses() {
         {/* ── All courses gallery — first in the document, right column at xl ─ */}
         <div className="space-y-4 min-w-0 order-1 xl:order-2" data-testid="academy-courses">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-1">
-            <h2 className="text-xl font-bold" style={{ color: "var(--arbor-muted)" }}>
+            <h2 className="text-lg font-bold" style={{ color: "var(--arbor-muted)" }}>
               {t("academy.courses.title")}
             </h2>
             {/* W0.7 — "Show all ages" toggle: only rendered when the child's-age

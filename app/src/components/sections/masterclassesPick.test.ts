@@ -88,3 +88,24 @@ describe("LC-04 · the hub hero runs the real ranking", () => {
     expect(body).not.toMatch(/riskLevel|milestonesPercent|percent/i);
   });
 });
+
+describe("W2-SHELLPLAY r1 · the pick reads first; the rail never stacks two empty states", () => {
+  it("the pick CTA is the page's --gradient-cta with on-accent ink (never the success green as a fill)", () => {
+    const cta = src.slice(src.indexOf('data-testid="academy-hero-cta"'), src.indexOf("</button>", src.indexOf('data-testid="academy-hero-cta"')));
+    expect(cta).toContain('style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}');
+    expect(cta).not.toContain('background: "var(--arbor-green-ink)"');
+  });
+
+  it("the pick title outranks the quiet 'All courses' heading", () => {
+    expect(src).toMatch(/<h2 className="text-xl font-bold leading-snug" dir="auto" style=\{\{ color: "var\(--arbor-ink\)", fontFamily: "var\(--font-display\)" \}\}>\{todaysRead/);
+    expect(src).toMatch(/<h2 className="text-lg font-bold" style=\{\{ color: "var\(--arbor-muted\)" \}\}>\s*\{t\("academy\.courses\.title"\)\}/);
+  });
+
+  it("with no map signal, ONE muted line with a 44 px door stands in for For You + Scholar Hub", () => {
+    expect(src).toMatch(/\{devMapHasSignal\(devScore\) \? \(\s*<>[\s\S]*<AcademyForYou \/>[\s\S]*<ScholarHubCard \/>[\s\S]*<\/>\s*\) : \(/);
+    const line = src.slice(src.indexOf('data-testid="academy-rail-nosignal"'), src.indexOf("</button>", src.indexOf('data-testid="academy-rail-nosignal"')));
+    expect(line).toContain("min-h-11");
+    expect(line).toContain('setActiveTab("milestones")');
+    expect(line).toContain('t("elev.growthTruth.learn.rail.noSignal", { name: childName })');
+  });
+});

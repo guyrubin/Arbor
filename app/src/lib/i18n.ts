@@ -1753,9 +1753,7 @@ export const en: Dict = {
   // "Here's why" toggle label
   "foryou.whyToggle": "Here's why",
   // Course roll-up label — B-PLAY-01: no {domain}
-  "foryou.coursesLabel": "Courses to explore first",
   // Progress label — VERBATIM "[X] of [Y] explored" (NOT "% complete")
-  "foryou.progress": "{x} of {y} explored",
   // CTA
   "foryou.cta": "Explore masterclasses",
   // No-data state
@@ -4160,12 +4158,10 @@ export const he: Dict = {
   // Flagged for arbor-localization native review before wide release.
   // Same invitational meaning as EN — "least-explored" framing, NOT deficit framing.
   "foryou.eyebrow": "בשבילכם",
-  "foryou.whyToggle": "למה דווקא כאן?",
+  "foryou.whyToggle": "למה אלה?",
   // B-PLAY-01: title + courses label name no domain.
   "foryou.title": "קורסים שנבחרו לגיל של {name} ולמה שהבחנתם בו",
-  "foryou.coursesLabel": "שיעורים לחקור קודם",
   // "[X] of [Y] explored" — NOT "% complete"
-  "foryou.progress": "{x} מתוך {y} נחקרו",
   "foryou.cta": "חקרו שיעורי הורים",
   "foryou.nodata": "סמנו כמה אבני דרך וארבור יציע לאן כדאי להפנות אנרגיה השבוע.",
   "foryou.provenance": "מבוסס על אבני הדרך שתיעדתם — הצעה עורכת לחקור, לא אות אבחנתי.",
