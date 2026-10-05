@@ -59,10 +59,12 @@ describe("B-PLAY-16 · deterministic, family-shaped pick", () => {
     expect(courageIds).not.toContain(story!.id);
   });
 
-  it("the age view applies: a 2-year-old gets no story unless 'Show all ages' is on", () => {
-    expect(pickTonightsStory("2026-10-05", "baby", { ageMonths: 24 }).story).toBeNull();
-    expect(pickTonightsStory("2026-10-05", "baby", { ageMonths: 24 }).reason.kind).toBe("none");
-    expect(pickTonightsStory("2026-10-05", "baby", { ageMonths: 24, showAllAges: true }).story).not.toBeNull();
+  // B-KID-52: the youngest bands are now 3-5 / 3-7, which the near-band rule
+  // shows to a 2-year-old; a 1-year-old is still outside every story.
+  it("the age view applies: a 1-year-old gets no story unless 'Show all ages' is on", () => {
+    expect(pickTonightsStory("2026-10-05", "baby", { ageMonths: 12 }).story).toBeNull();
+    expect(pickTonightsStory("2026-10-05", "baby", { ageMonths: 12 }).reason.kind).toBe("none");
+    expect(pickTonightsStory("2026-10-05", "baby", { ageMonths: 12, showAllAges: true }).story).not.toBeNull();
   });
 
   it("NEGATIVE CONTROL: the pre-change pick (day hash over the whole catalogue) re-picks a read story", () => {

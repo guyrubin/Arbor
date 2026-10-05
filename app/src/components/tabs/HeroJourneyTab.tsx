@@ -633,10 +633,10 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
     const orderedStories = aims.length
       ? [...visibleStories].sort((a, b) => (isAimed(b) ? 1 : 0) - (isAimed(a) ? 1 : 0))
       : visibleStories;
-    // W0.7 — age gate AFTER pack filter + aim ordering (never re-ranks). Every
-    // canon story is authored for ages 4–8, so for a younger child the default
-    // view is an honest empty state with the "Show all ages" door, not a grid
-    // of content written for someone else's age.
+    // W0.7 — age gate AFTER pack filter + aim ordering (never re-ranks). Each
+    // story carries its own band (B-KID-52: 3–5 … 6–8); a child no story is
+    // written for gets the honest empty state with the "Show all ages" door,
+    // not a grid of content written for someone else's age.
     const { visible: ageVisibleStories, hidden: ageHiddenStories } = filterByAge(
       orderedStories,
       (s) => windowFromRange(s.ageRange),
@@ -883,12 +883,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                         </span>
                       </div>
                     </WorldScene>
-                    <span
-                      className="absolute top-2 z-[3] text-[10.5px] font-black rounded-full px-2 py-0.5"
-                      style={{ insetInlineEnd: 8, background: "#fff", border: "2px solid var(--comic-ink)", color: "var(--arbor-ink)" }}
-                    >
-                      {he ? "גיל" : "Age"} {story.ageRange[0]}–{story.ageRange[1]}
-                    </span>
+                    {/* B-KID-52 (KB-13): no age chip in the kid register (the age view already chose the list). */}
                     <span className="comic-sfx absolute bottom-1 z-[3] text-[24px] -rotate-6" style={{ insetInlineStart: 8 }} aria-hidden="true">
                       {he ? art.sfxHe : art.sfx}
                     </span>

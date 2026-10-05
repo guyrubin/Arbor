@@ -44,7 +44,10 @@ describe("hero journey catalog", () => {
   it("every story follows the fixed 8-beat spine in order", () => {
     for (const story of HERO_STORIES) {
       expect(story.beats.map((b) => b.id)).toEqual(SPINE_ORDER);
-      expect(story.ageRange).toEqual([4, 8]);
+      // B-KID-52 (KB-13): ages follow the lane-B section 1.K verdicts, inside 3-8 years.
+      expect(story.ageRange[0]).toBeGreaterThanOrEqual(3);
+      expect(story.ageRange[1]).toBeLessThanOrEqual(8);
+      expect(story.ageRange[0]).toBeLessThan(story.ageRange[1]);
       expect(story.titleHe.trim().length).toBeGreaterThan(0);
       expect(story.learningObjective.trim().length).toBeGreaterThan(0);
       expect(story.parentReflection.questions.length).toBeGreaterThanOrEqual(2);
