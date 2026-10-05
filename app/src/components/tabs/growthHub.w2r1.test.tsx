@@ -48,7 +48,8 @@ vi.mock("../../hooks/useChildCollection", () => ({
 vi.mock("../sections/DevScoreCard", () => ({ default: () => null }));
 vi.mock("../sections/ScreeningSheet", () => ({ default: () => null }));
 vi.mock("../ui/EvidenceChip", () => ({ EvidenceChip: () => null }));
-vi.mock("../growth/RecordByDomain", () => ({ default: () => <section data-module="growth-record" /> }));
+// W2-GROWTH r2: RecordByDomain is the Map view inside the one Record card (no stamp of its own).
+vi.mock("../growth/RecordByDomain", () => ({ default: () => <div data-testid="record-by-domain" /> }));
 vi.mock("../growth/MonthInReview", () => ({ default: () => null }));
 vi.mock("../growth/ArborTreeCard", () => ({ default: () => null }));
 vi.mock("../ui/ContentActionBar", () => ({ ContentWhyLine: () => null }));
@@ -178,7 +179,12 @@ describe("#/development order, stamp and budget (W2-GROWTH r1)", () => {
     const stamps = [...html.matchAll(/<[^>]*data-module="([^"]+)"[^>]*>/g)];
     const top = stamps.filter((m) => !m[0].includes("data-module-demoted")).map((m) => m[1]);
     const budget = SURFACE_CONTRACTS.find((c) => c.route === "development")!.moduleBudget;
-    expect(top).toEqual(["growth-weekly-focus", "growth-map", "growth-record", "growth-deep-dives"]);
+    // W2-GROWTH r2: the four blocks B-GROWTH-02 names, by name; RecordByDomain
+    // is the Record card's Map view, never a second top-level record object.
+    expect(top).toEqual(["growth-new-since", "growth-weekly-focus", "growth-record", "growth-go-deeper"]);
+    const record = html.slice(html.indexOf('data-module="growth-record"'), html.indexOf('data-module="growth-go-deeper"'));
+    expect(record).toContain('data-testid="record-by-domain"');
+    expect(SRC).not.toMatch(/\n {6}<RecordByDomain \/>/);
     expect(top.length).toBeLessThanOrEqual(budget);
     expect(html).toContain('data-module-disclosure="growth-more"');
     for (const tab of ["map", "words", "tree"]) expect(html).toContain(`data-testid="growth-record-tab-${tab}"`);

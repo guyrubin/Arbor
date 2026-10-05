@@ -55,8 +55,10 @@ describe("B-GROWTH-30 — RecordByDomain", () => {
   it("three domain rows, registry order (talking, feelings, body) — not count order", () => {
     const html = render("en");
     expect(rowOrder(html)).toEqual(["talking", "feelings", "body"]);
-    expect(html).toContain("data-module=\"growth-record\"");
-    expect(html).toContain("Maya&#x27;s record");
+    // W2-GROWTH r2: the Map view of the ONE Record card — DevelopmentTab
+    // stamps the card; this view carries no stamp and no second heading.
+    expect(html).not.toContain("data-module=");
+    expect(html).not.toContain("<h2");
     expect(html).toContain("Talking &amp; understanding");
     expect(html).toContain("3 things noticed in the last 4 weeks");
     // feelings: one in the window, one older — the window count only

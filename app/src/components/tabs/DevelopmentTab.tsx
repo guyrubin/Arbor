@@ -229,16 +229,21 @@ export default function DevelopmentTab() {
           surfaceContract.ts declares for this route — the observe GROUP
           below (W2-GROWTH r1: it used to sit on this 851 px section, so the
           above-the-fold check measured the container's top edge). */}
-      <section data-module="growth-weekly-focus" className="space-y-4" aria-labelledby="growth-weekly-focus">
-        {/* New since — 2–4 dated rows in the parent's own words. A zero-event
-            visit renders nothing here and the focus card is the hero. */}
+      {/* W2-GROWTH r2 — the four blocks B-GROWTH-02 names, by name:
+          growth-new-since · growth-weekly-focus · growth-record ·
+          growth-go-deeper (+ the growth-more disclosure, demotionTarget
+          "disclosure"). New since is its OWN module: 2–4 dated rows in the
+          parent's own words; a zero-event visit renders nothing and the focus
+          card is the hero. */}
         {newSince.length > 0 && (
-          <div
+          <aside
+            data-module="growth-new-since"
             data-testid="growth-new-since"
+            aria-labelledby="growth-since-line"
             className="rounded-[var(--r-lg)] p-4"
             style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}
           >
-            <p className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }} data-testid="growth-since-line">{sinceLabel}</p>
+            <h2 id="growth-since-line" className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }} data-testid="growth-since-line">{sinceLabel}</h2>
             <ul className="mt-2 space-y-2">
               {newSince.map((row) => (
                 <li key={row.id} data-testid={`growth-new-since-${row.kind}`} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
@@ -255,8 +260,9 @@ export default function DevelopmentTab() {
                 </li>
               ))}
             </ul>
-          </div>
+          </aside>
         )}
+      <section data-module="growth-weekly-focus" className="space-y-4" aria-labelledby="growth-weekly-focus">
         <div className="min-w-0">
             <span className="inline-flex items-center gap-1.5 text-xs font-bold" style={{ color: "var(--arbor-green-ink)" }} data-testid="growth-focus-eyebrow">
               <Icon name={weeklyFocus.chosen ? "visibility" : "explore"} size={16} />
@@ -392,7 +398,7 @@ export default function DevelopmentTab() {
           record's home, counts only), the first-words ledger (GP-33) and the
           tree of what the PARENT noticed (GP-30) used to be three top-level
           objects; they are three views of one record now. */}
-      <section data-module="growth-map" aria-labelledby="growth-record-title" className="space-y-3">
+      <section data-module="growth-record" aria-labelledby="growth-record-title" className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 id="growth-record-title" className="break-words font-semibold leading-tight" style={{ fontFamily: "var(--font-display)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>
             {firstName ? t("elev.growth.record.title", { name: firstName }) : t("elev.growth.record.titleGeneric")}
@@ -422,20 +428,24 @@ export default function DevelopmentTab() {
           </div>
         </div>
         <div role="tabpanel" id="growth-record-panel" aria-labelledby={`growth-record-tab-${recordTab}`}>
-          {recordTab === "map" ? <DevScoreCard /> : recordTab === "words" ? <FirstWordsLedger /> : <ArborTreeCard />}
+          {/* W2-GROWTH r2: the Map IS the record by area (B-GROWTH-30, spine
+              Option A — registry order, counts and dates only), folded in from
+              its own top-level card, above the parent-checked milestone log. */}
+          {recordTab === "map" ? (
+            <div className="space-y-4">
+              <RecordByDomain />
+              <DevScoreCard />
+            </div>
+          ) : recordTab === "words" ? <FirstWordsLedger /> : <ArborTreeCard />}
         </div>
       </section>
-      {/* B-GROWTH-30 — the record by area (spine Option A): one row per domain
-          of the registry that has something noticed, registry order, counts
-          and dates only. Stamps its own `growth-record` module. */}
-      <RecordByDomain />
       {/* B-GROWTH-03: the Growth SpineRibbon (-> Academy) is removed — the
           Journal mount keeps the spine promise (spinePromiseMounts.test.ts). */}
       {/* Go deeper — Milestones · Timeline · Development Check (with its
           recheck date). Deep-dive doors are visible cards, not a second tab
           layer; each is a real route. W2-GROWTH r1: the Development Check
           pointer joined this module (it was an unstamped top-level sibling). */}
-      <div data-module="growth-deep-dives" className="space-y-3">
+      <div data-module="growth-go-deeper" className="space-y-3">
       <h2 className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.growth.deeper.title")}</h2>
       <div className="grid gap-3 sm:grid-cols-2">
         {([

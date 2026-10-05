@@ -56,24 +56,18 @@ export default function RecordByDomain() {
     }
   };
 
+  // W2-GROWTH r2 — this is the Map view INSIDE the hub's one Record card
+  // (DevelopmentTab stamps that card `growth-record`); it carries no stamp,
+  // no card chrome and no heading of its own — one record object, not two.
   return (
-    <section
-      data-module="growth-record"
-      data-testid="record-by-domain"
-      className="rounded-2xl p-4 sm:p-5"
-      style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}
-      aria-labelledby="record-by-domain-title"
-    >
-      <h2 id="record-by-domain-title" className="text-[17px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-        {t("elev.growth.record.title", { name: firstName })}
-      </h2>
+    <div data-testid="record-by-domain">
       {rows.length === 0 ? (
-        <p className="mt-1.5 text-[13px] leading-relaxed" style={{ color: "var(--arbor-muted)" }} data-testid="record-by-domain-empty">
+        <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }} data-testid="record-by-domain-empty">
           {t("elev.growth.record.empty")}
         </p>
       ) : (
         <>
-          <p className="mt-1 text-[12.5px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.growth.record.sub")}</p>
+          <p className="text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.growth.record.sub")}</p>
           <ul className="mt-3 divide-y" style={{ borderColor: "var(--arbor-rule)" }}>
             {rows.map((row) => {
               const list = byDomain.get(row.domain) ?? [];
@@ -147,6 +141,6 @@ export default function RecordByDomain() {
           </ul>
         </>
       )}
-    </section>
+    </div>
   );
 }
