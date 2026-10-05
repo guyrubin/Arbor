@@ -233,8 +233,9 @@ describe("Five Smooth Stones (the proof) — manuscript specifics", () => {
     // + PL7-dust, registered but unused (the edit re-framed; the dust overlay is used)
     expect(variants).toEqual(["PL1b", "PL1d", "PL3w", "PL4e", "PL7-dust"]);
     const poses = new Set(pagesOf.flatMap((p) => slots(p).map((s) => s.pose)));
-    // the art agent added left-facing poses so the key light stays upper-left (LOG.md §1)
-    expect([...poses].sort()).toEqual(["armour-stuck", "free-stretch", "kneel", "look-up", "run-staff", "run-staff-left", "sit", "sling-swing", "walk-bag-left", "worried"]);
+    // the art agent's poses (LOG.md §1 + Round 2): left-facing variants keep the
+    // key light upper-left; round 2 added look-across (cover), sling-swing-face-right (p9), squat-look (p8)
+    expect([...poses].sort()).toEqual(["armour-stuck", "free-stretch", "look-across", "look-up", "run-staff", "run-staff-left", "sit", "sling-swing", "sling-swing-face-right", "squat-look", "worried"]);
     expect(byId.p5.heroAlt?.tunic?.pose).toBe("worried-tunic");
     expect(Object.keys(getPlate(book.id, "PL4")!.focus ?? {}).sort()).toEqual(["a", "b", "c"]);
   });
@@ -273,7 +274,8 @@ describe("Five Smooth Stones (the proof) — manuscript specifics", () => {
       "sword-heap": { item: "sword", done: true },
       "helmet-heap": { item: "helmet", done: true },
     });
-    expect(byId.p8.occluders).toHaveLength(1);
+    // round 2 restaged p8 (squat-look on the boulder): no hand in the water, no occluder
+    expect(byId.p8.occluders).toBeUndefined();
   });
 
   it("geometry comes from the one geometry object (overwritable JSON)", () => {
