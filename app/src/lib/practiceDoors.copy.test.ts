@@ -54,7 +54,7 @@ const MOVE = /\bdata-primary-move=/g;
 describe("§3f row 2 — the speech and feelings doors are inside their budget", () => {
   const cases: { route: "speech" | "feelings"; src: string; move: string }[] = [
     { route: "speech", src: SPEECH, move: "complete-speech-round" },
-    { route: "feelings", src: FEELINGS, move: "complete-feelings-scenario" },
+    { route: "feelings", src: FEELINGS, move: "open-world-door" },
   ];
 
   for (const { route, src, move } of cases) {
@@ -98,8 +98,8 @@ describe("§3f row 2 — the speech and feelings doors are inside their budget",
     expect(inside).toContain("CALM_TOOLS.map");
   });
 
-  it("feelings puts the answer tiles ABOVE the counts and the safety note", () => {
-    const tiles = FEELINGS.indexOf('data-primary-move="complete-feelings-scenario"');
+  it("feelings puts the door ABOVE the counts and the safety note", () => {
+    const tiles = FEELINGS.indexOf('data-primary-move="open-world-door"');
     // W2-SHELLPLAY r1: the count line is plural-keyed now.
     const counts = FEELINGS.indexOf('"elev.practice.feelings.count.rounds.one"');
     const trust = FEELINGS.indexOf("<TrustSafetyBar");
@@ -251,7 +251,7 @@ const STAMPED_ROUTES: { route: string; file: string; move: string }[] = [
   { route: "practice", file: "components/practice/PracticeStudioTab.tsx", move: "start-world" },
   { route: "speech", file: "components/practice/SpeechCoachTab.tsx", move: "complete-speech-round" },
   { route: "mimic", file: "components/practice/MimicStudioTab.tsx", move: "complete-mimic-round" },
-  { route: "feelings", file: "components/practice/FeelingsLabTab.tsx", move: "complete-feelings-scenario" },
+  { route: "feelings", file: "components/practice/FeelingsLabTab.tsx", move: "open-world-door" },
   { route: "journey", file: "components/practice/JourneyTab.tsx", move: "complete-mission" },
   { route: "adventures", file: "components/practice/AdventuresTab.tsx", move: "complete-adventure-scene" },
   { route: "stories", file: "components/tabs/HeroJourneyTab.tsx", move: "read-tonights-story" },
@@ -615,5 +615,36 @@ describe("B-SHELL-NEW-1b · the door sentence can be kept as ONE journal moment"
       expect(translate(lang, "elev.practice.door.keep")).not.toBe("elev.practice.door.keep");
       expect(translate(lang, "elev.practice.door.kept")).not.toBe("elev.practice.door.kept");
     }
+  });
+});
+
+describe("W2-SHELLPLAY r2 · #/feelings — the parent page is the co-play door (law 2)", () => {
+  const parent = FEELINGS.slice(FEELINGS.indexOf("if (!kidMode) {"), FEELINGS.indexOf("<TrustSafetyBar"));
+  const KID = /MascotSay|PlayButton|ChoiceTile|\{emotionTiles\}|elev\.kids\.|text-\[1\.35rem\]/;
+
+  it("the parent branch carries no kid kit, no graded tiles and no kid-namespace copy", () => {
+    expect(parent.length).toBeGreaterThan(500);
+    expect(parent).not.toMatch(KID);
+    // NEGATIVE CONTROL: the r1 parent branch (mascot + kid copy) is caught
+    expect('<MascotSay mood="proud">{t("elev.kids.feelings.yes")}</MascotSay>').toMatch(KID);
+  });
+
+  it("ONE door: stamped open-world-door, the page's one gradient, opens Mood Mountain through the seam", () => {
+    expect(parent).toContain('data-primary-move="open-world-door"');
+    expect(parent).toContain('requestKidMode({ view: "arcade", worldId: "feelings" })');
+    expect(countOf(parent, /--gradient-cta/g)).toBe(1);
+    expect(countOf(FEELINGS, /--gradient-cta/g)).toBe(1);
+    expect(contractFor("feelings")!.primaryMove).toBe("open-world-door");
+    for (const lang of ["en", "he"] as const) {
+      for (const k of ["elev.practice.feelings.door.title", "elev.practice.feelings.door.tip", "elev.practice.feelings.door.cta"]) {
+        const v = translate(lang, k, { name: "Dylan" });
+        expect(v).not.toBe(k);
+        if (lang === "he") expect(v.replace("Dylan", "")).not.toMatch(/[A-Za-z]/);
+      }
+    }
+  });
+
+  it("the parent page uses the type scale, no orphan text-[…] sizes", () => {
+    expect(parent).not.toMatch(/text-\[\d/);
   });
 });

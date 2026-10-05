@@ -664,7 +664,11 @@ describe("W2-SHELLPLAY r1 — the Feelings Lab parent branch speaks the parent's
   const parent = feelings.slice(feelings.indexOf("if (!kidMode) {"), feelings.indexOf("// KID-04: the KID register"));
 
   it("the counter, the toolkit chrome and the footer note go through t()", () => {
-    expect(parent).toContain('t("elev.practice.feelings.progress", { n: scenarioIdx + 1, total: EMOTION_SCENARIOS.length })');
+    // W2-SHELLPLAY r2: the scenario counter left the parent page with the quiz
+    // (law 2); the co-play door's copy is keyed instead.
+    expect(parent).toContain('t("elev.practice.feelings.door.title")');
+    expect(parent).toContain('t("elev.practice.feelings.door.tip", { name: first })');
+    expect(parent).not.toContain("elev.kids.");
     expect(parent).toContain('<TrustSafetyBar note={t("elev.practice.feelings.note")} />');
     expect(parent).not.toMatch(/"Logged"|"We talked this through"|"Complete one round"|<b>Why:<\/b>|In \{pattern\.inhale\}s|\} of \{EMOTION_SCENARIOS/);
     expect(englishLines("components/practice/FeelingsLabTab.tsx")).toEqual([]);

@@ -275,7 +275,9 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
   {
     route: "feelings", hub: "practice", depth: 1,
     job: "Name feelings and practice calming, together.",
-    primaryMove: "complete-feelings-scenario", moduleBudget: 2, demotionTarget: "practice",
+    primaryMove: "open-world-door", moduleBudget: 2, demotionTarget: "practice",
+    // W2-SHELLPLAY critic r2 (B-PLAY-08): the parent page is the co-play door
+    // into Mood Mountain (B-KID-11 seam); the scenario quiz runs only in Kid Mode.
     // FeelingsLab record() writes PracticeEvent rows (emotion-id/-why/calm).
     threadWrite: "practiceEvents",
   },

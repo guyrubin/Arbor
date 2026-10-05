@@ -65,6 +65,10 @@ export const en: Record<string, string> = {
   "elev.practice.feelings.why.title": "Why feelings happen",
   "elev.practice.feelings.calm.title": "Calm-down practice",
   "elev.practice.feelings.toolkit": "Feelings toolkit",
+  // W2-SHELLPLAY critic r2 (B-PLAY-08): the parent page is the co-play door.
+  "elev.practice.feelings.door.title": "Play Mood Mountain together",
+  "elev.practice.feelings.door.tip": "Sit beside {name}. You name your feeling out loud first, then ask for theirs.",
+  "elev.practice.feelings.door.cta": "Open in Kid Mode",
   "elev.practice.feelings.toolkit.sub": "Why each feeling happens, and calm-down practice to run on a good day.",
   // The quiet counts line that replaced three stat bubbles above the drill.
   "elev.practice.feelings.counts": "{rounds} feeling rounds · {calm} calm practices",
@@ -278,6 +282,9 @@ export const he: Record<string, string> = {
   "elev.practice.feelings.why.title": "למה רגשות קורים",
   "elev.practice.feelings.calm.title": "תרגול הרגעה",
   "elev.practice.feelings.toolkit": "ארגז הכלים הרגשי",
+  "elev.practice.feelings.door.title": "משחקים יחד בהר הרגשות",
+  "elev.practice.feelings.door.tip": "שבו ליד {name}. אתם ראשונים: אמרו את הרגש שלכם בקול, ואז שאלו על שלהם.",
+  "elev.practice.feelings.door.cta": "לפתוח במצב ילדים",
   "elev.practice.feelings.toolkit.sub": "למה כל רגש מופיע, ותרגולי הרגעה לתרגל ביום טוב.",
   "elev.practice.feelings.counts": "{rounds} סבבי רגשות · {calm} תרגולי הרגעה",
   "elev.practice.feelings.progress": "{n} מתוך {total}",

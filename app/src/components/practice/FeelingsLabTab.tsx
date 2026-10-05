@@ -14,6 +14,7 @@ import type { PracticeEvent } from "../../types";
 import { track } from "../../lib/analytics";
 import { isKidModeActive, noteKidActivity, subscribeKidMode } from "../../lib/kidModeGate";
 import { SpeakButton } from "../ui/SpeakButton";
+import { useKidModeEntry } from "../kidmode/useKidModeEntry";
 const HEBREW_EMOTION_LABELS: Readonly<Record<string, string>> = Object.freeze(
   Object.fromEntries(EMOTION_SCENARIOS.map((scenario) => [scenario.answer, scenario.answerLabelHe])),
 );
@@ -140,6 +141,8 @@ export default function FeelingsLabTab() {
   // tiles → next). Stats, the safety note, the explainer cards and the
   // calm-tool logging are the parent register and stay in the !kidMode branch.
   const kidMode = useSyncExternalStore(subscribeKidMode, isKidModeActive, isKidModeActive);
+  // B-KID-11: the parent door opens Mood Mountain through the ONE entry seam.
+  const { request: requestKidMode, step: kidModeStep } = useKidModeEntry();
 
   const emotionTiles = choiceEmotions.map((emotion) => {
     const picked = pickedEmotion === emotion.id;
@@ -172,58 +175,48 @@ export default function FeelingsLabTab() {
           on a 390 phone; the counts are now one quiet line UNDER the drill and
           the note is a page footer. */}
       <section data-module="feelings-practice" className="space-y-3">
-      <SectionCard
-        title={t("elev.practice.feelings.match.title")}
-        icon={<Icon name="mood" size={20} />}
-        tone="yellow"
-        action={
-          <span className="rounded-full px-3 py-1.5 text-[12px] font-extrabold" style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-yellow-ink)" }}>{t("elev.practice.feelings.progress", { n: scenarioIdx + 1, total: EMOTION_SCENARIOS.length })}</span>
-        }
-      >
-        <div className="rounded-[var(--play-radius)] p-6 mb-4" style={{ background: "var(--arbor-paper-elevated)", boxShadow: "var(--shadow-xs)" }}>
-          <p className="text-5xl mb-3">{scenario.emoji}</p>
-          <p className="text-[1.35rem] font-extrabold leading-snug" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-            {scenarioText}
-          </p>
-        </div>
-        {/* The declared primaryMove for #/feelings ("complete-feelings-scenario"):
-            the answer tiles. Stamped once, on the control group the acceptance
-            measures. */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3" data-primary-move="complete-feelings-scenario">
-          {emotionTiles}
-        </div>
-        {pickedEmotion && (
-          <div className="mt-5">
-            <MascotSay mood={pickedEmotion === scenario.answer ? "proud" : "think"} tone={pickedEmotion === scenario.answer ? "clay" : "yellow"}>
-              {pickedEmotion === scenario.answer
-                ? t("elev.kids.feelings.yes", { feeling: answerLabel.toLowerCase() })
-                : t("elev.kids.feelings.retry", { feeling: answerLabel.toLowerCase() })}
-            </MascotSay>
-            <div className="mt-4">
-              <PlayButton tone="yellow" onClick={nextScenario}>{t("elev.kids.feelings.next")} →</PlayButton>
-            </div>
+      {/* W2-SHELLPLAY critic r2 (law 2, B-PLAY-08): the PARENT page is the
+          co-play door. The scenario quiz, its graded answer tiles, the mascot
+          and the kid PlayButton live only in Kid Mode (Mood Mountain, below);
+          the parent gets one door into that world through the B-KID-11 seam
+          and a two-line co-play tip. */}
+      <div data-testid="feelings-door" className={`${cardCls} p-5`}>
+        <div className="flex items-start gap-3">
+          <span aria-hidden="true" className="grid place-items-center w-10 h-10 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-yellow-soft)", color: "var(--arbor-yellow-ink)" }}>
+            <Icon name="mood" size={20} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h2 className="t-lg font-extrabold leading-snug" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+              {t("elev.practice.feelings.door.title")}
+            </h2>
+            <p className="t-sm mt-1.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+              {t("elev.practice.feelings.door.tip", { name: first })}
+            </p>
           </div>
-        )}
-        {/* W2-SHELLPLAY critic r1 (law 2): the child-addressed self-check ("How
-            are you feeling right now, {name}?") is gone from the PARENT page —
-            it lives in the kid register (Mood Mountain) below, where Lane X
-            K1-1 owns the self: kind. */}
-
-      </SectionCard>
-
-      {/* The counts that were three stat bubbles at the top of the page. A
-          quiet line: counts, never verdicts (law 1), and never before the move. */}
-      {/* W2-SHELLPLAY critic r1: ONE feelings-only count line, plural-keyed
-          (was "1 feeling rounds · 0 calm practices · 1 Feelings named"); no
-          zero parts, nothing when there is nothing to count. */}
-      {(emotionRounds > 0 || calmRounds > 0) && (
-        <p className="text-[11.5px] px-1" style={{ color: "var(--arbor-muted)" }}>
-          {[
-            emotionRounds > 0 ? t(emotionRounds === 1 ? "elev.practice.feelings.count.rounds.one" : "elev.practice.feelings.count.rounds.many", { n: emotionRounds }) : "",
-            calmRounds > 0 ? t(calmRounds === 1 ? "elev.practice.feelings.count.calm.one" : "elev.practice.feelings.count.calm.many", { n: calmRounds }) : "",
-          ].filter(Boolean).join(" · ")}
-        </p>
-      )}
+        </div>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            data-primary-move="open-world-door"
+            onClick={() => requestKidMode({ view: "arcade", worldId: "feelings" })}
+            className="inline-flex items-center gap-1.5 t-sm font-extrabold rounded-xl px-4 min-h-[44px] transition active:scale-[0.98] focus:outline-none focus-visible:ring-2"
+            style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}
+          >
+            <Icon name="sports_esports" size={16} /> {t("elev.practice.feelings.door.cta")}
+          </button>
+          {/* The counts that were three stat bubbles: one quiet line, plural-
+              keyed, counts never verdicts (law 1), nothing when there is nothing. */}
+          {(emotionRounds > 0 || calmRounds > 0) && (
+            <p className="t-xs" style={{ color: "var(--arbor-muted)" }}>
+              {[
+                emotionRounds > 0 ? t(emotionRounds === 1 ? "elev.practice.feelings.count.rounds.one" : "elev.practice.feelings.count.rounds.many", { n: emotionRounds }) : "",
+                calmRounds > 0 ? t(calmRounds === 1 ? "elev.practice.feelings.count.calm.one" : "elev.practice.feelings.count.calm.many", { n: calmRounds }) : "",
+              ].filter(Boolean).join(" · ")}
+            </p>
+          )}
+        </div>
+        {kidModeStep}
+      </div>
       </section>
 
       {/* §3f row 2 — MODULE 2 of 2. "Why feelings happen" (six explainer cards)
@@ -238,8 +231,8 @@ export default function FeelingsLabTab() {
             <Icon name="favorite" size={18} />
           </span>
           <span className="min-w-0">
-            <span className="block text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.practice.feelings.toolkit")}</span>
-            <span className="block text-[12px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.practice.feelings.toolkit.sub")}</span>
+            <span className="block t-base font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.practice.feelings.toolkit")}</span>
+            <span className="block t-xs" style={{ color: "var(--arbor-muted)" }}>{t("elev.practice.feelings.toolkit.sub")}</span>
           </span>
           <Icon name="expand_more" size={20} className="ms-auto" style={{ color: "var(--arbor-muted)" }} />
         </summary>
@@ -253,10 +246,10 @@ export default function FeelingsLabTab() {
                 <span className="text-3xl">{emotion.emoji}</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{emotionLabelFor(emotion, uiLang)}</p>
-                  <p className="text-[11px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}><b>{t("elev.practice.feelings.why.label")}</b> {emotion.why}</p>
-                  <p className="text-[11px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}><b>{t("elev.practice.feelings.looksLike.label")}</b> {emotion.looksLike}</p>
-                  <p className="text-[11px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}><b>{t("elev.practice.feelings.helps.label")}</b> {emotion.helps}</p>
-                  <button onClick={() => markTalked(emotion.id)} className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-extrabold px-3 min-h-[44px] rounded-xl" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}>
+                  <p className="t-xs mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}><b>{t("elev.practice.feelings.why.label")}</b> {emotion.why}</p>
+                  <p className="t-xs mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}><b>{t("elev.practice.feelings.looksLike.label")}</b> {emotion.looksLike}</p>
+                  <p className="t-xs mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}><b>{t("elev.practice.feelings.helps.label")}</b> {emotion.helps}</p>
+                  <button onClick={() => markTalked(emotion.id)} className="mt-3 inline-flex items-center gap-1.5 t-xs font-extrabold px-3 min-h-[44px] rounded-xl" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}>
                     {talkedEmotion === emotion.id ? <Icon name="check" size={14} /> : <Icon name="auto_awesome" size={14} />}
                     {talkedEmotion === emotion.id ? t("elev.practice.feelings.logged") : t("elev.practice.feelings.talked")}
                   </button>
@@ -276,11 +269,11 @@ export default function FeelingsLabTab() {
             <div key={pattern.id} className={`${cardCls} p-4`}>
               <p className="text-3xl">{pattern.emoji}</p>
               <p className="text-sm font-extrabold mt-2" style={{ color: "var(--arbor-ink)" }}>{pattern.title}</p>
-              <p className="text-[11px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{pattern.script}</p>
-              <p className="text-[10px] mt-2 font-bold" style={{ color: "var(--arbor-muted)" }}>
+              <p className="t-xs mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{pattern.script}</p>
+              <p className="t-xs mt-2 font-bold" style={{ color: "var(--arbor-muted)" }}>
                 {t("elev.practice.feelings.breath", { inhale: pattern.inhale, hold: pattern.hold, exhale: pattern.exhale, rounds: pattern.rounds })}
               </p>
-              <button onClick={() => completeCalm(pattern.id)} className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-extrabold px-3 min-h-[44px] rounded-xl" style={{ background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" }}>
+              <button onClick={() => completeCalm(pattern.id)} className="mt-3 inline-flex items-center gap-1.5 t-xs font-extrabold px-3 min-h-[44px] rounded-xl" style={{ background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" }}>
                 {completedCalm === pattern.id ? <Icon name="check" size={14} /> : <Icon name="replay" size={14} />}
                 {completedCalm === pattern.id ? t("elev.practice.feelings.logged") : t("elev.practice.feelings.completeRound")}
               </button>
@@ -292,7 +285,7 @@ export default function FeelingsLabTab() {
             <button key={tool.id} onClick={() => completeCalm(tool.id)} className={`${cardCls} p-4 text-start transition hover:shadow-md`}>
               <span className="text-2xl">{tool.emoji}</span>
               <span className="block text-sm font-extrabold mt-1" style={{ color: "var(--arbor-ink)" }}>{tool.title}</span>
-              <span className="block text-[11px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{tool.how}</span>
+              <span className="block t-xs mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{tool.how}</span>
             </button>
           ))}
         </div>
