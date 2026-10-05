@@ -65,6 +65,7 @@ import { T, METRIC_VARS } from "../../lib/tokens";
 import { fmtDay } from "../../lib/formatDate";
 import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
 import { authoredChoice, authoredScene, completeRender } from "../../lib/heroJourneyRender";
+import { DecisionChoices } from "../stories/DecisionChoices";
 
 /** Comic-world skin per pack — bg + ink token + bilingual label (matches the
  *  Hero Arcade design layer so the Academy reads as the same comic universe). */
@@ -562,21 +563,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
         <p className="text-[11px] uppercase tracking-widest font-bold text-center" style={{ color: "var(--arbor-green-ink)" }}>
           {kidsStoriesText("journey.decision", aiLang, { name: childProfile.name })}
         </p>
-        {choices.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => chooseOption(c.id)}
-            className="w-full text-start p-3.5 rounded-2xl transition flex items-center gap-3 group hover:-translate-y-0.5"
-            style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}
-          >
-            <span className="w-7 h-7 rounded-full font-extrabold flex items-center justify-center flex-shrink-0 uppercase" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
-              {c.id}
-            </span>
-            <span dir="auto" className="text-sm font-medium" style={{ color: "var(--arbor-ink)" }}>
-              {c.label}
-            </span>
-          </button>
-        ))}
+        <DecisionChoices choices={choices} lang={aiLang === "he" ? "he" : "en"} onChoose={chooseOption} />
       </div>
     );
 
