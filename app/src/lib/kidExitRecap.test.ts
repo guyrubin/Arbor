@@ -182,9 +182,32 @@ describe("B-SHELL-04 · the recap names hero stories and stays until kept or dis
 
   const recap = read("components/kidmode/KidExitRecap.tsx");
 
-  it("the hero ledger is mirrored from heroRuns (completedAt || startedAt)", () => {
+  // B-KID-31 (KA-20, VETO): the hero ledger counts FINISHED stories only, and
+  // a check-in is not a round — one shared builder, both callers.
+  it("the hero ledger is mirrored from heroRuns, finished stories only (B-KID-31)", () => {
     expect(recap).toMatch(/useChildCollection<HeroJourneyRun>\(childProfile\.id, "heroRuns"\)/);
-    expect(recap).toMatch(/hero: heroRuns\.items\.map\(\(x\) => x\.completedAt \|\| x\.startedAt\)/);
+    expect(recap).toContain("ledgersRef.current = kidActivityLedgers(practice, heroRuns.items);");
+    expect(recap).not.toMatch(/completedAt \|\| x\.startedAt/);
+    expect(read("components/practice/PracticeStudioTab.tsx")).toContain("ledgers: kidActivityLedgers(data),");
+  });
+
+  it("B-KID-31: 2 check-ins + 1 started-not-finished story → nothing to say", async () => {
+    const { kidActivityLedgers } = await import("./kidExitRecap");
+    const at = new Date(OPENED + 60_000).toISOString();
+    const empty = { items: [] as { timestamp: string }[] };
+    const ledgers = kidActivityLedgers(
+      { speech: empty, mimic: empty, missions: empty, adventures: empty, events: { items: [{ kind: "mood-checkin", timestamp: at }, { kind: "mood-checkin", timestamp: at }] } },
+      [{ completedAt: undefined }],
+    );
+    const counts = countsSince(ledgers, OPENED);
+    expect(counts).toEqual({});
+    expect(kidExitRecapLine(counts, tEn, "Mia")).toBeFalsy();
+    // a played round and a finished story still count
+    const real = countsSince(kidActivityLedgers(
+      { speech: empty, mimic: empty, missions: empty, adventures: empty, events: { items: [{ kind: "memory-match", timestamp: at }] } },
+      [{ completedAt: at }],
+    ), OPENED);
+    expect(real).toEqual({ practice: 1, hero: 1 });
   });
 
   it("the toast carries a Keep action (so it never auto-removes) that writes one moment", () => {

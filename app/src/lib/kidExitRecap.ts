@@ -43,6 +43,35 @@ export type KidActivityLedgers = Partial<Record<KidActivityKind, (string | numbe
 
 export type KidActivityCounts = Partial<Record<KidActivityKind, number>>;
 
+type Stamped = { timestamp?: string | null };
+/**
+ * B-KID-31 (KA-20, VETO): the ONE builder of the activity ledgers, so every
+ * caller counts only what HAPPENED — a Mood Mountain check-in is the child
+ * saying how they feel, not a round (`kind === "mood-checkin"` is dropped,
+ * the starEvents rule), and a story counts only when FINISHED (`completedAt`;
+ * a started-not-finished book is not a story read). Hero runs are optional:
+ * the Practice door reports stories by title through its own `stories` line.
+ */
+export function kidActivityLedgers(
+  practice: {
+    speech: { items: Stamped[] };
+    mimic: { items: Stamped[] };
+    missions: { items: Stamped[] };
+    adventures: { items: Stamped[] };
+    events: { items: (Stamped & { kind: string })[] };
+  },
+  heroRuns?: { completedAt?: string | null }[],
+): KidActivityLedgers {
+  return {
+    speech: practice.speech.items.map((x) => x.timestamp),
+    mimic: practice.mimic.items.map((x) => x.timestamp),
+    mission: practice.missions.items.map((x) => x.timestamp),
+    adventure: practice.adventures.items.map((x) => x.timestamp),
+    practice: practice.events.items.filter((x) => x.kind !== "mood-checkin").map((x) => x.timestamp),
+    ...(heroRuns ? { hero: heroRuns.filter((r) => r.completedAt).map((r) => r.completedAt) } : {}),
+  };
+}
+
 const msOf = (stamp: string | number | undefined | null): number | null => {
   if (stamp == null || stamp === "") return null;
   const ms = typeof stamp === "number" ? stamp : Date.parse(stamp);

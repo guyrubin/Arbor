@@ -41,7 +41,7 @@ import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { usePracticeData } from "../../practice/usePracticeData";
 import { withChildSignals } from "../../lib/i18nElevation/childsignals";
-import { countsSince, kidExitRecapLine, type KidActivityLedgers } from "../../lib/kidExitRecap";
+import { countsSince, kidActivityLedgers, kidExitRecapLine, type KidActivityLedgers } from "../../lib/kidExitRecap";
 
 export default function KidExitRecap() {
   const { childProfile, addMoment } = useArbor();
@@ -59,14 +59,8 @@ export default function KidExitRecap() {
   // The unmount cleanup runs with a stale closure, so the latest ledgers and
   // copy are mirrored into refs on every render.
   const ledgersRef = useRef<KidActivityLedgers>({});
-  ledgersRef.current = {
-    speech: practice.speech.items.map((x) => x.timestamp),
-    mimic: practice.mimic.items.map((x) => x.timestamp),
-    mission: practice.missions.items.map((x) => x.timestamp),
-    adventure: practice.adventures.items.map((x) => x.timestamp),
-    practice: practice.events.items.map((x) => x.timestamp),
-    hero: heroRuns.items.map((x) => x.completedAt || x.startedAt),
-  };
+  // B-KID-31: the shared builder — no check-ins as rounds, no unfinished stories.
+  ledgersRef.current = kidActivityLedgers(practice, heroRuns.items);
   const speakRef = useRef<() => void>(() => undefined);
   speakRef.current = () => {
     const counts = countsSince(ledgersRef.current, openedAtRef.current);

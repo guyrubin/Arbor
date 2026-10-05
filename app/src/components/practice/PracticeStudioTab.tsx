@@ -25,7 +25,7 @@ import { track } from "../../lib/analytics";
 import { requestOpenSettings } from "../layout/settingsBus";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { withChildSignals } from "../../lib/i18nElevation/childsignals";
-import { SINCE_LAST_PLAY_FALLBACK_MS, doorSinceSentence, doorWindowLabel } from "../../lib/kidExitRecap";
+import { SINCE_LAST_PLAY_FALLBACK_MS, doorSinceSentence, doorWindowLabel, kidActivityLedgers } from "../../lib/kidExitRecap";
 import { runTitle } from "../../lib/heroJourneys";
 import { lastKidSessionStartedAt } from "../../lib/kidModeGate";
 import type { HeroJourneyRun } from "../../types";
@@ -67,15 +67,9 @@ export default function PracticeStudioTab() {
   const since = React.useMemo(() => {
     const sinceMs = playWindow.sinceMs;
     return doorSinceSentence({
-      ledgers: {
-        speech: data.speech.items.map((x) => x.timestamp),
-        mimic: data.mimic.items.map((x) => x.timestamp),
-        mission: data.missions.items.map((x) => x.timestamp),
-        adventure: data.adventures.items.map((x) => x.timestamp),
-        // A Mood Mountain check-in is the child saying how they feel, not a
-        // round played (practiceWeekCount's rule).
-        practice: data.events.items.filter((x) => x.kind !== "mood-checkin").map((x) => x.timestamp),
-      },
+      // B-KID-31: the same ledger builder as the exit recap (check-ins are not
+      // rounds); stories are reported by title through `stories` below.
+      ledgers: kidActivityLedgers(data),
       stories: heroRuns.items.map((r) => ({ title: runTitle(r, lang), completedAt: r.completedAt })),
       sinceMs,
       sinceIsFallback: playWindow.isFallback,
