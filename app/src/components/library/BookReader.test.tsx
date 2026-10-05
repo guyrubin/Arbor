@@ -17,6 +17,8 @@ vi.mock("../../lib/voice", () => ({ speakText: vi.fn(() => 0), stopVoice: vi.fn(
 
 import { BookReader, nextIntent } from "./BookReader";
 import { BookEnd } from "./BookParts";
+import { BOOK_PLATES } from "../../lib/library/books";
+import { makePlate } from "../../lib/library/bookPlates";
 import { bookFlowReducer, END, initialBookFlow, type BookFlowAction, type BookFlowState } from "../../lib/library/bookFlow";
 import { fiveSmoothStones as book } from "../../lib/library/books/fiveSmoothStones";
 import type { Box } from "../../lib/library/bookPageLayout";
@@ -277,6 +279,33 @@ describe("the ending", () => {
     expect(shown).not.toMatch(/data-book-overlay="dust-cloud"[^>]*data-hidden=""/);
   });
 
+  it("v2 art states: p9 = swing → dust → 'the soldiers rise' plate cross-fading in over PL7 (the hero stays, the dust goes)", () => {
+    const s = toPage("a", "p9");
+    const RISE = [
+      { id: "dust", overlays: ["dust-cloud"], trigger: "narration" as const },
+      { id: "rise", plateId: "PL7-rise", overlays: [], trigger: { afterMs: 2000, silentAfterMs: 3000 } },
+    ];
+    const riseBook = { ...book, pages: book.pages.map((p) => (p.id === "p9" ? { ...p, artStates: RISE } : p)) };
+    const plates = { ...BOOK_PLATES[book.id], "PL7-rise": makePlate(book.id, "PL7-rise", "day", { width: 1920, height: 1280 }) };
+    const at = (stage: number | boolean, withPlate = true) =>
+      renderToStaticMarkup(<BookReader book={riseBook} lang="en" child={BOY} onClose={() => {}} dev narration="off" initialState={s} initialBox={WIDE} plates={withPlate ? plates : undefined} initialRevealed={stage} />);
+    const s0 = at(0);
+    expect(s0).toMatch(/data-book-overlay="dust-cloud"[^>]*data-hidden=""/);
+    expect(s0).not.toContain("data-book-state-plate");
+    const s1 = at(1);
+    expect(s1).not.toMatch(/data-book-overlay="dust-cloud"[^>]*data-hidden=""/);
+    expect(s1).not.toContain("data-book-state-plate");
+    const s2 = at(2);
+    expect(s2).toContain('data-book-state-plate="PL7-rise"');
+    expect(s2).toContain("/PL7-rise.webp");
+    expect(s2).toMatch(/data-book-overlay="dust-cloud"[^>]*data-hidden=""/);
+    expect(s2).toContain("data-book-hero");
+    // the plate not delivered: the page is the v1 page (the dust state only)
+    const noPlate = at(true, false);
+    expect(noPlate).not.toContain("data-book-state-plate");
+    expect(noPlate).not.toMatch(/data-book-overlay="dust-cloud"[^>]*data-hidden=""/);
+  });
+
   it("p9 lays out with the PLATE's size whether the print or the composite shows (no frame jump)", () => {
     const sheet: HeroSheet = { id: "placeholder", poses: {}, base: "/_dev/hero-sheets/placeholder", prints: { p9: { url: "/_dev/hero-sheets/placeholder/prints/p9.webp", width: 1920, height: 1280 } } };
     const s = toPage("a", "p9");
@@ -360,7 +389,7 @@ describe("fix round 1: bar, accent, choice cards", () => {
 
   it("decision cards at 1920: the cards state stacks three LARGE cards (pictures >= 300 px wide, 4:3) in the same book", () => {
     const html = render(run(...toDecision), { choosing: true });
-    expect(html).toContain('data-arrangement="stack"');
+    expect(html).toContain('data-arrangement="threeDown"');
     expect(html).toContain('data-plan="second"');
     const picW = Number(/--pic-w:([\d.]+)px/.exec(html)![1]);
     const picH = Number(/--pic-h:([\d.]+)px/.exec(html)![1]);
