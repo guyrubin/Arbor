@@ -5,6 +5,7 @@
  */
 import type { ChildProfile, HeroBeat, HeroChoice, HeroChoiceRender, HeroJourneyRender, HeroSceneRender, HeroStorySpec } from "../types";
 import { HERO_NAME_FALLBACK } from "./heroNameFallback";
+import { isolate } from "./bidi";
 
 /** B-KID-76 (a): who the authored text names as its hero — the child. */
 export interface StoryHero {
@@ -42,7 +43,7 @@ const HE_HERO = /(^|[^א-ת])(ו|ש|כש|מ|וכש)?(ה|ל)גיבור(?![א-ת])
 export function nameTheHero(text: string, lang: "en" | "he", hero?: StoryHero): string {
   const name = heroFirstName(hero);
   if (!name || !text) return text;
-  if (lang === "en") return text.replace(EN_HERO, (_m, poss: string | undefined) => (poss ? `${name}'s` : name));
+  if (lang === "en") return text.replace(EN_HERO, (_m, poss: string | undefined) => (poss ? `${isolate(name)}'s` : name));
   if (hero?.gender === "girl") return text;
   const hebrewName = /^[א-ת]/.test(name);
   return text.replace(HE_HERO, (_m, lead: string, prefix: string | undefined, article: string) => {
