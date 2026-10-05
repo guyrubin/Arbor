@@ -387,7 +387,8 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
     childIdentity: childProfile.id,
     pageIndex: 0,
     cover: true as const,
-    title: render.title || activeStory.title,
+    // B-KID-55 (KB-05): the cover's title is the DOM overlay (always shown, in
+    // the story's language) — never lettered into the image.
     theme: `${render.title || activeStory.title} — ${activeStory.theme}`,
     sfx: [] as string[],
   } : undefined;

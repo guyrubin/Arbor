@@ -112,7 +112,8 @@ export function HeroScenePlayer({
         childIdentity: childIdentity ?? heroName ?? seed,
         pageIndex: beatNumber,
         theme: scene.imagePrompt,
-        dialogue: scene.dialogue,
+        // B-KID-55 (KB-05): no lettered bubble on a story page — the narration
+        // under the page carries the words (and the image model misspells them).
         sfx: scene.sfx ?? [],
       }
     : undefined;

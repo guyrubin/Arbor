@@ -2608,9 +2608,13 @@ Friendly lighting and a readable composition. Gentle, non-scary, non-violent and
 
     const effectiveStyle = normalizeAvatarStyle(style);
     const stylePrompt = SCENE_STYLE_DIRECTIONS[effectiveStyle];
+    // B-KID-55 (KB-05): sound-effect words are drawn ONLY when the caller
+    // passes them (a story page is the story's own art, not a lettered panel),
+    // and there is no default "family home" setting forced on every scene.
     const sfxLine = Array.isArray(sfx) && sfx.length
       ? sfx.slice(0, 4).map((s: unknown) => String(s).slice(0, 12)).join(", ")
-      : "KA-POW!, ZAP!, WHOOSH!";
+      : "";
+    const settingText = typeof setting === "string" && setting.trim() ? scrub(setting.trim().slice(0, 160)) : "";
     // Dialogue bubble is OPTIONAL: standalone comics pass a line; embedded story
     // panels omit it (the narration caption carries the words) so text isn't doubled.
     const dialogueLine = dialogue === undefined || dialogue === null ? "" : letteredWithoutNames(String(dialogue).slice(0, 120), allNames);
@@ -2626,9 +2630,9 @@ ${referenceImage
   : "Feature a single friendly child protagonist as the central, large, active figure, with clothing and accessories that naturally fit the scene."}
 ${sidekickNames.length ? "Include a friendly younger sidekick beside the hero, in clothing natural to the scene and distinct from the hero's identity." : ""}
 Scene/theme: ${themeText}.
-Setting: ${scrub(String(setting ?? "a cozy, lived-in family home interior").slice(0, 160))}.
-Include 2-3 BIG, bold, stylized comic sound-effect words bursting in the scene with thick outlines and bright fills: ${sfxLine}.
-${dialogueLine ? `Include ONE clean white speech bubble with a bold tail, containing the short, legible, friendly line: "${dialogueLine}".` : "Do not draw any speech bubbles or sentences — only the short sound-effect words."}
+${settingText ? `Setting: ${settingText}.` : ""}
+${sfxLine ? `Include 2-3 BIG, bold, stylized comic sound-effect words bursting in the scene with thick outlines and bright fills: ${sfxLine}.` : "Do not draw any sound-effect words."}
+${dialogueLine ? `Include ONE clean white speech bubble with a bold tail, containing the short, legible, friendly line: "${dialogueLine}".` : `Do not draw any speech bubbles or sentences${sfxLine ? " — only the short sound-effect words" : ""}.`}
 Wholesome and age-appropriate for young children: confident, joyful and exciting, but NO real violence, weapons, blood, fear, or scary imagery. Keep all text short, correctly spelled, and clearly legible.`;
 
     // AIR-9: 60s image budget.

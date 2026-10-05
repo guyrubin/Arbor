@@ -88,6 +88,28 @@ describe("B-KID-40: /generate-comic sends no name to the image model", () => {
     expect(prompts[1]).toContain('"I can do it!"');
   });
 
+  it("B-KID-55 (KB-05): no forced family-home setting, no default SFX lettering; both only when passed", async () => {
+    prompts.length = 0;
+    await post({ theme: "a hill at dusk" });
+    await post({ theme: "a hill at dusk", setting: "a windy beach", sfx: ["POP!"] });
+    expect(prompts[0]).not.toContain("Setting:");
+    expect(prompts[0]).not.toContain("family home");
+    expect(prompts[0]).not.toContain("KA-POW");
+    expect(prompts[0]).toContain("Do not draw any sound-effect words.");
+    expect(prompts[0]).toContain("Do not draw any speech bubbles or sentences.");
+    expect(prompts[1]).toContain("Setting: a windy beach.");
+    expect(prompts[1]).toContain("POP!");
+  });
+
+  it("B-KID-55: journey pages send no dialogue and journey covers send no title (the DOM carries both)", () => {
+    const player = readFileSync(path.resolve(__dirname, "..", "components", "stories", "HeroScenePlayer.tsx"), "utf8");
+    expect(player).not.toContain("dialogue: scene.dialogue");
+    const tab = readFileSync(path.resolve(__dirname, "..", "components", "tabs", "HeroJourneyTab.tsx"), "utf8");
+    const cover = tab.slice(tab.indexOf("const coverPageArgs = () =>"), tab.indexOf("} : undefined;", tab.indexOf("const coverPageArgs = () =>")));
+    expect(cover).toContain("cover: true as const,");
+    expect(cover).not.toMatch(/^\s*title:/m);
+  });
+
   it("the hero-journey prompt tells the model never to name anyone in imagePrompt", () => {
     const api = readFileSync(path.resolve(__dirname, "..", "routes", "api.ts"), "utf8");
     expect(api).toContain('Never use anyone\'s name in imagePrompt: call the child "the hero".');
