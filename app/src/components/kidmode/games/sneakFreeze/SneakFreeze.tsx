@@ -43,6 +43,7 @@ import { sittingRecord } from "./record";
 import { usePracticeData } from "../../../../practice/usePracticeData";
 import { noteKidActivity } from "../../../../lib/kidModeGate";
 import { Ending, captionKey } from "./Ending";
+import { CourtyardPetals, DustPuff, LanternGlint, TagBurst } from "./courtyardLife";
 
 /** HE lines addressed to the child: `.boy` / `.girl`, else the plural base. */
 export function formKey(base: string, gender: string | undefined): string {
@@ -111,33 +112,6 @@ function HandGlyph({ size, mode }: { size: number; mode: HandCue }) {
   );
 }
 
-/** The sparkle at the tag: a few motes flying out (transform/opacity only). */
-function TagBurst({ x, y, size }: { x: number; y: number; size: number }) {
-  const ref = useRef<HTMLDivElement | null>(null);
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el || prefersReducedMotion()) return;
-    const kids = Array.from(el.children) as HTMLElement[];
-    const anims = kids.map((c, i) => {
-      const ang = (i / kids.length) * Math.PI * 2;
-      if (typeof c.animate !== "function") return null;
-      return c.animate(
-        [{ transform: "translate(0, 0) scale(0.4)", opacity: 1 }, { transform: `translate(${Math.cos(ang) * size}px, ${Math.sin(ang) * size}px) scale(1)`, opacity: 0 }],
-        { duration: 700, easing: "cubic-bezier(0.22, 1, 0.36, 1)", fill: "forwards" },
-      );
-    });
-    return () => anims.forEach((a) => a?.cancel());
-  }, [size]);
-  const dot = size * 0.14;
-  return (
-    <div ref={ref} aria-hidden="true" style={{ position: "absolute", left: x, top: y, width: 0, height: 0 }}>
-      {Array.from({ length: 10 }).map((_, i) => (
-        <span key={i} style={{ position: "absolute", left: -dot / 2, top: -dot / 2, width: dot, height: dot, borderRadius: "50%", background: i % 2 ? "var(--arbor-yellow)" : "var(--arbor-pink)", opacity: prefersReducedMotion() ? 0 : 1 }} />
-      ))}
-    </div>
-  );
-}
-
 function Scene({ ctx, v, art, sheet, prevProgress }: { ctx: PlayFieldContext; v: SneakView; art: SneakArt; sheet: HeroSheet; prevProgress: number }) {
   const layout = LAYOUTS[ctx.fit.orientation];
   const tagPoint = layout.heroPath[layout.heroPath.length - 1];
@@ -151,6 +125,9 @@ function Scene({ ctx, v, art, sheet, prevProgress }: { ctx: PlayFieldContext; v:
   const statue: boolean | "tremble" = frozen && (v.phase === "verdict" || v.demo === "statue") ? true : frozen && (v.phase === "looking" || v.demo === "look") ? "tremble" : false;
   // B-GAME-07c: in hold-up the prize is IN the hero's hands (HeroFigure).
   const carried = v.prize && v.heroPose === "hold-up" ? v.prize : null;
+  // B-GAME-07f: a step is a short eased hop — forward, or the scoot back to a
+  // cover after a tumble; a new round's return to the gate is a hard cut.
+  const hop = !reduced && (forward || (v.phase === "verdict" && v.progress < prevProgress));
   return (
     <>
       {layout.covers.map((c) => {
@@ -173,6 +150,8 @@ function Scene({ ctx, v, art, sheet, prevProgress }: { ctx: PlayFieldContext; v:
               data-cover={c.id}
               style={{ position: "absolute", left: c.feet.x - sp.anchor.x * k, top: c.feet.y - sp.anchor.y * k, width: sp.w * k, height: sp.h * k, maxWidth: "none", zIndex: Math.round(c.feet.y) }}
             />
+            {/* B-GAME-07f: the lantern's glass catches the light now and then. */}
+            {c.id === "lantern" && <LanternGlint x={c.feet.x} y={c.feet.y - c.h * 0.86} size={c.h * 0.2} zIndex={Math.round(c.feet.y)} />}
           </React.Fragment>
         );
       })}
@@ -182,13 +161,16 @@ function Scene({ ctx, v, art, sheet, prevProgress }: { ctx: PlayFieldContext; v:
         sunglasses={v.watcher.sunglasses}
         beat={v.watcher.beat}
         lean={(v.phase === "verdict" || v.demo === "statue") && v.watcher.pose === "looking"}
+        hop={v.phase === "tagged"}
         feet={layout.watcher.feet}
         height={layout.watcher.h}
         zIndex={Math.round(layout.watcher.feet.y)}
       />
+      {/* B-GAME-07f: the tag burst — 24 petals and sparkles from BEHIND him. */}
+      <TagBurst active={v.phase === "tagged"} x={tagPoint.x} y={tagPoint.y - base * 0.55} radius={base * 0.75} zIndex={Math.round(tagPoint.y)} />
       {/* The hero: one transform carries both the step toward the camera and
           the growth with depth, so a lurch is one short eased hop (stepwise,
-          never a glide); going back to a cover is a hard cut. */}
+          never a glide); the scoot back to a cover hops too (B-GAME-07f). */}
       <div
         data-hero-at={v.progress.toFixed(3)}
         style={{
@@ -200,9 +182,10 @@ function Scene({ ctx, v, art, sheet, prevProgress }: { ctx: PlayFieldContext; v:
           zIndex: Math.round(p.y) + 1,
           transform: `translate(${p.x}px, ${p.y}px) scale(${p.h / base})`,
           transformOrigin: "0 0",
-          transition: forward && !reduced ? "transform 190ms cubic-bezier(0.22, 1, 0.36, 1)" : undefined,
+          transition: hop ? "transform 150ms cubic-bezier(0.22, 1, 0.36, 1)" : undefined,
         }}
       >
+        <DustPuff active={v.heroPose === "oops"} size={base} />
         <HeroFigure
           pose={v.heroPose}
           height={base}
@@ -479,10 +462,11 @@ function SneakFreezeGame({ art, sheet }: { art: SneakArt; sheet: HeroSheet }) {
             <img src={art.plate[fit.orientation]} alt="" draggable={false} data-sneak-plate={art.source} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", maxWidth: "none", objectFit: "cover" }} />
           )}
           actors={(ctx) => <Scene ctx={ctx} v={v} art={art} sheet={sheet} prevProgress={prevProgress.current} />}
-          effects={(ctx) => {
-            if (v.phase !== "tagged") return null;
-            const lay = LAYOUTS[ctx.fit.orientation];
-            return <TagBurst key={`tag-${stateRef.current?.tags ?? 0}`} x={lay.prize.x} y={lay.prize.y} size={lay.prize.size * 1.6} />;
+          effects={(ctx) => <CourtyardPetals orientation={ctx.fit.orientation} />}
+          punch={(ctx) => {
+            // B-GAME-07f: the tag punches in around the hero's face.
+            const tag = LAYOUTS[ctx.fit.orientation].heroPath[LAYOUTS[ctx.fit.orientation].heroPath.length - 1];
+            return { key: v.phase === "tagged" ? "tag" : null, x: tag.x, y: tag.y - tag.h * 0.85 };
           }}
           controls={(ctx) => {
             if (!v.hand) return null;

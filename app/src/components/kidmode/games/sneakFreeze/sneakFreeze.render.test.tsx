@@ -188,3 +188,30 @@ describe("Sneak & Freeze — sounds and art slots", () => {
     expect(watcherSprite(noShades, "waiting", false).slot).toBe("counting");
   });
 });
+
+describe("B-GAME-07f — the courtyard is alive, the tag is a moment", () => {
+  const html = renderToStaticMarkup(<SneakFreeze />);
+
+  it("idle life is pooled and small: at most 8 petals, the lantern glint, a 24-piece tag burst mounted once", () => {
+    const petals = html.match(/data-sneak-petals=""[^>]*>([\s\S]*?)<\/div>/)?.[1] ?? "";
+    expect((petals.match(/<span /g) ?? []).length).toBeLessThanOrEqual(8);
+    expect((petals.match(/<span /g) ?? []).length).toBeGreaterThan(0);
+    expect(html).toContain("data-sneak-glint");
+    expect(html).toContain('data-sneak-burst="24"');
+    expect((html.match(/data-sneak-burst=/g) ?? []).length).toBe(1);
+    expect(html).toContain("data-play-punch");
+  });
+
+  it("every animation is transform / opacity only; reduced motion shows and moves none of it", () => {
+    for (const f of ["courtyardLife.tsx", "Watcher.tsx", "SneakFreeze.tsx", "Ending.tsx"]) {
+      const src = read(f);
+      for (const m of src.matchAll(/\.animate\(\s*\[([\s\S]*?)\]\s*,/g)) {
+        const keys = [...m[1].matchAll(/([a-zA-Z]+)\s*:/g)].map((k) => k[1]);
+        for (const k of keys) expect(["transform", "opacity", "offset"], `${f}: ${k}`).toContain(k);
+      }
+    }
+    const life = read("courtyardLife.tsx");
+    expect((life.match(/prefersReducedMotion\(\)/g) ?? []).length).toBeGreaterThanOrEqual(6);
+    expect(life).not.toMatch(/setInterval|setTimeout|requestAnimationFrame/);
+  });
+});

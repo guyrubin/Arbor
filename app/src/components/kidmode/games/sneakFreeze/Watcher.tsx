@@ -10,6 +10,10 @@
  * only: a bob on every chant beat, an ear-twitch shake through the tell, a
  * lean-in for the statue inspection. Reduced motion: no bob, shake or lean
  * travel (the cut still happens). Decorative: aria-hidden.
+ * B-GAME-07f: idle life — a gentle whole-sprite sway (+/- 1.5 deg about the
+ * stool's feet, the tail tip swinging) with a quick ear-twitch skew every few
+ * seconds and a 1 % breathing scale; a little hop when it laughs at a tag
+ * (`hop` rising); the statue inspection leans in (scale 1.04) and tilts.
  */
 import React, { useLayoutEffect, useRef } from "react";
 import { watcherSprite, type SneakArt, type WatcherSlot } from "./sneakArt";
@@ -24,6 +28,8 @@ export interface WatcherProps {
   beat: number;
   /** Lean in and squint (the statue inspection). */
   lean: boolean;
+  /** Rising edge = a little hop (the laugh at a tag). */
+  hop?: boolean;
   feet: { x: number; y: number };
   /** Display height of the whole sprite (stool + cat), parent units. */
   height: number;
@@ -32,7 +38,7 @@ export interface WatcherProps {
 
 const SLOTS: readonly WatcherSlot[] = ["counting", "tell", "looking", "laughing", "sunglasses", "waiting"];
 
-export function Watcher({ art, pose, sunglasses, beat, lean, feet, height, zIndex }: WatcherProps) {
+export function Watcher({ art, pose, sunglasses, beat, lean, hop = false, feet, height, zIndex }: WatcherProps) {
   const { slot } = watcherSprite(art, pose, sunglasses);
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const lastSlot = useRef(slot);
@@ -67,6 +73,40 @@ export function Watcher({ art, pose, sunglasses, beat, lean, feet, height, zInde
     return () => a.cancel();
   }, [pose, lean, height]);
 
+  // Idle life: sway about the stool's feet, an ear twitch, breathing.
+  const idleRef = useRef<HTMLDivElement | null>(null);
+  useLayoutEffect(() => {
+    const el = idleRef.current;
+    if (!el || prefersReducedMotion() || typeof el.animate !== "function") return;
+    const a = el.animate(
+      [
+        { transform: "rotate(0deg) scale(1)" },
+        { transform: "rotate(-1.5deg) scale(1.01)", offset: 0.3 },
+        { transform: "rotate(0.9deg) scale(1)", offset: 0.62 },
+        { transform: "rotate(0deg) skewX(0deg) scale(1)", offset: 0.84 },
+        { transform: "rotate(0.4deg) skewX(1.5deg) scale(1.005)", offset: 0.87 },
+        { transform: "rotate(0deg) skewX(-0.8deg) scale(1)", offset: 0.9 },
+        { transform: "rotate(0deg) skewX(0deg) scale(1)" },
+      ],
+      { duration: 4600, iterations: Infinity, easing: "ease-in-out" },
+    );
+    return () => a.cancel();
+  }, []);
+
+  // The laugh at a tag: a little hop.
+  const hopRef = useRef<HTMLDivElement | null>(null);
+  const hopped = useRef(hop);
+  useLayoutEffect(() => {
+    const el = hopRef.current;
+    const rising = hop && !hopped.current;
+    hopped.current = hop;
+    if (!rising || !el || prefersReducedMotion() || typeof el.animate !== "function") return;
+    el.animate(
+      [{ transform: "translateY(0) scale(1, 1)" }, { transform: `translateY(0) scale(1.08, 0.92)`, offset: 0.15 }, { transform: `translateY(${-height * 0.12}px) scale(0.96, 1.05)`, offset: 0.45 }, { transform: "translateY(0) scale(1.05, 0.95)", offset: 0.8 }, { transform: "translateY(0) scale(1, 1)" }],
+      { duration: 460, easing: "ease-out" },
+    );
+  }, [hop, height]);
+
   // The tell: ears twitch — a small shake for as long as it lasts.
   useLayoutEffect(() => {
     const el = bodyRef.current;
@@ -92,9 +132,11 @@ export function Watcher({ art, pose, sunglasses, beat, lean, feet, height, zInde
           background: "radial-gradient(closest-side, color-mix(in srgb, var(--arbor-ink) 32%, transparent), transparent)",
         }}
       />
+      <div ref={hopRef} style={{ position: "absolute", left: 0, top: 0, width: 0, height: 0, transformOrigin: "0 0" }}>
+      <div ref={idleRef} style={{ position: "absolute", left: 0, top: 0, width: 0, height: 0, transformOrigin: "0 0" }}>
       <div ref={peerRef} style={{ position: "absolute", left: 0, top: 0, width: 0, height: 0, transformOrigin: "0 0" }}>
       <div ref={bodyRef} style={{ position: "absolute", left: 0, top: 0, width: 0, height: 0, transformOrigin: "0 0" }}>
-        <div style={{ position: "absolute", left: 0, top: 0, width: 0, height: 0, transformOrigin: "0 0", transform: lean ? "scale(1.06) rotate(-3deg)" : "none", transition: reduced ? undefined : "transform 420ms cubic-bezier(0.22, 1, 0.36, 1)" }}>
+        <div style={{ position: "absolute", left: 0, top: 0, width: 0, height: 0, transformOrigin: "0 0", transform: lean ? "scale(1.04) rotate(-2.5deg)" : "none", transition: reduced ? undefined : "transform 420ms cubic-bezier(0.22, 1, 0.36, 1)" }}>
           {SLOTS.map((s) => {
             const sp = art.watcher[s];
             if (!sp) return null;
@@ -112,6 +154,8 @@ export function Watcher({ art, pose, sunglasses, beat, lean, feet, height, zInde
             );
           })}
         </div>
+      </div>
+      </div>
       </div>
       </div>
     </div>

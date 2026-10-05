@@ -23,10 +23,11 @@
  *             200 ms track B) a hero still holding (or still skidding out of
  *             a dash released inside the look) is CAUGHT. With SUNGLASSES on,
  *             the watcher cannot see: moving is safe and the hero keeps going.
- *   verdict   statue (the hero moved this cycle and stood still: the long
- *             comic beat, the pose is kept as a statue) | caught (0.7 s, back
- *             to the last cover REACHED) | still (nothing moved) | blind
- *             (sunglasses, the hero kept moving).
+ *   verdict   statue (the hero moved this cycle and stood still: the comic
+ *             beat, 2 s, the pose is kept as a statue) | caught (0.9 s: the
+ *             tumble where he stood, then he scoots back to the last cover
+ *             REACHED in visible steps — B-GAME-07f) | still (nothing moved) |
+ *             blind (sunglasses, the hero kept moving).
  *
  * "Reached" (the fairness rule that makes holding lose): a cover counts as
  * reached once the hero has been at or past it through a look without being
@@ -99,7 +100,12 @@ export const TIMING = {
   /** How long the watcher keeps looking after the grace (B-GAME-07e: 1.1 s;
    *  the comic beat lives in the statue verdict). */
   lookMs: 1100,
-  verdictMs: { statue: 2200, caught: 700, still: 900, blind: 1200 } as Readonly<Record<Verdict, number>>,
+  verdictMs: { statue: 2000, caught: 900, still: 900, blind: 1200 } as Readonly<Record<Verdict, number>>,
+  /** B-GAME-07f: the caught moment — the tumble lands, then the scoot back to
+   *  the cover in `caughtSteps` visible hops, done by `caughtBackMs`. */
+  caughtTumbleMs: 380,
+  caughtBackMs: 760,
+  caughtSteps: 3,
   /** A fake turn = a tell that ends in a giggle instead of a look. */
   fakeLaughMs: 500,
   tagCheerMs: 900,
@@ -684,7 +690,7 @@ function heroPoseOf(s: SneakState): HeroPose {
   if (s.phase === "done") return "hold-up";
   if (s.phase === "tagged") return s.phaseMs < TIMING.tagCheerMs ? "cheer" : "hold-up";
   if (s.phase === "verdict") {
-    if (s.verdict === "caught") return "oops";
+    if (s.verdict === "caught") return s.phaseMs < TIMING.caughtTumbleMs ? "oops" : "tiptoe";
     if (s.verdict === "statue") return s.freezePose;
     return s.movedSinceVerdict && !s.movedDuringLook ? s.freezePose : "idle";
   }
@@ -725,11 +731,25 @@ function handOf(s: SneakState): HandCue | null {
   return null;
 }
 
+/** Where the hero is DRAWN (0..1). The rules put a caught hero back at his
+ *  cover at once; the view lets him tumble where he stood, then scoot back
+ *  in visible hops (B-GAME-07f), never a teleport. */
+function shownProgress(s: SneakState): number {
+  const at = (pos: number) => (s.pathSteps > 0 ? Math.min(1, pos / s.pathSteps) : 0);
+  if (s.phase === "verdict" && s.verdict === "caught" && s.caughtFrom > s.pos) {
+    const T = TIMING;
+    if (s.phaseMs < T.caughtTumbleMs) return at(s.caughtFrom);
+    const hop = Math.min(T.caughtSteps, 1 + Math.floor(((s.phaseMs - T.caughtTumbleMs) / (T.caughtBackMs - T.caughtTumbleMs)) * T.caughtSteps));
+    return at(s.caughtFrom + ((s.pos - s.caughtFrom) * hop) / T.caughtSteps);
+  }
+  return at(s.pos);
+}
+
 export function view(s: SneakState): SneakView {
   const shades = s.sunglasses && (s.phase === "counting" || s.phase === "fake" || s.phase === "tell" || s.phase === "looking" || (s.phase === "verdict" && s.verdict === "blind"));
   return {
     phase: s.phase,
-    progress: s.pathSteps > 0 ? Math.min(1, s.pos / s.pathSteps) : 0,
+    progress: shownProgress(s),
     lurch: s.lurchSerial,
     heroPose: heroPoseOf(s),
     watcher: { pose: watcherPoseOf(s), sunglasses: shades, beat: s.phase === "counting" ? s.beatIndex : -1 },

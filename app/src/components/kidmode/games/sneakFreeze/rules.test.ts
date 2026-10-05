@@ -427,3 +427,38 @@ describe("Sneak & Freeze rules — B-GAME-07e the demonstration and first fun", 
     }
   });
 });
+
+describe("Sneak & Freeze rules — B-GAME-07f the caught moment and the statue beat", () => {
+  it("caught: the tumble lands where he stood, then he scoots back to the cover in visible hops (never a teleport), all within ~900 ms", () => {
+    let seen = 0;
+    for (let n = 0; n < 20 && seen < 5; n++) {
+      // Hold through every look: caught on the first look after moving.
+      let s = startSitting({ seed: `scoot-${n}`, track: "A", level: 1, intro: false });
+      let prev = view(s).progress;
+      const shown: number[] = [];
+      let caught = false;
+      for (let t = 0; t < 20000; t += DT) {
+        s = step(s, DT, { holding: s.phase !== "verdict" });
+        const v = view(s);
+        if (s.events.includes("caught") && s.caughtFrom > s.pos) { caught = true; expect(v.progress).toBeCloseTo(prev, 9); expect(v.heroPose).toBe("oops"); }
+        if (caught && s.phase === "verdict") shown.push(v.progress);
+        if (caught && s.phase !== "verdict") break;
+        prev = v.progress;
+      }
+      if (!caught) continue;
+      seen += 1;
+      const distinct = shown.filter((x, i) => i === 0 || x !== shown[i - 1]);
+      expect(distinct.length).toBe(1 + TIMING.caughtSteps);
+      for (let i = 1; i < distinct.length; i++) expect(distinct[i]).toBeLessThan(distinct[i - 1]);
+      expect(distinct[distinct.length - 1]).toBeCloseTo(s.pos / s.pathSteps, 9);
+      expect(TIMING.verdictMs.caught).toBeLessThanOrEqual(950);
+      expect(TIMING.caughtBackMs).toBeLessThan(TIMING.verdictMs.caught);
+    }
+    expect(seen).toBeGreaterThan(0);
+  });
+
+  it("the statue beat lasts long enough to be funny and never longer than 2.5 s", () => {
+    expect(TIMING.verdictMs.statue).toBeGreaterThanOrEqual(1600);
+    expect(TIMING.verdictMs.statue).toBeLessThanOrEqual(2200);
+  });
+});

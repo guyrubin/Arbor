@@ -10,6 +10,8 @@
  * - `kick` (a counter) plays a lurch squash when it changes: the game's
  *   stepwise travel lands on it.
  * - Idle breathes (scaleY 1 -> 1.015, origin at the feet, 3.2 s).
+ * - B-GAME-07f: the tumble (`oops`) LANDS — a deep squash and rebound at the
+ *   feet; a held statue wobbles +/- 1 deg over 1.2 s.
  * - Contact shadow: a radial ellipse at the feet that shrinks with `lift`.
  * - prefers-reduced-motion: no squash, no breathe (the cut still happens).
  * - Missing pose -> heroSheet FALLBACK; never renders empty.
@@ -32,7 +34,7 @@ export interface HeroFigureProps {
   kick?: number;
   /** Height above the ground (parent units): lifts the figure, shrinks the shadow. */
   lift?: number;
-  /** A tiny statue wobble (+/- 1.5 deg) while true; "tremble" = the held
+  /** A tiny statue wobble (+/- 1 deg, 1.2 s) while true; "tremble" = the held
    *  breath while the watcher looks (+/- 0.6 deg, quicker). */
   wobble?: boolean | "tremble";
   zIndex?: number;
@@ -81,6 +83,11 @@ export function HeroFigure({ pose, height, sheet, x, y, kick = 0, lift = 0, wobb
     lastShown.current = shown;
     lastKick.current = kick;
     if (!el || (!changed && !kicked) || prefersReducedMotion() || typeof el.animate !== "function") return;
+    if (changed && shown === "oops") {
+      // The tumble lands: squash flat, rebound, settle.
+      el.animate([{ transform: "scale(1.22, 0.76)" }, { transform: "scale(0.94, 1.07)", offset: 0.45 }, { transform: "scale(1.03, 0.97)", offset: 0.75 }, { transform: "scale(1, 1)" }], { duration: 320, easing: "ease-out" });
+      return;
+    }
     const squash = kicked ? "scale(1.08, 0.9)" : "scale(1.06, 0.94)";
     el.animate([{ transform: squash }, { transform: squash, offset: 0.45 }, { transform: "scale(1, 1)" }], { duration: kicked ? 150 : 110, easing: "cubic-bezier(0.34, 1.56, 0.64, 1)" });
   }, [shown, kick]);
@@ -94,7 +101,7 @@ export function HeroFigure({ pose, height, sheet, x, y, kick = 0, lift = 0, wobb
       return () => a.cancel();
     }
     if (wobble) {
-      const deg = wobble === "tremble" ? 0.6 : 1.5;
+      const deg = wobble === "tremble" ? 0.6 : 1;
       const a = el.animate([{ transform: `rotate(${-deg}deg)` }, { transform: `rotate(${deg}deg)` }, { transform: `rotate(${-deg}deg)` }], { duration: wobble === "tremble" ? 700 : 1200, iterations: Infinity, easing: "ease-in-out" });
       return () => a.cancel();
     }
