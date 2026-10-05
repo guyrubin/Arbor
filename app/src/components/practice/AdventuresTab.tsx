@@ -6,9 +6,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { ADVENTURE_SCENARIOS, fillTemplate, scenariosForAge, type AdventureScenario } from "../../practice/content";
 import { usePracticeData } from "../../practice/usePracticeData";
 import type { AdventureResult } from "../../types";
-import { api } from "../../lib/api";
 import { track } from "../../lib/analytics";
-import { useAsyncAction } from "../../hooks/useAsyncAction";
 import { RegisterShell, PlayButton, PlayPanel, ChoiceTile, ProgressPips, MascotSay, Celebrate } from "../ui/playkit";
 import { SpeakButton } from "../ui/SpeakButton";
 import { useKidSafeNav } from "../kidmode/useKidSafeNav";
@@ -38,7 +36,7 @@ const CURATED_IDS: ReadonlySet<string> = new Set(ADVENTURE_SCENARIOS.map((s) => 
  * Wrong answers get warm scaffolding and a retry — there is no "fail" state.
  */
 export default function AdventuresTab() {
-  const { childProfile, openPaywall } = useArbor();
+  const { childProfile } = useArbor();
   const { t, uiLang } = useLanguage();
   const isRtl = uiLang === "he";
   // KID-05: the comic CTA on the win screen needs the parent shell; null in Kid Mode → not rendered.
@@ -55,32 +53,13 @@ export default function AdventuresTab() {
     CURATED_IDS.has(s.id) ? t(`elev.practice.adventures.title.${s.id}`) : s.title;
 
   const ageScenarios = useMemo(() => scenariosForAge(childProfile.age), [childProfile.age]);
-  // Generated adventures (this session) sit alongside the curated ones.
-  const [generated, setGenerated] = useState<AdventureScenario[]>([]);
-  const scenarios = useMemo(() => [...generated, ...ageScenarios], [generated, ageScenarios]);
+  // B-KID-32 (KC-21): the Story Quest GENERATOR is gone from the kid register
+  // (a model call behind a child's tap, a dead tap at quota and a paywall left
+  // queued for the parent). The curated stories are the whole world; the
+  // generator retires with B-KID-82 (Story Quest folds into the library).
+  const scenarios = ageScenarios;
   const [activeId, setActiveId] = useState<string | null>(null);
   const scenario: AdventureScenario | null = scenarios.find((s) => s.id === activeId) ?? null;
-
-  // M4: loading + friendly error + start/success/error analytics ("adventure_create_*").
-  // A 402 opens the paywall (conversion moment) instead of an inline error.
-  const adventureGen = useAsyncAction(
-    "adventure_create",
-    () => api.generateAdventure({ childProfile }),
-    {
-      fallbackError: t("gen.adventure.fail"),
-      onPaywall: (err) => openPaywall(err.feature || "adventureGenerate", err.plan),
-    },
-  );
-  const generating = adventureGen.loading;
-  const genError = adventureGen.error;
-
-  const createAdventure = async () => {
-    const adv = await adventureGen.run();
-    if (!adv) return;
-    setGenerated((prev) => [adv, ...prev]);
-    track("adventure_generated", { id: adv.id });
-    openScenario(adv.id);
-  };
 
   const [sceneIdx, setSceneIdx] = useState(0);
   const [picked, setPicked] = useState<string | null>(null);
@@ -210,35 +189,6 @@ export default function AdventuresTab() {
       headerVariant="compact"
       eyebrow={kidMode ? t("elev.kids.mission") : undefined}
     >
-
-      {/* Make-a-new-adventure CTA */}
-      {!scenario && (
-        <PlayPanel tone="lav" className="flex flex-wrap items-center gap-4">
-          <span className="grid place-items-center w-14 h-14 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
-            <Icon name="auto_fix_high" size={28} />
-          </span>
-          <div className="flex-1 min-w-[200px]">
-            <p className="text-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("elev.practice.adventures.gen.title")}</p>
-            <p className="text-[13px] font-semibold" style={{ color: "var(--arbor-muted)" }}>{t("elev.practice.adventures.gen.sub", { name: first })}</p>
-          </div>
-          {/* W2-SHELLPLAY critic r1: on the parent page the generator is a soft
-              secondary — never the page's dominant control. */}
-          <PlayButton onClick={createAdventure} disabled={generating} tone="lav" variant={kidMode ? "primary" : "soft"}>
-            <Icon name="auto_awesome" size={16} /> {generating ? t("elev.practice.adventures.gen.creating") : t("elev.practice.adventures.gen.create")}
-          </PlayButton>
-          {genError &&
-            (kidMode ? (
-              /* OBJ-KID-04: no error code, no "AI", no "try again later" — the
-                 adventure is simply napping, and the four curated stories below
-                 are still one tap away. */
-              <div role="status" aria-live="polite" className="w-full">
-                <MascotSay mood="think" tone="yellow">{t("elev.play.adventures.napping")}</MascotSay>
-              </div>
-            ) : (
-              <p className="w-full text-[13px] font-semibold" style={{ color: "var(--arbor-pink-ink)" }}>{genError}</p>
-            ))}
-        </PlayPanel>
-      )}
 
       {/* item 11 (IA-02): the surface contract reaches the DOM. `data-module`
           marks a top-level sibling module (counted against the route's

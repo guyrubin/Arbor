@@ -522,7 +522,13 @@ function useArborState() {
   // MON-2 paywall: a 402 (PaywallError) opens an inline upgrade prompt instead
   // of surfacing as an error. Tracks which feature was hit + the suggested plan.
   const [paywall, setPaywall] = useState<{ open: boolean; feature?: string; suggestedPlan?: "plus" | "family" }>({ open: false });
-  const openPaywall = (feature?: string, suggestedPlan?: "plus" | "family") => setPaywall({ open: true, feature, suggestedPlan });
+  // B-KID-32 (KC-21): a paywall is a PARENT moment. While Kid Mode is open a
+  // 402 from a kid surface opens nothing — and nothing is queued for the
+  // parent's exit (the modal used to pop up after the grown-up unlocked).
+  const openPaywall = (feature?: string, suggestedPlan?: "plus" | "family") => {
+    if (isKidModeActive()) return;
+    setPaywall({ open: true, feature, suggestedPlan });
+  };
   const closePaywall = () => setPaywall((p) => ({ ...p, open: false }));
 
   // Form states: Log Behavior

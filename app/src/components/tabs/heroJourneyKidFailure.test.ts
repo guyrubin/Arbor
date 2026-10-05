@@ -88,14 +88,11 @@ describe("OBJ-KID-04 — the Hero Story Play failure answers the child", () => {
   });
 });
 
-describe("OBJ-KID-04 — the Story Quest Create failure answers the child", () => {
-  it("branches the generate error on Kid Mode and keeps the parent string for the parent", () => {
+describe("OBJ-KID-04 -> B-KID-32 — Story Quest has no Create in front of the child", () => {
+  it("B-KID-32 (KC-21): the generator, its failure line and its paywall hook are gone (superseding the OBJ-KID-04 kid failure branch)", () => {
     expect(adventures).toContain("const kidMode = useSyncExternalStore(subscribeKidMode, isKidModeActive, isKidModeActive);");
-    expect(adventures).toMatch(/\{genError &&\s*\n\s*\(kidMode \? \(/);
-    expect(adventures).toContain('<MascotSay mood="think" tone="yellow">{t("elev.play.adventures.napping")}</MascotSay>');
-    expect(adventures).toContain('<div role="status" aria-live="polite" className="w-full">');
-    // …and the parent branch still prints the real, actionable message.
-    expect(adventures).toContain("{genError}</p>");
+    expect(adventures).not.toMatch(/createAdventure|generateAdventure|genError|openPaywall|elev\.practice\.adventures\.gen\./);
+    expect(adventures).toContain("const scenarios = ageScenarios;");
   });
 
   it("negative control — the pre-fix single-branch error line has no kid path", () => {
