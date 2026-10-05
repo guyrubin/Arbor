@@ -63,7 +63,9 @@ describe("the sticker: existing art, die-cut", () => {
   it("a world's sticker is its card; a book's is its cover (or the Tonight card) — never another theme", () => {
     expect(souvenirArt({ kind: "world", refId: "memory" }, "film3d")!.src480).toContain("game-memory");
     expect(souvenirArt({ kind: "book", refId: "noahs-ark" }, "film3d")!.src480).toContain("noahs-ark");
-    expect(souvenirArt({ kind: "book", refId: "the-lantern-path" }, "film3d")!.provenanceId).toBe("film3d-card:arbor-academy-play-hero-bg");
+    // B-KID-131 re-pin: film3d covers every book now; the Tonight-card fallback is proven on a storybook book without a cover.
+    expect(souvenirArt({ kind: "book", refId: "the-lantern-path" }, "film3d")!.provenanceId).toBe("film3d-card:story-the-lantern-path");
+    expect(souvenirArt({ kind: "book", refId: "noahs-ark" }, "storybook")!.provenanceId).toBe("world-art-v2:tonight-story");
     expect(souvenirArt({ kind: "world", refId: "memory" }, "storybook")!.provenanceId).toBe("world-art-v2:mind-vault");
   });
   it("round: a CSS mask on the picture and a token border, decorative", () => {

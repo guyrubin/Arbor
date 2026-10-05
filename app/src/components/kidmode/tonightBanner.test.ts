@@ -18,7 +18,9 @@ describe("B-KID-42: the banner art is tonight's story cover", () => {
     expect(worldArtwork("story-noahs-ark", "film3d")?.src).toContain("/cards/web/story-noahs-ark-480.webp");
     expect(worldArtwork("story-noahs-ark", "storybook")).toBeUndefined();
     expect(worldArtwork("story-the-lantern-path", "storybook")?.src).toContain("lantern-path-v1-480.webp");
-    expect(worldArtwork("story-the-lantern-path", "film3d")).toBeUndefined();
+    // B-KID-131 re-pin: film3d now has its own lantern-path cover; it is never the storybook plate.
+    expect(worldArtwork("story-the-lantern-path", "film3d")?.src).toContain("/cards/web/story-the-lantern-path-480.webp");
+    expect(worldArtwork("story-the-lantern-path", "film3d")?.src).not.toContain("/stories/v1/");
   });
   it("the banner picks the cover when the theme has it, else the kid-quest tile", () => {
     expect(dash).toContain("kidArt(kidTheme, storyCoverKey(tonightsStory.id)) ? `story-${tonightsStory.id}` : \"kid-quest\"");

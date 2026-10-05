@@ -17,6 +17,7 @@ import { kidArt, storyCoverKey } from "../../lib/kidThemeManifest";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const film3dCover = (id: string) => kidArt("film3d", storyCoverKey(id)) !== null;
+const storybookCover = (id: string) => kidArt("storybook", storyCoverKey(id)) !== null;
 const EMOJI = /\p{Extended_Pictographic}/u;
 
 describe("kidBooks — the one list", () => {
@@ -34,19 +35,21 @@ describe("kidBooks — the one list", () => {
   });
 
   it("opened books lead, most recent first; then illustrated before title cards", () => {
-    const books = kidBooks({
-      lang: "en", ageMonths: 60, showAllAges: false, hasCover: film3dCover,
-      runs: [
-        { storyId: "noahs-ark", completedAt: "2026-09-01T18:00:00Z" },
-        { storyId: "the-lantern-path", completedAt: "2026-09-03T18:00:00Z" },
-      ],
-    });
+    // B-KID-131 re-pin: film3d covers every story, so the mixed shelf is proven
+    // in the storybook theme (3 covers); film3d has no title cards at all.
+    const runs = [
+      { storyId: "noahs-ark", completedAt: "2026-09-01T18:00:00Z" },
+      { storyId: "the-lantern-path", completedAt: "2026-09-03T18:00:00Z" },
+    ];
+    const books = kidBooks({ lang: "en", ageMonths: 60, showAllAges: false, hasCover: storybookCover, runs });
     expect(books.slice(0, 2).map((b) => [b.story.id, b.state])).toEqual([["the-lantern-path", "finished"], ["noahs-ark", "finished"]]);
     const rest = books.slice(2);
-    const firstTitleCard = rest.findIndex((b) => !film3dCover(b.story.id));
+    const firstTitleCard = rest.findIndex((b) => !storybookCover(b.story.id));
     expect(firstTitleCard).toBeGreaterThan(0);
-    expect(rest.slice(firstTitleCard).every((b) => !film3dCover(b.story.id))).toBe(true);
+    expect(rest.slice(firstTitleCard).every((b) => !storybookCover(b.story.id))).toBe(true);
     expect(rest.every((b) => b.state === "new")).toBe(true);
+    const film = kidBooks({ lang: "en", ageMonths: 60, showAllAges: false, hasCover: film3dCover, runs });
+    expect(film.every((b) => film3dCover(b.story.id))).toBe(true);
   });
 
   it("every story appears at most once (a re-read is one book)", () => {
@@ -93,8 +96,9 @@ describe("KidBookCover — the one cover", () => {
   });
 
   it("a story with no cover in the theme gets the designed title card: tokens only, no emoji, never another theme's file", () => {
-    expect(film3dCover("the-lantern-path")).toBe(false);
-    const html = renderToStaticMarkup(<KidBookCover {...base} storyId="the-lantern-path" layout="row" />);
+    // B-KID-131 re-pin: every story has a film3d cover; a cover-less story is a storybook one.
+    expect(storybookCover("noahs-ark")).toBe(false);
+    const html = renderToStaticMarkup(<KidBookCover {...base} theme="storybook" storyId="noahs-ark" title="Noah's Ark" layout="row" />);
     expect(html).toContain("data-kid-book-titlecard");
     expect(html).not.toContain("<img");
     expect(html).not.toContain("/visuals/");

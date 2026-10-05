@@ -10,17 +10,7 @@ import type { KidArtKey, KidThemeId } from "./kidThemeManifest";
 
 export const KID_ART_GAPS: Record<KidThemeId, readonly KidArtKey[]> = {
   film3d: [
-    "story.the-broken-music-box.cover",
-    "story.the-found-acorn-crown.cover",
-    "story.the-two-gifts.cover",
-    "story.leave-the-tent.cover",
-    "story.the-two-paths-through-the-meadow.cover",
-    "story.the-two-mothers-and-the-quiet-judge.cover",
-    "story.the-tyrant-and-the-town.cover",
-    "story.the-friendly-monster.cover",
-    "story.the-lantern-path.cover",
-    "story.the-cloud-orchestra.cover",
-    "story.the-little-bridge-builders.cover",
+    // B-KID-131: every story now has its film3d cover (no story gaps left).
     // B-KID-94: the finish moment's stock hero (film3d: commit the dylan-hero-avatar-480/1024 web derivatives, then map it here)
     "hero.portrait",
   ],

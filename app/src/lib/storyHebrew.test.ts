@@ -84,7 +84,8 @@ describe("B-KID-23: the AI-first-pass Hebrew stories", () => {
 describe("B-KID-23 + B-KID-46: a Hebrew child gets the illustrated stories again", () => {
   it("every story with a film3d cover, and the whole catalogue, can be told in Hebrew", () => {
     const covered = HERO_STORIES.filter((s) => kidArt("film3d", storyCoverKey(s.id)));
-    expect(covered.length).toBe(10);
+    // B-KID-131 re-pin: all 21 stories carry a film3d cover (was the first 10).
+    expect(covered.length).toBe(HERO_STORIES.length);
     for (const s of covered) expect(storyHasLanguage(s, "he"), s.id).toBe(true);
     expect(storiesForLanguage(HERO_STORIES, "he")).toHaveLength(HERO_STORIES.length);
   });

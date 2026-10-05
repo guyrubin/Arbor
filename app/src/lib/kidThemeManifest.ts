@@ -114,10 +114,19 @@ const FILM3D_STORY_COVERS = [
   "jonah-and-the-great-fish", "the-dragon-of-responsibility", "joseph-and-his-brothers",
   "jacob-wrestling-the-angel", "the-garden-of-forgotten-seeds", "king-solomons-choice",
 ] as const;
+/** B-KID-131: the eleven later covers. Their large derivative is 832×1248
+ *  (2:3, a taller portrait than the first ten's 1024×1365 3:4), so the srcSet
+ *  descriptor says 832w. In the 3:4 book frame an object-fit cover crop trims
+ *  ~11% of the height; the 30% focal point keeps the hero's face in frame. */
+const FILM3D_STORY_COVERS_2X3 = [
+  "the-broken-music-box", "the-found-acorn-crown", "the-two-gifts", "leave-the-tent",
+  "the-two-paths-through-the-meadow", "the-two-mothers-and-the-quiet-judge", "the-tyrant-and-the-town",
+  "the-friendly-monster", "the-lantern-path", "the-cloud-orchestra", "the-little-bridge-builders",
+] as const;
 
 export const KID_THEME_MANIFEST: Record<KidThemeId, Partial<Record<KidArtKey, KidArt>>> = {
   film3d: {
-    "world.speech.tile": film("game-speech"),
+    "world.speech.tile": film("game-speech", "50% 22%", 1023),
     "world.feelings.tile": film("game-feelings"),
     "world.memory.tile": film("game-memory"),
     "world.beat.tile": film("game-beat"),
@@ -133,6 +142,7 @@ export const KID_THEME_MANIFEST: Record<KidThemeId, Partial<Record<KidArtKey, Ki
     "world.kid-hero.tile": film("game-aim-map", "50% 30%"),
     "world.kid-quest.tile": film("arbor-academy-play-hero-bg", "50% 62%", 941, false),
     ...Object.fromEntries(FILM3D_STORY_COVERS.map((id) => [storyCoverKey(id), film(`story-${id}`, "50% 30%")])),
+    ...Object.fromEntries(FILM3D_STORY_COVERS_2X3.map((id) => [storyCoverKey(id), film(`story-${id}`, "50% 30%", 832)])),
     "home.stage": film("kid-discovery-garden-v2", "50% 50%", 1024, false),
   },
   storybook: {

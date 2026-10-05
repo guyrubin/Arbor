@@ -41,6 +41,33 @@ describe("B-KID-70 (a): every manifest file exists on disk", () => {
   });
 });
 
+/** Pixel width of a WebP file, read from its header (VP8 / VP8L / VP8X). */
+function webpWidth(file: string): number {
+  const b = readFileSync(file);
+  expect(b.toString("ascii", 0, 4)).toBe("RIFF");
+  expect(b.toString("ascii", 8, 12)).toBe("WEBP");
+  const chunk = b.toString("ascii", 12, 16);
+  if (chunk === "VP8 ") return b.readUInt16LE(26) & 0x3fff;
+  if (chunk === "VP8L") return 1 + (b.readUInt16LE(21) & 0x3fff);
+  if (chunk === "VP8X") return 1 + b.readUIntLE(24, 3);
+  throw new Error(`${file}: unknown WebP chunk ${chunk}`);
+}
+
+describe("B-KID-131: the srcSet descriptor is each file's real width", () => {
+  it.each(KID_THEME_IDS.map((t) => [t]))("%s", (theme) => {
+    for (const [key, art] of Object.entries(KID_THEME_MANIFEST[theme])) {
+      expect(webpWidth(path.join(PUBLIC, art!.src)), `${theme} ${key} ${art!.src}`).toBe(art!.width);
+      expect(webpWidth(path.join(PUBLIC, art!.src480)), `${theme} ${key} ${art!.src480}`).toBe(480);
+    }
+  });
+  it("film3d covers every story (the eleven 2:3 covers are 832w)", () => {
+    for (const s of HERO_STORIES) expect(kidArt("film3d", storyCoverKey(s.id)), s.id).not.toBeNull();
+    expect(kidArt("film3d", storyCoverKey("the-lantern-path"))?.width).toBe(832);
+    expect(kidArt("film3d", storyCoverKey("noahs-ark"))?.width).toBe(1024);
+    expect(themeCoverage("film3d").missing.filter((k) => k.startsWith("story."))).toEqual([]);
+  });
+});
+
 describe("B-KID-70 (b): coverage + the reviewed list of images to create", () => {
   it("KID_ART_GAPS equals what each theme is missing (re-review on any change)", () => {
     for (const theme of KID_THEME_IDS) {
