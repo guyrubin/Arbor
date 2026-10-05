@@ -16,7 +16,7 @@
  *   owns its 3:4 window, its text zone and its choice-card focus rects (BR6).
  * - Page types: "facing" (art page + text page) and "spread" (the whole plate
  *   large, the words on a paper panel in the plate's calm text zone).
- * - `{hero}` in any text is the child's display name, isolated for bidi at
+ * - `{name}` (or the older `{hero}`) in any text is the child's display name, isolated for bidi at
  *   render time (lib/library/bookText.ts). Hebrew has a masculine and a
  *   feminine form; a choice label is one Hebrew infinitive.
  * - A story choice is a story event: nothing here describes the child, and no
@@ -87,6 +87,12 @@ export interface RepairItem {
   plateDetailAfter?: string;
   /** A short sound on the tap (a public URL), when a file exists. */
   sound?: string;
+  /** The line this tap adds to the page ("Off comes the helmet."), shown in
+   *  tap order between the before-text and the after-text. */
+  line?: BookLine;
+  /** The page overlay this item IS (e.g. the helmet): the tap moves that
+   *  overlay to `to` instead of a marker. */
+  overlay?: string;
 }
 
 /** The repair (BR3): the child taps EACH item; every tap answers, nothing can
@@ -98,6 +104,25 @@ export interface Repair {
   textAfter: BookLine;
   heroAfter?: Slot;
   audio?: AudioSet;
+}
+
+/** A separate art layer over the plate (a helmet, a sword, a dust cloud).
+ *  (x, y) = the bottom centre in master fractions; scale = height / plate
+ *  height; aspect = width / height of its box (the image is drawn contain). */
+export interface PageOverlay {
+  id: string;
+  /** Public URL (alpha WebP). */
+  file: string;
+  x: number;
+  y: number;
+  scale: number;
+  aspect?: number;
+  /** "afterNarration": hidden until `revealAt` seconds into the page audio,
+   *  else 1.2 s after it ends, else (silent page) on a tap on the picture. */
+  reveal?: "always" | "afterNarration";
+  revealAt?: number;
+  /** Drawn over the hero (default) or behind it. */
+  z?: "over" | "under";
 }
 
 export type PageType = "facing" | "spread";
@@ -117,6 +142,7 @@ export interface Page {
   /** A closing line after the echo (the last page's "Goodnight."). */
   closing?: BookLine;
   repair?: Repair;
+  overlays?: PageOverlay[];
   audio?: PageAudio;
   touch?: TouchTarget[];
 }
@@ -151,6 +177,8 @@ export interface Book {
   id: string;
   title: BookLabel;
   coverLine: BookLabel;
+  /** The cover's name line ("{name} as David"), gender-neutral. */
+  coverNameLine?: BookLabel;
   /** e.g. "1 Samuel 17". */
   sourceRef: string;
   /** One adult sentence: what the story knows about being a person. */

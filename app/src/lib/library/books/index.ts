@@ -3,16 +3,21 @@
  * their plate tables. Not wired into the production kid library (the proof is
  * reviewed through the DEV route only — components/library/devBookRoute.tsx).
  *
- * - LIBRARY_BOOKS: real books (empty until the David and Goliath file lands,
- *   RULINGS BR1 — add it here with its plate table).
+ * - LIBRARY_BOOKS: real books — "Five Smooth Stones" (the proof, RULINGS BR1).
  * - FIXTURE_BOOKS: "Abram's Long Road", the engine's test fixture, reviewable
  *   on the DEV route.
  */
 import type { BookPlate, PlateTable } from "../bookPlates";
 import type { Book } from "../types";
 import { abramsLongRoad, abramsLongRoadPlates } from "./abramsLongRoad";
+import { fiveSmoothStones, fiveSmoothStonesPlates } from "./fiveSmoothStones";
 
-export const LIBRARY_BOOKS: Readonly<Record<string, Book>> = {};
+export const LIBRARY_BOOKS: Readonly<Record<string, Book>> = {
+  [fiveSmoothStones.id]: fiveSmoothStones,
+};
+
+/** The book the DEV review route opens when none is named. */
+export const DEFAULT_REVIEW_BOOK = fiveSmoothStones.id;
 
 export const FIXTURE_BOOKS: Readonly<Record<string, Book>> = {
   [abramsLongRoad.id]: abramsLongRoad,
@@ -20,6 +25,7 @@ export const FIXTURE_BOOKS: Readonly<Record<string, Book>> = {
 
 /** Plate tables, keyed by book id. */
 export const BOOK_PLATES: Readonly<Record<string, PlateTable>> = {
+  [fiveSmoothStones.id]: fiveSmoothStonesPlates,
   [abramsLongRoad.id]: abramsLongRoadPlates,
 };
 

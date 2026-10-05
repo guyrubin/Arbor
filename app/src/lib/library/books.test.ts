@@ -12,8 +12,9 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { allBooks, BOOK_PLATES, getLibraryBook, getPlate } from "./books";
+import { allBooks, BOOK_PLATES, DEFAULT_REVIEW_BOOK, getLibraryBook, getPlate, LIBRARY_BOOKS } from "./books";
 import { abramsLongRoad } from "./books/abramsLongRoad";
+import { fiveSmoothStones, fiveSmoothStonesGeometry } from "./books/fiveSmoothStones";
 import { PLATE_MASTER } from "./bookPlates";
 import { readPath } from "./bookFlow";
 import type { Book, BookLine, Page, Slot } from "./types";
@@ -38,7 +39,8 @@ function allPages(book: Book): Page[] {
 }
 
 function lines(page: Page): BookLine[] {
-  return [page.text, ...Object.values(page.echo ?? {}), ...(page.closing ? [page.closing] : []), ...(page.repair ? [page.repair.textAfter] : [])];
+  const tapLines = (page.repair?.items ?? []).map((it) => it.line).filter((l): l is BookLine => !!l);
+  return [page.text, ...Object.values(page.echo ?? {}), ...(page.closing ? [page.closing] : []), ...(page.repair ? [page.repair.textAfter] : []), ...tapLines];
 }
 
 function slots(page: Page): Slot[] {
@@ -117,7 +119,8 @@ describe.each(allBooks())("book $id", (book) => {
   it("words per page (echo, closing and after-repair text included): EN <= 40, HE <= 34 (RULINGS BR9)", () => {
     const count = (page: Page, pick: (l: BookLine) => string) => {
       const echoMax = Math.max(0, ...Object.values(page.echo ?? {}).map((e) => words(pick(e))));
-      return words(pick(page.text)) + echoMax + (page.closing ? words(pick(page.closing)) : 0) + (page.repair ? words(pick(page.repair.textAfter)) : 0);
+      const taps = (page.repair?.items ?? []).reduce((n, it) => n + (it.line ? words(pick(it.line)) : 0), 0);
+      return words(pick(page.text)) + echoMax + (page.closing ? words(pick(page.closing)) : 0) + (page.repair ? words(pick(page.repair.textAfter)) : 0) + taps;
     };
     for (const page of allPages(book)) {
       const en = count(page, (l) => l.en);
@@ -174,10 +177,12 @@ describe.each(allBooks())("book $id", (book) => {
     }
   });
 
-  it("only the EASY branch has a repair page; its items are unique and >= 1", () => {
+  it("the EASY branch has one repair page, THIRD at most one tap page, HARD none; items unique and >= 1", () => {
     for (const c of book.decision.choices) {
       const repairs = c.branch.filter((p) => p.repair);
-      expect(repairs.length, c.id).toBe(c.type === "easy" ? 1 : 0);
+      if (c.type === "easy") expect(repairs.length, c.id).toBe(1);
+      else if (c.type === "third") expect(repairs.length, c.id).toBeLessThanOrEqual(1);
+      else expect(repairs.length, c.id).toBe(0);
       for (const p of repairs) {
         const ids = p.repair!.items.map((it) => it.id);
         expect(ids.length).toBeGreaterThanOrEqual(1);
@@ -187,10 +192,81 @@ describe.each(allBooks())("book $id", (book) => {
     expect(book.pages.some((p) => p.repair)).toBe(false);
   });
 
+  it("Hebrew is NFC-normalised (nikud kept as written)", () => {
+    for (const page of allPages(book)) for (const l of lines(page)) for (const t of [l.he.m, l.he.f]) expect(t, page.id).toBe(t.normalize("NFC"));
+    expect(book.title.he).toBe(book.title.he.normalize("NFC"));
+  });
+
   it("the parent panel is complete in both languages", () => {
     const pp = book.parent;
     for (const l of [pp.builds, pp.why, pp.sourceNote]) expect(l.en && l.he).toBeTruthy();
     expect(pp.askAfter.en && pp.askAfter.he.m && pp.askAfter.he.f).toBeTruthy();
+  });
+});
+
+describe("Five Smooth Stones (the proof) — manuscript specifics", () => {
+  const book = fiveSmoothStones;
+  const pagesOf = allPages(book);
+  const byId = Object.fromEntries(pagesOf.map((p) => [p.id, p]));
+
+  it("is the default review book and a real library book", () => {
+    expect(DEFAULT_REVIEW_BOOK).toBe(book.id);
+    expect(LIBRARY_BOOKS[book.id]).toBe(book);
+  });
+
+  it("read paths are 10 / 11 / 11 screens (cover included)", () => {
+    const screens = (cid: string) => 1 + readPath(book, cid).length;
+    expect(screens("a")).toBe(10);
+    expect(screens("b")).toBe(11);
+    expect(screens("c")).toBe(11);
+  });
+
+  it("page types: spread for the cover, p5, p9, p10; facing elsewhere", () => {
+    const spreads = pagesOf.filter((p) => p.type === "spread").map((p) => p.id).sort();
+    expect(spreads).toEqual(["cover", "p10", "p5", "p9"]);
+  });
+
+  it("uses the 9 plates of §5.1 (4 of them edits) and the 9 poses of §5.2", () => {
+    expect(new Set(pagesOf.map((p) => p.plateId))).toEqual(new Set(["PL1", "PL1b", "PL1d", "PL3", "PL3w", "PL4", "PL4e", "PL6", "PL7"]));
+    const variants = Object.values(BOOK_PLATES[book.id]).filter((p) => p.variantOf).map((p) => p.id).sort();
+    expect(variants).toEqual(["PL1b", "PL1d", "PL3w", "PL4e"]);
+    const poses = new Set(pagesOf.flatMap((p) => slots(p).map((s) => s.pose)));
+    expect([...poses].sort()).toEqual(["armour-stuck", "free-stretch", "kneel", "look-up", "run-staff", "sit", "sling-swing", "walk-bag", "worried"]);
+    expect(Object.keys(getPlate(book.id, "PL4")!.focus ?? {}).sort()).toEqual(["a", "b", "c"]);
+  });
+
+  it("the name appears only on the cover name line and the p1 / p10 frame lines; HE-f differs only there", () => {
+    const hasName = (t: string) => t.includes("{name}");
+    const withName = pagesOf.filter((p) => lines(p).some((l) => hasName(l.en + l.he.m + l.he.f))).map((p) => p.id).sort();
+    expect(withName).toEqual(["p1", "p10"]);
+    expect(hasName(book.coverNameLine?.en ?? "")).toBe(true);
+    for (const p of pagesOf) {
+      for (const l of lines(p)) {
+        if (l.he.m === l.he.f) continue;
+        expect(["p1", "p10"], `${p.id} HE-f differs`).toContain(p.id);
+      }
+    }
+    expect(byId.p1.text.he.f).toContain("היא דוד");
+    expect(byId.p10.closing!.he.f).toContain("הייתה דוד");
+  });
+
+  it("p7b repairs by three taps (helmet, coat, sword) with a line each; p7c by one 'Stand up!'", () => {
+    expect(byId.p7b.repair!.items.map((it) => it.id)).toEqual(["helmet", "coat", "sword"]);
+    expect(byId.p7b.repair!.items.every((it) => it.line)).toBe(true);
+    expect(byId.p7b.repair!.heroAfter!.pose).toBe("free-stretch");
+    expect(byId.p7c.repair!.items).toHaveLength(1);
+    expect(byId.p7c.repair!.promptLabel).toEqual({ en: "Stand up!", he: "לקום!" });
+    expect(byId.p6b.overlays!.map((o) => o.id)).toEqual(["helmet", "sword"]);
+    expect(byId.p9.overlays!.find((o) => o.id === "dust")?.reveal).toBe("afterNarration");
+  });
+
+  it("geometry comes from the one geometry object (overwritable JSON)", () => {
+    expect(byId.p1.hero).toMatchObject(fiveSmoothStonesGeometry.pages.p1.hero!);
+    expect(getPlate(book.id, "PL4")!.focus).toEqual(fiveSmoothStonesGeometry.plates.PL4.focus);
+  });
+
+  it("no divine name in the HE text (17:45 is quoted only in its first half)", () => {
+    for (const page of pagesOf) for (const l of lines(page)) expect(`${l.he.m}${l.he.f}`).not.toMatch(/יהוה|יְהוָה|צְבָאוֹת/);
   });
 });
 

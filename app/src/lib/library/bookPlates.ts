@@ -91,6 +91,12 @@ export function plateSources(p: BookPlate, opts: { dev: boolean }): string[] {
   return opts.dev ? [p.file, devPlaceholderPath(p.bookId, p.id)] : [p.file];
 }
 
+/** The sources of an overlay layer: its own file, then (DEV only) the
+ *  placeholder convention `public/_dev/overlays/<bookId>/<overlayId>.webp`. */
+export function overlaySources(bookId: string, overlay: { id: string; file: string }, opts: { dev: boolean }): string[] {
+  return opts.dev ? [overlay.file, `/_dev/overlays/${bookId}/${overlay.id}.webp`] : [overlay.file];
+}
+
 /** CSS background geometry that shows `rect` of a plate inside a box of
  *  `boxW` x `boxH` px (cover-fit, centred on the rect, never stretched). */
 export function focusBackground(p: Pick<BookPlate, "width" | "height">, rect: PlateRect, boxW: number, boxH: number): { size: string; position: string } {
