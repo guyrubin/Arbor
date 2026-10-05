@@ -48,7 +48,7 @@ import { consumeTonightMode, type TonightMode } from "../../lib/tonightMode";
 import HeroCrest from "../ui/HeroCrest";
 import { ArborMascot } from "../ui/ArborMascot";
 import WorldScene from "../practice/WorldScene";
-import { chooseTonightsStory } from "../kidmode/tonightsStory";
+import { pickTonightsStory, TONIGHT_AIM_REASON_KEY } from "../kidmode/tonightsStory";
 import { dayKey } from "../../practice/signals";
 import { PageHeader, cardCls } from "../ui/kit";
 import { T, METRIC_VARS } from "../../lib/tokens";
@@ -607,8 +607,18 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
     // so both surfaces name the same story all day. A pinned request (the kid
     // banner deep-link) wins; otherwise the day pick, and only if it survives
     // this surface's own age view — never a story written for another age.
-    const tonightId = pinned?.id ?? chooseTonightsStory(dayKey(new Date()), childProfile.id);
-    const tonightStory = ageCandidates.find((x) => x.id === tonightId) ?? ageCandidates[0];
+    // B-PLAY-16: the pick comes from the family — age view, unread first
+    // (heroRuns), the charter's aims, then the day hash — with the SAME inputs
+    // the kid home passes, so both name the same story. The reason is shown.
+    const tonightPick = pickTonightsStory(dayKey(new Date()), childProfile.id, {
+      readIds: runs.map((r) => r.storyId), aims, ageMonths: childMonths, showAllAges,
+    });
+    const tonightStory = pinned ?? tonightPick.story ?? undefined;
+    const tonightReason = pinned ? null : tonightPick.reason;
+    const tonightReasonLine =
+      tonightReason?.kind === "aim" ? t(TONIGHT_AIM_REASON_KEY[tonightReason.metric])
+      : tonightReason?.kind === "unread" ? t("elev.stories.tonight.reason.unread", { name })
+      : "";
     const tonightArt = (tonightStory && STORY_ART[tonightStory.id]) ?? { emoji: "⭐", sfx: "POW!", sfxHe: "פאו!" };
     const hiddenAgeMin = ageHiddenStories.length
       ? Math.min(...ageHiddenStories.map((s) => s.ageRange[0]))
@@ -962,6 +972,12 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
               <span className="block text-[1.35rem] font-extrabold leading-tight mt-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
                 {tonightStory ? (he ? tonightStory.titleHe : tonightStory.title) : t("elev.stories.catalogue.title")}
               </span>
+              {/* B-PLAY-16: why THIS story tonight — from the family's own record. */}
+              {tonightReasonLine && (
+                <span data-testid="stories-tonight-reason" className="block mt-1.5 text-[12.5px] font-bold" style={{ color: "var(--arbor-green-ink)" }} dir="auto">
+                  {tonightReasonLine}
+                </span>
+              )}
               {/* B-PLAY-11: why tonight's story — the grown-up insight, under the
                   title and before Play, in the parent's UI language. */}
               {tonightStory?.parentInsight && (

@@ -66,11 +66,11 @@ describe("§3f row 3 — the parent door leads with tonight's cover", () => {
     expect(parent.length).toBeGreaterThan(2000);
   });
 
-  it("reuses chooseTonightsStory — the kid home's helper, same day key, same seed", () => {
-    expect(HERO).toContain('import { chooseTonightsStory } from "../kidmode/tonightsStory";');
-    expect(HERO).toMatch(/chooseTonightsStory\(dayKey\(new Date\(\)\), childProfile\.id\)/);
+  it("reuses the kid home's tonightsStory helper — same day key, same seed (B-PLAY-16: + the same family inputs)", () => {
+    expect(HERO).toContain('import { pickTonightsStory, TONIGHT_AIM_REASON_KEY } from "../kidmode/tonightsStory";');
+    expect(HERO).toMatch(/pickTonightsStory\(dayKey\(new Date\(\)\), childProfile\.id, \{/);
     // The kid home seeds it the same way, so both surfaces name one story.
-    expect(KID_HOME).toMatch(/chooseTonightsStory\(data\.today, childProfile\.id\)/);
+    expect(KID_HOME).toMatch(/chooseTonightsStory\(data\.today, childProfile\.id, \{/);
   });
 
   it("stamps ONE dominant cover as the first module, carrying the declared move", () => {

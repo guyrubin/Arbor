@@ -26,6 +26,14 @@ export const en: Record<string, string> = {
   "elev.stories.tonight.mode.label": "Tonight's story",
   "elev.stories.tonight.mode.today": "From today",
   "elev.stories.tonight.mode.hero": "A hero adventure",
+  // B-PLAY-16: why tonight's story — from the family's own record.
+  "elev.stories.tonight.reason.aim.courage": "A courage story — your family chose courage",
+  "elev.stories.tonight.reason.aim.responsibility": "A responsibility story — your family chose responsibility",
+  "elev.stories.tonight.reason.aim.resilience": "A resilience story — your family chose resilience",
+  "elev.stories.tonight.reason.aim.empathy": "A kindness story — your family chose kindness",
+  "elev.stories.tonight.reason.aim.wisdom": "A wisdom story — your family chose wisdom",
+  "elev.stories.tonight.reason.aim.truth": "A truth story — your family chose honesty",
+  "elev.stories.tonight.reason.unread": "One {name} hasn't heard yet",
 };
 
 export const he: Record<string, string> = {
@@ -44,4 +52,11 @@ export const he: Record<string, string> = {
   "elev.stories.tonight.mode.label": "הסיפור של הלילה",
   "elev.stories.tonight.mode.today": "מהיום שלנו",
   "elev.stories.tonight.mode.hero": "הרפתקת גיבורים",
+  "elev.stories.tonight.reason.aim.courage": "סיפור על אומץ — המשפחה שלכם בחרה באומץ",
+  "elev.stories.tonight.reason.aim.responsibility": "סיפור על אחריות — המשפחה שלכם בחרה באחריות",
+  "elev.stories.tonight.reason.aim.resilience": "סיפור על חוסן — המשפחה שלכם בחרה בחוסן",
+  "elev.stories.tonight.reason.aim.empathy": "סיפור על טוב לב — המשפחה שלכם בחרה בטוב לב",
+  "elev.stories.tonight.reason.aim.wisdom": "סיפור על חוכמה — המשפחה שלכם בחרה בחוכמה",
+  "elev.stories.tonight.reason.aim.truth": "סיפור על אמת — המשפחה שלכם בחרה ביושר",
+  "elev.stories.tonight.reason.unread": "סיפור ש{name} עוד לא שמע/ה",
 };

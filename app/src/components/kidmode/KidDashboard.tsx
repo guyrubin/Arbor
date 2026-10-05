@@ -39,6 +39,11 @@ import { HoldExitButton } from "./HoldExitButton";
 import { kidIsolate } from "./kidText";
 import { lastPlayedWorldYesterday } from "./kidGreeting";
 import { chooseTonightsStory } from "./tonightsStory";
+import { useChildCollection } from "../../hooks/useChildCollection";
+import { aimVirtues, loadCharter } from "../../lib/becoming";
+import { loadShowAllAges } from "../../lib/ageFilter";
+import { ageMonthsFromProfile } from "../../lib/childAge";
+import type { HeroJourneyRun } from "../../types";
 import { HERO_STORIES } from "../../lib/heroJourneys";
 import { starEvents } from "../../practice/signals";
 
@@ -337,9 +342,20 @@ export default function KidDashboard({
   // OBJ-KID-05 / KID-25: "Today's adventure" opens ONE story, chosen from the
   // local day so the banner and the surface it opens name the same one all day.
   // HeroJourneyTab still applies its own age view to the request (W0.7).
+  // B-PLAY-16: the SAME inputs the Stories cover passes (read stories, the
+  // charter's aims, the age view) so both name the same story; the reason line
+  // is the parent's and is ignored here.
+  const heroRunsCol = useChildCollection<HeroJourneyRun>(childProfile.id, "heroRuns");
+  const heroReadIds = useMemo(() => heroRunsCol.items.map((r) => r.storyId), [heroRunsCol.items]);
   const tonightsStoryId = useMemo(
-    () => chooseTonightsStory(data.today, childProfile.id),
-    [data.today, childProfile.id],
+    () => chooseTonightsStory(data.today, childProfile.id, {
+      readIds: heroReadIds,
+      aims: aimVirtues(loadCharter()),
+      ageMonths: ageMonthsFromProfile(childProfile),
+      showAllAges: loadShowAllAges("hero-journeys"),
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data.today, childProfile.id, heroReadIds],
   );
   // B-KID-06: the banner names the one story it opens (HE title in Hebrew),
   // instead of "Start a hero story / Pick a world" on a door with no choice.
