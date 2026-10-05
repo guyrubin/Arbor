@@ -38,16 +38,21 @@ describe("B-TODAY-10 · four tiles, each ≥44 px", () => {
     expect(BAR).toMatch(/\{ ms: "mic", key: "voice"/);
     expect(BAR).toMatch(/\{ ms: "photo_camera", key: "photo"/);
     expect(BAR).toContain('data-capture-tile="hard-moment"');
-    expect(BAR).toContain('tiles === 4 ? "grid-cols-4 lg:grid-cols-[1.3fr_1fr_1fr_1fr_1fr]"');
+    // Critic r1: the lead cell reads the BAR's width (@container), never the viewport.
+    expect(BAR).toContain('tiles === 4 ? "grid-cols-4 @3xl:grid-cols-[1.3fr_1fr_1fr_1fr_1fr]"');
+    expect(BAR).toContain('<div className="@container min-w-0">');
+    expect(BAR).not.toMatch(/lg:grid-cols|lg:flex/);
   });
 
-  it("every tile is ≥48 px tall and wraps icon over label below sm (≈89 px wide at 390)", () => {
+  it("every tile is ≥48 px tall and wraps icon over label in a narrow bar (≈89 px wide at 390)", () => {
     expect(BAR).toMatch(/TILE_STYLE = \(ink: string\): React\.CSSProperties =>\s*\(\{ minHeight: 48,/);
     expect((BAR.match(/style=\{TILE_STYLE\(/g) ?? []).length).toBe(3);
-    expect(BAR).toContain("flex-col sm:flex-row");
-    // 358 px / 4 tiles = 89.5 px ≥ 44 px; the label truncates rather than overflow.
+    expect(BAR).toContain("flex-col @2xl:flex-row");
+    // 358 px / 4 tiles = 89.5 px ≥ 44 px. Critic r1: a door label is NEVER
+    // truncated ("Hard mo…", "T…") — it wraps to two lines.
     expect(358 / 4).toBeGreaterThanOrEqual(44);
-    expect(BAR).toContain("max-w-full truncate");
+    expect(BAR).toContain("max-w-full line-clamp-2");
+    expect(BAR).not.toMatch(/truncate/);
   });
 
   it("neutral ink: no peach / red / coral / pink token, no SOS anywhere on the bar", () => {

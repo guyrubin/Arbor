@@ -26,14 +26,19 @@ const AUX_MODES: { ms: string; key: Exclude<CaptureMode, "text">; label: string;
   { ms: "photo_camera", key: "photo", label: "today.capture.photo", shortLabel: "elev.wave2Daily.capture.photo" },
 ];
 
-/** Tile anatomy shared by all four tiles: icon over label below sm (each tile
- *  is ~89 px wide at 390), icon beside label from sm up; ≥48 px tall. */
+/** Tile anatomy shared by all four tiles: icon over label in a narrow
+ *  CONTAINER (each tile ~89 px at 390), icon beside label once the bar itself
+ *  is ≥ 40rem; ≥48 px tall. Critic r1 (P0): the switch reads the bar's own
+ *  width (@container), never the viewport — at 1280 the bar sits in a ~490 px
+ *  column on #/behaviors, where the lg: viewport layout cut every label to
+ *  one letter ("T…", "V…", "P…", "H…"). */
 const TILE =
-  "min-h-[48px] min-w-0 inline-flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2.5 px-1.5 sm:px-3 py-1.5 sm:py-2.5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset";
+  "min-h-[48px] min-w-0 inline-flex flex-col @2xl:flex-row items-center justify-center gap-1 @2xl:gap-2.5 px-1.5 @2xl:px-3 py-1.5 @2xl:py-2.5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset";
 const TILE_STYLE = (ink: string): React.CSSProperties =>
   ({ minHeight: 48, borderColor: RULE, color: ink, ["--tw-ring-color" as string]: GREEN }) as React.CSSProperties;
 const ICON = "flex h-8 w-8 sm:h-9 sm:w-9 flex-none items-center justify-center rounded-full";
-const LABEL = "max-w-full truncate text-[11.5px] sm:text-[12px] font-bold";
+/** A door label is never truncated (critic r1): it wraps to two centred lines. */
+const LABEL = "max-w-full line-clamp-2 break-words text-center leading-tight text-[11.5px] @2xl:text-[12px] font-bold";
 
 export default function QuickCaptureBar({
   childName,
@@ -55,15 +60,16 @@ export default function QuickCaptureBar({
   const tiles = onHardMoment ? 4 : 3;
 
   return (
+    <div className="@container min-w-0">
     <motion.div
       initial={reduce ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={reduce ? { duration: 0 } : { duration: 0.16 }}
       data-capture-tiles={tiles}
-      className={`grid ${tiles === 4 ? "grid-cols-4 lg:grid-cols-[1.3fr_1fr_1fr_1fr_1fr]" : "grid-cols-3 lg:grid-cols-[1.1fr_1fr_1fr_1fr]"} items-stretch overflow-hidden rounded-[18px]`}
+      className={`grid ${tiles === 4 ? "grid-cols-4 @3xl:grid-cols-[1.3fr_1fr_1fr_1fr_1fr]" : "grid-cols-3 @3xl:grid-cols-[1.1fr_1fr_1fr_1fr]"} items-stretch overflow-hidden rounded-[18px]`}
       style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-sm)" }}
     >
-      <div className="hidden lg:flex flex-col justify-center px-5 py-3">
+      <div className="hidden @3xl:flex flex-col justify-center px-5 py-3">
         <span className="text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{t("today.capture.cta")}</span>
       </div>
       <button
@@ -71,7 +77,7 @@ export default function QuickCaptureBar({
         onClick={onText}
         aria-label={t("today.capture.aria", { name: childName })}
         data-capture-tile="text"
-        className={`${TILE} lg:border-s active:scale-[0.99]`}
+        className={`${TILE} @3xl:border-s active:scale-[0.99]`}
         style={TILE_STYLE("var(--arbor-ink)")}
       >
         <span className={ICON} style={{ background: "var(--arbor-tint)", color: "var(--arbor-clay)" }}><Icon name="edit_note" size={19} /></span>
@@ -111,5 +117,6 @@ export default function QuickCaptureBar({
         </button>
       )}
     </motion.div>
+    </div>
   );
 }

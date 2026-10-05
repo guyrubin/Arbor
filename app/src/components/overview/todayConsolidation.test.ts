@@ -141,7 +141,7 @@ describe("W2 Today working density", () => {
     expect(capture).toContain('shortLabel: "elev.wave2Daily.capture.photo"');
     expect(capture).toContain('aria-label={t(label)}');
     expect(capture).toContain('{t("elev.capture.hard.tile")}</span>');
-    expect(capture).toMatch(/const LABEL = "max-w-full truncate text-\[11\.5px\] sm:text-\[12px\] font-bold";/);
+    expect(capture).toMatch(/const LABEL = "max-w-full line-clamp-2 break-words text-center leading-tight text-\[11\.5px\] @2xl:text-\[12px\] font-bold";/);
     expect(capture).not.toContain("hidden sm:inline");
     expect(capture).not.toContain("hidden lg:inline");
     expect(compactHero).toContain("HeroAvatar size={40}");
