@@ -355,7 +355,7 @@ describe("W2-SHELLPLAY r2 · #/stories — Builds is a glance, and one moment li
     // the quote glyphs sit INSIDE the bdi (RTL no longer reverses them)
     expect(line).toContain("“{notedMoment.text}”</bdi>");
     expect(line).not.toMatch(/--gradient-cta|data-primary-move|data-module|<button|onClick/);
-    expect(section).toContain('!kidMode && tonightMode !== "today" && notedMoment && (');
+    expect(section).toContain('!kidMode && notedMoment && (');
     // NEGATIVE CONTROL: the r3 band's second door is gone
     expect(section).not.toContain("stories-tonight-noted-cta");
     expect(section).not.toContain("elev.stories.tonight.notedCta");
