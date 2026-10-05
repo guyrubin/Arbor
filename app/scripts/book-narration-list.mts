@@ -78,10 +78,10 @@ lines.push("```", `${DEV_NARRATION_ROOT}/${book.id}/${voiceKey}/<en | he-m | he-
 lines.push(`- \`voiceKey\` = the hero sheet id (\`${voiceKey}\`), else the child id — the files say the child's name.`);
 lines.push(`- Format: **MP3**. One whole-page render per file; no stitching (RULINGS BR8). \`{name}\` = the child's display name, spoken.`);
 lines.push(`- The reader plays a file only if it exists; a missing file = silence (never TTS). Hebrew: native review owed; never speak a divine name other than as written.`);
-lines.push(`- Repair pages are split as the reader plays them: before-text on page show → each item's line on its tap (any order) → after-text when all are done.`);
+lines.push(`- Repair pages are split as the reader plays them: before-text on page show → each item's line on its tap (in the fixed order where the book sets one) → after-text when all are done.`);
 lines.push(`- Echo pages (rejoin, ending) have one file per path: page text + that path's echo (+ the closing frame line on the last page).`);
 lines.push(`- Not played by the reader (safe to delete): \`p7b-item.<id>.mp3\` (duplicates of \`p7b-<id>.mp3\`).`);
-lines.push(`- Pages with an after-narration overlay (p9's dust cloud on "BOOM") start the reveal 1.2 s before the file ends (on \`ended\` if the duration is unknown; 5 s after the page shows when silent); report the BOOM timestamp per file and it can be set as \`revealAt\` instead.`, ``);
+lines.push(`- Pages with an after-narration overlay (p9's dust cloud on "BOOM") start the reveal 1.2 s before the file ends (on \`ended\` if the duration is unknown; 5 s after the page shows when silent); report the BOOM timestamp per file and it can be set as \`revealAt\` instead. p9's third picture state (v2, "the soldiers rise") is picture-only: it comes ~2 s after the dust (3 s when silent) and needs no file.`, ``);
 for (const v of VOICES) {
   const r = rows(v);
   lines.push(`## ${v.label} — folder \`${v.lang === "he" ? `he-${v.gender}` : "en"}/\` (${r.length} files)`, ``);
