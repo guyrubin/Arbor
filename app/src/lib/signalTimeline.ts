@@ -15,6 +15,7 @@ import type {
   SpeechAttempt,
 } from "../types";
 import { isolate } from "./i18n";
+import { languageName } from "./languageName";
 import { milestoneAgeGroupText, milestoneText } from "./milestoneData";
 import type { FirstKeepsake } from "./firstsKeepsake";
 import type { LangObservation } from "../growth/vocabAgg";
@@ -132,11 +133,7 @@ export interface TimelineSignal {
 /** B-GROWTH-15 — a stored language name in the page language when it is a
  *  known one ("Hebrew" → "עברית"); anything else prints as written. Same rule
  *  as consult/packet + lib/reportExport. */
-const KNOWN_WORD_LANGUAGES = ["hebrew", "english", "arabic", "russian", "french"] as const;
-const wordsLanguageName = (name: string, t: TranslateFn): string => {
-  const known = KNOWN_WORD_LANGUAGES.find((n) => n === name.trim().toLowerCase());
-  return known ? t(`ob.lang.${known}`) : name;
-};
+const wordsLanguageName = (name: string, t: TranslateFn): string => languageName(name, t);
 
 /**
  * JRNL-4: provenance is DERIVED read-only from who authored the entry.

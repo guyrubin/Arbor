@@ -806,6 +806,8 @@ export const en: Dict = {
   "vl.logPlaceholder": "e.g. \"more please\", \"כלב\", \"where is it?\"",
   "vl.logLangLabel": "Language",
   "vl.logSave": "Add phrase",
+  "vl.newest.label": "{first}'s newest word",
+  "vl.newest.added": "Saved — it joins {first}'s story today",
   "vl.noLangs": "Add at least two languages to {first}'s profile to see words by language.",
   // milestones
   "ms.title": "Milestones",
@@ -3233,6 +3235,8 @@ export const he: Dict = {
   "vl.logPlaceholder": "למשל \"עוד בבקשה\", \"כלב\", \"where is it?\"",
   "vl.logLangLabel": "שפה",
   "vl.logSave": "הוספת ביטוי",
+  "vl.newest.label": "המילה החדשה של {first}",
+  "vl.newest.added": "נשמר — היום זה נכנס לסיפור של {first}",
   "vl.noLangs": "הוסיפו לפחות שתי שפות לפרופיל של {first} כדי לראות מילים לפי שפה.",
   "ms.title": "אבני דרך",
   "ms.subtitle": "שימו לב למה שראיתם עד כה על פני תחומי ההתפתחות. זהו כלי תיעוד הורי, לא ציון אבחנתי, וילדים מתפתחים בקצב שלהם.",

@@ -150,7 +150,7 @@ describe("new portals retain their original register and scrim styles", () => {
 // Mode. A new raw dialog cannot pass by importing Modal somewhere in its file.
 const LEGACY = new Set([
   "kidmode/ParentChallenge.tsx", "kidmode/KidModeOverlay.tsx", "onboarding/WowOnboarding.tsx",
-  "sections/ScreeningSheet.tsx", "tabs/LanguageLabVocabView.tsx",
+  "sections/ScreeningSheet.tsx", // tabs/LanguageLabVocabView.tsx left the list in W2-GROWTH r1 (inline note, no dialog role)
 ]);
 const walk = (directory: string): string[] => readdirSync(directory, { withFileTypes: true }).flatMap(entry =>
   entry.isDirectory() ? walk(path.join(directory, entry.name)) : entry.name.endsWith(".tsx") ? [path.join(directory, entry.name)] : []);

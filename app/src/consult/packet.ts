@@ -15,6 +15,7 @@ import { milestoneAgeWindow } from "../lib/milestoneData";
 import { ageLabel, ageLabelForMonths, ageMonthsFromProfile } from "../lib/childAge";
 import { MOMENT_BEHAVIOR_TYPE, behaviorTypeLabel, isIncidentType } from "../content/behaviorTaxonomy";
 import { factMonthLabel } from "../lib/factsAsOf";
+import { languageName } from "../lib/languageName";
 
 export interface PacketInputProfile {
   name: string;
@@ -118,10 +119,8 @@ export type PacketVar =
  *  render the same line in the reader's language through `itemText`. */
 export interface PacketItem { id: string; text: string; textKey?: string; vars?: Record<string, PacketVar> }
 
-const KNOWN_LANGUAGE_NAMES = ["hebrew", "english", "arabic", "russian", "french"] as const;
-/** W2-CAREPRO r1: the proficiency labels onboarding appends ("Hebrew (Native)",
- *  "English (Transition)") — keyed, so a Hebrew reader never gets them in English. */
-const KNOWN_LANGUAGE_LEVELS = ["native", "transition", "fluent", "learning", "basic"] as const;
+/* W2-CAREPRO r1: the proficiency labels onboarding appends ("Hebrew (Native)",
+ * "English (Transition)") are keyed too — the ONE rule lives in lib/languageName. */
 
 /** W2-CAREPRO r1: Hebrew's "and" is a prefix glued to the next word; before a
  *  Latin word it takes a maqaf ("ו־English"), and every Latin part is its own
@@ -161,15 +160,7 @@ function resolveVar(v: PacketVar, lang: UiLang): string | number {
   if ("momentType" in v) return behaviorTypeLabel(v.momentType, (k) => translate(lang, k), "full");
   if ("monthOf" in v) return factMonthLabel(v.monthOf, lang);
   if ("dayOf" in v) return readerDay(v.dayOf, lang);
-  const raw = v.languageName.trim();
-  // "Hebrew (Native)" → name + proficiency, each through its own key.
-  const m = /^(.+?)\s*\(([^)]+)\)$/.exec(raw);
-  const namePart = (m ? m[1] : raw).trim();
-  const known = (KNOWN_LANGUAGE_NAMES as readonly string[]).find((n) => namePart.toLowerCase() === n);
-  const name = known ? translate(lang, `ob.lang.${known}`) : namePart;
-  if (!m) return name;
-  const level = (KNOWN_LANGUAGE_LEVELS as readonly string[]).find((n) => m[2].trim().toLowerCase() === n);
-  return `${name} (${level ? translate(lang, `elev.packet.langLevel.${level}`) : m[2].trim()})`;
+  return languageName(v.languageName, (k) => translate(lang, k));
 }
 
 function resolveVars(vars: Record<string, PacketVar> | undefined, lang: UiLang): Record<string, string | number> | undefined {

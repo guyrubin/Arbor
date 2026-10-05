@@ -8,6 +8,7 @@ import { PageHeader, SectionCard, cardCls, Chip } from "../ui/kit";
 import { ageLabel } from "../../lib/childAge";
 import { aggregateLangCounts, type LangObservation } from "../../growth/vocabAgg";
 import LanguageLabVocabView, { PhraseLogForm, WordsList } from "./LanguageLabVocabView";
+import { languageName } from "../../lib/languageName";
 
 /**
  * Language Lab — multilingual development support, driven by the child's own
@@ -30,7 +31,10 @@ export default function LanguageLabTab() {
   const home = langs[0];
   const second = langs[1];
   const others = langs.slice(2);
-  const target = second || t("lang.theirSecondLang");
+  // Law 8 (W2-GROWTH r1): stored names stay as written; what a parent READS
+  // is the reader's language ("Hebrew" → "עברית").
+  const ln = (l: string) => languageName(l, t);
+  const target = second ? ln(second) : t("lang.theirSecondLang");
   // GP-01: the months-precise age label — the ONE parent-facing age render.
   const age = ageLabel(childProfile, t);
 
@@ -69,7 +73,7 @@ export default function LanguageLabTab() {
     {
       title: t("lang.act.translate.title"),
       time: t("elev.growth.lang.duration.minutes", { n: 5 }),
-      desc: t("lang.act.translate.desc", { home: home || t("lang.theHomeLang"), first, target }),
+      desc: t("lang.act.translate.desc", { home: home ? ln(home) : t("lang.theHomeLang"), first, target }),
       example: t("lang.act.translate.example"),
     },
     {
@@ -120,27 +124,27 @@ export default function LanguageLabTab() {
           marks a top-level sibling module (what moduleBudget counts);
           `data-primary-move` marks the ONE control that performs the move
           surfaceContract.ts declares for this route. */}
-          <div data-module="language-capture" data-primary-move="log-language-moment" style={{ display: "contents" }}>
+          <div data-module="language-capture" data-primary-move="log-language-moment">
             <PhraseLogForm childId={childProfile.id} languages={langs} onAdded={() => {}} t={t} />
           </div>
 
           {/* B-GROWTH-16 — the words written down are the second module (the
               parent's own record, under the form that writes it); the practice
               ideas moved into the disclosure below. */}
-          <div data-module="language-words" style={{ display: "contents" }}>
+          <div data-module="language-words">
             <WordsList />
           </div>
 
           {/* Language profile — roles in the home + moments logged. One tone,
               no status chip, nothing graded (GP-02). */}
-          <div data-module="language-profile" style={{ display: "contents" }}>
+          <div data-module="language-profile">
           <SectionCard title={t("lang.profileTitle", { first, age })} icon={<Icon name="translate" size={20} />} tone="sky">
             <ul className="divide-y" style={{ borderColor: "var(--arbor-rule)" }} data-testid="lang-role-rows">
               {languageRows.map((row) => (
                 <li key={`${row.role}-${row.value}`} className="flex min-w-0 flex-wrap items-start justify-between gap-x-4 gap-y-1 py-3 first:pt-0 last:pb-0">
                   <div className="min-w-0 flex-1">
                     <span className="text-[10px] uppercase font-bold tracking-wide block" style={{ color: "var(--arbor-muted)" }}>{row.role}</span>
-                    <b className="block break-words text-sm" dir="auto" style={{ color: "var(--arbor-ink)" }}>{row.value}</b>
+                    <b className="block break-words text-sm" dir="auto" style={{ color: "var(--arbor-ink)" }}>{ln(row.value)}</b>
                     <p className="text-xs leading-relaxed mt-0.5" style={{ color: "var(--arbor-muted)" }}>{row.note}</p>
                   </div>
                   <span className="text-xs font-bold whitespace-nowrap tabular-nums" style={{ color: "var(--arbor-muted)" }}>{countLine(row.value)}</span>

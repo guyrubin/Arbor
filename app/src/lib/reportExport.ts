@@ -9,6 +9,7 @@ import type { ChildProfile, BehaviorLog, ActionPlan } from "../types";
 import type { LangObservation } from "../growth/vocabAgg";
 import { fmtDay } from "./formatDate";
 import { translate, type UiLang } from "./i18n";
+import { languageName } from "./languageName";
 import { topMomentDisplay } from "../hooks/useWeeklyRecap";
 import { behaviorTypeLabel } from "../content/behaviorTaxonomy";
 
@@ -93,12 +94,8 @@ const typeLabelFor = (lang: UiLang) => (type: string) =>
   lang === "en" ? type : behaviorTypeLabel(type, (k) => translate(lang, k), "full");
 /** A profile/observation language name in the report's language when it is a
  *  known language ("Hebrew" → "עברית"); anything else prints as written. */
-const KNOWN_LANGUAGES = ["hebrew", "english", "arabic", "russian", "french"];
-const languageNameFor = (lang: UiLang) => (name: string) => {
-  if (lang === "en") return name;
-  const known = KNOWN_LANGUAGES.find((n) => n === name.trim().toLowerCase());
-  return known ? translate(lang, `ob.lang.${known}`) : name;
-};
+const languageNameFor = (lang: UiLang) => (name: string) =>
+  lang === "en" ? name : languageName(name, (k) => translate(lang, k));
 
 function topMomentLines(logs: BehaviorLog[], tr: Tr, typeLabel: (t: string) => string): string[] {
   const typeCounts = new Map<string, number>();
