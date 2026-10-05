@@ -12,6 +12,10 @@
  *   duration is known, else on `ended`; with no audio (Sound off, no file, no
  *   gesture), `silentRevealMs` after the page shows. The reader adds "a tap /
  *   the first Next reveals" on top.
+ * - `heard`: audio actually started on this page show (else the page is
+ *   SILENT: the art states use their silent timings). `revealed` and `heard`
+ *   are keyed by `showKey`, so a page never sees the previous page's values
+ *   on its first render.
  * - `playClip(src)` plays a short one-off (a choice label, a repair line, a
  *   prompt, the cover title) under the same Sound rule, pausing the page
  *   narration; a page part that starts while a clip plays waits for its end.
@@ -28,6 +32,8 @@ export interface NarrationState {
   playing: boolean;
   /** The reveal moment has come (see the module note). */
   revealed: boolean;
+  /** Audio started on this page show. */
+  heard: boolean;
   playClip: (src: string | null | undefined) => void;
 }
 
@@ -45,15 +51,15 @@ export function useNarration(
   const clipAudio = useRef<HTMLAudioElement | null>(null);
   const [settled, setSettled] = useState(false);
   const [playing, setPlaying] = useState(false);
-  const [revealed, setRevealed] = useState(false);
+  const [revealedFor, setRevealedFor] = useState<string | null>(null);
+  const [heardFor, setHeardFor] = useState<string | null>(null);
 
   useEffect(() => {
     setSettled(false);
     setPlaying(false);
-    setRevealed(false);
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const reveal = () => !cancelled && setRevealed(true);
+    const reveal = () => !cancelled && setRevealedFor(showKey);
     const finish = (heard: boolean) => {
       if (cancelled) return;
       setSettled(true);
@@ -80,13 +86,17 @@ export function useNarration(
     audio.ontimeupdate = () => {
       if (cancelled) return;
       const at = revealAt ?? (Number.isFinite(audio.duration) && audio.duration > 0 ? Math.max(0, audio.duration - REVEAL_LEAD_S) : Infinity);
-      if (audio.currentTime >= at) setRevealed(true);
+      if (audio.currentTime >= at) setRevealedFor(showKey);
     };
     const start = () => {
       if (cancelled) return;
       audio
         .play()
-        .then(() => !cancelled && setPlaying(true))
+        .then(() => {
+          if (cancelled) return;
+          setPlaying(true);
+          setHeardFor(showKey);
+        })
         .catch(() => finish(false));
     };
     // A tap's clip (a repair item's line) finishes before the next part starts.
@@ -141,5 +151,5 @@ export function useNarration(
     [],
   );
 
-  return { settled, playing, revealed, playClip };
+  return { settled, playing, revealed: revealedFor === showKey, heard: heardFor === showKey, playClip };
 }

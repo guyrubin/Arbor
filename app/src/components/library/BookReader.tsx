@@ -9,8 +9,9 @@
  *   "This one!" commits; no timer, no grade) → the chosen branch → a repair
  *   page holds until the child has tapped each piece, in order where the book
  *   says so (only the next piece glows; nothing can fail) → the rejoin page
- *   with the path's echo line → p9's fall (the dust rises at the end of the
- *   narration; the first Next reveals it; then 1.5 s of stillness) → the last
+ *   with the path's echo line → p9's fall (ordered ART STATES, v2: the dust
+ *   on the narration cue, then "the soldiers rise" ~2 s later; a Next press
+ *   brings the next state; 1.5 s of stillness after the last) → the last
  *   page → Next → the END screen ("The End", the frame line, Read again /
  *   close, the grown-up's panel behind a small control). No "Another way?".
  *
@@ -36,6 +37,7 @@ import { Icon } from "../ui/Icon";
 import { BookPage, type BookPageItem, type BookPageOverlay } from "./BookPage";
 import { BookEnd, BookSoundToggle, PointingHand } from "./BookParts";
 import { useNarration } from "./useNarration";
+import { ART_STATE_HOLD_MS, nextIntent, nextStateDelay, overlayHiddenAt, pageArtStates, stagedOverlayIds, statePlateAt } from "../../lib/library/bookArtStates";
 import {
   bookFlowReducer,
   canTurnForward,
@@ -86,8 +88,8 @@ export interface BookReaderProps {
   prints?: boolean;
   /** A costume variant for pages that author one (`heroAlt`, e.g. "tunic"). */
   costume?: string | null;
-  /** Test seam: the after-narration overlay already revealed (p9's dust). */
-  initialRevealed?: boolean;
+  /** Test seam: the page opens at this art stage (true = every state shown). */
+  initialRevealed?: boolean | number;
   /** Test seam: the decision page opens in its cards state. */
   initialChoosing?: boolean;
 }
@@ -97,23 +99,15 @@ const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : use
 const BAR_WIDE = 72;
 const BAR_NARROW = 56;
 const isWide = (w: number, h: number) => w >= 900 && w >= h;
-/** After the dust rises: stillness before Next is enabled (ruling 5). */
-export const AFTER_REVEAL_HOLD_MS = 1500;
+/** After the last art state: stillness before Next is enabled (ruling 5). */
+export const AFTER_REVEAL_HOLD_MS = ART_STATE_HOLD_MS;
+export { nextIntent };
 
 function viewportBox(): Box {
   if (typeof window === "undefined") return { width: 1920, height: 1080 - BAR_WIDE };
   const w = window.innerWidth;
   const h = window.innerHeight;
   return { width: w, height: h - (isWide(w, h) ? BAR_WIDE : BAR_NARROW) };
-}
-
-/** What a press of Next does (ruling 5, pure for tests): on a page with an
- *  after-narration overlay the FIRST press reveals it if it has not shown;
- *  while the stillness after the reveal holds, nothing; else turn. */
-export function nextIntent(afterOverlay: boolean, revealed: boolean, holding: boolean): "reveal" | "hold" | "turn" {
-  if (afterOverlay && !revealed) return "reveal";
-  if (holding) return "hold";
-  return "turn";
 }
 
 const px = (n: number) => `${Math.round(n * 10) / 10}px`;
@@ -236,29 +230,44 @@ export function BookReader({
   const revealAt = page.overlays?.find((o) => o.reveal === "afterNarration")?.revealAt;
   const showKey = `${state.at}|${repaired ? "after" : "before"}`;
   const voice = useNarration(pageSrc, { showKey, muted, enabled: narration !== "off", revealAt });
-  const [tapReveal, setTapReveal] = useState<string | null>(initialRevealed ? state.at : null);
-  const afterOverlay = story && (page.overlays ?? []).some((o) => o.reveal === "afterNarration");
-  const revealed = voice.revealed || tapReveal === state.at;
 
-  // After the reveal: stillness before Next (ruling 5).
+  // ── art states (v2, engine 1): stage 0 = the page as authored ─────────────
+  const artStates = useMemo(() => (story ? pageArtStates(page, (id) => !!plateTable[id]) : []), [story, page, plateTable]);
+  const staged = artStates.length > 0;
+  const [stageRec, setStageRec] = useState<{ at: string; n: number }>(() => ({
+    at: (initialState ?? initialBookFlow()).at,
+    n: initialRevealed === true ? Number.MAX_SAFE_INTEGER : typeof initialRevealed === "number" ? initialRevealed : 0,
+  }));
+  const stage = stageRec.at === state.at ? Math.min(stageRec.n, artStates.length) : 0;
+  const allShown = staged && stage >= artStates.length;
+  const advance = useCallback((to: number) => setStageRec((r) => ({ at: state.at, n: Math.max(r.at === state.at ? r.n : 0, to) })), [state.at]);
+  // the first state on the narration's reveal moment
+  useEffect(() => {
+    if (staged && voice.revealed && artStates[0].trigger === "narration") advance(1);
+  }, [staged, voice.revealed, artStates, advance]);
+  // a timed state after the previous one (silent timings when nothing played)
+  const silent = !voice.heard;
+  useEffect(() => {
+    const d = nextStateDelay(artStates, stage, silent);
+    if (d == null) return;
+    const t = setTimeout(() => advance(stage + 1), d);
+    return () => clearTimeout(t);
+  }, [artStates, stage, silent, advance]);
+  // after the last state: stillness before Next (ruling 5)
   const [holdUntil, setHoldUntil] = useState(0);
   const [, setTick] = useState(0);
-  const wasRevealed = useRef(false);
+  const skipHold = useRef(initialRevealed !== false && initialRevealed !== 0);
   useEffect(() => {
-    if (!afterOverlay) {
-      wasRevealed.current = false;
+    if (!allShown) return;
+    if (skipHold.current) {
+      skipHold.current = false;
       return;
     }
-    if (revealed && !wasRevealed.current && !initialRevealed) {
-      const until = Date.now() + AFTER_REVEAL_HOLD_MS;
-      setHoldUntil(until);
-      const t = setTimeout(() => setTick((n) => n + 1), AFTER_REVEAL_HOLD_MS + 20);
-      wasRevealed.current = true;
-      return () => clearTimeout(t);
-    }
-    wasRevealed.current = revealed;
-  }, [afterOverlay, revealed, initialRevealed]);
-  const holding = afterOverlay && revealed && Date.now() < holdUntil;
+    setHoldUntil(Date.now() + AFTER_REVEAL_HOLD_MS);
+    const t = setTimeout(() => setTick((n) => n + 1), AFTER_REVEAL_HOLD_MS + 20);
+    return () => clearTimeout(t);
+  }, [allShown, state.at]);
+  const holding = allShown && Date.now() < holdUntil;
 
   // Repair prompt (`<page>-prompt`) once the page is ready (ruling 9).
   const prompted = useRef<string | null>(null);
@@ -269,10 +278,10 @@ export function BookReader({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pending, voice.settled, state.at]);
 
-  // A print replaces plate + sprite — unless a costume variant is shown or the
-  // after-narration overlay has been revealed (the live composite returns).
-  // The layout ALWAYS uses the plate's own size: no frame jump between the two.
-  const print = story || onCover || atEnd ? (prints && !(costume && page.heroAlt?.[costume]) && !(afterOverlay && revealed) ? heroPrint(sheet, page.id) : null) : null;
+  // A print replaces plate + sprite — unless a costume variant is shown or an
+  // art state has come (the live composite returns under the dust / the
+  // state plate). The layout ALWAYS uses the plate's own size: no frame jump.
+  const print = story || onCover || atEnd ? (prints && !(costume && page.heroAlt?.[costume]) && !(staged && stage > 0) ? heroPrint(sheet, page.id) : null) : null;
   const layout = computeBookPageLayout(page, box, lang, { plate, slot, content, anchorOf, cover: onCover });
   const coverFront = onCover && layout.mode === "wide" && layout.pageType === "cover";
 
@@ -298,17 +307,17 @@ export function BookReader({
   }, [state.at, state.dir]);
 
   // ── actions ────────────────────────────────────────────────────────────────
-  /** Next: on a page with an unrevealed after-narration overlay the first press
-   *  reveals it; while the stillness holds, nothing. */
+  /** Next: while an art state is still to come, a press brings it; while the
+   *  stillness after the last holds, nothing. */
   const next = useCallback(() => {
     if (twoState && !choosing) {
       setChoosingAt(state.at);
       return;
     }
-    const intent = nextIntent(afterOverlay, revealed, holding);
-    if (intent === "reveal") setTapReveal(state.at);
+    const intent = nextIntent(staged, allShown, holding);
+    if (intent === "reveal") advance(stage + 1);
     else if (intent === "turn") dispatch({ type: "next" });
-  }, [afterOverlay, revealed, holding, state.at, twoState, choosing]);
+  }, [staged, allShown, holding, stage, advance, state.at, twoState, choosing]);
   /** Back from the cards state returns to the words of the same page. */
   const back = useCallback(() => {
     if (choosing) setChoosingAt(null);
@@ -368,6 +377,9 @@ export function BookReader({
 
   // ── art inputs ─────────────────────────────────────────────────────────────
   const plateSrcs = print ? [print.url] : plate ? plateSources(plate, { dev }) : [];
+  const statePlateId = staged ? statePlateAt(artStates, stage) : null;
+  const statePlate = statePlateId ? plateTable[statePlateId] : undefined;
+  const statePlateSrcs = statePlate ? plateSources(statePlate, { dev }) : null;
   const heroSrc = heroSpriteUrl(sheet, slot?.pose);
   // Only the next piece glows and can be tapped (ordered repairs, ruling 4).
   const items: BookPageItem[] = pending && repair
@@ -375,13 +387,14 @@ export function BookReader({
         .filter((it) => !done.has(it.id) && (!nextItem || it.id === nextItem))
         .map((it) => ({ id: it.id, x: it.x, y: it.y, done: false, label: it.label ? labelFor(it.label, lang) : bookString("repair.tap", lang) }))
     : [];
-  // On a print only the not-yet-revealed overlays draw (the rest are baked in).
+  // On a print only the staged overlays draw (the rest are baked in).
+  const stagedIds = stagedOverlayIds(artStates);
   const overlays: BookPageOverlay[] = (story ? page.overlays ?? [] : [])
-    .filter((o) => !print || o.reveal === "afterNarration")
+    .filter((o) => !print || stagedIds.has(o.id))
     .map((o) => ({
       ...o,
       srcs: overlaySources(book.id, o, { dev }),
-      hidden: (o.reveal === "afterNarration" && !revealed) || (!!o.showWhen && done.has(o.showWhen.item) !== o.showWhen.done),
+      hidden: overlayHiddenAt(artStates, stage, o.id) || (!!o.showWhen && done.has(o.showWhen.item) !== o.showWhen.done),
       hop: !!o.showWhen?.done && done.has(o.showWhen.item),
     }));
 
@@ -500,6 +513,8 @@ export function BookReader({
               layout={layout}
               plateSrcs={plateSrcs}
               printed={!!print}
+              statePlateSrcs={statePlateSrcs}
+              statePlateKey={statePlateId ?? undefined}
               tint={slot?.tint}
               occluders={page.occluders}
               fgSrc={plate?.fg}
@@ -508,7 +523,7 @@ export function BookReader({
               overlays={overlays}
               items={items}
               onItem={tapItem}
-              onArtTap={onCover ? hearCover : afterOverlay ? () => setTapReveal(state.at) : undefined}
+              onArtTap={onCover ? hearCover : staged && !allShown ? () => advance(stage + 1) : undefined}
               pictureLabel={onCover ? bookString("hearTitle", lang) : bookString("picture", lang)}
             />
             {coverFront ? (

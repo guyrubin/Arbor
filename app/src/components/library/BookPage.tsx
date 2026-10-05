@@ -40,6 +40,10 @@ export interface BookPageProps {
   plateSrcs: readonly string[];
   /** True when plateSrcs is a print: no sprite, no shadow. */
   printed?: boolean;
+  /** An art state's plate (v2, p9 "the soldiers rise"): cross-fades in over
+   *  the plate, under the hero. */
+  statePlateSrcs?: readonly string[] | null;
+  statePlateKey?: string;
   /** Foreground occluder (alpha), drawn over the hero. */
   fgSrc?: string;
   heroSrc: string | null;
@@ -105,7 +109,7 @@ function featherMask(f: number, ft: number): CSSProperties {
   return { maskImage: `${v}, ${h}`, WebkitMaskImage: `${v}, ${h}`, maskComposite: "intersect", WebkitMaskComposite: "source-in" };
 }
 
-export function BookPage({ layout, plateSrcs, printed = false, fgSrc, heroSrc, heroKey, tint, overlays = [], occluders = [], items = [], onItem, onArtTap, pictureLabel }: BookPageProps) {
+export function BookPage({ layout, plateSrcs, printed = false, statePlateSrcs = null, statePlateKey, fgSrc, heroSrc, heroKey, tint, overlays = [], occluders = [], items = [], onItem, onArtTap, pictureLabel }: BookPageProps) {
   const { art, plate, hero, shadow } = layout;
   const [heroMissing, setHeroMissing] = useState(false);
   useEffect(() => setHeroMissing(false), [heroSrc]);
@@ -161,6 +165,11 @@ export function BookPage({ layout, plateSrcs, printed = false, fgSrc, heroSrc, h
         {/* a print is drawn "cover" into the PLATE's rect (its 3:2 vs the plate's
             1.49 differs by < 1 %): the frame never jumps between print and composite */}
         <FallbackImg srcs={plateSrcs} className={printed ? "bk-fill-cover" : "bk-fill"} />
+        {statePlateSrcs && statePlateSrcs.length > 0 && (
+          <div key={statePlateKey} className="bk-state-plate" data-book-state-plate={statePlateKey ?? ""}>
+            <FallbackImg srcs={statePlateSrcs} className="bk-fill" />
+          </div>
+        )}
       </div>
       {overlays.filter((o) => o.z === "under").map(renderOverlay)}
       {showHero && shadow && (
