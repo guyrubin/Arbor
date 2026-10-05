@@ -55,6 +55,10 @@ const TRACE_SIZE = 280; // px box
 
 function LetterTrace({ onLog }: { onLog: LogEvent }) {
   const { t } = useLanguage();
+  // B-KID-35 (KC-20, law 3): in Kid Mode a traced letter is a win, full stop —
+  // no graded star row (60 % coverage showed one lit star of three) and no
+  // live coverage bar. The parent door keeps both.
+  const kidMode = useSyncExternalStore(subscribeKidMode, isKidModeActive);
   const [idx, setIdx] = useState(0);
   const [strokeIdx, setStrokeIdx] = useState(0);
   const [drawing, setDrawing] = useState(false);
@@ -177,11 +181,13 @@ function LetterTrace({ onLog }: { onLog: LogEvent }) {
         <div className="flex-1 min-w-0 w-full">
           {done ? (
             <div className="text-center sm:text-start play-pop-in">
+              {!kidMode && (
               <div className="flex justify-center sm:justify-start gap-1 mb-2" aria-label={t("prac.read.trace.stars", { n: done.stars })}>
                 {[0, 1, 2].map((i) => (
                   <span key={i} className="text-2xl" style={{ filter: i < done.stars ? "none" : "grayscale(1)", opacity: i < done.stars ? 1 : 0.35 }}>⭐</span>
                 ))}
               </div>
+              )}
               <p className="text-base font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
                 {t("prac.read.trace.win", { letter: letter.letter, sound: letter.sound })}
               </p>
@@ -202,9 +208,11 @@ function LetterTrace({ onLog }: { onLog: LogEvent }) {
               <p className="text-[11px] mb-3" style={{ color: "var(--arbor-muted)" }}>
                 {t("prac.read.trace.stroke", { current: Math.min(strokeIdx + 1, totalStrokes), total: totalStrokes })}
               </p>
+              {!kidMode && (
               <div className="h-2.5 rounded-full overflow-hidden mb-3" style={{ background: "rgba(41,51,63,0.08)" }}>
                 <div className="h-full rounded-full transition-all" style={{ width: `${Math.round(coverage * 100)}%`, background: "var(--arbor-clay)" }} />
               </div>
+              )}
               {totalStrokes > 1 && <ProgressPips total={totalStrokes} current={Math.min(strokeIdx, totalStrokes - 1)} tone="lav" />}
               <div className="flex flex-wrap gap-2 mt-4">
                 <button onClick={() => sayAloud(letter.sound)} className="play-pressable inline-flex items-center gap-1.5 text-xs font-extrabold px-4 min-h-[44px] rounded-full" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
