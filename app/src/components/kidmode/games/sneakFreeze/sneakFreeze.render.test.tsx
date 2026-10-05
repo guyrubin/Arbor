@@ -215,3 +215,13 @@ describe("B-GAME-07f — the courtyard is alive, the tag is a moment", () => {
     expect(life).not.toMatch(/setInterval|setTimeout|requestAnimationFrame/);
   });
 });
+
+describe("B-GAME-06b — the covers sit in the plate", () => {
+  it("the covers sit in the plate (a softer, less saturated cut-out); never the hero", () => {
+    const html = renderToStaticMarkup(<SneakFreeze />);
+    const covers = html.match(/<img[^>]*data-cover="[^"]*"[^>]*>/g) ?? [];
+    expect(covers).toHaveLength(3);
+    for (const c of covers) expect(c).toContain("filter:saturate(0.88) brightness(0.98)");
+    for (const h of html.match(/<img[^>]*data-hero-pose="[^"]*"[^>]*>/g) ?? []) expect(h).not.toContain("filter:");
+  });
+});

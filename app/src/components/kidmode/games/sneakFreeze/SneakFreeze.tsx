@@ -61,6 +61,9 @@ const LAYOUTS: Record<FieldOrientation, SneakLayout> = { landscape: sneakLayout(
 /** How much of a cover's visible width touches the floor (the pot, the lantern's
  *  foot, the bench's legs) — its contact shadow's width. */
 const COVER_FOOTPRINT: Readonly<Record<CoverId, number>> = { "lemon-tree": 0.55, lantern: 0.8, bench: 1.0 };
+/** B-GAME-06b: the cover sprites sit IN the plate (a touch less saturated and
+ *  bright than a fresh cut-out); never applied to the hero. */
+export const COVER_FILTER = "saturate(0.88) brightness(0.98)";
 /** The one contact-shadow fill (soft ink, fading out). */
 export const SHADOW_FILL = "radial-gradient(closest-side, color-mix(in srgb, var(--arbor-ink) 30%, transparent), transparent)";
 
@@ -135,20 +138,21 @@ function Scene({ ctx, v, art, sheet, prevProgress }: { ctx: PlayFieldContext; v:
         const k = c.h / sp.h;
         // B-GAME-07d: a soft contact shadow under the base, a little to the
         // right (the plate's key light is upper left; RTL mirrors it with the art).
-        const sw = c.h * COVER_ASPECT[c.id] * COVER_FOOTPRINT[c.id];
+        // B-GAME-06b: cast down-right with the light (longer, offset further).
+        const sw = c.h * COVER_ASPECT[c.id] * COVER_FOOTPRINT[c.id] * 1.15;
         return (
           <React.Fragment key={c.id}>
             <span
               aria-hidden="true"
               data-cover-shadow={c.id}
-              style={{ position: "absolute", left: c.feet.x - sw / 2 + sw * 0.08, top: c.feet.y - sw * 0.07, width: sw, height: sw * 0.14, borderRadius: "50%", background: SHADOW_FILL, zIndex: Math.round(c.feet.y) - 1, pointerEvents: "none" }}
+              style={{ position: "absolute", left: c.feet.x - sw / 2 + sw * 0.18, top: c.feet.y - sw * 0.05, width: sw, height: sw * 0.16, borderRadius: "50%", background: SHADOW_FILL, zIndex: Math.round(c.feet.y) - 1, pointerEvents: "none" }}
             />
             <img
               src={sp.url}
               alt=""
               draggable={false}
               data-cover={c.id}
-              style={{ position: "absolute", left: c.feet.x - sp.anchor.x * k, top: c.feet.y - sp.anchor.y * k, width: sp.w * k, height: sp.h * k, maxWidth: "none", zIndex: Math.round(c.feet.y) }}
+              style={{ position: "absolute", left: c.feet.x - sp.anchor.x * k, top: c.feet.y - sp.anchor.y * k, width: sp.w * k, height: sp.h * k, maxWidth: "none", zIndex: Math.round(c.feet.y), filter: COVER_FILTER }}
             />
             {/* B-GAME-07f: the lantern's glass catches the light now and then. */}
             {c.id === "lantern" && <LanternGlint x={c.feet.x} y={c.feet.y - c.h * 0.86} size={c.h * 0.2} zIndex={Math.round(c.feet.y)} />}

@@ -129,7 +129,7 @@ export function Ending({ state, art, sheet, childId, rtl, caption, pictureAlt, p
       />
       <div
         data-sneak-ending-stack=""
-        style={{ position: "relative", blockSize: "100%", overflowY: "auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "clamp(8px, 1.6dvh, 18px)", paddingInline: 16, paddingBlock: "clamp(10px, 2dvh, 20px)" }}
+        style={{ position: "relative", blockSize: "100%", overflowY: "auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "clamp(8px, 1.6dvh, 18px)", paddingInline: 16, paddingBlockEnd: "clamp(10px, 2dvh, 20px)", paddingBlockStart: "calc(max(10px, env(safe-area-inset-top)) + 80px)" }}
       >
         <figure data-sneak-picture-frame="" style={{ margin: 0, inlineSize: PICTURE_INLINE, minInlineSize: "min(calc(100vw - 32px), 280px)", flexShrink: 0 }}>
           <div

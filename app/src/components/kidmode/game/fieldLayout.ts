@@ -146,17 +146,20 @@ const COURTYARD: Readonly<Record<FieldOrientation, CourtyardSpec>> = {
     horizonY: 400,
     k: 0.8,
     hero: { horizonY: 318, k: 0.772 },
+    // B-GAME-06b: the stops spread down the screen so the hero grows evenly
+    // per step from the gate to the tag (growth rate within 1.4x across the
+    // run; was 3.4x with the stops bunched at 50-63 % of the height).
     path: [
       { x: 478, y: 650, t: 0 },
-      { x: 440, y: 790, t: 0.28 },
-      { x: 500, y: 890, t: 0.52 },
-      { x: 500, y: 1010, t: 0.76 },
+      { x: 560, y: 830, t: 0.28 },
+      { x: 370, y: 995, t: 0.52 },
+      { x: 500, y: 1205, t: 0.76 },
       { x: 330, y: 1420, t: 1 },
     ],
     covers: [
-      { id: "lemon-tree", at: 0.28, x: 182, relH: 1.2 },
-      { id: "lantern", at: 0.52, x: 770, relH: 1.3 },
-      { id: "bench", at: 0.76, x: 175, relH: 0.4 },
+      { id: "bench", at: 0.28, x: 362, relH: 0.34 },
+      { id: "lemon-tree", at: 0.52, x: 706, relH: 1.05 },
+      { id: "lantern", at: 0.76, x: 165, relH: 1.1 },
     ],
     watcher: { x: 645, y: 1420 },
     watcherRelH: 0.43,
@@ -166,20 +169,23 @@ const COURTYARD: Readonly<Record<FieldOrientation, CourtyardSpec>> = {
     horizonY: 250,
     k: 0.848,
     hero: { horizonY: 216, k: 0.821 },
+    // B-GAME-06b: a soft S across the width through the cover stops (play is
+    // no longer confined to the middle); the cat sits further toward the end
+    // edge and a little larger, the tag beside it.
     path: [
       { x: 800, y: 380, t: 0 },
-      { x: 680, y: 450, t: 0.28 },
-      { x: 780, y: 540, t: 0.52 },
-      { x: 640, y: 680, t: 0.76 },
-      { x: 760, y: 800, t: 1 },
+      { x: 640, y: 450, t: 0.28 },
+      { x: 900, y: 540, t: 0.52 },
+      { x: 600, y: 680, t: 0.76 },
+      { x: 860, y: 800, t: 1 },
     ],
     covers: [
-      { id: "lemon-tree", at: 0.28, x: 545, relH: 1.35 },
-      { id: "lantern", at: 0.52, x: 950, relH: 1.45 },
-      { id: "bench", at: 0.76, x: 395, relH: 0.5 },
+      { id: "lemon-tree", at: 0.28, x: 500, relH: 1.35 },
+      { id: "lantern", at: 0.52, x: 1078, relH: 1.45 },
+      { id: "bench", at: 0.76, x: 319, relH: 0.5 },
     ],
-    watcher: { x: 1100, y: 800 },
-    watcherRelH: 0.55,
+    watcher: { x: 1280, y: 800 },
+    watcherRelH: 0.6,
     hand: { x: 250, y: 740 },
   },
 };

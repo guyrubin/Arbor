@@ -136,6 +136,26 @@ describe("the stage reads nothing; the bar's title is one line", () => {
   });
 });
 
+describe("B-GAME-06b: the scene without the white slab", () => {
+  it("in this game only, the bar is transparent over the scene: floating toys, the title kept for screen readers, presses pass through the empty bar", () => {
+    const overlay = read("KidModeOverlay.tsx");
+    expect(overlay).toContain('data-kid-bar-float={sneakOpen ? "" : undefined}');
+    expect(overlay).toContain("...(sneakOpen ? SNEAK_BAR_FLOAT : null),");
+    expect(overlay).toContain("...(sneakOpen ? SNEAK_BAR_TITLE_UNSEEN : null),");
+    expect(overlay).toContain("...(sneakOpen ? SNEAK_BAR_HOME : null),");
+    const float = overlay.slice(overlay.indexOf("const SNEAK_BAR_FLOAT"), overlay.indexOf(";", overlay.indexOf("const SNEAK_BAR_FLOAT")));
+    expect(float).toContain('background: "transparent"');
+    expect(float).toContain('position: "absolute"');
+    expect(float).toContain("env(safe-area-inset-top)");
+    expect(float).toContain('pointerEvents: "none"');
+    // the title is still in the DOM ({barTitle}), only unpainted
+    expect(overlay).toContain('const SNEAK_BAR_TITLE_UNSEEN: React.CSSProperties = { clipPath: "inset(50%)", pointerEvents: "none" };');
+    const css = readFileSync(path.join(here, "..", "..", "index.css"), "utf8");
+    expect(css).toContain("[data-kid-bar-float] > * { pointer-events: auto; }");
+    expect(css).toMatch(/\[data-kid-bar-float\] button \{\s*box-shadow:/);
+  });
+});
+
 describe("THE GUARD: the owner's son's likeness never enters git", () => {
   it("no file under public/_proof is tracked", () => {
     let out: string;

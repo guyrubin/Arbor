@@ -96,6 +96,17 @@ export function arrivalScrollTop(view: View, savedHomeScroll: number): number {
 
 /** B-GAME-07c: Sneak & Freeze's bar title on one line (step-down token, capped by the viewport). */
 const SNEAK_BAR_TITLE: React.CSSProperties = { fontSize: "min(var(--kid-t-say), 4.6vw)", WebkitLineClamp: 1, whiteSpace: "nowrap" };
+/** B-GAME-06b: in Sneak & Freeze (fullBleed) the bar is TRANSPARENT over the
+ *  scene: no white slab — the Home toy at the start edge, Sound + the
+ *  grown-ups exit at the end edge float as toy buttons with their own soft
+ *  shadows (index.css `[data-kid-bar-float]`); the scene runs to the top edge
+ *  under them; the bar's empty middle lets presses through to the stage.
+ *  Every other view's bar is unchanged. */
+const SNEAK_BAR_FLOAT: React.CSSProperties = { position: "absolute", insetBlockStart: 0, insetInline: 0, zIndex: 2, background: "transparent", borderBottom: "none", boxShadow: "none", paddingBlockStart: "max(10px, env(safe-area-inset-top))", pointerEvents: "none" };
+/** The title stays for screen readers; nothing of it paints over the scene. */
+const SNEAK_BAR_TITLE_UNSEEN: React.CSSProperties = { clipPath: "inset(50%)", pointerEvents: "none" };
+/** The Home toy: a round paper button with its own shadow. */
+const SNEAK_BAR_HOME: React.CSSProperties = { background: "var(--arbor-paper-elevated)", border: "2px solid var(--arbor-rule-strong)", borderRadius: 999, minHeight: "52px", minWidth: "52px" };
 
 export default function KidModeOverlay() {
   const { isKidModeOpen, closeKidMode } = useKidMode();
@@ -316,6 +327,7 @@ export default function KidModeOverlay() {
           {/* ── Surface back-bar (only when a surface is open) ──────────────── */}
           {surface && (
             <header
+              data-kid-bar-float={sneakOpen ? "" : undefined}
               style={{
                 position: "relative",
                 zIndex: 1,
@@ -329,6 +341,7 @@ export default function KidModeOverlay() {
                 background: "var(--arbor-paper-elevated)",
                 borderBottom: "1px solid var(--arbor-rule)",
                 boxShadow: "var(--shadow-xs)",
+                ...(sneakOpen ? SNEAK_BAR_FLOAT : null),
               }}
             >
               <button
@@ -350,6 +363,7 @@ export default function KidModeOverlay() {
                   color: "var(--arbor-clay)",
                   border: "1px solid var(--arbor-rule)",
                   cursor: "pointer",
+                  ...(sneakOpen ? SNEAK_BAR_HOME : null),
                 }}
               >
                 <ChevronLeft className="w-4 h-4 rtl:-scale-x-100" aria-hidden="true" />
@@ -378,6 +392,7 @@ export default function KidModeOverlay() {
                   // "דג מלוח") stays on ONE line at 375 px — the step-down
                   // token, capped by the viewport; other bars unchanged.
                   ...(sneakOpen ? SNEAK_BAR_TITLE : null),
+                  ...(sneakOpen ? SNEAK_BAR_TITLE_UNSEEN : null),
                 }}
               >
                 {/* B-KID-53: inside a world or a story the title is ITS name. */}

@@ -180,3 +180,35 @@ describe("fieldLayout — Sneak & Freeze anchors", () => {
     expect(plain.scale).toBeCloseTo(Math.max(375 / 900, 812 / 1600), 6);
   });
 });
+
+describe("fieldLayout — B-GAME-06b the run uses the screen", () => {
+  it("phone: the hero grows evenly per step from the gate to the tag (rate within 1.5x), the stops spread down the screen", () => {
+    const { heroPath } = sneakLayout("portrait");
+    const rates: number[] = [];
+    for (let i = 1; i < heroPath.length; i++) rates.push((heroPath[i].h - heroPath[i - 1].h) / ((heroPath[i].t as number) - (heroPath[i - 1].t as number)));
+    expect(Math.max(...rates) / Math.min(...rates)).toBeLessThanOrEqual(1.5);
+    // On a 375x812 phone (scene to the top edge) the three stops sit at least 9 % of the height apart.
+    const { fit, layout } = sneakField(375, 812);
+    const ys = layout.covers.map((c) => toPx(fit, c.feet).y / 812);
+    for (let i = 1; i < ys.length; i++) expect(ys[i] - ys[i - 1]).toBeGreaterThanOrEqual(0.09);
+  });
+
+  it("phone: every cover is (nearly) whole on a 375x812 screen - at most 14 px past an edge", () => {
+    const { fit, layout } = sneakField(375, 812);
+    for (const c of layout.covers) {
+      const half = (c.h * COVER_ASPECT[c.id]) / 2;
+      expect(toPx(fit, { x: c.feet.x - half, y: c.feet.y }).x, c.id).toBeGreaterThanOrEqual(-14);
+      expect(toPx(fit, { x: c.feet.x + half, y: c.feet.y }).x, c.id).toBeLessThanOrEqual(375 + 14);
+    }
+  });
+
+  it("1920: a soft S across the width, the cat further toward the end edge and larger", () => {
+    const { heroPath, watcher } = sneakLayout("landscape");
+    const xs = heroPath.map((p) => p.x);
+    expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThanOrEqual(250);
+    // the S: the run changes direction at every stop
+    for (let i = 1; i < heroPath.length - 1; i++) expect(Math.sign(heroPath[i].x - heroPath[i - 1].x)).toBe(-Math.sign(heroPath[i + 1].x - heroPath[i].x));
+    expect(watcher.feet.x).toBeGreaterThanOrEqual(1600 * 0.78);
+    expect(watcher.h / heroPath[heroPath.length - 1].h).toBeGreaterThanOrEqual(0.58);
+  });
+});
