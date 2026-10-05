@@ -33,7 +33,7 @@ describe("WorldScene current-key lifecycle and decorative fallback",()=>{
  });
  it("B-KID-70: film3d shows the theme's own card, top-focused, never the storybook tile",()=>{
   const img=image(render({heroUrl:undefined,theme:"film3d"}))!;
-  expect(img.props.src).toContain("/cards/web/game-feelings-480.webp");expect(img.props.srcSet).toContain("1024w");
+  expect(img.props.src).toContain("/cards/web/game-feelings-480.webp");expect(img.props.srcSet).toBe("/visuals/cards/web/game-feelings-480.webp 480w");
   expect(img.props.src).not.toContain("mood-mountain");expect(img.props.style.objectPosition).toBe("50% 22%");
  });
  it("hides the whole decorative slot, including a covered named fallback and ultimate icon",()=>{

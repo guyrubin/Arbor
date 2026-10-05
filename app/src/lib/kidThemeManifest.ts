@@ -21,6 +21,12 @@ export const KID_THEME_IDS = ["film3d", "storybook"] as const;
 export type KidThemeId = (typeof KID_THEME_IDS)[number];
 export const DEFAULT_KID_THEME: KidThemeId = "film3d";
 
+/** R-2b: the tile shape is a property of the THEME's art, never an `if` in a
+ *  component. film3d cards are portrait (~3:4, a hero in every frame) → a
+ *  portrait card grid; the storybook v2 tiles are landscape → today's wide tile. */
+export type KidTileShape = "portrait" | "wide";
+export const KID_THEME_TILE_SHAPE: Record<KidThemeId, KidTileShape> = { film3d: "portrait", storybook: "wide" };
+
 export function isKidThemeId(v: unknown): v is KidThemeId {
   return typeof v === "string" && (KID_THEME_IDS as readonly string[]).includes(v);
 }
@@ -64,16 +70,19 @@ export interface KidArt {
    *  every slot today renders aria-hidden). */
   altKey: string | null;
   provenanceId: string;
+  /** The picture itself already shows a hero (no sticker portrait over it). */
+  hasHero: boolean;
 }
 
 const FILM = "/visuals/cards/web/";
-const film = (name: string, objectPosition = "50% 22%", width = 1024): KidArt => ({
+const film = (name: string, objectPosition = "50% 22%", width = 1024, hasHero = true): KidArt => ({
   src: `${FILM}${name}-1024.webp`,
   src480: `${FILM}${name}-480.webp`,
   width,
   objectPosition,
   altKey: null,
   provenanceId: `film3d-card:${name}`,
+  hasHero,
 });
 const world = (name: string, objectPosition: string): KidArt => ({
   src: `/visuals/worlds/v2/${name}-v2.webp`,
@@ -82,6 +91,7 @@ const world = (name: string, objectPosition: string): KidArt => ({
   objectPosition,
   altKey: null,
   provenanceId: `world-art-v2:${name}`,
+  hasHero: false,
 });
 const plate = (name: string): KidArt => ({
   src: `/visuals/stories/v1/${name}-v1.webp`,
@@ -90,6 +100,7 @@ const plate = (name: string): KidArt => ({
   objectPosition: "50% 50%",
   altKey: null,
   provenanceId: `story-art-v1:${name}`,
+  hasHero: false,
 });
 
 const FILM3D_STORY_COVERS = [
@@ -114,9 +125,9 @@ export const KID_THEME_MANIFEST: Record<KidThemeId, Partial<Record<KidArtKey, Ki
     // bedtime reading nook).
     "world.kid-playbank.tile": film("game-truth-compass", "50% 30%"),
     "world.kid-hero.tile": film("game-aim-map", "50% 30%"),
-    "world.kid-quest.tile": film("arbor-academy-play-hero-bg", "50% 62%", 941),
+    "world.kid-quest.tile": film("arbor-academy-play-hero-bg", "50% 62%", 941, false),
     ...Object.fromEntries(FILM3D_STORY_COVERS.map((id) => [storyCoverKey(id), film(`story-${id}`, "50% 30%")])),
-    "home.stage": film("kid-discovery-garden-v2", "50% 50%"),
+    "home.stage": film("kid-discovery-garden-v2", "50% 50%", 1024, false),
   },
   storybook: {
     "world.speech.tile": world("sound-lab", "48% 40%"),

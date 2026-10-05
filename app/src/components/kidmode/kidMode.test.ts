@@ -310,7 +310,6 @@ describe("KID-1: kid.* i18n keys exist in BOTH language maps", () => {
     "kid.safety.private",
     "kid.safety.stars",
     "kid.quest.eyebrow",
-    "kid.quest.title",
     "kid.quest.sub",
     "kid.quest.cta",
     "kid.adventures.title",

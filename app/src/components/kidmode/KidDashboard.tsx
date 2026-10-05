@@ -36,7 +36,7 @@ import { useHeroAvatar, HeroAvatar } from "../ui/HeroAvatar";
 import { usePracticeData } from "../../practice/usePracticeData";
 import WorldScene from "../practice/WorldScene";
 import { useKidTheme } from "../../hooks/useKidTheme";
-import { kidArt, storyCoverKey, type KidThemeId } from "../../lib/kidThemeManifest";
+import { KID_THEME_TILE_SHAPE, kidArt, storyCoverKey, worldTileKey, type KidThemeId } from "../../lib/kidThemeManifest";
 import { HoldExitButton } from "./HoldExitButton";
 import { kidIsolate } from "./kidText";
 import { lastPlayedWorldYesterday } from "./kidGreeting";
@@ -185,6 +185,10 @@ export const KID_HOME_GAME_TILE_IMAGE_BLOCK = 110;
 export const KID_HOME_ADVENTURE_TILE_BLOCK = 150;
 /** Grid gap between tiles. */
 export const KID_HOME_TILE_GAP = 12;
+/** R-2b: a portrait-theme card (film3d) is image-led at this aspect; 2 columns
+ *  below 768 px, 3 at md, 4 at lg (grid classes below). */
+export const KID_HOME_PORTRAIT_ASPECT = "3 / 4";
+const PORTRAIT_GRID = "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4";
 /** Game tile title. OBJ-KID-06 fixup: `var(--t-xl)` was a rem step, and the
  *  floor it clears depends on a root font-size the product never pins — the
  *  rendered check at 390 px measured 15 px on this surface, the SAME number the
@@ -281,11 +285,26 @@ function SceneTile({
   big?: boolean;
   index: number;
 }) {
+  // R-2b: the theme decides the tile shape (KID_THEME_TILE_SHAPE), not this file.
+  const portrait = KID_THEME_TILE_SHAPE[theme] === "portrait";
   return (
     <button
       className="world-tile play-pop-in"
       onClick={onClick}
-      style={{
+      style={portrait ? {
+        appearance: "none",
+        position: "relative",
+        display: "block",
+        overflow: "hidden",
+        textAlign: "start",
+        cursor: "pointer",
+        padding: 0,
+        background: ACCENT_BG[accent],
+        aspectRatio: KID_HOME_PORTRAIT_ASPECT,
+        minBlockSize: 44,
+        inlineSize: "100%",
+        animationDelay: `${index * 40}ms`,
+      } : {
         appearance: "none",
         position: "relative",
         display: "grid",
@@ -299,22 +318,24 @@ function SceneTile({
         animationDelay: `${index * 40}ms`,
       }}
     >
-      <div className="relative" style={{ minBlockSize: big ? 60 : KID_HOME_GAME_TILE_IMAGE_BLOCK }}>
-        <WorldScene worldId={worldId} theme={theme} imagePrompt={imagePrompt} heroUrl={heroUrl} heroStyle={heroStyle} sizes={big ? "(max-width: 639px) 100vw, 33vw" : "(max-width: 359px) 100vw, (max-width: 639px) 50vw, 25vw"}>
+      <div className={portrait ? "absolute inset-0" : "relative"} style={portrait ? undefined : { minBlockSize: big ? 60 : KID_HOME_GAME_TILE_IMAGE_BLOCK }}>
+        <WorldScene worldId={worldId} theme={theme} imagePrompt={imagePrompt} heroUrl={heroUrl} heroStyle={heroStyle} sizes={portrait ? "(max-width: 767px) 50vw, 25vw" : big ? "(max-width: 639px) 100vw, 33vw" : "(max-width: 359px) 100vw, (max-width: 639px) 50vw, 25vw"}>
           <span aria-hidden="true" className="grid h-full w-full place-items-center" style={{ color: ACCENT_INK[accent] }}><Icon className="w-10 h-10" /></span>
         </WorldScene>
 
       </div>
       {/* Title block. */}
-      <span style={{ padding: big ? "14px" : "11px", background: "var(--arbor-paper-elevated)" }}>
+      <span style={portrait
+        ? { position: "absolute", insetInline: 0, insetBlockEnd: 0, zIndex: 1, padding: "28px 10px 10px", background: "linear-gradient(to top, var(--arbor-paper-elevated) 62%, transparent)" }
+        : { padding: big ? "14px" : "11px", background: "var(--arbor-paper-elevated)" }}>
         {/* OBJ-KID-06 fixup: `data-kid-tile-title` names the node the >= 20 px
             acceptance is about, so a rendered check measures the title itself
             and never the section heading or the inherited button size beside
             it. It is a measurement hook, not a style hook. */}
-        <span data-kid-tile-title="" style={{ display: "block", fontFamily: "var(--font-display)", fontWeight: 900, fontSize: KID_HOME_GAME_TITLE_SIZE, color: "var(--arbor-ink)", lineHeight: 1.12 }}>
+        <span data-kid-tile-title="" style={{ display: portrait ? "-webkit-box" : "block", fontFamily: "var(--font-display)", fontWeight: 900, fontSize: KID_HOME_GAME_TITLE_SIZE, color: "var(--arbor-ink)", lineHeight: 1.12, ...(portrait ? { WebkitBoxOrient: "vertical" as const, WebkitLineClamp: 2, overflow: "hidden" } : {}) }}>
           {title}
         </span>
-        <span style={{ display: "block", fontSize: "var(--t-sm)", color: "var(--arbor-ink)", opacity: 0.88, marginBlockStart: "1px" }}>{sub}</span>
+        <span style={{ display: "block", fontSize: "var(--t-sm)", color: "var(--arbor-ink)", opacity: 0.88, marginBlockStart: "1px", ...(portrait ? { whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis" } : {}) }}>{sub}</span>
       </span>
     </button>
   );
@@ -371,6 +392,10 @@ export default function KidDashboard({
   // child's theme (same art + scene key as its Stories card); a story with no
   // cover in this theme keeps the reviewed `kid-quest` tile.
   const tonightsArtId = tonightsStory && kidArt(kidTheme, storyCoverKey(tonightsStory.id)) ? `story-${tonightsStory.id}` : "kid-quest";
+  // R-2b: no sticker portrait pasted over art that already shows a hero; a
+  // portrait theme gives the banner a 3:4 side panel (the cover's own shape).
+  const tonightsArtHasHero = Boolean(kidArt(kidTheme, tonightsArtId === "kid-quest" ? worldTileKey("kid-quest") : storyCoverKey(tonightsStory!.id))?.hasHero);
+  const tilePortrait = KID_THEME_TILE_SHAPE[kidTheme] === "portrait";
   const tonightsArtPrompt = tonightsStory && tonightsArtId !== "kid-quest" ? `${tonightsStory.title} — ${tonightsStory.theme}` : "an epic castle scene on a hill with a glowing open magic book";
   const greetingSub = yesterdayWorld
     ? kt("elev.kid.greeting.playedYesterday", { world: t(`kid.game.${yesterdayWorld}.title`) })
@@ -426,10 +451,11 @@ export default function KidDashboard({
           minBlockSize: `${KID_HOME_BANNER_BLOCK}px`,
         }}
       >
-        <div className="relative flex-shrink-0" style={{ inlineSize: "45%", maxInlineSize: 300, minBlockSize: KID_HOME_BANNER_BLOCK }}>
+        <div className="relative flex-shrink-0" style={tilePortrait ? { inlineSize: Math.round(KID_HOME_BANNER_BLOCK * 3 / 4), minBlockSize: KID_HOME_BANNER_BLOCK } : { inlineSize: "45%", maxInlineSize: 300, minBlockSize: KID_HOME_BANNER_BLOCK }}>
           <WorldScene worldId={tonightsArtId} theme={kidTheme} imagePrompt={tonightsArtPrompt} heroUrl={hero.url ?? undefined} heroStyle={hero.style} sizes="(max-width: 639px) 45vw, 300px">
             <Sparkles aria-hidden="true" className="w-10 h-10" style={{ color: "var(--arbor-sky-ink)" }} />
           </WorldScene>
+          {!tonightsArtHasHero && (
           <span className="absolute bottom-2 end-2 z-[2] rounded-2xl" style={{ background: "var(--arbor-paper-elevated)", border: "2px solid var(--comic-ink)", boxShadow: "2px 2px 0 var(--comic-ink)" }}>
             {/* F6 — the featured hero ANNOUNCES. The adjacent text is "Tonight's
                 story: {title}", never the child's name, so the same argument that
@@ -438,10 +464,11 @@ export default function KidDashboard({
                 "Hi {name}!". */}
             <HeroAvatar size={80} mood="cheer" />
           </span>
+          )}
         </div>
         <span style={{ flex: 1, minInlineSize: 0, padding: 14, alignSelf: "center" }}>
           <span style={{ display: "block", fontSize: 12, fontWeight: 800, color: "var(--arbor-sky-ink)" }}>{kt("kid.quest.eyebrow")}</span>
-          <span style={{ display: "block", fontFamily: "var(--font-display)", fontWeight: 900, fontSize: "clamp(20px, 5vw, 26px)", color: "var(--arbor-ink)", lineHeight: 1.12 }}>{kt("kid.quest.title", { title: tonightsTitle })}</span>
+          <span style={{ display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 2, overflow: "hidden", fontFamily: "var(--font-display)", fontWeight: 900, fontSize: "clamp(20px, 5vw, 26px)", color: "var(--arbor-ink)", lineHeight: 1.12 }}>{tonightsTitle}</span>
           <span style={{ display: "block", fontSize: 13, color: "var(--arbor-ink)", marginBlockStart: 4 }}>{kt("kid.quest.sub")}</span>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 6, minBlockSize: 44, fontWeight: 800, color: "var(--arbor-sky-ink)" }}>{kt("kid.quest.cta")} <ChevronRight className="w-4 h-4 rtl:-scale-x-100" aria-hidden="true" /></span>
         </span>
@@ -461,7 +488,7 @@ export default function KidDashboard({
             {kt("kid.games.seeAll")} <ChevronRight className="w-4 h-4 rtl:-scale-x-100" aria-hidden="true" />
           </button>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(160px, 100%), 1fr))", gap: `${KID_HOME_TILE_GAP}px` }}>
+        <div className={tilePortrait ? PORTRAIT_GRID : undefined} style={tilePortrait ? { gap: `${KID_HOME_TILE_GAP}px` } : { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(160px, 100%), 1fr))", gap: `${KID_HOME_TILE_GAP}px` }}>
           {GAMES.map((g, i) => (
             <SceneTile key={g.id} worldId={g.worldId} accent={g.accent} Icon={g.Icon} title={kt(`kid.game.${g.id}.title`)} sub={kt(`kid.game.${g.id}.sub`)} imagePrompt={g.imagePrompt} heroUrl={hero.url ?? undefined} heroStyle={hero.style} theme={kidTheme} index={i} onClick={() => onOpenSurface("arcade", g.worldId)} />
           ))}
@@ -473,7 +500,7 @@ export default function KidDashboard({
           <Sparkles className="w-4 h-4" aria-hidden="true" style={{ color: "var(--arbor-green-ink)" }} />
           {kt("kid.adventures.title")}
         </h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: `${KID_HOME_TILE_GAP}px` }}>
+        <div className={tilePortrait ? PORTRAIT_GRID : undefined} style={tilePortrait ? { gap: `${KID_HOME_TILE_GAP}px` } : { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: `${KID_HOME_TILE_GAP}px` }}>
           {ADVENTURES.map((a, i) => (
             <SceneTile key={a.id} worldId={a.worldId} accent={a.accent} Icon={a.Icon} title={kt(`kid.adv.${a.id}.title`)} sub={kt(`kid.adv.${a.id}.sub`)} imagePrompt={a.imagePrompt} heroUrl={hero.url ?? undefined} heroStyle={hero.style} theme={kidTheme} big index={i} onClick={() => onOpenSurface(a.surface)} />
           ))}

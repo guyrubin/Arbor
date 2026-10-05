@@ -31,6 +31,7 @@ import {
   KID_HOME_TILE_GAP,
   KID_HOME_GAME_TITLE_SIZE,
   KID_HOME_GAME_TITLE_MIN_PX,
+  KID_HOME_PORTRAIT_ASPECT,
 } from "./KidDashboard";
 import { KID_WORLDS } from "../practice/HeroArcade";
 
@@ -70,6 +71,15 @@ describe("OBJ-KID-06 — the games are above the fold at 390x844", () => {
     // …and the second row lands above the fold too.
     const secondRowBottom = firstRowBottom + KID_HOME_TILE_GAP + KID_HOME_GAME_TILE_BLOCK;
     expect(secondRowBottom).toBeLessThan(FOLD);
+  });
+
+  it("R-2b: in a portrait theme (film3d, 2 columns at 390, 20 px overlay inset) two rows of 3:4 cards still clear the fold", () => {
+    expect(KID_HOME_PORTRAIT_ASPECT).toBe("3 / 4");
+    const OVERLAY_INLINE_PAD = 20; // KidModeOverlay paddingInline
+    const cardW = (390 - 2 * OVERLAY_INLINE_PAD - KID_HOME_TILE_GAP) / 2;
+    const cardH = (cardW * 4) / 3;
+    const secondRowBottom = firstGameTileTop + cardH + KID_HOME_TILE_GAP + cardH;
+    expect(secondRowBottom, `second portrait row ends at ${secondRowBottom.toFixed(0)}`).toBeLessThan(FOLD);
   });
 
   it("negative control — the pre-fix order and tile height put every tile below the fold", () => {

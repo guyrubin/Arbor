@@ -193,12 +193,15 @@ describe("B-KID-06 · kid copy says what the door does", async () => {
   });
 
   it("the banner names tonight's ONE story, EN title or HE titleHe; no 'pick a world'", () => {
-    expect(baseEn["kid.quest.title"]).toContain("{title}");
-    expect(baseHe["kid.quest.title"]).toContain("{title}");
-    for (const v of [baseEn["kid.quest.title"], baseEn["kid.quest.sub"]]) expect(v).not.toMatch(/pick a world|start a hero story/i);
-    for (const v of [baseHe["kid.quest.title"], baseHe["kid.quest.sub"]]) expect(v).not.toContain("בוחרים עולם");
+    // R-2b: the eyebrow says "Tonight's story" and the title IS the story's
+    // title (max 2 lines) — no "Tonight's story: …" prefix wrapping to 5 lines.
+    expect(baseEn["kid.quest.eyebrow"]).toBe("Tonight's story");
+    expect(baseHe["kid.quest.eyebrow"]).toBe("הסיפור של הערב");
+    expect(baseEn["kid.quest.title"]).toBeUndefined();
+    for (const v of [baseEn["kid.quest.eyebrow"], baseEn["kid.quest.sub"]]) expect(v).not.toMatch(/pick a world|start a hero story/i);
+    for (const v of [baseHe["kid.quest.eyebrow"], baseHe["kid.quest.sub"]]) expect(v).not.toContain("בוחרים עולם");
     const dashboard = read("KidDashboard.tsx");
-    expect(dashboard).toContain('kt("kid.quest.title", { title: tonightsTitle })');
+    expect(dashboard).toContain(">{tonightsTitle}</span>");
     expect(dashboard).toContain('uiLang === "he" ? tonightsStory.titleHe : tonightsStory.title');
     expect(HERO_STORIES.length).toBeGreaterThan(0);
     for (const s of HERO_STORIES) expect(s.titleHe, s.id).toMatch(/[֐-׿]/);

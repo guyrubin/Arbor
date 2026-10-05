@@ -14,7 +14,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import {
   DEFAULT_KID_THEME, GATING_KID_ART_KEYS, KID_ART_KEYS, KID_THEME_IDS, KID_THEME_MANIFEST,
-  kidArt, kidArtSrcSet, resolveKidTheme, selectableThemes, storyCoverKey, themeCoverage,
+  KID_THEME_TILE_SHAPE, kidArt, kidArtSrcSet, resolveKidTheme, selectableThemes, storyCoverKey, themeCoverage,
 } from "./kidThemeManifest";
 import { KID_ART_GAPS } from "./kidArtGaps";
 import { HERO_STORIES } from "./heroJourneys";
@@ -61,6 +61,12 @@ describe("B-KID-70 (b): coverage + the reviewed list of images to create", () =>
     expect(KID_ART_KEYS.filter((k) => k.startsWith("story."))).toHaveLength(HERO_STORIES.length);
     expect(kidArt("storybook", storyCoverKey("noahs-ark"))).toBeNull();
     expect(kidArt("film3d", storyCoverKey("noahs-ark"))?.src).toContain("story-noahs-ark");
+  });
+  it("R-2b: tile shape is a theme property; film3d art says whether it shows a hero", () => {
+    expect(KID_THEME_TILE_SHAPE).toEqual({ film3d: "portrait", storybook: "wide" });
+    expect(kidArt("film3d", "world.memory.tile")?.hasHero).toBe(true);
+    expect(kidArt("film3d", "world.kid-quest.tile")?.hasHero).toBe(false);
+    expect(kidArt("storybook", "world.memory.tile")?.hasHero).toBe(false);
   });
   it("resolveKidTheme: unknown or unselectable values fall to the default", () => {
     expect(resolveKidTheme(undefined)).toBe(DEFAULT_KID_THEME);

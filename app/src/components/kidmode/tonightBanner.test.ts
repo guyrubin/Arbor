@@ -27,6 +27,25 @@ describe("B-KID-42: the banner art is tonight's story cover", () => {
   });
 });
 
+describe("B-KID-70 (R-2b): a portrait theme is image-led", () => {
+  it("no sticker portrait over art that already shows a hero; 3:4 side panel; title max 2 lines", () => {
+    expect(dash).toContain("{!tonightsArtHasHero && (");
+    expect(dash).toContain("inlineSize: Math.round(KID_HOME_BANNER_BLOCK * 3 / 4)");
+    const banner = dash.slice(dash.indexOf("Today's adventure banner"), dash.indexOf("── Games ──"));
+    expect(banner).toContain("WebkitLineClamp: 2");
+  });
+  it("film3d tiles take the 480 derivative only (no 1024 request on the home)", () => {
+    for (const id of ["kid-playbank", "kid-hero", "memory", "story-noahs-ark"]) {
+      expect(worldArtwork(id, "film3d")!.srcSet, id).not.toContain("1024");
+    }
+    expect(worldArtwork("kid-hero", "storybook")!.srcSet).toContain("960w");
+  });
+  it("the shape comes from the theme, not a component if", () => {
+    expect(dash).toContain('const portrait = KID_THEME_TILE_SHAPE[theme] === "portrait";');
+    expect(dash).not.toMatch(/theme === "film3d"|kidTheme === "film3d"/);
+  });
+});
+
 describe("B-KID-42: a pinned story opens the book on arrival", () => {
   const effect = tab.slice(tab.indexOf("const pinnedOpened = useRef(false);"));
   it("auto-starts the pinned story once, after startJourney is declared", () => {
