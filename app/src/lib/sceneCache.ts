@@ -67,7 +67,11 @@ export function setScene(key: string, url: string): void {
  * flipping between beats (or Story-Journey ↔ Comic Reader) never double-pays.
  * At most MAX_CONCURRENT generations run in parallel; the rest are queued.
  */
-export function resolveScene(key: string, gen: () => Promise<string>): Promise<string> {
+/** B-KID-56 (KB-08): a book PAGE the child is waiting on goes to the front of
+ *  the generation queue, ahead of any queued decorative scene. */
+export type ScenePriority = "page" | "scene";
+
+export function resolveScene(key: string, gen: () => Promise<string>, opts: { priority?: ScenePriority } = {}): Promise<string> {
   const cached = getScene(key);
   if (cached !== undefined) return Promise.resolve(cached);
   const startedEpoch = cacheEpoch;
@@ -75,7 +79,7 @@ export function resolveScene(key: string, gen: () => Promise<string>): Promise<s
   const existing = inFlight.get(flightKey);
   if (existing) return existing;
   const p = new Promise<string>((resolve, reject) => {
-    genQueue.push(() => {
+    const job = () => {
       Promise.resolve()
         .then(gen)
         .then((url) => {
@@ -84,7 +88,9 @@ export function resolveScene(key: string, gen: () => Promise<string>): Promise<s
         })
         .catch(reject)
         .finally(() => { activeGens--; pump(); });
-    });
+    };
+    if (opts.priority === "page") genQueue.unshift(job);
+    else genQueue.push(job);
     pump();
   }).finally(() => { inFlight.delete(flightKey); });
   inFlight.set(flightKey, p);

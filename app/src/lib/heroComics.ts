@@ -634,7 +634,7 @@ async function resolveComicPage(args: {
     // instant the provider call starts so erased-child jobs never leave device.
     requireCurrentEpoch(pageEpoch);
     return request();
-  });
+  }, { priority: "page" }); // B-KID-56: a book page jumps queued tile scenes
   requireCurrentEpoch(pageEpoch);
   if (childId) void putComicPage(childId, key, url, pageEpoch);
   return url;

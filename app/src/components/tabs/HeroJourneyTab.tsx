@@ -875,7 +875,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                     {/* The story's world, with the child's hero generated into the scene
                         (same pipeline as the Practice world-cards). Falls back to the
                         hero + emoji motif while loading / with no hero / on error. */}
-                    <WorldScene worldId={`story-${story.id}`} theme={kidTheme} imagePrompt={`${story.title} — ${story.theme}`} heroUrl={heroAvatarUrl} heroStyle={heroAvatarStyle}>
+                    <WorldScene worldId={`story-${story.id}`} theme={kidTheme} imagePrompt={`${story.title} — ${story.theme}`}>
                       <div className="flex items-center gap-1.5">
                         <HeroAvatar size={80} ring animate={false} />
                         <span style={{ fontSize: 46, filter: "drop-shadow(2px 2px 0 rgba(23,27,34,.3))" }} aria-hidden="true">
@@ -1262,7 +1262,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                     {/* The story's world, with the child's hero generated into the scene
                         (same pipeline as the Practice world-cards). Falls back to the
                         hero + emoji motif while loading / with no hero / on error. */}
-                    <WorldScene worldId={`story-${story.id}`} theme={kidTheme} imagePrompt={`${story.title} — ${story.theme}`} heroUrl={heroAvatarUrl} heroStyle={heroAvatarStyle}>
+                    <WorldScene worldId={`story-${story.id}`} theme={kidTheme} imagePrompt={`${story.title} — ${story.theme}`}>
                       <div className="flex items-center gap-1.5">
                         <HeroAvatar size={80} ring animate={false} />
                         <span style={{ fontSize: 46, filter: "drop-shadow(2px 2px 0 rgba(23,27,34,.3))" }} aria-hidden="true">

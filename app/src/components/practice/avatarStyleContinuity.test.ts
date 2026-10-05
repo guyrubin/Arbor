@@ -30,8 +30,11 @@ describe("avatar medium continuity", () => {
     const journey = src("components", "tabs", "HeroJourneyTab.tsx");
     expect(count(dashboard, 'heroStyle={hero.style}')).toBe(3);
     expect(count(arcade, 'heroStyle={hero.style}')).toBe(1);
-    expect(count(journey, 'heroStyle={heroAvatarStyle}')).toBe(2);
-    expect(journey).toContain('heroUrl={heroAvatarUrl} heroStyle={heroAvatarStyle}');
+    // B-KID-56 (KB-08): story cards render the theme's plate and generate no
+    // scene, so the journey tab has no WorldScene style caller; the reader
+    // (HeroScenePlayer) still receives the selected style for its pages.
+    expect(count(journey, 'heroStyle={heroAvatarStyle}')).toBe(0);
+    expect(journey).toContain('heroAvatarStyle={heroAvatarStyle}');
   });
 
   it("keeps generic scene rendering style-aware without changing the child costume", () => {
