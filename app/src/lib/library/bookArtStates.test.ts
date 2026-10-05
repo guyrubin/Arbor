@@ -21,7 +21,8 @@ describe("art states (v3 cues)", () => {
   it("p9's authored states: flight, dust, quiet — a state whose plate is not delivered is skipped", () => {
     const all = pageArtStates({ ...p9, artStates: S }, () => true).map((s) => s.id);
     expect(all).toEqual(["flight", "dust", "quiet"]);
-    expect(pageArtStates({ ...p9, artStates: S }, (id) => id !== "PL7-flight").map((s) => s.id)).toEqual(["dust", "quiet"]);
+    const noFlight = pageArtStates({ ...p9, artStates: S }, (id) => id !== "PL7-flight");
+    expect(noFlight.map((s) => [s.id, s.silentAfterMs])).toEqual([["dust", 5500], ["quiet", 3000]]);
     const ids = p9.artStates!.map((s) => s.id);
     expect(ids).toEqual(["flight", "dust", "quiet"]);
     expect(p9.artStates!.map((s) => s.silentAfterMs)).toEqual([4000, 1500, 3000]);

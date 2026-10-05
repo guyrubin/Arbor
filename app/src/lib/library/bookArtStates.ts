@@ -49,7 +49,18 @@ export function pageArtStates(page: Page, hasPlate: (plateId: string) => boolean
       const cue: ArtCue = at != null ? { atMs: at * 1000 } : "audioEnd";
       return [{ id: "reveal", overlays: ovs.map((o) => o.id), cue, silentAfterMs: 5000 }];
     })();
-  return authored.filter((s) => !s.plateId || hasPlate(s.plateId));
+  // a skipped state's silent wait passes to the next kept one (Sound off,
+  // flight not delivered: the dust still comes at 4 s + 1.5 s)
+  const out: ArtState[] = [];
+  let carry = 0;
+  for (const s of authored) {
+    if (s.plateId && !hasPlate(s.plateId)) carry += s.silentAfterMs;
+    else {
+      out.push(carry ? { ...s, silentAfterMs: s.silentAfterMs + carry } : s);
+      carry = 0;
+    }
+  }
+  return out;
 }
 
 /** Overlay ids some state controls. */
