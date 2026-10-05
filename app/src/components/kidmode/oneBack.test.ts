@@ -50,6 +50,25 @@ describe("B-KID-53: one back control in Kid Mode", () => {
   });
 });
 
+describe("B-KID-53 polish: the reader header fits the phone", () => {
+  it("(a) the overlay title steps down for a surface title, max 2 lines + ellipsis", () => {
+    expect(overlay).toContain('fontSize: surfaceTitle ? "var(--t-lg)" : "var(--t-xl)",');
+    expect(overlay).toContain("WebkitLineClamp: 2,");
+  });
+  it("(b) Kid Mode has no reader top row; full screen sits in the page meta row", () => {
+    expect(tab).toMatch(/\{!kidMode && \(\s*<div className="flex items-center justify-between">/);
+    expect(tab).toContain("metaAction={kidMode && !immersiveMode ? immersiveButton : undefined}");
+    expect(read("stories/HeroScenePlayer.tsx")).toContain("{metaAction}");
+  });
+  it("(c) one visible page indicator; AT hears 'Page n of N' (EN + HE)", async () => {
+    const { kidsStoriesText } = await import("../../lib/i18nElevation/kidsStories");
+    expect(kidsStoriesText("journey.beat", "en", { current: 1, total: 8 })).toBe("Page 1 of 8");
+    expect(kidsStoriesText("journey.beat", "he", { current: 1, total: 8 })).toMatch(/^עמוד/);
+    const player = read("stories/HeroScenePlayer.tsx");
+    expect(player).not.toMatch(/\{beatNumber\} \/ \{beatTotal\}/);
+  });
+});
+
 describe("the title store", () => {
   it("publishes and clears", async () => {
     const mod = await import("./kidSurfaceTitle");

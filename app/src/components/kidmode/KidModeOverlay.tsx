@@ -260,7 +260,14 @@ export default function KidModeOverlay() {
                 style={{
                   fontFamily: "var(--font-display)",
                   fontWeight: 900,
-                  fontSize: "var(--t-xl)",
+                  // B-KID-53 polish: a story's own title can be long — one step
+                  // smaller than the surface label, max 2 lines, then an ellipsis.
+                  fontSize: surfaceTitle ? "var(--t-lg)" : "var(--t-xl)",
+                  lineHeight: 1.15,
+                  display: "-webkit-box",
+                  WebkitBoxOrient: "vertical",
+                  WebkitLineClamp: 2,
+                  overflow: "hidden",
                   color: "var(--arbor-clay)",
                   flex: 1,
                   minWidth: 0,

@@ -52,6 +52,7 @@ export function HeroScenePlayer({
   immersive = false,
   fallbackArtUrl,
   fallbackArtHasHero = false,
+  metaAction,
   childId,
   onPageResolved,
 }: {
@@ -84,6 +85,8 @@ export function HeroScenePlayer({
   fallbackArtUrl?: string;
   /** B-KID-70 (R-4b): the fallback picture already shows a hero — no cameo box over it. */
   fallbackArtHasHero?: boolean;
+  /** B-KID-53 polish: one extra control for the page's meta row (Kid Mode's full screen). */
+  metaAction?: React.ReactNode;
   /** G2: enables the device-local page store so the story re-opens with its art. */
   childId?: string;
   /** G2: reports each resolved page key so the story can be saved as a book. */
@@ -174,11 +177,12 @@ export function HeroScenePlayer({
   return (
     <div className="flex flex-col items-center text-center gap-5">
       <div className="flex items-center gap-3 text-[11px] uppercase tracking-widest font-bold" style={{ color: "var(--arbor-green-ink)" }}>
-        {/* R-4b: a kid-register page indicator — numerals only on screen,
-            the full sentence for the screen reader (EN + HE). */}
+        {/* B-KID-53 polish: ONE visible page indicator — the reader's nav row
+            ("1 / 8" between Back and Next); here only the accessible sentence
+            "Page 1 of 8" (EN + HE). */}
         <span className="sr-only">{kidsStoriesText("journey.beat", aiLang, { current: beatNumber, total: beatTotal })}</span>
-        <span aria-hidden="true" dir="ltr" className="normal-case tracking-normal text-[13px]">{beatNumber} / {beatTotal}</span>
         {scene.narration && <SpeakButton text={scene.narration} lang={uiLang} className="touch-target" />}
+        {metaAction}
         {/* KID-26: file downloads are a parent affordance — never reachable from inside Kid Mode. */}
         {sceneArt && !isKidModeActive() && (
           <button

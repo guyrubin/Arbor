@@ -1459,6 +1459,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                 immersive={immersiveMode}
                 fallbackArtUrl={storyCover(activeStory.id)?.src}
                 fallbackArtHasHero={storyCover(activeStory.id)?.hasHero ?? false}
+                metaAction={kidMode && !immersiveMode ? immersiveButton : undefined}
               />
             </motion.div>
           ) : null}
@@ -1567,6 +1568,20 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
 
   // Kid Mode owns its own trap and Escape gate. Keep the child view inside
   // that subtree; only the parent view portals out of the transformed tab.
+  // B-KID-53 polish: ONE full-screen control. The parent keeps it in the reader's
+  // top row; Kid Mode has no top row (the overlay carries back + title), so the
+  // control sits in the page's own meta row beside Read aloud.
+  const immersiveButton = (
+        <button
+          ref={immersiveTriggerRef}
+          onClick={() => setImmersive(true)}
+          className="inline-flex items-center justify-center gap-1.5 text-sm font-bold px-2 min-h-[44px]"
+          style={{ color: "var(--arbor-muted)", minWidth: "var(--touch-min)" }}
+          aria-label={t("elev.stories.reader.immersive")}
+        >
+          <Icon name="fullscreen" size={16} /> <span className="hidden sm:inline">{t("elev.stories.reader.immersive")}</span>
+        </button>
+  );
   const immersiveDialog = (
         <div ref={dialogRef} tabIndex={-1} data-arbor-dialog-layer role="dialog" aria-modal="true" aria-label={render.title} className="fixed inset-0 z-[60] flex flex-col" style={{ background: "var(--arbor-paper)" }}>
           <div className="flex items-center justify-between px-6 py-4">
@@ -1584,6 +1599,9 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
 
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
+      {/* B-KID-53 polish: Kid Mode has no reader top row (the overlay carries
+          back + title; full screen sits in the page meta row). */}
+      {!kidMode && (
       <div className="flex items-center justify-between">
         {/* §3f row 4 — these two measured 20 px and 16 px tall: the way out of a
             story and the way into full screen, both under the touch floor. Both
@@ -1600,16 +1618,9 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
           {kidMode ? kidsStoriesText("journey.backStories", aiLang) : t("elev.stories.reader.back")}
         </button>)}
         {!kidMode && <span className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{render.title}</span>}
-        <button
-          ref={immersiveTriggerRef}
-          onClick={() => setImmersive(true)}
-          className="inline-flex items-center justify-center gap-1.5 text-sm font-bold px-2 min-h-[44px]"
-          style={{ color: "var(--arbor-muted)", minWidth: "var(--touch-min)" }}
-          aria-label={t("elev.stories.reader.immersive")}
-        >
-          <Icon name="fullscreen" size={16} /> <span className="hidden sm:inline">{t("elev.stories.reader.immersive")}</span>
-        </button>
+        {immersiveButton}
       </div>
+      )}
 
       <div className="rounded-3xl p-6 md:p-8" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-md)" }}>
         {playerBody(false)}

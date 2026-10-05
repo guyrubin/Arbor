@@ -96,7 +96,9 @@ describe("B-KID-70 (R-4b): tonight and the catalogue lead with illustrated stori
     const player = readFileSync(path.join(SRC, "components/stories/HeroScenePlayer.tsx"), "utf8");
     expect(player).toContain("objectPosition: BEAT_FOCUS[(beatNumber - 1) % BEAT_FOCUS.length]");
     expect(player).toContain("{!(fallbackArtUrl && fallbackArtHasHero) && (");
-    expect(player).toContain('<span aria-hidden="true" dir="ltr"');
+    // B-KID-53 polish: one visible indicator (the nav row); the player keeps only "Page n of N" for AT.
+    expect(player).not.toContain('<span aria-hidden="true" dir="ltr"');
+    expect(player).toContain('<span className="sr-only">{kidsStoriesText("journey.beat", aiLang, { current: beatNumber, total: beatTotal })}</span>');
     expect(tab).toContain("fallbackArtHasHero={storyCover(activeStory.id)?.hasHero ?? false}");
   });
 });
