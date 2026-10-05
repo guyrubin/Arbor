@@ -20,6 +20,7 @@ import { rcString } from "../weekly/recapStrings";
 import { weeklyChipIds, isEmptyCurrentWeek } from "../weekly/weeklySelection";
 import { fetchDigestEmailStatus, readEmailOptIn, writeEmailOptIn, type DigestEmailStatus } from "../weekly/recapEmail";
 import type { WeeklyDigest } from "../../lib/api";
+import WhatWorkedCard, { whatWorkedThisWeek } from "../weekly/WhatWorkedCard";
 
 /**
  * WeeklyTab — the weekly report surface. W2 2.1 hoisted ALL generation state
@@ -115,6 +116,13 @@ export default function WeeklyTab() {
       promptKey: dailyPromptKeys({ ageYears: ageYearsFromProfile(childProfile), childId: childProfile.id, date: now })[0] ?? null,
     };
   }, [childProfile, behaviorLogs, playLogs, milestones, actionLoop, approvedMemoryItems, keptInsights, checkedMilestones]);
+  // B-TODAY-29: the sentences the parent marked "held the plan" this week
+  // (B-ASKJB-33), up to three — a card in the letter only when there are any.
+  const worked = useMemo(
+    () => whatWorkedThisWeek(actionLoop, recapRecord.weekStartMs, { locale: uiLang === "he" ? "he" : "en", childName: first }),
+    [actionLoop, recapRecord.weekStartMs, uiLang, first]
+  );
+  const parentFirst = (user?.displayName || t("nav.parent")).split(" ")[0];
   useEffect(() => {
     if (showRecap && recap.recapUnopened) recap.markRecapOpened();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -275,6 +283,9 @@ export default function WeeklyTab() {
                 setLogOpen(true);
               }}
             />
+            {/* B-TODAY-29: one of the letter's cards (inside its module, so the
+                route's module budget is unchanged); absent when none held. */}
+            <WhatWorkedCard lines={worked} childName={first} parentName={parentFirst} locale={uiLang === "he" ? "he" : "en"} t={t} />
             </div>
           )}
 

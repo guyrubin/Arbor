@@ -754,6 +754,8 @@ export const en: Dict = {
   "hm.send.when": "When: {when}",
   "hm.send.with": "With it: {doNow}",
   "hm.send.closing": "From Arbor, {parent}'s parenting notes",
+  // B-TODAY-29
+  "wk.worked.title": "What worked with {name} this week",
   "hm.now.pick": "What's happening right now?",
   "hm.now.matched": "Matches what you've noted",
   "hm.now.back": "All situations",
@@ -3223,6 +3225,8 @@ export const he: Dict = {
   "hm.send.when": "מתי: {when}",
   "hm.send.with": "ובמקביל: {doNow}",
   "hm.send.closing": "מתוך ארבור, הרשימות של {parent} על הורות",
+  // B-TODAY-29
+  "wk.worked.title": "מה עבד עם {name} השבוע",
   "hm.now.pick": "מה קורה עכשיו?",
   "hm.now.matched": "מתאים למה שתיעדתם",
   "hm.now.back": "כל המצבים",
