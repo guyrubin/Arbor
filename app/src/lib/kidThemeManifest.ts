@@ -16,7 +16,7 @@
  * need to be created: `KID_ART_GAPS` (kidArtGaps.ts), pinned by the test.
  */
 import { HERO_STORIES } from "./heroJourneys";
-import { KID_WORLDS, type KidWorldId } from "../components/kidmode/kidWorlds";
+import { KID_WORLDS, SNEAK_FREEZE_WORLD, type KidWorldId } from "../components/kidmode/kidWorlds";
 
 export const KID_THEME_IDS = ["film3d", "storybook"] as const;
 export type KidThemeId = (typeof KID_THEME_IDS)[number];
@@ -39,7 +39,7 @@ export const KID_HOME_TILE_IDS = ["kid-playbank", "kid-hero", "kid-quest"] as co
  *  HeroArcade's world picker) — ids = worldArtwork ids. B-KID-68: the kid
  *  worlds' ids come from the ONE registry (components/kidmode/kidWorlds.ts),
  *  in its slot order; only the home-only tiles are named here. */
-export type KidWorldTileId = KidWorldId | (typeof KID_HOME_TILE_IDS)[number];
+export type KidWorldTileId = KidWorldId | (typeof KID_HOME_TILE_IDS)[number] | typeof SNEAK_FREEZE_WORLD.worldId;
 export const KID_WORLD_TILE_IDS: readonly KidWorldTileId[] = [...KID_WORLDS.map((w) => w.worldId), ...KID_HOME_TILE_IDS];
 
 export type KidArtKey = `world.${KidWorldTileId}.tile` | `story.${string}.cover` | "home.stage" | "hero.portrait";
@@ -49,6 +49,7 @@ export const storyCoverKey = (storyId: string): KidArtKey => `story.${storyId}.c
 /** Every kid art slot that exists in the app today. */
 export const KID_ART_KEYS: readonly KidArtKey[] = [
   ...KID_WORLD_TILE_IDS.map(worldTileKey),
+  worldTileKey(SNEAK_FREEZE_WORLD.worldId), // B-GAME-15a: the Sneak & Freeze tile (not a gating slot)
   ...HERO_STORIES.map((s) => storyCoverKey(s.id)),
   "home.stage",
   // B-KID-94: the theme's stock hero for a finish moment when the child has
@@ -135,6 +136,9 @@ export const KID_THEME_MANIFEST: Record<KidThemeId, Partial<Record<KidArtKey, Ki
     "world.adventures.tile": film("game-adventures"),
     "world.mimic.tile": film("game-mimic", "50% 22%", 941),
     "world.reading.tile": film("game-reading"),
+    // B-GAME-15a (6 Oct): Sneak & Freeze — Savta's courtyard, the cat covering its eyes, the hero sneaking.
+    // Not in KID_WORLD_TILE_IDS (the painted worlds/v2 map and the gating list stay at the nine worlds); film-3D only.
+    "world.sneak.tile": film("game-sneak", "50% 40%"),
     // Adventure tiles + Tonight banner: the unused film3d cards whose scene
     // matches the tile's job (play together / the hero's story map / a
     // bedtime reading nook).

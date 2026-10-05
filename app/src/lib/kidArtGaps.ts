@@ -15,6 +15,7 @@ export const KID_ART_GAPS: Record<KidThemeId, readonly KidArtKey[]> = {
     "hero.portrait",
   ],
   storybook: [
+    "world.sneak.tile", // B-GAME-15a: the Sneak & Freeze tile exists in film-3D only (the game is film-3D only)
     "story.david-and-goliath.cover",
     "story.moses-and-pharaoh.cover",
     "story.the-lion-who-was-afraid.cover",

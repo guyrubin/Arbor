@@ -96,7 +96,8 @@ describe("B-KID-68: art ids come from the registry", () => {
   it("the manifest's world tile ids = the registry's worldIds (slot order) + the home-only tiles", () => {
     expect([...KID_WORLD_TILE_IDS]).toEqual([...KID_WORLDS.map((w) => w.worldId), ...KID_HOME_TILE_IDS]);
     const manifest = readFileSync(path.join(__dirname, "..", "..", "lib", "kidThemeManifest.ts"), "utf8");
-    expect(manifest).toContain('import { KID_WORLDS, type KidWorldId } from "../components/kidmode/kidWorlds";');
+    // B-GAME-15a re-pin (same meaning): the manifest still takes KID_WORLDS from the registry; SNEAK_FREEZE_WORLD may ride the same import.
+    expect(manifest).toMatch(/import \{ KID_WORLDS,(?: SNEAK_FREEZE_WORLD,)? type KidWorldId \} from "\.\.\/components\/kidmode\/kidWorlds";/);
     expect(manifest).not.toMatch(/"speech", "feelings", "memory"/);
   });
   it("worldArtwork resolves every registry world in every theme; the registry imports nothing at runtime", () => {
