@@ -1058,7 +1058,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                   Peach inline-start rule, quote in the editorial face with its
                   glyphs inside the <bdi>. No link: the "From today" switch is the
                   one door into that mode. Absent with no moment. */}
-              {!kidMode && tonightMode !== "today" && notedMoment && (
+              {!kidMode && notedMoment && (
                 <p data-testid="stories-tonight-noted" className="m-0 mb-2 ps-2.5 t-sm leading-snug line-clamp-2" style={{ borderInlineStart: "3px solid var(--arbor-peach-ink)", color: "var(--arbor-ink)" }}>
                   <span className="t-xs font-bold" style={{ color: "var(--arbor-peach-ink)" }}>
                     {t(notedMoment.from === "today" ? "elev.stories.tonight.noted" : "elev.stories.tonight.noted.yesterday")}
