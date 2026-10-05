@@ -254,8 +254,11 @@ export interface AgePatch {
  * Firestore is configured with `ignoreUndefinedProperties`, which would
  * otherwise skip the key and leave a stale (fabricated) birthDate winning over
  * the months the parent typed.
+ * B-KID-36 (KA-01): `avatar` and `comicAvatarUrl` too — a drawer save that
+ * replaces the hero with a real photo must DELETE the hero metadata, or
+ * resolveHeroUrl reads the real photo as the hero.
  */
-export const CLEARABLE_PROFILE_FIELDS: readonly string[] = ["birthDate"];
+export const CLEARABLE_PROFILE_FIELDS: readonly string[] = ["birthDate", "avatar", "comicAvatarUrl"];
 
 /**
  * B-CAREPRO-34 — the migration: profile fields that are RETIRED from the child

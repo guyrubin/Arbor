@@ -19,11 +19,29 @@ import { normalizeAvatarStyle } from "../../lib/avatarStyle";
  * hero — surfaces show Sprout and offer "Create {name}'s hero" instead of
  * quietly sending a real face into scene/comic generation.
  */
+/**
+ * B-KID-36 (KA-01): a hero is only ever a GENERATED image. Every hero writer
+ * (heroPersistence, the drawer's creator, Wow) stores the generator's inline
+ * `data:image/` URL together with `avatar` metadata whose `source` is
+ * 'descriptor' | 'photo'. A Storage URL (a real uploaded photo) or a malformed
+ * `avatar` left behind by an older drawer save is never a hero.
+ */
+const isGeneratedHeroMeta = (avatar: unknown): boolean => {
+  if (!avatar || typeof avatar !== "object") return false;
+  const source = (avatar as { source?: unknown }).source;
+  return source === "descriptor" || source === "photo";
+};
+
 export const resolveHeroUrl = (child: {
   avatar?: unknown;
   photoUrl?: string;
   comicAvatarUrl?: string;
-}): string | null => child.comicAvatarUrl || (child.avatar ? child.photoUrl || null : null);
+}): string | null => {
+  if (child.comicAvatarUrl) return child.comicAvatarUrl;
+  const url = child.photoUrl;
+  if (!url || !isGeneratedHeroMeta(child.avatar)) return null;
+  return url.startsWith("data:image/") ? url : null;
+};
 
 export function useHeroAvatar() {
   const { childProfile } = useArbor();

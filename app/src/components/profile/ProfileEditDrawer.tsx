@@ -171,7 +171,11 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
         ...facts,
         factsAsOf: stampChangedFacts(activeChild, facts, new Date().toISOString()),
         photoUrl: photoUrl || "",
-        ...(avatarMeta ? { avatar: avatarMeta } : {}),
+        // B-KID-36 (KA-01): the avatar key is ALWAYS written. "Upload a photo
+        // instead" / Remove clear avatarMeta, and an own `undefined` on the
+        // clearable `avatar` key becomes deleteField() — omitting the key left
+        // the stored metadata in place and turned the real photo into the hero.
+        avatar: avatarMeta ?? undefined,
         // CI-29: persist interests[] + ISO timestamp (parent-written only, COPPA-gated).
         // Defensive re-sanitize at the write boundary: entry-time filtering above
         // only covers tokens typed in this session. State is seeded from the stored
