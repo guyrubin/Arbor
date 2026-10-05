@@ -127,7 +127,9 @@ export const fiveSmoothStonesPlates: PlateTable = {
   ...(G.plates.PL3e ? { PL3e: plate("PL3e", "morning") } : {}), // p3b: Eliab standing by the bread basket
   ...(G.plates.PL3w2 ? { PL3w2: plate("PL3w2", "day") } : {}), // p6c: Goliath wading in the brook, twice the size
   ...(G.plates.PL3w3 ? { PL3w3: plate("PL3w3", "day") } : {}), // p7c: the two nearest soldiers lift their heads
-  ...(G.plates["PL7-rise"] ? { "PL7-rise": plate("PL7-rise", "day") } : {}), // p9 state 3: the soldiers stand
+  ...(G.plates["PL7-rise"] ? { "PL7-rise": plate("PL7-rise", "day") } : {}), // the soldiers stand (p9's quiet / p9b until round 4)
+  ...(G.plates["PL7-flight"] ? { "PL7-flight": plate("PL7-flight", "day") } : {}), // v3 p9 state 1: the stone in flight
+  ...(G.plates["PL7-quiet"] ? { "PL7-quiet": plate("PL7-quiet", "day") } : {}), // v3 p9 state 3: the quiet
 };
 
 /** The plate the geometry gives a page (round 3 put p3b on PL3e, p6c on PL3w2,
@@ -345,12 +347,21 @@ const p8: Page = {
   },
 };
 
-/** p9's art states (v2): 0 = the swing; 1 = the dust on the narration cue;
- *  2 = "the soldiers rise" plate ~2 s later (3 s when silent), held 1.5 s
- *  before Next. A state whose plate is not delivered yet is skipped. */
+// @icon-font-ignore — story data, not UI chrome: p9's sidecar cue key is the
+// word flight (an icon ligature name). Choice icons are still checked against
+// the shipped subset by books.test.ts.
+
+/** p9's art states (v3, §1.6): 0 = the swing; 1 = the stone in flight
+ *  (PL7-flight + `sling-release`) at "The stone flew" / "האבן עפה"; 2 = the
+ *  dust at "BOOM" / "בּוּם"; 3 = the quiet after the file ends. Cue times come
+ *  from the per-voice `p9.cues.json` sidecar ({ flight, boom } ms), else 0.80 /
+ *  0.93 of the file; Sound off: 4 s, +1.5 s, +3 s. A state whose plate is not
+ *  delivered yet (round 4) is skipped. */
+const QUIET_PLATE = G.plates["PL7-quiet"] ? "PL7-quiet" : "PL7-rise";
 const p9States: NonNullable<Page["artStates"]> = [
-  { id: "dust", overlays: ["dust-cloud"], trigger: "narration" },
-  ...(G.plates["PL7-rise"] ? [{ id: "rise", plateId: "PL7-rise", overlays: [] as string[], trigger: { afterMs: 2000, silentAfterMs: 3000 } }] : []),
+  { id: "flight", plateId: "PL7-flight", pose: "sling-release", overlays: [], cue: { atFraction: 0.8 }, cueKey: "flight", silentAfterMs: 4000 },
+  { id: "dust", overlays: ["dust-cloud"], cue: { atFraction: 0.93 }, cueKey: "boom", silentAfterMs: 1500 },
+  { id: "quiet", plateId: QUIET_PLATE, overlays: [], cue: "audioEnd", silentAfterMs: 3000 },
 ];
 
 const p9: Page = {
@@ -428,7 +439,7 @@ export const fiveSmoothStones: Book = {
   ],
   ageBand: "4-7",
   /** v2 poses the hero sheet may not have yet (round 3): the nearest pose it has. */
-  poseFallbacks: { "stand-tall-hand": "look-up", "stand-tall": "look-up", "sit-hunched": "sit" },
+  poseFallbacks: { "stand-tall-hand": "look-up", "stand-tall": "look-up", "sit-hunched": "sit", "sling-release": "sling-swing-face-right", "squat-stones": "squat-look" },
   cover,
   pages: [p1, p2, p2b, p3, p3b, p4, p4b, p5, p8, p9, p9b, p10],
   decision: {

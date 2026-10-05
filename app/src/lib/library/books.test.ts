@@ -253,16 +253,20 @@ describe("Five Smooth Stones (the proof) — manuscript specifics", () => {
     expect(byId.p6c.hero!.pose).toBe("sit-hunched");
     expect(byId.p7c.hero!.pose).toBe("sit-hunched");
     expect(byId.p7c.repair!.heroAfter!.pose).toBe("stand-tall");
-    expect(book.poseFallbacks).toEqual({ "stand-tall-hand": "look-up", "stand-tall": "look-up", "sit-hunched": "sit" });
+    expect(book.poseFallbacks).toEqual({ "stand-tall-hand": "look-up", "stand-tall": "look-up", "sit-hunched": "sit", "sling-release": "sling-swing-face-right", "squat-stones": "squat-look" });
   });
 
-  it("manuscript v2: p9 has ordered art states - the dust on the narration cue, then 'the soldiers rise' once PL7-rise is delivered", () => {
+  it("manuscript v3: p9 has four picture states cued by the words (flight on 'The stone flew', dust on 'BOOM', quiet at the end)", () => {
     const states = byId.p9.artStates!;
-    expect(states[0]).toEqual({ id: "dust", overlays: ["dust-cloud"], trigger: "narration" });
-    if (fiveSmoothStonesGeometry.plates["PL7-rise"]) {
-      expect(states[1]).toMatchObject({ id: "rise", plateId: "PL7-rise", overlays: [], trigger: { afterMs: 2000, silentAfterMs: 3000 } });
-      expect(getPlate(book.id, "PL7-rise")).toBeDefined();
-    } else expect(states).toHaveLength(1);
+    expect(states.map((st) => [st.id, st.cueKey ?? null, st.silentAfterMs])).toEqual([
+      ["flight", "flight", 4000],
+      ["dust", "boom", 1500],
+      ["quiet", null, 3000],
+    ]);
+    expect(states[0]).toMatchObject({ plateId: "PL7-flight", pose: "sling-release", cue: { atFraction: 0.8 } });
+    expect(states[1]).toMatchObject({ overlays: ["dust-cloud"], cue: { atFraction: 0.93 } });
+    expect(states[2].cue).toBe("audioEnd");
+    expect(getPlate(book.id, states[2].plateId!)).toBeDefined();
   });
 
   it("v3: pages whose art has not landed stand in on the nearest plate and are listed by name (ART_PENDING)", () => {

@@ -69,6 +69,9 @@ describe("the book library makes zero model calls", () => {
   it("the one fetch reads only same-origin static JSON under /_dev, /visuals or /audio", () => {
     expect(isStaticJsonPath("/_dev/hero-sheets/dylan-v2/manifest.json")).toBe(true);
     expect(isStaticJsonPath("/visuals/books/x/manifest.json")).toBe(true);
+    // a narration cue sidecar next to its file (v3)
+    expect(isStaticJsonPath("/_dev/narration/five-smooth-stones/dylan-v2/en/p9.cues.json")).toBe(true);
+    expect(isStaticJsonPath("/_dev/narration/x/p9..json")).toBe(false);
     for (const bad of ["/api/generate.json", "/api/tts", "https://evil.example/x.json", "//evil.example/x.json", "/_dev/../api/x.json", "/_dev/x.js", "/_dev/x.json?y=1"]) {
       expect(isStaticJsonPath(bad), bad).toBe(false);
     }
