@@ -115,7 +115,7 @@ describe("§3f row 3 — the parent door leads with tonight's cover", () => {
   });
 
   it("RUN-08 — no zero wall: the counts line renders only when there is something to count", () => {
-    expect(parent).toMatch(/\{runs\.length > 0 && \(\s*<p[^>]*>\s*\{t\("elev\.stories\.counts\.stories", \{ n: runs\.length \}\)\}/);
+    expect(parent).toMatch(/\{runs\.length > 0 && \(\s*<p[^>]*>\s*\{t\(runs\.length === 1 \? "elev\.stories\.counts\.stories\.one" : "elev\.stories\.counts\.stories", \{ n: runs\.length \}\)\}/);
   });
 
   it("KID-29 residue — the kid banner keeps the crest and the name, not the tally", () => {
@@ -219,7 +219,8 @@ describe("B-PLAY-11 — Tonight cover: no virtue tallies, insight first, catalog
     // the stamped element is the button whose label is the CTA
     expect(cover.slice(btnOpen, cover.indexOf("</button>", stamp))).toContain('t("elev.stories.tonight.cta")');
     expect(cover.slice(btnOpen, cover.indexOf("</button>", stamp))).not.toContain("tonightStory.titleHe");
-    expect(cover).toContain("h-[112px] sm:h-[168px]");
+    // W2-SHELLPLAY r2: the art band is a min-height (it now holds the hero row)
+    expect(cover).toContain("min-h-[112px] sm:min-h-[168px]");
     expect(cover).toContain("lg:grid-cols-[2fr_3fr]");
     expect(cover).toContain("lg:max-w-[60ch]");
     // the CTA is the one gradient, with the on-accent ink
@@ -293,8 +294,13 @@ describe("W2-SHELLPLAY r2 · #/stories — one filled button, honest 'starring',
   it("no hero: the cover's first act is the hero row (before Play), and the shell says 'starring' only once a hero exists", () => {
     expect(cover.indexOf('data-testid="hero-first-gate"')).toBeLessThan(cover.indexOf('data-primary-move="read-tonights-story"'));
     for (const f of ["components/layout/Shell.tsx", "components/layout/Topbar.tsx"]) {
-      expect(read(f), f).toContain('section.id === "stories" && !childProfile.avatar ? "nav.sub.stories.noHero"');
+      // 74d5790: the sub-line key is one visible dynamic prefix ("nav.sub." + hubSubKey); the no-hero rule lives in hubSubKey
+      const src = read(f);
+      expect(src, f).toContain('const hubSubKey = section.id === "stories" && !childProfile.avatar ? "stories.noHero" : section.id;');
+      expect(src, f).toContain('t("nav.sub." + hubSubKey, { name: childProfile.name })');
     }
+    // NEGATIVE CONTROL: a shell that keys the sub-line on section.id alone (no hero check) is caught
+    expect('t("nav.sub." + section.id, { name: childProfile.name })').not.toContain('t("nav.sub." + hubSubKey');
     for (const lang of ["en", "he"] as const) {
       expect(translate(lang, "nav.sub.stories.noHero", { name: "Dylan" })).not.toMatch(/starring|בכיכוב/i);
     }
