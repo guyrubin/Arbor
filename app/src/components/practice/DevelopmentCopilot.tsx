@@ -247,7 +247,7 @@ export default function DevelopmentCopilot() {
       return text;
     };
     return { clinicianSummary: build(true), previewSummary: build(false) };
-  }, [visibleDomains, domainCounts, childProfile, data.today, data.week, data.streak, data.stats, advCount, advCorrect, watch, recommendation]);
+  }, [visibleDomains, domainCounts, childProfile, data.today, data.week, data.streak, data.stats, advCount, watch, recommendation]);
 
   const copySummary = async () => {
     if (!clinicianSummary) return;
