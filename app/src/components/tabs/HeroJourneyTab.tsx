@@ -316,7 +316,8 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to start the journey.";
       const fallback = authoredJourneyRender(story, aiLang);
-      journeyMemo.set(journeyMemoKey(childProfile.id, story.id, aiLang, dayKey(new Date())), fallback);
+      // B-KID-33: the fallback is NOT memoised for the day — the next open asks
+      // again (one call), it never replays a refusal or a crash.
       startedAtRef.current = new Date().toISOString();
       setActiveStory(story);
       setRender(fallback);

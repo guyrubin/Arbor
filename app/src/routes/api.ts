@@ -2993,7 +2993,9 @@ ${languageDirective}`;
           category: outputVerdict.category,
           reason: outputVerdict.reason,
         });
-        res.json({ text: renderBlockedOutputMarkdown(), outputBlocked: true, blockedCategory: outputVerdict.category });
+        // B-KID-33: a blocked render is a refusal, not a render — 422 like
+        // sendScreenedJson, so no client can store it as tonight's story.
+        res.status(422).json({ error: "Arbor could not safely complete this story.", outputBlocked: true, blockedCategory: outputVerdict.category });
         return;
       }
 

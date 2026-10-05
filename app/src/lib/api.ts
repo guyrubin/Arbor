@@ -140,6 +140,18 @@ const sceneImagePost = (url: string, payload: unknown) =>
         throw err;
       });
 
+/** B-KID-33: a hero-journey answer is a render only when it has the render's
+ *  shape. A moderated answer (`{ text, outputBlocked }`) or any other body
+ *  throws, so the reader falls back to the authored story instead of crashing
+ *  on `render.scenes.find`. */
+export function assertHeroJourneyRender(r: HeroJourneyRender): HeroJourneyRender {
+  const v = r as unknown as { scenes?: unknown; choices?: unknown; outputBlocked?: unknown } | null;
+  if (!v || v.outputBlocked === true || !Array.isArray(v.scenes) || !Array.isArray(v.choices)) {
+    throw new ApiError("This story could not be personalised right now.", 422);
+  }
+  return r;
+}
+
 /** `Retry-After` in seconds, or undefined when absent/not a number. */
 function retryAfterOf(res: { headers: { get(name: string): string | null } }): number | undefined {
   const raw = res.headers.get("Retry-After");
@@ -429,7 +441,7 @@ export const api = {
     language?: "en" | "he";
   }) => post<BedtimeStory>("/api/generate-bedtime-story", payload),
   generateHeroJourney: (payload: { storyId: string; childName: string; age: number; language: "en" | "he" }) =>
-    post<HeroJourneyRender>("/api/generate-hero-journey", payload),
+    post<HeroJourneyRender>("/api/generate-hero-journey", payload).then(assertHeroJourneyRender),
   // LC-11: `language` threads the parent's UI language into the handoff
   // generation seam (mirroring extractLog/vision). The matching languageDirective
   // in the /generate-handoff prompt is a server-side change (src/routes/api.ts).

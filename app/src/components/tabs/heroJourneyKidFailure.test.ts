@@ -135,3 +135,37 @@ describe("OBJ-KID-04 — the fix is at the call site; ToastContext is untouched"
     expect(toastCtx).toContain("queueRef");
   });
 });
+
+describe("B-KID-33 — a moderated hero-journey answer never crashes the reader", () => {
+  const body = catchBody(hero, "const startJourney = async");
+  const routes = read("routes/api.ts");
+
+  it("the client rejects a non-render body (the moderated {text, outputBlocked} shape)", async () => {
+    const { assertHeroJourneyRender } = await import("../../lib/api");
+    const blocked = { text: "…", outputBlocked: true } as never;
+    expect(() => assertHeroJourneyRender(blocked)).toThrow();
+    expect(() => assertHeroJourneyRender({ scenes: [], choices: [], outputBlocked: true } as never)).toThrow();
+    expect(() => assertHeroJourneyRender(null as never)).toThrow();
+    const ok = { scenes: [], choices: [] } as never;
+    expect(assertHeroJourneyRender(ok)).toBe(ok);
+    expect(read("lib/api.ts")).toContain('post<HeroJourneyRender>("/api/generate-hero-journey", payload).then(assertHeroJourneyRender)');
+  });
+
+  it("the failure path renders the authored story and is NOT cached for the day", () => {
+    expect(body).toContain("setRender(fallback);");
+    expect(body).not.toContain("journeyMemo.set(");
+  });
+
+  it("negative control — the pre-fix catch memoised the fallback", () => {
+    const preFix = "const fallback = authoredJourneyRender(story, aiLang);\n      journeyMemo.set(journeyMemoKey(childProfile.id, story.id, aiLang, dayKey(new Date())), fallback);";
+    expect(preFix).toContain("journeyMemo.set(");
+  });
+
+  it("the server answers a blocked render with 422, never a 200 render-shaped reply", () => {
+    const route = routes.slice(routes.indexOf('router.post("/generate-hero-journey"'));
+    const blockedAt = route.indexOf("Hero journey output blocked by output safety screen");
+    const branch = route.slice(blockedAt, route.indexOf("return;", blockedAt));
+    expect(branch).toContain("res.status(422).json({");
+    expect(branch).not.toMatch(/\bres\.json\(\{ text: renderBlockedOutputMarkdown/);
+  });
+});
