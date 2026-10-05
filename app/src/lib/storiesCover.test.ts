@@ -121,9 +121,9 @@ describe("§3f row 3 — the parent door leads with tonight's cover", () => {
     expect(parent).toMatch(/\{runs\.length > 0 && \(\s*<p[^>]*>\s*\{t\(runs\.length === 1 \? "elev\.stories\.counts\.stories\.one" : "elev\.stories\.counts\.stories", \{ n: runs\.length \}\)\}/);
   });
 
-  it("KID-29 residue — the kid banner keeps the crest and the name, not the tally", () => {
+  it("KID-29 residue — the kid library carries no tally (B-KID-85: the crest banner went with the catalogue)", () => {
     const kid = kidBranch(HERO);
-    expect(kid).toContain("<HeroCrest");
+    expect(kid).toContain("<KidLibrary");
     expect(kid).not.toContain("stories done");
     expect(kid).not.toContain("סיפורים הושלמו");
     expect(kid).not.toContain("METRIC_IDS.map");
@@ -248,7 +248,9 @@ describe("B-PLAY-11 — Tonight cover: no virtue tallies, insight first, catalog
     expect(runTitle({ storyId: "nope", title: "Custom", language: "en" }, "he")).toBe("Custom");
     expect(HERO).not.toMatch(/>\{run\.title\}</);
     expect(HERO).not.toContain("aria-label={run.title}");
-    expect((HERO.match(/runTitle\(run, uiLang === "he" \? "he" : "en"\)/g) || []).length).toBe(4);
+    // B-KID-85: the kid library tiles left with the kid catalogue; the parent
+    // Library tile keeps its title + aria-label (2).
+    expect((HERO.match(/runTitle\(run, uiLang === "he" \? "he" : "en"\)/g) || []).length).toBe(2);
   });
 
   it("W2-SHELLPLAY r1 (law 4): the parent branch carries no raw hex", () => {

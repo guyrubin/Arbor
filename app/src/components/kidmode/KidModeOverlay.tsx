@@ -41,7 +41,8 @@ const KidComicsShelf = lazy(() => import("./KidComicsShelf"));
 
 // KID-1: labels are i18n keys (kid.* namespace) resolved with t() at render.
 const SURFACE_META: Record<KidSurface, { labelKey: string; Comp?: React.ComponentType }> = {
-  journeys: { labelKey: "kid.surface.journeys", Comp: HeroJourneyTab },
+  // B-KID-85: the story surface IS the kid library ("My books").
+  journeys: { labelKey: "kidBooks.title", Comp: HeroJourneyTab },
   arcade: { labelKey: "kid.surface.arcade", Comp: PracticeHubTab },
   feelings: { labelKey: "kid.surface.feelings", Comp: FeelingsLabTab },
   comics: { labelKey: "elev.kids.comics.title" },

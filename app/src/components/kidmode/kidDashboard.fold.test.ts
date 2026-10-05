@@ -276,16 +276,14 @@ describe("U1 — one FEATURED hero above the fold, plus the greeting mark", () =
     expect(greetingLine, "the greeting mark stays decorative").toContain("decorative");
     const featuredLine = aboveFold.split("\n").find((l) => /<HeroAvatar size=\{80\}/.test(l))!;
     expect(featuredLine, "the featured hero must announce").not.toContain("decorative");
-    // …and so does the comics door, whose adjacent copy is "Hero Comics".
-    const comics = dash.slice(dash.indexOf("Saved comics are a distinct"));
-    expect(comics.split("\n").find((l) => l.includes("<HeroAvatar"))!).not.toContain("decorative");
   });
 
   it("F8 — directional chevrons mirror in RTL; non-directional glyphs do not", () => {
     // DESIGN.md: "directional icons rtl:-scale-x-100". E9 caught three arrows
     // pointing right while sitting on the left of a Hebrew line.
     const chevrons = [...dash.matchAll(/<ChevronRight className="([^"]+)"/g)].map((m) => m[1]);
-    expect(chevrons.length, "every chevron on the kid home").toBe(3);
+    // B-KID-85: banner + My books See all (the comics door went into the library).
+    expect(chevrons.length, "every chevron on the kid home").toBe(2);
     for (const cls of chevrons) expect(cls, cls).toContain("rtl:-scale-x-100");
     for (const glyph of ["Star", "Gamepad2", "BookOpen"]) {
       const m = new RegExp(`<${glyph} className="([^"]*)"`).exec(dash);
@@ -294,14 +292,12 @@ describe("U1 — one FEATURED hero above the fold, plus the greeting mark", () =
     }
   });
 
-  it("the remaining portrait is the comics door, far below the fold", () => {
-    const comicsTop =
-      firstGameTileTop +
-      KID_HOME_GAME_TILE_BLOCK * 5 + KID_HOME_TILE_GAP * 4 + // five rows of nine tiles
-      KID_HOME_SECTION_GAP;
-    expect(comicsTop).toBeGreaterThan(FOLD);
-    const comics = dash.slice(dash.indexOf("Saved comics are a distinct"));
-    expect((comics.match(/<HeroAvatar/g) ?? []).length).toBe(1);
+  it("B-KID-85: no portrait below the games — the comics door (and its sticker) went into the library", () => {
+    const below = dash.slice(dash.indexOf("── Games ──"));
+    expect(below).not.toContain("<HeroAvatar");
+    expect(dash).not.toContain('onOpenSurface("comics")');
+    // the whole home carries exactly the two portraits U1 allows
+    expect((dash.match(/<HeroAvatar size=/g) ?? []).length).toBe(2);
   });
 });
 

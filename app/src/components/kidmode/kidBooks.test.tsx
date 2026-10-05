@@ -5,12 +5,17 @@
  */
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { en as kidsEn, he as kidsHe } from "../../lib/i18nElevation/kidsStories";
 import { describe, expect, it } from "vitest";
 import { kidBooks } from "./kidBooks";
 import { KidBookCover } from "./KidBookCover";
 import { HERO_STORIES, storyHasLanguage } from "../../lib/heroJourneys";
 import { kidArt, storyCoverKey } from "../../lib/kidThemeManifest";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const film3dCover = (id: string) => kidArt("film3d", storyCoverKey(id)) !== null;
 const EMOJI = /\p{Extended_Pictographic}/u;
 
@@ -90,5 +95,48 @@ describe("KidBookCover — the one cover", () => {
     // the in-card title is aria-hidden; the caption is the visible + accessible name
     expect(html).toContain('aria-hidden="true" data-kid-book-titlecard');
     expect((html.match(/The Lantern Path/g) ?? []).length).toBe(2);
+  });
+});
+
+describe("B-KID-85 — the kid library is a cover grid in the kid register", () => {
+  // code only (the header comment names what was removed)
+  const lib = readFileSync(path.join(__dirname, "KidLibrary.tsx"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  const tab = readFileSync(path.join(__dirname, "..", "tabs", "HeroJourneyTab.tsx"), "utf8");
+  const kidBranch = tab.slice(tab.indexOf("    return kidMode ? ("), tab.indexOf("    ) : (\n      <div className=\"space-y-6 max-w-[1100px]\">"));
+
+  it("the kid branch of the story surface is ONE KidLibrary over kidBooks", () => {
+    expect(kidBranch).toContain("<KidLibrary");
+    expect(kidBranch).toContain("kidBooks({ lang: storyLang, ageMonths: childMonths, showAllAges,");
+    for (const gone of ["role=\"tablist\"", "setPackFilter", "ORIGINAL", "מקורי", "agefilter-toggle", "Your aim", "HeroCrest", "ArborMascot", "shelfRuns.map", "PACK_WORLD"]) {
+      expect(kidBranch, gone).not.toContain(gone);
+    }
+  });
+
+  it("no filter chips, ages, ribbons, virtue tags or counts in the library itself", () => {
+    for (const gone of ["pack filter", "packFilter", "ageRange", "showAll", "ORIGINAL", "primaryMetric", "METRIC", ".length}", "★"]) {
+      expect(lib, gone).not.toContain(gone);
+    }
+    // 2 columns at phone width; the saved comics follow the books
+    expect(lib).toContain("grid grid-cols-2");
+    expect(lib.indexOf("<KidBookCover")).toBeLessThan(lib.indexOf('variant="madeBefore"'));
+  });
+
+  it("honest empty state: the hero + one true line, EN + HE", () => {
+    expect(lib).toContain('kidsStoriesText("kidBooks.empty", lang)');
+    expect(kidsEn["kidBooks.empty"]).toBeTruthy();
+    expect(kidsHe["kidBooks.empty"]).toMatch(/[א-ת]/);
+    expect(kidsHe["kidBooks.madeBefore"]).toMatch(/[א-ת]/);
+  });
+
+  it("the overlay names the screen 'My books' (one title, no second one inside)", () => {
+    const overlay = readFileSync(path.join(__dirname, "KidModeOverlay.tsx"), "utf8");
+    expect(overlay).toContain('journeys: { labelKey: "kidBooks.title", Comp: HeroJourneyTab }');
+    expect(lib).not.toMatch(/<h1\b/);
+  });
+
+  it("NEGATIVE CONTROL: the parent catalogue keeps its filter and age switch", () => {
+    const parent = tab.slice(tab.indexOf("    ) : (\n      <div className=\"space-y-6 max-w-[1100px]\">"));
+    expect(parent).toContain("setPackFilter");
+    expect(parent).toContain("agefilter-toggle-hero-journeys");
   });
 });

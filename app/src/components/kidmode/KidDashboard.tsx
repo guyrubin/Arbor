@@ -141,9 +141,9 @@ export function kidDestinations(bannerStoryId: string, bookIds: readonly string[
     { tile: "quest-banner", surface: "journeys", arg: bannerStoryId },
     // B-KID-88: each "My books" cover opens ITS book; See all opens the library.
     ...bookIds.map((id) => ({ tile: `book:${id}`, surface: "journeys" as KidSurface, arg: id })),
+    // B-KID-85: the library also holds the saved comics ("Made before").
     { tile: "books-see-all", surface: "journeys", arg: null },
     ...GAMES.map((g) => ({ tile: `game:${g.id}`, surface: "arcade" as KidSurface, arg: g.worldId })),
-    { tile: "hero-comics", surface: "comics", arg: null },
   ];
 }
 
@@ -565,27 +565,8 @@ export default function KidDashboard({
           ))}
         </div>
       </section>
-      {/* Saved comics are a distinct lower-home destination. The shelf mounts
-          only after this door opens, keyed to the active child in the overlay. */}
-      <section aria-label={t("elev.kids.comics.section")}>
-        <button
-          className="world-tile play-pressable w-full text-start"
-          onClick={() => onOpenSurface("comics")}
-          style={{ display: "flex", alignItems: "center", gap: 16, minBlockSize: 132, padding: 16, background: "var(--arbor-peach-soft)" }}
-        >
-          <span className="relative grid flex-shrink-0 place-items-center rounded-[22px]" style={{ inlineSize: 92, blockSize: 92, background: "var(--arbor-paper-elevated)", border: "var(--comic-line)" }}>
-            <BookOpen className="h-9 w-9" aria-hidden="true" style={{ color: "var(--arbor-peach-ink)" }} />
-            <span className="absolute -bottom-2 -end-2 rounded-2xl" style={{ background: "var(--arbor-paper-elevated)", border: "2px solid var(--comic-ink)" }}>
-              <HeroAvatar size={48} mood="cheer" />
-            </span>
-          </span>
-          <span style={{ flex: 1, minInlineSize: 0 }}>
-            <span style={{ display: "block", fontFamily: "var(--font-display)", fontWeight: 900, fontSize: KID_HOME_GAME_TITLE_SIZE, color: "var(--arbor-ink)" }}>{kt("elev.kids.comics.title")}</span>
-            <span style={{ display: "block", marginBlockStart: 4, color: "var(--arbor-ink-soft)" }}>{kt("elev.kids.comics.sub")}</span>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, minBlockSize: 44, fontWeight: 800, color: "var(--arbor-peach-ink)" }}>{kt("elev.kids.comics.cta")} <ChevronRight className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" /></span>
-          </span>
-        </button>
-      </section>
+      {/* B-KID-85: no comics door — saved comics live in the library ("My
+          books" › Made before), one shelf for every book the child has. */}
 
     </div>
   );

@@ -52,8 +52,6 @@ import { HeroAvatar, resolveHeroUrl } from "../ui/HeroAvatar";
 import HeroCreateDialog from "../profile/HeroCreateDialog";
 import TonightFromToday from "../stories/TonightFromToday";
 import { consumeTonightMode, type TonightMode } from "../../lib/tonightMode";
-import HeroCrest from "../ui/HeroCrest";
-import { ArborMascot } from "../ui/ArborMascot";
 import WorldScene from "../practice/WorldScene";
 import { useKidTheme } from "../../hooks/useKidTheme";
 import { kidArt, storyCoverKey } from "../../lib/kidThemeManifest";
@@ -65,6 +63,8 @@ import { T, METRIC_VARS } from "../../lib/tokens";
 import { fmtDay } from "../../lib/formatDate";
 import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
 import { authoredChoice, authoredScene, completeRender, type StoryHero } from "../../lib/heroJourneyRender";
+import KidLibrary from "../kidmode/KidLibrary";
+import { kidBooks } from "../kidmode/kidBooks";
 import { DecisionChoices } from "../stories/DecisionChoices";
 
 /** Comic-world skin per pack — bg + ink token + bilingual label (matches the
@@ -706,261 +706,21 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
         animate={{ opacity: 1, y: 0 }}
         className="arbor-play space-y-6"
       >
-        {/* HERO BANNER — the child fronts their own story academy. KID-29
-            residue: the "N stories done" chip and the six virtue counters used
-            to sit here, on the CHILD's banner — a running tally is a
-            measurement of the child rendered in front of them (laws 1 + 3).
-            They are counts a PARENT reads, so they moved to the parent door's
-            counts line. The kid banner is the crest and the name. */}
-        <section className="comic-panel p-5 sm:p-6 flex items-center gap-4 sm:gap-5" aria-label={he ? "הגיבור שלך" : "Your hero"}>
-          <HeroCrest size={92}>
-            <HeroAvatar size={92} mood="cheer" />
-          </HeroCrest>
-          <div className="flex-1 min-w-0">
-            <h1 className="font-black leading-none truncate" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(22px,5vw,38px)" }} dir="auto">
-              {he ? `מסעות הגיבור של ${isolate(name)}` : `${isolate(name)}'s Story Quests`}
-            </h1>
-            {charter.length > 0 && (
-              <p className="text-[12.5px] font-bold mt-1.5" dir="auto" style={{ color: "var(--arbor-ink-soft)" }}>
-                {he ? `מגדלים את ${isolate(name)} לקראת: ${charter.join(" · ")}` : `Raising ${isolate(name)} toward: ${charter.join(" · ")}`}
-              </p>
-            )}
-          </div>
-        </section>
-
-        {/* SPROUT COACH BUBBLE */}
-        <div className="flex items-end gap-3">
-          <ArborMascot size={50} mood="wave" animate className="flex-shrink-0" />
-          <div className="comic-panel px-4 py-3 text-[14px] font-extrabold" dir="auto">
-            {he ? `${isolate(name)}, הפכו לגיבור של כל סיפור!` : `Pick a story, hero — ${isolate(name)} stars in every one!`}
-          </div>
-        </div>
-
-        {/* §3f row 3: the Hero Comics and Family Formation tiles used to sit
-            here. Both were wrapped in `{kidNav && …}` — and `useKidSafeNav()`
-            returns null INSIDE Kid Mode — so they only ever rendered on the
-            PARENT door, where Hero Comics duplicated the hub's own pill (it is
-            `stories.tools`) and Family Formation duplicates the Learn hub's.
-            Two extra doors above the first story card, neither of them this
-            surface's job. Deleted; both routes keep their own hub pill, so
-            nothing became unreachable (routeReachability.test.ts). */}
-
-        {/* PACK FILTER — comic chips. Absent while the catalog is pinned to
-            tonight's single story: there is nothing to filter. */}
-        {!pinned && (
-        <div className="flex flex-wrap gap-2" role="tablist" aria-label={he ? "סינון לפי כוח" : "Filter by power"}>
-          {[{ id: "all" as const, label: he ? "הכול" : "All" }, ...PACKS.map((p) => ({ id: p.id, label: he ? p.titleHe : p.title }))].map((p) => {
-            const active = packFilter === p.id;
-            const w = p.id === "all" ? null : PACK_WORLD[p.id as HeroPackId];
-            return (
-              <button
-                key={p.id}
-                role="tab"
-                aria-selected={active}
-                onClick={() => setPackFilter(p.id as HeroPackId | "all")}
-                className="px-3.5 py-2.5 min-h-[44px] rounded-full text-[13px] font-black transition"
-                style={
-                  active
-                    ? { background: w ? w.bg : "var(--arbor-clay)", color: "#fff", border: "var(--comic-line)", boxShadow: "var(--comic-pop)" }
-                    : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink-soft)", border: "var(--comic-line)" }
-                }
-              >
-                {p.label}
-              </button>
-            );
-          })}
-        </div>
-        )}
-
-        {/* G1 hero-first (22 Sep 2026): a child without a generated hero gets one
-            parent-side step here, never a story starring the raw photo. */}
-        {!kidMode && !childProfile.avatar && (
-          <HeroCreateDialog
-            open={heroDialogOpen}
-            childId={childProfile.id}
-            childName={heroName}
-            onClose={() => setHeroDialogOpen(false)}
-          />
-        )}
-        {/* STORY WORLDS — each card is an illustrated world starring the hero */}
-        <div>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mb-3">
-            <h2 className="font-black" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(18px,3.4vw,24px)" }} dir="auto">
-              {kidMode ? (he ? "בחרו את הסיפור שלכם" : "Choose your story") : t("elev.stories.catalogue.title")}
-            </h2>
-            {/* W0.7 — "Show all ages" toggle (comic register), shown only when
-                the child's-age view actually hides stories or it's already on. */}
-            {(ageHiddenStories.length > 0 || showAllAges) && (
-              <span className="ms-auto inline-flex items-center gap-2">
-                {!showAllAges && ageHiddenStories.length > 0 && (
-                  <span className="text-[11.5px] font-black" style={{ color: "var(--arbor-muted)" }} dir="auto">
-                    {agefilterText("elev.agefilter.hiddenCount", he, { n: ageHiddenStories.length })}
-                  </span>
-                )}
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={showAllAges}
-                  onClick={toggleShowAllAges}
-                  data-testid="agefilter-toggle-hero-journeys"
-                  className="inline-flex items-center gap-1 rounded-full px-3 py-2.5 min-h-[44px] text-[11.5px] font-black"
-                  style={{
-                    background: showAllAges ? "var(--arbor-yellow)" : "#fff",
-                    border: "2px solid var(--comic-ink)",
-                    color: "var(--arbor-ink)",
-                  }}
-                >
-                  <Icon name={showAllAges ? "check" : "unfold_more"} size={14} />
-                  {agefilterText("elev.agefilter.showAll", he)}
-                </button>
-              </span>
-            )}
-          </div>
-          {/* OBJ-KID-04 — a failed generate ANSWERS the child, inside
-              `.arbor-play`, in the kid register. role=status so the line is
-              announced; the tapped card is already back in its idle state
-              (setLoadingId(null) in the finally), so a second tap retries. */}
-          {storyResting && (
-            <div role="status" aria-live="polite" className="mb-3">
-              <MascotSay mood="think" tone="yellow">{t("elev.play.hero.rest")}</MascotSay>
-            </div>
-          )}
-          {/* W0.7 — honest empty state: the catalog is written for older ages. */}
-          {displayStories.length === 0 && ageHiddenStories.length > 0 && (
-            <div className="comic-panel p-5 text-center" data-testid="agefilter-empty-hero-journeys">
-              <p className="text-[14px] font-black" dir="auto" style={{ color: "var(--arbor-ink)" }}>
-                {agefilterText("elev.agefilter.empty", he, {
-                  min: hiddenAgeMin ?? "",
-                  max: hiddenAgeMax ?? "",
-                  name,
-                })}
-              </p>
-              <button
-                type="button"
-                onClick={toggleShowAllAges}
-                className="mt-3 inline-flex items-center gap-1 rounded-full px-3.5 py-2.5 min-h-[44px] text-[12.5px] font-black"
-                style={{ background: "var(--arbor-yellow)", border: "2px solid var(--comic-ink)", color: "var(--arbor-ink)" }}
-              >
-                <Icon name="unfold_more" size={15} /> {agefilterText("elev.agefilter.showAll", he)}
-              </button>
-            </div>
-          )}
-          <div className="grid gap-3 sm:gap-4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
-            {displayStories.map((story) => {
-              const w = PACK_WORLD[story.pack];
-              const art = STORY_ART[story.id] ?? { emoji: "⭐", sfx: "POW!", sfxHe: "פאו!" };
-              const isLoading = loadingId === story.id;
-              return (
-                <button
-                  key={story.id}
-                  className="world-tile text-start relative"
-                  aria-disabled={!!loadingId}
-                  aria-label={`${he ? story.titleHe : story.title} — ${he ? w.labelHe : w.label}`}
-                  onClick={() => !loadingId && startJourney(story)}
-                >
-                  {isAimed(story) ? (
-                    <span
-                      className="absolute top-0 z-[2] text-[10.5px] font-black px-2.5 py-1 inline-flex items-center gap-1"
-                      style={{ background: "var(--arbor-yellow)", color: "var(--arbor-ink)", border: "var(--comic-line)", insetInlineStart: 0, borderStartStartRadius: "var(--play-radius)", borderEndEndRadius: "12px" }}
-                    >
-                      ★ {he ? "המטרה שלכם" : "Your aim"}
-                    </span>
-                  ) : story.origin === "original" ? (
-                    <span
-                      className="absolute top-0 z-[2] text-[11px] font-black text-white px-2.5 py-1"
-                      style={{ background: "var(--arbor-pink-ink)", border: "var(--comic-line)", insetInlineStart: 0, borderStartStartRadius: "var(--play-radius)", borderEndEndRadius: "12px" }}
-                    >
-                      {he ? "מקורי" : "ORIGINAL"}
-                    </span>
-                  ) : null}
-                  {/* Scene: the hero standing in this story's world */}
-                  <div className="comic-halftone relative overflow-hidden" style={{ height: 150, background: w.bg, borderBottom: "var(--comic-line)" }}>
-                    {/* The story's world, with the child's hero generated into the scene
-                        (same pipeline as the Practice world-cards). Falls back to the
-                        hero + emoji motif while loading / with no hero / on error. */}
-                    <WorldScene worldId={`story-${story.id}`} theme={kidTheme} imagePrompt={`${story.title} — ${story.theme}`}>
-                      <div className="flex items-center gap-1.5">
-                        <HeroAvatar size={80} ring animate={false} />
-                        <span style={{ fontSize: 46, filter: "drop-shadow(2px 2px 0 rgba(23,27,34,.3))" }} aria-hidden="true">
-                          {art.emoji}
-                        </span>
-                      </div>
-                    </WorldScene>
-                    {/* B-KID-52 (KB-13): no age chip in the kid register (the age view already chose the list). */}
-                    <span className="comic-sfx absolute bottom-1 z-[3] text-[24px] -rotate-6" style={{ insetInlineStart: 8 }} aria-hidden="true">
-                      {he ? art.sfxHe : art.sfx}
-                    </span>
-                  </div>
-                  {/* Caption */}
-                  <div className="p-3.5">
-                    <p className="font-black text-[16.5px] leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
-                      {he ? story.titleHe : story.title}
-                    </p>
-                    <div className="flex items-center gap-2 mt-2">
-                      <span
-                        className="inline-block text-[10.5px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full"
-                        style={{ border: "2px solid var(--comic-ink)", color: w.ink }}
-                      >
-                        {he ? w.labelHe : w.label}
-                      </span>
-                      <span className="ms-auto inline-flex items-center gap-1 text-[13px] font-black" style={{ color: w.ink }}>
-                        {isLoading ? (
-                          /* Press feedback while the story generates — label
-                             via i18n (masterplan 4.3: no hardcoded literals). */
-                          <><Icon name="autorenew" size={16} className="motion-safe:animate-spin" /> {statesText("elev.states.hero.opening", he)}</>
-                        ) : (
-                          <>{he ? "שחקו" : "Play"} <Icon name="play_arrow" size={16} fill={1} /></>
-                        )}
-                      </span>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* JOURNEY LIBRARY */}
-        <div>
-          <h2 className="font-black mb-3 inline-flex items-center gap-2" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(18px,3.4vw,24px)" }}>
-            <Icon name="auto_stories" size={20} /> {kidMode ? (he ? `הספרייה (${shelfRuns.length})` : `Library (${shelfRuns.length})`) : `${t("elev.stories.library.title")} (${shelfRuns.length})`}
-          </h2>
-          {!runsCol.loaded ? (
-            /* Masterplan 4.3 — per-section skeleton mimicking the library tile
-               grid (reserves real dimensions; ~10s → inline retry wired to the
-               W0 syncStore, which re-mounts this runsCol listener). */
-            <SectionSkeleton title={false} rows={2} rowClassName="h-[120px]" loaded={runsCol.loaded} testId="hero-library-skeleton" />
-          ) : shelfRuns.length === 0 ? (
-            <div className="comic-panel p-5">
-              <EmptyState
-                headline={he ? "עדיין אין מסעות" : "No quests yet"}
-                body={he ? "בחרו סיפור למעלה והתחילו את המסע הראשון. כל מסע שהושלם נשמר כאן." : "Pick a story above and start your first quest. Completed quests are saved here."}
-              />
-            </div>
-          ) : (
-            <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))" }}>
-              {shelfRuns.map((run) => {
-                const spec = getStorySpec(run.storyId);
-                const w = spec ? PACK_WORLD[spec.pack] : PACK_WORLD.courage;
-                const art = STORY_ART[run.storyId] ?? { emoji: "⭐", sfx: "POW!", sfxHe: "פאו!" };
-                const cover = storyCover(run.storyId);
-                return (
-                  <button key={run.id} onClick={() => replay(run)} className="world-tile text-start" aria-label={runTitle(run, uiLang === "he" ? "he" : "en")}>
-                    <div className="comic-halftone grid place-items-center overflow-hidden" style={{ height: 72, background: w.bg, borderBottom: "var(--comic-line)" }}>
-                      {cover ? <img src={cover.src480} alt="" aria-hidden="true" loading="lazy" decoding="async" className="h-full w-full object-cover" style={{ objectPosition: cover.objectPosition }} /> : <span style={{ fontSize: 34 }} aria-hidden="true">{art.emoji}</span>}
-                    </div>
-                    <div className="p-2.5">
-                      <span className="text-[12.5px] font-black block leading-tight line-clamp-2" style={{ color: "var(--arbor-ink)" }} dir="auto">{runTitle(run, uiLang === "he" ? "he" : "en")}</span>
-                      <span className="text-[10.5px] font-bold" style={{ color: "var(--arbor-muted)" }}>
-                        {run.completedAt ? fmtDay(run.completedAt, uiLang) : he ? "בתהליך" : "In progress"}
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        {/* B-KID-85 (KB-28 + KA-04): the kid catalogue is "My books" — ONE
+            cover grid (KidLibrary) over the one list the home row reads
+            (kidBooks: story language, age view, opened first, illustrated
+            first), then the saved comics ("Made before"). The crest, the
+            Sprout bubble, the pack filter chips, the age switch, the ribbons,
+            the virtue chips and the separate Library shelf are gone from the
+            kid register; the parent branch below is unchanged. */}
+        <KidLibrary
+          books={kidBooks({ lang: storyLang, ageMonths: childMonths, showAllAges, hasCover: (id) => storyCover(id) !== null, runs })}
+          theme={kidTheme}
+          lang={uiLang === "he" ? "he" : "en"}
+          childProfile={childProfile}
+          loadingId={loadingId}
+          onOpen={(story) => { void startJourney(story); }}
+        />
       </motion.div>
     ) : (
       <div className="space-y-6 max-w-[1100px]">

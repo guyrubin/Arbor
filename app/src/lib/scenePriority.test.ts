@@ -54,8 +54,13 @@ describe("B-KID-56: the wiring", () => {
   it("story cards (kid + parent catalogue) render the theme plate, never a generated scene", () => {
     const tab = readFileSync(path.join(SRC, "components/tabs/HeroJourneyTab.tsx"), "utf8");
     const cards = tab.match(/<WorldScene worldId=\{`story-\$\{story\.id\}`\}[^>]*>/g) ?? [];
-    expect(cards).toHaveLength(2);
+    // B-KID-85: the kid catalogue is KidLibrary (KidBookCover: static cover or
+    // token title card, no WorldScene at all); the parent card is the one left.
+    expect(cards).toHaveLength(1);
     for (const c of cards) expect(c).not.toContain("heroUrl=");
+    const cover = readFileSync(path.join(SRC, "components/kidmode/KidBookCover.tsx"), "utf8");
+    expect(cover).not.toContain("WorldScene");
+    expect(cover).not.toContain("generate");
   });
   it("book and journey pages ask for the page lane", () => {
     const comics = readFileSync(path.join(SRC, "lib/heroComics.ts"), "utf8");

@@ -329,8 +329,15 @@ describe("M3 — child shelf source wiring (components/kidmode/KidComicsShelf.ts
   });
 
   it("each card is cover-led: fixed 3:2 box, object-cover, one big control, title below", () => {
-    const card = code.slice(code.indexOf("openableBooks.map("), code.indexOf("</button>", code.indexOf("openableBooks.map(")));
+    // B-KID-85: the shelf variant's card (the LAST map); the library's "Made
+    // before" tail (the first map) is the same card in the 3:4 book shape.
+    const card = code.slice(code.lastIndexOf("openableBooks.map("), code.indexOf("</button>", code.lastIndexOf("openableBooks.map(")));
     expect(card).toContain('aspectRatio: "3 / 2"');
+    const tail = code.slice(code.indexOf("openableBooks.map("), code.indexOf("</button>", code.indexOf("openableBooks.map(")));
+    expect(tail).toContain('aspectRatio: "3 / 4"');
+    expect(tail).toContain("object-cover");
+    expect(tail.match(/<button[\s>]/g)?.length).toBe(1);
+    expect(tail).toContain("savedBookTitle(meta, aiLang, adventure)");
     expect(card).toContain("object-cover");
     expect(card).not.toContain("object-contain");
     expect(card.match(/<button[\s>]/g)?.length).toBe(1);

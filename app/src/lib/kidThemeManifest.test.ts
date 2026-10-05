@@ -96,7 +96,12 @@ describe("B-KID-70 (c): kid components reference art only through the manifest",
     const tab = readFileSync(path.join(SRC, "components", "tabs", "HeroJourneyTab.tsx"), "utf8");
     expect(tab).toContain("const storyCover = (id: string) => kidArt(kidTheme, storyCoverKey(id));");
     expect(tab).toContain("fallbackArtUrl={storyCover(activeStory.id)?.src}");
-    expect(tab.match(/const cover = storyCover\(run\.storyId\);/g)).toHaveLength(2);
+    // B-KID-85: the parent Library keeps its run tiles; the kid shelf is
+    // KidLibrary, whose covers come from the manifest through KidBookCover.
+    expect(tab.match(/const cover = storyCover\(run\.storyId\);/g)).toHaveLength(1);
+    expect(tab).toContain("hasCover: (id) => storyCover(id) !== null");
+    const kidCover = readFileSync(path.join(SRC, "components", "kidmode", "KidBookCover.tsx"), "utf8");
+    expect(kidCover).toContain("kidArt(theme, storyCoverKey(storyId))");
   });
   it("negative control: the scan catches a direct path", () => {
     expect('src="/visuals/cards/web/game-memory-480.webp"').toMatch(/\/visuals\//);

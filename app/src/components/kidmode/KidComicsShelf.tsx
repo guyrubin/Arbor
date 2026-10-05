@@ -56,15 +56,26 @@ export default function KidComicsShelf({
   authKey,
   onBack,
   onOpenStories,
+  variant = "shelf",
+  onReadingChange,
 }: {
   childProfile: ChildProfile;
   authKey?: string;
   onBack?: () => void;
   /** B-KID-38: the empty shelf's door to the story catalogue. */
   onOpenStories?: () => void;
+  /** B-KID-85: "madeBefore" = the saved comics as the tail of the kid "My
+   *  books" grid — no back, no title of its own, no empty or loading panel
+   *  (nothing renders until a book is proved openable), chrome in the UI
+   *  language, portrait covers like the books above it. */
+  variant?: "shelf" | "madeBefore";
+  /** B-KID-85: tells the library a saved comic is open (it hides its grid). */
+  onReadingChange?: (reading: boolean) => void;
 }) {
   const { user } = useAuth();
-  const { aiLang } = useLanguage();
+  const { aiLang: storyAiLang, uiLang } = useLanguage();
+  // B-KID-85: inside the library the chrome follows the UI language (KB-12).
+  const aiLang: "en" | "he" = variant === "madeBefore" ? (uiLang === "he" ? "he" : "en") : storyAiLang;
   const saved = useChildCollection<SavedComicMeta>(childProfile.id, "savedComics");
   const partitionKey = `${authKey ?? user?.uid ?? "anon"}|${childProfile.id}`;
   const heroUrl = resolveHeroUrl(childProfile);
@@ -176,6 +187,12 @@ export default function KidComicsShelf({
     setUnavailableId(null);
   };
 
+  const reading = Boolean(visibleOpen);
+  useEffect(() => {
+    onReadingChange?.(reading);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reading]);
+
   if (visibleOpen) {
     const markUnavailable = () => {
       setOpen(null);
@@ -193,6 +210,46 @@ export default function KidComicsShelf({
         onBack={() => setOpen(null)}
         onUnavailable={markUnavailable}
       />
+    );
+  }
+
+  if (variant === "madeBefore") {
+    // Only books proved openable on this device; nothing while probing.
+    if (!partitionReady || !saved.loaded || !probeReady || openableBooks.length === 0) return null;
+    return (
+      <section className="space-y-3" aria-labelledby="kid-made-before-title" data-testid="kid-made-before">
+        <h2 id="kid-made-before-title" className="font-black" style={{ fontFamily: "var(--font-display)", fontSize: 20, color: "var(--arbor-ink)" }}>
+          {kidsStoriesText("kidBooks.madeBefore", aiLang)}
+        </h2>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+          {openableBooks.map(({ meta, adventure }) => {
+            const cover = covers.scope === scopeKey ? covers.values[meta.id] : undefined;
+            const title = savedBookTitle(meta, aiLang, adventure);
+            return (
+              <button
+                key={meta.id}
+                type="button"
+                onClick={() => void openBook(meta)}
+                data-testid={`kid-comic-card-${meta.id}`}
+                className="play-pressable flex flex-col gap-1.5 text-start"
+                style={{ appearance: "none", background: "transparent", border: "none", padding: 0, cursor: "pointer", minBlockSize: 44 }}
+              >
+                <span className="world-tile relative block w-full overflow-hidden" style={{ aspectRatio: "3 / 4", background: "var(--arbor-yellow-soft)" }}>
+                  {cover ? (
+                    <img src={cover} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover" />
+                  ) : (
+                    <span className="absolute inset-0 grid place-items-center"><HeroAvatar size={74} ring animate={false} decorative /></span>
+                  )}
+                </span>
+                <span dir="auto" className="font-black leading-tight line-clamp-2" style={{ fontFamily: "var(--font-display)", fontSize: 15, color: "var(--arbor-ink)" }}>{title}</span>
+              </button>
+            );
+          })}
+        </div>
+        {unavailableId && (
+          <p role="status" className="text-sm" style={{ color: "var(--arbor-muted)" }}>{kidsStoriesText("shelf.unavailable", aiLang)}</p>
+        )}
+      </section>
     );
   }
 

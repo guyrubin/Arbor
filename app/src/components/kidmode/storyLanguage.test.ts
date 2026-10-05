@@ -128,8 +128,10 @@ describe("B-KID-46: both call sites and the Stories catalogue/Library apply the 
     expect(tab).toContain("lang: storyLang,");
     expect(tab).toContain("if (!storyHasLanguage(story, storyLang)) return;");
     expect(tab).toContain("const shelfRuns = runs.filter((r) => isTellable(r.storyId));");
-    // both registers' Library shelves read the filtered list
-    expect(tab.match(/\{shelfRuns\.map\(\(run\) => \{/g)).toHaveLength(2);
+    // the parent Library shelf reads the filtered list; B-KID-85: the kid
+    // library reads kidBooks with the same story language (storiesForLanguage)
+    expect(tab.match(/\{shelfRuns\.map\(\(run\) => \{/g)).toHaveLength(1);
+    expect(tab).toContain("kidBooks({ lang: storyLang,");
     expect(tab).not.toMatch(/\{runs\.map\(\(run\) => \{/);
   });
 });

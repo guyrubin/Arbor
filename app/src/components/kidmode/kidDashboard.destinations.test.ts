@@ -39,10 +39,12 @@ describe("OBJ-KID-05 — one tile, one destination", () => {
     expect(new Set(keys).size).toBe(destinations.length);
   });
 
-  it("B-KID-88: the home is Tonight's book, My books (+ See all), nine games and comics — no adventure doors", () => {
+  it("B-KID-88: the home is Tonight's book, My books (+ See all) and nine games — no adventure or comics doors", () => {
     expect(ROW.length).toBeGreaterThan(0);
     expect(ROW.length).toBeLessThanOrEqual(KID_HOME_BOOK_ROW_MAX);
-    expect(destinations).toHaveLength(1 + ROW.length + 1 + 9 + 1);
+    // B-KID-85: the comics door went into the library (See all → Made before).
+    expect(destinations).toHaveLength(1 + ROW.length + 1 + 9);
+    expect(destinations.some((d) => d.surface === "comics")).toBe(false);
     expect(destinations.filter((d) => d.tile.startsWith("game:"))).toHaveLength(9);
     expect(destinations.filter((d) => d.tile.startsWith("adv:"))).toHaveLength(0);
     expect(destinations.filter((d) => d.tile.startsWith("book:"))).toHaveLength(ROW.length);
@@ -50,7 +52,7 @@ describe("OBJ-KID-05 — one tile, one destination", () => {
     expect(destinations[1].tile).toBe(`book:${ROW[0].story.id}`);
     // the finished book leads the row
     expect(ROW[0].story.id).toBe("noahs-ark");
-    expect(destinations.at(-1)).toEqual({ tile: "hero-comics", surface: "comics", arg: null });
+    expect(destinations.at(-1)!.tile).toBe("game:spell-forge");
   });
 
   it("B-KID-88: tonight's book is never a second door in the row", () => {
