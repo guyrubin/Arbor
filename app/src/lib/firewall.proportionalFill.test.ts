@@ -50,7 +50,6 @@ const PENDING_CHILD_RECORD: Entry[] = [
 const NOT_CHILD_RECORD: Entry[] = [
   { file: "components/ui/kit.tsx", match: "${pct}%", why: "the ProgressBar primitive itself — every call site is classified here" },
   { file: "components/overview/CourseCard.tsx", match: "progress.percent", why: "the parent's own course progress" },
-  { file: "components/sections/Masterclasses.tsx", match: "doneCount / total", why: "the parent's own masterclass progress" },
   { file: "components/tabs/RoutinesTab.tsx", match: "<ProgressBar", why: "today's routine steps — a parent task list, reset daily" },
   { file: "components/practice/EarlyReadingTrack.tsx", match: "coverage * 100", why: "live trace coverage of the stroke being drawn (kid register), never stored" },
   { file: "components/practice/MimicMatch.tsx", match: "${pct}%", why: "live match meter inside the kid game, never stored" },

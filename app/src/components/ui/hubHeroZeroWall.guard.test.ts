@@ -50,7 +50,9 @@ describe("RUN-08 — no statistical hub mounts an untranslated zero wall",()=>{
   const profile=fs.readFileSync(path.join(SRC,"components/sections/ChildProfile.tsx"),"utf8");
   const academy=fs.readFileSync(path.join(SRC,"components/sections/Masterclasses.tsx"),"utf8");
   expect(profile).toContain('data-testid="profile-hub-hero"');expect(profile).toContain('profiles.length === 1');
-  expect(academy).toContain('data-testid="academy-hub-hero"');expect(academy).toContain('heroStats.map');
+  expect(academy).toContain('data-testid="academy-hub-hero"');
+  // B-PLAY-18: the academy header carries no stat list — the pick's reading minutes ride the pick line.
+  expect(academy).toContain('data-testid="academy-pick-minutes"');expect(academy).not.toContain('heroStats.map');
  });
  it("actually extracts stats-bearing Development and Behaviors mounts, including stats after CTA",()=>{
   const statistical=mounts.filter(hasStats);

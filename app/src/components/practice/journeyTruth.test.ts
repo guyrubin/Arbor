@@ -28,7 +28,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import * as growth from "../../lib/i18nElevation/growth";
 import { translate } from "../../lib/i18n";
-import * as authCopy from "../../lib/i18nElevation/auth";
+import * as wowCopy from "../../lib/i18nElevation/wow";
 import { en as trustEn, he as trustHe } from "../../lib/i18nElevation/trustcenter";
 import { CHILD_DATA_ROWS } from "../../lib/childDataGroups";
 
@@ -40,6 +40,7 @@ const science = read("components/tabs/SciencePage.tsx");
 const langTab = read("components/tabs/LanguageLabTab.tsx");
 const vocab = read("components/tabs/LanguageLabVocabView.tsx");
 const onboarding = read("components/auth/OnboardingFlow.tsx");
+const wow = read("components/onboarding/WowOnboarding.tsx");
 
 const HEBREW = /[֐-׿]/;
 const at = (src: string, marker: string) => {
@@ -198,12 +199,16 @@ describe("the primary move comes first", () => {
     expect(list).not.toMatch(/%|progressbar/);
   });
 
-  it("MOB-21 · the avatar CTA names what the tap does", () => {
-    expect(onboarding).toContain('t("elev.auth.avatar.cta", { name: childName })');
-    expect(authCopy.en["elev.auth.avatar.cta"]).toContain("{name}");
-    expect(HEBREW.test(authCopy.he["elev.auth.avatar.cta"] ?? "")).toBe(true);
-    // NEGATIVE CONTROL: the step's own button no longer says "Continue".
-    const step = onboarding.slice(at(onboarding, "function StepAvatar"), at(onboarding, "First-run promise card"));
+  it("MOB-21 · the avatar CTA names what the tap does (B-SHELL-09: the hero is made in Wow, not onboarding)", () => {
+    // B-SHELL-09 removed onboarding step 4 — no StepAvatar, no avatar CTA in OnboardingFlow.
+    expect(onboarding).not.toContain("function StepAvatar");
+    expect(onboarding).not.toContain('t("elev.auth.avatar.cta"');
+    // The hero step now lives in WowOnboarding; its own button says what it makes.
+    const step = wow.slice(at(wow, 'case "avatar":'), at(wow, 'case "comic":'));
+    expect(step).toContain('t("elev.wow.avatar.cta")');
+    expect(wowCopy.en["elev.wow.avatar.cta"]).toMatch(/hero/i);
+    expect(HEBREW.test(wowCopy.he["elev.wow.avatar.cta"] ?? "")).toBe(true);
+    // NEGATIVE CONTROL: the step's own button never says "Continue".
     expect(step).not.toContain('t("ob.step.continue")');
   });
 });
