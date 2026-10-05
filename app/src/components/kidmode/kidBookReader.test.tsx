@@ -20,6 +20,7 @@ vi.mock("../../lib/tts", () => ({ stopSpeaking: vi.fn() }));
 vi.mock("../../lib/kidModeGate", () => ({ isKidModeActive: () => true }));
 
 import { HeroScenePlayer, BEAT_FOCUS, KID_BOOK_TEXT_PX } from "../stories/HeroScenePlayer";
+import type { HeroSceneRender } from "../../types";
 import { autoReadPage, isKidReadAloudMuted, setKidReadAloudMuted, KidReadAloudToggle } from "./kidReadAloud";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -27,7 +28,7 @@ const tab = readFileSync(path.join(__dirname, "..", "tabs", "HeroJourneyTab.tsx"
 const overlay = readFileSync(path.join(__dirname, "KidModeOverlay.tsx"), "utf8");
 const kidReader = tab.slice(tab.indexOf("  if (kidMode) {\n    const bookArt"), tab.indexOf("  return (\n    <motion.div initial={{ opacity: 0, y: 15 }}"));
 
-const scene = { beatId: "call", title: "The Call", narration: "Dana is a small shepherd who hears about a giant.", imagePrompt: "" };
+const scene: HeroSceneRender = { beatId: "call", title: "The Call", narration: "Dana is a small shepherd who hears about a giant.", imagePrompt: "" };
 
 afterEach(() => { voice.speakText.mockClear(); voice.supported = true; vi.unstubAllGlobals(); });
 
