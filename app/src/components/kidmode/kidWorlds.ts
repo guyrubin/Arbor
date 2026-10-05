@@ -33,21 +33,25 @@ export interface KidWorld {
   doorNameKey: string;
   accent: KidWorldAccent;
   unit: KidWorldUnit;
+  /** Canonical age bands (lib/domains/ageBands.ts ids) the world is made for;
+   *  the parent side (pack P2A, 6 Oct: "each child with its own age group")
+   *  shows a child only worlds whose bands fit — untagged = hidden under 36 m. */
+  ageBands: readonly string[];
 }
 
 /** Home slot order. Face Match and the archived virtue worlds are not kid
  *  worlds (G-C4: retired); Word World is parent-only (HeroArcade parentOnly). */
 export const KID_WORLDS = [
-  { id: "sound-lab", worldId: "speech", nameKey: "kid.game.sound-lab.title", subKey: "kid.game.sound-lab.sub", doorNameKey: "elev.practice.world.kid.speech", accent: "sky", unit: "tries" },
-  { id: "mood-mountain", worldId: "feelings", nameKey: "kid.game.mood-mountain.title", subKey: "kid.game.mood-mountain.sub", doorNameKey: "elev.practice.world.kid.feelings", accent: "lav", unit: "rounds" },
-  { id: "mind-vault", worldId: "memory", nameKey: "kid.game.mind-vault.title", subKey: "kid.game.mind-vault.sub", doorNameKey: "elev.practice.world.kid.memory", accent: "pink", unit: "rounds" },
-  { id: "beat-keeper", worldId: "beat", nameKey: "kid.game.beat-keeper.title", subKey: "kid.game.beat-keeper.sub", doorNameKey: "elev.practice.world.kid.rhythm", accent: "clay", unit: "rounds" },
-  { id: "hero-pose", worldId: "pose", nameKey: "kid.game.hero-pose.title", subKey: "kid.game.hero-pose.sub", doorNameKey: "elev.practice.world.kid.movement", accent: "sky", unit: "rounds" },
-  { id: "pattern-power", worldId: "pattern", nameKey: "kid.game.pattern-power.title", subKey: "kid.game.pattern-power.sub", doorNameKey: "elev.practice.world.kid.logic", accent: "lav", unit: "rounds" },
-  { id: "story-quest", worldId: "adventures", nameKey: "kid.game.story-quest.title", subKey: "kid.game.story-quest.sub", doorNameKey: "elev.practice.world.kid.adventures", accent: "peach", unit: "stories" },
-  { id: "mimic-studio", worldId: "mimic", nameKey: "kid.game.mimic-studio.title", subKey: "kid.game.mimic-studio.sub", doorNameKey: "elev.practice.world.kid.mimic", accent: "clay", unit: "tries" },
+  { id: "sound-lab", worldId: "speech", nameKey: "kid.game.sound-lab.title", subKey: "kid.game.sound-lab.sub", doorNameKey: "elev.practice.world.kid.speech", accent: "sky", unit: "tries", ageBands: ["48m", "60m", "6-8y"] },
+  { id: "mood-mountain", worldId: "feelings", nameKey: "kid.game.mood-mountain.title", subKey: "kid.game.mood-mountain.sub", doorNameKey: "elev.practice.world.kid.feelings", accent: "lav", unit: "rounds", ageBands: ["36m", "48m", "60m", "6-8y"] },
+  { id: "mind-vault", worldId: "memory", nameKey: "kid.game.mind-vault.title", subKey: "kid.game.mind-vault.sub", doorNameKey: "elev.practice.world.kid.memory", accent: "pink", unit: "rounds", ageBands: ["36m", "48m", "60m", "6-8y"] },
+  { id: "beat-keeper", worldId: "beat", nameKey: "kid.game.beat-keeper.title", subKey: "kid.game.beat-keeper.sub", doorNameKey: "elev.practice.world.kid.rhythm", accent: "clay", unit: "rounds", ageBands: ["36m", "48m", "60m", "6-8y"] },
+  { id: "hero-pose", worldId: "pose", nameKey: "kid.game.hero-pose.title", subKey: "kid.game.hero-pose.sub", doorNameKey: "elev.practice.world.kid.movement", accent: "sky", unit: "rounds", ageBands: ["36m", "48m", "60m", "6-8y"] },
+  { id: "pattern-power", worldId: "pattern", nameKey: "kid.game.pattern-power.title", subKey: "kid.game.pattern-power.sub", doorNameKey: "elev.practice.world.kid.logic", accent: "lav", unit: "rounds", ageBands: ["48m", "60m", "6-8y"] },
+  { id: "story-quest", worldId: "adventures", nameKey: "kid.game.story-quest.title", subKey: "kid.game.story-quest.sub", doorNameKey: "elev.practice.world.kid.adventures", accent: "peach", unit: "stories", ageBands: ["36m", "48m", "60m", "6-8y"] },
+  { id: "mimic-studio", worldId: "mimic", nameKey: "kid.game.mimic-studio.title", subKey: "kid.game.mimic-studio.sub", doorNameKey: "elev.practice.world.kid.mimic", accent: "clay", unit: "tries", ageBands: ["36m", "48m", "60m", "6-8y"] },
   // Spell Forge keeps its ONE kid name (elev.kids.reading.title, kidHebrewCoverage).
-  { id: "spell-forge", worldId: "reading", nameKey: "elev.kids.reading.title", subKey: "elev.kids.reading.sub", doorNameKey: "elev.practice.world.kid.reading", accent: "peach", unit: "tries" },
+  { id: "spell-forge", worldId: "reading", nameKey: "elev.kids.reading.title", subKey: "elev.kids.reading.sub", doorNameKey: "elev.practice.world.kid.reading", accent: "peach", unit: "tries", ageBands: ["60m", "6-8y"] },
 ] as const satisfies readonly KidWorld[];
 
 /** A kid world's routing id (= its art key id), from the entries above. */
@@ -68,7 +72,7 @@ export const KID_WORLD_NAME_KEY: Readonly<Record<string, string>> = Object.fromE
  * keys and every existing consumer are exactly as before. No parent door, no art key, no souvenir yet.
  */
 export const SNEAK_FREEZE_FLAG_KEY = "arbor.flags.sneakFreeze";
-export const SNEAK_FREEZE_WORLD = { worldId: "sneak", id: "sneak-freeze", nameKey: "kid.game.sneak-freeze.title", subKey: "kid.game.sneak-freeze.sub", accent: "green" } as const;
+export const SNEAK_FREEZE_WORLD = { worldId: "sneak", id: "sneak-freeze", nameKey: "kid.game.sneak-freeze.title", subKey: "kid.game.sneak-freeze.sub", accent: "green", ageBands: ["36m", "48m", "60m", "6-8y"] } as const;
 export type SneakFreezeWorldId = (typeof SNEAK_FREEZE_WORLD)["worldId"];
 
 let sneakFlag: boolean | null = null;
