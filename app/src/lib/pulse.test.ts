@@ -108,6 +108,15 @@ describe("B-SHELL-19 · pulses carry no denominator; the hub line and the strip 
     expect(shell).toMatch(/countedPulse\.count > 0 \? countedPulse : null/);
   });
 
+  it("W2-GROWTH r2: the Growth pulse carries no `count`, so no total sits above #/development's H1", () => {
+    const src = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "pulse.ts"), "utf8").replace(/\r\n/g, "\n");
+    const growth = src.slice(src.indexOf("const growth: HubPulse ="), src.indexOf("const practice: HubPulse ="));
+    expect(growth).toContain('"elev.pulse.growth.noticed"');
+    expect(growth).not.toMatch(/\},\s*count:\s*noticed\b/);
+    // negative control: the r1 branch trips the rule
+    expect('params: { count: noticed }, count: noticed }').toMatch(/\},\s*count:\s*noticed\b/);
+  });
+
   it("the strip label is 'Working on' (EN + HE) and opens the profile editor", () => {
     expect(en["top.focus"]).toBe("Working on");
     expect(he["top.focus"]).toBe("עובדים על");

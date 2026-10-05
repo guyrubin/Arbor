@@ -154,9 +154,14 @@ export function usePulses(): HubPulses {
     //    the count as a denominator. B-GROWTH-34: the hub hero reads the SAME
     //    helper, so the pill and the stat row can never disagree.
     const { noticed } = noticedMilestoneCounts(milestones);
+    //    W2-GROWTH r2: NO `count` — below lg the shell prints a counted pulse
+    //    ABOVE the hub's H1, so #/development opened on a total ("You noticed
+    //    5 milestones") the redesign cut from the body. Without `count` the
+    //    shell line is the standing nav.sub.growth sentence and the page's first
+    //    read is "What's new with {name}"; the More-sheet row keeps this text.
     const growth: HubPulse =
       noticed > 0
-        ? { key: pickCountKey("elev.pulse.growth.noticed", noticed), params: { count: noticed }, count: noticed }
+        ? { key: pickCountKey("elev.pulse.growth.noticed", noticed), params: { count: noticed } }
         : { key: "elev.pulse.growth.empty" };
 
     // ── Practice (B-PLAY-04): the rounds the child played this week — the
