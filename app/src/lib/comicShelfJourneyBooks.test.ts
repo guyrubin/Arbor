@@ -268,8 +268,11 @@ describe("M3 — parent shelf source wiring (components/tabs/ComicsTab.tsx)", ()
   it("lists the read-along comics it counts (grid = authored + saved journey books)", () => {
     expect(code).toContain("shelfBooks(savedCol.items)");
     expect(code).toContain("const shelfAdventures = [...shownAuthored, ...journeyBooks]");
-    expect(code).toContain("const shelfTotal = ADVENTURES.length + journeyBooks.length");
-    expect(code).toContain("`${savedCount} of ${shelfTotal} books on the shelf`");
+    // B-KID-87 (KB-29) re-pin: the "{n} of {total} books on the shelf" meter is
+    // gone (a completion meter on a library); every saved journey book is still
+    // a tile in the grid, which is what this guard protects.
+    expect(code).toContain("{shelfAdventures.map((a) => {");
+    expect(code).not.toContain("books on the shelf`");
     expect(code).not.toContain("of ${ADVENTURES.length} books on the shelf");
   });
 

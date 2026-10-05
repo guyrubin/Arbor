@@ -12,7 +12,6 @@ import HeroCreateDialog from "../profile/HeroCreateDialog";
 import { ComicReader } from "../stories/ComicReader";
 import SavedComicReader from "../stories/SavedComicReader";
 import {
-  ADVENTURES,
   adventureTitle,
   getAdventure,
   isStrictComicImageDataUrl,
@@ -34,7 +33,11 @@ import { normalizeAvatarStyle } from "../../lib/avatarStyle";
 import { classifyAgeFit, loadShowAllAges, saveShowAllAges, windowFromRange } from "../../lib/ageFilter";
 import { agefilterText } from "../../lib/i18nElevation/agefilter";
 import { ageMonthsFromProfile } from "../../lib/childAge";
-import { getStorySpec } from "../../lib/heroJourneys";
+import { getStorySpec, HERO_STORIES, storiesForLanguage, storyLanguage } from "../../lib/heroJourneys";
+import { StoryCard } from "../stories/StoryCard";
+import { useKidTheme } from "../../hooks/useKidTheme";
+import { useKidSafeNav } from "../kidmode/useKidSafeNav";
+import { requestStoryOpen } from "../../lib/storyOpenRequest";
 import { track } from "../../lib/analytics";
 // TJB-28 — the shelf is where an evening actually ends, so this is the surface
 // most likely to be open at the close of a day. It writes the return hook; the
@@ -111,7 +114,11 @@ const savedMetaFingerprint = (meta: SavedComicMeta): string =>
 export default function ComicsTab() {
   const { childProfile, openPaywall, milestones, behaviorLogs, playLogs } = useArbor();
   const { user } = useAuth();
-  const { aiLang, t } = useLanguage();
+  const { aiLang, t, uiLang } = useLanguage();
+  // B-KID-87 (KB-29): Our books — the library's covers come from the child's
+  // ONE kid theme; a tapped cover opens that book in the Stories reader.
+  const kidTheme = useKidTheme();
+  const nav = useKidSafeNav();
   const { url: heroUrl, hasHero, name } = useHeroAvatar();
 
   // The durable shelf: one metadata doc per saved BOOK. A parent-built book
@@ -292,6 +299,64 @@ export default function ComicsTab() {
       });
   };
 
+  // ── B-KID-87 (KB-29): Our books — the whole library, nothing gated ─────────
+  // Every book the family can read tonight, on its own cover (StoryCard: the
+  // manifest's cover in the child's theme, or a token title card; zero model
+  // calls), in the story language, inside the child's age view ("Show all
+  // ages" lifts it). A tap opens the book in the Stories reader. A family with
+  // no hero reads every book too: the hero card is an invitation, not a gate.
+  const storyLang = storyLanguage(uiLang, aiLang);
+  const ourBooks = storiesForLanguage(HERO_STORIES, storyLang).filter(
+    (s) => showAllAges || classifyAgeFit(windowFromRange(s.ageRange), childMonths) !== "out",
+  );
+  const ourBooksHidden = storiesForLanguage(HERO_STORIES, storyLang).length - ourBooks.length;
+  const openStory = (storyId: string) => {
+    if (!nav) return;
+    requestStoryOpen(storyId);
+    nav("stories");
+  };
+  const ourBooksSection = (
+    <section data-module="comics-our-books" data-testid="comics-our-books" className="space-y-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <h2 className="m-0 text-[1.15rem] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+          {t("elev.comics.ourBooks.title")}
+        </h2>
+        {/* W0.7 — "Show all ages": only when the child's-age view hides
+            books (or the parent already opted in). One switch for the page. */}
+        {(ourBooksHidden > 0 || showAllAges) && (
+          <span className="ms-auto inline-flex items-center gap-2">
+            {!showAllAges && ourBooksHidden > 0 && (
+              <span className="text-[11.5px] font-bold" style={{ color: "var(--arbor-muted)" }} dir="auto">
+                {agefilterText("elev.agefilter.hiddenCount", he, { n: ourBooksHidden })}
+              </span>
+            )}
+            <button
+              type="button"
+              role="switch"
+              aria-checked={showAllAges}
+              onClick={toggleShowAllAges}
+              data-testid="agefilter-toggle-comics"
+              className="inline-flex items-center gap-1 rounded-full px-3 min-h-[44px] text-[11.5px] font-bold"
+              style={{
+                background: showAllAges ? "var(--arbor-yellow-soft)" : "var(--arbor-paper-elevated)",
+                border: "1px solid var(--arbor-rule-strong)",
+                color: "var(--arbor-ink)",
+              }}
+            >
+              <Icon name={showAllAges ? "check" : "unfold_more"} size={14} />
+              {agefilterText("elev.agefilter.showAll", he)}
+            </button>
+          </span>
+        )}
+      </div>
+      <div className="grid gap-3 sm:gap-4" data-testid="comics-our-books-grid" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(132px,1fr))" }}>
+        {ourBooks.map((story) => (
+          <StoryCard key={story.id} story={story} lang={uiLang === "he" ? "he" : "en"} theme={kidTheme} onOpen={() => openStory(story.id)} />
+        ))}
+      </div>
+    </section>
+  );
+
   // No hero yet → invite the parent to create one (cross-domain entry point).
   // AIX-S7: the entry-gate bookend follows the file's he? pattern — Hebrew
   // families must not hit English exactly where register matters most.
@@ -323,6 +388,9 @@ export default function ComicsTab() {
           childName={name}
           onClose={() => setHeroDialogOpen(false)}
         />
+        {/* B-KID-87 (KB-29): the hero invitation is ONE card; the library
+            below is readable without a hero (nothing is gated). */}
+        <div className="mt-6">{ourBooksSection}</div>
       </RegisterShell>
     );
   }
@@ -413,8 +481,6 @@ export default function ComicsTab() {
   // Saved read-along comics are never age-filtered — they are books the child
   // already made, and they are listed, not just counted.
   const shelfAdventures = [...shownAuthored, ...journeyBooks];
-  const shelfTotal = ADVENTURES.length + journeyBooks.length;
-  const hiddenAdventures = authoredBooks.length - shownAuthored.length;
   const hiddenSpecs = authoredBooks
     .filter((a) => !shownAuthored.includes(a))
     .map((a) => getStorySpec(a.adventureId))
@@ -436,48 +502,16 @@ export default function ComicsTab() {
           moduleBudget); `data-primary-move` marks the ONE control the
           contract declares. Playkit primitives take no data-* props, so the
           stamp goes on a wrapping <section> that adds no box of its own. */}
-      {/* Shelf summary */}
-      <section data-module="comics-shelf-summary">
-      <PlayPanel tone="clay">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-          <div className="min-w-0">
-            <p className="text-[1.05rem] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
-              {he ? `מדף הקומיקס של ${isolate(name)}` : `${isolate(name)}'s comic bookshelf`}
-            </p>
-            <p className="text-[12.5px] mt-0.5" style={{ color: "var(--arbor-muted)" }} dir="auto">
-              {he ? `${savedCount} מתוך ${shelfTotal} ספרים על המדף` : `${savedCount} of ${shelfTotal} books on the shelf`}
-            </p>
-          </div>
-          {/* W0.7 — "Show all ages" toggle: only when the child's-age view
-              actually hides books (or the parent already opted in). */}
-          {(hiddenAdventures > 0 || showAllAges) && (
-            <span className="ms-auto inline-flex items-center gap-2">
-              {!showAllAges && hiddenAdventures > 0 && (
-                <span className="text-[11.5px] font-black" style={{ color: "var(--arbor-muted)" }} dir="auto">
-                  {agefilterText("elev.agefilter.hiddenCount", he, { n: hiddenAdventures })}
-                </span>
-              )}
-              <button
-                type="button"
-                role="switch"
-                aria-checked={showAllAges}
-                onClick={toggleShowAllAges}
-                data-testid="agefilter-toggle-comics"
-                className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11.5px] font-black"
-                style={{
-                  background: showAllAges ? "var(--arbor-yellow)" : "#fff",
-                  border: "2px solid var(--comic-ink)",
-                  color: "var(--arbor-ink)",
-                }}
-              >
-                <Icon name={showAllAges ? "check" : "unfold_more"} size={14} />
-                {agefilterText("elev.agefilter.showAll", he)}
-              </button>
-            </span>
-          )}
-        </div>
-      </PlayPanel>
-      </section>
+      {/* B-KID-87 (KB-29): Our books leads; the "{n} of {total} books on the
+          shelf" summary is gone (a completion meter on a library). The age
+          switch moved into the Our books header. */}
+      {ourBooksSection}
+
+      {/* The comic books: the ones made before, and the authored adventures a
+          parent can still build as a comic. */}
+      <h2 className="m-0 mt-2 text-[1.05rem] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
+        {he ? `מדף הקומיקס של ${isolate(name)}` : `${isolate(name)}'s comic bookshelf`}
+      </h2>
 
       {/* Masterplan 4.3 — teach-empty for the untouched shelf: a ghost
           bookshelf shows what saved books will look like lined up, with ONE

@@ -53,9 +53,10 @@ import { HeroAvatar, resolveHeroUrl } from "../ui/HeroAvatar";
 import HeroCreateDialog from "../profile/HeroCreateDialog";
 import TonightFromToday from "../stories/TonightFromToday";
 import { consumeTonightMode, type TonightMode } from "../../lib/tonightMode";
-import WorldScene from "../practice/WorldScene";
 import { useKidTheme } from "../../hooks/useKidTheme";
-import { kidArt, storyCoverKey } from "../../lib/kidThemeManifest";
+import { kidArt, kidArtSrcSet, storyCoverKey } from "../../lib/kidThemeManifest";
+import { StoryCard, STORY_PACK_LABEL } from "../stories/StoryCard";
+import { consumeStoryOpen } from "../../lib/storyOpenRequest";
 import { setKidSurfaceTitle } from "../kidmode/kidSurfaceTitle";
 import { pickTonightsStory, TONIGHT_AIM_REASON_KEY } from "../kidmode/tonightsStory";
 import { dayKey } from "../../practice/signals";
@@ -568,6 +569,17 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pinKey]);
 
+  // B-KID-87 (KB-29): a cover tapped in "Our books" (#/comics) opens THAT book
+  // here, once, through the parent door's own generate-then-open path (the
+  // same language gate as the catalogue). Kid Mode never reads the request.
+  useEffect(() => {
+    if (isKidModeActive()) return;
+    const requested = consumeStoryOpen();
+    const story = requested ? getStorySpec(requested) : undefined;
+    if (story && storyHasLanguage(story, storyLang)) void startJourney(story);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const chooseOption = (id: string) => {
     kidPageMoved.current = true;
     setChoiceId(id);
@@ -909,6 +921,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
       lang: storyLang,
     });
     const tonightStory = pinned ?? tonightPick.story ?? undefined;
+    const tonightCover = tonightStory ? storyCover(tonightStory.id) : null;
     const tonightReason = pinned ? null : tonightPick.reason;
     const tonightReasonLine =
       tonightReason?.kind === "aim" ? t(TONIGHT_AIM_REASON_KEY[tonightReason.metric])
@@ -1032,7 +1045,27 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
               className="flex flex-row sm:flex-col items-center justify-center gap-3 sm:gap-1 w-full min-h-[96px] sm:min-h-[168px] lg:h-full lg:min-h-[220px] py-2 px-3"
               style={{ background: tonightStory ? PACK_SOFT[tonightStory.pack] : "var(--arbor-paper-deep)" }}
             >
-              <span aria-hidden="true"><HeroAvatar size={84} ring animate={false} /></span>
+              {/* B-KID-87 (KB-29): the cover shows the BOOK — its own cover in
+                  the child's one kid theme (the same file the kid banner and
+                  the reader show); the avatar bust only for a book with no
+                  cover in that theme. 3:4, 96 px tall in the phone row. */}
+              <span aria-hidden="true">
+                {tonightCover ? (
+                  <img
+                    src={tonightCover.src480}
+                    srcSet={kidArtSrcSet(tonightCover)}
+                    sizes="(max-width: 639px) 72px, (max-width: 1023px) 132px, 200px"
+                    width={tonightCover.width}
+                    height={Math.round((tonightCover.width * 4) / 3)}
+                    alt=""
+                    decoding="async"
+                    fetchPriority="high"
+                    data-testid="stories-tonight-book-cover"
+                    className="block w-[72px] sm:w-[132px] lg:w-[200px] aspect-[3/4] rounded-xl object-cover"
+                    style={{ objectPosition: tonightCover.objectPosition, border: "1px solid var(--arbor-rule)" }}
+                  />
+                ) : <HeroAvatar size={84} ring animate={false} />}
+              </span>
               {/* W2-SHELLPLAY critic r2: hero-first is ONE quiet 44 px text row
                   inside the art band (was a kid-register PlayPanel/PlayButton
                   below the cover, heavier than Play). "Read it together" stays
@@ -1246,81 +1279,54 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
               </button>
             </div>
           )}
-          <div className="grid gap-3 sm:gap-4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
+          {/* B-KID-87 (KB-29): "More stories" is the library grid — the same
+              books, each on its own cover from the child's kid theme (StoryCard,
+              zero scene calls; KB-08), the parent's filters above it (pack, age). */}
+          <div className="grid gap-3 sm:gap-4" data-testid="stories-library-grid" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(150px,1fr))" }}>
             {displayStories.map((story) => {
-              const w = PACK_WORLD[story.pack];
-              const art = STORY_ART[story.id] ?? { emoji: "⭐", sfx: "POW!", sfxHe: "פאו!" };
               const isLoading = loadingId === story.id;
+              const label = STORY_PACK_LABEL[story.pack];
               return (
-                <button
+                <StoryCard
                   key={story.id}
-                  className="world-tile text-start relative"
-                  aria-disabled={!!loadingId}
-                  aria-label={`${he ? story.titleHe : story.title} — ${he ? w.labelHe : w.label}`}
-                  onClick={() => !loadingId && startJourney(story)}
-                >
-                  {isAimed(story) ? (
+                  story={story}
+                  lang={he ? "he" : "en"}
+                  theme={kidTheme}
+                  disabled={!!loadingId}
+                  onOpen={() => { void startJourney(story); }}
+                  ribbon={isAimed(story) ? (
                     <span
-                      className="absolute top-0 z-[2] text-[10.5px] font-black px-2.5 py-1 inline-flex items-center gap-1"
-                      style={{ background: "var(--arbor-yellow)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)", insetInlineStart: 0, borderStartStartRadius: "var(--play-radius)", borderEndEndRadius: "12px" }}
+                      className="text-[10.5px] font-black px-2.5 py-1 inline-flex items-center gap-1"
+                      style={{ background: "var(--arbor-yellow)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)", borderStartStartRadius: 12, borderEndEndRadius: 12 }}
                     >
                       ★ {he ? "המטרה שלכם" : "Your aim"}
                     </span>
                   ) : story.origin === "original" ? (
                     <span
-                      className="absolute top-0 z-[2] text-[11px] font-black text-white px-2.5 py-1"
-                      style={{ background: "var(--arbor-pink-ink)", border: "1px solid var(--arbor-rule)", insetInlineStart: 0, borderStartStartRadius: "var(--play-radius)", borderEndEndRadius: "12px" }}
+                      className="text-[11px] font-black px-2.5 py-1 inline-block"
+                      style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-pink-ink)", border: "1px solid var(--arbor-rule)", borderStartStartRadius: 12, borderEndEndRadius: 12 }}
                     >
                       {he ? "מקורי" : "ORIGINAL"}
                     </span>
-                  ) : null}
-                  {/* Scene: the hero standing in this story's world */}
-                  <div className="relative overflow-hidden" style={{ height: 150, background: w.bg, borderBottom: "1px solid var(--arbor-rule)" }}>
-                    {/* The story's world, with the child's hero generated into the scene
-                        (same pipeline as the Practice world-cards). Falls back to the
-                        hero + emoji motif while loading / with no hero / on error. */}
-                    <WorldScene worldId={`story-${story.id}`} theme={kidTheme} imagePrompt={`${story.title} — ${story.theme}`}>
-                      <div className="flex items-center gap-1.5">
-                        <HeroAvatar size={80} ring animate={false} />
-                        <span style={{ fontSize: 46, filter: "drop-shadow(2px 2px 0 rgba(23,27,34,.3))" }} aria-hidden="true">
-                          {art.emoji}
-                        </span>
-                      </div>
-                    </WorldScene>
-                    <span
-                      className="absolute top-2 z-[3] text-[10.5px] font-black rounded-full px-2 py-0.5"
-                      style={{ insetInlineEnd: 8, background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
-                    >
+                  ) : undefined}
+                >
+                  <span className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                    <span className="inline-block text-[10.5px] font-black px-2 py-0.5 rounded-full" style={{ border: "1px solid var(--arbor-rule-strong)", color: label.ink }}>
+                      {he ? label.he : label.en}
+                    </span>
+                    <span className="text-[10.5px] font-bold" style={{ color: "var(--arbor-muted)" }}>
                       {he ? "גיל" : "Age"} {story.ageRange[0]}–{story.ageRange[1]}
                     </span>
-                    <span className="comic-sfx absolute bottom-1 z-[3] text-[24px] -rotate-6" style={{ insetInlineStart: 8 }} aria-hidden="true">
-                      {he ? art.sfxHe : art.sfx}
+                    <span className="ms-auto inline-flex items-center gap-1 min-h-[28px] text-[13px] font-black" style={{ color: label.ink }}>
+                      {isLoading ? (
+                        /* Press feedback while the story opens — keyed label. */
+                        <><Icon name="autorenew" size={16} className="motion-safe:animate-spin" /> {statesText("elev.states.hero.opening", he)}</>
+                      ) : (
+                        <>{he ? "שחקו" : "Play"} <Icon name="play_arrow" size={16} fill={1} /></>
+                      )}
                     </span>
-                  </div>
-                  {/* Caption */}
-                  <div className="p-3.5">
-                    <p className="font-black text-[16.5px] leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
-                      {he ? story.titleHe : story.title}
-                    </p>
-                    <div className="flex items-center gap-2 mt-2">
-                      <span
-                        className="inline-block text-[10.5px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full"
-                        style={{ border: "1px solid var(--arbor-rule-strong)", color: w.ink }}
-                      >
-                        {he ? w.labelHe : w.label}
-                      </span>
-                      <span className="ms-auto inline-flex items-center gap-1 text-[13px] font-black" style={{ color: w.ink }}>
-                        {isLoading ? (
-                          /* Press feedback while the story generates — label
-                             via i18n (masterplan 4.3: no hardcoded literals). */
-                          <><Icon name="autorenew" size={16} className="motion-safe:animate-spin" /> {statesText("elev.states.hero.opening", he)}</>
-                        ) : (
-                          <>{he ? "שחקו" : "Play"} <Icon name="play_arrow" size={16} fill={1} /></>
-                        )}
-                      </span>
-                    </div>
-                  </div>
-                </button>
+                  </span>
+                </StoryCard>
               );
             })}
           </div>

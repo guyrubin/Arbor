@@ -112,6 +112,8 @@ export const en: Record<string, string> = {
   "elev.stories.catalogue.title": "Choose a different story",
   // B-PLAY-11: the one disclosure holding the pack filter + catalogue.
   "elev.stories.more": "More stories",
+  // B-KID-87 (KB-29): #/comics leads with the library.
+  "elev.comics.ourBooks.title": "Our books",
   // B-PLAY-05 + W2-SHELLPLAY critic r1: the Practice door's ONE sentence —
   // one unit (rounds), one stated window, at most one finished story title
   // (rendered bidi-isolated). Gender variants exist for Hebrew; English is the
@@ -335,6 +337,7 @@ export const he: Record<string, string> = {
   "elev.stories.tonight.noted.yesterday": "רשמתם אתמול",
   "elev.stories.catalogue.title": "בחירת סיפור אחר",
   "elev.stories.more": "סיפורים נוספים",
+  "elev.comics.ourBooks.title": "הספרים שלנו",
   "elev.practice.door.when.day": "מאז {day}",
   "elev.practice.door.when.today": "היום",
   "elev.practice.door.when.week": "בשבעת הימים האחרונים",

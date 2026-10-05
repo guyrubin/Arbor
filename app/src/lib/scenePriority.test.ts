@@ -55,8 +55,13 @@ describe("B-KID-56: the wiring", () => {
     const tab = readFileSync(path.join(SRC, "components/tabs/HeroJourneyTab.tsx"), "utf8");
     const cards = tab.match(/<WorldScene worldId=\{`story-\$\{story\.id\}`\}[^>]*>/g) ?? [];
     // B-KID-85: the kid catalogue is KidLibrary (KidBookCover: static cover or
-    // token title card, no WorldScene at all); the parent card is the one left.
-    expect(cards).toHaveLength(1);
+    // token title card, no WorldScene at all). B-KID-87 (KB-29) re-pin: the
+    // parent card is StoryCard (the book's own cover), so no card mounts a scene.
+    expect(cards).toHaveLength(0);
+    expect(tab).not.toContain("<WorldScene");
+    const storyCard = readFileSync(path.join(SRC, "components/stories/StoryCard.tsx"), "utf8");
+    expect(storyCard).not.toContain("WorldScene");
+    expect(storyCard).not.toContain("generate");
     for (const c of cards) expect(c).not.toContain("heroUrl=");
     const cover = readFileSync(path.join(SRC, "components/kidmode/KidBookCover.tsx"), "utf8");
     expect(cover).not.toContain("WorldScene");
