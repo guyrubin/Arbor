@@ -238,12 +238,12 @@ describe("Five Smooth Stones (the proof) — manuscript specifics", () => {
     expect(LIBRARY_BOOKS[book.id]).toBe(book);
   });
 
-  it("manuscript v2: read paths are 11 / 12 / 12 screens (cover included); p3b sits between p3 and p4", () => {
+  it("manuscript v3: read paths are 14 / 15 / 15 screens (cover included); p2b, p4b, p9b in the linear order", () => {
     const screens = (cid: string) => 1 + readPath(book, cid).length;
-    expect(screens("a")).toBe(11);
-    expect(screens("b")).toBe(12);
-    expect(screens("c")).toBe(12);
-    expect(book.pages.map((p) => p.id)).toEqual(["p1", "p2", "p3", "p3b", "p4", "p5", "p8", "p9", "p10"]);
+    expect(screens("a")).toBe(14);
+    expect(screens("b")).toBe(15);
+    expect(screens("c")).toBe(15);
+    expect(book.pages.map((p) => p.id)).toEqual(["p1", "p2", "p2b", "p3", "p3b", "p4", "p4b", "p5", "p8", "p9", "p9b", "p10"]);
     expect(book.decision.choices.find((c) => c.id === "c")!.label).toEqual({ en: "Wait for someone bigger", he: "לחכות למישהו גדול יותר" });
     expect(book.coverLine).toEqual({ en: "Everyone ran. One shepherd went.", he: "כולם ברחו. רועה אחד הלך." });
   });
@@ -265,15 +265,15 @@ describe("Five Smooth Stones (the proof) — manuscript specifics", () => {
     } else expect(states).toHaveLength(1);
   });
 
-  it("manuscript v2: p3b waits for round 3 (PL3 + look-across stand in) until its geometry lands", () => {
-    if (fiveSmoothStonesGeometry.pages.p3b) {
-      expect(ART_PENDING.size).toBe(0);
-      expect(byId.p3b.plateId).toBe("PL3e");
-    } else {
-      expect([...ART_PENDING]).toEqual(["p3b"]);
-      expect(byId.p3b.plateId).toBe("PL3");
-      expect(byId.p3b.hero!.pose).toBe("look-across");
+  it("v3: pages whose art has not landed stand in on the nearest plate and are listed by name (ART_PENDING)", () => {
+    for (const id of ["p3b", "p2b", "p4b", "p9b"]) {
+      expect(ART_PENDING.has(id), id).toBe(!fiveSmoothStonesGeometry.pages[id]);
+      expect(getPlate(book.id, byId[id].plateId), `${id} plate`).toBeDefined();
+      expect(byId[id].phoneCrop, `${id} window`).toBeDefined();
     }
+    if (!fiveSmoothStonesGeometry.pages.p2b) expect([byId.p2b.plateId, byId.p2b.hero!.pose]).toEqual(["PL1", "walk-bag"]);
+    if (!fiveSmoothStonesGeometry.pages.p4b) expect([byId.p4b.plateId, byId.p4b.hero!.pose]).toEqual(["PL4", "look-up"]);
+    if (!fiveSmoothStonesGeometry.pages.p9b) expect(byId.p9b.hero!.pose).toBe("stand-tall");
   });
 
   it("page types: spread for the cover, p5, p9, p10; facing elsewhere", () => {
@@ -282,7 +282,10 @@ describe("Five Smooth Stones (the proof) — manuscript specifics", () => {
   });
 
   it("round 3 (v2): the plates the pages name, the edits, and the poses", () => {
-    expect(new Set(pagesOf.map((p) => p.plateId))).toEqual(new Set(["PL1", "PL1b", "PL1d", "PL3", "PL3e", "PL3w2", "PL3w3", "PL4", "PL4e", "PL6", "PL7"]));
+    const named = new Set(pagesOf.map((p) => p.plateId));
+    for (const id of ["p2b", "p4b", "p9b"]) if (!ART_PENDING.has(id)) named.delete(byId[id].plateId); // v3 round 4 plates, once delivered
+    named.delete("PL7-rise"); // p9b's stand-in until round 4
+    expect(named).toEqual(new Set(["PL1", "PL1b", "PL1d", "PL3", "PL3e", "PL3w2", "PL3w3", "PL4", "PL4e", "PL6", "PL7"]));
     const variants = Object.values(BOOK_PLATES[book.id]).filter((p) => p.variantOf).map((p) => p.id).sort();
     // + PL3w (the r2 day plate, now unused), PL7-dust (registered, unused) and PL7-rise (p9's third art state)
     expect(variants).toEqual(["PL1b", "PL1d", "PL3e", "PL3w", "PL3w2", "PL3w3", "PL4e", "PL7-dust", "PL7-rise"]);
@@ -290,6 +293,8 @@ describe("Five Smooth Stones (the proof) — manuscript specifics", () => {
     // the art agent's poses (LOG.md §1 + Round 2): left-facing variants keep the
     // key light upper-left; round 2 added look-across (cover), sling-swing-face-right (p9), squat-look (p8)
     // v2: stand-tall-hand (p4), sit-hunched (p6c, p7c), stand-tall (p7c after)
+    // v3: walk-bag (p2b's stand-in until round 4)
+    for (const extra of ["walk-bag"]) poses.delete(extra);
     expect([...poses].sort()).toEqual(["armour-stuck", "free-stretch", "look-across", "look-up", "run-staff", "run-staff-left", "sit", "sit-hunched", "sling-swing", "sling-swing-face-right", "squat-look", "stand-tall", "stand-tall-hand", "worried"]);
     expect(byId.p5.heroAlt?.tunic?.pose).toBe("worried-tunic");
     expect(Object.keys(getPlate(book.id, "PL4")!.focus ?? {}).sort()).toEqual(["a", "b", "c"]);

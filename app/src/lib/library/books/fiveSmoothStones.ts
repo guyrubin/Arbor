@@ -142,9 +142,9 @@ const same = (en: string, he: string): BookLine => ({ en, he: { m: he, f: he } }
  *  slot; until the sheet has it, the reader shows `poseFallbacks`. */
 const withPose = (slot: Slot, pose: string): Slot => ({ ...slot, pose });
 
-/** Pages whose art waits for the art agent's round 3 (placeholder geometry
- *  allowed; listed in BUILD-LOG's TODO). Empty once round 3 is imported. */
-export const ART_PENDING = new Set<string>(G.pages.p3b ? [] : ["p3b"]);
+/** Pages whose art waits for the art agent's next round (placeholder geometry
+ *  on the nearest plate; listed in BUILD-LOG's TODO). Empty once imported. */
+export const ART_PENDING = new Set<string>(["p3b", "p2b", "p4b", "p9b"].filter((id) => !G.pages[id]));
 
 const cover: Page = {
   id: "cover",
@@ -180,14 +180,27 @@ const p2: Page = {
   ),
 };
 
+// v3: NEW — the road to the valley (17:20). Placeholder art until round 4:
+// PL1 + p2's slot walking (walk-bag); ART_PENDING lists it.
+const p2b: Page = {
+  id: "p2b",
+  plateId: plateOf("p2b", "PL1"),
+  hero: G.pages.p2b?.hero ?? withPose(G.pages.p2?.hero ?? heroOf("p2", "walk-bag"), "walk-bag"),
+  ...(G.pages.p2b ? artOf("p2b") : { phoneCrop: G.pages.p2?.phoneCrop }),
+  text: same(
+    `Early in the morning, Father says: "Take this bread to your brothers, in the valley." David counts his sheep, every one. He leaves them with a keeper, and goes. The black-eared lamb watches him walk away.`,
+    `"וַיַּשְׁכֵּם דָּוִד בַּבֹּקֶר." אבא אומר: "קח את הלחם הזה לאחים שלך, בעמק." דוד סופר את הכבשים, כל אחת. משאיר אותן אצל שומר, והולך. הטלה עם האוזן השחורה מסתכל אחריו.`,
+  ),
+};
+
 const p3: Page = {
   id: "p3",
   plateId: plateOf("p3", "PL3"),
   hero: heroOf("p3", "look-up"),
   ...artOf("p3"),
   text: same(
-    `"Take this bread to your brothers," says Father. David leaves his sheep with a keeper, and goes. In the valley of Elah stands Goliath, big as a tree. "GIVE ME A MAN!" Forty days, everyone runs. Even the king.`,
-    `"קח את הלחם הזה לאחים שלך," אומר אבא. דוד משאיר את הכבשים אצל שומר, והולך. בעמק האלה עומד גָּלְיָת, גבוה כמו עץ. "תְּנוּ־לִי אִישׁ וְנִלָּחֲמָה יָחַד!" ארבעים יום, כולם בורחים. אפילו המלך.`,
+    `In the valley of Elah stands Goliath, big as a tree. Bronze helmet. Bronze coat. A huge spear. Morning and evening he shouts: "GIVE ME A MAN!" Forty days, everyone runs. Even the king stays in his tent.`,
+    `בעמק האלה עומד גָּלְיָת, גבוה כמו עץ. כובע נחושת. שריון נחושת. חנית ענקית. בבוקר ובערב הוא צועק: "תְּנוּ־לִי אִישׁ וְנִלָּחֲמָה יָחַד!" ארבעים יום, כולם בורחים. אפילו המלך נשאר באוהל.`,
   ),
 };
 
@@ -215,6 +228,19 @@ const p4: Page = {
   ),
 };
 
+// v3: NEW — the king holds out his armour (17:37-38, shown as an offer).
+// Placeholder art until round 4: PL4 + p4's slot looking up.
+const p4b: Page = {
+  id: "p4b",
+  plateId: plateOf("p4b", "PL4"),
+  hero: G.pages.p4b?.hero ?? withPose(G.pages.p4?.hero ?? heroOf("p4", "look-up"), "look-up"),
+  ...(G.pages.p4b ? artOf("p4b") : { phoneCrop: G.pages.p4?.phoneCrop }),
+  text: same(
+    `"Go," says King Saul, and holds out his own bronze helmet. It is as big as David's chest, as heavy as a lamb. Then the heavy coat. Then the long sword. Made for a king. David looks up, and up.`,
+    `"לֵךְ," אומר שאול המלך, ומושיט לדוד את כובע הנחושת שלו. גדול כמו כל החזה של דוד, כבד כמו טלה. ואחריו השריון הכבד, והחרב הארוכה. במידה של מלך. דוד מביט למעלה, ולמעלה.`,
+  ),
+};
+
 const p5: Page = {
   id: "p5",
   plateId: plateOf("p5", "PL4"),
@@ -222,8 +248,8 @@ const p5: Page = {
   hero: heroOf("p5", "worried"),
   ...artOf("p5"),
   text: same(
-    `King Saul gives David his armour: a bronze helmet, a heavy coat, a sword. Made for a king. Here is David's own staff, his own sling. He has never tried the armour. Not once. What will David do?`,
-    `שאול נותן לדוד את כלי המלחמה שלו: כובע נחושת, שריון כבד וחרב. במידה של מלך. והנה המקל של דוד, והקלע שלו. את כלי המלך הוא עוד לא ניסה. אף פעם. מה יעשה דוד?`,
+    `Here are the king's things: the helmet, the coat, the sword. And here, David's own staff, his own sling. He has never tried the armour. Not once. Outside, the giant shouts again. What will David do?`,
+    `הנה כלי המלך: הכובע, השריון, החרב. וכאן, המקל של דוד, והקלע שלו. את כלי המלך הוא עוד לא ניסה. אף פעם. בחוץ, הענק צועק שוב. מה יעשה דוד?`,
   ),
 };
 
@@ -309,8 +335,8 @@ const p8: Page = {
   hero: heroOf("p8", "kneel"),
   ...artOf("p8"),
   text: same(
-    `At the brook, David chooses five smooth stones. One, two, three, four, five. Into his shepherd's bag. Across the valley, Goliath looks down at him, and laughs. Just a boy!`,
-    `דוד יורד אל הנחל. "וַיִּבְחַר־לוֹ חֲמִשָּׁה חַלֻּקֵי־אֲבָנִים מִן־הַנַּחַל." אחת, שתיים, שלוש, ארבע, חמש, אל ילקוט הרועים. ומעבר לעמק, גָּלְיָת מביט בו, וצוחק. סתם נער!`,
+    `At the brook, David chooses five smooth stones. One, two, three, four, five. Into his shepherd's bag. Goliath's shadow reaches across the water. He looks down, and laughs. Just a boy!`,
+    `"וַיִּבְחַר־לוֹ חֲמִשָּׁה חַלֻּקֵי־אֲבָנִים מִן־הַנַּחַל." אחת, שתיים, שלוש, ארבע, חמש, אל ילקוט הרועים. הצל של גלית נמתח על המים. הוא מביט למטה, וצוחק. סתם נער!`,
   ),
   echo: {
     a: same(`His feet are light. He got here first.`, `הרגליים קלות. הוא הגיע ראשון.`),
@@ -340,6 +366,20 @@ const p9: Page = {
   ),
 };
 
+// v3: NEW — after the fall (17:52; Saul and Eliab staged; the walk home is
+// the book's own ending, disclosed). Placeholder art until round 4: the
+// "soldiers rise" plate + p9's slot standing.
+const p9b: Page = {
+  id: "p9b",
+  plateId: plateOf("p9b", G.plates["PL7-rise"] ? "PL7-rise" : "PL7"),
+  hero: G.pages.p9b?.hero ?? withPose(G.pages.p9?.hero ?? heroOf("p9", "stand-tall"), "stand-tall"),
+  ...(G.pages.p9b ? artOf("p9b") : { phoneCrop: G.pages.p9?.phoneCrop }),
+  text: same(
+    `Then, quiet. The dust settles. The soldiers who hid stand up tall, and run down shouting! King Saul comes out of his tent. Eliab looks at his little brother. David picks up his staff. The sheep are waiting.`,
+    `ואז, שקט. האבק שוקע. החיילים שהתחבאו קמים, זקופים, ורצים למטה בצעקות! שאול המלך יוצא מהאוהל. אליאב מביט באח הקטן שלו. דוד מרים את המקל שלו. הכבשים מחכות.`,
+  ),
+};
+
 const p10: Page = {
   id: "p10",
   plateId: plateOf("p10", "PL1d"),
@@ -347,8 +387,8 @@ const p10: Page = {
   hero: heroOf("p10", "sit"),
   ...artOf("p10"),
   text: same(
-    `That day, the soldiers stood up tall. That evening, David sits with his sheep. Baa. Four smooth stones in his bag. Tomorrow? A hundred times again.`,
-    `באותו יום, החיילים קמו זקופים. בערב, דוד יושב עם הכבשים על הגבעה. מֶההה. ארבע אבנים חלקות בילקוט. מחר? שוב מאה פעמים.`,
+    `That evening, David sits with his sheep. The black-eared lamb sleeps at his feet. Baa. Four smooth stones in his bag. Tomorrow? A hundred times again.`,
+    `בערב, דוד יושב עם הכבשים על הגבעה. הטלה עם האוזן השחורה ישן לרגליו. מֶההה. ארבע אבנים חלקות בילקוט. מחר? שוב מאה פעמים.`,
   ),
   echo: {
     a: same(`His own staff. His own sling.`, `המקל שלו. הקלע שלו.`),
@@ -379,15 +419,18 @@ export const fiveSmoothStones: Book = {
     "the lamb's black ear",
     "the tally marks",
     "the giant's shadow",
+    "David counting his sheep before he leaves",
+    "the king coming out of his tent and Eliab's look after the fall",
+    "the walk home to the sheep (in the text Saul kept David with him from that day, 18:2)",
     "the path where David waits (in the text the army waited forty days, 17:16; David did not)",
     "staging: the armour waits on a stand (in the text Saul dresses David himself, 17:38)",
-    "omitted: 17:25-27 (the reward and David's questions about it), 17:43-44 (curses), 17:50-51 (how the giant dies), 17:52 (the chase)",
+    "omitted: 17:25-27 (the reward and David's questions about it), 17:43-44 (curses), 17:50-51 (how the giant dies), the chase after 17:52",
   ],
   ageBand: "4-7",
   /** v2 poses the hero sheet may not have yet (round 3): the nearest pose it has. */
   poseFallbacks: { "stand-tall-hand": "look-up", "stand-tall": "look-up", "sit-hunched": "sit" },
   cover,
-  pages: [p1, p2, p3, p3b, p4, p5, p8, p9, p10],
+  pages: [p1, p2, p2b, p3, p3b, p4, p4b, p5, p8, p9, p9b, p10],
   decision: {
     pageId: "p5",
     // dedicated card pictures, when the art agent delivers them (geometry)
@@ -419,8 +462,8 @@ export const fiveSmoothStones: Book = {
     },
     together: { en: `What if David had waited for someone bigger? Read it again and see.`, he: `ומה אם דוד היה מחכה למישהו גדול יותר? קראו שוב ותראו.` },
     sourceNote: {
-      en: `1 Samuel 17, told in short. Quoted: 17:10, 17:28, 17:29, 17:32, 17:39, 17:40, the first half of 17:45, and the words "not by sword and spear" from 17:47. "In the name of God" is David's own claim (17:45), in plain words; in the Bible he says the battle belongs to God (17:47), and the narrator adds that "there was no sword in David's hand" (17:50). Left out for young children: the king's reward and David's questions about it (17:25–27), Goliath's curses (17:43–44), how the giant dies (17:50–51) and the chase (17:52). Added: the play frame, Bun, the olive-tree target, "a hundred times a day", the lamb's black ear, the tally marks, the giant's shadow, and the path where David waits (in the Bible the army waited forty days, 17:16; David did not). The "armour" path tells it as the Bible does; there Saul dresses David himself (17:38).`,
-      he: `שמואל א׳ יז, בקיצור. מצוטטים: יז, י; כח; כט; לב; לט; מ; תחילת מה; והמילים "לֹא בְּחֶרֶב וּבַחֲנִית" מיז, מז. "בשם אלוהים" הם דברי דוד עצמו (יז, מה), במילים פשוטות; במקרא הוא אומר שהמלחמה לאלוהים (יז, מז), והמספר מוסיף "וְחֶרֶב אֵין בְּיַד־דָּוִד" (יז, נ). הושמטו לילדים צעירים: שכר המלך ושאלות דוד עליו (יז, כה–כז), קללות גלית (יז, מג–מד), מות הענק (יז, נ–נא) והמרדף (יז, נב). נוספו: מסגרת המשחק, ארנבוני, עץ הזית, "מאה פעמים ביום", האוזן השחורה של הטלה, סימני הספירה, צל הענק, והדרך שבה דוד מחכה (במקרא הצבא חיכה ארבעים יום, יז, טז; דוד לא). דרך "השריון" מספרת כמו המקרא; שם שאול עצמו מלביש את דוד (יז, לח).`,
+      en: `1 Samuel 17, told in short. Quoted: 17:10, 17:20 ("David rose early in the morning"), 17:28, 17:29, 17:32, 17:37 (Saul's "Go"), 17:39, 17:40, the first half of 17:45, and "not by sword and spear" from 17:47. "In the name of God" is David's own claim (17:45), in plain words; in the Bible he says the battle belongs to God (17:47), and the narrator adds that "there was no sword in David's hand" (17:50). In the Bible Saul dresses David in his armour himself (17:38); here the king holds it out to him. After the giant falls, the men of Israel "rose and shouted" (17:52); the chase that follows is left out. Left out for young children: the king's reward and David's questions about it (17:25–27), Goliath's curses (17:43–44) and how the giant dies (17:50–51). In the Bible, Saul kept David with him from that day (18:2); David's walk home to the sheep is the book's own ending. Added: the play frame, Bun, the olive-tree target, "a hundred times a day", David counting his sheep before he leaves, the lamb's black ear, the tally marks, the giant's shadow, the king coming out of his tent and Eliab's look after the fall, and the path where David waits (in the Bible the army waited forty days, 17:16; David did not).`,
+      he: `שמואל א׳ יז, בקיצור. מצוטטים: יז, י; כ ("וַיַּשְׁכֵּם דָּוִד בַּבֹּקֶר"); כח; כט; לב; לז ("לֵךְ" של שאול); לט; מ; תחילת מה; והמילים "לֹא בְּחֶרֶב וּבַחֲנִית" מיז, מז. "בשם אלוהים" הם דברי דוד עצמו (יז, מה), במילים פשוטות; במקרא הוא אומר שהמלחמה לאלוהים (יז, מז), והמספר מוסיף "וְחֶרֶב אֵין בְּיַד־דָּוִד" (יז, נ). במקרא שאול עצמו מלביש את דוד בשריון (יז, לח); כאן המלך מושיט לו אותו. אחרי נפילת הענק "וַיָּקֻמוּ אַנְשֵׁי יִשְׂרָאֵל… וַיָּרִעוּ" (יז, נב); המרדף שאחר כך הושמט. הושמטו לילדים צעירים: שכר המלך ושאלות דוד עליו (יז, כה–כז), קללות גלית (יז, מג–מד) ומות הענק (יז, נ–נא). במקרא שאול השאיר את דוד אצלו מאותו יום (יח, ב); ההליכה הביתה אל הכבשים היא הסיום של הספר. נוספו: מסגרת המשחק, ארנבוני, עץ הזית, "מאה פעמים ביום", דוד סופר את הכבשים לפני שהוא יוצא, האוזן השחורה של הטלה, סימני הספירה, צל הענק, המלך היוצא מהאוהל ומבטו של אליאב אחרי הנפילה, והדרך שבה דוד מחכה (במקרא הצבא חיכה ארבעים יום, יז, טז; דוד לא).`,
     },
   },
 };
