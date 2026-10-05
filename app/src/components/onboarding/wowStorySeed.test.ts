@@ -91,6 +91,7 @@ describe("CHILD_SUBCOLLECTIONS registry pin — the seed invented NO new sink", 
       "mimicSessions",
       "missionRecords",
       "heroRuns",
+      "heroRenders", // B-KID-127: the kept personalised story text
       "kidSouvenirs", // B-KID-96: the souvenir ledger (registered, not invented by the seed)
       "journeyObjectives",
       "adventureResults",

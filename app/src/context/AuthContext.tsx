@@ -17,6 +17,7 @@ import { setAnalyticsUser } from "../lib/analytics";
 import { trackSessionOpen } from "../lib/loopEvents";
 import { recordRetentionSession } from "../lib/retentionRollup";
 import { purgeAllComicPages } from "../lib/comicPageStore";
+import { purgeAllHeroRenders } from "../lib/heroRenderStore";
 import { clearPrewarmedComic } from "../lib/comicPrewarm";
 import { clearMathExit } from "../components/kidmode/parentGate";
 
@@ -130,6 +131,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // and independent of firebaseEnabled (the store is device-local).
     try {
       await purgeAllComicPages();
+    } catch {
+      /* best effort */
+    }
+    // B-KID-127: the kept story text (device copy) leaves with the session too.
+    try {
+      await purgeAllHeroRenders();
     } catch {
       /* best effort */
     }

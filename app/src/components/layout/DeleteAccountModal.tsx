@@ -6,6 +6,7 @@ import { useToast } from "../../context/ToastContext";
 import { api, type AccountDeletionReceipt } from "../../lib/api";
 import { accountDeletionLeases } from "../../lib/accountDeletionLease";
 import { purgeAllComicPages } from "../../lib/comicPageStore";
+import { purgeAllHeroRenders } from "../../lib/heroRenderStore";
 import { commerceAllowed } from "../kidmode/parentGate";
 
 /**
@@ -66,6 +67,7 @@ export default function DeleteAccountModal({ open, onClose }: { open: boolean; o
     if (!ownsAccount()) return;
     try {
       await purgeAllComicPages();
+      await purgeAllHeroRenders(); // B-KID-127
     } catch {
       /* best effort */
     }

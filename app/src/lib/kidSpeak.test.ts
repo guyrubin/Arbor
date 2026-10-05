@@ -258,11 +258,16 @@ describe("KID-25 — a second Play of the same story makes no network call", () 
   const hero = stripComments(read("components/tabs/HeroJourneyTab.tsx"));
 
   it("startJourney reads the memo before it calls the API", () => {
-    const memoAt = hero.indexOf("journeyMemo.get(memoKey)");
-    const apiAt = hero.indexOf("api.generateHeroJourney({");
+    // B-KID-127 re-pin: the API call lives in the ONE keeper (personalisedFor ->
+    // resolvePersonalisedRender: kept render first, then one generation); startJourney
+    // still reads the session memo before it.
+    const start = hero.indexOf("const startJourney = async");
+    const memoAt = hero.indexOf("journeyMemo.get(memoKey)", start);
+    const apiAt = hero.indexOf("personalisedFor(story, storyLang)", start);
     expect(memoAt).toBeGreaterThan(-1);
     expect(apiAt).toBeGreaterThan(memoAt);
-    expect(hero).toContain("const r = memoed ?? await api.generateHeroJourney({");
+    expect(hero).toContain("const r = memoed ?? (await personalisedFor(story, storyLang)).render;");
+    expect(hero).toContain("generate: () => api.generateHeroJourney({");
     expect(hero).toContain("if (!memoed) rememberJourney(memoKey, r);"); // B-KID-121 re-pin: one writer
   });
 

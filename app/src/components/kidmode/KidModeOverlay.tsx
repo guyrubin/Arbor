@@ -35,6 +35,7 @@ import { ArborMascot } from "../ui/ArborMascot";
 import { useArbor } from "../../context/ArborContext";
 import { KidSoundToggle } from "./kidReadAloud";
 import { closeKidAudio, kidAudioVisibility, kidHush, setKidAudioChild } from "./audio/kidAudio";
+import { hydrateHeroRenders } from "../../lib/heroRenderStore";
 import { setKidHome } from "./kidChrome";
 
 // ── EXISTING surfaces — imported unchanged, never forked ──────────────────────
@@ -153,6 +154,8 @@ export default function KidModeOverlay() {
   useEffect(() => {
     if (!isKidModeOpen) return;
     setKidAudioChild(childProfile.id);
+    // B-KID-127: warm the child's kept stories so a tapped book opens on them.
+    void hydrateHeroRenders(childProfile.id);
     const onVisibility = () => kidAudioVisibility(document.visibilityState === "hidden");
     document.addEventListener("visibilitychange", onVisibility);
     return () => {

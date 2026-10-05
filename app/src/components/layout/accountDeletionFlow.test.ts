@@ -139,6 +139,7 @@ function boundaries() {
     "../../lib/api": { api },
     "../../lib/accountDeletionLease": { accountDeletionLeases: leases },
     "../../lib/comicPageStore": { purgeAllComicPages },
+    "../../lib/heroRenderStore": { purgeAllHeroRenders: async () => {} }, // B-KID-127
     "../kidmode/parentGate": { commerceAllowed },
   };
   return { imports, leases, auth, language, api, commerceAllowed, purgeAllComicPages, signOut, toast, storage, removeItem, order };

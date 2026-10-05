@@ -66,6 +66,7 @@ import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
 import { authoredChoice, authoredScene, completeRender, type StoryHero } from "../../lib/heroJourneyRender";
 import KidLibrary from "../kidmode/KidLibrary";
 import { kidBookOpenable, kidBooks } from "../kidmode/kidBooks";
+import { adoptSavedRender, getSavedRender, hydrateHeroRenders, renderSignature, resolvePersonalisedRender, type SavedHeroRender } from "../../lib/heroRenderStore";
 import { KidBookTitleCard } from "../kidmode/KidBookCover";
 import { autoReadPage } from "../kidmode/kidReadAloud";
 import { kidSfx } from "../kidmode/audio/kidAudio";
@@ -208,6 +209,10 @@ export function kidBookOpening(
   hero: StoryHero,
   day: string,
 ): { render: HeroJourneyRender; personalised: boolean } {
+  // B-KID-127: the child's KEPT render for this story + language comes first
+  // (no day in its key: a story written for a child is never written twice).
+  const kept = getSavedRender(childId, story.id, lang, renderSignature(hero.name?.split(" ")[0] ?? "", story));
+  if (kept) return { render: kept, personalised: true };
   const memoed = journeyMemo.get(journeyMemoKey(childId, story.id, lang, day));
   return memoed ? { render: memoed, personalised: true } : { render: authoredJourneyRender(story, lang, artTheme, hero), personalised: false };
 }
@@ -244,6 +249,24 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   const [storyResting, setStoryResting] = useState(false);
 
   const runsCol = useChildCollection<HeroJourneyRun>(childProfile.id, "heroRuns");
+  // B-KID-127: the child's personalised renders, kept per story + language
+  // (account copy; the device copy is lib/heroRenderStore). Text only.
+  const rendersCol = useChildCollection<SavedHeroRender>(childProfile.id, "heroRenders");
+  useEffect(() => { void hydrateHeroRenders(childProfile.id); }, [childProfile.id]);
+  useEffect(() => {
+    for (const doc of rendersCol.items) adoptSavedRender({ ...doc, childId: childProfile.id });
+  }, [rendersCol.items, childProfile.id]);
+  /** B-KID-127: kept render (device, then account), else ONE generation that is kept. */
+  const personalisedFor = (story: HeroStorySpec, lang: "en" | "he", fresh = false) => resolvePersonalisedRender({
+    childId: childProfile.id,
+    story,
+    lang,
+    firstName: childProfile.name?.split(" ")[0] ?? "",
+    remote: rendersCol.items,
+    generate: () => api.generateHeroJourney({ storyId: story.id, childName: childProfile.name, age: childProfile.age, language: lang }),
+    persistRemote: (doc) => { void rendersCol.upsert(doc).catch(() => { /* the device copy stands */ }); },
+    fresh,
+  });
   const runs = runsCol.items;
   // B-KID-46 (KB-03): the language a story is told in. A story that cannot be
   // told in it (no Hebrew beats) is not listed — catalogue, Tonight pick and
@@ -352,6 +375,9 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   const { ref: dialogRef, requestClose } = useDialog({ open: Boolean(kidNav) && immersive && Boolean(activeStory && render), onClose: () => setImmersive(false), returnFocusRef: immersiveTriggerRef });
   const [questionsChecked, setQuestionsChecked] = useState<Record<number, boolean>>({});
   const [saved, setSaved] = useState(false);
+  // B-KID-127: the parent's explicit "Write a new version" (the only way a kept
+  // story is written again; never in Kid Mode, never automatic).
+  const [rewriting, setRewriting] = useState(false);
   // B-KID-76 (b): the Kid Mode book's ending page (after the last beat).
   const [atEnd, setAtEnd] = useState(false);
   const [finishing, setFinishing] = useState(false);
@@ -423,12 +449,9 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
       // B-KID-121: the memo, the request and the render all carry the story language.
       const memoKey = journeyMemoKey(childProfile.id, story.id, storyLang, dayKey(new Date()));
       const memoed = journeyMemo.get(memoKey);
-      const r = memoed ?? await api.generateHeroJourney({
-        storyId: story.id,
-        childName: childProfile.name,
-        age: childProfile.age,
-        language: storyLang,
-      });
+      // B-KID-127: a kept render opens with zero network; only a story never
+      // written for this child is generated (and then kept).
+      const r = memoed ?? (await personalisedFor(story, storyLang)).render;
       if (!memoed) rememberJourney(memoKey, r);
       startedAtRef.current = new Date().toISOString();
       setActiveStory(story);
@@ -488,8 +511,8 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   const kidNarrationSpoken = useRef(false);
   const kidPersonalise = (story: HeroStorySpec, lang: "en" | "he", seq: number) => {
     const memoKey = journeyMemoKey(childProfile.id, story.id, lang, dayKey(new Date()));
-    api.generateHeroJourney({ storyId: story.id, childName: childProfile.name, age: childProfile.age, language: lang })
-      .then((r) => {
+    personalisedFor(story, lang)
+      .then(({ render: r }) => {
         rememberJourney(memoKey, r);
         if (!kidLateRenderApplies({ openSeq: kidOpenSeq.current, requestSeq: seq, pageMoved: kidPageMoved.current, narrationSpoken: kidNarrationSpoken.current })) return;
         setRender(r);
@@ -746,6 +769,24 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
     else void startJourney(activeStory);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storyLang]);
+
+  const rewriteStory = async () => {
+    if (!activeStory || rewriting || kidMode) return;
+    setRewriting(true);
+    try {
+      const { render: r } = await personalisedFor(activeStory, storyLang, true);
+      rememberJourney(journeyMemoKey(childProfile.id, activeStory.id, storyLang, dayKey(new Date())), r);
+      setRender(r);
+      setRenderLang(storyLang);
+      setSceneIndex(0);
+      setChoiceId(undefined);
+      setSaved(false);
+    } catch (e) {
+      if (e instanceof Error) toast(e.message, "error");
+    } finally {
+      setRewriting(false);
+    }
+  };
 
   const exitJourney = () => {
     kidOpenSeq.current += 1; // B-KID-124: a late personalised render lands nowhere
@@ -1703,7 +1744,22 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
           {kidMode ? kidsStoriesText("journey.backStories", aiLang) : t("elev.stories.reader.back")}
         </button>)}
         {!kidMode && <span className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{render.title}</span>}
-        {immersiveButton}
+        <div className="flex items-center gap-1">
+          {!kidMode && (
+            <button
+              type="button"
+              data-testid="stories-rewrite"
+              onClick={() => { void rewriteStory(); }}
+              disabled={rewriting}
+              aria-busy={rewriting || undefined}
+              className="inline-flex items-center text-sm font-bold px-2 min-h-[44px] disabled:opacity-50"
+              style={{ color: "var(--arbor-muted)" }}
+            >
+              {t("elev.stories.reader.rewrite")}
+            </button>
+          )}
+          {immersiveButton}
+        </div>
       </div>
       )}
 

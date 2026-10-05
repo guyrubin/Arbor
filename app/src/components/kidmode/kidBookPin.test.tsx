@@ -161,3 +161,27 @@ describe("B-KID-121: a run is restored only in the language it was written in", 
     expect(runRestorable({ language: "en" }, "en")).toBe(true);
   });
 });
+
+describe("B-KID-127: a kept story opens on its kept words, zero network", () => {
+  it("after a reload (front hydrated from the device store) the pinned book shows the kept render and no api call is made", async () => {
+    const { _setHeroRenderBackend, saveRender, renderSignature, _resetHeroRenderFront, hydrateHeroRenders } = await import("../../lib/heroRenderStore");
+    const map = new Map<string, import("../../lib/heroRenderStore").SavedHeroRender>();
+    _setHeroRenderBackend({ get: async (id) => map.get(id), put: async (r) => { map.set(r.id, r); }, delete: async (id) => { map.delete(id); }, getAll: async () => [...map.values()], clear: async () => map.clear() });
+    clearJourneyMemo();
+    const spec = getStorySpec(STORY)!;
+    saveRender("child-1", STORY, "en", renderSignature("Dana", spec), { storyId: STORY, title: "Kept", scenes: [{ beatId: spec.beats[0].id, title: "x", narration: "KEPT PERSONALISED WORDS", imagePrompt: "" }], choices: [], reflection: { practiced: [], questions: [] } });
+    await new Promise((r) => setTimeout(r, 0));
+    _resetHeroRenderFront(); // the reload
+    await hydrateHeroRenders("child-1");
+    lang.ui = "en"; lang.ai = null;
+    child.profile = profile(6);
+    const before = apiCalls.n;
+    const html = renderToStaticMarkup(<HeroJourneyTab initialStoryId={STORY} pinNonce={1} />);
+    expect(html).toContain("KEPT PERSONALISED WORDS");
+    expect(apiCalls.n).toBe(before);
+    // A renamed child does not get the old child's words.
+    child.profile = profile(6, "Noa");
+    expect(renderToStaticMarkup(<HeroJourneyTab initialStoryId={STORY} pinNonce={1} />)).not.toContain("KEPT PERSONALISED WORDS");
+    _setHeroRenderBackend(null);
+  });
+});

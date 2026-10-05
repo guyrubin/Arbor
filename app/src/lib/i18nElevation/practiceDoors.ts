@@ -198,6 +198,8 @@ export const en: Record<string, string> = {
   "elev.practice.studio.subtitle": "Ten skill worlds {name} plays as the hero. Pick one to start.",
   "elev.stories.library.title": "Your library",
   "elev.stories.reader.back": "All journeys",
+  // B-KID-127: the only way a kept story is written again (parent register).
+  "elev.stories.reader.rewrite": "Write a new version",
   "elev.stories.reader.immersive": "Immersive",
 
   /* ── Builder L · R23 · the Development Journey's own CONTENT ──────────────
@@ -401,6 +403,7 @@ export const he: Record<string, string> = {
   "elev.practice.studio.subtitle": "עשרה עולמות מיומנות ש{name} משחק בהם כגיבור. בחרו אחד כדי להתחיל.",
   "elev.stories.library.title": "הספרייה שלכם",
   "elev.stories.reader.back": "כל המסעות",
+  "elev.stories.reader.rewrite": "לכתוב גרסה חדשה",
   "elev.stories.reader.immersive": "מסך מלא",
 
   // ── Builder L · R23 · תוכן מסע ההתפתחות (משימות, תוספות, יעדים חודשיים)

@@ -2,6 +2,7 @@ import { collection, deleteDoc, doc, getDocs } from "firebase/firestore";
 import { db, firebaseEnabled } from "./firebase";
 import { api } from "./api";
 import { purgeComicPages } from "./comicPageStore";
+import { purgeHeroRenders } from "./heroRenderStore";
 import { clearChildLocalState } from "./childLocalState";
 import { ChildProfile, DeletionReceipt } from "../types";
 
@@ -50,6 +51,9 @@ export const CHILD_SUBCOLLECTIONS = [
   "mimicSessions",
   "missionRecords",
   "heroRuns",
+  // B-KID-127: the child's personalised story text, kept per story + language
+  // (never generated twice) - text only, no image data. Export + erase.
+  "heroRenders",
   // B-KID-96: the child's souvenir stickers (one per world / book, earned
   // once, lifetime) — per-child data → export + erase sweep.
   "kidSouvenirs",
@@ -126,6 +130,12 @@ async function wipeClientChildData(uid: string | undefined, childId: string): Pr
   // remote and sandbox branches (the store is device-local either way).
   try {
     await purgeComicPages(childId);
+  } catch {
+    /* best effort */
+  }
+  // B-KID-127: the device copy of the child's kept story text goes with them.
+  try {
+    await purgeHeroRenders(childId);
   } catch {
     /* best effort */
   }
