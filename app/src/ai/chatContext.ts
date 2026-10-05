@@ -40,6 +40,14 @@ export type WeeklyContext = {
   milestonesCrossedCount: number;
   /** Outcome of the most recent completed suggested action this week. */
   lastActionOutcome?: WeeklyContextOutcome;
+  /**
+   * B-GROWTH-15 — words the parent wrote down (`langObs`) in the trailing 7
+   * days: an INTEGER, never the words. Absent unless the client passed the
+   * ledger, so a request without it stays byte-identical. The coach prompt
+   * line that reads it is gated (Guy G14 + coach-core-v1 re-pin); until then
+   * the server carries the sanitised count and the prompt bytes are unchanged.
+   */
+  wordsLoggedCount?: number;
 };
 
 // ── Caps (shared by client assembly AND server sanitation — the server
@@ -110,6 +118,10 @@ export const sanitizeWeeklyContext = (raw: unknown): WeeklyContext | null => {
   if (typeof wc.lastActionOutcome === "string" && VALID_OUTCOMES.has(wc.lastActionOutcome)) {
     out.lastActionOutcome = wc.lastActionOutcome as WeeklyContextOutcome;
   }
+  // B-GROWTH-15: a number or nothing — a string (a word, "2", a phrase list)
+  // is dropped, never coerced, so no word text can ride this field.
+  const wordsLoggedCount = clampCount(wc.wordsLoggedCount);
+  if (wordsLoggedCount !== null) out.wordsLoggedCount = wordsLoggedCount;
   return out;
 };
 
@@ -193,6 +205,8 @@ export type WeeklyContextSources = {
   behaviorLogs: ReadonlyArray<{ timestamp: string; trigger?: string }>;
   milestones: ReadonlyArray<{ checked: boolean; observationUpdatedAt?: string }>;
   actionLoop: ReadonlyArray<{ outcome?: string; outcomeAt?: string }>;
+  /** B-GROWTH-15 — the `langObs` ledger; only the timestamps are read. */
+  langObs?: ReadonlyArray<{ timestamp: string }>;
 };
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -229,6 +243,8 @@ export const computeWeeklyContext = (sources: WeeklyContextSources, now: Date = 
 
   const out: WeeklyContext = { momentCount: weekLogs.length, milestonesCrossedCount };
   if (lastActionOutcome) out.lastActionOutcome = lastActionOutcome;
+  // B-GROWTH-15: a count of timestamps — the phrase field is never read here.
+  if (sources.langObs) out.wordsLoggedCount = sources.langObs.filter((o) => withinWeek(o.timestamp, nowMs)).length;
   return out;
 };
 
@@ -273,6 +289,8 @@ export const buildChatContext = (input: {
   behaviorLogs: WeeklyContextSources["behaviorLogs"];
   milestones: WeeklyContextSources["milestones"];
   actionLoop: WeeklyContextSources["actionLoop"];
+  /** B-GROWTH-15 — optional: absent ⇒ no wordsLoggedCount (legacy body). */
+  langObs?: WeeklyContextSources["langObs"];
   weeklyContextEnabled: boolean;
   now?: Date;
 }): { recentTurns?: RecentTurn[]; weeklyContext?: WeeklyContext } => {
@@ -282,7 +300,7 @@ export const buildChatContext = (input: {
   if (recentTurns.length > 0) out.recentTurns = recentTurns;
   if (input.weeklyContextEnabled) {
     out.weeklyContext = computeWeeklyContext(
-      { behaviorLogs: input.behaviorLogs, milestones: input.milestones, actionLoop: input.actionLoop },
+      { behaviorLogs: input.behaviorLogs, milestones: input.milestones, actionLoop: input.actionLoop, ...(input.langObs ? { langObs: input.langObs } : {}) },
       input.now,
     );
   }

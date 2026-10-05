@@ -197,9 +197,9 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
     route: "language", hub: "growth", depth: 1,
     job: "Support the languages your family actually speaks.",
     primaryMove: "log-language-moment", moduleBudget: 3, demotionTarget: "disclosure",
-    // No language/vocab ledger feeds buildTimeline today — "none" until a
-    // source exists.
-    threadWrite: "none",
+    // B-GROWTH-15: the words logged here (`langObs`) fold into the timeline
+    // as one "{count} new words in {language}" moment per day per language.
+    threadWrite: "langObs",
   },
   {
     route: "screening", hub: "growth", depth: 1,

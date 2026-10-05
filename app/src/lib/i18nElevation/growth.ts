@@ -64,6 +64,10 @@ export const en: Record<string, string> = {
   "elev.growth.lang.more.title": "Practice ideas and words by month",
   "elev.growth.lang.more.sub": "Optional — four short routines, and the words you wrote down month by month.",
   "elev.growth.lang.words.latest": "Latest words",
+  // B-GROWTH-15 — words written down reach the timeline: one row per day per
+  // language. A count of words the parent noted, never a size expectation.
+  "elev.growth.words.timeline.one": "1 new word in {language}",
+  "elev.growth.words.timeline.many": "{count} new words in {language}",
 
   // B-GROWTH-04 — the Development Check door states the re-check date as text.
   "elev.growth.recheck.date": "Check again around {date}",
@@ -136,6 +140,8 @@ export const he: Record<string, string> = {
   "elev.growth.lang.more.title": "רעיונות תרגול ומילים לפי חודש",
   "elev.growth.lang.more.sub": "רשות — ארבע שגרות קצרות, והמילים שרשמתם חודש אחר חודש.",
   "elev.growth.lang.words.latest": "המילים האחרונות",
+  "elev.growth.words.timeline.one": "מילה חדשה אחת ב{language}",
+  "elev.growth.words.timeline.many": "{count} מילים חדשות ב{language}",
 
   // B-GROWTH-04 — תאריך הבדיקה החוזרת, כטקסט
   "elev.growth.recheck.date": "לבדוק שוב בסביבות {date}",

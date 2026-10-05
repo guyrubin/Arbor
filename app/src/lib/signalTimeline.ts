@@ -17,6 +17,7 @@ import type {
 import { isolate } from "./i18n";
 import { milestoneAgeGroupText, milestoneText } from "./milestoneData";
 import type { FirstKeepsake } from "./firstsKeepsake";
+import type { LangObservation } from "../growth/vocabAgg";
 
 /**
  * The Signal Timeline — Arbor's unified developmental activity stream.
@@ -115,9 +116,27 @@ export interface TimelineSignal {
    * Same-day same-type aggregation count (kind:"practice" only) — one warm
    * signal per day per activity type, never one row per raw event.
    * FIREWALL: a flat event count, never a rate or a period-vs-period delta.
+   * B-GROWTH-15: also the number of words on a folded `langObs` row.
    */
   count?: number;
+  /**
+   * B-GROWTH-15 (kind "moment" only) — this row folds the words the parent
+   * wrote down on one day in ONE language (`langObs`); the value is the
+   * language as stored on the record ("Hebrew"). Title = "{count} new words in
+   * {language}"; `detail` = the words themselves (the parent's record, shown on
+   * tap). A count, never a size expectation or a comparison between languages.
+   */
+  wordsLanguage?: string;
 }
+
+/** B-GROWTH-15 — a stored language name in the page language when it is a
+ *  known one ("Hebrew" → "עברית"); anything else prints as written. Same rule
+ *  as consult/packet + lib/reportExport. */
+const KNOWN_WORD_LANGUAGES = ["hebrew", "english", "arabic", "russian", "french"] as const;
+const wordsLanguageName = (name: string, t: TranslateFn): string => {
+  const known = KNOWN_WORD_LANGUAGES.find((n) => n === name.trim().toLowerCase());
+  return known ? t(`ob.lang.${known}`) : name;
+};
 
 /**
  * JRNL-4: provenance is DERIVED read-only from who authored the entry.
@@ -167,6 +186,11 @@ export const signalTitle = (s: TimelineSignal, t: TranslateFn): string => {
       // behaviorType while Behaviors rendered `behaviorTypeLabel` of the same
       // field — one log, two names, and English inside the Hebrew app. One
       // label per type on every hub, through the one taxonomy seam.
+      if (s.wordsLanguage) {
+        // B-GROWTH-15: "2 new words in Hebrew" — the words are the detail.
+        const n = s.count ?? 1;
+        return t(`elev.growth.words.timeline.${n === 1 ? "one" : "many"}`, { count: n, language: wordsLanguageName(s.wordsLanguage, t) });
+      }
       return s.refTitle ? behaviorTypeLabel(s.refTitle, t) : t("timeline.title.moment");
     case "milestone":
       return t("timeline.title.observed", { title: milestoneSignalText(s, "title", t) });
@@ -294,6 +318,13 @@ export interface TimelineSources {
   adventureResults?: AdventureResult[];
   missionRecords?: MissionRecord[];
   heroRuns?: HeroJourneyRun[];
+  /**
+   * B-GROWTH-15 — the words the parent wrote down (`langObs`, registered in
+   * CHILD_SUBCOLLECTIONS; written by #/language). Folded per UTC day per
+   * language as ONE kind "moment" row with `count` + `wordsLanguage`; the
+   * phrases ride in `detail`. The #/language contract's threadWrite.
+   */
+  langObs?: LangObservation[];
 }
 
 /**
@@ -322,6 +353,7 @@ const TIMELINE_SOURCE_ID_MAP: { [K in keyof Required<TimelineSources>]: true } =
   adventureResults: true,
   missionRecords: true,
   heroRuns: true,
+  langObs: true,
 };
 
 export const TIMELINE_SOURCE_IDS = Object.keys(TIMELINE_SOURCE_ID_MAP) as readonly SignalSource[];
@@ -532,6 +564,44 @@ export const buildTimeline = (sources: TimelineSources): TimelineSignal[] => {
   foldChildActivity(signals, "mission", (sources.missionRecords || []).filter((m) => m.completed).map((m) => m.timestamp));
   // Hero runs: prefer the completion moment, fall back to the start of the run.
   foldChildActivity(signals, "hero", (sources.heroRuns || []).map((r) => r.completedAt || r.startedAt));
+
+  // B-GROWTH-15 — words written down: ONE row per UTC day per language,
+  // `count` = words that day, `at` = the latest entry (recency holds), the
+  // words themselves in `detail` (newest first). Id is NOT "moment-…", so the
+  // row never resolves to a BehaviorLog (journalFilters.momentLogId).
+  const wordDays = new Map<string, { language: string; day: string; latest: string; latestMs: number; phrases: { ms: number; phrase: string }[] }>();
+  for (const o of sources.langObs || []) {
+    const phrase = o.phrase?.trim();
+    const language = o.language?.trim();
+    if (!phrase || !language || !o.timestamp) continue;
+    const ms = new Date(o.timestamp).getTime();
+    if (!Number.isFinite(ms)) continue;
+    const day = new Date(ms).toISOString().slice(0, 10);
+    const key = `${language.toLowerCase()}|${day}`;
+    const entry = wordDays.get(key);
+    if (!entry) {
+      wordDays.set(key, { language, day, latest: o.timestamp, latestMs: ms, phrases: [{ ms, phrase }] });
+    } else {
+      entry.phrases.push({ ms, phrase });
+      if (ms > entry.latestMs) {
+        entry.latest = o.timestamp;
+        entry.latestMs = ms;
+      }
+    }
+  }
+  for (const entry of wordDays.values()) {
+    const phrases = entry.phrases.sort((a, b) => b.ms - a.ms).map((p) => p.phrase);
+    signals.push({
+      id: `words-${encodeURIComponent(entry.language.toLowerCase())}-${entry.day}`,
+      kind: "moment",
+      at: entry.latest,
+      detail: phrases.join(", "),
+      // B-DATA-10: one tone per kind — never a verdict colour.
+      tone: "lav",
+      count: phrases.length,
+      wordsLanguage: entry.language,
+    });
+  }
 
   return signals.sort((a, b) => {
     if (a.at && b.at) return a.at < b.at ? 1 : a.at > b.at ? -1 : 0;

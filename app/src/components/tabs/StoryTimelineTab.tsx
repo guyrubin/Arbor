@@ -50,18 +50,25 @@ const KIND_LABEL_KEY: Record<SignalKind, string> = {
   kept: "elev.kept.thread.kind",
 };
 
+/* FU#62 (B-GROWTH-15) — the filter chips DERIVE from SignalKind: a Record
+ * over the union, so a new kind is a compile error here until it has a chip
+ * label (the list used to be a hand-kept array beside KIND_LABEL_KEY). Order
+ * = insertion order. A chip still shows only when a row of its kind exists
+ * (AI-04: a chip whose count can only read zero is a dead end). */
+const FILTER_LABEL_KEY: Record<SignalKind, string> = {
+  moment: "timeline.filter.moment",
+  milestone: "timeline.filter.milestone",
+  plan: "timeline.filter.plan",
+  play: "timeline.filter.play",
+  practice: "elev.childsignals.filter",
+  action: "elev.closeloop.thread.filter",
+  kept: "elev.kept.thread.filter",
+  memory: "timeline.filter.memory",
+};
+
 const FILTERS: { key: SignalKind | "all"; labelKey: string }[] = [
   { key: "all", labelKey: "timeline.filter.all" },
-  { key: "moment", labelKey: "timeline.filter.moment" },
-  { key: "milestone", labelKey: "timeline.filter.milestone" },
-  { key: "plan", labelKey: "timeline.filter.plan" },
-  { key: "play", labelKey: "timeline.filter.play" },
-  { key: "practice", labelKey: "elev.childsignals.filter" },
-  { key: "action", labelKey: "elev.closeloop.thread.filter" },
-  { key: "kept", labelKey: "elev.kept.thread.filter" },
-  { key: "memory", labelKey: "timeline.filter.memory" },
-  // AI-04 (consent gate): the Ask-thread filter is gone with its source. A
-  // chip whose count can only ever read zero is a dead end, not a filter.
+  ...(Object.keys(FILTER_LABEL_KEY) as SignalKind[]).map((key) => ({ key, labelKey: FILTER_LABEL_KEY[key] })),
 ];
 
 /* B-ASKJB-18: no intensity scale on a Story row. Five dots filled in coral

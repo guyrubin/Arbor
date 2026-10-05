@@ -3,6 +3,7 @@ import { useArbor } from "../context/ArborContext";
 import { buildTimeline, type TimelineSignal } from "../lib/signalTimeline";
 import { useChildCollection } from "./useChildCollection";
 import type { KeepsakeDoc } from "../lib/firstsKeepsake";
+import type { LangObservation } from "../growth/vocabAgg";
 import type {
   AdventureResult,
   HeroJourneyRun,
@@ -68,6 +69,11 @@ export function useTimeline(): TimelineSignal[] {
   // B-GROWTH-10 — the parent's keepsake notes (registered CHILD_SUBCOLLECTION),
   // folded into the noticed milestone's own signal as its detail.
   const keepsakes = useChildCollection<KeepsakeDoc>(childId, "keepsakes");
+  // B-GROWTH-15 — the words the parent wrote down on #/language (registered
+  // CHILD_SUBCOLLECTION "langObs"), folded per day per language.
+  const langObs = useChildCollection<LangObservation>(childId, "langObs", {
+    orderByField: "timestamp", orderDir: "desc", max: 500,
+  });
 
   return useMemo(
     () => buildTimeline({
@@ -86,11 +92,12 @@ export function useTimeline(): TimelineSignal[] {
       missionRecords: missionRecords.items,
       heroRuns: heroRuns.items,
       keepsakes: keepsakes.items,
+      langObs: langObs.items,
     }),
     [
       behaviorLogs, milestones, actionPlans, memoryReviewItems, playLogs, actionLoop, keptInsights,
       practiceEvents.items, speechAttempts.items, mimicSessions.items,
-      adventureResults.items, missionRecords.items, heroRuns.items, keepsakes.items,
+      adventureResults.items, missionRecords.items, heroRuns.items, keepsakes.items, langObs.items,
     ],
   );
 }

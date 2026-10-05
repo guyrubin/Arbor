@@ -241,3 +241,51 @@ describe("weekly-context consent flag — per child, DEFAULT ON (B-ASKJB-07, Guy
     expect(shouldShowWeeklyContextNotice("c")).toBe(false); // no storage ⇒ consent off ⇒ nothing to announce
   });
 });
+
+/* B-GROWTH-15 — words written down reach the coach's weekly counts as an
+   INTEGER only (`wordsLoggedCount`). The words never cross this seam; a
+   string in the field is dropped, never coerced; a body without the ledger is
+   byte-identical to the legacy one. */
+describe("B-GROWTH-15 — wordsLoggedCount is a count, never the words", () => {
+  const langObs = [
+    { id: "w1", timestamp: daysAgo(0), language: "Hebrew", phrase: "אבא" },
+    { id: "w2", timestamp: daysAgo(0), language: "Hebrew", phrase: "כדור" },
+    { id: "w3", timestamp: daysAgo(12), language: "Hebrew", phrase: "מים" }, // outside window
+  ];
+
+  it("sanitizeWeeklyContext rejects strings in wordsLoggedCount (dropped, not coerced)", () => {
+    for (const junk of ["2", "אבא, כדור", ["אבא"], { n: 2 }, NaN, null]) {
+      const out = sanitizeWeeklyContext({ momentCount: 1, milestonesCrossedCount: 0, wordsLoggedCount: junk });
+      expect(out).toEqual({ momentCount: 1, milestonesCrossedCount: 0 });
+      expect(out && "wordsLoggedCount" in out).toBe(false);
+    }
+  });
+
+  it("sanitizeWeeklyContext clamps a numeric wordsLoggedCount like the other counts", () => {
+    expect(sanitizeWeeklyContext({ momentCount: 0, milestonesCrossedCount: 0, wordsLoggedCount: 2 })).toEqual({ momentCount: 0, milestonesCrossedCount: 0, wordsLoggedCount: 2 });
+    expect(sanitizeWeeklyContext({ momentCount: 0, milestonesCrossedCount: 0, wordsLoggedCount: 5000.4 })?.wordsLoggedCount).toBe(999);
+    expect(sanitizeWeeklyContext({ momentCount: 0, milestonesCrossedCount: 0, wordsLoggedCount: -1 })?.wordsLoggedCount).toBe(0);
+  });
+
+  it("request snapshot: two Hebrew words today ⇒ the /chat body carries wordsLoggedCount: 2 and no phrase text", () => {
+    const body = buildChatContext({
+      thread: [], behaviorLogs: [], milestones: [], actionLoop: [], langObs, weeklyContextEnabled: true, now: NOW,
+    });
+    expect(body).toEqual({ weeklyContext: { momentCount: 0, milestonesCrossedCount: 0, wordsLoggedCount: 2 } });
+    const wire = JSON.stringify(body);
+    for (const phrase of ["אבא", "כדור", "מים", "Hebrew"]) expect(wire).not.toContain(phrase);
+    // the server's re-sanitation keeps the count
+    expect(sanitizeWeeklyContext(JSON.parse(wire).weeklyContext)?.wordsLoggedCount).toBe(2);
+  });
+
+  it("toggle OFF sends nothing; no ledger passed ⇒ the field is ABSENT (legacy bytes)", () => {
+    expect("weeklyContext" in buildChatContext({ thread: [], behaviorLogs: [], milestones: [], actionLoop: [], langObs, weeklyContextEnabled: false, now: NOW })).toBe(false);
+    const legacy = buildChatContext({ thread: [], behaviorLogs: [], milestones: [], actionLoop: [], weeklyContextEnabled: true, now: NOW });
+    expect(legacy.weeklyContext && "wordsLoggedCount" in legacy.weeklyContext).toBe(false);
+  });
+
+  it("NEGATIVE CONTROL — a coercing sanitizer would have let the phrase list through", () => {
+    const coerce = (v: unknown) => (typeof v === "string" ? v : null);
+    expect(coerce("אבא, כדור")).toContain("אבא");
+  });
+});
