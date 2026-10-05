@@ -13,6 +13,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { abramsLongRoad } from "./books/abramsLongRoad";
+import { fiveSmoothStones } from "./books/fiveSmoothStones";
 import { getPlate } from "./books";
 import { computeBookPageLayout, estimateTextHeight, kidBookTokenPx, overlapArea, phoneWindow, platePoint, type Box, type LayoutContent } from "./bookPageLayout";
 import { heroDisplayName, pageParagraphs, paragraphChars } from "./bookText";
@@ -200,5 +201,50 @@ describe("estimateTextHeight", () => {
     expect(estimateTextHeight([200], 300, 20, 1.5)).toBeGreaterThan(estimateTextHeight([100], 300, 20, 1.5));
     expect(estimateTextHeight([200], 600, 20, 1.5)).toBeLessThan(estimateTextHeight([200], 300, 20, 1.5));
     expect(estimateTextHeight([10, 10], 300, 20, 1.5)).toBeGreaterThan(estimateTextHeight([20], 300, 20, 1.5));
+  });
+});
+
+describe("Five Smooth Stones (the proof): every page lays out at 1920, 1280 and 375", () => {
+  const david = fiveSmoothStones;
+  const dPages: Page[] = [david.cover, ...david.pages, ...david.decision.choices.flatMap((c) => c.branch)];
+  it("fits, keeps the hero and repair items visible, never covers the hero", () => {
+    for (const box of [...SPREAD_BOXES, PHONE]) {
+      for (const lang of LANGS) {
+        for (const page of dPages) {
+          const plate = getPlate(david.id, page.plateId)!;
+          const items = page.repair?.items.map((it) => it.id) ?? [];
+          for (const done of page.repair ? [[], items] : [[]]) {
+            for (const choiceId of page.echo ? Object.keys(page.echo) : [null]) {
+              const paras = paragraphChars(pageParagraphs(page, { lang, gender: "f", choiceId, repaired: done }), NAME);
+              const content: LayoutContent =
+                page.id === "cover"
+                  ? { paras: [david.coverLine[lang].length, david.coverNameLine![lang].length + NAME.length], title: david.title[lang].length }
+                  : { paras, choices: page.id === david.decision.pageId ? 3 : undefined, prompt: !!page.repair && done.length < items.length };
+              const slot = done.length && page.repair?.heroAfter ? page.repair.heroAfter : page.hero;
+              const l = computeBookPageLayout(page, box, lang, { content, plate, slot });
+              const tag = `${box.width} ${lang} ${page.id} done=${done.length}`;
+              expect(l.fits, tag).toBe(true);
+              if (l.hero) expect(l.hero.inWindow, tag).toBe(true);
+              if (l.pageType === "facing" || l.mode === "stacked") expect(overlapArea(l.textPage, l.art), tag).toBe(0);
+              else if (l.heroBody) expect(overlapArea(l.textPage, l.heroBody), tag).toBe(0);
+              for (const it of page.repair?.items ?? []) {
+                const p = platePoint(l, it.x, it.y);
+                expect(p.x > l.art.x && p.x < l.art.x + l.art.w, `${tag} ${it.id}`).toBe(true);
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+
+  it("the four spread pages are spreads at 1920 (EN and HE)", () => {
+    for (const lang of LANGS) {
+      for (const page of dPages.filter((p) => p.type === "spread")) {
+        const paras = paragraphChars(pageParagraphs(page, { lang, gender: "m", choiceId: "b", repaired: true }), NAME);
+        const l = computeBookPageLayout(page, SPREAD_BOXES[0], lang, { content: { paras, choices: page.id === "p5" ? 3 : undefined }, plate: getPlate(david.id, page.plateId)! });
+        expect(l.pageType, `${lang} ${page.id}`).toBe("spread");
+      }
+    }
   });
 });
