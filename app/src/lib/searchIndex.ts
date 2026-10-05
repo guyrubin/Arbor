@@ -146,7 +146,7 @@ export const UNSEARCHABLE_ROUTES: Partial<Record<ActiveTab, string>> = {
 function buildIndex(): readonly SearchEntry[] {
   const entries: SearchEntry[] = [];
 
-  // 1. Route/tab entries — every surfaced leaf across the eight sections,
+  // 1. Route/tab entries — every surfaced leaf across the ten hubs,
   //    labeled in both languages via the existing nav.tab.* dictionary.
   const seenTabs = new Set<ActiveTab>();
   for (const sec of SECTIONS) {

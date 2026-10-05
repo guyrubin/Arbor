@@ -183,8 +183,6 @@ const HEX_ALLOWLIST: Record<string, readonly string[]> = {
   "components/kidmode/KidDashboard.tsx": ["#58a6ff"],
   "components/layout/AdminDashboard.tsx": ["#fff"],
   "components/layout/SettingsModal.tsx": ["#eef6f1"],
-  "components/layout/Shell.tsx": ["#8a5326"],
-  "components/layout/Sidebar.tsx": ["#fff"],
   "components/overview/CourseCard.tsx": ["#fff"],
   "components/overview/DailyPlanCard.tsx": ["#fff"],
   "components/overview/DailyPlayCard.tsx": ["#fff"],

@@ -6,7 +6,7 @@ import ProfileSwitcher from "../profile/ProfileSwitcher";
 import { ArborMark } from "../ui/ArborMark";
 import { Avatar } from "../ui/Avatar";
 import { Icon } from "../ui/Icon";
-import SettingsModal from "./SettingsModal";
+import { requestOpenSettings } from "./settingsBus";
 import { SECTIONS, sectionForTab, primaryTabOf, type NavBadge } from "../../lib/navigation";
 
 /** Resolve the generalized sidebar badge to its display string from app state.
@@ -29,7 +29,6 @@ export default function Sidebar() {
   const { user, signOut, firebaseEnabled } = useAuth();
   const { t } = useLanguage();
   const activeSectionId = sectionForTab(activeTab).id;
-  const [showSettings, setShowSettings] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
 
@@ -72,7 +71,7 @@ export default function Sidebar() {
       {/* Child profile card */}
       <ProfileSwitcher />
 
-      {/* Eight primary categories — denser, rounder rows (UC-1) */}
+      {/* The ten hubs (Heartwood IA) — denser, rounder rows (UC-1) */}
       <nav aria-label={t("elev.sidebar.nav.aria")} className="flex flex-col gap-1 flex-1">
         {SECTIONS.map((sec) => {
           const active = sec.id === activeSectionId;
@@ -107,7 +106,7 @@ export default function Sidebar() {
               {showDot ? (
                 <span aria-hidden="true" className="rounded-full flex-shrink-0" style={{ width: 8, height: 8, background: "var(--arbor-clay)" }} />
               ) : text ? (
-                <span aria-hidden={reviewAria ? true : undefined} className="text-[11px] font-extrabold rounded-full px-2 py-0.5 flex-shrink-0" style={active ? { background: "var(--arbor-clay)", color: "#fff" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
+                <span aria-hidden={reviewAria ? true : undefined} className="text-[11px] font-extrabold rounded-full px-2 py-0.5 flex-shrink-0" style={active ? { background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
                   {text}
                 </span>
               ) : null}
@@ -117,7 +116,7 @@ export default function Sidebar() {
       </nav>
 
       {/* UC-6: the global TOOLS drawer is REMOVED. The sidebar is now exactly the
-          eight hubs + the account row. Each hub's secondary capabilities are
+          ten hubs + the account row. Each hub's secondary capabilities are
           folded into its own contextual pill row (Shell › hubTabsForSection), so
           tools feel integrated with their hub rather than a separate drawer. */}
 
@@ -140,8 +139,10 @@ export default function Sidebar() {
             {/* Settings entry */}
             <button
               role="menuitem"
-              onClick={() => { setPopoverOpen(false); setShowSettings(true); }}
-              className="w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-[13px] font-semibold transition text-start"
+              // B-SHELL-23: ONE SettingsModal — Shell's, through the settings bus
+              // (same seam and Kid Mode gate as the More sheet's Settings row).
+              onClick={() => { setPopoverOpen(false); requestOpenSettings(); }}
+              className="w-full flex items-center gap-3 px-2.5 py-2 min-h-11 rounded-xl text-[13px] font-semibold transition text-start"
               style={{ color: "var(--arbor-muted)" }}
               onMouseEnter={(e) => (e.currentTarget.style.background = "var(--arbor-paper-deep)")}
               onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
@@ -152,7 +153,7 @@ export default function Sidebar() {
               <button
                 role="menuitem"
                 onClick={() => void signOut()}
-                className="w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-[13px] font-semibold transition text-start"
+                className="w-full flex items-center gap-3 px-2.5 py-2 min-h-11 rounded-xl text-[13px] font-semibold transition text-start"
                 style={{ color: "var(--arbor-muted)" }}
                 onMouseEnter={(e) => (e.currentTarget.style.background = "var(--arbor-paper-deep)")}
                 onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
@@ -180,7 +181,6 @@ export default function Sidebar() {
         </button>
       </div>
 
-      <SettingsModal open={showSettings} onClose={() => setShowSettings(false)} />
     </aside>
   );
 }

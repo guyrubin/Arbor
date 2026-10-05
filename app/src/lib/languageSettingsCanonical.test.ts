@@ -107,7 +107,8 @@ describe("OBJ-SHELL-02 — setUiLang has exactly two homes in the whole tree", (
     expect(sidebar).not.toContain("nav.popover.language");
     // The door to the canonical panel stays.
     expect(sidebar).toContain("nav.popover.settings");
-    expect(sidebar).toContain("setShowSettings(true)");
+    // B-SHELL-23: the door opens Shell's one SettingsModal through the settings bus.
+    expect(sidebar).toContain("requestOpenSettings()");
     // Proof the guard would catch a reintroduction: the file it does allow.
     expect(callers).toContain("components/layout/SettingsModal.tsx");
   });

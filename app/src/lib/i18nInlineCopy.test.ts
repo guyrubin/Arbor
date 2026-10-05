@@ -598,3 +598,32 @@ describe("B-GROWTH-19 — DailyPlayTab carries no English literal", () => {
     expect(code).not.toContain("Turn today&apos;s practice into a comic");
   });
 });
+
+describe("B-SHELL-23 — no English title= literal in the shell chrome or the profile switcher", () => {
+  /** Founder-only operational panel (ADM-1), shown from Settings only to an
+   *  admin; wholly English by design (zero t() calls). Not parent chrome. */
+  const FOUNDER_ONLY = new Set(["components/layout/AdminDashboard.tsx"]);
+  const TITLE_LITERAL = /\btitle="[^"]*[A-Za-z][^"]*"/;
+  const files = [
+    ...fs.readdirSync(path.join(COMPONENTS, "layout"))
+      .filter((f) => /\.tsx$/.test(f) && !/\.test\.tsx$/.test(f))
+      .map((f) => "components/layout/" + f),
+    "components/profile/ProfileSwitcher.tsx",
+  ];
+
+  it("every title attribute in components/layout/*.tsx and ProfileSwitcher resolves through t()", () => {
+    expect(files.length).toBeGreaterThan(5);
+    const offenders = files
+      .filter((f) => !FOUNDER_ONLY.has(f))
+      .flatMap((f) => stripComments(readSrc(f)).split("\n").filter((l) => TITLE_LITERAL.test(l)).map((l) => `${f}: ${l.trim()}`));
+    expect(offenders).toEqual([]);
+    expect(readSrc("components/layout/Shell.tsx")).toContain('title={t("top.searchHint")}');
+    expect(readSrc("components/profile/ProfileSwitcher.tsx")).toContain('title={t("aria.editChildProfile")}');
+  });
+
+  it("NEGATIVE CONTROL: the two pre-fix literals are caught by the scan", () => {
+    expect(TITLE_LITERAL.test('                title="Search (Ctrl/Cmd+K)"')).toBe(true);
+    expect(TITLE_LITERAL.test('          title="Edit profile"')).toBe(true);
+    expect(TITLE_LITERAL.test('          title={t("aria.editChildProfile")}')).toBe(false);
+  });
+});

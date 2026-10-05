@@ -41,7 +41,7 @@ export default function ProfileSwitcher() {
         {/* VIS-2/VIS-3: icon-only → min 44×44 hit area + explicit aria-label */}
         <button
           onClick={() => setShowEdit(true)}
-          title="Edit profile"
+          title={t("aria.editChildProfile")}
           aria-label={t("aria.editChildProfile")}
           className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-lg transition"
           style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}

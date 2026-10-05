@@ -45,7 +45,8 @@ describe("F-02 — Shell resets scroll on tab swap (onExitComplete)", () => {
   });
 
   it("mainRef is attached to the overflow-y-auto <main> scrollport", () => {
-    expect(shell).toMatch(/<main ref=\{mainRef\} className="arbor-parent[^"]*overflow-y-auto/);
+    // B-SHELL-23: <main> also carries the skip link's target (id="main", tabIndex -1).
+    expect(shell).toMatch(/<main id="main" tabIndex=\{-1\} ref=\{mainRef\} className="arbor-parent[^"]*overflow-y-auto/);
   });
 
   it("the reset does NOT live in ArborContext.setActiveTab", () => {

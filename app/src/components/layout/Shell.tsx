@@ -339,6 +339,17 @@ export default function Shell() {
     <KidModeProvider>
     {/* select-none removed: parents must be able to select/copy scripts and guidance (a11y + core utility) */}
     <div className="arbor-app min-h-screen text-sans antialiased overflow-x-hidden relative">
+      {/* B-SHELL-23: the first Tab stop is a skip link to <main>. Hash routing
+          owns #/<tab>, so the link focuses <main> instead of changing the hash. */}
+      <a
+        href="#main"
+        data-testid="skip-to-content"
+        onClick={(e) => { e.preventDefault(); mainRef.current?.focus(); }}
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:start-2 focus:z-[80] focus:rounded-xl focus:px-4 focus:py-2.5 focus:min-h-11 focus:inline-flex focus:items-center focus:text-[13px] focus:font-bold"
+        style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}
+      >
+        {t("shell.skipToContent")}
+      </a>
       <div
         // B-SHELL-01: two columns at every width — the third (AI rail) track is gone.
         className="page-shell grid grid-cols-1 lg:grid-cols-[248px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)] min-h-screen relative z-10 transition-all duration-300 max-w-full overflow-x-hidden"
@@ -352,7 +363,7 @@ export default function Shell() {
             dashboard content area ONLY. KidModeOverlay renders at position:fixed z-70
             as a sibling of the grid — it carries its own .arbor-play scope and does
             NOT inherit from this <main>. See index.css .arbor-parent block. */}
-        <main ref={mainRef} className="arbor-parent w-full min-w-0 px-4 py-5 pb-24 sm:px-5 md:px-6 md:py-8 lg:pb-10 xl:px-8 2xl:px-10 overflow-y-auto overflow-x-hidden flex-1 min-h-0">
+        <main id="main" tabIndex={-1} ref={mainRef} className="arbor-parent focus:outline-none w-full min-w-0 px-4 py-5 pb-24 sm:px-5 md:px-6 md:py-8 lg:pb-10 xl:px-8 2xl:px-10 overflow-y-auto overflow-x-hidden flex-1 min-h-0">
           {/* IA-03 / IA-16 / MOB-26 — ONE mobile chrome strip, not three rows.
               The separate 34 px brand row is GONE: the 28 px mark folds into
               the strip below, which is where the eye already goes. The strip
@@ -402,7 +413,7 @@ export default function Shell() {
               <button
                 onClick={() => requestOpenSearch("mobile")}
                 aria-label={t("top.search")}
-                title="Search (Ctrl/Cmd+K)"
+                title={t("top.searchHint")}
                 className="flex flex-shrink-0 items-center justify-center w-11 h-11 rounded-xl transition bg-white"
                 style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
               >
@@ -497,19 +508,19 @@ export default function Shell() {
 
           {/* Sandbox banner if API key is missing */}
           {showSandboxBanner && (
-            <div className="mb-6 p-4 rounded-2xl text-xs flex items-center justify-between gap-4" style={{ background: "var(--arbor-peach-soft)", color: "#8a5326" }}>
+            <div className="mb-6 p-4 rounded-2xl text-xs flex items-center justify-between gap-4" style={{ background: "var(--arbor-peach-soft)", color: "var(--arbor-peach-ink)" }}>
               <span className="flex items-center gap-3">
                 <Icon name="warning" size={20} className="flex-shrink-0" />
                 <span>
-                  <strong>Sandbox mode:</strong> live AI is off. Sample data lets you explore the product. Add a key in <code>.env.local</code> to connect real models.
+                  <strong>{t("shell.sandbox.title")}</strong> {t("shell.sandbox.body")}
                 </span>
               </span>
               <button
-                onClick={() => toast("Add GEMINI_API_KEY to app/.env.local (copy from app/.env.example) to enable live AI responses.", "info")}
-                className="touch-target text-white font-extrabold px-3 py-1.5 rounded-xl flex-shrink-0"
-                style={{ background: "var(--arbor-peach-ink)" }}
+                onClick={() => toast(t("shell.sandbox.toast"), "info")}
+                className="touch-target font-extrabold px-3 py-1.5 rounded-xl flex-shrink-0"
+                style={{ background: "var(--arbor-peach-ink)", color: "var(--arbor-on-accent)" }}
               >
-                Learn how
+                {t("shell.sandbox.learn")}
               </button>
             </div>
           )}
