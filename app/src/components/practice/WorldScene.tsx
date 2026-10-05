@@ -52,6 +52,7 @@ export default function WorldScene({
   heroStyle,
   children,
   sizes = "(max-width: 639px) 50vw, (max-width: 1023px) 33vw, 240px",
+  priority = false,
 }: {
   worldId: string;
   /** B-KID-70: the child's ONE kid look (useKidTheme()); the static art comes
@@ -62,6 +63,9 @@ export default function WorldScene({
   heroStyle?: AvatarStyle;
   children: React.ReactNode;
   sizes?: string;
+  /** B-KID-122: the one above-the-fold picture (the kid home's Tonight
+   *  cover) loads eagerly at high fetch priority; every other scene stays lazy. */
+  priority?: boolean;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const style = normalizeAvatarStyle(heroStyle);
@@ -120,7 +124,7 @@ export default function WorldScene({
       {generated ? (
         <img key={generated} src={generated} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover" onError={() => setFailedGenerated({ key, url: generated })} />
       ) : fallback && failedStatic !== fallback.src ? (
-        <img key={fallback.src} src={fallback.src} srcSet={fallback.srcSet} sizes={sizes} width={960} height={640} alt="" aria-hidden="true" loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: fallback.objectPosition }} onError={() => setFailedStatic(fallback.src)} />
+        <img key={fallback.src} src={fallback.src} srcSet={fallback.srcSet} sizes={sizes} width={960} height={640} alt="" aria-hidden="true" loading={priority ? "eager" : "lazy"} fetchPriority={priority ? "high" : undefined} decoding="async" className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: fallback.objectPosition }} onError={() => setFailedStatic(fallback.src)} />
       ) : null}
     </div>
   );

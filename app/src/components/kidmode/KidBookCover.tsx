@@ -13,6 +13,7 @@
  * The title is printed under the cover; it is the button's accessible name.
  * Zero model calls: the art is static and the card is CSS.
  */
+import { useState } from "react";
 import type { HeroPackId } from "../../types";
 import { kidArt, kidArtSrcSet, storyCoverKey, type KidThemeId } from "../../lib/kidThemeManifest";
 
@@ -29,6 +30,9 @@ export const KID_BOOK_TINT: Record<HeroPackId, { page: string; spine: string }> 
 /** Row cover width at 390 px: 3.5 covers in view with the 12 px gap. */
 export const KID_BOOK_ROW_WIDTH = 116;
 export const KID_BOOK_ASPECT = "3 / 4";
+/** B-KID-122: covers in the first row (home shelf: 3.5 in view at 390 px;
+ *  library: the first row of the grid) load eagerly. */
+export const KID_BOOK_EAGER_COUNT = 4;
 
 export interface KidBookCoverProps {
   storyId: string;
@@ -42,6 +46,9 @@ export interface KidBookCoverProps {
   onOpen: () => void;
   /** "row" = fixed width for the home shelf; "grid" = fills its column. */
   layout: "row" | "grid";
+  /** B-KID-122: a cover in the first row loads eagerly (no blank card for
+   *  seconds on first paint); the rest stay lazy. */
+  eager?: boolean;
 }
 
 export function KidBookTitleCard({ title, pack }: { title: string; pack: HeroPackId }) {
@@ -58,8 +65,12 @@ export function KidBookTitleCard({ title, pack }: { title: string; pack: HeroPac
   );
 }
 
-export function KidBookCover({ storyId, title, pack, theme, read, readLabel, onOpen, layout }: KidBookCoverProps) {
+export function KidBookCover({ storyId, title, pack, theme, read, readLabel, onOpen, layout, eager = false }: KidBookCoverProps) {
   const art = kidArt(theme, storyCoverKey(storyId));
+  // B-KID-122: until the picture has loaded the slot shows the book's own
+  // title card (pack tint + title, tokens only), and the picture fades in over
+  // it (no fade under reduced motion). The slot's 3:4 box never changes size.
+  const [loaded, setLoaded] = useState(false);
   return (
     <button
       type="button"
@@ -83,17 +94,25 @@ export function KidBookCover({ storyId, title, pack, theme, read, readLabel, onO
     >
       <span className="world-tile" style={{ position: "relative", display: "block", overflow: "hidden", inlineSize: "100%", aspectRatio: KID_BOOK_ASPECT, background: KID_BOOK_TINT[pack].page }}>
         {art ? (
+          <>
+          <KidBookTitleCard title={title} pack={pack} />
           <img
             src={art.src480}
             srcSet={kidArtSrcSet(art)}
-            sizes={layout === "row" ? `${KID_BOOK_ROW_WIDTH}px` : "(max-width: 767px) 50vw, 25vw"}
+            sizes={layout === "row" ? `${KID_BOOK_ROW_WIDTH}px` : "(max-width: 639px) 50vw, 220px"}
+            width={art.width}
+            height={Math.round((art.width * 4) / 3)}
             alt=""
             aria-hidden="true"
-            loading="lazy"
+            loading={eager ? "eager" : "lazy"}
             decoding="async"
-            className="absolute inset-0 h-full w-full object-cover"
-            style={{ objectPosition: art.objectPosition }}
+            data-kid-book-img={loaded ? "loaded" : "pending"}
+            ref={(el) => { if (el && el.complete && el.naturalWidth > 0 && !loaded) setLoaded(true); }}
+            onLoad={() => setLoaded(true)}
+            className="absolute inset-0 h-full w-full object-cover transition-opacity duration-300 motion-reduce:transition-none"
+            style={{ objectPosition: art.objectPosition, opacity: loaded ? 1 : 0 }}
           />
+          </>
         ) : (
           <KidBookTitleCard title={title} pack={pack} />
         )}

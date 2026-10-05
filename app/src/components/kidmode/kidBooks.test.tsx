@@ -62,11 +62,34 @@ describe("kidBooks — the one list", () => {
 describe("KidBookCover — the one cover", () => {
   const base = { title: "The Lantern Path", pack: "courage" as const, theme: "film3d" as const, readLabel: "I read this", onOpen: () => {} };
 
-  it("a story covered in the theme shows its cover, edge to edge; no title card", () => {
+  it("a story covered in the theme shows its cover, edge to edge (B-KID-122: over its title card, which shows until the picture has loaded)", () => {
     const html = renderToStaticMarkup(<KidBookCover {...base} storyId="noahs-ark" title="Noah's Ark" layout="grid" />);
     expect(html).toContain("<img");
     expect(html).toContain("story-noahs-ark");
-    expect(html).not.toContain("data-kid-book-titlecard");
+    // B-KID-122 re-pin: the title card is the loading placeholder UNDER the image (before it in the DOM).
+    expect(html.indexOf("data-kid-book-titlecard")).toBeGreaterThan(-1);
+    expect(html.indexOf("data-kid-book-titlecard")).toBeLessThan(html.indexOf("<img"));
+  });
+
+  it("B-KID-122: first-row covers load eagerly; the rest lazy; the picture fades in over a sized slot", () => {
+    const eager = renderToStaticMarkup(<KidBookCover {...base} storyId="noahs-ark" title="Noah's Ark" layout="row" eager />);
+    const lazy = renderToStaticMarkup(<KidBookCover {...base} storyId="noahs-ark" title="Noah's Ark" layout="row" />);
+    expect(eager).toMatch(/<img[^>]*loading="eager"/);
+    expect(lazy).toMatch(/<img[^>]*loading="lazy"/);
+    expect(eager).toMatch(/<img[^>]*width="\d+"[^>]*height="\d+"/);
+    expect(eager).toContain("aspect-ratio:3 / 4");
+    expect(eager).toMatch(/<img[^>]*data-kid-book-img="pending"[^>]*opacity:0/);
+    expect(eager).toContain("motion-reduce:transition-none");
+    expect(eager).toContain("Noah&#x27;s Ark");
+  });
+
+  it("B-KID-122: the home row and the library mark their first row eager; Tonight's cover is high priority", () => {
+    const here = path.dirname(fileURLToPath(import.meta.url));
+    const read = (f: string) => readFileSync(path.join(here, f), "utf8");
+    expect(read("KidLibrary.tsx")).toContain("eager={i < KID_BOOK_EAGER_COUNT}");
+    expect(read("KidDashboard.tsx")).toContain("eager={i < KID_BOOK_EAGER_COUNT}");
+    expect(read("KidDashboard.tsx")).toMatch(/<WorldScene worldId=\{tonightsArtId\}[^>]*priority>/);
+    expect(read(path.join("..", "practice", "WorldScene.tsx"))).toContain('loading={priority ? "eager" : "lazy"} fetchPriority={priority ? "high" : undefined}');
   });
 
   it("a story with no cover in the theme gets the designed title card: tokens only, no emoji, never another theme's file", () => {

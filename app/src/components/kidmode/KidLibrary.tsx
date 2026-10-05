@@ -18,7 +18,7 @@ import type { ChildProfile, HeroStorySpec } from "../../types";
 import type { KidThemeId } from "../../lib/kidThemeManifest";
 import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
 import { HeroAvatar } from "../ui/HeroAvatar";
-import { KidBookCover } from "./KidBookCover";
+import { KID_BOOK_EAGER_COUNT, KidBookCover } from "./KidBookCover";
 import KidComicsShelf from "./KidComicsShelf";
 import { kidIsolate } from "./kidText";
 import type { KidBook } from "./kidBooks";
@@ -40,10 +40,11 @@ export default function KidLibrary({ books, theme, lang, childProfile, loadingId
     <div className="space-y-6" data-testid="kid-library">
       {!readingComic && (books.length > 0 ? (
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(150px,220px))] sm:justify-center" data-kid-library-grid="" style={{ listStyle: "none", margin: 0, padding: 0 }} aria-busy={loadingId ? true : undefined}>
-          {books.map((b) => (
+          {books.map((b, i) => (
             <li key={b.story.id} style={{ opacity: loadingId && loadingId !== b.story.id ? 0.6 : 1 }}>
               <KidBookCover
                 layout="grid"
+                eager={i < KID_BOOK_EAGER_COUNT}
                 storyId={b.story.id}
                 title={kidIsolate(lang === "he" ? b.story.titleHe : b.story.title)}
                 pack={b.story.pack}

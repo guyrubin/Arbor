@@ -51,7 +51,7 @@ import type { HeroJourneyRun } from "../../types";
 import { HERO_STORIES, storyLanguage } from "../../lib/heroJourneys";
 import { kidBooks } from "./kidBooks";
 import { KID_WORLDS, KID_WORLD_NAME_KEY, kidWorldByWorldId, type KidWorldAccent } from "./kidWorlds";
-import { KidBookCover } from "./KidBookCover";
+import { KID_BOOK_EAGER_COUNT, KidBookCover } from "./KidBookCover";
 import { KidStickerStrip } from "./rewards/KidSouvenir";
 import { kidOfflineArtUrls, precacheKidArt, recentlyOpenedStoryIds } from "../../lib/kidOfflineArt";
 import { useKidSouvenirs } from "./rewards/useKidSouvenirs";
@@ -493,7 +493,7 @@ export default function KidDashboard({
         }}
       >
         <div className="relative flex-shrink-0" style={tilePortrait ? { inlineSize: Math.round(KID_HOME_BANNER_BLOCK * 3 / 4), minBlockSize: KID_HOME_BANNER_BLOCK } : { inlineSize: "45%", maxInlineSize: 300, minBlockSize: KID_HOME_BANNER_BLOCK }}>
-          <WorldScene worldId={tonightsArtId} theme={kidTheme} imagePrompt={tonightsArtPrompt} heroUrl={hero.url ?? undefined} heroStyle={hero.style} sizes="(max-width: 639px) 45vw, 300px">
+          <WorldScene worldId={tonightsArtId} theme={kidTheme} imagePrompt={tonightsArtPrompt} heroUrl={hero.url ?? undefined} heroStyle={hero.style} sizes="(max-width: 639px) 45vw, 300px" priority>
             <Sparkles aria-hidden="true" className="w-10 h-10" style={{ color: "var(--arbor-sky-ink)" }} />
           </WorldScene>
           {!tonightsArtHasHero && (
@@ -537,10 +537,11 @@ export default function KidDashboard({
           <ul
             style={{ listStyle: "none", margin: 0, marginInline: -20, paddingInline: 20, paddingBlockEnd: 4, display: "flex", gap: `${KID_HOME_TILE_GAP}px`, overflowX: "auto", scrollSnapType: "x mandatory", scrollPaddingInline: 20 }}
           >
-            {bookRow.map((b) => (
+            {bookRow.map((b, i) => (
               <li key={b.story.id} style={{ scrollSnapAlign: "start", flexShrink: 0 }}>
                 <KidBookCover
                   layout="row"
+                  eager={i < KID_BOOK_EAGER_COUNT}
                   storyId={b.story.id}
                   title={kidIsolate(uiLang === "he" ? b.story.titleHe : b.story.title)}
                   pack={b.story.pack}
