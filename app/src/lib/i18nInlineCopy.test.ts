@@ -727,7 +727,8 @@ describe("W2-SHELLPLAY r1 — Cognitive Adventures speaks the parent's language,
 
   it("every key is bilingual, the HE values carry no slash-gendering", () => {
     const keys = Object.keys(doorsEn).filter((k) => k.startsWith("elev.practice.adventures."));
-    expect(keys.length).toBe(28);
+    // 28 + 5 (955941c, B-PLAY-09 door: door.title/.last/.last.one/.pick/.cta), each EN + HE
+    expect(keys.length).toBe(33);
     expectBilingual(keys, doorsEn, doorsHe, "adventures");
     for (const k of keys) expect(doorsHe[k], k).not.toMatch(/\/ה\b|\/ת\b/);
   });
