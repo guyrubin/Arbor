@@ -28,7 +28,10 @@ describe("avatar medium continuity", () => {
     const dashboard = src("components", "kidmode", "KidDashboard.tsx");
     const arcade = src("components", "practice", "HeroArcade.tsx");
     const journey = src("components", "tabs", "HeroJourneyTab.tsx");
-    expect(count(dashboard, 'heroStyle={hero.style}')).toBe(3);
+    // B-KID-88: the adventure tiles are gone — the banner and the game tiles are
+    // the dashboard's two scene callers, and every WorldScene there carries it.
+    expect(count(dashboard, 'heroStyle={hero.style}')).toBe(2);
+    expect(count(dashboard, '<WorldScene ')).toBe(count(dashboard, 'heroStyle={hero.style}'));
     expect(count(arcade, 'heroStyle={hero.style}')).toBe(1);
     // B-KID-56 (KB-08): story cards render the theme's plate and generate no
     // scene, so the journey tab has no WorldScene style caller; the reader

@@ -32,6 +32,8 @@ import {
   KID_HOME_GAME_TITLE_SIZE,
   KID_HOME_GAME_TITLE_MIN_PX,
   KID_HOME_PORTRAIT_ASPECT,
+  KID_HOME_BOOK_ROW_BLOCK,
+  KID_HOME_GAMES,
 } from "./KidDashboard";
 import { KID_WORLDS } from "../practice/HeroArcade";
 
@@ -45,41 +47,48 @@ const FOLD = 844;
 /** Two tiles per row at 390 px: 350 px of content, minmax(160px,1fr) + 12 px gap. */
 const TILES_PER_ROW = 2;
 
-/** Top edge of the first game tile, stacking the sections in render order. */
-const firstGameTileTop =
+/** B-KID-88: top edge of the "My books" covers (header, banner, books heading). */
+const firstBookTop =
   KID_HOME_HEADER_BLOCK +
   KID_HOME_SECTION_GAP +
   KID_HOME_BANNER_BLOCK +
   KID_HOME_SECTION_GAP +
   KID_HOME_SECTION_HEAD_BLOCK +
   KID_HOME_HEAD_GAP;
+/** Top edge of the first game tile, stacking the sections in render order. */
+const firstGameTileTop =
+  firstBookTop +
+  KID_HOME_BOOK_ROW_BLOCK +
+  KID_HOME_SECTION_GAP +
+  KID_HOME_SECTION_HEAD_BLOCK +
+  KID_HOME_HEAD_GAP;
 
-describe("OBJ-KID-06 — the games are above the fold at 390x844", () => {
-  it("the games section renders before the growth adventures", () => {
+describe("B-KID-88 — Tonight's book, then My books, then Play (390x844)", () => {
+  it("the sections render in that order and the growth adventures are gone", () => {
+    const banner = dash.indexOf("Today's adventure banner");
+    const books = dash.indexOf("{/* ── My books ");
     const games = dash.indexOf("{/* ── Games ");
-    const adventures = dash.indexOf("{/* ── My growth adventures ");
-    expect(games).toBeGreaterThan(-1);
-    expect(adventures).toBeGreaterThan(-1);
-    expect(games, "the games grid must sit directly under the quest banner").toBeLessThan(adventures);
+    expect(banner).toBeGreaterThan(-1);
+    expect(books, "My books sits directly under Tonight's book").toBeGreaterThan(banner);
+    expect(games, "Play comes after My books").toBeGreaterThan(books);
+    expect(dash).not.toContain("My growth adventures");
+    expect(dash).not.toContain("kid.adventures.title");
+    expect(dash).not.toContain('onOpenSurface("arcade")}');
   });
 
-  it("at least two game tiles are fully visible without scrolling", () => {
-    const firstRowBottom = firstGameTileTop + KID_HOME_GAME_TILE_BLOCK;
-    expect(firstRowBottom, `first row ends at ${firstRowBottom}`).toBeLessThan(FOLD);
-    // A row is TILES_PER_ROW tiles wide, so a visible first row is >= 2 tiles.
-    expect(TILES_PER_ROW).toBeGreaterThanOrEqual(2);
-    // …and the second row lands above the fold too.
-    const secondRowBottom = firstRowBottom + KID_HOME_TILE_GAP + KID_HOME_GAME_TILE_BLOCK;
-    expect(secondRowBottom).toBeLessThan(FOLD);
+  it("Tonight's book and the whole first row of covers are above the fold", () => {
+    const bookRowBottom = firstBookTop + KID_HOME_BOOK_ROW_BLOCK;
+    expect(bookRowBottom, `book row ends at ${bookRowBottom}`).toBeLessThan(FOLD);
+    // the row block is a 116 px 3:4 cover + a 2-line 15 px caption + the gap
+    expect(KID_HOME_BOOK_ROW_BLOCK).toBe(Math.round((116 * 4) / 3) + 36 + 6);
   });
 
-  it("R-2b: in a portrait theme (film3d, 2 columns at 390, 20 px overlay inset) two rows of 3:4 cards still clear the fold", () => {
+  it("the first game row starts above the fold (the child sees Play exists)", () => {
+    expect(firstGameTileTop, `first game tile top at ${firstGameTileTop}`).toBeLessThan(FOLD);
+  });
+
+  it("R-2b: a portrait theme keeps the 3:4 card aspect", () => {
     expect(KID_HOME_PORTRAIT_ASPECT).toBe("3 / 4");
-    const OVERLAY_INLINE_PAD = 20; // KidModeOverlay paddingInline
-    const cardW = (390 - 2 * OVERLAY_INLINE_PAD - KID_HOME_TILE_GAP) / 2;
-    const cardH = (cardW * 4) / 3;
-    const secondRowBottom = firstGameTileTop + cardH + KID_HOME_TILE_GAP + cardH;
-    expect(secondRowBottom, `second portrait row ends at ${secondRowBottom.toFixed(0)}`).toBeLessThan(FOLD);
   });
 
   it("negative control — the pre-fix order and tile height put every tile below the fold", () => {
@@ -187,7 +196,9 @@ describe("KID-06 — the arcade grid lists the same games the home does", () => 
     const tileWorldIds = [...dash.matchAll(/\{ id: "[a-z-]+", worldId: "([a-z-]+)"/g)]
       .map((m) => m[1])
       .filter((id) => !id.startsWith("kid-"));
-    expect(tileWorldIds.length).toBe(8);
+    // B-KID-88: nine — Spell Forge got its own tile when the picker door went.
+    expect(tileWorldIds.length).toBe(9);
+    expect(KID_HOME_GAMES.map((g) => g.worldId).sort()).toEqual([...KID_WORLDS.map((w) => w.id)].sort());
     for (const id of tileWorldIds) {
       expect(KID_WORLDS.some((w) => w.id === id), `home tile world "${id}" is not in the arcade grid`).toBe(true);
     }
@@ -276,7 +287,7 @@ describe("U1 — one FEATURED hero above the fold, plus the greeting mark", () =
     const chevrons = [...dash.matchAll(/<ChevronRight className="([^"]+)"/g)].map((m) => m[1]);
     expect(chevrons.length, "every chevron on the kid home").toBe(3);
     for (const cls of chevrons) expect(cls, cls).toContain("rtl:-scale-x-100");
-    for (const glyph of ["Star", "Gamepad2", "Sparkles"]) {
+    for (const glyph of ["Star", "Gamepad2", "BookOpen"]) {
       const m = new RegExp(`<${glyph} className="([^"]*)"`).exec(dash);
       expect(m, glyph).not.toBeNull();
       expect(m![1], `${glyph} is not directional and must not mirror`).not.toContain("scale-x");
@@ -286,7 +297,7 @@ describe("U1 — one FEATURED hero above the fold, plus the greeting mark", () =
   it("the remaining portrait is the comics door, far below the fold", () => {
     const comicsTop =
       firstGameTileTop +
-      KID_HOME_GAME_TILE_BLOCK * 4 + KID_HOME_TILE_GAP * 3 + // four rows of eight tiles
+      KID_HOME_GAME_TILE_BLOCK * 5 + KID_HOME_TILE_GAP * 4 + // five rows of nine tiles
       KID_HOME_SECTION_GAP;
     expect(comicsTop).toBeGreaterThan(FOLD);
     const comics = dash.slice(dash.indexOf("Saved comics are a distinct"));

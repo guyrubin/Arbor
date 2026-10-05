@@ -1,8 +1,8 @@
 /**
  * KidDashboard — the personalized Kid Mode home (viral redesign P0 shell + P1
  * avatar-in-scene art, see docs/KID-MODE-VIRAL-REDESIGN-PLAN.md). Renders the
- * greeting header, the Today's-adventure banner, the growth-adventure tiles
- * and the games grid. Every tile is a navigation entry that opens an EXISTING
+ * greeting header, then (B-KID-88) Tonight's book, the "My books" row and the
+ * games grid. Every tile is a navigation entry that opens an EXISTING
  * surface unchanged — re-shell, never rewrite. KID-4: every game tile is named
  * after the real HeroArcade world it opens and pre-selects that world.
  *
@@ -28,7 +28,7 @@
  * streak. Styling is token-only and RTL-safe (logical CSS properties).
  */
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, Brain, Gamepad2, Heart, HeartPulse, Map, Mic, Music, PersonStanding, Shapes, Smile, Sparkles, Star, ChevronRight } from "lucide-react";
+import { BookOpen, Brain, Gamepad2, Heart, Map, Mic, Music, PersonStanding, Shapes, Smile, Sparkles, Star, ChevronRight, Type } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import type { AvatarStyle } from "../../lib/api";
 import { useLanguage } from "../../context/LanguageContext";
@@ -49,6 +49,8 @@ import { loadShowAllAges } from "../../lib/ageFilter";
 import { ageMonthsFromProfile } from "../../lib/childAge";
 import type { HeroJourneyRun } from "../../types";
 import { HERO_STORIES, storyLanguage } from "../../lib/heroJourneys";
+import { kidBooks } from "./kidBooks";
+import { KidBookCover } from "./KidBookCover";
 import { starEvents } from "../../practice/signals";
 
 export type KidSurface = "journeys" | "arcade" | "feelings" | "comics";
@@ -73,31 +75,10 @@ const ACCENT_INK: Record<Accent, string> = {
   pink: "var(--arbor-pink-ink)",
 };
 
-// Neutral artwork is presentation-only, shared with the arcade by current world ID.
-// KID-1: tile copy lives in lib/i18n.ts under `kid.adv.<id>.*` / `kid.game.<id>.*`
-// — the defs here carry only ids, art and routing. kidMode.test.ts asserts every
-// id below has its title/sub key pair in BOTH language maps.
-interface AdventureDef {
-  id: string;
-  worldId: string;
-  accent: Accent;
-  imagePrompt: string;
-  Icon: React.ComponentType<{ className?: string }>;
-  surface: KidSurface;
-}
-
-// The growth adventures. `surface` routes into an existing tab. KID-4: the old
-// "Studio" tile was dropped — it had no live counterpart of its own (Mimic
-// Studio is a named game tile below; a distinct creative studio stays gated on
-// the games↔worlds decision, plan §9.5).
-const ADVENTURES: AdventureDef[] = [
-  { id: "playbank", worldId: "kid-playbank", accent: "green", Icon: Gamepad2, surface: "arcade", imagePrompt: "a joyful playroom full of colorful building blocks, learning toys and a friendly little dinosaur" },
-  { id: "hero", worldId: "kid-hero", accent: "clay", Icon: BookOpen, surface: "journeys", imagePrompt: "an epic castle on a hill with a glowing open magic book" },
-]; // OBJ-KID-05: the "Feelings" adventure tile opened the SAME FeelingsLabTab as
-   // the "Mood Mountain" game tile below (the arcade world `feelings` is that
-   // component). Two tiles, one destination, and the child pays for the
-   // duplicate twice: once choosing, once discovering they are in the same
-   // place. The game tile keeps the door; the adventure tile is gone.
+// B-KID-88: the kid home is Tonight's book -> My books -> Play. The two
+// "growth adventure" tiles (Playbank = the arcade picker, Hero Stories = the
+// catalogue) are gone: every world has its own tile below and the catalogue is
+// the "My books" row's See all. One tile, one place (kidDestinations).
 
 // Games grid — KID-4 honest navigation. Every tile is named EXACTLY after the
 // live HeroArcade world it opens (`worldId` = the arcade world id) and reuses
@@ -107,6 +88,10 @@ const ADVENTURES: AdventureDef[] = [
 // per-game deep-link redesign stays a Guy-gated decision (plan §9.5).
 interface GameDef {
   id: string;
+  /** Name key when it is not `kid.game.<id>.title` (Spell Forge keeps its ONE
+   *  kid name, elev.kids.reading.title - kidHebrewCoverage one-name rule). */
+  titleKey?: string;
+  subKey?: string;
   /** The HeroArcade world this tile opens — also the WorldScene cache key, so a
    *  generated tile scene is the SAME scene the arcade card shows. */
   worldId: string;
@@ -123,14 +108,20 @@ const GAMES: GameDef[] = [
   { id: "pattern-power", worldId: "pattern", accent: "lav", Icon: Shapes, imagePrompt: "a puzzle world of glowing shapes arranged in patterns" },
   { id: "story-quest", worldId: "adventures", accent: "peach", Icon: Map, imagePrompt: "an adventurous landscape with a treasure map and compass on a cliff" },
   { id: "mimic-studio", worldId: "mimic", accent: "clay", Icon: Smile, imagePrompt: "a playful mirror studio copying silly happy poses, sparkles all around" },
+  // B-KID-88: Spell Forge was reachable only through the arcade picker ("See
+  // all games"); the picker door is gone, so the world gets its own tile.
+  { id: "spell-forge", worldId: "reading", accent: "peach", Icon: Type, titleKey: "elev.kids.reading.title", subKey: "elev.kids.reading.sub", imagePrompt: "a magical letter forge where glowing letters become words" },
 ];
+/** B-KID-88: the home's game tiles with their name keys (tests read this). */
+export const KID_HOME_GAMES: readonly { id: string; worldId: string; titleKey: string; subKey: string }[] = GAMES.map((g) => ({
+  id: g.id,
+  worldId: g.worldId,
+  titleKey: g.titleKey ?? `kid.game.${g.id}.title`,
+  subKey: g.subKey ?? `kid.game.${g.id}.sub`,
+}));
 /** B-KID-53: the kid name key of the world a tile opens (HeroArcade worldId →
  *  kid.game.<id>.title), so the in-world header says the tile's own name. */
-export const KID_GAME_TITLE_KEY: Readonly<Record<string, string>> = {
-  // Spell Forge has no home tile (reached from the arcade grid) — its kid name.
-  reading: "elev.kids.reading.title",
-  ...Object.fromEntries(GAMES.map((g) => [g.worldId, `kid.game.${g.id}.title`])),
-};
+export const KID_GAME_TITLE_KEY: Readonly<Record<string, string>> = Object.fromEntries(KID_HOME_GAMES.map((g) => [g.worldId, g.titleKey]));
 
 /** OBJ-KID-05: every tile on the kid home, with the destination it opens.
  *  `surface` plus `arg` IS the destination — the overlay renders a surface and
@@ -145,13 +136,22 @@ export interface KidDestination {
 
 /** The static half of the destination map: the banner's arg is tonight's story,
  *  which is a function of the day, so it is supplied by the caller. */
-export function kidDestinations(bannerStoryId: string): KidDestination[] {
+export function kidDestinations(bannerStoryId: string, bookIds: readonly string[] = []): KidDestination[] {
   return [
     { tile: "quest-banner", surface: "journeys", arg: bannerStoryId },
-    ...ADVENTURES.map((a) => ({ tile: `adv:${a.id}`, surface: a.surface, arg: null })),
+    // B-KID-88: each "My books" cover opens ITS book; See all opens the library.
+    ...bookIds.map((id) => ({ tile: `book:${id}`, surface: "journeys" as KidSurface, arg: id })),
+    { tile: "books-see-all", surface: "journeys", arg: null },
     ...GAMES.map((g) => ({ tile: `game:${g.id}`, surface: "arcade" as KidSurface, arg: g.worldId })),
     { tile: "hero-comics", surface: "comics", arg: null },
   ];
+}
+
+/** B-KID-88: the "My books" row - the child's books (kidBooks) minus tonight's
+ *  (the banner is its one door), at most this many before See all. */
+export const KID_HOME_BOOK_ROW_MAX = 10;
+export function kidHomeBookRow<B extends { story: { id: string } }>(books: readonly B[], tonightsStoryId: string): B[] {
+  return books.filter((b) => b.story.id !== tonightsStoryId).slice(0, KID_HOME_BOOK_ROW_MAX);
 }
 
 /* ── OBJ-KID-06: the fold ────────────────────────────────────────────────
@@ -190,8 +190,12 @@ export const KID_HOME_GAME_TILE_BLOCK = 200;
  *  KID_HOME_GAME_TILE_BLOCK at 390 px, which keeps the fold arithmetic above
  *  exactly as it was — proved in kidDashboard.fold.test.ts. */
 export const KID_HOME_GAME_TILE_IMAGE_BLOCK = 110;
-/** Growth-adventure tile (unchanged). */
+/** The retired growth-adventure tile (B-KID-88 removed it); kept for the
+ *  fold test's pre-fix negative control. */
 export const KID_HOME_ADVENTURE_TILE_BLOCK = 150;
+/** B-KID-88: the "My books" row - a 116 px wide 3:4 cover (155 px) + a
+ *  two-line 15 px caption (36 px) + the 6 px gap between them. */
+export const KID_HOME_BOOK_ROW_BLOCK = 197;
 /** Grid gap between tiles. */
 export const KID_HOME_TILE_GAP = 12;
 /** R-2b: a portrait-theme card (film3d) is image-led at this aspect; 2 columns
@@ -412,6 +416,19 @@ export default function KidDashboard({
   const tonightsArtHasHero = Boolean(kidArt(kidTheme, tonightsArtId === "kid-quest" ? worldTileKey("kid-quest") : storyCoverKey(tonightsStory!.id))?.hasHero);
   const tilePortrait = KID_THEME_TILE_SHAPE[kidTheme] === "portrait";
   const tonightsArtPrompt = tonightsStory && tonightsArtId !== "kid-quest" ? `${tonightsStory.title} — ${tonightsStory.theme}` : "an epic castle scene on a hill with a glowing open magic book";
+  // B-KID-88: "My books" - the child's books (language + age view, opened
+  // first, illustrated first), tonight's book excluded (the banner opens it).
+  const bookRow = useMemo(
+    () => kidHomeBookRow(kidBooks({
+      lang: storyLanguage(uiLang, aiLang),
+      ageMonths: ageMonthsFromProfile(childProfile),
+      showAllAges: loadShowAllAges("hero-journeys"),
+      hasCover: (id) => kidArt(kidTheme, storyCoverKey(id)) !== null,
+      runs: heroRunsCol.items,
+    }), tonightsStoryId),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [uiLang, aiLang, childProfile.id, kidTheme, heroRunsCol.items, tonightsStoryId],
+  );
   const greetingSub = yesterdayWorld
     ? kt("elev.kid.greeting.playedYesterday", { world: t(`kid.game.${yesterdayWorld}.title`) })
     : kt("elev.kid.greeting.ready");
@@ -492,39 +509,62 @@ export default function KidDashboard({
         </span>
       </button>
 
-      {/* ── Games ───────────────────────────────────────────────────────── */}
-      <section aria-label={t("kid.games.title")}>
+      {/* ── My books ────────────────────────────────────────────────────── */}
+      {/* B-KID-88: directly under Tonight's book - the child's own shelf, one
+          tap per book; See all opens the library (the story surface, no arg).
+          The row scrolls along the reading direction (flex follows dir, so a
+          Hebrew shelf starts at the right). */}
+      <section aria-label={t("kidBooks.title")} data-kid-home-books="">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBlockEnd: `${KID_HOME_HEAD_GAP}px` }}>
+          <h2 style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: KID_HOME_GAME_TITLE_SIZE, fontWeight: 900, color: "var(--arbor-ink)" }}>
+            <BookOpen className="w-4 h-4" aria-hidden="true" style={{ color: "var(--arbor-peach-ink)" }} />
+            {kt("kidBooks.title")}
+          </h2>
+          <button
+            onClick={() => onOpenSurface("journeys")}
+            style={{ appearance: "none", background: "transparent", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "4px", minHeight: `${KID_HOME_SECTION_HEAD_BLOCK}px`, minWidth: 44, fontSize: "var(--t-sm)", fontWeight: 800, color: "var(--arbor-sky-ink)" }}
+          >
+            {kt("kidBooks.seeAll")} <ChevronRight className="w-4 h-4 rtl:-scale-x-100" aria-hidden="true" />
+          </button>
+        </div>
+        {bookRow.length > 0 && (
+          <ul
+            style={{ listStyle: "none", margin: 0, marginInline: -20, paddingInline: 20, paddingBlockEnd: 4, display: "flex", gap: `${KID_HOME_TILE_GAP}px`, overflowX: "auto", scrollSnapType: "x mandatory", scrollPaddingInline: 20 }}
+          >
+            {bookRow.map((b) => (
+              <li key={b.story.id} style={{ scrollSnapAlign: "start", flexShrink: 0 }}>
+                <KidBookCover
+                  layout="row"
+                  storyId={b.story.id}
+                  title={kidIsolate(uiLang === "he" ? b.story.titleHe : b.story.title)}
+                  pack={b.story.pack}
+                  theme={kidTheme}
+                  read={b.state === "finished"}
+                  readLabel={t("kidBooks.readMark")}
+                  onOpen={() => onOpenSurface("journeys", b.story.id)}
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* ── Games ───────────────────────────────────────────────────────── */}
+      {/* B-KID-88: every world has its own tile, so the "See all games" door to
+          the arcade picker (the "Playbank" menu) is gone. */}
+      <section aria-label={t("kid.games.title")}>
+        <div style={{ display: "flex", alignItems: "center", marginBlockEnd: `${KID_HOME_HEAD_GAP}px`, minHeight: `${KID_HOME_SECTION_HEAD_BLOCK}px` }}>
           <h2 style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: KID_HOME_GAME_TITLE_SIZE, fontWeight: 900, color: "var(--arbor-ink)" }}>
             <Gamepad2 className="w-4 h-4" aria-hidden="true" style={{ color: "var(--arbor-lav-ink)" }} />
             {kt("kid.games.title")}
           </h2>
-          <button
-            onClick={() => onOpenSurface("arcade")}
-            style={{ appearance: "none", background: "transparent", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "4px", minHeight: `${KID_HOME_SECTION_HEAD_BLOCK}px`, fontSize: "var(--t-sm)", fontWeight: 700, color: "var(--arbor-muted)" }}
-          >
-            {kt("kid.games.seeAll")} <ChevronRight className="w-4 h-4 rtl:-scale-x-100" aria-hidden="true" />
-          </button>
         </div>
         <div className={tilePortrait ? PORTRAIT_GRID : undefined} style={tilePortrait ? { gap: `${KID_HOME_TILE_GAP}px` } : { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(160px, 100%), 1fr))", gap: `${KID_HOME_TILE_GAP}px` }}>
           {GAMES.map((g, i) => (
-            <SceneTile key={g.id} worldId={g.worldId} accent={g.accent} Icon={g.Icon} title={kt(`kid.game.${g.id}.title`)} sub={kt(`kid.game.${g.id}.sub`)} imagePrompt={g.imagePrompt} heroUrl={hero.url ?? undefined} heroStyle={hero.style} theme={kidTheme} index={i} onClick={() => onOpenSurface("arcade", g.worldId)} />
+            <SceneTile key={g.id} worldId={g.worldId} accent={g.accent} Icon={g.Icon} title={kt(g.titleKey ?? `kid.game.${g.id}.title`)} sub={kt(g.subKey ?? `kid.game.${g.id}.sub`)} imagePrompt={g.imagePrompt} heroUrl={hero.url ?? undefined} heroStyle={hero.style} theme={kidTheme} index={i} onClick={() => onOpenSurface("arcade", g.worldId)} />
           ))}
         </div>
       </section>
-      {/* ── My growth adventures ────────────────────────────────────────── */}
-      <section aria-label={t("kid.adventures.title")}>
-        <h2 style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: KID_HOME_GAME_TITLE_SIZE, fontWeight: 900, color: "var(--arbor-ink)", marginBlockEnd: `${KID_HOME_HEAD_GAP}px` }}>
-          <Sparkles className="w-4 h-4" aria-hidden="true" style={{ color: "var(--arbor-green-ink)" }} />
-          {kt("kid.adventures.title")}
-        </h2>
-        <div className={tilePortrait ? PORTRAIT_GRID : undefined} style={tilePortrait ? { gap: `${KID_HOME_TILE_GAP}px` } : { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: `${KID_HOME_TILE_GAP}px` }}>
-          {ADVENTURES.map((a, i) => (
-            <SceneTile key={a.id} worldId={a.worldId} accent={a.accent} Icon={a.Icon} title={kt(`kid.adv.${a.id}.title`)} sub={kt(`kid.adv.${a.id}.sub`)} imagePrompt={a.imagePrompt} heroUrl={hero.url ?? undefined} heroStyle={hero.style} theme={kidTheme} big index={i} onClick={() => onOpenSurface(a.surface)} />
-          ))}
-        </div>
-      </section>
-
       {/* Saved comics are a distinct lower-home destination. The shelf mounts
           only after this door opens, keyed to the active child in the overlay. */}
       <section aria-label={t("elev.kids.comics.section")}>

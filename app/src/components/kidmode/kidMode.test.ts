@@ -287,7 +287,8 @@ describe("KID-2: shieldShellSiblings — shell carries inert while Kid Mode is o
 });
 
 // ── KID-1: i18n — kid.* namespace coverage, no hardcoded copy, register split ─
-import { en, he, isolate } from "../../lib/i18n";
+import { en, he, isolate, translate } from "../../lib/i18n";
+import { KID_HOME_GAMES } from "./KidDashboard";
 
 /** Strip // and /* *\/ comments so scans only see live code. */
 function stripComments(src: string): string {
@@ -333,16 +334,16 @@ describe("KID-1: kid.* i18n keys exist in BOTH language maps", () => {
     // without keys fails here instead of rendering a raw key string.
     const src = stripComments(readSelf("KidDashboard.tsx"));
     const ids = [...src.matchAll(/\{ id: "([a-z-]+)"/g)].map((m) => m[1]);
-    // OBJ-KID-05 dropped the duplicate "Feelings" adventure tile (it opened the
-    // same FeelingsLabTab as the Mood Mountain game tile), so the home declares
-    // 2 adventure + 8 game defs. Exact, not a floor: a silently vanished tile
-    // is as much a defect as a keyless one.
-    expect(ids.length, "expected the 2 adventure + 8 game tile defs").toBe(10);
-    for (const id of ids) {
-      const base = `kid.adv.${id}.title` in en ? `kid.adv.${id}` : `kid.game.${id}`;
-      for (const suffix of [".title", ".sub"]) {
-        expect(en[base + suffix], `en missing ${base}${suffix}`).toBeTruthy();
-        expect(he[base + suffix], `he missing ${base}${suffix}`).toBeTruthy();
+    // OBJ-KID-05 dropped the duplicate "Feelings" adventure tile; B-KID-88
+    // dropped the two adventure tiles (Playbank, Hero Stories) and gave Spell
+    // Forge its own tile: the home declares 9 game defs. Exact, not a floor: a
+    // silently vanished tile is as much a defect as a keyless one.
+    expect(ids.length, "expected the 9 game tile defs").toBe(9);
+    expect(KID_HOME_GAMES.map((g) => g.id)).toEqual(ids);
+    for (const g of KID_HOME_GAMES) {
+      for (const key of [g.titleKey, g.subKey]) {
+        expect(translate("en", key), `en missing ${key}`).not.toBe(key);
+        expect(translate("he", key), `he missing ${key}`).not.toBe(key);
       }
     }
   });
@@ -733,9 +734,9 @@ describe("KID-4: kid-dashboard game tiles match their HeroArcade destination", (
     .map((m) => ({ id: m[1], worldId: m[2] }))
     .filter((tile) => !tile.worldId.startsWith("kid-"));
 
-  it("finds the 8 game tiles and the arcade world registry", () => {
-    expect(gameTiles.length).toBe(8);
-    expect(worldNames.size).toBeGreaterThanOrEqual(8);
+  it("finds the 9 game tiles and the arcade world registry", () => {
+    expect(gameTiles.length).toBe(9);
+    expect(worldNames.size).toBeGreaterThanOrEqual(9);
   });
 
   it.each(gameTiles.map((g) => [g.id, g.worldId]))(
@@ -743,11 +744,13 @@ describe("KID-4: kid-dashboard game tiles match their HeroArcade destination", (
     (id, worldId) => {
       const worldName = worldNames.get(worldId as string);
       expect(worldName, `no HeroArcade world with id "${worldId}"`).toBeTruthy();
-      expect(en[`kid.game.${id}.title`]).toBe(worldName);
+      // B-KID-88: the tile's own name key (Spell Forge = elev.kids.reading.title).
+      const titleKey = KID_HOME_GAMES.find((g) => g.id === id)!.titleKey;
+      expect(translate("en", titleKey)).toBe(worldName);
       // B-KID-48 scope (5 Oct): HE = the Hebrew world name the parent doors ship
       // (kidHebrewCoverage.test.ts pins the equality); never the EN name.
-      expect(he[`kid.game.${id}.title`]).not.toBe(worldName);
-      expect(he[`kid.game.${id}.title`]).toMatch(/[֐-׿]/);
+      expect(translate("he", titleKey)).not.toBe(worldName);
+      expect(translate("he", titleKey)).toMatch(/[֐-׿]/);
     },
   );
 
@@ -776,11 +779,12 @@ describe("KID-7: kid-dashboard art is unique per visible tile", () => {
     const src = stripComments(readSelf("KidDashboard.tsx"));
     const ids = [...src.matchAll(/\{ id: "[a-z-]+", worldId: "([a-z-]+)"/g)].map(m=>m[1]);
     ids.push("kid-quest");
-    expect(ids).toHaveLength(11);
+    // B-KID-88: 9 game tiles + the Tonight fallback (the adventure tiles are gone).
+    expect(ids).toHaveLength(10);
     for (const theme of ["film3d", "storybook"] as const) {
       const arts=ids.map(id=>worldArtwork(id, theme)?.src);
       expect(arts.every(Boolean), theme).toBe(true);
-      expect(new Set(arts).size, theme).toBe(11);
+      expect(new Set(arts).size, theme).toBe(10);
     }
     expect(src).not.toContain("/visuals/");
   });
