@@ -224,10 +224,13 @@ const p7b: Page = {
   text: same(`“I cannot go with these,” says David, “for I have not tried them.”`, `"לֹא אוּכַל לָלֶכֶת בָּאֵלֶּה, כִּי לֹא נִסִּיתִי," אומר דוד.`),
   repair: {
     promptLabel: { en: `Take it off`, he: `להוריד` },
+    // Fixed order (fix round 1): helmet → sword → coat, so the coat lands on the
+    // rug only on the last tap, when the sprite swaps to free-stretch.
+    ordered: true,
     items: [
       { id: "helmet", label: { en: `the helmet`, he: `הכובע` }, ...itemAt("p7b", "helmet"), line: same(`Off comes the helmet.`, `הכובע יורד.`) },
-      { id: "coat", label: { en: `the coat`, he: `השריון` }, ...itemAt("p7b", "coat"), line: same(`Off comes the coat.`, `השריון יורד.`) },
       { id: "sword", label: { en: `the sword`, he: `החרב` }, ...itemAt("p7b", "sword"), line: same(`Off comes the sword.`, `החרב יורדת.`) },
+      { id: "coat", label: { en: `the coat`, he: `השריון` }, ...itemAt("p7b", "coat"), line: same(`Off comes the coat.`, `השריון יורד.`) },
     ],
     textAfter: same(`David stretches. Light again! With his own sling, he runs to the brook.`, `דוד מתמתח. קל שוב! ועם הקלע שלו, הוא רץ אל הנחל.`),
     heroAfter: afterOf("p7b", "free-stretch"),

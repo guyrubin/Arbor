@@ -108,6 +108,10 @@ export interface RepairItem {
  *  `text` is the before-text. */
 export interface Repair {
   items: RepairItem[];
+  /** The items must be done in their listed order: only the next one is
+   *  tappable (p7b: helmet → sword → coat, so the coat never lies on the rug
+   *  while he still wears it). */
+  ordered?: boolean;
   promptLabel: BookLabel;
   textAfter: BookLine;
   heroAfter?: Slot;
