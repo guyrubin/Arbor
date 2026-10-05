@@ -276,9 +276,10 @@ describe("the ending", () => {
     expect(nextIntent(true, true, true)).toBe("hold");
     expect(nextIntent(true, true, false)).toBe("turn");
     expect(nextIntent(false, false, false)).toBe("turn");
-    const shown = render(s, { revealed: 1 });
+    // v3: stage 1 = the stone in flight, stage 2 = the dust
+    const shown = render(s, { revealed: 2 });
     expect(shown).not.toMatch(/data-book-overlay="dust-cloud"[^>]*data-hidden=""/);
-    // round 3 delivered PL7-rise: the last state is the soldiers rising
+    // the last state is the quiet on PL7-rise
     const all = render(s, { revealed: true });
     expect(all).toContain('data-book-state-plate="PL7-rise"');
     expect(all).toMatch(/data-book-overlay="dust-cloud"[^>]*data-hidden=""/);
@@ -324,21 +325,20 @@ describe("the ending", () => {
     expect(resolvePose(null, "stand-tall", book.poseFallbacks)).toBe("stand-tall");
   });
 
-  it("v3: p9 = swing → the stone in flight (PL7-flight + sling-release) → dust → quiet; a narration set may be WAV", () => {
+  it("v3 (round 4): p9 = swing → the stone in flight (PL7-flight2 + sling-release) → dust on the duel plate → quiet (PL7-rise); a narration set may be WAV", () => {
     const s = toPage("a", "p9");
-    const plates = { ...BOOK_PLATES[book.id], "PL7-flight": makePlate(book.id, "PL7-flight", "day", { width: 1920, height: 1280 }), "PL7-quiet": makePlate(book.id, "PL7-quiet", "day", { width: 1920, height: 1280 }) };
-    const v3Book = { ...book, pages: book.pages.map((p) => (p.id === "p9" ? { ...p, artStates: p.artStates!.map((st) => (st.id === "quiet" ? { ...st, plateId: "PL7-quiet" } : st)) } : p)) };
-    const at = (stage: number) =>
-      renderToStaticMarkup(<BookReader book={v3Book} lang="en" child={BOY} onClose={() => {}} dev narration="off" initialState={s} initialBox={WIDE} plates={plates} initialRevealed={stage} />);
+    const at = (stage: number) => render(s, { revealed: stage });
     expect(at(0)).not.toContain("data-book-state-plate");
     const flight = at(1);
-    expect(flight).toContain('data-book-state-plate="PL7-flight"');
+    expect(flight).toContain('data-book-state-plate="PL7-flight2"');
     expect(flight).toContain("/sling-release.webp");
     expect(flight).toMatch(/data-book-overlay="dust-cloud"[^>]*data-hidden=""/);
     const dust = at(2);
+    expect(dust).toContain('data-book-state-plate="PL7"');
+    expect(dust).toContain("/sling-swing-face-right.webp");
     expect(dust).not.toMatch(/data-book-overlay="dust-cloud"[^>]*data-hidden=""/);
     const quiet = at(3);
-    expect(quiet).toContain('data-book-state-plate="PL7-quiet"');
+    expect(quiet).toContain('data-book-state-plate="PL7-rise"');
     expect(quiet).toMatch(/data-book-overlay="dust-cloud"[^>]*data-hidden=""/);
     expect(narrationCandidates("/_dev/narration/five-smooth-stones/dylan-v2-expressive/en/p9.mp3")).toEqual([
       "/_dev/narration/five-smooth-stones/dylan-v2-expressive/en/p9.mp3",
