@@ -255,7 +255,9 @@ describe("Five Smooth Stones (the proof) — manuscript specifics", () => {
   });
 
   it("p7b repairs by three taps (helmet, coat, sword) with a line each; p7c by one 'Stand up!'", () => {
-    expect(byId.p7b.repair!.items.map((it) => it.id)).toEqual(["helmet", "coat", "sword"]);
+    // fix round 1: a fixed order, helmet → sword → coat
+    expect(byId.p7b.repair!.ordered).toBe(true);
+    expect(byId.p7b.repair!.items.map((it) => it.id)).toEqual(["helmet", "sword", "coat"]);
     expect(byId.p7b.repair!.items.every((it) => it.line)).toBe(true);
     expect(byId.p7b.repair!.heroAfter!.pose).toBe("free-stretch");
     expect(byId.p7c.repair!.items).toHaveLength(1);
