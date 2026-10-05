@@ -70,13 +70,29 @@ export function useNarration(src: string | null, opts: { showKey: string; muted:
         if (!cancelled && audio.currentTime >= revealAt) setRevealed(true);
       };
     }
-    audio
-      .play()
-      .then(() => !cancelled && setPlaying(true))
-      .catch(() => finish(false));
+    const start = () => {
+      if (cancelled) return;
+      audio
+        .play()
+        .then(() => !cancelled && setPlaying(true))
+        .catch(() => finish(false));
+    };
+    // A tap's clip (a repair item's line) finishes before the next part starts.
+    const clip = clipAudio.current;
+    let wait: ReturnType<typeof setTimeout> | undefined;
+    const onClipEnd = () => {
+      if (wait) clearTimeout(wait);
+      start();
+    };
+    if (clip && !clip.paused && !clip.ended) {
+      wait = setTimeout(onClipEnd, 6000);
+      clip.addEventListener("ended", onClipEnd, { once: true });
+    } else start();
     return () => {
       cancelled = true;
       if (timer) clearTimeout(timer);
+      if (wait) clearTimeout(wait);
+      clip?.removeEventListener("ended", onClipEnd);
       audio.onended = null;
       audio.onerror = null;
       audio.ontimeupdate = null;

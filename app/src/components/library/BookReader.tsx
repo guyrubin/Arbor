@@ -32,7 +32,7 @@ import { KidToy } from "../kidmode/KidToy";
 import { KidSoundToggle } from "../kidmode/kidReadAloud";
 import { kidSfx, useKidReadAloudMuted } from "../kidmode/audio/kidAudio";
 import { Icon } from "../ui/Icon";
-import { BookPage, type BookPageItem } from "./BookPage";
+import { BookPage, type BookPageItem, type BookPageOverlay } from "./BookPage";
 import { useNarration } from "./useNarration";
 import {
   bookFlowReducer,
@@ -52,7 +52,7 @@ import { BOOK_PLATES } from "../../lib/library/books";
 import { bookString } from "../../lib/library/bookStrings";
 import { TURN_GLYPHS } from "../../lib/library/bookGlyphs";
 import { heGender, heroDisplayName, heroParts, labelFor, pageParagraphs, paragraphChars } from "../../lib/library/bookText";
-import { heroSpriteUrl, resolveHeroSheet } from "../../lib/library/heroSheet";
+import { heroPrint, heroSpriteUrl, resolveHeroSheet, sheetAnchorOf, type HeroSheet } from "../../lib/library/heroSheet";
 import { declaredAudio, DEV_NARRATION_ROOT, NARRATION_ROOT, narrationKey, pageNarrationSrc } from "../../lib/library/narration";
 import type { Book, BookLang, BookReaderChild, Page } from "../../lib/library/types";
 import "./bookReader.css";
@@ -74,6 +74,13 @@ export interface BookReaderProps {
   initialState?: BookFlowState;
   /** Test seam: the stage size before it is measured. */
   initialBox?: Box;
+  /** The child's hero sheet with its manifest read (loadHeroSheet); default =
+   *  the sync resolver (no manifest: no anchors, no prints). */
+  sheet?: HeroSheet | null;
+  /** Show the sheet's printed pages where it has them (default on). */
+  prints?: boolean;
+  /** A costume variant for pages that author one (`heroAlt`, e.g. "tunic"). */
+  costume?: string | null;
 }
 
 const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
@@ -100,12 +107,14 @@ function Words({ text, name }: { text: string; name: string }) {
   );
 }
 
-export function BookReader({ book, lang, child, onClose, plates, dev = import.meta.env.DEV, narration = "probe", initialState, initialBox }: BookReaderProps) {
+export function BookReader({ book, lang, child, onClose, plates, dev = import.meta.env.DEV, narration = "probe", initialState, initialBox, sheet: sheetProp, prints = true, costume = null }: BookReaderProps) {
   const plateTable = plates ?? BOOK_PLATES[book.id] ?? {};
   const [state, dispatch] = useReducer((s: BookFlowState, a: Parameters<typeof bookFlowReducer>[2]) => bookFlowReducer(book, s, a), initialState ?? initialBookFlow());
   const gender = heGender(child.gender);
   const name = heroDisplayName(child) || bookString(gender === "f" ? "name.fallback.f" : "name.fallback.m", lang);
-  const sheet = useMemo(() => resolveHeroSheet(child, { dev }), [child, dev]);
+  const resolved = useMemo(() => resolveHeroSheet(child, { dev }), [child, dev]);
+  const sheet = sheetProp !== undefined ? sheetProp : resolved;
+  const anchorOf = useMemo(() => sheetAnchorOf(sheet), [sheet]);
   const muted = useKidReadAloudMuted(child.id);
   const dir = lang === "he" ? "rtl" : "ltr";
 
@@ -140,7 +149,8 @@ export function BookReader({ book, lang, child, onClose, plates, dev = import.me
   const pending = !!repair && !repaired;
   const doneOrder = useMemo(() => state.repaired.filter((k) => k.startsWith(`${page.id}:`)).map((k) => k.slice(page.id.length + 1)), [state.repaired, page.id]);
   const paras = onCover ? [] : pageParagraphs(page, { lang, gender, choiceId: state.choiceId, repaired: doneOrder });
-  const slot = repaired && repair?.heroAfter ? repair.heroAfter : page.hero;
+  const baseSlot = (costume && page.heroAlt?.[costume]) || page.hero;
+  const slot = repaired && repair?.heroAfter ? repair.heroAfter : baseSlot;
 
   const content: LayoutContent = onCover
     ? {
@@ -152,9 +162,6 @@ export function BookReader({ book, lang, child, onClose, plates, dev = import.me
         choices: decision ? book.decision.choices.length : undefined,
         prompt: pending,
       };
-  const layout = computeBookPageLayout(page, box, lang, { plate, slot, content });
-  const spread = layout.mode === "wide" && layout.pageType === "spread";
-
   // ── narration ──────────────────────────────────────────────────────────────
   const voiceKey = child.heroSheetId?.trim() || child.id;
   const root = dev ? DEV_NARRATION_ROOT : NARRATION_ROOT;
@@ -162,9 +169,7 @@ export function BookReader({ book, lang, child, onClose, plates, dev = import.me
   const pageSrc =
     narration === "off"
       ? null
-      : onCover
-        ? null
-        : repaired && repair
+      : repaired && repair
           ? declaredAudio(repair.audio, lang, gender) ?? (narration === "probe" ? narrationKey({ ...keyBase, pageId: `${page.id}-after` }, root) : null)
           : pageNarrationSrc(page, { ...keyBase, choiceId: state.choiceId }, { probe: narration === "probe", root });
   const revealAt = page.overlays?.find((o) => o.reveal === "afterNarration")?.revealAt;
@@ -172,6 +177,15 @@ export function BookReader({ book, lang, child, onClose, plates, dev = import.me
   const voice = useNarration(pageSrc, { showKey, muted, enabled: narration !== "off", revealAt });
   const [tapReveal, setTapReveal] = useState<string | null>(null);
   const revealed = voice.revealed || tapReveal === state.at;
+
+  // A print (the page's composite after the print pass) replaces plate +
+  // sprite — unless a costume variant is shown, or the page's after-narration
+  // overlay (p9's dust) has been revealed: then the live composite returns.
+  const afterOverlay = (page.overlays ?? []).some((o) => o.reveal === "afterNarration");
+  const print = prints && !(costume && page.heroAlt?.[costume]) && !(afterOverlay && revealed) ? heroPrint(sheet, page.id) : null;
+  const layoutPlate = print && plate ? { ...plate, width: print.width, height: print.height } : plate;
+  const layout = computeBookPageLayout(page, box, lang, { plate: layoutPlate, slot, content, anchorOf });
+  const spread = layout.mode === "wide" && layout.pageType === "spread";
 
   // ── page-turn cue ──────────────────────────────────────────────────────────
   const lastAt = useRef(state.at);
@@ -187,7 +201,8 @@ export function BookReader({ book, lang, child, onClose, plates, dev = import.me
     if (done.has(id)) return;
     kidSfx("tap");
     const item = repair?.items.find((it) => it.id === id);
-    voice.playClip(item?.sound);
+    // the item's own sound, else its spoken line (`<page>-<item>`), when a file exists
+    voice.playClip(item?.sound ?? (narration === "probe" && item?.line ? narrationKey({ ...keyBase, pageId: `${page.id}-${id}` }, root) : null));
     dispatch({ type: "repair", itemId: id });
   };
   const choose = (choiceId: string) => {
@@ -232,21 +247,21 @@ export function BookReader({ book, lang, child, onClose, plates, dev = import.me
   });
 
   // ── art inputs ─────────────────────────────────────────────────────────────
-  const plateSrcs = plate ? plateSources(plate, { dev }) : [];
+  const plateSrcs = print ? [print.url] : plate ? plateSources(plate, { dev }) : [];
   const heroSrc = heroSpriteUrl(sheet, slot?.pose);
   const items: BookPageItem[] =
     repair && !singleTap
-      ? repair.items.map((it) => ({ id: it.id, x: it.x, y: it.y, to: it.to, done: done.has(it.id), overlay: it.overlay, label: it.label ? labelFor(it.label, lang) : bookString("repair.tap", lang) }))
+      ? repair.items.map((it) => ({ id: it.id, x: it.x, y: it.y, done: done.has(it.id), label: it.label ? labelFor(it.label, lang) : bookString("repair.tap", lang) }))
       : [];
-  const overlays = (page.overlays ?? []).map((o) => {
-    const carrier = repair?.items.find((it) => it.overlay === o.id && done.has(it.id));
-    return {
+  // On a print only the not-yet-revealed overlays draw (the rest are baked in).
+  const overlays: BookPageOverlay[] = (page.overlays ?? [])
+    .filter((o) => !print || o.reveal === "afterNarration")
+    .map((o) => ({
       ...o,
       srcs: overlaySources(book.id, o, { dev }),
-      hidden: o.reveal === "afterNarration" && !revealed,
-      at: carrier?.to,
-    };
-  });
+      hidden: (o.reveal === "afterNarration" && !revealed) || (!!o.showWhen && done.has(o.showWhen.item) !== o.showWhen.done),
+      hop: !!o.showWhen?.done && done.has(o.showWhen.item),
+    }));
 
   // ── the turn ───────────────────────────────────────────────────────────────
   const turnClass = state.dir === 1 ? "fwd" : state.dir === -1 ? "back" : "none";
@@ -309,6 +324,9 @@ export function BookReader({ book, lang, child, onClose, plates, dev = import.me
           <BookPage
             layout={layout}
             plateSrcs={plateSrcs}
+            printed={!!print}
+            tint={slot?.tint}
+            occluders={page.occluders}
             fgSrc={plate?.fg}
             heroSrc={heroSrc}
             heroKey={`${page.id}|${slot?.pose ?? ""}`}

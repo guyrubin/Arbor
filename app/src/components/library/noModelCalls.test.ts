@@ -10,6 +10,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { isStaticJsonPath } from "../../lib/library/staticJson";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.resolve(here, "..", "..");
@@ -40,6 +41,10 @@ export function offences(code: string): string[] {
   return BANNED.filter(([, re]) => re.test(code)).map(([name]) => name);
 }
 
+/** The ONE file allowed a fetch: it reads same-origin static JSON only
+ *  (a hero sheet's manifest) and refuses every other path (tested below). */
+const FETCH_ALLOWED = "lib/library/staticJson.ts";
+
 describe("the book library makes zero model calls", () => {
   const all = DIRS.flatMap((d) => files(d));
 
@@ -52,8 +57,21 @@ describe("the book library makes zero model calls", () => {
   });
 
   it("no source carries a banned call or import", () => {
-    const bad = all.flatMap((f) => offences(readFileSync(f, "utf8")).map((o) => `${path.relative(SRC, f)}: ${o}`));
+    const bad = all.flatMap((f) => {
+      const rel = path.relative(SRC, f).split(path.sep).join("/");
+      return offences(readFileSync(f, "utf8"))
+        .filter((o) => !(rel === FETCH_ALLOWED && o === "fetch("))
+        .map((o) => `${rel}: ${o}`);
+    });
     expect(bad).toEqual([]);
+  });
+
+  it("the one fetch reads only same-origin static JSON under /_dev, /visuals or /audio", () => {
+    expect(isStaticJsonPath("/_dev/hero-sheets/dylan-v2/manifest.json")).toBe(true);
+    expect(isStaticJsonPath("/visuals/books/x/manifest.json")).toBe(true);
+    for (const bad of ["/api/generate.json", "/api/tts", "https://evil.example/x.json", "//evil.example/x.json", "/_dev/../api/x.json", "/_dev/x.js", "/_dev/x.json?y=1"]) {
+      expect(isStaticJsonPath(bad), bad).toBe(false);
+    }
   });
 
   it("negative controls: each banned shape is caught", () => {
@@ -63,6 +81,6 @@ describe("the book library makes zero model calls", () => {
     expect(offences('import { api } from "../../lib/api"')).toContain("import of lib/api");
     expect(offences('import { speakText } from "../../lib/voice"')).toContain("import of lib/tts, lib/voice, lib/naturalVoice, lib/heroComics");
     expect(offences('kidSay(id, "hi", "en")')).toContain("kidSay / autoReadPage (the TTS voice queue)");
-    expect(offences('const a = new Audio("/audio/books/x.m4a")')).toEqual([]);
+    expect(offences('const a = new Audio("/audio/books/x.mp3")')).toEqual([]);
   });
 });
