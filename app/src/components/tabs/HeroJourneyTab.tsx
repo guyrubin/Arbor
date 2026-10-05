@@ -630,7 +630,10 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
       (s) => windowFromRange(s.ageRange),
       childMonths,
     );
-    const ageCandidates = showAllAges ? orderedStories : ageVisibleStories;
+    // B-KID-70 (R-4b): illustrated stories (a cover in the child's theme) lead
+    // the catalogue; a stable partition, so the aim order holds inside each half.
+    const illustratedFirst = (list: HeroStorySpec[]) => [...list.filter((s) => storyCover(s.id)), ...list.filter((s) => !storyCover(s.id))];
+    const ageCandidates = illustratedFirst(showAllAges ? orderedStories : ageVisibleStories);
     // OBJ-KID-05 / KID-25: the kid home's "Today's adventure" banner names ONE
     // story. Pin the catalog to it — but only after the age view has run, so a
     // child the canon is not written for still gets the honest empty state
@@ -647,6 +650,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
     // the kid home passes, so both name the same story. The reason is shown.
     const tonightPick = pickTonightsStory(dayKey(new Date()), childProfile.id, {
       readIds: runs.map((r) => r.storyId), aims, ageMonths: childMonths, showAllAges,
+      prefer: (s) => storyCover(s.id) !== null,
     });
     const tonightStory = pinned ?? tonightPick.story ?? undefined;
     const tonightReason = pinned ? null : tonightPick.reason;
@@ -1449,6 +1453,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                 onPageResolved={({ beatNumber, key }) => { comicPageKeys.current.set(beatNumber, key); void shelveWhenComplete(); }}
                 immersive={immersiveMode}
                 fallbackArtUrl={storyCover(activeStory.id)?.src}
+                fallbackArtHasHero={storyCover(activeStory.id)?.hasHero ?? false}
               />
             </motion.div>
           ) : null}

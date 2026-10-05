@@ -383,9 +383,11 @@ export default function KidDashboard({
       aims: aimVirtues(loadCharter()),
       ageMonths: ageMonthsFromProfile(childProfile),
       showAllAges: loadShowAllAges("hero-journeys"),
+      // R-4b: lead with stories illustrated in this child's theme.
+      prefer: (s) => kidArt(kidTheme, storyCoverKey(s.id)) !== null,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data.today, childProfile.id, heroReadIds],
+    [data.today, childProfile.id, heroReadIds, kidTheme],
   );
   // B-KID-06: the banner names the one story it opens (HE title in Hebrew),
   // instead of "Start a hero story / Pick a world" on a door with no choice.

@@ -17,6 +17,10 @@ import type { HeroSceneRender } from "../../types";
 import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
 import { ArborMascot } from "../ui/ArborMascot";
 
+/** B-KID-70 (R-4b): where the cover is cropped on each beat (object-position),
+ *  so a book read on one cover still turns eight different pages. */
+export const BEAT_FOCUS = ["50% 22%", "30% 40%", "70% 35%", "50% 60%", "25% 25%", "75% 55%", "50% 45%", "50% 30%"] as const;
+
 /**
  * AVA-3 / S3: scene-art cache. Generated scene images are large data URLs, so they
  * are cached via `lib/sceneCache` — a memory-only, quota-safe LRU with in-flight
@@ -47,6 +51,7 @@ export function HeroScenePlayer({
   childIdentity,
   immersive = false,
   fallbackArtUrl,
+  fallbackArtHasHero = false,
   childId,
   onPageResolved,
 }: {
@@ -77,6 +82,8 @@ export function HeroScenePlayer({
   immersive?: boolean;
   /** Authored local environment art; contains no child and never triggers generation. */
   fallbackArtUrl?: string;
+  /** B-KID-70 (R-4b): the fallback picture already shows a hero — no cameo box over it. */
+  fallbackArtHasHero?: boolean;
   /** G2: enables the device-local page store so the story re-opens with its art. */
   childId?: string;
   /** G2: reports each resolved page key so the story can be saved as a book. */
@@ -167,9 +174,10 @@ export function HeroScenePlayer({
   return (
     <div className="flex flex-col items-center text-center gap-5">
       <div className="flex items-center gap-3 text-[11px] uppercase tracking-widest font-bold" style={{ color: "var(--arbor-green-ink)" }}>
-        <span>
-          {kidsStoriesText("journey.beat", aiLang, { current: beatNumber, total: beatTotal })}
-        </span>
+        {/* R-4b: a kid-register page indicator — numerals only on screen,
+            the full sentence for the screen reader (EN + HE). */}
+        <span className="sr-only">{kidsStoriesText("journey.beat", aiLang, { current: beatNumber, total: beatTotal })}</span>
+        <span aria-hidden="true" dir="ltr" className="normal-case tracking-normal text-[13px]">{beatNumber} / {beatTotal}</span>
         {scene.narration && <SpeakButton text={scene.narration} lang={uiLang} className="touch-target" />}
         {/* KID-26: file downloads are a parent affordance — never reachable from inside Kid Mode. */}
         {sceneArt && !isKidModeActive() && (
@@ -210,11 +218,14 @@ export function HeroScenePlayer({
       ) : (
         <div className="relative w-full max-w-3xl overflow-hidden rounded-[20px] shadow-2xl" style={{ aspectRatio: "3 / 2", outline: "3px solid var(--comic-ink)", background: "var(--arbor-paper-deep)" }}>
           {fallbackArtUrl ? (
-            <img src={fallbackArtUrl} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-contain" />
+            // R-4b: the story's cover is the page on every beat — cropped, with
+            // the focal point moving per beat so no two pages are identical.
+            <img src={fallbackArtUrl} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: BEAT_FOCUS[(beatNumber - 1) % BEAT_FOCUS.length] }} />
           ) : (
             <StoryIllustration seed={seed} className="absolute inset-0 h-full w-full" />
           )}
           <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--comic-ink) 8%, transparent), transparent 60%)" }} />
+          {!(fallbackArtUrl && fallbackArtHasHero) && (
           <div
             className="absolute bottom-2 h-[48%] max-h-48 rounded-2xl p-1"
             style={{ insetInlineStart: "5%", background: "var(--arbor-paper-elevated)", outline: "2px solid var(--comic-ink)", boxShadow: "var(--comic-pop)" }}
@@ -233,6 +244,7 @@ export function HeroScenePlayer({
               <ArborMascot size={120} mood="wave" className="h-full w-auto" />
             )}
           </div>
+          )}
         </div>
       )}
 

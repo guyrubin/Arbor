@@ -88,7 +88,7 @@ describe("B-PLAY-16 · both call sites pass the same inputs; the cover shows the
   });
 
   it("the cover passes the same inputs and renders the reason line", () => {
-    expect(stories).toMatch(/pickTonightsStory\(dayKey\(new Date\(\)\), childProfile\.id, \{\s*readIds: runs\.map\(\(r\) => r\.storyId\), aims, ageMonths: childMonths, showAllAges,\s*\}\)/);
+    expect(stories).toMatch(/pickTonightsStory\(dayKey\(new Date\(\)\), childProfile\.id, \{\s*readIds: runs\.map\(\(r\) => r\.storyId\), aims, ageMonths: childMonths, showAllAges,\s*prefer: \(s\) => storyCover\(s\.id\) !== null,\s*\}\)/);
     expect(stories).toContain('data-testid="stories-tonight-reason"');
     expect(stories).toContain("t(TONIGHT_AIM_REASON_KEY[tonightReason.metric])");
     expect(stories).not.toContain("chooseTonightsStory(dayKey");

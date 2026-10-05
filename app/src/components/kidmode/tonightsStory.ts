@@ -53,6 +53,10 @@ export interface TonightContext {
   showAllAges?: boolean;
   /** The catalogue (defaults to HERO_STORIES; injectable for tests). */
   stories?: readonly HeroStorySpec[];
+  /** B-KID-70 (R-4b): stories to lead with — those with a cover in the child's
+   *  theme. Applied after the age view: when at least one age-visible story
+   *  qualifies, the rest of the pick runs inside that subset. */
+  prefer?: (s: HeroStorySpec) => boolean;
 }
 
 /** The reason line's key per aimed virtue — static keys, EN + HE in celebrate.ts. */
@@ -72,10 +76,12 @@ export function pickTonightsStory(
   ctx: TonightContext = {},
 ): { story: HeroStorySpec | null; reason: TonightReason } {
   const all = ctx.stories ?? HERO_STORIES;
-  const candidates =
+  const ageVisible =
     ctx.showAllAges || ctx.ageMonths == null
       ? [...all]
       : filterByAge(all, (s) => windowFromRange(s.ageRange), ctx.ageMonths).visible;
+  const preferred = ctx.prefer ? ageVisible.filter(ctx.prefer) : [];
+  const candidates = preferred.length > 0 ? preferred : ageVisible;
   if (candidates.length === 0) return { story: null, reason: { kind: "none" } };
 
   const read = new Set(ctx.readIds ?? []);

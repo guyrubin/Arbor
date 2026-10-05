@@ -59,3 +59,42 @@ describe("B-KID-42: a pinned story opens the book on arrival", () => {
     expect(pre).not.toContain("pinnedOpened");
   });
 });
+
+describe("B-KID-70 (R-4b): tonight and the catalogue lead with illustrated stories", () => {
+  it("(a) the pick stays inside the illustrated subset when one exists in the age view", async () => {
+    const { pickTonightsStory } = await import("./tonightsStory");
+    const { HERO_STORIES } = await import("../../lib/heroJourneys");
+    const { kidArt, storyCoverKey } = await import("../../lib/kidThemeManifest");
+    const prefer = (s: { id: string }) => kidArt("film3d", storyCoverKey(s.id)) !== null;
+    for (let d = 1; d <= 28; d++) {
+      const day = `2026-10-${String(d).padStart(2, "0")}`;
+      const { story } = pickTonightsStory(day, "child-a", { prefer, showAllAges: true });
+      expect(prefer(story!), `${day} picked ${story!.id}`).toBe(true);
+    }
+    // the family logic still runs inside the subset: read stories are skipped
+    const illustrated = HERO_STORIES.filter(prefer).map((s) => s.id);
+    const { story } = pickTonightsStory("2026-10-05", "child-a", { prefer, showAllAges: true, readIds: illustrated.slice(1) });
+    expect(story!.id).toBe(illustrated[0]);
+    // nothing illustrated in the age view → the whole age view, unchanged
+    const none = pickTonightsStory("2026-10-05", "child-a", { prefer: () => false, showAllAges: true });
+    expect(none.story!.id).toBe(pickTonightsStory("2026-10-05", "child-a", { showAllAges: true }).story!.id);
+  });
+  it("(a) both surfaces pass the same preference (banner and cover name one story)", () => {
+    expect(dash).toContain("prefer: (s) => kidArt(kidTheme, storyCoverKey(s.id)) !== null,");
+    expect(tab).toContain("prefer: (s) => storyCover(s.id) !== null,");
+    expect(tab).toContain("const ageCandidates = illustratedFirst(");
+  });
+  it("(c) a covered tonight story wears its cover and no sticker box when the cover shows a hero", async () => {
+    const { kidArt, storyCoverKey } = await import("../../lib/kidThemeManifest");
+    expect(kidArt("film3d", storyCoverKey("noahs-ark"))?.hasHero).toBe(true);
+    expect(worldArtwork("story-noahs-ark", "film3d")?.hasHero).toBe(true);
+    expect(dash).toContain("{!tonightsArtHasHero && (");
+  });
+  it("(d) the reader uses the cover on every beat, cropped per beat, without the cameo over a hero cover", () => {
+    const player = readFileSync(path.join(SRC, "components/stories/HeroScenePlayer.tsx"), "utf8");
+    expect(player).toContain("objectPosition: BEAT_FOCUS[(beatNumber - 1) % BEAT_FOCUS.length]");
+    expect(player).toContain("{!(fallbackArtUrl && fallbackArtHasHero) && (");
+    expect(player).toContain('<span aria-hidden="true" dir="ltr"');
+    expect(tab).toContain("fallbackArtHasHero={storyCover(activeStory.id)?.hasHero ?? false}");
+  });
+});
