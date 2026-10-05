@@ -148,8 +148,8 @@ function tokenColour(name: string): string {
 
 /** A token colour at alpha 0 (a gradient's clear end keeps its hue). */
 function clearOf(colour: string): string {
-  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(colour);
-  return m ? `rgba(${parseInt(m[1], 16)}, ${parseInt(m[2], 16)}, ${parseInt(m[3], 16)}, 0)` : "transparent";
+  // #rrggbb -> #rrggbb00 (the same hue, fully clear); anything else -> transparent.
+  return /^#[0-9a-f]{6}$/i.test(colour) ? `${colour}00` : "transparent";
 }
 
 /** The tint's wash colours (tokens): light from the upper left, shade below. */
