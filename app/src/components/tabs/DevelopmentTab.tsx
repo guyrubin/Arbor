@@ -11,7 +11,6 @@ import { latestRecheckDueAt } from "../../lib/screeningRecheck";
 import { comparisonAgeMonths, milestoneText, selectWeeklyFocus } from "../../lib/milestoneData";
 import { ageMonthsFromProfile } from "../../lib/childAge";
 import DevScoreCard from "../sections/DevScoreCard";
-import PhysicalGrowthCard from "../sections/PhysicalGrowthCard";
 import ScreeningSheet from "../sections/ScreeningSheet";
 import { en as fullPictureEn, he as fullPictureHe } from "../../lib/i18nElevation/fullpicture";
 import { tGCare } from "../../lib/growthCareText";
@@ -527,9 +526,9 @@ export default function DevelopmentTab() {
           </button>
         ))}
       </div>
-      {/* C4 — Physical growth: parent-logged measurements → longitudinal
-          trajectory. Raw data only; pediatrician holds the reference charts. */}
-      <PhysicalGrowthCard />
+      {/* B-GROWTH-05: physical measurements left this hub for Profile's
+          Measurements disclosure (spine domain 7); the pediatrician packet
+          still reads growthEntries. */}
       {/* B-GROWTH-03: the ritual card lives on #/family and the reminders card
           on #/smart-reminders — the homes that own their job. */}
       <ScreeningSheet open={checkOpen} onClose={() => setCheckOpen(false)} />

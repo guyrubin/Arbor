@@ -62,6 +62,9 @@ export const en: Record<string, string> = {
 
   // ── GP-26 / IA-09 · the strengths leaf gets one live door
   "elev.growthTruth.profile.openStrengths": "Open strengths & challenges",
+  // B-GROWTH-05 — physical measurements live on Profile (spine domain 7).
+  "elev.growthTruth.profile.measurements.title": "Measurements",
+  "elev.growthTruth.profile.measurements.sub": "Height, weight and head size you noted, kept for the pediatrician.",
 
   // (B-GROWTH-26: the five practice-domain names moved to the one domain
   //  registry, lib/i18nElevation/domains.ts.)
@@ -147,6 +150,8 @@ export const he: Record<string, string> = {
   "elev.growthTruth.profile.cta.addFact": "להוסיף עובדה על {name}",
 
   "elev.growthTruth.profile.openStrengths": "לפתוח חוזקות ואתגרים",
+  "elev.growthTruth.profile.measurements.title": "מדידות",
+  "elev.growthTruth.profile.measurements.sub": "גובה, משקל והיקף ראש שתיעדתם, שמורים לביקור אצל רופא הילדים.",
 
   // (B-GROWTH-26: שמות התחומים עברו למרשם התחומים, lib/i18nElevation/domains.ts.)
 

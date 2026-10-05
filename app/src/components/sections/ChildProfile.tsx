@@ -10,6 +10,8 @@ import { api } from "../../lib/api";
 import { scopeDisplayLabels } from "../../lib/shareScopes";
 import type { ShareGrant } from "../../types";
 import ProfileEditDrawer from "../profile/ProfileEditDrawer";
+// B-GROWTH-05 — physical measurements (spine domain 7) moved here from Growth.
+import PhysicalGrowthCard from "./PhysicalGrowthCard";
 import { useProfile } from "../../context/ProfileContext";
 // B-CAREPRO-06: memory text renders through the same plain-words scrub the
 // Story queue uses — the parent never reads a fact in an assessment register.
@@ -229,6 +231,24 @@ export default function ChildProfile() {
           </div>
         </div>
         <button onClick={() => setEditingProfile(true)} className="mt-3 min-h-11 text-sm font-bold" style={{ color: "var(--arbor-green-ink)" }}><Icon name="edit" size={16} className="inline-block me-1" />{t("elev.wave2Knowledge.profile.edit")}</button>
+        {/* B-GROWTH-05 — Measurements (spine domain 7): the parent-logged
+            growthEntries log, moved off the Growth hub. The UNCHANGED card,
+            closed by default; the pediatrician packet still reads the same
+            collection. Part of the profile-who module (no stamp of its own):
+            the route keeps ONE demotion disclosure and its budget. */}
+        <details data-testid="profile-measurements" className="mt-5 border-t pt-4" style={{ borderColor: "var(--arbor-rule)" }}>
+          <summary className="cursor-pointer list-none min-h-[44px] flex items-center gap-2.5">
+            <IconBadge tone="mint" size={36}><Icon name="straighten" size={20} /></IconBadge>
+            <span className="min-w-0">
+              <span className="block text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.growthTruth.profile.measurements.title")}</span>
+              <span className="block text-[12px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.growthTruth.profile.measurements.sub")}</span>
+            </span>
+            <Icon name="expand_more" size={20} className="ms-auto" style={{ color: "var(--arbor-muted)" }} />
+          </summary>
+          <div className="mt-3">
+            <PhysicalGrowthCard />
+          </div>
+        </details>
         {/* Family Circle — reads live ShareGrants (the SAME source Trusted Sharing
               uses); "Add a member" routes there rather than duplicating its form. */}
           <section aria-labelledby="profile-family-title" className="mt-5 border-t pt-5" style={{ borderColor: "var(--arbor-rule)" }}>
