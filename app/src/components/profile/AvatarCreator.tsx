@@ -9,6 +9,7 @@ import { useAsyncAction } from "../../hooks/useAsyncAction";
 import { useArborOptional } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { Avatar } from "../ui/Avatar";
+import { resolveHeroUrl } from "../ui/HeroAvatar";
 import { ProvenanceBadge } from "../ui/ProvenanceBadge";
 import { ShareButton } from "../ui/ShareButton";
 import { TrustPanel } from "../ui/TrustPanel";
@@ -189,7 +190,10 @@ export default function AvatarCreator({
 
   const characterReady = character?.preset !== "custom" || Boolean(character.customIdea?.trim());
   const canGenerate = characterReady && (mode === "describe" || (mode === "photo" && consent && !!refPhoto));
-  const currentAvatarUrl = (arbor?.childProfile as unknown as { photoUrl?: string } | undefined)?.photoUrl;
+  // B-KID-30 (VETO): "Current hero" shows the TARGET child's generated hero
+  // only — resolveHeroUrl refuses a real photo — and never another child's.
+  const targetChild = arbor?.childProfile && arbor.childProfile.id === childId ? arbor.childProfile : undefined;
+  const currentAvatarUrl = targetChild ? resolveHeroUrl(targetChild as Parameters<typeof resolveHeroUrl>[0]) : null;
 
   const inputStyle: React.CSSProperties = { background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" };
   const field = (label: string, key: keyof AvatarDescriptors, placeholder: string) => (

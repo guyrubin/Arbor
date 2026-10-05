@@ -204,3 +204,20 @@ describe("avatar draft identity snapshot", () => {
     expect(draft).toMatchObject({ style: "watercolor", source: "photo" });
   });
 });
+
+describe("B-KID-30 (VETO) — the creator never labels the real photo 'Current hero'", () => {
+  it("the row reads the target child's generated hero through resolveHeroUrl", async () => {
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync(new URL("./AvatarCreator.tsx", import.meta.url), "utf8");
+    expect(src).toContain("const targetChild = arbor?.childProfile && arbor.childProfile.id === childId ? arbor.childProfile : undefined;");
+    expect(src).toContain("const currentAvatarUrl = targetChild ? resolveHeroUrl(");
+    expect(src).not.toMatch(/currentAvatarUrl = \(arbor\?\.childProfile[^;]*\)\?\.photoUrl;/);
+    expect(src).toContain("{currentAvatarUrl && !visibleResult && (");
+  });
+  it("a photo-only child resolves to no hero (no row, no <img> of the photo)", async () => {
+    const { resolveHeroUrl } = await import("../ui/HeroAvatar");
+    expect(resolveHeroUrl({ photoUrl: "https://storage.example/kid.jpg", avatar: undefined })).toBeNull();
+    expect(resolveHeroUrl({ photoUrl: "data:image/jpeg;base64,AAAA", avatar: undefined })).toBeNull();
+    expect(resolveHeroUrl({ photoUrl: "data:image/png;base64,HERO", avatar: { style: "soft3d", source: "descriptor" } })).toBe("data:image/png;base64,HERO");
+  });
+});
