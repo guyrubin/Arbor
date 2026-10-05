@@ -295,7 +295,7 @@ export default function ChildProfile() {
             {pendingQueue.slice(0, 3).map((m, i) => (
               <li key={m.memoryId} data-testid="profile-remember-fact" className="rounded-[var(--r-lg)] p-4" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", opacity: isMemoryUpdating === m.memoryId ? 0.6 : 1 }}>
                 {m.createdAt && (
-                  <p className="t-xs" style={{ color: "var(--arbor-muted)" }}>{t("elev.childmem.provenance", { date: fmtDay(m.createdAt, uiLang) })}</p>
+                  <p className="t-xs" style={{ color: "var(--arbor-muted)" }}>{t("elev.childmem.provenance.inference", { date: fmtDay(m.createdAt, uiLang) })}</p>
                 )}
                 <p className="mt-1 text-sm" style={{ fontFamily: "var(--font-editorial)", fontSize: "var(--t-md)", color: "var(--arbor-ink)" }}><FreeText text={toParentWords(m.fact)} /></p>
                 <div className="mt-3 flex flex-wrap items-center gap-2">

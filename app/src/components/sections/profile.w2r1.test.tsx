@@ -103,6 +103,19 @@ describe("#/profile Hebrew page — no Latin chrome (Law 8)", () => {
   });
 });
 
+describe("critic r1 (P0) — a pending fact is an inference, never 'you wrote'", () => {
+  for (const loc of ["en", "he"] as const) {
+    it(`${loc}: the pending card says Arbor noticed it in the conversation`, () => {
+      h.locale = loc;
+      h.pending = [{ memoryId: "p1", fact: "Mornings go smoother when his bag is packed the night before.", status: "pending", createdAt: "2026-10-05T10:00:00.000Z", source: "chat", retention: "90d" }];
+      const html = renderToStaticMarkup(<ChildProfile />);
+      const lead = translate(loc, "elev.childmem.provenance.inference", { date: "X" }).split("X")[0];
+      expect(text(html)).toContain(lead.trim());
+      expect(text(html)).not.toMatch(/From what you wrote|ממה שכתבתם/);
+    });
+  }
+});
+
 describe("#/profile — the cut chapter, the count and the knows line", () => {
   it("the 'Now' chapter is gone: no coral moment card, no 'marked resolved'", () => {
     h.locale = "en";

@@ -584,7 +584,7 @@ export function MemoryRow({ m, busy, onApprove, onReject, onForget, onEdited, pr
               parent's own words — when the source is a parent conversation. */}
           {primary && dated && PARENT_MEMORY_SOURCES.has(m.source) && (
             <p data-testid="memory-provenance" className="t-sm mb-1.5 px-3 py-2" style={{ background: "var(--arbor-paper-deep)", borderRadius: "var(--r)", color: "var(--arbor-ink)", fontFamily: uiLang === "he" ? "var(--font-display)" : "var(--font-editorial)" }}>
-              {t("elev.childmem.provenance", { date: dated })}
+              {t("elev.childmem.provenance.inference", { date: dated })}
             </p>
           )}
           <p className="text-sm max-w-[65ch]" dir="auto" style={{ color: shownFact ? "var(--arbor-ink)" : "var(--arbor-muted)" }}>{shownFact || t("elev.childmem.fact.unshown")}</p>

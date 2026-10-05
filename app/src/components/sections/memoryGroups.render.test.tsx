@@ -109,14 +109,15 @@ describe("W2-CAREPRO r1 · the stamp is the lead row's Approve, never a wrapper"
    says what changes next — no toast, no count, no confetti. */
 describe("B-CAREPRO-NEW-2k/2l · provenance on the lead row, an in-place settle line", () => {
   for (const locale of ["en", "he"] as const) {
-    it(`${locale}: a chat-sourced lead fact carries 'From what you wrote on {date}'; a non-lead row does not`, () => {
+    it(`${locale}: a chat-sourced pending lead fact says Arbor NOTICED it (an inference, critic r1) — never 'you wrote'; a non-lead row does not`, () => {
       harness.locale = locale;
       const [group] = groupPendingMemory([fact(1, "Dylan cries at bedtime"), fact(2, "Dylan needs comfort at bedtime")]);
       const lead = renderToStaticMarkup(<PendingGroupCard group={group} lead isMemoryUpdating={null} onDecide={vi.fn()} />);
       const prov = /<p data-testid="memory-provenance"[^>]*>([^<]*)<\/p>/.exec(lead);
       expect(prov).toBeTruthy();
-      expect(prov![1].startsWith(translate(locale, "elev.childmem.provenance", { date: "X" }).split("X")[0])).toBe(true);
+      expect(prov![1].startsWith(translate(locale, "elev.childmem.provenance.inference", { date: "X" }).split("X")[0])).toBe(true);
       expect(prov![0]).toContain("var(--arbor-paper-deep)");
+      expect(prov![1]).not.toMatch(/you wrote|שכתבתם/i);
       const quiet = renderToStaticMarkup(<PendingGroupCard group={group} isMemoryUpdating={null} onDecide={vi.fn()} />);
       expect(quiet).not.toContain('data-testid="memory-provenance"');
     });
