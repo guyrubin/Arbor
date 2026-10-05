@@ -65,6 +65,7 @@ import {
 } from "../server/digestOptIn.js";
 import { buildConsultRequest, type ConsultStore } from "../server/consultRequests.js";
 import { IMAGE_ALLOWANCE, imageFailureResponse } from "../server/imageQuota.js";
+import { childNamesFrom, letteredWithoutNames, replaceNames } from "../server/imagePromptNames.js";
 import { decideLive, LIVE_VERTEX_EU_PROVIDER } from "../ai/liveResidency.js";
 import { cohortTagFor, resolveEntitlement, COACH_METER, type EntitlementStore } from "../server/entitlements.js";
 import type { ReferralStore } from "../server/referral.js";
@@ -2574,11 +2575,17 @@ Friendly lighting and a readable composition. Gentle, non-scary, non-violent and
   // (Nano Banana), which auto-applies SynthID + C2PA provenance.
   router.post("/generate-comic", async (req, res) => {
     const { avatar, heroName, sidekickName, theme, dialogue, sfx, setting, style, cover, title } = req.body ?? {};
-    const safeName = String(heroName ?? "the hero").slice(0, 40);
+    // B-KID-40 (KB-45): the names are kept ONLY to scrub them — no child's name
+    // reaches the image model (it is never drawn; a lettered field naming a
+    // child is dropped, free text says "the hero" / "the sidekick").
+    const heroNames = childNamesFrom(heroName);
+    const sidekickNames = childNamesFrom(sidekickName).filter((n) => !heroNames.includes(n));
+    const allNames = [...heroNames, ...sidekickNames];
+    const scrub = (text: string) => replaceNames(replaceNames(text, heroNames, "the hero"), sidekickNames, "the sidekick");
     // G2: a cover is a title page — bold lettered title, no interior panels, no bubble.
     const isCover = cover === true;
-    const safeTitle = String(title ?? "").replace(/["\n]/g, " ").trim().slice(0, 60);
-    const themeText = String(theme ?? "a brave, kind everyday adventure").slice(0, 200);
+    const safeTitle = letteredWithoutNames(String(title ?? "").replace(/["\n]/g, " ").trim().slice(0, 60), allNames);
+    const themeText = scrub(String(theme ?? "a brave, kind everyday adventure").slice(0, 200));
 
     const escalationMatch = screenForImmediateEscalation({ note: `${themeText} ${dialogue ?? ""}` });
     if (escalationMatch) {
@@ -2606,7 +2613,7 @@ Friendly lighting and a readable composition. Gentle, non-scary, non-violent and
       : "KA-POW!, ZAP!, WHOOSH!";
     // Dialogue bubble is OPTIONAL: standalone comics pass a line; embedded story
     // panels omit it (the narration caption carries the words) so text isn't doubled.
-    const dialogueLine = dialogue === undefined || dialogue === null ? "" : String(dialogue).slice(0, 120);
+    const dialogueLine = dialogue === undefined || dialogue === null ? "" : letteredWithoutNames(String(dialogue).slice(0, 120), allNames);
 
     // Comic composition and rendering medium are independent of costume. A
     // supplied reference is authoritative for clothing and accessories.
@@ -2614,13 +2621,12 @@ Friendly lighting and a readable composition. Gentle, non-scary, non-violent and
   ? `Create a SINGLE dramatic full-page COMIC-BOOK COVER: one bold hero image, a clear cover border, no interior panels, no speech bubbles${safeTitle ? `, with the title "${safeTitle}" lettered big and bold at the top` : ""}.`
   : "Create a SINGLE dynamic full-page COMIC PANEL with a clear panel border, expressive composition, readable action, and lively comic energy suitable for ages 4-8."}
 Rendering medium: ${stylePrompt}.
-Hero name: ${safeName}.
 ${referenceImage
   ? "The attached stylized character is the main figure. Preserve the reference character's face, hair, age, clothing, character intent and accessories exactly. Do not add, remove or replace identity-defining clothing or props. Do not print the hero's name on clothing."
   : "Feature a single friendly child protagonist as the central, large, active figure, with clothing and accessories that naturally fit the scene."}
-${sidekickName ? `Include a friendly younger sidekick named ${String(sidekickName).slice(0, 40)} beside the hero, in clothing natural to the scene and distinct from the hero's identity.` : ""}
+${sidekickNames.length ? "Include a friendly younger sidekick beside the hero, in clothing natural to the scene and distinct from the hero's identity." : ""}
 Scene/theme: ${themeText}.
-Setting: ${String(setting ?? "a cozy, lived-in family home interior").slice(0, 160)}.
+Setting: ${scrub(String(setting ?? "a cozy, lived-in family home interior").slice(0, 160))}.
 Include 2-3 BIG, bold, stylized comic sound-effect words bursting in the scene with thick outlines and bright fills: ${sfxLine}.
 ${dialogueLine ? `Include ONE clean white speech bubble with a bold tail, containing the short, legible, friendly line: "${dialogueLine}".` : "Do not draw any speech bubbles or sentences — only the short sound-effect words."}
 Wholesome and age-appropriate for young children: confident, joyful and exciting, but NO real violence, weapons, blood, fear, or scary imagery. Keep all text short, correctly spelled, and clearly legible.`;
@@ -2916,7 +2922,7 @@ RULES:
 - For the 'decision' beat narration, end by inviting the child to choose — do NOT say which option is best.
 - Personalize each of the ${choiceCount} choices: rewrite "label" as a short first-person action, and write a 1-2 sentence "consequence" expanding its cue. Keep every consequence kind — no choice is harshly punished.
 - This story is rendered as a COMIC BOOK starring ${heroName}. For each beat also return:
-  • "imagePrompt": a one-line description of a dynamic, exciting comic-book ACTION panel for this beat (vivid pose, setting, emotion) — describe only the scene, no text/words drawn in it.
+  • "imagePrompt": a one-line description of a dynamic, exciting comic-book ACTION panel for this beat (vivid pose, setting, emotion) — describe only the scene, no text/words drawn in it. Never use anyone's name in imagePrompt: call the child "the hero".
   • "sfx": an array of 2-3 SHORT, punchy comic sound-effect words IN THE SAME LANGUAGE AS THE STORY that fit this exact beat (${language === "he" ? 'Hebrew, e.g. ["ואוש!","בום!"]; for a calm beat ["אהה…","נצנוץ!"]' : 'English, e.g. ["WHOOSH!","BOOM!"]; for a calm beat ["AHH…","TWINKLE!"]'}). Vary them per beat — never reuse the same set.
   • "dialogue": ONE very short, exciting first-person hero line ${heroName} would shout or say in this beat (max ~8 words), IN THE SAME LANGUAGE AS THE STORY, for a comic speech bubble. Keep it kid-friendly and energetic.
 - Keep the reflection's practiced[] and questions[] close to those provided, lightly personalized to ${heroName}.
