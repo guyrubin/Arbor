@@ -216,40 +216,6 @@ export default function RitualTurnCard({ nowMs, onStart, started, primaryMovePro
         </div>
       </div>
 
-      <button
-        type="button"
-        onClick={() => setStepsOpen((v) => !v)}
-        aria-expanded={stepsOpen}
-        className="mt-3 flex w-full items-center justify-between gap-2 rounded-2xl px-4 text-start"
-        style={{ minHeight: 44, background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}
-      >
-        <span className="text-[13px] font-bold" dir="auto" style={{ color: "var(--arbor-ink)" }}>
-          {t("elev.rh.ritual.steps")}
-        </span>
-        <Icon name="expand_more" size={18} className={stepsOpen ? "rotate-180" : ""} />
-      </button>
-
-      {stepsOpen && (
-        <ol className="mt-3 space-y-2" data-testid="ritual-turn-steps">
-          {steps.map((s, i) => (
-            <li
-              key={i}
-              className="flex items-start gap-2.5 text-[13px] leading-relaxed"
-              dir="auto"
-              style={{ color: "var(--arbor-ink-soft)" }}
-            >
-              <span
-                className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-extrabold"
-                style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}
-              >
-                {i + 1}
-              </span>
-              <span>{s}</span>
-            </li>
-          ))}
-        </ol>
-      )}
-
       {/* W2-SHELLPLAY critic r1: ONE primary control — "Start it this week"
           puts the ritual's first step on Today (the host's move, stamped by
           the host) on the page's single --gradient-cta. "We did this" is the
@@ -285,6 +251,42 @@ export default function RitualTurnCard({ nowMs, onStart, started, primaryMovePro
           {t("elev.rh.ritual.did")}
         </button>
       </div>
+      {/* SHIP-FIX (W2-SHELLPLAY r3 P1): reason -> action -> detail. "How it
+          goes" follows the CTA row as a quiet 44 px disclosure (no deep well),
+          so the stamped start clears the fixed bottom nav at 375. */}
+      <button
+        type="button"
+        data-testid="ritual-turn-how"
+        onClick={() => setStepsOpen((v) => !v)}
+        aria-expanded={stepsOpen}
+        className="mt-1 inline-flex items-center gap-1 px-1 t-sm font-bold text-start"
+        style={{ minHeight: 44, color: "var(--arbor-muted)" }}
+      >
+        <span dir="auto">{t("elev.rh.ritual.steps")}</span>
+        <Icon name="expand_more" size={18} className={stepsOpen ? "rotate-180" : ""} />
+      </button>
+
+      {stepsOpen && (
+        <ol className="mt-1 space-y-2" data-testid="ritual-turn-steps">
+          {steps.map((s, i) => (
+            <li
+              key={i}
+              className="flex items-start gap-2.5 text-[13px] leading-relaxed"
+              dir="auto"
+              style={{ color: "var(--arbor-ink-soft)" }}
+            >
+              <span
+                className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-extrabold"
+                style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}
+              >
+                {i + 1}
+              </span>
+              <span>{s}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+
     </section>
   );
 }

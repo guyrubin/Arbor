@@ -7,7 +7,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { FAMILY_RITUALS, type FamilyRitual } from "../../lib/familyRituals";
 import RitualTurnCard from "../nextopen/RitualTurnCard";
-import { initialCharterValues, saveFamilyCharter } from "../../lib/familyCharter";
+import { hasSavedFamilyCharter, initialCharterValues, saveFamilyCharter } from "../../lib/familyCharter";
 // B-PLAY-21: the ONE tone sheet (B-ASKJB-12's) — same component, same store
 // (selectedLens → the prompt's lens). No lens bodies are imported here.
 import ToneSheet, { toneLabel } from "../coach/ToneSheet";
@@ -54,6 +54,11 @@ export default function FamilyFormation() {
   const { toast } = useToast();
   const he = aiLang === "he";
   const [values, setValues] = useState<string[]>(() => initialCharterValues(undefined, uiLang));
+  // SHIP-FIX (W2-SHELLPLAY r3 product P1-1, truth): until the family saves a
+  // charter, the values on screen are the language's STARTER words — labelled
+  // as such, and never handed to the turn card as "on your charter" (the same
+  // defect familyCharter.ts records and fixed on the hero strip).
+  const [saved, setSaved] = useState<boolean>(() => hasSavedFamilyCharter());
   const [input, setInput] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
   // W2-SHELLPLAY critic r2: the ritual the turn card shows is not repeated in
@@ -63,7 +68,7 @@ export default function FamilyFormation() {
   const [wayOpen, setWayOpen] = useState(false);
 
   // Persist on the edit, and render exactly what a reload will show.
-  const commit = (next: string[]) => setValues(saveFamilyCharter(next));
+  const commit = (next: string[]) => { setValues(saveFamilyCharter(next)); setSaved(true); };
   const add = () => { const v = input.trim(); if (v && !values.includes(v)) { commit([...values, v]); setInput(""); } };
   const remove = (v: string) => commit(values.filter((x) => x !== v));
 
@@ -98,9 +103,25 @@ export default function FamilyFormation() {
       <section data-testid="family-way" className={`${cardCls} p-4`} aria-labelledby="family-way-title">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h2 id="family-way-title" className="t-xs font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("elev.family.way.title")}</h2>
+            <div className="flex flex-wrap items-baseline gap-x-1.5">
+              <h2 id="family-way-title" className="t-xs font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("elev.family.way.title")}</h2>
+              {!saved && values.length > 0 && (
+                <span data-testid="family-way-starter" className="t-xs" style={{ color: "var(--arbor-muted)" }}>· {t("elev.family.way.starter")}</span>
+              )}
+            </div>
+            {/* r3 P2-2: each separator rides on the value before it, so a wrap
+                never opens a line with "·". */}
             <p className="t-sm font-bold mt-1" dir="auto" style={{ color: "var(--arbor-ink)" }}>
-              {values.length > 0 ? <bdi>{values.join(" · ")}</bdi> : t("elev.family.way.empty")}
+              {values.length > 0 ? (
+                <bdi>
+                  {values.map((v, i) => (
+                    <React.Fragment key={v}>
+                      <span className="whitespace-nowrap">{v}{i < values.length - 1 ? " ·" : ""}</span>
+                      {i < values.length - 1 ? " " : null}
+                    </React.Fragment>
+                  ))}
+                </bdi>
+              ) : t("elev.family.way.empty")}
             </p>
             <p className="t-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>{t("elev.family.way.tone", { tone: toneLabel(selectedLens, t) })}</p>
           </div>
@@ -167,7 +188,7 @@ export default function FamilyFormation() {
         {/* B-GROWTH-03 / ENG-25 — the ritual whose turn has come round, beside
             the rituals it belongs to (moved from #/development). Renders
             nothing when no ritual is due. */}
-        <div className="mb-4 empty:hidden"><RitualTurnCard onStart={startRitual} started={ritualStarted} primaryMoveProps={RITUAL_MOVE} onTurnChange={onTurnChange} charterValues={values} childName={childProfile?.name} childAge={childProfile?.age} /></div>
+        <div className="mb-4 empty:hidden"><RitualTurnCard onStart={startRitual} started={ritualStarted} primaryMoveProps={RITUAL_MOVE} onTurnChange={onTurnChange} charterValues={saved ? values : []} childName={childProfile?.name} childAge={childProfile?.age} /></div>
         <div className="grid sm:grid-cols-2 gap-4">
           {FAMILY_RITUALS.filter((r) => r.id !== turnId).map((r) => {
             const glyph = RITUAL_ICON[r.id] ?? "history_edu";

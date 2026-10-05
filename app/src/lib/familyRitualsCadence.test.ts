@@ -179,7 +179,7 @@ describe("ENG-25 → B-GROWTH-03 — the cadence is surfaced on #/family", () =>
     // W2-SHELLPLAY r1: the card is mounted inside the rituals module and
     // carries the route's ONE stamp on its start control (spread from the leaf).
     // W2-SHELLPLAY r2 (B-SHELL-NEW-2l): the host also passes the charter and the child
-    expect(growth).toMatch(/<RitualTurnCard onStart=\{startRitual\} started=\{ritualStarted\} primaryMoveProps=\{RITUAL_MOVE\} onTurnChange=\{onTurnChange\} charterValues=\{values\} childName=\{childProfile\?\.name\} childAge=\{childProfile\?\.age\} \/>/);
+    expect(growth).toMatch(/<RitualTurnCard onStart=\{startRitual\} started=\{ritualStarted\} primaryMoveProps=\{RITUAL_MOVE\} onTurnChange=\{onTurnChange\} charterValues=\{saved \? values : \[\]\} childName=\{childProfile\?\.name\} childAge=\{childProfile\?\.age\} \/>/);
     const mod = growth.indexOf('data-module="family-rituals"');
     expect(mod).toBeGreaterThan(-1);
     expect(growth.indexOf("<RitualTurnCard")).toBeGreaterThan(mod);
@@ -292,5 +292,48 @@ describe("W2-SHELLPLAY r2 · B-SHELL-NEW-2l — the first turn names the family'
     }
     // NEGATIVE CONTROL: the old first-time line is the deficit the guard keeps off the value path
     expect(en["elev.rh.ritual.first"]).toMatch(/not run/);
+  });
+});
+
+describe("SHIP-FIX r3 · #/family — the move clears the nav, and starter words are never 'your charter'", () => {
+  const family = read("../components/sections/FamilyFormation.tsx");
+  const card = read("../components/nextopen/RitualTurnCard.tsx");
+  const active = card.slice(card.indexOf("const { ritual, firstTime } = turn;"));
+
+  it("reason -> action -> detail: the CTA row renders BEFORE 'How it goes', which is a quiet 44 px disclosure (no deep well)", () => {
+    const start = active.indexOf('data-testid="ritual-turn-start"');
+    const how = active.indexOf('data-testid="ritual-turn-how"');
+    expect(start).toBeGreaterThan(-1);
+    expect(how).toBeGreaterThan(start);
+    expect(active.indexOf('data-testid="ritual-turn-practised"')).toBeLessThan(how);
+    expect(active.indexOf('data-testid="ritual-turn-steps"')).toBeGreaterThan(how);
+    const btn = active.slice(active.lastIndexOf("<button", how), active.indexOf("</button>", how));
+    expect(btn).toContain("minHeight: 44");
+    expect(btn).toContain('color: "var(--arbor-muted)"');
+    expect(btn).not.toContain("--arbor-paper-deep");
+    // NEGATIVE CONTROL: the r3 order (full-width well bar before the CTA row) is caught
+    const r3 = '<button onClick={() => setStepsOpen((v) => !v)} className="mt-3 flex w-full" style={{ minHeight: 44, background: "var(--arbor-paper-deep)" }}/><div className="mt-4"><button data-testid="ritual-turn-start"/>';
+    expect(r3.indexOf("setStepsOpen")).toBeLessThan(r3.indexOf("ritual-turn-start"));
+  });
+
+  it("unsaved charter: the line is labelled 'Starter values' (EN+HE keyed) and the turn card gets NO values, so it never says 'on your charter'", () => {
+    expect(family).toContain("const [saved, setSaved] = useState<boolean>(() => hasSavedFamilyCharter());");
+    expect(family).toContain("charterValues={saved ? values : []}");
+    expect(family).not.toContain("charterValues={values}");
+    expect(family).toContain('{!saved && values.length > 0 && (');
+    expect(family).toContain('t("elev.family.way.starter")');
+    // an edit is a save: the label goes and the value reaches the card
+    expect(family).toContain("const commit = (next: string[]) => { setValues(saveFamilyCharter(next)); setSaved(true); };");
+    expect(en["elev.family.way.starter"]).toBe("Starter values");
+    expect(he["elev.family.way.starter"]).toBeTruthy();
+    expect(he["elev.family.way.starter"]).not.toMatch(/[A-Za-z]/);
+    // the card's no-value path drops the charter clause (13adc5f)
+    expect(charterValueFor("truth-practice-weekly", [])).toBeNull();
+    expect(card).toContain("{charterValue && (");
+  });
+
+  it("the values line never opens a wrapped line with a separator (each '·' rides on the value before it)", () => {
+    expect(family).not.toContain('values.join(" · ")');
+    expect(family).toContain('<span className="whitespace-nowrap">{v}{i < values.length - 1 ? " ·" : ""}</span>');
   });
 });

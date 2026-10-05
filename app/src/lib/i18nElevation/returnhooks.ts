@@ -66,6 +66,7 @@ export const en: Record<string, string> = {
   // W2-SHELLPLAY critic r2 (B-PLAY-21): the compact "Our family's way" line.
   "elev.family.way.title": "Our family's way",
   "elev.family.way.empty": "No values named yet — add the first one.",
+  "elev.family.way.starter": "Starter values",
   "elev.family.way.tone": "Arbor talks with you: {tone}",
   "elev.family.way.edit": "Edit",
   "elev.family.way.done": "Done",
@@ -145,6 +146,7 @@ export const he: Record<string, string> = {
   "elev.rh.ritual.planNext": "לתכנן את הבא: {title}",
   "elev.family.way.title": "הדרך של המשפחה שלנו",
   "elev.family.way.empty": "עוד לא נבחרו ערכים — הוסיפו את הראשון.",
+  "elev.family.way.starter": "ערכים להתחלה",
   "elev.family.way.tone": "ארבור מדברת איתכם: {tone}",
   "elev.family.way.edit": "עריכה",
   "elev.family.way.done": "סיום",
