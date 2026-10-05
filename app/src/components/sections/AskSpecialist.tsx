@@ -30,7 +30,7 @@ import type { Appointment, AppointmentFollowUp } from "../../lib/careTrack";
 import { exportPlainLines } from "../../consult/plainText";
 import { handTeacherNote } from "../../schoolBrief/teacherHandoff";
 import { homePracticeWorlds, openHomePracticeWorld } from "../../consult/homePractice";
-import { useKidMode } from "../kidmode/KidModeContext";
+import { useKidModeEntry } from "../kidmode/useKidModeEntry";
 // LC-20 + LC-12: the reason for the visit, the questions prepared in
 // Appointments, and the discipline-specific evidence each preset reads.
 import { useChildCollection } from "../../hooks/useChildCollection";
@@ -136,7 +136,8 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience }: {
   const isTeacher = audience === "teacher";
   // B-CAREPRO-20: the worlds that work the chosen professional's domain —
   // parent-only, names only, never part of any packet.
-  const { openKidMode } = useKidMode();
+  // B-KID-11: through the ONE entry seam (hero-first, then the named world).
+  const { request: openKidMode, step: kidModeStep } = useKidModeEntry();
   const homeWorlds = useMemo(() => homePracticeWorlds(audience), [audience]);
 
   // AIX-S3(a): the Vision handoff note lands HERE — as a parent-editable note in
@@ -570,6 +571,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience }: {
                 );
               })}
             </div>
+            {kidModeStep}
           </details>
         )}
       </section>

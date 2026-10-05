@@ -90,27 +90,29 @@ describe("heroPromptGate — when the hero step is offered", () => {
   });
 });
 
-describe("heroPromptGate — how the Kid Mode button uses it", () => {
-  const button = read("layout", "KidModeButton.tsx");
+describe("heroPromptGate — how the Kid Mode entry seam uses it (B-KID-11)", () => {
+  // The topbar pill and every door call request() from the ONE seam.
+  const button = read("kidmode", "useKidModeEntry.tsx");
 
   it("asks the gate with the HERO-FIRST rule, never a re-implementation of it", () => {
     expect(button).toContain('import { resolveHeroUrl } from "../ui/HeroAvatar"');
+    expect(read("layout", "KidModeButton.tsx")).toContain("useKidModeEntry(onBeforeOpen)");
     expect(button).toMatch(/shouldOfferHeroStep\(\{ childId: child\.id, hasHero: Boolean\(resolveHeroUrl\(child\)\) \}\)/);
     // resolveHeroUrl is read, never redefined here.
     expect(button).not.toMatch(/const resolveHeroUrl|function resolveHeroUrl/);
   });
 
   it("records the offer when the step is shown, so it is asked once either way", () => {
-    expect(button).toMatch(/markHeroStepOffered\(child\.id\);\s*\n\s*setStepOpen\(true\)/);
+    expect(button).toMatch(/markHeroStepOffered\(child\.id\);\s*\n\s*setStepOpen\(target\)/);
   });
 
   it("a child WITH a hero still goes straight into Kid Mode", () => {
     // The early return is the only branch that skips openKidMode().
-    expect(button).toMatch(/setStepOpen\(true\);\s*\n\s*return;\s*\n\s*\}\s*\n\s*onBeforeOpen\?\.\(\);\s*\n\s*openKidMode\(\);/);
+    expect(button).toMatch(/setStepOpen\(target\);\s*\n\s*return;\s*\n\s*\}\s*\n\s*onBeforeOpen\?\.\(\);\s*\n\s*openKidMode\(target\);/);
   });
 
   it("the step hands over to Kid Mode itself — the child is never blocked", () => {
-    expect(button).toMatch(/const enterKidMode = \(\) => \{ setStepOpen\(false\); onBeforeOpen\?\.\(\); openKidMode\(\); \}/);
+    expect(button).toMatch(/const enterKidMode = \(\) => \{ const target = stepFor \?\? \{\}; setStepOpen\(null\); onBeforeOpen\?\.\(\); openKidMode\(target\); \}/);
     expect(button).toContain("onEnterKidMode={enterKidMode}");
   });
 });
@@ -120,7 +122,8 @@ describe("HeroFirstStep — parent register, never inside Kid Mode", () => {
 
   it("is mounted by the parent-shell button only (not by the Kid Mode overlay)", () => {
     expect(read("kidmode", "KidModeOverlay.tsx")).not.toContain("HeroFirstStep");
-    expect(read("layout", "KidModeButton.tsx")).toContain("<HeroFirstStep");
+    expect(read("kidmode", "useKidModeEntry.tsx")).toContain("<HeroFirstStep");
+    expect(read("layout", "KidModeButton.tsx")).toContain("{step}");
   });
 
   it("offers BOTH doors: create a hero, or continue with Sprout", () => {

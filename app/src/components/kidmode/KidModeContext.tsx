@@ -26,9 +26,20 @@ import { isKidModeActive, setKidModeActive, writeKidModeState } from "../../lib/
 // component renders nothing and reads only (the no-write contract holds).
 import KidExitRecap from "./KidExitRecap";
 
+/**
+ * B-KID-11: where Kid Mode opens. `view` is a kid surface id ("home" by
+ * default, "arcade", "feelings", "journeys"…) and `worldId` pre-selects the
+ * HeroArcade world (or the journeys story) — the same device-local channel
+ * the kid dashboard tiles already use. The overlay validates both on arrival.
+ */
+export interface KidModeTarget {
+  view?: string;
+  worldId?: string | null;
+}
+
 interface KidModeContextValue {
   isKidModeOpen: boolean;
-  openKidMode: () => void;
+  openKidMode: (target?: KidModeTarget) => void;
   closeKidMode: () => void;
 }
 
@@ -43,9 +54,9 @@ export function KidModeProvider({ children }: { children: React.ReactNode }) {
   // start from it so the overlay is up on the very first paint after reload.
   const [isKidModeOpen, setIsKidModeOpen] = useState<boolean>(isKidModeActive);
 
-  const openKidMode = () => {
+  const openKidMode = (target?: KidModeTarget) => {
     setKidModeActive(true); // gate first — non-React guards see it this tick
-    writeKidModeState({ open: true, view: "home" });
+    writeKidModeState({ open: true, view: target?.view ?? "home", worldId: target?.worldId ?? null });
     setIsKidModeOpen(true);
   };
   // Exit makes no Firestore call and mutates no child record.

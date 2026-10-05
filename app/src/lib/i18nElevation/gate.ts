@@ -37,6 +37,9 @@ export const en: Record<string, string> = {
 
   // ── E10 · Parent-side launcher safety line (ships true with the gate)
   "elev.kidmode.locked": "Parent-locked — your child can't exit or delete",
+  // Without a PIN the exit is a hold + a grown-up question (parentGate.ts:4
+  // "a friction barrier, not a security boundary") — say only that.
+  "elev.kidmode.gated": "Grown-up gate — leaving asks a grown-up question",
 
   // ── E11 · First-steps rail (parent-side, dismissible, counts only)
   "elev.rail.title": "First steps with Arbor",
@@ -79,6 +82,7 @@ export const he: Record<string, string> = {
   "elev.gate.unlocked": "נפתח — רכישות ושינויי חשבון זמינים שוב.",
 
   "elev.kidmode.locked": "נעול להורים — הילד לא יכול לצאת או למחוק",
+  "elev.kidmode.gated": "שער להורים — כדי לצאת צריך לענות על שאלה של מבוגר",
 
   "elev.rail.title": "צעדים ראשונים עם ארבור",
   "elev.rail.sub": "ארבעה צעדים קטנים — והסיפור יוצא לדרך.",

@@ -58,13 +58,12 @@ export function homePracticeWorlds(audience: ExportAudience, worlds: readonly St
   return ranked.slice(0, HOME_PRACTICE_MAX).map((x) => x.w);
 }
 
-/** Open a world the way Practice Studio does: its own parent-shell route when
- *  it has one, else Kid Mode (whose home lists every world — KID-4 will carry
- *  the world id into Kid Mode; until then the overlay opens on its home). */
+/** Open a world: its own parent-shell route when it has one, else Kid Mode
+ *  ON that world (B-KID-11 carries the world id into the arcade). */
 export function openHomePracticeWorld(
   world: StudioWorld,
-  seams: { setActiveTab: (tab: NonNullable<StudioWorld["tab"]>) => void; openKidMode: () => void },
+  seams: { setActiveTab: (tab: NonNullable<StudioWorld["tab"]>) => void; openKidMode: (target?: { view?: string; worldId?: string | null }) => void },
 ): void {
   if (world.tab) seams.setActiveTab(world.tab);
-  else seams.openKidMode();
+  else seams.openKidMode({ view: "arcade", worldId: world.id });
 }

@@ -76,14 +76,17 @@ export default function KidModeOverlay() {
     setView(s);
   };
 
-  // Reset to the home dashboard whenever the overlay opens — but only on a
-  // real closed→open transition. A rehydrated mount (already open) keeps the
-  // persisted view instead of snapping back home.
+  // On a real closed→open transition, arrive where the door asked
+  // (B-KID-11: openKidMode({view, worldId}) persisted it a tick ago), validated
+  // against SURFACE_META — anything else is the home dashboard. A rehydrated
+  // mount (already open) keeps the persisted view instead of snapping back home.
   const wasOpenRef = useRef(isKidModeOpen);
   useEffect(() => {
     if (isKidModeOpen && !wasOpenRef.current) {
-      setView("home");
-      setArcadeWorldId(null);
+      const p = readKidModeState();
+      const asked = p.view && p.view in SURFACE_META ? (p.view as View) : "home";
+      setView(asked);
+      setArcadeWorldId(asked === "home" ? null : p.worldId ?? null);
     }
     wasOpenRef.current = isKidModeOpen;
   }, [isKidModeOpen]);
