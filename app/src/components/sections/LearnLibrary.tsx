@@ -810,10 +810,14 @@ function LearnReader({
         {t("learn.back")}
       </button>
 
-      {/* Hero band */}
+      {/* Hero band — W2-SHELLPLAY r2 (learn design): ONE flat tone band. The old
+          linear-gradient(tone.soft → paper-deep) nested a token that is itself a
+          gradient (invalid CSS: the band rendered bare) and read as a second
+          gradient family beside --gradient-cta. */}
       <div
         className="rounded-[22px] p-5 sm:p-6"
-        style={{ background: `linear-gradient(135deg, ${tone.soft}, var(--arbor-paper-deep))` }}
+        data-testid="learn-reader-hero"
+        style={{ background: tone.soft }}
       >
         <div className="flex items-center gap-3 mb-4">
           <span

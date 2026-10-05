@@ -140,3 +140,25 @@ describe("W2-SHELLPLAY r1 · Learn: the move is a card, above the phone fold", (
     expect('<div data-module="learn-filters" className="flex flex-wrap gap-2"').not.toContain("flex-nowrap");
   });
 });
+
+describe("W2-SHELLPLAY r2 · learn design — one gradient on the reader's own move, one flat hero band", () => {
+  it("the course reader's --gradient-cta sits on 'Add to today' (on-accent ink); 'Mark complete' is a ghost", () => {
+    const add = between(master, 'data-testid="course-add-today"', "</button>");
+    expect(add).toContain('{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }');
+    const done = between(master, 'data-testid="course-mark-complete"', "</button>");
+    expect(done).not.toContain("--gradient-cta");
+    expect(done).toContain('border: "1px solid var(--arbor-rule)"');
+    // exactly one gradient in the course reader file's CTA set: the pick CTA (hub) + Add to today (reader)
+    expect((master.match(/var\(--gradient-cta\)/g) || []).length).toBe(2);
+    // NEGATIVE CONTROL: the pre-fix Mark complete is caught
+    expect('<button onClick={onComplete} className="w-full" style={{ background: "var(--gradient-cta)" }}>').toContain("--gradient-cta");
+  });
+
+  it("the Learn reader hero is ONE flat tone band — no gradient nesting a -soft token", () => {
+    const hero = between(learn, 'data-testid="learn-reader-hero"', ">");
+    expect(hero).toContain("style={{ background: tone.soft }}");
+    expect(learn).not.toMatch(/linear-gradient\(135deg, \$\{tone\.soft\}/);
+    // NEGATIVE CONTROL: the pre-fix band shape is caught
+    expect("style={{ background: `linear-gradient(135deg, ${tone.soft}, var(--arbor-paper-deep))` }}").toMatch(/linear-gradient\(135deg, \$\{tone\.soft\}/);
+  });
+});

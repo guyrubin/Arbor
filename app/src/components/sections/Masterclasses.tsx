@@ -544,8 +544,12 @@ export function MasterclassReader({ m, isDone: isDoneProp, onDone: onDoneProp, o
           disabled={todayTaken}
           data-testid="course-add-today"
           className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3.5 text-[13px] font-bold transition disabled:opacity-70"
-          style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
+          style={todayTaken
+            ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }
+            : { background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}
         >
+          {/* W2-SHELLPLAY r2 (learn design): the course reader's one --gradient-cta is the
+              target's own move, "Add to today"; "Mark complete" below is a ghost. */}
           <Icon name={todayTaken ? "check_circle" : "add_task"} size={16} fill={todayTaken ? 1 : 0} />
           {todayTaken ? t("learn.addedToday") : t("learn.addToday")}
         </button>
@@ -610,7 +614,7 @@ export function MasterclassReader({ m, isDone: isDoneProp, onDone: onDoneProp, o
           <Icon name="check" size={17} fill={1} /> {t("master.markedComplete")}
         </div>
       ) : (
-        <button onClick={onComplete} className="w-full min-h-11 py-3 text-white font-extrabold text-sm rounded-2xl flex items-center justify-center gap-2 active:scale-[0.98]" style={{ background: "var(--gradient-cta)" }}>
+        <button onClick={onComplete} data-testid="course-mark-complete" className="w-full min-h-11 py-3 font-bold text-sm rounded-2xl flex items-center justify-center gap-2 active:scale-[0.98]" style={{ background: "transparent", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}>
           <Icon name="check" size={17} fill={1} /> {t("master.markComplete")}
         </button>
       )}
