@@ -166,9 +166,10 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
   const [heroDialogOpen, setHeroDialogOpen] = useState(false);
   // B-PLAY-14: the Tonight cover's two options. The evening entry points ask
   // for "today" through lib/tonightMode (one-shot); otherwise the hero story.
-  // W2-SHELLPLAY critic r2: with no hero yet, the evening door opens on
-  // "From today" — never a "hero adventure" that cannot star the child.
-  const [tonightMode, setTonightMode] = useState<TonightMode>(() => consumeTonightMode() ?? (childProfile.avatar ? "hero" : "today"));
+  // W2-SHELLPLAY critic r2: the default stays the cover (it carries the route's
+  // one stamp); with no hero, the cover's FIRST act is the in-place hero row in
+  // its art band, Play second — and the shell drops "starring".
+  const [tonightMode, setTonightMode] = useState<TonightMode>(() => consumeTonightMode() ?? "hero");
   // KID-05: hub tiles navigate the PARENT shell — rendered only while the
   // shell is reachable (null inside Kid Mode, where the call would be a
   // silent no-op and a dead button in front of the child).

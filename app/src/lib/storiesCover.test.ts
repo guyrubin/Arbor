@@ -290,8 +290,8 @@ describe("W2-SHELLPLAY r2 · #/stories — one filled button, honest 'starring',
     expect('<PlayPanel tone="lav" data-testid="hero-first-gate"><PlayButton tone="clay" />').toMatch(/<PlayPanel|<PlayButton/);
   });
 
-  it("no hero: the door opens on 'From today', and the shell says 'starring' only once a hero exists", () => {
-    expect(HERO).toContain('consumeTonightMode() ?? (childProfile.avatar ? "hero" : "today")');
+  it("no hero: the cover's first act is the hero row (before Play), and the shell says 'starring' only once a hero exists", () => {
+    expect(cover.indexOf('data-testid="hero-first-gate"')).toBeLessThan(cover.indexOf('data-primary-move="read-tonights-story"'));
     for (const f of ["components/layout/Shell.tsx", "components/layout/Topbar.tsx"]) {
       expect(read(f), f).toContain('section.id === "stories" && !childProfile.avatar ? "nav.sub.stories.noHero"');
     }
