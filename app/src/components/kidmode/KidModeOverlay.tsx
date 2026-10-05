@@ -323,7 +323,7 @@ export default function KidModeOverlay() {
                     </Suspense>
                   ) : view === "comics" ? (
                     <Suspense fallback={<KidStageFallback />}>
-                      <KidComicsShelf key={childProfile.id} childProfile={childProfile} onBack={() => setView("home")} />
+                      <KidComicsShelf key={childProfile.id} childProfile={childProfile} onBack={() => setView("home")} onOpenStories={() => setView("journeys")} />
                     </Suspense>
                   ) : (
                     <Suspense fallback={<KidStageFallback />}>{surface?.Comp ? <surface.Comp /> : null}</Suspense>

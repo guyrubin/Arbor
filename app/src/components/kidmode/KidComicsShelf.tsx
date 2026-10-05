@@ -55,10 +55,13 @@ export default function KidComicsShelf({
   childProfile,
   authKey,
   onBack,
+  onOpenStories,
 }: {
   childProfile: ChildProfile;
   authKey?: string;
   onBack?: () => void;
+  /** B-KID-38: the empty shelf's door to the story catalogue. */
+  onOpenStories?: () => void;
 }) {
   const { user } = useAuth();
   const { aiLang } = useLanguage();
@@ -212,8 +215,22 @@ export default function KidComicsShelf({
       ) : openableBooks.length === 0 ? (
         <PlayPanel tone="lav" className="text-center">
           <div className="mx-auto mb-3 w-fit"><HeroAvatar size={88} mood="think" animate={false} /></div>
-          <p className="font-black" style={{ color: "var(--arbor-ink)" }}>{kidsStoriesText("shelf.empty", aiLang)}</p>
-          <p className="mt-1 text-sm" style={{ color: "var(--arbor-muted)" }}>{kidsStoriesText("shelf.emptyHint", aiLang)}</p>
+          {/* B-KID-38 (KB-06, truth): a child with no hero never gets a comic
+              shelved (the reader shelves only with a hero), so "your comic
+              appears here" was a promise that could not come true. */}
+          {heroUrl ? (
+            <>
+              <p className="font-black" style={{ color: "var(--arbor-ink)" }}>{kidsStoriesText("shelf.empty", aiLang)}</p>
+              <p className="mt-1 text-sm" style={{ color: "var(--arbor-muted)" }}>{kidsStoriesText("shelf.emptyHint", aiLang)}</p>
+            </>
+          ) : (
+            <p className="font-black" style={{ color: "var(--arbor-ink)" }}>{kidsStoriesText("shelf.emptyNoHero", aiLang)}</p>
+          )}
+          {onOpenStories && (
+            <div className="mt-4 flex justify-center">
+              <PlayButton tone="clay" onClick={onOpenStories}>{kidsStoriesText("shelf.openStories", aiLang)}</PlayButton>
+            </div>
+          )}
         </PlayPanel>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">

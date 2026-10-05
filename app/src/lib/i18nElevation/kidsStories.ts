@@ -7,7 +7,8 @@ export type KidsStoriesKey =
   | "journey.childEndingTitle" | "journey.childEndingBody" | "journey.childReflection"
   | "journey.finish" | "journey.saved" | "journey.backStories"
   | "journey.comicSaved" | "page.smudged" | "page.redraw" | "page.drawing"
-  | "comic.error" | "comic.tryAgain" | "comic.back" | "comic.end" | "comic.endBody" | "comic.save" | "comic.share" | "comic.another" | "comic.aria" | "comic.bookshelf" | "comic.brand" | "comic.read" | "comic.finish" | "comic.shareText" | "comic.pageTitle";
+  | "comic.error" | "comic.tryAgain" | "comic.back" | "comic.end" | "comic.endBody" | "comic.save" | "comic.share" | "comic.another" | "comic.aria" | "comic.bookshelf" | "comic.brand" | "comic.read" | "comic.finish" | "comic.shareText" | "comic.pageTitle"
+  | "shelf.emptyNoHero" | "shelf.openStories";
 
 const EN: Record<KidsStoriesKey, string> = {
   "shelf.title": "Hero Comics",
@@ -60,6 +61,8 @@ const EN: Record<KidsStoriesKey, string> = {
   "comic.finish": "Finish",
   "comic.shareText": "{name}'s comic!",
   "comic.pageTitle": "Page {number}",
+  "shelf.emptyNoHero": "Your books live here — read one to start",
+  "shelf.openStories": "Pick a story",
 };
 
 const HE: Record<KidsStoriesKey, string> = {
@@ -113,6 +116,8 @@ const HE: Record<KidsStoriesKey, string> = {
   "comic.finish": "סיום",
   "comic.shareText": "הקומיקס של {name}!",
   "comic.pageTitle": "עמוד {number}",
+  "shelf.emptyNoHero": "הספרים שלכם גרים כאן — קראו אחד כדי להתחיל",
+  "shelf.openStories": "לבחור סיפור",
 };
 
 /** Registry shape for the dictionary firewall (i18nElevation/index.ts MODULES). */
