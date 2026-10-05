@@ -438,3 +438,55 @@ describe("B-PLAY-05 + W2-SHELLPLAY critic r1 — ONE sentence on the Practice do
     expect(translate("he", "elev.practice.studio.opensKidmode")).not.toMatch(/[A-Za-z]/);
   });
 });
+
+describe("W2-SHELLPLAY r1 · #/speech — the round is scored on the fold, in one neutral treatment", () => {
+  const speech = stripComments(read("components/practice/SpeechCoachTab.tsx"));
+  const parent = speech.slice(speech.indexOf("if (!kidMode) {"), speech.indexOf('<details data-module="speech-more"'));
+
+  it("the scoring row sits inside the target card, BEFORE Record and the consent door", () => {
+    const row = parent.indexOf('data-primary-move="complete-speech-round"');
+    expect(row).toBeGreaterThan(-1);
+    expect(row).toBeGreaterThan(parent.indexOf('t("prac.speech.next")'));
+    expect(row).toBeLessThan(parent.indexOf('t("prac.speech.record", { name: first })'));
+    expect(row).toBeLessThan(parent.indexOf('data-testid="speech-consent-door"'));
+    // the consent invite is a closed one-line door, not an open card
+    expect(parent).toContain('<details data-testid="speech-consent-door"');
+  });
+
+  it("law 1: no hue carries correctness; descriptive labels; 44 px; one gradient on 'Said it'", () => {
+    const row = parent.slice(parent.indexOf('data-primary-move="complete-speech-round"'), parent.indexOf('data-testid="speech-almost-line"'));
+    expect(row).not.toMatch(/green-soft|yellow-soft|pink-soft|green-ink|yellow-ink|pink-ink/);
+    expect(row).toContain("min-h-[44px]");
+    expect((parent.match(/--gradient-cta/g) || []).length).toBe(1);
+    expect(translate("en", "elev.practice.speech.result.got")).toBe("Said it");
+    expect(translate("en", "elev.practice.speech.result.missed")).toBe("Not yet — model it again");
+    // NEGATIVE CONTROL: the pre-fix triad
+    expect('b.tone === "mint" ? "var(--arbor-green-soft)" : b.tone === "yellow" ? "var(--arbor-yellow-soft)" : "var(--arbor-pink-soft)"').toMatch(/green-soft|yellow-soft|pink-soft/);
+  });
+
+  it("the ladder tabs are 44 px", () => {
+    const ladder = parent.slice(parent.indexOf('role="tablist" aria-label={t("prac.speech.ladder.aria")}'), parent.indexOf("{t(l.labelKey)}"));
+    expect(ladder).toContain("min-h-[44px]");
+  });
+
+  it("no target pressure: no repetition quota, no dose celebration", () => {
+    expect(speech).not.toContain("prac.speech.dose.explainer");
+    expect(speech).not.toContain("prac.speech.doseWin");
+    expect(speech).not.toContain("speechDose(");
+    for (const lang of ["en", "he"] as const) expect(translate(lang, "elev.practice.speech.littleOften")).not.toMatch(/\d/);
+  });
+
+  it("law 8: a Hebrew session never renders the English drill — an honest door to #/language instead", () => {
+    expect(speech).toContain('const speechHe = uiLang === "he" || aiLang === "he";');
+    expect(parent).toMatch(/\{speechHe \? \(\s*<SectionCard title=\{t\("elev\.practice\.speech\.he\.title"\)\}/);
+    expect(parent).toContain('onClick={() => setActiveTab("language")}');
+    expect(parent).toContain("{!speechHe && (");
+    for (const k of ["elev.practice.speech.he.title", "elev.practice.speech.he.body", "elev.practice.speech.he.cta", "elev.practice.speech.almost"]) {
+      expect(translate("he", k).replace(/\{\w+\}/g, "")).not.toMatch(/[A-Za-z]/);
+    }
+  });
+
+  it("law 4: no raw hex or coloured shadow in the file", () => {
+    expect(speech).not.toMatch(/#[0-9a-fA-F]{3,6}\b|rgba\(88,166,255/);
+  });
+});

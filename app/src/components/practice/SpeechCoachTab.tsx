@@ -5,10 +5,10 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { SectionCard, TrustSafetyBar, cardCls, Chip, type PastelKey } from "../ui/kit";
 import { TrustPanel } from "../ui/TrustPanel";
-import { RegisterShell, PlayButton, ChoiceTile, ProgressPips, Celebrate, MascotSay } from "../ui/playkit";
+import { RegisterShell, PlayButton, ChoiceTile, ProgressPips, MascotSay } from "../ui/playkit";
 import { BAND_LABEL, SOUND_LIBRARY, type SoundEntry } from "../../practice/content";
 import { CATEGORY_ROUNDS, EXPRESS_PROMPTS, VOCAB_SETS } from "../../practice/playContent";
-import { matchResult, speechDose, ageAppropriateSoundIds, isSoundAgeAppropriate } from "../../practice/signals";
+import { matchResult, ageAppropriateSoundIds, isSoundAgeAppropriate } from "../../practice/signals";
 import { scoreUtterance, recognitionLangFor, autoListenSupported } from "../../lib/speechScorer";
 import { usePracticeData } from "../../practice/usePracticeData";
 import type { PracticeEvent, SpeechAttempt, SpeechLevel } from "../../types";
@@ -50,6 +50,8 @@ export default function SpeechCoachTab() {
   // is honest ONLY for English sessions — SOUND_LIBRARY targets are English.
   // For HE, autoResult stays null and the parent-scoring floor takes over.
   const autoVerdictOk = autoListenSupported(aiLang);
+  // W2-SHELLPLAY critic r1 (law 8): the sound drill is English content.
+  const speechHe = uiLang === "he" || aiLang === "he";
   const data = usePracticeData(childProfile.id);
   const first = childProfile.name.split(" ")[0];
 
@@ -68,8 +70,6 @@ export default function SpeechCoachTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [childProfile.age]);
 
-  // ASHA dosage: ~50 production trials/session, 2–3 sessions/week.
-  const dose = useMemo(() => speechDose(data.speech.items, data.today), [data.speech.items, data.today]);
 
   const [soundId, setSoundId] = useState<string>(defaultSound);
   const sound: SoundEntry = SOUND_LIBRARY.find((s) => s.id === soundId) ?? SOUND_LIBRARY[0];
@@ -81,16 +81,9 @@ export default function SpeechCoachTab() {
   const [categoryPick, setCategoryPick] = useState<number | null>(null);
   const [expressIdx, setExpressIdx] = useState(0);
   const [languageSaved, setLanguageSaved] = useState<string | null>(null);
-  // Fire the daily-dose Celebrate once per session, only on the transition into "met".
-  const [doseCelebrated, setDoseCelebrated] = useState(false);
-  const doseMetPrev = useRef(false);
 
   useEffect(() => { setItemIdx(0); }, [soundId, level]);
 
-  useEffect(() => {
-    if (dose.sessionMetToday && !doseMetPrev.current && !doseCelebrated) setDoseCelebrated(true);
-    doseMetPrev.current = dose.sessionMetToday;
-  }, [dose.sessionMetToday, doseCelebrated]);
 
   const items = level === "word" ? sound.words : level === "sentence" ? sound.sentences : [sound.storyPrompt];
   const target = items[Math.min(itemIdx, items.length - 1)];
@@ -335,9 +328,11 @@ export default function SpeechCoachTab() {
   };
 
   const RESULT_BTN: { result: SpeechAttempt["result"]; labelKey: string; tone: PastelKey }[] = [
-    { result: "got", labelKey: "prac.speech.result.got", tone: "mint" },
-    { result: "almost", labelKey: "prac.speech.result.almost", tone: "yellow" },
-    { result: "missed", labelKey: "prac.speech.result.missed", tone: "pink" },
+    // W2-SHELLPLAY critic r1 (law 1): descriptive labels; no hue carries
+    // correctness (the tone field is no longer read for colour).
+    { result: "got", labelKey: "elev.practice.speech.result.got", tone: "sky" },
+    { result: "almost", labelKey: "elev.practice.speech.result.almost", tone: "sky" },
+    { result: "missed", labelKey: "elev.practice.speech.result.missed", tone: "sky" },
   ];
 
   // KID-03: the PARENT register — the drill sheet with dose, per-sound
@@ -362,21 +357,39 @@ export default function SpeechCoachTab() {
           together" guide line; then the sound picker. One module, one job. */}
       <section data-module="speech-practice" className="space-y-6">
 
-      {/* Practice card: ladder + record & compare */}
+      {/* W2-SHELLPLAY critic r1 (law 8): SOUND_LIBRARY is an ENGLISH drill (its
+          words, cues, labels and IPA). A Hebrew session gets an honest door to
+          the Hebrew language work instead of English chrome — never "pig". */}
+      {speechHe ? (
+        <SectionCard title={t("elev.practice.speech.he.title")} icon={<Icon name="mic" size={20} />} tone="sky">
+          <p className="text-[13px] leading-relaxed mb-4" style={{ color: "var(--arbor-ink-soft)" }}>
+            {t("elev.practice.speech.he.body", { name: first })}
+          </p>
+          <button
+            type="button"
+            data-testid="speech-he-door"
+            onClick={() => setActiveTab("language")}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-4 text-[13px] font-extrabold"
+            style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}
+          >
+            <Icon name="translate" size={16} /> {t("elev.practice.speech.he.cta")}
+          </button>
+        </SectionCard>
+      ) : (
       <SectionCard title={`${sound.label} · ${sound.ipa}`} icon={<Icon name="mic" size={20} />} tone="sky"
         action={<Chip tone="sky">{t("prac.speech.typicalAge", { age: sound.typicalAge })}</Chip>}>
         <p className="text-xs rounded-xl p-3 mb-4" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}>
           <b>{t("prac.speech.modelLabel")}</b> {sound.cue}
         </p>
 
-        {/* Ladder */}
-        <div role="tablist" aria-label={t("prac.speech.ladder.aria")} className="flex gap-2 mb-4">
+        {/* Ladder — 44 px tabs (W2-SHELLPLAY critic r1). */}
+        <div role="tablist" aria-label={t("prac.speech.ladder.aria")} className="flex flex-wrap items-center gap-2 mb-4">
           {LADDER.map((l) => {
             const on = l.level === level;
             return (
               <button key={l.level} role="tab" aria-selected={on} onClick={() => setLevel(l.level)}
-                className="rounded-full px-3.5 py-1.5 text-[11.5px] font-extrabold transition"
-                style={on ? { background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
+                className="rounded-full px-3.5 min-h-[44px] text-[12px] font-extrabold transition"
+                style={on ? { background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" } : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
                 {t(l.labelKey)}
               </button>
             );
@@ -384,37 +397,70 @@ export default function SpeechCoachTab() {
           <span className="self-center text-[11px] ms-1" style={{ color: "var(--arbor-muted)" }}>{t(LADDER.find((l) => l.level === level)?.hintKey ?? "")}</span>
         </div>
 
-        {/* Target — the big, friendly say-it-together card */}
-        <div className="rounded-[var(--play-radius-lg)] p-7 text-center mb-4" style={{ background: "linear-gradient(135deg, var(--arbor-sky-soft), #ffffff 75%)", border: "2px solid var(--arbor-sky-soft)" }}>
+        {/* Target — the say-it-together card. W2-SHELLPLAY critic r1: flat
+            paper with a hairline (no decorative gradient); the parent's
+            scoring row sits INSIDE it, directly under Back/Next, so the
+            primary move is on the fold; Record and the consent invite follow. */}
+        <div className="rounded-[var(--play-radius-lg)] p-5 sm:p-6 text-center mb-4" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}>
           <p className="text-[11px] uppercase font-extrabold tracking-wider mb-3" style={{ color: "var(--arbor-sky-ink)" }}>
             {level === "story" ? t("prac.speech.target.story") : t("prac.speech.target.together", { current: itemIdx + 1, total: items.length })}
           </p>
-          <p className="font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)", fontSize: level === "word" ? "3.4rem" : "1.6rem" }}>
+          <p className="font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)", fontSize: level === "word" ? "3rem" : "1.5rem" }}>
             {target}
           </p>
           {level !== "story" && (
-            <div className="flex justify-center gap-2.5 mt-5">
+            <div className="flex justify-center gap-2.5 mt-4">
               <button onClick={() => setItemIdx((i) => Math.max(0, i - 1))} disabled={itemIdx === 0}
-                className="play-pressable text-[13px] font-extrabold px-5 min-h-[44px] rounded-full disabled:opacity-40" style={{ background: "#fff", color: "var(--arbor-sky-ink)", border: "2px solid var(--arbor-sky-soft)" }}>
+                className="play-pressable text-[13px] font-extrabold px-5 min-h-[44px] rounded-full disabled:opacity-40" style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-sky-ink)", border: "1px solid var(--arbor-sky-soft)" }}>
                 {t("prac.speech.back")}
               </button>
               <button onClick={() => setItemIdx((i) => Math.min(items.length - 1, i + 1))} disabled={itemIdx >= items.length - 1}
-                className="play-pressable text-[13px] font-extrabold px-5 min-h-[44px] rounded-full inline-flex items-center gap-1 disabled:opacity-40 text-white" style={{ background: "var(--arbor-sky-ink)" }}>
+                className="play-pressable text-[13px] font-extrabold px-5 min-h-[44px] rounded-full inline-flex items-center gap-1 disabled:opacity-40" style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-sky-ink)", border: "1px solid var(--arbor-sky-soft)" }}>
                 {t("prac.speech.next")} <Icon name="chevron_right" size={16} />
               </button>
             </div>
           )}
+
+          {/* Parent scoring — the universal floor, and the declared primaryMove
+              for #/speech ("complete-speech-round"). W2-SHELLPLAY critic r1 (law
+              1): ONE neutral treatment — no hue carries correctness; "Said it"
+              is the page's single --gradient-cta; 44 px targets. */}
+          <div className="mt-5 pt-4 flex flex-wrap items-center justify-center gap-2" style={{ borderTop: "1px solid var(--arbor-rule)" }} data-primary-move="complete-speech-round">
+            <span className="w-full text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }}>{t("prac.speech.howDidItSound")}</span>
+            {RESULT_BTN.map((b) => (
+              <button key={b.result} onClick={() => saveAttempt(b.result, "parent")}
+                data-testid={`speech-result-${b.result}`}
+                className="text-[13px] font-extrabold px-4 min-h-[44px] rounded-xl transition active:scale-[0.98]"
+                style={b.result === "got"
+                  ? { background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }
+                  : { background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}>
+                {t(b.labelKey)}
+              </button>
+            ))}
+            {lastSaved && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-ink-soft)" }}>
+                <Icon name="check" size={14} /> {t("prac.read.saved")}
+              </span>
+            )}
+          </div>
+
+          {/* W2-SHELLPLAY critic r1: what to say when it comes out almost — the
+              screen's one warm accent. Static copy: no accuracy is read. */}
+          <p data-testid="speech-almost-line" className="mt-4 rounded-[14px] p-4 text-start text-[15px] leading-snug flex items-start gap-2" style={{ background: "var(--arbor-peach-soft)", color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)" }}>
+            <Icon name="favorite" size={16} className="mt-1 flex-shrink-0" style={{ color: "var(--arbor-peach-ink)" }} />
+            <span>{t("elev.practice.speech.almost")}</span>
+          </p>
         </div>
 
-        {/* Record & Compare (feature 2) */}
+        {/* Record & Compare (feature 2) — a soft secondary, never the loudest. */}
         <div className="flex flex-wrap items-center gap-3 mb-3">
           {recState !== "recording" ? (
-            <PlayButton onClick={() => void startRecording()} tone="peach">
-              <Icon name="mic" size={20} /> {t("prac.speech.record", { name: first })}
+            <PlayButton onClick={() => void startRecording()} tone="peach" variant="soft" size="md">
+              <Icon name="mic" size={18} /> {t("prac.speech.record", { name: first })}
             </PlayButton>
           ) : (
-            <PlayButton onClick={stopRecording} tone="pink" className="animate-pulse">
-              <Icon name="stop" size={20} /> {t("prac.speech.stop")}
+            <PlayButton onClick={stopRecording} tone="pink" variant="soft" size="md" className="animate-pulse">
+              <Icon name="stop" size={18} /> {t("prac.speech.stop")}
             </PlayButton>
           )}
           {audioUrl && recState === "review" && (
@@ -432,14 +478,18 @@ export default function SpeechCoachTab() {
         </div>
         {micError && <p className="text-[11px] mb-3" style={{ color: "var(--arbor-pink-ink)" }}>{micError}</p>}
 
-        {/* STORE-K2 consent invite — parent surface only. Instant listening stays
+        {/* STORE-K2 consent invite — parent surface only. W2-SHELLPLAY critic
+            r1: a one-line door (closed disclosure) after the scoring row; the
+            TrustPanel and the consent opens on tap. Instant listening stays
             off until the grown-up allows it; practice works fully without it. */}
         {!kidMode && voiceConsent === "absent" && recognitionAvailable && autoVerdictOk && (
-          <div className="rounded-2xl p-3 mb-3 space-y-2.5" style={{ background: "#fff", border: "1px solid var(--arbor-rule)" }}>
-            <p className="text-xs font-extrabold flex items-center gap-1.5" style={{ color: "var(--arbor-ink)" }}>
+          <details data-testid="speech-consent-door" className="rounded-2xl mb-3" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}>
+            <summary className="list-none cursor-pointer flex items-center gap-1.5 px-3 min-h-[44px] text-xs font-extrabold" style={{ color: "var(--arbor-ink)" }}>
               <Icon name="hearing" size={14} style={{ color: "var(--arbor-green-ink)" }} />
               {t("prac.speech.voiceConsent.title")}
-            </p>
+              <Icon name="expand_more" size={16} className="ms-auto" style={{ color: "var(--arbor-muted)" }} />
+            </summary>
+            <div className="px-3 pb-3 space-y-2.5">
             <p className="text-[11px] leading-snug" style={{ color: "var(--arbor-muted)" }}>
               {t("prac.speech.voiceConsent.body", { name: first })}
             </p>
@@ -457,15 +507,16 @@ export default function SpeechCoachTab() {
               type="button"
               onClick={() => void allowVoiceConsent()}
               disabled={!consentChecked || consentBusy}
-              className="text-xs font-extrabold px-3.5 py-2 rounded-xl text-white transition disabled:opacity-40"
-              style={{ background: "var(--arbor-clay)" }}
+              className="text-xs font-extrabold px-3.5 min-h-[44px] rounded-xl transition disabled:opacity-40"
+              style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}
             >
               {t("prac.speech.voiceConsent.cta")}
             </button>
             {consentError && (
               <p className="text-[11px]" style={{ color: "var(--arbor-pink-ink)" }}>{t("prac.speech.voiceConsent.error")}</p>
             )}
-          </div>
+            </div>
+          </details>
         )}
 
         {heard && (
@@ -474,37 +525,19 @@ export default function SpeechCoachTab() {
             <span>{t("prac.speech.heardPrefix")} <b>&ldquo;{heard}&rdquo;</b>{autoResult && <> — {t("prac.speech.heardLooksLike")} <b>{autoResult === "got" ? t("prac.speech.heard.match") : autoResult === "almost" ? t("prac.speech.heard.close") : t("prac.speech.heard.different")}</b></>}</span>
             {autoResult && (
               <button onClick={() => saveAttempt(autoResult, "auto")}
-                className="ms-auto font-extrabold text-white rounded-full px-3 py-1" style={{ background: "var(--arbor-sky-ink)" }}>
+                className="ms-auto font-extrabold rounded-full px-3 min-h-[44px]" style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-sky-ink)", border: "1px solid var(--arbor-rule)" }}>
                 {t("prac.speech.saveScore")}
               </button>
             )}
           </div>
         )}
-
-        {/* Parent scoring — the universal floor, and the declared primaryMove
-            for #/speech ("complete-speech-round"): the tap that records the
-            round. Stamped once, on the control group. */}
-        <div className="flex flex-wrap items-center gap-2" data-primary-move="complete-speech-round">
-          <span className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>{t("prac.speech.howDidItSound")}</span>
-          {RESULT_BTN.map((b) => (
-            <button key={b.result} onClick={() => saveAttempt(b.result, "parent")}
-              className="text-xs font-extrabold px-3.5 py-2 rounded-xl transition"
-              style={{ background: b.tone === "mint" ? "var(--arbor-green-soft)" : b.tone === "yellow" ? "var(--arbor-yellow-soft)" : "var(--arbor-pink-soft)", color: b.tone === "mint" ? "var(--arbor-green-ink)" : b.tone === "yellow" ? "var(--arbor-yellow-ink)" : "var(--arbor-pink-ink)" }}>
-              {t(b.labelKey)}
-            </button>
-          ))}
-          {lastSaved && (
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-clay)" }}>
-              <Icon name="check" size={14} /> {t("prac.read.saved")}
-            </span>
-          )}
-        </div>
       </SectionCard>
+      )}
 
       {/* B-PLAY-07: the co-play guide line, not a dose meter. The ASHA evidence
-          chip stays (little and often is the evidence); the 0/50 bar, the
-          mint/yellow reps chip and the weekly x/y line are gone — counts live
-          in the progress disclosure below and, later, in Growth › Language. */}
+          chip stays (little and often is the evidence). W2-SHELLPLAY critic
+          r1: no target pressure — the "~50 repetitions, 3× a week" explainer
+          and the "Today's dose done!" celebration are gone. */}
       <div className={`${cardCls} p-5`} data-testid="speech-together">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
           <p className="text-sm font-extrabold flex items-center gap-2" style={{ color: "var(--arbor-ink)" }}>
@@ -513,23 +546,13 @@ export default function SpeechCoachTab() {
           <Chip tone="sky">{t("prac.speech.evidence.chip")}</Chip>
         </div>
         <p className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>
-          {t("prac.speech.dose.explainer", { perSession: dose.perSessionTarget, perWeek: dose.weeklySessionTarget })}
+          {t("elev.practice.speech.littleOften")}
         </p>
       </div>
 
-      {/* Daily-dose win beat — fires once per session when the dose is first met. */}
-      {doseCelebrated && (
-        <Celebrate
-          title={t("prac.speech.doseWin.title")}
-          subtitle={t("prac.speech.doseWin.sub", { name: first, target: dose.perSessionTarget })}
-        >
-          <PlayButton onClick={() => setDoseCelebrated(false)} variant="soft" tone="mint" size="md">
-            {t("prac.speech.doseWin.cta")}
-          </PlayButton>
-        </Celebrate>
-      )}
-
-      {/* Sound Studio (feature 1): age-banded sound picker */}
+      {/* Sound Studio (feature 1): age-banded sound picker — English sounds, so
+          not drawn in a Hebrew session (W2-SHELLPLAY critic r1, law 8). */}
+      {!speechHe && (
       <SectionCard title={t("prac.speech.studio.title")} icon={<Icon name="graphic_eq" size={20} />} tone="mint">
         <div className="space-y-4">
           {bands.map((band) => (
@@ -546,14 +569,14 @@ export default function SpeechCoachTab() {
                       onClick={() => setSoundId(s.id)}
                       className="play-pressable min-w-[52px] h-[52px] px-3 rounded-2xl text-base font-extrabold transition inline-flex items-center justify-center gap-1"
                       style={on
-                        ? { background: "var(--arbor-clay)", color: "#fff", boxShadow: "0 6px 16px rgba(88,166,255,0.28)" }
-                        : { background: "#fff", color: "var(--arbor-ink)", border: "2px solid var(--arbor-rule)", opacity: appropriate ? 1 : 0.5 }}
+                        ? { background: "var(--arbor-clay)", color: "var(--arbor-on-accent)", boxShadow: "var(--shadow-sm)" }
+                        : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", border: "2px solid var(--arbor-rule)", opacity: appropriate ? 1 : 0.5 }}
                       title={appropriate ? t("prac.speech.sound.tip", { label: s.label, age: s.typicalAge }) : t("prac.speech.sound.tipLate", { label: s.label, age: s.typicalAge, name: first })}
                     >
                       {s.id.toUpperCase()}
                       {/* KID-03/GP-20: a COUNT of tries, never an accuracy percentage. */}
                       {st && st.attempts > 0 && (
-                        <span className="text-[11px] font-bold" style={{ color: on ? "#fff" : "var(--arbor-clay)" }}>{st.attempts}</span>
+                        <span className="text-[11px] font-bold" style={{ color: on ? "var(--arbor-on-accent)" : "var(--arbor-clay)" }}>{st.attempts}</span>
                       )}
                     </button>
                   );
@@ -563,6 +586,7 @@ export default function SpeechCoachTab() {
           ))}
         </div>
       </SectionCard>
+      )}
 
       </section>
 

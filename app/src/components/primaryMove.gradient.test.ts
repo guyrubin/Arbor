@@ -209,6 +209,10 @@ describe("OBJ-TODAY-01 — repo-wide ratchet", () => {
     // the only gradient on that page; familyRitualsCadence.test pins it.
     "nextopen/RitualTurnCard.tsx",
     "practice/GoalBuilderModal.tsx",
+    // W2-SHELLPLAY critic r1: "Said it" in the scoring row carries
+    // data-primary-move="complete-speech-round" (surfaceContract speech) and
+    // is the only gradient in the file; practiceDoors.copy.test pins it.
+    "practice/SpeechCoachTab.tsx",
     // (W2-SHELLPLAY critic r1: PracticeStudioTab left the ratchet — the Kid
     //  Mode door CTA is secondary; the declared move is the first world tile.)
     "profile/AvatarCreator.tsx",

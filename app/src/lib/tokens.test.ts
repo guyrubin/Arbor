@@ -192,7 +192,6 @@ const HEX_ALLOWLIST: Record<string, readonly string[]> = {
   "components/practice/GoalBuilderModal.tsx": ["#7a6bd8", "#d6566f", "#ece9f9", "#fff"],
   "components/practice/MemoryMatch.tsx": ["#fff"],
   "components/practice/MimicMatch.tsx": ["#1c222b", "#5fce97", "#a8a093"], // game canvas art
-  "components/practice/SpeechCoachTab.tsx": ["#fff", "#ffffff"],
   "components/practice/WordWorldTab.tsx": ["#fff"],
   "components/profile/AvatarCreator.tsx": ["#fff"],
   "components/sections/Strengths.tsx": ["#eef6f1"],

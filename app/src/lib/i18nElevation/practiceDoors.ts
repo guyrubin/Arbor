@@ -107,6 +107,18 @@ export const en: Record<string, string> = {
   // W2-SHELLPLAY critic r1: a kid-only tile promises only what the tap does
   // (Kid Mode opens at home until the lane-X B-KID-11 world seam lands).
   "elev.practice.studio.opensKidmode": "Opens Kid Mode",
+  // W2-SHELLPLAY critic r1 · #/speech — descriptive scoring labels (no hue
+  // carries correctness), the "when it's almost" line, the little-and-often
+  // line (no repetition quota), and the honest Hebrew state (the sound drill is
+  // English content).
+  "elev.practice.speech.result.got": "Said it",
+  "elev.practice.speech.result.almost": "Almost",
+  "elev.practice.speech.result.missed": "Not yet — model it again",
+  "elev.practice.speech.almost": "When it comes out almost — smile and say the word back, slowly. Hearing it again is the whole correction.",
+  "elev.practice.speech.littleOften": "Little and often works best — a few minutes most days, and stop while it's still fun.",
+  "elev.practice.speech.he.title": "A Hebrew sound set is coming",
+  "elev.practice.speech.he.body": "The sound drill here is built on English words. Until the Hebrew set is ready, the Hebrew language work for {name} lives in Language & Communication.",
+  "elev.practice.speech.he.cta": "Open Language & Communication",
   // W2-SHELLPLAY critic r1: the subtitle names the one move (pick a world).
   "elev.practice.studio.subtitle": "Ten skill worlds {name} plays as the hero. Pick one to start.",
   "elev.stories.library.title": "Your library",
@@ -238,6 +250,14 @@ export const he: Record<string, string> = {
   "elev.practice.door.sentence.finished.girl": "{when}, {name} סיימה את {title}.",
   "elev.practice.door.sentence.finished.neutral": "{when}, הסיפור {title} של {name} הושלם.",
   "elev.practice.studio.opensKidmode": "נפתח במצב ילדים",
+  "elev.practice.speech.result.got": "נאמר",
+  "elev.practice.speech.result.almost": "כמעט",
+  "elev.practice.speech.result.missed": "עוד לא — נדגים שוב",
+  "elev.practice.speech.almost": "כשזה יוצא כמעט — חייכו ואמרו את המילה שוב, לאט. לשמוע אותה שוב זה כל התיקון.",
+  "elev.practice.speech.littleOften": "מעט ולעתים קרובות עובד הכי טוב — כמה דקות ברוב הימים, ולעצור כשעוד כיף.",
+  "elev.practice.speech.he.title": "ערכת צלילים בעברית בדרך",
+  "elev.practice.speech.he.body": "תרגול הצלילים כאן בנוי על מילים באנגלית. עד שהערכה בעברית תהיה מוכנה, העבודה על השפה העברית של {name} נמצאת בשפה ותקשורת.",
+  "elev.practice.speech.he.cta": "לפתוח את שפה ותקשורת",
   "elev.practice.studio.subtitle": "עשרה עולמות מיומנות ש{name} משחק בהם כגיבור. בחרו אחד כדי להתחיל.",
   "elev.stories.library.title": "הספרייה שלכם",
   "elev.stories.reader.back": "כל המסעות",
