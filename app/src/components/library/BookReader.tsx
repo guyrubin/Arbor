@@ -46,6 +46,7 @@ import {
   isDecision,
   isEnding,
   nextRepairItem,
+  readPath,
   repairDone,
   repairedItems,
   type BookFlowState,
@@ -55,7 +56,7 @@ import { focusBackground, overlaySources, plateSources, type PlateTable } from "
 import { BOOK_PLATES } from "../../lib/library/books";
 import { bookString } from "../../lib/library/bookStrings";
 import { TURN_GLYPHS } from "../../lib/library/bookGlyphs";
-import { heGender, heroDisplayName, heroParts, labelFor, pageParagraphs, paragraphChars } from "../../lib/library/bookText";
+import { heGender, heroDisplayName, heroParts, labelFor, lineFor, pageParagraphs, paragraphChars } from "../../lib/library/bookText";
 import { choicePictureSources, heroPrint, heroSpriteUrl, resolveHeroSheet, sheetAnchorOf, type HeroSheet } from "../../lib/library/heroSheet";
 import { declaredAudio, DEV_NARRATION_ROOT, NARRATION_ROOT, narrationKey, pageNarrationSrc } from "../../lib/library/narration";
 import type { Book, BookLang, BookReaderChild, Page } from "../../lib/library/types";
@@ -188,7 +189,10 @@ export function BookReader({
   // ── what is on screen ──────────────────────────────────────────────────────
   const atEnd = state.at === END;
   const onCover = state.at === COVER;
-  const page: Page = onCover || atEnd ? book.cover : currentPage(book, state) ?? book.cover;
+  // The END screen is the book's LAST page (fix round 2): the last story
+  // page's art on the art page, "The End" on the paper page.
+  const lastPage = readPath(book, state.choiceId).slice(-1)[0] ?? book.pages[book.pages.length - 1];
+  const page: Page = onCover ? book.cover : atEnd ? lastPage : currentPage(book, state) ?? book.cover;
   const story = !onCover && !atEnd;
   const plate = plateTable[page.plateId];
   const done = repairedItems(story ? page : null, state);
@@ -203,7 +207,10 @@ export function BookReader({
   const baseSlot = (costume && page.heroAlt?.[costume]) || page.hero;
   const slot = repaired && repair?.heroAfter ? repair.heroAfter : baseSlot;
 
-  const content: LayoutContent = onCover
+  const endFrame = atEnd && lastPage.closing ? lineFor(lastPage.closing, lang, gender) : "";
+  const content: LayoutContent = atEnd
+    ? { paras: [endFrame.length || 1], title: bookString("theEnd", lang).length }
+    : onCover
     ? {
         paras: [book.coverLine[lang].length, ...(book.coverNameLine ? [book.coverNameLine[lang].length + name.length] : [])],
         title: book.title[lang].length,
@@ -265,7 +272,7 @@ export function BookReader({
   // A print replaces plate + sprite — unless a costume variant is shown or the
   // after-narration overlay has been revealed (the live composite returns).
   // The layout ALWAYS uses the plate's own size: no frame jump between the two.
-  const print = story || onCover ? (prints && !(costume && page.heroAlt?.[costume]) && !(afterOverlay && revealed) ? heroPrint(sheet, page.id) : null) : null;
+  const print = story || onCover || atEnd ? (prints && !(costume && page.heroAlt?.[costume]) && !(afterOverlay && revealed) ? heroPrint(sheet, page.id) : null) : null;
   const layout = computeBookPageLayout(page, box, lang, { plate, slot, content, anchorOf, cover: onCover });
   const coverFront = onCover && layout.mode === "wide" && layout.pageType === "cover";
 
@@ -485,12 +492,8 @@ export function BookReader({
         <BookSoundToggle childId={child.id} lang={lang} />
       </header>
       <div className="bk-stage" ref={stageRef}>
-        {atEnd ? (
-          <div key="end" className="bk-turn bk-end-wrap" data-turn={turnClass} data-book-page="end">
-            <BookEnd book={book} lang={lang} gender={gender} name={name} onReadAgain={() => dispatch({ type: "toCover" })} onClose={onClose} />
-          </div>
-        ) : (
-          <div key={state.at} className="bk-turn" data-turn={turnClass} data-book-page={page.id}>
+        {(
+          <div key={state.at} className="bk-turn" data-turn={turnClass} data-book-page={atEnd ? "end" : page.id}>
             {layout.mode === "wide" && <div className={coverFront ? "bk-frame" : "bk-book"} aria-hidden="true" style={rectStyle(layout.book)} />}
             {layout.mode === "wide" && !coverFront && <div className="bk-artpage" aria-hidden="true" style={rectStyle(layout.artPage)} />}
             <BookPage
@@ -533,12 +536,15 @@ export function BookReader({
               <section
                 className="bk-text"
                 data-book-text=""
+                data-end={atEnd ? "" : undefined}
                 data-kind={layout.pageType === "spread" ? "panel" : layout.mode === "wide" ? "page" : "sheet"}
                 data-choosing={choosing ? "" : undefined}
                 data-spine={layout.spine}
                 style={textStyle}
               >
-                {onCover ? (
+                {atEnd ? (
+                  <BookEnd book={book} lang={lang} gender={gender} name={name} titlePx={layout.titlePx} typePx={typePx} onReadAgain={() => dispatch({ type: "toCover" })} onClose={onClose} />
+                ) : onCover ? (
                   <div className="bk-cover-words" ref={wordsRef}>
                     <h1 className="bk-title" style={{ fontSize: px(layout.titlePx) }}>
                       {book.title[lang]}
@@ -568,10 +574,10 @@ export function BookReader({
                     <span>{labelFor(repair.promptLabel, lang)}</span>
                   </p>
                 )}
-                <nav className="bk-nav" style={{ minBlockSize: px(Math.min(layout.navPx, 96) - 8) }}>
+                {!atEnd && <nav className="bk-nav" style={{ minBlockSize: px(Math.min(layout.navPx, 96) - 8) }}>
                   {!onCover ? <KidToy tone="paper" shape="round" glyph={TURN_GLYPHS.back} data-book-back="" aria-label={bookString("back", lang)} onClick={back} /> : <span />}
                   {forward}
-                </nav>
+                </nav>}
               </section>
             )}
             {leaf && <div className="bk-leaf" data-dir={state.dir === 1 ? "fwd" : "back"} aria-hidden="true" style={{ ...rectStyle(leaf.rect), transformOrigin: leaf.origin, "--leaf-rot": leaf.rot } as CSSProperties} />}

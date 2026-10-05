@@ -60,32 +60,39 @@ function Named({ text, name }: { text: string; name: string }) {
   );
 }
 
-export function BookEnd({ book, lang, gender, name, onReadAgain, onClose }: { book: Book; lang: BookLang; gender: HeGender; name: string; onReadAgain: () => void; onClose: () => void }) {
+export function BookEnd({
+  book,
+  lang,
+  gender,
+  name,
+  titlePx,
+  typePx,
+  onReadAgain,
+  onClose,
+}: {
+  book: Book;
+  lang: BookLang;
+  gender: HeGender;
+  name: string;
+  titlePx?: number;
+  typePx?: number;
+  onReadAgain: () => void;
+  onClose: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const last = book.pages[book.pages.length - 1];
   const pp = book.parent;
-  return (
-    <section className="bk-end" data-book-end-screen="">
-      <h1 className="bk-end-title">{bookString("theEnd", lang)}</h1>
-      {last?.closing && (
-        <p className="bk-end-frame" data-book-frame="">
-          <Named text={lineFor(last.closing, lang, gender)} name={name} />
-        </p>
-      )}
-      <div className="bk-end-toys">
-        <KidToy tone="go" size="l" glyph="replay" data-book-read-again="" onClick={onReadAgain}>
-          {bookString("readAgain", lang)}
-        </KidToy>
-        <KidToy tone="paper" size="l" glyph="close" data-book-end-close="" onClick={onClose}>
-          {bookString("close", lang)}
-        </KidToy>
-      </div>
-      <hr className="bk-end-rule" />
-      <button type="button" className="bk-grownup-toggle" data-book-grownup="" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        {bookString("grownUp", lang)}
-        <span aria-hidden="true" className="bk-grownup-caret" data-open={open ? "" : undefined} />
-      </button>
-      {open && (
+  const toggle = (
+    <button type="button" className="bk-grownup-toggle" data-book-grownup="" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+      {bookString("grownUp", lang)}
+      <span aria-hidden="true" className="bk-grownup-caret" data-open={open ? "" : undefined} />
+    </button>
+  );
+  if (open) {
+    // the parent panel takes over the paper page (it scrolls inside)
+    return (
+      <section className="bk-end" data-book-end-screen="" data-grownup="">
+        {toggle}
         <dl className="bk-grownup" data-book-grownup-panel="">
           <dt>{bookString("grownUp.builds", lang)}</dt>
           <dd>{labelFor(pp.builds, lang)}</dd>
@@ -108,7 +115,30 @@ export function BookEnd({ book, lang, gender, name, onReadAgain, onClose }: { bo
             <Named text={labelFor(pp.sourceNote, lang)} name={name} />
           </dd>
         </dl>
-      )}
+      </section>
+    );
+  }
+  return (
+    <section className="bk-end" data-book-end-screen="">
+      <div className="bk-end-main">
+        <h1 className="bk-end-title" style={titlePx ? { fontSize: `${titlePx}px` } : undefined}>
+          {bookString("theEnd", lang)}
+        </h1>
+        {last?.closing && (
+          <p className="bk-end-frame" data-book-frame="" style={typePx ? { fontSize: `${typePx}px` } : undefined}>
+            <Named text={lineFor(last.closing, lang, gender)} name={name} />
+          </p>
+        )}
+      </div>
+      <div className="bk-end-toys">
+        <KidToy tone="go" size="l" glyph="replay" data-book-read-again="" onClick={onReadAgain}>
+          {bookString("readAgain", lang)}
+        </KidToy>
+        <KidToy tone="paper" size="l" glyph="close" data-book-end-close="" onClick={onClose}>
+          {bookString("close", lang)}
+        </KidToy>
+      </div>
+      {toggle}
     </section>
   );
 }
