@@ -70,11 +70,19 @@ export function PatternRoundView({
   correctFeedback,
   retryFeedback,
   supportLabel,
+  missed = [],
+  revealed = false,
+  tryAnotherFeedback = "",
 }: {
   puzzle: PatternPuzzle;
   idx: number;
   options: string[];
   picked: string | null;
+  /** B-KID-50: wrong picks this round (the round stays open after the first). */
+  missed?: readonly string[];
+  /** B-KID-50: after a second miss the answer is shown as a pulse, no text. */
+  revealed?: boolean;
+  tryAnotherFeedback?: string;
   onChoose: (opt: string) => void;
   patternAria: string;
   title: string;
@@ -111,12 +119,17 @@ export function PatternRoundView({
       <div className="grid grid-cols-3 gap-3">
         {options.map((opt) => (
           <ChoiceTile key={opt} emoji={opt} label=""
-            state={!picked ? "idle" : opt === puzzle.answer ? "correct" : opt === picked ? "wrong" : "dim"}
-            onClick={() => onChoose(opt)} disabled={!!picked} />
+            state={!picked ? (missed.includes(opt) ? "wrong" : "idle") : opt === puzzle.answer ? "correct" : opt === picked || missed.includes(opt) ? "wrong" : "dim"}
+            onClick={() => onChoose(opt)} disabled={!!picked || missed.includes(opt)} />
         ))}
       </div>
 
-      {picked && (
+      {/* B-KID-50: one miss leaves the round open with a nudge line. */}
+      {!picked && missed.length > 0 && tryAnotherFeedback && (
+        <MascotSay mood="happy" tone="peach">{tryAnotherFeedback}</MascotSay>
+      )}
+
+      {picked && !revealed && (
         <MascotSay mood={picked === puzzle.answer ? "proud" : "happy"} tone={picked === puzzle.answer ? "clay" : "peach"}>
           {picked === puzzle.answer ? correctFeedback : retryFeedback.replace("{answer}", puzzle.answer)}
         </MascotSay>
@@ -134,6 +147,10 @@ export default function PatternPowerWorld() {
   const { t, uiLang } = useLanguage();
   const [idx, setIdx] = useState(0);
   const [picked, setPicked] = useState<string | null>(null);
+  // B-KID-50 (KC-06): a wrong pick nudges and leaves the round open; a second
+  // miss reveals the answer as a pulse (no sentence); only the FIRST try is logged.
+  const [missed, setMissed] = useState<string[]>([]);
+  const [revealed, setRevealed] = useState(false);
   const [scores, setScores] = useState<number[]>([]);
   const [sessionSeed, setSessionSeed] = useState(0);
   const advanceTimerRef = useRef<number | null>(null);
@@ -161,25 +178,32 @@ export default function PatternPowerWorld() {
         title={t("elev.play.pattern.done.title", { name: first })}
         subtitle={t("elev.play.pattern.done.sub")}
         againLabel={t("elev.play.pattern.done.again")}
-        onReplay={() => { setSessionSeed((seed) => seed + 1); setIdx(0); setScores([]); setPicked(null); }}
+        onReplay={() => { setSessionSeed((seed) => seed + 1); setIdx(0); setScores([]); setPicked(null); setMissed([]); setRevealed(false); }}
       />
     );
   }
 
   const choose = (opt: string) => {
-    if (picked) return;
+    if (picked || missed.includes(opt)) return;
     const correct = opt === puzzle.answer;
-    const score = correct ? 100 : 0;
-    setPicked(opt);
-    log("pattern", "cognition", { correct, score, meta: puzzle.id });
+    const firstTry = missed.length === 0;
+    // B-KID-50: one row per round — the FIRST try is what is logged.
+    if (firstTry) log("pattern", "cognition", { correct, score: correct ? 100 : 0, meta: puzzle.id });
+    if (!correct && firstTry) { setMissed([opt]); return; }
+    const score = correct && firstTry ? 100 : 0;
+    // A second miss reveals the answer (pulse on its tile, the slot fills).
+    if (!correct) setRevealed(true);
+    setPicked(correct ? opt : puzzle.answer);
     // N1-01-R5: one completed kid activity. A COUNT and nothing else —
     // a no-op outside Kid Mode, so a parent using this screen cannot inflate it.
     noteKidActivity();
     advanceTimerRef.current = window.setTimeout(() => {
       setScores((s) => [...s, score]);
       setPicked(null);
+      setMissed([]);
+      setRevealed(false);
       setIdx((i) => i + 1);
-    }, 1050);
+    }, correct ? 1050 : 1600);
   };
 
   return (
@@ -197,6 +221,9 @@ export default function PatternPowerWorld() {
       total={puzzles.length}
       correctFeedback={t("elev.kids.pattern.feedback.yes")}
       retryFeedback={t("elev.kids.pattern.feedback.retry", { answer: "{answer}" })}
+      missed={missed}
+      revealed={revealed}
+      tryAnotherFeedback={t("elev.kids.pattern.feedback.tryAnother")}
       supportLabel={t("elev.kids.pattern.support")}
     />
   );
