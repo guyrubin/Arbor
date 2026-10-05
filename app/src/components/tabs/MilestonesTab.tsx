@@ -28,7 +28,8 @@ import { ContentActionBar, ContentWhyLine } from "../ui/ContentActionBar";
 import { cardCls, Split, domainVisual, PASTEL } from "../ui/kit";
 import { authHeaders, getAiLanguage } from "../../lib/api";
 import { DOMAIN_REFERENCES } from "../../lib/milestoneReferences";
-import { MILESTONE_AGE_BANDS, ageWindowMilestones, bandForAgeMonths, comparisonAgeMonths, correctedAge, explainMilestonePrompt, milestoneAgeGroupText, milestoneBandLabel, milestoneText } from "../../lib/milestoneData";
+import { noticedMilestoneCounts } from "../../lib/pulse";
+import { MILESTONE_AGE_BANDS, ageWindowMilestones, bandForAgeMonths, comparisonAgeMonths, correctedAge, explainMilestonePrompt, milestoneAgeGroupText, milestoneBandLabel, milestoneText, selectNextMilestones } from "../../lib/milestoneData";
 // UND-7 — fail-closed gate for the governed milestone example-media slot
 // (missing reviewer/rightsRef → never renders; ships with zero media entries).
 import { isRenderableMilestoneMedia } from "../../content/governance";
@@ -56,6 +57,20 @@ import {
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { DEVELOPMENTAL_DOMAIN_IDS, domainLabel as registryDomainLabel, primaryDomainLabel } from "../../lib/domains/registry";
 import { DevelopmentalDomainId, Milestone } from "../../types";
+
+/** NEXTLEVEL critic r1: "Born early?" leads the rail only while correction
+ *  applies (under ~24 months, or a gestation is set); otherwise the same
+ *  control waits in a quiet disclosure — reachable, never the fold's action. */
+function BornEarlyFrame({ inline, summary, children }: { inline: boolean; summary: string; children: React.ReactNode }) {
+  return inline ? (
+    <div className={`${cardCls} min-w-0 p-4`}>{children}</div>
+  ) : (
+    <details data-testid="ms-born-early-disclosure" className={`${cardCls} min-w-0 px-4 py-1`}>
+      <summary className="flex min-h-11 cursor-pointer items-center t-sm font-bold" style={{ color: "var(--arbor-muted)" }}>{summary}</summary>
+      <div className="pb-3 pt-1">{children}</div>
+    </details>
+  );
+}
 
 function celebrate() {
   // ONE capped, brand-coloured, reduced-motion-safe burst — the Law 7 caps
@@ -178,7 +193,14 @@ export default function MilestonesTab() {
   // corrected band + one earlier — the shared lib/milestoneData helper), never
   // the whole 0–6y catalogue ("0 of 133" / "0/28" on day 0).
   const windowMilestones = useMemo(() => ageWindowMilestones(milestones, comparisonMonths), [milestones, comparisonMonths]);
-  const windowChecked = windowMilestones.filter((m) => m.checked).length;
+  // NEXTLEVEL critic r1 (P0, B-GROWTH-35): the headline and the domain rows
+  // count what the parent NOTICED, unwindowed — the same helper Growth, Care
+  // and Profile read (lib/pulse noticedMilestoneCounts), so "0 noticed" here
+  // can never sit beside "5 noticed" on #/development. The age window only
+  // chooses which OPEN items are suggested.
+  const recordCounts = useMemo(() => noticedMilestoneCounts(milestones), [milestones]);
+  const nextOpen = useMemo(() => selectNextMilestones(milestones, comparisonMonths, 3), [milestones, comparisonMonths]);
+  const nextInDomain = (domain: string): Milestone | undefined => windowMilestones.find((m) => m.domain === domain && !m.checked);
 
   // UND-3 — "Gentle watch points" derives from the canonical useMonitoring
   // watch-area derivation: real domain names + COUNTS only (clinical firewall —
@@ -282,7 +304,7 @@ export default function MilestonesTab() {
     <div
       key={item.id}
       className="p-3 rounded-xl transition"
-      style={item.checked ? { background: "var(--arbor-paper-deep)", border: "1px solid rgba(52,178,119,0.30)" } : { background: "#fff", border: "1px solid var(--arbor-rule)" }}
+      style={item.checked ? { background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" } : { background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}
     >
       <div className="flex items-start gap-3">
         <span className="mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full" style={{ background: item.checked ? "var(--arbor-green-soft)" : "var(--arbor-paper-deep)", color: item.checked ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}><Icon name={item.checked ? "check" : item.observationStatus === "not_sure" ? "question_mark" : "remove"} size={14} /></span>
@@ -331,7 +353,7 @@ export default function MilestonesTab() {
               ["not_yet", t("ms.observe.notYet")],
             ] as const).map(([status, label]) => {
               const selected = (item.observationStatus ?? (item.checked ? "yes" : undefined)) === status;
-              return <button key={status} type="button" onClick={() => observeMilestone(item, status)} aria-pressed={selected} className="min-h-11 rounded-lg px-1.5 text-[11px] font-bold" style={{ background: selected ? "var(--arbor-green-soft)" : "var(--arbor-paper-elevated)", color: selected ? "var(--arbor-green-ink)" : "var(--arbor-muted)", border: `1px solid ${selected ? "rgba(52,178,119,0.30)" : "var(--arbor-rule)"}` }}>{label}</button>;
+              return <button key={status} type="button" onClick={() => observeMilestone(item, status)} aria-pressed={selected} className="min-h-11 rounded-lg px-1.5 text-[11px] font-bold" style={{ background: selected ? "var(--arbor-green-soft)" : "var(--arbor-paper-elevated)", color: selected ? "var(--arbor-green-ink)" : "var(--arbor-muted)", border: `1px solid ${selected ? "var(--arbor-rule-strong)" : "var(--arbor-rule)"}` }}>{label}</button>;
             })}
           </div>
           {item.observationStatus === "not_sure" && <p className="pt-1 text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("ms.observeNotSureHint")}</p>}
@@ -722,7 +744,7 @@ export default function MilestonesTab() {
           marks a top-level sibling module (what moduleBudget counts);
           `data-primary-move` marks the ONE control that performs the move
           surfaceContract.ts declares for this route. */}
-      <div data-module="milestones-spine" data-primary-move="mark-milestone" style={{ display: "contents" }}>
+      <div data-module="milestones-spine" style={{ display: "contents" }}>
       <Split
         ratio="minmax(300px,1fr) minmax(0,1.4fr)"
         className="md:[&>div]:!contents xl:[&>div]:!grid"
@@ -730,21 +752,52 @@ export default function MilestonesTab() {
           <div className="min-w-0 space-y-4 xl:sticky xl:top-4 xl:space-y-5">
             {/* Development Map summary — count headline only, no verdict score. */}
             <div className={`${cardCls} min-w-0 p-4 sm:p-6`}>
-              <span className="text-[11px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("ms.developmentMap")}</span>
-              {/* B-GROWTH-07 — CLINICAL FIREWALL: no proportional fill of a child
-                  record. The ring drew checked/total as an arc; the count now
-                  stands alone as text in display type ("{n} noticed"). */}
-              <div className="mt-4 min-w-0" data-testid="ms-map-count">
-                <div className="min-w-0">
-                  <div className="text-[12px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("ms.observedSoFar")}</div>
-                  <div className="mt-1 text-[26px] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-                    {windowChecked} {t("ms.domainOf")}
-                  </div>
-                  <p className="text-[11px] mt-1.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("ms.snapshotNotScore")}</p>
-                  {/* GP-08: the denominator is the age window, and the parent is told so. */}
-                  <p className="text-[11px] mt-1.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.growthTruth.window.hint")}</p>
+              {/* NEXTLEVEL critic r1: one title per screen — the "DEVELOPMENT
+                  MAP" eyebrow and the second disclaimer ("A snapshot, not a
+                  score") are gone (the subtitle already says it). B-GROWTH-07:
+                  the count stands alone as text, never a ring or a fraction. */}
+              <div className="min-w-0" data-testid="ms-map-count">
+                <p className="t-sm font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ms.observedSoFar")}</p>
+                <div className="mt-1 text-[26px] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+                  {recordCounts.noticed} {t("ms.domainOf")}
                 </div>
               </div>
+
+              {/* NEXTLEVEL critic r1 (P1, B-NEXTLEVEL-NEW-1i): the primary move
+                  is a CONTROL, not a display:contents wrapper — "Seen any of
+                  these?" lists the next three open items of the child's band
+                  (selectNextMilestones), each a 44 px "Yes, I've seen it" that
+                  writes through observeMilestone (once-per-id celebration +
+                  the milestones thread write). One gradient: the first Yes. */}
+              <section data-primary-move="mark-milestone" data-testid="ms-seen-any" aria-labelledby="ms-seen-any-title" className="mt-5 border-t pt-4" style={{ borderColor: "var(--arbor-rule)" }}>
+                <h2 id="ms-seen-any-title" className="leading-snug" style={{ fontFamily: "var(--font-display)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>
+                  {t("elev.ms.seenAny.title")}
+                </h2>
+                {nextOpen.length > 0 ? (
+                  <ul className="mt-3 space-y-2.5">
+                    {nextOpen.map((m, i) => (
+                      <li key={m.id} className="flex items-center justify-between gap-3">
+                        <span className="min-w-0 text-sm font-semibold leading-snug" style={{ color: "var(--arbor-ink)" }}>{milestoneText(m, "title", t)}</span>
+                        <button
+                          type="button"
+                          data-testid="ms-seen-any-yes"
+                          onClick={() => observeMilestone(m, "yes")}
+                          className="min-h-11 shrink-0 rounded-xl px-3.5 text-sm font-extrabold"
+                          style={i === 0
+                            ? { background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }
+                            : { background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}
+                        >
+                          {t("elev.ms.seenAny.yes")}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-2 t-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+                    {t("elev.ms.seenAny.empty", { name: firstName || t("ms.watch.childFallback") })}
+                  </p>
+                )}
+              </section>
 
               {/* B1 — under-2 reassurance lead: name the current stage, no checklist framing. */}
               {comparisonMonths < 24 && (
@@ -753,7 +806,7 @@ export default function MilestonesTab() {
                     <span className="text-[11px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("ms.rightNow")}</span>
                     <span className="text-lg" style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink)" }}>{milestoneBandLabel(currentBand.months, t)}</span>
                     {corrected.applied && (
-                      <span className="text-[11px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "#fff" }}>
+                      <span className="text-[11px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-paper-elevated)" }}>
                         {t("ms.correctedBadge")} · {corrected.correctedMonths}m
                       </span>
                     )}
@@ -764,7 +817,7 @@ export default function MilestonesTab() {
             </div>
 
             {/* Corrected-age (preterm) control + badge — relocated into the rail. */}
-            <div className={`${cardCls} min-w-0 p-4`}>
+            <BornEarlyFrame inline={comparisonMonths < 24 || !!gestationalWeeks} summary={t("ms.bornEarly")}>
               <div className="flex flex-col gap-3">
                 <div className="flex items-start gap-2.5">
                   <span className="p-1.5 rounded-lg flex items-center justify-center mt-0.5" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}><Icon name="child_care" size={16} /></span>
@@ -785,7 +838,7 @@ export default function MilestonesTab() {
                     type="button"
                     onClick={() => { setGestationDraft(gestationalWeeks ? String(gestationalWeeks) : ""); setShowGestation(true); }}
                     className="text-xs font-bold px-3 py-2 min-h-11 rounded-xl transition self-start whitespace-nowrap"
-                    style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.30)" }}
+                    style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)", border: "1px solid var(--arbor-rule-strong)" }}
                   >
                     {gestationalWeeks ? `${gestationalWeeks}w · ${t("ms.gestationSave")}` : t("ms.gestationLabel")}
                   </button>
@@ -820,7 +873,7 @@ export default function MilestonesTab() {
                   </div>
                 </form>
               )}
-            </div>
+            </BornEarlyFrame>
           </div>
         }
         right={
@@ -830,7 +883,6 @@ export default function MilestonesTab() {
               <h3 className="text-[15px] font-extrabold mb-4" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("ms.developmentMap")}</h3>
               <div className="flex flex-col gap-3.5">
                 {domainOptions.filter((dom) => (domainStats[dom.id]?.total ?? 0) > 0).map((dom) => {
-                  const s = domainStats[dom.id] || { total: 0, checked: 0 };
                   const dv = domainVisual(dom.id);
                   const Icon = dv.icon;
                   return (
@@ -844,8 +896,15 @@ export default function MilestonesTab() {
                       <div className="flex items-center gap-2.5 mb-2">
                         <Icon className="w-[18px] h-[18px] flex-shrink-0" style={{ color: PASTEL[dv.tone].ink }} />
                         <span className="flex-1 text-[13.5px] font-bold" style={{ color: "var(--arbor-ink)" }}>{domainLabel(dom.id)}</span>
-                        {/* B-GROWTH-07: a count, never a bar or a "/total" fraction. */}
-                        <span className="text-[11px] font-extrabold" style={{ color: "var(--arbor-muted)" }}>{s.checked} {t("ms.domainOf")}</span>
+                        {/* B-GROWTH-07: a count, never a bar or a "/total" fraction.
+                            NEXTLEVEL critic r1: the unwindowed noticed count
+                            (byDomain); a domain at 0 names its next open item
+                            instead of a "0 noticed" line. */}
+                        {(recordCounts.byDomain[dom.id] ?? 0) > 0 || !nextInDomain(dom.id) ? (
+                          <span className="text-[11px] font-extrabold" style={{ color: "var(--arbor-muted)" }}>{recordCounts.byDomain[dom.id] ?? 0} {t("ms.domainOf")}</span>
+                        ) : (
+                          <span data-testid="ms-domain-next" className="min-w-0 max-w-[55%] truncate text-[11px] font-semibold" style={{ color: "var(--arbor-muted)" }}>{t("elev.ms.domainNext", { title: milestoneText(nextInDomain(dom.id)!, "title", t) })}</span>
+                        )}
                         <ChevEnd className="w-4 h-4 flex-shrink-0" style={{ color: "var(--arbor-muted)" }} />
                       </div>
                     </button>
@@ -857,7 +916,6 @@ export default function MilestonesTab() {
             /* ── Domain drill-in: back-link + header + banded checklist + hints ── */
             (() => {
               const dom = domainOptions.find((d) => d.id === openDomain) || domainOptions[0];
-              const s = domainStats[dom.id] || { total: 0, checked: 0 };
               const dv = domainVisual(dom.id);
               const Icon = dv.icon;
               return (
@@ -877,7 +935,7 @@ export default function MilestonesTab() {
                     </span>
                     <div className="flex-1">
                       <div className="text-[17px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{domainLabel(dom.id)}</div>
-                      <div className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>{s.checked} {t("ms.domainOf")}</div>
+                      <div className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>{recordCounts.byDomain[dom.id] ?? 0} {t("ms.domainOf")}</div>
                     </div>
                   </div>
 

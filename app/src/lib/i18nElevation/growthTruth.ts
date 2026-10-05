@@ -108,6 +108,12 @@ export const en: Record<string, string> = {
   // Builder M — R25 — #/profile demotion disclosure (chapters 3-7 and the jump strip).
   "elev.growthTruth.profile.more.title": "The rest of the story",
   "elev.growthTruth.profile.more.sub": "Milestones, strengths, language, what Arbor remembers, and the next step.",
+
+  // NEXTLEVEL critic r1 — #/milestones primary move (mark-milestone) + domain rows.
+  "elev.ms.seenAny.title": "Seen any of these?",
+  "elev.ms.seenAny.yes": "Yes, I've seen it",
+  "elev.ms.seenAny.empty": "When {name} does something for the first time, it lands here.",
+  "elev.ms.domainNext": "Next: {title}",
 };
 
 export const he: Record<string, string> = {
@@ -188,4 +194,10 @@ export const he: Record<string, string> = {
   // Builder M — R25 — #/profile demotion disclosure (chapters 3-7 and the jump strip).
   "elev.growthTruth.profile.more.title": "המשך הסיפור",
   "elev.growthTruth.profile.more.sub": "אבני דרך, חוזקות, שפה, מה ארבור זוכר והצעד הבא.",
+
+  // NEXTLEVEL critic r1 — #/milestones primary move (mark-milestone) + domain rows.
+  "elev.ms.seenAny.title": "ראיתם משהו מאלה?",
+  "elev.ms.seenAny.yes": "כן, ראיתי",
+  "elev.ms.seenAny.empty": "כש{name} יעשה משהו בפעם הראשונה, זה יופיע כאן.",
+  "elev.ms.domainNext": "הבא: {title}",
 };

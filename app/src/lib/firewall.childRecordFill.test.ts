@@ -93,9 +93,12 @@ describe("B-GROWTH-07 — no proportional fill of a child record", () => {
   it("the Milestones map keeps the count as text, without a /total fraction", () => {
     const ms = stripComments(read("components/tabs/MilestonesTab.tsx"));
     expect(ms).toContain('data-testid="ms-map-count"');
-    expect(ms).toContain('{windowChecked} {t("ms.domainOf")}');
+    // NEXTLEVEL critic r1: the headline is the unwindowed noticed count (lib/pulse).
+    expect(ms).toContain('{recordCounts.noticed} {t("ms.domainOf")}');
     expect(ms).not.toContain('{s.checked}/{s.total}');
-    expect((ms.match(/\{s\.checked\} \{t\("ms\.domainOf"\)\}/g) ?? []).length).toBe(2);
+    // The domain row + drill-in header: the noticed count per domain, as text.
+    expect((ms.match(/\{recordCounts\.byDomain\[dom\.id\] \?\? 0\} \{t\("ms\.domainOf"\)\}/g) ?? []).length).toBe(2);
+    expect(ms).not.toMatch(/\{recordCounts\.byDomain\[dom\.id\][^}]*\}\s*\/\s*\{/);
   });
 
   it("NEGATIVE CONTROL — the pre-fix shapes trip every pattern", () => {

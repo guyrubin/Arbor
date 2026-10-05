@@ -273,8 +273,10 @@ describe("OBJ-TODAY-01 — repo-wide ratchet", () => {
     // spells the literal (was the T.gradientCta alias this scan cannot see);
     // languageLab.hebrewChrome.test pins it.
     "tabs/LanguageLabVocabView.tsx",
-    // (B-GROWTH-12: MilestonesTab left the ratchet — its only gradient was the
-    //  removed "Find next steps" analyzer button.)
+    // NEXTLEVEL critic r1: the first "Yes, I've seen it" inside "Seen any of
+    // these?" carries data-primary-move="mark-milestone" (surfaceContract
+    // milestones.primaryMove) and is the only gradient in the file.
+    "tabs/MilestonesTab.tsx",
     "tabs/PlansTab.tsx",
     // W2-CAREPRO r1: the one-tap call button carries data-primary-move="call-helpline"
     // (surfaceContract safety.primaryMove) and is the only gradient in the file
