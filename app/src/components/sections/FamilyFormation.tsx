@@ -8,6 +8,9 @@ import { useToast } from "../../context/ToastContext";
 import { FAMILY_RITUALS, type FamilyRitual } from "../../lib/familyRituals";
 import RitualTurnCard from "../nextopen/RitualTurnCard";
 import { initialCharterValues, saveFamilyCharter } from "../../lib/familyCharter";
+// B-PLAY-21: the ONE tone sheet (B-ASKJB-12's) — same component, same store
+// (selectedLens → the prompt's lens). No lens bodies are imported here.
+import ToneSheet, { toneLabel } from "../coach/ToneSheet";
 import type { FrameId } from "../../lib/masterclasses";
 
 // Each ritual → its Material Symbols Rounded glyph (UC-2 visual-match).
@@ -42,7 +45,8 @@ export default function FamilyFormation() {
   // no way to actually start one. "Start" accepts the ritual's FIRST step
   // into today through the existing action loop (the same seam the Learn
   // reader's "Add to today" uses), so the practice reaches the day.
-  const { acceptTodayAction, actionLoop } = useArbor();
+  const { acceptTodayAction, actionLoop, selectedLens, setSelectedLens } = useArbor();
+  const [toneOpen, setToneOpen] = useState(false);
   const { toast } = useToast();
   const he = aiLang === "he";
   const [values, setValues] = useState<string[]>(() => initialCharterValues(undefined, uiLang));
@@ -94,6 +98,19 @@ export default function FamilyFormation() {
           <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} placeholder={he ? "הוסיפו ערך (למשל סבלנות)…" : "Add a value (e.g. Patience)…"} dir="auto" className="flex-1 rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} />
           <button onClick={add} className="inline-flex items-center gap-1 font-bold text-sm rounded-xl px-4 text-white" style={{ background: "var(--arbor-clay)" }}><Icon name="add" size={16} /> {he ? "הוסיפו" : "Add"}</button>
         </div>
+        {/* B-PLAY-21: "Our family's way" — how Arbor talks with you sits beside
+            the charter. The SAME sheet Ask opens, writing the same selectedLens
+            the companion prompt already reads. */}
+        <div className="mt-5 pt-4 flex flex-wrap items-center justify-between gap-3" style={{ borderTop: "1px solid var(--arbor-rule)" }} data-testid="family-tone-row">
+          <div className="min-w-0">
+            <p className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{t("coach.tone.title")}</p>
+            <p className="text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>{toneLabel(selectedLens, t)}</p>
+          </div>
+          <button type="button" onClick={() => setToneOpen(true)} className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3.5 text-[13px] font-bold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}>
+            <Icon name="tune" size={16} /> {t("coach.tone.change")}
+          </button>
+        </div>
+        <ToneSheet open={toneOpen} onClose={() => setToneOpen(false)} selectedLens={selectedLens} onSelect={setSelectedLens} t={t} />
       </SectionCard>
 
       {/* Family rituals — real, repeatable practices */}

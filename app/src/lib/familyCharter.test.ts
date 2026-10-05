@@ -306,3 +306,42 @@ describe("the charter key has one definition across the tree", () => {
     expect(shipped).toMatch(/localStorage/);
   });
 });
+
+/* B-PLAY-21 (decision-free part) — "Our family's way": the tone preference
+   sits beside the charter on Family and in Settings section 1, through the ONE
+   ToneSheet (B-ASKJB-12) writing the same selectedLens. The lens library stays
+   in Ask: Family imports no scholar body content. The charter's family-doc
+   sync is Guy-gated (new collection + rules) — REJECTIONS.md W2-SHELLPLAY. */
+describe("B-PLAY-21 · the tone preference beside the charter", () => {
+  const family = readSource("components/sections/FamilyFormation.tsx");
+  const settings = readSource("components/layout/SettingsModal.tsx");
+
+  it("Family and Settings render the ONE ToneSheet writing selectedLens", () => {
+    for (const [name, src] of [["FamilyFormation", family], ["SettingsModal", settings]] as const) {
+      expect(src, name).toContain('import ToneSheet, { toneLabel } from "../coach/ToneSheet";');
+      expect(src, name).toContain("<ToneSheet open={toneOpen} onClose={() => setToneOpen(false)} selectedLens={selectedLens} onSelect={setSelectedLens} t={t} />");
+      expect(src, name).toContain('t("coach.tone.title")');
+      expect(src, name).toContain("toneLabel(selectedLens, t)");
+    }
+  });
+
+  it("Settings shows it inside section 1 (companion), before Kid Mode & PIN", () => {
+    const companion = settings.indexOf('t("set.section.companion")');
+    const tone = settings.indexOf('data-testid="settings-tone-row"');
+    const kid = settings.indexOf('t("set.section.kidModePin")');
+    expect(companion).toBeGreaterThan(-1);
+    expect(tone).toBeGreaterThan(companion);
+    expect(tone).toBeLessThan(kid);
+  });
+
+  it("Family sits it inside the charter module (family budget 2 unchanged)", () => {
+    const charter = family.slice(family.indexOf('data-module="family-charter"'), family.indexOf('data-module="family-rituals"'));
+    expect(charter).toContain('data-testid="family-tone-row"');
+    expect((family.match(/data-module="/g) ?? []).length).toBe(2);
+  });
+
+  it("the lens library stays in Ask: Family imports no scholar body content", () => {
+    expect(family).not.toMatch(/services\/scholars|SCHOLAR|scholarLens|useWhen|coach\.tone\.name\./);
+    expect(family).not.toMatch(/MORE_APPROACHES|TONE_CHOICES/);
+  });
+});

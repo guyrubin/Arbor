@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import ToneSheet, { toneLabel } from "../coach/ToneSheet";
 import { Icon } from "../ui/Icon";
 import { APP_BUILD } from "../../lib/buildVersion";
 import { Modal } from "../ui/Modal";
@@ -30,7 +31,9 @@ import { fmtDay } from "../../lib/formatDate";
  *  notifications, billing, and account). */
 export default function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { uiLang, aiLang, setUiLang, setAiLang, t } = useLanguage();
-  const { setActiveTab, pendingMemoryItems, approvedMemoryItems } = useArbor();
+  const { setActiveTab, pendingMemoryItems, approvedMemoryItems, selectedLens, setSelectedLens } = useArbor();
+  // B-PLAY-21: the ONE tone sheet, opened from section 1 (same store as Ask).
+  const [toneOpen, setToneOpen] = useState(false);
   // B-SHELL-13: the "What Arbor remembers" row counts pending + approved facts.
   const memoryCount = (pendingMemoryItems?.length ?? 0) + (approvedMemoryItems?.length ?? 0);
   const { user, signOut, firebaseEnabled } = useAuth();
@@ -291,6 +294,19 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
             {t("set.memory.open")}
           </button>
         </Row>
+
+        {/* B-PLAY-21: how Arbor talks with you — the same sheet as Ask and Family. */}
+        <Row icon={<Icon name="tune" size={18} />} title={t("coach.tone.title")} sub={toneLabel(selectedLens, t)}>
+          <button
+            onClick={() => setToneOpen(true)}
+            className="text-xs font-bold rounded-xl px-3 min-h-11"
+            style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}
+            data-testid="settings-tone-row"
+          >
+            {t("coach.tone.change")}
+          </button>
+        </Row>
+        <ToneSheet open={toneOpen} onClose={() => setToneOpen(false)} selectedLens={selectedLens} onSelect={setSelectedLens} t={t} />
         </Section>
 
         <Section title={t("set.section.kidModePin")} sub={t("set.section.kidModePinSub")}>
