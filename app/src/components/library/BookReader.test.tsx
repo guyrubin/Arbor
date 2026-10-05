@@ -16,6 +16,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("../../lib/voice", () => ({ speakText: vi.fn(() => 0), stopVoice: vi.fn(), voiceSupported: () => true }));
 
 import { BookReader, nextIntent } from "./BookReader";
+import { BookEnd } from "./BookParts";
 import { bookFlowReducer, END, initialBookFlow, type BookFlowAction, type BookFlowState } from "../../lib/library/bookFlow";
 import { fiveSmoothStones as book } from "../../lib/library/books/fiveSmoothStones";
 import type { Box } from "../../lib/library/bookPageLayout";
@@ -47,7 +48,8 @@ function render(state: BookFlowState, opts: { lang?: BookLang; child?: BookReade
 /** The text a child sees (tags, attributes and styles stripped). */
 const visible = (html: string) => html.replace(/<[^>]*>/g, " ").replace(/&[a-z#0-9]+;/gi, " ");
 
-const toDecision: BookFlowAction[] = [{ type: "open" }, { type: "next" }, { type: "next" }, { type: "next" }, { type: "next" }];
+// manuscript v2: cover → p1, p2, p3, p3b, p4 → p5
+const toDecision: BookFlowAction[] = [{ type: "open" }, { type: "next" }, { type: "next" }, { type: "next" }, { type: "next" }, { type: "next" }];
 const pageOf = (html: string) => /data-book-page="([^"]+)"/.exec(html)?.[1];
 
 describe("cover → open", () => {
@@ -101,7 +103,7 @@ describe("the decision page", () => {
     // the card picture is a crop of the decision plate (focus rect), not an icon
     expect(html).toContain("bk-card-pic");
     expect(html).toContain('url(&quot;/visuals/books/five-smooth-stones/PL4.webp&quot;)');
-    for (const label of ["Go as I am", "Wear the king&#x27;s armour", "Wait for a soldier"]) expect(html).toContain(label);
+    for (const label of ["Go as I am", "Wear the king&#x27;s armour", "Wait for someone bigger"]) expect(html).toContain(label);
     expect(visible(html)).not.toMatch(/(^|\s)[ABC](\s|$)/);
   });
 
@@ -170,7 +172,7 @@ describe("each branch reaches the rejoin with its own echo", () => {
     html = render(s);
     expect(html).toContain("Off comes the helmet. Off comes the sword. Off comes the coat.");
     expect(html).not.toContain("data-book-item=");
-    expect(html).toContain("David stretches. Light again!");
+    expect(html).toContain("David can see again. His own staff, his own sling. Now he runs!");
     expect(html).toContain('src="/_dev/hero-sheets/placeholder/free-stretch.webp"');
     expect(html).not.toContain("data-book-repair-prompt");
     expect(html).toContain("data-book-next");
@@ -188,8 +190,11 @@ describe("each branch reaches the rejoin with its own echo", () => {
     expect(html).not.toContain("data-book-next");
     s = bookFlowReducer(book, s, { type: "repair", itemId: "stand" });
     html = render(s);
-    expect(html).toContain("Then David stands up tall.");
+    expect(html).toContain("David stands up tall. If nobody goes, David will go.");
     expect(html).toContain("data-book-next");
+    // v2: the page ENDS on David standing (stand-tall; until the sheet has it, its stopgap)
+    expect(html).toMatch(/\/(stand-tall|look-up)\.webp/);
+    expect(html).not.toContain("/run-staff");
     const p8 = render(bookFlowReducer(book, s, { type: "next" }));
     expect(p8).toContain("The sun is high. The waiting took all morning.");
   });
@@ -206,9 +211,9 @@ describe("the ending", () => {
   };
 
   it.each([
-    ["a", "His own staff. His own sling. All tried."],
-    ["b", "The king&#x27;s armour? One day, after a hundred tries."],
-    ["c", "Next time a giant shouts, David won&#x27;t wait."],
+    ["a", "His own staff. His own sling."],
+    ["b", "Armour? One day, after a hundred tries."],
+    ["c", "His knees remember the long wait."],
   ])("path %s: p10 shows its echo + frame line and a Next that opens the END screen — no 'Another way?'", (cid, echo) => {
     const s = toPage(cid, "p10");
     const html = render(s);
@@ -241,6 +246,22 @@ describe("the ending", () => {
     expect(bookFlowReducer(book, end, { type: "toCover" }).at).toBe("cover");
     expect(bookFlowReducer(book, end, { type: "back" }).at).toBe("p10");
     expect(bookFlowReducer(book, end, { type: "next" }).at).toBe(END);
+  });
+
+  it.each([
+    ["en", ["What the story knows", "Why it matters at five, this week", "One thing to do tomorrow", "Ask after", "Ask after, optional (5–7)", "Reading together", "Source note"], "Nobody sent him: he volunteered."],
+    ["he", ["מה הסיפור יודע", "למה זה חשוב בגיל חמש, השבוע", "דבר אחד לעשות מחר", "שאלה אחרי הקריאה", "שאלה נוספת, לבחירה (5–7)", "כשקוראים יחד", "הערת מקור"], "אף אחד לא שלח אותו: הוא התנדב."],
+  ] as const)("manuscript v2: the grown-up panel shows the v2 sections with their headings, in order (%s)", (lang, headings, knows) => {
+    const html = renderToStaticMarkup(
+      <BookEnd book={book} lang={lang} gender="m" name="Dylan" onReadAgain={() => {}} onClose={() => {}} initialGrownUp />,
+    );
+    expect(html).toContain("data-book-grownup-panel");
+    const shown = [...html.matchAll(/<dt data-grownup-section="[^"]+">([^<]+)<\/dt>/g)].map((m) => m[1]);
+    expect(shown).toEqual([...headings]);
+    expect(html).toContain(knows);
+    // the v1 sections are gone for this book
+    expect(html).not.toContain("grownUp.builds");
+    expect(html).not.toMatch(/What it builds|מה הסיפור בונה/);
   });
 
   it("p9: the dust waits for the narration; the first Next reveals it, then 1.5 s of stillness, then Next turns", () => {
@@ -347,7 +368,7 @@ describe("fix round 1: bar, accent, choice cards", () => {
     expect(picH / picW).toBeCloseTo(0.75, 1);
     // the art page is the same as p4's
     const artOf = (h: string) => /class="bk-art"[^>]*style="([^"]+)"/.exec(h)![1];
-    const p4 = render(run({ type: "open" }, { type: "next" }, { type: "next" }, { type: "next" }));
+    const p4 = render(run(...toDecision.slice(0, -1)));
     expect(pageOf(p4)).toBe("p4");
     expect(artOf(html)).toBe(artOf(p4));
   });

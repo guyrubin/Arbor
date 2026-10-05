@@ -14,7 +14,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { allBooks, BOOK_PLATES, DEFAULT_REVIEW_BOOK, getLibraryBook, getPlate, LIBRARY_BOOKS } from "./books";
 import { abramsLongRoad } from "./books/abramsLongRoad";
-import { fiveSmoothStones, fiveSmoothStonesGeometry, GEOMETRY_FALLBACKS } from "./books/fiveSmoothStones";
+import { ART_PENDING, fiveSmoothStones, fiveSmoothStonesGeometry, GEOMETRY_FALLBACKS } from "./books/fiveSmoothStones";
 import { readFileSync as readJson, existsSync } from "node:fs";
 import { readPath } from "./bookFlow";
 import type { Book, BookLine, Page, Slot } from "./types";
@@ -31,6 +31,10 @@ const iconSubset = new Set(
  *  over the BR9 cap are frozen here so the cap stays strict for real books.
  *  FROZEN: entries may only shrink. */
 const FIXTURE_HE_OVER: Record<string, Record<string, number>> = { "abrams-long-road": { p3: 35, p4: 36 } };
+/** Manuscript v2 p9 (depth-pass-david.md §3): its §3.1 says 40 EN words, a
+ *  whitespace count gives 41 ("…The giant fell. BOOM."). Held exactly as
+ *  written, flagged to Fable (BUILD-LOG v2). FROZEN: entries may only shrink. */
+const MANUSCRIPT_EN_OVER: Record<string, Record<string, number>> = { "five-smooth-stones": { p9: 41 } };
 
 const words = (text: string) => text.split(/\s+/).filter((w) => /[\p{L}\p{N}]|\{hero\}/u.test(w)).length;
 
@@ -125,7 +129,7 @@ describe.each(allBooks())("book $id", (book) => {
     };
     for (const page of allPages(book)) {
       const en = count(page, (l) => l.en);
-      expect(en, `${page.id}: ${en} EN words`).toBeLessThanOrEqual(40);
+      expect(en, `${page.id}: ${en} EN words`).toBeLessThanOrEqual(MANUSCRIPT_EN_OVER[book.id]?.[page.id] ?? 40);
       for (const g of ["m", "f"] as const) {
         const he = count(page, (l) => l.he[g]);
         expect(he, `${page.id}: ${he} HE-${g} words`).toBeLessThanOrEqual(FIXTURE_HE_OVER[book.id]?.[page.id] ?? 34);
@@ -208,10 +212,19 @@ describe.each(allBooks())("book $id", (book) => {
     }
   });
 
-  it("the parent panel is complete in both languages", () => {
+  it("the parent panel is complete in both languages (v1: builds + why; v2: knows + whyNow + tomorrow)", () => {
     const pp = book.parent;
-    for (const l of [pp.builds, pp.why, pp.sourceNote]) expect(l.en && l.he).toBeTruthy();
+    const sections = pp.knows ? [pp.knows, pp.whyNow, pp.tomorrow] : [pp.builds, pp.why];
+    for (const l of [...sections, pp.sourceNote, ...(pp.together ? [pp.together] : [])]) expect(l && l.en && l.he).toBeTruthy();
     expect(pp.askAfter.en && pp.askAfter.he.m && pp.askAfter.he.f).toBeTruthy();
+  });
+
+  it("every pose fallback points at a pose the fixture sheets have", () => {
+    const fixtures = readdirSync(path.join(here, "__fixtures__")).filter((f) => f.endsWith(".manifest.json"));
+    for (const f of fixtures) {
+      const man = JSON.parse(readFileSync(path.join(here, "__fixtures__", f), "utf8")) as { poses: Record<string, unknown> };
+      for (const to of Object.values(book.poseFallbacks ?? {})) expect(Object.keys(man.poses), `${f} lacks ${to}`).toContain(to);
+    }
   });
 });
 
@@ -225,11 +238,42 @@ describe("Five Smooth Stones (the proof) — manuscript specifics", () => {
     expect(LIBRARY_BOOKS[book.id]).toBe(book);
   });
 
-  it("read paths are 10 / 11 / 11 screens (cover included)", () => {
+  it("manuscript v2: read paths are 11 / 12 / 12 screens (cover included); p3b sits between p3 and p4", () => {
     const screens = (cid: string) => 1 + readPath(book, cid).length;
-    expect(screens("a")).toBe(10);
-    expect(screens("b")).toBe(11);
-    expect(screens("c")).toBe(11);
+    expect(screens("a")).toBe(11);
+    expect(screens("b")).toBe(12);
+    expect(screens("c")).toBe(12);
+    expect(book.pages.map((p) => p.id)).toEqual(["p1", "p2", "p3", "p3b", "p4", "p5", "p8", "p9", "p10"]);
+    expect(book.decision.choices.find((c) => c.id === "c")!.label).toEqual({ en: "Wait for someone bigger", he: "לחכות למישהו גדול יותר" });
+    expect(book.coverLine).toEqual({ en: "Everyone ran. One shepherd went.", he: "כולם ברחו. רועה אחד הלך." });
+  });
+
+  it("manuscript v2: p4 = stand-tall-hand, p6c = sit-hunched, p7c ENDS on David standing (stand-tall); stopgaps named until round 3", () => {
+    expect(byId.p4.hero!.pose).toBe("stand-tall-hand");
+    expect(byId.p6c.hero!.pose).toBe("sit-hunched");
+    expect(byId.p7c.hero!.pose).toBe("sit-hunched");
+    expect(byId.p7c.repair!.heroAfter!.pose).toBe("stand-tall");
+    expect(book.poseFallbacks).toEqual({ "stand-tall-hand": "look-up", "stand-tall": "look-up", "sit-hunched": "sit" });
+  });
+
+  it("manuscript v2: p9 has ordered art states - the dust on the narration cue, then 'the soldiers rise' once PL7-rise is delivered", () => {
+    const states = byId.p9.artStates!;
+    expect(states[0]).toEqual({ id: "dust", overlays: ["dust-cloud"], trigger: "narration" });
+    if (fiveSmoothStonesGeometry.plates["PL7-rise"]) {
+      expect(states[1]).toMatchObject({ id: "rise", plateId: "PL7-rise", overlays: [], trigger: { afterMs: 2000, silentAfterMs: 3000 } });
+      expect(getPlate(book.id, "PL7-rise")).toBeDefined();
+    } else expect(states).toHaveLength(1);
+  });
+
+  it("manuscript v2: p3b waits for round 3 (PL3 + look-across stand in) until its geometry lands", () => {
+    if (fiveSmoothStonesGeometry.pages.p3b) {
+      expect(ART_PENDING.size).toBe(0);
+      expect(byId.p3b.plateId).toBe("PL3e");
+    } else {
+      expect([...ART_PENDING]).toEqual(["p3b"]);
+      expect(byId.p3b.plateId).toBe("PL3");
+      expect(byId.p3b.hero!.pose).toBe("look-across");
+    }
   });
 
   it("page types: spread for the cover, p5, p9, p10; facing elsewhere", () => {
@@ -238,14 +282,17 @@ describe("Five Smooth Stones (the proof) — manuscript specifics", () => {
   });
 
   it("uses the 9 plates of §5.1 (4 of them edits) and the 9 poses of §5.2", () => {
-    expect(new Set(pagesOf.map((p) => p.plateId))).toEqual(new Set(["PL1", "PL1b", "PL1d", "PL3", "PL3w", "PL4", "PL4e", "PL6", "PL7"]));
-    const variants = Object.values(BOOK_PLATES[book.id]).filter((p) => p.variantOf).map((p) => p.id).sort();
+    const plateIds = new Set(pagesOf.map((p) => p.plateId));
+    plateIds.delete("PL3e"); // v2 round 3 (p3b), once delivered
+    expect(plateIds).toEqual(new Set(["PL1", "PL1b", "PL1d", "PL3", "PL3w", "PL4", "PL4e", "PL6", "PL7"]));
+    const variants = Object.values(BOOK_PLATES[book.id]).filter((p) => p.variantOf && p.id !== "PL3e" && p.id !== "PL7-rise").map((p) => p.id).sort();
     // + PL7-dust, registered but unused (the edit re-framed; the dust overlay is used)
     expect(variants).toEqual(["PL1b", "PL1d", "PL3w", "PL4e", "PL7-dust"]);
     const poses = new Set(pagesOf.flatMap((p) => slots(p).map((s) => s.pose)));
     // the art agent's poses (LOG.md §1 + Round 2): left-facing variants keep the
     // key light upper-left; round 2 added look-across (cover), sling-swing-face-right (p9), squat-look (p8)
-    expect([...poses].sort()).toEqual(["armour-stuck", "free-stretch", "look-across", "look-up", "run-staff", "run-staff-left", "sit", "sling-swing", "sling-swing-face-right", "squat-look", "worried"]);
+    // v2: stand-tall-hand (p4), sit-hunched (p6c, p7c), stand-tall (p7c after)
+    expect([...poses].sort()).toEqual(["armour-stuck", "free-stretch", "look-across", "look-up", "run-staff", "run-staff-left", "sit", "sit-hunched", "sling-swing", "sling-swing-face-right", "squat-look", "stand-tall", "stand-tall-hand", "worried"]);
     expect(byId.p5.heroAlt?.tunic?.pose).toBe("worried-tunic");
     expect(Object.keys(getPlate(book.id, "PL4")!.focus ?? {}).sort()).toEqual(["a", "b", "c"]);
   });
@@ -271,6 +318,7 @@ describe("Five Smooth Stones (the proof) — manuscript specifics", () => {
     expect(byId.p7b.repair!.items.map((it) => it.id)).toEqual(["helmet", "sword", "coat"]);
     expect(byId.p7b.repair!.items.every((it) => it.line)).toBe(true);
     expect(byId.p7b.repair!.heroAfter!.pose).toBe("free-stretch");
+    // v2 text order is helmet, coat, sword; the engine keeps ruling 4's order (the coat last) - flagged to Fable
     expect(byId.p7c.repair!.items).toHaveLength(1);
     expect(byId.p7c.repair!.promptLabel).toEqual({ en: "Stand up!", he: "לקום!" });
     expect(byId.p6b.overlays!.map((o) => o.id).sort()).toEqual(["helmet-worn", "sword"]);
@@ -293,10 +341,10 @@ describe("Five Smooth Stones (the proof) — manuscript specifics", () => {
     expect(getPlate(book.id, "PL4")!.focus).toEqual(fiveSmoothStonesGeometry.plates.PL4.focus);
   });
 
-  it("no page, slot, item or plate falls back to placeholder geometry", () => {
+  it("no page, slot, item or plate falls back to placeholder geometry (v2 pages waiting for round 3 excepted, by name)", () => {
     expect([...GEOMETRY_FALLBACKS]).toEqual([]);
     for (const p of pagesOf) {
-      expect(fiveSmoothStonesGeometry.pages[p.id]?.hero, `${p.id} hero`).toBeDefined();
+      if (!ART_PENDING.has(p.id)) expect(fiveSmoothStonesGeometry.pages[p.id]?.hero, `${p.id} hero`).toBeDefined();
       expect(p.phoneCrop, `${p.id} window`).toBeDefined();
       if (p.type === "spread") expect(p.textRect, `${p.id} text rect`).toBeDefined();
     }
