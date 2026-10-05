@@ -37,10 +37,17 @@ const renderApp = () =>
     </StrictMode>,
   );
 
+// B-BOOK-05: DEV-only review route for the new kid book reader
+// (`?book=<id>&hero=<sheetId>&lang=en|he&gender=m|f&name=<name>`, see
+// components/library/devBookRoute.tsx). `import.meta.env.DEV` is false in
+// production builds, so this branch and its chunk are dropped from prod.
+const devBookReview = import.meta.env.DEV && new URLSearchParams(window.location.search).has('book');
+
 // B-DIST-01: in the local sandbox (no Firebase) a seeded demo family is written
 // into the per-child storage keys BEFORE the first render; no bundle → the app
 // renders exactly as before. Never runs with Firebase (prod/stage/dev clouds).
-if (firebaseEnabled) renderApp();
+if (devBookReview) void import('./components/library/devBookRoute').then((m) => m.mountDevBookRoute(document.getElementById('root')!));
+else if (firebaseEnabled) renderApp();
 else void hydrateDemoFamily().catch(() => 'none').finally(renderApp);
 
 // First-party capture of uncaught errors / promise rejections.

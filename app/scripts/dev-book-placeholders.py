@@ -4,6 +4,7 @@ Writes, under app/public/_dev/ (git-ignored, never shipped):
   plates/<bookId>/<plateId>.webp      1536x1024 flat gradient plates, labelled
   hero-sheets/placeholder/<pose>.webp a neutral mannequin per pose (alpha),
                                       feet at the bottom centre, facing right
+  overlays/five-smooth-stones/*.webp  flat helmet / sword / dust-cloud shapes
 
 The mannequin is a plain shape, not anyone's likeness. Real plates go to
 public/visuals/books/<bookId>/ and replace these automatically (the registry
@@ -38,8 +39,45 @@ PLATES = {
         "P4": ("day", "The great river"),
         "P5": ("golden", "The hill with the great oak"),
         "P6": ("dusk", "The new tent under the oak"),
-    }
+    },
+    "five-smooth-stones": {
+        "PL1": ("morning", "Bethlehem hills"),
+        "PL1b": ("day", "Bethlehem hills, midday, the lion fleeing"),
+        "PL1d": ("dusk", "Bethlehem hills at dusk"),
+        "PL3": ("morning", "The Valley of Elah"),
+        "PL3w": ("day", "Elah, later, soldiers sitting"),
+        "PL4": ("day", "King Saul's tent"),
+        "PL4e": ("day", "Saul's tent, the stand empty"),
+        "PL6": ("morning", "The brook"),
+        "PL7": ("day", "The duel"),
+    },
 }
+
+# Five Smooth Stones pose ids -> the mannequin shape that stands in for them.
+POSE_ALIASES = {
+    "sling-swing": "wave", "run-staff": "run", "walk-bag": "walk", "look-up": "stand",
+    "worried": "stand", "armour-stuck": "arms-wide", "free-stretch": "arms-wide", "kneel": "sit",
+}
+
+
+def make_overlay(path: Path, kind: str):
+    """Flat alpha shapes standing in for the shared overlay objects."""
+    W2, H2 = {"helmet": (440, 400), "sword": (720, 300), "dust": (960, 800)}[kind]
+    img = Image.new("RGBA", (W2, H2), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    if kind == "helmet":
+        d.pieslice((20, 40, W2 - 20, H2 * 2 - 120), 180, 360, fill=(196, 140, 64, 255))
+        d.rectangle((10, H2 - 90, W2 - 10, H2 - 50), fill=(160, 110, 50, 255))
+    elif kind == "sword":
+        d.rectangle((140, H2 // 2 - 18, W2 - 30, H2 // 2 + 18), fill=(200, 205, 214, 255))
+        d.rectangle((110, H2 // 2 - 70, 140, H2 // 2 + 70), fill=(150, 110, 60, 255))
+        d.rectangle((20, H2 // 2 - 16, 110, H2 // 2 + 16), fill=(120, 80, 40, 255))
+    else:
+        for i, (cx, cy, r) in enumerate([(300, 520, 260), (560, 440, 300), (720, 580, 220), (420, 330, 220), (640, 260, 180)]):
+            d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=(222, 206, 176, 235))
+        img = img.filter(ImageFilter.GaussianBlur(14))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    img.save(path, "WEBP", quality=90)
 
 
 def lerp(a, b, t):
@@ -145,6 +183,10 @@ def main():
             make_plate(OUT / "plates" / book_id / f"{plate_id}.webp", rig, plate_id, caption)
     for pose in POSES:
         make_sprite(OUT / "hero-sheets" / "placeholder" / f"{pose}.webp", pose)
+    for alias, pose in POSE_ALIASES.items():
+        make_sprite(OUT / "hero-sheets" / "placeholder" / f"{alias}.webp", pose)
+    for kind in ("helmet", "sword", "dust"):
+        make_overlay(OUT / "overlays" / "five-smooth-stones" / f"{kind}.webp", kind)
     print("wrote", OUT)
 
 
