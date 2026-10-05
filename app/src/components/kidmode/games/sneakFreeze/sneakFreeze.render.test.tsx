@@ -180,6 +180,9 @@ describe("Sneak & Freeze — sounds and art slots", () => {
     expect(readSneakArt({ getItem: () => "{bad" }).source).toBe("dev-placeholder");
     expect(watcherSprite(base, "looking", true).slot).toBe("sunglasses");
     expect(watcherSprite(base, "laughing", true).slot).toBe("laughing");
+    // B-GAME-07d: the sunglasses sprite is the cat FROM BEHIND — only while it looks.
+    expect(watcherSprite(base, "counting", true).slot).toBe("counting");
+    expect(watcherSprite(base, "tell", true).slot).toBe("tell");
     const noShades = { ...base, watcher: { counting: base.watcher.counting, looking: base.watcher.looking } };
     expect(watcherSprite(noShades, "looking", true).slot).toBe("looking");
     expect(watcherSprite(noShades, "waiting", false).slot).toBe("counting");

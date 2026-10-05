@@ -119,8 +119,10 @@ function catSvg(state: CatState): string {
   const p: string[] = [];
   // Stool.
   p.push(`<rect x="88" y="300" width="14" height="96" rx="6" fill="${C.woodDark}"/><rect x="198" y="300" width="14" height="96" rx="6" fill="${C.woodDark}"/><ellipse cx="150" cy="298" rx="98" ry="20" fill="${C.wood}"/>`);
-  if (state === "looking") {
+  if (state === "looking" || state === "sunglasses") {
     // Turned round: seen FROM BEHIND, peering into the courtyard (no face).
+    // B-GAME-07d: "sunglasses" is the same back view wearing sunglasses
+    // (the arms over the ears, a strap round the back of the head).
     p.push(`<path d="M232 270 C292 240 290 170 250 160" stroke="${C.catDark}" stroke-width="18" fill="none" stroke-linecap="round"/>`);
     p.push(`<ellipse cx="150" cy="226" rx="88" ry="78" fill="${C.cat}"/>`);
     p.push(`<path d="M110 160 C130 200 170 200 190 160" stroke="${C.catDark}" stroke-width="10" fill="none"/>`);
@@ -128,6 +130,9 @@ function catSvg(state: CatState): string {
     p.push(`<path d="M104 92 L112 34 L146 74 Z" fill="${C.cat}"/><path d="M168 74 L204 36 L210 98 Z" fill="${C.cat}"/>`);
     // The back of the head, ears pricked toward the courtyard.
     p.push(`<path d="M120 96 Q156 112 192 96" stroke="${C.catDark}" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M130 150 Q156 160 182 150" stroke="${C.catDark}" stroke-width="5" fill="none" stroke-linecap="round"/>`);
+    if (state === "sunglasses") {
+      p.push(`<path d="M92 112 Q156 132 220 112" stroke="${C.ink}" stroke-width="7" fill="none" stroke-linecap="round"/><rect x="80" y="100" width="22" height="18" rx="6" fill="${C.shadesLens}"/><rect x="210" y="100" width="22" height="18" rx="6" fill="${C.shadesLens}"/>`);
+    }
     return svg("0 0 300 400", 300, 400, p.join(""));
   }
   const lean = state === "tell" ? -6 : 0;
@@ -156,10 +161,6 @@ function catSvg(state: CatState): string {
       p.push(`<path d="M112 122 Q126 106 140 122" stroke="${C.ink}" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M160 122 Q174 106 188 122" stroke="${C.ink}" stroke-width="6" fill="none" stroke-linecap="round"/>`);
       p.push(`<path d="M126 158 Q150 196 174 158 Z" fill="${C.ink}"/><path d="M138 176 Q150 186 162 176" fill="${C.pink}"/>`);
       p.push(`<ellipse cx="118" cy="244" rx="20" ry="16" fill="${C.catLight}" stroke="${C.catDark}" stroke-width="3"/><ellipse cx="182" cy="244" rx="20" ry="16" fill="${C.catLight}" stroke="${C.catDark}" stroke-width="3"/>`);
-      break;
-    case "sunglasses":
-      p.push(`<path d="M96 108 H204" stroke="${C.ink}" stroke-width="6"/><rect x="102" y="104" width="44" height="30" rx="10" fill="${C.shadesLens}"/><rect x="154" y="104" width="44" height="30" rx="10" fill="${C.shadesLens}"/><path d="M110 112 L124 112" stroke="${C.white}" stroke-width="4" opacity="0.6"/>`);
-      p.push(`<path d="M134 162 Q150 176 168 160" stroke="${C.ink}" stroke-width="5" fill="none" stroke-linecap="round"/>`);
       break;
     case "waiting":
       p.push(`<path d="M114 124 H138 M162 124 H186" stroke="${C.ink}" stroke-width="5" stroke-linecap="round"/><path d="M142 164 Q150 170 158 164" stroke="${C.ink}" stroke-width="4" fill="none"/>`);

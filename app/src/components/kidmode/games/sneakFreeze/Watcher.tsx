@@ -1,5 +1,8 @@
 /**
  * Watcher — B-GAME-07b: Savta's cat on its stool, in the foreground.
+ * B-GAME-07d: a slow peering sway while it looks; the stool's own contact
+ * shadow; the sunglasses sprite (the cat FROM BEHIND in sunglasses) only
+ * while it looks in a sunglasses round (sneakArt.watcherSprite).
  *
  * One sprite per state (counting / tell / looking / laughing / sunglasses /
  * waiting), all mounted and decoded once; a state change is a hard cut under
@@ -50,6 +53,20 @@ export function Watcher({ art, pose, sunglasses, beat, lean, feet, height, zInde
     }
   }, [slot, beat, height]);
 
+  // B-GAME-07d: while it looks (and has not leaned in), the cat peers round
+  // the courtyard — a slow sway, so the look is never a frozen 1.7 s.
+  const peerRef = useRef<HTMLDivElement | null>(null);
+  useLayoutEffect(() => {
+    const el = peerRef.current;
+    if (pose !== "looking" || lean || !el || prefersReducedMotion() || typeof el.animate !== "function") return;
+    const dx = height * 0.012;
+    const a = el.animate(
+      [{ transform: "translateX(0) rotate(0deg)" }, { transform: `translateX(${-dx}px) rotate(-1.2deg)` }, { transform: `translateX(${dx}px) rotate(1.2deg)` }, { transform: "translateX(0) rotate(0deg)" }],
+      { duration: 1600, iterations: Infinity, easing: "ease-in-out" },
+    );
+    return () => a.cancel();
+  }, [pose, lean, height]);
+
   // The tell: ears twitch — a small shake for as long as it lasts.
   useLayoutEffect(() => {
     const el = bodyRef.current;
@@ -61,17 +78,21 @@ export function Watcher({ art, pose, sunglasses, beat, lean, feet, height, zInde
   const reduced = prefersReducedMotion();
   return (
     <div aria-hidden="true" data-watcher={slot} style={{ position: "absolute", left: 0, top: 0, width: 0, height: 0, zIndex, transform: `translate(${feet.x}px, ${feet.y}px)` }}>
+      {/* B-GAME-07d: the stool's contact shadow — its footprint, soft, a little
+          to the right (key light upper left; RTL mirrors it with the art). */}
       <span
+        data-watcher-shadow=""
         style={{
           position: "absolute",
-          left: -height * 0.3,
+          left: -height * 0.22 + height * 0.04,
           top: -height * 0.03,
-          width: height * 0.6,
+          width: height * 0.44,
           height: height * 0.06,
           borderRadius: "50%",
-          background: "radial-gradient(closest-side, color-mix(in srgb, var(--arbor-ink) 34%, transparent), transparent)",
+          background: "radial-gradient(closest-side, color-mix(in srgb, var(--arbor-ink) 32%, transparent), transparent)",
         }}
       />
+      <div ref={peerRef} style={{ position: "absolute", left: 0, top: 0, width: 0, height: 0, transformOrigin: "0 0" }}>
       <div ref={bodyRef} style={{ position: "absolute", left: 0, top: 0, width: 0, height: 0, transformOrigin: "0 0" }}>
         <div style={{ position: "absolute", left: 0, top: 0, width: 0, height: 0, transformOrigin: "0 0", transform: lean ? "scale(1.06) rotate(-3deg)" : "none", transition: reduced ? undefined : "transform 420ms cubic-bezier(0.22, 1, 0.36, 1)" }}>
           {SLOTS.map((s) => {
@@ -91,6 +112,7 @@ export function Watcher({ art, pose, sunglasses, beat, lean, feet, height, zInde
             );
           })}
         </div>
+      </div>
       </div>
     </div>
   );

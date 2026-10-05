@@ -90,11 +90,15 @@ describe("the hero: per-pose scale, the prize in the hands", () => {
     expect(tip.top + 614 * (320 / 640) * 0.85).toBeCloseTo(0, 5);
   });
 
-  it("hold-up carries the prize at the midpoint of the hands; else above the head; else above the sprite", () => {
+  it("hold-up carries the prize resting on the hands (above their midpoint, never over the face); else above the head; else above the sprite", () => {
     const k = poseFactor(sheet, sheet.poses["hold-up"]!, 320);
     const mid = carryPoint(sheet.poses["hold-up"]!, k, 40);
     expect(mid.x).toBeCloseTo(0, 5);
-    expect(mid.y).toBeCloseTo((50 - 614) * k, 5);
+    expect(mid.y).toBeCloseTo((50 - 614) * k - 40 * 0.4, 5);
+    // B-GAME-07d: with a head, the prize's centre stays above the head's top.
+    const withHead = { ...sheet.poses["hold-up"]!, hand: { l: [100, 200] as [number, number], r: [200, 200] as [number, number] }, head: { x: 150, y: 180, r: 100 } };
+    const safe = carryPoint(withHead, 1, 40);
+    expect(safe.y).toBeLessThanOrEqual(80 - 614 - 40 * 0.35 + 1e-9);
     const idle = sheet.poses.idle!;
     const above = carryPoint(idle, 0.5, 40);
     expect(above.y).toBeLessThan((idle.head!.y - idle.head!.r - idle.foot.y) * 0.5);

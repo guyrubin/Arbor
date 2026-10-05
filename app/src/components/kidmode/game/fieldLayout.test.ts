@@ -3,12 +3,12 @@
  */
 import { describe, expect, it } from "vitest";
 import { COVER_FRACTIONS } from "../games/sneakFreeze/rules";
-import { DESIGN, PLATE_BLEED, fitField, insideSafe, mirrorX, orientationFor, pointOnPath, sneakField, sneakLayout, toPx } from "./fieldLayout";
+import { COVER_ASPECT, DESIGN, GATE, HERO_EXTENT, PLATE_BLEED, WATCHER_EXTENT, fitField, insideSafe, mirrorX, orientationFor, pointOnPath, sneakField, sneakLayout, toPx, type FieldOrientation } from "./fieldLayout";
 
 /** The four acceptance sizes, as the whole window and as the field under the
- *  kid top bar (~64 px). */
+ *  kid top bar (~64 px; 97 px measured by the B-GAME-12a proof run). */
 const SIZES: [number, number][] = [[375, 667], [375, 812], [1280, 720], [1920, 1080]];
-const FIELDS: [number, number][] = [...SIZES, ...SIZES.map(([w, h]) => [w, h - 64] as [number, number])];
+const FIELDS: [number, number][] = [...SIZES, ...SIZES.map(([w, h]) => [w, h - 64] as [number, number]), ...SIZES.map(([w, h]) => [w, h - 97] as [number, number])];
 
 describe("fieldLayout — design space", () => {
   it("picks landscape 1600x900 for wide fields and portrait 900x1600 for tall ones", () => {
@@ -74,20 +74,86 @@ describe("fieldLayout — Sneak & Freeze anchors", () => {
     }
   });
 
-  it("phone: the hero is ~90 px at the back gate and >= 160 px (about 55-60 % of the field) at the tag at 375x812", () => {
-    for (const [w, h] of [[375, 812], [375, 748]] as [number, number][]) {
+  it("B-GAME-07d: the hero is a child at the back gate (>= 110 px at 375x812, >= 150 px at 1920x1080) and the star at the tag (>= 50 % / >= 55 % of the field)", () => {
+    // The field = the window under the measured 97 px kid top bar.
+    for (const [w, h] of [[375, 715], [375, 812]] as [number, number][]) {
       const { fit, layout } = sneakField(w, h);
       const back = layout.heroPath[0].h * fit.scale;
       const tag = layout.heroPath[layout.heroPath.length - 1].h * fit.scale;
-      expect(back).toBeGreaterThanOrEqual(80);
-      expect(back).toBeLessThanOrEqual(110);
-      expect(tag).toBeGreaterThanOrEqual(160);
-      expect(tag / h).toBeGreaterThanOrEqual(0.5);
+      expect(back, `${w}x${h} back`).toBeGreaterThanOrEqual(110);
+      expect(tag / h, `${w}x${h} tag`).toBeGreaterThanOrEqual(0.5);
       expect(tag / h).toBeLessThanOrEqual(0.62);
     }
-    // 375x667 too.
-    const { fit, layout } = sneakField(375, 667);
-    expect(layout.heroPath[layout.heroPath.length - 1].h * fit.scale).toBeGreaterThanOrEqual(160);
+    for (const [w, h] of [[1920, 983]] as [number, number][]) {
+      const { fit, layout } = sneakField(w, h);
+      expect(layout.heroPath[0].h * fit.scale, `${w}x${h} back`).toBeGreaterThanOrEqual(150);
+      expect(layout.heroPath[layout.heroPath.length - 1].h * fit.scale / h, `${w}x${h} tag`).toBeGreaterThanOrEqual(0.55);
+    }
+    // Smooth growth (no pop): the hero grows on every step, never by more than 7 % of its tag height.
+    for (const o of ["portrait", "landscape"] as const) {
+      const { heroPath } = sneakLayout(o);
+      const tagH = heroPath[heroPath.length - 1].h;
+      for (let i = 1; i <= 26; i++) {
+        const dh = pointOnPath(heroPath, i / 26).h - pointOnPath(heroPath, (i - 1) / 26).h;
+        expect(dh).toBeGreaterThan(0);
+        expect(dh).toBeLessThanOrEqual(tagH * 0.07);
+      }
+    }
+    // 375x667 too: the tag still fills half the field.
+    const { fit, layout } = sneakField(375, 570);
+    expect(layout.heroPath[layout.heroPath.length - 1].h * fit.scale / 570).toBeGreaterThanOrEqual(0.5);
+  });
+
+  it("B-GAME-07d: the cat is a foreground character, never the star, and whole inside the safe area", () => {
+    for (const [w, h] of FIELDS) {
+      const { fit, layout } = sneakField(w, h);
+      const tag = layout.heroPath[layout.heroPath.length - 1];
+      expect(layout.watcher.h).toBeLessThan(tag.h * 0.7);
+      const box = { x0: layout.watcher.feet.x - layout.watcher.h * WATCHER_EXTENT.left, x1: layout.watcher.feet.x + layout.watcher.h * WATCHER_EXTENT.right, y0: layout.watcher.feet.y - layout.watcher.h };
+      expect(insideSafe(fit, { x: box.x0, y: box.y0 }), `${w}x${h} cat top-left`).toBe(true);
+      expect(insideSafe(fit, { x: box.x1, y: layout.watcher.feet.y }), `${w}x${h} cat bottom-right`).toBe(true);
+      // The cat is right of the tag's hero (lower right).
+      expect(layout.watcher.feet.x).toBeGreaterThan(tag.x);
+    }
+  });
+
+  it("B-GAME-07d: covers stand beside the run, alternate sides, on the floor at their stop, clear of each other, the cat, the gate and the run's line", () => {
+    type Box = { x0: number; x1: number; y0: number; y1: number };
+    const hit = (a: Box, b: Box) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+    for (const o of ["portrait", "landscape"] as FieldOrientation[]) {
+      const lay = sneakLayout(o);
+      const boxes = lay.covers.map((c) => {
+        const half = (c.h * COVER_ASPECT[c.id]) / 2;
+        return { id: c.id, box: { x0: c.feet.x - half, x1: c.feet.x + half, y0: c.feet.y - c.h, y1: c.feet.y } as Box };
+      });
+      const cat: Box = { x0: lay.watcher.feet.x - lay.watcher.h * WATCHER_EXTENT.left, x1: lay.watcher.feet.x + lay.watcher.h * WATCHER_EXTENT.right, y0: lay.watcher.feet.y - lay.watcher.h * 0.96, y1: lay.watcher.feet.y };
+      const gate: Box = { x0: GATE[o].x0, x1: GATE[o].x1, y0: 0, y1: GATE[o].y1 };
+      let lastSide = 0;
+      lay.covers.forEach((c, i) => {
+        const stop = pointOnPath(lay.heroPath, c.at);
+        // On the floor at the hero's depth: same base line as the stop.
+        expect(c.feet.y, `${o} ${c.id} base`).toBeCloseTo(stop.y, 6);
+        // Beside: on one side of the hero, alternating; the gap from the hero's body small.
+        const side = Math.sign(c.feet.x - stop.x);
+        expect(side, `${o} ${c.id} side`).not.toBe(0);
+        if (i > 0) expect(side, `${o} ${c.id} alternates`).toBe(-lastSide);
+        lastSide = side;
+        const b = boxes[i].box;
+        const gap = side < 0 ? stop.x - stop.h * HERO_EXTENT.left - b.x1 : b.x0 - (stop.x + stop.h * HERO_EXTENT.right);
+        expect(gap, `${o} ${c.id} gap`).toBeGreaterThanOrEqual(-0.1 * stop.h);
+        expect(gap, `${o} ${c.id} gap`).toBeLessThanOrEqual(0.15 * stop.h);
+        // Larger toward the camera: each cover's floor scale (height per relH) grows.
+        if (i > 0) expect(c.feet.y).toBeGreaterThan(lay.covers[i - 1].feet.y);
+        expect(hit(b, cat), `${o} ${c.id} vs cat`).toBe(false);
+        expect(hit(b, gate), `${o} ${c.id} vs gate`).toBe(false);
+        for (let j = i + 1; j < boxes.length; j++) expect(hit(b, boxes[j].box), `${o} ${c.id} vs ${boxes[j].id}`).toBe(false);
+        // The run's line never passes through a cover (sampled).
+        for (let t = 0; t <= 1; t += 0.005) {
+          const p = pointOnPath(lay.heroPath, t);
+          expect(p.x > b.x0 && p.x < b.x1 && p.y > b.y0 && p.y < b.y1, `${o} run crosses ${c.id} at ${t.toFixed(3)}`).toBe(false);
+        }
+      });
+    }
   });
 
   it("right-to-left mirrors x only", () => {

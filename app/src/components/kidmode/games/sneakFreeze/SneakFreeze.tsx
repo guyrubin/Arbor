@@ -22,12 +22,13 @@ import { useLanguage } from "../../../../context/LanguageContext";
 import { ageYearsFromProfile } from "../../../../lib/childAge";
 import { GameShell } from "../../game/GameShell";
 import { PlayField, type PlayFieldContext } from "../../game/PlayField";
-import { pointOnPath, sneakLayout, toPx, type FieldOrientation, type SneakLayout } from "../../game/fieldLayout";
+import { COVER_ASPECT, pointOnPath, sneakLayout, toPx, type CoverId, type FieldOrientation, type SneakLayout } from "../../game/fieldLayout";
 import { HeroFigure, prefersReducedMotion, useHeroSheet } from "../../hero/HeroFigure";
 import { kidIsolate } from "../../kidText";
 import { SNEAK_FREEZE_WORLD, sneakFreezeFlagOn } from "../../kidWorlds";
 import { useKidHome } from "../../kidChrome";
-import { startSitting, step, view as viewOf, type SneakState, type SneakView } from "./rules";
+import { startFor, startSitting, step, view as viewOf, type SneakState, type SneakView } from "./rules";
+import { proofVisit } from "../../proofVisit";
 import { artUrls, loadProofArt, readSneakArt, type SneakArt } from "./sneakArt";
 import { loadProofHeroSheet, type HeroSheet } from "../../hero/heroSheet";
 import { preloadImages } from "../../proofAssets";
@@ -52,6 +53,12 @@ export function sameView(a: SneakView, b: SneakView): boolean {
 }
 
 const LAYOUTS: Record<FieldOrientation, SneakLayout> = { landscape: sneakLayout("landscape"), portrait: sneakLayout("portrait") };
+
+/** How much of a cover's visible width touches the floor (the pot, the lantern's
+ *  foot, the bench's legs) — its contact shadow's width. */
+const COVER_FOOTPRINT: Readonly<Record<CoverId, number>> = { "lemon-tree": 0.55, lantern: 0.8, bench: 1.0 };
+/** The one contact-shadow fill (soft ink, fading out). */
+export const SHADOW_FILL = "radial-gradient(closest-side, color-mix(in srgb, var(--arbor-ink) 30%, transparent), transparent)";
 
 function newSeed(childId: string, n: number): string {
   return `${childId || "kid"}:${Date.now().toString(36)}:${n}`;
@@ -120,7 +127,10 @@ function Scene({ ctx, v, art, sheet, prevProgress }: { ctx: PlayFieldContext; v:
   const base = tagPoint.h;
   const forward = v.progress > prevProgress;
   const reduced = prefersReducedMotion();
-  const statue = v.phase === "verdict" && (v.heroPose === "freeze-a" || v.heroPose === "freeze-b");
+  const frozen = v.heroPose === "freeze-a" || v.heroPose === "freeze-b";
+  // The statue's comic beat wobbles; while the cat looks, a held-breath tremble
+  // (B-GAME-07d: the look is never a dead 1.7 s).
+  const statue: boolean | "tremble" = frozen && v.phase === "verdict" ? true : frozen && v.phase === "looking" ? "tremble" : false;
   // B-GAME-07c: in hold-up the prize is IN the hero's hands (HeroFigure).
   const carried = v.prize && v.heroPose === "hold-up" ? v.prize : null;
   return (
@@ -128,15 +138,24 @@ function Scene({ ctx, v, art, sheet, prevProgress }: { ctx: PlayFieldContext; v:
       {layout.covers.map((c) => {
         const sp = art.covers[c.id];
         const k = c.h / sp.h;
+        // B-GAME-07d: a soft contact shadow under the base, a little to the
+        // right (the plate's key light is upper left; RTL mirrors it with the art).
+        const sw = c.h * COVER_ASPECT[c.id] * COVER_FOOTPRINT[c.id];
         return (
-          <img
-            key={c.id}
-            src={sp.url}
-            alt=""
-            draggable={false}
-            data-cover={c.id}
-            style={{ position: "absolute", left: c.feet.x - sp.anchor.x * k, top: c.feet.y - sp.anchor.y * k, width: sp.w * k, height: sp.h * k, maxWidth: "none", zIndex: Math.round(c.feet.y) }}
-          />
+          <React.Fragment key={c.id}>
+            <span
+              aria-hidden="true"
+              data-cover-shadow={c.id}
+              style={{ position: "absolute", left: c.feet.x - sw / 2 + sw * 0.08, top: c.feet.y - sw * 0.07, width: sw, height: sw * 0.14, borderRadius: "50%", background: SHADOW_FILL, zIndex: Math.round(c.feet.y) - 1, pointerEvents: "none" }}
+            />
+            <img
+              src={sp.url}
+              alt=""
+              draggable={false}
+              data-cover={c.id}
+              style={{ position: "absolute", left: c.feet.x - sp.anchor.x * k, top: c.feet.y - sp.anchor.y * k, width: sp.w * k, height: sp.h * k, maxWidth: "none", zIndex: Math.round(c.feet.y) }}
+            />
+          </React.Fragment>
         );
       })}
       <Watcher
@@ -239,8 +258,12 @@ function SneakFreezeGame({ art, sheet }: { art: SneakArt; sheet: HeroSheet }) {
   const childId = childProfile?.id ?? "";
   const gender = childProfile?.gender;
   const goHome = useKidHome();
-  // Read once per child: the start level by age, or the device's remembered level.
-  const start = useMemo(() => readPlayLevel(childId, safeAge(childProfile)), [childId]);
+  // Read once per child: the start level by age, or the device's remembered
+  // level; a local proof visit's `age` sets the start for that visit only.
+  const start = useMemo(() => {
+    const pv = proofVisit();
+    return pv?.age != null ? startFor(pv.age) : readPlayLevel(childId, safeAge(childProfile));
+  }, [childId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [sitting, setSitting] = useState(0);
   const stateRef = useRef<SneakState | null>(null);
@@ -363,7 +386,8 @@ function SneakFreezeGame({ art, sheet }: { art: SneakArt; sheet: HeroSheet }) {
     const s = stateRef.current;
     if (!v.done || !s || recorded.current === s.seed) return;
     recorded.current = s.seed;
-    writePlayLevel(childId, { track: s.track, level: s.level });
+    // A proof visit's `age` is for that visit only: the device level stays as it was.
+    if (proofVisit()?.age == null) writePlayLevel(childId, { track: s.track, level: s.level });
     void practice.events.upsert(sittingRecord(s, Date.now() - sittingStart.current, new Date()));
     noteKidActivity();
   }, [v.done, childId]); // eslint-disable-line react-hooks/exhaustive-deps

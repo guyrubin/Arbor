@@ -34,8 +34,10 @@ export function orientationFor(width: number, height: number): FieldOrientation 
 /** A point in design units (feet anchor for actors). */
 export interface FieldPoint { x: number; y: number }
 
-/** A point on the hero's depth path: the feet, and the hero's height there. */
-export interface DepthPoint extends FieldPoint { h: number }
+/** A point on the hero's depth path: the feet, and the hero's height there.
+ *  `t` (0..1, optional): the keypoint's place along the run; a path whose
+ *  points all carry `t` is interpolated by it instead of by arc length. */
+export interface DepthPoint extends FieldPoint { h: number; t?: number }
 
 export interface FieldFit {
   orientation: FieldOrientation;
@@ -101,19 +103,39 @@ export function insideSafe(fit: FieldFit, p: FieldPoint): boolean {
 // ── Sneak & Freeze: Savta's courtyard ───────────────────────────────────────
 
 /**
- * Perspective rule: a figure's height grows with how far down its feet stand
- * below the horizon, h = k × (feetY - horizonY). The hero is ~90 px tall at
- * the back gate on a phone and ~55-60 % of the field height at the tag.
+ * Two perspective rules (B-GAME-07d):
+ * - The PLATE's floor (Builder 1, read off the plates' paving lines): an
+ *   object standing with its base at y is h = k × (y − horizonY) × relH tall,
+ *   relH = its height relative to a real child (COVER relH below). Covers and
+ *   the cat's stool stand on this floor, so their bases sit on the plate.
+ * - The HERO's own depth scale (`hero`): the same rule with its own horizon,
+ *   so the child stays a readable child at the back gate (>= 110 px at 375x812,
+ *   >= 150 px at 1920x1080) and grows smoothly to the tag close-up (about 52 %
+ *   of the field at 375x812, 59 % at 1920x1080) — the usual game cheat of a
+ *   hero drawn slightly larger than the set's perspective.
+ * The run is a list of KEYPOINTS: the back gate (t 0), the three cover stops
+ * at the rules' COVER_FRACTIONS, the tag (t 1); the hero is interpolated by
+ * `t`, so a checkpoint is exactly where its cover is. Covers alternate sides
+ * of the run, each standing BESIDE its stop (the hero at a cover visibly
+ * stands next to it), clear of each other, of the cat, of the gate and of the
+ * run's line. Measured against the proof art (COVER_ASPECT, HERO_EXTENT):
+ * fieldLayout.test.ts checks every one of those relations at both orientations.
  */
 interface CourtyardSpec {
+  /** The plate's floor. */
   horizonY: number;
   k: number;
-  /** Feet positions from the back gate (t = 0) to the tag (t = 1). */
-  path: readonly FieldPoint[];
-  /** Cover objects: where along the path (fraction, = rules COVER_FRACTIONS),
-   *  and the sideways offset of the object from the path, design units. */
-  covers: readonly { id: CoverId; at: number; dx: number }[];
+  /** The hero's depth scale. */
+  hero: { horizonY: number; k: number };
+  /** Keypoints: feet positions from the back gate (t 0) to the tag (t 1). */
+  path: readonly (FieldPoint & { t: number })[];
+  /** Cover objects: the path fraction they mark (= a keypoint's t), the base
+   *  centre's x (its base y = the hero's y there), height relative to a child. */
+  covers: readonly { id: CoverId; at: number; x: number; relH: number }[];
+  /** The cat's stool: where its legs meet the floor, and its whole height as
+   *  a fraction of the hero's height at the tag. */
   watcher: FieldPoint;
+  watcherRelH: number;
   hand: FieldPoint;
 }
 
@@ -123,48 +145,58 @@ const COURTYARD: Readonly<Record<FieldOrientation, CourtyardSpec>> = {
   portrait: {
     horizonY: 400,
     k: 0.8,
+    hero: { horizonY: 318, k: 0.772 },
     path: [
-      { x: 450, y: 640 },
-      { x: 560, y: 740 },
-      { x: 360, y: 860 },
-      { x: 560, y: 1000 },
-      { x: 360, y: 1150 },
-      { x: 400, y: 1300 },
-      { x: 360, y: 1440 },
+      { x: 478, y: 650, t: 0 },
+      { x: 440, y: 790, t: 0.28 },
+      { x: 500, y: 890, t: 0.52 },
+      { x: 500, y: 1010, t: 0.76 },
+      { x: 330, y: 1420, t: 1 },
     ],
     covers: [
-      { id: "lemon-tree", at: 0.28, dx: -150 },
-      { id: "bench", at: 0.52, dx: 190 },
-      { id: "lantern", at: 0.76, dx: -230 },
+      { id: "lemon-tree", at: 0.28, x: 182, relH: 1.2 },
+      { id: "lantern", at: 0.52, x: 770, relH: 1.3 },
+      { id: "bench", at: 0.76, x: 175, relH: 0.4 },
     ],
-    watcher: { x: 700, y: 1440 },
+    watcher: { x: 645, y: 1420 },
+    watcherRelH: 0.43,
     hand: { x: 200, y: 1360 },
   },
   landscape: {
     horizonY: 250,
     k: 0.848,
+    hero: { horizonY: 216, k: 0.821 },
     path: [
-      { x: 800, y: 380 },
-      { x: 640, y: 430 },
-      { x: 900, y: 500 },
-      { x: 660, y: 590 },
-      { x: 930, y: 690 },
-      { x: 760, y: 800 },
+      { x: 800, y: 380, t: 0 },
+      { x: 680, y: 450, t: 0.28 },
+      { x: 780, y: 540, t: 0.52 },
+      { x: 640, y: 680, t: 0.76 },
+      { x: 760, y: 800, t: 1 },
     ],
     covers: [
-      { id: "lemon-tree", at: 0.28, dx: -230 },
-      { id: "bench", at: 0.52, dx: 260 },
-      { id: "lantern", at: 0.76, dx: -300 },
+      { id: "lemon-tree", at: 0.28, x: 545, relH: 1.35 },
+      { id: "lantern", at: 0.52, x: 950, relH: 1.45 },
+      { id: "bench", at: 0.76, x: 395, relH: 0.5 },
     ],
-    watcher: { x: 1130, y: 800 },
+    watcher: { x: 1100, y: 800 },
+    watcherRelH: 0.55,
     hand: { x: 250, y: 740 },
   },
 };
 
-/** Watcher (cat on its stool) height as a fraction of the hero's height at the tag. */
-const WATCHER_REL_H = 0.78;
-/** Cover object height relative to a hero standing at the same depth. */
-const COVER_REL_H: Readonly<Record<CoverId, number>> = { "lemon-tree": 1.35, bench: 0.55, lantern: 1.45 };
+/** Visible width / height of each cover object in the proof art (alpha box). */
+export const COVER_ASPECT: Readonly<Record<CoverId, number>> = { "lemon-tree": 0.55, bench: 1.42, lantern: 0.26 };
+/** The hero's body to the left / right of its feet, as a fraction of its
+ *  height, over every pose but the arms-up cheer (freeze-a reaches furthest). */
+export const HERO_EXTENT = { left: 0.37, right: 0.46 } as const;
+/** The cat on its stool to the left / right of the stool's feet, as a
+ *  fraction of its drawn height (the turned-round sprite is the widest). */
+export const WATCHER_EXTENT = { left: 0.48, right: 0.34 } as const;
+/** The back gate in the plate (design units): no cover may stand in front of it. */
+export const GATE: Readonly<Record<FieldOrientation, { x0: number; x1: number; y1: number }>> = {
+  portrait: { x0: 393, x1: 556, y1: 650 },
+  landscape: { x0: 725, x1: 875, y1: 380 },
+};
 /** A hero's width relative to its height (front three-quarter, arms in). */
 export const HERO_ASPECT = 0.62;
 
@@ -186,8 +218,13 @@ export interface SneakLayout {
   need: { halfW: number; halfH: number };
 }
 
-function depthAt(spec: CourtyardSpec, p: FieldPoint): DepthPoint {
-  return { x: p.x, y: p.y, h: Math.round(spec.k * (p.y - spec.horizonY)) };
+/** A real child's height standing at depth y on the plate's floor. */
+function floorH(spec: CourtyardSpec, y: number): number {
+  return spec.k * (y - spec.horizonY);
+}
+
+function heroAt(spec: CourtyardSpec, p: FieldPoint & { t: number }): DepthPoint {
+  return { x: p.x, y: p.y, h: Math.round(spec.hero.k * (p.y - spec.hero.horizonY)), t: p.t };
 }
 
 /** Cumulative polyline lengths, for even travel along the path. */
@@ -197,10 +234,25 @@ function lengths(path: readonly FieldPoint[]): number[] {
   return out;
 }
 
-/** The point at fraction t (0..1) of the path's length; height by perspective. */
+/** The point at fraction t (0..1) of the run: between keypoints by their `t`
+ *  when every point carries one, else by arc length; height interpolated. */
 export function pointOnPath(path: readonly DepthPoint[], t: number): DepthPoint {
   if (path.length === 0) return { x: 0, y: 0, h: 0 };
   const tt = Math.min(1, Math.max(0, Number.isFinite(t) ? t : 0));
+  if (path.every((p) => typeof p.t === "number")) {
+    if (tt <= (path[0].t as number)) return path[0];
+    for (let i = 1; i < path.length; i++) {
+      const a = path[i - 1];
+      const b = path[i];
+      if (tt <= (b.t as number) || i === path.length - 1) {
+        const span = (b.t as number) - (a.t as number) || 1;
+        const f = Math.min(1, Math.max(0, (tt - (a.t as number)) / span));
+        if (f === 1) return b;
+        return { x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f, h: a.h + (b.h - a.h) * f };
+      }
+    }
+    return path[path.length - 1];
+  }
   const L = lengths(path);
   const total = L[L.length - 1] || 1;
   const target = tt * total;
@@ -219,14 +271,14 @@ export function pointOnPath(path: readonly DepthPoint[], t: number): DepthPoint 
 export function sneakLayout(orientation: FieldOrientation): SneakLayout {
   const spec = COURTYARD[orientation];
   const design = DESIGN[orientation];
-  const heroPath = spec.path.map((p) => depthAt(spec, p));
+  const heroPath = spec.path.map((p) => heroAt(spec, p));
   const tagPoint = heroPath[heroPath.length - 1];
   const covers = spec.covers.map((c) => {
     const onPath = pointOnPath(heroPath, c.at);
-    const feet = { x: onPath.x + c.dx, y: onPath.y };
-    return { id: c.id, at: c.at, feet, h: Math.round(depthAt(spec, feet).h * COVER_REL_H[c.id]) };
+    const feet = { x: c.x, y: onPath.y };
+    return { id: c.id, at: c.at, feet, h: Math.round(floorH(spec, feet.y) * c.relH) };
   });
-  const watcher = { feet: spec.watcher, h: Math.round(tagPoint.h * WATCHER_REL_H) };
+  const watcher = { feet: spec.watcher, h: Math.round(tagPoint.h * spec.watcherRelH) };
   const prizeSize = Math.round(tagPoint.h * 0.22);
   const prize = { x: tagPoint.x, y: Math.round(tagPoint.y - tagPoint.h - prizeSize * 0.35), size: prizeSize };
   const anchors: { id: string; p: FieldPoint }[] = [

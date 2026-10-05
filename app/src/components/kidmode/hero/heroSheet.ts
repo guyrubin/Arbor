@@ -93,14 +93,22 @@ export function poseFactor(sheet: HeroSheet, sprite: HeroSprite, height: number)
   return ref ? (height / ref.h) * (sprite.scale ?? 1) : 1;
 }
 
-/** Where a held prize sits, in parent units relative to the feet: the
- *  midpoint of the hand anchors (one hand: that hand), else just above the
- *  head box, else above the sprite. */
+/** Where a held prize sits (its centre), in parent units relative to the
+ *  feet: RESTING ON the raised hands — above the midpoint of the hand anchors
+ *  (one hand: that hand) by 0.4 × its size — and, when the sprite gives a
+ *  head, never lower than just above the head (B-GAME-07d: the proof run
+ *  showed a prize centred between the hands covering the face). Without
+ *  hands: just above the head box, else above the sprite. */
 export function carryPoint(sprite: HeroSprite, k: number, size: number): { x: number; y: number } {
   const { l, r } = sprite.hand ?? {};
   const rel = (x: number, y: number) => ({ x: (x - sprite.foot.x) * k, y: (y - sprite.foot.y) * k });
-  if (l && r) return rel((l[0] + r[0]) / 2, (l[1] + r[1]) / 2);
-  if (l || r) { const h = (l ?? r) as [number, number]; return rel(h[0], h[1]); }
+  const held = (p: { x: number; y: number }) => {
+    let y = p.y - size * 0.4;
+    if (sprite.head) y = Math.min(y, (sprite.head.y - sprite.head.r - sprite.foot.y) * k - size * 0.35);
+    return { x: p.x, y };
+  };
+  if (l && r) return held(rel((l[0] + r[0]) / 2, (l[1] + r[1]) / 2));
+  if (l || r) { const h = (l ?? r) as [number, number]; return held(rel(h[0], h[1])); }
   if (sprite.head) { const p = rel(sprite.head.x, sprite.head.y - sprite.head.r); return { x: p.x, y: p.y - size * 0.55 }; }
   const p = rel(sprite.w / 2, 0);
   return { x: p.x, y: p.y - size * 0.55 };

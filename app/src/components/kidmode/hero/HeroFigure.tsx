@@ -32,8 +32,9 @@ export interface HeroFigureProps {
   kick?: number;
   /** Height above the ground (parent units): lifts the figure, shrinks the shadow. */
   lift?: number;
-  /** A tiny statue wobble (+/- 1.5 deg) while true. */
-  wobble?: boolean;
+  /** A tiny statue wobble (+/- 1.5 deg) while true; "tremble" = the held
+   *  breath while the watcher looks (+/- 0.6 deg, quicker). */
+  wobble?: boolean | "tremble";
   zIndex?: number;
   /** Transition for x/y moves (stepwise travel), e.g. "transform 180ms ease-out". */
   travel?: string;
@@ -93,7 +94,8 @@ export function HeroFigure({ pose, height, sheet, x, y, kick = 0, lift = 0, wobb
       return () => a.cancel();
     }
     if (wobble) {
-      const a = el.animate([{ transform: "rotate(-1.5deg)" }, { transform: "rotate(1.5deg)" }, { transform: "rotate(-1.5deg)" }], { duration: 1200, iterations: Infinity, easing: "ease-in-out" });
+      const deg = wobble === "tremble" ? 0.6 : 1.5;
+      const a = el.animate([{ transform: `rotate(${-deg}deg)` }, { transform: `rotate(${deg}deg)` }, { transform: `rotate(${-deg}deg)` }], { duration: wobble === "tremble" ? 700 : 1200, iterations: Infinity, easing: "ease-in-out" });
       return () => a.cancel();
     }
     return undefined;
@@ -105,8 +107,11 @@ export function HeroFigure({ pose, height, sheet, x, y, kick = 0, lift = 0, wobb
     : null;
   const liftClamped = Math.max(0, lift);
   const shadowScale = Math.max(0.45, 1 - liftClamped / Math.max(1, height));
-  const shadowW = height * 0.5;
-  const shadowH = Math.max(6, height * 0.07);
+  // B-GAME-07d: soft, a little to the right of the feet (the key light is
+  // upper left; RTL mirrors it with the art group).
+  const shadowW = height * 0.46;
+  const shadowH = Math.max(6, height * 0.06);
+  const shadowDx = height * 0.05;
 
   return (
     <div
@@ -119,12 +124,12 @@ export function HeroFigure({ pose, height, sheet, x, y, kick = 0, lift = 0, wobb
         data-hero-shadow=""
         style={{
           position: "absolute",
-          left: -shadowW / 2,
+          left: -shadowW / 2 + shadowDx,
           top: -shadowH / 2,
           width: shadowW,
           height: shadowH,
           borderRadius: "50%",
-          background: "radial-gradient(closest-side, color-mix(in srgb, var(--arbor-ink) 38%, transparent), transparent)",
+          background: "radial-gradient(closest-side, color-mix(in srgb, var(--arbor-ink) 32%, transparent), transparent)",
           transform: `scale(${shadowScale})`,
         }}
       />

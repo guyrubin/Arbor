@@ -1,3 +1,6 @@
+// B-GAME-07d (g): FIRST — a local-only `/?proof=sneak` visit writes its device
+// state before the Kid Mode gate and the language provider read storage.
+import './components/kidmode/proofVisit';
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';

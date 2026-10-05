@@ -12,9 +12,11 @@
  *                looking    turned round: seen FROM BEHIND, peering into the
  *                           courtyard (no face)
  *                laughing   faces the viewer, laughing
- *                sunglasses faces the viewer in big sunglasses, paws down — it
- *                           cannot see either way (used for every pose but
- *                           laughing while the trick is on)
+ *                sunglasses turned round like `looking` — seen FROM BEHIND —
+ *                           wearing big sunglasses: it cannot see. Used ONLY
+ *                           while it looks in a sunglasses round; that round's
+ *                           counting / tell / laughing use the normal sprites
+ *                           (B-GAME-07d)
  *                waiting    (optional) faces the viewer, sitting down
  *              Anchor = where the stool's legs meet the floor.
  *   covers     lemon-tree, bench, lantern. Anchor = base centre on the floor.
@@ -115,9 +117,11 @@ export function readSneakArt(storage?: Pick<Storage, "getItem"> | null): SneakAr
   }
 }
 
-/** The watcher sprite for a pose (sunglasses wins while worn; missing -> counting). */
+/** The watcher sprite for a pose: the sunglasses sprite (the cat from behind
+ *  in sunglasses) only while it LOOKS in a sunglasses round; missing -> the
+ *  pose's own sprite, then counting. */
 export function watcherSprite(art: SneakArt, pose: WatcherPose, sunglasses: boolean): { slot: WatcherSlot; sprite: ArtSprite } {
-  const want: WatcherSlot = sunglasses && pose !== "laughing" ? "sunglasses" : pose;
+  const want: WatcherSlot = sunglasses && pose === "looking" ? "sunglasses" : pose;
   const s = art.watcher[want];
   if (s) return { slot: want, sprite: s };
   const fallback: WatcherSlot = want === "waiting" ? "counting" : want === "sunglasses" ? (pose === "looking" ? "looking" : "counting") : "counting";
