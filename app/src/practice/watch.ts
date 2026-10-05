@@ -60,8 +60,7 @@ export interface WatchInput {
   stats: SoundStats[];          // per-sound practice stats
   bands: DomainBand[];
   missions: MissionRecord[];
-  adventureScenes: number;      // total scenes answered
-  adventureCorrect: number;     // first-try correct
+  adventureScenes: number;      // story scenes played (a count; no correctness is read)
 }
 
 /** Upper bound of the typical acquisition window per sound band. */
@@ -133,27 +132,10 @@ export function watchSignals(input: WatchInput): WatchSignal[] {
     });
   }
 
-  // 3) Attention & task completion — adventures + missions, needs real volume.
-  const advRate = input.adventureScenes >= 10 ? input.adventureCorrect / input.adventureScenes : null;
-  const cogBand = band("cognition");
-  if (advRate !== null && advRate < 0.4 && cogBand && cogBand.signal < 45) {
-    out.push({
-      id: "attention",
-      area: "Attention & task completion",
-      domain: "cognition",
-      domainLabel: domainLabelEn("practice", "cognition"),
-      level: "monitor",
-      evidence: [
-        // Counts, never percentages (IA W4.5): evidence rides into clinician exports.
-        `${input.adventureCorrect} of ${input.adventureScenes} adventure scenes answered right on the first try`,
-        `Thinking & logic band currently ${cogBand.band}`,
-      ],
-      plan: [
-        "Shorten sessions: one adventure scene or one memory round at a time, then stop while it's fun.",
-        "Watch whether completion improves with smaller chunks over the next 2-3 weeks.",
-      ],
-    });
-  }
+  // 3) (W2-SHELLPLAY critic r2, law 1) The "Attention & task completion" rule
+  //    that turned a picture-choice game's first-try rate into a 'monitor'
+  //    pattern is gone: a story game is play, never a graded risk signal.
+  //    Story Quest contributes scene COUNTS only, and nothing reads .correct.
 
   // 4) The Development Check's own "worth a conversation" areas carry over, in
   //    the questionnaire's own vocabulary. OBJ-GROWTH-06: the area arrives with

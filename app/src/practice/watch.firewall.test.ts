@@ -40,7 +40,6 @@ const base: WatchInput = {
   bands: domainBands([], [], [], []),
   missions: [],
   adventureScenes: 0,
-  adventureCorrect: 0,
 };
 
 describe("OBJ-GROWTH-06 (a) — watch.ts emits no verdict vocabulary", () => {

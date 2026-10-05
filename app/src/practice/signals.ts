@@ -256,9 +256,10 @@ export function domainBands(
   const stats = soundStats(speech);
   const speechSignal = stats.length > 0 ? stats.reduce((s, x) => s + x.recentAccuracy, 0) / stats.length : null;
 
-  const advBySkillDomain = adventures.length >= 3
-    ? (adventures.filter((a) => a.correct).length / adventures.length) * 100
-    : null;
+  // W2-SHELLPLAY critic r2 (law 1): Story Quest is a picture-choice game the
+  // child plays — its first-try answers never move a band. `adventures` stays
+  // in the signature (callers pass it) but nothing here reads `.correct`.
+  void adventures;
 
   const missionBoost = (domain: PracticeDomain): number => {
     const done = missions.filter((m) => m.completed && m.domain === domain).length;
@@ -309,10 +310,6 @@ export function domainBands(
       signal = ms ?? 50;
       basis.push(ms !== undefined ? "milestone checklist" : "no milestone data yet");
       if (domain === "cognition") {
-        if (advBySkillDomain !== null) {
-          signal = signal * 0.6 + advBySkillDomain * 0.4;
-          basis.push("Adventure comprehension");
-        }
         if (memoryAcc !== null) {
           signal = signal * 0.75 + memoryAcc * 0.25;
           basis.push("Memory Match");

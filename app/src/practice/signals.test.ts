@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import nodePath from "node:path";
+import { fileURLToPath } from "node:url";
 import type { AdventureResult, Milestone, MissionRecord, PracticeEvent, PracticeEventKind, SpeechAttempt } from "../types";
 import {
   ageAppropriateSoundIds,
@@ -131,7 +134,7 @@ describe("domainBands + recommend", () => {
     expect(speech.basis).toContain("Speech Coach accuracy");
   });
 
-  it("blends adventure comprehension into cognition", () => {
+  it("W2-SHELLPLAY r2 (law 1): Story Quest answers never move the cognition band", () => {
     const adv = (correct: boolean): AdventureResult => ({
       id: `adv-${Math.random()}`,
       scenarioId: "hungry-lion",
@@ -140,10 +143,11 @@ describe("domainBands + recommend", () => {
       correct,
       timestamp: new Date().toISOString(),
     });
-    const low = domainBands([ms("cognition_executive_function", false)], [], [], [adv(true), adv(true), adv(true)]);
-    const cog = low.find((b) => b.domain === "cognition")!;
-    expect(cog.signal).toBeGreaterThan(0);
-    expect(cog.basis).toContain("Adventure comprehension");
+    const withAdv = domainBands([ms("cognition_executive_function", false)], [], [], [adv(true), adv(true), adv(false)]);
+    const without = domainBands([ms("cognition_executive_function", false)], [], [], []);
+    const cog = withAdv.find((b) => b.domain === "cognition")!;
+    expect(cog.signal).toBe(without.find((b) => b.domain === "cognition")!.signal);
+    expect(cog.basis).not.toContain("Adventure comprehension");
   });
 
   const ev = (kind: PracticeEventKind, correct?: boolean, score?: number): PracticeEvent => ({
@@ -496,5 +500,26 @@ describe("B-KID-02 · mood-checkin never enters accuracy or stars", async () => 
     expect(read("components/kidmode/KidDashboard.tsx")).toContain("starEvents(data.events.items).length");
     expect(read("components/practice/HeroArcade.tsx")).toContain("count: (d) => starEvents(d.events.items).length");
     function read(rel: string) { return readFileSync(resolve(__dirname, "..", rel), "utf8"); }
+  });
+});
+
+/* W2-SHELLPLAY critic r2 (law 1): adventureResults are scene COUNTS downstream.
+ * The writer (AdventuresTab) may keep the field for in-game feedback state, but
+ * no reader — the bands, the watch rules, the clinician export — reads it. */
+describe("W2-SHELLPLAY r2 · no reader of adventures.items touches .correct", () => {
+  const SRC = nodePath.resolve(nodePath.dirname(fileURLToPath(import.meta.url)), "..");
+  const READERS = ["practice/signals.ts", "practice/watch.ts", "components/practice/DevelopmentCopilot.tsx"];
+  const READ_CORRECT = /adventures?[\w.]*\.(?:items\.)?filter\(\(\w+\) => \w+\.correct\)|advCorrect|adventureCorrect|first-try correct/;
+
+  it("bands, watch and the clinician export never read adventure correctness", () => {
+    for (const rel of READERS) {
+      const src = readFileSync(nodePath.join(SRC, rel), "utf8");
+      expect(src, rel).not.toMatch(READ_CORRECT);
+    }
+  });
+
+  it("NEGATIVE CONTROL: the pre-fix reads are caught", () => {
+    expect("const advCorrect = data.adventures.items.filter((a) => a.correct).length;").toMatch(READ_CORRECT);
+    expect("(adventures.filter((a) => a.correct).length / adventures.length) * 100").toMatch(READ_CORRECT);
   });
 });

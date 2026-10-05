@@ -68,7 +68,7 @@ describe("watch signals (non-diagnostic guardrails)", () => {
   });
   const base: WatchInput = {
     age: 5, screeningWatchLabels: [], logs: [], stats: [], bands: domainBands([], [], [], []),
-    missions: [], adventureScenes: 0, adventureCorrect: 0,
+    missions: [], adventureScenes: 0,
   };
 
   it("stays silent without real data volume", () => {

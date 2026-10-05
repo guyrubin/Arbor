@@ -130,8 +130,8 @@ export default function DevelopmentCopilot() {
     [bands, domainCounts]
   );
 
+  // W2-SHELLPLAY critic r2 (law 1): story scenes are counted, never graded.
   const advCount = data.adventures.items.length;
-  const advCorrect = data.adventures.items.filter((a) => a.correct).length;
   const lastScreening = useMemo(
     () => [...screeningsCol.items].sort((a, b) => (a.answeredAt < b.answeredAt ? 1 : -1))[0],
     [screeningsCol.items]
@@ -152,9 +152,8 @@ export default function DevelopmentCopilot() {
       bands,
       missions: data.missions.items,
       adventureScenes: advCount,
-      adventureCorrect: advCorrect,
     }),
-    [childProfile.age, screeningWatchLabels, behaviorLogs, data.stats, bands, data.missions.items, advCount, advCorrect]
+    [childProfile.age, screeningWatchLabels, behaviorLogs, data.stats, bands, data.missions.items, advCount]
   );
 
   // Masterplan 1.7: the old graded dashboard-risk value is gone. What remains
@@ -226,7 +225,7 @@ export default function DevelopmentCopilot() {
         }
       }
       if (advCount > 0) {
-        lines.push(``, `Comprehension play: ${advCorrect}/${advCount} first-try correct across logic, sequencing, vocabulary and instruction scenes.`);
+        lines.push(``, `Story play: ${advCount} story ${advCount === 1 ? "scene" : "scenes"} played.`);
       }
       if (watch.length > 0) {
         // Masterplan 1.7: observational register — the pattern plus its count of
