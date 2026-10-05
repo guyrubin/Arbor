@@ -13,6 +13,7 @@ import { useChildCollection } from "../../hooks/useChildCollection";
 import { api } from "../../lib/api";
 import { normalizeAvatarStyle } from "../../lib/avatarStyle";
 import { isolate } from "../../lib/i18n";
+import { isolateNameIn, langDir } from "../../lib/bidi";
 import {
   HERO_STORIES,
   PACKS,
@@ -257,6 +258,10 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
   };
   const [activeStory, setActiveStory] = useState<HeroStorySpec | null>(null);
   const [render, setRender] = useState<HeroJourneyRender | null>(null);
+  // B-KID-120: the language the open render is WRITTEN in. The page text, the
+  // title, the Decision question and the choices take lang + dir from it
+  // (never dir="auto"), and the child's name inside it is isolated.
+  const [renderLang, setRenderLang] = useState<"en" | "he">("en");
   const [sceneIndex, setSceneIndex] = useState(0);
   const [choiceId, setChoiceId] = useState<string | undefined>(undefined);
   const [loadingId, setLoadingId] = useState<string | null>(null);
@@ -287,8 +292,8 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
   // B-KID-76 (a): the child the authored text names as its hero.
   const storyHero = useMemo<StoryHero>(() => ({ name: childProfile.name, gender: childProfile.gender }), [childProfile.name, childProfile.gender]);
   const { scenes, choices } = useMemo(
-    () => (activeStory && render ? completeRender(activeStory, render, aiLang === "he" ? "he" : "en", storyHero) : { scenes: [] as HeroSceneRender[], choices: [] as HeroChoiceRender[] }),
-    [activeStory, render, aiLang, storyHero],
+    () => (activeStory && render ? completeRender(activeStory, render, renderLang, storyHero) : { scenes: [] as HeroSceneRender[], choices: [] as HeroChoiceRender[] }),
+    [activeStory, render, renderLang, storyHero],
   );
 
   const beat = activeStory?.beats[sceneIndex];
@@ -317,11 +322,11 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
         : isDecision && !choiceId && displayScene
           // B-KID-73: the Decision page speaks its question, then each choice
           // (one line each — the kid voice queue reads them in turn).
-          ? [`${displayScene.narration} ${kidsStoriesText("journey.decision", aiLang, { name: childProfile.name?.split(" ")[0] ?? "" })}`, ...choices.map((c) => c.label)].join("\n")
+          ? [`${displayScene.narration} ${kidsStoriesText("journey.decision", renderLang, { name: childProfile.name?.split(" ")[0] ?? "" })}`, ...choices.map((c) => c.label)].join("\n")
           : displayScene?.narration ?? "";
   useEffect(() => {
     if (!kidSpeech) return;
-    const timer = setTimeout(() => { autoReadPage(childProfile.id, kidSpeech.split("\n"), aiLang === "he" ? "he" : "en"); }, 400);
+    const timer = setTimeout(() => { autoReadPage(childProfile.id, kidSpeech.split("\n"), atEnd ? (aiLang === "he" ? "he" : "en") : renderLang); }, 400);
     return () => { clearTimeout(timer); stopVoice(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kidSpeech]);
@@ -349,6 +354,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
       startedAtRef.current = new Date().toISOString();
       setActiveStory(story);
       setRender(r);
+      setRenderLang(aiLang === "he" ? "he" : "en");
       setSceneIndex(0);
       setChoiceId(undefined);
       setQuestionsChecked({});
@@ -365,6 +371,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
       startedAtRef.current = new Date().toISOString();
       setActiveStory(story);
       setRender(fallback);
+      setRenderLang(aiLang === "he" ? "he" : "en");
       setSceneIndex(0);
       setChoiceId(undefined);
       setQuestionsChecked({});
@@ -578,6 +585,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
     startedAtRef.current = run.startedAt;
     setActiveStory(story);
     setRender(run.render);
+    setRenderLang(run.language === "he" ? "he" : "en");
     setSceneIndex(0);
     setChoiceId(run.choiceId);
     setQuestionsChecked({});
@@ -600,10 +608,10 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
     isDecision &&
     !choiceId && (
       <div className="space-y-2 w-full max-w-xl mx-auto">
-        <p className="text-[11px] uppercase tracking-widest font-bold text-center" style={{ color: "var(--arbor-green-ink)" }}>
-          {kidsStoriesText("journey.decision", aiLang, { name: childProfile.name })}
+        <p lang={renderLang} dir={langDir(renderLang)} className="text-[11px] uppercase tracking-widest font-bold text-center" style={{ color: "var(--arbor-green-ink)" }}>
+          {kidsStoriesText("journey.decision", renderLang, { name: isolate(childProfile.name ?? "", renderLang) })}
         </p>
-        <DecisionChoices choices={choices} lang={aiLang === "he" ? "he" : "en"} onChoose={chooseOption} />
+        <DecisionChoices choices={choices} lang={renderLang} heroName={childProfile.name?.split(" ")[0]} onChoose={chooseOption} />
       </div>
     );
 
@@ -1203,11 +1211,12 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
           (drawing / smudged), and the alt text carries it for a screen reader. */}
       {!coverArt.url && (
         <h3
-          dir="auto"
+          lang={renderLang}
+          dir={langDir(renderLang)}
           className={`font-extrabold tracking-tight ${immersiveMode ? "text-xl" : "text-lg"}`}
           style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display), Georgia, serif" }}
         >
-          {render.title || activeStory.title}
+          {isolateNameIn(render.title || activeStory.title, childProfile.name?.split(" ")[0], renderLang)}
         </h3>
       )}
     </div>
@@ -1253,6 +1262,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                 fallbackArtUrl={storyCover(activeStory.id)?.src}
                 fallbackArtHasHero={storyCover(activeStory.id)?.hasHero ?? false}
                 metaAction={kidMode && !immersiveMode ? immersiveButton : undefined}
+                textLang={renderLang}
               />
             </motion.div>
           ) : null}
@@ -1429,7 +1439,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                   keeps this book's sticker (its cover, die-cut), earned once. */}
               <div className="pt-4"><KidFinishMoment childId={childProfile.id} kind="book" refId={activeStory.id} lang={uiLang === "he" ? "he" : "en"} /></div>
               <div className="flex flex-col items-center gap-4 px-5 pt-5 text-center">
-                <p dir="auto" className="font-black" style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 32, color: "var(--arbor-ink)" }}>{kidsStoriesText("journey.end", uiLang === "he" ? "he" : "en")}</p>
+                <p lang={uiLang === "he" ? "he" : "en"} dir={langDir(uiLang === "he" ? "he" : "en")} className="font-black" style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 32, color: "var(--arbor-ink)" }}>{kidsStoriesText("journey.end", uiLang === "he" ? "he" : "en")}</p>
                 <div className="flex w-full max-w-md flex-col gap-3">
                   <button type="button" onClick={readAgain} style={{ ...bigButton, background: "var(--arbor-green-cta-start)", color: "var(--arbor-on-accent)" }}>{kidsStoriesText("reader.again", uiLang === "he" ? "he" : "en")}</button>
                   <button type="button" onClick={exitJourney} style={{ ...bigButton, background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)" }}>{kidsStoriesText("kidBooks.title", uiLang === "he" ? "he" : "en")}</button>
@@ -1439,7 +1449,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
           ) : onCover ? (
             <motion.div key="kid-book-cover" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} data-kid-book-cover="">
               {bookArtBox}
-              <p dir="auto" className="font-black px-5 pt-4 text-center" style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 26, lineHeight: 1.2, color: "var(--arbor-ink)" }}>{render.title || activeStory.title}</p>
+              <p lang={renderLang} dir={langDir(renderLang)} data-kid-book-title="" className="font-black px-5 pt-4 text-center" style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 26, lineHeight: 1.2, color: "var(--arbor-ink)" }}>{isolateNameIn(render.title || activeStory.title, childProfile.name?.split(" ")[0], renderLang)}</p>
             </motion.div>
           ) : displayScene ? (
             <motion.div key={`kid-book-${displayScene.beatId}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -1459,6 +1469,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                 onPageResolved={({ beatNumber, key }) => { comicPageKeys.current.set(beatNumber, key); void shelveWhenComplete(); }}
                 fallbackArtUrl={storyCover(activeStory.id)?.src}
                 fallbackArtHasHero={storyCover(activeStory.id)?.hasHero ?? false}
+                textLang={renderLang}
               />
             </motion.div>
           ) : null}

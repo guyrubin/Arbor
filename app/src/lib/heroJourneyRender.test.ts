@@ -67,7 +67,8 @@ describe("B-KID-23 F-1: the reader completes a partial render in the story's lan
   });
   it("the reader uses the one helper for scenes, the chosen consequence and the Decision list", () => {
     const tab = readFileSync(path.resolve(__dirname, "..", "components", "tabs", "HeroJourneyTab.tsx"), "utf8");
-    expect(tab).toContain('completeRender(activeStory, render, aiLang === "he" ? "he" : "en", storyHero)');
+    // B-KID-120 re-pin: the gap-fill language is the render's own (renderLang).
+    expect(tab).toContain('completeRender(activeStory, render, renderLang, storyHero)');
     expect(tab).toContain("const chosen = choices.find((c) => c.id === choiceId);");
     expect(tab).not.toContain("narration: b.spine");
     expect(tab).not.toContain("render?.choices.map(");

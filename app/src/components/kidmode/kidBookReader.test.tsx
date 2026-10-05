@@ -114,9 +114,10 @@ describe("the Kid Mode reader (HeroJourneyTab)", () => {
   });
   it("each page reads itself on open; the Decision page reads its question; the cards are the large stacked list", () => {
     // B-KID-73 re-pin: the question, then each choice label, as one voice queue.
-    expect(tab).toContain('? [`${displayScene.narration} ${kidsStoriesText("journey.decision", aiLang');
+    // B-KID-120 re-pin: the question is spoken in the render's language.
+    expect(tab).toContain('? [`${displayScene.narration} ${kidsStoriesText("journey.decision", renderLang');
     expect(tab).toContain("...choices.map((c) => c.label)].join(\"\\n\")");
-    expect(tab).toContain("autoReadPage(childProfile.id, kidSpeech.split(\"\\n\"), aiLang === \"he\" ? \"he\" : \"en\")");
+    expect(tab).toContain("autoReadPage(childProfile.id, kidSpeech.split(\"\\n\"), atEnd ? (aiLang === \"he\" ? \"he\" : \"en\") : renderLang)");
     expect(kidReader).toContain("renderChoices()");
     expect(tab).toContain("<DecisionChoices choices={choices}");
   });

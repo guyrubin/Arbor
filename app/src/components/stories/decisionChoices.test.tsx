@@ -48,7 +48,8 @@ describe("B-KID-53 (F-2): the Decision list", () => {
   });
   it("the reader renders this list (no inline id badge left behind)", () => {
     const tab = readFileSync(path.resolve(__dirname, "..", "tabs", "HeroJourneyTab.tsx"), "utf8");
-    expect(tab).toContain('<DecisionChoices choices={choices} lang={aiLang === "he" ? "he" : "en"} onChoose={chooseOption} />');
+    // B-KID-120 re-pin: the list reads the render's language and isolates the name.
+    expect(tab).toContain('<DecisionChoices choices={choices} lang={renderLang} heroName={childProfile.name?.split(" ")[0]} onChoose={chooseOption} />');
     expect(tab).not.toContain("key={c.id}");
   });
 });

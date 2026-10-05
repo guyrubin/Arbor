@@ -11,6 +11,7 @@ import { runInstrumented } from "../../hooks/useAsyncAction";
 import { ProvenanceBadge } from "../ui/ProvenanceBadge";
 import { useLanguage } from "../../context/LanguageContext";
 import { isolate } from "../../lib/i18n";
+import { isolateNameIn, langDir } from "../../lib/bidi";
 import { downloadHeroAvatarCanvas } from "../../lib/heroAvatarCanvas";
 import { isKidModeActive } from "../../lib/kidModeGate";
 import type { HeroSceneRender } from "../../types";
@@ -63,6 +64,7 @@ export function HeroScenePlayer({
   childId,
   onPageResolved,
   layout = "card",
+  textLang,
 }: {
   scene: HeroSceneRender;
   seed: string;
@@ -103,6 +105,11 @@ export function HeroScenePlayer({
    *  big words, no meta row, no smudged/Redraw state: a page whose art is not
    *  drawn shows the story's own cover crop). "card" = today's reader page. */
   layout?: "card" | "book";
+  /** B-KID-120: the language the story's text is WRITTEN in (the render's
+   *  language). The page text takes `lang` + `dir` from it - never `dir="auto"`,
+   *  which let an English sentence opening with a Hebrew name run RTL. Absent →
+   *  the AI language (the render's language before a run carried its own). */
+  textLang?: "en" | "he";
 }) {
   const [resolvedArt, setResolvedArt] = useState<{ key: string; url: string } | undefined>();
   const [artLoading, setArtLoading] = useState(false);
@@ -113,6 +120,12 @@ export function HeroScenePlayer({
   const [retryTick, setRetryTick] = useState(0);
   const { uiLang, aiLang, t } = useLanguage();
   const effectiveStyle = heroAvatarStyle ?? "comichero";
+  // B-KID-120: the text's own language and direction; the child's name inside
+  // it is isolated at display time (a Hebrew name in an English sentence, a
+  // Latin name in a Hebrew one), so it never reorders the words around it.
+  const bookLang: "en" | "he" = textLang ?? (aiLang === "he" ? "he" : "en");
+  const narration = isolateNameIn(scene.narration, heroName, bookLang);
+  const beatTitle = isolateNameIn(scene.title, heroName, bookLang);
   const pageArgs: JourneyPageArgs | undefined = heroAvatarUrl && scene.imagePrompt
     ? {
         storyId: storyId ?? seed,
@@ -228,12 +241,13 @@ export function HeroScenePlayer({
           {sceneArt && <ProvenanceBadge lang={uiLang === "he" ? "he" : "en"} className="absolute bottom-2 end-2" />}
         </div>
         <p
-          dir="auto"
+          lang={bookLang}
+          dir={langDir(bookLang)}
           data-kid-book-text=""
           className="font-bold"
           style={{ margin: 0, paddingInline: 20, paddingBlockStart: 16, fontSize: KID_BOOK_TEXT_PX, lineHeight: KID_BOOK_TEXT_LINE, maxBlockSize: `calc(3 * ${KID_BOOK_TEXT_LINE}em + 16px)`, overflowY: "auto", color: "var(--arbor-ink)", fontFamily: "var(--font-display), Georgia, serif" }}
         >
-          {scene.narration}
+          {narration}
         </p>
       </div>
     );
@@ -302,16 +316,17 @@ export function HeroScenePlayer({
           does not verify any embedded watermark, so it must not imply one. */}
       {sceneArt && <ProvenanceBadge lang={uiLang === "he" ? "he" : "en"} className="-mt-2" />}
 
-      <h3 className={`font-extrabold tracking-tight ${immersive ? "text-lg" : "text-base"}`} style={{ color: "var(--arbor-ink)" }}>
-        {scene.title}
+      <h3 lang={bookLang} dir={langDir(bookLang)} className={`font-extrabold tracking-tight ${immersive ? "text-lg" : "text-base"}`} style={{ color: "var(--arbor-ink)" }}>
+        {beatTitle}
       </h3>
 
       <p
-        dir="auto"
+        lang={bookLang}
+        dir={langDir(bookLang)}
         className={`${textSize} font-medium max-w-2xl`}
         style={{ color: "var(--arbor-ink-soft)", ...(immersive ? { fontFamily: "var(--font-display), Georgia, serif" } : {}) }}
       >
-        {scene.narration}
+        {narration}
       </p>
     </div>
   );

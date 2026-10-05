@@ -49,3 +49,25 @@ export function isolate(value: string, lang: IsolateLang = "en"): string {
   const foreign = lang === "he" ? LTR_CHARS.test(value) : RTL_CHARS.test(value);
   return foreign ? `⁨${value}⁩` : value;
 }
+
+/** B-KID-120: the paragraph direction of a text in `lang` - never "auto".
+ *  A paragraph's direction comes from the language the text is WRITTEN in;
+ *  `dir="auto"` takes it from the first strong character instead, so an
+ *  English sentence that opens with a Hebrew child's name rendered RTL with its
+ *  words reordered. */
+export function langDir(lang: IsolateLang): "ltr" | "rtl" {
+  return lang === "he" ? "rtl" : "ltr";
+}
+
+/** B-KID-120: isolate every occurrence of `name` inside a text written in
+ *  `lang` when the name's script is the foreign one there (an English story
+ *  about a Hebrew-named child, a Hebrew story about a Latin-named one). For
+ *  model-written text, where nothing else knows where the name sits. An
+ *  occurrence already wrapped (FSI before, PDI after) is left alone, so the
+ *  call is idempotent. DISPLAY-TIME ONLY, like isolate(). */
+export function isolateNameIn(text: string, name: string | undefined, lang: IsolateLang): string {
+  const n = name?.trim();
+  if (!text || !n || isolate(n, lang) === n) return text;
+  const escaped = n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return text.replace(new RegExp(`(?<!\\u2068)${escaped}(?!\\u2069)`, "g"), isolate(n, lang));
+}

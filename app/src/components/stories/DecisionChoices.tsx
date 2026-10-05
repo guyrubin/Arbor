@@ -10,6 +10,7 @@
  * layout only (flex + text-start), so RTL mirrors without a branch.
  */
 import type { HeroChoiceRender } from "../../types";
+import { isolateNameIn, langDir } from "../../lib/bidi";
 
 const MARKS: Record<"en" | "he", readonly string[]> = {
   en: ["A", "B", "C", "D"],
@@ -20,9 +21,13 @@ export function DecisionChoices({
   choices,
   lang,
   onChoose,
+  heroName,
 }: {
   choices: readonly HeroChoiceRender[];
+  /** B-KID-120: the STORY's language - the labels take `lang` + `dir` from it
+   *  (never `dir="auto"`), and the child's name inside a label is isolated. */
   lang: "en" | "he";
+  heroName?: string;
   onChoose: (id: string) => void;
 }) {
   return (
@@ -44,11 +49,12 @@ export function DecisionChoices({
             {MARKS[lang][i] ?? String(i + 1)}
           </span>
           <span
-            dir="auto"
+            lang={lang}
+            dir={langDir(lang)}
             className="min-w-0 flex-1 text-sm font-medium break-words"
             style={{ color: "var(--arbor-ink)", overflowWrap: "anywhere" }}
           >
-            {c.label}
+            {isolateNameIn(c.label, heroName, lang)}
           </span>
         </button>
       ))}
