@@ -188,6 +188,42 @@ export function itemText(item: PacketItem, lang: UiLang = "en"): string {
   return translate(lang, item.textKey, resolveVars(item.vars, lang));
 }
 
+/** W2-CAREPRO c2 r2 — an item as PARTS for a rendered preview, so every
+ *  Latin title, domain, quote and date can sit in its own bidi isolate (and
+ *  a date never wraps). The joined `itemText` string reorders across lines in
+ *  a Hebrew list ("…blocks to" / "five" (1 באוק׳ 2026)"); the parts never do.
+ *  Egress text is unchanged — this is the on-screen shape of the same item. */
+export type ItemParts =
+  | { kind: "quote"; quote: string; date?: string }
+  | { kind: "group"; label: string; n: number; more?: number; entries: { title: string; domain: string; date?: string }[] }
+  | { kind: "text"; text: string };
+
+export function itemParts(item: PacketItem, lang: UiLang = "en"): ItemParts {
+  const v = item.vars;
+  if (v && (item.textKey === "elev.packet.item.momentQuoteDated" || item.textKey === "elev.packet.item.momentQuote")) {
+    return { kind: "quote", quote: String(resolveVar(v.quote, lang)), ...(v.date !== undefined ? { date: String(resolveVar(v.date, lang)) } : {}) };
+  }
+  const list = v?.list;
+  if (v && list && typeof list === "object" && "list" in list && (item.textKey === "elev.packet.item.group" || item.textKey === "elev.packet.item.groupMore")) {
+    const entries = list.list.map((e) => {
+      const ev = typeof e === "object" && e !== null && "vars" in e && e.vars ? e.vars : {};
+      return {
+        title: ev.title !== undefined ? String(resolveVar(ev.title, lang)) : String(resolveVar(e, lang)),
+        domain: ev.domain !== undefined ? String(resolveVar(ev.domain, lang)) : "",
+        ...(ev.date !== undefined ? { date: String(resolveVar(ev.date, lang)) } : {}),
+      };
+    });
+    return {
+      kind: "group",
+      label: String(resolveVar(v.label, lang)),
+      n: Number(resolveVar(v.n, lang)),
+      ...(v.more !== undefined ? { more: Number(resolveVar(v.more, lang)) } : {}),
+      entries,
+    };
+  }
+  return { kind: "text", text: itemText(item, lang) };
+}
+
 /** W2-CAREPRO c2 r1 — an ISO day (YYYY-MM-DD) as the reader reads a date.
  *  English keeps the ISO form (byte-identical exports); Hebrew gets
  *  "12 בספט׳ 2026", which never reorders inside an RTL line. */

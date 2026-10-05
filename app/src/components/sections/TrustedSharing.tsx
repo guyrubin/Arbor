@@ -17,7 +17,65 @@ import { REPORT_SCOPE_BY_TYPE, WEEK_SHARE_SCOPES, WEEK_SHARE_DURATION, type Shar
 import { fmtDay } from "../../lib/formatDate";
 // LC-17: the review step shows the RECIPIENT'S ACTUAL VIEW, built by the same
 // function the server uses for them — not a list of scope labels.
-import { buildPacketInput, buildSharedScopePacket, itemText, sectionTitle, sectionNote } from "../../consult/packet";
+import { buildPacketInput, buildSharedScopePacket, itemParts, sectionTitle, sectionNote, type PacketItem } from "../../consult/packet";
+import type { UiLang } from "../../lib/i18n";
+
+/** W2-CAREPRO c2 r2 — one preview row per thing the recipient reads, every
+ *  Latin title, domain, quote and date in its own isolate and every date
+ *  no-wrap, so a Hebrew preview reads the same as the English one (the joined
+ *  itemText line reordered quotes, parentheses and dates across lines). The
+ *  same grammar as the at-rest strip: a moment is <q dir=auto><bdi>…</bdi></q>
+ *  plus a <bdi> date; an observed group is one row per milestone. */
+/** W2-CAREPRO c2 r2: the live grant that IS "the week" — the week role with
+ *  every week scope. A custom share (other scopes) is not the week. */
+export function findWeekGrant(team: readonly ShareGrant[], role: ShareRole): ShareGrant | null {
+  return team.find((g) => g.role === role && WEEK_SHARE_SCOPES.every((s) => (g.scopes as readonly string[]).includes(s))) ?? null;
+}
+
+export function PreviewItemRows({ items, lang, className, style }: { items: PacketItem[]; lang: UiLang; className: string; style: React.CSSProperties }) {
+  const dir = lang === "he" ? "rtl" : "ltr";
+  return (
+    <>
+      {items.map((it) => {
+        const p = itemParts(it, lang);
+        if (p.kind === "quote") {
+          return (
+            <li key={it.id} data-preview-row="moment" className={className} dir={dir} style={style}>
+              <q dir="auto"><bdi>{p.quote}</bdi></q>
+              {p.date ? <> · <bdi className="whitespace-nowrap">{p.date}</bdi></> : null}
+            </li>
+          );
+        }
+        if (p.kind === "group") {
+          return (
+            <li key={it.id} data-preview-row="group" className={className} dir={dir} style={style}>
+              <span>{p.label} ({p.n})</span>
+              <ul className="list-[circle] ps-4 mt-0.5 space-y-0.5">
+                {p.entries.map((e, i) => (
+                  <li key={i} data-preview-row="milestone" dir={dir}>
+                    <bdi>{e.title}</bdi>
+                    {e.domain || e.date ? (
+                      <>
+                        {" · "}
+                        <span className="whitespace-nowrap">
+                          {e.domain ? <bdi>{e.domain}</bdi> : null}
+                          {e.domain && e.date ? ", " : null}
+                          {e.date ? <bdi>{e.date}</bdi> : null}
+                        </span>
+                      </>
+                    ) : null}
+                  </li>
+                ))}
+                {p.more ? <li data-preview-row="more" dir={dir}>+{p.more}</li> : null}
+              </ul>
+            </li>
+          );
+        }
+        return <li key={it.id} data-preview-row="text" className={className} dir={dir} style={style}>{p.text}</li>;
+      })}
+    </>
+  );
+}
 import { ClinicalLanguageError } from "../../lib/clinicalScan";
 
 // IA W4.5 + CARE-3: the professional share scopes mirror the W4.1 preset
@@ -214,6 +272,13 @@ export default function TrustedSharing() {
   // (createdAt/expiresAt/revokedAt) ARE the audit trail, surviving reloads.
   const isLiveGrant = (g: ShareGrant) => !g.revokedAt && (!g.expiresAt || Date.parse(g.expiresAt) > Date.now());
   const team = shares.filter(isLiveGrant);
+  // W2-CAREPRO c2 r2 — the done state, fed by the existing grant list (no new
+  // write): once a live week grant exists, the card says who reads the week,
+  // offers a 44 px Stop sharing (the same revoke as the roster) and a door to
+  // share with someone else. A returning parent never meets an empty form.
+  const weekGrant = findWeekGrant(team, WEEK_ROLE);
+  const [shareAnother, setShareAnother] = useState(false);
+  const weekDone = weekGrant !== null && !shareAnother;
   const history = shares.filter((g) => !isLiveGrant(g));
   // F-09: explicit-month app-locale date, never the browser's numeric default.
   const fmtDate = (iso: string | null) => fmtDay(iso, uiLang);
@@ -259,6 +324,7 @@ export default function TrustedSharing() {
     if (!weekEmailValid) return;
     await grant({ email, role: WEEK_ROLE, scopes: [...WEEK_SHARE_SCOPES], duration: WEEK_SHARE_DURATION }, "week", () => {
       setWeekEmail("");
+      setShareAnother(false);
     });
   };
 
@@ -367,14 +433,18 @@ export default function TrustedSharing() {
           <div className="flex flex-col gap-3 min-w-0 lg:col-start-1 lg:row-start-1">
             <div className="flex items-center gap-3">
               <span className="inline-flex items-center justify-center w-10 h-10 rounded-xl flex-shrink-0" style={{ background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" }}><Icon name="diversity_3" size={20} /></span>
-              <h2 className="t-lg font-extrabold min-w-0" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("elev.learnCare.share.week.title", { name: first })}</h2>
+              <h2 data-testid="share-week-title" className="t-lg font-extrabold min-w-0" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+                {weekDone && weekGrant
+                  ? t("elev.learnCare.share.week.done.title", { email: weekGrant.recipientEmail, name: first })
+                  : t("elev.learnCare.share.week.title", { name: first })}
+              </h2>
             </div>
-            <p className="t-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.share.week.body")}</p>
+            {!weekDone && <p className="t-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.share.week.body")}</p>}
             {/* W2-CAREPRO c2 r1: "What they'll read this week" — the parent's own
                 newest words the grant releases, at rest (the card's one warm
                 accent beside the one gradient); an honest line when there are none. */}
             <figure data-testid="share-week-atrest" className="p-3" style={{ background: "var(--arbor-paper-deep)", borderRadius: "var(--r)", borderInlineStart: "2px solid var(--arbor-sky-ink)" }}>
-              <figcaption className="t-xs" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.share.week.atRest")}</figcaption>
+              <figcaption className="t-xs" style={{ color: "var(--arbor-muted)" }}>{t(weekDone ? "elev.learnCare.share.week.done.atRest" : "elev.learnCare.share.week.atRest")}</figcaption>
               {weekAtRest ? (
                 <p className="t-sm mt-0.5 line-clamp-2" style={{ color: "var(--arbor-ink)", fontFamily: uiLang === "he" ? "var(--font-display)" : "var(--font-editorial)" }}>
                   <q dir="auto">{weekAtRest.quote}</q>{weekAtRest.iso ? <> · <bdi>{weekday(weekAtRest.iso)}</bdi></> : null}
@@ -390,6 +460,20 @@ export default function TrustedSharing() {
           {/* W2-CAREPRO c2 r1: at lg the email + the one tap are a sticky end
               column spanning both rows, beside the preview it confirms. */}
           <div className="flex flex-col gap-3 min-w-0 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-6 lg:self-start">
+            {weekDone && weekGrant ? (
+              /* W2-CAREPRO c2 r2: the done state's quiet exit — the roster's
+                 own revoke, at 44 px, before the door to share again. */
+              <button
+                type="button"
+                data-testid="share-week-stop"
+                onClick={() => void revoke(weekGrant)}
+                disabled={busy === weekGrant.id}
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl px-3 min-h-11 text-sm font-bold disabled:opacity-50"
+                style={{ color: "var(--arbor-pink-ink)", border: "1px solid var(--arbor-rule-strong)" }}
+              >
+                <Icon name="close" size={16} /> {t("elev.learnCare.share.week.done.stop")}
+              </button>
+            ) : (
             <div className="space-y-1.5">
               <input
                 ref={weekEmailRef}
@@ -410,6 +494,7 @@ export default function TrustedSharing() {
                 <p id="share-week-hint" role="alert" data-testid="share-week-hint" className="t-xs font-bold" style={{ color: "var(--arbor-ink)" }}>{t("elev.learnCare.share.week.needEmail")}</p>
               )}
             </div>
+            )}
             <div className="flex flex-col sm:flex-row lg:flex-col gap-2 sm:items-center lg:items-stretch">
               {/* The route's ONE primary-move stamp: one tap grants (viewer,
                   WEEK_SHARE_SCOPES, until revoked); no email = focus + hint. */}
@@ -419,14 +504,16 @@ export default function TrustedSharing() {
                 // the stamp's VALUE follows the route (ConsultTab pattern).
                 data-primary-move={activeTab === "care-team" ? "open-care-roster" : "grant-share"}
                 data-testid="share-week-confirm"
-                onClick={onWeekPrimary}
+                onClick={weekDone ? () => { setShareAnother(true); setTimeout(() => weekEmailRef.current?.focus(), 0); } : onWeekPrimary}
                 disabled={busy === "week" || (weekPreviewing && weekPreview.blocked)}
                 className="touch-target inline-flex items-center justify-center gap-2 font-extrabold text-sm rounded-xl px-5 min-h-11 disabled:cursor-not-allowed"
                 style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}
               >
                 {busy === "week"
                   ? <><Icon name="progress_activity" size={16} className="animate-spin" /> {t("sec.sharing.review.working")}</>
-                  : <><Icon name="check" size={16} /> {t("elev.learnCare.share.week.share", { name: first })}</>}
+                  : weekDone
+                    ? <><Icon name="person_add" size={16} /> {t("elev.learnCare.share.week.done.another")}</>
+                    : <><Icon name="check" size={16} /> {t("elev.learnCare.share.week.share", { name: first })}</>}
               </button>
               {/* B-CAREPRO-26: the full wizard sits behind "Custom share" — a
                   quiet text door inside the card (W2-CAREPRO r1). */}
@@ -455,13 +542,11 @@ export default function TrustedSharing() {
                 weekPreview.sections.map((section) => (
                   <div key={section.id}>
                     <p className="t-sm font-extrabold" dir={uiLang === "he" ? "rtl" : "ltr"} style={{ color: "var(--arbor-ink)" }}>{sectionTitle(section, uiLang)}</p>
-                    {/* W2-CAREPRO c2 r1: one direction per list (the UI's);
-                        itemText isolates every Latin title/quote and HE dates
-                        are Hebrew dates — never a raw ISO day in an RTL line. */}
+                    {/* W2-CAREPRO c2 r2: one direction per list (the UI's); one
+                        row per moment / milestone, each Latin run and date in
+                        its own <bdi> (PreviewItemRows) — never a joined line. */}
                     <ul dir={uiLang === "he" ? "rtl" : "ltr"} className="list-disc ps-5 mt-1 space-y-0.5">
-                      {section.items.map((it) => (
-                        <li key={it.id} className="t-xs leading-relaxed" dir={uiLang === "he" ? "rtl" : "ltr"} style={{ color: "var(--arbor-muted)" }}>{itemText(it, uiLang)}</li>
-                      ))}
+                      <PreviewItemRows items={section.items} lang={uiLang} className="t-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }} />
                     </ul>
                   </div>
                 ))
@@ -551,9 +636,7 @@ export default function TrustedSharing() {
                       {/* B-CAREPRO-15: headings in the parent's language (titleKey), never the English fallback. */}
                       <p className="text-[12.5px] font-extrabold" dir="auto" style={{ color: "var(--arbor-ink)" }}>{sectionTitle(section, uiLang)}</p>
                       <ul className="list-disc ps-5 mt-1 space-y-0.5">
-                        {section.items.map((it) => (
-                          <li key={it.id} className="text-[12px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-muted)" }}>{itemText(it, uiLang)}</li>
-                        ))}
+                        <PreviewItemRows items={section.items} lang={uiLang} className="text-[12px] leading-relaxed" style={{ color: "var(--arbor-muted)" }} />
                       </ul>
                     </div>
                   ))
@@ -776,13 +859,10 @@ export default function TrustedSharing() {
                   <div key={section.id} className="rounded-2xl p-4 space-y-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
                     <h3 className="text-sm font-extrabold" dir="auto" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{sectionTitle(section, uiLang)}</h3>
                     {sectionNote(section, uiLang) && <p className="text-[11px]" dir="auto" style={{ color: "var(--arbor-muted)" }}>{sectionNote(section, uiLang)}</p>}
-                    <ul className="space-y-1.5">
-                      {section.items.map((item) => (
-                        <li key={item.id} className="flex items-start gap-2 text-sm leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}>
-                          <span className="mt-2 h-1 w-1 flex-shrink-0 rounded-full" style={{ background: "var(--arbor-muted)" }} />
-                          {itemText(item, uiLang)}
-                        </li>
-                      ))}
+                    {/* W2-CAREPRO c2 r2: the recipient reads the same isolated
+                        rows the sharer previewed (one per moment / milestone). */}
+                    <ul dir={uiLang === "he" ? "rtl" : "ltr"} className="list-disc ps-5 space-y-1.5">
+                      <PreviewItemRows items={section.items} lang={uiLang} className="text-sm leading-relaxed" style={{ color: "var(--arbor-ink)" }} />
                     </ul>
                   </div>
                 ))

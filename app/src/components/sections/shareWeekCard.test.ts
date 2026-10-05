@@ -238,3 +238,89 @@ describe("W2-CAREPRO c2 r1 · the week is true, at rest and in the preview", () 
     expect(card).not.toMatch(/<li key=\{it\.id\}[^>]*dir="auto"/);
   });
 });
+
+/* W2-CAREPRO c2 r2 — sharing critics (product P1 G1 + design P1 G1: the HE
+ * preview bidi; product P1 G2: the done state). */
+describe("W2-CAREPRO c2 r2 · the HE preview reads the same as EN; the done state", () => {
+  const mixed: RawChildRecord = {
+    ...RAW,
+    logs: [
+      ...RAW.logs,
+      { behaviorType: "Moment", intensity: 1, timestamp: new Date(NOW - 2 * DAY).toISOString(), trigger: "Built a tower of blocks to five" },
+    ],
+    milestones: [
+      ...RAW.milestones,
+      { domain: "social_development", title: "Notices others' feelings", checked: true, observationStatus: "yes", observationUpdatedAt: new Date(NOW - 5 * DAY).toISOString() },
+      { domain: "language_communication", title: "Says two words together", checked: true, observationStatus: "yes", observationUpdatedAt: new Date(NOW - 6 * DAY).toISOString() },
+    ],
+  };
+  const LATIN = /[A-Za-z]/;
+  /** Every Latin run must sit inside a <bdi> or a <q>: strip those, then the tags. */
+  const latinOutsideIsolates = (li: string) =>
+    LATIN.test(li.replace(/<q\b[^>]*>[\s\S]*?<\/q>/g, "").replace(/<bdi\b[^>]*>[\s\S]*?<\/bdi>/g, "").replace(/<[^>]+>/g, "").replace(/&#x27;/g, "'"));
+
+  for (const lang of ["en", "he"] as const) {
+    it(`${lang}: one row per moment and per milestone; every Latin run is isolated; every date no-wrap`, async () => {
+      const React = await import("react");
+      const { renderToStaticMarkup } = await import("react-dom/server");
+      const { PreviewItemRows } = await import("./TrustedSharing");
+      const p = buildSharedScopePacket([...WEEK_SHARE_SCOPES], false, buildPacketInput(mixed, NOW));
+      const html = p.sections
+        .map((s) => renderToStaticMarkup(React.createElement("ul", null, React.createElement(PreviewItemRows, { items: s.items, lang, className: "t-xs", style: {} }))))
+        .join("\n");
+      const moments = [...html.matchAll(/<li data-preview-row="moment"[^>]*>([\s\S]*?)<\/li>/g)].map((m) => m[1]);
+      const milestones = [...html.matchAll(/<li data-preview-row="milestone"[^>]*>([\s\S]*?)<\/li>/g)].map((m) => m[1]);
+      expect(moments.length).toBeGreaterThan(0);
+      expect(milestones.length).toBe(3);
+      for (const li of [...moments, ...milestones]) expect(latinOutsideIsolates(li), li).toBe(false);
+      for (const li of moments) {
+        expect(li).toMatch(/^<q dir="auto"><bdi>[^<]+<\/bdi><\/q>/);
+        expect(li).toMatch(/<bdi class="whitespace-nowrap">[^<]+<\/bdi>$/);
+      }
+      for (const li of milestones) expect(li).toMatch(/<span class="whitespace-nowrap"><bdi>[^<]+<\/bdi>, <bdi>[^<]+<\/bdi><\/span>$/);
+      // the rows carry the UI direction, never dir=auto per row
+      expect(html).not.toMatch(/<li[^>]*data-preview-row="(moment|milestone)"[^>]*dir="auto"/);
+      if (lang === "he") expect(html).toMatch(/[֐-׿]/);
+    });
+  }
+
+  it("NEGATIVE CONTROL: the joined itemText line (the pre-fix render) carries Latin outside any isolate", async () => {
+    const { itemText } = await import("../../consult/packet");
+    const p = buildSharedScopePacket([...WEEK_SHARE_SCOPES], false, buildPacketInput(mixed, NOW));
+    const group = p.sections.flatMap((s) => s.items).find((i) => i.id === "dev-observed")!;
+    expect(latinOutsideIsolates(`<li>${itemText(group, "he")}</li>`)).toBe(true);
+  });
+
+  it("source: every preview list (week card, review step, recipient view) renders PreviewItemRows, never a joined itemText", () => {
+    expect((sharing.match(/<PreviewItemRows /g) ?? []).length).toBe(3);
+    expect(sharing).not.toMatch(/\{itemText\(/);
+  });
+
+  it("done state: findWeekGrant picks the live week grant (role + every week scope), never a custom share", async () => {
+    const { findWeekGrant } = await import("./TrustedSharing");
+    const week = buildGrant({ ownerUid: "u1", ownerEmail: "me@x.io", childId: "c1", childName: "Noa", recipientEmail: "dana@x.io", role: "viewer", scopes: [...WEEK_SHARE_SCOPES], duration: WEEK_SHARE_DURATION }, NOW);
+    const custom = buildGrant({ ownerUid: "u1", ownerEmail: "me@x.io", childId: "c1", childName: "Noa", recipientEmail: "pro@x.io", role: "viewer", scopes: ["weekly_insight"], duration: WEEK_SHARE_DURATION }, NOW);
+    expect(findWeekGrant([custom], "viewer")).toBeNull();
+    expect(findWeekGrant([custom, week], "viewer")?.recipientEmail).toBe("dana@x.io");
+    expect(findWeekGrant([], "viewer")).toBeNull();
+  });
+
+  it("source: the done state heads '{email} reads {name}'s week', retitles the strip, offers a 44 px Stop sharing (revoke) and a door to share again — no new write", () => {
+    const card = sharing.slice(sharing.indexOf('data-testid="share-week-card"'), sharing.indexOf("</section>", sharing.indexOf('data-testid="share-week-card"')));
+    expect(card).toMatch(/weekDone && weekGrant\s*\?\s*t\("elev\.learnCare\.share\.week\.done\.title", \{ email: weekGrant\.recipientEmail, name: first \}\)/);
+    expect(card).toContain('t(weekDone ? "elev.learnCare.share.week.done.atRest" : "elev.learnCare.share.week.atRest")');
+    const stop = card.slice(card.indexOf('data-testid="share-week-stop"') - 200, card.indexOf("</button>", card.indexOf('data-testid="share-week-stop"')));
+    expect(stop).toContain("onClick={() => void revoke(weekGrant)}");
+    expect(stop).toContain("min-h-11");
+    expect(card).toContain('t("elev.learnCare.share.week.done.another")');
+    expect(sharing).toContain("const weekGrant = findWeekGrant(team, WEEK_ROLE);");
+    for (const key of ["done.title", "done.atRest", "done.stop", "done.another"]) {
+      const k = `elev.learnCare.share.week.${key}`;
+      expect(translate("en", k)).not.toBe(k);
+      expect(translate("he", k)).not.toBe(k);
+      expect(translate("he", k)).not.toBe(translate("en", k));
+    }
+    expect(translate("en", "elev.learnCare.share.week.done.title", { email: "dana@x.io", name: "Dylan" })).toBe("dana@x.io reads Dylan's week");
+    expect(translate("he", "elev.learnCare.share.week.done.title", { email: "dana@x.io", name: "Dylan" })).toContain("dana@x.io");
+  });
+});

@@ -198,7 +198,9 @@ describe("LC-17 · the review step mounts the preview, and the parent can invite
     // The section items themselves are rendered, not just the section titles.
     const block = /data-testid="share-scope-preview"[\s\S]*?<\/div>\s*\)\}/.exec(sharing);
     expect(block).toBeTruthy();
-    expect(block![0]).toContain("section.items.map");
+    // W2-CAREPRO c2 r2: through the one isolated-row renderer (one row per
+    // moment / milestone, every Latin run and date in a <bdi>).
+    expect(block![0]).toContain("<PreviewItemRows items={section.items}");
   });
 
   it("a blocked build shows the reason and NO content (fail closed)", () => {

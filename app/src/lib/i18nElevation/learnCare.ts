@@ -120,6 +120,10 @@ export const en: Record<string, string> = {
   "elev.learnCare.share.week.edit": "Change email",
   "elev.learnCare.share.week.custom": "Custom share",
   "elev.learnCare.share.week.needEmail": "Add their email first",
+  "elev.learnCare.share.week.done.title": "{email} reads {name}'s week",
+  "elev.learnCare.share.week.done.atRest": "This week they're reading",
+  "elev.learnCare.share.week.done.stop": "Stop sharing",
+  "elev.learnCare.share.week.done.another": "Share with someone else",
 
   // ── LC-20 · Reason for visit + prepared questions ──────────────────────────
   "elev.learnCare.reason.label": "What I'd like help with",
@@ -231,6 +235,10 @@ export const he: Record<string, string> = {
   "elev.learnCare.share.week.edit": "לשנות מייל",
   "elev.learnCare.share.week.custom": "שיתוף מותאם אישית",
   "elev.learnCare.share.week.needEmail": "קודם מוסיפים את המייל שלהם",
+  "elev.learnCare.share.week.done.title": "השבוע של {name} משותף עם {email}",
+  "elev.learnCare.share.week.done.atRest": "מה שהם קוראים השבוע",
+  "elev.learnCare.share.week.done.stop": "להפסיק לשתף",
+  "elev.learnCare.share.week.done.another": "לשתף עם מישהו נוסף",
 
   // ── LC-20 ──────────────────────────────────────────────────────────────────
   "elev.learnCare.reason.label": "מה הייתי רוצה לקבל עזרה בו",
