@@ -97,7 +97,9 @@ describe("M2 — the cover is the opening page of the book", () => {
   });
 
   it("presents it with the shared ComicPage primitive, unnumbered", () => {
-    expect(tab).toContain('import { ComicPage, MascotSay, PlayButton, PlayPanel, usePrefersReducedMotion } from "../ui/playkit";');
+    // af186de dropped PlayButton/PlayPanel from this import (the hero row left
+    // the kid PlayPanel gate); the contract is the shared ComicPage primitive.
+    expect(tab).toMatch(/import \{[^}]*ComicPage[^}]*\} from "\.\.\/ui\/playkit";/);
     expect(tab).toContain("const coverPage = (immersiveMode: boolean) => (");
     expect(tab).toContain('key="journey-cover"');
     expect(tab).toContain("src={coverArt.url}");
