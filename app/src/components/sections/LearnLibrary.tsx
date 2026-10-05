@@ -48,8 +48,11 @@ import { isLearnPilotCard, learnPilotText } from "../../learn/learnPilotRelease"
 import { focusDomainContributed } from "../../learn/todaysPick";
 import { ContentActionBar, ContentWhyLine } from "../ui/ContentActionBar";
 import { TrustLink } from "../trust/TrustLink";
+import { MasterclassReader, loadDone as loadCourseDone } from "./Masterclasses";
+import { MASTERCLASSES } from "../../lib/masterclasses";
 
-type Filter = "all" | "saved" | LearnCategoryId;
+// B-PLAY-17: "courses" lists the Masterclasses inside the Library (same age switch).
+type Filter = "all" | "saved" | "courses" | LearnCategoryId;
 
 /**
  * R12 — how many reads the browse shelf shows before the parent asks for more.
@@ -88,6 +91,7 @@ export default function LearnLibrary() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [openCourseId, setOpenCourseId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<LearnFeedback>(() => readLearnFeedback());
 
   // LC-21 — reads the parent has already opened, on this device, for THIS
@@ -161,9 +165,19 @@ export default function LearnLibrary() {
   };
   const inScope = showAllAges ? ranked : ageVisible;
 
+  // B-PLAY-17: the courses shelf rides the SAME age switch as the reads shelf
+  // (lib/ageFilter over each course's year band; "Show all ages" lifts it).
+  const { visible: coursesAgeVisible, hidden: coursesAgeHidden } = useMemo(
+    () => filterByAge(MASTERCLASSES, (m) => windowFromYears(m.ageMinYears, m.ageMaxYears), childMonths),
+    [childMonths]
+  );
+  const courses = showAllAges ? MASTERCLASSES : coursesAgeVisible;
+  const courseDone = useMemo(() => loadCourseDone(), [openCourseId]);
+
   const visible = useMemo(() => {
     let list = inScope;
     if (filter === "saved") list = list.filter((c) => savedLearnIds.includes(c.id));
+    else if (filter === "courses") list = [];
     else if (filter !== "all") list = list.filter((c) => c.category === filter);
     return searchLearnCards(list, query, he);
   }, [inScope, filter, query, he, savedLearnIds]);
@@ -222,6 +236,11 @@ export default function LearnLibrary() {
     () => learnReadCount(readIds, LEARN_CARDS.map((c) => c.id)),
     [readIds]
   );
+
+  const openCourse = openCourseId ? MASTERCLASSES.find((m) => m.id === openCourseId) : undefined;
+  if (openCourse) {
+    return <MasterclassReader m={openCourse} onBack={() => setOpenCourseId(null)} />;
+  }
 
   const open = openId ? learnCardById(openId) : undefined;
   if (open) {
@@ -300,6 +319,12 @@ export default function LearnLibrary() {
           label={`${t("learn.saved")}${savedLearnIds.length > 0 ? ` · ${savedLearnIds.length}` : ""}`}
           msIcon="bookmark"
         />
+        <FilterPill
+          active={filter === "courses"}
+          onClick={() => setFilter(filter === "courses" ? "all" : "courses")}
+          label={t("learn.courses")}
+          msIcon="school"
+        />
         {LEARN_CATEGORIES.map((c) => (
           <FilterPill
             key={c.id}
@@ -373,8 +398,61 @@ export default function LearnLibrary() {
         </section>
       )}
 
-      {/* Grid */}
-      {gridCards.length > 0 ? (
+      {/* B-PLAY-17: Courses — the Masterclasses, opened in the same course reader. */}
+      {filter === "courses" ? (
+        <section data-testid="learn-courses" aria-label={t("learn.courses")}>
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1.5 mb-2.5">
+            <h2 className="text-lg font-bold" style={{ color: "var(--arbor-ink)" }}>{t("learn.courses")}</h2>
+            <span className="inline-flex w-full flex-wrap items-center gap-2 sm:w-auto">
+              <span className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("learn.courses.count", { n: courses.length })}</span>
+              {(coursesAgeHidden.length > 0 || showAllAges) && (
+                <>
+                  {!showAllAges && coursesAgeHidden.length > 0 && (
+                    <span className="text-xs font-semibold" style={{ color: "var(--arbor-faint)" }} dir="auto">
+                      {agefilterText("elev.agefilter.hiddenCount", he, { n: coursesAgeHidden.length })}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={showAllAges}
+                    onClick={toggleShowAllAges}
+                    data-testid="agefilter-toggle-courses"
+                    className="inline-flex items-center gap-1.5 rounded-full px-3 min-h-11 text-xs font-extrabold transition"
+                    style={
+                      showAllAges
+                        ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid color-mix(in srgb, var(--arbor-green-ink) 25%, transparent)" }
+                        : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }
+                    }
+                  >
+                    <Icon name={showAllAges ? "check" : "unfold_more"} size={14} />
+                    {agefilterText("elev.agefilter.showAll", he)}
+                  </button>
+                </>
+              )}
+            </span>
+          </div>
+          <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {courses.map((m) => (
+              <li key={m.id}>
+                <button
+                  type="button"
+                  onClick={() => setOpenCourseId(m.id)}
+                  data-testid="learn-course-row"
+                  className={`${cardCls} w-full min-h-11 p-4 text-start transition`}
+                >
+                  <span className="block text-[15px] font-bold leading-snug" dir="auto" style={{ color: "var(--arbor-ink)" }}>{he ? m.titleHe : m.title}</span>
+                  <span className="mt-1 block text-[13px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink-soft)" }}>{he ? m.hookHe : m.hook}</span>
+                  <span className="mt-2 inline-flex items-center gap-2 text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>
+                    <Icon name="schedule" size={13} /> {m.durationMin} {t("master.min")}
+                    {courseDone[m.id] && <span className="inline-flex items-center gap-1"><Icon name="check" size={13} /> {t("learn.courses.done")}</span>}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : gridCards.length > 0 ? (
         <section data-module="learn-shelf" data-primary-move="open-learn-card" aria-label={t("learn.allReads")}>
           {browsing && (
             /* R12 → R20: this row did not wrap, so at 390 the "Show all ages"

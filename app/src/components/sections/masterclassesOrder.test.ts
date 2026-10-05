@@ -32,7 +32,7 @@ const source = fs.readFileSync(path.join(SRC, "components", "sections", "Masterc
  *  whole-file index comparison would answer a different question. */
 function hubBody(src: string): string {
   const start = src.indexOf("  return (");
-  const end = src.indexOf("function Reader(");
+  const end = src.indexOf("export function MasterclassReader(");
   expect(start, "the hub's return was not found").toBeGreaterThan(-1);
   expect(end, "the Reader component was not found").toBeGreaterThan(start);
   return src.slice(start, end);

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useSyncExternalStore } from "react";
 import { motion } from "motion/react";
 import { celebrate } from "../../lib/celebrate";
 import { Icon } from "../ui/Icon";
+import { SpeakButton } from "../ui/SpeakButton";
 import { EvidenceChip } from "../ui/EvidenceChip";
 import { cardCls, IconBadge, PASTEL, type PastelKey } from "../ui/kit";
 import { useLanguage } from "../../context/LanguageContext";
@@ -46,7 +47,7 @@ const MASTERCLASS_VIRTUES: Record<string, DevelopmentMetricId[]> = {
 };
 
 const DONE_KEY = "arbor.masterclasses.done";
-const loadDone = (): Record<string, boolean> => {
+export const loadDone = (): Record<string, boolean> => {
   try { return JSON.parse(localStorage.getItem(DONE_KEY) || "{}"); } catch { return {}; }
 };
 
@@ -139,7 +140,7 @@ export default function Masterclasses() {
     : [];
 
   // ── Reader ───────────────────────────────────────────────────────────────
-  if (open) return <Reader m={open} he={he} isDone={!!done[open.id]} onDone={() => markDone(open.id)} onBack={() => setOpenId(null)} frameLabel={frameLabel(open.frame)} tone={FRAME_TONE[open.frame]} reflection={reflection[open.id] || ""} onReflect={(val) => saveReflection(open.id, val)} />;
+  if (open) return <MasterclassReader m={open} isDone={!!done[open.id]} onDone={() => markDone(open.id)} onBack={() => setOpenId(null)} reflection={reflection[open.id] || ""} onReflect={(val) => saveReflection(open.id, val)} />;
 
   // ── Catalog ──────────────────────────────────────────────────────────────
   const childName = (childProfile.name || "").split(" ")[0] || (he ? "ילדכם" : "your child");
@@ -439,10 +440,56 @@ export default function Masterclasses() {
   );
 }
 
-function Reader({ m, he, isDone, onDone, onBack, frameLabel, tone, reflection, onReflect }: {
-  m: Masterclass; he: boolean; isDone: boolean; onDone: () => void; onBack: () => void; frameLabel: string; tone: PastelKey; reflection: string; onReflect: (v: string) => void;
+/**
+ * B-PLAY-17 — the course reader, exported so the Learn Library's "Courses"
+ * filter opens the SAME reader inline. It carries the Learn reader's actions:
+ * "Add to today" (acceptTodayAction(tryTonight, "tiny", "learn-read") — one
+ * action-loop row, never twice), "Ask Arbor" (seedCoach prefill, the parent
+ * sends) and Listen (SpeakButton over the course body). Done and the private
+ * reflection persist through this file's own device keys; a caller that does
+ * not pass them (Learn) gets the same stored state.
+ */
+export function MasterclassReader({ m, isDone: isDoneProp, onDone: onDoneProp, onBack, reflection: reflectionProp, onReflect: onReflectProp }: {
+  m: Masterclass; isDone?: boolean; onDone?: () => void; onBack: () => void; reflection?: string; onReflect?: (v: string) => void;
 }) {
-  const { t } = useLanguage();
+  const { t, aiLang, uiLang } = useLanguage();
+  const { childProfile, actionLoop, acceptTodayAction, seedCoach } = useArbor();
+  const he = aiLang === "he";
+  const frameLabel = he ? FRAME_LABELS[m.frame].he : FRAME_LABELS[m.frame].en;
+  const tone = FRAME_TONE[m.frame];
+  // Self-contained persistence when the caller does not own it (Learn's Courses).
+  const [ownDone, setOwnDone] = useState<boolean>(() => !!loadDone()[m.id]);
+  const [ownReflection, setOwnReflection] = useState<string>(() => loadReflection()[m.id] || "");
+  const isDone = isDoneProp ?? ownDone;
+  const reflection = reflectionProp ?? ownReflection;
+  const onDone = () => {
+    if (onDoneProp) { onDoneProp(); return; }
+    const next = { ...loadDone(), [m.id]: true };
+    try { localStorage.setItem(DONE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+    setOwnDone(true);
+  };
+  const onReflect = (val: string) => {
+    if (onReflectProp) { onReflectProp(val); return; }
+    const next = { ...loadReflection(), [m.id]: val };
+    try { localStorage.setItem(REFLECT_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+    setOwnReflection(val);
+  };
+  const tryTonight = (he ? m.tryTonightHe : m.tryTonight).trim();
+  const todayTaken = actionLoop.some((a) => a.source === "learn-read" && a.recommendation === tryTonight);
+  const addToday = () => {
+    if (todayTaken) return;
+    acceptTodayAction(tryTonight, "tiny", "learn-read");
+    try { track("learn_add_today", { course: m.id }); } catch { /* noop */ }
+  };
+  const firstName = (childProfile.name || "").split(" ")[0];
+  const ask = () => seedCoach({ prompt: t("master.ask.prompt", { title: he ? m.titleHe : m.title, name: firstName || t("learn.yourChild") }), source: "learn-course" });
+  const listenText = [
+    he ? m.titleHe : m.title,
+    he ? m.hookHe : m.hook,
+    ...m.sections.flatMap((s) => [he ? s.headingHe : s.heading, he ? s.bodyHe : s.body]),
+    he ? m.parentScriptHe : m.parentScript,
+    tryTonight,
+  ].join(". ");
   // Wave-8: a single subtle brand-colored burst on completing a lesson
   // (capped + reduced-motion-safe via lib/celebrate — Law 7).
   const onComplete = () => {
@@ -469,11 +516,36 @@ function Reader({ m, he, isDone, onDone, onBack, frameLabel, tone, reflection, o
         </p>
       </div>
 
+      {/* B-PLAY-17: the Learn reader's actions — Add to today · Ask Arbor · Listen. */}
+      <div className="flex flex-wrap items-center gap-2" data-testid="course-reader-actions">
+        <button
+          type="button"
+          onClick={addToday}
+          disabled={todayTaken}
+          data-testid="course-add-today"
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3.5 text-[13px] font-bold transition disabled:opacity-70"
+          style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
+        >
+          <Icon name={todayTaken ? "check_circle" : "add_task"} size={16} fill={todayTaken ? 1 : 0} />
+          {todayTaken ? t("learn.addedToday") : t("learn.addToday")}
+        </button>
+        <button
+          type="button"
+          onClick={ask}
+          data-testid="course-ask"
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3.5 text-[13px] font-bold transition"
+          style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}
+        >
+          <Icon name="forum" size={16} /> {t("nav.tab.coach")}
+        </button>
+        <SpeakButton text={listenText} lang={uiLang} label={t("learn.listen")} size="md" className="touch-target" />
+      </div>
+
       <div className="space-y-5">
         {m.sections.map((s, i) => (
           <section key={i}>
             <h2 className="text-[15px] font-extrabold mb-1" dir="auto" style={{ color: "var(--arbor-ink)" }}>{he ? s.headingHe : s.heading}</h2>
-            <p className="text-[14px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink-soft)" }}>{he ? s.bodyHe : s.body}</p>
+            <p className="text-[length:var(--t-base)] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink-soft)" }}>{he ? s.bodyHe : s.body}</p>
           </section>
         ))}
       </div>
@@ -491,21 +563,23 @@ function Reader({ m, he, isDone, onDone, onBack, frameLabel, tone, reflection, o
         <p className="text-xs uppercase tracking-widest font-bold mb-1.5 inline-flex items-center gap-1.5" style={{ color: "var(--arbor-muted)" }}>
           <Icon name="bedtime" size={15} fill={1} /> {t("master.tryTonight")}
         </p>
-        <p className="text-[14px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}>{he ? m.tryTonightHe : m.tryTonight}</p>
+        <p className="text-[length:var(--t-base)] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}>{he ? m.tryTonightHe : m.tryTonight}</p>
       </div>
 
       {/* Wave-8: private parent reflection — client-only localStorage, never sent or stored server-side. */}
       <div className="rounded-2xl p-4" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}>
-        <p className="text-xs uppercase tracking-widest font-bold mb-1.5 inline-flex items-center gap-1.5" style={{ color: "var(--arbor-muted)" }}>
+        {/* B-PLAY-17: a real <label> names the field (was a <p> caption). */}
+        <label htmlFor={`course-reflect-${m.id}`} className="text-xs uppercase tracking-widest font-bold mb-1.5 inline-flex items-center gap-1.5" style={{ color: "var(--arbor-muted)" }}>
           <Icon name="edit_note" size={16} fill={1} /> {t("master.reflect.label")}
-        </p>
+        </label>
         <textarea
+          id={`course-reflect-${m.id}`}
           value={reflection}
           onChange={(e) => onReflect(e.target.value)}
           placeholder={t("master.reflect.placeholder")}
           dir="auto"
           rows={2}
-          className="w-full text-[14px] leading-relaxed rounded-lg px-3 py-2 resize-y min-h-[64px] focus:outline-none focus:ring-2"
+          className="w-full text-[length:var(--t-base)] leading-relaxed rounded-lg px-3 py-2 resize-y min-h-[64px] focus:outline-none focus:ring-2"
           style={{ color: "var(--arbor-ink)", background: "var(--arbor-paper-sunk)", border: "1px solid var(--arbor-rule)" }}
         />
         <p className="text-xs mt-1.5" style={{ color: "var(--arbor-faint)" }}>{t("master.reflect.hint")}</p>
