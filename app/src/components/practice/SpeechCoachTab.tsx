@@ -6,6 +6,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { SectionCard, TrustSafetyBar, cardCls, Chip, type PastelKey } from "../ui/kit";
 import { TrustPanel } from "../ui/TrustPanel";
 import { RegisterShell, PlayButton, ChoiceTile, ProgressPips, MascotSay } from "../ui/playkit";
+import { GameShell } from "../kidmode/game/GameShell";
 import { BAND_LABEL, SOUND_LIBRARY, type SoundEntry } from "../../practice/content";
 import { CATEGORY_ROUNDS, EXPRESS_PROMPTS, VOCAB_SETS } from "../../practice/playContent";
 import { matchResult, ageAppropriateSoundIds, isSoundAgeAppropriate } from "../../practice/signals";
@@ -840,26 +841,15 @@ export default function SpeechCoachTab() {
   // graded and no speechAttempt row is written from the kid register. No dose
   // bar, no per-sound progress, no coach hand-off, no consent card.
   const kidSounds = SOUND_LIBRARY.filter((s) => isSoundAgeAppropriate(s.band, childProfile.age));
+  // B-KID-74: Sound Lab on the one kid game shell — the bar names the game and
+  // its hear-it replays the line the child is asked to act on (KID-09's
+  // read-aloud moved to the bar); the instruction is spoken once on arrival.
   return (
-    <RegisterShell
-      kidMode
-      title={t("elev.play.soundlab.title")}
-      say={t("elev.play.soundlab.say", { name: first })}
-      mood="happy"
+    <GameShell
       worldId="speech"
-      headerVariant="compact"
-      eyebrow={t("elev.kids.mission")}
-      action={
-        /* KID-09: the read-aloud control, on the line the child is asked to
-           act on. Zero kid worlds carried one before this pass. */
-        <SpeakButton
-          text={t("elev.play.soundlab.say", { name: first })}
-          lang={uiLang}
-          label={t("elev.play.speak.label")}
-          size="md"
-          className="min-w-[44px] min-h-[44px] justify-center"
-        />
-      }
+      title={t("elev.play.soundlab.title")}
+      instruction={t("elev.play.soundlab.say", { name: first })}
+      mood="happy"
     >
 
       <div className="flex flex-wrap gap-2" role="group" aria-label={t("elev.play.soundlab.pickSound")}>
@@ -936,6 +926,6 @@ export default function SpeechCoachTab() {
         )}
       </div>
       {micError && <MascotSay mood="think" tone="peach">{micError}</MascotSay>}
-    </RegisterShell>
+    </GameShell>
   );
 }

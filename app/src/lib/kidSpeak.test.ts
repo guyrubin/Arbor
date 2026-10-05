@@ -68,6 +68,15 @@ describe("KID-09 — every kid world has at least one speak control", () => {
   for (const [world, rel] of Object.entries(KID_WORLDS)) {
     it(`${world} mounts SpeakButton and labels it from the kid dictionary`, () => {
       const src = stripComments(read(rel));
+      // B-KID-74: a world whose kid branch is the GameShell with an instruction
+      // speaks through the ONE top-bar hear-it (KidHearItButton, keyed EN + HE);
+      // its own SpeakButton (if any) is the parent door's.
+      if (/<GameShell[\s\S]*?instruction=/.test(src) && !src.includes('t("elev.play.speak.label")')) {
+        const bar = stripComments(read("components/kidmode/kidReadAloud.tsx"));
+        expect(bar).toContain("export function KidHearItButton");
+        expect(bar).toContain('kidsStoriesText("kidGame.hearIt", hearIt.lang)');
+        return;
+      }
       expect(src, `${rel} imports no SpeakButton`).toContain('from "../ui/SpeakButton"');
       expect(src, `${rel} mounts no SpeakButton`).toContain("<SpeakButton");
       expect(src, `${rel} labels the control with an English literal`).toContain(
@@ -78,6 +87,11 @@ describe("KID-09 — every kid world has at least one speak control", () => {
     it(`${world}'s speak control clears the 44 px floor`, () => {
       const src = stripComments(read(rel));
       const at = src.indexOf("<SpeakButton");
+      if (at < 0 && src.includes("<GameShell")) {
+        // B-KID-74: the bar's hear-it is the control — 44 x 44.
+        expect(read("components/kidmode/kidReadAloud.tsx")).toMatch(/data-kid-hear-it=""[\s\S]*?inlineSize: 44, blockSize: 44/);
+        return;
+      }
       const tag = src.slice(at, at + 500);
       expect(tag).toContain("min-h-[44px]");
       expect(tag).toContain("min-w-[44px]");
