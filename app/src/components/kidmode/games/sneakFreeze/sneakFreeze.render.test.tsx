@@ -19,7 +19,8 @@ vi.mock("../../../../lib/voice", () => ({ speakText: vi.fn(), stopVoice: vi.fn()
 vi.mock("../../../../practice/usePracticeData", () => ({ usePracticeData: () => ({ events: { items: [], upsert: async () => {} } }) }));
 
 import SneakFreeze, { formKey } from "./SneakFreeze";
-import { SNEAK_SOUNDS } from "./sounds";
+import { SNEAK_SOUNDS, SNEAK_VOICE_IDS, createSneakSounds } from "./sounds";
+import type { KidSoundBank, PlayOptions } from "../../audio/kidSoundBank";
 import { mergeArt, readSneakArt, watcherSprite } from "./sneakArt";
 import { devPlaceholderArt } from "./devPlaceholderArt";
 import { KID_WORLDS, SNEAK_FREEZE_WORLD, flaggedWorldNameKey, sneakFreezeFlagOn } from "../../kidWorlds";
@@ -101,6 +102,62 @@ describe("Sneak & Freeze — sounds and art slots", () => {
     expect(ids.length).toBeGreaterThan(10);
     expect(Object.keys(SNEAK_SOUNDS).sort()).toEqual([...ids].sort());
     expect(read("sounds.ts")).not.toMatch(/kidSay|speakText|speechSynthesis/);
+    // ruling G13: no synthesised cue inside the scene
+    for (const f of ["sounds.ts", "SneakFreeze.tsx", "Watcher.tsx", "Ending.tsx"]) expect(read(f), f).not.toMatch(/kidSfx|createOscillator/);
+  });
+
+  function fakeBank() {
+    const played: [string, PlayOptions | undefined][] = [];
+    const bank: KidSoundBank = {
+      load: async () => true,
+      play: (id, o) => { played.push([id, o]); return true; },
+      has: () => true,
+      durationMs: () => 1800,
+      unlock: vi.fn(),
+      stopVoice: vi.fn(),
+      dispose: vi.fn(),
+    };
+    return { bank, played };
+  }
+
+  it("files only: beat k says n k (cutting), the chant's end calls 'freeze' with the ear flick, steps round-robin", () => {
+    const { bank, played } = fakeBank();
+    const snd = createSneakSounds("he", bank);
+    snd.events(["beat"], { beatIndex: 0 });
+    snd.events(["beat"], { beatIndex: 2 });
+    snd.events(["beat"], { beatIndex: 9 });
+    snd.events(["tell"], { beatIndex: 3 });
+    snd.events(["step", "step", "step", "step"], { beatIndex: 0 });
+    snd.events(["look"], { beatIndex: 0 });
+    expect(played.map(([id, o]) => `${o?.kind}:${id}${o?.mode === "cut" ? "!" : ""}`)).toEqual([
+      "voice:n1!", "voice:n3!", "voice:n5!", "foley:tell", "voice:freeze!", "foley:step1", "foley:step2", "foley:step3", "foley:step1", "foley:turn",
+    ]);
+  });
+
+  it("lines rotate and queue; the sunglasses line plays once per sitting and its chant words wait", () => {
+    const { bank, played } = fakeBank();
+    const snd = createSneakSounds("en", bank);
+    for (let i = 0; i < 4; i++) snd.events(["statue"], { beatIndex: 0 });
+    snd.events(["caught"], { beatIndex: 0 });
+    snd.events(["caught"], { beatIndex: 0 });
+    snd.events(["sunglasses", "beat"], { beatIndex: 0 });
+    snd.events(["sunglasses"], { beatIndex: 0 });
+    const ids = played.map(([id]) => id);
+    expect(ids).toEqual(["statue1", "statue2", "statue3", "statue1", "plop", "caught1", "plop", "caught2", "sunglasses"]);
+    expect(played.find(([id]) => id === "statue1")?.[1]?.mode).toBe("queue");
+    snd.newSitting();
+    snd.events(["sunglasses"], { beatIndex: 0 });
+    expect(played.filter(([id]) => id === "sunglasses")).toHaveLength(2);
+    snd.intro();
+    snd.again();
+    expect(played.slice(-2).map(([id]) => id)).toEqual(["intro", "again"]);
+  });
+
+  it("every voice line the game plays is a declared voice id", () => {
+    const used = new Set<string>();
+    for (const row of Object.values(SNEAK_SOUNDS)) if (row.voice !== "count") row.voice.forEach((v) => used.add(v));
+    for (const v of used) expect(SNEAK_VOICE_IDS as readonly string[]).toContain(v);
+    for (const v of ["n1", "n2", "n3", "n4", "n5", "intro", "again", "laugh1", "laugh2", "fake", "hint", "waiting"]) expect(SNEAK_VOICE_IDS as readonly string[]).toContain(v);
   });
 
   it("the placeholder fills every slot; injected art merges slot by slot and rejects unsafe urls", () => {

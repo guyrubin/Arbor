@@ -32,6 +32,8 @@ export interface EndingProps {
   homeLabel: string;
   onPlayAgain: () => void;
   onHome: (() => void) | null;
+  /** The picture is up (or there is none): the cat's "again?" line plays. */
+  onShown?: () => void;
 }
 
 /** The caption key for this child: the named forms, or the nameless line. */
@@ -40,21 +42,25 @@ export function captionKey(firstName: string, gender: string | undefined): strin
   return gender === "boy" || gender === "girl" ? `kid.game.sneak-freeze.caption.${gender}` : "kid.game.sneak-freeze.caption";
 }
 
-export function Ending({ state, art, sheet, childId, rtl, caption, pictureAlt, playAgainLabel, homeLabel, onPlayAgain, onHome }: EndingProps) {
+export function Ending({ state, art, sheet, childId, rtl, caption, pictureAlt, playAgainLabel, homeLabel, onPlayAgain, onHome, onShown }: EndingProps) {
   const [picture, setPicture] = useState<string | null>(null);
 
   // Compose once per sitting (the seed names it); keep it on the device.
   useEffect(() => {
     let alive = true;
+    const shown = () => { if (alive) onShown?.(); };
     const shot = statueShot(state);
-    if (!shot) return;
+    if (!shot) { shown(); return; }
     composeStatuePicture({ shot, art, sheet, rtl })
       .then((url) => {
-        if (!alive || !url) return;
-        setPicture(url);
-        keepStatuePicture(childId, { id: state.seed, at: new Date().toISOString(), url, pose: shot.pose });
+        if (!alive) return;
+        if (url) {
+          setPicture(url);
+          keepStatuePicture(childId, { id: state.seed, at: new Date().toISOString(), url, pose: shot.pose });
+        }
+        shown();
       })
-      .catch(() => { /* the ending still stands without its picture */ });
+      .catch(() => { shown(); /* the ending still stands without its picture */ });
     return () => { alive = false; };
   }, [state.seed]); // eslint-disable-line react-hooks/exhaustive-deps
 

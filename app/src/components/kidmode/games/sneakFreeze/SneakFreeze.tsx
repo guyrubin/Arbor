@@ -28,7 +28,7 @@ import { useKidHome } from "../../kidChrome";
 import { startSitting, step, view as viewOf, type SneakState, type SneakView } from "./rules";
 import { readSneakArt, type SneakArt } from "./sneakArt";
 import { readPlayLevel, writePlayLevel } from "./sneakStore";
-import { sneakSound } from "./sounds";
+import { createSneakSounds, type SneakSounds } from "./sounds";
 import { Watcher } from "./Watcher";
 import { sittingRecord } from "./record";
 import { usePracticeData } from "../../../../practice/usePracticeData";
@@ -199,6 +199,24 @@ export default function SneakFreeze() {
     shownProgress.current = v.progress;
   }
   const hold = useRef({ pointers: new Set<number>(), keys: new Set<string>() });
+
+  // B-GAME-08a: recorded voice + foley (files), in the kid UI language.
+  // One controller per mount (StrictMode-safe: created and disposed by the effect).
+  const soundsRef = useRef<SneakSounds | null>(null);
+  useEffect(() => {
+    const sounds = createSneakSounds(lang);
+    soundsRef.current = sounds;
+    let alive = true;
+    void sounds.load().then(() => {
+      // The cat's first line, once, while the first sitting's demo still runs.
+      if (alive && stateRef.current?.phase === "intro") sounds.intro();
+    });
+    return () => {
+      alive = false;
+      sounds.dispose();
+      if (soundsRef.current === sounds) soundsRef.current = null;
+    };
+  }, [lang]);
   const stageRef = useRef<HTMLDivElement | null>(null);
 
   const holding = () => hold.current.pointers.size > 0 || hold.current.keys.size > 0;
@@ -207,7 +225,7 @@ export default function SneakFreeze() {
     if (!cur) return;
     const next = step(cur, dt, { holding: holding() });
     stateRef.current = next;
-    for (const e of next.events) sneakSound(e);
+    if (next.events.length) soundsRef.current?.events(next.events, next);
     const nv = viewOf(next);
     setV((prev) => (sameView(prev, nv) ? prev : nv));
   };
@@ -245,6 +263,7 @@ export default function SneakFreeze() {
       if (!isHoldKey(e.key) || !fromStage(e)) return;
       e.preventDefault();
       if (e.repeat || hold.current.keys.has(e.key)) return;
+      soundsRef.current?.unlock();
       hold.current.keys.add(e.key);
       pumpRef.current(0);
     };
@@ -288,6 +307,7 @@ export default function SneakFreeze() {
   const press = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.pointerType === "mouse" && e.button !== 0) return;
     e.preventDefault();
+    soundsRef.current?.unlock();
     hold.current.pointers.add(e.pointerId);
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* not capturable */ }
     pump(0);
@@ -305,6 +325,7 @@ export default function SneakFreeze() {
     prevProgress.current = 0;
     shownProgress.current = 0;
     sittingStart.current = Date.now();
+    soundsRef.current?.newSitting();
     setV(viewOf(stateRef.current));
     setSitting(n);
   };
@@ -330,6 +351,7 @@ export default function SneakFreeze() {
           homeLabel={t("kidGame.home")}
           onPlayAgain={playAgain}
           onHome={goHome}
+          onShown={() => soundsRef.current?.again()}
         />
       ) : (
         <PlayField

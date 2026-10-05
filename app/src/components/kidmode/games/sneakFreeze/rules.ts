@@ -51,7 +51,7 @@ export type PrizeId = "lemon" | "wool" | "bell";
 export type Experience = "sunglasses" | "fake-turn" | "dash";
 /** Events of one step, for sound and one-shot effects (sounds.ts maps them). */
 export type SneakEventId =
-  | "beat" | "step" | "tell" | "fake" | "look" | "sunglasses"
+  | "beat" | "step" | "tell" | "fake" | "fooled" | "look" | "sunglasses"
   | "statue" | "caught" | "still" | "blind"
   | "tag" | "prize" | "hint" | "waiting" | "done";
 
@@ -416,6 +416,7 @@ function untilBoundary(s: SneakState): number {
     if (s.sunglasses) until = Math.min(until, s.beatMs - (s.phaseMs % s.beatMs));
   }
   if (s.phase === "tagged" && !s.prizeShown) until = Math.min(until, TIMING.tagCheerMs - s.phaseMs);
+  if (s.phase === "fake" && s.phaseMs < s.tellDur) until = Math.min(until, s.tellDur - s.phaseMs);
   if (s.skidMs > 0) until = Math.min(until, s.skidMs);
   return Math.max(0, until);
 }
@@ -526,6 +527,9 @@ function advance(s: SneakState, ms: number): void {
     s.prizeShown = true;
     emit(s, "prize");
   }
+
+  // A fake turn: the tell ends in a giggle instead of a look ("fooled").
+  if (s.phase === "fake" && s.phaseMs >= s.tellDur && s.phaseMs - ms < s.tellDur) emit(s, "fooled");
 
   if (s.phaseMs < s.phaseDur) return;
 

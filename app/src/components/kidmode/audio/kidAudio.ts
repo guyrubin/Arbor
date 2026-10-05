@@ -93,10 +93,19 @@ export function kidSay(childId: string, text: string | readonly string[], lang: 
   return next(0);
 }
 
+/** Other voices that must stop with the kid voice (B-GAME-08a: the file-based
+ *  sound bank's voice clips) register here. */
+const hushListeners = new Set<() => void>();
+export function onKidHush(fn: () => void): () => void {
+  hushListeners.add(fn);
+  return () => { hushListeners.delete(fn); };
+}
+
 /** Cancel the queue and stop the voice (navigation, unmount, hidden tab). */
 export function kidHush(): void {
   queueToken++;
   stopVoice();
+  hushListeners.forEach((fn) => { try { fn(); } catch { /* never load-bearing */ } });
 }
 
 /* ── effects ───────────────────────────────────────────────────────────────── */
@@ -183,10 +192,23 @@ function playSwish(ac: AudioContext): void {
   src.stop(t0 + PAGE_TURN_SECONDS + 0.02);
 }
 
+/** True when a kid sound may play now: Kid Mode has an active child, that
+ *  child's Sound is on and the tab is visible (the same gate as kidSfx). */
+export function kidAudioAllowed(): boolean {
+  return !!activeChild && !isKidReadAloudMuted(activeChild) && !pageHidden();
+}
+
+/** The ONE shared AudioContext (created on first use; null when audio is
+ *  unavailable). The file-based sound bank decodes and plays on it, so mute,
+ *  hidden-tab suspend and close-on-exit cover it too. */
+export function kidAudioContext(): AudioContext | null {
+  return audioContext();
+}
+
 /** Play one effect for the active Kid Mode child. Silent when Kid Mode is not
  *  open, the child's sound is off, the tab is hidden or audio is unavailable. */
 export function kidSfx(name: KidSfx): void {
-  if (!activeChild || isKidReadAloudMuted(activeChild) || pageHidden()) return;
+  if (!kidAudioAllowed()) return;
   const ac = audioContext();
   if (!ac) return;
   try {

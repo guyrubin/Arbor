@@ -314,3 +314,34 @@ describe("Sneak & Freeze rules — response, idle, no score", () => {
     }
   });
 });
+
+describe("Sneak & Freeze rules — sound beats (B-GAME-08a)", () => {
+  it("every chant beat leaves room for one count word (>= 650 ms at every level)", () => {
+    for (const level of [1, 2, 3] as const) expect(TIMING.beatMs[level]).toBeGreaterThanOrEqual(650);
+  });
+
+  it("beat k of a chant is emitted with beatIndex k-1 (beat k plays n k), at most 5", () => {
+    const { events } = run({ seed: "count", track: "B", level: 2 }, stopper, 60000);
+    const beats = events.filter(([, e]) => e === "beat").map(([, , s]) => s.beatIndex);
+    expect(beats.length).toBeGreaterThan(5);
+    expect(Math.max(...beats)).toBeLessThanOrEqual(4);
+    expect(beats[0]).toBe(0);
+  });
+
+  it("a fake turn ends in ONE 'fooled' after its tell, never a look", () => {
+    let seen = 0;
+    for (let n = 0; n < 30 && seen < 3; n++) {
+      const { events } = run({ seed: `fool-${n}`, track: "B", level: 3 }, stopper, 90000);
+      for (let i = 0; i < events.length; i++) {
+        if (events[i][1] !== "fake") continue;
+        seen++;
+        const fakeAt = events[i][0];
+        const tellDur = events[i][2].tellDur;
+        const next = events.slice(i + 1).find(([, e]) => e === "fooled" || e === "look" || e === "tell");
+        expect(next?.[1]).toBe("fooled");
+        expect(next![0] - fakeAt).toBeGreaterThanOrEqual(tellDur - 10);
+      }
+    }
+    expect(seen).toBeGreaterThan(0);
+  });
+});
