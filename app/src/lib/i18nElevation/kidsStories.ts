@@ -6,7 +6,8 @@ export type KidsStoriesKey =
   | "journey.cover" | "journey.coverAlt" | "journey.pageAlt" | "journey.heroAlt" | "journey.heroAltUnnamed"
   | "journey.childEndingTitle" | "journey.childEndingBody" | "journey.childReflection"
   | "journey.finish" | "journey.saved" | "journey.backStories"
-  | "journey.comicSaved" | "page.smudged" | "page.redraw" | "page.drawing";
+  | "journey.comicSaved" | "page.smudged" | "page.redraw" | "page.drawing"
+  | "comic.error" | "comic.tryAgain" | "comic.back" | "comic.end" | "comic.endBody" | "comic.save" | "comic.share" | "comic.another" | "comic.aria" | "comic.bookshelf" | "comic.brand" | "comic.read" | "comic.finish" | "comic.shareText" | "comic.pageTitle";
 
 const EN: Record<KidsStoriesKey, string> = {
   "shelf.title": "Hero Comics",
@@ -44,6 +45,21 @@ const EN: Record<KidsStoriesKey, string> = {
   "page.smudged": "This page got a bit smudged.",
   "page.redraw": "Redraw page",
   "page.drawing": "Drawing the next page…",
+  "comic.error": "We couldn't draw this comic right now. Check your connection and try again.",
+  "comic.tryAgain": "Try again",
+  "comic.back": "Back",
+  "comic.end": "The End!",
+  "comic.endBody": "{name} saved the day. Keep it forever or share it.",
+  "comic.save": "Save comic",
+  "comic.share": "Share comic",
+  "comic.another": "Make another",
+  "comic.aria": "{name}'s comic",
+  "comic.bookshelf": "Bookshelf",
+  "comic.brand": "Arbor Comics",
+  "comic.read": "Read {name}'s comic",
+  "comic.finish": "Finish",
+  "comic.shareText": "{name}'s comic!",
+  "comic.pageTitle": "Page {number}",
 };
 
 const HE: Record<KidsStoriesKey, string> = {
@@ -82,6 +98,21 @@ const HE: Record<KidsStoriesKey, string> = {
   "page.smudged": "העמוד הזה קצת נמרח.",
   "page.redraw": "לצייר שוב",
   "page.drawing": "מציירים את העמוד הבא…",
+  "comic.error": "לא הצלחנו לצייר את הקומיקס הזה עכשיו. בדקו את החיבור ונסו שוב.",
+  "comic.tryAgain": "לנסות שוב",
+  "comic.back": "חזרה",
+  "comic.end": "הסוף!",
+  "comic.endBody": "היום ניצל בזכות {name}. שמרו את הקומיקס לתמיד או שתפו אותו.",
+  "comic.save": "לשמור את הקומיקס",
+  "comic.share": "לשתף את הקומיקס",
+  "comic.another": "ליצור עוד אחד",
+  "comic.aria": "הקומיקס של {name}",
+  "comic.bookshelf": "מדף הספרים",
+  "comic.brand": "קומיקס ארבור",
+  "comic.read": "לקרוא את הקומיקס של {name}",
+  "comic.finish": "סיום",
+  "comic.shareText": "הקומיקס של {name}!",
+  "comic.pageTitle": "עמוד {number}",
 };
 
 /** Registry shape for the dictionary firewall (i18nElevation/index.ts MODULES). */

@@ -10,6 +10,7 @@ import { trackShareInitiated, trackShareCompleted } from "../../lib/loopEvents";
 import { downloadHeroAvatarCanvas, renderComicCanvas } from "../../lib/heroAvatarCanvas";
 import { getStorySpec } from "../../lib/heroJourneys";
 import { isolate } from "../../lib/i18n";
+import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
 import {
   type Adventure,
   type ComicLang,
@@ -96,7 +97,7 @@ export function ComicReader({
     if (saved && saved.pageUrls.length) {
       return saved.pageUrls.map((url, i) => ({
         index: i,
-        title: i === 0 ? saved.title : (initialPages[i]?.title ?? `Page ${i}`),
+        title: i === 0 ? saved.title : (initialPages[i]?.title ?? kidsStoriesText("comic.pageTitle", lang, { number: i })),
         cover: i === 0,
         dataUrl: url,
         status: "ready" as const,
@@ -258,12 +259,8 @@ export function ComicReader({
     track("hero_comic_saved", { adventure: adventure.id, pages: total });
     const cover = comic.coverUrl;
     if (cover) {
-      const a = document.createElement("a");
-      a.href = cover;
-      a.download = `${heroName.toLowerCase()}-${adventure.id}-comic.png`;
-      a.click();
-      // AP-050 (ported from the retired HeroComicsTab grid): additionally save
-      // the branded share-card — single card only, comic → shared canvas module.
+      // B-KID-54 (KB-04): Save is ONE download — the branded share card
+      // (AP-050 comic template). The raw cover was a second file each time.
       void downloadHeroAvatarCanvas(
         "comic",
         { imageUrl: cover, name: heroName, title: comic.title },
@@ -288,7 +285,7 @@ export function ComicReader({
       if (shareUrl && nav.share) {
         const blob = card?.blob ?? (await (await fetch(shareUrl)).blob());
         const file = new File([blob], `${heroName.toLowerCase()}-comic.png`, { type: blob.type || "image/png" });
-        const data: ShareData = { files: [file], title, text: `${isolate(heroName)}'s comic!` };
+        const data: ShareData = { files: [file], title, text: kidsStoriesText("comic.shareText", lang, { name: isolate(heroName) }) };
         if (!nav.canShare || nav.canShare(data)) {
           await nav.share(data);
           trackShareCompleted("story", "web-share");
@@ -314,13 +311,13 @@ export function ComicReader({
       <PlayPanel tone="lav" className="text-center" >
         <div className="mx-auto w-fit mb-3"><HeroAvatar size={96} mood="think" animate /></div>
         <p className="text-[15px] font-extrabold mb-4" style={{ color: "var(--arbor-ink)" }}>
-          We couldn&apos;t draw this comic right now. Check your connection and try again.
+          {kidsStoriesText("comic.error", lang)}
         </p>
         <div className="flex justify-center gap-2.5">
           <PlayButton tone="clay" onClick={() => { setBookError(false); setPages(initialPages.map((p) => ({ ...p }))); }}>
-            <RefreshCw className="w-4 h-4" /> Try again
+            <RefreshCw className="w-4 h-4" /> {kidsStoriesText("comic.tryAgain", lang)}
           </PlayButton>
-          <PlayButton variant="soft" tone="clay" onClick={onClose}>Back</PlayButton>
+          <PlayButton variant="soft" tone="clay" onClick={onClose}>{kidsStoriesText("comic.back", lang)}</PlayButton>
         </div>
       </PlayPanel>
     );
@@ -329,10 +326,10 @@ export function ComicReader({
   // ── Completion ───────────────────────────────────────────────────────────
   if (finished) {
     return (
-      <Celebrate title="The End!" subtitle={`${heroName} saved the day. Keep it forever or share it.`}>
-        <PlayButton tone="clay" onClick={handleSave}><Download className="w-4 h-4" /> Save comic</PlayButton>
-        <PlayButton variant="soft" tone="clay" onClick={handleShare}><Share2 className="w-4 h-4" /> Share comic</PlayButton>
-        <PlayButton variant="soft" tone="clay" onClick={onClose}><RefreshCw className="w-4 h-4" /> Make another</PlayButton>
+      <Celebrate title={kidsStoriesText("comic.end", lang)} subtitle={kidsStoriesText("comic.endBody", lang, { name: isolate(heroName) })}>
+        <PlayButton tone="clay" onClick={handleSave}><Download className="w-4 h-4" /> {kidsStoriesText("comic.save", lang)}</PlayButton>
+        <PlayButton variant="soft" tone="clay" onClick={handleShare}><Share2 className="w-4 h-4" /> {kidsStoriesText("comic.share", lang)}</PlayButton>
+        <PlayButton variant="soft" tone="clay" onClick={onClose}><RefreshCw className="w-4 h-4" /> {kidsStoriesText("comic.another", lang)}</PlayButton>
       </Celebrate>
     );
   }
@@ -342,19 +339,19 @@ export function ComicReader({
     <section
       role="region"
       aria-roledescription="comic book"
-      aria-label={`${isolate(heroName)}'s comic`}
+      aria-label={kidsStoriesText("comic.aria", lang, { name: isolate(heroName) })}
       dir={rtl ? "rtl" : "ltr"}
       className="space-y-4"
     >
       <div className="flex items-center justify-between gap-3">
         <PlayButton variant="ghost" tone="clay" size="md" onClick={onClose}>
-          {rtl ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />} Bookshelf
+          {rtl ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />} {kidsStoriesText("comic.bookshelf", lang)}
         </PlayButton>
         <ProgressPips total={total} current={pageIndex} />
       </div>
 
       {/* Live region announces the page change for screen readers. */}
-      <p className="sr-only" aria-live="polite">{`Page ${pageIndex + 1} of ${total}`}</p>
+      <p className="sr-only" aria-live="polite">{kidsStoriesText("reader.page", lang, { current: pageIndex + 1, total })}</p>
 
       <h3
         ref={headingRef}
@@ -378,17 +375,17 @@ export function ComicReader({
             style={{ aspectRatio: "3 / 2", border: "3px solid var(--arbor-ink)", boxShadow: "0 12px 36px rgba(41,51,63,0.22)", background: "var(--arbor-paper-deep)" }}
           >
             <span className="absolute top-2 left-0 right-0 text-[10px] font-extrabold uppercase tracking-[0.3em]" style={{ color: "var(--arbor-muted)" }}>
-              Arbor Comics
+              {kidsStoriesText("comic.brand", lang)}
             </span>
             {current.dataUrl ? (
-              <img src={current.dataUrl} alt={`Cover: ${adventureTitle(adventure, lang)}`} className="absolute inset-0 w-full h-full object-contain" />
+              <img src={current.dataUrl} alt={kidsStoriesText("journey.coverAlt", lang, { title: adventureTitle(adventure, lang) })} className="absolute inset-0 w-full h-full object-contain" />
             ) : (
               <>
                 <HeroAvatar size={120} mood="cheer" animate={!reduced} />
                 <p className="text-[1.4rem] leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
                   {adventureTitle(adventure, lang)}
                 </p>
-                <p className="text-[13px] font-bold" style={{ color: "var(--arbor-ink-soft)" }}>{isolate(heroName)}&apos;s Comic</p>
+                <p className="text-[13px] font-bold" style={{ color: "var(--arbor-ink-soft)" }}>{kidsStoriesText("comic.aria", lang, { name: isolate(heroName) })}</p>
               </>
             )}
           </div>
@@ -397,7 +394,7 @@ export function ComicReader({
             <ComicPage
               key={pageIndex}
               src={current?.dataUrl}
-              alt={`Page ${pageIndex}: ${current?.title ?? ""}`}
+              alt={kidsStoriesText("journey.pageAlt", lang, { number: pageIndex, title: current?.title ?? "" })}
               pageNumber={pageIndex}
               loading={current?.status === "pending"}
                error={current?.status === "error"}
@@ -411,14 +408,15 @@ export function ComicReader({
 
       {/* On-screen prev/next (always present for a11y + desktop). */}
       <div className="flex items-center justify-center gap-3">
-        <PlayButton variant="soft" tone="clay" onClick={() => go(rtl ? 1 : -1)} disabled={pageIndex === 0}>
-          {rtl ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />} Back
+        {/* B-KID-54 (KB-04): Back goes BACK in both directions (RTL went forward). */}
+        <PlayButton variant="soft" tone="clay" onClick={() => go(-1)} disabled={pageIndex === 0}>
+          {rtl ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />} {kidsStoriesText("comic.back", lang)}
         </PlayButton>
         {current?.cover ? (
-          <PlayButton tone="clay" onClick={advance}>Read {isolate(heroName)}&apos;s comic</PlayButton>
+          <PlayButton tone="clay" onClick={advance}>{kidsStoriesText("comic.read", lang, { name: isolate(heroName) })}</PlayButton>
         ) : (
           <PlayButton tone="clay" onClick={advance}>
-            {onLastPage ? "Finish" : "Next"} {rtl ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+            {onLastPage ? kidsStoriesText("comic.finish", lang) : kidsStoriesText("journey.next", lang)} {rtl ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
           </PlayButton>
         )}
       </div>
