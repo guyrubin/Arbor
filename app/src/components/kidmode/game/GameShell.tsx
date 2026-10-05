@@ -39,6 +39,9 @@ export interface GameShellProps {
   title: string;
   /** Spoken once on arrival and replayed by the top bar's hear-it. */
   instruction?: string;
+  /** What the bar's hear-it says when it is more than the instruction (e.g.
+   *  the instruction + this round's cue). Defaults to the instruction. */
+  hearIt?: string;
   /** In-world progress: `index` of `total` steps done (dots, no numerals). */
   progress?: { index: number; total: number };
   /** Parent-register PlayHeader passthroughs (unchanged parent door). In Kid
@@ -80,7 +83,7 @@ export function GameProgressDots({ index, total }: { index: number; total: numbe
   );
 }
 
-export function GameShell({ worldId, title, instruction, progress, mood, eyebrow, action, variant = "compact", heroDecorative, children }: GameShellProps) {
+export function GameShell({ worldId, title, instruction, hearIt, progress, mood, eyebrow, action, variant = "compact", heroDecorative, children }: GameShellProps) {
   const kid = useKidModeOn();
   const { uiLang } = useLanguage();
   const arbor = useArborOptional();
@@ -88,12 +91,18 @@ export function GameShell({ worldId, title, instruction, progress, mood, eyebrow
   const theme = useKidTheme();
   const lang: "en" | "he" = uiLang === "he" ? "he" : "en";
 
-  // Kid Mode: the instruction is the bar's hear-it, and it is spoken once.
+  // Kid Mode: the bar's hear-it replays the instruction (or `hearIt`) …
+  const hearText = hearIt ?? instruction;
+  useEffect(() => {
+    if (!kid || !hearText) return;
+    setKidHearIt({ text: hearText, lang });
+    return () => setKidHearIt(null);
+  }, [kid, hearText, lang]);
+  // … and the instruction is spoken ONCE, on arrival.
   useEffect(() => {
     if (!kid || !instruction) return;
-    setKidHearIt({ text: instruction, lang });
     const timer = setTimeout(() => { autoReadPage(childId, instruction, lang); }, 400);
-    return () => { clearTimeout(timer); stopVoice(); setKidHearIt(null); };
+    return () => { clearTimeout(timer); stopVoice(); };
   }, [kid, instruction, lang, childId]);
 
   if (!kid) {

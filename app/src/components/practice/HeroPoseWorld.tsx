@@ -1,13 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
-import { PlayHeader, MascotSay, ProgressPips, PlayButton, Celebrate } from "../ui/playkit";
+import { MascotSay, ProgressPips, PlayButton, Celebrate } from "../ui/playkit";
+import { GameFinish, GameShell } from "../kidmode/game/GameShell";
 import { HeroAvatar } from "../ui/HeroAvatar";
 import { useArcadeLogger } from "../../practice/useArcadeLogger";
 import { selectPoseSession } from "../../practice/newGames";
 import { dayKey } from "../../practice/signals";
 import { SpeakButton } from "../ui/SpeakButton";
 import { useLanguage } from "../../context/LanguageContext";
-import { noteKidActivity } from "../../lib/kidModeGate";
+import { isKidModeActive, noteKidActivity } from "../../lib/kidModeGate";
 
 /* Hero Pose — copy the hero's action pose. A gross-motor / body-imitation game:
    the hero shows a pose, the child strikes it, the grown-up confirms. Logs a
@@ -30,7 +31,24 @@ export default function HeroPoseWorld() {
     if (advanceTimerRef.current !== null) window.clearTimeout(advanceTimerRef.current);
   }, []);
 
+  // B-KID-74: Hero Pose on the one kid game shell (bar title + hear-it of the
+  // invitation and this pose's cue; poses as dots; GameFinish at the end).
+  const kid = isKidModeActive();
   const done = idx >= poses.length;
+  const playAgain = () => { setSessionSeed((seed) => seed + 1); setIdx(0); setCheer(false); };
+  if (done && kid) {
+    return (
+      <GameShell worldId="pose" title={t("elev.kids.pose.title")}>
+        <GameFinish
+          title={t("elev.kids.pose.done.title", { name: first })}
+          subtitle={t("elev.kids.pose.done.sub")}
+          onPlayAgain={playAgain}
+          playAgainLabel={t("elev.kids.pose.again")}
+          homeLabel={t("kidGame.home")}
+        />
+      </GameShell>
+    );
+  }
   if (done) {
     return (
       <Celebrate title={t("elev.kids.pose.done.title", { name: first })} subtitle={t("elev.kids.pose.done.sub")} stars={3} starsTotal={3}>
@@ -57,17 +75,17 @@ export default function HeroPoseWorld() {
   };
 
   return (
-    <div className="space-y-6">
-      <PlayHeader
-        title={t("elev.kids.pose.title")}
-        say={poseSay}
-        mood="cheer"
-        worldId="pose"
-        variant="compact"
-        heroDecorative
-        action={<SpeakButton text={`${poseSay} ${poseCue} ${adaptedCue}`} lang={uiLang} label={t("elev.play.speak.label")} size="md" className="min-w-[44px] min-h-[44px] justify-center" />}
-      />
-      <ProgressPips total={poses.length} current={idx} tone="sky" />
+    <GameShell
+      worldId="pose"
+      title={t("elev.kids.pose.title")}
+      instruction={poseSay}
+      hearIt={`${poseSay} ${poseCue} ${adaptedCue}`}
+      mood="cheer"
+      heroDecorative
+      action={<SpeakButton text={`${poseSay} ${poseCue} ${adaptedCue}`} lang={uiLang} label={t("elev.play.speak.label")} size="md" className="min-w-[44px] min-h-[44px] justify-center" />}
+      progress={{ index: idx, total: poses.length }}
+    >
+      {!kid && <ProgressPips total={poses.length} current={idx} tone="sky" />}
 
       <div className="rounded-[var(--play-radius)] p-6 text-center comic-panel" style={{ background: "var(--arbor-sky-soft)" }}>
         {/* M1 — the hero DEMONSTRATES the pose. This pairing (hero beside the
@@ -97,9 +115,11 @@ export default function HeroPoseWorld() {
         </div>
       )}
 
+      {!kid && (
       <p className="flex items-center justify-center gap-1.5 text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }}>
         <Icon name="accessibility_new" size={14} /> {t("elev.kids.pose.support")}
       </p>
-    </div>
+      )}
+    </GameShell>
   );
 }
