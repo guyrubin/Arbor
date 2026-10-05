@@ -120,14 +120,14 @@ function catSvg(state: CatState): string {
   // Stool.
   p.push(`<rect x="88" y="300" width="14" height="96" rx="6" fill="${C.woodDark}"/><rect x="198" y="300" width="14" height="96" rx="6" fill="${C.woodDark}"/><ellipse cx="150" cy="298" rx="98" ry="20" fill="${C.wood}"/>`);
   if (state === "looking") {
-    // From behind, head turned over the shoulder toward the courtyard.
+    // Turned round: seen FROM BEHIND, peering into the courtyard (no face).
     p.push(`<path d="M232 270 C292 240 290 170 250 160" stroke="${C.catDark}" stroke-width="18" fill="none" stroke-linecap="round"/>`);
     p.push(`<ellipse cx="150" cy="226" rx="88" ry="78" fill="${C.cat}"/>`);
     p.push(`<path d="M110 160 C130 200 170 200 190 160" stroke="${C.catDark}" stroke-width="10" fill="none"/>`);
     p.push(`<circle cx="156" cy="124" r="62" fill="${C.cat}"/>`);
     p.push(`<path d="M104 92 L112 34 L146 74 Z" fill="${C.cat}"/><path d="M168 74 L204 36 L210 98 Z" fill="${C.cat}"/>`);
-    // A squinting eye at the edge of the turned head.
-    p.push(`<path d="M190 116 Q204 108 214 118" stroke="${C.ink}" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M212 132 L220 134" stroke="${C.ink}" stroke-width="5" stroke-linecap="round"/>`);
+    // The back of the head, ears pricked toward the courtyard.
+    p.push(`<path d="M120 96 Q156 112 192 96" stroke="${C.catDark}" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M130 150 Q156 160 182 150" stroke="${C.catDark}" stroke-width="5" fill="none" stroke-linecap="round"/>`);
     return svg("0 0 300 400", 300, 400, p.join(""));
   }
   const lean = state === "tell" ? -6 : 0;
@@ -147,8 +147,9 @@ function catSvg(state: CatState): string {
       p.push(`<ellipse cx="150" cy="166" rx="9" ry="10" fill="${C.ink}"/>`);
       break;
     case "tell":
-      // Ears up, eyes wide — about to turn.
-      p.push(`<circle cx="126" cy="120" r="15" fill="${C.white}"/><circle cx="174" cy="120" r="15" fill="${C.white}"/><circle cx="120" cy="122" r="8" fill="${C.ink}"/><circle cx="168" cy="122" r="8" fill="${C.ink}"/>`);
+      // Still facing the viewer, paws still over its eyes, ears shot up —
+      // the chant has ended and it is about to turn.
+      p.push(`<ellipse cx="124" cy="118" rx="26" ry="20" fill="${C.catLight}" stroke="${C.catDark}" stroke-width="3"/><ellipse cx="176" cy="118" rx="26" ry="20" fill="${C.catLight}" stroke="${C.catDark}" stroke-width="3"/>`);
       p.push(`<path d="M140 166 Q150 160 160 166" stroke="${C.ink}" stroke-width="4" fill="none" stroke-linecap="round"/>`);
       break;
     case "laughing":

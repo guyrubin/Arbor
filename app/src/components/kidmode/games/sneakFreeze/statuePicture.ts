@@ -158,7 +158,7 @@ export async function composeStatuePicture(o: { shot: StatueShot; art: SneakArt;
     items.push({ y: c.y, draw: () => place(covers[i], s, c, c.h) });
   });
   const heroSprite = heroPose.sprite;
-  const heroScaleH = (heroSprite.h / ref.h) * l.hero.h;
+  const heroScaleH = (heroSprite.h / ref.h) * l.hero.h * (heroSprite.scale ?? 1);
   items.push({ y: l.hero.y + 1, draw: () => { shadow(l.hero, l.hero.h * 0.5); place(hero, { w: heroSprite.w, h: heroSprite.h, anchor: heroSprite.foot }, l.hero, heroScaleH); } });
   items.push({ y: l.watcher.y, draw: () => { shadow(l.watcher, l.watcher.h * 0.6); place(cat, looking, l.watcher, l.watcher.h); } });
   items.sort((a, b) => a.y - b.y).forEach((it) => it.draw());

@@ -2437,9 +2437,6 @@ export const en: Dict = {
   "kid.game.sneak-freeze.stageAria": "Hold anywhere to sneak. Let go to freeze.",
   "kid.game.sneak-freeze.stageAria.boy": "Hold anywhere to sneak. Let go to freeze.",
   "kid.game.sneak-freeze.stageAria.girl": "Hold anywhere to sneak. Let go to freeze.",
-  "kid.game.sneak-freeze.hint": "Hold to sneak. Let go to freeze!",
-  "kid.game.sneak-freeze.hint.boy": "Hold to sneak. Let go to freeze!",
-  "kid.game.sneak-freeze.hint.girl": "Hold to sneak. Let go to freeze!",
   // B-GAME-09: the statue picture's caption ({name} is isolated by t()).
   "kid.game.sneak-freeze.caption": "The cat looked… and {name} didn't move!",
   "kid.game.sneak-freeze.caption.boy": "The cat looked… and {name} didn't move!",
@@ -4799,9 +4796,6 @@ export const he: Dict = {
   "kid.game.sneak-freeze.stageAria": "לחצו בכל מקום כדי להתגנב. עזבו כדי לקפוא.",
   "kid.game.sneak-freeze.stageAria.boy": "לחץ בכל מקום כדי להתגנב. עזוב כדי לקפוא.",
   "kid.game.sneak-freeze.stageAria.girl": "לחצי בכל מקום כדי להתגנב. עזבי כדי לקפוא.",
-  "kid.game.sneak-freeze.hint": "לחצו כדי להתגנב, עזבו כדי לקפוא!",
-  "kid.game.sneak-freeze.hint.boy": "לחץ כדי להתגנב, עזוב כדי לקפוא!",
-  "kid.game.sneak-freeze.hint.girl": "לחצי כדי להתגנב, עזבי כדי לקפוא!",
   // B-GAME-09: כיתוב תמונת הפסל (השם מבודד ב-t()). בלי מגדר: "— פסל!".
   "kid.game.sneak-freeze.caption": "החתול הסתכל… אבל {name} — פסל!",
   "kid.game.sneak-freeze.caption.boy": "החתול הסתכל… אבל {name} לא זז!",

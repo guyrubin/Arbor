@@ -7,12 +7,16 @@
  * swap never moves the feet. A missing pose resolves through FALLBACK, then
  * idle, then any pose present: a figure never renders empty.
  *
- * Source for the proof: a sheet injected on the sandbox at local-storage key
- * `arbor.heroSheet.<childId>` (JSON of HeroSheet; sprite urls may be data
- * urls). Otherwise the built-in DEV PLACEHOLDER (devPlaceholderSheet.ts) —
+ * Source for the proof, first found wins: the local-only file
+ * `/_proof/hero/sheet.json` (proofAssets.ts; read by the game while its flag
+ * is on; sprite urls relative to that folder), then a sheet injected on the
+ * sandbox at local-storage key `arbor.heroSheet.<childId>` (JSON of
+ * HeroSheet; sprite urls may be data urls). Otherwise the built-in DEV PLACEHOLDER (devPlaceholderSheet.ts) —
  * scaffolding for the orchestrator's checks, never shown to the owner.
- * Likeness art never enters public/ or git.
+ * Likeness art never enters git (public/_proof/ is excluded and guarded).
  */
+import { PROOF_HERO_SHEET_URL, fetchProofJson } from "../proofAssets";
+
 
 export type HeroPoseId = "idle" | "tiptoe" | "dash" | "freeze-a" | "freeze-b" | "oops" | "cheer" | "hold-up";
 
@@ -30,6 +34,9 @@ export interface HeroSprite {
   head?: { x: number; y: number; r: number };
   /** Hand points, sprite px (hold-up carries the prize here). */
   hand?: { l?: [number, number]; r?: [number, number] };
+  /** Optional size factor for this pose (a sheet whose poses were cut at
+   *  different figure heights): multiplies the drawn size; the feet stay put. */
+  scale?: number;
 }
 
 export type HeroSheetSource = "generated" | "stock" | "proof" | "dev-placeholder";
@@ -41,6 +48,13 @@ export interface HeroSheet {
   theme: "film3d";
   createdAt?: string;
   poses: Partial<Record<HeroPoseId, HeroSprite>>;
+}
+
+/** The proof sheet file, parsed (null when absent or malformed). */
+export async function loadProofHeroSheet(fetcher?: Parameters<typeof fetchProofJson>[1]): Promise<HeroSheet | null> {
+  const raw = await fetchProofJson(PROOF_HERO_SHEET_URL, fetcher);
+  const sheet = raw ? parseHeroSheet(raw) : null;
+  return sheet ? { ...sheet, source: "proof" } : null;
 }
 
 /** Missing pose -> the next pose to try (then idle, then anything present). */
@@ -72,6 +86,26 @@ export function referenceSprite(sheet: HeroSheet): HeroSprite | null {
   return resolvePose(sheet, "idle")?.sprite ?? null;
 }
 
+/** Sprite px -> parent units for one pose: `height` is the reference (idle)
+ *  sprite's height, times the pose's own `scale` when the sheet gives one. */
+export function poseFactor(sheet: HeroSheet, sprite: HeroSprite, height: number): number {
+  const ref = referenceSprite(sheet);
+  return ref ? (height / ref.h) * (sprite.scale ?? 1) : 1;
+}
+
+/** Where a held prize sits, in parent units relative to the feet: the
+ *  midpoint of the hand anchors (one hand: that hand), else just above the
+ *  head box, else above the sprite. */
+export function carryPoint(sprite: HeroSprite, k: number, size: number): { x: number; y: number } {
+  const { l, r } = sprite.hand ?? {};
+  const rel = (x: number, y: number) => ({ x: (x - sprite.foot.x) * k, y: (y - sprite.foot.y) * k });
+  if (l && r) return rel((l[0] + r[0]) / 2, (l[1] + r[1]) / 2);
+  if (l || r) { const h = (l ?? r) as [number, number]; return rel(h[0], h[1]); }
+  if (sprite.head) { const p = rel(sprite.head.x, sprite.head.y - sprite.head.r); return { x: p.x, y: p.y - size * 0.55 }; }
+  const p = rel(sprite.w / 2, 0);
+  return { x: p.x, y: p.y - size * 0.55 };
+}
+
 const num = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 
 function parseSprite(raw: unknown): HeroSprite | null {
@@ -83,6 +117,7 @@ function parseSprite(raw: unknown): HeroSprite | null {
   // Only image data urls or http(s)/relative urls; never javascript: or anything else.
   if (!/^(data:image\/(png|webp|jpeg|svg\+xml)[;,]|https?:\/\/|\/)/.test(r.url)) return null;
   const sprite: HeroSprite = { url: r.url, w: r.w, h: r.h, foot: { x: foot.x, y: foot.y } };
+  if (num(r.scale) && r.scale > 0.2 && r.scale < 5) sprite.scale = r.scale;
   const head = r.head as Record<string, unknown> | undefined;
   if (head && num(head.x) && num(head.y) && num(head.r)) sprite.head = { x: head.x, y: head.y, r: head.r };
   const hand = r.hand as Record<string, unknown> | undefined;

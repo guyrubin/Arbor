@@ -82,7 +82,9 @@ describe("Sneak & Freeze — behind its flag", () => {
   it("has its name and lines in EN and HE, Hebrew addressed by form", () => {
     expect(translate("en", "kid.game.sneak-freeze.title")).toBe("Sneak & Freeze");
     expect(translate("he", "kid.game.sneak-freeze.title")).toBe("דג מלוח");
-    for (const base of ["kid.game.sneak-freeze.hint", "kid.game.sneak-freeze.stageAria"]) {
+    // B-GAME-07c: no on-screen hint line any more (the hint is the whispered voice line)
+    expect(translate("en", "kid.game.sneak-freeze.hint")).toBe("kid.game.sneak-freeze.hint");
+    for (const base of ["kid.game.sneak-freeze.stageAria"]) {
       const forms = ["", ".boy", ".girl"].map((f) => translate("he", base + f));
       expect(new Set(forms).size).toBe(3);
       for (const f of forms) expect(f).toMatch(/[א-ת]/);

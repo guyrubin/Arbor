@@ -17,7 +17,7 @@
  * Motion is transform/opacity only (Web Animations, no new runtime).
  */
 import React, { useLayoutEffect, useMemo, useRef } from "react";
-import { HERO_POSES, readStoredHeroSheet, referenceSprite, resolvePose, type HeroPoseId, type HeroSheet } from "./heroSheet";
+import { HERO_POSES, carryPoint, poseFactor, readStoredHeroSheet, referenceSprite, resolvePose, type HeroPoseId, type HeroSheet } from "./heroSheet";
 import { devPlaceholderSheet } from "./devPlaceholderSheet";
 
 export interface HeroFigureProps {
@@ -37,6 +37,10 @@ export interface HeroFigureProps {
   zIndex?: number;
   /** Transition for x/y moves (stepwise travel), e.g. "transform 180ms ease-out". */
   travel?: string;
+  /** A prize held up in the hands (hold-up only): drawn at the midpoint of
+   *  the hand anchors (else above the head), inside the squash. `size` is in
+   *  parent units. */
+  carry?: { url: string; size: number } | null;
 }
 
 /** The proof sheet for this child, else the dev placeholder. Read once per child. */
@@ -57,11 +61,11 @@ export function spriteBox(sheet: HeroSheet, pose: HeroPoseId, height: number): {
   const r = resolvePose(sheet, pose);
   const ref = referenceSprite(sheet);
   if (!r || !ref) return null;
-  const k = height / ref.h;
+  const k = poseFactor(sheet, r.sprite, height);
   return { pose: r.pose, url: r.sprite.url, left: -r.sprite.foot.x * k, top: -r.sprite.foot.y * k, width: r.sprite.w * k, height: r.sprite.h * k };
 }
 
-export function HeroFigure({ pose, height, sheet, x, y, kick = 0, lift = 0, wobble = false, zIndex, travel }: HeroFigureProps) {
+export function HeroFigure({ pose, height, sheet, x, y, kick = 0, lift = 0, wobble = false, zIndex, travel, carry }: HeroFigureProps) {
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const breatheRef = useRef<HTMLDivElement | null>(null);
   const shown = resolvePose(sheet, pose)?.pose ?? "idle";
@@ -95,8 +99,10 @@ export function HeroFigure({ pose, height, sheet, x, y, kick = 0, lift = 0, wobb
     return undefined;
   }, [shown, wobble]);
 
-  const ref = referenceSprite(sheet);
-  const k = ref ? height / ref.h : 1;
+  const shownSprite = sheet.poses[shown];
+  const held = carry && pose === "hold-up" && shownSprite
+    ? (() => { const at = carryPoint(shownSprite, poseFactor(sheet, shownSprite, height), carry.size); return { ...carry, x: at.x, y: at.y }; })()
+    : null;
   const liftClamped = Math.max(0, lift);
   const shadowScale = Math.max(0.45, 1 - liftClamped / Math.max(1, height));
   const shadowW = height * 0.5;
@@ -128,6 +134,7 @@ export function HeroFigure({ pose, height, sheet, x, y, kick = 0, lift = 0, wobb
           {HERO_POSES.map((p) => {
             const sprite = sheet.poses[p];
             if (!sprite) return null;
+            const k = poseFactor(sheet, sprite, height);
             return (
               <img
                 key={p}
@@ -149,6 +156,15 @@ export function HeroFigure({ pose, height, sheet, x, y, kick = 0, lift = 0, wobb
               />
             );
           })}
+          {held && (
+            <img
+              src={held.url}
+              alt=""
+              draggable={false}
+              data-hero-carry=""
+              style={{ position: "absolute", left: held.x - held.size / 2, top: held.y - held.size / 2, width: held.size, height: held.size, maxWidth: "none", pointerEvents: "none" }}
+            />
+          )}
         </div>
       </div>
       </div>

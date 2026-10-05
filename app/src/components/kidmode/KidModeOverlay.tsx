@@ -94,6 +94,9 @@ export function arrivalScrollTop(view: View, savedHomeScroll: number): number {
   return view === "home" ? Math.max(0, savedHomeScroll) : 0;
 }
 
+/** B-GAME-07c: Sneak & Freeze's bar title on one line (step-down token, capped by the viewport). */
+const SNEAK_BAR_TITLE: React.CSSProperties = { fontSize: "min(var(--kid-t-say), 4.6vw)", WebkitLineClamp: 1, whiteSpace: "nowrap" };
+
 export default function KidModeOverlay() {
   const { isKidModeOpen, closeKidMode } = useKidMode();
   const { childProfile } = useArbor();
@@ -371,6 +374,10 @@ export default function KidModeOverlay() {
                   color: "var(--arbor-clay)",
                   flex: "1 1 0%",
                   minWidth: 0,
+                  // B-GAME-07c: the proof game's name ("Sneak & Freeze" /
+                  // "דג מלוח") stays on ONE line at 375 px — the step-down
+                  // token, capped by the viewport; other bars unchanged.
+                  ...(sneakOpen ? SNEAK_BAR_TITLE : null),
                 }}
               >
                 {/* B-KID-53: inside a world or a story the title is ITS name. */}

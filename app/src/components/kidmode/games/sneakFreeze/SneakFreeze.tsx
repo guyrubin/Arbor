@@ -8,10 +8,12 @@
  * requestAnimationFrame loop that pauses while the tab is hidden; a touch is
  * stepped at once (dt 0) so the hero lurches in the same frame.
  *
- * On screen: the place, the cat, the hero, three cover objects, a prize and —
- * in the intro / after an idle hint — one pulsing hand glyph in the thumb
- * zone (plus the one hint line for a grown-up). No instruction paragraph, no
- * progress dots, no digits, no timer, no level. Mounted inside GameShell's
+ * On screen: the place, the cat, the hero, three cover objects, a prize (held
+ * up in the hero's hands after a tag) and — in the intro / after an idle hint
+ * — one pulsing hand glyph in the thumb zone; the hint itself is the cat's
+ * whispered voice line. Nothing on screen needs reading (the sentence is the
+ * stage's aria-label). No instruction paragraph, no progress dots, no digits,
+ * no timer, no level. Mounted inside GameShell's
  * fullBleed: the overlay's top bar is the only chrome.
  */
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -23,10 +25,12 @@ import { PlayField, type PlayFieldContext } from "../../game/PlayField";
 import { pointOnPath, sneakLayout, toPx, type FieldOrientation, type SneakLayout } from "../../game/fieldLayout";
 import { HeroFigure, prefersReducedMotion, useHeroSheet } from "../../hero/HeroFigure";
 import { kidIsolate } from "../../kidText";
-import { SNEAK_FREEZE_WORLD } from "../../kidWorlds";
+import { SNEAK_FREEZE_WORLD, sneakFreezeFlagOn } from "../../kidWorlds";
 import { useKidHome } from "../../kidChrome";
 import { startSitting, step, view as viewOf, type SneakState, type SneakView } from "./rules";
-import { readSneakArt, type SneakArt } from "./sneakArt";
+import { artUrls, loadProofArt, readSneakArt, type SneakArt } from "./sneakArt";
+import { loadProofHeroSheet, type HeroSheet } from "../../hero/heroSheet";
+import { preloadImages } from "../../proofAssets";
 import { readPlayLevel, writePlayLevel } from "./sneakStore";
 import { createSneakSounds, type SneakSounds } from "./sounds";
 import { Watcher } from "./Watcher";
@@ -108,7 +112,7 @@ function TagBurst({ x, y, size }: { x: number; y: number; size: number }) {
   );
 }
 
-function Scene({ ctx, v, art, sheet, prevProgress }: { ctx: PlayFieldContext; v: SneakView; art: SneakArt; sheet: ReturnType<typeof useHeroSheet>; prevProgress: number }) {
+function Scene({ ctx, v, art, sheet, prevProgress }: { ctx: PlayFieldContext; v: SneakView; art: SneakArt; sheet: HeroSheet; prevProgress: number }) {
   const layout = LAYOUTS[ctx.fit.orientation];
   const tagPoint = layout.heroPath[layout.heroPath.length - 1];
   const p = pointOnPath(layout.heroPath, v.progress);
@@ -116,6 +120,8 @@ function Scene({ ctx, v, art, sheet, prevProgress }: { ctx: PlayFieldContext; v:
   const forward = v.progress > prevProgress;
   const reduced = prefersReducedMotion();
   const statue = v.phase === "verdict" && (v.heroPose === "freeze-a" || v.heroPose === "freeze-b");
+  // B-GAME-07c: in hold-up the prize is IN the hero's hands (HeroFigure).
+  const carried = v.prize && v.heroPose === "hold-up" ? v.prize : null;
   return (
     <>
       {layout.covers.map((c) => {
@@ -159,9 +165,18 @@ function Scene({ ctx, v, art, sheet, prevProgress }: { ctx: PlayFieldContext; v:
           transition: forward && !reduced ? "transform 190ms cubic-bezier(0.22, 1, 0.36, 1)" : undefined,
         }}
       >
-        <HeroFigure pose={v.heroPose} height={base} sheet={sheet} x={0} y={0} kick={v.lurch} wobble={statue} />
+        <HeroFigure
+          pose={v.heroPose}
+          height={base}
+          sheet={sheet}
+          x={0}
+          y={0}
+          kick={v.lurch}
+          wobble={statue}
+          carry={carried ? { url: art.prizes[carried].url, size: layout.prize.size * (base / p.h) } : null}
+        />
       </div>
-      {v.prize && (
+      {v.prize && !carried && (
         <img
           key={v.prize}
           src={art.prizes[v.prize].url}
@@ -175,7 +190,47 @@ function Scene({ ctx, v, art, sheet, prevProgress }: { ctx: PlayFieldContext; v:
   );
 }
 
+/** The art and the hero for this sitting. With the flag on, the local-only
+ *  proof files are tried first (then local storage, then the placeholders)
+ *  and their images decoded before the first frame (bounded wait). */
+export function useSneakAssets(childId: string): { ready: boolean; art: SneakArt; sheet: HeroSheet } {
+  const fallbackSheet = useHeroSheet(childId);
+  const baseArt = useMemo(() => readSneakArt(), []);
+  const flag = sneakFreezeFlagOn();
+  const [proof, setProof] = useState<{ art: SneakArt; sheet: HeroSheet | null } | null>(null);
+  useEffect(() => {
+    if (!flag) return;
+    let alive = true;
+    const settle = (v: { art: SneakArt; sheet: HeroSheet | null }) => { if (alive) setProof((p) => p ?? v); };
+    const giveUp = setTimeout(() => settle({ art: baseArt, sheet: null }), 4000);
+    void (async () => {
+      const [sheet, art] = await Promise.all([loadProofHeroSheet(), loadProofArt(baseArt)]);
+      const heroUrls = sheet ? Object.values(sheet.poses).map((p) => p?.url ?? "").filter((u) => u && !u.startsWith("data:")) : [];
+      await preloadImages([...artUrls(art), ...heroUrls]);
+      settle({ art, sheet });
+    })();
+    return () => { alive = false; clearTimeout(giveUp); };
+  }, [flag, baseArt]);
+  if (!flag) return { ready: true, art: baseArt, sheet: fallbackSheet };
+  return proof ? { ready: true, art: proof.art, sheet: proof.sheet ?? fallbackSheet } : { ready: false, art: baseArt, sheet: fallbackSheet };
+}
+
 export default function SneakFreeze() {
+  const { childProfile } = useArbor();
+  const { t } = useLanguage();
+  const assets = useSneakAssets(childProfile?.id ?? "");
+  if (!assets.ready) {
+    // A beat while the proof art decodes: the shell and the navy stage only.
+    return (
+      <GameShell worldId={SNEAK_FREEZE_WORLD.worldId} title={t(SNEAK_FREEZE_WORLD.nameKey)} fullBleed>
+        <div data-sneak-loading="" aria-hidden="true" style={{ blockSize: "100%" }} />
+      </GameShell>
+    );
+  }
+  return <SneakFreezeGame art={assets.art} sheet={assets.sheet} />;
+}
+
+function SneakFreezeGame({ art, sheet }: { art: SneakArt; sheet: HeroSheet }) {
   const { childProfile } = useArbor();
   const { t, uiLang } = useLanguage();
   const lang: "en" | "he" = uiLang === "he" ? "he" : "en";
@@ -183,8 +238,6 @@ export default function SneakFreeze() {
   const childId = childProfile?.id ?? "";
   const gender = childProfile?.gender;
   const goHome = useKidHome();
-  const sheet = useHeroSheet(childId);
-  const art = useMemo(() => readSneakArt(), []);
   // Read once per child: the start level by age, or the device's remembered level.
   const start = useMemo(() => readPlayLevel(childId, safeAge(childProfile)), [childId]);
 
@@ -332,7 +385,6 @@ export default function SneakFreeze() {
 
   const title = t(SNEAK_FREEZE_WORLD.nameKey);
   const firstName = (childProfile?.name ?? "").trim().split(/\s+/)[0] ?? "";
-  const hintLine = kidIsolate(t(formKey("kid.game.sneak-freeze.hint", gender)));
   const stageAria = kidIsolate(t(formKey("kid.game.sneak-freeze.stageAria", gender)));
 
   return (
@@ -386,31 +438,6 @@ export default function SneakFreeze() {
             const size = 76;
             return (
               <div data-sneak-hand="" style={{ position: "absolute", left: at.x - size / 2, top: at.y - size / 2, width: size, height: size }}>
-                {v.phase !== "intro" && (
-                  <p
-                    dir="auto"
-                    data-sneak-hint=""
-                    className="kid-type-label"
-                    style={{
-                      position: "absolute",
-                      insetBlockEnd: size + 8,
-                      insetInlineStart: "50%",
-                      transform: rtl ? "translateX(50%)" : "translateX(-50%)",
-                      inlineSize: "max-content",
-                      maxInlineSize: Math.max(160, ctx.fit.width - 48),
-                      margin: 0,
-                      paddingInline: 14,
-                      paddingBlock: 8,
-                      borderRadius: "var(--kid-r-m)",
-                      background: "var(--arbor-paper-elevated)",
-                      color: "var(--arbor-ink)",
-                      boxShadow: "var(--shadow-xs)",
-                      fontWeight: 800,
-                    }}
-                  >
-                    {hintLine}
-                  </p>
-                )}
                 <HandGlyph size={size} />
               </div>
             );

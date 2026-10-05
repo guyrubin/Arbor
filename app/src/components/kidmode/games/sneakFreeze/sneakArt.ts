@@ -5,21 +5,31 @@
  *   plate      Savta's courtyard, one per orientation, painted PLATE_BLEED
  *              beyond the design space (landscape 2240x1260 = 1600x900 + 20 %
  *              each side; portrait 1260x2240). No character in it.
- *   watcher    the cat on its stool: counting / tell / looking / laughing /
- *              sunglasses (+ optional waiting). Anchor = where the stool's
- *              legs meet the floor.
+ *   watcher    the cat on its stool. The screen is the wall the cat counts
+ *              against (ruling, B-GAME-07c):
+ *                counting   FACES THE VIEWER, paws over its eyes, chanting
+ *                tell       faces the viewer, paws still over its eyes, ears up
+ *                looking    turned round: seen FROM BEHIND, peering into the
+ *                           courtyard (no face)
+ *                laughing   faces the viewer, laughing
+ *                sunglasses faces the viewer in big sunglasses, paws down — it
+ *                           cannot see either way (used for every pose but
+ *                           laughing while the trick is on)
+ *                waiting    (optional) faces the viewer, sitting down
+ *              Anchor = where the stool's legs meet the floor.
  *   covers     lemon-tree, bench, lantern. Anchor = base centre on the floor.
  *   prizes     lemon, wool, bell. Anchor = centre.
  *   tile       the home tile (handled by the home grid; not here).
  *
- * Source for the proof: JSON injected on the sandbox at local-storage key
- * `arbor.sneakFreeze.art` (a Partial<SneakArt>, merged slot by slot over the
- * placeholders). Otherwise devPlaceholderArt() — TEMPORARY authored SVGs,
- * never shown to the owner.
+ * Source for the proof, first found wins slot by slot: the local-only file
+ * `/_proof/scene/art.json` (proofAssets.ts; flag on only), then JSON
+ * injected at local-storage key `arbor.sneakFreeze.art` (a Partial<SneakArt>),
+ * then devPlaceholderArt() — TEMPORARY authored SVGs, never shown to the owner.
  */
 import type { PrizeId, WatcherPose } from "./rules";
 import type { CoverId, FieldOrientation } from "../../game/fieldLayout";
 import { devPlaceholderArt } from "./devPlaceholderArt";
+import { PROOF_SCENE_ART_URL, fetchProofJson } from "../../proofAssets";
 
 export interface ArtSprite {
   url: string;
@@ -33,7 +43,7 @@ export interface ArtSprite {
 export type WatcherSlot = WatcherPose;
 
 export interface SneakArt {
-  source: "injected" | "dev-placeholder";
+  source: "proof" | "injected" | "dev-placeholder";
   plate: Record<FieldOrientation, string>;
   watcher: Partial<Record<WatcherSlot, ArtSprite>> & { counting: ArtSprite };
   covers: Record<CoverId, ArtSprite>;
@@ -54,7 +64,7 @@ function sprite(raw: unknown): ArtSprite | null {
 }
 
 /** Merge an injected art JSON over the placeholders (slot by slot; bad slots ignored). */
-export function mergeArt(base: SneakArt, raw: unknown): SneakArt {
+export function mergeArt(base: SneakArt, raw: unknown, source: "proof" | "injected" = "injected"): SneakArt {
   if (!raw || typeof raw !== "object") return base;
   const r = raw as Record<string, unknown>;
   const out: SneakArt = { ...base, plate: { ...base.plate }, watcher: { ...base.watcher }, covers: { ...base.covers }, prizes: { ...base.prizes } };
@@ -73,7 +83,25 @@ export function mergeArt(base: SneakArt, raw: unknown): SneakArt {
       if (s) { (out[group] as Record<string, ArtSprite>)[k] = s; any = true; }
     }
   }
-  return any ? { ...out, source: "injected" } : base;
+  return any ? { ...out, source } : base;
+}
+
+/** The proof art file (urls resolved against its folder) merged over `base`;
+ *  `base` unchanged when the file is absent or has no usable slot. */
+export async function loadProofArt(base: SneakArt, fetcher?: Parameters<typeof fetchProofJson>[1]): Promise<SneakArt> {
+  const raw = await fetchProofJson(PROOF_SCENE_ART_URL, fetcher);
+  return raw ? mergeArt(base, raw, "proof") : base;
+}
+
+/** Every image url the scene draws (for preloading). */
+export function artUrls(art: SneakArt): string[] {
+  return [
+    art.plate.landscape,
+    art.plate.portrait,
+    ...Object.values(art.watcher).map((s) => s?.url ?? ""),
+    ...Object.values(art.covers).map((s) => s.url),
+    ...Object.values(art.prizes).map((s) => s.url),
+  ].filter((u) => !!u && !u.startsWith("data:"));
 }
 
 export function readSneakArt(storage?: Pick<Storage, "getItem"> | null): SneakArt {
