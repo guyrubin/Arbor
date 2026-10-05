@@ -38,7 +38,7 @@ import { ProvenanceBadge } from "../ui/ProvenanceBadge";
 import { clearJourneyPageFailure, generateJourneyPage, journeyPageKey, toSavedComicMeta, type SavedComicMeta } from "../../lib/heroComics";
 import { useKidSafeNav } from "../kidmode/useKidSafeNav";
 import { isKidModeActive, noteKidActivity, subscribeKidMode } from "../../lib/kidModeGate";
-import { ComicPage, MascotSay, PlayButton, PlayPanel, usePrefersReducedMotion } from "../ui/playkit";
+import { ComicPage, MascotSay, usePrefersReducedMotion } from "../ui/playkit";
 import { EmptyState } from "../ui/EmptyState";
 import { SectionSkeleton } from "../ui/Skeleton";
 import { statesText } from "../../lib/i18nElevation/states";
@@ -166,7 +166,9 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
   const [heroDialogOpen, setHeroDialogOpen] = useState(false);
   // B-PLAY-14: the Tonight cover's two options. The evening entry points ask
   // for "today" through lib/tonightMode (one-shot); otherwise the hero story.
-  const [tonightMode, setTonightMode] = useState<TonightMode>(() => consumeTonightMode() ?? "hero");
+  // W2-SHELLPLAY critic r2: with no hero yet, the evening door opens on
+  // "From today" — never a "hero adventure" that cannot star the child.
+  const [tonightMode, setTonightMode] = useState<TonightMode>(() => consumeTonightMode() ?? (childProfile.avatar ? "hero" : "today"));
   // KID-05: hub tiles navigate the PARENT shell — rendered only while the
   // shell is reachable (null inside Kid Mode, where the call would be a
   // silent no-op and a dead button in front of the child).
@@ -724,29 +726,14 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
 
         {/* G1 hero-first (22 Sep 2026): a child without a generated hero gets one
             parent-side step here, never a story starring the raw photo. */}
-        {!kidMode && (!childProfile.avatar ? (
-          <PlayPanel tone="lav" className="text-center mb-4" data-testid="hero-first-gate">
-            <p className="text-[1.15rem] font-extrabold mb-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
-              {he ? `קודם כול, צרו את הגיבור של ${isolate(heroName)}` : `First, create ${isolate(heroName)}'s hero`}
-            </p>
-            <p className="text-sm mb-4 max-w-md mx-auto" style={{ color: "var(--arbor-muted)" }} dir="auto">
-              {he
-                ? `הסיפורים מצוירים סביב הדמות המאוירת של ${heroName} — לא סביב תמונה אמיתית.`
-                : `Stories are drawn around ${isolate(heroName)}'s illustrated character — never around a real photo.`}
-            </p>
-            {/* B-PLAY-15: create the hero IN PLACE (shared dialog) — the page
-                re-renders with the hero, no hub switch. */}
-            <PlayButton tone="clay" onClick={() => setHeroDialogOpen(true)}>
-              <Icon name="auto_awesome" size={16} /> {he ? `צרו את הגיבור של ${isolate(heroName)}` : `Create ${isolate(heroName)}'s hero`}
-            </PlayButton>
-            <HeroCreateDialog
-              open={heroDialogOpen}
-              childId={childProfile.id}
-              childName={heroName}
-              onClose={() => setHeroDialogOpen(false)}
-            />
-          </PlayPanel>
-        ) : null)}
+        {!kidMode && !childProfile.avatar && (
+          <HeroCreateDialog
+            open={heroDialogOpen}
+            childId={childProfile.id}
+            childName={heroName}
+            onClose={() => setHeroDialogOpen(false)}
+          />
+        )}
         {/* STORY WORLDS — each card is an illustrated world starring the hero */}
         <div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mb-3">
@@ -976,11 +963,27 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
           {tonightMode === "today" ? <TonightFromToday /> : (
           <div data-testid="stories-cover" className={`${cardCls} w-full overflow-hidden p-0 lg:grid lg:grid-cols-[2fr_3fr]`}>
             <div
-              aria-hidden="true"
-              className="grid place-items-center w-full h-[112px] sm:h-[168px] lg:h-full lg:min-h-[220px]"
+              className="flex flex-col items-center justify-center gap-1 w-full min-h-[112px] sm:min-h-[168px] lg:h-full lg:min-h-[220px] py-2"
               style={{ background: tonightStory ? PACK_SOFT[tonightStory.pack] : "var(--arbor-paper-deep)" }}
             >
-              <HeroAvatar size={84} ring animate={false} />
+              <span aria-hidden="true"><HeroAvatar size={84} ring animate={false} /></span>
+              {/* W2-SHELLPLAY critic r2: hero-first is ONE quiet 44 px text row
+                  inside the art band (was a kid-register PlayPanel/PlayButton
+                  below the cover, heavier than Play). "Read it together" stays
+                  the page's only filled button. */}
+              {!kidMode && !childProfile.avatar && (
+                <button
+                  type="button"
+                  data-testid="hero-first-gate"
+                  onClick={() => setHeroDialogOpen(true)}
+                  className="inline-flex min-h-11 items-center gap-1 px-2 t-sm font-bold"
+                  style={{ color: "var(--arbor-clay-ink)" }}
+                  dir="auto"
+                >
+                  {t("elev.stories.tonight.heroRow", { name: heroName })}
+                  <Icon name="arrow_forward" size={15} style={he ? { transform: "scaleX(-1)" } : undefined} />
+                </button>
+              )}
             </div>
             <div className="p-4 sm:p-5 lg:max-w-[60ch]">
               <h2 className="text-[1.35rem] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
@@ -1001,7 +1004,9 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                   {tonightBuilds && (
                     <div className="flex gap-2">
                       <dt className="font-extrabold flex-shrink-0" style={{ color: "var(--arbor-ink)" }}>{t("elev.stories.tonight.builds")} ·</dt>
-                      <dd className="m-0" style={{ color: "var(--arbor-ink-soft)" }} dir="auto">{tonightBuilds}</dd>
+                      {/* W2-SHELLPLAY critic r2: two lines at most below sm, so
+                          Play stays clear of the bottom nav at 375. */}
+                      <dd className="m-0 line-clamp-2 sm:line-clamp-none" title={tonightBuilds} style={{ color: "var(--arbor-ink-soft)" }} dir="auto">{tonightBuilds}</dd>
                     </div>
                   )}
                   {tonightAskAfter && (
@@ -1045,7 +1050,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
             measurement (law 1). The one count kept is the shared-reading line. */}
         {runs.length > 0 && (
           <p className="text-[11.5px] px-1" style={{ color: "var(--arbor-muted)" }}>
-            {t("elev.stories.counts.stories", { n: runs.length })}
+            {t(runs.length === 1 ? "elev.stories.counts.stories.one" : "elev.stories.counts.stories", { n: runs.length })}
           </p>
         )}
 
@@ -1053,29 +1058,14 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
             parent-side step here, never a story starring the raw photo.
             B-PLAY-11: it stays OUT of the "More stories" disclosure so it is
             never collapsed away. */}
-        {!kidMode && (!childProfile.avatar ? (
-          <PlayPanel tone="lav" className="text-center mb-4" data-testid="hero-first-gate">
-            <p className="text-[1.15rem] font-extrabold mb-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
-              {he ? `קודם כול, צרו את הגיבור של ${isolate(heroName)}` : `First, create ${isolate(heroName)}'s hero`}
-            </p>
-            <p className="text-sm mb-4 max-w-md mx-auto" style={{ color: "var(--arbor-muted)" }} dir="auto">
-              {he
-                ? `הסיפורים מצוירים סביב הדמות המאוירת של ${heroName} — לא סביב תמונה אמיתית.`
-                : `Stories are drawn around ${isolate(heroName)}'s illustrated character — never around a real photo.`}
-            </p>
-            {/* B-PLAY-15: create the hero IN PLACE (shared dialog) — the page
-                re-renders with the hero, no hub switch. */}
-            <PlayButton tone="clay" onClick={() => setHeroDialogOpen(true)}>
-              <Icon name="auto_awesome" size={16} /> {he ? `צרו את הגיבור של ${isolate(heroName)}` : `Create ${isolate(heroName)}'s hero`}
-            </PlayButton>
-            <HeroCreateDialog
-              open={heroDialogOpen}
-              childId={childProfile.id}
-              childName={heroName}
-              onClose={() => setHeroDialogOpen(false)}
-            />
-          </PlayPanel>
-        ) : null)}
+        {!kidMode && !childProfile.avatar && (
+          <HeroCreateDialog
+            open={heroDialogOpen}
+            childId={childProfile.id}
+            childName={heroName}
+            onClose={() => setHeroDialogOpen(false)}
+          />
+        )}
         {/* B-PLAY-11: the pack filter and the whole catalogue sit behind ONE
             collapsed "More stories" disclosure (R25: a demoted module inside a
             data-module-disclosure), so above the fold is cover + insight + Play. */}

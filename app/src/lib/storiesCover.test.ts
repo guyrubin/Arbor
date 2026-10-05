@@ -23,6 +23,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { contractFor } from "./surfaceContract";
+import { translate } from "./i18n";
 import { chooseTonightsStory } from "../components/kidmode/tonightsStory";
 import { HERO_STORIES } from "./heroJourneys";
 
@@ -191,7 +192,8 @@ describe("B-PLAY-11 — Tonight cover: no virtue tallies, insight first, catalog
     expect(parent).not.toContain("METRIC_LABELS");
     expect(parent).not.toContain("METRIC_EMOJI");
     expect(parent).not.toContain("totalMetrics");
-    expect(parent).toContain('t("elev.stories.counts.stories", { n: runs.length })');
+    // W2-SHELLPLAY r2: plural-keyed ("1 story read together", never "1 stories")
+    expect(parent).toContain('t(runs.length === 1 ? "elev.stories.counts.stories.one" : "elev.stories.counts.stories", { n: runs.length })');
   });
 
   it("the 'Builds · Ask after' well sits under the cover title and before Play, in uiLang (the essay moved to the reader)", () => {
@@ -272,5 +274,38 @@ describe("B-PLAY-11 — Tonight cover: no virtue tallies, insight first, catalog
     const preFix = '{METRIC_LABELS[m]} {totalMetrics[m]}';
     expect(preFix).toContain("METRIC_LABELS");
     expect(parent).not.toContain(preFix);
+  });
+});
+
+describe("W2-SHELLPLAY r2 · #/stories — one filled button, honest 'starring', Play clear of the nav", () => {
+  const parent = parentBranch(HERO);
+  const cover = parent.slice(parent.indexOf('data-testid="stories-cover"'), parent.indexOf("</section>", parent.indexOf('data-testid="stories-cover"')));
+
+  it("hero-first is ONE quiet text row inside the cover art band — no PlayPanel/PlayButton on the parent page", () => {
+    expect(cover).toContain('data-testid="hero-first-gate"');
+    expect(cover).toContain('t("elev.stories.tonight.heroRow", { name: heroName })');
+    expect(parent).not.toMatch(/<PlayPanel|<PlayButton/);
+    expect((parent.match(/--gradient-cta/g) || []).length).toBe(1);
+    // NEGATIVE CONTROL: the r1 gate shape is caught
+    expect('<PlayPanel tone="lav" data-testid="hero-first-gate"><PlayButton tone="clay" />').toMatch(/<PlayPanel|<PlayButton/);
+  });
+
+  it("no hero: the door opens on 'From today', and the shell says 'starring' only once a hero exists", () => {
+    expect(HERO).toContain('consumeTonightMode() ?? (childProfile.avatar ? "hero" : "today")');
+    for (const f of ["components/layout/Shell.tsx", "components/layout/Topbar.tsx"]) {
+      expect(read(f), f).toContain('section.id === "stories" && !childProfile.avatar ? "nav.sub.stories.noHero"');
+    }
+    for (const lang of ["en", "he"] as const) {
+      expect(translate(lang, "nav.sub.stories.noHero", { name: "Dylan" })).not.toMatch(/starring|בכיכוב/i);
+    }
+  });
+
+  it("Builds is clamped to two lines below sm (Play stays above the bottom nav at 375)", () => {
+    expect(cover).toContain('className="m-0 line-clamp-2 sm:line-clamp-none"');
+  });
+
+  it("the reading line is plural-keyed in both locales", () => {
+    expect(translate("en", "elev.stories.counts.stories.one", { n: 1 })).toBe("1 story read together");
+    expect(translate("he", "elev.stories.counts.stories.one", { n: 1 })).not.toMatch(/[A-Za-z]/);
   });
 });

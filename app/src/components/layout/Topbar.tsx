@@ -61,7 +61,8 @@ export default function Topbar() {
           {t("nav.title." + section.id)}
         </span>
         <span className="text-[12px] truncate" style={{ color: "var(--arbor-muted)" }}>
-          {t("nav.sub." + section.id, { name: childProfile.name })}
+          {/* W2-SHELLPLAY critic r2: "starring" only once a hero exists. */}
+          {t(section.id === "stories" && !childProfile.avatar ? "nav.sub.stories.noHero" : "nav.sub." + section.id, { name: childProfile.name })}
         </span>
       </div>
 

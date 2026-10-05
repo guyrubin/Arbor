@@ -103,6 +103,9 @@ export const en: Record<string, string> = {
   "elev.stories.tonight.askAfter": "Ask after",
   "elev.stories.sub": "One story for tonight, starring {name}. The whole shelf is below when you want it.",
   "elev.stories.counts.stories": "{n} stories read together",
+  "elev.stories.counts.stories.one": "1 story read together",
+  // W2-SHELLPLAY critic r2: the quiet hero-first row inside the cover art band.
+  "elev.stories.tonight.heroRow": "Give {name} a hero for these stories",
   "elev.stories.catalogue.title": "Choose a different story",
   // B-PLAY-11: the one disclosure holding the pack filter + catalogue.
   "elev.stories.more": "More stories",
@@ -318,6 +321,8 @@ export const he: Record<string, string> = {
   "elev.stories.tonight.askAfter": "לשאול אחרי",
   "elev.stories.sub": "סיפור אחד לערב, בכיכוב {name}. כל המדף מחכה מתחת כשתרצו.",
   "elev.stories.counts.stories": "{n} סיפורים שקראתם יחד",
+  "elev.stories.counts.stories.one": "סיפור אחד שקראתם יחד",
+  "elev.stories.tonight.heroRow": "תנו ל־{name} גיבור לסיפורים האלה",
   "elev.stories.catalogue.title": "בחירת סיפור אחר",
   "elev.stories.more": "סיפורים נוספים",
   "elev.practice.door.when.day": "מאז {day}",

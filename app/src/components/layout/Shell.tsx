@@ -500,7 +500,7 @@ export default function Shell() {
               quiet — the pills already name the hub. */}
           {!HUB_LINE_QUIET_TABS.has(activeTab) && (
           <p className="lg:hidden text-[11px] leading-snug mb-3 min-w-0" style={{ color: "var(--arbor-muted)" }}>
-            {hubPulse ? t(hubPulse.key, hubPulse.params) : t("nav.sub." + section.id, { name: childProfile.name })}
+            {hubPulse ? t(hubPulse.key, hubPulse.params) : t(section.id === "stories" && !childProfile.avatar ? "nav.sub.stories.noHero" : "nav.sub." + section.id, { name: childProfile.name })}
           </p>
           )}
 
