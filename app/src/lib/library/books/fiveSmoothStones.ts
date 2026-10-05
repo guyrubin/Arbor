@@ -1,8 +1,9 @@
 /**
  * "Five Smooth Stones" (1 Samuel 17) — B-BOOK-06: THE PROOF BOOK (RULINGS
- * BR1), as data. Source of record: execution/2026-10-06--kids-books/
- * proof-book-david.md — §4 (manuscript), §3.1 (parent panel), §1 (source,
- * knowledge, omissions), §5 (plate and pose ledger).
+ * BR1), as data. Source of record: MANUSCRIPT v2 = execution/2026-10-06--
+ * kids-books/depth-pass-david.md §3 (pages) + §3.2 (parent panel); v1 was
+ * proof-book-david.md §4. v2 adds p3b (Eliab: "Nobody sent him to the
+ * giant"), so the paths are 11 / 12 / 12 screens.
  *
  * - CAST mode (BR2): the child plays David. The narration says "David"; the
  *   child's name ({name}) appears only on the cover's name line and in the
@@ -13,8 +14,12 @@
  *   repair tap points, overlays, occluders, plate sizes + provenance) comes
  *   from ONE object, fiveSmoothStones.geometry.json, GENERATED from the art
  *   agent's proof-art/david/plates.json by scripts/import-book-art.py.
- * - Repairs: p7b = three taps (helmet, coat, sword; any order; cannot fail),
- *   p7c = one tap "Stand up!". No "Another way?" (BR3).
+ * - Repairs: p7b = three taps (fixed order helmet → sword → coat; cannot
+ *   fail), p7c = one tap "Stand up!" and the page ends on David standing
+ *   (`stand-tall`). No "Another way?" (BR3).
+ * - p9 has ordered ART STATES (v2): the swing → the dust on the narration cue
+ *   → "the soldiers rise" (PL7-rise) ~2 s later. A state whose plate is not
+ *   delivered yet is skipped.
  */
 import rawGeometry from "./fiveSmoothStones.geometry.json";
 import { readGeometry } from "../bookGeometry";
@@ -118,10 +123,22 @@ export const fiveSmoothStonesPlates: PlateTable = {
   PL6: plate("PL6", "morning"), // the brook (+ the kneeling boulder)
   PL7: plate("PL7", "day"), // the duel
   "PL7-dust": plate("PL7-dust", "day"), // full-plate BOOM alternative — NOT used (the edit re-framed; the dust overlay is used)
+  // v2 (round 3): registered only when the geometry has them
+  ...(G.plates.PL3e ? { PL3e: plate("PL3e", "morning") } : {}), // p3b: Eliab standing by the bread basket
+  ...(G.plates["PL7-rise"] ? { "PL7-rise": plate("PL7-rise", "day") } : {}), // p9 state 3: the soldiers stand
 };
 
 /** A line that is the same for both Hebrew genders (CAST: spoken of David). */
 const same = (en: string, he: string): BookLine => ({ en, he: { m: he, f: he } });
+
+/** Manuscript v2 poses the art agent's round 3 delivers (stand-tall-hand,
+ *  stand-tall, sit-hunched): the page names the v2 pose at the geometry's
+ *  slot; until the sheet has it, the reader shows `poseFallbacks`. */
+const withPose = (slot: Slot, pose: string): Slot => ({ ...slot, pose });
+
+/** Pages whose art waits for the art agent's round 3 (placeholder geometry
+ *  allowed; listed in BUILD-LOG's TODO). Empty once round 3 is imported. */
+export const ART_PENDING = new Set<string>(G.pages.p3b ? [] : ["p3b"]);
 
 const cover: Page = {
   id: "cover",
@@ -129,7 +146,7 @@ const cover: Page = {
   type: "spread",
   hero: heroOf("cover", "walk-bag"),
   ...artOf("cover"),
-  text: same(`A shepherd, a sling, and a giant as big as a tree.`, `רועה, קלע, וענק גבוה כמו עץ.`),
+  text: same(`Everyone ran. One shepherd went.`, `כולם ברחו. רועה אחד הלך.`),
 };
 
 const p1: Page = {
@@ -138,10 +155,10 @@ const p1: Page = {
   hero: heroOf("p1", "sling-swing"),
   ...artOf("p1"),
   text: {
-    en: `Today, {name} is David, the shepherd. On the hills of Bethlehem, David keeps his father's sheep. Every day he practises with his sling. Whirr, whirr, whirr… CLACK! Right on the old olive tree. A hundred times a day.`,
+    en: `Today, {name} is David, the shepherd. On the hills of Bethlehem, David keeps his father's sheep. Every day he practises with his sling. Whirr, whirr, whirr… CLACK! A hundred times a day. Each day, a little closer to the middle.`,
     he: {
-      m: `היום {name} הוא דוד, הרועה. על גבעות בית לחם, דוד שומר על הכבשים של אבא שלו. כל יום הוא מתאמן בקלע. ווּשׁ, ווּשׁ, ווּשׁ… טַק! בּוּל בעץ הזית הזקן. מאה פעמים ביום.`,
-      f: `היום {name} היא דוד, הרועה. על גבעות בית לחם, דוד שומר על הכבשים של אבא שלו. כל יום הוא מתאמן בקלע. ווּשׁ, ווּשׁ, ווּשׁ… טַק! בּוּל בעץ הזית הזקן. מאה פעמים ביום.`,
+      m: `היום {name} הוא דוד, הרועה. על גבעות בית לחם, דוד שומר על הכבשים של אבא שלו. כל יום הוא מתאמן בקלע. ווּשׁ, ווּשׁ, ווּשׁ… טַק! מאה פעמים ביום. וכל יום, קצת יותר קרוב לאמצע.`,
+      f: `היום {name} היא דוד, הרועה. על גבעות בית לחם, דוד שומר על הכבשים של אבא שלו. כל יום הוא מתאמן בקלע. ווּשׁ, ווּשׁ, ווּשׁ… טַק! מאה פעמים ביום. וכל יום, קצת יותר קרוב לאמצע.`,
     },
   },
 };
@@ -152,8 +169,8 @@ const p2: Page = {
   hero: heroOf("p2", "run-staff"),
   ...artOf("p2"),
   text: same(
-    `One day, a lion leaps out and grabs a lamb! David runs after it and saves the lamb from its mouth. Another day, a bear. David runs again. Whirr, whirr, whirr… CLACK! Then Father calls: “David!”`,
-    `יום אחד, אריה קופץ וחוטף טלה! דוד רץ אחריו, ומציל את הטלה מפיו. יום אחר, דוב. ודוד רץ שוב. ווּשׁ, ווּשׁ, ווּשׁ… טַק! ואז אבא קורא: "דוד!"`,
+    `One day, a lion grabs the smallest lamb! David's heart thumps. He runs after it anyway, and saves the lamb from its mouth. Another day, a bear. David runs again. Whirr, whirr, whirr… CLACK! Then Father calls: "David!"`,
+    `יום אחד, אריה חוטף את הטלה הכי קטן! הלב דופק. ובכל זאת דוד רץ אחריו, ומציל את הטלה מפיו. יום אחר, דוב. ודוד רץ שוב. ווּשׁ, ווּשׁ, ווּשׁ… טַק! ואז אבא קורא: "דוד!"`,
   ),
 };
 
@@ -163,19 +180,32 @@ const p3: Page = {
   hero: heroOf("p3", "look-up"),
   ...artOf("p3"),
   text: same(
-    `“Take this bread to your brothers,” says Father. So David walks to the valley of Elah. Across the brook stands a giant. Goliath! Big as a tree. “GIVE ME A MAN, AND WE WILL FIGHT!” All the soldiers run.`,
-    `"קח את הלחם הזה לאחים שלך," אומר אבא. ודוד הולך אל עמק האלה. מעבר לנחל עומד ענק. גָּלְיָת! גבוה כמו עץ. "תְּנוּ־לִי אִישׁ וְנִלָּחֲמָה יָחַד!" וכל החיילים בורחים.`,
+    `"Take this bread to your brothers," says Father. David leaves his sheep with a keeper, and goes. In the valley of Elah stands Goliath, big as a tree. "GIVE ME A MAN!" Forty days, everyone runs. Even the king.`,
+    `"קח את הלחם הזה לאחים שלך," אומר אבא. דוד משאיר את הכבשים אצל שומר, והולך. בעמק האלה עומד גָּלְיָת, גבוה כמו עץ. "תְּנוּ־לִי אִישׁ וְנִלָּחֲמָה יָחַד!" ארבעים יום, כולם בורחים. אפילו המלך.`,
+  ),
+};
+
+// v2: NEW page — mocked first (Eliab). Until round 3 delivers PL3e and its
+// geometry, the valley plate and p3's slot with `look-across` stand in.
+const p3b: Page = {
+  id: "p3b",
+  plateId: G.plates.PL3e ? "PL3e" : "PL3",
+  hero: G.pages.p3b?.hero ?? withPose(G.pages.p3?.hero ?? heroOf("p3", "look-across"), "look-across"),
+  ...(G.pages.p3b ? artOf("p3b") : { phoneCrop: G.pages.p3?.phoneCrop }),
+  text: same(
+    `"Who is he, to shout at us?" asks David. Big brother Eliab frowns: "Why are you here? Who is keeping your sheep?" "What did I do? I only asked." Father sent him with bread. Nobody sent him to the giant.`,
+    `"מי הוא, שיצעק עלינו ככה?" שואל דוד. אליאב, אחיו הגדול, כועס: "לָמָּה־זֶּה יָרַדְתָּ? ואצל מי הכבשים?" "מֶה עָשִׂיתִי עָתָּה? רק שאלתי." אבא שלח אותו עם לחם. אף אחד לא שלח אותו אל הענק.`,
   ),
 };
 
 const p4: Page = {
   id: "p4",
   plateId: "PL4",
-  hero: heroOf("p4", "look-up"),
+  hero: withPose(heroOf("p4", "stand-tall-hand"), "stand-tall-hand"),
   ...artOf("p4"),
   text: same(
-    `“I will go,” says David. King Saul looks down at him. “You are only a boy.” “A lion came,” says David. “A bear came. I ran after them. I saved the lamb.” Saul is quiet. He points to his armour.`,
-    `"אני אלך," אומר דוד. שאול המלך מביט בו מלמעלה. "אתה רק נער." "בא אריה," אומר דוד. "בא דוב. רדפתי אחריהם, והצלתי את הטלה." שאול שותק. ואז מצביע על השריון שלו.`,
+    `David stands up tall before the king. "Let no one's heart fall," he says. "I will go." "You are only a boy," says Saul. "A lion came. A bear came. I ran after them. This giant will be like them."`,
+    `דוד עומד זקוף מול המלך. "אַל־יִפֹּל לֵב־אָדָם עָלָיו," הוא אומר. "אני אלך." "אתה רק נער," אומר שאול. "בא אריה. בא דוב. רדפתי אחריהם. והענק הזה יהיה כמו אחד מהם."`,
   ),
 };
 
@@ -186,8 +216,8 @@ const p5: Page = {
   hero: heroOf("p5", "worried"),
   ...artOf("p5"),
   text: same(
-    `Here is the king's armour: a bronze helmet, a heavy coat of mail, a sword. Here is David's own staff, his own sling. He has never tried the armour. Not once. Outside, the giant shouts again. What will David do?`,
-    `הנה כלי המלחמה של המלך: כובע נחושת, שריון כבד וחרב. והנה המקל של דוד, והקלע שלו. את כלי המלך הוא עוד לא ניסה. אף פעם. בחוץ, הענק צועק שוב. מה יעשה דוד?`,
+    `King Saul gives David his armour: a bronze helmet, a heavy coat, a sword. Made for a king. Here is David's own staff, his own sling. He has never tried the armour. Not once. What will David do?`,
+    `שאול נותן לדוד את כלי המלחמה שלו: כובע נחושת, שריון כבד וחרב. במידה של מלך. והנה המקל של דוד, והקלע שלו. את כלי המלך הוא עוד לא ניסה. אף פעם. מה יעשה דוד?`,
   ),
 };
 
@@ -198,21 +228,20 @@ const p6a: Page = {
   hero: heroOf("p6a", "run-staff"),
   ...artOf("p6a"),
   text: same(
-    `David looks at the helmet, the coat, the sword. “I cannot go with these,” he says, “for I have not tried them.” He takes his own staff and sling. No helmet? No sword? His heart thumps. His feet are light.`,
-    `דוד מביט בכובע, בשריון, בחרב. "לֹא אוּכַל לָלֶכֶת בָּאֵלֶּה, כִּי לֹא נִסִּיתִי," הוא אומר. הוא לוקח את המקל שלו, את הקלע שלו. בלי כובע? בלי חרב? הלב דופק חזק. אבל הרגליים קלות.`,
+    `David looks at the king's armour. "I cannot go with these," he says, "for I have not tried them." He takes his own staff, his own sling. No helmet. His heart thumps. He goes anyway, light-footed, down the hill.`,
+    `דוד מביט בכלי המלך. "לֹא אוּכַל לָלֶכֶת בָּאֵלֶּה, כִּי לֹא נִסִּיתִי," הוא אומר. הוא לוקח את המקל שלו, את הקלע שלו. בלי כובע. הלב דופק. והוא הולך בכל זאת, ברגליים קלות, במורד הגבעה.`,
   ),
 };
 
 // ── Branch B — EASY: "Wear the king's armour" (2 pages) ───────────────────────
-
 const p6b: Page = {
   id: "p6b",
   plateId: "PL4e",
   hero: heroOf("p6b", "armour-stuck"),
   ...artOf("p6b"),
   text: same(
-    `On goes the bronze helmet. On goes the heavy coat. On goes the sword. David takes one step. Clank. Another. CLANK! He cannot run. He cannot lift his arm to swing the sling. He has never tried these. Not once.`,
-    `כובע הנחושת, על הראש. השריון הכבד, על הגוף. החרב, על המותן. דוד עושה צעד. קְלַנְק. ועוד צעד. קְלַנְק! הוא לא יכול לרוץ, לא יכול להרים יד לקלע. את אלה לא ניסה. אף פעם.`,
+    `On goes the king's helmet. On goes the heavy coat. David takes one step. CLANK! The helmet slips over his eyes. He cannot see, he cannot run. It is the king's, not his. He has never tried it.`,
+    `כובע המלך, על הראש. השריון הכבד, על הגוף. דוד עושה צעד. קְלַנְק! הכובע נופל על העיניים. הוא לא רואה, לא יכול לרוץ. זה של המלך, לא שלו. ואת זה לא ניסה אף פעם.`,
   ),
 };
 
@@ -221,7 +250,7 @@ const p7b: Page = {
   plateId: "PL4e",
   hero: heroOf("p7b", "armour-stuck"),
   ...artOf("p7b"),
-  text: same(`“I cannot go with these,” says David, “for I have not tried them.”`, `"לֹא אוּכַל לָלֶכֶת בָּאֵלֶּה, כִּי לֹא נִסִּיתִי," אומר דוד.`),
+  text: same(`"I cannot go with these," says David, "for I have not tried them."`, `"לֹא אוּכַל לָלֶכֶת בָּאֵלֶּה, כִּי לֹא נִסִּיתִי," אומר דוד.`),
   repair: {
     promptLabel: { en: `Take it off`, he: `להוריד` },
     // Fixed order (fix round 1): helmet → sword → coat, so the coat lands on the
@@ -232,37 +261,38 @@ const p7b: Page = {
       { id: "sword", label: { en: `the sword`, he: `החרב` }, ...itemAt("p7b", "sword"), line: same(`Off comes the sword.`, `החרב יורדת.`) },
       { id: "coat", label: { en: `the coat`, he: `השריון` }, ...itemAt("p7b", "coat"), line: same(`Off comes the coat.`, `השריון יורד.`) },
     ],
-    textAfter: same(`David stretches. Light again! With his own sling, he runs to the brook.`, `דוד מתמתח. קל שוב! ועם הקלע שלו, הוא רץ אל הנחל.`),
+    textAfter: same(`David can see again. His own staff, his own sling. Now he runs!`, `דוד רואה שוב. המקל שלו, הקלע שלו. ועכשיו הוא רץ!`),
     heroAfter: afterOf("p7b", "free-stretch"),
   },
 };
 
-// ── Branch C — THIRD: "Wait for a soldier" (2 pages) ──────────────────────────
+// ── Branch C — THIRD: "Wait for someone bigger" (2 pages) ─────────────────────
 const p6c: Page = {
   id: "p6c",
   plateId: "PL3w",
-  hero: heroOf("p6c", "sit"),
+  hero: withPose(heroOf("p6c", "sit-hunched"), "sit-hunched"),
   ...artOf("p6c"),
   text: same(
-    `David sits and waits for a soldier. One soldier stares at his own feet. One hides behind his shield. “GIVE ME A MAN!” The shout is bigger now. The sun climbs higher. Nobody goes. David's knees shake more and more.`,
-    `דוד יושב ומחכה שחייל ילך. חייל אחד מסתכל על הרגליים שלו. חייל אחר מתחבא מאחורי המגן. "תְּנוּ־לִי אִישׁ!" הצעקה גדלה. השמש עולה גבוה. אף אחד לא הולך. והברכיים של דוד רועדות, עוד ועוד.`,
+    `David sits down to wait for someone bigger. He curls up small, like the soldiers. "GIVE ME A MAN!" The giant comes closer. And closer. The shout grows bigger. Nobody goes. David's knees shake more and more.`,
+    `דוד מתיישב לחכות למישהו גדול יותר. הוא מתכווץ, כמו החיילים. "תְּנוּ־לִי אִישׁ!" הענק מתקרב. ומתקרב. הצעקה גדלה. אף אחד לא הולך. והברכיים של דוד רועדות, עוד ועוד.`,
   ),
 };
 
 const p7c: Page = {
   id: "p7c",
   plateId: "PL3w",
-  hero: heroOf("p7c", "sit"),
+  hero: withPose(heroOf("p7c", "sit-hunched"), "sit-hunched"),
   ...artOf("p7c"),
   text: same(`Nobody. Not one.`, `אף אחד. אפילו לא אחד.`),
   repair: {
     promptLabel: { en: `Stand up!`, he: `לקום!` },
     items: [{ id: "stand", label: { en: `Stand up!`, he: `לקום!` }, ...itemAt("p7c", "stand") }],
     textAfter: same(
-      `Then David stands up tall. If nobody goes, David will go. He grips his staff and his sling. His knees still shake. He goes anyway, down to the brook.`,
-      `ואז דוד קם, זקוף. אם אף אחד לא הולך, דוד ילך. הוא אוחז במקל ובקלע. הברכיים עוד רועדות. והוא הולך בכל זאת, אל הנחל.`,
+      `David stands up tall. If nobody goes, David will go. His heart thumps. His knees still shake. He goes anyway. From up here, the giant looks a little smaller.`,
+      `דוד קם, זקוף. אם אף אחד לא הולך, דוד ילך. הלב דופק, הברכיים עוד רועדות, והוא הולך בכל זאת. ומלמעלה, הענק נראה קצת יותר קטן.`,
     ),
-    heroAfter: afterOf("p7c", "run-staff"),
+    // v2: the page ENDS on David standing (stand-tall), not running
+    heroAfter: withPose(afterOf("p7c", "stand-tall"), "stand-tall"),
   },
 };
 
@@ -283,17 +313,24 @@ const p8: Page = {
   },
 };
 
+/** p9's art states (v2): 0 = the swing; 1 = the dust on the narration cue;
+ *  2 = "the soldiers rise" plate ~2 s later (3 s when silent), held 1.5 s
+ *  before Next. A state whose plate is not delivered yet is skipped. */
+const p9States: NonNullable<Page["artStates"]> = [
+  { id: "dust", overlays: ["dust-cloud"], trigger: "narration" },
+  ...(G.plates["PL7-rise"] ? [{ id: "rise", plateId: "PL7-rise", overlays: [] as string[], trigger: { afterMs: 2000, silentAfterMs: 3000 } }] : []),
+];
+
 const p9: Page = {
   id: "p9",
   plateId: "PL7",
   type: "spread",
   hero: heroOf("p9", "sling-swing"),
   ...artOf("p9"),
-  // The dust cloud (geometry overlay, revealed after the narration) hides the
-  // giant after BOOM; no body is ever shown.
+  artStates: p9States,
   text: same(
-    `“You come to me with a sword and a spear,” says David. “I come to you in the name of God.” David runs toward the giant. One stone. Whirr, whirr, whirr… The stone flew. The giant fell. BOOM.`,
-    `"אַתָּה בָּא אֵלַי בְּחֶרֶב וּבַחֲנִית וּבְכִידוֹן," אומר דוד. "וַאֲנִי בָּא אֵלֶיךָ בְּשֵׁם אֱלֹהִים." דוד רץ לקראת הענק. אבן אחת. ווּשׁ, ווּשׁ, ווּשׁ… האבן עפה. הענק נפל. בּוּם.`,
+    `David answers: "You come with a sword and a spear. I come in the name of God. All will see: swords and spears do not win!" He runs toward the giant. Whirr, whirr, whirr… The stone flew. The giant fell. BOOM.`,
+    `דוד עונה: "אַתָּה בָּא אֵלַי בְּחֶרֶב וּבַחֲנִית וּבְכִידוֹן, וַאֲנִי בָּא אֵלֶיךָ בְּשֵׁם אֱלֹהִים. וכולם יידעו: לֹא בְּחֶרֶב וּבַחֲנִית!" דוד רץ לקראת הענק. ווּשׁ, ווּשׁ, ווּשׁ… האבן עפה. הענק נפל. בּוּם.`,
   ),
 };
 
@@ -304,13 +341,13 @@ const p10: Page = {
   hero: heroOf("p10", "sit"),
   ...artOf("p10"),
   text: same(
-    `Then, quiet. That evening, David sits with his sheep on the hill. Baa. Four smooth stones in his bag. Tomorrow? A hundred times again.`,
-    `ואז, שקט. בערב, דוד יושב עם הכבשים על הגבעה. מֶההה. ארבע אבנים חלקות בילקוט. מחר? שוב מאה פעמים.`,
+    `That day, the soldiers stood up tall. That evening, David sits with his sheep. Baa. Four smooth stones in his bag. Tomorrow? A hundred times again.`,
+    `באותו יום, החיילים קמו זקופים. בערב, דוד יושב עם הכבשים על הגבעה. מֶההה. ארבע אבנים חלקות בילקוט. מחר? שוב מאה פעמים.`,
   ),
   echo: {
-    a: same(`His own staff. His own sling. All tried.`, `המקל שלו. הקלע שלו. את כולם ניסה.`),
-    b: same(`The king's armour? One day, after a hundred tries.`, `ושריון המלך? אולי יום אחד, אחרי מאה ניסיונות.`),
-    c: same(`Next time a giant shouts, David won't wait.`, `בפעם הבאה שענק יצעק, דוד לא יחכה.`),
+    a: same(`His own staff. His own sling.`, `המקל שלו. הקלע שלו.`),
+    b: same(`Armour? One day, after a hundred tries.`, `שריון? יום אחד, אחרי מאה ניסיונות.`),
+    c: same(`His knees remember the long wait.`, `הברכיים זוכרות את ההמתנה הארוכה.`),
   },
   // The play frame closes the book (the only other place the name appears).
   closing: {
@@ -322,24 +359,29 @@ const p10: Page = {
 export const fiveSmoothStones: Book = {
   id: BOOK_ID,
   title: { en: `Five Smooth Stones`, he: `חָמֵשׁ אֲבָנִים חֲלָקוֹת` },
-  coverLine: { en: `A shepherd, a sling, and a giant as big as a tree.`, he: `רועה, קלע, וענק גבוה כמו עץ.` },
+  coverLine: { en: `Everyone ran. One shepherd went.`, he: `כולם ברחו. רועה אחד הלך.` },
   coverNameLine: { en: `{name} as David`, he: `{name} בתפקיד דוד` },
-  sourceRef: "1 Samuel 17:12-50",
+  sourceRef: "1 Samuel 17",
   knowledge:
-    "What you practise in small dangers is what you can bring to the big one; borrowed armour, however royal, does not fit; and when the strong freeze, the small one who has practised steps forward of their own will.",
+    "For forty days a whole army waited for someone else to face the giant; the youngest volunteered, went as himself with what he had practised on small dangers, left the king's armour because he had never tried it, and when he went the others stood up.",
   childRole: "CAST (BR2) — the child is David, a youth in the text (17:33, 17:42); play frame on the first and last pages.",
   additions: [
     "the play frame",
     "Bun (painted, neutral)",
     "the olive-tree target David practises on",
     "\"a hundred times a day\"",
+    "the lamb's black ear",
+    "the tally marks",
+    "the giant's shadow",
     "the path where David waits (in the text the army waited forty days, 17:16; David did not)",
     "staging: the armour waits on a stand (in the text Saul dresses David himself, 17:38)",
-    "omitted: 17:25-27 (the reward), 17:28-30 (Eliab's anger), 17:43-44 and 17:46-47 (curses), 17:50-58 (after the fall)",
+    "omitted: 17:25-27 (the reward and David's questions about it), 17:43-44 (curses), 17:50-51 (how the giant dies), 17:52 (the chase)",
   ],
   ageBand: "4-7",
+  /** v2 poses the hero sheet may not have yet (round 3): the nearest pose it has. */
+  poseFallbacks: { "stand-tall-hand": "look-up", "stand-tall": "look-up", "sit-hunched": "sit" },
   cover,
-  pages: [p1, p2, p3, p4, p5, p8, p9, p10],
+  pages: [p1, p2, p3, p3b, p4, p5, p8, p9, p10],
   decision: {
     pageId: "p5",
     // dedicated card pictures, when the art agent delivers them (geometry)
@@ -347,30 +389,32 @@ export const fiveSmoothStones: Book = {
     choices: [
       { id: "a", type: "hard", label: { en: `Go as I am`, he: `ללכת כמו שאני` }, branch: [p6a] },
       { id: "b", type: "easy", label: { en: `Wear the king's armour`, he: `ללבוש את השריון של המלך` }, branch: [p6b, p7b] },
-      { id: "c", type: "third", label: { en: `Wait for a soldier`, he: `לחכות שחייל ילך` }, branch: [p6c, p7c] },
+      { id: "c", type: "third", label: { en: `Wait for someone bigger`, he: `לחכות למישהו גדול יותר` }, branch: [p6c, p7c] },
     ],
   },
   rejoinPageId: "p8",
   parent: {
-    builds: {
-      en: `Courage that has been practised. David faces the giant with what he has tried a hundred times, not with the king's armour. When the strong freeze, the one who practised steps forward.`,
-      he: `אומץ שמתאמנים בו. דוד יוצא אל הענק עם מה שניסה מאה פעמים, ולא עם השריון של המלך. כשהגדולים קופאים, מי שהתאמן יוצא קדימה.`,
+    knows: {
+      en: `For forty days a whole army, the king included, waited for someone else to face the giant. The youngest went. Nobody sent him: he volunteered. He went as himself, with what he had practised on small dangers, and he left the king's armour because he had never tried it. When he went, the others stood up.`,
+      he: `ארבעים יום חיכה צבא שלם, והמלך איתו, שמישהו אחר יצא אל הענק. הצעיר מכולם יצא. אף אחד לא שלח אותו: הוא התנדב. הוא הלך כמו שהוא, עם מה שתרגל מול סכנות קטנות, והשאיר את שריון המלך כי מעולם לא ניסה אותו. כשהוא יצא, כל האחרים קמו.`,
     },
-    why: {
-      en: `The choice is the Bible's own: David put on the king's armour and took it off, "for I have not tried them" (1 Sam 17:39). Every path reaches the brook with what is his; each leaves a different memory. Nothing is scored.`,
-      he: `הבחירה לקוחה מהמקרא עצמו: דוד לבש את שריון המלך והסיר אותו, "כִּי לֹא נִסִּיתִי" (שמואל א׳ יז, לט). כל דרך מגיעה אל הנחל עם מה ששלו, וכל אחת משאירה זיכרון אחר. שום דבר לא נמדד.`,
+    whyNow: {
+      en: `Five-year-olds meet small giants every week: a new group, a bigger child, the dark, the deep end. The story never says David was not afraid; his heart thumps every time. It shows the order that works: practise small, then choose to go yourself. A fear faced by choice, in small steps, usually shrinks. A fear avoided, or always handled by an adult, usually grows.`,
+      he: `ילדים בני חמש פוגשים ענקים קטנים כל שבוע: קבוצה חדשה, ילד גדול יותר, החושך, המים העמוקים. הסיפור לא אומר שדוד לא פחד; הלב שלו דופק כל פעם. הוא מראה את הסדר שעובד: מתאמנים בקטן, ואז בוחרים ללכת בעצמך. פחד שפוגשים מבחירה, בצעדים קטנים, בדרך כלל קטן. פחד שבורחים ממנו, או שמבוגר תמיד פותר במקומך, בדרך כלל גדל.`,
     },
-    askAfter: same(`What did David take to the giant, and why not the king's armour?`, `מה דוד לקח איתו אל הענק, ולמה לא את השריון של המלך?`),
+    tomorrow: {
+      en: `Choose one small "lion" your child can meet alone: ordering their own roll at the bakery, carrying the bag to the car, asking the teacher a question. Stand beside them; do not do it for them. Afterwards, say only what happened: "Your heart was thumping, and you did it."`,
+      he: `בחרו "אריה" קטן אחד שהילד יכול לפגוש לבד: להזמין בעצמו לחמנייה במאפייה, לסחוב את התיק לאוטו, לשאול את הגננת שאלה. עמדו לידו, אל תעשו במקומו. אחר כך אמרו רק מה שקרה: "הלב שלך דפק, ועשית את זה."`,
+    },
+    askAfter: same(`Why did David leave the king's armour in the tent?`, `למה דוד השאיר את השריון של המלך באוהל?`),
     askAfterOptional: {
-      en: `What have you practised so many times that you could do it even when you're scared?`,
-      he: {
-        m: `מה תרגלת כל כך הרבה פעמים, שהיית מצליח לעשות את זה גם כשאתה מפחד?`,
-        f: `מה תרגלת כל כך הרבה פעמים, שהיית מצליחה לעשות את זה גם כשאת מפחדת?`,
-      },
+      en: `Who stood up at the end, and why do you think they stood up?`,
+      he: { m: `מי קם בסוף, ולמה אתה חושב שהם קמו?`, f: `מי קם בסוף, ולמה את חושבת שהם קמו?` },
     },
+    together: { en: `What if David had waited for someone bigger? Read it again and see.`, he: `ומה אם דוד היה מחכה למישהו גדול יותר? קראו שוב ותראו.` },
     sourceNote: {
-      en: `1 Samuel 17:12–50, told in short. Quoted: 17:10, 17:39, 17:40, and the first half of 17:45. "In the name of God" is David's own claim (17:45), said here in plain words. Left out for young children: the king's reward (17:25), Eliab's anger (17:28), Goliath's curses (17:43–44), and everything after the giant falls. In the Bible, Goliath dies (17:50–51). Added: the play frame, Bun, the olive-tree target, "a hundred times a day", and the path where David waits (in the Bible the army waited forty days, 17:16, but David did not). The "armour" path tells it exactly as the Bible does; in the Bible Saul dresses David himself.`,
-      he: `שמואל א׳ יז, יב–נ, בקיצור. מצוטטים: יז, י; יז, לט; יז, מ; ותחילת יז, מה. "בשם אלוהים" הם דברי דוד עצמו (יז, מה), במילים פשוטות. הושמטו לילדים צעירים: שכר המלך (יז, כה), כעס אליאב (יז, כח), קללות גלית (יז, מג–מד) וכל מה שאחרי נפילת הענק: במקרא גלית מת (יז, נ–נא). נוספו: מסגרת המשחק, ארנבוני, עץ הזית שבו דוד מתאמן, "מאה פעמים ביום", והדרך שבה דוד מחכה (במקרא הצבא חיכה ארבעים יום, יז, טז, אבל דוד לא). דרך "השריון" מספרת בדיוק כמו המקרא; שם שאול עצמו מלביש את דוד.`,
+      en: `1 Samuel 17, told in short. Quoted: 17:10, 17:28, 17:29, 17:32, 17:39, 17:40, the first half of 17:45, and the words "not by sword and spear" from 17:47. "In the name of God" is David's own claim (17:45), in plain words; in the Bible he says the battle belongs to God (17:47), and the narrator adds that "there was no sword in David's hand" (17:50). Left out for young children: the king's reward and David's questions about it (17:25–27), Goliath's curses (17:43–44), how the giant dies (17:50–51) and the chase (17:52). Added: the play frame, Bun, the olive-tree target, "a hundred times a day", the lamb's black ear, the tally marks, the giant's shadow, and the path where David waits (in the Bible the army waited forty days, 17:16; David did not). The "armour" path tells it as the Bible does; there Saul dresses David himself (17:38).`,
+      he: `שמואל א׳ יז, בקיצור. מצוטטים: יז, י; כח; כט; לב; לט; מ; תחילת מה; והמילים "לֹא בְּחֶרֶב וּבַחֲנִית" מיז, מז. "בשם אלוהים" הם דברי דוד עצמו (יז, מה), במילים פשוטות; במקרא הוא אומר שהמלחמה לאלוהים (יז, מז), והמספר מוסיף "וְחֶרֶב אֵין בְּיַד־דָּוִד" (יז, נ). הושמטו לילדים צעירים: שכר המלך ושאלות דוד עליו (יז, כה–כז), קללות גלית (יז, מג–מד), מות הענק (יז, נ–נא) והמרדף (יז, נב). נוספו: מסגרת המשחק, ארנבוני, עץ הזית, "מאה פעמים ביום", האוזן השחורה של הטלה, סימני הספירה, צל הענק, והדרך שבה דוד מחכה (במקרא הצבא חיכה ארבעים יום, יז, טז; דוד לא). דרך "השריון" מספרת כמו המקרא; שם שאול עצמו מלביש את דוד (יז, לח).`,
     },
   },
 };

@@ -61,6 +61,12 @@
    "footX": 0.5,
    "footW": 0.9778
   },
+  "sit-hunched": {
+   "file": "sit-hunched.webp",
+   "aspect": 0.5567,
+   "footX": 0.5,
+   "footW": 0.9778
+  },
   "sling-swing": {
    "file": "sling-swing.webp",
    "aspect": 0.3642,
@@ -81,6 +87,18 @@
   },
   "stand": {
    "file": "stand.webp",
+   "aspect": 0.3343,
+   "footX": 0.5,
+   "footW": 0.4464
+  },
+  "stand-tall": {
+   "file": "stand-tall.webp",
+   "aspect": 0.3343,
+   "footX": 0.5,
+   "footW": 0.4464
+  },
+  "stand-tall-hand": {
+   "file": "stand-tall-hand.webp",
    "aspect": 0.3343,
    "footX": 0.5,
    "footW": 0.4464
