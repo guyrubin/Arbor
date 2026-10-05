@@ -115,6 +115,9 @@ export default function SpeechCoachTab() {
   const sittingCounted = useRef(false);
   const chunksRef = useRef<Blob[]>([]);
   const recogRef = useRef<SpeechRecognitionLike | null>(null);
+  // B-KID-74: leaving the world while the mic permission/open is still pending
+  // must not leave a live stream behind (the unmount cleanup ran before it existed).
+  const unmountedRef = useRef(false);
   const recognitionAvailable = useMemo(() => getRecognitionCtor() !== null, []);
 
   // KID-23: the record button used to render whatever the device said. On an
@@ -187,6 +190,7 @@ export default function SpeechCoachTab() {
 
   useEffect(() => () => {
     // Unmount: stop any live capture and free the blob URL.
+    unmountedRef.current = true;
     mediaRef.current?.stream.getTracks().forEach((t) => t.stop());
     recogRef.current?.abort();
     if (audioUrl) URL.revokeObjectURL(audioUrl);
@@ -204,11 +208,13 @@ export default function SpeechCoachTab() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       captureStream = stream;
+      if (unmountedRef.current) { stream.getTracks().forEach((t) => t.stop()); return; }
       const rec = new MediaRecorder(stream);
       chunksRef.current = [];
       rec.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       rec.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
+        if (unmountedRef.current) return; // left the world: no count, no scoring
         const blob = new Blob(chunksRef.current, { type: rec.mimeType || "audio/webm" });
         setAudioUrl(URL.createObjectURL(blob));
         setRecState("review");

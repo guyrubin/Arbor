@@ -71,6 +71,22 @@ export function kidBarTitle(
   return surfaceTitle ?? t(SURFACE_META[view].labelKey);
 }
 
+/** B-KID-74 (Fable render, 5 Oct): exactly ONE kid view is mounted at a time
+ *  (home | library | reader | one world). The content area is a single keyed
+ *  node with an enter-only fade — no exit animation, so no AnimatePresence
+ *  keeps a left view (and its world's timers, audio and streams) alive under
+ *  the new one. A changed key unmounts the old view in the same commit. */
+export function kidViewKey(view: View, arcadeWorldId: string | null): string {
+  return view === "arcade" ? `arcade:${arcadeWorldId ?? ""}` : view;
+}
+
+/** Where the content scroll lands on arrival: the home RESTORES the position
+ *  the child left it at (the tree itself is not kept alive); every other view
+ *  arrives at the top. */
+export function arrivalScrollTop(view: View, savedHomeScroll: number): number {
+  return view === "home" ? Math.max(0, savedHomeScroll) : 0;
+}
+
 export default function KidModeOverlay() {
   const { isKidModeOpen, closeKidMode } = useKidMode();
   const { childProfile } = useArbor();
@@ -94,6 +110,9 @@ export default function KidModeOverlay() {
   });
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
+  // B-KID-74: the home's scroll position, recorded while the home is the
+  // mounted view and restored when the child comes back to it.
+  const homeScrollRef = useRef(0);
 
   const openSurface = (s: KidSurface, worldId?: string) => {
     setArcadeWorldId(worldId ?? null);
@@ -107,6 +126,7 @@ export default function KidModeOverlay() {
   const wasOpenRef = useRef(isKidModeOpen);
   useEffect(() => {
     if (isKidModeOpen && !wasOpenRef.current) {
+      homeScrollRef.current = 0;
       const p = readKidModeState();
       const asked = p.view && p.view in SURFACE_META ? (p.view as View) : "home";
       setView(asked);
@@ -129,14 +149,15 @@ export default function KidModeOverlay() {
     writeKidModeState({ open: true, view, worldId: arcadeWorldId });
   }, [isKidModeOpen, view, arcadeWorldId]);
 
-  // Each destination owns a fresh top-of-page arrival. The content div is the
-  // actual scroll container, so reset it after AnimatePresence mounts the next
-  // view rather than relying on window.scrollTo.
+  // Each destination owns a fresh top-of-page arrival; the home restores where
+  // the child left it (B-KID-74). The content div is the actual scroll
+  // container, so set it after the next view mounts rather than relying on
+  // window.scrollTo.
   useEffect(() => {
     if (!isKidModeOpen) return;
     const frame = window.requestAnimationFrame(() => {
       if (!contentRef.current) return;
-      contentRef.current.scrollTop = 0;
+      contentRef.current.scrollTop = arrivalScrollTop(view, homeScrollRef.current);
       contentRef.current.scrollLeft = 0;
     });
     return () => window.cancelAnimationFrame(frame);
@@ -324,6 +345,7 @@ export default function KidModeOverlay() {
           {/* ── Content area ───────────────────────────────────────────────── */}
           <div
             ref={contentRef}
+            onScroll={view === "home" ? (e) => { homeScrollRef.current = e.currentTarget.scrollTop; } : undefined}
             style={{
               flex: 1,
               overflowY: "auto",
@@ -338,19 +360,21 @@ export default function KidModeOverlay() {
                 fallback's only action is Home (setView("home")). */}
             <KidErrorBoundary
               onHome={() => setView("home")}
-              resetKey={view === "arcade" ? `arcade:${arcadeWorldId ?? ""}` : view}
+              resetKey={kidViewKey(view, arcadeWorldId)}
               title={t("elev.kid.crash.title")}
               homeLabel={t("elev.kid.crash.home")}
               guide={<ArborMascot size={96} mood="think" />}
             >
-              {/* B-KID-47: popLayout, not "wait" — the next view mounts at once (no
-                  140 ms hold on an empty stage while the old one exits). */}
-              <AnimatePresence mode="popLayout">
+              {/* B-KID-74: ONE mounted view. A keyed node with an enter-only fade:
+                  the next view mounts at once (B-KID-47: no empty-stage hold) and
+                  the left one unmounts in the same commit — no exit animation, so
+                  nothing (a world's banner, timers, audio, mic) stays alive
+                  underneath. */}
                 <motion.div
-                  key={view === "arcade" ? `arcade:${arcadeWorldId ?? ""}` : view}
+                  key={kidViewKey(view, arcadeWorldId)}
+                  data-kid-view={kidViewKey(view, arcadeWorldId)}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
                   transition={{ duration: 0.14 }}
                 >
                   {view === "home" ? (
@@ -371,7 +395,6 @@ export default function KidModeOverlay() {
                     <Suspense fallback={<KidStageFallback />}>{surface?.Comp ? <surface.Comp /> : null}</Suspense>
                   )}
                 </motion.div>
-              </AnimatePresence>
             </KidErrorBoundary>
           </div>
         </motion.div>

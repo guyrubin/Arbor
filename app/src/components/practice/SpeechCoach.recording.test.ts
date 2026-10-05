@@ -13,7 +13,7 @@ const walk = (node: ts.Node) => {
 };
 walk(file);
 if (!body) throw new Error("Missing production recorder");
-function harness(mediaFails = false, consent = "granted") {
+function harness(mediaFails = false, consent = "granted", unmounted = false) {
   const trackStop = vi.fn(), recognitionStart = vi.fn(() => { throw new DOMException("ASR unavailable", "NotAllowedError"); });
   const states: string[] = [], errors: unknown[] = [];
   const stream = { getTracks: () => [{ stop: trackStop }] };
@@ -29,6 +29,8 @@ function harness(mediaFails = false, consent = "granted") {
     target: "sun", sound: { id: "s" }, kidMode: false, t: (key: string) => key,
     // B-KID-41: the record path runs only with the control shown (micHidden false).
     micHidden: false, sittingCounted: { current: false },
+    // B-KID-74: the world can be left while the mic open is pending.
+    unmountedRef: { current: unmounted },
   };
   const compiled = ts.transpileModule(`return (${body});`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
   const start = new Function(...Object.keys(scope), compiled)(...Object.values(scope));
@@ -48,6 +50,12 @@ describe("speech practice recording ownership", () => {
     expect(h.trackStop).toHaveBeenCalledTimes(1);
     expect(h.states).toEqual(["idle"]);
     expect(h.errors.at(-1)).toBe("prac.speech.micError");
+  });
+  it("B-KID-74: a stream that arrives after the world was left is stopped at once; nothing records", async () => {
+    const h = harness(false, "granted", true); await h.start();
+    expect(h.trackStop).toHaveBeenCalledTimes(1);
+    expect(h.states).toEqual([]);
+    expect(h.mediaRef.current).toBeNull();
   });
   it("without child voice consent local recording never starts platform ASR", async () => {
     const h = harness(false, "denied"); await h.start();
@@ -83,7 +91,7 @@ async function kidRound(kidMode: boolean) {
     getRecognitionCtor: () => class { start = recognitionStart; }, recognitionLangFor: () => "en-US", aiLang: "en",
     target: "sun", sound: { id: "s" }, kidMode, t: (key: string) => key, noteKidActivity,
     // B-KID-41: an already-granted mic in Kid Mode (the record button is shown).
-    micHidden: false, sittingCounted: { current: false },
+    micHidden: false, sittingCounted: { current: false }, unmountedRef: { current: false },
   };
   const compiled = ts.transpileModule(`return (${body});`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
   const start = new Function(...Object.keys(scope), compiled)(...Object.values(scope));

@@ -155,7 +155,9 @@ describe("Kids experience visual and session contract", () => {
     expect(memory).toContain("createMemoryPairLifecycle");
     expect(memory).toContain("!embedded");
     expect(reading).toContain("embedded && kidMode ? content");
-    expect(overlay).toContain("contentRef.current.scrollTop = 0");
+    // B-KID-74 re-pin: fresh arrival at the top for every view but the home,
+    // which restores where the child left it (arrivalScrollTop, oneKidView.test).
+    expect(overlay).toContain("contentRef.current.scrollTop = arrivalScrollTop(view, homeScrollRef.current);");
     expect(overlay).toContain("[isKidModeOpen, view, arcadeWorldId]");
     expect(arcade).toContain("{kidMode ? (");
     expect(arcade).toContain("{!kidMode && <div>");

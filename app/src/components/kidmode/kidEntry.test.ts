@@ -33,9 +33,12 @@ describe("B-KID-47: no grey parent skeleton in Kid Mode", () => {
     expect(fallback).toContain("{!art?.hasHero && (");
     expect(fallback).not.toMatch(/<TabSkeleton|import \{ TabSkeleton/);
   });
-  it("no empty-stage hold: the overlay swaps views with popLayout, not wait", () => {
+  it("no empty-stage hold: the overlay swaps views at once (B-KID-74: no exit hold at all)", () => {
     expect(overlay).not.toContain('mode="wait"');
-    expect(overlay).toContain('<AnimatePresence mode="popLayout">');
+    // B-KID-74 re-pin: popLayout kept every left view mounted until its exit
+    // finished; the content is now one keyed enter-only node (oneKidView.test).
+    expect(overlay).not.toContain('mode="popLayout"');
+    expect(overlay).toContain("key={kidViewKey(view, arcadeWorldId)}");
   });
 });
 
