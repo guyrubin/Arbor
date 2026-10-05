@@ -52,6 +52,7 @@ import HeroCrest from "../ui/HeroCrest";
 import { ArborMascot } from "../ui/ArborMascot";
 import WorldScene from "../practice/WorldScene";
 import { useKidTheme } from "../../hooks/useKidTheme";
+import { kidArt, storyCoverKey } from "../../lib/kidThemeManifest";
 import { pickTonightsStory, TONIGHT_AIM_REASON_KEY } from "../kidmode/tonightsStory";
 import { dayKey } from "../../practice/signals";
 import { PageHeader, cardCls } from "../ui/kit";
@@ -81,7 +82,7 @@ const PACK_WORLD: Record<HeroPackId, { bg: string; ink: string; label: string; l
 
 /** Per-story scene motif: a big emoji prop + a comic SFX burst (EN/HE), so every
  *  card is its own illustrated world with the child's hero standing inside it. */
-const STORY_ART: Record<string, { emoji: string; sfx: string; sfxHe: string; src?: string }> = {
+const STORY_ART: Record<string, { emoji: string; sfx: string; sfxHe: string }> = {
   "david-and-goliath": { emoji: "🛡️", sfx: "BOOM!", sfxHe: "בום!" },
   "moses-and-pharaoh": { emoji: "👑", sfx: "ECHO!", sfxHe: "הד!" },
   "the-lion-who-was-afraid": { emoji: "🦁", sfx: "ROAR!", sfxHe: "שאגה!" },
@@ -100,9 +101,9 @@ const STORY_ART: Record<string, { emoji: string; sfx: string; sfxHe: string; src
   "the-two-mothers-and-the-quiet-judge": { emoji: "🤝", sfx: "SHH…", sfxHe: "ששש…" },
   "the-tyrant-and-the-town": { emoji: "📢", sfx: "STOP!", sfxHe: "די!" },
   "the-friendly-monster": { emoji: "👾", sfx: "GRRAH!", sfxHe: "גראח!" },
-  "the-lantern-path": { emoji: "🏮", sfx: "GLOW!", sfxHe: "זוהר!", src: "/visuals/stories/v1/lantern-path-v1.webp" },
-  "the-cloud-orchestra": { emoji: "🎼", sfx: "BOOM!", sfxHe: "בום!", src: "/visuals/stories/v1/cloud-orchestra-v1.webp" },
-  "the-little-bridge-builders": { emoji: "🌉", sfx: "CLICK!", sfxHe: "קליק!", src: "/visuals/stories/v1/little-bridge-builders-v1.webp" },
+  "the-lantern-path": { emoji: "🏮", sfx: "GLOW!", sfxHe: "זוהר!" },
+  "the-cloud-orchestra": { emoji: "🎼", sfx: "BOOM!", sfxHe: "בום!" },
+  "the-little-bridge-builders": { emoji: "🌉", sfx: "CLICK!", sfxHe: "קליק!" },
 };
 
 /** Immediate, authored, provider-free render. Used only when the personalized
@@ -218,6 +219,9 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
   const heroAvatarUrl = childProfile.avatar && photoUrl?.startsWith("data:") ? photoUrl : undefined;
   const heroAvatarStyle = normalizeAvatarStyle(childProfile.avatar?.style);
   const kidTheme = useKidTheme();
+  // B-KID-70 (R-4): a story's cover in the child's ONE theme (manifest), or null
+  // — then today's rendering (emoji motif / SVG hills) stays; never another theme's file.
+  const storyCover = (id: string) => kidArt(kidTheme, storyCoverKey(id));
   // B-KID-01: the fallback-page cameo is the generated hero or Sprout — a
   // photo-only child (photoUrl, no avatar) resolves to null here, never the photo.
   const heroCameoUrl = resolveHeroUrl(childProfile) ?? undefined;
@@ -923,10 +927,11 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                 const spec = getStorySpec(run.storyId);
                 const w = spec ? PACK_WORLD[spec.pack] : PACK_WORLD.courage;
                 const art = STORY_ART[run.storyId] ?? { emoji: "⭐", sfx: "POW!", sfxHe: "פאו!" };
+                const cover = storyCover(run.storyId);
                 return (
                   <button key={run.id} onClick={() => replay(run)} className="world-tile text-start" aria-label={runTitle(run, uiLang === "he" ? "he" : "en")}>
-                    <div className="comic-halftone grid place-items-center" style={{ height: 72, background: w.bg, borderBottom: "var(--comic-line)" }}>
-                      <span style={{ fontSize: 34 }} aria-hidden="true">{art.emoji}</span>
+                    <div className="comic-halftone grid place-items-center overflow-hidden" style={{ height: 72, background: w.bg, borderBottom: "var(--comic-line)" }}>
+                      {cover ? <img src={cover.src480} alt="" aria-hidden="true" loading="lazy" decoding="async" className="h-full w-full object-cover" style={{ objectPosition: cover.objectPosition }} /> : <span style={{ fontSize: 34 }} aria-hidden="true">{art.emoji}</span>}
                     </div>
                     <div className="p-2.5">
                       <span className="text-[12.5px] font-black block leading-tight line-clamp-2" style={{ color: "var(--arbor-ink)" }} dir="auto">{runTitle(run, uiLang === "he" ? "he" : "en")}</span>
@@ -1320,10 +1325,11 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                 const spec = getStorySpec(run.storyId);
                 const w = spec ? PACK_WORLD[spec.pack] : PACK_WORLD.courage;
                 const art = STORY_ART[run.storyId] ?? { emoji: "⭐", sfx: "POW!", sfxHe: "פאו!" };
+                const cover = storyCover(run.storyId);
                 return (
                   <button key={run.id} onClick={() => replay(run)} className="world-tile text-start" aria-label={runTitle(run, uiLang === "he" ? "he" : "en")}>
-                    <div className="grid place-items-center" style={{ height: 72, background: w.bg, borderBottom: "1px solid var(--arbor-rule)" }}>
-                      <span style={{ fontSize: 34 }} aria-hidden="true">{art.emoji}</span>
+                    <div className="grid place-items-center overflow-hidden" style={{ height: 72, background: w.bg, borderBottom: "1px solid var(--arbor-rule)" }}>
+                      {cover ? <img src={cover.src480} alt="" aria-hidden="true" loading="lazy" decoding="async" className="h-full w-full object-cover" style={{ objectPosition: cover.objectPosition }} /> : <span style={{ fontSize: 34 }} aria-hidden="true">{art.emoji}</span>}
                     </div>
                     <div className="p-2.5">
                       <span className="text-[12.5px] font-black block leading-tight line-clamp-2" style={{ color: "var(--arbor-ink)" }} dir="auto">{runTitle(run, uiLang === "he" ? "he" : "en")}</span>
@@ -1441,7 +1447,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                 childId={childProfile.id}
                 onPageResolved={({ beatNumber, key }) => { comicPageKeys.current.set(beatNumber, key); void shelveWhenComplete(); }}
                 immersive={immersiveMode}
-                fallbackArtUrl={STORY_ART[activeStory.id]?.src}
+                fallbackArtUrl={storyCover(activeStory.id)?.src}
               />
             </motion.div>
           ) : null}

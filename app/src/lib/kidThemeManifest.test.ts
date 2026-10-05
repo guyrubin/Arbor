@@ -83,10 +83,20 @@ function walk(dir: string): string[] {
 }
 
 describe("B-KID-70 (c): kid components reference art only through the manifest", () => {
-  const files = ["kidmode", "practice"].flatMap((d) => walk(path.join(SRC, "components", d)));
+  // R-4: the story surfaces (catalogue, shelf, reader) joined the seam.
+  const files = [
+    ...["kidmode", "practice", "stories"].flatMap((d) => walk(path.join(SRC, "components", d))),
+    path.join(SRC, "components", "tabs", "HeroJourneyTab.tsx"),
+  ];
   it("scans a real tree", () => expect(files.length).toBeGreaterThan(20));
   it.each(files.map((f) => [path.relative(SRC, f), f]))("%s names no /visuals/ path", (_rel, file) => {
     expect(readFileSync(file, "utf8")).not.toMatch(/\/visuals\//);
+  });
+  it("R-4: the story shelf + reader take the cover from the manifest, per theme", () => {
+    const tab = readFileSync(path.join(SRC, "components", "tabs", "HeroJourneyTab.tsx"), "utf8");
+    expect(tab).toContain("const storyCover = (id: string) => kidArt(kidTheme, storyCoverKey(id));");
+    expect(tab).toContain("fallbackArtUrl={storyCover(activeStory.id)?.src}");
+    expect(tab.match(/const cover = storyCover\(run\.storyId\);/g)).toHaveLength(2);
   });
   it("negative control: the scan catches a direct path", () => {
     expect('src="/visuals/cards/web/game-memory-480.webp"').toMatch(/\/visuals\//);
