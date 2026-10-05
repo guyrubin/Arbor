@@ -57,6 +57,29 @@ export async function resolveMediaPermission(
   }
 }
 
+/**
+ * B-KID-41 (KC-15) — media permissions are never asked OF THE CHILD. Inside
+ * Kid Mode a capture control is offered only when the permission is ALREADY
+ * granted (a grown-up said yes earlier, on the parent side), so no browser
+ * permission prompt can appear in front of the child. "prompt", "denied",
+ * no Permissions API, or a query the browser does not know all read as NOT
+ * granted here (fail closed: an unknown state may still prompt).
+ */
+export async function mediaAlreadyGranted(
+  kind: MediaKind,
+  nav: MediaNavigatorLike | undefined | null,
+): Promise<boolean> {
+  if (!mediaSupported(nav)) return false;
+  const query = nav?.permissions?.query;
+  if (typeof query !== "function") return false;
+  try {
+    const status = await query.call(nav!.permissions, { name: kind });
+    return status?.state === "granted";
+  } catch {
+    return false;
+  }
+}
+
 /** True when the control must NOT be rendered to the child. */
 export function mediaControlHidden(state: MediaPermission): boolean {
   return state !== "available";

@@ -70,6 +70,9 @@ export default function MimicStudioTab() {
   };
 
   const startMirror = async () => {
+    // B-KID-41 (KC-15): the camera never starts in Kid Mode (the mirror is not
+    // rendered there; this guard keeps a stale tap from reaching the camera).
+    if (kidMode) return;
     setCamError(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
@@ -211,7 +214,7 @@ export default function MimicStudioTab() {
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* Model card — the parent demonstrates, big and theatrical */}
-          <div className={`${cardCls} p-6 text-center flex flex-col items-center justify-center`} style={{ background: "var(--arbor-paper-deep)", minHeight: 260 }}>
+          <div className={`${cardCls} p-6 text-center flex flex-col items-center justify-center ${kidMode ? "md:col-span-2" : ""}`} style={{ background: "var(--arbor-paper-deep)", minHeight: 260 }}>
             <motion.span key={prompt.id} initial={{ scale: 0.6, rotate: -8 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: "spring", stiffness: 300, damping: 16 }} className="text-6xl">
               {prompt.emoji}
             </motion.span>
@@ -242,7 +245,10 @@ export default function MimicStudioTab() {
             {ratedPromptIds.has(prompt.id) && <p className="text-[10px] font-bold mt-2" style={{ color: "var(--arbor-clay)" }}>✓ {t("elev.play.mimic.alreadyPlayed")}</p>}
           </div>
 
-          {/* Mirror — the child watches themselves try it */}
+          {/* Mirror — the child watches themselves try it. B-KID-41 (KC-15): not in
+              Kid Mode — a camera permission is never asked of the child; the
+              face-to-face round is the whole game there. */}
+          {!kidMode && (
           <div className={`${cardCls} overflow-hidden relative flex items-center justify-center`} style={{ minHeight: 260, background: T.camStage }}>
             <video ref={videoRef} muted playsInline className="w-full h-full object-cover absolute inset-0" style={{ transform: "scaleX(-1)", display: mirrorOn ? "block" : "none" }} />
             {!mirrorOn && (
@@ -269,6 +275,7 @@ export default function MimicStudioTab() {
               </button>
             )}
           </div>
+          )}
         </div>
 
         {/* Rating */}

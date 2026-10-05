@@ -27,6 +27,8 @@ function harness(mediaFails = false, consent = "granted") {
     voiceConsent: consent, platformAsrAllowed: (value: string) => value === "granted",
     getRecognitionCtor: () => class { start = recognitionStart; }, recognitionLangFor: () => "en-US", aiLang: "en",
     target: "sun", sound: { id: "s" }, kidMode: false, t: (key: string) => key,
+    // B-KID-41: the record path runs only with the control shown (micHidden false).
+    micHidden: false,
   };
   const compiled = ts.transpileModule(`return (${body});`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
   const start = new Function(...Object.keys(scope), compiled)(...Object.values(scope));
@@ -80,6 +82,8 @@ async function kidRound(kidMode: boolean) {
     voiceConsent: "granted", platformAsrAllowed: gate.platformAsrAllowed, speechScoringAllowed: gate.speechScoringAllowed,
     getRecognitionCtor: () => class { start = recognitionStart; }, recognitionLangFor: () => "en-US", aiLang: "en",
     target: "sun", sound: { id: "s" }, kidMode, t: (key: string) => key, noteKidActivity,
+    // B-KID-41: an already-granted mic in Kid Mode (the record button is shown).
+    micHidden: false,
   };
   const compiled = ts.transpileModule(`return (${body});`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
   const start = new Function(...Object.keys(scope), compiled)(...Object.values(scope));
@@ -100,5 +104,21 @@ describe("B-KID-03 · Kid Mode recording never scores (network spy)", () => {
     expect(parent.scoreUtterance).toHaveBeenCalledTimes(1);
     expect(parent.recognitionStart).toHaveBeenCalledTimes(1);
     expect(parent.noteKidActivity).not.toHaveBeenCalled();
+  });
+});
+
+/* B-KID-41 (KC-15) — the record path never reaches getUserMedia while the
+   control is hidden (Kid Mode without an already-granted microphone). */
+describe("B-KID-41 · no permission prompt in front of the child", () => {
+  it("micHidden → startRecording returns before getUserMedia", async () => {
+    const getUserMedia = vi.fn(async () => ({ getTracks: () => [] }));
+    const scope = {
+      micHidden: true, setMicError: vi.fn(), setHeard: vi.fn(), setAutoResult: vi.fn(), setLastSaved: vi.fn(), cleanupAudio: vi.fn(),
+      navigator: { mediaDevices: { getUserMedia } }, MediaRecorder: class {}, chunksRef: { current: [] }, mediaRef: { current: null },
+      recogRef: { current: null }, setRecState: vi.fn(), setAudioUrl: vi.fn(), kidMode: true, t: (key: string) => key,
+    };
+    const compiled = ts.transpileModule(`return (${body});`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+    await new Function(...Object.keys(scope), compiled)(...Object.values(scope))();
+    expect(getUserMedia).not.toHaveBeenCalled();
   });
 });

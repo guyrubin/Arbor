@@ -16,7 +16,7 @@ import { track } from "../../lib/analytics";
 import { api } from "../../lib/api";
 import { isKidModeActive, noteKidActivity, subscribeKidMode } from "../../lib/kidModeGate";
 import { SpeakButton } from "../ui/SpeakButton";
-import { mediaControlHidden, resolveMediaPermission, type MediaPermission } from "../../practice/mediaPermission";
+import { mediaAlreadyGranted, mediaControlHidden, resolveMediaPermission, type MediaPermission } from "../../practice/mediaPermission";
 import { platformAsrAllowed, speechScoringAllowed, voiceConsentState, VOICE_CONSENT_PURPOSE, type VoiceConsentState } from "./speechConsentGate";
 import EarlyReadingTrack from "./EarlyReadingTrack";
 import { useKidModeEntry } from "../kidmode/useKidModeEntry";
@@ -128,7 +128,17 @@ export default function SpeechCoachTab() {
     });
     return () => { live = false; };
   }, []);
-  const micHidden = mediaControlHidden(micPermission);
+  // B-KID-41 (KC-15): in Kid Mode the record button exists only when the
+  // microphone was ALREADY granted on the parent side — the child never meets
+  // a browser permission prompt; otherwise the say-it-aloud path runs.
+  const [micGranted, setMicGranted] = useState(false);
+  useEffect(() => {
+    let live = true;
+    void mediaAlreadyGranted("microphone", navigator).then((granted) => {
+      if (live) setMicGranted(granted);
+    });
+    return () => { live = false; };
+  }, []);
 
   // ---- STORE-K2: voice_processing consent gate for the PLATFORM recognizer ----
   // The browser SpeechRecognition API is not on-device (Android WebView routes
@@ -142,6 +152,7 @@ export default function SpeechCoachTab() {
   // Consent is a PARENT decision: the invite is never offered to a child, so in
   // Kid Mode the tab simply runs the parent-scoring floor with no recognizer.
   const kidMode = useSyncExternalStore(subscribeKidMode, isKidModeActive);
+  const micHidden = mediaControlHidden(micPermission) || (kidMode && !micGranted);
 
   useEffect(() => {
     let alive = true;
@@ -181,6 +192,7 @@ export default function SpeechCoachTab() {
   }, []);
 
   const startRecording = async () => {
+    if (micHidden) return; // B-KID-41: never a permission prompt in front of the child
     setMicError(null);
     setHeard(null);
     setAutoResult(null);
