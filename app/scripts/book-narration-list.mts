@@ -41,7 +41,7 @@ interface Row {
 function rows(v: Voice): Row[] {
   const out: Row[] = [];
   const key = (pageId: string, choiceId?: string) => narrationKey({ bookId: book!.id, voiceKey, lang: v.lang, gender: v.gender, pageId, choiceId }, DEV_NARRATION_ROOT)!.split("/").pop()!;
-  out.push({ file: key("cover"), when: "cover shown", text: join(`${label(book!.title, v)}.`, book!.coverNameLine ? `${label(book!.coverNameLine, v)}.` : undefined, label(book!.coverLine, v)) });
+  out.push({ file: key("cover"), when: "the child taps the cover picture (never on its own)", text: join(`${label(book!.title, v)}.`, book!.coverNameLine ? `${label(book!.coverNameLine, v)}.` : undefined, label(book!.coverLine, v)) });
   const pages: Page[] = [...book!.pages.slice(0, book!.pages.findIndex((p) => p.id === book!.decision.pageId) + 1)];
   const after = book!.pages.slice(book!.pages.findIndex((p) => p.id === book!.rejoinPageId));
   const add = (p: Page, when: string) => {
@@ -54,7 +54,10 @@ function rows(v: Voice): Row[] {
     }
     if (p.repair) {
       out.push({ file: key(p.id), when: `${when}: page shown (before the taps)`, text: pick(p.text, v) });
-      for (const it of p.repair.items) if (it.line) out.push({ file: key(`${p.id}-${it.id}`), when: `${when}: tap on ${it.id}`, text: pick(it.line, v) });
+      out.push({ file: key(`${p.id}-prompt`), when: `${when}: once the before-text has finished (the hint)`, text: label(p.repair.promptLabel, v) });
+      p.repair.items.forEach((it, n) => {
+        if (it.line) out.push({ file: key(`${p.id}-${it.id}`), when: `${when}: tap on ${it.id}${p.repair!.ordered ? ` (tap ${["one", "two", "three", "four", "five"][n] ?? "next"} of the fixed order)` : ""}`, text: pick(it.line, v) });
+      });
       out.push({ file: key(`${p.id}-after`), when: `${when}: every item done`, text: pick(p.repair.textAfter, v) });
       return;
     }
@@ -77,7 +80,8 @@ lines.push(`- Format: **MP3**. One whole-page render per file; no stitching (RUL
 lines.push(`- The reader plays a file only if it exists; a missing file = silence (never TTS). Hebrew: native review owed; never speak a divine name other than as written.`);
 lines.push(`- Repair pages are split as the reader plays them: before-text on page show → each item's line on its tap (any order) → after-text when all are done.`);
 lines.push(`- Echo pages (rejoin, ending) have one file per path: page text + that path's echo (+ the closing frame line on the last page).`);
-lines.push(`- Pages with an after-narration overlay (p9's dust cloud on "BOOM") reveal it 1.2 s after the file ends; report the BOOM timestamp per file and it can be set as \`revealAt\` instead.`, ``);
+lines.push(`- Not played by the reader (safe to delete): \`p7b-item.<id>.mp3\` (duplicates of \`p7b-<id>.mp3\`).`);
+lines.push(`- Pages with an after-narration overlay (p9's dust cloud on "BOOM") start the reveal 1.2 s before the file ends (on \`ended\` if the duration is unknown; 5 s after the page shows when silent); report the BOOM timestamp per file and it can be set as \`revealAt\` instead.`, ``);
 for (const v of VOICES) {
   const r = rows(v);
   lines.push(`## ${v.label} — folder \`${v.lang === "he" ? `he-${v.gender}` : "en"}/\` (${r.length} files)`, ``);
