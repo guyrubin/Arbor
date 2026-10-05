@@ -43,6 +43,8 @@ import { SectionSkeleton } from "../ui/Skeleton";
 import { statesText } from "../../lib/i18nElevation/states";
 import { HeroAvatar, resolveHeroUrl } from "../ui/HeroAvatar";
 import HeroCreateDialog from "../profile/HeroCreateDialog";
+import TonightFromToday from "../stories/TonightFromToday";
+import { consumeTonightMode, type TonightMode } from "../../lib/tonightMode";
 import HeroCrest from "../ui/HeroCrest";
 import { ArborMascot } from "../ui/ArborMascot";
 import WorldScene from "../practice/WorldScene";
@@ -151,6 +153,9 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
   const { childProfile } = useArbor();
   // B-PLAY-15: the hero-first gate opens the shared create dialog in place.
   const [heroDialogOpen, setHeroDialogOpen] = useState(false);
+  // B-PLAY-14: the Tonight cover's two options. The evening entry points ask
+  // for "today" through lib/tonightMode (one-shot); otherwise the hero story.
+  const [tonightMode, setTonightMode] = useState<TonightMode>(() => consumeTonightMode() ?? "hero");
   // KID-05: hub tiles navigate the PARENT shell — rendered only while the
   // shell is reachable (null inside Kid Mode, where the call would be a
   // silent no-op and a dead button in front of the child).
@@ -914,6 +919,25 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
             the kid home in 02e04b42, reused verbatim) already picks ONE story
             per local day, so the kid banner and this cover name the same one. */}
         <section data-module="stories-tonight">
+          {/* B-PLAY-14: "From today" · "A hero adventure" — a two-option switch
+              on the cover. "From today" renders the shared bedtime body inline
+              (generate-and-discard, the same code as #/bedtime-stories). */}
+          <div role="group" aria-label={t("elev.stories.tonight.mode.label")} data-testid="stories-tonight-mode" className="inline-flex items-center gap-1 rounded-xl p-1 mb-3" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+            {(["today", "hero"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                aria-pressed={tonightMode === m}
+                onClick={() => setTonightMode(m)}
+                data-testid={`stories-tonight-mode-${m}`}
+                className="px-3 min-h-11 rounded-lg text-[13px] font-bold transition"
+                style={tonightMode === m ? { background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", boxShadow: "var(--shadow-xs)" } : { color: "var(--arbor-muted)" }}
+              >
+                {m === "today" ? t("elev.stories.tonight.mode.today") : t("elev.stories.tonight.mode.hero")}
+              </button>
+            ))}
+          </div>
+          {tonightMode === "today" ? <TonightFromToday /> : (
           <button
             type="button"
             data-primary-move="read-tonights-story"
@@ -962,6 +986,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
               </span>
             </span>
           </button>
+          )}
         </section>
 
         {/* RUN-08 — the counts that used to be a chip reading "0 stories done"

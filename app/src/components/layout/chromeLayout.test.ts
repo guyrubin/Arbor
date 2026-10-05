@@ -24,7 +24,8 @@ import { describe, expect, it } from "vitest";
 describe("RhythmCue — a LOG nudge opens the composer on arrival (lane T; the bell's contract, kept)", () => {
   it("the cue's action calls requestCapture(visible.capture) BEFORE setActiveTab", () => {
     const cue = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "coach", "RhythmCue.tsx"), "utf8");
-    expect(cue).toMatch(/if \(visible\.capture\) requestCapture\(visible\.capture\);\s*\n\s*setActiveTab\(visible\.action\);/);
+    // B-PLAY-14: the BEDTIME cue's one-shot mode request rides the same seam, between the two.
+    expect(cue).toMatch(/if \(visible\.capture\) requestCapture\(visible\.capture\);\s*\n(?:\s*\/\/[^\n]*\n)*\s*if \(visible\.tonightMode\) requestTonightMode\(visible\.tonightMode\);\s*\n\s*setActiveTab\(visible\.action\);/);
   });
 });
 

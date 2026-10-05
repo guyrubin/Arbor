@@ -58,7 +58,7 @@ describe("KID-10 · Good night leaves one line", () => {
   });
 
   it("goodNight writes through the existing addMoment seam and still resets", () => {
-    expect(src).toContain("const { childProfile, behaviorLogs, addMoment } = useArbor();");
+    expect(src).toContain("const { childProfile, behaviorLogs, addMoment, openPaywall } = useArbor();");
     expect(src).toMatch(/const written = addMoment\(line\);/);
     expect(src).toMatch(/const goodNight = \(\) => \{[\s\S]*?reset\(\);\s*\};/);
   });
@@ -146,5 +146,92 @@ describe("B-PLAY-13 · the prefill tells the truth about today", () => {
     expect(src).toMatch(/const he = uiLang === "he";/);
     expect(src).not.toMatch(/const he = aiLang === "he"/);
     expect(src).toMatch(/language: aiLang,/);
+  });
+});
+
+/**
+ * B-PLAY-14 — Tonight gets a "From today" mode. The bedtime body is ONE
+ * component (BedtimeStoryBody) rendered by both #/bedtime-stories and the
+ * Stories Tonight cover; the evening doors land on Stories with "From today";
+ * goodnight answers can be kept; a failed generation is said inline + Retry.
+ */
+describe("B-PLAY-14 · the shared bedtime body", () => {
+  const read = (...p: string[]) => fs.readFileSync(path.join(SRC, ...p), "utf8");
+  const fromToday = read("components", "stories", "TonightFromToday.tsx");
+  const stories = read("components", "tabs", "HeroJourneyTab.tsx");
+  const lifecycle = read("components", "overview", "LifecycleMomentCard.tsx");
+  const cue = read("components", "coach", "RhythmCue.tsx");
+
+  it("#/bedtime-stories renders the shared body; the Stories cover embeds the same one", () => {
+    expect(src).toMatch(/export default function BedtimeStoriesTab\(\) \{\s*return <BedtimeStoryBody \/>;\s*\}/);
+    expect(src).toContain("export function BedtimeStoryBody({ embedded = false }");
+    expect(fromToday).toContain('import { BedtimeStoryBody } from "../tabs/BedtimeStoriesTab";');
+    expect(fromToday).toContain("<BedtimeStoryBody embedded />");
+    // embedded drops the page header and the route stamps — the stories budget is unchanged
+    expect(src).toContain('data-module={embedded ? undefined : "bedtime-day-events"}');
+    expect(src).toContain('data-primary-move={embedded ? undefined : "generate-bedtime-story"}');
+    const storiesContract = SURFACE_CONTRACTS.find((c) => c.route === "stories");
+    expect(storiesContract?.moduleBudget).toBe(3);
+    expect(storiesContract?.primaryMove).toBe("read-tonights-story");
+  });
+
+  it("the Tonight cover carries the two-option switch and opens on the requested mode", () => {
+    const cover = stories.slice(stories.indexOf('<section data-module="stories-tonight">'), stories.indexOf("RUN-08 — the counts"));
+    expect(cover).toContain('data-testid="stories-tonight-mode"');
+    expect(cover).toContain('aria-pressed={tonightMode === m}');
+    expect(cover).toContain('t("elev.stories.tonight.mode.today")');
+    expect(cover).toContain('t("elev.stories.tonight.mode.hero")');
+    expect(cover).toContain("<TonightFromToday />");
+    // the hero cover (and its primary move) is still the default
+    expect(cover).toContain('data-primary-move="read-tonights-story"');
+    expect(stories).toContain('useState<TonightMode>(() => consumeTonightMode() ?? "hero")');
+  });
+
+  it("the evening doors re-point to Stories with 'From today' (the route itself stays live)", () => {
+    expect(lifecycle).not.toMatch(/go\("bedtime-stories"\)|setActiveTab\("bedtime-stories"\)/);
+    expect((lifecycle.match(/requestTonightMode\("today"\)/g) ?? []).length).toBe(2);
+    expect(cue).toContain("if (visible.tonightMode) requestTonightMode(visible.tonightMode);");
+    expect(SURFACE_CONTRACTS.some((c) => c.route === "bedtime-stories")).toBe(true);
+  });
+
+  it("the mode request is one-shot", async () => {
+    const { requestTonightMode, consumeTonightMode } = await import("./tonightMode");
+    expect(consumeTonightMode()).toBeNull();
+    requestTonightMode("today");
+    expect(consumeTonightMode()).toBe("today");
+    expect(consumeTonightMode()).toBeNull();
+  });
+
+  it("'Keep what {name} said' writes ONE parent moment per answer through addMoment", () => {
+    const keep = src.slice(src.indexOf("const keepAnswer"), src.indexOf("const keepAnswer") + 500);
+    expect(keep).toContain("if (!answer || kept[i]) return;");
+    expect(keep).toMatch(/addMoment\(t\("elev\.bedtime\.keep\.line", \{ question, name, answer \}\)\)/);
+    expect(src).toContain('t("elev.bedtime.keep.label", { name })');
+    expect(src).toContain('data-testid="bedtime-answer-keep"');
+    // the input and the Keep button meet the 44 px floor
+    expect((src.match(/min-h-11/g) ?? []).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("a failed generation is said inline with Retry (useAsyncAction), not a lone toast", () => {
+    expect(src).toMatch(/useAsyncAction\(\s*"bedtime_generate"/);
+    expect(src).toContain('data-testid="bedtime-generate-error"');
+    expect(src).toContain('data-testid="bedtime-generate-retry"');
+    expect(src).not.toContain('"Could not generate the story"');
+    // the escalation 409 still opens the calm wall, never the error line
+    expect(src).toMatch(/setEscalated\(true\);\s*return null;/);
+  });
+
+  it("every new string exists in EN and HE", () => {
+    for (const key of [
+      "elev.bedtime.keep.label", "elev.bedtime.keep.cta", "elev.bedtime.keep.done", "elev.bedtime.keep.line",
+      "elev.bedtime.generate.failed", "elev.stories.tonight.mode.label", "elev.stories.tonight.mode.today", "elev.stories.tonight.mode.hero",
+    ]) {
+      expect(en[key], `${key} EN`).toBeTruthy();
+      expect(he[key], `${key} HE`).toMatch(/[֐-׿]/);
+    }
+    for (const lang of [en, he]) {
+      expect(lang["elev.bedtime.keep.label"]).toContain("{name}");
+      expect(lang["elev.bedtime.keep.line"]).toMatch(/\{question\}[\s\S]*\{answer\}/);
+    }
   });
 });

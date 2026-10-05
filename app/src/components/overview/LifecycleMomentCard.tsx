@@ -5,6 +5,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { ageLabelForMonths } from "../../lib/childAge";
 import { track } from "../../lib/analytics";
+import { requestTonightMode } from "../../lib/tonightMode";
 import { isIncidentType } from "../../content/behaviorTaxonomy";
 import type { ShareCardOpts } from "../../lib/shareCard";
 import type { LifecycleMoment, LifecycleMomentKind } from "../../lib/lifecycle";
@@ -249,7 +250,8 @@ export default function LifecycleMomentCard({
         // record itself, and it is the only place this card points.
         return () => go("journal");
       case "first-moment":
-        return () => go("bedtime-stories");
+        // B-PLAY-14: tonight's story from today lives on the Stories cover.
+        return () => { requestTonightMode("today"); go("stories"); };
       case "day-one":
         return () => {
           track("lifecycle_moment_action", { kind: moment.kind });
@@ -397,7 +399,9 @@ export default function LifecycleMomentCard({
                       onClick={() => {
                         markStep("story");
                         track("lifecycle_moment_action", { kind: moment.kind });
-                        setActiveTab("bedtime-stories");
+                        // B-PLAY-14: the story step lands on Stories, "From today".
+                        requestTonightMode("today");
+                        setActiveTab("stories");
                       }}
                       className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3 text-[12px] font-extrabold"
                       style={{ color: "var(--arbor-clay)" }}

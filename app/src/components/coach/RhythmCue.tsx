@@ -6,6 +6,7 @@ import type { Nudge } from "../../lib/jitai";
 import { nudgeDayKey } from "../../growth/jitaiPrefs";
 import { trackNudgeActed, trackNudgeDismissed, trackNudgeShown, type NudgeSurface } from "../../lib/jitaiTelemetry";
 import { PASTEL } from "../../lib/tokens";
+import { requestTonightMode } from "../../lib/tonightMode";
 
 /**
  * RhythmCue — ENG-10 + ENG-11.
@@ -105,6 +106,8 @@ export default function RhythmCue({
               trackNudgeActed(visible, surface);
               // ENG-01: the LOG cue asks the landing surface to open capture.
               if (visible.capture) requestCapture(visible.capture);
+              // B-PLAY-14: the BEDTIME cue opens Stories on "From today".
+              if (visible.tonightMode) requestTonightMode(visible.tonightMode);
               setActiveTab(visible.action);
             }}
             className="inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-xl text-[12.5px] font-extrabold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"

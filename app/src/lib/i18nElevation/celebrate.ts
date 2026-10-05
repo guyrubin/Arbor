@@ -16,6 +16,16 @@ export const en: Record<string, string> = {
   "elev.bedtime.goodnight.moment": "Read tonight's story together",
   "elev.bedtime.goodnight.moment.titled": "Read tonight's story together — {title}",
   "elev.bedtime.goodnight.saved": "Kept in tonight's journal.",
+  // B-PLAY-14: keep what the child answered to a goodnight question; a failed
+  // generation is said inline with Retry.
+  "elev.bedtime.keep.label": "Keep what {name} said",
+  "elev.bedtime.keep.cta": "Keep",
+  "elev.bedtime.keep.done": "Kept in the journal.",
+  "elev.bedtime.keep.line": "{question} {name} said: {answer}",
+  "elev.bedtime.generate.failed": "The story could not be made just now. Your moments are still here.",
+  "elev.stories.tonight.mode.label": "Tonight's story",
+  "elev.stories.tonight.mode.today": "From today",
+  "elev.stories.tonight.mode.hero": "A hero adventure",
 };
 
 export const he: Record<string, string> = {
@@ -26,4 +36,12 @@ export const he: Record<string, string> = {
   "elev.bedtime.goodnight.moment": "קראנו יחד את סיפור הלילה",
   "elev.bedtime.goodnight.moment.titled": "קראנו יחד את סיפור הלילה — {title}",
   "elev.bedtime.goodnight.saved": "נשמר ביומן של הערב.",
+  "elev.bedtime.keep.label": "לשמור את מה ש{name} אמר/ה",
+  "elev.bedtime.keep.cta": "לשמור",
+  "elev.bedtime.keep.done": "נשמר ביומן.",
+  "elev.bedtime.keep.line": "{question} {name} ענה/תה: {answer}",
+  "elev.bedtime.generate.failed": "לא הצלחנו ליצור את הסיפור כרגע. הרגעים שלכם עדיין כאן.",
+  "elev.stories.tonight.mode.label": "הסיפור של הלילה",
+  "elev.stories.tonight.mode.today": "מהיום שלנו",
+  "elev.stories.tonight.mode.hero": "הרפתקת גיבורים",
 };

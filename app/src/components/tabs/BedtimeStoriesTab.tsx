@@ -22,6 +22,8 @@
  */
 
 import React, { useState } from "react";
+import { useAsyncAction } from "../../hooks/useAsyncAction";
+import { PaywallError } from "../../lib/api";
 import { motion, AnimatePresence } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
@@ -50,8 +52,20 @@ const emptyEvent = (): LocalDayEvent => ({
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
+/**
+ * B-PLAY-14 — the ONE bedtime body, shared by both routes: #/bedtime-stories
+ * renders it as the page, and the Stories Tonight cover renders it inline
+ * ("From today", components/stories/TonightFromToday). `embedded` drops the
+ * page header and the route's surface stamps (the Stories cover is already the
+ * module and carries its own primary move); everything else — prefill,
+ * escalation wall, generate-and-discard, the reader — is the same code.
+ */
 export default function BedtimeStoriesTab() {
-  const { childProfile, behaviorLogs, addMoment } = useArbor();
+  return <BedtimeStoryBody />;
+}
+
+export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
+  const { childProfile, behaviorLogs, addMoment, openPaywall } = useArbor();
   const { aiLang, uiLang, t } = useLanguage();
   const { toast } = useToast();
   // B-PLAY-13: the page's chrome follows the UI language; only the story
@@ -70,8 +84,11 @@ export default function BedtimeStoriesTab() {
     todayLogs.length > 0 ? todayLogs : [emptyEvent()]
   );
   const [story, setStory] = useState<BedtimeStory | null>(null);
-  const [loading, setLoading] = useState(false);
   const [escalated, setEscalated] = useState(false);
+  // B-PLAY-14: what the child answered to each goodnight question, and which
+  // answers the parent has already kept (one moment each, never twice).
+  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [kept, setKept] = useState<Record<number, boolean>>({});
   const [pageIndex, setPageIndex] = useState(0);
 
   // Avatar description from the child's existing generated avatar — reuse, no new capture.
@@ -87,45 +104,71 @@ export default function BedtimeStoriesTab() {
 
   const validEvents = events.filter((e) => e.description.trim().length > 0);
 
-  const generate = async () => {
-    if (validEvents.length === 0) {
-      toast(he ? "הוסיפו לפחות אירוע אחד מהיום" : "Add at least one event from today", "error");
-      return;
-    }
-    setLoading(true);
-    setEscalated(false);
-    setStory(null);
-    setPageIndex(0);
-    try {
-      const result = await api.generateBedtimeStory({
+  // B-PLAY-14: a failed generation is said INLINE with a Retry (useAsyncAction),
+  // not as a lone toast that disappears with the reason. The escalation 409 is
+  // not a failure — it opens the calm wall, exactly as before; a 402 is the
+  // paywall.
+  const generation = useAsyncAction(
+    "bedtime_generate",
+    async () => {
+      try {
+        return await api.generateBedtimeStory({
         childName: childProfile.name,
         age: childProfile.age,
         dayEvents: validEvents.map((e) => ({ description: e.description })),
         avatarDescription: avatarStyle ? `Avatar style: ${avatarStyle}` : undefined,
         language: aiLang,
-      });
-      setStory(result);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      // The server returns 409 + escalationCategory when a safety trigger fires.
-      // Show a calm, non-diagnostic prompt to reach professional support.
-      if (
-        // DUX-032: typed escalation error thrown by the api layer on HTTP 409.
-        err instanceof EscalationRequiredError ||
-        // DEPRECATED fallback — legacy substring matching, kept so the escalation
-        // UI can never fire less often than before the typed error existed.
-        message.includes("Professional support recommended") ||
-        message.includes("409")
-      ) {
-        setEscalated(true);
-      } else {
-        toast(
-          he ? "לא הצלחנו ליצור את הסיפור" : "Could not generate the story",
-          "error"
-        );
+        });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        // The server returns 409 + escalationCategory when a safety trigger fires.
+        // Show a calm, non-diagnostic prompt to reach professional support.
+        if (
+          // DUX-032: typed escalation error thrown by the api layer on HTTP 409.
+          err instanceof EscalationRequiredError ||
+          // DEPRECATED fallback — legacy substring matching, kept so the escalation
+          // UI can never fire less often than before the typed error existed.
+          message.includes("Professional support recommended") ||
+          message.includes("409")
+        ) {
+          setEscalated(true);
+          return null;
+        }
+        throw err;
       }
-    } finally {
-      setLoading(false);
+    },
+    {
+      fallbackError: t("elev.bedtime.generate.failed"),
+      toMessage: () => t("elev.bedtime.generate.failed"),
+      onPaywall: (err: PaywallError) => openPaywall(err.feature, err.plan),
+    },
+  );
+  const loading = generation.loading;
+
+  const generate = async () => {
+    if (validEvents.length === 0) {
+      toast(he ? "הוסיפו לפחות אירוע אחד מהיום" : "Add at least one event from today", "error");
+      return;
+    }
+    setEscalated(false);
+    setStory(null);
+    setPageIndex(0);
+    setAnswers({});
+    setKept({});
+    generation.clearError();
+    const result = await generation.run();
+    if (result) setStory(result);
+  };
+
+  /** B-PLAY-14: keep what the child said to one goodnight question — ONE
+   *  parent-provenance moment through the addMoment seam (no new store). */
+  const keepAnswer = (i: number, question: string) => {
+    const answer = (answers[i] ?? "").trim();
+    if (!answer || kept[i]) return;
+    const written = addMoment(t("elev.bedtime.keep.line", { question, name, answer }));
+    if (written) {
+      setKept((k) => ({ ...k, [i]: true }));
+      toast(t("elev.bedtime.goodnight.saved"), "success");
     }
   };
 
@@ -341,14 +384,48 @@ export default function BedtimeStoriesTab() {
               {he ? "שאלות לפני שינה" : "Goodnight questions"}
             </p>
             {story.discussionQuestions.map((q, i) => (
-              <p
-                key={i}
-                className="text-[14px] leading-relaxed"
-                style={{ color: "var(--arbor-ink-soft)" }}
-                dir="auto"
-              >
-                {q}
-              </p>
+              <div key={i} className="space-y-1.5" data-testid="bedtime-question">
+                <p
+                  className="text-[14px] leading-relaxed"
+                  style={{ color: "var(--arbor-ink-soft)" }}
+                  dir="auto"
+                >
+                  {q}
+                </p>
+                {/* B-PLAY-14: "Keep what {name} said" — one parent moment per answer. */}
+                {kept[i] ? (
+                  <p className="text-[12px] font-bold" style={{ color: "var(--arbor-green-ink)" }} data-testid="bedtime-answer-kept">
+                    {t("elev.bedtime.keep.done")}
+                  </p>
+                ) : (
+                  <div className="flex items-end gap-2">
+                    <label className="flex-1 min-w-0">
+                      <span className="block text-[11.5px] font-bold mb-1" style={{ color: "var(--arbor-muted)" }} dir="auto">
+                        {t("elev.bedtime.keep.label", { name })}
+                      </span>
+                      <input
+                        type="text"
+                        value={answers[i] ?? ""}
+                        onChange={(e) => setAnswers((a) => ({ ...a, [i]: e.target.value }))}
+                        dir="auto"
+                        className="w-full rounded-xl px-3 min-h-11 text-[14px] focus:outline-none focus-visible:ring-2"
+                        style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}
+                        data-testid="bedtime-answer-input"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => keepAnswer(i, q)}
+                      disabled={!(answers[i] ?? "").trim()}
+                      className="inline-flex items-center rounded-xl px-3 min-h-11 text-[13px] font-bold disabled:opacity-50"
+                      style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
+                      data-testid="bedtime-answer-keep"
+                    >
+                      {t("elev.bedtime.keep.cta")}
+                    </button>
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         )}
@@ -393,7 +470,8 @@ export default function BedtimeStoriesTab() {
       className="space-y-5"
       data-testid="bedtime-stories-form"
     >
-      {/* Header */}
+      {/* Header — the page's own; the Stories cover is the header when embedded. */}
+      {!embedded && (
       <div
         className={`${cardCls} p-5`}
         style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}
@@ -430,6 +508,7 @@ export default function BedtimeStoriesTab() {
             : `Tell Arbor what happened today, and Arbor will create a warm bedtime story where ${isolate(name)} is the hero.`}
         </p>
       </div>
+      )}
 
       {/* item 11 (IA-02): the surface contract reaches the DOM. `data-module`
           marks a top-level sibling module (counted against the route's
@@ -438,7 +517,7 @@ export default function BedtimeStoriesTab() {
           this surface's own findings belong to another item. */}
       {/* Day event inputs */}
       <div
-        data-module="bedtime-day-events"
+        data-module={embedded ? undefined : "bedtime-day-events"}
         className={`${cardCls} p-5 space-y-4`}
         style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}
       >
@@ -497,8 +576,8 @@ export default function BedtimeStoriesTab() {
 
       {/* Generate CTA */}
       <button
-        data-module="bedtime-generate"
-        data-primary-move="generate-bedtime-story"
+        data-module={embedded ? undefined : "bedtime-generate"}
+        data-primary-move={embedded ? undefined : "generate-bedtime-story"}
         onClick={generate}
         disabled={loading || validEvents.length === 0}
         className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-extrabold text-[15px] text-white disabled:opacity-50 transition active:scale-[0.98] min-h-[52px]"
@@ -519,6 +598,22 @@ export default function BedtimeStoriesTab() {
           </>
         )}
       </button>
+
+      {/* B-PLAY-14: a failed generation is said here, with Retry — not a toast. */}
+      {generation.error && !loading && (
+        <div role="alert" data-testid="bedtime-generate-error" className="rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+          <p className="text-[13px]" style={{ color: "var(--arbor-ink)" }} dir="auto">{generation.error}</p>
+          <button
+            type="button"
+            onClick={() => void generate()}
+            className="inline-flex items-center gap-1.5 rounded-xl px-3 min-h-11 text-[13px] font-bold"
+            style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}
+            data-testid="bedtime-generate-retry"
+          >
+            <Icon name="refresh" size={16} /> {t("err.retry")}
+          </button>
+        </div>
+      )}
 
       {/* Privacy / generate-and-discard notice */}
       <div

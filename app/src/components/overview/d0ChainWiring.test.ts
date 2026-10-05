@@ -98,11 +98,12 @@ describe("ENG-L0 — the day-0 chain is reachable and resumable", () => {
     expect(words).toMatch(/filter\(\(l\) => !isIncidentType\(l\.behaviorType\)\)/);
   });
 
-  it("the story step lands on the EXISTING bedtime-stories route", () => {
+  it("the story step lands on Stories, 'From today' (B-PLAY-14; #/bedtime-stories stays live)", () => {
     const story = CARD.match(/data-testid="d0-story-cta"[\s\S]{0,1200}?<\/button>/)?.[0] ?? "";
     expect(story.length).toBeGreaterThan(150);
     expect(story).toContain('markStep("story")');
-    expect(story).toContain('setActiveTab("bedtime-stories")');
+    expect(story).toMatch(/requestTonightMode\("today"\);\s*setActiveTab\("stories"\)/);
+    expect(story).not.toContain('setActiveTab("bedtime-stories")');
     expect(story).toContain("min-h-[44px]");
   });
 

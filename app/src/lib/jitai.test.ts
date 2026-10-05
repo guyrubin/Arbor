@@ -157,7 +157,10 @@ describe("ENG-10 — the BEDTIME cue is the evening door", () => {
   it("FAILS WITHOUT THE CHANGE — at 19:00 a settled day used to produce NOTHING", () => {
     const n = nextNudge({ ...settledEvening, nowMs: at(19), rhythm: baseRhythm({ confidence: "low" }) });
     expect(n?.kind).toBe("bedtime");
-    expect(n?.action).toBe("bedtime-stories");
+    // B-PLAY-14: the evening lands on Stories with "From today" selected.
+    expect(n?.action).toBe("stories");
+    expect(n?.tonightMode).toBe("today");
+    expect(n?.action).not.toBe("bedtime-stories");
     // No prep (no peak), no calm (not dependable, no wind-down), no log (day
     // captured), no practice (engagement healthy) — every other branch is shut,
     // which is exactly why the pre-change engine returned null here.

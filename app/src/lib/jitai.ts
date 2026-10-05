@@ -40,6 +40,9 @@ export interface Nudge {
   /** ENG-01: the LOG cue asks the landing surface to open text capture
    *  (Today's QuickLogModal via the requestCapture seam). */
   capture?: "text";
+  /** B-PLAY-14: the BEDTIME cue asks Stories to open its Tonight cover on
+   *  "From today" (lib/tonightMode, the same one-shot request shape). */
+  tonightMode?: "today";
   tone: "coral" | "sky" | "mint" | "lav";
 }
 
@@ -161,7 +164,10 @@ export function nextNudge(inp: JitaiInputs, prefs?: JitaiPrefs): Nudge | null {
       bodyKey: "elev.evening.nudge.body",
       ctaKey: "elev.evening.nudge.cta",
       vars: { name },
-      action: "bedtime-stories",
+      // B-PLAY-14: the evening lands on Stories with "From today" selected
+      // (#/bedtime-stories stays a live route for its own doors).
+      action: "stories",
+      tonightMode: "today",
       tone: "lav",
     };
   }
