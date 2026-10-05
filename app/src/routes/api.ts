@@ -42,6 +42,7 @@ import { scrubMemoryProposals, toParentWords, PLAIN_PARENT_WORDS_CLAUSE } from "
 import { assembleHeroJourneyScreenable } from "../safety/heroJourneyScreenable.js";
 import { logger, requestIdOf } from "../server/logger.js";
 import { requireChildOwnership } from "../server/requireChildOwnership.js";
+import { createBookAssetsRouter, defaultBookAssetBucket, eraseChildBookAssets, type BookAssetBucket } from "../server/bookAssets.js";
 import { requireConsent } from "../server/requireConsent.js";
 import { CANONICAL_BEHAVIOR_TYPES } from "../content/behaviorTaxonomy.js";
 import { buildConsent, type ConsentPurpose, type ConsentStore } from "../sharing/consent.js";
@@ -384,6 +385,9 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   const coachResponseSchema = createCoachResponseGeminiSchema(framework);
   // Per-child authorization (closes the IDOR on child-scoped reads/erasure).
   const requireOwnership = requireChildOwnership(memoryStore);
+  // B-BOOK release: a child's private book files (hero sheet, prints, narration)
+  // — read only through this owner-checked proxy (server/bookAssets.ts).
+  router.use(createBookAssetsRouter({ getBucket: () => defaultBookAssetBucket(config.storageBucket), requireOwnership }));
   const sendImageFailure = (res: express.Response, error: unknown, fallback: string): void => {
     // B-KID-05: quota exhaustion → 429 image_resting (no Retry-After);
     // transient → 503 + Retry-After 15; anything else → 500 with the fallback.
@@ -3763,9 +3767,14 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
       } else {
         try {
           const { getStorage } = await import("firebase-admin/storage");
-          await getStorage().bucket(bucketName).deleteFiles({ prefix: `users/${uid}/children/${childId}/` });
-          storageFiles = 1;
-          storageNote = `storage prefix users/{uid}/children/${childId}/ removed`;
+          const bucket = getStorage().bucket(bucketName);
+          // The receipt COUNTS the files: the child's photos, then (B-BOOK
+          // release) the child's private book files under children/{childId}/books/.
+          const [photoFiles] = await bucket.getFiles({ prefix: `users/${uid}/children/${childId}/` });
+          await bucket.deleteFiles({ prefix: `users/${uid}/children/${childId}/` });
+          const bookFiles = await eraseChildBookAssets(bucket as unknown as BookAssetBucket, childId);
+          storageFiles = photoFiles.length + bookFiles;
+          storageNote = `storage prefixes users/{uid}/children/${childId}/ and children/${childId}/books/ removed`;
         } catch (err: unknown) {
           // A bucket that was never provisioned is a clean no-op, not a failure.
           const message = err instanceof Error ? err.message : String(err);

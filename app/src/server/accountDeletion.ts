@@ -1,6 +1,7 @@
 import { getFirestore, FieldPath, FieldValue, type Firestore } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
 import { getStorage } from "firebase-admin/storage";
+import { eraseChildBookAssets, type BookAssetBucket } from "./bookAssets.js";
 import { getApps, initializeApp, applicationDefault } from "firebase-admin/app";
 import type { ArborConfig } from "../config/env.js";
 import { logger } from "./logger.js";
@@ -277,6 +278,9 @@ export function createFirestoreDeletionOps(
         deleted += await stores.consentEraseByChild(child.id);
         deleted += await stores.shareEraseByChild(uid, child.id);
         deleted += 1; // the child profile doc itself (memoryEraseChild removes children/{id}; the users-tree copy falls to userTree)
+        // B-BOOK release: the child's private book files live outside users/{uid}/
+        // (children/{childId}/books/), so storageFiles' users/ prefix misses them.
+        if (config.storageBucket) deleted += await eraseChildBookAssets(getStorage().bucket(config.storageBucket) as unknown as BookAssetBucket, child.id);
       }
       return { deleted, note: `${children.size} child profile(s) erased` };
     },

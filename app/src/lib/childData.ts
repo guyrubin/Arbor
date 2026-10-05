@@ -74,6 +74,11 @@ export const CHILD_SUBCOLLECTIONS = [
   // (doc id = milestone id). They were device-local and missing from the
   // Art. 15/20 export; registered here they export and erase with the child.
   "keepsakes",
+  // B-BOOK release: the metadata of the child's private book files (hero
+  // sheet, prints, narration in the child's name) — the files themselves sit
+  // in Storage under children/{childId}/books/ and are swept by
+  // /privacy/erase and the account deletion. Export lists the metadata.
+  "bookAssets",
 ];
 
 const remoteActive = (uid?: string) =>
