@@ -336,6 +336,12 @@ describe("W2-SHELLPLAY r2 · bedtime tells the truth about which day it is, and 
     expect(src).toContain("(quote && !quoteEditing && idx === 0 && evt.id === `log-${prefill.lines[0]?.id}`) ? null : (");
     expect(src).toContain('data-testid="bedtime-quote-change"');
     expect(src).toContain("min-h-11");
+    // SHIP-FIX r3 (44 px floor): "Change" was 42x44 EN / 32x44 HE — the width
+    // floor too, with -ms-2 so the visual start edge stays on the caption's
+    const change = src.slice(src.indexOf('data-testid="bedtime-quote-change"'), src.indexOf("</button>", src.indexOf('data-testid="bedtime-quote-change"')));
+    expect(change).toContain('className="mt-1 -ms-2 inline-flex min-h-11 min-w-11 items-center justify-center px-2 t-xs font-bold"');
+    // NEGATIVE CONTROL: the r3 class had no width floor
+    expect('className="mt-1 inline-flex min-h-11 items-center t-xs font-bold"').not.toContain("min-w-11");
   });
 
   it("the well keeps the card's 16 px rhythm (no m-0 reset of the space-y end margin)", () => {

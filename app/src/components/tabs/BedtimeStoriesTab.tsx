@@ -562,7 +562,7 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
                 type="button"
                 data-testid="bedtime-quote-change"
                 onClick={() => setQuoteEditing(true)}
-                className="mt-1 inline-flex min-h-11 items-center t-xs font-bold"
+                className="mt-1 -ms-2 inline-flex min-h-11 min-w-11 items-center justify-center px-2 t-xs font-bold"
                 style={{ color: "var(--arbor-muted)" }}
               >
                 {t("elev.bedtime.quote.change")}
