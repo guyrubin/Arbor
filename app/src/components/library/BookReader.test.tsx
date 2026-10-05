@@ -258,7 +258,7 @@ describe("real art: prints, shadow + grade, occluder, costume", () => {
     id: "placeholder",
     poses: {},
     base: "/_dev/hero-sheets/placeholder",
-    anchors: { "walk-bag-left": { aspect: 0.5, footX: 0.45, footW: 0.5 } },
+    anchors: { "look-across": { aspect: 0.5, footX: 0.45, footW: 0.5 } },
     prints: { cover: { url: "/_dev/hero-sheets/placeholder/prints/cover.webp", width: 1920, height: 1280 } },
   };
   const withSheet = (state: BookFlowState, extra: Partial<React.ComponentProps<typeof BookReader>> = {}) =>
@@ -275,16 +275,18 @@ describe("real art: prints, shadow + grade, occluder, costume", () => {
     expect(html).not.toContain("data-book-hero");
     const off = withSheet(initialBookFlow(), { prints: false });
     expect(off).not.toContain("prints/cover.webp");
-    expect(off).toContain('src="/_dev/hero-sheets/placeholder/walk-bag-left.webp"');
+    expect(off).toContain('src="/_dev/hero-sheets/placeholder/look-across.webp"');
     expect(off).toContain('data-book-shadow="core"');
     expect(off).toContain('data-book-shadow="spill"');
     // the grade layer is masked by the sprite itself
-    expect(off).toMatch(/bk-hero-tint[^>]*mask-image:url\(&quot;\/_dev\/hero-sheets\/placeholder\/walk-bag-left\.webp/);
+    expect(off).toMatch(/bk-hero-tint[^>]*mask-image:url\(&quot;\/_dev\/hero-sheets\/placeholder\/look-across\.webp/);
   });
 
-  it("p8 draws the water occluder over the hero", () => {
+  it("a plate occluder (a patch of the plate) draws OVER the hero", () => {
     const s = run(...toDecision, { type: "choose", choiceId: "a" }, { type: "go" }, { type: "next" });
-    const html = render(s);
+    const p8 = book.pages.find((p) => p.id === "p8")!;
+    const withOcc = { ...book, pages: book.pages.map((p) => (p.id === "p8" ? { ...p8, occluders: [{ box: [0.4, 0.4, 0.5, 0.5] as [number, number, number, number], opacity: 0.8, feather: 0.01, featherTop: 0.004 }] } : p)) };
+    const html = renderToStaticMarkup(<BookReader book={withOcc} lang="en" child={BOY} onClose={() => {}} dev narration="off" initialState={s} initialBox={WIDE} />);
     expect(pageOf(html)).toBe("p8");
     expect(html).toContain("data-book-occluder");
     expect(html.indexOf("data-book-hero")).toBeLessThan(html.indexOf("data-book-occluder"));

@@ -19,6 +19,7 @@ Nothing here calls a model or the network.
 """
 import argparse
 import json
+import re
 import shutil
 from pathlib import Path
 
@@ -44,6 +45,25 @@ OVERLAYS_OUT = PLATES_OUT / "overlays"
 SHEET_OUT = APP / "public" / "_dev" / "hero-sheets" / args.sheet
 G = json.load(open(SRC / args.plates, encoding="utf-8"))
 
+# Art rounds add plate VERSIONS (PL3-r2b, PL7-r2c ...). The book keeps stable
+# plate ids (PL3, PL7 ...); the version a page names is shipped under the stable
+# name. Pages whose id carries a suffix (p5-tunic, p9-boom, p8-squat ...) are
+# variants / alternatives, not book pages.
+VERSION = re.compile(r"-r\d+[a-z]?$")
+
+
+def base_plate(pid: str) -> str:
+    return VERSION.sub("", pid)
+
+
+BOOK_PAGES = {k: v for k, v in G["pages"].items() if "-" not in k}
+PLATE_VERSION = {}
+for _pg in BOOK_PAGES.values():
+    PLATE_VERSION[base_plate(_pg["plate"])] = _pg["plate"]
+for _pid in G["plates"]:
+    if base_plate(_pid) == _pid:
+        PLATE_VERSION.setdefault(_pid, _pid)
+
 
 def alpha_meta(path: Path):
     """aspect = w/h of the image; footX = centre of the lowest 6 % of opaque rows (as compose.py
@@ -67,8 +87,12 @@ def assets():
     PLATES_OUT.mkdir(parents=True, exist_ok=True)
     OVERLAYS_OUT.mkdir(parents=True, exist_ok=True)
     SHEET_OUT.mkdir(parents=True, exist_ok=True)
-    for f in sorted((SRC / "app" / "plates").glob("*.webp")):
-        out = PLATES_OUT / f.name
+    for base, version in sorted(PLATE_VERSION.items()):
+        f = SRC / "app" / "plates" / f"{version}.webp"
+        if not f.exists():
+            print("MISSING plate file", f)
+            continue
+        out = PLATES_OUT / f"{base}.webp"
         im = Image.open(f)
         if f.stat().st_size > MAX_BYTES:
             if im.width > MAX_W:
@@ -76,7 +100,7 @@ def assets():
             im.convert("RGB").save(out, "WEBP", quality=84, method=6)
         else:
             shutil.copyfile(f, out)
-        print("plate", f.name, Image.open(out).size, out.stat().st_size)
+        print("plate", base, "<-", f.name, Image.open(out).size, out.stat().st_size)
     for f in sorted((SRC / "app" / "overlays").glob("*.webp")):
         shutil.copyfile(f, OVERLAYS_OUT / f.name)
         print("overlay", f.name, (OVERLAYS_OUT / f.name).stat().st_size)
@@ -96,8 +120,16 @@ def prints():
     out_dir = SHEET_OUT / "prints"
     out_dir.mkdir(parents=True, exist_ok=True)
     found = {}
-    for f in sorted((SRC / "pages").glob("*-print.jpg")):
-        pid = f.stem[: -len("-print")]
+    # the latest round's prints only (a page whose plate changed and was not
+    # re-printed shows the live composite); stale print files are removed
+    files = sorted((SRC / "pages").glob("*-print.jpg"))
+    rounds = sorted({m.group(1) for f in files for m in [re.search(r"-(r\d+)-print$", f.stem)] if m})
+    latest = rounds[-1] if rounds else None
+    files = [f for f in files if (latest and f.stem.endswith(f"-{latest}-print")) or (not latest)]
+    for old in out_dir.glob("*.webp"):
+        old.unlink()
+    for f in files:
+        pid = re.sub(r"(-r\d+)?-print$", "", f.stem)
         im = Image.open(f).convert("RGB")
         im.save(out_dir / f"{pid}.webp", "WEBP", quality=85, method=6)
         found[pid] = {"file": f"prints/{pid}.webp", "w": im.width, "h": im.height}
@@ -123,19 +155,21 @@ def geometry():
     sprite_dir = SRC / "app" / "hero-sheets" / args.sheet
     overlay_dir = SRC / "app" / "overlays"
     plates = {}
-    for pid, p in G["plates"].items():
-        f = PLATES_OUT / f"{pid}.webp"
+    for base, version in PLATE_VERSION.items():
+        p = G["plates"].get(version, {})
+        p0 = G["plates"].get(base, {})
+        f = PLATES_OUT / f"{base}.webp"
         size = Image.open(f).size if f.exists() else (G["master"]["w"], G["master"]["h"])
-        plates[pid] = {
+        plates[base] = {
             "size": {"w": size[0], "h": size[1]},
-            "light": light_of(p.get("light", "")),
-            "provenance": {"childFree": True, "textFree": True, "reviewedBy": "art-agent QC 2026-10-05 (proof-art/david/LOG.md §2); Fable full-size review owed"},
-            **({"variantOf": p["variantOf"]} if p.get("variantOf") else {}),
+            "light": light_of(p.get("light", p0.get("light", ""))),
+            "provenance": {"childFree": True, "textFree": True, "reviewedBy": f"art-agent QC ({version}; proof-art/david/LOG.md); Fable full-size review owed"},
+            **({"variantOf": base_plate(p0["variantOf"])} if p0.get("variantOf") else {}),
         }
     master_w, master_h = G["master"]["w"], G["master"]["h"]
 
     def plate_tint(plate_id, box):
-        f = PLATES_OUT / f"{plate_id}.webp"
+        f = PLATES_OUT / f"{base_plate(plate_id)}.webp"
         im = Image.open(f).convert("RGB")
         sx, sy = im.width, im.height
         x0, y0, x1, y1 = [max(0.0, min(1.0, v)) for v in box]
@@ -181,11 +215,9 @@ def geometry():
         return oid, o
 
     pages = {}
-    for pid, p in G["pages"].items():
-        if pid in ("p5-tunic", "p9-boom"):
-            continue
+    for pid, p in BOOK_PAGES.items():
         heroes = [l for l in p.get("layers", []) if "sprites/keyed" in l.get("file", "")]
-        g = {"plate": p["plate"], "phoneCrop": r4(p["window_cx"])}
+        g = {"plate": base_plate(p["plate"]), "phoneCrop": r4(p["window_cx"])}
         if p.get("text_zone"):
             g["textRect"] = [r4(v) for v in p["text_zone"]]
         if heroes:
@@ -194,7 +226,7 @@ def geometry():
         if occ:
             g["occluders"] = [{"box": [r4(v) for v in o["box"]], "opacity": r4(o.get("opacity", 0.85)), "feather": r4(o.get("feather", 0.012)), "featherTop": r4(o.get("feather_top", 0.004))} for o in occ]
         if p.get("focus_rects"):
-            plates[p["plate"]]["focus"] = {k.split("_")[0]: {"x": r4(r[0]), "y": r4(r[1]), "w": r4(r[2] - r[0]), "h": r4(r[3] - r[1])} for k, r in p["focus_rects"].items()}
+            plates[base_plate(p["plate"])]["focus"] = {k.split("_")[0]: {"x": r4(r[0]), "y": r4(r[1]), "w": r4(r[2] - r[0]), "h": r4(r[3] - r[1])} for k, r in p["focus_rects"].items()}
         ovs = {}
         for l in p.get("layers", []):
             if "overlays/keyed" in l.get("file", ""):
