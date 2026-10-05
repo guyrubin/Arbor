@@ -33,6 +33,7 @@ import { loadProofHeroSheet, type HeroSheet } from "../../hero/heroSheet";
 import { preloadImages } from "../../proofAssets";
 import { readPlayLevel, writePlayLevel } from "./sneakStore";
 import { createSneakSounds, type SneakSounds } from "./sounds";
+import { kidAudioContext } from "../../audio/kidAudio";
 import { Watcher } from "./Watcher";
 import { sittingRecord } from "./record";
 import { usePracticeData } from "../../../../practice/usePracticeData";
@@ -260,6 +261,16 @@ function SneakFreezeGame({ art, sheet }: { art: SneakArt; sheet: HeroSheet }) {
     const sounds = createSneakSounds(lang);
     soundsRef.current = sounds;
     let alive = true;
+    // B-GAME-12a: proof-run counters (flag on only; numbers, never child data).
+    if (sneakFreezeFlagOn() && typeof window !== "undefined") {
+      (window as unknown as { __sneakDebug?: unknown }).__sneakDebug = {
+        audio: () => ({ context: kidAudioContext()?.state ?? "none", ...sounds.stats() }),
+        rules: () => {
+          const s = stateRef.current;
+          return s ? { phase: s.phase, round: s.round, tags: s.tags, track: s.track, level: s.level, pos: s.pos, pathSteps: s.pathSteps } : null;
+        },
+      };
+    }
     void sounds.load().then(() => {
       // The cat's first line, once, while the first sitting's demo still runs.
       if (alive && stateRef.current?.phase === "intro") sounds.intro();

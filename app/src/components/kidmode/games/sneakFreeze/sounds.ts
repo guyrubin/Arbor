@@ -75,10 +75,23 @@ export interface SneakSounds {
   again(): void;
   /** A new sitting: the once-per-sitting lines may play again. */
   newSitting(): void;
+  /** B-GAME-12a proof counters: clips decoded, clips started, plays asked for. */
+  stats(): { decoded: number; played: number; asked: number };
   dispose(): void;
 }
 
-export function createSneakSounds(lang: "en" | "he", bank: KidSoundBank = createKidSoundBank({ base: SNEAK_AUDIO_BASE, lang })): SneakSounds {
+export function createSneakSounds(lang: "en" | "he", soundBank: KidSoundBank = createKidSoundBank({ base: SNEAK_AUDIO_BASE, lang })): SneakSounds {
+  let asked = 0;
+  let played = 0;
+  const bank: KidSoundBank = {
+    ...soundBank,
+    play: (id, opts) => {
+      asked += 1;
+      const ok = soundBank.play(id, opts);
+      if (ok) played += 1;
+      return ok;
+    },
+  };
   const turn = new Map<string, number>();
   const said = new Set<SneakEventId>();
   let unlocked = false;
@@ -129,6 +142,12 @@ export function createSneakSounds(lang: "en" | "he", bank: KidSoundBank = create
     intro: () => { bank.play("intro", { kind: "voice" }); },
     again: () => { bank.play("again", { kind: "voice" }); },
     newSitting: () => { said.clear(); protectUntil = 0; },
+    stats: () => {
+      let decoded = 0;
+      for (const id of SNEAK_VOICE_IDS) if (soundBank.has(id, "voice")) decoded += 1;
+      for (const id of SNEAK_FOLEY_IDS) if (soundBank.has(id, "foley")) decoded += 1;
+      return { decoded, played, asked };
+    },
     dispose: () => bank.dispose(),
   };
 }
