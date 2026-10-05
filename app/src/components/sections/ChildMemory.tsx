@@ -133,12 +133,11 @@ export default function ChildMemory() {
                 lead={gi === 0}
                 hideLabel={soleOther}
                 isMemoryUpdating={isMemoryUpdating}
-                onDecide={(id, status) => {
+                onDecide={(id, status) =>
                   // B-CAREPRO-NEW-2k: an approval settles in place into one
                   // line that says what changes next — no toast, no count.
-                  if (status === "approved") setKeptTopic(g.topic);
-                  return handleMemoryDecision(id, status);
-                }}
+                  // W2-CAREPRO c2 r1: ONLY after the server confirms.
+                  settleOnConfirmed(() => handleMemoryDecision(id, status), status, () => setKeptTopic(g.topic))}
                 onEdited={retryMemoryReview}
               />
             ))}
@@ -146,46 +145,6 @@ export default function ChildMemory() {
         </SectionCard>
         </div>
       )}
-
-      {/* R25 (item 11) — #/memory rendered 6 top-level modules against a declared
-          moduleBudget of 3. The tail below is DEMOTED, never removed: one
-          collapsed disclosure on the pattern components/practice/SpeechCoachTab.tsx
-          `speech-more` already ships, so every capability keeps its door (law 6)
-          while the fold belongs to the primary move. Demoted modules keep their
-          own `data-module` stamp and add `data-module-demoted`, which is what
-          makes the budget rule countable: top-level = stamps minus demoted. */}
-      <details data-module-disclosure="memory-more" className={`${cardCls} p-0 overflow-hidden`}>
-        <summary className="cursor-pointer list-none px-6 py-4 min-h-[44px] flex items-center gap-3">
-          <span className="grid place-items-center w-9 h-9 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
-            <Icon name="bookmark" size={18} />
-          </span>
-          <span className="min-w-0">
-            <span className="block text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.childmem.more.title")}</span>
-            <span className="block text-[12px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.childmem.more.sub")}</span>
-          </span>
-          <Icon name="expand_more" size={20} className="ms-auto" style={{ color: "var(--arbor-muted)" }} />
-        </summary>
-        <div className="px-4 pb-4 space-y-4">
-        {/* demotionTarget: "profile" — the hub the contract sends these to. */}
-        <button onClick={() => setActiveTab("profile")} className="inline-flex min-h-11 w-full items-center justify-between gap-2 rounded-xl px-4 py-2.5 text-sm font-bold" style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}>
-          <span>{t("elev.childmem.more.door")}</span>
-          <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
-        </button>
-      {/* ENG-13 · the week-1 "first", at a threshold of ONE. Renders at most
-          once ever per kind and returns null the rest of the time. */}
-      <div data-module="memory-firsts" data-module-demoted style={{ display: "contents" }}><FirstsMoment /></div>
-
-      {/* ENG-14(a) · what Arbor knows, as a COUNT — answerable on day 0 from
-          the profile alone, which is exactly what nothing else in the app
-          could do. Never a completeness score: see lib/keepsakeCounts. */}
-      <div data-module="memory-knows" data-module-demoted style={{ display: "contents" }}><ArborKnowsTile /></div>
-
-      {/* ENG-14(b) · the month keepsake, offered once on the first open of a
-          new month and never for a month the family is still living in. */}
-      <div data-module="memory-keepsake" data-module-demoted style={{ display: "contents" }}><MonthKeepsake /></div>
-
-        </div>
-      </details>
 
       {!memoryReviewError && (
       <div data-module="memory-approved" style={{ display: "contents" }}>
@@ -277,8 +236,64 @@ export default function ChildMemory() {
           )}
         </div>
       )}
+
+      {/* W2-CAREPRO c2 r1: the disclosure is the LAST module — the lane order is
+          pending groups, then the Approved ledger they feed, then everything else.
+          R25 (item 11) — #/memory rendered 6 top-level modules against a declared
+          moduleBudget of 3. The tail below is DEMOTED, never removed: one
+          collapsed disclosure on the pattern components/practice/SpeechCoachTab.tsx
+          `speech-more` already ships, so every capability keeps its door (law 6)
+          while the fold belongs to the primary move. Demoted modules keep their
+          own `data-module` stamp and add `data-module-demoted`, which is what
+          makes the budget rule countable: top-level = stamps minus demoted. */}
+      <details data-module-disclosure="memory-more" className={`${cardCls} p-0 overflow-hidden`}>
+        <summary className="cursor-pointer list-none px-6 py-4 min-h-[44px] flex items-center gap-3">
+          <span className="grid place-items-center w-9 h-9 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
+            <Icon name="bookmark" size={18} />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.childmem.more.title")}</span>
+            <span className="block text-[12px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.childmem.more.sub")}</span>
+          </span>
+          <Icon name="expand_more" size={20} className="ms-auto" style={{ color: "var(--arbor-muted)" }} />
+        </summary>
+        <div className="px-4 pb-4 space-y-4">
+        {/* demotionTarget: "profile" — the hub the contract sends these to. */}
+        <button onClick={() => setActiveTab("profile")} className="inline-flex min-h-11 w-full items-center justify-between gap-2 rounded-xl px-4 py-2.5 text-sm font-bold" style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}>
+          <span>{t("elev.childmem.more.door")}</span>
+          <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
+        </button>
+      {/* ENG-13 · the week-1 "first", at a threshold of ONE. Renders at most
+          once ever per kind and returns null the rest of the time. */}
+      <div data-module="memory-firsts" data-module-demoted style={{ display: "contents" }}><FirstsMoment /></div>
+
+      {/* ENG-14(a) · what Arbor knows, as a COUNT — answerable on day 0 from
+          the profile alone, which is exactly what nothing else in the app
+          could do. Never a completeness score: see lib/keepsakeCounts. */}
+      <div data-module="memory-knows" data-module-demoted style={{ display: "contents" }}><ArborKnowsTile /></div>
+
+      {/* ENG-14(b) · the month keepsake, offered once on the first open of a
+          new month and never for a month the family is still living in. */}
+      <div data-module="memory-keepsake" data-module-demoted style={{ display: "contents" }}><MonthKeepsake /></div>
+
+        </div>
+      </details>
     </motion.div>
   );
+}
+
+/** W2-CAREPRO c2 r1 — the "Kept…" settle line fires only after the server
+ *  confirmed the approval. handleMemoryDecision swallows every failure into a
+ *  toast, so the settle used to fire before it resolved and stay over a fact
+ *  that was still pending after a 429 or an offline save. */
+export async function settleOnConfirmed(
+  decide: () => Promise<boolean>,
+  status: "approved" | "rejected",
+  settle: () => void,
+): Promise<boolean> {
+  const saved = await decide();
+  if (saved && status === "approved") settle();
+  return saved;
 }
 
 /** B-CAREPRO-25 — one topic of the pending queue. The newest fact renders as
@@ -575,7 +590,12 @@ export function MemoryRow({ m, busy, onApprove, onReject, onForget, onEdited, pr
           <p className="text-sm max-w-[65ch]" dir="auto" style={{ color: shownFact ? "var(--arbor-ink)" : "var(--arbor-muted)" }}>{shownFact || t("elev.childmem.fact.unshown")}</p>
         </>
       )}
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1.5 text-[11px]" style={{ color: "var(--arbor-muted)" }}>
+      {/* W2-CAREPRO c2 r1: two rows below sm — a meta row (date · chip ···
+          Edit) and an action row (the CTA or ghost Approve at inline start +
+          Dismiss, never wrapping) — so EN and HE lay out the same way whatever
+          the string widths; one row from sm up, the actions at inline end. */}
+      <div data-testid="memory-row-controls" className="mt-1.5 flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+      <div data-testid="memory-row-meta" className="flex flex-1 min-w-0 flex-wrap items-center justify-between sm:justify-start gap-x-2 gap-y-0.5 text-[11px]" style={{ color: "var(--arbor-muted)" }}>
         {/* W2-CAREPRO r1: no "source" link icon over raw model text with no
             destination (an unkeepable "Source-linked" claim, English in HE). */}
         {dated && <span className="inline-flex items-center gap-1"><Icon name="schedule" size={12} /> {dated}</span>}
@@ -601,6 +621,9 @@ export function MemoryRow({ m, busy, onApprove, onReject, onForget, onEdited, pr
             <Icon name="edit" size={14} /> {t("elev.waveR.mem.edit")}
           </button>
         )}
+      </div>
+      {!busy && (onApprove || onReject || onForget) && (
+      <div data-testid="memory-row-actions" className="flex flex-nowrap items-center gap-3 sm:ms-auto">
         {onApprove && !busy && primary && (
           <button
             type="button"
@@ -627,6 +650,8 @@ export function MemoryRow({ m, busy, onApprove, onReject, onForget, onEdited, pr
             <Icon name="delete" size={14} /> {t("elev.childmem.action.forget")}
           </button>
         )}
+      </div>
+      )}
       </div>
     </div>
   );

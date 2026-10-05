@@ -255,3 +255,34 @@ describe("B-DIST-01 · every egress carries the demo header (EN + HE)", () => {
     for (const lang of ["en", "he"] as const) expect(translate(lang, "elev.demo.chip")).not.toBe("elev.demo.chip");
   });
 });
+
+/* W2-CAREPRO c2 r1 (memory product P1 + design P1) — the grouped review
+ * (B-CAREPRO-25: "{n} similar · See all {n} · Dismiss all {n}") had never
+ * rendered: the demo seed held two singleton topics. The seed now carries
+ * three distinct same-topic pending facts (EN + HE) that survive the B-AI-07
+ * near-duplicate merge, so one group holds 4 facts. */
+describe("W2-CAREPRO c2 r1 · the demo memory seed renders a group at volume", () => {
+  for (const lang of ["en", "he"] as const) {
+    it(`${lang}: seedMemory leaves 4 pending facts in ONE topic after the near-duplicate merge`, async () => {
+      const { foldMemoryEvents } = await import("../memory/memoryService");
+      const { groupPendingMemory } = await import("../lib/memoryGroups");
+      const events: import("../memory/types").MemoryLedgerEvent[] = [];
+      const store = {
+        async listEvents(childId?: string) { return events.filter((e) => !childId || e.childId === childId); },
+        async appendEvent(e: import("../memory/types").MemoryLedgerEvent) { events.push(e); },
+        async eraseChild() { return 0; },
+      };
+      const f = buildDemoFamily({ lang, now: Date.UTC(2026, 9, 4, 12) });
+      if (lang === "he") expect(/[֐-׿]/.test(f.memory.pendingMore[0].fact)).toBe(true);
+      expect(f.memory.pendingMore).toHaveLength(3);
+      await seedScript.seedMemory(store, f, "fam-demo");
+      const items = foldMemoryEvents(events, f.child.id);
+      const pending = items.filter((i) => i.status === "pending");
+      expect(items.filter((i) => i.status === "approved")).toHaveLength(1);
+      expect(pending).toHaveLength(4);
+      const groups = groupPendingMemory(pending as unknown as import("../types").MemoryReviewItem[]);
+      expect(groups[0].items.length, JSON.stringify(groups.map((g) => [g.topic, g.items.length]))).toBe(4);
+      expect(groups[0].topic).not.toBe("other");
+    });
+  }
+});

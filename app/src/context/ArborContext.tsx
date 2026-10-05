@@ -828,7 +828,9 @@ function useArborState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [childProfile.id]);
 
-  const handleMemoryDecision = async (memoryId: string, status: "approved" | "rejected" | "deleted") => {
+  // W2-CAREPRO c2 r1: resolves true ONLY when the server confirmed the write
+  // (res.ok) — callers settle "Kept" on true, never on a swallowed failure.
+  const handleMemoryDecision = async (memoryId: string, status: "approved" | "rejected" | "deleted"): Promise<boolean> => {
     setIsMemoryUpdating(memoryId);
     try {
       const res = await fetch(`/api/memory/${encodeURIComponent(memoryId)}`, {
@@ -839,8 +841,10 @@ function useArborState() {
       if (!res.ok) throw new Error("Memory review update failed");
       const data = await res.json();
       setMemoryReviewItems(data.items || []);
+      return true;
     } catch (err: any) {
       toast(t("ctx.toast.memoryReviewFailed"), "error");
+      return false;
     } finally {
       setIsMemoryUpdating(null);
     }

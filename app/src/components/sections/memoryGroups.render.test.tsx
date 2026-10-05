@@ -21,7 +21,7 @@ vi.mock("../../context/LanguageContext", () => ({
   }),
 }));
 
-import { PendingGroupCard, MemoryRow } from "./ChildMemory";
+import { PendingGroupCard, MemoryRow, settleOnConfirmed } from "./ChildMemory";
 import { groupPendingMemory } from "../../lib/memoryGroups";
 
 const fact = (i: number, text: string): MemoryReviewItem => ({
@@ -132,7 +132,8 @@ describe("B-CAREPRO-NEW-2k/2l · provenance on the lead row, an in-place settle 
   it("source: approve sets the kept topic and the settle line is a status line in green-soft, EN + HE copy, no digits", async () => {
     const { readFileSync } = await import("node:fs");
     const src = readFileSync(new URL("./ChildMemory.tsx", import.meta.url), "utf8");
-    expect(src).toMatch(/if \(status === "approved"\) setKeptTopic\(g\.topic\);\s*return handleMemoryDecision\(id, status\);/);
+    // W2-CAREPRO c2 r1: the settle waits for the server (settleOnConfirmed).
+    expect(src).toMatch(/settleOnConfirmed\(\(\) => handleMemoryDecision\(id, status\), status, \(\) => setKeptTopic\(g\.topic\)\)/);
     expect(src).toMatch(/data-testid="memory-kept" role="status"[^>]*style=\{\{ background: "var\(--arbor-green-soft\)", color: "var\(--arbor-green-ink\)" \}\}/);
     for (const locale of ["en", "he"] as const) {
       const line = translate(locale, "elev.childmem.kept.topic", { topic: "T" });
@@ -140,4 +141,63 @@ describe("B-CAREPRO-NEW-2k/2l · provenance on the lead row, an in-place settle 
       expect(translate(locale, "elev.childmem.kept.any")).not.toBe("elev.childmem.kept.any");
     }
   });
+});
+
+describe("W2-CAREPRO c2 r1 · 'Kept' settles only after the server confirms", () => {
+  it("a failed save (429 / offline → handleMemoryDecision resolves false) never settles; a confirmed one does", async () => {
+    const settle = vi.fn();
+    expect(await settleOnConfirmed(async () => false, "approved", settle)).toBe(false);
+    expect(settle).not.toHaveBeenCalled();
+    expect(await settleOnConfirmed(async () => true, "rejected", settle)).toBe(true);
+    expect(settle).not.toHaveBeenCalled();
+    expect(await settleOnConfirmed(async () => true, "approved", settle)).toBe(true);
+    expect(settle).toHaveBeenCalledTimes(1);
+  });
+
+  it("source: handleMemoryDecision resolves true only after res.ok, false in the catch", async () => {
+    const { readFileSync } = await import("node:fs");
+    const ctx = readFileSync(new URL("../../context/ArborContext.tsx", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+    const fn = ctx.slice(ctx.indexOf("const handleMemoryDecision = async"), ctx.indexOf("finally {", ctx.indexOf("const handleMemoryDecision = async")));
+    expect(fn).toContain("Promise<boolean>");
+    expect(fn).toMatch(/if \(!res\.ok\) throw[\s\S]*setMemoryReviewItems\(data\.items \|\| \[\]\);\s*return true;/);
+    expect(fn).toMatch(/catch[\s\S]*toast\([\s\S]*return false;/);
+    // NEGATIVE CONTROL: the pre-fix page settled before the decision resolved.
+    const pre = 'if (status === "approved") setKeptTopic(g.topic);\n return handleMemoryDecision(id, status);';
+    expect(/setKeptTopic[\s\S]*handleMemoryDecision/.test(pre)).toBe(true);
+    const page = readFileSync(new URL("./ChildMemory.tsx", import.meta.url), "utf8");
+    expect(page).not.toMatch(/setKeptTopic\(g\.topic\);\s*return handleMemoryDecision/);
+  });
+
+  it("source: the Approved ledger follows the pending card directly; the disclosure is the last module", async () => {
+    const { readFileSync } = await import("node:fs");
+    const page = readFileSync(new URL("./ChildMemory.tsx", import.meta.url), "utf8");
+    const pending = page.indexOf('data-testid="memory-groups"');
+    const approved = page.indexOf('data-module="memory-approved"');
+    const trail = page.indexOf('data-module="memory-learning-trail"');
+    const more = page.indexOf('data-module-disclosure="memory-more"');
+    expect(pending).toBeGreaterThan(0);
+    expect(approved).toBeGreaterThan(pending);
+    expect(trail).toBeGreaterThan(approved);
+    expect(more).toBeGreaterThan(trail);
+  });
+});
+
+describe("W2-CAREPRO c2 r1 · MemoryRow: a meta row and a no-wrap action row", () => {
+  for (const locale of ["en", "he"] as const) {
+    it(`${locale}: the CTA and Dismiss share one flex-nowrap action row at inline start; Edit stays in the meta row`, () => {
+      harness.locale = locale;
+      const html = renderToStaticMarkup(
+        <MemoryRow m={fact(1, "Dylan needs comfort at bedtime")} busy={false} primary onApprove={vi.fn()} onReject={vi.fn()} onEdited={vi.fn()} />,
+      );
+      const meta = html.slice(html.indexOf('data-testid="memory-row-meta"'), html.indexOf('data-testid="memory-row-actions"'));
+      const actions = html.slice(html.indexOf('data-testid="memory-row-actions"'));
+      expect(meta).toContain('data-testid="memory-edit-open"');
+      expect(meta).not.toContain("data-primary-move");
+      expect(actions).toMatch(/^data-testid="memory-row-actions" class="flex flex-nowrap items-center gap-3 sm:ms-auto"/);
+      expect(actions.indexOf('data-primary-move="approve-memory-fact"')).toBeGreaterThan(0);
+      expect(actions).toContain(translate(locale, "elev.childmem.action.dismiss"));
+      expect(actions.indexOf('data-primary-move="approve-memory-fact"')).toBeLessThan(actions.indexOf(translate(locale, "elev.childmem.action.dismiss")));
+      expect(html).not.toMatch(/\b(ml|mr|pl|pr)-\d/);
+    });
+  }
 });

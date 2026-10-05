@@ -39,7 +39,14 @@ const L = (en: string, he: string): L => ({ en, he });
 const DAY = 86_400_000;
 
 /** The memory ledger half (server-side store, written through appendMemoryProposals / transitionMemory). */
-export type DemoMemorySeed = { approved: { fact: string; source: string }; pending: { fact: string; source: string } };
+export type DemoMemorySeed = {
+  approved: { fact: string; source: string };
+  pending: { fact: string; source: string };
+  /** W2-CAREPRO c2 r1: distinct (non-paraphrase) pending facts on the SAME
+   *  topic as `pending`, so the grouped review ("{n} similar · See all ·
+   *  Dismiss all", B-CAREPRO-25) renders on the demo family, EN and HE. */
+  pendingMore: { fact: string; source: string }[];
+};
 
 export type DemoFamily = {
   version: string;
@@ -104,10 +111,20 @@ const MEMORY: Record<DemoLang, DemoMemorySeed> = {
   en: {
     approved: { fact: "Settles faster at bedtime when the night light stays on for the last page.", source: "parent" },
     pending: { fact: "Mornings go smoother when his bag is packed the night before.", source: "coach conversation" },
+    pendingMore: [
+      { fact: "Puts his shoes on alone when the timer song plays.", source: "coach conversation" },
+      { fact: "Brushing teeth goes better with the two-minute sand timer.", source: "coach conversation" },
+      { fact: "The morning routine runs smoother with the picture chart by the door.", source: "coach conversation" },
+    ],
   },
   he: {
     approved: { fact: "נרגע מהר יותר לפני השינה כשמנורת הלילה דולקת בעמוד האחרון.", source: "parent" },
     pending: { fact: "הבקרים עוברים בקלות יותר כשהתיק מוכן מהערב.", source: "coach conversation" },
+    pendingMore: [
+      { fact: "נועל נעליים לבד כששיר הטיימר מתנגן.", source: "coach conversation" },
+      { fact: "צחצוח שיניים הולך טוב יותר עם שעון החול של שתי דקות.", source: "coach conversation" },
+      { fact: "שגרת הבוקר זורמת יותר עם לוח התמונות ליד הדלת.", source: "coach conversation" },
+    ],
   },
 };
 

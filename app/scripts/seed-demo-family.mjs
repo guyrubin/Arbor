@@ -104,6 +104,7 @@ export function planDemoWrites(family, { target, uid, allowed = childSubcollecti
     memory: [
       { op: "propose+approve", fact: family.memory.approved.fact },
       { op: "propose", fact: family.memory.pending.fact },
+      ...(family.memory.pendingMore ?? []).map((m) => ({ op: "propose", fact: m.fact })),
     ],
   };
 }
@@ -143,6 +144,8 @@ export async function seedMemory(memoryStore, family, familyId) {
     [
       { fact: family.memory.approved.fact, source: family.memory.approved.source, retention: "3 months" },
       { fact: family.memory.pending.fact, source: family.memory.pending.source, retention: "3 months" },
+      // W2-CAREPRO c2 r1: the same-topic volume the grouped review needs.
+      ...(family.memory.pendingMore ?? []).map((m) => ({ fact: m.fact, source: m.source, retention: "3 months" })),
     ],
     { familyId, prompt: "demo family seed (invented)", frameRouting },
   );
