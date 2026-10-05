@@ -90,11 +90,17 @@ describe("the one top bar + migrated worlds", () => {
     expect(overlay).toContain('{view === "arcade" && <KidHearItButton />}');
     expect(overlay).toContain('setKidHome(() => setView("home"));');
   });
-  it.each([["MindVaultWorld.tsx", "memory"]])("%s is on the shell (no PlayHeader of its own)", (file, worldId) => {
+  it.each([["MindVaultWorld.tsx", "memory"], ["PatternPowerWorld.tsx", "pattern"]])("%s is on the shell (no PlayHeader of its own)", (file, worldId) => {
     const src = read("..", "..", "practice", file);
     expect(src).toContain("<GameShell");
     expect(src).toContain(`worldId="${worldId}"`);
     expect(src).not.toContain("<PlayHeader");
+  });
+  it("Pattern Power: in Kid Mode the pips, the support caption and the in-header hear-it give way to the shell; the done view is GameFinish", () => {
+    const pp = read("..", "..", "practice", "PatternPowerWorld.tsx");
+    expect(pp).toContain("{!kid && <ProgressPips");
+    expect(pp).toContain("progress={{ index: idx, total }}");
+    expect(pp).toMatch(/if \(isKidModeActive\(\)\) \{\s*return <GameFinish/);
   });
   it("Mind Vault: in the kid shell the in-panel hear-it row and Celebrate give way to the shell", () => {
     const mm = read("..", "..", "practice", "MemoryMatch.tsx");

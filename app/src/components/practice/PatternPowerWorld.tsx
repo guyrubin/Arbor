@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
-import { PlayHeader, MascotSay, ChoiceTile, ProgressPips, PlayButton, Celebrate } from "../ui/playkit";
+import { MascotSay, ChoiceTile, ProgressPips, PlayButton, Celebrate } from "../ui/playkit";
 import { useArcadeLogger } from "../../practice/useArcadeLogger";
 import { patternRound, selectPatternSession, type PatternPuzzle } from "../../practice/newGames";
 import { dayKey } from "../../practice/signals";
-import { noteKidActivity } from "../../lib/kidModeGate";
+import { isKidModeActive, noteKidActivity } from "../../lib/kidModeGate";
+import { GameFinish, GameShell } from "../kidmode/game/GameShell";
 import { SpeakButton } from "../ui/SpeakButton";
 import { useLanguage } from "../../context/LanguageContext";
 
@@ -39,13 +40,19 @@ export function PatternDoneView({
   title,
   subtitle,
   againLabel,
+  homeLabel = "",
 }: {
   first: string;
   onReplay: () => void;
   title: string;
   subtitle: string;
   againLabel: string;
+  /** B-KID-74: the kid shell's finish offers Home beside Play again. */
+  homeLabel?: string;
 }) {
+  if (isKidModeActive()) {
+    return <GameFinish title={title} subtitle={subtitle} onPlayAgain={onReplay} playAgainLabel={againLabel} homeLabel={homeLabel} />;
+  }
   return (
     // B-KID-04 (law 3): a finished set earns all three stars — 0/6 included.
     <Celebrate title={title} subtitle={subtitle} stars={3} starsTotal={3}>
@@ -94,17 +101,20 @@ export function PatternRoundView({
   retryFeedback: string;
   supportLabel: string;
 }) {
+  // B-KID-74: the one kid game shell — in Kid Mode the bar names the game and
+  // carries hear-it, progress is the shell's dots; the parent door keeps the
+  // PlayHeader + its Read aloud + the pips.
+  const kid = isKidModeActive();
   return (
-    <div className="space-y-6">
-      <PlayHeader
-        title={title}
-        say={say}
-        mood="think"
-        worldId="pattern"
-        variant="compact"
-        action={<SpeakButton text={say} lang={lang} label={speakLabel} size="md" className="min-w-[44px] min-h-[44px] justify-center" />}
-      />
-      <ProgressPips total={total} current={idx} tone="lav" />
+    <GameShell
+      worldId="pattern"
+      title={title}
+      instruction={say}
+      mood="think"
+      action={<SpeakButton text={say} lang={lang} label={speakLabel} size="md" className="min-w-[44px] min-h-[44px] justify-center" />}
+      progress={{ index: idx, total }}
+    >
+      {!kid && <ProgressPips total={total} current={idx} tone="lav" />}
 
       <div className="pattern-sequence" role="img" aria-label={patternAria}>
         {puzzle.shown.map((g, i) => (
@@ -135,10 +145,12 @@ export function PatternRoundView({
         </MascotSay>
       )}
 
+      {!kid && (
       <p className="flex items-center justify-center gap-1.5 text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }}>
         <Icon name="category" size={14} /> {supportLabel}
       </p>
-    </div>
+      )}
+    </GameShell>
   );
 }
 
@@ -178,6 +190,7 @@ export default function PatternPowerWorld() {
         title={t("elev.play.pattern.done.title", { name: first })}
         subtitle={t("elev.play.pattern.done.sub")}
         againLabel={t("elev.play.pattern.done.again")}
+        homeLabel={t("kidGame.home")}
         onReplay={() => { setSessionSeed((seed) => seed + 1); setIdx(0); setScores([]); setPicked(null); setMissed([]); setRevealed(false); }}
       />
     );

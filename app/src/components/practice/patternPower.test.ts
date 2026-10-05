@@ -28,6 +28,8 @@ vi.mock("../../context/LanguageContext", () => ({
 }));
 vi.mock("../../context/ArborContext", () => ({
   useArbor: () => ({ childProfile: { id: "c1", name: "Mia Test", age: 5 } }),
+  // B-KID-74: the game shell reads the active child (theme + read-aloud mute).
+  useArborOptional: () => ({ childProfile: { id: "c1", name: "Mia Test", age: 5 } }),
 }));
 vi.mock("../ui/HeroAvatar", () => ({
   HeroAvatar: () => React.createElement("span", { "data-hero": "1" }),

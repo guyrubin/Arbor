@@ -41,7 +41,9 @@ export interface GameShellProps {
   instruction?: string;
   /** In-world progress: `index` of `total` steps done (dots, no numerals). */
   progress?: { index: number; total: number };
-  /** Parent-register PlayHeader passthroughs (unchanged parent door). */
+  /** Parent-register PlayHeader passthroughs (unchanged parent door). In Kid
+   *  Mode `action` is not rendered: a world's header action is its hear-it,
+   *  and the top bar carries the ONE hear-it. */
   mood?: MascotMood;
   eyebrow?: string;
   action?: React.ReactNode;
@@ -122,7 +124,6 @@ export function GameShell({ worldId, title, instruction, progress, mood, eyebrow
             {instruction}
           </p>
         )}
-        {action ? <div className="flex justify-end">{action}</div> : null}
         {children}
         {progress && <GameProgressDots index={progress.index} total={progress.total} />}
       </div>
