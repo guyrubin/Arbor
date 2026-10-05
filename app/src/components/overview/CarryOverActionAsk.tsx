@@ -3,6 +3,7 @@ import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { todayActionId, type ActionOutcome } from "../../actionLoop/model";
+import HeldPlanAsk from "./HeldPlanAsk";
 import {
   readSkippedCarryOvers,
   rememberSkippedCarryOver,
@@ -80,6 +81,10 @@ export default function CarryOverActionAsk({ onSkip }: { onSkip?: () => void } =
           </p>
         </div>
       </div>
+      {entry.source === "hard-moment" ? (
+        /* B-ASKJB-33: a hard-moment step asks "Did you manage to hold the plan calmly?" */
+        <div className="mt-3"><HeldPlanAsk row={entry} via="carry" /></div>
+      ) : (
       <div className="mt-3 grid grid-cols-3 gap-2">
         {outcomes.map(({ value, label }) => (
           <button
@@ -97,6 +102,7 @@ export default function CarryOverActionAsk({ onSkip }: { onSkip?: () => void } =
           </button>
         ))}
       </div>
+      )}
       <button
         type="button"
         onClick={() => { setSkipped(rememberSkippedCarryOver(entry.id)); onSkip?.(); }}

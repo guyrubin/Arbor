@@ -14,6 +14,9 @@ import { acceptHardMomentStep } from "../overview/hardMomentStep";
 import { tryItState } from "../coach/CoachAnswerCards";
 import { HardMomentGuideContent } from "./HardMomentsSection";
 import type { BehaviorLog } from "../../types";
+import { useAuth } from "../../context/AuthContext";
+import { lastHeldFor } from "./hardMomentLastTime";
+import { LastTimeLead, SendWordsButton } from "./HardMomentWords";
 
 /**
  * B-ASKJB-31 — "Hard moment now": ONE sheet over the governed pilot guides,
@@ -58,8 +61,10 @@ export default function HardMomentNowSheet() {
   const {
     hardMomentNow, closeHardMomentNow, childProfile, behaviorLogs,
     acceptTodayAction, activeTodayAction, setActiveTab, setAskHardMomentRef, requestLearnRead,
+    actionLoop,
   } = useArbor();
   const { t, uiLang } = useLanguage();
+  const { user } = useAuth();
   const locale = uiLang === "he" ? "he" : "en";
   const open = hardMomentNow.open;
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -95,6 +100,9 @@ export default function HardMomentNowSheet() {
 
   const doNow = card ? locText(card.doNow, locale) : "";
   const tryState = card ? (booked === card.id ? "accepted" : tryItState(doNow, activeTodayAction)) : "accept";
+  // B-ASKJB-33: the newest "held the plan calmly" answer for this card.
+  const lastTime = card ? lastHeldFor(card, actionLoop || []) : null;
+  const parentFirst = (user?.displayName || t("nav.parent")).split(" ")[0];
 
   return (
     <Modal open={open} onClose={closeHardMomentNow} title={t("hm.now.title")}>
@@ -121,6 +129,8 @@ export default function HardMomentNowSheet() {
           </>
         ) : (
           <>
+            {/* B-ASKJB-33: "Last time, this helped with {name}" leads the card. */}
+            {lastTime && <LastTimeLead card={card} childName={childFirst} at={lastTime.at} locale={locale} t={t} />}
             <button
               type="button"
               onClick={() => setSelectedId(null)}
@@ -154,6 +164,7 @@ export default function HardMomentNowSheet() {
                   )}
                 </>
               )}
+              <SendWordsButton card={card} locale={locale} parentName={parentFirst} childName={childFirst} t={t} />
               <button
                 type="button"
                 data-testid="hard-moment-now-talk"

@@ -46,7 +46,7 @@ import { isLearnPilotCard } from "../learn/learnPilotRelease";
 import { concernsForBehaviors } from "../content/selectCards";
 import { ageYearsFromProfile, ageMonthsFromProfile } from "../lib/childAge";
 import { ageWindowMilestones, comparisonAgeMonths } from "../lib/milestoneData";
-import { activeActionFor, planAcceptedAction, sortActionLoop, todayActionId, type PlanStepRef } from "../actionLoop/model";
+import { activeActionFor, planAcceptedAction, sortActionLoop, todayActionId, type ChildResponse, type HeldAnswer, type PlanStepRef } from "../actionLoop/model";
 import { planStepStatusAfter } from "../lib/plans";
 import { fromRecordEntry, type FromRecordAnswer, type FromRecordOpener } from "../lib/today/fromRecord";
 import { recentTypeCounts } from "../lib/planRecord";
@@ -453,10 +453,11 @@ function useArborState() {
   };
   // B-TODAY-15: `via` = where the outcome was rated (the step card or the
   // carry-over ask); the event carries via + daysLate (ids/enums/counts only).
-  const recordTodayOutcome = (id: string, outcome: ActionOutcome, via: TodayOutcomeVia = "card") => {
+  // B-ASKJB-33: a hard-moment row also stores `held` (the two-tap ask).
+  const recordTodayOutcome = (id: string, outcome: ActionOutcome, via: TodayOutcomeVia = "card", held?: HeldAnswer) => {
     const item = actionLoop.find((entry) => entry.id === id);
     if (!item) return;
-    void actionLoopCol.upsert({ ...item, status: "completed", outcome, outcomeAt: new Date().toISOString() });
+    void actionLoopCol.upsert({ ...item, status: "completed", outcome, outcomeAt: new Date().toISOString(), ...(held ? { held } : {}) });
     // B-ASKJB-26: a plan step's outcome moves the step — helped → done (the
     // next step becomes today's), somewhat → in progress (kept, next offered),
     // not_today → unchanged (tomorrow's step).
@@ -467,6 +468,14 @@ function useArborState() {
     try { track("today_action_outcome", todayOutcomeProps({ outcome, capacity: item.capacity, via, acceptedAt: item.acceptedAt })); } catch { /* noop */ }
   };
   const removeTodayAction = (id: string) => void actionLoopCol.remove(id);
+  // B-ASKJB-33 — the second tap ("And {name}? Calmer · Same · Harder"):
+  // stored on the same row for the visit packet; never feeds "last time".
+  const recordChildResponse = (id: string, childResponse: ChildResponse) => {
+    const item = actionLoop.find((entry) => entry.id === id);
+    if (!item) return;
+    void actionLoopCol.upsert({ ...item, childResponse });
+    try { track("hard_moment_child_response", { response: childResponse }); } catch { /* noop */ }
+  };
   // B-TODAY-28 — Today's "From your record" answer: ONE row on the same
   // actionLoops ledger (source "from-record", the parent's reflection), never
   // a new collection. ids/enums only in the event.
@@ -1587,6 +1596,7 @@ function useArborState() {
     recordTodayOutcome,
     removeTodayAction,
     recordFromRecordAnswer,
+    recordChildResponse,
     captureSheet,
     openCaptureSheet,
     closeCaptureSheet,

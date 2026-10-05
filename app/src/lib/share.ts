@@ -183,3 +183,51 @@ export async function shareCard(args: ShareArgs): Promise<ShareResult> {
     return { ok: false, error: true };
   }
 }
+
+/* ── B-ASKJB-33 — the TEXT-ONLY path ("Send these words to…") ─────────────
+   Plain words a parent hands to a partner or grandparent: the sentence, when
+   to say it, what to do alongside it, and one closing line. No link, no
+   referral code, no UTM, no image, no branded card (shareCard.ts is NOT
+   used); the child's first name only when the parent turned it on. */
+
+export interface WordsPayload {
+  /** The words to say (already rendered with or without the first name). */
+  sentence: string;
+  /** "When: …" — the situation line. */
+  whenLine: string;
+  /** "With it: …" — the one line of what to do alongside the words. */
+  withLine: string;
+  /** "From Arbor, {parent}'s parenting notes". */
+  closing: string;
+}
+
+/** Pure: the shared text — lines joined by newlines, nothing else. */
+export function buildWordsText(p: WordsPayload): string {
+  return [p.sentence, p.whenLine, p.withLine, p.closing].map((s) => s.trim()).filter(Boolean).join("\n");
+}
+
+export type WordsShareResult = "shared" | "copied" | "cancelled" | "error";
+
+/**
+ * The OS share sheet with `text` only (navigator.share), else copy to the
+ * clipboard. Never a url, never files. Throws nothing.
+ */
+export async function shareWordsText(text: string, nav: Pick<Navigator, "share" | "clipboard"> | undefined =
+  typeof navigator !== "undefined" ? navigator : undefined): Promise<WordsShareResult> {
+  if (!nav) return "error";
+  if (typeof nav.share === "function") {
+    try {
+      await nav.share({ text });
+      return "shared";
+    } catch (err) {
+      if (isAbort(err)) return "cancelled";
+      // fall through to the clipboard
+    }
+  }
+  try {
+    await nav.clipboard?.writeText(text);
+    return nav.clipboard ? "copied" : "error";
+  } catch {
+    return "error";
+  }
+}

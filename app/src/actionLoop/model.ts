@@ -65,6 +65,19 @@ export interface ActionLoopEntry {
    *  The reflection is the parent's read, never a score; `outcome` stays unset. */
   recordKey?: string;
   reflection?: "easier" | "hard_again" | "other";
+  /** B-ASKJB-33: a `hard-moment` row's two-tap ask — did the adult hold the
+   *  plan calmly (feeds "Last time, this helped"), and how the child was
+   *  (kept for the visit packet). The parent's own read, never a score. */
+  held?: HeldAnswer;
+  childResponse?: ChildResponse;
+}
+
+export type HeldAnswer = "yes" | "no";
+export type ChildResponse = "calmer" | "same" | "harder";
+/** "Held the plan" → the ledger's outcome enum, so every existing reader
+ *  (plan steps, What changed, the focus loop) keeps working. */
+export function heldOutcome(held: HeldAnswer): ActionOutcome {
+  return held === "yes" ? "helped" : "not_today";
 }
 
 /** B-ASKJB-26: the plan step an accept came from. */
