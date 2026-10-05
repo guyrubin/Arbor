@@ -17,6 +17,7 @@ vi.mock("../../lib/voice", () => ({ speakText: vi.fn(() => 0), stopVoice: vi.fn(
 
 import { BookReader, nextIntent } from "./BookReader";
 import { BookEnd } from "./BookParts";
+import { narrationCandidates } from "./useNarration";
 import { BOOK_PLATES } from "../../lib/library/books";
 import { makePlate } from "../../lib/library/bookPlates";
 import { bookFlowReducer, END, initialBookFlow, type BookFlowAction, type BookFlowState } from "../../lib/library/bookFlow";
@@ -286,8 +287,8 @@ describe("the ending", () => {
   it("v2 art states: p9 = swing → dust → 'the soldiers rise' plate cross-fading in over PL7 (the hero stays, the dust goes)", () => {
     const s = toPage("a", "p9");
     const RISE = [
-      { id: "dust", overlays: ["dust-cloud"], trigger: "narration" as const },
-      { id: "rise", plateId: "PL7-rise", overlays: [], trigger: { afterMs: 2000, silentAfterMs: 3000 } },
+      { id: "dust", overlays: ["dust-cloud"], cue: { atFraction: 0.93 }, silentAfterMs: 4000 },
+      { id: "rise", plateId: "PL7-rise", overlays: [], cue: "audioEnd" as const, silentAfterMs: 3000 },
     ];
     const riseBook = { ...book, pages: book.pages.map((p) => (p.id === "p9" ? { ...p, artStates: RISE } : p)) };
     const plates = { ...BOOK_PLATES[book.id], "PL7-rise": makePlate(book.id, "PL7-rise", "day", { width: 1920, height: 1280 }) };
@@ -321,6 +322,28 @@ describe("the ending", () => {
     expect(html(lacking)).toContain(`src="${base}/look-up.webp"`);
     expect(html(having)).toContain(`src="${base}/stand-tall.webp"`);
     expect(resolvePose(null, "stand-tall", book.poseFallbacks)).toBe("stand-tall");
+  });
+
+  it("v3: p9 = swing → the stone in flight (PL7-flight + sling-release) → dust → quiet; a narration set may be WAV", () => {
+    const s = toPage("a", "p9");
+    const plates = { ...BOOK_PLATES[book.id], "PL7-flight": makePlate(book.id, "PL7-flight", "day", { width: 1920, height: 1280 }), "PL7-quiet": makePlate(book.id, "PL7-quiet", "day", { width: 1920, height: 1280 }) };
+    const v3Book = { ...book, pages: book.pages.map((p) => (p.id === "p9" ? { ...p, artStates: p.artStates!.map((st) => (st.id === "quiet" ? { ...st, plateId: "PL7-quiet" } : st)) } : p)) };
+    const at = (stage: number) =>
+      renderToStaticMarkup(<BookReader book={v3Book} lang="en" child={BOY} onClose={() => {}} dev narration="off" initialState={s} initialBox={WIDE} plates={plates} initialRevealed={stage} />);
+    expect(at(0)).not.toContain("data-book-state-plate");
+    const flight = at(1);
+    expect(flight).toContain('data-book-state-plate="PL7-flight"');
+    expect(flight).toContain("/sling-release.webp");
+    expect(flight).toMatch(/data-book-overlay="dust-cloud"[^>]*data-hidden=""/);
+    const dust = at(2);
+    expect(dust).not.toMatch(/data-book-overlay="dust-cloud"[^>]*data-hidden=""/);
+    const quiet = at(3);
+    expect(quiet).toContain('data-book-state-plate="PL7-quiet"');
+    expect(quiet).toMatch(/data-book-overlay="dust-cloud"[^>]*data-hidden=""/);
+    expect(narrationCandidates("/_dev/narration/five-smooth-stones/dylan-v2-expressive/en/p9.mp3")).toEqual([
+      "/_dev/narration/five-smooth-stones/dylan-v2-expressive/en/p9.mp3",
+      "/_dev/narration/five-smooth-stones/dylan-v2-expressive/en/p9.wav",
+    ]);
   });
 
   it("p9 lays out with the PLATE's size whether the print or the composite shows (no frame jump)", () => {

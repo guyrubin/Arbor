@@ -6,7 +6,8 @@
  * never reach an API, a model or another host (noModelCalls.test allows
  * fetch only in this file, and tests this rule). Failure = null, never throws.
  */
-const ALLOWED = /^\/(?:_dev|visuals|audio)\/[A-Za-z0-9_\-/]+\.json$/;
+// dotted file names are allowed (`p9.cues.json`, a narration cue sidecar)
+const ALLOWED = /^\/(?:_dev|visuals|audio)\/[A-Za-z0-9_\-/]+(?:\.[A-Za-z0-9_-]+)*\.json$/;
 
 export function isStaticJsonPath(path: string): boolean {
   return ALLOWED.test(path) && !path.includes("..") && !path.includes("//");

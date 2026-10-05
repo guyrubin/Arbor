@@ -5,123 +5,128 @@
  * user gesture yet, or a hidden tab = silence, never an error.
  *
  * - One HTMLAudioElement per page show; the previous one is paused on change.
- * - A path that failed once is not asked again this session.
+ * - A file is tried as `.mp3`, then as `.wav` (a performed reading set may be
+ *   delivered as WAV); a path that failed once is not asked again.
  * - `settled` turns true when the narration ends, fails, or never starts.
- * - `revealed` (fix round 1, ruling 5 — p9's dust on "BOOM"): with audio,
- *   at `revealAt` seconds if given, else REVEAL_LEAD_S before the end when the
- *   duration is known, else on `ended`; with no audio (Sound off, no file, no
- *   gesture), `silentRevealMs` after the page shows. The reader adds "a tap /
- *   the first Next reveals" on top.
  * - `heard`: audio actually started on this page show (else the page is
- *   SILENT: the art states use their silent timings). `revealed` and `heard`
- *   are keyed by `showKey`, so a page never sees the previous page's values
- *   on its first render.
+ *   SILENT: the art states use their silent timings). `heard` is keyed by
+ *   `showKey`, so a page never sees the previous page's value.
+ * - `onClock` (v3, the art-state cues): called with the file's position and
+ *   duration on every time update, and once with `ended: true`.
  * - `playClip(src)` plays a short one-off (a choice label, a repair line, a
  *   prompt, the cover title) under the same Sound rule, pausing the page
  *   narration; a page part that starts while a clip plays waits for its end.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { pageHasUserGesture } from "../kidmode/audio/kidAudio";
+import type { NarrationClock } from "../../lib/library/bookArtStates";
 
 const failed = new Set<string>();
+
+/** The URLs to try for a narration file: the file, then its `.wav` twin. */
+export function narrationCandidates(src: string): string[] {
+  const out = [src];
+  if (/\.mp3$/.test(src)) out.push(src.replace(/\.mp3$/, ".wav"));
+  return out.filter((u) => !failed.has(u));
+}
 
 export interface NarrationState {
   /** The page narration finished, failed, or never started. */
   settled: boolean;
-  /** Audio actually started on this page show. */
+  /** Audio is playing now. */
   playing: boolean;
-  /** The reveal moment has come (see the module note). */
-  revealed: boolean;
   /** Audio started on this page show. */
   heard: boolean;
   playClip: (src: string | null | undefined) => void;
 }
 
-/** Seconds before the end of the narration at which the reveal starts. */
-export const REVEAL_LEAD_S = 1.2;
-/** The reveal on a silent page. */
-export const SILENT_REVEAL_MS = 5000;
-
 export function useNarration(
   src: string | null,
-  opts: { showKey: string; muted: boolean; enabled: boolean; revealAt?: number; silentRevealMs?: number },
+  opts: { showKey: string; muted: boolean; enabled: boolean; onClock?: (c: NarrationClock) => void },
 ): NarrationState {
-  const { showKey, muted, enabled, revealAt, silentRevealMs = SILENT_REVEAL_MS } = opts;
+  const { showKey, muted, enabled } = opts;
+  const onClock = useRef(opts.onClock);
+  onClock.current = opts.onClock;
   const pageAudio = useRef<HTMLAudioElement | null>(null);
   const clipAudio = useRef<HTMLAudioElement | null>(null);
   const [settled, setSettled] = useState(false);
   const [playing, setPlaying] = useState(false);
-  const [revealedFor, setRevealedFor] = useState<string | null>(null);
   const [heardFor, setHeardFor] = useState<string | null>(null);
 
   useEffect(() => {
     setSettled(false);
     setPlaying(false);
     let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const reveal = () => !cancelled && setRevealedFor(showKey);
-    const finish = (heard: boolean) => {
+    const finish = () => {
       if (cancelled) return;
       setSettled(true);
       setPlaying(false);
-      if (heard) reveal();
-      else timer = setTimeout(reveal, silentRevealMs);
     };
     const hidden = typeof document !== "undefined" && document.visibilityState === "hidden";
-    if (!enabled || !src || muted || failed.has(src) || !pageHasUserGesture() || hidden || typeof Audio === "undefined") {
-      finish(false);
+    const urls = src ? narrationCandidates(src) : [];
+    if (!enabled || !src || muted || !urls.length || !pageHasUserGesture() || hidden || typeof Audio === "undefined") {
+      finish();
       return () => {
         cancelled = true;
-        if (timer) clearTimeout(timer);
       };
     }
-    const audio = new Audio(src);
-    pageAudio.current = audio;
-    audio.preload = "auto";
-    audio.onended = () => finish(true);
-    audio.onerror = () => {
-      failed.add(src);
-      finish(false);
-    };
-    audio.ontimeupdate = () => {
+    let audio: HTMLAudioElement | null = null;
+    let wait: ReturnType<typeof setTimeout> | undefined;
+    const clock = (a: HTMLAudioElement, ended: boolean) =>
+      onClock.current?.({ positionMs: a.currentTime * 1000, durationMs: Number.isFinite(a.duration) ? a.duration * 1000 : NaN, ended });
+    const play = (i: number) => {
       if (cancelled) return;
-      const at = revealAt ?? (Number.isFinite(audio.duration) && audio.duration > 0 ? Math.max(0, audio.duration - REVEAL_LEAD_S) : Infinity);
-      if (audio.currentTime >= at) setRevealedFor(showKey);
-    };
-    const start = () => {
-      if (cancelled) return;
-      audio
-        .play()
+      if (i >= urls.length) return finish();
+      const a = new Audio(urls[i]);
+      audio = a;
+      pageAudio.current = a;
+      a.preload = "auto";
+      a.onended = () => {
+        if (cancelled) return;
+        clock(a, true);
+        finish();
+      };
+      a.onerror = () => {
+        failed.add(urls[i]);
+        play(i + 1);
+      };
+      a.ontimeupdate = () => !cancelled && clock(a, false);
+      a.play()
         .then(() => {
           if (cancelled) return;
           setPlaying(true);
           setHeardFor(showKey);
         })
-        .catch(() => finish(false));
+        .catch((e: unknown) => {
+          // not allowed to play (no gesture): silence; a missing or
+          // undecodable file is handled by onerror (the next candidate)
+          if ((e as { name?: string } | null)?.name === "NotAllowedError") finish();
+        });
     };
     // A tap's clip (a repair item's line) finishes before the next part starts.
     const clip = clipAudio.current;
-    let wait: ReturnType<typeof setTimeout> | undefined;
     const onClipEnd = () => {
       if (wait) clearTimeout(wait);
-      start();
+      play(0);
     };
     if (clip && !clip.paused && !clip.ended) {
       wait = setTimeout(onClipEnd, 6000);
       clip.addEventListener("ended", onClipEnd, { once: true });
-    } else start();
+    } else play(0);
     return () => {
       cancelled = true;
-      if (timer) clearTimeout(timer);
       if (wait) clearTimeout(wait);
       clip?.removeEventListener("ended", onClipEnd);
-      audio.onended = null;
-      audio.onerror = null;
-      audio.ontimeupdate = null;
-      audio.pause();
-      if (pageAudio.current === audio) pageAudio.current = null;
+      const a = audio as HTMLAudioElement | null;
+      if (a) {
+        a.onended = null;
+        a.onerror = null;
+        a.ontimeupdate = null;
+        a.pause();
+        if (pageAudio.current === a) pageAudio.current = null;
+      }
     };
-  }, [src, showKey, muted, enabled, revealAt, silentRevealMs]);
+  }, [src, showKey, muted, enabled]);
 
   // Sound turned off mid-page: stop at once.
   useEffect(() => {
@@ -133,13 +138,22 @@ export function useNarration(
 
   const playClip = useCallback(
     (clip: string | null | undefined) => {
-      if (!clip || muted || failed.has(clip) || typeof Audio === "undefined") return;
+      if (!clip || muted || typeof Audio === "undefined") return;
+      const urls = narrationCandidates(clip);
+      if (!urls.length) return;
       pageAudio.current?.pause();
       clipAudio.current?.pause();
-      const a = new Audio(clip);
-      clipAudio.current = a;
-      a.onerror = () => failed.add(clip);
-      a.play().catch(() => {});
+      const tryAt = (i: number) => {
+        if (i >= urls.length) return;
+        const a = new Audio(urls[i]);
+        clipAudio.current = a;
+        a.onerror = () => {
+          failed.add(urls[i]);
+          tryAt(i + 1);
+        };
+        a.play().catch(() => {});
+      };
+      tryAt(0);
     },
     [muted],
   );
@@ -151,5 +165,5 @@ export function useNarration(
     [],
   );
 
-  return { settled, playing, revealed: revealedFor === showKey, heard: heardFor === showKey, playClip };
+  return { settled, playing, heard: heardFor === showKey, playClip };
 }

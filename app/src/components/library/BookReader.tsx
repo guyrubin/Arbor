@@ -37,7 +37,8 @@ import { Icon } from "../ui/Icon";
 import { BookPage, type BookPageItem, type BookPageOverlay } from "./BookPage";
 import { BookEnd, BookSoundToggle, PointingHand } from "./BookParts";
 import { useNarration } from "./useNarration";
-import { ART_STATE_HOLD_MS, nextIntent, nextStateDelay, overlayHiddenAt, pageArtStates, stagedOverlayIds, statePlateAt } from "../../lib/library/bookArtStates";
+import { ART_STATE_HOLD_MS, audioStage, cuesPath, nextIntent, overlayHiddenAt, pageArtStates, readCues, stagedOverlayIds, statePlateAt, statePoseAt, timerDelay, type CueTimes, type NarrationClock } from "../../lib/library/bookArtStates";
+import { loadStaticJson } from "../../lib/library/staticJson";
 import {
   bookFlowReducer,
   canTurnForward,
@@ -92,6 +93,9 @@ export interface BookReaderProps {
   initialRevealed?: boolean | number;
   /** Test seam: the decision page opens in its cards state. */
   initialChoosing?: boolean;
+  /** The narration set (folder) to read from; default = the hero sheet id,
+   *  else the child id. DEV review: `&voice=dylan-v2-expressive`. */
+  voiceSet?: string | null;
 }
 
 const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
@@ -151,6 +155,7 @@ export function BookReader({
   costume = null,
   initialRevealed = false,
   initialChoosing = false,
+  voiceSet = null,
 }: BookReaderProps) {
   const plateTable = plates ?? BOOK_PLATES[book.id] ?? {};
   const [state, dispatch] = useReducer((s: BookFlowState, a: Parameters<typeof bookFlowReducer>[2]) => bookFlowReducer(book, s, a), initialState ?? initialBookFlow());
@@ -198,8 +203,22 @@ export function BookReader({
   const nextItem = story ? nextRepairItem(page, state) : null;
   const doneOrder = useMemo(() => state.repaired.filter((k) => k.startsWith(`${page.id}:`)).map((k) => k.slice(page.id.length + 1)), [state.repaired, page.id]);
   const paras = story ? pageParagraphs(page, { lang, gender, choiceId: state.choiceId, repaired: doneOrder }) : [];
+  // ── art states (v3): stage 0 = the page as authored; the narration's
+  // position cues the next ones (lib/library/bookArtStates) ──────────────
+  const artStates = useMemo(() => (story ? pageArtStates(page, (id) => !!plateTable[id]) : []), [story, page, plateTable]);
+  const staged = artStates.length > 0;
+  const [stageRec, setStageRec] = useState<{ at: string; n: number }>(() => ({
+    at: (initialState ?? initialBookFlow()).at,
+    n: initialRevealed === true ? Number.MAX_SAFE_INTEGER : typeof initialRevealed === "number" ? initialRevealed : 0,
+  }));
+  const stage = stageRec.at === state.at ? Math.min(stageRec.n, artStates.length) : 0;
+  const allShown = staged && stage >= artStates.length;
+  const advance = useCallback((to: number) => setStageRec((r) => ({ at: state.at, n: Math.max(r.at === state.at ? r.n : 0, to) })), [state.at]);
   const baseSlot = (costume && page.heroAlt?.[costume]) || page.hero;
-  const authoredSlot = repaired && repair?.heroAfter ? repair.heroAfter : baseSlot;
+  const repairSlot = repaired && repair?.heroAfter ? repair.heroAfter : baseSlot;
+  // an art state may set the hero's pose (p9's `sling-release` in flight)
+  const stagePose = statePoseAt(artStates, stage);
+  const authoredSlot = repairSlot && stagePose ? { ...repairSlot, pose: stagePose } : repairSlot;
   // v2 poses the sheet does not have yet show their stopgap (Book.poseFallbacks)
   const shownPose = authoredSlot ? resolvePose(sheet, authoredSlot.pose, book.poseFallbacks) : null;
   const slot = authoredSlot && shownPose !== authoredSlot.pose ? { ...authoredSlot, pose: shownPose! } : authoredSlot;
@@ -219,7 +238,7 @@ export function BookReader({
       };
 
   // ── narration ──────────────────────────────────────────────────────────────
-  const voiceKey = child.heroSheetId?.trim() || child.id;
+  const voiceKey = voiceSet?.trim() || child.heroSheetId?.trim() || child.id;
   const root = dev ? DEV_NARRATION_ROOT : NARRATION_ROOT;
   const keyBase = { bookId: book.id, lang, gender, voiceKey };
   const probe = narration === "probe";
@@ -230,32 +249,44 @@ export function BookReader({
       : repaired && repair
         ? declaredAudio(repair.audio, lang, gender) ?? (probe ? narrationKey({ ...keyBase, pageId: `${page.id}-after` }, root) : null)
         : pageNarrationSrc(page, { ...keyBase, choiceId: state.choiceId }, { probe, root });
-  const revealAt = page.overlays?.find((o) => o.reveal === "afterNarration")?.revealAt;
   const showKey = `${state.at}|${repaired ? "after" : "before"}`;
-  const voice = useNarration(pageSrc, { showKey, muted, enabled: narration !== "off", revealAt });
 
-  // ── art states (v2, engine 1): stage 0 = the page as authored ─────────────
-  const artStates = useMemo(() => (story ? pageArtStates(page, (id) => !!plateTable[id]) : []), [story, page, plateTable]);
-  const staged = artStates.length > 0;
-  const [stageRec, setStageRec] = useState<{ at: string; n: number }>(() => ({
-    at: (initialState ?? initialBookFlow()).at,
-    n: initialRevealed === true ? Number.MAX_SAFE_INTEGER : typeof initialRevealed === "number" ? initialRevealed : 0,
-  }));
-  const stage = stageRec.at === state.at ? Math.min(stageRec.n, artStates.length) : 0;
-  const allShown = staged && stage >= artStates.length;
-  const advance = useCallback((to: number) => setStageRec((r) => ({ at: state.at, n: Math.max(r.at === state.at ? r.n : 0, to) })), [state.at]);
-  // the first state on the narration's reveal moment
+  // ── art states: the narration's position cues the next one ───────────────
+  // the per-voice cue sidecar next to the page's file (`p9.cues.json`)
+  const wantsCues = staged && artStates.some((s) => s.cueKey);
+  const [cues, setCues] = useState<{ src: string; times: CueTimes } | null>(null);
   useEffect(() => {
-    if (staged && voice.revealed && artStates[0].trigger === "narration") advance(1);
-  }, [staged, voice.revealed, artStates, advance]);
-  // a timed state after the previous one (silent timings when nothing played)
-  const silent = !voice.heard;
+    if (!wantsCues || !pageSrc) return;
+    let live = true;
+    void loadStaticJson(cuesPath(pageSrc)).then((raw) => live && setCues({ src: pageSrc, times: readCues(raw) }));
+    return () => {
+      live = false;
+    };
+  }, [wantsCues, pageSrc]);
+  const cueTimes = useRef<CueTimes>({});
+  cueTimes.current = cues && cues.src === pageSrc ? cues.times : {};
+  const onClock = useCallback(
+    (c: NarrationClock) => {
+      if (!staged) return;
+      setStageRec((r) => {
+        const cur = r.at === state.at ? r.n : 0;
+        const n = audioStage(artStates, cur, c, cueTimes.current);
+        return n > cur ? { at: state.at, n } : r;
+      });
+    },
+    [staged, artStates, state.at],
+  );
+  const voice = useNarration(pageSrc, { showKey, muted, enabled: narration !== "off", onClock });
+  // Sound off / no file: the states' silent timings; with audio, timed cues
+  const silent = muted || narration === "off" || !pageSrc || (voice.settled && !voice.heard);
+  const audioPending = !silent && !voice.settled && !voice.heard;
   useEffect(() => {
-    const d = nextStateDelay(artStates, stage, silent);
+    if (!staged || audioPending) return;
+    const d = timerDelay(artStates, stage, silent);
     if (d == null) return;
     const t = setTimeout(() => advance(stage + 1), d);
     return () => clearTimeout(t);
-  }, [artStates, stage, silent, advance]);
+  }, [staged, artStates, stage, silent, audioPending, advance]);
   // after the last state: stillness before Next (ruling 5)
   const [holdUntil, setHoldUntil] = useState(0);
   const [, setTick] = useState(0);

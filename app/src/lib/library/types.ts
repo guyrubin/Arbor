@@ -159,22 +159,31 @@ export interface PlateOccluder {
   featherTop: number;
 }
 
-/** One ordered picture state of a page (manuscript v2, p9: the swing → the
- *  dust → "the soldiers rise"). State 0 is the page as authored; each state
- *  here comes after the previous one. An overlay that any state names is shown
- *  only in the states that list it. */
+/** When an art state comes, inside the page's narration: at page show, at a
+ *  point (ms or a fraction of the file's duration), when the file ends, or a
+ *  time after the previous state. */
+export type ArtCue = "start" | { atFraction: number } | { atMs: number } | "audioEnd" | { afterMs: number };
+
+/** One ordered picture state of a page (v3, p9: the swing → the stone in
+ *  flight → the dust → the quiet). State 0 is the page as authored; each
+ *  state here comes after the previous one (lib/library/bookArtStates). */
 export interface ArtState {
   id: string;
-  /** A plate that cross-fades in over the page's plate (the hero stays). A
-   *  state whose plate is not in the book's plate table is skipped. */
+  /** A plate that cross-fades in over the page's plate. A state whose plate
+   *  is not in the book's plate table is skipped. */
   plateId?: string;
-  /** The overlay ids visible in this state. */
+  /** The hero's pose from this state on (e.g. `sling-release`). */
+  pose?: Pose;
+  /** The overlay ids visible in this state (an overlay any state names shows
+   *  only in the states that list it). */
   overlays: string[];
-  /** "narration" = the narration's reveal moment (REVEAL_LEAD_S before the
-   *  file ends; 5 s after the page shows when silent); timed = that long
-   *  after the previous state (`silentAfterMs` when the page is silent). A
-   *  tap on the picture or a Next press brings the next state at once. */
-  trigger: "narration" | { afterMs: number; silentAfterMs: number };
+  cue: ArtCue;
+  /** The key of this cue in the per-voice sidecar `<file>.cues.json`
+   *  ({ flight: ms, boom: ms }); the sidecar wins over `cue`. */
+  cueKey?: string;
+  /** Sound off / no file: ms after the previous state (the page show for the
+   *  first). */
+  silentAfterMs: number;
 }
 
 export type PageType = "facing" | "spread";
