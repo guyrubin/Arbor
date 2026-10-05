@@ -8,7 +8,7 @@ import { EvidenceChip } from "../ui/EvidenceChip";
 import { countSince, WEEK_MS } from "../../lib/pulse";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { latestRecheckDueAt } from "../../lib/screeningRecheck";
-import { ageWindowMilestones, comparisonAgeMonths, selectWeeklyFocus } from "../../lib/milestoneData";
+import { ageWindowMilestones, comparisonAgeMonths, milestoneText, selectWeeklyFocus } from "../../lib/milestoneData";
 import { ageMonthsFromProfile } from "../../lib/childAge";
 import DevScoreCard from "../sections/DevScoreCard";
 import PhysicalGrowthCard from "../sections/PhysicalGrowthCard";
@@ -107,8 +107,9 @@ export default function DevelopmentTab() {
   const weeklyFocus = useMemo(() => {
     if (chosenWatch) {
       return {
-        title: chosenWatch.title,
-        body: chosenWatch.skillLooksLike || chosenWatch.description,
+        // B-GROWTH-11: catalogue text by stable id, in the page language.
+        title: milestoneText(chosenWatch, "title", t),
+        body: milestoneText(chosenWatch, chosenWatch.skillLooksLike ? "looks" : "desc", t),
         hint: t("growth.focus.watchHint"),
         action: "daily-play" as const,
         chosen: true,
@@ -120,8 +121,8 @@ export default function DevelopmentTab() {
     const selected = selectWeeklyFocus(milestones, comparisonMonths);
     if (selected) {
       return {
-        title: selected.milestone.title,
-        body: selected.milestone.skillLooksLike || selected.milestone.description,
+        title: milestoneText(selected.milestone, "title", t),
+        body: milestoneText(selected.milestone, selected.milestone.skillLooksLike ? "looks" : "desc", t),
         // "watch for" vs "try" — observational framing only, never a verdict.
         hint: selected.mode === "watch" ? t("growth.focus.watchHint") : t("growth.focus.tryHint"),
         action: "daily-play" as const,
@@ -154,7 +155,7 @@ export default function DevelopmentTab() {
           id: `milestone-${m.id}`,
           at: new Date(m.observationUpdatedAt as string).getTime(),
           icon: "check_circle",
-          title: m.title,
+          title: milestoneText(m, "title", t),
           meta: tGCare(uiLang, "elev.gcare.ms.noticedOn", { date: fmtDay(m.observationUpdatedAt as string, uiLang) }),
         })),
       ...behaviorLogs.map((log) => ({

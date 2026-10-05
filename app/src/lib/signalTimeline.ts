@@ -15,6 +15,7 @@ import type {
   SpeechAttempt,
 } from "../types";
 import { isolate } from "./i18n";
+import { milestoneAgeGroupText, milestoneText } from "./milestoneData";
 import type { FirstKeepsake } from "./firstsKeepsake";
 
 /**
@@ -73,6 +74,14 @@ export interface TimelineSignal {
   refTitle?: string;
   /** Raw source-record detail (user/content data, never UI copy). */
   detail?: string;
+  /**
+   * B-GROWTH-11 (kind "milestone" only) — the milestone's stable id, so the
+   * render helpers resolve a CATALOGUE title/description/age label in the page
+   * language (`refTitle`/`detail`/`ageGroup` hold the stored English seed).
+   * `noteDetail` = the detail is the parent's own keepsake note (never
+   * translated); `custom` = a parent-added milestone (its words stay as typed).
+   */
+  milestoneRef?: { id: string; custom?: boolean; noteDetail?: boolean };
   tone: SignalTone;
   /** Optional render metadata — structured, labeled at render. */
   intensity?: number;
@@ -143,6 +152,13 @@ export const isAutoSignal = (kind: SignalKind): boolean => SIGNAL_PROVENANCE[kin
 /** Shape of the app's `t()` — kept structural so this module stays framework-free. */
 export type TranslateFn = (key: string, vars?: Record<string, string | number>) => string;
 
+/** B-GROWTH-11 — a milestone signal's stored text, resolved by stable id
+ *  (catalogue rows in the page language; parent-added rows as typed). */
+const milestoneSignalText = (s: TimelineSignal, field: "title" | "desc", t: TranslateFn): string =>
+  s.milestoneRef
+    ? milestoneText({ id: s.milestoneRef.id, custom: s.milestoneRef.custom, title: s.refTitle ?? "", description: s.detail ?? "" }, field, t)
+    : field === "title" ? s.refTitle ?? "" : s.detail ?? "";
+
 /** Localized display title for a signal — all templates live in i18n. */
 export const signalTitle = (s: TimelineSignal, t: TranslateFn): string => {
   switch (s.kind) {
@@ -153,7 +169,7 @@ export const signalTitle = (s: TimelineSignal, t: TranslateFn): string => {
       // label per type on every hub, through the one taxonomy seam.
       return s.refTitle ? behaviorTypeLabel(s.refTitle, t) : t("timeline.title.moment");
     case "milestone":
-      return t("timeline.title.observed", { title: s.refTitle ?? "" });
+      return t("timeline.title.observed", { title: milestoneSignalText(s, "title", t) });
     case "plan":
       return s.refTitle || t("timeline.title.plan");
     case "memory":
@@ -187,6 +203,7 @@ export const signalDetail = (s: TimelineSignal, t: TranslateFn): string => {
   }
   // TJB-05: the accepted step's own words — raw record content, never UI copy.
   if (s.kind === "action") return s.refTitle ?? "";
+  if (s.kind === "milestone" && !s.milestoneRef?.noteDetail) return milestoneSignalText(s, "desc", t);
   return s.detail || "";
 };
 
@@ -201,7 +218,7 @@ export const signalMeta = (s: TimelineSignal, t: TranslateFn): string | undefine
       return parts.length ? parts.join(" · ") : undefined;
     }
     case "milestone":
-      return s.ageGroup || undefined;
+      return milestoneAgeGroupText({ ageGroup: s.ageGroup, custom: s.milestoneRef?.custom }, t) || undefined;
     case "plan":
       return s.steps?.total ? t("timeline.meta.steps", { done: s.steps.done, total: s.steps.total }) : undefined;
     case "memory":
@@ -422,6 +439,7 @@ export const buildTimeline = (sources: TimelineSources): TimelineSignal[] => {
       at: m.observationUpdatedAt || null,
       refTitle: m.title,
       detail: kept?.note || m.description || "",
+      milestoneRef: { id: m.id, ...(m.custom ? { custom: true } : {}), ...(kept?.note ? { noteDetail: true } : {}) },
       ...(kept?.photoUrl ? { photo: kept.photoUrl } : {}),
       tone: "lav",
       ageGroup: m.ageGroup,

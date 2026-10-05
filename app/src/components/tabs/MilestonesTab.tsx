@@ -28,7 +28,7 @@ import { ContentActionBar, ContentWhyLine } from "../ui/ContentActionBar";
 import { cardCls, Split, domainVisual, PASTEL } from "../ui/kit";
 import { authHeaders, getAiLanguage } from "../../lib/api";
 import { DOMAIN_REFERENCES } from "../../lib/milestoneReferences";
-import { MILESTONE_AGE_BANDS, ageWindowMilestones, bandForAgeMonths, comparisonAgeMonths, correctedAge, explainMilestonePrompt } from "../../lib/milestoneData";
+import { MILESTONE_AGE_BANDS, ageWindowMilestones, bandForAgeMonths, comparisonAgeMonths, correctedAge, explainMilestonePrompt, milestoneAgeGroupText, milestoneBandLabel, milestoneText } from "../../lib/milestoneData";
 // UND-7 — fail-closed gate for the governed milestone example-media slot
 // (missing reviewer/rightsRef → never renders; ships with zero media entries).
 import { isRenderableMilestoneMedia } from "../../content/governance";
@@ -286,12 +286,15 @@ export default function MilestonesTab() {
       <div className="flex items-start gap-3">
         <span className="mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full" style={{ background: item.checked ? "var(--arbor-green-soft)" : "var(--arbor-paper-deep)", color: item.checked ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}><Icon name={item.checked ? "check" : item.observationStatus === "not_sure" ? "question_mark" : "remove"} size={14} /></span>
         <div className="space-y-0.5 flex-1">
-          <span className="font-bold block" style={{ color: item.checked ? "var(--arbor-green-ink)" : "var(--arbor-ink)" }}>{item.title}</span>
-          <span className="text-[12px] block leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{item.description}</span>
+          {/* B-GROWTH-11 — catalogue text resolves by stable id in the page
+              language (the stored doc carries the English seed); a parent's
+              own milestone keeps the parent's words. */}
+          <span className="font-bold block" style={{ color: item.checked ? "var(--arbor-green-ink)" : "var(--arbor-ink)" }}>{milestoneText(item, "title", t)}</span>
+          <span className="text-[12px] block leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{milestoneText(item, "desc", t)}</span>
           {item.skillLooksLike && (
             <span className="text-[12px] block leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
               <span className="font-bold" style={{ color: "var(--arbor-green-ink)" }}>{t("ms.looksLike")} </span>
-              {item.skillLooksLike}
+              {milestoneText(item, "looks", t)}
             </span>
           )}
           {/* UND-7 — governed example-media slot (AR-CAP-08/AR-CONT-07). FAIL-CLOSED:
@@ -343,7 +346,7 @@ export default function MilestonesTab() {
                   : tGCare(uiLang, "elev.gcare.ms.noticedUndated")}
               </span>
             )}
-            {item.ageGroup && <span className="text-[11px] font-bold px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)" }}>{t("ms.age")} {item.ageGroup}</span>}
+            {item.ageGroup && <span className="text-[11px] font-bold px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)" }}>{t("ms.age")} {milestoneAgeGroupText(item, t)}</span>}
             {item.custom && <span className="text-[11px] font-bold px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-peach-ink)", background: "var(--arbor-peach-soft)" }}>{t("ms.custom")}</span>}
             {item.custom && (
               <button
@@ -549,7 +552,7 @@ export default function MilestonesTab() {
                     trustLink
                     className="mt-2.5"
                     actions={[
-                      { verb: "save", label: t("elev.waveR.ms.explain.keep"), icon: "bookmark_add", onClick: () => keepBehaviorInsight(`${item.title} — ${explainAnswerText(explanations[item.id], t("explain.tryToday"))}`) },
+                      { verb: "save", label: t("elev.waveR.ms.explain.keep"), icon: "bookmark_add", onClick: () => keepBehaviorInsight(`${milestoneText(item, "title", t)} — ${explainAnswerText(explanations[item.id], t("explain.tryToday"))}`) },
                     ]}
                   />
                 </>
@@ -567,16 +570,17 @@ export default function MilestonesTab() {
    * "other" bucket keyed -1 so they always render after the dated bands.
    */
   const groupByBand = (items: Milestone[]) => {
-    const byBand = new Map<number, { label: string; items: Milestone[] }>();
+    const byBand = new Map<number, Milestone[]>();
     for (const m of items) {
       const key = typeof m.ageMonths === "number" ? bandForAgeMonths(m.ageMonths).months : -1;
-      const label = key === -1 ? t("ms.custom") : bandForAgeMonths(m.ageMonths as number).label;
-      if (!byBand.has(key)) byBand.set(key, { label, items: [] });
-      byBand.get(key)!.items.push(m);
+      if (!byBand.has(key)) byBand.set(key, []);
+      byBand.get(key)!.push(m);
     }
+    // B-GROWTH-11: the heading is resolved in the page language from the
+    // band's months (never the English `MILESTONE_AGE_BANDS` label).
     return [...byBand.entries()]
       .sort((a, b) => (a[0] === -1 ? 1 : b[0] === -1 ? -1 : a[0] - b[0]))
-      .map(([months, v]) => ({ months, label: v.label, items: v.items }));
+      .map(([months, bandItems]) => ({ months, heading: months === -1 ? t("ms.custom") : milestoneBandLabel(months, t), items: bandItems }));
   };
 
   /** The age-banded checklist for one domain — reused inside the drill-in pane.
@@ -613,7 +617,7 @@ export default function MilestonesTab() {
                 style={{ cursor: isToggleable ? "pointer" : "default" }}
               >
                 <span className="flex items-center gap-2">
-                  <span className="text-[11px] font-extrabold uppercase tracking-wide" style={{ color: isCurrent ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>{band.label}</span>
+                  <span className="text-[11px] font-extrabold uppercase tracking-wide" style={{ color: isCurrent ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>{band.heading}</span>
                   {isCurrent && <span className="text-[11px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}>{t("ms.currentBand")}</span>}
                   {isAhead && !isLater && <span className="text-[11px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)" }}>{t("ms.aheadBand")}</span>}
                   {isLater && <span className="text-[11px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)" }}>{t("elev.growthTruth.ms.laterBand")}</span>}
@@ -659,9 +663,9 @@ export default function MilestonesTab() {
   const askAboutMilestone = (item: Milestone) =>
     seedCoach({
       prompt: t("seed.milestone.ask", {
-        title: item.title,
+        title: milestoneText(item, "title", t),
         name: askSeedName,
-        band: typeof item.ageMonths === "number" ? ageLabelForMonths(item.ageMonths, t) : item.ageGroup,
+        band: typeof item.ageMonths === "number" ? ageLabelForMonths(item.ageMonths, t) : milestoneAgeGroupText(item, t),
       }),
       source: "milestone-ask",
     });
@@ -746,7 +750,7 @@ export default function MilestonesTab() {
                 <div className="mt-4 rounded-xl p-3.5" style={{ background: "var(--arbor-green-soft)" }}>
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-[11px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("ms.rightNow")}</span>
-                    <span className="text-lg" style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink)" }}>{currentBand.label}</span>
+                    <span className="text-lg" style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink)" }}>{milestoneBandLabel(currentBand.months, t)}</span>
                     {corrected.applied && (
                       <span className="text-[11px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "#fff" }}>
                         {t("ms.correctedBadge")} · {corrected.correctedMonths}m
@@ -982,7 +986,7 @@ export default function MilestonesTab() {
       <FirstKeepsakeSheet
         open={Boolean(openKeepsake)}
         milestoneId={openKeepsake?.id ?? ""}
-        milestoneTitle={openKeepsake?.title ?? ""}
+        milestoneTitle={openKeepsake ? milestoneText(openKeepsake, "title", t) : ""}
         childId={childProfile.id}
         childName={firstName}
         keepsake={openKeepsake ? keepsakes[openKeepsake.id] ?? null : null}

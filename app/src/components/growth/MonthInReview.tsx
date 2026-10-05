@@ -9,7 +9,7 @@ import {
   monthReviewSeenKey,
   previousMonthKey,
 } from "../../lib/growthMonth";
-import { comparisonAgeMonths, selectWeeklyFocus } from "../../lib/milestoneData";
+import { comparisonAgeMonths, milestoneText, selectWeeklyFocus } from "../../lib/milestoneData";
 import { ageMonthsFromProfile } from "../../lib/childAge";
 import { writeWatchFocus } from "../../lib/screeningWatch";
 import { track } from "../../lib/analytics";
@@ -202,7 +202,7 @@ export default function MonthInReview() {
         {nextToWatch ? (
           <>
             <p className="mt-1.5 break-words text-sm font-bold leading-snug" style={{ color: "var(--arbor-ink)" }}>
-              {nextToWatch.title}
+              {milestoneText(nextToWatch, "title", t)}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <button

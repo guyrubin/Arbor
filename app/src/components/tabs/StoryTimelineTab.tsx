@@ -162,7 +162,7 @@ function MonthsSpine({ nodes, locale, tt }: { nodes: MonthNode[]; locale: string
               <div key={m.id} className="flex items-center gap-1.5 mt-1.5 min-w-0">
                 <Icon name="check_circle" size={15} fill={1} style={{ color: PASTEL.lav.ink, flexShrink: 0 }} />
                 <span className="text-[13px] font-bold truncate" style={{ color: "var(--arbor-ink)" }} dir="auto">
-                  {tt("timeline.title.observed", { title: m.refTitle ?? "" })}
+                  {signalTitle(m, tt)}
                 </span>
               </div>
             ))}
