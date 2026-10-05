@@ -26,6 +26,8 @@ const harness = vi.hoisted(() => ({
 }));
 
 vi.mock("../../context/ArborContext", () => ({
+  // the Kid Mode entry seam reads the optional context; outside a provider it is null
+  useArborOptional: () => null,
   useArbor: () => ({
     childProfile: { id: "c1", name: "Dylan", age: 5, languages: ["English"], schoolContext: "Gan", challenges: [], strengths: ["curious"], interests: [] },
     activeTab: "consult",
