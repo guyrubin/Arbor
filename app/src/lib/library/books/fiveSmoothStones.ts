@@ -444,6 +444,8 @@ export const fiveSmoothStones: Book = {
     "omitted: 17:25-27 (the reward and David's questions about it), 17:43-44 (curses), 17:50-51 (how the giant dies), the chase after 17:52",
   ],
   ageBand: "4-7",
+  // ages 4-7: 48-60 m, 60-72 m, 6-8 y
+  ageBands: ["48m", "60m", "6-8y"],
   /** v2 poses the hero sheet may not have yet (round 3): the nearest pose it has. */
   poseFallbacks: { "stand-tall-hand": "look-up", "stand-tall": "look-up", "sit-hunched": "sit", "sling-release": "sling-swing-face-right" },
   cover,

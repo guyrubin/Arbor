@@ -302,6 +302,8 @@ export const abramsLongRoad: Book = {
     "the river crossing (tradition: Abram \"from the other side of the river\", Josh 24:3)",
   ],
   ageBand: "4-7",
+  // ages 4-7: 48-60 m, 60-72 m, 6-8 y
+  ageBands: ["48m", "60m", "6-8y"],
   cover,
   pages: [p1, p2, p3, p4, p5, p8, p9, p10],
   decision: {

@@ -23,6 +23,8 @@
  *   field records which path a child took.
  */
 
+import type { CanonicalBandId } from "../domains/ageBands";
+
 /** A pose id, resolved against the hero sheet's manifest (open set, BR ruling 2). */
 export type Pose = string;
 
@@ -269,7 +271,11 @@ export interface Book {
   childRole: string;
   /** What the book adds in the text's silences (shown to the parent). */
   additions: string[];
+  /** The parent panel's age text ("4-7"). */
   ageBand: string;
+  /** The canonical age bands the book is for (lib/domains/ageBands; ≥ 1), so
+   *  each child sees the books of its own age group. */
+  ageBands: CanonicalBandId[];
   cover: Page;
   /** The linear pages in reading order (branch pages live in the choices). */
   pages: Page[];

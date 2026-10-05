@@ -17,6 +17,7 @@ import { abramsLongRoad } from "./books/abramsLongRoad";
 import { ART_PENDING, fiveSmoothStones, fiveSmoothStonesGeometry, GEOMETRY_FALLBACKS } from "./books/fiveSmoothStones";
 import { readFileSync as readJson, existsSync } from "node:fs";
 import { readPath } from "./bookFlow";
+import { CANONICAL_BANDS } from "../domains/ageBands";
 import { pageArtStates } from "./bookArtStates";
 import type { Book, BookLine, Page, Slot } from "./types";
 
@@ -211,6 +212,13 @@ describe.each(allBooks())("book $id", (book) => {
       const man = JSON.parse(readFileSync(path.join(here, "__fixtures__", f), "utf8")) as { poses: Record<string, unknown> };
       for (const pose of poses) expect(Object.keys(man.poses), `${f} lacks ${pose}`).toContain(pose);
     }
+  });
+
+  it("has at least one canonical age band (lib/domains/ageBands), no duplicates", () => {
+    const ids = new Set(CANONICAL_BANDS.map((b) => b.id));
+    expect(book.ageBands.length).toBeGreaterThanOrEqual(1);
+    for (const id of book.ageBands) expect(ids.has(id), id).toBe(true);
+    expect(new Set(book.ageBands).size).toBe(book.ageBands.length);
   });
 
   it("the parent panel is complete in both languages (v1: builds + why; v2: knows + whyNow + tomorrow)", () => {
