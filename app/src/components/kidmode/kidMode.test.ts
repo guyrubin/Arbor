@@ -332,7 +332,8 @@ describe("KID-1: kid.* i18n keys exist in BOTH language maps", () => {
     // Tile defs carry only ids — copy lives in i18n under kid.adv.<id>.* /
     // kid.game.<id>.*. Extract the ids straight from the source so a new tile
     // without keys fails here instead of rendering a raw key string.
-    const src = stripComments(readSelf("KidDashboard.tsx"));
+    // B-KID-68: the tile defs are the ONE kid world registry (kidWorlds.ts).
+    const src = stripComments(readSelf("kidWorlds.ts"));
     const ids = [...src.matchAll(/\{ id: "([a-z-]+)"/g)].map((m) => m[1]);
     // OBJ-KID-05 dropped the duplicate "Feelings" adventure tile; B-KID-88
     // dropped the two adventure tiles (Playbank, Hero Stories) and gave Spell
@@ -717,7 +718,8 @@ describe("RUN-21: the sub-greeting derives from real state", () => {
 // (The arcade also renders `open.name` as the opened panel's heading, so the
 // title the child tapped is the title they land on.)
 describe("KID-4: kid-dashboard game tiles match their HeroArcade destination", () => {
-  const dashSrc = stripComments(readSelf("KidDashboard.tsx"));
+  // B-KID-68: the tiles are the registry's entries.
+  const dashSrc = stripComments(readSelf("kidWorlds.ts"));
   const arcadeSrc = stripComments(
     readFileSync(path.join(__dirname, "..", "practice", "HeroArcade.tsx"), "utf8"),
   );
@@ -777,7 +779,7 @@ describe("KID-7: kid-dashboard art is unique per visible tile", () => {
   it("every visible role resolves distinct reviewed art, referenced only through the theme manifest", async () => {
     const { worldArtwork } = await import("../practice/worldArtwork");
     const src = stripComments(readSelf("KidDashboard.tsx"));
-    const ids = [...src.matchAll(/\{ id: "[a-z-]+", worldId: "([a-z-]+)"/g)].map(m=>m[1]);
+    const ids = [...stripComments(readSelf("kidWorlds.ts")).matchAll(/\{ id: "[a-z-]+", worldId: "([a-z-]+)"/g)].map(m=>m[1]);
     ids.push("kid-quest");
     // B-KID-88: 9 game tiles + the Tonight fallback (the adventure tiles are gone).
     expect(ids).toHaveLength(10);

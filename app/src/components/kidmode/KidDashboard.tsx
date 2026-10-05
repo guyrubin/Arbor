@@ -50,12 +50,13 @@ import { ageMonthsFromProfile } from "../../lib/childAge";
 import type { HeroJourneyRun } from "../../types";
 import { HERO_STORIES, storyLanguage } from "../../lib/heroJourneys";
 import { kidBooks } from "./kidBooks";
+import { KID_WORLDS, KID_WORLD_NAME_KEY, type KidWorldAccent } from "./kidWorlds";
 import { KidBookCover } from "./KidBookCover";
 import { starEvents } from "../../practice/signals";
 
 export type KidSurface = "journeys" | "arcade" | "feelings" | "comics";
 
-type Accent = "green" | "clay" | "lav" | "peach" | "sky" | "pink";
+type Accent = KidWorldAccent;
 const ACCENT_BG: Record<Accent, string> = {
   green: "var(--arbor-green-soft)",
   clay: "var(--arbor-clay-soft)",
@@ -80,48 +81,38 @@ const ACCENT_INK: Record<Accent, string> = {
 // catalogue) are gone: every world has its own tile below and the catalogue is
 // the "My books" row's See all. One tile, one place (kidDestinations).
 
-// Games grid — KID-4 honest navigation. Every tile is named EXACTLY after the
-// live HeroArcade world it opens (`worldId` = the arcade world id) and reuses
-// that world's color + scene prompt, so tile and destination are visually the
-// same object. The tile passes its worldId through onOpenSurface so the arcade
-// opens with the world pre-selected — honoring the existing mapping only; the
-// per-game deep-link redesign stays a Guy-gated decision (plan §9.5).
-interface GameDef {
-  id: string;
-  /** Name key when it is not `kid.game.<id>.title` (Spell Forge keeps its ONE
-   *  kid name, elev.kids.reading.title - kidHebrewCoverage one-name rule). */
-  titleKey?: string;
-  subKey?: string;
-  /** The HeroArcade world this tile opens — also the WorldScene cache key, so a
-   *  generated tile scene is the SAME scene the arcade card shows. */
-  worldId: string;
-  accent: Accent;
-  Icon: React.ComponentType<{ className?: string }>;
-  imagePrompt: string;
-}
-const GAMES: GameDef[] = [
-  { id: "sound-lab", worldId: "speech", accent: "sky", Icon: Mic, imagePrompt: "a bright sound-and-music studio with a big microphone, floating letters and musical notes" },
-  { id: "mood-mountain", worldId: "feelings", accent: "lav", Icon: Heart, imagePrompt: "a friendly mountain landscape with cheerful emotion characters (happy, sad, calm) and a warm sky" },
-  { id: "mind-vault", worldId: "memory", accent: "pink", Icon: Brain, imagePrompt: "opening a glowing memory vault full of colorful matching cards" },
-  { id: "beat-keeper", worldId: "beat", accent: "clay", Icon: Music, imagePrompt: "a colorful music stage with drums, rhythm bars and bouncing musical notes" },
-  { id: "hero-pose", worldId: "pose", accent: "sky", Icon: PersonStanding, imagePrompt: "a joyful movement pose with sweeping motion lines" },
-  { id: "pattern-power", worldId: "pattern", accent: "lav", Icon: Shapes, imagePrompt: "a puzzle world of glowing shapes arranged in patterns" },
-  { id: "story-quest", worldId: "adventures", accent: "peach", Icon: Map, imagePrompt: "an adventurous landscape with a treasure map and compass on a cliff" },
-  { id: "mimic-studio", worldId: "mimic", accent: "clay", Icon: Smile, imagePrompt: "a playful mirror studio copying silly happy poses, sparkles all around" },
-  // B-KID-88: Spell Forge was reachable only through the arcade picker ("See
-  // all games"); the picker door is gone, so the world gets its own tile.
-  { id: "spell-forge", worldId: "reading", accent: "peach", Icon: Type, titleKey: "elev.kids.reading.title", subKey: "elev.kids.reading.sub", imagePrompt: "a magical letter forge where glowing letters become words" },
-];
+// Games grid — KID-4 honest navigation. B-KID-68: the tiles ARE the ONE kid
+// world registry (kidWorlds.ts: id, routing worldId = art key, the one name +
+// sub keys, accent, slot order); this file keeps only its own presentation
+// (the lucide glyph and the scene prompt per world). The tile passes its
+// worldId through onOpenSurface so the arcade opens with the world selected.
+const GAME_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
+  speech: Mic, feelings: Heart, memory: Brain, beat: Music, pose: PersonStanding,
+  pattern: Shapes, adventures: Map, mimic: Smile, reading: Type,
+};
+const GAME_PROMPT: Record<string, string> = {
+  speech: "a bright sound-and-music studio with a big microphone, floating letters and musical notes",
+  feelings: "a friendly mountain landscape with cheerful emotion characters (happy, sad, calm) and a warm sky",
+  memory: "opening a glowing memory vault full of colorful matching cards",
+  beat: "a colorful music stage with drums, rhythm bars and bouncing musical notes",
+  pose: "a joyful movement pose with sweeping motion lines",
+  pattern: "a puzzle world of glowing shapes arranged in patterns",
+  adventures: "an adventurous landscape with a treasure map and compass on a cliff",
+  mimic: "a playful mirror studio copying silly happy poses, sparkles all around",
+  reading: "a magical letter forge where glowing letters become words",
+};
+const GAMES = KID_WORLDS.map((w) => ({ ...w, Icon: GAME_ICON[w.worldId] ?? Gamepad2, imagePrompt: GAME_PROMPT[w.worldId] ?? "" }));
 /** B-KID-88: the home's game tiles with their name keys (tests read this). */
-export const KID_HOME_GAMES: readonly { id: string; worldId: string; titleKey: string; subKey: string }[] = GAMES.map((g) => ({
-  id: g.id,
-  worldId: g.worldId,
-  titleKey: g.titleKey ?? `kid.game.${g.id}.title`,
-  subKey: g.subKey ?? `kid.game.${g.id}.sub`,
+export const KID_HOME_GAMES: readonly { id: string; worldId: string; titleKey: string; subKey: string }[] = KID_WORLDS.map((w) => ({
+  id: w.id,
+  worldId: w.worldId,
+  titleKey: w.nameKey,
+  subKey: w.subKey,
 }));
-/** B-KID-53: the kid name key of the world a tile opens (HeroArcade worldId →
- *  kid.game.<id>.title), so the in-world header says the tile's own name. */
-export const KID_GAME_TITLE_KEY: Readonly<Record<string, string>> = Object.fromEntries(KID_HOME_GAMES.map((g) => [g.worldId, g.titleKey]));
+/** B-KID-53: the kid name key of the world a tile opens (worldId → the ONE
+ *  kid name), so the in-world bar says the tile's own name. B-KID-68: read
+ *  from the registry. */
+export const KID_GAME_TITLE_KEY: Readonly<Record<string, string>> = KID_WORLD_NAME_KEY;
 
 /** OBJ-KID-05: every tile on the kid home, with the destination it opens.
  *  `surface` plus `arg` IS the destination — the overlay renders a surface and
@@ -561,7 +552,7 @@ export default function KidDashboard({
         </div>
         <div className={tilePortrait ? PORTRAIT_GRID : undefined} style={tilePortrait ? { gap: `${KID_HOME_TILE_GAP}px` } : { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(160px, 100%), 1fr))", gap: `${KID_HOME_TILE_GAP}px` }}>
           {GAMES.map((g, i) => (
-            <SceneTile key={g.id} worldId={g.worldId} accent={g.accent} Icon={g.Icon} title={kt(g.titleKey ?? `kid.game.${g.id}.title`)} sub={kt(g.subKey ?? `kid.game.${g.id}.sub`)} imagePrompt={g.imagePrompt} heroUrl={hero.url ?? undefined} heroStyle={hero.style} theme={kidTheme} index={i} onClick={() => onOpenSurface("arcade", g.worldId)} />
+            <SceneTile key={g.id} worldId={g.worldId} accent={g.accent} Icon={g.Icon} title={kt(g.nameKey)} sub={kt(g.subKey)} imagePrompt={g.imagePrompt} heroUrl={hero.url ?? undefined} heroStyle={hero.style} theme={kidTheme} index={i} onClick={() => onOpenSurface("arcade", g.worldId)} />
           ))}
         </div>
       </section>

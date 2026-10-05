@@ -193,7 +193,9 @@ describe("KID-06 — the arcade grid lists the same games the home does", () => 
   });
 
   it("every game tile on the kid home has a world in that grid", () => {
-    const tileWorldIds = [...dash.matchAll(/\{ id: "[a-z-]+", worldId: "([a-z-]+)"/g)]
+    // B-KID-68: the tile defs live in the ONE kid world registry.
+    const registry = readFileSync(path.join(__dirname, "kidWorlds.ts"), "utf8");
+    const tileWorldIds = [...registry.matchAll(/\{ id: "[a-z-]+", worldId: "([a-z-]+)"/g)]
       .map((m) => m[1])
       .filter((id) => !id.startsWith("kid-"));
     // B-KID-88: nine — Spell Forge got its own tile when the picker door went.
