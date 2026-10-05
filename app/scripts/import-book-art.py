@@ -35,13 +35,14 @@ ap.add_argument("--book", default="five-smooth-stones")
 ap.add_argument("--sheet", default="dylan-v2")
 ap.add_argument("--geometry", default="src/lib/library/books/fiveSmoothStones.geometry.json")
 ap.add_argument("--step", default="all")
+ap.add_argument("--plates", default="plates.json", help="geometry file name inside <art-dir> (e.g. plates-r1.json)")
 args = ap.parse_args()
 
 SRC = Path(args.src)
 PLATES_OUT = APP / "public" / "visuals" / "books" / args.book
 OVERLAYS_OUT = PLATES_OUT / "overlays"
 SHEET_OUT = APP / "public" / "_dev" / "hero-sheets" / args.sheet
-G = json.load(open(SRC / "plates.json", encoding="utf-8"))
+G = json.load(open(SRC / args.plates, encoding="utf-8"))
 
 
 def alpha_meta(path: Path):
@@ -225,7 +226,8 @@ def geometry():
     hero = p6b["hero"]
     ri = G["pages"]["p7b"]["repair_items"]
     p7b["items"] = {
-        "helmet": {"x": hw["x"], "y": hw["y"], "to": {"x": r4(ri["helmet"][0]), "y": r4(ri["helmet"][1])}},
+        # compose.py anchors y at the BOTTOM edge even for anchor "center": the tap point is the helmet's middle
+        "helmet": {"x": hw["x"], "y": r4(hw["y"] - hw["scale"] * 0.5), "to": {"x": r4(ri["helmet"][0]), "y": r4(ri["helmet"][1])}},
         "coat": {"x": hero["x"], "y": r4(hero["y"] - hero["scale"] * 0.42), "to": {"x": r4(ri["coat"][0]), "y": r4(ri["coat"][1])}},
         "sword": {"x": sw["x"], "y": r4(sw["y"] - sw["scale"] * 0.5), "to": {"x": r4(ri["sword"][0]), "y": r4(ri["sword"][1])}},
     }

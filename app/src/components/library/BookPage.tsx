@@ -116,7 +116,9 @@ export function BookPage({ layout, plateSrcs, printed = false, fgSrc, heroSrc, h
     const w = h * (o.aspect ?? 1);
     const x = plate.x + o.x * plate.w;
     const y = plate.y + o.y * plate.h;
-    return o.anchor === "center" ? { x: x - w / 2, y: y - h / 2, w, h } : { x: x - (o.footX ?? 0.5) * w, y: y - h, w, h };
+    // compose.py: (x, y) is ALWAYS the bottom edge; "center" only centres x
+    // (the worn helmet), "feet" puts the feet-band centre on x.
+    return { x: x - (o.anchor === "center" ? 0.5 : o.footX ?? 0.5) * w, y: y - h, w, h };
   };
   const renderOverlay = (o: BookPageOverlay) => {
     const b = overlayBox(o);
