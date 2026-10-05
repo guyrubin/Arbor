@@ -21,6 +21,13 @@ import { ArborMascot } from "../ui/ArborMascot";
  *  so a book read on one cover still turns eight different pages. */
 export const BEAT_FOCUS = ["50% 22%", "30% 40%", "70% 35%", "50% 60%", "25% 25%", "75% 55%", "50% 45%", "50% 30%"] as const;
 
+/** B-KID-76 (b): the Kid Mode picture-book page. The art fills the top ~55 %
+ *  of the screen edge to edge; the words sit below at the kid type scale
+ *  (>= 18 px), three lines in view, scrolling when longer. */
+export const KID_BOOK_ART_BLOCK = "clamp(220px, 55dvh, 640px)";
+export const KID_BOOK_TEXT_PX = 20;
+export const KID_BOOK_TEXT_LINE = 1.45;
+
 /**
  * AVA-3 / S3: scene-art cache. Generated scene images are large data URLs, so they
  * are cached via `lib/sceneCache` — a memory-only, quota-safe LRU with in-flight
@@ -55,6 +62,7 @@ export function HeroScenePlayer({
   metaAction,
   childId,
   onPageResolved,
+  layout = "card",
 }: {
   scene: HeroSceneRender;
   seed: string;
@@ -91,6 +99,10 @@ export function HeroScenePlayer({
   childId?: string;
   /** G2: reports each resolved page key so the story can be saved as a book. */
   onPageResolved?: (page: { beatNumber: number; key: string }) => void;
+  /** B-KID-76 (b): "book" = the Kid Mode picture-book page (full-bleed art,
+   *  big words, no meta row, no smudged/Redraw state: a page whose art is not
+   *  drawn shows the story's own cover crop). "card" = today's reader page. */
+  layout?: "card" | "book";
 }) {
   const [resolvedArt, setResolvedArt] = useState<{ key: string; url: string } | undefined>();
   const [artLoading, setArtLoading] = useState(false);
@@ -175,6 +187,58 @@ export function HeroScenePlayer({
 
   const textSize = immersive ? "text-2xl md:text-3xl leading-relaxed" : "text-sm md:text-base leading-relaxed";
 
+  const cameo = (
+    <div
+      className="absolute bottom-2 h-[48%] max-h-48 rounded-2xl p-1"
+      style={{ insetInlineStart: "5%", background: "var(--arbor-paper-elevated)", outline: "2px solid var(--comic-ink)", boxShadow: "var(--comic-pop)" }}
+    >
+      {(heroAvatarUrl ?? cameoUrl) ? (
+        <img
+          src={heroAvatarUrl ?? cameoUrl}
+          alt={heroName
+            ? kidsStoriesText("journey.heroAlt", aiLang, { name: isolate(heroName, aiLang) })
+            : kidsStoriesText("journey.heroAltUnnamed", aiLang)}
+          className="h-full w-auto rounded-xl object-contain"
+        />
+      ) : (
+        // No generated hero yet: Sprout stars (role="img", keyed EN/HE
+        // aria label). The story never blocks on a missing hero.
+        <ArborMascot size={120} mood="wave" className="h-full w-auto" />
+      )}
+    </div>
+  );
+
+  if (layout === "book") {
+    // B-KID-76 (b): one picture, then the words. Generated art when it exists
+    // (a child with a hero and an allowance); otherwise the story's own cover,
+    // cropped per beat; otherwise the seeded illustration. Never a smudged page
+    // or a Redraw button in front of the child.
+    return (
+      <div className="flex flex-col" data-kid-book-page="">
+        <span className="sr-only">{kidsStoriesText("journey.beat", aiLang, { current: beatNumber, total: beatTotal })}</span>
+        <div className="relative w-full overflow-hidden" style={{ blockSize: KID_BOOK_ART_BLOCK, background: "var(--arbor-paper-deep)" }}>
+          {sceneArt ? (
+            <img src={sceneArt} alt={kidsStoriesText("journey.pageAlt", aiLang, { number: beatNumber, title: scene.title })} className="absolute inset-0 h-full w-full object-cover" onError={() => { setResolvedArt(undefined); setArtError(true); }} />
+          ) : fallbackArtUrl ? (
+            <img src={fallbackArtUrl} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: BEAT_FOCUS[(beatNumber - 1) % BEAT_FOCUS.length] }} />
+          ) : (
+            <StoryIllustration seed={seed} className="absolute inset-0 h-full w-full" />
+          )}
+          {!sceneArt && !(fallbackArtUrl && fallbackArtHasHero) && cameo}
+          {sceneArt && <ProvenanceBadge lang={uiLang === "he" ? "he" : "en"} className="absolute bottom-2 end-2" />}
+        </div>
+        <p
+          dir="auto"
+          data-kid-book-text=""
+          className="font-bold"
+          style={{ margin: 0, paddingInline: 20, paddingBlockStart: 16, fontSize: KID_BOOK_TEXT_PX, lineHeight: KID_BOOK_TEXT_LINE, maxBlockSize: `calc(3 * ${KID_BOOK_TEXT_LINE}em + 16px)`, overflowY: "auto", color: "var(--arbor-ink)", fontFamily: "var(--font-display), Georgia, serif" }}
+        >
+          {scene.narration}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col items-center text-center gap-5">
       <div className="flex items-center gap-3 text-[11px] uppercase tracking-widest font-bold" style={{ color: "var(--arbor-green-ink)" }}>
@@ -230,26 +294,7 @@ export function HeroScenePlayer({
             <StoryIllustration seed={seed} className="absolute inset-0 h-full w-full" />
           )}
           <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--comic-ink) 8%, transparent), transparent 60%)" }} />
-          {!(fallbackArtUrl && fallbackArtHasHero) && (
-          <div
-            className="absolute bottom-2 h-[48%] max-h-48 rounded-2xl p-1"
-            style={{ insetInlineStart: "5%", background: "var(--arbor-paper-elevated)", outline: "2px solid var(--comic-ink)", boxShadow: "var(--comic-pop)" }}
-          >
-            {(heroAvatarUrl ?? cameoUrl) ? (
-              <img
-                src={heroAvatarUrl ?? cameoUrl}
-                alt={heroName
-                  ? kidsStoriesText("journey.heroAlt", aiLang, { name: isolate(heroName, aiLang) })
-                  : kidsStoriesText("journey.heroAltUnnamed", aiLang)}
-                className="h-full w-auto rounded-xl object-contain"
-              />
-            ) : (
-              // No generated hero yet: Sprout stars (role="img", keyed EN/HE
-              // aria label). The story never blocks on a missing hero.
-              <ArborMascot size={120} mood="wave" className="h-full w-auto" />
-            )}
-          </div>
-          )}
+          {!(fallbackArtUrl && fallbackArtHasHero) && cameo}
         </div>
       )}
 

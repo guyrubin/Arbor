@@ -32,6 +32,7 @@ import KidDashboard, { type KidSurface } from "./KidDashboard";
 import { HoldExitButton } from "./HoldExitButton";
 import { KidErrorBoundary } from "./KidErrorBoundary";
 import { useArbor } from "../../context/ArborContext";
+import { KidReadAloudToggle } from "./kidReadAloud";
 
 // ── EXISTING surfaces — imported unchanged, never forked ──────────────────────
 const HeroJourneyTab = lazy(() => import("../tabs/HeroJourneyTab"));
@@ -53,7 +54,7 @@ type View = "home" | KidSurface;
 export default function KidModeOverlay() {
   const { isKidModeOpen, closeKidMode } = useKidMode();
   const { childProfile } = useArbor();
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
   const surfaceTitle = useKidSurfaceTitle();
   // KID-LOCK LEAK 1: rehydrate the surface in view from the persisted state so
   // a reload lands the child on the SAME kid surface (validated against
@@ -277,6 +278,9 @@ export default function KidModeOverlay() {
                 {/* B-KID-53: inside a world or a story the title is ITS name. */}
                 {surfaceTitle ?? t(surface.labelKey)}
               </span>
+              {/* B-KID-76 (b): an open book (its title is the surface title) gets
+                  the per-child read-to-me mute in the top bar. */}
+              {view === "journeys" && surfaceTitle && <KidReadAloudToggle childId={childProfile.id} lang={uiLang === "he" ? "he" : "en"} />}
               <HoldExitButton onExit={closeKidMode} idleLabel={t("kid.exit.backToParent")} ariaIdle={t("kid.exit.backToParentAria")} />
             </header>
           )}
