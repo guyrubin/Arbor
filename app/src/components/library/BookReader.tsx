@@ -87,6 +87,8 @@ export interface BookReaderProps {
   costume?: string | null;
   /** Test seam: the after-narration overlay already revealed (p9's dust). */
   initialRevealed?: boolean;
+  /** Test seam: the decision page opens in its cards state. */
+  initialChoosing?: boolean;
 }
 
 const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
@@ -138,6 +140,7 @@ export function BookReader({
   prints = true,
   costume = null,
   initialRevealed = false,
+  initialChoosing = false,
 }: BookReaderProps) {
   const plateTable = plates ?? BOOK_PLATES[book.id] ?? {};
   const [state, dispatch] = useReducer((s: BookFlowState, a: Parameters<typeof bookFlowReducer>[2]) => bookFlowReducer(book, s, a), initialState ?? initialBookFlow());
@@ -251,6 +254,20 @@ export function BookReader({
   const layout = computeBookPageLayout(page, box, lang, { plate, slot, content, anchorOf, cover: onCover });
   const coverFront = onCover && layout.mode === "wide" && layout.pageType === "cover";
 
+  // ── the decision page (fix round 2): the same book as every page; its cards
+  // sit below the words ("below") or fill the text page in a second state
+  // ("second": the words first with a Choose toy, then the cards) ───────────
+  const plan = decision ? layout.choicePlan : null;
+  const twoState = plan?.mode === "second";
+  const [choosingAt, setChoosingAt] = useState<string | null>(() => (initialChoosing || (decision && state.selected) ? state.at : null));
+  const choosing = twoState && choosingAt === state.at;
+  // coming back to the decision page with a choice made: show the cards
+  useEffect(() => {
+    if (decision && state.selected && twoState) setChoosingAt(state.at);
+  }, [decision, state.at, state.selected, twoState]);
+  const showCards = !!plan && (!twoState || choosing);
+  const showWords = !choosing;
+
   // ── page-turn cue ──────────────────────────────────────────────────────────
   const lastAt = useRef(state.at);
   useEffect(() => {
@@ -262,11 +279,19 @@ export function BookReader({
   /** Next: on a page with an unrevealed after-narration overlay the first press
    *  reveals it; while the stillness holds, nothing. */
   const next = useCallback(() => {
+    if (twoState && !choosing) {
+      setChoosingAt(state.at);
+      return;
+    }
     const intent = nextIntent(afterOverlay, revealed, holding);
     if (intent === "reveal") setTapReveal(state.at);
     else if (intent === "turn") dispatch({ type: "next" });
-  }, [afterOverlay, revealed, holding, state.at]);
-  const back = useCallback(() => dispatch({ type: "back" }), []);
+  }, [afterOverlay, revealed, holding, state.at, twoState, choosing]);
+  /** Back from the cards state returns to the words of the same page. */
+  const back = useCallback(() => {
+    if (choosing) setChoosingAt(null);
+    else dispatch({ type: "back" });
+  }, [choosing]);
   const tapItem = (id: string) => {
     if (done.has(id) || (nextItem && nextItem !== id)) return;
     kidSfx("tap");
@@ -343,11 +368,11 @@ export function BookReader({
   const leaf = layout.mode === "wide" && layout.pageType === "facing" && state.dir !== 0 && !atEnd ? leafFor(layout, state.dir) : null;
 
   // ── the text page ──────────────────────────────────────────────────────────
+  const pad = choosing && plan?.pad ? plan.pad : layout.pad;
   const textStyle: CSSProperties = {
     ...rectStyle(layout.textPage),
-    paddingInline: px(layout.pad.inline),
-    paddingBlock: px(layout.pad.block),
-    ...(layout.sheetOverlap ? ({ "--sheet-overlap": px(layout.sheetOverlap) } as CSSProperties) : {}),
+    paddingInline: px(pad.inline),
+    paddingBlock: px(pad.block),
   };
   const wordsStyle: CSSProperties = { fontSize: px(typePx), lineHeight: layout.lineHeight };
   const decisionPlate = plateTable[book.pages.find((p) => p.id === book.decision.pageId)?.plateId ?? ""];
@@ -357,6 +382,13 @@ export function BookReader({
       return (
         <KidToy tone="go" size="l" glyph="auto_stories" data-book-open="" aria-label={bookString("open", lang)} onClick={() => dispatch({ type: "open" })} className="bk-wide-toy">
           {bookString("open", lang)}
+        </KidToy>
+      );
+    }
+    if (decision && twoState && !choosing) {
+      return (
+        <KidToy tone="go" size="l" glyphEnd={TURN_GLYPHS.next} data-book-choose="" onClick={() => setChoosingAt(state.at)} className={layout.mode === "wide" ? undefined : "bk-grow"}>
+          {bookString("choose", lang)}
         </KidToy>
       );
     }
@@ -377,12 +409,18 @@ export function BookReader({
     );
   })();
 
-  const cards = decision && (
-    <div className="bk-choices" role="group" aria-label={bookString("choices.aria", lang)} style={{ gridTemplateColumns: `repeat(3, ${px(layout.cardW)})` }}>
+  const cards = showCards && plan && (
+    <div
+      className="bk-choices"
+      role="group"
+      aria-label={bookString("choices.aria", lang)}
+      data-arrangement={plan.arrangement}
+      data-plan={plan.mode}
+      style={{ gap: px(plan.gap), "--card-w": px(plan.cardW), "--pic-w": px(plan.picW), "--pic-h": px(plan.picH) } as CSSProperties}
+    >
       {book.decision.choices.map((c, i) => {
         const focus = decisionPlate?.focus?.[c.id];
-        const picW = layout.cardW - 12;
-        const bg = focus && decisionPlate ? focusBackground(decisionPlate, focus, picW, layout.cardPicH) : null;
+        const bg = focus && decisionPlate ? focusBackground(decisionPlate, focus, plan.picW, plan.picH) : null;
         const srcs = decisionPlate ? plateSources(decisionPlate, { dev }) : [];
         const selected = state.selected === c.id;
         return (
@@ -402,15 +440,14 @@ export function BookReader({
                 className="bk-card-pic"
                 aria-hidden="true"
                 style={{
-                  blockSize: px(layout.cardPicH),
                   backgroundImage: srcs.map((u) => `url("${u}")`).join(", "),
                   backgroundSize: srcs.map(() => bg.size).join(", "),
                   backgroundPosition: srcs.map(() => bg.position).join(", "),
                 }}
               />
             ) : (
-              <span className="bk-card-pic bk-card-icon" aria-hidden="true" style={{ blockSize: px(layout.cardPicH) }}>
-                <Icon name={c.icon ?? "auto_stories"} size={Math.round(Math.min(layout.cardPicH * 0.6, 72))} fill={1} />
+              <span className="bk-card-pic bk-card-icon" aria-hidden="true">
+                <Icon name={c.icon ?? "auto_stories"} size={Math.round(Math.min(plan.picH * 0.6, 72))} fill={1} />
               </span>
             )}
             <span className="bk-card-label">{labelFor(c.label, lang)}</span>
@@ -477,11 +514,10 @@ export function BookReader({
                 className="bk-text"
                 data-book-text=""
                 data-kind={layout.pageType === "spread" ? "panel" : layout.mode === "wide" ? "page" : "sheet"}
-                data-overlap={layout.sheetOverlap ? "" : undefined}
+                data-choosing={choosing ? "" : undefined}
                 data-spine={layout.spine}
                 style={textStyle}
               >
-                {layout.sheetOverlap > 0 && cards}
                 {onCover ? (
                   <div className="bk-cover-words" ref={wordsRef}>
                     <h1 className="bk-title" style={{ fontSize: px(layout.titlePx) }}>
@@ -496,7 +532,7 @@ export function BookReader({
                       {book.coverLine[lang]}
                     </p>
                   </div>
-                ) : (
+                ) : showWords ? (
                   <div className="bk-words" ref={wordsRef} style={wordsStyle}>
                     {paras.map((p, i) => (
                       <p key={i} data-book-para={i}>
@@ -504,8 +540,8 @@ export function BookReader({
                       </p>
                     ))}
                   </div>
-                )}
-                {layout.sheetOverlap === 0 && cards}
+                ) : null}
+                {cards}
                 {pending && repair && (
                   <p className="bk-hint" data-book-repair-prompt="">
                     <PointingHand />

@@ -248,14 +248,22 @@
 .arbor-play .bk-open-row { position: absolute; display: flex; justify-content: center; align-items: center; }
 .arbor-play .bk-open-row .kid-toy { min-inline-size: 100%; }
 
-/* ── choice cards: LARGE picture + label, no letters, no grade ──────────── */
-.arbor-play .bk-choices { display: grid; gap: 16px; justify-content: center; flex-shrink: 0; position: relative; z-index: 1; }
+/* ── choice cards (fix round 2): picture + label, sized by the layout's
+   plan (--card-w, --pic-w, --pic-h); "stack" = three-down with the label
+   beside the picture, "grid21" = two over one, "row" = three across ─────── */
+.arbor-play .bk-choices { display: grid; justify-content: center; align-content: center; flex-shrink: 0; position: relative; z-index: 1; }
+.arbor-play .bk-choices[data-arrangement="stack"] { grid-template-columns: var(--card-w); }
+.arbor-play .bk-choices[data-arrangement="grid21"] { grid-template-columns: repeat(2, var(--card-w)); }
+.arbor-play .bk-choices[data-arrangement="grid21"] > .bk-card:nth-child(3) { grid-column: 1 / span 2; justify-self: center; inline-size: var(--card-w); }
+.arbor-play .bk-choices[data-arrangement="row"] { grid-template-columns: repeat(3, var(--card-w)); }
+.arbor-play .bk-text[data-choosing] .bk-choices { flex: 1 1 auto; }
 .arbor-play .bk-card {
   --card-lip: color-mix(in oklab, var(--arbor-sky) 55%, var(--arbor-paper-elevated));
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 6px 6px 10px;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
   border: 0;
   border-radius: var(--kid-r-m, 22px);
   background: var(--arbor-paper-elevated);
@@ -267,21 +275,27 @@
   min-block-size: 0;
   overflow: hidden;
 }
+.arbor-play .bk-choices[data-arrangement="stack"] .bk-card { flex-direction: row; text-align: start; gap: 14px; }
 .arbor-play .bk-card[data-tone="1"] { --card-lip: color-mix(in oklab, var(--arbor-lav) 55%, var(--arbor-paper-elevated)); }
 .arbor-play .bk-card[data-tone="2"] { --card-lip: color-mix(in oklab, var(--arbor-peach) 50%, var(--arbor-paper-elevated)); }
 .arbor-play .bk-card:focus-visible { outline: 3px solid var(--arbor-sky); outline-offset: 3px; }
 .arbor-play .bk-card[data-selected] {
-  transform: translateY(-10px);
+  transform: translateY(-6px);
   box-shadow: 0 0 0 5px var(--arbor-sky), 0 6px 0 var(--card-lip), 0 26px 34px -16px color-mix(in oklab, var(--arbor-ink) 65%, transparent);
 }
+.arbor-play .bk-choices[data-arrangement="stack"] .bk-card[data-selected] { transform: translateX(calc(var(--book-x, 1) * 6px)); }
 .arbor-play .bk-card[data-dimmed] { opacity: 0.6; }
 .arbor-play .bk-card-pic {
   display: block;
-  inline-size: 100%;
+  flex-shrink: 0;
+  inline-size: var(--pic-w);
+  block-size: var(--pic-h);
   border-radius: 16px;
   background-color: var(--arbor-paper-deep);
   background-repeat: no-repeat;
+  overflow: hidden;
 }
+.arbor-play .bk-card-pic img { display: block; inline-size: 100%; block-size: 100%; object-fit: cover; }
 .arbor-play .bk-card-icon { display: grid; place-items: center; color: var(--arbor-sky-ink); background: color-mix(in oklab, var(--arbor-sky) 18%, var(--arbor-paper-elevated)); }
 .arbor-play .bk-card-label {
   font: 800 var(--kid-t-label, 18px)/1.15 var(--font-sans);
@@ -289,16 +303,8 @@
   text-wrap: balance;
   padding-inline: 4px;
 }
-/* stacked decision page: the card row rides over the art's lower edge; the
-   sheet's paper starts under it */
-.arbor-play .bk-text[data-kind="sheet"][data-overlap] {
-  background:
-    linear-gradient(to bottom, transparent 0, transparent var(--sheet-overlap, 0px), var(--arbor-paper-elevated) var(--sheet-overlap, 0px));
-  box-shadow: none;
-}
-.arbor-play .bk-text[data-overlap] .bk-choices { margin-block-start: -6px; }
+.arbor-play .bk-choices[data-arrangement="stack"] .bk-card-label { text-align: start; font-size: var(--kid-t-say, 22px); }
 
-/* ── repair prompt + nav ─────────────────────────────────────────────────── */
 /* the repair hint: plain words with a pointing hand — an instruction, not a
    button (fix round 1, ruling 4) */
 .arbor-play .bk-hint {

@@ -36,10 +36,10 @@ function run(...actions: BookFlowAction[]): BookFlowState {
   return actions.reduce((s, a) => bookFlowReducer(book, s, a), initialBookFlow());
 }
 
-function render(state: BookFlowState, opts: { lang?: BookLang; child?: BookReaderChild; box?: Box; revealed?: boolean } = {}): string {
+function render(state: BookFlowState, opts: { lang?: BookLang; child?: BookReaderChild; box?: Box; revealed?: boolean; choosing?: boolean } = {}): string {
   return renderToStaticMarkup(
     <div className="arbor-play">
-      <BookReader book={book} lang={opts.lang ?? "en"} child={opts.child ?? BOY} onClose={() => {}} dev narration="off" initialState={state} initialBox={opts.box ?? WIDE} initialRevealed={opts.revealed} />
+      <BookReader book={book} lang={opts.lang ?? "en"} child={opts.child ?? BOY} onClose={() => {}} dev narration="off" initialState={state} initialBox={opts.box ?? WIDE} initialRevealed={opts.revealed} initialChoosing={opts.choosing} />
     </div>,
   ).replace(/<!-- -->/g, "");
 }
@@ -81,9 +81,20 @@ describe("cover → open", () => {
 });
 
 describe("the decision page", () => {
-  it("three picture cards, no letters, Go disabled until a card is selected, no Next", () => {
+  it("fix round 2: first the words with a Choose toy (the same book page, no cards yet)", () => {
     const html = render(run(...toDecision));
     expect(pageOf(html)).toBe("p5");
+    expect(html).toContain("What will David do?");
+    expect(html).toContain("data-book-choose");
+    expect(html).not.toContain("data-choice-card");
+    expect(html).not.toContain("data-book-go");
+  });
+
+  it("then the cards state: three picture cards, no letters, Go disabled until a card is selected, no Next", () => {
+    const html = render(run(...toDecision), { choosing: true });
+    expect(pageOf(html)).toBe("p5");
+    expect(html).toContain("data-choosing");
+    expect(html).not.toContain("What will David do?");
     expect(html.match(/data-choice-card="/g)).toHaveLength(3);
     expect(html).toMatch(/data-book-go=""[^>]*disabled/);
     expect(html).not.toContain("data-book-next");
@@ -320,11 +331,19 @@ describe("fix round 1: bar, accent, choice cards", () => {
     expect(css).not.toMatch(/--card-lip: var\(--arbor-[a-z]+-soft\)/);
   });
 
-  it("decision cards at 1920: three in a row at the layout's card width (>= 300 px); a second tap does not commit", () => {
-    const html = render(run(...toDecision));
-    expect(html).toMatch(/class="bk-choices"[^>]*grid-template-columns:repeat\(3, (\d{3})/);
-    const w = Number(/grid-template-columns:repeat\(3, ([\d.]+)px\)/.exec(html)![1]);
-    expect(w).toBeGreaterThanOrEqual(300);
+  it("decision cards at 1920: the cards state stacks three LARGE cards (pictures >= 300 px wide, 4:3) in the same book", () => {
+    const html = render(run(...toDecision), { choosing: true });
+    expect(html).toContain('data-arrangement="stack"');
+    expect(html).toContain('data-plan="second"');
+    const picW = Number(/--pic-w:([\d.]+)px/.exec(html)![1]);
+    const picH = Number(/--pic-h:([\d.]+)px/.exec(html)![1]);
+    expect(picW).toBeGreaterThanOrEqual(300);
+    expect(picH / picW).toBeCloseTo(0.75, 1);
+    // the art page is the same as p4's
+    const artOf = (h: string) => /class="bk-art"[^>]*style="([^"]+)"/.exec(h)![1];
+    const p4 = render(run({ type: "open" }, { type: "next" }, { type: "next" }, { type: "next" }));
+    expect(pageOf(p4)).toBe("p4");
+    expect(artOf(html)).toBe(artOf(p4));
   });
 });
 
@@ -338,11 +357,15 @@ describe("Hebrew, the phone sheet, and what the child never sees", () => {
     expect(html).not.toContain("data-book-hero");
   });
 
-  it("375 x 812: the art window is never under 300 px wide (p5 cards ride over it; p10)", () => {
+  it("375 x 812: the art window is never under 300 px wide; p5's cards replace the words below the art, never over David", () => {
     const widthOf = (html: string) => Number(/class="bk-art"[^>]*style="left:[\d.]+px;top:[\d.]+px;width:([\d.]+)px/.exec(html)![1]);
     const p5 = render(run(...toDecision), { box: PHONE });
     expect(widthOf(p5)).toBeGreaterThanOrEqual(300);
-    expect(p5).toContain('data-overlap=""');
+    expect(p5).toContain("data-book-choose");
+    const cards = render(run(...toDecision), { box: PHONE, choosing: true });
+    expect(widthOf(cards)).toBe(widthOf(p5));
+    expect(cards.match(/data-choice-card="/g)).toHaveLength(3);
+    expect(cards).not.toContain("data-overlap");
     const s10 = run(...toDecision, { type: "choose", choiceId: "a" }, { type: "go" }, { type: "next" }, { type: "next" }, { type: "next" });
     const p10 = render(s10, { box: PHONE, lang: "he" });
     expect(pageOf(p10)).toBe("p10");
