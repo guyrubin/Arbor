@@ -43,7 +43,6 @@ type Entry = { file: string; match: string; why: string };
  *  it. A pending entry whose site has already gone is tolerated (the fix
  *  landed in a parallel lane) — delete the entry when you see it. */
 const PENDING_CHILD_RECORD: Entry[] = [
-  { file: "components/practice/SpeechCoachTab.tsx", match: "dose.trialsToday / dose.perSessionTarget", why: "Speech dose bar — FU#30 (pending; B-PLAY-07 replaces it with 'about 5 minutes together')" },
 ];
 
 /** Fills that are NOT a record of the child. */
@@ -109,9 +108,11 @@ describe("CN-004 · no proportional fill of a child record", () => {
     expect(classified("components/profile/RewardsCard.tsx", sites[0])).toBeUndefined();
   });
 
-  it("the Speech dose bar is named explicitly — it cannot pass silently", () => {
-    const speech = PENDING_CHILD_RECORD.find((e) => e.file === "components/practice/SpeechCoachTab.tsx");
-    expect(speech?.why).toMatch(/FU#30/);
+  it("B-PLAY-07: the Speech dose bar is gone — no exemption, and no fill site left in the file", () => {
+    expect(PENDING_CHILD_RECORD.some((e) => e.file === "components/practice/SpeechCoachTab.tsx")).toBe(false);
+    const speech = SOURCES.find((s) => s.rel === "components/practice/SpeechCoachTab.tsx");
+    expect(speech, "SpeechCoachTab.tsx is scanned").toBeTruthy();
+    expect(fillSites(speech!.src)).toEqual([]);
   });
 
   it("every NOT_CHILD_RECORD entry still matches a live site (no stale exemptions)", () => {

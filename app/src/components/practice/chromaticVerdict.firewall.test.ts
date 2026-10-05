@@ -201,3 +201,57 @@ describe("clinical firewall — ms-watch-points carries no verdict colour or nor
     expect(/--arbor-(yellow|peach)-/.test(pre)).toBe(true);
   });
 });
+
+/* B-PLAY-07 — Speech becomes a co-play guide. Records the override of FU#30/31
+   ("the guard passes the dose bar deliberately"): on #/speech the parent is the
+   listener, so the 0/50 dose bar and the accuracy-steered sound picker go. */
+describe("B-PLAY-07 · the Speech parent page is a co-play guide, not a meter", () => {
+  const speech = readDrill("practice/SpeechCoachTab.tsx")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/.*$/gm, "");
+  const parent = speech.slice(speech.indexOf("if (!kidMode) {"), speech.indexOf("data-module=\"speech-more\""));
+
+  it("the parent branch was found", () => {
+    expect(parent.length).toBeGreaterThan(2000);
+    expect(parent).toContain('data-primary-move="complete-speech-round"');
+  });
+
+  it("no dose-fill arithmetic and no width-percentage style on the parent branch", () => {
+    expect(parent).not.toContain("perSessionTarget) * 100");
+    expect(parent).not.toMatch(/width:\s*`[^`]*%`/);
+  });
+
+  it("recentAccuracy is never read — the next sound is the least-practised by attempt count", () => {
+    expect(speech).not.toMatch(/recentAccuracy/);
+    expect(speech).toMatch(/const tries = new Map\(data\.stats\.map\(\(s\) => \[s\.sound, s\.attempts\]\)\);/);
+    expect(speech).toMatch(/\(tries\.get\(s\.id\) \?\? 0\) < \(tries\.get\(best\.id\) \?\? 0\)/);
+  });
+
+  it("the say-it-together card and scoring row follow the header; the guide line, then the picker", () => {
+    const primary = parent.indexOf('data-primary-move="complete-speech-round"');
+    const together = parent.indexOf('data-testid="speech-together"');
+    const picker = parent.indexOf('t("prac.speech.studio.title")');
+    expect(primary).toBeGreaterThan(-1);
+    expect(together).toBeGreaterThan(primary);
+    expect(picker).toBeGreaterThan(together);
+  });
+
+  it("the ASHA evidence chip stays with 'About 5 minutes together is plenty' (EN + HE); no mint/yellow reps verdict", async () => {
+    const { translate } = await import("../../lib/i18n");
+    expect(parent).toContain('t("prac.speech.together.line")');
+    expect(parent).toContain('t("prac.speech.evidence.chip")');
+    expect(parent).not.toMatch(/dose\.sessionMetToday \? "mint" : "yellow"/);
+    expect(parent).not.toContain('t("prac.speech.dose.weekCount"');
+    expect(translate("en", "prac.speech.together.line")).toBe("About 5 minutes together is plenty");
+    for (const key of ["prac.speech.together.line", "prac.speech.evidence.chip"]) {
+      expect(/[\u0590-\u05FF]/.test(translate("he", key)), key).toBe(true);
+    }
+  });
+
+  it("NEGATIVE CONTROL: the pre-change bar and picker trip the bans", () => {
+    const bar = "style={{ width: `${Math.min(100, Math.round((dose.trialsToday / dose.perSessionTarget) * 100))}%` }}";
+    expect(bar).toContain("perSessionTarget) * 100");
+    expect(bar).toMatch(/width:\s*`[^`]*%`/);
+    expect("candidates.find((s) => (practiced.get(s.id)?.recentAccuracy ?? 0) < 80)").toMatch(/recentAccuracy/);
+  });
+});

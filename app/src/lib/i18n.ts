@@ -1985,6 +1985,9 @@ export const en: Dict = {
   "prac.speech.switchLangCta": "Multiple languages? Language & Communication",
   "prac.speech.safetyNote": "Sound ages are typical ranges, not deadlines. If you're concerned about {name}'s speech, the right next step is a speech-language professional — Arbor can prepare the report.",
   "prac.speech.dose.eyebrow": "Today's practice dose",
+  // B-PLAY-07: the co-play guide line + the ASHA evidence chip.
+  "prac.speech.together.line": "About 5 minutes together is plenty",
+  "prac.speech.evidence.chip": "ASHA guidance",
   "prac.speech.dose.done": "Today's dose done 🎉",
   "prac.speech.dose.count": "{done}/{target} reps",
   "prac.speech.dose.explainer": "Speech practice works best little and often — about {perSession} gentle repetitions a session, {perWeek}× a week (ASHA guidance).",
@@ -4322,6 +4325,8 @@ export const he: Dict = {
   "prac.speech.switchLangCta": "יותר משפה אחת? שפה ותקשורת",
   "prac.speech.safetyNote": "גילאי הצלילים הם טווחים מקובלים, לא מועדים שאי־אפשר לפספס. אם משהו בדיבור של {name} מדאיג אתכם, הצעד הנכון הבא הוא איש מקצוע לדיבור ושפה — ארבור יכול להכין את הדוח.",
   "prac.speech.dose.eyebrow": "מנת התרגול של היום",
+  "prac.speech.together.line": "בערך 5 דקות יחד זה בהחלט מספיק",
+  "prac.speech.evidence.chip": "לפי הנחיית ASHA",
   "prac.speech.dose.done": "המנה היומית הושלמה 🎉",
   "prac.speech.dose.count": "{done}/{target} חזרות",
   "prac.speech.dose.explainer": "תרגול הגייה עובד הכי טוב במנות קטנות ותכופות — בערך {perSession} חזרות עדינות בכל סבב, {perWeek} פעמים בשבוע (לפי הנחיית ASHA).",

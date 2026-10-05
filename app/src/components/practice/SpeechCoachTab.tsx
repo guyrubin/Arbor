@@ -53,13 +53,18 @@ export default function SpeechCoachTab() {
   const data = usePracticeData(childProfile.id);
   const first = childProfile.name.split(" ")[0];
 
-  // Default sound: the first age-appropriate sound (ASHA-gated) not yet strong.
+  // B-PLAY-07: the next sound is the LEAST-PRACTISED age-appropriate sound by
+  // attempt count (ties keep library order). No accuracy read steers it — the
+  // parent is the listener, not a grader (FU#30/31 override recorded).
   const defaultSound = useMemo(() => {
     const appropriate = new Set(ageAppropriateSoundIds(SOUND_LIBRARY, childProfile.age));
-    const practiced = new Map(data.stats.map((s) => [s.sound, s]));
+    const tries = new Map(data.stats.map((s) => [s.sound, s.attempts]));
     const candidates = SOUND_LIBRARY.filter((s) => appropriate.has(s.id));
-    const unfinished = candidates.find((s) => (practiced.get(s.id)?.recentAccuracy ?? 0) < 80);
-    return (unfinished ?? candidates[0] ?? SOUND_LIBRARY[0]).id;
+    const leastPractised = candidates.reduce<SoundEntry | null>(
+      (best, s) => (best === null || (tries.get(s.id) ?? 0) < (tries.get(best.id) ?? 0) ? s : best),
+      null,
+    );
+    return (leastPractised ?? SOUND_LIBRARY[0]).id;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [childProfile.age]);
 
@@ -352,75 +357,10 @@ export default function SpeechCoachTab() {
     >
 
       {/* §3f row 2 / item 11 — MODULE 1 of 2: the sound drill and the two rows
-          that belong to it (today's dose, the sound picker). One module, one
-          job: "practice sounds and words". */}
+          that belong to it. B-PLAY-07 order: the say-it-together card and the
+          parent scoring row follow the header; then the "about 5 minutes
+          together" guide line; then the sound picker. One module, one job. */}
       <section data-module="speech-practice" className="space-y-6">
-
-      {/* ASHA dosage: practice little and often (≈50 reps/session, 2–3×/week) */}
-      <div className={`${cardCls} p-5`}>
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-extrabold flex items-center gap-2" style={{ color: "var(--arbor-ink)" }}>
-            <Icon name="graphic_eq" size={16} style={{ color: "var(--arbor-green-ink)" }} /> {t("prac.speech.dose.eyebrow")}
-          </p>
-          <Chip tone={dose.sessionMetToday ? "mint" : "yellow"}>
-            {dose.sessionMetToday ? t("prac.speech.dose.done") : t("prac.speech.dose.count", { done: dose.trialsToday, target: dose.perSessionTarget })}
-          </Chip>
-        </div>
-        <div className="h-2 rounded-full overflow-hidden mb-2" style={{ background: "var(--arbor-paper-deep)" }}>
-          <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.round((dose.trialsToday / dose.perSessionTarget) * 100))}%`, background: "var(--arbor-clay)" }} />
-        </div>
-        <p className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>
-          {t("prac.speech.dose.explainer", { perSession: dose.perSessionTarget, perWeek: dose.weeklySessionTarget })}
-          {" "}{t("prac.speech.dose.weekPrefix")} <b style={{ color: dose.weeklyMet ? "var(--arbor-green-ink)" : "var(--arbor-ink)" }}>{t("prac.speech.dose.weekCount", { done: dose.sessionsThisWeek, target: dose.weeklySessionTarget })}</b>{dose.weeklyMet ? ` ${t("prac.speech.dose.consistent")}` : "."}
-        </p>
-      </div>
-
-      {/* Daily-dose win beat — fires once per session when the dose is first met. */}
-      {doseCelebrated && (
-        <Celebrate
-          title={t("prac.speech.doseWin.title")}
-          subtitle={t("prac.speech.doseWin.sub", { name: first, target: dose.perSessionTarget })}
-        >
-          <PlayButton onClick={() => setDoseCelebrated(false)} variant="soft" tone="mint" size="md">
-            {t("prac.speech.doseWin.cta")}
-          </PlayButton>
-        </Celebrate>
-      )}
-
-      {/* Sound Studio (feature 1): age-banded sound picker */}
-      <SectionCard title={t("prac.speech.studio.title")} icon={<Icon name="graphic_eq" size={20} />} tone="mint">
-        <div className="space-y-4">
-          {bands.map((band) => (
-            <div key={band}>
-              <p className="text-[10px] uppercase font-bold tracking-wider mb-2" style={{ color: "var(--arbor-muted)" }}>{BAND_LABEL[band]}</p>
-              <div className="flex flex-wrap gap-2">
-                {SOUND_LIBRARY.filter((s) => s.band === band).map((s) => {
-                  const on = s.id === soundId;
-                  const st = data.stats.find((x) => x.sound === s.id);
-                  const appropriate = isSoundAgeAppropriate(s.band, childProfile.age);
-                  return (
-                    <button
-                      key={s.id}
-                      onClick={() => setSoundId(s.id)}
-                      className="play-pressable min-w-[52px] h-[52px] px-3 rounded-2xl text-base font-extrabold transition inline-flex items-center justify-center gap-1"
-                      style={on
-                        ? { background: "var(--arbor-clay)", color: "#fff", boxShadow: "0 6px 16px rgba(88,166,255,0.28)" }
-                        : { background: "#fff", color: "var(--arbor-ink)", border: "2px solid var(--arbor-rule)", opacity: appropriate ? 1 : 0.5 }}
-                      title={appropriate ? t("prac.speech.sound.tip", { label: s.label, age: s.typicalAge }) : t("prac.speech.sound.tipLate", { label: s.label, age: s.typicalAge, name: first })}
-                    >
-                      {s.id.toUpperCase()}
-                      {/* KID-03/GP-20: a COUNT of tries, never an accuracy percentage. */}
-                      {st && st.attempts > 0 && (
-                        <span className="text-[11px] font-bold" style={{ color: on ? "#fff" : "var(--arbor-clay)" }}>{st.attempts}</span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-      </SectionCard>
 
       {/* Practice card: ladder + record & compare */}
       <SectionCard title={`${sound.label} · ${sound.ipa}`} icon={<Icon name="mic" size={20} />} tone="sky"
@@ -560,6 +500,70 @@ export default function SpeechCoachTab() {
           )}
         </div>
       </SectionCard>
+
+      {/* B-PLAY-07: the co-play guide line, not a dose meter. The ASHA evidence
+          chip stays (little and often is the evidence); the 0/50 bar, the
+          mint/yellow reps chip and the weekly x/y line are gone — counts live
+          in the progress disclosure below and, later, in Growth › Language. */}
+      <div className={`${cardCls} p-5`} data-testid="speech-together">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <p className="text-sm font-extrabold flex items-center gap-2" style={{ color: "var(--arbor-ink)" }}>
+            <Icon name="graphic_eq" size={16} style={{ color: "var(--arbor-green-ink)" }} /> {t("prac.speech.together.line")}
+          </p>
+          <Chip tone="sky">{t("prac.speech.evidence.chip")}</Chip>
+        </div>
+        <p className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>
+          {t("prac.speech.dose.explainer", { perSession: dose.perSessionTarget, perWeek: dose.weeklySessionTarget })}
+        </p>
+      </div>
+
+      {/* Daily-dose win beat — fires once per session when the dose is first met. */}
+      {doseCelebrated && (
+        <Celebrate
+          title={t("prac.speech.doseWin.title")}
+          subtitle={t("prac.speech.doseWin.sub", { name: first, target: dose.perSessionTarget })}
+        >
+          <PlayButton onClick={() => setDoseCelebrated(false)} variant="soft" tone="mint" size="md">
+            {t("prac.speech.doseWin.cta")}
+          </PlayButton>
+        </Celebrate>
+      )}
+
+      {/* Sound Studio (feature 1): age-banded sound picker */}
+      <SectionCard title={t("prac.speech.studio.title")} icon={<Icon name="graphic_eq" size={20} />} tone="mint">
+        <div className="space-y-4">
+          {bands.map((band) => (
+            <div key={band}>
+              <p className="text-[10px] uppercase font-bold tracking-wider mb-2" style={{ color: "var(--arbor-muted)" }}>{BAND_LABEL[band]}</p>
+              <div className="flex flex-wrap gap-2">
+                {SOUND_LIBRARY.filter((s) => s.band === band).map((s) => {
+                  const on = s.id === soundId;
+                  const st = data.stats.find((x) => x.sound === s.id);
+                  const appropriate = isSoundAgeAppropriate(s.band, childProfile.age);
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => setSoundId(s.id)}
+                      className="play-pressable min-w-[52px] h-[52px] px-3 rounded-2xl text-base font-extrabold transition inline-flex items-center justify-center gap-1"
+                      style={on
+                        ? { background: "var(--arbor-clay)", color: "#fff", boxShadow: "0 6px 16px rgba(88,166,255,0.28)" }
+                        : { background: "#fff", color: "var(--arbor-ink)", border: "2px solid var(--arbor-rule)", opacity: appropriate ? 1 : 0.5 }}
+                      title={appropriate ? t("prac.speech.sound.tip", { label: s.label, age: s.typicalAge }) : t("prac.speech.sound.tipLate", { label: s.label, age: s.typicalAge, name: first })}
+                    >
+                      {s.id.toUpperCase()}
+                      {/* KID-03/GP-20: a COUNT of tries, never an accuracy percentage. */}
+                      {st && st.attempts > 0 && (
+                        <span className="text-[11px] font-bold" style={{ color: on ? "#fff" : "var(--arbor-clay)" }}>{st.attempts}</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </SectionCard>
+
       </section>
 
       {/* §3f row 2 — MODULE 2 of 2. Words & Express (vocabulary + expressive
