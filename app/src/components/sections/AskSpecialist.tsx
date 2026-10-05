@@ -113,7 +113,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience }: {
    *  (consultAudienceForProfession) — applied once, never persisted. */
   anchorAudience?: ExportAudience;
 } = {}) {
-  const { childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems, setActiveTab, pendingConsultPrefill, consumeConsultPrefill } = useArbor();
+  const { childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems, actionLoop, setActiveTab, pendingConsultPrefill, consumeConsultPrefill } = useArbor();
   const { toast } = useToast();
   const { t, uiLang } = useLanguage();
   const reduceMotion = useReducedMotion();
@@ -216,8 +216,12 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience }: {
       // (device-local until a server anchor, G5). Absent on a first export.
       lastExportedAt: getLastExportedAt(childProfile.id, audience) ?? undefined,
       lastExportedAudience: audience,
+      // B-CAREPRO-45: the dated "held the plan" answers (B-ASKJB-33 ledger rows).
+      heldOutcomes: (actionLoop ?? [])
+        .filter((r) => r.source === "hard-moment" && (r.held === "yes" || r.held === "no") && r.outcomeAt)
+        .map((r) => ({ at: r.outcomeAt!, held: r.held! })),
     }),
-    [childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems, reason, preparedQuestions, langObsCol.items, growthCol.items, audience]
+    [childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems, reason, preparedQuestions, langObsCol.items, growthCol.items, audience, actionLoop]
   );
   // W2-CAREPRO c2 r2: ONE egress set — the card the parent curates, the
   // step-3 count, the empty test and Copy/PDF/Send all read the audience-capped

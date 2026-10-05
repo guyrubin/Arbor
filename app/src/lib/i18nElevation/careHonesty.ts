@@ -120,6 +120,11 @@ export const en: Record<string, string> = {
   "elev.packet.item.milestone": "{title} ({domain})",
   "elev.packet.item.milestoneDated": "{title} ({domain}, {date})",
   "elev.packet.item.triedFor": "{title} — for {issue}.",
+  // B-CAREPRO-45 — the adults' side, dated (never a ratio).
+  "elev.packet.section.adults": "What the adults did",
+  "elev.packet.item.didDated": "{date} — what we did: “{quote}”",
+  "elev.packet.item.heldYes": "{date} — held the plan: yes",
+  "elev.packet.item.heldNo": "{date} — held the plan: not this time",
   "elev.packet.item.phraseLang": "{phrase} [{language}]",
   "elev.packet.item.phraseDated": "{phrase} ({date})",
   "elev.packet.item.phraseLangDated": "{phrase} [{language}] ({date})",
@@ -348,6 +353,11 @@ export const he: Record<string, string> = {
   "elev.packet.item.milestone": "{title} ({domain})",
   "elev.packet.item.milestoneDated": "{title} ({domain}, {date})",
   "elev.packet.item.triedFor": "{title} — בשביל {issue}.",
+  // B-CAREPRO-45 — the adults' side, dated (never a ratio).
+  "elev.packet.section.adults": "מה המבוגרים עשו",
+  "elev.packet.item.didDated": "{date} — מה שעשינו: „{quote}”",
+  "elev.packet.item.heldYes": "{date} — עמדנו בתוכנית: כן",
+  "elev.packet.item.heldNo": "{date} — עמדנו בתוכנית: לא הפעם",
   "elev.packet.item.phraseLang": "{phrase} [{language}]",
   "elev.packet.item.phraseDated": "{phrase} ({date})",
   "elev.packet.item.phraseLangDated": "{phrase} [{language}] ({date})",

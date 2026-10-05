@@ -290,6 +290,10 @@ export interface BuildPacketInput {
   /** LC-20: parent-logged measurements — the pediatrician preset's own
    *  evidence. Numbers as entered; never a percentile or growth verdict. */
   growthEntries?: PacketInputGrowthEntry[];
+  /** B-CAREPRO-45: the two-tap "did you hold the plan?" answers of the
+   *  hard-moment ledger rows (B-ASKJB-33) — the adults' side of a hard
+   *  moment, dated. The parent's own read; never a ratio. */
+  heldOutcomes?: { at: string; held: "yes" | "no" }[];
 }
 
 /* ── LC-17b — ONE input assembler for every packet call site ─────────────────
@@ -730,11 +734,40 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
   }
 
   // 4) What's been tried — active plans (shows the family is already working on it).
+  //    B-CAREPRO-45 (NEXTLEVEL critic r1, P0): and what the ADULTS did, dated —
+  //    the parent's own "what we did" words on a hard moment in the window
+  //    (`response`, newest first) and the dated "held the plan" answers.
+  //    Dated lines only: never "x of y", never a share, never a trend.
+  const did: PacketItem[] = recent
+    .filter((l) => isIncidentType(l.behaviorType) && (l.response ?? "").trim() && isoDay(l.timestamp))
+    .sort((a, b) => toMs(b.timestamp) - toMs(a.timestamp))
+    .slice(0, 3)
+    .map((l, i) => {
+      const day = isoDay(l.timestamp)!;
+      const quote = (l.response ?? "").trim();
+      return { id: `did-${i}`, text: `${day} — what we did: "${quote}"`, textKey: "elev.packet.item.didDated", vars: { date: dayVar(day), quote } };
+    });
+  const held: PacketItem[] = (input.heldOutcomes ?? [])
+    .filter((h) => toMs(h.at) >= since && toMs(h.at) <= nowMs && isoDay(h.at))
+    .sort((a, b) => toMs(b.at) - toMs(a.at))
+    .slice(0, 3)
+    .map((h, i) => {
+      const day = isoDay(h.at)!;
+      return h.held === "yes"
+        ? { id: `held-${i}`, text: `${day} — held the plan: yes`, textKey: "elev.packet.item.heldYes", vars: { date: dayVar(day) } }
+        : { id: `held-${i}`, text: `${day} — held the plan: not this time`, textKey: "elev.packet.item.heldNo", vars: { date: dayVar(day) } };
+    });
   if (plans.length) {
     const items: PacketItem[] = plans.slice(0, 4).map((p, i) => (p.issue
       ? { id: `tried-${i}`, text: `${p.title} — for ${p.issue}.`, textKey: "elev.packet.item.triedFor", vars: { title: p.title, issue: p.issue } }
       : { id: `tried-${i}`, text: p.title }));
     sections.push({ id: "tried", title: "What we've already tried", titleKey: "elev.packet.section.tried", items });
+  }
+  // Its own section, directly under "tried": raw log responses are
+  // clinician-ceiling data, so the teacher preset (["about", "tried"]) never
+  // carries them; every clinician preset does (CLINICIAN_SECTIONS).
+  if (did.length || held.length) {
+    sections.push({ id: "adults", title: "What the adults did", titleKey: "elev.packet.section.adults", items: [...did, ...held] });
   }
 
   // 5) What Arbor remembers — approved longitudinal facts (the moat).
@@ -1028,7 +1061,7 @@ const PARENT_VOICE_SECTIONS = ["reason", "questions"] as const;
  *  then adds the ONE evidence section its own discipline actually reads
  *  (LC-20: four "professional" reports used to be byte-identical documents
  *  that differed only in their title). */
-const CLINICIAN_SECTIONS = ["about", "patterns", "moments", "development", "tried", "memory", "since-last-visit"] as const;
+const CLINICIAN_SECTIONS = ["about", "patterns", "moments", "development", "tried", "adults", "memory", "since-last-visit"] as const;
 const CLINICIAN_CEILING = { logDerivedPatterns: true, approvedMemoryFacts: true } as const;
 const clinicianPreset = (audience: ConsultAudience, extraSections: readonly string[] = []): ConsultPreset => ({
   audience,
