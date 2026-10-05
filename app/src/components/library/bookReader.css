@@ -261,10 +261,10 @@
 .arbor-play .bk-open-row .kid-toy { min-inline-size: 100%; white-space: nowrap; }
 
 /* ── choice cards (fix round 2): picture + label, sized by the layout's
-   plan (--card-w, --pic-w, --pic-h); "stack" = three-down with the label
+   plan (--card-w, --pic-w, --pic-h); "threeDown" = three-down with the label
    beside the picture, "grid21" = two over one, "row" = three across ─────── */
 .arbor-play .bk-choices { display: grid; justify-content: center; align-content: center; flex-shrink: 0; position: relative; z-index: 1; }
-.arbor-play .bk-choices[data-arrangement="stack"] { grid-template-columns: var(--card-w); }
+.arbor-play .bk-choices[data-arrangement="threeDown"] { grid-template-columns: var(--card-w); }
 .arbor-play .bk-choices[data-arrangement="grid21"] { grid-template-columns: repeat(2, var(--card-w)); }
 .arbor-play .bk-choices[data-arrangement="grid21"] > .bk-card:nth-child(3) { grid-column: 1 / span 2; justify-self: center; inline-size: var(--card-w); }
 .arbor-play .bk-choices[data-arrangement="row"] { grid-template-columns: repeat(3, var(--card-w)); }
@@ -287,7 +287,7 @@
   min-block-size: 0;
   overflow: hidden;
 }
-.arbor-play .bk-choices[data-arrangement="stack"] .bk-card { flex-direction: row; text-align: start; gap: 14px; }
+.arbor-play .bk-choices[data-arrangement="threeDown"] .bk-card { flex-direction: row; text-align: start; gap: 14px; }
 .arbor-play .bk-card[data-tone="1"] { --card-lip: color-mix(in oklab, var(--arbor-lav) 55%, var(--arbor-paper-elevated)); }
 .arbor-play .bk-card[data-tone="2"] { --card-lip: color-mix(in oklab, var(--arbor-peach) 50%, var(--arbor-paper-elevated)); }
 .arbor-play .bk-card:focus-visible { outline: 3px solid var(--arbor-sky); outline-offset: 3px; }
@@ -295,7 +295,7 @@
   transform: translateY(-6px);
   box-shadow: 0 0 0 5px var(--arbor-sky), 0 6px 0 var(--card-lip), 0 26px 34px -16px color-mix(in oklab, var(--arbor-ink) 65%, transparent);
 }
-.arbor-play .bk-choices[data-arrangement="stack"] .bk-card[data-selected] { transform: translateX(calc(var(--book-x, 1) * 6px)); }
+.arbor-play .bk-choices[data-arrangement="threeDown"] .bk-card[data-selected] { transform: translateX(calc(var(--book-x, 1) * 6px)); }
 .arbor-play .bk-card[data-dimmed] { opacity: 0.6; }
 .arbor-play .bk-card-pic {
   display: block;
@@ -315,7 +315,7 @@
   text-wrap: balance;
   padding-inline: 4px;
 }
-.arbor-play .bk-choices[data-arrangement="stack"] .bk-card-label { text-align: start; font-size: var(--kid-t-say, 22px); }
+.arbor-play .bk-choices[data-arrangement="threeDown"] .bk-card-label { text-align: start; font-size: var(--kid-t-say, 22px); }
 
 /* the repair hint: plain words with a pointing hand — an instruction, not a
    button (fix round 1, ruling 4) */
@@ -443,3 +443,11 @@
 .arbor-play .bk-grownup dt:first-child { margin-block-start: 0; }
 .arbor-play .bk-grownup dd { margin: 2px 0 0; }
 .arbor-play .bk-grownup bdi { color: var(--arbor-clay); font-weight: 600; }
+
+/* ── art states (manuscript v2): a state's plate cross-fades in over the
+   page's plate, under the hero (p9 "the soldiers rise") ─────────────────── */
+.arbor-play .bk-state-plate { position: absolute; inset: 0; animation: bk-state-in 900ms var(--kid-ease-out) both; }
+@keyframes bk-state-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .arbor-play .bk-state-plate { animation-duration: 200ms; }
+}
