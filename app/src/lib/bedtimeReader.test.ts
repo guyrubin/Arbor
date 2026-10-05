@@ -314,3 +314,32 @@ describe("B-SHELL-NEW-1f · the From-today quote well", () => {
     expect(en["elev.bedtime.quote.today"]).toContain("{time}");
   });
 });
+
+describe("W2-SHELLPLAY r2 · bedtime tells the truth about which day it is, and says the moment once", () => {
+  const TODAY = /\btoday\b|\u05d4\u05d9\u05d5\u05dd/i;
+  it("no today/\u05d4\u05d9\u05d5\u05dd string renders on the yesterday path (eyebrow, caption, subtitle)", () => {
+    for (const lang of [en, he]) {
+      for (const k of ["elev.bedtime.eyebrow.yesterday", "elev.bedtime.eyebrow.day", "elev.bedtime.quote.yesterday", "elev.bedtime.quote.earlier", "elev.bedtime.subtitle.recent"]) {
+        expect(lang[k], k).toBeTruthy();
+        expect(lang[k], k).not.toMatch(TODAY);
+      }
+    }
+    // the eyebrow switches on the path; the separate "From yesterday" line is gone
+    expect(src).toContain('prefillFrom === "yesterday"\n                ? t("elev.bedtime.eyebrow.yesterday", { name })');
+    expect(src).not.toContain('t("elev.bedtime.prefill.yesterday")');
+    expect(src).toContain('prefillFrom && prefillFrom !== "today"\n            ? t("elev.bedtime.subtitle.recent")');
+    // NEGATIVE CONTROL: the r2 shipped eyebrow on the yesterday path said today
+    expect("What happened today with Dylan?").toMatch(TODAY);
+  });
+
+  it("the quote well is the first seed: its row is not rendered twice, 'Change' opens it as a textarea", () => {
+    expect(src).toContain("(quote && !quoteEditing && idx === 0 && evt.id === `log-${prefill.lines[0]?.id}`) ? null : (");
+    expect(src).toContain('data-testid="bedtime-quote-change"');
+    expect(src).toContain("min-h-11");
+  });
+
+  it("the well keeps the card's 16 px rhythm (no m-0 reset of the space-y end margin)", () => {
+    expect(src).toContain('data-testid="bedtime-quote-well" className="mx-0 mt-0 rounded-[14px] p-4"');
+    expect(src).not.toContain('data-testid="bedtime-quote-well" className="m-0');
+  });
+});

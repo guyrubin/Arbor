@@ -89,6 +89,9 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
   const [prefillFrom, setPrefillFrom] = useState(prefill.from);
   const [prefillDay, setPrefillDay] = useState(prefill.day);
   const typedRef = useRef(false);
+  // W2-SHELLPLAY critic r2: the quote well IS the first seed — the rows below
+  // it render the other moments; "Change" turns it into the first textarea.
+  const [quoteEditing, setQuoteEditing] = useState(false);
   // B-SHELL-NEW-1f: the newest prefilled moment (the first line), with the
   // clock time the parent logged it.
   const quote = (() => {
@@ -505,7 +508,9 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
       {!embedded && (
         <PageHeader
           title={he ? `סיפור הלילה של ${isolate(name)}` : `${isolate(name)}'s Bedtime Story`}
-          subtitle={he
+          subtitle={prefillFrom && prefillFrom !== "today"
+            ? t("elev.bedtime.subtitle.recent")
+            : he
             ? "סיפור מותאם אישית שנולד מהיום שלכם — לקריאה משותפת לפני השינה"
             : "A personalised story born from today — read together at bedtime"}
         />
@@ -526,27 +531,43 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
           className="text-[12px] uppercase tracking-widest font-bold"
           style={{ color: "var(--arbor-muted)" }}
         >
-          {he ? `מה קרה היום עם ${isolate(name)}?` : `What happened today with ${isolate(name)}?`}
+          {/* W2-SHELLPLAY critic r2: ONE day, stated once. On the yesterday /
+              earlier path the eyebrow names that day and the caption carries it;
+              nothing on that path says "today". */}
+          {prefillFrom && prefillFrom !== "today" && prefillDay ? (
+            <span data-testid="bedtime-prefill-from">
+              {prefillFrom === "yesterday"
+                ? t("elev.bedtime.eyebrow.yesterday", { name })
+                : t("elev.bedtime.eyebrow.day", { name, day: new Intl.DateTimeFormat(he ? "he-IL" : "en-GB", { weekday: "long" }).format(prefillDay) })}
+            </span>
+          ) : he ? `מה קרה היום עם ${isolate(name)}?` : `What happened today with ${isolate(name)}?`}
         </p>
-        {prefillFrom && prefillFrom !== "today" && prefillDay && (
-          <p data-testid="bedtime-prefill-from" className="text-[12px] font-bold -mt-2" style={{ color: "var(--arbor-ink-soft)" }}>
-            {prefillFrom === "yesterday"
-              ? t("elev.bedtime.prefill.yesterday")
-              : t("elev.bedtime.prefill.day", { day: new Intl.DateTimeFormat(he ? "he-IL" : "en-GB", { weekday: "long" }).format(prefillDay) })}
-          </p>
-        )}
 
         {/* B-SHELL-NEW-1f: the screen's one warm accent — the newest moment the
             parent noted, in their own words, before the editable rows. Empty
             day: an open question instead (never a disabled wall). */}
         {quote ? (
-          <figure data-testid="bedtime-quote-well" className="m-0 rounded-[14px] p-4" style={{ background: "var(--arbor-peach-soft)", border: "1px solid var(--arbor-rule)" }}>
+          <figure data-testid="bedtime-quote-well" className="mx-0 mt-0 rounded-[14px] p-4" style={{ background: "var(--arbor-peach-soft)", border: "1px solid var(--arbor-rule)" }}>
             <blockquote className="m-0 text-[18px] leading-snug" dir="auto" style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink)" }}>
               “{quote.text}”
             </blockquote>
             <figcaption className="mt-1.5 text-[11.5px] font-bold" style={{ color: "var(--arbor-peach-ink)" }}>
-              {t(prefillFrom === "today" ? "elev.bedtime.quote.today" : "elev.bedtime.quote.earlier", { time: quote.time })}
+              {t(
+                prefillFrom === "today" ? "elev.bedtime.quote.today" : prefillFrom === "yesterday" ? "elev.bedtime.quote.yesterday" : "elev.bedtime.quote.earlier",
+                { time: quote.time, day: prefillDay ? new Intl.DateTimeFormat(he ? "he-IL" : "en-GB", { weekday: "long" }).format(prefillDay) : "" },
+              )}
             </figcaption>
+            {!quoteEditing && (
+              <button
+                type="button"
+                data-testid="bedtime-quote-change"
+                onClick={() => setQuoteEditing(true)}
+                className="mt-1 inline-flex min-h-11 items-center t-xs font-bold"
+                style={{ color: "var(--arbor-muted)" }}
+              >
+                {t("elev.bedtime.quote.change")}
+              </button>
+            )}
           </figure>
         ) : prefillFrom === null ? (
           <p data-testid="bedtime-quote-empty" className="rounded-[14px] p-4 text-[15px] leading-snug" style={{ background: "var(--arbor-peach-soft)", border: "1px solid var(--arbor-rule)", fontFamily: "var(--font-editorial)", color: "var(--arbor-ink)" }}>
@@ -555,7 +576,7 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
         ) : null}
 
         <div className="space-y-3" data-testid="bedtime-events-list">
-          {events.map((evt) => (
+          {events.map((evt, idx) => (quote && !quoteEditing && idx === 0 && evt.id === `log-${prefill.lines[0]?.id}`) ? null : (
             <div key={evt.id} className="flex items-start gap-2">
               <textarea
                 className="flex-1 rounded-xl px-3 py-2.5 text-[14px] resize-none min-h-[56px] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 transition"
