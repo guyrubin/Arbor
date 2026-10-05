@@ -342,6 +342,8 @@ export const fiveSmoothStones: Book = {
   pages: [p1, p2, p3, p4, p5, p8, p9, p10],
   decision: {
     pageId: "p5",
+    // dedicated card pictures, when the art agent delivers them (geometry)
+    ...(G.choiceArt ? { choiceArt: Object.fromEntries(Object.entries(G.choiceArt).map(([k, f]) => [k, `/visuals/books/${BOOK_ID}/${f}`])) } : {}),
     choices: [
       { id: "a", type: "hard", label: { en: `Go as I am`, he: `ללכת כמו שאני` }, branch: [p6a] },
       { id: "b", type: "easy", label: { en: `Wear the king's armour`, he: `ללבוש את השריון של המלך` }, branch: [p6b, p7b] },

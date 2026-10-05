@@ -231,7 +231,14 @@ export interface Book {
   cover: Page;
   /** The linear pages in reading order (branch pages live in the choices). */
   pages: Page[];
-  decision: { pageId: string; choices: Choice[] };
+  decision: {
+    pageId: string;
+    choices: Choice[];
+    /** Dedicated 4:3 pictures for the choice cards (public URLs), by choice id.
+     *  A hero sheet may carry its own per-child versions (they show the child);
+     *  those win. Without either, the card shows the plate's focus crop. */
+    choiceArt?: Record<string, string>;
+  };
   /** The first page every branch returns to. */
   rejoinPageId: string;
   parent: ParentPanel;

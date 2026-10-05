@@ -41,11 +41,13 @@ export interface HeroSheet {
   anchors?: Record<Pose, SpriteAnchor>;
   /** Printed pages by page id. */
   prints?: Record<string, HeroPrint>;
+  /** Per-child choice-card pictures by choice id (they show the child). */
+  choices?: Record<string, string>;
 }
 
 /** A sheet id / pose id / file is a path segment: letters, digits, '-', '_'. */
 const SEGMENT = /^[A-Za-z0-9_-]{1,64}$/;
-const FILE = /^(?:prints\/)?[A-Za-z0-9_-]{1,64}\.webp$/;
+const FILE = /^(?:prints\/|choices\/)?[A-Za-z0-9_-]{1,64}\.webp$/;
 
 /** The DEV fixture sheet for an id, before its manifest is read. */
 export function devHeroSheet(sheetId: string): HeroSheet | null {
@@ -63,6 +65,17 @@ export function heroSpriteUrl(sheet: HeroSheet | null, pose: Pose | undefined): 
 /** The layout's anchor lookup for this sheet (undefined pose → no anchor). */
 export function sheetAnchorOf(sheet: HeroSheet | null): AnchorOf {
   return (pose) => (sheet?.anchors && Object.prototype.hasOwnProperty.call(sheet.anchors, pose) ? sheet.anchors[pose] : undefined);
+}
+
+/** The pictures to try for a choice card, best first: the child's own (from
+ *  the sheet), then the book's dedicated scene picture. */
+export function choicePictureSources(sheet: HeroSheet | null, bookArt: Record<string, string> | undefined, choiceId: string): string[] {
+  const out: string[] = [];
+  const own = sheet?.choices && Object.prototype.hasOwnProperty.call(sheet.choices, choiceId) ? sheet.choices[choiceId] : undefined;
+  if (own) out.push(own);
+  const scene = bookArt && Object.prototype.hasOwnProperty.call(bookArt, choiceId) ? bookArt[choiceId] : undefined;
+  if (scene) out.push(scene);
+  return out;
 }
 
 /** The print for a page, when the sheet has one. */
@@ -94,7 +107,11 @@ export function applySheetManifest(base: HeroSheet, raw: unknown): HeroSheet {
     const h = isObj(v) && pos(v.h) ? v.h : 1280;
     prints[pageId] = { url: `${base.base}/${file}`, width: w, height: h };
   }
-  return { ...base, poses, anchors, prints };
+  const choices: Record<string, string> = { ...(base.choices ?? {}) };
+  for (const [cid, v] of isObj(raw.choices) ? Object.entries(raw.choices) : []) {
+    if (SEGMENT.test(cid) && typeof v === "string" && FILE.test(v)) choices[cid] = `${base.base}/${v}`;
+  }
+  return { ...base, poses, anchors, prints, choices };
 }
 
 /** The hero sheet for this child (sync: no manifest), or null. */
