@@ -194,9 +194,10 @@ describe("LC-11b · one teacher door — every door, not one named file", () => 
     // The page iterates the parent-record list — the teacher type (and every
     // professional preset) cannot appear as a card, so no ungated teacher PDF.
     const page = reports.slice(reports.indexOf("export default function Reports"));
-    // W2-CAREPRO r1: the lead record is PARENT_RECORD_REPORTS[0]; the rest are rows of the same list.
-    expect(page).toContain("const lead = PARENT_RECORD_REPORTS[0];");
-    expect(page).toContain("{PARENT_RECORD_REPORTS.filter((r) => r.type !== lead.type).map((r) => (");
+    // W2-CAREPRO c2 r1: the lead saves the combined parent record ("record" →
+    // buildFullRecord, parent documents only); every document is a row of the same list.
+    expect(page).toContain('exportReport("record");');
+    expect(page).toContain("{PARENT_RECORD_REPORTS.map((r) => (");
     expect(page).not.toContain("reports-teacher-one-door");
     expect(page).not.toMatch(/\{REPORTS\.map\(/);
     // NEGATIVE CONTROL: the pre-change card exported every type unconditionally.
@@ -206,7 +207,8 @@ describe("LC-11b · one teacher door — every door, not one named file", () => 
   it("B-CAREPRO-28: the Reports seam prints parent records only — no preset packet is built there", () => {
     const hook = reports.slice(reports.indexOf("export function useReportExport"), reports.indexOf("export function useConsultPdf"));
     expect(hook.length).toBeGreaterThan(300);
-    expect(hook).toContain("return (type: ParentReportType) => {");
+    expect(hook).toContain('return (type: ParentReportType | "record") => {');
+    expect(hook).toContain('type === "record" ? buildFullRecord(ctx, uiLang) : buildReport(type, ctx, uiLang)');
     expect(reports).not.toContain("buildPresetPacket(");
     expect(reports).not.toContain("presetPacketToPrintSections(");
   });
@@ -372,12 +374,14 @@ describe("B-CAREPRO-27 · teacher egress only via buildSchoolBriefExport", () =>
 });
 
 describe("B-CAREPRO-27 · the brief opens on a free draft from the teacher preset", () => {
-  it("overview ← about lines; strengths ← profile strengths; strategies ← what the family tries", () => {
+  it("overview ← about lines; strengths ← profile strengths; strategies ← the plan as written, never its issue (W2-CAREPRO c2 r1)", () => {
     const d = teacherBriefDraft(DRAFT_INPUT, "en");
     expect(d.overview).toContain("Dylan");
     expect(d.overview).toContain("Setting: Gan Shaked.");
     expect(d.keyStrengths).toEqual(["Builds towers", "Kind to friends"]);
-    expect(d.suggestedTeacherStrategies).toEqual(["Five-minute warning — for leaving the park."]);
+    // A plan with no steps: its title alone — the issue never reaches a teacher.
+    expect(d.suggestedTeacherStrategies).toEqual(["Five-minute warning"]);
+    expect(JSON.stringify(d.suggestedTeacherStrategies)).not.toContain("leaving the park");
   });
 
   it("never carries what the teacher ceiling forbids: logs, milestones, memory, the clinician-facing reason", () => {

@@ -384,7 +384,7 @@ export default function SchoolBrief() {
               {generating
                 ? (<><Icon name="progress_activity" size={16} className="animate-spin" /> {t("schoolBrief.generating")}</>)
                 : (<><Icon name="auto_awesome" size={16} className="hidden sm:inline-block" /> {t("elev.learnCare.brief.aiDraft")}
-                    <span className="text-[11px] font-extrabold rounded-full px-2 py-0.5" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>{t("elev.learnCare.brief.plus")}</span></>)}
+                    <span className="text-[11px] font-extrabold rounded-full px-2 py-0.5" style={{ background: "var(--arbor-lav-wash)", color: "var(--arbor-lav-ink)" }}>{t("elev.learnCare.brief.plus")}</span></>)}
             </button>
           </div>
 
@@ -394,11 +394,11 @@ export default function SchoolBrief() {
                 where the draft came from, and the per-section edit toggle. */}
             <div data-testid="school-brief-card-header" className="flex items-start gap-2">
               <div className="flex-1 min-w-0 space-y-1">
+                {/* W2-CAREPRO c2 r1: ONE caption line (provenance + the
+                    non-diagnostic promise); the edit/Plus hint moved to the
+                    card footer, so the strengths reach the fold at 375. */}
                 <p data-testid="school-brief-promise" className="t-xs font-bold inline-flex items-start gap-1.5" style={{ color: GREEN }}>
-                  <Icon name="favorite" size={14} fill={1} className="mt-0.5 flex-shrink-0" /> <span>{t("schoolBrief.nonDiagnostic", { name: firstName })}</span>
-                </p>
-                <p data-testid="school-brief-draft-hint" className="t-xs leading-relaxed" style={{ color: MUTED }}>
-                  {editing ? t("schoolBrief.editHint") : t("elev.learnCare.brief.draftHint")}
+                  <Icon name="favorite" size={14} fill={1} className="mt-0.5 flex-shrink-0" /> <span>{t("elev.learnCare.brief.caption")}</span>
                 </p>
               </div>
               {/* Per-section edit toggle — keeps the default view calm; full edit power on demand. */}
@@ -417,7 +417,8 @@ export default function SchoolBrief() {
                 parent's voice, from the first curated strength. It is the first
                 paragraph of `overview` (edited there, printed first). */}
             {openingShown && (
-              <div data-testid="school-brief-opening" className="p-4 border-s-[3px]" style={{ background: "var(--arbor-peach-soft)", borderColor: "var(--arbor-peach-ink)", borderRadius: "var(--r)" }}>
+              // W2-CAREPRO c2 r1: a FLAT wash — the page's one gradient is Save as PDF.
+              <div data-testid="school-brief-opening" className="p-4 border-s-[3px]" style={{ background: "var(--arbor-peach-wash)", borderColor: "var(--arbor-peach-ink)", borderRadius: "var(--r)" }}>
                 <p className="t-xs font-bold" style={{ color: "var(--arbor-peach-ink)" }}>{t("elev.learnCare.brief.startHere")}</p>
                 <p dir={uiLang === "he" ? "rtl" : "ltr"} className="t-lg leading-snug mt-1" style={{ fontFamily: uiLang === "he" ? "var(--font-display)" : "var(--font-editorial)", color: "var(--arbor-ink)" }}>{openingLine}</p>
               </div>
@@ -456,6 +457,9 @@ export default function SchoolBrief() {
               </>
             )}
             <p className="text-[12px] leading-relaxed pt-1" style={{ color: "var(--arbor-faint)" }}>{t("schoolBrief.bilingualNote")}</p>
+            <p data-testid="school-brief-draft-hint" className="t-xs leading-relaxed" style={{ color: MUTED }}>
+              {editing ? t("schoolBrief.editHint") : t("elev.learnCare.brief.draftHint")}
+            </p>
           </div>
 
           {/* LC-11 — THE SAFETY FIELD THAT WAS BEING DROPPED. The generator is
@@ -517,13 +521,16 @@ function Section({ icon, title, children }: { icon: React.ReactNode; title: stri
 }
 
 function ListSection({ icon, title, items }: { icon: React.ReactNode; title: string; items: string[] }) {
+  // W2-CAREPRO c2 r1: ONE list direction per card — the UI's. dir=auto let a
+  // Latin item resolve LTR and jump its bullet to the left edge inside an RTL
+  // card; the parent's own text is a <bdi>, so its run (and period) stays whole.
+  const { uiLang } = useLanguage();
+  const dir = uiLang === "he" ? "rtl" : "ltr";
   if (!items?.length) return null;
   return (
     <Section icon={icon} title={title}>
-      <ul className="list-disc ps-5 space-y-1" style={{ color: MUTED }}>
-        {/* W2-CAREPRO r1: each item is its own bidi paragraph — a Latin
-            strength in the RTL list kept its period on the wrong edge. */}
-        {items.map((it, i) => <li key={i} dir="auto" className="t-base leading-relaxed">{it}</li>)}
+      <ul dir={dir} data-testid="school-brief-list" className="list-disc ps-5 space-y-1" style={{ color: MUTED }}>
+        {items.map((it, i) => <li key={i} dir={dir} className="t-base leading-relaxed"><bdi>{it}</bdi></li>)}
       </ul>
     </Section>
   );

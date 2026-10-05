@@ -82,6 +82,8 @@ export const en: Record<string, string> = {
   "elev.learnCare.brief.printed": "Opened for printing. Choose “Save as PDF” to keep a copy.",
   // B-CAREPRO-27: the free draft and the Plus AI draft.
   "elev.learnCare.brief.draftHint": "Drafted from what you've recorded. Edit any line before you save it — or let Arbor write a fuller draft.",
+  // W2-CAREPRO c2 r1: the card's ONE caption line.
+  "elev.learnCare.brief.caption": "From what you've recorded — what helps, never a diagnosis.",
   "elev.learnCare.brief.aiDraft": "Draft with Arbor",
   // B-CAREPRO-NEW-2d — the note's opening line ("Start here").
   "elev.learnCare.brief.startHere": "Start here",
@@ -194,6 +196,7 @@ export const he: Record<string, string> = {
   "elev.learnCare.brief.print": "לשמור כ‑PDF",
   "elev.learnCare.brief.printed": "נפתח להדפסה. בחרו „שמירה כ‑PDF” כדי לשמור עותק.",
   "elev.learnCare.brief.draftHint": "הטיוטה נכתבה ממה שתיעדתם. אפשר לערוך כל שורה לפני השמירה — או לבקש מארבור טיוטה מלאה יותר.",
+  "elev.learnCare.brief.caption": "ממה שתיעדתם — מה שעוזר, לעולם לא אבחנה.",
   "elev.learnCare.brief.aiDraft": "לנסח עם ארבור",
   "elev.learnCare.brief.startHere": "להתחיל מכאן",
   "elev.teacherBrief.opening.boy": "עם {name}, הכי טוב להתחיל ממה שהוא אוהב: {strength}.",

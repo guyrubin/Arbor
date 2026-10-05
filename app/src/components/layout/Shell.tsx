@@ -119,7 +119,7 @@ const RoutinesTab = lazy(() => import("../tabs/RoutinesTab"));
 
 /** W2-CAREPRO r2 — routes where the phone hub one-liner stays quiet (the
  *  route's first decision needs the fold; the pill row names the hub). */
-export const HUB_LINE_QUIET_TABS: ReadonlySet<string> = new Set(["memory", "sharing", "safety"]);
+export const HUB_LINE_QUIET_TABS: ReadonlySet<string> = new Set(["memory", "sharing", "safety", "school-brief"]);
 
 const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   overview: OverviewTab,

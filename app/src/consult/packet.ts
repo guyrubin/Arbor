@@ -61,6 +61,10 @@ export interface PacketInputMilestone {
 export interface PacketInputPlan {
   title: string;
   issue?: string;
+  /** W2-CAREPRO c2 r1: the plan's steps as written, with the phase they sit
+   *  in — the School Brief's teacher strategies are built from these (never
+   *  from `issue`, which is clinical-register and never printed to a teacher). */
+  steps?: { text: string; completed: boolean; phase: string }[];
   /** When the plan was created (ISO or ms) — feeds the CARE-7 delta counts. */
   createdAt?: string | number;
 }
@@ -331,7 +335,7 @@ export interface RawPacketMilestone {
   observationUpdatedAt?: string;
 }
 /** Raw action-plan fields (an `ActionPlan`, or a Firestore document). */
-export interface RawPacketPlan { id?: string; title: string; issue?: string; createdAt?: string | number }
+export interface RawPacketPlan { id?: string; title: string; issue?: string; createdAt?: string | number; phases?: unknown }
 /** Raw memory-ledger fields (a folded memory item, or a Firestore document). */
 export interface RawPacketMemory { fact: string; status: string }
 
@@ -345,6 +349,22 @@ export interface RawChildRecord {
 }
 
 const rawStr = (v: unknown): string => (typeof v === "string" ? v : "");
+/** W2-CAREPRO c2 r1: a plan's phases → its steps as written, in order. */
+const rawPlanSteps = (phases: unknown): { text: string; completed: boolean; phase: string }[] => {
+  if (!Array.isArray(phases)) return [];
+  const out: { text: string; completed: boolean; phase: string }[] = [];
+  for (const ph of phases) {
+    if (!ph || typeof ph !== "object") continue;
+    const phase = rawStr((ph as { name?: unknown }).name);
+    const steps = (ph as { steps?: unknown }).steps;
+    if (!Array.isArray(steps)) continue;
+    for (const st of steps) {
+      const text = st && typeof st === "object" ? rawStr((st as { text?: unknown }).text).trim() : "";
+      if (text) out.push({ text, completed: !!(st as { completed?: unknown }).completed, phase });
+    }
+  }
+  return out;
+};
 const rawNum = (v: unknown, fallback = 0): number => (typeof v === "number" && Number.isFinite(v) ? v : fallback);
 const rawStrArr = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
 /** B-CAREPRO-33: only a parseable setting date survives the seam. */
@@ -436,6 +456,7 @@ export function buildPacketInput(record: RawChildRecord, nowMs: number): BuildPa
       title: rawStr(pl.title),
       issue: rawOptStr(pl.issue),
       createdAt: rawPlanCreatedAt(pl),
+      steps: rawPlanSteps(pl.phases),
     })),
     memory: record.memory.map((m) => ({ fact: rawStr(m.fact), status: rawStr(m.status) })),
     nowMs,
@@ -1349,10 +1370,28 @@ export function teacherBriefDraft(input: BuildPacketInput, lang: UiLang = "en"):
     keyStrengths: (input.profile.strengths ?? []).filter(clean),
     // harderMoments ← goals + challenges as the parent wrote them, ungraded
     harderMoments: [...goals.map(goalLabel), ...challenges].filter(clean),
-    // suggestedTeacherStrategies ← what the family already tries
-    suggestedTeacherStrategies: items("tried").map((it) => itemText(it, lang)).filter(clean),
+    // suggestedTeacherStrategies ← W2-CAREPRO c2 r1: moves a teacher could
+    // try, as the family wrote them — each active plan's COMPLETED steps
+    // first, then the steps of a classroom/teacher phase; capped at 3. The
+    // plan's `issue` ("Transition anxiety triggered by…") is never printed to
+    // a teacher. A plan with no steps falls back to its title alone.
+    suggestedTeacherStrategies: teacherStrategies(input.plans, clean),
     openingLine: teacherOpeningLine(input, lang, clean),
   };
+}
+
+/** W2-CAREPRO c2 r1 — the School Brief's "Easy things a teacher can try". */
+const CLASSROOM_PHASE = /class|teacher|school|gan|preschool|kindergarten|daycare|כית|גן|גננת|מורה|בית ספר|מעון/i;
+export function teacherStrategies(plans: readonly PacketInputPlan[], clean: (line: string) => boolean, cap = 3): string[] {
+  const out: string[] = [];
+  const add = (x: string) => {
+    const v = x.trim();
+    if (v && clean(v) && !out.some((o) => o.toLowerCase() === v.toLowerCase())) out.push(v);
+  };
+  for (const p of plans) for (const st of p.steps ?? []) if (st.completed) add(st.text);
+  for (const p of plans) for (const st of p.steps ?? []) if (!st.completed && CLASSROOM_PHASE.test(st.phase)) add(st.text);
+  if (out.length === 0) for (const p of plans) if (!(p.steps ?? []).length) add(p.title);
+  return out.slice(0, cap);
 }
 
 /** B-CAREPRO-NEW-2d — "Start here": the first curated strength as the way in.

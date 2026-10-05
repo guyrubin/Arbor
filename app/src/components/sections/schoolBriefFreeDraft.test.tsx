@@ -12,14 +12,16 @@ const harness = vi.hoisted(() => ({
   locale: "en" as "en" | "he",
   generateBrief: vi.fn(),
   openPaywall: vi.fn(),
+  plans: null as unknown[] | null,
+  strengths: null as string[] | null,
 }));
 
 vi.mock("../../context/ArborContext", () => ({
   useArbor: () => ({
-    childProfile: { id: "c1", name: "Noa", age: 5, languages: ["Hebrew"], schoolContext: harness.locale === "he" ? "גן שקד" : "Gan Shaked", strengths: [harness.locale === "he" ? "בונה מגדלים" : "Builds towers"], challenges: [] },
+    childProfile: { id: "c1", name: "Noa", age: 5, languages: ["Hebrew"], schoolContext: harness.locale === "he" ? "גן שקד" : "Gan Shaked", strengths: harness.strengths ?? [harness.locale === "he" ? "בונה מגדלים" : "Builds towers"], challenges: [] },
     behaviorLogs: [],
     milestones: [],
-    actionPlans: [{ id: "p1", title: harness.locale === "he" ? "התראה של חמש דקות" : "Five-minute warning", phases: [] }],
+    actionPlans: harness.plans ?? [{ id: "p1", title: harness.locale === "he" ? "התראה של חמש דקות" : "Five-minute warning", phases: [] }],
     setActiveTab: vi.fn(),
     openPaywall: harness.openPaywall,
   }),
@@ -40,6 +42,8 @@ vi.mock("../ui/Modal", () => ({ Modal: () => null }));
 import SchoolBrief from "./SchoolBrief";
 
 beforeEach(() => {
+  harness.plans = null;
+  harness.strengths = null;
   harness.generateBrief.mockReset();
   harness.openPaywall.mockReset();
 });
@@ -146,7 +150,7 @@ describe("W2-CAREPRO r2 · one action row, promise in the card, a Start-here lin
       expect(html.slice(html.indexOf("</header>"), rowStart)).not.toContain("arbor-green-soft");
       const header = html.slice(html.indexOf('data-testid="school-brief-card-header"'), html.indexOf('data-testid="school-brief-overview"'));
       expect(header).toContain('data-testid="school-brief-promise"');
-      expect(header).toContain(translate(locale, "schoolBrief.nonDiagnostic", { name: "Noa" }));
+      expect(header.replace(/&#x27;/g, "'")).toContain(translate(locale, "elev.learnCare.brief.caption")); // W2-CAREPRO c2 r1: one caption line
       expect(header).toMatch(/data-testid="school-brief-edit"[^>]*w-11 h-11/);
       expect(html.indexOf('data-testid="school-brief-edit"')).toBeGreaterThan(card);
     });
@@ -158,7 +162,7 @@ describe("W2-CAREPRO r2 · one action row, promise in the card, a Start-here lin
       const band = html.slice(html.indexOf('data-testid="school-brief-opening"'), html.indexOf('data-testid="school-brief-overview"'));
       expect(band).toContain(translate(locale, "elev.learnCare.brief.startHere"));
       expect(band).toContain(opening.replace(/'/g, "&#x27;"));
-      expect(band).toContain("var(--arbor-peach-soft)");
+      expect(band).toContain("var(--arbor-peach-wash)");
       const overview = /<p data-testid="school-brief-overview"[^>]*>([^<]*)<\/p>/.exec(html)![1];
       expect(overview).not.toContain(opening);
       // the band sits under the card header, above the overview section
@@ -181,5 +185,89 @@ describe("W2-CAREPRO r2 · one action row, promise in the card, a Start-here lin
     );
     expect(he.openingLine).toBe("עם ⁨Dylan⁩, הכי טוב להתחיל ממה שהוא אוהב: משחק דמיון.");
     expect(he.openingLine).not.toMatch(/\//);
+  });
+});
+
+/* W2-CAREPRO c2 r1 — school-brief critics (product P1 G1 x3, design P1 G1 x3). */
+describe("W2-CAREPRO c2 r1 · real moves for a teacher, one gradient, one list direction, a quiet hub line", () => {
+  const plan = (he: boolean) => ({
+    id: "plan-1",
+    title: he ? "תוכנית מעבר לגן והגעה בבוקר" : "Preschool Transition & Morning Arrival Plan",
+    issue: he ? "חרדת מעבר שמופעלת מלחץ יציאה" : "Transition anxiety triggered by departure pressure and bilingual friction",
+    phases: [
+      { name: he ? "שלב 1: בבית" : "Phase 1: At home", description: "", steps: [
+        { text: he ? "להחזיק אבן אומץ קטנה בכיס בדרך החוצה" : "Hold a small 'courage pebble' in a pocket on the way out", completed: true },
+        { text: he ? "לשיר את שיר הנעליים" : "Sing the shoes song", completed: false },
+      ] },
+      { name: he ? "שלב 3: חיבור בכיתה" : "Phase 3: Classroom Handoff Connection", description: "", steps: [
+        { text: he ? "הגננת מקבלת את ידו ליד הדלת" : "The teacher takes his hand at the door", completed: false },
+      ] },
+    ],
+  });
+
+  for (const locale of ["en", "he"] as const) {
+    it(`${locale}: 'Easy things a teacher can try' = completed steps first, then a classroom phase's steps — never the plan's issue`, () => {
+      harness.locale = locale;
+      harness.plans = [plan(locale === "he")];
+      const html = renderToStaticMarkup(<SchoolBrief />).replace(/&#x27;/g, "'");
+      const p = plan(locale === "he");
+      expect(html).toContain(p.phases[0].steps[0].text);
+      expect(html).toContain(p.phases[1].steps[0].text);
+      expect(html).not.toContain(p.phases[0].steps[1].text); // not done, not a classroom phase
+      expect(html).not.toContain(p.issue);
+      expect(html).not.toMatch(/anxiety|חרדה|חרדת/i);
+      expect(html).not.toContain(" — for ");
+    });
+
+    it(`${locale}: exactly one gradient on the route (Save as PDF); the band and the Plus chip are flat washes`, () => {
+      harness.locale = locale;
+      harness.strengths = ["Builds towers"];
+      const html = renderToStaticMarkup(<SchoolBrief />);
+      const gradients = html.match(/var\(--(arbor-gradient-primary|gradient-cta|arbor-(peach|lav|pink|sky|yellow|green|clay)-soft)\)/g) ?? [];
+      expect(gradients).toEqual(["var(--arbor-gradient-primary)"]);
+      const pdf = html.slice(html.lastIndexOf("<button", html.indexOf('data-primary-move="build-school-brief"')), html.indexOf("</button>", html.indexOf('data-primary-move="build-school-brief"')));
+      expect(pdf).toContain("var(--arbor-gradient-primary)");
+      expect(html).toContain("var(--arbor-peach-wash)");
+      expect(html).toContain("var(--arbor-lav-wash)");
+    });
+
+    it(`${locale}: one list direction per card — a Latin item in an RTL list keeps the UI direction, its words in a <bdi>`, () => {
+      harness.locale = locale;
+      harness.strengths = ["Pretend play", "בונה מגדלים"];
+      const html = renderToStaticMarkup(<SchoolBrief />);
+      const dir = locale === "he" ? "rtl" : "ltr";
+      const lists = html.match(/<ul dir="(\w+)" data-testid="school-brief-list"/g) ?? [];
+      expect(lists.length).toBeGreaterThan(0);
+      for (const ul of lists) expect(ul).toContain(`dir="${dir}"`);
+      expect(html).toContain(`<li dir="${dir}" class="t-base leading-relaxed"><bdi>Pretend play</bdi></li>`);
+      expect(html).not.toMatch(/<li dir="auto"/);
+    });
+
+    it(`${locale}: one caption line in the card header; the draft hint sits in the card footer`, () => {
+      harness.locale = locale;
+      const html = renderToStaticMarkup(<SchoolBrief />);
+      const header = html.slice(html.indexOf('data-testid="school-brief-card-header"'), html.indexOf('data-testid="school-brief-edit"')).replace(/&#x27;/g, "'");
+      expect(header).toContain(translate(locale, "elev.learnCare.brief.caption"));
+      expect(header).not.toContain('data-testid="school-brief-draft-hint"');
+      expect(html.indexOf('data-testid="school-brief-draft-hint"')).toBeGreaterThan(html.indexOf(translate(locale, "schoolBrief.bilingualNote")));
+      // the lede is one sentence
+      expect(translate(locale, "schoolBrief.subtitle", { name: "Noa" }).replace(/\.$/, "")).not.toMatch(/[.:]\s/);
+    });
+  }
+
+  it("the Care hub line is quiet on school-brief (HUB_LINE_QUIET_TABS), so the strengths reach the fold", async () => {
+    const { readFileSync } = await import("node:fs");
+    const shell = readFileSync(new URL("../layout/Shell.tsx", import.meta.url), "utf8");
+    expect(shell).toMatch(/HUB_LINE_QUIET_TABS: ReadonlySet<string> = new Set\(\[[^\]]*"school-brief"[^\]]*\]\)/);
+  });
+
+  it("teacherStrategies (pure): cap 3, dedupe, no plan with steps → its title only; NEGATIVE CONTROL: the pre-fix 'title — for issue' line trips the issue scan", async () => {
+    const { teacherStrategies } = await import("../../consult/packet");
+    const clean = (x: string) => x.trim().length > 0;
+    const steps = [1, 2, 3, 4].map((i) => ({ text: `Step ${i}`, completed: true, phase: "Phase 1" }));
+    expect(teacherStrategies([{ title: "T", issue: "Transition anxiety", steps }], clean)).toEqual(["Step 1", "Step 2", "Step 3"]);
+    expect(teacherStrategies([{ title: "Five-minute warning", issue: "Transition anxiety" }], clean)).toEqual(["Five-minute warning"]);
+    const pre = "Preschool Transition & Morning Arrival Plan — for Transition anxiety triggered by departure pressure..";
+    expect(/anxiety/i.test(pre)).toBe(true);
   });
 });
