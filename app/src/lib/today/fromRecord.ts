@@ -22,6 +22,7 @@
 import type { ActionPlan, BehaviorLog } from "../../types";
 import type { ActionLoopEntry } from "../../actionLoop/model";
 import { planStepStatus } from "../plans";
+import { parentWords as sharedParentWords } from "../recordCounts";
 
 export type FromRecordKind = "plan" | "note" | "fact";
 /** The three tap answers; stored verbatim as the reflection. */
@@ -84,20 +85,19 @@ const ms = (iso: string | undefined | null): number => {
   return Number.isFinite(v) ? v : NaN;
 };
 
-/** The parent's own written words on a moment (notes, else the resolution note). */
-export function parentWords(log: Pick<BehaviorLog, "notes" | "resolutionNotes">): string | null {
-  for (const raw of [log.notes, log.resolutionNotes]) {
-    const s = (raw ?? "").trim();
-    if (s.length >= MIN_QUOTE) return s;
-  }
-  return null;
+/** The parent's own written words on a moment — the ONE reader
+ *  (lib/recordCounts.parentWords: `notes`, else a Moment's `trigger`, where
+ *  the capture sheet writes them), quoted only when it is a sentence. */
+export function quotableWords(log: Pick<BehaviorLog, "behaviorType" | "trigger" | "notes">): string | null {
+  const s = sharedParentWords(log);
+  return s.length >= MIN_QUOTE ? s : null;
 }
 
 /** The parent's newest written note (any age), or null. */
 function latestNote(logs: readonly BehaviorLog[]): { id: string; text: string; at: string } | null {
   let best: { id: string; text: string; at: string; t: number } | null = null;
   for (const l of logs) {
-    const text = parentWords(l);
+    const text = quotableWords(l);
     const t = ms(l.timestamp);
     if (!text || !Number.isFinite(t)) continue;
     if (!best || t > best.t) best = { id: l.id, text, at: l.timestamp, t };

@@ -81,6 +81,11 @@ describe("B-TODAY-28 — selectFromRecord priorities", () => {
     expect(factHasTimeWord("Dylan loves dinosaurs.")).toBe(false);
   });
 
+  it("a Moment's words live in `trigger` (the capture sheet) — quoted through the shared parentWords reader", () => {
+    const moment = log({ behaviorType: "Moment", trigger: NOTE, notes: undefined });
+    expect(selectFromRecord(base({ logs: [moment] }))).toMatchObject({ kind: "note", quote: NOTE });
+  });
+
   it("(4) a record with nothing → null (Today keeps its day-0 starter)", () => {
     expect(selectFromRecord(base())).toBeNull();
     expect(selectFromRecord(base({ facts: [facts[1]] }))).toBeNull();
