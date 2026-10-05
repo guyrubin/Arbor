@@ -68,7 +68,8 @@ export default function FeelingsLabTab() {
   // KID-04/GP-20 clinical firewall: the middle tile used to be a "Recognition"
   // PERCENTAGE derived from which emotions the child got right. A parent surface
   // reports counts; a recognition rate is a graded verdict about the child.
-  const feelingsNamed = data.events.items.filter((e) => e.kind === "emotion-id").length;
+  // (W2-SHELLPLAY r1: the separate "feelings named" count — a subset of the
+  // rounds — left the line; one feelings-only count remains.)
 
   const record = (kind: PracticeEvent["kind"], correct?: boolean, meta?: string) => {
     const event: PracticeEvent = {
@@ -176,10 +177,10 @@ export default function FeelingsLabTab() {
         icon={<Icon name="mood" size={20} />}
         tone="yellow"
         action={
-          <span className="rounded-full px-3 py-1.5 text-[12px] font-extrabold" style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-yellow-ink)" }}>{scenarioIdx + 1} of {EMOTION_SCENARIOS.length}</span>
+          <span className="rounded-full px-3 py-1.5 text-[12px] font-extrabold" style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-yellow-ink)" }}>{t("elev.practice.feelings.progress", { n: scenarioIdx + 1, total: EMOTION_SCENARIOS.length })}</span>
         }
       >
-        <div className="rounded-[var(--play-radius)] p-6 mb-4 bg-white shadow-[0_2px_12px_rgba(41,51,63,0.05)]">
+        <div className="rounded-[var(--play-radius)] p-6 mb-4" style={{ background: "var(--arbor-paper-elevated)", boxShadow: "var(--shadow-xs)" }}>
           <p className="text-5xl mb-3">{scenario.emoji}</p>
           <p className="text-[1.35rem] font-extrabold leading-snug" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
             {scenarioText}
@@ -203,47 +204,26 @@ export default function FeelingsLabTab() {
             </div>
           </div>
         )}
-        {/* A4: the child's own avatar mirrors how they feel right now */}
-        <div className="flex items-center gap-4 rounded-2xl p-4 mt-5" style={{ background: "var(--arbor-paper-deep)" }}>
-          <EmotionAvatar
-            name={first}
-            photoURL={heroUrl}
-            fallback={<ArborMascot size={64} mood="happy" />}
-            emotionEmoji={activeEmotion?.emoji}
-            emotionLabel={activeEmotion ? emotionLabelFor(activeEmotion, uiLang) : undefined}
-            color={activeColor}
-            size={64}
-          />
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-extrabold mb-2" style={{ color: "var(--arbor-ink)" }}>{t("elev.kids.feelings.selfCheck", { name: first })}</p>
-            <div className="flex flex-wrap gap-1.5">
-              {EMOTIONS.map((e) => {
-                const on = feltEmotion === e.id;
-                return (
-                  <button
-                    key={e.id}
-                    onClick={() => feel(e.id)}
-                    aria-pressed={on}
-                    title={emotionLabelFor(e, uiLang)}
-                    className="rounded-full px-2.5 py-1.5 text-base transition"
-                    style={on ? { background: "#fff", boxShadow: `0 0 0 2px ${EMOTION_TONE[e.id] ?? "var(--arbor-clay)"}` } : { background: "#fff", border: "1px solid var(--arbor-rule)" }}
-                  >
-                    {e.emoji}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
+        {/* W2-SHELLPLAY critic r1 (law 2): the child-addressed self-check ("How
+            are you feeling right now, {name}?") is gone from the PARENT page —
+            it lives in the kid register (Mood Mountain) below, where Lane X
+            K1-1 owns the self: kind. */}
 
       </SectionCard>
 
       {/* The counts that were three stat bubbles at the top of the page. A
           quiet line: counts, never verdicts (law 1), and never before the move. */}
-      <p className="text-[11.5px] px-1" style={{ color: "var(--arbor-muted)" }}>
-        {t("elev.practice.feelings.counts", { rounds: emotionRounds, calm: calmRounds })}
-        {feelingsNamed > 0 && <> · {feelingsNamed} {t("elev.practice.feelings.named")}</>}
-      </p>
+      {/* W2-SHELLPLAY critic r1: ONE feelings-only count line, plural-keyed
+          (was "1 feeling rounds · 0 calm practices · 1 Feelings named"); no
+          zero parts, nothing when there is nothing to count. */}
+      {(emotionRounds > 0 || calmRounds > 0) && (
+        <p className="text-[11.5px] px-1" style={{ color: "var(--arbor-muted)" }}>
+          {[
+            emotionRounds > 0 ? t(emotionRounds === 1 ? "elev.practice.feelings.count.rounds.one" : "elev.practice.feelings.count.rounds.many", { n: emotionRounds }) : "",
+            calmRounds > 0 ? t(calmRounds === 1 ? "elev.practice.feelings.count.calm.one" : "elev.practice.feelings.count.calm.many", { n: calmRounds }) : "",
+          ].filter(Boolean).join(" · ")}
+        </p>
+      )}
       </section>
 
       {/* §3f row 2 — MODULE 2 of 2. "Why feelings happen" (six explainer cards)
@@ -272,13 +252,13 @@ export default function FeelingsLabTab() {
               <div className="flex items-start gap-3">
                 <span className="text-3xl">{emotion.emoji}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{emotion.label}</p>
-                  <p className="text-[11px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}><b>Why:</b> {emotion.why}</p>
-                  <p className="text-[11px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}><b>Looks like:</b> {emotion.looksLike}</p>
-                  <p className="text-[11px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}><b>Helps:</b> {emotion.helps}</p>
-                  <button onClick={() => markTalked(emotion.id)} className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-extrabold px-3 py-1.5 rounded-xl" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}>
+                  <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{emotionLabelFor(emotion, uiLang)}</p>
+                  <p className="text-[11px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}><b>{t("elev.practice.feelings.why.label")}</b> {emotion.why}</p>
+                  <p className="text-[11px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}><b>{t("elev.practice.feelings.looksLike.label")}</b> {emotion.looksLike}</p>
+                  <p className="text-[11px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}><b>{t("elev.practice.feelings.helps.label")}</b> {emotion.helps}</p>
+                  <button onClick={() => markTalked(emotion.id)} className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-extrabold px-3 min-h-[44px] rounded-xl" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}>
                     {talkedEmotion === emotion.id ? <Icon name="check" size={14} /> : <Icon name="auto_awesome" size={14} />}
-                    {talkedEmotion === emotion.id ? "Logged" : "We talked this through"}
+                    {talkedEmotion === emotion.id ? t("elev.practice.feelings.logged") : t("elev.practice.feelings.talked")}
                   </button>
                 </div>
               </div>
@@ -289,7 +269,7 @@ export default function FeelingsLabTab() {
 
       <SectionCard title={t("elev.practice.feelings.calm.title")} icon={<Icon name="air" size={20} />} tone="sky">
         <p className="text-xs mb-4" style={{ color: "var(--arbor-muted)" }}>
-          Practice these during calm moments. That is when the body learns the route back.
+          {t("elev.practice.feelings.calm.intro")}
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
           {BREATHING_PATTERNS.map((pattern) => (
@@ -298,11 +278,11 @@ export default function FeelingsLabTab() {
               <p className="text-sm font-extrabold mt-2" style={{ color: "var(--arbor-ink)" }}>{pattern.title}</p>
               <p className="text-[11px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{pattern.script}</p>
               <p className="text-[10px] mt-2 font-bold" style={{ color: "var(--arbor-muted)" }}>
-                In {pattern.inhale}s, hold {pattern.hold}s, out {pattern.exhale}s x {pattern.rounds}
+                {t("elev.practice.feelings.breath", { inhale: pattern.inhale, hold: pattern.hold, exhale: pattern.exhale, rounds: pattern.rounds })}
               </p>
-              <button onClick={() => completeCalm(pattern.id)} className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-extrabold px-3 py-1.5 rounded-xl" style={{ background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" }}>
+              <button onClick={() => completeCalm(pattern.id)} className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-extrabold px-3 min-h-[44px] rounded-xl" style={{ background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" }}>
                 {completedCalm === pattern.id ? <Icon name="check" size={14} /> : <Icon name="replay" size={14} />}
-                {completedCalm === pattern.id ? "Logged" : "Complete one round"}
+                {completedCalm === pattern.id ? t("elev.practice.feelings.logged") : t("elev.practice.feelings.completeRound")}
               </button>
             </div>
           ))}
@@ -322,9 +302,7 @@ export default function FeelingsLabTab() {
 
       {/* Page-level honesty note, not a module: it says what this surface IS,
           the way PracticeStudioTab's register note does. Last, and quiet. */}
-      <TrustSafetyBar
-        note="This is coaching and practice, not mental-health diagnosis. Patterns worth discussing are surfaced gently in the Development Dashboard."
-      />
+      <TrustSafetyBar note={t("elev.practice.feelings.note")} />
     </RegisterShell>
   );
   }

@@ -59,7 +59,9 @@ describe("M1 — no child surface reads the raw photo itself", () => {
     const feelings = files.find((f) => f.rel.endsWith("FeelingsLabTab.tsx"))!;
     expect(feelings.text).toContain('import { resolveHeroUrl } from "../ui/HeroAvatar"');
     expect(feelings.text).toContain("const heroUrl = resolveHeroUrl(childProfile)");
-    expect((feelings.text.match(/photoURL=\{heroUrl\}/g) ?? []).length).toBe(2);
+    // W2-SHELLPLAY r1 (law 2): the self-check left the PARENT branch; the kid
+    // register (Mood Mountain) keeps the one companion.
+    expect((feelings.text.match(/photoURL=\{heroUrl\}/g) ?? []).length).toBe(1);
   });
 
   it("…and when there is no hero it is SPROUT, never a letter in a circle", () => {
@@ -69,9 +71,9 @@ describe("M1 — no child surface reads the raw photo itself", () => {
     // world falls back to Sprout; a letter disc is parent contact-list chrome.
     const feelings = files.find((f) => f.rel.endsWith("FeelingsLabTab.tsx"))!;
     expect(feelings.text).toContain('import { ArborMascot } from "../ui/ArborMascot"');
-    expect((feelings.text.match(/fallback=\{<ArborMascot /g) ?? []).length).toBe(2);
-    // Both self-check sites — the one that has a hero and the one that does not.
-    expect((feelings.text.match(/<EmotionAvatar/g) ?? []).length).toBe(2);
+    expect((feelings.text.match(/fallback=\{<ArborMascot /g) ?? []).length).toBe(1);
+    // The one self-check site (kid register; the parent branch has none — law 2).
+    expect((feelings.text.match(/<EmotionAvatar/g) ?? []).length).toBe(1);
   });
 
   it("the fallback slot exists on the primitive, so the ring still composes", () => {

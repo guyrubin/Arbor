@@ -100,7 +100,8 @@ describe("§3f row 2 — the speech and feelings doors are inside their budget",
 
   it("feelings puts the answer tiles ABOVE the counts and the safety note", () => {
     const tiles = FEELINGS.indexOf('data-primary-move="complete-feelings-scenario"');
-    const counts = FEELINGS.indexOf('t("elev.practice.feelings.counts"');
+    // W2-SHELLPLAY r1: the count line is plural-keyed now.
+    const counts = FEELINGS.indexOf('"elev.practice.feelings.count.rounds.one"');
     const trust = FEELINGS.indexOf("<TrustSafetyBar");
     expect(tiles).toBeGreaterThan(-1);
     expect(tiles).toBeLessThan(counts);

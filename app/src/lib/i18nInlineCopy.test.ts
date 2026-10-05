@@ -653,3 +653,52 @@ describe("B-PLAY-08 (part) — Mimic's parent branch carries no English literal"
     expect(pre).toMatch(/if \(!kidMode\) \{ \w+ = ["`][^"`]*[A-Za-z]{3}[^"`]*\s[^"`]*["`]/);
   });
 });
+
+/* ── W2-SHELLPLAY critic r1 — #/feelings parent branch, keyed ───────────────
+ * The sweep counted the footer note in English under lang=he, and the counter
+ * read "of 14 1" (a literal "of" with no bidi isolate). The toolkit's breath
+ * line and its "Logged" / "Complete one round" / "We talked this through"
+ * buttons were ternary literals the line regexes above cannot see. */
+describe("W2-SHELLPLAY r1 — the Feelings Lab parent branch speaks the parent's language", () => {
+  const feelings = readSrc("components/practice/FeelingsLabTab.tsx");
+  const parent = feelings.slice(feelings.indexOf("if (!kidMode) {"), feelings.indexOf("// KID-04: the KID register"));
+
+  it("the counter, the toolkit chrome and the footer note go through t()", () => {
+    expect(parent).toContain('t("elev.practice.feelings.progress", { n: scenarioIdx + 1, total: EMOTION_SCENARIOS.length })');
+    expect(parent).toContain('<TrustSafetyBar note={t("elev.practice.feelings.note")} />');
+    expect(parent).not.toMatch(/"Logged"|"We talked this through"|"Complete one round"|<b>Why:<\/b>|In \{pattern\.inhale\}s|\} of \{EMOTION_SCENARIOS/);
+    expect(englishLines("components/practice/FeelingsLabTab.tsx")).toEqual([]);
+  });
+
+  it("every new key is bilingual", () => {
+    expectBilingual(
+      [
+        "elev.practice.feelings.progress", "elev.practice.feelings.count.rounds.one", "elev.practice.feelings.count.rounds.many",
+        "elev.practice.feelings.count.calm.one", "elev.practice.feelings.count.calm.many", "elev.practice.feelings.why.label",
+        "elev.practice.feelings.looksLike.label", "elev.practice.feelings.helps.label", "elev.practice.feelings.logged",
+        "elev.practice.feelings.talked", "elev.practice.feelings.calm.intro", "elev.practice.feelings.breath",
+        "elev.practice.feelings.completeRound", "elev.practice.feelings.note",
+      ],
+      doorsEn,
+      doorsHe,
+      "feelings",
+    );
+  });
+
+  it("law 2: the parent page never addresses the child (no self-check on the parent branch)", () => {
+    expect(parent).not.toContain("elev.kids.feelings.selfCheck");
+    expect(parent).not.toContain("<EmotionAvatar");
+    // the kid register keeps it
+    expect(feelings.slice(feelings.indexOf("// KID-04: the KID register"))).toContain("elev.kids.feelings.selfCheck");
+  });
+
+  it("law 4: the parent branch carries no raw hex, bg-white or rgba shadow", () => {
+    expect(parent).not.toMatch(/#[0-9a-fA-F]{3,6}\b|bg-white|rgba\(/);
+  });
+
+  it("one feelings-only count line, plural-keyed, never a zero part", () => {
+    expect(parent).not.toContain("elev.practice.feelings.named");
+    expect(parent).toContain('emotionRounds === 1 ? "elev.practice.feelings.count.rounds.one" : "elev.practice.feelings.count.rounds.many"');
+    expect(parent).toMatch(/\{\(emotionRounds > 0 \|\| calmRounds > 0\) && \(/);
+  });
+});

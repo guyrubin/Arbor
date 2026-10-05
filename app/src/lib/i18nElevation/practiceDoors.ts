@@ -68,6 +68,22 @@ export const en: Record<string, string> = {
   "elev.practice.feelings.toolkit.sub": "Why each feeling happens, and calm-down practice to run on a good day.",
   // The quiet counts line that replaced three stat bubbles above the drill.
   "elev.practice.feelings.counts": "{rounds} feeling rounds · {calm} calm practices",
+  // W2-SHELLPLAY critic r1 · #/feelings: the counter, the plural count line,
+  // the toolkit chrome and the footer note — keyed (they were English in HE).
+  "elev.practice.feelings.progress": "{n} of {total}",
+  "elev.practice.feelings.count.rounds.one": "1 feelings round",
+  "elev.practice.feelings.count.rounds.many": "{n} feelings rounds",
+  "elev.practice.feelings.count.calm.one": "1 calm practice",
+  "elev.practice.feelings.count.calm.many": "{n} calm practices",
+  "elev.practice.feelings.why.label": "Why:",
+  "elev.practice.feelings.looksLike.label": "Looks like:",
+  "elev.practice.feelings.helps.label": "Helps:",
+  "elev.practice.feelings.logged": "Logged",
+  "elev.practice.feelings.talked": "We talked this through",
+  "elev.practice.feelings.calm.intro": "Practise these during calm moments. That is when the body learns the route back.",
+  "elev.practice.feelings.breath": "In {inhale}s, hold {hold}s, out {exhale}s × {rounds}",
+  "elev.practice.feelings.completeRound": "Complete one round",
+  "elev.practice.feelings.note": "This is coaching and practice, not mental-health diagnosis. Patterns worth discussing are surfaced gently in the Development Dashboard.",
 
   /* ── Stories door (#/stories parent branch, §3f rows 3–4) ───────────────── */
   // Lives here rather than in a module of its own: this file is the "parent
@@ -224,6 +240,20 @@ export const he: Record<string, string> = {
   "elev.practice.feelings.toolkit": "ארגז הכלים הרגשי",
   "elev.practice.feelings.toolkit.sub": "למה כל רגש מופיע, ותרגולי הרגעה לתרגל ביום טוב.",
   "elev.practice.feelings.counts": "{rounds} סבבי רגשות · {calm} תרגולי הרגעה",
+  "elev.practice.feelings.progress": "{n} מתוך {total}",
+  "elev.practice.feelings.count.rounds.one": "סבב רגשות אחד",
+  "elev.practice.feelings.count.rounds.many": "{n} סבבי רגשות",
+  "elev.practice.feelings.count.calm.one": "תרגול הרגעה אחד",
+  "elev.practice.feelings.count.calm.many": "{n} תרגולי הרגעה",
+  "elev.practice.feelings.why.label": "למה:",
+  "elev.practice.feelings.looksLike.label": "איך זה נראה:",
+  "elev.practice.feelings.helps.label": "מה עוזר:",
+  "elev.practice.feelings.logged": "נרשם",
+  "elev.practice.feelings.talked": "דיברנו על זה",
+  "elev.practice.feelings.calm.intro": "תרגלו את אלה ברגעים רגועים. אז הגוף לומד את הדרך חזרה.",
+  "elev.practice.feelings.breath": "שאיפה {inhale} שנ׳, עצירה {hold} שנ׳, נשיפה {exhale} שנ׳ × {rounds}",
+  "elev.practice.feelings.completeRound": "השלמנו סבב אחד",
+  "elev.practice.feelings.note": "זה אימון ותרגול, לא אבחון של בריאות הנפש. דפוסים ששווה לדבר עליהם עולים בעדינות בלוח ההתפתחות.",
 
   "elev.stories.tonight.eyebrow": "הסיפור של הערב",
   "elev.stories.tonight.cta": "קוראים יחד",
