@@ -87,13 +87,13 @@ function blobToBase64(blob: Blob): Promise<string> {
 }
 
 /** Web share with a file, when the browser supports sharing files. */
-async function shareWebFile(blob: Blob, filename: string, caption: string): Promise<boolean> {
+async function shareWebFile(blob: Blob, filename: string, caption: string, mime = "image/png"): Promise<boolean> {
   const nav = navigator as Navigator & {
     canShare?: (data?: ShareData) => boolean;
     share?: (data?: ShareData) => Promise<void>;
   };
   if (typeof nav.share !== "function") return false;
-  const file = new File([blob], filename, { type: "image/png" });
+  const file = new File([blob], filename, { type: mime });
   const data: ShareData & { files?: File[] } = { text: caption, files: [file] };
   if (typeof nav.canShare === "function" && !nav.canShare(data)) return false;
   await nav.share(data);
@@ -178,6 +178,52 @@ export async function shareCard(args: ShareArgs): Promise<ShareResult> {
   try {
     downloadBlob(blob, filename);
     trackShareCompleted(args.artifact, "download");
+    return { ok: true, channel: "download" };
+  } catch {
+    return { ok: false, error: true };
+  }
+}
+
+/** Decode an image data url into a Blob on the device (no fetch, no network). */
+export function dataUrlToBlob(dataUrl: string): Blob | null {
+  const m = /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl);
+  if (!m || typeof atob !== "function") return null;
+  try {
+    const bin = atob(m[2]);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new Blob([bytes], { type: m[1] });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * B-GAME-10: hand an image ALREADY rendered on the device (e.g. the Sneak &
+ * Freeze statue picture) to the OS share sheet — the same transport ladder as
+ * shareCard (native sheet -> web share with a file -> download), but no card
+ * render, no link, no referral code and no loop events: nothing about the
+ * child leaves the device in any network request. Throws nothing.
+ */
+export async function shareImageFile(args: { dataUrl: string; filename: string; caption?: string }): Promise<ShareResult> {
+  const blob = dataUrlToBlob(args.dataUrl);
+  if (!blob) return { ok: false, error: true };
+  const caption = args.caption ?? "";
+  if (isNativeShareAvailable()) {
+    try {
+      await shareNative(blob, args.filename, caption);
+      return { ok: true, channel: "native" };
+    } catch (err) {
+      if (isAbort(err)) return { ok: false, cancelled: true };
+    }
+  }
+  try {
+    if (await shareWebFile(blob, args.filename, caption, blob.type)) return { ok: true, channel: "web_share" };
+  } catch (err) {
+    if (isAbort(err)) return { ok: false, cancelled: true };
+  }
+  try {
+    downloadBlob(blob, args.filename);
     return { ok: true, channel: "download" };
   } catch {
     return { ok: false, error: true };

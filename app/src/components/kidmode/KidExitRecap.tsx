@@ -42,6 +42,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { usePracticeData } from "../../practice/usePracticeData";
 import { withChildSignals } from "../../lib/i18nElevation/childsignals";
 import { countsSince, kidActivityLedgers, kidExitRecapLine, type KidActivityLedgers } from "../../lib/kidExitRecap";
+import { offerSneakHandBack, reachedTheCatToday } from "./games/sneakFreeze/handBack";
 
 export default function KidExitRecap() {
   const { childProfile, addMoment } = useArbor();
@@ -74,6 +75,14 @@ export default function KidExitRecap() {
     // parent keeps it or dismisses it (ToastContext never auto-removes an
     // action toast). The toast is queued while Kid Mode is active, so Keep can
     // only be pressed by the parent after exit; it writes ONE parent moment.
+    // B-GAME-10: after a finished Sneak & Freeze sitting today, the hand-back
+    // CARD carries this moment (statue picture, one count line, Keep) instead
+    // of the strip. Memory only: the card's Keep is the same one parent moment.
+    const reached = reachedTheCatToday(practice.events?.items ?? [], new Date());
+    if (reached > 0) {
+      offerSneakHandBack({ childId: childProfile.id, name: (childProfile.name || "").split(" ")[0], gender: childProfile.gender, reached, keepLine: line || null });
+      return;
+    }
     if (line) {
       const kept = line;
       toast(line, "info", {

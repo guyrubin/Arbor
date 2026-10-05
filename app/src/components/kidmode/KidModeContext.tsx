@@ -25,6 +25,9 @@ import { isKidModeActive, setKidModeActive, writeKidModeState } from "../../lib/
 // the practice listeners live exactly as long as the child's session; the
 // component renders nothing and reads only (the no-write contract holds).
 import KidExitRecap from "./KidExitRecap";
+// B-GAME-10: the hand-back card (parent register), shown only once Kid Mode is
+// closed and the exit recap offered it (memory only, no write).
+import SneakHandBackCard from "./SneakHandBackCard";
 
 /**
  * B-KID-11: where Kid Mode opens. `view` is a kid surface id ("home" by
@@ -80,6 +83,7 @@ export function KidModeProvider({ children }: { children: React.ReactNode }) {
           the PARENT register, after the hold-exit gate has already closed the
           child surface. */}
       {isKidModeOpen && <KidExitRecap />}
+      {!isKidModeOpen && <SneakHandBackCard />}
       {children}
     </KidModeContext.Provider>
   );
