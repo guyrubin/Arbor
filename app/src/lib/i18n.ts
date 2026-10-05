@@ -1154,7 +1154,7 @@ export const en: Dict = {
   "prac.journey.title": "Growth Journey",
   "prac.journey.sub": "A weekly roadmap for {name}: daily missions, aimed extras, monthly objectives, and effort-based achievements in one place.",
   "prac.speech.title": "Speech Coach",
-  "prac.speech.sub": "Playful articulation practice for {name}: how single sounds and words are formed, one sound at a time. For building more than one language, that's Language & Communication.",
+  "prac.speech.sub": "Playful sound practice for {name} — one sound at a time.",
   "prac.mimic.title": "Mimic Studio",
   "prac.mimic.sub": "\"Can you do what I do?\" — face, mouth and sound imitation games for {name}. You model it, {name} mirrors it.",
   // B-PLAY-08: the three parent-branch Mimic literals, keyed.
@@ -3566,7 +3566,7 @@ export const he: Dict = {
   "prac.journey.title": "מסע התפתחות",
   "prac.journey.sub": "מפת דרכים שבועית ל־{name}: משימות יומיות, תוספות ממוקדות, יעדים חודשיים והישגים מבוססי מאמץ במקום אחד.",
   "prac.speech.title": "מאמן דיבור",
-  "prac.speech.sub": "תרגול הגייה משחקי ל־{name}: כיצד נוצרים צלילים ומילים בודדים, צליל אחד בכל פעם. לבניית יותר משפה אחת, זה בשפה ותקשורת.",
+  "prac.speech.sub": "תרגול צלילים משחקי ל־{name} — צליל אחד בכל פעם.",
   "prac.mimic.title": "סטודיו חיקוי",
   "prac.mimic.sub": "\"אפשר לעשות כמוני?\" — משחקי חיקוי של פנים, פה וצלילים ל־{name}. אתם מדגימים, {name} מחקה.",
   "prac.mimic.camUnavailable": "המצלמה לא זמינה — המשחק עובד באותה מידה פנים מול פנים. אתם המראה!",

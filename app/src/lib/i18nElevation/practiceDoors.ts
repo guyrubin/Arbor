@@ -168,6 +168,13 @@ export const en: Record<string, string> = {
   "elev.practice.speech.he.title": "A Hebrew sound set is coming",
   "elev.practice.speech.he.body": "The sound drill here is built on English words. Until the Hebrew set is ready, the Hebrew language work for {name} lives in Language & Communication.",
   "elev.practice.speech.he.cta": "Open Language & Communication",
+  // W2-SHELLPLAY critic r2: the end of a round — a count of words said together
+  // and tomorrow's open loop (the least-practised sound), never a target.
+  "elev.practice.speech.roundDone": "{n} words said together this round.",
+  "elev.practice.speech.roundDone.one": "1 word said together this round.",
+  "elev.practice.speech.roundDone.next": "Tomorrow: {sound} — the sound practised least so far.",
+  "elev.practice.speech.handover": "Hand over to Sound Lab",
+  "elev.practice.speech.anotherRound": "Another round",
   // W2-SHELLPLAY critic r1: the subtitle names the one move (pick a world).
   "elev.practice.studio.subtitle": "Ten skill worlds {name} plays as the hero. Pick one to start.",
   "elev.stories.library.title": "Your library",
@@ -352,6 +359,11 @@ export const he: Record<string, string> = {
   "elev.practice.speech.he.title": "ערכת צלילים בעברית בדרך",
   "elev.practice.speech.he.body": "תרגול הצלילים כאן בנוי על מילים באנגלית. עד שהערכה בעברית תהיה מוכנה, העבודה על השפה העברית של {name} נמצאת בשפה ותקשורת.",
   "elev.practice.speech.he.cta": "לפתוח את שפה ותקשורת",
+  "elev.practice.speech.roundDone": "{n} מילים נאמרו יחד בסבב הזה.",
+  "elev.practice.speech.roundDone.one": "מילה אחת נאמרה יחד בסבב הזה.",
+  "elev.practice.speech.roundDone.next": "מחר: {sound} — הצליל שתורגל הכי מעט עד עכשיו.",
+  "elev.practice.speech.handover": "להעביר למעבדת הצלילים",
+  "elev.practice.speech.anotherRound": "סבב נוסף",
   "elev.practice.studio.subtitle": "עשרה עולמות מיומנות ש{name} משחק בהם כגיבור. בחרו אחד כדי להתחיל.",
   "elev.stories.library.title": "הספרייה שלכם",
   "elev.stories.reader.back": "כל המסעות",

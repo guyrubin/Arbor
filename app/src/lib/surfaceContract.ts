@@ -258,6 +258,12 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
     primaryMove: "complete-speech-round", moduleBudget: 2, demotionTarget: "practice",
     // Folded one warm aggregated row per day, provenance "child", counts only
     // (the firewall drops correctness).
+    // HEBREW EXEMPTION (W2-SHELLPLAY critic r2, recorded until a clinician-
+    // reviewed Hebrew sound set exists): SOUND_LIBRARY is English content, so
+    // a Hebrew UI session renders the honest door to #/language — its CTA is
+    // the screen's one --gradient-cta — and complete-speech-round is EN-only.
+    // The framer decides between authoring the HE set and resolving HE #/speech
+    // to #/language (REJECTIONS.md, W2-SHELLPLAY r2).
     threadWrite: "speechAttempts",
   },
   {

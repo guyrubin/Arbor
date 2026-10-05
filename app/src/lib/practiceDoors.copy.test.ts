@@ -529,11 +529,18 @@ describe("W2-SHELLPLAY r1 · #/speech — the round is scored on the fold, in on
     expect(parent).toContain('<details data-testid="speech-consent-door"');
   });
 
-  it("law 1: no hue carries correctness; descriptive labels; 44 px; one gradient on 'Said it'", () => {
-    const row = parent.slice(parent.indexOf('data-primary-move="complete-speech-round"'), parent.indexOf('data-testid="speech-almost-line"'));
+  it("law 1: no hue carries correctness; descriptive labels; 44 px; NO gradient on any result (critic r2)", () => {
+    const row = parent.slice(parent.indexOf("{RESULT_BTN.map((b) => ("), parent.indexOf('data-testid="speech-almost-line"'));
     expect(row).not.toMatch(/green-soft|yellow-soft|pink-soft|green-ink|yellow-ink|pink-ink/);
     expect(row).toContain("min-h-[44px]");
+    expect(row).not.toContain("--gradient-cta");
+    expect(row).not.toMatch(/b\.result === "got"\s*\?/);
+    // the page's one gradient is the Hebrew door CTA (the EN page has none)
     expect((parent.match(/--gradient-cta/g) || []).length).toBe(1);
+    const door = parent.slice(parent.indexOf('data-testid="speech-he-door"'), parent.indexOf("elev.practice.speech.he.cta"));
+    expect(door).toContain("--gradient-cta");
+    // NEGATIVE CONTROL: the r1 shape (gradient on "Said it" only) is caught
+    expect('style={b.result === "got"\n ? { background: "var(--gradient-cta)" }').toMatch(/b\.result === "got"\s*\?/);
     expect(translate("en", "elev.practice.speech.result.got")).toBe("Said it");
     expect(translate("en", "elev.practice.speech.result.missed")).toBe("Not yet — model it again");
     // NEGATIVE CONTROL: the pre-fix triad
@@ -553,7 +560,13 @@ describe("W2-SHELLPLAY r1 · #/speech — the round is scored on the fold, in on
   });
 
   it("law 8: a Hebrew session never renders the English drill — an honest door to #/language instead", () => {
-    expect(speech).toContain('const speechHe = uiLang === "he" || aiLang === "he";');
+    // critic r2 (law 6): the drill is chosen by the UI language only — the AI
+    // language never removes the English drill from an English-reading family.
+    expect(speech).toContain('const speechHe = uiLang === "he";');
+    expect(speech).not.toMatch(/speechHe = [^;]*aiLang/);
+    // the Hebrew page sends the parent to L&C once (the door), not three times
+    expect(parent).toContain("action={speechHe ? undefined : (");
+    for (const lang of ["en", "he"] as const) expect(translate(lang, "prac.speech.sub")).not.toMatch(/Language & Communication|שפה ותקשורת/);
     expect(parent).toMatch(/\{speechHe \? \(\s*<SectionCard title=\{t\("elev\.practice\.speech\.he\.title"\)\}/);
     expect(parent).toContain('onClick={() => setActiveTab("language")}');
     expect(parent).toContain("{!speechHe && (");
@@ -564,6 +577,29 @@ describe("W2-SHELLPLAY r1 · #/speech — the round is scored on the fold, in on
 
   it("law 4: no raw hex or coloured shadow in the file", () => {
     expect(speech).not.toMatch(/#[0-9a-fA-F]{3,6}\b|rgba\(88,166,255/);
+  });
+
+  it("critic r2: the scoring row comes BEFORE the ladder (on the fold at 375)", () => {
+    const row = parent.indexOf("{RESULT_BTN.map((b) => (");
+    const ladder = parent.indexOf('role="tablist" aria-label={t("prac.speech.ladder.aria")}');
+    expect(row).toBeGreaterThan(-1);
+    expect(ladder).toBeGreaterThan(row);
+  });
+
+  it("critic r2: a round has an end — a count + tomorrow's least-practised sound + the Sound Lab hand-over through the seam", () => {
+    // ONE stamp wraps the scoring row and the end-of-round line, so the route
+    // always carries exactly one move, in either state
+    expect(parent).toMatch(/<div data-primary-move="complete-speech-round">\s*\{roundDone \? \(\s*<div data-testid="speech-round-done"/);
+    expect(speech).toContain('else if (result === "got" && level !== "story") setRoundDone(true);');
+    expect(parent).toContain('requestKidMode({ view: "arcade", worldId: "speech" })');
+    expect(speech).toContain("appropriate.has(s.id) && s.id !== sound.id");
+    for (const lang of ["en", "he"] as const) {
+      for (const k of ["elev.practice.speech.roundDone", "elev.practice.speech.roundDone.one", "elev.practice.speech.roundDone.next", "elev.practice.speech.handover", "elev.practice.speech.anotherRound"]) {
+        const v = translate(lang, k, { n: 6, sound: "x" });
+        expect(v, `${lang} ${k}`).not.toBe(k);
+        expect(v).not.toMatch(/%|score|streak|\bcorrect|ציון|רצף/i);
+      }
+    }
   });
 });
 
