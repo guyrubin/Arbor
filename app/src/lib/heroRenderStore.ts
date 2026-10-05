@@ -17,7 +17,7 @@
  * stories (MAX_RENDERS, oldest-saved first). Purged with the child (erase) and
  * on sign-out / account deletion, like the comic pages.
  */
-import type { HeroJourneyRender } from "../types";
+import type { HeroBeat, HeroJourneyRender } from "../types";
 
 export const MAX_RENDERS = 120;
 
@@ -44,11 +44,31 @@ export interface HeroRenderBackend {
 export const heroRenderDeviceId = (childId: string, storyId: string, lang: "en" | "he"): string => `${childId}|${storyId}|${lang}`;
 export const heroRenderDocId = (storyId: string, lang: "en" | "he"): string => `${storyId}|${lang}`;
 
+/** The authored fields of a beat a render is written from (all optional so a
+ *  bare `{ id }` beat still signs). */
+export type SignedBeat = { id: string } & Partial<Pick<HeroBeat, "title" | "titleHe" | "spine" | "spineHe" | "spineHeF" | "choices">>;
+export interface SignedStory {
+  id: string;
+  beats: readonly SignedBeat[];
+}
+
+/** B-KID-132: the authored WORDS of every beat and Decision choice (EN, HE and
+ *  the feminine HE), so a re-authored text — not only a re-shaped spine — makes
+ *  the saved personalised words stale and the child gets the new book. */
+function authoredText(story: SignedStory): string {
+  return story.beats
+    .map((b) => [b.id, b.title, b.titleHe, b.spine, b.spineHe, b.spineHeF,
+      ...(b.choices ?? []).flatMap((c) => [c.id, c.label, c.labelHe, c.labelHeF, c.outcomeHint, c.outcomeHintHe, c.outcomeHintHeF])]
+      .map((x) => x ?? "").join("~"))
+    .join("^");
+}
+
 /** A small stable hash (FNV-1a, hex) of what the render was written FOR: the
- *  child's first name, the story id and the authored beat spine. A name change
- *  or a re-authored story makes the saved words stale. */
-export function renderSignature(firstName: string, story: { id: string; beats: readonly { id: string }[] }): string {
-  const input = `${firstName.trim()}|${story.id}|${story.beats.length}|${story.beats.map((b) => b.id).join(",")}`;
+ *  child's first name, the story id, the authored beat spine and (B-KID-132)
+ *  the authored words. A name change or a re-authored story makes the saved
+ *  words stale. */
+export function renderSignature(firstName: string, story: SignedStory): string {
+  const input = `${firstName.trim()}|${story.id}|${story.beats.length}|${story.beats.map((b) => b.id).join(",")}|${authoredText(story)}`;
   let h = 0x811c9dc5;
   for (let i = 0; i < input.length; i++) {
     h ^= input.charCodeAt(i);
@@ -230,7 +250,7 @@ export async function purgeAllHeroRenders(): Promise<void> {
  */
 export async function resolvePersonalisedRender(args: {
   childId: string;
-  story: { id: string; beats: readonly { id: string }[] };
+  story: SignedStory;
   lang: "en" | "he";
   firstName: string;
   remote: readonly SavedHeroRender[];

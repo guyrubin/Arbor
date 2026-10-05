@@ -8,9 +8,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   _resetHeroRenderFront, _setHeroRenderBackend, getSavedRender, hydrateHeroRenders, isTextOnlyRender, MAX_RENDERS,
   purgeHeroRenders, renderSignature, resolvePersonalisedRender, saveRender, heroRenderDocId,
-  type HeroRenderBackend, type SavedHeroRender,
+  type HeroRenderBackend, type SavedHeroRender, type SignedBeat,
 } from "./heroRenderStore";
 import { CHILD_SUBCOLLECTIONS } from "./childData";
+import { getStorySpec } from "./heroJourneys";
 import type { HeroJourneyRender } from "../types";
 
 function memoryBackend(): HeroRenderBackend & { map: Map<string, SavedHeroRender> } {
@@ -77,6 +78,27 @@ describe("B-KID-127: kept, never generated twice", () => {
     await ask().p;
     const renamed = ask({ firstName: "Noa" });
     expect((await renamed.p).source).toBe("generated");
+  });
+  it("B-KID-132: re-authored WORDS (same beat ids) invalidate the kept render, so the child gets the new book", async () => {
+    const real = getStorySpec("david-and-goliath")!;
+    const sig = renderSignature("Dana", real);
+    expect(renderSignature("Dana", { ...real, beats: real.beats.map((b) => ({ ...b })) })).toBe(sig); // same words, same sig
+    const respun = real.beats.map((b, i) => (i === 0 ? { ...b, spine: `${b.spine} More.` } : b));
+    expect(renderSignature("Dana", { ...real, beats: respun })).not.toBe(sig);
+    const b1 = real.beats[1];
+    const edits: SignedBeat[] = [{ ...b1, title: "x" }, { ...b1, titleHe: "x" }, { ...b1, spineHe: "x" }, { ...b1, spineHeF: "x" }];
+    for (const e of edits) {
+      expect(renderSignature("Dana", { ...real, beats: real.beats.map((b, i) => (i === 1 ? e : b)) })).not.toBe(sig);
+    }
+    const choiceEdit = real.beats.map((b) => (b.choices ? { ...b, choices: b.choices.map((c, i) => (i === 2 ? { ...c, outcomeHintHeF: "y" } : c)) } : b));
+    expect(renderSignature("Dana", { ...real, beats: choiceEdit })).not.toBe(sig);
+    // the store: a render kept for the old words is not served for the new ones
+    const before = { ...real, beats: respun };
+    await ask({ story: before }).p;
+    const again = ask({ story: before });
+    expect((await again.p).source).toBe("device");
+    const rewritten = ask({ story: real });
+    expect((await rewritten.p).source).toBe("generated");
   });
   it("a blocked or failed answer is never kept", async () => {
     const failing = vi.fn(async (): Promise<HeroJourneyRender> => { throw new Error("blocked"); });
