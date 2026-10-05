@@ -80,6 +80,7 @@
 .arbor-play .bk-reader[data-mode="stacked"] .bk-art { border-radius: 0 0 6px 6px; }
 .arbor-play .bk-plate { position: absolute; pointer-events: none; }
 .arbor-play .bk-fill { display: block; inline-size: 100%; block-size: 100%; object-fit: fill; animation: bk-fade 260ms var(--kid-ease-out, ease-out) both; }
+.arbor-play .bk-fill-cover { display: block; inline-size: 100%; block-size: 100%; object-fit: cover; animation: bk-fade 260ms var(--kid-ease-out, ease-out) both; }
 .arbor-play .bk-fill-contain { display: block; inline-size: 100%; block-size: 100%; object-fit: contain; object-position: 50% 100%; }
 
 /* contact shadow = compose.py: solid warm-dark ellipses, Gaussian-blurred
@@ -129,8 +130,8 @@
 /* repair tap targets: a soft glowing sky ring over the painted thing */
 .arbor-play .bk-item {
   position: absolute;
-  inline-size: 84px;
-  block-size: 84px;
+  inline-size: 76px;
+  block-size: 76px;
   transform: translate(-50%, -50%);
   border: 0;
   padding: 0;
@@ -207,8 +208,11 @@
 .arbor-play .bk-text[data-kind="page"] .bk-words { display: flex; flex-direction: column; justify-content: center; }
 .arbor-play .bk-words p { margin: 0 0 0.6em; }
 .arbor-play .bk-words p:last-child { margin-block-end: 0; }
+/* the child's name in running text: the accent colour of the cover's name
+   line (weight alone is invisible in Frank Ruhl Libre — fix round 1, ruling 8) */
 .arbor-play .bk-words bdi,
-.arbor-play .bk-name-line bdi { font-weight: 700; }
+.arbor-play .bk-name-line bdi,
+.arbor-play .bk-end-frame bdi { font-weight: 700; color: var(--arbor-clay); }
 
 .arbor-play .bk-cover-words { display: flex; flex-direction: column; justify-content: center; gap: 0.4em; }
 .arbor-play .bk-title {
@@ -222,31 +226,53 @@
 .arbor-play .bk-name-line { margin: 0; font-family: var(--font-display); font-weight: 600; color: var(--arbor-clay); }
 .arbor-play .bk-cover-line { margin: 0; font-family: var(--font-display); font-weight: 500; color: color-mix(in oklab, var(--arbor-ink) 78%, transparent); }
 
-/* ── choice cards: picture + label, no letters, no grade ─────────────────── */
-.arbor-play .bk-choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); flex-shrink: 0; }
-.arbor-play .bk-card {
-  --card-lip: var(--arbor-sky-soft);
+/* ── the cover as the book's front: the title set in the plate's calm sky
+   band (no card); a soft paper glow keeps it legible on the painted sky ─── */
+.arbor-play .bk-cover-title {
+  position: absolute;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 6px 6px 8px;
+  justify-content: center;
+  gap: 0.15em;
+  pointer-events: none;
+  color: var(--arbor-ink);
+  text-shadow:
+    0 0 18px color-mix(in oklab, var(--arbor-paper-elevated) 85%, transparent),
+    0 0 4px color-mix(in oklab, var(--arbor-paper-elevated) 70%, transparent);
+  animation: bk-fade 420ms var(--kid-ease-out) both;
+}
+.arbor-play .bk-cover-title .bk-title { font-weight: 700; letter-spacing: -0.015em; }
+.arbor-play .bk-cover-title .bk-name-line { color: var(--arbor-clay); font-weight: 700; }
+.arbor-play .bk-cover-title .bk-cover-line { color: color-mix(in oklab, var(--arbor-ink) 85%, transparent); }
+.arbor-play .bk-open-row { position: absolute; display: flex; justify-content: center; align-items: center; }
+.arbor-play .bk-open-row .kid-toy { min-inline-size: 100%; }
+
+/* ── choice cards: LARGE picture + label, no letters, no grade ──────────── */
+.arbor-play .bk-choices { display: grid; gap: 16px; justify-content: center; flex-shrink: 0; position: relative; z-index: 1; }
+.arbor-play .bk-card {
+  --card-lip: color-mix(in oklab, var(--arbor-sky) 55%, var(--arbor-paper-elevated));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 6px 6px 10px;
   border: 0;
   border-radius: var(--kid-r-m, 22px);
-  background: var(--arbor-paper);
+  background: var(--arbor-paper-elevated);
   color: var(--arbor-ink);
-  box-shadow: 0 5px 0 var(--card-lip), 0 14px 22px -14px color-mix(in oklab, var(--arbor-ink) 60%, transparent);
+  box-shadow: 0 6px 0 var(--card-lip), 0 16px 26px -14px color-mix(in oklab, var(--arbor-ink) 60%, transparent);
   cursor: pointer;
   transition: transform 220ms var(--kid-ease-spring), opacity 200ms var(--kid-ease-out), box-shadow 200ms var(--kid-ease-out);
   -webkit-tap-highlight-color: transparent;
   min-block-size: 0;
   overflow: hidden;
 }
-.arbor-play .bk-card[data-tone="1"] { --card-lip: var(--arbor-lav-soft); }
-.arbor-play .bk-card[data-tone="2"] { --card-lip: var(--arbor-peach-soft); }
+.arbor-play .bk-card[data-tone="1"] { --card-lip: color-mix(in oklab, var(--arbor-lav) 55%, var(--arbor-paper-elevated)); }
+.arbor-play .bk-card[data-tone="2"] { --card-lip: color-mix(in oklab, var(--arbor-peach) 50%, var(--arbor-paper-elevated)); }
 .arbor-play .bk-card:focus-visible { outline: 3px solid var(--arbor-sky); outline-offset: 3px; }
 .arbor-play .bk-card[data-selected] {
-  transform: translateY(-8px);
-  box-shadow: 0 0 0 4px var(--arbor-sky), 0 5px 0 var(--card-lip), 0 22px 30px -16px color-mix(in oklab, var(--arbor-ink) 60%, transparent);
+  transform: translateY(-10px);
+  box-shadow: 0 0 0 5px var(--arbor-sky), 0 6px 0 var(--card-lip), 0 26px 34px -16px color-mix(in oklab, var(--arbor-ink) 65%, transparent);
 }
 .arbor-play .bk-card[data-dimmed] { opacity: 0.6; }
 .arbor-play .bk-card-pic {
@@ -256,25 +282,35 @@
   background-color: var(--arbor-paper-deep);
   background-repeat: no-repeat;
 }
-.arbor-play .bk-card-icon { display: grid; place-items: center; color: var(--arbor-sky-ink); background: var(--arbor-sky-soft); }
+.arbor-play .bk-card-icon { display: grid; place-items: center; color: var(--arbor-sky-ink); background: color-mix(in oklab, var(--arbor-sky) 18%, var(--arbor-paper-elevated)); }
 .arbor-play .bk-card-label {
   font: 800 var(--kid-t-label, 18px)/1.15 var(--font-sans);
   text-align: center;
   text-wrap: balance;
   padding-inline: 4px;
 }
+/* stacked decision page: the card row rides over the art's lower edge; the
+   sheet's paper starts under it */
+.arbor-play .bk-text[data-kind="sheet"][data-overlap] {
+  background:
+    linear-gradient(to bottom, transparent 0, transparent var(--sheet-overlap, 0px), var(--arbor-paper-elevated) var(--sheet-overlap, 0px));
+  box-shadow: none;
+}
+.arbor-play .bk-text[data-overlap] .bk-choices { margin-block-start: -6px; }
 
 /* ── repair prompt + nav ─────────────────────────────────────────────────── */
-.arbor-play .bk-prompt-row { display: flex; justify-content: center; flex-shrink: 0; }
-.arbor-play .bk-prompt {
-  display: inline-block;
-  padding: 10px 22px;
-  border-radius: 999px;
-  background: var(--arbor-sky-soft);
+/* the repair hint: plain words with a pointing hand — an instruction, not a
+   button (fix round 1, ruling 4) */
+.arbor-play .bk-hint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
   color: var(--arbor-sky-ink);
   font: 800 var(--kid-t-say, 22px)/1.2 var(--font-sans);
-  box-shadow: 0 4px 0 color-mix(in oklab, var(--arbor-sky) 40%, transparent);
+  flex-shrink: 0;
 }
+.arbor-play .bk-hint .bk-hand { flex-shrink: 0; color: var(--arbor-sky); }
 .arbor-play .bk-nav {
   display: flex;
   align-items: center;
@@ -332,3 +368,42 @@
   .arbor-play .bk-card { transition: none; }
   .arbor-play .bk-card[data-selected] { transform: none; }
 }
+
+/* ── the END screen (fix round 1, ruling 6) ─────────────────────────────── */
+.arbor-play .bk-end-wrap { display: grid; place-items: center; overflow-y: auto; padding: 24px 16px; }
+.arbor-play .bk-end {
+  box-sizing: border-box;
+  inline-size: min(760px, 100%);
+  padding: clamp(28px, 4vw, 56px) clamp(20px, 4vw, 56px);
+  border-radius: 18px;
+  background:
+    repeating-linear-gradient(0deg, color-mix(in oklab, var(--arbor-ink) 2%, transparent) 0 1px, transparent 1px 4px),
+    var(--arbor-paper-elevated);
+  color: var(--arbor-ink);
+  text-align: center;
+  box-shadow: 0 40px 80px -30px color-mix(in oklab, var(--arbor-ink) 90%, transparent);
+  animation: bk-fade 420ms var(--kid-ease-out) both;
+}
+.arbor-play .bk-end-title { margin: 0; font: 700 clamp(44px, 5vw, 76px)/1.05 var(--font-display); letter-spacing: -0.015em; }
+.arbor-play .bk-end-frame { margin: 0.6em 0 0; font: 600 clamp(22px, 1.8vw, 32px)/1.45 var(--font-display); }
+.arbor-play .bk-end-toys { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; margin-block-start: 32px; }
+.arbor-play .bk-end-rule { border: 0; border-block-start: 1px solid var(--arbor-rule); margin: 36px 0 12px; }
+.arbor-play .bk-grownup-toggle {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: none;
+  padding: 8px 10px;
+  color: var(--arbor-muted);
+  font: 600 15px/1.3 var(--font-sans);
+  cursor: pointer;
+}
+.arbor-play .bk-grownup-toggle:focus-visible { outline: 2px solid var(--arbor-sky); border-radius: 8px; }
+.arbor-play .bk-grownup-caret { inline-size: 8px; block-size: 8px; border-inline-end: 2px solid currentColor; border-block-end: 2px solid currentColor; transform: rotate(45deg); transition: transform 200ms; }
+.arbor-play .bk-grownup-caret[data-open] { transform: rotate(-135deg); }
+.arbor-play .bk-grownup { margin: 8px 0 0; text-align: start; font: 400 15px/1.55 var(--font-sans); color: var(--arbor-ink); }
+.arbor-play .bk-grownup dt { margin-block-start: 14px; font-weight: 700; color: var(--arbor-muted); font-size: 13px; letter-spacing: 0.02em; }
+.arbor-play .bk-grownup dd { margin: 2px 0 0; }
+.arbor-play .bk-grownup bdi { color: var(--arbor-clay); font-weight: 600; }

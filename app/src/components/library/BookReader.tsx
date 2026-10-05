@@ -1,27 +1,29 @@
 /**
- * BookReader — B-BOOK-04: the new kid book reader (lane C §2, §4, §6; RULINGS
- * BR3/BR6/BR8). It renders ONE resolved book with zero model calls:
+ * BookReader — B-BOOK-04/12: the new kid book reader (lane C §2, §4, §6;
+ * RULINGS BR3/BR6/BR8; fix round 1 of the rendered pass). It renders ONE
+ * resolved book with zero model calls:
  *
- *   cover (title as live text) → Open → pages → the decision page (three
- *   picture cards: tap = select + hear the label if a file exists, a second
- *   tap or "This one!" commits; no timer, no grade) → the chosen branch → a
- *   repair page holds until the child has tapped EVERY item (each tap answers,
- *   nothing can fail) → the rejoin page with the path's echo line → … → the
- *   last page with its echo and frame line → "The End" closes the book. No
- *   "Another way?" (BR3): reading again starts from the cover.
+ *   cover (the book's front: title in the plate's calm band, ONE Open toy;
+ *   tap the picture to hear the title) → pages → the decision page (three
+ *   LARGE picture cards on the text page: a tap selects + speaks the card,
+ *   "This one!" commits; no timer, no grade) → the chosen branch → a repair
+ *   page holds until the child has tapped each piece, in order where the book
+ *   says so (only the next piece glows; nothing can fail) → the rejoin page
+ *   with the path's echo line → p9's fall (the dust rises at the end of the
+ *   narration; the first Next reveals it; then 1.5 s of stillness) → the last
+ *   page → Next → the END screen ("The End", the frame line, Read again /
+ *   close, the grown-up's panel behind a small control). No "Another way?".
  *
- * - Wide (>= 900 px, landscape): an open book — "facing" pages put the whole
- *   plate on a paper art page beside the paper text page; "spread" pages show
- *   the whole plate large with the words on a soft paper panel in its calm
- *   zone. Hebrew puts the text page on the left and turns the other way; the
- *   art is not mirrored. Narrow / portrait: a 3:4 window of the plate on top,
- *   the words on a paper sheet below, a big next control, no scrolling.
- * - Page turn: the outgoing page folds toward the spine (a paper leaf, CSS
- *   transform + opacity only) while the new page fades in; reduced motion =
- *   a 200 ms cross-fade.
- * - Read-aloud: a pre-rendered whole-page FILE per (book, voice, language,
- *   gender, page, path) — narration.ts; the one per-child Sound control
- *   (KidSoundToggle, the kid audio mute) silences it. No file = silence.
+ * - Wide (>= 900 px, landscape): an open book — every story page is FACING
+ *   (the whole plate on a paper art page beside the paper text page); a
+ *   spread is honoured only when its words fit the plate's calm rect. Hebrew
+ *   puts the text page on the left and turns the other way; the art is not
+ *   mirrored. Narrow / portrait: a 3:4 window (>= 300 px wide) on top, the
+ *   words on a paper sheet below, a big next control.
+ * - Page turn: a paper leaf folds toward the spine (transform + opacity only);
+ *   reduced motion = a 200 ms cross-fade.
+ * - Read-aloud: pre-rendered whole-page FILES (narration.ts); the one
+ *   per-child Sound toggle silences them. No file = silence, never TTS.
  * - Keyboard: ← / → turn pages (mirrored in Hebrew), Space turns forward,
  *   Esc closes.
  * - A story choice lives only in this component's memory: nothing is written,
@@ -29,19 +31,21 @@
  */
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState, type CSSProperties } from "react";
 import { KidToy } from "../kidmode/KidToy";
-import { KidSoundToggle } from "../kidmode/kidReadAloud";
 import { kidSfx, useKidReadAloudMuted } from "../kidmode/audio/kidAudio";
 import { Icon } from "../ui/Icon";
 import { BookPage, type BookPageItem, type BookPageOverlay } from "./BookPage";
+import { BookEnd, BookSoundToggle, PointingHand } from "./BookParts";
 import { useNarration } from "./useNarration";
 import {
   bookFlowReducer,
   canTurnForward,
   COVER,
   currentPage,
+  END,
   initialBookFlow,
   isDecision,
   isEnding,
+  nextRepairItem,
   repairDone,
   repairedItems,
   type BookFlowState,
@@ -81,6 +85,8 @@ export interface BookReaderProps {
   prints?: boolean;
   /** A costume variant for pages that author one (`heroAlt`, e.g. "tunic"). */
   costume?: string | null;
+  /** Test seam: the after-narration overlay already revealed (p9's dust). */
+  initialRevealed?: boolean;
 }
 
 const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
@@ -88,12 +94,23 @@ const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : use
 const BAR_WIDE = 72;
 const BAR_NARROW = 56;
 const isWide = (w: number, h: number) => w >= 900 && w >= h;
+/** After the dust rises: stillness before Next is enabled (ruling 5). */
+export const AFTER_REVEAL_HOLD_MS = 1500;
 
 function viewportBox(): Box {
   if (typeof window === "undefined") return { width: 1920, height: 1080 - BAR_WIDE };
   const w = window.innerWidth;
   const h = window.innerHeight;
   return { width: w, height: h - (isWide(w, h) ? BAR_WIDE : BAR_NARROW) };
+}
+
+/** What a press of Next does (ruling 5, pure for tests): on a page with an
+ *  after-narration overlay the FIRST press reveals it if it has not shown;
+ *  while the stillness after the reveal holds, nothing; else turn. */
+export function nextIntent(afterOverlay: boolean, revealed: boolean, holding: boolean): "reveal" | "hold" | "turn" {
+  if (afterOverlay && !revealed) return "reveal";
+  if (holding) return "hold";
+  return "turn";
 }
 
 const px = (n: number) => `${Math.round(n * 10) / 10}px`;
@@ -107,7 +124,21 @@ function Words({ text, name }: { text: string; name: string }) {
   );
 }
 
-export function BookReader({ book, lang, child, onClose, plates, dev = import.meta.env.DEV, narration = "probe", initialState, initialBox, sheet: sheetProp, prints = true, costume = null }: BookReaderProps) {
+export function BookReader({
+  book,
+  lang,
+  child,
+  onClose,
+  plates,
+  dev = import.meta.env.DEV,
+  narration = "probe",
+  initialState,
+  initialBox,
+  sheet: sheetProp,
+  prints = true,
+  costume = null,
+  initialRevealed = false,
+}: BookReaderProps) {
   const plateTable = plates ?? BOOK_PLATES[book.id] ?? {};
   const [state, dispatch] = useReducer((s: BookFlowState, a: Parameters<typeof bookFlowReducer>[2]) => bookFlowReducer(book, s, a), initialState ?? initialBookFlow());
   const gender = heGender(child.gender);
@@ -137,18 +168,20 @@ export function BookReader({ book, lang, child, onClose, plates, dev = import.me
   const wide = isWide(box.width, box.height);
 
   // ── what is on screen ──────────────────────────────────────────────────────
+  const atEnd = state.at === END;
   const onCover = state.at === COVER;
-  const page: Page = onCover ? book.cover : currentPage(book, state) ?? book.cover;
+  const page: Page = onCover || atEnd ? book.cover : currentPage(book, state) ?? book.cover;
+  const story = !onCover && !atEnd;
   const plate = plateTable[page.plateId];
-  const done = repairedItems(onCover ? null : page, state);
-  const repaired = repairDone(onCover ? null : page, state);
-  const decision = !onCover && isDecision(book, state);
-  const ending = !onCover && isEnding(book, state);
-  const repair = !onCover ? page.repair : undefined;
-  const singleTap = repair && repair.items.length === 1 && !!repair.items[0].label ? repair.items[0] : undefined;
+  const done = repairedItems(story ? page : null, state);
+  const repaired = repairDone(story ? page : null, state);
+  const decision = story && isDecision(book, state);
+  const ending = story && isEnding(book, state);
+  const repair = story ? page.repair : undefined;
   const pending = !!repair && !repaired;
+  const nextItem = story ? nextRepairItem(page, state) : null;
   const doneOrder = useMemo(() => state.repaired.filter((k) => k.startsWith(`${page.id}:`)).map((k) => k.slice(page.id.length + 1)), [state.repaired, page.id]);
-  const paras = onCover ? [] : pageParagraphs(page, { lang, gender, choiceId: state.choiceId, repaired: doneOrder });
+  const paras = story ? pageParagraphs(page, { lang, gender, choiceId: state.choiceId, repaired: doneOrder }) : [];
   const baseSlot = (costume && page.heroAlt?.[costume]) || page.hero;
   const slot = repaired && repair?.heroAfter ? repair.heroAfter : baseSlot;
 
@@ -162,30 +195,61 @@ export function BookReader({ book, lang, child, onClose, plates, dev = import.me
         choices: decision ? book.decision.choices.length : undefined,
         prompt: pending,
       };
+
   // ── narration ──────────────────────────────────────────────────────────────
   const voiceKey = child.heroSheetId?.trim() || child.id;
   const root = dev ? DEV_NARRATION_ROOT : NARRATION_ROOT;
   const keyBase = { bookId: book.id, lang, gender, voiceKey };
+  const probe = narration === "probe";
+  // The cover is read only when the child taps the picture (ruling 9).
   const pageSrc =
-    narration === "off"
+    narration === "off" || !story
       ? null
       : repaired && repair
-          ? declaredAudio(repair.audio, lang, gender) ?? (narration === "probe" ? narrationKey({ ...keyBase, pageId: `${page.id}-after` }, root) : null)
-          : pageNarrationSrc(page, { ...keyBase, choiceId: state.choiceId }, { probe: narration === "probe", root });
+        ? declaredAudio(repair.audio, lang, gender) ?? (probe ? narrationKey({ ...keyBase, pageId: `${page.id}-after` }, root) : null)
+        : pageNarrationSrc(page, { ...keyBase, choiceId: state.choiceId }, { probe, root });
   const revealAt = page.overlays?.find((o) => o.reveal === "afterNarration")?.revealAt;
   const showKey = `${state.at}|${repaired ? "after" : "before"}`;
   const voice = useNarration(pageSrc, { showKey, muted, enabled: narration !== "off", revealAt });
-  const [tapReveal, setTapReveal] = useState<string | null>(null);
+  const [tapReveal, setTapReveal] = useState<string | null>(initialRevealed ? state.at : null);
+  const afterOverlay = story && (page.overlays ?? []).some((o) => o.reveal === "afterNarration");
   const revealed = voice.revealed || tapReveal === state.at;
 
-  // A print (the page's composite after the print pass) replaces plate +
-  // sprite — unless a costume variant is shown, or the page's after-narration
-  // overlay (p9's dust) has been revealed: then the live composite returns.
-  const afterOverlay = (page.overlays ?? []).some((o) => o.reveal === "afterNarration");
-  const print = prints && !(costume && page.heroAlt?.[costume]) && !(afterOverlay && revealed) ? heroPrint(sheet, page.id) : null;
-  const layoutPlate = print && plate ? { ...plate, width: print.width, height: print.height } : plate;
-  const layout = computeBookPageLayout(page, box, lang, { plate: layoutPlate, slot, content, anchorOf });
-  const spread = layout.mode === "wide" && layout.pageType === "spread";
+  // After the reveal: stillness before Next (ruling 5).
+  const [holdUntil, setHoldUntil] = useState(0);
+  const [, setTick] = useState(0);
+  const wasRevealed = useRef(false);
+  useEffect(() => {
+    if (!afterOverlay) {
+      wasRevealed.current = false;
+      return;
+    }
+    if (revealed && !wasRevealed.current && !initialRevealed) {
+      const until = Date.now() + AFTER_REVEAL_HOLD_MS;
+      setHoldUntil(until);
+      const t = setTimeout(() => setTick((n) => n + 1), AFTER_REVEAL_HOLD_MS + 20);
+      wasRevealed.current = true;
+      return () => clearTimeout(t);
+    }
+    wasRevealed.current = revealed;
+  }, [afterOverlay, revealed, initialRevealed]);
+  const holding = afterOverlay && revealed && Date.now() < holdUntil;
+
+  // Repair prompt (`<page>-prompt`) once the page is ready (ruling 9).
+  const prompted = useRef<string | null>(null);
+  useEffect(() => {
+    if (!pending || !voice.settled || prompted.current === state.at || !probe) return;
+    prompted.current = state.at;
+    voice.playClip(narrationKey({ ...keyBase, pageId: `${page.id}-prompt` }, root));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pending, voice.settled, state.at]);
+
+  // A print replaces plate + sprite — unless a costume variant is shown or the
+  // after-narration overlay has been revealed (the live composite returns).
+  // The layout ALWAYS uses the plate's own size: no frame jump between the two.
+  const print = story || onCover ? (prints && !(costume && page.heroAlt?.[costume]) && !(afterOverlay && revealed) ? heroPrint(sheet, page.id) : null) : null;
+  const layout = computeBookPageLayout(page, box, lang, { plate, slot, content, anchorOf, cover: onCover });
+  const coverFront = onCover && layout.mode === "wide" && layout.pageType === "cover";
 
   // ── page-turn cue ──────────────────────────────────────────────────────────
   const lastAt = useRef(state.at);
@@ -195,22 +259,30 @@ export function BookReader({ book, lang, child, onClose, plates, dev = import.me
   }, [state.at, state.dir]);
 
   // ── actions ────────────────────────────────────────────────────────────────
-  const next = useCallback(() => dispatch({ type: "next" }), []);
+  /** Next: on a page with an unrevealed after-narration overlay the first press
+   *  reveals it; while the stillness holds, nothing. */
+  const next = useCallback(() => {
+    const intent = nextIntent(afterOverlay, revealed, holding);
+    if (intent === "reveal") setTapReveal(state.at);
+    else if (intent === "turn") dispatch({ type: "next" });
+  }, [afterOverlay, revealed, holding, state.at]);
   const back = useCallback(() => dispatch({ type: "back" }), []);
   const tapItem = (id: string) => {
-    if (done.has(id)) return;
+    if (done.has(id) || (nextItem && nextItem !== id)) return;
     kidSfx("tap");
     const item = repair?.items.find((it) => it.id === id);
-    // the item's own sound, else its spoken line (`<page>-<item>`), when a file exists
-    voice.playClip(item?.sound ?? (narration === "probe" && item?.line ? narrationKey({ ...keyBase, pageId: `${page.id}-${id}` }, root) : null));
+    voice.playClip(item?.sound ?? (probe && item?.line ? narrationKey({ ...keyBase, pageId: `${page.id}-${id}` }, root) : null));
     dispatch({ type: "repair", itemId: id });
   };
   const choose = (choiceId: string) => {
     const c = book.decision.choices.find((x) => x.id === choiceId);
-    if (state.selected !== choiceId) {
-      voice.playClip(declaredAudio(c?.audio, lang, gender) ?? (narration === "probe" ? narrationKey({ ...keyBase, pageId: `${book.decision.pageId}-choice`, choiceId }, root) : null));
-    }
-    dispatch({ type: "choose", choiceId });
+    voice.playClip(declaredAudio(c?.audio, lang, gender) ?? (probe ? narrationKey({ ...keyBase, pageId: `${book.decision.pageId}-choice`, choiceId }, root) : null));
+    // a tap selects (and speaks); "This one!" commits (ruling 2)
+    if (state.selected !== choiceId) dispatch({ type: "choose", choiceId });
+  };
+  const hearCover = () => {
+    if (narration === "off") return;
+    voice.playClip(declaredAudio(book.cover.audio, lang, gender) ?? (probe ? narrationKey({ ...keyBase, pageId: "cover" }, root) : null));
   };
 
   // ── keyboard: arrows (mirrored in HE), Space, Esc ──────────────────────────
@@ -224,15 +296,16 @@ export function BookReader({ book, lang, child, onClose, plates, dev = import.me
       } else if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
         e.preventDefault();
         const forward = (e.key === "ArrowRight") === (dir === "ltr");
-        dispatch({ type: forward ? "next" : "back" });
+        if (forward) next();
+        else back();
       } else if (e.key === " " && !(t && t.tagName === "BUTTON")) {
         e.preventDefault();
-        dispatch({ type: "next" });
+        next();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [dir, onClose]);
+  }, [dir, onClose, next, back]);
 
   // ── the words fit (DOM safety net over the layout's estimate) ──────────────
   const wordsRef = useRef<HTMLDivElement | null>(null);
@@ -249,12 +322,14 @@ export function BookReader({ book, lang, child, onClose, plates, dev = import.me
   // ── art inputs ─────────────────────────────────────────────────────────────
   const plateSrcs = print ? [print.url] : plate ? plateSources(plate, { dev }) : [];
   const heroSrc = heroSpriteUrl(sheet, slot?.pose);
-  const items: BookPageItem[] =
-    repair && !singleTap
-      ? repair.items.map((it) => ({ id: it.id, x: it.x, y: it.y, done: done.has(it.id), label: it.label ? labelFor(it.label, lang) : bookString("repair.tap", lang) }))
-      : [];
+  // Only the next piece glows and can be tapped (ordered repairs, ruling 4).
+  const items: BookPageItem[] = pending && repair
+    ? repair.items
+        .filter((it) => !done.has(it.id) && (!nextItem || it.id === nextItem))
+        .map((it) => ({ id: it.id, x: it.x, y: it.y, done: false, label: it.label ? labelFor(it.label, lang) : bookString("repair.tap", lang) }))
+    : [];
   // On a print only the not-yet-revealed overlays draw (the rest are baked in).
-  const overlays: BookPageOverlay[] = (page.overlays ?? [])
+  const overlays: BookPageOverlay[] = (story ? page.overlays ?? [] : [])
     .filter((o) => !print || o.reveal === "afterNarration")
     .map((o) => ({
       ...o,
@@ -265,19 +340,17 @@ export function BookReader({ book, lang, child, onClose, plates, dev = import.me
 
   // ── the turn ───────────────────────────────────────────────────────────────
   const turnClass = state.dir === 1 ? "fwd" : state.dir === -1 ? "back" : "none";
-  const leaf = layout.mode === "wide" && layout.pageType === "facing" && state.dir !== 0 ? leafFor(layout, state.dir) : null;
+  const leaf = layout.mode === "wide" && layout.pageType === "facing" && state.dir !== 0 && !atEnd ? leafFor(layout, state.dir) : null;
 
   // ── the text page ──────────────────────────────────────────────────────────
   const textStyle: CSSProperties = {
     ...rectStyle(layout.textPage),
     paddingInline: px(layout.pad.inline),
     paddingBlock: px(layout.pad.block),
+    ...(layout.sheetOverlap ? ({ "--sheet-overlap": px(layout.sheetOverlap) } as CSSProperties) : {}),
   };
   const wordsStyle: CSSProperties = { fontSize: px(typePx), lineHeight: layout.lineHeight };
   const decisionPlate = plateTable[book.pages.find((p) => p.id === book.decision.pageId)?.plateId ?? ""];
-  const cardGap = 12;
-  const cardW = Math.max(60, (layout.text.w - 2 * cardGap) / 3);
-  const cardPicH = Math.max(48, layout.cardsPx - 56);
 
   const forward = (() => {
     if (onCover) {
@@ -294,134 +367,160 @@ export function BookReader({ book, lang, child, onClose, plates, dev = import.me
         </KidToy>
       );
     }
-    if (ending) {
-      return (
-        <KidToy tone="go" size="l" glyph="menu_book" data-book-end="" onClick={onClose}>
-          {bookString("theEnd", lang)}
-        </KidToy>
-      );
-    }
     if (pending) return null;
-    if (!canTurnForward(book, state)) return null;
+    if (!canTurnForward(book, state) && !ending) return null;
+    const label = bookString("next", lang);
     return layout.mode === "wide" ? (
-      <KidToy tone="go" size="l" shape="round" glyph={TURN_GLYPHS.next} data-book-next="" aria-label={bookString("next", lang)} onClick={next} />
+      <KidToy tone="go" size="l" shape="round" glyph={TURN_GLYPHS.next} data-book-next="" data-holding={holding ? "" : undefined} disabled={holding} aria-label={label} onClick={next} />
     ) : (
-      <KidToy tone="go" size="l" glyphEnd={TURN_GLYPHS.next} data-book-next="" aria-label={bookString("next", lang)} onClick={next} className="bk-grow" />
+      <KidToy tone="go" size="l" glyphEnd={TURN_GLYPHS.next} data-book-next="" data-holding={holding ? "" : undefined} disabled={holding} aria-label={label} onClick={next} className="bk-grow" />
     );
   })();
 
+  const cards = decision && (
+    <div className="bk-choices" role="group" aria-label={bookString("choices.aria", lang)} style={{ gridTemplateColumns: `repeat(3, ${px(layout.cardW)})` }}>
+      {book.decision.choices.map((c, i) => {
+        const focus = decisionPlate?.focus?.[c.id];
+        const picW = layout.cardW - 12;
+        const bg = focus && decisionPlate ? focusBackground(decisionPlate, focus, picW, layout.cardPicH) : null;
+        const srcs = decisionPlate ? plateSources(decisionPlate, { dev }) : [];
+        const selected = state.selected === c.id;
+        return (
+          <button
+            key={c.id}
+            type="button"
+            className="bk-card"
+            data-choice-card={c.id}
+            data-tone={i % 3}
+            data-selected={selected ? "" : undefined}
+            data-dimmed={state.selected && !selected ? "" : undefined}
+            aria-pressed={selected}
+            onClick={() => choose(c.id)}
+          >
+            {bg ? (
+              <span
+                className="bk-card-pic"
+                aria-hidden="true"
+                style={{
+                  blockSize: px(layout.cardPicH),
+                  backgroundImage: srcs.map((u) => `url("${u}")`).join(", "),
+                  backgroundSize: srcs.map(() => bg.size).join(", "),
+                  backgroundPosition: srcs.map(() => bg.position).join(", "),
+                }}
+              />
+            ) : (
+              <span className="bk-card-pic bk-card-icon" aria-hidden="true" style={{ blockSize: px(layout.cardPicH) }}>
+                <Icon name={c.icon ?? "auto_stories"} size={Math.round(Math.min(layout.cardPicH * 0.6, 72))} fill={1} />
+              </span>
+            )}
+            <span className="bk-card-label">{labelFor(c.label, lang)}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+
   return (
-    <div className="bk-reader" data-book-reader="" data-mode={layout.mode} data-page-type={layout.pageType} dir={dir} lang={lang} role="region" aria-label={bookString("reader.aria", lang, { title: book.title[lang] })}>
+    <div className="bk-reader" data-book-reader="" data-mode={layout.mode} data-page-type={atEnd ? "end" : layout.pageType} dir={dir} lang={lang} role="region" aria-label={bookString("reader.aria", lang, { title: book.title[lang] })}>
       <header className="bk-bar" style={{ blockSize: px(wide ? BAR_WIDE : BAR_NARROW) }}>
-        <KidToy tone="paper" shape="round" size="s" glyph="menu_book" data-book-close="" aria-label={bookString("close", lang)} onClick={onClose} />
+        <KidToy tone="paper" shape="round" size="s" glyph="close" data-book-close="" aria-label={bookString("close", lang)} onClick={onClose} />
         <span className="bk-bar-fill" />
-        <KidSoundToggle childId={child.id} lang={lang} />
+        <BookSoundToggle childId={child.id} lang={lang} />
       </header>
       <div className="bk-stage" ref={stageRef}>
-        <div key={state.at} className="bk-turn" data-turn={turnClass} data-book-page={page.id}>
-          {layout.mode === "wide" && <div className={spread ? "bk-frame" : "bk-book"} aria-hidden="true" style={rectStyle(layout.book)} />}
-          {layout.mode === "wide" && !spread && <div className="bk-artpage" data-spine={layout.spine === "left" ? "right" : "left"} aria-hidden="true" style={rectStyle(layout.artPage)} />}
-          <BookPage
-            layout={layout}
-            plateSrcs={plateSrcs}
-            printed={!!print}
-            tint={slot?.tint}
-            occluders={page.occluders}
-            fgSrc={plate?.fg}
-            heroSrc={heroSrc}
-            heroKey={`${page.id}|${slot?.pose ?? ""}`}
-            overlays={overlays}
-            items={items}
-            onItem={tapItem}
-            onArtTap={() => setTapReveal(state.at)}
-            pictureLabel={bookString("picture", lang)}
-          />
-          <section className="bk-text" data-book-text="" data-kind={spread ? "panel" : layout.mode === "wide" ? "page" : "sheet"} data-spine={layout.spine} style={textStyle}>
-            {onCover ? (
-              <div className="bk-cover-words" ref={wordsRef}>
-                <h1 className="bk-title" style={{ fontSize: px(layout.titlePx) }}>
-                  {book.title[lang]}
-                </h1>
-                {book.coverNameLine && (
-                  <p className="bk-name-line" style={{ fontSize: px(Math.round(typePx * 1.1)) }}>
-                    <Words text={book.coverNameLine[lang]} name={name} />
+        {atEnd ? (
+          <div key="end" className="bk-turn bk-end-wrap" data-turn={turnClass} data-book-page="end">
+            <BookEnd book={book} lang={lang} gender={gender} name={name} onReadAgain={() => dispatch({ type: "toCover" })} onClose={onClose} />
+          </div>
+        ) : (
+          <div key={state.at} className="bk-turn" data-turn={turnClass} data-book-page={page.id}>
+            {layout.mode === "wide" && <div className={coverFront ? "bk-frame" : "bk-book"} aria-hidden="true" style={rectStyle(layout.book)} />}
+            {layout.mode === "wide" && !coverFront && <div className="bk-artpage" aria-hidden="true" style={rectStyle(layout.artPage)} />}
+            <BookPage
+              layout={layout}
+              plateSrcs={plateSrcs}
+              printed={!!print}
+              tint={slot?.tint}
+              occluders={page.occluders}
+              fgSrc={plate?.fg}
+              heroSrc={heroSrc}
+              heroKey={`${page.id}|${slot?.pose ?? ""}`}
+              overlays={overlays}
+              items={items}
+              onItem={tapItem}
+              onArtTap={onCover ? hearCover : afterOverlay ? () => setTapReveal(state.at) : undefined}
+              pictureLabel={onCover ? bookString("hearTitle", lang) : bookString("picture", lang)}
+            />
+            {coverFront ? (
+              <>
+                <div className="bk-cover-title" data-book-text="" data-kind="cover" style={{ ...rectStyle(layout.textPage), padding: px(layout.pad.block) }}>
+                  <h1 className="bk-title" style={{ fontSize: px(layout.titlePx) }}>
+                    {book.title[lang]}
+                  </h1>
+                  {book.coverNameLine && (
+                    <p className="bk-name-line" style={{ fontSize: px(Math.round(layout.titlePx * 0.5)) }}>
+                      <Words text={book.coverNameLine[lang]} name={name} />
+                    </p>
+                  )}
+                  <p className="bk-cover-line" style={{ fontSize: px(layout.typePx) }}>
+                    {book.coverLine[lang]}
+                  </p>
+                </div>
+                {layout.openRect && (
+                  <div className="bk-open-row" style={rectStyle(layout.openRect)}>
+                    {forward}
+                  </div>
+                )}
+              </>
+            ) : (
+              <section
+                className="bk-text"
+                data-book-text=""
+                data-kind={layout.pageType === "spread" ? "panel" : layout.mode === "wide" ? "page" : "sheet"}
+                data-overlap={layout.sheetOverlap ? "" : undefined}
+                data-spine={layout.spine}
+                style={textStyle}
+              >
+                {layout.sheetOverlap > 0 && cards}
+                {onCover ? (
+                  <div className="bk-cover-words" ref={wordsRef}>
+                    <h1 className="bk-title" style={{ fontSize: px(layout.titlePx) }}>
+                      {book.title[lang]}
+                    </h1>
+                    {book.coverNameLine && (
+                      <p className="bk-name-line" style={{ fontSize: px(Math.round(typePx * 1.1)) }}>
+                        <Words text={book.coverNameLine[lang]} name={name} />
+                      </p>
+                    )}
+                    <p className="bk-cover-line" style={wordsStyle}>
+                      {book.coverLine[lang]}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="bk-words" ref={wordsRef} style={wordsStyle}>
+                    {paras.map((p, i) => (
+                      <p key={i} data-book-para={i}>
+                        <Words text={p} name={name} />
+                      </p>
+                    ))}
+                  </div>
+                )}
+                {layout.sheetOverlap === 0 && cards}
+                {pending && repair && (
+                  <p className="bk-hint" data-book-repair-prompt="">
+                    <PointingHand />
+                    <span>{labelFor(repair.promptLabel, lang)}</span>
                   </p>
                 )}
-                <p className="bk-cover-line" style={wordsStyle}>
-                  {book.coverLine[lang]}
-                </p>
-              </div>
-            ) : (
-              <div className="bk-words" ref={wordsRef} style={wordsStyle}>
-                {paras.map((p, i) => (
-                  <p key={i} data-book-para={i}>
-                    <Words text={p} name={name} />
-                  </p>
-                ))}
-              </div>
+                <nav className="bk-nav" style={{ minBlockSize: px(Math.min(layout.navPx, 96) - 8) }}>
+                  {!onCover ? <KidToy tone="paper" shape="round" glyph={TURN_GLYPHS.back} data-book-back="" aria-label={bookString("back", lang)} onClick={back} /> : <span />}
+                  {forward}
+                </nav>
+              </section>
             )}
-            {decision && (
-              <div className="bk-choices" role="group" aria-label={bookString("choices.aria", lang)} style={{ blockSize: px(layout.cardsPx), gap: px(cardGap) }}>
-                {book.decision.choices.map((c, i) => {
-                  const focus = decisionPlate?.focus?.[c.id];
-                  const bg = focus && decisionPlate ? focusBackground(decisionPlate, focus, cardW, cardPicH) : null;
-                  const srcs = decisionPlate ? plateSources(decisionPlate, { dev }) : [];
-                  const selected = state.selected === c.id;
-                  return (
-                    <button
-                      key={c.id}
-                      type="button"
-                      className="bk-card"
-                      data-choice-card={c.id}
-                      data-tone={i % 3}
-                      data-selected={selected ? "" : undefined}
-                      data-dimmed={state.selected && !selected ? "" : undefined}
-                      aria-pressed={selected}
-                      onClick={() => choose(c.id)}
-                    >
-                      {bg ? (
-                        <span
-                          className="bk-card-pic"
-                          aria-hidden="true"
-                          style={{
-                            blockSize: px(cardPicH),
-                            backgroundImage: srcs.map((u) => `url("${u}")`).join(", "),
-                            backgroundSize: srcs.map(() => bg.size).join(", "),
-                            backgroundPosition: srcs.map(() => bg.position).join(", "),
-                          }}
-                        />
-                      ) : (
-                        <span className="bk-card-pic bk-card-icon" aria-hidden="true" style={{ blockSize: px(cardPicH) }}>
-                          <Icon name={c.icon ?? "auto_stories"} size={Math.round(Math.min(cardPicH * 0.6, 64))} fill={1} />
-                        </span>
-                      )}
-                      <span className="bk-card-label">{labelFor(c.label, lang)}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-            {pending && singleTap && (
-              <div className="bk-prompt-row">
-                <KidToy tone="go" size="l" data-book-repair={singleTap.id} onClick={() => tapItem(singleTap.id)} className="bk-wide-toy">
-                  {labelFor(singleTap.label!, lang)}
-                </KidToy>
-              </div>
-            )}
-            {pending && !singleTap && repair && (
-              <div className="bk-prompt-row">
-                <span className="bk-prompt" data-book-repair-prompt="">
-                  {labelFor(repair.promptLabel, lang)}
-                </span>
-              </div>
-            )}
-            <nav className="bk-nav" style={{ minBlockSize: px(Math.min(layout.navPx, 96) - 8) }}>
-              {!onCover ? <KidToy tone="paper" shape="round" glyph={TURN_GLYPHS.back} data-book-back="" aria-label={bookString("back", lang)} onClick={back} /> : <span />}
-              {forward}
-            </nav>
-          </section>
-          {leaf && <div className="bk-leaf" data-dir={state.dir === 1 ? "fwd" : "back"} aria-hidden="true" style={{ ...rectStyle(leaf.rect), transformOrigin: leaf.origin, "--leaf-rot": leaf.rot } as CSSProperties} />}
-        </div>
+            {leaf && <div className="bk-leaf" data-dir={state.dir === 1 ? "fwd" : "back"} aria-hidden="true" style={{ ...rectStyle(leaf.rect), transformOrigin: leaf.origin, "--leaf-rot": leaf.rot } as CSSProperties} />}
+          </div>
+        )}
       </div>
     </div>
   );

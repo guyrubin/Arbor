@@ -15,12 +15,17 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../../lib/voice", () => ({ speakText: vi.fn(() => 0), stopVoice: vi.fn(), voiceSupported: () => true }));
 
-import { BookReader } from "./BookReader";
-import { bookFlowReducer, initialBookFlow, type BookFlowAction, type BookFlowState } from "../../lib/library/bookFlow";
+import { BookReader, nextIntent } from "./BookReader";
+import { bookFlowReducer, END, initialBookFlow, type BookFlowAction, type BookFlowState } from "../../lib/library/bookFlow";
 import { fiveSmoothStones as book } from "../../lib/library/books/fiveSmoothStones";
 import type { Box } from "../../lib/library/bookPageLayout";
 import type { BookLang, BookReaderChild } from "../../lib/library/types";
 import type { HeroSheet } from "../../lib/library/heroSheet";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const here = path.dirname(fileURLToPath(import.meta.url));
 
 const BOY: BookReaderChild = { id: "child-1", name: "Dylan", gender: "boy", heroSheetId: "placeholder" };
 const GIRL: BookReaderChild = { id: "child-2", name: "נועה", gender: "girl" };
@@ -31,10 +36,10 @@ function run(...actions: BookFlowAction[]): BookFlowState {
   return actions.reduce((s, a) => bookFlowReducer(book, s, a), initialBookFlow());
 }
 
-function render(state: BookFlowState, opts: { lang?: BookLang; child?: BookReaderChild; box?: Box } = {}): string {
+function render(state: BookFlowState, opts: { lang?: BookLang; child?: BookReaderChild; box?: Box; revealed?: boolean } = {}): string {
   return renderToStaticMarkup(
     <div className="arbor-play">
-      <BookReader book={book} lang={opts.lang ?? "en"} child={opts.child ?? BOY} onClose={() => {}} dev narration="off" initialState={state} initialBox={opts.box ?? WIDE} />
+      <BookReader book={book} lang={opts.lang ?? "en"} child={opts.child ?? BOY} onClose={() => {}} dev narration="off" initialState={state} initialBox={opts.box ?? WIDE} initialRevealed={opts.revealed} />
     </div>,
   ).replace(/<!-- -->/g, "");
 }
@@ -53,7 +58,12 @@ describe("cover → open", () => {
     expect(html).toContain("<bdi data-book-name=\"\">Dylan</bdi> as David");
     expect(html).toContain("data-book-open");
     expect(html).not.toContain("data-book-back");
-    expect(html).toContain('data-page-type="spread"');
+    // fix round 1: the cover is the book's front at 1920 — the title in the
+    // plate's calm band (no card), ONE Open toy under the plate
+    expect(html).toContain('data-page-type="cover"');
+    expect(html).toContain('data-kind="cover"');
+    expect(html).toContain("bk-open-row");
+    expect(html).not.toContain('data-kind="panel"');
   });
 
   it("open lands on p1 with the play frame and a Next page control", () => {
@@ -107,7 +117,7 @@ describe("each branch reaches the rejoin with its own echo", () => {
     expect(p8).not.toContain("His shoulders still ache");
   });
 
-  it("EASY: p6b (helmet + sword overlays) → p7b holds until every piece is off, any order", () => {
+  it("EASY: p6b (helmet + sword overlays) → p7b: helmet → sword → coat, only the next piece can be tapped", () => {
     let s = run(...toDecision, { type: "choose", choiceId: "b" }, { type: "go" });
     const p6b = render(s);
     expect(p6b).toContain('data-book-overlay="helmet-worn"');
@@ -117,24 +127,38 @@ describe("each branch reaches the rejoin with its own echo", () => {
     expect(pageOf(html)).toBe("p7b");
     expect(html).toContain("data-book-repair-prompt");
     expect(html).toContain("Take it off");
-    expect(html.match(/data-book-item="/g)).toHaveLength(3);
+    // only the next piece glows and can be tapped (fix round 1, ruling 4)
+    expect(html.match(/data-book-item="/g)).toHaveLength(1);
+    expect(html).toContain('data-book-item="helmet"');
+    expect(html).toMatch(/class="bk-hint"[^>]*>[\s\S]*<svg class="bk-hand"/);
+    expect(html).not.toContain("bk-prompt-row");
     expect(html).not.toContain("data-book-next");
     // the page cannot turn yet
     expect(bookFlowReducer(book, s, { type: "next" }).at).toBe("p7b");
     // before: the worn helmet and the sword on the rug show, the heap pieces wait
     expect(html).not.toMatch(/data-book-overlay="helmet-worn"[^>]*data-hidden/);
     expect(html).toMatch(/data-book-overlay="helmet-heap"[^>]*data-hidden=""/);
+    // out of order is ignored
+    expect(bookFlowReducer(book, s, { type: "repair", itemId: "coat" })).toBe(s);
+    s = bookFlowReducer(book, s, { type: "repair", itemId: "helmet" });
+    html = render(s);
+    expect(html).toMatch(/data-book-overlay="helmet-worn"[^>]*data-hidden=""/);
+    expect(html).toMatch(/data-book-overlay="helmet-heap" data-hop=""/);
+    expect(html).toContain("Off comes the helmet.");
+    expect(html.match(/data-book-item="/g)).toHaveLength(1);
+    expect(html).toContain('data-book-item="sword"');
+    // the coat is still worn: no coat on the rug yet, the sprite is armour-stuck
+    expect(html).toMatch(/data-book-overlay="coat-heap"[^>]*data-hidden=""/);
+    expect(html).toContain("/armour-stuck.webp");
+    expect(html).not.toContain("data-book-next");
     s = bookFlowReducer(book, s, { type: "repair", itemId: "sword" });
     html = render(s);
     expect(html).toMatch(/data-book-overlay="sword-rug"[^>]*data-hidden=""/);
-    expect(html).toMatch(/data-book-overlay="sword-heap" data-hop=""/);
-    expect(html).toContain("Off comes the sword.");
-    expect(html).toMatch(/data-book-item="sword"[^>]*data-done=""/);
-    expect(html).not.toContain("data-book-next");
-    s = bookFlowReducer(book, s, { type: "repair", itemId: "helmet" });
+    expect(html).toContain('data-book-item="coat"');
     s = bookFlowReducer(book, s, { type: "repair", itemId: "coat" });
     html = render(s);
-    expect(html).toContain("Off comes the sword. Off comes the helmet. Off comes the coat.");
+    expect(html).toContain("Off comes the helmet. Off comes the sword. Off comes the coat.");
+    expect(html).not.toContain("data-book-item=");
     expect(html).toContain("David stretches. Light again!");
     expect(html).toContain('src="/_dev/hero-sheets/placeholder/free-stretch.webp"');
     expect(html).not.toContain("data-book-repair-prompt");
@@ -144,12 +168,12 @@ describe("each branch reaches the rejoin with its own echo", () => {
     expect(p8).toContain("His shoulders still ache from the heavy coat.");
   });
 
-  it("THIRD: p6c → p7c's one big 'Stand up!' → p8 'The waiting took all morning.'", () => {
+  it("THIRD: p6c → p7c's 'Stand up!' tap on the boy (hint, not a button) → p8 'The waiting took all morning.'", () => {
     let s = run(...toDecision, { type: "choose", choiceId: "c" }, { type: "go" }, { type: "next" });
     let html = render(s);
     expect(pageOf(html)).toBe("p7c");
-    expect(html).toMatch(/data-book-repair="stand"[^>]*>[\s\S]*Stand up!/);
-    expect(html).not.toContain("data-book-item=");
+    expect(html).toContain('data-book-item="stand"');
+    expect(html).toMatch(/class="bk-hint"[^>]*>[\s\S]*Stand up!/);
     expect(html).not.toContain("data-book-next");
     s = bookFlowReducer(book, s, { type: "repair", itemId: "stand" });
     html = render(s);
@@ -161,9 +185,9 @@ describe("each branch reaches the rejoin with its own echo", () => {
 });
 
 describe("the ending", () => {
-  const atEnd = (cid: string) => {
+  const toPage = (cid: string, target: string) => {
     let s = run(...toDecision, { type: "choose", choiceId: cid }, { type: "go" });
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 8 && s.at !== target; i++) {
       for (const it of book.decision.choices.find((c) => c.id === cid)!.branch.find((p) => p.id === s.at)?.repair?.items ?? []) s = bookFlowReducer(book, s, { type: "repair", itemId: it.id });
       s = bookFlowReducer(book, s, { type: "next" });
     }
@@ -174,21 +198,58 @@ describe("the ending", () => {
     ["a", "His own staff. His own sling. All tried."],
     ["b", "The king&#x27;s armour? One day, after a hundred tries."],
     ["c", "Next time a giant shouts, David won&#x27;t wait."],
-  ])("path %s ends on p10 with its echo, the frame line and 'The End' — no 'Another way?'", (cid, echo) => {
-    const html = render(atEnd(cid));
+  ])("path %s: p10 shows its echo + frame line and a Next that opens the END screen — no 'Another way?'", (cid, echo) => {
+    const s = toPage(cid, "p10");
+    const html = render(s);
     expect(pageOf(html)).toBe("p10");
     expect(html).toContain(echo);
     expect(html).toContain("And today, <bdi data-book-name=\"\">Dylan</bdi> was David, the shepherd.");
-    expect(html).toContain("data-book-end");
-    expect(html).not.toContain("data-book-next");
+    expect(html).toContain("data-book-next");
     expect(html).not.toMatch(/Another way|דרך אחרת/);
+    const end = bookFlowReducer(book, s, { type: "next" });
+    expect(end.at).toBe(END);
   });
 
-  it("p9's dust cloud waits for the narration (hidden on a silent page until a tap)", () => {
-    const s = atEnd("a");
-    const p9 = render(bookFlowReducer(book, s, { type: "back" }));
+  it("the END screen: 'The End', the frame line, Read again + close, the grown-up panel collapsed", () => {
+    const end = bookFlowReducer(book, toPage("b", "p10"), { type: "next" });
+    const html = render(end);
+    expect(html).toContain('data-book-end-screen=""');
+    expect(html).toContain('class="bk-end-title">The End<');
+    expect(html).toContain("And today, <bdi data-book-name=\"\">Dylan</bdi> was David, the shepherd.");
+    expect(html).toContain("data-book-read-again");
+    expect(html).toContain("data-book-end-close");
+    expect(html).toMatch(/data-book-grownup="" aria-expanded="false"/);
+    expect(html).not.toContain("data-book-grownup-panel");
+    // Read again → the cover; back → the last page (never a silent snap to the cover)
+    expect(bookFlowReducer(book, end, { type: "toCover" }).at).toBe("cover");
+    expect(bookFlowReducer(book, end, { type: "back" }).at).toBe("p10");
+    expect(bookFlowReducer(book, end, { type: "next" }).at).toBe(END);
+  });
+
+  it("p9: the dust waits for the narration; the first Next reveals it, then 1.5 s of stillness, then Next turns", () => {
+    const s = toPage("a", "p9");
+    const p9 = render(s);
     expect(pageOf(p9)).toBe("p9");
     expect(p9).toMatch(/data-book-overlay="dust-cloud"[^>]*data-hidden=""/);
+    expect(nextIntent(true, false, false)).toBe("reveal");
+    expect(nextIntent(true, true, true)).toBe("hold");
+    expect(nextIntent(true, true, false)).toBe("turn");
+    expect(nextIntent(false, false, false)).toBe("turn");
+    const shown = render(s, { revealed: true });
+    expect(shown).not.toMatch(/data-book-overlay="dust-cloud"[^>]*data-hidden=""/);
+  });
+
+  it("p9 lays out with the PLATE's size whether the print or the composite shows (no frame jump)", () => {
+    const sheet: HeroSheet = { id: "placeholder", poses: {}, base: "/_dev/hero-sheets/placeholder", prints: { p9: { url: "/_dev/hero-sheets/placeholder/prints/p9.webp", width: 1920, height: 1280 } } };
+    const s = toPage("a", "p9");
+    const html = (revealed: boolean) =>
+      renderToStaticMarkup(<BookReader book={book} lang="en" child={BOY} onClose={() => {}} dev narration="off" initialState={s} initialBox={WIDE} sheet={sheet} initialRevealed={revealed} />);
+    const art = (h: string) => /class="bk-art"[^>]*style="([^"]+)"/.exec(h)![1];
+    const before = html(false);
+    const after = html(true);
+    expect(before).toContain("prints/p9.webp");
+    expect(after).not.toContain("prints/p9.webp");
+    expect(art(before)).toBe(art(after));
   });
 });
 
@@ -237,6 +298,34 @@ describe("real art: prints, shadow + grade, occluder, costume", () => {
   });
 });
 
+describe("fix round 1: bar, accent, choice cards", () => {
+  it("the bar: a 48 px close toy with the close glyph, a paper Sound toy", () => {
+    const html = render(run({ type: "open" }));
+    const tag = (attr: string) => new RegExp(`<button[^>]*${attr}[^>]*>`).exec(html)?.[0] ?? "";
+    for (const attr of ["data-book-close", "data-book-sound"]) {
+      expect(tag(attr), attr).toContain('data-tone="paper"');
+      expect(tag(attr), attr).toContain('data-size="s"'); // 48 px round toy
+      expect(tag(attr), attr).toContain('data-shape="round"');
+    }
+    expect(html).toMatch(/data-book-close=""[^>]*>[\s\S]*?>close</);
+    expect(tag("data-book-sound")).toContain('aria-pressed="true"');
+  });
+
+  it("the child's name in running text wears the cover's accent colour (CSS)", () => {
+    const css = readFileSync(path.join(here, "bookReader.css"), "utf8");
+    expect(css).toMatch(/\.bk-words bdi,[\s\S]*?\{ font-weight: 700; color: var\(--arbor-clay\); \}/);
+    // the card lips are solid colours (the -soft tokens are gradients)
+    expect(css).not.toMatch(/--card-lip: var\(--arbor-[a-z]+-soft\)/);
+  });
+
+  it("decision cards at 1920: three in a row at the layout's card width (>= 300 px); a second tap does not commit", () => {
+    const html = render(run(...toDecision));
+    expect(html).toMatch(/class="bk-choices"[^>]*grid-template-columns:repeat\(3, (\d{3})/);
+    const w = Number(/grid-template-columns:repeat\(3, ([\d.]+)px\)/.exec(html)![1]);
+    expect(w).toBeGreaterThanOrEqual(300);
+  });
+});
+
 describe("Hebrew, the phone sheet, and what the child never sees", () => {
   it("HE: rtl, the girl's frame line, her Hebrew name isolated", () => {
     const html = render(run({ type: "open" }), { lang: "he", child: GIRL });
@@ -245,6 +334,17 @@ describe("Hebrew, the phone sheet, and what the child never sees", () => {
     expect(html).toContain("היום <bdi data-book-name=\"\">נועה</bdi> היא דוד, הרועה.");
     // no hero sheet for this child → the page renders without a sprite
     expect(html).not.toContain("data-book-hero");
+  });
+
+  it("375 x 812: the art window is never under 300 px wide (p5 cards ride over it; p10)", () => {
+    const widthOf = (html: string) => Number(/class="bk-art"[^>]*style="left:[\d.]+px;top:[\d.]+px;width:([\d.]+)px/.exec(html)![1]);
+    const p5 = render(run(...toDecision), { box: PHONE });
+    expect(widthOf(p5)).toBeGreaterThanOrEqual(300);
+    expect(p5).toContain('data-overlap=""');
+    const s10 = run(...toDecision, { type: "choose", choiceId: "a" }, { type: "go" }, { type: "next" }, { type: "next" }, { type: "next" });
+    const p10 = render(s10, { box: PHONE, lang: "he" });
+    expect(pageOf(p10)).toBe("p10");
+    expect(widthOf(p10)).toBeGreaterThanOrEqual(300);
   });
 
   it("375 x 812: the stacked sheet, Next as a big bar", () => {
@@ -266,6 +366,7 @@ describe("Hebrew, the phone sheet, and what the child never sees", () => {
         s = bookFlowReducer(book, s, { type: "next" });
       }
     }
+    screens.push({ ...initialBookFlow(), at: END, choiceId: "a" });
     for (const lang of ["en", "he"] as const) {
       for (const s of screens) expect(visible(render(s, { lang })), `${lang} ${s.at}`).not.toMatch(/\d/);
     }

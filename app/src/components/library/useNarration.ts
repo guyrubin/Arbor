@@ -1,17 +1,20 @@
 /**
- * useNarration — B-BOOK-04: plays a page's pre-rendered narration FILE on page
- * show (RULINGS BR8: whole-page files with the child's name inside; reading
- * never calls a voice service). No file, a missing file, Sound off, no user
- * gesture yet, or a hidden tab = silence, never an error.
+ * useNarration — B-BOOK-04/12: plays a page's pre-rendered narration FILE on
+ * page show (RULINGS BR8: whole-page files with the child's name inside;
+ * reading never calls a voice service). No file, a missing file, Sound off, no
+ * user gesture yet, or a hidden tab = silence, never an error.
  *
  * - One HTMLAudioElement per page show; the previous one is paused on change.
  * - A path that failed once is not asked again this session.
- * - `settled` turns true when the narration ends, fails, or never starts —
- *   the reader uses it for the "after the narration" reveal (p9's dust cloud:
- *   at `revealAt` seconds, else 1.2 s after the end; a silent page reveals on
- *   a tap instead).
- * - `playClip(src)` plays a short one-off (a choice label, a repair tap sound)
- *   under the same Sound rule, pausing the page narration.
+ * - `settled` turns true when the narration ends, fails, or never starts.
+ * - `revealed` (fix round 1, ruling 5 — p9's dust on "BOOM"): with audio,
+ *   at `revealAt` seconds if given, else REVEAL_LEAD_S before the end when the
+ *   duration is known, else on `ended`; with no audio (Sound off, no file, no
+ *   gesture), `silentRevealMs` after the page shows. The reader adds "a tap /
+ *   the first Next reveals" on top.
+ * - `playClip(src)` plays a short one-off (a choice label, a repair line, a
+ *   prompt, the cover title) under the same Sound rule, pausing the page
+ *   narration; a page part that starts while a clip plays waits for its end.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { pageHasUserGesture } from "../kidmode/audio/kidAudio";
@@ -23,15 +26,21 @@ export interface NarrationState {
   settled: boolean;
   /** Audio actually started on this page show. */
   playing: boolean;
-  /** The reveal moment has come (revealAt reached, or 1.2 s after the end). */
+  /** The reveal moment has come (see the module note). */
   revealed: boolean;
   playClip: (src: string | null | undefined) => void;
 }
 
-export const REVEAL_DELAY_MS = 1200;
+/** Seconds before the end of the narration at which the reveal starts. */
+export const REVEAL_LEAD_S = 1.2;
+/** The reveal on a silent page. */
+export const SILENT_REVEAL_MS = 5000;
 
-export function useNarration(src: string | null, opts: { showKey: string; muted: boolean; enabled: boolean; revealAt?: number }): NarrationState {
-  const { showKey, muted, enabled, revealAt } = opts;
+export function useNarration(
+  src: string | null,
+  opts: { showKey: string; muted: boolean; enabled: boolean; revealAt?: number; silentRevealMs?: number },
+): NarrationState {
+  const { showKey, muted, enabled, revealAt, silentRevealMs = SILENT_REVEAL_MS } = opts;
   const pageAudio = useRef<HTMLAudioElement | null>(null);
   const clipAudio = useRef<HTMLAudioElement | null>(null);
   const [settled, setSettled] = useState(false);
@@ -44,17 +53,20 @@ export function useNarration(src: string | null, opts: { showKey: string; muted:
     setRevealed(false);
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    const reveal = () => !cancelled && setRevealed(true);
     const finish = (heard: boolean) => {
       if (cancelled) return;
       setSettled(true);
       setPlaying(false);
-      if (heard) timer = setTimeout(() => !cancelled && setRevealed(true), REVEAL_DELAY_MS);
+      if (heard) reveal();
+      else timer = setTimeout(reveal, silentRevealMs);
     };
     const hidden = typeof document !== "undefined" && document.visibilityState === "hidden";
     if (!enabled || !src || muted || failed.has(src) || !pageHasUserGesture() || hidden || typeof Audio === "undefined") {
       finish(false);
       return () => {
         cancelled = true;
+        if (timer) clearTimeout(timer);
       };
     }
     const audio = new Audio(src);
@@ -65,11 +77,11 @@ export function useNarration(src: string | null, opts: { showKey: string; muted:
       failed.add(src);
       finish(false);
     };
-    if (revealAt != null) {
-      audio.ontimeupdate = () => {
-        if (!cancelled && audio.currentTime >= revealAt) setRevealed(true);
-      };
-    }
+    audio.ontimeupdate = () => {
+      if (cancelled) return;
+      const at = revealAt ?? (Number.isFinite(audio.duration) && audio.duration > 0 ? Math.max(0, audio.duration - REVEAL_LEAD_S) : Infinity);
+      if (audio.currentTime >= at) setRevealed(true);
+    };
     const start = () => {
       if (cancelled) return;
       audio
@@ -99,7 +111,7 @@ export function useNarration(src: string | null, opts: { showKey: string; muted:
       audio.pause();
       if (pageAudio.current === audio) pageAudio.current = null;
     };
-  }, [src, showKey, muted, enabled, revealAt]);
+  }, [src, showKey, muted, enabled, revealAt, silentRevealMs]);
 
   // Sound turned off mid-page: stop at once.
   useEffect(() => {
