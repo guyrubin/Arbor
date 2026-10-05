@@ -12,11 +12,13 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { translate } from "../../lib/i18n";
+import { fmtDay } from "../../lib/formatDate";
+import { buildMomentLog } from "../../content/behaviorTaxonomy";
 
 const DAY = 86_400_000;
 const harness = vi.hoisted(() => ({
   locale: "en" as "en" | "he",
-  logs: [] as { id: string; timestamp: string; behaviorType: string; notes?: string }[],
+  logs: [] as { id: string; timestamp: string; behaviorType: string; notes?: string; trigger?: string }[],
   openSettings: vi.fn(),
 }));
 
@@ -68,7 +70,8 @@ describe("W2-CAREPRO r2 · one layer of chrome, one row family, a measure", () =
       const catalogue = html.slice(html.indexOf('data-module="reports-catalogue"'));
       expect(catalogue).not.toMatch(/<h3/);
       const titles = catalogue.match(/<p data-testid="reports-row-title" class="([^"]*)" style="([^"]*)"/g) ?? [];
-      expect(titles.length).toBe(4);
+      // W2-CAREPRO c2 r1: the lead is the combined record; all five documents are quiet rows.
+      expect(titles.length).toBe(5);
       for (const tag of titles) {
         expect(tag).toContain("t-sm font-bold");
         expect(tag).toContain("var(--font-sans)");
@@ -105,13 +108,15 @@ describe("B-CAREPRO-NEW-2e · the lead line counts what the parent logged (numer
   });
 
   for (const locale of ["en", "he"] as const) {
-    it(`${locale}: first visit reads the first-visit line with counts; no %, no denominator`, () => {
+    it(`${locale}: first visit names the record since it began, with whole-record counts; no %, no denominator, no "nothing"`, () => {
       harness.locale = locale;
       const html = renderToStaticMarkup(<Reports />);
-      const line = /<p data-testid="reports-lead-counts"[^>]*>([^<]*)<\/p>/.exec(html)![1];
-      const moments = translate(locale, "elev.reports.line.moments.other", { n: 2 });
-      const milestones = translate(locale, "elev.reports.lead.milestones.one", { n: 1 });
-      expect(line).toBe(translate(locale, "elev.reports.lead.first", { moments, milestones }));
+      const line = /<p data-testid="reports-lead-counts"[^>]*>([^<]*)<\/p>/.exec(html)![1].replace(/&#x27;/g, "'");
+      const moments = translate(locale, "elev.reports.line.moments.other", { n: 3 });
+      const milestones = translate(locale, "elev.reports.lead.milestones.other", { n: 2 });
+      const start = new Date(Date.now() - 40 * DAY).toISOString();
+      expect(line).toBe(translate(locale, "elev.reports.lead.first", { name: "Dylan", date: fmtDay(start, locale), moments, milestones }));
+      expect(line).not.toMatch(/Nothing|עוד לא נשמר/);
       expect(line).not.toMatch(/%|\/\s*\d|\bof\b/);
       expect(html.indexOf('data-testid="reports-lead-counts"')).toBeLessThan(html.indexOf('data-primary-move="export-report"'));
     });
@@ -122,8 +127,44 @@ describe("B-CAREPRO-NEW-2f · kept this week, in the parent's words", () => {
   it("unit: the newest note inside 7 days, else null", () => {
     const now = Date.now();
     expect(keptThisWeek(harness.logs, now)?.quote).toBe("I did the gate by myself.");
-    expect(keptThisWeek([{ timestamp: new Date(now - 20 * DAY).toISOString(), notes: "old" }], now)).toBeNull();
+    // W2-CAREPRO c2 r1: nothing this week → the newest kept words in the record, dated.
+    expect(keptThisWeek([{ timestamp: new Date(now - 20 * DAY).toISOString(), notes: "old" }], now)).toMatchObject({ quote: "old", thisWeek: false });
+    expect(keptThisWeek([], now)).toBeNull();
   });
+
+  it("unit: a moment built by the capture sheet (words in trigger, no notes) is the parent's words; an incident trigger is not", () => {
+    const now = Date.now();
+    const m = buildMomentLog("Sang the whole bath song on his own", "Home", {}, new Date(now - DAY))!;
+    expect("notes" in m).toBe(false);
+    expect(keptThisWeek([m], now)?.quote).toBe("Sang the whole bath song on his own");
+    expect(keptThisWeek([{ timestamp: m.timestamp, behaviorType: "Transition Refusal", trigger: "Leaving the house" }], now)).toBeNull();
+  });
+
+  for (const locale of ["en", "he"] as const) {
+    it(`${locale}: a capture-sheet moment this week mounts reports-kept; moments > 0 never renders reports-kept-empty`, () => {
+      harness.locale = locale;
+      const m = buildMomentLog(locale === "he" ? "שר לבד את כל שיר האמבטיה" : "Sang the whole bath song on his own", "Home", {}, new Date(Date.now() - DAY))!;
+      harness.logs = [{ ...m, behaviorType: m.behaviorType as string }];
+      const html = renderToStaticMarkup(<Reports />);
+      expect(html).toContain('data-testid="reports-kept"');
+      expect(html).toContain(m.trigger);
+      expect(html).not.toContain('data-testid="reports-kept-empty"');
+      // An incident-only record: no quote (never `response`/incident text), and still no empty line.
+      harness.logs = [{ id: "i1", timestamp: new Date(Date.now() - DAY).toISOString(), behaviorType: "Transition Refusal", trigger: "Leaving" }];
+      const incidents = renderToStaticMarkup(<Reports />);
+      expect(incidents).not.toContain('data-testid="reports-kept"');
+      expect(incidents).not.toContain('data-testid="reports-kept-empty"');
+    });
+
+    it(`${locale}: the stamped lead saves "{name}'s record" — the full record the H1 promises`, () => {
+      harness.locale = locale;
+      const html = renderToStaticMarkup(<Reports />).replace(/&#x27;/g, "'");
+      const lead = html.slice(html.indexOf('data-primary-move="export-report"'));
+      expect(lead.slice(0, 900)).toContain(translate(locale, "elev.reports.lead.cta", { name: "Dylan" }));
+      expect(html).toContain(translate(locale, "elev.reports.record.title", { name: "Dylan" }));
+      expect(translate(locale, "elev.reports.lead.cta", { name: "x" })).not.toMatch(/week|השבוע/i);
+    });
+  }
 
   for (const locale of ["en", "he"] as const) {
     it(`${locale}: the quote well is the one peach accent, dir=auto, date isolated; the empty line has no CTA`, () => {

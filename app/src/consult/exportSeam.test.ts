@@ -190,8 +190,8 @@ describe("B-CAREPRO-23 — Reports.tsx never calls exportReport with a professio
   it("the page renders PARENT_RECORD_REPORTS (5 cards) and nothing from the professional list", () => {
     expect(page.length).toBeGreaterThan(1500);
     expect(reportsSrc).toMatch(/export const PARENT_RECORD_REPORTS = REPORTS\.filter\(\n\s*\(r\)[^=]*=> !isProfessionalReportType\(r\.type\)\n\);/);
-    // W2-CAREPRO r1: the lead (PARENT_RECORD_REPORTS[0]) + the other four as rows = all five.
-    expect(page).toContain("{PARENT_RECORD_REPORTS.filter((r) => r.type !== lead.type).map((r) => (");
+    // W2-CAREPRO c2 r1: the lead saves the combined record; all five are rows.
+    expect(page).toContain("{PARENT_RECORD_REPORTS.map((r) => (");
     expect(page).not.toMatch(/\{REPORTS\.map\(|CONSULT_MENU_REPORTS/);
     const parentTypes = ALL_REPORT_TYPES.filter((t) => !isProfessionalReportType(t));
     expect(parentTypes).toEqual(["weekly", "snapshot", "behavior", "language", "growth"]);
@@ -199,11 +199,12 @@ describe("B-CAREPRO-23 — Reports.tsx never calls exportReport with a professio
 
   it("every exportReport call on the page takes a parent-record card's type — no literal, no professional", () => {
     const calls = [...page.matchAll(/exportReport\(([^)]*)\)/g)].map((m) => m[1].trim());
-    // W2-CAREPRO r1: the lead record's one Save button + the quiet rows.
-    expect(calls).toEqual(["lead.type", "r.type"]);
-    expect(page).toContain("const lead = PARENT_RECORD_REPORTS[0];");
+    // W2-CAREPRO c2 r1: the lead's one Save button builds the combined
+    // parent record ("record" → buildFullRecord, parent documents only) + the quiet rows.
+    expect(calls).toEqual(['"record"', "r.type"]);
+    expect(reportsSrc).toContain('type === "record" ? buildFullRecord(ctx, uiLang) : buildReport(type, ctx, uiLang)');
     // the r it reads is the PARENT_RECORD_REPORTS iteration variable
-    const loop = page.slice(page.indexOf("{PARENT_RECORD_REPORTS.filter((r) => r.type !== lead.type).map((r) => ("));
+    const loop = page.slice(page.indexOf("{PARENT_RECORD_REPORTS.map((r) => ("));
     expect(loop.indexOf("exportReport(r.type)")).toBeGreaterThan(0);
     for (const pro of ["teacher", "therapist", "pediatrician", "slp", "behavioral_health"]) {
       expect(page).not.toContain(`exportReport("${pro}"`);

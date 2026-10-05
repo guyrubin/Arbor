@@ -329,3 +329,26 @@ function renderPrintableHtml(doc: ReportDoc, childName: string, lang: UiLang = "
   <script>window.onload=function(){setTimeout(function(){window.print();},250);}</script>
   </body></html>`;
 }
+
+/** W2-CAREPRO c2 r1 (B-CAREPRO-NEW-c2-1e) — the ONE "{name}'s record" document
+ *  the #/reports lead saves: every parent-record document, in catalogue order,
+ *  each under its own part heading. The page's H1 and its contract job say
+ *  "your full record"; the lead button now does that job (it used to save the
+ *  weekly document only). Same builders, same law-1 lines — nothing new derived. */
+export const FULL_RECORD_PARTS: readonly ParentReportType[] = ["weekly", "snapshot", "behavior", "language", "growth"];
+export function buildFullRecord(ctx: ReportContext, lang: UiLang = "en"): ReportDoc {
+  const tr = trFor(lang);
+  const sections: ReportSection[] = [];
+  let subtitle: string | undefined;
+  for (const part of FULL_RECORD_PARTS) {
+    const doc = buildReportBody(part, ctx, lang);
+    subtitle = subtitle ?? doc.subtitle;
+    sections.push({ heading: doc.title, body: [] }, ...doc.sections);
+  }
+  return {
+    title: tr("elev.reports.record.title", `${ctx.child.name}'s record`, { name: ctx.child.name }),
+    subtitle,
+    sections,
+    heroImageUrl: ctx.heroImageUrl,
+  };
+}

@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { TRIGGER_QUOTE_MAX } from "../hooks/useWeeklyRecap";
-import { buildReport, type ReportContext, type ReportDoc } from "./reportExport";
+import { buildFullRecord, buildReport, FULL_RECORD_PARTS, type ReportContext, type ReportDoc } from "./reportExport";
 
 /**
  * N6 (RES-REPORT) — exported-report hygiene. The printable parent report
@@ -269,6 +269,22 @@ describe("W2-CAREPRO r1 (law 1) — no parent-record PDF carries a denominator",
       expect(text).toContain(lang === "en" ? "6 milestones noticed so far" : "6 אבני דרך נצפו עד כה");
       const one = flattenDoc(buildReport("weekly", { ...CTX, checkedMilestones: 1 }, lang));
       expect(one).toContain(lang === "en" ? "1 milestone noticed so far" : "אבן דרך אחת נצפתה עד כה");
+    });
+  }
+});
+
+describe("W2-CAREPRO c2 r1 — buildFullRecord: the ONE '{name}'s record' document the #/reports lead saves", () => {
+  for (const lang of ["en", "he"] as const) {
+    it(`${lang}: every parent-record document, in catalogue order, under its own heading; numerators only`, () => {
+      const doc = buildFullRecord(CTX, lang);
+      expect(doc.title).toBe(lang === "en" ? "Noa's record" : "התיעוד של Noa".replace("Noa", "⁨Noa⁩"));
+      expect(FULL_RECORD_PARTS).toEqual(["weekly", "snapshot", "behavior", "language", "growth"]);
+      const partHeads = FULL_RECORD_PARTS.map((t) => buildReport(t, CTX, lang).title);
+      const heads = doc.sections.map((x) => x.heading);
+      let at = -1;
+      for (const h of partHeads) { const k = heads.indexOf(h, at + 1); expect(k, h).toBeGreaterThan(at); at = k; }
+      const text = flattenDoc(doc);
+      expect(text).not.toMatch(/\d+\s*(of|\/|מתוך)\s*\d+|%/);
     });
   }
 });

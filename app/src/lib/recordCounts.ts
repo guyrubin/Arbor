@@ -26,3 +26,15 @@ export function reportsLeadCounts(input: {
   };
 }
 
+
+/** W2-CAREPRO c2 r1 — the parent's OWN words on a log, wherever capture
+ *  stores them. The one capture sheet (addMoment → buildMomentLog) writes a
+ *  moment's words to `trigger` and never sets `notes`; only the Behaviors full
+ *  form writes `notes`. Three readers (Reports' kept quote, Appointments'
+ *  worth-bringing well, Consult's since-moment) filtered on `notes` alone and
+ *  never rendered for a real moment. Never `response`, never AI text. */
+export function parentWords(log: { behaviorType?: string; trigger?: string; notes?: string }): string {
+  const notes = (log.notes ?? "").trim();
+  if (notes) return notes;
+  return log.behaviorType === "Moment" ? (log.trigger ?? "").trim() : "";
+}

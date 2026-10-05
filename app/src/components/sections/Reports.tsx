@@ -5,7 +5,7 @@ import { Icon } from "../ui/Icon";
 import { PageHeader, PASTEL, PastelKey } from "../ui/kit";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { buildReport, openPrintableReport, isProfessionalReportType, ReportDoc, ReportType, type ParentReportType } from "../../lib/reportExport";
+import { buildFullRecord, buildReport, openPrintableReport, isProfessionalReportType, ReportDoc, ReportType, type ParentReportType } from "../../lib/reportExport";
 import type { ExportAudience, PresetPrintSection } from "../../consult/packet";
 import { useHeroAvatar } from "../ui/HeroAvatar";
 import { useChildCollection } from "../../hooks/useChildCollection";
@@ -14,7 +14,7 @@ import type { BehaviorLog } from "../../types";
 import { getLastExportedAt, recordExport } from "../../consult/exportHistory";
 import { fmtDay } from "../../lib/formatDate";
 import { requestOpenSettings } from "../layout/settingsBus";
-import { reportsLeadCounts } from "../../lib/recordCounts";
+import { parentWords, reportsLeadCounts } from "../../lib/recordCounts";
 export { reportsLeadCounts };
 
 /** W2-CAREPRO r2 / B-CAREPRO-NEW-2e — the device-local export-history slot the
@@ -22,13 +22,27 @@ export { reportsLeadCounts };
 export const REPORTS_WEEKLY_EXPORT_KEY = "reports-weekly";
 const WEEK_MS = 7 * 86_400_000;
 
-/** B-CAREPRO-NEW-2f — the newest moment this week that carries the parent's
- *  own words (notes), else null. Read from the record already in memory. */
-export function keptThisWeek(logs: readonly Pick<BehaviorLog, "timestamp" | "notes">[], nowMs: number): { quote: string; at: string } | null {
-  const fresh = logs
-    .filter((l) => (l.notes ?? "").trim() && nowMs - new Date(l.timestamp).getTime() <= WEEK_MS && new Date(l.timestamp).getTime() <= nowMs)
-    .sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1));
-  return fresh[0] ? { quote: (fresh[0].notes ?? "").trim(), at: fresh[0].timestamp } : null;
+/** B-CAREPRO-NEW-2f / W2-CAREPRO c2 r1 — the parent's own words, quoted:
+ *  the newest kept moment (this week's when there is one, else the newest in
+ *  the whole record, with its date), else null. Reads the words where capture
+ *  stores them (lib/recordCounts.parentWords: notes, else a Moment's trigger)
+ *  — the capture sheet never writes `notes`, so a notes-only filter never filled. */
+export function keptThisWeek(logs: readonly { timestamp: string; notes?: string; trigger?: string; behaviorType?: string }[], nowMs: number): { quote: string; at: string; thisWeek: boolean } | null {
+  const newest = logs
+    .filter((l) => parentWords(l) && new Date(l.timestamp).getTime() <= nowMs)
+    .sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1))[0];
+  if (!newest) return null;
+  return { quote: parentWords(newest), at: newest.timestamp, thisWeek: nowMs - new Date(newest.timestamp).getTime() <= WEEK_MS };
+}
+
+/** W2-CAREPRO c2 r1 — when the record starts: the earliest log or noticed
+ *  milestone, else null (an empty record). */
+export function recordStartIso(logs: readonly Pick<BehaviorLog, "timestamp">[], milestones: readonly { checked?: boolean; observationUpdatedAt?: string }[]): string | null {
+  const times = [
+    ...logs.map((l) => l.timestamp),
+    ...milestones.filter((m) => m.checked && m.observationUpdatedAt).map((m) => m.observationUpdatedAt as string),
+  ].map((x) => new Date(x).getTime()).filter((x) => Number.isFinite(x));
+  return times.length ? new Date(Math.min(...times)).toISOString() : null;
 }
 
 /** The 10 report definitions (5 parent-record documents, 5 professional
@@ -80,9 +94,10 @@ export function useReportExport() {
     orderDir: "desc",
     max: 500,
   });
-  return (type: ParentReportType) => {
+  // W2-CAREPRO c2 r1: "record" builds the ONE combined parent-record document.
+  return (type: ParentReportType | "record") => {
     const heroImageUrl = isGenerated && heroUrl ? heroUrl : undefined;
-    const doc = buildReport(type, {
+    const ctx = {
       child: childProfile,
       logs: behaviorLogs,
       plans: actionPlans,
@@ -90,7 +105,8 @@ export function useReportExport() {
       totalMilestones,
       heroImageUrl,
       langObs: langObsCol.items,
-    }, uiLang);
+    };
+    const doc = type === "record" ? buildFullRecord(ctx, uiLang) : buildReport(type, ctx, uiLang);
     openPrintableReport(doc, childProfile.name, uiLang);
   };
 }
@@ -138,8 +154,13 @@ export default function Reports() {
   const momentsText = countText(counts.moments, "elev.reports.line.moments.one", "elev.reports.line.moments.other");
   const milestonesText = countText(counts.milestones, "elev.reports.lead.milestones.one", "elev.reports.lead.milestones.other");
   const kept = keptThisWeek(behaviorLogs ?? [], nowMs);
+  // W2-CAREPRO c2 r1: before the first save the lead names the record, not
+  // its absence — counts over the whole record since it began.
+  const startIso = recordStartIso(behaviorLogs ?? [], milestones ?? []);
+  const recordMoments = (behaviorLogs ?? []).length;
+  const recordNoticed = (milestones ?? []).filter((m) => m.checked).length;
   const saveLead = () => {
-    exportReport(lead.type);
+    exportReport("record");
     const when = new Date().toISOString();
     recordExport(childProfile.id, REPORTS_WEEKLY_EXPORT_KEY, when);
     setLastSaved(when);
@@ -151,8 +172,8 @@ export default function Reports() {
     snapshot: t(noticed === 1 ? "elev.reports.line.milestonesNoticed.one" : "elev.reports.line.milestonesNoticed", { n: noticed }),
     behavior: t(allMoments === 1 ? "elev.reports.line.momentsLogged.one" : "elev.reports.line.momentsLogged.other", { n: allMoments }),
   };
-  // W2-CAREPRO r1: Weekly Insight leads; the other records are quiet rows.
-  const lead = PARENT_RECORD_REPORTS[0];
+  // W2-CAREPRO c2 r1: the lead is the ONE "{name}'s record" document (the
+  // page's H1 and contract job); every single document is a quiet row.
   // B-CAREPRO-28: the door names no audience — the parent picks the
   // profession in Consult's first step (their last choice is remembered).
   const openConsult = () => {
@@ -176,16 +197,25 @@ export default function Reports() {
         {/* The lead record: Weekly Insight, with the page's one gradient. */}
         <div className="flex flex-col gap-3 pb-4" style={{ borderBlockEnd: "1px solid var(--arbor-rule)" }}>
           <div className="min-w-0">
-            <h2 className="t-md font-extrabold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-sans)" }}>{t(lead.titleKey)}</h2>
-            {/* B-CAREPRO-NEW-2e: one counts-only line from the record. */}
-            <p data-testid="reports-lead-counts" className="t-sm mt-0.5 leading-relaxed" style={{ color: "var(--arbor-ink)" }}>
-              {lastSaved
-                ? t("elev.reports.lead.since", { date: fmtDay(lastSaved, uiLang), moments: momentsText, milestones: milestonesText })
-                : t("elev.reports.lead.first", { moments: momentsText, milestones: milestonesText })}
-            </p>
+            <h2 data-testid="reports-lead-title" className="t-md font-extrabold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-sans)" }}>{t("elev.reports.record.title", { name: first })}</h2>
+            {/* B-CAREPRO-NEW-2e: one counts-only line from the record.
+                W2-CAREPRO c2 r1: never a "nothing" sentence above counts. */}
+            {startIso ? (
+              <p data-testid="reports-lead-counts" className="t-sm mt-0.5 leading-relaxed" style={{ color: "var(--arbor-ink)" }}>
+                {lastSaved
+                  ? t("elev.reports.lead.since", { date: fmtDay(lastSaved, uiLang), moments: momentsText, milestones: milestonesText })
+                  : t("elev.reports.lead.first", {
+                      name: first,
+                      date: fmtDay(startIso, uiLang),
+                      moments: countText(recordMoments, "elev.reports.line.moments.one", "elev.reports.line.moments.other"),
+                      milestones: countText(recordNoticed, "elev.reports.lead.milestones.one", "elev.reports.lead.milestones.other"),
+                    })}
+              </p>
+            ) : null}
           </div>
-          {/* B-CAREPRO-NEW-2f: the parent's own words this week, quoted — the
-              page's one warm accent; nothing kept yet says so plainly. */}
+          {/* B-CAREPRO-NEW-2f: the parent's own words, quoted — this week's
+              newest, else the newest in the record, with its date; the page's
+              one warm accent. The empty line shows ONLY on an empty record. */}
           {kept ? (
             <figure data-testid="reports-kept" className="p-3" style={{ background: "var(--arbor-peach-soft)", borderRadius: "var(--r)" }}>
               <figcaption className="t-xs" style={{ color: "var(--arbor-muted)" }}>{t("elev.reports.kept.label")}</figcaption>
@@ -193,18 +223,18 @@ export default function Reports() {
                 “{kept.quote}” <span className="t-xs" style={{ fontFamily: "var(--font-sans)", color: "var(--arbor-muted)" }}>· <bdi>{fmtDay(kept.at, uiLang)}</bdi></span>
               </blockquote>
             </figure>
-          ) : (
+          ) : recordMoments === 0 ? (
             <p data-testid="reports-kept-empty" className="t-xs" style={{ color: "var(--arbor-muted)" }}>{t("elev.reports.kept.empty")}</p>
-          )}
+          ) : null}
           <button
             type="button"
             data-primary-move="export-report"
             onClick={saveLead}
             className="touch-target self-start inline-flex items-center justify-center gap-2 t-sm font-extrabold rounded-xl px-5 min-h-11 transition hover:brightness-105"
             style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}
-            aria-label={t("elev.reports.exportAria", { title: t(lead.titleKey) })}
+            aria-label={t("elev.reports.exportAria", { title: t("elev.reports.record.title", { name: first }) })}
           >
-            <Icon name="download" size={16} /> {t("elev.reports.lead.cta")}
+            <Icon name="download" size={16} /> {t("elev.reports.lead.cta", { name: first })}
           </button>
         </div>
         {/* B-CAREPRO-23: ONE door for a professional summary — Consult, where
@@ -228,7 +258,7 @@ export default function Reports() {
         {/* The other parent-record documents: one layer of chrome — hairline
             rows inside the one SectionCard, never cards inside a card. */}
         <ul>
-          {PARENT_RECORD_REPORTS.filter((r) => r.type !== lead.type).map((r) => (
+          {PARENT_RECORD_REPORTS.map((r) => (
             <li key={r.type} className="py-3 flex items-center gap-3" style={{ borderBlockEnd: "1px solid var(--arbor-rule)" }}>
               <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}><Icon name="description" size={18} /></span>
               <div className="min-w-0 flex-1">
