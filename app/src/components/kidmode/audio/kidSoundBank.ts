@@ -59,7 +59,8 @@ export interface KidSoundBank {
   play(id: string, opts?: PlayOptions): boolean;
   /** True once the clip is decoded. */
   has(id: string, kind?: SoundKind): boolean;
-  /** The decoded clip's length in ms (0 when absent). */
+  /** The clip's length in ms, as manifest.json declares it (else the decoded
+   *  length; 0 when absent). */
   durationMs(id: string, kind?: SoundKind): number;
   /** Resume the shared context inside a user gesture. */
   unlock(): void;
@@ -119,13 +120,18 @@ export interface SoundBankOptions {
   now?: () => number;
 }
 
-interface Playing { src: AudioBufferSourceNode; endsAt: number }
+interface Playing { src: AudioBufferSourceNode; gain: GainNode; endsAt: number }
+
+/** A cut voice fades out over ~40 ms (no click), then stops. */
+const CUT_FADE_S = 0.04;
 
 export function createKidSoundBank(o: SoundBankOptions): KidSoundBank {
   const fetcher: Fetcher | null = o.fetcher ?? (typeof fetch === "function" ? (u) => fetch(u) : null);
   const random = o.random ?? Math.random;
   const now = o.now ?? (() => (typeof performance !== "undefined" ? performance.now() : Date.now()));
   const buffers = new Map<string, AudioBuffer>();
+  /** Durations declared by manifest.json, ms. */
+  const declared = new Map<string, number>();
   const lastAt = new Map<string, number>();
   let voice: Playing | null = null;
   let queued: { id: string; opts: PlayOptions } | null = null;
@@ -139,7 +145,14 @@ export function createKidSoundBank(o: SoundBankOptions): KidSoundBank {
     const v = voice;
     voice = null;
     if (v) {
-      try { v.src.onended = null; v.src.stop(); } catch { /* already stopped */ }
+      try { v.src.onended = null; } catch { /* ignore */ }
+      try {
+        const t = v.src.context.currentTime;
+        v.gain.gain.setTargetAtTime(0, t, CUT_FADE_S / 3);
+        v.src.stop(t + CUT_FADE_S);
+      } catch {
+        try { v.src.stop(); } catch { /* already stopped */ }
+      }
     }
   };
   const unhush = onKidHush(stopVoice);
@@ -159,7 +172,7 @@ export function createKidSoundBank(o: SoundBankOptions): KidSoundBank {
       g.connect(ac.destination);
       if (ac.state === "suspended") void ac.resume?.();
       src.start();
-      return { src, endsAt: ac.currentTime + buffer.duration / rate };
+      return { src, gain: g, endsAt: ac.currentTime + buffer.duration / rate };
     } catch {
       return null;
     }
@@ -228,6 +241,8 @@ export function createKidSoundBank(o: SoundBankOptions): KidSoundBank {
       const ac = kidAudioContext();
       if (!ac) return true;
       const m = manifest;
+      for (const [id, ms] of Object.entries(m[o.lang])) declared.set(key("voice", id), ms);
+      for (const [id, ms] of Object.entries(m.foley)) declared.set(key("foley", id), ms);
       const jobs: Promise<void>[] = [];
       const want = (kind: SoundKind, folder: SoundLang | "foley", ids: string[]) => {
         for (const id of ids) {
@@ -257,7 +272,10 @@ export function createKidSoundBank(o: SoundBankOptions): KidSoundBank {
     load,
     play,
     has: (id, kind = "foley") => buffers.has(key(kind, id)),
-    durationMs: (id, kind = "foley") => Math.round((buffers.get(key(kind, id))?.duration ?? 0) * 1000),
+    durationMs: (id, kind = "foley") => {
+      if (!buffers.has(key(kind, id))) return 0;
+      return declared.get(key(kind, id)) ?? Math.round((buffers.get(key(kind, id))?.duration ?? 0) * 1000);
+    },
     unlock: () => {
       try {
         const ac = kidAudioContext();

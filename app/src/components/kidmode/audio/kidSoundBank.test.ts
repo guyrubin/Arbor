@@ -96,6 +96,10 @@ describe("manifest + files", () => {
     expect(bank.has("freeze", "voice")).toBe(true);
     expect(bank.has("n1", "voice")).toBe(true);
     expect(bank.has("turn")).toBe(true);
+    // durations come from manifest.json (not hard-coded, not the decoder)
+    expect(bank.durationMs("freeze", "voice")).toBe(700);
+    expect(bank.durationMs("turn")).toBe(300);
+    expect(bank.durationMs("missing")).toBe(0);
     expect(clipUrl("/a/", "foley", "x", "wav")).toBe("/a/foley/x.wav");
   });
 

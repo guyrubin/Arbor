@@ -67,7 +67,9 @@ export const TIMING = {
   /** The demo: the cat watches the courtyard, then turns its back to it. */
   introLookMs: 1400,
   readyMs: 900,
-  beatMs: { 1: 900, 2: 800, 3: 720 } as Readonly<Record<Level, number>>,
+  /** One count word per beat (B-GAME-08a): a rendered count word is 450-800
+   *  ms, so a beat is never under 900 ms (the next word cuts the last). */
+  beatMs: { 1: 1100, 2: 1000, 3: 900 } as Readonly<Record<Level, number>>,
   tellMs: { 1: 900, 2: 650, 3: 550 } as Readonly<Record<Level, number>>,
   tellJitterMs: 60,
   /** The tell is never shorter than this: a stopping game, not a reflex test. */

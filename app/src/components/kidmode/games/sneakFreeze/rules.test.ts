@@ -316,8 +316,9 @@ describe("Sneak & Freeze rules — response, idle, no score", () => {
 });
 
 describe("Sneak & Freeze rules — sound beats (B-GAME-08a)", () => {
-  it("every chant beat leaves room for one count word (>= 650 ms at every level)", () => {
-    for (const level of [1, 2, 3] as const) expect(TIMING.beatMs[level]).toBeGreaterThanOrEqual(650);
+  it("every chant beat leaves room for one count word (>= 900 ms at every level; L1 the slowest)", () => {
+    for (const level of [1, 2, 3] as const) expect(TIMING.beatMs[level]).toBeGreaterThanOrEqual(900);
+    expect(TIMING.beatMs[1]).toBeGreaterThanOrEqual(1050);
   });
 
   it("beat k of a chant is emitted with beatIndex k-1 (beat k plays n k), at most 5", () => {
