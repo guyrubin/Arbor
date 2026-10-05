@@ -81,7 +81,8 @@ lines.push(`- The reader plays a file only if it exists; a missing file = silenc
 lines.push(`- Repair pages are split as the reader plays them: before-text on page show → each item's line on its tap (in the fixed order where the book sets one) → after-text when all are done.`);
 lines.push(`- Echo pages (rejoin, ending) have one file per path: page text + that path's echo (+ the closing frame line on the last page).`);
 lines.push(`- Not played by the reader (safe to delete): \`p7b-item.<id>.mp3\` (duplicates of \`p7b-<id>.mp3\`).`);
-lines.push(`- Pages with an after-narration overlay (p9's dust cloud on "BOOM") start the reveal 1.2 s before the file ends (on \`ended\` if the duration is unknown; 5 s after the page shows when silent); report the BOOM timestamp per file and it can be set as \`revealAt\` instead. p9's third picture state (v2, "the soldiers rise") is picture-only: it comes ~2 s after the dust (3 s when silent) and needs no file.`, ``);
+lines.push(`- **Picture-state cues (p9):** the reader shows the stone in flight at "The stone flew" / "האבן עפה" and the dust at "BOOM" / "בּוּם". Per voice, put a sidecar next to the file: \`p9.cues.json\` = \`{"flight": <ms>, "boom": <ms>}\` (the onset of each phrase, ms from the file's start; same folder as \`p9.mp3\`). Without it the reader uses 0.80 and 0.93 of the file's duration; the quiet picture comes when the file ends. No extra audio file.`);
+lines.push(`- **Narration sets:** a set is a folder (\`voiceKey\`); the DEV review URL \`&voice=<setId>\` reads another set (e.g. \`dylan-v2-expressive\`) without replacing files. A set may deliver \`.wav\` instead of \`.mp3\` (the reader tries .mp3, then .wav; cue sidecars keep the \`.cues.json\` name).`, ``);
 for (const v of VOICES) {
   const r = rows(v);
   lines.push(`## ${v.label} — folder \`${v.lang === "he" ? `he-${v.gender}` : "en"}/\` (${r.length} files)`, ``);
