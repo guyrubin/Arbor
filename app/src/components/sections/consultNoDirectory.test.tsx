@@ -20,6 +20,8 @@ vi.mock("../../services/professionals", () => ({
 }));
 
 vi.mock("../../context/ArborContext", () => ({
+  // the Kid Mode entry seam reads the optional context; outside a provider it is null
+  useArborOptional: () => null,
   useArbor: () => ({
     childProfile: { id: "c1", name: "Dylan", age: 5, languages: ["English"], schoolContext: "Gan", challenges: ["transitions"], strengths: ["curious"], interests: [] },
     behaviorLogs: [{ id: "l1", behaviorType: "Transition Refusal", intensity: 3, timestamp: new Date().toISOString() }],

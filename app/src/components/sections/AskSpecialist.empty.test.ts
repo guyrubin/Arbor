@@ -24,7 +24,7 @@ const record = {
   consumeConsultPrefill: vi.fn(),
 };
 
-vi.mock("../../context/ArborContext", () => ({ useArbor: () => record }));
+vi.mock("../../context/ArborContext", () => ({ useArbor: () => record, useArborOptional: () => null }));
 vi.mock("../../context/ToastContext", () => ({ useToast: () => ({ toast: vi.fn() }) }));
 vi.mock("../../context/LanguageContext", () => ({ useLanguage: () => ({ t: (k: string) => k, uiLang: "en" }) }));
 vi.mock("./Reports", () => ({ REPORTS: [], useReportExport: () => vi.fn(), useConsultPdf: () => vi.fn() }));

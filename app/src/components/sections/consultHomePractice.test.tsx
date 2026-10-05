@@ -13,6 +13,8 @@ import { translate } from "../../lib/i18n";
 const harness = vi.hoisted(() => ({ locale: "en" as "en" | "he" }));
 
 vi.mock("../../context/ArborContext", () => ({
+  // the Kid Mode entry seam reads the optional context; outside a provider it is null
+  useArborOptional: () => null,
   useArbor: () => ({
     childProfile: { id: "c1", name: "Dylan", age: 5, languages: ["English"], schoolContext: "Gan", challenges: [], strengths: ["curious"], interests: [] },
     behaviorLogs: [{ id: "l1", behaviorType: "Transition Refusal", intensity: 3, timestamp: new Date(Date.now() - 86_400_000).toISOString() }],
