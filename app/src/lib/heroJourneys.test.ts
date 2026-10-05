@@ -142,6 +142,7 @@ describe("metric helpers", () => {
 const READ_ALOUD_IDS = [
   "the-lion-who-was-afraid", "noahs-ark", "the-garden-of-forgotten-seeds",
   "david-and-goliath", "the-dragon-of-responsibility", "jonah-and-the-great-fish",
+  "king-solomons-choice", "moses-and-pharaoh",
 ];
 
 describe("B-KID-132: the read-aloud books name the child on every page", () => {

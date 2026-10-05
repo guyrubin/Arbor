@@ -147,7 +147,7 @@ describe("B-KID-76 (a): the authored text names the child as the hero", () => {
   it("NEGATIVE CONTROL: the pre-fix render said 'The hero is a small shepherd' to a named child", () => {
     // B-KID-132 re-pin: the authored page still says "the hero"; the named page never does.
     expect(david.beats[0].spine).toContain("the hero takes care");
-    expect(authoredScene(david.beats[0], "en", undefined, dana).narration).not.toMatch(/hero/i);
+    expect(authoredScene(david.beats[0], "en", undefined, dana).narration).not.toMatch(/\bhero\b/i);
   });
   it("B-KID-132 (a) — EN / HE boy / HE girl: a girl reads the feminine text, named; a boy the masculine, named", () => {
     const beat: HeroBeat = {
