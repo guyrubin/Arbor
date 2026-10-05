@@ -75,6 +75,12 @@ export const en: Record<string, string> = {
   // story — the shelf is what you browse AFTER tonight is settled.
   "elev.stories.tonight.eyebrow": "Tonight's story",
   "elev.stories.tonight.cta": "Read it together",
+  // W2-SHELLPLAY critic r1: the H1 names tonight (not the catalogue); the
+  // cover's recessed well — what the story builds, the one thing to ask after.
+  "elev.stories.tonight.h1": "Tonight's story",
+  "elev.stories.tonight.h1.starring": "Tonight, starring {name}",
+  "elev.stories.tonight.builds": "Builds",
+  "elev.stories.tonight.askAfter": "Ask after",
   "elev.stories.sub": "One story for tonight, starring {name}. The whole shelf is below when you want it.",
   "elev.stories.counts.stories": "{n} stories read together",
   "elev.stories.catalogue.title": "Choose a different story",
@@ -209,6 +215,10 @@ export const he: Record<string, string> = {
 
   "elev.stories.tonight.eyebrow": "הסיפור של הערב",
   "elev.stories.tonight.cta": "קוראים יחד",
+  "elev.stories.tonight.h1": "הסיפור של הערב",
+  "elev.stories.tonight.h1.starring": "הערב, בכיכוב {name}",
+  "elev.stories.tonight.builds": "בונה",
+  "elev.stories.tonight.askAfter": "לשאול אחרי",
   "elev.stories.sub": "סיפור אחד לערב, בכיכוב {name}. כל המדף מחכה מתחת כשתרצו.",
   "elev.stories.counts.stories": "{n} סיפורים שקראתם יחד",
   "elev.stories.catalogue.title": "בחירת סיפור אחר",

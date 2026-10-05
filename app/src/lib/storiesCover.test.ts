@@ -194,15 +194,57 @@ describe("B-PLAY-11 — Tonight cover: no virtue tallies, insight first, catalog
     expect(parent).toContain('t("elev.stories.counts.stories", { n: runs.length })');
   });
 
-  it("the grown-up insight sits under the cover title and before Play, in uiLang", () => {
+  it("the 'Builds · Ask after' well sits under the cover title and before Play, in uiLang (the essay moved to the reader)", () => {
     const cover = parent.slice(parent.indexOf('data-module="stories-tonight"'), parent.indexOf("</section>", parent.indexOf('data-module="stories-tonight"')));
-    const insight = cover.indexOf('data-testid="stories-tonight-insight"');
-    expect(insight).toBeGreaterThan(cover.indexOf("tonightStory.titleHe"));
-    expect(insight).toBeLessThan(cover.indexOf('t("elev.stories.tonight.cta")'));
-    expect(cover).toContain('uiLang === "he" ? tonightStory.parentInsight.he : tonightStory.parentInsight.en');
+    const well = cover.indexOf('data-testid="stories-tonight-insight"');
+    expect(well).toBeGreaterThan(cover.indexOf("tonightStory.titleHe"));
+    expect(well).toBeLessThan(cover.indexOf('t("elev.stories.tonight.cta")'));
+    expect(cover).toContain('t("elev.stories.tonight.builds")');
+    expect(cover).toContain('t("elev.stories.tonight.askAfter")');
+    expect(cover).not.toContain("parentInsight");
+    // the rows read the UI language and never fall back to English in Hebrew
+    expect(HERO).toContain('uiLang === "he" ? tonightStory.learningObjectiveHe : tonightStory.learningObjective');
+    expect(HERO).toContain('uiLang === "he" ? tonightStory.parentReflection.questionsHe?.[0] : tonightStory.parentReflection.questions[0]');
     // The reader's insight block reads uiLang too (it is chrome, not story text).
     expect(HERO).toContain('uiLang === "he" ? activeStory.parentInsight.he : activeStory.parentInsight.en');
     expect(HERO).not.toContain('aiLang === "he" ? activeStory.parentInsight.he');
+  });
+
+  it("W2-SHELLPLAY r1: the move is stamped on the Play control, not a 586 px card; Play fits the phone fold", () => {
+    const cover = parent.slice(parent.indexOf('data-module="stories-tonight"'), parent.indexOf("</section>", parent.indexOf('data-module="stories-tonight"')));
+    const stamp = cover.indexOf('data-primary-move="read-tonights-story"');
+    const btnOpen = cover.lastIndexOf("<button", stamp);
+    // the stamped element is the button whose label is the CTA
+    expect(cover.slice(btnOpen, cover.indexOf("</button>", stamp))).toContain('t("elev.stories.tonight.cta")');
+    expect(cover.slice(btnOpen, cover.indexOf("</button>", stamp))).not.toContain("tonightStory.titleHe");
+    expect(cover).toContain("h-[112px] sm:h-[168px]");
+    expect(cover).toContain("lg:grid-cols-[2fr_3fr]");
+    expect(cover).toContain("lg:max-w-[60ch]");
+    // the CTA is the one gradient, with the on-accent ink
+    expect(cover).toContain('style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}');
+    // no cover eyebrow, no subtitle, the H1 names tonight
+    expect(cover).not.toContain('t("elev.stories.tonight.eyebrow")');
+    expect(parent).not.toContain('subtitle={t("elev.stories.sub"');
+    expect(parent).toMatch(/childProfile\.avatar \? t\("elev\.stories\.tonight\.h1\.starring", \{ name \}\) : t\("elev\.stories\.tonight\.h1"\)/);
+  });
+
+  it("W2-SHELLPLAY r1 (law 8): a library tile resolves its title in the UI language", async () => {
+    const { runTitle } = await import("./heroJourneys");
+    const enRun = { storyId: "david-and-goliath", title: "The Small Shepherd and the Giant", language: "en" as const };
+    expect(runTitle(enRun, "en")).toBe("The Small Shepherd and the Giant");
+    const heTitle = runTitle(enRun, "he");
+    expect(heTitle).not.toMatch(/[A-Za-z]/);
+    expect(heTitle).toBe("דוד וגוליית");
+    // no spec → the stored title is all there is
+    expect(runTitle({ storyId: "nope", title: "Custom", language: "en" }, "he")).toBe("Custom");
+    expect(HERO).not.toMatch(/>\{run\.title\}</);
+    expect(HERO).not.toContain("aria-label={run.title}");
+    expect((HERO.match(/runTitle\(run, uiLang === "he" \? "he" : "en"\)/g) || []).length).toBe(4);
+  });
+
+  it("W2-SHELLPLAY r1 (law 4): the parent branch carries no raw hex", () => {
+    const door = parent.slice(0, parent.indexOf("const coverPage = (immersiveMode: boolean)"));
+    expect(door).not.toMatch(/#[0-9a-fA-F]{3,6}/);
   });
 
   it("pack filter + catalogue sit in ONE collapsed disclosure, demoted (R25)", () => {

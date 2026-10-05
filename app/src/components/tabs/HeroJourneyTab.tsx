@@ -16,6 +16,7 @@ import {
   PACKS,
   applyChoice,
   getStorySpec,
+  runTitle,
   storiesInPack,
 } from "../../lib/heroJourneys";
 import type {
@@ -57,6 +58,16 @@ import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
 
 /** Comic-world skin per pack — bg + ink token + bilingual label (matches the
  *  Hero Arcade design layer so the Academy reads as the same comic universe). */
+/** W2-SHELLPLAY critic r1: the parent cover's art band — the pack's -soft
+ *  tint (the saturated PACK_WORLD.bg is the kid register's). */
+const PACK_SOFT: Record<HeroPackId, string> = {
+  courage: "var(--arbor-peach-soft)",
+  responsibility: "var(--arbor-yellow-soft)",
+  growth: "var(--arbor-clay-soft)",
+  wisdom: "var(--arbor-sky-soft)",
+  truth: "var(--arbor-lav-soft)",
+};
+
 const PACK_WORLD: Record<HeroPackId, { bg: string; ink: string; label: string; labelHe: string }> = {
   courage: { bg: "var(--arbor-peach)", ink: "var(--arbor-peach-ink)", label: "Courage", labelHe: "אומץ" },
   responsibility: { bg: "var(--arbor-yellow)", ink: "var(--arbor-yellow-ink)", label: "Responsibility", labelHe: "אחריות" },
@@ -619,7 +630,12 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
       tonightReason?.kind === "aim" ? t(TONIGHT_AIM_REASON_KEY[tonightReason.metric])
       : tonightReason?.kind === "unread" ? t("elev.stories.tonight.reason.unread", { name })
       : "";
-    const tonightArt = (tonightStory && STORY_ART[tonightStory.id]) ?? { emoji: "⭐", sfx: "POW!", sfxHe: "פאו!" };
+    // W2-SHELLPLAY critic r1: the cover's "Builds · Ask after" well, in the UI
+    // language only — a Hebrew row with no Hebrew text is not drawn.
+    const tonightBuilds = tonightStory ? (uiLang === "he" ? tonightStory.learningObjectiveHe : tonightStory.learningObjective) ?? "" : "";
+    const tonightAskAfter = tonightStory
+      ? (uiLang === "he" ? tonightStory.parentReflection.questionsHe?.[0] : tonightStory.parentReflection.questions[0]) ?? ""
+      : "";
     const hiddenAgeMin = ageHiddenStories.length
       ? Math.min(...ageHiddenStories.map((s) => s.ageRange[0]))
       : null;
@@ -898,12 +914,12 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                 const w = spec ? PACK_WORLD[spec.pack] : PACK_WORLD.courage;
                 const art = STORY_ART[run.storyId] ?? { emoji: "⭐", sfx: "POW!", sfxHe: "פאו!" };
                 return (
-                  <button key={run.id} onClick={() => replay(run)} className="world-tile text-start" aria-label={run.title}>
+                  <button key={run.id} onClick={() => replay(run)} className="world-tile text-start" aria-label={runTitle(run, uiLang === "he" ? "he" : "en")}>
                     <div className="comic-halftone grid place-items-center" style={{ height: 72, background: w.bg, borderBottom: "var(--comic-line)" }}>
                       <span style={{ fontSize: 34 }} aria-hidden="true">{art.emoji}</span>
                     </div>
                     <div className="p-2.5">
-                      <span className="text-[12.5px] font-black block leading-tight line-clamp-2" style={{ color: "var(--arbor-ink)" }} dir="auto">{run.title}</span>
+                      <span className="text-[12.5px] font-black block leading-tight line-clamp-2" style={{ color: "var(--arbor-ink)" }} dir="auto">{runTitle(run, uiLang === "he" ? "he" : "en")}</span>
                       <span className="text-[10.5px] font-bold" style={{ color: "var(--arbor-muted)" }}>
                         {run.completedAt ? fmtDay(run.completedAt, uiLang) : he ? "בתהליך" : "In progress"}
                       </span>
@@ -917,9 +933,12 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
       </motion.div>
     ) : (
       <div className="space-y-6 max-w-[1100px]">
+        {/* W2-SHELLPLAY critic r1: the H1 names tonight, not the catalogue; no
+            eyebrow, no subtitle (four labels stood before the story). "Starring"
+            only once the child has a hero — the cover cannot keep that claim
+            with the generic mascot. */}
         <PageHeader
-          title={t("nav.tab.stories")}
-          subtitle={t("elev.stories.sub", { name })}
+          title={childProfile.avatar ? t("elev.stories.tonight.h1.starring", { name }) : t("elev.stories.tonight.h1")}
         />
         {/* §3f row 3 — ONE dominant cover, above the fold. The parent door used
             to open on a comic hero banner, a mascot bubble in the kid's voice,
@@ -947,61 +966,73 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
               </button>
             ))}
           </div>
+          {/* W2-SHELLPLAY critic r1: the cover is a card, not one 586 px
+              button — the declared move is stamped on the ONE control that
+              plays it. Phone: a 112 px art band (avatar only), title, the
+              family's reason, one recessed "Builds · Ask after" well and Play,
+              all inside 812 px. ≥1024: two columns, art at inline-start, the
+              text column held to 60ch. The archetype essay lives in the reader
+              (reflection beat), not on the cover. */}
           {tonightMode === "today" ? <TonightFromToday /> : (
-          <button
-            type="button"
-            data-primary-move="read-tonights-story"
-            onClick={() => { if (!loadingId && tonightStory) void startJourney(tonightStory); }}
-            disabled={!tonightStory || !!loadingId}
-            aria-label={tonightStory ? (he ? tonightStory.titleHe : tonightStory.title) : undefined}
-            className={`${cardCls} w-full text-start overflow-hidden p-0 transition motion-safe:hover:-translate-y-0.5 disabled:opacity-60`}
-          >
-            <span
-              className="grid place-items-center w-full"
-              style={{ height: 168, background: tonightStory ? PACK_WORLD[tonightStory.pack].bg : "var(--arbor-paper-deep)" }}
+          <div data-testid="stories-cover" className={`${cardCls} w-full overflow-hidden p-0 lg:grid lg:grid-cols-[2fr_3fr]`}>
+            <div
+              aria-hidden="true"
+              className="grid place-items-center w-full h-[112px] sm:h-[168px] lg:h-full lg:min-h-[220px]"
+              style={{ background: tonightStory ? PACK_SOFT[tonightStory.pack] : "var(--arbor-paper-deep)" }}
             >
-              <span className="flex items-center gap-3">
-                <HeroAvatar size={92} ring animate={false} />
-                <span style={{ fontSize: 56 }} aria-hidden="true">{tonightArt.emoji}</span>
-              </span>
-            </span>
-            <span className="block p-5">
-              <span className="block text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--arbor-muted)" }}>
-                {t("elev.stories.tonight.eyebrow")}
-              </span>
-              <span className="block text-[1.35rem] font-extrabold leading-tight mt-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
+              <HeroAvatar size={84} ring animate={false} />
+            </div>
+            <div className="p-4 sm:p-5 lg:max-w-[60ch]">
+              <h2 className="text-[1.35rem] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
                 {tonightStory ? (he ? tonightStory.titleHe : tonightStory.title) : t("elev.stories.catalogue.title")}
-              </span>
+              </h2>
               {/* B-PLAY-16: why THIS story tonight — from the family's own record. */}
               {tonightReasonLine && (
-                <span data-testid="stories-tonight-reason" className="block mt-1.5 text-[12.5px] font-bold" style={{ color: "var(--arbor-green-ink)" }} dir="auto">
+                <p data-testid="stories-tonight-reason" className="mt-1.5 text-[12.5px] font-bold" style={{ color: "var(--arbor-green-ink)" }} dir="auto">
                   {tonightReasonLine}
-                </span>
+                </p>
               )}
-              {/* B-PLAY-11: why tonight's story — the grown-up insight, under the
-                  title and before Play, in the parent's UI language. */}
-              {tonightStory?.parentInsight && (
-                <span data-testid="stories-tonight-insight" className="block mt-2 text-[13px] leading-relaxed line-clamp-3" style={{ color: "var(--arbor-ink-soft)" }} dir="auto">
-                  {uiLang === "he" ? tonightStory.parentInsight.he : tonightStory.parentInsight.en}
-                </span>
+              {/* B-PLAY-11 + W2-SHELLPLAY critic r1: what this story builds and
+                  the one thing to ask after — read BEFORE reading, in the UI
+                  language. A row with no text in that language is not drawn
+                  (never English in the Hebrew UI). */}
+              {(tonightBuilds || tonightAskAfter) && (
+                <dl data-testid="stories-tonight-insight" className="mt-3 rounded-[14px] p-4 space-y-1.5 text-[13px]" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+                  {tonightBuilds && (
+                    <div className="flex gap-2">
+                      <dt className="font-extrabold flex-shrink-0" style={{ color: "var(--arbor-ink)" }}>{t("elev.stories.tonight.builds")} ·</dt>
+                      <dd className="m-0" style={{ color: "var(--arbor-ink-soft)" }} dir="auto">{tonightBuilds}</dd>
+                    </div>
+                  )}
+                  {tonightAskAfter && (
+                    <div className="flex gap-2">
+                      <dt className="font-extrabold flex-shrink-0" style={{ color: "var(--arbor-ink)" }}>{t("elev.stories.tonight.askAfter")} ·</dt>
+                      <dd className="m-0 text-[15px] leading-snug" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)" }} dir="auto">{tonightAskAfter}</dd>
+                    </div>
+                  )}
+                </dl>
               )}
-              <span className="flex flex-wrap items-center gap-2 mt-3">
+              <div className="flex flex-wrap items-center gap-2 mt-3">
                 {tonightStory && (
                   <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[11.5px] font-bold" style={{ background: "var(--arbor-paper-deep)", color: PACK_WORLD[tonightStory.pack].ink }}>
                     {he ? PACK_WORLD[tonightStory.pack].labelHe : PACK_WORLD[tonightStory.pack].label}
                   </span>
                 )}
-                <span
-                  className="inline-flex items-center gap-1.5 rounded-xl px-4 min-h-[44px] text-[13px] font-extrabold ms-auto"
-                  style={{ background: "var(--gradient-cta, var(--arbor-clay))", color: "var(--arbor-subtab-on-ink)" }}
+                <button
+                  type="button"
+                  data-primary-move="read-tonights-story"
+                  onClick={() => { if (!loadingId && tonightStory) void startJourney(tonightStory); }}
+                  disabled={!tonightStory || !!loadingId}
+                  className="inline-flex items-center gap-1.5 rounded-xl px-4 min-h-[44px] text-[13px] font-extrabold ms-auto transition active:scale-[0.98] disabled:opacity-60 focus:outline-none focus-visible:ring-2"
+                  style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}
                 >
                   {tonightStory && loadingId === tonightStory.id
                     ? <><Icon name="autorenew" size={16} className="motion-safe:animate-spin" /> {statesText("elev.states.hero.opening", he)}</>
                     : <><Icon name="play_arrow" size={16} fill={1} /> {t("elev.stories.tonight.cta")}</>}
-                </span>
-              </span>
-            </span>
-          </button>
+                </button>
+              </div>
+            </div>
+          </div>
           )}
         </section>
 
@@ -1070,7 +1101,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                 className="px-3.5 py-2.5 min-h-[44px] rounded-full text-[13px] font-black transition"
                 style={
                   active
-                    ? { background: w ? w.bg : "var(--arbor-clay)", color: "#fff", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }
+                    ? { background: w ? PACK_SOFT[p.id as HeroPackId] : "var(--arbor-clay-soft)", color: w ? w.ink : "var(--arbor-clay-deep)", border: "1px solid var(--arbor-rule-strong)", boxShadow: "var(--shadow-sm)" }
                     : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink-soft)", border: "1px solid var(--arbor-rule)" }
                 }
               >
@@ -1104,7 +1135,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                   data-testid="agefilter-toggle-hero-journeys"
                   className="inline-flex items-center gap-1 rounded-full px-3 py-2.5 min-h-[44px] text-[11.5px] font-black"
                   style={{
-                    background: showAllAges ? "var(--arbor-yellow)" : "#fff",
+                    background: showAllAges ? "var(--arbor-yellow)" : "var(--arbor-paper-elevated)",
                     border: "1px solid var(--arbor-rule-strong)",
                     color: "var(--arbor-ink)",
                   }}
@@ -1187,7 +1218,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                     </WorldScene>
                     <span
                       className="absolute top-2 z-[3] text-[10.5px] font-black rounded-full px-2 py-0.5"
-                      style={{ insetInlineEnd: 8, background: "#fff", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
+                      style={{ insetInlineEnd: 8, background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
                     >
                       {he ? "גיל" : "Age"} {story.ageRange[0]}–{story.ageRange[1]}
                     </span>
@@ -1252,12 +1283,12 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
                 const w = spec ? PACK_WORLD[spec.pack] : PACK_WORLD.courage;
                 const art = STORY_ART[run.storyId] ?? { emoji: "⭐", sfx: "POW!", sfxHe: "פאו!" };
                 return (
-                  <button key={run.id} onClick={() => replay(run)} className="world-tile text-start" aria-label={run.title}>
+                  <button key={run.id} onClick={() => replay(run)} className="world-tile text-start" aria-label={runTitle(run, uiLang === "he" ? "he" : "en")}>
                     <div className="grid place-items-center" style={{ height: 72, background: w.bg, borderBottom: "1px solid var(--arbor-rule)" }}>
                       <span style={{ fontSize: 34 }} aria-hidden="true">{art.emoji}</span>
                     </div>
                     <div className="p-2.5">
-                      <span className="text-[12.5px] font-black block leading-tight line-clamp-2" style={{ color: "var(--arbor-ink)" }} dir="auto">{run.title}</span>
+                      <span className="text-[12.5px] font-black block leading-tight line-clamp-2" style={{ color: "var(--arbor-ink)" }} dir="auto">{runTitle(run, uiLang === "he" ? "he" : "en")}</span>
                       <span className="text-[10.5px] font-bold" style={{ color: "var(--arbor-muted)" }}>
                         {run.completedAt ? fmtDay(run.completedAt, uiLang) : he ? "בתהליך" : "In progress"}
                       </span>
