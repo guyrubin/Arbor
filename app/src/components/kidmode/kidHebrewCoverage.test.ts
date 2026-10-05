@@ -23,6 +23,9 @@ const ADDED_KEYS = [
 const DOOR_KEY: Record<string, string> = {
   speech: "speech", feelings: "feelings", memory: "memory", beat: "rhythm",
   pose: "movement", pattern: "logic", adventures: "adventures", mimic: "mimic",
+  // Kids Mode pack step 5: Spell Forge had two Hebrew names (header "נפחיית
+  // המילים" vs door "נפחיית האותיות"); the door now uses the kid register's.
+  reading: "reading",
 };
 
 describe("Kids Mode HE coverage", () => {

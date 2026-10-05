@@ -266,7 +266,9 @@ export const he: Record<string, string> = {
   "elev.practice.world.kid.mimic": "אולפן החיקוי",
   "elev.practice.world.kid.adventures": "מסע הסיפור",
   "elev.practice.world.kid.memory": "כספת הזיכרון",
-  "elev.practice.world.kid.reading": "נפחיית האותיות",
+  // Kids Mode pack (step 5): ONE Hebrew name for Spell Forge — the kid register's
+  // (the game header elev.kids.reading.title); the door used "נפחיית האותיות".
+  "elev.practice.world.kid.reading": "נפחיית המילים",
   "elev.practice.world.kid.rhythm": "שומר הקצב",
   "elev.practice.world.kid.movement": "תנוחת הגיבור",
   "elev.practice.world.kid.logic": "כוח התבניות",
