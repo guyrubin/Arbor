@@ -63,9 +63,32 @@ export interface LayoutOpts {
   /** The slot to place (default: page.hero). */
   slot?: Slot | null;
   content?: LayoutContent;
-  /** Sprite box width / height. The sprite is drawn contain + bottom-centre in
-   *  it, so a square box holds any pose at full height (conservative). */
+  /** Sprite box width / height when the sheet gives no anchor. The sprite is
+   *  drawn contain + bottom-centre in it, so a square box holds any pose at
+   *  full height (conservative). */
   heroBoxAspect?: number;
+  /** The sheet's measured sprite geometry per pose (the art agent's anchor:
+   *  the centre of the lowest opaque band). Known = the box IS the sprite. */
+  anchorOf?: AnchorOf;
+}
+
+/** A sprite's geometry: aspect = width / height of the (tight) image; footX =
+ *  the feet-band centre and footW = its width, as fractions of the width. */
+export interface SpriteAnchor {
+  aspect: number;
+  footX: number;
+  footW: number;
+}
+export type AnchorOf = (pose: string) => SpriteAnchor | undefined;
+
+export interface ShadowEllipse {
+  cx: number;
+  cy: number;
+  rx: number;
+  ry: number;
+  opacity: number;
+  /** Gaussian blur radius, px. */
+  blur: number;
 }
 
 export interface HeroRect extends Rect {
@@ -104,7 +127,9 @@ export interface BookPageLayout {
   hero: HeroRect | null;
   /** The hero's body (narrower than the sprite box) — what a panel avoids. */
   heroBody: Rect | null;
-  shadow: { cx: number; cy: number; rx: number; ry: number; opacity: number } | null;
+  /** Contact shadow (scripts' compositor): a dark core hugging the soles + a
+   *  soft cast away from the light. */
+  shadow: (ShadowEllipse & { cast: ShadowEllipse }) | null;
   /** The physical side of a facing text page that touches the spine. */
   spine: "left" | "right";
   /** False when the words could not be fitted at the floor size (they then
@@ -144,32 +169,61 @@ function titleHeight(chars: number, width: number, titlePx: number): number {
   return Math.ceil(chars / perLine) * titlePx * 1.12 + titlePx * 0.5;
 }
 
-function heroRect(slot: Slot | null | undefined, plate: Rect, art: Rect, aspect: number): HeroRect | null {
+function anchorFor(c: Pick<Ctx, "anchorOf" | "boxAspect">, slot: Slot | null | undefined): SpriteAnchor & { known: boolean } {
+  const a = slot ? c.anchorOf?.(slot.pose) : undefined;
+  return a ? { ...a, known: true } : { aspect: c.boxAspect, footX: 0.5, footW: 0.45, known: false };
+}
+
+function heroRect(slot: Slot | null | undefined, plate: Rect, art: Rect, a: SpriteAnchor): HeroRect | null {
   if (!slot) return null;
   const h = slot.scale * plate.h;
-  const w = h * aspect;
-  const x = plate.x + slot.x * plate.w - w / 2;
+  const w = h * a.aspect;
+  const x = plate.x + slot.x * plate.w - a.footX * w;
   const y = plate.y + slot.y * plate.h - h;
   const eps = 0.5;
   const inWindow = x >= art.x - eps && x + w <= art.x + art.w + eps && y >= art.y - eps && y + h <= art.y + art.h + eps;
   return { x, y, w, h, flip: slot.facing === "left", inWindow };
 }
 
-function bodyRect(slot: Slot | null | undefined, plate: Rect): Rect | null {
+/** What a text panel must not cover: the sprite itself when its geometry is
+ *  measured, else a body-width estimate. */
+function bodyRect(slot: Slot | null | undefined, plate: Rect, a: SpriteAnchor & { known: boolean }): Rect | null {
   if (!slot) return null;
   const h = slot.scale * plate.h;
+  if (a.known) {
+    const w = h * a.aspect;
+    return { x: plate.x + slot.x * plate.w - a.footX * w, y: plate.y + slot.y * plate.h - h, w, h };
+  }
   const w = h * BODY_ASPECT;
   return { x: plate.x + slot.x * plate.w - w / 2, y: plate.y + slot.y * plate.h - h, w, h };
 }
 
-function shadowFor(slot: Slot | null | undefined, plate: Rect, hero: HeroRect | null): BookPageLayout["shadow"] {
+/** The art agent's contact shadow (compose.py `shadow`), as two ellipses:
+ *  a dark core under the soles (alpha .92 x strength, blur .03 w) and a soft
+ *  cast offset away from the light (alpha .59 x strength, blur .12 w), where
+ *  w = the feet band's width. */
+function shadowFor(slot: Slot | null | undefined, plate: Rect, hero: HeroRect | null, a: SpriteAnchor): BookPageLayout["shadow"] {
   if (!slot || !hero) return null;
+  const s = slot.shadow ?? 0.8;
+  const dx = slot.lightDx ?? 0.8;
+  const w = Math.max(6, a.footW * hero.w);
+  const fx = plate.x + slot.x * plate.w;
+  const fy = plate.y + slot.y * plate.h;
   return {
-    cx: plate.x + slot.x * plate.w,
-    cy: plate.y + slot.y * plate.h,
-    rx: hero.h * (slot.pose === "sit" ? 0.26 : 0.2),
-    ry: Math.max(3, hero.h * 0.035),
-    opacity: 0.34,
+    cx: fx,
+    cy: fy + 0.01 * w,
+    rx: w * 0.56,
+    ry: Math.max(2, w * 0.035),
+    opacity: Math.min(1, 0.92 * s),
+    blur: Math.max(2, w * 0.03),
+    cast: {
+      cx: fx + dx * 0.715 * w,
+      cy: fy + 0.011 * w,
+      rx: w * (0.55 + 0.26 * Math.abs(dx)),
+      ry: w * 0.121,
+      opacity: Math.min(1, 0.59 * s),
+      blur: Math.max(6, w * 0.12),
+    },
   };
 }
 
@@ -188,22 +242,26 @@ export function windowCentre(page: Page, plate?: LayoutPlate): number {
  *  hero now, the hero after the repair, and every repair item where the child
  *  taps it. Later intervals win when they cannot all fit; the page's own hero
  *  is applied last, so it always wins. */
-function requiredIntervals(page: Page, slot: Slot | null | undefined, plateAspect: number, boxAspect: number): [number, number][] {
-  const half = (s: Slot) => (s.scale * boxAspect) / plateAspect / 2;
+function requiredIntervals(page: Page, slot: Slot | null | undefined, plateAspect: number, anchorOf?: AnchorOf): [number, number][] {
   const out: [number, number][] = [];
   for (const it of page.repair?.items ?? []) out.push([it.x - ITEM_RADIUS, it.x + ITEM_RADIUS]);
-  for (const s of [page.repair?.heroAfter, page.hero, slot]) if (s) out.push([s.x - half(s), s.x + half(s)]);
+  for (const s of [page.repair?.heroAfter, page.hero, slot]) {
+    if (!s) continue;
+    const a = anchorOf?.(s.pose) ?? { aspect: 1, footX: 0.5, footW: 0.45 };
+    const w = (s.scale * a.aspect) / plateAspect;
+    out.push([s.x - a.footX * w, s.x + (1 - a.footX) * w]);
+  }
   return out;
 }
 
 /** The phone window [x0, x1] (plate fractions): centred on the authored
  *  window, moved only as far as needed so the required intervals (+ margin)
  *  are inside. */
-export function phoneWindow(page: Page, slot: Slot | null | undefined, plate: LayoutPlate, boxAspect = 1): { x0: number; x1: number } {
+export function phoneWindow(page: Page, slot: Slot | null | undefined, plate: LayoutPlate, anchorOf?: AnchorOf): { x0: number; x1: number } {
   const aspect = plate.width / plate.height;
   const wf = Math.min(1, PHONE_WINDOW / aspect);
   let cx = clamp(windowCentre(page, plate), wf / 2, 1 - wf / 2);
-  for (const [lo0, hi0] of requiredIntervals(page, slot, aspect, boxAspect)) {
+  for (const [lo0, hi0] of requiredIntervals(page, slot, aspect, anchorOf)) {
     const lo = lo0 - CROP_MARGIN;
     const hi = hi0 + CROP_MARGIN;
     if (lo < cx - wf / 2) cx = lo + wf / 2;
@@ -220,6 +278,7 @@ interface Ctx {
   aspect: number;
   slot: Slot | null | undefined;
   boxAspect: number;
+  anchorOf?: AnchorOf;
   content: LayoutContent;
   lineHeight: number;
   dir: "ltr" | "rtl";
@@ -273,7 +332,8 @@ function layoutFacing(c: Ctx): BookPageLayout {
       const maxType = Math.round(clamp(P * 0.044, c.tokenPx, 40));
       const typePx = fitType(c, text.w, () => text.h - fixed, maxType, floor);
       const fits = typePx > 0;
-      const hero = heroRect(c.slot, art, art, c.boxAspect);
+      const anchor = anchorFor(c, c.slot);
+      const hero = heroRect(c.slot, art, art, anchor);
       best = {
         mode: "wide",
         pageType: "facing",
@@ -292,8 +352,8 @@ function layoutFacing(c: Ctx): BookPageLayout {
         navPx,
         cardsPx,
         hero,
-        heroBody: bodyRect(c.slot, art),
-        shadow: shadowFor(c.slot, art, hero),
+        heroBody: bodyRect(c.slot, art, anchor),
+        shadow: shadowFor(c.slot, art, hero, anchor),
         spine: dir === "ltr" ? "left" : "right",
         fits,
       };
@@ -310,6 +370,28 @@ export function overlapArea(a: Rect, b: Rect): number {
   return w > 0 && h > 0 ? w * h : 0;
 }
 
+type Corner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
+
+/** The corners to try for a spread's text panel: the authored calm rect's
+ *  corner first (physical — the art is not mirrored), then the other top
+ *  corner, then the bottoms; without a rect, the logical textZone side. */
+function panelCorners(c: Ctx): Corner[] {
+  const r = c.page.textRect;
+  let first: Corner;
+  if (r) {
+    const cx = (r[0] + r[2]) / 2;
+    const cy = (r[1] + r[3]) / 2;
+    first = `${cy < 0.5 ? "top" : "bottom"}-${cx < 0.5 ? "left" : "right"}` as Corner;
+  } else {
+    const zone = c.plate.textZone ?? "inline-end";
+    const right = zone === "bottom" ? c.dir === "ltr" : (zone === "inline-end") === (c.dir === "ltr");
+    first = `${zone === "bottom" ? "bottom" : "top"}-${right ? "right" : "left"}` as Corner;
+  }
+  const all: Corner[] = ["top-left", "top-right", "bottom-left", "bottom-right"];
+  const sameRow = all.filter((k) => k !== first && k.split("-")[0] === first.split("-")[0]);
+  return [first, ...sameRow, ...all.filter((k) => k !== first && !sameRow.includes(k))];
+}
+
 function layoutSpread(c: Ctx): BookPageLayout | null {
   const { box, aspect, dir, content } = c;
   const W = box.width;
@@ -323,57 +405,61 @@ function layoutSpread(c: Ctx): BookPageLayout | null {
   const plateW = Math.round(plateH * aspect);
   const artPage: Rect = { x: Math.round((W - plateW) / 2) - pm, y: Math.round((H - plateH) / 2) - pm, w: plateW + 2 * pm, h: plateH + 2 * pm };
   const art: Rect = { x: artPage.x + pm, y: artPage.y + pm, w: plateW, h: plateH };
-  const hero = heroRect(c.slot, art, art, c.boxAspect);
-  const body = bodyRect(c.slot, art);
+  const anchor = anchorFor(c, c.slot);
+  const hero = heroRect(c.slot, art, art, anchor);
+  const body = bodyRect(c.slot, art, anchor);
   const inset = Math.round(plateW * 0.022);
   const navPx = 92;
   const cardsPx = content.choices ? Math.round(clamp(plateH * 0.17, 132, 168)) : 0;
   const promptPx = content.prompt ? 72 : 0;
   const titlePx = Math.round(clamp(plateH * 0.06, 34, 60));
-  const left = dir === "ltr" ? "inline-start" : "inline-end";
-  const zone = c.plate.textZone ?? "inline-end";
-  const sides = zone === "bottom" ? ["bottom", "inline-end", "inline-start"] : [zone, zone === "inline-end" ? "inline-start" : "inline-end", "bottom"];
+  const corners = panelCorners(c);
   for (const floor of c.floors) {
-    for (const side of sides) {
-      const bottom = side === "bottom";
-      const panelW = Math.round(bottom ? plateW * 0.72 : clamp(plateW * 0.36, 380, 620));
-      const padI = Math.round(clamp(panelW * 0.08, 24, 48));
-      const padB = Math.round(clamp(plateH * 0.045, 20, 44));
-      const textW = panelW - 2 * padI;
-      const maxH = bottom ? plateH * 0.42 : plateH - 2 * inset;
-      const fixed = navPx + (cardsPx ? cardsPx + 20 : 0) + promptPx + titleHeight(content.title ?? 0, textW, titlePx);
-      const maxType = Math.round(clamp(plateH * 0.042, c.tokenPx, 38));
-      const typePx = fitType(c, textW, () => maxH - 2 * padB - fixed, maxType, floor);
-      if (!typePx) continue;
-      const panelH = Math.ceil(2 * padB + fixed + estimateTextHeight(content.paras, textW, typePx, c.lineHeight));
-      const onLeft = side === left;
-      const textPage: Rect = bottom
-        ? { x: Math.round(art.x + (plateW - panelW) / 2), y: art.y + plateH - inset - panelH, w: panelW, h: panelH }
-        : { x: onLeft ? art.x + inset : art.x + plateW - inset - panelW, y: art.y + inset, w: panelW, h: panelH };
-      if (body && overlapArea(textPage, body) > 0) continue;
-      return {
-        mode: "wide",
-        pageType: "spread",
-        dir,
-        book: artPage,
-        artPage,
-        art,
-        plate: art,
-        crop: { x0: 0, x1: 1 },
-        textPage,
-        text: { x: textPage.x + padI, y: textPage.y + padB, w: textW, h: panelH - 2 * padB },
-        pad: { inline: padI, block: padB },
-        typePx,
-        lineHeight: c.lineHeight,
-        titlePx,
-        navPx,
-        cardsPx,
-        hero,
-        heroBody: body,
-        shadow: shadowFor(c.slot, art, hero),
-        spine: dir === "ltr" ? "left" : "right",
-        fits: true,
-      };
+    for (const corner of corners) {
+      for (const share of [0.44, 0.5, 0.38, 0.56]) {
+        const panelW = Math.round(Math.max(340, plateW * share));
+        if (panelW > plateW - 2 * inset) continue;
+        const padI = Math.round(clamp(panelW * 0.08, 24, 48));
+        const padB = Math.round(clamp(plateH * 0.045, 20, 44));
+        const textW = panelW - 2 * padI;
+        const maxH = plateH - 2 * inset;
+        const fixed = navPx + (cardsPx ? cardsPx + 20 : 0) + promptPx + titleHeight(content.title ?? 0, textW, titlePx);
+        const maxType = Math.round(clamp(plateH * 0.042, c.tokenPx, 38));
+        const typePx = fitType(c, textW, () => maxH - 2 * padB - fixed, maxType, floor);
+        if (!typePx) continue;
+        const panelH = Math.ceil(2 * padB + fixed + estimateTextHeight(content.paras, textW, typePx, c.lineHeight));
+        const [row, col] = corner.split("-");
+        const textPage: Rect = {
+          x: col === "left" ? art.x + inset : art.x + plateW - inset - panelW,
+          y: row === "top" ? art.y + inset : art.y + plateH - inset - panelH,
+          w: panelW,
+          h: panelH,
+        };
+        if (body && overlapArea(textPage, body) > 0) continue;
+        return {
+          mode: "wide",
+          pageType: "spread",
+          dir,
+          book: artPage,
+          artPage,
+          art,
+          plate: art,
+          crop: { x0: 0, x1: 1 },
+          textPage,
+          text: { x: textPage.x + padI, y: textPage.y + padB, w: textW, h: panelH - 2 * padB },
+          pad: { inline: padI, block: padB },
+          typePx,
+          lineHeight: c.lineHeight,
+          titlePx,
+          navPx,
+          cardsPx,
+          hero,
+          heroBody: body,
+          shadow: shadowFor(c.slot, art, hero, anchor),
+          spine: dir === "ltr" ? "left" : "right",
+          fits: true,
+        };
+      }
     }
   }
   return null;
@@ -409,12 +495,13 @@ function layoutStacked(c: Ctx): BookPageLayout {
   const artH = Math.floor(Math.max(artAt(typePx), minArtH));
   const artW = Math.floor(artH * PHONE_WINDOW);
   const art: Rect = { x: Math.round((W - artW) / 2), y: 0, w: artW, h: artH };
-  const crop = phoneWindow(page, c.slot, c.plate, c.boxAspect);
+  const crop = phoneWindow(page, c.slot, c.plate, c.anchorOf);
   const plateDisplayW = artH * aspect;
   const plate: Rect = { x: art.x - crop.x0 * plateDisplayW, y: 0, w: plateDisplayW, h: artH };
   const textPage: Rect = { x: colX, y: artH, w: colW, h: Math.max(0, H - artH) };
   const text: Rect = { x: colX + padI, y: artH + padB, w: textW, h: Math.max(0, H - artH - 2 * padB) };
-  const hero = heroRect(c.slot, plate, art, c.boxAspect);
+  const anchor = anchorFor(c, c.slot);
+  const hero = heroRect(c.slot, plate, art, anchor);
   return {
     mode: "stacked",
     pageType: page.type ?? "facing",
@@ -433,8 +520,8 @@ function layoutStacked(c: Ctx): BookPageLayout {
     navPx,
     cardsPx,
     hero,
-    heroBody: bodyRect(c.slot, plate),
-    shadow: shadowFor(c.slot, plate, hero),
+    heroBody: bodyRect(c.slot, plate, anchor),
+    shadow: shadowFor(c.slot, plate, hero, anchor),
     spine: dir === "ltr" ? "left" : "right",
     fits,
   };
@@ -450,6 +537,7 @@ export function computeBookPageLayout(page: Page, box: Box, lang: BookLang, opts
     aspect: plate.width / plate.height,
     slot: opts.slot === undefined ? page.hero : opts.slot,
     boxAspect: opts.heroBoxAspect ?? 1,
+    anchorOf: opts.anchorOf,
     content: opts.content ?? { paras: [page.text.en.length] },
     lineHeight: lang === "he" ? 1.6 : 1.5,
     dir: lang === "he" ? "rtl" : "ltr",

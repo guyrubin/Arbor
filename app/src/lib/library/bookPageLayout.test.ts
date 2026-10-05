@@ -185,8 +185,33 @@ describe("hero, shadow and the feet anchor", () => {
     expect(l.hero!.x + l.hero!.w / 2).toBeCloseTo(l.plate.x + s.x * l.plate.w, 6);
     expect(l.hero!.y + l.hero!.h).toBeCloseTo(l.plate.y + s.y * l.plate.h, 6);
     expect(l.hero!.flip).toBe(s.facing === "left");
-    expect(l.shadow!.cy).toBeCloseTo(l.hero!.y + l.hero!.h, 6);
+    expect(Math.abs(l.shadow!.cy - (l.hero!.y + l.hero!.h))).toBeLessThan(0.02 * l.hero!.h);
     expect(l.shadow!.rx).toBeGreaterThan(l.shadow!.ry);
+  });
+
+  it("with the sheet's measured anchor the box IS the sprite, feet-band centre on the slot; the cast falls away from the light", () => {
+    const p1 = book.pages[0];
+    const anchor = { aspect: 0.5, footX: 0.4, footW: 0.6 };
+    const l = computeBookPageLayout(p1, SPREAD_BOXES[0], "en", { anchorOf: () => anchor });
+    const s = p1.hero!;
+    expect(l.hero!.w / l.hero!.h).toBeCloseTo(0.5, 6);
+    expect(l.hero!.x + 0.4 * l.hero!.w).toBeCloseTo(l.plate.x + s.x * l.plate.w, 6);
+    expect(l.heroBody).toEqual({ x: l.hero!.x, y: l.hero!.y, w: l.hero!.w, h: l.hero!.h });
+    // light from the left (lightDx > 0): the cast lies right of the core; from the right: left
+    expect(l.shadow!.cast.cx).toBeGreaterThan(l.shadow!.cx);
+    const fromRight = computeBookPageLayout({ ...p1, hero: { ...s, lightDx: -0.6 } }, SPREAD_BOXES[0], "en", { anchorOf: () => anchor });
+    expect(fromRight.shadow!.cast.cx).toBeLessThan(fromRight.shadow!.cx);
+    // the core is tighter and darker than the cast
+    expect(l.shadow!.ry).toBeLessThan(l.shadow!.cast.ry);
+    expect(l.shadow!.opacity).toBeGreaterThan(l.shadow!.cast.opacity);
+  });
+
+  it("a spread puts its panel in the corner of the authored calm rect when it fits", () => {
+    const p = { ...book.pages[0], type: "spread" as const, hero: { ...book.pages[0].hero!, x: 0.8, scale: 0.3 }, textRect: [0.03, 0.03, 0.45, 0.22] as [number, number, number, number] };
+    const l = computeBookPageLayout(p, SPREAD_BOXES[0], "he", { content: { paras: [120] } });
+    expect(l.pageType).toBe("spread");
+    expect(l.textPage.x).toBeLessThan(l.art.x + l.art.w / 2);
+    expect(l.textPage.y).toBeLessThan(l.art.y + l.art.h / 2);
   });
 
   it("a page without a slot has no hero and no shadow", () => {
