@@ -29,6 +29,10 @@ const HUB_FILES = [
   "components/growth/FirstWordsLedger.tsx",
   "components/growth/ArborTreeCard.tsx",
   "components/growth/RecordByDomain.tsx",
+  // W2-GROWTH r1 (profile critic F3): the Profile milestones chapter printed
+  // "{checked} of {total} noticed in the {band} window" — the denominator
+  // B-GROWTH-34 removed from the hub survived one route over.
+  "components/sections/ChildProfile.tsx",
 ];
 
 /** Every literal key a file renders: t("k"), tr("k"), and pickCountKey("k") (both forms). */
@@ -57,6 +61,9 @@ describe("B-GROWTH-34 — the Growth hub counts, never 'of N'", () => {
     expect(dev).not.toContain("noticedMilestoneCounts(");
     expect(dev).not.toContain("ageWindowMilestones(");
     expect(dev).not.toContain("inWindow.length");
+    const profile = stripComments(read("components/sections/ChildProfile.tsx"));
+    expect(profile).toMatch(/const \{ noticed: noticedCount \} = useMemo\(\(\) => noticedMilestoneCounts\(milestones\), \[milestones\]\);/);
+    expect(profile).not.toContain("ageWindowMilestones(");
     const card = stripComments(read("components/sections/DevScoreCard.tsx"));
     expect(card).toMatch(/const \{ noticed, byDomain \} = noticedMilestoneCounts\(milestones\);/);
     expect(card).not.toMatch(/reached, total/);

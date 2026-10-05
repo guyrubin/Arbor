@@ -448,8 +448,10 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
     job: "Who she is — and what Arbor remembers.",
     primaryMove: "approve-memory", moduleBudget: 3, demotionTarget: "disclosure",
     // The hub's one move per plan §4 (MY CHILD): approve a proposed fact —
-    // the approve control itself lives on the memory tool (ChildProfile's
-    // memory chapter routes there); approved facts land as kind "memory".
+    // W2-GROWTH r1 / B-GROWTH-NEW-1E: performed ON this page. The stamp sits
+    // on the first pending fact's Keep (profile-remember band, handleMemoryDecision
+    // "approved" → kind "memory"). Zero-pending state: the stamp moves to the
+    // one "tell Arbor one thing" / "Add what you know" control (edit drawer).
     threadWrite: "memory",
   },
   {

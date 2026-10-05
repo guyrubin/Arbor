@@ -26,13 +26,22 @@ describe("GP-15 — the hero CTA is the contract's primary move", () => {
     expect(c.primaryMove).toBe("approve-memory");
   });
 
-  it("with pending proposals the CTA reviews what Arbor remembers (→ memory); otherwise it adds a fact", () => {
-    expect(hero).toMatch(/pendingMemoryItems\.length > 0\s*\?/);
-    expect(hero).toContain('t("elev.growthTruth.profile.cta.review")');
-    expect(hero).toMatch(/onClick=\{pendingMemoryItems\.length > 0 \? \(\) => setActiveTab\("memory"\)/);
-    expect(hero).toContain('t("elev.growthTruth.profile.cta.addFact", { name: first })');
-    expect(hero).toMatch(/: \(\) => setEditingProfile\(true\)/);
+  // W2-GROWTH r1 / B-GROWTH-NEW-1E: the move is PERFORMED here. With pending
+  // facts the stamp sits on the first Keep (handleMemoryDecision "approved");
+  // with none it sits on the one "tell Arbor one thing" control (edit drawer).
+  // Never again a button that routes away and calls itself approve-memory.
+  it("with pending facts the stamped control is Keep on this page; otherwise it adds a fact", () => {
+    const band = src.slice(src.indexOf('data-module="profile-remember"'), src.indexOf("</section>", src.indexOf('data-module="profile-remember"')));
+    expect(band).toContain('data-testid="profile-remember-keep"');
+    expect(band).toMatch(/data-primary-move=\{i === 0 \? "approve-memory" : undefined\}/);
+    expect(band).toContain('void decide(m.memoryId, "approved")');
+    expect(src).toMatch(/const ok = await handleMemoryDecision\(memoryId, status\);/);
     expect(hero).toContain('data-testid="profile-hero-cta"');
+    expect(hero).toMatch(/data-primary-move="approve-memory"\s+onClick=\{\(\) => setEditingProfile\(true\)\}/);
+    expect(hero).toContain('t("elev.growthTruth.profile.cta.addFact", { name: first })');
+    // no stamped control routes away
+    expect(src).not.toMatch(/data-primary-move="approve-memory"[^>]*setActiveTab\("memory"\)/);
+    expect(src).not.toMatch(/<div[^>]*data-primary-move="approve-memory"/);
   });
 
   it("NEGATIVE CONTROL: the pre-fix 'Add a family member' CTA is gone from the hero", () => {
@@ -44,10 +53,12 @@ describe("GP-15 — the hero CTA is the contract's primary move", () => {
 });
 
 describe("GP-15 — the child count is the family's real count", () => {
-  it("reads profiles.length from useProfile()", () => {
-    expect(src).toMatch(/const \{ profiles \} = useProfile\(\);/);
-    expect(hero).toContain('profiles.length === 1 ? "elev.wave2Knowledge.profile.childOne" : "elev.wave2Knowledge.profile.childMany"');
-    expect(hero).toContain("{ n: profiles.length }");
+  // W2-GROWTH r1: the telemetry row (children · members · moments) is CUT from
+  // the identity band — no count can be a literal because no count is printed.
+  it("the identity band prints no family/moment counts at all", () => {
+    expect(hero).not.toContain("elev.wave2Knowledge.profile.child");
+    expect(hero).not.toContain("elev.wave2Knowledge.profile.member");
+    expect(hero).not.toContain("elev.wave2Knowledge.profile.moment");
   });
 
   it("NEGATIVE CONTROL: the literal `1` stat is gone", () => {

@@ -81,7 +81,10 @@ describe("CN-004 · no proportional fill of a child record", () => {
     expect(profile, "ChildProfile.tsx found by the walk").toBeTruthy();
     expect(fillSites(profile!.src)).toEqual([]);
     expect(profile!.src).not.toContain("windowRecord.share");
-    expect(profile!.src).toContain('t("elev.growthTruth.window.noticed"');
+    // W2-GROWTH r1 (law 1): the count sentence carries no denominator either —
+    // "{checked} of {total} noticed in the window" became "{n} milestones noticed".
+    expect(profile!.src).not.toContain('t("elev.growthTruth.window.noticed"');
+    expect(profile!.src).toContain('t("elev.profile.ms.noticed", { n: noticedCount })');
   });
 
   it("B-CAREPRO-44 · RewardsCard says a count sentence: no fill, no next-reward target, no pending entry", () => {

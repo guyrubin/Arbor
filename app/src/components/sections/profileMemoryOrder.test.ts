@@ -87,10 +87,11 @@ describe("Profile · one door per room", () => {
     expect(profile.match(/t\("cp\.ch\.memory"\)/g) ?? []).toHaveLength(1);
     // …and it is the chapter's own SectionCard title, not a bare tile heading.
     expect(profile).toMatch(/<SectionCard title=\{t\("cp\.ch\.memory"\)\}/);
-    // The chapter keeps the ONE review link; nothing else routes to memory
-    // except the hero CTA, which is a call to action rather than a second door.
-    expect(profile.match(/setActiveTab\("memory"\)/g) ?? []).toHaveLength(2);
-    expect(profile).toContain('t("elev.growthTruth.profile.cta.review")');
+    // The chapter keeps the ONE review link. W2-GROWTH r1: the pending band's
+    // "Not quite" (edit lives there) and "See all N waiting" also open it —
+    // decisions, not a second chapter; the heading still renders once.
+    expect(profile.match(/setActiveTab\("memory"\)/g) ?? []).toHaveLength(3);
+    expect(profile).toContain('t("elev.profile.remember.notQuite")');
   });
 
   it("NEGATIVE CONTROL: the pre-fix tile is a second heading of the same name", () => {

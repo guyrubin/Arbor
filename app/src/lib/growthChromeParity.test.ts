@@ -118,7 +118,9 @@ describe("the sites render through the keys", () => {
   });
 
   it("the Profile age window renders a localized age, not a catalogue label", () => {
-    expect(profile).toContain("ageLabelForMonths(milestoneAgeWindow(comparisonMonths).currentBandMonths, t)");
+    // W2-GROWTH r1: the window sentence (a denominator, law 1) is gone; the
+    // chapter prints a plain count, so no band label renders at all.
+    expect(profile).not.toContain("elev.growthTruth.window.noticed");
     // NEGATIVE CONTROL: the pre-fix derivation read the English band label…
     expect(profile).not.toContain("band: milestoneAgeWindow(comparisonMonths).label");
     // …and its replacement read a field the window does not carry (R8): the

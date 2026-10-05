@@ -85,8 +85,12 @@ describe("R8 — the Profile age window is an age, not NaN", () => {
   });
 
   it("the component reads the real field and never `.months` again", () => {
-    expect(profileSrc).toContain("milestoneAgeWindow(comparisonMonths).currentBandMonths");
+    // W2-GROWTH r1: the chapter no longer prints a window sentence at all (law 1:
+    // "{checked} of {total} in the {band} window" was a denominator) — a plain
+    // count instead, so no band label can be NaN.
     expect(profileSrc).not.toContain("milestoneAgeWindow(comparisonMonths).months");
+    expect(profileSrc).not.toContain("elev.growthTruth.window.noticed");
+    expect(profileSrc).toContain("noticedMilestoneCounts(milestones)");
   });
 
   it("every band threshold renders a finite age label in both locales", () => {

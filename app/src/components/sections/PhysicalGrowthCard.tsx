@@ -405,10 +405,16 @@ function LatestSummary({ entry }: { entry: GrowthEntry }) {
 
 // ---- Main card ----------------------------------------------------------
 
-export default function PhysicalGrowthCard() {
+/**
+ * `embedded` (W2-GROWTH r1): mounted inside Profile's "Measurements"
+ * disclosure, whose summary already names the card — the inner eyebrow would
+ * be a second title nested under the first, so it is dropped there.
+ */
+export default function PhysicalGrowthCard({ embedded = false }: { embedded?: boolean } = {}) {
   const { childProfile } = useArbor();
   const { t } = useLanguage();
-  const firstName = (childProfile.name || "your child").split(" ")[0];
+  // Law 8: the no-name fallback is keyed ("your child" / "הילד שלכם").
+  const firstName = childProfile.name ? childProfile.name.split(" ")[0] : t("learn.yourChild");
   const [adding, setAdding] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
@@ -445,7 +451,8 @@ export default function PhysicalGrowthCard() {
     >
       <div className="p-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className={`flex items-center ${embedded ? "justify-end" : "justify-between"}`}>
+          {!embedded && (
           <span
             className="inline-flex items-center gap-1.5 text-[13px] font-bold"
             style={{ color: GREEN }}
@@ -453,6 +460,7 @@ export default function PhysicalGrowthCard() {
             <Icon name="straighten" size={14} />
             {t("growth.eyebrow")}
           </span>
+          )}
           {!isEmpty && !adding && (
             <button
               className="touch-target inline-flex items-center gap-1 text-[12px] font-bold rounded-xl px-3"

@@ -8,7 +8,7 @@ import { en as cpEn, he as cpHe } from "../../lib/i18nElevation/careprofile";
 const harness=vi.hoisted(() => ({
  callback:false, locale:"en", pending:[] as unknown[], approved:[] as unknown[], hasHero:true,
  goals:[] as unknown[], challenges:[] as string[], factsAsOf:undefined as unknown, updateChild:vi.fn(),
- setActiveTab:vi.fn(), setState:vi.fn(),
+ setActiveTab:vi.fn(), setState:vi.fn(), decide:vi.fn(async()=>true),
 }));
 vi.mock("react", async (original) => {
  const real=await original<typeof import("react")>();
@@ -20,7 +20,7 @@ vi.mock("react", async (original) => {
 });
 vi.mock("../../context/ArborContext",()=>({useArbor:()=>({
  childProfile:{id:"c1",name:"Dylan",age:5,languages:["English"],schoolContext:"School",challenges:harness.challenges,strengths:[],interests:["Dinosaurs"],activeGoals:harness.goals,factsAsOf:harness.factsAsOf},
- milestones:[],behaviorLogs:[],playLogs:[],actionPlans:[],approvedMemoryItems:harness.approved,pendingMemoryItems:harness.pending,setActiveTab:harness.setActiveTab,updateChild:harness.updateChild,
+ milestones:[],behaviorLogs:[],playLogs:[],actionPlans:[],approvedMemoryItems:harness.approved,pendingMemoryItems:harness.pending,setActiveTab:harness.setActiveTab,updateChild:harness.updateChild,handleMemoryDecision:harness.decide,isMemoryUpdating:null,
 })}));
 vi.mock("../../context/ProfileContext",()=>({useProfile:()=>({profiles:[{id:"c1"}]})}));
 vi.mock("../../context/AuthContext",()=>({useAuth:()=>({user:{displayName:"Parent"}})}));
@@ -39,11 +39,11 @@ function elements(node:React.ReactNode):React.ReactElement<Record<string,any>>[]
 }
 beforeEach(()=>{vi.clearAllMocks();harness.callback=false;harness.locale="en";harness.pending=[];harness.approved=[];harness.hasHero=true;harness.goals=[];harness.challenges=[];harness.factsAsOf=undefined;});
 describe("W2 Profile identity and protected doors",()=>{
- it("renders one h1 and honest singular counts with parent facts before family",()=>{
+ // W2-GROWTH r1: the telemetry row ("1 child · 1 family member · N moments") is cut.
+ it("renders one h1, no count row, with parent facts before family",()=>{
   const html=renderToStaticMarkup(<ChildProfile/>);
   expect(html.match(/<h1[\s>]/g)).toHaveLength(1);
-  expect(html).toContain("1 child");expect(html).not.toContain("1 children");
-  expect(html).toContain("1 family member");
+  expect(html).not.toContain("1 child");expect(html).not.toContain("family member");
   expect(html.indexOf("English")).toBeLessThan(html.indexOf("cp.family.title"));
   expect(html).toContain("Facts you added");
  });
@@ -57,23 +57,39 @@ describe("W2 Profile identity and protected doors",()=>{
   }
   expect(familyInsideFacts).toBe(true);
   expect(html).toContain('<h3 id="profile-family-title"');
-  expect(html.match(/data-module="profile-(identity|who|now)"/g)).toHaveLength(3);
+  // W2-GROWTH r1: "Now" is CUT (Journal owns the week's moments); with nothing
+  // pending the remember band is absent, so two top-level modules remain.
+  expect(html.match(/data-module="profile-(identity|who|now|remember)"/g)).toHaveLength(2);
+  expect(html).not.toContain('data-module="profile-now"');
  });
- it("renders localized interface counts and edit label in HE",()=>{
+ it("renders the identity line and edit label in HE, with the language name in Hebrew (law 8)",()=>{
   harness.locale="he";const html=renderToStaticMarkup(<ChildProfile/>);
-  expect(html).toContain("ילד אחד");expect(html).toContain("בן משפחה אחד");expect(html).toContain(he["elev.wave2Knowledge.profile.edit"]);
+  expect(html).toContain(he["elev.wave2Knowledge.profile.edit"]);
+  const line=html.slice(html.indexOf('data-testid="profile-identity-line"'),html.indexOf("</p>",html.indexOf('data-testid="profile-identity-line"')));
+  expect(line).not.toContain("English");
+  expect(line).toContain("<bdi dir=\"auto\">School</bdi>");
  });
- it("labels approved and proposed memory separately, without displaying proposal facts",()=>{
+ // W2-GROWTH r1 / B-GROWTH-NEW-1E: a proposal is shown ONLY inside the decision
+ // band, beside its Keep / Not quite / Forget — never in the approved list.
+ it("labels approved and proposed memory separately; a proposal appears only where it is decided",()=>{
   harness.approved=[{memoryId:"a1",fact:"Approved fact"}];harness.pending=[{memoryId:"p1",fact:"Unapproved private proposal"}];
   const html=renderToStaticMarkup(<ChildProfile/>);
   expect(html).toContain("Approved by you");expect(html).toContain("Approved fact");
-  expect(html).toContain("awaiting your review");expect(html).not.toContain("Unapproved private proposal");
+  expect(html).toContain("awaiting your review");
+  const band=html.slice(html.indexOf('data-module="profile-remember"'),html.indexOf("</section>",html.indexOf('data-module="profile-remember"')));
+  expect(band).toContain("Unapproved private proposal");expect(band).toContain('data-testid="profile-remember-keep"');
+  expect(html.split("Unapproved private proposal")).toHaveLength(2);
  });
- it("the primary reviews proposals when present and opens editing otherwise",()=>{
+ it("the primary keeps the first pending fact on this page, and opens editing when nothing waits",()=>{
   harness.callback=true;
-  const click=()=>elements(ChildProfile()).find(el=>el.props["data-testid"]==="profile-hero-cta")!.props.onClick();
-  click();expect(harness.setState).toHaveBeenCalledWith(true);expect(harness.setActiveTab).not.toHaveBeenCalled();
-  harness.pending=[{memoryId:"p1"}];click();expect(harness.setActiveTab).toHaveBeenCalledWith("memory");
+  const stamped=()=>elements(ChildProfile()).filter(el=>el.props["data-primary-move"]==="approve-memory");
+  expect(stamped()).toHaveLength(1);
+  stamped()[0].props.onClick();expect(harness.setState).toHaveBeenCalledWith(true);expect(harness.setActiveTab).not.toHaveBeenCalled();
+  harness.pending=[{memoryId:"p1",fact:"f"},{memoryId:"p2",fact:"g"}];
+  expect(stamped()).toHaveLength(1);
+  expect(stamped()[0].props["data-testid"]).toBe("profile-remember-keep");
+  stamped()[0].props.onClick();expect(harness.decide).toHaveBeenCalledWith("p1","approved");
+  expect(harness.setActiveTab).not.toHaveBeenCalled();
  });
  it("Create Hero opens the existing edit/creation seam rather than navigating to itself",()=>{
   harness.callback=true;harness.hasHero=false;

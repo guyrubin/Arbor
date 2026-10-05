@@ -135,12 +135,12 @@ describe("HubHero — lane G hubs pass the translated teach line", () => {
     expect(dev).not.toMatch(/stats=\{\[/);
   });
 
-  it("Profile retains real family counts in its consolidated identity header", () => {
+  // W2-GROWTH r1: the identity header carries no counts (telemetry row cut).
+  it("Profile's consolidated identity header prints no count row", () => {
     const profile = read("components/sections/ChildProfile.tsx");
     expect(profile).toContain('data-testid="profile-hub-hero"');
-    expect(profile).toContain('profiles.length === 1');
-    expect(profile).toContain('shares.length + 1 === 1');
-    expect(profile).toContain('behaviorLogs.length + playLogs.length === 1');
+    expect(profile).not.toContain('profiles.length === 1');
+    expect(profile).not.toContain('behaviorLogs.length + playLogs.length');
     expect(profile).not.toContain('<HubHero');
     // ChildProfile.layout.test.tsx renders singular/plural and consent branches.
   });

@@ -20,12 +20,12 @@ describe("B-GROWTH-05 — Measurements live on Profile, not on Growth", () => {
   it("DevelopmentTab does not import or mount PhysicalGrowthCard; ChildProfile does", () => {
     expect(dev).not.toContain("PhysicalGrowthCard");
     expect(profile).toContain('import PhysicalGrowthCard from "./PhysicalGrowthCard";');
-    expect(profile).toContain("<PhysicalGrowthCard />");
+    expect(profile).toContain("<PhysicalGrowthCard embedded />");
   });
 
   it("the card sits inside the Measurements disclosure, part of the Who chapter (profile budget unchanged)", () => {
     const open = profile.indexOf('<details data-testid="profile-measurements"');
-    const card = profile.indexOf("<PhysicalGrowthCard />");
+    const card = profile.indexOf("<PhysicalGrowthCard embedded />");
     const close = profile.indexOf("</details>", open);
     expect(open).toBeGreaterThan(-1);
     expect(card).toBeGreaterThan(open);

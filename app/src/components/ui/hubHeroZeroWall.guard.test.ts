@@ -52,7 +52,8 @@ describe("RUN-08 — no statistical hub mounts an untranslated zero wall",()=>{
   expect(files.has("components/tabs/ConsultTab.tsx"),"ConsultTab").toBe(false);
   const profile=fs.readFileSync(path.join(SRC,"components/sections/ChildProfile.tsx"),"utf8");
   const academy=fs.readFileSync(path.join(SRC,"components/sections/Masterclasses.tsx"),"utf8");
-  expect(profile).toContain('data-testid="profile-hub-hero"');expect(profile).toContain('profiles.length === 1');
+  // W2-GROWTH r1: Profile's identity header carries no counts (no zero wall possible).
+  expect(profile).toContain('data-testid="profile-hub-hero"');expect(profile).not.toContain('profiles.length === 1');
   expect(academy).toContain('data-testid="academy-hub-hero"');
   // B-PLAY-18: the academy header carries no stat list — the pick's reading minutes ride the pick line.
   expect(academy).toContain('data-testid="academy-pick-minutes"');expect(academy).not.toContain('heroStats.map');
