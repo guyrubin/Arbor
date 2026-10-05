@@ -16,6 +16,7 @@ vi.mock("../../../../context/ArborContext", () => ({
   useArbor: () => ({ childProfile: { id: "c1", name: "Dylan", gender: "boy", age: 5 } }),
 }));
 vi.mock("../../../../lib/voice", () => ({ speakText: vi.fn(), stopVoice: vi.fn(), voiceSupported: () => true }));
+vi.mock("../../../../practice/usePracticeData", () => ({ usePracticeData: () => ({ events: { items: [], upsert: async () => {} } }) }));
 
 import SneakFreeze, { formKey } from "./SneakFreeze";
 import { SNEAK_SOUNDS } from "./sounds";

@@ -30,6 +30,9 @@ import { readSneakArt, type SneakArt } from "./sneakArt";
 import { readPlayLevel, writePlayLevel } from "./sneakStore";
 import { sneakSound } from "./sounds";
 import { Watcher } from "./Watcher";
+import { sittingRecord } from "./record";
+import { usePracticeData } from "../../../../practice/usePracticeData";
+import { noteKidActivity } from "../../../../lib/kidModeGate";
 import { Ending, captionKey } from "./Ending";
 
 /** HE lines addressed to the child: `.boy` / `.girl`, else the plural base. */
@@ -267,12 +270,20 @@ export default function SneakFreeze() {
     try { stageRef.current?.focus({ preventScroll: true }); } catch { /* focus is a convenience */ }
   }, [sitting]);
 
-  // The level is the device's memory (never shown); saved when a sitting ends.
+  // A sitting ends: the level is the device's memory (never shown); ONE
+  // practice record (counts + experiences, no right/wrong) and ONE kid
+  // activity, once per sitting (keyed by its seed).
+  const practice = usePracticeData(childId);
+  const recorded = useRef<string | null>(null);
+  const sittingStart = useRef(Date.now());
   useEffect(() => {
     const s = stateRef.current;
-    if (!v.done || !s) return;
+    if (!v.done || !s || recorded.current === s.seed) return;
+    recorded.current = s.seed;
     writePlayLevel(childId, { track: s.track, level: s.level });
-  }, [v.done, childId]);
+    void practice.events.upsert(sittingRecord(s, Date.now() - sittingStart.current, new Date()));
+    noteKidActivity();
+  }, [v.done, childId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const press = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.pointerType === "mouse" && e.button !== 0) return;
@@ -293,6 +304,7 @@ export default function SneakFreeze() {
     hold.current.keys.clear();
     prevProgress.current = 0;
     shownProgress.current = 0;
+    sittingStart.current = Date.now();
     setV(viewOf(stateRef.current));
     setSitting(n);
   };
