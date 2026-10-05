@@ -15,17 +15,19 @@ const t = (lang: "en" | "he", key: string, vars?: Record<string, string | number
   resolvePlural(lang, translate(lang, key, vars), vars);
 
 describe("OBJ-GROWTH-01 — {plural} never reaches the screen", () => {
+  // B-GROWTH-34: the Growth hero's "area{plural} of {total}" key is gone (no
+  // denominator on the hub); cite.drawer.header is the live {plural} carrier.
   it("EN resolves the suffix from n", () => {
-    expect(t("en", "elev.hero.growth.stat.domains", { n: 1, total: 5 })).toBe("area of 5");
-    expect(t("en", "elev.hero.growth.stat.domains", { n: 2, total: 5 })).toBe("areas of 5");
+    expect(t("en", "cite.drawer.header", { n: 1 })).toBe("Grounded in 1 source");
+    expect(t("en", "cite.drawer.header", { n: 2 })).toBe("Grounded in 2 sources");
   });
 
   it("HE carries no token and no English suffix", () => {
     for (const n of [1, 2]) {
-      const s = t("he", "elev.hero.growth.stat.domains", { n, total: 5 });
+      const s = t("he", "cite.drawer.header", { n });
       expect(s).not.toContain("{plural}");
       expect(s).not.toMatch(/[A-Za-z]/);
-      expect(s).toContain("5");
+      expect(s).toContain(String(n));
     }
   });
 
@@ -47,7 +49,6 @@ describe("OBJ-GROWTH-01 — {plural} never reaches the screen", () => {
   });
 
   it("NEGATIVE CONTROL — translate() alone leaks the token", () => {
-    expect(translate("en", "elev.hero.growth.stat.domains", { n: 1, total: 5 })).toContain("{plural}");
     expect(translate("en", "cite.drawer.header", { n: 3 })).toContain("{plural}");
   });
 });

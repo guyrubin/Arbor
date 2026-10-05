@@ -131,9 +131,11 @@ describe("RUN-02 — the 60-month fixture: no 0–12-month title in any 'next' p
 });
 
 describe("GP-08 — every denominator surface counts the window, not the catalogue", () => {
-  it("Development hero, Milestones map, Copilot picture, useDevScore and ChildProfile go through ageWindowMilestones", () => {
+  // B-GROWTH-34: the Development hero has NO denominator any more (plain
+  // counts from lib/pulse.noticedMilestoneCounts, guarded in
+  // components/tabs/growthHeroCounts.test.ts), so it leaves this list.
+  it("Milestones map, Copilot picture, useDevScore and ChildProfile go through ageWindowMilestones", () => {
     for (const rel of [
-      "components/tabs/DevelopmentTab.tsx",
       "components/tabs/MilestonesTab.tsx",
       "components/practice/DevelopmentCopilot.tsx",
       "components/sections/ChildProfile.tsx",
@@ -147,6 +149,7 @@ describe("GP-08 — every denominator surface counts the window, not the catalog
   it("the pre-fix all-ages denominators are gone", () => {
     const dev = stripComments(read("components/tabs/DevelopmentTab.tsx"));
     expect(dev).not.toMatch(/total:\s*milestones\.length/);
+    expect(dev).not.toMatch(/total:\s*heroStats\.|inWindow\.length/);
     const ms = stripComments(read("components/tabs/MilestonesTab.tsx"));
     expect(ms).not.toMatch(/RadialProgress value=\{checkedMilestones\} total=\{totalMilestones\}/);
     const profile = stripComments(read("components/sections/ChildProfile.tsx"));

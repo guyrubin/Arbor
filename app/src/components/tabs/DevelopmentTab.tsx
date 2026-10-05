@@ -5,17 +5,14 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useArbor } from "../../context/ArborContext";
 import { HubHero } from "../ui/HubHero";
 import { EvidenceChip } from "../ui/EvidenceChip";
-import { countSince, WEEK_MS } from "../../lib/pulse";
+import { countSince, noticedMilestoneCounts, pickCountKey, WEEK_MS } from "../../lib/pulse";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { latestRecheckDueAt } from "../../lib/screeningRecheck";
-import { ageWindowMilestones, comparisonAgeMonths, milestoneText, selectWeeklyFocus } from "../../lib/milestoneData";
+import { comparisonAgeMonths, milestoneText, selectWeeklyFocus } from "../../lib/milestoneData";
 import { ageMonthsFromProfile } from "../../lib/childAge";
 import DevScoreCard from "../sections/DevScoreCard";
 import PhysicalGrowthCard from "../sections/PhysicalGrowthCard";
 import ScreeningSheet from "../sections/ScreeningSheet";
-// B-GROWTH-01 — "areas of N" counted in ONE vocabulary: the milestone domains
-// inside the child's age window (numerator and denominator from one array).
-import { domainCountsIn } from "../../lib/domainCount";
 import { en as fullPictureEn, he as fullPictureHe } from "../../lib/i18nElevation/fullpicture";
 import { tGCare } from "../../lib/growthCareText";
 // GP-34 — the thing the parent chose to watch for after a Development Check.
@@ -179,23 +176,20 @@ export default function DevelopmentTab() {
       .slice(0, 3);
   }, [milestones, behaviorLogs, playLogs, uiLang, t]);
 
-  // E2 hero stat trio — CLINICAL FIREWALL: counts and plain activity facts
-  // only ("x of y noticed", active-domain count, moments-this-week count).
-  // Never percentages, verdicts, or trend deltas on this surface.
-  // GP-08: "x of y" is counted over the child's AGE WINDOW (current corrected
-  // band + one earlier — lib/milestoneData.milestoneAgeWindow), never the
-  // whole 0–6y catalogue ("0 of 133" on day 0).
+  // E2 hero stat trio — CLINICAL FIREWALL: plain counts only (law 1).
+  // B-GROWTH-34: the row read "0 of 21 noticed · 0 areas of 6" while the
+  // Growth pill above it said "You noticed 5 milestones" — two sources (an
+  // age-window ratio vs every checked milestone) and a denominator. All three
+  // numbers are now plain counts, and the milestone pair comes from the SAME
+  // helper the pill uses (lib/pulse.noticedMilestoneCounts). No "of N", no
+  // window total, no ring.
   const heroStats = useMemo(() => {
-    const inWindow = ageWindowMilestones(milestones, comparisonMonths);
-    const noticed = inWindow.filter((m) => m.checked).length;
-    // B-GROWTH-01: both domain numbers from the SAME windowed array — the
-    // numerator can never exceed the denominator ("6 areas of 5" is gone).
-    const { active: domainsActive, total: domainsTotal } = domainCountsIn(inWindow);
+    const { noticed, areas } = noticedMilestoneCounts(milestones);
     const nowMs = Date.now();
     const weekAgo = nowMs - WEEK_MS;
     const momentsWeek = countSince(behaviorLogs, weekAgo, nowMs) + countSince(playLogs, weekAgo, nowMs);
-    return { noticed, total: inWindow.length, domainsActive, domainsTotal, momentsWeek };
-  }, [milestones, comparisonMonths, behaviorLogs, playLogs]);
+    return { noticed, areas, momentsWeek };
+  }, [milestones, behaviorLogs, playLogs]);
 
   // GP-06 — THE primary move of this hub, performed ON this hub. The Growth
   // contract declares primaryMove "notice-milestone" (lib/surfaceContract.ts),
@@ -271,11 +265,10 @@ export default function DevelopmentTab() {
             testId: "growth-hero-cta",
           }}
           stats={[
-            { value: heroStats.noticed, label: t("elev.hero.growth.stat.noticed", { total: heroStats.total }) },
-            // B-GROWTH-01: numerator and denominator both count milestone
-            // domains in the child's age window (one vocabulary, n ≤ total).
-            { value: heroStats.domainsActive, label: t("elev.hero.growth.stat.domains", { n: heroStats.domainsActive, total: heroStats.domainsTotal }) },
-            { value: heroStats.momentsWeek, label: t("elev.hero.growth.stat.week") },
+            // B-GROWTH-34: plain counts, one source, no denominator (EN + HE).
+            { value: heroStats.noticed, label: t(pickCountKey("elev.hero.growth.stat.noticedCount", heroStats.noticed)) },
+            { value: heroStats.areas, label: t(pickCountKey("elev.hero.growth.stat.areas", heroStats.areas)) },
+            { value: heroStats.momentsWeek, label: t(pickCountKey("elev.hero.growth.stat.moments", heroStats.momentsWeek)) },
           ]}
           // RUN-08: day-0 teach line instead of "0 · 0 · 0".
           zeroLine={t("elev.growthTruth.hero.empty")}

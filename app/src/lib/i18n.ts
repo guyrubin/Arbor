@@ -333,9 +333,9 @@ export const en: Dict = {
   "devscore.coach.headline": "Want a few simple ideas for this week?",
   "devscore.coach.prompt": "I'd like a few simple, age-appropriate ideas for nurturing {name}'s development this week. What's one thing to try?",
   "devscore.note": "A non-diagnostic snapshot from the milestones you've noticed — a starting point, not a verdict.",
-  "devscore.noticed": "{reached} of {total} age-appropriate milestones noticed",
+  "devscore.noticed": "Milestones you've noticed so far: {count}",
   "devscore.noticed.short": "noticed",
-  "devscore.noticed.aria": "{domain}: {reached} of {total} milestones noticed",
+  "devscore.noticed.aria": "{domain}: {count} noticed",
   "devscore.mechanism": "Every milestone you notice is a small window into how {name} is growing — and a good prompt for what to try next. This is parent observation, not an assessment.",
   // Care › Consult
   "consult.ask": "Ask a specialist",
@@ -2816,9 +2816,9 @@ export const he: Dict = {
   "devscore.coach.headline": "רוצים כמה רעיונות פשוטים להשבוע?",
   "devscore.coach.prompt": "אשמח לכמה רעיונות פשוטים ומותאמי־גיל לטיפוח ההתפתחות של {name} השבוע. מה דבר אחד שאפשר לנסות?",
   "devscore.note": "תמונת מצב לא־אבחנתית מאבני הדרך ששמתם לב אליהן — נקודת התחלה, לא פסק דין.",
-  "devscore.noticed": "שמתם לב ל־{reached} מתוך {total} אבני דרך גילאיות",
+  "devscore.noticed": "אבני דרך ששמתם לב אליהן עד עכשיו: {count}",
   "devscore.noticed.short": "שמתם לב",
-  "devscore.noticed.aria": "{domain}: {reached} מתוך {total} אבני דרך שמתם לב אליהן",
+  "devscore.noticed.aria": "{domain}: שמתם לב ל־{count}",
   "devscore.mechanism": "כל אבן דרך שאתם שמים לב אליה היא חלון קטן לאופן שבו {name} גדל — וגם נקודת פתיחה למה כדאי לנסות הלאה. זו תצפית שלכם כהורים, לא הערכה.",
   // Care › Consult
   "consult.ask": "שאל מומחה",

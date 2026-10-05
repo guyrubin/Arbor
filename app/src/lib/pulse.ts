@@ -61,6 +61,27 @@ export function countSince(
 export const pickCountKey = (base: string, count: number): string =>
   count === 1 ? `${base}One` : base;
 
+/**
+ * B-GROWTH-34 — THE one source for "how many milestones has the parent
+ * noticed". The Growth pill, the Growth hero stat row and the Development
+ * picture card all read this, so one screen can never say "You noticed 5
+ * milestones" beside "0 of 21 noticed". Plain counts only (law 1): no
+ * denominator, no window total, no share. `areas` = distinct domains among
+ * the noticed milestones; `byDomain` = noticed count per domain.
+ */
+export function noticedMilestoneCounts(
+  milestones: ReadonlyArray<{ checked: boolean; domain: string }>,
+): { noticed: number; areas: number; byDomain: Record<string, number> } {
+  const byDomain: Record<string, number> = {};
+  let noticed = 0;
+  for (const m of milestones) {
+    if (!m.checked) continue;
+    noticed++;
+    byDomain[m.domain] = (byDomain[m.domain] ?? 0) + 1;
+  }
+  return { noticed, areas: Object.keys(byDomain).length, byDomain };
+}
+
 /** Hour → display time in the UI language (en "5pm", he 24h "17:00"). */
 export const formatHour = (hour: number, lang: UiLang): string =>
   lang === "he" ? `${((hour % 24) + 24) % 24}:00` : hourLabel(hour);
@@ -130,8 +151,9 @@ export function usePulses(): HubPulses {
 
     // ── Growth: parent-noticed milestones — B-SHELL-19: a COUNT only. The
     //    old "x of y" put the all-ages catalogue (`milestones.length`) behind
-    //    the count as a denominator.
-    const noticed = milestones.filter((m) => m.checked).length;
+    //    the count as a denominator. B-GROWTH-34: the hub hero reads the SAME
+    //    helper, so the pill and the stat row can never disagree.
+    const { noticed } = noticedMilestoneCounts(milestones);
     const growth: HubPulse =
       noticed > 0
         ? { key: pickCountKey("elev.pulse.growth.noticed", noticed), params: { count: noticed }, count: noticed }

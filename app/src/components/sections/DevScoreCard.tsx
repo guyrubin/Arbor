@@ -5,6 +5,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useDevScore } from "../../hooks/useDevScore";
 import { domainLabel } from "../../lib/domains/registry";
 import { HeroAvatar } from "../ui/HeroAvatar";
+import { noticedMilestoneCounts } from "../../lib/pulse";
 
 /* My Child › Development — the Development picture (PRD C4).
  *
@@ -25,7 +26,7 @@ const GREEN_SOFT = "var(--arbor-green-soft)";
 const RULE = "var(--arbor-rule)";
 
 export default function DevScoreCard() {
-  const { childProfile } = useArbor();
+  const { childProfile, milestones } = useArbor();
   const { t } = useLanguage();
   const firstName = (childProfile.name || t("learn.yourChild")).split(" ")[0];
 
@@ -37,8 +38,10 @@ export default function DevScoreCard() {
   // in CHILD_SUBCOLLECTIONS (export + erase) until Guy's G12 deletion decision.
   const score = useDevScore();
 
-  const reached = score.domains.reduce((n, d) => n + d.reached, 0);
-  const total = score.domains.reduce((n, d) => n + d.total, 0);
+  // B-GROWTH-34: the headline count and the per-area screen-reader line come
+  // from the SAME helper the Growth pill and hero stat row read — a plain count
+  // of what the parent noticed, never "{reached} of {total}" (law 1).
+  const { noticed, byDomain } = noticedMilestoneCounts(milestones);
 
   if (score.confidence === "none") {
     return (
@@ -73,12 +76,12 @@ export default function DevScoreCard() {
         {/* Headline: flat count of parent-noticed milestones (NOT a percentage/share). */}
         <div className="flex items-center gap-5 mt-3">
           <div className="flex-none w-[72px] h-[72px] rounded-full flex flex-col items-center justify-center" style={{ background: GREEN_SOFT }}>
-            <span className="text-[24px] font-extrabold leading-none" style={{ fontFamily: "var(--font-display)", color: GREEN }}>{reached}</span>
+            <span className="text-[24px] font-extrabold leading-none" style={{ fontFamily: "var(--font-display)", color: GREEN }}>{noticed}</span>
             <span className="text-xs font-bold mt-1" style={{ color: GREEN }}>{t("devscore.noticed.short")}</span>
           </div>
           <div className="min-w-0">
             <div className="text-[16px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: INK }}>
-              {t("devscore.noticed", { reached, total })}
+              {t("devscore.noticed", { count: noticed })}
             </div>
             {/* Developmental mechanism (parent observation + one-thing-to-try). */}
             <div className="text-[12.5px] mt-1.5 leading-relaxed" style={{ color: MUTED }}>
@@ -92,7 +95,7 @@ export default function DevScoreCard() {
         <div className="sr-only">
           {score.domains.map((d) => (
             <span key={d.domain}>
-              {t("devscore.noticed.aria", { domain: domainLabel("developmental", d.domain, t), reached: d.reached, total: d.total })}{"; "}
+              {t("devscore.noticed.aria", { domain: domainLabel("developmental", d.domain, t), count: byDomain[d.domain] ?? 0 })}{"; "}
             </span>
           ))}
         </div>

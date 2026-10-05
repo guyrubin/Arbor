@@ -4,9 +4,6 @@ import path from "node:path";
 import { DOMAIN_META } from "../practice/content";
 import { DOMAINS, DOMAIN_COUNT } from "./domains/registry";
 import { translate } from "./i18n";
-import { resolvePlural } from "../context/LanguageContext";
-import { ALL_MILESTONES, MILESTONE_AGE_BANDS, ageWindowMilestones } from "./milestoneData";
-import { domainCountsIn } from "./domainCount";
 
 /* OBJ-GROWTH-01 — one screen, four different answers to "how many areas does
    Arbor track": the Development hero said "1 areas (of 7)" from a hard-coded
@@ -24,87 +21,29 @@ const stripComments = (src: string) =>
   src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
 
 describe("OBJ-GROWTH-01 — one domain count, derived once", () => {
-  it("the dictionary no longer carries a literal total in either language", () => {
+  /* B-GROWTH-34 superseded B-GROWTH-01: the hero row no longer carries any
+     "areas of N" (law 1 — no denominator), so the n ≤ total invariant and its
+     lib/domainCount helper are gone. The hero's plain counts are guarded in
+     components/tabs/growthHeroCounts.test.ts. What stays here: the registry
+     total the remaining surfaces name. */
+  it("the hero row's old denominator keys are gone from both dictionaries", () => {
     const growth = read("lib", "i18nElevation", "growth.ts");
-    for (const line of growth.split("\n").filter((l) => l.includes("elev.hero.growth.stat.domains"))) {
-      expect(line).not.toMatch(/\d/);
-      expect(line).toContain("{total}");
-    }
-  });
-
-  it("EN and HE both interpolate the count and read singular at 1", () => {
-    const t = (lang: "en" | "he", vars: Record<string, string | number>) =>
-      resolvePlural(lang, translate(lang, "elev.hero.growth.stat.domains", vars), vars);
-    const total = DOMAIN_COUNT;
-    for (const lang of ["en", "he"] as const) {
-      expect(t(lang, { n: 1, total })).toContain(String(total));
-      expect(t(lang, { n: total, total })).toContain(String(total));
-    }
-    expect(t("en", { n: 1, total })).toBe(`area of ${total}`);
-    expect(t("en", { n: 3, total })).toBe(`areas of ${total}`);
-  });
-
-  /* B-GROWTH-01 — the hero's numerator counted DevelopmentalDomainId over ALL
-     checked milestones (six ids) while the denominator was DOMAIN_META (five
-     PracticeDomains): "6 areas of 5" was reachable. Both now derive from the
-     SAME ageWindowMilestones(...) array, so n ≤ total by construction. */
-  describe("B-GROWTH-01 — hero numerator and denominator share one array", () => {
+    expect(growth).not.toContain('"elev.hero.growth.stat.domains"');
+    expect(growth).not.toContain('"elev.hero.growth.stat.noticed"');
     const dev = stripComments(read("components", "tabs", "DevelopmentTab.tsx"));
+    expect(dev).not.toContain("domainCountsIn");
+    expect(dev).not.toContain("DOMAIN_META");
+    expect(dev).not.toContain("DOMAIN_COUNT");
+  });
 
-    it("source scan: both numbers come from the one windowed array", () => {
-      expect(dev).toMatch(/const inWindow = ageWindowMilestones\(milestones, comparisonMonths\);/);
-      expect(dev).toMatch(/const \{ active: domainsActive, total: domainsTotal \} = domainCountsIn\(inWindow\);/);
-      expect(dev).toMatch(/elev\.hero\.growth\.stat\.domains[^)]*n: heroStats\.domainsActive, total: heroStats\.domainsTotal/);
-      // the second vocabulary is gone from this surface
-      expect(dev).not.toContain("DOMAIN_META");
-      expect(dev).not.toContain("DOMAIN_COUNT");
-      expect(dev).not.toMatch(/milestones\.filter\(\(m\) => m\.checked\)\.map\(\(m\) => m\.domain\)/);
-      const helper = stripComments(read("lib", "domainCount.ts"));
-      expect(helper).toContain("new Set(inWindow.map((m) => m.domain)).size");
-      expect(helper).toContain("new Set(inWindow.filter((m) => m.checked).map((m) => m.domain)).size");
-    });
-
-    it("the Full Picture teaser renders without a number in EN and HE", () => {
-      expect(dev).toContain('{t("elev.fullpicture.card.teaser")}');
-      for (const lang of ["en", "he"] as const) {
-        const s = translate(lang, "elev.fullpicture.card.teaser", {});
-        expect(s).not.toBe("elev.fullpicture.card.teaser");
-        expect(s).not.toMatch(/\d|\{n\}/);
-      }
-    });
-
-    it("property: n ≤ total at every catalogue band age (2–72 m), any check pattern", () => {
-      expect(MILESTONE_AGE_BANDS.length).toBe(13);
-      for (const { months } of MILESTONE_AGE_BANDS) {
-        const window = ageWindowMilestones(ALL_MILESTONES, months);
-        for (const pattern of [() => true, () => false, (i: number) => i % 2 === 0, (i: number) => i % 3 === 1]) {
-          const marked = window.map((m, i) => ({ ...m, checked: pattern(i) }));
-          const { active, total } = domainCountsIn(marked);
-          expect(active, `${months} m`).toBeLessThanOrEqual(total);
-        }
-        // a checked milestone OUTSIDE the window never inflates the numerator
-        const outside = ALL_MILESTONES.map((m) => ({ ...m, checked: !window.includes(m) }));
-        const { active } = domainCountsIn(ageWindowMilestones(outside, months));
-        expect(active).toBe(0);
-      }
-    });
-
-    it("a 5-year-old with every window milestone checked reads \"6 areas of 6\" (EN) and HE", () => {
-      const all = ageWindowMilestones(ALL_MILESTONES, 60).map((m) => ({ ...m, checked: true }));
-      const { active, total } = domainCountsIn(all);
-      expect([active, total]).toEqual([6, 6]);
-      const vars = { n: active, total };
-      expect(`${active} ${resolvePlural("en", translate("en", "elev.hero.growth.stat.domains", vars), vars)}`).toBe("6 areas of 6");
-      const he = resolvePlural("he", translate("he", "elev.hero.growth.stat.domains", vars), vars);
-      expect(he).toContain("6");
-      expect(he).not.toMatch(/\{(total|plural)\}/);
-    });
-
-    it("NEGATIVE CONTROL — the pre-fix shape (all-checked numerator over DOMAIN_META) breaks n ≤ total", () => {
-      const all = ALL_MILESTONES.map((m) => ({ ...m, checked: true }));
-      const preFixNumerator = new Set(all.filter((m) => m.checked).map((m) => m.domain)).size;
-      expect(preFixNumerator).toBeGreaterThan(Object.keys(DOMAIN_META).length);
-    });
+  it("the Full Picture teaser renders without a number in EN and HE", () => {
+    const dev = stripComments(read("components", "tabs", "DevelopmentTab.tsx"));
+    expect(dev).toContain('{t("elev.fullpicture.card.teaser")}');
+    for (const lang of ["en", "he"] as const) {
+      const s = translate(lang, "elev.fullpicture.card.teaser", {});
+      expect(s).not.toBe("elev.fullpicture.card.teaser");
+      expect(s).not.toMatch(/\d|\{n\}/);
+    }
   });
 
   it("B-GROWTH-26: DOMAIN_COUNT is the registry's length — 8 domains (Guy D1)", () => {

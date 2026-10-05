@@ -12,13 +12,15 @@ export const en: Record<string, string> = {
   "elev.hero.growth.title": "Small moments become the growth story",
   "elev.hero.growth.sub": "Every milestone you notice is kept — Arbor remembers it for you.",
   "elev.hero.growth.cta": "Quick development check",
-  "elev.hero.growth.stat.noticed": "of {total} noticed",
-  // OBJ-GROWTH-01: the "7" was a hard-coded literal beside 6 rendered rows,
-  // a "5 areas covered" teaser and Science's "7 developmental domains". The
-  // total is interpolated from DOMAIN_META now; `{plural}` is resolved by
-  // LanguageContext from `n`, so "1 area" reads singular.
-  "elev.hero.growth.stat.domains": "area{plural} of {total}",
-  "elev.hero.growth.stat.week": "logged this week",
+  // B-GROWTH-34: plain counts under the hero number — never "of {total}"
+  // (the row read "0 of 21 noticed · 0 areas of 6" beside a pill saying
+  // "You noticed 5 milestones"). Singular keys are explicit "<base>One".
+  "elev.hero.growth.stat.noticedCount": "noticed",
+  "elev.hero.growth.stat.noticedCountOne": "noticed",
+  "elev.hero.growth.stat.areas": "areas",
+  "elev.hero.growth.stat.areasOne": "area",
+  "elev.hero.growth.stat.moments": "moments this week",
+  "elev.hero.growth.stat.momentsOne": "moment this week",
 
   // ── E2 · Academy hub hero
   "elev.hero.academy.eyebrow": "Academy",
@@ -91,9 +93,12 @@ export const he: Record<string, string> = {
   "elev.hero.growth.title": "כאן רגעים קטנים הופכים לסיפור ההתפתחות",
   "elev.hero.growth.sub": "כל אבן דרך ששמתם לב אליה נשמרת — ארבור זוכרת בשבילכם.",
   "elev.hero.growth.cta": "בדיקת התפתחות מהירה",
-  "elev.hero.growth.stat.noticed": "מתוך {total} אבני דרך",
-  "elev.hero.growth.stat.domains": "מתוך {total} תחומים",
-  "elev.hero.growth.stat.week": "תועד השבוע",
+  "elev.hero.growth.stat.noticedCount": "אבני דרך ששמתם לב אליהן",
+  "elev.hero.growth.stat.noticedCountOne": "אבן דרך ששמתם לב אליה",
+  "elev.hero.growth.stat.areas": "תחומים",
+  "elev.hero.growth.stat.areasOne": "תחום",
+  "elev.hero.growth.stat.moments": "רגעים השבוע",
+  "elev.hero.growth.stat.momentsOne": "רגע השבוע",
 
   "elev.hero.academy.eyebrow": "אקדמיה",
   "elev.hero.academy.title": "קורסים קצרים, מותאמים לשלב של {name}",
