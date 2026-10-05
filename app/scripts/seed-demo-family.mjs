@@ -128,7 +128,17 @@ async function sandboxWriters() {
 
 async function applySandbox(family, plan) {
   await mkdir(path.dirname(SANDBOX_BUNDLE_PATH), { recursive: true });
-  await writeFile(SANDBOX_BUNDLE_PATH, JSON.stringify(family, null, 2));
+  // W2-GROWTH r2 (Law 8): the bundle carries the same family in BOTH UI
+  // languages; the client hydrator picks the one the parent reads in
+  // (lib/demoFamilyHydrate). The memory ledger stays in --lang (server-side).
+  const { buildDemoFamily } = await import("../src/demo/demoFamily.ts");
+  const now = Date.parse(family.seededAt);
+  const locales = {};
+  for (const lang of ["en", "he"]) {
+    const f = lang === family.lang ? family : buildDemoFamily({ now, lang, childId: family.child.id });
+    locales[lang] = { child: f.child, collections: f.collections };
+  }
+  await writeFile(SANDBOX_BUNDLE_PATH, JSON.stringify({ ...family, locales }, null, 2));
   const { memoryStore, familyId } = await sandboxWriters();
   await seedMemory(memoryStore, family, familyId);
   return { wrote: [SANDBOX_BUNDLE_PATH, "app/.data/memory-ledger.json"], plan };

@@ -21,12 +21,18 @@ const LS_PROFILES = "arbor.children";
 const LS_ACTIVE = "arbor.activeChildId";
 
 type StorageLike = Pick<Storage, "getItem" | "setItem">;
-type Bundle = {
-  version?: unknown;
-  seededAt?: unknown;
+type BundleBody = {
   child?: { id?: unknown; demo?: unknown } & Record<string, unknown>;
   collections?: Record<string, unknown>;
 };
+type Bundle = BundleBody & {
+  version?: unknown;
+  seededAt?: unknown;
+  /** W2-GROWTH r2 (Law 8): the same family in each UI language (seed-demo-family.mjs). */
+  locales?: Partial<Record<"en" | "he", BundleBody>>;
+};
+/** LanguageContext's persisted UI language key. */
+const LS_UI_LANG = "arbor.uiLang";
 
 export type HydrateResult = "seeded" | "current" | "none";
 
@@ -43,14 +49,24 @@ export async function hydrateDemoFamily({
   } catch {
     return "none";
   }
-  const child = bundle?.child;
+  // W2-GROWTH r2 (Law 8): a Hebrew parent's record is hydrated in Hebrew — the
+  // HE sweep cell rendered "City kindergarten, first year" because the one
+  // bundle was English. The bundle carries both locales; the UI language at
+  // load picks one, and the marker carries the language, so a reload after a
+  // language switch re-hydrates. An old single-locale bundle still works.
+  let uiLang: "en" | "he" = "en";
+  try { uiLang = storage.getItem(LS_UI_LANG) === "he" ? "he" : "en"; } catch { /* default en */ }
+  const body: BundleBody = bundle?.locales?.[uiLang] ?? bundle;
+  const child = body?.child;
   const childId = typeof child?.id === "string" ? child.id : "";
-  if (!childId || child?.demo !== true || !bundle.collections || typeof bundle.collections !== "object") return "none";
+  if (!childId || child?.demo !== true || !body.collections || typeof body.collections !== "object") return "none";
 
-  const marker = `${String(bundle.version)}@${String(bundle.seededAt)}`;
+  const marker = bundle?.locales?.[uiLang]
+    ? `${String(bundle.version)}@${String(bundle.seededAt)}@${uiLang}`
+    : `${String(bundle.version)}@${String(bundle.seededAt)}`;
   if (storage.getItem(DEMO_FAMILY_MARKER) === marker) return "current";
 
-  for (const [name, docs] of Object.entries(bundle.collections)) {
+  for (const [name, docs] of Object.entries(body.collections)) {
     if (!CHILD_SUBCOLLECTIONS.includes(name) || !Array.isArray(docs)) continue;
     storage.setItem(`arbor.${name}.${childId}`, JSON.stringify(docs));
   }

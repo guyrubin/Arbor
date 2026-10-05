@@ -169,6 +169,27 @@ describe("B-DIST-01 · the sandbox run", () => {
     expect(await hydrateDemoFamily({ fetchImpl: okFetch, storage })).toBe("current");
   });
 
+  it("W2-GROWTH r2 (Law 8): a two-locale bundle hydrates in the parent's UI language; a language switch re-hydrates", async () => {
+    const en = buildDemoFamily({ now: NOW, lang: "en" });
+    const he = buildDemoFamily({ now: NOW, lang: "he" });
+    const twoLocale = { ...en, locales: { en: { child: en.child, collections: en.collections }, he: { child: he.child, collections: he.collections } } };
+    const fetch2 = (async () => ({ ok: true, json: async () => twoLocale })) as unknown as typeof fetch;
+    const storage = memoryStorage();
+    storage.setItem("arbor.uiLang", "he");
+    expect(await hydrateDemoFamily({ fetchImpl: fetch2, storage })).toBe("seeded");
+    const child = JSON.parse(storage.getItem("arbor.children")!)[0];
+    expect(child.schoolContext).toBe("גן עירוני, שנה ראשונה");
+    expect(storage.getItem(DEMO_FAMILY_MARKER)).toMatch(/@he$/);
+    expect(await hydrateDemoFamily({ fetchImpl: fetch2, storage })).toBe("current");
+    storage.setItem("arbor.uiLang", "en");
+    expect(await hydrateDemoFamily({ fetchImpl: fetch2, storage })).toBe("seeded");
+    expect(JSON.parse(storage.getItem("arbor.children")!)[0].schoolContext).toBe("City kindergarten, first year");
+    // the sandbox writer puts both locales in the bundle
+    const seedSrc = readFileSync(new URL("../../scripts/seed-demo-family.mjs", import.meta.url), "utf8");
+    expect(seedSrc).toMatch(/for \(const lang of \["en", "he"\]\)/);
+    expect(seedSrc).toContain("JSON.stringify({ ...family, locales }, null, 2)");
+  });
+
   it("no bundle, a failing server or a non-demo body leaves storage untouched", async () => {
     const storage = memoryStorage();
     expect(await hydrateDemoFamily({ fetchImpl: (async () => ({ ok: false })) as unknown as typeof fetch, storage })).toBe("none");
