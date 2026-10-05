@@ -16,3 +16,7 @@ ds-bundle/
 .design-sync/node_modules
 .design-sync/arbor-compiled.css
 public/mediapipe/wasm/
+
+# B-BOOK-01: DEV-only book art (placeholder plates, hero sheets that may be a real
+# child's likeness, narration drafts) - never committed, never shipped
+public/_dev/
