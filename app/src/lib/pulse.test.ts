@@ -117,6 +117,21 @@ describe("B-SHELL-19 · pulses carry no denominator; the hub line and the strip 
     expect('params: { count: noticed }, count: noticed }').toMatch(/\},\s*count:\s*noticed\b/);
   });
 
+  it("W2-GROWTH r2: the Profile pulse is what Arbor remembers — no album moment total, no `count` above the H1", () => {
+    const src = readFileSync(path.join(here, "pulse.ts"), "utf8").replace(/\r\n/g, "\n");
+    const profile = src.slice(src.indexOf("const remembered ="), src.indexOf("return { today, journal"));
+    expect(profile).toBeTruthy();
+    expect(profile).not.toContain("elev.pulse.profile.album");
+    expect(profile).not.toMatch(/\bcount:/);
+    expect(profile).toContain("elev.pulse.profile.");
+    for (const k of ["memory", "memoryOne", "memoryWaiting", "memoryOneWaiting", "waitingOnly"]) {
+      const key = `elev.pulse.profile.${k}`;
+      expect(elevationEn[key], key).toBeTruthy();
+      expect(elevationHe[key], key).toBeTruthy();
+      expect(elevationEn[key]).not.toMatch(/%|\bof\b|\{total\}|moments?/);
+    }
+  });
+
   it("the strip label is 'Working on' (EN + HE) and opens the profile editor", () => {
     expect(en["top.focus"]).toBe("Working on");
     expect(he["top.focus"]).toBe("עובדים על");

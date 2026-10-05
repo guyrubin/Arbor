@@ -96,6 +96,11 @@ export const en: Record<string, string> = {
   "elev.pulse.profile.album": "The album is growing: {count} moments",
   "elev.pulse.profile.albumOne": "The album is growing: first moment saved",
   "elev.pulse.profile.empty": "{name}'s album starts here",
+  "elev.pulse.profile.memory": "Arbor remembers {n} things about {name}",
+  "elev.pulse.profile.memoryWaiting": "Arbor remembers {n} things about {name} · {k} waiting for you",
+  "elev.pulse.profile.memoryOne": "Arbor remembers one thing about {name}",
+  "elev.pulse.profile.memoryOneWaiting": "Arbor remembers one thing about {name} · {k} waiting for you",
+  "elev.pulse.profile.waitingOnly": "{k} things about {name} waiting for you",
 
   // ── Builder E1 · Today hub + Weekly (object backlog, 2026-09-07) ──────────
   // TJB-14 · Day Windows: both of these were bare template literals, so the
@@ -189,6 +194,11 @@ export const he: Record<string, string> = {
   "elev.pulse.profile.album": "האלבום גדל: {count} רגעים",
   "elev.pulse.profile.albumOne": "האלבום גדל: הרגע הראשון נשמר",
   "elev.pulse.profile.empty": "האלבום של {name} מתחיל כאן",
+  "elev.pulse.profile.memory": "ארבור זוכרת {n} דברים על {name}",
+  "elev.pulse.profile.memoryWaiting": "ארבור זוכרת {n} דברים על {name} · {k} מחכים לכם",
+  "elev.pulse.profile.memoryOne": "ארבור זוכרת דבר אחד על {name}",
+  "elev.pulse.profile.memoryOneWaiting": "ארבור זוכרת דבר אחד על {name} · {k} מחכים לכם",
+  "elev.pulse.profile.waitingOnly": "{k} דברים על {name} מחכים לכם",
 
   // ── Builder E1 · Today hub + Weekly (object backlog, 2026-09-07) ──────────
   "elev.dw.daysLoggedOf": "תיעדתם {n} מתוך {total} ימים עד כה.",

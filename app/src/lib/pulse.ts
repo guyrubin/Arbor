@@ -99,6 +99,8 @@ export function usePulses(): HubPulses {
     milestones,
     conversations,
     unreadCoachCount,
+    approvedMemoryItems,
+    pendingMemoryItems,
   } = useArbor();
   const { uiLang } = useLanguage();
   // B-PLAY-04: kid-play rounds this week (practiceEvents, one subscription).
@@ -190,11 +192,22 @@ export function usePulses(): HubPulses {
     //    standing line, like Academy. ─────────────────────────────────────────
     const care: HubPulse = { key: "elev.pulse.care.empty" };
 
-    // ── Profile: the album motif — total captured moments across time. ─────
-    const albumTotal = behaviorLogs.length + playLogs.length;
+    // ── Profile — W2-GROWTH r2: what Arbor remembers, never the album's
+    //    moment total (moment counts belong to Journal, CN-007). NO `count`:
+    //    below lg a counted pulse prints above the profile H1 and pushed the
+    //    pending Keep toward the tab bar; the shell shows nav.sub.profile and
+    //    the More-sheet row reads "Arbor remembers {n} things about {name} ·
+    //    {k} waiting for you" (counts only, no comparison).
+    const remembered = (approvedMemoryItems ?? []).length;
+    const waiting = (pendingMemoryItems ?? []).length;
     const profile: HubPulse =
-      albumTotal > 0
-        ? { key: pickCountKey("elev.pulse.profile.album", albumTotal), params: { count: albumTotal }, count: albumTotal }
+      remembered > 0 || waiting > 0
+        ? {
+            key: remembered === 0
+              ? "elev.pulse.profile.waitingOnly"
+              : `elev.pulse.profile.memory${remembered === 1 ? "One" : ""}${waiting > 0 ? "Waiting" : ""}`,
+            params: { name, n: remembered, k: waiting },
+          }
         : { key: "elev.pulse.profile.empty", params: { name } };
 
     return { today, journal, behaviors, growth, practice, stories, learn, ask, care, profile };
@@ -208,5 +221,7 @@ export function usePulses(): HubPulses {
     unreadCoachCount,
     uiLang,
     practice7d,
+    approvedMemoryItems,
+    pendingMemoryItems,
   ]);
 }
