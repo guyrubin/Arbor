@@ -18,6 +18,9 @@ export interface StatuePicture {
   /** image/jpeg data url, composed on the device. */
   url: string;
   pose: FreezePose;
+  /** B-GAME-09c: the framing / time-of-day variant (statuePicture.ts), so the
+   *  next sitting's picture can differ from this one. */
+  variant?: number;
 }
 
 export function statuesKey(childId: string): string {
@@ -45,6 +48,12 @@ export function readStatuePictures(childId: string, storage?: Store | null): Sta
   } catch {
     return [];
   }
+}
+
+/** The variant of the newest kept picture (null when none, or older pictures). */
+export function lastStatueVariant(childId: string, storage?: Store | null): number | null {
+  const v = readStatuePictures(childId, storage)[0]?.variant;
+  return typeof v === "number" && Number.isInteger(v) ? v : null;
 }
 
 /** Keep one more picture (newest first, at most 12). Returns what is kept. */

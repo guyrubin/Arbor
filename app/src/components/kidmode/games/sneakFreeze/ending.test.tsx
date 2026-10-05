@@ -10,8 +10,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { startSitting, step, type SneakState } from "./rules";
-import { PICTURE, pictureLayout, statueShot, toPicture } from "./statuePicture";
-import { STATUE_KEEP, keepStatuePicture, readStatuePictures, statuesKey, type StatuePicture } from "./statueStore";
+import { PICTURE, PICTURE_VARIANTS, pickVariant, pictureLayout, statueShot, toPicture } from "./statuePicture";
+import { STATUE_KEEP, keepStatuePicture, lastStatueVariant, readStatuePictures, statuesKey, type StatuePicture } from "./statueStore";
 import { Ending, captionKey } from "./Ending";
 import { devPlaceholderArt } from "./devPlaceholderArt";
 import { devPlaceholderSheet } from "../../hero/devPlaceholderSheet";
@@ -55,28 +55,46 @@ describe("the statue picture — composition", () => {
     expect(statueShot({ statues: [] })).toBeNull();
   });
 
-  it("the picture differs between two sittings", () => {
+  it("the picture differs between two sittings: another framing and time of day than the last", () => {
     const sa = statueShot(a)!;
     const sb = statueShot(b)!;
-    expect(sa.pose !== sb.pose || Math.abs(sa.at - sb.at) > 1e-6).toBe(true);
-    expect(JSON.stringify(pictureLayout(sa))).not.toBe(JSON.stringify(pictureLayout(sb)));
+    const va = pickVariant(a.seed, null);
+    const vb = pickVariant(b.seed, va);
+    expect(vb).not.toBe(va);
+    const la = pictureLayout(sa, va);
+    const lb = pictureLayout(sb, vb);
+    expect(la.variant.side !== lb.variant.side || la.variant.tint !== lb.variant.tint).toBe(true);
+    expect(JSON.stringify(la)).not.toBe(JSON.stringify(lb));
+    // Whatever the seed, the next sitting never repeats the last variant; neighbours differ in side AND tint.
+    for (let n = 0; n < 60; n++) for (let prev = 0; prev < PICTURE_VARIANTS.length; prev++) expect(pickVariant(`s${n}`, prev)).not.toBe(prev);
+    PICTURE_VARIANTS.forEach((v, i) => {
+      const next = PICTURE_VARIANTS[(i + 1) % PICTURE_VARIANTS.length];
+      expect(v.side).not.toBe(next.side);
+      expect(v.tint).not.toBe(next.tint);
+    });
   });
 
-  it("frames the hero (head to feet) and the cat inside a 4:3 picture, mirrored in Hebrew", () => {
+  it("B-GAME-09c: a close shot — the hero LARGE (>= 55 % of the height) head to feet, the cat whole in the opposite lower corner, mirrored in Hebrew", () => {
     for (const at of [0.08, 0.3, 0.5, 0.7, 0.92]) {
       for (const pose of ["freeze-a", "freeze-b"] as const) {
-        const l = pictureLayout({ pose, at });
-        expect(l.crop.w / l.crop.h).toBeCloseTo(PICTURE.w / PICTURE.h, 6);
-        for (const p of [{ x: l.hero.x, y: l.hero.y }, { x: l.hero.x, y: l.hero.y - l.hero.h }, { x: l.watcher.x, y: l.watcher.y }, { x: l.watcher.x, y: l.watcher.y - l.watcher.h }]) {
-          const q = toPicture(l, p, false);
-          expect(q.x).toBeGreaterThanOrEqual(0);
-          expect(q.x).toBeLessThanOrEqual(PICTURE.w);
-          expect(q.y).toBeGreaterThanOrEqual(0);
-          expect(q.y).toBeLessThanOrEqual(PICTURE.h);
-          expect(toPicture(l, p, true).x).toBeCloseTo(PICTURE.w - q.x, 6);
+        for (let v = 0; v < PICTURE_VARIANTS.length; v++) {
+          const l = pictureLayout({ pose, at }, v);
+          expect(l.crop.w / l.crop.h).toBeCloseTo(PICTURE.w / PICTURE.h, 6);
+          expect(l.hero.h / PICTURE.h).toBeGreaterThanOrEqual(0.55);
+          expect(l.hero.h / PICTURE.h).toBeLessThanOrEqual(0.72);
+          // Head and feet inside the picture, with air above the head.
+          expect(l.hero.y - l.hero.h).toBeGreaterThan(PICTURE.h * 0.12);
+          expect(l.hero.y).toBeLessThanOrEqual(PICTURE.h * 0.95);
+          // The cat: whole (stool on the floor inside the bottom edge), in the other half, lower corner.
+          expect(l.watcher.y).toBeLessThanOrEqual(PICTURE.h);
+          expect(l.watcher.y - l.watcher.h).toBeGreaterThan(PICTURE.h * 0.4);
+          expect(Math.sign(l.watcher.x - PICTURE.w / 2)).toBe(-Math.sign(l.hero.x - PICTURE.w / 2));
+          // It peers at him: the sprite peers right, mirrored when he stands on the left.
+          expect(l.watcher.flip).toBe(l.hero.x < PICTURE.w / 2);
+          for (const p of [{ x: l.hero.x, y: l.hero.y }, { x: l.watcher.x, y: l.watcher.y }]) {
+            expect(toPicture(p, true).x).toBeCloseTo(PICTURE.w - toPicture(p, false).x, 6);
+          }
         }
-        // The hero is big enough to read: at least a fifth of the picture's height.
-        expect(l.hero.h * l.scale).toBeGreaterThan(PICTURE.h / 5);
       }
     }
   });
@@ -101,6 +119,15 @@ describe("the statue pictures kept on the device", () => {
     expect(kept[0].id).toBe("s14");
     expect(kept[kept.length - 1].id).toBe("s3");
     expect(statuesKey("kid1")).toBe("arbor.sneakFreeze.statues.kid1");
+  });
+
+  it("B-GAME-09c: remembers the newest picture's variant (older pictures have none)", () => {
+    const store = memoryStore();
+    expect(lastStatueVariant("kid1", store)).toBeNull();
+    keepStatuePicture("kid1", pic(1), store);
+    expect(lastStatueVariant("kid1", store)).toBeNull();
+    keepStatuePicture("kid1", { ...pic(2), variant: 4 }, store);
+    expect(lastStatueVariant("kid1", store)).toBe(4);
   });
 
   it("when storage is full the oldest pictures make room; garbage reads as empty", () => {
@@ -189,7 +216,7 @@ describe("B-GAME-09b — ending polish", () => {
     const check = src.indexOf("if (!urls.every(sameOriginOrData)) return null;");
     expect(check).toBeGreaterThan(0);
     expect(check).toBeLessThan(src.indexOf("await Promise.all("));
-    for (const drawn of ["o.art.plate.landscape", "looking.url", "heroPose.sprite.url", "o.art.covers[c.id as keyof SneakArt[\"covers\"]].url"]) {
+    for (const drawn of ["o.art.plate.landscape", "looking.url", "heroPose.sprite.url"]) {
       expect(src.slice(src.indexOf("const urls = ["), check)).toContain(drawn);
     }
     expect(src).toMatch(/try \{\s*return canvas\.toDataURL/);
