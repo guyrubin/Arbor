@@ -395,6 +395,16 @@ describe("IA-07 — the hub pill row tells you it scrolls, and lands on a pill",
     expect(bare).not.toMatch(/scrollIntoView\(\{ block: "start"/);
   });
 
+  it("W2-SHELLPLAY r2: no pill sits under the fade at rest — inline padding and scroll-padding equal the 14 px fade", () => {
+    const fade = bare.slice(bare.indexOf("const PILL_EDGE_FADE ="), bare.indexOf("const PILL_EDGE_FADE =") + 240);
+    expect(fade).toContain("black 14px");
+    expect(fade).toContain("black calc(100% - 14px)");
+    expect(row).toContain("-mx-[14px] px-[14px]");
+    expect(row).toContain('scrollPaddingInline: "14px"');
+    // NEGATIVE CONTROL: the r2 band (4 px padding under a 14 px fade) is caught
+    expect('className="sticky z-20 flex gap-2 overflow-x-auto mb-4 -mx-1 px-1 pb-2 no-scrollbar"').not.toContain("px-[14px]");
+  });
+
   it("negative control: the shipped row had no fade, no snap and no ref", () => {
     const preFix = 'className="sticky z-20 flex gap-2 overflow-x-auto mb-6 -mx-1 px-1 pb-2 no-scrollbar"';
     expect(preFix).not.toContain("scrollSnap");

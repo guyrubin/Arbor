@@ -438,7 +438,7 @@ export default function Shell() {
             <div
               role="tablist"
               aria-label={`${section.label} sections`}
-              className="sticky z-20 flex gap-2 overflow-x-auto mb-4 -mx-1 px-1 pb-2 no-scrollbar"
+              className="sticky z-20 flex gap-2 overflow-x-auto mb-4 -mx-[14px] px-[14px] pb-2 no-scrollbar"
               style={{
                 background: "var(--arbor-paper)",
                 /* IA-07: the row scrolled silently. A pill past either edge
@@ -450,6 +450,14 @@ export default function Shell() {
                    makes the scroll land ON a pill instead of between two. */
                 maskImage: PILL_EDGE_FADE,
                 WebkitMaskImage: PILL_EDGE_FADE,
+                /* W2-SHELLPLAY r2 (masterclasses design): the fade is 14 px, so the
+                   band carries 14 px of inline padding (pulled back out with the
+                   same negative margin, so pills keep their x) and snaps/scrolls
+                   with a 14 px scroll-padding: at rest NO pill sits under the
+                   fade — the active navy pill's leading edge was washed in every
+                   cell, even at 1280 where the row does not overflow. The fade
+                   now only ever covers a pill that is actually scrolled past. */
+                scrollPaddingInline: "14px",
                 scrollSnapType: "x mandatory",
                 /* <main> is the scrollport and carries a top padding, so a plain
                    `top: 0` parked this band one padding-height below the
