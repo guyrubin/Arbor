@@ -288,3 +288,37 @@ describe("W2-CAREPRO c2 r1 · the demo memory seed renders a group at volume", (
     });
   }
 });
+
+/* W2-CAREPRO c2 r2 (appointments + memory critics, P1 G1): two rounds of new
+ * demo content (the booked T+9 SLP visit; three same-topic pending facts)
+ * never rendered because DEMO_FAMILY_VERSION was not bumped, so nothing told
+ * the served bundle was stale. The family's CONTENT is pinned to its version:
+ * change the family → this fails until the version is bumped and the pin
+ * re-recorded (then `npm run seed:demo -- --apply` re-seeds the sandbox). */
+describe("W2-CAREPRO c2 r2 · the demo content is pinned to DEMO_FAMILY_VERSION", () => {
+  const PINNED = { version: "2026-10-05.1", sha256: "419e2a09d02bc688306183a0fa2a30dc9ff03095a68177bc179a241a57ba6411" };
+  const contentHash = async () => {
+    const { createHash } = await import("node:crypto");
+    const body = JSON.stringify([buildDemoFamily({ now: NOW, lang: "en" }), buildDemoFamily({ now: NOW, lang: "he" })]);
+    return createHash("sha256").update(body).digest("hex");
+  };
+
+  it("content and version move together", async () => {
+    const { DEMO_FAMILY_VERSION } = await import("./demoFamily");
+    const hash = await contentHash();
+    expect(
+      { version: DEMO_FAMILY_VERSION, sha256: hash },
+      "demo family content changed: bump DEMO_FAMILY_VERSION, re-pin PINNED here, then run `npm run seed:demo -- --apply` (and --lang he for HE cells)",
+    ).toEqual(PINNED);
+  });
+
+  it("the content the critics need is in it: a booked visit within 14 days, and a pending topic at volume (EN + HE)", () => {
+    for (const lang of ["en", "he"] as const) {
+      const fam = buildDemoFamily({ now: NOW, lang });
+      const upcoming = fam.collections.appointments
+        .filter((a) => a.whenIso && Date.parse(a.whenIso) > NOW && Date.parse(a.whenIso) - NOW <= 14 * 86_400_000);
+      expect(upcoming.length, lang).toBeGreaterThan(0);
+      expect(fam.memory.pendingMore.length, lang).toBeGreaterThanOrEqual(3);
+    }
+  });
+});
