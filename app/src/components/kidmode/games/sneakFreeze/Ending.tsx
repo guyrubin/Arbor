@@ -6,7 +6,9 @@
  * the cat turned round squinting, the hero in the freeze pose held longest,
  * where it froze), captioned "The cat looked… and {name} didn't move!" with
  * the name isolated for bidi (EN + HE boy / girl / unspecified), the three
- * prizes the cat handed over, and two toys: Play again (a new seed) and Home.
+ * prizes the cat handed over, then — once the picture is up — the cat's
+ * "again?" line and two toys: Play again (a new seed; the next sitting opens
+ * on a different prize) and Home.
  * No stars, no counts, no auto-advance, no model or network call. The last
  * 12 pictures are kept on the device (statueStore.ts).
  */
@@ -44,11 +46,18 @@ export function captionKey(firstName: string, gender: string | undefined): strin
 
 export function Ending({ state, art, sheet, childId, rtl, caption, pictureAlt, playAgainLabel, homeLabel, onPlayAgain, onHome, onShown }: EndingProps) {
   const [picture, setPicture] = useState<string | null>(null);
+  // B-GAME-09b: the picture first, then the cat's "again?" line, then the two
+  // toys appear (no auto-advance: nothing happens until the child taps).
+  const [ready, setReady] = useState(false);
 
   // Compose once per sitting (the seed names it); keep it on the device.
   useEffect(() => {
     let alive = true;
-    const shown = () => { if (alive) onShown?.(); };
+    const shown = () => {
+      if (!alive) return;
+      setReady(true);
+      onShown?.();
+    };
     const shot = statueShot(state);
     if (!shot) { shown(); return; }
     composeStatuePicture({ shot, art, sheet, rtl })
@@ -97,7 +106,10 @@ export function Ending({ state, art, sheet, childId, rtl, caption, pictureAlt, p
           ))}
         </div>
       )}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 16, justifyContent: "center" }}>
+      <div
+        data-sneak-ending-toys={ready ? "ready" : "waiting"}
+        style={{ display: "flex", flexWrap: "wrap", gap: 16, justifyContent: "center", opacity: ready ? 1 : 0, visibility: ready ? "visible" : "hidden", transition: "opacity 240ms ease-out" }}
+      >
         <KidToy tone="go" size="l" glyph="replay" onClick={onPlayAgain} data-kid-finish-again="">{kidIsolate(playAgainLabel)}</KidToy>
         {onHome && <KidToy tone="paper" glyph="home" onClick={onHome} data-kid-finish-home="">{kidIsolate(homeLabel)}</KidToy>}
       </div>

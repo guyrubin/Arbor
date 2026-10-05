@@ -372,7 +372,7 @@ function SneakFreezeGame({ art, sheet }: { art: SneakArt; sheet: HeroSheet }) {
   const playAgain = () => {
     const s = stateRef.current;
     const n = sitting + 1;
-    stateRef.current = startSitting({ seed: newSeed(childId, n), track: s?.track ?? start.track, level: s?.level ?? start.level, intro: false });
+    stateRef.current = startSitting({ seed: newSeed(childId, n), track: s?.track ?? start.track, level: s?.level ?? start.level, intro: false, after: s?.prizeOrder[0] });
     hold.current.pointers.clear();
     hold.current.keys.clear();
     prevProgress.current = 0;

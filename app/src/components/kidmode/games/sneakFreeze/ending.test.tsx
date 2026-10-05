@@ -159,3 +159,47 @@ describe("the ending screen", () => {
     expect(translate("he", "kid.game.sneak-freeze.caption.noName")).toMatch(/[א-ת]/);
   });
 });
+
+describe("B-GAME-09b — ending polish", () => {
+  it("the toys wait for the picture; the cat's 'again?' line plays when it is up (no timer, no auto-advance)", () => {
+    const s = startSitting({ seed: "polish", track: "A", level: 1 });
+    const html = renderToStaticMarkup(
+      <Ending state={s} art={devPlaceholderArt()} sheet={devPlaceholderSheet()} childId="kid1" rtl={false} caption="x" pictureAlt="x" playAgainLabel="Play again" homeLabel="Home" onPlayAgain={() => {}} onHome={() => {}} />,
+    );
+    expect(html).toContain('data-sneak-ending-toys="waiting"');
+    expect(html).toContain("data-kid-finish-again");
+    const src = read("Ending.tsx");
+    expect(src).toMatch(/setReady\(true\);\s*onShown\?\.\(\);/);
+    expect(src).not.toMatch(/setTimeout|setInterval/);
+    expect(read("SneakFreeze.tsx")).toContain("onShown={() => soundsRef.current?.again()}");
+  });
+
+  it("Play again: a new seed, and the next sitting opens on a different prize", () => {
+    for (let n = 0; n < 40; n++) {
+      const a = startSitting({ seed: `prize-${n}`, track: "A", level: 1 });
+      const b = startSitting({ seed: `prize-${n}-next`, track: "A", level: 1, after: a.prizeOrder[0] });
+      expect(b.prizeOrder[0]).not.toBe(a.prizeOrder[0]);
+      expect([...b.prizeOrder].sort()).toEqual(["bell", "lemon", "wool"]);
+    }
+    expect(read("SneakFreeze.tsx")).toContain("after: s?.prizeOrder[0]");
+  });
+
+  it("the canvas is never tainted: every drawn url is checked same-origin or data BEFORE loading; otherwise no picture, no throw", () => {
+    const src = read("statuePicture.ts");
+    const check = src.indexOf("if (!urls.every(sameOriginOrData)) return null;");
+    expect(check).toBeGreaterThan(0);
+    expect(check).toBeLessThan(src.indexOf("await Promise.all("));
+    for (const drawn of ["o.art.plate.landscape", "looking.url", "heroPose.sprite.url", "o.art.covers[c.id as keyof SneakArt[\"covers\"]].url"]) {
+      expect(src.slice(src.indexOf("const urls = ["), check)).toContain(drawn);
+    }
+    expect(src).toMatch(/try \{\s*return canvas\.toDataURL/);
+  });
+
+  it("the caption isolates the name for bidi both ways", () => {
+    const en = translate("en", "kid.game.sneak-freeze.caption.boy", { name: "דילן" });
+    expect(en).toMatch(/[⁦-⁨]דילן⁩/);
+    const he = translate("he", "kid.game.sneak-freeze.caption.girl", { name: "Noa" });
+    expect(he).toMatch(/[⁦-⁨]Noa⁩/);
+  });
+});
+

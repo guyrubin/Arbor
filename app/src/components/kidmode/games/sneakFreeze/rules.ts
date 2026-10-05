@@ -214,6 +214,8 @@ export interface SittingOptions {
   level: Level;
   /** First sitting of a visit: the watcher demonstrates (4 s, no reading). */
   intro?: boolean;
+  /** Play again: the previous sitting's first prize; this one opens on another. */
+  after?: PrizeId;
 }
 
 export function startSitting(o: SittingOptions): SneakState {
@@ -275,6 +277,7 @@ export function startSitting(o: SittingOptions): SneakState {
     const j = randInt(s, 0, i);
     [order[i], order[j]] = [order[j], order[i]];
   }
+  if (o.after && order[0] === o.after) order.push(order.shift() as PrizeId);
   s.prizeOrder = order;
   s.freezePose = rand(s) < 0.5 ? "freeze-a" : "freeze-b";
   // Round 2 always meets the sunglasses trick on its 1st or 2nd look.

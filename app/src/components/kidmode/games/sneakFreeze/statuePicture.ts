@@ -4,14 +4,16 @@
  * Composed ON THE DEVICE with a canvas: the courtyard plate, the cover
  * objects, the cat turned round and squinting (`looking`), and the child's
  * hero in the freeze pose held longest this sitting, standing where it froze.
- * No model call, no network: every image is already on the page (data urls
- * or the sandbox's own art). The pure part (what goes where) is
+ * No model call, no network: every image is already on the page (data urls,
+ * or same-origin files such as the sandbox's /_proof/ art — checked before
+ * drawing, so the canvas is never tainted). The pure part (what goes where) is
  * `statueShot` + `pictureLayout`; `composeStatuePicture` draws it.
  */
 import { DESIGN, PLATE_BLEED, pointOnPath, sneakLayout, type FieldPoint } from "../../game/fieldLayout";
 import { referenceSprite, resolvePose, type HeroSheet } from "../../hero/heroSheet";
 import { longestStatue, type FreezePose, type SneakState } from "./rules";
 import { watcherSprite, type ArtSprite, type SneakArt } from "./sneakArt";
+import { sameOriginOrData } from "../../proofAssets";
 
 /** The picture: 4:3, sized for a phone share and a desktop frame. */
 export const PICTURE = { w: 1200, h: 900 } as const;
@@ -118,6 +120,12 @@ export async function composeStatuePicture(o: { shot: StatueShot; art: SneakArt;
   const heroPose = resolvePose(o.sheet, o.shot.pose);
   const ref = referenceSprite(o.sheet);
   if (!heroPose || !ref) return null;
+  // B-GAME-09b: every image drawn is a data url or a same-origin file (the
+  // placeholders, the sandbox's /_proof/ art) — so the canvas is never
+  // tainted. A sprite from anywhere else could taint it: skip the picture
+  // (nothing saved) rather than throw.
+  const urls = [o.art.plate.landscape, looking.url, heroPose.sprite.url, ...l.covers.map((c) => o.art.covers[c.id as keyof SneakArt["covers"]].url)];
+  if (!urls.every(sameOriginOrData)) return null;
   const [plate, cat, hero, ...covers] = await Promise.all([
     loadImage(o.art.plate.landscape),
     loadImage(looking.url),
