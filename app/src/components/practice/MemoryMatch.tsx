@@ -84,7 +84,6 @@ export default function MemoryMatch({ data, childAge, embedded = false }: { data
   useEffect(() => () => pairLifecycleRef.current?.invalidate(), []);
 
   const pairs = size / 2;
-  const matchedCount = deck.filter((c) => c.matched).length / 2;
 
   const reset = (nextSize = recommendedSize, nextSet = setIdx) => {
     pairLifecycleRef.current?.invalidate();
@@ -195,19 +194,20 @@ export default function MemoryMatch({ data, childAge, embedded = false }: { data
             </PlayButton>
           );
         })}
-        <span className="text-[13px] font-bold ms-auto" style={{ color: "var(--arbor-muted)" }}>{t("elev.kids.memory.moves", { moves, found: matchedCount, total: pairs })}</span>
       </div>
 
       {won ? (
         <Celebrate
-          title="All pairs found!"
+          title={t("elev.kids.memory.done.title")}
           // B-KID-04 (law 3): solving the board earns all three stars.
           stars={3}
           starsTotal={3}
-          subtitle={`Solved in ${moves} moves. ${recommendedSize > size ? "Next round gets a little bigger!" : recommendedSize < size ? "We'll keep it comfy next round." : "Nicely done."}`}
+          // B-KID-34 (KC-02, law 3): no move count and no "next round is bigger"
+          // in front of the child — finding every pair IS the win.
+          subtitle={t("elev.kids.memory.done.sub")}
         >
           <PlayButton tone="lav" onClick={() => reset()}>
-            <Icon name="refresh" size={16} /> Play again
+            <Icon name="refresh" size={16} /> {t("elev.kids.memory.again")}
           </PlayButton>
         </Celebrate>
       ) : (
@@ -216,7 +216,7 @@ export default function MemoryMatch({ data, childAge, embedded = false }: { data
             {deck.map((c) => {
               const face = c.flipped || c.matched;
               return (
-                <button key={c.uid} onClick={() => flip(c.uid)} aria-label={face ? c.emoji : "hidden card"}
+                <button key={c.uid} onClick={() => flip(c.uid)} aria-label={face ? c.emoji : t("elev.kids.memory.hiddenCard")}
                   className={`play-pressable aspect-square rounded-[var(--play-radius)] flex items-center justify-center text-[2.4rem] ${c.matched ? "play-correct" : ""}`}
                   style={{
                     background: c.matched ? "var(--arbor-green-soft)" : face ? "#fff" : "var(--arbor-lav-soft)",
