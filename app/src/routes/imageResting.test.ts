@@ -133,11 +133,12 @@ describe("B-KID-05 · the classifier and our own daily caps", () => {
   });
 
   it("our per-user daily cap answers 429 image_resting with no Retry-After", async () => {
-    process.env.IMAGE_GEN_DAILY_LIMIT = "1";
+    // B-KID-119: the per-plan table replaced IMAGE_GEN_DAILY_LIMIT (unenforced env = plus).
+    process.env.IMAGE_PLUS_PER_DAY = "1";
     const { vi } = await import("vitest");
     vi.resetModules();
     const fresh = (await import("../server/imageQuota.js")).createImageQuota;
-    const mw = fresh(new MemoryCounterStore());
+    const mw = fresh(new MemoryCounterStore(), { getPlan: async () => null });
     const run = async () => {
       const res: any = { statusCode: 0, headers: {} as Record<string, string>, body: undefined,
         setHeader(k: string, v: string) { this.headers[k] = v; },
@@ -153,7 +154,8 @@ describe("B-KID-05 · the classifier and our own daily caps", () => {
     expect(blocked.res.statusCode).toBe(429);
     expect(blocked.res.body.code).toBe(IMAGE_RESTING);
     expect(blocked.res.headers["Retry-After"]).toBeUndefined();
-    delete process.env.IMAGE_GEN_DAILY_LIMIT;
+    expect(blocked.res.body.window).toBe("day");
+    delete process.env.IMAGE_PLUS_PER_DAY;
     expect(typeof createImageQuota).toBe("function");
   });
 });

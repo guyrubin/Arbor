@@ -117,6 +117,29 @@ export const IMAGE_RESTING = "image_resting";
 export const isImageResting = (err: unknown): boolean =>
   err instanceof ApiError && err.status === 429 && err.message === IMAGE_RESTING;
 
+/**
+ * B-KID-119: whether this session's plan grants ANY scene/comic image. Learnt
+ * from /entitlement (`imageAllowance`) and from a "resting" refusal of a scene
+ * or comic; `false` makes generateScene/generateComic refuse locally (no
+ * network call) so a free family's kid mode never fires a request certain to
+ * be refused — every caller already renders the built-in manifest art on a
+ * refusal. `null` = not known yet (the server still decides).
+ */
+let sceneImagesAllowed: boolean | null = null;
+export const noteImageAllowance = (a: { perDay: number; perMonth: number } | null | undefined): void => {
+  if (a) sceneImagesAllowed = a.perDay > 0 && a.perMonth > 0;
+};
+export const sceneImagesOff = (): boolean => sceneImagesAllowed === false;
+/** Test-only. */
+export const __resetImageAllowance = (): void => { sceneImagesAllowed = null; };
+const sceneImagePost = (url: string, payload: unknown) =>
+  sceneImagesOff()
+    ? Promise.reject(new ApiError(IMAGE_RESTING, 429))
+    : post<{ dataUrl: string }>(url, payload).catch((err) => {
+        if (isImageResting(err)) sceneImagesAllowed = false;
+        throw err;
+      });
+
 /** `Retry-After` in seconds, or undefined when absent/not a number. */
 function retryAfterOf(res: { headers: { get(name: string): string | null } }): number | undefined {
   const raw = res.headers.get("Retry-After");
@@ -431,7 +454,7 @@ export const api = {
     post<{ dataUrl: string; style: string; source: "descriptor" | "photo" }>("/api/generate-avatar", payload),
   // AVA-3: render a story-beat scene featuring the child's generated character.
   generateScene: (payload: { imagePrompt: string; avatar?: { dataUrl: string }; style?: AvatarStyle }) =>
-    post<{ dataUrl: string }>("/api/generate-scene", payload),
+    sceneImagePost("/api/generate-scene", payload),
   // A3b: a full-page Hero Comic panel starring the child's hero (avatar reference).
   generateComic: (payload: {
     avatar?: { dataUrl: string };
@@ -448,7 +471,7 @@ export const api = {
     cover?: boolean;
     /** G2: the title to letter on a cover page. */
     title?: string;
-  }) => post<{ dataUrl: string }>("/api/generate-comic", payload),
+  }) => sceneImagePost("/api/generate-comic", payload),
   // Generative Cognitive Adventure personalized to the child (AdventureScenario shape).
   generateAdventure: (payload: { childProfile: ChildProfile; focusSkill?: string }) =>
     post<AdventureScenario>("/api/generate-adventure", payload),
@@ -507,7 +530,7 @@ export const api = {
   liveTurn: (payload: { role: "user" | "model"; text: string; language?: "en" | "he"; childId?: string }) =>
     post<import("./liveTurnGuard").LiveTurnVerdict>("/api/live/turn", payload),
   // MON-1: plan + limits + usage for the signed-in parent.
-  entitlement: () => get<EntitlementInfo>("/api/entitlement"),
+  entitlement: () => get<EntitlementInfo>("/api/entitlement").then((e) => { noteImageAllowance(e.imageAllowance); return e; }),
   // MON-2: start a hosted checkout for a plan + cadence; returns the URL to open.
   billingCheckout: (plan: "plus" | "family", cadence: "monthly" | "annual") =>
     post<{ url: string }>("/api/billing/checkout", { plan, cadence }),
@@ -581,6 +604,8 @@ export type EntitlementInfo = {
   isAdmin?: boolean;
   /** B-MEAS-01: measurement cohort tag (founder/comped/smoke = "internal"). */
   cohort?: "internal" | "family";
+  /** B-KID-119: the plan's image allowance (server IMAGE_ALLOWANCE row). */
+  imageAllowance?: { perDay: number; perMonth: number; heroPer30Days: number };
 };
 
 export type AdminOverview = {

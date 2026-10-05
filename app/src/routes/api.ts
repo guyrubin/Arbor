@@ -64,7 +64,7 @@ import {
   type VerifiedEmailResolver,
 } from "../server/digestOptIn.js";
 import { buildConsultRequest, type ConsultStore } from "../server/consultRequests.js";
-import { imageFailureResponse } from "../server/imageQuota.js";
+import { IMAGE_ALLOWANCE, imageFailureResponse } from "../server/imageQuota.js";
 import { decideLive, LIVE_VERTEX_EU_PROVIDER } from "../ai/liveResidency.js";
 import { cohortTagFor, resolveEntitlement, COACH_METER, type EntitlementStore } from "../server/entitlements.js";
 import type { ReferralStore } from "../server/referral.js";
@@ -3339,6 +3339,8 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
         isAdmin: isAdmin(actor),
         // B-MEAS-01: a measurement tag (internal | family), never the email.
         cohort: cohortTagFor(entitlement, actor, isAdmin(actor)),
+        // B-KID-119: the client skips scene/comic calls the plan cannot grant.
+        imageAllowance: IMAGE_ALLOWANCE[entitlement.plan],
       });
     } catch (error: any) {
       logger.error("Arbor Entitlement Error", error, { requestId: requestIdOf(req) });

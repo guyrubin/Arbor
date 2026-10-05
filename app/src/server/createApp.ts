@@ -245,7 +245,8 @@ export const createApp = (config: ArborConfig) => {
   // which previously had no quota at all.
   app.use(
     ["/api/generate-avatar", "/api/generate-scene", "/api/generate-comic"],
-    createImageQuota(counters)
+    // B-KID-119: the allowance follows the plan (same entitlement reader as the coach gate).
+    createImageQuota(counters, entitlementStore)
   );
   // MON-1: free-tier coach meter + Plus-only feature gates. Production enforces
   // by default; local beta can still opt out with ENFORCE_ENTITLEMENTS=false.
