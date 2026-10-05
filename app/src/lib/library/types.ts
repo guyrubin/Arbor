@@ -1,26 +1,30 @@
 /**
- * lib/library/types — B-BOOK-01: the Book model of the new kid library
- * (Arbor Kids BOOKS, 6 Oct). One authored book = data only: every word, every
+ * lib/library/types — B-BOOK-01 (+ RULINGS BR1-BR9, 6 Oct): the Book model of
+ * the new kid library. One authored book = data only: every word, every
  * branch, every hero slot and every narration path is decided here, so a book
- * reads with ZERO model calls (lane A §2.4, lane C §6.1).
+ * reads with ZERO model calls (lane A §2.4, lane C §6.1). The engine is
+ * book-agnostic: no book id, page id or pose name is known to it.
  *
- * - The story shape is lane A's Cost-and-Repair rule (§2.3): linear pages up to
- *   ONE decision page, three typed choices (hard | easy | third — the type is
- *   for critics only and is never rendered), 1-2 branch pages per choice, one
- *   rejoin page, echo lines keyed by the choice id on the rejoin and last pages.
+ * - Story shape (lane A §2.3 + BR3): linear pages up to ONE decision page,
+ *   typed choices (hard | easy | third — for critics only, never rendered),
+ *   1-2 branch pages per choice, a rejoin page, echo lines keyed by the choice
+ *   id. A repair page asks the child to tap EACH item (it cannot fail); its
+ *   after-text shows when all are done. No "Another way?" (BR3): re-reading
+ *   from the cover is the way to choose differently.
  * - Art is a 3:2 master plate per scene (lib/library/bookPlates.ts) with the
- *   child's hero composited from a slot (fractions of the master) — the plate
- *   never contains the child. `phoneCrop` names the centre of the 3:4 window
- *   shown at narrow portrait widths.
+ *   child's hero composited from a slot (fractions of the master). The plate
+ *   owns its 3:4 window, its text zone and its choice-card focus rects (BR6).
+ * - Page types: "facing" (art page + text page) and "spread" (the whole plate
+ *   large, the words on a paper panel in the plate's calm text zone).
  * - `{hero}` in any text is the child's display name, isolated for bidi at
- *   render time (lib/library/bookText.ts). Hebrew text has a masculine and a
- *   feminine form (`he.m` / `he.f`); a choice label is one Hebrew infinitive.
+ *   render time (lib/library/bookText.ts). Hebrew has a masculine and a
+ *   feminine form; a choice label is one Hebrew infinitive.
  * - A story choice is a story event: nothing here describes the child, and no
  *   field records which path a child took.
  */
 
-/** The hero poses a sheet provides (lane A §6.0; grip-free, lane B §1). */
-export type Pose = "run" | "stand" | "wave" | "walk" | "arms-wide" | "sit";
+/** A pose id, resolved against the hero sheet's manifest (open set, BR ruling 2). */
+export type Pose = string;
 
 /** A line of book text: English, and Hebrew in both grammatical genders. */
 export interface BookLine {
@@ -28,7 +32,7 @@ export interface BookLine {
   he: { m: string; f: string };
 }
 
-/** A short UI-facing label (a choice, an action tap): one EN, one HE. */
+/** A short UI-facing label (a choice, a repair prompt): one EN, one HE. */
 export interface BookLabel {
   en: string;
   he: string;
@@ -70,20 +74,41 @@ export interface TouchTarget {
   sound?: string;
 }
 
-/** The repair page's ONE action (lane A rule 3): the before-text is the page's
- *  `text`, the button is `label`, then `textAfter` (and `heroAfter`). */
-export interface ActionTap {
-  label: BookLabel;
+/** One thing the child brings back on a repair page (a goat, a scattered
+ *  stone). (x, y) = where it is painted on the master plate; `to` = where it
+ *  hops when tapped (absent = it hops in place). */
+export interface RepairItem {
+  id: string;
+  label?: BookLabel;
+  x: number;
+  y: number;
+  to?: { x: number; y: number };
+  /** An alpha overlay (same box as the plate) shown once this item is done. */
+  plateDetailAfter?: string;
+  /** A short sound on the tap (a public URL), when a file exists. */
+  sound?: string;
+}
+
+/** The repair (BR3): the child taps EACH item; every tap answers, nothing can
+ *  fail; when all are done the after-text (and `heroAfter`) shows. The page's
+ *  `text` is the before-text. */
+export interface Repair {
+  items: RepairItem[];
+  promptLabel: BookLabel;
   textAfter: BookLine;
   heroAfter?: Slot;
   audio?: AudioSet;
 }
 
+export type PageType = "facing" | "spread";
+
 export interface Page {
   id: string;
   plateId: string;
-  /** Centre x (fraction of the master) of the 3:4 phone window. */
-  phoneCrop: number;
+  /** "facing" (default) or "spread" (cover, decision, climax, ending). */
+  type?: PageType;
+  /** Overrides the plate's 3:4 window centre for this page. */
+  phoneCrop?: number;
   hero: Slot | null;
   text: BookLine;
   /** One line per choice id, shown after the page text on the rejoin page and
@@ -91,7 +116,7 @@ export interface Page {
   echo?: Record<string, BookLine>;
   /** A closing line after the echo (the last page's "Goodnight."). */
   closing?: BookLine;
-  actionTap?: ActionTap;
+  repair?: Repair;
   audio?: PageAudio;
   touch?: TouchTarget[];
 }
@@ -103,8 +128,9 @@ export interface Choice {
   /** Critic use only — never rendered, never stored. */
   type: ChoiceType;
   label: BookLabel;
-  /** A Material Symbols glyph that is in the shipped icon subset. */
-  icon: string;
+  /** A Material Symbols glyph in the shipped icon subset — shown only when the
+   *  decision plate has no focus crop for this choice. */
+  icon?: string;
   /** 1-2 branch pages (lane A rule 4). */
   branch: Page[];
   /** The spoken label, when a file exists. */
@@ -125,11 +151,11 @@ export interface Book {
   id: string;
   title: BookLabel;
   coverLine: BookLabel;
-  /** e.g. "Genesis 12:1-9". */
+  /** e.g. "1 Samuel 17". */
   sourceRef: string;
   /** One adult sentence: what the story knows about being a person. */
   knowledge: string;
-  /** Lane A §2.5 mode + the verse that gives the hero room. */
+  /** BR2 mode (CAST | COMPANION) + the verse that gives the hero room. */
   childRole: string;
   /** What the book adds in the text's silences (shown to the parent). */
   additions: string[];

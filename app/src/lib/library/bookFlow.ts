@@ -4,9 +4,12 @@
  *
  * Path = the linear pages up to and including the decision page, then the
  * chosen branch's pages, then the linear pages from the rejoin page on. Before
- * a choice is made the path stops at the decision page: nothing turns past it
- * but a committed choice. A choice lives only in this in-memory state — it is
- * never stored and never describes the child (lane A rule 8).
+ * a choice the path stops at the decision page: nothing turns past it but a
+ * committed choice. A repair page holds the page until the child has tapped
+ * EVERY item (each tap answers; nothing can fail — BR3). There is no "Another
+ * way?" jump (BR3): the last page closes the book; re-reading starts at the
+ * cover. A choice lives only in this in-memory state — it is never stored and
+ * never describes the child (lane A rule 8).
  */
 import type { Book, Choice, Page } from "./types";
 
@@ -32,8 +35,8 @@ export interface BookFlowState {
   choiceId: string | null;
   /** The card currently selected on the decision page (before commit). */
   selected: string | null;
-  /** Pages whose action tap has been done on this path. */
-  tapped: readonly string[];
+  /** Repair items done on this path, as `<pageId>:<itemId>`. */
+  repaired: readonly string[];
   /** The direction of the last move: 1 = forward, -1 = back, 0 = none. */
   dir: 1 | -1 | 0;
 }
@@ -44,14 +47,13 @@ export type BookFlowAction =
   | { type: "back" }
   | { type: "choose"; choiceId: string }
   | { type: "go" }
-  | { type: "tap" }
-  | { type: "anotherWay" }
+  | { type: "repair"; itemId: string }
   | { type: "toCover" };
 
 export const COVER = "cover";
 
 export function initialBookFlow(): BookFlowState {
-  return { at: COVER, choiceId: null, selected: null, tapped: [], dir: 0 };
+  return { at: COVER, choiceId: null, selected: null, repaired: [], dir: 0 };
 }
 
 export function currentPage(book: Book, s: BookFlowState): Page | null {
@@ -69,16 +71,30 @@ export function isEnding(book: Book, s: BookFlowState): boolean {
   return path.length > 0 && path[path.length - 1].id === s.at;
 }
 
-/** True while the page's action tap is still waiting for the child. */
-export function awaitingTap(book: Book, s: BookFlowState): boolean {
+export const repairKey = (pageId: string, itemId: string) => `${pageId}:${itemId}`;
+
+/** The repair items of the current page already done. */
+export function repairedItems(page: Page | null, s: BookFlowState): Set<string> {
+  const done = new Set<string>();
+  for (const item of page?.repair?.items ?? []) if (s.repaired.includes(repairKey(page!.id, item.id))) done.add(item.id);
+  return done;
+}
+
+/** True when the page has a repair and every item is done. */
+export function repairDone(page: Page | null, s: BookFlowState): boolean {
+  return !!page?.repair && repairedItems(page, s).size === page.repair.items.length;
+}
+
+/** True while the page's repair still waits for the child. */
+export function awaitingRepair(book: Book, s: BookFlowState): boolean {
   const page = currentPage(book, s);
-  return !!page?.actionTap && !s.tapped.includes(page.id);
+  return !!page?.repair && !repairDone(page, s);
 }
 
 /** Can the forward page-turn control move on from here? */
 export function canTurnForward(book: Book, s: BookFlowState): boolean {
   if (s.at === COVER) return true;
-  if (isDecision(book, s) || isEnding(book, s) || awaitingTap(book, s)) return false;
+  if (isDecision(book, s) || isEnding(book, s) || awaitingRepair(book, s)) return false;
   const path = readPath(book, s.choiceId);
   const i = path.findIndex((p) => p.id === s.at);
   return i >= 0 && i < path.length - 1;
@@ -97,7 +113,7 @@ export function bookFlowReducer(book: Book, s: BookFlowState, a: BookFlowAction)
       if (s.at === COVER) return s;
       if (i <= 0) return { ...s, at: COVER, dir: -1 };
       // Back onto the decision page keeps the committed choice selected, so a
-      // second tap (or Go) re-enters the same branch; a new card moves it.
+      // second tap (or Go) re-enters the same branch; another card moves it.
       return { ...s, at: path[i - 1].id, selected: path[i - 1].id === book.decision.pageId ? s.choiceId : s.selected, dir: -1 };
     case "choose": {
       if (!isDecision(book, s) || !findChoice(book, a.choiceId)) return s;
@@ -108,17 +124,16 @@ export function bookFlowReducer(book: Book, s: BookFlowState, a: BookFlowAction)
     case "go": {
       const choice = isDecision(book, s) ? findChoice(book, s.selected) : undefined;
       if (!choice || !choice.branch.length) return s;
-      const tapped = s.tapped.filter((id) => !choice.branch.some((p) => p.id === id));
-      return { ...s, choiceId: choice.id, at: choice.branch[0].id, tapped, dir: 1 };
+      // A newly entered branch starts with its repairs undone.
+      const repaired = s.repaired.filter((k) => !choice.branch.some((p) => k.startsWith(`${p.id}:`)));
+      return { ...s, choiceId: choice.id, at: choice.branch[0].id, repaired, dir: 1 };
     }
-    case "tap": {
+    case "repair": {
       const page = currentPage(book, s);
-      if (!page?.actionTap || s.tapped.includes(page.id)) return s;
-      return { ...s, tapped: [...s.tapped, page.id], dir: 0 };
+      if (!page?.repair?.items.some((it) => it.id === a.itemId)) return s;
+      const key = repairKey(page.id, a.itemId);
+      return s.repaired.includes(key) ? s : { ...s, repaired: [...s.repaired, key], dir: 0 };
     }
-    case "anotherWay":
-      // Back to the decision page with nothing selected and no repair done.
-      return { at: book.decision.pageId, choiceId: null, selected: null, tapped: [], dir: -1 };
     case "toCover":
       return initialBookFlow();
     default:

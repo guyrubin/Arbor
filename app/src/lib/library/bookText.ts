@@ -54,16 +54,16 @@ export function fillHero(text: string, name: string, lang: BookLang): string {
   return text.split(HERO_TOKEN).join(isolate(name, lang));
 }
 
-/** The paragraphs a page shows, raw (with `{hero}`), in order. The action
- *  page shows its before-text, and once the tap is done the after-text too;
+/** The paragraphs a page shows, raw (with `{hero}`), in order. A repair page
+ *  shows its before-text, and once every item is done the after-text too;
  *  the echo line is the committed choice's. */
 export function pageParagraphs(
   page: Page,
-  opts: { lang: BookLang; gender: HeGender; choiceId: string | null; tapped: boolean },
+  opts: { lang: BookLang; gender: HeGender; choiceId: string | null; repaired: boolean },
 ): string[] {
-  const { lang, gender, choiceId, tapped } = opts;
+  const { lang, gender, choiceId, repaired } = opts;
   const out = [lineFor(page.text, lang, gender)];
-  if (page.actionTap && tapped) out.push(lineFor(page.actionTap.textAfter, lang, gender));
+  if (page.repair && repaired) out.push(lineFor(page.repair.textAfter, lang, gender));
   const echo = choiceId ? page.echo?.[choiceId] : undefined;
   if (echo) out.push(lineFor(echo, lang, gender));
   if (page.closing) out.push(lineFor(page.closing, lang, gender));
