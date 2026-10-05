@@ -208,10 +208,18 @@ describe("OBJ-TODAY-01 — repo-wide ratchet", () => {
     // (data-primary-move="start-family-ritual", spread from FamilyFormation) —
     // the only gradient on that page; familyRitualsCadence.test pins it.
     "nextopen/RitualTurnCard.tsx",
+    // W2-SHELLPLAY critic r2 (B-PLAY-09): "Play Story Quest together" carries
+    // data-primary-move="open-story-quest" (surfaceContract adventures) and is
+    // the only gradient in the file; practiceDoors.copy.test pins it.
+    "practice/AdventuresTab.tsx",
+    // W2-SHELLPLAY critic r2 (B-PLAY-08): "Open in Kid Mode" carries
+    // data-primary-move="open-world-door" (surfaceContract feelings) and is the
+    // only gradient in the file; practiceDoors.copy.test pins it.
+    "practice/FeelingsLabTab.tsx",
     "practice/GoalBuilderModal.tsx",
-    // W2-SHELLPLAY critic r1: "Said it" in the scoring row carries
-    // data-primary-move="complete-speech-round" (surfaceContract speech) and
-    // is the only gradient in the file; practiceDoors.copy.test pins it.
+    // W2-SHELLPLAY critic r2: no result button wears it any more (law 1); the
+    // ONE gradient is the Hebrew door CTA (the route's recorded HE exemption,
+    // surfaceContract speech); practiceDoors.copy.test pins it.
     "practice/SpeechCoachTab.tsx",
     // (W2-SHELLPLAY critic r1: PracticeStudioTab left the ratchet — the Kid
     //  Mode door CTA is secondary; the declared move is the first world tile.)

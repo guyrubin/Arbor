@@ -1212,7 +1212,7 @@ export const en: Dict = {
   "prac.feelings.title": "Feelings Lab",
   "prac.feelings.sub": "Emotion recognition and regulation practice for {name}: match feelings, talk about why they happen, then practice calm-down tools before big feelings arrive.",
   "prac.adventures.title": "Adventures",
-  "prac.adventures.sub": "Little stories with big thinking inside — {name} helps the characters and quietly practices logic, sequencing and word power. It never feels like a test.",
+  "prac.adventures.sub": "Little stories with big thinking inside — {name} helps the characters and quietly practices logic, sequencing and word power.",
   "prac.copilot.title": "Development Dashboard",
   "prac.copilot.sub": "{name}'s whole picture in one place — language, speech, thinking, social and emotional signals from milestones and daily practice, with one clear focus for the week.",
   // auth / login
@@ -3623,7 +3623,7 @@ export const he: Dict = {
   "prac.feelings.title": "מעבדת רגשות",
   "prac.feelings.sub": "תרגול זיהוי וויסות רגשות ל־{name}: התאימו רגשות, דברו על למה הם קורים, ואז תרגלו כלי הרגעה לפני שהרגשות הגדולים מגיעים.",
   "prac.adventures.title": "הרפתקאות",
-  "prac.adventures.sub": "סיפורים קטנים עם חשיבה גדולה בתוכם — {name} עוזר לדמויות ומתרגל בחשאי היגיון, רצף וכוח מילים. זה לעולם לא מרגיש כמו מבחן.",
+  "prac.adventures.sub": "סיפורים קטנים עם חשיבה גדולה בתוכם — {name} עוזר לדמויות ומתרגל בחשאי היגיון, רצף וכוח מילים.",
   "prac.copilot.title": "לוח התפתחות",
   "prac.copilot.sub": "התמונה המלאה של {name} במקום אחד — אותות שפה, דיבור, חשיבה, חברה ורגש מאבני דרך ומתרגול יומי, עם מיקוד אחד ברור לשבוע.",
   "auth.tagline": "ההתפתחות של ילדכם, בליווי מתחשב.",

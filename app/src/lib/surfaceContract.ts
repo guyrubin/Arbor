@@ -291,7 +291,9 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
   {
     route: "adventures", hub: "practice", depth: 1,
     job: "Story adventures where her choices quietly practice thinking skills.",
-    primaryMove: "complete-adventure-scene", moduleBudget: 2, demotionTarget: "practice",
+    // W2-SHELLPLAY critic r2 (B-PLAY-09): the parent page is ONE door into Kid
+    // Mode Story Quest (B-KID-11 seam); scenes and the generator run in Kid Mode.
+    primaryMove: "open-story-quest", moduleBudget: 1, demotionTarget: "practice",
     threadWrite: "adventureResults",
   },
 

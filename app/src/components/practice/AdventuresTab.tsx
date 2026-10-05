@@ -13,6 +13,8 @@ import { RegisterShell, PlayButton, PlayPanel, ChoiceTile, ProgressPips, MascotS
 import { SpeakButton } from "../ui/SpeakButton";
 import { useKidSafeNav } from "../kidmode/useKidSafeNav";
 import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
+import { useKidModeEntry } from "../kidmode/useKidModeEntry";
+import { cardCls } from "../ui/kit";
 
 /** W2-SHELLPLAY critic r1 (law 8): the skill chip is keyed (was English). */
 const SKILL_KEY: Record<string, string> = {
@@ -46,6 +48,8 @@ export default function AdventuresTab() {
   const kidMode = useSyncExternalStore(subscribeKidMode, isKidModeActive, isKidModeActive);
   const data = usePracticeData(childProfile.id);
   const first = childProfile.name.split(" ")[0];
+  // B-PLAY-09 / B-KID-11: the parent door opens Story Quest through the ONE seam.
+  const { request: requestKidMode, step: kidModeStep } = useKidModeEntry();
   const vars = { name: first, age: childProfile.age };
   const scenarioTitle = (s: AdventureScenario) =>
     CURATED_IDS.has(s.id) ? t(`elev.practice.adventures.title.${s.id}`) : s.title;
@@ -138,6 +142,61 @@ export default function AdventuresTab() {
   let headerSay = t("elev.play.adventures.say", { name: first });
   if (!kidMode) { headerSay = t("prac.adventures.sub", { name: first }); }
 
+  // W2-SHELLPLAY critic r2 (B-PLAY-09, laws 2 + 7): the PARENT page is ONE
+  // door into Kid Mode Story Quest. The scene (graded ChoiceTiles, MascotSay,
+  // Celebrate) and the model-call generator run only inside Kid Mode; the
+  // parent reads one line from adventureResults as a scene count, never right
+  // or wrong (law 1).
+  if (!kidMode) {
+    const latest = [...data.adventures.items].sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)))[0];
+    const lastStory = latest ? scenarios.find((s) => s.id === latest.scenarioId) ?? null : null;
+    const lastScenes = lastStory ? playedCount(lastStory) : 0;
+    const firstPick = ageScenarios[0] ?? null;
+    return (
+      <RegisterShell kidMode={false} title={t("prac.adventures.title")} subtitle={headerSay}>
+        <section data-module="adventures-door" className={`${cardCls} p-5`}>
+          <p className="t-lg font-extrabold leading-snug" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+            {t("elev.practice.adventures.door.title", { name: first })}
+          </p>
+          {(lastStory || firstPick) && (
+            <p data-testid="adventures-door-line" className="t-sm mt-3 rounded-[var(--r)] p-3" dir="auto" style={{ background: "var(--arbor-peach-soft)", color: "var(--arbor-ink)" }}>
+              {lastStory
+                ? t(lastScenes === 1 ? "elev.practice.adventures.door.last.one" : "elev.practice.adventures.door.last", { name: first, title: scenarioTitle(lastStory), n: lastScenes })
+                : t("elev.practice.adventures.door.pick", { name: first, title: scenarioTitle(firstPick!) })}
+            </p>
+          )}
+          <button
+            type="button"
+            data-primary-move="open-story-quest"
+            onClick={() => requestKidMode({ view: "arcade", worldId: "adventures" })}
+            className="mt-4 inline-flex items-center gap-1.5 t-sm font-extrabold rounded-xl px-4 min-h-[44px] transition active:scale-[0.98] focus:outline-none focus-visible:ring-2"
+            style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}
+          >
+            <Icon name="sports_esports" size={16} /> {t("elev.practice.adventures.door.cta", { world: t("elev.practice.world.kid.adventures") })}
+          </button>
+          {kidModeStep}
+          {/* The stories Story Quest holds, as a quiet list (no in-page scene). */}
+          <ul className="mt-5 list-none p-0 m-0 border-t" style={{ borderColor: "var(--arbor-rule)" }}>
+            {ageScenarios.map((s) => (
+              <li key={s.id} className="py-3 border-b flex items-start gap-3" style={{ borderColor: "var(--arbor-rule)" }}>
+                <span aria-hidden="true" className="t-lg leading-none">{s.emoji}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block t-sm font-bold" dir="auto" style={{ color: "var(--arbor-ink)" }}>{scenarioTitle(s)}</span>
+                  {CURATED_IDS.has(s.id) && (
+                    <span className="block t-xs mt-0.5" dir="auto" style={{ color: "var(--arbor-muted)" }}>{t(`elev.practice.adventures.parent.${s.id}`, { name: first })}</span>
+                  )}
+                </span>
+                <span className="t-xs font-bold flex-shrink-0" style={{ color: "var(--arbor-muted)" }}>
+                  {t("elev.practice.adventures.ages", { range: `${s.ageBand[0]}–${s.ageBand[1]}` })}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </RegisterShell>
+    );
+  }
+
   // IA-08 / RUN-12: one route, two registers — the play wash mounts under Kid
   // Mode only; the parent door is kit chrome (PageHeader + tokens).
   return (
@@ -188,7 +247,7 @@ export default function AdventuresTab() {
           stamp goes on a wrapping <section> that adds no box of its own. */}
       {/* Scenario picker */}
       {!scenario && (
-        <div data-module="adventures-picker" className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {scenarios.map((s) => {
             const played = playedCount(s) > 0;
             return (
@@ -209,7 +268,7 @@ export default function AdventuresTab() {
                     <p className="text-[13px] mt-1 leading-relaxed font-medium" dir="auto" style={{ color: "var(--arbor-muted)" }}>{t(`elev.practice.adventures.parent.${s.id}`, { name: first })}</p>
                   ) : null}
                   <div className="flex flex-wrap gap-2 mt-3">
-                    <PlayPill tone="sky">{t("elev.practice.adventures.ages", { from: s.ageBand[0], to: s.ageBand[1] })}</PlayPill>
+                    <PlayPill tone="sky">{t("elev.practice.adventures.ages", { range: `${s.ageBand[0]}–${s.ageBand[1]}` })}</PlayPill>
                     <PlayPill tone="lav">{t(s.scenes.length === 1 ? "elev.practice.adventures.choices.one" : "elev.practice.adventures.choices.many", { n: s.scenes.length })}</PlayPill>
                     {played && <PlayPill tone="clay">{t("elev.practice.adventures.played")}</PlayPill>}
                   </div>
@@ -227,7 +286,7 @@ export default function AdventuresTab() {
 
       {/* Active scene */}
       {scenario && !finished && scene && (
-        <section data-module="adventures-scene">
+        <section>
         <PlayPanel>
           <div className="flex items-center justify-between mb-5 gap-3">
             <div className="flex items-center gap-3 min-w-0">
@@ -266,7 +325,7 @@ export default function AdventuresTab() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4" data-primary-move="complete-adventure-scene">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
                 {scene.choices.map((c) => {
                   const isPicked = picked === c.id;
                   const reveal = picked !== null;

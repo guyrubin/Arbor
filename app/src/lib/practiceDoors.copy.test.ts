@@ -253,7 +253,7 @@ const STAMPED_ROUTES: { route: string; file: string; move: string }[] = [
   { route: "mimic", file: "components/practice/MimicStudioTab.tsx", move: "complete-mimic-round" },
   { route: "feelings", file: "components/practice/FeelingsLabTab.tsx", move: "open-world-door" },
   { route: "journey", file: "components/practice/JourneyTab.tsx", move: "complete-mission" },
-  { route: "adventures", file: "components/practice/AdventuresTab.tsx", move: "complete-adventure-scene" },
+  { route: "adventures", file: "components/practice/AdventuresTab.tsx", move: "open-story-quest" },
   { route: "stories", file: "components/tabs/HeroJourneyTab.tsx", move: "read-tonights-story" },
   { route: "bedtime-stories", file: "components/tabs/BedtimeStoriesTab.tsx", move: "generate-bedtime-story" },
   { route: "comics", file: "components/tabs/ComicsTab.tsx", move: "open-comic" },
@@ -646,5 +646,50 @@ describe("W2-SHELLPLAY r2 · #/feelings — the parent page is the co-play door 
 
   it("the parent page uses the type scale, no orphan text-[…] sizes", () => {
     expect(parent).not.toMatch(/text-\[\d/);
+  });
+});
+
+describe("W2-SHELLPLAY r2 · #/adventures — ONE door into Story Quest (B-PLAY-09, laws 2 + 7)", () => {
+  const adv = stripComments(read("components/practice/AdventuresTab.tsx"));
+  const parent = adv.slice(adv.indexOf("const latest = [...data.adventures.items]"), adv.indexOf("kidMode={kidMode}"));
+  const KID = /<ChoiceTile|<MascotSay|<Celebrate|<PlayButton|<PlayPanel|createAdventure|generateAdventure|play-radius/;
+
+  it("the parent branch is one door: one module, one stamp, one gradient, through the seam", () => {
+    expect(parent.length).toBeGreaterThan(500);
+    expect(countOf(parent, MODULE)).toBe(1);
+    expect(parent).toContain('data-primary-move="open-story-quest"');
+    expect(countOf(adv, MOVE)).toBe(1);
+    expect(countOf(adv, /--gradient-cta/g)).toBe(1);
+    expect(parent).toContain('requestKidMode({ view: "arcade", worldId: "adventures" })');
+    expect(contractFor("adventures")!.primaryMove).toBe("open-story-quest");
+    expect(contractFor("adventures")!.moduleBudget).toBe(1);
+  });
+
+  it("law 2: no in-page scene, no kid kit and no model call path on the parent page", () => {
+    expect(parent).not.toMatch(KID);
+    // NEGATIVE CONTROL: the r1 parent page (generator + scene tiles) is caught
+    expect('<PlayButton onClick={createAdventure}><ChoiceTile state="wrong" />').toMatch(KID);
+  });
+
+  it("law 1: the door line counts scenes, never right answers; the sub makes no 'never a test' claim", () => {
+    expect(parent).not.toMatch(/\.correct|sessionCorrect/);
+    for (const lang of ["en", "he"] as const) {
+      expect(translate(lang, "prac.adventures.sub", { name: "Dylan" })).not.toMatch(/test|מבחן/i);
+      for (const k of ["elev.practice.adventures.door.title", "elev.practice.adventures.door.last", "elev.practice.adventures.door.last.one", "elev.practice.adventures.door.pick", "elev.practice.adventures.door.cta"]) {
+        const v = translate(lang, k, { name: "Dylan", title: "T", n: 3, world: "W" });
+        expect(v).not.toBe(k);
+        expect(v).not.toMatch(/correct|right answer|%|נכון/i);
+      }
+    }
+  });
+
+  it("law 8: a numeric range is ONE placeholder (two isolated numbers around a dash flip in RTL)", () => {
+    const PAIR = /\{\w+\}\s*[–-]\s*\{\w+\}/;
+    for (const dict of [doorsEn, doorsHe]) {
+      for (const [k, v] of Object.entries(dict)) expect(v, k).not.toMatch(PAIR);
+    }
+    expect(translate("he", "elev.practice.adventures.ages", { range: "2–4" })).toContain("2–4");
+    // NEGATIVE CONTROL: the r1 shape is caught
+    expect("גילאי {from}–{to}").toMatch(PAIR);
   });
 });
