@@ -23,7 +23,7 @@ import { bookFlowReducer, END, initialBookFlow, type BookFlowAction, type BookFl
 import { fiveSmoothStones as book } from "../../lib/library/books/fiveSmoothStones";
 import type { Box } from "../../lib/library/bookPageLayout";
 import type { BookLang, BookReaderChild } from "../../lib/library/types";
-import { applySheetManifest, choicePictureSources, type HeroSheet } from "../../lib/library/heroSheet";
+import { applySheetManifest, choicePictureSources, resolvePose, type HeroSheet } from "../../lib/library/heroSheet";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -304,6 +304,18 @@ describe("the ending", () => {
     const noPlate = at(true, false);
     expect(noPlate).not.toContain("data-book-state-plate");
     expect(noPlate).not.toMatch(/data-book-overlay="dust-cloud"[^>]*data-hidden=""/);
+  });
+
+  it("v2 engine 2: a pose the sheet lacks shows its stopgap; a sheet that has it shows it (p7c ends standing)", () => {
+    let s = run(...toDecision, { type: "choose", choiceId: "c" }, { type: "go" }, { type: "next" });
+    s = bookFlowReducer(book, s, { type: "repair", itemId: "stand" });
+    const base = "/_dev/hero-sheets/x";
+    const lacking: HeroSheet = { id: "x", base, poses: { "look-up": `${base}/look-up.webp`, sit: `${base}/sit.webp` } };
+    const having: HeroSheet = { ...lacking, poses: { ...lacking.poses, "stand-tall": `${base}/stand-tall.webp` } };
+    const html = (sheet: HeroSheet) => renderToStaticMarkup(<BookReader book={book} lang="en" child={BOY} onClose={() => {}} dev narration="off" initialState={s} initialBox={WIDE} sheet={sheet} />);
+    expect(html(lacking)).toContain(`src="${base}/look-up.webp"`);
+    expect(html(having)).toContain(`src="${base}/stand-tall.webp"`);
+    expect(resolvePose(null, "stand-tall", book.poseFallbacks)).toBe("stand-tall");
   });
 
   it("p9 lays out with the PLATE's size whether the print or the composite shows (no frame jump)", () => {
