@@ -30,6 +30,8 @@ import { composeWhatChanged, type WhatChangedLine } from "../overview/whatChange
 import { firstsStorageKey, type FirstsState } from "../../lib/firsts";
 import PromptCaptureCard from "../overview/PromptCaptureCard";
 import FromRecordCard, { FromRecordReceipt } from "../overview/FromRecordCard";
+import { Avatar } from "../ui/Avatar";
+import { childPicture } from "../../lib/childPicture";
 import { answeredToday, selectFromRecord } from "../../lib/today/fromRecord";
 import { ErrorState } from "../ui/ErrorState";
 import ArborNoticedCard, { todayNoticedSignal } from "../sections/ArborNoticedCard";
@@ -682,9 +684,13 @@ export default function OverviewTab() {
           {/* B-TODAY-28: no greeting, no "What would help today?" — the
               child's identity line is the page title; the record speaks
               first in the card below. */}
-          <h1 data-testid="today-identity" dir="auto" className="text-[17px] font-semibold leading-tight sm:text-[19px]" style={{ color: "var(--arbor-ink)" }}>
-            <bdi>{identityLine}</bdi>
-          </h1>
+          {/* B-SHELL-27: the same face as the sidebar/switcher (lib/childPicture), a 28 px circle in the identity line only. */}
+          <div className="flex items-center gap-2.5">
+            <Avatar name={childProfile.name} photoURL={childPicture(childProfile).url} size={28} />
+            <h1 data-testid="today-identity" dir="auto" className="text-[17px] font-semibold leading-tight sm:text-[19px]" style={{ color: "var(--arbor-ink)" }}>
+              <bdi>{identityLine}</bdi>
+            </h1>
+          </div>
         </div>
       </header>
 

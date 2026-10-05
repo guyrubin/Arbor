@@ -6,6 +6,7 @@ import { Avatar } from "../ui/Avatar";
 import AddChildModal from "../profile/AddChildModal";
 // GP-01: the months-precise age label is THE parent-facing age render.
 import { ageLabel } from "../../lib/childAge";
+import { childPicture } from "../../lib/childPicture";
 
 /**
  * B-DIST-01: the quiet "Demo" tag beside the demo family's child (invented
@@ -103,7 +104,7 @@ export default function TopbarKidSwitcher({ maxWidth = "180px" }: { maxWidth?: s
           boxSizing: "border-box",
         }}
       >
-        <Avatar name={activeChild.name} photoURL={activeChild.photoUrl} size={24} />
+        <Avatar name={activeChild.name} photoURL={childPicture(activeChild).url} size={24} />
         {/* UC-1: inline child name (avatar + name + chevron) */}
         <span
           dir="auto"
@@ -180,7 +181,7 @@ export default function TopbarKidSwitcher({ maxWidth = "180px" }: { maxWidth?: s
                   minHeight: "44px",
                 }}
               >
-                <Avatar name={p.name} photoURL={p.photoUrl} size={28} />
+                <Avatar name={p.name} photoURL={childPicture(p).url} size={28} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <span
                     dir="auto"

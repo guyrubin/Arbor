@@ -7,6 +7,7 @@ import { Avatar } from "../ui/Avatar";
 import FamilyGlanceCard from "./FamilyGlanceCard";
 // GP-01: the months-precise age label is THE parent-facing age render.
 import { ageLabel } from "../../lib/childAge";
+import { childPicture } from "../../lib/childPicture";
 
 /**
  * IA-04 / IA-17 — the sidebar card is IDENTITY, not a second switcher.
@@ -32,7 +33,7 @@ export default function ProfileSwitcher() {
     <div className="relative">
       <div className="rounded-2xl p-3 flex items-center justify-between gap-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
         <div className="flex items-center gap-3 flex-1 min-w-0 text-start">
-          <span className="flex-shrink-0"><Avatar name={activeChild.name} photoURL={activeChild.photoUrl} size={36} ring /></span>
+          <span className="flex-shrink-0"><Avatar name={activeChild.name} photoURL={childPicture(activeChild).url} size={36} ring /></span>
           <div className="min-w-0">
             <h4 className="text-sm font-bold leading-tight truncate" dir="auto" style={{ color: "var(--arbor-ink)" }}>{activeChild.name}</h4>
             <p className="text-[11px] whitespace-nowrap" dir="auto" style={{ color: "var(--arbor-muted)" }}>{t("profile.ageLine", { age: ageLabel(activeChild, t) })}</p>

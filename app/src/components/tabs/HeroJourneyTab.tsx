@@ -75,6 +75,7 @@ import { KidFinishMoment } from "../kidmode/rewards/KidSouvenir";
 import { stopVoice } from "../../lib/voice";
 import { KID_BOOK_ART_CLASS, KID_BOOK_SIDE_CLASS, KID_BOOK_SPREAD_CLASS } from "../stories/HeroScenePlayer";
 import { DecisionChoices } from "../stories/DecisionChoices";
+import { asksForHero } from "../../lib/childPicture";
 
 /** B-KID-81 (KB-14): the pack tint + label tables live in ONE module
  *  (components/stories/StoryCard: STORY_PACK_SOFT, STORY_PACK_LABEL), shared
@@ -1026,7 +1027,8 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
                   inside the art band (was a kid-register PlayPanel/PlayButton
                   below the cover, heavier than Play). "Read it together" stays
                   the page's only filled button. */}
-              {!kidMode && !childProfile.avatar && (
+              {/* B-SHELL-27: asked only when the child has no picture at all. */}
+              {!kidMode && asksForHero(childProfile) && (
                 <button
                   type="button"
                   data-testid="hero-first-gate"

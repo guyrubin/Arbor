@@ -111,3 +111,12 @@ describe("W2 — a useful identity header", () => {
     expect(src).toContain("<ProfileEditDrawer");
   });
 });
+
+describe("B-SHELL-27 — one face on My Child", () => {
+  it("the identity picture and the Create-hero gate read lib/childPicture (never the plant beside a hero)", () => {
+    expect(src).toContain('import { asksForHero, childPicture } from "../../lib/childPicture";');
+    expect(src).toContain("const hasHero = !asksForHero(childProfile);");
+    expect(src).toMatch(/\{!hasHero && <button[^>]*>[\s\S]{0,200}cp\.hero\.create/);
+    expect(src).not.toMatch(/const \{ hasHero[^}]*\} = useHeroAvatar\(\)/);
+  });
+});

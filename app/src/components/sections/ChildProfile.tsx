@@ -5,7 +5,9 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useAuth } from "../../context/AuthContext";
 import { SectionCard, Chip, IconBadge, InitialsTile, cardCls, PASTEL, type PastelKey } from "../ui/kit";
-import { HeroAvatar, useHeroAvatar } from "../ui/HeroAvatar";
+import { useHeroAvatar } from "../ui/HeroAvatar";
+import { Avatar } from "../ui/Avatar";
+import { asksForHero, childPicture } from "../../lib/childPicture";
 import { api } from "../../lib/api";
 import { scopeDisplayLabels } from "../../lib/shareScopes";
 import type { ShareGrant } from "../../types";
@@ -54,7 +56,11 @@ export default function ChildProfile() {
   const { user } = useAuth();
   // GP-15: the child count is the family's real count, never a literal.
   const { profiles } = useProfile();
-  const { hasHero, name: heroName } = useHeroAvatar();
+  // B-SHELL-27: ONE resolver (hero render → photo → initial) — the same face
+  // the sidebar and the switcher show; "Create hero" only when there is none.
+  const { name: heroName } = useHeroAvatar();
+  const picture = childPicture(childProfile);
+  const hasHero = !asksForHero(childProfile);
   const first = childProfile.name.split(" ")[0];
 
   // Family Circle reads the SAME live, server-enforced ShareGrants that Trusted
@@ -190,7 +196,7 @@ export default function ChildProfile() {
       <div data-testid="profile-fold" className={hasPending ? "space-y-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-8 lg:space-y-0" : "space-y-6"}>
       <header data-module="profile-identity" data-testid="profile-hub-hero" className="border-b pb-5 lg:col-start-1 lg:row-start-1" style={{ borderColor: "var(--arbor-rule)" }}>
         <div className="flex items-center gap-4">
-          <HeroAvatar size={56} mood="wave" decorative />
+          <Avatar name={childProfile.name} photoURL={picture.url} size={40} />
           <div className="min-w-0">
             <h1 className="text-2xl sm:text-3xl leading-tight" dir="auto" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{childProfile.name || t("cp.title", { name: first })}</h1>
             {/* Each segment is its own bidi island, so a Hebrew age cannot tear
