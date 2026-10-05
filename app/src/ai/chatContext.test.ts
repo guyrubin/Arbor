@@ -289,3 +289,14 @@ describe("B-GROWTH-15 — wordsLoggedCount is a count, never the words", () => {
     expect(coerce("אבא, כדור")).toContain("אבא");
   });
 });
+
+describe("B-GROWTH-15 — ArborContext.sendMessage passes the words ledger (timestamps only reach the wire)", () => {
+  it("the one chat call site hands langObs to buildChatContext", async () => {
+    const { readFileSync } = await import("node:fs");
+    const path = await import("node:path");
+    const src = readFileSync(path.resolve(__dirname, "..", "context", "ArborContext.tsx"), "utf8");
+    expect(src).toMatch(/useChildCollection<\{ id: string; timestamp: string \}>\(childProfile\.id, "langObs"/);
+    const call = src.slice(src.indexOf("...buildChatContext({"), src.indexOf("weeklyContextEnabled: readWeeklyContextConsent(childProfile.id)"));
+    expect(call).toContain("langObs: langObsCol.items,");
+  });
+});

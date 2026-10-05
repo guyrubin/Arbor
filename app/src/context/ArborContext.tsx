@@ -355,6 +355,11 @@ function useArborState() {
     sandboxSeed: initialMilestones,
   });
   const plansCol = useChildCollection<ActionPlan>(childProfile.id, "actionPlans", { sandboxSeed: demoSeed.plans });
+  // B-GROWTH-15: the words the parent wrote down (`langObs`) — only their
+  // timestamps reach the coach, as the weekly wordsLoggedCount (never text).
+  const langObsCol = useChildCollection<{ id: string; timestamp: string }>(childProfile.id, "langObs", {
+    orderByField: "timestamp", orderDir: "desc", max: 200,
+  });
   // c2 — Daily Play completions: a positive, synced "win" record (NOT a
   // BehaviorLog) that closes the moat loop into the Story timeline.
   const playLogCol = useChildCollection<PlayLog>(childProfile.id, "playLogs", {
@@ -1027,6 +1032,7 @@ function useArborState() {
             behaviorLogs,
             milestones,
             actionLoop,
+            langObs: langObsCol.items,
             weeklyContextEnabled: readWeeklyContextConsent(childProfile.id),
           }),
         }),
