@@ -18,9 +18,16 @@ import {
   comicPageEpochIsCurrent,
   getComicPage,
   hasComicPage,
+  markComicPagesShelved,
   putComicPage,
   type ComicPageEpoch,
 } from "./comicPageStore";
+
+/** B-KID-49: a book just went onto a shelf — its device pages are evicted last
+ *  (the reader/tab call this; they never import the store directly). */
+export function shelveBookPages(childId: string | undefined, pageKeys: readonly string[] | undefined): void {
+  if (childId && pageKeys?.length) void markComicPagesShelved(childId, pageKeys);
+}
 import type { HeroStorySpec } from "../types";
 import type { AvatarStyle } from "./api";
 

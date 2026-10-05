@@ -11,6 +11,10 @@ import {
   putComicPage,
   type ComicPageBackend,
   type ComicPageRecord,
+  QUOTA_SHARE,
+  _setStorageManager,
+  evictionOrder,
+  markComicPagesShelved,
 } from "./comicPageStore";
 
 /**
@@ -182,5 +186,67 @@ describe("comicPageStore — graceful degradation without IndexedDB", () => {
     await expect(putComicPage("c", "k", "d")).resolves.toBeUndefined();
     await expect(purgeComicPages("c")).resolves.toBeUndefined();
     await expect(purgeAllComicPages()).resolves.toBeUndefined();
+  });
+});
+
+/* B-KID-49 (KB-07 interim) — the device store holds a real library. */
+describe("B-KID-49: a real library, shelved books evicted last", () => {
+  const BOOK = 9; // cover + 8 beats
+  const putBook = async (n: number, t0: number) => {
+    const keys = Array.from({ length: BOOK }, (_, i) => `book${n}-p${i}`);
+    for (const [i, k] of keys.entries()) {
+      await putComicPage("c", k, `data:${n}-${i}`);
+      mem.map.get(`c|${k}`)!.lastUsed = t0 + i;
+    }
+    await markComicPagesShelved("c", keys);
+    return keys;
+  };
+
+  it("six saved journey books stay openable; the 7th does not evict the 1st (cap 240, not 30)", async () => {
+    _setStorageManager(null);
+    const books: string[][] = [];
+    for (let n = 0; n < 7; n++) books.push(await putBook(n, n * 100));
+    for (const keys of books) for (const k of keys) expect(await hasComicPage("c", k), k).toBe(true);
+    expect(MAX_PAGES).toBeGreaterThanOrEqual(240);
+  });
+
+  it("over the cap, every unshelved scene goes before any shelved page, oldest first", () => {
+    const rec = (key: string, lastUsed: number, shelved = false): ComicPageRecord => ({ key, childId: "c", dataUrl: "x", lastUsed, ...(shelved ? { shelved } : {}) });
+    const all = [rec("old-book", 1, true), rec("new-scene", 50), rec("old-scene", 2), rec("new-book", 60, true)];
+    expect(evictionOrder(all, 3, Infinity).map((r) => r.key)).toEqual(["old-scene"]);
+    expect(evictionOrder(all, 1, Infinity).map((r) => r.key)).toEqual(["old-scene", "new-scene", "old-book"]);
+    // byte budget: same order, until the bytes fit
+    expect(evictionOrder(all, 99, 2).map((r) => r.key)).toEqual(["old-scene", "new-scene"]);
+  });
+
+  it("the byte budget is a quarter of the reported quota", async () => {
+    expect(QUOTA_SHARE).toBe(0.25);
+    _setStorageManager({ estimate: async () => ({ quota: 400 }) }); // budget 100 bytes
+    for (let i = 0; i < 5; i++) {
+      await putComicPage("c", `big${i}`, "d".repeat(40));
+      mem.map.get(`c|big${i}`)!.lastUsed = i;
+    }
+    const bytes = [...mem.map.values()].reduce((n, r) => n + r.dataUrl.length, 0);
+    expect(bytes).toBeLessThanOrEqual(100);
+    expect(await hasComicPage("c", "big4")).toBe(true);
+    expect(await hasComicPage("c", "big0")).toBe(false);
+  });
+
+  it("the first shelved book asks once for persistent storage; a re-written page keeps its shelf flag", async () => {
+    let asked = 0;
+    _setStorageManager({ persisted: async () => false, persist: async () => { asked++; return true; } });
+    await putComicPage("c", "p", "data:p");
+    await markComicPagesShelved("c", ["p"]);
+    await markComicPagesShelved("c", ["p"]);
+    expect(asked).toBe(1);
+    await putComicPage("c", "p", "data:p2");
+    expect(mem.map.get("c|p")!.shelved).toBe(true);
+  });
+
+  it("NEGATIVE CONTROL: the old rule (30 pages, LRU only) evicted the first book by the 4th", () => {
+    const pages: ComicPageRecord[] = Array.from({ length: 4 * BOOK }, (_, i) => ({ key: `p${i}`, childId: "c", dataUrl: "x", lastUsed: i, shelved: true }));
+    const oldRule = [...pages].sort((x, y) => x.lastUsed - y.lastUsed).slice(0, pages.length - 30);
+    expect(oldRule.map((r) => r.key)).toContain("p0");
+    expect(evictionOrder(pages, MAX_PAGES, Infinity)).toEqual([]);
   });
 });

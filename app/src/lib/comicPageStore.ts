@@ -22,7 +22,12 @@
  *     test locks the import allow-list and the no-network rule).
  *  4. The honesty copy layer ("Rebuild this book") ships with it (ComicsTab).
  *
- * Bounded: at most MAX_PAGES entries (LRU by lastUsed). Cross-DEVICE durability
+ * Bounded (B-KID-49, KB-07 interim): at most MAX_PAGES entries AND at most a
+ * quarter of the origin's storage quota (navigator.storage.estimate). Eviction
+ * takes pages that belong to NO shelved book first (LRU), and a shelved book's
+ * pages only after those — a saved book is never emptied to make room for a
+ * stray scene. The first shelved book asks the browser once to make storage
+ * persistent (navigator.storage.persist). Cross-DEVICE durability
  * stays the separate Guy-gated Firebase Storage decision (GG-6) — until then
  * another device honestly shows "Rebuild this book".
  */
@@ -30,7 +35,10 @@
 /** Bounded entry count — data URLs are large; keep the on-disk set small. */
 import { invalidateSceneCache } from "./sceneCache";
 
-export const MAX_PAGES = 30;
+export const MAX_PAGES = 240;
+
+/** Fraction of the origin quota the page store may use (KB-07). */
+export const QUOTA_SHARE = 0.25;
 
 export interface ComicPageRecord {
   /** Primary key: `${childId}|${sceneKey}` (sceneKey = heroComics.comicKey). */
@@ -39,6 +47,15 @@ export interface ComicPageRecord {
   dataUrl: string;
   /** LRU recency stamp (ms epoch); reads touch it. */
   lastUsed: number;
+  /** B-KID-49: the page belongs to a book on a shelf (evicted last). */
+  shelved?: boolean;
+}
+
+/** The slice of `navigator.storage` this module reads. Injectable for tests. */
+export interface StorageManagerLike {
+  estimate?: () => Promise<{ quota?: number; usage?: number }>;
+  persist?: () => Promise<boolean>;
+  persisted?: () => Promise<boolean>;
 }
 
 /**
@@ -116,6 +133,52 @@ function createIdbBackend(): ComicPageBackend {
 }
 
 let backend: ComicPageBackend | null | undefined;
+let storageManager: StorageManagerLike | null | undefined;
+let persistAsked = false;
+
+function resolveStorage(): StorageManagerLike | null {
+  if (storageManager !== undefined) return storageManager;
+  try {
+    storageManager = typeof navigator !== "undefined" && navigator.storage ? navigator.storage : null;
+  } catch {
+    storageManager = null;
+  }
+  return storageManager;
+}
+
+/** Test hook: inject navigator.storage (or null for none). */
+export function _setStorageManager(m: StorageManagerLike | null): void {
+  storageManager = m;
+  persistAsked = false;
+}
+
+/** The byte budget: QUOTA_SHARE of the reported quota, or unbounded when the
+ *  browser reports none (the entry cap still applies). */
+async function byteBudget(): Promise<number> {
+  try {
+    const est = await resolveStorage()?.estimate?.();
+    return est?.quota && est.quota > 0 ? Math.floor(est.quota * QUOTA_SHARE) : Number.POSITIVE_INFINITY;
+  } catch {
+    return Number.POSITIVE_INFINITY;
+  }
+}
+
+/** B-KID-49: which records go when the store is over its caps — unshelved
+ *  pages first, oldest first; shelved pages only after every unshelved one.
+ *  Pure (exported for the test). */
+export function evictionOrder(all: readonly ComicPageRecord[], maxPages: number, maxBytes: number): ComicPageRecord[] {
+  const order = [...all].sort((x, y) => (Number(Boolean(x.shelved)) - Number(Boolean(y.shelved))) || (x.lastUsed - y.lastUsed));
+  let count = all.length;
+  let bytes = all.reduce((n, r) => n + r.dataUrl.length, 0);
+  const out: ComicPageRecord[] = [];
+  for (const rec of order) {
+    if (count <= maxPages && bytes <= maxBytes) break;
+    out.push(rec);
+    count -= 1;
+    bytes -= rec.dataUrl.length;
+  }
+  return out;
+}
 let globalPurgeEpoch = 0;
 const childPurgeEpoch = new Map<string, number>();
 let mutationChain: Promise<void> = Promise.resolve();
@@ -165,6 +228,8 @@ export function _setComicPageBackend(b: ComicPageBackend | null): void {
 /** Test hook: forget the injected/default backend so it re-resolves. */
 export function _resetComicPageStore(): void {
   backend = undefined;
+  storageManager = undefined;
+  persistAsked = false;
   globalPurgeEpoch = 0;
   childPurgeEpoch.clear();
   mutationChain = Promise.resolve();
@@ -219,20 +284,52 @@ export async function putComicPage(
   try {
     await mutate(async () => {
       if (!comicPageEpochIsCurrent(epoch)) return;
-      await b.put({ key, childId, dataUrl, lastUsed: Date.now() });
+      // A re-written page keeps its shelf membership.
+      const shelved = (await b.has(key)) ? Boolean((await b.get(key))?.shelved) : false;
+      await b.put({ key, childId, dataUrl, lastUsed: Date.now(), ...(shelved ? { shelved } : {}) });
       if (!comicPageEpochIsCurrent(epoch)) return;
       const all = await b.getAll();
       if (!comicPageEpochIsCurrent(epoch)) return;
-      if (all.length > MAX_PAGES) {
-        const surplus = [...all].sort((x, y) => x.lastUsed - y.lastUsed).slice(0, all.length - MAX_PAGES);
-        for (const rec of surplus) {
-          if (!comicPageEpochIsCurrent(epoch)) return;
-          await b.delete(rec.key);
-        }
+      const surplus = evictionOrder(all, MAX_PAGES, await byteBudget());
+      for (const rec of surplus) {
+        if (!comicPageEpochIsCurrent(epoch)) return;
+        await b.delete(rec.key);
       }
     });
   } catch {
     /* best effort */
+  }
+}
+
+/**
+ * B-KID-49: the pages of a book that just went onto a shelf are evicted last.
+ * The first call on this device also asks the browser to keep the store
+ * (navigator.storage.persist — no prompt in Chromium/Firefox for a used site).
+ * Never throws.
+ */
+export async function markComicPagesShelved(childId: string, sceneKeys: readonly string[]): Promise<void> {
+  const b = resolveBackend();
+  if (!b || sceneKeys.length === 0) return;
+  const epoch = captureComicPageEpoch(childId);
+  try {
+    await mutate(async () => {
+      for (const sceneKey of sceneKeys) {
+        if (!comicPageEpochIsCurrent(epoch)) return;
+        const rec = await b.get(recordKey(childId, sceneKey));
+        if (rec && !rec.shelved) await b.put({ ...rec, shelved: true });
+      }
+    });
+  } catch {
+    /* best effort */
+  }
+  if (!persistAsked) {
+    persistAsked = true;
+    try {
+      const sm = resolveStorage();
+      if (sm?.persist && !(await sm.persisted?.())) await sm.persist();
+    } catch {
+      /* best effort */
+    }
   }
 }
 

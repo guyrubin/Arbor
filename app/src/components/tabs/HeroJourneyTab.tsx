@@ -41,7 +41,7 @@ import { ageMonthsFromProfile } from "../../lib/childAge";
 import { track } from "../../lib/analytics";
 import { HeroScenePlayer } from "../stories/HeroScenePlayer";
 import { ProvenanceBadge } from "../ui/ProvenanceBadge";
-import { clearJourneyPageFailure, generateJourneyPage, journeyPageKey, toSavedComicMeta, type SavedComicMeta } from "../../lib/heroComics";
+import { clearJourneyPageFailure, generateJourneyPage, journeyPageKey, shelveBookPages, toSavedComicMeta, type SavedComicMeta } from "../../lib/heroComics";
 import { useKidSafeNav } from "../kidmode/useKidSafeNav";
 import { isKidModeActive, noteKidActivity, subscribeKidMode } from "../../lib/kidModeGate";
 import { ComicPage, MascotSay, usePrefersReducedMotion } from "../ui/playkit";
@@ -458,6 +458,8 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
       createdAt: new Date().toISOString(),
       pageKeys: keys,
     }));
+    // B-KID-49: a shelved book's pages are evicted from the device store last.
+    shelveBookPages(childProfile.id, keys);
     markComicSaved(true);
   };
 

@@ -23,6 +23,7 @@ import {
   prevPageIndex,
   swipeToDelta,
   tapToDelta,
+  shelveBookPages,
 } from "../../lib/heroComics";
 import { captureComicPageEpoch, type ComicPageEpoch } from "../../lib/comicPageStore";
 import { wowPageFor } from "../../lib/comicPrewarm";
@@ -252,6 +253,8 @@ export function ComicReader({
   const handleSave = () => {
     const comic = buildSavedComic();
     onSave(comic);
+    // B-KID-49: a shelved book's pages are evicted from the device store last.
+    shelveBookPages(childId, comic.pageKeys);
     track("hero_comic_saved", { adventure: adventure.id, pages: total });
     const cover = comic.coverUrl;
     if (cover) {
