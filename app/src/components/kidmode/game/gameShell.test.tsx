@@ -49,7 +49,11 @@ describe("GameShell in Kid Mode", () => {
     expect(html).toMatch(/aria-hidden="true" data-game-backdrop=""/);
     expect(html).toContain("game-memory-480.webp");
     expect(html).toContain("game-memory-1024.webp 1024w");
-    expect(html).toContain("clamp(150px, 30dvh, 300px)");
+    // B-KID-123 re-pin: a centred 4:3 window, width-capped (no full-width strip that crops the face).
+    expect(html).toContain("aspect-ratio:4 / 3");
+    expect(html).toContain("inline-size:min(100%, 560px, calc(36dvh * 4 / 3))");
+    expect(html).toContain("margin-inline:auto");
+    expect(html).not.toMatch(/data-game-backdrop=""[^>]*block-size:/);
     expect(html).toContain("object-position:50% 22%");
     // not hidden behind the play card: no blur, no dimming, not absolutely behind
     expect(html).not.toContain("blur(");

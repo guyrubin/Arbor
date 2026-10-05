@@ -67,9 +67,16 @@ export interface GameShellProps {
   children: React.ReactNode;
 }
 
-/** The world-card banner at the top of a kid game (~30 % of the viewport) and
- *  how far the play surface rides up over its faded lower edge. */
-export const GAME_BANNER_BLOCK = "clamp(150px, 30dvh, 300px)";
+/** The world-card banner at the top of a kid game and how far the play surface
+ *  rides up over its faded lower edge.
+ *  B-KID-123: the banner was a full-width strip of fixed height, so at tablet
+ *  and desktop widths a portrait card became a wide, short slice that cut the
+ *  hero's face. It is now a 4:3 window onto the card (a 3:4 card shows ~56 % of
+ *  its height, from the manifest's top focal point - the face), centred, and
+ *  its width is capped (<= 560 px and <= 36dvh * 4/3, so it stays ~a third of
+ *  a short desktop screen): the same picture at 375, 768, 1280 and 1920. */
+export const GAME_BANNER_ASPECT = "4 / 3";
+export const GAME_BANNER_INLINE = "min(100%, 560px, calc(36dvh * 4 / 3))";
 export const GAME_BANNER_OVERLAP = -56;
 
 function useKidModeOn(): boolean {
@@ -140,11 +147,11 @@ export function GameShell({ worldId, title, instruction, hearIt, progress, mood,
           solid token surfaces. Decorative, aria-hidden, fixed block size (no
           layout shift), no motion. */}
       {art && (
-        <div aria-hidden="true" data-game-backdrop="" className="pointer-events-none relative overflow-hidden" style={{ blockSize: GAME_BANNER_BLOCK, borderRadius: 24 }}>
+        <div aria-hidden="true" data-game-backdrop="" className="pointer-events-none relative overflow-hidden" style={{ inlineSize: GAME_BANNER_INLINE, aspectRatio: GAME_BANNER_ASPECT, marginInline: "auto", borderRadius: 24 }}>
           <img
             src={art.src480}
             srcSet={kidArtSrcSet(art)}
-            sizes="(max-width: 767px) 100vw, 1100px"
+            sizes="(max-width: 599px) 100vw, 560px"
             alt=""
             className="absolute inset-0 h-full w-full object-cover"
             style={{ objectPosition: art.objectPosition }}
