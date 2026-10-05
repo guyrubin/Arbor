@@ -326,6 +326,18 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
     }
   };
 
+  // B-KID-42: tonight's banner pins ONE story — open THAT book on arrival
+  // (one tap from the kid home), once per mount; never a one-card catalogue.
+  const pinnedOpened = useRef(false);
+  useEffect(() => {
+    if (pinnedOpened.current || !initialStoryId) return;
+    const story = getStorySpec(initialStoryId);
+    if (!story) return;
+    pinnedOpened.current = true;
+    void startJourney(story);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialStoryId]);
+
   const chooseOption = (id: string) => {
     setChoiceId(id);
     celebrate({ kind: "choice" });

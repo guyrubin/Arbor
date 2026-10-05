@@ -36,7 +36,7 @@ import { useHeroAvatar, HeroAvatar } from "../ui/HeroAvatar";
 import { usePracticeData } from "../../practice/usePracticeData";
 import WorldScene from "../practice/WorldScene";
 import { useKidTheme } from "../../hooks/useKidTheme";
-import type { KidThemeId } from "../../lib/kidThemeManifest";
+import { kidArt, storyCoverKey, type KidThemeId } from "../../lib/kidThemeManifest";
 import { HoldExitButton } from "./HoldExitButton";
 import { kidIsolate } from "./kidText";
 import { lastPlayedWorldYesterday } from "./kidGreeting";
@@ -367,6 +367,11 @@ export default function KidDashboard({
   // instead of "Start a hero story / Pick a world" on a door with no choice.
   const tonightsStory = HERO_STORIES.find((s) => s.id === tonightsStoryId);
   const tonightsTitle = tonightsStory ? (uiLang === "he" ? tonightsStory.titleHe : tonightsStory.title) : "";
+  // B-KID-42 / KA-28: the banner wears tonight's story's OWN cover in the
+  // child's theme (same art + scene key as its Stories card); a story with no
+  // cover in this theme keeps the reviewed `kid-quest` tile.
+  const tonightsArtId = tonightsStory && kidArt(kidTheme, storyCoverKey(tonightsStory.id)) ? `story-${tonightsStory.id}` : "kid-quest";
+  const tonightsArtPrompt = tonightsStory && tonightsArtId !== "kid-quest" ? `${tonightsStory.title} — ${tonightsStory.theme}` : "an epic castle scene on a hill with a glowing open magic book";
   const greetingSub = yesterdayWorld
     ? kt("elev.kid.greeting.playedYesterday", { world: t(`kid.game.${yesterdayWorld}.title`) })
     : kt("elev.kid.greeting.ready");
@@ -422,7 +427,7 @@ export default function KidDashboard({
         }}
       >
         <div className="relative flex-shrink-0" style={{ inlineSize: "45%", maxInlineSize: 300, minBlockSize: KID_HOME_BANNER_BLOCK }}>
-          <WorldScene worldId="kid-quest" theme={kidTheme} imagePrompt="an epic castle scene on a hill with a glowing open magic book" heroUrl={hero.url ?? undefined} heroStyle={hero.style} sizes="(max-width: 639px) 45vw, 300px">
+          <WorldScene worldId={tonightsArtId} theme={kidTheme} imagePrompt={tonightsArtPrompt} heroUrl={hero.url ?? undefined} heroStyle={hero.style} sizes="(max-width: 639px) 45vw, 300px">
             <Sparkles aria-hidden="true" className="w-10 h-10" style={{ color: "var(--arbor-sky-ink)" }} />
           </WorldScene>
           <span className="absolute bottom-2 end-2 z-[2] rounded-2xl" style={{ background: "var(--arbor-paper-elevated)", border: "2px solid var(--comic-ink)", boxShadow: "2px 2px 0 var(--comic-ink)" }}>
