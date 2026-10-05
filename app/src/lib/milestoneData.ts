@@ -1,4 +1,5 @@
 import { Milestone } from "../types";
+import { resolveHebrewSlash } from "./hebrewSlashGender";
 import { toAgeBand, type CanonicalBandId } from "./domains/ageBands";
 
 /**
@@ -582,9 +583,15 @@ export function milestoneText(
   m: { id: string; title: string; description?: string; skillLooksLike?: string; custom?: boolean },
   field: MilestoneTextField,
   t: MilestoneT,
+  /** W2-GROWTH r2 (Law 8): pass the child's profile gender and the catalogue's
+   *  Hebrew slash forms resolve to ONE form (lib/hebrewSlashGender). */
+  opts?: { gender?: string | null },
 ): string {
   const stored = field === "title" ? m.title : field === "desc" ? m.description ?? "" : m.skillLooksLike ?? "";
-  if (isCatalogueMilestone(m)) return resolved(t, milestoneTextKey(m.id, field)) ?? stored;
+  if (isCatalogueMilestone(m)) {
+    const text = resolved(t, milestoneTextKey(m.id, field)) ?? stored;
+    return opts ? resolveHebrewSlash(text, opts.gender) : text;
+  }
   if (field === "desc" && m.description === CUSTOM_MILESTONE_DESC) return resolved(t, "ms.customDesc") ?? stored;
   return stored;
 }

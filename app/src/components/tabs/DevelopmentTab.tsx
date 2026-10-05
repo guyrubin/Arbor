@@ -63,6 +63,9 @@ export default function DevelopmentTab() {
   const { milestones, behaviorLogs, playLogs, childProfile, setActiveTab, setMilestoneObservation } = useArbor();
   const [checkOpen, setCheckOpen] = useState(false);
   const firstName = (childProfile.name || "").split(" ")[0];
+  // W2-GROWTH r2 (Law 8): catalogue Hebrew takes the child's gender from the
+  // profile — one form, never the intake-form slash ("נרגע/ת").
+  const heGender = useMemo(() => ({ gender: childProfile.gender ?? null }), [childProfile.gender]);
 
   // UND-2 — read-only view of the saved screenings (existing child collection):
   // once a parent-requested re-check comes due, the pointer row says so.
@@ -101,8 +104,8 @@ export default function DevelopmentTab() {
     if (chosenWatch) {
       return {
         // B-GROWTH-11: catalogue text by stable id, in the page language.
-        title: milestoneText(chosenWatch, "title", t),
-        body: milestoneText(chosenWatch, chosenWatch.skillLooksLike ? "looks" : "desc", t),
+        title: milestoneText(chosenWatch, "title", t, heGender),
+        body: milestoneText(chosenWatch, chosenWatch.skillLooksLike ? "looks" : "desc", t, heGender),
         hint: t("growth.focus.watchHint"),
         action: "daily-play" as const,
         chosen: true,
@@ -115,8 +118,8 @@ export default function DevelopmentTab() {
     const selected = selectWeeklyFocus(milestones, comparisonMonths);
     if (selected) {
       return {
-        title: milestoneText(selected.milestone, "title", t),
-        body: milestoneText(selected.milestone, selected.milestone.skillLooksLike ? "looks" : "desc", t),
+        title: milestoneText(selected.milestone, "title", t, heGender),
+        body: milestoneText(selected.milestone, selected.milestone.skillLooksLike ? "looks" : "desc", t, heGender),
         // "watch for" vs "try" — observational framing only, never a verdict.
         hint: selected.mode === "watch" ? t("growth.focus.watchHint") : t("growth.focus.tryHint"),
         action: "daily-play" as const,
@@ -136,7 +139,7 @@ export default function DevelopmentTab() {
       observationStatus: undefined as string | undefined,
       observationUpdatedAt: undefined as string | undefined,
     };
-  }, [chosenWatch, milestones, comparisonMonths, t]);
+  }, [chosenWatch, milestones, comparisonMonths, t, heGender]);
 
   // B-GROWTH-NEW-1A (W2-GROWTH r1) — "New since {date}": 2–4 dated rows in
   // the parent's own words (milestones marked seen, words written down, the
@@ -149,8 +152,8 @@ export default function DevelopmentTab() {
   const previousVisitAt = childProfile.lastVisitPreviousAt ?? null;
   const sinceMs = useMemo(() => newSinceAnchor(previousVisitAt, Date.now()), [previousVisitAt]);
   const newSince = useMemo(
-    () => buildNewSince({ sinceMs, milestones, langObs: langObs.items, behaviorLogs, milestoneTitle: (m) => milestoneText(m, "title", t), t }),
-    [sinceMs, milestones, langObs.items, behaviorLogs, t],
+    () => buildNewSince({ sinceMs, milestones, langObs: langObs.items, behaviorLogs, milestoneTitle: (m) => milestoneText(m, "title", t, heGender), t }),
+    [sinceMs, milestones, langObs.items, behaviorLogs, t, heGender],
   );
   const sinceLabel = previousVisitAt
     ? t("elev.growth.newSince.label", { date: fmtDay(new Date(sinceMs).toISOString(), uiLang) })

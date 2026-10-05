@@ -110,7 +110,7 @@ describe("lib/growthNewSince — the parent's own words, counts only", () => {
       behaviorLogs: h.state.behaviorLogs as BehaviorLog[], milestoneTitle: (m) => m.title, t,
     });
     expect(rows.map((r) => r.kind).sort()).toEqual(["milestone", "moment", "words"]);
-    expect(rows.find((r) => r.kind === "milestone")!.text).toBe("You noticed: Calms after you leave");
+    expect(rows.find((r) => r.kind === "milestone")!.text).toBe("You marked ‘Seen it’: Calms after you leave");
     const words = rows.find((r) => r.kind === "words")!;
     expect(words.text).toBe("2 new words in English:");
     expect(words.quote).toBe("“moon”, “more juice”");
@@ -152,6 +152,37 @@ describe("#/development Hebrew screen — no Latin chrome (Law 8)", () => {
     const html = renderToStaticMarkup(<FirstWordsLedger />);
     expect(latinChrome(html, ["moon", "more juice", "old word", "Dylan"])).toEqual([]);
     expect(html).toContain("אנגלית");
+  });
+});
+
+describe("#/development Hebrew takes the child's gender from the profile — never a slash (W2-GROWTH r2, Law 8)", () => {
+  const SLASH = /[א-ת]\/[א-ת]/;
+  const setCatalogue = (gender?: string) => {
+    h.locale = "he";
+    h.state.childProfile = { id: "c1", name: "Dylan", age: 1, birthDate: "2025-03-01", ageMonths: 18, gender };
+    h.state.milestones = [
+      ms({ id: "cdc-36m-1", title: "Calms after you leave", observationStatus: "not_sure", observationUpdatedAt: ago(3) }),
+      ms({ id: "cdc-36m-2", title: "Notices other children and joins them to play", checked: true, observationStatus: "yes", observationUpdatedAt: ago(1) }),
+    ];
+  };
+  it("a girl: the focus H2 and the New-since row are feminine, one form each", async () => {
+    setCatalogue("girl");
+    const html = await render();
+    expect(html).toMatch(/<h2 id="growth-weekly-focus"[^>]*>נרגעת אחרי שאתם הולכים<\/h2>/);
+    expect(html).toContain("סימנתם ‘ראיתי’: מצטרפת לילדים אחרים");
+    expect(text(html).match(new RegExp(`.{0,24}${SLASH.source}.{0,24}`))?.[0]).toBeUndefined();
+  });
+  it("a boy, and no gender on file: one masculine form, never a slash", async () => {
+    for (const g of ["boy", undefined]) {
+      setCatalogue(g);
+      const html = await render();
+      expect(html).toMatch(/<h2 id="growth-weekly-focus"[^>]*>נרגע אחרי שאתם הולכים<\/h2>/);
+      expect(html).toContain("סימנתם ‘ראיתי’: מצטרף לילדים אחרים");
+      expect(text(html).match(new RegExp(`.{0,24}${SLASH.source}.{0,24}`))?.[0]).toBeUndefined();
+    }
+  });
+  it("negative control: the catalogue itself still carries the slash the seam resolves", () => {
+    expect(translate("he", "ms.item.cdc-36m-1.title")).toMatch(SLASH);
   });
 });
 
