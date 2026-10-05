@@ -3,7 +3,7 @@ import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { SectionCard, TrustSafetyBar, cardCls } from "../ui/kit";
-import { RegisterShell, ChoiceTile, MascotSay, PlayButton, PlayPanel, ProgressPips } from "../ui/playkit";
+import { RegisterShell, Celebrate, ChoiceTile, MascotSay, PlayButton, PlayPanel, ProgressPips } from "../ui/playkit";
 import { BREATHING_PATTERNS, CALM_TOOLS, EMOTION_SCENARIOS, EMOTIONS, type Emotion } from "../../practice/playContent";
 import { usePracticeData } from "../../practice/usePracticeData";
 import { EmotionAvatar } from "../ui/EmotionAvatar";
@@ -23,6 +23,8 @@ function emotionLabelFor(emotion: Emotion, uiLang: string): string {
   return uiLang === "he" ? HEBREW_EMOTION_LABELS[emotion.id] ?? emotion.label : emotion.label;
 }
 
+/** B-KID-29: one Mood Mountain climb = this many answers, then a finish. */
+export const MOOD_CLIMB = 5;
 const eventId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
 // Each feeling gets a calm tone for the avatar's aura.
@@ -50,6 +52,8 @@ export default function FeelingsLabTab() {
   const heroUrl = resolveHeroUrl(childProfile);
 
   const [scenarioIdx, setScenarioIdx] = useState(0);
+  // B-KID-29: Mood Mountain is a climb of MOOD_CLIMB answers, then it ends.
+  const [kidStep, setKidStep] = useState(0);
   const [pickedEmotion, setPickedEmotion] = useState<string | null>(null);
   const [feltEmotion, setFeltEmotion] = useState<string | null>(null);
   const [talkedEmotion, setTalkedEmotion] = useState<string | null>(null);
@@ -123,6 +127,7 @@ export default function FeelingsLabTab() {
   const nextScenario = () => {
     setScenarioIdx((i) => (i + 1) % EMOTION_SCENARIOS.length);
     setPickedEmotion(null);
+    setKidStep((n) => n + 1);
   };
 
   const markTalked = (id: string) => {
@@ -302,6 +307,16 @@ export default function FeelingsLabTab() {
 
   // KID-04: the KID register — Mood Mountain. Self-check → scenario → tiles →
   // next. Counts never verdicts: progress is pips, feedback is words.
+  // B-KID-29: five answers, then a finish — the mountain ends.
+  if (kidStep >= MOOD_CLIMB) {
+    return (
+      <RegisterShell kidMode title={t("elev.play.feelings.title")} mood="happy" worldId="feelings" headerVariant="compact">
+        <Celebrate title={t("elev.kids.feelings.done.title", { name: first })} subtitle={t("elev.kids.feelings.done.sub")}>
+          <PlayButton tone="yellow" onClick={() => setKidStep(0)}>{t("elev.kids.feelings.again")}</PlayButton>
+        </Celebrate>
+      </RegisterShell>
+    );
+  }
   return (
     <RegisterShell
       kidMode
@@ -314,7 +329,7 @@ export default function FeelingsLabTab() {
     >
 
       <PlayPanel tone="yellow">
-        <ProgressPips total={EMOTION_SCENARIOS.length} current={scenarioIdx % EMOTION_SCENARIOS.length} tone="yellow" />
+        <ProgressPips total={MOOD_CLIMB} current={kidStep} tone="yellow" />
 
         <div className="rounded-[var(--play-radius)] p-6 my-4" style={{ background: "var(--arbor-paper-elevated)", boxShadow: "var(--shadow-sm)" }}>
           <p className="text-5xl mb-3">{scenario.emoji}</p>
