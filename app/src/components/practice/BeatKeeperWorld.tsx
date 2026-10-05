@@ -9,10 +9,10 @@ import { selectionHaptic } from "../../lib/native";
 import { noteKidActivity } from "../../lib/kidModeGate";
 import { beatClick, closeBeatAudio } from "../../practice/beatAudio";
 
-/* Beat Keeper — tap on the beat. A rhythm/timing game (regulation): a pulse
-   flashes at a steady tempo, the child taps along, and tap timing is scored
-   against the beat. Logs a "rhythm" event (domain: emotional/regulation).
-   Visual-only pulse — no audio dependency. */
+/* Beat Keeper — tap on the beat. A rhythm/timing game (regulation): the drum
+   flashes AND clicks on every beat at a steady tempo (B-KID-37: the first
+   click IS beat 1), the child taps along. Tap timing is logged for the parent
+   record only; the child hears one warm line whatever the timing. */
 
 export default function BeatKeeperWorld() {
   const { first, log } = useArcadeLogger();
@@ -21,7 +21,10 @@ export default function BeatKeeperWorld() {
   const [selectedSetId, setSelectedSetId] = useState<string | null>(null);
   const [phase, setPhase] = useState<"ready" | "playing" | "scored">("ready");
   const [pulse, setPulse] = useState(-1);
-  const [score, setScore] = useState(0);
+  // B-KID-37: a 120 ms flash on EVERY beat (pulse alone only ever grew, so the
+  // drum stayed enlarged after beat 1 — a muted child saw one bump, then nothing).
+  const [flash, setFlash] = useState(false);
+  const flashBeat = () => { setFlash(true); window.setTimeout(() => setFlash(false), 120); };
   const [scores, setScores] = useState<number[]>([]);
 
   const startRef = useRef(0);
@@ -93,7 +96,6 @@ export default function BeatKeeperWorld() {
 
   const finish = () => {
     const s = scoreBeatTaps(expRef.current, tapsRef.current);
-    setScore(s);
     setScores((p) => [...p, s]);
     setPhase("scored");
     log("rhythm", "emotional", { correct: s >= 50, score: s, meta: `${selectedSet.id}:${round.beats}@${round.intervalMs}` });
@@ -104,20 +106,24 @@ export default function BeatKeeperWorld() {
 
   const start = () => {
     tapsRef.current = [];
-    expRef.current = Array.from({ length: round.beats }, (_, i) => round.intervalMs * (i + 1));
+    // B-KID-37: beat 1 is at t = 0 — the first click counts (it used to be an
+    // extra click the child's first tap was spent on).
+    expRef.current = Array.from({ length: round.beats }, (_, i) => round.intervalMs * i);
     startRef.current = Date.now();
     setPhase("playing");
-    setPulse(-1);
     let k = 0;
     // KID-27: the pulse was VISUAL ONLY — a rhythm game the child could not
     // hear. Every beat now makes a short click through the shared Web Audio
     // node, so a child looking away can still keep time.
+    setPulse(0);
+    flashBeat();
     beatClick();
     timerRef.current = window.setInterval(() => {
       k++;
-      setPulse(k - 1);
+      setPulse(k);
+      flashBeat();
       beatClick();
-      if (k >= round.beats) {
+      if (k >= round.beats - 1) {
         if (timerRef.current !== null) window.clearInterval(timerRef.current);
         finishTimerRef.current = window.setTimeout(finish, round.intervalMs);
       }
@@ -147,14 +153,15 @@ export default function BeatKeeperWorld() {
       <div className="rounded-[var(--play-radius)] p-6 grid place-items-center comic-panel" style={{ background: "var(--arbor-green-soft)", minHeight: 220 }}>
         <button
           onClick={phase === "playing" ? tap : start}
+          data-beat={phase === "playing" ? pulse : undefined}
           aria-label={phase === "playing" ? t("elev.play.beat.tapAria") : phase === "scored" ? t("elev.play.beat.scoredAria") : t("elev.play.beat.startAria")}
           className="play-pressable grid place-items-center rounded-full font-black text-white select-none"
           style={{
             width: 168, height: 168, border: "var(--comic-line)", fontFamily: "var(--font-display)", fontSize: 28,
             background: "var(--arbor-clay)",
-            transform: phase === "playing" && pulse >= 0 ? "scale(1.12)" : "scale(1)",
+            transform: phase === "playing" && flash ? "scale(1.12)" : "scale(1)",
             transition: "transform 120ms ease-out",
-            boxShadow: phase === "playing" && pulse >= 0 ? "0 0 0 12px color-mix(in oklab, var(--arbor-clay) 35%, transparent)" : "var(--comic-pop)",
+            boxShadow: phase === "playing" && flash ? "0 0 0 12px color-mix(in oklab, var(--arbor-clay) 35%, transparent)" : "var(--comic-pop)",
           }}
         >
           {phase === "playing" ? t("elev.play.beat.tap") : phase === "scored" ? "✔" : t("elev.play.beat.start")}
@@ -164,8 +171,9 @@ export default function BeatKeeperWorld() {
       {phase === "scored" && (
         <>
           <MascotSay mood="proud" tone="clay">
-            {/* KID-27 / kid register: the child hears the beat verdict as words + stars, never a percentage. */}
-            {score >= 80 ? t("elev.play.beat.feedback.nailed", { name: first }) : score >= 50 ? t("elev.play.beat.feedback.next") : t("elev.play.beat.feedback.keep")}
+            {/* B-KID-37 (law 1): one warm line for every round — never a sentence
+                that varies with the child's timing, never a "try again" with no retry. */}
+            {t("elev.play.beat.feedback.nailed", { name: first })}
           </MascotSay>
           <div className="flex justify-center">
             <PlayButton onClick={() => { setPhase("ready"); setPulse(-1); setRoundIdx((i) => i + 1); }}>
