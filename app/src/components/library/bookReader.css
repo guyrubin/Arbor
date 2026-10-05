@@ -375,41 +375,59 @@
   .arbor-play .bk-card[data-selected] { transform: none; }
 }
 
-/* ── the END screen (fix round 1, ruling 6) ─────────────────────────────── */
-.arbor-play .bk-end-wrap { display: grid; place-items: center; overflow-y: auto; padding: 24px 16px; }
+/* ── the END screen = the book's last page (fix round 2, ruling 3): the last
+   page's art on the art page; on the paper page "The End", the frame line,
+   Read again + Close, and a quiet "For the grown-up" control (>= 48 px) whose
+   panel takes over the paper page and scrolls inside ──────────────────── */
 .arbor-play .bk-end {
-  box-sizing: border-box;
-  inline-size: min(760px, 100%);
-  padding: clamp(28px, 4vw, 56px) clamp(20px, 4vw, 56px);
-  border-radius: 18px;
-  background:
-    repeating-linear-gradient(0deg, color-mix(in oklab, var(--arbor-ink) 2%, transparent) 0 1px, transparent 1px 4px),
-    var(--arbor-paper-elevated);
-  color: var(--arbor-ink);
+  flex: 1 1 auto;
+  min-block-size: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
   text-align: center;
-  box-shadow: 0 40px 80px -30px color-mix(in oklab, var(--arbor-ink) 90%, transparent);
+  color: var(--arbor-ink);
   animation: bk-fade 420ms var(--kid-ease-out) both;
 }
-.arbor-play .bk-end-title { margin: 0; font: 700 clamp(44px, 5vw, 76px)/1.05 var(--font-display); letter-spacing: -0.015em; }
-.arbor-play .bk-end-frame { margin: 0.6em 0 0; font: 600 clamp(22px, 1.8vw, 32px)/1.45 var(--font-display); }
-.arbor-play .bk-end-toys { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; margin-block-start: 32px; }
-.arbor-play .bk-end-rule { border: 0; border-block-start: 1px solid var(--arbor-rule); margin: 36px 0 12px; }
+.arbor-play .bk-end-main { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; gap: 0.5em; }
+.arbor-play .bk-end-title { margin: 0; font: 700 clamp(44px, 5vw, 76px)/1.05 var(--font-display); letter-spacing: -0.015em; text-wrap: balance; }
+.arbor-play .bk-end-frame { margin: 0; font: 600 clamp(22px, 1.8vw, 34px)/1.45 var(--font-display); text-wrap: balance; }
+.arbor-play .bk-end-toys { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; }
+.arbor-play .bk-end-toys .kid-toy { white-space: nowrap; }
 .arbor-play .bk-grownup-toggle {
   appearance: none;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  border: 0;
-  background: none;
-  padding: 8px 10px;
+  justify-content: center;
+  gap: 10px;
+  min-block-size: 48px;
+  padding: 10px 20px;
+  border: 1px solid var(--arbor-rule);
+  border-radius: 999px;
+  background: var(--arbor-paper-deep);
   color: var(--arbor-muted);
-  font: 600 15px/1.3 var(--font-sans);
+  font: 700 16px/1.2 var(--font-sans);
   cursor: pointer;
+  flex-shrink: 0;
 }
-.arbor-play .bk-grownup-toggle:focus-visible { outline: 2px solid var(--arbor-sky); border-radius: 8px; }
+.arbor-play .bk-grownup-toggle:focus-visible { outline: 3px solid var(--arbor-sky); outline-offset: 2px; }
 .arbor-play .bk-grownup-caret { inline-size: 8px; block-size: 8px; border-inline-end: 2px solid currentColor; border-block-end: 2px solid currentColor; transform: rotate(45deg); transition: transform 200ms; }
 .arbor-play .bk-grownup-caret[data-open] { transform: rotate(-135deg); }
-.arbor-play .bk-grownup { margin: 8px 0 0; text-align: start; font: 400 15px/1.55 var(--font-sans); color: var(--arbor-ink); }
-.arbor-play .bk-grownup dt { margin-block-start: 14px; font-weight: 700; color: var(--arbor-muted); font-size: 13px; letter-spacing: 0.02em; }
+.arbor-play .bk-end[data-grownup] { justify-content: flex-start; align-items: stretch; }
+.arbor-play .bk-end[data-grownup] .bk-grownup-toggle { align-self: center; }
+.arbor-play .bk-grownup {
+  flex: 1 1 auto;
+  min-block-size: 0;
+  overflow-y: auto;
+  margin: 4px 0 0;
+  padding-inline-end: 6px;
+  text-align: start;
+  font: 400 17px/1.6 var(--font-sans);
+  color: var(--arbor-ink);
+}
+.arbor-play .bk-grownup dt { margin-block-start: 16px; font-weight: 700; color: var(--arbor-muted); font-size: 15px; letter-spacing: 0.02em; }
+.arbor-play .bk-grownup dt:first-child { margin-block-start: 0; }
 .arbor-play .bk-grownup dd { margin: 2px 0 0; }
 .arbor-play .bk-grownup bdi { color: var(--arbor-clay); font-weight: 600; }

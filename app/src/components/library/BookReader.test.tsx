@@ -221,11 +221,17 @@ describe("the ending", () => {
     expect(end.at).toBe(END);
   });
 
-  it("the END screen: 'The End', the frame line, Read again + close, the grown-up panel collapsed", () => {
+  it("the END screen: 'The End', the frame line, Read again + close, the grown-up panel collapsed (a >= 48 px control)", () => {
     const end = bookFlowReducer(book, toPage("b", "p10"), { type: "next" });
     const html = render(end);
     expect(html).toContain('data-book-end-screen=""');
-    expect(html).toContain('class="bk-end-title">The End<');
+    expect(html).toMatch(/class="bk-end-title"[^>]*>The End</);
+    // fix round 2: the end screen is the book's last page — the book frame,
+    // the last page's art on the art page, the words on the paper page
+    expect(html).toContain('data-book-page="end"');
+    expect(html).toContain('class="bk-art"');
+    expect(html).toContain('/PL1d.webp');
+    expect(html).toContain('data-end=""');
     expect(html).toContain("And today, <bdi data-book-name=\"\">Dylan</bdi> was David, the shepherd.");
     expect(html).toContain("data-book-read-again");
     expect(html).toContain("data-book-end-close");
