@@ -235,15 +235,21 @@ export default function DevelopmentTab() {
           "disclosure"). New since is its OWN module: 2–4 dated rows in the
           parent's own words; a zero-event visit renders nothing and the focus
           card is the hero. */}
+      {/* W2-GROWTH r2 (1280 used the width as a phone column): at lg the
+          focus card + its observe row take the inline-start 7/12 and New since
+          is a sticky 5/12 aside at inline-end. Grid lines follow the writing
+          direction, so RTL mirrors with no extra rule; the Record card spans
+          the full width below. */}
+      <div className="space-y-5 sm:space-y-6 lg:grid lg:grid-cols-12 lg:items-start lg:gap-6 lg:space-y-0">
         {newSince.length > 0 && (
           <aside
             data-module="growth-new-since"
             data-testid="growth-new-since"
             aria-labelledby="growth-since-line"
-            className="rounded-[var(--r-lg)] p-4"
+            className="rounded-[var(--r-lg)] p-4 lg:sticky lg:top-4 lg:col-span-5 lg:col-start-8 lg:row-start-1"
             style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}
           >
-            <h2 id="growth-since-line" className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }} data-testid="growth-since-line">{sinceLabel}</h2>
+            <h2 id="growth-since-line" className="pb-1.5 text-xs font-bold" style={{ color: "var(--arbor-muted)", borderBottom: "1px solid var(--arbor-rule)" }} data-testid="growth-since-line">{sinceLabel}</h2>
             <ul className="mt-2 space-y-2">
               {newSince.map((row) => (
                 <li key={row.id} data-testid={`growth-new-since-${row.kind}`} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
@@ -262,7 +268,11 @@ export default function DevelopmentTab() {
             </ul>
           </aside>
         )}
-      <section data-module="growth-weekly-focus" className="space-y-4" aria-labelledby="growth-weekly-focus">
+      <section
+        data-module="growth-weekly-focus"
+        className={`space-y-4 lg:col-start-1 lg:row-start-1 ${newSince.length > 0 ? "lg:col-span-7" : "lg:col-span-12"}`}
+        aria-labelledby="growth-weekly-focus"
+      >
         <div className="min-w-0">
             <span className="inline-flex items-center gap-1.5 text-xs font-bold" style={{ color: "var(--arbor-green-ink)" }} data-testid="growth-focus-eyebrow">
               <Icon name={weeklyFocus.chosen ? "visibility" : "explore"} size={16} />
@@ -392,6 +402,7 @@ export default function DevelopmentTab() {
             </div>
         </div>
       </section>
+      </div>
       {/* TJB-28 → B-TODAY-18: the reason card moved to Today's continuation
           slot (the B-AI-06 coordinator); Growth keeps the close-of-day WRITE. */}
       {/* B-GROWTH-NEW-1A — ONE Record card: Map · Words · Tree. The map (the

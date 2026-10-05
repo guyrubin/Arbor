@@ -167,6 +167,14 @@ describe("#/development order, stamp and budget (W2-GROWTH r1)", () => {
     expect(html).not.toContain("growth-hub-hero-zero-line");
     expect(html).not.toMatch(/\d+ noticed · \d+ areas?/);
   });
+  it("W2-GROWTH r2: at lg the focus takes the inline-start 7/12 and New since is a sticky 5/12 aside (grid lines, no order hacks)", async () => {
+    h.locale = "en";
+    const html = await render();
+    expect(html).toMatch(/class="[^"]*lg:grid lg:grid-cols-12[^"]*"/);
+    expect(html).toMatch(/data-module="growth-new-since"[^>]*class="[^"]*lg:sticky[^"]*lg:col-span-5 lg:col-start-8 lg:row-start-1/);
+    expect(html).toMatch(/data-module="growth-weekly-focus" class="[^"]*lg:col-start-1 lg:row-start-1 lg:col-span-7/);
+    expect(SRC).not.toMatch(/\blg:order-|\b(?:ml|mr|pl|pr|left|right)-\d/);
+  });
   it("stamps the observe group, never the section", async () => {
     h.locale = "en";
     const html = await render();
