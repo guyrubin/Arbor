@@ -737,7 +737,7 @@ export default function OverviewTab() {
               momentsToday={momentsToday}
               childName={firstName}
               onRead={() => setActiveTab("bedtime-stories")}
-              onRoutine={() => setActiveTab("routines")}
+              onRoutine={() => setActiveTab("plans")}
             />
           ) : todayChoice.kind === "weekOpen" ? (
             <WeekOpenAnchorCard

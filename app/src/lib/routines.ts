@@ -49,6 +49,13 @@ export interface Routine {
   /** One-line "why it works" note; use {name} for the child's first name. */
   why: Localized;
   steps: RoutineStep[];
+  /**
+   * B-GROWTH-25 — the age window (months, inclusive) a routine is offered in.
+   * Absent = every age. A nap wind-down past 4 and a potty board outside
+   * 18–48 m are not offered (`routinesForAge`); the board itself is unchanged.
+   */
+  ageMinMonths?: number;
+  ageMaxMonths?: number;
 }
 
 /** The seven routines, in display order. `morning` is the default selection. */
@@ -182,6 +189,7 @@ export const ROUTINES: Routine[] = [
     tone: "sky",
     domains: { en: "Regulation + Self-Care", he: "ויסות + עצמאות" },
     title: { en: "Nap wind-down", he: "הרגעה לפני שנת צהריים" },
+    ageMaxMonths: 48,
     time: { en: "10 min", he: "10 דק׳" },
     why: {
       en: "The same few quiet steps each time tell {name}'s body a nap is coming — steadier mood, easier sleep.",
@@ -201,6 +209,8 @@ export const ROUTINES: Routine[] = [
     tone: "mint",
     domains: { en: "Self-Care + Regulation", he: "עצמאות + ויסות" },
     title: { en: "Potty routine", he: "שגרת סיר" },
+    ageMinMonths: 18,
+    ageMaxMonths: 48,
     time: { en: "5 min", he: "5 דק׳" },
     why: {
       en: "Trying at the same moments each day — after meals, before nap — helps {name}'s body learn the rhythm, no pressure.",
@@ -282,4 +292,11 @@ export function localized(value: Localized, uiLang: UiLang): string {
  *  the id is unknown, so consumers never render blank). */
 export function routineById(id: string): Routine {
   return ROUTINES.find((r) => r.id === id) ?? ROUTINES[0];
+}
+
+/** B-GROWTH-25 — the routines offered at this age (months; null = unknown
+ *  age ⇒ every routine, so a profile without a birth date loses nothing). */
+export function routinesForAge(months: number | null | undefined): Routine[] {
+  if (months == null || !Number.isFinite(months)) return ROUTINES;
+  return ROUTINES.filter((r) => (r.ageMinMonths == null || months >= r.ageMinMonths) && (r.ageMaxMonths == null || months <= r.ageMaxMonths));
 }

@@ -42,6 +42,10 @@ export const en: Record<string, string> = {
   // B-ASKJB-28: the one quiet routines row below the active plan.
   "elev.plans.routines.row": "Your routines ({n})",
   "elev.plans.routines.add": "Add a routine",
+  // B-GROWTH-25: the ready-made routines are Plans templates, started in one tap.
+  "elev.plans.routineTemplates.title": "Or start a ready-made routine",
+  "elev.plans.routineTemplates.sub": "One tap makes it a plan, its first step ready for today.",
+  "elev.plans.routineTemplates.start": "Start {title}, {time}",
 
   // ── B-ASKJB-26: today's step, through the action loop
   "elev.plans.today.eyebrow": "From your plan",
@@ -95,6 +99,9 @@ export const he: Record<string, string> = {
   "elev.plans.steps.title": "הצעדים",
   "elev.plans.routines.row": "השגרות שלכם ({n})",
   "elev.plans.routines.add": "הוספת שגרה",
+  "elev.plans.routineTemplates.title": "או להתחיל שגרה מוכנה",
+  "elev.plans.routineTemplates.sub": "לחיצה אחת הופכת אותה לתוכנית, והצעד הראשון מוכן להיום.",
+  "elev.plans.routineTemplates.start": "להתחיל: {title}, {time}",
 
   "elev.plans.today.eyebrow": "מתוך התוכנית שלכם",
   "elev.plans.today.day": "יום {n} בתוכנית {plan}",

@@ -6,7 +6,7 @@ import {
   Share2, BookOpen, Sliders, Waypoints, ShieldAlert,
   Target, Map, School,
   MessageCircle, NotebookPen, UserCircle,
-  Clock, ListChecks, BarChart3, Bell,
+  Clock, BarChart3, Bell,
   Sparkles, Heart, Library,
 } from "lucide-react";
 import type { ActiveTab } from "../context/ArborContext";
@@ -181,9 +181,8 @@ export const SECTIONS: NavSection[] = [
       { tab: "language", label: "Language & Communication", icon: Languages },
     ],
     tools: [
-      // Wireframe: Ready-made Routines — the research-backed routine library
-      // (morning, goodbye, meal, tidy, screens, bedtime…), each a step board.
-      { tab: "routines", label: "Routines", icon: ListChecks, msIcon: "event_repeat" },
+      // B-GROWTH-25: the Routines pill is gone — #/routines retired to Plans,
+      // where the twelve boards are one-tap plan templates.
       { tab: "daily-play", label: "Daily Play", icon: Map, msIcon: "playing_cards" },
       // M4 surfacing (IA masterplan): the quick-check screener was fallback-only
       // (reachable via one ChildProfile JumpLink) — now a visible Growth pill.
@@ -329,8 +328,9 @@ export const TAB_SECTION_FALLBACK: Partial<Record<ActiveTab, HubId>> = {
   copilot: "growth",
   screening: "growth",
   strengths: "growth",
-  // Wireframe: Ready-made Routines library — a Growth tool pill.
-  routines: "growth",
+  // B-GROWTH-25: #/routines retired to Plans (RETIRED_ROUTES) — it resolves
+  // to the hub that owns plans.
+  routines: "behaviors",
 
   // Practice (Heartwood D3) — the standalone drill routes are the Practice
   // hub's tools; they stay valid deep links resolving here for highlighting,

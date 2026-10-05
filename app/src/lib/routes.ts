@@ -154,6 +154,11 @@ export const RETIRED_ROUTES: Readonly<Record<string, ActiveTab>> = {
   // single offer (B-AI-06) and lane-X's sticker book (B-KID-19) ship —
   // accepted under Guy #5's default, recorded so it is not called an orphan.
   journey: "practice",
+  // B-GROWTH-25 (CN-301): the twelve ready-made routine boards are Plans
+  // templates now (lib/routineTemplates, started in one tap on #/plans). The
+  // id keeps its ROUTE_IDS seat and RoutinesTab stays registered (journey
+  // pattern); the device-local board ticks are not migrated (no ledger).
+  routines: "plans",
 };
 
 export function resolveRouteId(raw: string): ActiveTab | null {

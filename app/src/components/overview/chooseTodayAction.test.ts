@@ -235,7 +235,8 @@ describe("B-TODAY-26 — Today wiring: one voice, no generation, no timer", () =
   it("the count is the day-close signal; the card navigates and generates nothing", () => {
     expect(overview).toMatch(/deriveReturnSignals\(\{[^}]*\}\)\.momentsToday/);
     expect(overview).toContain('onRead={() => setActiveTab("bedtime-stories")}');
-    expect(overview).toContain('onRoutine={() => setActiveTab("routines")}');
+    // B-GROWTH-25: #/routines retired to Plans — the routine door opens Plans' templates.
+    expect(overview).toContain('onRoutine={() => setActiveTab("plans")}');
     expect(card).not.toMatch(/fetch\(|api\.|generate|setTimeout|setInterval|streak|tomorrow/i);
   });
 

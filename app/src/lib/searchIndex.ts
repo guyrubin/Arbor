@@ -251,7 +251,8 @@ function buildIndex(): readonly SearchEntry[] {
       pair(routine.title.en, routine.title.he),
       pair(routine.domains.en, routine.domains.he),
       { en: [routine.why.en], he: [routine.why.he] },
-      "routines",
+      // B-GROWTH-25: #/routines retired — a routine is a template on Plans.
+      "plans",
     ));
   }
 

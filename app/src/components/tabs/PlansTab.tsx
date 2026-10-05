@@ -13,6 +13,8 @@ import { SayThis } from "../ui/AiBlock";
 import PlanSteps from "../plans/PlanSteps";
 import PlanTrackCard, { planAdjustSeed } from "../plans/PlanTrackCard";
 import RoutinesCard from "../plans/RoutinesCard";
+// B-GROWTH-25: the ready-made routines, as one-tap plan templates.
+import RoutineTemplates from "../plans/RoutineTemplates";
 import { useChildCollection } from "../../hooks/useChildCollection";
 /* B-ASKJB-28: the routines row only counts docs; their shape stays RoutinesCard's. */
 import { lastPlanOutcomes, planDoneSteps, planEcho, suggestedChallenges, todaysPlanStep } from "../../lib/plans";
@@ -114,6 +116,10 @@ export default function PlansTab() {
           </button>
         ))}
       </div>
+
+      {/* B-GROWTH-25: #/routines retired here — the twelve boards are templates
+          (age-windowed), one tap starts a plan with no goal. */}
+      <RoutineTemplates />
 
       {/* Data-driven: suggestions from {name}'s recent logged behavior */}
       {suggestions.length > 0 && (

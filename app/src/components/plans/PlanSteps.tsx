@@ -127,7 +127,9 @@ export default function PlanSteps({ plan, todayStep, now = Date.now() }: {
       <div data-testid="plan-header" className="flex flex-col gap-2 pb-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4" style={{ borderBottom: "1px solid var(--arbor-rule)" }}>
         <div className="min-w-0">
           <h3 dir="auto" className="t-lg font-semibold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{plan.title}</h3>
-          <p dir="auto" className="t-xs mt-1 line-clamp-2" style={{ color: "var(--arbor-muted)" }}>{t("elev.plans.focusIssue", { issue: plan.issue })}</p>
+          {/* B-GROWTH-25: a plan started from a routine template has no issue —
+              no "Focus:" line with nothing after it. */}
+          {plan.issue ? <p dir="auto" className="t-xs mt-1 line-clamp-2" style={{ color: "var(--arbor-muted)" }}>{t("elev.plans.focusIssue", { issue: plan.issue })}</p> : null}
           {days !== null && (
             <p className="t-xs mt-1" style={{ color: "var(--arbor-muted)" }}>
               {days === 0 ? t("elev.plans.startedToday") : t("elev.plans.startedAgo", { n: days })}

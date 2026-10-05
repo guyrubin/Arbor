@@ -225,6 +225,25 @@ describe("navigation IA", () => {
     expect(sectionForTab("care-team").id).toBe("care");
   });
 
+  it("B-GROWTH-25: #/routines lands on Plans; the id keeps its ROUTE_IDS seat and no pill names it", async () => {
+    const { ROUTE_IDS } = await import("./routes");
+    expect(RETIRED_ROUTES.routines).toBe("plans");
+    expect(ROUTE_IDS as readonly string[]).toContain("routines");
+    expect(resolveHash("#/routines", "today")).toEqual({ tab: "plans", unknown: false });
+    // highlights the hub that owns plans, never Growth
+    expect(sectionForTab("routines").id).toBe(sectionForTab("plans").id);
+    expect(sectionForTab("routines").id).not.toBe("growth");
+    // no section lists a Routines pill any more
+    for (const s of SECTIONS) expect(s.items.some((i) => i.tab === "routines"), s.id).toBe(false);
+    // the routine search entries open Plans
+    const search = fs.readFileSync(path.resolve(__dirname, "searchIndex.ts"), "utf8");
+    const block = search.slice(search.indexOf("for (const routine of ROUTINES)"), search.indexOf("// 5. Scholar"));
+    expect(block).toContain('"plans",');
+    expect(block).not.toContain('"routines",');
+    // NEGATIVE CONTROL: the pre-fix search target fails the pin
+    expect('      "routines",'.includes('"plans",')).toBe(false);
+  });
+
   // UC-1 capability-floor enforcer: EVERY ActiveTab value (the full route
   // registry) must resolve to a section so the sidebar always highlights and no
   // leaf is orphaned. This is the 43-route floor guard.

@@ -236,12 +236,13 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
     threadWrite: "none",
   },
   {
-    route: "routines", hub: "growth", depth: 1,
+    route: "routines", hub: "behaviors", depth: 1,
     job: "Run a ready-made daily routine with her, step by step.",
     primaryMove: "complete-routine-step", moduleBudget: 2, demotionTarget: "disclosure",
-    // ⚠ Plan §3's hub table omits "routines" entirely — homed here per the
-    // actual navigation.ts (Growth tools + fallback routines:"growth"); flag
-    // for Guy. Progress is a COUNT {done}/{total} only (clinical firewall).
+    // B-GROWTH-25: retired to plans (RETIRED_ROUTES) — the boards are Plans
+    // templates; the id keeps its seat and RoutinesTab stays registered
+    // (journey pattern), so its move and budget are unchanged. Homed with
+    // the hub that owns plans (TAB_SECTION_FALLBACK routines → behaviors).
     // No routine ledger feeds buildTimeline — "none", said plainly.
     threadWrite: "none",
   },

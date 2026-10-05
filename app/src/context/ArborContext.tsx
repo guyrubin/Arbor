@@ -1415,6 +1415,9 @@ function useArborState() {
   // Deletions (data correction)
   const deleteLog = (id: string) => void logsCol.remove(id);
   const deletePlan = (id: string) => void plansCol.remove(id);
+  // B-GROWTH-25: a ready-made routine starts as a plan in one tap — no goal,
+  // no AI call; the template (lib/routineTemplates.routineToPlan) is the plan.
+  const startPlanFromTemplate = (plan: ActionPlan) => plansCol.upsert(plan);
   const deleteMilestone = (id: string) => void milestonesCol.remove(id);
 
   // Toggle milestone checking
@@ -1643,6 +1646,7 @@ function useArborState() {
     toggleLogResolved,
     deleteLog,
     deletePlan,
+    startPlanFromTemplate,
     deleteMilestone,
     planChallengeTopic,
     setPlanChallengeTopic,
