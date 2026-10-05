@@ -98,16 +98,27 @@ describe("wide: the whole plate at its own aspect, never stretched", () => {
     expect(l.typePx).toBeGreaterThanOrEqual(30);
   });
 
-  it("spread pages are laid out as spreads at 1920 (cover, decision, rejoin, ending of the fixture)", () => {
-    for (const page of pages.filter((p) => p.type === "spread")) {
+  it("fix round 1: a spread page whose words do not fit its calm rect falls back to facing (no card over the art)", () => {
+    for (const page of pages.filter((p) => p.type === "spread" && p.id !== "cover")) {
       for (const lang of LANGS) {
         for (const { content } of states(page, lang)) {
           const l = layout(page, SPREAD_BOXES[0], lang, content);
-          expect(l.pageType, `${lang} ${page.id}`).toBe("spread");
-          expect(l.art.h).toBeGreaterThan(820);
+          expect(l.pageType, `${lang} ${page.id}`).toBe("facing");
+          expect(overlapArea(l.textPage, l.art)).toBe(0);
         }
       }
     }
+  });
+
+  it("a spread is honoured only when the words + controls fit INSIDE the authored calm rect", () => {
+    const roomy: Page = { ...book.pages[0], type: "spread", hero: { ...book.pages[0].hero!, x: 0.85, scale: 0.3 }, textRect: [0.03, 0.03, 0.6, 0.7] };
+    const l = computeBookPageLayout(roomy, SPREAD_BOXES[0], "en", { content: { paras: [80] } });
+    expect(l.pageType).toBe("spread");
+    const zone = { x: l.art.x + 0.03 * l.art.w, y: l.art.y + 0.03 * l.art.h, w: 0.57 * l.art.w, h: 0.67 * l.art.h };
+    expect(l.textPage.x).toBeCloseTo(zone.x, 3);
+    expect(l.textPage.y + l.textPage.h).toBeLessThanOrEqual(zone.y + zone.h + 0.01);
+    const thin: Page = { ...roomy, textRect: [0.03, 0.03, 0.45, 0.22] };
+    expect(computeBookPageLayout(thin, SPREAD_BOXES[0], "en", { content: { paras: [200] } }).pageType).toBe("facing");
   });
 
   it("a spread whose zones all cover the hero falls back to facing", () => {
@@ -139,8 +150,9 @@ describe("stacked at 375x812: a 3:4 window that holds the hero and the repair it
           expect(l.art.x).toBeGreaterThanOrEqual(0);
           expect(l.art.x + l.art.w).toBeLessThanOrEqual(PHONE.width);
           expect(l.textPage.y + l.textPage.h).toBeLessThanOrEqual(PHONE.height);
-          expect(overlapArea(l.textPage, l.art)).toBe(0);
-          expect(overlapArea(l.text, l.art)).toBe(0);
+          if (page.id !== book.decision.pageId) expect(overlapArea(l.textPage, l.art)).toBe(0);
+          else expect(l.textPage.y).toBeGreaterThanOrEqual(l.art.y + l.art.h - l.cardsPx);
+          expect(l.art.w).toBeGreaterThanOrEqual(300);
         }
       }
     }
@@ -206,13 +218,6 @@ describe("hero, shadow and the feet anchor", () => {
     expect(l.shadow!.opacity).toBeGreaterThan(l.shadow!.cast.opacity);
   });
 
-  it("a spread puts its panel in the corner of the authored calm rect when it fits", () => {
-    const p = { ...book.pages[0], type: "spread" as const, hero: { ...book.pages[0].hero!, x: 0.8, scale: 0.3 }, textRect: [0.03, 0.03, 0.45, 0.22] as [number, number, number, number] };
-    const l = computeBookPageLayout(p, SPREAD_BOXES[0], "he", { content: { paras: [120] } });
-    expect(l.pageType).toBe("spread");
-    expect(l.textPage.x).toBeLessThan(l.art.x + l.art.w / 2);
-    expect(l.textPage.y).toBeLessThan(l.art.y + l.art.h / 2);
-  });
 
   it("a page without a slot has no hero and no shadow", () => {
     const l = computeBookPageLayout({ ...book.pages[0], hero: null }, PHONE, "en");
@@ -250,7 +255,8 @@ describe("Five Smooth Stones (the proof): every page lays out at 1920, 1280 and 
               const tag = `${box.width} ${lang} ${page.id} done=${done.length}`;
               expect(l.fits, tag).toBe(true);
               if (l.hero) expect(l.hero.inWindow, tag).toBe(true);
-              if (l.pageType === "facing" || l.mode === "stacked") expect(overlapArea(l.textPage, l.art), tag).toBe(0);
+              if (l.mode === "stacked" && l.sheetOverlap > 0) expect(page.id, tag).toBe(david.decision.pageId);
+              else if (l.pageType === "facing" || l.mode === "stacked") expect(overlapArea(l.textPage, l.art), tag).toBe(0);
               else if (l.heroBody) expect(overlapArea(l.textPage, l.heroBody), tag).toBe(0);
               for (const it of page.repair?.items ?? []) {
                 const p = platePoint(l, it.x, it.y);
@@ -263,12 +269,61 @@ describe("Five Smooth Stones (the proof): every page lays out at 1920, 1280 and 
     }
   });
 
-  it("the four spread pages are spreads at 1920 (EN and HE)", () => {
+  it("fix round 1: p5, p9, p10 lay out FACING at 1920 and 1280 (EN and HE)", () => {
+    for (const box of SPREAD_BOXES) {
+      for (const lang of LANGS) {
+        for (const id of ["p5", "p9", "p10"]) {
+          const page = dPages.find((p) => p.id === id)!;
+          const paras = paragraphChars(pageParagraphs(page, { lang, gender: "m", choiceId: "b", repaired: true }), NAME);
+          const l = computeBookPageLayout(page, box, lang, { content: { paras, choices: id === "p5" ? 3 : undefined }, plate: getPlate(david.id, page.plateId)! });
+          expect(l.pageType, `${box.width} ${lang} ${id}`).toBe("facing");
+        }
+      }
+    }
+  });
+
+  it("the cover at 1920 is the book's front: title in the calm band, ONE Open toy under the plate; at 1280 a facing title page", () => {
     for (const lang of LANGS) {
-      for (const page of dPages.filter((p) => p.type === "spread")) {
-        const paras = paragraphChars(pageParagraphs(page, { lang, gender: "m", choiceId: "b", repaired: true }), NAME);
-        const l = computeBookPageLayout(page, SPREAD_BOXES[0], lang, { content: { paras, choices: page.id === "p5" ? 3 : undefined }, plate: getPlate(david.id, page.plateId)! });
-        expect(l.pageType, `${lang} ${page.id}`).toBe("spread");
+      const content = { paras: [david.coverLine[lang].length, david.coverNameLine![lang].length + NAME.length], title: david.title[lang].length };
+      const plate = getPlate(david.id, "PL3")!;
+      const l = computeBookPageLayout(david.cover, SPREAD_BOXES[0], lang, { cover: true, content, plate });
+      expect(l.pageType).toBe("cover");
+      expect(l.titlePx).toBeGreaterThanOrEqual(44);
+      const r = david.cover.textRect!;
+      expect(l.textPage.x).toBeCloseTo(l.art.x + r[0] * l.art.w, 3);
+      expect(l.textPage.y + l.textPage.h).toBeLessThanOrEqual(l.art.y + r[3] * l.art.h + 0.01);
+      expect(l.openRect!.y).toBeGreaterThanOrEqual(l.artPage.y + l.artPage.h);
+      expect(l.openRect!.y + l.openRect!.h).toBeLessThanOrEqual(SPREAD_BOXES[0].height);
+      const small = computeBookPageLayout(david.cover, SPREAD_BOXES[1], lang, { cover: true, content, plate });
+      expect(["cover", "facing"]).toContain(small.pageType);
+      if (small.pageType === "facing") expect(overlapArea(small.textPage, small.art)).toBe(0);
+    }
+  });
+
+  it("the decision page at 1920 holds three LARGE picture cards (>= 300 px wide, picture >= 190 tall) at >= the type token", () => {
+    const p5 = dPages.find((p) => p.id === "p5")!;
+    for (const lang of LANGS) {
+      const paras = paragraphChars(pageParagraphs(p5, { lang, gender: "f", choiceId: null, repaired: [] }), NAME);
+      const l = computeBookPageLayout(p5, SPREAD_BOXES[0], lang, { content: { paras, choices: 3 }, plate: getPlate(david.id, "PL4")! });
+      expect(l.cardW).toBeGreaterThanOrEqual(300);
+      expect(l.cardPicH).toBeGreaterThanOrEqual(190);
+      expect(3 * l.cardW + 2 * 16).toBeLessThanOrEqual(l.text.w + 0.5);
+      expect(l.typePx).toBeGreaterThanOrEqual(Math.ceil(kidBookTokenPx(1920)));
+      expect(l.fits).toBe(true);
+    }
+  });
+
+  it("at 375 the art window is never under 300 px wide (p5's cards ride over its lower edge; p10's words fit)", () => {
+    for (const lang of LANGS) {
+      for (const id of ["p5", "p10"]) {
+        const page = dPages.find((p) => p.id === id)!;
+        for (const choiceId of ["a", "b", "c"]) {
+          const paras = paragraphChars(pageParagraphs(page, { lang, gender: "f", choiceId, repaired: [] }), NAME);
+          const l = computeBookPageLayout(page, PHONE, lang, { content: { paras, choices: id === "p5" ? 3 : undefined }, plate: getPlate(david.id, page.plateId)! });
+          expect(l.art.w, `${lang} ${id}`).toBeGreaterThanOrEqual(300);
+          expect(l.fits, `${lang} ${id}`).toBe(true);
+          if (id === "p10") expect(l.sheetOverlap).toBe(0);
+        }
       }
     }
   });
