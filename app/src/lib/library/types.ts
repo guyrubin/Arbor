@@ -50,6 +50,14 @@ export interface Slot {
   scale: number;
   facing: "left" | "right";
   z: "fr" | "fg";
+  /** Contact shadow strength 0..1 (the art agent's compositor; default 0.8). */
+  shadow?: number;
+  /** Where the light comes from along x: > 0 = from the left (the cast falls
+   *  to the right), < 0 = from the right. Default 0.8. */
+  lightDx?: number;
+  /** The plate's mean colour under the hero (r, g, b) — the sprite is graded
+   *  a little toward it. */
+  tint?: [number, number, number];
 }
 
 /** A narration file per language / Hebrew gender. Paths are public URLs. */
@@ -123,6 +131,27 @@ export interface PageOverlay {
   revealAt?: number;
   /** Drawn over the hero (default) or behind it. */
   z?: "over" | "under";
+  /** "feet" (default): (x, y) is the centre of the lowest opaque band, at
+   *  `footX` of the image width; "center": (x, y) is the image centre. */
+  anchor?: "feet" | "center";
+  footX?: number;
+  /** Degrees, clockwise. */
+  rotate?: number;
+  /** Contact shadow strength (feet-anchored objects on the ground). */
+  shadow?: number;
+  /** Shown only while a repair item is (not) done: the worn helmet hides when
+   *  the helmet is tapped; the helmet on the heap appears. */
+  showWhen?: { item: string; done: boolean };
+}
+
+/** A patch of the plate redrawn OVER the hero (p8: the water surface over the
+ *  dipping fingers). The box is [x0, y0, x1, y1] in master fractions. */
+export interface PlateOccluder {
+  box: [number, number, number, number];
+  opacity: number;
+  /** Side / bottom feather and top (waterline) feather, plate-height fractions. */
+  feather: number;
+  featherTop: number;
 }
 
 export type PageType = "facing" | "spread";
@@ -143,6 +172,12 @@ export interface Page {
   closing?: BookLine;
   repair?: Repair;
   overlays?: PageOverlay[];
+  occluders?: PlateOccluder[];
+  /** The plate's calm area for the words on a spread page, [x0, y0, x1, y1]
+   *  master fractions (physical: the art is not mirrored in Hebrew). */
+  textRect?: [number, number, number, number];
+  /** Alternative slots by costume ("tunic" — the p5 A/B, BR5). */
+  heroAlt?: Record<string, Slot>;
   audio?: PageAudio;
   touch?: TouchTarget[];
 }

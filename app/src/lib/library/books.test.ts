@@ -14,8 +14,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { allBooks, BOOK_PLATES, DEFAULT_REVIEW_BOOK, getLibraryBook, getPlate, LIBRARY_BOOKS } from "./books";
 import { abramsLongRoad } from "./books/abramsLongRoad";
-import { fiveSmoothStones, fiveSmoothStonesGeometry } from "./books/fiveSmoothStones";
-import { PLATE_MASTER } from "./bookPlates";
+import { fiveSmoothStones, fiveSmoothStonesGeometry, GEOMETRY_FALLBACKS } from "./books/fiveSmoothStones";
+import { readFileSync as readJson, existsSync } from "node:fs";
 import { readPath } from "./bookFlow";
 import type { Book, BookLine, Page, Slot } from "./types";
 
@@ -76,7 +76,8 @@ describe.each(allBooks())("book $id", (book) => {
     for (const page of allPages(book)) {
       const plate = getPlate(book.id, page.plateId);
       expect(plate, `${page.id} → ${page.plateId}`).toBeDefined();
-      expect(plate!.width / plate!.height).toBeCloseTo(PLATE_MASTER.width / PLATE_MASTER.height, 6);
+      // 3:2 masters (the delivered 2K plates are 2528x1696 / 2048x1374 = 1.4906)
+      expect(Math.abs(plate!.width / plate!.height - 1.5)).toBeLessThan(0.01);
       expect(plate!.file).toBe(`/visuals/books/${book.id}/${page.plateId}.webp`);
       expect(plate!.window.cx).toBeGreaterThanOrEqual(0);
       expect(plate!.window.cx).toBeLessThanOrEqual(1);
@@ -229,9 +230,12 @@ describe("Five Smooth Stones (the proof) — manuscript specifics", () => {
   it("uses the 9 plates of §5.1 (4 of them edits) and the 9 poses of §5.2", () => {
     expect(new Set(pagesOf.map((p) => p.plateId))).toEqual(new Set(["PL1", "PL1b", "PL1d", "PL3", "PL3w", "PL4", "PL4e", "PL6", "PL7"]));
     const variants = Object.values(BOOK_PLATES[book.id]).filter((p) => p.variantOf).map((p) => p.id).sort();
-    expect(variants).toEqual(["PL1b", "PL1d", "PL3w", "PL4e"]);
+    // + PL7-dust, registered but unused (the edit re-framed; the dust overlay is used)
+    expect(variants).toEqual(["PL1b", "PL1d", "PL3w", "PL4e", "PL7-dust"]);
     const poses = new Set(pagesOf.flatMap((p) => slots(p).map((s) => s.pose)));
-    expect([...poses].sort()).toEqual(["armour-stuck", "free-stretch", "kneel", "look-up", "run-staff", "sit", "sling-swing", "walk-bag", "worried"]);
+    // the art agent added left-facing poses so the key light stays upper-left (LOG.md §1)
+    expect([...poses].sort()).toEqual(["armour-stuck", "free-stretch", "kneel", "look-up", "run-staff", "run-staff-left", "sit", "sling-swing", "walk-bag-left", "worried"]);
+    expect(byId.p5.heroAlt?.tunic?.pose).toBe("worried-tunic");
     expect(Object.keys(getPlate(book.id, "PL4")!.focus ?? {}).sort()).toEqual(["a", "b", "c"]);
   });
 
@@ -256,13 +260,46 @@ describe("Five Smooth Stones (the proof) — manuscript specifics", () => {
     expect(byId.p7b.repair!.heroAfter!.pose).toBe("free-stretch");
     expect(byId.p7c.repair!.items).toHaveLength(1);
     expect(byId.p7c.repair!.promptLabel).toEqual({ en: "Stand up!", he: "לקום!" });
-    expect(byId.p6b.overlays!.map((o) => o.id)).toEqual(["helmet", "sword"]);
-    expect(byId.p9.overlays!.find((o) => o.id === "dust")?.reveal).toBe("afterNarration");
+    expect(byId.p6b.overlays!.map((o) => o.id).sort()).toEqual(["helmet-worn", "sword"]);
+    expect(byId.p9.overlays!.find((o) => o.id === "dust-cloud")?.reveal).toBe("afterNarration");
+    // p7b: each tap hides the worn piece and shows it on the heap
+    const when = Object.fromEntries(byId.p7b.overlays!.map((o) => [o.id, o.showWhen]));
+    expect(when).toEqual({
+      "helmet-worn": { item: "helmet", done: false },
+      "sword-rug": { item: "sword", done: false },
+      "coat-heap": { item: "coat", done: true },
+      "sword-heap": { item: "sword", done: true },
+      "helmet-heap": { item: "helmet", done: true },
+    });
+    expect(byId.p8.occluders).toHaveLength(1);
   });
 
   it("geometry comes from the one geometry object (overwritable JSON)", () => {
     expect(byId.p1.hero).toMatchObject(fiveSmoothStonesGeometry.pages.p1.hero!);
     expect(getPlate(book.id, "PL4")!.focus).toEqual(fiveSmoothStonesGeometry.plates.PL4.focus);
+  });
+
+  it("no page, slot, item or plate falls back to placeholder geometry", () => {
+    expect([...GEOMETRY_FALLBACKS]).toEqual([]);
+    for (const p of pagesOf) {
+      expect(fiveSmoothStonesGeometry.pages[p.id]?.hero, `${p.id} hero`).toBeDefined();
+      expect(p.phoneCrop, `${p.id} window`).toBeDefined();
+      if (p.type === "spread") expect(p.textRect, `${p.id} text rect`).toBeDefined();
+    }
+    expect(Object.keys(getPlate(book.id, "PL4")!.focus ?? {}).sort()).toEqual(["a", "b", "c"]);
+  });
+
+  it("every plate and overlay file the book names is shipped in public/ (child-free, committed)", () => {
+    const pub = path.join(here, "..", "..", "..", "public");
+    for (const p of pagesOf) {
+      const plate = getPlate(book.id, p.plateId)!;
+      const f = path.join(pub, plate.file);
+      expect(existsSync(f), plate.file).toBe(true);
+      // the registered size is the file's size (WebP VP8/VP8L/VP8X header)
+      const b = readJson(f);
+      expect(b.toString("ascii", 0, 4)).toBe("RIFF");
+      for (const o of p.overlays ?? []) expect(existsSync(path.join(pub, o.file)), o.file).toBe(true);
+    }
   });
 
   it("no divine name in the HE text (17:45 is quoted only in its first half)", () => {

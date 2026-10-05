@@ -36,6 +36,8 @@ export interface BookPlate {
   width: number;
   height: number;
   light: LightRig;
+  /** Key light along x (> 0 = from the left); a slot's own lightDx wins. */
+  lightDx?: number;
   /** The base plate this one is an edit of (a branch variant). */
   variantOf?: string;
   /** The authored 3:4 window: its centre x (fraction of the master). */
@@ -64,7 +66,7 @@ export function makePlate(
   bookId: string,
   id: string,
   light: LightRig,
-  extra: Partial<Omit<BookPlate, "id" | "bookId" | "file" | "light" | "provenance">> = {},
+  extra: Partial<Omit<BookPlate, "id" | "bookId" | "file" | "light">> = {},
 ): BookPlate {
   return {
     id,
@@ -74,8 +76,8 @@ export function makePlate(
     height: PLATE_MASTER.height,
     light,
     window: { cx: 0.5 },
-    ...extra,
     provenance: { childFree: false, textFree: false, reviewedBy: null },
+    ...extra,
   };
 }
 

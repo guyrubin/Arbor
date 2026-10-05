@@ -97,8 +97,9 @@ def prints():
     found = {}
     for f in sorted((SRC / "pages").glob("*-print.jpg")):
         pid = f.stem[: -len("-print")]
-        Image.open(f).convert("RGB").save(out_dir / f"{pid}.webp", "WEBP", quality=85, method=6)
-        found[pid] = f"prints/{pid}.webp"
+        im = Image.open(f).convert("RGB")
+        im.save(out_dir / f"{pid}.webp", "WEBP", quality=85, method=6)
+        found[pid] = {"file": f"prints/{pid}.webp", "w": im.width, "h": im.height}
         print("print", pid, (out_dir / f"{pid}.webp").stat().st_size)
     man_path = SHEET_OUT / "manifest.json"
     man = json.load(open(man_path, encoding="utf-8")) if man_path.exists() else {"id": args.sheet, "poses": {}}
