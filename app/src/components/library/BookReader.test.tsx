@@ -50,8 +50,8 @@ function render(state: BookFlowState, opts: { lang?: BookLang; child?: BookReade
 /** The text a child sees (tags, attributes and styles stripped). */
 const visible = (html: string) => html.replace(/<[^>]*>/g, " ").replace(/&[a-z#0-9]+;/gi, " ");
 
-// manuscript v2: cover → p1, p2, p3, p3b, p4 → p5
-const toDecision: BookFlowAction[] = [{ type: "open" }, { type: "next" }, { type: "next" }, { type: "next" }, { type: "next" }, { type: "next" }];
+// manuscript v3: cover → p1, p2, p2b, p3, p3b, p4, p4b → p5
+const toDecision: BookFlowAction[] = [{ type: "open" }, ...Array.from({ length: 7 }, () => ({ type: "next" }) as BookFlowAction)];
 const pageOf = (html: string) => /data-book-page="([^"]+)"/.exec(html)?.[1];
 
 describe("cover → open", () => {
@@ -414,7 +414,7 @@ describe("fix round 1: bar, accent, choice cards", () => {
     expect(picH / picW).toBeCloseTo(0.75, 1);
     // the art page is the same as p4's
     const artOf = (h: string) => /class="bk-art"[^>]*style="([^"]+)"/.exec(h)![1];
-    const p4 = render(run(...toDecision.slice(0, -1)));
+    const p4 = render(run(...toDecision.slice(0, -2)));
     expect(pageOf(p4)).toBe("p4");
     expect(artOf(html)).toBe(artOf(p4));
   });
@@ -458,7 +458,7 @@ describe("Hebrew, the phone sheet, and what the child never sees", () => {
     expect(widthOf(cards)).toBe(widthOf(p5));
     expect(cards.match(/data-choice-card="/g)).toHaveLength(3);
     expect(cards).not.toContain("data-overlap");
-    const s10 = run(...toDecision, { type: "choose", choiceId: "a" }, { type: "go" }, { type: "next" }, { type: "next" }, { type: "next" });
+    const s10 = run(...toDecision, { type: "choose", choiceId: "a" }, { type: "go" }, { type: "next" }, { type: "next" }, { type: "next" }, { type: "next" });
     const p10 = render(s10, { box: PHONE, lang: "he" });
     expect(pageOf(p10)).toBe("p10");
     expect(widthOf(p10)).toBeGreaterThanOrEqual(300);
