@@ -28,6 +28,12 @@ export const en: Record<string, string> = {
   "elev.learnCare.pick.why.age": "Chosen for where {name} is right now.",
   "elev.learnCare.pick.why.focus": "Chosen for {name}'s age and the area you have been exploring.",
   "elev.learnCare.pick.why.logs": "Chosen from what you noted this week.",
+  // W2-SHELLPLAY critic r2 (B-SHELL-NEW-2j): the pick quotes the parent's own note.
+  "elev.learnCare.pick.moment.today": "Today you wrote:",
+  "elev.learnCare.pick.moment.yesterday": "Yesterday you wrote:",
+  "elev.learnCare.pick.moment.weekday": "On {day} you wrote:",
+  "elev.learnCare.pick.moment.date": "On {day} you wrote:",
+  "elev.learnCare.pick.moment.tail": "This read is about exactly that.",
   "elev.learnCare.pick.why.saved": "Continues a topic you saved.",
   "elev.learnCare.pick.deeper": "Go deeper with a full course below.",
 
@@ -161,6 +167,11 @@ export const he: Record<string, string> = {
   "elev.learnCare.pick.why.age": "נבחר לפי המקום ש{name} נמצא בו עכשיו.",
   "elev.learnCare.pick.why.focus": "נבחר לפי הגיל של {name} והתחום שאתם חוקרים בזמן האחרון.",
   "elev.learnCare.pick.why.logs": "נבחר לפי מה שתיעדתם השבוע.",
+  "elev.learnCare.pick.moment.today": "היום כתבתם:",
+  "elev.learnCare.pick.moment.yesterday": "אתמול כתבתם:",
+  "elev.learnCare.pick.moment.weekday": "ב{day} כתבתם:",
+  "elev.learnCare.pick.moment.date": "ב־{day} כתבתם:",
+  "elev.learnCare.pick.moment.tail": "הקריאה הזו בדיוק על זה.",
   "elev.learnCare.pick.why.saved": "ממשיך נושא ששמרתם.",
   "elev.learnCare.pick.deeper": "להעמיק בקורס מלא למטה.",
 

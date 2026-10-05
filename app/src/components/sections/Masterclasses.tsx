@@ -173,6 +173,7 @@ export default function Masterclasses() {
   const todaysRead = todaysLearnPick(LEARN_CARDS, learnSignals, {
     childId: childProfile.id,
     dayKey: pickDayKey(new Date()),
+    logs: behaviorLogs,
   });
   // Every branch names a signal that DEMONSTRABLY moved this card. The focus
   // branch reads `todaysRead.fromFocus` — the pick's own re-derivation — and
@@ -189,6 +190,20 @@ export default function Masterclasses() {
   // exploring" to a parent who had explored nothing. `devMapHasSignal` is the
   // same gate LearnLibrary's rail already carries: at least one milestone
   // actually noticed, or the claim falls to the age-only variant.
+  // B-SHELL-NEW-2j: only on the logs branch (saved outranks it, as in pickWhy).
+  const pickMoment = todaysRead && !todaysRead.fromSaved && todaysRead.fromConcerns ? todaysRead.fromMoment : null;
+  const pickMomentLead = (() => {
+    if (!pickMoment) return "";
+    const day0 = new Date(); day0.setHours(0, 0, 0, 0);
+    const at0 = new Date(pickMoment.at); at0.setHours(0, 0, 0, 0);
+    const days = Math.round((day0.getTime() - at0.getTime()) / 86_400_000);
+    if (days <= 0) return t("elev.learnCare.pick.moment.today");
+    if (days === 1) return t("elev.learnCare.pick.moment.yesterday");
+    const locale = uiLang === "he" ? "he-IL" : "en-GB";
+    return days <= 6
+      ? t("elev.learnCare.pick.moment.weekday", { day: new Intl.DateTimeFormat(locale, { weekday: "long" }).format(pickMoment.at) })
+      : t("elev.learnCare.pick.moment.date", { day: new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }).format(pickMoment.at) });
+  })();
   const pickWhy = !todaysRead
     ? ""
     : todaysRead.fromSaved
@@ -292,7 +307,18 @@ export default function Masterclasses() {
         {(todaysRead || nextCourse) && <section className="mt-4 border-y py-4 flex flex-wrap items-center justify-between gap-3" style={{ borderColor: "var(--arbor-rule)" }}>
           <div className="min-w-0 max-w-[65ch] flex-1 basis-[240px]">
             <h2 className="text-xl font-bold leading-snug" dir="auto" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{todaysRead ? (he ? todaysRead.card.title.he : todaysRead.card.title.en) : (he ? nextCourse!.titleHe : nextCourse!.title)}</h2>
-            {todaysRead && <p data-testid="academy-pick-why" dir="auto" className="mt-1 text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{pickWhy}</p>}
+            {/* W2-SHELLPLAY critic r2 (B-SHELL-NEW-2j): when the parent's own
+                note moved today's pick, the why-line QUOTES it (lead-in sans
+                muted, the note in the editorial face, a peach-ink inline-start
+                rule) — never a domain, a score or a count. Otherwise the
+                re-derived why-line as before. */}
+            {todaysRead && pickMoment ? (
+              <p data-testid="academy-pick-why" data-why="moment" dir="auto" className="mt-2 leading-relaxed" style={{ borderInlineStart: "3px solid var(--arbor-peach-ink)", paddingInlineStart: 12 }}>
+                <span className="t-sm" style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-sans)" }}>{pickMomentLead}</span>{" "}
+                <span className="t-base" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)" }}>“<bdi>{pickMoment.text}</bdi>”</span>{" "}
+                <span className="t-sm" style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-sans)" }}>{t("elev.learnCare.pick.moment.tail")}</span>
+              </p>
+            ) : todaysRead && <p data-testid="academy-pick-why" dir="auto" className="mt-1 text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{pickWhy}</p>}
             {pickMinutes != null && <p data-testid="academy-pick-minutes" className="mt-1 text-xs" style={{ color: "var(--arbor-muted)" }}>{pickMinutes} {t(todaysRead ? "elev.learnCare.pick.stat.minutes" : "elev.hero.academy.stat.minNext")}</p>}
           </div>
           <button data-testid="academy-hero-cta" onClick={() => todaysRead ? requestLearnRead({ cardId: todaysRead.card.id, source: "learn-hub-todays-pick" }) : setOpenId(nextCourse!.id)} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold" style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}><Icon name="menu_book" size={16} />{t(todaysRead ? "elev.learnCare.pick.cta" : "elev.hero.academy.cta")}</button>

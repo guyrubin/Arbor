@@ -28,6 +28,7 @@ import {
   type LearnCard,
   type LearnRankSignals,
 } from "./learnLibrary";
+import { concernsForBehaviors } from "../content/selectCards";
 
 /** UTC day key (YYYY-MM-DD) — the day half of the tiebreak seed. */
 export function pickDayKey(now: Date): string {
@@ -64,6 +65,11 @@ export interface TodaysPickOptions {
   childId: string;
   /** UTC day key from `pickDayKey` — the caller owns "now". */
   dayKey: string;
+  /** W2-SHELLPLAY critic r2 (B-SHELL-NEW-2j): the parent's own logs, so the
+   *  pick can quote the newest note that actually moved the winning card. */
+  logs?: ReadonlyArray<{ behaviorType: string; timestamp: string; trigger?: string }>;
+  /** The caller's "now" for the log window (defaults to the current time). */
+  now?: Date;
 }
 
 export interface TodaysPickResult {
@@ -86,6 +92,14 @@ export interface TodaysPickResult {
    * firewall note says the why-line may claim only contributing signals.
    */
   fromFocus: boolean;
+  /**
+   * W2-SHELLPLAY critic r2 (B-SHELL-NEW-2j): the newest parent note (its own
+   * words, `trigger`) whose concern ACTUALLY moved the winning card — the
+   * `fromConcerns` re-derivation applied to one log: rescoring the winner with
+   * only that log's concerns beats rescoring it with none. Null when no logged
+   * note with words did (never a paraphrase, never a domain or a count).
+   */
+  fromMoment: { text: string; at: Date } | null;
 }
 
 /**
@@ -125,7 +139,38 @@ export function todaysLearnPick(
       !!signals.focusDomain &&
       learnCardScore(card, signals) > learnCardScore(card, { ...signals, focusDomain: null }),
     fromSaved: continuesSaved(card, topics),
+    fromMoment: concerns.length > 0 ? pickMoment(card, signals, opts.logs ?? [], opts.now ?? new Date()) : null,
   };
+}
+
+/** The 14-day window `recentBehaviorTypes` reads (content/hardMomentSurface). */
+const MOMENT_WINDOW_DAYS = 14;
+
+/**
+ * B-SHELL-NEW-2j — the newest log in the concerns window whose own words are
+ * non-empty and whose behaviour type, ALONE, raises the winning card's score.
+ * Exported for the guard.
+ */
+export function pickMoment(
+  card: LearnCard,
+  signals: LearnRankSignals,
+  logs: ReadonlyArray<{ behaviorType: string; timestamp: string; trigger?: string }>,
+  now: Date,
+): { text: string; at: Date } | null {
+  const cutoff = now.getTime() - MOMENT_WINDOW_DAYS * 86_400_000;
+  const base = learnCardScore(card, { ...signals, recentConcerns: [] });
+  const ordered = logs
+    .map((l) => ({ l, at: new Date(l.timestamp) }))
+    .filter(({ at }) => Number.isFinite(at.getTime()) && at.getTime() >= cutoff && at.getTime() <= now.getTime())
+    .sort((a, b) => b.at.getTime() - a.at.getTime());
+  for (const { l, at } of ordered) {
+    const text = String(l.trigger ?? "").trim();
+    if (!text) continue;
+    const own = concernsForBehaviors([String(l.behaviorType ?? "")]);
+    if (own.length === 0) continue;
+    if (learnCardScore(card, { ...signals, recentConcerns: own }) > base) return { text, at };
+  }
+  return null;
 }
 
 /**
