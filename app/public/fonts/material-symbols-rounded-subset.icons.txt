@@ -3,7 +3,6 @@
 # Guarded by src/components/ui/iconFontSubset.test.ts: every icon name src/ can
 # reference must appear here, or the font would render the ligature as English text.
 accessibility_new
-account_tree
 acute
 add
 add_a_photo
@@ -13,7 +12,6 @@ air
 anchor
 android
 arrow_back
-arrow_downward
 arrow_forward
 assessment
 assignment
@@ -107,6 +105,7 @@ error
 event
 event_available
 event_repeat
+event_upcoming
 expand_less
 expand_more
 explore
@@ -165,6 +164,7 @@ list
 local_library
 lock
 logout
+looks
 loop
 mail
 map
@@ -220,6 +220,7 @@ play_arrow
 play_lesson
 playing_cards
 playlist_add
+portrait
 preview
 privacy
 progress_activity
