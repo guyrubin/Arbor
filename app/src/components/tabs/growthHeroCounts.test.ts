@@ -51,8 +51,10 @@ describe("B-GROWTH-34 — the Growth hub counts, never 'of N'", () => {
   it("one source: the pill, the hero row and the Development card all read noticedMilestoneCounts", () => {
     const pulse = stripComments(read("lib/pulse.ts"));
     expect(pulse).toMatch(/const \{ noticed \} = noticedMilestoneCounts\(milestones\);/);
+    // W2-GROWTH r1: the hub no longer prints a milestone total at all (the
+    // pill is the one count; the page opens on New-since rows instead).
     const dev = stripComments(read("components/tabs/DevelopmentTab.tsx"));
-    expect(dev).toMatch(/const \{ noticed, areas \} = noticedMilestoneCounts\(milestones\);/);
+    expect(dev).not.toContain("noticedMilestoneCounts(");
     expect(dev).not.toContain("ageWindowMilestones(");
     expect(dev).not.toContain("inWindow.length");
     const card = stripComments(read("components/sections/DevScoreCard.tsx"));
@@ -60,12 +62,14 @@ describe("B-GROWTH-34 — the Growth hub counts, never 'of N'", () => {
     expect(card).not.toMatch(/reached, total/);
   });
 
-  it("the hero row renders three plain counts through count keys (EN + HE)", () => {
+  // W2-GROWTH r1: the count trio ("5 noticed · 2 areas · 6 moments") is CUT —
+  // dashboard density in the parent register, and a repeat of the pill. The
+  // keys stay valid (other surfaces / history), so the dictionary check stays.
+  it("the hub renders no stat trio; the count keys stay plain counts (EN + HE)", () => {
     const dev = stripComments(read("components/tabs/DevelopmentTab.tsx"));
-    expect(dev).toContain('t(pickCountKey("elev.hero.growth.stat.noticedCount", heroStats.noticed))');
-    expect(dev).toContain('t(pickCountKey("elev.hero.growth.stat.areas", heroStats.areas))');
-    expect(dev).toContain('t(pickCountKey("elev.hero.growth.stat.moments", heroStats.momentsWeek))');
-    expect(dev).not.toContain("total: heroStats");
+    expect(dev).not.toContain("heroStats");
+    expect(dev).not.toMatch(/stats=\{\[/);
+    expect(dev).not.toContain('pickCountKey("elev.hero.growth.stat');
     for (const base of ["elev.hero.growth.stat.noticedCount", "elev.hero.growth.stat.areas", "elev.hero.growth.stat.moments"]) {
       for (const key of [base, `${base}One`]) {
         const en = translate("en", key);

@@ -528,8 +528,11 @@ describe("R22 — the practice domain names and the Full Picture body carry both
     expect(ms).not.toContain('title="Celebrate"');
 
     const dev = stripComments(readSrc("components/tabs/DevelopmentTab.tsx"));
-    expect(dev).toContain("title: behaviorTypeLabel(log.behaviorType, t),");
-    expect(dev).not.toContain("title: log.behaviorType,");
+    // W2-GROWTH r1: the recent rows merged into New-since (lib/growthNewSince):
+    // the parent's own note, never the stored type or the stored English context.
+    expect(dev).toContain("buildNewSince({");
+    expect(dev).not.toContain("log.behaviorType");
+    expect(dev).not.toContain("log.context");
 
     const play = stripComments(readSrc("components/overview/DailyPlayCard.tsx"));
     expect(play).toContain('t("elev.evidence.basedOn")');

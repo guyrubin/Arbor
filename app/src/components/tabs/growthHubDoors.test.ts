@@ -48,7 +48,6 @@ vi.mock("../sections/PhysicalGrowthCard", () => ({ default: () => null }));
 vi.mock("../sections/ScreeningSheet", () => ({ default: () => null }));
 vi.mock("../ui/SpineRibbon", () => ({ SpineRibbon: () => null }));
 vi.mock("../ui/EvidenceChip", () => ({ EvidenceChip: () => null }));
-vi.mock("../ui/HubHero", () => ({ HubHero: () => null }));
 // B-GROWTH-30: the Record by area has its own rendered test (RecordByDomain.test.tsx).
 vi.mock("../growth/RecordByDomain", () => ({ default: () => null }));
 
@@ -102,23 +101,31 @@ describe("GP-07 — the timeline door", () => {
 });
 
 describe("GP-07 / GP-10 — noticing a milestone leaves a visible, dated trace", () => {
-  it("a noticed milestone appears in the hub's recent list, with the date it was noticed", async () => {
-    state.milestones = [ms({ id: "m1", title: "First two-word phrase", checked: true, observationUpdatedAt: "2026-08-14T10:00:00.000Z" })];
+  // W2-GROWTH r1 / B-GROWTH-NEW-1A: the separate "Recent observations" column
+  // merged into the New-since well (anchored on the previous visit, else the
+  // last seven days). The trace is the same: the milestone's title and the
+  // date it was noticed, in the frame the parent marks it.
+  const DAY = 86_400_000;
+  it("a noticed milestone appears in the New-since well, with the date it was noticed", async () => {
+    const at = new Date(Date.now() - DAY).toISOString();
+    state.milestones = [ms({ id: "m1", title: "First two-word phrase", checked: true, observationUpdatedAt: at })];
     const html = await render();
-    expect(html).toContain("First two-word phrase");
-    expect(html).toContain("Noticed Aug 14, 2026");
-    // The empty state is gone precisely because the record grew.
-    expect(html).not.toContain("growth.recent.empty");
+    expect(html).toContain('data-testid="growth-new-since"');
+    expect(html).toContain("elev.growth.newSince.noticed|First two-word phrase");
+    const { fmtDay } = await import("../../lib/formatDate");
+    expect(html).toContain(fmtDay(at, "en"));
   });
 
   it("NEGATIVE CONTROL: an unmarked milestone leaves no trace, and an undated mark is not invented", async () => {
     state.milestones = [ms({ id: "m1", title: "First two-word phrase" })];
-    expect(await render()).toContain("growth.recent.empty");
+    // A zero-event visit: the well collapses (the focus card is the hero).
+    expect(await render()).not.toContain('data-testid="growth-new-since"');
 
     // checked but never dated (legacy rows): it must not fabricate a date.
     state.milestones = [ms({ id: "m1", title: "First two-word phrase", checked: true })];
     const html = await render();
-    expect(html).not.toContain("Noticed Invalid");
+    expect(html).not.toContain('data-testid="growth-new-since"');
+    expect(html).not.toContain("Invalid");
     expect(html).not.toContain("NaN");
   });
 });

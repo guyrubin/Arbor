@@ -5,6 +5,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { ContentWhyLine } from "../ui/ContentActionBar";
 import { fmtDay } from "../../lib/formatDate";
+import { languageName } from "../../lib/languageName";
 import { buildFirstWordsLedger } from "../../lib/firstWords";
 import type { LangObservation } from "../../growth/vocabAgg";
 
@@ -108,7 +109,8 @@ export default function FirstWordsLedger() {
                 “{row.phrase}”
               </span>
               <span className="text-[11px] font-bold" style={{ color: "var(--arbor-lav-ink)" }}>
-                {row.language}
+                {/* Law 8 (W2-GROWTH r1): the reader's language, stored value untouched. */}
+                {languageName(row.language, t)}
               </span>
               <span className="flex-1" />
               <span className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>

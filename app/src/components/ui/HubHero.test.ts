@@ -128,8 +128,11 @@ describe("HubHero compact mode", () => {
   });
 });
 describe("HubHero — lane G hubs pass the translated teach line", () => {
-  it("Development's statistical hero wires the translated zero-state teach line", () => {
-    expect(read("components/tabs/DevelopmentTab.tsx")).toMatch(/zeroLine=\{t\("elev\.growthTruth\.hero\.empty"\)\}/);
+  // W2-GROWTH r1: Growth's stat hero is cut — no stats, so no zero wall to teach over.
+  it("Development mounts no statistical hero (no zero wall possible)", () => {
+    const dev = read("components/tabs/DevelopmentTab.tsx");
+    expect(dev).not.toMatch(/<HubHero\b/);
+    expect(dev).not.toMatch(/stats=\{\[/);
   });
 
   it("Profile retains real family counts in its consolidated identity header", () => {

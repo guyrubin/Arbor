@@ -61,7 +61,7 @@ describe("GP-06 negative controls — the matchers reject the pre-change hub", (
   });
 });
 
-describe("GP-06 — the hub's hero CTA is its declared primaryMove", () => {
+describe("GP-06 — the hub's declared primaryMove is the observe row", () => {
   it("the contract still declares notice-milestone for the development hub", () => {
     const contract = SURFACE_CONTRACTS.find((c) => c.route === "development");
     expect(contract).toBeTruthy();
@@ -69,12 +69,33 @@ describe("GP-06 — the hub's hero CTA is its declared primaryMove", () => {
     expect(contract!.depth).toBe(0);
   });
 
-  it("the hero CTA focuses the observe row and no longer opens the screener", () => {
-    const block = heroCtaBlock(DEV_TAB);
-    expect(block, "growth-hero-cta block not found in DevelopmentTab").toBeTruthy();
-    expect(block).toContain("focusObserveRow");
-    expect(block).not.toContain("setCheckOpen(true)");
-    expect(block).toContain('t("elev.waveR.growth.hero.cta")');
+  // W2-GROWTH r1: the hero's scroll-to CTA is DELETED — it only scrolled to
+  // the row, and the row now sits in the first 375 viewport. The stamp moved
+  // from the 851 px focus <section> onto the observe GROUP itself, so the
+  // sweep's above-the-fold check measures the control, not a container edge.
+  it("the stamp sits on the observe group, never on a container; no scroll-to hero CTA", () => {
+    expect(heroCtaBlock(DEV_TAB)).toBe("");
+    expect(DEV_TAB).not.toContain("focusObserveRow");
+    const stamps = DEV_TAB.match(/data-primary-move=/g) ?? [];
+    // one on the observe group + the zero-focus fallback on Review milestones
+    expect(stamps).toHaveLength(2);
+    expect(DEV_TAB).toMatch(/role="group"\s+aria-label=\{t\("elev\.waveR\.growth\.observe\.aria"\)\}\s+data-primary-move="notice-milestone"/);
+    expect(DEV_TAB).not.toMatch(/<section[^>]*data-primary-move/);
+    expect(DEV_TAB).toContain('data-primary-move={weeklyFocus.milestoneId ? undefined : "notice-milestone"}');
+  });
+
+  it("the observe answers carry the card's weight; nothing below them is a filled button", () => {
+    const row = DEV_TAB.slice(DEV_TAB.indexOf('data-testid="growth-observe-row"'));
+    expect(row).toContain('"var(--arbor-paper-elevated)"');
+    expect(row).toContain('"var(--arbor-ink)"');
+    expect(row).toContain('"var(--arbor-rule-strong)"');
+    // "Choose an activity" is a text link now (no clay/sapphire fill)
+    const tryBtn = DEV_TAB.match(/data-testid="growth-focus-try"[^>]*>/)?.[0] ?? "";
+    expect(tryBtn).toBeTruthy();
+    expect(tryBtn).not.toMatch(/background:/);
+    // one --gradient-cta on the page (the zero-focus check), no clay fills
+    expect(DEV_TAB.match(/var\(--gradient-cta\)/g)).toHaveLength(1);
+    expect(DEV_TAB).not.toContain('background: "var(--arbor-clay)"');
   });
 
   it("the Development Check keeps its own home — the neutral pointer row", () => {

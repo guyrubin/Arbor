@@ -42,9 +42,12 @@ const mounts=listTsx(SRC).flatMap(file=>scan(fs.readFileSync(file,"utf8"),path.r
 const fixture=(jsx:string)=>{const result=scan("const element = ("+jsx+");");expect(result).toHaveLength(1);return result[0];};
 describe("RUN-08 — no statistical hub mounts an untranslated zero wall",()=>{
  it("finds four remaining mounts plus both real custom-header destinations",()=>{
-  expect(mounts.length).toBeGreaterThanOrEqual(3);
+  expect(mounts.length).toBeGreaterThanOrEqual(2);
   const files=new Set(mounts.map(m=>m.file));
-  for(const file of ["DevelopmentTab","BehaviorsTab","RoutinesTab"])expect(files.has("components/tabs/"+file+".tsx"),file).toBe(true);
+  for(const file of ["BehaviorsTab","RoutinesTab"])expect(files.has("components/tabs/"+file+".tsx"),file).toBe(true);
+  // W2-GROWTH r1: Growth's stat hero is CUT — the H1 is "What's new with {name}"
+  // and the page opens on New-since rows; no stats mount can greet with zeros.
+  expect(files.has("components/tabs/DevelopmentTab.tsx"),"DevelopmentTab").toBe(false);
   // W2-CAREPRO r1 (B-CAREPRO-36 hero part): Consult's hero is CUT — the H1 is the job.
   expect(files.has("components/tabs/ConsultTab.tsx"),"ConsultTab").toBe(false);
   const profile=fs.readFileSync(path.join(SRC,"components/sections/ChildProfile.tsx"),"utf8");
@@ -54,10 +57,10 @@ describe("RUN-08 — no statistical hub mounts an untranslated zero wall",()=>{
   // B-PLAY-18: the academy header carries no stat list — the pick's reading minutes ride the pick line.
   expect(academy).toContain('data-testid="academy-pick-minutes"');expect(academy).not.toContain('heroStats.map');
  });
- it("actually extracts stats-bearing Development and Behaviors mounts, including stats after CTA",()=>{
+ it("actually extracts the stats-bearing Behaviors mount, including stats after CTA",()=>{
   const statistical=mounts.filter(hasStats);
-  expect(statistical.length).toBeGreaterThanOrEqual(2);
-  for(const file of ["components/tabs/DevelopmentTab.tsx","components/tabs/BehaviorsTab.tsx"]){
+  expect(statistical.length).toBeGreaterThanOrEqual(1);
+  for(const file of ["components/tabs/BehaviorsTab.tsx"]){
    const found=statistical.filter(m=>m.file===file);expect(found,file).toHaveLength(1);
    expect(found[0].attributes.has("zeroLine"),file).toBe(true);
   }
