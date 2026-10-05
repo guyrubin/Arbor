@@ -18,7 +18,7 @@
  * files, plus the pre-fix band derivation.
  */
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import * as growth from "./i18nElevation/growth";
 import * as growthTruth from "./i18nElevation/growthTruth";
@@ -37,7 +37,9 @@ const NEW_KEYS = {
     "elev.growth.course.markDone",
     "elev.growth.course.markNotDone",
   ],
-  growthTruth: ["elev.growthTruth.strengths.ctaTitle", "elev.growthTruth.strengths.ctaBody"],
+  // B-GROWTH-23: the Strengths leaf and its two CTA keys are deleted (#/strengths
+  // renders Profile); the chrome it carried lives on Profile chapter 4.
+  growthTruth: [] as string[],
 };
 
 const SCHOLAR_SLUGS = [
@@ -99,7 +101,6 @@ describe("every new chrome key lands in BOTH locales", () => {
 });
 
 describe("the sites render through the keys", () => {
-  const strengths = read("components/sections/Strengths.tsx");
   const profile = read("components/sections/ChildProfile.tsx");
   const play = read("components/tabs/DailyPlayTab.tsx");
   const lang = read("components/tabs/LanguageLabTab.tsx");
@@ -108,19 +109,11 @@ describe("the sites render through the keys", () => {
   // B-ASKJB-12: the lens picker is Ask's ToneSheet (ScholarTab deleted).
   const tone = read("components/coach/ToneSheet.tsx");
 
-  it("Strengths carries no hard-coded English chrome", () => {
-    for (const literal of [
-      'eyebrow="My Child"',
-      'title="Strengths"',
-      'title="Where to support"',
-      "Build a plan <Icon",
-      "Turn a challenge into a calm next step</h3>",
-      "> Ask Arbor",
-    ]) {
-      expect(strengths, literal).not.toContain(literal);
-    }
-    for (const key of ['t("cp.eyebrow")', 't("cp.ch.strengths")', 't("cp.ch.support")', 't("cp.buildPlan")', 't("nav.ask")']) {
-      expect(strengths).toContain(key);
+  it("B-GROWTH-23: the Strengths leaf is gone and its CTA keys left both dictionaries", () => {
+    expect(existsSync(path.join(SRC, "components/sections/Strengths.tsx"))).toBe(false);
+    for (const k of ["elev.growthTruth.strengths.ctaTitle", "elev.growthTruth.strengths.ctaBody"]) {
+      expect(growthTruth.en[k], k).toBeUndefined();
+      expect(growthTruth.he[k], k).toBeUndefined();
     }
   });
 

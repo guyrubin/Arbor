@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
 import { ROUTE_IDS, HASH_ALIASES, RETIRED_ROUTES, resolveRouteId } from "./routes";
 import { SECTIONS, TAB_SECTION_FALLBACK, primaryTabOf } from "./navigation";
 import { ALL_TABS } from "../context/ArborContext";
@@ -103,6 +105,19 @@ describe("hash aliases", () => {
       expect(HASH_ALIASES[retired]).toBeUndefined();
     }
     expect(resolveRouteId("#/strengths")).toBe("profile");
+  });
+
+  it("B-GROWTH-23: the retired Strengths leaf is deleted; its registry seat renders Profile", () => {
+    const src = path.resolve(__dirname, "..");
+    expect(existsSync(path.join(src, "components/sections/Strengths.tsx"))).toBe(false);
+    const shell = readFileSync(path.join(src, "components/layout/Shell.tsx"), "utf8");
+    expect(shell).toMatch(/^\s*strengths: ChildProfile,$/m);
+    expect(shell).not.toContain('import("../sections/Strengths")');
+    // the id keeps its ROUTE_IDS seat (Law 6) and still lands on Profile
+    expect(ROUTE_IDS as readonly string[]).toContain("strengths");
+    expect(RETIRED_ROUTES.strengths).toBe("profile");
+    // NEGATIVE CONTROL: the pre-fix registry line fails the pin
+    expect(/^\s*strengths: ChildProfile,$/m.test("  strengths: Strengths,")).toBe(false);
   });
 
   it("B-CAREPRO-19: #/find-pro lands on Consult; the id keeps its seat (ROUTE_IDS still 43)", () => {

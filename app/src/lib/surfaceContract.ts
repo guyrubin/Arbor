@@ -227,9 +227,12 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
   {
     route: "strengths", hub: "growth", depth: 1,
     job: "See what she's already good at — and build on it.",
-    primaryMove: "review-strengths", moduleBudget: 2, demotionTarget: "development",
-    // Folded into the Development Profile, resolves to Growth via
-    // TAB_SECTION_FALLBACK. Read surface — no write.
+    primaryMove: "approve-memory", moduleBudget: 3, demotionTarget: "development",
+    // GP-26: retired to profile (RETIRED_ROUTES). B-GROWTH-23 deleted the
+    // Strengths leaf; the id and this entry keep their seat like scholar /
+    // find-pro, and Shell renders the Profile leaf for it, so the move and
+    // budget are the Profile leaf's own (review-strengths / 2 left with
+    // Strengths.tsx). Resolves to Growth via TAB_SECTION_FALLBACK. No write.
     threadWrite: "none",
   },
   {

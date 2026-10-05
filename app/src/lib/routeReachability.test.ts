@@ -133,7 +133,11 @@ describe("IA-09 — every non-pill route has a real entry point", () => {
 
   it("the registry alias detector finds the known retired doors and nothing bogus", () => {
     expect(aliased.has("handoff")).toBe(true);
-    expect(aliased.has("strengths")).toBe(false);
+    // B-GROWTH-23: the Strengths leaf is deleted; its registry seat renders
+    // ChildProfile, so strengths and profile now share one component.
+    expect(aliased.has("strengths")).toBe(true);
+    expect(aliased.has("profile")).toBe(true);
+    expect(aliased.has("milestones")).toBe(false);
   });
 
   const live = new Set<string>(ROUTE_IDS);

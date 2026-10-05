@@ -66,7 +66,6 @@ const SafetyTab = lazy(() => import("../tabs/SafetyTab"));
 // New capability views (IA refactor).
 const ChildProfile = lazy(() => import("../sections/ChildProfile"));
 const ChildMemory = lazy(() => import("../sections/ChildMemory"));
-const Strengths = lazy(() => import("../sections/Strengths"));
 const Screening = lazy(() => import("../sections/Screening"));
 // One timeline surface, two densities (Feed #/journal · Story #/timeline).
 const TimelineTab = lazy(() => import("../tabs/TimelineTab"));
@@ -143,7 +142,9 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   safety: SafetyTab,
   profile: ChildProfile,
   memory: ChildMemory,
-  strengths: Strengths,
+  // B-GROWTH-23: retired to Profile (RETIRED_ROUTES) — the id keeps its seat;
+  // its content is Profile chapter 4, so the registry seat renders Profile.
+  strengths: ChildProfile,
   screening: Screening,
   timeline: TimelineTab,
   journal: TimelineTab,

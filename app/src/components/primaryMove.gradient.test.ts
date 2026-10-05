@@ -238,7 +238,6 @@ describe("OBJ-TODAY-01 — repo-wide ratchet", () => {
     "sections/Reports.tsx",
     "sections/SchoolBrief.tsx",
     "sections/Screening.tsx",
-    "sections/Strengths.tsx",
     "sections/TrustedSharing.tsx",
     // H3b/R17 — the #/stories cover button. Licensed, not tolerated: it carries
     // `data-primary-move="read-tonights-story"`, which surfaceContract.ts:276

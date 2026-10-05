@@ -193,7 +193,6 @@ const HEX_ALLOWLIST: Record<string, readonly string[]> = {
   "components/practice/MimicMatch.tsx": ["#1c222b", "#5fce97", "#a8a093"], // game canvas art
   "components/practice/WordWorldTab.tsx": ["#fff"],
   "components/profile/AvatarCreator.tsx": ["#fff"],
-  "components/sections/Strengths.tsx": ["#eef6f1"],
   "components/stories/StoryIllustration.tsx": [
     // SVG illustration palette — allowlisted art file
     "#5fae86", "#6f9e6f", "#7a6bd8", "#8fc3a3", "#9bbf8f", "#a89cda", "#bcd9c6", "#c2785f",
