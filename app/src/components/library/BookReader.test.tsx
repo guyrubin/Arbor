@@ -20,7 +20,7 @@ import { bookFlowReducer, END, initialBookFlow, type BookFlowAction, type BookFl
 import { fiveSmoothStones as book } from "../../lib/library/books/fiveSmoothStones";
 import type { Box } from "../../lib/library/bookPageLayout";
 import type { BookLang, BookReaderChild } from "../../lib/library/types";
-import type { HeroSheet } from "../../lib/library/heroSheet";
+import { applySheetManifest, choicePictureSources, type HeroSheet } from "../../lib/library/heroSheet";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -344,6 +344,25 @@ describe("fix round 1: bar, accent, choice cards", () => {
     const p4 = render(run({ type: "open" }, { type: "next" }, { type: "next" }, { type: "next" }));
     expect(pageOf(p4)).toBe("p4");
     expect(artOf(html)).toBe(artOf(p4));
+  });
+});
+
+describe("fix round 2: dedicated choice-card pictures", () => {
+  it("the child's own card picture wins, then the book's scene picture, else the plate crop", () => {
+    const sheet: HeroSheet = { id: "placeholder", poses: {}, base: "/_dev/hero-sheets/placeholder", choices: { a: "/_dev/hero-sheets/placeholder/choices/a.webp" } };
+    const withArt = { ...book, decision: { ...book.decision, choiceArt: { a: "/visuals/books/five-smooth-stones/choices/a.webp", b: "/visuals/books/five-smooth-stones/choices/b.webp" } } };
+    const html = renderToStaticMarkup(<BookReader book={withArt} lang="en" child={BOY} onClose={() => {}} dev narration="off" initialState={run(...toDecision)} initialBox={WIDE} sheet={sheet} initialChoosing />);
+    const card = (id: string) => new RegExp(`data-choice-card="${id}"[^]*?</button>`).exec(html)![0];
+    expect(card("a")).toContain('src="/_dev/hero-sheets/placeholder/choices/a.webp"');
+    expect(card("b")).toContain('src="/visuals/books/five-smooth-stones/choices/b.webp"');
+    expect(card("c")).toContain("url(&quot;/visuals/books/five-smooth-stones/PL4.webp&quot;)");
+    expect(choicePictureSources(sheet, withArt.decision.choiceArt, "a")).toEqual(["/_dev/hero-sheets/placeholder/choices/a.webp", "/visuals/books/five-smooth-stones/choices/a.webp"]);
+  });
+
+  it("a sheet manifest lists per-child card pictures under choices/", () => {
+    const base = { id: "s", poses: {}, base: "/_dev/hero-sheets/s" };
+    const s2 = applySheetManifest(base, { choices: { a: "choices/a.webp", b: "../x.webp", "c d": "choices/c.webp" } });
+    expect(s2.choices).toEqual({ a: "/_dev/hero-sheets/s/choices/a.webp" });
   });
 });
 

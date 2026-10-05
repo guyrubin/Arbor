@@ -59,6 +59,9 @@ export interface PageGeometry {
 export interface BookGeometry {
   plates: Record<string, PlateGeometry>;
   pages: Record<string, PageGeometry>;
+  /** Choice-card pictures, by choice id: file paths relative to the book's
+   *  public folder (e.g. "choices/a.webp"). */
+  choiceArt?: Record<string, string>;
 }
 
 type Obj = Record<string, unknown>;
@@ -188,5 +191,10 @@ export function readGeometry(raw: unknown): BookGeometry {
     }
     out.pages[id] = g;
   }
+  const art: Record<string, string> = {};
+  for (const [cid, f] of entries(raw.choiceArt)) {
+    if (typeof f === "string" && /^choices\/[A-Za-z0-9_-]{1,64}\.webp$/.test(f)) art[cid] = f;
+  }
+  if (Object.keys(art).length) out.choiceArt = art;
   return out;
 }

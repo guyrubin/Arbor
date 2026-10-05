@@ -29,7 +29,7 @@
  * - A story choice lives only in this component's memory: nothing is written,
  *   nothing describes the child, no number is shown.
  */
-import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState, type CSSProperties } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { KidToy } from "../kidmode/KidToy";
 import { kidSfx, useKidReadAloudMuted } from "../kidmode/audio/kidAudio";
 import { Icon } from "../ui/Icon";
@@ -56,7 +56,7 @@ import { BOOK_PLATES } from "../../lib/library/books";
 import { bookString } from "../../lib/library/bookStrings";
 import { TURN_GLYPHS } from "../../lib/library/bookGlyphs";
 import { heGender, heroDisplayName, heroParts, labelFor, pageParagraphs, paragraphChars } from "../../lib/library/bookText";
-import { heroPrint, heroSpriteUrl, resolveHeroSheet, sheetAnchorOf, type HeroSheet } from "../../lib/library/heroSheet";
+import { choicePictureSources, heroPrint, heroSpriteUrl, resolveHeroSheet, sheetAnchorOf, type HeroSheet } from "../../lib/library/heroSheet";
 import { declaredAudio, DEV_NARRATION_ROOT, NARRATION_ROOT, narrationKey, pageNarrationSrc } from "../../lib/library/narration";
 import type { Book, BookLang, BookReaderChild, Page } from "../../lib/library/types";
 import "./bookReader.css";
@@ -117,6 +117,21 @@ export function nextIntent(afterOverlay: boolean, revealed: boolean, holding: bo
 
 const px = (n: number) => `${Math.round(n * 10) / 10}px`;
 const rectStyle = (r: Rect): CSSProperties => ({ left: px(r.x), top: px(r.y), width: px(r.w), height: px(r.h) });
+
+/** A choice card's picture (fix round 2, ruling 2): the dedicated 4:3 files
+ *  (the child's own first, then the book's scene picture); when none loads,
+ *  the plate's focus crop (or the icon). */
+function CardPicture({ srcs, fallback }: { srcs: readonly string[]; fallback: ReactNode }) {
+  const [i, setI] = useState(0);
+  const key = srcs.join("|");
+  useEffect(() => setI(0), [key]);
+  if (i >= srcs.length) return <>{fallback}</>;
+  return (
+    <span className="bk-card-pic" aria-hidden="true" data-card-art="">
+      <img key={srcs[i]} src={srcs[i]} alt="" draggable={false} decoding="async" onError={() => setI(i + 1)} />
+    </span>
+  );
+}
 
 function Words({ text, name }: { text: string; name: string }) {
   return (
@@ -435,21 +450,26 @@ export function BookReader({
             aria-pressed={selected}
             onClick={() => choose(c.id)}
           >
-            {bg ? (
-              <span
-                className="bk-card-pic"
-                aria-hidden="true"
-                style={{
-                  backgroundImage: srcs.map((u) => `url("${u}")`).join(", "),
-                  backgroundSize: srcs.map(() => bg.size).join(", "),
-                  backgroundPosition: srcs.map(() => bg.position).join(", "),
-                }}
-              />
-            ) : (
-              <span className="bk-card-pic bk-card-icon" aria-hidden="true">
-                <Icon name={c.icon ?? "auto_stories"} size={Math.round(Math.min(plan.picH * 0.6, 72))} fill={1} />
-              </span>
-            )}
+            <CardPicture
+              srcs={choicePictureSources(sheet, book.decision.choiceArt, c.id)}
+              fallback={
+                bg ? (
+                  <span
+                    className="bk-card-pic"
+                    aria-hidden="true"
+                    style={{
+                      backgroundImage: srcs.map((u) => `url("${u}")`).join(", "),
+                      backgroundSize: srcs.map(() => bg.size).join(", "),
+                      backgroundPosition: srcs.map(() => bg.position).join(", "),
+                    }}
+                  />
+                ) : (
+                  <span className="bk-card-pic bk-card-icon" aria-hidden="true">
+                    <Icon name={c.icon ?? "auto_stories"} size={Math.round(Math.min(plan.picH * 0.6, 72))} fill={1} />
+                  </span>
+                )
+              }
+            />
             <span className="bk-card-label">{labelFor(c.label, lang)}</span>
           </button>
         );
