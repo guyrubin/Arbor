@@ -131,6 +131,7 @@ export const en: Record<string, string> = {
   "elev.practice.door.sentence.finished.girl": "{when}, {name} finished {title}.",
   "elev.practice.door.sentence.finished.neutral": "{when}, {name} finished {title}.",
   "elev.practice.studio.opensWorld": "Opens {world} in Kid Mode",
+  "elev.practice.studio.notInLanguage": "Sounds in this language are coming · opens in {tab}",
   "elev.practice.studio.window": "Counts: {when}",
   // B-SHELL-NEW-1b: keep the door sentence as one journal moment.
   "elev.practice.door.keep": "Keep it in the journal",
@@ -345,6 +346,7 @@ export const he: Record<string, string> = {
   "elev.practice.door.sentence.finished.girl": "{when}, {name} סיימה את {title}.",
   "elev.practice.door.sentence.finished.neutral": "{when}, הסיפור {title} של {name} הושלם.",
   "elev.practice.studio.opensWorld": "נפתח ב{world} במצב ילדים",
+  "elev.practice.studio.notInLanguage": "צלילים בעברית בקרוב · נפתח בלשונית {tab}",
   "elev.practice.studio.window": "ספירה: {when}",
   "elev.practice.door.keep": "לשמור ביומן",
   "elev.practice.door.kept": "נשמר ביומן",

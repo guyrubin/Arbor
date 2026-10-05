@@ -20,7 +20,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useKidModeEntry } from "../kidmode/useKidModeEntry";
 import { markPinNudgeShown, readParentPin, shouldNudgeForPin } from "../kidmode/parentGate";
 import { usePracticeData } from "../../practice/usePracticeData";
-import { STUDIO_WORLDS, opensInKidMode, studioCountKey, studioCountsSince, worksInLanguage, type StudioWorld } from "./studioWorlds";
+import { STUDIO_WORLDS, opensInKidMode, orderedStudioWorlds, stampWorldId, studioCountKey, studioCountsSince, worksInLanguage, type StudioWorld } from "./studioWorlds";
 import { track } from "../../lib/analytics";
 import { requestOpenSettings } from "../layout/settingsBus";
 import { useChildCollection } from "../../hooks/useChildCollection";
@@ -108,17 +108,23 @@ export default function PracticeStudioTab() {
 
   // B-KID-11 / B-PLAY-03: every kid-capable tile opens ITS world in Kid Mode
   // through the seam; Word World (no Kid Mode seat) is the only parent-tab tile.
+  // SHIP-FIX (W2-SHELLPLAY r3 P1-1): a world that cannot keep its promise in
+  // the UI language (Sound Lab in Hebrew — an English drill) never sends the
+  // child into Kid Mode; it opens its parent tab, where SpeechCoachTab's
+  // honest Hebrew door explains, and its tile says so.
+  const kidOpens = (world: StudioWorld) => opensInKidMode(world) && worksInLanguage(world, lang);
   const openWorld = (world: StudioWorld) => {
-    const kid = opensInKidMode(world);
+    const kid = kidOpens(world);
     try { track("practice_studio_open", { world: world.id, via: kid ? "kidmode" : "direct" }); } catch { /* noop */ }
     if (!kid && world.tab) setActiveTab(world.tab);
     else requestKidMode({ view: "arcade", worldId: world.id });
   };
-  // The start-world stamp sits on the first tile that works in the UI
-  // language: Sound Lab has no Hebrew sound set yet (SpeechCoachTab's honest
-  // Hebrew door), so a Hebrew parent's primary move is never a promise the
-  // destination says it cannot keep.
-  const stampId = (STUDIO_WORLDS.find((w) => worksInLanguage(w, lang)) ?? STUDIO_WORLDS[0]).id;
+  // The start-world stamp sits on the first world that works in the UI
+  // language AND opens a world the child plays, and that world is tile 1 in
+  // every language (orderedStudioWorlds) — the move sits at the same height
+  // in EN and HE, never under the bottom nav.
+  const stampId = stampWorldId(lang);
+  const worlds = orderedStudioWorlds(lang);
 
   return (
     <div dir={isRtl ? "rtl" : "ltr"} className="space-y-5 max-w-[980px]">
@@ -249,10 +255,11 @@ export default function PracticeStudioTab() {
             critic r1: stamped on ONE control — the first world tile — not on
             the grid container (a 1373 px region is not a move). */}
         <div className="grid sm:grid-cols-2 gap-4">
-          {STUDIO_WORLDS.map((world, i) => {
+          {worlds.map((world, i) => {
             const tone = PASTEL[world.tone];
             const sessions = counts.byWorld[world.id] ?? 0;
-            const kid = opensInKidMode(world);
+            const kid = kidOpens(world);
+            const inLang = worksInLanguage(world, lang);
             return (
               <motion.button
                 key={world.id}
@@ -288,7 +295,7 @@ export default function PracticeStudioTab() {
                   </span>
                   {/* One label pattern in one ink. With the B-KID-11 seam a
                       kid-capable tile names the world the tap really opens. */}
-                  <span className="mt-1.5 flex items-center gap-1 t-xs font-bold" style={{ color: "var(--arbor-clay-deep)" }}>
+                  <span className="mt-1.5 flex items-center gap-1 t-xs font-bold" style={{ color: inLang ? "var(--arbor-clay-deep)" : "var(--arbor-muted)" }}>
                     {/* CR-13: the arrow used `rtl:-scale-x-100`, a variant this
                         build never emitted — the glyph pointed right on a
                         right-to-left page, i.e. backwards. `isRtl` is already
@@ -301,6 +308,8 @@ export default function PracticeStudioTab() {
                     />
                     {kid
                       ? t("elev.practice.studio.opensWorld", { world: t(world.kidNameKey) })
+                      : !inLang && world.fallbackTabNameKey
+                      ? t("elev.practice.studio.notInLanguage", { tab: t(world.fallbackTabNameKey) })
                       : world.tabNameKey
                       ? t("practice.studio.openIn", { tab: t(world.tabNameKey) })
                       : t("practice.studio.openDirect")}

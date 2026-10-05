@@ -39,6 +39,9 @@ export interface StudioWorld {
    *  Word World is parent-only in the arcade (HeroArcade `parentOnly`), so its
    *  tile must never promise "In Kid Mode as …" for a world the child cannot see. */
   tabNameKey?: string;
+  /** SHIP-FIX r3: the parent tab a world opens INSTEAD of Kid Mode in a UI
+   *  language it cannot serve yet (see worksInLanguage). */
+  fallbackTabNameKey?: string;
   unit: StudioCountUnit;
   count: (d: StudioCountSource) => number;
   /** B-CAREPRO-20 · spine §7b: the registry domains this world exercises
@@ -55,7 +58,7 @@ const eventsOf = (d: StudioCountSource, pred: (kind: string) => boolean) =>
   d.events.items.filter((e) => pred(e.kind)).length;
 
 export const STUDIO_WORLDS: StudioWorld[] = [
-  { id: "speech", key: "speech", kidNameKey: "elev.practice.world.kid.speech", msIcon: "mic", tone: "sky", tab: "speech", unit: "tries", count: (d) => d.speech.items.length, domains: ["talking"] },
+  { id: "speech", key: "speech", kidNameKey: "elev.practice.world.kid.speech", msIcon: "mic", tone: "sky", tab: "speech", fallbackTabNameKey: "nav.tab.speech", unit: "tries", count: (d) => d.speech.items.length, domains: ["talking"] },
   { id: "word-world", key: "words", kidNameKey: "elev.practice.world.kid.words", msIcon: "menu_book", tone: "sky", tab: "language", tabNameKey: "nav.tab.language", unit: "tries", count: (d) => eventsOf(d, (k) => k === "lang-strategy"), domains: ["talking"] },
   { id: "feelings", key: "feelings", kidNameKey: "elev.practice.world.kid.feelings", msIcon: "favorite", tone: "pink", tab: "feelings", unit: "rounds", count: (d) => eventsOf(d, (k) => FEELINGS_KINDS.has(k)), domains: ["feelings", "playing"] },
   { id: "mimic", key: "mimic", kidNameKey: "elev.practice.world.kid.mimic", msIcon: "mood", tone: "coral", tab: "mimic", unit: "tries", count: (d) => d.mimic.items.length, domains: ["hands", "playing"] },
@@ -74,6 +77,26 @@ export const opensInKidMode = (world: StudioWorld): boolean => !world.tabNameKey
 /** Sound Lab's drill is English-only today; every other world works in both. */
 export const worksInLanguage = (world: StudioWorld, lang: "en" | "he"): boolean =>
   !(lang === "he" && world.id === "speech");
+
+/** SHIP-FIX (W2-SHELLPLAY r3 P1): the start-world stamp sits on the first
+ *  world that both works in the UI language AND opens a world the child plays
+ *  (Word World is a parent tab). EN: Sound Lab · HE: Feelings Lab. */
+export const stampWorldId = (lang: "en" | "he"): string =>
+  (STUDIO_WORLDS.find((w) => worksInLanguage(w, lang) && opensInKidMode(w)) ?? STUDIO_WORLDS[0]).id;
+
+/** The grid order for a UI language: the stamped world is ALWAYS tile 1 (so the
+ *  move sits at the same height in EN and HE), every other world keeps its
+ *  registry order, and a world that cannot keep its promise in this language
+ *  goes last. EN order is the registry order unchanged. */
+export const orderedStudioWorlds = (lang: "en" | "he"): StudioWorld[] => {
+  const stamp = stampWorldId(lang);
+  const rest = STUDIO_WORLDS.filter((w) => w.id !== stamp);
+  return [
+    ...STUDIO_WORLDS.filter((w) => w.id === stamp),
+    ...rest.filter((w) => worksInLanguage(w, lang)),
+    ...rest.filter((w) => !worksInLanguage(w, lang)),
+  ];
+};
 
 /** The chip's i18n key for `n` records of a world (`.one` for exactly 1). */
 export const studioCountKey = (unit: StudioCountUnit, n: number): string =>

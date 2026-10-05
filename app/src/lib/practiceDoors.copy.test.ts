@@ -447,10 +447,47 @@ describe("B-PLAY-05 + W2-SHELLPLAY critic r1 — ONE sentence on the Practice do
   });
 
   it("the start-world stamp never lands on a world that cannot keep its promise in Hebrew", async () => {
-    const { worksInLanguage } = await import("../components/practice/studioWorlds");
-    const first = (lang: "en" | "he") => STUDIO_WORLDS.find((w) => worksInLanguage(w, lang))!.id;
-    expect(first("en")).toBe("speech");
-    expect(first("he")).not.toBe("speech");
+    const { worksInLanguage, stampWorldId } = await import("../components/practice/studioWorlds");
+    expect(stampWorldId("en")).toBe("speech");
+    expect(stampWorldId("he")).not.toBe("speech");
+    expect(worksInLanguage(STUDIO_WORLDS.find((w) => w.id === stampWorldId("he"))!, "he")).toBe(true);
+  });
+
+  it("SHIP-FIX r3: the stamped world is tile 1 in EN and HE, opens a world the child plays, and EN keeps the registry order", async () => {
+    const { stampWorldId, orderedStudioWorlds, opensInKidMode, worksInLanguage } = await import("../components/practice/studioWorlds");
+    for (const lang of ["en", "he"] as const) {
+      const order = orderedStudioWorlds(lang);
+      expect(order[0].id, lang).toBe(stampWorldId(lang));
+      expect(opensInKidMode(order[0]), lang).toBe(true);
+      expect(worksInLanguage(order[0], lang), lang).toBe(true);
+      expect(order.map((w) => w.id).sort()).toEqual(STUDIO_WORLDS.map((w) => w.id).sort());
+      // a world that cannot keep its promise in this language goes last
+      const firstBroken = order.findIndex((w) => !worksInLanguage(w, lang));
+      if (firstBroken >= 0) expect(order.slice(firstBroken).every((w) => !worksInLanguage(w, lang))).toBe(true);
+    }
+    expect(stampWorldId("he")).toBe("feelings");
+    expect(orderedStudioWorlds("en").map((w) => w.id)).toEqual(STUDIO_WORLDS.map((w) => w.id));
+    expect(orderedStudioWorlds("he").at(-1)!.id).toBe("speech");
+    // the page renders THAT order and stamps from THAT helper
+    expect(studio).toContain("const stampId = stampWorldId(lang);");
+    expect(studio).toContain("const worlds = orderedStudioWorlds(lang);");
+    expect(stripComments(studio)).toContain("{worlds.map((world, i) => {");
+    expect(stripComments(studio)).not.toContain("{STUDIO_WORLDS.map((world, i) => {");
+    // NEGATIVE CONTROL: the r3 rule (first world that works in HE) stamped the parent-tab tile 2
+    expect(STUDIO_WORLDS.find((w) => worksInLanguage(w, "he"))!.id).toBe("word-world");
+    expect(STUDIO_WORLDS.findIndex((w) => w.id === "word-world")).toBe(1);
+  });
+
+  it("SHIP-FIX r3: in Hebrew the Sound Lab tile never sends the child into the English drill, and its footer says so (muted, keyed)", () => {
+    const src = stripComments(studio);
+    expect(src).toContain("const kidOpens = (world: StudioWorld) => opensInKidMode(world) && worksInLanguage(world, lang);");
+    expect(src).toContain("const kid = kidOpens(world);");
+    expect(src).toContain('t("elev.practice.studio.notInLanguage", { tab: t(world.fallbackTabNameKey) })');
+    expect(src).toContain('color: inLang ? "var(--arbor-clay-deep)" : "var(--arbor-muted)"');
+    expect(STUDIO_WORLDS.find((w) => w.id === "speech")!.fallbackTabNameKey).toBe("nav.tab.speech");
+    expect(translate("he", "elev.practice.studio.notInLanguage", { tab: translate("he", "nav.tab.speech") })).not.toMatch(/[A-Za-z]/);
+    expect(translate("he", "elev.practice.studio.notInLanguage", { tab: "x" })).not.toContain("במצב ילדים");
+    expect(translate("en", "elev.practice.studio.notInLanguage", { tab: "Speech Coach" })).toContain("Speech Coach");
   });
 });
 
