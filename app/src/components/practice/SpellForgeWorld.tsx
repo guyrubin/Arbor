@@ -4,7 +4,7 @@ import { usePracticeData } from "../../practice/usePracticeData";
 import { track } from "../../lib/analytics";
 import type { PracticeEvent } from "../../types";
 import EarlyReadingTrack from "./EarlyReadingTrack";
-import { PlayHeader } from "../ui/playkit";
+import { GameShell } from "../kidmode/game/GameShell";
 import { useLanguage } from "../../context/LanguageContext";
 
 /* Spell Forge world — the early-reading track (letter tracing + phonics), given
@@ -32,16 +32,16 @@ export default function SpellForgeWorld() {
   };
 
   return (
-    <div className="space-y-6">
-      <PlayHeader
-        title={t("elev.kids.reading.title")}
-        say={t("elev.kids.reading.say")}
-        mood="think"
-        worldId="spell"
-        variant="compact"
-        eyebrow={t("elev.kids.mission")}
-      />
+    // B-KID-74: the one kid game shell (Kid Mode: bar title + hear-it, the
+    // instruction once, the world banner; the parent door keeps PlayHeader).
+    <GameShell
+      worldId="reading"
+      title={t("elev.kids.reading.title")}
+      instruction={t("elev.kids.reading.say")}
+      mood="think"
+      eyebrow={t("elev.kids.mission")}
+    >
       <EarlyReadingTrack age={childProfile.age} first={first} onLog={onLog} embedded />
-    </div>
+    </GameShell>
   );
 }
