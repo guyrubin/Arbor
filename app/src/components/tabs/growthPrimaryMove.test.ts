@@ -93,8 +93,9 @@ describe("GP-06 — the hub's declared primaryMove is the observe row", () => {
     const tryBtn = DEV_TAB.match(/data-testid="growth-focus-try"[^>]*>/)?.[0] ?? "";
     expect(tryBtn).toBeTruthy();
     expect(tryBtn).not.toMatch(/background:/);
-    // one --gradient-cta on the page (the zero-focus check), no clay fills
+    // one --gradient-cta on the page, on the zero-focus stamped control; no clay fills
     expect(DEV_TAB.match(/var\(--gradient-cta\)/g)).toHaveLength(1);
+    expect(DEV_TAB).toMatch(/data-primary-move=\{weeklyFocus\.milestoneId \? undefined : "notice-milestone"\}[\s\S]{0,500}?var\(--gradient-cta\)/);
     expect(DEV_TAB).not.toContain('background: "var(--arbor-clay)"');
   });
 

@@ -333,12 +333,14 @@ export default function DevelopmentTab() {
                 )}
               </div>
             )}
-            {/* W2-GROWTH r1: one filled CTA per page. With a focus milestone the
-                observe row is the move and everything here is a link; with
-                none, "Start a check" is the one --gradient-cta. */}
+            {/* W2-GROWTH r1: one filled CTA per page, and it spells the
+                contract's primaryMove. With a focus milestone the observe row
+                is the move and everything here is a link; with none, noticing
+                happens on the Milestones map, so "Review milestones" carries
+                the stamp and the one --gradient-cta. */}
             <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1">
               {weeklyFocus.action === "check" ? (
-                <button type="button" onClick={() => setCheckOpen(true)} data-testid="growth-focus-check" className="inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-extrabold transition active:scale-[0.98]" style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}>
+                <button type="button" onClick={() => setCheckOpen(true)} data-testid="growth-focus-check" className="inline-flex min-h-11 items-center gap-1.5 text-sm font-bold transition" style={{ color: "var(--arbor-green-ink)" }}>
                   <Icon name="assignment_turned_in" size={18} />
                   {t("growth.focus.check")}
                 </button>
@@ -354,8 +356,12 @@ export default function DevelopmentTab() {
                 // With no focus milestone, noticing happens on the Milestones map:
                 // the stamp moves here (the contract's zero-focus state).
                 data-primary-move={weeklyFocus.milestoneId ? undefined : "notice-milestone"}
-                className="inline-flex min-h-11 items-center gap-1.5 text-sm font-bold transition"
-                style={{ color: "var(--arbor-ink)" }}
+                className={weeklyFocus.milestoneId
+                  ? "inline-flex min-h-11 items-center gap-1.5 text-sm font-bold transition"
+                  : "inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-extrabold transition active:scale-[0.98]"}
+                style={weeklyFocus.milestoneId
+                  ? { color: "var(--arbor-ink)" }
+                  : { background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}
               >
                 <Icon name="edit_note" size={18} /> {t("growth.focus.review")}
               </button>

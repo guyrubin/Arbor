@@ -126,9 +126,9 @@ describe("#/language primary move — the Add button cannot be clipped at 375", 
     expect(input).toContain("basis-full");
   });
   it("Add phrase is the one --gradient-cta (never an opacity-washed slab); Got it is quiet", () => {
-    expect(SRC).toContain("background: T.gradientCta, color: T.onAccent");
+    expect(SRC).toContain('background: "var(--gradient-cta)", color: "var(--arbor-on-accent)"');
     expect(SRC).not.toContain("disabled:opacity-40");
-    expect(SRC.match(/T\.gradientCta/g)).toHaveLength(1);
+    expect(SRC.match(/--gradient-cta|T\.gradientCta/g)).toHaveLength(1);
     expect(SRC).not.toMatch(/background: T\.greenInk, color: T\.onAccent/);
   });
 });

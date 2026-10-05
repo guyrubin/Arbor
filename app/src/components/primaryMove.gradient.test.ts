@@ -258,6 +258,16 @@ describe("OBJ-TODAY-01 — repo-wide ratchet", () => {
     "tabs/CoachTab.tsx",
     // W2-ASKJB critic r1: licensed above (the Text capture tile = capture-moment).
     "tabs/JournalTab.tsx",
+    // W2-GROWTH critic r1: with no focus milestone, "Review milestones" carries
+    // data-primary-move="notice-milestone" (surfaceContract development
+    // .primaryMove) and is the only gradient in the file; growthPrimaryMove.test
+    // pins one gradient + the stamp on the same control.
+    "tabs/DevelopmentTab.tsx",
+    // W2-GROWTH critic r1: "Add phrase" = data-primary-move log-language-moment
+    // (surfaceContract language.primaryMove), the only gradient in the file; it
+    // spells the literal (was the T.gradientCta alias this scan cannot see);
+    // languageLab.hebrewChrome.test pins it.
+    "tabs/LanguageLabVocabView.tsx",
     // (B-GROWTH-12: MilestonesTab left the ratchet — its only gradient was the
     //  removed "Find next steps" analyzer button.)
     "tabs/PlansTab.tsx",

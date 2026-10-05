@@ -176,11 +176,11 @@ export function PhraseLogForm({
           // Item 9: the row's flex-1 input squeezed this to 32 px wide even
           // though min-h-[44px] was already set — a height floor is not a hit
           // box. shrink-0 + the width floor keep the primary move tappable.
-          // W2-GROWTH r1: the page's ONE --gradient-cta; disabled is a settled
+          // W2-GROWTH r1: the page's ONE gradient CTA; disabled is a settled
           // paper fill, never a washed-out opacity slab.
           className="inline-flex flex-1 sm:flex-none shrink-0 items-center justify-center gap-1 text-xs font-bold px-4 min-w-11 rounded-xl min-h-[44px] transition"
           style={phrase.trim()
-            ? { background: T.gradientCta, color: T.onAccent }
+            ? { background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }
             : { background: T.paperDeep, color: T.muted, border: `1px solid var(--arbor-rule)` }}
           data-testid="vl-log-add"
           aria-label={t("vl.logSave")}
