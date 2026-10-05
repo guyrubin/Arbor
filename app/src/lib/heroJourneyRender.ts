@@ -6,14 +6,18 @@
 import type { HeroBeat, HeroChoice, HeroChoiceRender, HeroJourneyRender, HeroSceneRender, HeroStorySpec } from "../types";
 
 /** ONE authored scene for a beat, in the story's language (the authored render
- *  and a scene the model did not return both use it — B-KID-23 F-1). */
-export function authoredScene(beat: HeroBeat, lang: "en" | "he"): HeroSceneRender {
+ *  and a scene the model did not return both use it — B-KID-23 F-1).
+ *  B-KID-45 (KB-02): with an `artTheme` (a child with a hero) the scene keeps
+ *  its art — the image prompt is the story's comic theme + the beat's English
+ *  spine (it names "the hero", never the child), so the reader still draws
+ *  the page instead of an art-less fallback. */
+export function authoredScene(beat: HeroBeat, lang: "en" | "he", artTheme?: string): HeroSceneRender {
   const he = lang === "he";
   return {
     beatId: beat.id,
     title: he ? (beat.titleHe ?? beat.title) : beat.title,
     narration: he ? (beat.spineHe ?? beat.spine) : beat.spine,
-    imagePrompt: "",
+    imagePrompt: artTheme ? `${artTheme} — ${beat.spine}` : "",
   };
 }
 

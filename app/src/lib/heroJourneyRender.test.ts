@@ -71,6 +71,19 @@ describe("B-KID-23 F-1: the reader completes a partial render in the story's lan
     expect(tab).toContain("const chosen = choices.find((c) => c.id === choiceId);");
     expect(tab).not.toContain("narration: b.spine");
     expect(tab).not.toContain("render?.choices.map(");
-    expect(tab).toContain("scenes: story.beats.map((beat) => authoredScene(beat, lang)),");
+    expect(tab).toContain("scenes: story.beats.map((beat) => authoredScene(beat, lang, artTheme)),");
+  });
+});
+
+describe("B-KID-45 (KB-02): the authored fallback keeps its art", () => {
+  it("with an art theme every beat has an image prompt: the theme + the beat's spine, never a child's name", () => {
+    for (const b of david.beats) {
+      const scene = authoredScene(b, "he", "a small hero before a giant");
+      expect(scene.imagePrompt).toBe(`a small hero before a giant — ${b.spine}`);
+      expect(scene.narration).toBe(b.spineHe); // the words stay Hebrew
+    }
+  });
+  it("without one (no hero) the scene stays art-less, as before", () => {
+    expect(authoredScene(david.beats[0], "en").imagePrompt).toBe("");
   });
 });

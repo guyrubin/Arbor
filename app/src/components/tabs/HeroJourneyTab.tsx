@@ -41,7 +41,7 @@ import { ageMonthsFromProfile } from "../../lib/childAge";
 import { track } from "../../lib/analytics";
 import { HeroScenePlayer } from "../stories/HeroScenePlayer";
 import { ProvenanceBadge } from "../ui/ProvenanceBadge";
-import { clearJourneyPageFailure, generateJourneyPage, journeyPageKey, shelveBookPages, toSavedComicMeta, type SavedComicMeta } from "../../lib/heroComics";
+import { STORY_COMIC, clearJourneyPageFailure, generateJourneyPage, journeyPageKey, shelveBookPages, toSavedComicMeta, type SavedComicMeta } from "../../lib/heroComics";
 import { useKidSafeNav } from "../kidmode/useKidSafeNav";
 import { isKidModeActive, noteKidActivity, subscribeKidMode } from "../../lib/kidModeGate";
 import { ComicPage, MascotSay, usePrefersReducedMotion } from "../ui/playkit";
@@ -116,13 +116,13 @@ const STORY_ART: Record<string, { emoji: string; sfx: string; sfxHe: string }> =
 /** Immediate, authored, provider-free render. Used only when the personalized
  * route is unavailable; preserves all eight beats, localized copy and exact
  * authored choice consequences without adding any generation. */
-export function authoredJourneyRender(story: HeroStorySpec, lang: "en" | "he"): HeroJourneyRender {
+export function authoredJourneyRender(story: HeroStorySpec, lang: "en" | "he", artTheme?: string): HeroJourneyRender {
   const he = lang === "he";
   const decision = story.beats.find((beat) => beat.id === "decision");
   return {
     storyId: story.id,
     title: he ? story.titleHe : story.title,
-    scenes: story.beats.map((beat) => authoredScene(beat, lang)),
+    scenes: story.beats.map((beat) => authoredScene(beat, lang, artTheme)),
     choices: (decision?.choices ?? []).map((choice) => authoredChoice(choice, lang)),
     reflection: {
       practiced: he ? (story.parentReflection.practicedHe ?? story.parentReflection.practiced) : story.parentReflection.practiced,
@@ -323,7 +323,9 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
       finishingRef.current = false;
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to start the journey.";
-      const fallback = authoredJourneyRender(story, aiLang);
+      // B-KID-45 (KB-02): a child with a hero keeps the page art on the
+      // authored fallback (the story's comic theme + the beat spine).
+      const fallback = authoredJourneyRender(story, aiLang, heroAvatarUrl ? (STORY_COMIC[story.id]?.theme ?? story.theme) : undefined);
       // B-KID-33: the fallback is NOT memoised for the day — the next open asks
       // again (one call), it never replays a refusal or a crash.
       startedAtRef.current = new Date().toISOString();
