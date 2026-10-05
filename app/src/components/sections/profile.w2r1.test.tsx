@@ -21,6 +21,7 @@ const h = vi.hoisted(() => ({
   pending: [] as unknown[],
   approved: [] as unknown[],
   name: "Dylan",
+  factsAsOf: undefined as undefined | Record<string, string>,
 }));
 
 vi.mock("../../context/ArborContext", () => ({
@@ -28,6 +29,7 @@ vi.mock("../../context/ArborContext", () => ({
     childProfile: {
       id: "c1", name: h.name, age: 3, birthDate: "2023-08-01", languages: ["Hebrew", "English"],
       schoolContext: "City kindergarten, first year", challenges: [], strengths: [], interests: [],
+      factsAsOf: h.factsAsOf,
     },
     milestones: [
       { id: "m1", domain: "language_communication", title: "t1", description: "d", checked: true, ageMonths: 36 },
@@ -63,6 +65,7 @@ beforeEach(() => {
   h.pending = [];
   h.approved = [{ memoryId: "a1", fact: "Dylan answers in Hebrew when tired", status: "approved", createdAt: "2026-09-02T10:00:00.000Z", source: "chat", retention: "90d" }];
   h.name = "Dylan";
+  h.factsAsOf = undefined;
 });
 
 describe("#/profile Hebrew page — no Latin chrome (Law 8)", () => {
@@ -82,6 +85,21 @@ describe("#/profile Hebrew page — no Latin chrome (Law 8)", () => {
     // W2-GROWTH r2 (B-33): the languages are ONE segment (with its as-of month when dated).
     expect(line).toMatch(/<bdi dir="auto">עברית · אנגלית[^<]*<\/bdi>/);
     expect(line.match(/<bdi dir="auto">/g)!.length).toBe(3);
+  });
+  it("critic r1: the h1 keeps the page direction (no dir), only the name is isolated", () => {
+    const html = renderToStaticMarkup(<ChildProfile />);
+    const h1 = html.slice(html.indexOf("<h1"), html.indexOf("</h1>"));
+    expect(h1).not.toMatch(/\sdir=/);
+    expect(h1).toContain("<bdi>Dylan</bdi>");
+  });
+  it("critic r1 (B-GROWTH-35 seam): the school setting carries its as-of month in both locales", () => {
+    h.factsAsOf = { schoolContext: "2026-09-01T10:00:00.000Z" };
+    for (const loc of ["en", "he"] as const) {
+      h.locale = loc;
+      const html = renderToStaticMarkup(<ChildProfile />);
+      const line = html.slice(html.indexOf('data-testid="profile-identity-line"'), html.indexOf("</p>", html.indexOf('data-testid="profile-identity-line"')));
+      expect(line).toMatch(loc === "en" ? /City kindergarten, first year[⁨⁩]* \(as of [^)]+\)/ : /City kindergarten, first year[⁨⁩]* \(נכון ל[^)]+\)/);
+    }
   });
 });
 

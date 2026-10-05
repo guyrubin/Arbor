@@ -159,7 +159,15 @@ export default function ChildProfile() {
     : langsAsOf
     ? t("elev.profile.identity.langsAsOf", { langs: langNames.join(" · "), month: factMonthLabel(langsAsOf, uiLang === "he" ? "he" : "en") })
     : langNames.join(" · ");
-  const identitySegments = [ageLabel(childProfile, t), langSegment, childProfile.schoolContext].filter(Boolean) as string[];
+  // Critic r1 (B-GROWTH-35 seam): the school setting is time-bearing too, so
+  // it carries its as-of month the same way languages do.
+  const schoolAsOf = childProfile.factsAsOf?.schoolContext;
+  const schoolSegment = !childProfile.schoolContext
+    ? ""
+    : schoolAsOf
+    ? t("elev.profile.identity.schoolAsOf", { school: childProfile.schoolContext, month: factMonthLabel(schoolAsOf, uiLang === "he" ? "he" : "en") })
+    : childProfile.schoolContext;
+  const identitySegments = [ageLabel(childProfile, t), langSegment, schoolSegment].filter(Boolean) as string[];
   const hasPending = pendingQueue.length > 0;
 
   // B-GROWTH-NEW-1F → B-GROWTH-NEW-2F — the ProfileKnowsLine names the child
@@ -198,7 +206,10 @@ export default function ChildProfile() {
         <div className="flex items-center gap-4">
           <Avatar name={childProfile.name} photoURL={picture.url} size={40} />
           <div className="min-w-0">
-            <h1 className="text-2xl sm:text-3xl leading-tight" dir="auto" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{childProfile.name || t("cp.title", { name: first })}</h1>
+            {/* Critic r1: no dir on the h1 — it keeps text-align:start in the PAGE
+                direction; only the name is isolated, so "Dylan" on a Hebrew page
+                sits beside its avatar, not 240 px away. */}
+            <h1 className="text-2xl sm:text-3xl leading-tight text-start" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{childProfile.name ? <bdi>{childProfile.name}</bdi> : t("cp.title", { name: first })}</h1>
             {/* Each segment is its own bidi island, so a Hebrew age cannot tear
                 "City" away from "kindergarten, first year" (one dir=auto on the
                 joined line did). Language names in the reader's language. */}
