@@ -39,6 +39,10 @@ import { confirmFact, factMonthLabel, isFactStale, type FactField } from "../../
  * now, milestones, strengths, language, what Arbor remembers, and the next step
  * — with each chapter linking into its full tool.
  */
+/** The route's ONE primary move. Three mutually exclusive states render it (a pending fact to keep,
+ *  the zero-pending hero CTA, the add-a-fact CTA), so the stamp is declared once and spread. */
+const APPROVE_MOVE = { "data-primary-move": "approve-memory" } as const;
+
 export default function ChildProfile() {
   const {
     childProfile, milestones,
@@ -188,7 +192,7 @@ export default function ChildProfile() {
             data-testid="profile-hero-cta"
             // Zero pending (the contract's empty state): the approve-memory move
             // is "tell Arbor one thing" — it opens the drawer where facts live.
-            data-primary-move="approve-memory"
+            {...APPROVE_MOVE}
             onClick={() => setEditingProfile(true)}
             className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-start text-sm font-bold"
             style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}
@@ -227,7 +231,7 @@ export default function ChildProfile() {
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           {latestApproved && pendingQueue.length === 0 && (
-            <button type="button" data-testid="profile-hero-cta" data-primary-move="approve-memory" onClick={() => setEditingProfile(true)} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold" style={{ color: "var(--arbor-clay)" }}>
+            <button type="button" data-testid="profile-hero-cta" {...APPROVE_MOVE} onClick={() => setEditingProfile(true)} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold" style={{ color: "var(--arbor-clay)" }}>
               <Icon name="edit" size={16} /> {t("elev.growthTruth.profile.cta.addFact", { name: first })}
             </button>
           )}
@@ -263,7 +267,7 @@ export default function ChildProfile() {
                   <button
                     type="button"
                     data-testid="profile-remember-keep"
-                    data-primary-move={i === 0 ? "approve-memory" : undefined}
+                    {...(i === 0 ? APPROVE_MOVE : {})}
                     disabled={isMemoryUpdating === m.memoryId}
                     onClick={() => { void decide(m.memoryId, "approved"); }}
                     className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-4 text-sm font-extrabold"

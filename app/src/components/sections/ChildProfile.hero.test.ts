@@ -33,11 +33,15 @@ describe("GP-15 — the hero CTA is the contract's primary move", () => {
   it("with pending facts the stamped control is Keep on this page; otherwise it adds a fact", () => {
     const band = src.slice(src.indexOf('data-module="profile-remember"'), src.indexOf("</section>", src.indexOf('data-module="profile-remember"')));
     expect(band).toContain('data-testid="profile-remember-keep"');
-    expect(band).toMatch(/data-primary-move=\{i === 0 \? "approve-memory" : undefined\}/);
+    expect(band).toContain("{...(i === 0 ? APPROVE_MOVE : {})}");
     expect(band).toContain('void decide(m.memoryId, "approved")');
     expect(src).toMatch(/const ok = await handleMemoryDecision\(memoryId, status\);/);
     expect(hero).toContain('data-testid="profile-hero-cta"');
-    expect(hero).toMatch(/data-primary-move="approve-memory"\s+onClick=\{\(\) => setEditingProfile\(true\)\}/);
+    expect(hero).toMatch(/\{\.\.\.APPROVE_MOVE\}\s+onClick=\{\(\) => setEditingProfile\(true\)\}/);
+    // one declaration, spread into the three mutually exclusive states (framework-check: exactly 1 stamp)
+    expect(src).toContain('const APPROVE_MOVE = { "data-primary-move": "approve-memory" } as const;');
+    expect(src.match(/data-primary-move/g)?.length).toBe(1);
+    expect(src).not.toMatch(/<div[^>]*\{\.\.\.APPROVE_MOVE\}/);
     expect(hero).toContain('t("elev.growthTruth.profile.cta.addFact", { name: first })');
     // no stamped control routes away
     expect(src).not.toMatch(/data-primary-move="approve-memory"[^>]*setActiveTab\("memory"\)/);
