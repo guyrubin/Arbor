@@ -167,6 +167,19 @@ export function clearJourneyMemo(): void {
   journeyMemo.clear();
 }
 
+/** Remember today's personalised render (key carries the story language). */
+export function rememberJourney(key: string, render: HeroJourneyRender): void {
+  journeyMemo.set(key, render);
+}
+
+/** B-KID-121: a saved run is restored only in the language it was written in.
+ *  A story read in English and reopened with the app in Hebrew does not show
+ *  the English run: the book opens in Hebrew (authored text at once in Kid
+ *  Mode, a new personalised run requested as usual). */
+export function runRestorable(run: { language?: string }, storyLang: "en" | "he"): boolean {
+  return (run.language === "he" ? "he" : "en") === storyLang;
+}
+
 /**
  * B-KID-124 (B-KID-10, P0) — what a Kid Mode book opens on, AT ONCE: today's
  * personalised render when it is already memoised, else the authored text in
@@ -259,7 +272,10 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   // B-KID-124: a pinned book in Kid Mode is open on the FIRST paint - the
   // authored text (or today's memoised personalised run) in the story language,
   // never the catalogue grid while a model call runs. Computed once per mount.
-  const kidTellLang: "en" | "he" = aiLang === "he" ? "he" : "en";
+  // B-KID-121: a book is told in the STORY language (Hebrew when the UI or the
+  // story language is Hebrew) - the same language that lists it - so a Hebrew
+  // UI never opens an English run.
+  const kidTellLang: "en" | "he" = storyLang;
   const kidArtTheme = (story: HeroStorySpec) =>
     childProfile.avatar && (childProfile as unknown as { photoUrl?: string }).photoUrl?.startsWith("data:") ? (STORY_COMIC[story.id]?.theme ?? story.theme) : undefined;
   const kidPinInit = useRef<{ story: HeroStorySpec; refused: boolean; render?: HeroJourneyRender; personalised?: boolean; lang: "en" | "he" } | null | undefined>(undefined);
@@ -404,19 +420,20 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
     setStoryResting(false);
     try {
       // KID-25: a second Play of tonight's story makes NO network call.
-      const memoKey = journeyMemoKey(childProfile.id, story.id, aiLang, dayKey(new Date()));
+      // B-KID-121: the memo, the request and the render all carry the story language.
+      const memoKey = journeyMemoKey(childProfile.id, story.id, storyLang, dayKey(new Date()));
       const memoed = journeyMemo.get(memoKey);
       const r = memoed ?? await api.generateHeroJourney({
         storyId: story.id,
         childName: childProfile.name,
         age: childProfile.age,
-        language: aiLang,
+        language: storyLang,
       });
-      if (!memoed) journeyMemo.set(memoKey, r);
+      if (!memoed) rememberJourney(memoKey, r);
       startedAtRef.current = new Date().toISOString();
       setActiveStory(story);
       setRender(r);
-      setRenderLang(aiLang === "he" ? "he" : "en");
+      setRenderLang(storyLang);
       setSceneIndex(0);
       setChoiceId(undefined);
       setQuestionsChecked({});
@@ -427,13 +444,13 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
       const msg = e instanceof Error ? e.message : "Failed to start the journey.";
       // B-KID-45 (KB-02): a child with a hero keeps the page art on the
       // authored fallback (the story's comic theme + the beat spine).
-      const fallback = authoredJourneyRender(story, aiLang, heroAvatarUrl ? (STORY_COMIC[story.id]?.theme ?? story.theme) : undefined, storyHero);
+      const fallback = authoredJourneyRender(story, storyLang, heroAvatarUrl ? (STORY_COMIC[story.id]?.theme ?? story.theme) : undefined, storyHero);
       // B-KID-33: the fallback is NOT memoised for the day — the next open asks
       // again (one call), it never replays a refusal or a crash.
       startedAtRef.current = new Date().toISOString();
       setActiveStory(story);
       setRender(fallback);
-      setRenderLang(aiLang === "he" ? "he" : "en");
+      setRenderLang(storyLang);
       setSceneIndex(0);
       setChoiceId(undefined);
       setQuestionsChecked({});
@@ -473,7 +490,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
     const memoKey = journeyMemoKey(childProfile.id, story.id, lang, dayKey(new Date()));
     api.generateHeroJourney({ storyId: story.id, childName: childProfile.name, age: childProfile.age, language: lang })
       .then((r) => {
-        journeyMemo.set(memoKey, r);
+        rememberJourney(memoKey, r);
         if (!kidLateRenderApplies({ openSeq: kidOpenSeq.current, requestSeq: seq, pageMoved: kidPageMoved.current, narrationSpoken: kidNarrationSpoken.current })) return;
         setRender(r);
       })
@@ -540,7 +557,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   // effect and an onRetry, one synchronous call away from a TDZ white screen.
   const coverPageArgs = () => activeStory && render && heroAvatarUrl ? {
     storyId: activeStory.id,
-    lang: aiLang,
+    lang: renderLang,
     heroName: childProfile.name?.split(" ")[0] ?? "",
     heroDataUrl: heroAvatarUrl,
     style: heroAvatarStyle,
@@ -590,7 +607,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
     if (!activeStory || !render || !heroAvatarUrl) return;
     drawCover();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeStory?.id, heroAvatarUrl, aiLang]);
+  }, [activeStory?.id, heroAvatarUrl, renderLang]);
 
   const saveStoryAsComic = async () => {
     if (!activeStory || !render || !heroAvatarUrl) return;
@@ -617,7 +634,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
       // `<storyId>:journey`) — it no longer overwrites a parent-built book.
       kind: "journey",
       title: render.title || activeStory.title,
-      lang: aiLang,
+      lang: renderLang,
       pageUrls: [],
       createdAt: new Date().toISOString(),
       pageKeys: keys,
@@ -655,7 +672,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
       id: `run-${Date.now()}`,
       storyId: activeStory.id,
       title: render.title || activeStory.title,
-      language: aiLang,
+      language: renderLang,
       startedAt: startedAtRef.current || new Date().toISOString(),
       completedAt: new Date().toISOString(),
       choiceId,
@@ -702,6 +719,12 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   const replay = (run: HeroJourneyRun) => {
     const story = getStorySpec(run.storyId);
     if (!story) return;
+    // B-KID-121: a run written in another language is not restored.
+    if (!runRestorable(run, storyLang)) {
+      if (kidMode) openKidBook(story, false);
+      else void startJourney(story);
+      return;
+    }
     startedAtRef.current = run.startedAt;
     setActiveStory(story);
     setRender(run.render);
@@ -713,6 +736,16 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
     setFinishing(false);
     finishingRef.current = false;
   };
+
+  // B-KID-121: the app language changed under an open book - its words are in
+  // the old language, so the book reopens in the story language (Kid Mode: at
+  // once on the authored text; parent: generate-then-open as before).
+  useEffect(() => {
+    if (!activeStory || !render || renderLang === storyLang) return;
+    if (kidMode) openKidBook(activeStory, false);
+    else void startJourney(activeStory);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storyLang]);
 
   const exitJourney = () => {
     kidOpenSeq.current += 1; // B-KID-124: a late personalised render lands nowhere

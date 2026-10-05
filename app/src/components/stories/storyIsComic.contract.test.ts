@@ -51,7 +51,7 @@ describe("HeroJourneyTab — cover, shelf save, child ending", () => {
     expect(tab).toContain("pageIndex: 0,\n    cover: true as const,");
     // a cover that failed at start gets exactly one more try at finish
     expect(tab).toContain("if (!comicPageKeys.current.has(0)) {");
-    expect(tab).toContain("}, [activeStory?.id, heroAvatarUrl, aiLang]);");
+    expect(tab).toContain("}, [activeStory?.id, heroAvatarUrl, renderLang]);"); // B-KID-121 re-pin: the cover follows the render's language
   });
 
   it("saves the book only when the cover and every illustrated beat resolved — never a book that cannot open", () => {

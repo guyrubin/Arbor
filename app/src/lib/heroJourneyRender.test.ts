@@ -146,6 +146,6 @@ describe("B-KID-76 (a): the authored text names the child as the hero", () => {
   it("the reader passes the child (name + gender) to the authored fallback", () => {
     const tab = readFileSync(path.resolve(__dirname, "..", "components", "tabs", "HeroJourneyTab.tsx"), "utf8");
     expect(tab).toContain("({ name: childProfile.name, gender: childProfile.gender })");
-    expect(tab).toMatch(/authoredJourneyRender\(story, aiLang, [^\n]*, storyHero\)/);
+    expect(tab).toMatch(/authoredJourneyRender\(story, storyLang, [^\n]*, storyHero\)/); // B-KID-121 re-pin
   });
 });

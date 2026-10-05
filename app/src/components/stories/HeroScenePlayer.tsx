@@ -120,18 +120,19 @@ export function HeroScenePlayer({
   const [retryTick, setRetryTick] = useState(0);
   const { uiLang, aiLang, t } = useLanguage();
   const effectiveStyle = heroAvatarStyle ?? "comichero";
+  // B-KID-120/121: the text's own language (the render's), never the UI's.
+  const bookLang: "en" | "he" = textLang ?? (aiLang === "he" ? "he" : "en");
   // B-KID-124: read once per render, not a hook (the page is remounted per beat).
   const reducedMotion = typeof window !== "undefined" && Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
   // B-KID-120: the text's own language and direction; the child's name inside
   // it is isolated at display time (a Hebrew name in an English sentence, a
   // Latin name in a Hebrew one), so it never reorders the words around it.
-  const bookLang: "en" | "he" = textLang ?? (aiLang === "he" ? "he" : "en");
   const narration = isolateNameIn(scene.narration, heroName, bookLang);
   const beatTitle = isolateNameIn(scene.title, heroName, bookLang);
   const pageArgs: JourneyPageArgs | undefined = heroAvatarUrl && scene.imagePrompt
     ? {
         storyId: storyId ?? seed,
-        lang: aiLang,
+        lang: bookLang,
         heroName: heroName ?? "",
         heroDataUrl: heroAvatarUrl,
         style: effectiveStyle,

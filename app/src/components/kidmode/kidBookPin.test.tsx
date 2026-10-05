@@ -24,11 +24,11 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import type { ChildProfile } from "../../types";
 
-const lang = vi.hoisted(() => ({ ui: "en" as "en" | "he" }));
+const lang = vi.hoisted(() => ({ ui: "en" as "en" | "he", ai: null as null | "en" | "he" }));
 const apiCalls = vi.hoisted(() => ({ n: 0 }));
 const child = vi.hoisted(() => ({ profile: null as unknown }));
 
-vi.mock("../../context/LanguageContext", () => ({ useLanguage: () => ({ uiLang: lang.ui, aiLang: lang.ui, t: (k: string) => k }) }));
+vi.mock("../../context/LanguageContext", () => ({ useLanguage: () => ({ uiLang: lang.ui, aiLang: lang.ai ?? lang.ui, t: (k: string) => k }) }));
 vi.mock("../../context/ArborContext", () => ({
   useArbor: () => ({ childProfile: child.profile, behaviorLogs: [], setActiveTab: () => {} }),
   useArborOptional: () => ({ childProfile: child.profile }),
@@ -40,7 +40,7 @@ vi.mock("../../lib/kidModeGate", () => ({ isKidModeActive: () => true, subscribe
 vi.mock("../../lib/tts", () => ({ stopSpeaking: vi.fn() }));
 vi.mock("../../lib/voice", () => ({ speakText: vi.fn(() => 0), stopVoice: vi.fn(), voiceSupported: () => false }));
 
-import HeroJourneyTab, { kidBookOpening, kidLateRenderApplies, kidPinKey } from "../tabs/HeroJourneyTab";
+import HeroJourneyTab, { kidBookOpening, kidLateRenderApplies, kidPinKey, rememberJourney, journeyMemoKey, clearJourneyMemo, runRestorable } from "../tabs/HeroJourneyTab";
 import { kidBookOpenable, kidBooks } from "./kidBooks";
 import { chooseTonightsStory } from "./tonightsStory";
 import { HERO_STORIES, getStorySpec } from "../../lib/heroJourneys";
@@ -133,4 +133,31 @@ describe("B-KID-124: every listed book passes the pin's own gate (EN + HE, ages 
       });
     }
   }
+});
+
+describe("B-KID-121: a run is restored only in the language it was written in", () => {
+  it("UI in Hebrew with the AI language left on English: the book opens in Hebrew, not the cached English run", () => {
+    clearJourneyMemo();
+    const day = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const today = `${day.getFullYear()}-${pad(day.getMonth() + 1)}-${pad(day.getDate())}`;
+    // Today's ENGLISH personalised run is in memory (opened earlier in English).
+    rememberJourney(journeyMemoKey("child-1", STORY, "en", today), { storyId: STORY, title: "ENGLISH RUN", scenes: [{ beatId: getStorySpec(STORY)!.beats[0].id, title: "x", narration: "ENGLISH PERSONALISED WORDS", imagePrompt: "" }], choices: [], reflection: { practiced: [], questions: [] } });
+    lang.ui = "he"; lang.ai = "en";
+    child.profile = profile(6, "דנה");
+    const html = renderToStaticMarkup(<HeroJourneyTab initialStoryId={STORY} pinNonce={1} />);
+    expect(html).not.toContain("ENGLISH PERSONALISED WORDS");
+    expect(html).toMatch(/<p lang="he" dir="rtl"[^>]*data-kid-book-text/);
+    lang.ui = "en"; lang.ai = null;
+    // The same run in English opens in English.
+    child.profile = profile(6);
+    const en = renderToStaticMarkup(<HeroJourneyTab initialStoryId={STORY} pinNonce={1} />);
+    expect(en).toContain("ENGLISH PERSONALISED WORDS");
+    clearJourneyMemo();
+  });
+  it("a saved run in another language is not restored", () => {
+    expect(runRestorable({ language: "en" }, "he")).toBe(false);
+    expect(runRestorable({ language: "he" }, "he")).toBe(true);
+    expect(runRestorable({ language: "en" }, "en")).toBe(true);
+  });
 });

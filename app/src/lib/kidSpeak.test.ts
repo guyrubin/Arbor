@@ -263,12 +263,12 @@ describe("KID-25 — a second Play of the same story makes no network call", () 
     expect(memoAt).toBeGreaterThan(-1);
     expect(apiAt).toBeGreaterThan(memoAt);
     expect(hero).toContain("const r = memoed ?? await api.generateHeroJourney({");
-    expect(hero).toContain("if (!memoed) journeyMemo.set(memoKey, r);");
+    expect(hero).toContain("if (!memoed) rememberJourney(memoKey, r);"); // B-KID-121 re-pin: one writer
   });
 
   it("the key is (child, story, language, local day)", () => {
     expect(hero).toContain(
-      "journeyMemoKey(childProfile.id, story.id, aiLang, dayKey(new Date()))",
+      "journeyMemoKey(childProfile.id, story.id, storyLang, dayKey(new Date()))", // B-KID-121 re-pin
     );
   });
 
