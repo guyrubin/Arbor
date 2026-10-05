@@ -64,7 +64,7 @@ import { PageHeader, cardCls } from "../ui/kit";
 import { T, METRIC_VARS } from "../../lib/tokens";
 import { fmtDay } from "../../lib/formatDate";
 import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
-import { authoredChoice, authoredScene, completeRender } from "../../lib/heroJourneyRender";
+import { authoredChoice, authoredScene, completeRender, type StoryHero } from "../../lib/heroJourneyRender";
 import { DecisionChoices } from "../stories/DecisionChoices";
 
 /** Comic-world skin per pack — bg + ink token + bilingual label (matches the
@@ -116,14 +116,15 @@ const STORY_ART: Record<string, { emoji: string; sfx: string; sfxHe: string }> =
 /** Immediate, authored, provider-free render. Used only when the personalized
  * route is unavailable; preserves all eight beats, localized copy and exact
  * authored choice consequences without adding any generation. */
-export function authoredJourneyRender(story: HeroStorySpec, lang: "en" | "he", artTheme?: string): HeroJourneyRender {
+export function authoredJourneyRender(story: HeroStorySpec, lang: "en" | "he", artTheme?: string, hero?: StoryHero): HeroJourneyRender {
   const he = lang === "he";
   const decision = story.beats.find((beat) => beat.id === "decision");
   return {
     storyId: story.id,
     title: he ? story.titleHe : story.title,
-    scenes: story.beats.map((beat) => authoredScene(beat, lang, artTheme)),
-    choices: (decision?.choices ?? []).map((choice) => authoredChoice(choice, lang)),
+    // B-KID-76 (a): the authored words name the child as the hero.
+    scenes: story.beats.map((beat) => authoredScene(beat, lang, artTheme, hero)),
+    choices: (decision?.choices ?? []).map((choice) => authoredChoice(choice, lang, hero)),
     reflection: {
       practiced: he ? (story.parentReflection.practicedHe ?? story.parentReflection.practiced) : story.parentReflection.practiced,
       questions: he ? (story.parentReflection.questionsHe ?? story.parentReflection.questions) : story.parentReflection.questions,
@@ -275,9 +276,11 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
   // model drops or reorders a beat.
   // B-KID-23 F-1: a beat or choice the model dropped is filled from the
   // authored story in the render's language (aiLang), never the English spine.
+  // B-KID-76 (a): the child the authored text names as its hero.
+  const storyHero = useMemo<StoryHero>(() => ({ name: childProfile.name, gender: childProfile.gender }), [childProfile.name, childProfile.gender]);
   const { scenes, choices } = useMemo(
-    () => (activeStory && render ? completeRender(activeStory, render, aiLang === "he" ? "he" : "en") : { scenes: [] as HeroSceneRender[], choices: [] as HeroChoiceRender[] }),
-    [activeStory, render, aiLang],
+    () => (activeStory && render ? completeRender(activeStory, render, aiLang === "he" ? "he" : "en", storyHero) : { scenes: [] as HeroSceneRender[], choices: [] as HeroChoiceRender[] }),
+    [activeStory, render, aiLang, storyHero],
   );
 
   const beat = activeStory?.beats[sceneIndex];
@@ -325,7 +328,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
       const msg = e instanceof Error ? e.message : "Failed to start the journey.";
       // B-KID-45 (KB-02): a child with a hero keeps the page art on the
       // authored fallback (the story's comic theme + the beat spine).
-      const fallback = authoredJourneyRender(story, aiLang, heroAvatarUrl ? (STORY_COMIC[story.id]?.theme ?? story.theme) : undefined);
+      const fallback = authoredJourneyRender(story, aiLang, heroAvatarUrl ? (STORY_COMIC[story.id]?.theme ?? story.theme) : undefined, storyHero);
       // B-KID-33: the fallback is NOT memoised for the day — the next open asks
       // again (one call), it never replays a refusal or a crash.
       startedAtRef.current = new Date().toISOString();

@@ -50,7 +50,8 @@ describe("OBJ-KID-04 — the Hero Story Play failure answers the child", () => {
     // UX26-38 (22 Sep 2026): a failed generation no longer parks the child on a
     // resting screen — the authored catalog story renders instead, silently.
     // B-KID-45: the fallback keeps its art for a child with a hero.
-    expect(body).toContain("const fallback = authoredJourneyRender(story, aiLang, heroAvatarUrl ? (STORY_COMIC[story.id]?.theme ?? story.theme) : undefined);");
+    // B-KID-76 (a): the fallback names the child as the hero (storyHero).
+    expect(body).toContain("const fallback = authoredJourneyRender(story, aiLang, heroAvatarUrl ? (STORY_COMIC[story.id]?.theme ?? story.theme) : undefined, storyHero);");
     expect(body).toContain("setRender(fallback);");
     expect(body).toContain('if (!kidMode) toast(msg, "error");');
     // The toast call is REACHABLE only through the else — never on its own line.

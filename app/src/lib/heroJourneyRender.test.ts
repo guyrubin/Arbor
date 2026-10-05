@@ -8,7 +8,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { authoredChoice, authoredScene, completeRender } from "./heroJourneyRender";
+import { authoredChoice, authoredScene, completeRender, nameTheHero } from "./heroJourneyRender";
 import { getStorySpec } from "./heroJourneys";
 import type { HeroJourneyRender } from "../types";
 
@@ -67,11 +67,11 @@ describe("B-KID-23 F-1: the reader completes a partial render in the story's lan
   });
   it("the reader uses the one helper for scenes, the chosen consequence and the Decision list", () => {
     const tab = readFileSync(path.resolve(__dirname, "..", "components", "tabs", "HeroJourneyTab.tsx"), "utf8");
-    expect(tab).toContain('completeRender(activeStory, render, aiLang === "he" ? "he" : "en")');
+    expect(tab).toContain('completeRender(activeStory, render, aiLang === "he" ? "he" : "en", storyHero)');
     expect(tab).toContain("const chosen = choices.find((c) => c.id === choiceId);");
     expect(tab).not.toContain("narration: b.spine");
     expect(tab).not.toContain("render?.choices.map(");
-    expect(tab).toContain("scenes: story.beats.map((beat) => authoredScene(beat, lang, artTheme)),");
+    expect(tab).toContain("scenes: story.beats.map((beat) => authoredScene(beat, lang, artTheme, hero)),");
   });
 });
 
@@ -85,5 +85,66 @@ describe("B-KID-45 (KB-02): the authored fallback keeps its art", () => {
   });
   it("without one (no hero) the scene stays art-less, as before", () => {
     expect(authoredScene(david.beats[0], "en").imagePrompt).toBe("");
+  });
+});
+
+describe("B-KID-76 (a): the authored text names the child as the hero", () => {
+  const dana = { name: "Dana Cohen", gender: "boy" as const };
+  it("EN: sentence-initial, mid-sentence, possessive and the authored epithets become the first name", () => {
+    expect(authoredScene(david.beats[0], "en", undefined, dana).narration).toBe("Dana is a small shepherd who hears that a giant named Goliath is frightening everyone in the valley.");
+    expect(authoredScene(david.beats.find((b) => b.id === "fear")!, "en", undefined, dana).narration).toBe("Dana's heart pounds — Goliath is enormous and Dana is so small. Fear says 'you can't'.");
+    expect(nameTheHero("everyone watches what the small hero does next.", "en", dana)).toBe("everyone watches what Dana does next.");
+    expect(nameTheHero("At dusk, the child hero notices", "en", dana)).toBe("At dusk, Dana notices");
+    expect(nameTheHero("thank the dependable little hero.", "en", dana)).toBe("thank Dana.");
+    // never the indefinite, the plural or another word
+    expect(nameTheHero("a hero with a new name; heroes; the heroine", "en", dana)).toBe("a hero with a new name; heroes; the heroine");
+  });
+  it("HE: הגיבור with its prefix letters becomes the name; the indefinite and plural stay", () => {
+    const he = { name: "דנה", gender: "unspecified" as const };
+    expect(authoredScene(david.beats[0], "he", undefined, he).narration).toBe("דנה הוא רועה צאן קטן. הוא שומע שענק בשם גוליית מפחיד את כל מי שגר בעמק.");
+    expect(nameTheHero("הלב של הגיבור דופק. והגיבור קם, כשהגיבור הולך, מריעים לגיבור הקטן שהגיבור", "he", he))
+      .toBe("הלב של דנה דופק. ודנה קם, כשדנה הולך, מריעים לדנה הקטן שדנה");
+    expect(nameTheHero("הגיבור הילד ושלושה חברים", "he", he)).toBe("דנה ושלושה חברים");
+    expect(nameTheHero("גיבור עם שם חדש; קומיקס גיבורים; הגיבורים", "he", he)).toBe("גיבור עם שם חדש; קומיקס גיבורים; הגיבורים");
+    // a Latin-script name in a Hebrew story takes a hyphen after a prefix letter
+    expect(nameTheHero("והגיבור קם", "he", { name: "Dana" })).toBe("ו-Dana קם");
+  });
+  it("every authored Hebrew mention in a whole story is replaced (no stray הגיבור)", () => {
+    const he = { name: "נועם", gender: "boy" as const };
+    for (const b of david.beats) {
+      const n = authoredScene(b, "he", undefined, he).narration;
+      expect(n, b.id).not.toMatch(/(^|[^א-ת])[ושכמ]*[הל]גיבור(?![א-ת])/);
+    }
+    for (const c of david.beats[3].choices!) expect(authoredChoice(c, "he", he).consequence).not.toContain("הגיבור");
+  });
+  it("a nameless child keeps 'the hero' (EN + HE); a girl keeps the authored masculine Hebrew text", () => {
+    expect(authoredScene(david.beats[0], "en", undefined, { name: "" }).narration).toBe(david.beats[0].spine);
+    expect(authoredScene(david.beats[0], "en", undefined, { name: "your child" }).narration).toBe(david.beats[0].spine);
+    expect(authoredScene(david.beats[0], "he").narration).toBe(david.beats[0].spineHe);
+    expect(authoredScene(david.beats[0], "he", undefined, { name: "מיה", gender: "girl" }).narration).toBe(david.beats[0].spineHe);
+    // English for a girl is named (the English text is gender-neutral)
+    expect(authoredScene(david.beats[0], "en", undefined, { name: "Maya", gender: "girl" }).narration.startsWith("Maya is")).toBe(true);
+  });
+  it("B-KID-40 stays: the image prompt never carries the name", () => {
+    for (const b of david.beats) {
+      const s = authoredScene(b, "en", "a comic theme", dana);
+      expect(s.imagePrompt).toBe(`a comic theme — ${b.spine}`);
+      expect(s.imagePrompt).not.toContain("Dana");
+    }
+  });
+  it("the model's own beats are never rewritten; only the authored fill is named", () => {
+    const { scenes, choices } = completeRender(david, partialHe, "he", { name: "דנה" });
+    expect(scenes.find((s) => s.beatId === "fear")!.narration).toBe("טקסט מהמודל.");
+    expect(scenes.find((s) => s.beatId === "call")!.narration.startsWith("דנה")).toBe(true);
+    expect(choices[1].consequence.startsWith("דנה")).toBe(true);
+  });
+  it("NEGATIVE CONTROL: the pre-fix render said 'The hero is a small shepherd' to a named child", () => {
+    expect(david.beats[0].spine.startsWith("The hero is")).toBe(true);
+    expect(authoredScene(david.beats[0], "en", undefined, dana).narration.startsWith("The hero")).toBe(false);
+  });
+  it("the reader passes the child (name + gender) to the authored fallback", () => {
+    const tab = readFileSync(path.resolve(__dirname, "..", "components", "tabs", "HeroJourneyTab.tsx"), "utf8");
+    expect(tab).toContain("({ name: childProfile.name, gender: childProfile.gender })");
+    expect(tab).toMatch(/authoredJourneyRender\(story, aiLang, [^\n]*, storyHero\)/);
   });
 });
