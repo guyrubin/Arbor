@@ -40,6 +40,8 @@ export const en: Record<string, string> = {
   "elev.stat.moments": "moments captured",
   // W2-GROWTH r1 + B-GROWTH-NEW-1E/1F — what Arbor remembers, on Profile.
   "elev.profile.knows.lead": "Arbor remembers:",
+  "elev.profile.knows.leadNamed": "What Arbor knows about {name}:",
+  "elev.profile.identity.langsAsOf": "{langs} (as of {month})",
   "elev.profile.knows.since": "kept since {month}",
   "elev.profile.knows.empty": "Tell Arbor one thing about {name} worth remembering.",
   "elev.profile.remember.title": "What Arbor would like to remember",
@@ -78,6 +80,8 @@ export const he: Record<string, string> = {
   "elev.stat.family": "בני משפחה",
   "elev.stat.moments": "רגעים שנשמרו",
   "elev.profile.knows.lead": "ארבור זוכרת:",
+  "elev.profile.knows.leadNamed": "מה ארבור יודעת על {name}:",
+  "elev.profile.identity.langsAsOf": "{langs} (נכון ל{month})",
   "elev.profile.knows.since": "מאז {month}",
   "elev.profile.knows.empty": "ספרו לארבור דבר אחד על {name} ששווה לזכור.",
   "elev.profile.remember.title": "מה ארבור רוצה לזכור",

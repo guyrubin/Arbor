@@ -79,8 +79,9 @@ describe("#/profile Hebrew page — no Latin chrome (Law 8)", () => {
     const html = renderToStaticMarkup(<ChildProfile />);
     const line = html.slice(html.indexOf('data-testid="profile-identity-line"'), html.indexOf("</p>", html.indexOf('data-testid="profile-identity-line"')));
     expect(line).toContain('<bdi dir="auto">City kindergarten, first year</bdi>');
-    expect(line).toContain('<bdi dir="auto">עברית</bdi>');
-    expect(line.match(/<bdi dir="auto">/g)!.length).toBe(4);
+    // W2-GROWTH r2 (B-33): the languages are ONE segment (with its as-of month when dated).
+    expect(line).toMatch(/<bdi dir="auto">עברית · אנגלית[^<]*<\/bdi>/);
+    expect(line.match(/<bdi dir="auto">/g)!.length).toBe(3);
   });
 });
 
@@ -105,7 +106,8 @@ describe("#/profile — the cut chapter, the count and the knows line", () => {
     const html = renderToStaticMarkup(<ChildProfile />);
     const band = html.slice(0, html.indexOf("</header>"));
     expect(band).toContain('data-testid="profile-knows-line"');
-    expect(band).toContain("Arbor remembers:");
+    // B-GROWTH-NEW-2F: the line names the child.
+    expect(band).toMatch(/What Arbor knows about (⁨)?Dylan(⁩)?:/);
     expect(band).toContain("Dylan answers in Hebrew when tired");
     expect(band).toMatch(/kept since September 2026/);
     expect(band).not.toMatch(/\d+ (child|children|family members?|captured moments)/);
@@ -127,6 +129,26 @@ describe("#/profile — the cut chapter, the count and the knows line", () => {
     expect(html).toContain(translate("he", "elev.profile.remember.notQuite"));
     expect(html).toContain(translate("he", "elev.profile.remember.forget"));
     expect(html.indexOf('data-module="profile-remember"')).toBeLessThan(html.indexOf('data-module="profile-who"'));
+  });
+  it("W2-GROWTH r2 (P0): the first fold is identity → working on → the first pending fact's Keep; nothing else sits above Keep (EN + HE)", () => {
+    for (const locale of ["en", "he"] as const) {
+      h.locale = locale;
+      h.pending = [{ memoryId: "p1", fact: "fact 1", status: "pending", createdAt: "2026-10-02T10:00:00.000Z", source: "chat", retention: "90d" }];
+      const html = renderToStaticMarkup(<ChildProfile />);
+      const keep = html.indexOf('data-testid="profile-remember-keep"');
+      const above = html.slice(0, keep);
+      expect(keep).toBeGreaterThan(-1);
+      expect(above).toContain('data-testid="profile-identity-line"');
+      expect(above).toContain('data-testid="profile-goals"');
+      // the knows-line, Ask Arbor and Create hero all sit BELOW the decision
+      expect(above).not.toContain('data-testid="profile-knows-line"');
+      expect(html.indexOf('data-testid="profile-knows-line"')).toBeGreaterThan(keep);
+      expect(above).not.toContain(translate(locale, "cp.askAbout", { name: "Dylan" }));
+      expect(above).not.toContain(translate(locale, "cp.hero.subline"));
+      // at lg the band is a column beside the identity (grid lines mirror in RTL)
+      expect(html).toMatch(/data-testid="profile-fold" class="[^"]*lg:grid lg:grid-cols-2/);
+      expect(html).toMatch(/data-module="profile-remember"[^>]*class="[^"]*lg:col-start-2 lg:row-start-1/);
+    }
   });
 });
 

@@ -144,16 +144,49 @@ export default function ChildProfile() {
 
   // Identity line from REAL data (age · languages · school) — never the mock's
   // hardcoded "Bilingual · Pre-K". Each segment renders as its own bidi island.
+  // W2-GROWTH r2 (B-33): the languages segment carries its as-of month.
   const langNames = childProfile.languages.map((l) => languageName(l, t)).filter(Boolean);
-  const identitySegments = [ageLabel(childProfile, t), ...langNames, childProfile.schoolContext].filter(Boolean) as string[];
+  const langsAsOf = childProfile.factsAsOf?.languages;
+  const langSegment = langNames.length === 0
+    ? ""
+    : langsAsOf
+    ? t("elev.profile.identity.langsAsOf", { langs: langNames.join(" · "), month: factMonthLabel(langsAsOf, uiLang === "he" ? "he" : "en") })
+    : langNames.join(" · ");
+  const identitySegments = [ageLabel(childProfile, t), langSegment, childProfile.schoolContext].filter(Boolean) as string[];
+  const hasPending = pendingQueue.length > 0;
+
+  // B-GROWTH-NEW-1F → B-GROWTH-NEW-2F — the ProfileKnowsLine names the child
+  // ("What Arbor knows about {name}:"), then one fact the parent kept, in their
+  // own words, "— kept since {month}". No count, no bar. W2-GROWTH r2 (P0):
+  // with a fact pending it sits UNDER the pending band — above it, it pushed
+  // Keep behind the tab bar at 375; with nothing pending it closes the header.
+  const knowsLine = latestApproved ? (
+    <div data-testid="profile-knows-line" className="flex items-start gap-3 rounded-[var(--r)] p-4" style={{ background: "var(--arbor-paper-deep)" }}>
+      <span aria-hidden="true" className="mt-2 inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ background: "var(--arbor-clay)" }} />
+      <p className="t-md min-w-0" style={{ fontFamily: "var(--font-editorial)", fontWeight: 400, color: "var(--arbor-ink)" }}>
+        {first ? t("elev.profile.knows.leadNamed", { name: first }) : t("elev.profile.knows.lead")}{" "}
+        <bdi dir="auto">{toParentWords(latestApproved.fact)}</bdi>
+        {latestApproved.createdAt && (
+          <span className="t-sm" style={{ color: "var(--arbor-muted)" }}>
+            {" — "}{t("elev.profile.knows.since", { month: factMonthLabel(latestApproved.createdAt, uiLang === "he" ? "he" : "en") })}
+          </span>
+        )}
+      </p>
+    </div>
+  ) : null;
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1180px] space-y-6">
-      {/* W2-GROWTH r1 + B-GROWTH-NEW-1E/1F — identity ONCE, then what Arbor
-          remembers, then (when anything waits) the pending facts with Keep on
-          this page. Cut: the telemetry row ("1 child · 1 family member · 17
-          captured moments") — moment counts belong to Journal (CN-007). */}
-      <header data-module="profile-identity" data-testid="profile-hub-hero" className="border-b pb-5" style={{ borderColor: "var(--arbor-rule)" }}>
+      {/* W2-GROWTH r2 — the first fold in the lane's order: identity line (age
+          · languages as of {month} · school), What we're working on, then (when
+          anything waits) What Arbor would like to remember with Keep. Ask Arbor
+          moved to the jump strip (a door), Create hero into the Who chapter,
+          the album-count kicker is gone (lib/pulse). Cut in r1: the telemetry
+          row — moment counts belong to Journal (CN-007). At lg the band is a
+          sticky column beside the identity; grid lines follow the writing
+          direction, so RTL mirrors with no extra rule. */}
+      <div data-testid="profile-fold" className={hasPending ? "space-y-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-8 lg:space-y-0" : "space-y-6"}>
+      <header data-module="profile-identity" data-testid="profile-hub-hero" className="border-b pb-5 lg:col-start-1 lg:row-start-1" style={{ borderColor: "var(--arbor-rule)" }}>
         <div className="flex items-center gap-4">
           <HeroAvatar size={56} mood="wave" decorative />
           <div className="min-w-0">
@@ -171,36 +204,6 @@ export default function ChildProfile() {
             </p>
           </div>
         </div>
-        {/* B-GROWTH-NEW-1F — ProfileKnowsLine: one fact the parent kept, in
-            their own words, with the month it was kept. No count, no bar. */}
-        {latestApproved ? (
-          <div data-testid="profile-knows-line" className="mt-4 flex items-start gap-3 rounded-[var(--r)] p-4" style={{ background: "var(--arbor-paper-deep)" }}>
-            <span aria-hidden="true" className="mt-2 inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ background: "var(--arbor-clay)" }} />
-            <p className="t-md min-w-0" style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink)" }}>
-              {t("elev.profile.knows.lead")}{" "}
-              <bdi dir="auto">{toParentWords(latestApproved.fact)}</bdi>
-              {latestApproved.createdAt && (
-                <span className="t-sm" style={{ color: "var(--arbor-muted)" }}>
-                  {" — "}{t("elev.profile.knows.since", { month: factMonthLabel(latestApproved.createdAt, uiLang === "he" ? "he" : "en") })}
-                </span>
-              )}
-            </p>
-          </div>
-        ) : pendingQueue.length === 0 ? (
-          <button
-            type="button"
-            data-testid="profile-hero-cta"
-            // Zero pending (the contract's empty state): the approve-memory move
-            // is "tell Arbor one thing" — it opens the drawer where facts live.
-            {...APPROVE_MOVE}
-            onClick={() => setEditingProfile(true)}
-            className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-start text-sm font-bold"
-            style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}
-          >
-            <Icon name="edit" size={16} />
-            {t("elev.profile.knows.empty", { name: first })}
-          </button>
-        ) : null}
         {/* What we're working on — the parent's chosen goals (B-CAREPRO-29),
             above the fold with the identity, one tap to choose. */}
         <div className="mt-4">
@@ -229,15 +232,28 @@ export default function ChildProfile() {
             />
           )}
         </div>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          {latestApproved && pendingQueue.length === 0 && (
-            <button type="button" data-testid="profile-hero-cta" {...APPROVE_MOVE} onClick={() => setEditingProfile(true)} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold" style={{ color: "var(--arbor-clay)" }}>
-              <Icon name="edit" size={16} /> {t("elev.growthTruth.profile.cta.addFact", { name: first })}
-            </button>
-          )}
-          <button onClick={() => setActiveTab("coach")} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold" style={{ color: "var(--arbor-clay)" }}><Icon name="auto_awesome" size={16} /> {t("cp.askAbout", { name: first })}</button>
-        </div>
-        {!hasHero && <button onClick={() => setEditingProfile(true)} className="mt-2 block min-h-11 text-start text-sm font-bold" style={{ color: "var(--arbor-clay)" }}><Icon name="auto_awesome" size={16} className="inline-block me-1" />{t("cp.hero.create", { name: heroName })}<span className="block text-xs font-normal" style={{ color: "var(--arbor-muted)" }}>{t("cp.hero.subline")}</span></button>}
+        {/* Nothing pending: the knows-line closes the header, then the
+            approve-memory move in its zero-pending shape. */}
+        {!hasPending && knowsLine && <div className="mt-4">{knowsLine}</div>}
+        {!hasPending && (latestApproved ? (
+          <button type="button" data-testid="profile-hero-cta" {...APPROVE_MOVE} onClick={() => setEditingProfile(true)} className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold" style={{ color: "var(--arbor-clay)" }}>
+            <Icon name="edit" size={16} /> {t("elev.growthTruth.profile.cta.addFact", { name: first })}
+          </button>
+        ) : (
+          <button
+            type="button"
+            data-testid="profile-hero-cta"
+            // Zero pending (the contract's empty state): the approve-memory move
+            // is "tell Arbor one thing" — it opens the drawer where facts live.
+            {...APPROVE_MOVE}
+            onClick={() => setEditingProfile(true)}
+            className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-start text-sm font-bold"
+            style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}
+          >
+            <Icon name="edit" size={16} />
+            {t("elev.profile.knows.empty", { name: first })}
+          </button>
+        ))}
       </header>
 
       {/* B-GROWTH-NEW-1E — What Arbor would like to remember: the first
@@ -246,8 +262,8 @@ export default function ChildProfile() {
           handleMemoryDecision seam #/memory uses); Not quite opens the full
           review where a fact is edited; Forget dismisses it. The first Keep is
           the route's stamped approve-memory and its one gradient. */}
-      {pendingQueue.length > 0 && (
-        <section data-module="profile-remember" aria-labelledby="profile-remember-title" className="space-y-3">
+      {hasPending && (
+        <section data-module="profile-remember" aria-labelledby="profile-remember-title" className="space-y-3 lg:sticky lg:top-4 lg:col-start-2 lg:row-start-1">
           <h2 id="profile-remember-title" className="text-lg font-semibold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
             {t("elev.profile.remember.title")}
           </h2>
@@ -293,8 +309,11 @@ export default function ChildProfile() {
               <Icon name="chevron_right" size={16} className="rtl:rotate-180" />
             </button>
           )}
+          {/* The knows-line sits under the decision, never above it. */}
+          {knowsLine}
         </section>
       )}
+      </div>
 
       {/* Chapter 1 — who {first} is */}
       <section data-module="profile-who" aria-label={t("elev.wave2Knowledge.profile.facts")}>
@@ -329,6 +348,9 @@ export default function ChildProfile() {
           </div>
         </div>
         <button onClick={() => setEditingProfile(true)} className="mt-3 min-h-11 text-sm font-bold" style={{ color: "var(--arbor-green-ink)" }}><Icon name="edit" size={16} className="inline-block me-1" />{t("elev.wave2Knowledge.profile.edit")}</button>
+        {/* W2-GROWTH r2: Create hero left the identity header (it pushed the
+            pending Keep under the tab bar at 375); it lives in the Who chapter. */}
+        {!hasHero && <button onClick={() => setEditingProfile(true)} className="mt-2 block min-h-11 text-start text-sm font-bold" style={{ color: "var(--arbor-clay)" }}><Icon name="auto_awesome" size={16} className="inline-block me-1" />{t("cp.hero.create", { name: heroName })}<span className="block text-xs font-normal" style={{ color: "var(--arbor-muted)" }}>{t("cp.hero.subline")}</span></button>}
         {/* B-GROWTH-05 — Measurements (spine domain 7): the parent-logged
             growthEntries log, moved off the Growth hub. The UNCHANGED card,
             closed by default; the pediatrician packet still reads the same
@@ -503,6 +525,8 @@ export default function ChildProfile() {
         {([
           { tab: "timeline" as const, tone: "sky" as const, icon: <Icon name="route" size={18} />, label: t("cp.footer.story", { name: first }) },
           { tab: "behaviors" as const, tone: "coral" as const, icon: <Icon name="monitoring" size={18} />, label: t("cp.footer.moments") },
+          // W2-GROWTH r2: Ask Arbor is a door — it left the identity header.
+          { tab: "coach" as const, tone: "lav" as const, icon: <Icon name="auto_awesome" size={18} />, label: t("cp.askAbout", { name: first }) },
           // OBJ-PROFILE-03: the memory door was rendered twice on one screen —
           // chapter 6 IS "what Arbor remembers" and carries its own review
           // link, so this footer tile was a second door to the same room.

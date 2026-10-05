@@ -95,9 +95,17 @@ describe("W2 — a useful identity header", () => {
     expect(src.indexOf('data-module="profile-who"')).toBeLessThan(src.indexOf('t("cp.family.title")'));
   });
   it("keeps edit, Ask, and the existing drawer creation seam reachable", () => {
-    expect(src).toContain('setActiveTab("coach")');
+    // W2-GROWTH r2: Ask Arbor is a door in the jump strip, not a header action.
+    expect(src).toContain('{ tab: "coach" as const');
+    const header = src.slice(src.indexOf('data-module="profile-identity"'), src.indexOf("</header>"));
+    expect(header).toBeTruthy();
+    expect(header).not.toContain('"coach"');
+    expect(header).not.toContain("!hasHero");
     expect(src).toContain('t("elev.wave2Knowledge.profile.edit")');
-    const create = hero.slice(hero.indexOf("!hasHero"));
+    // Create hero lives in the Who chapter now (W2-GROWTH r2).
+    const who = src.slice(src.indexOf('data-module="profile-who"'));
+    expect(who.indexOf("!hasHero")).toBeGreaterThan(-1);
+    const create = who.slice(who.indexOf("!hasHero"), who.indexOf("!hasHero") + 400);
     expect(create).toContain("setEditingProfile(true)");
     expect(create).not.toContain('setActiveTab("profile")');
     expect(src).toContain("<ProfileEditDrawer");
