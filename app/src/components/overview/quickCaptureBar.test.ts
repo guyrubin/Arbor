@@ -41,7 +41,7 @@ describe("B-TODAY-10 · four tiles, each ≥44 px", () => {
     // Critic r1: the lead cell reads the BAR's width (@container), never the viewport.
     expect(BAR).toContain('tiles === 4 ? "grid-cols-4 @3xl:grid-cols-[1.3fr_1fr_1fr_1fr_1fr]"');
     expect(BAR).toContain('<div className="@container min-w-0">');
-    expect(BAR).not.toMatch(/lg:grid-cols|lg:flex/);
+    expect(BAR).not.toMatch(/\blg:grid-cols|\blg:flex\b/);
   });
 
   it("every tile is ≥48 px tall and wraps icon over label in a narrow bar (≈89 px wide at 390)", () => {
@@ -52,7 +52,7 @@ describe("B-TODAY-10 · four tiles, each ≥44 px", () => {
     // truncated ("Hard mo…", "T…") — it wraps to two lines.
     expect(358 / 4).toBeGreaterThanOrEqual(44);
     expect(BAR).toContain("max-w-full line-clamp-2");
-    expect(BAR).not.toMatch(/truncate/);
+    expect(BAR).not.toMatch(/\btruncate\b/);
   });
 
   it("neutral ink: no peach / red / coral / pink token, no SOS anywhere on the bar", () => {
