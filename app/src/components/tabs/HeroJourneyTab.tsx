@@ -26,6 +26,7 @@ import {
 } from "../../lib/heroJourneys";
 import type {
   DevelopmentMetricId,
+  HeroChoiceRender,
   HeroJourneyRender,
   HeroJourneyRun,
   HeroPackId,
@@ -63,6 +64,7 @@ import { PageHeader, cardCls } from "../ui/kit";
 import { T, METRIC_VARS } from "../../lib/tokens";
 import { fmtDay } from "../../lib/formatDate";
 import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
+import { authoredChoice, authoredScene, completeRender } from "../../lib/heroJourneyRender";
 
 /** Comic-world skin per pack — bg + ink token + bilingual label (matches the
  *  Hero Arcade design layer so the Academy reads as the same comic universe). */
@@ -119,17 +121,8 @@ export function authoredJourneyRender(story: HeroStorySpec, lang: "en" | "he"): 
   return {
     storyId: story.id,
     title: he ? story.titleHe : story.title,
-    scenes: story.beats.map((beat) => ({
-      beatId: beat.id,
-      title: he ? (beat.titleHe ?? beat.title) : beat.title,
-      narration: he ? (beat.spineHe ?? beat.spine) : beat.spine,
-      imagePrompt: "",
-    })),
-    choices: (decision?.choices ?? []).map((choice) => ({
-      id: choice.id,
-      label: he ? (choice.labelHe ?? choice.label) : choice.label,
-      consequence: he ? (choice.outcomeHintHe ?? choice.outcomeHint) : choice.outcomeHint,
-    })),
+    scenes: story.beats.map((beat) => authoredScene(beat, lang)),
+    choices: (decision?.choices ?? []).map((choice) => authoredChoice(choice, lang)),
     reflection: {
       practiced: he ? (story.parentReflection.practicedHe ?? story.parentReflection.practiced) : story.parentReflection.practiced,
       questions: he ? (story.parentReflection.questionsHe ?? story.parentReflection.questions) : story.parentReflection.questions,
@@ -279,19 +272,18 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
 
   // Scenes aligned to the fixed spine order, with a graceful fallback if the
   // model drops or reorders a beat.
-  const scenes: HeroSceneRender[] = useMemo(() => {
-    if (!activeStory || !render) return [];
-    return activeStory.beats.map((b) => {
-      const s = render.scenes.find((rs) => rs.beatId === b.id);
-      return s ?? { beatId: b.id, title: b.title, narration: b.spine, imagePrompt: "" };
-    });
-  }, [activeStory, render]);
+  // B-KID-23 F-1: a beat or choice the model dropped is filled from the
+  // authored story in the render's language (aiLang), never the English spine.
+  const { scenes, choices } = useMemo(
+    () => (activeStory && render ? completeRender(activeStory, render, aiLang === "he" ? "he" : "en") : { scenes: [] as HeroSceneRender[], choices: [] as HeroChoiceRender[] }),
+    [activeStory, render, aiLang],
+  );
 
   const beat = activeStory?.beats[sceneIndex];
   const isDecision = beat?.id === "decision";
   const isConsequence = beat?.id === "consequence";
   const isReflection = beat?.id === "reflection";
-  const chosen = render?.choices.find((c) => c.id === choiceId);
+  const chosen = choices.find((c) => c.id === choiceId);
 
   // On the consequence beat, show the chosen choice's tailored outcome text.
   const displayScene: HeroSceneRender | undefined = scenes[sceneIndex]
@@ -570,7 +562,7 @@ export default function HeroJourneyTab({ initialStoryId }: { initialStoryId?: st
         <p className="text-[11px] uppercase tracking-widest font-bold text-center" style={{ color: "var(--arbor-green-ink)" }}>
           {kidsStoriesText("journey.decision", aiLang, { name: childProfile.name })}
         </p>
-        {render?.choices.map((c) => (
+        {choices.map((c) => (
           <button
             key={c.id}
             onClick={() => chooseOption(c.id)}
