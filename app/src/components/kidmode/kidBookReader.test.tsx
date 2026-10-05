@@ -44,9 +44,10 @@ describe("the book page (HeroScenePlayer layout=book)", () => {
   });
   it("the words sit below at the kid scale (>= 18 px), three lines then scroll", () => {
     expect(KID_BOOK_TEXT_PX).toBeGreaterThanOrEqual(18);
-    expect(html).toMatch(/data-kid-book-text=""[^>]*font-size:20px/);
+    // B-KID-133 (D-03) re-pin: the book voice token, floored at KID_BOOK_TEXT_PX (20 px).
+    expect(html).toMatch(/data-kid-book-text=""[^>]*font-size:max\(20px, var\(--kid-t-book\)\)/);
     expect(html).toContain("overflow-y:auto");
-    expect(html).toContain("max-h-[calc(3*1.45em_+_16px)]"); // B-KID-128 re-pin: the 3-line cap is a phone-only class
+    expect(html).toContain("max-h-[calc(3*1.5em_+_16px)]"); // B-KID-128 re-pin: the 3-line cap is a phone-only class (B-KID-133 D-03: book line height 1.5)
     expect(html).toContain(scene.narration);
   });
   it("no meta row in front of the child: no Read aloud button, no Save, no smudged/Redraw page", () => {

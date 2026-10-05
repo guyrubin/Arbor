@@ -59,7 +59,7 @@ export default function KidLibrary({ books, theme, lang, childProfile, loadingId
       ) : (
         <div className="comic-panel flex flex-col items-center gap-3 p-6 text-center" data-testid="kid-library-empty">
           <HeroAvatar size={88} mood="think" animate={false} decorative />
-          <p className="font-black" dir="auto" style={{ fontSize: 18, color: "var(--arbor-ink)" }}>{kidsStoriesText("kidBooks.empty", lang)}</p>
+          <p className="kid-type-label" dir="auto" style={{ color: "var(--arbor-ink)" }}>{kidsStoriesText("kidBooks.empty", lang)}</p>
         </div>
       ))}
       {/* "Made before": the saved comics, after the books, only those that open on this device. */}

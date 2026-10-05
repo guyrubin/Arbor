@@ -139,7 +139,7 @@ export function GameShell({ worldId, title, instruction, hearIt, progress, mood,
             dir="auto"
             data-game-instruction=""
             className="font-extrabold"
-            style={{ margin: 0, fontSize: 18, lineHeight: 1.35, color: "var(--arbor-ink)", background: "var(--arbor-paper-elevated)", border: "var(--comic-line)", borderRadius: 18, paddingInline: 16, paddingBlock: 10, display: "flex", alignItems: "center", gap: 10 }}
+            style={{ margin: 0, fontFamily: "var(--font-sans)", fontWeight: 800, fontSize: "var(--kid-t-say)", lineHeight: 1.3, color: "var(--arbor-ink)", background: "var(--arbor-paper-elevated)", border: "var(--comic-line)", borderRadius: 18, paddingInline: 16, paddingBlock: 10, display: "flex", alignItems: "center", gap: 10 }}
           >
             <span style={{ flex: "1 1 0%", minInlineSize: 0 }}>{instruction}</span>
             {/* B-KID-73: hear-it beside the words it repeats (its own glyph). */}
@@ -169,8 +169,9 @@ export function GameFinish({ title, subtitle, onPlayAgain, playAgainLabel, homeL
   return (
     <div className="text-center py-6 play-pop-in" data-game-finish="">
       <KidFinishMoment childId={childId} kind="world" refId={world} lang={uiLang === "he" ? "he" : "en"} />
-      <h2 className="text-[1.6rem] font-extrabold mt-2" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)", textWrap: "balance" }}>{title}</h2>
-      {subtitle && <p className="mt-1 text-[16px] font-bold" style={{ color: "var(--arbor-ink-soft)" }}>{subtitle}</p>}
+      {/* B-KID-133 (D-03): the finish headline in the toy voice at --kid-t-title. */}
+      <h2 className="kid-type-title mt-2" style={{ color: "var(--arbor-ink)" }}>{title}</h2>
+      {subtitle && <p className="kid-type-label mt-1" style={{ color: "var(--arbor-ink-soft)" }}>{subtitle}</p>}
       <div className="mt-5 flex flex-wrap items-start justify-center gap-4">
         {/* B-KID-133 (D-02): Play again = the GO toy; Home = a paper toy. */}
         <KidToy tone="go" size="l" glyph="replay" onClick={onPlayAgain} data-kid-finish-again="">{playAgainLabel}</KidToy>

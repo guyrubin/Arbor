@@ -46,7 +46,7 @@ export const KID_BOOK_SIDE_CLASS = "kid-page-plate flex min-w-0 flex-col sm:just
  *  1.15), so the hero's face stays in frame. Literal classes (Tailwind scans). */
 export const BEAT_SCALE_CLASS = ["sm:scale-100", "sm:scale-[1.06]", "sm:scale-[1.1]", "sm:scale-[1.04]", "sm:scale-[1.15]", "sm:scale-[1.08]", "sm:scale-[1.03]", "sm:scale-[1.12]"] as const;
 export const KID_BOOK_TEXT_PX = 20;
-export const KID_BOOK_TEXT_LINE = 1.45;
+export const KID_BOOK_TEXT_LINE = 1.5;
 
 /**
  * AVA-3 / S3: scene-art cache. Generated scene images are large data URLs, so they
@@ -286,8 +286,10 @@ export function HeroScenePlayer({
           lang={bookLang}
           dir={langDir(bookLang)}
           data-kid-book-text=""
-          className="font-bold min-h-[calc(3*1.45em_+_16px)] max-h-[calc(3*1.45em_+_16px)] sm:max-h-[50vh] sm:max-w-[32ch]"
-          style={{ margin: 0, paddingInline: 20, paddingBlockStart: 16, fontSize: KID_BOOK_TEXT_PX, lineHeight: KID_BOOK_TEXT_LINE, overflowY: "auto", color: "var(--arbor-ink)", fontFamily: "var(--font-display), Georgia, serif" }}
+          className="min-h-[calc(3*1.5em_+_16px)] max-h-[calc(3*1.5em_+_16px)] sm:max-h-[50vh] sm:max-w-[32ch]"
+          // B-KID-133 (D-03): the book voice — Fraunces / Frank Ruhl 600 at
+          // --kid-t-book (20 px at a phone, 26 px wide), line height 1.5 (HE 1.6).
+          style={{ margin: 0, paddingInline: 20, paddingBlockStart: 16, fontSize: `max(${KID_BOOK_TEXT_PX}px, var(--kid-t-book))`, fontWeight: 600, lineHeight: "var(--kid-book-lh)", overflowY: "auto", color: "var(--arbor-ink)", fontFamily: "var(--font-display), Georgia, serif" }}
         >
           {narration}
         </motion.p>

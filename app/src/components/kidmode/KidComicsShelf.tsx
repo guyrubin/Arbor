@@ -219,7 +219,7 @@ export default function KidComicsShelf({
     if (!partitionReady || !saved.loaded || !probeReady || openableBooks.length === 0) return null;
     return (
       <section className="space-y-3" aria-labelledby="kid-made-before-title" data-testid="kid-made-before">
-        <h2 id="kid-made-before-title" className="font-black" style={{ fontFamily: "var(--font-display)", fontSize: 20, color: "var(--arbor-ink)" }}>
+        <h2 id="kid-made-before-title" className="kid-type-label" style={{ color: "var(--arbor-ink)" }}>
           {kidsStoriesText("kidBooks.madeBefore", aiLang)}
         </h2>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
@@ -242,13 +242,13 @@ export default function KidComicsShelf({
                     <span className="absolute inset-0 grid place-items-center"><HeroAvatar size={74} ring animate={false} decorative /></span>
                   )}
                 </span>
-                <span dir="auto" className="font-black leading-tight line-clamp-2" style={{ fontFamily: "var(--font-display)", fontSize: 15, color: "var(--arbor-ink)" }}>{title}</span>
+                <span dir="auto" className="font-bold leading-tight line-clamp-2" style={{ fontFamily: "var(--font-display)", fontSize: "var(--kid-t-tag)", color: "var(--arbor-ink)" }}>{title}</span>
               </button>
             );
           })}
         </div>
         {unavailableId && (
-          <p role="status" className="text-sm" style={{ color: "var(--arbor-muted)" }}>{kidsStoriesText("shelf.unavailable", aiLang)}</p>
+          <p role="status" className="kid-type-tag" style={{ color: "var(--arbor-muted)" }}>{kidsStoriesText("shelf.unavailable", aiLang)}</p>
         )}
       </section>
     );
@@ -263,8 +263,8 @@ export default function KidComicsShelf({
           </PlayButton>
         )}
         <div>
-          <h2 id="kid-comics-title" className="text-xl font-black" style={{ color: "var(--arbor-ink)" }}>{kidsStoriesText("shelf.title", aiLang)}</h2>
-          <p className="text-sm" style={{ color: "var(--arbor-muted)" }}>{kidsStoriesText("shelf.subtitle", aiLang)}</p>
+          <h2 id="kid-comics-title" className="kid-type-title" style={{ color: "var(--arbor-ink)" }}>{kidsStoriesText("shelf.title", aiLang)}</h2>
+          <p className="kid-type-tag" style={{ color: "var(--arbor-muted)" }}>{kidsStoriesText("shelf.subtitle", aiLang)}</p>
         </div>
       </div>
 
@@ -279,11 +279,11 @@ export default function KidComicsShelf({
               appears here" was a promise that could not come true. */}
           {heroUrl ? (
             <>
-              <p className="font-black" style={{ color: "var(--arbor-ink)" }}>{kidsStoriesText("shelf.empty", aiLang)}</p>
-              <p className="mt-1 text-sm" style={{ color: "var(--arbor-muted)" }}>{kidsStoriesText("shelf.emptyHint", aiLang)}</p>
+              <p className="kid-type-label" style={{ color: "var(--arbor-ink)" }}>{kidsStoriesText("shelf.empty", aiLang)}</p>
+              <p className="kid-type-tag mt-1" style={{ color: "var(--arbor-muted)" }}>{kidsStoriesText("shelf.emptyHint", aiLang)}</p>
             </>
           ) : (
-            <p className="font-black" style={{ color: "var(--arbor-ink)" }}>{kidsStoriesText("shelf.emptyNoHero", aiLang)}</p>
+            <p className="kid-type-label" style={{ color: "var(--arbor-ink)" }}>{kidsStoriesText("shelf.emptyNoHero", aiLang)}</p>
           )}
           {onOpenStories && (
             <div className="mt-4 flex justify-center">
@@ -318,20 +318,20 @@ export default function KidComicsShelf({
                     </div>
                   )}
                   <span
-                    className="absolute bottom-2 inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[14px] font-black"
+                    className="absolute bottom-2 inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[15px] font-extrabold"
                     style={{ insetInlineStart: 8, background: "var(--arbor-paper-elevated)", border: "var(--comic-line)", color: "var(--arbor-ink)" }}
                   >
                     <BookOpen className="h-4 w-4" aria-hidden="true" /> {kidsStoriesText("shelf.read", aiLang)}
                   </span>
                 </div>
-                <h3 className="p-3.5 text-[15px] font-black leading-tight" dir="auto" style={{ color: "var(--arbor-ink)" }}>{title}</h3>
+                <h3 className="kid-type-tag p-3.5 leading-tight" dir="auto" style={{ color: "var(--arbor-ink)" }}>{title}</h3>
               </button>
             );
           })}
         </div>
       )}
       {unavailableId && (
-        <p role="status" className="text-sm" style={{ color: "var(--arbor-muted)" }}>{kidsStoriesText("shelf.unavailable", aiLang)}</p>
+        <p role="status" className="kid-type-tag" style={{ color: "var(--arbor-muted)" }}>{kidsStoriesText("shelf.unavailable", aiLang)}</p>
       )}
     </section>
   );

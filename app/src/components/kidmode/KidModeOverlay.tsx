@@ -336,7 +336,7 @@ export default function KidModeOverlay() {
                   flexShrink: 0,
                   borderRadius: "var(--r)",
                   fontWeight: 800,
-                  fontSize: "var(--t-sm)",
+                  fontSize: "var(--kid-t-tag)",
                   background: "var(--arbor-paper-deep)",
                   color: "var(--arbor-clay)",
                   border: "1px solid var(--arbor-rule)",
@@ -351,11 +351,12 @@ export default function KidModeOverlay() {
               <span
                 data-kid-bar-title=""
                 style={{
-                  fontFamily: "var(--font-display)",
-                  fontWeight: 900,
+                  // B-KID-133 (D-03): toy voice (Nunito / Heebo 800 — 900 is not loaded).
+                  fontFamily: "var(--font-sans)",
+                  fontWeight: 800,
                   // B-KID-53 polish: a story's own title can be long — one step
                   // smaller than the surface label, max 2 lines, then an ellipsis.
-                  fontSize: surfaceTitle ? "var(--t-lg)" : "var(--t-xl)",
+                  fontSize: surfaceTitle ? "var(--kid-t-say)" : "var(--kid-t-title)",
                   lineHeight: 1.15,
                   display: "-webkit-box",
                   WebkitBoxOrient: "vertical",

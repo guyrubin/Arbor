@@ -57,7 +57,7 @@ export function KidBookTitleCard({ title, pack }: { title: string; pack: HeroPac
     <span aria-hidden="true" data-kid-book-titlecard="" style={{ position: "absolute", inset: 0, display: "block", background: tint.page }}>
       <span style={{ position: "absolute", insetBlock: 0, insetInlineStart: 0, inlineSize: 10, background: tint.spine }} />
       <span style={{ position: "absolute", insetBlock: 10, insetInlineStart: 18, insetInlineEnd: 8, display: "grid", placeItems: "center", padding: 10, background: "var(--arbor-paper-elevated)", border: "var(--comic-line)", borderRadius: 12 }}>
-        <span style={{ display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 4, overflow: "hidden", textAlign: "center", fontFamily: "var(--font-display)", fontWeight: 900, fontSize: 17, lineHeight: 1.15, color: "var(--arbor-ink)" }}>
+        <span style={{ display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 4, overflow: "hidden", textAlign: "center", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 17, lineHeight: 1.15, color: "var(--arbor-ink)" }}>
           {title}
         </span>
       </span>
@@ -129,7 +129,7 @@ export function KidBookCover({ storyId, title, pack, theme, read, readLabel, onO
           </span>
         )}
       </span>
-      <span style={{ display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 2, overflow: "hidden", fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 15, lineHeight: 1.2, color: "var(--arbor-ink)" }}>
+      <span style={{ display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 2, overflow: "hidden", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "var(--kid-t-label)", lineHeight: 1.2, color: "var(--arbor-ink)" }}>
         {title}
       </span>
     </button>

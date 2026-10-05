@@ -49,7 +49,7 @@ export function KidCrashFallback({ title, homeLabel, onHome, guide }: { title: s
           provider; the fallback itself needs no context), never an emoji
           glyph and never an error message. */}
       {guide && <span aria-hidden="true" data-kid-crash-sprout="">{guide}</span>}
-      <p style={{ fontFamily: "var(--font-display)", fontWeight: 900, fontSize: "var(--t-xl)", color: "var(--arbor-ink)", margin: 0 }}>
+      <p style={{ fontFamily: "var(--font-sans)", fontWeight: 800, fontSize: "var(--kid-t-title)", color: "var(--arbor-ink)", margin: 0 }}>
         {title}
       </p>
       <button
@@ -65,7 +65,7 @@ export function KidCrashFallback({ title, homeLabel, onHome, guide }: { title: s
           paddingInline: "28px",
           borderRadius: "999px",
           border: "none",
-          fontWeight: 900,
+          fontWeight: 800,
           fontSize: "var(--t-lg)",
           background: "var(--arbor-clay)",
           color: "var(--arbor-on-accent)",

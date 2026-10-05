@@ -55,7 +55,7 @@ describe("B-KID-53: one back control in Kid Mode", () => {
 
 describe("B-KID-53 polish: the reader header fits the phone", () => {
   it("(a) the overlay title steps down for a surface title, max 2 lines + ellipsis", () => {
-    expect(overlay).toContain('fontSize: surfaceTitle ? "var(--t-lg)" : "var(--t-xl)",');
+    expect(overlay).toContain('fontSize: surfaceTitle ? "var(--kid-t-say)" : "var(--kid-t-title)",'); // B-KID-133 (D-03): kid type tokens
     expect(overlay).toContain("WebkitLineClamp: 2,");
   });
   it("(b) Kid Mode has no reader top row; full screen sits in the page meta row", () => {

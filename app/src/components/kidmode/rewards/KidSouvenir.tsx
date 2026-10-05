@@ -97,7 +97,7 @@ export function KidFinishMoment({ childId, kind, refId, lang, hero = true }: { c
         <div className="flex flex-col items-center gap-1 play-pop-in">
           <KidSouvenirSticker kind={kind} refId={refId} size={96} />
           {isNew && (
-            <p dir="auto" data-kid-sticker-new="" className="font-extrabold" style={{ margin: 0, fontSize: 16, color: "var(--arbor-ink)" }}>
+            <p dir="auto" data-kid-sticker-new="" className="kid-type-label" style={{ margin: 0, color: "var(--arbor-ink)" }}>
               {kidsStoriesText("kidReward.newSticker", lang)}
             </p>
           )}
