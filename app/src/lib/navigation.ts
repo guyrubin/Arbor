@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Activity, Languages,
   FileBarChart, Calendar,
   Share2, BookOpen, Sliders, Waypoints, ShieldAlert,
-  Target, Map, School, Moon,
+  Target, Map, School,
   MessageCircle, NotebookPen, UserCircle,
   Clock, ListChecks, BarChart3, Bell,
   Sparkles, Heart, Library,
@@ -229,13 +229,17 @@ export const SECTIONS: NavSection[] = [
     // learning half lives in the LEARN hub.
     items: [
       { tab: "stories", label: "Story Journeys", icon: BookOpen },
-      { tab: "bedtime-stories", label: "Bedtime Story", icon: Moon },
     ],
     primaryTabs: [
       { tab: "stories", label: "Story Journeys", icon: BookOpen },
     ],
     tools: [
-      { tab: "bedtime-stories", label: "Bedtime Stories", icon: Moon, msIcon: "bedtime" },
+      // W2-SHELLPLAY r2 (stories): ONE evening door. The Bedtime pill rendered
+      // the same BedtimeStoryBody as the Tonight cover's "From today" mode, two
+      // evening doors above the fold. The pill leaves the Stories row; the route
+      // stays live (TAB_SECTION_FALLBACK maps it to this hub) for its own
+      // doors — the Overview Tonight card, search — and its contract demotes
+      // into "stories" (surfaceContract demotionTarget). No capability is lost.
       // M4 surfacing (IA masterplan): Hero Comics is THE viral surface — an
       // in-hub tile AND a one-click pill; resolves here via fallback.
       { tab: "comics", label: "Hero Comics", icon: Sparkles, msIcon: "auto_awesome" },
@@ -354,6 +358,10 @@ export const TAB_SECTION_FALLBACK: Partial<Record<ActiveTab, HubId>> = {
   // tool (child-starring register); Family Formation a Learn tool (parent
   // register). Both stay valid deep-link routes mapped for highlight.
   comics: "stories",
+  // W2-SHELLPLAY r2: ONE evening door — the Bedtime pill left the Stories row
+  // (the cover's "From today" mode is the same body); the route stays a valid
+  // deep link for its own doors (Overview Tonight card, search).
+  "bedtime-stories": "stories",
   family: "learn",
 
   // Care — the former handoff/reports/find-pro doors live inside Consult; they

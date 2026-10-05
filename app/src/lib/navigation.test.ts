@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
-import { SECTIONS, sectionForTab, primaryTabOf, subTabsForSection, hubTabsForSection, COMPACT_HIDDEN_TOOLS, isCompactHiddenTool } from "./navigation";
+import { SECTIONS, sectionForTab, primaryTabOf, subTabsForSection, hubTabsForSection, pillRowFor, COMPACT_HIDDEN_TOOLS, isCompactHiddenTool } from "./navigation";
 import { resolveHash, FALLBACK_ROUTE, RETIRED_ROUTES } from "./routes";
 import { ALL_TABS } from "../context/ArborContext";
 
@@ -45,11 +45,17 @@ describe("navigation IA", () => {
 
   // Heartwood D2: the Academy split along the register seam — Stories is the
   // child-starring half, Learn the parent-learning half (hub = Masterclasses).
-  it("Stories hub leads with Story Journeys and carries bedtime + comics", () => {
+  it("Stories hub leads with Story Journeys and carries comics; bedtime is ONE evening door (the cover's From-today), not a second pill", () => {
     const stories = SECTIONS.find((s) => s.id === "stories");
     expect(stories && primaryTabOf(stories)).toBe("stories");
-    expect(stories?.tools.map((i) => i.tab)).toEqual(["bedtime-stories", "comics"]);
+    // W2-SHELLPLAY r2: the Bedtime pill duplicated the cover's "From today" mode
+    expect(stories?.tools.map((i) => i.tab)).toEqual(["comics"]);
+    expect(stories && pillRowFor(stories, "stories").map((i) => i.tab)).not.toContain("bedtime-stories");
+    // …the route is not retired: it still resolves to the Stories hub for its own doors
+    expect(sectionForTab("bedtime-stories").id).toBe("stories");
     expect(sectionForTab("comics").id).toBe("stories");
+    // NEGATIVE CONTROL: the r2 tool list would put the second evening door back in the row
+    expect(["bedtime-stories", "comics"]).toContain("bedtime-stories");
   });
 
   it("Learn hub leads with Masterclasses, keeps the Library, carries Family Formation", () => {

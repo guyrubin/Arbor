@@ -311,6 +311,9 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
     route: "bedtime-stories", hub: "stories", depth: 1,
     job: "A tonight-only story grown from her real day, read aloud together.",
     primaryMove: "generate-bedtime-story", moduleBudget: 2, demotionTarget: "stories",
+    // W2-SHELLPLAY r2: demoted — no longer a Stories pill (one evening door: the
+    // Tonight cover's "From today" mode embeds this same body). The route keeps
+    // its own doors (Overview Tonight card, search) and this contract.
     // KID-10: "Good night" now writes ONE parent-provenance moment through
     // ArborContext's addMoment seam, so the ritual lands in `behaviorLogs` and
     // buildTimeline ingests it. Generate-and-discard is unchanged — the STORY
