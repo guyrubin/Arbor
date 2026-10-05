@@ -8,7 +8,6 @@
 import { describe, expect, it } from "vitest";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -156,14 +155,6 @@ describe("B-GAME-06b: the scene without the white slab", () => {
   });
 });
 
-describe("THE GUARD: the owner's son's likeness never enters git", () => {
-  it("no file under public/_proof is tracked", () => {
-    let out: string;
-    try {
-      out = execFileSync("git", ["ls-files", "--", "public/_proof"], { cwd: appDir, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
-    } catch {
-      return; // no git here: nothing to check
-    }
-    expect(out.trim()).toBe("");
-  });
-});
+// The git guard that stood here was retired on 6 Oct 2026: Guy ruled (5 Oct) that his son's
+// images stay in the app, and on 6 Oct put the proof in production; public/_proof ships.
+

@@ -23,7 +23,7 @@ import { SNEAK_SOUNDS, SNEAK_VOICE_IDS, createSneakSounds } from "./sounds";
 import type { KidSoundBank, PlayOptions } from "../../audio/kidSoundBank";
 import { mergeArt, readSneakArt, watcherSprite } from "./sneakArt";
 import { devPlaceholderArt } from "./devPlaceholderArt";
-import { KID_WORLDS, SNEAK_FREEZE_WORLD, flaggedWorldNameKey, sneakFreezeFlagOn } from "../../kidWorlds";
+import { KID_WORLDS, SNEAK_FREEZE_WORLD, flaggedWorldNameKey, resetSneakFreezeFlagForTests, sneakFreezeFlagOn } from "../../kidWorlds";
 import { translate } from "../../../../lib/i18n";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -73,10 +73,18 @@ describe("Sneak & Freeze — the stage", () => {
 });
 
 describe("Sneak & Freeze — behind its flag", () => {
-  it("is off by default and never part of the registry", () => {
+  it("is on by default (Guy, 6 Oct: production), never part of the registry, and a device can opt out with \"0\"", () => {
+    resetSneakFreezeFlagForTests();
+    expect(sneakFreezeFlagOn()).toBe(true); // no localStorage here = no opt-out = on
+    const g = globalThis as { localStorage?: unknown };
+    g.localStorage = { getItem: (k: string) => (k === "arbor.flags.sneakFreeze" ? "0" : null) };
+    resetSneakFreezeFlagForTests();
     expect(sneakFreezeFlagOn()).toBe(false);
+    delete g.localStorage;
+    resetSneakFreezeFlagForTests();
     expect(KID_WORLDS.some((w) => (w.worldId as string) === SNEAK_FREEZE_WORLD.worldId)).toBe(false);
-    expect(flaggedWorldNameKey("sneak")).toBeUndefined();
+    expect(flaggedWorldNameKey("sneak")).toBe(SNEAK_FREEZE_WORLD.nameKey);
+    expect(flaggedWorldNameKey("pattern")).toBeUndefined();
   });
 
   it("has its name and lines in EN and HE, Hebrew addressed by form", () => {

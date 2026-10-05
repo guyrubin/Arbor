@@ -221,7 +221,8 @@ function Scene({ ctx, v, art, sheet, prevProgress }: { ctx: PlayFieldContext; v:
 export function useSneakAssets(childId: string): { ready: boolean; art: SneakArt; sheet: HeroSheet } {
   const fallbackSheet = useHeroSheet(childId);
   const baseArt = useMemo(() => readSneakArt(), []);
-  const flag = sneakFreezeFlagOn();
+  // No window (a static render, a test) = nothing to fetch: the placeholders are the art.
+  const flag = sneakFreezeFlagOn() && typeof window !== "undefined";
   const [proof, setProof] = useState<{ art: SneakArt; sheet: HeroSheet | null } | null>(null);
   useEffect(() => {
     if (!flag) return;
