@@ -45,22 +45,24 @@ describe("GameShell in Kid Mode", () => {
     expect((html.match(/Find the pairs\./g) ?? []).length).toBe(1);
     expect(html).toMatch(/data-game-instruction=""[^>]*background:var\(--arbor-paper-elevated\)/);
   });
-  it("the world's own card is a VISIBLE banner strip (decorative, ~30 % of the viewport, focal point top); the play surface overlaps its faded edge", () => {
-    expect(html).toMatch(/aria-hidden="true" data-game-backdrop=""/);
-    expect(html).toContain("game-memory-480.webp");
-    expect(html).toContain("game-memory-1024.webp 1024w");
-    // B-KID-123 re-pin: a centred 4:3 window, width-capped (no full-width strip that crops the face).
-    expect(html).toContain("aspect-ratio:4 / 3");
-    expect(html).toContain("inline-size:min(100%, 560px, calc(36dvh * 4 / 3))");
-    expect(html).toContain("margin-inline:auto");
-    expect(html).not.toMatch(/data-game-backdrop=""[^>]*block-size:/);
-    expect(html).toContain("object-position:50% 22%");
-    // not hidden behind the play card: no blur, no dimming, not absolutely behind
-    expect(html).not.toContain("blur(");
-    expect(html).not.toMatch(/data-game-backdrop=""[^>]*absolute inset-0/);
-    expect(html).toContain("margin-block-start:-56px");
-    // text sits on the solid instruction surface, after the banner
-    expect(html.indexOf("data-game-backdrop")).toBeLessThan(html.indexOf("data-game-instruction"));
+  it("B-KID-133 (D-01): the world's card is the Stage behind the whole view — never a cropped banner strip in the shell", async () => {
+    // B-KID-123's 4:3 banner is retired: the shell prints no picture of its own …
+    expect(html).not.toContain("data-game-backdrop");
+    expect(html).not.toContain("game-memory-480.webp");
+    // … it names its world as the overlay's stage, and clears it on leaving.
+    const src = read("GameShell.tsx");
+    expect(src).toMatch(/setKidStage\(\{ kind: "world", worldId \}\);\s*return \(\) => setKidStage\(null\);/);
+    // The stage resolves that world's card: whole card, blurred, crisp top band on a phone.
+    const { kidStageArt } = await import("../kidStageArt");
+    const stage = kidStageArt("film3d", { kind: "world", worldId: "memory" });
+    expect(stage.wide?.src480).toContain("game-memory-480.webp");
+    expect(stage.sharpTop).toBe(true);
+    expect(stage.blur).toBe(22);
+    // the overlay renders the stage under the content, on navy (never white)
+    const overlay = read("..", "KidModeOverlay.tsx");
+    expect(overlay).toContain("<KidStage scene={stageScene} />");
+    expect(overlay).toContain("const stageScene = stageOverride ?? kidStageFor(view, arcadeWorldId);");
+    expect(overlay).not.toContain('background: "var(--arbor-paper)"');
   });
   it("progress is dots — never numerals", () => {
     const dots = renderToStaticMarkup(<GameProgressDots index={2} total={5} />);

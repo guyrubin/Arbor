@@ -36,7 +36,9 @@ import { useArbor } from "../../context/ArborContext";
 import { KidSoundToggle } from "./kidReadAloud";
 import { closeKidAudio, kidAudioVisibility, kidHush, setKidAudioChild } from "./audio/kidAudio";
 import { hydrateHeroRenders } from "../../lib/heroRenderStore";
-import { setKidHome } from "./kidChrome";
+import { setKidHome, useKidStage } from "./kidChrome";
+import { KidStage } from "./KidStage";
+import { kidStageFor } from "./kidStageArt";
 
 // ── EXISTING surfaces — imported unchanged, never forked ──────────────────────
 const HeroJourneyTab = lazy(() => import("../tabs/HeroJourneyTab"));
@@ -246,6 +248,10 @@ export default function KidModeOverlay() {
 
   const surface = view === "home" ? null : SURFACE_META[view];
   const barTitle = kidBarTitle(view, arcadeWorldId, surfaceTitle, t);
+  // B-KID-133 (D-01): the lit stage behind the view — the view's own picture
+  // (a mounted game/book page may name a more exact one via setKidStage).
+  const stageOverride = useKidStage();
+  const stageScene = stageOverride ?? kidStageFor(view, arcadeWorldId);
 
   return (
     // KID-LOCK LEAK 1: initial={false} — on a rehydrated mount (reload while
@@ -268,7 +274,8 @@ export default function KidModeOverlay() {
           // parent shell during enter/exit. This non-transformed full-viewport backdrop
           // swallows any pointer that lands in those strips — the lock never depends on a
           // completed animation frame.
-          style={{ position: "fixed", inset: 0, zIndex: 69, background: "var(--arbor-paper)", pointerEvents: "auto" }}
+          // B-KID-133 (D-01): navy, so a slow stage image never flashes white.
+          style={{ position: "fixed", inset: 0, zIndex: 69, background: "var(--arbor-ink)", pointerEvents: "auto" }}
         />
       )}
       {isKidModeOpen && (
@@ -284,20 +291,25 @@ export default function KidModeOverlay() {
           aria-modal="true"
           aria-label={t("aria.kidMode")}
           className="arbor-play"
+          data-kid-staged=""
           style={{
             position: "fixed",
             inset: 0,
             zIndex: 70,
             display: "flex",
             flexDirection: "column",
-            background: "var(--arbor-paper)",
+            background: "var(--arbor-ink)",
             overflow: "hidden",
           }}
         >
+          {/* B-KID-133 (D-01): the Stage — first child, under everything. */}
+          <KidStage scene={stageScene} />
           {/* ── Surface back-bar (only when a surface is open) ──────────────── */}
           {surface && (
             <header
               style={{
+                position: "relative",
+                zIndex: 1,
                 display: "flex",
                 alignItems: "center",
                 // B-KID-74: the title takes the remaining width at 375 px.
@@ -372,6 +384,8 @@ export default function KidModeOverlay() {
             ref={contentRef}
             onScroll={view === "home" ? (e) => { homeScrollRef.current = e.currentTarget.scrollTop; } : undefined}
             style={{
+              position: "relative",
+              zIndex: 1,
               flex: 1,
               overflowY: "auto",
               overflowX: "hidden",

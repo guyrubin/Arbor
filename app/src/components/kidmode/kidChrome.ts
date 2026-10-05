@@ -9,6 +9,7 @@
  *   Home without a second back control in the game.
  */
 import { useSyncExternalStore } from "react";
+import type { KidStageScene } from "./kidStageArt";
 
 export interface KidHearIt { text: string; lang: "en" | "he" }
 
@@ -25,6 +26,18 @@ export function setKidHearIt(next: KidHearIt | null): void {
 }
 export function useKidHearIt(): KidHearIt | null {
   return useSyncExternalStore(subscribe, () => hearIt, () => hearIt);
+}
+
+/** B-KID-133 (D-01): the mounted view names its stage (a game its world, a
+ *  book page its story); null = the overlay's default for the view. */
+let stage: KidStageScene | null = null;
+export function setKidStage(next: KidStageScene | null): void {
+  if (JSON.stringify(next) === JSON.stringify(stage)) return;
+  stage = next;
+  emit();
+}
+export function useKidStage(): KidStageScene | null {
+  return useSyncExternalStore(subscribe, () => stage, () => stage);
 }
 
 export function setKidHome(next: (() => void) | null): void {

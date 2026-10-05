@@ -7,10 +7,10 @@
  * kidChrome) and renders, under it:
  *   - the instruction ONCE on arrival, on a solid token surface, and spoken
  *     once (read-to-me rules: per-child mute, after a gesture — kidReadAloud);
- *   - the world's own scene: the theme's world card (kidThemeManifest) as a
- *     soft, blurred and dimmed backdrop behind the play area (decorative,
- *     aria-hidden, absolutely placed so nothing shifts; text never sits on
- *     the picture — pieces and copy keep their token surfaces);
+ *   - the world's own scene: B-KID-133 (D-01) the shell names its world as the
+ *     overlay's Stage (kidChrome setKidStage) — the card fills the screen
+ *     behind the view, crisp at the top on a phone; text never sits on the
+ *     picture (pieces and copy keep their token surfaces);
  *   - the game itself (game logic untouched);
  *   - optional in-world progress as dots, never numerals;
  * and `GameFinish` is the explicit finish screen: the hero cheers, Play again
@@ -25,9 +25,8 @@ import type { MascotMood } from "../../ui/ArborMascot";
 import { useLanguage } from "../../../context/LanguageContext";
 import { useArborOptional } from "../../../context/ArborContext";
 import { isKidModeActive, subscribeKidMode } from "../../../lib/kidModeGate";
-import { useKidTheme } from "../../../hooks/useKidTheme";
-import { kidArt, kidArtSrcSet, worldTileKey, type KidWorldTileId } from "../../../lib/kidThemeManifest";
-import { setKidHearIt, useKidHome } from "../kidChrome";
+import type { KidWorldTileId } from "../../../lib/kidThemeManifest";
+import { setKidHearIt, setKidStage, useKidHome } from "../kidChrome";
 import { autoReadPage, KidHearItButton } from "../kidReadAloud";
 import { stopVoice } from "../../../lib/voice";
 import { kidSfx } from "../audio/kidAudio";
@@ -67,18 +66,6 @@ export interface GameShellProps {
   children: React.ReactNode;
 }
 
-/** The world-card banner at the top of a kid game and how far the play surface
- *  rides up over its faded lower edge.
- *  B-KID-123: the banner was a full-width strip of fixed height, so at tablet
- *  and desktop widths a portrait card became a wide, short slice that cut the
- *  hero's face. It is now a 4:3 window onto the card (a 3:4 card shows ~56 % of
- *  its height, from the manifest's top focal point - the face), centred, and
- *  its width is capped (<= 560 px and <= 36dvh * 4/3, so it stays ~a third of
- *  a short desktop screen): the same picture at 375, 768, 1280 and 1920. */
-export const GAME_BANNER_ASPECT = "4 / 3";
-export const GAME_BANNER_INLINE = "min(100%, 560px, calc(36dvh * 4 / 3))";
-export const GAME_BANNER_OVERLAP = -56;
-
 function useKidModeOn(): boolean {
   return useSyncExternalStore(subscribeKidMode, isKidModeActive, isKidModeActive);
 }
@@ -107,7 +94,6 @@ export function GameShell({ worldId, title, instruction, hearIt, progress, mood,
   const { uiLang } = useLanguage();
   const arbor = useArborOptional();
   const childId = arbor?.childProfile?.id ?? "";
-  const theme = useKidTheme();
   const lang: "en" | "he" = uiLang === "he" ? "he" : "en";
 
   // Kid Mode: the bar's hear-it replays the instruction (or `hearIt`) …
@@ -117,6 +103,14 @@ export function GameShell({ worldId, title, instruction, hearIt, progress, mood,
     setKidHearIt({ text: hearText, lang });
     return () => setKidHearIt(null);
   }, [kid, hearText, lang]);
+  // B-KID-133 (D-01): the world IS the stage — the overlay paints this
+  // world's card behind the whole view (crisp top band on a phone), so the
+  // shell no longer crops it into a banner strip.
+  useEffect(() => {
+    if (!kid) return;
+    setKidStage({ kind: "world", worldId });
+    return () => setKidStage(null);
+  }, [kid, worldId]);
   // … and the instruction is spoken ONCE, on arrival.
   useEffect(() => {
     if (!kid || !instruction) return;
@@ -133,33 +127,12 @@ export function GameShell({ worldId, title, instruction, hearIt, progress, mood,
     );
   }
 
-  const art = kidArt(theme, worldTileKey(worldId));
   return (
     // `.arbor-play`: the kid type scale, also when a surface mounts a game
     // directly (the overlay's feelings view), not only inside the arcade.
     <GameWorldContext.Provider value={worldId}>
     <div data-game-shell={worldId} className="arbor-play relative" style={{ isolation: "isolate" }} onPointerDownCapture={onGamePiecePointerDown}>
-      {/* Fable render (5 Oct): a full-area blurred backdrop sat under an opaque
-          play card and was never seen. The world's card is now a banner strip
-          at the top of the shell (~30 % of the viewport, focal point near the
-          top, fading into the paper), and the instruction + play surface
-          overlap its lower edge — the scene is visible, the text stays on
-          solid token surfaces. Decorative, aria-hidden, fixed block size (no
-          layout shift), no motion. */}
-      {art && (
-        <div aria-hidden="true" data-game-backdrop="" className="pointer-events-none relative overflow-hidden" style={{ inlineSize: GAME_BANNER_INLINE, aspectRatio: GAME_BANNER_ASPECT, marginInline: "auto", borderRadius: 24 }}>
-          <img
-            src={art.src480}
-            srcSet={kidArtSrcSet(art)}
-            sizes="(max-width: 599px) 100vw, 560px"
-            alt=""
-            className="absolute inset-0 h-full w-full object-cover"
-            style={{ objectPosition: art.objectPosition }}
-          />
-          <span className="absolute inset-0" style={{ background: "linear-gradient(to bottom, transparent 45%, var(--arbor-paper) 100%)" }} />
-        </div>
-      )}
-      <div className="relative space-y-4 p-1" style={art ? { marginBlockStart: GAME_BANNER_OVERLAP } : undefined}>
+      <div className="relative space-y-4 p-1">
         {instruction && (
           <p
             dir="auto"

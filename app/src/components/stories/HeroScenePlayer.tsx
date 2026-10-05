@@ -17,6 +17,7 @@ import { isKidModeActive } from "../../lib/kidModeGate";
 import type { HeroSceneRender } from "../../types";
 import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
 import { ArborMascot } from "../ui/ArborMascot";
+import { setKidStage } from "../kidmode/kidChrome";
 
 /** B-KID-70 (R-4b): where the cover is cropped on each beat (object-position),
  *  so a book read on one cover still turns eight different pages. */
@@ -37,7 +38,9 @@ export const BEAT_FOCUS = ["50% 22%", "30% 40%", "70% 35%", "50% 60%", "25% 25%"
  *  Logical grid columns, so Hebrew mirrors the spread. */
 export const KID_BOOK_SPREAD_CLASS = "flex flex-col sm:grid sm:grid-cols-[auto_minmax(0,24rem)] sm:items-center sm:justify-center sm:gap-8 sm:px-6 sm:py-4";
 export const KID_BOOK_ART_CLASS = "relative w-full overflow-hidden aspect-[4/5] sm:w-auto sm:aspect-[3/4] sm:h-[min(80vh,calc(100dvh_-_140px))] sm:rounded-[24px] sm:[border:var(--comic-line)]";
-export const KID_BOOK_SIDE_CLASS = "flex min-w-0 flex-col sm:justify-center";
+/** B-KID-133 (D-01): the words sit on a paper plate (`kid-page-plate`) —
+ *  never directly on the Stage (the book's cover, blurred, fills the screen). */
+export const KID_BOOK_SIDE_CLASS = "kid-page-plate flex min-w-0 flex-col sm:justify-center";
 /** B-KID-128: on the wide spread every page shows the WHOLE picture; the
  *  per-beat variation is a gentle zoom toward that beat's focal point (max
  *  1.15), so the hero's face stays in frame. Literal classes (Tailwind scans). */
@@ -167,6 +170,14 @@ export function HeroScenePlayer({
     : undefined;
   const artRequestKey = pageArgs ? journeyPageKey(pageArgs) : undefined;
   const sceneArt = resolvedArt && resolvedArt.key === artRequestKey ? resolvedArt.url : undefined;
+
+  // B-KID-133 (D-01): in Kid Mode a book page names its story's cover as the
+  // overlay's Stage (also when the book was opened from the library).
+  useEffect(() => {
+    if (layout !== "book" || !storyId || !isKidModeActive()) return;
+    setKidStage({ kind: "story", storyId });
+    return () => setKidStage(null);
+  }, [layout, storyId]);
 
   // Stop speech whenever the scene changes or the card unmounts.
   useEffect(() => {

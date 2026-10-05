@@ -767,6 +767,86 @@ body {
 @media (prefers-reduced-motion: reduce) { .power-fill { animation: none; } }
 
 /* ════════════════════════════════════════════════════════════════════════════
+   KID UI LANGUAGE v1 (film-3D) — B-KID-133, KID-DESIGN-DIRECTION.md §2.
+   "Every screen is a lit set from the hero's own film, and everything the
+   child can touch is a chunky glossy toy that squashes, clicks and answers
+   back." Kid register only: every selector is scoped under `.arbor-play`.
+   Tokens only (mask literals use var(--arbor-ink) as opaque alpha).
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ── D-01 · The Stage (§2.4.1) ─────────────────────────────────────────── */
+/* The staged overlay paints no four-blob wash: the stage IS the background. */
+.arbor-play[data-kid-staged]::before { display: none; }
+.arbor-play .kid-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  contain: strict;
+  pointer-events: none;
+  background: var(--arbor-ink);
+}
+/* No art in this theme: the flat token stage, never an empty dark box. */
+.arbor-play .kid-stage[data-empty] {
+  background:
+    radial-gradient(60% 52% at 8% -4%, color-mix(in oklab, var(--arbor-lav) 30%, transparent), transparent 70%),
+    radial-gradient(64% 56% at 98% 2%, color-mix(in oklab, var(--arbor-sky) 28%, transparent), transparent 72%),
+    var(--arbor-tint);
+}
+.arbor-play .kid-stage-soft {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+  filter: blur(var(--stage-blur, 22px)) saturate(1.2);
+  transform: scale(1.12);
+}
+.arbor-play .kid-stage-sharp { display: none; }
+/* Phone portrait: the scene crisp at the top, melting into glow where play
+   happens — a 3:4 card covers a 375x812 viewport by height, so the hero's
+   face (~30 % down every card) lands in the crisp band. */
+@media (max-width: 767px) and (orientation: portrait) {
+  .arbor-play .kid-stage[data-sharp-top] .kid-stage-sharp {
+    display: block;
+    position: absolute;
+    inset: 0;
+    inline-size: 100%;
+    block-size: 100%;
+    object-fit: cover;
+    object-position: 50% 0;
+    -webkit-mask-image: linear-gradient(to bottom, var(--arbor-ink) 0 32%, transparent 58%);
+    mask-image: linear-gradient(to bottom, var(--arbor-ink) 0 32%, transparent 58%);
+  }
+}
+.arbor-play .kid-stage-tint {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(120% 90% at 50% 40%, transparent 55%, color-mix(in oklab, var(--arbor-ink) 30%, transparent)),
+    linear-gradient(180deg, color-mix(in oklab, var(--arbor-ink) 12%, transparent), color-mix(in oklab, var(--arbor-ink) 38%, transparent));
+}
+/* Words never sit on the stage: a paper plate (§2.4.2) holds them. */
+.arbor-play .kid-plate,
+.arbor-play .kid-page-plate {
+  background: var(--arbor-paper-elevated);
+  color: var(--arbor-ink);
+  border-radius: var(--kid-r-l, 32px);
+  box-shadow:
+    0 2px 0 color-mix(in oklab, var(--arbor-ink) 10%, transparent),
+    0 24px 48px -24px color-mix(in oklab, var(--arbor-ink) 55%, transparent);
+}
+/* The book's facing page: at a phone it rises from under the picture as a
+   sheet; on the spread it is a page as tall as the picture's words need. */
+.arbor-play .kid-page-plate {
+  border-radius: 0 0 var(--kid-r-l, 32px) var(--kid-r-l, 32px);
+  padding-block-end: 4px;
+}
+@media (min-width: 640px) {
+  .arbor-play .kid-page-plate { border-radius: var(--kid-r-l, 32px); padding-block: 12px; align-self: stretch; }
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
    NATIVE SAFE AREAS — Capacitor iOS/Android (notch, status bar, home indicator).
    Scoped to .is-native (set on <html> by src/lib/native.ts) so the web app is
    byte-for-byte unchanged. viewport-fit=cover is set in index.html, so env()
