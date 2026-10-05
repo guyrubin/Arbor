@@ -168,7 +168,7 @@ describe("Kids experience visual and session contract", () => {
     const beat = read("../practice/BeatKeeperWorld.tsx");
     // B-KID-74: the kid branch is the GameShell, titled with the kid name.
     expect(adventures).toContain('<GameShell worldId="adventures" title={t("elev.kids.adventures.title")}');
-    expect(mimic).toContain('kidMode ? t("elev.kids.mimic.title")');
+    expect(mimic).toContain('<GameShell worldId="mimic" title={t("elev.kids.mimic.title")}');
     expect(beat).toContain('title={t("elev.play.beat.title")}');
   });
 

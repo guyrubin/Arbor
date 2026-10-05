@@ -248,6 +248,10 @@ const WRAPPERS = [
   // mount instead of PlayShell. Every white label on those routes sits inside
   // it, so its presentation is audited here rather than treated as unverified.
   { name: "RegisterShell", file: "components/ui/playkit.tsx", slots: ["children"], params: ["kidMode", "title", "say", "subtitle", "mood", "action", "worldId", "headerVariant", "eyebrow", "className", "children"] },
+  // B-KID-74: the one kid game shell the nine worlds mount (parent door: a
+  // plain div + PlayHeader; Kid Mode: .arbor-play + token surfaces). Every
+  // white label in a world sits inside it, so it is audited on the same terms.
+  { name: "GameShell", file: "components/kidmode/game/GameShell.tsx", slots: ["children"], params: ["worldId", "title", "instruction", "hearIt", "progress", "mood", "eyebrow", "action", "variant", "heroDecorative", "children"] },
 ] as const;
 function importsModule(source: ts.SourceFile, statement: ts.ImportDeclaration, module: string): boolean {
   if (!ts.isStringLiteral(statement.moduleSpecifier)) return false;

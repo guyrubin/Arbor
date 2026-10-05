@@ -5,6 +5,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { cardCls } from "../ui/kit";
 import { RegisterShell, PlayButton, ProgressPips, Celebrate, PlayPanel } from "../ui/playkit";
+import { GameShell } from "../kidmode/game/GameShell";
 import { isKidModeActive, noteKidActivity, subscribeKidMode } from "../../lib/kidModeGate";
 import { SpeakButton } from "../ui/SpeakButton";
 import { mediaControlHidden, resolveMediaPermission, type MediaPermission } from "../../practice/mediaPermission";
@@ -162,17 +163,11 @@ export default function MimicStudioTab() {
 
   // IA-08 / RUN-12: one route, two registers. `RegisterShell` mounts `PlayShell`
   // (`.arbor-play`) under Kid Mode and the parent-register PageHeader on the door.
-  return (
-    <RegisterShell
-      kidMode={kidMode}
-      title={kidMode ? t("elev.kids.mimic.title") : t("prac.mimic.title")}
-      say={headerSay}
-      subtitle={headerSay}
-      mood="cheer"
-      worldId="mimic"
-      headerVariant="compact"
-      eyebrow={kidMode ? t("elev.kids.mission") : undefined}
-    >
+  // B-KID-74: one body, two shells — Kid Mode plays inside the kid GameShell
+  // (bar title + hear-it, instruction once, world banner; no eyebrow, no
+  // second title); the parent door keeps RegisterShell.
+  const body = (
+    <>
 
       {/* The privacy strip is a PARENT assurance about how the mirror handles
           the camera — the one reader who can act on it. Inside Kid Mode it is
@@ -360,6 +355,23 @@ export default function MimicStudioTab() {
           only. A kid-register Face Match needs kid lines inside MimicMatch.tsx
           (another builder's file) — filed as OBJ-KID-03-a in FOLLOW-UPS.md. */}
       {!kidMode && <MimicMatch childId={childProfile.id} name={first} />}
+    </>
+  );
+  return kidMode ? (
+    <GameShell worldId="mimic" title={t("elev.kids.mimic.title")} instruction={headerSay} mood="cheer">
+      {body}
+    </GameShell>
+  ) : (
+    <RegisterShell
+      kidMode={false}
+      title={t("prac.mimic.title")}
+      say={headerSay}
+      subtitle={headerSay}
+      mood="cheer"
+      worldId="mimic"
+      headerVariant="compact"
+    >
+      {body}
     </RegisterShell>
   );
 }
