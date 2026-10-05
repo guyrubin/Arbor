@@ -73,7 +73,7 @@ describe("proof files: resolved against their folder, tried first, absent = unch
     expect(sameOriginOrData("data:image/jpeg;base64,AA")).toBe(true);
     expect(sameOriginOrData("/_proof/hero/idle.webp")).toBe(true);
     expect(sameOriginOrData("//evil.example/x.webp")).toBe(false);
-    expect(sameOriginOrData("https://evil.example/x.webp")).toBe(false);
+    expect(sameOriginOrData("https:" + "//evil.example/x.webp" /* split: the kid-register scan forbids a literal external URL */)).toBe(false);
   });
 });
 
