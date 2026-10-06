@@ -67,6 +67,10 @@ export interface ActionLoopEntry {
    *  The reflection is the parent's read, never a score; `outcome` stays unset. */
   recordKey?: string;
   reflection?: "easier" | "hard_again" | "other";
+  /** B-GROWTH-36: the say-back opener's answer (`recordKey` `said:<id>`) —
+   *  did the PARENT get to say the child's words back. The parent's act,
+   *  never a count or a rating of the child; `reflection` stays unset. */
+  sayBack?: "yes" | "not_today";
   /** B-ASKJB-33: a `hard-moment` row's two-tap ask — did the adult hold the
    *  plan calmly (feeds "Last time, this helped"), and how the child was
    *  (kept for the visit packet). The parent's own read, never a score. */

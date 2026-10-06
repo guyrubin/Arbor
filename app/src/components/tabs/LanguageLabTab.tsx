@@ -190,8 +190,8 @@ export default function LanguageLabTab() {
                 <Icon name="translate" size={18} />
               </span>
               <span className="min-w-0">
-                <span className="block text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.growth.lang.more.title")}</span>
-                <span className="block text-[12px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.growth.lang.more.sub")}</span>
+                <span className="block text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.words.more.title")}</span>
+                <span className="block text-[12px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.words.more.sub")}</span>
               </span>
               <Icon name="expand_more" size={20} className="ms-auto" style={{ color: "var(--arbor-muted)" }} />
             </summary>

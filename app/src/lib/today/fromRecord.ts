@@ -328,7 +328,9 @@ export function fromRecordEntry(
     acceptedAt: iso,
     outcomeAt: iso,
     recordKey: opener.key,
-    reflection: answer,
+    // B-GROWTH-36: the say-back answer is its own field (the parent's act);
+    // the three plan/note/fact reads stay the reflection.
+    ...(answer === "yes" || answer === "not_today" ? { sayBack: answer } : { reflection: answer }),
   };
 }
 

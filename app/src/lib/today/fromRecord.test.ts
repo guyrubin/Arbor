@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  answersFor,
   fromRecordAnswerKey,
   fromRecordQuestionKey,
   noteMatchesPlan,
@@ -14,7 +15,7 @@ import {
 } from "./fromRecord";
 import type { ActionPlan, BehaviorLog } from "../../types";
 import type { ActionLoopEntry } from "../../actionLoop/model";
-import { en, he } from "../i18n";
+import { en, he, translate } from "../i18n";
 
 const NOW = new Date("2026-10-06T08:00:00");
 const NOTE = "Calmed and put shoes on within 8 mins instead of usual 25. No screaming, just mild protest.";
@@ -193,5 +194,70 @@ describe("B-TODAY-28 — pronouns", () => {
     const keys = Object.keys(en).filter((k) => k.startsWith("today.record.") || k.startsWith("today.identity") || k.startsWith("today.when."));
     expect(keys.length).toBeGreaterThanOrEqual(19);
     for (const k of keys) expect((he as Record<string, string>)[k], k).toBeTruthy();
+  });
+});
+
+/* B-GROWTH-36 — priority 0: a quote kept YESTERDAY with a say-back leads,
+   asking about the PARENT's act ("Did you get to say it back in Hebrew?
+   Yes / Not today"); nothing counts the child. */
+describe("B-GROWTH-36 — the say-back opener (priority 0)", () => {
+  const GUY = ["Hebrew (Native)", "English (Transition)"];
+  const quote = (over: Partial<{ id: string; note: string; noticedOn: string; language: string }> = {}) => ({
+    id: "quote-2026-10-05-aa",
+    note: "Daddy, the moon is following our car",
+    noticedOn: "2026-10-05",
+    language: "English",
+    ...over,
+  });
+  const base = (quotes: ReturnType<typeof quote>[], over: Partial<FromRecordInput> = {}): FromRecordInput => ({
+    now: NOW,
+    plans: [plan()],
+    loop: [],
+    logs: [log()],
+    facts: [],
+    said: { quotes, languages: GUY, months: 64 },
+    ...over,
+  });
+
+  it("the day after a cross-language quote, the opener is the say-back — ahead of an active plan", () => {
+    const o = selectFromRecord(base([quote()]))!;
+    expect(o.kind).toBe("said");
+    expect(o.key).toBe("said:quote-2026-10-05-aa");
+    expect(o.quote).toBe("Daddy, the moon is following our car");
+    expect(o.quoteSource).toBe("child");
+    expect(o.sayBackMode).toBe("cross");
+    expect(o.sayBackIn).toBe("Hebrew");
+    expect(fromRecordQuestionKey(o)).toBe("elev.words.today.q.cross");
+    expect(answersFor(o)).toEqual(["yes", "not_today"]);
+    expect(fromRecordAnswerKey(o, "not_today")).toBe("elev.words.today.a.not_today");
+    expect(translate("en", "elev.words.today.q.cross", { kept: "Hebrew" })).toBe("Did you get to say it back in Hebrew?");
+    expect(translate("he", "elev.words.today.q.cross", { kept: "עברית" })).toBe("הספקתם להגיד את זה בחזרה בעברית?");
+  });
+
+  it("not on the same day, not two days later, not for a kept-language quote (no say-back)", () => {
+    expect(selectFromRecord(base([quote({ noticedOn: "2026-10-06" })]))?.kind).toBe("plan");
+    expect(selectFromRecord(base([quote({ noticedOn: "2026-10-04" })]))?.kind).toBe("plan");
+    expect(selectFromRecord(base([quote({ note: "אבא, הירח נוסע איתנו", language: "Hebrew" })]))?.kind).toBe("plan");
+  });
+
+  it("a monolingual family gets 'say it back and add one'", () => {
+    const o = selectFromRecord(base([quote()], { said: { quotes: [quote()], languages: ["English"], months: 64 } }))!;
+    expect(o.sayBackMode).toBe("same");
+    expect(o.sayBackIn).toBeNull();
+    expect(fromRecordQuestionKey(o)).toBe("elev.words.today.q.same");
+  });
+
+  it("an answer writes one from-record row and the opener goes quiet; the plan speaks next", () => {
+    const o = selectFromRecord(base([quote()]))!;
+    const row = fromRecordEntry(o, "yes", "c1", NOW);
+    expect(row.sayBack).toBe("yes");
+    expect(row.reflection).toBeUndefined();
+    expect(row.recordKey).toBe("said:quote-2026-10-05-aa");
+    expect(selectFromRecord(base([quote()], { loop: [row] }))?.kind).toBe("plan");
+  });
+
+  it("without said input the selector is unchanged (no opener of kind said)", () => {
+    const { said: _s, ...rest } = base([quote()]);
+    expect(selectFromRecord(rest)?.kind).toBe("plan");
   });
 });

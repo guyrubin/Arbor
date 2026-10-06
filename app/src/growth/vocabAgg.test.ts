@@ -229,7 +229,9 @@ describe("LanguageLabVocabView source gates", () => {
     expect(src).not.toMatch(/<(AreaChart|LineChart|BarChart|ResponsiveContainer|svg)\b/);
     expect(src).not.toMatch(/t\("vl\.(mixLabel|mixValue|trendTitle)"/);
     expect(src).toContain("profileLangCounts(languages, counts)");
-    expect(src).toContain('data-testid="vl-month-list"');
+    // B-GROWTH-36: the per-month count list is removed (never month against month).
+    expect(src).not.toContain('data-testid="vl-month-list"');
+    expect(src).not.toContain("monthlyWordCounts(");
   });
 
   it("finds no language by a /hebrew|english/ regex for a count", () => {

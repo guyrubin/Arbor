@@ -44,6 +44,9 @@ export const en: Dict = {
   ...g("elev.words.sayBack.why.same", "Saying back what {name} said and adding one more keeps the talk going. It is a habit for you, not a test for {name}."),
 
   "elev.words.actNow.label": "When to ask someone",
+  // the #/language disclosure — the month list is gone (B-GROWTH-36)
+  "elev.words.more.title": "Practice ideas",
+  "elev.words.more.sub": "Optional — four short routines, and when to ask someone.",
   ...g("elev.words.actNow.words", "Ask your doctor if {name} is not saying any words by 18 months, or stops saying words {name} used to say."),
   ...g("elev.words.actNow.talk", "Ask your doctor if, from age 4, people outside the family find {name} hard to understand most of the time."),
   ...g("elev.words.actNow.school", "Ask your doctor or the school's speech therapist if {name}'s teacher raises talking or understanding with you."),
@@ -82,6 +85,8 @@ export const he: Dict = {
   ...g("elev.words.sayBack.why.same", "כשחוזרים על מה ש{name} אמר/ה ומוסיפים עוד משהו, השיחה ממשיכה. זה הרגל שלכם, לא מבחן ל{name}.", "כשחוזרים על מה ש{name} אמר ומוסיפים עוד משהו, השיחה ממשיכה. זה הרגל שלכם, לא מבחן ל{name}.", "כשחוזרים על מה ש{name} אמרה ומוסיפים עוד משהו, השיחה ממשיכה. זה הרגל שלכם, לא מבחן ל{name}."),
 
   "elev.words.actNow.label": "מתי לשאול איש מקצוע",
+  "elev.words.more.title": "רעיונות תרגול",
+  "elev.words.more.sub": "רשות — ארבע שגרות קצרות, ומתי לשאול איש מקצוע.",
   ...g("elev.words.actNow.words", "פנו לרופא/ת הילדים אם {name} לא אומר/ת אף מילה עד גיל 18 חודשים, או מפסיק/ה להגיד מילים שכבר אמר/ה.", "פנו לרופא/ת הילדים אם {name} לא אומר אף מילה עד גיל 18 חודשים, או מפסיק להגיד מילים שכבר אמר.", "פנו לרופא/ת הילדים אם {name} לא אומרת אף מילה עד גיל 18 חודשים, או מפסיקה להגיד מילים שכבר אמרה."),
   ...g("elev.words.actNow.talk", "פנו לרופא/ת הילדים אם מגיל 4 אנשים מחוץ למשפחה מתקשים להבין את {name} רוב הזמן."),
   ...g("elev.words.actNow.school", "פנו לרופא/ת הילדים או לקלינאית התקשורת של בית הספר אם הגננת או המורה של {name} מעלה איתכם משהו לגבי דיבור או הבנה."),

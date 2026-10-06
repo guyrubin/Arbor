@@ -6,6 +6,7 @@ import { languageName } from "../../lib/languageName";
 import { fmtDay } from "../../lib/formatDate";
 import { genderedKey, type ChildGender } from "../../lib/today/fromRecord";
 import { quoteKeepsakeDoc, quotesFromDocs, type KeptQuote } from "../../lib/loop/tonight";
+import type { KeepsakeDoc } from "../../lib/firstsKeepsake";
 import { plainLanguage, quoteLanguage, type SayBack } from "../../lib/language/sayBack";
 
 /* ════════════════════════════════════════════════════════════════════════════
@@ -26,13 +27,13 @@ import { plainLanguage, quoteLanguage, type SayBack } from "../../lib/language/s
    ════════════════════════════════════════════════════════════════════════════ */
 
 /** A kept quote's document, as this page writes it (the Tonight shape + language). */
-type QuoteDoc = { id: string; kind?: string; note?: string; noticedOn?: string; language?: string };
+type QuoteDoc = KeepsakeDoc & { language?: string };
 
 /** The language a kept quote was saved under, by id (docs without one are skipped). */
 export function quoteLanguages(docs: readonly unknown[]): Map<string, string> {
   const out = new Map<string, string>();
   for (const raw of docs) {
-    const d = raw as QuoteDoc | null;
+    const d = raw as Partial<QuoteDoc> | null;
     if (d && d.kind === "quote" && typeof d.id === "string" && typeof d.language === "string" && d.language.trim()) out.set(d.id, d.language);
   }
   return out;
