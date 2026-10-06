@@ -75,6 +75,12 @@ const KIND_KEY: Record<string, string> = {
 };
 
 // ── Type definitions ──────────────────────────────────────────────────────────
+/* B-OCCL-01 (6 Oct): the route's ONE data-primary-move literal, spread on the
+   control that performs the move — the first nudge-type switch — never on the
+   prefs wrapper. A static const (or undefined), so whiteLabelContrast resolves
+   it as a data attribute. */
+const PREFS_STAMP = { "data-primary-move": "set-reminder-prefs" } as const;
+
 const NUDGE_TYPES: Array<{
   key: NudgeTypeKey;
   labelKey: string;
@@ -215,10 +221,55 @@ export default function SmartRemindersPanel() {
         </p>
       </div>
 
+      {/* PER-TYPE TOGGLES (AC-2). The declared move is set-reminder-prefs: this
+          is the block where the parent decides what Arbor may send.
+          B-OCCL-01 (6 Oct): the stamp is on the FIRST switch (Toggle
+          stamped), not on this wrapper (276 px at 375, it ran under the
+          capture dock), and the block comes BEFORE the max-2 contract card
+          (≈ 237 px at 375) — the contract stays always visible, under it. */}
+      <div data-module="reminders-prefs" style={{ display: "contents" }}>
+      <Section title={t("sr.types.heading")} icon={<Icon name="notifications" size={16} />}>
+        <div className="space-y-3">
+          {NUDGE_TYPES.map(({ key, labelKey, descKey, tone, toneSoft }, i) => {
+            const on = prefs.types[key];
+            return (
+              <div
+                key={key}
+                className="rounded-2xl p-4 flex items-center justify-between gap-4"
+                style={{
+                  background: on ? toneSoft : PAPER_DEEP,
+                  border: `1px solid ${on ? tone : RULE}`,
+                  transition: "background 0.15s, border-color 0.15s",
+                }}
+                data-testid={`sr-toggle-${key}`}
+              >
+                <div className="min-w-0">
+                  <p className="text-[13px] font-bold" style={{ color: INK }}>
+                    {t(labelKey)}
+                  </p>
+                  <p className="text-[12px] mt-0.5" style={{ color: MUTED }}>
+                    {t(descKey)}
+                  </p>
+                </div>
+                <Toggle
+                  on={on}
+                  onToggle={() => toggleType(key)}
+                  label={t(labelKey)}
+                  activeColor={tone}
+                  stamped={i === 0}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </Section>
+      </div>
+
       {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
           marks a top-level sibling module (what moduleBudget counts);
           `data-primary-move` marks the ONE control that performs the move
-          surfaceContract.ts declares for this route. */}
+          surfaceContract.ts declares for this route (B-OCCL-01: the first
+          nudge-type switch above). */}
       {/* MAX-2 CONTRACT CARD — always visible (AC-5) */}
       {/* B-TODAY-16: one card, two halves — the max-2 contract and, under a
           rule, the next nudge (it lost its own module slot to Delivery). */}
@@ -295,45 +346,6 @@ export default function SmartRemindersPanel() {
           </div>
         )}
       </div>
-      </div>
-
-      {/* PER-TYPE TOGGLES (AC-2). The declared move is set-reminder-prefs: this
-          is the block where the parent decides what Arbor may send. */}
-      <div data-module="reminders-prefs" data-primary-move="set-reminder-prefs" style={{ display: "contents" }}>
-      <Section title={t("sr.types.heading")} icon={<Icon name="notifications" size={16} />}>
-        <div className="space-y-3">
-          {NUDGE_TYPES.map(({ key, labelKey, descKey, tone, toneSoft }) => {
-            const on = prefs.types[key];
-            return (
-              <div
-                key={key}
-                className="rounded-2xl p-4 flex items-center justify-between gap-4"
-                style={{
-                  background: on ? toneSoft : PAPER_DEEP,
-                  border: `1px solid ${on ? tone : RULE}`,
-                  transition: "background 0.15s, border-color 0.15s",
-                }}
-                data-testid={`sr-toggle-${key}`}
-              >
-                <div className="min-w-0">
-                  <p className="text-[13px] font-bold" style={{ color: INK }}>
-                    {t(labelKey)}
-                  </p>
-                  <p className="text-[12px] mt-0.5" style={{ color: MUTED }}>
-                    {t(descKey)}
-                  </p>
-                </div>
-                <Toggle
-                  on={on}
-                  onToggle={() => toggleType(key)}
-                  label={t(labelKey)}
-                  activeColor={tone}
-                />
-              </div>
-            );
-          })}
-        </div>
-      </Section>
       </div>
 
       {/* B-TODAY-16 — DELIVERY: phone reminders live where nudges are
@@ -551,11 +563,14 @@ function Toggle({
   onToggle,
   label,
   activeColor,
+  stamped = false,
 }: {
   on: boolean;
   onToggle: () => void;
   label: string;
   activeColor: string;
+  /** B-OCCL-01: the route's primary-move stamp goes on the FIRST switch. */
+  stamped?: boolean;
 }) {
   return (
     <button
@@ -564,6 +579,7 @@ function Toggle({
       aria-checked={on}
       aria-label={label}
       onClick={onToggle}
+      {...(stamped ? PREFS_STAMP : undefined)}
       className="relative rounded-full transition flex-shrink-0"
       style={{
         width: 44,

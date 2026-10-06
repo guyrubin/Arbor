@@ -203,9 +203,15 @@ describe("B-TODAY-16 — push opt-in lives where nudges are configured (one moun
     const contract = panel.indexOf('data-module="reminders-contract"');
     const next = panel.indexOf('data-testid="sr-next-nudge"');
     const prefs = panel.indexOf('data-module="reminders-prefs"');
+    const delivery = panel.indexOf('data-module="reminders-delivery"');
     expect(contract).toBeGreaterThan(-1);
     expect(next).toBeGreaterThan(contract);
-    expect(next).toBeLessThan(prefs);
+    // B-OCCL-01 (6 Oct): the prefs block (the route's move) now comes BEFORE
+    // the contract card, so the next nudge is pinned inside the contract card
+    // by the module that follows it — Delivery.
+    expect(prefs).toBeGreaterThan(-1);
+    expect(prefs).toBeLessThan(contract);
+    expect(next).toBeLessThan(delivery);
   });
 
   it("EN + HE heading", async () => {
