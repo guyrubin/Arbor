@@ -21,7 +21,7 @@ const SN = programById("steady-nights")!;
 
 const enrol = (programId: string, now: Date, rows: unknown[] = []): ProgramEnrolment => {
   const r = enrolInProgram(rows, programId, now);
-  if (!r.ok) throw new Error(r.reason);
+  if ("reason" in r) throw new Error(r.reason);
   return r.enrolment;
 };
 
@@ -61,7 +61,7 @@ describe("B-PROG-01 — enrolment", () => {
     expect(programWeekAt(paused, TT, at(2026, 11, 30))).toBe(2);
     const r = enrolInProgram([paused], "talk-together", at(2026, 10, 29)); // 14 days later
     expect(r).toMatchObject({ ok: true, resumed: true, enrolment: { status: "active", startedAt: "2026-10-20" } });
-    if (!r.ok) throw new Error("x");
+    if (!("enrolment" in r)) throw new Error("x");
     expect("pausedAt" in r.enrolment).toBe(false);
     expect(programWeekAt(r.enrolment, TT, at(2026, 10, 29))).toBe(2);
     // resume is refused while another program is active

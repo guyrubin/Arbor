@@ -121,6 +121,8 @@ export function activeProgramWeek(rows: readonly unknown[], now: Date = new Date
   return content ? { enrolment, program, week, content } : null;
 }
 
+/** Narrow with `"enrolment" in result` / `"reason" in result`: the app's tsconfig
+ *  is not strict, so a boolean `ok` discriminant does not narrow (CI TS2339). */
 export type EnrolResult =
   | { ok: true; enrolment: ProgramEnrolment; resumed: boolean }
   | { ok: false; reason: "unknown_program" | "already_active"; active?: ProgramEnrolment };
@@ -139,8 +141,8 @@ export function enrolInProgram(rows: readonly unknown[], programId: string, now:
     .filter((e) => e.programId === programId && e.status === "paused")
     .sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0];
   if (paused) {
-    const resumed = resumeEnrolment(rows, paused, now);
-    return resumed.ok ? { ok: true, enrolment: resumed.enrolment, resumed: true } : resumed;
+    // resumeEnrolment already returns { ok: true, enrolment, resumed: true } or the refusal.
+    return resumeEnrolment(rows, paused, now);
   }
   const startedAt = dayKey(now);
   const iso = now.toISOString();
