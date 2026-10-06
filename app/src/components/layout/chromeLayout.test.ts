@@ -276,7 +276,8 @@ describe("IA-04 / IA-17 — exactly one child switcher at every width", () => {
     const src = stripComments(shell);
     expect(src).toContain('import TopbarKidSwitcher from "./TopbarKidSwitcher";');
     const identity = src.slice(src.indexOf("identity={"), src.indexOf("actions={"));
-    expect(identity).toContain('<TopbarKidSwitcher maxWidth="128px" />');
+    // P5-LOOP c2 r1: natural width, shrinks in the row (the 128 px cap cut the name to "D..")
+    expect(identity).toContain("<TopbarKidSwitcher shrink />");
     // the read-only "Caring for {name}" line it replaces is gone
     expect(src).not.toContain('t("top.caringFor")');
   });

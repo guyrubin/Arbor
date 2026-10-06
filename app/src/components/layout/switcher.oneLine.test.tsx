@@ -21,14 +21,25 @@ describe("TopbarKidSwitcher — name and age on ONE line", () => {
     it(`${lang}: one row (flex-direction: row), the name can shrink but never to zero, the age never wraps`, () => {
       const html = renderToStaticMarkup(<ChildIdentity child={DYLAN} t={(k, v) => translate(lang, k, v)} />);
       expect(html).toMatch(/data-child-identity="c1"[^>]*flex-direction:row/);
-      expect(html).toMatch(/data-identity-name[^>]*min-width:2ch/);
-      expect(html).toMatch(/data-identity-age[^>]*white-space:nowrap/);
+      // P5-LOOP c2 r1: the name keeps priority — never under 4 characters
+      expect(html).toMatch(/data-identity-name[^>]*min-width:4ch/);
+      // "· age" is ONE nowrap unit that wraps to the clipped 2nd line instead of being cut mid-word
+      expect(html).toMatch(/data-child-identity="c1"[^>]*flex-wrap:wrap[^>]*row-gap:24px;height:20px[^>]*overflow:hidden/);
+      expect(html).toMatch(/data-age-unit[^>]*class="max-lg:hidden"[^>]*white-space:nowrap/);
+      const unit = html.slice(html.indexOf("data-age-unit"));
+      expect(unit.indexOf("·")).toBeLessThan(unit.indexOf("data-identity-age"));
       expect(html.indexOf("data-identity-name")).toBeLessThan(html.indexOf("data-identity-age"));
     });
   }
-  it("the identity wrapper keeps room beside the Demo chip (flex 1 1 auto, min 3.5rem)", () => {
+  it("the identity slot grows; the closed trigger carries a 6 px Demo dot, never the text chip (c2 r1)", () => {
     const src = readFileSync(path.join(here, "TopbarKidSwitcher.tsx"), "utf8");
-    expect(src).toContain('<span style={{ flex: "1 1 auto", minWidth: "3.5rem", overflow: "hidden", display: "flex" }}>');
+    expect(src).toContain('<span data-identity-slot style={{ flex: "1 1 auto", minWidth: "4ch", overflow: "hidden", display: "flex" }}>');
+    expect(src).toContain("{activeChild.demo === true && <DemoDot t={t} />}");
+    expect(src).not.toContain("{activeChild.demo === true && <DemoChip t={t} />}");
+    expect(src).toMatch(/data-demo-chip="dot"[\s\S]{0,120}aria-label=\{t\("elev\.demo\.chipAria"\)\}/);
+    expect(src).toContain('width: "6px", height: "6px"');
+    // the family list keeps the full chip
+    expect(src).toContain("{p.demo === true && <DemoChip t={t} />}");
     expect(src).not.toMatch(/flexDirection: "column", minWidth: 0, textAlign: "start"/);
   });
 });

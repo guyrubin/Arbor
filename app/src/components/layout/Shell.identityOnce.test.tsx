@@ -87,7 +87,9 @@ describe("B-SHELL-38 · one identity per screen (source pins)", () => {
   it("phone: the strip mounts the identity switcher and does not repeat the age", () => {
     const strip = shell.slice(shell.indexOf("<ChildContextHeader"), shell.indexOf("actions={"));
     expect(strip).toContain('className="lg:hidden"');
-    expect(strip).toContain('<TopbarKidSwitcher maxWidth="128px" />');
+    // P5-LOOP c2 r1: no fixed 128 px cap (it cut the name to "D.."); natural width, shrinks in the row
+    expect(strip).toContain("<TopbarKidSwitcher shrink />");
+    expect(strip).not.toMatch(/maxWidth="128px"/);
     expect(strip).not.toMatch(/ageLabel\(|formatChildAge\(/);
   });
 

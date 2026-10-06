@@ -327,7 +327,12 @@ describe("B-DIST-01 · every egress carries the demo header (EN + HE)", () => {
 
   it("the switcher chip: shown only for the demo child, tokens only, inside ≥44 px rows", () => {
     const src = readFileSync(path.join(SRC, "components/layout/TopbarKidSwitcher.tsx"), "utf8");
-    expect(src).toMatch(/activeChild\.demo === true && <DemoChip t=\{t\} \/>/);
+    // P5-LOOP c2 r1: the closed trigger carries a 6 px dot (named), the family list the chip
+    expect(src).toMatch(/activeChild\.demo === true && <DemoDot t=\{t\} \/>/);
+    const dot = src.slice(src.indexOf("function DemoDot"), src.indexOf("export function SwitcherChildOption"));
+    expect(dot).toMatch(/aria-label=\{t\("elev\.demo\.chipAria"\)\}/);
+    expect(dot).toMatch(/background: "var\(--arbor-muted\)"/);
+    expect(dot).not.toMatch(/#[0-9a-fA-F]{3,8}|green|amber|coral|red/);
     expect(src).toMatch(/p\.demo === true && <DemoChip t=\{t\} \/>/);
     const chip = src.slice(src.indexOf("function DemoChip"), src.indexOf("export default function"));
     expect(chip).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);

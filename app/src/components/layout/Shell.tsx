@@ -393,7 +393,10 @@ export default function Shell() {
               <ArborMark size={28} />
               {/* IA-25: no pulsing "live" dot — nothing here is live, and a
                   pulse reads as presence (law 4). The child avatar is the mark. */}
-              <TopbarKidSwitcher maxWidth="128px" />
+              {/* P5-LOOP c2 r1: no fixed cap (128 px cut the name to "D.."); the
+                  switcher takes its natural width and shrinks only when the
+                  row is full — the name keeps priority inside it. */}
+              <TopbarKidSwitcher shrink />
               {/* GP-01: the months-precise age label, still on the strip — but
                   only from `sm` up. At 390 the row is mark + switcher + three
                   44 px accessories and there is no width left for it; the age

@@ -37,6 +37,25 @@ function DemoChip({ t }: { t: (key: string) => string }) {
 }
 
 /**
+ * P5-LOOP critic c2 r1 (overview design + product P1, carried r1 P1-2): in
+ * the closed trigger the Demo tag is a 6 px dot (named for screen readers
+ * and on hover) — the full "Demo" chip crossed the switcher border at 375
+ * and took the width the child's name needed at 1280. The chip itself stays
+ * in the open family list (SwitcherChildOption).
+ */
+function DemoDot({ t }: { t: (key: string) => string }) {
+  return (
+    <span
+      data-demo-chip="dot"
+      role="img"
+      aria-label={t("elev.demo.chipAria")}
+      title={t("elev.demo.chip")}
+      style={{ flex: "0 0 auto", width: "6px", height: "6px", borderRadius: "999px", background: "var(--arbor-muted)" }}
+    />
+  );
+}
+
+/**
  * B-INF-10 — one child in the switcher list: picture · name · her own age
  * ("22 months" under three, "5 years" from three — lib/age/format, the one
  * formatter). Exported so the age line renders in a static test.
@@ -106,11 +125,18 @@ export function SwitcherChildOption({
 /**
  * B-SHELL-38 — the ONE identity line: name · the child's own age ("22
  * months" under three, "5 years" from three — lib/age/format), ON ONE LINE
- * (P5 r1 pass A8, 6 Oct: stacked, the name collapsed to zero width at 375
- * and the age ran under the Demo chip). The name shrinks with an ellipsis,
- * the age never wraps and never paints outside the line. On a child
- * switch the line crossfades in 200 ms (keyed on the child id): the one
- * motion this item allows. Exported so the line renders in a static test.
+ * (P5 r1 pass A8, 6 Oct). On a child switch the line crossfades in 200 ms
+ * (keyed on the child id): the one motion this item allows. Exported so the
+ * line renders in a static test.
+ *
+ * P5-LOOP critic c2 r1 (P1, the render still showed "D.. · 3 yea"): the NAME
+ * has priority. The line is a wrapping row clipped to its first line: the
+ * name is the first item and keeps its whole width (it ellipsizes only when
+ * the name alone is wider than the line, never under 4 characters); "· age"
+ * is ONE nowrap unit that drops to the hidden second line when there is no
+ * room, so it is either whole or absent — never clipped mid-word. Below lg
+ * the age is not in the switcher at all (`max-lg:hidden`: the phone strip;
+ * the page H1 carries it).
  */
 export function ChildIdentity({ child, t }: { child: ChildProfile; t: (key: string, vars?: Record<string, string | number>) => string }) {
   const age = formatChildAge(child, t);
@@ -121,22 +147,20 @@ export function ChildIdentity({ child, t }: { child: ChildProfile; t: (key: stri
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.2, ease: "easeOut" }}
-      style={{ display: "flex", flexDirection: "row", alignItems: "baseline", gap: "4px", minWidth: 0, overflow: "hidden", textAlign: "start", lineHeight: 1.15 }}
+      style={{ display: "flex", flexDirection: "row", flexWrap: "wrap", alignItems: "baseline", columnGap: "4px", rowGap: "24px", height: "20px", minWidth: 0, overflow: "hidden", textAlign: "start", lineHeight: "20px" }}
     >
       <span
         dir="auto"
         data-identity-name
-        style={{ fontSize: "var(--t-sm)", fontWeight: 700, color: "var(--arbor-ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: "2ch", flex: "0 1 auto" }}
+        style={{ fontSize: "var(--t-sm)", fontWeight: 700, color: "var(--arbor-ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: "4ch", maxWidth: "100%", flex: "0 1 auto" }}
       >
         {child.name}
       </span>
       {age && (
-        <>
-          <span aria-hidden="true" style={{ fontSize: "12px", color: "var(--arbor-muted)", flex: "0 0 auto" }}>·</span>
-          <span dir="auto" data-identity-age style={{ fontSize: "12px", color: "var(--arbor-muted)", whiteSpace: "nowrap", flex: "0 0 auto" }}>
-            {age}
-          </span>
-        </>
+        <span data-age-unit className="max-lg:hidden" style={{ fontSize: "12px", color: "var(--arbor-muted)", whiteSpace: "nowrap", flex: "0 0 auto" }}>
+          <span aria-hidden="true">·</span>{" "}
+          <span dir="auto" data-identity-age>{age}</span>
+        </span>
       )}
     </motion.span>
   );
@@ -154,7 +178,7 @@ export function ChildIdentity({ child, t }: { child: ChildProfile; t: (key: stri
  * RTL: all directional layout uses logical CSS properties so the chip and
  * popover render correctly under dir=rtl (Hebrew). No raw hex values.
  */
-export default function TopbarKidSwitcher({ maxWidth = "180px", fullWidth = false }: { maxWidth?: string; fullWidth?: boolean } = {}) {
+export default function TopbarKidSwitcher({ maxWidth = "180px", fullWidth = false, shrink = false }: { maxWidth?: string; fullWidth?: boolean; /** In a flex row (the phone strip): take the natural width, shrink when the row is full — no fixed cap (c2 r1). */ shrink?: boolean } = {}) {
   const { profiles, activeChild, setActiveChild } = useProfile();
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
@@ -188,7 +212,7 @@ export default function TopbarKidSwitcher({ maxWidth = "180px", fullWidth = fals
   }, [open]);
 
   return (
-    <div ref={containerRef} style={{ position: "relative" }}>
+    <div ref={containerRef} style={shrink ? { position: "relative", flex: "0 1 auto", minWidth: 0 } : { position: "relative" }}>
       {/* Chip button — active child avatar + chevron */}
       <button
         onClick={() => setOpen((o) => !o)}
@@ -199,7 +223,7 @@ export default function TopbarKidSwitcher({ maxWidth = "180px", fullWidth = fals
           display: fullWidth ? "flex" : "inline-flex",
           width: fullWidth ? "100%" : undefined,
           alignItems: "center",
-          gap: "8px",
+          gap: "6px",
           padding: "4px 10px",
           borderRadius: "12px",
           background: "var(--arbor-paper-elevated)",
@@ -208,16 +232,16 @@ export default function TopbarKidSwitcher({ maxWidth = "180px", fullWidth = fals
           color: "var(--arbor-muted)",
           minWidth: "44px",      /* WCAG AA touch target */
           minHeight: "44px",
-          maxWidth,
+          maxWidth: shrink ? "100%" : maxWidth,
           boxSizing: "border-box",
         }}
       >
         <Avatar name={activeChild.name} photoURL={childPicture(activeChild).url} size={fullWidth ? 32 : 24} />
         {/* B-SHELL-38: the identity line — picture · name · her own age, once per screen. */}
-        <span style={{ flex: "1 1 auto", minWidth: "3.5rem", overflow: "hidden", display: "flex" }}>
+        <span data-identity-slot style={{ flex: "1 1 auto", minWidth: "4ch", overflow: "hidden", display: "flex" }}>
           <ChildIdentity child={activeChild} t={t} />
         </span>
-        {activeChild.demo === true && <DemoChip t={t} />}
+        {activeChild.demo === true && <DemoDot t={t} />}
         <Icon
           name="expand_more"
           size={16}
