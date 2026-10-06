@@ -2,8 +2,10 @@
    B-GROWTH-11 — the milestone catalogue in both languages, keyed by stable id.
 
    Keys: `ms.item.<id>.title|desc|looks` for every catalogue row (CDC
-   `cdc-{m}m-{n}`, ASHA `asha-*`, Arbor `m-*`), `ms.band.<months>` for the
-   13 age bands, `ms.ageGroup.<slug>` for the non-band age labels.
+   `cdc-{m}m-{n}`, ASHA `asha-*`; the Arbor `m-*` rows were retired by
+   B-LOOP-01), `ms.band.<months>` for the 13 age bands, `ms.ageGroup.<slug>`
+   for any non-band age label, `ms.age.*` for the one age sentence
+   (lib/milestoneAgeLine.ts).
 
    EN is DERIVED from lib/milestoneData.ts (the catalogue is the source of
    truth; the dictionary can never drift from it). HE is written here.
@@ -183,17 +185,6 @@ export const HE_MILESTONE_TEXT: Readonly<Record<string, readonly [string, string
   "asha-comm-36m": ["מבינים בערך שלושה רבעים מהדיבור", "בגיל שלוש, רוב השומעים מבינים בערך שלושה רבעים ממה שהילד/ה אומר/ת.", "רוב האנשים, גם כאלה שלא מכירים, מבינים בערך שלושה רבעים מהדיבור."],
   "asha-comm-48m": ["מבינים כמעט את כל הדיבור", "בגיל ארבע מבינים את הדיבור כמעט תמיד, גם אם כמה צלילים עוד מתגבשים.", "גם זרים מבינים כמעט הכול; כמה צלילים שמגיעים בדרך כלל אחרונים (כמו ר, ל, ס, ש) עוד יכולים להתבלבל."],
 
-  // ─────────────────────────────── Arbor 4–6y ─────────────────────────────
-  "m-1": ["נרגע/ת בעזרת מבוגר", "מצליח/ה להירגע תוך 15 דקות עם נוכחות חמה ומרגיעה של מבוגר.", "אחרי התפרצות, נוכחות רגועה של מבוגר עוזרת להירגע תוך רבע שעה."],
-  "m-2": ["מדבר/ת במשפטים מלאים", "מדבר/ת במשפטים של 5–6 מילים ומספר/ת בבהירות על מה שקרה במהלך היום.", "מספר/ת על היום במשפטים שקל לכם לעקוב אחריהם."],
-  "m-3": ["משחק דמיון משותף", "ממציא/ה משחקים עם ילדים אחרים ומסכם/ת איתם חוקים פשוטים.", "ממציא/ה עם חברים משחק 'כאילו', ומסכמים מי משחק מה."],
-  "m-4": ["מתלבש/ת לבד", "מכפתר/ת חולצה, מעלה מכנסיים ומסדר/ת נעליים עם מעט הכוונה.", "מתלבש/ת מההתחלה ועד הסוף, רק עם תזכורת פה ושם."],
-  "m-5": ["קופץ/ת על רגל אחת", "שומר/ת על שיווי משקל וקופץ/ת בנוחות על רגל אחת 3–4 קפיצות ברצף.", "קופץ/ת כמה פעמים על רגל אחת בלי ליפול."],
-  "m-6": ["קורא/ת לרגשות בשם", "יודע/ת לתת שם לרגשות מורכבים, למשל 'אני מרגיש/ה לבד' או 'התאכזבתי'.", "אומר/ת רגש מדויק, לא רק 'כועס לי' או 'עצוב לי'."],
-  "m-7": ["עובר/ת בין שפות", "עובר/ת בנוחות בין עברית לאנגלית, לפי מי שמקשיב.", "מחליף/ה שפה לפי מי שמדברים איתו, בלי להיתקע."],
-  "m-8": ["מציע/ה דרכים ליישב ריב", "מציע/ה פשרות פשוטות כשיש ריב על צעצוע ('חמש דקות לך ואז לי').", "מציע/ה החלפה הוגנת או תורות כדי לסיים ויכוח."],
-  "m-9": ["מבין/ה את סדר הזמנים", "מסדר/ת ימים לפי הסדר, מבין/ה 'מחר' לעומת 'אתמול' ומכיר/ה את סדר הבוקר.", "מדבר/ת נכון על אתמול, היום ומחר ועל סדר היום."],
-  "m-10": ["מבקש/ת הפסקה לפני שזה יותר מדי", "יודע/ת להגיד 'רועש לי פה' ומבקש/ת אוזניות או לצאת מהמקום.", "מרגיש/ה שהרעש וההמולה מתחילים להציף ומבקש/ת הפסקה או שקט."],
 };
 
 /** HE per band threshold (months). */
@@ -215,8 +206,7 @@ const HE_BANDS: Readonly<Record<number, string>> = {
 
 /** HE for the non-band age labels (Arbor's own items). */
 const HE_AGE_GROUPS: Readonly<Record<string, string>> = {
-  "ms.ageGroup.4-5": "4–5 שנים",
-  "ms.ageGroup.5-6": "5–6 שנים",
+  // B-LOOP-01: the Arbor "Age 4-5" / "Age 5-6" labels left with their rows.
 };
 
 const FIELDS = ["title", "desc", "looks"] as const;
@@ -231,6 +221,10 @@ function buildEn(): Record<string, string> {
   for (const b of MILESTONE_AGE_BANDS) out[milestoneBandKey(b.months)] = b.label;
   for (const [label, key] of MILESTONE_AGE_GROUP_KEYS) if (!(key in out)) out[key] = label;
   out["ms.customDesc"] = CUSTOM_MILESTONE_DESC;
+  // B-LOOP-01: the ONE parent-facing age sentence (lib/milestoneAgeLine.ts).
+  // {age}/{from}/{to} are band labels (ms.band.*), never raw months.
+  out["ms.age.mostBy"] = "Most children do this by {age}";
+  out["ms.age.between"] = "Usually between {from} and {to}";
   out["ms.heReview.note"] = "The Hebrew milestone wording is an AI-assisted first draft, awaiting review by a native Hebrew-speaking child-development professional.";
   return out;
 }
@@ -243,6 +237,8 @@ function buildHe(): Record<string, string> {
   for (const [months, label] of Object.entries(HE_BANDS)) out[milestoneBandKey(Number(months))] = label;
   Object.assign(out, HE_AGE_GROUPS);
   out["ms.customDesc"] = "אבן דרך שהוספתם בעצמכם.";
+  out["ms.age.mostBy"] = "רוב הילדים עושים זאת עד גיל {age}";
+  out["ms.age.between"] = "בדרך כלל בין {from} ל-{to}";
   out["ms.heReview.note"] = "הנוסח העברי של אבני הדרך הוא טיוטה ראשונה שנכתבה בעזרת בינה מלאכותית, וממתינה לבדיקה של איש/אשת מקצוע בהתפתחות הילד שעברית היא שפת האם שלהם.";
   return out;
 }

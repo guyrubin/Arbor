@@ -10,6 +10,7 @@
  * URL, from the places that cite them:
  *   - the milestone map's per-domain references (`DOMAIN_REFERENCES`)
  *   - per-milestone references in the seeded catalogue (`ALL_MILESTONES`)
+ *   - B-LOOP-01: each catalogue row's `source` document (CDC 2022, ASHA 2023)
  *   - the hard-moment guides' evidence refs (`hardMomentCards`)
  *   - the Trust Center's own citation anchors, passed in by the page (kept
  *     there so the AP-060 preservation guard still sees them in that file)
@@ -32,6 +33,7 @@ export function contentCitedSourceUrls(): string[] {
   for (const ref of Object.values(DOMAIN_REFERENCES)) urls.push(ref.url);
   for (const milestone of ALL_MILESTONES) {
     for (const ref of milestone.references ?? []) urls.push(ref.url);
+    if (milestone.source?.url) urls.push(milestone.source.url);
   }
   for (const card of hardMomentCards) urls.push(...card.evidenceRefs);
   return urls;

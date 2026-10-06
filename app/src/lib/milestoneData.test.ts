@@ -10,6 +10,9 @@ import {
   selectWeeklyFocus,
   explainMilestonePrompt,
   MILESTONE_AGE_BANDS,
+  CDC_2022_SOURCE,
+  RETIRED_MILESTONE_IDS,
+  isCatalogueMilestone,
 } from "./milestoneData";
 import type { DevelopmentalDomainId, Milestone } from "../types";
 
@@ -69,9 +72,9 @@ describe("CDC/AAP-2022 milestone dataset", () => {
     }
   });
 
-  it("includes ASHA communication + feeding milestones and the Arbor extended set", () => {
+  it("includes ASHA communication + feeding milestones; the unsourced Arbor set is retired (B-LOOP-01)", () => {
     expect(ASHA_MILESTONES.length).toBeGreaterThan(0);
-    expect(ARBOR_EXTENDED_MILESTONES.length).toBe(10);
+    expect(ARBOR_EXTENDED_MILESTONES.length).toBe(0);
     expect(ALL_MILESTONES.length).toBe(
       CDC_MILESTONES.length + ASHA_MILESTONES.length + ARBOR_EXTENDED_MILESTONES.length
     );
@@ -79,10 +82,84 @@ describe("CDC/AAP-2022 milestone dataset", () => {
     expect(ASHA_MILESTONES.some((m) => m.ageMonths === 36 && /understandable/i.test(m.title))).toBe(true);
   });
 
-  it("preserves the legacy Arbor milestone ids (m-1…m-10) for existing records", () => {
-    for (let i = 1; i <= 10; i++) {
-      expect(ALL_MILESTONES.some((m) => m.id === `m-${i}`)).toBe(true);
+  it("B-LOOP-01: the legacy Arbor ids (m-1…m-10) are listed as retired and are no catalogue row", () => {
+    // Was: "preserves the legacy Arbor milestone ids for existing records".
+    // B-LOOP-01 (VETO-FIRST clinical) retired them: no public source states
+    // those skills at those ages. Stored records may still carry the ids; the
+    // list names them so a reader can recognise them.
+    expect([...RETIRED_MILESTONE_IDS]).toEqual(Array.from({ length: 10 }, (_, i) => `m-${i + 1}`));
+    for (const id of RETIRED_MILESTONE_IDS) {
+      expect(ALL_MILESTONES.some((m) => m.id === id), id).toBe(false);
+      expect(isCatalogueMilestone({ id }), id).toBe(false);
     }
+  });
+});
+
+describe("B-LOOP-01 — every catalogue row carries its source and its age semantics", () => {
+  const bandMonths = new Set(MILESTONE_AGE_BANDS.map((b) => b.months));
+
+  it("prints the catalogue count (133 before B-LOOP-01, 10 Arbor rows retired)", () => {
+    // eslint-disable-next-line no-console
+    console.log(`B-LOOP-01 catalogue rows: ${ALL_MILESTONES.length} (CDC ${CDC_MILESTONES.length} · ASHA ${ASHA_MILESTONES.length} · Arbor ${ARBOR_EXTENDED_MILESTONES.length})`);
+    expect(ALL_MILESTONES.length).toBe(123);
+  });
+
+  it("every row has a source with org, title, year and ageSemantics", () => {
+    const orgs = ["CDC", "ASHA", "AAP", "WHO", "NHS", "JGZ", "IL-CDI", "arbor"];
+    const semantics = ["most_children_by", "average_onset", "range"];
+    for (const m of ALL_MILESTONES) {
+      const s = m.source;
+      expect(s, `${m.id} has no source`).toBeDefined();
+      expect(orgs, m.id).toContain(s!.org);
+      expect(s!.title.trim().length, m.id).toBeGreaterThan(0);
+      expect(Number.isInteger(s!.year) && s!.year >= 1990 && s!.year <= 2026, `${m.id} year ${s!.year}`).toBe(true);
+      expect(semantics, m.id).toContain(s!.ageSemantics);
+      if (s!.url !== undefined) expect(s!.url, m.id).toMatch(/^https:\/\//);
+    }
+  });
+
+  it("no row has ageSemantics 'range' without rangeMonths, and only range rows carry one", () => {
+    for (const m of ALL_MILESTONES) {
+      const s = m.source!;
+      if (s.ageSemantics === "range") {
+        expect(s.rangeMonths, `${m.id} range without rangeMonths`).toBeDefined();
+        const [from, to] = s.rangeMonths!;
+        expect(from, m.id).toBeLessThan(to);
+        // Bounds are band thresholds, so the sentence prints a band label.
+        expect(bandMonths.has(from) && bandMonths.has(to), `${m.id} [${from}, ${to}]`).toBe(true);
+      } else {
+        expect(s.rangeMonths, `${m.id} carries rangeMonths without 'range'`).toBeUndefined();
+      }
+    }
+  });
+
+  it("CDC rows cite the 2022 revision as 'most children by'; their anchor is a band threshold", () => {
+    for (const m of CDC_MILESTONES) {
+      expect(m.source).toEqual(CDC_2022_SOURCE);
+      expect(bandMonths.has(m.ageMonths as number), m.id).toBe(true);
+    }
+    expect(CDC_2022_SOURCE).toEqual({
+      org: "CDC",
+      title: "Learn the Signs. Act Early. (2022 revision, Zubler et al.)",
+      url: "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+      year: 2022,
+      ageSemantics: "most_children_by",
+    });
+  });
+
+  it("ASHA rows cite the 2023 Communication Milestones as a range starting at the row's own band", () => {
+    for (const m of ASHA_MILESTONES) {
+      expect(m.source?.org, m.id).toBe("ASHA");
+      expect(m.source?.year, m.id).toBe(2023);
+      expect(m.source?.ageSemantics, m.id).toBe("range");
+      expect(m.source?.rangeMonths?.[0], m.id).toBe(m.ageMonths);
+    }
+  });
+
+  it("a stored row's source never decides anything: catalogue rows are recognised by id", () => {
+    const row = ALL_MILESTONES[0];
+    expect(isCatalogueMilestone({ id: row.id })).toBe(true);
+    expect(isCatalogueMilestone({ id: row.id, custom: true })).toBe(false);
   });
 });
 

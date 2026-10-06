@@ -359,6 +359,38 @@ export interface Milestone {
    */
   exampleMedia?: MilestoneExampleMedia;
   custom?: boolean;
+  /**
+   * B-LOOP-01 — the public document this row's age claim comes from, with the
+   * age semantics stated exactly as that document states them. REQUIRED on
+   * every catalogue row (lib/milestoneData.test.ts enforces it); optional by
+   * type only because parent-added rows and stored legacy docs carry none.
+   * The parent-facing age sentence is built by `milestoneAgeLine`
+   * (lib/milestoneAgeLine.ts), never from this field directly.
+   */
+  source?: MilestoneSource;
+}
+
+/** B-LOOP-01 — who published the document a catalogue row cites. */
+export type MilestoneSourceOrg = "CDC" | "ASHA" | "AAP" | "WHO" | "NHS" | "JGZ" | "IL-CDI" | "arbor";
+
+/**
+ * B-LOOP-01 — how the source states its age:
+ *  - "most_children_by": the age by which MOST (about 75 %) children do the
+ *    skill (CDC 2022). Not an average, not a cut-off.
+ *  - "range": the source prints an age range; `rangeMonths` carries it.
+ *  - "average_onset": the source states an average age. Never rendered to a
+ *    parent (an average invites comparison).
+ */
+export type MilestoneAgeSemantics = "most_children_by" | "average_onset" | "range";
+
+export interface MilestoneSource {
+  org: MilestoneSourceOrg;
+  title: string;
+  url?: string;
+  year: number;
+  ageSemantics: MilestoneAgeSemantics;
+  /** [from, to] in months, both band thresholds — present exactly when ageSemantics is "range". */
+  rangeMonths?: [number, number];
 }
 
 export type StepStatus = 'todo' | 'doing' | 'done';

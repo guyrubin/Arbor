@@ -168,7 +168,7 @@ function readSrc(relPath) {
   }
 }
 
-// ── F5: ALL_MILESTONES >= 133 ─────────────────────────────────────────────────
+// ── F5: ALL_MILESTONES >= 123 (B-LOOP-01: 117 CDC + 6 ASHA; the 10 unsourced Arbor rows m-1…m-10 retired) ─────────────────────────────────────────────────
 {
   const text = readSrc("lib/milestoneData.ts");
   if (!text) {
@@ -188,10 +188,10 @@ function readSrc(relPath) {
       const asha = (ashaSec.match(/^\s+\{/gm) || []).length;
       const arbor = (arborSec.match(/^\s+\{/gm) || []).length;
       const total = cdc + asha + arbor;
-      if (total >= 133) {
-        pass("F5", "milestones", "ALL_MILESTONES=" + total + ">=133 (cdc=" + cdc + " asha=" + asha + " arbor=" + arbor + ")");
+      if (total >= 123) {
+        pass("F5", "milestones", "ALL_MILESTONES=" + total + ">=123 (cdc=" + cdc + " asha=" + asha + " arbor=" + arbor + ")");
       } else {
-        fail("F5", "milestones", total + "<133 (cdc=" + cdc + " asha=" + asha + " arbor=" + arbor + ")");
+        fail("F5", "milestones", total + "<123 (cdc=" + cdc + " asha=" + asha + " arbor=" + arbor + ")");
       }
     }
   }

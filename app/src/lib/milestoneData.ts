@@ -1,4 +1,4 @@
-import { Milestone } from "../types";
+import { Milestone, MilestoneSource } from "../types";
 import { resolveHebrewSlash } from "./hebrewSlashGender";
 import { toAgeBand, type CanonicalBandId } from "./domains/ageBands";
 
@@ -28,6 +28,27 @@ import { toAgeBand, type CanonicalBandId } from "./domains/ageBands";
  * the everyday, plain-language picture of the behavior.
  */
 
+/* ───────────────────────────── Sources (B-LOOP-01) ───────────────────────────── */
+
+/**
+ * B-LOOP-01 [VETO-FIRST clinical] — every catalogue row names the public
+ * document its age claim comes from, with the age semantics that document
+ * uses. A row with no public source does not ship. The parent-facing age
+ * sentence is built ONLY by `milestoneAgeLine` (lib/milestoneAgeLine.ts).
+ * Every source family has a row in
+ * PAI/projects/arbor/execution/2026-10-06--milestone-loop/REVIEW-SHEET.md for
+ * the clinical reviewer (G-01).
+ */
+
+/** CDC 2022: the age by which MOST (about 75 %) children do the skill. */
+export const CDC_2022_SOURCE: MilestoneSource = { org: "CDC", title: "Learn the Signs. Act Early. (2022 revision, Zubler et al.)", url: "https://www.cdc.gov/ncbddd/actearly/milestones/index.html", year: 2022, ageSemantics: "most_children_by" };
+
+/** ASHA 2023 Communication Milestones: ASHA prints age RANGES. Each ASHA row
+ *  carries its own band to the next band; REVIEW-SHEET.md says so per row (the
+ *  range ASHA prints for these rows could not be stated with confidence in the
+ *  build session, and a range is never invented from one anchor). */
+export const ashaSource = (fromMonths: number, toMonths: number): MilestoneSource => ({ org: "ASHA", title: "Communication Milestones (2023)", url: "https://www.asha.org/public/developmental-milestones/", year: 2023, ageSemantics: "range", rangeMonths: [fromMonths, toMonths] });
+
 /** Build a stable, deterministic id for a CDC checklist item. */
 const cdc = (
   ageMonths: number,
@@ -49,6 +70,7 @@ const cdc = (
   // they've actually seen. (We deliberately do NOT auto-check by a fixed age
   // literal — that read as artificial per-child "progress" rather than truth.)
   checked: false,
+  source: CDC_2022_SOURCE,
 });
 
 export const CDC_MILESTONES: Milestone[] = [
@@ -203,6 +225,7 @@ export const CDC_MILESTONES: Milestone[] = [
 export const ASHA_MILESTONES: Milestone[] = [
   {
     id: "asha-feed-9m",
+    source: ashaSource(9, 12),
     domain: "independence_adaptive_skills",
     ageMonths: 9,
     ageGroup: "9 months",
@@ -213,6 +236,7 @@ export const ASHA_MILESTONES: Milestone[] = [
   },
   {
     id: "asha-feed-12m",
+    source: ashaSource(12, 15),
     domain: "independence_adaptive_skills",
     ageMonths: 12,
     ageGroup: "12 months",
@@ -223,6 +247,7 @@ export const ASHA_MILESTONES: Milestone[] = [
   },
   {
     id: "asha-comm-24m",
+    source: ashaSource(24, 30),
     domain: "language_communication",
     ageMonths: 24,
     ageGroup: "2 years",
@@ -233,6 +258,7 @@ export const ASHA_MILESTONES: Milestone[] = [
   },
   {
     id: "asha-feed-24m",
+    source: ashaSource(24, 30),
     domain: "independence_adaptive_skills",
     ageMonths: 24,
     ageGroup: "2 years",
@@ -243,6 +269,7 @@ export const ASHA_MILESTONES: Milestone[] = [
   },
   {
     id: "asha-comm-36m",
+    source: ashaSource(36, 48),
     domain: "language_communication",
     ageMonths: 36,
     ageGroup: "3 years",
@@ -253,6 +280,7 @@ export const ASHA_MILESTONES: Milestone[] = [
   },
   {
     id: "asha-comm-48m",
+    source: ashaSource(48, 60),
     domain: "language_communication",
     ageMonths: 48,
     ageGroup: "4 years",
@@ -264,26 +292,19 @@ export const ASHA_MILESTONES: Milestone[] = [
 ];
 
 /**
- * Arbor's own 4–6y surveillance items — the bilingual, regulation, and sensory
- * cues that the CDC set doesn't cover but the product cares about. Kept from the
- * original demo so the default profile (a 5-year-old in language transition)
- * still has relevant, editable open milestones. Like the CDC/ASHA rows these
- * seed UNobserved (`checked:false`) — nothing is "observed" until the parent
- * marks it, so a brand-new child never gets a silently inflated Development Score.
+ * B-LOOP-01 — Arbor's own 4–6y rows (m-1…m-10) are RETIRED. Each was checked
+ * one by one against the CDC 4-year and 5-year checklists, AAP and NHS parent
+ * pages; none could be tied to a public document stating THAT skill at THAT
+ * age with confidence (two duplicated a CDC row at a different age; the
+ * per-row verdicts are in REVIEW-SHEET.md). The export stays, empty, so its
+ * callers and the capability floor keep their seam; a 4–6y row comes back
+ * only with its `source`.
  */
-export const ARBOR_EXTENDED_MILESTONES: Milestone[] = [
-  { id: "m-1", domain: "attachment_regulation", ageMonths: 54, ageGroup: "Age 4-5", title: "Regulates with Prompting", description: "Can calm down within 15 minutes with warm adult co-regulation.", skillLooksLike: "After a meltdown, a calm adult presence helps them settle within a quarter of an hour.", checked: false },
-  { id: "m-2", domain: "language_communication", ageMonths: 54, ageGroup: "Age 4-5", title: "Uses Full Sentences", description: "Speaks in sentences of 5-6 words, sharing clear thoughts on what they did during the day.", skillLooksLike: "Recaps their day in proper sentences you can easily follow.", checked: false },
-  { id: "m-3", domain: "social_development", ageMonths: 54, ageGroup: "Age 4-5", title: "Imaginative Cooperative Play", description: "Plays 'makeup' games with other children, successfully negotiating simple rules.", skillLooksLike: "Invents a pretend game with friends and agrees on who plays what.", checked: false },
-  { id: "m-4", domain: "independence_adaptive_skills", ageMonths: 54, ageGroup: "Age 4-5", title: "Dresses Independently", description: "Can button shirts, pull up pants, and arrange shoes with minimal direction.", skillLooksLike: "Gets dressed start-to-finish with only the odd reminder.", checked: false },
-  { id: "m-5", domain: "sensory_motor_patterns", ageMonths: 54, ageGroup: "Age 4-5", title: "Hops on One Foot", description: "Balances and hops comfortably on one foot for 3-4 consecutive bounds.", skillLooksLike: "Hops several times on one foot without toppling over.", checked: false },
+export const ARBOR_EXTENDED_MILESTONES: Milestone[] = [];
 
-  { id: "m-6", domain: "attachment_regulation", ageMonths: 66, ageGroup: "Age 5-6", title: "Articulates Specific Feelings", description: "Can verbally name complex feelings: e.g., 'I am lonely,' 'I feel disappointed.'", skillLooksLike: "Names a nuanced feeling instead of just 'mad' or 'sad'.", checked: false },
-  { id: "m-7", domain: "language_communication", ageMonths: 66, ageGroup: "Age 5-6", title: "Handles Code-Switching", description: "Can comfortably shift phrases between Hebrew and English depending on the listener.", skillLooksLike: "Switches language to match who they're talking to, without getting stuck.", checked: false },
-  { id: "m-8", domain: "social_development", ageMonths: 66, ageGroup: "Age 5-6", title: "Conflict Resolution Process", description: "Suggests simple compromises when a toy dispute arises ('You play 5 mins, then me').", skillLooksLike: "Offers a fair trade or turn-taking idea to settle a squabble.", checked: false },
-  { id: "m-9", domain: "cognition_executive_function", ageMonths: 66, ageGroup: "Age 5-6", title: "Time Sequencing", description: "Correctly sequences days, understand 'tomorrow vs yesterday', and basic morning schedule.", skillLooksLike: "Talks accurately about yesterday, today, and tomorrow and the day's order.", checked: false },
-  { id: "m-10", domain: "sensory_motor_patterns", ageMonths: 66, ageGroup: "Age 5-6", title: "Manages Senses Pre-emptively", description: "Can say 'It is too loud here' and requests headphones or leaving space.", skillLooksLike: "Notices sensory overload coming and asks for a break or quiet.", checked: false },
-];
+/** B-LOOP-01 — the retired Arbor ids. Stored child records may still carry
+ *  them; they are no longer catalogue rows (no Hebrew text, no age line). */
+export const RETIRED_MILESTONE_IDS: readonly string[] = ["m-1", "m-2", "m-3", "m-4", "m-5", "m-6", "m-7", "m-8", "m-9", "m-10"];
 
 /** The full, ordered milestone library Arbor seeds into a new child record. */
 export const ALL_MILESTONES: Milestone[] = [
