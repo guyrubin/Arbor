@@ -119,7 +119,9 @@ describe("law 1 · the week chip names the family's aim, or says nothing", () =>
 
 describe("GP-25 · the Science page counts what it lists", () => {
   it('"40+" is replaced by the length of the list under it', () => {
-    expect(science).toContain("value={String(CITATIONS.length)}");
+    // B-LOOP-01 (science page): the list is SOURCE_ROWS (own citations + content-cited sources).
+    expect(science).toContain("value={String(SOURCE_ROWS.length)}");
+    expect(science).toContain("{SOURCE_ROWS.map((c) => (");
     expect(science).not.toContain('value="40+"');
   });
 

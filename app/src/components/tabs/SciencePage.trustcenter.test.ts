@@ -20,6 +20,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { ROUTE_IDS } from "../../lib/routes";
+import { contentCitedSourceUrls } from "../../lib/citedSources";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const src = readFileSync(path.join(here, "SciencePage.tsx"), "utf8");
@@ -148,5 +149,23 @@ describe("trust center — deep-link validity", () => {
     expect(src).toContain('requestOpenSettings({ focus: "data" })');
     expect(src).not.toContain('setActiveTab("profile")');
     expect(src).toContain('setActiveTab("consult")');
+  });
+});
+
+describe("trust center — B-LOOP-01: the sources list reads the content's cited sources", () => {
+  it("SciencePage reads contentCitedSourceUrls() and renders the merged list in the same row style", () => {
+    expect(src).toMatch(/import \{ contentCitedSourceUrls \} from "\.\.\/\.\.\/lib\/citedSources";/);
+    expect(src).toContain("contentCitedSourceUrls()");
+    expect(src).toContain("{SOURCE_ROWS.map((c) => (");
+    expect(src).toContain("<CitationRow key={c.key} citation={c}");
+    // de-duplicated by URL against the page's own citations, http(s) only
+    expect(src).toMatch(/!seen\.has\(u\)/);
+    expect(src).not.toContain("{CITATIONS.map((c) => (");
+  });
+
+  it("the content does cite sources the six AP-060 rows do not (the merge is not empty)", () => {
+    const own = new Set([...src.matchAll(/url: "(https:[^"]+)"/g)].map((m) => m[1]));
+    const extra = new Set(contentCitedSourceUrls().filter((u) => /^https?:\/\//.test(u) && !own.has(u)));
+    expect(extra.size).toBeGreaterThan(0);
   });
 });

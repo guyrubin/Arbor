@@ -9,6 +9,7 @@ import { trustText } from "../../lib/i18nElevation/trustcenter";
 import { DOMAINS, DOMAIN_COUNT, domainName } from "../../lib/domains/registry";
 import { ALL_MILESTONES } from "../../lib/milestoneData";
 import { CHILD_DATA_ROWS } from "../../lib/childDataGroups";
+import { contentCitedSourceUrls } from "../../lib/citedSources";
 import { requestOpenSettings } from "../layout/settingsBus";
 
 /**
@@ -79,6 +80,36 @@ const CITATIONS = [
   },
 ] as const;
 
+type CitationRowData = { key: string; label: string; url: string; note: string | null };
+
+/** A content-cited URL's row label: the host and path, as the reader would type it. */
+function sourceLabel(url: string): string {
+  try {
+    const u = new URL(url);
+    return `${u.hostname.replace(/^www\./, "")}${u.pathname.replace(/\/$/, "")}`;
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * B-LOOP-01 (science page): the list a parent reads is the page's own
+ * AP-060 citations FIRST, then every source the shipped content cites
+ * (lib/citedSources contentCitedSourceUrls: the milestone catalogue's row
+ * sources and references, the domain references, the hard-moment guides),
+ * de-duplicated by URL, http(s) only, in URL order. Same row style. The
+ * sources tile counts this list (GP-25: the number is the list).
+ */
+const SOURCE_ROWS: readonly CitationRowData[] = (() => {
+  const rows: CitationRowData[] = CITATIONS.map((c) => ({ key: c.key, label: c.label, url: c.url, note: c.note }));
+  const seen = new Set(rows.map((r) => r.url.trim()));
+  const extra = [...new Set(contentCitedSourceUrls().map((u) => (typeof u === "string" ? u.trim() : "")))]
+    .filter((u) => /^https?:\/\//.test(u) && !seen.has(u))
+    .sort();
+  for (const url of extra) rows.push({ key: `content:${url}`, label: sourceLabel(url), url, note: null });
+  return rows;
+})();
+
 // ─── Section registry (ids double as analytics ids + DOM anchors) ─────────────
 const SECTION_IDS = ["how", "data", "signs", "not", "sources", "more"] as const;
 type SectionId = (typeof SECTION_IDS)[number];
@@ -109,7 +140,7 @@ function StatTile({ value, label }: { value: string; label: string }) {
   );
 }
 
-function CitationRow({ citation, noteText }: { citation: (typeof CITATIONS)[number]; noteText?: string }) {
+function CitationRow({ citation, noteText }: { citation: CitationRowData; noteText?: string }) {
   return (
     <li className="flex items-start gap-3 py-3" style={{ borderBottom: "1px solid var(--arbor-rule)" }}>
       <Icon name="menu_book" size={16} className="flex-shrink-0 mt-0.5" style={{ color: "var(--arbor-clay)" }} />
@@ -420,7 +451,7 @@ export default function SciencePage() {
             <StatTile value={String(DOMAIN_COUNT)} label={t("sci.stat.domains")} />
             {/* GP-25 / law 8: "40+" was a claim; six rows render below it.
                 The number is the list. */}
-            <StatTile value={String(CITATIONS.length)} label={t("sci.stat.sources")} />
+            <StatTile value={String(SOURCE_ROWS.length)} label={t("sci.stat.sources")} />
           </div>
 
           {/* B-GROWTH-26: the same eight names Growth and Milestones print,
@@ -442,7 +473,7 @@ export default function SciencePage() {
           </div>
 
           <ul className="mt-2 divide-y divide-transparent" role="list" aria-label={t("sci.sources.aria")}>
-            {CITATIONS.map((c) => (
+            {SOURCE_ROWS.map((c) => (
               <CitationRow key={c.key} citation={c} noteText={c.note ? citationNotes[c.note] : undefined} />
             ))}
           </ul>
