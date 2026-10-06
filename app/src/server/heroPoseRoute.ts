@@ -32,13 +32,16 @@ import { HERO_SHEET_POSES_BY_PLAN, chargeHeroSheetCall, imagePlanFor } from "./i
 import { heroPosePrompt } from "./heroPosePrompts.js";
 import {
   HERO_POSE_REFUSALS,
-  HERO_SHEET_KEY_COLOUR,
   HERO_SHEET_MODEL,
   HERO_SHEET_PROMPT_VERSION,
   heroAvatarHash,
   isHeroSheetPose,
   type HeroSheetPoseId,
 } from "../lib/heroSheetContract.js";
+
+/** The flat background every pose is asked for (heroPosePrompts BACKGROUND;
+ *  the device's keyer samples the real one from the border). */
+export const HERO_SHEET_KEY_COLOUR = "#00B140";
 
 /** What the server knows about the child's hero, read from the child record. */
 export interface StoredHero {

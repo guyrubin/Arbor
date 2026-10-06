@@ -13,6 +13,7 @@ import { resolveHeroUrl } from "../ui/HeroAvatar";
 import { ProvenanceBadge } from "../ui/ProvenanceBadge";
 import { ShareButton } from "../ui/ShareButton";
 import { TrustPanel } from "../ui/TrustPanel";
+import { startHeroSheet } from "../kidmode/hero/buildHeroSheet";
 import {
   isAvatarDraftCurrent,
   runAvatarGeneration,
@@ -184,6 +185,10 @@ export default function AvatarCreator({
     // still invalidate this draft (AV-05 request-snapshot binding).
     if (!isAvatarDraftCurrent(draft, { childId, requestId: draftRequestRef.current, open })) return;
     onCreated({ dataUrl, style: draft.style, source: draft.source });
+    // B-GAME-13c: the parent accepted this hero -> draw its pose sheet (parent
+    // side, in the background; the server waits for the saved hero and draws
+    // only a hero made from a description).
+    void startHeroSheet({ childId, photoUrl: dataUrl, source: draft.source });
     close();
   };
   const visibleResult = isAvatarDraftCurrent(result, { childId, requestId: draftRequestRef.current, open }) ? result : undefined;
