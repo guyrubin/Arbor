@@ -180,11 +180,12 @@ describe("clinical firewall — ms-watch-points carries no verdict colour or nor
   const start = ms.indexOf('data-testid="ms-watch-points"');
   const block = ms.slice(start, ms.indexOf("</div>", ms.indexOf("{t(\"ms.watch.close\")}", start)));
 
-  it("the block exists and uses no --arbor-yellow-* / --arbor-peach-* token", () => {
-    expect(start).toBeGreaterThan(-1);
-    expect(block).toContain('t("ms.watch.close")');
-    expect(block).not.toMatch(/--arbor-(yellow|peach)-/);
-    expect(block).toContain('background: "var(--arbor-paper-deep)"');
+  // P5-LOOP c2 r1: the panel is gone from the map altogether (stronger than a
+  // neutral wash); no yellow/peach token re-enters the milestones route.
+  it("the block is gone (no watch wash of any colour can return with it)", () => {
+    expect(start).toBe(-1);
+    expect(block).toBe("");
+    expect(ms).not.toContain('t("ms.watch.close")');
   });
 
   it("no ms.watch.* string claims a norm (EN \"typically seen by now\" / HE \"בדרך כלל עד גיל זה\")", async () => {

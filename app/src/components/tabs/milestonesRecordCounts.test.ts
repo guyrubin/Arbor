@@ -61,7 +61,9 @@ describe("NEXTLEVEL r1 — the primary move is a control", () => {
   // shelf's Notice card (three 44 px answers), never on the display:contents
   // spine; the answers write through observeMilestone (the one seam).
   it("data-primary-move=notice-milestone stamps the first shelf's Notice card, not the display:contents spine", () => {
-    expect(MS).toContain('<div data-module="milestones-spine" style={{ display: "contents" }}>');
+    // P5-LOOP c2 r1: the spine is a REAL box now (the root's gap reaches Born early)
+    expect(MS).toContain('<div data-module="milestones-spine" className="min-w-0">');
+    expect(MS).not.toContain('<div data-module="milestones-spine" style={{ display: "contents" }}>');
     expect(MS.match(/data-primary-move/g)?.length).toBe(1);
     // P5 critic r1: the stamp rides the first Notice card's answers group (answersAttrs).
     // P5 critic r2 (P1-4): the stamp rides the first UNANSWERED card's answers.
@@ -77,6 +79,44 @@ describe("NEXTLEVEL r1 — the primary move is a control", () => {
       }
       expect(translate(lang, "elev.ms.seenAny.empty", { name: "Dylan" })).toContain("Dylan");
     }
+  });
+});
+
+describe("P5-LOOP c2 r1 — no scoreboard at zero, one column at 1280, no watch-points panel", () => {
+  it("the count renders ONLY at 1 or more, always t-sm muted body font; never t-2xl / display", () => {
+    expect(MS).toMatch(/\{recordCounts\.noticed > 0 && \(\s*<div data-testid="ms-map-count" className="mt-1 t-sm" style=\{\{ color: "var\(--arbor-muted\)" \}\}>/);
+    expect(MS).not.toMatch(/t-2xl font-extrabold leading-tight/);
+    expect(MS.match(/data-testid="ms-map-count"/g)?.length).toBe(1);
+  });
+
+  it("first open: ONE editorial line naming the child (no number, no chip) + a lede naming the first card (EN + HE)", async () => {
+    const { translate } = await import("../../lib/i18n");
+    for (const lang of ["en", "he"] as const) {
+      const first = translate(lang, "elev.loop.ms.firstLine", { name: "Dylan" });
+      expect(first).toContain("Dylan");
+      expect(first).not.toMatch(/\d/);
+      const lede = translate(lang, "elev.loop.ms.ledeFirst", { title: "Draws a circle" });
+      expect(lede).toContain("Draws a circle");
+      expect(lede).not.toBe(translate(lang, "elev.loop.shelfMap.title"));
+    }
+    expect(translate("en", "elev.loop.ms.firstLine", { name: "Dylan" })).toBe("Dylan's shelves are ready — start with whatever you saw this week.");
+    expect(translate("he", "elev.loop.ms.firstLine", { name: "Dylan" }).replace(/[\u2068\u2069]/g, "")).toBe("המדפים של Dylan מוכנים — התחילו ממה שראיתם השבוע.");
+    expect(MS).toMatch(/data-testid="ms-first-line" dir="auto"[^>]*fontFamily: "var\(--font-editorial\)", fontSize: "var\(--t-lg\)", color: "var\(--arbor-ink\)"/);
+    expect(MS).toContain('firstCard ? t("elev.loop.ms.ledeFirst", { title: milestoneText(firstCard, "title", t, msGender) }) : t("elev.loop.ms.lede")');
+  });
+
+  it("the Split renders only with its rail (under 2); otherwise ONE start-aligned 760 px column shared by the header, the map and the cards", () => {
+    expect(MS).toContain("const hasRail = comparisonMonths < 24;");
+    expect(MS).toMatch(/\{hasRail \? \(\s*<Split[\s\S]*right=\{shelfMap\}\s*\/>\s*\) : shelfMap\}/);
+    expect(MS).toContain('flex w-full min-w-0 flex-col gap-5 sm:gap-6 ${hasRail ? "mx-auto max-w-[1180px]" : "me-auto max-w-[760px]"}');
+    expect(MS).not.toMatch(/max-w-\[1180px\] space-y-5 sm:space-y-6/);
+  });
+
+  it("the Gentle watch points panel is gone; the corrected-age note is one muted line in the map foot", () => {
+    expect(MS).not.toContain('data-testid="ms-watch-points"');
+    expect(MS).not.toMatch(/watchPointsSummary|useMonitoring\(|t\("ms\.watch\.close"\)|t\("ms\.watchPoints"\)|t\("ms\.watch\.none"\)/);
+    expect(MS).toMatch(/\{corrected\.applied && \(\s*<p data-testid="ms-corrected-note" className="mt-1 t-sm" style=\{\{ color: "var\(--arbor-muted\)" \}\}>/);
+    expect(MS.indexOf('data-testid="ms-footer"')).toBeLessThan(MS.indexOf('data-testid="ms-corrected-note"'));
   });
 });
 

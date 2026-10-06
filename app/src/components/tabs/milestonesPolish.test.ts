@@ -48,10 +48,12 @@ describe("UND-3 — watch points card is derived, never fabricated", () => {
     expect(code).not.toContain("A few areas are still in the");
   });
 
-  it("derives the card from the canonical monitoring derivation (counts only)", () => {
-    expect(code).toContain("useMonitoring");
-    expect(code).toContain("watchPointsSummary");
-    expect(code).toContain('t("ms.watch.none")');
+  // P5-LOOP c2 r1 (milestones product P1): the panel is removed from the map;
+  // the watch signal stays derived in Screening (useMonitoring) and Today's door.
+  it("the watch-points panel is absent from #/milestones (the card's A4 close is the only close)", () => {
+    expect(code).not.toContain('data-testid="ms-watch-points"');
+    expect(code).not.toContain("watchPointsSummary");
+    expect(read("components/sections/ArborNoticedCard.tsx").length).toBeGreaterThan(0);
   });
 });
 

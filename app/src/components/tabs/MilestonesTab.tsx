@@ -17,7 +17,7 @@ import { explainAnswerText, isEmptyExplainAnswer, type ExplainAnswer } from "../
 // least structured AI in the app: raw markdown, an English-only failure
 // string, no why-line, no provenance, nothing to keep. They now ride the same
 // shared action cluster every other content object uses.
-import { ContentActionBar, ContentWhyLine } from "../ui/ContentActionBar";
+import { ContentActionBar } from "../ui/ContentActionBar";
 import { cardCls, Split } from "../ui/kit";
 import { authHeaders, getAiLanguage } from "../../lib/api";
 import { DOMAIN_REFERENCES, DOMAIN_REFERENCE_LABEL_KEY } from "../../lib/milestoneReferences";
@@ -35,8 +35,6 @@ import { fmtDay } from "../../lib/formatDate";
 import { bestCardForDomain } from "../../learn/learnLibrary";
 import { LEARN_CARDS } from "../../learn/learnCards";
 // UND-3 — the ONE canonical watch derivation feeds the "Gentle watch points" card.
-import { useMonitoring } from "../../hooks/useMonitoring";
-import { watchPointsSummary } from "../../lib/monitoring";
 import { HeroAvatar } from "../ui/HeroAvatar";
 // GP-31 — a first is a note and a date, not a boolean. The editor lives in
 // components/milestones; the record's pure helpers live in lib/firstsKeepsake
@@ -48,7 +46,7 @@ import {
   type KeepsakeDoc, type KeepsakeDraft,
 } from "../../lib/firstsKeepsake";
 import { useChildCollection } from "../../hooks/useChildCollection";
-import { DEVELOPMENTAL_DOMAIN_IDS, domainLabel as registryDomainLabel, primaryDomainLabel } from "../../lib/domains/registry";
+import { DEVELOPMENTAL_DOMAIN_IDS, primaryDomainLabel } from "../../lib/domains/registry";
 import { DevelopmentalDomainId, Milestone } from "../../types";
 import { ageMonthsOf } from "../../lib/age/forChild";
 import { localDay, type ObserveStatus } from "../../lib/milestones/observe";
@@ -265,12 +263,6 @@ export default function MilestonesTab() {
         return band <= quietWindow.currentBandMonths && band >= quietWindow.earlierBandMonths;
       }) ?? null,
   }));
-
-  // UND-3 — "Gentle watch points" derives from the canonical useMonitoring
-  // watch-area derivation: real domain names + COUNTS only (clinical firewall —
-  // never severity, verdicts, or fabricated claims). Empty → neutral/hidden.
-  const monitoring = useMonitoring();
-  const watchPoints = useMemo(() => watchPointsSummary(monitoring), [monitoring]);
 
   const [showGestation, setShowGestation] = useState(false);
   const [gestationDraft, setGestationDraft] = useState<string>(gestationalWeeks ? String(gestationalWeeks) : "");
@@ -756,107 +748,11 @@ export default function MilestonesTab() {
   };
 
   const firstName = (childProfile.name || "").split(" ")[0];
-  const latestShelf = latestNoticed ? shelfOfMilestone(latestNoticed.milestone) : null;
-  const latestShelfName = latestShelf ? shelfLabel(latestShelf, t) : latestNoticed ? domainLabel(latestNoticed.milestone.domain) : "";
-
-  return (
-    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1180px] space-y-5 sm:space-y-6">
-      <div className="flex min-w-0 items-start gap-3.5 sm:items-center">
-        {/* The child's memory portrait — modest, no comic frame in the parent register. */}
-        <HeroAvatar size={52} mood="wave" animate={false} ring={false} className="flex-shrink-0" />
-        <div className="min-w-0">
-          <h1 className="text-2xl md:text-[2rem] leading-[1.1]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("ms.title")}</h1>
-          {latestNoticed ? (
-            /* P5 critic r1 (design P0, stronger target 1): the one sentence that
-               matters leads under the H1 — the parent's last first, dated. The
-               four-line disclaimer moves to one muted line under the shelf map. */
-            <p data-testid="ms-latest" className="mt-1.5 leading-snug" style={{ fontFamily: "var(--font-editorial)", fontSize: "var(--t-md)", color: "var(--arbor-ink-soft)" }}>
-              {t("elev.ms.latest.lead", { name: firstName || t("ms.watch.childFallback") })}{" "}
-              <bdi dir="auto">{milestoneText(latestNoticed.milestone, "title", t, msGender)}</bdi>
-              <span data-testid="ms-latest-area" className="t-sm" style={{ fontFamily: "var(--font-sans)", color: "var(--arbor-muted)" }}> · {t("elev.ms.latest.area", { area: latestShelfName })} · {t("elev.ms.latest.when")} </span>
-              <span data-testid="ms-latest-date" className="inline-flex items-center rounded-full px-2.5 py-0.5 t-sm font-semibold whitespace-nowrap" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", fontFamily: "var(--font-sans)" }}>
-                <bdi>{new Date(latestNoticed.at).toLocaleDateString(uiLang === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short" })}</bdi>
-              </span>
-            </p>
-          ) : (
-            <p data-testid="ms-lede" className="t-sm mt-1.5 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>{t("elev.loop.ms.lede")}</p>
-          )}
-          <div className="min-w-0" data-testid="ms-map-count">
-            {latestNoticed && !changingLatest && (
-              <button
-                type="button"
-                data-testid="ms-latest-change"
-                onClick={() => setChangingLatest(true)}
-                className="inline-flex min-h-11 items-center t-sm font-semibold"
-                style={{ color: "var(--arbor-clay)" }}
-              >
-                {t("elev.loop.latest.change")}
-              </button>
-            )}
-            {/* Critic r3 (P1): correctable where it is read — "Not right?
-                Change" opens the ONE answer group for the latest milestone. */}
-            {latestNoticed && changingLatest ? (
-              <div data-testid="ms-latest-change-answers">
-                <NoticeAnswers
-                  onAnswer={(status) => { observeMilestone(latestNoticed.milestone, status); setChangingLatest(false); }}
-                  ariaLabel={t("ms.observePrompt")}
-                  className="mt-2"
-                />
-              </div>
-            ) : null}
-            <div className={latestNoticed ? "mt-1 t-sm" : "mt-1 t-2xl font-extrabold leading-tight"} style={latestNoticed ? { color: "var(--arbor-muted)" } : { fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-              {recordCounts.noticed} {t("ms.domainOf")}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* W5 mount — the R3 threshold-crossing pride moment. Designed for Today,
-          but Rule A caps Today's module budget, so it lives here: the Map is
-          where crossings are born. Renders nothing when there is no new
-          crossing; ≤1/session via the shared CelebrationMoment guard. */}
-      <PrideMomentCard />
-
-      {/* Master/detail spine: left rail = the persistent Development Map summary
-          (firewall-safe COUNT headline — never a 0–100 gauge or trend delta);
-          right pane = the seven-domain master list, or a single-domain drill-in. */}
-      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
-          marks a top-level sibling module (what moduleBudget counts);
-          `data-primary-move` marks the ONE control that performs the move
-          surfaceContract.ts declares for this route. */}
-      <div data-module="milestones-spine" style={{ display: "contents" }}>
-      <Split
-        ratio="minmax(300px,1fr) minmax(0,1.4fr)"
-        className="md:[&>div]:!contents xl:[&>div]:!grid"
-        left={
-          <div className="min-w-0 space-y-4 xl:sticky xl:top-4 xl:space-y-5">
-            {/* P5 critic r2 (P1-2 / P2-1): the summary card is gone — "Not
-                right? Change" and "{n} noticed" sit under the lede in the
-                header; the rail keeps only the under-2 lead. */}
-            {comparisonMonths < 24 && (
-            <div className={`${cardCls} min-w-0 p-4 sm:p-6`}>
-              {/* B1 — under-2 reassurance lead: name the current stage, no checklist framing. */}
-              {comparisonMonths < 24 && (
-                <div className="mt-4 rounded-xl p-3.5" style={{ background: "var(--arbor-green-soft)" }}>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[11px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("ms.rightNow")}</span>
-                    <span className="text-lg" style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink)" }}>{milestoneBandLabel(currentBand.months, t)}</span>
-                    {corrected.applied && (
-                      <span className="text-[11px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-paper-elevated)" }}>
-                        {t("ms.correctedBadge")} · {corrected.correctedMonths}m
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[12px] leading-relaxed mt-1.5" style={{ color: "var(--arbor-ink)" }}>{t("ms.rightNowBody")}</p>
-                </div>
-              )}
-            </div>
-            )}
-
-
-          </div>
-        }
-        right={
+  // P5-LOOP c2 r1: the rail exists only for the under-2 lead.
+  const hasRail = comparisonMonths < 24;
+  // The first card the parent can answer (the route's stamp) — named by the first-open lede.
+  const firstCard = stampShelf ? noticeFor(stampShelf) : undefined;
+  const shelfMap = (
           <div data-testid="ms-shelf-map" className={`${cardCls} min-w-0 p-4 sm:p-6`}>
             <div className="flex items-center gap-2">
               <h2 className="min-w-0 flex-1 font-semibold leading-snug" style={{ fontFamily: "var(--font-display)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>
@@ -1064,10 +960,138 @@ export default function MilestonesTab() {
               </div>
             )}
             <p data-testid="ms-footer" className="mt-3 t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.loop.ms.footer")}</p>
+            {corrected.applied && (
+              <p data-testid="ms-corrected-note" className="mt-1 t-sm" style={{ color: "var(--arbor-muted)" }}>
+                {t("ms.watch.corrected", { name: firstName || t("ms.watch.childFallback"), corrected: Math.round(corrected.correctedMonths), chrono: corrected.chronologicalMonths })}
+              </p>
+            )}
+          </div>
+  );
+  const latestShelf = latestNoticed ? shelfOfMilestone(latestNoticed.milestone) : null;
+  const latestShelfName = latestShelf ? shelfLabel(latestShelf, t) : latestNoticed ? domainLabel(latestNoticed.milestone.domain) : "";
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className={`flex w-full min-w-0 flex-col gap-5 sm:gap-6 ${hasRail ? "mx-auto max-w-[1180px]" : "me-auto max-w-[760px]"}`}>
+      <div className="flex min-w-0 items-start gap-3.5 sm:items-center">
+        {/* The child's memory portrait — modest, no comic frame in the parent register. */}
+        <HeroAvatar size={52} mood="wave" animate={false} ring={false} className="flex-shrink-0" />
+        <div className="min-w-0">
+          <h1 className="text-2xl md:text-[2rem] leading-[1.1]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("ms.title")}</h1>
+          {latestNoticed ? (
+            /* P5 critic r1 (design P0, stronger target 1): the one sentence that
+               matters leads under the H1 — the parent's last first, dated. The
+               four-line disclaimer moves to one muted line under the shelf map. */
+            <p data-testid="ms-latest" className="mt-1.5 leading-snug" style={{ fontFamily: "var(--font-editorial)", fontSize: "var(--t-md)", color: "var(--arbor-ink-soft)" }}>
+              {t("elev.ms.latest.lead", { name: firstName || t("ms.watch.childFallback") })}{" "}
+              <bdi dir="auto">{milestoneText(latestNoticed.milestone, "title", t, msGender)}</bdi>
+              <span data-testid="ms-latest-area" className="t-sm" style={{ fontFamily: "var(--font-sans)", color: "var(--arbor-muted)" }}> · {t("elev.ms.latest.area", { area: latestShelfName })} · {t("elev.ms.latest.when")} </span>
+              <span data-testid="ms-latest-date" className="inline-flex items-center rounded-full px-2.5 py-0.5 t-sm font-semibold whitespace-nowrap" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", fontFamily: "var(--font-sans)" }}>
+                <bdi>{new Date(latestNoticed.at).toLocaleDateString(uiLang === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short" })}</bdi>
+              </span>
+            </p>
+          ) : (
+            <>
+              {/* P5-LOOP c2 r1 (B-LOOP-NEW-1f): first open names the child in ONE
+                  editorial line — no number, no chip; it yields to "{name}'s
+                  latest" after the first answer. */}
+              <p data-testid="ms-first-line" dir="auto" className="mt-1.5 leading-snug" style={{ fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>
+                {t("elev.loop.ms.firstLine", { name: firstName || t("ms.watch.childFallback") })}
+              </p>
+              {/* c2 r1 (product P1): the lede names the first card, never the map title again. */}
+              <p data-testid="ms-lede" className="t-sm mt-1 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>
+                {firstCard ? t("elev.loop.ms.ledeFirst", { title: milestoneText(firstCard, "title", t, msGender) }) : t("elev.loop.ms.lede")}
+              </p>
+            </>
+          )}
+          <div className="min-w-0">
+            {latestNoticed && !changingLatest && (
+              <button
+                type="button"
+                data-testid="ms-latest-change"
+                onClick={() => setChangingLatest(true)}
+                className="inline-flex min-h-11 items-center t-sm font-semibold"
+                style={{ color: "var(--arbor-clay)" }}
+              >
+                {t("elev.loop.latest.change")}
+              </button>
+            )}
+            {/* Critic r3 (P1): correctable where it is read — "Not right?
+                Change" opens the ONE answer group for the latest milestone. */}
+            {latestNoticed && changingLatest ? (
+              <div data-testid="ms-latest-change-answers">
+                <NoticeAnswers
+                  onAnswer={(status) => { observeMilestone(latestNoticed.milestone, status); setChangingLatest(false); }}
+                  ariaLabel={t("ms.observePrompt")}
+                  className="mt-2"
+                />
+              </div>
+            ) : null}
+            {/* c2 r1 (P1 ×2): ONE style in every state — t-sm, muted, body font —
+                and nothing at all at zero (a "0 noticed" headline is a scoreboard). */}
+            {recordCounts.noticed > 0 && (
+              <div data-testid="ms-map-count" className="mt-1 t-sm" style={{ color: "var(--arbor-muted)" }}>
+                {recordCounts.noticed} {t("ms.domainOf")}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* W5 mount — the R3 threshold-crossing pride moment. Designed for Today,
+          but Rule A caps Today's module budget, so it lives here: the Map is
+          where crossings are born. Renders nothing when there is no new
+          crossing; ≤1/session via the shared CelebrationMoment guard. */}
+      <PrideMomentCard />
+
+      {/* Master/detail spine: left rail = the persistent Development Map summary
+          (firewall-safe COUNT headline — never a 0–100 gauge or trend delta);
+          right pane = the seven-domain master list, or a single-domain drill-in. */}
+      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (what moduleBudget counts);
+          `data-primary-move` marks the ONE control that performs the move
+          surfaceContract.ts declares for this route. */}
+      {/* P5-LOOP c2 r1 (milestones P1 ×2): the Split renders only when its
+          rail has content (the under-2 lead); otherwise the map is ONE
+          start-aligned column with the header and the cards below it (the
+          root narrows to 760 px). The spine is a real box, so the root's gap
+          lands between it and Born early (it was a display:contents wrapper —
+          the space-y margin was dropped and the two touched at 0 px). */}
+      <div data-module="milestones-spine" className="min-w-0">
+      {hasRail ? (
+      <Split
+        ratio="minmax(300px,1fr) minmax(0,1.4fr)"
+        className="md:[&>div]:!contents xl:[&>div]:!grid"
+        left={
+          <div className="min-w-0 space-y-4 xl:sticky xl:top-4 xl:space-y-5">
+            {/* P5 critic r2 (P1-2 / P2-1): the summary card is gone — "Not
+                right? Change" and "{n} noticed" sit under the lede in the
+                header; the rail keeps only the under-2 lead. */}
+            {comparisonMonths < 24 && (
+            <div className={`${cardCls} min-w-0 p-4 sm:p-6`}>
+              {/* B1 — under-2 reassurance lead: name the current stage, no checklist framing. */}
+              {comparisonMonths < 24 && (
+                <div className="mt-4 rounded-xl p-3.5" style={{ background: "var(--arbor-green-soft)" }}>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[11px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("ms.rightNow")}</span>
+                    <span className="text-lg" style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink)" }}>{milestoneBandLabel(currentBand.months, t)}</span>
+                    {corrected.applied && (
+                      <span className="text-[11px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-paper-elevated)" }}>
+                        {t("ms.correctedBadge")} · {corrected.correctedMonths}m
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[12px] leading-relaxed mt-1.5" style={{ color: "var(--arbor-ink)" }}>{t("ms.rightNowBody")}</p>
+                </div>
+              )}
+            </div>
+            )}
+
+
           </div>
         }
+        right={shelfMap}
       />
-
+      ) : shelfMap}
       </div>
 
       {/* P5 critic r1 (P1-1): Born early sits AFTER the shelf map at every
@@ -1152,46 +1176,14 @@ export default function MilestonesTab() {
           with a fixed "Vygotsky's Scaffolding" lens) is gone — each milestone
           row and the Map's area pane carry the ONE door, "Ask Arbor about this". */}
 
-      {/* UND-3 — "Gentle watch points" is DERIVED, never fabricated: real domain
-          names + counts from the canonical useMonitoring derivation (clinical
-          firewall: counts only, no severity/verdict language). Neutral line when
-          nothing is in the not-seen column; hidden entirely when there is also
-          no corrected-age note to carry. */}
-      {(watchPoints.length > 0 || corrected.applied) && (
-        // B-GROWTH-09: paper surface + muted ink — the Screening monitoring
-        // card's treatment. The yellow wash was a chromatic verdict.
-        <div data-testid="ms-watch-points" className="p-5 rounded-2xl flex items-start gap-4 text-xs" style={{ background: "var(--arbor-paper-deep)" }}>
-          <Icon name="visibility" size={20} className="mt-0.5" style={{ color: "var(--arbor-muted)" }} />
-          <div className="space-y-1 leading-relaxed">
-            <strong className="text-sm block" style={{ color: "var(--arbor-ink)" }}>{t("ms.watchPoints")}</strong>
-            <p style={{ color: "var(--arbor-muted)" }}>
-              {corrected.applied && (
-                <>{t("ms.watch.corrected", { name: firstName || t("ms.watch.childFallback"), corrected: Math.round(corrected.correctedMonths), chrono: corrected.chronologicalMonths })} </>
-              )}
-              {watchPoints.length > 0 ? (
-                <>
-                  {watchPoints
-                    .map((w) =>
-                      w.count === 1
-                        ? t("ms.watch.area.one", { area: registryDomainLabel("screen", w.domain, t).toLowerCase() })
-                        : t("ms.watch.area.many", { n: w.count, area: registryDomainLabel("screen", w.domain, t).toLowerCase() }),
-                    )
-                    .join(" ")}{" "}
-                  {t("ms.watch.close")}
-                </>
-              ) : (
-                t("ms.watch.none")
-              )}
-            </p>
-            {/* GP-22 — the highest-stakes why-line on this surface: it says a
-                count of things not marked yet. It now says what it was built
-                from, and opens the Trust Center. */}
-            <div className="pt-1">
-              <ContentWhyLine why={t("elev.waveR.why.watch")} trustLink surface="milestone-watch" />
-            </div>
-          </div>
-        </div>
-      )}
+      {/* P5-LOOP c2 r1 (milestones product P1): the "Gentle watch points"
+          panel is gone from the map — it counted not-yet answers by domain in
+          a second vocabulary, reassured where the card's A4 close says
+          "worth mentioning", and pointed to a pediatrician (out of the lane).
+          The not-yet answer's only close is the card's A4 line; the derived
+          watch signal still lives in Screening (useMonitoring) and in Today's
+          door (ArborNoticedCard). The corrected-age note is one line in the
+          map foot. */}
 
       {/* GP-31 — the keepsake editor. One sheet for the whole list; a null
           milestone keeps it closed. Save/remove write through the pure
