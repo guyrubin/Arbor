@@ -177,10 +177,26 @@ describe("B-LOOP-03 — milestoneShelf over the catalogue", () => {
     for (const m of ALL_MILESTONES) expect(SHELF_IDS, m.id).toContain(milestoneShelf(m));
   });
 
-  it("the tagged rows: six feeding rows on Body, food & growth, no sleep row in the catalogue", () => {
+  it("the tagged rows: six feeding rows on Body, food & growth, one fine-motor row on Hands, no sleep row in the catalogue", () => {
     const tagged = ALL_MILESTONES.filter((m) => m.tags?.length).map((m) => `${m.id}:${m.tags!.join(",")}`);
-    expect(tagged.sort()).toEqual(["asha-feed-12m:feeding", "asha-feed-24m:feeding", "asha-feed-9m:feeding", "cdc-15m-8:feeding", "cdc-18m-9:feeding", "cdc-60m-12:feeding"]);
+    expect(tagged.sort()).toEqual(["asha-feed-12m:feeding", "asha-feed-24m:feeding", "asha-feed-9m:feeding", "cdc-15m-8:feeding", "cdc-18m-9:feeding", "cdc-36m-9:fine_motor", "cdc-60m-12:feeding"]);
     for (const m of ALL_MILESTONES.filter((x) => x.tags?.includes("feeding"))) expect(milestoneShelf(m), m.id).toBe("food");
+  });
+
+  it("B-LOOP-01 (split): the three 3-year hand skills are three rows, all on Hands — and each row's practice sits on the same shelf", async () => {
+    const { PRACTICES } = await import("../../content/practices");
+    for (const id of ["cdc-36m-9", "cdc-36m-10", "cdc-36m-11"]) {
+      const m = ALL_MILESTONES.find((x) => x.id === id)!;
+      expect(m, id).toBeTruthy();
+      expect(milestoneShelf(m), id).toBe("hands");
+      expect(PRACTICES.find((p) => p.id === `pr-${id}`)?.shelf, `pr-${id}`).toBe("hands");
+    }
+    // a stored cdc-36m-9 doc without the tag still resolves by id (the catalogue row carries it)
+    const { tags: _drop, ...stored } = ALL_MILESTONES.find((m) => m.id === "cdc-36m-9")!;
+    expect(milestoneShelf(stored)).toBe("hands");
+    // NEGATIVE CONTROL: without the tag a sensory_motor_patterns row files on Moving (the defect)
+    expect(milestoneShelf({ id: "custom-beads", domain: "sensory_motor_patterns", custom: true })).toBe("moving");
+    expect(milestoneShelf({ id: "custom-beads", domain: "sensory_motor_patterns", custom: true, tags: ["fine_motor"] })).toBe("hands");
   });
 
   it("a stored catalogue doc without tags resolves by id; a parent-added row by its own tags/domain; an untagged body row → Body, food & growth", () => {

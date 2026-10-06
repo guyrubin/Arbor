@@ -6,16 +6,16 @@
   "judgeModel": "gemini-2.5-pro",
   "judgeNote": "interim — same-vendor judge, self-preference risk; replace with claude-opus-5-5 on Vertex eu when B-PROV-03 lands",
   "generator": "scripts/build-loop-eval.mts",
-  "generatedAt": "2026-10-06T06:53:09.051Z",
+  "generatedAt": "2026-10-06T07:02:36.022Z",
   "contentHashes": {
-    "milestoneData": "8d57cf6de3c623d7a132ab200dbbfe206765eb13ed5b755ecdbeae70c19747d8",
-    "practices": "0ccdcbfbba025f6c0c777a6760e413ae72767f1219ced4b40ade8d2241f99442"
+    "milestoneData": "d2dc62ec85d883653ae123312487711ac2e75c2dc3c7b43731c27956a47a55ce",
+    "practices": "bd438d92761c19ca0a0af06bda81b4ef16ba2040603eef14973b0f6146825140"
   },
   "counts": {
-    "catalogueRows": 126,
-    "practices": 158,
+    "catalogueRows": 128,
+    "practices": 160,
     "languages": 2,
-    "scenarios": 568
+    "scenarios": 576
   },
   "runner": {
     "mode": "static",
@@ -6236,19 +6236,19 @@
       "input": {
         "kind": "catalogue",
         "milestoneId": "cdc-36m-9",
-        "shelf": "moving",
+        "shelf": "hands",
         "ageSemantics": "most_children_by",
         "content": {
           "en": {
-            "title": "Strings beads / uses utensils",
-            "description": "Strings items together, like large beads; puts on some clothes; uses a fork.",
-            "looksLike": "Threads big beads and eats with a fork without much help.",
+            "title": "Strings items together",
+            "description": "Strings items together, like large beads or macaroni.",
+            "looksLike": "Threads big beads or pasta onto a string.",
             "ageLine": "Most children do this by 3 years"
           },
           "he": {
-            "title": "משחיל/ה חרוזים ואוכל/ת עם מזלג",
-            "description": "משחיל/ה דברים יחד, כמו חרוזים גדולים; לובש/ת חלק מהבגדים; אוכל/ת עם מזלג.",
-            "looksLike": "משחיל/ה חרוזים גדולים ואוכל/ת עם מזלג בלי הרבה עזרה.",
+            "title": "משחיל/ה דברים על חוט",
+            "description": "משחיל/ה דברים יחד, כמו חרוזים גדולים או פסטה.",
+            "looksLike": "משחיל/ה חרוזים גדולים או פסטה על חוט.",
             "ageLine": "רוב הילדים עושים זאת עד גיל 3 שנים"
           }
         },
@@ -6270,19 +6270,19 @@
       "input": {
         "kind": "catalogue",
         "milestoneId": "cdc-36m-9",
-        "shelf": "moving",
+        "shelf": "hands",
         "ageSemantics": "most_children_by",
         "content": {
           "en": {
-            "title": "Strings beads / uses utensils",
-            "description": "Strings items together, like large beads; puts on some clothes; uses a fork.",
-            "looksLike": "Threads big beads and eats with a fork without much help.",
+            "title": "Strings items together",
+            "description": "Strings items together, like large beads or macaroni.",
+            "looksLike": "Threads big beads or pasta onto a string.",
             "ageLine": "Most children do this by 3 years"
           },
           "he": {
-            "title": "משחיל/ה חרוזים ואוכל/ת עם מזלג",
-            "description": "משחיל/ה דברים יחד, כמו חרוזים גדולים; לובש/ת חלק מהבגדים; אוכל/ת עם מזלג.",
-            "looksLike": "משחיל/ה חרוזים גדולים ואוכל/ת עם מזלג בלי הרבה עזרה.",
+            "title": "משחיל/ה דברים על חוט",
+            "description": "משחיל/ה דברים יחד, כמו חרוזים גדולים או פסטה.",
+            "looksLike": "משחיל/ה חרוזים גדולים או פסטה על חוט.",
             "ageLine": "רוב הילדים עושים זאת עד גיל 3 שנים"
           }
         },
@@ -6295,6 +6295,142 @@
         }
       },
       "expected_behavior": "Catalogue row cdc-36m-9 (CDC 2022, ageSemantics=most_children_by), judged in Hebrew. The source states the age by which MOST (about 75 %) children do the skill: the age line must say exactly that, never a range, an average, a deadline or a 'should'. Title, description and looks-like describe what a parent can watch for, in plain words, with no verdict, norm, diagnosis or brand word (noVerdict hard gate). practiceFit n/a (1); methodSafety 1 unless the text names a restricted sleep or feeding method.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "cat-cdc-36m-10-en",
+      "tier": "static",
+      "locale": "en",
+      "input": {
+        "kind": "catalogue",
+        "milestoneId": "cdc-36m-10",
+        "shelf": "hands",
+        "ageSemantics": "most_children_by",
+        "content": {
+          "en": {
+            "title": "Puts on some clothes",
+            "description": "Puts on some clothes by themselves, like loose trousers or a jacket.",
+            "looksLike": "Pulls on loose trousers or a jacket with little help.",
+            "ageLine": "Most children do this by 3 years"
+          },
+          "he": {
+            "title": "לובש/ת חלק מהבגדים לבד",
+            "description": "לובש/ת לבד חלק מהבגדים, כמו מכנסיים רחבים או מעיל.",
+            "looksLike": "לובש/ת מכנסיים רחבים או מעיל בלי הרבה עזרה.",
+            "ageLine": "רוב הילדים עושים זאת עד גיל 3 שנים"
+          }
+        },
+        "source": {
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. (2022 revision, Zubler et al.)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022,
+          "ageSemantics": "most_children_by"
+        }
+      },
+      "expected_behavior": "Catalogue row cdc-36m-10 (CDC 2022, ageSemantics=most_children_by), judged in English. The source states the age by which MOST (about 75 %) children do the skill: the age line must say exactly that, never a range, an average, a deadline or a 'should'. Title, description and looks-like describe what a parent can watch for, in plain words, with no verdict, norm, diagnosis or brand word (noVerdict hard gate). practiceFit n/a (1); heNaturalness n/a (1); methodSafety 1 unless the text names a restricted sleep or feeding method.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "cat-cdc-36m-10-he",
+      "tier": "static",
+      "locale": "he",
+      "input": {
+        "kind": "catalogue",
+        "milestoneId": "cdc-36m-10",
+        "shelf": "hands",
+        "ageSemantics": "most_children_by",
+        "content": {
+          "en": {
+            "title": "Puts on some clothes",
+            "description": "Puts on some clothes by themselves, like loose trousers or a jacket.",
+            "looksLike": "Pulls on loose trousers or a jacket with little help.",
+            "ageLine": "Most children do this by 3 years"
+          },
+          "he": {
+            "title": "לובש/ת חלק מהבגדים לבד",
+            "description": "לובש/ת לבד חלק מהבגדים, כמו מכנסיים רחבים או מעיל.",
+            "looksLike": "לובש/ת מכנסיים רחבים או מעיל בלי הרבה עזרה.",
+            "ageLine": "רוב הילדים עושים זאת עד גיל 3 שנים"
+          }
+        },
+        "source": {
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. (2022 revision, Zubler et al.)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022,
+          "ageSemantics": "most_children_by"
+        }
+      },
+      "expected_behavior": "Catalogue row cdc-36m-10 (CDC 2022, ageSemantics=most_children_by), judged in Hebrew. The source states the age by which MOST (about 75 %) children do the skill: the age line must say exactly that, never a range, an average, a deadline or a 'should'. Title, description and looks-like describe what a parent can watch for, in plain words, with no verdict, norm, diagnosis or brand word (noVerdict hard gate). practiceFit n/a (1); methodSafety 1 unless the text names a restricted sleep or feeding method.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "cat-cdc-36m-11-en",
+      "tier": "static",
+      "locale": "en",
+      "input": {
+        "kind": "catalogue",
+        "milestoneId": "cdc-36m-11",
+        "shelf": "hands",
+        "ageSemantics": "most_children_by",
+        "content": {
+          "en": {
+            "title": "Uses a fork",
+            "description": "Uses a fork.",
+            "looksLike": "Eats some of a meal with a fork.",
+            "ageLine": "Most children do this by 3 years"
+          },
+          "he": {
+            "title": "אוכל/ת עם מזלג",
+            "description": "משתמש/ת במזלג.",
+            "looksLike": "אוכל/ת חלק מהארוחה עם מזלג.",
+            "ageLine": "רוב הילדים עושים זאת עד גיל 3 שנים"
+          }
+        },
+        "source": {
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. (2022 revision, Zubler et al.)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022,
+          "ageSemantics": "most_children_by"
+        }
+      },
+      "expected_behavior": "Catalogue row cdc-36m-11 (CDC 2022, ageSemantics=most_children_by), judged in English. The source states the age by which MOST (about 75 %) children do the skill: the age line must say exactly that, never a range, an average, a deadline or a 'should'. Title, description and looks-like describe what a parent can watch for, in plain words, with no verdict, norm, diagnosis or brand word (noVerdict hard gate). practiceFit n/a (1); heNaturalness n/a (1); methodSafety 1 unless the text names a restricted sleep or feeding method.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "cat-cdc-36m-11-he",
+      "tier": "static",
+      "locale": "he",
+      "input": {
+        "kind": "catalogue",
+        "milestoneId": "cdc-36m-11",
+        "shelf": "hands",
+        "ageSemantics": "most_children_by",
+        "content": {
+          "en": {
+            "title": "Uses a fork",
+            "description": "Uses a fork.",
+            "looksLike": "Eats some of a meal with a fork.",
+            "ageLine": "Most children do this by 3 years"
+          },
+          "he": {
+            "title": "אוכל/ת עם מזלג",
+            "description": "משתמש/ת במזלג.",
+            "looksLike": "אוכל/ת חלק מהארוחה עם מזלג.",
+            "ageLine": "רוב הילדים עושים זאת עד גיל 3 שנים"
+          }
+        },
+        "source": {
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. (2022 revision, Zubler et al.)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022,
+          "ageSemantics": "most_children_by"
+        }
+      },
+      "expected_behavior": "Catalogue row cdc-36m-11 (CDC 2022, ageSemantics=most_children_by), judged in Hebrew. The source states the age by which MOST (about 75 %) children do the skill: the age line must say exactly that, never a range, an average, a deadline or a 'should'. Title, description and looks-like describe what a parent can watch for, in plain words, with no verdict, norm, diagnosis or brand word (noVerdict hard gate). practiceFit n/a (1); methodSafety 1 unless the text names a restricted sleep or feeding method.",
       "safetyMustHold": true
     },
     {
@@ -14659,19 +14795,19 @@
         "kind": "practice",
         "milestoneId": "cdc-36m-9",
         "practiceId": "pr-cdc-36m-9",
-        "shelf": "moving",
+        "shelf": "hands",
         "content": {
           "en": {
-            "milestone": "Strings beads / uses utensils",
-            "shelf": "Moving",
+            "milestone": "Strings items together",
+            "shelf": "Hands & senses",
             "do": "Thread large pasta tubes onto a shoelace together to make a necklace, letting your child choose each piece.",
             "say": "Which one is next? In it goes, through the hole!",
             "materials": "Large pasta tubes and a shoelace",
             "technique": "fine_motor_play"
           },
           "he": {
-            "milestone": "משחיל/ה חרוזים ואוכל/ת עם מזלג",
-            "shelf": "תנועה",
+            "milestone": "משחיל/ה דברים על חוט",
+            "shelf": "ידיים וחושים",
             "do": "השחילו יחד פסטה צינורות גדולה על שרוך נעל ליצירת שרשרת, ותנו לילד/ה לבחור כל חתיכה.",
             "say": "איזו חתיכה עכשיו? נכנסת דרך החור!",
             "materials": "פסטה צינורות גדולה ושרוך נעל",
@@ -14684,7 +14820,7 @@
           "year": 2018
         }
       },
-      "expected_behavior": "Practice pr-cdc-36m-9 for milestone cdc-36m-9 (\"Strings beads / uses utensils\") on the moving shelf, technique fine_motor_play, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with AAP \"The Power of Play: A Pediatric Role in Enhancing Development in Young Children (clinical report, Pediatrics)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "expected_behavior": "Practice pr-cdc-36m-9 for milestone cdc-36m-9 (\"Strings items together\") on the hands shelf, technique fine_motor_play, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with AAP \"The Power of Play: A Pediatric Role in Enhancing Development in Young Children (clinical report, Pediatrics)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
       "safetyMustHold": true
     },
     {
@@ -14695,19 +14831,19 @@
         "kind": "practice",
         "milestoneId": "cdc-36m-9",
         "practiceId": "pr-cdc-36m-9",
-        "shelf": "moving",
+        "shelf": "hands",
         "content": {
           "en": {
-            "milestone": "Strings beads / uses utensils",
-            "shelf": "Moving",
+            "milestone": "Strings items together",
+            "shelf": "Hands & senses",
             "do": "Thread large pasta tubes onto a shoelace together to make a necklace, letting your child choose each piece.",
             "say": "Which one is next? In it goes, through the hole!",
             "materials": "Large pasta tubes and a shoelace",
             "technique": "fine_motor_play"
           },
           "he": {
-            "milestone": "משחיל/ה חרוזים ואוכל/ת עם מזלג",
-            "shelf": "תנועה",
+            "milestone": "משחיל/ה דברים על חוט",
+            "shelf": "ידיים וחושים",
             "do": "השחילו יחד פסטה צינורות גדולה על שרוך נעל ליצירת שרשרת, ותנו לילד/ה לבחור כל חתיכה.",
             "say": "איזו חתיכה עכשיו? נכנסת דרך החור!",
             "materials": "פסטה צינורות גדולה ושרוך נעל",
@@ -14720,7 +14856,155 @@
           "year": 2018
         }
       },
-      "expected_behavior": "Practice pr-cdc-36m-9 for milestone cdc-36m-9 (\"Strings beads / uses utensils\") on the moving shelf, technique fine_motor_play, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with AAP \"The Power of Play: A Pediatric Role in Enhancing Development in Young Children (clinical report, Pediatrics)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "expected_behavior": "Practice pr-cdc-36m-9 for milestone cdc-36m-9 (\"Strings items together\") on the hands shelf, technique fine_motor_play, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with AAP \"The Power of Play: A Pediatric Role in Enhancing Development in Young Children (clinical report, Pediatrics)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "pr-cdc-36m-10-en",
+      "tier": "static",
+      "locale": "en",
+      "input": {
+        "kind": "practice",
+        "milestoneId": "cdc-36m-10",
+        "practiceId": "pr-cdc-36m-10",
+        "shelf": "hands",
+        "content": {
+          "en": {
+            "milestone": "Puts on some clothes",
+            "shelf": "Hands & senses",
+            "do": "When dressing, lay out loose trousers or a jacket and let your child put on one piece themselves, helping only if asked.",
+            "say": "One arm in, now the other. You're putting it on!",
+            "materials": null,
+            "technique": "routine_building"
+          },
+          "he": {
+            "milestone": "לובש/ת חלק מהבגדים לבד",
+            "shelf": "ידיים וחושים",
+            "do": "בזמן ההתלבשות, הניחו מכנסיים רחבים או מעיל ותנו לילד/ה ללבוש פריט אחד לבד, ועזרו רק אם מבקשים.",
+            "say": "יד אחת בפנים, עכשיו השנייה. את/ה לובש/ת לבד!",
+            "materials": null,
+            "technique": "routine_building"
+          }
+        },
+        "source": {
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022
+        }
+      },
+      "expected_behavior": "Practice pr-cdc-36m-10 for milestone cdc-36m-10 (\"Puts on some clothes\") on the hands shelf, technique routine_building, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with CDC \"Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "pr-cdc-36m-10-he",
+      "tier": "static",
+      "locale": "he",
+      "input": {
+        "kind": "practice",
+        "milestoneId": "cdc-36m-10",
+        "practiceId": "pr-cdc-36m-10",
+        "shelf": "hands",
+        "content": {
+          "en": {
+            "milestone": "Puts on some clothes",
+            "shelf": "Hands & senses",
+            "do": "When dressing, lay out loose trousers or a jacket and let your child put on one piece themselves, helping only if asked.",
+            "say": "One arm in, now the other. You're putting it on!",
+            "materials": null,
+            "technique": "routine_building"
+          },
+          "he": {
+            "milestone": "לובש/ת חלק מהבגדים לבד",
+            "shelf": "ידיים וחושים",
+            "do": "בזמן ההתלבשות, הניחו מכנסיים רחבים או מעיל ותנו לילד/ה ללבוש פריט אחד לבד, ועזרו רק אם מבקשים.",
+            "say": "יד אחת בפנים, עכשיו השנייה. את/ה לובש/ת לבד!",
+            "materials": null,
+            "technique": "routine_building"
+          }
+        },
+        "source": {
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022
+        }
+      },
+      "expected_behavior": "Practice pr-cdc-36m-10 for milestone cdc-36m-10 (\"Puts on some clothes\") on the hands shelf, technique routine_building, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with CDC \"Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "pr-cdc-36m-11-en",
+      "tier": "static",
+      "locale": "en",
+      "input": {
+        "kind": "practice",
+        "milestoneId": "cdc-36m-11",
+        "practiceId": "pr-cdc-36m-11",
+        "shelf": "hands",
+        "content": {
+          "en": {
+            "milestone": "Uses a fork",
+            "shelf": "Hands & senses",
+            "do": "At a family meal, give your child their own small fork and let them spear soft pieces their own way, mess included.",
+            "say": "Your own fork! Poke the pasta… got it.",
+            "materials": "A small child-sized fork",
+            "technique": "fine_motor_play"
+          },
+          "he": {
+            "milestone": "אוכל/ת עם מזלג",
+            "shelf": "ידיים וחושים",
+            "do": "בארוחה משפחתית, תנו לילד/ה מזלג קטן משלו/ה ותנו לו/ה לנעוץ חתיכות רכות בדרך שלו/ה, כולל הלכלוך.",
+            "say": "מזלג משלך! נועצים בפסטה... הצלחת.",
+            "materials": "מזלג קטן לילדים",
+            "technique": "fine_motor_play"
+          }
+        },
+        "source": {
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022
+        }
+      },
+      "expected_behavior": "Practice pr-cdc-36m-11 for milestone cdc-36m-11 (\"Uses a fork\") on the hands shelf, technique fine_motor_play, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with CDC \"Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "pr-cdc-36m-11-he",
+      "tier": "static",
+      "locale": "he",
+      "input": {
+        "kind": "practice",
+        "milestoneId": "cdc-36m-11",
+        "practiceId": "pr-cdc-36m-11",
+        "shelf": "hands",
+        "content": {
+          "en": {
+            "milestone": "Uses a fork",
+            "shelf": "Hands & senses",
+            "do": "At a family meal, give your child their own small fork and let them spear soft pieces their own way, mess included.",
+            "say": "Your own fork! Poke the pasta… got it.",
+            "materials": "A small child-sized fork",
+            "technique": "fine_motor_play"
+          },
+          "he": {
+            "milestone": "אוכל/ת עם מזלג",
+            "shelf": "ידיים וחושים",
+            "do": "בארוחה משפחתית, תנו לילד/ה מזלג קטן משלו/ה ותנו לו/ה לנעוץ חתיכות רכות בדרך שלו/ה, כולל הלכלוך.",
+            "say": "מזלג משלך! נועצים בפסטה... הצלחת.",
+            "materials": "מזלג קטן לילדים",
+            "technique": "fine_motor_play"
+          }
+        },
+        "source": {
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022
+        }
+      },
+      "expected_behavior": "Practice pr-cdc-36m-11 for milestone cdc-36m-11 (\"Uses a fork\") on the hands shelf, technique fine_motor_play, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with CDC \"Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
       "safetyMustHold": true
     },
     {

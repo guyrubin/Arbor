@@ -104,7 +104,7 @@ describe("B-LOOP-01 — every catalogue row carries its source and its age seman
   it("prints the catalogue count (133 before B-LOOP-01, 10 Arbor rows retired; +1 cdc-24m-11; pre-review: −cdc-48m-11 −asha-comm-36m +cdc-9m-10 +cdc-9m-11 +cdc-48m-15 +cdc-60m-15)", () => {
     // eslint-disable-next-line no-console
     console.log(`B-LOOP-01 catalogue rows: ${ALL_MILESTONES.length} (CDC ${CDC_MILESTONES.length} · ASHA ${ASHA_MILESTONES.length} · Arbor ${ARBOR_EXTENDED_MILESTONES.length})`);
-    expect(ALL_MILESTONES.length).toBe(126);
+    expect(ALL_MILESTONES.length).toBe(128);
   });
 
   it("every row has a source with org, title, year and ageSemantics", () => {

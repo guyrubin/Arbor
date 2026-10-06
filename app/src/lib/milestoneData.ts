@@ -58,6 +58,10 @@ const ASHA_INTELLIGIBILITY_NOTE = "No intelligibility percentage is shown: the 5
  *  so the parent finds them on the Food & growth shelf (lib/shelves). */
 const CDC_FEEDING_IDS: ReadonlySet<string> = new Set(["cdc-15m-8", "cdc-18m-9", "cdc-60m-12"]);
 
+/** B-LOOP-01 (split, 6 Oct) — CDC movement rows that are HAND skills: tagged
+ *  "fine_motor" so the row and its practice file on the Hands shelf. */
+const CDC_FINE_MOTOR_IDS: ReadonlySet<string> = new Set(["cdc-36m-9"]);
+
 /** Build a stable, deterministic id for a CDC checklist item. */
 const cdc = (
   ageMonths: number,
@@ -81,6 +85,7 @@ const cdc = (
   checked: false,
   source: CDC_2022_SOURCE,
   ...(CDC_FEEDING_IDS.has(`cdc-${ageMonths}m-${n}`) ? { tags: ["feeding" as const] } : {}),
+  ...(CDC_FINE_MOTOR_IDS.has(`cdc-${ageMonths}m-${n}`) ? { tags: ["fine_motor" as const] } : {}),
 });
 
 export const CDC_MILESTONES: Milestone[] = [
@@ -199,7 +204,12 @@ export const CDC_MILESTONES: Milestone[] = [
   cdc(36, "3 years", "language_communication", 6, "Talks in conversation", "Talks with you in a conversation of at least two back-and-forth exchanges.", "Can keep a short chat going with a couple of replies."),
   cdc(36, "3 years", "cognition_executive_function", 7, "Draws a circle", "Draws a circle when you show them how.", "Copies a round shape after watching you draw one."),
   cdc(36, "3 years", "cognition_executive_function", 8, "Avoids hot things when warned", "Avoids touching hot objects, like a stove, when you warn them.", "Heeds 'hot!' and keeps their hands back."),
-  cdc(36, "3 years", "sensory_motor_patterns", 9, "Strings beads / uses utensils", "Strings items together, like large beads; puts on some clothes; uses a fork.", "Threads big beads and eats with a fork without much help."),
+  // B-LOOP-01 (split, 6 Oct): this row fused THREE CDC 3-year items ("Strings beads / uses utensils"). One skill
+  // per row now: cdc-36m-9 strings items (fine motor → Hands), cdc-36m-10 puts on some clothes, cdc-36m-11 uses a
+  // fork (self-help → Hands). Same source record, same band.
+  cdc(36, "3 years", "sensory_motor_patterns", 9, "Strings items together", "Strings items together, like large beads or macaroni.", "Threads big beads or pasta onto a string."),
+  cdc(36, "3 years", "independence_adaptive_skills", 10, "Puts on some clothes", "Puts on some clothes by themselves, like loose trousers or a jacket.", "Pulls on loose trousers or a jacket with little help."),
+  cdc(36, "3 years", "independence_adaptive_skills", 11, "Uses a fork", "Uses a fork.", "Eats some of a meal with a fork."),
 
   // ─────────────────────────────── 4 years (48 months) ────────────────────
   cdc(48, "4 years", "social_development", 1, "Pretends to be something else", "Pretends to be something else during play, like a teacher or superhero.", "Takes on a role and stays in character through the game."),

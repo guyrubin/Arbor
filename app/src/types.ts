@@ -427,7 +427,9 @@ export interface Milestone {
    * say Sleep or Food (both shelves sit over `body`): "feeding" puts the row
    * on Food & growth, "sleep" on Sleep (lib/shelves/registry milestoneShelf).
    */
-  tags?: ("sleep" | "feeding")[];
+  /** Shelf signals: `sleep` / `feeding` (B-LOOP-03); `fine_motor` (B-LOOP-01 split, 6 Oct) puts a
+   *  sensory_motor_patterns row that is a HAND skill on the Hands shelf, not Moving. */
+  tags?: ("sleep" | "feeding" | "fine_motor")[];
 }
 
 /** B-LOOP-01 — who published the document a catalogue row cites. */

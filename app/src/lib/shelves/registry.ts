@@ -144,6 +144,9 @@ const firstNonBody = (domains: readonly DomainId[]): ShelfId | null => {
 const tagShelf = (tags: Milestone["tags"]): ShelfId | null => {
   if (tags?.includes("sleep")) return "sleep";
   if (tags?.includes("feeding")) return "food";
+  // B-LOOP-01 (split, 6 Oct): a fine-motor CDC row (e.g. stringing beads) is a Hands skill — its domain
+  // sensory_motor_patterns maps to ["moving", "hands"] and the first non-body domain would file it on Moving.
+  if (tags?.includes("fine_motor")) return "hands";
   return null;
 };
 

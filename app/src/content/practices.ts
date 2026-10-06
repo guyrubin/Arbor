@@ -587,6 +587,16 @@ export const PRACTICES: readonly Practice[] = [
     say: L("Which one is next? In it goes, through the hole!", "איזו חתיכה עכשיו? נכנסת דרך החור!"),
     materials: L("Large pasta tubes and a shoelace", "פסטה צינורות גדולה ושרוך נעל"),
   }),
+  // B-LOOP-01 (split, 6 Oct): the two CDC 3-year items that were fused into cdc-36m-9.
+  P("cdc-36m-10", "routine_building", 10, S.cdcMilestones, {
+    do: L("When dressing, lay out loose trousers or a jacket and let your child put on one piece themselves, helping only if asked.", "בזמן ההתלבשות, הניחו מכנסיים רחבים או מעיל ותנו לילד/ה ללבוש פריט אחד לבד, ועזרו רק אם מבקשים."),
+    say: L("One arm in, now the other. You're putting it on!", "יד אחת בפנים, עכשיו השנייה. את/ה לובש/ת לבד!"),
+  }),
+  P("cdc-36m-11", "fine_motor_play", 5, S.cdcMilestones, {
+    do: L("At a family meal, give your child their own small fork and let them spear soft pieces their own way, mess included.", "בארוחה משפחתית, תנו לילד/ה מזלג קטן משלו/ה ותנו לו/ה לנעוץ חתיכות רכות בדרך שלו/ה, כולל הלכלוך."),
+    say: L("Your own fork! Poke the pasta… got it.", "מזלג משלך! נועצים בפסטה... הצלחת."),
+    materials: L("A small child-sized fork", "מזלג קטן לילדים"),
+  }),
   P("cdc-48m-13", "gross_motor_play", 10, S.whoMovement, {
     do: L("Toss a large soft ball gently from close by, with a ready signal first, and celebrate the try, caught or not.", "זרקו כדור גדול ורך בעדינות ממרחק קצר, אחרי סימן מוכן, ושמחו בניסיון, גם אם הכדור לא נתפס."),
     say: L("Ready? Hands out... here it comes! Good try!", "מוכן/ה? ידיים קדימה... הנה הוא בא! איזה ניסיון!"),
