@@ -33,6 +33,8 @@
      · nonDiagnosticHypotheses — hypothesis language; a hypothesis filed as a
                                  kept moment reads later as a finding.
      · escalateIf              — safety routing, not a keepsake.
+     · governedEscalation      — the governed card's escalation sentence
+                                 (B-AI-14): safety routing, not a keepsake.
      · avoid                   — negative framing about the child's handling.
    A kept row is a thing the PARENT chose to keep, never evidence about the
    child.
@@ -85,7 +87,7 @@ export type KeepableField = (typeof KEEPABLE_CONTRACT_FIELDS)[number];
 
 /** Deliberately excluded, with the reason in the header. Asserted by test. */
 export const NEVER_KEEPABLE_FIELDS = [
-  "riskLevel", "domains", "nonDiagnosticHypotheses", "escalateIf", "avoid",
+  "riskLevel", "domains", "nonDiagnosticHypotheses", "escalateIf", "governedEscalation", "avoid",
 ] as const;
 
 /** Flooding a tray is not one-tap save — at most this many rows per answer. */

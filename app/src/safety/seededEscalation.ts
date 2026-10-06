@@ -3,22 +3,26 @@ import type { ContentLocale } from "../content/governance.js";
 
 /**
  * B-AI-14 — the hard-moment seed's escalation line is a VERBATIM,
- * model-independent block.
+ * model-independent field.
  *
  * The "Talk this through" seed (content/hardMomentSurface.ts
- * buildHardMomentSeedPrompt) embeds the card's governed escalation sentence
- * and asks the model to repeat it word for word. On coach_chat 1.4.x the model
- * paraphrased or dropped it in 3 of 6 judged scenarios — and on a follow-up
- * turn it cannot even see it: recentTurns are capped at 800 chars per turn
- * (ai/chatContext.ts), which cuts the seed before its last line.
+ * buildHardMomentSeedPrompt) used to embed the card's governed escalation
+ * sentence and ask the model to repeat it word for word. On coach_chat 1.4.x
+ * the model paraphrased or dropped it (3 of 6 judged scenarios on 1 Oct; 2 of
+ * 6 on gemini-2.5-flash on 5 Oct even after 0ef2b21 put the sentence at the
+ * head of escalateIf, because the model's own paraphrase stayed beside it) —
+ * and on a follow-up turn it cannot even see it: recentTurns are capped at
+ * 800 chars per turn (ai/chatContext.ts).
  *
- * So the server stops trusting the model with it. It recognises the seed by
- * its FIRST line (`I want to talk through a hard moment: "<title>".`, always
- * inside the 800-char window), resolves the title against the governed card
- * catalog (never against client-supplied escalation text — a forged seed
- * cannot make the server echo arbitrary words), and the /chat route puts the
- * card's escalation sentence, byte-identical, at the head of `escalateIf` on
- * every answer in a seeded conversation.
+ * So the model is no longer asked to repeat it at all (reopened 6 Oct). The
+ * server recognises the seed by its FIRST line (`I want to talk through a
+ * hard moment: "<title>".`, always inside the 800-char window), resolves the
+ * title against the governed card catalog (never against client-supplied
+ * escalation text — a forged seed cannot make the server echo arbitrary
+ * words), and the /chat route sets `contract.governedEscalation` to the card's
+ * escalation sentence, byte-identical, on every answer in a seeded
+ * conversation — and DROPS the model's own `escalateIf` lines (never merged).
+ * The card UI renders the field verbatim in the escalation slot.
  */
 
 export const HARD_MOMENT_SEED_OPENING = "I want to talk through a hard moment: ";
@@ -61,12 +65,17 @@ export function seededEscalationLine(message: unknown, recentTurns: unknown): st
 }
 
 /**
- * Put the governed line at the head of `escalateIf`, byte-identical, unless
- * an item already carries it verbatim. Any model item that merely paraphrases
- * it stays (it is the model's own threshold), the governed line leads.
+ * The seeded answer's escalation slot carries the governed sentence and
+ * nothing else: `governedEscalation` = the line, byte-identical (no trim, no
+ * rewrite), and the model's `escalateIf` lines are dropped — a paraphrase
+ * beside the governed sentence is exactly the 5 Oct judge failure. Mutates
+ * and returns the contract (server-side, after parse, before the output screen).
  */
-export function withVerbatimEscalation(escalateIf: readonly string[] | undefined, line: string): string[] {
-  const items = Array.isArray(escalateIf) ? [...escalateIf] : [];
-  if (items.some((item) => typeof item === "string" && item.includes(line))) return items;
-  return [line, ...items];
+export function applyGovernedEscalation<T extends { escalateIf?: string[]; governedEscalation?: string }>(
+  contract: T,
+  line: string,
+): T {
+  contract.governedEscalation = line;
+  contract.escalateIf = [];
+  return contract;
 }

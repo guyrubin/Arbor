@@ -78,12 +78,27 @@ export function todayHardMomentOffer(
 }
 
 /**
+ * B-AI-14 (reopened 6 Oct): the seed's last line. The app shows the guide's
+ * escalation boundary itself (server-added `governedEscalation`), so the model
+ * is told not to restate it — a model paraphrase beside the governed sentence
+ * was the 5 Oct judge failure. Pointing to it in one plain sentence is allowed.
+ */
+export const HARD_MOMENT_SEED_ESCALATION_NOTE =
+  "The app shows this guide's own escalation boundary (when to reach out for more support) with your answer, word for word. Do not restate, summarize or reword that boundary, in your reply or in escalateIf. If the conversation reaches the point where more support may be needed, say so in one plain sentence and point me to that guidance.";
+
+/**
  * Ask Arbor "Talk this through" seed — built for the EXISTING seedCoach seam.
  * Contract (evals/coach-hardmoment-seed-v1, pinned judge gemini-2.5-pro, interim — B-PROV-02):
  *   1. The card's five sections bound the scope of the conversation.
  *   2. The coach must never diagnose, label, score, or issue a verdict.
- *   3. The governed escalation boundary is embedded VERBATIM (byte-identical
- *      substring) with an instruction to repeat it exactly, never paraphrased.
+ *   3. B-AI-14 (reopened 6 Oct): the governed escalation boundary is NOT in
+ *      the seed and the model is NOT asked to repeat it. The app shows it
+ *      itself: /chat resolves the card from the seed's FIRST line (the title,
+ *      safety/seededEscalation cardFromSeedText — inside the 800-char window
+ *      a follow-up turn keeps) and sets `contract.governedEscalation` to the
+ *      card's sentence byte-identical, dropping the model's escalateIf. The
+ *      seed tells the model the app shows the boundary, so it must not
+ *      restate, summarize or reword it (in its reply or in escalateIf).
  * The frame stays English (the model localizes replies via getAiLanguage());
  * the card copy rides in the parent's AI language.
  */
@@ -96,7 +111,6 @@ export function buildHardMomentSeedPrompt(
   const publication = hardMomentPublication(card, { ...context, ageMonths: context?.ageMonths, locale });
   if (!publication) return "";
   const sayThis = locText(renderSayThis(card, childName), locale);
-  const escalation = escalationText(card, locale);
   return [
     `I want to talk through a hard moment: "${locText(card.title, locale)}".`,
     publication === "editorial-pilot"
@@ -108,6 +122,6 @@ export function buildHardMomentSeedPrompt(
     `- What to notice: ${locText(card.observe, locale)}`,
     "Offer educational parenting support, not treatment. Do not suggest restraint, forced affection, punishment, or ignoring danger. Stop an activity that increases distress.",
     "Please coach me within the scope of this guide for this exact moment only. Do not diagnose, label, score, or give any verdict about my child.",
-    `If the conversation reaches the point where more support may be needed, repeat the following guidance exactly as written, word for word, never paraphrased: ${escalation}`,
+    HARD_MOMENT_SEED_ESCALATION_NOTE,
   ].join("\n");
 }

@@ -39,7 +39,8 @@ import { toAnthropicVertexModelId } from "../ai/modelRouter.js";
 import { PROMPT_VERSIONS, type PromptKey } from "../ai/prompts.js";
 import { computeContentHash } from "../content/governance.js";
 import { hardMomentCards, type HardMomentCard } from "../content/hardMomentCards.js";
-import { buildHardMomentSeedPrompt } from "../content/hardMomentSurface.js";
+import { buildHardMomentSeedPrompt, HARD_MOMENT_SEED_ESCALATION_NOTE } from "../content/hardMomentSurface.js";
+import { seededEscalationLine } from "../safety/seededEscalation.js";
 import { HARD_MOMENT_PILOT } from "../content/pilotRelease.js";
 
 export type EvalScenario = {
@@ -224,8 +225,12 @@ export const hardMomentSeedContractErrors = (suite: EvalSuite): string[] => {
     for (const [route, seed] of routes) {
       const at = `scenario "${scenario.id}" (${route})`;
       if (!seed) { errors.push(`${at}: seed is empty — the card is not publishable on this route`); continue; }
-      if (!seed.includes(escalation)) errors.push(`${at}: escalation not byte-identical in seed`);
-      if (!seed.includes("never paraphrased")) errors.push(`${at}: seed lost the never-paraphrase instruction`);
+      // B-AI-14 (reopened 6 Oct): the seed no longer carries the sentence;
+      // its first line (the title) resolves the governed card on the server,
+      // which sets contract.governedEscalation byte-identical.
+      if (seed.includes(escalation)) errors.push(`${at}: the seed still carries the escalation sentence (the server owns it)`);
+      if (seededEscalationLine(seed, undefined) !== escalation) errors.push(`${at}: the seed's title no longer resolves the governed escalation`);
+      if (!seed.includes(HARD_MOMENT_SEED_ESCALATION_NOTE)) errors.push(`${at}: seed lost the do-not-restate instruction`);
       if (!seed.includes("Do not diagnose, label, score, or give any verdict")) {
         errors.push(`${at}: seed lost the no-diagnosis instruction`);
       }

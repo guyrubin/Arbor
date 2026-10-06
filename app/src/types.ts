@@ -230,6 +230,11 @@ export interface CoachContract {
   avoid: string[];
   observe: string[];
   escalateIf: string[];
+  /** B-AI-14 (reopened 6 Oct): the governed hard-moment card's escalation
+   *  sentence, byte-identical, set by the SERVER on a seeded conversation
+   *  (never model-emitted; the model's escalateIf is then empty). When
+   *  present, the escalation slot renders this and nothing else. */
+  governedEscalation?: string;
   frameRouting: FrameRouting;
   memoryProposals: { fact: string; source: string; retention: string }[];
   handoffNotes: { teacher: string; professional: string };

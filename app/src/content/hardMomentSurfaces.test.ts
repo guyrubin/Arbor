@@ -6,12 +6,14 @@ import { computeContentHash } from "./governance";
 import { CHILD_NAME_TOKEN, hardMomentCards, type HardMomentCard } from "./hardMomentCards";
 import {
   HARD_MOMENT_CATEGORIES,
+  HARD_MOMENT_SEED_ESCALATION_NOTE,
   buildHardMomentSeedPrompt,
   escalationText,
   locText,
   recentBehaviorTypes,
   todayHardMomentOffer,
 } from "./hardMomentSurface";
+import { seededEscalationLine } from "../safety/seededEscalation";
 
 /**
  * CONT-2 / CODEX-5(surfaces) — acceptance tests for the AR-CONT-01 consuming
@@ -144,7 +146,7 @@ describe("coach-hardmoment-seed-v1 — deterministic seed contract on the fixtur
 
   it("suite is authored and version-pinned (judge model, version, rubric, pass bar)", () => {
     expect(suite.judgeModel).toBe("gemini-2.5-pro"); // pinned — never "latest" (B-PROV-02 interim judge)
-    expect(suite.version).toBe("1.1.0"); // routine-escalation prompt revalidation; rubric unchanged
+    expect(suite.version).toBe("1.2.0"); // B-AI-14 (6 Oct): escalationVerbatim judges contract.governedEscalation
     expect(suite.rubric.dimensions.cardScope).toBeTruthy();
     expect(suite.rubric.dimensions.noDiagnosis).toBeTruthy();
     expect(suite.rubric.dimensions.escalationVerbatim).toBeTruthy();
@@ -164,13 +166,22 @@ describe("coach-hardmoment-seed-v1 — deterministic seed contract on the fixtur
     }
   });
 
-  it("the seed embeds the governed escalation byte-identical for every scenario", () => {
+  // B-AI-14 (reopened 6 Oct) re-pin: the seed no longer embeds the sentence
+  // or asks the model to repeat it. It carries the card title on its FIRST
+  // line (the server resolves the governed card from it and sets
+  // contract.governedEscalation byte-identical — routes/hardMomentSeedEscalation
+  // .test.ts) + the scope + the "do not restate" instruction.
+  it("the seed carries the title (resolving to the governed sentence) and the do-not-restate note, never the sentence", () => {
     for (const scenario of suite.scenarios) {
       const card = approve(find(scenario.cardId));
       const seed = buildHardMomentSeedPrompt(card, scenario.locale, "Noa", { now: NOW, ageMonths: Number(card.ageBands[0].split("-")[0]) * 12 });
       const escalation = scenario.locale === "he" ? card.escalation.he : card.escalation.en;
-      expect(seed.includes(escalation), `${scenario.id}: escalation not byte-identical in seed`).toBe(true);
-      expect(seed).toContain("never paraphrased");
+      expect(seed.includes(escalation), `${scenario.id}: the seed still carries the escalation sentence`).toBe(false);
+      expect(seededEscalationLine(seed, undefined), `${scenario.id}: the title no longer resolves the card`).toBe(escalation);
+      expect(seed.split("\n")[0]).toBe(`I want to talk through a hard moment: "${scenario.locale === "he" ? card.title.he : card.title.en}".`);
+      expect(seed).toContain(HARD_MOMENT_SEED_ESCALATION_NOTE);
+      expect(seed).not.toContain("never paraphrased");
+      expect(seed).not.toMatch(/repeat the following guidance/);
       expect(seed).toContain("Do not diagnose, label, score, or give any verdict");
       expect(seed).not.toContain(CHILD_NAME_TOKEN); // renderSayThis resolved the token
     }

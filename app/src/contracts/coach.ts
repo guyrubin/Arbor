@@ -90,7 +90,19 @@ export const coachResponseZodSchema = z.object({
   approvedMemoryFactsUsed: z.number().int().nonnegative().optional()
 });
 
-export type CoachResponse = z.infer<typeof coachResponseZodSchema>;
+/**
+ * B-AI-14 (reopened 6 Oct): `governedEscalation` — the governed hard-moment
+ * card's escalation sentence, byte-identical — is SERVER-ADDED after the
+ * parse, so it is deliberately NOT a key of coachResponseZodSchema: zod
+ * strips unknown keys, so a model-emitted (or injected) `governedEscalation`
+ * never survives the parse and can never pose as governed text. It is not in
+ * the Gemini schema either (the model is never asked for it). /chat sets it
+ * when the conversation is a hard-moment seed (safety/seededEscalation
+ * applyGovernedEscalation) and drops the model's escalateIf lines; the
+ * renderer below and the card UI show it in the escalation slot. Safety
+ * routing, never a keepsake (lib/captureProposals NEVER_KEEPABLE_FIELDS).
+ */
+export type CoachResponse = z.infer<typeof coachResponseZodSchema> & { governedEscalation?: string };
 
 /** COACH-6: a resolved citation row — real title + card type for an id. */
 export type SourceCardRef = { id: string; title: string; type: string };
@@ -327,7 +339,7 @@ ${L.observe}
 ${response.observe.map((item) => `- ${item}`).join("\n")}
 
 ${L.escalate}
-${response.escalateIf.map((item) => `- ${item}`).join("\n")}
+${(response.governedEscalation ? [response.governedEscalation] : response.escalateIf).map((item) => `- ${item}`).join("\n")}
 
 ${L.frames}
 - **${L.aim}** ${response.frameRouting.aim}

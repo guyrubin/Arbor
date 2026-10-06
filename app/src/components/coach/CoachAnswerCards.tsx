@@ -137,6 +137,18 @@ export function escalationTier(riskLevel?: string): "quiet" | "prominent" {
 }
 
 /**
+ * B-AI-14 (reopened 6 Oct): the lines the escalation slot shows. A seeded
+ * hard-moment answer carries the governed card's sentence in its own field,
+ * `governedEscalation` (server-set, byte-identical); then that string is the
+ * slot's ONLY line, untouched — the model's escalateIf is never shown beside
+ * it. Without it, the model's escalateIf renders as before.
+ */
+export function escalationLines(contract: Pick<CoachContract, "escalateIf" | "governedEscalation">): string[] {
+  if (typeof contract.governedEscalation === "string" && contract.governedEscalation.length > 0) return [contract.governedEscalation];
+  return Array.isArray(contract.escalateIf) ? contract.escalateIf : [];
+}
+
+/**
  * OBJ-ASK-02 — the attribution chips printed the model's own identifiers.
  * `domains` are framework ids (`independence_adaptive_skills`) and the chip
  * rendered `d.replace(/_/g, " ")`, so a parent read "independence adaptive
@@ -395,6 +407,8 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
   const [copied, setCopied] = useState<string | null>(null);
   const [citationsOpen, setCitationsOpen] = useState(false);
   const [escalateOpen, setEscalateOpen] = useState(false);
+  // B-AI-14: the governed sentence when the server set it, else the model's lines.
+  const escalation = escalationLines(contract);
   // ASK-3: hypotheses are analysis, not action — collapsed by default behind
   // a "Why this might be happening" disclosure (same idiom as the citation
   // drawer). Hidden, never unmounted, so the content stays in the DOM.
@@ -461,10 +475,10 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
           moderate and above keep the full pink warning panel untouched. The list
           is identical in both tiers and is never conditionally dropped — when
           collapsed it is hidden, not unmounted, so it stays in the DOM. */}
-      {contract.escalateIf?.length > 0 && (escalationTier(contract.riskLevel) === "prominent" ? (
+      {escalation.length > 0 && (escalationTier(contract.riskLevel) === "prominent" ? (
         <AiBlock icon={<Icon name="warning" size={12} />} title={t("coach.escalate.headline")} tint="var(--arbor-pink-ink)">
           <ul className="space-y-1 text-[12px] leading-snug list-disc ps-4" style={{ color: "var(--arbor-pink-ink)" }}>
-            {contract.escalateIf.map((e, i) => <li key={i}>{e}</li>)}
+            {escalation.map((e, i) => <li key={i}>{e}</li>)}
           </ul>
         </AiBlock>
       ) : (
@@ -486,7 +500,7 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
           </button>
           <div hidden={!escalateOpen} className="px-3.5 pb-3 pt-2" style={{ background: "white", borderTop: "1px solid var(--arbor-rule)" }}>
             <ul className="space-y-1 text-[12px] leading-snug list-disc ps-4" style={{ color: "var(--arbor-muted)" }}>
-              {contract.escalateIf.map((e, i) => <li key={i}>{e}</li>)}
+              {escalation.map((e, i) => <li key={i}>{e}</li>)}
             </ul>
           </div>
         </div>

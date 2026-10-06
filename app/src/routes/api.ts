@@ -17,7 +17,7 @@ import { assembleCompanionContext, createCompanionLedgerSource, lastRatedAction,
 import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../services/framework.js";
 import { screenForImmediateEscalation, renderEscalationMarkdown, escalationMatchForCategory } from "../safety/escalation.js";
 import { renderConditionQuestionReply, screenForConditionQuestion } from "../safety/conditionQuestion.js";
-import { seededEscalationLine, withVerbatimEscalation } from "../safety/seededEscalation.js";
+import { seededEscalationLine, applyGovernedEscalation } from "../safety/seededEscalation.js";
 import { captureLanguage, normalizeCaptureDraft } from "../server/captureDraft.js";
 import { DEFAULT_MEMORY_RETENTION, appendMemoryProposals, enforceMemoryRetention, foldMemoryEvents, getApprovedMemoryContext, getApprovedMemoryContextDetail, toChildId, toFamilyId, transitionMemory } from "../memory/memoryService.js";
 import { loadKnowledgeCardsWithMetadata, renderKnowledgeContext, retrieveKnowledgeCards, loadCardsByIds } from "../knowledge/wiki.js";
@@ -984,11 +984,15 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       const renderLanguage = language === "he" ? "he" : "en";
       scrubHypothesisConfidence(structured, renderLanguage);
 
-      // B-AI-14: in a hard-moment seeded conversation the card's governed
-      // escalation sentence leads escalateIf byte-identical — appended by the
-      // server after generation, never left to the model (safety/seededEscalation).
+      // B-AI-14 (reopened 6 Oct): in a hard-moment seeded conversation the
+      // card's governed escalation sentence rides its OWN field,
+      // `governedEscalation`, byte-identical — set by the server after
+      // generation, never asked of the model — and the model's escalateIf
+      // lines are dropped (safety/seededEscalation). renderCoachResponse
+      // renders the field in the escalation section, so the output screen
+      // below covers it.
       const seededEscalation = seededEscalationLine(message, recentTurns);
-      if (seededEscalation) structured.escalateIf = withVerbatimEscalation(structured.escalateIf, seededEscalation);
+      if (seededEscalation) applyGovernedEscalation(structured, seededEscalation);
 
       // AI-2: output-side safety screen (lexical floor + optional semantic classifier).
       const renderedText = renderCoachResponse(structured, renderLanguage);

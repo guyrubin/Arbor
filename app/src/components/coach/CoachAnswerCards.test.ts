@@ -1,7 +1,10 @@
 import { describe, it, expect } from "vitest";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import CoachAnswerCards, { sourcesLabel, escalationTier, citationRows, memoryFooterLabel } from "./CoachAnswerCards";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import CoachAnswerCards, { sourcesLabel, escalationTier, citationRows, memoryFooterLabel, escalationLines } from "./CoachAnswerCards";
+import { hardMomentCards } from "../../content/hardMomentCards";
 import type { CoachContract } from "../../types";
 
 /**
@@ -224,6 +227,59 @@ describe("escalation footer rendering", () => {
     const html = renderCards("high");
     expect(html).toContain(ESCALATE_ITEM);
     expect(html).toContain("Reach out for help if");
+  });
+});
+
+/**
+ * B-AI-14 (reopened 6 Oct) — a seeded hard-moment answer carries the governed
+ * card's escalation sentence in its own field, `governedEscalation` (set by
+ * the server, byte-identical). The escalation slot shows THAT string, in both
+ * tiers and both locales, and never the model's escalateIf beside it.
+ */
+describe("B-AI-14 — the escalation slot renders governedEscalation verbatim", () => {
+  const MODEL_PARAPHRASE = "If things get harder, consider checking in with someone.";
+  const seeded = (riskLevel: string, line: string): CoachContract => ({
+    ...makeContract(riskLevel),
+    escalateIf: [MODEL_PARAPHRASE],
+    governedEscalation: line,
+  });
+  const render = (contract: CoachContract, lang: "en" | "he" = "en") =>
+    renderToStaticMarkup(React.createElement(CoachAnswerCards, { contract, lang, onSaveToPlan: noop, onAddToHandoff: noop }));
+  /** The text React escapes in markup (quotes, apostrophes, ampersands). */
+  const escapeHtml = (text: string) =>
+    text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
+
+  it("escalationLines: the governed field is the slot's only line; without it, escalateIf as before", () => {
+    const line = hardMomentCards[0].escalation.en;
+    expect(escalationLines(seeded("low", line))).toEqual([line]);
+    expect(escalationLines(seeded("low", line))[0]).toBe(line); // same string, no copy edit
+    expect(escalationLines(makeContract("low"))).toEqual([ESCALATE_ITEM]);
+    expect(escalationLines({ escalateIf: [], governedEscalation: "" })).toEqual([]);
+  });
+
+  for (const card of hardMomentCards) {
+    for (const lang of ["en", "he"] as const) {
+      const line = lang === "he" ? card.escalation.he : card.escalation.en;
+      for (const risk of ["low", "moderate"]) {
+        it(`${card.id} · ${lang} · ${risk}: the slot shows the card's sentence, not the model's`, () => {
+          const html = render(seeded(risk, line), lang);
+          expect(html).toContain(`<li>${escapeHtml(line)}</li>`);
+          expect(html).not.toContain(MODEL_PARAPHRASE);
+          expect(html.split(escapeHtml(line)).length - 1).toBe(1);
+        });
+      }
+    }
+  }
+
+  it("NEGATIVE CONTROL — an answer without the field still renders the model's escalateIf", () => {
+    const html = render({ ...makeContract("moderate"), escalateIf: [MODEL_PARAPHRASE] });
+    expect(html).toContain(MODEL_PARAPHRASE);
+  });
+
+  it("source pin: both tiers map the escalationLines result, never contract.escalateIf directly", () => {
+    const src = readFileSync(path.resolve(__dirname, "CoachAnswerCards.tsx"), "utf8");
+    expect(src).not.toMatch(/contract\.escalateIf\.map\(/);
+    expect(src.match(/\{escalation\.map\(\(e, i\) => <li key=\{i\}>\{e\}<\/li>\)\}/g)?.length).toBe(2);
   });
 });
 
