@@ -292,6 +292,8 @@ const buildScenarioRunner = (suite: EvalSuite, baseUrl: string) => async (scenar
           contextChildId: input.contextChildId === "different-child" ? "different-child" : scenarioProfile.id,
         } : {}),
         ...(input.privateMode === true ? { privateMode: true } : {}),
+        // B-LOOP-13 (voice_reply 1.8.0): the scenario's journal request (today's practice).
+        ...(input.journal && typeof input.journal === "object" ? { journal: input.journal } : {}),
       }),
     });
     return sseTranscript(await res.text());
@@ -307,6 +309,8 @@ const buildScenarioRunner = (suite: EvalSuite, baseUrl: string) => async (scenar
       // EVAL-5 (lens fidelity): the selected lens is load-bearing — pass it
       // through so the live answer is judged on APPLYING the method.
       ...(input.scholarLens ? { scholarLens: String(input.scholarLens) } : {}),
+      // B-LOOP-13 (coach_chat 1.7.0): the scenario's journal request (today's practice).
+      ...(input.journal && typeof input.journal === "object" ? { journal: input.journal } : {}),
     }),
   });
   const payload: any = await res.json();

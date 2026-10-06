@@ -45,6 +45,7 @@ export function runnerInputError(scenario: Pick<EvalScenario, "route" | "input" 
     if (!sig || typeof sig !== "object" || !Number.isFinite(Number(sig.count))) return "has no signals.count input for /api/todays-focus";
     if (input.approvedFacts !== undefined && !Array.isArray(input.approvedFacts)) return "has a non-array approvedFacts input";
     if (input.ledger !== undefined && !Array.isArray(input.ledger)) return "has a non-array ledger input";
+    if (input.journal !== undefined && !isJournal(input.journal)) return "has a non-object journal input";
     return null;
   }
   // B-ASKJB-27 (plan-v1): the plan route posts the topic, the child and the
@@ -100,6 +101,7 @@ export function todaysFocusWireBody(
   childProfile: Record<string, unknown>;
   signals: { count: number; topTrigger?: string; lastActionRecommendation?: string; lastActionOutcome?: string };
   language: "en" | "he";
+  journal?: Record<string, unknown>;
 } {
   const cp = input.childProfile && typeof input.childProfile === "object" ? (input.childProfile as Record<string, unknown>) : fallbackProfile;
   const sig = (input.signals ?? {}) as Record<string, unknown>;
@@ -115,8 +117,14 @@ export function todaysFocusWireBody(
       ...(last ? { lastActionRecommendation: String(last.recommendation), lastActionOutcome: String(last.outcome) } : {}),
     },
     language: input.language === "he" ? "he" : "en",
+    // B-LOOP-13: the scenario's journal request rides as Today posts it (the
+    // server sanitizes it; the local adapter reads its dose rows as-is).
+    ...(isJournal(input.journal) ? { journal: input.journal } : {}),
   };
 }
+
+/** B-LOOP-13: a scenario `journal` is the client's request object (ai/journalContext JournalRequest). */
+const isJournal = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
 
 /** B-ASKJB-27 (plan-v1): the body PlansTab posts — topic, child, language,
  *  the behaviour counts as written (the server's sanitizer is under test) and
