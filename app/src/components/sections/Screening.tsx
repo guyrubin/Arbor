@@ -38,6 +38,15 @@ type SavedScreening = ScreeningResult & { id: string; recheckDueAt?: string };
 // UND-1 — answer labels resolve through i18n ("screen.answer.<key>").
 const ANSWERS: ScreenAnswer[] = ["yes", "sometimes", "not_yet"];
 
+/* B-OCCL-03 (6 Oct): the route's ONE data-primary-move literal, spread on the
+   control that performs the move — "Start the check" on the intro, "See the
+   result" on the questions — never on the module wrapper (353 px at 375 EN,
+   it ran under the capture dock). The page renders ScreeningFlow `stamped`;
+   the inline sheet (ScreeningSheet) does not, so its host route keeps its own.
+   The spread is this static const or undefined — whiteLabelContrast resolves
+   it as a data attribute and can still prove the button's fill. */
+const CHECK_STAMP = { "data-primary-move": "complete-check" } as const;
+
 /** Child Intelligence › Development Check — non-diagnostic, age-banded screener
  *  that surfaces "worth a professional conversation" areas and routes to care. */
 export default function Screening() {
@@ -91,24 +100,32 @@ export default function Screening() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[920px]">
+      {/* B-OCCL-03: flush — the page's space-y-6 is the gap; mb-7 stacked on
+          it pushed the check down 28 px at 375. */}
       <PageHeader
+        flush
         eyebrow={t("screen.eyebrow")}
         title={t("sec.screen.title")}
         subtitle={t("sec.screen.sub", { name: first })}
       />
 
-      <TrustSafetyBar note={t("screen.trustNote")} />
-
       {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
           marks a top-level sibling module (what moduleBudget counts);
           `data-primary-move` marks the ONE control that performs the move
-          surfaceContract.ts declares for this route. */}
+          surfaceContract.ts declares for this route — B-OCCL-03: the flow's
+          start / submit button (ScreeningFlow stamped), not this wrapper. */}
       {/* B-GROWTH-18: the check comes FIRST — "Start the check" was below the
           fold at 390 px under the monitoring card. The monitoring card is the
           second module, unchanged. */}
-      <div data-module="screening-check" data-primary-move="complete-check" style={{ display: "contents" }}>
-        <ScreeningFlow />
+      <div data-module="screening-check" style={{ display: "contents" }}>
+        <ScreeningFlow stamped />
       </div>
+
+      {/* B-OCCL-03: the non-diagnostic note sits UNDER the check (it stood
+          between the header and the check, ~150 px at 375, and pushed "Start
+          the check" under the capture dock). The intro still says "no score
+          and no labels" and the basis line still says "Non-diagnostic". */}
+      <TrustSafetyBar note={t("screen.trustNote")} />
 
       {/* Passive developmental-monitoring layer — surveillance, never a test or diagnosis. */}
       <div data-module="screening-monitoring" style={{ display: "contents" }}>
@@ -178,7 +195,12 @@ export function visitPrefillReason(
 /** The screener phase machine (intro → questions → result), extracted so it can
  *  run as a full page OR inside an inline sheet (b2 My Child story spine). The
  *  optional `onClose` lets the sheet dismiss itself before routing to Care. */
-export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
+export function ScreeningFlow({ onClose, stamped = false }: {
+  onClose?: () => void;
+  /** B-OCCL-03: the page's primary-move stamp (CHECK_STAMP) goes on the start
+   *  / submit button only; the sheet leaves it off. */
+  stamped?: boolean;
+}) {
   const { childProfile, milestones, setActiveTab, requestConsultPrefill } = useArbor();
   const { toast } = useToast();
   const { t, uiLang } = useLanguage();
@@ -343,7 +365,18 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
           <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
             {t("screen.intro.body", { n: band.items.length })}
           </p>
-          <div className="mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11.5px] font-bold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
+          {/* B-OCCL-03: the move comes right after what it does — the basis
+              line, the corrected-age note and the last check follow it. */}
+          <button
+            onClick={() => setPhase("questions")}
+            {...(stamped ? CHECK_STAMP : undefined)}
+            data-testid="screen-start"
+            className="mt-4 inline-flex min-h-11 items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3"
+            style={{ background: "var(--arbor-gradient-primary)" }}
+          >
+            <Icon name="fact_check" size={16} /> {t("screen.start")}
+          </button>
+          <div data-testid="screen-basis" className="mt-4 flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-[12px] font-bold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
             <Icon name="verified_user" size={14} style={{ color: "var(--arbor-green-ink)" }} />
             {t("screen.intro.basis")}
           </div>
@@ -351,7 +384,7 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
               pattern as the Milestones map) + one observational intro sentence. */}
           {corrected.applied && (
             <div className="mt-3 space-y-1.5" data-testid="screen-corrected-intro">
-              <span className="inline-block text-[11px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}>
+              <span className="inline-block text-[12px] font-extrabold px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}>
                 {t("ms.correctedBadge")} · {corrected.correctedMonths}m
               </span>
               <p className="text-[12px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
@@ -376,7 +409,7 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
               {last.recheckDueAt && (
                 <span
                   data-testid="screen-recheck-due"
-                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11.5px] font-bold"
+                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-bold"
                   style={isRecheckDue(last.recheckDueAt)
                     ? { background: "var(--arbor-yellow-soft)", color: "var(--arbor-ink)" }
                     : { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
@@ -389,13 +422,6 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
               )}
             </div>
           )}
-          <button
-            onClick={() => setPhase("questions")}
-            className="mt-4 inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3"
-            style={{ background: "var(--arbor-gradient-primary)" }}
-          >
-            <Icon name="fact_check" size={16} /> {t("screen.start")}
-          </button>
         </SectionCard>
       )}
 
@@ -458,6 +484,7 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
             <button
               onClick={submit}
               disabled={!allAnswered}
+              {...(stamped ? CHECK_STAMP : undefined)}
               className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3 disabled:opacity-50"
               style={{ background: "var(--arbor-gradient-primary)" }}
             >
