@@ -205,7 +205,6 @@ const HEX_ALLOWLIST: Record<string, readonly string[]> = {
     "#18f0d2", "#1b2898", "#38c8f0", "#68b4ff", "#a07af8", "#cca8ff", "#ff5822", "#ffc07a",
   ],
   "components/ui/ArborMascot.tsx": ["#16352a", "#5fce97", "#ef8a52", "#f3a886", "#fff", "#ffffff"], // mascot SVG
-  "components/ui/Avatar.tsx": ["#2f5a73", "#2f6d52", "#3a7d6b", "#5b6e2f", "#7a4a86", "#9a5b2b", "#b3463c"], // avatar palette
   "components/ui/HeroAvatar.tsx": ["#fff"],
   "components/ui/HeroCrest.tsx": ["#fff"],
   "components/ui/ProvenanceBadge.tsx": ["#fff"],
@@ -672,7 +671,6 @@ const RGBA_BASELINE: Record<string, number> = {
   "components/tabs/PlansTab.tsx": 1,
   "components/tabs/SciencePage.tsx": 1,
   "components/tabs/StoryTimelineTab.tsx": 2,
-  "components/ui/Avatar.tsx": 1,
   "components/ui/Button.tsx": 2,
   "components/ui/EmotionAvatar.tsx": 1,
   "components/ui/HeroAvatar.tsx": 2,

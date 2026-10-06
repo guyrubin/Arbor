@@ -1099,6 +1099,9 @@ const FROZEN_DEBT: readonly Debt[] = [
 const FROZEN_SEAL = "66b8a7891677ed44216437abe0176e245b554deb40754e7f1d747688e6af5ee6";
 // Retire exact keys only after fixing/removing their consumer; never rewrite the snapshot.
 const RETIRED_DEBT: readonly string[] = [
+  // RESOLVED 2026-10-06 (P1-NEXTLEVEL critic r2, profile design): the initials
+  // disc reads the jewel ink tokens with --arbor-on-accent; no text-white class.
+  "components/ui/Avatar.tsx#401210d34e62158d500c7d4604fe8d72d5f7139f8ac00e6152a1760806fb7e3b",
   // RESOLVED 2026-09-23 (kids gauntlet M2): the Hero Story reflection checkbox
   // was a ternary fill under a white mark; split into an explicit checked (clay)
   // / unchecked (no label) pair, same pixels, provable fill.

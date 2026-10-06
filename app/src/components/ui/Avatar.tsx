@@ -5,7 +5,16 @@ import React from "react";
  * deterministic brand-tinted background. Used for the parent and (optionally)
  * each child. Google sign-in supplies `photoURL`; the CSP allows lh3.* images.
  */
-const PALETTE = ["#2f6d52", "#2f5a73", "#9a5b2b", "#7a4a86", "#b3463c", "#3a7d6b", "#5b6e2f"];
+// P1-NEXTLEVEL critic r2 (profile design, Law 4): the identity disc reads the
+// jewel ink tokens — no second palette. Initials sit in --arbor-on-accent.
+const PALETTE = [
+  "var(--arbor-green-ink)",
+  "var(--arbor-sky-ink)",
+  "var(--arbor-clay-ink)",
+  "var(--arbor-lav-ink)",
+  "var(--arbor-peach-ink)",
+  "var(--arbor-pink-ink)",
+];
 
 function colorFor(seed: string): string {
   let h = 0;
@@ -33,7 +42,7 @@ export function Avatar({
   className?: string;
 }) {
   const dims: React.CSSProperties = { width: size, height: size };
-  const ringStyle: React.CSSProperties = ring ? { boxShadow: "0 0 0 2px var(--arbor-paper-elevated), 0 0 0 3.5px rgba(52,178,119,0.35)" } : {};
+  const ringStyle: React.CSSProperties = ring ? { boxShadow: "0 0 0 2px var(--arbor-paper-elevated), 0 0 0 3.5px var(--arbor-rule-strong)" } : {};
 
   if (photoURL) {
     return (
@@ -49,8 +58,8 @@ export function Avatar({
   return (
     <span
       aria-hidden="true"
-      className={`rounded-full inline-flex items-center justify-center font-bold text-white flex-shrink-0 ${className}`}
-      style={{ ...dims, ...ringStyle, background: colorFor(name || "·"), fontSize: Math.round(size * 0.4) }}
+      className={`rounded-full inline-flex items-center justify-center font-bold flex-shrink-0 ${className}`}
+      style={{ ...dims, ...ringStyle, background: colorFor(name || "·"), color: "var(--arbor-on-accent)", fontSize: Math.round(size * 0.4) }}
     >
       {initialsOf(name)}
     </span>
