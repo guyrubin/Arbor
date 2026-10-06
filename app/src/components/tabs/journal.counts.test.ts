@@ -73,6 +73,25 @@ describe("B-ASKJB-13 · Journal header counts by kind", () => {
     expect(JOURNAL).toContain("journalFeedCountKey(signals)");
     expect(JOURNAL).not.toContain("journal.timeline.count");
   });
+
+  it("NEXTLEVEL critic r1 — under a filter or search the count says what is on screen ('3 matches'), never the unfiltered total and never 'x of y'", () => {
+    const at = JOURNAL.indexOf('data-testid="journal-feed-count"');
+    expect(at).toBeGreaterThan(-1);
+    const span = JOURNAL.slice(at, JOURNAL.indexOf("</span>", at));
+    expect(span).toMatch(/filtering\s*\?\s*t\(visibleSignals\.length === 1 \? "journal\.timeline\.matches\.one" : "journal\.timeline\.matches", \{ n: visibleSignals\.length \}\)/);
+    for (const lang of ["en", "he"] as const) {
+      expect(translate(lang, "journal.timeline.matches", { n: 3 })).toContain("3");
+      expect(translate(lang, "journal.timeline.matches", { n: 3 })).not.toMatch(/ of |מתוך|%|\//);
+      expect(translate(lang, "journal.timeline.matches.one")).toBeTruthy();
+    }
+  });
+
+  it("NEXTLEVEL critic r1 — at lg a reading column (≤ 42rem) and a sticky 20rem compose rail", () => {
+    expect(JOURNAL).toContain("lg:grid lg:grid-cols-[minmax(0,42rem)_20rem]");
+    expect(JOURNAL).toMatch(/data-module="journal-header" className="[^"]*lg:col-start-1 lg:row-start-1"/);
+    expect(JOURNAL).toMatch(/data-module="journal-compose" className="[^"]*lg:sticky lg:top-4 lg:col-start-2 lg:row-span-3 lg:row-start-1"/);
+    expect(JOURNAL).toContain('aria-labelledby="journal-timeline-title" className="min-w-0 lg:col-start-1"');
+  });
 });
 
 describe("B-ASKJB-13 · no guessed domain chip on plan or memory rows", () => {

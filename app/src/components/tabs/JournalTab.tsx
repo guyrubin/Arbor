@@ -492,8 +492,13 @@ export default function JournalTab({ primaryMoveProps, densityToggle }: { primar
   );
 
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto flex w-full min-w-0 max-w-[1080px] flex-col gap-5">
-      <header data-module="journal-header" className="border-b pb-5" style={{ borderColor: "var(--arbor-rule)" }}>
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto flex w-full min-w-0 max-w-[1080px] flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,42rem)_20rem] lg:items-start lg:justify-between lg:gap-x-10">
+      {/* NEXTLEVEL critic r1 (journal · design · P1): at lg the page is a
+          reading column (≤ 42rem: header + thread, so a row's time sits next
+          to its words) and a sticky inline-end rail (20rem) holding the
+          compose card — not a stretched phone column. Placement by
+          col/row-start only; the DOM order is unchanged. */}
+      <header data-module="journal-header" className="border-b pb-5 lg:col-start-1 lg:row-start-1" style={{ borderColor: "var(--arbor-rule)" }}>
         <div className="grid min-w-0 items-end gap-5 md:grid-cols-[minmax(0,1.25fr)_minmax(220px,.75fr)]">
           <div>
             {/* Critic r2: TimelineTab's density toggle rides in the header on
@@ -574,7 +579,7 @@ export default function JournalTab({ primaryMoveProps, densityToggle }: { primar
       {activePromptKey && (
         <div
           data-testid="journal-prompt-cue"
-          className="flex items-start gap-2.5 rounded-[var(--r)] px-4 py-3"
+          className="flex items-start gap-2.5 rounded-[var(--r)] px-4 py-3 lg:col-start-1"
           style={{ background: PASTEL.lav.soft, color: PASTEL.lav.ink }}
           dir="auto"
           aria-live="polite"
@@ -589,7 +594,7 @@ export default function JournalTab({ primaryMoveProps, densityToggle }: { primar
       {/* Compose card — "Log a moment" + three modality tiles. All three trigger the
           EXISTING capture flow (BehaviorsTab); the Voice/Photo/Text split is an
           entry affordance, not a new capture path. */}
-      <section ref={composeRef} data-module="journal-compose" className="rounded-[var(--r-lg)] p-4 sm:p-5" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-xs)" }}>
+      <section ref={composeRef} data-module="journal-compose" className="rounded-[var(--r-lg)] p-4 sm:p-5 lg:sticky lg:top-4 lg:col-start-2 lg:row-span-3 lg:row-start-1" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-xs)" }}>
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
             <p className="t-sm" style={{ color: "var(--arbor-muted)" }}>{t("journal.compose.eyebrow")}</p>
@@ -670,7 +675,7 @@ export default function JournalTab({ primaryMoveProps, densityToggle }: { primar
           (display: contents — no layout change). */}
       <div data-module="journal-thread" style={{ display: "contents" }}>
       {!logsLoaded ? (
-        <div className="flex flex-col gap-3" aria-hidden>
+        <div className="flex flex-col gap-3 lg:col-start-1" aria-hidden>
           <Skeleton className="h-20" />
           <Skeleton className="h-20" />
           <Skeleton className="h-20" />
@@ -681,7 +686,7 @@ export default function JournalTab({ primaryMoveProps, densityToggle }: { primar
            capture bar above. Copy = elev.states.journal.* (en+he, encouraging,
            never celebrating the zero). Replaces the bespoke card+IconBadge+
            editorial-font shape (one of the 3 competing EmptyState shapes). */
-        <div className={`${cardCls} p-6 sm:p-8`} data-testid="journal-teach-empty">
+        <div className={`${cardCls} p-6 sm:p-8 lg:col-start-1`} data-testid="journal-teach-empty">
           <EmptyState
             className="py-6"
             icon={<IconBadge tone="lav" size={48}><Icon name="edit_note" size={26} fill={1} /></IconBadge>}
@@ -716,10 +721,17 @@ export default function JournalTab({ primaryMoveProps, densityToggle }: { primar
           />
         </div>
       ) : (
-        <section aria-labelledby="journal-timeline-title">
+        <section aria-labelledby="journal-timeline-title" className="min-w-0 lg:col-start-1">
           <div className="mb-1 flex items-center justify-between gap-3">
             <h2 id="journal-timeline-title" className="t-lg font-extrabold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{t("journal.timeline.title")}</h2>
-            <span className="t-sm" style={{ color: "var(--arbor-muted)" }}>{t(feedCount.key, { n: feedCount.n })}</span>
+            {/* NEXTLEVEL critic r1 (Law 9): under a filter or a search the
+                count says what is ON SCREEN ("3 matches"), never the
+                unfiltered total; a count only, never "x of y". */}
+            <span data-testid="journal-feed-count" className="t-sm" style={{ color: "var(--arbor-muted)" }}>
+              {filtering
+                ? t(visibleSignals.length === 1 ? "journal.timeline.matches.one" : "journal.timeline.matches", { n: visibleSignals.length })
+                : t(feedCount.key, { n: feedCount.n })}
+            </span>
           </div>
           <div data-testid="journal-filters" className="mb-3 space-y-2">
             <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t("journal.filter.aria")}>
