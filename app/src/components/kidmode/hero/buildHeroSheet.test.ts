@@ -6,7 +6,8 @@
  */
 import { describe, expect, it } from "vitest";
 import { HERO_SHEET_POSE_IDS, heroAvatarHash, type HeroSheetPoseId } from "../../../lib/heroSheetContract";
-import { buildHeroSheet, startHeroSheet, type BuilderDeps, type PoseResponse } from "./buildHeroSheet";
+import { buildHeroSheet, markHeroPoseOk, redrawHeroPose, startHeroSheet, type BuilderDeps, type PoseResponse } from "./buildHeroSheet";
+import { sheetFromDocs } from "./heroSheetStore";
 import { heroSheetStoreFor } from "./heroSheetStore";
 import type { RgbaImage } from "./heroKeyer";
 
@@ -158,5 +159,45 @@ describe("B-GAME-13c builder", () => {
     const b = startHeroSheet({ childId: "c1", photoUrl: "data:image/png;base64,SEVSTw==", source: "descriptor" }, f.deps);
     expect(a).toBe(b);
     expect((await a)?.status).toBe("complete");
+  });
+});
+
+describe("B-GAME-14 parent review", () => {
+  it("Yes keeps the pose; Redraw removes it from the record at once, draws it once more, and only once", async () => {
+    const f = fakes();
+    await buildHeroSheet({ childId: "c1", avatarHash: HASH }, f.deps);
+    expect(await markHeroPoseOk(f.store, "idle")).toBe(true);
+    expect((await f.store.read()).poses.idle?.review).toBe("ok");
+    expect(await markHeroPoseOk(f.store, "idle")).toBe(false);
+
+    // While the redraw is in flight the rejected pose is already gone: the
+    // child's sheet resolves it through the fallback map, never the old art.
+    const before = (await f.store.read()).poses.oops!.dataUrl;
+    let seenDuring: boolean | null = null;
+    const deps: BuilderDeps = { ...f.deps, requestPose: async (b) => { const docs = await f.store.read(); seenDuring = !!docs.poses.oops; return f.deps.requestPose(b); } };
+    f.calls.length = 0;
+    expect(await redrawHeroPose({ childId: "c1", avatarHash: HASH, pose: "oops" }, deps)).toEqual({ ok: true });
+    expect(seenDuring).toBe(false);
+    expect(f.calls).toEqual(["oops"]);
+    const after = (await f.store.read()).poses.oops!;
+    expect(after.redrawn).toBe(true);
+    expect(after.dataUrl).not.toBe(before);
+    expect((await f.store.read()).meta?.poses).toContain("oops");
+    expect(sheetFromDocs(await f.store.read(), HASH)?.poses.oops).toBeTruthy();
+    // One redraw per pose per creation.
+    expect(await redrawHeroPose({ childId: "c1", avatarHash: HASH, pose: "oops" }, f.deps)).toEqual({ ok: false, reason: "redraw-spent" });
+    // Not for another hero's sheet.
+    expect(await redrawHeroPose({ childId: "c1", avatarHash: "2222222222222222", pose: "dash" }, f.deps)).toEqual({ ok: false, reason: "not-in-sheet" });
+  });
+
+  it("a redraw that fails leaves the pose out (the fallback plays), never the rejected art", async () => {
+    const f = fakes();
+    await buildHeroSheet({ childId: "c1", avatarHash: HASH }, f.deps);
+    const deps: BuilderDeps = { ...f.deps, requestPose: async () => ({ ok: false, status: 429, code: "hero_sheet_resting" }) };
+    expect(await redrawHeroPose({ childId: "c1", avatarHash: HASH, pose: "dash" }, deps)).toEqual({ ok: false, reason: "hero_sheet_resting" });
+    const docs = await f.store.read();
+    expect(docs.poses.dash).toBeUndefined();
+    expect(docs.meta?.poses).not.toContain("dash");
+    expect(sheetFromDocs(docs, HASH)?.poses.dash).toBeUndefined();
   });
 });
