@@ -4,7 +4,7 @@ import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
-import { PageHeader, SectionCard, TrustSafetyBar, cardCls, Chip } from "../ui/kit";
+import { PageHeader, SectionCard, TrustSafetyBar, cardCls, Chip, IconBadge } from "../ui/kit";
 // GP-22 — the Full Picture carries the two highest-stakes why-lines in Growth
 // ("this week's focus" and each "worth a conversation" row) and neither had a
 // door to how Arbor decides. A why-line that cannot show its inputs is an
@@ -52,6 +52,13 @@ function tFP(uiLang: string, key: string, vars?: Record<string, string | number>
 /** R22 (Builder L): the mechanism note was a module literal, so it printed
  *  English on a Hebrew page. Same sentence, now a key (growthTruth, EN + HE). */
 const MECHANISM_NOTE_KEY = "elev.growthTruth.copilot.domains.mechanism";
+
+/* B-OCCL-04 (6 Oct, framer option (c)): the route's move is a READ
+   (surfaceContract copilot: "Read surface — no write"), so the ONE
+   data-primary-move literal sits on the domain card's HEADING (≈ 28 px tall,
+   y ≈ 541 EN / 468 HE at 375 — above the capture dock), never on the 472 px
+   card wrapper. A static const spread, so whiteLabelContrast resolves it. */
+const FULL_PICTURE_STAMP = { "data-primary-move": "open-full-picture" } as const;
 
 /** Masterplan 1.7 / GD-10 — presentation guard on evidence lines: a couple of
  *  watch-signal evidence strings interpolate the internal band VALUE
@@ -303,9 +310,26 @@ export default function DevelopmentCopilot() {
       {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
           marks a top-level sibling module (what moduleBudget counts);
           `data-primary-move` marks the ONE control that performs the move
-          surfaceContract.ts declares for this route. */}
-      <div data-module="copilot-domains" data-primary-move="open-full-picture" style={{ display: "contents" }}>
-      <SectionCard title={t("elev.growthTruth.copilot.domains.title", { age: ageLabel(childProfile, t) })} icon={<Icon name="monitoring" size={20} />} tone="mint">
+          surfaceContract.ts declares for this route — B-OCCL-04: a read move,
+          stamped on the card's heading (FULL_PICTURE_STAMP), not this wrapper. */}
+      <div data-module="copilot-domains" style={{ display: "contents" }}>
+      <SectionCard tone="mint">
+        {/* B-OCCL-04: the SectionCard header row, written out here (same
+            markup as kit SectionCard: 36 px mint badge + text-lg heading) so
+            the heading itself can carry the read stamp. */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
+            <IconBadge tone="mint" size={36}><Icon name="monitoring" size={20} /></IconBadge>
+            <h2
+              {...FULL_PICTURE_STAMP}
+              data-testid="copilot-domains-heading"
+              className="text-lg font-extrabold"
+              style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}
+            >
+              {t("elev.growthTruth.copilot.domains.title", { age: ageLabel(childProfile, t) })}
+            </h2>
+          </div>
+        </div>
         {/* RUN-08 / item 19 — a domain with no milestone in this age window has
             nothing to count, and printing "Speech sounds — 0 of 0 milestones
             noticed" taught the parent that the number means something bad. The
