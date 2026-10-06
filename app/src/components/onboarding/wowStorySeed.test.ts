@@ -102,6 +102,7 @@ describe("CHILD_SUBCOLLECTIONS registry pin — the seed invented NO new sink", 
       "wellness",
       "savedComics",
       "keepsakes", // B-GROWTH-10 (4ccb483): milestone keepsakes moved from device-local into the registered record
+      "heroSheet", // B-GAME-13c: the hero's pose sheet (generated art, registered for export + erase)
     ]);
   });
 });

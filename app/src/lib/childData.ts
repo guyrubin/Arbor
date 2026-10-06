@@ -74,6 +74,9 @@ export const CHILD_SUBCOLLECTIONS = [
   // (doc id = milestone id). They were device-local and missing from the
   // Art. 15/20 export; registered here they export and erase with the child.
   "keepsakes",
+  // B-GAME-13c: the hero's pose sheet — one doc per pose (generated art drawn
+  // from the stored generated hero, never a photo) + `_meta`. Export + erase.
+  "heroSheet",
 ];
 
 const remoteActive = (uid?: string) =>

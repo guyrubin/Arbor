@@ -605,36 +605,58 @@ export function normalisePoses<P extends string>(sprites: Partial<Record<P, Rgba
   const idle = sprites[idlePose];
   const out: Partial<Record<P, NormalisedPose>> = {};
   if (!idle) return out;
+  const ref = sheetReference(idle);
+  for (const pose of Object.keys(sprites) as P[]) {
+    const img = sprites[pose];
+    if (img) out[pose] = normalisePose(pose, img, ref);
+  }
+  return out;
+}
+
+/** What every pose is normalised against, learned once from the idle (the
+ *  keyed idle, or the stored 960 px idle when a build resumes). */
+export interface SheetReference {
+  headTop: [number, number, number] | null;
+  /** The idle's run/mop ratio (null: no head-top colour found). */
+  k: number | null;
+  /** Head width the sheet is drawn at, output px. */
+  target: number;
+  /** The idle's own resample factor to SHEET_IDLE_H. */
+  idleResize: number;
+}
+
+export function sheetReference(idle: RgbaImage): SheetReference {
   const headTop = sampleHeadTopColour(idle);
   const mi = measureHead(idle, headTop, null);
   const k = mi.mop > 0 ? mi.run / mi.mop : null;
   const idleM = k ? measureHead(idle, headTop, k) : mi;
-  const sIdle = SHEET_IDLE_H / idle.height;
-  const target = idleM.w * sIdle;
-  for (const pose of Object.keys(sprites) as P[]) {
-    const img = sprites[pose];
-    if (!img) continue;
-    const m = pose === idlePose ? idleM : measureHead(img, headTop, k);
-    const want = m.w > 0 ? target / m.w : sIdle;
-    const resize = Math.min(want, MAX_UPSCALE, MAX_OUT_H / img.height);
-    const r = (m.w / 2) * resize;
-    const basic = basicAnchors(img);
-    let foot = basic.foot;
-    if (pose === ("oops" as P)) foot = seatOf(img, m.x, m.hairTop, foot);
-    let hy = ((m.hairTop + m.row) / 2) * resize;
-    hy = Math.max(hy, m.hairTop * resize + r * 0.9);
-    const head = { x: round1(m.x * resize), y: round1(hy), r: round1(r) };
-    const hand = pose === ("hold-up" as P) ? handAnchors(img, { x: m.x, y: hy / resize, r: m.w / 2 }) : undefined;
-    out[pose] = {
-      resize,
-      scale: Math.round((want / resize) * 10000) / 10000,
-      w: Math.max(1, Math.round(img.width * resize)),
-      h: Math.max(1, Math.round(img.height * resize)),
-      foot: { x: round1(foot.x * resize), y: round1(foot.y * resize) },
-      head,
-      ...(hand ? { hand: { ...(hand.l ? { l: [round1(hand.l[0] * resize), round1(hand.l[1] * resize)] as [number, number] } : {}), ...(hand.r ? { r: [round1(hand.r[0] * resize), round1(hand.r[1] * resize)] as [number, number] } : {}) } } : {}),
-      headW: m.w,
-    };
-  }
-  return out;
+  const idleResize = SHEET_IDLE_H / idle.height;
+  return { headTop, k, target: idleM.w * idleResize, idleResize };
+}
+
+/** One pose at the sheet's pixels-per-head (the idle itself: SHEET_IDLE_H tall). */
+export function normalisePose(pose: string, img: RgbaImage, ref: SheetReference): NormalisedPose {
+  const m = measureHead(img, ref.headTop, ref.k);
+  const want = pose === "idle" ? ref.idleResize : m.w > 0 ? ref.target / m.w : ref.idleResize;
+  // The idle IS the reference (drawn at the figure height the game asks for):
+  // always SHEET_IDLE_H tall, scale 1. Other poses are capped; `scale` carries the rest.
+  const resize = pose === "idle" ? want : Math.min(want, MAX_UPSCALE, MAX_OUT_H / img.height);
+  const r = (m.w / 2) * resize;
+  let foot = basicAnchors(img).foot;
+  if (pose === "oops") foot = seatOf(img, m.x, m.hairTop, foot);
+  const hy = Math.max(((m.hairTop + m.row) / 2) * resize, m.hairTop * resize + r * 0.9);
+  const head = { x: round1(m.x * resize), y: round1(hy), r: round1(r) };
+  const hand = pose === "hold-up" ? handAnchors(img, { x: m.x, y: hy / resize, r: m.w / 2 }) : undefined;
+  const at = (p: [number, number]): [number, number] => [round1(p[0] * resize), round1(p[1] * resize)];
+  const outHand: HandAnchor | undefined = hand ? { ...(hand.l ? { l: at(hand.l) } : {}), ...(hand.r ? { r: at(hand.r) } : {}) } : undefined;
+  return {
+    resize,
+    scale: Math.round((want / resize) * 10000) / 10000,
+    w: Math.max(1, Math.round(img.width * resize)),
+    h: Math.max(1, Math.round(img.height * resize)),
+    foot: { x: round1(foot.x * resize), y: round1(foot.y * resize) },
+    head,
+    ...(outHand ? { hand: outHand } : {}),
+    headW: m.w,
+  };
 }

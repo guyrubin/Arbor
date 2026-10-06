@@ -76,6 +76,14 @@ export const en: Record<string, string> = {
   // ── Write honesty ─────────────────────────────────────────────────────────
   "elev.hero.save.failed": "We couldn't save that hero. Check your connection and try again.",
   "elev.hero.saveProfile.failed": "We couldn't save those changes. Check your connection and try again.",
+
+  // ── B-GAME-13c: the pose sheet (parent side only; one calm line) ─────────
+  "elev.hero.sheet.building": "{name}'s hero is learning to move — ready in a few minutes",
+  "elev.hero.sheet.building.boy": "{name}'s hero is learning to move — ready in a few minutes",
+  "elev.hero.sheet.building.girl": "{name}'s hero is learning to move — ready in a few minutes",
+  "elev.hero.sheet.stopped": "{name}'s hero learned some of the moves today — the game plays with those.",
+  "elev.hero.sheet.stopped.boy": "{name}'s hero learned some of the moves today — the game plays with those.",
+  "elev.hero.sheet.stopped.girl": "{name}'s hero learned some of the moves today — the game plays with those.",
 };
 
 export const he: Record<string, string> = {
@@ -130,4 +138,11 @@ export const he: Record<string, string> = {
 
   "elev.hero.save.failed": "לא הצלחנו לשמור את הגיבור. בדקו את החיבור ונסו שוב.",
   "elev.hero.saveProfile.failed": "לא הצלחנו לשמור את השינויים. בדקו את החיבור ונסו שוב.",
+
+  "elev.hero.sheet.building": "הדמות של {name} לומדת לזוז — מוכנה בעוד כמה דקות",
+  "elev.hero.sheet.building.boy": "הגיבור של {name} לומד לזוז — מוכן בעוד כמה דקות",
+  "elev.hero.sheet.building.girl": "הגיבורה של {name} לומדת לזוז — מוכנה בעוד כמה דקות",
+  "elev.hero.sheet.stopped": "הדמות של {name} למדה היום חלק מהתנועות — המשחק משתמש בהן.",
+  "elev.hero.sheet.stopped.boy": "הגיבור של {name} למד היום חלק מהתנועות — המשחק משתמש בהן.",
+  "elev.hero.sheet.stopped.girl": "הגיבורה של {name} למדה היום חלק מהתנועות — המשחק משתמש בהן.",
 };

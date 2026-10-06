@@ -19,8 +19,6 @@ export const HERO_SHEET_ANCHOR: HeroSheetPoseId = "idle";
 export const HERO_SHEET_META_ID = "_meta";
 export const HERO_SHEET_VERSION = 1;
 export const HERO_SHEET_MODEL = "gemini-2.5-flash-image";
-/** The flat background every pose is asked for (the keyer samples the real one). */
-export const HERO_SHEET_KEY_COLOUR = "#00B140";
 /** Bumped whenever a pose prompt changes (stamped into every response). */
 export const HERO_SHEET_PROMPT_VERSION = "hero-pose-2026-10-06";
 
