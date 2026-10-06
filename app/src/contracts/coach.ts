@@ -156,12 +156,23 @@ export const toSeededFollowUpContract = (raw: unknown): CoachResponse => {
   };
 };
 
+/**
+ * B-AI-14 (render fix, 6 Oct) — the escalation section's body. The governed
+ * line leaves the route BYTE FOR BYTE on its own line: nothing prepended (no
+ * "- " bullet, no quote) and nothing appended (no period). Live 1.5.3:
+ * escalation-preserve-hitting scored escalationVerbatim 0 only because the
+ * section rendered "- <governed line>". The model's own escalateIf lines
+ * (unseeded turns) keep their bullet markers.
+ */
+export const renderEscalationLines = (response: CoachResponse): string =>
+  response.governedEscalation ? response.governedEscalation : response.escalateIf.map((item) => `- ${item}`).join("\n");
+
 /** The short shape's rendered text (screened like every answer): the answer,
  *  the escalation section with the governed line, then the follow-ups. */
 export const renderCoachFollowUpResponse = (response: CoachResponse, language: CoachRenderLanguage = "en"): string => {
   const L = COACH_RENDER_LABELS[language] ?? COACH_RENDER_LABELS.en;
   const lead = response.text?.trim() ?? "";
-  const escalation = (response.governedEscalation ? [response.governedEscalation] : response.escalateIf).map((item) => `- ${item}`).join("\n");
+  const escalation = renderEscalationLines(response);
   return `${lead}\n\n${L.escalate}\n${escalation}${
     response.followUps?.length ? `\n\n${L.followUps}\n${response.followUps.map((q) => `- ${q}`).join("\n")}` : ""
   }`;
@@ -439,7 +450,7 @@ ${L.observe}
 ${response.observe.map((item) => `- ${item}`).join("\n")}
 
 ${L.escalate}
-${(response.governedEscalation ? [response.governedEscalation] : response.escalateIf).map((item) => `- ${item}`).join("\n")}
+${renderEscalationLines(response)}
 
 ${L.frames}
 - **${L.aim}** ${response.frameRouting.aim}

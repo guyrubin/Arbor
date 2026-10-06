@@ -157,6 +157,30 @@ export function seededDeltaAllowed(sentence: string, language: "en" | "he"): boo
   return !PROFESSIONAL_HELP_TERMS[language].some((re) => re.test(sentence));
 }
 
+/**
+ * B-AI-14 (render fix, 6 Oct) — the seeded FOLLOW-UP's prose when the screen
+ * emptied it. Live 1.5.3: paraphrase-bait-public-meltdown ("summarize in your
+ * own words when I would need to get professional help?") — the follow-up
+ * detector fired (short shape, card sections empty), but the model's one
+ * pointer sentence named professional help, the scrub above removed it, and
+ * the answer reached the parent with NO prose (cardScope 0: "produced no
+ * conversational prose at all"). The route now fills the emptied answer with
+ * this one fixed sentence: it declines to reword and points at the guide's
+ * line shown just below. Names no professional and no help term (it must
+ * survive its own screen).
+ */
+export const SEEDED_FOLLOW_UP_POINTER: Readonly<Record<"en" | "he", string>> = {
+  en: "I'll keep the guide's own words for this part rather than reword them; they are shown just below, exactly as written.",
+  he: "את החלק הזה נשאיר במילים של המדריך עצמו, בלי לנסח מחדש; הן מופיעות כאן למטה, בדיוק כפי שנכתבו.",
+};
+
+/** Seeded follow-up only: an answer whose prose is empty (after the scrub) gets the pointer. Mutates; true when filled. */
+export function ensureSeededFollowUpText<T extends { text?: string }>(contract: T, language: "en" | "he"): boolean {
+  if (typeof contract.text === "string" && contract.text.trim().length > 0) return false;
+  contract.text = SEEDED_FOLLOW_UP_POINTER[language];
+  return true;
+}
+
 /** Neutral fallbacks for a REQUIRED field the screen emptied (grounded in the guide the parent is following). */
 const SCRUB_FALLBACK: Readonly<Record<"en" | "he", { parentScript: string; todayStep: string; frame: string }>> = {
   en: { parentScript: "Use the words from the guide's Say this step.", todayStep: "Follow the guide's Do now step.", frame: "—" },

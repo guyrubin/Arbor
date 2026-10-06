@@ -18,7 +18,7 @@ import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../
 import { screenForImmediateEscalation, renderEscalationMarkdown, escalationMatchForCategory } from "../safety/escalation.js";
 import { renderConditionQuestionReply, renderSeededConditionReply, screenForConditionQuestion } from "../safety/conditionQuestion.js";
 import { answerUsesApprovedFact, recordMemoryFactUnused } from "../server/memoryFactUse.js";
-import { seededEscalationLine, seededCard, seededFollowUpLine, applyGovernedEscalation, scrubSeededProfessionalHelp, seededScrubCount, seededDeltaAllowed } from "../safety/seededEscalation.js";
+import { seededEscalationLine, seededCard, seededFollowUpLine, applyGovernedEscalation, scrubSeededProfessionalHelp, seededScrubCount, seededDeltaAllowed, ensureSeededFollowUpText } from "../safety/seededEscalation.js";
 import { withoutCrisisThresholds, recordRoutineThresholdDrop } from "../safety/routineThresholds.js";
 import { captureLanguage, normalizeCaptureDraft } from "../server/captureDraft.js";
 import { DEFAULT_MEMORY_RETENTION, appendMemoryProposals, enforceMemoryRetention, foldMemoryEvents, getApprovedMemoryContext, getApprovedMemoryContextDetail, toChildId, toFamilyId, transitionMemory } from "../memory/memoryService.js";
@@ -1044,6 +1044,11 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         const scrubbed = scrubSeededProfessionalHelp(structured, renderLanguage);
         if (scrubbed > 0) {
           logger.info("Seeded-turn professional-help scrub", { requestId: requestIdOf(req), dropped: scrubbed, total: seededScrubCount() });
+        }
+        // B-AI-14 (render fix): a follow-up whose prose the scrub emptied is
+        // never sent without words — one fixed pointer sentence fills it.
+        if (seededFollowUp && ensureSeededFollowUpText(structured, renderLanguage)) {
+          logger.info("Seeded follow-up pointer", { requestId: requestIdOf(req) });
         }
       }
 

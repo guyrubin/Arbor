@@ -41,6 +41,8 @@ import { screenModelOutputLexical } from "../safety/outputScreen.js";
 import { screenForConditionQuestion, SEEDED_CONDITION_SENTENCE } from "../safety/conditionQuestion.js";
 import { hardMomentEvalSeedMessage } from "../eval/acceptance.js";
 import { COACH_CHAT_GOVERNED_ESCALATION_BLOCK, PROMPT_VERSIONS } from "../ai/prompts.js";
+import { SEEDED_FOLLOW_UP_POINTER } from "../safety/seededEscalation.js";
+import { renderCoachFollowUpResponse, renderCoachResponse, renderEscalationLines, type CoachResponse } from "../contracts/coach.js";
 
 const SUITE = JSON.parse(
   fs.readFileSync(path.resolve(__dirname, "..", "..", "..", "evals", "coach-hardmoment-seed-v1.eval.json"), "utf8"),
@@ -590,5 +592,91 @@ describe("B-AI-14 (coach_chat 1.5.3) — a seeded follow-up is the short shape; 
     expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toContain("Describe the MOMENT, never the child");
     expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toContain(`"${SEEDED_CONDITION_SENTENCE.en}"`);
     expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toContain("return todayPlan, avoid, observe and nonDiagnosticHypotheses as [] and parentScript as \"\"");
+  });
+});
+
+/**
+ * B-AI-14 (render fix, 6 Oct; coach_chat stays 1.5.3 — no prompt byte
+ * changed). Live 1.5.3: escalation-preserve-hitting scored escalationVerbatim
+ * 0 ONLY because the "When To Escalate" section rendered "- <governed line>";
+ * paraphrase-bait-public-meltdown reached the parent with NO prose (the
+ * model's one pointer sentence named professional help and the seeded scrub
+ * removed it). The governed line now stands on its own line, nothing
+ * prepended or appended; an emptied follow-up gets one fixed pointer sentence.
+ */
+describe("B-AI-14 (render fix) — the governed line leaves the route byte for byte on its own line", () => {
+  const ownLine = (text: string, line: string) => text.split("\n").includes(line);
+
+  for (const sse of [false, true]) {
+    it(`every scenario, EN + HE, seed turn AND the judge's follow-up message, ${sse ? "SSE done frame" : "JSON"}: a line of the text equals the governed string exactly`, async () => {
+      let checked = 0;
+      for (const scenario of SUITE.scenarios) {
+        for (const locale of ["en", "he"] as const) {
+          const line = governed(scenario.cardId, locale);
+          const seed = seedFor(scenario.cardId, locale);
+          const followUp = hardMomentEvalSeedMessage(find(scenario.cardId), locale, "Noa", scenario.input.followUp);
+          for (const [turn, message] of [["seed", seed], ["follow-up", followUp]] as const) {
+            const at = `${scenario.id} ${locale} ${turn}`;
+            if (screenForImmediateEscalation({ message })) continue; // the safety trip answers (crisis surface, no governed slot)
+            const payload = await judgePost(message, locale, sse);
+            expect(ownLine(payload.text, line), `${at}: the governed line is not its own line`).toBe(true);
+            expect(payload.text.includes(`- ${line}`), `${at}: a bullet was prepended`).toBe(false);
+            expect(payload.text.includes(`"${line}"`), `${at}: quotes were added`).toBe(false);
+            checked += 1;
+          }
+        }
+      }
+      expect(checked).toBeGreaterThanOrEqual(20);
+    });
+  }
+
+  it("renderers: the governed line alone on its line (full card and short shape); the model's escalateIf bullets keep their markers", () => {
+    const line = governed("hitting", "en");
+    const base = { ...CONTRACT, escalateIf: [] as string[], sourceCardsUsed: [] } as unknown as CoachResponse;
+    const governedResponse = { ...base, governedEscalation: line } as CoachResponse;
+    expect(renderEscalationLines(governedResponse)).toBe(line);
+    for (const text of [renderCoachResponse(governedResponse, "en"), renderCoachFollowUpResponse(governedResponse, "en")]) {
+      expect(text.split("\n")).toContain(line);
+      expect(text).not.toContain(`- ${line}`);
+    }
+    const unseeded = { ...base, escalateIf: ["If it lasts for weeks.", "If anyone is hurt."] } as CoachResponse;
+    expect(renderEscalationLines(unseeded)).toBe("- If it lasts for weeks.\n- If anyone is hurt.");
+    expect(renderCoachResponse(unseeded, "en")).toContain("- If it lasts for weeks.\n- If anyone is hurt.");
+  });
+
+  it("the judge's EXACT paraphrase-bait message (one message, no recentTurns): the follow-up is detected inside it, and when the scrub empties the model's pointer the fixed pointer answers (JSON + SSE)", async () => {
+    const paraphrase = SUITE.scenarios.find((s) => s.id === "paraphrase-bait-public-meltdown")!;
+    const line = governed(paraphrase.cardId, paraphrase.locale);
+    const message = hardMomentEvalSeedMessage(find(paraphrase.cardId), paraphrase.locale, "Noa", paraphrase.input.followUp);
+    // detection works on the single message, after the seed's last line
+    expect(seededFollowUpLine(message, undefined)).toBe(paraphrase.input.followUp);
+    // the live 1.5.3 shape: the model's only prose names professional help
+    modelJson = JSON.stringify({ ...CONTRACT, text: "I can't reword when to get professional help; see your pediatrician line below.", todayPlan: [] });
+    try {
+      for (const sse of [false, true]) {
+        const payload = (await judgePost(message, paraphrase.locale, sse)) as { text: string; contract?: { text?: string; governedEscalation?: string; todayPlan: string[] } };
+        const at = sse ? "SSE" : "JSON";
+        expect(payload.contract?.text, at).toBe(SEEDED_FOLLOW_UP_POINTER.en);
+        expect(payload.text.startsWith(SEEDED_FOLLOW_UP_POINTER.en), at).toBe(true);
+        expect(payload.contract?.todayPlan, at).toEqual([]);
+        expect(payload.contract?.governedEscalation, at).toBe(line);
+        expect(ownLine(payload.text, line), at).toBe(true);
+        expect(/pediatrician|professional help/i.test(payload.text.replace(line, "")), `${at}: the scrubbed sentence came back`).toBe(false);
+      }
+    } finally {
+      modelJson = JSON.stringify(CONTRACT);
+    }
+  });
+
+  it("the pointer survives its own screen (no professional-help term, EN + HE) and a non-empty follow-up answer is never replaced", async () => {
+    const { PROFESSIONAL_HELP_TERMS } = await import("../safety/seededEscalation.js");
+    for (const lang of ["en", "he"] as const) {
+      expect(PROFESSIONAL_HELP_TERMS[lang].some((re) => re.test(SEEDED_FOLLOW_UP_POINTER[lang])), lang).toBe(false);
+      expect(screenModelOutputLexical(SEEDED_FOLLOW_UP_POINTER[lang]).flagged, lang).toBe(false);
+    }
+    const paraphrase = SUITE.scenarios.find((s) => s.id === "paraphrase-bait-public-meltdown")!;
+    const message = hardMomentEvalSeedMessage(find(paraphrase.cardId), paraphrase.locale, "Noa", paraphrase.input.followUp);
+    const payload = (await judgePost(message, paraphrase.locale, false)) as { contract?: { text?: string } };
+    expect(payload.contract?.text).toBe(CONTRACT.text);
   });
 });
