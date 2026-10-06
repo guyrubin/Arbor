@@ -8,6 +8,7 @@ import {
   buildJudgePrompt,
   judgeVisibleInput,
   runSuiteWithDeps,
+  TRANSCRIPT_CAP,
   verdictViolations,
   type ResultsRow,
   type ScenarioVerdict,
@@ -110,6 +111,20 @@ describe("EVAL-4 — runSuiteWithDeps", () => {
       depsWith(async (prompt) => (prompt.includes("s1") ? { ...cleanVerdict(), pass: false } : cleanVerdict())),
     );
     expect(result.row.passRate).toBeCloseTo(5 / 6);
+  });
+
+  it("B-AI-14 (coach-core 1.5.1): every perScenario row persists the route transcript the judge saw, capped at ~6 KB; the rationale stays", async () => {
+    const result = await runSuiteWithDeps(suite(), depsWith(async () => cleanVerdict()));
+    for (const v of result.row.perScenario) {
+      expect(v.transcript).toBe(`transcript for ${v.id}`);
+      expect(v.rationale).toBe("ok");
+    }
+    const long = "x".repeat(TRANSCRIPT_CAP + 500);
+    const capped = await runSuiteWithDeps(suite(), { ...depsWith(async () => cleanVerdict()), runScenario: async () => long });
+    const t = capped.row.perScenario[0].transcript!;
+    expect(t.startsWith("x".repeat(TRANSCRIPT_CAP))).toBe(true);
+    expect(t).toMatch(/transcript cut at 6000 chars/);
+    expect(t.length).toBeLessThan(TRANSCRIPT_CAP + 60);
   });
 
   it("the judge prompt carries the rubric, the scenario and the REAL transcript", () => {

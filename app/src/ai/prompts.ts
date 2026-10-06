@@ -173,7 +173,14 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // no field restates the boundary the app shows verbatim). Block absent ⇒
   // the 1.4.1 bytes (parity pin in prompts.test.ts). Re-pin owed (live, by the
   // orchestrator): coach-core-v1, coach-hardmoment-seed-v1, companion-continuity-v1.
-  coach_chat: { version: "1.5.0", sha256: "e213405b92ae7da7a811724526ec71067fe830be65a780b3b48a0aa21cbff36b" },
+  // 1.5.1 (B-AI-14 coach-core, 2026-10-06; live coach-core-v1 0.80 on
+  // 1813b2e8): the escalateIf rule adds "thresholds are about the behaviour
+  // the parent described and never introduce a danger the parent did not
+  // raise"; COACH_CHAT_MEMORY_LEAD renders under the approved facts ONLY when
+  // facts exist. The seeded block is unchanged (seeded = unseeded + block,
+  // parity pin). Re-pin owed (live, NOT RE-RUN by the builder):
+  // coach-core-v1, coach-hardmoment-seed-v1, companion-continuity-v1.
+  coach_chat: { version: "1.5.1", sha256: "80f1da832876efd0078214a09f9c8b1b7ffce33eebf09d9dbb44a649267d7219" },
   council_synthesis: { version: "1.2.0", sha256: "428ed3513c47ba544b8e1afee8a4492140902d4b1210ec8cbb75893d8b77a00f" },
   voice_reply: { version: "1.6.0", sha256: "7c06dfda8297c50b0fd596f32a728689cd1503cb0662f9e10d3904e007be651b" },
   live_session: { version: "1.4.0", sha256: "a860d147a58a4be6f0adca9b9525925c76e3db86bf563f0ee6ad5590572fbe5c" },
@@ -236,7 +243,7 @@ export const ROUTINE_ESCALATION_GUIDANCE = "Escalation guidance must be proporti
 export const COACH_CHAT_FIELD_RULES = `Field rules:
 - When a fact under ARBOR APPROVED CHILD MEMORY bears on the question, build the answer on it first and name it (what already works for this child) in "text" and todayPlan, before adding anything new.
 - If the parent asks whether the child has a condition or a label, never write that condition's name or any label back, not even to decline. Say plainly in "text" that Arbor cannot answer that question and only a qualified professional can assess it. Do not describe behaviours the parent did not report: ask what they have noticed, and make todayPlan about noticing and writing down concrete moments to bring to that conversation.
-- escalateIf: 1-3 thresholds built only from what the parent reported (how often, how long, how intense, in how many settings, skills lost, daily life disrupted) and whom to talk to. In a routine answer no field names self-harm, suicide, abuse, violence or injury.
+- escalateIf: 1-3 thresholds built only from what the parent reported (how often, how long, how intense, in how many settings, skills lost, daily life disrupted) and whom to talk to. Thresholds are about the behaviour the parent described and never introduce a danger the parent did not raise. In a routine answer no field names self-harm, suicide, abuse, violence or injury.
 - nonDiagnosticHypotheses[].confidence: an uncertainty phrase such as "one possibility", never low, medium, high, a score or a percentage.`;
 
 /**
@@ -280,6 +287,17 @@ export type ChatPromptArgs = {
    *  hard-moment escalation line for this conversation. Absent/false ⇒ 1.4.1 bytes. */
   seededHardMoment?: boolean;
 };
+
+/**
+ * coach_chat 1.5.1 (B-AI-14 coach-core, 2026-10-06) — the approved-memory
+ * lead, rendered directly under the facts ONLY when facts exist (live
+ * coach-core-v1 on 1813b2e8: the sand-timer fact was counted and ignored).
+ * No facts ⇒ no line, so a day-0 family's memory block is unchanged.
+ */
+export const COACH_CHAT_MEMORY_LEAD = `When an approved fact above applies to the question, build the first concrete step on it and name it in the first sentence of "text"; never contradict it.`;
+
+const renderMemoryLeadLine = (approvedMemory: string): string =>
+  approvedMemory.trim() ? `\n${COACH_CHAT_MEMORY_LEAD}` : "";
 
 /** 1.5.0: "" unless seeded, so every other conversation keeps the 1.4.1 bytes. */
 const renderGovernedEscalationBlock = (seeded?: boolean): string =>
@@ -357,7 +375,7 @@ ${NON_DIAGNOSTIC_CONTRACT}
 ${developmentalFramework}
 
 ARBOR APPROVED CHILD MEMORY:
-${approvedMemory || "No parent-approved child memory available."}
+${approvedMemory || "No parent-approved child memory available."}${renderMemoryLeadLine(approvedMemory)}
 ${renderCompanionLedgerBlock(acceptedActions, keptInsights)}
 ARBOR AI WIKI SOURCE CARDS:
 ${knowledgeContext || "No matching Arbor AI Wiki cards found. Use the framework contract and keep uncertainty explicit."}

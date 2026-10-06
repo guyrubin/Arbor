@@ -4,6 +4,7 @@ import { NON_DIAGNOSTIC_CONTRACT } from "../contracts/coach.js";
 import {
   COACH_CHAT_FIELD_RULES,
   COACH_CHAT_GOVERNED_ESCALATION_BLOCK,
+  COACH_CHAT_MEMORY_LEAD,
   MODEL_PROFILE_FIELDS,
   PROMPT_VERSIONS,
   ROUTINE_ESCALATION_GUIDANCE,
@@ -184,7 +185,8 @@ describe("EVAL-6 — builders keep the byte contract of the old inline templates
  * bytes (7d5b299d…) to the digest below. The optional blocks stay additions.
  */
 describe("Masterplan 1.3 — coach_chat block-free byte-parity (v1.4.1 pin)", () => {
-  const COACH_CHAT_BLOCK_FREE_SHA256 = "7b545347db0dc1ac909fff148e88dc1bf13ffa4738a4257790bdfde79eef5283";
+  // 1.5.1 (B-AI-14 coach-core): escalateIf rule sentence + the memory lead (facts present here) — new bytes.
+  const COACH_CHAT_BLOCK_FREE_SHA256 = "1918e844bd89bf8181557139bcc10c11b1fef06f8b595f124c3d3fcbc03849dc";
   const sha256 = (text: string) => createHash("sha256").update(text, "utf8").digest("hex");
   const legacyArgs = {
     developmentalFramework: "«framework»",
@@ -208,7 +210,7 @@ describe("Masterplan 1.3 — coach_chat block-free byte-parity (v1.4.1 pin)", ()
     expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toMatch(/Return "escalateIf": \[\]/);
     expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toMatch(/shepherd/);
     expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toMatch(/do not reword it/);
-    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.5.0");
+    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.5.1");
   });
 
   it("empty recentTurns / null weeklyContext (the sanitizers' degenerate outputs) also keep the block-free bytes", () => {
@@ -466,7 +468,23 @@ describe("coach_chat 1.4.1 — field rules", () => {
     expect(COACH_CHAT_FIELD_RULES).toMatch(/never write that condition's name or any label back/);
     expect(COACH_CHAT_FIELD_RULES).toMatch(/In a routine answer no field names self-harm/);
     expect(COACH_CHAT_FIELD_RULES).toMatch(/never low, medium, high/);
-    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.5.0");
+    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.5.1");
+  });
+  it("coach_chat 1.5.1: escalateIf thresholds stay on the behaviour the parent described", () => {
+    expect(COACH_CHAT_FIELD_RULES).toContain("Thresholds are about the behaviour the parent described and never introduce a danger the parent did not raise.");
+  });
+  it("coach_chat 1.5.1: the memory lead renders right under the facts ONLY when facts exist (EN + no-memory form unchanged)", () => {
+    const withFacts = buildChatPrompt(chatArgs);
+    expect(withFacts).toContain(`ARBOR APPROVED CHILD MEMORY:\n- Timer helps\n${COACH_CHAT_MEMORY_LEAD}\n`);
+    expect(withFacts.split(COACH_CHAT_MEMORY_LEAD).length).toBe(2);
+    expect(COACH_CHAT_MEMORY_LEAD).toMatch(/first sentence of "text"; never contradict it/);
+    const noFacts = buildChatPrompt({ ...chatArgs, approvedMemory: "" });
+    expect(noFacts).not.toContain(COACH_CHAT_MEMORY_LEAD);
+    expect(noFacts).toContain("ARBOR APPROVED CHILD MEMORY:\nNo parent-approved child memory available.\n");
+    expect(buildChatPrompt({ ...chatArgs, approvedMemory: "   " })).not.toContain(COACH_CHAT_MEMORY_LEAD);
+    // the council prompt keeps its own memory block untouched
+    const council = buildCouncilSynthesisPrompt({ developmentalFramework: "F", approvedMemory: "- Timer helps", knowledgeContext: "", childProfile: null, councilTakes: "T", message: "q", languageDirective: "" });
+    expect(council).not.toContain(COACH_CHAT_MEMORY_LEAD);
   });
   it("council and voice prompts do not carry the /chat field rules", () => {
     const council = buildCouncilSynthesisPrompt({ developmentalFramework: "F", approvedMemory: "", knowledgeContext: "", childProfile: null, councilTakes: "T", message: "q", languageDirective: "" });

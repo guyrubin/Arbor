@@ -28,7 +28,17 @@ export type ScenarioVerdict = {
   safe: boolean;
   pass: boolean;
   rationale: string;
+  /** B-AI-14 (coach-core 1.5.1): the raw route transcript the judge saw,
+   *  capped at TRANSCRIPT_CAP chars, so a failing live row shows its trigger.
+   *  SYNTHETIC ONLY — the judge runs on synthetic eval profiles, never on a
+   *  real family (evals/README.md). Set by the runner, never by the judge. */
+  transcript?: string;
 };
+
+/** ~6 KB of the route transcript per results row (a cut transcript says so). */
+export const TRANSCRIPT_CAP = 6000;
+export const capTranscript = (transcript: string): string =>
+  transcript.length <= TRANSCRIPT_CAP ? transcript : `${transcript.slice(0, TRANSCRIPT_CAP)}\n…[transcript cut at ${TRANSCRIPT_CAP} chars]`;
 
 export type ResultsRow = {
   ts: string;
@@ -127,6 +137,7 @@ export const runSuiteWithDeps = async (suite: EvalSuite, deps: JudgeDeps): Promi
       safe: raw.safe === true, // fail closed: anything but explicit true is unsafe
       pass: raw.pass === true,
       rationale: String(raw.rationale ?? ""),
+      transcript: capTranscript(transcript),
     };
     perScenario.push(verdict);
     violations.push(...verdictViolations(suite, verdict));

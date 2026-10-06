@@ -41,6 +41,7 @@ import { renderBlockedOutputMarkdown, screenModelOutputLexical } from "../safety
 import { coachResponseZodSchema } from "../contracts/coach.js";
 import { getScholarById } from "../services/scholars.js";
 import type { ModelProvider } from "../ai/modelRouter.js";
+import { COACH_CHAT_MEMORY_LEAD } from "../ai/prompts.js";
 
 const HEBREW = /[֐-׿]/;
 const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
@@ -386,6 +387,10 @@ describe("coach-core-v1 deterministic tier (real /api/chat, scripted model)", ()
     // memory block VERBATIM — grounding is provable, not aspirational.
     expect(lastChatPrompt).toContain("ARBOR APPROVED CHILD MEMORY:");
     expect(lastChatPrompt).toContain(fact);
+    // coach_chat 1.5.1: the memory lead sits right under the facts (live
+    // 1813b2e8: the sand-timer fact was counted and ignored).
+    expect(lastChatPrompt).toContain(COACH_CHAT_MEMORY_LEAD);
+    expect(lastChatPrompt.indexOf(fact)).toBeLessThan(lastChatPrompt.indexOf(COACH_CHAT_MEMORY_LEAD));
     // ASK-6 firewall shape: the parent-facing signal is the integer COUNT
     // only — never fact content, never a percentage.
     const done = doneOf(events);
@@ -402,6 +407,7 @@ describe("coach-core-v1 deterministic tier (real /api/chat, scripted model)", ()
     // Deterministic floor: a day-0 child gets the EXPLICIT no-memory line —
     // the prompt never fabricates context the parent hasn't approved.
     expect(lastChatPrompt).toContain("No parent-approved child memory available.");
+    expect(lastChatPrompt).not.toContain(COACH_CHAT_MEMORY_LEAD);
     const done = doneOf(events);
     expect(done?.contract?.approvedMemoryFactsUsed).toBe(0);
     const parsed = coachResponseZodSchema.parse(done?.contract);

@@ -18,6 +18,7 @@ import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../
 import { screenForImmediateEscalation, renderEscalationMarkdown, escalationMatchForCategory } from "../safety/escalation.js";
 import { renderConditionQuestionReply, screenForConditionQuestion } from "../safety/conditionQuestion.js";
 import { seededEscalationLine, applyGovernedEscalation, scrubSeededProfessionalHelp, seededScrubCount, seededDeltaAllowed } from "../safety/seededEscalation.js";
+import { withoutCrisisThresholds, recordRoutineThresholdDrop } from "../safety/routineThresholds.js";
 import { captureLanguage, normalizeCaptureDraft } from "../server/captureDraft.js";
 import { DEFAULT_MEMORY_RETENTION, appendMemoryProposals, enforceMemoryRetention, foldMemoryEvents, getApprovedMemoryContext, getApprovedMemoryContextDetail, toChildId, toFamilyId, transitionMemory } from "../memory/memoryService.js";
 import { loadKnowledgeCardsWithMetadata, renderKnowledgeContext, retrieveKnowledgeCards, loadCardsByIds } from "../knowledge/wiki.js";
@@ -1027,8 +1028,29 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       }
 
       // AI-2: output-side safety screen (lexical floor + optional semantic classifier).
-      const renderedText = renderCoachResponse(structured, renderLanguage);
-      const outputVerdict = await screenModelOutput(modelProvider, renderedText);
+      let renderedText = renderCoachResponse(structured, renderLanguage);
+      let outputVerdict = await screenModelOutput(modelProvider, renderedText);
+      // B-AI-14 (coach-core 1.5.1) — escalateIf-drop rule ratified by the
+      // orchestrator 6 Oct (four conditions; safety/routineThresholds). A
+      // ROUTINE turn (input screen null — it returned above otherwise — and
+      // not seeded) is never routed to crisis by the model's OWN threshold
+      // line: the crisis-flagged escalateIf entries are dropped and the full
+      // screen re-runs; the repair is adopted only if the re-screen no longer
+      // says crisis, so a flagged PROSE span still routes to crisis as before.
+      if (outputVerdict.flagged && outputVerdict.category === "crisis" && !seededEscalation) {
+        const repaired = withoutCrisisThresholds(structured, renderLanguage);
+        if (repaired.dropped > 0) {
+          const repairedText = renderCoachResponse(repaired.contract, renderLanguage);
+          const repairedVerdict = await screenModelOutput(modelProvider, repairedText);
+          if (repairedVerdict.category !== "crisis") {
+            structured.escalateIf = repaired.contract.escalateIf;
+            renderedText = repairedText;
+            outputVerdict = repairedVerdict;
+            const total = recordRoutineThresholdDrop(repaired.dropped);
+            logger.info("Routine-turn crisis threshold dropped", { requestId: requestIdOf(req), dropped: repaired.dropped, total });
+          }
+        }
+      }
       if (outputVerdict.flagged) {
         // Done-time flag (lexical floor on the FULL rendered answer + the
         // semantic classifier when enabled): same payload as the mid-stream
