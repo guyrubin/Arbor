@@ -385,8 +385,42 @@ export const defaultConfigForPinning = (): ArborConfig => {
   }
 };
 
-/** `contentWarnings` (B-LOOP-14) are printed as WARN beside `warnings`, never failed. */
-export type SuiteReport = { suite: string; file: string; errors: string[]; warnings: string[]; contentWarnings?: string[] };
+/** `contentWarnings` (B-LOOP-14) are printed as WARN beside `warnings`, never failed.
+ *  `mode` / `scenarioCount` (B-LOOP-14 guard) let the live tier tell a static
+ *  suite from a route suite without re-reading the file. */
+export type SuiteReport = { suite: string; file: string; errors: string[]; warnings: string[]; contentWarnings?: string[]; mode?: string; scenarioCount?: number };
+
+/**
+ * B-LOOP-14 (guard): the live judge tier of check:acceptance runs whenever
+ * judge credentials are present (a routine Vertex ADC shell has them). A
+ * STATIC suite (`runner.mode: "static"`, e.g. the generated milestone-loop-v1:
+ * one judge call per scenario, 512 of them) is therefore OPT-IN there: it is
+ * judged live only when EVAL_LOOP_LIVE=1. Its offline validation and its
+ * content-hash staleness WARN keep running on every check:acceptance; the
+ * dedicated way to judge it is `npm run eval:loop`.
+ */
+export const LOOP_LIVE_ENV = "EVAL_LOOP_LIVE";
+
+export const isStaticSuiteReport = (report: Pick<SuiteReport, "mode">): boolean => report.mode === "static";
+
+export const partitionLiveSuites = (
+  reports: readonly SuiteReport[],
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): { live: SuiteReport[]; skipped: SuiteReport[] } => {
+  const optedIn = env[LOOP_LIVE_ENV] === "1";
+  const live: SuiteReport[] = [];
+  const skipped: SuiteReport[] = [];
+  for (const report of reports) (isStaticSuiteReport(report) && !optedIn ? skipped : live).push(report);
+  return { live, skipped };
+};
+
+/** The one line check:acceptance prints for the static suites it did not judge. */
+export const staticSuitesSkippedLine = (skipped: readonly SuiteReport[]): string | null => {
+  if (skipped.length === 0) return null;
+  const calls = skipped.reduce((n, r) => n + (r.scenarioCount ?? 0), 0);
+  const names = skipped.map((r) => r.suite).join(", ");
+  return `Live judge tier: static suite(s) ${names} skipped (${calls} judge calls; offline validation and the content staleness WARN ran). Judge with \`npm run eval:loop\`, or set ${LOOP_LIVE_ENV}=1 to include them here.`;
+};
 
 /** Load and check every evals/*.eval.json. Pure I/O composition of the layers above. */
 export const runOfflineAcceptance = (repoRoot: string): { reports: SuiteReport[]; globalErrors: string[] } => {
@@ -414,7 +448,12 @@ export const runOfflineAcceptance = (repoRoot: string): { reports: SuiteReport[]
     errors.push(...deterministicGateErrors(suite, repoRoot));
     if (suite.suite === "coach-hardmoment-seed-v1") errors.push(...hardMomentSeedContractErrors(suite));
     const contentWarnings = staleContentWarnings(suite, repoRoot);
-    reports.push({ suite: suite.suite ?? file, file, errors, warnings: stalePromptWarnings(suite), ...(contentWarnings.length ? { contentWarnings } : {}) });
+    reports.push({
+      suite: suite.suite ?? file, file, errors, warnings: stalePromptWarnings(suite),
+      ...(contentWarnings.length ? { contentWarnings } : {}),
+      ...(typeof suite.runner?.mode === "string" ? { mode: suite.runner.mode } : {}),
+      scenarioCount: Array.isArray(suite.scenarios) ? suite.scenarios.length : 0,
+    });
   }
   return { reports, globalErrors };
 };

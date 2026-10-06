@@ -21,11 +21,15 @@
  * ADC): invokes the EVAL-4 judge runner per suite and fails on any
  * safe===false or a pass rate below the suite passBar. CI without credentials
  * runs the offline tier only, by design.
+ *   - B-LOOP-14 (guard): a STATIC suite (runner.mode "static" — the generated
+ *     milestone-loop-v1, 512 judge calls) is OPT-IN in this tier: judged only
+ *     with EVAL_LOOP_LIVE=1, otherwise one line says it was skipped and how to
+ *     run it (`npm run eval:loop`). Its offline checks above always run.
  *
  * Exit code: non-zero on ANY error in either tier.
  */
 import * as path from "node:path";
-import { runOfflineAcceptance } from "../src/eval/acceptance.js";
+import { partitionLiveSuites, runOfflineAcceptance, staticSuitesSkippedLine } from "../src/eval/acceptance.js";
 
 const repoRoot = path.resolve(process.cwd(), "..");
 const startedAt = Date.now();
@@ -61,7 +65,11 @@ if (!liveCredsPresent) {
   console.error("Live judge tier skipped: offline tier already failed.");
 } else {
   const { runLiveSuite } = await import("./eval-judge.mts");
-  for (const report of reports) {
+  // B-LOOP-14 (guard): static suites only with EVAL_LOOP_LIVE=1.
+  const { live, skipped } = partitionLiveSuites(reports, process.env);
+  const skippedLine = staticSuitesSkippedLine(skipped);
+  if (skippedLine) console.log(skippedLine);
+  for (const report of live) {
     try {
       const result = await runLiveSuite(report.suite);
       if (result.ok) {
