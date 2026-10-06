@@ -380,8 +380,11 @@ export type MilestoneSourceOrg = "CDC" | "ASHA" | "AAP" | "WHO" | "NHS" | "JGZ" 
  *  - "range": the source prints an age range; `rangeMonths` carries it.
  *  - "average_onset": the source states an average age. Never rendered to a
  *    parent (an average invites comparison).
+ *  - "unstated": the row names its source, but the age that source PRINTS for
+ *    the item could not be cited — no age line is rendered (`note` says why)
+ *    until the clinical reviewer re-sources the row.
  */
-export type MilestoneAgeSemantics = "most_children_by" | "average_onset" | "range";
+export type MilestoneAgeSemantics = "most_children_by" | "average_onset" | "range" | "unstated";
 
 export interface MilestoneSource {
   org: MilestoneSourceOrg;
@@ -391,6 +394,12 @@ export interface MilestoneSource {
   ageSemantics: MilestoneAgeSemantics;
   /** [from, to] in months, both band thresholds — present exactly when ageSemantics is "range". */
   rangeMonths?: [number, number];
+  /** The range exactly as the cited page prints it (e.g. "2 to 3 years") —
+   *  REQUIRED with "range": a range is rendered only when it was printed by
+   *  the source at `url`, never derived from a band. */
+  printedRange?: string;
+  /** Why an "unstated" row has no age line (for the reviewer). */
+  note?: string;
 }
 
 export type StepStatus = 'todo' | 'doing' | 'done';

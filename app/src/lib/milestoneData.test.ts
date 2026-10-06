@@ -106,7 +106,7 @@ describe("B-LOOP-01 — every catalogue row carries its source and its age seman
 
   it("every row has a source with org, title, year and ageSemantics", () => {
     const orgs = ["CDC", "ASHA", "AAP", "WHO", "NHS", "JGZ", "IL-CDI", "arbor"];
-    const semantics = ["most_children_by", "average_onset", "range"];
+    const semantics = ["most_children_by", "average_onset", "range", "unstated"];
     for (const m of ALL_MILESTONES) {
       const s = m.source;
       expect(s, `${m.id} has no source`).toBeDefined();
@@ -123,6 +123,9 @@ describe("B-LOOP-01 — every catalogue row carries its source and its age seman
       const s = m.source!;
       if (s.ageSemantics === "range") {
         expect(s.rangeMonths, `${m.id} range without rangeMonths`).toBeDefined();
+        // Ruling 6 Oct: a range is the one the cited page PRINTS.
+        expect(s.url, `${m.id} range without a cited page`).toMatch(/^https:\/\//);
+        expect(s.printedRange?.trim(), `${m.id} range without the printed bracket`).toBeTruthy();
         const [from, to] = s.rangeMonths!;
         expect(from, m.id).toBeLessThan(to);
         // Bounds are band thresholds, so the sentence prints a band label.
@@ -147,12 +150,14 @@ describe("B-LOOP-01 — every catalogue row carries its source and its age seman
     });
   });
 
-  it("ASHA rows cite the 2023 Communication Milestones as a range starting at the row's own band", () => {
+  it("ASHA rows name the 2023 Communication Milestones but state no age they could not cite (ruling 6 Oct)", () => {
     for (const m of ASHA_MILESTONES) {
       expect(m.source?.org, m.id).toBe("ASHA");
       expect(m.source?.year, m.id).toBe(2023);
-      expect(m.source?.ageSemantics, m.id).toBe("range");
-      expect(m.source?.rangeMonths?.[0], m.id).toBe(m.ageMonths);
+      // No band-derived range ever ships under ASHA's name.
+      expect(m.source?.ageSemantics, m.id).toBe("unstated");
+      expect(m.source?.rangeMonths, m.id).toBeUndefined();
+      expect(m.source?.note?.trim().length ?? 0, `${m.id} says why`).toBeGreaterThan(20);
     }
   });
 

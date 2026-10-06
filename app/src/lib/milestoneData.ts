@@ -43,11 +43,16 @@ import { toAgeBand, type CanonicalBandId } from "./domains/ageBands";
 /** CDC 2022: the age by which MOST (about 75 %) children do the skill. */
 export const CDC_2022_SOURCE: MilestoneSource = { org: "CDC", title: "Learn the Signs. Act Early. (2022 revision, Zubler et al.)", url: "https://www.cdc.gov/ncbddd/actearly/milestones/index.html", year: 2022, ageSemantics: "most_children_by" };
 
-/** ASHA 2023 Communication Milestones: ASHA prints age RANGES. Each ASHA row
- *  carries its own band to the next band; REVIEW-SHEET.md says so per row (the
- *  range ASHA prints for these rows could not be stated with confidence in the
- *  build session, and a range is never invented from one anchor). */
-export const ashaSource = (fromMonths: number, toMonths: number): MilestoneSource => ({ org: "ASHA", title: "Communication Milestones (2023)", url: "https://www.asha.org/public/developmental-milestones/", year: 2023, ageSemantics: "range", rangeMonths: [fromMonths, toMonths] });
+/** ASHA 2023 Communication Milestones. B-LOOP-01 (orchestrator ruling, 6 Oct):
+ *  "never ship ASHA over a number ASHA did not print". The range ASHA prints
+ *  for these six rows could not be cited in the build session (no network; the
+ *  intelligibility percentages and the feeding items are not confirmed ASHA
+ *  milestone-page items), so every ASHA row is "unstated": the source is named,
+ *  no age line renders, and REVIEW-SHEET.md asks the reviewer to re-source. */
+export const ashaUnstated = (note: string): MilestoneSource => ({ org: "ASHA", title: "Communication Milestones (2023)", url: "https://www.asha.org/public/developmental-milestones/", year: 2023, ageSemantics: "unstated", note });
+
+const ASHA_FEEDING_NOTE = "Feeding item: ASHA's feeding page and the age range it prints could not be cited offline; no age line until the reviewer re-sources it.";
+const ASHA_INTELLIGIBILITY_NOTE = "The intelligibility percentage is not a confirmed item of ASHA's milestone page (commonly attributed to Coplan & Gleason 1988); no ASHA range is cited over it.";
 
 /** Build a stable, deterministic id for a CDC checklist item. */
 const cdc = (
@@ -221,14 +226,14 @@ export const CDC_MILESTONES: Milestone[] = [
  * articulation intelligibility benchmarks and oral-feeding development that the
  * CDC checklists touch only lightly. Sourced from ASHA's "Communication
  * Milestones" and feeding/swallowing development guidance.
- * B-LOOP-01: each row carries `source: ashaSource(band, nextBand)` — a range
- * derived from the row's own band, flagged HIGH risk per row in REVIEW-SHEET.md
- * until the clinical reviewer (G-01) confirms ASHA's printed range.
+ * B-LOOP-01: each row carries `source: ashaUnstated(note)` — ASHA named, no
+ * age line rendered — until the clinical reviewer (G-01) cites the range ASHA
+ * prints for the item (REVIEW-SHEET.md rows 7–12).
  */
 export const ASHA_MILESTONES: Milestone[] = [
   {
     id: "asha-feed-9m",
-    source: ashaSource(9, 12),
+    source: ashaUnstated(ASHA_FEEDING_NOTE),
     domain: "independence_adaptive_skills",
     ageMonths: 9,
     ageGroup: "9 months",
@@ -239,7 +244,7 @@ export const ASHA_MILESTONES: Milestone[] = [
   },
   {
     id: "asha-feed-12m",
-    source: ashaSource(12, 15),
+    source: ashaUnstated(ASHA_FEEDING_NOTE),
     domain: "independence_adaptive_skills",
     ageMonths: 12,
     ageGroup: "12 months",
@@ -250,7 +255,7 @@ export const ASHA_MILESTONES: Milestone[] = [
   },
   {
     id: "asha-comm-24m",
-    source: ashaSource(24, 30),
+    source: ashaUnstated(ASHA_INTELLIGIBILITY_NOTE),
     domain: "language_communication",
     ageMonths: 24,
     ageGroup: "2 years",
@@ -261,7 +266,7 @@ export const ASHA_MILESTONES: Milestone[] = [
   },
   {
     id: "asha-feed-24m",
-    source: ashaSource(24, 30),
+    source: ashaUnstated(ASHA_FEEDING_NOTE),
     domain: "independence_adaptive_skills",
     ageMonths: 24,
     ageGroup: "2 years",
@@ -272,7 +277,7 @@ export const ASHA_MILESTONES: Milestone[] = [
   },
   {
     id: "asha-comm-36m",
-    source: ashaSource(36, 48),
+    source: ashaUnstated(ASHA_INTELLIGIBILITY_NOTE),
     domain: "language_communication",
     ageMonths: 36,
     ageGroup: "3 years",
@@ -283,7 +288,7 @@ export const ASHA_MILESTONES: Milestone[] = [
   },
   {
     id: "asha-comm-48m",
-    source: ashaSource(48, 60),
+    source: ashaUnstated("ASHA's 4 to 5 years bracket lists speech sounds that may still be developing, but this item's wording and bracket could not be confirmed offline; no age line until the reviewer re-sources it."),
     domain: "language_communication",
     ageMonths: 48,
     ageGroup: "4 years",

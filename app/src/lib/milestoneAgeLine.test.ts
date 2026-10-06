@@ -10,8 +10,10 @@ import type { Milestone } from "../types";
 /**
  * B-LOOP-01 — the one parent-facing age sentence (lib/milestoneAgeLine.ts).
  *  1) CDC rows → "most children by" with the band label, EN + HE.
- *  2) ASHA rows → "between {from} and {to}", band labels, native Hebrew join.
- *  3) average_onset → null; parent-added / retired rows → null.
+ *  2) "range" renders "between {from} and {to}" ONLY with a cited page and
+ *     the bracket the page prints (ruling 6 Oct); the six ASHA rows are
+ *     "unstated" (no printed range citable offline) → no line.
+ *  3) average_onset / unstated → null; parent-added / retired rows → null.
  *  4) FIREWALL: the sentence is identical for yes / not_sure / not_yet, and
  *     no rendered sentence (every row, both locales) carries a verdict word.
  *  5) The sources reach the cited-sources list the Trust/Science page counts.
@@ -51,40 +53,66 @@ describe("B-LOOP-01 — CDC rows: 'most children do this by {band}'", () => {
   });
 });
 
-describe("B-LOOP-01 — ASHA rows: 'usually between {from} and {to}'", () => {
-  it("a feeding row prints its range in both languages (native Hebrew prefix join)", () => {
-    const m = byId("asha-feed-9m");
-    expect(milestoneAgeLine(m, tEn)).toBe("Usually between 9 months and 12 months");
-    expect(milestoneAgeLine(m, tHe)).toBe("בדרך כלל בין 9 חודשים לשנה");
+/** Run `fn` with a catalogue row's source swapped (the builder resolves by id). */
+const withSource = (id: string, source: Milestone["source"], fn: (m: Milestone) => void) => {
+  const real = byId(id);
+  const saved = real.source;
+  try {
+    real.source = source;
+    fn(real);
+  } finally {
+    real.source = saved;
+  }
+};
+
+describe("B-LOOP-01 — 'usually between {from} and {to}' only over a range the source PRINTS", () => {
+  const PRINTED = { org: "ASHA" as const, title: "Communication Milestones (2023)", url: "https://www.asha.org/public/developmental-milestones/", year: 2023, ageSemantics: "range" as const };
+
+  it("a cited printed bracket renders in both languages (native Hebrew prefix join)", () => {
+    withSource("asha-comm-36m", { ...PRINTED, rangeMonths: [36, 48], printedRange: "3 to 4 years" }, (m) => {
+      expect(milestoneAgeLine(m, tEn)).toBe("Usually between 3 years and 4 years");
+      expect(milestoneAgeLine(m, tHe)).toBe("בדרך כלל בין 3 שנים ל-4 שנים");
+    });
+    withSource("asha-feed-9m", { ...PRINTED, rangeMonths: [9, 12], printedRange: "7 to 12 months" }, (m) => {
+      expect(milestoneAgeLine(m, tHe)).toBe("בדרך כלל בין 9 חודשים לשנה");
+    });
+    withSource("asha-comm-24m", { ...PRINTED, rangeMonths: [24, 30], printedRange: "x" }, (m) => {
+      expect(milestoneAgeLine(m, tHe)).toBe("בדרך כלל בין שנתיים לשנתיים וחצי");
+    });
   });
 
-  it("a numeral keeps the maqaf; a word joins the prefix", () => {
-    expect(milestoneAgeLine(byId("asha-comm-36m"), tHe)).toBe("בדרך כלל בין 3 שנים ל-4 שנים");
-    expect(milestoneAgeLine(byId("asha-comm-24m"), tHe)).toBe("בדרך כלל בין שנתיים לשנתיים וחצי");
+  it("GUARD: a range without the printed bracket or without the cited page renders nothing", () => {
+    withSource("asha-comm-36m", { ...PRINTED, rangeMonths: [36, 48] }, (m) => {
+      expect(milestoneAgeLine(m, tEn)).toBeNull();
+    });
+    withSource("asha-comm-36m", { ...PRINTED, url: undefined, rangeMonths: [36, 48], printedRange: "3 to 4 years" }, (m) => {
+      expect(milestoneAgeLine(m, tEn)).toBeNull();
+    });
   });
 
-  it("every ASHA row renders a 'between' sentence", () => {
+  it("GUARD: every catalogue range row carries its cited page and printed bracket", () => {
+    for (const m of ALL_MILESTONES) {
+      if (m.source?.ageSemantics !== "range") continue;
+      expect(m.source.url, m.id).toMatch(/^https:\/\//);
+      expect(m.source.printedRange?.trim(), m.id).toBeTruthy();
+    }
+  });
+
+  it("the six ASHA rows are 'unstated' today: no age line, both languages", () => {
     for (const m of ASHA_MILESTONES) {
-      expect(milestoneAgeLine(m, tEn), m.id).toMatch(/^Usually between .+ and .+$/);
-      expect(milestoneAgeLine(m, tHe), m.id).toMatch(/^בדרך כלל בין .+ ל.+$/);
+      expect(m.source?.ageSemantics, m.id).toBe("unstated");
+      expect(milestoneAgeLine(m, tEn), m.id).toBeNull();
+      expect(milestoneAgeLine(m, tHe), m.id).toBeNull();
     }
   });
 });
 
 describe("B-LOOP-01 — what is never said", () => {
   it("average_onset → null (an average invites comparison)", () => {
-    const real = byId("cdc-24m-3");
-    const source = { ...CDC_2022_SOURCE, ageSemantics: "average_onset" as const };
-    // The builder resolves by id from the catalogue, so prove the branch on a
-    // patched catalogue row: temporarily swap its source.
-    const saved = real.source;
-    try {
-      real.source = source;
-      expect(milestoneAgeLine(real, tEn)).toBeNull();
-      expect(milestoneAgeLine(real, tHe)).toBeNull();
-    } finally {
-      real.source = saved;
-    }
+    withSource("cdc-24m-3", { ...CDC_2022_SOURCE, ageSemantics: "average_onset" }, (m) => {
+      expect(milestoneAgeLine(m, tEn)).toBeNull();
+      expect(milestoneAgeLine(m, tHe)).toBeNull();
+    });
   });
 
   it("a parent-added row and a retired Arbor row have no age line", () => {
@@ -106,7 +134,7 @@ describe("B-LOOP-01 — what is never said", () => {
           milestoneAgeLine({ ...m, observationStatus: status, checked: status === "yes" } as Milestone, t),
         );
         expect(new Set(lines).size, m.id).toBe(1);
-        expect(lines[0], `${m.id} has a line`).not.toBeNull();
+        if (m.source?.org === "CDC") expect(lines[0], `${m.id} has a line`).not.toBeNull();
       }
     }
   });

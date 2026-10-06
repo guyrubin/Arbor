@@ -5,10 +5,16 @@
  *
  *  - "most_children_by" (CDC 2022)  → "Most children do this by {age}"
  *                                     "רוב הילדים עושים זאת עד גיל {age}"
- *  - "range" (ASHA 2023)            → "Usually between {from} and {to}"
+ *  - "range"                        → "Usually between {from} and {to}"
  *                                     "בדרך כלל בין {from} ל-{to}"
+ *                                     ONLY when the source cites the page
+ *                                     (`url`) and the range it PRINTS
+ *                                     (`printedRange`); otherwise null.
  *  - "average_onset"                → null. Never rendered: an average invites
  *                                     comparison.
+ *  - "unstated"                     → null. The source is named but the age it
+ *                                     prints could not be cited (the six ASHA
+ *                                     rows, orchestrator ruling 6 Oct).
  *
  * FIREWALL (pack non-negotiable "Firewall on age"):
  *  - The sentence is the SOURCE's own semantics and nothing else. It never
@@ -64,12 +70,16 @@ export function milestoneAgeLine(
       return age ? t("ms.age.mostBy", { age }) : null;
     }
     case "range": {
+      // Never "ASHA" over a number ASHA did not print: no cited page + printed
+      // bracket → no sentence.
+      if (!source.url || !source.printedRange?.trim()) return null;
       const [fromMonths, toMonths] = source.rangeMonths ?? [];
       const from = bandLabel(fromMonths, t);
       const to = bandLabel(toMonths, t);
       return from && to ? joinHebrewPrefix(t("ms.age.between", { from, to })) : null;
     }
     case "average_onset":
+    case "unstated":
     default:
       return null;
   }
