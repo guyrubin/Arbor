@@ -32,6 +32,10 @@ import type { HeroJourneyRun } from "../../types";
 import { kidModeOpenFor, TOGETHER_CARDS } from "../../lib/age/playGate";
 import { genderedKey } from "../../lib/today/fromRecord";
 
+/* The route's ONE data-primary-move literal (check:framework counts the literal once per leaf):
+   under three it sits on the first together card, from three on the first fitting world tile. */
+const START_WORLD_STAMP = { "data-primary-move": "start-world" } as const;
+
 // B-PLAY-02: the world list and each tile's count + unit live in the pure
 // components/practice/studioWorlds module (fixture-testable without React).
 
@@ -283,7 +287,7 @@ export default function PracticeStudioTab() {
                   <button
                     type="button"
                     /* the page's ONE start-world stamp under three (the tiles carry none then) */
-                    {...(i === 0 ? { "data-primary-move": "start-world" } : {})}
+                    {...(i === 0 ? START_WORLD_STAMP : {})}
                     onClick={() => keepTogether(id)}
                     disabled={kept}
                     className="mt-auto self-start inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-4 t-sm font-semibold transition active:scale-[0.98]"
@@ -326,7 +330,7 @@ export default function PracticeStudioTab() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: Math.min(i * 0.03, 0.24) }}
                 onClick={() => openWorld(world)}
-                data-primary-move={world.id === stampId ? "start-world" : undefined}
+                {...(world.id === stampId ? START_WORLD_STAMP : {})}
                 className={`${cardCls} w-full flex items-start gap-3.5 p-4 text-start transition motion-safe:hover:-translate-y-0.5 active:scale-[0.99] focus:outline-none focus-visible:ring-2`}
               >
                 <span

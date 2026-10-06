@@ -47,7 +47,9 @@ const STUDIO = stripComments(read("components/practice/PracticeStudioTab.tsx")) 
 
 const countOf = (src: string, re: RegExp) => (src.match(re) || []).length;
 const MODULE = /\bdata-module=/g;
-const MOVE = /\bdata-primary-move=/g;
+// B-PLAY-24 (gate): the stamp may be the attribute form or the ONE shared object literal
+// (`START_WORLD_STAMP`); either way the leaf carries the name exactly once (check:framework rule).
+const MOVE = /\bdata-primary-move\b(?!-)/g;
 
 /* ── 1 · budgets ──────────────────────────────────────────────────────────── */
 
@@ -420,7 +422,9 @@ describe("B-PLAY-05 + W2-SHELLPLAY critic r1 — ONE sentence on the Practice do
   it("the door CTA is secondary and the move is stamped on ONE tile (the first that works in the UI language), not the grid", () => {
     const src = stripComments(studio);
     expect(src).not.toMatch(/--gradient-cta|--arbor-gradient-primary/);
-    expect(src).toContain('data-primary-move={world.id === stampId ? "start-world" : undefined}');
+    // B-PLAY-24: the one literal lives in START_WORLD_STAMP; the tile spreads it on the first fitting world.
+    expect(src).toContain('const START_WORLD_STAMP = { "data-primary-move": "start-world" } as const;');
+    expect(src).toContain("{...(world.id === stampId ? START_WORLD_STAMP : {})}");
     expect(src).not.toMatch(/className="grid[^"]*"\s+data-primary-move/);
   });
 
