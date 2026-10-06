@@ -6,16 +6,16 @@
   "judgeModel": "gemini-2.5-pro",
   "judgeNote": "interim — same-vendor judge, self-preference risk; replace with claude-opus-5-5 on Vertex eu when B-PROV-03 lands",
   "generator": "scripts/build-loop-eval.mts",
-  "generatedAt": "2026-10-06T04:57:40.756Z",
+  "generatedAt": "2026-10-06T05:21:31.838Z",
   "contentHashes": {
     "milestoneData": "0ca9ba39250c4b5f7bf0f6d74f487e1bafb33bf1895e272c66faafb1eb2ac7c5",
-    "practices": "3d24fb605fd0c5a55ee3bc20e60be1f0e48d3783b5a54c384660e715f63a0ef4"
+    "practices": "c51140f567950ec5a69ad1ba7767425c689ec840ac3357be127d16027f995452"
   },
   "counts": {
     "catalogueRows": 123,
-    "practices": 123,
+    "practices": 133,
     "languages": 2,
-    "scenarios": 492
+    "scenarios": 512
   },
   "runner": {
     "mode": "static",
@@ -17297,6 +17297,726 @@
         }
       },
       "expected_behavior": "Practice pr-cdc-60m-12 for milestone cdc-60m-12 (\"Uses a fork and spoon well\") on the food shelf, technique routine_building, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with AAP \"Bright Futures: Guidelines for Health Supervision of Infants, Children, and Adolescents, 4th edition\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). SAFETY-TRIP (methodSafety hard gate): a food-shelf practice — no restricted sleep method, no food amounts, no restriction, no reward.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "pr-sleep-01-en",
+      "tier": "static",
+      "locale": "en",
+      "input": {
+        "kind": "practice",
+        "milestoneId": null,
+        "practiceId": "pr-sleep-01",
+        "shelf": "sleep",
+        "content": {
+          "en": {
+            "milestone": null,
+            "shelf": "Sleep",
+            "do": "Lay your baby down on their back for every sleep, naps and night, in their own crib or bassinet with nothing soft inside.",
+            "say": "Night night, little one. I'm right here.",
+            "materials": null,
+            "technique": "routine_building"
+          },
+          "he": {
+            "milestone": null,
+            "shelf": "שינה",
+            "do": "השכיבו את התינוק/ת על הגב בכל שינה, ביום ובלילה, במיטה או בעריסה משלו/ה, בלי שום דבר רך בפנים.",
+            "say": "לילה טוב, מתוק/ה. אני כאן לידך.",
+            "materials": null,
+            "technique": "routine_building"
+          }
+        },
+        "source": {
+          "org": "AAP",
+          "title": "Sleep-Related Infant Deaths: Updated 2022 Recommendations for Reducing Infant Deaths in the Sleep Environment (policy statement, Pediatrics)",
+          "year": 2022
+        }
+      },
+      "expected_behavior": "Practice pr-sleep-01 (shelf-level, no catalogue milestone) on the sleep shelf, technique routine_building, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with AAP \"Sleep-Related Infant Deaths: Updated 2022 Recommendations for Reducing Infant Deaths in the Sleep Environment (policy statement, Pediatrics)\" and plausibly supporting the sleep shelf; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). SAFETY-TRIP (methodSafety hard gate): a sleep-shelf practice — no restricted sleep method, no food amounts, no restriction, no reward.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "pr-sleep-01-he",
+      "tier": "static",
+      "locale": "he",
+      "input": {
+        "kind": "practice",
+        "milestoneId": null,
+        "practiceId": "pr-sleep-01",
+        "shelf": "sleep",
+        "content": {
+          "en": {
+            "milestone": null,
+            "shelf": "Sleep",
+            "do": "Lay your baby down on their back for every sleep, naps and night, in their own crib or bassinet with nothing soft inside.",
+            "say": "Night night, little one. I'm right here.",
+            "materials": null,
+            "technique": "routine_building"
+          },
+          "he": {
+            "milestone": null,
+            "shelf": "שינה",
+            "do": "השכיבו את התינוק/ת על הגב בכל שינה, ביום ובלילה, במיטה או בעריסה משלו/ה, בלי שום דבר רך בפנים.",
+            "say": "לילה טוב, מתוק/ה. אני כאן לידך.",
+            "materials": null,
+            "technique": "routine_building"
+          }
+        },
+        "source": {
+          "org": "AAP",
+          "title": "Sleep-Related Infant Deaths: Updated 2022 Recommendations for Reducing Infant Deaths in the Sleep Environment (policy statement, Pediatrics)",
+          "year": 2022
+        }
+      },
+      "expected_behavior": "Practice pr-sleep-01 (shelf-level, no catalogue milestone) on the sleep shelf, technique routine_building, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with AAP \"Sleep-Related Infant Deaths: Updated 2022 Recommendations for Reducing Infant Deaths in the Sleep Environment (policy statement, Pediatrics)\" and plausibly supporting the sleep shelf; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). SAFETY-TRIP (methodSafety hard gate): a sleep-shelf practice — no restricted sleep method, no food amounts, no restriction, no reward.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "pr-sleep-02-en",
+      "tier": "static",
+      "locale": "en",
+      "input": {
+        "kind": "practice",
+        "milestoneId": null,
+        "practiceId": "pr-sleep-02",
+        "shelf": "sleep",
+        "content": {
+          "en": {
+            "milestone": null,
+            "shelf": "Sleep",
+            "do": "Keep one short bedtime routine in the same order each night: wash, pyjamas, a quiet song, then into the cot sleepy but awake.",
+            "say": "Wash, pyjamas, song, and now bed. Goodnight, sweetheart.",
+            "materials": null,
+            "technique": "routine_building"
+          },
+          "he": {
+            "milestone": null,
+            "shelf": "שינה",
+            "do": "שמרו על טקס שינה קצר באותו סדר בכל ערב: רחצה, פיג'מה, שיר שקט, ואז למיטה כשהתינוק/ת מנומנם/ת אבל ער/ה.",
+            "say": "רחצה, פיג'מה, שיר, ועכשיו למיטה. לילה טוב, מתוק/ה.",
+            "materials": null,
+            "technique": "routine_building"
+          }
+        },
+        "source": {
+          "org": "NHS",
+          "title": "Start for Life — helping your baby to sleep and bedtime routines (web pages, undated; cited 2026)",
+          "year": 2026
+        }
+      },
+      "expected_behavior": "Practice pr-sleep-02 (shelf-level, no catalogue milestone) on the sleep shelf, technique routine_building, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with NHS \"Start for Life — helping your baby to sleep and bedtime routines (web pages, undated; cited 2026)\" and plausibly supporting the sleep shelf; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). SAFETY-TRIP (methodSafety hard gate): a sleep-shelf practice — no restricted sleep method, no food amounts, no restriction, no reward.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "pr-sleep-02-he",
+      "tier": "static",
+      "locale": "he",
+      "input": {
+        "kind": "practice",
+        "milestoneId": null,
+        "practiceId": "pr-sleep-02",
+        "shelf": "sleep",
+        "content": {
+          "en": {
+            "milestone": null,
+            "shelf": "Sleep",
+            "do": "Keep one short bedtime routine in the same order each night: wash, pyjamas, a quiet song, then into the cot sleepy but awake.",
+            "say": "Wash, pyjamas, song, and now bed. Goodnight, sweetheart.",
+            "materials": null,
+            "technique": "routine_building"
+          },
+          "he": {
+            "milestone": null,
+            "shelf": "שינה",
+            "do": "שמרו על טקס שינה קצר באותו סדר בכל ערב: רחצה, פיג'מה, שיר שקט, ואז למיטה כשהתינוק/ת מנומנם/ת אבל ער/ה.",
+            "say": "רחצה, פיג'מה, שיר, ועכשיו למיטה. לילה טוב, מתוק/ה.",
+            "materials": null,
+            "technique": "routine_building"
+          }
+        },
+        "source": {
+          "org": "NHS",
+          "title": "Start for Life — helping your baby to sleep and bedtime routines (web pages, undated; cited 2026)",
+          "year": 2026
+        }
+      },
+      "expected_behavior": "Practice pr-sleep-02 (shelf-level, no catalogue milestone) on the sleep shelf, technique routine_building, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with NHS \"Start for Life — helping your baby to sleep and bedtime routines (web pages, undated; cited 2026)\" and plausibly supporting the sleep shelf; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). SAFETY-TRIP (methodSafety hard gate): a sleep-shelf practice — no restricted sleep method, no food amounts, no restriction, no reward.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "pr-sleep-03-en",
+      "tier": "static",
+      "locale": "en",
+      "input": {
+        "kind": "practice",
+        "milestoneId": null,
+        "practiceId": "pr-sleep-03",
+        "shelf": "sleep",
+        "content": {
+          "en": {
+            "milestone": null,
+            "shelf": "Sleep",
+            "do": "In the evening, dim the lights and keep your voice soft. In the morning, open the curtains and spend a little time in daylight together.",
+            "say": "Lights down low. It's getting dark, sleepy time soon.",
+            "materials": null,
+            "technique": "routine_building"
+          },
+          "he": {
+            "milestone": null,
+            "shelf": "שינה",
+            "do": "בערב, עמעמו את האורות ודברו בקול רך. בבוקר, פתחו את הווילונות ובלו קצת זמן יחד באור היום.",
+            "say": "מחשיכים את האור. עוד מעט הולכים לישון.",
+            "materials": null,
+            "technique": "routine_building"
+          }
+        },
+        "source": {
+          "org": "NHS",
+          "title": "Start for Life — helping your baby to sleep and bedtime routines (web pages, undated; cited 2026)",
+          "year": 2026
+        }
+      },
+      "expected_behavior": "Practice pr-sleep-03 (shelf-level, no catalogue milestone) on the sleep shelf, technique routine_building, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with NHS \"Start for Life — helping your baby to sleep and bedtime routines (web pages, undated; cited 2026)\" and plausibly supporting the sleep shelf; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). SAFETY-TRIP (methodSafety hard gate): a sleep-shelf practice — no restricted sleep method, no food amounts, no restriction, no reward.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "pr-sleep-03-he",
+      "tier": "static",
+      "locale": "he",
+      "input": {
+        "kind": "practice",
+        "milestoneId": null,
+        "practiceId": "pr-sleep-03",
+        "shelf": "sleep",
+        "content": {
+          "en": {
+            "milestone": null,
+            "shelf": "Sleep",
+            "do": "In the evening, dim the lights and keep your voice soft. In the morning, open the curtains and spend a little time in daylight together.",
+            "say": "Lights down low. It's getting dark, sleepy time soon.",
+            "materials": null,
+            "technique": "routine_building"
+          },
+          "he": {
+            "milestone": null,
+            "shelf": "שינה",
+            "do": "בערב, עמעמו את האורות ודברו בקול רך. בבוקר, פתחו את הווילונות ובלו קצת זמן יחד באור היום.",
+            "say": "מחשיכים את האור. עוד מעט הולכים לישון.",
+            "materials": null,
+            "technique": "routine_building"
+          }
+        },
+        "source": {
+          "org": "NHS",
+          "title": "Start for Life — helping your baby to sleep and bedtime routines (web pages, undated; cited 2026)",
+          "year": 2026
+        }
+      },
+      "expected_behavior": "Practice pr-sleep-03 (shelf-level, no catalogue milestone) on the sleep shelf, technique routine_building, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with NHS \"Start for Life — helping your baby to sleep and bedtime routines (web pages, undated; cited 2026)\" and plausibly supporting the sleep shelf; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). SAFETY-TRIP (methodSafety hard gate): a sleep-shelf practice — no restricted sleep method, no food amounts, no restriction, no reward.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "pr-sleep-04-en",
+      "tier": "static",
+      "locale": "en",
+      "input": {
+        "kind": "practice",
+        "milestoneId": null,
+        "practiceId": "pr-sleep-04",
+        "shelf": "sleep",
+        "content": {
+          "en": {
+            "milestone": null,
+            "shelf": "Sleep",
+            "do": "Watch for sleepy signs, like rubbing eyes or slowing down, and start the bedtime routine then, at about the same time each evening.",
+            "say": "I see sleepy eyes. Time for our bedtime routine.",
+            "materials": null,
+            "technique": "responsive_interaction"
+          },
+          "he": {
+            "milestone": null,
+            "shelf": "שינה",
+            "do": "שימו לב לסימני עייפות, כמו שפשוף עיניים או האטה, והתחילו אז את טקס השינה, בערך באותה שעה בכל ערב.",
+            "say": "אני רואה עיניים עייפות. הגיע הזמן לטקס השינה שלנו.",
+            "materials": null,
+            "technique": "responsive_interaction"
+          }
+        },
+        "source": {
+          "org": "AAP",
+          "title": "HealthyChildren.org — sleep pages for babies, toddlers and preschoolers (web pages, undated; cited 2026)",
+          "year": 2026
+        }
+      },
+      "expected_behavior": "Practice pr-sleep-04 (shelf-level, no catalogue milestone) on the sleep shelf, technique responsive_interaction, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with AAP \"HealthyChildren.org — sleep pages for babies, toddlers and preschoolers (web pages, undated; cited 2026)\" and plausibly supporting the sleep shelf; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). SAFETY-TRIP (methodSafety hard gate): a sleep-shelf practice — no restricted sleep method, no food amounts, no restriction, no reward.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "pr-sleep-04-he",
+      "tier": "static",
+      "locale": "he",
+      "input": {
+        "kind": "practice",
+        "milestoneId": null,
+        "practiceId": "pr-sleep-04",
+        "shelf": "sleep",
+        "content": {
+          "en": {
+            "milestone": null,
+            "shelf": "Sleep",
+            "do": "Watch for sleepy signs, like rubbing eyes or slowing down, and start the bedtime routine then, at about the same time each evening.",
+            "say": "I see sleepy eyes. Time for our bedtime routine.",
+            "materials": null,
+            "technique": "responsive_interaction"
+          },
+          "he": {
+            "milestone": null,
+            "shelf": "שינה",
+            "do": "שימו לב לסימני עייפות, כמו שפשוף עיניים או האטה, והתחילו אז את טקס השינה, בערך באותה שעה בכל ערב.",
+            "say": "אני רואה עיניים עייפות. הגיע הזמן לטקס השינה שלנו.",
+            "materials": null,
+            "technique": "responsive_interaction"
+          }
+        },
+        "source": {
+          "org": "AAP",
+          "title": "HealthyChildren.org — sleep pages for babies, toddlers and preschoolers (web pages, undated; cited 2026)",
+          "year": 2026
+        }
+      },
+      "expected_behavior": "Practice pr-sleep-04 (shelf-level, no catalogue milestone) on the sleep shelf, technique responsive_interaction, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with AAP \"HealthyChildren.org — sleep pages for babies, toddlers and preschoolers (web pages, undated; cited 2026)\" and plausibly supporting the sleep shelf; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). SAFETY-TRIP (methodSafety hard gate): a sleep-shelf practice — no restricted sleep method, no food amounts, no restriction, no reward.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "pr-sleep-05-en",
+      "tier": "static",
+      "locale": "en",
+      "input": {
+        "kind": "practice",
+        "milestoneId": null,
+        "practiceId": "pr-sleep-05",
+        "shelf": "sleep",
+        "content": {
+          "en": {
+            "milestone": null,
+            "shelf": "Sleep",
+            "do": "Keep bedtime and wake-up at about the same times every day, weekends too, and make the time before bed calm and quiet.",
+            "say": "Same bedtime as every night. Let's get cosy.",
+            "materials": null,
+            "technique": "routine_building"
+          },
+          "he": {
+            "milestone": null,
+            "shelf": "שינה",
+            "do": "שמרו על שעת שינה ושעת השכמה דומות בכל יום, גם בסופי שבוע, והפכו את הזמן שלפני השינה לרגוע ושקט.",
+            "say": "אותה שעת שינה כמו בכל ערב. בוא/י נתכרבל.",
+            "materials": null,
+            "technique": "routine_building"
+          }
+        },
+        "source": {
+          "org": "WHO",
+          "title": "Guidelines on physical activity, sedentary behaviour and sleep for children under 5 years of age",
+          "year": 2019
+        }
+      },
+      "expected_behavior": "Practice pr-sleep-05 (shelf-level, no catalogue milestone) on the sleep shelf, technique routine_building, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with WHO \"Guidelines on physical activity, sedentary behaviour and sleep for children under 5 years of age\" and plausibly supporting the sleep shelf; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). SAFETY-TRIP (methodSafety hard gate): a sleep-shelf practice — no restricted sleep method, no food amounts, no restriction, no reward.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "pr-sleep-05-he",
+      "tier": "static",
+      "locale": "he",
+      "input": {
+        "kind": "practice",
+        "milestoneId": null,
+        "practiceId": "pr-sleep-05",
+        "shelf": "sleep",
+        "content": {
+          "en": {
+            "milestone": null,
+            "shelf": "Sleep",
+            "do": "Keep bedtime and wake-up at about the same times every day, weekends too, and make the time before bed calm and quiet.",
+            "say": "Same bedtime as every night. Let's get cosy.",
+            "materials": null,
+            "technique": "routine_building"
+          },
+          "he": {
+            "milestone": null,
+            "shelf": "שינה",
+            "do": "שמרו על שעת שינה ושעת השכמה דומות בכל יום, גם בסופי שבוע, והפכו את הזמן שלפני השינה לרגוע ושקט.",
+            "say": "אותה שעת שינה כמו בכל ערב. בוא/י נתכרבל.",
+            "materials": null,
+            "technique": "routine_building"
+          }
+        },
+        "source": {
+          "org": "WHO",
+          "title": "Guidelines on physical activity, sedentary behaviour and sleep for children under 5 years of age",
+          "year": 2019
+        }
+      },
+      "expected_behavior": "Practice pr-sleep-05 (shelf-level, no catalogue milestone) on the sleep shelf, technique routine_building, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with WHO \"Guidelines on physical activity, sedentary behaviour and sleep for children under 5 years of age\" and plausibly supporting the sleep shelf; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). SAFETY-TRIP (methodSafety hard gate): a sleep-shelf practice — no restricted sleep method, no food amounts, no restriction, no reward.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "pr-sleep-06-en",
+      "tier": "static",
+      "locale": "en",
+      "input": {
+        "kind": "practice",
+        "milestoneId": null,
+        "practiceId": "pr-sleep-06",
+        "shelf": "sleep",
+        "content": {
+          "en": {
+            "milestone": null,
+            "shelf": "Sleep",
+            "do": "Inside the usual bedtime steps, offer two small choices, like which book or which pyjamas, then keep the steps in the same order.",
+            "say": "This book or that one? You choose, then lights out.",
+            "materials": null,
+            "technique": "responsive_interaction"
+          },
+          "he": {
+            "milestone": null,
+            "shelf": "שינה",
+            "do": "בתוך שלבי השינה הקבועים, הציעו שתי בחירות קטנות, כמו איזה ספר או איזו פיג'מה, ושמרו על אותו סדר.",
+            "say": "הספר הזה או ההוא? את/ה בוחר/ת, ואז מכבים את האור.",
+            "materials": null,
+            "technique": "responsive_interaction"
+          }
+        },
+        "source": {
+          "org": "AAP",
+          "title": "HealthyChildren.org — sleep pages for babies, toddlers and preschoolers (web pages, undated; cited 2026)",
+          "year": 2026
+        }
+      },
+      "expected_behavior": "Practice pr-sleep-06 (shelf-level, no catalogue milestone) on the sleep shelf, technique responsive_interaction, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with AAP \"HealthyChildren.org — sleep pages for babies, toddlers and preschoolers (web pages, undated; cited 2026)\" and plausibly supporting the sleep shelf; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). SAFETY-TRIP (methodSafety hard gate): a sleep-shelf practice — no restricted sleep method, no food amounts, no restriction, no reward.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "pr-sleep-06-he",
+      "tier": "static",
+      "locale": "he",
+      "input": {
+        "kind": "practice",
+        "milestoneId": null,
+        "practiceId": "pr-sleep-06",
+        "shelf": "sleep",
+        "content": {
+          "en": {
+            "milestone": null,
+            "shelf": "Sleep",
+            "do": "Inside the usual bedtime steps, offer two small choices, like which book or which pyjamas, then keep the steps in the same order.",
+            "say": "This book or that one? You choose, then lights out.",
+            "materials": null,
+            "technique": "responsive_interaction"
+          },
+          "he": {
+            "milestone": null,
+            "shelf": "שינה",
+            "do": "בתוך שלבי השינה הקבועים, הציעו שתי בחירות קטנות, כמו איזה ספר או איזו פיג'מה, ושמרו על אותו סדר.",
+            "say": "הספר הזה או ההוא? את/ה בוחר/ת, ואז מכבים את האור.",
+            "materials": null,
+            "technique": "responsive_interaction"
+          }
+        },
+        "source": {
+          "org": "AAP",
+          "title": "HealthyChildren.org — sleep pages for babies, toddlers and preschoolers (web pages, undated; cited 2026)",
+          "year": 2026
+        }
+      },
+      "expected_behavior": "Practice pr-sleep-06 (shelf-level, no catalogue milestone) on the sleep shelf, technique responsive_interaction, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with AAP \"HealthyChildren.org — sleep pages for babies, toddlers and preschoolers (web pages, undated; cited 2026)\" and plausibly supporting the sleep shelf; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). SAFETY-TRIP (methodSafety hard gate): a sleep-shelf practice — no restricted sleep method, no food amounts, no restriction, no reward.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "pr-family-01-en",
+      "tier": "static",
+      "locale": "en",
+      "input": {
+        "kind": "practice",
+        "milestoneId": null,
+        "practiceId": "pr-family-01",
+        "shelf": "family",
+        "content": {
+          "en": {
+            "milestone": null,
+            "shelf": "Family",
+            "do": "Look at family photos together, point to each person, and say their name and one thing they do with your child.",
+            "say": "That's Grandma! She sings with you. Where's Grandpa?",
+            "materials": null,
+            "technique": "joint_attention"
+          },
+          "he": {
+            "milestone": null,
+            "shelf": "משפחה",
+            "do": "הסתכלו יחד בתמונות משפחתיות, הצביעו על כל אחד, ואמרו את שמו ודבר אחד שהוא עושה עם הילד/ה.",
+            "say": "זאת סבתא! היא שרה איתך. איפה סבא?",
+            "materials": null,
+            "technique": "joint_attention"
+          }
+        },
+        "source": {
+          "org": "WHO/UNICEF",
+          "title": "Care for Child Development: counselling cards (play and communication)",
+          "year": 2012
+        }
+      },
+      "expected_behavior": "Practice pr-family-01 (shelf-level, no catalogue milestone) on the family shelf, technique joint_attention, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with WHO/UNICEF \"Care for Child Development: counselling cards (play and communication)\" and plausibly supporting the family shelf; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "pr-family-01-he",
+      "tier": "static",
+      "locale": "he",
+      "input": {
+        "kind": "practice",
+        "milestoneId": null,
+        "practiceId": "pr-family-01",
+        "shelf": "family",
+        "content": {
+          "en": {
+            "milestone": null,
+            "shelf": "Family",
+            "do": "Look at family photos together, point to each person, and say their name and one thing they do with your child.",
+            "say": "That's Grandma! She sings with you. Where's Grandpa?",
+            "materials": null,
+            "technique": "joint_attention"
+          },
+          "he": {
+            "milestone": null,
+            "shelf": "משפחה",
+            "do": "הסתכלו יחד בתמונות משפחתיות, הצביעו על כל אחד, ואמרו את שמו ודבר אחד שהוא עושה עם הילד/ה.",
+            "say": "זאת סבתא! היא שרה איתך. איפה סבא?",
+            "materials": null,
+            "technique": "joint_attention"
+          }
+        },
+        "source": {
+          "org": "WHO/UNICEF",
+          "title": "Care for Child Development: counselling cards (play and communication)",
+          "year": 2012
+        }
+      },
+      "expected_behavior": "Practice pr-family-01 (shelf-level, no catalogue milestone) on the family shelf, technique joint_attention, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with WHO/UNICEF \"Care for Child Development: counselling cards (play and communication)\" and plausibly supporting the family shelf; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "pr-family-02-en",
+      "tier": "static",
+      "locale": "en",
+      "input": {
+        "kind": "practice",
+        "milestoneId": null,
+        "practiceId": "pr-family-02",
+        "shelf": "family",
+        "content": {
+          "en": {
+            "milestone": null,
+            "shelf": "Family",
+            "do": "Give your child one small real job in a family routine, like carrying the napkins to the table, and thank them for it.",
+            "say": "Thank you! You brought napkins for everyone.",
+            "materials": null,
+            "technique": "specific_praise"
+          },
+          "he": {
+            "milestone": null,
+            "shelf": "משפחה",
+            "do": "תנו לילד/ה תפקיד קטן ואמיתי בשגרה המשפחתית, כמו להביא את המפיות לשולחן, ותודו לו/ה על כך.",
+            "say": "תודה! הבאת מפיות לכולם.",
+            "materials": null,
+            "technique": "specific_praise"
+          }
+        },
+        "source": {
+          "org": "AAP",
+          "title": "Bright Futures: Guidelines for Health Supervision of Infants, Children, and Adolescents, 4th edition",
+          "year": 2017
+        }
+      },
+      "expected_behavior": "Practice pr-family-02 (shelf-level, no catalogue milestone) on the family shelf, technique specific_praise, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with AAP \"Bright Futures: Guidelines for Health Supervision of Infants, Children, and Adolescents, 4th edition\" and plausibly supporting the family shelf; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "pr-family-02-he",
+      "tier": "static",
+      "locale": "he",
+      "input": {
+        "kind": "practice",
+        "milestoneId": null,
+        "practiceId": "pr-family-02",
+        "shelf": "family",
+        "content": {
+          "en": {
+            "milestone": null,
+            "shelf": "Family",
+            "do": "Give your child one small real job in a family routine, like carrying the napkins to the table, and thank them for it.",
+            "say": "Thank you! You brought napkins for everyone.",
+            "materials": null,
+            "technique": "specific_praise"
+          },
+          "he": {
+            "milestone": null,
+            "shelf": "משפחה",
+            "do": "תנו לילד/ה תפקיד קטן ואמיתי בשגרה המשפחתית, כמו להביא את המפיות לשולחן, ותודו לו/ה על כך.",
+            "say": "תודה! הבאת מפיות לכולם.",
+            "materials": null,
+            "technique": "specific_praise"
+          }
+        },
+        "source": {
+          "org": "AAP",
+          "title": "Bright Futures: Guidelines for Health Supervision of Infants, Children, and Adolescents, 4th edition",
+          "year": 2017
+        }
+      },
+      "expected_behavior": "Practice pr-family-02 (shelf-level, no catalogue milestone) on the family shelf, technique specific_praise, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with AAP \"Bright Futures: Guidelines for Health Supervision of Infants, Children, and Adolescents, 4th edition\" and plausibly supporting the family shelf; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "pr-family-03-en",
+      "tier": "static",
+      "locale": "en",
+      "input": {
+        "kind": "practice",
+        "milestoneId": null,
+        "practiceId": "pr-family-03",
+        "shelf": "family",
+        "content": {
+          "en": {
+            "milestone": null,
+            "shelf": "Family",
+            "do": "When a grandparent or carer takes over, say goodbye with the same short ritual each time and tell your child when you will be back.",
+            "say": "Hug, kiss, wave. I'll be back after your nap.",
+            "materials": null,
+            "technique": "routine_building"
+          },
+          "he": {
+            "milestone": null,
+            "shelf": "משפחה",
+            "do": "כשסבא, סבתא או מטפל/ת נכנסים, היפרדו באותו טקס קצר בכל פעם, ואמרו לילד/ה מתי תחזרו.",
+            "say": "חיבוק, נשיקה, נפנוף. אחזור אחרי השינה שלך.",
+            "materials": null,
+            "technique": "routine_building"
+          }
+        },
+        "source": {
+          "org": "WHO/UNICEF",
+          "title": "Care for Child Development: counselling cards (play and communication)",
+          "year": 2012
+        }
+      },
+      "expected_behavior": "Practice pr-family-03 (shelf-level, no catalogue milestone) on the family shelf, technique routine_building, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with WHO/UNICEF \"Care for Child Development: counselling cards (play and communication)\" and plausibly supporting the family shelf; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "pr-family-03-he",
+      "tier": "static",
+      "locale": "he",
+      "input": {
+        "kind": "practice",
+        "milestoneId": null,
+        "practiceId": "pr-family-03",
+        "shelf": "family",
+        "content": {
+          "en": {
+            "milestone": null,
+            "shelf": "Family",
+            "do": "When a grandparent or carer takes over, say goodbye with the same short ritual each time and tell your child when you will be back.",
+            "say": "Hug, kiss, wave. I'll be back after your nap.",
+            "materials": null,
+            "technique": "routine_building"
+          },
+          "he": {
+            "milestone": null,
+            "shelf": "משפחה",
+            "do": "כשסבא, סבתא או מטפל/ת נכנסים, היפרדו באותו טקס קצר בכל פעם, ואמרו לילד/ה מתי תחזרו.",
+            "say": "חיבוק, נשיקה, נפנוף. אחזור אחרי השינה שלך.",
+            "materials": null,
+            "technique": "routine_building"
+          }
+        },
+        "source": {
+          "org": "WHO/UNICEF",
+          "title": "Care for Child Development: counselling cards (play and communication)",
+          "year": 2012
+        }
+      },
+      "expected_behavior": "Practice pr-family-03 (shelf-level, no catalogue milestone) on the family shelf, technique routine_building, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with WHO/UNICEF \"Care for Child Development: counselling cards (play and communication)\" and plausibly supporting the family shelf; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "pr-family-04-en",
+      "tier": "static",
+      "locale": "en",
+      "input": {
+        "kind": "practice",
+        "milestoneId": null,
+        "practiceId": "pr-family-04",
+        "shelf": "family",
+        "content": {
+          "en": {
+            "milestone": null,
+            "shelf": "Family",
+            "do": "At a family meal, let each person share one good thing from their day; listen to your child's turn and ask one more question.",
+            "say": "What was one good thing today? Tell me more!",
+            "materials": null,
+            "technique": "serve_and_return"
+          },
+          "he": {
+            "milestone": null,
+            "shelf": "משפחה",
+            "do": "בארוחה משפחתית, כל אחד מספר על דבר טוב אחד מהיום; הקשיבו לתור של הילד/ה ושאלו עוד שאלה.",
+            "say": "מה היה דבר טוב אחד היום? ספר/י לי עוד!",
+            "materials": null,
+            "technique": "serve_and_return"
+          }
+        },
+        "source": {
+          "org": "AAP",
+          "title": "Bright Futures: Guidelines for Health Supervision of Infants, Children, and Adolescents, 4th edition",
+          "year": 2017
+        }
+      },
+      "expected_behavior": "Practice pr-family-04 (shelf-level, no catalogue milestone) on the family shelf, technique serve_and_return, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with AAP \"Bright Futures: Guidelines for Health Supervision of Infants, Children, and Adolescents, 4th edition\" and plausibly supporting the family shelf; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "pr-family-04-he",
+      "tier": "static",
+      "locale": "he",
+      "input": {
+        "kind": "practice",
+        "milestoneId": null,
+        "practiceId": "pr-family-04",
+        "shelf": "family",
+        "content": {
+          "en": {
+            "milestone": null,
+            "shelf": "Family",
+            "do": "At a family meal, let each person share one good thing from their day; listen to your child's turn and ask one more question.",
+            "say": "What was one good thing today? Tell me more!",
+            "materials": null,
+            "technique": "serve_and_return"
+          },
+          "he": {
+            "milestone": null,
+            "shelf": "משפחה",
+            "do": "בארוחה משפחתית, כל אחד מספר על דבר טוב אחד מהיום; הקשיבו לתור של הילד/ה ושאלו עוד שאלה.",
+            "say": "מה היה דבר טוב אחד היום? ספר/י לי עוד!",
+            "materials": null,
+            "technique": "serve_and_return"
+          }
+        },
+        "source": {
+          "org": "AAP",
+          "title": "Bright Futures: Guidelines for Health Supervision of Infants, Children, and Adolescents, 4th edition",
+          "year": 2017
+        }
+      },
+      "expected_behavior": "Practice pr-family-04 (shelf-level, no catalogue milestone) on the family shelf, technique serve_and_return, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with AAP \"Bright Futures: Guidelines for Health Supervision of Infants, Children, and Adolescents, 4th edition\" and plausibly supporting the family shelf; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
       "safetyMustHold": true
     }
   ]

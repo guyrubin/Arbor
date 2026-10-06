@@ -34,7 +34,7 @@
  *   npx tsx scripts/milestone-he-review.mts --practices import <file.csv> [--practices-file <path>]
  *
  * EXPORT writes HE-REVIEW-PRACTICES-<YYYY-MM-DD>.csv (BOM, CRLF, quoted):
- * one row per practice — id · milestoneId · shelf · band · EN do · HE do ·
+ * one row per practice — id · milestoneId (`—` for a shelf-level practice) · shelf · band · EN do · HE do ·
  * EN say · HE say · reviewer_ok · reviewer_fix · reviewer_note.
  * IMPORT applies `reviewer_fix` (`do=…` / `say=…`, or `עשו=` / `אמרו=`) into
  * content/practices.ts BY ID + FIELD: inside the practice's `P("<milestoneId>"`
@@ -241,6 +241,8 @@ export function runImport(csvText: string, opts: { catalogue?: string; data?: st
 /* ── PRACTICES (B-LOOP-08) ─────────────────────────────────────────────── */
 
 export const DEFAULT_PRACTICES = path.resolve(HERE, "..", "src", "content", "practices.ts");
+/** B-LOOP-08 follow-up: the milestoneId cell of a shelf-level practice (milestoneId null). */
+export const SHELF_LEVEL_MARK = "—";
 export const PRACTICE_COLUMNS = ["id", "milestoneId", "shelf", "band", "en_do", "he_do", "en_say", "he_say", "reviewer_ok", "reviewer_fix", "reviewer_note"] as const;
 export type PracticeReviewRow = Record<(typeof PRACTICE_COLUMNS)[number], string>;
 const PRACTICE_FIELDS = ["do", "say"] as const;
@@ -251,7 +253,7 @@ const PRACTICE_WORD_CAP: Record<PracticeField, number> = { do: 25, say: 15 };
 /** One row per practice, in library order; the text is the TS source's own. */
 export function buildPracticeReviewRows(): PracticeReviewRow[] {
   return PRACTICES.map((p) => ({
-    id: p.id, milestoneId: p.milestoneId, shelf: p.shelf, band: bandForAgeMonths(p.ageMonths).label,
+    id: p.id, milestoneId: p.milestoneId ?? SHELF_LEVEL_MARK, shelf: p.shelf, band: bandForAgeMonths(p.ageMonths).label,
     en_do: p.do.en, he_do: p.do.he, en_say: p.say.en, he_say: p.say.he,
     reviewer_ok: "", reviewer_fix: "", reviewer_note: "",
   }));
@@ -320,12 +322,13 @@ export function runPracticesImport(csvText: string, opts: { practices?: string }
   const refused: string[] = [];
   const signed = new Set<string>();
 
-  /** The line index of `field:` inside the practice block of `milestoneId`, or -1. */
-  const fieldLine = (milestoneId: string, field: PracticeField): number => {
-    const start = lines.findIndex((l) => l.startsWith(`  P(${JSON.stringify(milestoneId)},`));
+  /** The line index of `field:` inside the practice block (`P("<milestoneId>"`, or
+   *  `SP("<practiceId>"` for a shelf-level practice), or -1. */
+  const fieldLine = (opener: string, field: PracticeField): number => {
+    const start = lines.findIndex((l) => l.startsWith(opener));
     if (start < 0) return -1;
     for (let i = start + 1; i < lines.length; i += 1) {
-      if (lines[i].startsWith("  P(") || lines[i].startsWith("];")) return -1;
+      if (lines[i].startsWith("  P(") || lines[i].startsWith("  SP(") || lines[i].startsWith("];")) return -1;
       if (lines[i].startsWith(`    ${field}: L(`)) return i;
     }
     return -1;
@@ -335,7 +338,9 @@ export function runPracticesImport(csvText: string, opts: { practices?: string }
     const id = row[idx.id]?.trim();
     if (!id) continue;
     const milestoneId = row[idx.milestoneId]?.trim() ?? "";
-    if (id !== `pr-${milestoneId}`) { refused.push(`${id}: id and milestoneId disagree — re-export`); continue; }
+    const shelfLevel = milestoneId === SHELF_LEVEL_MARK;
+    if (shelfLevel ? !/^pr-[a-z]+-\d{2}$/.test(id) : id !== `pr-${milestoneId}`) { refused.push(`${id}: id and milestoneId disagree — re-export`); continue; }
+    const opener = shelfLevel ? `  SP(${JSON.stringify(id)},` : `  P(${JSON.stringify(milestoneId)},`;
     const ok = row[idx.ok]?.trim() === "1";
     let fix: Partial<Record<PracticeField, string>> = {};
     try {
@@ -351,7 +356,7 @@ export function runPracticesImport(csvText: string, opts: { practices?: string }
       const key = `${id}.${field}.he`;
       const problem = practiceFixProblem(next, field);
       if (problem) { refused.push(`${key}: ${problem}`); rowRefused = true; continue; }
-      const lineNo = fieldLine(milestoneId, field);
+      const lineNo = fieldLine(opener, field);
       if (lineNo < 0) { refused.push(`${key}: no ${field}: line for ${id}`); rowRefused = true; continue; }
       const current = JSON.stringify(row[idx.he[field]] ?? "");
       if (lines[lineNo].split(current).length - 1 !== 1) { refused.push(`${key}: the current value is not the text the reviewer saw (or not unique) — re-export`); rowRefused = true; continue; }

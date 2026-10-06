@@ -166,7 +166,12 @@ describe("B-LOOP-08 — practices export", () => {
     expect(rows[0]).toEqual([...PRACTICE_COLUMNS]);
     const body = rows.slice(1);
     expect(body.map((r) => r[0])).toEqual(PRACTICES.map((p) => p.id));
-    expect(body).toHaveLength(ALL_MILESTONES.length);
+    // B-LOOP-08 follow-up: one per catalogue row + the shelf-level set (milestoneId "—").
+    expect(body).toHaveLength(PRACTICES.length);
+    expect(body.filter((r) => r[1] !== "—")).toHaveLength(ALL_MILESTONES.length);
+    const shelfLevel = body.filter((r) => r[1] === "—");
+    expect(shelfLevel.map((r) => r[0])).toEqual(PRACTICES.filter((p) => p.milestoneId === null).map((p) => p.id));
+    expect(new Set(shelfLevel.map((r) => r[2]))).toEqual(new Set(["sleep", "family"]));
     for (const r of body) {
       expect(r, r[0]).toHaveLength(11);
       for (let i = 0; i < 8; i += 1) expect(r[i].trim().length, `${r[0]} ${PRACTICE_COLUMNS[i]}`).toBeGreaterThan(0);
@@ -240,6 +245,18 @@ describe("B-LOOP-08 — practices import (temp copy only)", () => {
       "pr-cdc-12m-2.say.he", "pr-cdc-12m-3", "pr-cdc-6m-3.say.he", "pr-cdc-6m-4.say.he", "pr-cdc-9m-4.do.he", "pr-cdc-9m-5.say.he",
     ]);
     expect(fs.readFileSync(file, "utf8")).toBe(realPractices);
+  });
+
+  it("follow-up: a fix on a SHELF-LEVEL practice (milestoneId —) lands on its SP block's say line", () => {
+    const file = practicesCopy();
+    const rows = prows((r) => (r.id === "pr-sleep-03" ? { ...r, reviewer_fix: "say=מחשיכים את האור. עוד מעט לישון." } : r));
+    const res = runPracticesImport(buildPracticeExportCsv(rows), { practices: file });
+    expect(res.changed).toEqual(["pr-sleep-03.say.he"]);
+    expect(res.refused).toEqual([]);
+    const after = fs.readFileSync(file, "utf8").split(/\r?\n/);
+    const at = after.findIndex((l) => l.includes('"מחשיכים את האור. עוד מעט לישון."'));
+    expect(after[at]).toMatch(/^ {4}say: L\(/);
+    expect(after.slice(0, at).reverse().find((l) => /^ {2}S?P\(/.test(l))).toMatch(/^ {2}SP\("pr-sleep-03",/);
   });
 
   it("the real practices file is never touched by the suite", () => {

@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { ALL_MILESTONES, RETIRED_MILESTONE_IDS } from "../lib/milestoneData";
-import { milestoneShelf } from "../lib/shelves/registry";
+import { SHELF_IDS, milestoneShelf } from "../lib/shelves/registry";
 import { HE_VERDICT_WORDS } from "../lib/milestoneHeRules";
 import { findClinicalDiagnosisTerm } from "../lib/clinicalScan";
 import {
-  FEELING_WORDS, FOOD_BANNED, PRACTICES, PRACTICE_BANNED, PRACTICE_TECHNIQUES, isPracticePublishable, practiceAsGovernedRecord, practiceCountTable, practicesForMilestone, type Practice,
+  FEELING_WORDS, FOOD_BANNED, PRACTICES, PRACTICE_BANNED, PRACTICE_SOURCES, PRACTICE_TECHNIQUES, isPracticePublishable, practiceAsGovernedRecord, practiceCountTable, practicesForMilestone, practicesForShelf, type Practice,
 } from "./practices";
 
 /**
@@ -15,6 +15,8 @@ import {
  *  catalogue rules of lib/milestoneHeRules) · the diagnosis scan · the sleep
  *  method scan · the food amount/restriction scan · feelings named only as
  *  an offer · no Latin letters in Hebrew · draft never publishes.
+ *  Follow-up (6 Oct): shelf-level practices (`milestoneId: null`) on Sleep
+ *  and Family — every shelf has ≥ 1 practice; the scans cover them.
  */
 
 const words = (s: string): number => s.split(/\s+/).filter(Boolean).length;
@@ -41,8 +43,30 @@ describe("B-LOOP-08 — coverage", () => {
     expect(missing).toEqual([]);
     for (const id of RETIRED_MILESTONE_IDS) expect(practicesForMilestone(id), id).toEqual([]);
     const live = new Set(ALL_MILESTONES.map((m) => m.id));
-    for (const p of PRACTICES) expect(live.has(p.milestoneId), p.id).toBe(true);
+    for (const p of PRACTICES) if (p.milestoneId !== null) expect(live.has(p.milestoneId), p.id).toBe(true);
     expect(new Set(PRACTICES.map((p) => p.id)).size).toBe(PRACTICES.length);
+  });
+
+  it("follow-up: every shelf has ≥ 1 practice (Sleep and Family through the shelf-level set)", () => {
+    const empty = SHELF_IDS.filter((shelf) => practicesForShelf(shelf).length === 0);
+    expect(empty).toEqual([]);
+    expect(practicesForShelf("sleep").length).toBeGreaterThanOrEqual(6);
+    expect(practicesForShelf("family").length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("follow-up: shelf-level practices have milestoneId null, a shelf in SHELVES, an id pr-<shelf>-<nn> and their own age anchor", () => {
+    const shelfLevel = PRACTICES.filter((p) => p.milestoneId === null);
+    expect(shelfLevel.length).toBeGreaterThanOrEqual(10);
+    for (const p of shelfLevel) {
+      expect(SHELF_IDS, p.id).toContain(p.shelf);
+      expect(p.id, p.id).toMatch(new RegExp(`^pr-${p.shelf}-\\d{2}$`));
+      expect(Number.isInteger(p.ageMonths) && p.ageMonths >= 6 && p.ageMonths <= 60, p.id).toBe(true);
+      expect(practicesForMilestone(p.id), p.id).toEqual([]);
+    }
+    // Sleep practices cite the sleep sources only (AAP safe sleep / HealthyChildren, NHS Start for Life, WHO 2019).
+    const sleepSources = [PRACTICE_SOURCES.aapSafeSleep, PRACTICE_SOURCES.aapHealthyChildrenSleep, PRACTICE_SOURCES.nhsStartForLifeSleep, PRACTICE_SOURCES.whoMovement];
+    for (const p of practicesForShelf("sleep")) expect(sleepSources, p.id).toContain(p.evidence.source);
+    for (const p of practicesForShelf("family")) expect([PRACTICE_SOURCES.whoUnicefCcd, PRACTICE_SOURCES.aapBrightFutures], p.id).toContain(p.evidence.source);
   });
 
   it("the count table adds up to the library (counts only, per shelf × band)", () => {
@@ -56,7 +80,7 @@ describe("B-LOOP-08 — shape", () => {
   const row = new Map(ALL_MILESTONES.map((m) => [m.id, m]));
   it("EN + HE do and say; technique from the union; source with title + year; minutes 5/10/15; shelf and age from the row; draft", () => {
     for (const p of PRACTICES) {
-      const m = row.get(p.milestoneId)!;
+      const m = p.milestoneId === null ? null : row.get(p.milestoneId)!;
       for (const t of [p.do.en, p.do.he, p.say.en, p.say.he]) expect(t.trim().length, p.id).toBeGreaterThan(0);
       if (p.materials) expect(p.materials.en.trim().length > 0 && p.materials.he.trim().length > 0, p.id).toBe(true);
       expect(PRACTICE_TECHNIQUES, p.id).toContain(p.evidence.technique);
@@ -65,11 +89,13 @@ describe("B-LOOP-08 — shape", () => {
       expect(Number.isInteger(p.evidence.source.year) && p.evidence.source.year >= 1980 && p.evidence.source.year <= 2026, p.id).toBe(true);
       if (p.evidence.source.url) expect(p.evidence.source.url, p.id).toMatch(/^https:\/\//);
       expect([5, 10, 15], p.id).toContain(p.minutes);
-      expect(p.shelf, p.id).toBe(milestoneShelf(m));
-      expect(p.ageMonths, p.id).toBe(m.ageMonths);
+      if (m) {
+        expect(p.shelf, p.id).toBe(milestoneShelf(m));
+        expect(p.ageMonths, p.id).toBe(m.ageMonths);
+        expect(p.id, p.id).toBe(`pr-${p.milestoneId}`);
+      }
       expect(p.ageMonths >= 2 && p.ageMonths <= 66, p.id).toBe(true);
       expect(p.reviewStatus, p.id).toBe("draft");
-      expect(p.id, p.id).toBe(`pr-${p.milestoneId}`);
     }
   });
 
@@ -108,6 +134,8 @@ describe("B-LOOP-08 — the firewall scans", () => {
   });
 
   it("no sleep method with a safety debate anywhere (sleep shelf included): routine, light, timing and wind-down only", () => {
+    // follow-up: the scan really covers the shelf-level sleep rows.
+    expect(PRACTICES.filter((p) => p.shelf === "sleep" && p.milestoneId === null).length).toBeGreaterThanOrEqual(6);
     const hits: string[] = [];
     for (const p of PRACTICES) for (const t of texts(p)) {
       if (t.locale === "en" && SLEEP_METHOD.en.some((re) => re.test(t.text))) hits.push(`${p.id}.${t.field}.en`);
@@ -156,6 +184,18 @@ describe("B-LOOP-08 — governance", () => {
       expect(rec.reviewStatus, p.id).toBe("draft");
       expect(rec.locales, p.id).toEqual(["en", "he"]);
       expect(rec.evidenceRefs.length, p.id).toBe(1);
+      expect(rec.contentKind, p.id).toBe("practice");
+      expect(rec.citedSource, p.id).toEqual({ title: p.evidence.source.title, year: p.evidence.source.year });
     }
+  });
+
+  it("follow-up: an approved practice with the reviewer's named stamp and a cited source publishes (concerns: [] allowed); without a stamp it does not", () => {
+    const p = practicesForShelf("sleep")[0];
+    const now = new Date("2026-11-01");
+    const approved: Practice = { ...p, reviewStatus: "approved", review: { reviewedBy: "Dr. Noa Levi", reviewedAt: "2026-10-20", reviewDueAt: "2027-10-20" } };
+    expect(practiceAsGovernedRecord(approved).concerns).toEqual([]);
+    expect(isPracticePublishable(approved, now)).toBe(true);
+    expect(isPracticePublishable({ ...approved, review: undefined }, now)).toBe(false);
+    expect(isPracticePublishable({ ...approved, evidence: { ...approved.evidence, source: { ...approved.evidence.source, title: " " } } }, now)).toBe(false);
   });
 });

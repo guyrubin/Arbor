@@ -27,12 +27,19 @@
  * only as an offer ("Looks like…?"). The scan lists live HERE, once
  * (PRACTICE_BANNED), so the review import refuses the same words.
  *
- * The catalogue has NO sleep-tagged row and no family-domain row today, so
- * the Sleep and Family shelves carry no practice (B-LOOP-03: the tagged rows
- * are six feeding rows). A sleep practice arrives with a sourced sleep row.
+ * SHELF-LEVEL PRACTICES (B-LOOP-08 follow-up, orchestrator ruling 6 Oct):
+ * the catalogue has NO sleep-tagged row and no family-domain row, so the
+ * Sleep and Family shelves had no practice. They carry a small set that is
+ * bound to the SHELF, not to a milestone: `milestoneId: null`, `shelf` set by
+ * hand, `ageMonths` the practice's own anchor (the band it suits). Same rules
+ * as every practice; sleep practices are routine, light, timing and
+ * wind-down only (no sleep method, no amounts, no restriction). A shelf can
+ * still be empty at runtime for a given age (B-LOOP-09's chooser must allow
+ * it); `milestoneId: null` is legal everywhere a practice is read.
  *
  * FIX-BY-ID LAYOUT (the review import depends on it): one `P("<milestoneId>"`
- * line opens each practice; `do:` and `say:` each sit on their own line as
+ * line opens each milestone practice, one `SP("<practiceId>"` line each
+ * shelf-level practice; `do:` and `say:` each sit on their own line as
  * `L("<en>", "<he>")`. Edit text in place; never regenerate the file.
  */
 import type { Milestone } from "../types";
@@ -68,7 +75,9 @@ export interface PracticeSource {
 
 export interface Practice {
   id: string;
-  milestoneId: string;
+  /** The catalogue row this practice supports; null = a SHELF-LEVEL practice
+   *  (B-LOOP-08 follow-up: Sleep and Family have no catalogue row). */
+  milestoneId: string | null;
   shelf: ShelfId;
   do: LocalizedText;
   say: LocalizedText;
@@ -76,7 +85,12 @@ export interface Practice {
   materials?: LocalizedText;
   evidence: { technique: PracticeTechnique; source: PracticeSource };
   reviewStatus: ContentReviewStatus;
+  /** The catalogue row's age for a milestone practice; a shelf-level
+   *  practice's own anchor (the band it suits). */
   ageMonths: number;
+  /** CONT-1 — the clinical reviewer's stamp, set with reviewStatus
+   *  "approved" (absent on every draft). */
+  review?: { reviewedBy: string; reviewedAt: string; reviewDueAt: string };
 }
 
 /**
@@ -97,6 +111,10 @@ export const PRACTICE_SOURCES = {
   whoUnicefCcd: { org: "WHO/UNICEF", title: "Care for Child Development: counselling cards (play and communication)", year: 2012 },
   whoMovement: { org: "WHO", title: "Guidelines on physical activity, sedentary behaviour and sleep for children under 5 years of age", year: 2019 },
   whoFeeding: { org: "WHO", title: "WHO Guideline for complementary feeding of infants and young children 6–23 months of age", year: 2023 },
+  // B-LOOP-08 follow-up — the shelf-level Sleep set.
+  aapSafeSleep: { org: "AAP", title: "Sleep-Related Infant Deaths: Updated 2022 Recommendations for Reducing Infant Deaths in the Sleep Environment (policy statement, Pediatrics)", year: 2022 },
+  aapHealthyChildrenSleep: { org: "AAP", title: "HealthyChildren.org — sleep pages for babies, toddlers and preschoolers (web pages, undated; cited 2026)", year: 2026 },
+  nhsStartForLifeSleep: { org: "NHS", title: "Start for Life — helping your baby to sleep and bedtime routines (web pages, undated; cited 2026)", year: 2026 },
 } as const satisfies Record<string, PracticeSource>;
 
 const S = PRACTICE_SOURCES;
@@ -166,6 +184,24 @@ function P(milestoneId: string, technique: PracticeTechnique, minutes: Practice[
     evidence: { technique, source },
     reviewStatus: "draft",
     ageMonths: row.ageMonths ?? 0,
+  };
+}
+
+/** One SHELF-LEVEL practice (no catalogue row): shelf and age anchor given here. */
+function SP(id: string, shelf: ShelfId, ageMonths: number, technique: PracticeTechnique, minutes: Practice["minutes"], source: PracticeSource, text: PracticeText): Practice {
+  if (!SHELF_IDS.includes(shelf)) throw new Error(`B-LOOP-08: shelf-level practice ${id} on unknown shelf ${shelf}`);
+  if (!id.startsWith(`pr-${shelf}-`) || !/^pr-[a-z]+-\d{2}$/.test(id)) throw new Error(`B-LOOP-08: shelf-level practice id ${id} must be pr-<shelf>-<nn>`);
+  return {
+    id,
+    milestoneId: null,
+    shelf,
+    do: text.do,
+    say: text.say,
+    minutes,
+    ...(text.materials ? { materials: text.materials } : {}),
+    evidence: { technique, source },
+    reviewStatus: "draft",
+    ageMonths,
   };
 }
 
@@ -708,6 +744,53 @@ export const PRACTICES: readonly Practice[] = [
     do: L("Make a family meal a calm, shared time: real cutlery for everyone, food passed around, and your child serving themselves.", "הפכו ארוחה משפחתית לזמן רגוע ומשותף: סכו״ם אמיתי לכולם, מעבירים את האוכל, והילד/ה מגיש/ה לעצמו/ה."),
     say: L("Can you pass the salad? Thanks. Take what you'd like.", "תעביר/י לי את הסלט? תודה. קח/י מה שבא לך."),
   }),
+
+  /* ── shelf-level (B-LOOP-08 follow-up) · Sleep · 6–48 months ─────────── */
+  /* Routine, light, timing and wind-down only: no sleep method, no amounts,  */
+  /* no restriction.                                                          */
+  SP("pr-sleep-01", "sleep", 6, "routine_building", 5, S.aapSafeSleep, {
+    do: L("Lay your baby down on their back for every sleep, naps and night, in their own crib or bassinet with nothing soft inside.", "השכיבו את התינוק/ת על הגב בכל שינה, ביום ובלילה, במיטה או בעריסה משלו/ה, בלי שום דבר רך בפנים."),
+    say: L("Night night, little one. I'm right here.", "לילה טוב, מתוק/ה. אני כאן לידך."),
+  }),
+  SP("pr-sleep-02", "sleep", 9, "routine_building", 10, S.nhsStartForLifeSleep, {
+    do: L("Keep one short bedtime routine in the same order each night: wash, pyjamas, a quiet song, then into the cot sleepy but awake.", "שמרו על טקס שינה קצר באותו סדר בכל ערב: רחצה, פיג'מה, שיר שקט, ואז למיטה כשהתינוק/ת מנומנם/ת אבל ער/ה."),
+    say: L("Wash, pyjamas, song, and now bed. Goodnight, sweetheart.", "רחצה, פיג'מה, שיר, ועכשיו למיטה. לילה טוב, מתוק/ה."),
+  }),
+  SP("pr-sleep-03", "sleep", 12, "routine_building", 5, S.nhsStartForLifeSleep, {
+    do: L("In the evening, dim the lights and keep your voice soft. In the morning, open the curtains and spend a little time in daylight together.", "בערב, עמעמו את האורות ודברו בקול רך. בבוקר, פתחו את הווילונות ובלו קצת זמן יחד באור היום."),
+    say: L("Lights down low. It's getting dark, sleepy time soon.", "מחשיכים את האור. עוד מעט הולכים לישון."),
+  }),
+  SP("pr-sleep-04", "sleep", 18, "responsive_interaction", 5, S.aapHealthyChildrenSleep, {
+    do: L("Watch for sleepy signs, like rubbing eyes or slowing down, and start the bedtime routine then, at about the same time each evening.", "שימו לב לסימני עייפות, כמו שפשוף עיניים או האטה, והתחילו אז את טקס השינה, בערך באותה שעה בכל ערב."),
+    say: L("I see sleepy eyes. Time for our bedtime routine.", "אני רואה עיניים עייפות. הגיע הזמן לטקס השינה שלנו."),
+  }),
+  SP("pr-sleep-05", "sleep", 30, "routine_building", 5, S.whoMovement, {
+    do: L("Keep bedtime and wake-up at about the same times every day, weekends too, and make the time before bed calm and quiet.", "שמרו על שעת שינה ושעת השכמה דומות בכל יום, גם בסופי שבוע, והפכו את הזמן שלפני השינה לרגוע ושקט."),
+    say: L("Same bedtime as every night. Let's get cosy.", "אותה שעת שינה כמו בכל ערב. בוא/י נתכרבל."),
+  }),
+  SP("pr-sleep-06", "sleep", 48, "responsive_interaction", 10, S.aapHealthyChildrenSleep, {
+    do: L("Inside the usual bedtime steps, offer two small choices, like which book or which pyjamas, then keep the steps in the same order.", "בתוך שלבי השינה הקבועים, הציעו שתי בחירות קטנות, כמו איזה ספר או איזו פיג'מה, ושמרו על אותו סדר."),
+    say: L("This book or that one? You choose, then lights out.", "הספר הזה או ההוא? את/ה בוחר/ת, ואז מכבים את האור."),
+  }),
+
+  /* ── shelf-level (B-LOOP-08 follow-up) · Family · 12–48 months ───────── */
+  /* Routines and the people around the child.                              */
+  SP("pr-family-01", "family", 12, "joint_attention", 5, S.whoUnicefCcd, {
+    do: L("Look at family photos together, point to each person, and say their name and one thing they do with your child.", "הסתכלו יחד בתמונות משפחתיות, הצביעו על כל אחד, ואמרו את שמו ודבר אחד שהוא עושה עם הילד/ה."),
+    say: L("That's Grandma! She sings with you. Where's Grandpa?", "זאת סבתא! היא שרה איתך. איפה סבא?"),
+  }),
+  SP("pr-family-02", "family", 24, "specific_praise", 5, S.aapBrightFutures, {
+    do: L("Give your child one small real job in a family routine, like carrying the napkins to the table, and thank them for it.", "תנו לילד/ה תפקיד קטן ואמיתי בשגרה המשפחתית, כמו להביא את המפיות לשולחן, ותודו לו/ה על כך."),
+    say: L("Thank you! You brought napkins for everyone.", "תודה! הבאת מפיות לכולם."),
+  }),
+  SP("pr-family-03", "family", 30, "routine_building", 5, S.whoUnicefCcd, {
+    do: L("When a grandparent or carer takes over, say goodbye with the same short ritual each time and tell your child when you will be back.", "כשסבא, סבתא או מטפל/ת נכנסים, היפרדו באותו טקס קצר בכל פעם, ואמרו לילד/ה מתי תחזרו."),
+    say: L("Hug, kiss, wave. I'll be back after your nap.", "חיבוק, נשיקה, נפנוף. אחזור אחרי השינה שלך."),
+  }),
+  SP("pr-family-04", "family", 48, "serve_and_return", 10, S.aapBrightFutures, {
+    do: L("At a family meal, let each person share one good thing from their day; listen to your child's turn and ask one more question.", "בארוחה משפחתית, כל אחד מספר על דבר טוב אחד מהיום; הקשיבו לתור של הילד/ה ושאלו עוד שאלה."),
+    say: L("What was one good thing today? Tell me more!", "מה היה דבר טוב אחד היום? ספר/י לי עוד!"),
+  }),
 ];
 
 /* ───────────────────────────── helpers ───────────────────────────── */
@@ -717,11 +800,17 @@ export function practicesForMilestone(milestoneId: string): Practice[] {
   return PRACTICES.filter((p) => p.milestoneId === milestoneId);
 }
 
+/** Every practice on a shelf (milestone-bound and shelf-level); may be [] at runtime. */
+export function practicesForShelf(shelf: ShelfId): Practice[] {
+  return PRACTICES.filter((p) => p.shelf === shelf);
+}
+
 /**
  * The practice as a governed record for the fail-closed publication gate.
- * `concerns` stays empty: the parent-concern vocabulary (governance.ts) does
- * not describe a milestone practice, so even an approved practice stays
- * unpublishable until the framer maps one (REVIEW-SHEET residue).
+ * B-LOOP-08 follow-up: `contentKind: "practice"` — a practice publishes on
+ * review (reviewStatus "approved" + the reviewer's named stamp, CONT-1) and a
+ * cited source (title + year); `concerns: []` is allowed (that vocabulary
+ * describes hard moments). Every draft stays unpublishable.
  */
 export function practiceAsGovernedRecord(p: Practice): GovernedContentRecord {
   return {
@@ -734,10 +823,12 @@ export function practiceAsGovernedRecord(p: Practice): GovernedContentRecord {
     safetyClass: "general-parenting",
     reviewStatus: p.reviewStatus,
     reviewerRole: "Clinical reviewer (G-01)",
-    reviewedBy: "",
-    reviewedAt: "",
-    reviewDueAt: "",
+    reviewedBy: p.review?.reviewedBy ?? "",
+    reviewedAt: p.review?.reviewedAt ?? "",
+    reviewDueAt: p.review?.reviewDueAt ?? "",
     evidenceRefs: [`${p.evidence.source.org}: ${p.evidence.source.title} (${p.evidence.source.year})`],
+    contentKind: "practice",
+    citedSource: { title: p.evidence.source.title, year: p.evidence.source.year },
   };
 }
 

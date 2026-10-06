@@ -61,6 +61,16 @@ export interface GovernedContentRecord {
    * post-approval edit demotes the record. Absent on drafts.
    */
   contentHash?: string;
+  /**
+   * B-LOOP-08 (follow-up) — the kind of record. Absent = a hard-moment /
+   * governed card (the CONT-6 concern tag is required). "practice" = a
+   * milestone- or shelf-level practice (content/practices): the parent-concern
+   * vocabulary describes hard moments, not practices, so `concerns: []` is
+   * allowed and a cited source (`citedSource` title + year) is required.
+   */
+  contentKind?: "practice";
+  /** B-LOOP-08 (follow-up) — the public document a practice cites. */
+  citedSource?: { title: string; year: number };
 }
 
 /** The reviewed-copy fields the CONT-1 content hash binds the stamp to. */
@@ -109,7 +119,7 @@ function isValidReviewedAt(record: GovernedContentRecord, now: Date): boolean {
 /**
  * AR-CONT-01 / CONT-1 — the fail-closed publication gate. A record publishes
  * only when it is approved, bilingual, carries honest metadata (>=1 ageBand,
- * >=1 concern), is stamped by a NAMED reviewer with a real review date inside
+ * >=1 concern — or, for a practice, a cited source title + year), is stamped by a NAMED reviewer with a real review date inside
  * the review window, has provenance, and — when it carries reviewable copy —
  * its contentHash still matches the copy the reviewer stamped.
  */
@@ -120,7 +130,12 @@ export function isPublishableContent(
   if (record.reviewStatus !== "approved") return false; // draft AND retired fail
   if (!record.locales.includes("en") || !record.locales.includes("he")) return false;
   if (record.ageBands.length === 0) return false;
-  if (record.concerns.length === 0) return false;
+  if (record.contentKind === "practice") {
+    // B-LOOP-08 (follow-up): a practice publishes on review + a cited source;
+    // concerns: [] is allowed. Every other gate below still applies.
+    const src = record.citedSource;
+    if (!src || typeof src.title !== "string" || !src.title.trim() || !Number.isInteger(src.year) || src.year <= 0) return false;
+  } else if (record.concerns.length === 0) return false;
   if (!record.reviewerRole.trim()) return false;
   const reviewedBy = record.reviewedBy.trim();
   if (!reviewedBy) return false;

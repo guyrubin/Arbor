@@ -88,6 +88,9 @@ export function practiceCandidates(input: ChoosePracticeInput, limit = 6): Pract
   for (const p of input.practices) {
     if (recent.has(p.id)) continue;
     if (input.candidateFilter && !input.candidateFilter(p)) continue;
+    // B-LOOP-08 follow-up: a shelf-level practice (milestoneId null) is legal
+    // but not milestone-bound; this chooser picks by milestone, so it skips it.
+    if (p.milestoneId === null) continue;
     const list = byMilestone.get(p.milestoneId) ?? [];
     list.push(p);
     byMilestone.set(p.milestoneId, list);

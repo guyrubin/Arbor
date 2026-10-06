@@ -137,3 +137,32 @@ describe("milestone example-media gate (fail-closed)", () => {
     expect(isRenderableMilestoneMedia({ ...media, locale: "fr" as never })).toBe(false);
   });
 });
+
+describe("B-LOOP-08 (follow-up) — practices publish on review + a cited source", () => {
+  const practice: GovernedContentRecord = {
+    ...base, id: "pr-sleep-01", concerns: [], contentKind: "practice",
+    citedSource: { title: "Safe Sleep (HealthyChildren.org)", year: 2022 },
+  };
+
+  it("an approved, sourced practice with concerns: [] publishes", () => {
+    expect(isPublishableContent(practice, NOW)).toBe(true);
+  });
+
+  it("an approved practice with no cited source (or a blank title / no year) never publishes", () => {
+    expect(isPublishableContent({ ...practice, citedSource: undefined }, NOW)).toBe(false);
+    expect(isPublishableContent({ ...practice, citedSource: { title: "  ", year: 2022 } }, NOW)).toBe(false);
+    expect(isPublishableContent({ ...practice, citedSource: { title: "Safe Sleep", year: undefined as unknown as number } }, NOW)).toBe(false);
+  });
+
+  it("the other gates still hold for a practice: draft, unnamed reviewer, one locale", () => {
+    expect(isPublishableContent({ ...practice, reviewStatus: "draft" }, NOW)).toBe(false);
+    expect(isPublishableContent({ ...practice, reviewedBy: "" }, NOW)).toBe(false);
+    expect(isPublishableContent({ ...practice, locales: ["en"] }, NOW)).toBe(false);
+  });
+
+  it("the hard-moment gate is unchanged: a record without contentKind still needs a concern, and a citedSource does not stand in for one", () => {
+    expect(isPublishableContent({ ...base, concerns: [] }, NOW)).toBe(false);
+    expect(isPublishableContent({ ...base, concerns: [], citedSource: { title: "X", year: 2020 } }, NOW)).toBe(false);
+    expect(isPublishableContent(base, NOW)).toBe(true);
+  });
+});
