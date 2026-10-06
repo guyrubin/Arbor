@@ -16,6 +16,7 @@ import { ageLabel, ageLabelForMonths, ageMonthsFromProfile } from "../lib/childA
 import { MOMENT_BEHAVIOR_TYPE, behaviorTypeLabel, isIncidentType } from "../content/behaviorTaxonomy";
 import { factMonthLabel } from "../lib/factsAsOf";
 import { languageName } from "../lib/languageName";
+import { milestonesNoticedSince, momentsSince as recordMomentsSince } from "../lib/record/counts";
 
 export interface PacketInputProfile {
   name: string;
@@ -895,20 +896,21 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
   if (input.lastExportedAt != null) {
     const lastMs = toMs(input.lastExportedAt);
     if (Number.isFinite(lastMs) && lastMs > 0 && lastMs <= nowMs) {
-      const newLogs = logs.filter((l) => {
-        const t = toMs(l.timestamp);
-        return Number.isFinite(t) && t > lastMs;
-      }).length;
+      // B-GROWTH-35: the delta counts come from the ONE count reader
+      // (lib/record/counts) — the same rule Care, Milestones and Journal use.
+      const lastIso = new Date(lastMs).toISOString();
+      const newLogs = recordMomentsSince({
+        behaviorLogs: logs,
+        langObs: (input.langObs ?? []).map((o) => ({ phrase: o.phrase, language: o.language ?? null, timestamp: o.at == null ? null : typeof o.at === "number" ? new Date(o.at).toISOString() : o.at })),
+      }, lastIso, nowMs);
       const newPlans = plans.filter((p) => {
         if (p.createdAt == null) return false;
         const t = toMs(p.createdAt);
         return Number.isFinite(t) && t > lastMs;
       }).length;
-      const newlyNoticed = milestones.filter((m) => {
-        if (effectiveObservation(m) !== "yes" || !m.observedAt) return false;
-        const t = toMs(m.observedAt);
-        return Number.isFinite(t) && t > lastMs;
-      }).length;
+      const newlyNoticed = milestonesNoticedSince({
+        milestones: milestones.filter((m) => effectiveObservation(m) === "yes").map((m) => ({ checked: true, observationUpdatedAt: m.observedAt ?? null })),
+      }, lastIso, nowMs);
       const s = (n: number) => (n === 1 ? "" : "s");
       // B-CAREPRO-17: the heading names who last received it — honest about
       // what the anchor is (the last time THIS audience got a summary), until

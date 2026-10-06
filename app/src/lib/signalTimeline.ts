@@ -19,6 +19,7 @@ import { languageName } from "./languageName";
 import { milestoneAgeGroupText, milestoneText } from "./milestoneData";
 import type { FirstKeepsake } from "./firstsKeepsake";
 import type { LangObservation } from "../growth/vocabAgg";
+import { momentRowsSince, wordDays } from "./record/counts";
 
 /**
  * The Signal Timeline — Arbor's unified developmental activity stream.
@@ -566,28 +567,10 @@ export const buildTimeline = (sources: TimelineSources): TimelineSignal[] => {
   // `count` = words that day, `at` = the latest entry (recency holds), the
   // words themselves in `detail` (newest first). Id is NOT "moment-…", so the
   // row never resolves to a BehaviorLog (journalFilters.momentLogId).
-  const wordDays = new Map<string, { language: string; day: string; latest: string; latestMs: number; phrases: { ms: number; phrase: string }[] }>();
-  for (const o of sources.langObs || []) {
-    const phrase = o.phrase?.trim();
-    const language = o.language?.trim();
-    if (!phrase || !language || !o.timestamp) continue;
-    const ms = new Date(o.timestamp).getTime();
-    if (!Number.isFinite(ms)) continue;
-    const day = new Date(ms).toISOString().slice(0, 10);
-    const key = `${language.toLowerCase()}|${day}`;
-    const entry = wordDays.get(key);
-    if (!entry) {
-      wordDays.set(key, { language, day, latest: o.timestamp, latestMs: ms, phrases: [{ ms, phrase }] });
-    } else {
-      entry.phrases.push({ ms, phrase });
-      if (ms > entry.latestMs) {
-        entry.latest = o.timestamp;
-        entry.latestMs = ms;
-      }
-    }
-  }
-  for (const entry of wordDays.values()) {
-    const phrases = entry.phrases.sort((a, b) => b.ms - a.ms).map((p) => p.phrase);
+  // B-GROWTH-35: the fold is lib/record/counts.wordDays — the same rows the
+  // moment count counts.
+  for (const entry of wordDays(sources.langObs)) {
+    const phrases = entry.phrases;
     signals.push({
       id: `words-${encodeURIComponent(entry.language.toLowerCase())}-${entry.day}`,
       kind: "moment",
@@ -637,7 +620,8 @@ export const weekWindow = (signals: TimelineSignal[], now: number = Date.now()):
  * timestamp falls in the trailing seven days. One selector, one number.
  */
 export const weekMomentCount = (signals: TimelineSignal[], now: number = Date.now()): number =>
-  weekWindow(signals, now).filter((s) => s.kind === "moment").length;
+  // B-GROWTH-35: the rule lives in the ONE count reader (lib/record/counts).
+  momentRowsSince(signals, new Date(now - 7 * DAY).toISOString(), now);
 
 /**
  * B-ASKJB-13 — the Journal feed header says what it counts. The feed mixes

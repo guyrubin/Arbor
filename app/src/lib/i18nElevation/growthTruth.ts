@@ -114,6 +114,9 @@ export const en: Record<string, string> = {
   "elev.ms.seenAny.yes": "Yes, I've seen it",
   "elev.ms.seenAny.empty": "When {name} does something for the first time, it lands here.",
   "elev.ms.domainNext": "Next: {title}",
+
+  // B-GROWTH-35 — a kept fact with a relative time in it, dated by when it was written.
+  "elev.growthTruth.profile.written": "written {date}:",
 };
 
 export const he: Record<string, string> = {
@@ -200,4 +203,7 @@ export const he: Record<string, string> = {
   "elev.ms.seenAny.yes": "כן, ראיתי",
   "elev.ms.seenAny.empty": "כש{name} יעשה משהו בפעם הראשונה, זה יופיע כאן.",
   "elev.ms.domainNext": "הבא: {title}",
+
+  // B-GROWTH-35 — עובדה שיש בה זמן יחסי מקבלת את התאריך שבו נכתבה.
+  "elev.growthTruth.profile.written": "נכתב ב־{date}:",
 };

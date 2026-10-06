@@ -24,7 +24,7 @@ import { ageLabel, ageMonthsFromProfile } from "../../lib/childAge";
 import { comparisonAgeMonths, selectNextMilestones } from "../../lib/milestoneData";
 // W2-GROWTH r1 (law 1): the milestones chapter is a plain count from the ONE
 // helper the Growth pill reads — never "{checked} of {total} in the window".
-import { noticedMilestoneCounts } from "../../lib/pulse";
+import { noticedMilestoneCounts } from "../../lib/record/counts";
 // W2-GROWTH r1 (law 8): stored language names print in the reader's language.
 import { languageName } from "../../lib/languageName";
 import { fmtDay } from "../../lib/formatDate";
@@ -34,6 +34,8 @@ import { goalLabel, type ActiveGoal } from "../../practice/goalBuilder";
 // B-CAREPRO-33: the quoted facts carry an as-of date and ask "Still true?" after 90 days.
 import { confirmFact, factMonthLabel, isFactStale, type FactField } from "../../lib/factsAsOf";
 import { FreeText } from "../ui/FreeText";
+// B-GROWTH-35: a kept fact with a relative time in it carries the day it was written.
+import { writtenDateFor } from "../../lib/record/datedFact";
 
 /**
  * Child Intelligence › Development Profile — ONE scrolling narrative ("My Child"
@@ -168,6 +170,20 @@ export default function ChildProfile() {
     ? t("elev.profile.identity.schoolAsOf", { school: childProfile.schoolContext, month: factMonthLabel(schoolAsOf, uiLang === "he" ? "he" : "en") })
     : childProfile.schoolContext;
   const identitySegments = [ageLabel(childProfile, t), langSegment, schoolSegment].filter(Boolean) as string[];
+
+  // B-GROWTH-35: "Entering kindergarten in 3 months", kept in June, is read in
+  // October as if said today. A fact whose words carry a relative time is
+  // printed after the day it was written ("written 10 Jun 2026: …"); the
+  // words themselves are never rewritten.
+  const writtenPrefix = (fact: string, at: string | null | undefined): React.ReactNode => {
+    const written = writtenDateFor(fact, at);
+    return written ? (
+      <span data-testid="profile-fact-written" className="t-sm" style={{ color: "var(--arbor-muted)" }}>
+        {t("elev.growthTruth.profile.written", { date: fmtDay(written, uiLang) })}{" "}
+      </span>
+    ) : null;
+  };
+  const latestWritten = latestApproved ? writtenDateFor(toParentWords(latestApproved.fact), latestApproved.createdAt) : null;
   const hasPending = pendingQueue.length > 0;
 
   // B-GROWTH-NEW-1F → B-GROWTH-NEW-2F — the ProfileKnowsLine names the child
@@ -180,9 +196,10 @@ export default function ChildProfile() {
       <span aria-hidden="true" className="mt-2 inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ background: "var(--arbor-clay)" }} />
       <p className="t-md min-w-0" style={{ fontFamily: "var(--font-editorial)", fontWeight: 400, color: "var(--arbor-ink)" }}>
         {first ? t("elev.profile.knows.leadNamed", { name: first }) : t("elev.profile.knows.lead")}{" "}
+        {writtenPrefix(toParentWords(latestApproved.fact), latestApproved.createdAt)}
         {/* B-SHELL-28: the parent's words never flip on a leading name. */}
         <FreeText text={toParentWords(latestApproved.fact)} />
-        {latestApproved.createdAt && (
+        {latestApproved.createdAt && !latestWritten && (
           <span className="t-sm" style={{ color: "var(--arbor-muted)" }}>
             {" — "}{t("elev.profile.knows.since", { month: factMonthLabel(latestApproved.createdAt, uiLang === "he" ? "he" : "en") })}
           </span>
@@ -523,7 +540,7 @@ export default function ChildProfile() {
           <ul className="space-y-1.5 text-sm" style={{ color: "var(--arbor-ink)" }}>
             {shownApproved.slice(0, 5).map((shown) => (
               <li key={shown.memoryId} className="flex items-start gap-2">
-                <span className="mt-2 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "var(--arbor-lav-ink)" }} /> <FreeText text={shown.fact} />
+                <span className="mt-2 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "var(--arbor-lav-ink)" }} /> <span>{writtenPrefix(shown.fact, shown.createdAt)}<FreeText text={shown.fact} /></span>
               </li>
             ))}
           </ul>

@@ -249,7 +249,11 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, onAudi
   const sinceIso = anchor.kind === "none" ? null : anchor.iso;
   // "Since you started" includes the first entry itself (counts are strictly after).
   const countFromIso = anchor.kind === "start" ? new Date(new Date(anchor.iso).getTime() - 1).toISOString() : sinceIso;
-  const sinceCounts = reportsLeadCounts({ logs: behaviorLogs ?? [], milestones: milestones ?? [], sinceIso: countFromIso, nowMs });
+  // B-GROWTH-35: "since you started" is the WHOLE record (lib/record/counts,
+  // wholeRecord) — a date filter on the first dated entry dropped every
+  // undated noticed milestone ("0 milestones noticed" beside Milestones' 6)
+  // and the words written down that the Journal counts as moments.
+  const sinceCounts = reportsLeadCounts({ logs: behaviorLogs ?? [], milestones: milestones ?? [], langObs: langObsCol.items, sinceIso: countFromIso, nowMs, wholeRecord: anchor.kind === "start" });
   const lower = (x: string) => (uiLang === "en" ? x.toLowerCase() : x);
   // W2-CAREPRO c2 r1: a packet line takes the reader's direction (a Latin
   // child name first must not flip a Hebrew line); translate() isolates every

@@ -17,6 +17,7 @@ import { predictRhythm, hourLabel } from "../rhythm/predict";
 import type { UiLang } from "./i18n";
 import type { HubId } from "./surfaceContract";
 import { usePractice7d } from "../practice/practiceWeekCount";
+import { noticedMilestoneCounts } from "./record/counts";
 
 // HubId comes from surfaceContract's HUB_IDS — the ten Heartwood hub ids that
 // SC-1 asserts mirror navigation.ts SECTIONS exactly. usePulses() returns a
@@ -62,25 +63,11 @@ export const pickCountKey = (base: string, count: number): string =>
   count === 1 ? `${base}One` : base;
 
 /**
- * B-GROWTH-34 — THE one source for "how many milestones has the parent
- * noticed". The Growth pill, the Growth hero stat row and the Development
- * picture card all read this, so one screen can never say "You noticed 5
- * milestones" beside "0 of 21 noticed". Plain counts only (law 1): no
- * denominator, no window total, no share. `areas` = distinct domains among
- * the noticed milestones; `byDomain` = noticed count per domain.
+ * B-GROWTH-34 → B-GROWTH-35 — "how many milestones has the parent noticed"
+ * lives in lib/record/counts (the ONE count reader); re-exported here for the
+ * Growth pill and its existing importers.
  */
-export function noticedMilestoneCounts(
-  milestones: ReadonlyArray<{ checked: boolean; domain: string }>,
-): { noticed: number; areas: number; byDomain: Record<string, number> } {
-  const byDomain: Record<string, number> = {};
-  let noticed = 0;
-  for (const m of milestones) {
-    if (!m.checked) continue;
-    noticed++;
-    byDomain[m.domain] = (byDomain[m.domain] ?? 0) + 1;
-  }
-  return { noticed, areas: Object.keys(byDomain).length, byDomain };
-}
+export { noticedMilestoneCounts };
 
 /** Hour → display time in the UI language (en "5pm", he 24h "17:00"). */
 export const formatHour = (hour: number, lang: UiLang): string =>
