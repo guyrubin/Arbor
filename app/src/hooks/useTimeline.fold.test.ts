@@ -8,7 +8,7 @@ import { signalDetail, signalTitle, type TimelineSignal } from "../lib/signalTim
 import { withChildSignals } from "../lib/i18nElevation/childsignals";
 
 const T = (h: number, m = 0) => `2026-09-17T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00.000Z`;
-const t = withChildSignals((key: string) => key);
+const t = withChildSignals((key: string) => key, false);
 
 const parentNote = {
   id: "log-1",
