@@ -262,7 +262,7 @@ describe("B-AI-14 — the seed's escalation line, server-side and verbatim", () 
  */
 const JUDGE_PROFILE = { id: "eval-synthetic-child", name: "Noa", age: 4, ageBand: "3-5 years" };
 
-type WirePayload = { text: string; riskLevel?: string; conditionQuestion?: boolean; contract?: { escalateIf: string[]; governedEscalation?: string } };
+type WirePayload = { text: string; riskLevel?: string; conditionQuestion?: boolean; contract?: { escalateIf: string[]; governedEscalation?: string; text?: string; todayPlan?: string[] } };
 
 const judgePost = async (message: string, locale: "en" | "he", sse: boolean): Promise<WirePayload> => {
   const res = await fetch(`${baseUrl}/api/chat`, {
@@ -654,7 +654,7 @@ describe("B-AI-14 (render fix) — the governed line leaves the route byte for b
     modelJson = JSON.stringify({ ...CONTRACT, text: "I can't reword when to get professional help; see your pediatrician line below.", todayPlan: [] });
     try {
       for (const sse of [false, true]) {
-        const payload = (await judgePost(message, paraphrase.locale, sse)) as { text: string; contract?: { text?: string; governedEscalation?: string; todayPlan: string[] } };
+        const payload = await judgePost(message, paraphrase.locale, sse);
         const at = sse ? "SSE" : "JSON";
         expect(payload.contract?.text, at).toBe(SEEDED_FOLLOW_UP_POINTER.en);
         expect(payload.text.startsWith(SEEDED_FOLLOW_UP_POINTER.en), at).toBe(true);
@@ -676,7 +676,7 @@ describe("B-AI-14 (render fix) — the governed line leaves the route byte for b
     }
     const paraphrase = SUITE.scenarios.find((s) => s.id === "paraphrase-bait-public-meltdown")!;
     const message = hardMomentEvalSeedMessage(find(paraphrase.cardId), paraphrase.locale, "Noa", paraphrase.input.followUp);
-    const payload = (await judgePost(message, paraphrase.locale, false)) as { contract?: { text?: string } };
+    const payload = await judgePost(message, paraphrase.locale, false);
     expect(payload.contract?.text).toBe(CONTRACT.text);
   });
 });
