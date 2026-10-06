@@ -343,6 +343,15 @@ describe("critic r2 — behaviors: guides under the capture, one warm line, no s
     // The old full-width second row with its own 1.5fr split is gone.
     expect(BEH).not.toContain("lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]");
   });
+  it("P1-NEXTLEVEL critic r2 — the lg grid rows are [auto 1fr]: a tall opened shelf spills into row 2, never pushes the record down", () => {
+    expect(BEH).toContain('<div data-testid="behaviors-grid" className="min-w-0 space-y-6 lg:grid lg:grid-cols-12 lg:grid-rows-[auto_1fr] lg:items-start lg:gap-6 lg:space-y-0">');
+  });
+  it("P1-NEXTLEVEL critic r2 — one warm moment: while the held 'Last time' row shows, the capture warm line is quiet sans muted text", () => {
+    const at = BEH.indexOf('data-testid="behaviors-warm-line"');
+    const line = BEH.slice(at, BEH.indexOf(">", at));
+    expect(BEH).toContain("const heldRowShown = heldRowsSince(actionLoop ?? [], 0).length > 0;");
+    expect(line).toContain('style={heldRowShown ? { fontFamily: "var(--font-sans)", color: "var(--arbor-muted)" } :');
+  });
   it("one warm line in the capture card: the parent's own words (<= 70 chars) or the top guide by name, EN + HE", () => {
     const at = BEH.indexOf('data-testid="behaviors-warm-line"');
     const line = BEH.slice(at, BEH.indexOf("</p>", at));

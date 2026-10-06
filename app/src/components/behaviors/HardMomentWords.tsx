@@ -23,11 +23,14 @@ export function LastTimeLead({ card, childName, at, locale, t }: {
   const sentence = locText(renderSayThis(card, childName), locale);
   return (
     <section data-testid="hm-last-time" lang={locale} dir={locale === "he" ? "rtl" : "ltr"} className="min-w-0 text-start">
-      <p dir="auto" className="text-[13px] font-semibold" style={{ color: "var(--arbor-muted)" }}>
+      {/* P1-NEXTLEVEL critic r2: no dir="auto" on the lead or the quote — their
+          only child is a <bdi>, which the first-strong scan skips, so they fell
+          back to ltr in Hebrew (bar on the left). They inherit the section's
+          locale direction; the <bdi> keeps the words isolated. */}
+      <p className="text-[13px] font-semibold" style={{ color: "var(--arbor-muted)" }}>
         <bdi>{t("hm.lastTime.lead", { name: childName })}</bdi>
       </p>
       <blockquote
-        dir="auto"
         data-testid="hm-last-time-words"
         className="mt-1.5 border-s-2 ps-3 text-[20px] leading-snug sm:text-[22px]"
         style={{ borderColor: "var(--arbor-rule-strong)", color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)" }}

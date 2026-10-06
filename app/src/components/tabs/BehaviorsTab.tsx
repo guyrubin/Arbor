@@ -16,6 +16,7 @@ import { cardCls, PASTEL, type PastelKey } from "../ui/kit";
 import { T } from "../../lib/tokens";
 import PatternInsights from "../behaviors/PatternInsights";
 import HardMomentsSection from "../behaviors/HardMomentsSection";
+import { heldRowsSince } from "../behaviors/hardMomentLastTime";
 import QuickCaptureBar from "../overview/QuickCaptureBar";
 import { availableHardMomentCards, matchToRecentBehaviors } from "../../content/selectCards";
 import { locText, recentBehaviorTypes } from "../../content/hardMomentSurface";
@@ -149,6 +150,7 @@ export default function BehaviorsTab() {
     logsLoaded,
     openCaptureSheet,
     openHardMomentNow,
+    actionLoop,
   } = useArbor();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -494,6 +496,10 @@ export default function BehaviorsTab() {
   // generated; first 70 characters; the date is the fact), else — on day 0 —
   // the child's top matched guide by name. No count, no verdict, no colour on
   // a hard moment beyond the page's one peach accent.
+  // P1-NEXTLEVEL critic r2 (one warm moment per screen): while the hard-moment
+  // section leads with a held "Last time, this helped" row (peach + editorial
+  // serif), the capture card's last-words line is quiet body text.
+  const heldRowShown = heldRowsSince(actionLoop ?? [], 0).length > 0;
   const warmLine = useMemo((): { kind: "quote"; words: string; day: string } | { kind: "guide"; guide: string } | null => {
     const latest = [...behaviorLogs]
       .filter((l) => (l.trigger || "").trim())
@@ -684,7 +690,10 @@ export default function BehaviorsTab() {
           the pattern echo in the start column (≤ ~670 px, no 936 px phone
           column), the guide shelf as a rail in the end column. Below lg the
           shelf sits directly under the capture (its tiles a snap row). */}
-      <div className="min-w-0 space-y-6 lg:grid lg:grid-cols-12 lg:items-start lg:gap-6 lg:space-y-0">
+      {/* P1-NEXTLEVEL critic r2: rows are [auto 1fr], so a tall guide shelf
+          (row-span-2) pours its extra height into row 2 and the record stays
+          directly under the capture card. */}
+      <div data-testid="behaviors-grid" className="min-w-0 space-y-6 lg:grid lg:grid-cols-12 lg:grid-rows-[auto_1fr] lg:items-start lg:gap-6 lg:space-y-0">
       {/* NEXTLEVEL critic r1 (behaviors · design · P1): the record (recent
           moments + patterns) follows capture in the START column at lg
           (row 2), the guide shelf is the end rail spanning both rows — no
@@ -752,7 +761,7 @@ export default function BehaviorsTab() {
                direction; only the parent's words (with their quote marks) are
                an auto-direction island and the day is its own island — an
                English quote on a Hebrew page no longer flips its marks. */
-            <p data-testid="behaviors-warm-line" data-warm={warmLine.kind} dir={uiLang === "he" ? "rtl" : "ltr"} className="px-3 py-2 t-sm leading-snug" style={{ borderRadius: "var(--r-sm)", fontFamily: "var(--font-editorial)", background: "var(--arbor-peach-soft)", color: "var(--arbor-peach-ink)" }}>
+            <p data-testid="behaviors-warm-line" data-warm={warmLine.kind} data-quiet={heldRowShown ? "true" : undefined} dir={uiLang === "he" ? "rtl" : "ltr"} className={heldRowShown ? "t-sm leading-snug" : "px-3 py-2 t-sm leading-snug"} style={heldRowShown ? { fontFamily: "var(--font-sans)", color: "var(--arbor-muted)" } : { borderRadius: "var(--r-sm)", fontFamily: "var(--font-editorial)", background: "var(--arbor-peach-soft)", color: "var(--arbor-peach-ink)" }}>
               {warmLine.kind === "quote"
                 ? <>{t("beh.warm.quoteLead")}{" "}<bdi dir="auto">{uiLang === "he" ? "„" : "“"}{warmLine.words}{"”"}</bdi>{" · "}<bdi>{warmLine.day}</bdi></>
                 : t("beh.warm.guide", { guide: warmLine.guide, name: behFirst })}

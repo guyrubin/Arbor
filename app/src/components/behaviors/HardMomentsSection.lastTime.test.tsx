@@ -80,6 +80,11 @@ describe("B-ASKJB-33 — the lead block (rendered, EN + HE)", () => {
       expect(html).toContain("var(--font-editorial)");
       expect(html).toMatch(lang === "he" ? /1 באוק/ : /1 Oct/);
       expect(html).not.toMatch(/uppercase|gradient|%/);
+      // P1-NEXTLEVEL critic r2: the lead and the quote take the section's locale
+      // direction. dir="auto" over a lone <bdi> resolved ltr in Hebrew.
+      expect(html).toMatch(new RegExp(`data-testid="hm-last-time" lang="${lang}" dir="${lang === "he" ? "rtl" : "ltr"}"`));
+      const section = html.slice(html.indexOf('data-testid="hm-last-time"'));
+      expect(section).not.toContain('dir="auto"');
     });
   }
 
@@ -169,5 +174,14 @@ describe("NEXTLEVEL r1 — #/behaviors leads with 'Last time, this helped'", () 
     const words = fs.readFileSync(path.resolve(__dirname, "HardMomentWords.tsx"), "utf8");
     expect(words).toMatch(/data-testid="hm-last-time-words"[\s\S]{0,80}text-\[20px\][^"]*sm:text-\[22px\]/);
     expect(SEC).toMatch(/text-base font-bold[^"]*"[^>]*>\{locText\(card\.title, locale\)\}/);
+  });
+});
+
+describe("P1-NEXTLEVEL critic r2 — the send button never ends on a dangling 'to…'", () => {
+  it("EN + HE: hm.send.cta is a whole phrase (no trailing ellipsis or preposition)", () => {
+    for (const lang of ["en", "he"] as const) {
+      const cta = translate(lang, "hm.send.cta");
+      expect(cta, lang).not.toMatch(/…$|\.\.\.$|\bto$|ל…$/);
+    }
   });
 });
