@@ -35,7 +35,9 @@ import { isIncidentType } from "../../content/behaviorTaxonomy";
 import { useObservations } from "../../hooks/useObservations";
 import { PRACTICES } from "../../content/practices";
 import { choosePractice, practiceDoseEntry, recentPracticeIds, todayDose, type PracticeAnswer } from "../../lib/practice/choosePractice";
-import { selectNextMilestonesByShelf, shelfCoverage } from "../../lib/milestones/selectByShelf";
+import { shelfCoverage } from "../../lib/milestones/selectByShelf";
+import { selectNoticeWithProgram, type NoticeProgram } from "../../lib/programs/notice";
+import { activeProgramWeek } from "../../lib/programs/enrolment";
 import { localDay, type ObserveStatus, type ObservedWhen } from "../../lib/milestones/observe";
 import { shelfWordsThenNow } from "../../lib/today/shelfWords";
 import { quoteKeepsakeDoc, tonightDayQuestion, tonightOutcomeEntry } from "../../lib/loop/tonight";
@@ -213,16 +215,25 @@ export default function OverviewTab() {
   }, [pick, coverage]);
 
   // ── B-LOOP-04: Notice today. A card the parent just answered stays in place
-  //    for the session (its receipt); the block never shows the practice's shelf. ──
+  //    for the session (its receipt); the block never shows the practice's shelf.
+  //    B-PROG-03 (seam): with an ACTIVE program (lib/programs/enrolment), the
+  //    program's shelf is skipped by the thinnest-shelf rule and the week's
+  //    watchFor rows are served first (lib/programs/notice); no enrolment =
+  //    exactly the previous selection. ──
+  const programRows = useChildCollection<unknown>(childProfile.id, "programs");
+  const noticeProgram = useMemo<NoticeProgram | null>(() => {
+    const active = activeProgramWeek(programRows.items, now);
+    return active ? { shelf: active.program.shelf, watchFor: active.content.watchFor } : null;
+  }, [programRows.items, now]);
   const noticePicks = useMemo(
-    () => (comparisonMonths === null ? [] : selectNextMilestonesByShelf(milestones, comparisonMonths, {
+    () => (comparisonMonths === null ? [] : selectNoticeWithProgram(milestones, comparisonMonths, {
       perShelf: 1,
       total: 3,
       coverage,
       now,
       excludeShelves: pick ? [pick.shelf] : [],
-    })),
-    [milestones, comparisonMonths, coverage, now, pick]
+    }, noticeProgram)),
+    [milestones, comparisonMonths, coverage, now, pick, noticeProgram]
   );
   const [heldNotice, setHeldNotice] = useState<{ id: string; shelf: ShelfId }[]>([]);
   const [beforeNotice, setBeforeNotice] = useState<Record<string, Milestone>>({});
