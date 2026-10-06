@@ -221,14 +221,12 @@ function JournalRow({
           <span
             className="inline-flex items-center gap-1 t-sm font-semibold rounded-md px-2 py-0.5"
             style={
-              prov === "auto"
-                ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }
-                : prov === "child"
-                  ? { background: PASTEL.lav.soft, color: PASTEL.lav.ink }
-                  : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }
+              // arborQuiet rows (prov "auto") render in the other arm; here prov is child | manual.
+              prov === "child"
+                ? { background: PASTEL.lav.soft, color: PASTEL.lav.ink }
+                : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }
             }
           >
-            {prov === "auto" && <Icon name="auto_awesome" size={12} fill={1} />}
             {prov === "child" && <Icon name="child_care" size={12} fill={1} />}
             {provLabel}
           </span>
