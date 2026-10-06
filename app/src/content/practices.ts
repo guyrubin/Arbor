@@ -572,6 +572,76 @@ export const PRACTICES: readonly Practice[] = [
     do: L("Place a favourite toy just within reach while your baby sits supported or lies on their tummy, and wait for the reach.", "שימו צעצוע אהוב בדיוק בהישג יד, כשהתינוק/ת יושב/ת עם תמיכה או שוכב/ת על הבטן, וחכו להושטת היד."),
     say: L("Your duck is right there. You got it!", "הברווז ממש פה. תפסת אותו!"),
   }),
+
+  /* ── batch 6/7 · School & thinking · 9–30 months ────────────────────── */
+  P("cdc-9m-6", "joint_attention", 5, S.whoUnicefCcd, {
+    do: L("When your baby drops a spoon from the high chair, look down together, ask where it went, and show where it landed.", "כשהתינוק/ת מפיל/ה כף מהכיסא, הסתכלו יחד למטה, שאלו לאן היא נעלמה, והראו איפה היא נחתה."),
+    say: L("Uh-oh! Where did the spoon go? Down there!", "אופס! לאן הכף הלכה? הנה היא, למטה!"),
+  }),
+  P("cdc-9m-7", "child_directed_play", 5, S.aapPowerOfPlay, {
+    do: L("Give your baby two safe kitchen things, like a pot and a wooden spoon, and copy the rhythm they make.", "תנו לתינוק/ת שני כלי מטבח בטוחים, כמו סיר וכף עץ, וחקו את הקצב שהוא/היא יוצר/ת."),
+    say: L("Bang, bang! You're a drummer! Bang, bang, bang!", "בום, בום! איזה מתופף/ת! בום, בום, בום!"),
+    materials: L("A small pot and a wooden spoon", "סיר קטן וכף עץ"),
+  }),
+  P("cdc-12m-5", "child_directed_play", 10, S.aapPowerOfPlay, {
+    do: L("Give your child a container and a few safe things to drop in and tip out, and take turns with them.", "תנו לילד/ה קופסה וכמה חפצים בטוחים להכניס ולשפוך, ושחקו בתורות."),
+    say: L("In it goes! Clunk. And out it comes!", "נכנס פנימה! טראח. ויוצא החוצה!"),
+    materials: L("A plastic box and a few large blocks or lids", "קופסת פלסטיק וכמה קוביות או מכסים גדולים"),
+  }),
+  P("cdc-12m-6", "executive_function_game", 5, S.harvardExecutiveFunction, {
+    do: L("While your child watches, hide a toy under a cloth, then let them find it. Make the hiding easy to see at first.", "כשהילד/ה מסתכל/ת, החביאו צעצוע מתחת לבד ותנו לו/ה למצוא. בהתחלה החביאו כך שיהיה קל לראות."),
+    say: L("Where did the duck go? Under the cloth! You found it!", "לאן הברווז נעלם? מתחת לבד! מצאת אותו!"),
+    materials: L("A small cloth or towel", "בד קטן או מגבת"),
+  }),
+  P("cdc-15m-5", "child_directed_play", 10, S.aapPowerOfPlay, {
+    do: L("Offer everyday things, like a cup, a hairbrush or a spoon, and show how you use them, then follow whatever your child tries.", "הציעו חפצים יומיומיים, כמו כוס, מברשת שיער או כף, הראו איך אתם משתמשים בהם, ולכו אחרי מה שהילד/ה מנסה."),
+    say: L("You're brushing your hair! Now brush Teddy's hair?", "את/ה מסרק/ת את השיער! עכשיו גם לדובי?"),
+    materials: L("A cup, a hairbrush, a spoon", "כוס, מברשת שיער, כף"),
+  }),
+  P("cdc-15m-6", "fine_motor_play", 10, S.aapPowerOfPlay, {
+    do: L("Build a small tower together from blocks or small boxes, take turns adding one, and enjoy knocking it down.", "בנו יחד מגדל קטן מקוביות או מקופסאות קטנות, הוסיפו אחת בתורות, ותיהנו להפיל אותו."),
+    say: L("One on top... and another! Crash! Build again?", "אחת למעלה... ועוד אחת! בום! בונים שוב?"),
+    materials: L("Blocks or small boxes", "קוביות או קופסאות קטנות"),
+  }),
+  P("cdc-18m-6", "routine_building", 10, S.cdcPositiveParenting, {
+    do: L("Let your child join a real chore with their own small tool, like a cloth for wiping, while you work side by side.", "תנו לילד/ה להצטרף למטלה אמיתית עם כלי קטן משלו/ה, כמו מטלית לניגוב, בזמן שאתם עובדים יחד."),
+    say: L("You wipe this side, I'll wipe that side. Shiny table!", "את/ה מנגב/ת פה, ואני שם. איזה שולחן נוצץ!"),
+    materials: L("A small cloth", "מטלית קטנה"),
+  }),
+  P("cdc-18m-7", "child_directed_play", 10, S.aapPowerOfPlay, {
+    do: L("Sit on the floor and let your child choose a toy. Watch first, then copy what they do and describe it.", "שבו על הרצפה ותנו לילד/ה לבחור צעצוע. קודם צפו, אחר כך חקו את מה שהוא/היא עושה ותארו את זה."),
+    say: L("Your car goes vroom! My car goes vroom too.", "המכונית שלך נוסעת ברררום! גם שלי ברררום."),
+  }),
+  P("cdc-24m-6", "fine_motor_play", 5, S.aapPowerOfPlay, {
+    do: L("Give your child a container with a lid to open, with a small surprise inside, and let them work it out with both hands.", "תנו לילד/ה קופסה עם מכסה לפתוח, עם הפתעה קטנה בפנים, וחכו שיסתדר/תסתדר בשתי ידיים."),
+    say: L("What's inside? Hold the box... and open!", "מה יש בפנים? מחזיקים את הקופסה... ופותחים!"),
+    materials: L("A plastic tub with a lid and a small toy", "קופסת פלסטיק עם מכסה וצעצוע קטן"),
+  }),
+  P("cdc-24m-7", "child_directed_play", 5, S.aapPowerOfPlay, {
+    do: L("Let your child press safe switches with you, like the light or the lift button, and talk about what happens.", "תנו לילד/ה ללחוץ איתכם על מתגים בטוחים, כמו האור או הכפתור במעלית, ודברו על מה שקורה."),
+    say: L("You pressed it! The light is on. Now off!", "לחצת! האור דלק. ועכשיו כבה!"),
+  }),
+  P("cdc-24m-8", "child_directed_play", 10, S.aapPowerOfPlay, {
+    do: L("Set out a plate, a spoon and a doll, and join your child's game as a guest, letting them decide what happens.", "הניחו צלחת, כף ובובה, והצטרפו למשחק כאורחים, ותנו לילד/ה להחליט מה קורה."),
+    say: L("Is that dinner for Teddy? Can I have some too?", "זאת ארוחת ערב לדובי? אפשר גם לי קצת?"),
+    materials: L("A plate, a spoon and a doll or teddy", "צלחת, כף ובובה או דובי"),
+  }),
+  P("cdc-30m-6", "child_directed_play", 10, S.aapPowerOfPlay, {
+    do: L("When your child pretends, play along with the pretend object, like eating the 'cake' block, and ask about it.", "כשהילד/ה משחק/ת בכאילו, שחקו גם אתם עם החפץ המדומיין, כמו לאכול את ה'עוגה' מהקובייה, ושאלו עליו."),
+    say: L("Mmm, cake! What flavour is it? Can I have more?", "ממ, עוגה! איזה טעם יש לה? אפשר עוד?"),
+  }),
+  P("cdc-30m-7", "executive_function_game", 5, S.harvardExecutiveFunction, {
+    do: L("When your child gets stuck, like a toy out of reach, wait a moment before helping and ask what they could try.", "כשהילד/ה נתקע/ת, למשל צעצוע שלא מגיעים אליו, חכו רגע לפני שעוזרים ושאלו מה אפשר לנסות."),
+    say: L("Hmm, it's up high. What could you use to reach it?", "הממ, זה גבוה. במה אפשר להשתמש כדי להגיע?"),
+  }),
+  P("cdc-30m-8", "executive_function_game", 5, S.harvardExecutiveFunction, {
+    do: L("Turn a small task into a two-step silly mission, like 'touch the door, then jump', and swap so they give you one.", "הפכו משימה קטנה לשליחות מצחיקה בשני שלבים, כמו 'לגעת בדלת ואז לקפוץ', ואז החליפו תפקידים."),
+    say: L("Touch your nose, then spin around! Now give me one!", "לגעת באף ואז להסתובב! עכשיו תורך לתת לי."),
+  }),
+  P("cdc-30m-9", "joint_attention", 5, S.cdcMilestones, {
+    do: L("Name colours in passing during the day, like the red cup or the yellow bus, without quizzing your child.", "תנו שמות לצבעים במהלך היום, כמו הכוס האדומה או האוטובוס הצהוב, בלי לבחון את הילד/ה."),
+    say: L("Look, a yellow bus! Yellow like your boots.", "תראה/י, אוטובוס צהוב! צהוב כמו המגפיים שלך."),
+  }),
 ];
 
 /* ───────────────────────────── helpers ───────────────────────────── */
