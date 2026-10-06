@@ -95,6 +95,47 @@ describe("ShelfPage — the suggestion block", () => {
     }
   });
 
+  it("P5-LOOP c2 r1: the empty line promises only what renders — no Notice card, no 'one thing to notice' (EN + HE)", () => {
+    for (const lang of ["en", "he"] as const) {
+      const noNotice = text(render({ lang, count: 0, withNotice: false }));
+      expect(noNotice).toContain(translate(lang, "elev.shelfJournal.page.empty.bodyTry"));
+      expect(noNotice).not.toMatch(lang === "en" ? /one thing to notice/i : /לשים לב/);
+      const both = render({ lang, count: 0 });
+      expect(text(both)).toContain(translate(lang, "elev.shelfJournal.page.empty.body"));
+      expect(both).toContain('data-testid="notice-card"');
+      const noticeOnly = text(render({ lang, count: 0, withPractice: false }));
+      expect(noticeOnly).toContain(translate(lang, "elev.shelfJournal.page.empty.bodyNotice"));
+      expect(noticeOnly).not.toMatch(lang === "en" ? /thing to try/i : /לנסות/);
+      const neither = text(render({ lang, count: 0, withPractice: false, withNotice: false }));
+      expect(neither).toContain(translate(lang, "elev.shelfJournal.page.empty.lead"));
+      expect(neither).not.toMatch(lang === "en" ? /thing to try|thing to notice/i : /לנסות|לשים לב/);
+    }
+  });
+
+  it("P5-LOOP c2 r1: the coach wash is the caption row's own block; the H2 starts below it on white (no absolute h-14 band)", () => {
+    const html = render();
+    expect(html).toMatch(/data-testid="shelf-practice-caption"[^>]*style="background:var\(--arbor-coach-grad\)/);
+    const cap = html.slice(html.indexOf('data-testid="shelf-practice-caption"'));
+    expect(cap.indexOf("</p>")).toBeLessThan(cap.indexOf("<h2"));
+    const src = readFileSync(path.resolve(__dirname, "ShelfPage.tsx"), "utf8");
+    expect(src).not.toMatch(/absolute inset-x-0 top-0 h-14/);
+    expect(src).toMatch(/<div className="px-4 pb-4 pt-3">\s*<h2/);
+  });
+
+  it("B-LOOP-NEW-1d: the latest entry in the parent's words leads 'On this shelf' (44 px, clay-dim rule, day caption) and is not repeated below", () => {
+    for (const lang of ["en", "he"] as const) {
+      const html = render({ lang });
+      const lead = html.match(/<button[^>]*data-testid="shelf-lead-quote"[^>]*>/)![0];
+      expect(lead).toMatch(/min-h-11/);
+      expect(html).toMatch(/border-s-2 ps-3 t-lg[^"]*" style="border-color:var\(--arbor-clay-dim\);font-family:var\(--font-editorial\);color:var\(--arbor-ink-soft\)"/);
+      expect(html.indexOf('id="shelf-entries-title"')).toBeLessThan(html.indexOf('data-testid="shelf-lead-quote"'));
+      expect(html.indexOf('data-testid="shelf-lead-quote"')).toBeLessThan(html.indexOf('data-testid="shelf-add-moment"'));
+      expect((text(html).match(/Said big ball at the park/g) || []).length).toBe(1);
+      expect(html).not.toContain('data-testid="shelf-entry"');
+      expect(text(html)).toContain("Yesterday");
+    }
+  });
+
   it("no practice → one quiet line, the stamp on the add row", () => {
     const html = render({ withPractice: false });
     expect(html).toContain('data-testid="shelf-no-practice"');
@@ -115,7 +156,7 @@ describe("ShelfPage — the suggestion block", () => {
   it("the entries are the caller's day groups (the parent's words lead), EN + HE chrome", () => {
     for (const lang of ["en", "he"] as const) {
       const html = render({ lang });
-      expect(text(html)).toContain("Said big ball at the park");
+      expect(text(html)).toContain("Said big ball at the park"); // (as the lead quote, B-LOOP-NEW-1d)
       expect(text(html)).toContain(translate(lang, "elev.shelfJournal.add", { shelf: translate(lang, "elev.shelves.words") }));
       expect(text(html)).toContain(translate(lang, "elev.shelfJournal.back"));
     }
