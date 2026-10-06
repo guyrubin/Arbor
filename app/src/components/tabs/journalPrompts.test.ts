@@ -19,7 +19,7 @@ const src = raw.replace(/\/\/[^\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
 describe("W2 2.6 JournalTab prompt mount", () => {
   it("uses the shared promptBank rotation (same API as PromptCaptureCard's caller)", () => {
     expect(src).toContain('from "../../lib/promptBank"');
-    expect(src).toContain("dailyPromptKeys({ ageYears: childProfile.age, childId: childProfile.id");
+    expect(src).toContain("dailyPromptKeys({ ageYears: ageYearsOf(childProfile), childId: childProfile.id");
   });
 
   // W2-ASKJB critic r1 (journal P1 G1, lane-ASKJB.md:324): the capture triad
@@ -59,6 +59,6 @@ describe("W2 2.6 JournalTab prompt mount", () => {
   });
 
   it("tracks journal_prompt_tap with the child's band", () => {
-    expect(src).toContain('track("journal_prompt_tap", { band: bandForAge(childProfile.age) })');
+    expect(src).toContain('track("journal_prompt_tap", { band: bandForAge(ageYearsOf(childProfile)) })');
   });
 });

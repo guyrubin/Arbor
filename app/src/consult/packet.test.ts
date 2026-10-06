@@ -50,7 +50,7 @@ const base: BuildPacketInput = {
 
 describe("buildConsultPacket", () => {
   it("formats infant and mixed-year ages from a minimal export profile", () => {
-    for (const [ageMonths, label] of [[9, "9 months"], [15, "1 year 3 months"], [60, "5 years"]] as const) {
+    for (const [ageMonths, label] of [[9, "9 months"], [15, "15 months"], [35, "35 months"], [60, "5 years"]] as const) {
       const packet = buildConsultPacket({
         ...base,
         profile: { name: "Tali", age: Math.floor(ageMonths / 12), ageMonths, languages: [] },

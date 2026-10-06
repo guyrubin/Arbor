@@ -220,8 +220,16 @@ describe("ENG-07 — whyLineFor is built from real inputs", () => {
     for (const lang of ["en", "he"] as const) {
       expect(translate(lang, "today.intent.why.prompt", { age: 4 })).not.toMatch(/goal|interest|moment|מטרות|תחומי עניין|רגע/i);
     }
+    // B-INF-10: the rendered key names the child's OWN age ("Leni at 22 months"), never "for N-year-olds".
+    for (const lang of ["en", "he"] as const) {
+      const line = translate(lang, "elev.ages.today.whyPrompt", { name: "Leni", age: lang === "en" ? "22 months" : "22 חודשים" });
+      expect(line).toContain("Leni");
+      expect(line).toMatch(/22/);
+      expect(line).not.toMatch(/year-olds|goal|interest|moment|מטרות|תחומי עניין|רגע/i);
+    }
     const src = read("components/tabs/OverviewTab.tsx");
-    expect(src).toMatch(/whyLine=\{todayChoice\.kind === "prompt" \? t\("today\.intent\.why\.prompt", \{ age: ageYearsFromProfile\(childProfile\) \}\) : undefined\}/);
+    expect(src).toMatch(/whyLine=\{todayChoice\.kind === "prompt" \? t\("elev\.ages\.today\.whyPrompt", \{ name: firstName, age: ageText \}\) : undefined\}/);
+    expect(src).toMatch(/const ageText = formatChildAge\(childProfile, t\);/);
     expect(src).not.toContain("whyLine={focusWhy}");
   });
 

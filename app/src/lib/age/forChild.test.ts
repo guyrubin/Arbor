@@ -13,6 +13,7 @@ import {
   fits,
   fitsChild,
   fitsMonths,
+  fitsYears,
   isUnderThree,
   rangeOfNotation,
   stageFor,
@@ -122,6 +123,22 @@ describe("B-INF-10 · fits reads each legacy notation", () => {
     expect(fits(["toddlers"], leni)).toBe(false);
     expect(fits(["1-2", "soon"], leni)).toBe(false);
     expect(fitsMonths(["1-2"], null)).toBe(false);
+  });
+  it("a band expands to every year it covers: the 60m child fits cards tagged 4-6, 5-5, 3-7 and 2-5", () => {
+    for (const tag of ["4-6", "5-5", "3-7", "2-5", "5+"]) expect(fits([tag], dylan), tag).toBe(true);
+    for (const tag of ["6-8", "1-2", "0-4"]) expect(fits([tag], dylan), tag).toBe(false);
+    // the school band spans three years, so it fits a card for any of them
+    for (const tag of ["6-6", "7-9", "8-12"]) expect(fits([tag], seven), tag).toBe(true);
+  });
+  it("fitsYears (Learn's year-keyed age): the child's whole year, exact; slack widens the card", () => {
+    expect(fitsYears(4, 3, 6)).toBe(true);
+    expect(fitsYears(6, 3, 6)).toBe(true);
+    expect(fitsYears(7, 3, 6)).toBe(false);
+    expect(fitsYears(7, 3, 6, 1)).toBe(true);
+    expect(fitsYears(10, 3, 6, 1)).toBe(false);
+    expect(fitsYears(1, 2, 6)).toBe(false);
+    expect(fitsYears(99, 2, 12)).toBe(false);
+    expect(fitsYears(null, 2, 6)).toBe(false);
   });
   it("months and child forms agree with the band form", () => {
     expect(fitsMonths(["1-2"], 22)).toBe(true);

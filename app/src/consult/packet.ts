@@ -159,7 +159,7 @@ function resolveVar(v: PacketVar, lang: UiLang): string | number {
     const parts = v.list.map((x) => String(resolveVar(x, lang)));
     return joinList(parts, lang, v.join);
   }
-  if ("ageMonths" in v) return formatAgeMonths(v.ageMonths, (k, vars) => translate(lang, k, vars));
+  if ("ageMonths" in v) return formatAgeMonths(v.ageMonths, (k, vars) => translate(lang, k, vars), { precise: true });
   if ("momentType" in v) return behaviorTypeLabel(v.momentType, (k) => translate(lang, k), "full");
   if ("monthOf" in v) return factMonthLabel(v.monthOf, lang);
   if ("dayOf" in v) return readerDay(v.dayOf, lang);
@@ -572,12 +572,12 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
     profile.languages.length
       ? {
           id: "about-basics",
-          text: `${profile.name}, ${formatChildAge(profile)}, speaks ${profile.languages.join(" and ")}.`,
+          text: `${profile.name}, ${formatChildAge(profile, undefined, undefined, { precise: true })}, speaks ${profile.languages.join(" and ")}.`,
           // W2-CAREPRO r1: the gendered verb comes from the profile, never "מדבר/ת".
           textKey: profile.gender === "boy" || profile.gender === "girl" ? `elev.packet.item.basicsLangs.${profile.gender}` : "elev.packet.item.basicsLangs",
           vars: { ...basicsVars, languages: { list: profile.languages.map((l) => ({ languageName: l })), join: "and" } },
         }
-      : { id: "about-basics", text: `${profile.name}, ${formatChildAge(profile)}.`, textKey: "elev.packet.item.basics", vars: basicsVars },
+      : { id: "about-basics", text: `${profile.name}, ${formatChildAge(profile, undefined, undefined, { precise: true })}.`, textKey: "elev.packet.item.basics", vars: basicsVars },
   ];
   // B-CAREPRO-33: a dated setting says when the parent last confirmed it.
   const settingAsOf = profile.factsAsOf?.schoolContext;

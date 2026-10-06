@@ -48,6 +48,12 @@ describe("B-INF-10 · the switcher prints months under three, years from three",
     expect(formatAgeMonths(95)).toBe("7 years");
     expect(formatAgeMonths(22, tFor("he"))).toBe("22 חודשים");
     expect(formatChildAge({ age: undefined as unknown as number })).toBe("");
+    // { precise: true } (the packet a clinician reads) adds months from three only
+    expect(formatAgeMonths(40, undefined, { precise: true })).toBe("3 years 4 months");
+    expect(formatAgeMonths(37, undefined, { precise: true })).toBe("3 years 1 month");
+    expect(formatAgeMonths(60, undefined, { precise: true })).toBe("5 years");
+    expect(formatAgeMonths(15, undefined, { precise: true })).toBe("15 months");
+    expect(formatAgeMonths(40)).toBe("3 years");
   });
 
   it("the switcher, Today's header, Profile and the packet all read lib/age/format", () => {

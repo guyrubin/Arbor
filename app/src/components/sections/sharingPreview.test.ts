@@ -150,6 +150,7 @@ describe("LC-17 · the preview IS the recipient's view — same INPUT, not just 
   it("the age in the packet is derived from the record, not from the stale legacy year", () => {
     const about = buildSharedScopePacket(["report_therapist"], true, input).sections.find((s) => s.id === "about");
     expect(about).toBeTruthy();
+    // B-INF-10: the packet a clinician reads passes { precise: true } — years + months from three.
     expect(about!.items[0].text).toContain("3 years 4 months");
   });
 

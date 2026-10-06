@@ -183,13 +183,18 @@ export function fitsChild(content: AgeTagged, child: AgedChild | null | undefine
 
 /**
  * `fits` for a legacy whole-years age against inclusive whole-year bounds
- * (LearnCard `ageMin`/`ageMax`): the band of the year's first month, so a
- * year-keyed selector filters through the same band logic. `slackYears`
- * widens the content window (a ranking's "near" ring). Null age → false.
+ * (LearnCard `ageMin`/`ageMax`). A year-keyed age is only known to the year,
+ * so the child's span is that whole year [Y·12, Y·12+12) — read through the
+ * same notation table as `fits` (a school-age canonical band spans three
+ * years and would widen a year window). `slackYears` widens the content
+ * window (a ranking's "near" ring). Null age → false.
  */
 export function fitsYears(ageYears: number | null | undefined, minYears: number, maxYears: number, slackYears = 0): boolean {
   if (typeof ageYears !== "number" || !Number.isFinite(ageYears)) return false;
-  return fitsMonths([yearsNotation(Math.max(0, minYears - slackYears), maxYears + slackYears)], Math.max(0, ageYears) * 12);
+  const ranges = rangesOf([yearsNotation(Math.max(0, minYears - slackYears), maxYears + slackYears)]);
+  if (!ranges) return false;
+  const from = Math.max(0, Math.floor(ageYears)) * 12;
+  return ranges.some(([min, max]) => min < from + 12 && max > from);
 }
 
 /** Inclusive whole-year bounds (LearnCard `ageMin`/`ageMax`, story `ageRange`) as a notation. */
