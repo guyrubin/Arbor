@@ -119,12 +119,12 @@ describe("B-TODAY-19 · addMoment stores the photo (unit)", () => {
     expect(log).toMatchObject({
       behaviorType: MOMENT_BEHAVIOR_TYPE,
       trigger: "Built a tower",
-      intensity: 1,
       resolved: true,
       photoAttachment: "data:image/jpeg;base64,AAA",
       promptKey: "elev.prompt.toddler.1",
       timestamp: now.toISOString(),
     });
+    expect("intensity" in log!).toBe(false); // B-DATA-09: a moment stores no intensity
   });
 
   it("a plain moment carries no photo or prompt keys at all (never undefined)", () => {

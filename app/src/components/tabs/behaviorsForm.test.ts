@@ -105,8 +105,11 @@ describe("OBJ-BEH-03 · a Moment is not graded", () => {
 
   it("the list applies that predicate, and hides the meter and level for a Moment", () => {
     expect(BEH).toMatch(/intensityFilter !== "all" && \(!isIncidentType\(l\.behaviorType\) \|\| l\.intensity !== Number\(intensityFilter\)\)/);
-    expect(BEH).toMatch(/\{isIncidentType\(log\.behaviorType\) && <span className="hidden min-\[520px\]:inline-flex"><IntensityMeter/);
-    expect(BEH).toMatch(/\{isIncidentType\(log\.behaviorType\) && <span[^\n]*beh\.level/);
+    // B-DATA-09: the row's colour-coded IntensityMeter is a verdict
+    // (REVIEW-PRODUCTION §6) — its mount is gone; the level pill renders only
+    // for an incident with a recorded number.
+    expect(BEH).not.toMatch(/<IntensityMeter\b/);
+    expect(BEH).toMatch(/\{isIncidentType\(log\.behaviorType\) && typeof log\.intensity === "number" && <span[^\n]*beh\.level/);
   });
 
   it("NEGATIVE CONTROL: the pre-fix predicate matched a Moment stored at 3", () => {
