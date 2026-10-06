@@ -107,20 +107,24 @@ describe("GP-12 — the answer chips are tappable", () => {
 });
 
 describe("GP-11 — the intro no longer grades the last check", () => {
-  it("a previous elevated check reads 'worth a conversation', never 'flagged'", async () => {
+  // B-CAREPRO-45: the last check is a saved set of answers — never a grade,
+  // never a count of areas, never a reassurance; the same line either way.
+  it("a previous check with a 'not yet' reads 'answers saved', never 'flagged' or a count", async () => {
     state.items = [{
       id: "s1", answeredAt: "2026-08-20T10:00:00.000Z", elevated: true,
       watchAreas: [{ domain: "language_communication" }], domains: [],
     }];
     const html = await render();
-    expect(html).toContain("1 area worth a conversation");
+    expect(html).toContain("answers saved");
     expect(html).not.toContain("screen.last.flagged");
+    expect(html).not.toContain("1 area worth a conversation");
   });
 
-  it("NEGATIVE CONTROL: the calm branch is untouched", async () => {
+  it("NEGATIVE CONTROL: a check with no 'not yet' reads the same saved line — no 'no area to talk over'", async () => {
     state.items = [{ id: "s1", answeredAt: "2026-08-20T10:00:00.000Z", elevated: false, watchAreas: [], domains: [] }];
     const html = await render();
-    expect(html).toContain("screen.last.calm");
+    expect(html).toContain("answers saved");
+    expect(html).not.toContain("screen.last.calm");
   });
 });
 
@@ -184,9 +188,11 @@ describe("GP-11 / GP-34 — the result screen has somewhere to go", () => {
     const fs = await import("node:fs");
     const src = fs.readFileSync(new URL("./Screening.tsx", import.meta.url), "utf8");
     const resultBranch = src.slice(src.indexOf('phase === "result"'));
-    // GP-11: a calm result now offers a next move.
-    expect(resultBranch).toContain("!result.elevated");
+    // GP-11: every result offers a next move (B-CAREPRO-45: no longer gated
+    // on a "calm" verdict — the play / record doors show for every result).
+    expect(resultBranch).not.toContain("!result.elevated");
     expect(resultBranch).toContain('data-testid="screen-calm-next"');
+    expect(resultBranch).toContain('data-testid="screen-saved"');
     // GP-34: the watch offers render, and choosing one books the re-check.
     expect(resultBranch).toContain('data-testid="screen-watch-offers"');
     expect(src).toContain("if (!reminderDueAt) remind();");
@@ -229,12 +235,17 @@ describe("B-GROWTH-17 — one Consult action, pre-filled with the areas", () => 
     const fn = /const prepareForVisit = [\s\S]*?\r?\n  \};/.exec(src)?.[0] ?? "";
     expect(fn).toContain("requestConsultPrefill({ reason: visitPrefillReason(watchAreas, t) });");
     expect(fn).toContain('setActiveTab("consult");');
-    const start = src.indexOf("{result.elevated && (");
+    // B-CAREPRO-45: the door is the quiet "worth a conversation" line, shown
+    // only when an answer is "not yet", prefilled with those areas.
+    const start = src.indexOf("{notYetAreas.length > 0 && (");
+    expect(start).toBeGreaterThan(-1);
     const elevated = src.slice(start, src.indexOf("</button>", start) + "</button>".length);
     expect((elevated.match(/<button/g) ?? []).length).toBe(1);
-    // …and the elevated block closes right after that one button
-    expect(src.slice(start + elevated.length).trimStart().startsWith(")}")).toBe(true);
-    expect(elevated).toContain("prepareForVisit(result.watchAreas)");
+    // …and the block closes right after that one button's line
+    expect(src.slice(start + elevated.length).trimStart().startsWith("</p>")).toBe(true);
+    expect(src.slice(start + elevated.length).trimStart().slice("</p>".length).trimStart().startsWith(")}")).toBe(true);
+    expect(elevated).toContain("prepareForVisit(notYetAreas)");
+    expect(src).not.toContain("{result.elevated && (");
   });
 
   it("the retired keys are gone in both languages; the new ones resolve", async () => {

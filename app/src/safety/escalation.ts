@@ -53,7 +53,7 @@ export const escalationCategories: {
     label: "abuse, violence, neglect, or unsafe home concern",
     resources: [
       "If a child is in immediate danger, call **112** (EU / mobile in Israel), **100** (Israel police) or **911** (US) now.",
-      "- 🇮🇱 Israel — Ministry of Welfare hotline (family violence, children at risk): **118** (24/7, free) · Police child protection: **100** · online child protection (Lametayel/105): **105**",
+      "- 🇮🇱 Israel — Ministry of Welfare hotline (family violence and child protection): **118** (24/7, free) · Police child protection: **100** · online child protection (Lametayel/105): **105**",
       "- 🇳🇱 Netherlands — Veilig Thuis (abuse & domestic violence): **0800-2000** (free, 24/7)",
       "- 🇧🇪 Belgium — **1712** (violence & abuse, NL) · SOS Enfants (FR)",
       "- 🇺🇸 US — Childhelp National Child Abuse Hotline: **1-800-422-4453**",
