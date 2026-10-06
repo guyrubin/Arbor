@@ -16,6 +16,7 @@ import {
 } from "./milestoneData";
 import { HE_MILESTONE_TEXT } from "./i18nElevation/milestoneCatalogue";
 import { CLINICAL_DIAGNOSIS_TERMS_HE, findClinicalDiagnosisTerm } from "./clinicalScan";
+import { HE_VERDICT_WORDS as HE_VERDICT_WORDS_SHARED } from "./milestoneHeRules";
 import { buildTimeline, signalDetail, signalMeta, signalTitle } from "./signalTimeline";
 import type { Milestone } from "../types";
 
@@ -40,9 +41,9 @@ const FIELDS: MilestoneTextField[] = ["title", "desc", "looks"];
 const tHe = (key: string, vars?: Record<string, string | number>) => translate("he", key, vars);
 const tEn = (key: string, vars?: Record<string, string | number>) => translate("en", key, vars);
 const LATIN = /[A-Za-z]/;
-/** Verdict / norm words a parent must never read about their child. Substrings
- *  (Hebrew glues particles to the word). */
-const HE_VERDICT_WORDS = ["מאחר", "תקין", "מפגר", "בפיגור", "בקצב", "אמור", "אמורה", "נורמלי", "אחוזון", "בסיכון", "%"];
+/** Verdict / norm words a parent must never read about their child — ONE list
+ *  (lib/milestoneHeRules), shared with the native-review import (B-LOOP-02). */
+const HE_VERDICT_WORDS = [...HE_VERDICT_WORDS_SHARED];
 
 describe("B-GROWTH-11 — catalogue coverage (both languages, keyed by stable id)", () => {
   it("measures the catalogue: 117 CDC + 6 ASHA = 123 rows (B-LOOP-01 retired the 10 unsourced Arbor rows), all with HE", () => {
