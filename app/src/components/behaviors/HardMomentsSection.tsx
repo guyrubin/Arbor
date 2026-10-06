@@ -12,6 +12,9 @@ import { hardMomentAgeFit, explainsEmptyHardMoments } from "../../content/hardMo
 import HardMomentAgeNotice from "./HardMomentAgeNotice";
 import { hardMomentPilotText } from "../../content/hardMomentPilotText";
 import { ageMonthsFromProfile } from "../../lib/childAge";
+import { useAuth } from "../../context/AuthContext";
+import { lastHeldFor } from "./hardMomentLastTime";
+import { LastTimeLead, SendWordsButton } from "./HardMomentWords";
 
 /** Renderable without a provider; also independently enforces the release policy. */
 export function HardMomentGuideContent({ card, context, childName, t }: {
@@ -87,6 +90,35 @@ export const RESTING_GUIDES = 3;
  * nothing logged yet — the first three available cards, never an empty shelf.
  * Pure so the count is a testable rule rather than a hand-counted render.
  */
+/** NEXTLEVEL critic r1 — the lead row on #/behaviors. The screen's one warm
+ *  moment: peach-soft, the Say-this sentence as the largest text in the
+ *  section (LastTimeLead), the guide's when / with-it line, and the text-only
+ *  send. Tapping it opens that guide. Rendered only with a held answer. */
+function HardMomentLastTimeRow({ card, at, childName, locale, onOpen }: {
+  card: HardMomentCard;
+  at: string;
+  childName: string;
+  locale: "en" | "he";
+  onOpen: () => void;
+}) {
+  const { t } = useLanguage();
+  const { user } = useAuth();
+  const parentFirst = (user?.displayName || t("nav.parent")).split(" ")[0];
+  return (
+    <div data-testid="hm-last-time-row" className="min-w-0 rounded-[var(--r-lg)] p-5" style={{ background: "var(--arbor-peach-soft)" }}>
+      <button type="button" data-testid="hm-last-time-open" onClick={onOpen} className="block min-h-11 w-full min-w-0 text-start">
+        <LastTimeLead card={card} childName={childName} at={at} locale={locale} t={t} />
+        <p className="mt-2 t-sm leading-snug" style={{ color: "var(--arbor-muted)" }}>
+          <bdi>{t("hm.send.when", { when: locText(card.title, locale) })}</bdi>{" · "}<bdi>{t("hm.send.with", { doNow: locText(card.doNow, locale) })}</bdi>
+        </p>
+      </button>
+      <div className="mt-3">
+        <SendWordsButton card={card} locale={locale} parentName={parentFirst} childName={childName} t={t} />
+      </div>
+    </div>
+  );
+}
+
 export function restingGuides<T>(available: T[], matched: T[]): T[] {
   return (matched.length ? matched : available).slice(0, RESTING_GUIDES);
 }
@@ -96,7 +128,7 @@ export default function HardMomentsSection() {
   // B-ASKJB-31: a shelf card opens the ONE "Hard moment now" sheet on that
   // card (openHardMomentNow). The shelf's own modal — and its prompt seed —
   // are gone: "Talk it through" now hands Ask a reference card, never a seed.
-  const { childProfile, behaviorLogs, openHardMomentNow } = useArbor();
+  const { childProfile, behaviorLogs, openHardMomentNow, actionLoop } = useArbor();
   const { t, uiLang } = useLanguage();
   const [category, setCategory] = useState<HardMomentCategory | "all">("all");
   // TJB-21: the shelf opened as the whole catalogue — 22 tiles, 2,025 px between
@@ -128,7 +160,17 @@ export default function HardMomentsSection() {
     cards, context.now, context.ageMonths, locale,
   );
   const featured = restingGuides(cards, matched);
-  const visible = expanded ? all : featured;
+  /* NEXTLEVEL critic r1 (B-ASKJB-33 on #/behaviors): when the parent answered
+     "held the plan" for a guide, the section LEADS with that remembered
+     sentence (lastHeldFor — the same reader the sheet uses), and that guide
+     sorts first in the shelf. Newest held answer wins; nothing renders
+     without one. */
+  const held = cards
+    .map((card) => ({ card, at: lastHeldFor(card, actionLoop ?? [])?.at ?? "" }))
+    .filter((x) => x.at)
+    .sort((a, b) => b.at.localeCompare(a.at))[0] ?? null;
+  const ordered = (list: HardMomentCard[]) => (held ? [held.card, ...list.filter((c) => c.id !== held.card.id)] : list);
+  const visible = expanded ? ordered(all) : ordered(featured).slice(0, Math.max(featured.length, 1));
 
   // WAVE-G · THE AGE GAP — an empty list caused by the child's AGE explains
   // itself; the guides are written for a bounded range and the gate is
@@ -168,6 +210,9 @@ export default function HardMomentsSection() {
           </button>
         ))}
       </div>
+      )}
+      {held && (
+        <HardMomentLastTimeRow card={held.card} at={held.at} childName={childFirst} locale={locale} onOpen={() => openHardMomentNow(held.card.id)} />
       )}
       {!expanded && matched.length > 0 && (
         <p className="text-xs font-bold" style={{ color: "var(--arbor-green-ink)" }}>{t("elev.closeloop.hm.matched")}</p>

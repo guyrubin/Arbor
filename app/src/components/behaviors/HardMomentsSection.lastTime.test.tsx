@@ -142,3 +142,32 @@ describe("B-ASKJB-33 — the two-tap ask", () => {
     expect(carry).toMatch(/entry\.source === "hard-moment" \? \([\s\S]{0,140}<HeldPlanAsk row=\{entry\} via="carry"/);
   });
 });
+
+/* NEXTLEVEL critic r1 (behaviors P0): the remembered sentence leads #/behaviors
+   too — not only the global sheet. Source pin (no jsdom; the section needs
+   the full provider stack). */
+describe("NEXTLEVEL r1 — #/behaviors leads with 'Last time, this helped'", () => {
+  const SEC = fs.readFileSync(path.resolve(__dirname, "HardMomentsSection.tsx"), "utf8");
+  it("the section reads lastHeldFor over its cards (newest held answer) and renders the lead row ABOVE the tiles", () => {
+    expect(SEC).toContain("lastHeldFor(card, actionLoop ?? [])");
+    expect(SEC).toMatch(/\.sort\(\(a, b\) => b\.at\.localeCompare\(a\.at\)\)\[0\]/);
+    const use = SEC.indexOf("<HardMomentLastTimeRow card={held.card}");
+    expect(use).toBeGreaterThan(-1);
+    expect(use).toBeLessThan(SEC.indexOf('data-testid="hard-moment-tiles"'));
+    expect(SEC).toContain("onOpen={() => openHardMomentNow(held.card.id)}");
+    const fn = SEC.slice(SEC.indexOf("function HardMomentLastTimeRow"), SEC.indexOf("export function restingGuides"));
+    expect(fn).toContain('data-testid="hm-last-time-row"');
+    expect(fn).toContain("var(--arbor-peach-soft)");
+    expect(fn).toContain("<LastTimeLead card={card}");
+    expect(fn).toContain("<SendWordsButton card={card}");
+    expect(fn).toContain("min-h-11");
+  });
+  it("the held guide sorts first in the shelf, at rest and expanded", () => {
+    expect(SEC).toContain("const visible = expanded ? ordered(all) : ordered(featured).slice(0, Math.max(featured.length, 1));");
+  });
+  it("the lead sentence is the largest text in the section (LastTimeLead 20/22 px vs 16 px tile titles)", () => {
+    const words = fs.readFileSync(path.resolve(__dirname, "HardMomentWords.tsx"), "utf8");
+    expect(words).toMatch(/data-testid="hm-last-time-words"[\s\S]{0,80}text-\[20px\][^"]*sm:text-\[22px\]/);
+    expect(SEC).toMatch(/text-base font-bold[^"]*"[^>]*>\{locText\(card\.title, locale\)\}/);
+  });
+});

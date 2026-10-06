@@ -102,7 +102,8 @@ describe("TJB-21 — the guide shelf rests at three, and the door keeps every gu
     // `all` is every available card under the active category filter; the
     // resting branch is `featured`. Both branches feed the same grid, so no
     // guide can be reachable in one and unreachable in the other.
-    expect(source).toMatch(/const visible = expanded \? all : featured;/);
+    // NEXTLEVEL r1: both branches pass through ordered() (the held guide first).
+    expect(source).toMatch(/const visible = expanded \? ordered\(all\) : ordered\(featured\)/);
     expect(source).toMatch(/setExpanded\(\(v\) => !v\)/);
   });
 
