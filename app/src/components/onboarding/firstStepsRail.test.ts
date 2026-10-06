@@ -50,7 +50,10 @@ describe("B-TODAY-07 · rail order and capture target", () => {
     // B-TODAY-19 (07fea27): every capture door on Today goes through the ONE
     // in-place opener, startCapture(mode, promptKey?, hard?) — the same seam
     // the QuickCapture bar uses — which opens QuickLogModal on #/overview.
-    expect(overview).toContain('<FirstStepsRail onCapture={() => startCapture("text")} />');
+    // P5 r1 pass A5: the rail is superseded on Today by the B-LOOP-07 three
+    // blocks (practice · notice · tonight are the first steps); it is no
+    // longer mounted there. The capture seam it used stays pinned below.
+    expect(overview).not.toContain("<FirstStepsRail");
     expect(overview).toMatch(/const startCapture = \(mode: CaptureMode[^)]*\) => \{\s*setQuickLogMode\(mode\);[\s\S]{0,120}setQuickLogOpen\(true\);/);
     expect(overview).not.toMatch(/FirstStepsRail onCapture=\{\(\) => setActiveTab\(/);
   });

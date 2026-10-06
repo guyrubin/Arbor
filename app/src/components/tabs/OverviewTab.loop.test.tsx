@@ -62,9 +62,13 @@ describe("OverviewTab — three blocks and one door (source pins)", () => {
     expect(OV).toContain("<TonightFlow");
     expect(OV).toMatch(/<details data-module-disclosure="today-more" data-testid="today-door"(?![^>]*\bopen\b)/);
     const door = OV.slice(OV.indexOf('data-testid="today-door"'), OV.indexOf("</details>"));
-    for (const tok of ["<WhatChanged", "today-door-hard", "today-door-week", "today-door-play", "<LifecycleMomentCard", "<FirstStepsRail", "<ArborNoticedCard", "<CompanionOfferSlot", "<FamilyOfferLines", "<TodayActionLoop"]) {
+    // P5 r1 pass A5 (option b): lines only, plus the ONE proactive slot, the
+    // clinical watch signal and the sibling lines; no lifecycle card, no rail,
+    // no step card (TodayStepLine is its line).
+    for (const tok of ["<WhatChanged", "today-door-hard", "today-door-week", "today-door-play", "<TodayStepLine", "<ArborNoticedCard", "<CompanionOfferSlot", "<FamilyOfferLines"]) {
       expect(door, tok).toContain(tok);
     }
+    for (const tok of ["<LifecycleMomentCard", "<FirstStepsRail", "<TodayActionLoop"]) expect(OV, tok).not.toContain(tok);
     expect(door).toContain("changed.lines.slice(0, 3)");
   });
 

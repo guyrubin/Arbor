@@ -392,7 +392,10 @@ describe("ENG-24 — Today mounts the honest anchor, and only the honest one", (
   });
 
   it("an accepted step from Ask keeps its loop behind the door; the chain order stays pinned for its importers", () => {
-    expect(OVERVIEW).toMatch(/\{activeTodayAction && <TodayActionLoop \/>\}/);
+    // P5 r1 pass A5: the accepted step is ONE line in the door (TodayStepLine
+    // reads activeTodayAction and writes through recordTodayOutcome).
+    const door = OVERVIEW.slice(OVERVIEW.indexOf('data-testid="today-door"'), OVERVIEW.indexOf("</details>"));
+    expect(door).toContain("<TodayStepLine />");
     const chain = stripComments(read("chooseTodayAction.ts"));
     const at = (s: string) => chain.indexOf(s);
     expect(at("input.hasActiveAction")).toBeLessThan(at("input.hasWeekAnchorRecap"));

@@ -46,7 +46,9 @@ describe("TODAY-2/CODEX-1 — one loop, not three stacked widgets", () => {
     // P5 design r1 P0-1: the slot's stamp sits on its answers (one literal).
     expect(overview).toContain('const primaryStamp = { "data-primary-move": "do-practice" } as const;');
     expect(overview).toContain('stampMove={firstBlock === "practice" ? primaryMoveId : undefined}');
-    expect(count(overview, /<TodayActionLoop/g)).toBe(1);
+    // P5 r1 pass A5: an accepted step is ONE line in the door (TodayStepLine).
+    expect(count(overview, /<TodayActionLoop/g)).toBe(0);
+    expect(count(overview, /<TodayStepLine/g)).toBe(1);
     expect(count(overview, /<TodayRecommendation/g)).toBe(0);
     expect(count(overview, /<PromptCaptureCard/g)).toBe(0);
     expect(count(overview, /<PracticeCard/g)).toBe(1);
@@ -85,13 +87,13 @@ describe("TODAY-2/CODEX-1 — one loop, not three stacked widgets", () => {
     expect(overview).not.toMatch(/today-recent-context/);
   });
 
-  it("section order: capture → the three blocks → the door (What changed → the Ask step → rail → noticed)", () => {
+  it("section order: capture → the three blocks → the door (What changed → the step line → the offer → noticed)", () => {
     const order = [
       overview.indexOf("<QuickCaptureBar"),
       overview.indexOf("plan.order.map((id) => ("),
       overview.indexOf("<WhatChanged"),
-      overview.indexOf("<TodayActionLoop"),
-      overview.indexOf("<FirstStepsRail"),
+      overview.indexOf("<TodayStepLine"),
+      overview.indexOf("<CompanionOfferSlot"),
       overview.indexOf("<ArborNoticedCard"),
     ];
     for (const idx of order) expect(idx).toBeGreaterThan(-1);

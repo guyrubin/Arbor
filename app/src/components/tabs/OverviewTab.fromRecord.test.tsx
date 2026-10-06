@@ -126,7 +126,8 @@ describe("NEXTLEVEL critic r1 — a named topic, a joy opener, the chips are the
     // P5 design r1 P0-1: the stamp is on the first block's answers, not a wrapper.
     expect(SRC).toContain('const primaryStamp = { "data-primary-move": "do-practice" } as const;');
     expect(SRC).not.toContain('<div data-primary-move="do-practice"');
-    expect(SRC).toContain("{railWould && <FirstStepsRail");
+    // P5 r1 pass A5: the rail is superseded by the three blocks on Today.
+    expect(SRC).not.toContain("<FirstStepsRail");
   });
 });
 

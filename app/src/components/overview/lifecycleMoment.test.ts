@@ -72,18 +72,19 @@ describe("ENG-09 — the lifecycle module is wired into Today", () => {
     expect(overview).toMatch(/lifecycle/);
   });
 
-  it("mounts the card and the hook", () => {
-    expect(overview).toMatch(/import LifecycleMomentCard from "\.\.\/overview\/LifecycleMomentCard"/);
+  // P5 r1 pass A5 re-pin: the moment is ONE short note in the practice
+  // header (the pack), never a card in the door.
+  it("mounts the hook; the moment is the practice header's note, never a card", () => {
+    expect(overview).not.toMatch(/import LifecycleMomentCard/);
     expect(overview).toMatch(/useLifecycleMoment\(\{ previousVisitAt \}\)/);
-    expect((overview.match(/<LifecycleMomentCard/g) ?? []).length).toBe(1);
+    expect((overview.match(/<LifecycleMomentCard/g) ?? []).length).toBe(0);
+    expect(overview).toContain("headerNote={lifecycleNote}");
   });
 
   // B-LOOP-07 re-pin: the lifecycle moment is never a Today module any more —
   // it renders behind the "More for today" door, only when resolved.
-  it("renders only when a moment was resolved, behind the door (never a sibling module)", () => {
-    expect(overview).toMatch(/\{lifecycle\.moment && todayOffer\.offer\?\.kind === "what-changed" && \(\s*<div data-proactive="" data-offer-kind="what-changed">\s*<LifecycleMomentCard/);
-    const door = overview.slice(overview.indexOf('data-testid="today-door"'), overview.indexOf("</details>"));
-    expect(door).toContain("<LifecycleMomentCard");
+  it("renders only when a moment was resolved AND the coordinator chose it (never a sibling module)", () => {
+    expect(overview).toContain('const lifecycleKey = lifecycle.moment && todayOffer.offer?.kind === "what-changed" ? LIFECYCLE_NOTE[lifecycle.moment.kind] : undefined;');
     expect(overview).not.toMatch(/data-module="today-lifecycle"/);
   });
 
@@ -96,13 +97,12 @@ describe("ENG-09 — the lifecycle module is wired into Today", () => {
   // B-TODAY-21: the since-strip is gone; the ONE What-changed card sits in the
   // anchor ROW (the seat the dev-map card held), so the lifecycle moment now
   // renders after that row — still after the day's action (P1-A).
-  it("renders AFTER the day's blocks (P1-A) and after the door's What-changed lines", () => {
+  it("never leads the page: the note sits inside the first block's header; What changed stays behind the door", () => {
     const blocks = overview.indexOf("plan.order.map((id) => (");
     const changed = overview.indexOf("<WhatChanged");
-    const lifecycle = overview.indexOf("<LifecycleMomentCard");
     expect(blocks).toBeGreaterThan(-1);
     expect(changed).toBeGreaterThan(blocks);
-    expect(lifecycle).toBeGreaterThan(changed);
+    expect(overview.indexOf("headerNote={lifecycleNote}")).toBeGreaterThan(-1);
   });
 
   it("the budget has no lifecycle module id (todayModules v3: practice · notice · tonight · door)", () => {
