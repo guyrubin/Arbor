@@ -45,6 +45,7 @@ import { db, firebaseEnabled } from "./firebase";
 import { loadAttribution } from "./attribution";
 import { buildRollup, mergeRollup, type RetentionRollup } from "./retention";
 import { api } from "./api";
+import { hydrateAnalyticsOptOut, isAnalyticsOptedOut } from "./analyticsOptOut";
 
 /** Top-level collection. One document per family, id = uid. */
 export const RETENTION_ROLLUP_COLLECTION = "retentionRollups";
@@ -169,6 +170,9 @@ export async function upsertRetentionRollup(
   store: RetentionRollupStore | null,
   ctx: RetentionSessionContext,
 ): Promise<RetentionUpsertResult> {
+  // B-DATA-05: the analytics opt-out is checked FIRST — an opted-out account
+  // gets no rollup read and no rollup write.
+  if (isAnalyticsOptedOut(ctx.uid)) return "skipped";
   if (!store || !ctx.uid) return "skipped";
   try {
     const stored = await store.read(ctx.uid);
@@ -216,6 +220,17 @@ function localTzOffsetMinutes(): number {
  */
 export function recordRetentionSession(uid: string | undefined): void {
   if (!uid || uid === "local-sandbox") return;
+  // B-DATA-05: sign-in hydration of the per-account analytics opt-out — the
+  // user doc's `analyticsOptOut` is read FIRST, on every sign-in (before the
+  // once-per-session gate below), and sets lib/analyticsOptOut's flag; that
+  // also flushes or drops the events track() held on a fresh browser. The
+  // rollup is written only when the account is known to be opted in.
+  let optedOut: Promise<boolean | null>;
+  try {
+    optedOut = hydrateAnalyticsOptOut(uid).catch(() => null);
+  } catch {
+    optedOut = Promise.resolve(null);
+  }
   try {
     if (sessionStorage.getItem(SS_RETENTION_ROLLUP)) return;
     sessionStorage.setItem(SS_RETENTION_ROLLUP, new Date().toISOString());
@@ -237,11 +252,15 @@ export function recordRetentionSession(uid: string | undefined): void {
   // (comped / admin / @example.com → "internal"). A failed read leaves it
   // undefined, and nextRollupDoc keeps whatever tag is already stored.
   const write = (cohort: RetentionCohort | undefined) => {
-    try {
-      void upsertRetentionRollup(firestoreRollupStore(), { uid, at, tzOffsetMinutes, source, market, cohort });
-    } catch {
-      /* best effort */
-    }
+    void optedOut
+      .then((out) => {
+        // Opted out, or the preference could not be read: no rollup write.
+        if (out !== false) return;
+        return upsertRetentionRollup(firestoreRollupStore(), { uid, at, tzOffsetMinutes, source, market, cohort });
+      })
+      .catch(() => {
+        /* best effort */
+      });
   };
   try {
     void api

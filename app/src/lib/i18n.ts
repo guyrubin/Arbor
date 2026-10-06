@@ -2595,6 +2595,10 @@ export const en: Dict = {
   // non-English session (SOUND_LIBRARY targets are English-only; the machine
   // may never assert a "sounds different" verdict it provably cannot hear).
   "prac.speech.parentJudged": "Auto-listen works for English practice words only for now — you're the judge here: score how it sounded below.",
+  // B-DATA-05 — the analytics opt-out switch (components/privacy/AnalyticsOptOutRow).
+  "privacy.analytics.label": "Share how you use Arbor",
+  "privacy.analytics.body": "When on, Arbor records which parts of the app you use, on which days, and how you first found Arbor. Never what you write, and never your child's name or notes.",
+  "privacy.analytics.saveFailed": "Saved on this device. We could not reach your account, so it applies here for now.",
 };
 
 export const he: Dict = {
@@ -5038,6 +5042,10 @@ export const he: Dict = {
   "seed.langActivity": "עזרו לי להעביר היום את הפעילות \"{title}\" ב{target} עם {name} (גיל {age}). תנו לי תסריט בשלושה שלבים ודרך אחת להקל אם יש התנגדות.",
   // AIX-S2 — honest parent-judged copy when auto-listen is suppressed for HE.
   "prac.speech.parentJudged": "ההאזנה האוטומטית עובדת בינתיים רק עם מילות תרגול באנגלית, אז אתם השופטים — דרגו למטה איך זה נשמע.",
+  // B-DATA-05 — the analytics opt-out switch (components/privacy/AnalyticsOptOutRow).
+  "privacy.analytics.label": "שיתוף אופן השימוש בארבור",
+  "privacy.analytics.body": "כשהאפשרות פעילה, ארבור רושם באילו חלקים של האפליקציה השתמשתם, באילו ימים, ואיך הגעתם לארבור לראשונה. אף פעם לא את מה שכתבתם, ואף פעם לא את השם או ההערות על ילדכם.",
+  "privacy.analytics.saveFailed": "נשמר במכשיר הזה. לא הצלחנו להגיע לחשבון שלכם, ולכן ההגדרה חלה כאן בינתיים.",
 };
 
 // Elevation Wave seam: per-feature "elev.*" modules live in ./i18nElevation and

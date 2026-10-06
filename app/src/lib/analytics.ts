@@ -2,6 +2,7 @@ import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db, firebaseEnabled } from "./firebase";
 import { ATTRIBUTION_PROP_KEYS } from "./attribution";
 import { isKidModeActive } from "./kidModeGate";
+import { awaitsAnalyticsOptOutHydration, isAnalyticsOptedOut, onAnalyticsOptOutSettled } from "./analyticsOptOut";
 
 /**
  * Minimal first-party analytics. Writes events to the signed-in user's own
@@ -62,7 +63,47 @@ export function stripAttributionProps(props: Record<string, unknown>): Record<st
   return out;
 }
 
+/**
+ * B-DATA-05: events fired before the sign-in hydration has read an account's
+ * opt-out on a fresh browser (lib/analyticsOptOut) wait here — at most this
+ * many, the first ones kept — and are written once the account turns out to
+ * be opted in, or dropped when it is opted out. Props are merged (and the
+ * kid-mode gate applied) at FIRE time, so a buffered event cannot pick up
+ * attribution later.
+ */
+export const PRE_HYDRATION_EVENT_CAP = 20;
+
+type PendingEvent = { uid: string; event: string; props: Record<string, unknown> };
+const pendingEvents: PendingEvent[] = [];
+
+/** How many events are waiting on hydration (read by the guard). */
+export function pendingAnalyticsEventCount(): number {
+  return pendingEvents.length;
+}
+
+function writeEvent(uid: string, event: string, props: Record<string, unknown>) {
+  if (!firebaseEnabled || !db) return;
+  try {
+    void addDoc(collection(db, `users/${uid}/events`), { event, props, at: serverTimestamp() });
+  } catch {
+    /* ignore */
+  }
+}
+
+onAnalyticsOptOutSettled((uid, optedOut) => {
+  const waiting = pendingEvents.splice(0, pendingEvents.length);
+  for (const pending of waiting) {
+    if (pending.uid !== uid) pendingEvents.push(pending); // another account's: still waiting
+    else if (!optedOut) writeEvent(pending.uid, pending.event, pending.props);
+    // opted out: dropped, never written
+  }
+});
+
 export function track(event: string, props: Record<string, unknown> = {}) {
+  // B-DATA-05: the analytics opt-out is checked FIRST, before any other logic —
+  // an opted-out account writes nothing, in parent mode and in Kid Mode alike.
+  const uid = uidProvider();
+  if (isAnalyticsOptedOut(uid)) return;
   let merged: Record<string, unknown> = props;
   if (isKidModeActive()) {
     // Child-generated event: no attribution in, none out, tagged as kid-mode.
@@ -74,13 +115,13 @@ export function track(event: string, props: Record<string, unknown> = {}) {
       /* fall back to bare props */
     }
   }
-  const uid = uidProvider();
   if (firebaseEnabled && db && uid && uid !== "local-sandbox") {
-    try {
-      void addDoc(collection(db, `users/${uid}/events`), { event, props: merged, at: serverTimestamp() });
-    } catch {
-      /* ignore */
+    if (awaitsAnalyticsOptOutHydration(uid)) {
+      // B-DATA-05: fresh browser, preference not read yet — hold, never send.
+      if (pendingEvents.length < PRE_HYDRATION_EVENT_CAP) pendingEvents.push({ uid, event, props: merged });
+      return;
     }
+    writeEvent(uid, event, merged);
   } else if (import.meta.env.DEV) {
     // eslint-disable-next-line no-console
     console.debug("[track]", event, merged);
