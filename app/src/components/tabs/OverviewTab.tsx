@@ -7,26 +7,24 @@ import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import QuickCaptureBar from "../overview/QuickCaptureBar";
-import TodayActionLoop from "../overview/TodayActionLoop";
-import CompanionOfferSlot from "../overview/CompanionOfferSlot";
 import { bedtimeDoorOpen } from "../../lib/timeOfDay";
-import FamilyOfferLines from "../overview/FamilyOfferLines";
-import { useCompanionOffer } from "../overview/useCompanionOffer";
 import QuickLogModal from "../overview/QuickLogModal";
 import WhatChanged from "../overview/WhatChanged";
 import { composeWhatChanged, type WhatChangedLine } from "../overview/whatChangedEvents";
 import { firstsStorageKey, type FirstsState } from "../../lib/firsts";
 import { Avatar } from "../ui/Avatar";
 import { childPicture } from "../../lib/childPicture";
-import ArborNoticedCard from "../sections/ArborNoticedCard";
 import type { CaptureMode } from "../../context/ArborContext";
 import { useTodaysFocus } from "../../hooks/useTodaysFocus";
 import { useLastVisit } from "../../hooks/useLastVisit";
 import { predictRhythm } from "../../rhythm/predict";
 import { planToday } from "../overview/todayModules";
-import FirstStepsRail, { useFirstStepsRail } from "../onboarding/FirstStepsRail";
-import LifecycleMomentCard from "../overview/LifecycleMomentCard";
 import { useLifecycleMoment } from "../overview/useLifecycleMoment";
+import CompanionOfferSlot from "../overview/CompanionOfferSlot";
+import { useCompanionOffer } from "../overview/useCompanionOffer";
+import TodayStepLine from "../overview/TodayStepLine";
+import FamilyOfferLines from "../overview/FamilyOfferLines";
+import ArborNoticedCard from "../sections/ArborNoticedCard";
 import { useWeeklyRecap } from "../../hooks/useWeeklyRecap";
 import { track } from "../../lib/analytics";
 import { ageYearsOf, comparisonMonthsOf } from "../../lib/age/forChild";
@@ -65,10 +63,16 @@ const DAY = 86_400_000;
  *   3 · Tonight — before the evening door: ONE pointer line; after it: the
  *       three-question flow (B-LOOP-10) leads, the practice shows only its
  *       outcome strip, Notice follows.
- *   "More for today" — ONE collapsed door (chrome, never counted): what
- *       changed since you left (≤ 3 lines), an accepted step from Ask,
- *       hard-moment words, this week's letter, Daily Play, a lifecycle moment,
- *       the first steps, the watch signal, the family lines, the proactive offer.
+ *   "More for today" — ONE collapsed door (chrome, never counted), LINES
+ *       only (P5 r1 pass A5): what changed since you left (≤ 3 lines), then
+ *       hard-moment words · this week's letter · Daily Play · the ONE proactive
+ *       offer (B-AI-06 CompanionOfferSlot: ENG-12 carry-over, B-TODAY-18
+ *       resume / tomorrow reason) · an accepted step still open today as ONE
+ *       line with its two answers (TodayStepLine) · the watch signal
+ *       (ArborNoticedCard, clinical, no other home) · the sibling lines. A
+ *       lifecycle moment is a short note in the practice header; the first-
+ *       steps rail is superseded by the three blocks (REJECTIONS.md, P5-LOOP
+ *       session A, pass A5).
  *
  * todayModules.ts v3 (planToday) decides the ≤ 3 modules from their REAL
  * render conditions. chooseTodayAction is retired for Today (kept for its
@@ -81,7 +85,7 @@ export default function OverviewTab() {
   const {
     setActiveTab, milestones, checkedMilestones,
     behaviorLogs, childProfile,
-    playLogs, actionLoop, activeTodayAction, requestJournalFocus, approvedMemoryItems,
+    playLogs, actionLoop, requestJournalFocus, approvedMemoryItems,
     pendingCaptureMode, consumeCaptureRequest, openHardMomentNow,
     setMilestoneObservation, restoreMilestone, recordPracticeDose, removeTodayAction,
     addMoment,
@@ -318,13 +322,24 @@ export default function OverviewTab() {
     const at = new Date();
     return availableHardMomentCards({ now: at, ageMonths: ageMonthsFromProfile(childProfile, at), locale: lang }).length > 0;
   }, [childProfile, lang]);
+  // P5 r1 pass A5: a lifecycle moment is ONE short note inside the practice
+  // header (the pack), never a card in the door. Kinds whose title restates
+  // the age (welcome-back, age-band) add nothing the H1 does not say.
   const lifecycle = useLifecycleMoment({ previousVisitAt });
-  const railWould = useFirstStepsRail().visible;
+  const LIFECYCLE_NOTE: Partial<Record<string, string>> = {
+    birthday: "elev.lifecycle.birthday.title",
+    "first-week": "elev.lifecycle.week.title",
+    "first-month": "elev.lifecycle.month.title",
+    "first-moment": "elev.lifecycle.first.title",
+  };
   // B-AI-06: ONE proactive offer per open — the coordinator ranks the
-  // lifecycle moment with the carry-over ask, appointments and the cues.
+  // lifecycle moment with the carry-over ask, appointments and the cues
+  // (a "what-changed" winner renders as the header note, the slot stays empty).
   const todayOffer = useCompanionOffer("today", {
     whatChanged: lifecycle.moment ? { id: lifecycle.moment.kind } : null,
   });
+  const lifecycleKey = lifecycle.moment && todayOffer.offer?.kind === "what-changed" ? LIFECYCLE_NOTE[lifecycle.moment.kind] : undefined;
+  const lifecycleNote = lifecycleKey ? t(lifecycleKey, { name: firstName }) : null;
 
   // B-TODAY-28 / B-INF-10: the child leads — name · age · weekday + part of day.
   const hour = now.getHours();
@@ -375,6 +390,7 @@ export default function OverviewTab() {
       onUndo={dose ? () => removeTodayAction(dose.id) : undefined}
       quotes={quotes}
       whyReason={whyReason}
+      headerNote={lifecycleNote}
       stampMove={firstBlock === "practice" ? primaryMoveId : undefined}
     />
   ) : slotNotice ? (
@@ -516,24 +532,14 @@ export default function OverviewTab() {
                   onMore={() => setActiveTab("journal")}
                 />
               )}
-              {activeTodayAction && <TodayActionLoop />}
               {hardMomentTile && doorLine("today-door-hard", "favorite", t("elev.loop.door.hardMoment"), () => openHardMomentNow())}
               {weeklyRecap.currentReport && doorLine("today-door-week", "auto_stories", t("elev.loop.door.week"), () => setActiveTab("weekly"))}
               {doorLine("today-door-play", "sports_esports", t("elev.loop.door.play"), () => setActiveTab("daily-play"))}
-              {lifecycle.moment && todayOffer.offer?.kind === "what-changed" && (
-                <div data-proactive="" data-offer-kind="what-changed">
-                  <LifecycleMomentCard
-                    moment={lifecycle.moment}
-                    childName={firstName}
-                    onDismiss={lifecycle.dismiss}
-                    onSaveInterests={lifecycle.saveInterests}
-                    onCapture={() => startCapture("text")}
-                  />
-                </div>
-              )}
-              {railWould && <FirstStepsRail onCapture={() => startCapture("text")} />}
-              {!dayZero && <ArborNoticedCard />}
+              <TodayStepLine />
               <CompanionOfferSlot surface="today" offer={todayOffer.offer} controls={todayOffer} placement="under-step" />
+              {/* Kept (pass A5, Law 6): the hard-moment watch signal ("worth
+                  mentioning to your pediatrician") has no other home — clinical. */}
+              {!dayZero && <ArborNoticedCard />}
               <FamilyOfferLines activeChildId={childProfile.id} />
             </div>
           </details>

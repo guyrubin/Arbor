@@ -66,6 +66,8 @@ export const en: Record<string, string> = {
   "elev.loop.practice.whyEmpty": "Nothing on {name}'s {shelf} shelf yet this month, so today's small thing is for it.",
   "elev.loop.practice.whyFewest": "{shelf} has the fewest notes on {name}'s shelves this month, so today's small thing is for it.",
   "elev.loop.practice.didReceiptWords": "Noted on {name}'s {shelf} shelf, next to your words.",
+  // P5 r1 pass A5: an accepted step still open today, ONE line in the door.
+  "elev.loop.door.step": "Your step for today:",
   "elev.loop.practice.didIt": "Did it",
   "elev.loop.practice.notToday": "Not today",
   "elev.loop.practice.didReceipt": "Noted. Tonight Arbor asks how it went.",
@@ -169,6 +171,7 @@ export const he: Record<string, string> = {
   "elev.loop.practice.whyEmpty": "עדיין אין כלום במדף {shelf} של {name} החודש, אז הדבר הקטן של היום הוא בשבילו.",
   "elev.loop.practice.whyFewest": "במדף {shelf} יש הכי מעט רשומות מבין המדפים של {name} החודש, אז הדבר הקטן של היום הוא בשבילו.",
   "elev.loop.practice.didReceiptWords": "נרשם במדף {shelf} של {name}, ליד המילים שלכם.",
+  "elev.loop.door.step": "הצעד שלכם להיום:",
   "elev.loop.practice.didIt": "עשינו",
   "elev.loop.practice.notToday": "לא היום",
   "elev.loop.practice.didReceipt": "נרשם. בערב נשאל איך זה הלך.",
