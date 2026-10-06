@@ -76,7 +76,7 @@ describe("P1-NEXTLEVEL critic r2 (milestones · G0) — every Growth screen pass
       const fs = await import("node:fs");
       const path = await import("node:path");
       const src = fs.readFileSync(path.resolve(__dirname, "../components/tabs", file), "utf8");
-      const calls = src.match(/milestoneText\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\)/g) ?? [];
+      const calls: string[] = src.match(/milestoneText\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\)/g) ?? [];
       expect(calls.length).toBeGreaterThan(0);
       const bare = calls.filter((c) => c.split(",").length < 4);
       expect(bare).toEqual([]);
