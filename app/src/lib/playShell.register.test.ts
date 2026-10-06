@@ -65,6 +65,10 @@ const SHARED_ROUTE_FILES: Record<string, string> = {
  * one of them parent. It is off the list and now branches on `kidMode` itself.
  */
 const KID_ONLY_SURFACES: Record<string, string> = {
+  "components/kidmode/KidBookReaderView.tsx":
+    "B-BOOK release: mounted only by KidModeOverlay (the kid shell), when the child taps a library book on the kid home — no parent route mounts it",
+  "components/library/devBookRoute.tsx":
+    "B-BOOK: the DEV-only review route — main.tsx mounts it only when import.meta.env.DEV and ?book (pinned in devBookRoute.test); never in production",
   "components/ui/playkit.tsx":
     "the primitive itself — `PlayShell` declares the class, and `RegisterShell` is the only thing that mounts it (asserted below)",
   "components/kidmode/KidModeOverlay.tsx": "the Kid Mode shell; it IS the kid register",

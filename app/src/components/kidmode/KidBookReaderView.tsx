@@ -24,7 +24,7 @@ export default function KidBookReaderView({ bookId, onClose }: { bookId: string;
   const entry = entries.find((e) => e.book.id === bookId) ?? null;
   const folder = lang === "he" ? (heGender(childProfile.gender) === "f" ? "he-f" : "he-m") : "en";
   const [resolved, setResolved] = useState<ResolvedBookAssets | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [unavailable, setUnavailable] = useState(false);
   const doc = entry?.doc ?? null;
   useEffect(() => {
     if (!doc) return;
@@ -37,7 +37,7 @@ export default function KidBookReaderView({ bookId, onClose }: { bookId: string;
         if (live) setResolved(r);
         else r.revoke();
       })
-      .catch(() => live && setFailed(true));
+      .catch(() => live && setUnavailable(true));
     return () => {
       live = false;
       got?.revoke();
@@ -45,8 +45,8 @@ export default function KidBookReaderView({ bookId, onClose }: { bookId: string;
   }, [childProfile.id, doc, folder]);
   // A book that cannot open goes back home rather than showing a broken page.
   useEffect(() => {
-    if (failed) onClose();
-  }, [failed, onClose]);
+    if (unavailable) onClose();
+  }, [unavailable, onClose]);
   const child = useMemo(
     () => ({ id: childProfile.id, name: childProfile.name, gender: childProfile.gender, heroSheetId: doc?.sheetId ?? null }),
     [childProfile.id, childProfile.name, childProfile.gender, doc?.sheetId],
