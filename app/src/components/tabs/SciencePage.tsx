@@ -112,6 +112,12 @@ const SOURCE_ROWS: readonly CitationRowData[] = (() => {
 
 // ─── Section registry (ids double as analytics ids + DOM anchors) ─────────────
 const SECTION_IDS = ["how", "data", "signs", "not", "sources", "more"] as const;
+
+/* B-OCCL-05 (6 Oct): the route's ONE data-primary-move literal, spread on the
+   control that performs the move — the hub nav's FIRST section door — never
+   on the nav wrapper (y 678 EN at 375, under the capture dock). A static const
+   (or undefined), so whiteLabelContrast resolves it as a data attribute. */
+const EVIDENCE_STAMP = { "data-primary-move": "open-evidence" } as const;
 type SectionId = (typeof SECTION_IDS)[number];
 
 const SECTION_ICON: Record<SectionId, string> = {
@@ -288,8 +294,33 @@ export default function SciencePage() {
       {/* ── Spine — masterplan 1.5/3.3: the trust center is a spine surface. ── */}
       <SpineRibbon text={tt("elev.trust.spine")} tone="lav" icon="hub" testId="trust-spine-ribbon" />
 
+      {/* ── Hub quick-nav (Maytal frame 6: one listing, each row → section) ── */}
+      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+          marks a top-level sibling module (what moduleBudget counts);
+          `data-primary-move` marks the ONE control that performs the move
+          surfaceContract.ts declares for this route — B-OCCL-05: the nav's
+          first section door, not the nav wrapper. */}
+      <nav data-module="science-nav" aria-label={tt("elev.trust.title")} className="flex flex-wrap gap-2" data-testid="trust-hub-nav">
+        {SECTION_IDS.map((id) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => goSection(id)}
+            {...(id === SECTION_IDS[0] ? EVIDENCE_STAMP : undefined)}
+            data-testid={`trust-nav-${id}`}
+            className="relative inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[var(--t-xs)] font-bold transition active:scale-[0.97] motion-reduce:transition-none motion-reduce:transform-none before:absolute before:content-[''] before:-inset-y-2 before:inset-x-0"
+            style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}
+          >
+            <Icon name={SECTION_ICON[id]} size={14} />
+            {tt(`elev.trust.nav.${id}`)}
+          </button>
+        ))}
+      </nav>
+
       {/* ── FIREWALL: Approved disclaimer — VERBATIM, renders on load ───────── */}
-      {/* AP-060 gate: this disclaimer text is VERBATIM and must render on load (not behind a toggle). */}
+      {/* AP-060 gate: this disclaimer text is VERBATIM and must render on load (not behind a toggle).
+          B-OCCL-05 (6 Oct): it renders on load directly UNDER the hub nav —
+          above it (≈ 285 px at 375) it pushed the nav under the capture dock. */}
       <div
         className="rounded-2xl p-4 flex items-start gap-3"
         style={{ background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.22)" }}
@@ -302,27 +333,6 @@ export default function SciencePage() {
           {disclaimer}
         </p>
       </div>
-
-      {/* ── Hub quick-nav (Maytal frame 6: one listing, each row → section) ── */}
-      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
-          marks a top-level sibling module (what moduleBudget counts);
-          `data-primary-move` marks the ONE control that performs the move
-          surfaceContract.ts declares for this route. */}
-      <nav data-module="science-nav" data-primary-move="open-evidence" aria-label={tt("elev.trust.title")} className="flex flex-wrap gap-2" data-testid="trust-hub-nav">
-        {SECTION_IDS.map((id) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => goSection(id)}
-            data-testid={`trust-nav-${id}`}
-            className="relative inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[var(--t-xs)] font-bold transition active:scale-[0.97] motion-reduce:transition-none motion-reduce:transform-none before:absolute before:content-[''] before:-inset-y-2 before:inset-x-0"
-            style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}
-          >
-            <Icon name={SECTION_ICON[id]} size={14} />
-            {tt(`elev.trust.nav.${id}`)}
-          </button>
-        ))}
-      </nav>
 
       {/* ── 1 · How Arbor works (Maytal frame 2) ────────────────────────────── */}
       <div data-module="science-document" style={{ display: "contents" }}>
