@@ -21,7 +21,8 @@ export function practiceText(p: Practice, field: "do" | "say" | "materials", lan
 
 export interface PracticeCardProps {
   practice: Practice;
-  milestone: Milestone;
+  /** null for a shelf-level practice (B-LOOP-08 follow-up). */
+  milestone: Milestone | null;
   shelf: ShelfId;
   childName?: string;
   gender?: string | null;
@@ -68,7 +69,7 @@ export default function PracticeCard({
   const doText = practiceText(practice, "do", lang, gender);
   const sayText = practiceText(practice, "say", lang, gender);
   const materials = practiceText(practice, "materials", lang, gender);
-  const title = milestoneText(milestone, "title", t, { gender: gender ?? null });
+  const title = milestone ? milestoneText(milestone, "title", t, { gender: gender ?? null }) : "";
   const meta = [t("elev.loop.practice.minutes", { n: practice.minutes }), materials].filter(Boolean).join(" · ");
   return (
     <section
@@ -123,7 +124,7 @@ export default function PracticeCard({
         )}
         <p data-testid="practice-meta" className="mt-3 text-[13px]" style={{ color: "var(--arbor-muted)" }}>{meta}</p>
         <p data-testid="practice-why" className="mt-1 text-[14.5px] italic leading-snug" style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-editorial)" }}>
-          {t("elev.loop.practice.why", { shelf: shelfName, title, name: childName || t("today.record.childFallback") })}
+          {t(milestone ? "elev.loop.practice.why" : "elev.loop.practice.whyShelf", { shelf: shelfName, title, name: childName || t("today.record.childFallback") })}
         </p>
         {answered ? (
           <div className="mt-4 flex items-center gap-2">

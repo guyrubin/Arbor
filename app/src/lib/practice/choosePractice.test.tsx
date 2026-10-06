@@ -56,8 +56,23 @@ describe("choosePractice", () => {
     expect(candidates[candidates.length - 1].shelf === "words" || !candidates.slice(0, 2).some((c) => c.shelf === "words")).toBe(true);
     const pick = choosePractice(base())!;
     expect([candidates[0].practice.id, candidates[1].practice.id]).toContain(pick.practice.id);
-    expect(bandForAgeMonths(pick.milestone.ageMonths as number).months).toBeLessThanOrEqual(24);
-    expect(pick.practice.milestoneId).toBe(pick.milestone.id);
+    expect(bandForAgeMonths(pick.practice.ageMonths).months).toBeLessThanOrEqual(24);
+    if (pick.milestone) expect(pick.practice.milestoneId).toBe(pick.milestone.id);
+    else expect(pick.practice.milestoneId).toBeNull();
+  });
+
+  it("B-LOOP-08 follow-up: a shelf with no open milestone practice (Sleep) is served by a SHELF-LEVEL practice in the window", () => {
+    const candidates = practiceCandidates(base());
+    const sleep = candidates.find((c) => c.shelf === "sleep");
+    expect(sleep, "sleep (0 entries) has a shelf-level candidate at 26 months").toBeTruthy();
+    expect(sleep!.milestone).toBeNull();
+    expect(sleep!.practice.milestoneId).toBeNull();
+    expect(bandForAgeMonths(sleep!.practice.ageMonths).months).toBeLessThanOrEqual(24);
+    expect(candidates[0].shelf).toBe("sleep");
+    // and its dose row carries no milestone id
+    const row = practiceDoseEntry(sleep!, "did", "kid-1", "x", NOW);
+    expect("milestoneId" in row).toBe(false);
+    expect(row.shelf).toBe("sleep");
   });
 
   it("same input, same day → the same practice (a reload shows the same card)", () => {
@@ -79,8 +94,8 @@ describe("choosePractice", () => {
   });
 
   it('a shelf answered "not sure" today is skipped', () => {
-    const first = choosePractice(base())!;
-    const ms = catalogue().map((m) => (m.id === first.milestone.id ? { ...m, observationStatus: "not_sure" as const, observationUpdatedAt: NOW.toISOString() } : m));
+    const first = practiceCandidates(base()).find((c) => c.milestone)!;
+    const ms = catalogue().map((m) => (m.id === first.milestone!.id ? { ...m, observationStatus: "not_sure" as const, observationUpdatedAt: NOW.toISOString() } : m));
     expect(choosePractice(base({ milestones: ms }))!.shelf).not.toBe(first.shelf);
   });
 
@@ -105,10 +120,10 @@ describe("choosePractice", () => {
 });
 
 describe("the dose log (actionLoops, source practice)", () => {
-  const pick = choosePractice(base())!;
+  const pick = practiceCandidates(base()).find((c) => c.milestone)!;
   it('"Did it" writes ONE completed row without an outcome (tonight sets it); "Not today" closes with not_today', () => {
     const did = practiceDoseEntry(pick, "did", "kid-1", "Say this", NOW);
-    expect(did).toMatchObject({ id: practiceDoseId("kid-1", NOW), source: "practice", status: "completed", practiceId: pick.practice.id, milestoneId: pick.milestone.id, shelf: pick.shelf, recommendation: "Say this" });
+    expect(did).toMatchObject({ id: practiceDoseId("kid-1", NOW), source: "practice", status: "completed", practiceId: pick.practice.id, milestoneId: pick.milestone!.id, shelf: pick.shelf, recommendation: "Say this" });
     expect("outcome" in did).toBe(false);
     const no = practiceDoseEntry(pick, "not_today", "kid-1", "Say this", NOW);
     expect(no.outcome).toBe("not_today");

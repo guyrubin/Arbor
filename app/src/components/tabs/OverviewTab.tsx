@@ -379,7 +379,7 @@ export default function OverviewTab() {
         recordPracticeDose(tonightOutcomeEntry(row, outcome));
       }}
       onWhatHappened={(text) => {
-        if (pick) addMoment(text, { shelf: pick.shelf, milestoneId: pick.milestone.id });
+        if (pick) addMoment(text, { shelf: pick.shelf, ...(pick.milestone ? { milestoneId: pick.milestone.id } : {}) });
       }}
       dayQuestion={dayQuestion}
       onQuote={(text) => {

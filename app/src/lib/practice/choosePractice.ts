@@ -21,7 +21,7 @@
 import type { Milestone } from "../../types";
 import type { ActionLoopEntry } from "../../actionLoop/model";
 import type { Practice } from "../../content/practices";
-import { selectNextMilestones } from "../milestoneData";
+import { bandForAgeMonths, milestoneAgeWindow, selectNextMilestones } from "../milestoneData";
 import { dayKey } from "../../practice/signals";
 import { answeredToday } from "../milestones/observe";
 import { shelfOfMilestone, shelvesThinnestFirst, type ShelfCoverage } from "../milestones/selectByShelf";
@@ -29,7 +29,9 @@ import type { ShelfId } from "../shelves/registry";
 
 export interface PracticePick {
   practice: Practice;
-  milestone: Milestone;
+  /** The open milestone the practice serves; null for a SHELF-LEVEL practice
+   *  (B-LOOP-08 follow-up: Sleep and Family carry practices bound to the shelf). */
+  milestone: Milestone | null;
   shelf: ShelfId;
   /** "ai" when the focus route's practiceId (from the candidates) won. */
   via: "chooser" | "ai" | "today";
@@ -85,12 +87,18 @@ export function practiceCandidates(input: ChoosePracticeInput, limit = 6): Pract
   const recent = new Set(input.recentPracticeIds ?? []);
   const rested = restedShelves(input.milestones, input.today);
   const byMilestone = new Map<string, Practice[]>();
+  const shelfLevel = new Map<ShelfId, Practice[]>();
   for (const p of input.practices) {
     if (recent.has(p.id)) continue;
     if (input.candidateFilter && !input.candidateFilter(p)) continue;
-    // B-LOOP-08 follow-up: a shelf-level practice (milestoneId null) is legal
-    // but not milestone-bound; this chooser picks by milestone, so it skips it.
-    if (p.milestoneId === null) continue;
+    // B-LOOP-08 follow-up: a shelf-level practice (milestoneId null) is
+    // ranked below with its shelf, never through a milestone.
+    if (p.milestoneId === null) {
+      const list = shelfLevel.get(p.shelf) ?? [];
+      list.push(p);
+      shelfLevel.set(p.shelf, list);
+      continue;
+    }
     const list = byMilestone.get(p.milestoneId) ?? [];
     list.push(p);
     byMilestone.set(p.milestoneId, list);
@@ -105,12 +113,28 @@ export function practiceCandidates(input: ChoosePracticeInput, limit = 6): Pract
     firstByShelf.set(shelf, { milestone: m, practices });
   }
   const seed = `${input.childId}|${dayKey(input.today)}`;
+  // A shelf with no open milestone practice may still have a SHELF-LEVEL one
+  // whose own age anchor sits inside the child's window (never ahead of band).
+  const window = milestoneAgeWindow(input.comparisonMonths);
+  const shelfLevelFor = (shelf: ShelfId): Practice | null => {
+    if (rested.has(shelf)) return null;
+    const fits = (shelfLevel.get(shelf) ?? []).filter((p) => {
+      const band = bandForAgeMonths(p.ageMonths).months;
+      return band <= window.currentBandMonths && band >= window.earlierBandMonths;
+    });
+    return fits.length ? fits[hash(`${seed}|${shelf}`) % fits.length] : null;
+  };
   const out: PracticePick[] = [];
   for (const shelf of shelvesThinnestFirst(input.coverage)) {
     const hit = firstByShelf.get(shelf);
-    if (!hit) continue;
-    const practice = hit.practices[hash(`${seed}|${hit.milestone.id}`) % hit.practices.length];
-    out.push({ practice, milestone: hit.milestone, shelf, via: "chooser" });
+    if (hit) {
+      const practice = hit.practices[hash(`${seed}|${hit.milestone.id}`) % hit.practices.length];
+      out.push({ practice, milestone: hit.milestone, shelf, via: "chooser" });
+    } else {
+      const practice = shelfLevelFor(shelf);
+      if (!practice) continue;
+      out.push({ practice, milestone: null, shelf, via: "chooser" });
+    }
     if (out.length >= limit) break;
   }
   return out;
@@ -148,8 +172,8 @@ export function todaysCandidates(input: ChoosePracticeInput, limit = 6): Practic
 export function choosePractice(input: ChoosePracticeInput): PracticePick | null {
   if (input.todayPracticeId) {
     const practice = input.practices.find((p) => p.id === input.todayPracticeId);
-    const milestone = practice ? input.milestones.find((m) => m.id === practice.milestoneId) : undefined;
-    if (practice && milestone) return { practice, milestone, shelf: practice.shelf, via: "today" };
+    const milestone = practice?.milestoneId ? input.milestones.find((m) => m.id === practice.milestoneId) ?? null : null;
+    if (practice && (milestone || practice.milestoneId === null)) return { practice, milestone, shelf: practice.shelf, via: "today" };
   }
   const candidates = todaysCandidates(input);
   if (input.aiPracticeId) {
@@ -183,7 +207,7 @@ export function practiceDoseEntry(
     status: "completed",
     acceptedAt: iso,
     practiceId: pick.practice.id,
-    milestoneId: pick.milestone.id,
+    ...(pick.milestone ? { milestoneId: pick.milestone.id } : {}),
     shelf: pick.shelf,
     ...(answer === "not_today" ? { outcome: "not_today" as const, outcomeAt: iso } : {}),
   };
