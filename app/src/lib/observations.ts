@@ -103,8 +103,9 @@ export interface Observation {
   ageAtObservationMonths: number | null;
   pretermCorrected: boolean;
   /** B-LOOP-03 — the parent shelf, DERIVED at build time through `shelfOf`
-   *  (lib/shelves/registry). Unset only where the binding table has no rule
-   *  (a body-only record with no sleep/feeding signal) — never guessed. */
+   *  (lib/shelves/registry). Always set by `toObservations` (framer ruling
+   *  (d), 6 Oct: a body-only record files under "Body, food & growth");
+   *  optional only for hand-built observations outside the read model. */
   shelf?: ShelfId;
 }
 

@@ -22,9 +22,13 @@
  *   family   ← family
  * A multi-domain observation takes the FIRST non-body domain in registry
  * order after the sleep/food signals above. A record whose only domain is
- * `body` with no sleep/feeding signal has NO shelf (throws; the read model
- * leaves `shelf` unset) — that decision is the framer's (execution/
- * 2026-10-01--one-backlog/REJECTIONS.md, "W3A-B builder blocks (6 Oct)").
+ * `body` with no sleep/feeding signal (a body-only memory fact, a
+ * parent-added `health_sleep_feeding` milestone) files under the second body
+ * shelf, id `food`, named "Body, food & growth" / "גוף, אוכל וגדילה" —
+ * framer ruling option (d), 6 Oct (execution/2026-10-01--one-backlog/
+ * REJECTIONS.md, "W3A-B builder blocks (6 Oct)"): Sleep stays separate,
+ * nothing is ever off the shelves, no tenth shelf. Only a record with NO
+ * domain at all throws (the read model never produces one).
  * The pack's `sleepLogs` origin and "routines wind-down" do not exist in the
  * read model yet (lib/observations ObservationOrigin); they bind here when a
  * builder adds them.
@@ -114,8 +118,13 @@ const BEHAVIOR_SHELF: Readonly<Record<string, ShelfId>> = {
 
 const CATALOGUE_BY_ID: ReadonlyMap<string, Milestone> = new Map(ALL_MILESTONES.map((m) => [m.id, m]));
 
+/** The shelf a body-only record files under (framer ruling (d), 6 Oct): the
+ *  second body shelf, "Body, food & growth". */
+export const BODY_ONLY_SHELF: ShelfId = "food";
+
 const firstNonBody = (domains: readonly DomainId[]): ShelfId | null => {
   for (const d of domains) if (d !== "body") return DOMAIN_SHELF[d];
+  if (domains.includes("body")) return BODY_ONLY_SHELF;
   return null;
 };
 

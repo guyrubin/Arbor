@@ -3,15 +3,15 @@ import { translate } from "../i18n";
 import { ALL_MILESTONES } from "../milestoneData";
 import { DOMAIN_IDS, DEVELOPMENTAL_DOMAIN_IDS, VOCAB_IDS, toDomains, type DomainId } from "../domains/registry";
 import { toObservations, type Observation, type ObservationOrigin, type ObservationValue } from "../observations";
-import { SHELVES, SHELF_IDS, milestoneShelf, shelfDef, shelfLabel, shelfOf, shelvesOfDomain, type ShelfId } from "./registry";
+import { BODY_ONLY_SHELF, SHELVES, SHELF_IDS, milestoneShelf, shelfDef, shelfLabel, shelfOf, shelvesOfDomain, type ShelfId } from "./registry";
 
 /**
  * B-LOOP-03 — nine parent shelves over the eight registry domains.
  *  1) shape: every domain has ≥1 shelf, every shelf exactly one domain, body two.
  *  2) shelfOf, TABLE-DRIVEN over every ObservationOrigin × domain set that
  *     lib/observations.ts actually produces (read from its builders): each
- *     resolves, or — the two body-only cases the binding table does not cover
- *     — THROWS (never a silent default).
+ *     resolves — ZERO throws; the body-only cases (no sleep/feeding signal)
+ *     file under `food` = "Body, food & growth" (framer ruling (d), 6 Oct).
  *  3) milestoneShelf over every catalogue row; the tagged rows.
  *  4) EN + HE labels for all nine.
  */
@@ -21,11 +21,12 @@ type Case = { origin: ObservationOrigin; domains: DomainId[]; subArea?: string; 
 
 const DOMAIN_SHELF: Record<DomainId, ShelfId | "throws"> = {
   talking: "words", moving: "moving", hands: "hands", thinking: "school",
-  playing: "play", feelings: "feelings", body: "throws", family: "family",
+  playing: "play", feelings: "feelings", body: "food", family: "family",
 };
 const firstNonBody = (doms: DomainId[]): ShelfId | "throws" => {
   const d = doms.find((x) => x !== "body");
-  return d ? DOMAIN_SHELF[d] : "throws";
+  if (d) return DOMAIN_SHELF[d];
+  return doms.includes("body") ? "food" : "throws";
 };
 
 /** Every origin × domain combination the read model's builders produce. */
@@ -114,7 +115,7 @@ describe("B-LOOP-03 — shelfOf, every ObservationOrigin × domain the read mode
     expect(new Set(cases.map((c) => c.origin))).toEqual(new Set(origins));
   });
 
-  it("every combination resolves to its bound shelf, or throws where the binding table has no rule", () => {
+  it("every combination resolves to its bound shelf (zero throws)", () => {
     const failures: string[] = [];
     cases.forEach((c, i) => {
       const o = { id: `case-${i}`, origin: c.origin, domains: c.domains, value: c.value, ...(c.subArea ? { subArea: c.subArea } : {}) };
@@ -129,13 +130,15 @@ describe("B-LOOP-03 — shelfOf, every ObservationOrigin × domain the read mode
     expect(failures).toEqual([]);
   });
 
-  it("only body-only records without a sleep/feeding signal throw (the framer's decision, REJECTIONS.md)", () => {
-    const throwing = cases.filter((c) => c.expect === "throws");
-    expect(throwing.length).toBeGreaterThan(0);
-    for (const c of throwing) expect(c.domains, c.origin).toEqual(["body"]);
+  it("nothing is off the shelves: no case expects a throw; body-only records file under Body, food & growth (framer ruling (d), REJECTIONS.md)", () => {
+    expect(cases.filter((c) => c.expect === "throws")).toEqual([]);
+    const bodyOnly = cases.filter((c) => c.domains.length === 1 && c.domains[0] === "body" && !c.subArea && c.value.type !== "moment");
+    expect(bodyOnly.map((c) => c.origin).sort()).toEqual(["keepsakes", "memory", "milestones"]);
+    for (const c of bodyOnly) expect(c.expect, c.origin).toBe("food");
+    expect(BODY_ONLY_SHELF).toBe("food");
   });
 
-  it("the read model derives the shelf at build time and never guesses one", () => {
+  it("the read model derives the shelf at build time and always sets one", () => {
     const at = "2026-10-01T10:00:00.000Z";
     const obs = toObservations({
       behaviorLogs: [{ id: "b1", behaviorType: "Sleep Meltdown", timestamp: at } as never],
@@ -148,9 +151,10 @@ describe("B-LOOP-03 — shelfOf, every ObservationOrigin × domain the read mode
     expect(by("growthEntries:g1").shelf).toBe("food");
     expect(by("langObs:w1").shelf).toBe("words");
     expect(by("memory:f2").shelf).toBe("family");
-    // body-only fact: still on the record (domain counts unchanged), no shelf
-    expect(by("memory:f1")).toBeDefined();
-    expect("shelf" in by("memory:f1")).toBe(false);
+    // body-only fact: on the record (domain counts unchanged) AND on Body, food & growth
+    expect(by("memory:f1").domains).toEqual(["body"]);
+    expect(by("memory:f1").shelf).toBe("food");
+    for (const o of obs) expect(o.shelf, o.id).toBeDefined();
   });
 });
 
@@ -159,18 +163,18 @@ describe("B-LOOP-03 — milestoneShelf over the catalogue", () => {
     for (const m of ALL_MILESTONES) expect(SHELF_IDS, m.id).toContain(milestoneShelf(m));
   });
 
-  it("the tagged rows: six feeding rows on Food & growth, no sleep row in the catalogue", () => {
+  it("the tagged rows: six feeding rows on Body, food & growth, no sleep row in the catalogue", () => {
     const tagged = ALL_MILESTONES.filter((m) => m.tags?.length).map((m) => `${m.id}:${m.tags!.join(",")}`);
     expect(tagged.sort()).toEqual(["asha-feed-12m:feeding", "asha-feed-24m:feeding", "asha-feed-9m:feeding", "cdc-15m-8:feeding", "cdc-18m-9:feeding", "cdc-60m-12:feeding"]);
     for (const m of ALL_MILESTONES.filter((x) => x.tags?.includes("feeding"))) expect(milestoneShelf(m), m.id).toBe("food");
   });
 
-  it("a stored catalogue doc without tags resolves by id; a parent-added row by its own tags/domain; an untagged body row throws", () => {
+  it("a stored catalogue doc without tags resolves by id; a parent-added row by its own tags/domain; an untagged body row → Body, food & growth", () => {
     const { tags: _drop, ...stored } = ALL_MILESTONES.find((m) => m.id === "asha-feed-9m")!;
     expect(milestoneShelf(stored)).toBe("food");
     expect(milestoneShelf({ id: "ms-1", domain: "language_communication", custom: true })).toBe("words");
     expect(milestoneShelf({ id: "ms-2", domain: "health_sleep_feeding", custom: true, tags: ["sleep"] })).toBe("sleep");
-    expect(() => milestoneShelf({ id: "ms-3", domain: "health_sleep_feeding", custom: true })).toThrow(/no shelf/);
+    expect(milestoneShelf({ id: "ms-3", domain: "health_sleep_feeding", custom: true })).toBe("food");
   });
 });
 
@@ -178,8 +182,8 @@ describe("B-LOOP-03 — labels EN + HE", () => {
   const tEn = (k: string) => translate("en", k);
   const tHe = (k: string) => translate("he", k);
   it("all nine resolve in both languages, as the pack prints them", () => {
-    expect(SHELF_IDS.map((id) => shelfLabel(id, tEn))).toEqual(["Sleep", "Food & growth", "Words", "Feelings", "Play & friends", "Moving", "Hands & senses", "School & thinking", "Family"]);
-    expect(SHELF_IDS.map((id) => shelfLabel(id, tHe))).toEqual(["שינה", "אוכל וגדילה", "מילים", "רגשות", "משחק וחברים", "תנועה", "ידיים וחושים", "גן, בית ספר וחשיבה", "משפחה"]);
+    expect(SHELF_IDS.map((id) => shelfLabel(id, tEn))).toEqual(["Sleep", "Body, food & growth", "Words", "Feelings", "Play & friends", "Moving", "Hands & senses", "School & thinking", "Family"]);
+    expect(SHELF_IDS.map((id) => shelfLabel(id, tHe))).toEqual(["שינה", "גוף, אוכל וגדילה", "מילים", "רגשות", "משחק וחברים", "תנועה", "ידיים וחושים", "גן, בית ספר וחשיבה", "משפחה"]);
     for (const id of SHELF_IDS) expect(shelfLabel(id, tHe), id).not.toMatch(/[A-Za-z]/);
   });
 });

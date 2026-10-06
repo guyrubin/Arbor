@@ -7,7 +7,7 @@
 
 export const en: Record<string, string> = {
   "elev.shelves.sleep": "Sleep",
-  "elev.shelves.food": "Food & growth",
+  "elev.shelves.food": "Body, food & growth",
   "elev.shelves.words": "Words",
   "elev.shelves.feelings": "Feelings",
   "elev.shelves.play": "Play & friends",
@@ -19,7 +19,7 @@ export const en: Record<string, string> = {
 
 export const he: Record<string, string> = {
   "elev.shelves.sleep": "שינה",
-  "elev.shelves.food": "אוכל וגדילה",
+  "elev.shelves.food": "גוף, אוכל וגדילה",
   "elev.shelves.words": "מילים",
   "elev.shelves.feelings": "רגשות",
   "elev.shelves.play": "משחק וחברים",
