@@ -206,6 +206,12 @@ export function buildWordsText(p: WordsPayload): string {
   return [p.sentence, p.whenLine, p.withLine, p.closing].map((s) => s.trim()).filter(Boolean).join("\n");
 }
 
+/** B-GROWTH-37: plain lines (a month of kept quotes, each with its day) and
+ *  one closing line — newline-joined, nothing else (no URL, no code). */
+export function buildLinesText(lines: readonly string[], closing: string): string {
+  return [...lines, closing].map((s) => s.trim()).filter(Boolean).join("\n");
+}
+
 export type WordsShareResult = "shared" | "copied" | "cancelled" | "error";
 
 /**

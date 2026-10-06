@@ -58,6 +58,18 @@ export const en: Dict = {
   "elev.words.today.meta": "Said on {date}",
 
   ...g("elev.words.ledger.add", "Keep something {name} said"),
+
+  // B-GROWTH-37 — the month page (#/language?view=said)
+  "elev.words.page.door": "This month's page — print or send",
+  "elev.words.page.posterDoor": "The first-words page — print or send",
+  "elev.words.page.back": "Back",
+  "elev.words.page.months": "Month",
+  "elev.words.page.posterTitle": "{name}'s first words",
+  "elev.words.page.empty": "Nothing kept this month yet.",
+  "elev.words.page.print": "Print",
+  "elev.words.page.send": "Send to…",
+  "elev.words.page.copied": "Copied — paste it into a message.",
+  "elev.words.page.closing": "From Arbor — {parent}'s notes about {name}",
 };
 
 export const he: Dict = {
@@ -98,4 +110,15 @@ export const he: Dict = {
   "elev.words.today.meta": "נאמר ב-{date}",
 
   ...g("elev.words.ledger.add", "לשמור משהו ש{name} אמר/ה", "לשמור משהו ש{name} אמר", "לשמור משהו ש{name} אמרה"),
+
+  "elev.words.page.door": "הדף של החודש — להדפסה או לשליחה",
+  "elev.words.page.posterDoor": "דף המילים הראשונות — להדפסה או לשליחה",
+  "elev.words.page.back": "חזרה",
+  "elev.words.page.months": "חודש",
+  "elev.words.page.posterTitle": "המילים הראשונות של {name}",
+  "elev.words.page.empty": "החודש עוד לא נשמר כלום.",
+  "elev.words.page.print": "להדפסה",
+  "elev.words.page.send": "לשלוח ל…",
+  "elev.words.page.copied": "הועתק — אפשר להדביק בהודעה.",
+  "elev.words.page.closing": "מתוך ארבור — הרשימות של {parent} על {name}",
 };

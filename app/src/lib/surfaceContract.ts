@@ -210,6 +210,12 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
     primaryMove: "log-language-moment", moduleBudget: 3, demotionTarget: "disclosure",
     // B-GROWTH-15: the words logged here (`langObs`) fold into the timeline
     // as one "{count} new words in {language}" moment per day per language.
+    // B-GROWTH-36: from age 3 the same move keeps a `quote` keepsake ("Things
+    // {name} said", Tonight's kind) — the under-3 words stay `langObs`.
+    // B-GROWTH-37: `?view=said` is the month page (a mode of this route, two
+    // modules: the sheet + Print / Send to…); it carries no stamp because it
+    // is a read-and-send view of what the move kept. A `language/said` route
+    // id needs lib/routes.ts (REJECTIONS P2-WORDS B-GROWTH-37).
     threadWrite: "langObs",
   },
   {

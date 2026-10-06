@@ -13,6 +13,8 @@ import { ageMonthsOf, isUnderThree } from "../../lib/age/forChild";
 import { genderedKey } from "../../lib/today/fromRecord";
 import { actNowKey, sayBackFor } from "../../lib/language/sayBack";
 import { SaidCapture, SaidList, SayBackBlock } from "../growth/ThingsSaid";
+import SaidPage from "../growth/SaidPage";
+import { goToRoute, useHashQuery } from "../../hooks/useHashQuery";
 
 /**
  * Language Lab — multilingual development support, driven by the child's own
@@ -50,6 +52,9 @@ export default function LanguageLabTab() {
   const underThree = isUnderThree(childProfile);
   const [kept, setKept] = useState<{ text: string; language: string | null } | null>(null);
   const sayBack = kept ? sayBackFor({ text: kept.text, language: kept.language, languages: langs, months }) : null;
+  // B-GROWTH-37: #/language?view=said is the month page (a mode of this
+  // route; lib/routes.ts holds no sub-routes — REJECTIONS P2-WORDS).
+  const view = useHashQuery().get("view");
 
   // Read-only over the SAME parent-logged phrase observations the vocabulary
   // log below writes ("langObs") — a count per language, nothing derived.
@@ -103,6 +108,8 @@ export default function LanguageLabTab() {
     },
   ];
 
+  if (view === "said") return <SaidPage />;
+
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1180px] space-y-5 sm:space-y-6">
       <PageHeader
@@ -151,6 +158,15 @@ export default function LanguageLabTab() {
               ideas moved into the disclosure below. */}
           <div data-module="language-words">
             {underThree ? <WordsList /> : <SaidList childId={childProfile.id} first={first} gender={gender} />}
+            <button
+              type="button"
+              data-testid="said-page-door"
+              onClick={() => goToRoute("language", { view: "said" })}
+              className="mt-2 inline-flex min-h-[44px] items-center text-[14px] underline underline-offset-4"
+              style={{ color: "var(--arbor-ink-soft)" }}
+            >
+              {t(underThree ? "elev.words.page.posterDoor" : "elev.words.page.door")}
+            </button>
           </div>
 
           {/* Language profile — roles in the home + moments logged. One tone,

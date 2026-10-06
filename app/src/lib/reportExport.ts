@@ -288,8 +288,8 @@ function renderPrintableHtml(doc: ReportDoc, childName: string, lang: UiLang = "
     const items = Array.isArray(s.body) ? s.body.filter(Boolean) : [s.body];
     const body = items.length
       ? (Array.isArray(s.body)
-          ? `<ul>${items.map((i) => `<li>${esc(String(i))}</li>`).join("")}</ul>`
-          : `<p>${esc(String(items[0]))}</p>`)
+          ? `<ul>${items.map((i) => `<li dir="auto">${esc(String(i))}</li>`).join("")}</ul>`
+          : `<p dir="auto">${esc(String(items[0]))}</p>`)
       : `<p class="muted">—</p>`;
     return `<section><h2>${esc(s.heading)}</h2>${body}</section>`;
   }).join("");
