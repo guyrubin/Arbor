@@ -38,6 +38,7 @@ import { declineMilestoneProposal } from "../../lib/milestones/proposalLedger";
 import type { MilestoneCaptureProposal } from "../../lib/captureProposals";
 import { milestoneText } from "../../lib/milestoneData";
 import { comparisonMonthsOf } from "../../lib/age/forChild";
+import type { ShelfId } from "../../lib/shelves/registry";
 
 /** Lightweight behavior log capture that can be opened from anywhere (e.g. Overview).
  *
@@ -57,6 +58,7 @@ export default function QuickLogModal({
   hardMomentNow = false,
   review,
   editLogId,
+  shelf,
 }: {
   open: boolean;
   onClose: () => void;
@@ -75,6 +77,10 @@ export default function QuickLogModal({
    *  (openCaptureSheet ran startEditLog); Save updates the row through
    *  handleAddLog's editingLogId branch. */
   editLogId?: string;
+  /** B-LOOP-11: opened from a journal shelf page — the plain moment is filed
+   *  on that shelf (addMoment's shelf seam); a milestone proposal still asks
+   *  the parent to confirm. */
+  shelf?: ShelfId;
 }) {
   const {
     newLogType,
@@ -424,6 +430,7 @@ export default function QuickLogModal({
     const written = addMoment(words, {
       ...(photo ? { photoAttachment: photo } : {}),
       ...(promptKey ? { promptKey } : {}),
+      ...(shelf ? { shelf } : {}),
     });
     if (!written) {
       toast(t("beh.toast.fillTrigger"), "error");

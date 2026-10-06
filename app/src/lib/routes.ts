@@ -161,8 +161,40 @@ export const RETIRED_ROUTES: Readonly<Record<string, ActiveTab>> = {
   routines: "plans",
 };
 
+/**
+ * B-LOOP-11 — a hash may carry a QUERY after the route id: the journal's
+ * shelf page (`#/journal?shelf=sleep`) and professional view
+ * (`#/journal?view=pro`) are the same route with a parameter, so Back
+ * returns to the grid. Until this helper a `?query` made the whole key an
+ * unknown route and the parent landed on Today. `splitHash` is the ONE
+ * place the hash is cut into the route key and its query; `resolveRouteId`
+ * and `resolveHash` resolve the key only, and a surface reads its own
+ * parameters through `hashQuery`.
+ */
+export function splitHash(raw: string): { key: string; query: URLSearchParams } {
+  const bare = (raw || "").replace(/^#\/?/, "");
+  const at = bare.indexOf("?");
+  const path = at >= 0 ? bare.slice(0, at) : bare;
+  const qs = at >= 0 ? bare.slice(at + 1) : "";
+  return { key: path.replace(/\/+$/, "").trim(), query: new URLSearchParams(qs) };
+}
+
+/** The query of a hash (`#/journal?shelf=sleep` → shelf=sleep); empty when none. */
+export function hashQuery(raw: string): URLSearchParams {
+  return splitHash(raw).query;
+}
+
+/** The hash for a route plus parameters, without the leading `#`
+ *  (`/journal?shelf=sleep`); empty or absent values are left out. */
+export function routeHash(route: ActiveTab, params: Record<string, string | null | undefined> = {}): string {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) if (v) q.set(k, v);
+  const qs = q.toString();
+  return `/${route}${qs ? `?${qs}` : ""}`;
+}
+
 export function resolveRouteId(raw: string): ActiveTab | null {
-  const key = raw.replace(/^#\/?/, "").replace(/\/+$/, "").trim();
+  const key = splitHash(raw).key;
   if (!key) return null;
   // A retired hash outranks its own (still-typed) route id — see above.
   const retired = RETIRED_ROUTES[key.toLowerCase()];
@@ -203,7 +235,7 @@ export type HashResolution = { tab: ActiveTab; unknown: boolean };
 export const FALLBACK_ROUTE: ActiveTab = "overview";
 
 export function resolveHash(raw: string, stored?: string | null): HashResolution {
-  const key = raw.replace(/^#\/?/, "").replace(/\/+$/, "").trim();
+  const key = splitHash(raw).key;
   if (!key) {
     // A parent whose last session ended on a retired leaf is returned to the
     // hub that absorbed it, not to a screen that no longer has a door.

@@ -35,6 +35,7 @@ import { isIncidentType } from "../../content/behaviorTaxonomy";
 import { useObservations } from "../../hooks/useObservations";
 import { PRACTICES } from "../../content/practices";
 import { choosePractice, practiceDoseEntry, recentPracticeIds, todayDose, type PracticeAnswer } from "../../lib/practice/choosePractice";
+import { readTodayPin } from "../../lib/practice/todayPin";
 import { shelfCoverage } from "../../lib/milestones/selectByShelf";
 import { selectNoticeWithProgram, type NoticeProgram } from "../../lib/programs/notice";
 import { activeProgramWeek } from "../../lib/programs/enrolment";
@@ -186,7 +187,9 @@ export default function OverviewTab() {
       coverage,
       today: now,
       recentPracticeIds: recentPracticeIds(actionLoop, childProfile.id, now),
-      todayPracticeId: dose?.practiceId,
+      // B-LOOP-11: "Try it today" on a journal shelf page pins the practice
+      // for the day (lib/practice/todayPin); a dose row always wins.
+      todayPracticeId: dose?.practiceId ?? readTodayPin(childProfile.id, now),
       aiPracticeId,
     }),
     [childProfile.id, milestones, comparisonMonths, coverage, now, actionLoop, dose?.practiceId, aiPracticeId]

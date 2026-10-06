@@ -144,12 +144,16 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
   },
 
   // ── JOURNAL ────────────────────────────────────────────────────────────────
+  // B-LOOP-11: the journal is nine shelves — the grid (≤ 3 modules), a shelf
+  // page (3: header · suggested now · entries) and the professional view
+  // (`?view=pro`) are the same route; "Everything by date" (`?view=all`) is
+  // the day-grouped thread behind its door.
   {
     route: "journal", hub: "journal", depth: 0,
-    job: "Catch the moment before it's gone.",
-    primaryMove: "capture-moment", moduleBudget: 3, demotionTarget: "timeline",
-    // Captured moments enter the stream as kind "moment" from behaviorLogs;
-    // the row appears in the timeline BEFORE any AI runs (plan §4).
+    job: "See {name} shelf by shelf, and what to try next.",
+    primaryMove: "open-shelf", moduleBudget: 3, demotionTarget: "timeline",
+    // A moment added from a shelf enters the stream from behaviorLogs,
+    // filed on that shelf, before any AI runs (plan §4).
     threadWrite: "behaviorLogs",
   },
   {

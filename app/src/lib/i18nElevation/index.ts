@@ -69,6 +69,7 @@ import * as returnhooks from "./returnhooks";
 import * as safety from "./safety";
 import * as screeningcalm from "./screeningcalm";
 import * as searchnav from "./searchnav";
+import * as shelfJournal from "./shelfJournal";
 import * as shelves from "./shelves";
 import * as sidebar from "./sidebar";
 import * as sincevisit from "./sincevisit";
@@ -138,6 +139,7 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   safety,
   screeningcalm,
   searchnav,
+  shelfJournal,
   shelves,
   sidebar,
   sincevisit,

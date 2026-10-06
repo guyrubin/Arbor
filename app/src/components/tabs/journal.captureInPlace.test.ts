@@ -91,7 +91,8 @@ describe("B-TODAY-19 · QuickLogModal photo mode", () => {
   });
 
   it("the save writes the photo and the prompt key through addMoment", () => {
-    expect(MODAL).toMatch(/addMoment\(words, \{\s*\.\.\.\(photo \? \{ photoAttachment: photo \} : \{\}\),\s*\.\.\.\(promptKey \? \{ promptKey \} : \{\}\),\s*\}\)/);
+    // B-LOOP-11: opened from a journal shelf page, the moment is filed on that shelf (addMoment's shelf seam).
+    expect(MODAL).toMatch(/addMoment\(words, \{\s*\.\.\.\(photo \? \{ photoAttachment: photo \} : \{\}\),\s*\.\.\.\(promptKey \? \{ promptKey \} : \{\}\),\s*\.\.\.\(shelf \? \{ shelf \} : \{\}\),\s*\}\)/);
     expect(MODAL).toContain('trackCaptureStarted(mode === "voice" ? "voice" : mode === "photo" ? "photo" : "text")');
   });
 

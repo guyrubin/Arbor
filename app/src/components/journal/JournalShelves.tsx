@@ -1,0 +1,154 @@
+import React, { useMemo, useState } from "react";
+import { motion } from "motion/react";
+import { useArbor, type CaptureMode } from "../../context/ArborContext";
+import { useLanguage } from "../../context/LanguageContext";
+import { useObservations } from "../../hooks/useObservations";
+import { useTimeline } from "../../hooks/useTimeline";
+import { useChildCollection } from "../../hooks/useChildCollection";
+import { goToRoute } from "../../hooks/useHashQuery";
+import { PRACTICES } from "../../content/practices";
+import type { Milestone } from "../../types";
+import { SHELF_IDS, type ShelfId } from "../../lib/shelves/registry";
+import { shelfCoverage } from "../../lib/milestones/selectByShelf";
+import { localDay, type ObserveStatus, type ObservedWhen } from "../../lib/milestones/observe";
+import { keepsakeDoc, type KeepsakeDoc } from "../../lib/firstsKeepsake";
+import { comparisonMonthsOf } from "../../lib/age/forChild";
+import { recentPracticeIds, todayDose } from "../../lib/practice/choosePractice";
+import { readTodayPin, writeTodayPin } from "../../lib/practice/todayPin";
+import { shelfNotice, shelfPractice, signalsOnShelf } from "../../lib/journal/shelfView";
+import { groupByDay, SIGNAL_PROVENANCE, signalDetail, signalTitle } from "../../lib/signalTimeline";
+import { withChildSignals } from "../../lib/i18nElevation/childsignals";
+import QuickLogModal from "../overview/QuickLogModal";
+import ShelfGrid from "./ShelfGrid";
+import ShelfPage, { type ShelfDayGroup } from "./ShelfPage";
+
+/** A query value that names a shelf, or null (an unknown id falls back to the grid). */
+export function shelfFromQuery(v: string | null): ShelfId | null {
+  return v && (SHELF_IDS as readonly string[]).includes(v) ? (v as ShelfId) : null;
+}
+
+/**
+ * B-LOOP-11 — the journal by shelves: the wiring behind ShelfGrid and
+ * ShelfPage (both presentational). Reads the ONE read model
+ * (useObservations), the ONE timeline stream (useTimeline) and the existing
+ * seams: the B-LOOP-09 chooser scoped to a shelf, the B-LOOP-04 Notice
+ * selection, setMilestoneObservation, the keepsake sink, the ONE capture sheet
+ * (QuickLogModal, pre-filed on the shelf). No new write path except the
+ * device-local "Try it today" pin (lib/practice/todayPin).
+ */
+export default function JournalShelves({ shelf, primaryMoveProps }: { shelf: ShelfId | null; primaryMoveProps?: Record<string, string> }) {
+  const { childProfile, milestones, actionLoop, setMilestoneObservation, restoreMilestone, requestJournalFocus } = useArbor();
+  const { t, uiLang } = useLanguage();
+  const locale = uiLang === "he" ? "he" : "en";
+  const tt = useMemo(() => withChildSignals(t, uiLang === "he"), [t, uiLang]);
+  const childName = (childProfile.name || "").split(" ")[0] || t("learn.yourChild");
+  const observations = useObservations();
+  const signals = useTimeline();
+  const now = useMemo(() => new Date(), [observations, actionLoop, milestones]);
+  const coverage = useMemo(() => shelfCoverage(observations, now), [observations, now]);
+
+  // ── the ONE capture sheet, pre-filed on the open shelf ──
+  const [capture, setCapture] = useState<{ open: boolean; mode: CaptureMode }>({ open: false, mode: "text" });
+
+  // ── the shelf's practice (the chooser, scoped) and "Try it today" ──
+  const comparisonMonths = comparisonMonthsOf(childProfile, now);
+  const practicePick = useMemo(
+    () => (shelf ? shelfPractice({
+      childId: childProfile.id,
+      milestones,
+      comparisonMonths,
+      practices: PRACTICES,
+      coverage,
+      today: now,
+      recentPracticeIds: recentPracticeIds(actionLoop, childProfile.id, now),
+    }, shelf) : null),
+    [shelf, childProfile.id, milestones, comparisonMonths, coverage, now, actionLoop],
+  );
+  const dose = useMemo(() => todayDose(actionLoop, childProfile.id, now), [actionLoop, childProfile.id, now]);
+  const [pinned, setPinned] = useState<string | undefined>(() => readTodayPin(childProfile.id));
+  const todaysId = dose?.practiceId ?? pinned;
+  const tryToday = () => {
+    if (!practicePick) return;
+    writeTodayPin(childProfile.id, practicePick.practice.id);
+    setPinned(practicePick.practice.id);
+  };
+
+  // ── the shelf's next thing to notice (the B-LOOP-04 handlers, as on Today) ──
+  const notice = useMemo(() => (shelf ? shelfNotice(milestones, comparisonMonths, shelf, now) : null), [shelf, milestones, comparisonMonths, now]);
+  const [held, setHeld] = useState<{ id: string; before: Milestone } | null>(null);
+  const shownNotice = held && held.id !== notice?.milestone.id ? milestones.find((m) => m.id === held.id) ?? null : notice?.milestone ?? null;
+  const keepsakes = useChildCollection<KeepsakeDoc>(childProfile.id, "keepsakes");
+  const noticeHandlers = (m: Milestone) => ({
+    onAnswer: (status: ObserveStatus) => {
+      setHeld((p) => (p?.id === m.id ? p : { id: m.id, before: m }));
+      setMilestoneObservation(m.id, status);
+    },
+    onWhen: (when: ObservedWhen) => setMilestoneObservation(m.id, "yes", { when }),
+    onKeepQuote: (note: string) => {
+      const at = new Date().toISOString();
+      void keepsakes.upsert(keepsakeDoc({ milestoneId: m.id, note: note.slice(0, 280), noticedOn: localDay(new Date()), createdAt: at, updatedAt: at }));
+    },
+    onKeepPhoto: () => setCapture({ open: true, mode: "photo" }),
+    onUndo: () => {
+      if (held?.id === m.id) restoreMilestone(held.before);
+      setHeld(null);
+    },
+  });
+
+  // ── the shelf's entries: the journal engine (groupByDay), filtered by shelfOf only ──
+  const groups = useMemo<ShelfDayGroup[]>(() => {
+    if (!shelf) return [];
+    const onShelf = signalsOnShelf(signals, observations, shelf);
+    return groupByDay(onShelf, Date.now(), { locale, ongoingLabel: t("timeline.ongoing") }).map((g) => ({
+      key: g.key,
+      label: g.label,
+      rows: g.signals.map((s) => {
+        const words = s.kind === "moment" && SIGNAL_PROVENANCE[s.kind] === "manual" ? signalDetail(s, tt).trim() : "";
+        return {
+          id: s.id,
+          title: signalTitle(s, tt),
+          ...(words ? { words } : {}),
+          when: s.at ? new Date(s.at).toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" }) : "",
+        };
+      }),
+    }));
+  }, [shelf, signals, observations, locale, t, tt]);
+
+  const openEntry = (id: string) => {
+    goToRoute("journal", { view: "all" });
+    requestJournalFocus(id);
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="w-full min-w-0">
+      {shelf ? (
+        <ShelfPage
+          shelf={shelf}
+          childName={childName}
+          gender={childProfile.gender}
+          count={coverage[shelf] ?? 0}
+          practice={practicePick?.practice ?? null}
+          practiceIsToday={!!practicePick && todaysId === practicePick.practice.id}
+          onTryToday={tryToday}
+          notice={shownNotice}
+          noticeHandlers={shownNotice ? noticeHandlers(shownNotice) : { onAnswer: () => undefined }}
+          groups={groups}
+          onOpenEntry={openEntry}
+          onBack={() => goToRoute("journal")}
+          onAdd={() => setCapture({ open: true, mode: "text" })}
+          primaryMoveProps={primaryMoveProps}
+        />
+      ) : (
+        <ShelfGrid
+          childName={childName}
+          counts={coverage}
+          onOpenShelf={(id) => goToRoute("journal", { shelf: id })}
+          onOpenPro={() => goToRoute("journal", { view: "pro" })}
+          onOpenAll={() => goToRoute("journal", { view: "all" })}
+          primaryMoveProps={primaryMoveProps}
+        />
+      )}
+      <QuickLogModal open={capture.open} mode={capture.mode} shelf={shelf ?? undefined} onClose={() => setCapture((c) => ({ ...c, open: false }))} />
+    </motion.div>
+  );
+}

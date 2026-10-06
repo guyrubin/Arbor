@@ -1,0 +1,128 @@
+/* i18nElevation/shelfJournal — B-LOOP-11 (the journal is nine shelves) and
+ * B-LOOP-12 (the professional view + the intake packet per profession).
+ *
+ * Parent register: plain words, counts never verdicts, no streaks, no
+ * "behind", no colour, no comparison between shelves, never "0" on a shelf.
+ * The ONLY age sentence is `milestoneAgeLine` (lib/milestoneAgeLine.ts) — no
+ * key here states an age. Profession NAMES live in
+ * lib/i18nElevation/professions.ts (rendered only in the professional view
+ * and in Care). Hebrew addresses the parent in the plural (the app's voice).
+ *
+ * Critic r3 P1-1 (#/journal): no line here claims "nothing is added without
+ * you" — the child's play folds into the record without a parent act. */
+
+export const en: Record<string, string> = {
+  // ── B-LOOP-11 · the shelf grid ──────────────────────────────────────────
+  "elev.shelfJournal.eyebrow": "Small moments, kept where they belong",
+  "elev.shelfJournal.h1": "{name}, shelf by shelf",
+  "elev.shelfJournal.lede": "Each moment you add lands on one of these shelves.",
+  "elev.shelfJournal.flip": "Professional view",
+  "elev.shelfJournal.gridAria": "{name}'s shelves",
+  "elev.shelfJournal.nothingYet": "Nothing yet · one thing to try",
+  "elev.shelfJournal.family.sub": "The people and places around {name}",
+  "elev.shelfJournal.all": "Everything by date",
+  "elev.shelfJournal.all.sub": "Every entry, newest first, as before",
+  // ── B-LOOP-11 · a shelf page ────────────────────────────────────────────
+  "elev.shelfJournal.back": "All shelves",
+  "elev.shelfJournal.page.none": "Nothing noticed here yet",
+  "elev.shelfJournal.page.empty.lead": "An empty shelf is normal.",
+  "elev.shelfJournal.page.empty.body": "Here is one small thing to try, and one thing to notice.",
+  "elev.shelfJournal.suggested": "Suggested now · practice",
+  "elev.shelfJournal.tryToday": "Try it today",
+  "elev.shelfJournal.tryToday.done": "It is today's practice",
+  "elev.shelfJournal.noPractice": "No practice for this shelf at this age yet. Moments you add still land here.",
+  "elev.shelfJournal.notice": "Something to notice",
+  "elev.shelfJournal.entries": "On this shelf",
+  "elev.shelfJournal.add": "Add a moment to {shelf}",
+  "elev.shelfJournal.add.sub": "Filed under {shelf}. Arbor may suggest a milestone; you confirm it.",
+  // ── B-LOOP-12 · the professional view ───────────────────────────────────
+  "elev.shelfJournal.pro.back": "Back to shelves",
+  "elev.shelfJournal.pro.h1": "How a professional reads {name}'s journal",
+  "elev.shelfJournal.pro.note": "The same entries, grouped the way an intake reads them. Professions are shown so you can prepare, never as an assessment.",
+  "elev.shelfJournal.pro.prepare": "Prepare a packet for",
+  "elev.shelfJournal.pro.packetTitle": "Intake packet · {profession}",
+  "elev.shelfJournal.pro.line.seen": "Seen",
+  "elev.shelfJournal.pro.line.notYet": "Not seen yet",
+  "elev.shelfJournal.pro.line.moments": "Moments",
+  "elev.shelfJournal.pro.line.practice": "Practice",
+  "elev.shelfJournal.pro.line.questions": "Your questions",
+  "elev.shelfJournal.pro.line.none": "Nothing here yet",
+  "elev.shelfJournal.pro.questions.placeholder": "Add what you want to ask, one question per line",
+  "elev.shelfJournal.pro.pdf": "PDF",
+  "elev.shelfJournal.pro.copy": "Copy",
+  "elev.shelfJournal.pro.send": "Send",
+  "elev.shelfJournal.pro.egressHint": "Next you read every line and tick that you reviewed it. Nothing leaves before that.",
+  "elev.shelfJournal.pro.domainsAria": "The journal by area",
+  "elev.shelfJournal.pro.count.milestones": "{n} milestones seen",
+  "elev.shelfJournal.pro.count.milestones.one": "1 milestone seen",
+  "elev.shelfJournal.pro.count.practice": "{n} practice days",
+  "elev.shelfJournal.pro.count.practice.one": "1 practice day",
+  "elev.shelfJournal.pro.count.none": "Nothing noticed here yet",
+  // ── B-LOOP-12 · the intake packet (consult/packet.ts buildIntakePacket) ──
+  "elev.packet.intake.seen": "Seen",
+  "elev.packet.intake.notYet": "Not seen yet",
+  "elev.packet.intake.notYet.note": "Listed, not counted. The age line is the source's own words.",
+  "elev.packet.intake.moments": "Moments, in the parent's words",
+  "elev.packet.intake.practice": "Practice",
+  "elev.packet.intake.questions": "The parent's questions",
+  "elev.packet.intake.practiceLine": "{shelf} · {n} practice days in the last {days} days",
+  "elev.packet.intake.practiceLine.one": "{shelf} · 1 practice day in the last {days} days",
+};
+
+export const he: Record<string, string> = {
+  // ── B-LOOP-11 · the shelf grid ──────────────────────────────────────────
+  "elev.shelfJournal.eyebrow": "רגעים קטנים, כל אחד במקום שלו",
+  "elev.shelfJournal.h1": "{name}, מדף אחר מדף",
+  "elev.shelfJournal.lede": "כל רגע שתוסיפו נכנס לאחד המדפים האלה.",
+  "elev.shelfJournal.flip": "תצוגה לאנשי מקצוע",
+  "elev.shelfJournal.gridAria": "המדפים של {name}",
+  "elev.shelfJournal.nothingYet": "עוד אין כאן כלום · דבר אחד לנסות",
+  "elev.shelfJournal.family.sub": "האנשים והמקומות סביב {name}",
+  "elev.shelfJournal.all": "הכול לפי תאריך",
+  "elev.shelfJournal.all.sub": "כל הרשומות, מהחדשה לישנה, כמו קודם",
+  // ── B-LOOP-11 · a shelf page ────────────────────────────────────────────
+  "elev.shelfJournal.back": "כל המדפים",
+  "elev.shelfJournal.page.none": "עוד לא נרשם כאן כלום",
+  "elev.shelfJournal.page.empty.lead": "מדף ריק זה רגיל.",
+  "elev.shelfJournal.page.empty.body": "הנה דבר קטן אחד לנסות, ודבר אחד לשים לב אליו.",
+  "elev.shelfJournal.suggested": "מוצע עכשיו · תרגול",
+  "elev.shelfJournal.tryToday": "לנסות היום",
+  "elev.shelfJournal.tryToday.done": "זה התרגול של היום",
+  "elev.shelfJournal.noPractice": "עוד אין תרגול למדף הזה בגיל הזה. רגעים שתוסיפו עדיין יגיעו לכאן.",
+  "elev.shelfJournal.notice": "משהו לשים לב אליו",
+  "elev.shelfJournal.entries": "במדף הזה",
+  "elev.shelfJournal.add": "להוסיף רגע למדף {shelf}",
+  "elev.shelfJournal.add.sub": "יתויק תחת {shelf}. ארבור עשוי להציע אבן דרך, ואתם מאשרים.",
+  // ── B-LOOP-12 · the professional view ───────────────────────────────────
+  "elev.shelfJournal.pro.back": "חזרה למדפים",
+  "elev.shelfJournal.pro.h1": "איך אנשי מקצוע קוראים את היומן של {name}",
+  "elev.shelfJournal.pro.note": "אותן רשומות, מקובצות כמו שקוראים אותן בפגישת היכרות. אנשי המקצוע מופיעים כדי שתוכלו להתכונן, אף פעם לא כהערכה.",
+  "elev.shelfJournal.pro.prepare": "להכין תיק עבור",
+  "elev.shelfJournal.pro.packetTitle": "תיק היכרות · {profession}",
+  "elev.shelfJournal.pro.line.seen": "נצפה",
+  "elev.shelfJournal.pro.line.notYet": "עוד לא נצפה",
+  "elev.shelfJournal.pro.line.moments": "רגעים",
+  "elev.shelfJournal.pro.line.practice": "תרגול",
+  "elev.shelfJournal.pro.line.questions": "השאלות שלכם",
+  "elev.shelfJournal.pro.line.none": "עוד אין כאן כלום",
+  "elev.shelfJournal.pro.questions.placeholder": "כתבו מה תרצו לשאול, שאלה בכל שורה",
+  "elev.shelfJournal.pro.pdf": "PDF",
+  "elev.shelfJournal.pro.copy": "העתקה",
+  "elev.shelfJournal.pro.send": "שליחה",
+  "elev.shelfJournal.pro.egressHint": "במסך הבא תקראו כל שורה ותסמנו שעברתם עליה. שום דבר לא יוצא לפני כן.",
+  "elev.shelfJournal.pro.domainsAria": "היומן לפי תחומים",
+  "elev.shelfJournal.pro.count.milestones": "{n} אבני דרך נצפו",
+  "elev.shelfJournal.pro.count.milestones.one": "אבן דרך אחת נצפתה",
+  "elev.shelfJournal.pro.count.practice": "{n} ימי תרגול",
+  "elev.shelfJournal.pro.count.practice.one": "יום תרגול אחד",
+  "elev.shelfJournal.pro.count.none": "עוד לא נרשם כאן כלום",
+  // ── B-LOOP-12 · the intake packet ───────────────────────────────────────
+  "elev.packet.intake.seen": "נצפה",
+  "elev.packet.intake.notYet": "עוד לא נצפה",
+  "elev.packet.intake.notYet.note": "רשום, לא נספר. שורת הגיל היא לשון המקור.",
+  "elev.packet.intake.moments": "רגעים, במילים של ההורה",
+  "elev.packet.intake.practice": "תרגול",
+  "elev.packet.intake.questions": "השאלות של ההורה",
+  "elev.packet.intake.practiceLine": "{shelf} · {n} ימי תרגול ב־{days} הימים האחרונים",
+  "elev.packet.intake.practiceLine.one": "{shelf} · יום תרגול אחד ב־{days} הימים האחרונים",
+};

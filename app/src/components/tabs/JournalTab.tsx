@@ -33,6 +33,9 @@ import { journalStoryState, lastKeptMoment } from "../../lib/journalLastKept";
 import { fmtDay } from "../../lib/formatDate";
 import { isIncidentType } from "../../content/behaviorTaxonomy";
 import { ageYearsOf } from "../../lib/age/forChild";
+import { useHashQuery } from "../../hooks/useHashQuery";
+import { hashQuery, routeHash } from "../../lib/routes";
+import JournalShelves, { shelfFromQuery } from "../journal/JournalShelves";
 
 /**
  * UC-1 Journal (wireframe-reconciled) — a single calm column of logged moments.
@@ -284,9 +287,41 @@ function JournalRow({
   );
 }
 
-/** `primaryMoveProps`: TimelineTab's contract stamp (capture-moment), spread on
- *  the capture tiles — the control that performs the move, not the wrapper. */
+/**
+ * B-LOOP-11 — JournalTab v2: #/journal is nine shelves, not a list. The hash
+ * query picks the view (same route, so Back returns):
+ *   #/journal                 → the shelf grid (components/journal/ShelfGrid)
+ *   #/journal?shelf=<id>      → a shelf page (components/journal/ShelfPage)
+ *   #/journal?view=all        → "Everything by date": the day-grouped thread
+ *                               below (JournalFeed), every capability intact
+ *                               (filters, search, the hard-moment PDF, the
+ *                               entry sheet, the evidence deep-link)
+ * A pending evidence deep-link (requestJournalFocus) always lands on the
+ * thread, where the row it names is rendered.
+ * `primaryMoveProps`: TimelineTab's ONE stamp literal, spread on the control
+ * that performs the live view's move (the grid of shelves; on the thread,
+ * the capture tiles).
+ */
 export default function JournalTab({ primaryMoveProps, densityToggle }: { primaryMoveProps?: Record<string, string>; densityToggle?: ReactNode } = {}) {
+  const { pendingJournalFocusId } = useArbor();
+  const query = useHashQuery();
+  const view = query.get("view");
+  const shelf = shelfFromQuery(query.get("shelf"));
+  useEffect(() => {
+    if (!pendingJournalFocusId) return;
+    try {
+      if (hashQuery(window.location.hash).get("view") === "all") return;
+      window.history.replaceState(null, "", `#${routeHash("journal", { view: "all" })}`);
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    } catch { /* SSR / tests */ }
+  }, [pendingJournalFocusId]);
+  if (view === "all") return <JournalFeed primaryMoveProps={primaryMoveProps} densityToggle={densityToggle} />;
+  return <JournalShelves shelf={shelf} primaryMoveProps={primaryMoveProps} />;
+}
+
+/** `primaryMoveProps`: TimelineTab's contract stamp, spread on the capture
+ *  tiles — the control that performs the move, not the wrapper. */
+function JournalFeed({ primaryMoveProps, densityToggle }: { primaryMoveProps?: Record<string, string>; densityToggle?: ReactNode } = {}) {
   const { milestones, playLogs, behaviorLogs, logsLoaded, pendingJournalFocusId, consumeJournalFocus, requestJournalFocus, childProfile, openCaptureSheet, toggleLogResolved, deleteLog } = useArbor();
   const { t, uiLang } = useLanguage();
   const locale = uiLang === "he" ? "he" : "en";

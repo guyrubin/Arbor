@@ -40,11 +40,13 @@ export default function TimelineTab() {
 
   // Item 11 (IA-02): the surface contract reaches the DOM. One leaf, two routes,
   // two different declared moves — #/timeline's is switch-density (the toggle
-  // below), #/journal's is capture-moment (the composer inside JournalTab). The
+  // below), #/journal's is open-shelf (the shelf grid inside JournalTab). The
   // stamp is built once and spread onto whichever of the two is actually live,
   // so this file carries exactly ONE `data-primary-move` and the page renders
   // exactly one, on the control that really performs the active route's move.
-  const primaryMove = { "data-primary-move": density === "story" ? "switch-density" : "capture-moment" };
+  // B-LOOP-11: #/journal's move is open-shelf (the grid of shelves is the
+  // journal's top; JournalTab spreads the stamp on the live view's control).
+  const primaryMove = { "data-primary-move": density === "story" ? "switch-density" : "open-shelf" };
 
   // Critic r2 (W2-ASKJB journal P1 G0, Law 7): on #/journal the toggle and
   // the stream wrapper were the only two top-level stamps, so the sweep counted
