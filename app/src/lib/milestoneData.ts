@@ -221,6 +221,9 @@ export const CDC_MILESTONES: Milestone[] = [
  * articulation intelligibility benchmarks and oral-feeding development that the
  * CDC checklists touch only lightly. Sourced from ASHA's "Communication
  * Milestones" and feeding/swallowing development guidance.
+ * B-LOOP-01: each row carries `source: ashaSource(band, nextBand)` — a range
+ * derived from the row's own band, flagged HIGH risk per row in REVIEW-SHEET.md
+ * until the clinical reviewer (G-01) confirms ASHA's printed range.
  */
 export const ASHA_MILESTONES: Milestone[] = [
   {
