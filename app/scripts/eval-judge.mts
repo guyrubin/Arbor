@@ -18,6 +18,13 @@
  *   5. exits non-zero on any safe===false or any score below the suite
  *      passBar (escalationVerbatim < 1.0 is the canonical Tier-C fail).
  *
+ * B-LOOP-14 STATIC mode: a suite whose scenarios are `tier: "static"` (or
+ * `runner.mode: "static"`, e.g. milestone-loop-v1 — `npm run eval:loop`)
+ * carries the text under judgement in `input.content`; no server starts,
+ * step 2 is skipped, the judge reads the rendered content + its source, and
+ * the row stamps the suite's contentHashes (a stale suite is refused).
+ * `--ids a,b,c` judges a subset (scenario ids, or catalogue/practice ids).
+ *
  * Requires live model credentials — this is the LIVE half of the eval program;
  * the deterministic half runs in CI via `npm test` + `npm run check:acceptance`.
  */
@@ -43,7 +50,8 @@ import { createAdminMetricsStore } from "../src/server/adminMetrics.js";
 import { createWaitlistStore } from "../src/server/waitlist.js";
 import { hardMomentCards } from "../src/content/hardMomentCards.js";
 import { hardMomentEvalSeedMessage } from "../src/eval/acceptance.js";
-import { appendResultsRow, judgeVisibleInput, runSuiteWithDeps, type ScenarioVerdict } from "../src/eval/judge.js";
+import { appendResultsRow, isStaticSuite, judgeVisibleInput, runSuiteWithDeps, type ScenarioVerdict } from "../src/eval/judge.js";
+import { changedContentKeys } from "../src/eval/contentHashes.js";
 import type { EvalScenario, EvalSuite } from "../src/eval/acceptance.js";
 import { handoffWireBody, planWireBody, runnerInputError, todaysFocusWireBody } from "../src/eval/runnerInput.js";
 
@@ -353,8 +361,51 @@ const buildJudgeCall = (suite: EvalSuite) => {
 };
 
 // ── Entry points ─────────────────────────────────────────────────────────────
-export const runLiveSuite = async (suiteName: string) => {
+/**
+ * B-LOOP-14 `--ids a,b,c`: keep the scenarios whose id is listed, or whose
+ * `input.milestoneId` / `input.practiceId` is (so one catalogue id re-judges
+ * its row and its practice in both languages). An id that matches nothing
+ * throws — a typo never reads as a green subset.
+ */
+export const selectScenarios = (suite: EvalSuite, ids: readonly string[]): EvalScenario[] => {
+  const wanted = new Set(ids.map((id) => id.trim()).filter(Boolean));
+  const matches = (scenario: EvalScenario, id: string) =>
+    scenario.id === id || scenario.input?.milestoneId === id || scenario.input?.practiceId === id;
+  const unknown = [...wanted].filter((id) => !suite.scenarios.some((scenario) => matches(scenario, id)));
+  if (unknown.length) throw new Error(`--ids: no scenario of "${suite.suite}" matches ${unknown.join(", ")}`);
+  return suite.scenarios.filter((scenario) => [...wanted].some((id) => matches(scenario, id)));
+};
+
+/**
+ * B-LOOP-14 — a static-content suite: no server, no route model. The suite
+ * must be FRESH (its contentHashes equal the live source files), otherwise
+ * the judge would grade text the app no longer prints.
+ */
+const runStaticSuite = async (suiteName: string, suite: EvalSuite, subset?: string[]) => {
+  if (suite.contentHashes) {
+    const changed = changedContentKeys(suite.contentHashes, REPO_ROOT);
+    if (changed.length) {
+      throw new Error(`suite "${suiteName}" is STALE against ${changed.join(", ")} — regenerate it (npm run eval:loop:build) before judging`);
+    }
+  }
+  const result = await runSuiteWithDeps(suite, {
+    runScenario: async (scenario) => { throw new Error(`static suite "${suiteName}": scenario "${scenario.id}" has no route to run`); },
+    judge: buildJudgeCall(suite),
+    resolvedRouteModel: "static-content",
+    ...(subset ? { subset } : {}),
+  });
+  appendResultsRow(path.join(REPO_ROOT, "evals", `${suiteName}.results.jsonl`), result.row);
+  return result;
+};
+
+export const runLiveSuite = async (suiteName: string, opts: { ids?: string[] } = {}) => {
   const suite = loadSuite(suiteName);
+  let subset: string[] | undefined;
+  if (opts.ids?.length) {
+    suite.scenarios = selectScenarios(suite, opts.ids);
+    subset = suite.scenarios.map((scenario) => scenario.id);
+  }
+  if (isStaticSuite(suite)) return runStaticSuite(suiteName, suite, subset);
   // The judge must see the exact synthetic profile supplied to the route;
   // otherwise a correctly restored child name appears to be hallucinated.
   suite.scenarios = suite.scenarios.map((scenario) => ({
@@ -381,6 +432,7 @@ export const runLiveSuite = async (suiteName: string) => {
       promptVersions: Object.fromEntries(
         Object.entries(PROMPT_VERSIONS).map(([key, entry]) => [key, entry.version]),
       ),
+      ...(subset ? { subset } : {}),
     });
     appendResultsRow(path.join(REPO_ROOT, "evals", `${suiteName}.results.jsonl`), result.row);
     return result;
@@ -392,11 +444,18 @@ export const runLiveSuite = async (suiteName: string) => {
 const isDirectRun = process.argv[1]?.replace(/\\/g, "/").endsWith("scripts/eval-judge.mts") ?? false;
 if (isDirectRun) {
   const suiteName = process.argv[2];
-  if (!suiteName) {
-    console.error("Usage: npm run eval:judge -- <suite-name>   (e.g. coach-hardmoment-seed-v1)");
+  if (!suiteName || suiteName.startsWith("--")) {
+    console.error("Usage: npm run eval:judge -- <suite-name> [--ids a,b,c]   (e.g. coach-hardmoment-seed-v1)");
     process.exit(2);
   }
-  const result = await runLiveSuite(suiteName);
+  // B-LOOP-14: `--ids a,b,c` (or `--ids=a,b,c`) judges a subset; the row says so.
+  const idsAt = process.argv.findIndex((arg) => arg === "--ids" || arg.startsWith("--ids="));
+  const idsArg = idsAt < 0 ? "" : process.argv[idsAt].startsWith("--ids=") ? process.argv[idsAt].slice(6) : process.argv[idsAt + 1] ?? "";
+  if (idsAt >= 0 && !idsArg.trim()) {
+    console.error("--ids needs a comma-separated list of scenario ids (or catalogue / practice ids)");
+    process.exit(2);
+  }
+  const result = await runLiveSuite(suiteName, idsArg ? { ids: idsArg.split(",") } : {});
   console.log(
     `eval:judge [${suiteName}] passRate=${result.row.passRate.toFixed(2)} ` +
     `(${result.row.perScenario.length} scenario verdicts, judge=${result.row.judgeModel}, ` +

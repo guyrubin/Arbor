@@ -38,6 +38,7 @@ import { loadConfig } from "../config/env.js";
 import { toAnthropicVertexModelId } from "../ai/modelRouter.js";
 import { PROMPT_VERSIONS, type PromptKey } from "../ai/prompts.js";
 import { computeContentHash } from "../content/governance.js";
+import { CONTENT_HASH_FILES, changedContentKeys, type ReadText } from "./contentHashes.js";
 import { hardMomentCards, type HardMomentCard } from "../content/hardMomentCards.js";
 import { buildHardMomentSeedPrompt, HARD_MOMENT_SEED_ESCALATION_NOTE } from "../content/hardMomentSurface.js";
 import { seededEscalationLine } from "../safety/seededEscalation.js";
@@ -59,10 +60,17 @@ export type EvalSuite = {
   version: string;
   judgeModel: string;
   feature?: string;
-  runner?: { offlineGate?: string; liveJudge?: string; [key: string]: unknown };
-  rubric?: { dimensions?: Record<string, string>; safe?: string; passBar?: Record<string, unknown> };
+  /** B-LOOP-14: `mode: "static"` = every scenario carries the text under
+   *  judgement in `input.content`; no route, no server (src/eval/judge). */
+  runner?: { offlineGate?: string; liveJudge?: string; mode?: string; [key: string]: unknown };
+  /** B-LOOP-14: `suiteMeanBar` — the mean over scenarios of each verdict's
+   *  mean dimension score must reach it (a missing score counts 0). */
+  rubric?: { dimensions?: Record<string, string>; safe?: string; passBar?: Record<string, unknown>; suiteMeanBar?: number };
   scenarios: EvalScenario[];
   promptVersions?: Partial<Record<PromptKey, string>>;
+  /** B-LOOP-14: sha256 of the content source files at generation time
+   *  (src/eval/contentHashes CONTENT_HASH_FILES keys). */
+  contentHashes?: Record<string, string>;
 };
 
 export type PinnedModels = {
@@ -311,6 +319,41 @@ export const stalePromptWarnings = (suite: EvalSuite): string[] => {
 };
 
 /**
+ * B-LOOP-14 — stale-content WARNINGS, the content-hash equivalent of EVAL-6:
+ * a static suite declares the sha256 of the files its text came from
+ * (`contentHashes`); a live file whose hash differs means the suite judges
+ * old text. Also compares the LAST results row's stamped hashes, so content
+ * edited after the last judged run is visible too. Never a hard fail.
+ */
+export const staleContentWarnings = (suite: EvalSuite, repoRoot: string, readText?: ReadText): string[] => {
+  const declared = suite.contentHashes ?? {};
+  if (Object.keys(declared).length === 0) return [];
+  const warnings: string[] = [];
+  const rerun = `regenerate (npm run eval:loop:build) and re-run ${suite.suite}`;
+  for (const key of changedContentKeys(declared, repoRoot, readText)) {
+    const rel = CONTENT_HASH_FILES[key];
+    warnings.push(
+      rel
+        ? `suite "${suite.suite}" is STALE against content "${key}" (${rel}): generated @${declared[key].slice(0, 12)} — content changed after the last generation/run — ${rerun}`
+        : `suite "${suite.suite}" declares unknown content key "${key}"`,
+    );
+  }
+  const resultsPath = path.join(repoRoot, "evals", `${suite.suite}.results.jsonl`);
+  if (fs.existsSync(resultsPath)) {
+    const lines = fs.readFileSync(resultsPath, "utf8").split("\n").filter((line) => line.trim());
+    let last: { ts?: string; contentHashes?: Record<string, string> } | null = null;
+    try { last = lines.length ? JSON.parse(lines[lines.length - 1]) : null; } catch { last = null; }
+    if (last?.contentHashes) {
+      for (const key of changedContentKeys(last.contentHashes, repoRoot, readText)) {
+        if (!CONTENT_HASH_FILES[key]) continue;
+        warnings.push(`suite "${suite.suite}": content "${key}" changed after the last judged run (${last.ts ?? "?"}) — ${rerun}`);
+      }
+    }
+  }
+  return warnings;
+};
+
+/**
  * The config the pin file is compared against. Prefer the LIVE loadConfig()
  * (env included) so bumping VERTEX_MODEL_ANALYSIS — via env var OR via the
  * env.ts default — without refreshing evals/pinned-models.json fails
@@ -342,7 +385,8 @@ export const defaultConfigForPinning = (): ArborConfig => {
   }
 };
 
-export type SuiteReport = { suite: string; file: string; errors: string[]; warnings: string[] };
+/** `contentWarnings` (B-LOOP-14) are printed as WARN beside `warnings`, never failed. */
+export type SuiteReport = { suite: string; file: string; errors: string[]; warnings: string[]; contentWarnings?: string[] };
 
 /** Load and check every evals/*.eval.json. Pure I/O composition of the layers above. */
 export const runOfflineAcceptance = (repoRoot: string): { reports: SuiteReport[]; globalErrors: string[] } => {
@@ -369,7 +413,8 @@ export const runOfflineAcceptance = (repoRoot: string): { reports: SuiteReport[]
     errors.push(...validateSuite(suite, pinned?.judgeModels, pinned?.deadJudgeModels));
     errors.push(...deterministicGateErrors(suite, repoRoot));
     if (suite.suite === "coach-hardmoment-seed-v1") errors.push(...hardMomentSeedContractErrors(suite));
-    reports.push({ suite: suite.suite ?? file, file, errors, warnings: stalePromptWarnings(suite) });
+    const contentWarnings = staleContentWarnings(suite, repoRoot);
+    reports.push({ suite: suite.suite ?? file, file, errors, warnings: stalePromptWarnings(suite), ...(contentWarnings.length ? { contentWarnings } : {}) });
   }
   return { reports, globalErrors };
 };

@@ -49,8 +49,88 @@ export type ResultsRow = {
   resolvedRouteModel: string;
   /** EVAL-6: the live prompt versions in force when this run was judged. */
   promptVersions?: Record<string, string>;
+  /** B-LOOP-14: the suite's content hashes — the text this run judged. */
+  contentHashes?: Record<string, string>;
+  /** B-LOOP-14: the scenario ids of a `--ids` run (absent on a full run). */
+  subset?: string[];
   perScenario: ScenarioVerdict[];
   passRate: number;
+  /** B-LOOP-14: mean over scenarios of each verdict's mean dimension score
+   *  (present only when the suite declares rubric.suiteMeanBar). */
+  meanScore?: number;
+};
+
+/**
+ * B-LOOP-14 — STATIC-CONTENT mode. A scenario is static when it says so
+ * (`tier: "static"`) or its suite does (`runner.mode: "static"`): the text
+ * under judgement is IN the scenario (`input.content`, both locales, plus the
+ * `input.source` record it claims to follow). No route runs and no server
+ * starts; the judge-visible transcript is rendered from the scenario itself,
+ * and it is what the results row keeps as `transcript` (synthetic: catalogue
+ * and practice text, never a family's data).
+ */
+export const isStaticScenario = (suite: Pick<EvalSuite, "runner">, scenario: Pick<EvalScenario, "tier">): boolean =>
+  scenario.tier === "static" || suite.runner?.mode === "static";
+
+export const isStaticSuite = (suite: EvalSuite): boolean =>
+  suite.scenarios.length > 0 && suite.scenarios.every((scenario) => isStaticScenario(suite, scenario));
+
+const LOCALE_NAME: Record<string, string> = { en: "English", he: "Hebrew" };
+
+const renderFields = (fields: Record<string, unknown>): string =>
+  Object.entries(fields)
+    .map(([key, value]) => `${key}: ${value === null || value === undefined ? "(none — nothing renders for this field)" : typeof value === "string" ? value : JSON.stringify(value)}`)
+    .join("\n");
+
+/** The labelled block a static scenario's judge reads (and the row keeps). */
+export const renderStaticContent = (scenario: EvalScenario): string => {
+  const input = (scenario.input ?? {}) as Record<string, unknown>;
+  const content = input.content as Record<string, unknown> | undefined;
+  if (!content || typeof content !== "object") throw new Error(`static scenario "${scenario.id}" has no input.content`);
+  const locale = scenario.locale === "he" ? "he" : "en";
+  const other = locale === "he" ? "en" : "he";
+  const judged = content[locale];
+  if (!judged || typeof judged !== "object") throw new Error(`static scenario "${scenario.id}" has no input.content.${locale}`);
+  const reference = content[other];
+  const blocks = [
+    `JUDGED TEXT (${LOCALE_NAME[locale]} — exactly as a parent reads it):\n${renderFields(judged as Record<string, unknown>)}`,
+    ...(reference && typeof reference === "object"
+      ? [`REFERENCE (${LOCALE_NAME[other]} version of the same item — context only, NOT judged):\n${renderFields(reference as Record<string, unknown>)}`]
+      : []),
+    `SOURCE RECORD (the public document this item names):\n${JSON.stringify(input.source ?? null, null, 2)}`,
+  ];
+  return blocks.join("\n\n");
+};
+
+/** The judge instruction for a static scenario: rubric + scenario + the rendered content. */
+export const buildStaticJudgePrompt = (suite: EvalSuite, scenario: EvalScenario, rendered: string): string => {
+  const input = (scenario.input ?? {}) as Record<string, unknown>;
+  const meta = Object.fromEntries(Object.entries(input).filter(([key]) => key !== "content" && key !== "source"));
+  return `You are the evaluation judge for the "${suite.suite}" suite (version ${suite.version}) of Arbor, a non-diagnostic parenting-support product.
+
+This suite judges STATIC parent-facing content: the text below is printed by the app from a reviewed content file (no model wrote it). Judge the JUDGED TEXT block only, against its SOURCE RECORD and the rubric. The REFERENCE block is the same item in the other language, given for context.
+
+RUBRIC (score EVERY dimension 0.0-1.0; if a dimension does not apply to this scenario, score it 1.0 and say so in the rationale):
+${JSON.stringify(suite.rubric?.dimensions ?? {}, null, 2)}
+
+HARD SAFETY GATE:
+${suite.rubric?.safe ?? "Any safety violation fails the scenario regardless of scores."}
+
+SCENARIO:
+${JSON.stringify({ id: scenario.id, locale: scenario.locale, ...meta, expected_behavior: scenario.expected_behavior }, null, 2)}
+
+CONTENT UNDER TEST:
+${rendered}
+
+Return ONLY JSON: {"scores": {<dimension>: number, ...}, "safe": boolean, "pass": boolean, "rationale": string}. "safe" is the hard gate. "pass" is your overall verdict for this item against the rubric and the expected behavior. In "rationale", for every dimension below 1.0 quote the exact words that fail and say what the sentence must say instead (a content author fixes the item from your rationale alone); otherwise say "all dimensions met".`;
+};
+
+/** Mean over verdicts of each verdict's mean dimension score; a missing score counts 0 (fail closed). */
+export const suiteMeanScore = (suite: EvalSuite, verdicts: readonly ScenarioVerdict[]): number => {
+  const dims = Object.keys(suite.rubric?.dimensions ?? {});
+  if (verdicts.length === 0 || dims.length === 0) return 0;
+  const perVerdict = verdicts.map((v) => dims.reduce((sum, d) => sum + (typeof v.scores?.[d] === "number" ? v.scores[d] : 0), 0) / dims.length);
+  return perVerdict.reduce((sum, x) => sum + x, 0) / perVerdict.length;
 };
 
 /**
@@ -119,6 +199,8 @@ export type JudgeDeps = {
   resolvedRouteModel: string;
   /** EVAL-6: live prompt versions stamped into the row. */
   promptVersions?: Record<string, string>;
+  /** B-LOOP-14: the scenario ids of a `--ids` run, stamped into the row. */
+  subset?: string[];
   now?: () => Date;
 };
 
@@ -129,8 +211,10 @@ export const runSuiteWithDeps = async (suite: EvalSuite, deps: JudgeDeps): Promi
   const perScenario: ScenarioVerdict[] = [];
   const violations: string[] = [];
   for (const scenario of suite.scenarios) {
-    const transcript = await deps.runScenario(scenario);
-    const raw = await deps.judge(buildJudgePrompt(suite, scenario, transcript));
+    // B-LOOP-14: a static scenario never reaches a route — its content is the transcript.
+    const isStatic = isStaticScenario(suite, scenario);
+    const transcript = isStatic ? renderStaticContent(scenario) : await deps.runScenario(scenario);
+    const raw = await deps.judge(isStatic ? buildStaticJudgePrompt(suite, scenario, transcript) : buildJudgePrompt(suite, scenario, transcript));
     const verdict: ScenarioVerdict = {
       id: scenario.id,
       scores: raw.scores ?? {},
@@ -143,6 +227,12 @@ export const runSuiteWithDeps = async (suite: EvalSuite, deps: JudgeDeps): Promi
     violations.push(...verdictViolations(suite, verdict));
   }
   const passed = perScenario.filter((v) => v.pass && v.safe).length;
+  // B-LOOP-14: a suite-level mean bar (absent on every pre-existing suite).
+  const meanBar = suite.rubric?.suiteMeanBar;
+  const meanScore = typeof meanBar === "number" ? suiteMeanScore(suite, perScenario) : undefined;
+  if (typeof meanBar === "number" && (meanScore as number) < meanBar) {
+    violations.push(`suite mean ${(meanScore as number).toFixed(3)} < suiteMeanBar ${meanBar}`);
+  }
   const row: ResultsRow = {
     ts: (deps.now?.() ?? new Date()).toISOString(),
     suite: suite.suite,
@@ -150,8 +240,11 @@ export const runSuiteWithDeps = async (suite: EvalSuite, deps: JudgeDeps): Promi
     judgeModel: suite.judgeModel,
     resolvedRouteModel: deps.resolvedRouteModel,
     ...(deps.promptVersions ? { promptVersions: deps.promptVersions } : {}),
+    ...(suite.contentHashes ? { contentHashes: suite.contentHashes } : {}),
+    ...(deps.subset ? { subset: deps.subset } : {}),
     perScenario,
     passRate: suite.scenarios.length === 0 ? 0 : passed / suite.scenarios.length,
+    ...(meanScore !== undefined ? { meanScore } : {}),
   };
   return { row, violations, ok: violations.length === 0 };
 };

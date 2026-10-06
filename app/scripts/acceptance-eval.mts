@@ -11,7 +11,10 @@
  *   - EVAL-8: fails on evals/pinned-models.json drift against the
  *     loadConfig() defaults ("model changed: re-run suites");
  *   - EVAL-6: WARNs (never fails) when a suite is stale against the live
- *     PROMPT_VERSIONS registry.
+ *     PROMPT_VERSIONS registry;
+ *   - B-LOOP-14: WARNs (never fails) when a static suite's content source
+ *     (milestoneData.ts / practices.ts) changed after its generation or its
+ *     last judged run (src/eval/contentHashes).
  *
  * LIVE TIER (only when judge credentials are present — ANTHROPIC_API_KEY, an
  * explicit ARBOR_EVAL_LIVE=1, or GOOGLE_APPLICATION_CREDENTIALS for Vertex
@@ -41,6 +44,8 @@ for (const report of reports) {
     for (const error of report.errors) console.error(`       - ${error}`);
   }
   for (const warning of report.warnings) console.warn(`WARN   [${report.suite}] ${warning}`);
+  // B-LOOP-14: content changed after the last generation/run of a static suite.
+  for (const warning of report.contentWarnings ?? []) console.warn(`WARN   [${report.suite}] ${warning}`);
 }
 
 console.log(`check:acceptance offline tier finished in ${((Date.now() - startedAt) / 1000).toFixed(1)}s`);

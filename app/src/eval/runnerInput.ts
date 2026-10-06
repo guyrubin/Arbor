@@ -14,7 +14,17 @@ export const RUNNER_ROUTES = ["/api/chat", "/api/voice", "/api/live/turn", "/api
 const DAY = 86_400_000;
 
 /** Why the runner cannot drive this scenario, or null when it can. */
-export function runnerInputError(scenario: Pick<EvalScenario, "route" | "input" | "cardId">): string | null {
+export function runnerInputError(scenario: Pick<EvalScenario, "route" | "input" | "cardId"> & Partial<Pick<EvalScenario, "tier">>): string | null {
+  // B-LOOP-14: a static-content scenario drives no route — the runner judges
+  // the text it carries (src/eval/judge renderStaticContent).
+  if (scenario.tier === "static") {
+    const input = (scenario.input ?? {}) as Record<string, unknown>;
+    const content = input.content as Record<string, unknown> | undefined;
+    if (!content || typeof content !== "object") return "has no input.content object (static-content scenario)";
+    if (!content.en || typeof content.en !== "object" || !content.he || typeof content.he !== "object") return "has no input.content.en / .he (static-content scenario)";
+    if (!input.source || typeof input.source !== "object") return "has no input.source record (static-content scenario)";
+    return null;
+  }
   const route = scenario.route ?? "/api/chat";
   if (!(RUNNER_ROUTES as readonly string[]).includes(route)) return `has a route the runner cannot drive (${route})`;
   const input = (scenario.input ?? {}) as Record<string, unknown>;
