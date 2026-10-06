@@ -642,6 +642,72 @@ export const PRACTICES: readonly Practice[] = [
     do: L("Name colours in passing during the day, like the red cup or the yellow bus, without quizzing your child.", "תנו שמות לצבעים במהלך היום, כמו הכוס האדומה או האוטובוס הצהוב, בלי לבחון את הילד/ה."),
     say: L("Look, a yellow bus! Yellow like your boots.", "תראה/י, אוטובוס צהוב! צהוב כמו המגפיים שלך."),
   }),
+
+  /* ── batch 7/7 · School & thinking · 36–60 months, Body, food & growth ─ */
+  P("cdc-36m-7", "fine_motor_play", 10, S.aapPowerOfPlay, {
+    do: L("Draw side by side on big paper. Draw your own circles and lines, and describe what your child draws without correcting.", "ציירו זה לצד זה על דף גדול. ציירו עיגולים וקווים משלכם, ותארו את מה שהילד/ה מצייר/ת בלי לתקן."),
+    say: L("You're making a round shape, round and round! Mine goes round too.", "את/ה מצייר/ת משהו עגול, סביב סביב! גם שלי עגול."),
+    materials: L("Paper and crayons", "נייר וצבעים"),
+  }),
+  P("cdc-36m-8", "responsive_interaction", 5, S.aapBrightFutures, {
+    do: L("While cooking, show your child the hot area from a safe distance, and say a short, steady safety phrase each time.", "בזמן בישול, הראו לילד/ה את האזור החם ממרחק בטוח, ואמרו כל פעם משפט בטיחות קצר וקבוע."),
+    say: L("Hot! The stove is hot. We stay back here.", "חם! הכיריים חמות. אנחנו עומדים פה."),
+  }),
+  P("cdc-48m-10", "child_directed_play", 10, S.cdcMilestones, {
+    do: L("Play 'I spy' with colours on a walk or in the car, taking turns choosing, and give easy hints.", "שחקו 'אני רואה משהו' עם צבעים בהליכה או באוטו, בחרו בתורות ותנו רמזים קלים."),
+    say: L("I spy something green... it's on a tree!", "אני רואה משהו ירוק... הוא על העץ!"),
+  }),
+  P("cdc-48m-11", "routine_building", 5, S.cdcMilestones, {
+    do: L("At breakfast, talk through the day in order using words like morning, afternoon and night, and let your child add parts.", "בארוחת הבוקר, עברו יחד על סדר היום עם מילים כמו בוקר, צהריים ולילה, ותנו לילד/ה להוסיף חלקים."),
+    say: L("This morning, the park. Tonight, bath. What comes after the park?", "הבוקר גינה, בלילה אמבטיה. מה קורה אחרי הגינה?"),
+  }),
+  P("cdc-48m-12", "fine_motor_play", 15, S.aapPowerOfPlay, {
+    do: L("Draw a family picture together, each drawing someone, and talk about the people while you draw.", "ציירו יחד ציור משפחתי, כל אחד מצייר מישהו אחר, ודברו על האנשים תוך כדי ציור."),
+    say: L("Who are you drawing? Tell me about them.", "את מי את/ה מצייר/ת? ספר/י לי."),
+    materials: L("Paper and crayons", "נייר וצבעים"),
+  }),
+  P("cdc-60m-8", "child_directed_play", 5, S.cdcMilestones, {
+    do: L("Count real things together as part of the day, like stairs or apples, saying the numbers out loud with your child.", "ספרו יחד דברים אמיתיים במהלך היום, כמו מדרגות או תפוחים, ואמרו את המספרים בקול ביחד."),
+    say: L("One, two, three stairs... let's count the rest together!", "אחת, שתיים, שלוש מדרגות... ממשיכים לספור ביחד!"),
+  }),
+  P("cdc-60m-9", "joint_attention", 5, S.cdcMilestones, {
+    do: L("Point out numbers you see together, like on doors, buses or the lift, and wonder aloud what each one is for.", "הצביעו על מספרים שאתם רואים יחד, על דלתות, אוטובוסים או במעלית, ותהו בקול בשביל מה כל אחד."),
+    say: L("Look, a number on our door! Which number is it?", "תראה/י, מספר על הדלת שלנו! איזה מספר זה?"),
+  }),
+  P("cdc-60m-10", "executive_function_game", 15, S.harvardExecutiveFunction, {
+    do: L("Do one calm activity your child picks, like a puzzle, with screens away, and stay with it while it holds their interest.", "עשו יחד פעילות רגועה אחת שהילד/ה בוחר/ת, כמו פאזל, בלי מסכים, והישארו איתה כל עוד זה מעניין."),
+    say: L("Let's find the corner pieces first. Which one fits here?", "בוא/י נמצא קודם את הפינות. איזה חלק מתאים פה?"),
+  }),
+  P("cdc-60m-11", "fine_motor_play", 10, S.aapLiteracy, {
+    do: L("Write your child's name in big letters on a card for their door or drawings, and let them trace or copy any letters they want.", "כתבו את השם של הילד/ה באותיות גדולות על כרטיס לדלת או לציורים, ותנו לו/ה להעתיק או לעבור על אילו אותיות שירצה/תרצה."),
+    say: L("This is your name. Which letter do you want to make?", "זה השם שלך. איזו אות בא לך לכתוב?"),
+    materials: L("Paper or card and crayons", "נייר או כרטיס וצבעים"),
+  }),
+  P("asha-feed-9m", "responsive_interaction", 10, S.whoFeeding, {
+    do: L("Offer a little of the family meal, mashed soft, and let your baby explore it. Follow their cues for when they are done.", "הציעו מעט מהארוחה המשפחתית, מעוכה ורכה, ותנו לתינוק/ת לחקור אותה. שימו לב לסימני השובע."),
+    say: L("This is mashed carrot. Soft and orange. Want to touch it?", "זה גזר מעוך. רך וכתום. רוצה לגעת?"),
+  }),
+  P("asha-feed-12m", "responsive_interaction", 10, S.whoFeeding, {
+    do: L("Sit and eat together, offering soft finger foods and a small open cup with a little water, and let your child lead.", "שבו לאכול יחד, הציעו אוכל רך שאפשר לאכול בידיים וכוס פתוחה קטנה עם קצת מים, ותנו לילד/ה להוביל."),
+    say: L("Here's your cup. Sip, sip. Mmm, water!", "הנה הכוס שלך. לגימה קטנה. ממ, מים!"),
+  }),
+  P("cdc-15m-8", "responsive_interaction", 10, S.whoFeeding, {
+    do: L("Put a few soft pieces of the family food on your child's plate and let them feed themselves, mess included, while you eat too.", "שימו כמה חתיכות רכות מהאוכל המשפחתי בצלחת של הילד/ה ותנו לו/ה לאכול לבד, כולל הלכלוך, בזמן שגם אתם אוכלים."),
+    say: L("You picked up the pasta! I'm eating pasta too.", "הרמת פסטה! גם אני אוכל/ת פסטה."),
+  }),
+  P("cdc-18m-9", "responsive_interaction", 10, S.whoFeeding, {
+    do: L("Offer water in a small open cup at meals and let spills happen, with a cloth nearby and a calm voice.", "הציעו מים בכוס פתוחה קטנה בארוחות, ותנו לשפיכות לקרות, עם מטלית קרובה וקול רגוע."),
+    say: L("Oops, a little spill! That's okay. Here's the cloth.", "אופס, נשפך קצת! זה בסדר. הנה המטלית."),
+    materials: L("A small open cup and a cloth", "כוס פתוחה קטנה ומטלית"),
+  }),
+  P("asha-feed-24m", "responsive_interaction", 10, S.aapBrightFutures, {
+    do: L("Put a small taste of a new food next to a familiar one, eat it yourself happily, and let your child decide whether to try.", "שימו טעימה קטנה של מאכל חדש ליד מאכל מוכר, אכלו ממנו בעצמכם בהנאה, ותנו לילד/ה להחליט אם לטעום."),
+    say: L("This is crunchy cucumber. I like the crunch. You can just look.", "זה מלפפון פריך. אני אוהב/ת את הקראנץ'. אפשר רק להסתכל."),
+  }),
+  P("cdc-60m-12", "routine_building", 15, S.aapBrightFutures, {
+    do: L("Make a family meal a calm, shared time: real cutlery for everyone, food passed around, and your child serving themselves.", "הפכו ארוחה משפחתית לזמן רגוע ומשותף: סכו״ם אמיתי לכולם, מעבירים את האוכל, והילד/ה מגיש/ה לעצמו/ה."),
+    say: L("Can you pass the salad? Thanks. Take what you'd like.", "תעביר/י לי את הסלט? תודה. קח/י מה שבא לך."),
+  }),
 ];
 
 /* ───────────────────────────── helpers ───────────────────────────── */
