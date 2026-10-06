@@ -3,6 +3,7 @@ import { db, firebaseEnabled } from "./firebase";
 import { api } from "./api";
 import { purgeComicPages } from "./comicPageStore";
 import { purgeHeroRenders } from "./heroRenderStore";
+import { purgeBookAssets } from "./bookAssetStore";
 import { clearChildLocalState } from "./childLocalState";
 import { ChildProfile, DeletionReceipt } from "../types";
 
@@ -144,6 +145,8 @@ async function wipeClientChildData(uid: string | undefined, childId: string): Pr
   } catch {
     /* best effort */
   }
+  // B-BOOK release: the device copy of the child's private book files.
+  await purgeBookAssets(childId);
   if (remoteActive(uid) && db) {
     for (const name of CHILD_SUBCOLLECTIONS) {
       try {

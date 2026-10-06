@@ -25,13 +25,15 @@ describe("B-KID-42: the banner art is tonight's story cover", () => {
   it("the banner picks the cover when the theme has it, else the kid-quest tile", () => {
     expect(dash).toContain("kidArt(kidTheme, storyCoverKey(tonightsStory.id)) ? `story-${tonightsStory.id}` : \"kid-quest\"");
     expect(dash).toContain("<WorldScene worldId={tonightsArtId} theme={kidTheme}");
-    expect(dash).toContain('onClick={() => onOpenSurface("journeys", tonightsStoryId)}');
+    // B-BOOK release re-pin: tonight's hero story opens the story surface; a
+    // library book made with the child's own hero (when there is one) opens itself
+    expect(dash).toContain('onClick={() => (tonightLib && onOpenBook ? onOpenBook(tonightLib.book.id) : onOpenSurface("journeys", tonightsStoryId))}');
   });
 });
 
 describe("B-KID-70 (R-2b): a portrait theme is image-led", () => {
   it("no sticker portrait over art that already shows a hero; 3:4 side panel; title max 2 lines", () => {
-    expect(dash).toContain("{!tonightsArtHasHero && (");
+    expect(dash).toContain("{!tonightLib && !tonightsArtHasHero && ("); // B-BOOK release re-pin
     expect(dash).toContain("inlineSize: Math.round(KID_HOME_BANNER_BLOCK * 3 / 4)");
     const banner = dash.slice(dash.indexOf("Today's adventure banner"), dash.indexOf("── Games ──"));
     expect(banner).toContain("WebkitLineClamp: 2");
@@ -97,7 +99,7 @@ describe("B-KID-70 (R-4b): tonight and the catalogue lead with illustrated stori
     const { kidArt, storyCoverKey } = await import("../../lib/kidThemeManifest");
     expect(kidArt("film3d", storyCoverKey("noahs-ark"))?.hasHero).toBe(true);
     expect(worldArtwork("story-noahs-ark", "film3d")?.hasHero).toBe(true);
-    expect(dash).toContain("{!tonightsArtHasHero && (");
+    expect(dash).toContain("{!tonightLib && !tonightsArtHasHero && ("); // B-BOOK release re-pin
   });
   it("(d) the reader uses the cover on every beat, cropped per beat, without the cameo over a hero cover", () => {
     const player = readFileSync(path.join(SRC, "components/stories/HeroScenePlayer.tsx"), "utf8");

@@ -18,6 +18,7 @@ import { trackSessionOpen } from "../lib/loopEvents";
 import { recordRetentionSession } from "../lib/retentionRollup";
 import { purgeAllComicPages } from "../lib/comicPageStore";
 import { purgeAllHeroRenders } from "../lib/heroRenderStore";
+import { purgeBookAssets } from "../lib/bookAssetStore";
 import { clearPrewarmedComic } from "../lib/comicPrewarm";
 import { clearMathExit } from "../components/kidmode/parentGate";
 
@@ -137,6 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // B-KID-127: the kept story text (device copy) leaves with the session too.
     try {
       await purgeAllHeroRenders();
+      await purgeBookAssets(); // B-BOOK release: every child's private book files on this device
     } catch {
       /* best effort */
     }
