@@ -210,7 +210,7 @@ describe("Masterplan 1.3 — coach_chat block-free byte-parity (v1.4.1 pin)", ()
     expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toMatch(/Return "escalateIf": \[\]/);
     expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toMatch(/shepherd/);
     expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toMatch(/do not reword it/);
-    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.5.1");
+    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.5.2");
   });
 
   it("empty recentTurns / null weeklyContext (the sanitizers' degenerate outputs) also keep the block-free bytes", () => {
@@ -468,7 +468,7 @@ describe("coach_chat 1.4.1 — field rules", () => {
     expect(COACH_CHAT_FIELD_RULES).toMatch(/never write that condition's name or any label back/);
     expect(COACH_CHAT_FIELD_RULES).toMatch(/In a routine answer no field names self-harm/);
     expect(COACH_CHAT_FIELD_RULES).toMatch(/never low, medium, high/);
-    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.5.1");
+    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.5.2");
   });
   it("coach_chat 1.5.1: escalateIf thresholds stay on the behaviour the parent described", () => {
     expect(COACH_CHAT_FIELD_RULES).toContain("Thresholds are about the behaviour the parent described and never introduce a danger the parent did not raise.");

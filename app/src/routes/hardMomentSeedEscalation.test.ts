@@ -40,6 +40,7 @@ import { screenForImmediateEscalation } from "../safety/escalation.js";
 import { screenModelOutputLexical } from "../safety/outputScreen.js";
 import { screenForConditionQuestion } from "../safety/conditionQuestion.js";
 import { hardMomentEvalSeedMessage } from "../eval/acceptance.js";
+import { COACH_CHAT_GOVERNED_ESCALATION_BLOCK, PROMPT_VERSIONS } from "../ai/prompts.js";
 
 const SUITE = JSON.parse(
   fs.readFileSync(path.resolve(__dirname, "..", "..", "..", "evals", "coach-hardmoment-seed-v1.eval.json"), "utf8"),
@@ -81,8 +82,11 @@ const CONTRACT = {
 /** What the stub model emits; a test may swap it (forged-field case). */
 let modelJson = JSON.stringify(CONTRACT);
 
+/** coach_chat 1.5.2: every prompt the route sent to the stub, newest last. */
+const sentPrompts: string[] = [];
 const stubModelProvider = {
-  async *generateJsonStream() {
+  async *generateJsonStream(options?: { prompt?: string }) {
+    sentPrompts.push(String(options?.prompt ?? ""));
     yield modelJson;
   },
   generateJson: async () => ({ safe: true, reason: "" }),
@@ -397,3 +401,64 @@ describe("B-AI-14 (live fix) — the judge's exact payload carries the governed 
   });
 });
 
+/**
+ * coach_chat 1.5.2 (B-AI-14, live coach-hardmoment-seed-v1 0.83 on 261799e7):
+ * paraphrase-bait-public-meltdown regenerated the whole card answer and
+ * ignored the follow-up. The governed block (seeded turns only) now carries
+ * the follow-up-first rule. It is UNCONDITIONAL inside the block and harmless
+ * on the seed turn: the same clause says "on the turn that only shares the
+ * guide, coach within it as usual". A non-seeded prompt never carries it.
+ */
+describe("B-AI-14 (coach_chat 1.5.2) — a seeded follow-up is answered first; the card is never regenerated", () => {
+  const FOLLOW_UP_FIRST = "Answer the parent's LATEST line first.";
+  const promptFor = async (body: Record<string, unknown>): Promise<string> => {
+    const before = sentPrompts.length;
+    await chat(body);
+    expect(sentPrompts.length, "the route called the model once").toBe(before + 1);
+    return sentPrompts[sentPrompts.length - 1];
+  };
+
+  it("the block carries the rule: latest line first, sections never re-rendered, a summarise request = one pointer sentence then the follow-up", () => {
+    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.5.2");
+    expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toContain(FOLLOW_UP_FIRST);
+    expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toContain("Never re-render the guide's sections (do now, say this, avoid, what to notice) or repeat the earlier answer wholesale.");
+    expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toContain("On the turn that only shares the guide, coach within it as usual.");
+    expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toMatch(/summarize, restate or reword when to get help, say in one sentence in "text" that the guide's own line is shown with this answer, and do not reword it; then answer the rest of their line\./);
+  });
+
+  it("the judge's shape (seed + 'Parent follow-up:' in one message): the prompt carries the rule and the follow-up AFTER the seed", async () => {
+    const scenario = SUITE.scenarios.find((s) => s.id === "paraphrase-bait-public-meltdown")!;
+    const card = find(scenario.cardId);
+    const message = hardMomentEvalSeedMessage(card, scenario.locale, "Noa", scenario.input.followUp);
+    const prompt = await promptFor({ message, language: scenario.locale });
+    expect(prompt).toContain(COACH_CHAT_GOVERNED_ESCALATION_BLOCK);
+    const seedAt = prompt.indexOf('I want to talk through a hard moment: "');
+    const followAt = prompt.lastIndexOf(scenario.input.followUp);
+    expect(seedAt).toBeGreaterThan(-1);
+    expect(followAt, "the latest parent line sits after the seed").toBeGreaterThan(seedAt);
+    expect(prompt.indexOf(FOLLOW_UP_FIRST)).toBeGreaterThan(followAt);
+  });
+
+  it("the product shape (seed in recentTurns, the follow-up as the message): the rule and the latest line ride the prompt (EN + HE)", async () => {
+    for (const locale of ["en", "he"] as const) {
+      const seed = seedFor("tantrum", locale);
+      const followUp = locale === "he" ? "ומה אם זה קורה בסופר?" : "And what if it happens at the supermarket?";
+      const prompt = await promptFor({
+        message: followUp,
+        recentTurns: sanitizeRecentTurns([{ role: "parent", text: seed }, { role: "coach", text: "A calm first sentence." }]),
+        language: locale,
+      });
+      expect(prompt, locale).toContain(COACH_CHAT_GOVERNED_ESCALATION_BLOCK);
+      expect(prompt.indexOf(`Parent question:\n${followUp}`), locale).toBeGreaterThan(prompt.indexOf("Recent turns of this same conversation"));
+    }
+  });
+
+  it("the seed turn carries the clause HARMLESSLY (its own 'only shares the guide' branch); a non-seeded turn never carries it", async () => {
+    const seedTurn = await promptFor({ message: seedFor("tantrum", "en"), language: "en" });
+    expect(seedTurn).toContain(FOLLOW_UP_FIRST);
+    expect(seedTurn).toContain("On the turn that only shares the guide, coach within it as usual.");
+    const plain = await promptFor({ message: "How do I handle the bedtime standoff?", language: "en" });
+    expect(plain).not.toContain(FOLLOW_UP_FIRST);
+    expect(plain).not.toContain("Governed escalation");
+  });
+});

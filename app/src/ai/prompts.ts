@@ -180,7 +180,19 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // facts exist. The seeded block is unchanged (seeded = unseeded + block,
   // parity pin). Re-pin owed (live, NOT RE-RUN by the builder):
   // coach-core-v1, coach-hardmoment-seed-v1, companion-continuity-v1.
-  coach_chat: { version: "1.5.1", sha256: "80f1da832876efd0078214a09f9c8b1b7ffce33eebf09d9dbb44a649267d7219" },
+  // 1.5.2 (B-AI-14, 2026-10-06; live coach-hardmoment-seed-v1 0.83 on
+  // 261799e7, paraphrase-bait-public-meltdown cardScope 0: the follow-up
+  // "summarise when I would need help" was ignored and the whole card answer
+  // regenerated): the governed block (seeded turns ONLY) gains the
+  // follow-up-first rule — the latest parent line after the guide is answered
+  // first, the guide's sections are never re-rendered wholesale, and a
+  // summarise/restate/reword request gets ONE sentence pointing at the
+  // guide's own line, then the answer stays on the follow-up. The rule is
+  // unconditional inside the block and harmless on the seed turn ("on the
+  // turn that only shares the guide, coach within it"). Non-seeded bytes are
+  // 1.5.1-identical (parity pin). Re-pin owed (live, NOT RE-RUN by the
+  // builder): coach-hardmoment-seed-v1, coach-core-v1.
+  coach_chat: { version: "1.5.2", sha256: "c64567d2c80b3579bed76bdc2eb6b928976897a251ded2474a625e7028396b4c" },
   council_synthesis: { version: "1.2.0", sha256: "428ed3513c47ba544b8e1afee8a4492140902d4b1210ec8cbb75893d8b77a00f" },
   voice_reply: { version: "1.6.0", sha256: "7c06dfda8297c50b0fd596f32a728689cd1503cb0662f9e10d3904e007be651b" },
   live_session: { version: "1.4.0", sha256: "a860d147a58a4be6f0adca9b9525925c76e3db86bf563f0ee6ad5590572fbe5c" },
@@ -266,7 +278,8 @@ export const COACH_CHAT_FIELD_RULES = `Field rules:
 export const COACH_CHAT_GOVERNED_ESCALATION_BLOCK = `Governed escalation (this conversation follows an Arbor hard-moment guide; this overrides the escalateIf field rule above):
 - The app shows this guide's own line on when to reach out for more support, word for word, with your answer. Return "escalateIf": [] (an empty array).
 - No field (text, parentScript, observe, nonDiagnosticHypotheses, frameRouting: aim, twoAxes, story, shadow, marriage, shepherd, todayPlan) may state, summarize, reword or hint at when professional help is needed or whom to contact.
-- If the parent asks you to summarize or restate when to get help, answer in one sentence in "text" that the guide's own line is shown with this answer, and do not reword it.`;
+- Answer the parent's LATEST line first. When the guide was shared earlier (in the recent turns, or above a later parent line in the question), that latest line is a follow-up: address it first and keep the answer on it. Never re-render the guide's sections (do now, say this, avoid, what to notice) or repeat the earlier answer wholesale. On the turn that only shares the guide, coach within it as usual.
+- If the parent asks you to summarize, restate or reword when to get help, say in one sentence in "text" that the guide's own line is shown with this answer, and do not reword it; then answer the rest of their line.`;
 
 // ── Versioned builders ────────────────────────────────────────────────────
 
