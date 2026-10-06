@@ -1,0 +1,259 @@
+{
+  "generatedFrom": "weight-p1",
+  "generatedAt": "2026-10-06T02:03:00.545Z",
+  "note": "B-INF-06 ratchet baseline: a later sweep may only be lighter. Lower by hand when a screen gets lighter; never raise.",
+  "metrics": [
+    "tappableAboveFold",
+    "tappable",
+    "textSizes",
+    "under12",
+    "uppercase",
+    "gradients",
+    "screens"
+  ],
+  "cells": {
+    "behaviors|1280x800|en": {
+      "tappableAboveFold": 20,
+      "tappable": 40,
+      "textSizes": 11,
+      "under12": 39,
+      "uppercase": 2,
+      "gradients": 8,
+      "screens": 2.2
+    },
+    "behaviors|375x812|en": {
+      "tappableAboveFold": 14,
+      "tappable": 44,
+      "textSizes": 11,
+      "under12": 42,
+      "uppercase": 2,
+      "gradients": 8,
+      "screens": 2.9
+    },
+    "behaviors|375x812|he": {
+      "tappableAboveFold": 14,
+      "tappable": 44,
+      "textSizes": 11,
+      "under12": 42,
+      "uppercase": 2,
+      "gradients": 8,
+      "screens": 2.8
+    },
+    "consult|1280x800|en": {
+      "tappableAboveFold": 14,
+      "tappable": 41,
+      "textSizes": 6,
+      "under12": 0,
+      "uppercase": 22,
+      "gradients": 2,
+      "screens": 3.9
+    },
+    "consult|375x812|en": {
+      "tappableAboveFold": 16,
+      "tappable": 46,
+      "textSizes": 8,
+      "under12": 3,
+      "uppercase": 22,
+      "gradients": 2,
+      "screens": 5.8
+    },
+    "consult|375x812|he": {
+      "tappableAboveFold": 16,
+      "tappable": 46,
+      "textSizes": 8,
+      "under12": 3,
+      "uppercase": 22,
+      "gradients": 2,
+      "screens": 5.6
+    },
+    "journal|1280x800|en": {
+      "tappableAboveFold": 18,
+      "tappable": 46,
+      "textSizes": 6,
+      "under12": 0,
+      "uppercase": 0,
+      "gradients": 24,
+      "screens": 5.1
+    },
+    "journal|375x812|en": {
+      "tappableAboveFold": 19,
+      "tappable": 50,
+      "textSizes": 8,
+      "under12": 3,
+      "uppercase": 0,
+      "gradients": 24,
+      "screens": 6
+    },
+    "journal|375x812|he": {
+      "tappableAboveFold": 19,
+      "tappable": 50,
+      "textSizes": 8,
+      "under12": 3,
+      "uppercase": 0,
+      "gradients": 24,
+      "screens": 5.9
+    },
+    "milestones|1280x800|en": {
+      "tappableAboveFold": 15,
+      "tappable": 15,
+      "textSizes": 8,
+      "under12": 6,
+      "uppercase": 0,
+      "gradients": 1,
+      "screens": 1
+    },
+    "milestones|375x812|en": {
+      "tappableAboveFold": 12,
+      "tappable": 19,
+      "textSizes": 9,
+      "under12": 9,
+      "uppercase": 0,
+      "gradients": 1,
+      "screens": 2
+    },
+    "milestones|375x812|he": {
+      "tappableAboveFold": 12,
+      "tappable": 19,
+      "textSizes": 9,
+      "under12": 9,
+      "uppercase": 0,
+      "gradients": 1,
+      "screens": 1.9
+    },
+    "overview|1280x800|en": {
+      "tappableAboveFold": 12,
+      "tappable": 12,
+      "textSizes": 7,
+      "under12": 1,
+      "uppercase": 0,
+      "gradients": 1,
+      "screens": 0.9
+    },
+    "overview|375x812|en": {
+      "tappableAboveFold": 14,
+      "tappable": 14,
+      "textSizes": 9,
+      "under12": 8,
+      "uppercase": 0,
+      "gradients": 1,
+      "screens": 1
+    },
+    "overview|375x812|he": {
+      "tappableAboveFold": 14,
+      "tappable": 14,
+      "textSizes": 9,
+      "under12": 8,
+      "uppercase": 0,
+      "gradients": 1,
+      "screens": 1
+    },
+    "profile|1280x800|en": {
+      "tappableAboveFold": 7,
+      "tappable": 9,
+      "textSizes": 9,
+      "under12": 0,
+      "uppercase": 0,
+      "gradients": 1,
+      "screens": 1.6
+    },
+    "profile|375x812|en": {
+      "tappableAboveFold": 10,
+      "tappable": 13,
+      "textSizes": 11,
+      "under12": 3,
+      "uppercase": 0,
+      "gradients": 1,
+      "screens": 2.2
+    },
+    "profile|375x812|he": {
+      "tappableAboveFold": 10,
+      "tappable": 13,
+      "textSizes": 11,
+      "under12": 3,
+      "uppercase": 0,
+      "gradients": 1,
+      "screens": 2.2
+    },
+    "safety|1280x800|en": {
+      "tappableAboveFold": 7,
+      "tappable": 7,
+      "textSizes": 6,
+      "under12": 0,
+      "uppercase": 1,
+      "gradients": 1,
+      "screens": 0.9
+    },
+    "safety|375x812|en": {
+      "tappableAboveFold": 11,
+      "tappable": 11,
+      "textSizes": 7,
+      "under12": 2,
+      "uppercase": 1,
+      "gradients": 1,
+      "screens": 1.1
+    },
+    "safety|375x812|he": {
+      "tappableAboveFold": 11,
+      "tappable": 11,
+      "textSizes": 7,
+      "under12": 2,
+      "uppercase": 0,
+      "gradients": 1,
+      "screens": 1
+    },
+    "screening|1280x800|en": {
+      "tappableAboveFold": 6,
+      "tappable": 6,
+      "textSizes": 6,
+      "under12": 1,
+      "uppercase": 0,
+      "gradients": 1,
+      "screens": 0.9
+    },
+    "screening|375x812|en": {
+      "tappableAboveFold": 10,
+      "tappable": 10,
+      "textSizes": 8,
+      "under12": 4,
+      "uppercase": 0,
+      "gradients": 1,
+      "screens": 1.5
+    },
+    "screening|375x812|he": {
+      "tappableAboveFold": 10,
+      "tappable": 10,
+      "textSizes": 8,
+      "under12": 4,
+      "uppercase": 0,
+      "gradients": 1,
+      "screens": 1.4
+    },
+    "weekly|1280x800|en": {
+      "tappableAboveFold": 8,
+      "tappable": 11,
+      "textSizes": 4,
+      "under12": 3,
+      "uppercase": 2,
+      "gradients": 1,
+      "screens": 1.3
+    },
+    "weekly|375x812|en": {
+      "tappableAboveFold": 10,
+      "tappable": 13,
+      "textSizes": 5,
+      "under12": 6,
+      "uppercase": 2,
+      "gradients": 1,
+      "screens": 1.5
+    },
+    "weekly|375x812|he": {
+      "tappableAboveFold": 10,
+      "tappable": 13,
+      "textSizes": 5,
+      "under12": 6,
+      "uppercase": 2,
+      "gradients": 1,
+      "screens": 1.5
+    }
+  }
+}
