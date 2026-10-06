@@ -294,7 +294,7 @@ export interface BuildPacketInput {
   /** B-CAREPRO-45: the two-tap "did you hold the plan?" answers of the
    *  hard-moment ledger rows (B-ASKJB-33) — the adults' side of a hard
    *  moment, dated. The parent's own read; never a ratio. */
-  heldOutcomes?: { at: string; held: "yes" | "no" }[];
+  heldOutcomes?: { at: string; held: "yes" | "no"; child?: "calmer" | "same" | "harder" }[];
 }
 
 /* ── LC-17b — ONE input assembler for every packet call site ─────────────────
@@ -754,9 +754,13 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
     .slice(0, 3)
     .map((h, i) => {
       const day = isoDay(h.at)!;
+      // B-CAREPRO-45: the parent's second tap (B-ASKJB-33) — how the child was
+      // afterwards, in the parent's own three words. Dated, never a tally.
+      const after = h.child ? ` · afterwards: ${h.child === "same" ? "the same" : h.child}` : "";
+      const keyFor = (base: string) => (h.child ? `${base}.${h.child}` : base);
       return h.held === "yes"
-        ? { id: `held-${i}`, text: `${day} — held the plan: yes`, textKey: "elev.packet.item.heldYes", vars: { date: dayVar(day) } }
-        : { id: `held-${i}`, text: `${day} — held the plan: not this time`, textKey: "elev.packet.item.heldNo", vars: { date: dayVar(day) } };
+        ? { id: `held-${i}`, text: `${day} — held the plan: yes${after}`, textKey: keyFor("elev.packet.item.heldYes"), vars: { date: dayVar(day) } }
+        : { id: `held-${i}`, text: `${day} — held the plan: not this time${after}`, textKey: keyFor("elev.packet.item.heldNo"), vars: { date: dayVar(day) } };
     });
   if (plans.length) {
     const items: PacketItem[] = plans.slice(0, 4).map((p, i) => (p.issue

@@ -27,6 +27,14 @@ export const en: Record<string, string> = {
   // ── Per-domain row markers (same neutral tone for every domain)
   "elev.screencalm.row.discuss": "worth a conversation",
   "elev.screencalm.row.reviewed": "reviewed",
+
+  // ── B-CAREPRO-45 — every result screen: the answers are kept, never graded.
+  "elev.screencalm.saved.title": "Your answers are saved for your next check-up",
+  "elev.screencalm.saved.listLabel": "What you answered",
+  "elev.screencalm.saved.worth": "Some answers are “not yet” — worth a conversation at the next visit.",
+  "elev.screencalm.saved.last": "answers saved",
+  // The passive watch card when nothing is listed: what it does, never a reassurance.
+  "elev.screencalm.monitor.none": "Arbor reads your notes and the milestones you mark. Anything worth raising at a visit is listed here.",
 };
 
 export const he: Record<string, string> = {
@@ -37,4 +45,10 @@ export const he: Record<string, string> = {
   "elev.screencalm.body.none": "עברנו על כל התחומים לפי התשובות שלכם. אין כאן שום דבר שמבקש פעולה כרגע.",
   "elev.screencalm.row.discuss": "שווה שיחה",
   "elev.screencalm.row.reviewed": "נבדק",
+
+  "elev.screencalm.saved.title": "התשובות שלכם שמורות לבדיקה הבאה",
+  "elev.screencalm.saved.listLabel": "מה עניתם",
+  "elev.screencalm.saved.worth": "חלק מהתשובות הן „עדיין לא” — שווה לדבר עליהן בביקור הבא.",
+  "elev.screencalm.saved.last": "התשובות נשמרו",
+  "elev.screencalm.monitor.none": "ארבור קורא את הרישומים שלכם ואת אבני הדרך שסימנתם. כל מה ששווה להעלות בביקור יופיע כאן.",
 };

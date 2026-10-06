@@ -223,7 +223,8 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, onAudi
       // B-CAREPRO-45: the dated "held the plan" answers (B-ASKJB-33 ledger rows).
       heldOutcomes: (actionLoop ?? [])
         .filter((r) => r.source === "hard-moment" && (r.held === "yes" || r.held === "no") && r.outcomeAt)
-        .map((r) => ({ at: r.outcomeAt!, held: r.held! })),
+        // B-CAREPRO-45: + the parent's read of the child afterwards, when given.
+        .map((r) => ({ at: r.outcomeAt!, held: r.held!, ...(r.childResponse ? { child: r.childResponse } : {}) })),
     }),
     [childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems, reason, preparedQuestions, langObsCol.items, growthCol.items, audience, actionLoop]
   );

@@ -5,8 +5,8 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { useToast } from "../../context/ToastContext";
-import { PageHeader, SectionCard, cardCls, Chip, IconBadge, TrustSafetyBar } from "../ui/kit";
-import { bandForAgeMonths, scoreScreening, type ScreenAnswer, type ScreeningResult } from "../../lib/screening";
+import { PageHeader, SectionCard, cardCls, TrustSafetyBar } from "../ui/kit";
+import { AGE_BANDS, bandForAgeMonths, scoreScreening, type ScreenAnswer, type ScreeningResult } from "../../lib/screening";
 import { domainLabel } from "../../lib/domains/registry";
 import { comparisonAgeMonths, correctedAge } from "../../lib/milestoneData";
 import { ageLabel, ageMonthsFromProfile } from "../../lib/childAge";
@@ -42,7 +42,7 @@ const ANSWERS: ScreenAnswer[] = ["yes", "sometimes", "not_yet"];
 export default function Screening() {
   const { childProfile, behaviorLogs, milestones } = useArbor();
   const { toast } = useToast();
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
   const first = childProfile.name.split(" ")[0];
 
   // Passive developmental-monitoring layer (Mission M8): derived from the child's
@@ -152,9 +152,10 @@ export default function Screening() {
             ))}
           </div>
         ) : (
-          <div className="mt-3 inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-xs font-bold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
-            <Icon name="visibility" size={14} /> {t("monitor.calm")}
-          </div>
+          // B-CAREPRO-45: what the card does, never a reassurance ("Nothing stands out").
+          <p data-testid="monitor-none" className="mt-3 t-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+            {tCalm(uiLang, "elev.screencalm.monitor.none")}
+          </p>
         )}
       </SectionCard>
       </div>
@@ -303,6 +304,20 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
     () => (result ? watchOffersForScreening(band.items, answers, milestones, comparisonMonths).slice(0, 3) : []),
     [result, band.items, answers, milestones, comparisonMonths],
   );
+  // B-CAREPRO-45 — the answers the result screen lists (band order), and the
+  // areas holding a "not yet" (the quiet Care line's prefill). Records saved
+  // before the answers were kept show the saved line only.
+  const savedAnswers = useMemo(() => {
+    if (!result?.answers) return [] as { id: string; answer: ScreenAnswer; domain: string }[];
+    const items = AGE_BANDS.find((b) => b.id === result.bandId)?.items ?? [];
+    return items
+      .filter((it) => result.answers?.[it.id])
+      .map((it) => ({ id: it.id, answer: result.answers![it.id], domain: it.domain as string }));
+  }, [result]);
+  const notYetAreas = useMemo(
+    () => [...new Set(savedAnswers.filter((a) => a.answer === "not_yet").map((a) => a.domain))].map((domain) => ({ domain })),
+    [savedAnswers],
+  );
   const chooseWatch = (milestoneId: string, screenItemId: string) => {
     writeWatchFocus(childProfile.id, { milestoneId, screenItemId, chosenAt: new Date().toISOString() });
     setWatchingId(milestoneId);
@@ -349,13 +364,9 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
                 <span className="text-xs" style={{ color: "var(--arbor-muted)" }}>
                   {t("screen.last.line", {
                     date: fmtDay(last.answeredAt, uiLang),
-                    // GP-11 — the calm reframe reworded the RESULT screen but
-                    // left "flagged" on the line above it. One register.
-                    status: last.elevated
-                      ? (last.watchAreas.length === 1
-                        ? tGCare(uiLang, "elev.gcare.screen.last.worth.one")
-                        : tGCare(uiLang, "elev.gcare.screen.last.worth.many", { n: last.watchAreas.length }))
-                      : t("screen.last.calm"),
+                    // B-CAREPRO-45: the last check is a saved set of answers,
+                    // never a verdict line (no "no area to talk over").
+                    status: tCalm(uiLang, "elev.screencalm.saved.last"),
                   })}
                 </span>
                 <button onClick={() => { setActiveId(last.id); setResult(last); setPhase("result"); }} className="text-xs font-bold" style={{ color: "var(--arbor-green-ink)" }}>{t("screen.viewLast")}</button>
@@ -458,45 +469,42 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
       <AnimatePresence>
         {phase === "result" && result && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
-            {/* Headline — W0.3 clinical firewall: ONE neutral card regardless of
-                outcome. UND-1 removed the verdict WORDS; this removes the verdict
-                COLOR mechanism (the amber-vs-green wash + badge flip). The
-                headline reports a count, observationally — which is what the
-                safetyNote below has promised all along. */}
-            <div className="rounded-[22px] p-6" style={{ background: "var(--arbor-paper-deep)" }}>
-              <div className="flex items-center gap-3">
-                <IconBadge tone="lav">
-                  <Icon name="fact_check" size={20} />
-                </IconBadge>
-                <div>
-                  <h3 className="text-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-                    {result.watchAreas.length === 0
-                      ? tCalm(uiLang, "elev.screencalm.title.none", { total: result.domains.length })
-                      : result.watchAreas.length === 1
-                        ? tCalm(uiLang, "elev.screencalm.title.one")
-                        : tCalm(uiLang, "elev.screencalm.title.many", { n: result.watchAreas.length })}
-                  </h3>
-                  <p className="text-sm mt-0.5" style={{ color: "var(--arbor-muted)" }}>
-                    {result.watchAreas.length > 0
-                      ? tCalm(uiLang, "elev.screencalm.body.some")
-                      : tCalm(uiLang, "elev.screencalm.body.none")}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Per-domain breakdown — same neutral marker tone for EVERY domain;
-                the row wording routes ("worth a conversation" / "reviewed"),
-                it never grades. */}
-            <div className="grid sm:grid-cols-2 gap-3">
-              {result.domains.map((d) => (
-                <div key={d.domain} className={`${cardCls} p-4 flex items-center justify-between gap-3`}>
-                  <span className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{domainLabel("screen", d.domain, t)}</span>
-                  <Chip tone="lav">
-                    {tCalm(uiLang, d.status === "watch" ? "elev.screencalm.row.discuss" : "elev.screencalm.row.reviewed")}
-                  </Chip>
-                </div>
-              ))}
+            {/* B-CAREPRO-45 — the Development Check never reassures and never
+                grades. Every result reads the same way: the answers are saved
+                for the next check-up, listed as the parent gave them. When any
+                answer is "not yet", one quiet line routes to Care. No headline
+                count, no per-area marker, no "nothing stood out". */}
+            <div data-testid="screen-saved" className="rounded-[22px] p-6" style={{ background: "var(--arbor-paper-deep)" }}>
+              <h3 className="t-lg font-semibold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+                {tCalm(uiLang, "elev.screencalm.saved.title")}
+              </h3>
+              {savedAnswers.length > 0 && (
+                <>
+                  <p className="mt-3 t-sm" style={{ color: "var(--arbor-muted)" }}>{tCalm(uiLang, "elev.screencalm.saved.listLabel")}</p>
+                  <ul data-testid="screen-saved-answers" className="mt-1">
+                    {savedAnswers.map(({ id, answer }) => (
+                      <li key={id} className="flex items-start justify-between gap-3 border-b py-2.5 last:border-b-0" style={{ borderColor: "var(--arbor-rule)" }}>
+                        <span className="min-w-0 flex-1 t-sm" style={{ color: "var(--arbor-ink)" }}>{t(`screen.item.${id}`)}</span>
+                        <span className="flex-shrink-0 t-sm" style={{ color: "var(--arbor-ink-soft)" }}>{t(`screen.answer.${answer}`)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+              {notYetAreas.length > 0 && (
+                <p data-testid="screen-worth" className="mt-3 t-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+                  {tCalm(uiLang, "elev.screencalm.saved.worth")}{" "}
+                  <button
+                    type="button"
+                    data-testid="screen-prepare-visit"
+                    onClick={() => prepareForVisit(notYetAreas)}
+                    className="inline-flex min-h-11 items-center font-semibold underline underline-offset-2"
+                    style={{ color: "var(--arbor-ink)" }}
+                  >
+                    {t("screen.next.summary")}
+                  </button>
+                </p>
+              )}
             </div>
 
             {/* GP-34 — close the loop. Every "sometimes"/"not yet" answer that
@@ -540,48 +548,27 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
               </SectionCard>
             )}
 
-            {/* GP-11 — a calm result used to dead-end: "nothing asks for action"
-                and then only "remind me" / "Retake". Most checks come back calm,
-                so that was the common case with nowhere to go. The offered next
-                move is the ordinary one — play together, or open the record. */}
-            {!result.elevated && (
-              <SectionCard title={tGCare(uiLang, "elev.gcare.screen.calm.title")} icon={<Icon name="wb_sunny" size={20} />} tone="mint">
-                <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
-                  {tGCare(uiLang, "elev.gcare.screen.calm.body")}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2" data-testid="screen-calm-next">
+            {/* Next steps */}
+            <SectionCard title={t("screen.next.title")} icon={<Icon name="verified_user" size={20} />} tone="sky">
+              <div className="flex flex-wrap gap-2">
+                {/* GP-11 — every result has somewhere to go: today's play idea or
+                    the record (B-CAREPRO-45: no longer behind a "calm" card). */}
+                <span data-testid="screen-calm-next" style={{ display: "contents" }}>
                   <button
                     onClick={() => { onClose?.(); setActiveTab("daily-play"); }}
-                    className="inline-flex min-h-11 items-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold text-white"
-                    style={{ background: "var(--arbor-gradient-primary)" }}
+                    className="inline-flex min-h-11 items-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold"
+                    style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}
                   >
                     <Icon name="toys" size={16} /> {tGCare(uiLang, "elev.gcare.screen.calm.play")}
                   </button>
                   <button
                     onClick={() => { onClose?.(); setActiveTab("milestones"); }}
-                    className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-bold"
-                    style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}
+                    className="inline-flex min-h-11 items-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold"
+                    style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}
                   >
                     <Icon name="edit_note" size={16} /> {tGCare(uiLang, "elev.gcare.screen.calm.record")}
                   </button>
-                </div>
-              </SectionCard>
-            )}
-
-            {/* Next steps */}
-            <SectionCard title={t("screen.next.title")} icon={<Icon name="verified_user" size={20} />} tone="sky">
-              <div className="flex flex-wrap gap-2">
-                {result.elevated && (
-                  <button
-                    type="button"
-                    data-testid="screen-prepare-visit"
-                    onClick={() => prepareForVisit(result.watchAreas)}
-                    className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3"
-                    style={{ background: "var(--arbor-gradient-primary)", minHeight: 44 }}
-                  >
-                    <Icon name="description" size={16} /> {t("screen.next.summary")}
-                  </button>
-                )}
+                </span>
                 <button
                   onClick={remind}
                   disabled={!!reminderDueAt}
@@ -599,7 +586,7 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
                   {t("screen.next.retake")}
                 </button>
               </div>
-              <p className="text-[11px] mt-3 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+              <p className="t-sm mt-3 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
                 {t("screen.safetyNote")}
               </p>
             </SectionCard>

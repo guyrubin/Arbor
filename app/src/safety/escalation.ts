@@ -53,7 +53,7 @@ export const escalationCategories: {
     label: "abuse, violence, neglect, or unsafe home concern",
     resources: [
       "If a child is in immediate danger, call **112** (EU / mobile in Israel), **100** (Israel police) or **911** (US) now.",
-      "- 🇮🇱 Israel — Police child protection: **100** · online child protection (Lametayel/105): **105**",
+      "- 🇮🇱 Israel — Ministry of Welfare hotline (family violence, children at risk): **118** (24/7, free) · Police child protection: **100** · online child protection (Lametayel/105): **105**",
       "- 🇳🇱 Netherlands — Veilig Thuis (abuse & domestic violence): **0800-2000** (free, 24/7)",
       "- 🇧🇪 Belgium — **1712** (violence & abuse, NL) · SOS Enfants (FR)",
       "- 🇺🇸 US — Childhelp National Child Abuse Hotline: **1-800-422-4453**",
@@ -234,6 +234,14 @@ ${renderHelplineLinksMarkdown()}`;
  *   be_1813 1813   zelfmoord1813.be ("Bel 1813", 24/7)
  *   be_1712 1712   1712.be (violence/abuse line, Mon–Fri 09:00–18:00)
  *   us_988 988 · us_911 911   988lifeline.org
+ * Added 2026-10-06 (B-CAREPRO-45) — child-protection line per supported country:
+ *   il_welfare 118   gov.il Ministry of Welfare "מוקד מידע וסיוע 118"
+ *                    (gov.il/he/service/contact-the-ministry-of-labor-welfare-and-social-services);
+ *                    family-violence calls incl. violence against children, staffed around
+ *                    the clock (gov.il/he/pages/molsa-news-violence-and-delinquency-domestic-violence-21112022)
+ *   nl_veiligthuis 0800-2000   veiligthuis.nl ("Bel gratis … 0800-2000", "24/7 … bereikbaar")
+ *   be_1712 1712     1712.be ("geweld, misbruik en kindermishandeling", Mon–Fri 09:00–18:00)
+ *   us_childhelp 1-800-422-4453   childhelphotline.org (Childhelp National Child Abuse Hotline)
  * Next review due by 2027-03-30 (180 d); the CI currency test warns 14 d before. */
 export const HELPLINES_REVIEWED_ON = "2026-10-01";
 
@@ -341,13 +349,29 @@ export const HELPLINE_DIRECTORY: readonly HelplineEntry[] = [
   { id: "il_eran",   region: "il", number: "1201",      tel: "1201" },
   { id: "il_mda",    region: "il", number: "101",       tel: "101" },
   { id: "il_police", region: "il", number: "100",       tel: "100" },
+  // B-CAREPRO-45: the child-protection line per country (il_welfare, nl_veiligthuis,
+  // be_1712, us_childhelp). Each sits AFTER its region's talk line, so
+  // dangerLineFor's "first non-emergency line of the region" is unchanged.
+  { id: "il_welfare", region: "il", number: "118",       tel: "118" },
   { id: "eu_112",    region: "eu", number: "112",       tel: "112" },
   { id: "nl_113",    region: "nl", number: "0800-0113", tel: "08000113" },
+  { id: "nl_veiligthuis", region: "nl", number: "0800-2000", tel: "08002000" },
   { id: "be_1813",   region: "be", number: "1813",      tel: "1813" },
   { id: "be_1712",   region: "be", number: "1712",      tel: "1712" },
   { id: "us_988",    region: "us", number: "988",       tel: "988" },
   { id: "us_911",    region: "us", number: "911",       tel: "911" },
+  { id: "us_childhelp", region: "us", number: "1-800-422-4453", tel: "+18004224453" },
 ];
+
+/** B-CAREPRO-45 — the child-protection line of each supported country (the
+ *  family-violence / child-abuse line a parent calls about a child at risk).
+ *  escalation.directory.test.ts holds every country to exactly one. */
+export const CHILD_PROTECTION_HELPLINE_IDS: Readonly<Record<Exclude<HelplineRegion, "eu">, string>> = {
+  il: "il_welfare",
+  nl: "nl_veiligthuis",
+  be: "be_1712",
+  us: "us_childhelp",
+};
 
 /** W2-CAREPRO r1 — the emergency-service numbers in the directory (the rest
  *  are emotional / crisis-talk lines). */

@@ -39,12 +39,15 @@ export const en: Record<string, string> = {
   "elev.safety.helpline.il_eran": "ERAN emotional first aid (24/7)",
   "elev.safety.helpline.il_mda": "Magen David Adom — ambulance",
   "elev.safety.helpline.il_police": "Police",
+  "elev.safety.helpline.il_welfare": "Ministry of Welfare — family violence, children at risk (24/7)",
   "elev.safety.helpline.eu_112": "Emergency services (EU-wide; also from mobiles in Israel)",
   "elev.safety.helpline.nl_113": "113 Suicide Prevention (free)",
+  "elev.safety.helpline.nl_veiligthuis": "Veilig Thuis — abuse and domestic violence (free, 24/7)",
   "elev.safety.helpline.be_1813": "Zelfmoordlijn — suicide prevention",
   "elev.safety.helpline.be_1712": "Violence & abuse line",
   "elev.safety.helpline.us_988": "988 Suicide & Crisis Lifeline",
   "elev.safety.helpline.us_911": "Emergency services",
+  "elev.safety.helpline.us_childhelp": "Childhelp National Child Abuse Hotline",
   "elev.safety.helplines.findLocal": "Country not listed? Find a local helpline",
 
   // ── Escalation checklist — warning signs
@@ -118,12 +121,15 @@ export const he: Record<string, string> = {
   "elev.safety.helpline.il_eran": "ער״ן — עזרה ראשונה נפשית (24/7)",
   "elev.safety.helpline.il_mda": "מגן דוד אדום — אמבולנס",
   "elev.safety.helpline.il_police": "משטרה",
+  "elev.safety.helpline.il_welfare": "מוקד משרד הרווחה — אלימות במשפחה, ילדים בסיכון (24/7)",
   "elev.safety.helpline.eu_112": "שירותי חירום (בכל האיחוד האירופי, וגם מניידים בישראל)",
   "elev.safety.helpline.nl_113": "113 מניעת אובדנות (שיחת חינם)",
+  "elev.safety.helpline.nl_veiligthuis": "Veilig Thuis — התעללות ואלימות במשפחה (שיחת חינם, 24/7)",
   "elev.safety.helpline.be_1813": "Zelfmoordlijn — קו מניעת אובדנות",
   "elev.safety.helpline.be_1712": "קו אלימות והתעללות",
   "elev.safety.helpline.us_988": "988 — קו סיוע לאובדנות ומשבר",
   "elev.safety.helpline.us_911": "שירותי חירום",
+  "elev.safety.helpline.us_childhelp": "Childhelp — הקו הארצי לפגיעה בילדים",
   "elev.safety.helplines.findLocal": "המדינה שלכם לא ברשימה? מצאו קו סיוע מקומי",
 
   // ── Escalation checklist — warning signs

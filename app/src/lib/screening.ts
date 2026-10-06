@@ -5,9 +5,16 @@
  * device. Items are plain-language, general developmental-awareness prompts
  * derived from public-domain milestone guidance (CDC "Learn the Signs. Act
  * Early."-style), grouped by the app's six developmental domains. The output is
- * only ever "on track" vs "worth a conversation with a professional" — never a
- * score, probability, or condition name. See
+ * never a score, probability, or condition name. See
  * docs/prd-red-flag-screening-2026-06-07.md.
+ *
+ * B-CAREPRO-45: the result screen renders NO verdict — every result reads "Your
+ * answers are saved for your next check-up" plus the answers themselves, and a
+ * quiet "worth a conversation" line routes to Care when any answer is "not
+ * yet". `DomainResult.status` / `ScreeningResult.elevated` stay in the saved
+ * record as routing data (observations, the Copilot's conversation starters);
+ * no component renders them as a reassurance or a grade
+ * (lib/screening.noVerdict.test.ts).
  */
 
 import { toAgeBand, type CanonicalBandId } from "./domains/ageBands";
@@ -99,6 +106,10 @@ export const AGE_BANDS: AgeBand[] = [
       { id: "b23-soc2", domain: "social_development", prompt: "Responds to their name and makes eye contact during talk." },
       { id: "b23-att1", domain: "attachment_regulation", prompt: "Recovers from upset with help within a reasonable time." },
       { id: "b23-ind1", domain: "independence_adaptive_skills", prompt: "Eats a reasonable range of foods and textures." },
+      // B-CAREPRO-45 gross motor — CDC "Learn the Signs. Act Early." 2-year
+      // checklist, Movement/Physical: "Kicks a ball", "Runs".
+      // https://www.cdc.gov/act-early/milestones/2-years.html
+      { id: "b23-mot1", domain: "sensory_motor_patterns", prompt: "Runs and kicks a ball." },
     ],
   },
   {
@@ -113,6 +124,10 @@ export const AGE_BANDS: AgeBand[] = [
       { id: "b35-att1", domain: "attachment_regulation", prompt: "Manages most transitions and disappointments without prolonged meltdowns." },
       { id: "b35-ind1", domain: "independence_adaptive_skills", prompt: "Manages basics like dressing, toileting and sleep for their age." },
       { id: "b35-mot1", domain: "sensory_motor_patterns", prompt: "Copes with everyday sounds, textures and busy spaces." },
+      // B-CAREPRO-45 gross motor — CDC 4-year checklist, Movement/Physical:
+      // "Catches a large ball most of the time".
+      // https://www.cdc.gov/act-early/milestones/4-years.html
+      { id: "b35-mot2", domain: "sensory_motor_patterns", prompt: "Catches a large ball most of the time." },
     ],
   },
   {
@@ -126,6 +141,11 @@ export const AGE_BANDS: AgeBand[] = [
       { id: "b58-lang1", domain: "language_communication", prompt: "Holds a back-and-forth conversation and follows a story." },
       { id: "b58-att1", domain: "attachment_regulation", prompt: "Calms after upset and bounces back from setbacks." },
       { id: "b58-ind1", domain: "independence_adaptive_skills", prompt: "Sleeps well and manages morning/school routines with support." },
+      // B-CAREPRO-45 gross motor — CDC 5-year checklist, Movement/Physical:
+      // "Hops on one foot" (the CDC checklist ends at 5 years; for 5–8 this is
+      // the floor the child should already have).
+      // https://www.cdc.gov/act-early/milestones/5-years.html
+      { id: "b58-mot1", domain: "sensory_motor_patterns", prompt: "Hops on one foot." },
     ],
   },
   {
@@ -183,6 +203,10 @@ export interface ScreeningResult {
   /** Domains worth a professional conversation. */
   watchAreas: DomainResult[];
   elevated: boolean;
+  /** B-CAREPRO-45: the parent's answers, saved with the record — the result
+   *  screen lists them ("saved for your next check-up"). Absent on records
+   *  saved before 6 Oct 2026. */
+  answers?: Record<string, ScreenAnswer>;
 }
 
 /**
@@ -210,6 +234,8 @@ export function scoreScreening(items: ScreenItem[], answers: Record<string, Scre
     status: v.concern >= 1 ? "watch" : "on_track",
   }));
   const watchAreas = domains.filter((d) => d.status === "watch");
+  const saved: Record<string, ScreenAnswer> = {};
+  for (const it of items) if (answers[it.id]) saved[it.id] = answers[it.id];
   return {
     bandId: band?.id ?? "",
     bandLabel: band?.label ?? "",
@@ -217,5 +243,6 @@ export function scoreScreening(items: ScreenItem[], answers: Record<string, Scre
     domains,
     watchAreas,
     elevated: watchAreas.length > 0,
+    answers: saved,
   };
 }

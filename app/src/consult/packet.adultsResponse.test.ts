@@ -73,6 +73,17 @@ describe("B-CAREPRO-45 — the adults' side of a hard moment, dated", () => {
     expect(order.indexOf("adults")).toBe(order.indexOf("tried") + 1);
   });
 
+  it("carries the parent's read of the child afterwards on the same dated line (EN + HE), never a tally", () => {
+    const withChild = { ...base, heldOutcomes: [{ at: iso(1), held: "yes" as const, child: "calmer" as const }, { at: iso(2), held: "no" as const, child: "harder" as const }] };
+    const held = tried(withChild)!.items.filter((i) => i.id.startsWith("held-"));
+    expect(held).toHaveLength(2);
+    expect(itemText(held[0], "en")).toMatch(/held the plan: yes · afterwards: calmer$/);
+    expect(itemText(held[1], "en")).toMatch(/held the plan: not this time · afterwards: harder$/);
+    expect(itemText(held[0], "he")).toMatch(/עמדנו בתוכנית: כן · אחר כך: יותר רגיעה$/);
+    expect(itemText(held[1], "he")).toMatch(/לא הפעם · אחר כך: יותר קשה$/);
+    for (const lang of ["en", "he"] as const) for (const it of held) expect(itemText(it, lang)).not.toMatch(/\d+\s*(of|\/|מתוך)\s*\d+|%|times/);
+  });
+
   it("negative control: with no responses and no held answers there is no section", () => {
     expect(tried({ ...base, logs: base.logs.map((l) => ({ ...l, response: undefined })), heldOutcomes: [] })).toBeUndefined();
   });
