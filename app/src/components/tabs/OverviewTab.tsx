@@ -44,7 +44,7 @@ import { quoteKeepsakeDoc, tonightDayQuestion, tonightOutcomeEntry } from "../..
 import { keepsakeDoc, type KeepsakeDoc } from "../../lib/firstsKeepsake";
 import type { Milestone } from "../../types";
 import type { ShelfId } from "../../lib/shelves/registry";
-import PracticeCard, { PracticeOutcomeStrip, practiceText } from "../loop/PracticeCard";
+import PracticeCard, { PracticeOutcomeStrip, practiceText, type PracticeWhyReason } from "../loop/PracticeCard";
 import NoticeCard from "../loop/NoticeCard";
 import TonightFlow from "../loop/TonightFlow";
 
@@ -197,6 +197,16 @@ export default function OverviewTab() {
   );
   const dateOf = (iso: string) => new Date(iso).toLocaleDateString(lang === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short" });
   const quotes = [words.then, words.now].filter((w): w is NonNullable<typeof w> => !!w).map((w) => ({ text: w.text, date: dateOf(w.at) }));
+  // P5 r1 pass A3: the why-line states the chooser's reason from the SAME
+  // coverage count it ranked by (never rendered as a number): nothing on the
+  // shelf this month, or the fewest notes of all the child's shelves; the
+  // alternation's second shelf gets the plain line — never a false "fewest".
+  const whyReason = useMemo<PracticeWhyReason | null>(() => {
+    if (!pick) return null;
+    const n = coverage[pick.shelf] ?? 0;
+    if (n === 0) return "empty";
+    return n <= Math.min(...Object.values(coverage)) ? "fewest" : null;
+  }, [pick, coverage]);
 
   // ── B-LOOP-04: Notice today. A card the parent just answered stays in place
   //    for the session (its receipt); the block never shows the practice's shelf. ──
@@ -364,6 +374,7 @@ export default function OverviewTab() {
       onAnswer={answerPractice}
       onUndo={dose ? () => removeTodayAction(dose.id) : undefined}
       quotes={quotes}
+      whyReason={whyReason}
       stampMove={firstBlock === "practice" ? primaryMoveId : undefined}
     />
   ) : slotNotice ? (

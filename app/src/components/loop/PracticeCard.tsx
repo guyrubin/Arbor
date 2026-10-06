@@ -4,7 +4,6 @@ import { FreeText } from "../ui/FreeText";
 import { useLanguage } from "../../context/LanguageContext";
 import type { Practice } from "../../content/practices";
 import type { Milestone } from "../../types";
-import { milestoneText } from "../../lib/milestoneData";
 import { resolveHebrewSlash } from "../../lib/hebrewSlashGender";
 import { shelfLabel, type ShelfId } from "../../lib/shelves/registry";
 import type { PracticeAnswer } from "../../lib/practice/choosePractice";
@@ -19,6 +18,13 @@ export function practiceText(p: Practice, field: "do" | "say" | "materials", lan
   const text = lang === "he" ? value.he : value.en;
   return lang === "he" ? resolveHebrewSlash(text, gender) : text;
 }
+
+export type PracticeWhyReason = "empty" | "fewest";
+
+const WHY_KEY: Record<PracticeWhyReason, string> = {
+  empty: "elev.loop.practice.whyEmpty",
+  fewest: "elev.loop.practice.whyFewest",
+};
 
 export interface PracticeCardProps {
   practice: Practice;
@@ -37,6 +43,11 @@ export interface PracticeCardProps {
   quotes?: ReadonlyArray<{ text: string; date?: string }>;
   /** B-LOOP-07: a lifecycle line (birthday, first week) inside the header, never a sibling. */
   headerNote?: string | null;
+  /** P5 r1 pass A3: the chooser's REASON for this shelf today (the coverage
+   *  count it ranked by — never rendered as a number): nothing this month,
+   *  or the fewest notes of all the child's shelves. Otherwise (the
+   *  alternation's second shelf) the plain shelf line — never a false claim. */
+  whyReason?: PracticeWhyReason | null;
   /** Law 7: the answers ARE the surface's primary move (P5 design r1 P0-1:
    *  the stamp sits on the "Did it" / "Not today" group, h ≈ 48, never on the
    *  card; after an answer the route moves it to the next unanswered
@@ -58,7 +69,6 @@ export interface PracticeCardProps {
  */
 export default function PracticeCard({
   practice,
-  milestone,
   shelf,
   childName,
   gender,
@@ -67,6 +77,7 @@ export default function PracticeCard({
   onUndo,
   quotes,
   headerNote,
+  whyReason,
   stampMove,
 }: PracticeCardProps) {
   const { t, uiLang } = useLanguage();
@@ -77,7 +88,6 @@ export default function PracticeCard({
   const stamp = stampMove ? { "data-primary-move": stampMove } : {};
   const sayText = practiceText(practice, "say", lang, gender);
   const materials = practiceText(practice, "materials", lang, gender);
-  const title = milestone ? milestoneText(milestone, "title", t, { gender: gender ?? null }) : "";
   const meta = [t("elev.loop.practice.minutes", { n: practice.minutes }), materials].filter(Boolean).join(" · ");
   return (
     <section
@@ -107,6 +117,24 @@ export default function PracticeCard({
         >
           {titleText}
         </h2>
+        {/* P5 r1 pass A1: the parent's OWN words on this shelf, dated, right
+            under the title — THEN and NOW when both exist (lib/today/shelfWords).
+            ONE line each (date first, the words after; the full sentence in the
+            title attribute) so "Did it" stays ≤ 640 at 375 with both present. */}
+        {quotes && quotes.length > 0 && (
+          <div data-testid="practice-quotes" className="mt-2 space-y-1 border-s-2 ps-3" style={{ borderColor: "var(--arbor-clay)" }}>
+            {quotes.map((q, i) => (
+              <p key={i} data-testid="practice-quote" title={q.text} className="truncate leading-snug" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)", fontSize: "var(--t-base)" }}>
+                {q.date && (
+                  <span style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-sans)", fontSize: "var(--t-sm)" }}>
+                    {t("elev.loop.practice.quoteMeta", { date: q.date })} ·{" "}
+                  </span>
+                )}
+                <FreeText text={`“${q.text}”`} />
+              </p>
+            ))}
+          </div>
+        )}
         <blockquote
           data-testid="practice-say"
           className="mt-3 border-s-2 ps-3 leading-snug"
@@ -119,31 +147,12 @@ export default function PracticeCard({
             {doText}
           </p>
         )}
-        {quotes && quotes.length > 0 && (
-          <div data-testid="practice-quotes" className="mt-3 space-y-2">
-            {quotes.map((q, i) => (
-              <figure key={i} data-testid="practice-quote">
-                <blockquote className="border-s-2 ps-3 text-[15px] leading-snug" style={{ borderColor: "var(--arbor-clay)", color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)" }}>
-                  <FreeText text={q.text} />
-                </blockquote>
-                {q.date && (
-                  <figcaption className="mt-1 ps-3 text-[12px]" style={{ color: "var(--arbor-muted)" }}>
-                    {t("elev.loop.practice.quoteMeta", { date: q.date })}
-                  </figcaption>
-                )}
-              </figure>
-            ))}
-          </div>
-        )}
-        <p data-testid="practice-meta" className="mt-3 text-[13px]" style={{ color: "var(--arbor-muted)" }}>{meta}</p>
-        <p data-testid="practice-why" className="mt-1 text-[14.5px] italic leading-snug" style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-editorial)" }}>
-          {t(milestone ? "elev.loop.practice.why" : "elev.loop.practice.whyShelf", { shelf: shelfName, title, name: childName || t("today.record.childFallback") })}
-        </p>
         {answered ? (
           <div className="mt-4 flex items-center gap-2">
             <p role="status" data-testid="practice-receipt" className="flex min-w-0 items-center gap-1.5 text-[14px]" style={{ color: "var(--arbor-muted)" }}>
               <Icon name="check" size={18} />
-              {t(answered === "did" ? "elev.loop.practice.didReceipt" : "elev.loop.practice.notTodayReceipt")}
+              {/* pass A1: the dose is filed on the shelf, next to the parent's words */}
+              {t(answered === "did" ? (quotes && quotes.length > 0 ? "elev.loop.practice.didReceiptWords" : "elev.loop.practice.didReceipt") : "elev.loop.practice.notTodayReceipt", { name: childName || t("today.record.childFallback"), shelf: shelfName })}
             </p>
             {onUndo && (
               <button
@@ -170,7 +179,7 @@ export default function PracticeCard({
               data-answer="did"
               onClick={() => onAnswer("did")}
               className="inline-flex min-h-12 flex-[1.15] items-center justify-center gap-2 rounded-full px-5 text-[15px] font-bold transition active:scale-[0.98]"
-              style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}
+              style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)", boxShadow: "var(--shadow-sm)" }}
             >
               <Icon name="check" size={20} />
               {t("elev.loop.practice.didIt")}
@@ -186,6 +195,12 @@ export default function PracticeCard({
             </button>
           </div>
         )}
+        {/* P5 r1 pass A1/A3: the meta and the reason sit UNDER the answers, so
+            the parent's words fit above "Did it" at 375 (bottom ≤ 640). */}
+        <p data-testid="practice-meta" className="mt-3" style={{ color: "var(--arbor-muted)", fontSize: "var(--t-sm)" }}>{meta}</p>
+        <p data-testid="practice-why" className="mt-1 italic leading-snug" style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-editorial)", fontSize: "var(--t-base)" }}>
+          {t(whyReason ? WHY_KEY[whyReason] : "elev.loop.practice.whyShelf", { shelf: shelfName, name: childName || t("today.record.childFallback") })}
+        </p>
       </div>
     </section>
   );

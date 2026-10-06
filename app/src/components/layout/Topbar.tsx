@@ -61,10 +61,14 @@ export default function Topbar() {
         >
           {t("nav.title." + section.id)}
         </span>
-        <span className="text-[12px] truncate" style={{ color: "var(--arbor-muted)" }}>
-          {/* W2-SHELLPLAY critic r2: "starring" only once a hero exists. */}
-          {t("nav.sub." + hubSubKey, { name: childProfile.name })}
-        </span>
+        {/* P5 r1 pass A6: Today owns its one caption (the eyebrow line); the
+            hub sentence here repeated it, in HE with a second wording. */}
+        {activeTab !== "overview" && (
+          <span className="text-[12px] truncate" style={{ color: "var(--arbor-muted)" }}>
+            {/* W2-SHELLPLAY critic r2: "starring" only once a hero exists. */}
+            {t("nav.sub." + hubSubKey, { name: childProfile.name })}
+          </span>
+        )}
       </div>
 
       {/* Right zone: lean desktop control band (search → Kid Mode → rail toggle →

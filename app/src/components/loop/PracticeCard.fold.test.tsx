@@ -11,7 +11,8 @@ import { describe, expect, it, vi } from "vitest";
    375 × 812 in BOTH locales.
 
    jsdom has no layout, so this guard asserts what it CAN: (1) the ORDER of
-   the card (band → title → say → do → meta → why → answers, stamp on the
+   the card (band → title → [the parent's words] → say → do → answers →
+   meta → why; pass A1 moved meta + why under the answers), stamp on the
    answers only); (2) the SIZES (title --t-lg, say --t-xl the one largest
    line, do --t-base, answers min-h-12); (3) a line-count height model of
    the card at 375 for the demo child's practice (Dylan, 3 years: the pasta
@@ -39,6 +40,20 @@ import { translate } from "../../lib/i18n";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const DEMO = PRACTICES.find((p) => p.id === "pr-cdc-36m-9")!;
+/* Pass A1: the card with the parent's words — two dated demo-length notes
+   (the demo family's own moment sentences), and every practice the 38-month
+   demo child can be offered (current band + one earlier, shelf practices). */
+const QUOTES = {
+  en: [
+    { text: "Drew a circle and called it grandma's house", date: "21 Sept" },
+    { text: "Put his shoes on by himself before breakfast", date: "4 Oct" },
+  ],
+  he: [
+    { text: "צייר עיגול וקרא לו הבית של סבתא", date: "21 בספט׳" },
+    { text: "נעל לבד את הנעליים לפני ארוחת הבוקר", date: "4 באוק׳" },
+  ],
+} as const;
+const OFFERABLE = PRACTICES.filter((p) => p.ageMonths >= 24 && p.ageMonths <= 38);
 
 /* The 375 model. Content width = 375 − 2 × 16 (page gutter) − 2 × 16 (card
    padding) = 311 px. Average advance per character (font metrics of the
@@ -50,37 +65,37 @@ const lines = (text: string, px: number, em = 0.52) => Math.max(1, Math.ceil((te
 const CARD_TOP_375 = 268 - 24 - 28; // r1 render (EN 375) − shell hub line − H1 second line
 const FOLD_LIMIT = 640;
 
-function didItBottom(lang: "en" | "he", gender: string) {
+function didItBottom(lang: "en" | "he", gender: string, practice = DEMO, quotes: ReadonlyArray<{ text: string }> = []) {
   const t = (k: string, v?: Record<string, string | number>) => translate(lang, k, v);
-  const doText = practiceText(DEMO, "do", lang, gender);
+  const doText = practiceText(practice, "do", lang, gender);
   const title = practiceTitle(doText, lang);
-  const say = `${t("elev.loop.practice.say")} “${practiceText(DEMO, "say", lang, gender)}”`;
-  const why = t("elev.loop.practice.why", { shelf: "Hands", title: "Strings beads", name: "Dylan" });
-  const meta = t("elev.loop.practice.minutes", { n: DEMO.minutes }) + " · " + practiceText(DEMO, "materials", lang, gender);
+  const say = `${t("elev.loop.practice.say")} “${practiceText(practice, "say", lang, gender)}”`;
   let y = CARD_TOP_375 + 1; // border
   y += 12 + 40 + 10; // band: pt-3, 40 px glyph row, pb-2.5
   y += 12 + lines(title, 18) * 18 * 1.375; // mt-3 + title --t-lg leading-snug
+  if (quotes.length) {
+    y += 8; // mt-2
+    y += quotes.length * (15 * 1.375 + 4); // ONE truncated line each (date first) + gap
+  }
   y += 12 + lines(say, 22, 0.5) * 22 * 1.375; // mt-3 + say --t-xl leading-snug
   if (!titleIsWholeDo(title, doText)) y += 8 + lines(doText, 15, 0.5) * 15 * 1.375; // mt-2 + do --t-base
-  y += 12 + lines(meta, 13, 0.5) * 13 * 1.5; // mt-3 + meta
-  y += 4 + lines(why, 14.5, 0.5) * 14.5 * 1.375; // mt-1 + why
-  y += 16 + 48; // mt-4 + the answers row (min-h-12)
+  y += 16 + 48; // mt-4 + the answers row (min-h-12); meta + why sit BELOW it
   return Math.round(y);
 }
 
 describe("PracticeCard at 375 × 812 — the move sits above the capture dock", () => {
-  const render = (lang: "en" | "he") => {
+  const render = (lang: "en" | "he", quotes?: ReadonlyArray<{ text: string; date: string }>) => {
     state.lang = lang;
     return renderToStaticMarkup(
-      <PracticeCard practice={DEMO} milestone={null} shelf="hands" childName="Dylan" gender="boy" onAnswer={() => undefined} stampMove="do-practice" />,
+      <PracticeCard practice={DEMO} milestone={null} shelf="hands" childName="Dylan" gender="boy" onAnswer={() => undefined} stampMove="do-practice" quotes={quotes} />,
     );
   };
 
   for (const lang of ["en", "he"] as const) {
-    it(`${lang}: order — band, title, say, do, meta, why, answers; the stamp is on the answer group only`, () => {
-      const html = render(lang);
+    it(`${lang}: order — band, title, the parent's words, say, do, answers, meta, why; the stamp is on the answer group only`, () => {
+      const html = render(lang, QUOTES[lang]);
       const at = (id: string) => html.indexOf(`data-testid="${id}"`);
-      const order = ["practice-band", "practice-title", "practice-say", "practice-do", "practice-meta", "practice-why", "practice-answers"].map(at);
+      const order = ["practice-band", "practice-title", "practice-quotes", "practice-say", "practice-do", "practice-answers", "practice-meta", "practice-why"].map(at);
       expect(order.every((i) => i >= 0)).toBe(true);
       expect([...order].sort((a, b) => a - b)).toEqual(order);
       expect(html.match(/data-primary-move=/g)).toHaveLength(1);
@@ -100,6 +115,10 @@ describe("PracticeCard at 375 × 812 — the move sits above the capture dock", 
     for (const gender of ["boy", "girl"]) {
       it(`${lang}/${gender}: the "Did it" bottom edge ≤ ${FOLD_LIMIT} px at 375 × 812 (line model)`, () => {
         expect(didItBottom(lang, gender)).toBeLessThanOrEqual(FOLD_LIMIT);
+      });
+      it(`${lang}/${gender}: with the parent's two dated notes, every practice the demo child can be offered keeps "Did it" ≤ ${FOLD_LIMIT}`, () => {
+        const over = OFFERABLE.map((p) => ({ id: p.id, y: didItBottom(lang, gender, p, QUOTES[lang]) })).filter((r) => r.y > FOLD_LIMIT);
+        expect(over).toEqual([]);
       });
     }
   }

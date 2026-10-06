@@ -17,7 +17,7 @@
  */
 import type { Milestone } from "../../types";
 import type { Observation } from "../observations";
-import { selectNextMilestones } from "../milestoneData";
+import { bandForAgeMonths, milestoneAgeWindow, selectNextMilestones } from "../milestoneData";
 import { SHELF_IDS, milestoneShelf, type ShelfId } from "../shelves/registry";
 import { answeredToday } from "./observe";
 
@@ -85,9 +85,14 @@ export interface SelectByShelfOptions {
 }
 
 /**
- * The Notice cards: thinnest shelves first, `perShelf` open milestones each,
- * `total` in all. Never ahead of the child's band (the window comes from
+ * The Notice cards: `perShelf` open milestones per shelf, `total` in all.
+ * Never ahead of the child's band (the window comes from
  * `selectNextMilestones`); never a shelf answered today.
+ *
+ * ORDER (P5 critic r1 on #/overview, P1-6 / pass A4, 6 Oct): CURRENT-band
+ * items first, earlier-band items second; within each, thinnest shelf
+ * first. A 3-year-old must not read "Most children do this by 30 months"
+ * at the top of every morning while a current-band item is open.
  */
 export function selectNextMilestonesByShelf(
   milestones: Milestone[],
@@ -118,12 +123,13 @@ export function selectNextMilestonesByShelf(
     byShelf.set(shelf, list);
   }
 
-  const out: NoticePick[] = [];
+  const currentBand = milestoneAgeWindow(comparisonMonths).currentBandMonths;
+  const isCurrent = (m: Milestone) =>
+    typeof m.ageMonths === "number" && bandForAgeMonths(m.ageMonths).months === currentBand;
+  const all: NoticePick[] = [];
   for (const shelf of shelvesThinnestFirst(opts.coverage ?? {})) {
-    for (const milestone of byShelf.get(shelf) ?? []) {
-      if (out.length >= total) return out;
-      out.push({ shelf, milestone });
-    }
+    for (const milestone of byShelf.get(shelf) ?? []) all.push({ shelf, milestone });
   }
-  return out;
+  // stable: current band first, earlier band second, thinnest shelf within each
+  return [...all.filter((p) => isCurrent(p.milestone)), ...all.filter((p) => !isCurrent(p.milestone))].slice(0, total);
 }
