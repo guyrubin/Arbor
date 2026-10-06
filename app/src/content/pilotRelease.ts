@@ -1,5 +1,6 @@
 import { isPublishableContent, type ContentLocale, type ContentPublicationKind } from "./governance";
 import type { HardMomentCard } from "./hardMomentCards";
+import { fitsMonths } from "../lib/age/forChild";
 
 /** Editorial release evidence is separate from an individual clinical review. */
 export interface PilotRelease {
@@ -45,6 +46,28 @@ export const HARD_MOMENT_PILOT: PilotRelease = Object.freeze({
     "bath": "fnv1a64:981d41f6e6beab42",
     "waiting": "fnv1a64:5ec8b9a9e1cec97a",
     "change-of-plan": "fnv1a64:f3a200301e8c3646",
+    // B-ASKJB-38: the toddler (12–36 m) and school-age (6–8) DRAFT sets, behind
+    // this same pilot (same expiry, same withdrawal lever) until clinical review.
+    "t-biting": "fnv1a64:58f8302f1219432b",
+    "t-hitting": "fnv1a64:97eff979d32d3ec0",
+    "t-throwing-food": "fnv1a64:69275b4ccf76815a",
+    "t-potty-refusal": "fnv1a64:ae9f68960f09acef",
+    "t-bedtime-two": "fnv1a64:0a0f45727a2a1ef1",
+    "t-no-phase": "fnv1a64:eec6a837ba4eef34",
+    "t-daycare-separation": "fnv1a64:6bfd0d92076a5e67",
+    "t-public-meltdown": "fnv1a64:671b1e617a83139a",
+    "t-new-sibling": "fnv1a64:441d902c455b3695",
+    "t-screen-handover": "fnv1a64:8b591e1c64607a06",
+    "s-homework-start": "fnv1a64:e3b4fa9f90424924",
+    "s-losing-games": "fnv1a64:9aa5a418856d7f4d",
+    "s-friend-trouble": "fnv1a64:7aa6445ebcaea818",
+    "s-lying": "fnv1a64:ec88f9b53822e8e6",
+    "s-screens": "fnv1a64:7cd4252fa8b65275",
+    "s-bedtime-seven": "fnv1a64:3534b7f977f8b4d5",
+    "s-morning-rush": "fnv1a64:3de6fcd5f0ff0932",
+    "s-backtalk": "fnv1a64:d67533dd9a457b2f",
+    "s-sibling-fights": "fnv1a64:f111860c3467b40f",
+    "s-night-fears": "fnv1a64:c6040babbb98a038",
   }),
   withdrawnIds: Object.freeze([] as string[]),
 });
@@ -101,11 +124,17 @@ export function parseHardMomentAgeBand(band: string): HardMomentAgeRange | null 
   return open ? { startMonths: Number(open[1]) * 12, endMonths: Infinity } : null;
 }
 
-/** Years are inclusive: 2–5 means 24 <= months < 72. Unknown metadata closes. */
+/**
+ * B-INF-10 / B-ASKJB-38: a card fits when its bands overlap the child's
+ * canonical band (lib/age/forChild `fits` on bandFor(months)) — the one band
+ * rule every chooser uses. Years are inclusive ("2-5" = 24 <= months < 72).
+ * Unknown metadata closes: no bands, an unreadable band (this parser), or no
+ * age never opts a card in.
+ */
 export function fitsHardMomentAge(card: HardMomentCard, months?: number | null): boolean {
   if (typeof months !== "number" || !Number.isFinite(months) || months < 0 || !Array.isArray(card.ageBands) || !card.ageBands.length) return false;
-  const ranges = card.ageBands.map(parseHardMomentAgeBand);
-  return ranges.every(Boolean) && ranges.some((range) => !!range && months >= range.startMonths && months < range.endMonths);
+  if (!card.ageBands.every((band) => parseHardMomentAgeBand(band) !== null)) return false;
+  return fitsMonths(card, months);
 }
 
 /** One call-time policy for lists, detail/actions, Search, Today and coach seeds. */

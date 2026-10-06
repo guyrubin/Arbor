@@ -23,7 +23,7 @@
  * widening one is content authorship, not a wiring fix.
  */
 
-import { hardMomentCards, type HardMomentCard } from "./hardMomentCards";
+import { hardMomentCatalogue, type HardMomentCard } from "./hardMomentCards";
 import {
   hardMomentPublication,
   parseHardMomentAgeBand,
@@ -92,7 +92,7 @@ function publishableRanges(context: HardMomentContext, cards: readonly HardMomen
  */
 export function hardMomentAgeCoverage(
   context: HardMomentContext,
-  cards: readonly HardMomentCard[] = hardMomentCards,
+  cards: readonly HardMomentCard[] = hardMomentCatalogue,
 ): HardMomentAgeCoverage | null {
   const ranges = publishableRanges(context, cards);
   if (ranges.length === 0) return null;
@@ -114,7 +114,7 @@ export function hardMomentAgeCoverage(
  */
 export function hardMomentAgeFit(
   context: HardMomentContext,
-  cards: readonly HardMomentCard[] = hardMomentCards,
+  cards: readonly HardMomentCard[] = hardMomentCatalogue,
 ): HardMomentAgeVerdict {
   const coverage = hardMomentAgeCoverage(context, cards);
   if (!coverage) return { fit: "none", coverage: null };

@@ -1,7 +1,7 @@
 import type { BehaviorLog } from "../types";
 import type { ContentLocale, LocalizedText } from "./governance";
 import {
-  hardMomentCards,
+  hardMomentCatalogue,
   renderSayThis,
   type HardMomentCard,
   type HardMomentCategory,
@@ -65,7 +65,7 @@ export interface HardMomentTodayOffer {
  */
 export function todayHardMomentOffer(
   logs: Pick<BehaviorLog, "behaviorType" | "timestamp">[],
-  cards: HardMomentCard[] = hardMomentCards,
+  cards: HardMomentCard[] = hardMomentCatalogue,
   now: Date = new Date(),
   ageMonths?: number | null,
   locale: ContentLocale = "en",

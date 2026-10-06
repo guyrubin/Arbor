@@ -3,6 +3,8 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { computeContentHash, isPublishableContent, type ContentLocale } from "./governance";
 import { hardMomentCards, publishedHardMomentCards, type HardMomentCard } from "./hardMomentCards";
+import { toddlerHardMomentCards } from "./hardMomentCardsToddler";
+import { schoolHardMomentCards } from "./hardMomentCardsSchool";
 import { availableHardMomentCards, byCategory, byConcern, matchToRecentBehaviors } from "./selectCards";
 import { buildHardMomentSeedPrompt, HARD_MOMENT_SEED_ESCALATION_NOTE, todayHardMomentOffer } from "./hardMomentSurface";
 import { seededEscalationLine } from "../safety/seededEscalation";
@@ -45,8 +47,11 @@ const schoolAge = new Set(["homework", "screen-ending", "losing-game"]);
 afterEach(() => { vi.useRealTimers(); ui.locale = "en"; ui.childProfile.ageMonths = 36; ui.behaviorLogs = []; });
 
 describe("arbor-pilot-2026-09-04 — separate, bounded editorial release", () => {
-  it("enumerates exactly 25 frozen IDs and grants no clinical stamps", () => {
-    expect(Object.keys(HARD_MOMENT_PILOT.entries)).toEqual(IDS);
+  it("enumerates exactly 25 frozen IDs (+ the B-ASKJB-38 toddler and school-age drafts) and grants no clinical stamps", () => {
+    // B-ASKJB-38: the two new DRAFT sets ride the same pilot (same expiry, same withdrawal lever).
+    const drafts = [...toddlerHardMomentCards, ...schoolHardMomentCards].map((card) => card.id);
+    expect(drafts).toHaveLength(20);
+    expect(Object.keys(HARD_MOMENT_PILOT.entries)).toEqual([...IDS, ...drafts]);
     expect(hardMomentCards.map((card) => card.id)).toEqual(IDS);
     expect(Object.isFrozen(HARD_MOMENT_PILOT.entries)).toBe(true);
     expect(publishedHardMomentCards).toEqual([]);
@@ -94,11 +99,15 @@ describe("arbor-pilot-2026-09-04 — separate, bounded editorial release", () =>
   }
 
   it("keeps both inclusive band edges, and rejects missing/invalid age or locale", () => {
-    expect(availableHardMomentCards(context("en", 24))).toHaveLength(22);
+    // B-INF-10/B-ASKJB-38: a card fits the child's canonical band. 24 m = the
+    // 2-5 set + the toddler set (12-36 m); 72 m = the three 6-12 cards + the
+    // school-age set; 23 m = the toddler set only.
+    expect(availableHardMomentCards(context("en", 24))).toHaveLength(32);
     expect(availableHardMomentCards(context("he", 71))).toHaveLength(22);
-    expect(availableHardMomentCards(context("en", 72))).toHaveLength(3);
+    expect(availableHardMomentCards(context("en", 72))).toHaveLength(13);
     expect(availableHardMomentCards(context("he", 155))).toHaveLength(3);
-    for (const ageMonths of [null, undefined, NaN, Infinity, -1, 0, 23, 156]) {
+    expect(availableHardMomentCards(context("en", 23)).map((card) => card.id)).toEqual(toddlerHardMomentCards.map((card) => card.id));
+    for (const ageMonths of [null, undefined, NaN, Infinity, -1, 0, 11, 156]) {
       expect(availableHardMomentCards({ ...context(), ageMonths })).toEqual([]);
     }
     expect(availableHardMomentCards({ ...context(), locale: "fr" as ContentLocale })).toEqual([]);
@@ -187,7 +196,7 @@ describe("mutation controls across every release consumer", () => {
   it("Search never retains a stale pilot result in its static memo", () => {
     expect(getSearchIndex().filter((entry) => entry.kind === "hard-moment")).toEqual([]);
     expect(getSearchIndex(context()).filter((entry) => entry.kind === "hard-moment")).toHaveLength(22);
-    expect(getSearchIndex(context("he", 84)).filter((entry) => entry.kind === "hard-moment")).toHaveLength(3);
+    expect(getSearchIndex(context("he", 84)).filter((entry) => entry.kind === "hard-moment")).toHaveLength(13); // 3 + the school-age set
     expect(searchCatalog("מכות", 100, context("he")).map((entry) => entry.id)).toContain("hard-moment:hitting");
     const card = find("hitting"), original = card.doNow.he;
     try {
@@ -228,7 +237,7 @@ describe("real parent surface markup", () => {
       expect(today).toContain('min-h-11');
       // ONE gradient (the accept), never a second.
       expect(today.match(/gradient-primary/g) ?? []).toHaveLength(1);
-      ui.childProfile.ageMonths = 12;
+      ui.childProfile.ageMonths = 9; // B-ASKJB-38: 12 m is now the toddler set's band
       // WAVE-G · THE AGE GAP — an out-of-band child still gets ZERO guides, but
       // the catalogue surface now says why instead of vanishing (the Today
       // offer, an interruption rather than a destination, stays silent).
@@ -237,7 +246,7 @@ describe("real parent surface markup", () => {
       expect(outOfBand).not.toContain(find("hitting").title[locale]);
       expect(outOfBand).not.toContain('data-testid="hard-moments-section"');
       expect(outOfBand).toContain('data-testid="hard-moments-age-notice"');
-      expect(hardMomentStepFor(ui.behaviorLogs, { now: NOW, ageMonths: 12, locale }, false)).toBeNull();
+      expect(hardMomentStepFor(ui.behaviorLogs, { now: NOW, ageMonths: 9, locale }, false)).toBeNull();
       // …and never for a parent who already has today's step.
       expect(hardMomentStepFor(ui.behaviorLogs, { now: NOW, ageMonths: 36, locale }, true)).toBeNull();
     });

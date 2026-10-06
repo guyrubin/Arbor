@@ -1,23 +1,24 @@
 import type { ContentConcern, ContentLocale } from "./governance";
-import { hardMomentCards, type HardMomentCard, type HardMomentCategory } from "./hardMomentCards";
+// B-ASKJB-38: every chooser reads THE catalogue (25 + toddler set + school-age set).
+import { hardMomentCatalogue, type HardMomentCard, type HardMomentCategory } from "./hardMomentCards";
 import { fitsHardMomentAge, hardMomentPublication, type HardMomentContext, type PilotRelease } from "./pilotRelease";
 
 /** Call-time selection; unknown age/locale never opts a family into the pilot. */
 export const inAgeBand = fitsHardMomentAge;
 
-export function availableHardMomentCards(context: HardMomentContext, cards: HardMomentCard[] = hardMomentCards): HardMomentCard[] {
+export function availableHardMomentCards(context: HardMomentContext, cards: HardMomentCard[] = hardMomentCatalogue): HardMomentCard[] {
   return cards.filter((card) => hardMomentPublication(card, context) !== null);
 }
 
 export function byCategory(
-  category: HardMomentCategory, cards: HardMomentCard[] = hardMomentCards,
+  category: HardMomentCategory, cards: HardMomentCard[] = hardMomentCatalogue,
   now = new Date(), ageMonths?: number | null, locale: ContentLocale = "en", release?: PilotRelease,
 ): HardMomentCard[] {
   return availableHardMomentCards({ now, ageMonths, locale, release }, cards).filter((card) => card.category === category);
 }
 
 export function byConcern(
-  concern: ContentConcern, cards: HardMomentCard[] = hardMomentCards,
+  concern: ContentConcern, cards: HardMomentCard[] = hardMomentCatalogue,
   now = new Date(), ageMonths?: number | null, locale: ContentLocale = "en", release?: PilotRelease,
 ): HardMomentCard[] {
   return availableHardMomentCards({ now, ageMonths, locale, release }, cards).filter((card) => card.concerns.includes(concern));
@@ -84,7 +85,7 @@ export function concernsForBehaviors(behaviorCategories: string[]): ContentConce
 
 /** Deterministic concern matching, never a clinical inference about a child. */
 export function matchToRecentBehaviors(
-  behaviorCategories: string[], cards: HardMomentCard[] = hardMomentCards,
+  behaviorCategories: string[], cards: HardMomentCard[] = hardMomentCatalogue,
   now = new Date(), ageMonths?: number | null, locale: ContentLocale = "en", release?: PilotRelease,
 ): HardMomentCard[] {
   const concerns = concernsForBehaviors(behaviorCategories);

@@ -11,7 +11,7 @@ import { hardMomentPublication, type HardMomentContext } from "../../content/pil
 import { hardMomentAgeFit, explainsEmptyHardMoments } from "../../content/hardMomentAgeFit";
 import HardMomentAgeNotice from "./HardMomentAgeNotice";
 import { hardMomentPilotText } from "../../content/hardMomentPilotText";
-import { ageMonthsFromProfile } from "../../lib/childAge";
+import { comparisonMonthsOf } from "../../lib/age/forChild";
 import { useAuth } from "../../context/AuthContext";
 import { lastHeldFor } from "./hardMomentLastTime";
 import { LastTimeLead, SendWordsButton } from "./HardMomentWords";
@@ -41,9 +41,6 @@ export function HardMomentGuideContent({ card, context, childName, t }: {
           <p>{copy.explanation}</p>
         </div>
       )}
-      <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>
-        {copy.ageLabel} <bdi>{card.ageBands.join(", ")}</bdi> {copy.years}
-      </p>
       {/* AI-17: the per-axis section is the shared AiBlock guide tone. This
           file used to hand-roll a third copy of the coach answer's frame. */}
       {/* B-ASKJB-24: the say-this axis renders through the shared SayThis
@@ -139,7 +136,8 @@ export default function HardMomentsSection() {
   const locale = uiLang === "he" ? "he" : "en";
   const contextFor = (lang: "en" | "he" = locale): HardMomentContext => {
     const now = new Date();
-    return { locale: lang, now, ageMonths: ageMonthsFromProfile(childProfile, now) };
+    // B-ASKJB-38: the child's band months (corrected under 2 if preterm) — lib/age, the one source.
+    return { locale: lang, now, ageMonths: comparisonMonthsOf(childProfile, now) };
   };
   const context = contextFor();
   const cards = availableHardMomentCards(context);

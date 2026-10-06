@@ -173,6 +173,13 @@ export function fits(content: AgeTagged, band: CanonicalBand | CanonicalBandId):
 /** `fits` for a known months value (the band of those months). Unknown months → false. */
 export function fitsMonths(content: AgeTagged, months: number | null | undefined): boolean {
   if (typeof months !== "number" || !Number.isFinite(months) || months < 0) return false;
+  // Past the last canonical band (12 y+) fromMonths clamps to 9–12 y; a
+  // teenager is not a 9-year-old, so content must contain the months itself.
+  const last = CANONICAL_BANDS[CANONICAL_BANDS.length - 1];
+  if (months >= last.maxMonths) {
+    const ranges = rangesOf(content);
+    return !!ranges && ranges.some(([min, max]) => months >= min && months < max);
+  }
   return fits(content, fromMonths(months));
 }
 
