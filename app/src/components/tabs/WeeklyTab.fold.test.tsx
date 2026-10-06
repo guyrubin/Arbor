@@ -10,7 +10,8 @@ import { describe, expect, it, vi } from "vitest";
    measured y 510, h 650 EN + HE (sweeps/ship-275042b9) — it ran under the
    fixed capture dock. Fix: the ONE stamp literal (WeeklyTab ACCEPT_STAMP) is
    spread on the control that performs the move — the letter's accept button
-   (RecapStoryCards acceptAttrs, last card) or, on a history week, the insight
+   (RecapStoryCards acceptStamp — one data attribute, never a spread, so
+   whiteLabelContrast can prove the fill — last card) or, on a history week, the insight
    card's accept — and the header gives back the height above the letter:
    the week label rides in the eyebrow (no subtitle line), PageHeader flush
    (no mb-7), the outline Retell and the history chips sit UNDER the story.
@@ -90,11 +91,10 @@ const report = (tryThisWeek: string) =>
     },
   }) as unknown as WeeklyReport & { digest: WeeklyDigest };
 
-const STAMP = { "data-primary-move": "accept-recap-recommendation" } as const;
 const renderCard = (lang: "en" | "he", text: string, index = 3) => {
   state.lang = lang;
   return renderToStaticMarkup(
-    <RecapStoryCards report={report(text)} record={record} childName="Dylan" canAccept accepted={false} onAccept={() => undefined} onCapture={() => undefined} initialIndex={index} acceptAttrs={STAMP} />,
+    <RecapStoryCards report={report(text)} record={record} childName="Dylan" canAccept accepted={false} onAccept={() => undefined} onCapture={() => undefined} initialIndex={index} acceptStamp={{ "data-primary-move": "accept-recap-recommendation" }} />,
   );
 };
 
@@ -127,7 +127,11 @@ describe("#/weekly — the move is the accept button, above the capture dock at 
   it("ONE data-primary-move literal in WeeklyTab, a shared const spread on the accept controls; the letter wrapper carries none", () => {
     expect(TAB.match(/\bdata-primary-move\b(?!-)/g)).toHaveLength(1);
     expect(TAB).toContain('const ACCEPT_STAMP = { "data-primary-move": "accept-recap-recommendation" } as const;');
-    expect(TAB).toMatch(/<RecapStoryCards\s+acceptAttrs=\{ACCEPT_STAMP\}/);
+    expect(TAB).toMatch(/<RecapStoryCards\s+acceptStamp=\{ACCEPT_STAMP\}/);
+    // whiteLabelContrast: the letter sets ONE data attribute, never a prop spread on the button.
+    const LETTER = readFileSync(path.join(here, "../weekly/RecapStoryCards.tsx"), "utf8");
+    expect(LETTER).toContain('data-primary-move={acceptStamp?.["data-primary-move"]}');
+    expect(LETTER).not.toMatch(/\{\.\.\.accept\w*\}/);
     expect(TAB).toMatch(/onClick=\{\(\) => acceptTodayAction\(selected\.digest!\.tryThisWeek, "standard", "digest"\)\}\s+\{\.\.\.ACCEPT_STAMP\}/);
     expect(TAB).toMatch(/<div data-module="weekly-recap" style=\{\{ display: "contents" \}\}>/);
   });

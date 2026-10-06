@@ -24,7 +24,7 @@ import WhatWorkedCard, { whatWorkedThisWeek } from "../weekly/WhatWorkedCard";
 
 /* B-OCCL-02 (6 Oct): the route's ONE data-primary-move literal. It is spread
    on the control that performs the move — the letter's "Make it today's step"
-   (RecapStoryCards, last card) or, on a history week, the insight card's
+   (RecapStoryCards acceptStamp, last card) or, on a history week, the insight card's
    accept — never on the letter's wrapper (650 px at 375, it ran under the
    capture dock). Both branches are mutually exclusive (showRecap). */
 const ACCEPT_STAMP = { "data-primary-move": "accept-recap-recommendation" } as const;
@@ -300,11 +300,11 @@ export default function WeeklyTab() {
           marks a top-level sibling module (what moduleBudget counts);
           `data-primary-move` marks the ONE control that performs the move
           surfaceContract.ts declares for this route — B-OCCL-02: the
-          letter's accept button (acceptAttrs), not this wrapper. */}
+          letter's accept button (acceptStamp), not this wrapper. */}
           {showRecap && selected.digest && (
             <div data-module="weekly-recap" style={{ display: "contents" }}>
             <RecapStoryCards
-              acceptAttrs={ACCEPT_STAMP}
+              acceptStamp={ACCEPT_STAMP}
               report={selected as WeeklyReport & { digest: WeeklyDigest }}
               record={recapRecord}
               childName={childProfile.name}
