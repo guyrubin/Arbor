@@ -120,6 +120,26 @@ describe("P5-LOOP c2 r1 — no scoreboard at zero, one column at 1280, no watch-
   });
 });
 
+describe("B-LOOP-NEW-1e — the map remembers in the parent's words", () => {
+  it("each shelf header carries its latest kept line: verbatim, editorial t-sm, 2 px --arbor-ink start rule, dated — and no count, no comparison", () => {
+    expect(MS).toContain("const shelfWords = useMemo(() => latestWordsByShelf(observations, behaviorLogs ?? [], SHELF_IDS), [observations, behaviorLogs]);");
+    expect(MS).toMatch(/data-testid="ms-shelf-epigraph" className="mt-2 truncate border-s-2 ps-3 t-sm leading-snug" style=\{\{ borderColor: "var\(--arbor-ink\)", fontFamily: "var\(--font-editorial\)", color: "var\(--arbor-ink-soft\)" \}\}/);
+    const epi = MS.slice(MS.indexOf('data-testid="ms-shelf-epigraph"'), MS.indexOf("</p>", MS.indexOf('data-testid="ms-shelf-epigraph"')));
+    expect(epi).toContain("shelfDayLabel(");
+    expect(epi).not.toMatch(/noticed|count|\bn\b/);
+  });
+
+  it("after an answer the receipt names the next row on the SAME shelf — a title only (EN + HE)", async () => {
+    const { translate } = await import("../../lib/i18n");
+    expect(MS).toMatch(/\{heldNotice\[shelf\] === card\.id && \(\(\) => \{\s*const next = nextOnShelf\(shelf, card\.id\);/);
+    expect(MS).toContain(".find((m) => m.id !== answeredId && shelfOfMilestone(m) === shelf);");
+    const strip = (v: string) => v.replace(/[\u2068\u2069]/g, "");
+    expect(strip(translate("en", "elev.loop.ms.nextOn", { shelf: "Words", title: "Tells a short story" }))).toBe("Next on Words: Tells a short story.");
+    expect(strip(translate("he", "elev.loop.ms.nextOn", { shelf: "מילים", title: "מספר סיפור קצר" }))).toBe("הבא במדף מילים: מספר סיפור קצר");
+    for (const lang of ["en", "he"] as const) expect(translate(lang, "elev.loop.ms.nextOn", { shelf: "x", title: "y" })).not.toMatch(/\d|tomorrow|מחר|soon/i);
+  });
+});
+
 describe("NEXTLEVEL r1 — a quiet page", () => {
   it("'Born early?' leads only under 24 months or with a gestation set; otherwise a disclosure", () => {
     expect(MS).toContain("<BornEarlyFrame inline={comparisonMonths < 24 || !!gestationalWeeks}");

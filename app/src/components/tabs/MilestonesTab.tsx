@@ -22,7 +22,9 @@ import { cardCls, Split } from "../ui/kit";
 import { authHeaders, getAiLanguage } from "../../lib/api";
 import { DOMAIN_REFERENCES, DOMAIN_REFERENCE_LABEL_KEY } from "../../lib/milestoneReferences";
 import { noticedMilestoneCounts } from "../../lib/record/counts";
-import { MILESTONE_AGE_BANDS, ageWindowMilestones, bandForAgeMonths, comparisonAgeMonths, correctedAge, explainMilestonePrompt, milestoneAgeGroupText, milestoneAgeWindow, milestoneBandLabel, milestoneText } from "../../lib/milestoneData";
+import { MILESTONE_AGE_BANDS, ageWindowMilestones, bandForAgeMonths, comparisonAgeMonths, correctedAge, explainMilestonePrompt, milestoneAgeGroupText, milestoneAgeWindow, milestoneBandLabel, milestoneText, selectNextMilestones } from "../../lib/milestoneData";
+import { useObservations } from "../../hooks/useObservations";
+import { latestWordsByShelf, shelfDayLabel } from "../../lib/journal/shelfView";
 // UND-7 — fail-closed gate for the governed milestone example-media slot
 // (missing reviewer/rightsRef → never renders; ships with zero media entries).
 import { isRenderableMilestoneMedia } from "../../content/governance";
@@ -111,6 +113,7 @@ export default function MilestonesTab() {
     // GP-23 "Keep this": the canonical save verb writes the answer into the
     // child's `insights` record (the TJB-04 seam) — one tap, no new sink.
     keepBehaviorInsight,
+    behaviorLogs,
   } = useArbor();
 
   const { t, uiLang } = useLanguage();
@@ -239,6 +242,15 @@ export default function MilestonesTab() {
     if (held) return milestones.find((m) => m.id === held);
     return noticePicks.find((p) => p.shelf === shelf)?.milestone;
   };
+  // B-LOOP-NEW-1e (3): the map remembers in the parent's words — each shelf
+  // header carries its latest kept line (verbatim, dated); nothing else on it judges.
+  const observations = useObservations();
+  const shelfWords = useMemo(() => latestWordsByShelf(observations, behaviorLogs ?? [], SHELF_IDS), [observations, behaviorLogs]);
+  // B-LOOP-NEW-1e (4): after an answer, the next open row on the SAME shelf
+  // (a title only: no date, no count, no notification).
+  const nextOnShelf = (shelf: ShelfId, answeredId: string): Milestone | undefined =>
+    selectNextMilestones(milestones, comparisonMonths, Number.MAX_SAFE_INTEGER)
+      .find((m) => m.id !== answeredId && shelfOfMilestone(m) === shelf);
   const [openShelves, setOpenShelves] = useState<Partial<Record<ShelfId, boolean>>>({});
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -846,10 +858,17 @@ export default function MilestonesTab() {
                           </span>
                         )}
                       </div>
+                      {shelfWords[shelf] && (
+                        <p data-testid="ms-shelf-epigraph" className="mt-2 truncate border-s-2 ps-3 t-sm leading-snug" style={{ borderColor: "var(--arbor-ink)", fontFamily: "var(--font-editorial)", color: "var(--arbor-ink-soft)" }} title={shelfWords[shelf]!.text}>
+                          <span dir="auto">{"“"}{shelfWords[shelf]!.text}{"”"}</span>
+                          <span style={{ fontFamily: "var(--font-sans)", color: "var(--arbor-muted)" }}> · <bdi>{shelfDayLabel(shelfWords[shelf]!.at, noticeNow, uiLang === "he" ? "he" : "en")}</bdi></span>
+                        </p>
+                      )}
                       {card ? (
                         /* A ROW inside the map (no card in a card); the shelf is
                            named once by the header; the first shelf's answers
                            carry the route's one stamp. */
+                        <>
                         <NoticeCard
                           key={card.id}
                           milestone={card}
@@ -872,6 +891,15 @@ export default function MilestonesTab() {
                           onKeepQuote={(note) => saveKeepsake({ milestoneId: card.id, note, noticedOn: localDay(new Date()) })}
                           onKeepPhoto={() => setKeepsakeFor(card.id)}
                         />
+                        {heldNotice[shelf] === card.id && (() => {
+                          const next = nextOnShelf(shelf, card.id);
+                          return next ? (
+                            <p data-testid="ms-shelf-next" className="mt-1 t-sm" style={{ color: "var(--arbor-ink-soft)" }}>
+                              {t("elev.loop.ms.nextOn", { shelf: shelfLabel(shelf, t), title: milestoneText(next, "title", t, msGender) })}
+                            </p>
+                          ) : null;
+                        })()}
+                        </>
                       ) : windowShelfItems[shelf].length === 0 ? (
                         <p className="mt-2 t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.loop.shelf.noneNow")}</p>
                       ) : null}
