@@ -151,7 +151,8 @@ describe("B-TODAY-28 — OverviewTab wiring (source pin)", () => {
   });
 
   it("when the record speaks, the generic capture prompt card does not render", () => {
-    expect(SRC).toMatch(/recordSpeaks \? null : \(\s*<PromptCaptureCard/);
+    // B-TODAY-35: a toddler's band starter speaks in the same slot, so either silences the prompt card.
+    expect(SRC).toMatch(/recordSpeaks \|\| starter \? null : \(\s*<PromptCaptureCard/);
     expect(SRC).toContain("const recordSpeaks = !!recordOpener || !!recordAnswered;");
   });
 

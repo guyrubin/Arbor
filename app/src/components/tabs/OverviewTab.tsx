@@ -58,6 +58,9 @@ import WeekAnchorCard, { WeekAnchorLine } from "../overview/WeekAnchorCard";
 import { recapWeekId, useWeeklyRecap } from "../../hooks/useWeeklyRecap";
 import { track } from "../../lib/analytics";
 import { ageYearsOf } from "../../lib/age/forChild";
+import { selectStarter, type TodayStarter } from "../../lib/today/starters";
+import TodayStarterCard from "../overview/TodayStarterCard";
+import { useChildCollection } from "../../hooks/useChildCollection";
 
 const DAY = 86_400_000;
 
@@ -481,6 +484,22 @@ export default function OverviewTab() {
   );
   const recordAnswered = useMemo(() => answeredToday(actionLoop, childProfile.id), [actionLoop, childProfile.id]);
   const recordSpeaks = !!recordOpener || !!recordAnswered;
+  // B-TODAY-35 — Today for a toddler: when the record has nothing to say
+  // back, the child's band chooses ONE starter (same bedtime · first words ·
+  // tiny tastes · the routine check-up once the schedule is reviewed). A
+  // preschool or school-age child gets none (lib/today/starters). Keyed on
+  // the active child, so switching child re-runs it.
+  const wordsCol = useChildCollection<{ id: string; timestamp: string }>(childProfile.id, "langObs", { orderByField: "timestamp", orderDir: "desc", max: 20 });
+  const starter = useMemo(
+    () => (recordSpeaks ? null : selectStarter({ child: childProfile, now: new Date(), logs: behaviorLogs, words: wordsCol.items })),
+    [recordSpeaks, childProfile, behaviorLogs, wordsCol.items]
+  );
+  const actOnStarter = (s: TodayStarter) => {
+    track("today_starter_act", { kind: s.kind });
+    if (s.kind === "bedtime") setActiveTab("routines");
+    else if (s.kind === "checkup") setActiveTab("appointments");
+    else startCapture("text");
+  };
   /** NEXTLEVEL critic r1: the record card is asking (its chips are the move). */
   const recordAsks = !!recordOpener && !recordAnswered;
 
@@ -776,6 +795,10 @@ export default function OverviewTab() {
             <div className="mb-4">
               <FromRecordCard opener={recordOpener} childName={firstName} stampMove onAnswer={(answer) => recordFromRecordAnswer(recordOpener, answer)} />
             </div>
+          ) : starter ? (
+            <div className="mb-4">
+              <TodayStarterCard starter={starter} childName={firstName} gender={childProfile.gender} onAct={actOnStarter} />
+            </div>
           ) : null}
           {/* B-TODAY-18: the continuation slot ABOVE the step — exactly one of
               the carry-over outcome ask or tomorrow's reason, or nothing, as
@@ -853,7 +876,7 @@ export default function OverviewTab() {
             />
           ) : todayChoice.kind === "play" ? (
             playSection
-          ) : recordSpeaks ? null : (
+          ) : recordSpeaks || starter ? null : (
             <PromptCaptureCard
               gender={childProfile.gender}
               promptKey={todayChoice.kind === "prompt" ? todayChoice.promptKey : null}
