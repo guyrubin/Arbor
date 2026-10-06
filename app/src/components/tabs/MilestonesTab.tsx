@@ -25,11 +25,11 @@ import { explainAnswerText, isEmptyExplainAnswer, type ExplainAnswer } from "../
 // string, no why-line, no provenance, nothing to keep. They now ride the same
 // shared action cluster every other content object uses.
 import { ContentActionBar, ContentWhyLine } from "../ui/ContentActionBar";
-import { cardCls, Split, domainVisual, PASTEL } from "../ui/kit";
+import { cardCls, Split } from "../ui/kit";
 import { authHeaders, getAiLanguage } from "../../lib/api";
 import { DOMAIN_REFERENCES } from "../../lib/milestoneReferences";
-import { milestonesNoticedSince, noticedMilestoneCounts } from "../../lib/record/counts";
-import { MILESTONE_AGE_BANDS, ageWindowMilestones, bandForAgeMonths, comparisonAgeMonths, correctedAge, explainMilestonePrompt, milestoneAgeGroupText, milestoneBandLabel, milestoneText, selectNextMilestones } from "../../lib/milestoneData";
+import { noticedMilestoneCounts } from "../../lib/record/counts";
+import { MILESTONE_AGE_BANDS, ageWindowMilestones, bandForAgeMonths, comparisonAgeMonths, correctedAge, explainMilestonePrompt, milestoneAgeGroupText, milestoneBandLabel, milestoneText } from "../../lib/milestoneData";
 // UND-7 — fail-closed gate for the governed milestone example-media slot
 // (missing reviewer/rightsRef → never renders; ships with zero media entries).
 import { isRenderableMilestoneMedia } from "../../content/governance";
@@ -58,7 +58,12 @@ import { useChildCollection } from "../../hooks/useChildCollection";
 import { DEVELOPMENTAL_DOMAIN_IDS, domainLabel as registryDomainLabel, primaryDomainLabel } from "../../lib/domains/registry";
 import { DevelopmentalDomainId, Milestone } from "../../types";
 import { ageMonthsOf } from "../../lib/age/forChild";
-import type { ObserveStatus } from "../../lib/milestones/observe";
+import { localDay, type ObserveStatus } from "../../lib/milestones/observe";
+import { selectNextMilestonesByShelf, shelfOfMilestone } from "../../lib/milestones/selectByShelf";
+import { groupMilestonesByShelf, matchesMilestoneQuery, noticedByShelf, shelfBands } from "../../lib/milestones/shelfMap";
+import { SHELVES, SHELF_IDS, shelfLabel, type ShelfId } from "../../lib/shelves/registry";
+import NoticeCard from "../loop/NoticeCard";
+import { ShelfGlyph } from "../loop/ShelfGlyph";
 
 /** NEXTLEVEL critic r1: "Born early?" leads the rail only while correction
  *  applies (under ~24 months, or a gestation is set); otherwise the same
@@ -114,7 +119,6 @@ export default function MilestonesTab() {
   } = useArbor();
 
   const { t, uiLang } = useLanguage();
-  const isRtl = uiLang === "he";
   /* B-GROWTH-26 — the catalogue's domain list and every domain NAME come from
      the one domain registry (lib/domains/registry.ts, EN + HE in
      lib/i18nElevation/domains.ts): the same names Growth and Science print.
@@ -122,9 +126,6 @@ export default function MilestonesTab() {
   const domainOptions = useMemo(() => DEVELOPMENTAL_DOMAIN_IDS.map((id) => ({ id })), []);
   // B-SHELL-28: one label per map row — the primary domain, never the cross-tag.
   const domainLabel = (id: string) => primaryDomainLabel("developmental", id, t);
-  // openDomain === null → the "all domains" master list (the closed Map);
-  // set → the single-domain drill-in detail pane.
-  const [openDomain, setOpenDomain] = useState<string | null>(null);
   // AI-17: the explain route's TWO structured fields are held as they arrive.
   // They used to be glued into a markdown string here and re-parsed by a
   // markdown renderer downstream, which threw the structure away.
@@ -206,12 +207,6 @@ export default function MilestonesTab() {
   const corrected = correctedAge(chronoMonths, gestationalWeeks);
   const comparisonMonths = comparisonAgeMonths(chronoMonths, gestationalWeeks);
   const currentBand = bandForAgeMonths(comparisonMonths);
-  // GP-09: the ONE band after the current one stays open ("coming up"); bands
-  // beyond it collapse behind "Show later milestones".
-  const nextBandMonths = (() => {
-    const idx = MILESTONE_AGE_BANDS.findIndex((b) => b.months === currentBand.months);
-    return MILESTONE_AGE_BANDS[idx + 1]?.months ?? currentBand.months;
-  })();
   // GP-08: every count on this surface is over the child's AGE WINDOW (current
   // corrected band + one earlier — the shared lib/milestoneData helper), never
   // the whole 0–6y catalogue ("0 of 133" / "0/28" on day 0).
@@ -222,11 +217,33 @@ export default function MilestonesTab() {
   // can never sit beside "5 noticed" on #/development. The age window only
   // chooses which OPEN items are suggested.
   const recordCounts = useMemo(() => noticedMilestoneCounts(milestones), [milestones]);
-  const nextOpen = useMemo(() => selectNextMilestones(milestones, comparisonMonths, 3), [milestones, comparisonMonths]);
   // NEXTLEVEL critic r1 (B-NEXTLEVEL-NEW-1i/1j): the parent's last first leads
   // the summary — the newest milestone marked "yes" that carries its date.
   const latestNoticed = useMemo(() => latestNoticedMilestone(milestones), [milestones]);
-  const nextInDomain = (domain: string): Milestone | undefined => windowMilestones.find((m) => m.domain === domain && !m.checked);
+  // B-LOOP-05 — THE SHELF MAP. Every milestone sits on its parent shelf
+  // (lib/shelves/registry); one Notice card per shelf from the shared
+  // selector (never ahead of band, never a shelf answered today); a card the
+  // parent just answered stays in place for the session as its receipt; the
+  // only number is "{n} noticed" per shelf (their sum is recordCounts.noticed,
+  // the count Care and Growth read).
+  const noticeNow = useMemo(() => new Date(), [milestones]);
+  const shelfItems = useMemo(() => groupMilestonesByShelf(milestones), [milestones]);
+  const windowShelfItems = useMemo(() => groupMilestonesByShelf(windowMilestones), [windowMilestones]);
+  const shelfCounts = useMemo(() => noticedByShelf(milestones), [milestones]);
+  const noticedShelves = SHELF_IDS.filter((id) => shelfCounts[id] > 0).length;
+  const noticePicks = useMemo(
+    () => selectNextMilestonesByShelf(milestones, comparisonMonths, { perShelf: 1, total: SHELF_IDS.length, now: noticeNow }),
+    [milestones, comparisonMonths, noticeNow],
+  );
+  const [heldNotice, setHeldNotice] = useState<Partial<Record<ShelfId, string>>>({});
+  const noticeFor = (shelf: ShelfId): Milestone | undefined => {
+    const held = heldNotice[shelf];
+    if (held) return milestones.find((m) => m.id === held);
+    return noticePicks.find((p) => p.shelf === shelf)?.milestone;
+  };
+  const firstNoticeShelf = SHELF_IDS.find((id) => noticeFor(id));
+  const [openShelves, setOpenShelves] = useState<Partial<Record<ShelfId, boolean>>>({});
+  const [query, setQuery] = useState("");
 
   // UND-3 — "Gentle watch points" derives from the canonical useMonitoring
   // watch-area derivation: real domain names + COUNTS only (clinical firewall —
@@ -295,28 +312,9 @@ export default function MilestonesTab() {
       setExplaining((p) => ({ ...p, [item.id]: false }));
     }
   };
-  // Bands strictly below the child's current band start collapsed (progressive
-  // disclosure — a parent of a 5yo shouldn't wade through newborn items). The
-  // current band and anything ahead start open. Tracks which collapsed bands the
-  // parent has manually expanded.
-  const [openEarlierBands, setOpenEarlierBands] = useState<Record<number, boolean>>({});
-  // GP-09: bands beyond current + next start collapsed too ("Show later milestones").
-  const [openLaterBands, setOpenLaterBands] = useState<Record<number, boolean>>({});
-
   const [showAdd, setShowAdd] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newDomain, setNewDomain] = useState<DevelopmentalDomainId>(domainOptions[0].id as DevelopmentalDomainId);
-
-  const domainStats = useMemo(() => {
-    const map: Record<string, { total: number; checked: number }> = {};
-    for (const dom of domainOptions) map[dom.id] = { total: 0, checked: 0 };
-    for (const m of windowMilestones) {
-      if (!map[m.domain]) map[m.domain] = { total: 0, checked: 0 };
-      map[m.domain].total += 1;
-      if (m.checked) map[m.domain].checked += 1;
-    }
-    return map;
-  }, [windowMilestones, domainOptions]);
 
   const submitCustom = (e: React.FormEvent) => {
     e.preventDefault();
@@ -613,94 +611,42 @@ export default function MilestonesTab() {
     </div>
   );
 
-  /**
-   * Group a domain's milestones into the canonical age bands, in ascending age
-   * order. Items without an `ageMonths` (legacy/custom) fall into a trailing
-   * "other" bucket keyed -1 so they always render after the dated bands.
-   */
-  const groupByBand = (items: Milestone[]) => {
-    const byBand = new Map<number, Milestone[]>();
-    for (const m of items) {
-      const key = typeof m.ageMonths === "number" ? bandForAgeMonths(m.ageMonths).months : -1;
-      if (!byBand.has(key)) byBand.set(key, []);
-      byBand.get(key)!.push(m);
-    }
-    // B-GROWTH-11: the heading is resolved in the page language from the
-    // band's months (never the English `MILESTONE_AGE_BANDS` label).
-    return [...byBand.entries()]
-      .sort((a, b) => (a[0] === -1 ? 1 : b[0] === -1 ? -1 : a[0] - b[0]))
-      .map(([months, bandItems]) => ({ months, heading: months === -1 ? t("ms.custom") : milestoneBandLabel(months, t), items: bandItems }));
-  };
+  /** B-LOOP-05 — one shelf behind its door: every band, earlier first. The
+   *  child's band and the earlier ones answer through renderItem; a LATER
+   *  band is titles only (a parent can read what comes next, never tick
+   *  it). No per-band fraction anywhere. */
+  const renderShelfBands = (shelf: ShelfId) => (
+    <div className="space-y-3">
+      {shelfBands(shelfItems[shelf], currentBand.months).map((band) => (
+        <div key={band.months} data-testid="ms-shelf-band" data-band={band.months} className="space-y-2">
+          <p className="t-sm font-semibold" style={{ color: band.current ? "var(--arbor-ink)" : "var(--arbor-muted)" }}>
+            {band.months === -1 ? t("ms.custom") : milestoneBandLabel(band.months, t)}
+            {band.current && <> · {t("ms.currentBand")}</>}
+            {band.later && <> · {t("elev.loop.shelf.later")}</>}
+          </p>
+          {band.later ? (
+            <ul className="space-y-1.5">
+              {band.items.map((m) => (
+                <li key={m.id} data-testid="ms-later-item" className="t-sm leading-snug" style={{ color: "var(--arbor-ink-soft)" }}>
+                  {milestoneText(m, "title", t, msGender)}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="space-y-2">{band.items.map(renderItem)}</div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
 
-  /** The age-banded checklist for one domain — reused inside the drill-in pane.
-   *  Identical band/disclosure/renderItem behavior as before; only relocated. */
-  const renderDomainChecklist = (domId: string) => {
-    const itemsInDom = milestones.filter((m) => m.domain === domId);
-    const bands = groupByBand(itemsInDom);
-    if (itemsInDom.length === 0) {
-      return <p className="text-[11px] italic" style={{ color: "var(--arbor-muted)" }}>{t("ms.noMilestones")}</p>;
-    }
-    return (
-      <div className="space-y-2.5">
-        {bands.map((band) => {
-          const isCurrent = band.months === currentBand.months;
-          const isEarlier = band.months !== -1 && band.months < currentBand.months;
-          const isAhead = band.months !== -1 && band.months > currentBand.months;
-          // GP-09: only the ONE next band opens as "coming up"; later bands
-          // collapse behind "Show later milestones" (mirror of ms.showEarlier).
-          const isLater = band.months !== -1 && band.months > nextBandMonths;
-          const isToggleable = isEarlier || isLater;
-          const collapsed = (isEarlier && !openEarlierBands[band.months]) || (isLater && !openLaterBands[band.months]);
-          const toggleBand = () => {
-            if (isEarlier) setOpenEarlierBands((p) => ({ ...p, [band.months]: !p[band.months] }));
-            else if (isLater) setOpenLaterBands((p) => ({ ...p, [band.months]: !p[band.months] }));
-          };
-          const checkedInBand = milestonesNoticedSince({ milestones: band.items }, null); // B-GROWTH-35: the ONE count reader
-          return (
-            <div key={band.months} className="space-y-2">
-              <button
-                type="button"
-                onClick={toggleBand}
-                aria-expanded={!collapsed}
-                className="min-h-11 w-full flex items-center justify-between gap-2 text-start"
-                style={{ cursor: isToggleable ? "pointer" : "default" }}
-              >
-                <span className="flex items-center gap-2">
-                  <span className="text-[11px] font-extrabold uppercase tracking-wide" style={{ color: isCurrent ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>{band.heading}</span>
-                  {isCurrent && <span className="text-[11px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}>{t("ms.currentBand")}</span>}
-                  {isAhead && !isLater && <span className="text-[11px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)" }}>{t("ms.aheadBand")}</span>}
-                  {isLater && <span className="text-[11px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)" }}>{t("elev.growthTruth.ms.laterBand")}</span>}
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>{checkedInBand}/{band.items.length}</span>
-                  {isToggleable && (
-                    <Icon name="expand_more" size={16} className="transition-transform" style={{ color: "var(--arbor-muted)", transform: collapsed ? "rotate(-90deg)" : "rotate(0deg)" }} />
-                  )}
-                </span>
-              </button>
-              <AnimatePresence initial={false}>
-                {!collapsed && (
-                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden space-y-2">
-                    {band.items.map(renderItem)}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-              {collapsed && (
-                <button
-                  type="button"
-                  onClick={toggleBand}
-                  className="text-[11px] font-bold min-h-11"
-                  style={{ color: "var(--arbor-green-ink)" }}
-                >
-                  {isLater ? t("elev.growthTruth.ms.showLater") : t("ms.showEarlier")}
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
+  /** B-LOOP-05 — word search across shelves: the page-language catalogue
+   *  text and the stored words (a parent-added row keeps its own). */
+  const searchText = (m: Milestone): string[] => [milestoneText(m, "title", t, msGender), milestoneText(m, "looks", t, msGender), m.title, m.skillLooksLike ?? ""];
+  const searchHits = query.trim()
+    ? SHELF_IDS.map((shelf) => ({ shelf, items: shelfItems[shelf].filter((m) => matchesMilestoneQuery(searchText(m), query)) })).filter((g) => g.items.length > 0)
+    : null;
+  const isLaterItem = (m: Milestone): boolean => typeof m.ageMonths === "number" && bandForAgeMonths(m.ageMonths).months > currentBand.months;
 
   // B-GROWTH-08: the honest destination. This used to seed an ENGLISH coach
   // prompt and a lens, then navigate to Daily Play (not Ask), so the prompt sat
@@ -718,10 +664,10 @@ export default function MilestonesTab() {
       }),
       source: "milestone-ask",
     });
-  const askAboutArea = (domId: string) =>
+  const askAboutShelf = (shelf: ShelfId) =>
     seedCoach({
       prompt: t("seed.milestone.ask", {
-        title: domainLabel(domId),
+        title: shelfLabel(shelf, t),
         name: askSeedName,
         band: ageLabelForMonths(comparisonMonths, t),
       }),
@@ -732,19 +678,9 @@ export default function MilestonesTab() {
     setActiveTab("daily-play");
   };
 
-  // RTL-aware directional chevrons via the shared Material Symbols <Icon>.
-  // (Declared as components so they slot into the existing <ChevStart/> /
-  // <ChevEnd/> render sites, including the domain-map scopes where a local
-  // `Icon` shadows the import.)
-  const chevStartName = isRtl ? "chevron_right" : "chevron_left";
-  const chevEndName = isRtl ? "chevron_left" : "chevron_right";
-  const ChevStart = ({ className, style }: { className?: string; style?: React.CSSProperties }) => (
-    <Icon name={chevStartName} size={16} className={className} style={style} />
-  );
-  const ChevEnd = ({ className, style }: { className?: string; style?: React.CSSProperties }) => (
-    <Icon name={chevEndName} size={16} className={className} style={style} />
-  );
   const firstName = (childProfile.name || "").split(" ")[0];
+  const latestShelf = latestNoticed ? shelfOfMilestone(latestNoticed.milestone) : null;
+  const latestShelfName = latestShelf ? shelfLabel(latestShelf, t) : latestNoticed ? domainLabel(latestNoticed.milestone.domain) : "";
 
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1180px] space-y-5 sm:space-y-6">
@@ -800,7 +736,7 @@ export default function MilestonesTab() {
                         in, so "latest: notices feelings" never contradicts a
                         Feelings row that has not counted it. */}
                     <p data-testid="ms-latest-area" className="mt-0.5 t-sm" style={{ color: "var(--arbor-muted)" }}>
-                      {t("elev.ms.latest.area", { area: domainLabel(latestNoticed.milestone.domain) })}
+                      {t("elev.ms.latest.area", { area: latestShelfName })}
                     </p>
                     <p className="mt-2 flex flex-wrap items-center gap-1.5 t-sm" style={{ color: "var(--arbor-muted)" }}>
                       {t("elev.ms.latest.when")}
@@ -814,45 +750,9 @@ export default function MilestonesTab() {
                 )}
                 <div className={latestNoticed ? "mt-3 t-sm" : "mt-1 t-2xl font-extrabold leading-tight"} style={latestNoticed ? { color: "var(--arbor-muted)" } : { fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
                   {recordCounts.noticed} {t("ms.domainOf")}
-                  {latestNoticed && recordCounts.areas > 0 && <> {t(recordCounts.areas === 1 ? "elev.ms.latest.areas.one" : "elev.ms.latest.areas", { n: recordCounts.areas })}</>}
+                  {latestNoticed && noticedShelves > 0 && <> {t(noticedShelves === 1 ? "elev.ms.latest.areas.one" : "elev.ms.latest.areas", { n: noticedShelves })}</>}
                 </div>
               </div>
-
-              {/* NEXTLEVEL critic r1 (P1, B-NEXTLEVEL-NEW-1i): the primary move
-                  is a CONTROL, not a display:contents wrapper — "Seen any of
-                  these?" lists the next three open items of the child's band
-                  (selectNextMilestones), each a 44 px "Yes, I've seen it" that
-                  writes through observeMilestone (once-per-id celebration +
-                  the milestones thread write). One gradient: the first Yes. */}
-              <section data-primary-move="mark-milestone" data-testid="ms-seen-any" aria-labelledby="ms-seen-any-title" className="mt-5 border-t pt-4" style={{ borderColor: "var(--arbor-rule)" }}>
-                <h2 id="ms-seen-any-title" className="leading-snug" style={{ fontFamily: "var(--font-display)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>
-                  {t("elev.ms.seenAny.title")}
-                </h2>
-                {nextOpen.length > 0 ? (
-                  <ul className="mt-3 space-y-2.5">
-                    {nextOpen.map((m, i) => (
-                      <li key={m.id} className="flex items-center justify-between gap-3">
-                        <span className="min-w-0 text-sm font-semibold leading-snug" style={{ color: "var(--arbor-ink)" }}>{milestoneText(m, "title", t, msGender)}</span>
-                        <button
-                          type="button"
-                          data-testid="ms-seen-any-yes"
-                          onClick={() => observeMilestone(m, "yes")}
-                          className="min-h-11 shrink-0 rounded-xl px-3.5 text-sm font-extrabold"
-                          style={i === 0
-                            ? { background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }
-                            : { background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}
-                        >
-                          {t("elev.ms.seenAny.yes")}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="mt-2 t-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
-                    {t("elev.ms.seenAny.empty", { name: firstName || t("ms.watch.childFallback") })}
-                  </p>
-                )}
-              </section>
 
               {/* B1 — under-2 reassurance lead: name the current stage, no checklist framing. */}
               {comparisonMonths < 24 && (
@@ -932,99 +832,146 @@ export default function MilestonesTab() {
           </div>
         }
         right={
-          openDomain === null ? (
-            /* ── Closed Map: the seven domains as tappable rows with COUNT bars ── */
-            <div className={`${cardCls} p-6`}>
-              <h3 className="t-lg font-extrabold mb-4" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("ms.developmentMap")}</h3>
-              <div className="flex flex-col gap-3.5">
-                {domainOptions.filter((dom) => (domainStats[dom.id]?.total ?? 0) > 0).map((dom) => {
-                  const dv = domainVisual(dom.id);
-                  const Icon = dv.icon;
+          <div data-testid="ms-shelf-map" className={`${cardCls} min-w-0 p-4 sm:p-6`}>
+            <h2 className="font-semibold leading-snug" style={{ fontFamily: "var(--font-display)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>
+              {t("elev.loop.shelfMap.title")}
+            </h2>
+            <label className="mt-3 flex min-h-11 items-center gap-2 rounded-xl ps-3 pe-1" style={{ background: "var(--arbor-paper)", border: "1px solid var(--arbor-rule-strong)" }}>
+              <Icon name="search" size={18} style={{ color: "var(--arbor-muted)" }} />
+              <input
+                data-testid="ms-search"
+                type="search"
+                dir="auto"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={t("elev.loop.search.placeholder")}
+                aria-label={t("elev.loop.search.label")}
+                className="min-h-11 min-w-0 flex-1 bg-transparent t-base focus:outline-none"
+                style={{ color: "var(--arbor-ink)" }}
+              />
+              {query && (
+                <button type="button" onClick={() => setQuery("")} aria-label={t("elev.loop.search.clear")} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg" style={{ color: "var(--arbor-muted)" }}>
+                  <Icon name="close" size={18} />
+                </button>
+              )}
+            </label>
+
+            {searchHits ? (
+              <div data-testid="ms-search-results" className="mt-4 space-y-4">
+                {searchHits.length === 0 && (
+                  <p className="t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.loop.search.empty", { q: query.trim() })}</p>
+                )}
+                {searchHits.map((g) => (
+                  <div key={g.shelf} className="space-y-2">
+                    <p className="t-sm font-semibold" style={{ color: "var(--arbor-muted)" }}>{shelfLabel(g.shelf, t)}</p>
+                    {g.items.map((m) =>
+                      isLaterItem(m) ? (
+                        <p key={m.id} data-testid="ms-search-later" className="t-sm leading-snug" style={{ color: "var(--arbor-ink-soft)" }}>
+                          {milestoneText(m, "title", t, msGender)} · {milestoneAgeGroupText(m, t)}
+                        </p>
+                      ) : (
+                        renderItem(m)
+                      ),
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-2">
+                {SHELVES.map((def, i) => {
+                  const shelf = def.id;
+                  const card = noticeFor(shelf);
+                  const n = shelfCounts[shelf];
+                  const open = Boolean(openShelves[shelf]);
+                  const hasItems = shelfItems[shelf].length > 0;
                   return (
-                    <button
-                      key={dom.id}
-                      type="button"
-                      onClick={() => setOpenDomain(dom.id)}
-                      className="min-h-11 text-start rounded-[14px] p-3 transition hover:bg-[var(--arbor-paper-deep)]"
-                      style={{ border: "1px solid var(--arbor-rule)", minHeight: 44 }}
+                    <section
+                      key={shelf}
+                      data-testid="ms-shelf"
+                      data-shelf={shelf}
+                      aria-labelledby={`ms-shelf-${shelf}`}
+                      className="py-4"
+                      style={i === 0 ? undefined : { borderTop: "1px solid var(--arbor-rule)" }}
                     >
-                      <div className="flex items-center gap-2.5 mb-2">
-                        <Icon className="w-[18px] h-[18px] flex-shrink-0" style={{ color: PASTEL[dv.tone].ink }} />
-                        <span className="flex-1 t-base font-bold" style={{ color: "var(--arbor-ink)" }}>{domainLabel(dom.id)}</span>
-                        {/* B-GROWTH-07: a count, never a bar or a "/total" fraction.
-                            NEXTLEVEL critic r1: the unwindowed noticed count
-                            (byDomain); a domain at 0 names its next open item
-                            instead of a "0 noticed" line. */}
-                        {(recordCounts.byDomain[dom.id] ?? 0) > 0 || !nextInDomain(dom.id) ? (
-                          <span className="t-sm font-extrabold" style={{ color: "var(--arbor-muted)" }}>{recordCounts.byDomain[dom.id] ?? 0} {t("ms.domainOf")}</span>
-                        ) : (
-                          <span data-testid="ms-domain-next" className="min-w-0 max-w-[55%] truncate t-sm font-semibold" style={{ color: "var(--arbor-muted)" }}>{t("elev.ms.domainNext", { title: milestoneText(nextInDomain(dom.id)!, "title", t, msGender) })}</span>
+                      <div className="flex items-center gap-3">
+                        <ShelfGlyph shelf={shelf} size={36} />
+                        <h3 id={`ms-shelf-${shelf}`} className="min-w-0 flex-1 font-semibold leading-tight" style={{ fontFamily: "var(--font-display)", fontSize: "var(--t-md)", color: "var(--arbor-ink)" }}>
+                          {shelfLabel(shelf, t)}
+                        </h3>
+                        {n > 0 && (
+                          <span data-testid="ms-shelf-count" className="t-sm whitespace-nowrap" style={{ color: "var(--arbor-muted)" }}>
+                            {t(n === 1 ? "elev.loop.shelf.noticed.one" : "elev.loop.shelf.noticed", { n })}
+                          </span>
                         )}
-                        <ChevEnd className="w-4 h-4 flex-shrink-0" style={{ color: "var(--arbor-muted)" }} />
                       </div>
-                    </button>
+                      {card ? (
+                        <div className="mt-3" {...(shelf === firstNoticeShelf ? { "data-primary-move": "notice-milestone" } : {})}>
+                          <NoticeCard
+                            key={card.id}
+                            milestone={card}
+                            shelf={shelf}
+                            gender={childProfile.gender}
+                            variant="card"
+                            onAnswer={(status) => {
+                              setHeldNotice((p) => ({ ...p, [shelf]: card.id }));
+                              observeMilestone(card, status);
+                            }}
+                            onWhen={(when) => setMilestoneObservation(card.id, "yes", { when })}
+                            onKeepQuote={(note) => saveKeepsake({ milestoneId: card.id, note, noticedOn: localDay(new Date()) })}
+                            onKeepPhoto={() => setKeepsakeFor(card.id)}
+                          />
+                        </div>
+                      ) : !hasItems ? (
+                        <p data-testid="ms-shelf-none" className="mt-2 t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.loop.shelf.none")}</p>
+                      ) : windowShelfItems[shelf].length === 0 ? (
+                        <p className="mt-2 t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.loop.shelf.noneNow")}</p>
+                      ) : null}
+                      {hasItems && (
+                        <button
+                          type="button"
+                          data-testid="ms-shelf-door"
+                          aria-expanded={open}
+                          onClick={() => setOpenShelves((p) => ({ ...p, [shelf]: !p[shelf] }))}
+                          className="mt-2 inline-flex min-h-11 items-center gap-1.5 t-sm font-semibold"
+                          style={{ color: "var(--arbor-ink-soft)" }}
+                        >
+                          {t(open ? "elev.loop.shelf.doorClose" : "elev.loop.shelf.door")}
+                          <Icon name="expand_more" size={18} style={{ transform: open ? "rotate(180deg)" : undefined }} />
+                        </button>
+                      )}
+                      {open && (
+                        <div className="mt-2 space-y-3">
+                          {renderShelfBands(shelf)}
+                          <button
+                            type="button"
+                            data-testid="ms-play-ideas"
+                            onClick={openPlayIdeas}
+                            className="min-h-11 w-full flex items-center gap-2.5 rounded-[13px] p-3 text-start transition"
+                            style={{ background: "var(--arbor-paper)", border: "1px solid var(--arbor-rule)" }}
+                          >
+                            <Icon name="sports_esports" size={18} style={{ color: "var(--arbor-ink-soft)" }} />
+                            <span className="flex-1 t-base font-semibold" style={{ color: "var(--arbor-ink)" }}>
+                              {t("ms.playIdeas", { area: shelfLabel(shelf, t) })}
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            data-testid="ms-map-ask-arbor"
+                            onClick={() => askAboutShelf(shelf)}
+                            className="min-h-11 inline-flex items-center gap-1.5 t-sm font-semibold"
+                            style={{ color: "var(--arbor-ink)" }}
+                          >
+                            <Icon name="forum" size={16} />
+                            {t("ms.askArbor")}
+                          </button>
+                        </div>
+                      )}
+                    </section>
                   );
                 })}
               </div>
-            </div>
-          ) : (
-            /* ── Domain drill-in: back-link + header + banded checklist + hints ── */
-            (() => {
-              const dom = domainOptions.find((d) => d.id === openDomain) || domainOptions[0];
-              const dv = domainVisual(dom.id);
-              const Icon = dv.icon;
-              return (
-                <div className={`${cardCls} p-6 space-y-4 text-xs`}>
-                  <button
-                    type="button"
-                    onClick={() => setOpenDomain(null)}
-                    className="min-h-11 inline-flex items-center gap-1.5 t-sm font-extrabold rounded-lg px-2.5 py-1.5 transition"
-                    style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}
-                  >
-                    <ChevStart className="w-4 h-4" /> {t("ms.allDomains")}
-                  </button>
-
-                  <div className="flex items-center gap-3">
-                    <span className="rounded-[13px] flex items-center justify-center flex-shrink-0" style={{ width: 46, height: 46, background: PASTEL[dv.tone].soft }}>
-                      <Icon className="w-6 h-6" style={{ color: PASTEL[dv.tone].ink }} />
-                    </span>
-                    <div className="flex-1">
-                      <div className="t-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{domainLabel(dom.id)}</div>
-                      <div className="t-sm font-bold" style={{ color: "var(--arbor-muted)" }}>{recordCounts.byDomain[dom.id] ?? 0} {t("ms.domainOf")}</div>
-                    </div>
-                  </div>
-
-                  {renderDomainChecklist(dom.id)}
-
-                  {/* B-GROWTH-08: opens Daily Play — the honest destination. No
-                      quest is written and no coach prompt is seeded. */}
-                  <button
-                    type="button"
-                    data-testid="ms-play-ideas"
-                    onClick={openPlayIdeas}
-                    className="min-h-11 w-full flex items-center gap-2.5 rounded-[13px] p-3 text-start transition"
-                    style={{ background: "var(--arbor-paper)", border: "1px solid var(--arbor-rule)", minHeight: 44 }}
-                  >
-                    <Icon name="sports_esports" size={18} style={{ color: "var(--arbor-ink-soft)" }} />
-                    <div className="flex-1 t-base font-extrabold" style={{ color: "var(--arbor-ink)" }}>
-                      {t("ms.playIdeas", { area: domainLabel(dom.id) })}
-                    </div>
-                    <ChevEnd className="w-4 h-4 flex-shrink-0" style={{ color: "var(--arbor-muted)" }} />
-                  </button>
-                  <button
-                    type="button"
-                    data-testid="ms-map-ask-arbor"
-                    onClick={() => askAboutArea(dom.id)}
-                    className="min-h-11 inline-flex items-center gap-1.5 text-[13px] font-bold"
-                    style={{ color: "var(--arbor-ink)" }}
-                  >
-                    <Icon name="forum" size={16} />
-                    {t("ms.askArbor")}
-                  </button>
-                </div>
-              );
-            })()
-          )
+            )}
+          </div>
         }
       />
 

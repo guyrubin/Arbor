@@ -190,8 +190,10 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
   },
   {
     route: "milestones", hub: "growth", depth: 1,
-    job: "Mark what she just did for the first time.",
-    primaryMove: "mark-milestone", moduleBudget: 3, demotionTarget: "disclosure",
+    // B-LOOP-05: the shelf map — nine parent shelves, one Notice card each,
+    // earlier and later bands behind each shelf's door, word search.
+    job: "See what to notice next, shelf by shelf.",
+    primaryMove: "notice-milestone", moduleBudget: 3, demotionTarget: "disclosure",
     // Celebration fires only on a fresh "yes", once per milestone id ever;
     // caps per Law 2 (≤800ms, ≤12 particles).
     threadWrite: "milestones",

@@ -26,6 +26,19 @@ export const en: Record<string, string> = {
   "elev.loop.notice.seenReceipt": "Noted under {shelf}.",
   "elev.loop.notice.keptReceipt": "Kept with this milestone.",
   "elev.loop.notice.thanks": "Noted. No need to test or push; everyday play is enough.",
+  // ── B-LOOP-05 · the shelf map (#/milestones) ────────────────────────────
+  "elev.loop.shelfMap.title": "What to notice, shelf by shelf",
+  "elev.loop.shelf.noticed": "{n} noticed",
+  "elev.loop.shelf.noticed.one": "1 noticed",
+  "elev.loop.shelf.door": "Earlier and later",
+  "elev.loop.shelf.doorClose": "Hide earlier and later",
+  "elev.loop.shelf.later": "to read, not to mark yet",
+  "elev.loop.shelf.none": "No milestones on this shelf. Moments you add still land here.",
+  "elev.loop.shelf.noneNow": "Nothing on this shelf for this age. Open Earlier and later to read the rest.",
+  "elev.loop.search.label": "Search milestones",
+  "elev.loop.search.placeholder": "Search by word, like ball",
+  "elev.loop.search.empty": "Nothing matches “{q}”.",
+  "elev.loop.search.clear": "Clear the search",
 };
 
 export const he: Record<string, string> = {
@@ -43,4 +56,17 @@ export const he: Record<string, string> = {
   "elev.loop.notice.seenReceipt": "נרשם תחת {shelf}.",
   "elev.loop.notice.keptReceipt": "נשמר ליד אבן הדרך הזו.",
   "elev.loop.notice.thanks": "נרשם. אין צורך לבדוק או ללחוץ; משחק רגיל מספיק.",
+  // ── B-LOOP-05 · the shelf map (#/milestones) ────────────────────────────
+  "elev.loop.shelfMap.title": "מה לשים לב אליו, מדף אחר מדף",
+  "elev.loop.shelf.noticed": "{n} נצפו",
+  "elev.loop.shelf.noticed.one": "1 נצפה",
+  "elev.loop.shelf.door": "מוקדם יותר ומאוחר יותר",
+  "elev.loop.shelf.doorClose": "להסתיר את המוקדם והמאוחר",
+  "elev.loop.shelf.later": "לקריאה, עוד לא לסימון",
+  "elev.loop.shelf.none": "אין אבני דרך במדף הזה. רגעים שתוסיפו עדיין יגיעו לכאן.",
+  "elev.loop.shelf.noneNow": "אין כאן משהו לגיל הזה. אפשר לפתוח „מוקדם יותר ומאוחר יותר” ולקרוא את השאר.",
+  "elev.loop.search.label": "חיפוש אבני דרך",
+  "elev.loop.search.placeholder": "חיפוש לפי מילה, למשל כדור",
+  "elev.loop.search.empty": "לא נמצא דבר עבור „{q}”.",
+  "elev.loop.search.clear": "ניקוי החיפוש",
 };
