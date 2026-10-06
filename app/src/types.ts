@@ -259,7 +259,10 @@ export interface BehaviorLog {
   id: string;
   timestamp: string;
   behaviorType: string;
-  intensity: number; // 1-5
+  /** 1-5, recorded on the hard-moment sheet only. B-DATA-09: a plain moment
+   *  stores none — every consumer treats absence as "not recorded" (no dots,
+   *  outside every intensity reducer), never as a neutral 1 or 3. */
+  intensity?: number;
   durationMinutes: number;
   trigger: string;
   /** What the parent tried. REQUIRED only for incident-type behaviourTypes

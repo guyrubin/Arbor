@@ -18,7 +18,7 @@ import {
   PlanCheckAnswer,
 } from "../types";
 import { useToastOptional } from "./ToastContext";
-import { validateLogDraft, momentLogFields, buildMomentLog, isIncidentType, MOMENT_BEHAVIOR_TYPE } from "../content/behaviorTaxonomy";
+import { validateLogDraft, buildMomentLog, isIncidentType, MOMENT_BEHAVIOR_TYPE } from "../content/behaviorTaxonomy";
 import type { ScoredActivity } from "../playbank/select";
 import type { PlayActivity } from "../playbank/content";
 import { ROUTE_IDS, resolveHash, FALLBACK_ROUTE, type ActiveTab } from "../lib/routes";
@@ -637,7 +637,7 @@ function useArborState() {
     try {
       const result = await explainViaApi({
         subject: `A co-regulation script for this logged moment (${log.behaviorType})`,
-        details: `Duration: ${log.durationMinutes} mins. Intensity: ${log.intensity}/5. Trigger: ${log.trigger}. What the parent tried: ${log.response || "not recorded"}.`,
+        details: `Duration: ${log.durationMinutes} mins.${typeof log.intensity === "number" ? ` Intensity: ${log.intensity}/5.` : ""} Trigger: ${log.trigger}. What the parent tried: ${log.response || "not recorded"}.`,
       });
       setInlineCoRegulationScripts((prev) => ({ ...prev, [log.id]: result }));
     } catch (err: any) {
@@ -1220,17 +1220,12 @@ function useArborState() {
       id: existing ? existing.id : `log-${Date.now()}`,
       timestamp: existing ? existing.timestamp : new Date().toISOString(),
       behaviorType: newLogType,
-      // OBJ-BEH-03: a Moment is "she said butterfly for the first time" — it
-      // has no severity to grade, and the form never asks for one. The
-      // newLogIntensity default (3) was written regardless, so a joyful
-      // capture was stored as a mid-intensity incident, drew a 3/5 meter and
-      // answered the "intensity 3" filter. It now takes the SAME neutral
-      // `momentLogFields` already writes on the addMoment path (1 — outside
-      // the friction rhythm, which counts intensity >= 4), so both capture
-      // routes agree; Behaviors excludes non-incident types from the
-      // intensity filter and renders no meter or level for them, so nothing
-      // intensity-shaped reaches the parent for a moment.
-      intensity: newLogType === MOMENT_BEHAVIOR_TYPE ? momentLogFields("").intensity : newLogIntensity,
+      // OBJ-BEH-03 / B-DATA-09: a Moment is "she said butterfly for the
+      // first time" — it has no severity to grade, and the form never asks
+      // for one. It stores NO intensity (as `momentLogFields` on the
+      // addMoment path), never a neutral 1 or 3: absence keeps it outside
+      // every intensity reducer, and no dots or level render for it.
+      intensity: newLogType === MOMENT_BEHAVIOR_TYPE ? undefined : newLogIntensity,
       durationMinutes: newLogDuration,
       trigger: newLogTrigger,
       // A moment carries a response only if the parent actually wrote one.
@@ -1280,7 +1275,8 @@ function useArborState() {
     const log = behaviorLogs.find((l) => l.id === id);
     if (!log) return;
     setNewLogType(log.behaviorType);
-    setNewLogIntensity(log.intensity);
+    // B-DATA-09: a moment carries no intensity — the sheet keeps its own.
+    if (typeof log.intensity === "number") setNewLogIntensity(log.intensity);
     setNewLogDuration(log.durationMinutes);
     setNewLogTrigger(log.trigger);
     setNewLogResponse(log.response ?? "");

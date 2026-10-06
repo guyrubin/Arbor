@@ -292,7 +292,7 @@ export default function QuickLogModal({
       const n = normalizeExtractedLog(d, text);
       if (from === "moment" && !extractionOpensIncidentReview(n)) return;
       setNewLogType(n.behaviorType);
-      setNewLogIntensity(n.intensity);
+      if (typeof n.intensity === "number") setNewLogIntensity(n.intensity);
       setNewLogDuration(n.durationMinutes);
       setNewLogContext(n.context as BehaviorContext);
       setNewLogTrigger(n.trigger);

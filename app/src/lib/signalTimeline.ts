@@ -693,8 +693,8 @@ export const computeMomentum = (
   const momentTrend: Trend =
     thisWeek.length > prevWeek.length ? "up" : thisWeek.length < prevWeek.length ? "down" : "flat";
 
-  const avgThis = avg(thisWeek.map((l) => l.intensity).filter((n) => typeof n === "number"));
-  const avgPrev = avg(prevWeek.map((l) => l.intensity).filter((n) => typeof n === "number"));
+  const avgThis = avg(thisWeek.map((l) => l.intensity).filter((n): n is number => typeof n === "number"));
+  const avgPrev = avg(prevWeek.map((l) => l.intensity).filter((n): n is number => typeof n === "number"));
 
   let intensityTrend: Momentum["intensityTrend"] = "none";
   if (avgThis != null && avgPrev != null) {

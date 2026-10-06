@@ -108,7 +108,8 @@ export function watchSignals(input: WatchInput): WatchSignal[] {
 
   // 2) Emotional regulation pattern from logged moments (28-day window).
   const month = recent(input.logs, 28);
-  const intense = month.filter((l) => l.intensity >= 4);
+  // B-DATA-09: a moment with no recorded intensity is never an intense one.
+  const intense = month.filter((l) => typeof l.intensity === "number" && l.intensity >= 4);
   const avgDuration = month.length ? month.reduce((s, l) => s + l.durationMinutes, 0) / month.length : 0;
   if (intense.length >= 6) {
     const level: WatchLevel = intense.length >= 10 && avgDuration >= 15 ? "discuss" : "monitor";

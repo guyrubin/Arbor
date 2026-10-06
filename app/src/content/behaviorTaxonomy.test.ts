@@ -50,11 +50,11 @@ describe("AI-CAP-8 — mapLabelToType", () => {
 });
 
 describe("AI-CAP-8 — normalizeExtractedLog clamps every field", () => {
-  it("clamps intensity to 1..5 with 3 as the unknown default", () => {
+  it("clamps an explicit intensity to 1..5; a missing one stays undefined (B-DATA-09: no invented 3)", () => {
     expect(normalizeExtractedLog({ intensity: 99 }).intensity).toBe(5);
     expect(normalizeExtractedLog({ intensity: -2 }).intensity).toBe(1);
-    expect(normalizeExtractedLog({ intensity: "nope" }).intensity).toBe(3);
-    expect(normalizeExtractedLog({}).intensity).toBe(3);
+    expect(normalizeExtractedLog({ intensity: "nope" }).intensity).toBeUndefined();
+    expect(normalizeExtractedLog({}).intensity).toBeUndefined();
   });
 
   it("clamps duration to >= 1 with 10 as the unknown default", () => {
@@ -185,10 +185,10 @@ describe("TJB-01 — validateLogDraft: response is required for incidents only",
     }
   });
 
-  it("momentLogFields never feeds the friction rhythm (intensity 1, duration 0, no response)", () => {
+  it("momentLogFields never feeds the friction rhythm (no intensity, duration 0, no response)", () => {
     const f = momentLogFields("  First full sentence today  ");
     expect(f.behaviorType).toBe(MOMENT_BEHAVIOR_TYPE);
-    expect(f.intensity).toBe(1);
+    expect("intensity" in f).toBe(false);
     expect(f.durationMinutes).toBe(0);
     expect(f.trigger).toBe("First full sentence today");
     expect(f.response).toBeUndefined();

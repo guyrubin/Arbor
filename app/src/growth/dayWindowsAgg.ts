@@ -24,10 +24,11 @@
  */
 import { HIGH_INTENSITY, MIN_HARD_DAYS, MIN_HARD_LOGS, RHYTHM_WINDOW_DAYS, rhythmDayKey, type RhythmPrediction } from "../rhythm/predict";
 
-/** A log as the aggregator needs it (timestamp + 1–5 intensity). */
+/** A log as the aggregator needs it (timestamp + optional 1–5 intensity).
+ *  B-DATA-09: a plain moment stores no intensity — it is never a hard moment. */
 export interface DayWindowsLog {
   timestamp: string | number;
-  intensity: number;
+  intensity?: number;
 }
 
 /** A named 2-hour window in the day. */
@@ -107,7 +108,7 @@ export function buildDayWindowsSummary(
   const since = nowMs - windowDays * DAY_MS;
   const hard = logs.filter((l) => {
     const t = toMs(l.timestamp);
-    return Number.isFinite(t) && t >= since && t <= nowMs && l.intensity >= HIGH_INTENSITY;
+    return Number.isFinite(t) && t >= since && t <= nowMs && typeof l.intensity === "number" && l.intensity >= HIGH_INTENSITY;
   });
 
   const hourCounts = zeroCounts();

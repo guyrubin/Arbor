@@ -165,7 +165,7 @@ export function buildDemoFamily({
       id: `demo-moment-${i + 1}`,
       timestamp: at(now, m.daysAgo, m.hour),
       behaviorType: "Moment",
-      intensity: 1,
+      // B-DATA-09: a plain moment stores no intensity.
       durationMinutes: 0,
       trigger: pick(m.text),
       context: m.context,

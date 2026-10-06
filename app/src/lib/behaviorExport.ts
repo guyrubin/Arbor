@@ -25,7 +25,7 @@ export function buildBehaviorExportHtml(
   const rows = logs
     .map(
       (l) =>
-        `<tr><td>${escapeHtml(fmtDayTime(l.timestamp, lang))}</td><td>${escapeHtml(l.behaviorType)}</td><td>${escapeHtml(l.context || "")}</td><td>${l.intensity}/5</td><td>${l.durationMinutes}m</td><td>${l.resolved ? t("beh.resolved") : t("beh.open")}</td><td>${escapeHtml(l.trigger)}</td><td>${escapeHtml(l.response ?? "")}</td></tr>`,
+        `<tr><td>${escapeHtml(fmtDayTime(l.timestamp, lang))}</td><td>${escapeHtml(l.behaviorType)}</td><td>${escapeHtml(l.context || "")}</td><td>${typeof l.intensity === "number" ? `${l.intensity}/5` : ""}</td><td>${l.durationMinutes}m</td><td>${l.resolved ? t("beh.resolved") : t("beh.open")}</td><td>${escapeHtml(l.trigger)}</td><td>${escapeHtml(l.response ?? "")}</td></tr>`,
     )
     .join("");
   return `<!doctype html><html><head><title>${t("beh.pdf.title")}</title>

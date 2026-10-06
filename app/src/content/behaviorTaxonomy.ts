@@ -76,7 +76,7 @@ export const isIncidentType = (behaviorType: string): boolean => INCIDENT_TYPES.
  * An unmatched free label ("First word") falls back to DEFAULT_BEHAVIOR_TYPE
  * with `typeMatched: false`, and a "Moment" label is not an incident — both
  * keep the parent's words in the moment field (saved via momentLogFields:
- * behaviorType "Moment", intensity 1). Never a joyful line filed as a
+ * behaviorType "Moment", no intensity — B-DATA-09). Never a joyful line filed as a
  * Transition Refusal at 3/5.
  */
 export const extractionOpensIncidentReview = (n: { typeMatched: boolean; behaviorType: string }): boolean =>
@@ -104,10 +104,10 @@ export function validateLogDraft(d: BehaviorLogDraft): "beh.toast.fillTrigger" |
   return null;
 }
 
-/** Field defaults for a plain moment saved from ONE text field. */
+/** Field defaults for a plain moment saved from ONE text field.
+ *  B-DATA-09: a moment has no severity — it stores no intensity at all. */
 export const momentLogFields = (text: string, context: string = "Home") => ({
   behaviorType: MOMENT_BEHAVIOR_TYPE,
-  intensity: 1,
   durationMinutes: 0,
   trigger: text.trim(),
   response: undefined as string | undefined,
@@ -132,7 +132,7 @@ export function buildMomentLog(
     id: `log-${now.getTime()}`,
     timestamp: now.toISOString(),
     behaviorType: fields.behaviorType,
-    intensity: fields.intensity,
+    // B-DATA-09: no `intensity` key — a plain moment stores none.
     durationMinutes: fields.durationMinutes,
     trigger: fields.trigger,
     context: fields.context,
@@ -174,6 +174,15 @@ export function mapLabelToType(label: string): { type: CanonicalBehaviorType; ma
   return { type: DEFAULT_BEHAVIOR_TYPE, matched: false };
 }
 
+/** B-DATA-09: an explicit numeric intensity clamps to 1–5; a missing or
+ *  non-numeric one stays undefined (no neutral value is invented). */
+export function clampIntensity(v: unknown): number | undefined {
+  if (v === null || v === undefined || v === "") return undefined;
+  const n = Math.round(Number(v));
+  if (!Number.isFinite(n)) return undefined;
+  return Math.min(5, Math.max(1, n));
+}
+
 /** Raw /extract-log response shape (all fields untrusted until clamped). */
 export type ExtractedLogDraft = {
   behaviorType?: unknown;
@@ -192,7 +201,9 @@ export type NormalizedExtractedLog = {
   typeMatched: boolean;
   /** The model's original label, verbatim. */
   freeLabel: string;
-  intensity: number;
+  /** B-DATA-09: undefined when the model gave no usable number — never an
+   *  invented neutral 3; an explicit value is clamped to 1–5. */
+  intensity: number | undefined;
   durationMinutes: number;
   context: (typeof EXTRACT_CONTEXTS)[number];
   trigger: string;
@@ -217,7 +228,7 @@ export function normalizeExtractedLog(d: ExtractedLogDraft, fallbackTrigger = ""
     behaviorType: type,
     typeMatched: matched,
     freeLabel,
-    intensity: Math.min(5, Math.max(1, Math.round(Number(d?.intensity)) || 3)),
+    intensity: clampIntensity(d?.intensity),
     durationMinutes: Math.max(1, Math.round(Number(d?.durationMinutes)) || 10),
     context: (EXTRACT_CONTEXTS as readonly string[]).includes(ctx) ? (ctx as (typeof EXTRACT_CONTEXTS)[number]) : "Home",
     trigger: String(d?.trigger ?? "").trim() || fallbackTrigger,

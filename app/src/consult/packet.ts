@@ -41,7 +41,7 @@ export interface PacketInputProfile {
 }
 export interface PacketInputLog {
   behaviorType: string;
-  intensity: number;
+  intensity?: number;
   timestamp: string | number;
   trigger?: string;
   response?: string;
@@ -349,7 +349,7 @@ export interface RawPacketProfile {
 /** Raw behaviour-log fields (a `BehaviorLog`, or a Firestore document). */
 export interface RawPacketLog {
   behaviorType: string;
-  intensity: number;
+  intensity?: number;
   timestamp: string | number;
   trigger?: string;
   response?: string;
@@ -461,7 +461,7 @@ export function buildPacketInput(record: RawChildRecord, nowMs: number): BuildPa
     },
     logs: record.logs.map((l) => ({
       behaviorType: rawStr(l.behaviorType),
-      intensity: rawNum(l.intensity),
+      intensity: rawOptNum(l.intensity),
       timestamp: rawTs(l.timestamp),
       // The parent's own words for what came first — the ONLY source of the
       // behavioural preset's `triggers` section, and of the trigger lines a
@@ -610,7 +610,7 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
     const counts = new Map<string, { n: number; maxIntensity: number }>();
     for (const l of recentConcerns) {
       const c = counts.get(l.behaviorType) ?? { n: 0, maxIntensity: 0 };
-      c.n += 1; c.maxIntensity = Math.max(c.maxIntensity, l.intensity);
+      c.n += 1; if (typeof l.intensity === "number") c.maxIntensity = Math.max(c.maxIntensity, l.intensity);
       counts.set(l.behaviorType, c);
     }
     const top = [...counts.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 3);

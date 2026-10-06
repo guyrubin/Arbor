@@ -79,13 +79,14 @@ describe("OBJ-BEH-03 · a Moment is not graded", () => {
   } as BehaviorLog);
 
   it("the newLog path no longer writes the form default for a Moment", () => {
-    expect(CTX).toMatch(/intensity: newLogType === MOMENT_BEHAVIOR_TYPE \? momentLogFields\(""\)\.intensity : newLogIntensity/);
+    // B-DATA-09: a Moment stores NO intensity (was the neutral 1).
+    expect(CTX).toMatch(/intensity: newLogType === MOMENT_BEHAVIOR_TYPE \? undefined : newLogIntensity/);
     // NEGATIVE CONTROL: the unconditional write that shipped.
     expect(CTX).not.toMatch(/^\s*intensity: newLogIntensity,$/m);
   });
 
-  it("both capture routes agree on the value a Moment carries", () => {
-    expect(momentLogFields("said butterfly").intensity).toBe(1);
+  it("both capture routes agree: a Moment carries no intensity (B-DATA-09)", () => {
+    expect("intensity" in momentLogFields("said butterfly")).toBe(false);
     expect(momentLogFields("said butterfly").behaviorType).toBe(MOMENT_BEHAVIOR_TYPE);
   });
 

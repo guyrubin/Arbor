@@ -274,7 +274,7 @@ export default function BehaviorsTab() {
   const applyExtractedDraft = (d: Awaited<ReturnType<typeof api.extractLog>>, fallbackTrigger: string) => {
     const n = normalizeExtractedLog(d, fallbackTrigger);
     setNewLogType(n.behaviorType);
-    setNewLogIntensity(n.intensity);
+    if (typeof n.intensity === "number") setNewLogIntensity(n.intensity);
     setNewLogDuration(n.durationMinutes);
     setNewLogContext(n.context as BehaviorContext);
     setNewLogTrigger(n.trigger);
@@ -1013,7 +1013,6 @@ export default function BehaviorsTab() {
                                       <span className="truncate">{log.context ? `${contextLabel(log.context, t)} · ` : ""}{fmtDayTime(log.timestamp, uiLang)}</span>
                                     </div>
                                   </div>
-                                  {isIncidentType(log.behaviorType) && <span className="hidden min-[520px]:inline-flex"><IntensityMeter intensity={log.intensity} tone={tv.tone} /></span>}
                                   {/* Status icon — resolved (mint check_circle) / open (amber pending) */}
                                   {log.resolved
                                     ? <Icon name="check_circle" size={20} fill={1} style={{ color: "var(--arbor-green-ink)" }} aria-label={t("beh.resolved")} />
@@ -1031,7 +1030,7 @@ export default function BehaviorsTab() {
                                           <span className="inline-flex items-center px-2.5 py-1 rounded-full font-bold text-[10px]" style={{ background: tonePal.soft, color: tonePal.ink }}>{t(domainKeyOf(log.behaviorType))}</span>
                                           {log.context && <span className="inline-flex items-center px-2.5 py-1 rounded-full font-bold text-[10px]" style={{ background: T.paperElevated, color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }} dir="auto">{contextLabel(log.context, t)}</span>}
                                           <span className="inline-flex items-center px-2.5 py-1 rounded-full font-bold text-[10px]" style={{ background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" }}>{log.durationMinutes}m</span>
-                                          {isIncidentType(log.behaviorType) && <span className="inline-flex items-center px-2.5 py-1 rounded-full font-extrabold text-[10px]" style={{ background: "var(--arbor-yellow-soft)", color: "var(--arbor-yellow-ink)" }}>{t("beh.level", { n: log.intensity })}</span>}
+                                          {isIncidentType(log.behaviorType) && typeof log.intensity === "number" && <span className="inline-flex items-center px-2.5 py-1 rounded-full font-extrabold text-[10px]" style={{ background: "var(--arbor-yellow-soft)", color: "var(--arbor-yellow-ink)" }}>{t("beh.level", { n: log.intensity })}</span>}
                                         </div>
 
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>

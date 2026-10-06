@@ -198,13 +198,13 @@ describe("B-TODAY-01 — moment-branch extraction routing (both branches)", () =
   const route = (label: string, text: string) =>
     extractionOpensIncidentReview(normalizeExtractedLog({ behaviorType: label }, text));
 
-  it("{behaviorType:'Moment'} or a free label keeps the moment form; Save = Moment at intensity 1", () => {
+  it("{behaviorType:'Moment'} or a free label keeps the moment form; Save = Moment with no intensity", () => {
     expect(route("Moment", joyEn)).toBe(false);
     expect(route("First word", joyEn)).toBe(false);
     expect(route("First word", joyHe)).toBe(false);
     const saved = momentLogFields(joyEn);
     expect(saved.behaviorType).toBe("Moment");
-    expect(saved.intensity).toBe(1);
+    expect("intensity" in saved).toBe(false); // B-DATA-09
   });
 
   it("the HE transcript is preserved verbatim on the moment branch", () => {

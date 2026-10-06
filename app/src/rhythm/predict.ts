@@ -14,8 +14,9 @@
 export interface RhythmEvent {
   /** ISO string or epoch ms. */
   timestamp: string | number;
-  /** 1–5 difficulty/intensity of the moment. */
-  intensity: number;
+  /** 1–5 difficulty/intensity of the moment. B-DATA-09: absent on a plain
+   *  moment — such an event counts toward coverage, never as a hard event. */
+  intensity?: number;
 }
 
 export type RhythmTone = "calm" | "watch" | "friction";
@@ -96,6 +97,11 @@ function windDownPrior(ageYears: number | undefined): number {
   return 20;
 }
 
+/** B-DATA-09: a hard event carries a recorded intensity at or above the
+ *  floor; an event without one (a plain moment) is never hard. */
+const isHardEvent = (e: RhythmEvent): e is RhythmEvent & { intensity: number } =>
+  typeof e.intensity === "number" && e.intensity >= HIGH_INTENSITY;
+
 /**
  * Build today's rhythm read from a list of logged moments.
  * `nowMs` is injected so the function is pure and testable.
@@ -123,7 +129,7 @@ export function predictRhythm(
   const daysNeeded = Math.max(0, minDays - daysObserved);
 
   // B-TODAY-06: the evidence floor — hard logs and the distinct days they fell on.
-  const hardEvents = inWindow.filter((e) => e.intensity >= HIGH_INTENSITY);
+  const hardEvents = inWindow.filter((e) => isHardEvent(e));
   const hardLogs = hardEvents.length;
   const hardDays = new Set(hardEvents.map((e) => rhythmDayKey(toMs(e.timestamp)))).size;
   const enoughHard = hardDays >= MIN_HARD_DAYS && hardLogs >= MIN_HARD_LOGS;
@@ -132,7 +138,7 @@ export function predictRhythm(
   const hours = Array.from({ length: sleepHour - wakeHour }, (_, i) => wakeHour + i);
   const raw = new Map<number, number>(hours.map((h) => [h, 0]));
   for (const e of inWindow) {
-    if (e.intensity < HIGH_INTENSITY) continue;
+    if (!isHardEvent(e)) continue;
     const h = new Date(toMs(e.timestamp)).getHours();
     if (!raw.has(h)) continue;
     raw.set(h, (raw.get(h) ?? 0) + (e.intensity - HIGH_INTENSITY + 1)); // 4→1, 5→2
