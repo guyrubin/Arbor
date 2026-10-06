@@ -19,6 +19,7 @@ import { hardMomentCatalogue } from "../../content/hardMomentCards";
 import { hardMomentAgeCoverage, hardMomentAgeFit } from "../../content/hardMomentAgeFit";
 import { fitsHardMomentAge, parseHardMomentAgeBand } from "../../content/pilotRelease";
 import { availableHardMomentCards } from "../../content/selectCards";
+import HardMomentsSection from "./HardMomentsSection";
 
 /** Inside the live pilot window (availableFrom 2026-09-04 → expires 2026-12-03). */
 const NOW = new Date("2026-10-01T09:00:00.000Z");
@@ -39,10 +40,10 @@ vi.mock("../../context/LanguageContext", () => ({
 }));
 vi.mock("../ui/Modal", () => ({ Modal: () => null, default: () => null }));
 
-const renderSection = async () => {
-  const { default: HardMomentsSection } = await import("./HardMomentsSection");
-  return renderToStaticMarkup(React.createElement(HardMomentsSection));
-};
+// B-ASKJB-38 (gate): the section is imported ONCE, statically (the mocks
+// above are hoisted over it) — a cold dynamic import inside a test paid the
+// whole module graph's load against that test's 5 s timeout.
+const renderSection = async () => renderToStaticMarkup(React.createElement(HardMomentsSection));
 
 beforeEach(() => {
   vi.useFakeTimers();
