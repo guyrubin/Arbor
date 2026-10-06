@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { useProfile } from "../../context/ProfileContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -103,6 +104,39 @@ export function SwitcherChildOption({
 }
 
 /**
+ * B-SHELL-38 — the ONE identity line: name over the child's own age ("22
+ * months" under three, "5 years" from three — lib/age/format). On a child
+ * switch the line crossfades in 200 ms (keyed on the child id): the one
+ * motion this item allows. Exported so the line renders in a static test.
+ */
+export function ChildIdentity({ child, t }: { child: ChildProfile; t: (key: string, vars?: Record<string, string | number>) => string }) {
+  const age = formatChildAge(child, t);
+  return (
+    <motion.span
+      key={child.id}
+      data-child-identity={child.id}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
+      style={{ display: "flex", flexDirection: "column", minWidth: 0, textAlign: "start", lineHeight: 1.15 }}
+    >
+      <span
+        dir="auto"
+        data-identity-name
+        style={{ fontSize: "var(--t-sm)", fontWeight: 700, color: "var(--arbor-ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}
+      >
+        {child.name}
+      </span>
+      {age && (
+        <span dir="auto" data-identity-age style={{ fontSize: "12px", color: "var(--arbor-muted)", whiteSpace: "nowrap" }}>
+          {age}
+        </span>
+      )}
+    </motion.span>
+  );
+}
+
+/**
  * AP-047: Topbar kid-switcher chip.
  *
  * NEW ENTRY POINT ONLY — delegates entirely to the existing ProfileContext
@@ -114,7 +148,7 @@ export function SwitcherChildOption({
  * RTL: all directional layout uses logical CSS properties so the chip and
  * popover render correctly under dir=rtl (Hebrew). No raw hex values.
  */
-export default function TopbarKidSwitcher({ maxWidth = "180px" }: { maxWidth?: string } = {}) {
+export default function TopbarKidSwitcher({ maxWidth = "180px", fullWidth = false }: { maxWidth?: string; fullWidth?: boolean } = {}) {
   const { profiles, activeChild, setActiveChild } = useProfile();
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
@@ -156,11 +190,11 @@ export default function TopbarKidSwitcher({ maxWidth = "180px" }: { maxWidth?: s
         aria-expanded={open}
         aria-label={t("aria.activeChildSwitch", { name: activeChild.name })}
         style={{
-          display: "inline-flex",
+          display: fullWidth ? "flex" : "inline-flex",
+          width: fullWidth ? "100%" : undefined,
           alignItems: "center",
           gap: "8px",
-          height: "40px",
-          padding: "0 10px",
+          padding: "4px 10px",
           borderRadius: "12px",
           background: "var(--arbor-paper-elevated)",
           border: "1px solid var(--arbor-rule)",
@@ -172,21 +206,10 @@ export default function TopbarKidSwitcher({ maxWidth = "180px" }: { maxWidth?: s
           boxSizing: "border-box",
         }}
       >
-        <Avatar name={activeChild.name} photoURL={childPicture(activeChild).url} size={24} />
-        {/* UC-1: inline child name (avatar + name + chevron) */}
-        <span
-          dir="auto"
-          style={{
-            fontSize: "var(--t-sm)",
-            fontWeight: 700,
-            color: "var(--arbor-ink)",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            minWidth: 0,
-          }}
-        >
-          {activeChild.name}
+        <Avatar name={activeChild.name} photoURL={childPicture(activeChild).url} size={fullWidth ? 32 : 24} />
+        {/* B-SHELL-38: the identity line — picture · name · her own age, once per screen. */}
+        <span style={{ flex: fullWidth ? 1 : undefined, minWidth: 0, display: "flex" }}>
+          <ChildIdentity child={activeChild} t={t} />
         </span>
         {activeChild.demo === true && <DemoChip t={t} />}
         <Icon

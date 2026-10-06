@@ -3,63 +3,51 @@ import { Pencil } from "lucide-react";
 import { useProfile } from "../../context/ProfileContext";
 import { useLanguage } from "../../context/LanguageContext";
 import ProfileEditDrawer from "./ProfileEditDrawer";
-import { Avatar } from "../ui/Avatar";
-import FamilyGlanceCard from "./FamilyGlanceCard";
-// GP-01: the months-precise age label is THE parent-facing age render.
+import TopbarKidSwitcher from "../layout/TopbarKidSwitcher";
+// B-INF-10: the ONE child-age formatter (months under 3, years from 3).
 import { formatChildAge } from "../../lib/age/format";
-import { childPicture } from "../../lib/childPicture";
+import { genderedKey } from "../../lib/today/fromRecord";
 
 /**
- * IA-04 / IA-17 — the sidebar card is IDENTITY, not a second switcher.
+ * B-SHELL-38 — the active child is unmistakable: on desktop the child
+ * appears ONCE, here, as the identity line (picture · name · "22 months")
+ * that IS the switcher. Its dropdown is the family list (the old "All
+ * children" glance card), so the top-right duplicate chip and the glance card
+ * are gone; one control switches child at every width (the phone strip
+ * mounts the same component). Editing the profile keeps its own button.
  *
- * At 1280 the app offered two child switchers eight centimetres apart: this
- * card and the Topbar chip (TopbarKidSwitcher), each with its own popover,
- * its own "Add child" row and its own open state, over the same
- * ProfileContext. Two controls for one job is the defect; the chip wins
- * because it is the one the mobile strip mounts too, so ONE component is
- * the switcher at every width.
- *
- * Nothing is lost. Switching and "Add child" both live in the chip, one row
- * up and always visible; editing the profile is a different capability and
- * keeps its button here; the family glance is unchanged. What goes away is
- * the duplicate popover, not a door.
+ * Under it, one quiet caption names whose app this is: "Showing Leni's app ·
+ * 22 months" — never the generic "content for children 5 years old". Hebrew
+ * carries .girl / .boy forms when the gender is known.
  */
 export default function ProfileSwitcher() {
   const { activeChild } = useProfile();
   const { t } = useLanguage();
   const [showEdit, setShowEdit] = useState(false);
+  const first = (activeChild.name || "").split(" ")[0];
 
   return (
     <div className="relative">
-      <div className="rounded-2xl p-3 flex items-center justify-between gap-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-        <div className="flex items-center gap-3 flex-1 min-w-0 text-start">
-          <span className="flex-shrink-0"><Avatar name={activeChild.name} photoURL={childPicture(activeChild).url} size={36} ring /></span>
-          <div className="min-w-0">
-            <h4 className="text-sm font-bold leading-tight truncate" dir="auto" style={{ color: "var(--arbor-ink)" }}>{activeChild.name}</h4>
-            <p className="text-[12px] whitespace-nowrap" dir="auto" style={{ color: "var(--arbor-muted)" }}>{formatChildAge(activeChild, t)}</p>
-          </div>
+      <div className="flex items-center gap-2" data-testid="sidebar-identity">
+        <div className="flex-1 min-w-0">
+          <TopbarKidSwitcher maxWidth="100%" fullWidth />
         </div>
         {/* VIS-2/VIS-3: icon-only → min 44×44 hit area + explicit aria-label */}
         <button
           onClick={() => setShowEdit(true)}
           title={t("aria.editChildProfile")}
           aria-label={t("aria.editChildProfile")}
-          className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-lg transition"
+          className="inline-flex flex-shrink-0 items-center justify-center min-h-[44px] min-w-[44px] rounded-lg transition"
           style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
         >
           <Pencil className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      {/* E6 (age-tuning visibility): quiet factual line — everything shown is
-          selected for this child's age. A fact, never a clinical claim. */}
-      <p className="mt-1.5 ps-1 text-[12px] text-start" style={{ color: "var(--arbor-muted)" }}>
-        {t("elev.growthTruth.agechip.switcher", { age: formatChildAge(activeChild, t) })}
+      {/* B-SHELL-38: whose app this is — her name and her own age, never an age group. */}
+      <p data-testid="sidebar-showing" className="mt-1.5 ps-1 text-[12px] text-start" dir="auto" style={{ color: "var(--arbor-muted)" }}>
+        {t(genderedKey("elev.ages.shell.showing", activeChild.gender), { name: first, age: formatChildAge(activeChild, t) })}
       </p>
-
-      {/* C3 — Family glance: shown below the switcher for 2+ child households.
-          Reads only the existing DevScore snapshot per child — no new data. */}
-      <FamilyGlanceCard />
 
       <ProfileEditDrawer open={showEdit} onClose={() => setShowEdit(false)} />
     </div>

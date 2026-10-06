@@ -1,5 +1,4 @@
 import React from "react";
-import TopbarKidSwitcher from "./TopbarKidSwitcher";
 import TopbarSearch from "../search/TopbarSearch";
 import KidModeButton from "./KidModeButton";
 import SafetyRing from "./SafetyRing"; // IA-01: canon Safety life-ring — first control in the band
@@ -100,9 +99,8 @@ export default function Topbar() {
         <div className="hidden lg:block flex-shrink-0">
           <KidModeButton />
         </div>
-        <div className="flex-shrink-0 min-w-0">
-          <TopbarKidSwitcher />
-        </div>
+        {/* B-SHELL-38: no child chip here — on desktop the child appears ONCE,
+            as the sidebar identity line that IS the switcher (ProfileSwitcher). */}
       </div>
     </header>
   );

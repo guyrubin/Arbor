@@ -48,9 +48,11 @@ describe("B-SHELL-02 — no bell, no notification centre", () => {
     expect(existsSync(path.join(SRC_ROOT, "components", "layout", "TopbarBell.tsx"))).toBe(false);
     expect(existsSync(path.join(SRC_ROOT, "hooks", "useNotifications.ts"))).toBe(false);
   });
-  it("the topbar band mounts Safety · Search · Kid Mode · child chip and no Notifications control", () => {
+  it("the topbar band mounts Safety · Search · Kid Mode and no Notifications control (B-SHELL-38: no child chip)", () => {
     const band = stripComments(topbar.slice(topbar.lastIndexOf("Right zone")));
-    for (const c of ["<SafetyRing", "<TopbarSearch", "<KidModeButton", "<TopbarKidSwitcher"]) expect(band).toContain(c);
+    for (const c of ["<SafetyRing", "<TopbarSearch", "<KidModeButton"]) expect(band).toContain(c);
+    // B-SHELL-38: the child appears once on desktop — the sidebar identity line is the switcher.
+    expect(band).not.toContain("<TopbarKidSwitcher");
     expect(band).not.toMatch(/TopbarBell|aria\.notifications|Notifications/);
   });
 });
@@ -79,7 +81,7 @@ describe("IA-01 — the Safety life-ring is mounted in all three chrome homes", 
     const band = stripComments(topbar.slice(topbar.lastIndexOf("Right zone")));
     const ring = band.indexOf("<SafetyRing");
     expect(ring).toBeGreaterThan(-1);
-    for (const later of ["<OfflineChip", "<TopbarSearch", "<KidModeButton", "<TopbarKidSwitcher"]) {
+    for (const later of ["<OfflineChip", "<TopbarSearch", "<KidModeButton"]) {
       expect(band.indexOf(later), `${later} renders before the Safety ring`).toBeGreaterThan(ring);
     }
     expect(/flex-shrink-0|flex-none/.test(band.slice(Math.max(0, ring - 120), ring))).toBe(true);
@@ -163,7 +165,7 @@ describe("UC-8a — the topbar title always gets usable width", () => {
     expect(band).toMatch(/minInlineSize:\s*"[\d.]+rem"/);
     // …and every other control in the band keeps its intrinsic size, so no
     // control can be squeezed to unreachable.
-    for (const control of ["KidModeButton", "TopbarKidSwitcher"]) {
+    for (const control of ["KidModeButton"]) { // B-SHELL-38: the child chip left the band
       const idx = band.indexOf(`<${control}`);
       expect(idx, `${control} not found in the topbar control band`).toBeGreaterThan(-1);
       const wrapper = band.slice(Math.max(0, idx - 220), idx);
@@ -279,22 +281,29 @@ describe("IA-04 / IA-17 — exactly one child switcher at every width", () => {
     expect(src).not.toContain('t("top.caringFor")');
   });
 
-  it("the mobile mount is lg:hidden and the topbar mount is lg-only — never both", () => {
+  it("the mobile mount is lg:hidden and the desktop mount is the lg-only sidebar — never both", () => {
     const src = stripComments(shell);
     const header = src.slice(src.indexOf("<ChildContextHeader"), src.indexOf("}/>"));
     expect(header).toContain('className="lg:hidden"');
-    expect(stripComments(topbar)).toMatch(/className="hidden lg:flex/);
-    expect(stripComments(topbar)).toContain("<TopbarKidSwitcher />");
+    // B-SHELL-38: the desktop switcher is the sidebar identity line (Sidebar is hidden lg:flex).
+    const sidebar = stripComments(readFileSync(path.join(here, "Sidebar.tsx"), "utf8"));
+    expect(sidebar).toMatch(/className="hidden lg:flex/);
+    expect(sidebar).toContain("<ProfileSwitcher />");
+    expect(stripComments(profileSwitcher)).toContain("<TopbarKidSwitcher maxWidth=\"100%\" fullWidth />");
+    expect(stripComments(topbar)).not.toContain("<TopbarKidSwitcher");
   });
 
-  it("the sidebar card is identity now — no second popover over the same context", () => {
+  it("the sidebar card IS the one desktop switcher (B-SHELL-38) — no second popover over the same context", () => {
     const src = stripComments(profileSwitcher);
     expect(src).not.toContain("setActiveChild");
     expect(src).not.toContain("AddChildModal");
     expect(src).not.toContain("ChevronDown");
-    // …while the capabilities that were NOT duplicated stay put (law 6).
+    // …while the capabilities that were NOT duplicated stay put (law 6): editing,
+    // and the family list — now the switcher's own dropdown (B-SHELL-38), so the
+    // separate glance card is not mounted.
     expect(src).toContain("<ProfileEditDrawer");
-    expect(src).toContain("<FamilyGlanceCard />");
+    expect(src).toContain("<TopbarKidSwitcher");
+    expect(src).not.toContain("<FamilyGlanceCard />");
     // B-SHELL-18: the glance card is identity only — exactly one control
     // switches child (the chip below), the card has no handler and no button.
     const glance = stripComments(readFileSync(path.join(here, "..", "profile", "FamilyGlanceCard.tsx"), "utf8"));

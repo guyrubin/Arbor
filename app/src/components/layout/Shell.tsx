@@ -45,10 +45,9 @@ import WowOnboarding from "../onboarding/WowOnboarding";
 import PostCaptureCoachStrip from "../overview/PostCaptureCoachStrip";
 // W0.5+W0.6: ONE global data-freshness banner (offline / couldn't-refresh).
 import SyncStatusBanner from "../ui/SyncStatusBanner";
-// GP-01: the months-precise age label is THE parent-facing age render.
-import { ageLabel } from "../../lib/childAge";
-// IA-04 / IA-17: ONE child switcher per viewport — the topbar chip on lg+,
-// the same component in the mobile strip identity slot below lg.
+// IA-04 / IA-17 / B-SHELL-38: ONE child switcher per viewport — the sidebar
+// identity line on lg+ (ProfileSwitcher), the same component in the mobile
+// strip identity slot below lg. It prints name + age; the strip does not repeat it.
 import TopbarKidSwitcher from "./TopbarKidSwitcher";
 import { SETTINGS_OPEN_EVENT } from "./settingsBus";
 
@@ -398,10 +397,13 @@ export default function Shell() {
                   44 px accessories and there is no width left for it; the age
                   is one tap away in the switcher's own popover (profile.ageLine)
                   and on the Profile hub, so nothing is lost on a phone. */}
-              <span className="hidden sm:inline truncate text-xs font-medium min-w-0" style={{ color: "var(--arbor-muted)" }}>
-                {ageLabel(childProfile, t)}
-                {focusLabel && <> · <button type="button" data-testid="strip-working-on" onClick={() => setProfileEditOpen(true)} className="inline-flex min-h-11 items-center gap-1 align-middle hover:underline underline-offset-2">{t("top.focus")}: <strong style={{ color: "var(--arbor-clay-deep)" }}>{focusLabel}</strong></button></>}
-              </span>
+              {/* B-SHELL-38: the age is IN the identity line (the switcher prints
+                  name over "22 months"), so the strip no longer repeats it. */}
+              {focusLabel && (
+                <span className="hidden sm:inline truncate text-xs font-medium min-w-0" style={{ color: "var(--arbor-muted)" }}>
+                  <button type="button" data-testid="strip-working-on" onClick={() => setProfileEditOpen(true)} className="inline-flex min-h-11 items-center gap-1 align-middle hover:underline underline-offset-2">{t("top.focus")}: <strong style={{ color: "var(--arbor-clay-deep)" }}>{focusLabel}</strong></button>
+                </span>
+              )}
             </>}
             actions={<div className="flex items-center gap-2">
               {/* IA-01: Safety life-ring — first accessory, one tap from every hub. */}
@@ -562,8 +564,10 @@ export default function Shell() {
                   stagger in index.css was removed (it double-fired with this
                   and capped at 6 children). Respects MotionConfig
                   reducedMotion="user" (App.tsx). */}
+              {/* B-SHELL-38: keyed on the child too — switching child re-mounts the
+                  hub (every chooser re-runs for her band) and the entrance plays. */}
               <motion.div
-                key={activeTab}
+                key={`${activeTab}@${childProfile.id}`}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}

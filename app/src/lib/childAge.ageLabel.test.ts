@@ -174,8 +174,9 @@ describe("GP-01 — source scan: no parent-facing .tsx renders the whole-years `
   });
 
   it("the nine GP-01 sites in lane G's files call ageLabel()", () => {
+    // B-SHELL-38: Shell no longer prints the age itself — the identity line
+    // (TopbarKidSwitcher ChildIdentity) does, so Shell left this list.
     for (const rel of [
-      "components/layout/Shell.tsx",
       "components/layout/TopbarKidSwitcher.tsx",
       "components/profile/ProfileSwitcher.tsx",
       "components/profile/FamilyGlanceCard.tsx",

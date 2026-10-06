@@ -7,6 +7,8 @@
  *     next routine check-up. A title about the child carries .girl / .boy
  *     variants in both locales (lib/today/fromRecord genderedKey); the
  *     neutral key is "they" in EN and impersonal in HE.
+ *   · shell.showing   — B-SHELL-38, the sidebar caption under the identity
+ *     line: "Showing Leni's app · 22 months" (HE "של" forms by gender).
  *
  * The only age statement a parent reads is the child's own age; content is
  * filtered by band silently (lib/age/forChild). Never a milestone count,
@@ -30,6 +32,10 @@ export const en: Record<string, string> = {
   "elev.ages.starter.checkup.title": "{name}'s check-up at {age} is coming",
   "elev.ages.starter.checkup.body": "Here's what they'll ask, so you can bring your notes.",
   "elev.ages.starter.checkup.action": "See what they'll ask",
+
+  "elev.ages.shell.showing": "Showing {name}'s app · {age}",
+  "elev.ages.shell.showing.girl": "Showing {name}'s app · {age}",
+  "elev.ages.shell.showing.boy": "Showing {name}'s app · {age}",
 };
 
 export const he: Record<string, string> = {
@@ -50,4 +56,8 @@ export const he: Record<string, string> = {
   "elev.ages.starter.checkup.title": "הבדיקה של {name} בגיל {age} מתקרבת",
   "elev.ages.starter.checkup.body": "הנה מה ישאלו שם, כדי שתוכלו להביא את הרשימות שלכם.",
   "elev.ages.starter.checkup.action": "לראות מה ישאלו",
+
+  "elev.ages.shell.showing": "מוצגת האפליקציה של {name} · {age}",
+  "elev.ages.shell.showing.girl": "מוצגת האפליקציה שלה, של {name} · {age}",
+  "elev.ages.shell.showing.boy": "מוצגת האפליקציה שלו, של {name} · {age}",
 };

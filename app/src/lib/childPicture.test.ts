@@ -30,7 +30,8 @@ describe("B-SHELL-27 — resolver order: hero render → uploaded photo → init
 
 describe("B-SHELL-27 — every mount reads the one resolver (the same URL everywhere)", () => {
   it("sidebar switcher, top-bar switcher, My Child, Stories and Today", () => {
-    expect(read("../components/profile/ProfileSwitcher.tsx")).toContain("photoURL={childPicture(activeChild).url}");
+    // B-SHELL-38: the sidebar card mounts the switcher itself (one identity line), so its picture IS the chip's.
+    expect(read("../components/profile/ProfileSwitcher.tsx")).toContain("<TopbarKidSwitcher maxWidth=\"100%\" fullWidth />");
     const top = read("../components/layout/TopbarKidSwitcher.tsx");
     expect(top).toContain("photoURL={childPicture(activeChild).url}");
     expect(top).toContain("photoURL={childPicture(p).url}");
