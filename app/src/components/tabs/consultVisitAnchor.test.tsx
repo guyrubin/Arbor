@@ -132,7 +132,7 @@ describe("W2-CAREPRO r2 · step 2 opens on the record", () => {
       const fig = html.slice(html.indexOf('data-testid="consult-since-moment"'), html.indexOf("</figure>"));
       expect(decode(fig)).toContain("He said 'big truck go' all the way to gan.");
       expect(fig).toContain(translate(locale, "elev.carehonesty.consult.sinceMoment.seed"));
-      expect(fig).toContain("var(--arbor-peach-soft)");
+      expect(fig).toContain("var(--arbor-peach-wash)");
       expect(fig).toContain("<bdi");
       const preview = /data-testid="consult-export-preview"[^>]*>([\s\S]*?)<\/div>/.exec(html)?.[1] ?? "";
       expect(decode(preview)).not.toContain("big truck go");

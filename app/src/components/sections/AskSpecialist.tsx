@@ -518,7 +518,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, onAudi
             latest words since the anchor (the one warm accent). Nothing renders
             when there is none. */}
         {sinceMoment && (
-          <figure data-testid="consult-since-moment" className="mt-3 p-5" style={{ background: "var(--arbor-peach-soft)", borderRadius: "var(--r-lg)", border: `1px solid ${RULE}` }}>
+          <figure data-testid="consult-since-moment" className="mt-3 p-5" style={{ background: "var(--arbor-peach-wash)", borderRadius: "var(--r-lg)", border: `1px solid ${RULE}` }}>
             <figcaption className="t-xs" style={{ color: "var(--arbor-peach-ink)" }}>{t("elev.carehonesty.consult.sinceMoment.label")}</figcaption>
             <blockquote dir="auto" className="t-lg mt-1.5" style={{ color: INK, fontFamily: uiLang === "he" ? "var(--font-display)" : "var(--font-editorial)" }}>“{sinceMoment.quote}”</blockquote>
             <p className="t-xs mt-1.5" style={{ color: "var(--arbor-peach-ink)" }}><bdi dir="ltr">{fmtDay(sinceMoment.at, uiLang)}</bdi> · {t("elev.carehonesty.consult.sinceMoment.logged")}</p>

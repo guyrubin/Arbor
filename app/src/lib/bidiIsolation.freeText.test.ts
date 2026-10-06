@@ -55,3 +55,14 @@ describe("B-SHELL-28 — FreeText renders inside a bdi with dir=auto, the name i
     expect(src).toContain("<FreeText text={topicLine} />");
   });
 });
+
+describe("P1-NEXTLEVEL critic r2 — a packet bullet never strands the name at the far edge", () => {
+  it("'• {name}, {age}' in Hebrew: the bullet sits outside the name's isolate, the name is its own <bdi>", () => {
+    const html = renderToStaticMarkup(React.createElement(FreeText, { text: "• Dylan, 3 שנים ו-2 חודשים. שפות: עברית ואנגלית." }));
+    expect(html).toBe('<bdi dir="auto" data-free-text="">• <bdi>Dylan,</bdi> 3 שנים ו-2 חודשים. שפות: עברית ואנגלית.</bdi>');
+  });
+  it("the English mirror and a plain line are untouched apart from the marker", () => {
+    expect(renderToStaticMarkup(React.createElement(FreeText, { text: "• דילן, 3 years 2 months." }))).toBe('<bdi dir="auto" data-free-text="">• <bdi>דילן,</bdi> 3 years 2 months.</bdi>');
+    expect(renderToStaticMarkup(React.createElement(FreeText, { text: "Plain line." }))).toBe('<bdi dir="auto" data-free-text="">Plain line.</bdi>');
+  });
+});
