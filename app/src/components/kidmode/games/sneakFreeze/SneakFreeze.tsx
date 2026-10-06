@@ -26,14 +26,15 @@ import { ageYearsFromProfile } from "../../../../lib/childAge";
 import { GameShell } from "../../game/GameShell";
 import { PlayField, type PlayFieldContext } from "../../game/PlayField";
 import { COVER_ASPECT, pointOnPath, sneakLayout, toPx, type CoverId, type FieldOrientation, type SneakLayout } from "../../game/fieldLayout";
-import { HeroFigure, prefersReducedMotion, useHeroSheet } from "../../hero/HeroFigure";
+import { HeroFigure, prefersReducedMotion } from "../../hero/HeroFigure";
+import { useHeroSheetState, type HeroChainChild } from "../../hero/useHeroSheet";
 import { kidIsolate } from "../../kidText";
 import { SNEAK_FREEZE_WORLD, sneakFreezeFlagOn } from "../../kidWorlds";
 import { useKidHome } from "../../kidChrome";
 import { startFor, startSitting, step, view as viewOf, type HandCue, type SneakState, type SneakView } from "./rules";
 import { proofVisit } from "../../proofVisit";
 import { artUrls, loadProofArt, readSneakArt, type SneakArt } from "./sneakArt";
-import { loadProofHeroSheet, type HeroSheet } from "../../hero/heroSheet";
+import type { HeroSheet } from "../../hero/heroSheet";
 import { preloadImages } from "../../proofAssets";
 import { demoSeen, markDemoSeen, readPlayLevel, writePlayLevel } from "./sneakStore";
 import { createSneakSounds, type SneakSounds } from "./sounds";
@@ -215,36 +216,47 @@ function Scene({ ctx, v, art, sheet, prevProgress }: { ctx: PlayFieldContext; v:
   );
 }
 
-/** The art and the hero for this sitting. With the flag on, the local-only
- *  proof files are tried first (then local storage, then the placeholders)
- *  and their images decoded before the first frame (bounded wait). */
-export function useSneakAssets(childId: string): { ready: boolean; art: SneakArt; sheet: HeroSheet } {
-  const fallbackSheet = useHeroSheet(childId);
+/** The art and the hero for this sitting. The hero comes from the
+ *  resolution chain (hero/useHeroSheet.ts: the child's own sheet, the proof
+ *  only for the allow-listed child, the device sheet, the chosen stock hero,
+ *  the placeholder). With the flag on, the local-only proof art is tried and
+ *  images are decoded before the first frame (bounded wait); the sheet the
+ *  sitting starts with is kept for the whole sitting. */
+export function useSneakAssets(child: HeroChainChild | null): { ready: boolean; art: SneakArt; sheet: HeroSheet } {
+  const hero = useHeroSheetState(child);
   const baseArt = useMemo(() => readSneakArt(), []);
   // No window (a static render, a test) = nothing to fetch: the placeholders are the art.
   const flag = sneakFreezeFlagOn() && typeof window !== "undefined";
-  const [proof, setProof] = useState<{ art: SneakArt; sheet: HeroSheet | null } | null>(null);
+  const [art, setArt] = useState<SneakArt | null>(null);
+  const [gaveUp, setGaveUp] = useState(false);
+  const [settled, setSettled] = useState<{ art: SneakArt; sheet: HeroSheet } | null>(null);
   useEffect(() => {
     if (!flag) return;
     let alive = true;
-    const settle = (v: { art: SneakArt; sheet: HeroSheet | null }) => { if (alive) setProof((p) => p ?? v); };
-    const giveUp = setTimeout(() => settle({ art: baseArt, sheet: null }), 4000);
+    const giveUp = setTimeout(() => { if (alive) setGaveUp(true); }, 4000);
     void (async () => {
-      const [sheet, art] = await Promise.all([loadProofHeroSheet(), loadProofArt(baseArt)]);
-      const heroUrls = sheet ? Object.values(sheet.poses).map((p) => p?.url ?? "").filter((u) => u && !u.startsWith("data:")) : [];
-      await preloadImages([...artUrls(art), ...heroUrls]);
-      settle({ art, sheet });
+      const a = await loadProofArt(baseArt);
+      await preloadImages(artUrls(a));
+      if (alive) setArt(a);
     })();
     return () => { alive = false; clearTimeout(giveUp); };
   }, [flag, baseArt]);
-  if (!flag) return { ready: true, art: baseArt, sheet: fallbackSheet };
-  return proof ? { ready: true, art: proof.art, sheet: proof.sheet ?? fallbackSheet } : { ready: false, art: baseArt, sheet: fallbackSheet };
+  useEffect(() => {
+    if (!flag || settled || !((art && hero.ready) || gaveUp)) return;
+    let alive = true;
+    const sheet = hero.sheet;
+    const heroUrls = Object.values(sheet.poses).map((p) => p?.url ?? "").filter((u) => u && !u.startsWith("data:"));
+    void preloadImages(heroUrls).then(() => { if (alive) setSettled((s) => s ?? { art: art ?? baseArt, sheet }); });
+    return () => { alive = false; };
+  }, [flag, settled, art, hero.ready, hero.sheet, gaveUp, baseArt]);
+  if (!flag) return { ready: true, art: baseArt, sheet: hero.sheet };
+  return settled ? { ready: true, art: settled.art, sheet: settled.sheet } : { ready: false, art: baseArt, sheet: hero.sheet };
 }
 
 export default function SneakFreeze() {
   const { childProfile } = useArbor();
   const { t } = useLanguage();
-  const assets = useSneakAssets(childProfile?.id ?? "");
+  const assets = useSneakAssets(childProfile ?? null);
   if (!assets.ready) {
     // A beat while the proof art decodes: the shell and the navy stage only.
     return (

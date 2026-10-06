@@ -18,9 +18,8 @@
  * Decorative (aria-hidden): the game says what the hero does.
  * Motion is transform/opacity only (Web Animations, no new runtime).
  */
-import React, { useLayoutEffect, useMemo, useRef } from "react";
-import { HERO_POSES, carryPoint, poseFactor, readStoredHeroSheet, referenceSprite, resolvePose, type HeroPoseId, type HeroSheet } from "./heroSheet";
-import { devPlaceholderSheet } from "./devPlaceholderSheet";
+import React, { useLayoutEffect, useRef } from "react";
+import { HERO_POSES, carryPoint, poseFactor, referenceSprite, resolvePose, type HeroPoseId, type HeroSheet } from "./heroSheet";
 
 export interface HeroFigureProps {
   pose: HeroPoseId;
@@ -46,10 +45,7 @@ export interface HeroFigureProps {
   carry?: { url: string; size: number } | null;
 }
 
-/** The proof sheet for this child, else the dev placeholder. Read once per child. */
-export function useHeroSheet(childId: string): HeroSheet {
-  return useMemo(() => readStoredHeroSheet(childId) ?? devPlaceholderSheet(), [childId]);
-}
+/* Which sheet plays (the resolution chain) lives in ./useHeroSheet.ts (B-GAME-13c). */
 
 export function prefersReducedMotion(): boolean {
   try {
