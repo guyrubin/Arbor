@@ -40,14 +40,14 @@ describe("TODAY-2/CODEX-1 — one loop, not three stacked widgets", () => {
   const loop = stripComments(read("components/overview/TodayActionLoop.tsx"));
   const promptCard = stripComments(read("components/overview/PromptCaptureCard.tsx"));
 
-  it("OverviewTab renders ONE mutually-exclusive primary slot (W1 1.2 chain)", () => {
-    // The guaranteed-action chain: accepted action → focus hero → prompt
-    // capture card / play promotion — one ternary chain, one slot.
-    // B-TODAY-12: the focus hero and the grounded hard-moment step are ONE card.
-    expect(overview).toMatch(/activeTodayAction\s*\?\s*\(\s*<TodayActionLoop\s*\/>\s*\)\s*:\s*todayChoice\.kind\s*===\s*"focus"\s*\|\|\s*\(todayChoice\.kind === "hardMoment" && hardMoment\)\s*\?\s*\(/);
+  // B-LOOP-07 re-pin: the W1 step chain left Today; the ONE primary slot is
+  // the first block of planToday's order (morning: the practice).
+  it("OverviewTab renders ONE primary slot: the first of the three blocks", () => {
+    expect(overview).toContain('{i === 0 ? <div data-primary-move="do-practice" className="min-w-0">{blocks[id]}</div> : blocks[id]}');
     expect(count(overview, /<TodayActionLoop/g)).toBe(1);
-    expect(count(overview, /<TodayRecommendation/g)).toBe(1);
-    expect(count(overview, /<PromptCaptureCard/g)).toBe(1);
+    expect(count(overview, /<TodayRecommendation/g)).toBe(0);
+    expect(count(overview, /<PromptCaptureCard/g)).toBe(0);
+    expect(count(overview, /<PracticeCard/g)).toBe(1);
   });
 
   it("the hero owns the pre-accept state: capacity chips + accept row", () => {
@@ -55,10 +55,9 @@ describe("TODAY-2/CODEX-1 — one loop, not three stacked widgets", () => {
     expect(hero).toMatch(/accept\?:/);
   });
 
-  it("TODAY-1 guard survives the merge: accept is offered ONLY from a real focus headline", () => {
-    // B-TODAY-12: …or from a released pilot guide (re-checked at tap time).
-    expect(overview).toMatch(/accept=\{stepIsHardMoment \|\| focusHeadline\s*\?/);
-    expect(overview).toContain("if (focusHeadline) acceptTodayAction(focusHeadline, capacity);");
+  it("TODAY-1 guard: Today persists nothing from a focus headline; the dose row is the practice's own", () => {
+    expect(overview).not.toMatch(/acceptTodayAction/);
+    expect(overview).toContain("recordPracticeDose(practiceDoseEntry(pick, answer, childProfile.id, sayText));");
     // and the action card can no longer persist anything into actionLoops
     expect(loop).not.toMatch(/acceptTodayAction/);
   });
@@ -84,23 +83,18 @@ describe("TODAY-2/CODEX-1 — one loop, not three stacked widgets", () => {
     expect(overview).not.toMatch(/today-recent-context/);
   });
 
-  it("section order: capture → day anchor → What changed → rail → noticed", () => {
-    // W1 Rule A, as corrected by P1-A (2026-08-12): the primary-action anchor
-    // comes FIRST so the one CTA clears the fold; the since-strip and the
-    // first-steps rail follow it. The Daily Play section is a single JSX
-    // instance (playSection const, placed by the budget logic) so it is
-    // order-exempt.
+  it("section order: capture → the three blocks → the door (What changed → the Ask step → rail → noticed)", () => {
     const order = [
       overview.indexOf("<QuickCaptureBar"),
-      overview.indexOf("<TodayActionLoop"),
-      // B-TODAY-21: since-strip + narrative + dev-map card → ONE card.
+      overview.indexOf("plan.order.map((id, i) => ("),
       overview.indexOf("<WhatChanged"),
+      overview.indexOf("<TodayActionLoop"),
       overview.indexOf("<FirstStepsRail"),
       overview.indexOf("<ArborNoticedCard"),
     ];
     for (const idx of order) expect(idx).toBeGreaterThan(-1);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
-    expect(count(overview, /<DailyPlayCard/g)).toBe(1);
+    expect(count(overview, /<DailyPlayCard/g)).toBe(0);
   });
 
   it("the merged action row is fully bilingual (today.action.* in both dictionaries)", () => {
@@ -197,10 +191,8 @@ describe("B-TODAY-09 — no dead header button, no duplicate Ask row, no dead ve
     }
   });
 
-  it("the step card offers exactly one seeded ask, labelled 'Ask about this' (EN + HE)", () => {
-    expect(count(overview, /t\("seed\.todayFocus"/g)).toBe(1);
-    expect(overview).toContain('action={t("elev.today.askAbout")}');
-    expect(overview).not.toContain('action={t("today.begin")}');
+  it("Today seeds no coach prompt of its own (the practice is the move); the 'Ask about this' key stays for the step card", () => {
+    expect(count(overview, /seedCoach\(/g)).toBe(0);
     expect(elevationEn["elev.today.askAbout"]).toBe("Ask about this");
     expect(elevationHe["elev.today.askAbout"]).toBe("לשאול על זה");
   });
@@ -224,27 +216,23 @@ describe("B-TODAY-12 — one step card: the hard-moment offer folds into it as '
   /** The day-anchor column: from its primary-move stamp to the end of the anchor module. */
   const anchor = overview.slice(overview.indexOf('data-primary-move={recordAsks ? undefined : "do-today-action"}'), overview.indexOf("{showLifecycle &&"));
 
-  it("the anchor tree holds ONE accept label and ONE gradient owner", () => {
-    expect(anchor.length).toBeGreaterThan(1000);
-    expect(count(anchor, /t\("today\.action\.make"\)/g)).toBe(1);
-    expect(count(anchor, /<TodayRecommendation(?=[\s>])/g)).toBe(1);
-    expect(count(anchor, /--arbor-gradient-primary/g)).toBe(0);
+  it("the blocks hold no accept label and no gradient; the hard-moment words are ONE door line", () => {
+    expect(count(overview, /t\("today\.action\.make"\)/g)).toBe(0);
+    expect(count(overview, /--arbor-gradient-primary|--gradient-cta/g)).toBe(0);
     expect(count(hero, /--arbor-gradient-primary/g)).toBe(1);
+    expect(overview).toContain('doorLine("today-door-hard", "favorite", t("elev.loop.door.hardMoment"), () => openHardMomentNow())');
     expect(overview).not.toContain("HardMomentTodayOffer");
     expect(existsSync(path.join(SRC_ROOT, "components/overview/HardMomentTodayOffer.tsx"))).toBe(false);
   });
 
-  it("Say-this renders through the shared SayThis, with the pilot label and an always-visible escalation", () => {
+  it("Say-this renders through the shared SayThis, with the pilot label and an always-visible escalation (the step card; the sheet on Today)", () => {
     expect(hero).toContain('import { SayThis } from "../ui/AiBlock";');
     expect(hero).toContain('data-testid="today-saythis"');
     expect(hero).toContain('data-testid="today-saythis-pilot"');
     expect(hero).toMatch(/role="note" data-testid="today-saythis-escalation"/);
     expect(hero).not.toMatch(/<details[\s\S]{0,200}today-saythis-escalation/);
-    // B-TODAY-24: one Say-this line — the governed guide's, else the focus's own.
-    expect(overview).toContain("sayThis={stepSayThis}");
-    expect(overview).toMatch(/const stepSayThis: StepSayThis \| undefined = hardMomentSayThis\s*\?\? \(!stepIsHardMoment && focus\?\.sayThis/);
-    expect(overview).toContain("text: locText(renderSayThis(hardMoment.card, firstName), hmLocale)");
-    expect(overview).toContain("escalation: { title: t(\"hm.section.escalation\"), text: escalationText(hardMoment.card, hmLocale) }");
+    // B-LOOP-07: Today's say-line is the practice's own (one editorial sentence).
+    expect(overview).toContain('const sayText = pick ? practiceText(pick.practice, "say", lang, childProfile.gender) : "";');
   });
 
   it("the SayThis controls reach 44 px (it now sits on Today's step)", () => {
@@ -269,12 +257,12 @@ describe("B-TODAY-17 — the drawer is gone: no feed, no check-in, no displaced 
     expect(existsSync(path.join(SRC_ROOT, "components/overview/DailyCheckinCard.tsx"))).toBe(false);
   });
 
-  it("Today stamps at most four top-level modules in every state (budget 4 = contract)", () => {
-    const stamps = [...overview.matchAll(/data-module="(today-[a-z]+)"/g)].map((m) => m[1]);
-    expect(stamps.sort()).toEqual(["today-anchor", "today-changed", "today-lifecycle", "today-noticed", "today-rail"]);
+  it("Today stamps at most three top-level modules in every state (budget 3 = contract)", () => {
+    expect(overview).toContain('data-module={`today-${id}`}');
+    expect(overview.match(/data-module="today-[a-z]+"/g) ?? []).toEqual([]);
     const budget = read("components/overview/todayModules.ts").match(/TODAY_MODULE_BUDGET = (\d+)/)?.[1];
-    expect(Number(budget)).toBe(4);
-    expect(read("lib/surfaceContract.ts")).toMatch(/route: "overview"[\s\S]{0,200}moduleBudget: 4/);
+    expect(Number(budget)).toBe(3);
+    expect(read("lib/surfaceContract.ts")).toMatch(/route: "overview"[\s\S]{0,400}moduleBudget: 3/);
   });
 
   it("no wellness writer remains; export/erase still lists wellness", () => {

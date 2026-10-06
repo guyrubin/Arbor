@@ -275,10 +275,10 @@ describe("B-AI-06 — render: exactly one proactive module", () => {
       expect(src).not.toMatch(/<HardMomentTodayOffer\b/);
       expect((src.match(/<CompanionOfferSlot\b/g) ?? []).length).toBe(1);
     }
-    // Today's only other proactive stamp is the lifecycle card, and it renders
-    // only when the coordinator chose "what-changed" — which the slot skips.
+    // B-LOOP-07: Today's only other proactive stamp is the lifecycle card behind
+    // the door, and it renders only when the coordinator chose "what-changed".
     expect((overview.match(/data-proactive=/g) ?? []).length).toBe(1);
-    expect(overview).toMatch(/todayOffer\.offer\?\.kind === "what-changed" && \(\s*<div data-module="today-lifecycle" data-proactive=""/);
+    expect(overview).toMatch(/todayOffer\.offer\?\.kind === "what-changed" && \(\s*<div data-proactive="" data-offer-kind="what-changed">/);
     const slot = read("components/overview/CompanionOfferSlot.tsx");
     expect(slot).toMatch(/if \(!offer \|\| offer\.kind === "what-changed"\) return null;/);
   });

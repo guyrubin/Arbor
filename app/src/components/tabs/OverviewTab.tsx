@@ -137,9 +137,11 @@ export default function OverviewTab() {
       const at = raw ? new Date(raw).getTime() : NaN;
       return Number.isFinite(at) && at >= since;
     };
-    return behaviorLogs.filter((l) => inWindow(l.timestamp)).length
-      + playLogs.filter((p) => inWindow(p.timestamp)).length
-      + milestones.filter((m) => m.checked && inWindow(m.observationUpdatedAt)).length;
+    return (
+      behaviorLogs.filter((l) => inWindow(l.timestamp)).length +
+      playLogs.filter((p) => inWindow(p.timestamp)).length +
+      milestones.filter((m) => m.checked && inWindow(m.observationUpdatedAt)).length
+    );
   }, [behaviorLogs, playLogs, milestones]);
   const topTrigger = useMemo(() => {
     const counts = new Map<string, number>();
@@ -282,10 +284,13 @@ export default function OverviewTab() {
       approvedFactsSince,
       firstsState,
       firstsCounts: { milestoneCount: checkedMilestones },
-      includeNoticed: true,
+      // the watch signal renders as its own card behind the door (never twice)
+      includeNoticed: false,
     }),
     [isReturning, dayZero, previousVisitAt, behaviorLogs, playLogs, milestones, actionLoop, approvedFactsSince, firstsState, checkedMilestones]
   );
+  // Returning parents only, never day-0 (B-TODAY-21 gate, now behind the door).
+  const changedWould = !dayZero && isReturning && changed.lines.length > 0;
   const weeklyRecap = useWeeklyRecap();
   const onChangedLineTap = (line: WhatChangedLine) => {
     if (line.kind === "milestone" || line.kind === "noticed" || line.kind === "first") {
@@ -305,7 +310,11 @@ export default function OverviewTab() {
   }, [childProfile, lang]);
   const lifecycle = useLifecycleMoment({ previousVisitAt });
   const railWould = useFirstStepsRail().visible;
-  const todayOffer = useCompanionOffer("today", { whatChanged: null });
+  // B-AI-06: ONE proactive offer per open — the coordinator ranks the
+  // lifecycle moment with the carry-over ask, appointments and the cues.
+  const todayOffer = useCompanionOffer("today", {
+    whatChanged: lifecycle.moment ? { id: lifecycle.moment.kind } : null,
+  });
 
   // B-TODAY-28 / B-INF-10: the child leads — name · age · weekday + part of day.
   const hour = now.getHours();
@@ -472,7 +481,7 @@ export default function OverviewTab() {
               <Icon name="expand_more" size={20} style={{ color: "var(--arbor-muted)" }} />
             </summary>
             <div className="space-y-2 px-2 pb-3">
-              {changed.lines.length > 0 && (
+              {changedWould && (
                 <WhatChanged
                   lines={changed.lines.slice(0, 3)}
                   hiddenCount={0}
@@ -486,14 +495,16 @@ export default function OverviewTab() {
               {hardMomentTile && doorLine("today-door-hard", "favorite", t("elev.loop.door.hardMoment"), () => openHardMomentNow())}
               {weeklyRecap.currentReport && doorLine("today-door-week", "auto_stories", t("elev.loop.door.week"), () => setActiveTab("weekly"))}
               {doorLine("today-door-play", "sports_esports", t("elev.loop.door.play"), () => setActiveTab("daily-play"))}
-              {lifecycle.moment && (
-                <LifecycleMomentCard
-                  moment={lifecycle.moment}
-                  childName={firstName}
-                  onDismiss={lifecycle.dismiss}
-                  onSaveInterests={lifecycle.saveInterests}
-                  onCapture={() => startCapture("text")}
-                />
+              {lifecycle.moment && todayOffer.offer?.kind === "what-changed" && (
+                <div data-proactive="" data-offer-kind="what-changed">
+                  <LifecycleMomentCard
+                    moment={lifecycle.moment}
+                    childName={firstName}
+                    onDismiss={lifecycle.dismiss}
+                    onSaveInterests={lifecycle.saveInterests}
+                    onCapture={() => startCapture("text")}
+                  />
+                </div>
               )}
               {railWould && <FirstStepsRail onCapture={() => startCapture("text")} />}
               {!dayZero && <ArborNoticedCard />}

@@ -80,7 +80,7 @@ describe("B-TODAY-10 · four tiles, each ≥44 px", () => {
 describe("B-TODAY-10 · gating and opener", () => {
   it("the tile renders only when Today passes an opener, gated on available pilot guides", () => {
     expect(BAR).toMatch(/\{onHardMoment && \(/);
-    expect(TODAY).toMatch(/availableHardMomentCards\(\{ now, ageMonths: ageMonthsFromProfile\(childProfile, now\), locale: uiLang === "he" \? "he" : "en" \}\)\.length > 0/);
+    expect(TODAY).toMatch(/availableHardMomentCards\(\{ now: at, ageMonths: ageMonthsFromProfile\(childProfile, at\), locale: lang \}\)\.length > 0/);
     // B-ASKJB-31: the tile opens the ONE "Hard moment now" sheet (context seam).
     expect(TODAY).toContain("onHardMoment={hardMomentTile ? () => openHardMomentNow() : undefined}");
   });

@@ -56,8 +56,9 @@ describe("AIX-S4 — no raw-English template literal reaches a coach seed", () =
   it("every surface consumes its localized seed key", () => {
     expect(read("components/tabs/DailyPlayTab.tsx")).toContain('t("seed.play"');
     expect(read("components/tabs/DailyPlayTab.tsx")).toContain('t("seed.play.withGoal"');
-    expect(read("components/tabs/OverviewTab.tsx")).toContain('t("seed.play"');
-    expect(read("components/tabs/OverviewTab.tsx")).toContain('t("seed.todayFocus"');
+    // B-LOOP-07: Today seeds no coach prompt (the practice is the move); the
+    // seed.todayFocus key stays for the step card wherever it renders.
+    expect(read("components/tabs/OverviewTab.tsx")).not.toMatch(/seedCoach\(/);
     // B-GROWTH-12: the gap-analysis seed left with its analyzer; the ONE door seeds this key.
     expect(read("components/tabs/MilestonesTab.tsx")).toContain('t("seed.milestone.ask"');
     expect(read("components/tabs/PlansTab.tsx")).toContain('t("seed.planCoreg"');

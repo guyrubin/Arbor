@@ -105,14 +105,10 @@ describe("OBJ-TODAY-02 — the prompt card stops asserting unused inputs", () =>
     expect(card).toMatch(/\{whyLine\s*&&\s*\(/);
   });
 
-  it("B-TODAY-04: OverviewTab feeds it its OWN prompt key; the hero keeps whyLineFor", () => {
-    // B-INF-10: the prompt's own key now names the child's OWN age (lib/age/format), never an age group.
-    expect(overview).toMatch(/whyLine=\{todayChoice\.kind === "prompt" \? t\("elev\.ages\.today\.whyPrompt", \{ name: firstName, age: ageText \}\)/);
+  it("B-TODAY-04 / B-LOOP-07: Today mounts no prompt card and no focus hero; the practice states its own why", () => {
     expect(overview).not.toMatch(/whyLine=\{focusWhy\}/);
-    // B-TODAY-12/24: the hero's why is focusWhy, except when the step IS the
-    // matched pilot hard-moment guide, which states its own provenance.
-    expect(overview).toMatch(/why=\{stepIsHardMoment \? t\("elev\.brief\.hardMoment\.why"\) : focusWhy\}/);
-    expect(overview).toMatch(/whyLineFor\(/);
+    expect(overview).not.toContain("<PromptCaptureCard");
+    expect(overview).not.toContain("<TodayRecommendation");
   });
 
   it("negative control: the shipped markup fails both card assertions", () => {

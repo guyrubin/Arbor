@@ -118,18 +118,23 @@ describe("ENG-L0 — the day-0 chain is reachable and resumable", () => {
 /* ── ENG-L2 ───────────────────────────────────────────────────────────────── */
 
 describe("ENG-L2 — a captured interest actually reaches play selection", () => {
-  const memo = OVERVIEW.match(/const dailyPlay: ScoredActivity \| null = useMemo\([\s\S]*?\}, \[[^\]]*\]\);/)?.[0] ?? "";
+  // B-LOOP-07: Daily Play left Today; the selection lives in DailyPlayTab.
+  const memo = read("components/tabs/DailyPlayTab.tsx").match(/const picks: ScoredActivity\[\] = useMemo\([\s\S]*?\n {4}\[[^\]]*\]\n {2}\);/)?.[0] ?? "";
 
-  it("the Today play memo was extracted", () => {
+  // B-LOOP-07: Daily Play left Today (one door line → #/daily-play); the
+  // selection the interest feeds lives in DailyPlayTab, re-pinned there.
+  it("the Daily Play memo was extracted (DailyPlayTab, the play surface)", () => {
     expect(memo.length).toBeGreaterThan(400);
     expect(memo).toContain("selectDailyPlay({");
   });
 
   it("it reads the child's interests AND re-runs when they change", () => {
     expect(memo).toContain("interests: childProfile.interests");
-    const deps = memo.match(/\}, \[([^\]]*)\]\);$/)?.[1] ?? "";
-    expect(deps.length).toBeGreaterThan(20);
-    expect(deps).toContain("childProfile.interests");
+    const deps = memo.match(/\], *\n? *\[([^\]]*)\]\s*\);$|\}, \d+\),\s*\[([^\]]*)\]\s*\);$/);
+    const list = (deps?.[1] ?? deps?.[2] ?? "");
+    expect(list.length).toBeGreaterThan(20);
+    expect(list).toContain("childProfile.interests");
+    expect(OVERVIEW).toContain('doorLine("today-door-play", "sports_esports", t("elev.loop.door.play"), () => setActiveTab("daily-play"))');
   });
 
   it("NEGATIVE CONTROL — the shipped dep list would have failed before the fix", () => {

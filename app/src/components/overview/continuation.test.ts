@@ -65,24 +65,19 @@ describe("B-TODAY-18 · placement on Today", () => {
   const slot = strip(read("./CompanionOfferSlot.tsx"));
   const cont = strip(read("./TodayContinuation.tsx"));
 
-  it("the slot renders ABOVE the step card, inside the anchor column", () => {
-    const anchor = overview.indexOf('data-primary-move={recordAsks ? undefined : "do-today-action"}');
-    const cont = overview.indexOf("<TodayContinuation choice={continuation} isReturning={isReturning}>");
-    const step = overview.indexOf("<TodayRecommendation");
-    expect(anchor).toBeGreaterThan(-1);
-    expect(cont).toBeGreaterThan(anchor);
-    expect(cont).toBeLessThan(step);
+  // B-LOOP-07 re-pin: the continuation slot (carry-over ask, tomorrow's
+  // reason) is the coordinator's ONE slot behind Today's door, below the blocks.
+  it("the slot renders behind the door, after the three blocks", () => {
+    const blocks = overview.indexOf("plan.order.map((id, i) => (");
+    const slotAt = overview.indexOf("<CompanionOfferSlot");
+    expect(blocks).toBeGreaterThan(-1);
+    expect(slotAt).toBeGreaterThan(blocks);
+    expect(slotAt).toBeGreaterThan(overview.indexOf('data-testid="today-door"'));
   });
 
-  it("ONE CompanionOfferSlot instance, placed by the coordinator's winner (never a second arbiter)", () => {
+  it("ONE CompanionOfferSlot instance, fed the coordinator's winner (never a second arbiter)", () => {
     expect((overview.match(/<CompanionOfferSlot\b/g) ?? []).length).toBe(1);
-    // B-TODAY-26: the slot's placement follows the coordinator's winner KIND
-    // (isContinuationKind); the day-close line only fills an empty slot, and
-    // the evening cue is withheld while Tonight is the step (one voice).
-    expect(overview).toMatch(/const continuation = chooseContinuation\(\{\s*offerKind: shownOffer\?\.kind,/);
-    expect(overview).toContain("const offerIsContinuation = isContinuationKind(shownOffer?.kind);");
-    expect(overview).toContain('placement={offerIsContinuation ? "continuation" : "under-step"}');
-    expect(overview).toContain("{!offerIsContinuation && offerSlot}");
+    expect(overview).toContain('<CompanionOfferSlot surface="today" offer={todayOffer.offer} controls={todayOffer} placement="under-step" />');
     expect(overview).not.toMatch(/<CarryOverActionAsk\b|<TomorrowReasonCard\b/);
     expect(slot).toContain("<CarryOverActionAsk onSkip={controls.refresh} />");
     expect(slot).toContain("<TomorrowReasonCard onResolved={controls.refresh} />");

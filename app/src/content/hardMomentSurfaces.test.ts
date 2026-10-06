@@ -220,14 +220,12 @@ describe("CONT-2/CODEX-5 — surfaces consume gated selectors and existing seams
     expect(stripComments(read("components/behaviors/HardMomentsSection.tsx"))).toContain("availableHardMomentCards(context)");
   });
 
-  it("Today's step goes through the EXISTING acceptTodayAction seam — no new capture path (B-TODAY-12)", () => {
+  it("the hard-moment step seam is unchanged; Today opens the ONE sheet from a door line (B-LOOP-07)", () => {
     const code = stripComments(read("components/overview/hardMomentStep.ts"));
     expect(code).toContain('accept(locText(current.doNow, ctx.locale), capacity, "hard-moment")');
     expect(code).not.toMatch(/handleAddLog|upsert|firestore|setDoc/i);
     const overview = stripComments(read("components/tabs/OverviewTab.tsx"));
-    expect(overview).toContain("acceptHardMomentStep(hardMoment.card.id,");
-    expect(overview).toContain(", capacity, acceptTodayAction)");
-    // The second card is gone; the slot renders nothing for it on Today.
+    expect(overview).toContain("openHardMomentNow()");
     expect(overview).not.toContain("HardMomentTodayOffer");
     expect(stripComments(read("components/overview/CompanionOfferSlot.tsx"))).toMatch(/if \(offer\.kind === "grounded-step" && surface === "today"\) return null;/);
   });
@@ -242,10 +240,10 @@ describe("CONT-2/CODEX-5 — surfaces consume gated selectors and existing seams
     expect(stripComments(read("content/hardMomentSurface.ts"))).toContain("export function buildHardMomentSeedPrompt");
   });
 
-  it("TODAY-2 holds: one step card, one accept — never a second 'Make this today's step' (B-TODAY-12)", () => {
+  it("TODAY-2 holds on Today: no step card, no accept — the practice is the one move (B-LOOP-07)", () => {
     const overview = stripComments(read("components/tabs/OverviewTab.tsx"));
-    expect((overview.match(/<TodayRecommendation\b/g) ?? []).length).toBe(1);
-    expect((overview.match(/t\("today\.action\.make"\)/g) ?? []).length).toBe(1);
+    expect((overview.match(/<TodayRecommendation\b/g) ?? []).length).toBe(0);
+    expect(overview).not.toMatch(/acceptTodayAction|today\.action\.make/);
   });
 
   it("tokens only: no hex literals or white literals in the new surfaces", () => {

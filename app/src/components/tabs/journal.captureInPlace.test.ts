@@ -64,8 +64,9 @@ describe("B-TODAY-19 · every capture tile opens the one sheet in place", () => 
     expect(JOURNAL).toMatch(/setOpenSignal\(null\);\s*openCaptureSheet\(\{ editLogId: logId \}\);/);
   });
 
-  it("Today's prompt card passes its promptKey into the sheet", () => {
-    expect(TODAY).toMatch(/startCapture\("text", todayChoice\.kind === "prompt" \? todayChoice\.promptKey : null\)/);
+  it("Today's capture tiles open the one sheet in place (no prompt card on Today since B-LOOP-07)", () => {
+    expect(TODAY).toContain('onText={() => startCapture("text")}');
+    expect(TODAY).toContain("<QuickLogModal open={quickLogOpen} mode={quickLogMode} promptKey={quickLogPromptKey}");
   });
 
   it("the Journal's tapped writing prompt rides in as the sheet's cue", () => {
@@ -139,8 +140,9 @@ describe("B-TODAY-19 · addMoment stores the photo (unit)", () => {
   });
 
   it("ArborContext.addMoment writes the builder's record (one path)", () => {
-    expect(CONTEXT).toMatch(/const addMoment = \(\s*text: string,\s*opts: \{ photoAttachment\?: string; promptKey\?: string \} = \{\},/);
-    expect(CONTEXT).toContain("buildMomentLog(text, newLogContext, opts)");
+    // B-LOOP-07/10: the opts also carry the shelf + milestone Tonight files the line on; the builder gets the rest.
+    expect(CONTEXT).toMatch(/const addMoment = \(\s*text: string,\s*opts: \{ photoAttachment\?: string; promptKey\?: string; shelf\?: ShelfId; milestoneId\?: string \} = \{\},/);
+    expect(CONTEXT).toContain("buildMomentLog(text, newLogContext, buildOpts)");
   });
 
   it("the Journal row reads the stored photo (signalTimeline maps photoAttachment)", () => {

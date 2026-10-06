@@ -412,7 +412,8 @@ describe("R25 — the shipped check enforces exactly this, and its one exemption
     const declared = Number(TODAY_MODULES.match(/export const TODAY_MODULE_BUDGET = (\d+);/)?.[1]);
     expect(declared, "TODAY_MODULE_BUDGET not found").not.toBeNaN();
     expect(declared, "the runtime cap must equal the contract, or the exemption is a hole").toBe(contract.moduleBudget);
-    expect(TODAY_MODULES).toContain("const budget = opts.budget ?? TODAY_MODULE_BUDGET;");
+    // B-LOOP-07 (todayModules v3): planToday slices its order at the budget.
+    expect(TODAY_MODULES).toContain("order: order.slice(0, TODAY_MODULE_BUDGET)");
   });
 });
 

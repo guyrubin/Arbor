@@ -90,12 +90,12 @@ describe("B-TODAY-35 · the card, EN + HE, gendered for a girl, no verdict", () 
     );
     expect(html).toContain("Leni&#x27;s check-up at 24 months is coming");
   });
-  it("design rules: tokens only, no upper-case label, no gradient, nothing under 12 px; Today wires it in the record slot", () => {
+  it("design rules: tokens only, no upper-case label, no gradient, nothing under 12 px; Today no longer mounts it (the practice leads, B-LOOP-07)", () => {
     const SRC = path.resolve(__dirname, "../..");
     const card = readFileSync(path.join(SRC, "components/overview/TodayStarterCard.tsx"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
     expect(card).not.toMatch(/#[0-9a-fA-F]{3,8}\b|gradient|uppercase|text-\[(?:[0-9]|1[01])(?:\.\d+)?px\]/);
     const overview = readFileSync(path.join(SRC, "components/tabs/OverviewTab.tsx"), "utf8");
-    expect(overview).toMatch(/\) : starter \? \(\s*<div className="mb-4">\s*<TodayStarterCard /);
-    expect(overview).toMatch(/recordSpeaks \|\| starter \? null : \(\s*<PromptCaptureCard/);
+    expect(overview).not.toContain("<TodayStarterCard");
+    expect(overview).toContain("<PracticeCard");
   });
 });

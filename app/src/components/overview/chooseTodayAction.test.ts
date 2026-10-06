@@ -221,22 +221,23 @@ describe("B-TODAY-26 — Today wiring: one voice, no generation, no timer", () =
   const overview = strip(readFileSync(path.join(here, "../tabs/OverviewTab.tsx"), "utf8"));
   const card = strip(readFileSync(path.join(here, "TonightCard.tsx"), "utf8"));
 
-  it("the clock feeds the chain through bedtimeDoorOpen; Tonight renders in the step slot", () => {
-    expect(overview).toMatch(/const tonightOpen = bedtimeDoorOpen\(nowHour, rhythm\.windDownHour\)/);
-    expect(overview).toMatch(/tonight: tonightOpen && behaviorLogs\.length \+ playLogs\.length > 0/);
-    expect(overview).toMatch(/todayChoice\.kind === "tonight" \? \(\s*<TonightCard/);
+  // B-LOOP-07 re-pin: Today no longer runs this chain (chooseTodayAction stays
+  // for its other importers); the evening door opens Tonight's three questions.
+  it("the clock opens Tonight through bedtimeDoorOpen; Tonight is the three-question flow, not the step card", () => {
+    expect(overview).toMatch(/const evening = bedtimeDoorOpen\(now\.getHours\(\), rhythm\.windDownHour\) \|\| tonightEarly;/);
+    expect(overview).not.toMatch(/chooseTodayAction/);
+    expect(overview).toContain("<TonightFlow");
+    expect(overview).not.toContain("<TonightCard");
   });
 
-  it("the coordinator's evening cue is not rendered while Tonight holds the slot", () => {
-    expect(overview).toMatch(/const shownOffer = todayChoice\.kind === "tonight" && todayOffer\.offer\?\.kind === "tonight" \? null : todayOffer\.offer/);
-    expect(overview).toContain("offer={shownOffer}");
+  it("one voice in the evening: the coordinator's slot sits behind the door, Tonight leads the page", () => {
+    const door = overview.slice(overview.indexOf('data-testid="today-door"'), overview.indexOf("</details>"));
+    expect(door).toContain('<CompanionOfferSlot surface="today" offer={todayOffer.offer}');
+    expect((overview.match(/<CompanionOfferSlot\b/g) ?? []).length).toBe(1);
   });
 
-  it("the count is the day-close signal; the card navigates and generates nothing", () => {
-    expect(overview).toMatch(/deriveReturnSignals\(\{[^}]*\}\)\.momentsToday/);
-    expect(overview).toContain('onRead={() => setActiveTab("bedtime-stories")}');
-    // B-GROWTH-25: #/routines retired to Plans — the routine door opens Plans' templates.
-    expect(overview).toContain('onRoutine={() => setActiveTab("plans")}');
+  it("Tonight's story door navigates and generates nothing; the card it replaced stays inert", () => {
+    expect(overview).toContain('onStory={storyFits ? () => setActiveTab("bedtime-stories") : undefined}');
     expect(card).not.toMatch(/fetch\(|api\.|generate|setTimeout|setInterval|streak|tomorrow/i);
   });
 

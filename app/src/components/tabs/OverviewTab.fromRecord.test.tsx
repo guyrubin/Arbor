@@ -88,10 +88,8 @@ describe("B-TODAY-28 — the record card (rendered)", () => {
       expect(html).toContain('role="status"');
       expect(html).not.toMatch(/celebrat|confetti|🎉|!|%/);
     }
-    // Today passes the answered row's words (the quote the parent answered).
-    const fs = require("node:fs") as typeof import("node:fs");
-    const src = fs.readFileSync(require("node:path").resolve(__dirname, "OverviewTab.tsx"), "utf8");
-    expect(src).toContain("<FromRecordReceipt quote={recordAnswered.recommendation} />");
+    // B-LOOP-07: Today quotes the parent's words in the practice card (THEN and NOW on its shelf).
+    expect(SRC).toContain("quotes={quotes}");
   });
 });
 
@@ -120,11 +118,13 @@ describe("NEXTLEVEL critic r1 — a named topic, a joy opener, the chips are the
     const plain = renderToStaticMarkup(<FromRecordCard opener={topicOpener} childName="Dylan" onAnswer={() => {}} />);
     expect(plain).not.toContain("data-primary-move");
   });
-  it("OverviewTab: the wrapper drops its stamp while the card asks; the week is one quiet line; the rail hides when the record speaks", () => {
-    expect(SRC).toContain('data-primary-move={recordAsks ? undefined : "do-today-action"}');
-    expect(SRC).toMatch(/<FromRecordCard opener=\{recordOpener\} childName=\{firstName\} stampMove /);
-    expect(SRC).toMatch(/todayChoice\.kind === "recap" && recordAsks \? \(\s*(\/\*[\s\S]*?\*\/\s*)?<WeekAnchorLine/);
-    expect(SRC).toContain("rail: railWould && !recordSpeaks,");
+  // B-LOOP-07 re-pin: the record card's quote slot moved INTO the practice
+  // card (the parent's own words on the practice's shelf, then and now); the
+  // standalone mount is gone and the first block carries the one stamp.
+  it("OverviewTab: no standalone record card; the first block carries the one stamp; the rail sits behind the door", () => {
+    expect(SRC).not.toContain("<FromRecordCard");
+    expect(SRC).toContain('<div data-primary-move="do-practice" className="min-w-0">');
+    expect(SRC).toContain("{railWould && <FirstStepsRail");
   });
 });
 
@@ -144,19 +144,17 @@ describe("B-TODAY-28 — OverviewTab wiring (source pin)", () => {
     expect(h1).toMatch(/var\(--t-lg\)/);
   });
 
-  it("the record card is the FIRST thing inside the primary move", () => {
-    const anchor = SRC.slice(SRC.indexOf('data-primary-move={recordAsks ? undefined : "do-today-action"}'));
-    expect(anchor.indexOf("<FromRecordCard")).toBeGreaterThan(-1);
-    expect(anchor.indexOf("<FromRecordCard")).toBeLessThan(anchor.indexOf("<TodayContinuation"));
+  it("the parent's own words lead inside the practice card (quotes under the do), first block of the primary move", () => {
+    const card = fs.readFileSync(path.resolve(__dirname, "../loop/PracticeCard.tsx"), "utf8");
+    expect(card.indexOf('data-testid="practice-quotes"')).toBeGreaterThan(card.indexOf('data-testid="practice-do"'));
+    expect(card.indexOf('data-testid="practice-quotes"')).toBeLessThan(card.indexOf('data-testid="practice-answers"'));
   });
 
-  it("when the record speaks, the generic capture prompt card does not render", () => {
-    // B-TODAY-35: a toddler's band starter speaks in the same slot, so either silences the prompt card.
-    expect(SRC).toMatch(/recordSpeaks \|\| starter \? null : \(\s*<PromptCaptureCard/);
-    expect(SRC).toContain("const recordSpeaks = !!recordOpener || !!recordAnswered;");
+  it("no generic capture prompt card on Today (the practice replaces it)", () => {
+    expect(SRC).not.toContain("<PromptCaptureCard");
   });
 
-  it("the prompt card gets the child's gender (EN he/she)", () => {
-    expect(SRC).toMatch(/<PromptCaptureCard\s+gender=\{childProfile\.gender\}/);
+  it("the practice card gets the child's gender (Hebrew slash forms resolve from it)", () => {
+    expect(SRC).toMatch(/<PracticeCard[\s\S]{0,200}gender=\{childProfile\.gender\}/);
   });
 });

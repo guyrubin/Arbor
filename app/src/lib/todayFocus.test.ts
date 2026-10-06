@@ -92,14 +92,11 @@ describe("focusHeadlineFrom — pure scrub (CODEX-2 firewall condition)", () => 
 describe("OverviewTab wiring (TODAY-1 + CODEX-2)", () => {
   const src = read("components/tabs/OverviewTab.tsx");
 
-  it("derives the rendered headline through the pure scrub (TJB-02: the structured-aware entry point)", () => {
-    // Was `focusHeadlineFrom(focus?.text)` — the observation sentence. The
-    // hero now reads the whole record so the model's ONE step is the headline
-    // and legacy text-only records still resolve through focusHeadlineFrom.
-    expect(src).toContain("focusHeadlineFor(focus)");
-    // B-TODAY-12: one step card — the guide's doNow when it IS the step.
-    expect(src).toContain('headline={stepIsHardMoment ? hardMomentDoNow : focusHeadline ?? t("ov.recoEmpty"');
-    expect(src).toContain("body={!stepIsHardMoment && focusHeadline ? focusBody : undefined}");
+  // B-LOOP-07 re-pin: Today renders no focus headline (the practice leads);
+  // the scrub stays the one path for any surface that renders the focus.
+  it("Today renders no focus headline; the focus only names a practice from the candidates", () => {
+    expect(src).not.toContain("focusHeadlineFor(focus)");
+    expect(src).toContain("aiPracticeId");
   });
 
   it("has no keyword-override branch (canned copy never replaces live guidance)", () => {
@@ -108,13 +105,8 @@ describe("OverviewTab wiring (TODAY-1 + CODEX-2)", () => {
   });
 
   it("never feeds the marketing fallback into the action loop", () => {
-    // TODAY-2/CODEX-1: the accept CTA moved into the hero; the guard moved
-    // with it — the accept prop is offered ONLY from a real focus headline.
-    // B-TODAY-12: …or from a released pilot guide (re-checked at tap time).
-    expect(src).toMatch(/accept=\{stepIsHardMoment \|\| focusHeadline\s*\?/);
-    expect(src).toContain("if (focusHeadline) acceptTodayAction(focusHeadline, capacity);");
-    expect(src).not.toMatch(/acceptTodayAction\([^)]*recoEmpty/);
-    expect(src).not.toMatch(/focus\?\.text\?\.trim\(\)\s*\|\|\s*t\("ov\.recoEmpty"/);
+    expect(src).not.toMatch(/acceptTodayAction/);
+    expect(src).not.toMatch(/t\("ov\.recoEmpty"/);
   });
 
   it("names the local part of day via i18n keys (no hardcoded Good morning)", () => {
@@ -161,9 +153,10 @@ describe("TJB-02 — focusHeadlineFor prefers the model's tryToday step", () => 
     expect(out.endsWith("…")).toBe(true);
   });
 
-  it("OverviewTab persists the headline (the step) through acceptTodayAction", () => {
+  it("OverviewTab persists no focus headline (B-LOOP-07: the practice's dose row is the write)", () => {
     const src = read("components/tabs/OverviewTab.tsx");
-    expect(src).toContain("acceptTodayAction(focusHeadline");
+    expect(src).not.toContain("acceptTodayAction(focusHeadline");
+    expect(src).toContain("recordPracticeDose(");
   });
 
   it("useTodaysFocus stores the structured fields (reads data.tryToday, data.focus, data.inputsUsed)", () => {
@@ -220,17 +213,12 @@ describe("ENG-07 — whyLineFor is built from real inputs", () => {
     for (const lang of ["en", "he"] as const) {
       expect(translate(lang, "today.intent.why.prompt", { age: 4 })).not.toMatch(/goal|interest|moment|מטרות|תחומי עניין|רגע/i);
     }
-    // B-INF-10: the rendered key names the child's OWN age ("Leni at 22 months"), never "for N-year-olds".
     for (const lang of ["en", "he"] as const) {
       const line = translate(lang, "elev.ages.today.whyPrompt", { name: "Leni", age: lang === "en" ? "22 months" : "22 חודשים" });
       expect(line).toContain("Leni");
       expect(line).toMatch(/22/);
       expect(line).not.toMatch(/year-olds|goal|interest|moment|מטרות|תחומי עניין|רגע/i);
     }
-    const src = read("components/tabs/OverviewTab.tsx");
-    expect(src).toMatch(/whyLine=\{todayChoice\.kind === "prompt" \? t\("elev\.ages\.today\.whyPrompt", \{ name: firstName, age: ageText \}\) : undefined\}/);
-    expect(src).toMatch(/const ageText = formatChildAge\(childProfile, t\);/);
-    expect(src).not.toContain("whyLine={focusWhy}");
   });
 
   it("server-reported inputsUsed refines the count, but the LIVE ledger decides day-0 (OBJ-TODAY-02)", () => {
@@ -254,10 +242,9 @@ describe("ENG-07 — whyLineFor is built from real inputs", () => {
     }
   });
 
-  it("OverviewTab feeds the hero why-line from whyLineFor, never a fixed key", () => {
-    const src = read("components/tabs/OverviewTab.tsx");
-    expect(src).toContain('why={stepIsHardMoment ? t("elev.brief.hardMoment.why") : focusWhy}');
-    expect(src).toMatch(/whyLineFor\(\s*\{\s*name: firstName,\s*recentCount,\s*confidence: rhythm\.confidence,\s*goals: activeGoals\.length,\s*interests: childProfile\.interests\?\.length \?\? 0,\s*inputsUsed: focus\?\.inputsUsed,\s*\},\s*t,\s*\)/);
+  it("Today's why-line is the practice's own (it names the milestone or the shelf), never a fixed generic key", () => {
+    const card = read("components/loop/PracticeCard.tsx");
+    expect(card).toContain('t(milestone ? "elev.loop.practice.why" : "elev.loop.practice.whyShelf"');
   });
 });
 

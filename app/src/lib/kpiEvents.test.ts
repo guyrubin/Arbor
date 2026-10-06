@@ -72,12 +72,12 @@ describe("N8 KPI events — all six families live at their call sites", () => {
     expect(safetyTab).toContain('track("safety_contact_tel_tap"');
   });
 
-  it("6. error banner: ErrorState fires on mount, N2's Today-focus banner tagged", () => {
+  it("6. error banner: ErrorState fires on mount (Today renders no focus banner since B-LOOP-07)", () => {
     expect(loopEvents).toContain('track("error_banner_shown"');
     expect(errorState).toContain("trackErrorBannerShown(surface)");
     // Mount-once, not render-loop: the effect has an empty dep array.
     expect(errorState).toMatch(/useEffect\(\(\) => \{\s*trackErrorBannerShown\(surface\);/);
-    expect(read("components/tabs/OverviewTab.tsx")).toContain('surface="today-focus"');
+    expect(read("components/tabs/OverviewTab.tsx")).not.toContain('surface="today-focus"');
   });
 });
 

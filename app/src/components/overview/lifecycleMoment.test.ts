@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { resolveTodayModules, todayModulePriority } from "./todayModules";
+import { planToday } from "./todayModules";
 import { LIFECYCLE_STICKY_KINDS } from "./useLifecycleMoment";
 import { resolveLifecycle } from "../../lib/lifecycle";
 import { en as lifecycleEn } from "../../lib/i18nElevation/lifecycle";
@@ -78,11 +78,13 @@ describe("ENG-09 — the lifecycle module is wired into Today", () => {
     expect((overview.match(/<LifecycleMomentCard/g) ?? []).length).toBe(1);
   });
 
-  it("feeds the budget the module's REAL render condition, not a proxy", () => {
-    expect(overview).toMatch(/lifecycle:\s*lifecycleMoment\s*!==\s*null/);
-    expect(overview).toMatch(/showLifecycle\s*=\s*modulePlan\.visible\.has\("lifecycle"\)/);
-    // B-AI-06: and only when the single-offer coordinator chose it.
-    expect(overview).toMatch(/\{showLifecycle && lifecycleMoment && todayOffer\.offer\?\.kind === "what-changed" && \(/);
+  // B-LOOP-07 re-pin: the lifecycle moment is never a Today module any more —
+  // it renders behind the "More for today" door, only when resolved.
+  it("renders only when a moment was resolved, behind the door (never a sibling module)", () => {
+    expect(overview).toMatch(/\{lifecycle\.moment && todayOffer\.offer\?\.kind === "what-changed" && \(\s*<div data-proactive="" data-offer-kind="what-changed">\s*<LifecycleMomentCard/);
+    const door = overview.slice(overview.indexOf('data-testid="today-door"'), overview.indexOf("</details>"));
+    expect(door).toContain("<LifecycleMomentCard");
+    expect(overview).not.toMatch(/data-module="today-lifecycle"/);
   });
 
   it("mounts useLastVisit exactly once — the hook WRITES, so twice is a double stamp", () => {
@@ -94,36 +96,31 @@ describe("ENG-09 — the lifecycle module is wired into Today", () => {
   // B-TODAY-21: the since-strip is gone; the ONE What-changed card sits in the
   // anchor ROW (the seat the dev-map card held), so the lifecycle moment now
   // renders after that row — still after the day's action (P1-A).
-  it("renders AFTER the day's action (P1-A) and after the anchor row's What-changed card", () => {
-    const anchor = overview.indexOf('data-module="today-anchor"');
+  it("renders AFTER the day's blocks (P1-A) and after the door's What-changed lines", () => {
+    const blocks = overview.indexOf("plan.order.map((id, i) => (");
     const changed = overview.indexOf("<WhatChanged");
     const lifecycle = overview.indexOf("<LifecycleMomentCard");
-    expect(anchor).toBeGreaterThan(-1);
-    expect(changed).toBeGreaterThan(anchor);
+    expect(blocks).toBeGreaterThan(-1);
+    expect(changed).toBeGreaterThan(blocks);
     expect(lifecycle).toBeGreaterThan(changed);
   });
 
-  it("the budget ranks it directly below the anchor row (anchor + What changed), in both orders", () => {
-    for (const noticedCanFold of [false, true]) {
-      const order = todayModulePriority({ noticedCanFold });
-      expect(order.slice(0, 3)).toEqual(["anchor", "changed", "lifecycle"]);
+  it("the budget has no lifecycle module id (todayModules v3: practice · notice · tonight · door)", () => {
+    const src = fs.readFileSync(path.join(__dirname, "todayModules.ts"), "utf8");
+    expect(src).toMatch(/export type TodayModuleId = "practice" \| "notice" \| "tonight" \| "door";/);
+  });
+
+  it("Rule A holds: Today renders at most three modules, a lifecycle moment included (it is not one)", () => {
+    for (const evening of [false, true]) {
+      const plan = planToday({ evening, practice: true, notice: true, tonight: true, practiceAnswered: true });
+      expect(plan.order.length).toBeLessThanOrEqual(3);
+      expect(plan.order).not.toContain("lifecycle" as never);
     }
   });
 
-  it("Rule A holds: a lifecycle moment never pushes Today past four modules (B-TODAY-17)", () => {
-    const plan = resolveTodayModules(
-      { lifecycle: true, changed: true, noticed: true, rail: true },
-      { noticedCanFold: true },
-    );
-    expect(plan.visible.size).toBeLessThanOrEqual(4);
-    expect(plan.visible.has("lifecycle")).toBe(true);
-  });
-
-  it("day-0 with no data stays bare — the card cannot be the thing that breaks it", () => {
-    // The resolver cannot produce a moment before the first capture, so the
-    // want is false and the day-0 shape (header + capture + action + rail) holds.
-    const plan = resolveTodayModules({ lifecycle: false, rail: true });
-    expect([...plan.visible].sort()).toEqual(["anchor", "rail"]);
+  it("day-0 with no data: the practice (from age) and notice only; the moment cannot be produced before a capture", () => {
+    const plan = planToday({ evening: false, practice: true, notice: true, tonight: false });
+    expect(plan.order).toEqual(["practice", "notice"]);
   });
 });
 

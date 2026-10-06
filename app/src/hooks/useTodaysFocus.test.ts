@@ -99,33 +99,25 @@ describe("N2-errfocus — focus fetch failure surfaces an inline error + retry",
     expect(hookSrc).toMatch(/triedAuto\.current = false;\s*setError\(false\);/);
   });
 
-  it("OverviewTab renders ErrorState on failure — gated, not always-on", () => {
-    expect(overviewSrc).toContain('import { ErrorState } from "../ui/ErrorState"');
-    expect(overviewSrc).toMatch(/\{focusError && !focus && !activeTodayAction && \(\s*<ErrorState/);
+  // B-LOOP-07 re-pin: Today no longer renders the focus text; a failed focus
+  // fetch leaves the pure practice chooser in charge (B-LOOP-09), so there is
+  // nothing to banner. The hook keeps its error + regenerate contract above.
+  it("Today renders no focus error banner: the pure chooser is the fallback", () => {
+    expect(overviewSrc).not.toContain("<ErrorState");
+    expect(overviewSrc).toContain("choosePractice({");
   });
 
-  it("the banner sits ALONGSIDE the guaranteed-action fallback, never instead of it", () => {
-    // The chooseTodayAction anchor chain is intact: every fallback renderer is
-    // still present, and ErrorState is NOT a branch of that ternary (the
-    // ternary still closes into the plain PromptCaptureCard floor).
-    for (const renderer of ["<TodayActionLoop", "<TodayRecommendation", "<PromptCaptureCard"]) {
-      expect(overviewSrc).toContain(renderer);
-    }
-    // ErrorState renders AFTER the ternary's close — additive, not a branch.
-    const ternaryFloor = overviewSrc.indexOf("<PromptCaptureCard");
-    const banner = overviewSrc.indexOf("<ErrorState");
-    expect(ternaryFloor).toBeGreaterThan(-1);
-    expect(banner).toBeGreaterThan(ternaryFloor);
+  it("the practice renders whether or not the focus fetch succeeded (the AI pick only wins inside the candidates)", () => {
+    expect(overviewSrc).toContain("const aiPracticeId = (focus as { practiceId?: string } | null)?.practiceId;");
+    expect(overviewSrc).toContain("aiPracticeId,");
   });
 
-  it("retry refetches through the hook's regenerate", () => {
-    expect(overviewSrc).toContain("regenerate: regenerateFocus");
-    expect(overviewSrc).toContain("onRetry={() => void regenerateFocus()}");
+  it("the hook still exposes regenerate for any surface that renders the focus", () => {
+    expect(hookSrc).toContain("regenerate: generate");
   });
 
   it("copy rides err.* i18n keys present in BOTH language maps", () => {
     for (const key of ["err.focus.title", "err.focus.body", "err.retry"]) {
-      expect(overviewSrc).toContain(`t("${key}")`);
       const hits = i18nSrc.split(`"${key}":`).length - 1;
       expect(hits).toBeGreaterThanOrEqual(2); // en + he
     }

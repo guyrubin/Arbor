@@ -363,11 +363,13 @@ describe("ENG-24 — Today mounts the honest anchor, and only the honest one", (
     expect(OVERVIEW).toContain("export default function OverviewTab");
   });
 
-  it("mounts the week-open card from the shared decision and the shared marker", () => {
-    expect(OVERVIEW).toContain("<WeekOpenAnchorCard");
-    expect(OVERVIEW).toContain("weekOpenAnchorDue({");
-    expect(OVERVIEW).toContain("readWeekAnchorSeen(childProfile.id)");
-    expect(OVERVIEW).toContain("hasWeekOpenAnchor: weekOpenDue");
+  // B-LOOP-07 re-pin: the week anchors left Today; the week is ONE door line
+  // ("This week's letter" → #/weekly) when a recap exists. The anchor
+  // decisions (weekOpenAnchorDue, weekAnchorRecapDue) keep their own suites.
+  it("Today mounts no week anchor card; the week is one door line when a recap exists", () => {
+    expect(OVERVIEW).not.toContain("<WeekOpenAnchorCard");
+    expect(OVERVIEW).not.toContain("<WeekAnchorCard");
+    expect(OVERVIEW).toContain('{weeklyRecap.currentReport && doorLine("today-door-week", "auto_stories", t("elev.loop.door.week"), () => setActiveTab("weekly"))}');
   });
 
   it("B-TODAY-08: buys NO second recap subscription — the overview tree mounts useWeeklyRecap exactly once", () => {
@@ -384,19 +386,14 @@ describe("ENG-24 — Today mounts the honest anchor, and only the honest one", (
     expect(/useWeeklyRecap\(/.test("const recap = useWeeklyRecap();")).toBe(true);
   });
 
-  it("B-TODAY-08: the recap-claiming card mounts only for kind 'recap', from the verified signal", () => {
-    expect(OVERVIEW).toContain('todayChoice.kind === "recap" ? (\n            <WeekAnchorCard');
-    expect(OVERVIEW).toContain("weekAnchorRecapDue({");
-    expect(OVERVIEW).toContain("hasWeekAnchorRecap: recapAnchorDue");
+  it("B-TODAY-08: the recap line claims a letter only from the verified signal (the recap hook's report)", () => {
+    expect(OVERVIEW).toContain("weeklyRecap.currentReport &&");
+    expect(OVERVIEW).not.toContain("hasWeekAnchorRecap");
   });
 
-  it("the accepted-action loop still wins the slot ahead of it", () => {
-    // Source order puts the week-open branch first, so the ranking is what
-    // keeps the loop on top: kind "weekOpen" is unreachable with an active
-    // action, which the ranking suite above pins behaviourally.
-    expect(OVERVIEW).toMatch(/todayChoice\.kind === "weekOpen" \?[\s\S]{0,600}?activeTodayAction \? \(\s*<TodayActionLoop/);
+  it("an accepted step from Ask keeps its loop behind the door; the chain order stays pinned for its importers", () => {
+    expect(OVERVIEW).toMatch(/\{activeTodayAction && <TodayActionLoop \/>\}/);
     const chain = stripComments(read("chooseTodayAction.ts"));
-    // B-TODAY-08 chain order: loop → recap → focus → weekOpen → prompt → play → capture.
     const at = (s: string) => chain.indexOf(s);
     expect(at("input.hasActiveAction")).toBeLessThan(at("input.hasWeekAnchorRecap"));
     expect(at("input.hasWeekAnchorRecap")).toBeLessThan(at("input.focusHeadline ||"));
@@ -404,14 +401,9 @@ describe("ENG-24 — Today mounts the honest anchor, and only the honest one", (
     expect(at("input.hasWeekOpenAnchor)")).toBeLessThan(at("input.promptKeys.length"));
   });
 
-  it("costs the Rule-A module budget nothing (it takes the anchor slot)", () => {
+  it("costs the module budget nothing (todayModules v3 has no week id)", () => {
     const budget = stripComments(read("todayModules.ts"));
     expect(budget.length).toBeGreaterThan(1_000);
-    // The anchor is the budget's implicit first entry; the week-open card
-    // REPLACES what that slot would otherwise hold, so no new module id and no
-    // new want is introduced for it.
-    expect(budget).toContain('"anchor"');
-    expect(budget).not.toMatch(/weekOpen/);
-    expect(OVERVIEW).not.toMatch(/resolveTodayModules\([\s\S]{0,600}?weekOpen/);
+    expect(budget).not.toMatch(/weekOpen|"anchor"/);
   });
 });

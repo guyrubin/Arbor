@@ -286,10 +286,13 @@ describe("OverviewTab wiring — ONE What-changed card", () => {
   const overview = stripComments(read("components/tabs/OverviewTab.tsx"));
   const card = stripComments(read("components/overview/WhatChanged.tsx"));
 
-  it("one mount, inside its data-module stamp, after the primary-action slot", () => {
+  // B-LOOP-07 re-pin: the ONE What-changed card is the first object behind
+  // Today's "More for today" door (≤ 3 lines), after the three blocks.
+  it("one mount, behind the door, after the blocks", () => {
     expect(overview.match(/<WhatChanged\b/g)).toHaveLength(1);
-    expect(overview).toMatch(/showChanged\s*&&\s*\(\s*<div data-module="today-changed"[^>]*>\s*<WhatChanged/);
-    expect(overview.indexOf("<WhatChanged")).toBeGreaterThan(overview.indexOf("<TodayActionLoop"));
+    expect(overview).toMatch(/\{changedWould && \(\s*<WhatChanged\s+lines=\{changed\.lines\.slice\(0, 3\)\}/);
+    expect(overview.indexOf("<WhatChanged")).toBeGreaterThan(overview.indexOf("plan.order.map((id, i) => ("));
+    expect(overview.indexOf("<WhatChanged")).toBeGreaterThan(overview.indexOf('data-testid="today-door"'));
   });
 
   it("the four restatements are gone: SinceLastVisit, ProgressNarrative, the dev-map count card", () => {
@@ -305,16 +308,15 @@ describe("OverviewTab wiring — ONE What-changed card", () => {
   it("returning parents only, never on day-0", () => {
     expect(overview).toMatch(/previousVisitAt:\s*isReturning\s*&&\s*!dayZero\s*\?\s*previousVisitAt\s*:\s*null/);
     expect(overview).toMatch(/changedWould\s*=\s*!dayZero\s*&&\s*isReturning/);
-    expect(overview).toMatch(/changed:\s*changedWould/);
   });
 
   it("evidence taps keep the requestJournalFocus seam", () => {
     expect(overview).toMatch(/requestJournalFocus\(line\.focusId\)/);
   });
 
-  it("Rule-A fold: the watch signal folds into the card when Today is full", () => {
-    expect(overview).toMatch(/foldNoticed\s*=\s*modulePlan\.demoted\.includes\("noticed"\)/);
-    expect(overview).toMatch(/foldNoticed\s*\?\s*composeChanged\(true\)/);
+  it("the watch signal is said once: its own card behind the door, never also folded into the lines", () => {
+    expect(overview).toMatch(/includeNoticed: false/);
+    expect(overview).toContain("{!dayZero && <ArborNoticedCard />}");
   });
 
   it("days together = totalDays only (no streak walk), KPI names kept", () => {
