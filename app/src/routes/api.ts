@@ -17,7 +17,7 @@ import { assembleCompanionContext, createCompanionLedgerSource, lastRatedAction,
 import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../services/framework.js";
 import { screenForImmediateEscalation, renderEscalationMarkdown, escalationMatchForCategory } from "../safety/escalation.js";
 import { renderConditionQuestionReply, screenForConditionQuestion } from "../safety/conditionQuestion.js";
-import { seededEscalationLine, applyGovernedEscalation, scrubSeededProfessionalHelp, seededScrubCount } from "../safety/seededEscalation.js";
+import { seededEscalationLine, applyGovernedEscalation, scrubSeededProfessionalHelp, seededScrubCount, seededDeltaAllowed } from "../safety/seededEscalation.js";
 import { captureLanguage, normalizeCaptureDraft } from "../server/captureDraft.js";
 import { DEFAULT_MEMORY_RETENTION, appendMemoryProposals, enforceMemoryRetention, foldMemoryEvents, getApprovedMemoryContext, getApprovedMemoryContextDetail, toChildId, toFamilyId, transitionMemory } from "../memory/memoryService.js";
 import { loadKnowledgeCardsWithMetadata, renderKnowledgeContext, retrieveKnowledgeCards, loadCardsByIds } from "../knowledge/wiki.js";
@@ -190,11 +190,19 @@ const writeSse = (res: express.Response, event: string, data: unknown) => {
  * return the verdict and release nothing further. Structured panels stay gated
  * at `done`, where the full pre-cadence screen still runs on the complete
  * rendered answer.
+ *
+ * B-AI-14 (stream): `releaseFilter` (seeded /chat turns only) is asked for
+ * each COMPLETE sentence AFTER the cumulative screen passed it; a sentence it
+ * refuses is never written as a `delta`. The screen itself is unchanged — it
+ * still runs on every sentence the model produced (`released` keeps them all),
+ * so `push`/`flush` verdicts are identical with or without the filter, and a
+ * call without it writes byte-identical frames.
  */
 const createScreenedProseRelay = (
   res: express.Response,
   restorer: { push: (chunk: string) => string; flush: () => string },
   enabled: boolean,
+  releaseFilter?: (sentence: string) => boolean,
 ) => {
   const proseExtractor = createJsonTextFieldExtractor("text");
   let released = "";
@@ -208,7 +216,7 @@ const createScreenedProseRelay = (
       // Cumulative alias-restored screen — never a sentence in isolation.
       const verdict = screenModelOutputLexical((released + bytes).trim());
       if (verdict.flagged) return verdict;
-      writeSse(res, "delta", { text: bytes });
+      if (!releaseFilter || releaseFilter(bytes)) writeSse(res, "delta", { text: bytes });
       released += bytes;
       pending = pending.slice(sliceEnd);
     }
@@ -947,7 +955,13 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // RETRACT the streamed bubble and replace it (firewall CONDITIONS 1-3).
       // AI-07: this relay is now the SHARED seam (see createScreenedProseRelay
       // above) — /council drives the identical screen, so the two cannot drift.
-      const relay = createScreenedProseRelay(res, privacy.createStreamRestorer(), streamResponse);
+      // B-AI-14 (stream): on a SEEDED turn the done payload is scrubbed of
+      // professional-help sentences (below), so the streamed deltas are too —
+      // per sentence at the relay's boundary, before any byte leaves.
+      // Non-seeded turns pass no filter: byte-identical frames.
+      const seededLanguage = language === "he" ? "he" : "en";
+      const seededFilter = seededEscalation ? (sentence: string) => seededDeltaAllowed(sentence, seededLanguage) : undefined;
+      const relay = createScreenedProseRelay(res, privacy.createStreamRestorer(), streamResponse, seededFilter);
 
       let rawResponse = "";
       if (streamResponse) writeSse(res, "status", { stage: "plan" });

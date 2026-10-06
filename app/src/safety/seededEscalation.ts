@@ -120,6 +120,19 @@ export const PROFESSIONAL_HELP_TERMS: Readonly<Record<"en" | "he", readonly RegE
   ],
 };
 
+/**
+ * B-AI-14 (stream) — the SSE twin of the done-time scrub. On a seeded turn
+ * the /chat relay asks this for every COMPLETE prose sentence it is about to
+ * release as a `delta` (the relay's sentence boundary, lib/sentenceStream
+ * SENTENCE_BOUNDARY_SCAN, as /voice uses): a sentence that names professional
+ * help or whom to contact is never written to the wire. Same language-scoped
+ * term list as `scrubSeededProfessionalHelp`, so the streamed bubble and the
+ * scrubbed `done` text agree. Non-seeded turns never call it.
+ */
+export function seededDeltaAllowed(sentence: string, language: "en" | "he"): boolean {
+  return !PROFESSIONAL_HELP_TERMS[language].some((re) => re.test(sentence));
+}
+
 /** Neutral fallbacks for a REQUIRED field the screen emptied (grounded in the guide the parent is following). */
 const SCRUB_FALLBACK: Readonly<Record<"en" | "he", { parentScript: string; todayStep: string; frame: string }>> = {
   en: { parentScript: "Use the words from the guide's Say this step.", todayStep: "Follow the guide's Do now step.", frame: "—" },

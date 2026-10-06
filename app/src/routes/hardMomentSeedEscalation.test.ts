@@ -334,6 +334,45 @@ describe("B-AI-14 (live fix) — the judge's exact payload carries the governed 
     }
   });
 
+  it("SSE, seeded turn: a professional-help sentence mid-stream never reaches a delta frame (EN + HE); the same stub on a non-seeded turn streams byte-identical frames", async () => {
+    const ssePost = async (message: string, language: "en" | "he"): Promise<string> => {
+      const res = await fetch(`${baseUrl}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+        body: JSON.stringify({ message, childProfile: JUDGE_PROFILE, language }),
+      });
+      expect(res.status).toBe(200);
+      return res.text();
+    };
+    const deltaFrames = (raw: string): string[] => raw.split("\n\n").filter((frame) => frame.startsWith("event: delta\n"));
+    const deltaText = (raw: string): string => deltaFrames(raw).map((f) => (JSON.parse(f.split("\n").find((l) => l.startsWith("data: "))!.slice(6)) as { text: string }).text).join("");
+    const cases = [
+      { locale: "en" as const, text: "That sounds hard. Generally, talk to your pediatrician if it keeps happening. Stay close to her. Breathe.", banned: "talk to your pediatrician", kept: ["That sounds hard. ", "Stay close to her. "] },
+      { locale: "he" as const, text: "זה רגע קשה. אם זה ממשיך, דברו עם רופא הילדים. הישארו קרובים. נשימה.", banned: "דברו עם רופא הילדים", kept: ["זה רגע קשה. ", "הישארו קרובים. "] },
+    ];
+    try {
+      for (const c of cases) {
+        modelJson = JSON.stringify({ ...CONTRACT, text: c.text });
+        const seeded = await ssePost(hardMomentEvalSeedMessage(find("hitting"), c.locale, "Noa", "What now?"), c.locale);
+        const frames = deltaFrames(seeded);
+        expect(frames.length, `${c.locale}: the seeded turn still streams`).toBeGreaterThan(0);
+        for (const frame of frames) expect(frame.includes(c.banned), `${c.locale}: ${frame}`).toBe(false);
+        expect(deltaText(seeded), c.locale).toBe(c.kept.join(""));
+        // the done payload agrees with what streamed
+        const done = seeded.split("\n\n").find((f) => f.startsWith("event: done\n"))!;
+        expect(done.includes(c.banned), `${c.locale}: done`).toBe(false);
+
+        // NON-SEEDED, same stub: every sentence streams, frames byte-identical to the relay's plain output
+        const plain = await ssePost(c.locale === "he" ? "ומה לגבי השינה?" : "And what about bedtime?", c.locale);
+        const sentences = [c.kept[0], c.text.slice(c.kept[0].length, c.text.indexOf(c.kept[1])), c.kept[1]];
+        expect(deltaFrames(plain), c.locale).toEqual(sentences.map((s) => `event: delta\ndata: ${JSON.stringify({ text: s })}`));
+        expect(deltaText(plain).includes(c.banned), c.locale).toBe(true);
+      }
+    } finally {
+      modelJson = JSON.stringify(CONTRACT);
+    }
+  });
+
   it("seeded turn: a model that returns escalateIf [] is accepted (min 0 on seeded turns only); a non-seeded turn still requires one", async () => {
     modelJson = JSON.stringify({ ...CONTRACT, escalateIf: [] });
     try {
