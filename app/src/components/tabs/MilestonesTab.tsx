@@ -72,6 +72,22 @@ function BornEarlyFrame({ inline, summary, children }: { inline: boolean; summar
   );
 }
 
+/** NEXTLEVEL critic r1 (B-NEXTLEVEL-NEW-1i/1j) — pure: the newest milestone
+ *  the parent marked "yes" that carries its own date (observationUpdatedAt).
+ *  An undated tick never leads — the sentence quotes a date, so it needs one. */
+export function latestNoticedMilestone<M extends { checked: boolean; observationUpdatedAt?: string }>(
+  milestones: readonly M[],
+): { milestone: M; at: string } | null {
+  let best: { milestone: M; at: string; t: number } | null = null;
+  for (const m of milestones) {
+    if (!m.checked || !m.observationUpdatedAt) continue;
+    const t = Date.parse(m.observationUpdatedAt);
+    if (!Number.isFinite(t)) continue;
+    if (!best || t > best.t) best = { milestone: m, at: m.observationUpdatedAt, t };
+  }
+  return best ? { milestone: best.milestone, at: best.at } : null;
+}
+
 function celebrate() {
   // ONE capped, brand-coloured, reduced-motion-safe burst — the Law 7 caps
   // (≤12 particles / ≤800 ms) and the reduced-motion gate live in lib/celebrate.
@@ -200,6 +216,9 @@ export default function MilestonesTab() {
   // chooses which OPEN items are suggested.
   const recordCounts = useMemo(() => noticedMilestoneCounts(milestones), [milestones]);
   const nextOpen = useMemo(() => selectNextMilestones(milestones, comparisonMonths, 3), [milestones, comparisonMonths]);
+  // NEXTLEVEL critic r1 (B-NEXTLEVEL-NEW-1i/1j): the parent's last first leads
+  // the summary — the newest milestone marked "yes" that carries its date.
+  const latestNoticed = useMemo(() => latestNoticedMilestone(milestones), [milestones]);
   const nextInDomain = (domain: string): Milestone | undefined => windowMilestones.find((m) => m.domain === domain && !m.checked);
 
   // UND-3 — "Gentle watch points" derives from the canonical useMonitoring
@@ -757,9 +776,32 @@ export default function MilestonesTab() {
                   score") are gone (the subtitle already says it). B-GROWTH-07:
                   the count stands alone as text, never a ring or a fraction. */}
               <div className="min-w-0" data-testid="ms-map-count">
-                <p className="t-sm font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ms.observedSoFar")}</p>
-                <div className="mt-1 text-[26px] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+                {latestNoticed ? (
+                  /* NEXTLEVEL critic r1 (1i/1j): one sentence from the record —
+                     "Dylan's latest: 'Jumps with both feet' — you noticed it on
+                     3 Oct". The title in display type; the date the screen's
+                     one warm accent (green-soft chip). The count follows as one
+                     quiet line from the same reader Growth and Care use. */
+                  <div data-testid="ms-latest">
+                    <p className="t-sm font-semibold" style={{ color: "var(--arbor-muted)" }}>
+                      {t("elev.ms.latest.lead", { name: firstName || t("ms.watch.childFallback") })}
+                    </p>
+                    <p className="mt-1 font-semibold leading-snug" style={{ fontFamily: "var(--font-display)", fontSize: "var(--t-xl)", color: "var(--arbor-ink)" }}>
+                      <bdi dir="auto">{milestoneText(latestNoticed.milestone, "title", t)}</bdi>
+                    </p>
+                    <p className="mt-2 flex flex-wrap items-center gap-1.5 t-sm" style={{ color: "var(--arbor-muted)" }}>
+                      {t("elev.ms.latest.when")}
+                      <span data-testid="ms-latest-date" className="inline-flex items-center rounded-full px-2.5 py-0.5 font-semibold whitespace-nowrap" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
+                        <bdi>{new Date(latestNoticed.at).toLocaleDateString(uiLang === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short" })}</bdi>
+                      </span>
+                    </p>
+                  </div>
+                ) : (
+                  <p className="t-sm font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ms.observedSoFar")}</p>
+                )}
+                <div className={latestNoticed ? "mt-3 t-sm" : "mt-1 text-[26px] font-extrabold leading-tight"} style={latestNoticed ? { color: "var(--arbor-muted)" } : { fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
                   {recordCounts.noticed} {t("ms.domainOf")}
+                  {latestNoticed && recordCounts.areas > 0 && <> {t(recordCounts.areas === 1 ? "elev.ms.latest.areas.one" : "elev.ms.latest.areas", { n: recordCounts.areas })}</>}
                 </div>
               </div>
 

@@ -114,6 +114,11 @@ export const en: Record<string, string> = {
   "elev.ms.seenAny.yes": "Yes, I've seen it",
   "elev.ms.seenAny.empty": "When {name} does something for the first time, it lands here.",
   "elev.ms.domainNext": "Next: {title}",
+  // NEXTLEVEL critic r1 (B-NEXTLEVEL-NEW-1i/1j) — the parent's last first leads the summary.
+  "elev.ms.latest.lead": "{name}'s latest:",
+  "elev.ms.latest.when": "You noticed it on",
+  "elev.ms.latest.areas": "across {n} areas",
+  "elev.ms.latest.areas.one": "in 1 area",
 
   // B-GROWTH-35 — a kept fact with a relative time in it, dated by when it was written.
   "elev.growthTruth.profile.written": "written {date}:",
@@ -203,6 +208,10 @@ export const he: Record<string, string> = {
   "elev.ms.seenAny.yes": "כן, ראיתי",
   "elev.ms.seenAny.empty": "כש{name} יעשה משהו בפעם הראשונה, זה יופיע כאן.",
   "elev.ms.domainNext": "הבא: {title}",
+  "elev.ms.latest.lead": "הכי חדש אצל {name}:",
+  "elev.ms.latest.when": "סימנתם את זה ב־",
+  "elev.ms.latest.areas": "ב־{n} תחומים",
+  "elev.ms.latest.areas.one": "בתחום אחד",
 
   // B-GROWTH-35 — עובדה שיש בה זמן יחסי מקבלת את התאריך שבו נכתבה.
   "elev.growthTruth.profile.written": "נכתב ב־{date}:",

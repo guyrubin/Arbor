@@ -94,3 +94,33 @@ describe("NEXTLEVEL r1 — a quiet page", () => {
     expect(MS).not.toMatch(/rgba\(52,\s*178,\s*119/);
   });
 });
+
+describe("NEXTLEVEL r1 (B-NEXTLEVEL-NEW-1i/1j) — the parent's last first leads the summary", () => {
+  it("latestNoticedMilestone picks the newest dated 'yes'; an undated or open item never leads", async () => {
+    const { latestNoticedMilestone } = await import("./MilestonesTab");
+    const ms = [
+      { id: "a", checked: true, observationUpdatedAt: "2026-10-01T09:00:00Z" },
+      { id: "b", checked: true, observationUpdatedAt: "2026-10-03T09:00:00Z" },
+      { id: "c", checked: false, observationUpdatedAt: "2026-10-05T09:00:00Z" },
+      { id: "d", checked: true },
+    ];
+    expect(latestNoticedMilestone(ms)?.milestone.id).toBe("b");
+    expect(latestNoticedMilestone([{ id: "x", checked: true }])).toBeNull();
+    expect(latestNoticedMilestone([])).toBeNull();
+  });
+  it("the summary card leads with the sentence; the count stays the shared reader, one quiet line; no ratio", async () => {
+    const at = MS.indexOf('data-testid="ms-latest"');
+    expect(at).toBeGreaterThan(-1);
+    expect(at).toBeLessThan(MS.indexOf('{recordCounts.noticed} {t("ms.domainOf")}'));
+    expect(MS).toContain('t("elev.ms.latest.lead", { name: firstName || t("ms.watch.childFallback") })');
+    expect(MS).toContain('<bdi dir="auto">{milestoneText(latestNoticed.milestone, "title", t)}</bdi>');
+    expect(MS).toMatch(/data-testid="ms-latest-date"[^>]*background: "var\(--arbor-green-soft\)", color: "var\(--arbor-green-ink\)"/);
+    const { translate } = await import("../../lib/i18n");
+    for (const lang of ["en", "he"] as const) {
+      for (const k of ["elev.ms.latest.lead", "elev.ms.latest.when", "elev.ms.latest.areas", "elev.ms.latest.areas.one"]) {
+        expect(translate(lang, k, { name: "Dylan", n: 3 }), `${lang} ${k}`).toBeTruthy();
+        expect(translate(lang, k, { name: "Dylan", n: 3 })).not.toMatch(/%| of |מתוך/);
+      }
+    }
+  });
+});
