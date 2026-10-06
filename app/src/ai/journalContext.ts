@@ -276,13 +276,26 @@ const spokenAnswerLine = (a: JournalNightAnswer): string =>
  */
 export const firstSentence = (text: string, min = 8): string => {
   const s = text.replace(/\s+/g, " ").trim();
-  const m = /^(.+?[.!?])\s+\S/u.exec(s);
+  const m = /^(.+?[.!?؟…])(?:\s+\S|$)/u.exec(s);
   if (!m) return s.length >= min ? s : "";
   const first = m[1].trim();
   return first.length >= min ? first : "";
 };
 
-const STOP_EN: ReadonlySet<string> = new Set(["the", "and", "you", "your", "with", "this", "that", "then", "here", "there", "what", "when", "today", "let's", "lets", "together", "while", "try", "for", "can", "now", "our", "she", "her", "his", "him", "they", "them", "just", "one", "small"]);
+/** The sentences of a line, cut at . ! ? ؟ … followed by a space or the end (EN + HE). */
+export const sentencesOf = (text: string): string[] =>
+  (text.replace(/\s+/g, " ").trim().match(/[^.!?؟…]+[.!?؟…]*(?=\s|$)/gu) ?? []).map((x) => x.trim()).filter(Boolean);
+
+/**
+ * Round 5 (three live sayThis lines were a practice's whole 2–3-sentence
+ * say-line, served by the fallback): ONE sentence of a catalogue say-line —
+ * the first of ≥ 8 chars ("מה זה? משאית! משאית אדומה." → "משאית אדומה.");
+ * "" when none is long enough.
+ */
+export const oneSayableSentence = (line: string, min = 8): string =>
+  sentencesOf(line).find((x) => x.length >= min) ?? "";
+
+const STOP_EN: ReadonlySet<string> = new Set(["the", "and", "you", "your", "with", "this", "that", "then", "here", "there", "what", "when", "today", "let's", "lets", "together", "while", "try", "for", "can", "now", "our", "she", "her", "his", "him", "they", "them", "just", "one", "small", "come", "comes", "here", "show", "look", "see", "get", "put", "make", "want", "like", "will", "who", "where", "why", "how", "yes", "good", "okay"]);
 const HE_PREFIX = /^[והבלמשכ]/;
 
 /** Content stems of a line: EN words ≥ 3 letters minus stop words (first 4

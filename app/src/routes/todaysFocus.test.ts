@@ -444,7 +444,7 @@ describe("B-LOOP-13 · /todays-focus chooses the practice from the journal", () 
     for (const [i, say] of [undefined, "", "Ok.", "Here comes the dinosaur bus."].entries()) {
       draft = { ...DRAFT, practiceId: "pr-sleep-08", sayThis: say };
       const { json } = await postFocus(body(`c-loop-say-${i}`));
-      expect(json.sayThis, String(say)).toBe("What comes after pyjamas? Show me on our page.");
+      expect(json.sayThis, String(say)).toBe("What comes after pyjamas?"); // round 5: ONE sentence of the say-line
     }
     draft = { ...DRAFT, practiceId: "pr-sleep-08", sayThis: "" };
     const { json: he } = await postFocus(body("c-loop-say-he", { language: "he" }));
@@ -461,7 +461,7 @@ describe("B-LOOP-13 · /todays-focus chooses the practice from the journal", () 
     expect(Object.keys(lastSchema.properties ?? {})).toEqual(["focus", "tryToday", "sayThis"]);
     expect(json).not.toHaveProperty("practiceId");
     expect(json).not.toHaveProperty("why");
-    expect(json.sayThis).toBe("Where's the bear? There he is! A big brown bear.");
+    expect(json.sayThis).toBe("Where's the bear?"); // round 5: ONE sentence of the say-line
   });
 
   it("no journal → no practiceId, no why; a bad sayThis is dropped (nothing to fall back to)", async () => {
@@ -522,5 +522,35 @@ describe("B-LOOP-13 round 4 · coherence + gendered why", () => {
     const he = await postFocus({ childProfile: { id: "c-coh-he-ok", name: "נועה", age: 2, gender: "girl" }, signals: { count: 2 }, journal, language: "he" });
     expect(he.status).toBe(200);
     expect(String(he.json.why).endsWith("בשבילה.")).toBe(true);
+  });
+});
+
+/* ── B-LOOP-13 round 5: one-sentence fallback; the rested-shelf gate ────── */
+describe("B-LOOP-13 round 5 · sayThis is always ONE sentence; a rested shelf is never picked", () => {
+  const journal = { candidatePracticeIds: ["pr-cdc-24m-10", "pr-cdc-24m-3", "pr-sleep-08"], shelfCoverage: { sleep: 4, food: 3, words: 0, feelings: 4, play: 6, moving: 0, hands: 2, school: 4, family: 3 } };
+  const body = (id: string, over: Record<string, unknown> = {}) => ({ childProfile: { id, name: "Noa", age: 2 }, signals: { count: 2 }, journal, ...over });
+  it("an unrelated sayThis falls back to ONE sentence of the practice's say-line (EN), never the whole line", async () => {
+    draft = { focus: "Stairs are today's small thing.", tryToday: "On a few safe stairs, hold Noa's hand and walk up slowly.", sayThis: "Here comes the dinosaur bus.", practiceId: "pr-cdc-24m-10" };
+    const { status, json } = await postFocus(body("c-r5-fallback"));
+    expect(status).toBe(200);
+    expect(json.sayThis).toBe("Step, step, up we go!");
+  });
+  it("a sayThis that IS the practice's own line is kept and cut to its first sentence", async () => {
+    draft = { focus: "Stairs are today's small thing.", tryToday: "On a few safe stairs, hold Noa's hand and walk up slowly.", sayThis: "Step, step, up we go! I'm right next to you.", practiceId: "pr-cdc-24m-10" };
+    const { json } = await postFocus(body("c-r5-own"));
+    expect(json.sayThis).toBe("Step, step, up we go!");
+  });
+  it("HE: the fallback is one Hebrew sentence", async () => {
+    draft = { focus: "המדרגות הן הדבר הקטן של היום.", tryToday: "על כמה מדרגות בטוחות, החזיקו יד ועלו לאט.", sayThis: "", practiceId: "pr-cdc-24m-10" };
+    const { json } = await postFocus(body("c-r5-he", { language: "he", childProfile: { id: "c-r5-he", name: "נועה", age: 2, gender: "girl" } }));
+    expect(String(json.sayThis)).toMatch(/[\u0590-\u05FF]/);
+    expect(String(json.sayThis).split(/[.!?؟](?:\s|$)/u).filter((x) => x.trim()).length).toBe(1);
+  });
+  it("a pick on a rested shelf → the chooser's pick (practiceVia 'chooser'), even when the shelf ties as thinnest", async () => {
+    draft = { focus: "Stairs are today's small thing.", tryToday: "Hold Noa's hand on a few safe stairs.", sayThis: "Up we go, one step.", practiceId: "pr-cdc-24m-3" };
+    const { json } = await postFocus(body("c-r5-rested", { journal: { ...journal, restedShelves: ["words"] } }));
+    expect(json.practiceId).toBe("pr-cdc-24m-10");
+    expect(json.practiceVia).toBe("chooser");
+    expect(lastPrompt).not.toContain("- pr-cdc-24m-3");
   });
 });

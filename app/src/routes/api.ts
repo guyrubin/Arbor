@@ -14,7 +14,7 @@ import { sanitizeRecentTurns, sanitizeWeeklyContext } from "../ai/chatContext.js
 import { assembleSpokenContext, liveContextWithoutNames, spokenChildId } from "../server/spokenContext.js";
 import { createDigestJobSource, createOidcJobVerifier, runWeeklyDigestJob, type DigestJobSource, type JobCallerVerifier } from "../server/digestJob.js";
 import { assembleCompanionContext, createCompanionLedgerSource, lastRatedAction, practiceMaterial, practiceSayLine, programPromptLine, renderWhyLine, renderApprovedFactLines, todayPracticeLine, type CompanionLedgerSource, type CompanionPurpose } from "../server/companionContext.js";
-import { firstSentence, gradesTheChild, sanitizeJournalRequest, sayRelatesTo, stepFitsPractice, whyReasonFor } from "../ai/journalContext.js";
+import { firstSentence, gradesTheChild, oneSayableSentence, sanitizeJournalRequest, sayRelatesTo, stepFitsPractice, whyReasonFor } from "../ai/journalContext.js";
 import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../services/framework.js";
 import { screenForImmediateEscalation, renderEscalationMarkdown, escalationMatchForCategory } from "../safety/escalation.js";
 import { renderConditionQuestionReply, renderSeededConditionReply, screenForConditionQuestion } from "../safety/conditionQuestion.js";
@@ -2173,7 +2173,11 @@ Finalized parent transcript: ${privacy.redact(transcript.trim())}${REDACTION_DIR
       // tied with it; never a rested shelf; never when a dose row or the
       // parent's pin already set today). Anything else → the chooser's pick.
       const aiPick = typeof restored.practiceId === "string" ? restored.practiceId.trim() : "";
-      const aiCandidate = mayPick && journal ? journal.candidates.find((c) => c.firstTier && c.id === aiPick) ?? null : null;
+      // Round 5: a rested ("not sure" today) shelf is excluded outright here
+      // too (projectJournal already drops its candidates) — belt and braces.
+      const aiCandidate = mayPick && journal
+        ? journal.candidates.find((c) => c.firstTier && c.id === aiPick && !journal.restedShelves.includes(c.shelf)) ?? null
+        : null;
       const practice = mayPick && journal
         ? aiCandidate
           ? { practiceId: aiCandidate.id, practiceVia: "ai" as const }
@@ -2190,8 +2194,14 @@ Finalized parent transcript: ${privacy.redact(transcript.trim())}${REDACTION_DIR
       // sayThis: ONE sentence ≤ 140 that belongs to tryToday; otherwise the
       // chosen practice's own catalogue say-line (EN/HE) — never an empty card.
       const chosenPracticeId = journal?.practice?.id ?? practice?.practiceId ?? "";
-      const sayFits = sayThisRaw.length > 0 && sayThisRaw.length <= TODAY_SAY_THIS_MAX && (!chosenPracticeId || !tryToday || sayRelatesTo(sayThisRaw, tryToday));
-      const sayThis = sayFits ? sayThisRaw : chosenPracticeId ? practiceSayLine(chosenPracticeId, lang, childProfile?.gender) : "";
+      // Round 5: a line that belongs to the chosen practice (its own say / do)
+      // fits too; the fallback is ONE sentence of the practice's say-line
+      // (never the whole 2–3-sentence line), else the whole line when no
+      // sentence of it stands alone.
+      const sayFits = sayThisRaw.length > 0 && sayThisRaw.length <= TODAY_SAY_THIS_MAX
+        && (!chosenPracticeId || !tryToday || sayRelatesTo(sayThisRaw, tryToday) || stepFitsPractice(sayThisRaw, practiceMaterial(chosenPracticeId)));
+      const practiceSay = chosenPracticeId ? practiceSayLine(chosenPracticeId, lang, childProfile?.gender) : "";
+      const sayThis = sayFits ? sayThisRaw : practiceSay ? oneSayableSentence(practiceSay) || practiceSay : "";
       const text = [focus, tryToday].filter(Boolean).join(" ");
       if (!text) {
         budget.settle();

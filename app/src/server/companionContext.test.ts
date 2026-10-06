@@ -604,3 +604,40 @@ describe("B-LOOP-13 round 4 — renderWhyLine follows the child's gender (HE); p
     expect(practiceMaterial("nope")).toBe("");
   });
 });
+
+/* ── B-LOOP-13 round 5: two children — nothing of the sibling reaches child B's prompt ── */
+describe("B-LOOP-13 round 5 — two-child isolation over every journal + context input", () => {
+  it("the sibling's facts, steps, kept insights, dose rows, night answers, pin and program never reach child B's todays_focus prompt", async () => {
+    const SIB = "child-sib";
+    const ME = "child-me";
+    const sibDose = (day: string, over: Record<string, unknown> = {}) => ({ id: `practice.${SIB}.${day}`, recommendation: "SIBLING_DOSE_REC", source: "practice", capacity: "tiny", status: "completed", acceptedAt: `${day}T08:00:00.000Z`, practiceId: "pr-family-02", outcome: "helped", whatHappened: "SIBLING_WHAT_HAPPENED", ...over });
+    const ledger = ledgerOf({
+      [`parent-a/${SIB}`]: {
+        actionLoops: [
+          { recommendation: "SIBLING_STEP name the feeling", source: "coach", status: "completed", outcome: "helped", acceptedAt: "2026-09-30T08:00:00.000Z" },
+          sibDose("2026-09-30"), sibDose("2026-10-01"),
+        ],
+        insights: [{ kind: "kept-insight", text: "SIBLING_INSIGHT", createdAt: "2026-09-30T08:00:00.000Z" }],
+        programs: [{ id: "e1", programId: "talk-together", startedAt: "2026-09-20", enrolledAt: "t", currentWeek: 1, status: "active", baseline: { childProxy: null, capturedAt: null }, updatedAt: "t" }],
+      },
+      [`parent-a/${ME}`]: { actionLoops: [], insights: [] },
+    });
+    const memory = storeOf([ev("SIBLING_FACT loves dinosaurs", { childId: SIB }), ev("Bath helps bedtime", { childId: ME })]);
+    // A buggy client that posts the sibling's rows for child B: the server keeps only child B's prefix.
+    const journal = {
+      dateKey: "2026-10-01",
+      candidatePracticeIds: ["pr-sleep-08"],
+      doseRows: [{ id: `practice.${SIB}.2026-09-30`, practiceId: "pr-family-02", outcome: "helped", whatHappened: "SIBLING_CLIENT_ROW" }],
+    };
+    const ctx = await assembleCompanionContext({ purpose: "todays-focus", audience: "parent", childId: ME, childProfile: { id: ME, name: "Lior", age: 2 }, memoryStore: memory, ledgerSource: ledger, uid: "parent-a", now: NOW, journal, maxFacts: 5 });
+    expect(ledger.reads).toEqual([`parent-a/${ME}`]);
+    const { buildTodaysFocusPrompt } = await import("../ai/prompts.js");
+    const prompt = buildTodaysFocusPrompt({
+      childProfile: { id: ME, name: "Lior", age: 2 }, count: 1, triggerSent: "", lastActionRecommendation: "", lastActionOutcome: "", languageDirective: "",
+      approvedFacts: ctx.approvedFacts.map((f) => f.text), activeProgram: ctx.program ? { name: ctx.program.name.en, week: ctx.program.week, skill: ctx.program.skill.en } : undefined, journal: ctx.journal,
+    });
+    for (const token of ["SIBLING_", "name the feeling", "dinosaurs", "Talk Together", "napkins"]) expect(prompt, token).not.toContain(token);
+    expect(prompt).toContain("Bath helps bedtime");
+    expect(ctx.journal!.nightAnswers).toEqual([]);
+  });
+});

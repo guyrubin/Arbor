@@ -6,7 +6,7 @@
  * about a hard moment are not a grade and pass.
  */
 import { describe, expect, it } from "vitest";
-import { gradesTheChild, sanitizeDoseRow, stepFitsPractice } from "./journalContext";
+import { firstSentence, gradesTheChild, oneSayableSentence, sanitizeDoseRow, sentencesOf, stepFitsPractice } from "./journalContext";
 
 describe("gradesTheChild — graded difficulty fails closed (EN + HE)", () => {
   it("EN: a grading adjective with a difficulty noun, or an indicates / points-to frame", () => {
@@ -64,5 +64,23 @@ describe("stepFitsPractice — the step is ABOUT the chosen practice (round 4)",
   it("HE: a sleep-routine step fits; a family chores step does not", () => {
     expect(stepFitsPractice("הערב ציירו יחד את שלבי השינה על דף אחד.", sleep08)).toBe(true);
     expect(stepFitsPractice("אפשר לשתף את נועה במטלות קטנות בבית, כמו לאסוף צעצועים.", sleep08)).toBe(false);
+  });
+});
+
+describe("round 5 — one sentence, EN + HE, at . ! ? ؟ boundaries", () => {
+  it("firstSentence cuts at the first boundary (! and ? included, Hebrew too); under 8 chars → ''", () => {
+    expect(firstSentence("Step, step, up we go! I'm right next to you.")).toBe("Step, step, up we go!");
+    expect(firstSentence("Where's the bear? There he is!")).toBe("Where's the bear?");
+    expect(firstSentence("מה בא אחרי הפיג'מה? תראי לי על הדף שלנו.")).toBe("מה בא אחרי הפיג'מה?");
+    expect(firstSentence("בוא נלך לשטוף ידיים! אחר כך אוכלים.")).toBe("בוא נלך לשטוף ידיים!");
+    expect(firstSentence("מה זה? משאית! משאית אדומה.")).toBe("");
+    expect(firstSentence("Ok.")).toBe("");
+    expect(firstSentence("One calm sentence with no end mark")).toBe("One calm sentence with no end mark");
+  });
+  it("sentencesOf / oneSayableSentence: the first sentence of ≥ 8 chars of a catalogue say-line", () => {
+    expect(sentencesOf("That boy is crying. Maybe he's sad? What happened, I wonder?")).toEqual(["That boy is crying.", "Maybe he's sad?", "What happened, I wonder?"]);
+    expect(oneSayableSentence("That boy is crying. Maybe he's sad? What happened, I wonder?")).toBe("That boy is crying.");
+    expect(oneSayableSentence("מה זה? משאית! משאית אדומה. רוצה להגיד גם?")).toBe("משאית אדומה.");
+    expect(oneSayableSentence("Hi! Yo!")).toBe("");
   });
 });
