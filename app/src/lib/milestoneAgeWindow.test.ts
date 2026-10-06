@@ -167,9 +167,10 @@ describe("GP-09 → B-LOOP-05 — later bands sit behind each shelf's door, titl
     const code = stripComments(read("components/tabs/MilestonesTab.tsx"));
     // every band of a shelf renders only inside the open door
     expect(code).toMatch(/\{open && \(\s*<div className="mt-2 space-y-3">\s*\{renderShelfBands\(shelf\)\}/);
-    const later = code.slice(code.indexOf("band.later ? ("), code.indexOf(") : (", code.indexOf("band.later ? (")));
+    // P5 critic r2 re-pin: the later band is the "Coming next" group, titles only.
+    const later = code.slice(code.indexOf('data-band="next"'), code.indexOf('data-band="own"'));
     expect(later).toContain('data-testid="ms-later-item"');
-    expect(later).not.toMatch(/<button|observeMilestone|renderItem/);
+    expect(later).not.toMatch(/<button|observeMilestone|renderItem|renderRow/);
     for (const lang of ["en", "he"] as const) expect(translate(lang, "elev.loop.shelf.door")).not.toBe("elev.loop.shelf.door");
     // Pre-fix rule: only earlier bands ever collapsed.
     expect(code).not.toMatch(/const collapsed = isEarlier && !openEarlierBands\[band\.months\];/);

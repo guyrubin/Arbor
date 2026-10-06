@@ -45,13 +45,14 @@ function fakeStorage(initial: Record<string, string> = {}) {
 }
 
 describe("W5 mounts — the celebration chain is actually wired", () => {
-  it("MilestonesTab layers CelebrationMoment as an overlay with the shared testId", () => {
-    expect(milestonesTab).toContain("<CelebrationMoment");
-    expect(milestonesTab).toContain('testId="milestone-celebration"');
-    expect(milestonesTab).toContain('data-testid="milestone-celebration-overlay"');
-    // A dialog, not a buried inline row.
-    expect(milestonesTab).toContain('role="dialog"');
-    expect(milestonesTab).toContain('aria-modal="true"');
+  // P5 critic r2 (P1-4, 6 Oct) re-pin: B-LOOP-04 says "an inline follow-up
+  // strip (no modal)"; framer ruling 3 allows ONE confetti burst. The W5
+  // overlay covered the Seen-it strip (When? · Keep), so it is gone from
+  // #/milestones; the kept state is the celebration.
+  it("MilestonesTab layers NO celebration overlay: no CelebrationMoment, no dialog", () => {
+    expect(milestonesTab).not.toContain("<CelebrationMoment");
+    expect(milestonesTab).not.toContain('data-testid="milestone-celebration-overlay"');
+    expect(milestonesTab).not.toContain('aria-modal="true"');
   });
 
   it("PrideMomentCard is mounted in MilestonesTab (Rule A bars the Today mount)", () => {
@@ -67,12 +68,9 @@ describe("W5 mounts — the celebration chain is actually wired", () => {
 });
 
 describe("W5 dedupe — once per milestone id, ≤1 per session, never on uncheck", () => {
-  it("MilestonesTab gates the overlay on BOTH the per-milestone and the session guard", () => {
-    // P5 critic r1 (framer ruling 3): once per milestone id EVER — the burst
-    // itself is behind the per-milestone guard; the overlay also needs the
-    // session guard.
-    expect(milestonesTab).toMatch(/if \(hasCelebrated\(childProfile\.id, item\.id\)\) return;\s*celebrate\(\);\s*if \(celebrationSessionAvailable\(\)\) \{/);
-    expect(milestonesTab).toContain("markCelebrated(childProfile.id, item.id)");
+  it("MilestonesTab fires the burst once per milestone id ever (the per-milestone guard)", () => {
+    // framer ruling 3: once per milestone id EVER; P5 critic r2: burst only.
+    expect(milestonesTab).toMatch(/if \(hasCelebrated\(childProfile\.id, item\.id\)\) return;\s*celebrate\(\);\s*markCelebrated\(childProfile\.id, item\.id\);/);
   });
 
   it("celebration fires ONLY on a fresh 'yes' — uncheck/not_yet/not_sure early-return", () => {

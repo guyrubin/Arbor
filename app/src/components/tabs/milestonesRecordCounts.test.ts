@@ -64,7 +64,9 @@ describe("NEXTLEVEL r1 — the primary move is a control", () => {
     expect(MS).toContain('<div data-module="milestones-spine" style={{ display: "contents" }}>');
     expect(MS.match(/data-primary-move/g)?.length).toBe(1);
     // P5 critic r1: the stamp rides the first Notice card's answers group (answersAttrs).
-    expect(MS).toMatch(/<NoticeCard[\s\S]{0,400}answersAttrs=\{shelf === firstNoticeShelf \? \{ "data-primary-move": "notice-milestone" \} : undefined\}[\s\S]{0,300}observeMilestone\(card, status\)/);
+    // P5 critic r2 (P1-4): the stamp rides the first UNANSWERED card's answers.
+    expect(MS).toMatch(/<NoticeCard[\s\S]{0,400}answersAttrs=\{shelf === stampShelf \? \{ "data-primary-move": "notice-milestone" \} : undefined\}[\s\S]{0,300}observeMilestone\(card, status\)/);
+    expect(MS).toContain("const stampShelf = mapShelves.find((id) => noticeFor(id) && !heldNotice[id]);");
     expect(MS).not.toMatch(/var\(--gradient-cta\)/);
   });
 

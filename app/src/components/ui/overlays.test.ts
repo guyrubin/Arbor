@@ -12,7 +12,8 @@ const TARGETS = {
   "practice/GoalBuilderModal.tsx": "open",
   "profile/AvatarCreator.tsx": "open",
   "profile/ProfileEditDrawer.tsx": "open",
-  "tabs/MilestonesTab.tsx": "Boolean(celebratingId)",
+  // P5 critic r2 (P1-4, 6 Oct): #/milestones no longer owns a dialog — the
+  // full-screen celebration overlay is gone (one confetti burst only).
   "coach/VoiceOverlay.tsx": "true",
   "tabs/HeroJourneyTab.tsx": "Boolean(kidNav) && immersive && Boolean(activeStory && render)",
 };
@@ -109,7 +110,6 @@ describe("CR-03 actual consumer wiring", () => {
 
 describe("new portals retain their original register and scrim styles", () => {
   for (const [file, scope] of [
-    ["tabs/MilestonesTab.tsx", "arbor-app arbor-parent"],
     ["coach/VoiceOverlay.tsx", "arbor-app arbor-parent"],
     ["tabs/HeroJourneyTab.tsx", "arbor-app arbor-parent"],
   ]) {
@@ -129,7 +129,8 @@ describe("new portals retain their original register and scrim styles", () => {
     expect(nav).toContain("returnFocusRef={moreTriggerRef}");
   });
   it("rejects the pre-review scope-on-scrim regression", () => {
-    const source = read("tabs/MilestonesTab.tsx");
+    // fixture moved off MilestonesTab (its overlay is retired, P5 critic r2 P1-4)
+    const source = read("tabs/HeroJourneyTab.tsx");
     expect(contract(source.replace('className="fixed inset-0', 'className="arbor-app fixed inset-0')).layerResetsAppScope).toBe(true);
   });
   it("Hero stays inside the existing Kid Mode trap and play scope; only parent mode portals", () => {

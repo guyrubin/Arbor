@@ -78,15 +78,23 @@ describe("MilestonesTab renders the shelf map (source pins)", () => {
     expect(MS).toContain('data-testid="ms-quiet-shelves"');
     expect(MS).toContain('data-testid="ms-shelf"');
     expect(MS).toContain("selectNextMilestonesByShelf(milestones, comparisonMonths, { perShelf: 1, total: SHELF_IDS.length, now: noticeNow })");
-    expect(MS.match(/<NoticeCard\b/g)?.length).toBe(1);
-    expect(MS.indexOf("<NoticeCard")).toBeLessThan(MS.indexOf('data-testid="ms-shelf-door"'));
+    // P5 critic r2 (P1-1): the door / search rows are Notice rows too (renderRow).
+    expect(MS.match(/<NoticeCard\b/g)?.length).toBe(2);
+    expect(MS.lastIndexOf("<NoticeCard")).toBeLessThan(MS.indexOf('data-testid="ms-shelf-door"'));
   });
 
-  it("the door opens the shelf's bands; later bands render titles only, never answers", () => {
+  // P5 critic r2 (P0-3 / P1-1) re-pin: the door groups carry NO age label —
+  // Around now (Notice rows) · Earlier (closed, Notice rows) · Coming next
+  // (closed, titles only); milestoneBandLabel is never called inside it.
+  it("the door opens the shelf's groups with no age label; Coming next renders titles only, never answers", () => {
     expect(MS).toContain("shelfBands(shelfItems[shelf], currentBand.months)");
-    const later = MS.slice(MS.indexOf("band.later ? ("), MS.indexOf(") : (", MS.indexOf("band.later ? (")));
-    expect(later).toContain('data-testid="ms-later-item"');
-    expect(later).not.toMatch(/<button|observeMilestone|renderItem/);
+    const door = MS.slice(MS.indexOf("const renderShelfBands = (shelf: ShelfId) => {"), MS.indexOf("const searchText = "));
+    expect(door).not.toContain("milestoneBandLabel");
+    for (const band of ['data-band="now"', 'data-band="earlier"', 'data-band="next"']) expect(door).toContain(band);
+    const next = door.slice(door.indexOf('data-band="next"'), door.indexOf('data-band="own"'));
+    expect(next).toContain('data-testid="ms-later-item"');
+    expect(next).not.toMatch(/<button|observeMilestone|renderItem|renderRow/);
+    expect(door).toContain("{now.map((m) => renderRow(m, shelf))}");
   });
 
   it("no denominator anywhere on the route: no x/y band fraction, no 'of {total}'", () => {
@@ -108,7 +116,8 @@ describe("MilestonesTab renders the shelf map (source pins)", () => {
     // one stamp in the source, on the first shelf's Notice card (a control-sized wrapper)
     expect(MS.match(/data-primary-move/g)?.length).toBe(1);
     // critic r1 P2-3: the stamp sits on the ANSWERS of the first Notice card, never a wrapper
-    expect(MS).toContain('answersAttrs={shelf === firstNoticeShelf ? { "data-primary-move": "notice-milestone" } : undefined}');
+    // P5 critic r2 (P1-4): on the first UNANSWERED card (stampShelf).
+    expect(MS).toContain('answersAttrs={shelf === stampShelf ? { "data-primary-move": "notice-milestone" } : undefined}');
     expect(MS).not.toContain('data-primary-move="mark-milestone"');
     const c = contractFor("milestones");
     expect(c?.primaryMove).toBe("notice-milestone");
