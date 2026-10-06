@@ -11,6 +11,7 @@ import ParentalGatePanel from "./ParentalGatePanel";
 import { consumeSettingsFocus, SETTINGS_FOCUS_ANCHOR } from "./settingsBus";
 import DeleteAccountModal from "./DeleteAccountModal";
 import YourDataSheet from "./YourDataSheet";
+import { AnalyticsOptOutRow } from "../privacy/AnalyticsOptOutRow";
 import InviteCard from "../referral/InviteCard";
 import { PlanPrices } from "../billing/PlanPrices";
 import { LegalLinks } from "../billing/LegalLinks"; // MOB-01: Privacy · Terms · Support in the footer
@@ -522,6 +523,8 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
           </button>
         </Row>
         </div>
+        {/* B-DATA-05: the analytics opt-out sits under the child-data row. */}
+        <AnalyticsOptOutRow />
         </Section>
 
         {/* P0.2 (SET-ADMIN): operator-only tools isolated in their own section */}

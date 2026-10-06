@@ -167,6 +167,8 @@ function settings(source = settingsSource) {
     "./DeleteAccountModal": { default: "DeleteAccountModal", __esModule: true },
     // B-CAREPRO-35: Settings › Your data (export / delete child / delete account).
     "./YourDataSheet": { default: "YourDataSheet", __esModule: true },
+    // B-DATA-05: the analytics opt-out row under the child-data row.
+    "../privacy/AnalyticsOptOutRow": { AnalyticsOptOutRow: "AnalyticsOptOutRow" },
     // B-PLAY-21: section 1 opens the ONE tone sheet (B-ASKJB-12's).
     "../coach/ToneSheet": { default: "ToneSheet", toneLabel: () => "", __esModule: true },
     "../referral/InviteCard": { default: "InviteCard", __esModule: true },
