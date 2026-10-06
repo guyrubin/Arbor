@@ -148,9 +148,12 @@ describe("B-TODAY-28 — OverviewTab wiring (source pin)", () => {
     expect(h1).toMatch(/var\(--t-lg\)/);
   });
 
-  it("the parent's own words lead inside the practice card (quotes under the do), first block of the primary move", () => {
+  // P5 r1 pass A1 re-pin: the parent's words sit right under the TITLE (the
+  // editorial quote), above the say, the do and the answers.
+  it("the parent's own words lead inside the practice card (quotes under the title), first block of the primary move", () => {
     const card = fs.readFileSync(path.resolve(__dirname, "../loop/PracticeCard.tsx"), "utf8");
-    expect(card.indexOf('data-testid="practice-quotes"')).toBeGreaterThan(card.indexOf('data-testid="practice-do"'));
+    expect(card.indexOf('data-testid="practice-quotes"')).toBeGreaterThan(card.indexOf('data-testid="practice-title"'));
+    expect(card.indexOf('data-testid="practice-quotes"')).toBeLessThan(card.indexOf('data-testid="practice-say"'));
     expect(card.indexOf('data-testid="practice-quotes"')).toBeLessThan(card.indexOf('data-testid="practice-answers"'));
   });
 

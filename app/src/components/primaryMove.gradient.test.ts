@@ -202,6 +202,10 @@ describe("OBJ-TODAY-01 — repo-wide ratchet", () => {
     "overview/TodayRecommendation.tsx",
     // B-TODAY-26: licensed above (Today's do-today-action, evening state).
     "overview/TonightCard.tsx",
+    // P5 r1 pass A7 (design P1-1): "Did it" is Today's ONE gradient — the
+    // practice answer carries data-primary-move="do-practice" (OverviewTab
+    // stampMove); OverviewTab.passA.test pins it to data-answer="did".
+    "loop/PracticeCard.tsx",
     // W2-SHELLPLAY critic r1: "Start it this week" carries the #/family move
     // (data-primary-move="start-family-ritual", spread from FamilyFormation) —
     // the only gradient on that page; familyRitualsCadence.test pins it.

@@ -242,9 +242,13 @@ describe("ENG-07 — whyLineFor is built from real inputs", () => {
     }
   });
 
-  it("Today's why-line is the practice's own (it names the milestone or the shelf), never a fixed generic key", () => {
+  // P5 r1 pass A3 re-pin: the line states the chooser's REASON for the shelf
+  // (empty this month / the fewest notes) and names the child — never the
+  // catalogue label; the plain shelf line when neither is true.
+  it("Today's why-line is the practice's own (the shelf and the chooser's reason), never a fixed generic key", () => {
     const card = read("components/loop/PracticeCard.tsx");
-    expect(card).toContain('t(milestone ? "elev.loop.practice.why" : "elev.loop.practice.whyShelf"');
+    expect(card).toContain('t(whyReason ? WHY_KEY[whyReason] : "elev.loop.practice.whyShelf"');
+    expect(card).not.toContain('"elev.loop.practice.why"');
   });
 });
 
