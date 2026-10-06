@@ -117,6 +117,7 @@ export const en: Record<string, string> = {
   // NEXTLEVEL critic r1 (B-NEXTLEVEL-NEW-1i/1j) — the parent's last first leads the summary.
   "elev.ms.latest.lead": "{name}'s latest:",
   "elev.ms.latest.when": "You noticed it on",
+  "elev.ms.latest.area": "in {area}",
   "elev.ms.latest.areas": "across {n} areas",
   "elev.ms.latest.areas.one": "in 1 area",
 
@@ -210,6 +211,7 @@ export const he: Record<string, string> = {
   "elev.ms.domainNext": "הבא: {title}",
   "elev.ms.latest.lead": "הכי חדש אצל {name}:",
   "elev.ms.latest.when": "סימנתם את זה ב־",
+  "elev.ms.latest.area": "בתחום {area}",
   "elev.ms.latest.areas": "ב־{n} תחומים",
   "elev.ms.latest.areas.one": "בתחום אחד",
 

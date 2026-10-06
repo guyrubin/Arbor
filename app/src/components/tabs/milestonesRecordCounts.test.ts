@@ -124,3 +124,18 @@ describe("NEXTLEVEL r1 (B-NEXTLEVEL-NEW-1i/1j) — the parent's last first leads
     }
   });
 });
+
+describe("P1-NEXTLEVEL critic r2 — the latest card names its area; the map is on the type scale", () => {
+  it("under the latest title, one quiet t-sm line names the area it was counted in (EN + HE)", () => {
+    expect(MS).toContain('data-testid="ms-latest-area" className="mt-0.5 t-sm"');
+    expect(MS).toContain('t("elev.ms.latest.area", { area: domainLabel(latestNoticed.milestone.domain) })');
+    for (const lang of ["en", "he"] as const) expect(translate(lang, "elev.ms.latest.area", { area: "x" })).not.toBe("elev.ms.latest.area");
+  });
+  it("the count card and the Development Map carry no orphan px sizes; the map heading is a step above its rows", () => {
+    const map = MS.slice(MS.indexOf('t("ms.developmentMap")') - 200, MS.indexOf('t("ms.playIdeas"'));
+    expect(map).not.toMatch(/text-\[(?:11|12|12\.5|13|13\.5|15|17|26)px\]/);
+    expect(map).toContain('<h3 className="t-lg font-extrabold mb-4"');
+    expect(map).toContain('<span className="flex-1 t-base font-bold"');
+    expect(MS).not.toContain("text-[26px]");
+  });
+});

@@ -793,6 +793,12 @@ export default function MilestonesTab() {
                     <p className="mt-1 font-semibold leading-snug" style={{ fontFamily: "var(--font-display)", fontSize: "var(--t-xl)", color: "var(--arbor-ink)" }}>
                       <bdi dir="auto">{milestoneText(latestNoticed.milestone, "title", t, msGender)}</bdi>
                     </p>
+                    {/* P1-NEXTLEVEL critic r2: name the area the item was counted
+                        in, so "latest: notices feelings" never contradicts a
+                        Feelings row that has not counted it. */}
+                    <p data-testid="ms-latest-area" className="mt-0.5 t-sm" style={{ color: "var(--arbor-muted)" }}>
+                      {t("elev.ms.latest.area", { area: domainLabel(latestNoticed.milestone.domain) })}
+                    </p>
                     <p className="mt-2 flex flex-wrap items-center gap-1.5 t-sm" style={{ color: "var(--arbor-muted)" }}>
                       {t("elev.ms.latest.when")}
                       <span data-testid="ms-latest-date" className="inline-flex items-center rounded-full px-2.5 py-0.5 font-semibold whitespace-nowrap" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
@@ -803,7 +809,7 @@ export default function MilestonesTab() {
                 ) : (
                   <p className="t-sm font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ms.observedSoFar")}</p>
                 )}
-                <div className={latestNoticed ? "mt-3 t-sm" : "mt-1 text-[26px] font-extrabold leading-tight"} style={latestNoticed ? { color: "var(--arbor-muted)" } : { fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+                <div className={latestNoticed ? "mt-3 t-sm" : "mt-1 t-2xl font-extrabold leading-tight"} style={latestNoticed ? { color: "var(--arbor-muted)" } : { fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
                   {recordCounts.noticed} {t("ms.domainOf")}
                   {latestNoticed && recordCounts.areas > 0 && <> {t(recordCounts.areas === 1 ? "elev.ms.latest.areas.one" : "elev.ms.latest.areas", { n: recordCounts.areas })}</>}
                 </div>
@@ -926,7 +932,7 @@ export default function MilestonesTab() {
           openDomain === null ? (
             /* ── Closed Map: the seven domains as tappable rows with COUNT bars ── */
             <div className={`${cardCls} p-6`}>
-              <h3 className="text-[15px] font-extrabold mb-4" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("ms.developmentMap")}</h3>
+              <h3 className="t-lg font-extrabold mb-4" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("ms.developmentMap")}</h3>
               <div className="flex flex-col gap-3.5">
                 {domainOptions.filter((dom) => (domainStats[dom.id]?.total ?? 0) > 0).map((dom) => {
                   const dv = domainVisual(dom.id);
@@ -941,15 +947,15 @@ export default function MilestonesTab() {
                     >
                       <div className="flex items-center gap-2.5 mb-2">
                         <Icon className="w-[18px] h-[18px] flex-shrink-0" style={{ color: PASTEL[dv.tone].ink }} />
-                        <span className="flex-1 text-[13.5px] font-bold" style={{ color: "var(--arbor-ink)" }}>{domainLabel(dom.id)}</span>
+                        <span className="flex-1 t-base font-bold" style={{ color: "var(--arbor-ink)" }}>{domainLabel(dom.id)}</span>
                         {/* B-GROWTH-07: a count, never a bar or a "/total" fraction.
                             NEXTLEVEL critic r1: the unwindowed noticed count
                             (byDomain); a domain at 0 names its next open item
                             instead of a "0 noticed" line. */}
                         {(recordCounts.byDomain[dom.id] ?? 0) > 0 || !nextInDomain(dom.id) ? (
-                          <span className="text-[11px] font-extrabold" style={{ color: "var(--arbor-muted)" }}>{recordCounts.byDomain[dom.id] ?? 0} {t("ms.domainOf")}</span>
+                          <span className="t-sm font-extrabold" style={{ color: "var(--arbor-muted)" }}>{recordCounts.byDomain[dom.id] ?? 0} {t("ms.domainOf")}</span>
                         ) : (
-                          <span data-testid="ms-domain-next" className="min-w-0 max-w-[55%] truncate text-[11px] font-semibold" style={{ color: "var(--arbor-muted)" }}>{t("elev.ms.domainNext", { title: milestoneText(nextInDomain(dom.id)!, "title", t, msGender) })}</span>
+                          <span data-testid="ms-domain-next" className="min-w-0 max-w-[55%] truncate t-sm font-semibold" style={{ color: "var(--arbor-muted)" }}>{t("elev.ms.domainNext", { title: milestoneText(nextInDomain(dom.id)!, "title", t, msGender) })}</span>
                         )}
                         <ChevEnd className="w-4 h-4 flex-shrink-0" style={{ color: "var(--arbor-muted)" }} />
                       </div>
@@ -969,7 +975,7 @@ export default function MilestonesTab() {
                   <button
                     type="button"
                     onClick={() => setOpenDomain(null)}
-                    className="min-h-11 inline-flex items-center gap-1.5 text-[12px] font-extrabold rounded-lg px-2.5 py-1.5 transition"
+                    className="min-h-11 inline-flex items-center gap-1.5 t-sm font-extrabold rounded-lg px-2.5 py-1.5 transition"
                     style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}
                   >
                     <ChevStart className="w-4 h-4" /> {t("ms.allDomains")}
@@ -980,8 +986,8 @@ export default function MilestonesTab() {
                       <Icon className="w-6 h-6" style={{ color: PASTEL[dv.tone].ink }} />
                     </span>
                     <div className="flex-1">
-                      <div className="text-[17px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{domainLabel(dom.id)}</div>
-                      <div className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>{recordCounts.byDomain[dom.id] ?? 0} {t("ms.domainOf")}</div>
+                      <div className="t-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{domainLabel(dom.id)}</div>
+                      <div className="t-sm font-bold" style={{ color: "var(--arbor-muted)" }}>{recordCounts.byDomain[dom.id] ?? 0} {t("ms.domainOf")}</div>
                     </div>
                   </div>
 
@@ -997,7 +1003,7 @@ export default function MilestonesTab() {
                     style={{ background: "var(--arbor-paper)", border: "1px solid var(--arbor-rule)", minHeight: 44 }}
                   >
                     <Icon name="sports_esports" size={18} style={{ color: "var(--arbor-ink-soft)" }} />
-                    <div className="flex-1 text-[13px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>
+                    <div className="flex-1 t-base font-extrabold" style={{ color: "var(--arbor-ink)" }}>
                       {t("ms.playIdeas", { area: domainLabel(dom.id) })}
                     </div>
                     <ChevEnd className="w-4 h-4 flex-shrink-0" style={{ color: "var(--arbor-muted)" }} />
