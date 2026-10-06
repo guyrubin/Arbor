@@ -17,7 +17,8 @@ import { assembleCompanionContext, createCompanionLedgerSource, lastRatedAction,
 import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../services/framework.js";
 import { screenForImmediateEscalation, renderEscalationMarkdown, escalationMatchForCategory } from "../safety/escalation.js";
 import { renderConditionQuestionReply, renderSeededConditionReply, screenForConditionQuestion } from "../safety/conditionQuestion.js";
-import { answerUsesApprovedFact, recordMemoryFactUnused } from "../server/memoryFactUse.js";
+import { answerUsesApprovedFact, recordMemoryFactUnused, groundTodayPlanOnFact, factStepText } from "../server/memoryFactUse.js";
+import { translate } from "../lib/i18n.js";
 import { seededEscalationLine, seededCard, seededFollowUpLine, applyGovernedEscalation, scrubSeededProfessionalHelp, seededScrubCount, seededDeltaAllowed, ensureSeededFollowUpText } from "../safety/seededEscalation.js";
 import { withoutCrisisThresholds, recordRoutineThresholdDrop } from "../safety/routineThresholds.js";
 import { captureLanguage, normalizeCaptureDraft } from "../server/captureDraft.js";
@@ -1058,6 +1059,14 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       if (approvedMemoryFactsUsed > 0 && !answerUsesApprovedFact(companion.approvedFacts.map((fact) => fact.text), structured)) {
         const total = recordMemoryFactUnused();
         logger.info("memory_fact_unused", { requestId: requestIdOf(req), facts: approvedMemoryFactsUsed, total });
+        // B-AI-14 (route): the top-ranked applicable fact becomes todayPlan
+        // step 1 in the parent's own words (memoryFactUse groundTodayPlanOnFact).
+        // Never on a seeded follow-up (no todayPlan in the short shape).
+        const top = companion.approvedFacts[0];
+        if (top && !seededFollowUp) {
+          groundTodayPlanOnFact(structured, top, factStepText(translate(renderLanguage, "coach.memory.factStep"), top.text, renderLanguage));
+          logger.info("memory_fact_step_inserted", { requestId: requestIdOf(req) });
+        }
       }
 
       // AI-2: output-side safety screen (lexical floor + optional semantic classifier).

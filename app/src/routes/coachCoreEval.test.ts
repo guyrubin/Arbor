@@ -42,7 +42,11 @@ import { coachResponseZodSchema } from "../contracts/coach.js";
 import { getScholarById } from "../services/scholars.js";
 import type { ModelProvider } from "../ai/modelRouter.js";
 import { COACH_CHAT_MEMORY_LEAD } from "../ai/prompts.js";
-import { answerUsesApprovedFact, factWindows, memoryFactUnusedCount } from "../server/memoryFactUse.js";
+import { answerUsesApprovedFact, factWindows, memoryFactUnusedCount, factClause, MAX_TODAY_PLAN_STEPS } from "../server/memoryFactUse.js";
+import { hardMomentCards } from "../content/hardMomentCards.js";
+import { hardMomentEvalSeedMessage } from "../eval/acceptance.js";
+import { translate } from "../lib/i18n.js";
+import { keepableLines } from "../lib/captureProposals.js";
 
 const HEBREW = /[֐-׿]/;
 const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
@@ -430,9 +434,9 @@ describe("coach-core-v1 deterministic tier (real /api/chat, scripted model)", ()
     contractOverrides = { text: "Mornings can feel rushed. A picture chart of the steps may help.", todayPlan: ["Draw the morning steps together."] };
     const ungrounded = doneOf((await postChatStreamed(body)).events);
     expect(memoryFactUnusedCount()).toBe(before + 1);
-    // never blocks: the ungrounded answer is delivered as usual
+    // never blocks: the ungrounded answer is delivered — and (B-AI-14 route, 6 Oct) the fact is now step 1
     expect(ungrounded?.outputBlocked).toBeUndefined();
-    expect(ungrounded?.contract?.todayPlan).toEqual(["Draw the morning steps together."]);
+    expect(ungrounded?.contract?.todayPlan).toEqual([`You've found that ${factClause(fact, "en")} — start there today.`, "Draw the morning steps together."]);
     // a day-0 child (no facts) never counts
     contractOverrides = { text: "Mornings can feel rushed." };
     await postChatStreamed({ message: sc.input.parentMessage, childProfile: { id: "c-day0-count", name: "Mia" } });
@@ -510,5 +514,102 @@ describe("coach-core-v1 deterministic tier (real /api/chat, scripted model)", ()
         "coach-day0-no-memory",
       ].sort(),
     );
+  });
+});
+
+/**
+ * B-AI-14 (route, 6 Oct; coach_chat stays 1.5.3 — no prompt byte changed):
+ * an applicable approved fact always reaches the answer. Three prompt versions
+ * in a row the live model ignored the sand-timer fact (groundedness 0); the
+ * route now writes it as todayPlan step 1 when the answer names none of the
+ * turn's facts, stamped with the fact's memory id for the keep seam.
+ */
+describe("B-AI-14 (route) — an applicable approved fact always reaches the answer", () => {
+  const seedFact = async (childId: string, memoryId: string, fact: string) =>
+    inMemoryStore.appendEvent({
+      eventId: `e-${memoryId}`, memoryId, familyId: "default-family", childId, eventType: "approved", status: "approved",
+      fact, source: "chat", retention: "3 months", createdAt: new Date().toISOString(), actor: "parent",
+    });
+
+  it("EN: the scenario's exact fact + 'Any progress ideas for the mornings?' + an ungrounded stub → step 1 is the fact, stamped; counter +1", async () => {
+    const sc = scenario("coach-memory-grounding");
+    const fact = sc.input.approvedMemoryFacts[0] as string;
+    expect(sc.input.parentMessage).toBe("Any progress ideas for the mornings?");
+    await seedFact("c-fact-en", "mem-fact-en", fact);
+    contractOverrides = { text: "Mornings can feel rushed. A picture chart of the steps may help.", todayPlan: ["Draw the morning steps together."] };
+    const before = memoryFactUnusedCount();
+    const { events } = await postChatStreamed({ message: sc.input.parentMessage, childProfile: { id: "c-fact-en", name: "Mia" } });
+    const done = doneOf(events);
+    expect(memoryFactUnusedCount()).toBe(before + 1);
+    expect(done?.outputBlocked).toBeUndefined();
+    const step1 = done?.contract?.todayPlan?.[0] as string;
+    expect(step1).toBe("You've found that transitions go better with a 5-minute sand timer — start there today.");
+    expect(step1).toContain(factClause(fact, "en"));
+    expect(done?.contract?.todayPlanProvenance).toEqual([{ step: 0, memoryId: "mem-fact-en", kind: "approved_fact" }]);
+    expect(String(done?.text)).toContain(step1); // rendered (and screened) with the answer
+    expect(screenModelOutputLexical(String(done?.text)).flagged).toBe(false);
+    expect(answerUsesApprovedFact([fact], done!.contract)).toBe(true);
+    // the keep seam carries the provenance onto the kept step
+    const lines = keepableLines(done!.contract);
+    expect(lines[0]).toEqual({ field: "todayPlan", text: step1, memoryId: "mem-fact-en" });
+    expect(lines[1]).toEqual({ field: "todayPlan", text: "Draw the morning steps together." });
+  });
+
+  it("a grounded stub → nothing inserted, no provenance, counter unchanged", async () => {
+    const sc = scenario("coach-memory-grounding");
+    const fact = sc.input.approvedMemoryFacts[0] as string;
+    await seedFact("c-fact-grounded", "mem-fact-grounded", fact);
+    contractOverrides = { text: sc.input.stubbedContractText };
+    const before = memoryFactUnusedCount();
+    const done = doneOf((await postChatStreamed({ message: sc.input.parentMessage, childProfile: { id: "c-fact-grounded", name: "Mia" } })).events);
+    expect(memoryFactUnusedCount()).toBe(before);
+    expect(done?.contract?.todayPlanProvenance).toBeUndefined();
+    expect((done?.contract?.todayPlan as string[]).some((s) => s.startsWith("You've found that"))).toBe(false);
+  });
+
+  it("cap: a model plan of three steps keeps three — the fact first, the model's last step dropped", async () => {
+    const sc = scenario("coach-memory-grounding");
+    await seedFact("c-fact-cap", "mem-fact-cap", sc.input.approvedMemoryFacts[0] as string);
+    contractOverrides = { text: "Mornings can feel rushed.", todayPlan: ["Step A.", "Step B.", "Step C."] };
+    const done = doneOf((await postChatStreamed({ message: sc.input.parentMessage, childProfile: { id: "c-fact-cap", name: "Mia" } })).events);
+    expect(MAX_TODAY_PLAN_STEPS).toBe(3);
+    expect(done?.contract?.todayPlan).toHaveLength(3);
+    expect((done?.contract?.todayPlan as string[]).slice(1)).toEqual(["Step A.", "Step B."]);
+  });
+
+  it("HE twin: the Hebrew fact is quoted as written inside the keyed Hebrew template", async () => {
+    const fact = "מעברים הולכים טוב יותר עם שעון חול של חמש דקות.";
+    await seedFact("c-fact-he", "mem-fact-he", fact);
+    contractOverrides = { text: "הבקרים יכולים להיות לחוצים.", todayPlan: ["ציירו יחד את שלבי הבוקר."] };
+    const done = doneOf((await postChatStreamed({ message: "יש רעיונות לבקרים?", childProfile: { id: "c-fact-he", name: "מיה" }, language: "he" })).events);
+    const step1 = done?.contract?.todayPlan?.[0] as string;
+    expect(step1).toBe("כבר גיליתם: „מעברים הולכים טוב יותר עם שעון חול של חמש דקות”. אפשר להתחיל משם היום.");
+    expect(step1).toBe(translate("he", "coach.memory.factStep").replace("{fact}", factClause(fact, "he")));
+    expect(done?.contract?.todayPlanProvenance).toEqual([{ step: 0, memoryId: "mem-fact-he", kind: "approved_fact" }]);
+    expect(/[\u2066-\u2069]/.test(step1), "no display-time bidi marks stored on the contract").toBe(false);
+  });
+
+  it("the seeded short shape (a hard-moment follow-up) is untouched: no todayPlan, no inserted step", async () => {
+    const sc = scenario("coach-memory-grounding");
+    await seedFact("c-fact-seeded", "mem-fact-seeded", sc.input.approvedMemoryFacts[0] as string);
+    const card = hardMomentCards.find((c) => c.id === "public-meltdown")!;
+    const message = hardMomentEvalSeedMessage(card, "en", "Mia", "Any progress ideas for the mornings?");
+    contractOverrides = { text: "Mornings can feel rushed.", todayPlan: ["Draw the morning steps together."] };
+    const done = doneOf((await postChatStreamed({ message, childProfile: { id: "c-fact-seeded", name: "Mia", age: 4 } })).events);
+    expect(done?.contract?.governedEscalation).toBeTruthy();
+    expect(done?.contract?.todayPlan).toEqual([]);
+    expect(done?.contract?.todayPlanProvenance).toBeUndefined();
+  });
+
+  it("a model-emitted todayPlanProvenance never survives the parse (server-set only)", async () => {
+    contractOverrides = { text: "Mornings can feel rushed.", todayPlanProvenance: [{ step: 0, memoryId: "forged", kind: "approved_fact" }] };
+    const done = doneOf((await postChatStreamed({ message: "Any ideas for mornings?", childProfile: { id: "c-fact-none", name: "Mia" } })).events);
+    expect(done?.contract?.todayPlanProvenance).toBeUndefined();
+  });
+
+  it("factClause: trailing punctuation dropped; EN first letter lower-cased unless an acronym; HE untouched", () => {
+    expect(factClause("Transitions go better with a 5-minute sand timer.", "en")).toBe("transitions go better with a 5-minute sand timer");
+    expect(factClause("TV off before dinner helps.", "en")).toBe("TV off before dinner helps");
+    expect(factClause("שעון חול עוזר.", "he")).toBe("שעון חול עוזר");
   });
 });

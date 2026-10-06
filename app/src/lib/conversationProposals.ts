@@ -17,6 +17,8 @@ export type ConversationProposal = {
   occurredAt?: string;
   milestoneId?: string;
   milestoneStatus?: "yes" | "not_sure" | "not_yet";
+  /** B-AI-14 (route): the approved fact a kept coach step was written from (contract.todayPlanProvenance). */
+  memoryId?: string;
   conflict?: { code: "duplicate" | "milestone_change" | "missing_milestone"; existing: string };
   status: ConversationProposalStatus;
   createdAt: string;

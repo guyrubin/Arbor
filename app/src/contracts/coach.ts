@@ -102,7 +102,11 @@ export const coachResponseZodSchema = z.object({
  * renderer below and the card UI show it in the escalation slot. Safety
  * routing, never a keepsake (lib/captureProposals NEVER_KEEPABLE_FIELDS).
  */
-export type CoachResponse = z.infer<typeof coachResponseZodSchema> & { governedEscalation?: string };
+export type CoachResponse = z.infer<typeof coachResponseZodSchema> & {
+  governedEscalation?: string;
+  /** B-AI-14 (route): server-set, like governedEscalation — see types.ts CoachContract. */
+  todayPlanProvenance?: { step: number; memoryId: string; kind: "approved_fact" }[];
+};
 
 /**
  * B-AI-14 (coach_chat 1.5.0): on a hard-moment SEEDED turn the app shows the

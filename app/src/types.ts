@@ -253,6 +253,12 @@ export interface CoachContract {
    *  that grounded this answer — a count only (clinical firewall: never fact
    *  content, never a percentage/confidence figure). */
   approvedMemoryFactsUsed?: number;
+  /** B-AI-14 (route, 6 Oct): which todayPlan steps the SERVER wrote from a
+   *  parent-approved fact (never model-emitted — not in the zod schema, so a
+   *  model-sent value is stripped at the parse). `step` is the todayPlan index,
+   *  `memoryId` the approved fact's memory id; the keep seam carries it onto
+   *  the proposal so a kept step keeps its provenance. */
+  todayPlanProvenance?: { step: number; memoryId: string; kind: "approved_fact" }[];
 }
 
 export interface BehaviorLog {

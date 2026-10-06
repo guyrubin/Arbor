@@ -503,6 +503,8 @@ export const en: Dict = {
   "coach.memory.grounded.one": "Grounded in 1 fact you approved",
   "coach.memory.manage": "Manage",
   "coach.memory.reviewChip": "Arbor suggests remembering something — review",
+  // B-AI-14 (route): an applicable approved fact the model left out becomes today's first step, in the parent's own words.
+  "coach.memory.factStep": "You've found that {fact} — start there today.",
   "coach.scenario.morning": "Morning refusal",
   "coach.scenario.ipad": "iPad dispute",
   "coach.scenario.sibling": "Sibling clash",
@@ -3056,6 +3058,7 @@ export const he: Dict = {
   "coach.memory.grounded.one": "מבוסס על עובדה אחת שאישרתם",
   "coach.memory.manage": "ניהול",
   "coach.memory.reviewChip": "ארבור מציעה לזכור משהו — לבדיקה",
+  "coach.memory.factStep": "כבר גיליתם: „{fact}”. אפשר להתחיל משם היום.",
   "coach.scenario.morning": "סירוב בבוקר",
   "coach.scenario.ipad": "מריבת מסך",
   "coach.scenario.sibling": "מריבת אחים",

@@ -199,13 +199,16 @@ export function isTypedAnswer(message: ChatMessage | undefined): boolean {
 }
 
 /** The lines a contract offers, in the order they are worth keeping. */
-export function keepableLines(contract: CoachContract | undefined): { field: KeepableField; text: string }[] {
+export function keepableLines(contract: CoachContract | undefined): { field: KeepableField; text: string; memoryId?: string }[] {
   if (!contract) return [];
-  const out: { field: KeepableField; text: string }[] = [];
-  for (const step of contract.todayPlan ?? []) {
+  const out: { field: KeepableField; text: string; memoryId?: string }[] = [];
+  // B-AI-14 (route): a step the server wrote from an approved fact keeps that fact's memory id.
+  const factStep = new Map((contract.todayPlanProvenance ?? []).map((p) => [p.step, p.memoryId]));
+  (contract.todayPlan ?? []).forEach((step, index) => {
     const text = clean(step, 600);
-    if (text) out.push({ field: "todayPlan", text });
-  }
+    const memoryId = factStep.get(index);
+    if (text) out.push(memoryId ? { field: "todayPlan", text, memoryId } : { field: "todayPlan", text });
+  });
   const script = clean(contract.parentScript, 600);
   if (script) out.push({ field: "parentScript", text: script });
   for (const line of contract.observe ?? []) {
@@ -271,6 +274,7 @@ export function buildTypedCaptureProposals(
       // incident-shaped) and never a milestone (which is a record of the child).
       target: "journal",
       summary: line.text,
+      ...(line.memoryId ? { memoryId: line.memoryId } : {}),
       sourceExcerpt,
       sourceLanguage: ctx.language,
       // 1 is honest here and means "clear": this is a verbatim quote of a
