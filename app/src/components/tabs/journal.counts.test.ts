@@ -60,6 +60,21 @@ describe("B-ASKJB-13 · Journal header counts by kind", () => {
     expect(translate("he", "journal.story.body.one")).toMatch(/^רגע אחד השבוע/);
   });
 
+  it("P5-LOOP c2 r1: no journal key claims 'nothing is added without you' while the thread folds practiceEvents / heroRuns (EN + HE)", async () => {
+    const { en, he } = await import("../../lib/i18n");
+    const fold = readFileSync(path.join(SRC, "lib", "timelineFold.ts"), "utf8");
+    const foldsPlay = /practiceEvents|heroRuns/.test(fold);
+    for (const dict of [en, he]) {
+      for (const [k, v] of Object.entries(dict)) {
+        if (!/^(elev\.)?journal\./.test(k)) continue;
+        if (foldsPlay) expect(v, k).not.toMatch(/nothing is added|לא נוסף בלעדיכם/i);
+      }
+    }
+    expect(foldsPlay).toBe(true); // the premise: the fold still reads the play rows
+    expect(translate("en", "journal.story.body", { count: 7 })).toBe("7 moments this week, in order.");
+    expect(translate("he", "journal.story.body", { count: 7 })).toBe("7 רגעים השבוע, לפי הסדר.");
+  });
+
   it("the story line claims nothing Arbor does not do", () => {
     for (const lang of ["en", "he"] as const) {
       for (const key of ["journal.story.body", "journal.story.body.one"]) {

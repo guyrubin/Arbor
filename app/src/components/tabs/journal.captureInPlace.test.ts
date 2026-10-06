@@ -262,7 +262,14 @@ describe("critic r1 — the journal's primary move is the capture tiles", async 
     // Journal's own three modules are the top level); Story keeps its wrapper.
     expect(TIMELINE).toContain("<JournalTab primaryMoveProps={primaryMove} densityToggle={densityToggle} />");
     expect(TIMELINE).toMatch(/story \? \(\s*<div data-module="timeline-stream">\s*<StoryTimelineTab \/>/);
-    expect(JOURNAL).toContain('data-capture-bar {...primaryMoveProps}');
+    // P5-LOOP c2 r1: on ?view=all the stamp rides "All shelves", the page's FIRST item;
+    // the tiles carry none (they follow the thread below lg)
+    expect(JOURNAL).toContain('data-capture-bar>');
+    expect(JOURNAL).not.toContain("data-capture-bar {...primaryMoveProps}");
+    expect(JOURNAL).toMatch(/data-testid="journal-all-back"\s*onClick=\{\(\) => goToRoute\("journal"\)\}\s*\{\.\.\.primaryMoveProps\}/);
+    const header = JOURNAL.slice(JOURNAL.indexOf('data-module="journal-header"'), JOURNAL.indexOf("</header>"));
+    expect(header.indexOf('data-testid="journal-all-back"')).toBeLessThan(header.indexOf("{densityToggle}"));
+    expect(JOURNAL).toMatch(/data-module="journal-compose" className="[^"]*max-lg:order-last/);
   });
 
   it("tiles come before the prompt chips; no gradient — the Text tile is the one solid accent fill", () => {
@@ -327,7 +334,9 @@ describe("critic r2 — Journal: real modules, an honest aside, the quote at eve
     expect(aside).not.toContain('"journal.week.sub"');
     expect(aside).not.toContain('"journal.week.title"');
     expect(aside).not.toMatch(/\buppercase\b|tracking-/);
-    expect(aside).toContain('t("elev.journal.lastKept.title")');
+    // P5-LOOP c2 r1 (design P1): the "From the story" aside and its door are gone at every width
+    expect(aside).not.toContain('t("elev.journal.lastKept.title")');
+    expect(JOURNAL).not.toContain("elev.journal.lastKept.next");
     expect(dict.en["elev.journal.lastKept.title"]).toBe("From the story");
     expect(dict.he["elev.journal.lastKept.title"]).toBe("מהסיפור");
     for (const d of [dict.en, dict.he]) expect(d["elev.journal.lastKept.title"]).not.toMatch(/week|השבוע/i);
@@ -345,8 +354,9 @@ describe("critic r2 — Journal: real modules, an honest aside, the quote at eve
     // The aside no longer repeats the quote.
     const aside = JOURNAL.slice(JOURNAL.indexOf('data-testid="journal-last-kept"'), JOURNAL.indexOf("journal-week-zero-line"));
     expect(aside).not.toContain("lastKept.words");
-    // One door per width: the story line's door is md:hidden, the aside is md+.
-    expect(JOURNAL).toContain('<div className="md:hidden">{lastKeptDoor("journal-story-door")}</div>');
+    // P5-LOOP c2 r1: no second "What happened with {name} today?" at any width
+    // (it repeated the compose card's H2) — the door is gone.
+    expect(JOURNAL).not.toMatch(/lastKeptDoor|journal-story-door|journal-last-kept-next/);
   });
 
   it("NEXTLEVEL critic r1 (B-NEXTLEVEL-NEW-1f) — 'Last thing you wrote about {name}' under the H1 on every week; tap opens the entry; the week count stays one quiet line", () => {

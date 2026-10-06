@@ -2357,8 +2357,8 @@ export const en: Dict = {
   // writes it. The surface contract's own job sentence is the honest line.
   "journal.eyebrow": "Catch the moment before it's gone",
   "journal.title": "Your family story, in order.",
-  "journal.story.body": "{count} moments this week, kept in order — nothing is added without you.",
-  "journal.story.body.one": "1 moment this week, kept in order — nothing is added without you.",
+  "journal.story.body": "{count} moments this week, in order.",
+  "journal.story.body.one": "1 moment this week, in order.",
   // B-ASKJB-19 residue (law 1): the Story card counts what the parent noticed — no denominator.
   "story.milestones.one": "Together you've noted 1 milestone.",
   "story.milestones.other": "Together you've noted {n} milestones.",
@@ -4811,8 +4811,8 @@ export const he: Dict = {
   // JRNL-2 — Journal header/compose strings (see the en dict note).
   "journal.eyebrow": "לתפוס את הרגע לפני שהוא נעלם",
   "journal.title": "כל הרגעים של המשפחה, לפי הסדר.",
-  "journal.story.body": "{count} רגעים השבוע, שמורים לפי הסדר — שום דבר לא נוסף בלעדיכם.",
-  "journal.story.body.one": "רגע אחד השבוע, שמור לפי הסדר — שום דבר לא נוסף בלעדיכם.",
+  "journal.story.body": "{count} רגעים השבוע, לפי הסדר.",
+  "journal.story.body.one": "רגע אחד השבוע, לפי הסדר.",
   "story.milestones.one": "יחד סימנתם אבן דרך אחת.",
   "story.milestones.other": "יחד סימנתם {n} אבני דרך.",
   "story.wins.one": "חגגתם ניצחון קטן אחד בדרך.",

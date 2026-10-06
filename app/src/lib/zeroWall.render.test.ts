@@ -122,7 +122,8 @@ describe("RUN-08 · Journal and Story zero branches", () => {
 
   it("the Journal aside never prints a week numeral; at zero it carries the teach line", () => {
     // NEXTLEVEL r1 (Law 9): the week count is said once, in the story line.
-    expect(journal).toMatch(/\(lastKept \|\| weekCount === 0\) &&/);
+    // P5-LOOP c2 r1: the aside now carries ONLY the day-0 teach line
+    expect(journal).toMatch(/\{!lastKept && weekCount === 0 && \(/);
     expect(journal).toContain('data-testid="journal-week-zero-line"');
     expect(journal).toContain('t("elev.journal.week.zero")');
     const aside = journal.slice(journal.indexOf('data-testid="journal-week-aside"'), journal.indexOf("</header>"));

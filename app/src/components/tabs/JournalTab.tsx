@@ -33,7 +33,7 @@ import { journalStoryState, lastKeptMoment } from "../../lib/journalLastKept";
 import { fmtDay } from "../../lib/formatDate";
 import { isIncidentType } from "../../content/behaviorTaxonomy";
 import { ageYearsOf } from "../../lib/age/forChild";
-import { useHashQuery } from "../../hooks/useHashQuery";
+import { goToRoute, useHashQuery } from "../../hooks/useHashQuery";
 import { hashQuery, routeHash } from "../../lib/routes";
 import JournalShelves, { shelfFromQuery } from "../journal/JournalShelves";
 
@@ -302,7 +302,7 @@ function JournalRow({
  * thread, where the row it names is rendered.
  * `primaryMoveProps`: TimelineTab's ONE stamp literal, spread on the control
  * that performs the live view's move (the grid of shelves; on the thread,
- * the capture tiles).
+ * "All shelves", its first item — P5-LOOP c2 r1).
  */
 export default function JournalTab({ primaryMoveProps, densityToggle }: { primaryMoveProps?: Record<string, string>; densityToggle?: ReactNode } = {}) {
   const { pendingJournalFocusId } = useArbor();
@@ -321,8 +321,8 @@ export default function JournalTab({ primaryMoveProps, densityToggle }: { primar
   return <JournalShelves shelf={shelf} pro={view === "pro"} intakeFor={query.get("for")} primaryMoveProps={primaryMoveProps} />;
 }
 
-/** `primaryMoveProps`: TimelineTab's contract stamp, spread on the capture
- *  tiles — the control that performs the move, not the wrapper. */
+/** `primaryMoveProps`: TimelineTab's contract stamp, spread on "All shelves"
+ *  (the page's first item, P5-LOOP c2 r1) — the control, not the wrapper. */
 function JournalFeed({ primaryMoveProps, densityToggle }: { primaryMoveProps?: Record<string, string>; densityToggle?: ReactNode } = {}) {
   const { milestones, playLogs, behaviorLogs, logsLoaded, pendingJournalFocusId, consumeJournalFocus, requestJournalFocus, childProfile, openCaptureSheet, toggleLogResolved, deleteLog } = useArbor();
   const { t, uiLang } = useLanguage();
@@ -535,18 +535,6 @@ function JournalFeed({ primaryMoveProps, densityToggle }: { primaryMoveProps?: R
   // count as one quiet line under the quote (said once). No words → the count
   // line alone; never a machine entry.
   const quotedLastKept = !!lastKept?.words;
-  const lastKeptDoor = (testId: string) => (
-    <button
-      type="button"
-      data-testid={testId}
-      onClick={() => composeRef.current?.querySelector<HTMLButtonElement>("[data-capture-bar] button")?.focus()}
-      className="inline-flex min-h-11 items-center t-sm font-bold underline underline-offset-2"
-      style={{ color: "var(--arbor-clay)" }}
-    >
-      {t("elev.journal.lastKept.next", { name: childFirstName })}
-    </button>
-  );
-
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto flex w-full min-w-0 max-w-[1080px] flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,42rem)_20rem] lg:items-start lg:justify-between lg:gap-x-10">
       {/* NEXTLEVEL critic r1 (journal · design · P1): at lg the page is a
@@ -557,6 +545,21 @@ function JournalFeed({ primaryMoveProps, densityToggle }: { primaryMoveProps?: R
       <header data-module="journal-header" className="border-b pb-5 lg:col-start-1 lg:row-start-1" style={{ borderColor: "var(--arbor-rule)" }}>
         <div className="grid min-w-0 items-end gap-5 md:grid-cols-[minmax(0,1.25fr)_minmax(220px,.75fr)]">
           <div>
+            {/* P5-LOOP c2 r1 (journal design P1): "All shelves" is the page's
+                FIRST item and carries TimelineTab's ONE stamp (open-shelf) —
+                this view is the door behind the shelves, and the way back to
+                them is its move; the capture tiles sit after the thread below lg. */}
+            <button
+              type="button"
+              data-testid="journal-all-back"
+              onClick={() => goToRoute("journal")}
+              {...primaryMoveProps}
+              className="-ms-1 inline-flex min-h-11 items-center gap-1 px-1 t-sm font-bold focus:outline-none focus-visible:ring-2"
+              style={{ color: "var(--arbor-muted)" }}
+            >
+              <Icon name="arrow_back" size={18} aria-hidden className="rtl:-scale-x-100" />
+              {t("elev.shelfJournal.back")}
+            </button>
             {/* Critic r2: TimelineTab's density toggle rides in the header on
                 #/journal (one module with the H1, not a stamp of its own). */}
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -593,7 +596,6 @@ function JournalFeed({ primaryMoveProps, densityToggle }: { primaryMoveProps?: R
                   </span>
                 </button>
                 {weekCount > 0 && <p data-testid="journal-week-line" className="t-sm" style={{ color: "var(--arbor-muted)" }}>{storyCopy}</p>}
-                <div className="md:hidden">{lastKeptDoor("journal-story-door")}</div>
               </div>
             ) : (
               <p data-testid="journal-story-line" dir="auto" className="mt-3 max-w-2xl t-base leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>{storyCopy}</p>
@@ -607,35 +609,20 @@ function JournalFeed({ primaryMoveProps, densityToggle }: { primaryMoveProps?: R
               old lavender "6 · moments and insights" tile repeated it 600 px
               away and did not say what it counted. The aside keeps only the
               door to the parent's last kept words, or the day-0 teach line. */}
-          {(lastKept || weekCount === 0) && (
+          {/* P5-LOOP c2 r1 (journal design P1): the "From the story" aside and
+              its "What happened with {name} today?" door are gone at every
+              width — they repeated the compose card's own question. The aside
+              keeps only the day-0 teach line. */}
+          {!lastKept && weekCount === 0 && (
           <div data-testid="journal-week-aside" className="hidden border-t pt-4 md:block md:border-s md:border-t-0 md:ps-5 md:pt-0" style={{ borderColor: "var(--arbor-rule-strong)" }}>
-            {lastKept ? (
-              /* B-ASKJB-NEW-1d — "Last kept": the date, the parent's own words
-                 (real row text, never generated), and one door to the compose
-                 card. No new colour, gradient or stat. */
-              <div data-testid="journal-last-kept" className="space-y-1.5">
-                <p data-testid="journal-aside-title" className="t-sm font-bold" style={{ color: "var(--arbor-muted)" }}>
-                  {t("elev.journal.lastKept.title")}
-                </p>
-                {/* The quote now leads the story line at every width; the
-                    aside keeps the date only when the line could not quote. */}
-                {!quotedLastKept && (
-                  <p className="t-sm" style={{ color: "var(--arbor-muted)" }}>
-                    {t("elev.journal.lastKept.caption", { date: lastKeptDate })}
-                  </p>
-                )}
-                {lastKeptDoor("journal-last-kept-next")}
-              </div>
-            ) : (
-              <p
-                data-testid="journal-week-zero-line"
-                className="t-sm leading-snug"
-                style={{ color: "var(--arbor-ink-soft)" }}
-                dir="auto"
-              >
-                {t("elev.journal.week.zero")}
-              </p>
-            )}
+            <p
+              data-testid="journal-week-zero-line"
+              className="t-sm leading-snug"
+              style={{ color: "var(--arbor-ink-soft)" }}
+              dir="auto"
+            >
+              {t("elev.journal.week.zero")}
+            </p>
           </div>
           )}
         </div>
@@ -646,7 +633,7 @@ function JournalFeed({ primaryMoveProps, densityToggle }: { primaryMoveProps?: R
       {activePromptKey && (
         <div
           data-testid="journal-prompt-cue"
-          className="flex items-start gap-2.5 rounded-[var(--r)] px-4 py-3 lg:col-start-1"
+          className="flex items-start gap-2.5 rounded-[var(--r)] px-4 py-3 max-lg:order-last lg:col-start-1"
           style={{ background: PASTEL.lav.soft, color: PASTEL.lav.ink }}
           aria-live="polite"
         >
@@ -660,7 +647,7 @@ function JournalFeed({ primaryMoveProps, densityToggle }: { primaryMoveProps?: R
       {/* Compose card — "Log a moment" + three modality tiles. All three trigger the
           EXISTING capture flow (BehaviorsTab); the Voice/Photo/Text split is an
           entry affordance, not a new capture path. */}
-      <section ref={composeRef} data-module="journal-compose" className="rounded-[var(--r-lg)] p-4 sm:p-5 lg:sticky lg:top-4 lg:col-start-2 lg:row-span-3 lg:row-start-1" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-xs)" }}>
+      <section ref={composeRef} data-module="journal-compose" className="rounded-[var(--r-lg)] p-4 sm:p-5 max-lg:order-last lg:sticky lg:top-4 lg:col-start-2 lg:row-span-3 lg:row-start-1" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-xs)" }}>
         <div className="mb-3 flex items-center justify-between gap-3">
           {/* P1-NEXTLEVEL critic r2 (B-NEXTLEVEL-NEW-2f): the "New moment"
               eyebrow and the "Log a moment" title go; the H2 is the question
@@ -675,7 +662,7 @@ function JournalFeed({ primaryMoveProps, densityToggle }: { primaryMoveProps?: R
             move above the fold at 375) and carry TimelineTab's contract stamp;
             Text — the in-place default — is the ONE primary fill; Voice and
             Photo are neutral. */}
-        <div className="grid grid-cols-3 gap-2" data-capture-bar {...primaryMoveProps}>
+        <div className="grid grid-cols-3 gap-2" data-capture-bar>
           {MODE_TILES.map(({ ms, key }) => (
             <button
               key={key}
