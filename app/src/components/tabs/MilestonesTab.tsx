@@ -28,7 +28,7 @@ import { ContentActionBar, ContentWhyLine } from "../ui/ContentActionBar";
 import { cardCls, Split, domainVisual, PASTEL } from "../ui/kit";
 import { authHeaders, getAiLanguage } from "../../lib/api";
 import { DOMAIN_REFERENCES } from "../../lib/milestoneReferences";
-import { noticedMilestoneCounts } from "../../lib/record/counts";
+import { milestonesNoticedSince, noticedMilestoneCounts } from "../../lib/record/counts";
 import { MILESTONE_AGE_BANDS, ageWindowMilestones, bandForAgeMonths, comparisonAgeMonths, correctedAge, explainMilestonePrompt, milestoneAgeGroupText, milestoneBandLabel, milestoneText, selectNextMilestones } from "../../lib/milestoneData";
 // UND-7 — fail-closed gate for the governed milestone example-media slot
 // (missing reviewer/rightsRef → never renders; ships with zero media entries).
@@ -629,7 +629,7 @@ export default function MilestonesTab() {
             if (isEarlier) setOpenEarlierBands((p) => ({ ...p, [band.months]: !p[band.months] }));
             else if (isLater) setOpenLaterBands((p) => ({ ...p, [band.months]: !p[band.months] }));
           };
-          const checkedInBand = band.items.filter((m) => m.checked).length;
+          const checkedInBand = milestonesNoticedSince({ milestones: band.items }, null); // B-GROWTH-35: the ONE count reader
           return (
             <div key={band.months} className="space-y-2">
               <button
