@@ -23,7 +23,8 @@
  * A multi-domain observation takes the FIRST non-body domain in registry
  * order after the sleep/food signals above. A record whose only domain is
  * `body` with no sleep/feeding signal has NO shelf (throws; the read model
- * leaves `shelf` unset) — that decision is the framer's (REJECTIONS.md).
+ * leaves `shelf` unset) — that decision is the framer's (execution/
+ * 2026-10-01--one-backlog/REJECTIONS.md, "W3A-B builder blocks (6 Oct)").
  * The pack's `sleepLogs` origin and "routines wind-down" do not exist in the
  * read model yet (lib/observations ObservationOrigin); they bind here when a
  * builder adds them.
