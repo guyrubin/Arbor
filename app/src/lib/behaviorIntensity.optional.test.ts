@@ -126,12 +126,12 @@ describe("B-DATA-09 — a log without intensity is outside every intensity reduc
       log({ behaviorType: "Transition Refusal", intensity: 5, timestamp: at(2, 10), trigger: "leaving" }),
       log({ behaviorType: "Transition Refusal", timestamp: at(3, 10), trigger: "leaving" }),
     ];
-    const input = buildPacketInput({ profile: { name: "Dylan", age: 3 }, logs, milestones: [], plans: [], memory: [] }, NOW);
+    const input = buildPacketInput({ profile: { name: "Dylan", age: 3, languages: ["en"] }, logs, milestones: [], plans: [], memory: [] }, NOW);
     expect(input.logs.map((l) => l.intensity)).toEqual([undefined, 5, undefined]);
     const pattern = buildConsultPacket(input).sections.flatMap((s) => s.items).find((i) => i.id === "pattern-0");
     expect(pattern?.textKey).toBe("elev.packet.item.patternIntense");
 
-    const plainOnly = buildPacketInput({ profile: { name: "Dylan", age: 3 }, logs: [logs[0], logs[2]], milestones: [], plans: [], memory: [] }, NOW);
+    const plainOnly = buildPacketInput({ profile: { name: "Dylan", age: 3, languages: ["en"] }, logs: [logs[0], logs[2]], milestones: [], plans: [], memory: [] }, NOW);
     const p2 = buildConsultPacket(plainOnly).sections.flatMap((s) => s.items).find((i) => i.id === "pattern-0");
     expect(p2?.textKey).toBe("elev.packet.item.pattern");
   });
