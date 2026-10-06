@@ -113,7 +113,7 @@ describe("NEXTLEVEL r1 (B-NEXTLEVEL-NEW-1i/1j) — the parent's last first leads
     expect(at).toBeGreaterThan(-1);
     expect(at).toBeLessThan(MS.indexOf('{recordCounts.noticed} {t("ms.domainOf")}'));
     expect(MS).toContain('t("elev.ms.latest.lead", { name: firstName || t("ms.watch.childFallback") })');
-    expect(MS).toContain('<bdi dir="auto">{milestoneText(latestNoticed.milestone, "title", t)}</bdi>');
+    expect(MS).toContain('<bdi dir="auto">{milestoneText(latestNoticed.milestone, "title", t, msGender)}</bdi>');
     expect(MS).toMatch(/data-testid="ms-latest-date"[^>]*background: "var\(--arbor-green-soft\)", color: "var\(--arbor-green-ink\)"/);
     const { translate } = await import("../../lib/i18n");
     for (const lang of ["en", "he"] as const) {

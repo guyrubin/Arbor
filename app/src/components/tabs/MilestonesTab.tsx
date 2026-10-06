@@ -195,6 +195,9 @@ export default function MilestonesTab() {
   // ── Corrected age (preterm) ──────────────────────────────────────────────
   // B0: prefer months-precise value from birthDate/ageMonths over the legacy
   // whole-year field so a 9-month-old isn't compared against the 0-month band.
+  // P1-NEXTLEVEL critic r2 (Law 8): every catalogue string on this tab resolves
+  // its Hebrew slash forms from the profile gender, as #/development does.
+  const msGender = { gender: childProfile.gender };
   const chronoMonths = ageMonthsOf(childProfile);
   const gestationalWeeks = childProfile.preterm?.gestationalWeeks;
   const corrected = correctedAge(chronoMonths, gestationalWeeks);
@@ -332,12 +335,12 @@ export default function MilestonesTab() {
           {/* B-GROWTH-11 — catalogue text resolves by stable id in the page
               language (the stored doc carries the English seed); a parent's
               own milestone keeps the parent's words. */}
-          <span className="font-bold block" style={{ color: item.checked ? "var(--arbor-green-ink)" : "var(--arbor-ink)" }}>{milestoneText(item, "title", t)}</span>
-          <span className="text-[12px] block leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{milestoneText(item, "desc", t)}</span>
+          <span className="font-bold block" style={{ color: item.checked ? "var(--arbor-green-ink)" : "var(--arbor-ink)" }}>{milestoneText(item, "title", t, msGender)}</span>
+          <span className="text-[12px] block leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{milestoneText(item, "desc", t, msGender)}</span>
           {item.skillLooksLike && (
             <span className="text-[12px] block leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
               <span className="font-bold" style={{ color: "var(--arbor-green-ink)" }}>{t("ms.looksLike")} </span>
-              {milestoneText(item, "looks", t)}
+              {milestoneText(item, "looks", t, msGender)}
             </span>
           )}
           {/* UND-7 — governed example-media slot (AR-CAP-08/AR-CONT-07). FAIL-CLOSED:
@@ -595,7 +598,7 @@ export default function MilestonesTab() {
                     trustLink
                     className="mt-2.5"
                     actions={[
-                      { verb: "save", label: t("elev.waveR.ms.explain.keep"), icon: "bookmark_add", onClick: () => keepBehaviorInsight(`${milestoneText(item, "title", t)} — ${explainAnswerText(explanations[item.id], t("explain.tryToday"))}`) },
+                      { verb: "save", label: t("elev.waveR.ms.explain.keep"), icon: "bookmark_add", onClick: () => keepBehaviorInsight(`${milestoneText(item, "title", t, msGender)} — ${explainAnswerText(explanations[item.id], t("explain.tryToday"))}`) },
                     ]}
                   />
                 </>
@@ -706,7 +709,7 @@ export default function MilestonesTab() {
   const askAboutMilestone = (item: Milestone) =>
     seedCoach({
       prompt: t("seed.milestone.ask", {
-        title: milestoneText(item, "title", t),
+        title: milestoneText(item, "title", t, msGender),
         name: askSeedName,
         band: typeof item.ageMonths === "number" ? ageLabelForMonths(item.ageMonths, t) : milestoneAgeGroupText(item, t),
       }),
@@ -788,7 +791,7 @@ export default function MilestonesTab() {
                       {t("elev.ms.latest.lead", { name: firstName || t("ms.watch.childFallback") })}
                     </p>
                     <p className="mt-1 font-semibold leading-snug" style={{ fontFamily: "var(--font-display)", fontSize: "var(--t-xl)", color: "var(--arbor-ink)" }}>
-                      <bdi dir="auto">{milestoneText(latestNoticed.milestone, "title", t)}</bdi>
+                      <bdi dir="auto">{milestoneText(latestNoticed.milestone, "title", t, msGender)}</bdi>
                     </p>
                     <p className="mt-2 flex flex-wrap items-center gap-1.5 t-sm" style={{ color: "var(--arbor-muted)" }}>
                       {t("elev.ms.latest.when")}
@@ -820,7 +823,7 @@ export default function MilestonesTab() {
                   <ul className="mt-3 space-y-2.5">
                     {nextOpen.map((m, i) => (
                       <li key={m.id} className="flex items-center justify-between gap-3">
-                        <span className="min-w-0 text-sm font-semibold leading-snug" style={{ color: "var(--arbor-ink)" }}>{milestoneText(m, "title", t)}</span>
+                        <span className="min-w-0 text-sm font-semibold leading-snug" style={{ color: "var(--arbor-ink)" }}>{milestoneText(m, "title", t, msGender)}</span>
                         <button
                           type="button"
                           data-testid="ms-seen-any-yes"
@@ -946,7 +949,7 @@ export default function MilestonesTab() {
                         {(recordCounts.byDomain[dom.id] ?? 0) > 0 || !nextInDomain(dom.id) ? (
                           <span className="text-[11px] font-extrabold" style={{ color: "var(--arbor-muted)" }}>{recordCounts.byDomain[dom.id] ?? 0} {t("ms.domainOf")}</span>
                         ) : (
-                          <span data-testid="ms-domain-next" className="min-w-0 max-w-[55%] truncate text-[11px] font-semibold" style={{ color: "var(--arbor-muted)" }}>{t("elev.ms.domainNext", { title: milestoneText(nextInDomain(dom.id)!, "title", t) })}</span>
+                          <span data-testid="ms-domain-next" className="min-w-0 max-w-[55%] truncate text-[11px] font-semibold" style={{ color: "var(--arbor-muted)" }}>{t("elev.ms.domainNext", { title: milestoneText(nextInDomain(dom.id)!, "title", t, msGender) })}</span>
                         )}
                         <ChevEnd className="w-4 h-4 flex-shrink-0" style={{ color: "var(--arbor-muted)" }} />
                       </div>
@@ -1088,7 +1091,7 @@ export default function MilestonesTab() {
       <FirstKeepsakeSheet
         open={Boolean(openKeepsake)}
         milestoneId={openKeepsake?.id ?? ""}
-        milestoneTitle={openKeepsake ? milestoneText(openKeepsake, "title", t) : ""}
+        milestoneTitle={openKeepsake ? milestoneText(openKeepsake, "title", t, msGender) : ""}
         childId={childProfile.id}
         childName={firstName}
         keepsake={openKeepsake ? keepsakes[openKeepsake.id] ?? null : null}

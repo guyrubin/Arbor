@@ -66,3 +66,20 @@ describe("resolveHebrewSlash", () => {
     expect(milestoneText(m, "title", t, { gender: "boy" })).toBe("נרגע אחרי שאתם הולכים");
   });
 });
+
+describe("P1-NEXTLEVEL critic r2 (milestones · G0) — every Growth screen passes the profile gender", () => {
+  // A milestoneText( call with no 4th argument skips resolveHebrewSlash and
+  // paints 'נרגע/ת' on Hebrew screens. #/development was fixed in fcd4a2df;
+  // #/milestones rendered the slash forms in the hero and all three rows.
+  for (const file of ["MilestonesTab.tsx", "DevelopmentTab.tsx"]) {
+    it(`${file}: no milestoneText( call lacks the gender opts`, async () => {
+      const fs = await import("node:fs");
+      const path = await import("node:path");
+      const src = fs.readFileSync(path.resolve(__dirname, "../components/tabs", file), "utf8");
+      const calls = src.match(/milestoneText\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\)/g) ?? [];
+      expect(calls.length).toBeGreaterThan(0);
+      const bare = calls.filter((c) => c.split(",").length < 4);
+      expect(bare).toEqual([]);
+    });
+  }
+});
