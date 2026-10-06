@@ -58,6 +58,8 @@ import WeekAnchorCard, { WeekAnchorLine } from "../overview/WeekAnchorCard";
 import { recapWeekId, useWeeklyRecap } from "../../hooks/useWeeklyRecap";
 import { track } from "../../lib/analytics";
 import { ageYearsOf } from "../../lib/age/forChild";
+import { storyFitsChild } from "../../lib/age/playGate";
+import { HERO_STORIES } from "../../lib/heroJourneys";
 import { selectStarter, type TodayStarter } from "../../lib/today/starters";
 import TodayStarterCard from "../overview/TodayStarterCard";
 import { useChildCollection } from "../../hooks/useChildCollection";
@@ -496,7 +498,7 @@ export default function OverviewTab() {
   );
   const actOnStarter = (s: TodayStarter) => {
     track("today_starter_act", { kind: s.kind });
-    if (s.kind === "bedtime") setActiveTab("routines");
+    if (s.kind === "bedtime") setActiveTab("plans"); // #/routines is retired to Plans' templates (B-GROWTH-25)
     else if (s.kind === "checkup") setActiveTab("appointments");
     else startCapture("text");
   };
@@ -830,6 +832,9 @@ export default function OverviewTab() {
               childName={firstName}
               onRead={() => setActiveTab("bedtime-stories")}
               onRoutine={() => setActiveTab("plans")}
+              /* B-PLAY-24: a story only when the shelf has one that fits her band. */
+              storyFits={HERO_STORIES.some((s) => storyFitsChild(s, childProfile))}
+              onWrite={() => startCapture("text")}
             />
           ) : todayChoice.kind === "weekOpen" ? (
             <WeekOpenAnchorCard

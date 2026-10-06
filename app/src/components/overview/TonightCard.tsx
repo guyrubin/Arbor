@@ -25,15 +25,23 @@ export default function TonightCard({
   childName,
   onRead,
   onRoutine,
+  storyFits = true,
+  onWrite,
 }: {
   momentsToday: number;
   childName: string;
   onRead: () => void;
   onRoutine: () => void;
+  /** B-PLAY-24: false when no story on the shelf fits the child's band (a
+   *  toddler today): the card offers the parent's question only — no Read. */
+  storyFits?: boolean;
+  /** B-PLAY-24: the question's action — keep tonight's line (capture). */
+  onWrite?: () => void;
 }) {
   const { t, uiLang } = useLanguage();
-  const headline =
-    momentsToday === 0
+  const headline = !storyFits
+    ? t("elev.ages.tonight.question", { name: childName })
+    : momentsToday === 0
       ? t("elev.tonight.headline.none", { name: childName })
       : momentsToday === 1
         ? t("elev.tonight.headline.one")
@@ -50,25 +58,35 @@ export default function TonightCard({
             <HeroAvatar size={40} mood="calm" animate={false} decorative />
           </div>
           <div className="min-w-0 flex-1">
-            <span className="text-[10px] font-extrabold uppercase tracking-[0.13em]" style={{ color: "var(--arbor-green-ink)" }}>{t("elev.tonight.eyebrow")}</span>
+            <span className="text-[12px] font-semibold" style={{ color: "var(--arbor-muted)" }}>{t("elev.tonight.eyebrow")}</span>
             <h2 className="mt-1.5 text-[21px] font-extrabold leading-[1.12] sm:text-[23px]" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>
               {headline}
             </h2>
+            {!storyFits && (
+              <p data-testid="today-tonight-question-sub" className="mt-1.5 text-[14px] leading-snug" style={{ color: "var(--arbor-ink)" }}>
+                {t("elev.ages.tonight.sub")}
+              </p>
+            )}
           </div>
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
             type="button"
-            data-testid="today-tonight-read"
+            data-testid={storyFits ? "today-tonight-read" : "today-tonight-write"}
             onClick={() => {
+              if (!storyFits) {
+                track("today_tonight_write", { moments: momentsToday });
+                onWrite?.();
+                return;
+              }
               track("today_tonight_read", { moments: momentsToday });
               onRead();
             }}
             className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 py-2.5 text-[13px] font-extrabold transition active:scale-[0.98]"
             style={{ background: "var(--arbor-gradient-primary)", color: "var(--arbor-on-accent)" }}
           >
-            <Icon name="auto_stories" size={17} />
-            {t("elev.tonight.read")}
+            <Icon name={storyFits ? "auto_stories" : "edit_note"} size={17} />
+            {storyFits ? t("elev.tonight.read") : t("elev.ages.tonight.write")}
           </button>
           <button
             type="button"

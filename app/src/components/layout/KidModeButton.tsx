@@ -2,6 +2,8 @@ import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
 import { useKidModeEntry } from "../kidmode/useKidModeEntry";
 import { readParentPin } from "../kidmode/parentGate";
+import { useArborOptional } from "../../context/ArborContext";
+import { kidModeOpenFor } from "../../lib/age/playGate";
 
 /**
  * The single affordance to hand the device to the child (enter Kid Mode).
@@ -24,6 +26,11 @@ export default function KidModeButton({ compact = false, onBeforeOpen }: { compa
   // E10: the parent-lock safety line — the honest one: a grown-up gate
   // (hold → question), a lock only once a PIN is set (practice critic r2).
   const lockedLine = t(readParentPin() ? "elev.kidmode.locked" : "elev.kidmode.gated");
+
+  // B-PLAY-24: under three the door is hidden, not removed (Practice says
+  // "From 3, {name} can play on her own"). No profile in scope = shown as before.
+  const child = useArborOptional()?.childProfile;
+  if (child && !kidModeOpenFor(child)) return <>{step}</>;
 
   if (compact) {
     return (

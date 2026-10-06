@@ -13,6 +13,8 @@ import type { ActiveTab } from "../../lib/routes";
 import type { PASTEL } from "../../lib/tokens";
 import type { DomainId } from "../../lib/domains/registry";
 import { kidWorldByWorldId, type KidWorldAccent } from "../kidmode/kidWorlds";
+import { offersForChild } from "../../lib/age/playGate";
+import type { AgedChild } from "../../lib/age/forChild";
 
 /** The slice of PracticeData a tile count reads. */
 export interface StudioCountSource {
@@ -49,6 +51,10 @@ export interface StudioWorld {
    *  (primary first). Parent-side read only — the kid register never shows a
    *  domain name. Consult's "At home while you wait" matches on it. */
   domains: readonly DomainId[];
+  /** B-PLAY-24: the canonical bands the world is made for — READ from the
+   *  Kids sessions' kid world registry (never re-tagged here). Absent = no
+   *  kid seat / untagged: hidden under 36 months (lib/age/playGate). */
+  ageBands?: readonly string[];
 }
 
 const READING_KINDS = new Set<string>(["phonics", "sight-word", "letter-trace"]);
@@ -67,10 +73,10 @@ export const PASTEL_OF_ACCENT: Record<KidWorldAccent, keyof typeof PASTEL> = {
 /** B-KID-68: a kid world's name (the parent door's key for the ONE kid name),
  *  its counted unit and its tone come from the kid world registry — never a
  *  second map. */
-function kidSeat(worldId: string): { kidNameKey: string; unit: StudioCountUnit; tone: keyof typeof PASTEL } {
+function kidSeat(worldId: string): { kidNameKey: string; unit: StudioCountUnit; tone: keyof typeof PASTEL; ageBands: readonly string[] } {
   const w = kidWorldByWorldId(worldId);
   if (!w) throw new Error(`no kid world ${worldId}`);
-  return { kidNameKey: w.doorNameKey, unit: w.unit, tone: PASTEL_OF_ACCENT[w.accent] };
+  return { kidNameKey: w.doorNameKey, unit: w.unit, tone: PASTEL_OF_ACCENT[w.accent], ageBands: w.ageBands };
 }
 
 export const STUDIO_WORLDS: StudioWorld[] = [
@@ -113,6 +119,21 @@ export const orderedStudioWorlds = (lang: "en" | "he"): StudioWorld[] => {
     ...rest.filter((w) => !worksInLanguage(w, lang)),
   ];
 };
+
+/**
+ * B-PLAY-24 — the page's world list for THIS child: orderedStudioWorlds(lang)
+ * filtered by her band (lib/age/playGate, reading the Kids sessions' tags),
+ * and the ONE start-world stamp: stampWorldId(lang) when that world fits,
+ * else the first fitting world that works in the language and opens in Kid
+ * Mode — always tile 1. Under three nothing tagged fits: no tiles, no stamp
+ * (the page stamps its first "together" card instead).
+ */
+export function studioWorldsForChild(lang: "en" | "he", child: AgedChild | null | undefined, now?: Date): { worlds: StudioWorld[]; stampId: string | undefined } {
+  const fitting = offersForChild(orderedStudioWorlds(lang), child, now);
+  const preferred = stampWorldId(lang);
+  const stampId = (fitting.find((w) => w.id === preferred) ?? fitting.find((w) => worksInLanguage(w, lang) && opensInKidMode(w)) ?? fitting[0])?.id;
+  return { worlds: [...fitting.filter((w) => w.id === stampId), ...fitting.filter((w) => w.id !== stampId)], stampId };
+}
 
 /** The chip's i18n key for `n` records of a world (`.one` for exactly 1). */
 export const studioCountKey = (unit: StudioCountUnit, n: number): string =>

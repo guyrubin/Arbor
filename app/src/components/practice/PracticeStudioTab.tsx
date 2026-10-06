@@ -20,7 +20,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useKidModeEntry } from "../kidmode/useKidModeEntry";
 import { markPinNudgeShown, readParentPin, shouldNudgeForPin } from "../kidmode/parentGate";
 import { usePracticeData } from "../../practice/usePracticeData";
-import { STUDIO_WORLDS, opensInKidMode, orderedStudioWorlds, stampWorldId, studioCountKey, studioCountsSince, worksInLanguage, type StudioWorld } from "./studioWorlds";
+import { opensInKidMode, studioCountKey, studioCountsSince, studioWorldsForChild, worksInLanguage, type StudioWorld } from "./studioWorlds";
 import { track } from "../../lib/analytics";
 import { requestOpenSettings } from "../layout/settingsBus";
 import { useChildCollection } from "../../hooks/useChildCollection";
@@ -29,6 +29,8 @@ import { SINCE_LAST_PLAY_FALLBACK_MS, doorSinceSentence, doorWindowLabel, kidAct
 import { runTitle } from "../../lib/heroJourneys";
 import { lastKidSessionStartedAt } from "../../lib/kidModeGate";
 import type { HeroJourneyRun } from "../../types";
+import { kidModeOpenFor, TOGETHER_CARDS } from "../../lib/age/playGate";
+import { genderedKey } from "../../lib/today/fromRecord";
 
 // B-PLAY-02: the world list and each tile's count + unit live in the pure
 // components/practice/studioWorlds module (fixture-testable without React).
@@ -123,8 +125,19 @@ export default function PracticeStudioTab() {
   // language AND opens a world the child plays, and that world is tile 1 in
   // every language (orderedStudioWorlds) — the move sits at the same height
   // in EN and HE, never under the bottom nav.
-  const stampId = stampWorldId(lang);
-  const worlds = orderedStudioWorlds(lang);
+  // B-PLAY-24: only the worlds whose band tags fit the child (lib/age/playGate,
+  // reading the Kids sessions' tags). Under three the page leads with three
+  // parent-led "together" cards and the Kid Mode door stays hidden. The
+  // start-world stamp sits on the first FITTING world that works in the UI
+  // language and opens in Kid Mode (stampWorldId when it fits), tile 1.
+  const { worlds, stampId } = studioWorldsForChild(lang, childProfile);
+  const kidModeOpen = kidModeOpenFor(childProfile);
+  const [togetherKept, setTogetherKept] = React.useState<string[]>([]);
+  const keepTogether = (id: string) => {
+    if (togetherKept.includes(id)) return;
+    try { track("practice_together_did", { card: id }); } catch { /* noop */ }
+    if (addMoment(t(`elev.ages.together.${id}.moment`))) setTogetherKept((k) => [...k, id]);
+  };
 
   return (
     <div dir={isRtl ? "rtl" : "ltr"} className="space-y-5 max-w-[980px]">
@@ -138,6 +151,14 @@ export default function PracticeStudioTab() {
         </p>
       </div>
 
+      {!kidModeOpen && (
+        /* B-PLAY-24: under three the Kid Mode door is hidden (not removed) —
+           one quiet line says when it opens. */
+        <p data-testid="practice-kidmode-from-three" className="t-sm" dir="auto" style={{ color: "var(--arbor-muted)" }}>
+          {t(genderedKey("elev.ages.practice.fromThree", childProfile.gender), { name: firstName || t("learn.yourChild") })}
+        </p>
+      )}
+      {kidModeOpen && (<>
       {/* Kid Mode — the safe play space. W2-SHELLPLAY critic r1: a flat
           paper-deep door whose CTA is SECONDARY (outline): the page's declared
           move is start-world, stamped on the first world tile below. At phone
@@ -215,6 +236,7 @@ export default function PracticeStudioTab() {
           {t("practice.studio.kidmode.cta")}
         </button>
       </section>
+      </>)}
 
       {/* B-PLAY-06: the PIN nudge is a 44 px button that opens Settings with
           the PIN row in view (was a static "… · Settings" line). Removed again
@@ -238,8 +260,45 @@ export default function PracticeStudioTab() {
         </button>
       )}
 
-      {/* World grid */}
-      <section data-module="practice-worlds" aria-label={t("practice.studio.worlds")}>
+      {/* The worlds module (#/practice moduleBudget 2: the door + this). Under
+          three it holds the three parent-led "together" cards instead of game
+          tiles (B-PLAY-24); from three, the band-fitting world grid. */}
+      <section data-module="practice-worlds" aria-label={kidModeOpen ? t("practice.studio.worlds") : t("elev.ages.together.title")}>
+      {!kidModeOpen ? (
+        /* B-PLAY-24: the under-three page — three parent-led cards. The words
+           to say are the largest text on each card; one action writes a moment. */
+        <>
+          <h2 className="t-base font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.ages.together.title")}</h2>
+          <p className="t-sm mt-1" style={{ color: "var(--arbor-muted)" }}>{t("elev.ages.together.sub", { name: firstName || t("learn.yourChild") })}</p>
+          <div className="mt-3 grid sm:grid-cols-3 gap-4">
+            {TOGETHER_CARDS.map((id, i) => {
+              const kept = togetherKept.includes(id);
+              return (
+                <article key={id} data-together-card={id} className="rounded-[20px] p-4 flex flex-col gap-2" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}>
+                  <h3 className="t-sm font-semibold" style={{ color: "var(--arbor-ink)" }}>{t(`elev.ages.together.${id}.title`)}</h3>
+                  <p data-together-say className="leading-snug" dir="auto" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)", fontSize: "var(--t-xl)" }}>
+                    “{t(`elev.ages.together.${id}.say`)}”
+                  </p>
+                  <p className="t-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t(`elev.ages.together.${id}.do`)}</p>
+                  <button
+                    type="button"
+                    /* the page's ONE start-world stamp under three (the tiles carry none then) */
+                    {...(i === 0 ? { "data-primary-move": "start-world" } : {})}
+                    onClick={() => keepTogether(id)}
+                    disabled={kept}
+                    className="mt-auto self-start inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-4 t-sm font-semibold transition active:scale-[0.98]"
+                    style={{ color: "var(--arbor-ink)", background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }}
+                  >
+                    <Icon name={kept ? "check" : "favorite"} size={16} />
+                    {kept ? t("elev.ages.together.kept") : t("elev.ages.together.did")}
+                  </button>
+                </article>
+              );
+            })}
+          </div>
+        </>
+      ) : (
+      <>
         <div className="flex items-baseline justify-between mb-2.5">
           <h2 className="t-base font-extrabold" style={{ color: "var(--arbor-ink)" }}>
             {t("practice.studio.worlds")}
@@ -248,7 +307,7 @@ export default function PracticeStudioTab() {
           <span data-testid="practice-count-window" className="t-xs font-bold" style={{ color: "var(--arbor-muted)" }}>
             {counts.total > 0
               ? t("elev.practice.studio.window", { when: windowLabel })
-              : t("practice.studio.count", { n: STUDIO_WORLDS.length })}
+              : t("practice.studio.count", { n: worlds.length })}
           </span>
         </div>
         {/* The declared primaryMove for #/practice ("start-world"). W2-SHELLPLAY
@@ -319,6 +378,8 @@ export default function PracticeStudioTab() {
             );
           })}
         </div>
+      </>
+      )}
       </section>
 
       {/* OBJ-PRACTICE-01: a three-pill "related parent spines" row (Language,

@@ -31,7 +31,7 @@ import { contractFor } from "./surfaceContract";
 import { en as doorsEn, he as doorsHe } from "./i18nElevation/practiceDoors";
 import { elevationEn, elevationHe } from "./i18nElevation";
 import { translate } from "./i18n";
-import { STUDIO_WORLDS, studioCountKey, type StudioCountSource } from "../components/practice/studioWorlds";
+import { STUDIO_WORLDS, studioCountKey, type StudioCountSource, studioWorldsForChild } from "../components/practice/studioWorlds";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.resolve(here, "..");
@@ -469,8 +469,16 @@ describe("B-PLAY-05 + W2-SHELLPLAY critic r1 — ONE sentence on the Practice do
     expect(orderedStudioWorlds("en").map((w) => w.id)).toEqual(STUDIO_WORLDS.map((w) => w.id));
     expect(orderedStudioWorlds("he").at(-1)!.id).toBe("speech");
     // the page renders THAT order and stamps from THAT helper
-    expect(studio).toContain("const stampId = stampWorldId(lang);");
-    expect(studio).toContain("const worlds = orderedStudioWorlds(lang);");
+    // B-PLAY-24: the page reads ONE seam that filters THAT order by the child's
+    // band and stamps from THAT helper; for a child every world fits (5 y), the
+    // list and the stamp are exactly orderedStudioWorlds / stampWorldId.
+    expect(studio).toContain("const { worlds, stampId } = studioWorldsForChild(lang, childProfile);");
+    for (const lang of ["en", "he"] as const) {
+      const five = { age: 5, ageMonths: 62, ageMonthsAsOf: new Date().toISOString().slice(0, 10) };
+      const seam = studioWorldsForChild(lang, five);
+      expect(seam.worlds.map((w) => w.id), lang).toEqual(orderedStudioWorlds(lang).map((w) => w.id));
+      expect(seam.stampId, lang).toBe(stampWorldId(lang));
+    }
     expect(stripComments(studio)).toContain("{worlds.map((world, i) => {");
     expect(stripComments(studio)).not.toContain("{STUDIO_WORLDS.map((world, i) => {");
     // NEGATIVE CONTROL: the r3 rule (first world that works in HE) stamped the parent-tab tile 2
