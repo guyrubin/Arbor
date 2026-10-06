@@ -122,7 +122,8 @@ function brandBand(ctx: CanvasRenderingContext2D) {
   ctx.fillText("Made with Arbor", W / 2, H - 86);
   ctx.fillStyle = "#5f6b75";
   ctx.font = "600 32px system-ui, sans-serif";
-  ctx.fillText("arbor.app", W / 2, H - 44);
+  // B-SHELL-29: the live domain (was "arbor.app", not ours).
+  ctx.fillText("arborparentingapp.com", W / 2, H - 44);
 }
 
 async function finalize(canvas: HTMLCanvasElement): Promise<RenderedCard> {

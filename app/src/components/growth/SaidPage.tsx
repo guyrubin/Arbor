@@ -10,7 +10,8 @@ import { languageName } from "../../lib/languageName";
 import { buildFirstWordsLedger } from "../../lib/firstWords";
 import { quotesFromDocs, type KeptQuote } from "../../lib/loop/tonight";
 import { openPrintableReport, type ReportDoc } from "../../lib/reportExport";
-import { buildLinesText, shareWordsText } from "../../lib/share";
+import { buildLinesText } from "../../lib/share";
+import { SendButton } from "../share/SendSheet";
 import { genderedKey } from "../../lib/today/fromRecord";
 import type { KeepsakeDoc } from "../../lib/firstsKeepsake";
 import type { LangObservation } from "../../growth/vocabAgg";
@@ -29,7 +30,7 @@ import { quoteLanguages } from "./ThingsSaid";
 
    Two modules (the sub-page budget): the sheet, and its two actions —
    "Print" (the existing print shell, lib/reportExport) and "Send to…" (the
-   text-only path, lib/share: the quotes as lines + one closing line). No
+   ONE send sheet, B-SHELL-29: the quotes as lines + one closing line). No
    PNG, no referral code, no link, no count.
    ════════════════════════════════════════════════════════════════════════════ */
 
@@ -101,7 +102,6 @@ export default function SaidPage() {
   const shownMonth = month && saidMonths(quotes).includes(month) ? month : pickMonth(quotes, askedMonth);
   const monthQuotes = useMemo(() => quotesOfMonth(quotes, shownMonth), [quotes, shownMonth]);
   const poster = useMemo(() => buildFirstWordsLedger(obs.items, 24).rows, [obs.items]);
-  const [sent, setSent] = useState<"copied" | "shared" | null>(null);
 
   const title = underThree ? t("elev.words.page.posterTitle", { name: first }) : t(gk("elev.words.said.title"), { name: first });
   const closing = t("elev.words.page.closing", { parent: parentFirst, name: first });
@@ -110,10 +110,6 @@ export default function SaidPage() {
     : monthQuotes;
 
   const print = () => void openPrintableReport(saidPrintDoc(lines, { lang, title, subtitle: `${first}, ${age}`, month: underThree ? null : shownMonth }), first, lang);
-  const send = async () => {
-    const r = await shareWordsText(saidSendText(lines, { lang, closing }));
-    setSent(r === "copied" || r === "shared" ? r : null);
-  };
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-[720px] space-y-5" data-testid="said-page">
@@ -181,16 +177,15 @@ export default function SaidPage() {
       </article>
 
       <div data-module="said-actions" className="flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          data-testid="said-send"
-          onClick={() => void send()}
+        {/* B-SHELL-29: "Send to…" opens the ONE send sheet (editable text). */}
+        <SendButton
+          testId="said-send"
+          variant="solid"
           disabled={lines.length === 0}
-          className="inline-flex min-h-[44px] items-center rounded-xl px-5 text-[15px] font-semibold disabled:opacity-60"
-          style={{ background: "var(--arbor-blue)", color: "var(--arbor-on-accent)" }}
-        >
-          {t("elev.words.page.send")}
-        </button>
+          artifact="growth_card"
+          surface="said_page"
+          getText={() => saidSendText(lines, { lang, closing })}
+        />
         <button
           type="button"
           data-testid="said-print"
@@ -201,9 +196,6 @@ export default function SaidPage() {
         >
           {t("elev.words.page.print")}
         </button>
-        {sent === "copied" && (
-          <p role="status" className="text-[13px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.words.page.copied")}</p>
-        )}
       </div>
     </div>
   );

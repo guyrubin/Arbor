@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import { Icon } from "../ui/Icon";
 import { renderSayThis, type HardMomentCard } from "../../content/hardMomentCards";
 import { locText } from "../../content/hardMomentSurface";
-import { buildWordsText, shareWordsText } from "../../lib/share";
+import { buildWordsText } from "../../lib/share";
+import { SendSheet } from "../share/SendSheet";
 import { recordDate } from "../overview/FromRecordCard";
 
 type T = (key: string, vars?: Record<string, string | number>) => string;
@@ -60,8 +61,8 @@ export function hardMomentWordsText(card: HardMomentCard, opts: {
 }
 
 /**
- * "Send these words to…" — the OS share sheet with plain text (no link, no
- * referral code, no image), else copy. The child's first name is included
+ * "Send these words to…" — B-SHELL-29: opens the ONE send sheet (editable
+ * plain text; no link, no referral code, no image; share sheet else copy). The child's first name is included
  * only when the parent ticks it (default off).
  */
 export function SendWordsButton({ card, locale, parentName, childName, t }: {
@@ -72,18 +73,19 @@ export function SendWordsButton({ card, locale, parentName, childName, t }: {
   t: T;
 }) {
   const [withName, setWithName] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const send = async () => {
-    const text = hardMomentWordsText(card, { locale, parentName, childName: withName ? childName : undefined, t });
-    const result = await shareWordsText(text);
-    setCopied(result === "copied");
+  // B-SHELL-29: the tap opens the ONE send sheet with these words, editable.
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const send = () => {
+    setText(hardMomentWordsText(card, { locale, parentName, childName: withName ? childName : undefined, t }));
+    setOpen(true);
   };
   return (
     <div className="min-w-0 space-y-1">
       <button
         type="button"
         data-testid="hm-send-words"
-        onClick={() => { void send(); }}
+        onClick={send}
         className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition"
         style={{ color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule-strong)", background: "var(--arbor-paper-elevated)" }}
       >
@@ -93,7 +95,7 @@ export function SendWordsButton({ card, locale, parentName, childName, t }: {
         <input type="checkbox" data-testid="hm-send-name" checked={withName} onChange={(e) => setWithName(e.target.checked)} className="h-4 w-4" />
         <bdi>{t("hm.send.includeName", { name: childName })}</bdi>
       </label>
-      {copied && <p role="status" className="px-1 text-[13px]" style={{ color: "var(--arbor-muted)" }}>{t("hm.send.copied")}</p>}
+      {open && <SendSheet open={open} onClose={() => setOpen(false)} text={text} artifact="answer_card" surface="hard_moment_words" />}
     </div>
   );
 }

@@ -1,36 +1,41 @@
 /**
- * ShareButton (mk-p0-3) — the calm/premium parent-register primitive that drives
- * the 1-tap branded share for every loop artifact. Renders the card on-device,
- * opens the native/web share sheet (download fallback), and fires the loop
- * events — all via lib/share.ts. NOT a playkit component.
+ * ShareButton (mk-p0-3 → B-SHELL-29) — the parent-register "Send to…" for
+ * every loop artifact. Since B-SHELL-29 it opens the ONE send sheet
+ * (components/share/SendSheet) with the object's words as editable plain
+ * text and one closing line — child content leaves the parent's phone ONLY
+ * as text, to one person: no rendered PNG, no referral code, no link. The
+ * call-site contract is unchanged (artifact · surface · getCardOpts ·
+ * captionKey · label), so every mount converted at once; `getCardOpts`
+ * supplies the words at tap time. lib/shareCard stays for the kid register
+ * and the invite card only (share.noChildImages.test pins it).
  *
- * States: default · loading ("Preparing…", spinner after 150ms, aria-busy) ·
- * empty (hidden when there's nothing to share) · error (inline, aria-live).
- * Cancel of the OS sheet is silent. a11y: real <button>, descriptive aria-label,
- * focus-visible ring; motion (scale + spinner) is auto-gated by the global
- * reduced-motion guard in index.css.
+ * a11y: real <button>, descriptive aria-label, 44 px, focus-visible ring.
  */
-import React, { useEffect, useRef, useState } from "react";
-import { Share2, RefreshCw } from "lucide-react";
+import React, { useState } from "react";
+import { Share2 } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
-import { shareCard } from "../../lib/share";
+import { useAuth } from "../../context/AuthContext";
 import { resolveCaptionKey } from "../../lib/shareCaption";
-import { api } from "../../lib/api";
-import { loadAttribution } from "../../lib/attribution";
+import { textFromCardOpts } from "../../lib/share";
 import type { LoopArtifact } from "../../lib/loopEvents";
 import type { ShareCardOpts } from "../../lib/shareCard";
+import { SendSheet, sendSheetText } from "../share/SendSheet";
 
-let cachedRefCode: string | null | undefined; // module cache: fetch the code at most once
-
-async function resolveRefCode(): Promise<string | undefined> {
-  if (cachedRefCode !== undefined) return cachedRefCode ?? undefined;
-  try {
-    const info = await api.referralCode();
-    cachedRefCode = info.code;
-  } catch {
-    cachedRefCode = null; // don't block the share; ship UTM-only
-  }
-  return cachedRefCode ?? undefined;
+/** Pure: the text a ShareButton prefills — the card's words (else its caption,
+ *  link-free), then the closing line. */
+export function shareButtonText(
+  opts: ShareCardOpts,
+  args: { caption: string; parent: string; childName?: string; t: (k: string, v?: Record<string, string | number>) => string },
+): string {
+  const name = (opts.name || args.childName || "").split(" ")[0];
+  const words = textFromCardOpts(opts);
+  const lines = words.length
+    ? words
+    : [args.t(args.caption, { name, url: "" }).replace(/https?:\/\/\S+/g, "").replace(/\s+([.,!?])/g, "$1").trim()];
+  const closing = name
+    ? args.t("elev.words.page.closing", { parent: args.parent, name })
+    : args.t("elev.words.send.closingNoName", { parent: args.parent });
+  return sendSheetText(lines, closing);
 }
 
 export function ShareButton({
@@ -44,63 +49,26 @@ export function ShareButton({
 }: {
   artifact: LoopArtifact;
   surface: string;
-  /** Lazily supplies the card data at tap time (avoids rendering work on mount). */
+  /** Lazily supplies the object's words at tap time. */
   getCardOpts: () => ShareCardOpts;
-  /** i18n caption key; defaults to share.caption.<artifact-ish>. */
+  /** i18n caption key; the fallback line when the object has no words of its own. */
   captionKey?: string;
   label?: string;
   variant?: "solid" | "ghost";
-  /** Child name for the aria-label ("Share Maya's hero card"). */
+  /** Child name for the aria-label and the closing line. */
   childName?: string;
 }) {
   const { t } = useLanguage();
-  const [busy, setBusy] = useState(false);
-  const [showSpinner, setShowSpinner] = useState(false);
-  const [error, setError] = useState(false);
-  const [announce, setAnnounce] = useState("");
-  const spinTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const mounted = useRef(true);
-
-  useEffect(() => () => { mounted.current = false; if (spinTimer.current) clearTimeout(spinTimer.current); }, []);
-
-  const defaultLabel = label ?? t(`share.cta.${ctaKey(artifact)}`);
-  // ENG-16: the caption is resolved from (artifact, surface), not the artifact
-  // alone. A growth_card shared off a single completed activity used to fall
-  // back to "{name}'s progress this month" — a month-of-progress CLAIM on one
-  // ten-minute play. lib/shareCaption owns the rule and is tested there.
+  const { user } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const defaultLabel = label ?? t("elev.words.page.send");
   const caption = resolveCaptionKey({ artifact, surface, captionKey });
+  const parent = (user?.displayName || t("nav.parent")).split(" ")[0];
 
-  const onShare = async () => {
-    if (busy) return;
-    setError(false);
-    setAnnounce("");
-    setBusy(true);
-    // Show the spinner only after 150ms to avoid flicker on fast renders.
-    spinTimer.current = setTimeout(() => { if (mounted.current) setShowSpinner(true); }, 150);
-
-    const opts = getCardOpts();
-    const refCode = await resolveRefCode();
-    const market = loadAttribution()?.market;
-    const res = await shareCard({
-      artifact,
-      surface,
-      opts,
-      captionTemplate: t(caption), // raw "{name}…{url}" — share.ts fills both
-      refCode,
-      market,
-    });
-
-    if (spinTimer.current) clearTimeout(spinTimer.current);
-    if (!mounted.current) return;
-    setBusy(false);
-    setShowSpinner(false);
-    if (res.ok) {
-      setAnnounce(defaultLabel);
-    } else if ("error" in res) {
-      setError(true);
-      setAnnounce(t("share.error"));
-    }
-    // cancelled → silent, no announce, no error
+  const onShare = () => {
+    setText(shareButtonText(getCardOpts(), { caption, parent, childName, t }));
+    setOpen(true);
   };
 
   const solid = variant === "solid";
@@ -110,33 +78,21 @@ export function ShareButton({
     <div className="inline-flex flex-col items-start gap-1">
       <button
         type="button"
-        onClick={() => { void onShare(); }}
-        disabled={busy}
+        onClick={onShare}
         aria-label={aria}
-        aria-busy={busy}
-        className="inline-flex items-center justify-center gap-1.5 font-bold text-[13px] rounded-full px-4 min-h-[44px] transition active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--arbor-clay)] focus-visible:ring-offset-1 disabled:opacity-60"
+        className="inline-flex items-center justify-center gap-1.5 font-semibold text-[13px] rounded-full px-4 min-h-[44px] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--arbor-clay)] focus-visible:ring-offset-1"
         style={
           solid
-            ? { background: "var(--arbor-clay)", color: "#fff" }
-            : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }
+            ? { background: "var(--arbor-blue)", color: "var(--arbor-on-accent)" }
+            : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }
         }
       >
-        {showSpinner ? <RefreshCw className="w-4 h-4 animate-spin" aria-hidden /> : <Share2 className="w-4 h-4" aria-hidden />}
-        {busy ? t("share.preparing") : defaultLabel}
+        <Share2 className="w-4 h-4" aria-hidden />
+        {defaultLabel}
       </button>
-      {error && (
-        <span className="text-[11px] font-semibold" style={{ color: "var(--arbor-pink-ink)" }}>
-          {t("share.error")}
-        </span>
-      )}
-      <span className="sr-only" aria-live="polite">{announce}</span>
+      {open && <SendSheet open={open} onClose={() => setOpen(false)} text={text} artifact={artifact} surface={surface} />}
     </div>
   );
-}
-
-/** share.cta.<key> — map the artifact union to the copy keys in i18n. */
-function ctaKey(a: LoopArtifact): string {
-  return a === "answer_card" ? "answer" : a === "growth_card" ? "growth" : a; // avatar | story
 }
 
 export default ShareButton;

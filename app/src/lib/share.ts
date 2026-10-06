@@ -238,6 +238,28 @@ export async function shareWordsText(text: string, nav: Pick<Navigator, "share" 
   }
 }
 
+/* ── B-SHELL-29 — the ONE send sheet's path (components/share/SendSheet) ──
+   Parent-side child content leaves only as text: the loop events fire as
+   for a card share (channel "text" / "clipboard"), the payload is the text
+   alone — no url, no files, no referral code. */
+
+/** Pure: a branded-card's fields as plain lines (the object the parent shares). */
+export function textFromCardOpts(opts: ShareCardOpts): string[] {
+  return [opts.headline, opts.sub, opts.question, opts.takeaway, opts.title]
+    .map((s) => (s ?? "").replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+}
+
+/** Text-only share with the loop events. Throws nothing. */
+export async function sendTextShare(args: { artifact: LoopArtifact; surface: string; text: string },
+  nav: Pick<Navigator, "share" | "clipboard"> | undefined = typeof navigator !== "undefined" ? navigator : undefined): Promise<WordsShareResult> {
+  trackShareInitiated(args.artifact, args.surface);
+  const r = await shareWordsText(args.text, nav);
+  if (r === "shared") trackShareCompleted(args.artifact, "text");
+  else if (r === "copied") trackShareCompleted(args.artifact, "clipboard");
+  return r;
+}
+
 /** Decode an image data url into a Blob on the device (no fetch, no network). */
 export function dataUrlToBlob(dataUrl: string): Blob | null {
   const m = /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl);

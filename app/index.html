@@ -31,7 +31,20 @@
         } catch (e) { /* bundle sets defaults on mount */ }
       })();
     </script>
-    <meta name="description" content="Arbor — your child's development, thoughtfully guided." />
+    <meta name="description" content="Arbor — a calm place for the things your child says and does, and one small thing to try today." />
+    <!-- B-SHELL-29: the invite link (the weekly letter's referral card) previews
+         in WhatsApp with these tags. The preview IMAGE is B-INF-07's: when it
+         lands at /og/arbor-invite-1200x630.png, add
+           <meta property="og:image" content="https://arborparentingapp.com/og/arbor-invite-1200x630.png" />
+           <meta property="og:image:width" content="1200" /> <meta property="og:image:height" content="630" />
+         and switch twitter:card to summary_large_image. No image tag until the
+         file exists (never a broken preview). -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Arbor" />
+    <meta property="og:title" content="Arbor — your child's days, in your words" />
+    <meta property="og:description" content="A calm place for the things your child says and does, and one small thing to try today." />
+    <meta property="og:url" content="https://arborparentingapp.com/" />
+    <meta name="twitter:card" content="summary" />
     <meta name="theme-color" content="#fbfaf7" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="48x48" href="/icons/icon-48.png" />
@@ -39,7 +52,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Arbor" />
-    <title>Arbor — Parent Development Support</title>
+    <title>Arbor — your child's days, in your words</title>
 
     <!-- preconnect for the TEXT webfonts still imported by src/index.css
          (Fraunces / Nunito / Heebo / …, all font-display:swap with real local

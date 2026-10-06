@@ -21,6 +21,7 @@ import { weeklyChipIds, isEmptyCurrentWeek } from "../weekly/weeklySelection";
 import { fetchDigestEmailStatus, readEmailOptIn, writeEmailOptIn, type DigestEmailStatus } from "../weekly/recapEmail";
 import type { WeeklyDigest } from "../../lib/api";
 import WhatWorkedCard, { whatWorkedThisWeek } from "../weekly/WhatWorkedCard";
+import InviteCard from "../referral/InviteCard";
 
 /* B-OCCL-02 (6 Oct): the route's ONE data-primary-move literal. It is spread
    on the control that performs the move — the letter's "Make it today's step"
@@ -319,6 +320,15 @@ export default function WeeklyTab() {
             {/* B-TODAY-29: one of the letter's cards (inside its module, so the
                 route's module budget is unchanged); absent when none held. */}
             <WhatWorkedCard lines={worked} childName={first} parentName={parentFirst} locale={uiLang === "he" ? "he" : "en"} t={t} />
+            {/* B-SHELL-29: the invite closes the letter — the ONE place a link
+                leaves the app (the referral link, two-sided free month); it
+                carries no child content. Moved here from Settings. Inside the
+                letter's module, so the route's budget is unchanged. */}
+            <section data-testid="weekly-invite" aria-labelledby="weekly-invite-title" className="border-t pt-4" style={{ borderColor: "var(--arbor-rule)" }}>
+              <h3 id="weekly-invite-title" className="text-[15px] font-semibold" style={{ color: "var(--arbor-ink)" }}>{t("elev.words.invite.title")}</h3>
+              <p className="mt-1 text-[13px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.words.invite.sub", { name: first })}</p>
+              <InviteCard />
+            </section>
             </div>
           )}
 

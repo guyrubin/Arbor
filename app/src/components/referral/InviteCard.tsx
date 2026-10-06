@@ -15,14 +15,16 @@ type State =
   | { kind: "ready"; info: ReferralCodeInfo };
 
 /**
- * mk-p0-2 referral loop — the in-app invite surface (Settings → Plan block).
+ * mk-p0-2 referral loop — the in-app invite surface. B-SHELL-29: it closes
+ * the weekly letter (components/tabs/WeeklyTab.tsx), the ONE place a link
+ * leaves the app; it carries no child content.
  * Shows the parent's stable referral link with Copy + Share (Web Share API when
  * available, clipboard fallback otherwise), wires `trackInviteSent`, and honestly
  * surfaces the earned-months counter / cap. Loading, anon, and error states are
  * all reachable. The link field stays LTR even in Hebrew; copy follows the doc dir.
  */
 export default function InviteCard() {
-  const { t, uiLang } = useLanguage();
+  const { t } = useLanguage();
   const { user, firebaseEnabled } = useAuth();
   const { toast } = useToast();
   const reduce = useReducedMotion();
@@ -133,12 +135,14 @@ export default function InviteCard() {
         className="w-full text-xs rounded-xl px-3 py-2.5 min-h-[44px]"
         style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
       />
-      <div className="flex flex-wrap gap-2 mt-2" style={{ flexDirection: uiLang === "he" ? "row-reverse" : "row" }}>
+      {/* B-SHELL-29: the row follows the document direction (it was
+          row-reverse in Hebrew, which put Copy last in RTL). */}
+      <div className="flex flex-wrap gap-2 mt-2">
         <button
           onClick={() => void doCopy(link)}
           aria-label={t("set.referral.copy")}
           className="inline-flex items-center justify-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 min-h-[44px] transition"
-          style={{ background: "var(--arbor-clay)", color: T.onAccent }}
+          style={{ background: "var(--arbor-blue)", color: T.onAccent }}
         >
           {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
           {copied ? t("set.referral.copied") : t("set.referral.copy")}

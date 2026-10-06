@@ -67,9 +67,18 @@ export const en: Dict = {
   "elev.words.page.posterTitle": "{name}'s first words",
   "elev.words.page.empty": "Nothing kept this month yet.",
   "elev.words.page.print": "Print",
-  "elev.words.page.send": "Send to…",
+  "elev.words.page.send": "Send these words",
   "elev.words.page.copied": "Copied — paste it into a message.",
   "elev.words.page.closing": "From Arbor — {parent}'s notes about {name}",
+
+  // B-SHELL-29 — the one send sheet + the invite card on the weekly letter
+  "elev.words.send.edit": "What will be sent — you can change it",
+  "elev.words.send.onlyText": "Only these words are sent. No photo, no link.",
+  "elev.words.send.send": "Send",
+  "elev.words.send.error": "Sharing did not open. Copy the words above instead.",
+  "elev.words.send.closingNoName": "From Arbor — {parent}'s notes",
+  "elev.words.invite.title": "Know a parent who'd like this?",
+  "elev.words.invite.sub": "Send them a free month of Arbor, and you get one too. The link carries nothing about {name}.",
 };
 
 export const he: Dict = {
@@ -118,7 +127,15 @@ export const he: Dict = {
   "elev.words.page.posterTitle": "המילים הראשונות של {name}",
   "elev.words.page.empty": "החודש עוד לא נשמר כלום.",
   "elev.words.page.print": "להדפסה",
-  "elev.words.page.send": "לשלוח ל…",
+  "elev.words.page.send": "לשלוח את המילים",
   "elev.words.page.copied": "הועתק — אפשר להדביק בהודעה.",
   "elev.words.page.closing": "מתוך ארבור — הרשימות של {parent} על {name}",
+
+  "elev.words.send.edit": "מה יישלח — אפשר לשנות",
+  "elev.words.send.onlyText": "נשלחות רק המילים האלה. בלי תמונה ובלי קישור.",
+  "elev.words.send.send": "לשלוח",
+  "elev.words.send.error": "השיתוף לא נפתח. אפשר להעתיק את המילים למעלה.",
+  "elev.words.send.closingNoName": "מתוך ארבור — הרשימות של {parent}",
+  "elev.words.invite.title": "מכירים הורה שזה יתאים לו?",
+  "elev.words.invite.sub": "שלחו לו חודש חינם בארבור, וגם אתם תקבלו חודש. בקישור אין שום דבר על {name}.",
 };

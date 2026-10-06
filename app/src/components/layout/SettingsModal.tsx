@@ -12,7 +12,6 @@ import { consumeSettingsFocus, SETTINGS_FOCUS_ANCHOR } from "./settingsBus";
 import DeleteAccountModal from "./DeleteAccountModal";
 import YourDataSheet from "./YourDataSheet";
 import { AnalyticsOptOutRow } from "../privacy/AnalyticsOptOutRow";
-import InviteCard from "../referral/InviteCard";
 import { PlanPrices } from "../billing/PlanPrices";
 import { LegalLinks } from "../billing/LegalLinks"; // MOB-01: Privacy · Terms · Support in the footer
 import { Skeleton } from "../ui/Skeleton";
@@ -473,13 +472,9 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
           )}
         </div>
 
-        {/* mk-p0-2 referral loop: invite a parent, both earn a free Plus month */}
-        <div>
-          <Row icon={<Icon name="redeem" size={18} />} title={t("set.referral.title")} sub={t("set.referral.sub")}>
-            <span />
-          </Row>
-          <InviteCard />
-        </div>
+        {/* mk-p0-2 referral loop → B-SHELL-29: the invite card moved to the
+            bottom of the weekly letter (components/tabs/WeeklyTab.tsx), its
+            one visible place in parent mode. */}
         </Section>
 
         <Section title={t("set.section.childData")} sub={t("set.section.childDataSub")}>
