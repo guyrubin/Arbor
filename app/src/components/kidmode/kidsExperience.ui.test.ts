@@ -210,7 +210,8 @@ describe("B-KID-06 · kid copy says what the door does", async () => {
     for (const v of [baseEn["kid.quest.eyebrow"], baseEn["kid.quest.sub"]]) expect(v).not.toMatch(/pick a world|start a hero story/i);
     for (const v of [baseHe["kid.quest.eyebrow"], baseHe["kid.quest.sub"]]) expect(v).not.toContain("בוחרים עולם");
     const dashboard = read("KidDashboard.tsx");
-    expect(dashboard).toContain(">{tonightsTitle}</span>");
+    // B-BOOK release re-pin: the library book's title when the banner shows one
+    expect(dashboard).toContain(">{tonightLib ? kidIsolate(tonightLib.book.title[bookLang]) : tonightsTitle}</span>");
     expect(dashboard).toContain('uiLang === "he" ? tonightsStory.titleHe : tonightsStory.title');
     expect(HERO_STORIES.length).toBeGreaterThan(0);
     for (const s of HERO_STORIES) expect(s.titleHe, s.id).toMatch(/[֐-׿]/);

@@ -48,6 +48,8 @@ const FeelingsLabTab = lazy(() => import("../practice/FeelingsLabTab"));
 const KidComicsShelf = lazy(() => import("./KidComicsShelf"));
 // B-GAME-07b: the G0 proof game — its chunk loads only when the flagged tile opens it.
 const SneakFreeze = lazy(() => import("./games/sneakFreeze/SneakFreeze"));
+// B-BOOK release: a library book (lib/library) open full screen over the shell.
+const KidBookReaderView = lazy(() => import("./KidBookReaderView"));
 
 // KID-1: labels are i18n keys (kid.* namespace) resolved with t() at render.
 const SURFACE_META: Record<KidSurface, { labelKey: string; Comp?: React.ComponentType }> = {
@@ -138,6 +140,12 @@ export default function KidModeOverlay() {
   // B-KID-124: every tap of a book is a fresh pin (the same book tapped again
   // after Home opens again even if the reader tab stayed mounted).
   const [pinNonce, setPinNonce] = useState(0);
+  // B-BOOK release: the library book open over the shell (device-local UI state;
+  // its close toy is the one way back, to the kid home).
+  const [openBookId, setOpenBookId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isKidModeOpen) setOpenBookId(null);
+  }, [isKidModeOpen]);
   const openSurface = (s: KidSurface, worldId?: string) => {
     setArcadeWorldId(worldId ?? null);
     setPinNonce((n) => n + 1);
@@ -448,7 +456,7 @@ export default function KidModeOverlay() {
                   style={sneakOpen ? { flex: 1, minBlockSize: 0, position: "relative" } : undefined}
                 >
                   {view === "home" ? (
-                    <KidDashboard onOpenSurface={openSurface} onExit={closeKidMode} />
+                    <KidDashboard onOpenSurface={openSurface} onExit={closeKidMode} onOpenBook={setOpenBookId} />
                   ) : view === "arcade" ? (
                     <Suspense fallback={<KidStageFallback worldId={arcadeWorldId ?? undefined} />}>
                       {/* B-GAME-07b: the flagged proof game, in the arcade's own Suspense. */}
@@ -468,6 +476,11 @@ export default function KidModeOverlay() {
                 </motion.div>
             </KidErrorBoundary>
           </div>
+          {openBookId && (
+            <Suspense fallback={null}>
+              <KidBookReaderView bookId={openBookId} onClose={() => setOpenBookId(null)} />
+            </Suspense>
+          )}
         </motion.div>
       )}
     </AnimatePresence>

@@ -52,6 +52,8 @@ import { HERO_STORIES, storyLanguage } from "../../lib/heroJourneys";
 import { kidBooks } from "./kidBooks";
 import { KID_WORLDS, KID_WORLD_NAME_KEY, SNEAK_FREEZE_WORLD, kidWorldByWorldId, sneakFreezeFlagOn, type KidWorldAccent } from "./kidWorlds";
 import { KID_BOOK_EAGER_COUNT, KidBookCover } from "./KidBookCover";
+import { useChildLibraryBooks } from "./useChildLibraryBooks";
+import { LibraryBookCover } from "./LibraryBookCover";
 import { KidStickerStrip } from "./rewards/KidSouvenir";
 import { kidOfflineArtUrls, precacheKidArt, recentlyOpenedStoryIds } from "../../lib/kidOfflineArt";
 import { useKidSouvenirs } from "./rewards/useKidSouvenirs";
@@ -352,11 +354,14 @@ function SceneTile({
 export default function KidDashboard({
   onOpenSurface,
   onExit,
+  onOpenBook,
 }: {
   /** KID-4: game tiles pass the HeroArcade worldId so the arcade opens with
    *  that world pre-selected — the tile's name appears verbatim on arrival. */
   onOpenSurface: (s: KidSurface, arcadeWorldId?: string) => void;
   onExit: () => void;
+  /** B-BOOK release: opens a library book (lib/library) full screen. */
+  onOpenBook?: (bookId: string) => void;
 }) {
   const { childProfile } = useArbor();
   const { t, uiLang, aiLang } = useLanguage();
@@ -386,6 +391,14 @@ export default function KidDashboard({
   // B-KID-96: the souvenirs the child kept (the "My stickers" strip).
   const souvenirs = useKidSouvenirs(childProfile.id);
   const heroReadIds = useMemo(() => heroRunsCol.items.map((r) => r.storyId), [heroRunsCol.items]);
+  // B-BOOK release: a library book made with THIS child's own hero (their
+  // private book files are complete for it) is tonight's pick, the way a book
+  // illustrated in the child's theme leads (R-4b); the rest lead My books.
+  // A child without one: nothing here changes.
+  const libraryBooks = useChildLibraryBooks(childProfile.id);
+  const bookLang: "en" | "he" = storyLanguage(uiLang, aiLang) === "he" ? "he" : "en";
+  const tonightLib = onOpenBook ? libraryBooks[0] ?? null : null;
+  const moreLib = onOpenBook ? libraryBooks.slice(1) : [];
   const tonightsStoryId = useMemo(
     () => chooseTonightsStory(data.today, childProfile.id, {
       readIds: heroReadIds,
@@ -429,9 +442,9 @@ export default function KidDashboard({
       showAllAges: loadShowAllAges("hero-journeys"),
       hasCover: (id) => kidArt(kidTheme, storyCoverKey(id)) !== null,
       runs: heroRunsCol.items,
-    }), tonightsStoryId),
+    }), tonightLib ? "" : tonightsStoryId),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [uiLang, aiLang, childProfile.id, kidTheme, heroRunsCol.items, tonightsStoryId],
+    [uiLang, aiLang, childProfile.id, kidTheme, heroRunsCol.items, tonightsStoryId, tonightLib],
   );
   // B-KID-68: the world is named by the registry's own key (Spell Forge too).
   const yesterdayNameKey = yesterdayWorld ? greetingWorldNameKey(yesterdayWorld) : undefined;
@@ -479,7 +492,8 @@ export default function KidDashboard({
           fabricated progress numerals. */}
       <button
         className="world-tile play-pop-in"
-        onClick={() => onOpenSurface("journeys", tonightsStoryId)}
+        onClick={() => (tonightLib && onOpenBook ? onOpenBook(tonightLib.book.id) : onOpenSurface("journeys", tonightsStoryId))}
+        data-kid-tonight-book={tonightLib ? tonightLib.book.id : undefined}
         style={{
           display: "flex",
           appearance: "none",
@@ -493,10 +507,14 @@ export default function KidDashboard({
         }}
       >
         <div className="relative flex-shrink-0" style={tilePortrait ? { inlineSize: Math.round(KID_HOME_BANNER_BLOCK * 3 / 4), minBlockSize: KID_HOME_BANNER_BLOCK } : { inlineSize: "45%", maxInlineSize: 300, minBlockSize: KID_HOME_BANNER_BLOCK }}>
+          {tonightLib ? (
+            <LibraryBookCover childId={childProfile.id} entry={tonightLib} />
+          ) : (
           <WorldScene worldId={tonightsArtId} theme={kidTheme} imagePrompt={tonightsArtPrompt} heroUrl={hero.url ?? undefined} heroStyle={hero.style} sizes="(max-width: 639px) 45vw, 300px" priority>
             <Sparkles aria-hidden="true" className="w-10 h-10" style={{ color: "var(--arbor-sky-ink)" }} />
           </WorldScene>
-          {!tonightsArtHasHero && (
+          )}
+          {!tonightLib && !tonightsArtHasHero && (
           <span className="absolute bottom-2 end-2 z-[2] rounded-2xl" style={{ background: "var(--arbor-paper-elevated)", border: "2px solid var(--comic-ink)", boxShadow: "2px 2px 0 var(--comic-ink)" }}>
             {/* F6 — the featured hero ANNOUNCES. The adjacent text is "Tonight's
                 story: {title}", never the child's name, so the same argument that
@@ -509,7 +527,7 @@ export default function KidDashboard({
         </div>
         <span style={{ flex: 1, minInlineSize: 0, padding: 14, alignSelf: "center" }}>
           <span style={{ display: "block", fontSize: 12, fontWeight: 800, color: "var(--arbor-sky-ink)" }}>{kt("kid.quest.eyebrow")}</span>
-          <span style={{ display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 2, overflow: "hidden", fontFamily: "var(--font-display)", fontWeight: 900, fontSize: "clamp(20px, 5vw, 26px)", color: "var(--arbor-ink)", lineHeight: 1.12 }}>{tonightsTitle}</span>
+          <span style={{ display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 2, overflow: "hidden", fontFamily: "var(--font-display)", fontWeight: 900, fontSize: "clamp(20px, 5vw, 26px)", color: "var(--arbor-ink)", lineHeight: 1.12 }}>{tonightLib ? kidIsolate(tonightLib.book.title[bookLang]) : tonightsTitle}</span>
           <span style={{ display: "block", fontSize: 13, color: "var(--arbor-ink)", marginBlockStart: 4 }}>{kt("kid.quest.sub")}</span>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 6, minBlockSize: 44, fontWeight: 800, color: "var(--arbor-sky-ink)" }}>{kt("kid.quest.cta")} <ChevronRight className="w-4 h-4 rtl:-scale-x-100" aria-hidden="true" /></span>
         </span>
@@ -533,10 +551,24 @@ export default function KidDashboard({
             {kt("kidBooks.seeAll")} <ChevronRight className="w-4 h-4 rtl:-scale-x-100" aria-hidden="true" />
           </button>
         </div>
-        {bookRow.length > 0 && (
+        {(bookRow.length > 0 || moreLib.length > 0) && (
           <ul
             style={{ listStyle: "none", margin: 0, marginInline: -20, paddingInline: 20, paddingBlockEnd: 4, display: "flex", gap: `${KID_HOME_TILE_GAP}px`, overflowX: "auto", scrollSnapType: "x mandatory", scrollPaddingInline: 20 }}
           >
+            {moreLib.map((e) => (
+              <li key={`library:${e.book.id}`} style={{ scrollSnapAlign: "start", flexShrink: 0 }}>
+                <button
+                  type="button"
+                  className="world-tile"
+                  data-library-book={e.book.id}
+                  onClick={() => onOpenBook?.(e.book.id)}
+                  aria-label={e.book.title[bookLang]}
+                  style={{ position: "relative", display: "block", inlineSize: 140, aspectRatio: "3 / 4", padding: 0, overflow: "hidden", cursor: "pointer", appearance: "none" }}
+                >
+                  <LibraryBookCover childId={childProfile.id} entry={e} />
+                </button>
+              </li>
+            ))}
             {bookRow.map((b, i) => (
               <li key={b.story.id} style={{ scrollSnapAlign: "start", flexShrink: 0 }}>
                 <KidBookCover

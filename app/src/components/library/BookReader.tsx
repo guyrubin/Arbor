@@ -96,7 +96,15 @@ export interface BookReaderProps {
   /** The narration set (folder) to read from; default = the hero sheet id,
    *  else the child id. DEV review: `&voice=dylan-v2-expressive`. */
   voiceSet?: string | null;
+  /** Production (B-BOOK release): the child's own narration as `blob:` URLs
+   *  keyed `<en|he-m|he-f>/<file>` (+ the cue sidecars), from lib/bookAssets.
+   *  When given, every narration path resolves through it and nothing else
+   *  is asked for. */
+  assets?: { files: Record<string, string>; cues: Record<string, CueTimes> } | null;
 }
+
+/** `<root>/<book>/<set>/<folder>/<file>` → the `<folder>/<file>` key. */
+const assetKey = (path: string) => path.split("/").slice(-2).join("/");
 
 const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
@@ -156,6 +164,7 @@ export function BookReader({
   initialRevealed = false,
   initialChoosing = false,
   voiceSet = null,
+  assets = null,
 }: BookReaderProps) {
   const plateTable = plates ?? BOOK_PLATES[book.id] ?? {};
   const [state, dispatch] = useReducer((s: BookFlowState, a: Parameters<typeof bookFlowReducer>[2]) => bookFlowReducer(book, s, a), initialState ?? initialBookFlow());
@@ -243,7 +252,7 @@ export function BookReader({
   // `voiceSet` prop (&voice=) overrides it; without either, the hero sheet id
   const [preferredSet, setPreferredSet] = useState<string | null>(null);
   useEffect(() => {
-    if (narration === "off" || voiceSet) return;
+    if (narration === "off" || voiceSet || assets) return;
     const path = narrationSetsPath(book.id, root);
     if (!path) return;
     let live = true;
@@ -251,17 +260,25 @@ export function BookReader({
     return () => {
       live = false;
     };
-  }, [book.id, root, narration, voiceSet]);
+  }, [book.id, root, narration, voiceSet, assets]);
   const voiceKey = voiceSet?.trim() || preferredSet || child.heroSheetId?.trim() || child.id;
   const keyBase = { bookId: book.id, lang, gender, voiceKey };
   const probe = narration === "probe";
+  // With the child's own files (production), a path resolves to its blob URL
+  // (.mp3, else the set's .wav) or to nothing.
+  const via = (path: string | null | undefined): string | null => {
+    if (!path || !assets) return path ?? null;
+    const k = assetKey(path);
+    return assets.files[k] ?? assets.files[k.replace(/\.mp3$/, ".wav")] ?? null;
+  };
   // The cover is read only when the child taps the picture (ruling 9).
-  const pageSrc =
+  const pagePath =
     narration === "off" || !story
       ? null
       : repaired && repair
         ? declaredAudio(repair.audio, lang, gender) ?? (probe ? narrationKey({ ...keyBase, pageId: `${page.id}-after` }, root) : null)
         : pageNarrationSrc(page, { ...keyBase, choiceId: state.choiceId }, { probe, root });
+  const pageSrc = via(pagePath);
   const showKey = `${state.at}|${repaired ? "after" : "before"}`;
 
   // ── art states: the narration's position cues the next one ───────────────
@@ -269,7 +286,7 @@ export function BookReader({
   const wantsCues = staged && artStates.some((s) => s.cueKey);
   const [cues, setCues] = useState<{ src: string; times: CueTimes } | null>(null);
   useEffect(() => {
-    if (!wantsCues || !pageSrc) return;
+    if (!wantsCues || !pageSrc || assets) return;
     let live = true;
     void loadStaticJson(cuesPath(pageSrc)).then((raw) => live && setCues({ src: pageSrc, times: readCues(raw) }));
     return () => {
@@ -277,7 +294,9 @@ export function BookReader({
     };
   }, [wantsCues, pageSrc]);
   const cueTimes = useRef<CueTimes>({});
-  cueTimes.current = cues && cues.src === pageSrc ? cues.times : {};
+  cueTimes.current = assets
+    ? (pagePath && assets.cues[assetKey(pagePath).replace(/\.(mp3|wav)$/, "")]) || {}
+    : cues && cues.src === pageSrc ? cues.times : {};
   const onClock = useCallback(
     (c: NarrationClock) => {
       if (!staged) return;
@@ -321,7 +340,7 @@ export function BookReader({
   useEffect(() => {
     if (!pending || !voice.settled || prompted.current === state.at || !probe) return;
     prompted.current = state.at;
-    voice.playClip(narrationKey({ ...keyBase, pageId: `${page.id}-prompt` }, root));
+    voice.playClip(via(narrationKey({ ...keyBase, pageId: `${page.id}-prompt` }, root)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pending, voice.settled, state.at]);
 
@@ -374,18 +393,18 @@ export function BookReader({
     if (done.has(id) || (nextItem && nextItem !== id)) return;
     kidSfx("tap");
     const item = repair?.items.find((it) => it.id === id);
-    voice.playClip(item?.sound ?? (probe && item?.line ? narrationKey({ ...keyBase, pageId: `${page.id}-${id}` }, root) : null));
+    voice.playClip(item?.sound ?? via(probe && item?.line ? narrationKey({ ...keyBase, pageId: `${page.id}-${id}` }, root) : null));
     dispatch({ type: "repair", itemId: id });
   };
   const choose = (choiceId: string) => {
     const c = book.decision.choices.find((x) => x.id === choiceId);
-    voice.playClip(declaredAudio(c?.audio, lang, gender) ?? (probe ? narrationKey({ ...keyBase, pageId: `${book.decision.pageId}-choice`, choiceId }, root) : null));
+    voice.playClip(declaredAudio(c?.audio, lang, gender) ?? via(probe ? narrationKey({ ...keyBase, pageId: `${book.decision.pageId}-choice`, choiceId }, root) : null));
     // a tap selects (and speaks); "This one!" commits (ruling 2)
     if (state.selected !== choiceId) dispatch({ type: "choose", choiceId });
   };
   const hearCover = () => {
     if (narration === "off") return;
-    voice.playClip(declaredAudio(book.cover.audio, lang, gender) ?? (probe ? narrationKey({ ...keyBase, pageId: "cover" }, root) : null));
+    voice.playClip(declaredAudio(book.cover.audio, lang, gender) ?? via(probe ? narrationKey({ ...keyBase, pageId: "cover" }, root) : null));
   };
 
   // ── keyboard: arrows (mirrored in HE), Space, Esc ──────────────────────────
