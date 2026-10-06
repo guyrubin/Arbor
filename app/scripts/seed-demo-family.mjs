@@ -157,9 +157,21 @@ async function applySandbox(family, plan) {
   return { wrote: [SANDBOX_BUNDLE_PATH, "app/.data/memory-ledger.json"], plan };
 }
 
-/** The app's own memory write path: propose both, approve one. Idempotent (proposals dedupe on fact). */
+/** The app's own memory write path: propose both, approve one. Idempotent (proposals dedupe on fact).
+ *  P1-NEXTLEVEL critic r2 (profile + consult, Law 8/9): the ledger is ONE
+ *  language per run. A run in --lang X first retires (status "deleted", the
+ *  same decision Forget makes) every live demo fact of the OTHER language, so
+ *  an en run after a he run never leaves the Hebrew fact beside the English
+ *  one (the EN packet carried the fact twice; Profile counted 9 pending). */
 export async function seedMemory(memoryStore, family, familyId) {
-  const { appendMemoryProposals, transitionMemory } = await import("../src/memory/memoryService.ts");
+  const { appendMemoryProposals, transitionMemory, foldMemoryEvents } = await import("../src/memory/memoryService.ts");
+  const { buildDemoFamily } = await import("../src/demo/demoFamily.ts");
+  const otherLang = family.lang === "he" ? "en" : "he";
+  const other = buildDemoFamily({ now: Date.parse(family.seededAt) || Date.now(), lang: otherLang, childId: family.child.id }).memory;
+  const otherFacts = new Set([other.approved.fact, other.pending.fact, ...(other.pendingMore ?? []).map((m) => m.fact)]);
+  const live = foldMemoryEvents(await memoryStore.listEvents(family.child.id), family.child.id)
+    .filter((i) => otherFacts.has(i.fact) && (i.status === "pending" || i.status === "approved"));
+  for (const stale of live) await transitionMemory(memoryStore, stale.memoryId, "deleted");
   const frameRouting = { aim: "-", twoAxes: "-", story: "-", shadow: "-", marriage: "-", shepherd: "-" };
   const items = await appendMemoryProposals(
     memoryStore,

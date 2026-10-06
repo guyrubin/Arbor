@@ -151,9 +151,9 @@ describe("B-CAREPRO-06 · ChildMemory, ChildProfile and SafetyTab render scrubbe
     expect(PROFILE).toContain("scrubMemoryProposals(approvedMemoryItems)");
     // B-SHELL-26: the remembered band lists the scrubbed facts, newest first.
     expect(PROFILE).toContain("[...shownApproved].sort(");
-    expect(PROFILE).toContain("remembered.slice(0, 5).map(");
+    expect(PROFILE).toContain("rememberedRest.slice(0, 5).map(");
     expect(PROFILE).not.toContain("approvedMemoryItems.slice(");
-    expect(PROFILE).toContain("pendingQueue.length === 1");
+    expect(PROFILE).toContain("[...pendingQueue].sort("); // P1-NEXTLEVEL r2: the newest inference is named, never counted
     // B-CAREPRO-14: Safety renders no memory text at all.
     expect(SAFETY).not.toContain("approvedMemoryItems");
     expect(SAFETY).not.toContain("item.fact");

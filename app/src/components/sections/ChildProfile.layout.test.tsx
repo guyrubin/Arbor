@@ -72,8 +72,10 @@ describe("W2 Profile identity and protected doors",()=>{
  // B-SHELL-26: Profile lists the kept facts (Forget only); an inference waiting
  // is one quiet line to #/memory — its words are never shown or decided here.
  it("lists what Arbor remembers with Forget only; a proposal's words never appear on Profile",()=>{
-  harness.approved=[{memoryId:"a1",fact:"Approved fact"}];harness.pending=[{memoryId:"p1",fact:"Unapproved private proposal"}];
+  harness.approved=[{memoryId:"a0",fact:"Newest fact",createdAt:"2026-10-05T10:00:00.000Z"},{memoryId:"a1",fact:"Approved fact",createdAt:"2026-09-05T10:00:00.000Z"}];harness.pending=[{memoryId:"p1",fact:"Unapproved private proposal"}];
   const html=renderToStaticMarkup(<ChildProfile/>);
+  // P1-NEXTLEVEL critic r2: the newest fact is the knows-line quote; the list starts after it.
+  expect(html.split("Newest fact").length-1).toBe(1);
   const band=html.slice(html.indexOf('data-module="profile-remember"'),html.indexOf("</section>",html.indexOf('data-module="profile-remember"')));
   expect(band).toContain("Approved fact");expect(band).toContain('data-testid="profile-remembered-forget"');
   expect(band).toContain('data-testid="profile-remember-check"');
@@ -86,7 +88,7 @@ describe("W2 Profile identity and protected doors",()=>{
   expect(stamped()).toHaveLength(1);
   expect(stamped()[0].props["data-testid"]).toBe("profile-hero-cta");
   stamped()[0].props.onClick();expect(harness.setState).toHaveBeenCalledWith(true);expect(harness.setActiveTab).not.toHaveBeenCalled();
-  harness.pending=[{memoryId:"p1",fact:"f"},{memoryId:"p2",fact:"g"}];harness.approved=[{memoryId:"a1",fact:"Approved fact"}];
+  harness.pending=[{memoryId:"p1",fact:"f"},{memoryId:"p2",fact:"g"}];harness.approved=[{memoryId:"a0",fact:"Newest fact",createdAt:"2026-10-05T10:00:00.000Z"},{memoryId:"a1",fact:"Approved fact",createdAt:"2026-09-05T10:00:00.000Z"}];
   expect(stamped()).toHaveLength(1);
   expect(stamped()[0].props["data-testid"]).toBe("profile-hero-cta");
   expect(elements(ChildProfile()).filter(el=>el.props["data-primary-move"]==="approve-memory")).toHaveLength(0);

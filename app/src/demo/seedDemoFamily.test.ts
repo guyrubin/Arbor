@@ -363,7 +363,7 @@ describe("W2-CAREPRO c2 r1 · the demo memory seed renders a group at volume", (
  * change the family → this fails until the version is bumped and the pin
  * re-recorded (then `npm run seed:demo -- --apply` re-seeds the sandbox). */
 describe("W2-CAREPRO c2 r2 · the demo content is pinned to DEMO_FAMILY_VERSION", () => {
-  const PINNED = { version: "2026-10-06.3", sha256: "c09e92e84c78a13282f519450feb0af195cc8da80fe1a5cb2e47e2f7830a8e5e" };
+  const PINNED = { version: "2026-10-06.4", sha256: "47ad8d10c3c8902d03546d64d0a6ac51ef9ff6590e03e4a02879fe856f255093" };
   const contentHash = async () => {
     const { createHash } = await import("node:crypto");
     const body = JSON.stringify([buildDemoFamily({ now: NOW, lang: "en" }), buildDemoFamily({ now: NOW, lang: "he" })]);
@@ -388,4 +388,32 @@ describe("W2-CAREPRO c2 r2 · the demo content is pinned to DEMO_FAMILY_VERSION"
       expect(fam.memory.pendingMore.length, lang).toBeGreaterThanOrEqual(3);
     }
   });
+});
+
+/* P1-NEXTLEVEL critic r2 (profile product P1 + consult product P1, Laws 8/9):
+ * seeding en then he (or he then en) left BOTH languages' facts live under one
+ * child id — the EN packet carried one fact twice and Profile read 9 pending
+ * against a seed of 4. One run leaves one language. */
+describe("P1-NEXTLEVEL r2 · the demo memory ledger is one language per run", () => {
+  for (const [first, second] of [["en", "he"], ["he", "en"]] as const) {
+    it(`${first} then ${second}: only the ${second} facts stay live (1 approved, 4 pending)`, async () => {
+      const { foldMemoryEvents } = await import("../memory/memoryService");
+      const events: import("../memory/types").MemoryLedgerEvent[] = [];
+      const store = {
+        async listEvents(childId?: string) { return events.filter((e) => !childId || e.childId === childId); },
+        async appendEvent(e: import("../memory/types").MemoryLedgerEvent) { events.push(e); },
+        async eraseChild() { return 0; },
+      };
+      const now = Date.UTC(2026, 9, 4, 12);
+      const a = buildDemoFamily({ lang: first, now });
+      const b = buildDemoFamily({ lang: second, now, childId: a.child.id });
+      await seedScript.seedMemory(store, a, "fam-demo");
+      await seedScript.seedMemory(store, b, "fam-demo");
+      const live = foldMemoryEvents(events, a.child.id).filter((i) => i.status === "pending" || i.status === "approved");
+      const firstFacts = new Set([a.memory.approved.fact, a.memory.pending.fact, ...a.memory.pendingMore.map((m) => m.fact)]);
+      expect(live.filter((i) => firstFacts.has(i.fact))).toEqual([]);
+      expect(live.filter((i) => i.status === "approved")).toHaveLength(1);
+      expect(live.filter((i) => i.status === "pending")).toHaveLength(4);
+    });
+  }
 });

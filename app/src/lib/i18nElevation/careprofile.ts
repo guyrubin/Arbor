@@ -60,8 +60,11 @@ export const en: Record<string, string> = {
   // Profile lists what Arbor remembers, each with Forget only. Inferences are
   // asked inline (B-AI-07) and on #/memory.
   "elev.profile.remembers.title": "Things Arbor remembers",
-  "elev.profile.remembers.check.one": "Arbor has one thought to check with you",
-  "elev.profile.remembers.check.many": "Arbor has {n} thoughts to check with you",
+  // P1-NEXTLEVEL critic r2: no count on Profile — the newest inference is
+  // named, never counted (the count lives on #/memory only).
+  "elev.profile.remembers.noticedAbout": "Arbor noticed something about {topic} — check it",
+  "elev.profile.remembers.noticed": "Arbor noticed something to check with you",
+  "elev.profile.who.title": "About {name}",
 };
 
 export const he: Record<string, string> = {
@@ -106,7 +109,8 @@ export const he: Record<string, string> = {
   "elev.profile.remember.more": "לכל {n} הממתינים",
   "elev.profile.ms.noticed": "שמתם לב ל־{n} אבני דרך",
   "elev.profile.ms.noticedOne": "שמתם לב לאבן דרך אחת",
-  "elev.profile.remembers.title": "דברים שארבור זוכר",
-  "elev.profile.remembers.check.one": "לארבור יש מחשבה אחת לבדוק איתכם",
-  "elev.profile.remembers.check.many": "לארבור יש {n} מחשבות לבדוק איתכם",
+  "elev.profile.remembers.title": "דברים שארבור זוכרת",
+  "elev.profile.remembers.noticedAbout": "ארבור שמה לב למשהו בנושא {topic} — לבדוק",
+  "elev.profile.remembers.noticed": "ארבור שמה לב למשהו לבדוק איתכם",
+  "elev.profile.who.title": "על {name}",
 };

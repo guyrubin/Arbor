@@ -22,6 +22,7 @@ const h = vi.hoisted(() => ({
   approved: [] as unknown[],
   name: "Dylan",
   factsAsOf: undefined as undefined | Record<string, string>,
+  onboardingCompletedAt: undefined as undefined | string,
 }));
 
 vi.mock("../../context/ArborContext", () => ({
@@ -29,7 +30,7 @@ vi.mock("../../context/ArborContext", () => ({
     childProfile: {
       id: "c1", name: h.name, age: 3, birthDate: "2023-08-01", languages: ["Hebrew", "English"],
       schoolContext: "City kindergarten, first year", challenges: [], strengths: [], interests: [],
-      factsAsOf: h.factsAsOf,
+      factsAsOf: h.factsAsOf, onboardingCompletedAt: h.onboardingCompletedAt,
     },
     milestones: [
       { id: "m1", domain: "language_communication", title: "t1", description: "d", checked: true, ageMonths: 36 },
@@ -109,7 +110,13 @@ describe("critic r1 (P0) → B-SHELL-26 — a pending inference is Arbor's, neve
       h.locale = loc;
       h.pending = [{ memoryId: "p1", fact: "Mornings go smoother when his bag is packed the night before.", status: "pending", createdAt: "2026-10-05T10:00:00.000Z", source: "chat", retention: "90d" }];
       const html = renderToStaticMarkup(<ChildProfile />);
-      expect(text(html)).toContain(translate(loc, "elev.profile.remembers.check.one"));
+      // P1-NEXTLEVEL critic r2: the line NAMES the newest inference by its
+      // topic and never counts (no digit); the words stay on #/memory.
+      const at = html.indexOf('data-testid="profile-remember-check"');
+      const line = text(html.slice(html.indexOf(">", at) + 1, html.indexOf("</button>", at))).trim();
+      const lead = translate(loc, "elev.profile.remembers.noticedAbout", { topic: "@@" }).split("@@")[0].replace(/[⁨⁩]/g, "");
+      expect(line.startsWith(lead) || line.includes(translate(loc, "elev.profile.remembers.noticed")), line).toBe(true);
+      expect(line).not.toMatch(/\d/);
       expect(html).toContain('data-testid="profile-remember-check"');
       expect(text(html)).not.toContain("Mornings go smoother");
       expect(text(html)).not.toMatch(/From what you wrote|ממה שכתבתם/);
@@ -163,9 +170,10 @@ describe("#/profile — the cut chapter, the count and the knows line", () => {
     expect(html).not.toContain(translate("he", "elev.profile.remember.keep"));
     expect(html).not.toContain(translate("he", "elev.profile.remember.notQuite"));
     expect(html.match(/data-testid="profile-remember-check"/g)).toHaveLength(1);
-    // the kept fact is listed with Forget only
-    expect(html).toContain('data-testid="profile-remembered-forget"');
-    expect(html).toContain(translate("he", "elev.profile.remember.forget"));
+    // P1-NEXTLEVEL critic r2: the one kept fact is the knows-line quote, so
+    // the list (which starts after it) is empty — the fact renders ONCE.
+    expect(html).not.toContain('data-testid="profile-remembered-forget"');
+    expect(html.split("Dylan answers in Hebrew when tired").length - 1).toBe(1);
     expect(html.indexOf('data-module="profile-remember"')).toBeLessThan(html.indexOf('data-module="profile-who"'));
   });
   it("W2-GROWTH r2 → B-SHELL-26: the first fold is identity → working on → the knows-line → the one door (EN + HE)", () => {
@@ -200,5 +208,35 @@ describe("PhysicalGrowthCard inside the Measurements disclosure", () => {
     h.name = "";
     const s = text(renderToStaticMarkup(<PhysicalGrowthCard embedded />));
     expect(s).not.toContain("your child");
+  });
+});
+
+describe("P1-NEXTLEVEL critic r2 — Profile never counts the approval queue", () => {
+  it("no profile remembers/check string carries a {n} (EN + HE); the count lives on #/memory", async () => {
+    const dict = await import("../../lib/i18nElevation/careprofile");
+    for (const table of [dict.en, dict.he]) {
+      const keys = Object.keys(table).filter((k) => k.startsWith("elev.profile.remembers."));
+      expect(keys.length).toBeGreaterThan(2);
+      for (const k of keys) expect(table[k], k).not.toContain("{n}");
+    }
+    expect(dict.he["elev.profile.remembers.title"]).toBe("דברים שארבור זוכרת"); // one grammatical gender with "ארבור יודעת"
+  });
+});
+
+describe("P1-NEXTLEVEL critic r2 — an identity fact is never undated", () => {
+  it("a legacy profile (no factsAsOf) dates school + languages from onboarding, EN + HE", () => {
+    h.factsAsOf = undefined;
+    h.onboardingCompletedAt = "2026-06-10T10:00:00.000Z";
+    try {
+      for (const loc of ["en", "he"] as const) {
+        h.locale = loc;
+        const html = renderToStaticMarkup(<ChildProfile />);
+        const line = html.slice(html.indexOf('data-testid="profile-identity-line"'), html.indexOf("</p>", html.indexOf('data-testid="profile-identity-line"')));
+        const asOf = loc === "en" ? /\(as of [^)]+\)/g : /\(נכון ל[^)]+\)/g;
+        expect(line.match(asOf), line).toHaveLength(2);
+      }
+    } finally {
+      h.onboardingCompletedAt = undefined;
+    }
   });
 });

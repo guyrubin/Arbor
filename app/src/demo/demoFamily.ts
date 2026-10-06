@@ -33,7 +33,7 @@ import type { LangObservation } from "../growth/vocabAgg";
 import { defaultChildProfile, initialMilestones } from "../initialData";
 import { hardMomentCards } from "../content/hardMomentCards";
 
-export const DEMO_FAMILY_VERSION = "2026-10-06.3";
+export const DEMO_FAMILY_VERSION = "2026-10-06.4";
 export const DEMO_FAMILY_LABEL = { en: "Demo family", he: "משפחת הדגמה" } as const;
 /** The demo child IS the sandbox's synthetic child, so `npm run seed:demo` populates it. */
 export const DEMO_CHILD_ID = defaultChildProfile.id;
@@ -225,6 +225,10 @@ export function buildDemoFamily({
     birthDate: birth.toISOString().slice(0, 10),
     languages: ["Hebrew", "English"],
     schoolContext: lang === "he" ? "גן עירוני, שנה ראשונה" : "City kindergarten, first year",
+    // P1-NEXTLEVEL critic r2 (profile P1): the time-bearing identity facts are
+    // dated, so the sweep renders "as of {month}" in EN and HE.
+    factsAsOf: { schoolContext: at(now, 36, 9), languages: at(now, 36, 9) },
+    onboardingCompletedAt: at(now, 36, 9),
     strengths: lang === "he" ? ["משחקי דמיון", "אוהב לבנות ולספור"] : ["Pretend play", "Loves building and counting"],
     challenges: lang === "he" ? ["בקרים עם יציאה מהבית"] : ["Mornings when it is time to leave the house"],
     onboardingComplete: true,

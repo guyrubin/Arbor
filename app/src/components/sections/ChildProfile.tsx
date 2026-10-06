@@ -34,6 +34,8 @@ import { goalLabel, type ActiveGoal } from "../../practice/goalBuilder";
 // B-CAREPRO-33: the quoted facts carry an as-of date and ask "Still true?" after 90 days.
 import { confirmFact, factMonthLabel, isFactStale, type FactField } from "../../lib/factsAsOf";
 import { FreeText } from "../ui/FreeText";
+import { memoryTopicOf } from "../../lib/memoryGroups";
+import { domainName } from "../../lib/domains/registry";
 // B-GROWTH-35: a kept fact with a relative time in it carries the day it was written.
 import { writtenDateFor } from "../../lib/record/datedFact";
 import { ageMonthsOf } from "../../lib/age/forChild";
@@ -156,7 +158,11 @@ export default function ChildProfile() {
   // hardcoded "Bilingual · Pre-K". Each segment renders as its own bidi island.
   // W2-GROWTH r2 (B-33): the languages segment carries its as-of month.
   const langNames = childProfile.languages.map((l) => languageName(l, t)).filter(Boolean);
-  const langsAsOf = childProfile.factsAsOf?.languages;
+  // P1-NEXTLEVEL critic r2 (profile P1): an identity fact is never undated. With
+  // no as-of stamp (a legacy profile), the day the parent entered it at
+  // onboarding dates it, so "first year" / "in 3 months" never reads as today.
+  const identityEnteredAt = childProfile.onboardingCompletedAt;
+  const langsAsOf = childProfile.factsAsOf?.languages ?? identityEnteredAt;
   const langSegment = langNames.length === 0
     ? ""
     : langsAsOf
@@ -164,7 +170,7 @@ export default function ChildProfile() {
     : langNames.join(" · ");
   // Critic r1 (B-GROWTH-35 seam): the school setting is time-bearing too, so
   // it carries its as-of month the same way languages do.
-  const schoolAsOf = childProfile.factsAsOf?.schoolContext;
+  const schoolAsOf = childProfile.factsAsOf?.schoolContext ?? identityEnteredAt;
   const schoolSegment = !childProfile.schoolContext
     ? ""
     : schoolAsOf
@@ -186,6 +192,16 @@ export default function ChildProfile() {
   };
   const latestWritten = latestApproved ? writtenDateFor(toParentWords(latestApproved.fact), latestApproved.createdAt) : null;
   const hasPending = pendingQueue.length > 0;
+  // P1-NEXTLEVEL critic r2: one fact reads once. The knows-line quotes the
+  // newest kept fact; the list starts after it. The newest inference is NAMED
+  // in one quiet line, never counted (the count lives on #/memory only).
+  const rememberedRest = latestApproved ? remembered.filter((m) => m.memoryId !== latestApproved.memoryId) : remembered;
+  const newestPending = useMemo(
+    () => [...pendingQueue].sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? "")))[0] ?? null,
+    [pendingQueue],
+  );
+  const newestPendingTopic = newestPending ? memoryTopicOf(newestPending) : "other";
+  const showRemember = rememberedRest.length > 0 || hasPending;
 
   // B-GROWTH-NEW-1F → B-GROWTH-NEW-2F — the ProfileKnowsLine names the child
   // ("What Arbor knows about {name}:"), then one fact the parent kept, in their
@@ -219,7 +235,7 @@ export default function ChildProfile() {
           row — moment counts belong to Journal (CN-007). At lg the band is a
           sticky column beside the identity; grid lines follow the writing
           direction, so RTL mirrors with no extra rule. */}
-      <div data-testid="profile-fold" className={hasPending ? "space-y-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-8 lg:space-y-0" : "space-y-6"}>
+      <div data-testid="profile-fold" className={showRemember ? "space-y-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-8 lg:space-y-0" : "space-y-6"}>
       <header data-module="profile-identity" data-testid="profile-hub-hero" className="border-b pb-5 lg:col-start-1 lg:row-start-1" style={{ borderColor: "var(--arbor-rule)" }}>
         <div className="flex items-center gap-4">
           <Avatar name={childProfile.name} photoURL={picture.url} size={40} />
@@ -291,14 +307,14 @@ export default function ChildProfile() {
           Forget only (the same "deleted" decision #/memory makes). No Keep, no
           "Not quite", no queue: an inference is asked inline in the
           conversation (B-AI-07) and on #/memory; here it is one quiet line. */}
-      {(remembered.length > 0 || hasPending) && (
+      {showRemember && (
         <section data-module="profile-remember" aria-labelledby="profile-remember-title" className="space-y-3 lg:sticky lg:top-4 lg:col-start-2 lg:row-start-1">
           <h2 id="profile-remember-title" className="text-lg font-semibold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
             {t("elev.profile.remembers.title")}
           </h2>
-          {remembered.length > 0 && (
+          {rememberedRest.length > 0 && (
             <ul data-testid="profile-remembered">
-              {remembered.slice(0, 5).map((m) => (
+              {rememberedRest.slice(0, 5).map((m) => (
                 <li key={m.memoryId} data-testid="profile-remembered-fact" className="flex items-start justify-between gap-3 border-b py-3 last:border-b-0" style={{ borderColor: "var(--arbor-rule)", opacity: isMemoryUpdating === m.memoryId ? 0.6 : 1 }}>
                   <div className="min-w-0 flex-1">
                     <p style={{ fontFamily: "var(--font-editorial)", fontWeight: 400, fontSize: "var(--t-md)", color: "var(--arbor-ink)" }}>
@@ -315,10 +331,16 @@ export default function ChildProfile() {
               ))}
             </ul>
           )}
-          {hasPending && (
-            <button type="button" data-testid="profile-remember-check" onClick={() => setActiveTab("memory")} className="inline-flex min-h-11 items-center gap-1 t-sm font-semibold" style={{ color: "var(--arbor-ink-soft)" }}>
-              {pendingQueue.length === 1 ? t("elev.profile.remembers.check.one") : t("elev.profile.remembers.check.many", { n: pendingQueue.length })}
-              <Icon name="chevron_right" size={16} className="rtl:rotate-180" />
+          {newestPending && (
+            <button type="button" data-testid="profile-remember-check" onClick={() => setActiveTab("memory")} className="inline-flex min-h-11 items-start gap-1 py-2 text-start t-sm" style={{ color: "var(--arbor-ink-soft)" }}>
+              {/* Named by its topic, never counted; the inference's own words stay on
+                  #/memory (B-SHELL-26: nothing is decided on Profile). */}
+              <span className="min-w-0 font-semibold">
+                {newestPendingTopic === "other"
+                  ? t("elev.profile.remembers.noticed")
+                  : t("elev.profile.remembers.noticedAbout", { topic: domainName(newestPendingTopic, t).toLocaleLowerCase(uiLang === "he" ? "he" : "en") })}
+              </span>
+              <Icon name="chevron_right" size={16} className="mt-0.5 rtl:rotate-180" />
             </button>
           )}
         </section>
@@ -327,7 +349,7 @@ export default function ChildProfile() {
 
       {/* Chapter 1 — who {first} is */}
       <section data-module="profile-who" aria-label={t("elev.wave2Knowledge.profile.facts")}>
-      <SectionCard title={t("cp.ch.who", { name: first, age: formatChildAge(childProfile, t) })} icon={<Icon name="person" size={20} />} tone="mint">
+      <SectionCard title={t("elev.profile.who.title", { name: first })} icon={<Icon name="person" size={20} />} tone="mint">
         <p className="mb-4 text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.wave2Knowledge.profile.facts")}</p>
         <div className="grid sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
           <Field label={t("cp.f.languages")} value={langNames.join(" · ") || "—"} asOf={factLine("languages", childProfile.languages.length > 0)} />
@@ -357,7 +379,9 @@ export default function ChildProfile() {
             )}
           </div>
         </div>
-        <button onClick={() => setEditingProfile(true)} className="mt-3 min-h-11 text-sm font-bold" style={{ color: "var(--arbor-green-ink)" }}><Icon name="edit" size={16} className="inline-block me-1" />{t("elev.wave2Knowledge.profile.edit")}</button>
+        {/* P1-NEXTLEVEL critic r2: one link ink on the Who card — the edit door
+            and Create hero both read --arbor-clay (no green-ink second ink). */}
+        <button onClick={() => setEditingProfile(true)} className="mt-3 min-h-11 text-sm font-bold" style={{ color: "var(--arbor-clay)" }}><Icon name="edit" size={16} className="inline-block me-1" />{t("elev.wave2Knowledge.profile.edit")}</button>
         {/* W2-GROWTH r2: Create hero left the identity header (it pushed the
             pending Keep under the tab bar at 375); it lives in the Who chapter. */}
         {!hasHero && <button onClick={() => setEditingProfile(true)} className="mt-2 block min-h-11 text-start text-sm font-bold" style={{ color: "var(--arbor-clay)" }}><Icon name="auto_awesome" size={16} className="inline-block me-1" />{t("cp.hero.create", { name: heroName })}<span className="block text-xs font-normal" style={{ color: "var(--arbor-muted)" }}>{t("cp.hero.subline")}</span></button>}
