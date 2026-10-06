@@ -74,7 +74,11 @@ export const FIRSTS_KEEPSAKE_SURFACE = "firsts_keepsake";
 export const KEEPSAKE_NOTE_MAX = 400;
 
 export interface FirstKeepsake {
-  /** The milestone this keepsake belongs to. */
+  /** B-LOOP-10: "quote" = a line from Tonight's question ("Things {name}
+   *  said"), stored in the same registered collection with NO milestone id,
+   *  so every milestone-keepsake reader skips it. Absent = a milestone first. */
+  kind?: "quote";
+  /** The milestone this keepsake belongs to ("" on a quote). */
   milestoneId: string;
   /** The parent's own words. Required — this IS the keepsake. */
   note: string;

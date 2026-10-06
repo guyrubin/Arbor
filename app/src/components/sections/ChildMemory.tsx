@@ -35,6 +35,10 @@ import MonthKeepsake from "../weekly/MonthKeepsake";
 // B-CAREPRO-25: the pending queue reads as one group per topic (G6: no bulk approve).
 import { groupPendingMemory, dismissGroup, type PendingMemoryGroup, type MemoryTopic } from "../../lib/memoryGroups";
 import { domainName } from "../../lib/domains/registry";
+import { useChildCollection } from "../../hooks/useChildCollection";
+import type { KeepsakeDoc } from "../../lib/firstsKeepsake";
+import { quotesFromDocs } from "../../lib/loop/tonight";
+import ThingsSaid from "../loop/ThingsSaid";
 
 const pick = (he: boolean, txt: { en: string; he: string }) => (he ? txt.he : txt.en);
 
@@ -42,6 +46,10 @@ const pick = (he: boolean, txt: { en: string; he: string }) => (he ? txt.he : tx
  *  append-only memory service (/api/memory). A core moat: source-linked,
  *  time-stamped, editable via approve/forget, time-boxed when sensitive. */
 export default function ChildMemory() {
+  // B-LOOP-10 — "Things {name} said": the quote keepsakes from Tonight.
+  const quoteChild = useArbor().childProfile;
+  const quoteDocs = useChildCollection<KeepsakeDoc>(quoteChild.id, "keepsakes");
+  const keptQuotes = useMemo(() => quotesFromDocs(quoteDocs.items), [quoteDocs.items]);
   const { childProfile, approvedMemoryItems, pendingMemoryItems, handleMemoryDecision, isMemoryUpdating, memoryReviewError, memoryReviewErrorKind, retryMemoryReview, savedLearnIds, requestLearnRead, setActiveTab } = useArbor();
   const { t, aiLang } = useLanguage();
   const he = aiLang === "he";
@@ -258,6 +266,11 @@ export default function ChildMemory() {
           <Icon name="expand_more" size={20} className="ms-auto" style={{ color: "var(--arbor-muted)" }} />
         </summary>
         <div className="px-4 pb-4 space-y-4">
+        {/* B-LOOP-10 — the quotes kept from Tonight's second question, by
+            month; one tap shares ONE quote as text. Demoted like its siblings. */}
+        <div data-module="memory-quotes" data-module-demoted className="pt-1">
+          <ThingsSaid quotes={keptQuotes} childName={(quoteChild.name || "").split(" ")[0]} gender={quoteChild.gender} />
+        </div>
         {/* demotionTarget: "profile" — the hub the contract sends these to. */}
         <button onClick={() => setActiveTab("profile")} className="inline-flex min-h-11 w-full items-center justify-between gap-2 rounded-xl px-4 py-2.5 text-sm font-bold" style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}>
           <span>{t("elev.childmem.more.door")}</span>
