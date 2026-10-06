@@ -89,16 +89,18 @@ export function practiceCandidates(input: ChoosePracticeInput, limit = 6): Pract
   const byMilestone = new Map<string, Practice[]>();
   const shelfLevel = new Map<ShelfId, Practice[]>();
   for (const p of input.practices) {
-    if (recent.has(p.id)) continue;
     if (input.candidateFilter && !input.candidateFilter(p)) continue;
     // B-LOOP-08 follow-up: a shelf-level practice (milestoneId null) is
-    // ranked below with its shelf, never through a milestone.
+    // ranked below with its shelf, never through a milestone. B-PROG-06
+    // (gate): the WHOLE shelf pool is kept here (recent ids are skipped at
+    // pick time), so the day rotation below indexes a stable pool.
     if (p.milestoneId === null) {
       const list = shelfLevel.get(p.shelf) ?? [];
       list.push(p);
       shelfLevel.set(p.shelf, list);
       continue;
     }
+    if (recent.has(p.id)) continue;
     const list = byMilestone.get(p.milestoneId) ?? [];
     list.push(p);
     byMilestone.set(p.milestoneId, list);
@@ -122,7 +124,20 @@ export function practiceCandidates(input: ChoosePracticeInput, limit = 6): Pract
       const band = bandForAgeMonths(p.ageMonths).months;
       return band <= window.currentBandMonths && band >= window.earlierBandMonths;
     });
-    return fits.length ? fits[hash(`${seed}|${shelf}`) % fits.length] : null;
+    if (!fits.length) return null;
+    // B-PROG-06 (gate): a DAY ROTATION over the shelf's whole pool, seeded per
+    // child + shelf — consecutive days take consecutive positions — and the
+    // pick is the pool MINUS yesterday's choice (explicitly excluded) and
+    // minus recent ids. With a 21-practice sleep pool the date-seeded index
+    // used to land on the same id two days running (pr-sleep-17, day 15/16).
+    const start = (hash(`${input.childId}|${shelf}`) + epochDay(input.today)) % fits.length;
+    const yesterdays = fits[(start + fits.length - 1) % fits.length].id;
+    for (let k = 0; k < fits.length; k += 1) {
+      const p = fits[(start + k) % fits.length];
+      if (recent.has(p.id) || (fits.length > 1 && p.id === yesterdays)) continue;
+      return p;
+    }
+    return null;
   };
   const out: PracticePick[] = [];
   for (const shelf of shelvesThinnestFirst(input.coverage)) {

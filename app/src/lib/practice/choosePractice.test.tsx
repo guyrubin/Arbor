@@ -88,6 +88,17 @@ describe("choosePractice", () => {
       expect(id, `day ${d}`).not.toBe(prev);
       prev = id;
     }
+    // B-PROG-06 (gate): the day-15/16 pair (pr-sleep-17 twice when the sleep pool grew to 21) — pinned
+    const d15 = choosePractice(base({ today: new Date(2026, 9, 16, 9, 0) }))!.practice.id;
+    const d16 = choosePractice(base({ today: new Date(2026, 9, 17, 9, 0) }))!.practice.id;
+    expect(d16).not.toBe(d15);
+    // and a longer run over the sleep pool never repeats yesterday either
+    let last = "";
+    for (let d = 0; d < 60; d++) {
+      const id = choosePractice(base({ today: new Date(2026, 9, 1 + d, 9, 0) }))!.practice.id;
+      expect(id, `long run day ${d}`).not.toBe(last);
+      last = id;
+    }
     // and yesterday's ANSWERED practice is excluded too
     const answeredYesterday = choosePractice(base({ today: new Date(2026, 9, 5, 9, 0) }))!.practice.id;
     expect(choosePractice(base({ recentPracticeIds: [answeredYesterday] }))!.practice.id).not.toBe(answeredYesterday);
