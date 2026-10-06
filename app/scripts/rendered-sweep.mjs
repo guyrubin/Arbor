@@ -83,6 +83,12 @@ const VIEWPORTS = [
   { w: 375, h: 812, lang: "he" },
   { w: 1280, h: 800, lang: "en" },
 ];
+/** P5 critic r2 on #/milestones (P1-6, 6 Oct): extra viewports for ONE route —
+ *  a 1280 HE cell (base + its states) where the desktop Hebrew layout is the
+ *  evidence asked for; every other route keeps the three cells. */
+const EXTRA_VIEWPORTS = {
+  milestones: [{ w: 1280, h: 800, lang: "he" }],
+};
 const READY_SELECTOR = "main h1, [data-module], [data-primary-move]";
 const READY_BUDGET_MS = 20_000;
 const QUIET_MS = 500;
@@ -415,10 +421,20 @@ function collect({ lang, allowLatin }) {
         .replace(allow, " ");
     // Icon-font ligatures ("chevron_left" in Material Symbols) render as glyphs, not words.
     const iconFont = (el) => /material (symbols|icons)/i.test(getComputedStyle(el).fontFamily);
-    latinChromeHE = deepest(
-      (t) => /[A-Za-z]{3,}/.test(strip(t)),
-      (el) => !!el.closest('[lang^="en"], [dir="ltr"]') || iconFont(el),
-    );
+    // P5 critic r2 (P0-1): test each element's OWN direct text nodes, not only
+    // leaf elements — `<a>English label <span class=icon/></a>` was never tested,
+    // because the icon child made the anchor a non-leaf and the icon is excluded.
+    const ownText = (el) => [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent || "").join(" ");
+    const latinTest = (t) => /[A-Za-z]{3,}/.test(strip(t));
+    const latinExclude = (el) => !!el.closest('[lang^="en"], [dir="ltr"]') || iconFont(el);
+    const own = [];
+    for (const el of document.body.querySelectorAll("*")) {
+      if (SKIP.has(el.tagName) || el.closest("script,style,noscript,template")) continue;
+      const text = ownText(el);
+      if (!text.trim() || !latinTest(text) || latinExclude(el) || !visible(el)) continue;
+      own.push(clip(text, 80));
+    }
+    latinChromeHE = own;
   }
 
   const sub44 = [];
@@ -830,6 +846,27 @@ const STATES = {
             return (await h.page.locator("[data-testid=ms-shelf-map] [data-primary-move] [data-answer=yes]").count()) > 0;
           },
         };
+      },
+    },
+    {
+      name: "not-sure",
+      writes: "one milestone answer in the local record; the card's Undo restores it after the shot",
+      run: async (h) => {
+        await h.click("[data-testid=ms-shelf-map] [data-primary-move] [data-answer=not_sure]", [], "the first Notice card's Not sure");
+        await h.top(await h.need("[data-testid=ms-shelf-map] [data-testid=notice-thanks]", "the neutral Not-sure line with Undo"));
+        return {
+          undo: async () => {
+            await h.page.locator("[data-testid=ms-shelf-map] [data-testid=notice-undo]").first().click({ timeout: 5_000 });
+            await h.page.waitForTimeout(400);
+            return (await h.page.locator("[data-testid=ms-shelf-map] [data-primary-move] [data-answer=yes]").count()) > 0;
+          },
+        };
+      },
+    },
+    {
+      name: "quiet-shelves",
+      run: async (h) => {
+        await h.top(await h.need("[data-testid=ms-quiet-shelves]", "the quiet shelves (shelf-level practices)"));
       },
     },
     {
@@ -1386,6 +1423,19 @@ async function sweep(browser, opts, routes, outDir, withShots, allowLatin, tr) {
       }
     }
     await context.close();
+  }
+  for (const route of pageRoutes) {
+    for (const vp of EXTRA_VIEWPORTS[route] ?? []) {
+      const context = await newSweepContext(browser, vp, opts, apiCache);
+      const shotPath = withShots ? path.join(outDir, "shots", `${route}.${vp.w}x${vp.h}.${vp.lang}.png`) : null;
+      cells.push(await visit(context, opts.base, route, vp, allowLatin, shotPath));
+      await context.close();
+      if (!opts.states) continue;
+      for (const state of statesFor(route, vp)) {
+        const shotFor = withShots ? (name) => path.join(outDir, "shots", `${route}.${vp.w}x${vp.h}.${vp.lang}.${name}.png`) : null;
+        cells.push(await stateCell(browser, opts, apiCache, route, vp, state, allowLatin, shotFor, tr));
+      }
+    }
   }
   const isBase = (c) => (c.state ?? "base") === "base";
   const reached = cells.filter((c) => isBase(c) || c.reached);

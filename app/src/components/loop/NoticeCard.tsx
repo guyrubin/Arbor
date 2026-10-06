@@ -93,6 +93,9 @@ export interface NoticeCardProps {
    *  back the document it held BEFORE the answer (byte-equal), the card asks
    *  again. A mis-tap never travels silently into the clinician packet. */
   onUndo?: () => void;
+  /** P5 critic r2 (P1-1): a door / search row shows the answer already given
+   *  (the same pills, the chosen one marked); a new tap re-answers it. */
+  selected?: ObserveStatus | null;
   /** "row" sits inside a parent card (Today, the shelf map); "card" is its own card. */
   variant?: "row" | "card";
   /** The host already names the shelf (the shelf map's section header): no eyebrow. */
@@ -132,6 +135,7 @@ export default function NoticeCard({
   variant = "card",
   hideShelf = false,
   initialPhase = "ask",
+  selected,
   stampMove,
   answersAttrs,
 }: NoticeCardProps) {
@@ -171,7 +175,7 @@ export default function NoticeCard({
     setPhase("kept");
   };
   const undoButton = onUndo ? (
-    <button type="button" data-testid="notice-undo" onClick={undo} className="ms-auto inline-flex min-h-[44px] items-center rounded-full px-3 t-sm font-semibold" style={{ color: "var(--arbor-clay)" }}>
+    <button type="button" data-testid="notice-undo" onClick={undo} className="ms-auto inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full px-3 t-sm font-semibold" style={{ color: "var(--arbor-clay)" }}>
       {t("elev.loop.notice.undo")}
     </button>
   ) : null;
@@ -220,7 +224,7 @@ export default function NoticeCard({
           )}
 
           {phase === "ask" && (
-            <NoticeAnswers onAnswer={answer} ariaLabel={t("ms.observePrompt")} attrs={{ ...stamp, ...(answersAttrs ?? {}) }} />
+            <NoticeAnswers onAnswer={answer} selected={selected} ariaLabel={t("ms.observePrompt")} attrs={{ ...stamp, ...(answersAttrs ?? {}) }} />
           )}
 
           {phase === "seen" && (

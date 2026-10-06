@@ -1,18 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { useDialog } from "../../hooks/useDialog";
 import { motion, AnimatePresence } from "motion/react";
 import { celebrate as fireCelebration } from "../../lib/celebrate";
 import { Icon } from "../ui/Icon";
 // W5 celebration chain — the shared E7 celebration grammar layered on a fresh
 // milestone "yes" (once per milestone id, ≤1/session), plus the threshold-
 // crossing pride card (Rule A bars it from Today; the Map is its home).
-import {
-  CelebrationMoment,
-  celebrationSessionAvailable,
-  hasCelebrated,
-  markCelebrated,
-} from "../ui/CelebrationMoment";
+import { hasCelebrated, markCelebrated } from "../ui/CelebrationMoment";
 import PrideMomentCard from "../overview/PrideMomentCard";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -27,7 +20,7 @@ import { explainAnswerText, isEmptyExplainAnswer, type ExplainAnswer } from "../
 import { ContentActionBar, ContentWhyLine } from "../ui/ContentActionBar";
 import { cardCls, Split } from "../ui/kit";
 import { authHeaders, getAiLanguage } from "../../lib/api";
-import { DOMAIN_REFERENCES } from "../../lib/milestoneReferences";
+import { DOMAIN_REFERENCES, DOMAIN_REFERENCE_LABEL_KEY } from "../../lib/milestoneReferences";
 import { noticedMilestoneCounts } from "../../lib/record/counts";
 import { MILESTONE_AGE_BANDS, ageWindowMilestones, bandForAgeMonths, comparisonAgeMonths, correctedAge, explainMilestonePrompt, milestoneAgeGroupText, milestoneAgeWindow, milestoneBandLabel, milestoneText } from "../../lib/milestoneData";
 // UND-7 — fail-closed gate for the governed milestone example-media slot
@@ -145,10 +138,6 @@ export default function MilestonesTab() {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  // W5 — the milestone whose CelebrationMoment overlay is currently layered.
-  const [celebratingId, setCelebratingId] = useState<string | null>(null);
-
-  const { ref: dialogRef, requestClose, onBackdropClick } = useDialog({ open: Boolean(celebratingId), onClose: () => setCelebratingId(null) });
 
   // GP-31 / B-GROWTH-10 — the keepsakes this child's parent has written, in
   // the registered `keepsakes` subcollection (doc id = milestone id): synced
@@ -196,14 +185,12 @@ export default function MilestonesTab() {
     // P5 critic r1 (framer ruling 3): the confetti burst fires ONCE per
     // milestone id ever (a completion moment, never a repeat reward); an Undo and a
     // second "Seen it" replay nothing.
+    // P5 critic r2 (P1-4, 6 Oct): ONE confetti burst only — the full-screen
+    // celebration overlay covered the Seen-it strip (When? · Keep), the
+    // screen's own move; the kept state is the celebration (B-LOOP-04).
     if (hasCelebrated(childProfile.id, item.id)) return;
     celebrate();
-    if (celebrationSessionAvailable()) {
-      markCelebrated(childProfile.id, item.id);
-      setCelebratingId(item.id);
-    } else {
-      markCelebrated(childProfile.id, item.id);
-    }
+    markCelebrated(childProfile.id, item.id);
   };
 
   // ── Corrected age (preterm) ──────────────────────────────────────────────
@@ -254,7 +241,6 @@ export default function MilestonesTab() {
     if (held) return milestones.find((m) => m.id === held);
     return noticePicks.find((p) => p.shelf === shelf)?.milestone;
   };
-  const firstNoticeShelf = SHELF_IDS.find((id) => noticeFor(id));
   const [openShelves, setOpenShelves] = useState<Partial<Record<ShelfId, boolean>>>({});
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -266,6 +252,9 @@ export default function MilestonesTab() {
     ...SHELF_IDS.filter((id) => noticeFor(id)),
     ...SHELF_IDS.filter((id) => !noticeFor(id) && shelfItems[id].length > 0),
   ];
+  // P5 critic r2 (P1-4): the route's ONE stamp sits on the first card the
+  // parent has NOT answered this session; an answered (held) card keeps none.
+  const stampShelf = mapShelves.find((id) => noticeFor(id) && !heldNotice[id]);
   const quietWindow = milestoneAgeWindow(comparisonMonths);
   const quietShelves = SHELF_IDS.filter((id) => shelfItems[id].length === 0).map((shelf) => ({
     shelf,
@@ -463,7 +452,7 @@ export default function MilestonesTab() {
                 className="text-[11px] font-bold flex items-center gap-0.5"
                 style={{ color: "var(--arbor-sky-ink)" }}
               >
-                {DOMAIN_REFERENCES[item.domain].label} <Icon name="open_in_new" size={11} />
+                {t(DOMAIN_REFERENCE_LABEL_KEY(item.domain))} <Icon name="open_in_new" size={11} />
               </a>
             )}
             <button
@@ -643,34 +632,90 @@ export default function MilestonesTab() {
     </div>
   );
 
-  /** B-LOOP-05 — one shelf behind its door: every band, earlier first. The
-   *  child's band and the earlier ones answer through renderItem; a LATER
-   *  band is titles only (a parent can read what comes next, never tick
-   *  it). No per-band fraction anywhere. */
-  const renderShelfBands = (shelf: ShelfId) => (
-    <div className="space-y-3">
-      {shelfBands(shelfItems[shelf], currentBand.months).map((band) => (
-        <div key={band.months} data-testid="ms-shelf-band" data-band={band.months} className="space-y-2">
-          <p className="t-sm font-semibold" style={{ color: band.current ? "var(--arbor-ink)" : "var(--arbor-muted)" }}>
-            {band.months === -1 ? t("ms.custom") : milestoneBandLabel(band.months, t)}
-            {band.current && <> · {t("ms.currentBand")}</>}
-            {band.later && <> · {t("elev.loop.shelf.later")}</>}
-          </p>
-          {band.later ? (
+  /** P5 critic r2 (P1-1 / P2-3): a door or search row IS a Notice row — the
+   *  same answers, receipt, When?, Keep and Undo as the shelf's card, the
+   *  answer already given shown as selected. A parent-added row keeps its own
+   *  controls (rename / delete live only there). */
+  const [beforeRow, setBeforeRow] = useState<Record<string, Milestone>>({});
+  const renderRow = (m: Milestone, shelf: ShelfId) =>
+    m.custom ? renderItem(m) : (
+      <NoticeCard
+        key={m.id}
+        milestone={m}
+        shelf={shelf}
+        gender={childProfile.gender}
+        childName={firstName}
+        variant="row"
+        hideShelf
+        selected={m.observationStatus ?? (m.checked ? "yes" : null)}
+        onAnswer={(status) => {
+          setBeforeRow((p) => ({ ...p, [m.id]: m }));
+          observeMilestone(m, status);
+        }}
+        onUndo={() => {
+          const previous = beforeRow[m.id];
+          if (previous) restoreMilestone(previous);
+        }}
+        onWhen={(when) => setMilestoneObservation(m.id, "yes", { when })}
+        onKeepQuote={(note) => saveKeepsake({ milestoneId: m.id, note, noticedOn: localDay(new Date()) })}
+        onKeepPhoto={() => setKeepsakeFor(m.id)}
+      />
+    );
+
+  /** B-LOOP-05 / P5 critic r2 (P0-3, 6 Oct) — one shelf behind its door, with
+   *  NO age label anywhere: "Around now" (the child's band, Notice rows),
+   *  "Earlier" (a closed disclosure, the same rows) and "Coming next" (a
+   *  closed disclosure, titles only — read, never tick). The only age text a
+   *  row carries is its own sourced sentence (milestoneAgeLine). */
+  const renderShelfBands = (shelf: ShelfId) => {
+    const bands = shelfBands(shelfItems[shelf], currentBand.months);
+    const skip = noticeFor(shelf)?.id;
+    const now = bands.filter((b) => b.current).flatMap((b) => b.items).filter((m) => m.id !== skip);
+    const earlier = bands.filter((b) => !b.current && !b.later && b.months !== -1).flatMap((b) => b.items).filter((m) => m.id !== skip).reverse();
+    const next = bands.filter((b) => b.later).flatMap((b) => b.items);
+    const own = bands.filter((b) => b.months === -1).flatMap((b) => b.items);
+    const group = "t-sm font-semibold";
+    return (
+      <div className="space-y-3">
+        {now.length > 0 && (
+          <div data-testid="ms-shelf-band" data-band="now" className="space-y-1">
+            <p className={group} style={{ color: "var(--arbor-ink)" }}>{t("ms.currentBand")}</p>
+            {now.map((m) => renderRow(m, shelf))}
+          </div>
+        )}
+        {earlier.length > 0 && (
+          <details data-testid="ms-shelf-band" data-band="earlier" className="group">
+            <summary className={`flex min-h-11 cursor-pointer list-none items-center gap-1.5 ${group}`} style={{ color: "var(--arbor-ink-soft)" }}>
+              {t("elev.loop.shelf.earlier")}
+              <Icon name="expand_more" size={18} className="group-open:rotate-180" />
+            </summary>
+            <div className="space-y-1">{earlier.map((m) => renderRow(m, shelf))}</div>
+          </details>
+        )}
+        {next.length > 0 && (
+          <details data-testid="ms-shelf-band" data-band="next" className="group">
+            <summary className={`flex min-h-11 cursor-pointer list-none items-center gap-1.5 ${group}`} style={{ color: "var(--arbor-ink-soft)" }}>
+              {t("elev.loop.shelf.next")} · {t("elev.loop.shelf.later")}
+              <Icon name="expand_more" size={18} className="group-open:rotate-180" />
+            </summary>
             <ul className="space-y-1.5">
-              {band.items.map((m) => (
+              {next.map((m) => (
                 <li key={m.id} data-testid="ms-later-item" className="t-sm leading-snug" style={{ color: "var(--arbor-ink-soft)" }}>
                   {milestoneText(m, "title", t, msGender)}
                 </li>
               ))}
             </ul>
-          ) : (
-            <div className="space-y-2">{band.items.filter((m) => m.id !== noticeFor(shelf)?.id).map(renderItem)}</div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
+          </details>
+        )}
+        {own.length > 0 && (
+          <div data-testid="ms-shelf-band" data-band="own" className="space-y-2">
+            <p className={group} style={{ color: "var(--arbor-ink)" }}>{t("elev.loop.shelf.own")}</p>
+            {own.map((m) => renderRow(m, shelf))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   /** B-LOOP-05 — word search across shelves: the page-language catalogue
    *  text and the stored words (a parent-added row keeps its own). */
@@ -736,6 +781,33 @@ export default function MilestonesTab() {
           ) : (
             <p data-testid="ms-lede" className="t-sm mt-1.5 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>{t("elev.loop.ms.lede")}</p>
           )}
+          <div className="min-w-0" data-testid="ms-map-count">
+            {latestNoticed && !changingLatest && (
+              <button
+                type="button"
+                data-testid="ms-latest-change"
+                onClick={() => setChangingLatest(true)}
+                className="inline-flex min-h-11 items-center t-sm font-semibold"
+                style={{ color: "var(--arbor-clay)" }}
+              >
+                {t("elev.loop.latest.change")}
+              </button>
+            )}
+            {/* Critic r3 (P1): correctable where it is read — "Not right?
+                Change" opens the ONE answer group for the latest milestone. */}
+            {latestNoticed && changingLatest ? (
+              <div data-testid="ms-latest-change-answers">
+                <NoticeAnswers
+                  onAnswer={(status) => { observeMilestone(latestNoticed.milestone, status); setChangingLatest(false); }}
+                  ariaLabel={t("ms.observePrompt")}
+                  className="mt-2"
+                />
+              </div>
+            ) : null}
+            <div className={latestNoticed ? "mt-1 t-sm" : "mt-1 t-2xl font-extrabold leading-tight"} style={latestNoticed ? { color: "var(--arbor-muted)" } : { fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+              {recordCounts.noticed} {t("ms.domainOf")}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -758,40 +830,11 @@ export default function MilestonesTab() {
         className="md:[&>div]:!contents xl:[&>div]:!grid"
         left={
           <div className="min-w-0 space-y-4 xl:sticky xl:top-4 xl:space-y-5">
-            {/* Development Map summary — count headline only, no verdict score. */}
+            {/* P5 critic r2 (P1-2 / P2-1): the summary card is gone — "Not
+                right? Change" and "{n} noticed" sit under the lede in the
+                header; the rail keeps only the under-2 lead. */}
+            {comparisonMonths < 24 && (
             <div className={`${cardCls} min-w-0 p-4 sm:p-6`}>
-              {/* NEXTLEVEL critic r1: one title per screen — the "DEVELOPMENT
-                  MAP" eyebrow and the second disclaimer ("A snapshot, not a
-                  score") are gone (the subtitle already says it). B-GROWTH-07:
-                  the count stands alone as text, never a ring or a fraction. */}
-              <div className="min-w-0" data-testid="ms-map-count">
-                {latestNoticed && !changingLatest && (
-                  <button
-                    type="button"
-                    data-testid="ms-latest-change"
-                    onClick={() => setChangingLatest(true)}
-                    className="inline-flex min-h-11 items-center t-sm font-semibold"
-                    style={{ color: "var(--arbor-clay)" }}
-                  >
-                    {t("elev.loop.latest.change")}
-                  </button>
-                )}
-                {/* Critic r3 (P1): correctable where it is read — "Not right?
-                    Change" opens the ONE answer group for the latest milestone. */}
-                {latestNoticed && changingLatest ? (
-                  <div data-testid="ms-latest-change-answers">
-                    <NoticeAnswers
-                      onAnswer={(status) => { observeMilestone(latestNoticed.milestone, status); setChangingLatest(false); }}
-                      ariaLabel={t("ms.observePrompt")}
-                      className="mt-2"
-                    />
-                  </div>
-                ) : null}
-                <div className={latestNoticed ? "mt-1 t-sm" : "mt-1 t-2xl font-extrabold leading-tight"} style={latestNoticed ? { color: "var(--arbor-muted)" } : { fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-                  {recordCounts.noticed} {t("ms.domainOf")}
-                </div>
-              </div>
-
               {/* B1 — under-2 reassurance lead: name the current stage, no checklist framing. */}
               {comparisonMonths < 24 && (
                 <div className="mt-4 rounded-xl p-3.5" style={{ background: "var(--arbor-green-soft)" }}>
@@ -808,6 +851,7 @@ export default function MilestonesTab() {
                 </div>
               )}
             </div>
+            )}
 
 
           </div>
@@ -863,13 +907,14 @@ export default function MilestonesTab() {
                 {searchHits.map((g) => (
                   <div key={g.shelf} className="space-y-2">
                     <p className="t-sm font-semibold" style={{ color: "var(--arbor-muted)" }}>{shelfLabel(g.shelf, t)}</p>
-                    {g.items.map((m) =>
+                    {/* P5 critic r2 (P2-3): the shelf's own Notice item is never answered twice. */}
+                    {g.items.filter((m) => m.id !== noticeFor(g.shelf)?.id).map((m) =>
                       isLaterItem(m) ? (
                         <p key={m.id} data-testid="ms-search-later" className="t-sm leading-snug" style={{ color: "var(--arbor-ink-soft)" }}>
                           {milestoneText(m, "title", t, msGender)}
                         </p>
                       ) : (
-                        renderItem(m)
+                        renderRow(m, g.shelf)
                       ),
                     )}
                   </div>
@@ -917,7 +962,7 @@ export default function MilestonesTab() {
                           childName={firstName}
                           variant="row"
                           hideShelf
-                          answersAttrs={shelf === firstNoticeShelf ? { "data-primary-move": "notice-milestone" } : undefined}
+                          answersAttrs={shelf === stampShelf ? { "data-primary-move": "notice-milestone" } : undefined}
                           onAnswer={(status) => {
                             setHeldNotice((p) => ({ ...p, [shelf]: card.id }));
                             setBeforeAnswer((p) => ({ ...p, [shelf]: card }));
@@ -970,6 +1015,25 @@ export default function MilestonesTab() {
                             <Icon name="forum" size={16} />
                             {t("ms.askArbor")}
                           </button>
+                          {(() => {
+                            // P5 critic r2 (P0-1 / P0-2): ONE source line per shelf, in the page language, 44 px tall.
+                            const domain = shelfItems[shelf].find((m) => !m.custom)?.domain;
+                            const ref = domain ? DOMAIN_REFERENCES[domain] : undefined;
+                            if (!domain || !ref) return null;
+                            return (
+                              <a
+                                data-testid="ms-shelf-source"
+                                href={ref.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex min-h-11 items-center gap-1.5 t-sm"
+                                style={{ color: "var(--arbor-muted)" }}
+                              >
+                                <Icon name="menu_book" size={16} />
+                                <span>{t("elev.loop.shelf.source", { label: t(DOMAIN_REFERENCE_LABEL_KEY(domain)) })}</span>
+                              </a>
+                            );
+                          })()}
                         </div>
                       )}
                     </section>
@@ -1145,36 +1209,6 @@ export default function MilestonesTab() {
         onClose={() => setKeepsakeFor(null)}
       />
 
-      {/* W5 celebration chain — the FULL moment layered over the tab on a fresh
-          "yes" (never on uncheck), on top of the confetti burst. The card body
-          is the shared E7 CelebrationMoment (parent register, factual copy,
-          parent-mediated ShareButton, reduced-motion handled internally); the
-          scrim click and Escape both dismiss. Dedupe: once per milestone id
-          ever + ≤1/session, both enforced in observeMilestone before opening. */}
-      {celebratingId && createPortal(
-        <div className="arbor-app arbor-parent" style={{ display: "contents" }}>
-        <div
-          ref={dialogRef}
-          tabIndex={-1}
-          data-arbor-dialog-layer
-          role="dialog"
-          aria-modal="true"
-          aria-label={t("elev.celebrate.titleGeneric")}
-          data-testid="milestone-celebration-overlay"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-5"
-          onClick={onBackdropClick}
-        >
-          <div className="w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-            <CelebrationMoment
-              firstName={firstName || undefined}
-              surface="milestones"
-              onDismiss={requestClose}
-              testId="milestone-celebration"
-            />
-          </div>
-        </div>
-        </div>, document.body
-      )}
     </motion.div>
   );
 }

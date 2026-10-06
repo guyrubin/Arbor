@@ -1,6 +1,11 @@
 import { DevelopmentalDomainId } from "../types";
 
-/** Curated, reputable research references per developmental domain. */
+/** Curated, reputable research references per developmental domain.
+ *  `label` is the English descriptor (lib/citedSources reads it); a rendered
+ *  surface prints `t(labelKey)` — P5 critic r2 (P0-1 / P1-5): the Hebrew page
+ *  never shows the English descriptor. */
+export const DOMAIN_REFERENCE_LABEL_KEY = (domain: DevelopmentalDomainId): string => `elev.loop.ref.${domain}`;
+
 export const DOMAIN_REFERENCES: Record<DevelopmentalDomainId, { label: string; url: string }> = {
   attachment_regulation: {
     label: "ZERO TO THREE — social-emotional",
