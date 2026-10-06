@@ -237,7 +237,8 @@ describe("B-TODAY-26 — Today wiring: one voice, no generation, no timer", () =
   });
 
   it("Tonight's story door navigates and generates nothing; the card it replaced stays inert", () => {
-    expect(overview).toContain('onStory={storyFits ? () => setActiveTab("bedtime-stories") : undefined}');
+    // critic c2 r1: the story moved from under the Tonight card into the door
+    expect(overview).toContain('doorLine("today-door-story", "auto_stories", t("elev.loop.tonight.story"), () => setActiveTab("bedtime-stories"))');
     expect(card).not.toMatch(/fetch\(|api\.|generate|setTimeout|setInterval|streak|tomorrow/i);
   });
 

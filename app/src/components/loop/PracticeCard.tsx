@@ -210,18 +210,3 @@ export default function PracticeCard({
     </section>
   );
 }
-
-/**
- * B-LOOP-07 — the evening's practice block: its outcome strip only (one line
- * under Tonight), never the card again. Nothing renders before an answer.
- */
-export function PracticeOutcomeStrip({ shelf, answered }: { shelf: ShelfId; answered: PracticeAnswer | null | undefined }) {
-  const { t } = useLanguage();
-  if (!answered) return null;
-  return (
-    <p role="status" data-testid="practice-outcome-strip" className="flex items-center gap-1.5 px-1 text-[14px]" style={{ color: "var(--arbor-muted)" }}>
-      <Icon name="check" size={18} />
-      {shelfLabel(shelf, t)} · {t(answered === "did" ? "elev.loop.practice.didReceipt" : "elev.loop.practice.notTodayReceipt")}
-    </p>
-  );
-}

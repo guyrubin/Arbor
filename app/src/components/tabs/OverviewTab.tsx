@@ -48,7 +48,7 @@ import { quoteKeepsakeDoc, tonightDayQuestion, tonightOutcomeEntry } from "../..
 import { keepsakeDoc, type KeepsakeDoc } from "../../lib/firstsKeepsake";
 import type { Milestone } from "../../types";
 import type { ShelfId } from "../../lib/shelves/registry";
-import PracticeCard, { PracticeOutcomeStrip, practiceText, type PracticeWhyReason } from "../loop/PracticeCard";
+import PracticeCard, { practiceText, type PracticeWhyReason } from "../loop/PracticeCard";
 import NoticeCard from "../loop/NoticeCard";
 import TonightFlow from "../loop/TonightFlow";
 
@@ -67,8 +67,9 @@ const DAY = 86_400_000;
  *       practice for the window, the thin shelf's Notice card takes the slot.
  *   2 · Notice today — ≤ 2 Notice cards (B-LOOP-04), never the practice's shelf.
  *   3 · Tonight — before the evening door: ONE pointer line; after it: the
- *       three-question flow (B-LOOP-10) leads, the practice shows only its
- *       outcome strip, Notice follows.
+ *       three-question flow (B-LOOP-10) leads and carries the ONE stamp on
+ *       its current step; Notice follows. The morning receipt is not shown
+ *       while Tonight is open (critic c2 r1), and the story is a door line.
  *   "More for today" — ONE collapsed door (chrome, never counted), LINES
  *       only (P5 r1 pass A5): what changed since you left (≤ 3 lines), then
  *       hard-moment words · this week's letter · Daily Play · the ONE proactive
@@ -417,9 +418,7 @@ export default function OverviewTab() {
     </button>
   );
 
-  const practiceBlock = plan.practiceMode === "outcome" && pick ? (
-    <PracticeOutcomeStrip shelf={pick.shelf} answered={doseAnswer} />
-  ) : pick ? (
+  const practiceBlock = pick ? (
     <PracticeCard
       practice={pick.practice}
       milestone={pick.milestone}
@@ -488,7 +487,6 @@ export default function OverviewTab() {
       onNotice={(status) => tonightNotice && noticeHandlers(tonightNotice.milestone, tonightNotice.shelf).onAnswer(status)}
       onNoticeWhen={(when) => tonightNotice && setMilestoneObservation(tonightNotice.milestone.id, "yes", { when })}
       onNoticeUndo={() => tonightNotice && noticeHandlers(tonightNotice.milestone, tonightNotice.shelf).onUndo()}
-      onStory={storyFits ? () => setActiveTab("bedtime-stories") : undefined}
       stampMove={firstBlock === "tonight" ? primaryMoveId : undefined}
     />
   );
@@ -582,6 +580,9 @@ export default function OverviewTab() {
                   onMore={() => setActiveTab("journal")}
                 />
               )}
+              {/* Critic c2 r1 (design P1): at night the story is one line in the
+                  door, never a second line under the open Tonight card. */}
+              {evening && storyFits && doorLine("today-door-story", "auto_stories", t("elev.loop.tonight.story"), () => setActiveTab("bedtime-stories"))}
               {hardMomentTile && doorLine("today-door-hard", "favorite", t("elev.loop.door.hardMoment"), () => openHardMomentNow())}
               {weeklyRecap.currentReport && doorLine("today-door-week", "auto_stories", t("elev.loop.door.week"), () => setActiveTab("weekly"))}
               {doorLine("today-door-play", "sports_esports", t("elev.loop.door.play"), () => setActiveTab("daily-play"))}

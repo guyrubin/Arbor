@@ -41,7 +41,10 @@ export interface TonightFlowProps {
   onStory?: () => void;
   /** Tests render each step statically. */
   initialStep?: TonightStep;
-  /** Law 7: in the evening the first answer is Today's primary move. */
+  /** Law 7: in the evening Tonight's CURRENT step is Today's primary move —
+   *  the ONE literal moves with the step (critic c2 r1 P1-1): step 1's
+   *  answers, then its how-group (or the not-today forward), step 2's
+   *  words form (or its forward once kept), step 3's watch-for answers. */
   stampMove?: string;
 }
 
@@ -67,6 +70,9 @@ export default function TonightFlow(props: TonightFlowProps) {
   const [quote, setQuote] = useState("");
   const [kept, setKept] = useState(false);
   const name = props.childName || t("today.record.childFallback");
+  const forwardReady = !!outcome || !!line.trim();
+  // Law 7: ONE stamp, spread on whichever action group the current step shows.
+  const stamp: Record<string, string> = props.stampMove ? { "data-primary-move": props.stampMove } : {};
 
   const next = (from: TonightStep) => setStep(from === 1 ? 2 : from === 2 && props.notice ? 3 : "done");
   const progress = (n: 1 | 2 | 3) => (
@@ -116,7 +122,7 @@ export default function TonightFlow(props: TonightFlowProps) {
             role="group"
             aria-label={t("elev.loop.tonight.practice.q")}
             data-testid="tonight-practice-answers"
-            {...(props.stampMove ? { "data-primary-move": props.stampMove } : {})}
+            {...stamp}
             className="mt-4 flex gap-2.5"
           >
             <button
@@ -142,12 +148,24 @@ export default function TonightFlow(props: TonightFlowProps) {
         ) : answer === "not_today" ? (
           <div className="mt-4 space-y-3">
             <p role="status" data-testid="tonight-not-today" className="text-[14px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.loop.practice.notTodayReceipt")}</p>
-            <div className="flex flex-wrap gap-2">{nextButton(1)}</div>
+            <div className="flex flex-wrap gap-2" {...stamp}>{nextButton(1)}</div>
           </div>
         ) : (
-          <div className="mt-4 space-y-3" data-testid="tonight-how">
+          <form
+            className="mt-4 space-y-3"
+            data-testid="tonight-how"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const text = line.trim();
+              if (text) props.onWhatHappened(text);
+              setLine("");
+              next(1);
+            }}
+          >
             <p className="text-[14px] font-semibold" style={{ color: "var(--arbor-ink)" }}>{t("elev.loop.tonight.practice.how")}</p>
-            <div role="group" aria-label={t("elev.loop.tonight.practice.how")} className="flex flex-wrap gap-2">
+            {/* Law 7: the how-group IS the evening's move once "Did it" is in
+                (the morning answer, or step 1's own tap). */}
+            <div role="group" aria-label={t("elev.loop.tonight.practice.how")} data-testid="tonight-how-answers" {...stamp} className="flex flex-wrap gap-2">
               {(["helped", "somewhat"] as const).map((o) => (
                 <button
                   key={o}
@@ -166,36 +184,34 @@ export default function TonightFlow(props: TonightFlowProps) {
                 </button>
               ))}
             </div>
-            <form
-              className="flex items-center gap-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                const text = line.trim();
-                if (!text) return;
-                props.onWhatHappened(text);
-                setLine("");
-                next(1);
-              }}
-            >
-              <input
-                type="text"
-                dir="auto"
-                value={line}
-                maxLength={280}
-                onChange={(e) => setLine(e.target.value)}
-                placeholder={t("elev.loop.tonight.practice.what")}
-                aria-label={t("elev.loop.tonight.practice.what")}
-                data-testid="tonight-what"
-                className="min-h-[44px] min-w-0 flex-1 rounded-xl px-3 text-[14.5px]"
-                style={{ background: "var(--arbor-paper)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
-              />
-              <button type="submit" disabled={!line.trim()} className={`${pillBase} disabled:opacity-60`} style={{ color: "var(--arbor-ink)", background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }}>
-                {t("elev.loop.tonight.save")}
-              </button>
-            </form>
+            <input
+              type="text"
+              dir="auto"
+              value={line}
+              maxLength={280}
+              onChange={(e) => setLine(e.target.value)}
+              placeholder={t("elev.loop.tonight.practice.what")}
+              aria-label={t("elev.loop.tonight.practice.what")}
+              data-testid="tonight-what"
+              className="min-h-[44px] w-full min-w-0 rounded-xl px-3 text-[14.5px]"
+              style={{ background: "var(--arbor-paper)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
+            />
             <p className="text-[12.5px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.loop.tonight.helper")}</p>
-            <div className="flex flex-wrap gap-2">{nextButton(1)}</div>
-          </div>
+            {/* Critic c2 r1 (design P1): ONE forward button. Once an outcome or
+                a line exists it is "Save & next" in the CTA treatment — the
+                evening's only gradient; before that a plain "Next". */}
+            <button
+              type="submit"
+              data-testid="tonight-save-next"
+              data-ready={forwardReady ? "true" : "false"}
+              className={pillBase}
+              style={forwardReady
+                ? { color: "var(--arbor-on-accent)", background: "var(--gradient-cta)", boxShadow: "var(--shadow-sm)" }
+                : { color: "var(--arbor-ink)", background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }}
+            >
+              {t(forwardReady ? "elev.loop.tonight.saveNext" : "elev.loop.tonight.next")}
+            </button>
+          </form>
         )}
         {!answer && <div className="mt-2">{skipButton(1)}</div>}
       </div>
@@ -213,11 +229,13 @@ export default function TonightFlow(props: TonightFlowProps) {
               <Icon name="check" size={18} />
               {g(t("elev.loop.tonight.day.receipt", { name }))}
             </p>
-            <div className="flex flex-wrap gap-2">{nextButton(2)}</div>
+            <div className="flex flex-wrap gap-2" {...stamp}>{nextButton(2)}</div>
           </div>
         ) : (
           <>
             <form
+              data-testid="tonight-quote-form"
+              {...stamp}
               className="mt-3 flex items-center gap-2"
               onSubmit={(e) => {
                 e.preventDefault();
@@ -265,6 +283,7 @@ export default function TonightFlow(props: TonightFlowProps) {
           onAnswer={props.onNotice}
           onWhen={props.onNoticeWhen}
           onUndo={props.onNoticeUndo}
+          answersAttrs={stamp}
         />
         <div className="flex flex-wrap gap-2">
           <button

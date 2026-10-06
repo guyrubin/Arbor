@@ -115,6 +115,52 @@ describe("TonightFlow — three steps in order", () => {
   });
 });
 
+describe("Law 7 — the ONE stamp moves with the step (P5-LOOP critic c2 r1 P1-1)", () => {
+  const stamps = (html: string) => (html.match(/data-primary-move="do-practice"/g) ?? []).length;
+  const holder = (html: string) => {
+    const i = html.indexOf('data-primary-move="do-practice"');
+    const open = html.lastIndexOf("<", i);
+    return html.slice(open, html.indexOf(">", i) + 1);
+  };
+  it("every step carries exactly one stamp on its action group, EN + HE — including the evening after a morning 'Did it'", () => {
+    for (const lang of ["en", "he"] as const) {
+      const s1 = render(1, lang, { stampMove: "do-practice" });
+      expect(stamps(s1), `${lang} step 1`).toBe(1);
+      expect(holder(s1)).toContain('data-testid="tonight-practice-answers"');
+      // the success path: Did it at 07:30, Today opened at 22:00 → the how-group
+      const how = render(1, lang, { stampMove: "do-practice", doseAnswer: "did" });
+      expect(stamps(how), `${lang} how`).toBe(1);
+      expect(holder(how)).toContain('data-testid="tonight-how-answers"');
+      const notToday = render(1, lang, { stampMove: "do-practice", doseAnswer: "not_today" });
+      expect(stamps(notToday), `${lang} not today`).toBe(1);
+      const s2 = render(2, lang, { stampMove: "do-practice" });
+      expect(stamps(s2), `${lang} step 2`).toBe(1);
+      expect(holder(s2)).toContain('data-testid="tonight-quote-form"');
+      const s3 = render(3, lang, { stampMove: "do-practice" });
+      expect(stamps(s3), `${lang} step 3`).toBe(1);
+    }
+    // no stampMove (the flow is not the page's first block) → no stamp anywhere
+    for (const s of [1, 2, 3, "done"] as const) expect(stamps(render(s))).toBe(0);
+  });
+
+  it("the how step has ONE forward button: 'Next' until an outcome or a line exists, then 'Save & next' in the CTA gradient", () => {
+    const how = render(1, "en", { doseAnswer: "did" });
+    const fwd = how.match(/<button[^>]*data-testid="tonight-save-next"[^>]*>/g) ?? [];
+    expect(fwd).toHaveLength(1);
+    expect(fwd[0]).toContain('type="submit"');
+    expect(fwd[0]).toContain('data-ready="false"');
+    expect(how).not.toContain("var(--gradient-cta)");
+    expect(how).not.toContain('data-testid="tonight-next"');
+    expect(text(how)).not.toMatch(/\bSave\b(?! &)/);
+    const src = readFileSync(path.join(here, "TonightFlow.tsx"), "utf8");
+    expect(src).toMatch(/forwardReady\s*\?\s*\{ color: "var\(--arbor-on-accent\)", background: "var\(--gradient-cta\)", boxShadow: "var\(--shadow-sm\)" \}/);
+    expect(src).toContain('const forwardReady = !!outcome || !!line.trim();');
+    state.lang = "en";
+    expect(render(1, "en", { doseAnswer: "did" })).toContain('placeholder="What happened? One line."');
+    expect(text(render(1, "he", { doseAnswer: "did" }))).toContain("התרגול של הערב");
+  });
+});
+
 describe("each step writes through its named seam; skipping writes nothing", () => {
   it("practice outcome → the day's actionLoops dose row (the parent's choice)", () => {
     const dose = practiceDoseEntry(pick, "did", "kid-1", "x", NOW);

@@ -206,6 +206,12 @@ describe("OBJ-TODAY-01 — repo-wide ratchet", () => {
     // practice answer carries data-primary-move="do-practice" (OverviewTab
     // stampMove); OverviewTab.passA.test pins it to data-answer="did".
     "loop/PracticeCard.tsx",
+    // P5-LOOP critic c2 r1 (overview design P1): at night Today's move is
+    // Tonight's current step (data-primary-move="do-practice" moves with the
+    // step); the how-step's ONE forward "Save & next" takes the gradient once
+    // an outcome or a line exists — the evening's only gradient (PracticeCard
+    // does not render at night). TonightFlow.test pins it.
+    "loop/TonightFlow.tsx",
     // W2-SHELLPLAY critic r1: "Start it this week" carries the #/family move
     // (data-primary-move="start-family-ritual", spread from FamilyFormation) —
     // the only gradient on that page; familyRitualsCadence.test pins it.

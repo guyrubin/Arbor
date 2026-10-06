@@ -44,10 +44,14 @@ describe("todayModules v3 — planToday", () => {
     expect(planToday(STATES.morning)).toEqual({ order: ["practice", "notice"], tonightPointer: true, practiceMode: "card" });
   });
 
-  it("evening: tonight → practice outcome → notice; the practice shows its outcome strip only", () => {
-    expect(planToday(STATES.evening)).toEqual({ order: ["tonight", "practice", "notice"], tonightPointer: false, practiceMode: "outcome" });
-    // unanswered: Tonight's step 1 asks it, so no strip yet
+  it("evening: tonight → notice; the morning receipt never sits under the open flow (critic c2 r1)", () => {
+    expect(planToday(STATES.evening)).toEqual({ order: ["tonight", "notice"], tonightPointer: false, practiceMode: null });
     expect(planToday(STATES.eveningUnanswered).order).toEqual(["tonight", "notice"]);
+    const tab = stripComments(read("components/tabs/OverviewTab.tsx"));
+    expect(tab).not.toMatch(/PracticeOutcomeStrip|practiceMode === "outcome"/);
+    // the story is ONE door line at night, never a line under the Tonight card
+    expect(tab).toContain('{evening && storyFits && doorLine("today-door-story"');
+    expect(tab.slice(tab.indexOf("<TonightFlow"), tab.indexOf("/>", tab.indexOf("<TonightFlow")))).not.toMatch(/onStory=/);
   });
 
   it("nothing invented: a block renders only when its input says it would", () => {

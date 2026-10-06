@@ -406,7 +406,10 @@ describe("ENG-24 — Today mounts the honest anchor, and only the honest one", (
 
   it("costs the module budget nothing (todayModules v3 has no week id)", () => {
     const budget = stripComments(read("todayModules.ts"));
-    expect(budget.length).toBeGreaterThan(1_000);
+    // the read is real: the planner itself is in the file (P5-LOOP c2 r1 dropped
+    // the evening outcome strip, so the bare size floor moved from 1 000 to 800)
+    expect(budget).toMatch(/export function planToday\(/);
+    expect(budget.length).toBeGreaterThan(800);
     expect(budget).not.toMatch(/weekOpen|"anchor"/);
   });
 });

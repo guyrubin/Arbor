@@ -1,8 +1,10 @@
 /* ════════════════════════════════════════════════════════════════════════════
    todayModules v3 — B-LOOP-07: Today = THREE BLOCKS (the milestone loop).
 
-     practice — Today's practice (B-LOOP-09), the day's primary move; in the
-                evening only its outcome strip.
+     practice — Today's practice (B-LOOP-09), the day's primary move. In the
+                evening it does not render: Tonight's step 1 asks how it went,
+                so a morning receipt under it would contradict the open flow
+                (P5-LOOP critic c2 r1).
      notice   — Notice today: ≤ 2 watch-for cards (B-LOOP-04), never the
                 practice's shelf.
      tonight  — Tonight's three questions (B-LOOP-10). Before the evening door
@@ -13,7 +15,7 @@
                 step, a lifecycle moment, first steps).
 
    Order: morning practice → notice (+ tonight pointer); evening tonight →
-   practice outcome → notice. `lifecycle`, `changed`, `noticed`, `rail` are no
+   notice. `lifecycle`, `changed`, `noticed`, `rail` are no
    longer modules — they live behind the door, so they can never be siblings.
 
    The budget still counts the modules that ACTUALLY render (P1-B lesson): the
@@ -35,7 +37,7 @@ export interface TodayPlanInput {
   notice: boolean;
   /** Tonight has a question to ask (a day to read from). */
   tonight: boolean;
-  /** Evening only: today's practice was answered (its outcome strip has a line). */
+  /** Today's practice was answered (kept for the callers; the evening no longer renders a strip). */
   practiceAnswered?: boolean;
 }
 
@@ -44,8 +46,8 @@ export interface TodayPlan {
   order: TodayModuleId[];
   /** Morning: the one-line pointer to Tonight under `notice`. */
   tonightPointer: boolean;
-  /** How block 1 renders: the full card, its outcome strip (evening), or not at all. */
-  practiceMode: "card" | "outcome" | null;
+  /** How block 1 renders: the full card, or not at all (the evening). */
+  practiceMode: "card" | null;
 }
 
 export function planToday(input: TodayPlanInput): TodayPlan {
@@ -53,10 +55,6 @@ export function planToday(input: TodayPlanInput): TodayPlan {
   let practiceMode: TodayPlan["practiceMode"] = null;
   if (input.evening && input.tonight) {
     order.push("tonight");
-    if (input.practice && input.practiceAnswered) {
-      order.push("practice");
-      practiceMode = "outcome";
-    }
     if (input.notice) order.push("notice");
     return { order: order.slice(0, TODAY_MODULE_BUDGET), tonightPointer: false, practiceMode };
   }
