@@ -41,6 +41,32 @@ const HE_RE = new RegExp(
   "u",
 );
 
+/**
+ * Live judge on 1.3.1 (6 Oct): "We went to grandma's and had pasta" still
+ * came back as a Food shelf. An EVENT-ONLY description — an outing, a visit,
+ * a meal — names no skill; a shelf-only proposal on it is dropped by the
+ * server (a listed milestone id the model matched with high confidence still
+ * stands: that is the model saying a skill was shown, and the parent taps).
+ * Data, not inline regexes: EN phrases match as words, HE words as whole
+ * words with a glued ו.
+ */
+export const EVENT_CUES_EN: readonly string[] = [
+  "we went to", "we went", "went to", "we had", "had", "we ate", "ate", "we visited", "visited",
+  "we were at", "we spent", "we drove", "we took",
+];
+
+export const EVENT_CUES_HE: readonly string[] = [
+  "הלכנו", "אכלנו", "ביקרנו", "היינו", "נסענו", "טיילנו", "בילינו", "יצאנו",
+];
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const EVENT_EN_RE = new RegExp(`\\b(?:${EVENT_CUES_EN.map(escapeRe).join("|")})\\b`, "i");
+const EVENT_HE_RE = new RegExp(`(?<!\\p{L})ו?(?:${EVENT_CUES_HE.map(escapeRe).join("|")})(?!\\p{L})`, "u");
+
+/** True when the description reads as an event (an outing, a visit, a meal). */
+export const hasEventCue = (text: unknown): boolean =>
+  typeof text === "string" && text.trim() !== "" && (EVENT_EN_RE.test(text) || EVENT_HE_RE.test(text));
+
 /** True when the description voices a worry or a skill the child does not show. */
 export const hasConcernCue = (text: unknown): boolean =>
   typeof text === "string" && text.trim() !== "" && (EN_RE.test(text) || HE_RE.test(text));

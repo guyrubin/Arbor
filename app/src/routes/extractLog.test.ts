@@ -216,6 +216,27 @@ describe("/api/extract-log milestone match (B-LOOP-06)", () => {
     expect((await tryMessage("She said big ball at the park")).json.milestoneMatch).toEqual({ shelf: "words", milestoneId: "cdc-24m-3", confidence: "high" });
   });
 
+  it("extract_log 1.3.1 (live judge): an id OUTSIDE the child's age window is never returned, even when the request lists it", async () => {
+    lastPrompt = "";
+    draft = { ...LEGACY, milestoneMatch: { shelf: "words", milestoneId: "cdc-30m-3", confidence: "high" } };
+    // a 26-month child: cdc-30m-3 is ahead of band — the request lists it, the server never offers it
+    const { json } = await postExtract({ message: "She counted to ten and said about fifty different words today.", childProfile: TODDLER, milestoneCandidateIds: ["cdc-24m-3", "cdc-30m-3"] });
+    expect(lastPrompt).not.toContain("cdc-30m-3");
+    expect(json.milestoneMatch).toBeNull();
+    expect(JSON.stringify(json)).not.toContain("cdc-30m-3");
+  });
+
+  it("extract_log 1.3.1 (live judge): a shelf-only pick on an event-only description is dropped; a skill keeps its shelf", async () => {
+    const tryShelf = (message: string) => {
+      draft = { ...LEGACY, milestoneMatch: { shelf: "food", confidence: "low" } };
+      return postExtract({ message, childProfile: TODDLER, milestoneCandidateIds: ["cdc-24m-3"] });
+    };
+    expect((await tryShelf("We went to grandma's and had pasta for dinner.")).json.milestoneMatch).toBeNull();
+    expect((await tryShelf("הלכנו לסבתא ואכלנו פסטה לארוחת ערב.")).json.milestoneMatch).toBeNull();
+    // NEGATIVE CONTROL: a skill shown in the words keeps the shelf-only pick
+    expect((await tryShelf("She fed herself with a spoon at lunch.")).json.milestoneMatch).toEqual({ shelf: "food", confidence: "low" });
+  });
+
   it("no candidates ⇒ no block in the prompt and no milestoneMatch key: the legacy fields byte for byte", async () => {
     lastPrompt = "";
     draft = { ...LEGACY };

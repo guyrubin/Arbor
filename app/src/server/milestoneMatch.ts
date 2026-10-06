@@ -16,7 +16,7 @@ import type { MilestoneMatchCandidate } from "../ai/prompts.js";
 import { ALL_MILESTONES, isCatalogueMilestone, milestoneAgeWindow } from "../lib/milestoneData.js";
 import { comparisonMonthsOf } from "../lib/age/forChild.js";
 import { SHELF_IDS, milestoneShelf, type ShelfId } from "../lib/shelves/registry.js";
-import { hasConcernCue } from "../lib/loop/concernCues.js";
+import { hasConcernCue, hasEventCue } from "../lib/loop/concernCues.js";
 import { screenForConditionQuestion } from "../safety/conditionQuestion.js";
 
 export const MAX_MILESTONE_CANDIDATES = 24;
@@ -64,6 +64,8 @@ export const describesConcernOrAbsence = (message: unknown): boolean =>
 /**
  * The model's raw `milestoneMatch`, validated against the candidates:
  *  - a description that voices a worry / a skill not shown → null;
+ *  - a SHELF-ONLY pick on an event-only description (an outing, a visit, a
+ *    meal: lib/loop/concernCues EVENT_CUES) → null — it names no skill;
  *  - an id outside the list → null (dropped);
  *  - "high" needs a listed id; the shelf is the candidate's own shelf;
  *  - "low" carries a valid shelf and no id;
@@ -78,10 +80,15 @@ export function validateMilestoneMatch(raw: unknown, candidates: readonly Milest
     const hit = candidates.find((c) => c.id === id);
     if (!hit) return null;
     // A low-confidence pick names the shelf only — never a milestone to tick.
-    if (r.confidence === "low") return { shelf: hit.shelf as ShelfId, confidence: "low" };
+    if (r.confidence === "low") return shelfOnly(hit.shelf as ShelfId, message);
     return { shelf: hit.shelf as ShelfId, milestoneId: hit.id, confidence: "high" };
   }
   const shelf = typeof r.shelf === "string" ? (r.shelf.trim() as ShelfId) : null;
   if (!shelf || !SHELF_IDS.includes(shelf)) return null;
-  return { shelf, confidence: "low" };
+  return shelfOnly(shelf, message);
+}
+
+/** A shelf-only proposal stands only when the words are not an event alone. */
+function shelfOnly(shelf: ShelfId, message: unknown): MilestoneMatch | null {
+  return message !== undefined && hasEventCue(message) ? null : { shelf, confidence: "low" };
 }

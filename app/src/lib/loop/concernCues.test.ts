@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CONCERN_CUES_EN, CONCERN_CUES_HE, hasConcernCue } from "./concernCues";
+import { CONCERN_CUES_EN, CONCERN_CUES_HE, EVENT_CUES_EN, EVENT_CUES_HE, hasConcernCue, hasEventCue } from "./concernCues";
 import { describesConcernOrAbsence } from "../../server/milestoneMatch";
 
 /* B-LOOP-06 (extract_log 1.3.1) — the ONE worry / negation list. The live
@@ -51,6 +51,23 @@ describe("concernCues — a worry or a skill not shown is never milestone eviden
         expect(hasConcernCue(`אמא ${form} היום`)).toBe(true);
       }
     }
+  });
+  it("event cues (data): an outing, a visit or a meal names no skill; EN + HE", () => {
+    expect(hasEventCue("We went to grandma's and had pasta for dinner.")).toBe(true);
+    expect(hasEventCue("הלכנו לסבתא ואכלנו פסטה לארוחת ערב.")).toBe(true);
+    expect(hasEventCue("ביקרנו בגן החיות.")).toBe(true);
+    for (const cue of EVENT_CUES_EN) expect(hasEventCue(`so ${cue} there`)).toBe(true);
+    for (const cue of EVENT_CUES_HE) expect(hasEventCue(`אז ${cue} שם`)).toBe(true);
+    // skills shown in the words carry no event cue
+    for (const text of [
+      "She said 'big ball' at the park today and pointed at it.",
+      "He fell asleep right after his bath and the book, no fuss.",
+      "He was playing with his cars this afternoon and seemed busy.",
+      "She counted to ten and said about fifty different words today.",
+      "היא אמרה 'כדור גדול' בגינה היום והצביעה עליו.",
+      "הוא נרדם מיד אחרי האמבטיה והספר, בלי מאבק.",
+      "היא ספרה עד עשר ואמרה היום בערך חמישים מילים שונות.",
+    ]) expect(hasEventCue(text)).toBe(false);
   });
   it("non-strings and blanks are not cues", () => {
     expect(hasConcernCue(undefined)).toBe(false);
