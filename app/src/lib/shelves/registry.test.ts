@@ -102,7 +102,21 @@ describe("B-LOOP-03 — the shelf registry shape", () => {
 
   it("a shelf carries no profession, score or verdict field (names only)", () => {
     for (const s of SHELVES) {
-      for (const key of Object.keys(s)) expect(["id", "domain", "subAreas", "labelKey", "order", "illustrationKey"], `${s.id}.${key}`).toContain(key);
+      // framer ruling 6 Oct: + glyph / tint (the Material Symbols map, DATA; never a verdict)
+      for (const key of Object.keys(s)) expect(["id", "domain", "subAreas", "labelKey", "order", "illustrationKey", "glyph", "tint"], `${s.id}.${key}`).toContain(key);
+    }
+  });
+
+  it("framer ruling: every shelf has a glyph in the shipped icon subset and an allowed tint; no two shelves share glyph + tint", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const subset = new Set(fs.readFileSync(path.resolve(__dirname, "../../../public/fonts/material-symbols-rounded-subset.icons.txt"), "utf8").split(/\r?\n/).map((l) => l.trim()).filter((l) => l && !l.startsWith("#")));
+    const pairs = new Set<string>();
+    for (const s of SHELVES) {
+      expect(subset.has(s.glyph), `${s.id} glyph ${s.glyph}`).toBe(true);
+      expect(["sky", "yellow", "lav", "pink", "green", "peach", "deep"]).toContain(s.tint);
+      expect(pairs.has(`${s.glyph}|${s.tint}`), `${s.id} repeats a glyph + tint`).toBe(false);
+      pairs.add(`${s.glyph}|${s.tint}`);
     }
   });
 });

@@ -63,11 +63,8 @@ describe("NEXTLEVEL r1 — the primary move is a control", () => {
   it("data-primary-move=notice-milestone stamps the first shelf's Notice card, not the display:contents spine", () => {
     expect(MS).toContain('<div data-module="milestones-spine" style={{ display: "contents" }}>');
     expect(MS.match(/data-primary-move/g)?.length).toBe(1);
-    const at = MS.indexOf('"data-primary-move": "notice-milestone"');
-    expect(at).toBeGreaterThan(-1);
-    const sec = MS.slice(at, MS.indexOf("</div>", at));
-    expect(sec).toContain("<NoticeCard");
-    expect(sec).toContain("observeMilestone(card, status)");
+    // P5 critic r1: the stamp rides the first Notice card's answers group (answersAttrs).
+    expect(MS).toMatch(/<NoticeCard[\s\S]{0,400}answersAttrs=\{shelf === firstNoticeShelf \? \{ "data-primary-move": "notice-milestone" \} : undefined\}[\s\S]{0,300}observeMilestone\(card, status\)/);
     expect(MS).not.toMatch(/var\(--gradient-cta\)/);
   });
 
@@ -136,7 +133,8 @@ describe("NEXTLEVEL r1 (B-NEXTLEVEL-NEW-1i/1j) — the parent's last first leads
 
 describe("P1-NEXTLEVEL critic r2 — the latest card names its area; the map is on the type scale", () => {
   it("under the latest title, one quiet t-sm line names the area it was counted in (EN + HE)", () => {
-    expect(MS).toContain('data-testid="ms-latest-area" className="mt-0.5 t-sm"');
+    // P5 critic r1: the latest sentence is the lede under the H1, the area one quiet t-sm span in it.
+    expect(MS).toContain('data-testid="ms-latest-area" className="t-sm"');
     // B-LOOP-05: the area is the SHELF the item sits on, the same name the map prints.
     expect(MS).toContain('t("elev.ms.latest.area", { area: latestShelfName })');
     expect(MS).toContain("shelfLabel(latestShelf, t)");
@@ -146,7 +144,7 @@ describe("P1-NEXTLEVEL critic r2 — the latest card names its area; the map is 
     // B-LOOP-05 re-pin: the shelf map — title t-lg, shelf names t-md, rows t-sm.
     const map = MS.slice(MS.indexOf('t("elev.loop.shelfMap.title")') - 300, MS.indexOf('t("ms.playIdeas"'));
     expect(map).not.toMatch(/text-\[(?:11|12|12\.5|13|13\.5|15|17|26)px\]/);
-    expect(map).toContain('fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>\n              {t("elev.loop.shelfMap.title")}');
+    expect(map).toContain('fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>\n                {t("elev.loop.shelfMap.title")}');
     expect(map).toContain('fontSize: "var(--t-md)", color: "var(--arbor-ink)" }}>\n                          {shelfLabel(shelf, t)}');
     expect(MS).not.toContain("text-[26px]");
   });

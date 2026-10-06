@@ -68,7 +68,10 @@ describe("W5 mounts — the celebration chain is actually wired", () => {
 
 describe("W5 dedupe — once per milestone id, ≤1 per session, never on uncheck", () => {
   it("MilestonesTab gates the overlay on BOTH the per-milestone and the session guard", () => {
-    expect(milestonesTab).toMatch(/hasCelebrated\(childProfile\.id,\s*item\.id\)\s*&&\s*celebrationSessionAvailable\(\)/);
+    // P5 critic r1 (framer ruling 3): once per milestone id EVER — the burst
+    // itself is behind the per-milestone guard; the overlay also needs the
+    // session guard.
+    expect(milestonesTab).toMatch(/if \(hasCelebrated\(childProfile\.id, item\.id\)\) return;\s*celebrate\(\);\s*if \(celebrationSessionAvailable\(\)\) \{/);
     expect(milestonesTab).toContain("markCelebrated(childProfile.id, item.id)");
   });
 

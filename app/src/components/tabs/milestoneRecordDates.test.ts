@@ -29,7 +29,11 @@ const read = (rel: string) => fs.readFileSync(path.join(SRC_ROOT, rel), "utf8");
 const code = read("components/tabs/MilestonesTab.tsx");
 
 /** The observe-row block and the chip block, isolated from the rest of the file. */
-const observeRow = code.slice(code.indexOf('<div className="grid grid-cols-3'), code.indexOf("observeNotSureHint"));
+// P5 critic r1 (P1-2): the door rows answer through the ONE loop group
+// (NoticeAnswers in components/loop/NoticeCard.tsx); the row's call site
+// passes the Wave G group label.
+const observeRow = code.slice(code.indexOf("<NoticeAnswers"), code.indexOf("observeNotSureHint"));
+const answers = read("components/loop/NoticeCard.tsx");
 const chipBlock = code.slice(code.indexOf('data-testid="ms-noticed-chip"') - 400, code.indexOf('data-testid="ms-noticed-chip"') + 700);
 
 /** Exactly what shipped before this change. */
@@ -41,9 +45,10 @@ const BEFORE_CHIP =
   '{item.checked && <span className="text-[11px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded">{t("ms.observed")}</span>}';
 
 describe("GP-12 — the marking control is 44px", () => {
-  it("the observe buttons are min-h-11", () => {
-    expect(observeRow).toContain("min-h-11");
-    expect(observeRow).not.toContain("min-h-9");
+  it("the observe buttons are min-h-[44px] (the shared answer group)", () => {
+    expect(observeRow).toContain("onAnswer={(status) => observeMilestone(item, status)}");
+    expect(answers).toContain('const pill = "inline-flex min-h-[44px] min-w-[44px]');
+    expect(answers).not.toContain("min-h-9");
   });
 
   it("NEGATIVE CONTROL: the pre-change row fails both assertions", () => {
@@ -51,20 +56,19 @@ describe("GP-12 — the marking control is 44px", () => {
     expect(BEFORE_ROW).not.toContain("min-h-11");
   });
 
-  it("the three-column grid is kept (the fix is height, not layout)", () => {
-    expect(observeRow).toContain("grid-cols-3");
+  it("three answers, one order (yes · not_yet · not_sure) — the fix is the shared grammar", () => {
+    expect(answers).toContain('export const NOTICE_ANSWER_ORDER: readonly ObserveStatus[] = ["yes", "not_yet", "not_sure"];');
   });
 });
 
 describe("GP-10 — the row is about noticing for the first time", () => {
   it("the affirmative control and the group label come from the Wave G copy", () => {
-    expect(observeRow).toContain('tGCare(uiLang, "elev.gcare.ms.observe.yes")');
+    // "Seen it" (elev.loop.notice.seen = the Wave G word) and the group label.
     expect(observeRow).toContain('tGCare(uiLang, "elev.gcare.ms.observePrompt")');
     expect(observeRow).not.toContain('t("ms.observe.yes")');
-    expect(observeRow).not.toContain('aria-label={t("ms.observePrompt")}');
-    // The other two answers are unchanged — this is a relabel, not a rewrite.
-    expect(observeRow).toContain('t("ms.observe.notSure")');
-    expect(observeRow).toContain('t("ms.observe.notYet")');
+    expect(answers).toContain('yes: "elev.loop.notice.seen",');
+    expect(answers).toContain('not_yet: "ms.observe.notYet",');
+    expect(answers).toContain('not_sure: "ms.observe.notSure",');
   });
 
   it("NEGATIVE CONTROL: the pre-change row fails those assertions", () => {

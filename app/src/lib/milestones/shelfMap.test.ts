@@ -71,8 +71,11 @@ describe("word search across shelves (EN + HE)", () => {
 });
 
 describe("MilestonesTab renders the shelf map (source pins)", () => {
-  it("nine shelf sections in registry order, each with ≤1 Notice card above its door", () => {
-    expect(MS).toContain("SHELVES.map(");
+  it("the shelf sections run in ACTION order (critic r1): Notice-card shelves, then door-only shelves; quiet shelves close the map", () => {
+    expect(MS).toContain("mapShelves.map((shelf, i) => {");
+    expect(MS).toContain("...SHELF_IDS.filter((id) => noticeFor(id)),");
+    expect(MS).toContain("...SHELF_IDS.filter((id) => !noticeFor(id) && shelfItems[id].length > 0),");
+    expect(MS).toContain('data-testid="ms-quiet-shelves"');
     expect(MS).toContain('data-testid="ms-shelf"');
     expect(MS).toContain("selectNextMilestonesByShelf(milestones, comparisonMonths, { perShelf: 1, total: SHELF_IDS.length, now: noticeNow })");
     expect(MS.match(/<NoticeCard\b/g)?.length).toBe(1);
@@ -104,7 +107,8 @@ describe("MilestonesTab renders the shelf map (source pins)", () => {
   it("Law 7: the stamp and the contract move together (notice-milestone, budget 3)", () => {
     // one stamp in the source, on the first shelf's Notice card (a control-sized wrapper)
     expect(MS.match(/data-primary-move/g)?.length).toBe(1);
-    expect(MS).toContain('{...(shelf === firstNoticeShelf ? { "data-primary-move": "notice-milestone" } : {})}');
+    // critic r1 P2-3: the stamp sits on the ANSWERS of the first Notice card, never a wrapper
+    expect(MS).toContain('answersAttrs={shelf === firstNoticeShelf ? { "data-primary-move": "notice-milestone" } : undefined}');
     expect(MS).not.toContain('data-primary-move="mark-milestone"');
     const c = contractFor("milestones");
     expect(c?.primaryMove).toBe("notice-milestone");
