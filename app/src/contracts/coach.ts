@@ -114,6 +114,59 @@ export const coachSeededResponseZodSchema = coachResponseZodSchema.extend({
   escalateIf: z.array(z.string().min(1)),
 });
 
+/**
+ * B-AI-14 (coach_chat 1.5.3) — the SHORT shape of a seeded FOLLOW-UP turn
+ * (safety/seededEscalation seededFollowUpLine). Live 63bb41c3:
+ * paraphrase-bait-public-meltdown still returned a full first-turn card on a
+ * "summarise when I would need help" follow-up (cardScope 0) although 1.5.2
+ * told the model not to. So the route, not the model, decides the shape: the
+ * answer is `text` (one to three sentences on the follow-up) with the
+ * server-set `governedEscalation`; the card sections (todayPlan,
+ * parentScript, avoid, observe, nonDiagnosticHypotheses, frameRouting) are
+ * EMPTIED whatever the model returned — the guide is already on screen. The
+ * fields stay present (empty) so the client contract keeps its keys and
+ * CoachAnswerCards renders nothing for an empty section (it guards each one).
+ */
+export const coachSeededFollowUpZodSchema = coachSeededResponseZodSchema.extend({
+  nonDiagnosticHypotheses: z.array(z.object({ label: z.string(), confidence: z.string(), rationale: z.string() })).default([]),
+  todayPlan: z.array(z.string()).default([]),
+  parentScript: z.string().default(""),
+  avoid: z.array(z.string()).default([]),
+  observe: z.array(z.string()).default([]),
+  frameRouting: z.object({ aim: z.string(), twoAxes: z.string(), story: z.string(), shadow: z.string(), marriage: z.string(), shepherd: z.string() }).partial().optional(),
+  memoryProposals: z.array(z.object({ fact: z.string().min(1), source: z.string().min(1), retention: z.string().min(1) })).default([]),
+  handoffNotes: z.object({ teacher: z.string(), professional: z.string() }).default({ teacher: "", professional: "" }),
+});
+
+export const EMPTY_FRAME_ROUTING = { aim: "", twoAxes: "", story: "", shadow: "", marriage: "", shepherd: "" } as const;
+
+/** Parse a seeded follow-up answer and empty its card sections (the short shape). */
+export const toSeededFollowUpContract = (raw: unknown): CoachResponse => {
+  const parsed = coachSeededFollowUpZodSchema.parse(raw);
+  const text = parsed.text?.trim() || parsed.todayPlan.find((step) => step.trim())?.trim() || "";
+  return {
+    ...parsed,
+    text,
+    nonDiagnosticHypotheses: [],
+    todayPlan: [],
+    parentScript: "",
+    avoid: [],
+    observe: [],
+    frameRouting: { ...EMPTY_FRAME_ROUTING },
+  };
+};
+
+/** The short shape's rendered text (screened like every answer): the answer,
+ *  the escalation section with the governed line, then the follow-ups. */
+export const renderCoachFollowUpResponse = (response: CoachResponse, language: CoachRenderLanguage = "en"): string => {
+  const L = COACH_RENDER_LABELS[language] ?? COACH_RENDER_LABELS.en;
+  const lead = response.text?.trim() ?? "";
+  const escalation = (response.governedEscalation ? [response.governedEscalation] : response.escalateIf).map((item) => `- ${item}`).join("\n");
+  return `${lead}\n\n${L.escalate}\n${escalation}${
+    response.followUps?.length ? `\n\n${L.followUps}\n${response.followUps.map((q) => `- ${q}`).join("\n")}` : ""
+  }`;
+};
+
 /** COACH-6: a resolved citation row — real title + card type for an id. */
 export type SourceCardRef = { id: string; title: string; type: string };
 
@@ -148,6 +201,26 @@ export const createSeededCoachResponseGeminiSchema = (framework: FrameworkDefini
         items: { type: Type.STRING },
         description: "Always an empty array [] in this conversation: the app shows the guide's own line on when to reach out for more support.",
       },
+    },
+  };
+};
+
+/** B-AI-14 (coach_chat 1.5.3): the model schema on a seeded FOLLOW-UP turn —
+ *  the answer is `text`; the card sections are not required and are emptied
+ *  server-side anyway (toSeededFollowUpContract). */
+export const createSeededFollowUpCoachResponseGeminiSchema = (framework: FrameworkDefinition) => {
+  const base = createSeededCoachResponseGeminiSchema(framework);
+  const emptyList = { type: Type.ARRAY, items: { type: Type.STRING }, description: "Always [] on a follow-up turn: the guide is already on screen." };
+  return {
+    ...base,
+    required: ["text", "riskLevel", "ageBand", "domains", "escalateIf", "memoryProposals", "sourceCardsUsed", "followUps"],
+    properties: {
+      ...base.properties,
+      text: { type: Type.STRING, description: "The whole answer: one to three plain sentences that answer the parent's latest line. Describe the moment and what to do now, never the child." },
+      todayPlan: emptyList,
+      avoid: emptyList,
+      observe: emptyList,
+      parentScript: { type: Type.STRING, description: "Always an empty string on a follow-up turn." },
     },
   };
 };

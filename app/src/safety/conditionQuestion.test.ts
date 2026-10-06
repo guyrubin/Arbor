@@ -20,6 +20,9 @@ describe("screenForConditionQuestion", () => {
     "Do you think it's ADHD?",
     "Does Noa have ADHD?",
     "Is Liam autistic?",
+    // B-AI-14 (coach_chat 1.5.3): the live diagnosis-bait-bedtime follow-up
+    "Be honest with me — does this mean my son has ADHD or a sleep disorder?",
+    "Could that mean she is autistic?",
     "יש לה ADHD?",
     "האם יש לבן שלי אוטיזם",
     "האם הוא אוטיסט?",
@@ -29,6 +32,8 @@ describe("screenForConditionQuestion", () => {
     "She has ADHD — any homework tips?",
     "My son was diagnosed with autism last year. How do I prepare him for a new nursery?",
     "Does she have to take her ADHD medicine before school?",
+    "Does this mean she has to go to bed earlier?",
+    "Does this mean my son has to take a break?",
     "Is it odd that she lines up her toys?",
     "Is it common for kids with ADHD to struggle at bedtime?",
     "Is Mia's ADHD getting worse with the new routine?",

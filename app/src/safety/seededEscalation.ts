@@ -1,5 +1,6 @@
 import { hardMomentCards, type HardMomentCard } from "../content/hardMomentCards.js";
 import type { ContentLocale } from "../content/governance.js";
+import { HARD_MOMENT_SEED_ESCALATION_NOTE } from "../content/hardMomentSurface.js";
 
 /**
  * B-AI-14 — the hard-moment seed's escalation line is a VERBATIM,
@@ -50,6 +51,13 @@ export function cardFromSeedText(text: unknown): { card: HardMomentCard; locale:
  * `recentTurns` is read RAW (before sanitizeRecentTurns) only as a lookup key.
  */
 export function seededEscalationLine(message: unknown, recentTurns: unknown): string | null {
+  const hit = seededCard(message, recentTurns);
+  if (!hit) return null;
+  return hit.locale === "he" ? hit.card.escalation.he : hit.card.escalation.en;
+}
+
+/** The governed card (and its seed locale) of a seeded conversation, newest seed first; null otherwise. */
+export function seededCard(message: unknown, recentTurns: unknown): { card: HardMomentCard; locale: ContentLocale } | null {
   const candidates: unknown[] = [message];
   if (Array.isArray(recentTurns)) {
     for (let i = recentTurns.length - 1; i >= 0; i -= 1) {
@@ -59,9 +67,25 @@ export function seededEscalationLine(message: unknown, recentTurns: unknown): st
   }
   for (const candidate of candidates) {
     const hit = cardFromSeedText(candidate);
-    if (hit) return hit.locale === "he" ? hit.card.escalation.he : hit.card.escalation.en;
+    if (hit) return hit;
   }
   return null;
+}
+
+/**
+ * B-AI-14 (coach_chat 1.5.3) — the parent's FOLLOW-UP line in a seeded
+ * conversation, or null on the turn that only shares the guide (and on every
+ * unseeded turn). Two shapes: the product's (the seed sits in recentTurns,
+ * the message is the follow-up) and the judge's (one message: the seed, then
+ * a later parent line after the seed's closing note, "Parent follow-up: …").
+ */
+export function seededFollowUpLine(message: unknown, recentTurns: unknown): string | null {
+  if (typeof message !== "string" || !message.trim()) return null;
+  if (!cardFromSeedText(message)) return seededCard(message, recentTurns) ? message.trim() : null;
+  const at = message.lastIndexOf(HARD_MOMENT_SEED_ESCALATION_NOTE);
+  if (at < 0) return null;
+  const rest = message.slice(at + HARD_MOMENT_SEED_ESCALATION_NOTE.length).trim().replace(/^Parent follow-up:\s*/i, "").trim();
+  return rest || null;
 }
 
 /**
@@ -184,7 +208,9 @@ export function scrubSeededProfessionalHelp<T extends ScrubbableContract>(contra
   contract.parentScript = one(contract.parentScript) ?? fallback.parentScript;
   contract.observe = contract.observe.map(one).filter((s): s is string => s !== null);
   const plan = contract.todayPlan.map(one).filter((s): s is string => s !== null);
-  contract.todayPlan = plan.length > 0 ? plan : [fallback.todayStep];
+  // 1.5.3: the fallback fills a plan the SCREEN emptied; a plan that arrived
+  // empty (the seeded follow-up's short shape) stays empty.
+  contract.todayPlan = plan.length > 0 || contract.todayPlan.length === 0 ? plan : [fallback.todayStep];
   contract.nonDiagnosticHypotheses = contract.nonDiagnosticHypotheses.flatMap((h) => {
     if (terms.some((re) => re.test(h.label))) {
       dropped += 1;

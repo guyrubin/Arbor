@@ -43,6 +43,9 @@ const EN_PATTERNS: readonly RegExp[] = [
   new RegExp(`\\bdo you think\\s+${SUBJECT}(?:'s\\s+|\\s+(?:has|is|might have|could have|might be|could be)\\s+)${QUALIFIER}(?:${CONDITIONS}|${SPECTRUM})`, "i"),
   // Name subject (no possessive): "Does Noa have ADHD?", "Is Liam autistic?"
   new RegExp(`\\b(?:[Dd]oes|[Cc]ould|[Mm]ight|[Ii]s)\\s+\\p{Lu}[\\p{L}-]*\\s+(?:(?:have|has|be)\\s+)?${QUALIFIER_CI}(?:${CONDITIONS_CI})`, "u"),
+  // B-AI-14 (coach_chat 1.5.3; live diagnosis-bait-bedtime on 63bb41c3):
+  // "does this mean my son has ADHD", "could that mean she is autistic"
+  new RegExp(`\\b(?:does|do|could|might|would|can)\\s+(?:this|that|it)\\s+mean\\s+(?:that\\s+)?${SUBJECT}\\s+(?:has|have|is|might have|could have|may have|might be|could be)\\s+${QUALIFIER}(?:${CONDITIONS}|${SPECTRUM})`, "i"),
 ];
 
 const HE_CONDITIONS = HE_CONDITION_TOKENS.join("|");
@@ -89,3 +92,32 @@ If you tell me what you have been noticing, we can think it through together.`,
 
 /** The governed reply — no model call, no contract, no grade, no label. */
 export const renderConditionQuestionReply = (language: ConditionReplyLanguage = "en"): string => REPLY[language] ?? REPLY.en;
+
+/**
+ * B-AI-14 (coach_chat 1.5.3) — inside a hard-moment SEEDED conversation the
+ * condition question gets the card-scoped reply: ONE fixed sentence that names
+ * no condition and points nowhere (the app shows the card's governed line
+ * after it, byte-identical), then the card's own do-now and what-to-notice
+ * lines from the governed catalog — never model prose, never a verdict about
+ * the child. Live 63bb41c3 diagnosis-bait-bedtime: the model's draft was
+ * diagnostic, the output floor swapped in the generic fallback, and the
+ * answer carried no card content (cardScope 0).
+ */
+export const SEEDED_CONDITION_SENTENCE: Record<ConditionReplyLanguage, string> = {
+  en: "That is not something this guide or I can answer, and I won't guess; here is what helps in this moment.",
+  he: "על זה לא המדריך ולא אני יכולים לענות, ולא ננחש; הנה מה שעוזר ברגע הזה.",
+};
+
+const SEEDED_LABELS: Record<ConditionReplyLanguage, { doNow: string; observe: string }> = {
+  en: { doNow: "Do now:", observe: "What to notice:" },
+  he: { doNow: "מה עושים עכשיו:", observe: "על מה לשים לב:" },
+};
+
+export const renderSeededConditionReply = (
+  card: { doNow: { en: string; he: string }; observe: { en: string; he: string } },
+  language: ConditionReplyLanguage = "en",
+): string => {
+  const lang: ConditionReplyLanguage = language === "he" ? "he" : "en";
+  const L = SEEDED_LABELS[lang];
+  return `${SEEDED_CONDITION_SENTENCE[lang]}\n\n**${L.doNow}** ${card.doNow[lang]}\n**${L.observe}** ${card.observe[lang]}`;
+};

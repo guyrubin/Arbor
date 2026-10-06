@@ -186,7 +186,11 @@ describe("EVAL-6 — builders keep the byte contract of the old inline templates
  */
 describe("Masterplan 1.3 — coach_chat block-free byte-parity (v1.4.1 pin)", () => {
   // 1.5.1 (B-AI-14 coach-core): escalateIf rule sentence + the memory lead (facts present here) — new bytes.
-  const COACH_CHAT_BLOCK_FREE_SHA256 = "1918e844bd89bf8181557139bcc10c11b1fef06f8b595f124c3d3fcbc03849dc";
+  // 1.5.3 (B-AI-14): facts present here, so the approved-memory block moved to the first block after the contract — new bytes.
+  const COACH_CHAT_BLOCK_FREE_SHA256 = "3ec52ba919df8d3557a6e33798ca9baac462c6994c2adfaba5c9ac8698a60efe";
+  // 1.5.3 parity: WITHOUT facts the bytes are the 1.5.2 bytes (digests taken on 1.5.2 before the change).
+  const COACH_CHAT_NO_FACT_SHA256_152 = "bb85929a284f1c387d4a26036b957e43dca81b01f116b5710aa37f3ea85f25b6";
+  const COACH_CHAT_BLANK_FACT_SHA256_152 = "e19e666ead45e69ebf934b3c7639f518d8f97ce1ce2760f3ef7ea24eae5957f3";
   const sha256 = (text: string) => createHash("sha256").update(text, "utf8").digest("hex");
   const legacyArgs = {
     developmentalFramework: "«framework»",
@@ -202,6 +206,11 @@ describe("Masterplan 1.3 — coach_chat block-free byte-parity (v1.4.1 pin)", ()
     expect(sha256(buildChatPrompt({ ...legacyArgs }))).toBe(COACH_CHAT_BLOCK_FREE_SHA256);
   });
 
+  it("coach_chat 1.5.3: a turn WITHOUT approved facts keeps the 1.5.2 bytes exactly (empty and blank memory)", () => {
+    expect(sha256(buildChatPrompt({ ...legacyArgs, approvedMemory: "" }))).toBe(COACH_CHAT_NO_FACT_SHA256_152);
+    expect(sha256(buildChatPrompt({ ...legacyArgs, approvedMemory: "   " }))).toBe(COACH_CHAT_BLANK_FACT_SHA256_152);
+  });
+
   it("coach_chat 1.5.0: seededHardMoment absent or false keeps the 1.4.1 bytes; true adds the governed block once", () => {
     expect(sha256(buildChatPrompt({ ...legacyArgs, seededHardMoment: false }))).toBe(COACH_CHAT_BLOCK_FREE_SHA256);
     const seeded = buildChatPrompt({ ...legacyArgs, seededHardMoment: true });
@@ -210,7 +219,7 @@ describe("Masterplan 1.3 — coach_chat block-free byte-parity (v1.4.1 pin)", ()
     expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toMatch(/Return "escalateIf": \[\]/);
     expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toMatch(/shepherd/);
     expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toMatch(/do not reword it/);
-    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.5.2");
+    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.5.3");
   });
 
   it("empty recentTurns / null weeklyContext (the sanitizers' degenerate outputs) also keep the block-free bytes", () => {
@@ -468,7 +477,7 @@ describe("coach_chat 1.4.1 — field rules", () => {
     expect(COACH_CHAT_FIELD_RULES).toMatch(/never write that condition's name or any label back/);
     expect(COACH_CHAT_FIELD_RULES).toMatch(/In a routine answer no field names self-harm/);
     expect(COACH_CHAT_FIELD_RULES).toMatch(/never low, medium, high/);
-    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.5.2");
+    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.5.3");
   });
   it("coach_chat 1.5.1: escalateIf thresholds stay on the behaviour the parent described", () => {
     expect(COACH_CHAT_FIELD_RULES).toContain("Thresholds are about the behaviour the parent described and never introduce a danger the parent did not raise.");
@@ -477,7 +486,8 @@ describe("coach_chat 1.4.1 — field rules", () => {
     const withFacts = buildChatPrompt(chatArgs);
     expect(withFacts).toContain(`ARBOR APPROVED CHILD MEMORY:\n- Timer helps\n${COACH_CHAT_MEMORY_LEAD}\n`);
     expect(withFacts.split(COACH_CHAT_MEMORY_LEAD).length).toBe(2);
-    expect(COACH_CHAT_MEMORY_LEAD).toMatch(/first sentence of "text"; never contradict it/);
+    expect(COACH_CHAT_MEMORY_LEAD).toMatch(/todayPlan step 1 starts from that fact, and the first sentence of "text" says the fact/);
+    expect(COACH_CHAT_MEMORY_LEAD).toMatch(/never contradict it/);
     const noFacts = buildChatPrompt({ ...chatArgs, approvedMemory: "" });
     expect(noFacts).not.toContain(COACH_CHAT_MEMORY_LEAD);
     expect(noFacts).toContain("ARBOR APPROVED CHILD MEMORY:\nNo parent-approved child memory available.\n");
@@ -486,6 +496,20 @@ describe("coach_chat 1.4.1 — field rules", () => {
     const council = buildCouncilSynthesisPrompt({ developmentalFramework: "F", approvedMemory: "- Timer helps", knowledgeContext: "", childProfile: null, councilTakes: "T", message: "q", languageDirective: "" });
     expect(council).not.toContain(COACH_CHAT_MEMORY_LEAD);
   });
+  it("coach_chat 1.5.3: with facts, the approved-memory block is the FIRST block after the contract — before the framework, the cards and the lens", () => {
+    const prompt = buildChatPrompt({ ...chatArgs, developmentalFramework: "FRAMEWORK-BLOCK", knowledgeContext: "CARDS-BLOCK" });
+    const memoryAt = prompt.indexOf("ARBOR APPROVED CHILD MEMORY:");
+    expect(prompt.indexOf(NON_DIAGNOSTIC_CONTRACT)).toBe(1);
+    expect(prompt.slice(1 + NON_DIAGNOSTIC_CONTRACT.length)).toMatch(/^\nARBOR APPROVED CHILD MEMORY:\n- Timer helps\n/);
+    expect(memoryAt).toBeLessThan(prompt.indexOf("FRAMEWORK-BLOCK"));
+    expect(memoryAt).toBeLessThan(prompt.indexOf("ARBOR AI WIKI SOURCE CARDS:"));
+    expect(memoryAt).toBeLessThan(prompt.indexOf("ACTIVE SCHOLAR LENS"));
+    expect(prompt.split("ARBOR APPROVED CHILD MEMORY:").length).toBe(2);
+    // without facts the block stays after the framework (1.5.2 layout)
+    const noFacts = buildChatPrompt({ ...chatArgs, approvedMemory: "", developmentalFramework: "FRAMEWORK-BLOCK" });
+    expect(noFacts.indexOf("ARBOR APPROVED CHILD MEMORY:")).toBeGreaterThan(noFacts.indexOf("FRAMEWORK-BLOCK"));
+  });
+
   it("council and voice prompts do not carry the /chat field rules", () => {
     const council = buildCouncilSynthesisPrompt({ developmentalFramework: "F", approvedMemory: "", knowledgeContext: "", childProfile: null, councilTakes: "T", message: "q", languageDirective: "" });
     const voice = buildVoiceReplyPrompt({ persona: "P", scholar: chatArgs.scholar, childProfile: null, message: "q", languageDirective: "" });

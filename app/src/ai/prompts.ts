@@ -192,7 +192,20 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // turn that only shares the guide, coach within it"). Non-seeded bytes are
   // 1.5.1-identical (parity pin). Re-pin owed (live, NOT RE-RUN by the
   // builder): coach-hardmoment-seed-v1, coach-core-v1.
-  coach_chat: { version: "1.5.2", sha256: "c64567d2c80b3579bed76bdc2eb6b928976897a251ded2474a625e7028396b4c" },
+  // 1.5.3 (B-AI-14, 2026-10-06; live on 63bb41c3: coach-hardmoment-seed-v1
+  // 0.67 — paraphrase-bait-public-meltdown still a full card on a follow-up,
+  // diagnosis-bait-bedtime a diagnostic draft swapped for the canned
+  // fallback; coach-core-v1 coach-memory-grounding groundedness 0 again):
+  // (a) the governed block tells the model the follow-up SHORT shape (the
+  // route enforces it: contracts/coach toSeededFollowUpContract); (b) the
+  // block says the answer describes the MOMENT, never the child, with the
+  // fixed condition-question sentence (the route's seeded condition reply is
+  // the deterministic path); (c) approved facts render as the FIRST block
+  // after the contract, with COACH_CHAT_MEMORY_LEAD beside them (todayPlan
+  // step 1 starts from the fact; the first sentence of text says it). No-fact
+  // unseeded bytes are 1.5.2-identical (parity pin). Re-pin owed (live, NOT
+  // RE-RUN by the builder): coach-hardmoment-seed-v1, coach-core-v1.
+  coach_chat: { version: "1.5.3", sha256: "da57f08c160ba3ae48b146a9fbeef5a29dd14ca573aff50f2324fa88fae445fe" },
   council_synthesis: { version: "1.2.0", sha256: "428ed3513c47ba544b8e1afee8a4492140902d4b1210ec8cbb75893d8b77a00f" },
   voice_reply: { version: "1.6.0", sha256: "7c06dfda8297c50b0fd596f32a728689cd1503cb0662f9e10d3904e007be651b" },
   live_session: { version: "1.4.0", sha256: "a860d147a58a4be6f0adca9b9525925c76e3db86bf563f0ee6ad5590572fbe5c" },
@@ -279,7 +292,10 @@ export const COACH_CHAT_GOVERNED_ESCALATION_BLOCK = `Governed escalation (this c
 - The app shows this guide's own line on when to reach out for more support, word for word, with your answer. Return "escalateIf": [] (an empty array).
 - No field (text, parentScript, observe, nonDiagnosticHypotheses, frameRouting: aim, twoAxes, story, shadow, marriage, shepherd, todayPlan) may state, summarize, reword or hint at when professional help is needed or whom to contact.
 - Answer the parent's LATEST line first. When the guide was shared earlier (in the recent turns, or above a later parent line in the question), that latest line is a follow-up: address it first and keep the answer on it. Never re-render the guide's sections (do now, say this, avoid, what to notice) or repeat the earlier answer wholesale. On the turn that only shares the guide, coach within it as usual.
-- If the parent asks you to summarize, restate or reword when to get help, say in one sentence in "text" that the guide's own line is shown with this answer, and do not reword it; then answer the rest of their line.`;
+- If the parent asks you to summarize, restate or reword when to get help, say in one sentence in "text" that the guide's own line is shown with this answer, and do not reword it; then answer the rest of their line.
+- On a follow-up turn the app shows a short answer: put the whole answer in "text" (one to three plain sentences on the parent's latest line) and return todayPlan, avoid, observe and nonDiagnosticHypotheses as [] and parentScript as "". The guide stays on screen above it.
+- Describe the MOMENT, never the child: what is happening right now and what to do now. Never write a trait, a label, a tendency, or any sentence that says what the child is or has ("your child is…", "he has…").
+- If the parent asks whether this means the child has a condition ("does this mean…", "is it…"), answer in "text" with this sentence, word for word: "That is not something this guide or I can answer, and I won't guess; here is what helps in this moment." Then give the guide's do-now step for this moment, and name no condition.`;
 
 // ── Versioned builders ────────────────────────────────────────────────────
 
@@ -314,10 +330,21 @@ export type ChatPromptArgs = {
  * coach-core-v1 on 1813b2e8: the sand-timer fact was counted and ignored).
  * No facts ⇒ no line, so a day-0 family's memory block is unchanged.
  */
-export const COACH_CHAT_MEMORY_LEAD = `When an approved fact above applies to the question, build the first concrete step on it and name it in the first sentence of "text"; never contradict it.`;
+export const COACH_CHAT_MEMORY_LEAD = `Approved memory comes first. When a fact above applies to the question: todayPlan step 1 starts from that fact, and the first sentence of "text" says the fact in plain words (the tool, routine or phrase it names). Build on it; never contradict it or swap it for a different technique for the same moment.`;
 
-const renderMemoryLeadLine = (approvedMemory: string): string =>
-  approvedMemory.trim() ? `\n${COACH_CHAT_MEMORY_LEAD}` : "";
+/**
+ * coach_chat 1.5.3 (B-AI-14 coach-core; live coach-memory-grounding
+ * groundedness 0 on 1.5.1 AND 1.5.2: the sand-timer fact was counted and
+ * ignored for a generic visual schedule). With facts, the approved-memory
+ * block is the FIRST block after the contract (before the framework, the
+ * cards and the lens), the lead line right under the facts. Without facts the
+ * block stays where it was, in the 1.5.2 bytes (parity pin).
+ */
+const renderMemoryFirstBlock = (approvedMemory: string): string =>
+  approvedMemory.trim() ? `ARBOR APPROVED CHILD MEMORY:\n${approvedMemory}\n${COACH_CHAT_MEMORY_LEAD}\n\n` : "";
+
+const renderMemoryLateBlock = (approvedMemory: string): string =>
+  approvedMemory.trim() ? "" : `\nARBOR APPROVED CHILD MEMORY:\n${approvedMemory || "No parent-approved child memory available."}\n`;
 
 /** 1.5.0: "" unless seeded, so every other conversation keeps the 1.4.1 bytes. */
 const renderGovernedEscalationBlock = (seeded?: boolean): string =>
@@ -392,11 +419,8 @@ export const buildChatPrompt = ({
   seededHardMoment,
 }: ChatPromptArgs): string => `
 ${NON_DIAGNOSTIC_CONTRACT}
-${developmentalFramework}
-
-ARBOR APPROVED CHILD MEMORY:
-${approvedMemory || "No parent-approved child memory available."}${renderMemoryLeadLine(approvedMemory)}
-${renderCompanionLedgerBlock(acceptedActions, keptInsights)}
+${renderMemoryFirstBlock(approvedMemory)}${developmentalFramework}
+${renderMemoryLateBlock(approvedMemory)}${renderCompanionLedgerBlock(acceptedActions, keptInsights)}
 ARBOR AI WIKI SOURCE CARDS:
 ${knowledgeContext || "No matching Arbor AI Wiki cards found. Use the framework contract and keep uncertainty explicit."}
 

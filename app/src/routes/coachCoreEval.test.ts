@@ -42,6 +42,7 @@ import { coachResponseZodSchema } from "../contracts/coach.js";
 import { getScholarById } from "../services/scholars.js";
 import type { ModelProvider } from "../ai/modelRouter.js";
 import { COACH_CHAT_MEMORY_LEAD } from "../ai/prompts.js";
+import { answerUsesApprovedFact, factWindows, memoryFactUnusedCount } from "../server/memoryFactUse.js";
 
 const HEBREW = /[֐-׿]/;
 const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
@@ -391,10 +392,53 @@ describe("coach-core-v1 deterministic tier (real /api/chat, scripted model)", ()
     // 1813b2e8: the sand-timer fact was counted and ignored).
     expect(lastChatPrompt).toContain(COACH_CHAT_MEMORY_LEAD);
     expect(lastChatPrompt.indexOf(fact)).toBeLessThan(lastChatPrompt.indexOf(COACH_CHAT_MEMORY_LEAD));
+    // coach_chat 1.5.3 (live 1.5.2 groundedness 0 again): the facts are the
+    // FIRST block after the contract — before the cards and the lens — and a
+    // distinctive window of the fact is in the prompt.
+    expect(lastChatPrompt.indexOf("ARBOR APPROVED CHILD MEMORY:")).toBeLessThan(lastChatPrompt.indexOf("ARBOR AI WIKI SOURCE CARDS:"));
+    expect(lastChatPrompt.indexOf("ARBOR APPROVED CHILD MEMORY:")).toBeLessThan(lastChatPrompt.indexOf("ACTIVE SCHOLAR LENS"));
+    expect(factWindows(fact)).toContain("sand timer");
+    expect(lastChatPrompt.toLowerCase()).toContain("sand timer");
     // ASK-6 firewall shape: the parent-facing signal is the integer COUNT
     // only — never fact content, never a percentage.
     const done = doneOf(events);
     expect(done?.contract?.approvedMemoryFactsUsed).toBe(1);
+  });
+
+  it("coach-memory-grounding (1.5.3): memory_fact_unused stays 0 on a grounded stub and counts 1 on an ungrounded one (never blocks)", async () => {
+    const sc = scenario("coach-memory-grounding");
+    const fact = sc.input.approvedMemoryFacts[0] as string;
+    await inMemoryStore.appendEvent({
+      eventId: "eval-e2",
+      memoryId: "eval-m2",
+      familyId: "default-family",
+      childId: "c-mem-unused",
+      eventType: "approved",
+      status: "approved",
+      fact,
+      source: "chat",
+      retention: "3 months",
+      createdAt: new Date().toISOString(),
+      actor: "parent",
+    });
+    const body = { message: sc.input.parentMessage, childProfile: { id: "c-mem-unused", name: "Mia" } };
+    const before = memoryFactUnusedCount();
+    contractOverrides = { text: sc.input.stubbedContractText };
+    const grounded = doneOf((await postChatStreamed(body)).events);
+    expect(grounded?.contract?.approvedMemoryFactsUsed).toBe(1);
+    expect(memoryFactUnusedCount()).toBe(before);
+    contractOverrides = { text: "Mornings can feel rushed. A picture chart of the steps may help.", todayPlan: ["Draw the morning steps together."] };
+    const ungrounded = doneOf((await postChatStreamed(body)).events);
+    expect(memoryFactUnusedCount()).toBe(before + 1);
+    // never blocks: the ungrounded answer is delivered as usual
+    expect(ungrounded?.outputBlocked).toBeUndefined();
+    expect(ungrounded?.contract?.todayPlan).toEqual(["Draw the morning steps together."]);
+    // a day-0 child (no facts) never counts
+    contractOverrides = { text: "Mornings can feel rushed." };
+    await postChatStreamed({ message: sc.input.parentMessage, childProfile: { id: "c-day0-count", name: "Mia" } });
+    expect(memoryFactUnusedCount()).toBe(before + 1);
+    expect(answerUsesApprovedFact([fact], { text: sc.input.stubbedContractText })).toBe(true);
+    expect(answerUsesApprovedFact([fact], { text: "Try a visual schedule.", todayPlan: ["Use a timer chart"] })).toBe(false);
   });
 
   it("coach-day0-no-memory: zero approved memory → honest empty-memory prompt, count 0, contract still parses", async () => {

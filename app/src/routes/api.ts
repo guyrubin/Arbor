@@ -5,7 +5,7 @@ import { normalizeAvatarStyle } from "../lib/avatarStyle.js";
 import { isAbortError, newAbortError, type ModelCallBudget, type ModelProvider } from "../ai/modelRouter.js";
 import { abortableIterate, raceWithAbort, isTransientModelError } from "../ai/modelRetry.js";
 import type { MemoryStore } from "../memory/types.js";
-import { createCoachResponseGeminiSchema, createSeededCoachResponseGeminiSchema, coachResponseZodSchema, coachSeededResponseZodSchema, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards, scrubHypothesisConfidence } from "../contracts/coach.js";
+import { createCoachResponseGeminiSchema, createSeededCoachResponseGeminiSchema, createSeededFollowUpCoachResponseGeminiSchema, coachResponseZodSchema, coachSeededResponseZodSchema, toSeededFollowUpContract, renderCoachFollowUpResponse, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards, scrubHypothesisConfidence } from "../contracts/coach.js";
 import { PROMPT_VERSIONS, buildAnalyzeBehaviorPrompt, buildChatPrompt, buildCouncilSynthesisPrompt, buildExtractLogPrompt, buildGeneratePlanPrompt, buildTodaysFocusPrompt, jsonLanguageDirective, buildVoiceReplyPrompt, promptProfile, ROUTINE_ESCALATION_GUIDANCE } from "../ai/prompts.js";
 // Masterplan 1.3 — server-defensive sanitizers for the two OPTIONAL /chat body
 // fields (recentTurns transcript + counts-only weeklyContext). Both degrade to
@@ -16,8 +16,9 @@ import { createDigestJobSource, createOidcJobVerifier, runWeeklyDigestJob, type 
 import { assembleCompanionContext, createCompanionLedgerSource, lastRatedAction, renderApprovedFactLines, type CompanionLedgerSource, type CompanionPurpose } from "../server/companionContext.js";
 import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../services/framework.js";
 import { screenForImmediateEscalation, renderEscalationMarkdown, escalationMatchForCategory } from "../safety/escalation.js";
-import { renderConditionQuestionReply, screenForConditionQuestion } from "../safety/conditionQuestion.js";
-import { seededEscalationLine, applyGovernedEscalation, scrubSeededProfessionalHelp, seededScrubCount, seededDeltaAllowed } from "../safety/seededEscalation.js";
+import { renderConditionQuestionReply, renderSeededConditionReply, screenForConditionQuestion } from "../safety/conditionQuestion.js";
+import { answerUsesApprovedFact, recordMemoryFactUnused } from "../server/memoryFactUse.js";
+import { seededEscalationLine, seededCard, seededFollowUpLine, applyGovernedEscalation, scrubSeededProfessionalHelp, seededScrubCount, seededDeltaAllowed } from "../safety/seededEscalation.js";
 import { withoutCrisisThresholds, recordRoutineThresholdDrop } from "../safety/routineThresholds.js";
 import { captureLanguage, normalizeCaptureDraft } from "../server/captureDraft.js";
 import { DEFAULT_MEMORY_RETENTION, appendMemoryProposals, enforceMemoryRetention, foldMemoryEvents, getApprovedMemoryContext, getApprovedMemoryContextDetail, toChildId, toFamilyId, transitionMemory } from "../memory/memoryService.js";
@@ -396,6 +397,8 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   const coachResponseSchema = createCoachResponseGeminiSchema(framework);
   // B-AI-14 (coach_chat 1.5.0): seeded hard-moment turns only.
   const seededCoachResponseSchema = createSeededCoachResponseGeminiSchema(framework);
+  // B-AI-14 (coach_chat 1.5.3): a seeded FOLLOW-UP turn's short shape.
+  const seededFollowUpCoachResponseSchema = createSeededFollowUpCoachResponseGeminiSchema(framework);
   // Per-child authorization (closes the IDOR on child-scoped reads/erasure).
   const requireOwnership = requireChildOwnership(memoryStore);
   // B-BOOK release: a child's private book files (hero sheet, prints, narration)
@@ -813,7 +816,13 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // B-AI-14: a seeded conversation's governed escalation line rides the
       // governed reply too (byte-identical, after it). The crisis path above
       // stays the safety trip, untouched.
-      const conditionReply = renderConditionQuestionReply(language === "he" ? "he" : "en");
+      // B-AI-14 (coach_chat 1.5.3): inside a seeded conversation the reply is
+      // card-scoped — one fixed sentence naming no condition, then the card's
+      // own do-now and what-to-notice lines (governed catalog, no model).
+      const conditionSeed = seededCard(message, recentTurns);
+      const conditionReply = conditionSeed
+        ? renderSeededConditionReply(conditionSeed.card, language === "he" ? "he" : "en")
+        : renderConditionQuestionReply(language === "he" ? "he" : "en");
       const seededLine = seededEscalationLine(message, recentTurns);
       const payload = {
         text: seededLine && !conditionReply.includes(seededLine) ? `${conditionReply}\n\n${seededLine}` : conditionReply,
@@ -892,6 +901,10 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // prompt (live fix, coach_chat 1.5.0): a seeded turn renders the
       // governed-escalation block and sends the seeded schema (escalateIf []).
       const seededEscalation = seededEscalationLine(message, recentTurns);
+      // B-AI-14 (coach_chat 1.5.3): a seeded FOLLOW-UP turn (the latest parent
+      // line is not the seed) gets the short shape — the route decides it,
+      // whatever the model returns (contracts/coach toSeededFollowUpContract).
+      const seededFollowUp = seededEscalation !== null && seededFollowUpLine(message, recentTurns) !== null;
 
       // EVAL-6: version-pinned named builder (ai/prompts.ts) — byte-identical
       // to the old inline template; promptVersion is stamped into telemetry.
@@ -974,7 +987,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       for await (const chunk of abortableIterate(modelProvider.generateJsonStream({
         route: "coach_high_stakes",
         prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
-        schema: seededEscalation ? seededCoachResponseSchema : coachResponseSchema,
+        schema: seededFollowUp ? seededFollowUpCoachResponseSchema : seededEscalation ? seededCoachResponseSchema : coachResponseSchema,
         temperature: 0.45,
         budget: budget.budget,
         promptVersion: PROMPT_VERSIONS.coach_chat.version
@@ -1000,7 +1013,12 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
 
       // B-AI-14 (1.5.0): a seeded turn accepts escalateIf [] (min 0); every
       // other turn keeps the min(1) contract.
-      const structured = privacy.restoreDeep((seededEscalation ? coachSeededResponseZodSchema : coachResponseZodSchema).parse(parseJson(rawResponse.trim())));
+      // B-AI-14 (1.5.3): a seeded follow-up parses into the short shape (card
+      // sections emptied server-side).
+      const parsedJson = parseJson(rawResponse.trim());
+      const structured = privacy.restoreDeep(
+        seededFollowUp ? toSeededFollowUpContract(parsedJson) : (seededEscalation ? coachSeededResponseZodSchema : coachResponseZodSchema).parse(parsedJson),
+      );
       if (!structured.sourceCardsUsed?.length && knowledgeCards.length > 0) {
         structured.sourceCardsUsed = knowledgeCards.map((card) => card.id);
       }
@@ -1029,8 +1047,16 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         }
       }
 
+      // B-AI-14 (coach_chat 1.5.3, coach-core): on a turn with approved facts,
+      // count an answer that names none of them (a distinctive two-content-word
+      // window of each fact, in text or todayPlan). Never blocks; the judge decides.
+      if (approvedMemoryFactsUsed > 0 && !answerUsesApprovedFact(companion.approvedFacts.map((fact) => fact.text), structured)) {
+        const total = recordMemoryFactUnused();
+        logger.info("memory_fact_unused", { requestId: requestIdOf(req), facts: approvedMemoryFactsUsed, total });
+      }
+
       // AI-2: output-side safety screen (lexical floor + optional semantic classifier).
-      let renderedText = renderCoachResponse(structured, renderLanguage);
+      let renderedText = seededFollowUp ? renderCoachFollowUpResponse(structured, renderLanguage) : renderCoachResponse(structured, renderLanguage);
       let outputVerdict = await screenModelOutput(modelProvider, renderedText);
       // B-AI-14 (coach-core 1.5.1) — escalateIf-drop rule ratified by the
       // orchestrator 6 Oct (four conditions; safety/routineThresholds). A
