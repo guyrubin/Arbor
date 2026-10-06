@@ -220,7 +220,7 @@ describe("Masterplan 1.3 — coach_chat block-free byte-parity (v1.4.1 pin)", ()
     expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toMatch(/Return "escalateIf": \[\]/);
     expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toMatch(/shepherd/);
     expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toMatch(/do not reword it/);
-    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.5.3");
+    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.6.0");
   });
 
   it("empty recentTurns / null weeklyContext (the sanitizers' degenerate outputs) also keep the block-free bytes", () => {
@@ -478,7 +478,7 @@ describe("coach_chat 1.4.1 — field rules", () => {
     expect(COACH_CHAT_FIELD_RULES).toMatch(/never write that condition's name or any label back/);
     expect(COACH_CHAT_FIELD_RULES).toMatch(/In a routine answer no field names self-harm/);
     expect(COACH_CHAT_FIELD_RULES).toMatch(/never low, medium, high/);
-    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.5.3");
+    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.6.0");
   });
   it("coach_chat 1.5.1: escalateIf thresholds stay on the behaviour the parent described", () => {
     expect(COACH_CHAT_FIELD_RULES).toContain("Thresholds are about the behaviour the parent described and never introduce a danger the parent did not raise.");
@@ -556,5 +556,55 @@ describe("B-LOOP-06 — extract_log milestone-match block", () => {
     expect(p).not.toContain("If the moment clearly belongs to one shelf");
     expect(p).toContain("Never infer a delay, a status, an emotion or a diagnosis.");
     expect(p.indexOf("Milestone match (optional)")).toBeLessThan(p.indexOf("Return only JSON matching the schema."));
+  });
+});
+
+/* B-PROG-01 — the ONE program context line in todays_focus 1.2.0, coach_chat
+   1.6.0, voice_reply 1.7.0 and live_session 1.5.0: present once when the
+   family has an active program, and WITHOUT one every prompt keeps its
+   previous bytes (parity). */
+describe("B-PROG-01 — the active-program line", () => {
+  const program = { name: "Talk Together", week: 3, skill: "Take turns: answer every sound, then wait." };
+  const LINE = "Active program: Talk Together, week 3: Take turns: answer every sound, then wait.";
+  const chatArgs = {
+    developmentalFramework: "F", approvedMemory: "", knowledgeContext: "", childProfile: null,
+    scholar: { name: "s", concept: "c", method: "m", defaultFrame: "f" }, message: "q", languageDirective: "",
+    acceptedActions: [{ recommendation: "step", status: "accepted" as const, acceptedAt: "2026-10-01T00:00:00.000Z" }],
+  };
+  const focusArgs = { childProfile: null, count: 2, triggerSent: "", lastActionRecommendation: "", lastActionOutcome: "", languageDirective: "", approvedFacts: ["fact"] };
+  const spoken = { profile: { age: 2 }, approvedMemory: "m", approvedMemoryFactsUsed: 1, recentTurns: [] } as Parameters<typeof buildVoiceReplyPrompt>[0]["companionContext"];
+  const voiceArgs = { persona: "P", scholar: { name: "s", method: "m" }, childProfile: null, message: "q", languageDirective: "" };
+
+  it("renders the line exactly once, in the spec's words, in all four prompts", async () => {
+    const { buildLiveSystemInstruction } = await import("../lib/livePersona.js");
+    const all = [
+      buildChatPrompt({ ...chatArgs, activeProgram: program }),
+      buildTodaysFocusPrompt({ ...focusArgs, activeProgram: program }),
+      buildVoiceReplyPrompt({ ...voiceArgs, companionContext: { ...spoken!, program } }),
+      buildLiveSystemInstruction("en", { ...spoken!, program }),
+    ];
+    for (const p of all) expect(p.split(LINE).length - 1).toBe(1);
+    // placement: after the companion ledger in /chat, after the facts in /todays-focus
+    const chat = all[0];
+    expect(chat.indexOf(LINE)).toBeGreaterThan(chat.indexOf("STEPS THE PARENT CHOSE TO TRY"));
+    expect(chat.indexOf(LINE)).toBeLessThan(chat.indexOf("ARBOR AI WIKI SOURCE CARDS"));
+    const focus = all[1];
+    expect(focus.indexOf(LINE)).toBeGreaterThan(focus.indexOf("Parent-approved facts"));
+    expect(focus.indexOf(LINE)).toBeLessThan(focus.indexOf("What the parent has logged this week"));
+  });
+
+  it("parity: without an active program the four prompts keep their previous bytes", async () => {
+    const { buildLiveSystemInstruction } = await import("../lib/livePersona.js");
+    const strip = (s: string) => s.replace(`${LINE}\n`, "");
+    expect(buildChatPrompt(chatArgs)).toBe(strip(buildChatPrompt({ ...chatArgs, activeProgram: program })));
+    expect(buildTodaysFocusPrompt(focusArgs)).toBe(strip(buildTodaysFocusPrompt({ ...focusArgs, activeProgram: program })));
+    expect(buildVoiceReplyPrompt({ ...voiceArgs, companionContext: spoken })).toBe(strip(buildVoiceReplyPrompt({ ...voiceArgs, companionContext: { ...spoken!, program } })));
+    expect(buildLiveSystemInstruction("en", spoken)).toBe(strip(buildLiveSystemInstruction("en", { ...spoken!, program })));
+    // an empty skill or name renders nothing
+    expect(buildChatPrompt({ ...chatArgs, activeProgram: { ...program, skill: " " } })).toBe(buildChatPrompt(chatArgs));
+    expect(PROMPT_VERSIONS.todays_focus.version).toBe("1.2.0");
+    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.6.0");
+    expect(PROMPT_VERSIONS.voice_reply.version).toBe("1.7.0");
+    expect(PROMPT_VERSIONS.live_session.version).toBe("1.5.0");
   });
 });

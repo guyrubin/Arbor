@@ -32,6 +32,8 @@ import { loopFirewallHits } from "../loop/firewall";
 import { shelfCoverage } from "../milestones/selectByShelf";
 import { choosePractice, practiceCandidates, todaysCandidates, practiceDoseEntry, practiceDoseId, recentPracticeIds, todayDose, type ChoosePracticeInput } from "./choosePractice";
 import type { Milestone } from "../../types";
+import { programById } from "../../content/programs";
+import { chooserProgram } from "../programs/enrolment";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const NOW = new Date(2026, 9, 6, 7, 30);
@@ -127,6 +129,80 @@ describe("choosePractice", () => {
   it("P6 seam: a candidate filter narrows the set before ranking (no program rule built)", () => {
     const keep = new Set(practiceCandidates(base()).slice(1, 3).map((c) => c.practice.id));
     expect(keep.has(choosePractice(base({ candidateFilter: (p) => keep.has(p.id) }))!.practice.id)).toBe(true);
+  });
+});
+
+/* B-PROG-01 — the program rule comes first: with an active program the
+   chosen practice belongs to the CURRENT week's list, rotates through it,
+   never two days the same (also across a week boundary), the AI pick is
+   honoured only inside the week; without one, everything above is unchanged. */
+describe("B-PROG-01 — the program rule", () => {
+  const TT = programById("talk-together")!;
+  const START = "2026-10-01"; // NOW (6 Oct) is day 6 of week 1
+  const program = chooserProgram({ program: TT, enrolment: { startedAt: START } as never })!;
+  const weekList = (n: number) => TT.weeks[n - 1].practices;
+
+  it("with an active program the chosen practice belongs to the current week (via program, programId + week on the pick)", () => {
+    const pick = choosePractice(base({ program }))!;
+    expect(weekList(1)).toContain(pick.practice.id);
+    expect(pick).toMatchObject({ via: "program", programId: "talk-together", programWeek: 1, shelf: "words" });
+    // week 2 from 8 Oct
+    const w2 = choosePractice(base({ program, today: new Date(2026, 9, 9, 9, 0) }))!;
+    expect(w2.programWeek).toBe(2);
+    expect(weekList(2)).toContain(w2.practice.id);
+    // past the last week the program stays on its last week
+    const late = choosePractice(base({ program, today: new Date(2027, 2, 1, 9, 0) }))!;
+    expect(late.programWeek).toBe(TT.weeks.length);
+    expect(weekList(TT.weeks.length)).toContain(late.practice.id);
+  });
+
+  it("rotates through the week and never serves the same practice two days running (across week boundaries too)", () => {
+    let prev = "";
+    const seenInWeek1 = new Set<string>();
+    for (let d = 0; d < 7 * TT.weeks.length + 7; d++) {
+      const day = new Date(2026, 9, 1 + d, 9, 0);
+      const pick = choosePractice(base({ program, today: day }))!;
+      expect(pick.via, `day ${d}`).toBe("program");
+      expect(TT.weeks[pick.programWeek! - 1].practices, `day ${d}`).toContain(pick.practice.id);
+      expect(pick.practice.id, `day ${d}`).not.toBe(prev);
+      if (pick.programWeek === 1) seenInWeek1.add(pick.practice.id);
+      prev = pick.practice.id;
+    }
+    expect(seenInWeek1.size, "the week's list rotates, not one practice all week").toBeGreaterThanOrEqual(4);
+    // yesterday's ANSWERED practice is excluded too
+    const y = choosePractice(base({ program, today: new Date(2026, 9, 5, 9, 0) }))!.practice.id;
+    expect(choosePractice(base({ program, recentPracticeIds: [y] }))!.practice.id).not.toBe(y);
+  });
+
+  it("the AI pick is honoured inside the week's list only; today's dose row keeps the card put and stays tagged", () => {
+    const candidates = todaysCandidates(base({ program }));
+    expect(candidates.every((c) => weekList(1).includes(c.practice.id))).toBe(true);
+    const second = candidates[1];
+    expect(choosePractice(base({ program, aiPracticeId: second.practice.id }))).toMatchObject({ via: "ai", programId: "talk-together", practice: { id: second.practice.id } });
+    const outside = PRACTICES.find((p) => !weekList(1).includes(p.id))!;
+    expect(choosePractice(base({ program, aiPracticeId: outside.id }))!.via).toBe("program");
+    const today = choosePractice(base({ program, todayPracticeId: second.practice.id }))!;
+    expect(today).toMatchObject({ via: "today", programId: "talk-together", programWeek: 1 });
+  });
+
+  it("the dose row and the record carry the programId", () => {
+    const pick = choosePractice(base({ program }))!;
+    const row = practiceDoseEntry(pick, "did", "kid-1", "x", NOW);
+    expect(row.programId).toBe("talk-together");
+    const [o] = toObservations({ actionLoops: [row] }, { id: "kid-1" });
+    expect(o.value).toMatchObject({ type: "practice", programId: "talk-together" });
+    const plain = practiceDoseEntry(choosePractice(base())!, "did", "kid-1", "x", NOW);
+    expect("programId" in plain).toBe(false);
+  });
+
+  it("without a program (null, or a week whose ids resolve to nothing) the P5 behaviour is unchanged", () => {
+    for (let d = 0; d < 14; d++) {
+      const day = new Date(2026, 9, 1 + d, 9, 0);
+      expect(choosePractice(base({ today: day, program: null }))).toEqual(choosePractice(base({ today: day })));
+    }
+    const empty = { programId: "x", startedAt: START, weeks: [["pr-does-not-exist"]] };
+    expect(choosePractice(base({ program: empty }))).toEqual(choosePractice(base()));
+    expect(choosePractice(base({ program, comparisonMonths: null }))).toBeNull();
   });
 });
 

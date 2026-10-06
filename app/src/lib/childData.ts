@@ -83,6 +83,11 @@ export const CHILD_SUBCOLLECTIONS = [
   // B-PROG-06 (Steady Nights): the sleep diary — one doc per night (bedtime
   // routine tap + the morning's times; lib/sleepDiary.ts). Export + erase.
   "sleepLogs",
+  // B-PROG-01 (program engine): the child's program enrolments (programId,
+  // startedAt, currentWeek, status active | paused | done, the family's own
+  // first-week baseline, optional parent-typed lines; lib/programs/enrolment).
+  // Export + erase.
+  "programs",
 ];
 
 const remoteActive = (uid?: string) =>

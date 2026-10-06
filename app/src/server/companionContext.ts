@@ -1,5 +1,5 @@
 /**
- * B-AI-01 — CompanionContext v1: the ONE server-side context service.
+ * B-AI-01 — CompanionContext v1 (v2 since B-PROG-01): the ONE server-side context service.
  *
  * Before this module every AI route assembled its own picture of the family:
  * `/voice` + `/live/token` through spokenContext.ts, `/chat` through a
@@ -18,6 +18,13 @@
  *   · kept insights — suggestion lines the parent tapped "Keep this" on
  *     (`insights` rows of kind `kept-insight`, B-AI-04).
  *
+ * B-PROG-01 (v2): the child's ACTIVE program enrolment (`programs` rows,
+ * lib/programs/enrolment) becomes `program: { id, name, shelf, week, skill,
+ * scripts[≤3], measures }` — program content only (the week's skill and the
+ * coach scripts Arbor wrote, the measure definitions), never a count about
+ * the child. Present only when an enrolment is active; the `child` audience
+ * never sees it (the whole context is empty for it, fail closed).
+ *
  * What it never reads: moment free text (`behaviorLogs.notes`) — Guy G-14
  * keeps it out of every prompt; weekly counts arrive only as the caller's
  * already-sanitized counts. Every read is scoped to the AUTHENTICATED uid's
@@ -32,6 +39,10 @@ import { promptProfile, type ModelProfile } from "../ai/prompts.js";
 import type { ActionSource } from "../actionLoop/model.js";
 import { enforceMemoryRetention, foldMemoryEvents, selectApprovedFacts } from "../memory/memoryService.js";
 import type { MemoryStore } from "../memory/types.js";
+import type { LocalizedText } from "../content/governance.js";
+import type { ShelfId } from "../lib/shelves/registry.js";
+import { programName } from "../content/programs/index.js";
+import { activeProgramWeek } from "../lib/programs/enrolment.js";
 
 export type CompanionPurpose =
   | "chat"
@@ -57,16 +68,38 @@ export type CompanionAction = {
 
 export type CompanionInsight = { text: string; createdAt: string };
 
+/** B-PROG-01 — the active program block: Arbor's own program content for the
+ *  current week, never a count or a read of the child. */
+export type CompanionProgram = {
+  id: string;
+  /** The program's name (EN + HE). */
+  name: LocalizedText;
+  shelf: ShelfId;
+  /** 1-based program week. */
+  week: number;
+  /** The week's parent skill (EN + HE). */
+  skill: LocalizedText;
+  /** The week's in-the-moment coach scripts, ≤ 3 (EN + HE). */
+  scripts: LocalizedText[];
+  /** The measure definitions (ids + EN labels) — what the family counts, never a value. */
+  measures: { dose: true; parentProxy: { id: string; label: string }; childProxy: { id: string; label: string } };
+};
+
+export const MAX_PROGRAM_SCRIPTS = 3;
+
 export type CompanionContext = {
   profile: ModelProfile | null;
   approvedFacts: CompanionFact[];
   acceptedActions: CompanionAction[];
   keptInsights: CompanionInsight[];
   weeklyCounts?: WeeklyContext | null;
+  /** B-PROG-01: only when an enrolment is active (parent audience only). */
+  program?: CompanionProgram;
 };
 
-/** Raw ledger rows as the client writes them — validated field by field here. */
-export type CompanionLedger = { actionLoops: unknown[]; insights: unknown[] };
+/** Raw ledger rows as the client writes them — validated field by field here.
+ *  `programs` (B-PROG-01) is optional: a source that does not read it yields no program block. */
+export type CompanionLedger = { actionLoops: unknown[]; insights: unknown[]; programs?: unknown[] };
 
 /** Server-side read of the parent's own child ledgers. */
 export interface CompanionLedgerSource {
@@ -135,6 +168,33 @@ export const projectKeptInsights = (rows: readonly unknown[]): CompanionInsight[
   return out.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, MAX_KEPT_INSIGHTS);
 };
 
+/** B-PROG-01: the active enrolment → the program block, or null (no active
+ *  enrolment, unknown program, malformed row). The week is computed at `now`. */
+export const projectActiveProgram = (rows: readonly unknown[], now: number = Date.now()): CompanionProgram | null => {
+  const active = activeProgramWeek(rows, new Date(now));
+  if (!active) return null;
+  const name = programName(active.program.id);
+  if (!name) return null;
+  const { program, week, content } = active;
+  return {
+    id: program.id,
+    name,
+    shelf: program.shelf,
+    week,
+    skill: content.skill,
+    scripts: content.coachScripts.slice(0, MAX_PROGRAM_SCRIPTS).map((s) => s.text),
+    measures: {
+      dose: true,
+      parentProxy: { id: program.measures.parentProxy.id, label: program.measures.parentProxy.label.en },
+      childProxy: { id: program.measures.childProxy.id, label: program.measures.childProxy.label.en },
+    },
+  };
+};
+
+/** The one context line the four program-aware prompts render (B-PROG-01). */
+export const programPromptLine = (program?: CompanionProgram | null): { name: string; week: number; skill: string } | undefined =>
+  program ? { name: program.name.en, week: program.week, skill: program.skill.en } : undefined;
+
 export const emptyCompanionContext = (profile: ModelProfile | null = null): CompanionContext => ({
   profile,
   approvedFacts: [],
@@ -193,9 +253,12 @@ export const assembleCompanionContext = async (input: {
       const ledger = await input.ledgerSource.load(input.uid, childId);
       context.acceptedActions = projectAcceptedActions(ledger.actionLoops ?? []);
       context.keptInsights = projectKeptInsights(ledger.insights ?? []);
+      const program = projectActiveProgram(ledger.programs ?? [], now);
+      if (program) context.program = program;
     } catch {
       context.acceptedActions = [];
       context.keptInsights = [];
+      delete context.program;
     }
   }
   return context;
@@ -216,7 +279,7 @@ export const lastRatedAction = (actions: readonly CompanionAction[]): CompanionA
 /** Local adapter: child ledgers live in the owner's browser; nothing to read. */
 export class NullCompanionLedgerSource implements CompanionLedgerSource {
   async load(): Promise<CompanionLedger> {
-    return { actionLoops: [], insights: [] };
+    return { actionLoops: [], insights: [], programs: [] };
   }
 }
 
@@ -234,13 +297,16 @@ export class FirestoreCompanionLedgerSource implements CompanionLedgerSource {
 
   async load(uid: string, childId: string): Promise<CompanionLedger> {
     const childRef = this.db.doc(`users/${uid}/children/${childId}`);
-    const [loops, insights] = await Promise.all([
+    const [loops, insights, programs] = await Promise.all([
       childRef.collection("actionLoops").orderBy("acceptedAt", "desc").limit(20).get(),
       childRef.collection("insights").where("kind", "==", "kept-insight").get(),
+      // B-PROG-01: the active enrolment only (one per child; 2 tolerates a race).
+      childRef.collection("programs").where("status", "==", "active").limit(2).get(),
     ]);
     return {
       actionLoops: loops.docs.map((d) => d.data()),
       insights: insights.docs.map((d) => d.data()),
+      programs: programs.docs.map((d) => d.data()),
     };
   }
 }

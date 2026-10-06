@@ -13,7 +13,7 @@ import { PROMPT_VERSIONS, buildAnalyzeBehaviorPrompt, buildChatPrompt, buildCoun
 import { sanitizeRecentTurns, sanitizeWeeklyContext } from "../ai/chatContext.js";
 import { assembleSpokenContext, liveContextWithoutNames, spokenChildId } from "../server/spokenContext.js";
 import { createDigestJobSource, createOidcJobVerifier, runWeeklyDigestJob, type DigestJobSource, type JobCallerVerifier } from "../server/digestJob.js";
-import { assembleCompanionContext, createCompanionLedgerSource, lastRatedAction, renderApprovedFactLines, type CompanionLedgerSource, type CompanionPurpose } from "../server/companionContext.js";
+import { assembleCompanionContext, createCompanionLedgerSource, lastRatedAction, programPromptLine, renderApprovedFactLines, type CompanionLedgerSource, type CompanionPurpose } from "../server/companionContext.js";
 import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../services/framework.js";
 import { screenForImmediateEscalation, renderEscalationMarkdown, escalationMatchForCategory } from "../safety/escalation.js";
 import { renderConditionQuestionReply, renderSeededConditionReply, screenForConditionQuestion } from "../safety/conditionQuestion.js";
@@ -926,6 +926,8 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         // 1.4 (B-AI-01): the parent's own action ledger + kept insights.
         acceptedActions: companion.acceptedActions,
         keptInsights: companion.keptInsights,
+        // B-PROG-01 (coach_chat 1.6.0): the active program's one context line.
+        activeProgram: programPromptLine(companion.program),
         // 1.5.0 (B-AI-14): only when the governed line resolved; else 1.4.1 bytes.
         seededHardMoment: seededEscalation !== null,
       });
@@ -1470,6 +1472,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       const companionContext = await raceWithAbort(assembleSpokenContext({
         memoryStore, childProfile, recentTurns, contextChildId, privateMode,
         canReadMemory, maxMemoryFacts: config.memoryPromptMaxFacts,
+        ledgerSource, uid: actorOf(req).uid,
       }), budget.signal);
       // AI-V9: persona + language directive come from the ONE shared spoken
       // persona module (lib/livePersona.ts) — byte-shared with the Live path.
@@ -1710,6 +1713,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       const companionContext = await assembleSpokenContext({
         memoryStore, childProfile, recentTurns, contextChildId, privateMode,
         canReadMemory, maxMemoryFacts: config.memoryPromptMaxFacts,
+        ledgerSource, uid: actorOf(req).uid,
       });
       // Direct audio cannot restore the text route's child-name alias. Keep
       // names/contact PII out of the token pin and use natural generic wording.
@@ -2103,6 +2107,8 @@ Finalized parent transcript: ${privacy.redact(transcript.trim())}${REDACTION_DIR
         lastActionOutcome,
         languageDirective,
         approvedFacts,
+        // B-PROG-01 (todays_focus 1.2.0): the active program's one context line.
+        activeProgram: programPromptLine(companion.program),
       });
 
       const privacy = createRedaction(childProfile?.name);

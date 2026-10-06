@@ -12,6 +12,15 @@
  *    candidates this chooser offered; anything else is ignored. The pure
  *    chooser is the fallback and the zero-model-call path.
  *
+ * B-PROG-01 — THE PROGRAM RULE comes FIRST: with an active program
+ * (`input.program`, the enrolment's current week from lib/programs/enrolment
+ * `activeProgramWeek`), today's practice is drawn from THAT WEEK's list — a
+ * day rotation over the week's practices, never two days the same (the same
+ * pool-minus-yesterday rule as the shelf-level pools), recent ids skipped —
+ * and the AI's pick is honoured only inside the week's list. Without a
+ * program, or when none of the week's ids resolve, the thinnest-shelf rule
+ * below is unchanged.
+ *
  * The dose log is ONE `actionLoops` row per day (`practice.<child>.<day>`,
  * source "practice"): "Did it" → completed (tonight's question sets the
  * outcome: helped / somewhat, chosen by the parent, never inferred);
@@ -33,8 +42,22 @@ export interface PracticePick {
    *  (B-LOOP-08 follow-up: Sleep and Family carry practices bound to the shelf). */
   milestone: Milestone | null;
   shelf: ShelfId;
-  /** "ai" when the focus route's practiceId (from the candidates) won. */
-  via: "chooser" | "ai" | "today";
+  /** "ai" when the focus route's practiceId (from the candidates) won;
+   *  "program" when the active program's week served it (B-PROG-01). */
+  via: "chooser" | "ai" | "today" | "program";
+  /** B-PROG-01: set when the pick came from the active program's week. */
+  programId?: string;
+  programWeek?: number;
+}
+
+/** B-PROG-01: the active program, as the chooser needs it (lib/programs/enrolment
+ *  `chooserProgram` builds it from the active enrolment). */
+export interface ChooserProgram {
+  programId: string;
+  /** LOCAL day key (YYYY-MM-DD) of week 1's first day (the enrolment's `startedAt`). */
+  startedAt: string;
+  /** Every week's practice ids, in order (content/programs ProgramWeek.practices). */
+  weeks: readonly (readonly string[])[];
 }
 
 export interface ChoosePracticeInput {
@@ -54,6 +77,8 @@ export interface ChoosePracticeInput {
   /** P6 seam (B-PROG-01): a program rule may narrow the candidates later; the
    *  chooser takes an optional filter and applies it before ranking. */
   candidateFilter?: (practice: Practice) => boolean;
+  /** B-PROG-01: the active program — its current week's practices win. */
+  program?: ChooserProgram | null;
 }
 
 /** FNV-1a — a stable small hash (date + child seed). */
@@ -75,6 +100,80 @@ function restedShelves(milestones: readonly Milestone[], now: Date): Set<ShelfId
     if (shelf) out.add(shelf);
   }
   return out;
+}
+
+/**
+ * B-PROG-06 (gate) rotation, shared with the program rule (B-PROG-01): a DAY
+ * ROTATION over a stable pool, seeded by `seedKey` — consecutive days take
+ * consecutive positions — returned in order from today's position, MINUS
+ * yesterday's position (explicitly excluded when the pool has more than one)
+ * and minus recent ids.
+ */
+function dayRotation(pool: readonly Practice[], seedKey: string, today: Date, recent: ReadonlySet<string>): Practice[] {
+  if (!pool.length) return [];
+  const start = (hash(seedKey) + epochDay(today)) % pool.length;
+  const yesterdays = pool[(start + pool.length - 1) % pool.length].id;
+  const out: Practice[] = [];
+  for (let k = 0; k < pool.length; k += 1) {
+    const p = pool[(start + k) % pool.length];
+    if (recent.has(p.id) || (pool.length > 1 && p.id === yesterdays)) continue;
+    out.push(p);
+  }
+  return out;
+}
+
+/** B-PROG-01: the program week (1-based, clamped) a local day falls in. */
+export function chooserProgramWeekOn(program: ChooserProgram, day: Date): number {
+  const [y, m, d] = program.startedAt.split("-").map(Number);
+  const days = Math.round((Date.UTC(day.getFullYear(), day.getMonth(), day.getDate()) - Date.UTC(y, (m || 1) - 1, d || 1)) / DAY_MS);
+  return Math.min(Math.max(1, program.weeks.length), Math.max(1, Math.floor(days / 7) + 1));
+}
+
+/** The week's practices that resolve (and pass the optional filter), list order, no duplicates. */
+function programPool(input: ChoosePracticeInput, program: ChooserProgram, week: number): Practice[] {
+  const byId = new Map(input.practices.map((p) => [p.id, p]));
+  const seen = new Set<string>();
+  const pool: Practice[] = [];
+  for (const id of program.weeks[week - 1] ?? []) {
+    const p = byId.get(id);
+    if (!p || seen.has(id) || (input.candidateFilter && !input.candidateFilter(p))) continue;
+    seen.add(id);
+    pool.push(p);
+  }
+  return pool;
+}
+
+const programSeed = (input: ChoosePracticeInput, program: ChooserProgram, week: number): string =>
+  `${input.childId}|program|${program.programId}|${week}`;
+
+/**
+ * B-PROG-01 — the program week's candidates, today's first: the current
+ * week's practices rotated by day (never yesterday's position), recent ids
+ * skipped, and — across a week boundary too — never YESTERDAY's offer
+ * (yesterday's rotation of yesterday's week, answered or not). [] without a
+ * program or when nothing resolves (the caller falls back to the shelves).
+ */
+export function programCandidates(input: ChoosePracticeInput, limit = 6): PracticePick[] {
+  const program = input.program;
+  if (!program || !program.weeks.length || input.comparisonMonths === null || !Number.isFinite(input.comparisonMonths)) return [];
+  const week = chooserProgramWeekOn(program, input.today);
+  const pool = programPool(input, program, week);
+  if (!pool.length) return [];
+  const recent = new Set(input.recentPracticeIds ?? []);
+  const yesterday = dayBefore(input.today);
+  const yWeek = chooserProgramWeekOn(program, yesterday);
+  const yOffer = dayRotation(programPool(input, program, yWeek), programSeed(input, program, yWeek), yesterday, recent)[0];
+  let list = dayRotation(pool, programSeed(input, program, week), input.today, yOffer ? new Set([...recent, yOffer.id]) : recent);
+  if (!list.length) list = dayRotation(pool, programSeed(input, program, week), input.today, recent);
+  const milestoneById = new Map(input.milestones.map((m) => [m.id, m]));
+  return list.slice(0, limit).map((practice) => ({
+    practice,
+    milestone: practice.milestoneId ? milestoneById.get(practice.milestoneId) ?? null : null,
+    shelf: practice.shelf,
+    via: "program" as const,
+    programId: program.programId,
+    programWeek: week,
+  }));
 }
 
 /**
@@ -130,14 +229,7 @@ export function practiceCandidates(input: ChoosePracticeInput, limit = 6): Pract
     // pick is the pool MINUS yesterday's choice (explicitly excluded) and
     // minus recent ids. With a 21-practice sleep pool the date-seeded index
     // used to land on the same id two days running (pr-sleep-17, day 15/16).
-    const start = (hash(`${input.childId}|${shelf}`) + epochDay(input.today)) % fits.length;
-    const yesterdays = fits[(start + fits.length - 1) % fits.length].id;
-    for (let k = 0; k < fits.length; k += 1) {
-      const p = fits[(start + k) % fits.length];
-      if (recent.has(p.id) || (fits.length > 1 && p.id === yesterdays)) continue;
-      return p;
-    }
-    return null;
+    return dayRotation(fits, `${input.childId}|${shelf}`, input.today, recent)[0] ?? null;
   };
   const out: PracticePick[] = [];
   for (const shelf of shelvesThinnestFirst(input.coverage)) {
@@ -180,6 +272,10 @@ function withoutYesterdaysOffer(input: ChoosePracticeInput, day: Date): ChoosePr
 /** The candidates TODAY offers (yesterday's offer excluded), ≤ `limit` —
  *  the same set the focus route may choose from (`candidatePracticeIds`). */
 export function todaysCandidates(input: ChoosePracticeInput, limit = 6): PracticePick[] {
+  // B-PROG-01: an active program's week wins; the rotation already excludes
+  // yesterday's position, so the parity pass is not needed.
+  const program = programCandidates(input, limit);
+  if (program.length) return program;
   return practiceCandidates(withoutYesterdaysOffer(input, input.today), limit);
 }
 
@@ -188,7 +284,13 @@ export function choosePractice(input: ChoosePracticeInput): PracticePick | null 
   if (input.todayPracticeId) {
     const practice = input.practices.find((p) => p.id === input.todayPracticeId);
     const milestone = practice?.milestoneId ? input.milestones.find((m) => m.id === practice.milestoneId) ?? null : null;
-    if (practice && (milestone || practice.milestoneId === null)) return { practice, milestone, shelf: practice.shelf, via: "today" };
+    if (practice && (milestone || practice.milestoneId === null)) {
+      const week = input.program ? chooserProgramWeekOn(input.program, input.today) : 0;
+      const inProgram = input.program && (input.program.weeks[week - 1] ?? []).includes(practice.id)
+        ? { programId: input.program.programId, programWeek: week }
+        : {};
+      return { practice, milestone, shelf: practice.shelf, via: "today", ...inProgram };
+    }
   }
   const candidates = todaysCandidates(input);
   if (input.aiPracticeId) {
@@ -207,7 +309,7 @@ export const practiceDoseId = (childId: string, at: Date = new Date()): string =
 
 /** The row "Did it" / "Not today" writes. Pure; the caller persists it. */
 export function practiceDoseEntry(
-  pick: Pick<PracticePick, "practice" | "milestone" | "shelf">,
+  pick: Pick<PracticePick, "practice" | "milestone" | "shelf" | "programId">,
   answer: PracticeAnswer,
   childId: string,
   sayText: string,
@@ -224,6 +326,7 @@ export function practiceDoseEntry(
     practiceId: pick.practice.id,
     ...(pick.milestone ? { milestoneId: pick.milestone.id } : {}),
     shelf: pick.shelf,
+    ...(pick.programId ? { programId: pick.programId } : {}),
     ...(answer === "not_today" ? { outcome: "not_today" as const, outcomeAt: iso } : {}),
   };
 }

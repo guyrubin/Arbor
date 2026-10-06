@@ -14,12 +14,14 @@ import { enforceMemoryRetention, foldMemoryEvents, isMemoryExpired } from "../me
 import type { MemoryLedgerEvent, MemoryStore } from "../memory/types.js";
 import {
   assembleCompanionContext,
+  projectActiveProgram,
   projectAcceptedActions,
   projectKeptInsights,
   type CompanionLedger,
   type CompanionLedgerSource,
 } from "./companionContext.js";
 import { assembleSpokenContext, spokenChildId } from "./spokenContext.js";
+import { programById } from "../content/programs/index.js";
 import { createApiRouter } from "../routes/api.js";
 import { createTestConfig } from "../testConfig.js";
 import { loadFramework } from "../services/framework.js";
@@ -36,6 +38,7 @@ import { createWaitlistStore } from "./waitlist.js";
 const DAY = 86_400_000;
 const NOW = Date.parse("2026-10-01T12:00:00.000Z");
 const iso = (msAgo: number) => new Date(NOW - msAgo).toISOString();
+const localDay = (ms: number) => { const d = new Date(ms); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 
 const ev = (
   fact: string,
@@ -270,6 +273,8 @@ const routeLedger = ledgerOf({
       { recommendation: "Two-minute warning before leaving", source: "digest", status: "completed", outcome: "not_today", acceptedAt: new Date(Date.now() - 2 * DAY).toISOString() },
     ],
     insights: [{ kind: "kept-insight", text: "Name the feeling first", createdAt: new Date(Date.now() - DAY).toISOString() }],
+    // B-PROG-01: child A is in week 2 of Talk Together (started 8 local days ago).
+    programs: [{ id: "talk-together.x", programId: "talk-together", startedAt: localDay(Date.now() - 8 * DAY), enrolledAt: "t", currentWeek: 1, status: "active", baseline: { childProxy: null, capturedAt: null }, updatedAt: "t" }],
   },
 });
 let server: Server;
@@ -330,6 +335,72 @@ describe("B-AI-01 — routes consume CompanionContext", () => {
     expect(chatPrompt).toContain('- "Name the feeling first"');
     expect(chatPrompt).not.toContain("CHILD_B_FACT");
     expect(body.contract?.approvedMemoryFactsUsed ?? body.approvedMemoryFactsUsed).toBe(1);
-    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.5.3");
+    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.6.0");
+  });
+});
+
+/* B-PROG-01 — CompanionContext v2 `program`: present only when an enrolment is
+   active; the child audience never sees it; the four routes render the one
+   "Active program" line from it (todays_focus / coach_chat here; the spoken
+   pair through assembleSpokenContext). */
+describe("B-PROG-01 — the program block", () => {
+  const TT = programById("talk-together")!;
+  const enrolment = (over: Record<string, unknown> = {}) => ({ id: "e1", programId: "talk-together", startedAt: localDay(NOW - 8 * DAY), enrolledAt: "t", currentWeek: 1, status: "active", baseline: { childProxy: null, capturedAt: null }, updatedAt: "t", ...over });
+  const ledger = (programs: unknown[]) => ledgerOf({ "parent-a/child-a": { actionLoops: [], insights: [], programs } });
+  const ctxOf = (programs: unknown[], audience: "parent" | "child" = "parent") =>
+    assembleCompanionContext({ purpose: "chat", audience, childId: "child-a", childProfile: { id: "child-a", age: 2 }, memoryStore: storeOf([]), ledgerSource: ledger(programs), uid: "parent-a", now: NOW });
+
+  it("an active enrolment → { id, name, shelf, week, skill, scripts ≤ 3, measures } for the current week", async () => {
+    const ctx = await ctxOf([enrolment()]);
+    expect(ctx.program).toEqual({
+      id: "talk-together",
+      name: { en: "Talk Together", he: "מדברים ביחד" },
+      shelf: "words",
+      week: 2,
+      skill: TT.weeks[1].skill,
+      scripts: TT.weeks[1].coachScripts.slice(0, 3).map((s) => s.text),
+      measures: { dose: true, parentProxy: { id: "turns-waited", label: "Turns you waited for" }, childProxy: { id: "new-words", label: "New words this week" } },
+    });
+    expect(ctx.program!.scripts.length).toBeLessThanOrEqual(3);
+  });
+
+  it("absent when no enrolment is active (none, paused, done, unknown program, malformed)", async () => {
+    for (const rows of [[], [enrolment({ status: "paused", pausedAt: localDay(NOW - DAY) })], [enrolment({ status: "done" })], [enrolment({ programId: "nope" })], [{ status: "active" }], [null]]) {
+      const ctx = await ctxOf(rows as unknown[]);
+      expect("program" in ctx, JSON.stringify(rows)).toBe(false);
+    }
+    expect(projectActiveProgram([], NOW)).toBeNull();
+  });
+
+  it("the child audience NEVER sees it (the whole context is empty, fail closed), and no ledger is read for it", async () => {
+    const src = ledger([enrolment()]);
+    const ctx = await assembleCompanionContext({ purpose: "chat", audience: "child", childId: "child-a", memoryStore: storeOf([]), ledgerSource: src, uid: "parent-a", now: NOW });
+    expect(ctx).toEqual({ profile: null, approvedFacts: [], acceptedActions: [], keptInsights: [] });
+    expect(src.reads).toEqual([]);
+  });
+
+  it("a memory-unauthorised caller or a failing ledger read gets no program block", async () => {
+    const denied = await assembleCompanionContext({ purpose: "chat", audience: "parent", childId: "child-a", memoryStore: storeOf([]), ledgerSource: ledger([enrolment()]), uid: "parent-a", canReadMemory: false, now: NOW });
+    expect("program" in denied).toBe(false);
+    const broken = { load: async () => { throw new Error("down"); } };
+    const failed = await assembleCompanionContext({ purpose: "chat", audience: "parent", childId: "child-a", memoryStore: storeOf([]), ledgerSource: broken, uid: "parent-a", now: NOW });
+    expect("program" in failed).toBe(false);
+  });
+
+  it("the spoken context carries the program line only with a ledger source; without one it is the legacy shape", async () => {
+    const withLedger = await assembleSpokenContext({ memoryStore: storeOf([]), childProfile: { id: "child-a", age: 2 }, canReadMemory: true, ledgerSource: ledger([enrolment({ startedAt: localDay(Date.now() - 8 * DAY) })]), uid: "parent-a" });
+    expect(withLedger.program).toEqual({ name: "Talk Together", week: 2, skill: TT.weeks[1].skill.en });
+    const without = await assembleSpokenContext({ memoryStore: storeOf([]), childProfile: { id: "child-a", age: 2 }, canReadMemory: true });
+    expect("program" in without).toBe(false);
+  });
+
+  it("routes: /todays-focus and /chat for child A carry the one line; child B's never does", async () => {
+    const LINE = `Active program: Talk Together, week 2: ${TT.weeks[1].skill.en}`;
+    expect((await post("/todays-focus", { childProfile: { id: "child-a", age: 2 }, signals: { count: 1 }, language: "en" })).status).toBe(200);
+    expect(focusPrompt.split(LINE).length - 1).toBe(1);
+    expect((await post("/chat", { message: "he points and waits", childProfile: { id: "child-a", age: 2 }, language: "en" })).status).toBe(200);
+    expect(chatPrompt.split(LINE).length - 1).toBe(1);
+    expect((await post("/todays-focus", { childProfile: { id: "child-b", age: 2 }, signals: { count: 0 }, language: "en" })).status).toBe(200);
+    expect(focusPrompt).not.toContain("Active program:");
   });
 });

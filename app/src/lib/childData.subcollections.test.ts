@@ -104,3 +104,42 @@ describe("B-GROWTH-10 — keepsakes export and erase with the child", () => {
     expect(receipt.childId).toBe("c1");
   });
 });
+
+/* B-PROG-01 — the program enrolments (`programs`) are per-child data: they
+   ride the Art. 15/20 export and the Art. 17 erase with the child. */
+describe("B-PROG-01 — program enrolments export and erase with the child", () => {
+  const installStorage = () => {
+    const map = new Map<string, string>();
+    vi.stubGlobal("localStorage", {
+      get length() { return map.size; },
+      clear: () => map.clear(),
+      key: (i: number) => [...map.keys()][i] ?? null,
+      getItem: (k: string) => map.get(k) ?? null,
+      setItem: (k: string, v: string) => { map.set(k, String(v)); },
+      removeItem: (k: string) => { map.delete(k); },
+    } as Storage);
+    vi.stubGlobal("sessionStorage", { get length() { return 0; }, key: () => null, getItem: () => null, setItem: () => {}, removeItem: () => {}, clear: () => {} } as Storage);
+    return map;
+  };
+  const doc = { id: "talk-together.2026-10-06", programId: "talk-together", startedAt: "2026-10-06", enrolledAt: "t", currentWeek: 1, status: "active", baseline: { childProxy: null, capturedAt: null }, updatedAt: "t" };
+
+  it("is registered", () => {
+    expect(CHILD_SUBCOLLECTIONS).toContain("programs");
+  });
+
+  it("the export JSON carries collections.programs", async () => {
+    const map = installStorage();
+    map.set("arbor.programs.c1", JSON.stringify([doc]));
+    const out = await exportChildData(undefined, { id: "c1", name: "Noa" } as ChildProfile);
+    expect(out.collections.programs).toEqual([doc]);
+  });
+
+  it("child erase removes it; a sibling's enrolment stays", async () => {
+    const map = installStorage();
+    map.set("arbor.programs.c1", JSON.stringify([doc]));
+    map.set("arbor.programs.c2", JSON.stringify([doc]));
+    await eraseEverything(undefined, "c1");
+    expect(map.has("arbor.programs.c1")).toBe(false);
+    expect(map.has("arbor.programs.c2")).toBe(true);
+  });
+});

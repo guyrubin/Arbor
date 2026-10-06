@@ -4,11 +4,12 @@
   "feature": "Spoken coaching continues the active child's settled conversation using parent-approved unexpired memory. Live token context uses the same assembly; live audio quality is evaluated separately.",
   "judgeModel": "gemini-2.5-pro",
   "promptVersions": {
-    "voice_reply": "1.6.0",
-    "live_session": "1.4.0",
+    "voice_reply": "1.7.0",
+    "live_session": "1.5.0",
     "non_diagnostic_contract": "1.0.0"
   },
   "runner": {
+    "revalidation-2026-10-06-bprog01": "B-PROG-01 (6 Oct): voice_reply 1.6.0 -> 1.7.0; live_session 1.4.0 -> 1.5.0. The program engine adds ONE optional context line, \"Active program: {name}, week {n}: {skill}\" (ai/programContext.ts; CompanionContext v2 `program`), rendered only when the child has an ACTIVE program enrolment; without one the prompt bytes equal the previous version (parity pinned in app/src/ai/prompts.test.ts 'B-PROG-01 — the active-program line'). No scenario in this suite carries an enrolment, so every scenario's prompt is byte-identical to the validated one. RE-RUN GREEN: the deterministic tier (prompts.test, companionContext.test, todaysFocus, hardMomentSeedEscalation, coachCoreEval, captureProposals). NOT RE-RUN by the builder (zero model calls): live re-pin owed by the orchestrator.",
     "offlineGate": "app/src/server/spokenContext.test.ts and app/src/routes/spokenContextRoute.test.ts cover authorization, expiry, rejected/pending memory, child binding, private mode, profile allow-list, PII redaction, token constraints and safety short-circuiting.",
     "liveJudge": "app/scripts/eval-judge.mts runs each live-tier scenario through /api/voice with a distinct synthetic child, seeded approved facts, child-bound recentTurns and privateMode; gemini-2.5-pro grades the generated spoken response. This does not certify browser microphone or Live audio quality.",
     "validationStatus": "Real Vertex live run 2026-09-22T07:39:44.760Z: all 7/7 scenarios passed, all safety gates true, every scored dimension 1.0, zero violations. Route gemini-2.5-flash; pinned judge gemini-2.5-pro; suite1.4.0; voice_reply1.6.0 and live_session1.4.0 prompt registry. The unchanged seven-scenario rubric evaluated /api/voice; this does not certify browser microphones or direct Live audio. All previous failed runs remain in companion-continuity-v1.results.jsonl.",

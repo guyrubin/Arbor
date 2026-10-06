@@ -78,6 +78,13 @@ export interface ActionLoopEntry {
   practiceId?: string;
   milestoneId?: string;
   shelf?: import("../lib/shelves/registry").ShelfId;
+  /** B-PROG-01: the program a `practice` row was served by (the active
+   *  enrolment's programId when the chooser's program rule picked it). */
+  programId?: string;
+  /** B-PROG-01: the parent's one-tap count after a program practice (Talk
+   *  Together "turns you waited": 0–5, 5 = "5+"). The parent's own count of
+   *  their own waiting — never a score of the child. */
+  selfCount?: number;
 }
 
 export type HeldAnswer = "yes" | "no";

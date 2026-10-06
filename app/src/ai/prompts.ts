@@ -32,6 +32,7 @@ import { ageMonthsFromProfile } from "../lib/childAge.js";
 import type { ChildProfile } from "../types.js";
 import type { RecentTurn, WeeklyContext } from "./chatContext.js";
 import { renderSpokenContext, type SpokenContext } from "./spokenContext.js";
+import { renderActiveProgramLine, type ActiveProgramLine } from "./programContext.js";
 import { buildLiveSystemInstruction } from "../lib/livePersona.js";
 import { buildDigestPrompt } from "../server/digest.js";
 import { toAnalyzeLogInputs } from "../lib/analyzeLogPayload.js";
@@ -206,10 +207,21 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // step 1 starts from the fact; the first sentence of text says it). No-fact
   // unseeded bytes are 1.5.2-identical (parity pin). Re-pin owed (live, NOT
   // RE-RUN by the builder): coach-hardmoment-seed-v1, coach-core-v1.
-  coach_chat: { version: "1.5.3", sha256: "da57f08c160ba3ae48b146a9fbeef5a29dd14ca573aff50f2324fa88fae445fe" },
+  // 1.6.0 (B-PROG-01, 2026-10-06): one OPTIONAL context line after the
+  // companion ledger block — "Active program: {name}, week {n}: {skill}"
+  // (ai/programContext.ts; CompanionContext v2 `program`). No program ⇒ the
+  // 1.5.3 bytes (parity pinned in prompts.test.ts). Re-pin owed (live, NOT
+  // run by the builder): coach-core-v1, coach-hardmoment-seed-v1.
+  coach_chat: { version: "1.6.0", sha256: "3897994c4d2ee2d0a98fce5ba0e21afc2afd4bc2cdb3eace10e96d00a853e764" },
   council_synthesis: { version: "1.2.0", sha256: "428ed3513c47ba544b8e1afee8a4492140902d4b1210ec8cbb75893d8b77a00f" },
-  voice_reply: { version: "1.6.0", sha256: "7c06dfda8297c50b0fd596f32a728689cd1503cb0662f9e10d3904e007be651b" },
-  live_session: { version: "1.4.0", sha256: "a860d147a58a4be6f0adca9b9525925c76e3db86bf563f0ee6ad5590572fbe5c" },
+  // voice_reply 1.7.0 / live_session 1.5.0 (B-PROG-01, 2026-10-06): the
+  // spoken context (ai/spokenContext.ts) renders the OPTIONAL "Active
+  // program: {name}, week {n}: {skill}" line when the family has an active
+  // program. No program ⇒ the 1.6.0 / 1.4.0 bytes (parity pinned in
+  // prompts.test.ts). Re-pin owed (live, NOT run by the builder):
+  // companion-continuity-v1, voice-loop-v1.
+  voice_reply: { version: "1.7.0", sha256: "18d08b2ebbc89562f15008d2f2f655f6cb5abb3d16df7369790ecee131c9010c" },
+  live_session: { version: "1.5.0", sha256: "970ef0d3c685a0aead19ab8244d311b0af3fc0ab87ff071b3b08d9a6c9ca0829" },
   // 1.2.0 (B-AI-15, 2026-10-04): one capture = one log (first moment, never
   // merged, never an array), notes copy the parent's own words, no adjective
   // about the parent, Hebrew in → Hebrew out. Deterministic floor under it:
@@ -241,7 +253,11 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // gains the optional field. Everything else is byte-identical to 1.0.0
   // (parity pinned in prompts.test.ts). Re-pin: today-focus-v1 (first run —
   // the suite is authored with this bump; live tier = Fable / Guy G5).
-  todays_focus: { version: "1.1.0", sha256: "7e25cefb76e15871bb58ea8bfc1a6b85782410fd355612178c06b321ca16c590" },
+  // 1.2.0 (B-PROG-01, 2026-10-06): one OPTIONAL "Active program: {name},
+  // week {n}: {skill}" line after the approved facts. No program ⇒ the 1.1.0
+  // bytes (parity pinned in prompts.test.ts). Re-pin owed (live, NOT run by
+  // the builder): today-focus-v1.
+  todays_focus: { version: "1.2.0", sha256: "1209725ea326a1907ad7329850193779a8c1ab377aa89f85181756dc72184b64" },
   // 1.0.0 (B-AI-02): first pins. weekly_digest = server/digest.ts
   // buildDigestPrompt + the OPTIONAL recent-steps line (the parent's accepted
   // steps + outcomes; absent → the B-TODAY-03 bytes). generate_plan moved out
@@ -331,6 +347,8 @@ export type ChatPromptArgs = {
   /** 1.5.0 (B-AI-14) — true ONLY when the route resolved a governed
    *  hard-moment escalation line for this conversation. Absent/false ⇒ 1.4.1 bytes. */
   seededHardMoment?: boolean;
+  /** 1.6.0 (B-PROG-01) — the active program's one context line. Absent ⇒ 1.5.3 bytes. */
+  activeProgram?: ActiveProgramLine;
 };
 
 /**
@@ -426,10 +444,11 @@ export const buildChatPrompt = ({
   acceptedActions,
   keptInsights,
   seededHardMoment,
+  activeProgram,
 }: ChatPromptArgs): string => `
 ${NON_DIAGNOSTIC_CONTRACT}
 ${renderMemoryFirstBlock(approvedMemory)}${developmentalFramework}
-${renderMemoryLateBlock(approvedMemory)}${renderCompanionLedgerBlock(acceptedActions, keptInsights)}
+${renderMemoryLateBlock(approvedMemory)}${renderCompanionLedgerBlock(acceptedActions, keptInsights)}${renderActiveProgramLine(activeProgram)}
 ARBOR AI WIKI SOURCE CARDS:
 ${knowledgeContext || "No matching Arbor AI Wiki cards found. Use the framework contract and keep uncertainty explicit."}
 
@@ -584,6 +603,8 @@ export type TodaysFocusPromptArgs = {
   languageDirective: string;
   /** B-AI-01 — approved facts placed in the context (CompanionContext). */
   approvedFacts?: readonly string[];
+  /** 1.2.0 (B-PROG-01) — the active program's one context line. Absent ⇒ 1.1.0 bytes. */
+  activeProgram?: ActiveProgramLine;
 };
 
 /** B-AI-01: "" when no facts, so the bytes equal the pre-1.0.0 inline template. */
@@ -601,6 +622,7 @@ export const buildTodaysFocusPrompt = ({
   lastActionOutcome,
   languageDirective,
   approvedFacts,
+  activeProgram,
 }: TodaysFocusPromptArgs): string => {
   // B-AI-03: the prompt states only facts the parent actually logged. No
   // trigger → no clause; no moments → say so and ask for a starter step.
@@ -611,7 +633,7 @@ export const buildTodaysFocusPrompt = ({
   return `${NON_DIAGNOSTIC_CONTRACT}
 You are Arbor's Today's Focus writer for a calm parenting app.
 Child: ${childProfile ? JSON.stringify(promptProfile(childProfile)) : "unknown"}
-${renderFocusFactsBlock(approvedFacts)}${weekLine}${lastActionRecommendation && lastActionOutcome ? ` The parent last tried "${lastActionRecommendation}" and reported the attempt as "${lastActionOutcome}". Use that parent-reported outcome to avoid repeating an unhelpful step and adapt effort or framing.` : ""}
+${renderFocusFactsBlock(approvedFacts)}${renderActiveProgramLine(activeProgram)}${weekLine}${lastActionRecommendation && lastActionOutcome ? ` The parent last tried "${lastActionRecommendation}" and reported the attempt as "${lastActionOutcome}". Use that parent-reported outcome to avoid repeating an unhelpful step and adapt effort or framing.` : ""}
 Write today's single most useful parenting focus:
 - "focus": 1-2 short, warm sentences naming what to pay attention to today — an observation about the child's week, never an assessment.
 - "tryToday": ONE small, concrete thing to try today — a developmental mechanism (serve-and-return, co-regulation, a transition cue), phrased as a doable step.
@@ -744,7 +766,11 @@ const CANONICAL = {
     approvedMemory: "«approved-memory»",
     approvedMemoryFactsUsed: 1,
     recentTurns: [{ role: "parent", text: "«turn-parent»" }, { role: "coach", text: "«turn-coach»" }],
+    // B-PROG-01 — voice_reply 1.7.0 / live_session 1.5.0 pin the program line's text.
+    program: { name: "«program»", week: 2, skill: "«program-skill»" },
   } as SpokenContext,
+  // B-PROG-01 — coach_chat 1.6.0 / todays_focus 1.2.0 pin the program line's text.
+  activeProgram: { name: "«program»", week: 2, skill: "«program-skill»" } as ActiveProgramLine,
   // Masterplan 1.3 — the coach_chat fingerprint pins the NEW optional blocks'
   // template text too (framing line, role labels, weekly-line phrasing).
   recentTurns: [
@@ -784,6 +810,7 @@ export const promptFingerprint = (key: PromptKey): string => {
         keptInsights: CANONICAL.keptInsights,
         // 1.5.0: the fingerprint pins the governed-escalation block's text.
         seededHardMoment: true,
+        activeProgram: CANONICAL.activeProgram,
       }));
     case "council_synthesis":
       return sha256(buildCouncilSynthesisPrompt({
@@ -822,6 +849,7 @@ export const promptFingerprint = (key: PromptKey): string => {
           lastActionOutcome: "helped",
           languageDirective: CANONICAL.languageDirective,
           approvedFacts: ["«approved-fact»"],
+          activeProgram: CANONICAL.activeProgram,
         }),
         buildTodaysFocusPrompt({
           childProfile: null,

@@ -5,10 +5,11 @@
   "judgeModel": "gemini-2.5-pro",
   "judgeNote": "interim - same-vendor judge, self-preference risk; replace with claude-opus-5-5 on Vertex eu when B-PROV-03 lands",
   "promptVersions": {
-    "todays_focus": "1.1.0",
+    "todays_focus": "1.2.0",
     "non_diagnostic_contract": "1.0.0"
   },
   "runner": {
+    "revalidation-2026-10-06-bprog01": "B-PROG-01 (6 Oct): todays_focus 1.1.0 -> 1.2.0. The program engine adds ONE optional context line, \"Active program: {name}, week {n}: {skill}\" (ai/programContext.ts; CompanionContext v2 `program`), rendered only when the child has an ACTIVE program enrolment; without one the prompt bytes equal the previous version (parity pinned in app/src/ai/prompts.test.ts 'B-PROG-01 — the active-program line'). No scenario in this suite carries an enrolment, so every scenario's prompt is byte-identical to the validated one. RE-RUN GREEN: the deterministic tier (prompts.test, companionContext.test, todaysFocus, hardMomentSeedEscalation, coachCoreEval, captureProposals). NOT RE-RUN by the builder (zero model calls): live re-pin owed by the orchestrator.",
     "offlineGate": "app/src/routes/todaysFocus.test.ts reads this suite (dynamic coverage) and runs the deterministic contract against the REAL /api/todays-focus handler with a stub provider: sayThis is an optional schema field, an over-long sayThis is dropped, sayThis passes the same output screen (a diagnostic line blocks the focus with 422), factCount is reported, one model call per focus. app/src/server/companionContext.test.ts pins two-child isolation of facts and ledger and factCount against seeded approved facts. app/src/ai/prompts.test.ts pins the todays_focus 1.1.0 bytes (one parity test).",
     "liveJudge": "npm run eval:judge -- today-focus-v1 - each scenario runs through the live /api/todays-focus route (analysis_structured); one judge call per scenario on the pinned judgeModel returning {scores, safe, pass, rationale}; rows append to evals/today-focus-v1.results.jsonl keyed by the resolved route model id.",
     "first-run-2026-10-02": "Authored by the builder with B-TODAY-24 (todays_focus 1.0.0 -> 1.1.0). NOT RUN on the live tier: the judge run is Fable's (Guy gate G5, judge key). A red first run is a result, not a reason to edit the prompt."

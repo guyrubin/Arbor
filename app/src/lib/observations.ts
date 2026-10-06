@@ -83,7 +83,8 @@ export type ObservationValue =
   | { type: "goal_note"; goalId: string; text: string }
   | { type: "check"; bandId: string }
   | { type: "play"; activityId: string; title: string }
-  | { type: "practice"; activity: string }
+  /** B-PROG-01: `programId` when the active program served the practice. */
+  | { type: "practice"; activity: string; programId?: string }
   | { type: "fact"; fact: string };
 
 export interface Observation {
@@ -202,7 +203,7 @@ export function toObservations(sources: ObservationSources, child: ObservationCh
     const def = shelfDef(r.shelf);
     push("actionLoops", r.id, r.acceptedAt, [def.domain], {
       kind: "practice",
-      value: { type: "practice", activity: `practice:${r.practiceId}` },
+      value: { type: "practice", activity: `practice:${r.practiceId}`, ...(r.programId ? { programId: r.programId } : {}) },
       source: "parent_typed",
       provenance: r.practiceId,
       ...(r.shelf === "sleep" ? { subArea: "sleep" } : r.shelf === "food" ? { subArea: "feeding" } : {}),
