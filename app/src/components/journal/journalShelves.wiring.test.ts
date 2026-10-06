@@ -17,7 +17,7 @@ describe("JournalTab v2 — the grid is the journal's top", () => {
   const journal = strip(src("tabs/JournalTab.tsx"));
   it("no query → the shelves; ?view=all → the day-grouped thread (every feed capability intact)", () => {
     expect(journal).toContain('if (view === "all") return <JournalFeed primaryMoveProps={primaryMoveProps} densityToggle={densityToggle} />;');
-    expect(journal).toContain("return <JournalShelves shelf={shelf} primaryMoveProps={primaryMoveProps} />;");
+    expect(journal).toContain('return <JournalShelves shelf={shelf} pro={view === "pro"} intakeFor={query.get("for")} primaryMoveProps={primaryMoveProps} />;');
     expect(journal).toContain("function JournalFeed(");
   });
   it("an evidence deep-link always lands on the thread, where its row is rendered", () => {
@@ -58,5 +58,27 @@ describe("the doors and seams", () => {
       expect(s).not.toMatch(/generateImage/);
       expect(s).not.toMatch(/kidmode\//);
     }
+  });
+});
+
+describe("B-LOOP-12 — the professional view reuses the ONE consult egress", () => {
+  const shelves = strip(src("journal/JournalShelves.tsx"));
+  const consult = strip(src("tabs/ConsultTab.tsx"));
+  const ask = strip(src("sections/AskSpecialist.tsx"));
+  it("PDF · Copy · Send open #/consult?intake=<profession>; no second egress in the journal", () => {
+    expect(shelves).toContain('onEgress={() => goToRoute("consult", { intake: profession })}');
+    for (const f of ["journal/JournalShelves.tsx", "journal/ProView.tsx"]) {
+      const s = strip(src(f));
+      expect(s).not.toMatch(/serializeForExport|exportPrintSections|navigator\.clipboard|mailto:|useConsultPdf/);
+    }
+  });
+  it("Consult reads the preset and the step-3 egress carries the intake packet behind the same reviewed gate", () => {
+    expect(consult).toContain('const intakeRaw = useHashQuery().get("intake");');
+    expect(consult).toContain("intake={intake}");
+    expect(ask).toContain("const packet = useMemo(() => intakePacket ?? presetPacket(audience, fullPacket), [intakePacket, audience, fullPacket]);");
+    expect(ask).toContain('const egressAudience: ExportAudience = intakePacket ? "self" : audience;');
+    expect(ask).toContain("serializeForExport(egressAudience, packet, excluded, visionNote");
+    expect(ask).toContain("exportPrintSections(egressAudience, packet, excluded, visionNote");
+    expect(ask).toContain("const noneSelected = includedCount === 0 || !reviewed || exportText == null;");
   });
 });

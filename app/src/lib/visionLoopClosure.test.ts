@@ -61,7 +61,7 @@ describe("AIX-S3(a) — AskSpecialist: parent-editable prefill, explicit-act sha
   });
 
   it("the note joins the packet only via appendParentNote in markdown() — no new send path", () => {
-    expect(code).toContain("serializeForExport(audience, packet, excluded, visionNote");
+    expect(code).toContain("serializeForExport(egressAudience, packet, excluded, visionNote");
     // No auto-send: the only submit acts remain the existing explicit ones.
     expect(code).not.toMatch(/useEffect\([\s\S]{0,400}?(submitConsult|requestConsult)/);
   });

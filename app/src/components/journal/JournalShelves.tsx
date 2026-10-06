@@ -8,19 +8,22 @@ import { useChildCollection } from "../../hooks/useChildCollection";
 import { goToRoute } from "../../hooks/useHashQuery";
 import { PRACTICES } from "../../content/practices";
 import type { Milestone } from "../../types";
-import { SHELF_IDS, type ShelfId } from "../../lib/shelves/registry";
+import { SHELF_IDS, shelfDef, type ShelfId } from "../../lib/shelves/registry";
 import { shelfCoverage } from "../../lib/milestones/selectByShelf";
 import { localDay, type ObserveStatus, type ObservedWhen } from "../../lib/milestones/observe";
 import { keepsakeDoc, type KeepsakeDoc } from "../../lib/firstsKeepsake";
 import { comparisonMonthsOf } from "../../lib/age/forChild";
 import { recentPracticeIds, todayDose } from "../../lib/practice/choosePractice";
 import { readTodayPin, writeTodayPin } from "../../lib/practice/todayPin";
-import { shelfNotice, shelfPractice, signalsOnShelf } from "../../lib/journal/shelfView";
+import { proDomainCounts, shelfNotice, shelfPractice, signalsOnShelf } from "../../lib/journal/shelfView";
 import { groupByDay, SIGNAL_PROVENANCE, signalDetail, signalTitle } from "../../lib/signalTimeline";
 import { withChildSignals } from "../../lib/i18nElevation/childsignals";
 import QuickLogModal from "../overview/QuickLogModal";
 import ShelfGrid from "./ShelfGrid";
 import ShelfPage, { type ShelfDayGroup } from "./ShelfPage";
+import ProView from "./ProView";
+import { buildIntakePacket, isIntakeProfession, type IntakeProfession } from "../../consult/packet";
+import { intakeQuestionLines, readIntakeQuestionsText, writeIntakeQuestionsText } from "../../consult/intakeDraft";
 
 /** A query value that names a shelf, or null (an unknown id falls back to the grid). */
 export function shelfFromQuery(v: string | null): ShelfId | null {
@@ -36,8 +39,15 @@ export function shelfFromQuery(v: string | null): ShelfId | null {
  * (QuickLogModal, pre-filed on the shelf). No new write path except the
  * device-local "Try it today" pin (lib/practice/todayPin).
  */
-export default function JournalShelves({ shelf, primaryMoveProps }: { shelf: ShelfId | null; primaryMoveProps?: Record<string, string> }) {
-  const { childProfile, milestones, actionLoop, setMilestoneObservation, restoreMilestone, requestJournalFocus } = useArbor();
+export default function JournalShelves({ shelf, pro = false, intakeFor = null, primaryMoveProps }: {
+  shelf: ShelfId | null;
+  /** B-LOOP-12: `#/journal?view=pro` — the professional view. */
+  pro?: boolean;
+  /** B-LOOP-12: `&for=<profession>` preselects a chip (default: speech therapist). */
+  intakeFor?: string | null;
+  primaryMoveProps?: Record<string, string>;
+}) {
+  const { childProfile, milestones, behaviorLogs, actionLoop, setMilestoneObservation, restoreMilestone, requestJournalFocus } = useArbor();
   const { t, uiLang } = useLanguage();
   const locale = uiLang === "he" ? "he" : "en";
   const tt = useMemo(() => withChildSignals(t, uiLang === "he"), [t, uiLang]);
@@ -114,6 +124,32 @@ export default function JournalShelves({ shelf, primaryMoveProps }: { shelf: She
     }));
   }, [shelf, signals, observations, locale, t, tt]);
 
+  // ── B-LOOP-12: the professional view — the intake packet per profession ──
+  const [profession, setProfession] = useState<IntakeProfession>(() => (isIntakeProfession(intakeFor) ? intakeFor : "slp"));
+  const [questions, setQuestions] = useState<string>(() => readIntakeQuestionsText(childProfile.id, isIntakeProfession(intakeFor) ? intakeFor : "slp"));
+  const selectProfession = (p: IntakeProfession) => {
+    setProfession(p);
+    setQuestions(readIntakeQuestionsText(childProfile.id, p));
+  };
+  const changeQuestions = (text: string) => {
+    setQuestions(text);
+    writeIntakeQuestionsText(childProfile.id, profession, text);
+  };
+  const intakePacket = useMemo(
+    () => (pro ? buildIntakePacket(profession, {
+      child: childProfile,
+      milestones,
+      behaviorLogs,
+      actionLoops: actionLoop,
+      questions: intakeQuestionLines(questions),
+      comparisonMonths,
+      nowMs: now.getTime(),
+      lang: uiLang === "he" ? "he" : "en",
+    }) : null),
+    [pro, profession, childProfile, milestones, behaviorLogs, actionLoop, questions, comparisonMonths, now, uiLang],
+  );
+  const domainCounts = useMemo(() => proDomainCounts(observations, (s) => shelfDef(s).domain, now), [observations, now]);
+
   const openEntry = (id: string) => {
     goToRoute("journal", { view: "all" });
     requestJournalFocus(id);
@@ -121,7 +157,20 @@ export default function JournalShelves({ shelf, primaryMoveProps }: { shelf: She
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="w-full min-w-0">
-      {shelf ? (
+      {pro && intakePacket ? (
+        <ProView
+          childName={childName}
+          profession={profession}
+          onSelectProfession={selectProfession}
+          packet={intakePacket}
+          questions={questions}
+          onQuestionsChange={changeQuestions}
+          onEgress={() => goToRoute("consult", { intake: profession })}
+          counts={domainCounts}
+          onBack={() => goToRoute("journal")}
+          primaryMoveProps={primaryMoveProps}
+        />
+      ) : shelf ? (
         <ShelfPage
           shelf={shelf}
           childName={childName}

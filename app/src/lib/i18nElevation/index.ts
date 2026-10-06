@@ -63,6 +63,7 @@ import * as personal from "./personal";
 import * as planclarity from "./planclarity";
 import * as plans from "./plans";
 import * as practiceDoors from "./practiceDoors";
+import * as professions from "./professions";
 import * as promise from "./promise";
 import * as recap from "./recap";
 import * as returnhooks from "./returnhooks";
@@ -133,6 +134,7 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   planclarity,
   plans,
   practiceDoors,
+  professions,
   promise,
   recap,
   returnhooks,

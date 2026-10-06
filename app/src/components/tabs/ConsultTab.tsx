@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import AskSpecialist from "../sections/AskSpecialist";
-import type { ExportAudience } from "../../consult/packet";
+import { isIntakeProfession, type ExportAudience } from "../../consult/packet";
+import { useHashQuery } from "../../hooks/useHashQuery";
 import { appointmentRoleLabel } from "../sections/Appointments";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -62,6 +63,12 @@ export default function ConsultTab() {
   const visit = useMemo(() => nextPrepareVisit(apptsCol.items, nowMs), [apptsCol.items, nowMs]);
   const awaiting = useMemo(() => visitAwaitingOutcome(apptsCol.items, followUpsCol.items, nowMs), [apptsCol.items, followUpsCol.items, nowMs]);
   const anchorAudience = visit?.profession ? consultAudienceForProfession(visit.profession) : undefined;
+  // B-LOOP-12: the professional view's PDF · Copy · Send land here
+  // (`#/consult?intake=<profession>`) — the profession preset builds the
+  // intake packet (consult/packet buildIntakePacket) and it leaves through
+  // the ONE step-3 egress, behind the same reviewed gate.
+  const intakeRaw = useHashQuery().get("intake");
+  const intake = isIntakeProfession(intakeRaw) ? intakeRaw : undefined;
   const [outcome, setOutcome] = useState("");
   // NEXTLEVEL critic r1 (P1): the H1 names the audience the parent CHOSE.
   // "Prepare for the speech therapist on 14 Oct" stayed on screen after
@@ -134,7 +141,7 @@ export default function ConsultTab() {
             </div>
           </section>
         )}
-        <AskSpecialist key={anchorAudience ?? "no-visit"} primaryMoveStamp={primaryMoveStamp} anchorAudience={anchorAudience} onAudienceChange={setChosen} />
+        <AskSpecialist key={`${anchorAudience ?? "no-visit"}${intake ? `:${intake}` : ""}`} primaryMoveStamp={primaryMoveStamp} anchorAudience={anchorAudience} intake={intake} onAudienceChange={setChosen} />
       </div>
     </div>
   );

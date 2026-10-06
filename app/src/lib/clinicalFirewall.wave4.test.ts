@@ -293,7 +293,7 @@ describe("Wave-4 (c) — single-serializer seam (static source scan over src/com
     expect(ask, "AskSpecialist imports lib/reportExport directly").not.toMatch(/from\s+["'][^"']*reportExport["']/);
     expect(ask, "AskSpecialist no longer prints through the Reports seam").toMatch(/\buseConsultPdf\b/);
     // the sections it hands over come from the guarded print twin of the Copy text
-    expect(ask).toContain("exportPrintSections(audience, packet, excluded, visionNote");
+    expect(ask).toContain("exportPrintSections(egressAudience, packet, excluded, visionNote");
     expect(ask).not.toMatch(/\bopenPrintableReport\b/);
   });
 

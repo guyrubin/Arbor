@@ -11,7 +11,7 @@
 import { ClinicalLanguageError, findClinicalDiagnosisTerm, findTeacherBlockedTerm } from "../lib/clinicalScan";
 import { isolate, translate, type UiLang } from "../lib/i18n";
 import { DOMAIN_LABEL } from "../lib/screening";
-import { milestoneAgeWindow } from "../lib/milestoneData";
+import { milestoneAgeWindow, milestoneText } from "../lib/milestoneData";
 import { ageMonthsFromProfile } from "../lib/childAge";
 import { ageMonthsOf } from "../lib/age/forChild";
 import { formatAgeMonths, formatChildAge } from "../lib/age/format";
@@ -19,6 +19,12 @@ import { MOMENT_BEHAVIOR_TYPE, behaviorTypeLabel, isIncidentType } from "../cont
 import { factMonthLabel } from "../lib/factsAsOf";
 import { languageName } from "../lib/languageName";
 import { milestonesNoticedSince, momentsSince as recordMomentsSince } from "../lib/record/counts";
+import { DOMAINS, type DomainId, type Profession } from "../lib/domains/registry";
+import { milestoneShelf, shelfDef, shelfLabel, type ShelfId } from "../lib/shelves/registry";
+import { toObservations, type ObservationChild } from "../lib/observations";
+import { milestoneAgeLine } from "../lib/milestoneAgeLine";
+import type { BehaviorLog, Milestone } from "../types";
+import type { ActionLoopEntry } from "../actionLoop/model";
 
 export interface PacketInputProfile {
   name: string;
@@ -1496,4 +1502,184 @@ function teacherOpeningLine(input: BuildPacketInput, lang: UiLang, clean: (line:
   const shown = lang === "en" && /^[A-Z][a-z]/.test(strength) ? strength[0].toLowerCase() + strength.slice(1) : strength;
   const line = translate(lang, `elev.teacherBrief.opening.${g}`, { name: first, strength: shown });
   return clean(line) ? line : "";
+}
+
+/* ── B-LOOP-12 — the INTAKE PACKET per profession ───────────────────────────
+ * The professional view (components/journal/ProView) prepares a packet for
+ * ONE profession: only the domains that profession owns in the registry
+ * (lib/domains/registry `professions`, output metadata — spine D2), as five
+ * labelled sections:
+ *   · Seen          — milestones the parent marked seen, with the date;
+ *   · Not seen yet  — the parent's own "not yet" / "not sure" answers inside
+ *                     the child's age window, each with the SOURCED age line
+ *                     (lib/milestoneAgeLine) and never a count or a score;
+ *   · Moments       — the parent's own words, quoted and dated (the consult
+ *                     step-2 redaction removes any line before egress);
+ *   · Practice      — practice DAYS per shelf (a count of days, never a rate);
+ *   · Questions     — the parent's questions, saved to the packet only.
+ * A domain is matched through the record's SHELF (one domain per entry), so a
+ * speech-language packet carries talking-shelf items only.
+ * Egress is the ONE consult step-3 egress (Copy · PDF · Send behind the
+ * reviewed gate): the packet is built in the parent's language and leaves
+ * through `serializeForExport("self", …)`, whose header carries the standing
+ * non-diagnostic line (`elev.packet.prepared`) and the demo header for the
+ * demo family (B-DIST-01). Pure + deterministic. */
+
+/** The professions a parent can prepare an intake packet for (the chips). */
+export type IntakeProfession = "slp" | "ot" | "pt" | "psychology" | "pediatrician";
+export const INTAKE_PROFESSIONS: readonly IntakeProfession[] = ["slp", "ot", "pt", "psychology", "pediatrician"];
+
+/** Each chip → the registry professions it reads as (the psychologist chip
+ *  covers the three psychology lenses the registry names). */
+const INTAKE_REGISTRY_PROFESSIONS: Record<IntakeProfession, readonly Profession[]> = {
+  slp: ["slp"],
+  ot: ["ot"],
+  pt: ["pt"],
+  psychology: ["developmental_psychologist", "educational_psychologist", "child_psychologist"],
+  pediatrician: ["pediatrician"],
+};
+
+/** The consult audience whose step-1 chip the packet opens under (H1, hint). */
+export const INTAKE_AUDIENCE: Record<IntakeProfession, ExportAudience> = {
+  slp: "slp",
+  ot: "therapist",
+  pt: "therapist",
+  psychology: "behavioral_health",
+  pediatrician: "pediatrician",
+};
+
+export function isIntakeProfession(v: unknown): v is IntakeProfession {
+  return typeof v === "string" && (INTAKE_PROFESSIONS as readonly string[]).includes(v);
+}
+
+/** The registry domains a chip owns, in registry order. */
+export function intakeDomains(p: IntakeProfession): DomainId[] {
+  const owners = new Set<string>(INTAKE_REGISTRY_PROFESSIONS[p]);
+  return DOMAINS.filter((d) => d.professions.some((x) => owners.has(x))).map((d) => d.id);
+}
+
+export interface IntakePacketInput {
+  /** The child (read-model fields + the label the packet header names). */
+  child: ObservationChild & { name?: string; demo?: boolean; gender?: string | null };
+  milestones: Milestone[];
+  behaviorLogs: BehaviorLog[];
+  actionLoops: ActionLoopEntry[];
+  /** The parent's questions for this professional (device-local draft). */
+  questions?: string[];
+  /** The child's comparison age in months — the "not seen yet" window. */
+  comparisonMonths?: number | null;
+  nowMs: number;
+  /** Moments and practice days are read over this many days (default 30). */
+  windowDays?: number;
+  /** The packet is built in the parent's language. */
+  lang?: UiLang;
+}
+
+const INTAKE_MOMENTS_CAP = 8;
+
+/** An ISO date as the reader reads a day ("14 Sep 2026" / "14 בספט׳ 2026"). */
+function intakeDay(iso: string, lang: UiLang): string {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return "";
+  return new Intl.DateTimeFormat(lang === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short", year: "numeric" }).format(t);
+}
+
+export function buildIntakePacket(profession: IntakeProfession, input: IntakePacketInput): ConsultPacket {
+  const lang: UiLang = input.lang ?? "en";
+  const t = (k: string, v?: Record<string, string | number>) => translate(lang, k, v);
+  const domains = new Set<DomainId>(intakeDomains(profession));
+  const onDomain = (shelf: ShelfId | undefined) => !!shelf && domains.has(shelfDef(shelf).domain);
+  const days = Math.max(1, input.windowDays ?? 30);
+  const since = input.nowMs - days * DAY;
+  const observations = toObservations(
+    { behaviorLogs: input.behaviorLogs, milestones: input.milestones, actionLoops: input.actionLoops },
+    input.child,
+  );
+  const gender = input.child.gender ?? undefined;
+  const sections: PacketSection[] = [];
+  const section = (id: string, key: string, items: PacketItem[], noteKey?: string) => {
+    if (!items.length) return;
+    sections.push({ id, title: translate("en", key), titleKey: key, ...(noteKey ? { note: translate("en", noteKey), noteKey } : {}), items });
+  };
+
+  // · Seen — the parent's "yes", dated, oldest first
+  const byId = new Map(input.milestones.map((m) => [m.id, m]));
+  const seen = observations
+    .filter((o) => o.origin === "milestones" && onDomain(o.shelf))
+    .sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
+    .map((o): PacketItem | null => {
+      const m = o.value.type === "milestone" ? byId.get(o.value.milestoneId) : undefined;
+      if (!m) return null;
+      const title = milestoneText(m, "title", t, { gender });
+      const date = intakeDay(o.at, lang);
+      // The date LEADS the line: a line that ends in a year, read straight
+      // into the next label ("2026 Not seen yet"), would read as a counted absence.
+      return { id: `intake-seen-${m.id}`, text: date ? `${date} · ${title}` : title };
+    })
+    .filter((x): x is PacketItem => !!x);
+  section("intake-seen", "elev.packet.intake.seen", seen);
+
+  // · Not seen yet — the parent's own answer, in the age window, the sourced age line, never counted
+  const ageWindow = typeof input.comparisonMonths === "number" && Number.isFinite(input.comparisonMonths) ? milestoneAgeWindow(input.comparisonMonths) : null;
+  const notYet = input.milestones
+    .filter((m) => m.observationStatus === "not_yet" || m.observationStatus === "not_sure")
+    .filter((m) => !ageWindow || ageWindow.includes(m.ageMonths))
+    .filter((m) => {
+      try {
+        return onDomain(milestoneShelf(m));
+      } catch {
+        return false;
+      }
+    })
+    .map((m): PacketItem => {
+      const title = milestoneText(m, "title", t, { gender });
+      const age = milestoneAgeLine(m, t);
+      return { id: `intake-notyet-${m.id}`, text: age ? `${title} · ${age}` : title };
+    });
+  section("intake-not-yet", "elev.packet.intake.notYet", notYet, "elev.packet.intake.notYet.note");
+
+  // · Moments — the parent's words, quoted and dated, newest first
+  const logById = new Map(input.behaviorLogs.map((l) => [l.id, l]));
+  const moments = observations
+    .filter((o) => o.origin === "behaviorLogs" && onDomain(o.shelf) && Date.parse(o.at) >= since && Date.parse(o.at) <= input.nowMs)
+    .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
+    .map((o): PacketItem | null => {
+      const log = logById.get(o.id.slice("behaviorLogs:".length));
+      const words = (log?.trigger || log?.notes || "").trim();
+      if (!log || !words) return null;
+      const date = intakeDay(o.at, lang);
+      return { id: `intake-moment-${log.id}`, text: `“${words}”${date ? ` · ${date}` : ""}` };
+    })
+    .filter((x): x is PacketItem => !!x)
+    .slice(0, INTAKE_MOMENTS_CAP);
+  section("intake-moments", "elev.packet.intake.moments", moments);
+
+  // · Practice — practice DAYS per shelf in the window (a count of days, never a rate)
+  const practiceDays = new Map<ShelfId, Set<string>>();
+  for (const o of observations) {
+    if (o.origin !== "actionLoops" || !o.shelf || !onDomain(o.shelf)) continue;
+    const at = Date.parse(o.at);
+    if (!(at >= since && at <= input.nowMs)) continue;
+    const set = practiceDays.get(o.shelf) ?? new Set<string>();
+    set.add(o.at.slice(0, 10));
+    practiceDays.set(o.shelf, set);
+  }
+  const practice: PacketItem[] = [...practiceDays.entries()]
+    .sort((a, b) => shelfDef(a[0]).order - shelfDef(b[0]).order)
+    .map(([shelf, set]) => ({
+      id: `intake-practice-${shelf}`,
+      text: t(set.size === 1 ? "elev.packet.intake.practiceLine.one" : "elev.packet.intake.practiceLine", { shelf: shelfLabel(shelf, t), n: set.size, days }),
+    }));
+  section("intake-practice", "elev.packet.intake.practice", practice);
+
+  // · Questions — the parent's own lines, as written
+  const questions = (input.questions ?? []).map((q) => q.trim()).filter(Boolean).map((q, i): PacketItem => ({ id: `intake-question-${i}`, text: q }));
+  section("intake-questions", "elev.packet.intake.questions", questions);
+
+  return {
+    childLabel: (input.child.name || "").split(" ")[0] || translate(lang, "learn.yourChild"),
+    generatedAt: new Date(input.nowMs).toISOString().slice(0, 10),
+    sections,
+    ...(input.child.demo === true ? { demo: true as const } : {}),
+  };
 }

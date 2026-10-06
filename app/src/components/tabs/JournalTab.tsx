@@ -292,6 +292,8 @@ function JournalRow({
  * query picks the view (same route, so Back returns):
  *   #/journal                 → the shelf grid (components/journal/ShelfGrid)
  *   #/journal?shelf=<id>      → a shelf page (components/journal/ShelfPage)
+ *   #/journal?view=pro        → the professional view (B-LOOP-12,
+ *                               components/journal/ProView; `&for=<chip>`)
  *   #/journal?view=all        → "Everything by date": the day-grouped thread
  *                               below (JournalFeed), every capability intact
  *                               (filters, search, the hard-moment PDF, the
@@ -316,7 +318,7 @@ export default function JournalTab({ primaryMoveProps, densityToggle }: { primar
     } catch { /* SSR / tests */ }
   }, [pendingJournalFocusId]);
   if (view === "all") return <JournalFeed primaryMoveProps={primaryMoveProps} densityToggle={densityToggle} />;
-  return <JournalShelves shelf={shelf} primaryMoveProps={primaryMoveProps} />;
+  return <JournalShelves shelf={shelf} pro={view === "pro"} intakeFor={query.get("for")} primaryMoveProps={primaryMoveProps} />;
 }
 
 /** `primaryMoveProps`: TimelineTab's contract stamp, spread on the capture

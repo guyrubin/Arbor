@@ -19,8 +19,13 @@ import {
   normalizeExportAudience,
   EXPORT_AUDIENCES,
   DEFAULT_EXPORT_AUDIENCE,
+  INTAKE_AUDIENCE,
+  buildIntakePacket,
   type ExportAudience,
+  type IntakeProfession,
 } from "../../consult/packet";
+import { intakeQuestionLines, readIntakeQuestionsText } from "../../consult/intakeDraft";
+import { comparisonMonthsOf } from "../../lib/age/forChild";
 import { ClinicalLanguageError } from "../../lib/clinicalScan";
 import { trackShareInitiated, trackShareCompleted } from "../../lib/loopEvents";
 import { getLastExportedAt, recordExport } from "../../consult/exportHistory";
@@ -108,8 +113,12 @@ type ExportBuild = { text: string; error: null } | { text: null; error: string }
 
 /** W2-CAREPRO r1: ConsultTab hands its route stamp here; it lands on the
  *  selected audience chip (one 44 px button in step 1), never on a wrapper. */
-export default function AskSpecialist({ primaryMoveStamp, anchorAudience, onAudienceChange }: {
+export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake: intakeProp, onAudienceChange }: {
   primaryMoveStamp?: Record<string, string>;
+  /** B-LOOP-12: the professional view's profession preset — the packet is
+   *  the intake packet (buildIntakePacket) and leaves through THIS step-3
+   *  egress, behind the same reviewed gate. A different audience chip ends it. */
+  intake?: IntakeProfession;
   /** B-CAREPRO-NEW-2a: the audience of a visit due within 14 days
    *  (consultAudienceForProfession) — applied once, never persisted. */
   anchorAudience?: ExportAudience;
@@ -127,8 +136,10 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, onAudi
   const [previewAll, setPreviewAll] = useState(false);
 
   // Step 1: the audience (= the preset); remembered per device.
-  const [audience, setAudienceState] = useState<ExportAudience>(() => anchorAudience ?? readStoredAudience());
+  const [audience, setAudienceState] = useState<ExportAudience>(() => (intakeProp ? INTAKE_AUDIENCE[intakeProp] : anchorAudience ?? readStoredAudience()));
+  const [intake, setIntake] = useState<IntakeProfession | undefined>(intakeProp);
   const setAudience = (a: ExportAudience) => {
+    if (intake && a !== audience) setIntake(undefined);
     // Consent applies to the exact outgoing audience. Clear it in this click
     // transaction, rather than waiting for the effect below, so an immediate
     // export cannot reuse approval for a different recipient.
@@ -231,7 +242,25 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, onAudi
   // W2-CAREPRO c2 r2: ONE egress set — the card the parent curates, the
   // step-3 count, the empty test and Copy/PDF/Send all read the audience-capped
   // packet, so switching the chip re-shapes step 2 and every row shown can leave.
-  const packet = useMemo(() => presetPacket(audience, fullPacket), [audience, fullPacket]);
+  // B-LOOP-12: with a profession preset the curated packet IS the intake packet.
+  const intakePacket = useMemo(
+    () => (intake ? buildIntakePacket(intake, {
+      child: childProfile,
+      milestones,
+      behaviorLogs,
+      actionLoops: actionLoop ?? [],
+      questions: intakeQuestionLines(readIntakeQuestionsText(childProfile.id, intake)),
+      comparisonMonths: comparisonMonthsOf(childProfile),
+      nowMs: Date.now(),
+      lang: uiLang === "he" ? "he" : "en",
+    }) : null),
+    [intake, childProfile, milestones, behaviorLogs, actionLoop, uiLang]
+  );
+  const packet = useMemo(() => intakePacket ?? presetPacket(audience, fullPacket), [intakePacket, audience, fullPacket]);
+  // The intake packet is already scoped to its profession; it leaves through
+  // the whole-packet serializer ("self": clinician ceiling, forbidden tokens,
+  // no %), never a preset cap that would drop its sections.
+  const egressAudience: ExportAudience = intakePacket ? "self" : audience;
 
   // W2-CAREPRO c2 r1: "What changed" is measured from a NAMED anchor — the
   // last visit with this audience's profession (with what they said), else
@@ -294,6 +323,12 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, onAudi
     target?.scrollIntoView?.({ block: "start", behavior: reduceMotion ? "auto" : "smooth" });
     (target?.querySelector("h2") as HTMLElement | null)?.focus?.();
   };
+  // B-LOOP-12: arriving from the professional view's PDF · Copy · Send, the
+  // parent lands on step 3 — the verbatim preview and the reviewed gate.
+  useEffect(() => {
+    if (intakeProp) buildSummary();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // LC-06: "about" is always emitted, so the honest emptiness test is
   // "nothing beyond about" — the authored empty state can finally mount.
   const isEmpty = isConsultPacketEmpty(packet);
@@ -310,12 +345,12 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, onAudi
     if (isTeacher) return { text: null, error: "" };
     try {
       // LC-13 / item 8: `uiLang` renders the packet SCAFFOLD in the parent's language.
-      return { text: serializeForExport(audience, packet, excluded, visionNote, t("consult.visionNote.heading"), uiLang), error: null };
+      return { text: serializeForExport(egressAudience, packet, excluded, visionNote, t("consult.visionNote.heading"), uiLang), error: null };
     } catch (err) {
       // Fail closed: a forbidden token or a % in the note blocks every verb.
       return { text: null, error: err instanceof ClinicalLanguageError ? t("elev.carehonesty.consult.blocked.generic") : t("consult.exportError") };
     }
-  }, [isTeacher, audience, packet, excluded, visionNote, t, uiLang]);
+  }, [isTeacher, egressAudience, packet, excluded, visionNote, t, uiLang]);
   // W2-CAREPRO c2 r1: what leaves is clean plain text (title line, plain
   // heads, bullets — no #, ** or _ in a WhatsApp/SMS paste), and the preview
   // renders EXACTLY that string, one line per block.
@@ -346,7 +381,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, onAudi
   const savePdf = () => {
     if (exportText == null || isTeacher) return;
     try {
-      const sections = exportPrintSections(audience, packet, excluded, visionNote, t("consult.visionNote.heading"), uiLang);
+      const sections = exportPrintSections(egressAudience, packet, excluded, visionNote, t("consult.visionNote.heading"), uiLang);
       printPdf(audience, sections);
       recordExport(childProfile.id, audience);
     } catch (err) {

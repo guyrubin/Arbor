@@ -61,3 +61,44 @@ export function shelfNotice(milestones: Milestone[], comparisonMonths: number | 
   if (comparisonMonths === null) return null;
   return selectNextMilestonesByShelf(milestones, comparisonMonths, { perShelf: 1, total: 9, now }).find((p) => p.shelf === shelf) ?? null;
 }
+
+/* ── B-LOOP-12 — the professional view's per-domain counts ─────────────── */
+
+export interface ProDomainCounts {
+  /** Entries on the domain's shelves in the last `days` days. */
+  noticed: number;
+  /** Milestones the parent marked seen on the domain's shelves (all time). */
+  milestonesSeen: number;
+  /** Distinct days with a practice done on the domain's shelves in the window. */
+  practiceDays: number;
+}
+
+/** Counts only, per registry domain (through each entry's shelf). */
+export function proDomainCounts(
+  observations: ReadonlyArray<Pick<Observation, "at" | "origin" | "shelf">>,
+  shelvesOf: (shelf: ShelfId) => string,
+  now: Date = new Date(),
+  days = 30,
+): Map<string, ProDomainCounts> {
+  const out = new Map<string, ProDomainCounts>();
+  const end = now.getTime();
+  const start = end - days * 86_400_000;
+  const practice = new Map<string, Set<string>>();
+  for (const o of observations) {
+    if (!o.shelf) continue;
+    const domain = shelvesOf(o.shelf);
+    const c = out.get(domain) ?? { noticed: 0, milestonesSeen: 0, practiceDays: 0 };
+    const t = Date.parse(o.at);
+    const inWindow = Number.isFinite(t) && t >= start && t <= end;
+    if (inWindow) c.noticed += 1;
+    if (o.origin === "milestones") c.milestonesSeen += 1;
+    if (o.origin === "actionLoops" && inWindow) {
+      const set = practice.get(domain) ?? new Set<string>();
+      set.add(o.at.slice(0, 10));
+      practice.set(domain, set);
+      c.practiceDays = set.size;
+    }
+    out.set(domain, c);
+  }
+  return out;
+}
