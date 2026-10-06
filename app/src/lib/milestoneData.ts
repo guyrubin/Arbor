@@ -162,7 +162,11 @@ export const CDC_MILESTONES: Milestone[] = [
   cdc(24, "2 years", "social_development", 2, "Looks at your reaction", "Looks at your face to see how to react in a new situation.", "Faced with something new, they check your expression before deciding."),
   cdc(24, "2 years", "language_communication", 3, "Says two words together", "Says at least two words together, like 'more milk'.", "Combines two words into a tiny phrase to make a point."),
   cdc(24, "2 years", "language_communication", 4, "Points to things in a book", "Points to things in a book when you ask, like 'where is the bear?'.", "You ask for the bear and they put a finger on it."),
-  cdc(24, "2 years", "language_communication", 5, "Names objects in a book", "Points to at least two body parts when you ask; uses gestures beyond waving and pointing.", "Can point out a nose or tummy and blows a kiss."),
+  // B-LOOP-01 (reconcile, 6 Oct): this row WAS titled "Names objects in a book" (CDC's 30-month item, = cdc-30m-5)
+  // over a description fusing two CDC 24-month items. It is now ONE skill — body parts — and the gestures item is
+  // its own row (cdc-24m-11). "Points to things in a book" is cdc-24m-4.
+  cdc(24, "2 years", "language_communication", 5, "Points to body parts", "Points to at least two body parts when you ask, like 'where is your nose?'.", "Can point out a nose or tummy when you name it."),
+  cdc(24, "2 years", "language_communication", 11, "Uses more gestures", "Uses more gestures than just waving and pointing, like blowing a kiss or nodding yes.", "Blows a kiss goodbye or nods to say yes."),
   cdc(24, "2 years", "cognition_executive_function", 6, "Holds something while using the other hand", "Holds something in one hand while using the other, like a toy while opening a lid.", "Steadies a container in one hand and twists the lid with the other."),
   cdc(24, "2 years", "cognition_executive_function", 7, "Tries switches and buttons", "Tries to use switches, knobs, or buttons on a toy.", "Pokes, twists, and flips every button to see what happens."),
   cdc(24, "2 years", "cognition_executive_function", 8, "Plays with more than one toy together", "Plays with more than one toy at once, like putting toy food on a toy plate.", "Combines toys into a little scene rather than one at a time."),

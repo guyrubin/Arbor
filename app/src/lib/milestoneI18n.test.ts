@@ -46,8 +46,8 @@ const LATIN = /[A-Za-z]/;
 const HE_VERDICT_WORDS = [...HE_VERDICT_WORDS_SHARED];
 
 describe("B-GROWTH-11 — catalogue coverage (both languages, keyed by stable id)", () => {
-  it("measures the catalogue: 117 CDC + 6 ASHA = 123 rows (B-LOOP-01 retired the 10 unsourced Arbor rows), all with HE", () => {
-    expect(ALL_MILESTONES.length).toBe(123);
+  it("measures the catalogue: 118 CDC + 6 ASHA = 124 rows (B-LOOP-01 retired the 10 unsourced Arbor rows; the 6 Oct reconcile split cdc-24m-5 into body parts + cdc-24m-11 gestures), all with HE", () => {
+    expect(ALL_MILESTONES.length).toBe(124);
     const ids = ALL_MILESTONES.map((m) => m.id);
     expect(new Set(ids).size, "catalogue ids must be unique").toBe(ids.length);
     expect(Object.keys(HE_MILESTONE_TEXT).sort()).toEqual([...ids].sort());
@@ -96,8 +96,8 @@ describe("B-GROWTH-11 — every HE catalogue string is Hebrew, clinical-clean an
   for (const b of MILESTONE_AGE_BANDS) heStrings.push([`band.${b.months}`, milestoneBandLabel(b.months, tHe)]);
   heStrings.push(["ms.heReview.note", translate("he", "ms.heReview.note")]);
 
-  it("covers 3 × 123 item strings + 13 bands + the review note", () => {
-    expect(heStrings.length).toBe(123 * 3 + 13 + 1);
+  it("covers 3 × 124 item strings + 13 bands + the review note", () => {
+    expect(heStrings.length).toBe(124 * 3 + 13 + 1);
   });
 
   it("no Latin letters (0 English inside the Hebrew catalogue)", () => {

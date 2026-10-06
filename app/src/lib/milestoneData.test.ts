@@ -98,10 +98,10 @@ describe("CDC/AAP-2022 milestone dataset", () => {
 describe("B-LOOP-01 — every catalogue row carries its source and its age semantics", () => {
   const bandMonths = new Set(MILESTONE_AGE_BANDS.map((b) => b.months));
 
-  it("prints the catalogue count (133 before B-LOOP-01, 10 Arbor rows retired)", () => {
+  it("prints the catalogue count (133 before B-LOOP-01, 10 Arbor rows retired; +1 cdc-24m-11 on 6 Oct)", () => {
     // eslint-disable-next-line no-console
     console.log(`B-LOOP-01 catalogue rows: ${ALL_MILESTONES.length} (CDC ${CDC_MILESTONES.length} · ASHA ${ASHA_MILESTONES.length} · Arbor ${ARBOR_EXTENDED_MILESTONES.length})`);
-    expect(ALL_MILESTONES.length).toBe(123);
+    expect(ALL_MILESTONES.length).toBe(124);
   });
 
   it("every row has a source with org, title, year and ageSemantics", () => {

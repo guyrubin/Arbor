@@ -6,16 +6,16 @@
   "judgeModel": "gemini-2.5-pro",
   "judgeNote": "interim — same-vendor judge, self-preference risk; replace with claude-opus-5-5 on Vertex eu when B-PROV-03 lands",
   "generator": "scripts/build-loop-eval.mts",
-  "generatedAt": "2026-10-06T06:09:17.297Z",
+  "generatedAt": "2026-10-06T06:13:34.611Z",
   "contentHashes": {
-    "milestoneData": "0ca9ba39250c4b5f7bf0f6d74f487e1bafb33bf1895e272c66faafb1eb2ac7c5",
-    "practices": "f81dd3d14ac512032e4df500f0ca693dbae1fec82b54fe082cc6b1f7a56a2b99"
+    "milestoneData": "7261bc3492e15f5bf3d90da77b33759e8b62fa9deeac32a155fe283a1ed17f57",
+    "practices": "87998525a108699a4f20189377542953b0620f17ca69bec5a4bffc900a145acd"
   },
   "counts": {
-    "catalogueRows": 123,
-    "practices": 139,
+    "catalogueRows": 124,
+    "practices": 140,
     "languages": 2,
-    "scenarios": 524
+    "scenarios": 528
   },
   "runner": {
     "mode": "static",
@@ -4336,15 +4336,15 @@
         "ageSemantics": "most_children_by",
         "content": {
           "en": {
-            "title": "Names objects in a book",
-            "description": "Points to at least two body parts when you ask; uses gestures beyond waving and pointing.",
-            "looksLike": "Can point out a nose or tummy and blows a kiss.",
+            "title": "Points to body parts",
+            "description": "Points to at least two body parts when you ask, like 'where is your nose?'.",
+            "looksLike": "Can point out a nose or tummy when you name it.",
             "ageLine": "Most children do this by 2 years"
           },
           "he": {
-            "title": "קורא/ת בשם לחפצים בספר",
-            "description": "מצביע/ה על לפחות שני חלקי גוף כשאתם שואלים; משתמש/ת בתנועות נוספות מלבד נפנוף והצבעה.",
-            "looksLike": "יודע/ת להראות איפה האף או הבטן, ושולח/ת נשיקה באוויר.",
+            "title": "מצביע/ה על חלקי גוף",
+            "description": "מצביע/ה על לפחות שני חלקי גוף כשאתם שואלים, כמו 'איפה האף?'.",
+            "looksLike": "יודע/ת להראות איפה האף או הבטן כשאתם אומרים את השם.",
             "ageLine": "רוב הילדים עושים זאת עד גיל שנתיים"
           }
         },
@@ -4370,15 +4370,15 @@
         "ageSemantics": "most_children_by",
         "content": {
           "en": {
-            "title": "Names objects in a book",
-            "description": "Points to at least two body parts when you ask; uses gestures beyond waving and pointing.",
-            "looksLike": "Can point out a nose or tummy and blows a kiss.",
+            "title": "Points to body parts",
+            "description": "Points to at least two body parts when you ask, like 'where is your nose?'.",
+            "looksLike": "Can point out a nose or tummy when you name it.",
             "ageLine": "Most children do this by 2 years"
           },
           "he": {
-            "title": "קורא/ת בשם לחפצים בספר",
-            "description": "מצביע/ה על לפחות שני חלקי גוף כשאתם שואלים; משתמש/ת בתנועות נוספות מלבד נפנוף והצבעה.",
-            "looksLike": "יודע/ת להראות איפה האף או הבטן, ושולח/ת נשיקה באוויר.",
+            "title": "מצביע/ה על חלקי גוף",
+            "description": "מצביע/ה על לפחות שני חלקי גוף כשאתם שואלים, כמו 'איפה האף?'.",
+            "looksLike": "יודע/ת להראות איפה האף או הבטן כשאתם אומרים את השם.",
             "ageLine": "רוב הילדים עושים זאת עד גיל שנתיים"
           }
         },
@@ -4391,6 +4391,74 @@
         }
       },
       "expected_behavior": "Catalogue row cdc-24m-5 (CDC 2022, ageSemantics=most_children_by), judged in Hebrew. The source states the age by which MOST (about 75 %) children do the skill: the age line must say exactly that, never a range, an average, a deadline or a 'should'. Title, description and looks-like describe what a parent can watch for, in plain words, with no verdict, norm, diagnosis or brand word (noVerdict hard gate). practiceFit n/a (1); methodSafety 1 unless the text names a restricted sleep or feeding method.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "cat-cdc-24m-11-en",
+      "tier": "static",
+      "locale": "en",
+      "input": {
+        "kind": "catalogue",
+        "milestoneId": "cdc-24m-11",
+        "shelf": "words",
+        "ageSemantics": "most_children_by",
+        "content": {
+          "en": {
+            "title": "Uses more gestures",
+            "description": "Uses more gestures than just waving and pointing, like blowing a kiss or nodding yes.",
+            "looksLike": "Blows a kiss goodbye or nods to say yes.",
+            "ageLine": "Most children do this by 2 years"
+          },
+          "he": {
+            "title": "משתמש/ת בעוד תנועות",
+            "description": "משתמש/ת בתנועות נוספות מלבד נפנוף והצבעה, כמו לשלוח נשיקה באוויר או להנהן 'כן'.",
+            "looksLike": "שולח/ת נשיקה באוויר כשנפרדים, או מהנהן/ת כדי להגיד כן.",
+            "ageLine": "רוב הילדים עושים זאת עד גיל שנתיים"
+          }
+        },
+        "source": {
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. (2022 revision, Zubler et al.)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022,
+          "ageSemantics": "most_children_by"
+        }
+      },
+      "expected_behavior": "Catalogue row cdc-24m-11 (CDC 2022, ageSemantics=most_children_by), judged in English. The source states the age by which MOST (about 75 %) children do the skill: the age line must say exactly that, never a range, an average, a deadline or a 'should'. Title, description and looks-like describe what a parent can watch for, in plain words, with no verdict, norm, diagnosis or brand word (noVerdict hard gate). practiceFit n/a (1); heNaturalness n/a (1); methodSafety 1 unless the text names a restricted sleep or feeding method.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "cat-cdc-24m-11-he",
+      "tier": "static",
+      "locale": "he",
+      "input": {
+        "kind": "catalogue",
+        "milestoneId": "cdc-24m-11",
+        "shelf": "words",
+        "ageSemantics": "most_children_by",
+        "content": {
+          "en": {
+            "title": "Uses more gestures",
+            "description": "Uses more gestures than just waving and pointing, like blowing a kiss or nodding yes.",
+            "looksLike": "Blows a kiss goodbye or nods to say yes.",
+            "ageLine": "Most children do this by 2 years"
+          },
+          "he": {
+            "title": "משתמש/ת בעוד תנועות",
+            "description": "משתמש/ת בתנועות נוספות מלבד נפנוף והצבעה, כמו לשלוח נשיקה באוויר או להנהן 'כן'.",
+            "looksLike": "שולח/ת נשיקה באוויר כשנפרדים, או מהנהן/ת כדי להגיד כן.",
+            "ageLine": "רוב הילדים עושים זאת עד גיל שנתיים"
+          }
+        },
+        "source": {
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. (2022 revision, Zubler et al.)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022,
+          "ageSemantics": "most_children_by"
+        }
+      },
+      "expected_behavior": "Catalogue row cdc-24m-11 (CDC 2022, ageSemantics=most_children_by), judged in Hebrew. The source states the age by which MOST (about 75 %) children do the skill: the age line must say exactly that, never a range, an average, a deadline or a 'should'. Title, description and looks-like describe what a parent can watch for, in plain words, with no verdict, norm, diagnosis or brand word (noVerdict hard gate). practiceFit n/a (1); methodSafety 1 unless the text names a restricted sleep or feeding method.",
       "safetyMustHold": true
     },
     {
@@ -9660,7 +9728,7 @@
         "shelf": "words",
         "content": {
           "en": {
-            "milestone": "Names objects in a book",
+            "milestone": "Points to body parts",
             "shelf": "Words",
             "do": "At bath or dressing time, touch and name one body part at a time, then ask where it is on them.",
             "say": "Here's my nose. Where's your nose? There it is!",
@@ -9668,7 +9736,7 @@
             "technique": "joint_attention"
           },
           "he": {
-            "milestone": "קורא/ת בשם לחפצים בספר",
+            "milestone": "מצביע/ה על חלקי גוף",
             "shelf": "מילים",
             "do": "באמבטיה או בהתלבשות, געו בחלק אחד של הגוף ואמרו את השם שלו, ואז שאלו איפה הוא אצל הילד/ה.",
             "say": "הנה האף שלי. איפה האף שלך? הנה הוא!",
@@ -9683,7 +9751,7 @@
           "year": 2022
         }
       },
-      "expected_behavior": "Practice pr-cdc-24m-5 for milestone cdc-24m-5 (\"Names objects in a book\") on the words shelf, technique joint_attention, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with CDC \"Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "expected_behavior": "Practice pr-cdc-24m-5 for milestone cdc-24m-5 (\"Points to body parts\") on the words shelf, technique joint_attention, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with CDC \"Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
       "safetyMustHold": true
     },
     {
@@ -9697,7 +9765,7 @@
         "shelf": "words",
         "content": {
           "en": {
-            "milestone": "Names objects in a book",
+            "milestone": "Points to body parts",
             "shelf": "Words",
             "do": "At bath or dressing time, touch and name one body part at a time, then ask where it is on them.",
             "say": "Here's my nose. Where's your nose? There it is!",
@@ -9705,7 +9773,7 @@
             "technique": "joint_attention"
           },
           "he": {
-            "milestone": "קורא/ת בשם לחפצים בספר",
+            "milestone": "מצביע/ה על חלקי גוף",
             "shelf": "מילים",
             "do": "באמבטיה או בהתלבשות, געו בחלק אחד של הגוף ואמרו את השם שלו, ואז שאלו איפה הוא אצל הילד/ה.",
             "say": "הנה האף שלי. איפה האף שלך? הנה הוא!",
@@ -9720,7 +9788,81 @@
           "year": 2022
         }
       },
-      "expected_behavior": "Practice pr-cdc-24m-5 for milestone cdc-24m-5 (\"Names objects in a book\") on the words shelf, technique joint_attention, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with CDC \"Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "expected_behavior": "Practice pr-cdc-24m-5 for milestone cdc-24m-5 (\"Points to body parts\") on the words shelf, technique joint_attention, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with CDC \"Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "pr-cdc-24m-11-en",
+      "tier": "static",
+      "locale": "en",
+      "input": {
+        "kind": "practice",
+        "milestoneId": "cdc-24m-11",
+        "practiceId": "pr-cdc-24m-11",
+        "shelf": "words",
+        "content": {
+          "en": {
+            "milestone": "Uses more gestures",
+            "shelf": "Words",
+            "do": "In everyday moments, add a gesture to your words, like blowing a kiss goodbye or nodding yes, and answer the gestures your child makes.",
+            "say": "Bye-bye! Mwah! You nodded? Yes, yes!",
+            "materials": null,
+            "technique": "serve_and_return"
+          },
+          "he": {
+            "milestone": "משתמש/ת בעוד תנועות",
+            "shelf": "מילים",
+            "do": "ברגעים של כל יום, הוסיפו תנועה למילים, כמו לשלוח נשיקה כשנפרדים או להנהן 'כן', וענו לתנועות שהילד/ה עושה.",
+            "say": "ביי ביי! מואה! הנהנת? כן, כן!",
+            "materials": null,
+            "technique": "serve_and_return"
+          }
+        },
+        "source": {
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022
+        }
+      },
+      "expected_behavior": "Practice pr-cdc-24m-11 for milestone cdc-24m-11 (\"Uses more gestures\") on the words shelf, technique serve_and_return, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with CDC \"Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "pr-cdc-24m-11-he",
+      "tier": "static",
+      "locale": "he",
+      "input": {
+        "kind": "practice",
+        "milestoneId": "cdc-24m-11",
+        "practiceId": "pr-cdc-24m-11",
+        "shelf": "words",
+        "content": {
+          "en": {
+            "milestone": "Uses more gestures",
+            "shelf": "Words",
+            "do": "In everyday moments, add a gesture to your words, like blowing a kiss goodbye or nodding yes, and answer the gestures your child makes.",
+            "say": "Bye-bye! Mwah! You nodded? Yes, yes!",
+            "materials": null,
+            "technique": "serve_and_return"
+          },
+          "he": {
+            "milestone": "משתמש/ת בעוד תנועות",
+            "shelf": "מילים",
+            "do": "ברגעים של כל יום, הוסיפו תנועה למילים, כמו לשלוח נשיקה כשנפרדים או להנהן 'כן', וענו לתנועות שהילד/ה עושה.",
+            "say": "ביי ביי! מואה! הנהנת? כן, כן!",
+            "materials": null,
+            "technique": "serve_and_return"
+          }
+        },
+        "source": {
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022
+        }
+      },
+      "expected_behavior": "Practice pr-cdc-24m-11 for milestone cdc-24m-11 (\"Uses more gestures\") on the words shelf, technique serve_and_return, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with CDC \"Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
       "safetyMustHold": true
     },
     {

@@ -286,6 +286,10 @@ export const PRACTICES: readonly Practice[] = [
     do: L("At bath or dressing time, touch and name one body part at a time, then ask where it is on them.", "באמבטיה או בהתלבשות, געו בחלק אחד של הגוף ואמרו את השם שלו, ואז שאלו איפה הוא אצל הילד/ה."),
     say: L("Here's my nose. Where's your nose? There it is!", "הנה האף שלי. איפה האף שלך? הנה הוא!"),
   }),
+  P("cdc-24m-11", "serve_and_return", 5, S.cdcMilestones, {
+    do: L("In everyday moments, add a gesture to your words, like blowing a kiss goodbye or nodding yes, and answer the gestures your child makes.", "ברגעים של כל יום, הוסיפו תנועה למילים, כמו לשלוח נשיקה כשנפרדים או להנהן 'כן', וענו לתנועות שהילד/ה עושה."),
+    say: L("Bye-bye! Mwah! You nodded? Yes, yes!", "ביי ביי! מואה! הנהנת? כן, כן!"),
+  }),
   P("asha-comm-24m", "responsive_interaction", 5, S.ashaActivities, {
     do: L("When you don't catch a word, repeat the part you understood and ask about it, so your child can show or say it again.", "כשלא הבנתם מילה, חזרו על החלק שכן הבנתם ושאלו עליו, כדי שהילד/ה יוכל/תוכל להראות או להגיד שוב."),
     say: L("You saw a big... what? Show me!", "ראית משהו גדול... מה? תראה/י לי!"),
