@@ -394,6 +394,92 @@ export const PRACTICES: readonly Practice[] = [
     do: L("At dressing time, slow down and offer the sleeve or sock so your child can push in an arm or foot. Name each step.", "בזמן ההלבשה, האטו והגישו את השרוול או הגרב כך שהילד/ה יוכל/תוכל להכניס יד או רגל. תנו שם לכל שלב."),
     say: L("Arm in the sleeve... whoosh! Your arm came out!", "יד לשרוול... ושש! היד יצאה!"),
   }),
+
+  /* ── batch 4/7 · Play · 24–60 months, Moving · 2–9 months ───────────── */
+  P("cdc-24m-1", "responsive_interaction", 5, S.aapBrightFutures, {
+    do: L("When someone nearby cries or laughs, notice it out loud together and wonder what happened, without asking your child to fix it.", "כשמישהו ליד בוכה או צוחק, שימו לב לזה בקול יחד ותהו מה קרה, בלי לבקש מהילד/ה לעשות משהו."),
+    say: L("That boy is crying. Maybe he's sad? What happened, I wonder?", "הילד הזה בוכה. אולי הוא עצוב? מעניין מה קרה."),
+  }),
+  P("cdc-24m-2", "responsive_interaction", 5, S.harvardServeReturn, {
+    do: L("In a new place or with a new thing, show a calm, interested face and voice first, then let your child take a closer look.", "במקום חדש או מול דבר חדש, הראו קודם פנים וקול רגועים וסקרנים, ואז תנו לילד/ה להתקרב ולהסתכל."),
+    say: L("Hmm, a new dog. He looks friendly. Let's watch him first.", "הממ, כלב חדש. הוא נראה ידידותי. בוא/י נסתכל עליו קודם."),
+  }),
+  P("cdc-30m-1", "child_directed_play", 10, S.aapPowerOfPlay, {
+    do: L("Set up two of the same simple toy so your child and another child can play side by side without waiting to share.", "הכינו שני צעצועים פשוטים זהים, כך שהילד/ה וחבר/ה יוכלו לשחק זה לצד זה בלי לחכות לתור."),
+    say: L("You have a bucket, and your friend has a bucket too.", "לך יש דלי, וגם לחבר/ה שלך יש דלי."),
+    materials: L("Two similar buckets or spoons", "שני דליים או שתי כפות דומות"),
+  }),
+  P("cdc-30m-2", "specific_praise", 5, S.cdcPositiveParenting, {
+    do: L("When your child calls 'look at me!', stop and watch the whole thing, then describe exactly what you saw them do.", "כשהילד/ה קורא/ת 'תסתכלו עליי!', עצרו, צפו עד הסוף, ותארו בדיוק מה ראיתם."),
+    say: L("I watched! You climbed all the way up and slid down.", "ראיתי! טיפסת עד למעלה וגלשת למטה."),
+  }),
+  P("cdc-36m-2", "child_directed_play", 10, S.aapPowerOfPlay, {
+    do: L("At the playground, walk over with your child to children who are playing and describe their game, so joining feels easy.", "בגינה, גשו יחד עם הילד/ה לילדים שמשחקים ותארו את המשחק שלהם, כך שיהיה קל להצטרף."),
+    say: L("They're building a sandcastle. Want to bring your shovel?", "הם בונים ארמון חול. רוצה להביא את האת שלך?"),
+  }),
+  P("cdc-48m-1", "child_directed_play", 15, S.aapPowerOfPlay, {
+    do: L("Join your child's pretend game in the role they give you. Follow their story and ask what happens next rather than taking over.", "הצטרפו למשחק הדמיון בתפקיד שהילד/ה נותן/ת לכם. לכו אחרי הסיפור ושאלו מה קורה עכשיו, בלי לקחת פיקוד."),
+    say: L("I'm the customer. What can I buy in your shop today?", "אני הלקוח/ה. מה אפשר לקנות היום בחנות שלך?"),
+  }),
+  P("cdc-48m-2", "child_directed_play", 15, S.aapPowerOfPlay, {
+    do: L("Invite one friend over for a short, simple playdate, with a few toys out and a snack, and stay nearby without directing.", "הזמינו חבר/ה אחד/ת למפגש משחק קצר ופשוט, עם כמה צעצועים בחוץ וחטיף, והישארו בסביבה בלי לנהל."),
+    say: L("Who would you like to play with this week?", "עם מי היית רוצה לשחק השבוע?"),
+  }),
+  P("cdc-48m-3", "specific_praise", 5, S.cdcPositiveParenting, {
+    do: L("When your child is kind to someone who is upset, describe the kind act afterwards, quietly and specifically.", "כשהילד/ה מתנהג/ת בחום למישהו עצוב, תארו אחר כך את המעשה, בשקט ובמדויק."),
+    say: L("You gave your friend your teddy when they were sad. That was kind.", "נתת לחבר/ה את הדובי כשהיה לו/ה עצוב. זה היה מעשה חם."),
+  }),
+  P("cdc-48m-4", "responsive_interaction", 5, S.aapBrightFutures, {
+    do: L("At the playground, think out loud together about which heights feel safe, and let your child show you their own careful choice.", "בגינה, חשבו יחד בקול איזה גובה מרגיש בטוח, ותנו לילד/ה להראות לכם את הבחירה הזהירה שלו/ה."),
+    say: L("That's really high. Where do you think is a safe place to jump?", "זה ממש גבוה. מאיפה בטוח לקפוץ, מה את/ה חושב/ת?"),
+  }),
+  P("cdc-48m-5", "routine_building", 5, S.cdcPositiveParenting, {
+    do: L("Give your child one real job in a daily routine, like setting the spoons, and thank them for the specific help.", "תנו לילד/ה תפקיד אמיתי אחד בשגרה היומית, כמו לשים כפיות על השולחן, והודו על העזרה המסוימת."),
+    say: L("You put a spoon by every plate. Thanks, helper!", "שמת כפית ליד כל צלחת. תודה על העזרה!"),
+  }),
+  P("cdc-60m-2", "routine_building", 10, S.cdcPositiveParenting, {
+    do: L("Make one small chore part of the day, like matching socks from the laundry, and do it side by side while you chat.", "הפכו מטלה קטנה אחת לחלק מהיום, כמו להתאים גרביים מהכביסה, ועשו אותה יחד תוך כדי שיחה."),
+    say: L("You find the stripy sock's partner, I'll find the blue one.", "את/ה מוצא/ת זוג לגרב המפוספס, ואני לכחול."),
+    materials: L("Clean socks from the laundry", "גרביים נקיים מהכביסה"),
+  }),
+  P("cdc-60m-3", "child_directed_play", 10, S.aapPowerOfPlay, {
+    do: L("Offer a little stage time: put on music, become the audience, and clap for the show your child creates.", "תנו במה קטנה: שימו מוזיקה, היו הקהל, ומחאו כפיים להופעה שהילד/ה יוצר/ת."),
+    say: L("Ladies and gentlemen, the show begins! We're ready to watch.", "גבירותיי ורבותיי, ההופעה מתחילה! אנחנו מוכנים לצפות."),
+  }),
+  P("cdc-2m-7", "gross_motor_play", 5, S.whoMovement, {
+    do: L("Place your baby on their tummy on your chest or a blanket while awake, and get down face to face to chat.", "כשהתינוק/ת ער/ה, השכיבו אותו/ה על הבטן על החזה שלכם או על שמיכה, ורדו לגובה הפנים כדי לדבר."),
+    say: L("Hello down there! I can see your face.", "שלום לך שם למטה! אני רואה את הפנים שלך."),
+  }),
+  P("cdc-2m-8", "gross_motor_play", 5, S.whoMovement, {
+    do: L("During a nappy change or after a bath, let your baby kick freely on a safe surface while you sing and gently touch each foot.", "בזמן החלפת חיתול או אחרי אמבטיה, תנו לתינוק/ת לבעוט בחופשיות על משטח בטוח, תוך כדי שירה ונגיעה עדינה בכל רגל."),
+    say: L("Kick, kick, kick! Here's one foot, and here's the other.", "בעיטה, בעיטה! הנה רגל אחת, והנה השנייה."),
+  }),
+  P("cdc-4m-7", "gross_motor_play", 5, S.whoMovement, {
+    do: L("Carry your baby upright against your shoulder for a short walk around the home, stopping to show them interesting things.", "שאו את התינוק/ת זקוף/ה על הכתף לסיבוב קצר בבית, ועצרו להראות דברים מעניינים."),
+    say: L("Here's the window. Look at the tree outside!", "הנה החלון. תראה/י את העץ בחוץ!"),
+  }),
+  P("cdc-4m-8", "gross_motor_play", 5, S.whoMovement, {
+    do: L("In tummy time, lie in front of your baby and hold a colourful object a little above eye level to look up at.", "בזמן שכיבה על הבטן, שכבו מול התינוק/ת והחזיקו חפץ צבעוני קצת מעל גובה העיניים."),
+    say: L("Where's the red cup? Up here! You see it!", "איפה הכוס האדומה? פה למעלה! ראית אותה!"),
+    materials: L("A colourful object, like a cup or spoon", "חפץ צבעוני, כמו כוס או כף"),
+  }),
+  P("cdc-6m-7", "gross_motor_play", 5, S.whoMovement, {
+    do: L("On a blanket on the floor, place a toy just to one side so your baby can reach and roll toward it. Cheer the effort.", "על שמיכה על הרצפה, שימו צעצוע קצת בצד, כדי שהתינוק/ת יוכל/תוכל להושיט יד ולהתגלגל אליו. עודדו את הניסיון."),
+    say: L("Ooh, you're reaching! Over you go!", "וואו, את/ה מושיט/ה יד! הופה, מתגלגלים!"),
+  }),
+  P("cdc-6m-8", "gross_motor_play", 5, S.whoMovement, {
+    do: L("Sit on the floor with your baby supported between your legs, and place a toy just in front so they lean on their hands.", "שבו על הרצפה עם התינוק/ת בין הרגליים שלכם לתמיכה, ושימו צעצוע מקדימה כדי שיישען/תישען על הידיים כדי להסתכל."),
+    say: L("I've got you. Look at the ball!", "אני מחזיק/ה אותך. תראה/י את הכדור!"),
+  }),
+  P("cdc-9m-8", "gross_motor_play", 10, S.whoMovement, {
+    do: L("Give your baby plenty of free floor time on a safe mat, with a few toys spread around to reach for while sitting.", "תנו לתינוק/ת הרבה זמן חופשי על הרצפה, על מזרן בטוח, עם כמה צעצועים מסביב להושיט אליהם יד בישיבה."),
+    say: L("You're sitting up! What will you grab first?", "את/ה יושב/ת! מה תיקח/י קודם?"),
+  }),
+  P("cdc-9m-9", "fine_motor_play", 5, S.whoUnicefCcd, {
+    do: L("Hand your baby one safe object, then offer a second one to the same hand, and watch them work out the swap.", "תנו לתינוק/ת חפץ בטוח אחד, ואז הציעו חפץ שני לאותה יד, וצפו איך הוא/היא מסתדר/ת עם ההחלפה."),
+    say: L("One spoon... and a lid! What will you do now?", "כף אחת... ומכסה! מה עושים עכשיו?"),
+    materials: L("Two safe household objects, like a wooden spoon and a lid", "שני חפצים בטוחים מהבית, כמו כף עץ ומכסה"),
+  }),
 ];
 
 /* ───────────────────────────── helpers ───────────────────────────── */
