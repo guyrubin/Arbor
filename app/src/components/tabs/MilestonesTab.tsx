@@ -28,7 +28,7 @@ import { ContentActionBar, ContentWhyLine } from "../ui/ContentActionBar";
 import { cardCls, Split, domainVisual, PASTEL } from "../ui/kit";
 import { authHeaders, getAiLanguage } from "../../lib/api";
 import { DOMAIN_REFERENCES } from "../../lib/milestoneReferences";
-import { noticedMilestoneCounts } from "../../lib/pulse";
+import { noticedMilestoneCounts } from "../../lib/record/counts";
 import { MILESTONE_AGE_BANDS, ageWindowMilestones, bandForAgeMonths, comparisonAgeMonths, correctedAge, explainMilestonePrompt, milestoneAgeGroupText, milestoneBandLabel, milestoneText, selectNextMilestones } from "../../lib/milestoneData";
 // UND-7 — fail-closed gate for the governed milestone example-media slot
 // (missing reviewer/rightsRef → never renders; ships with zero media entries).
@@ -865,7 +865,7 @@ export default function MilestonesTab() {
                     />
                   </label>
                   <div className="flex flex-wrap items-stretch gap-2">
-                    <button type="submit" disabled={savingGestation} className="min-h-11 text-white font-extrabold text-xs px-4 py-2 rounded-xl transition disabled:opacity-60" style={{ background: "var(--arbor-clay)" }}>
+                    <button type="submit" disabled={savingGestation} className="min-h-11 font-extrabold text-xs px-4 py-2 rounded-xl transition disabled:opacity-60" style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}>
                       {savingGestation ? <Icon name="progress_activity" size={14} className="animate-spin" /> : t("ms.gestationSave")}
                     </button>
                     <button type="button" disabled={savingGestation} onClick={() => saveGestation(null)} className="min-h-11 text-xs px-3 py-2 rounded-xl" style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>{t("ms.gestationClear")}</button>
