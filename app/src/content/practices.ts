@@ -321,6 +321,79 @@ export const PRACTICES: readonly Practice[] = [
     do: L("Play a silly rhyming game in the car or bath: say a word and enjoy whatever rhymes come back, real or made up.", "שחקו במשחק חרוזים מצחיק באוטו או באמבטיה: אמרו מילה ותיהנו מכל חרוז שחוזר, אמיתי או מומצא."),
     say: L("Cat, hat, bat... what else sounds like cat?", "גמל, חשמל, נמל... מה עוד מתחרז עם גמל?"),
   }),
+
+  /* ── batch 3/7 · Feelings · 9–60 months, Play · 2–18 months ─────────── */
+  P("cdc-9m-1", "responsive_interaction", 5, S.harvardServeReturn, {
+    do: L("When your baby's face changes, mirror the expression gently and name the feeling as a guess, in a soft voice.", "כשהפנים של התינוק/ת משתנות, שקפו את ההבעה בעדינות ותנו לרגש שם כניחוש, בקול רך."),
+    say: L("Oh, that face! Are you surprised? Was that a surprise?", "אוי, איזה פרצוף! הופתעת? זאת הייתה הפתעה?"),
+  }),
+  P("cdc-9m-2", "routine_building", 5, S.aapBrightFutures, {
+    do: L("When you step out of the room, say a short, cheerful goodbye and come back soon. Avoid slipping away unseen.", "כשאתם יוצאים מהחדר, אמרו פרידה קצרה ועליזה וחזרו תוך זמן קצר. השתדלו לא להיעלם בלי להגיד."),
+    say: L("I'm going to the kitchen. I'll be right back. Here I am!", "אני הולך/ת למטבח וחוזר/ת מיד. הנה אני!"),
+  }),
+  P("cdc-36m-1", "routine_building", 5, S.aapBrightFutures, {
+    do: L("Keep drop-off short and the same each time: a hug, your goodbye phrase, and when you'll return in words they know.", "שמרו על פרידה קצרה וקבועה בגן: חיבוק, משפט הפרידה שלכם, ומתי תחזרו במילים שהילד/ה מכיר/ה."),
+    say: L("Looks like goodbyes feel hard? I'll be back after nap.", "נראה שקשה להיפרד? אני חוזר/ת אחרי מנוחת הצהריים."),
+  }),
+  P("cdc-60m-1", "executive_function_game", 15, S.harvardExecutiveFunction, {
+    do: L("Play a short board or card game as a family. Say whose turn it is out loud, and when someone loses, name it calmly.", "שחקו משחק קופסה או קלפים קצר עם המשפחה. אמרו בקול של מי התור, וכשמישהו מפסיד, תנו לזה שם ברוגע."),
+    say: L("My turn, then your turn. Losing can feel annoying, right?", "תור שלי ואז תור שלך. להפסיד זה מעצבן, נכון?"),
+    materials: L("Any simple card or board game at home", "משחק קלפים או קופסה פשוט שיש בבית"),
+  }),
+  P("cdc-2m-1", "responsive_interaction", 5, S.whoUnicefCcd, {
+    do: L("When your baby fusses, pick them up, hold them close and talk or hum softly. Notice what settles them best.", "כשהתינוק/ת מתמרמר/ת, הרימו, החזיקו קרוב ודברו או זמזמו בשקט. שימו לב מה הכי מרגיע אותו/ה."),
+    say: L("Shh, shh, I've got you. You're safe with me.", "שש, שש, אני כאן. הכול בסדר, אני איתך."),
+  }),
+  P("cdc-2m-2", "serve_and_return", 5, S.harvardServeReturn, {
+    do: L("Spend a few minutes face to face, close enough to see each other well. Smile, talk softly, and smile back at every smile.", "בלו כמה דקות פנים מול פנים, קרוב מספיק כדי לראות טוב. חייכו, דברו בשקט וענו בחיוך על כל חיוך."),
+    say: L("Hello, you! Is that a smile for me? I see you!", "שלום לך! זה חיוך בשבילי? אני רואה אותך!"),
+  }),
+  P("cdc-4m-1", "responsive_interaction", 5, S.harvardServeReturn, {
+    do: L("When your baby smiles at you from across the room, come over and answer with your face and voice, even briefly.", "כשהתינוק/ת מחייך/ת אליכם מהצד השני של החדר, בואו וענו בפנים ובקול, גם לרגע קצר."),
+    say: L("I saw that smile! You called me, and here I am.", "ראיתי את החיוך! קראת לי, והנה אני."),
+  }),
+  P("cdc-4m-2", "child_directed_play", 5, S.aapPowerOfPlay, {
+    do: L("Try gentle silly things, like funny noises or soft tummy kisses, and repeat whatever brings a chuckle. Stop when they look away.", "נסו דברים מצחיקים ועדינים, כמו קולות משונים או נשיקות על הבטן, וחזרו על מה שמצחיק. עצרו כשהמבט פונה הצידה."),
+    say: L("Boop! Where's your tummy? Boop! You think that's funny?", "בופ! איפה הבטן? בופ! זה מצחיק אותך?"),
+  }),
+  P("cdc-6m-1", "responsive_interaction", 5, S.aapBrightFutures, {
+    do: L("When a new person comes close, hold your baby, greet the person warmly yourself, and let your baby watch from your arms.", "כשאדם חדש מתקרב, החזיקו את התינוק/ת, ברכו את האדם בחום בעצמכם, ותנו לתינוק/ת להסתכל מהידיים שלכם."),
+    say: L("This is our neighbour. I know her. I'm holding you.", "זאת השכנה שלנו. אני מכיר/ה אותה. אני מחזיק/ה אותך."),
+  }),
+  P("cdc-6m-2", "child_directed_play", 5, S.aapPowerOfPlay, {
+    do: L("Sit with your baby in front of a mirror. Wave, make faces, and point to their reflection, following what they look at.", "שבו עם התינוק/ת מול מראה. נפנפו, עשו פרצופים והצביעו על ההשתקפות, לפי מה שמושך את המבט שלו/ה."),
+    say: L("Who's that? That's you! And here's me.", "מי זה? זה את/ה! והנה אני."),
+    materials: L("A mirror at home", "מראה בבית"),
+  }),
+  P("cdc-9m-3", "child_directed_play", 5, S.whoUnicefCcd, {
+    do: L("Play peek-a-boo with a cloth or your hands. Let your baby pull the cloth away, and wait for them to start the next round.", "שחקו קוקו עם בד או עם הידיים. תנו לתינוק/ת למשוך את הבד, וחכו שיתחיל/תתחיל את הסיבוב הבא."),
+    say: L("Where did I go? Peek-a-boo! Here I am!", "איפה אני? קוקו! הנה אני!"),
+    materials: L("A small cloth or scarf", "בד קטן או צעיף"),
+  }),
+  P("cdc-12m-1", "child_directed_play", 5, S.whoUnicefCcd, {
+    do: L("Sit facing each other and play a clapping rhyme slowly. Pause before the clap and let your child's hands lead the rhythm.", "שבו זה מול זה ושחקו בשיר מחיאות כפיים לאט. עצרו לפני המחיאה ותנו לידיים של הילד/ה להוביל את הקצב."),
+    say: L("Clap, clap, clap! Your turn. Clap, clap!", "כפיים, כפיים! תורך. עוד פעם כפיים!"),
+  }),
+  P("cdc-15m-1", "child_directed_play", 10, S.aapPowerOfPlay, {
+    do: L("Go where other small children play, like a playground or a friend's home. Sit near your child and let them watch and join when ready.", "לכו למקום שבו ילדים קטנים משחקים, כמו גינה או בית של חברים. שבו ליד הילד/ה ותנו להסתכל ולהצטרף כשבא לו/ה."),
+    say: L("Look, they're filling the bucket. Want to try too?", "תראה/י, הם ממלאים את הדלי. רוצה לנסות גם?"),
+  }),
+  P("cdc-15m-2", "joint_attention", 5, S.harvardServeReturn, {
+    do: L("When your child holds something up to show you, stop what you are doing, look at it with them, and name it with interest.", "כשהילד/ה מרים/ה משהו כדי להראות לכם, עצרו את מה שאתם עושים, הסתכלו עליו יחד ותנו לו שם בעניין."),
+    say: L("Oh, you're showing me your teddy! He's so soft.", "וואו, את/ה מראה לי את הדובי! הוא כל כך רך."),
+  }),
+  P("cdc-18m-1", "responsive_interaction", 10, S.aapBrightFutures, {
+    do: L("At a safe park, stay in one visible spot while your child explores. When they look back, smile and wave so they know you're there.", "בגינה בטוחה, הישארו במקום אחד שרואים אתכם בזמן שהילד/ה חוקר/ת. כשהוא/היא מסתכל/ת אחורה, חייכו ונפנפו."),
+    say: L("I'm right here on the bench. Go see!", "אני פה על הספסל. לך/לכי לראות!"),
+  }),
+  P("cdc-18m-2", "joint_attention", 5, S.harvardServeReturn, {
+    do: L("When your child points, look where they point first, then name what you see together, and add one thing about it.", "כשהילד/ה מצביע/ה, הסתכלו קודם לאן שהוא/היא מצביע/ה, תנו שם למה שרואים, והוסיפו עליו עוד משהו."),
+    say: L("You see the bird! A bird on the fence. It's singing.", "ראית ציפור! ציפור על הגדר. היא שרה."),
+  }),
+  P("cdc-18m-3", "routine_building", 5, S.cdcMilestones, {
+    do: L("At dressing time, slow down and offer the sleeve or sock so your child can push in an arm or foot. Name each step.", "בזמן ההלבשה, האטו והגישו את השרוול או הגרב כך שהילד/ה יוכל/תוכל להכניס יד או רגל. תנו שם לכל שלב."),
+    say: L("Arm in the sleeve... whoosh! Your arm came out!", "יד לשרוול... ושש! היד יצאה!"),
+  }),
 ];
 
 /* ───────────────────────────── helpers ───────────────────────────── */
