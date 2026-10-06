@@ -251,6 +251,11 @@ const PRINT_SHELL_ALLOWLIST = new Set([
   PRESET_SEAM,
   "components/sections/Screening.tsx",
   "components/sections/SchoolBrief.tsx",
+  // B-GROWTH-37: the "Things {name} said" month page prints the child's kept
+  // quotes and their days ONLY — its doc builder `saidPrintDoc` takes the
+  // quote list and nothing else (no record, no milestone, no plan; pinned in
+  // components/growth/SaidPage.test.tsx), so no clinical field can reach it.
+  "components/growth/SaidPage.tsx",
 ]);
 
 describe("Wave-4 (c) — single-serializer seam (static source scan over src/components)", () => {
@@ -286,6 +291,9 @@ describe("Wave-4 (c) — single-serializer seam (static source scan over src/com
     // Screening's printable must come from the ceiling-bound monitoring builder.
     const screening = COMPONENT_FILES.find((f) => f.rel === "components/sections/Screening.tsx")!.code;
     expect(screening).toMatch(/\bbuildMonitoringReportDoc\b/);
+    // The said page's printable must come from its quotes-only builder.
+    const said = COMPONENT_FILES.find((f) => f.rel === "components/growth/SaidPage.tsx")!.code;
+    expect(said).toMatch(/openPrintableReport\(saidPrintDoc\(/);
   });
 
   it("B-CAREPRO-28: AskSpecialist prints ONLY through the seam's useConsultPdf, from ceiling-bound sections — never lib/reportExport directly", () => {
