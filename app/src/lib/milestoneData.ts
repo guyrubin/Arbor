@@ -55,8 +55,11 @@ const ASHA_FEEDING_NOTE = "Feeding item: ASHA's feeding page and the age range i
 const ASHA_INTELLIGIBILITY_NOTE = "No intelligibility percentage is shown: the 50/75/100 % rule of thumb (commonly attributed to Coplan & Gleason 1988) is not a confirmed item of ASHA's milestone page and later normative data contest it (pre-review R07). The row names the skill in words; no age line until the reviewer re-sources it.";
 
 /** B-LOOP-03 — CDC rows whose skill is eating or drinking: tagged "feeding"
- *  so the parent finds them on the Food & growth shelf (lib/shelves). */
-const CDC_FEEDING_IDS: ReadonlySet<string> = new Set(["cdc-15m-8", "cdc-18m-9", "cdc-60m-12"]);
+ *  so the parent finds them on the Food & growth shelf (lib/shelves).
+ *  B-LOOP-01 (forks, framer ruling 6 Oct): the two fork rows are EATING skills —
+ *  cdc-36m-11 "Uses a fork" joins cdc-60m-12 "Uses a fork and spoon well" here
+ *  (it had filed on Hands by its independence_adaptive_skills domain). */
+const CDC_FEEDING_IDS: ReadonlySet<string> = new Set(["cdc-15m-8", "cdc-18m-9", "cdc-36m-11", "cdc-60m-12"]);
 
 /** B-LOOP-01 (split, 6 Oct) — CDC movement rows that are HAND skills: tagged
  *  "fine_motor" so the row and its practice file on the Hands shelf. */
@@ -205,8 +208,9 @@ export const CDC_MILESTONES: Milestone[] = [
   cdc(36, "3 years", "cognition_executive_function", 7, "Draws a circle", "Draws a circle when you show them how.", "Copies a round shape after watching you draw one."),
   cdc(36, "3 years", "cognition_executive_function", 8, "Avoids hot things when warned", "Avoids touching hot objects, like a stove, when you warn them.", "Heeds 'hot!' and keeps their hands back."),
   // B-LOOP-01 (split, 6 Oct): this row fused THREE CDC 3-year items ("Strings beads / uses utensils"). One skill
-  // per row now: cdc-36m-9 strings items (fine motor → Hands), cdc-36m-10 puts on some clothes, cdc-36m-11 uses a
-  // fork (self-help → Hands). Same source record, same band.
+  // per row now: cdc-36m-9 strings items (fine motor → Hands), cdc-36m-10 puts on some clothes (self-help → Hands),
+  // cdc-36m-11 uses a fork (an eating skill → Body, food & growth via CDC_FEEDING_IDS; forks ruling 6 Oct).
+  // Same source record, same band.
   cdc(36, "3 years", "sensory_motor_patterns", 9, "Strings items together", "Strings items together, like large beads or macaroni.", "Threads big beads or pasta onto a string."),
   cdc(36, "3 years", "independence_adaptive_skills", 10, "Puts on some clothes", "Puts on some clothes by themselves, like loose trousers or a jacket.", "Pulls on loose trousers or a jacket with little help."),
   cdc(36, "3 years", "independence_adaptive_skills", 11, "Uses a fork", "Uses a fork.", "Eats some of a meal with a fork."),

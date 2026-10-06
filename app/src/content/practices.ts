@@ -592,6 +592,7 @@ export const PRACTICES: readonly Practice[] = [
     do: L("When dressing, lay out loose trousers or a jacket and let your child put on one piece themselves, helping only if asked.", "בזמן ההתלבשות, הניחו מכנסיים רחבים או מעיל ותנו לילד/ה ללבוש פריט אחד לבד, ועזרו רק אם מבקשים."),
     say: L("One arm in, now the other. You're putting it on!", "יד אחת בפנים, עכשיו השנייה. את/ה לובש/ת לבד!"),
   }),
+  // Forks ruling (6 Oct): cdc-36m-11 is an eating skill, so this practice files on Body, food & growth (FOOD_BANNED applies).
   P("cdc-36m-11", "fine_motor_play", 5, S.cdcMilestones, {
     do: L("At a family meal, give your child their own small fork and let them spear soft pieces their own way, mess included.", "בארוחה משפחתית, תנו לילד/ה מזלג קטן משלו/ה ותנו לו/ה לנעוץ חתיכות רכות בדרך שלו/ה, כולל הלכלוך."),
     say: L("Your own fork! Poke the pasta… got it.", "מזלג משלך! נועצים בפסטה... הצלחת."),

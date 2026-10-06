@@ -177,19 +177,20 @@ describe("B-LOOP-03 — milestoneShelf over the catalogue", () => {
     for (const m of ALL_MILESTONES) expect(SHELF_IDS, m.id).toContain(milestoneShelf(m));
   });
 
-  it("the tagged rows: six feeding rows on Body, food & growth, one fine-motor row on Hands, no sleep row in the catalogue", () => {
+  it("the tagged rows: seven feeding rows on Body, food & growth (both fork rows among them), one fine-motor row on Hands, no sleep row in the catalogue", () => {
     const tagged = ALL_MILESTONES.filter((m) => m.tags?.length).map((m) => `${m.id}:${m.tags!.join(",")}`);
-    expect(tagged.sort()).toEqual(["asha-feed-12m:feeding", "asha-feed-24m:feeding", "asha-feed-9m:feeding", "cdc-15m-8:feeding", "cdc-18m-9:feeding", "cdc-36m-9:fine_motor", "cdc-60m-12:feeding"]);
+    expect(tagged.sort()).toEqual(["asha-feed-12m:feeding", "asha-feed-24m:feeding", "asha-feed-9m:feeding", "cdc-15m-8:feeding", "cdc-18m-9:feeding", "cdc-36m-11:feeding", "cdc-36m-9:fine_motor", "cdc-60m-12:feeding"]);
     for (const m of ALL_MILESTONES.filter((x) => x.tags?.includes("feeding"))) expect(milestoneShelf(m), m.id).toBe("food");
   });
 
-  it("B-LOOP-01 (split): the three 3-year hand skills are three rows, all on Hands — and each row's practice sits on the same shelf", async () => {
+  it("B-LOOP-01 (split): the three fused 3-year skills are three rows — beads and clothes on Hands, the fork on Body, food & growth — and each row's practice sits on the same shelf", async () => {
     const { PRACTICES } = await import("../../content/practices");
-    for (const id of ["cdc-36m-9", "cdc-36m-10", "cdc-36m-11"]) {
+    const want: Record<string, string> = { "cdc-36m-9": "hands", "cdc-36m-10": "hands", "cdc-36m-11": "food" };
+    for (const [id, shelf] of Object.entries(want)) {
       const m = ALL_MILESTONES.find((x) => x.id === id)!;
       expect(m, id).toBeTruthy();
-      expect(milestoneShelf(m), id).toBe("hands");
-      expect(PRACTICES.find((p) => p.id === `pr-${id}`)?.shelf, `pr-${id}`).toBe("hands");
+      expect(milestoneShelf(m), id).toBe(shelf);
+      expect(PRACTICES.find((p) => p.id === `pr-${id}`)?.shelf, `pr-${id}`).toBe(shelf);
     }
     // a stored cdc-36m-9 doc without the tag still resolves by id (the catalogue row carries it)
     const { tags: _drop, ...stored } = ALL_MILESTONES.find((m) => m.id === "cdc-36m-9")!;
@@ -197,6 +198,21 @@ describe("B-LOOP-03 — milestoneShelf over the catalogue", () => {
     // NEGATIVE CONTROL: without the tag a sensory_motor_patterns row files on Moving (the defect)
     expect(milestoneShelf({ id: "custom-beads", domain: "sensory_motor_patterns", custom: true })).toBe("moving");
     expect(milestoneShelf({ id: "custom-beads", domain: "sensory_motor_patterns", custom: true, tags: ["fine_motor"] })).toBe("hands");
+  });
+
+  it("B-LOOP-01 (forks, framer ruling 6 Oct): both fork rows are eating skills — cdc-36m-11 and cdc-60m-12 and their practices file on Body, food & growth, never on Hands", async () => {
+    const { PRACTICES } = await import("../../content/practices");
+    for (const id of ["cdc-36m-11", "cdc-60m-12"]) {
+      const m = ALL_MILESTONES.find((x) => x.id === id)!;
+      expect(m.tags, id).toContain("feeding");
+      expect(milestoneShelf(m), id).toBe("food");
+      expect(PRACTICES.find((p) => p.id === `pr-${id}`)?.shelf, `pr-${id}`).toBe("food");
+      // a stored doc without the tag still resolves by id (the catalogue row carries it)
+      const { tags: _drop, ...stored } = m;
+      expect(milestoneShelf(stored), `${id} stored`).toBe("food");
+    }
+    // every catalogue row whose title names a fork is on the food shelf
+    for (const m of ALL_MILESTONES.filter((x) => /\bfork\b/i.test(x.title))) expect(milestoneShelf(m), m.id).toBe("food");
   });
 
   it("a stored catalogue doc without tags resolves by id; a parent-added row by its own tags/domain; an untagged body row → Body, food & growth", () => {
