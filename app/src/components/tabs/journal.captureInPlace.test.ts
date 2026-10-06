@@ -356,3 +356,28 @@ describe("critic r2 — Journal: real modules, an honest aside, the quote at eve
     expect(read("components/search/TopbarSearch.tsx")).toContain('className="field-bare min-h-11 self-stretch"');
   });
 });
+
+/* NEXTLEVEL critic round 1 — the parent's words lead their row (B-ASKJB-34),
+   and the parent register carries no upper-case labels. */
+describe("NEXTLEVEL r1 — Journal: the parent's words are the row; sentence case", () => {
+  const JOURNAL = stripComments(read("components/tabs/JournalTab.tsx"));
+  const SHEET = stripComments(read("components/journal/JournalEntrySheet.tsx"));
+  it("a parent-written moment row leads with the words verbatim (editorial, t-lg, FreeText); the type label + time are one quiet caption; no provenance chip", () => {
+    expect(JOURNAL).toContain('const parentLead = prov === "manual" && signal.kind === "moment" && !!detail.trim();');
+    const lead = JOURNAL.slice(JOURNAL.indexOf("{parentLead ? ("), JOURNAL.indexOf(") : (", JOURNAL.indexOf("{parentLead ? (")));
+    expect(lead).toContain('data-testid="journal-row-words"');
+    expect(lead).toContain("<FreeText text={detail} />");
+    expect(lead).toContain('fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)"');
+    expect(lead).toContain('data-testid="journal-row-caption"');
+    expect(lead.indexOf("journal-row-words")).toBeLessThan(lead.indexOf("<bdi>{title}</bdi>"));
+    expect(lead).not.toContain("{provLabel}");
+  });
+  it("no upper-case or letter-spaced labels on #/journal or its entry sheet (Hebrew must not be letter-spaced)", () => {
+    for (const src of [JOURNAL, SHEET]) {
+      expect(src).not.toMatch(/\buppercase\b/);
+      expect(src).not.toMatch(/tracking-(wide|wider|widest|\[0\.)/);
+      expect(src).not.toMatch(/text-\[(10|9)px\]/);
+    }
+    expect(JOURNAL).not.toContain('t("journal.eyebrow")');
+  });
+});

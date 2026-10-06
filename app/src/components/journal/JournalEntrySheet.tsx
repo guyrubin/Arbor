@@ -119,14 +119,14 @@ export default function JournalEntrySheet({
           <dl className="grid grid-cols-2 gap-3 text-[12px]">
             {when && (
               <div className="rounded-xl p-3" style={{ background: "var(--arbor-paper-deep)" }}>
-                <dt className="font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-faint)" }}>
+                <dt className="font-bold" style={{ color: "var(--arbor-faint)" }}>
                   {t("elev.closeloop.entry.when")}
                 </dt>
                 <dd className="mt-1 font-bold" style={{ color: "var(--arbor-ink)" }}>{when}</dd>
               </div>
             )}
             <div className="rounded-xl p-3" style={{ background: "var(--arbor-paper-deep)" }}>
-              <dt className="font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-faint)" }}>
+              <dt className="font-bold" style={{ color: "var(--arbor-faint)" }}>
                 {t("elev.closeloop.entry.noted")}
               </dt>
               <dd className="mt-1 font-bold" dir="auto" style={{ color: "var(--arbor-ink)" }}>{provLabel}</dd>
@@ -154,7 +154,7 @@ export default function JournalEntrySheet({
               dir="auto"
               style={{ background: PASTEL.mint.soft, color: PASTEL.mint.ink }}
             >
-              <p className="font-extrabold uppercase tracking-wider text-[10px]">
+              <p className="font-bold t-xs">
                 {t("elev.waveR.provenance.chip")}
               </p>
               <p className="mt-1 font-bold">

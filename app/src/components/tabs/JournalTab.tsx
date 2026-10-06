@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
+import { FreeText } from "../ui/FreeText";
 import { Skeleton } from "../ui/Skeleton";
 import { EmptyState, GhostBlock } from "../ui/EmptyState";
 import { statesText } from "../../lib/i18nElevation/states";
@@ -148,6 +149,12 @@ function JournalRow({
   const tone: PastelKey = domain ? domainVisual(domain).tone : (signal.tone as PastelKey);
   const p = PASTEL[tone];
   const glyph = domain ? DOMAIN_MS[domain] : KIND_MS[signal.kind];
+  // NEXTLEVEL critic r1 (B-ASKJB-34, P0): on a row the parent wrote, the
+  // parent's words ARE the row — verbatim, in the editorial serif — and the
+  // machine type label ("A moment", "Departure Refusal") plus the time drop to
+  // one quiet caption. Parent rows carry no provenance chip; Arbor and child
+  // rows keep theirs, in sentence case.
+  const parentLead = prov === "manual" && signal.kind === "moment" && !!detail.trim();
   return (
     /* TJB-13: the whole row is the affordance. It used to be an inert
        <article>: the feed showed a title and a two-line clamp and there was no
@@ -169,6 +176,18 @@ function JournalRow({
       >
         <Icon name={glyph} size={22} fill={1} />
       </span>
+      {parentLead ? (
+      <div className="min-w-0 flex-1">
+        <p data-testid="journal-row-words" className="leading-snug line-clamp-3" style={{ fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>
+          <FreeText text={detail} />
+        </p>
+        <p data-testid="journal-row-caption" className="mt-1 t-xs" style={{ color: "var(--arbor-muted)" }}>
+          <bdi>{title}</bdi>
+          {when && <>{" · "}<bdi>{when}</bdi></>}
+          {signal.resolved && <>{" · "}<span data-testid="journal-row-resolved">{resolvedLabel}</span></>}
+        </p>
+      </div>
+      ) : (
       <div className="min-w-0 flex-1">
         {/* W2: the parent-visible entry meaning leads; provenance/time remain readable metadata. */}
         <p className="t-base font-bold leading-relaxed" style={{ color: "var(--arbor-ink)" }} dir="auto">
@@ -178,7 +197,7 @@ function JournalRow({
           {/* Provenance badge — AUTO gets the accent "Arbor" mark, CHILD a soft
               lav chip with the child's name, MANUAL a neutral "You" one. */}
           <span
-            className="inline-flex items-center gap-1 text-[var(--t-xs)] font-extrabold uppercase tracking-wide rounded-md px-2 py-0.5"
+            className="inline-flex items-center gap-1 text-[var(--t-xs)] font-bold rounded-md px-2 py-0.5"
             dir="auto"
             style={
               prov === "auto"
@@ -198,7 +217,7 @@ function JournalRow({
           {originLabel && (
             <span
               data-testid="journal-row-origin"
-              className="inline-flex items-center gap-1 t-sm font-extrabold uppercase tracking-wide rounded-md px-1.5 py-0.5"
+              className="inline-flex items-center gap-1 t-sm font-bold rounded-md px-1.5 py-0.5"
               dir="auto"
               style={{ background: PASTEL.mint.soft, color: PASTEL.mint.ink }}
             >
@@ -227,6 +246,7 @@ function JournalRow({
           </p>
         )}
       </div>
+      )}
       {signal.photo && (
         <img
           src={signal.photo}
@@ -476,9 +496,10 @@ export default function JournalTab({ primaryMoveProps, densityToggle }: { primar
             {/* Critic r2: TimelineTab's density toggle rides in the header on
                 #/journal (one module with the H1, not a stamp of its own). */}
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <span className="inline-flex items-center gap-1.5 t-xs font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-lav-ink)" }}>
-                <Icon name="auto_stories" size={16} fill={1} /> {t("journal.eyebrow")}
-              </span>
+              {/* NEXTLEVEL critic r1: the "Catch the moment before it's gone"
+                  eyebrow is gone — it repeated the topbar subtitle and competed
+                  with the H1. */}
+              <span aria-hidden="true" />
               {densityToggle}
             </div>
             <h1 className="mt-2 t-2xl leading-[1.08] tracking-[-0.03em]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
@@ -568,7 +589,7 @@ export default function JournalTab({ primaryMoveProps, densityToggle }: { primar
       <section ref={composeRef} data-module="journal-compose" className="rounded-[var(--r-lg)] p-4 sm:p-5" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-xs)" }}>
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
-            <p className="t-xs font-extrabold uppercase tracking-[0.16em]" style={{ color: "var(--arbor-lav-ink)" }}>{t("journal.compose.eyebrow")}</p>
+            <p className="t-xs font-bold" style={{ color: "var(--arbor-lav-ink)" }}>{t("journal.compose.eyebrow")}</p>
           <h2 className="mt-1 t-lg font-extrabold tracking-[-0.01em]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
             {t("journal.compose.title")}
           </h2>
@@ -601,7 +622,7 @@ export default function JournalTab({ primaryMoveProps, densityToggle }: { primar
             (deterministic per child+day; elev.prompt.* strings, registered in
             i18nElevation/journal.ts). Tap toggles the writing cue above. */}
         <div className="mt-3">
-          <p className="t-xs font-extrabold uppercase tracking-wider mb-1.5" style={{ color: "var(--arbor-muted)" }}>
+          <p className="t-xs font-bold mb-1.5" style={{ color: "var(--arbor-muted)" }}>
             {t("elev.prompt.lead")}
           </p>
           {/* Critic r1: below sm the chips are ONE horizontal snap row, not
@@ -782,7 +803,7 @@ export default function JournalTab({ primaryMoveProps, densityToggle }: { primar
                 className="sticky top-0 z-[5] -mx-1 flex items-center gap-3 px-1 py-1.5"
                 style={{ background: "var(--arbor-paper)" }}
               >
-                <h3 className="t-xs font-extrabold uppercase tracking-wider text-start" style={{ color: "var(--arbor-muted)" }}>
+                <h3 className="t-xs font-bold text-start" style={{ color: "var(--arbor-muted)" }}>
                   {group.label}
                 </h3>
                 <span className="h-px flex-1" style={{ background: "var(--arbor-rule)" }} aria-hidden />
