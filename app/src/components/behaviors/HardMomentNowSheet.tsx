@@ -49,6 +49,17 @@ export function hardMomentSheetOrder<T extends { id: string }>(available: readon
   return [...lead, ...available.filter((card) => !leadIds.has(card.id))];
 }
 
+/** NEXTLEVEL critic r1 (overview · design · P1): the picker leads with at
+ *  most this many record matches; every other card stays one tap away behind
+ *  "Something else" (Law 6: nothing is dropped). */
+export const SHEET_LEAD_MAX = 3;
+
+/** Pure: split the matched cards into the lead (≤ SHEET_LEAD_MAX) and the
+ *  rest, which joins the disclosure with the category groups. */
+export function hardMomentSheetLead<T extends { id: string }>(matched: readonly T[], max: number = SHEET_LEAD_MAX): { lead: T[]; rest: T[] } {
+  return { lead: matched.slice(0, max), rest: matched.slice(max) };
+}
+
 /** Pure: the cards the sheet offers for a child right now (the doors' gate). */
 export function hardMomentSheetCards(ctx: HardMomentContext, logs: Pick<BehaviorLog, "behaviorType" | "timestamp">[]): { ordered: HardMomentCard[]; matchedIds: string[] } {
   const available = availableHardMomentCards(ctx);
@@ -81,8 +92,11 @@ export default function HardMomentNowSheet() {
   const childFirst = (childProfile.name || "").split(" ")[0];
   const card = ordered.find((c) => c.id === selectedId) ?? null;
   const matched = ordered.filter((c) => matchedIds.includes(c.id));
+  // The matches past the lead fall back into their category groups.
+  const { lead } = hardMomentSheetLead(matched);
+  const leadIds = new Set(lead.map((c) => c.id));
   const groups = HARD_MOMENT_CATEGORIES
-    .map((category) => [category, ordered.filter((c) => c.category === category && !matchedIds.includes(c.id))] as [HardMomentCategory, HardMomentCard[]])
+    .map((category) => [category, ordered.filter((c) => c.category === category && !leadIds.has(c.id))] as [HardMomentCategory, HardMomentCard[]])
     .filter(([, cards]) => cards.length > 0);
 
   const chip = (c: HardMomentCard) => (
@@ -114,13 +128,34 @@ export default function HardMomentNowSheet() {
         ) : !card ? (
           <>
             <p className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{t("hm.now.pick")}</p>
-            {matched.length > 0 && (
+            {lead.length > 0 && (
               <div className="space-y-2" data-testid="hard-moment-now-matched">
                 <p className="text-xs font-bold" style={{ color: "var(--arbor-green-ink)" }}>{t("hm.now.matched")}</p>
-                <div className="flex flex-wrap gap-2">{matched.map(chip)}</div>
+                <div className="flex flex-wrap gap-2">{lead.map(chip)}</div>
               </div>
             )}
-            {groups.map(([category, cards]) => (
+            {/* NEXTLEVEL critic r1: one thing in a hard moment — the record's
+                matches lead (≤ 3); the categories wait behind one disclosure.
+                With no match the categories show directly (nothing to lead). */}
+            {lead.length > 0 ? (
+              <details data-testid="hard-moment-now-else" className="group">
+                <summary
+                  className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 px-1 text-sm font-bold [&::-webkit-details-marker]:hidden"
+                  style={{ color: "var(--arbor-green-ink)" }}
+                >
+                  {t("hm.now.else")}
+                  <Icon name="expand_more" size={16} className="transition group-open:rotate-180" />
+                </summary>
+                <div className="mt-2 space-y-4">
+                  {groups.map(([category, cards]) => (
+                    <div key={category} className="space-y-2">
+                      <p className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t(`hm.cat.${category}`)}</p>
+                      <div className="flex flex-wrap gap-2">{cards.map(chip)}</div>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            ) : groups.map(([category, cards]) => (
               <div key={category} className="space-y-2">
                 <p className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t(`hm.cat.${category}`)}</p>
                 <div className="flex flex-wrap gap-2">{cards.map(chip)}</div>

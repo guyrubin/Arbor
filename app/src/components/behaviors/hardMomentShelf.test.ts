@@ -148,6 +148,22 @@ describe("B-ASKJB-31 — the Hard moment now sheet and its doors", async () => {
     expect(hardMomentSheetOrder([{ id: "a" }, { id: "b" }, { id: "c" }], [{ id: "c" }, { id: "x" }]).map((c) => c.id)).toEqual(["c", "a", "b"]);
   });
 
+  it("NEXTLEVEL critic r1 — one thing in a hard moment: ≤ 3 record matches lead, the rest wait behind 'Something else'", async () => {
+    const { hardMomentSheetLead, SHEET_LEAD_MAX } = await import("./HardMomentNowSheet");
+    expect(SHEET_LEAD_MAX).toBe(3);
+    const many = ["a", "b", "c", "d", "e"].map((id) => ({ id }));
+    const { lead, rest } = hardMomentSheetLead(many);
+    expect(lead.map((c) => c.id)).toEqual(["a", "b", "c"]);
+    expect(rest.map((c) => c.id)).toEqual(["d", "e"]);
+    // The lead row renders `lead`, never every match; the categories sit inside one <details>.
+    expect(SHEET).toContain("{lead.map(chip)}");
+    expect(SHEET).not.toContain("{matched.map(chip)}");
+    expect(SHEET).toMatch(/<details data-testid="hard-moment-now-else"/);
+    expect(SHEET).toContain('t("hm.now.else")');
+    // Law 6: the groups only drop the lead cards, so every card stays one tap away.
+    expect(SHEET).toContain("!leadIds.has(c.id)");
+  });
+
   it("after the pilot expires the sheet offers nothing, EN and HE (every door's gate)", () => {
     expect(hardMomentSheetCards({ now: afterPilot, ageMonths: 48, locale: "en" }, refusals).ordered).toEqual([]);
     expect(hardMomentSheetCards({ now: afterPilot, ageMonths: 48, locale: "he" }, refusals).ordered).toEqual([]);
@@ -197,7 +213,7 @@ describe("B-ASKJB-31 — the Hard moment now sheet and its doors", async () => {
 
   it("the sheet copy exists in EN and HE, with no Latin on HE and no SOS in either", async () => {
     const { en, he } = await import("../../lib/i18n");
-    for (const k of ["hm.now.title", "hm.now.pick", "hm.now.matched", "hm.now.back", "hm.now.tryTonight", "hm.now.talk", "hm.now.none", "hm.ref.eyebrow", "hm.ref.note", "hm.ref.open", "hm.ref.dismiss"]) {
+    for (const k of ["hm.now.title", "hm.now.pick", "hm.now.matched", "hm.now.back", "hm.now.else", "hm.now.tryTonight", "hm.now.talk", "hm.now.none", "hm.ref.eyebrow", "hm.ref.note", "hm.ref.open", "hm.ref.dismiss"]) {
       expect(en[k], k).toBeTruthy();
       expect(he[k], k).toBeTruthy();
       expect(he[k], k).not.toMatch(/[A-Za-z]/);
