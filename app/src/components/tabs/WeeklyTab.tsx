@@ -22,6 +22,13 @@ import { fetchDigestEmailStatus, readEmailOptIn, writeEmailOptIn, type DigestEma
 import type { WeeklyDigest } from "../../lib/api";
 import WhatWorkedCard, { whatWorkedThisWeek } from "../weekly/WhatWorkedCard";
 
+/* B-OCCL-02 (6 Oct): the route's ONE data-primary-move literal. It is spread
+   on the control that performs the move — the letter's "Make it today's step"
+   (RecapStoryCards, last card) or, on a history week, the insight card's
+   accept — never on the letter's wrapper (650 px at 375, it ran under the
+   capture dock). Both branches are mutually exclusive (showRecap). */
+const ACCEPT_STAMP = { "data-primary-move": "accept-recap-recommendation" } as const;
+
 /**
  * WeeklyTab — the weekly report surface. W2 2.1 hoisted ALL generation state
  * into hooks/useWeeklyRecap (app-level: the Since-strip mounts the same hook
@@ -151,6 +158,60 @@ export default function WeeklyTab() {
     track("recap_email_optin", { on: next, channelEnabled: emailStatus.enabled });
   };
 
+  /* TJB-10 / principle 3: ONE gradient per screen, and it belongs to
+     the surface's primaryMove — "accept-recap-recommendation"
+     (surfaceContract weekly). Retelling a week the parent already
+     has is a secondary move and now reads as one; only "Create this
+     week's story", when there is nothing to accept yet, keeps the
+     gradient, because then it IS the only move on the screen. */
+  const retellButton = (
+    <button
+      onClick={() => void generate()}
+      disabled={generating}
+      className="inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 disabled:opacity-60"
+      style={hasStoredCurrentWeek
+        ? { background: "transparent", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)", minHeight: 44 }
+        : { background: "var(--arbor-gradient-primary)", color: "var(--arbor-on-accent)", minHeight: 44 }}
+    >
+      {generating ? (<><Icon name="refresh" size={16} className="animate-spin" /> {t("wk.generating")}</>) : (<><Icon name="auto_awesome" size={16} /> {hasStoredCurrentWeek ? t("wk.regenerate") : t("wk.generate")}</>)}
+    </button>
+  );
+
+  /* History strip — F-06: chipIds always leads with the current week
+     (synthetic when no report is stored for it yet), so the newest chip
+     is never a week in the past. B-OCCL-02: the strip (and, once this week
+     is stored, the outline Retell) sits UNDER the week's story instead of
+     above it — at 375 the two rows pushed the letter's move under the
+     capture dock. Nothing is removed; the order changed. */
+  const afterStory = (hasStoredCurrentWeek || reports.length > 0) ? (
+    <div data-testid="weekly-after-story" className="space-y-3">
+      {hasStoredCurrentWeek && retellButton}
+      {reports.length > 0 && (
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+        <Icon name="history" size={14} className="flex-shrink-0" style={{ color: "var(--arbor-muted)" }} />
+        {chipIds.map((id) => {
+          const on = id === (selectedId ?? currentId);
+          return (
+            <button
+              key={id}
+              onClick={() => setSelectedId(id)}
+              className="text-[12px] font-bold px-3 py-1.5 rounded-full whitespace-nowrap transition flex-shrink-0"
+              style={on ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", minHeight: 44 } : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)", minHeight: 44 }}
+            >
+              {/* TJB-19: the chip printed the raw week id — "2026-W37" is a
+                  storage key, and F-06 already established that it never
+                  renders. labelFor is the same resolver the page subtitle
+                  uses, so a chip and the header agree in both languages; the
+                  current week names itself rather than a date. */}
+              {chipLabel(id)}
+            </button>
+          );
+        })}
+      </div>
+      )}
+    </div>
+  ) : null;
+
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
       {/* TJB-10: back went to #/timeline — a route the parent did not come from
@@ -171,69 +232,36 @@ export default function WeeklyTab() {
       <div className="flex items-start gap-4">
         <HeroAvatar size={48} mood="calm" animate={false} decorative className="mt-0.5" />
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] font-extrabold uppercase mb-1" style={{ color: "var(--arbor-muted)", letterSpacing: "0.14em" }}>
+          {/* B-OCCL-02: the eyebrow carries the week label (was a separate
+              subtitle line under the H1) — one 12 px line, sentence case. */}
+          <p data-testid="weekly-eyebrow" className="text-[12px] font-bold mb-1 truncate" style={{ color: "var(--arbor-muted)" }}>
             {t("elev.personal.weekly.eyebrow")}
+            {" · "}
+            {/* The week label is LOCALIZED HERE, from the report's stored date
+                anchor — never read back as a frozen English string (P1 language
+                fix): labelFor honors a stored label only in its own language.
+                F-06: the raw week id (a storage key) never renders here. */}
+            {selected ? labelFor(selected) : currentLabel}
           </p>
           <PageHeader
+            flush
             title={t("wk.title", { first })}
-            /* The week label is LOCALIZED HERE, from the report's stored date
-               anchor — never read back as a frozen English string (P1 language
-               fix): labelFor honors a stored label only in its own language.
-               F-06: the raw week id (a storage key) never renders here. */
-            subtitle={selected ? labelFor(selected) : currentLabel}
-            action={
-              /* TJB-10 / principle 3: ONE gradient per screen, and it belongs to
-                 the surface's primaryMove — "accept-recap-recommendation"
-                 (surfaceContract weekly). Retelling a week the parent already
-                 has is a secondary move and now reads as one; only "Create this
-                 week's story", when there is nothing to accept yet, keeps the
-                 gradient, because then it IS the only move on the screen. */
-              <button
-                onClick={() => void generate()}
-                disabled={generating}
-                className="inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 disabled:opacity-60"
-                style={hasStoredCurrentWeek
-                  ? { background: "transparent", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)", minHeight: 44 }
-                  : { background: "var(--arbor-gradient-primary)", color: "var(--arbor-on-accent)", minHeight: 44 }}
-              >
-                {generating ? (<><Icon name="refresh" size={16} className="animate-spin" /> {t("wk.generating")}</>) : (<><Icon name="auto_awesome" size={16} /> {hasStoredCurrentWeek ? t("wk.regenerate") : t("wk.generate")}</>)}
-              </button>
-            }
+            /* B-OCCL-02: once this week is stored, Retell is a secondary move
+               and sits under the letter (it wrapped to its own 44 px row here
+               at 375); "Create this week's story" stays in the header — then it
+               IS the only move on the screen. */
+            action={hasStoredCurrentWeek ? undefined : retellButton}
           />
         </div>
       </div>
 
-      {/* History strip — F-06: chipIds always leads with the current week
-          (synthetic when no report is stored for it yet), so the newest chip
-          is never a week in the past. */}
-      {reports.length > 0 && (
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-          <Icon name="history" size={14} className="flex-shrink-0" style={{ color: "var(--arbor-muted)" }} />
-          {chipIds.map((id) => {
-            const on = id === (selectedId ?? currentId);
-            return (
-              <button
-                key={id}
-                onClick={() => setSelectedId(id)}
-                className="text-[11px] font-bold px-3 py-1.5 rounded-full whitespace-nowrap transition flex-shrink-0"
-                style={on ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", minHeight: 44 } : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)", minHeight: 44 }}
-              >
-                {/* TJB-19: the chip printed the raw week id — "2026-W37" is a
-                    storage key, and F-06 already established that it never
-                    renders. labelFor is the same resolver the page subtitle
-                    uses, so a chip and the header agree in both languages; the
-                    current week names itself rather than a date. */}
-                {chipLabel(id)}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
       {generating && !selected ? (
+        <>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Skeleton className="h-24" /><Skeleton className="h-24" /><Skeleton className="h-24" />
         </div>
+        {afterStory}
+        </>
       ) : !selected ? (
         /* F-06: the current week with nothing stored yet says so honestly —
            it never falls back to rendering a past week as if it were now. */
@@ -241,6 +269,7 @@ export default function WeeklyTab() {
            module whose ONE move is the explicit secondary "capture-moment"
            (surfaceContract weekly) — the primary move has nothing to accept
            until a week exists. */
+        <>
         <div data-module="weekly-empty" className={`${cardCls} p-8 text-center text-sm`} style={{ color: "var(--arbor-muted)" }}>
           {/* ENG-07: the copy promised "log a moment and this week's report will
               build itself". Nothing builds itself — the report is generated when
@@ -259,6 +288,8 @@ export default function WeeklyTab() {
             <Icon name="add" size={16} /> {t("elev.wk.logMoment")}
           </button>
         </div>
+        {afterStory}
+        </>
       ) : (
         <>
           {/* ── W2 2.1: the recap ritual — the PRIMARY view of this week's
@@ -268,10 +299,12 @@ export default function WeeklyTab() {
           {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
           marks a top-level sibling module (what moduleBudget counts);
           `data-primary-move` marks the ONE control that performs the move
-          surfaceContract.ts declares for this route. */}
+          surfaceContract.ts declares for this route — B-OCCL-02: the
+          letter's accept button (acceptAttrs), not this wrapper. */}
           {showRecap && selected.digest && (
-            <div data-module="weekly-recap" data-primary-move="accept-recap-recommendation" style={{ display: "contents" }}>
+            <div data-module="weekly-recap" style={{ display: "contents" }}>
             <RecapStoryCards
+              acceptAttrs={ACCEPT_STAMP}
               report={selected as WeeklyReport & { digest: WeeklyDigest }}
               record={recapRecord}
               childName={childProfile.name}
@@ -344,6 +377,7 @@ export default function WeeklyTab() {
                         <button
                           type="button"
                           onClick={() => acceptTodayAction(selected.digest!.tryThisWeek, "standard", "digest")}
+                          {...ACCEPT_STAMP}
                           className="mt-2.5 inline-flex items-center gap-1.5 min-h-[44px] px-4 text-[12px] font-extrabold rounded-xl transition active:scale-[0.98]"
                           style={{ background: "var(--arbor-gradient-primary)", color: "var(--arbor-on-accent)" }}
                         >
@@ -360,6 +394,8 @@ export default function WeeklyTab() {
             )}
           </div>
           )}
+
+          {afterStory}
 
           {/* R25 (item 11) → B-TODAY-22: ONE collapsed disclosure, holding the
               week's milestone wins only (one nested level at most). Demoted

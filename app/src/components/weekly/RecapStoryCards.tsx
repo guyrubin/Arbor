@@ -181,6 +181,7 @@ export default function RecapStoryCards({
   onAccept,
   onCapture,
   initialIndex = 0,
+  acceptAttrs,
 }: {
   report: WeeklyReport & { digest: WeeklyDigest };
   /** The parent's own record for the report's week (client-side only). */
@@ -195,6 +196,9 @@ export default function RecapStoryCards({
   onCapture: () => void;
   /** The card the letter opens on (0 = "New this week"). */
   initialIndex?: number;
+  /** B-OCCL-02: the route's primary-move stamp (WeeklyTab ACCEPT_STAMP),
+   *  spread on the accept button itself — never on the letter. */
+  acceptAttrs?: Readonly<Record<string, string>>;
 }) {
   const { t, uiLang } = useLanguage();
   const rtl = uiLang === "he";
@@ -392,6 +396,8 @@ export default function RecapStoryCards({
                       track("recap_try_accept", { week: report.id });
                       onAccept();
                     }}
+                    {...acceptAttrs}
+                    data-testid="recap-accept"
                     className="inline-flex min-h-[44px] items-center gap-2 rounded-2xl px-5 text-[13px] font-extrabold text-white transition active:scale-[0.98]"
                     style={{ background: "var(--arbor-gradient-primary)" }}
                   >
