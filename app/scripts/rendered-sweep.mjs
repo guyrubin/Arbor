@@ -596,6 +596,13 @@ const momentCount = (page) =>
     return n;
   });
 
+/** Today (P5 pass A9): the practice card's own Undo; true when the answers ask again. */
+async function undoPractice(h) {
+  await h.page.locator("main [data-testid=practice-undo]").first().click({ timeout: 5_000 });
+  await h.page.waitForTimeout(400);
+  return (await h.page.locator("main [data-testid=practice-answers]").count()) > 0;
+}
+
 /** Coach: send the fixture question and wait for the four-block answer (mock provider). */
 async function askAnswered(h) {
   const box = await h.need("[data-primary-move=ask] textarea", "the Ask composer");
@@ -681,6 +688,91 @@ const STATES = {
       run: async (h) => {
         await h.click("main [data-capture-tile=hard-moment]", [], "the Hard moment tile");
         await h.need("[role=dialog]", "the Hard moment sheet");
+      },
+    },
+    // P5 critic r1 on #/overview (pass A9, 6 Oct): the loop's own states.
+    // practice-did = loop-morning-did; practice-quotes = loop-quotes.
+    {
+      name: "loop-morning-did",
+      writes: "one practice dose row in the local record; the card's Undo removes it after the shot (cell.undone = the answers ask again)",
+      run: async (h) => {
+        await h.click("main [data-testid=practice-answers] [data-answer=did]", [h.tr("elev.loop.practice.didIt")], "the practice card's Did it");
+        await h.top(await h.need("main [data-testid=practice-receipt]", "the Did-it receipt (filed on the shelf)"));
+        return { undo: () => undoPractice(h) };
+      },
+    },
+    {
+      name: "loop-morning-not-today",
+      writes: "one practice dose row (not today) in the local record; Undo removes it after the shot",
+      run: async (h) => {
+        await h.click("main [data-testid=practice-answers] [data-answer=not_today]", [h.tr("elev.loop.practice.notToday")], "the practice card's Not today");
+        await h.top(await h.need("main [data-testid=practice-receipt]", "the Not-today line (Tomorrow is fine.)"));
+        return { undo: () => undoPractice(h) };
+      },
+    },
+    {
+      name: "loop-tonight",
+      writes: "none (the flow is opened early through Tonight's pointer; no answer is tapped)",
+      run: async (h) => {
+        await h.click("main [data-testid=today-tonight-pointer]", [h.tr("elev.loop.today.tonight")], "Tonight's pointer line");
+        await h.top(await h.need("main [data-module=today-tonight]", "the three-question Tonight flow (step 1)"));
+      },
+    },
+    {
+      name: "loop-quotes",
+      writes: "two dated notes on the practice's shelf, written to this throwaway context's local record only (outside the 30-day count, so the pick is unchanged)",
+      run: async (h) => {
+        const card = await h.need("main [data-testid=practice-card]", "the practice card");
+        const shelf = await card.getAttribute("data-shelf");
+        if (!shelf) skip("the practice card carries no shelf");
+        await h.page.evaluate(({ shelf, lang }) => {
+          const id = localStorage.getItem("arbor.activeChildId");
+          const key = `arbor.behaviorLogs.${id}`;
+          const logs = JSON.parse(localStorage.getItem(key) || "[]");
+          const at = (d) => new Date(Date.now() - d * 86_400_000).toISOString();
+          const words = lang === "he" ? ["ויתר אחרי ניסיון אחד", "עשה שש חתיכות ורצה עוד"] : ["Gave up after one try", "Did six pieces and wanted more"];
+          logs.unshift(
+            { id: "sweep-quote-now", timestamp: at(38), behaviorType: "Moment", durationMinutes: 0, trigger: words[1], context: "Home", shelf },
+            { id: "sweep-quote-then", timestamp: at(52), behaviorType: "Moment", durationMinutes: 0, trigger: words[0], context: "Home", shelf },
+          );
+          localStorage.setItem(key, JSON.stringify(logs));
+        }, { shelf, lang: h.lang });
+        await h.page.reload({ waitUntil: "domcontentloaded" });
+        await h.top(await h.need("main [data-testid=practice-quotes]", "the parent's own words under the practice title (THEN / NOW)", 12_000));
+        return { via: `two notes on ${shelf}` };
+      },
+    },
+    {
+      name: "loop-first-open",
+      writes: "the throwaway context's local record is emptied (no moments, no plays, no steps, every milestone open) before a reload; nothing leaves the context",
+      run: async (h) => {
+        await h.page.evaluate(() => {
+          const id = localStorage.getItem("arbor.activeChildId");
+          for (const c of ["behaviorLogs", "playLogs", "actionLoops", "practiceEvents", "langObs", "keepsakes"]) localStorage.setItem(`arbor.${c}.${id}`, "[]");
+          const mk = `arbor.milestones.${id}`;
+          const ms = JSON.parse(localStorage.getItem(mk) || "[]").map((m) => ({ ...m, checked: false, observationStatus: undefined, observationUpdatedAt: undefined }));
+          localStorage.setItem(mk, JSON.stringify(ms));
+        });
+        await h.page.reload({ waitUntil: "domcontentloaded" });
+        await h.need("main [data-module=today-practice], main [data-module=today-notice]", "Today's first-open blocks", 12_000);
+      },
+    },
+    {
+      name: "loop-thin-shelf",
+      run: async (h) => {
+        // The thin-shelf slot (a Notice card in the practice's place) shows only
+        // when NO practice fits the window; shelf-level practices (Sleep, Family)
+        // fit every window, so the seeded record cannot reach it.
+        const slot = await h.first("main [data-module=today-practice] [data-testid=notice-card]", 1_500);
+        if (!slot) skip("no window without a practice: shelf-level practices (Sleep, Family) fit every age, so the thin-shelf Notice slot cannot render for the demo child");
+        await h.top(slot);
+      },
+    },
+    {
+      name: "door-open",
+      run: async (h) => {
+        await h.click("main [data-testid=today-door] summary", [h.tr("elev.loop.today.door")], "the More for today door");
+        await h.top(await h.need("main [data-testid=today-door][open]", "the open door (lines only)"));
       },
     },
   ],
@@ -1116,6 +1208,15 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
       await page.screenshot({ path: shotFile, fullPage: false, animations: "disabled", caret: "hide" });
       shot = path.relative(path.dirname(path.dirname(shotFile)), shotFile).split(path.sep).join("/");
     } catch { shot = null; }
+    // P5 pass A9: a full-page shot per 375 BASE cell, so the blocks below the
+    // fold (Notice, Tonight's line, the door) have rendered evidence.
+    if (!run && vp.w < 768) {
+      try {
+        const fullFile = shotFile.replace(/\.png$/, ".full.png");
+        await page.screenshot({ path: fullFile, fullPage: true, animations: "disabled", caret: "hide" });
+        rec.fullShot = path.relative(path.dirname(path.dirname(fullFile)), fullFile).split(path.sep).join("/");
+      } catch { /* the viewport shot stands */ }
+    }
   }
   if (undo) {
     // The state wrote something local (capture): take it back in-page and say whether the
