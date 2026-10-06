@@ -62,6 +62,7 @@ import { ALL_MILESTONES, isCatalogueMilestone, milestoneAgeWindow } from "../lib
 import { comparisonMonthsOf } from "../lib/age/forChild.js";
 import { buildMilestoneCandidates } from "./milestoneMatch.js";
 import { SHELF_IDS } from "../lib/shelves/registry.js";
+import { resolveHebrewSlash } from "../lib/hebrewSlashGender.js";
 import type { ChildProfile } from "../types.js";
 import {
   MAX_JOURNAL_CANDIDATES,
@@ -257,6 +258,8 @@ export const projectJournal = (input: {
   childId: string;
   childProfile?: unknown;
   now?: number;
+  /** Round 2: with an active program the client's (program week) order stands. */
+  keepOrder?: boolean;
 }): CompanionJournal => {
   const req: JournalRequest = input.request ?? {};
   const now = input.now ?? Date.now();
@@ -270,13 +273,27 @@ export const projectJournal = (input: {
   // Candidates: catalogue practices inside the child's age window, never on a rested shelf.
   const months = comparisonMonthsOf((input.childProfile ?? null) as ChildProfile | null);
   const window = months === null ? null : milestoneAgeWindow(months);
-  const candidates: JournalCandidate[] = [];
+  const kept: Practice[] = [];
   for (const id of req.candidatePracticeIds ?? []) {
     const p = PRACTICE_BY_ID.get(id);
     if (!p || !window || !window.includes(p.ageMonths) || restedShelves.includes(p.shelf)) continue;
-    candidates.push({ id: p.id, shelf: p.shelf, say: p.say.en, milestoneId: p.milestoneId });
-    if (candidates.length >= MAX_JOURNAL_CANDIDATES) break;
+    kept.push(p);
+    if (kept.length >= MAX_JOURNAL_CANDIDATES) break;
   }
+  // Round 2 (framer, 6 Oct): the model never ranks shelves. The candidates
+  // arrive in the pure chooser's order (thinnest shelf first, ties by shelf
+  // order — lib/milestones/selectByShelf shelvesThinnestFirst); the server
+  // re-applies that order (stable within a shelf) whatever the wire order,
+  // except under an active program, whose week order stands. FIRST TIER =
+  // the candidates on a shelf as thin as the first one's (the chooser's own
+  // shelf, plus any shelf tied with it; under a program: the first's shelf).
+  const order = (shelf: ShelfId) => SHELF_IDS.indexOf(shelf);
+  const ordered = input.keepOrder
+    ? kept
+    : kept.map((p, i) => ({ p, i })).sort((a, b) => (shelfCoverage[a.p.shelf] - shelfCoverage[b.p.shelf]) || (order(a.p.shelf) - order(b.p.shelf)) || (a.i - b.i)).map((x) => x.p);
+  const head = ordered[0];
+  const inFirstTier = (p: Practice) => !!head && (input.keepOrder ? p.shelf === head.shelf : shelfCoverage[p.shelf] === shelfCoverage[head.shelf]);
+  const candidates: JournalCandidate[] = ordered.map((p) => ({ id: p.id, shelf: p.shelf, say: p.say.en, milestoneId: p.milestoneId, firstTier: inFirstTier(p) }));
   // Dose rows: the server ledger first; the client's rows only when the ledger has none.
   const prefix = `practice.${input.childId}.`;
   const fromLedger = ledgerDoseRows(input.actionLoops, input.childId);
@@ -298,10 +315,20 @@ export const projectJournal = (input: {
     .slice(0, MAX_NIGHT_ANSWERS)
     .map((r) => ({
       date: r.id.slice(prefix.length),
+      practice: PRACTICE_BY_ID.get(r.practiceId)!.say.en,
       ...(r.outcome ? { practiceOutcome: r.outcome } : {}),
       ...(r.whatHappened ? { whatHappened: r.whatHappened } : {}),
     }));
   return { shelfCoverage, nextMilestones, candidates, restedShelves, practice, nightAnswers };
+};
+
+/** Round 2: a practice's own catalogue say-line in the parent's language
+ *  (HE slash forms resolved by gender, as Today's card renders it) — the
+ *  sayThis fallback. "" for an unknown id. */
+export const practiceSayLine = (id: string, lang: "en" | "he", gender?: string | null): string => {
+  const p = PRACTICE_BY_ID.get(id);
+  if (!p) return "";
+  return lang === "he" ? resolveHebrewSlash(p.say.he, gender) : p.say.en;
 };
 
 /** The practice line's input for coach_chat / voice_reply (null without a practice). */
@@ -385,7 +412,7 @@ export const assembleCompanionContext = async (input: {
     const request = sanitizeJournalRequest(input.journal);
     if (request || ledgerDoseRows(ledgerActions, childId).length > 0) {
       try {
-        context.journal = projectJournal({ request, actionLoops: ledgerActions, childId, childProfile: input.childProfile, now });
+        context.journal = projectJournal({ request, actionLoops: ledgerActions, childId, childProfile: input.childProfile, now, keepOrder: !!context.program });
       } catch {
         delete context.journal;
       }

@@ -63,6 +63,10 @@ export const assembleSpokenContext = async (input: {
   if (program) context.program = program;
   const practice = todayPracticeLine(companion.journal);
   if (practice) context.todayPractice = practice;
+  // Round 2 (continuity judge on 1.8.0): the night answers reach voice_reply
+  // too — the client's rows when the server ledger holds none.
+  const answers = companion.journal?.nightAnswers ?? [];
+  if (answers.length) context.nightAnswers = answers.map((a) => ({ ...a }));
   return context;
 };
 

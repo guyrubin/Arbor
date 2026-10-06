@@ -13,8 +13,8 @@ import { PROMPT_VERSIONS, buildAnalyzeBehaviorPrompt, buildChatPrompt, buildCoun
 import { sanitizeRecentTurns, sanitizeWeeklyContext } from "../ai/chatContext.js";
 import { assembleSpokenContext, liveContextWithoutNames, spokenChildId } from "../server/spokenContext.js";
 import { createDigestJobSource, createOidcJobVerifier, runWeeklyDigestJob, type DigestJobSource, type JobCallerVerifier } from "../server/digestJob.js";
-import { assembleCompanionContext, createCompanionLedgerSource, lastRatedAction, programPromptLine, renderApprovedFactLines, todayPracticeLine, type CompanionLedgerSource, type CompanionPurpose } from "../server/companionContext.js";
-import { WHY_MAX, firstSentence, sanitizeJournalRequest, whyHasVerdict } from "../ai/journalContext.js";
+import { assembleCompanionContext, createCompanionLedgerSource, lastRatedAction, practiceSayLine, programPromptLine, renderApprovedFactLines, todayPracticeLine, type CompanionLedgerSource, type CompanionPurpose } from "../server/companionContext.js";
+import { WHY_KEYS, firstSentence, sanitizeJournalRequest, sayRelatesTo, whyReasonFor } from "../ai/journalContext.js";
 import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../services/framework.js";
 import { screenForImmediateEscalation, renderEscalationMarkdown, escalationMatchForCategory } from "../safety/escalation.js";
 import { renderConditionQuestionReply, renderSeededConditionReply, screenForConditionQuestion } from "../safety/conditionQuestion.js";
@@ -85,7 +85,7 @@ import { countAnalyzeLogs, toAnalyzeLogInputs } from "../lib/analyzeLogPayload.j
 import { toDigestLogInputs, toDigestMilestoneInputs } from "../lib/digestPayload.js";
 import { sanitizeTypeCounts } from "../lib/planRecord.js";
 import { buildMilestoneCandidates, validateMilestoneMatch } from "../server/milestoneMatch.js";
-import { SHELF_IDS } from "../lib/shelves/registry.js";
+import { SHELF_IDS, shelfLabel } from "../lib/shelves/registry.js";
 import { isAdmin } from "../server/admin.js";
 import type { AdminMetricsStore } from "../server/adminMetrics.js";
 import type { UsageCounterStore } from "../server/quotaStore.js";
@@ -2112,7 +2112,9 @@ Finalized parent transcript: ${privacy.redact(transcript.trim())}${REDACTION_DIR
       const journal = companion.journal ?? null;
       // The AI may pick only when nothing is set today (no dose row, no pin)
       // and there are candidates to pick from.
-      const mayPick = !!journal && !journal.practice && journal.candidates.length > 0;
+      // Round 2: the model may choose only inside the FIRST TIER of the
+      // chooser's own order (projectJournal); it never ranks shelves.
+      const mayPick = !!journal && !journal.practice && journal.candidates.some((c) => c.firstTier);
       const rated = lastRatedAction(companion.acceptedActions);
       const lastActionRecommendation = rated ? rated.recommendation : clientLastRecommendation;
       const lastActionOutcome = rated?.outcome ?? clientLastOutcome;
@@ -2140,23 +2142,23 @@ Finalized parent transcript: ${privacy.redact(transcript.trim())}${REDACTION_DIR
         prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
         temperature: 0.5,
         budget: budget.budget,
-        // B-AI-01: `required` stays the two fields; B-TODAY-24 adds the
-        // optional `sayThis` property without touching the contract.
+        // B-AI-01: focus + tryToday; B-TODAY-24 added sayThis. B-LOOP-13
+        // round 2 (live judge on 1.3.0: sayThis missing): sayThis is REQUIRED;
+        // practiceId only when the AI may pick; the model writes NO why.
         schema: {
           type: Type.OBJECT,
-          required: ["focus", "tryToday"],
+          required: ["focus", "tryToday", "sayThis"],
           properties: {
             focus: { type: Type.STRING },
             tryToday: { type: Type.STRING },
             sayThis: { type: Type.STRING },
-            // B-LOOP-13: optional, and only when the AI may pick today.
-            ...(mayPick ? { practiceId: { type: Type.STRING }, why: { type: Type.STRING } } : {}),
+            ...(mayPick ? { practiceId: { type: Type.STRING } } : {}),
           }
         },
         promptVersion: PROMPT_VERSIONS.todays_focus.version
-      }), budget.signal)) as { focus?: unknown; tryToday?: unknown; sayThis?: unknown; practiceId?: unknown; why?: unknown };
+      }), budget.signal)) as { focus?: unknown; tryToday?: unknown; sayThis?: unknown; practiceId?: unknown };
 
-      const restored = privacy.restoreDeep(draft) as { focus?: unknown; tryToday?: unknown; sayThis?: unknown; practiceId?: unknown; why?: unknown };
+      const restored = privacy.restoreDeep(draft) as { focus?: unknown; tryToday?: unknown; sayThis?: unknown; practiceId?: unknown };
       const focus = String(restored.focus ?? "").replace(/[#*]/g, "").replace(/\s+/g, " ").trim().slice(0, 400);
       const tryToday = String(restored.tryToday ?? "").replace(/[#*]/g, "").replace(/\s+/g, " ").trim().slice(0, 300);
       // B-TODAY-24: one sentence the parent can say; ≤140 chars, dropped when
@@ -2166,22 +2168,30 @@ Finalized parent transcript: ${privacy.redact(transcript.trim())}${REDACTION_DIR
       // a first sentence too short to stand alone drops the line (the card
       // keeps the practice's own say-line).
       const sayThisRaw = firstSentence(String(restored.sayThis ?? "").replace(/[#*]/g, "").replace(/\s+/g, " ").trim());
-      const sayThis = sayThisRaw.length > 0 && sayThisRaw.length <= TODAY_SAY_THIS_MAX ? sayThisRaw : "";
-      // B-LOOP-13: the AI's practice pick is honoured ONLY inside today's
-      // candidate list (never a rested shelf; never when a dose row or the
-      // parent's pin already set today). Anything else is dropped and the
-      // pure chooser's first candidate stands (the list arrives in its order).
+      // B-LOOP-13 round 2: the AI's practice pick is honoured ONLY inside the
+      // FIRST TIER of today's candidates (the chooser's own shelf, or a shelf
+      // tied with it; never a rested shelf; never when a dose row or the
+      // parent's pin already set today). Anything else → the chooser's pick.
       const aiPick = typeof restored.practiceId === "string" ? restored.practiceId.trim() : "";
-      const aiCandidate = mayPick && journal ? journal.candidates.find((c) => c.id === aiPick) ?? null : null;
-      // The why-line: one parent-facing sentence about the AI's own pick, no
-      // verdict (fail closed: a verdict word drops it), screened below with the rest.
-      const whyRaw = aiCandidate ? firstSentence(String(restored.why ?? "").replace(/[#*]/g, "").replace(/\s+/g, " ").trim()) : "";
-      const why = whyRaw && whyRaw.length <= WHY_MAX && !whyHasVerdict(whyRaw) ? whyRaw : "";
+      const aiCandidate = mayPick && journal ? journal.candidates.find((c) => c.firstTier && c.id === aiPick) ?? null : null;
       const practice = mayPick && journal
         ? aiCandidate
           ? { practiceId: aiCandidate.id, practiceVia: "ai" as const }
           : { practiceId: journal.candidates[0].id, practiceVia: "chooser" as const }
         : null;
+      // The why-line is SERVER-RENDERED (round 2: the model's own why carried
+      // comparisons): the chooser's reason for the shelf in the two shapes
+      // Today's card already ships (i18nElevation/loop whyEmpty / whyFewest),
+      // only beside an AI pick; no reason → no why.
+      const whyReason = aiCandidate && journal ? whyReasonFor(journal.shelfCoverage, aiCandidate.shelf) : null;
+      const whyT = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars);
+      const firstName = String(childProfile?.name ?? "").trim().split(/\s+/)[0] || whyT("today.record.childFallback");
+      const why = whyReason && aiCandidate ? whyT(WHY_KEYS[whyReason], { shelf: shelfLabel(aiCandidate.shelf, whyT), name: firstName }) : "";
+      // sayThis: ONE sentence ≤ 140 that belongs to tryToday; otherwise the
+      // chosen practice's own catalogue say-line (EN/HE) — never an empty card.
+      const chosenPracticeId = journal?.practice?.id ?? practice?.practiceId ?? "";
+      const sayFits = sayThisRaw.length > 0 && sayThisRaw.length <= TODAY_SAY_THIS_MAX && (!chosenPracticeId || !tryToday || sayRelatesTo(sayThisRaw, tryToday));
+      const sayThis = sayFits ? sayThisRaw : chosenPracticeId ? practiceSayLine(chosenPracticeId, lang, childProfile?.gender) : "";
       const text = [focus, tryToday].filter(Boolean).join(" ");
       if (!text) {
         budget.settle();

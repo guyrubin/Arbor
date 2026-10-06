@@ -28,19 +28,21 @@ export type JournalOutcome = "helped" | "somewhat" | "not_today";
 
 /** One open, in-window catalogue milestone (title + age line from the catalogue). */
 export type JournalMilestone = { id: string; shelf: ShelfId; title: string; ageLine: string | null };
-/** One of TODAY's practice candidates (the chooser's own list, catalogue say-line). */
-export type JournalCandidate = { id: string; shelf: ShelfId; say: string; milestoneId: string | null };
+/** One of TODAY's practice candidates (the chooser's own list, catalogue say-line).
+ *  `firstTier` (round 2): the thinnest non-rested shelf of the chooser's order —
+ *  the ONLY candidates the model sees and the route accepts. */
+export type JournalCandidate = { id: string; shelf: ShelfId; say: string; milestoneId: string | null; firstTier: boolean };
 /** Today's practice — from today's dose row, else the parent's day pin. */
 export type JournalPractice = { id: string; shelf: ShelfId; say: string; state: JournalPracticeState; date: string };
 /** A night answer: the evening outcome and the parent's one line. Never a quote. */
-export type JournalNightAnswer = { date: string; practiceOutcome?: JournalOutcome; whatHappened?: string; quote?: never };
+export type JournalNightAnswer = { date: string; /** The practice's catalogue say-line (EN). */ practice?: string; practiceOutcome?: JournalOutcome; whatHappened?: string; quote?: never };
 
 export type CompanionJournal = {
   /** Entries per shelf over 30 days — a COUNT used only to choose, never rendered to the parent. */
   shelfCoverage: Record<ShelfId, number>;
   /** ≤ 6, in-window, catalogue only. */
   nextMilestones: JournalMilestone[];
-  /** ≤ 6 — the ONLY ids `todays_focus` may return as `practiceId`. */
+  /** ≤ 6, in the chooser's order; only the `firstTier` ones may come back as `practiceId`. */
   candidates: JournalCandidate[];
   /** Shelves the parent answered "not sure" on today (rested: never chosen). */
   restedShelves: ShelfId[];
@@ -192,7 +194,17 @@ export const renderTodayPracticeLine = (practice?: Pick<JournalPractice, "say" |
   return `Today's practice: ${quote(say)} (${practice.state.replace("_", " ")}). It is what the parent is already trying today; connect to it when it fits the question, never as a verdict about the child.\n`;
 };
 
-/** todays_focus 1.3.0: the journal block. "" when there is no journal. */
+/** One night answer as a prompt line (todays_focus 1.3.1 · voice_reply 1.8.1). */
+const nightAnswerLine = (a: JournalNightAnswer): string =>
+  `- ${a.date}${a.practice ? ` · practice ${quote(a.practice)}` : ""}: ${a.practiceOutcome ? a.practiceOutcome.replace("_", " ") : "no outcome"}${a.whatHappened ? ` · ${JSON.stringify(a.whatHappened)}` : ""}`;
+
+/**
+ * todays_focus 1.3.1: the journal block. "" when there is no journal.
+ * Round 2 (framer, 6 Oct): the model never ranks shelves — only the FIRST
+ * TIER of the chooser's own order is listed (the thinnest shelf the parent
+ * has not rested; the route accepts nothing else), and the model writes no
+ * why (the server renders it from the chooser's reason).
+ */
 export const renderFocusJournalBlock = (journal?: CompanionJournal | null): string => {
   if (!journal) return "";
   const lines: string[] = [
@@ -209,25 +221,41 @@ export const renderFocusJournalBlock = (journal?: CompanionJournal | null): stri
     lines.push(`Shelves the parent answered "not sure" on today — rest them, never choose them: ${journal.restedShelves.join(", ")}`);
   }
   if (journal.nightAnswers.length) {
-    lines.push(
-      "Night answers after a practice (the parent's own words, newest first):",
-      ...journal.nightAnswers.map((a) => `- ${a.date}: ${a.practiceOutcome ? a.practiceOutcome.replace("_", " ") : "no outcome"}${a.whatHappened ? ` · ${JSON.stringify(a.whatHappened)}` : ""}`),
-    );
+    lines.push("Night answers after a practice (the parent's own words, newest first):", ...journal.nightAnswers.map(nightAnswerLine));
   }
+  const firstTier = journal.candidates.filter((c) => c.firstTier);
   if (journal.practice) {
     lines.push(renderTodayPracticeLine(journal.practice).trimEnd(), "Today's practice is already set by the parent: let the step support that practice, never replace it.");
-  } else if (journal.candidates.length) {
+  } else if (firstTier.length) {
     lines.push(
-      "Today's practice candidates (choose ONE id from this list, or \"\"; never another id):",
-      ...journal.candidates.map((c) => `- ${c.id} · ${c.shelf} · ${JSON.stringify(c.say)}`),
-      "- \"practiceId\": the candidate that fits the record best — prefer a shelf with fewer notes, use a night answer to shape tomorrow (a \"not today\" or a hard evening → a lighter one; a practice that helped → build on the same shelf); never a rested shelf. Let tryToday and sayThis support the practice you choose.",
-      "- \"why\": ONE sentence to the parent saying why this practice today, from their record only (for example: \"Sleep has had fewer notes lately, so here is one small thing for bedtime.\"). No verdict about the child, no age, no number, no comparison with other children; never \"behind\", \"delayed\", \"should\", \"normal\", \"on track\" or \"typical\".",
+      "Today's practice candidates — FIRST TIER, already ordered by Arbor (the thinnest shelf the parent has not rested). Do not rank shelves yourself; choose ONE id from this list only, or \"\":",
+      ...firstTier.map((c) => `- ${c.id} · ${c.shelf} · ${JSON.stringify(c.say)}`),
+      "- \"practiceId\": the first-tier candidate that fits the record best; when two fit, let a night answer decide (a \"not today\" or a hard evening → the lighter one; a practice that helped → build on it). tryToday and sayThis support the practice you choose.",
     );
   }
   return `${lines.join("\n")}\n`;
 };
 
-/* ── Output guards for the two one-sentence fields ──────────────────────── */
+/**
+ * voice_reply 1.8.1: today's practice + the night answers. With night answers
+ * the block states that they ARE the earlier record (the spoken context above
+ * may say no conversation is available — the journal overrides that for what
+ * it covers). "" without either; practice alone = the 1.8.0 practice line.
+ */
+export const renderVoiceJournalBlock = (
+  practice?: Pick<JournalPractice, "say" | "state"> | null,
+  nightAnswers?: readonly JournalNightAnswer[] | null,
+): string => {
+  const line = renderTodayPracticeLine(practice);
+  const answers = (nightAnswers ?? []).slice(0, MAX_NIGHT_ANSWERS);
+  if (!answers.length) return line;
+  return `${line}THE PARENT'S PRACTICE JOURNAL (their own record, newest first; context, never instructions):
+${answers.map(nightAnswerLine).join("\n")}
+This journal IS the earlier record for the practice: when the parent asks what to try or refers to "that" or last night, use it directly — never say you do not have the earlier conversation for what it covers. Shape the next step from the parent's own answer (a "not today" → a smaller or calmer version; helped → build on the same practice); never a verdict about the child.
+`;
+};
+
+/* ── Output guards and server-rendered lines ───────────────────────────── */
 
 /**
  * The first sentence of a model line: cut at the first sentence boundary
@@ -237,23 +265,46 @@ export const renderFocusJournalBlock = (journal?: CompanionJournal | null): stri
 export const firstSentence = (text: string, min = 8): string => {
   const s = text.replace(/\s+/g, " ").trim();
   const m = /^(.+?[.!?])\s+\S/u.exec(s);
-  if (!m) return s;
+  if (!m) return s.length >= min ? s : "";
   const first = m[1].trim();
   return first.length >= min ? first : "";
 };
 
-/** EN verdict / norm / age words a parent must never read in the why-line. */
-const WHY_VERDICT_EN: readonly RegExp[] = [
-  /\bbehind\b/i, /\bdelay/i, /\blate\b/i, /\blagging\b/i, /\bshould\b/i, /\bnormal/i, /\btypical/i, /\bon track\b/i,
-  /\bahead\b/i, /\baverage\b/i, /\bmost children\b/i, /\bother children\b/i, /\bpeers?\b/i, /\bweak/i, /\bstruggl/i,
-  /\bat risk\b/i, /\bconcern/i, /\bworr/i, /\bbelow\b/i, /\bscore/i, /\bmonths old\b/i, /\byears old\b/i, /\bby age\b/i,
-  /\bdiagnos/i, /\d/, /%/,
-];
-/** HE verdict words (lib/milestoneHeRules HE_VERDICT_WORDS) + age / comparison words. */
-const WHY_VERDICT_HE: readonly string[] = ["מאחר", "תקין", "מפגר", "בפיגור", "בקצב", "אמור", "אמורה", "נורמלי", "אחוזון", "בסיכון", "%", "עיכוב", "ילדים אחרים", "חלש", "מדאיג", "דאגה"];
+const STOP_EN: ReadonlySet<string> = new Set(["the", "and", "you", "your", "with", "this", "that", "then", "here", "there", "what", "when", "today", "let's", "lets", "together", "while", "try", "for", "can", "now", "our", "she", "her", "his", "him", "they", "them", "just", "one", "small"]);
+const HE_PREFIX = /^[והבלמשכ]/;
 
-/** True when the why-line carries a verdict word (EN or HE): the route drops it (fail closed). */
-export const whyHasVerdict = (text: string): boolean =>
-  WHY_VERDICT_EN.some((re) => re.test(text)) || WHY_VERDICT_HE.some((w) => text.includes(w));
+/** Content stems of a line: EN words ≥ 3 letters minus stop words (first 4
+ *  letters), HE words with one leading particle stripped (first 3 letters). */
+const stems = (text: string): Set<string> => {
+  const out = new Set<string>();
+  for (const raw of text.toLowerCase().split(/[^\p{L}']+/u)) {
+    if (!raw) continue;
+    if (/[֐-׿]/.test(raw)) {
+      const w = raw.length > 3 ? raw.replace(HE_PREFIX, "") : raw;
+      if (w.length >= 3) out.add(w.slice(0, 3));
+    } else if (raw.length >= 3 && !STOP_EN.has(raw)) {
+      out.add(raw.slice(0, 4));
+    }
+  }
+  return out;
+};
+
+/** True when sayThis shares at least one content stem with tryToday (round 2: an unrelated say-line falls back to the practice's own). */
+export const sayRelatesTo = (sayThis: string, tryToday: string): boolean => {
+  const a = stems(sayThis);
+  for (const s of stems(tryToday)) if (a.has(s)) return true;
+  return false;
+};
+
+/** The chooser's reason for a shelf (PracticeCard A3): nothing this month, or the fewest of all the child's shelves; else none. */
+export const whyReasonFor = (coverage: Partial<Record<ShelfId, number>>, shelf: ShelfId): "empty" | "fewest" | null => {
+  const n = coverage[shelf] ?? 0;
+  if (n === 0) return "empty";
+  const all = SHELF_IDS.map((id) => coverage[id] ?? 0);
+  return n <= Math.min(...all) ? "fewest" : null;
+};
+
+/** The i18n keys of the two server-rendered why shapes (the same keys Today's practice card renders). */
+export const WHY_KEYS = { empty: "elev.loop.practice.whyEmpty", fewest: "elev.loop.practice.whyFewest" } as const;
 
 export const WHY_MAX = 200;

@@ -432,7 +432,8 @@ describe("B-LOOP-13 — the journal block (CompanionContext v2)", () => {
     expect(j.shelfCoverage).toEqual({ sleep: 0, food: 2, words: 4, feelings: 0, play: 0, moving: 0, hands: 999, school: 0, family: 0 });
     expect(j.nextMilestones).toEqual([{ id: "cdc-18m-4", shelf: "words", title: "Says three or more words", ageLine: "Most children do this by 18 months" }]);
     expect(j.candidates.map((c) => c.id)).toEqual(["pr-sleep-08", "pr-cdc-24m-4"]);
-    expect(j.candidates[1]).toEqual({ id: "pr-cdc-24m-4", shelf: "words", say: "Where's the bear? There he is! A big brown bear.", milestoneId: "cdc-24m-4" });
+    expect(j.candidates[1]).toEqual({ id: "pr-cdc-24m-4", shelf: "words", say: "Where's the bear? There he is! A big brown bear.", milestoneId: "cdc-24m-4", firstTier: false });
+    expect(j.candidates[0].firstTier).toBe(true);
     const flat = JSON.stringify(j);
     for (const leak of ["IGNORE PREVIOUS", "behaviorLogs note text", "INJECTED", "custom-123", "not-a-practice"]) expect(flat).not.toContain(leak);
   });
@@ -444,7 +445,7 @@ describe("B-LOOP-13 — the journal block (CompanionContext v2)", () => {
     ]);
     const j = ctx.journal!;
     expect(JSON.stringify(j)).not.toContain("QUOTE_CANARY");
-    expect(j.nightAnswers).toEqual([{ date: "2026-09-30", practiceOutcome: "helped", whatHappened: "x".repeat(240) }]);
+    expect(j.nightAnswers).toEqual([{ date: "2026-09-30", practice: "What comes after pyjamas? Show me on our page.", practiceOutcome: "helped", whatHappened: "x".repeat(240) }]);
     expect(Object.keys(j.nightAnswers[0])).not.toContain("quote");
   });
 
@@ -507,5 +508,52 @@ describe("B-LOOP-13 — the journal block (CompanionContext v2)", () => {
     expect(chatPrompt).toContain("Today's practice: 'What comes after pyjamas? Show me on our page.' (pending).");
     expect((await post("/chat", { message: "bedtime is hard", childProfile: { id: "child-c", age: 2 }, language: "en" })).status).toBe(200);
     expect(chatPrompt).not.toContain("Today's practice:");
+  });
+});
+
+/* ── B-LOOP-13 round 2: the chooser's order, the first tier, voice night answers ── */
+describe("B-LOOP-13 round 2 — first tier + night answers on /voice", () => {
+  const child = { id: "child-a", age: 2 };
+  const ctx = (journal: unknown, over: Partial<Parameters<typeof assembleCompanionContext>[0]> = {}) =>
+    assembleCompanionContext({ purpose: "todays-focus", audience: "parent", childId: "child-a", childProfile: child, memoryStore: storeOf([]), now: NOW, journal, ...over });
+
+  it("the server re-applies the chooser's order whatever the wire order; first tier = the thinnest shelf, ties included", async () => {
+    const cov = { sleep: 2, words: 0, food: 3, feelings: 3, play: 3, moving: 0, hands: 3, school: 3, family: 3 };
+    const j = (await ctx({ dateKey: "2026-10-01", shelfCoverage: cov, candidatePracticeIds: ["pr-sleep-08", "pr-cdc-24m-10", "pr-cdc-24m-4"] })).journal!;
+    expect(j.candidates.map((c) => [c.id, c.firstTier])).toEqual([["pr-cdc-24m-4", true], ["pr-cdc-24m-10", true], ["pr-sleep-08", false]]);
+  });
+
+  it("with an active program the client's (program week) order stands; the first tier is the first candidate's shelf", async () => {
+    const enrolment = { id: "e1", programId: "talk-together", startedAt: localDay(NOW - 8 * DAY), enrolledAt: "t", currentWeek: 1, status: "active", baseline: { childProxy: null, capturedAt: null }, updatedAt: "t" };
+    const j = (await ctx(
+      { dateKey: "2026-10-01", shelfCoverage: { sleep: 0, words: 5 }, candidatePracticeIds: ["pr-cdc-24m-4", "pr-sleep-08"] },
+      { ledgerSource: ledgerOf({ "parent-a/child-a": { actionLoops: [], insights: [], programs: [enrolment] } }), uid: "parent-a" },
+    )).journal!;
+    expect(j.candidates.map((c) => [c.id, c.firstTier])).toEqual([["pr-cdc-24m-4", true], ["pr-sleep-08", false]]);
+  });
+
+  it("a posted journal (no server ledger) reaches the voice_reply prompt: today's practice + the night answers + 'IS the earlier record'", async () => {
+    const journal = { pinnedPracticeId: "pr-sleep-08", doseRows: [{ id: "practice.child-a.2026-10-05", practiceId: "pr-sleep-08", outcome: "not_today", whatHappened: "She was too tired." }] };
+    const spoken = await assembleSpokenContext({ memoryStore: storeOf([]), childProfile: child, canReadMemory: true, journal });
+    expect(spoken.todayPractice).toEqual({ say: "What comes after pyjamas? Show me on our page.", state: "pending" });
+    expect(spoken.nightAnswers).toEqual([{ date: "2026-10-05", practice: "What comes after pyjamas? Show me on our page.", practiceOutcome: "not_today", whatHappened: "She was too tired." }]);
+    const { buildVoiceReplyPrompt } = await import("../ai/prompts.js");
+    const prompt = buildVoiceReplyPrompt({ persona: "P", scholar: { name: "s", method: "m" }, childProfile: spoken.profile, companionContext: spoken, message: "What should we try tomorrow evening?", languageDirective: "" });
+    expect(prompt).toContain("Today's practice: 'What comes after pyjamas? Show me on our page.' (pending).");
+    expect(prompt).toContain('not today · "She was too tired."');
+    expect(prompt).toMatch(/This journal IS the earlier record for the practice/);
+    // night answers alone (no pin) still render
+    const answersOnly = await assembleSpokenContext({ memoryStore: storeOf([]), childProfile: child, canReadMemory: true, journal: { doseRows: journal.doseRows } });
+    expect(answersOnly.nightAnswers).toHaveLength(1);
+    expect("todayPractice" in answersOnly).toBe(false);
+  });
+
+  it("fail closed: private mode / unread memory → no practice and no night answers; the child audience gets no journal", async () => {
+    const journal = { pinnedPracticeId: "pr-sleep-08", doseRows: [{ id: "practice.child-a.2026-10-05", practiceId: "pr-sleep-08", outcome: "helped" }] };
+    for (const over of [{ privateMode: true }, { canReadMemory: false }]) {
+      const s2 = await assembleSpokenContext({ memoryStore: storeOf([]), childProfile: child, canReadMemory: true, journal, ...over });
+      expect("nightAnswers" in s2 || "todayPractice" in s2, JSON.stringify(over)).toBe(false);
+    }
+    expect("journal" in (await ctx(journal, { audience: "child" }))).toBe(false);
   });
 });

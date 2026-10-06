@@ -15,6 +15,10 @@ export type SpokenContext = {
    *  voice_reply 1.8.0 ONLY (ai/prompts buildVoiceReplyPrompt), never by
    *  renderSpokenContext, so live_session keeps its 1.5.0 bytes. */
   todayPractice?: { say: string; state: "pending" | "done" | "not_today" };
+  /** B-LOOP-13 round 2 (voice_reply 1.8.1) — ≤ 3 night answers (date, the
+   *  practice's catalogue say-line, the parent's outcome and Tonight line;
+   *  never the quote). voice_reply only; live_session never renders it. */
+  nightAnswers?: Array<{ date: string; practice?: string; practiceOutcome?: "helped" | "somewhat" | "not_today"; whatHappened?: string }>;
 };
 
 /** JSON keeps parent-written newlines/role labels inside values, not prompt roles. */

@@ -33,7 +33,7 @@ import type { ChildProfile } from "../types.js";
 import type { RecentTurn, WeeklyContext } from "./chatContext.js";
 import { renderSpokenContext, type SpokenContext } from "./spokenContext.js";
 import { renderActiveProgramLine, type ActiveProgramLine } from "./programContext.js";
-import { renderFocusJournalBlock, renderTodayPracticeLine, type CompanionJournal, type JournalPractice } from "./journalContext.js";
+import { renderFocusJournalBlock, renderTodayPracticeLine, renderVoiceJournalBlock, type CompanionJournal, type JournalPractice } from "./journalContext.js";
 import { buildLiveSystemInstruction } from "../lib/livePersona.js";
 import { buildDigestPrompt } from "../server/digest.js";
 import { toAnalyzeLogInputs } from "../lib/analyzeLogPayload.js";
@@ -233,7 +233,14 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // never renders it and keeps 1.5.0. No practice ⇒ the 1.7.0 bytes (parity
   // pinned). Re-pin owed (live, NOT run by the builder): companion-continuity-v1
   // (+3 night-answer scenarios), voice-loop-v1. B-PROV-10 Part B takes 1.9.0.
-  voice_reply: { version: "1.8.0", sha256: "a8fcf2633ab2995ce928df3ffce8248564a167c0ebec0b5d99633f8f0dc18953" },
+  // 1.8.1 (B-LOOP-13 round 2, continuity judge on 1.8.0: the 3 night-answer
+  // scenarios said "I don't have the context"): the night answers render
+  // after the practice line (ai/journalContext renderVoiceJournalBlock) with
+  // one sentence that they ARE the earlier record for the practice. No night
+  // answer ⇒ the 1.8.0 practice line; nothing ⇒ the 1.7.0 bytes. Re-pin owed
+  // (live, NOT run by the builder): companion-continuity-v1, voice-loop-v1.
+  // B-PROV-10 Part B takes 1.9.0.
+  voice_reply: { version: "1.8.1", sha256: "6f15785a8d18abb077cb33137e20a1d60fb8824af2ec038e1b13c56cc34329d4" },
   live_session: { version: "1.5.0", sha256: "970ef0d3c685a0aead19ab8244d311b0af3fc0ab87ff071b3b08d9a6c9ca0829" },
   // 1.2.0 (B-AI-15, 2026-10-04): one capture = one log (first moment, never
   // merged, never an array), notes copy the parent's own words, no adjective
@@ -281,7 +288,15 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // longer asks for "an observation about the child's week"; (c) sayThis says
   // "exactly ONE sentence" (the route also cuts at the first boundary). Re-pin
   // owed (live, NOT run by the builder): today-focus-v1 (+12 scenarios).
-  todays_focus: { version: "1.3.0", sha256: "9afa5e55150b1442b4c11388f5d46830d82c72b8e3155e5e10c51e3bfd92c76c" },
+  // 1.3.1 (B-LOOP-13 round 2, live judge on 1.3.0: 0.47, 9/19 with 2 ENV 504s):
+  // the model never ranks shelves — only the FIRST TIER of the chooser's own
+  // order is listed ("already ordered by Arbor … do not rank shelves
+  // yourself") and the route accepts nothing else; the model writes no why
+  // (server-rendered from the chooser's reason); night answers name their
+  // practice. sayThis is REQUIRED in the schema (route falls back to the
+  // practice's own say-line). Re-pin owed (live, NOT run by the builder):
+  // today-focus-v1.
+  todays_focus: { version: "1.3.1", sha256: "007c235f557c21f47e49190b6859120a4ee2e36f2dd6d306220caaa7cb55798f" },
   // 1.0.0 (B-AI-02): first pins. weekly_digest = server/digest.ts
   // buildDigestPrompt + the OPTIONAL recent-steps line (the parent's accepted
   // steps + outcomes; absent → the B-TODAY-03 bytes). generate_plan moved out
@@ -560,7 +575,7 @@ export const buildVoiceReplyPrompt = ({
 }: VoiceReplyPromptArgs): string => `${NON_DIAGNOSTIC_CONTRACT}
 ${persona} Apply this lens: ${scholar.name} — ${scholar.method}
 Child: ${childProfile ? JSON.stringify(promptProfile(childProfile)) : "unknown"}
-${renderSpokenContext(companionContext)}${renderTodayPracticeLine(companionContext?.todayPractice)}The parent just said: ${JSON.stringify(message)}
+${renderSpokenContext(companionContext)}${renderVoiceJournalBlock(companionContext?.todayPractice, companionContext?.nightAnswers)}The parent just said: ${JSON.stringify(message)}
 Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give one concrete thing to try, or ask one short clarifying question when the needed context is missing. Never invent an earlier discussion. Use plain everyday language. No markdown, no headings, no bullet points, no emojis. Observations only — never a diagnosis. If there's a safety concern, gently suggest professional help.${languageDirective}`;
 
 export type ExtractLogPromptArgs = {
@@ -804,6 +819,8 @@ const CANONICAL = {
     program: { name: "«program»", week: 2, skill: "«program-skill»" },
     // B-LOOP-13 — voice_reply 1.8.0 pins the practice line (live_session never renders it).
     todayPractice: { say: "«practice-say»", state: "not_today" },
+    // B-LOOP-13 round 2 — voice_reply 1.8.1 pins the night-answer block.
+    nightAnswers: [{ date: "«day-1»", practice: "«pr-say»", practiceOutcome: "not_today", whatHappened: "«what-happened»" }],
   } as SpokenContext,
   // B-PROG-01 — coach_chat 1.6.0 / todays_focus 1.2.0 pin the program line's text.
   activeProgram: { name: "«program»", week: 2, skill: "«program-skill»" } as ActiveProgramLine,
@@ -815,11 +832,14 @@ const CANONICAL = {
       { id: "«ms-id»", shelf: "words", title: "«ms-title»", ageLine: "«age-line»" },
       { id: "«ms-id-2»", shelf: "hands", title: "«ms-title-2»", ageLine: null },
     ],
-    candidates: [{ id: "«pr-id»", shelf: "sleep", say: "«pr-say»", milestoneId: null }],
+    candidates: [
+      { id: "«pr-id»", shelf: "sleep", say: "«pr-say»", milestoneId: null, firstTier: true },
+      { id: "«pr-id-2»", shelf: "food", say: "«pr-say-2»", milestoneId: "«ms-id»", firstTier: false },
+    ],
     restedShelves: ["food"],
     practice: null,
     nightAnswers: [
-      { date: "«day-1»", practiceOutcome: "not_today", whatHappened: "«what-happened»" },
+      { date: "«day-1»", practice: "«pr-say»", practiceOutcome: "not_today", whatHappened: "«what-happened»" },
       { date: "«day-2»", whatHappened: "«what-happened-2»" },
     ],
   } as CompanionJournal,

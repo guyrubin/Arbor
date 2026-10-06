@@ -276,14 +276,14 @@ describe("B-AI-03 · the prompt states only what the parent logged", () => {
 
 /* ── B-TODAY-24: grounded step — sayThis + a truthful why-line input ──────── */
 describe("B-TODAY-24 · /todays-focus returns one screened sayThis (≤140) and factCount", () => {
-  it("the schema gains an OPTIONAL sayThis; required stays focus + tryToday", async () => {
+  it("the schema carries sayThis (REQUIRED since todays_focus 1.3.1)", async () => {
     draft = { ...CLEAN_DRAFT, sayThis: "Two more minutes, then shoes on together." };
     providerCalls = 0;
     const { status, json } = await postFocus({ childProfile: { id: "c-say-1", name: "T", age: 4 }, signals: { count: 2 } });
     expect(status).toBe(200);
     expect(providerCalls).toBe(1); // model calls per focus unchanged (1)
     expect(Object.keys(lastSchema.properties ?? {})).toEqual(["focus", "tryToday", "sayThis"]);
-    expect(lastSchema.required).toEqual(["focus", "tryToday"]);
+    expect(lastSchema.required).toEqual(["focus", "tryToday", "sayThis"]);
     expect(json.sayThis).toBe("Two more minutes, then shoes on together.");
     expect(lastPrompt).toContain('"sayThis": exactly ONE sentence (under 140 characters; never two sentences)');
   });
@@ -317,7 +317,7 @@ describe("B-TODAY-24 · /todays-focus returns one screened sayThis (≤140) and 
       suite: string; promptVersions: Record<string, string>; scenarios: { id: string; route?: string; locale?: string; safetyMustHold?: boolean }[];
     };
     expect(suite.suite).toBe("today-focus-v1");
-    expect(suite.promptVersions.todays_focus).toBe("1.3.0");
+    expect(suite.promptVersions.todays_focus).toBe("1.3.1");
     const ids = suite.scenarios.map((s) => s.id);
     for (const required of ["cold-start", "approved-fact-used", "not-today-not-repeated", "he-output", "two-child-isolation", "safety-trip-no-score-trend-diagnosis", "saythis-length",
       // B-LOOP-13: the journal scenarios + the live-judge fixes on 1.2.0
@@ -364,30 +364,39 @@ describe("B-TODAY-11 · /todays-focus dateKey + rev", () => {
 });
 
 /* ── B-LOOP-13: the journal, the AI's practice pick and the why-line ──────── */
+/* Round 2 (framer, 6 Oct): the model picks only inside the FIRST TIER of the
+   chooser's order; the why is server-rendered (whyEmpty / whyFewest); sayThis
+   is required and falls back to the practice's own say-line. */
 describe("B-LOOP-13 · /todays-focus chooses the practice from the journal", () => {
   // child aged 2: pr-sleep-08 (sleep, shelf-level) and pr-cdc-24m-4 (words) are in window
-  const journal = { candidatePracticeIds: ["pr-sleep-08", "pr-cdc-24m-4"], shelfCoverage: { sleep: 0, words: 3 } };
-  const body = (id: string, over: Record<string, unknown> = {}) => ({ childProfile: { id, name: "T", age: 2 }, signals: { count: 2 }, journal, ...over });
-  const WHY = "Sleep has had fewer notes lately, so here is one small thing for bedtime.";
+  const journal = { candidatePracticeIds: ["pr-cdc-24m-4", "pr-sleep-08"], shelfCoverage: { sleep: 0, words: 3, food: 2, feelings: 2, play: 2, moving: 2, hands: 2, school: 2, family: 2 } };
+  const body = (id: string, over: Record<string, unknown> = {}) => ({ childProfile: { id, name: "Noa Levi", age: 2 }, signals: { count: 2 }, journal, ...over });
+  const SAY = "Try the bedtime picture page together tonight.";
+  const DRAFT = { focus: "Bedtime is today's small thing.", tryToday: "Look at the bedtime picture page together tonight.", sayThis: "Let's find the bedtime picture together." };
 
-  it("the schema gains OPTIONAL practiceId + why only when the AI may pick; the journal reaches the prompt", async () => {
-    draft = { ...CLEAN_DRAFT, practiceId: "pr-cdc-24m-4", why: "Words is a quiet shelf right now, so here is a small game for it." };
+  it("the schema: sayThis REQUIRED, optional practiceId only when the AI may pick, never a model why; one model call", async () => {
+    draft = { ...DRAFT, practiceId: "pr-sleep-08" };
     providerCalls = 0;
     const { status, json } = await postFocus(body("c-loop-1"));
     expect(status).toBe(200);
-    expect(providerCalls).toBe(1); // still ONE model call per focus
-    expect(Object.keys(lastSchema.properties ?? {})).toEqual(["focus", "tryToday", "sayThis", "practiceId", "why"]);
-    expect(lastSchema.required).toEqual(["focus", "tryToday"]);
+    expect(providerCalls).toBe(1);
+    expect(Object.keys(lastSchema.properties ?? {})).toEqual(["focus", "tryToday", "sayThis", "practiceId"]);
+    expect(lastSchema.required).toEqual(["focus", "tryToday", "sayThis"]);
     expect(lastPrompt).toContain("THE PARENT'S JOURNAL");
-    expect(lastPrompt).toContain('- pr-cdc-24m-4 · words · "Where\'s the bear? There he is! A big brown bear."');
-    expect(json.practiceId).toBe("pr-cdc-24m-4");
+    expect(json.practiceId).toBe("pr-sleep-08");
     expect(json.practiceVia).toBe("ai");
-    expect(json.why).toBe("Words is a quiet shelf right now, so here is a small game for it.");
   });
 
-  it("a practiceId outside the candidates is dropped and the pure chooser's id (the first candidate) is used — no why", async () => {
-    for (const bad of ["pr-cdc-2m-3", "pr-made-up", "", 42]) {
-      draft = { ...CLEAN_DRAFT, practiceId: bad, why: WHY };
+  it("the server re-applies the chooser's order: sleep (0 notes) is the first tier whatever the wire order; words is never listed", async () => {
+    draft = { ...DRAFT, practiceId: "pr-sleep-08" };
+    await postFocus(body("c-loop-order"));
+    expect(lastPrompt).toContain('- pr-sleep-08 · sleep · "What comes after pyjamas? Show me on our page."');
+    expect(lastPrompt).not.toContain("- pr-cdc-24m-4");
+  });
+
+  it("a pick outside the first tier (a later candidate, an unknown id, a non-string) → the chooser's pick, practiceVia 'chooser', no why", async () => {
+    for (const bad of ["pr-cdc-24m-4", "pr-cdc-2m-3", "pr-made-up", "", 42]) {
+      draft = { ...DRAFT, practiceId: bad };
       const { status, json } = await postFocus(body(`c-loop-bad-${String(bad)}`));
       expect(status).toBe(200);
       expect(json.practiceId).toBe("pr-sleep-08");
@@ -396,48 +405,71 @@ describe("B-LOOP-13 · /todays-focus chooses the practice from the journal", () 
     }
   });
 
-  it("a rested ('not sure' today) shelf is never chosen: the candidate is not offered and the pick is dropped", async () => {
-    draft = { ...CLEAN_DRAFT, practiceId: "pr-cdc-24m-4", why: WHY };
-    const { json } = await postFocus(body("c-loop-rested", { journal: { ...journal, restedShelves: ["words"] } }));
+  it("a shelf tied with the chooser's is first tier too; a rested shelf never is", async () => {
+    const tied = { candidatePracticeIds: ["pr-sleep-08", "pr-cdc-24m-4"], shelfCoverage: { sleep: 1, words: 1, food: 3, feelings: 3, play: 3, moving: 3, hands: 3, school: 3, family: 3 } };
+    draft = { ...DRAFT, practiceId: "pr-cdc-24m-4" };
+    const { json } = await postFocus(body("c-loop-tie", { journal: tied }));
+    expect(json.practiceId).toBe("pr-cdc-24m-4");
+    expect(json.practiceVia).toBe("ai");
+    const { json: rested } = await postFocus(body("c-loop-rested", { journal: { ...tied, restedShelves: ["words"] } }));
     expect(lastPrompt).not.toContain("- pr-cdc-24m-4");
-    expect(json.practiceId).toBe("pr-sleep-08");
-    expect(json.practiceVia).toBe("chooser");
+    expect(rested.practiceId).toBe("pr-sleep-08");
+    expect(rested.practiceVia).toBe("chooser");
   });
 
-  it("the why-line is screened: a verdict word drops it (fail closed), EN and HE; a second sentence is cut", async () => {
-    for (const verdict of ["Words is behind for her age, so try this.", "Most children do this by now, so practise it.", "She should be talking more, so here is a game.", "המילים מאחר, אז הנה משחק."]) {
-      draft = { ...CLEAN_DRAFT, practiceId: "pr-cdc-24m-4", why: verdict };
-      const { status, json } = await postFocus(body(`c-loop-v-${verdict.length}`));
-      expect(status).toBe(200);
-      expect(json.practiceId).toBe("pr-cdc-24m-4");
-      expect(json, verdict).not.toHaveProperty("why");
-    }
-    draft = { ...CLEAN_DRAFT, practiceId: "pr-sleep-08", why: `${WHY} It will help a lot.` };
-    const { json } = await postFocus(body("c-loop-two"));
-    expect(json.why).toBe(WHY);
+  it("the why is SERVER-RENDERED in the shipped A3 shapes (EN + HE), never the model's text", async () => {
+    draft = { ...DRAFT, practiceId: "pr-sleep-08", why: "MODEL_WHY has the most notes of all." };
+    const { json } = await postFocus(body("c-loop-why-en"));
+    expect(json.why).toBe("Nothing on Noa's Sleep shelf yet this month, so today's small thing is for it.");
+    expect(JSON.stringify(json)).not.toContain("MODEL_WHY");
+    draft = { ...DRAFT, practiceId: "pr-sleep-08", sayThis: "בואי נמצא את דף השינה ביחד.", tryToday: "תסתכלו יחד על דף השינה הערב." };
+    const { json: he } = await postFocus(body("c-loop-why-he", { language: "he", childProfile: { id: "c-loop-why-he", name: "נועה", age: 2 } }));
+    expect(String(he.why)).toContain("עדיין אין כלום במדף");
+    expect(String(he.why)).toContain("נועה");
+    // "fewest": the shelf is the thinnest of all, with notes
+    const fewest = { ...journal, shelfCoverage: { ...journal.shelfCoverage, sleep: 1 } };
+    draft = { ...DRAFT, practiceId: "pr-sleep-08" };
+    const { json: f } = await postFocus(body("c-loop-why-fewest", { journal: fewest }));
+    expect(f.why).toBe("Sleep has the fewest notes on Noa's shelves this month, so today's small thing is for it.");
   });
 
-  it("a diagnostic why blocks the whole focus with 422 (the same output screen)", async () => {
-    draft = { ...CLEAN_DRAFT, practiceId: "pr-sleep-08", why: "Your child has autism so bedtime is hard." };
+  it("a diagnostic line in any model field still blocks the whole focus with 422 (the same output screen)", async () => {
+    draft = { ...DRAFT, practiceId: "pr-sleep-08", sayThis: "Your child has autism so bedtime is hard." };
     const { status, json } = await postFocus(body("c-loop-diag"));
     expect(status).toBe(422);
     expect(JSON.stringify(json)).not.toContain("autism");
   });
 
-  it("a day pin or a dose row sets today's practice: no pick, no why, the practice line in the prompt", async () => {
-    draft = { ...CLEAN_DRAFT, practiceId: "pr-cdc-24m-4", why: WHY };
-    const { json } = await postFocus(body("c-loop-pin", { journal: { ...journal, pinnedPracticeId: "pr-sleep-08" } }));
-    expect(lastPrompt).toContain("Today's practice: 'What comes after pyjamas? Show me on our page.' (pending).");
+  it("sayThis missing, too short, or unrelated to tryToday → the chosen practice's own say-line (EN / HE)", async () => {
+    for (const [i, say] of [undefined, "", "Ok.", "Here comes the dinosaur bus."].entries()) {
+      draft = { ...DRAFT, practiceId: "pr-sleep-08", sayThis: say };
+      const { json } = await postFocus(body(`c-loop-say-${i}`));
+      expect(json.sayThis, String(say)).toBe("What comes after pyjamas? Show me on our page.");
+    }
+    draft = { ...DRAFT, practiceId: "pr-sleep-08", sayThis: "" };
+    const { json: he } = await postFocus(body("c-loop-say-he", { language: "he" }));
+    expect(String(he.sayThis)).toMatch(/[֐-׿]/);
+    draft = { ...DRAFT, practiceId: "pr-sleep-08" };
+    const { json: kept } = await postFocus(body("c-loop-say-kept"));
+    expect(kept.sayThis).toBe(DRAFT.sayThis);
+  });
+
+  it("a day pin or a dose row sets today's practice: no pick, no why, the practice line in the prompt; sayThis falls back to that practice", async () => {
+    draft = { ...DRAFT, practiceId: "pr-cdc-24m-4", sayThis: "" };
+    const { json } = await postFocus(body("c-loop-pin", { journal: { ...journal, pinnedPracticeId: "pr-cdc-24m-4" } }));
+    expect(lastPrompt).toContain("Today's practice: 'Where's the bear? There he is! A big brown bear.' (pending).");
     expect(Object.keys(lastSchema.properties ?? {})).toEqual(["focus", "tryToday", "sayThis"]);
     expect(json).not.toHaveProperty("practiceId");
     expect(json).not.toHaveProperty("why");
+    expect(json.sayThis).toBe("Where's the bear? There he is! A big brown bear.");
   });
 
-  it("no journal → the 1.2.0 response shape (no practiceId, no why)", async () => {
-    draft = { ...CLEAN_DRAFT, practiceId: "pr-sleep-08", why: WHY };
+  it("no journal → no practiceId, no why; a bad sayThis is dropped (nothing to fall back to)", async () => {
+    draft = { ...CLEAN_DRAFT, practiceId: "pr-sleep-08", sayThis: "" };
     const { json } = await postFocus({ childProfile: { id: "c-loop-none", name: "T", age: 2 }, signals: { count: 2 } });
     expect(json).not.toHaveProperty("practiceId");
     expect(json).not.toHaveProperty("why");
+    expect(json).not.toHaveProperty("sayThis");
     expect(lastPrompt).not.toContain("THE PARENT'S JOURNAL");
   });
 

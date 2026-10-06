@@ -613,9 +613,9 @@ describe("B-PROG-01 — the active-program line", () => {
     expect(buildLiveSystemInstruction("en", spoken)).toBe(strip(buildLiveSystemInstruction("en", { ...spoken!, program })));
     // an empty skill or name renders nothing
     expect(buildChatPrompt({ ...chatArgs, activeProgram: { ...program, skill: " " } })).toBe(buildChatPrompt(chatArgs));
-    expect(PROMPT_VERSIONS.todays_focus.version).toBe("1.3.0");
+    expect(PROMPT_VERSIONS.todays_focus.version).toBe("1.3.1");
     expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.7.0");
-    expect(PROMPT_VERSIONS.voice_reply.version).toBe("1.8.0");
+    expect(PROMPT_VERSIONS.voice_reply.version).toBe("1.8.1");
     expect(PROMPT_VERSIONS.live_session.version).toBe("1.5.0");
   });
 });
@@ -634,10 +634,13 @@ describe("B-LOOP-13 — the journal block and today's practice line", () => {
   const journal = {
     shelfCoverage: { sleep: 0, food: 2, words: 1, feelings: 0, play: 3, moving: 0, hands: 0, school: 0, family: 0 },
     nextMilestones: [{ id: "m-1", shelf: "words" as const, title: "Says two words together", ageLine: "Most children do this by 2 years" }],
-    candidates: [{ id: "pr-1", shelf: "sleep" as const, say: "Night night, teddy.", milestoneId: null }],
+    candidates: [
+      { id: "pr-1", shelf: "sleep" as const, say: "Night night, teddy.", milestoneId: null, firstTier: true },
+      { id: "pr-2", shelf: "words" as const, say: "LATER_TIER_SAY", milestoneId: "m-1", firstTier: false },
+    ],
     restedShelves: ["food" as const],
     practice: null,
-    nightAnswers: [{ date: "2026-10-05", practiceOutcome: "helped" as const, whatHappened: "She hugged the book" }],
+    nightAnswers: [{ date: "2026-10-05", practice: "Book time.", practiceOutcome: "helped" as const, whatHappened: "She hugged the book" }],
   };
   const focusArgs = { childProfile: null, count: 2, triggerSent: "", lastActionRecommendation: "", lastActionOutcome: "", languageDirective: "" };
 
@@ -668,10 +671,14 @@ describe("B-LOOP-13 — the journal block and today's practice line", () => {
     expect(p).toMatch(/never write a number, never compare shelves or children/);
     expect(p).toContain('- m-1 · words · "Says two words together" · "Most children do this by 2 years"');
     expect(p).toContain('- pr-1 · sleep · "Night night, teddy."');
+    // round 2: only the FIRST TIER is listed; the model never ranks shelves
+    expect(p).not.toContain("LATER_TIER_SAY");
+    expect(p).toMatch(/FIRST TIER, already ordered by Arbor/);
+    expect(p).toMatch(/Do not rank shelves yourself/);
     expect(p).toContain("rest them, never choose them: food");
-    expect(p).toContain('- 2026-10-05: helped · "She hugged the book"');
-    expect(p).toMatch(/"why": ONE sentence to the parent/);
-    expect(p).toMatch(/never "behind", "delayed", "should", "normal"/);
+    expect(p).toContain(`- 2026-10-05 · practice 'Book time.': helped · "She hugged the book"`);
+    // round 2: the model writes no why (server-rendered from the chooser's reason)
+    expect(p).not.toMatch(/"why"/);
     expect(p).not.toMatch(/quote/i);
     expect(p.indexOf("THE PARENT'S JOURNAL")).toBeLessThan(p.indexOf("What the parent has logged"));
   });
@@ -694,10 +701,31 @@ describe("B-LOOP-13 — the journal block and today's practice line", () => {
     expect(warm).toContain("(the journal's notes per shelf cover the last 30 days)");
   });
 
-  it("versions: todays_focus 1.3.0 · coach_chat 1.7.0 · voice_reply 1.8.0 · live_session unchanged 1.5.0", () => {
-    expect(PROMPT_VERSIONS.todays_focus.version).toBe("1.3.0");
+  it("versions: todays_focus 1.3.1 · coach_chat 1.7.0 · voice_reply 1.8.1 · live_session unchanged 1.5.0", () => {
+    expect(PROMPT_VERSIONS.todays_focus.version).toBe("1.3.1");
     expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.7.0");
-    expect(PROMPT_VERSIONS.voice_reply.version).toBe("1.8.0");
+    expect(PROMPT_VERSIONS.voice_reply.version).toBe("1.8.1");
     expect(PROMPT_VERSIONS.live_session.version).toBe("1.5.0");
+  });
+});
+
+/* B-LOOP-13 round 2 — voice_reply 1.8.1 renders the night answers. */
+describe("B-LOOP-13 round 2 — voice_reply night answers", () => {
+  const spoken = { profile: { age: 4 }, approvedMemory: "", approvedMemoryFactsUsed: 0, recentTurns: [] } as NonNullable<Parameters<typeof buildVoiceReplyPrompt>[0]["companionContext"]>;
+  const voiceArgs = { persona: "P", scholar: { name: "s", method: "m" }, childProfile: null, message: "What should we try tomorrow?", languageDirective: "" };
+  const practice = { say: "This book or that one?", state: "pending" as const };
+  const answers = [{ date: "2026-10-05", practice: "This book or that one?", practiceOutcome: "not_today" as const, whatHappened: "She was too tired." }];
+  it("renders the answers after the practice line, says they ARE the earlier record, before the parent's words", () => {
+    const v = buildVoiceReplyPrompt({ ...voiceArgs, companionContext: { ...spoken, todayPractice: practice, nightAnswers: answers } });
+    expect(v).toContain(`- 2026-10-05 · practice 'This book or that one?': not today · "She was too tired."`);
+    expect(v).toMatch(/This journal IS the earlier record for the practice/);
+    expect(v.indexOf("Today's practice:")).toBeLessThan(v.indexOf("THE PARENT'S PRACTICE JOURNAL"));
+    expect(v.indexOf("THE PARENT'S PRACTICE JOURNAL")).toBeLessThan(v.indexOf("The parent just said"));
+  });
+  it("parity: no answers ⇒ the practice line alone; live_session never renders either", async () => {
+    const { buildLiveSystemInstruction } = await import("../lib/livePersona.js");
+    expect(buildVoiceReplyPrompt({ ...voiceArgs, companionContext: { ...spoken, todayPractice: practice, nightAnswers: [] } }))
+      .toBe(buildVoiceReplyPrompt({ ...voiceArgs, companionContext: { ...spoken, todayPractice: practice } }));
+    expect(buildLiveSystemInstruction("en", { ...spoken, todayPractice: practice, nightAnswers: answers })).toBe(buildLiveSystemInstruction("en", spoken));
   });
 });
