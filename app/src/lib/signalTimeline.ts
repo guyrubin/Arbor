@@ -129,6 +129,13 @@ export interface TimelineSignal {
    * tap). A count, never a size expectation or a comparison between languages.
    */
   wordsLanguage?: string;
+  /**
+   * B-ASKJB-34 (kind "practice" only) — one quiet row per day for the child's
+   * play and stories: the day's per-activity rows, shown on tap (the row's
+   * detail lists them). Set by lib/timelineFold.foldPlayDays at read; the
+   * folded row carries no count of its own.
+   */
+  folded?: TimelineSignal[];
 }
 
 /** B-GROWTH-15 — a stored language name in the page language when it is a
@@ -199,6 +206,8 @@ export const signalTitle = (s: TimelineSignal, t: TranslateFn): string => {
     case "play":
       return t("timeline.title.played", { title: s.refTitle ?? "" });
     case "practice": {
+      // B-ASKJB-34: a day's folded play and stories read as one quiet line.
+      if (s.folded?.length) return t("elev.childsignals.title.day");
       // Warm aggregated child-activity copy — keys live in the childsignals
       // i18n module (i18nElevation/childsignals.ts); callers wrap t via
       // withChildSignals until the module is registered in index.ts.
@@ -225,6 +234,8 @@ export const signalDetail = (s: TimelineSignal, t: TranslateFn): string => {
   }
   // TJB-05: the accepted step's own words — raw record content, never UI copy.
   if (s.kind === "action") return s.refTitle ?? "";
+  // B-ASKJB-34: the folded day's disclosure — each activity's own warm line.
+  if (s.kind === "practice" && s.folded?.length) return s.folded.map((f) => signalTitle(f, t)).join(" · ");
   if (s.kind === "milestone" && !s.milestoneRef?.noteDetail) return milestoneSignalText(s, "desc", t);
   return s.detail || "";
 };
@@ -827,7 +838,8 @@ export const groupByDay = (
         ? relDayLabel(0, locale)
         : k === yesterdayKey
           ? relDayLabel(1, locale)
-          : new Date(s.at).toLocaleDateString(locale, { weekday: "long", month: "short", day: "numeric" });
+          // B-ASKJB-34: a sentence-case day header with the month in words ("Thursday, September 17").
+          : new Date(s.at).toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long" });
     ensure(k, label).signals.push(s);
   }
 

@@ -155,6 +155,9 @@ function JournalRow({
   // one quiet caption. Parent rows carry no provenance chip; Arbor and child
   // rows keep theirs, in sentence case.
   const parentLead = prov === "manual" && signal.kind === "moment" && !!detail.trim();
+  // B-ASKJB-34: the child's play and stories (one folded row a day) are the
+  // quiet line under the parent's entries — regular weight, secondary ink.
+  const quiet = prov === "child";
   return (
     /* TJB-13: the whole row is the affordance. It used to be an inert
        <article>: the feed showed a title and a two-line clamp and there was no
@@ -181,7 +184,7 @@ function JournalRow({
         <p data-testid="journal-row-words" className="leading-snug line-clamp-3" style={{ fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>
           <FreeText text={detail} />
         </p>
-        <p data-testid="journal-row-caption" className="mt-1 t-xs" style={{ color: "var(--arbor-muted)" }}>
+        <p data-testid="journal-row-caption" className="mt-1 t-sm" style={{ color: "var(--arbor-muted)" }}>
           <bdi>{title}</bdi>
           {when && <>{" · "}<bdi>{when}</bdi></>}
           {signal.resolved && <>{" · "}<span data-testid="journal-row-resolved">{resolvedLabel}</span></>}
@@ -190,14 +193,14 @@ function JournalRow({
       ) : (
       <div className="min-w-0 flex-1">
         {/* W2: the parent-visible entry meaning leads; provenance/time remain readable metadata. */}
-        <p className="t-base font-bold leading-relaxed" style={{ color: "var(--arbor-ink)" }} dir="auto">
+        <p data-testid={quiet ? "journal-row-quiet" : undefined} className={quiet ? "t-sm leading-relaxed" : "t-base font-semibold leading-relaxed"} style={{ color: quiet ? "var(--arbor-ink-soft)" : "var(--arbor-ink)" }} dir="auto">
           {title}
         </p>
         <div className="mt-1.5 flex items-center gap-2 flex-wrap">
           {/* Provenance badge — AUTO gets the accent "Arbor" mark, CHILD a soft
               lav chip with the child's name, MANUAL a neutral "You" one. */}
           <span
-            className="inline-flex items-center gap-1 text-[var(--t-xs)] font-bold rounded-md px-2 py-0.5"
+            className="inline-flex items-center gap-1 t-sm font-semibold rounded-md px-2 py-0.5"
             dir="auto"
             style={
               prov === "auto"
@@ -237,7 +240,7 @@ function JournalRow({
             <Chip tone={tone} icon={<Icon name={DOMAIN_MS[domain]} size={13} fill={1} />}>{domainLabel}</Chip>
           )}
           {when && (
-            <span className="t-sm font-bold ms-auto" style={{ color: "var(--arbor-muted)" }}>{when}</span>
+            <span className="t-sm ms-auto" style={{ color: "var(--arbor-muted)" }}>{when}</span>
           )}
         </div>
         {detail && (
@@ -545,7 +548,7 @@ export default function JournalTab({ primaryMoveProps, densityToggle }: { primar
                 {/* The quote now leads the story line at every width; the
                     aside keeps the date only when the line could not quote. */}
                 {!quotedLastKept && (
-                  <p className="t-xs" style={{ color: "var(--arbor-muted)" }}>
+                  <p className="t-sm" style={{ color: "var(--arbor-muted)" }}>
                     {t("elev.journal.lastKept.caption", { date: lastKeptDate })}
                   </p>
                 )}
@@ -589,7 +592,7 @@ export default function JournalTab({ primaryMoveProps, densityToggle }: { primar
       <section ref={composeRef} data-module="journal-compose" className="rounded-[var(--r-lg)] p-4 sm:p-5" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-xs)" }}>
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
-            <p className="t-xs font-bold" style={{ color: "var(--arbor-lav-ink)" }}>{t("journal.compose.eyebrow")}</p>
+            <p className="t-sm" style={{ color: "var(--arbor-muted)" }}>{t("journal.compose.eyebrow")}</p>
           <h2 className="mt-1 t-lg font-extrabold tracking-[-0.01em]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
             {t("journal.compose.title")}
           </h2>
@@ -622,7 +625,7 @@ export default function JournalTab({ primaryMoveProps, densityToggle }: { primar
             (deterministic per child+day; elev.prompt.* strings, registered in
             i18nElevation/journal.ts). Tap toggles the writing cue above. */}
         <div className="mt-3">
-          <p className="t-xs font-bold mb-1.5" style={{ color: "var(--arbor-muted)" }}>
+          <p className="t-sm font-semibold mb-1.5" style={{ color: "var(--arbor-muted)" }}>
             {t("elev.prompt.lead")}
           </p>
           {/* Critic r1: below sm the chips are ONE horizontal snap row, not
@@ -716,7 +719,7 @@ export default function JournalTab({ primaryMoveProps, densityToggle }: { primar
         <section aria-labelledby="journal-timeline-title">
           <div className="mb-1 flex items-center justify-between gap-3">
             <h2 id="journal-timeline-title" className="t-lg font-extrabold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{t("journal.timeline.title")}</h2>
-            <span className="t-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t(feedCount.key, { n: feedCount.n })}</span>
+            <span className="t-sm" style={{ color: "var(--arbor-muted)" }}>{t(feedCount.key, { n: feedCount.n })}</span>
           </div>
           <div data-testid="journal-filters" className="mb-3 space-y-2">
             <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t("journal.filter.aria")}>
@@ -803,7 +806,8 @@ export default function JournalTab({ primaryMoveProps, densityToggle }: { primar
                 className="sticky top-0 z-[5] -mx-1 flex items-center gap-3 px-1 py-1.5"
                 style={{ background: "var(--arbor-paper)" }}
               >
-                <h3 className="t-xs font-bold text-start" style={{ color: "var(--arbor-muted)" }}>
+                {/* B-ASKJB-34: sentence case as Intl writes it ("Thursday, September 17"), 12 px, no shout. */}
+                <h3 className="t-sm font-semibold text-start" style={{ color: "var(--arbor-muted)" }}>
                   {group.label}
                 </h3>
                 <span className="h-px flex-1" style={{ background: "var(--arbor-rule)" }} aria-hidden />

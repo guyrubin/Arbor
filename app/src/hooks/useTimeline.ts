@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { useArbor } from "../context/ArborContext";
-import { buildTimeline, type TimelineSignal } from "../lib/signalTimeline";
+import type { TimelineSignal } from "../lib/signalTimeline";
+// B-ASKJB-34: identical events read once; play and stories fold to one row a day.
+import { readTimeline } from "../lib/timelineFold";
 import { useChildCollection } from "./useChildCollection";
 import type { KeepsakeDoc } from "../lib/firstsKeepsake";
 import type { LangObservation } from "../growth/vocabAgg";
@@ -76,7 +78,7 @@ export function useTimeline(): TimelineSignal[] {
   });
 
   return useMemo(
-    () => buildTimeline({
+    () => readTimeline({
       behaviorLogs,
       milestones,
       plans: actionPlans,

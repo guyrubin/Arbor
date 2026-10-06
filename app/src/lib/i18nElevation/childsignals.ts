@@ -41,6 +41,8 @@ export const en: Record<string, string> = {
   "elev.childsignals.title.mission.many": "Completed {count} daily missions",
   "elev.childsignals.title.hero.one": "Finished 1 hero story",
   "elev.childsignals.title.hero.many": "Finished {count} hero stories",
+  // B-ASKJB-34 — one quiet Journal row a day for the child's play and stories (tap lists them).
+  "elev.childsignals.title.day": "Play and stories",
 
   // ── "Over the months" spine — milestone crossings + cumulative totals only.
   "elev.childsignals.months.title": "Over the months",
@@ -107,6 +109,7 @@ export const he: Record<string, string> = {
   "elev.childsignals.title.mission.many": "הושלמו {count} משימות יומיות",
   "elev.childsignals.title.hero.one": "הושלם סיפור גיבור אחד",
   "elev.childsignals.title.hero.many": "הושלמו {count} סיפורי גיבור",
+  "elev.childsignals.title.day": "משחקים וסיפורים",
 
   "elev.childsignals.months.title": "לאורך החודשים",
   "elev.childsignals.months.by": "עד {month}: {count} רגעים בסיפור",
