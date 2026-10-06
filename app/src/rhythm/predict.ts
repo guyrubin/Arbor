@@ -9,6 +9,7 @@
  * bands not exact minutes. Sparse data returns a low-confidence read with how
  * many more days of logging are needed — never invented precision.
  */
+import { bandForMonths, stageOfBand, type AgeStage } from "../lib/age/forChild";
 
 /** Minimal event shape — decoupled from the app's BehaviorLog on purpose. */
 export interface RhythmEvent {
@@ -88,13 +89,14 @@ function toMs(ts: string | number): number {
   return typeof ts === "number" ? ts : new Date(ts).getTime();
 }
 
+/** Wind-down prior per stage of the canonical band (baby/toddler ~18:00, preschool 19:00, school 20:00). */
+const WIND_DOWN_BY_STAGE: Record<AgeStage, number> = { baby: 18, toddler: 18, preschool: 19, school: 20 };
+
 /** Age-based wind-down prior (hour) used until evening logs are dense enough. */
 function windDownPrior(ageYears: number | undefined): number {
   if (ageYears == null) return 19;
-  if (ageYears < 1) return 18;
-  if (ageYears < 3) return 18.5 | 0; // ~18:30 → floor to 18 for an hour band
-  if (ageYears < 6) return 19;
-  return 20;
+  // B-INF-10: the stage of the canonical band, never local age math.
+  return WIND_DOWN_BY_STAGE[stageOfBand(bandForMonths(Math.max(0, ageYears) * 12))];
 }
 
 /** B-DATA-09: a hard event carries a recorded intensity at or above the

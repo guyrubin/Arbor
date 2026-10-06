@@ -14,9 +14,10 @@ import { useCopilot, usePracticeData } from "../../practice/usePracticeData";
 import { domainMilestoneCounts } from "../../practice/signals";
 // GP-08: the age window every other count on the parent side uses.
 import { ageWindowMilestones, comparisonAgeMonths } from "../../lib/milestoneData";
-import { ageMonthsFromProfile } from "../../lib/childAge";
+
 import type { JourneyObjective, MissionRecord } from "../../types";
 import { track } from "../../lib/analytics";
+import { ageMonthsOf, ageYearsOf } from "../../lib/age/forChild";
 
 const TAB_BY_EXTRA: Record<string, ActiveTab> = {
   speech: "speech",
@@ -38,7 +39,7 @@ export default function JourneyTab() {
   });
   const first = childProfile.name.split(" ")[0];
   const month = data.today.slice(0, 7);
-  const vars = { name: first, age: childProfile.age, lang: childProfile.languages?.[1] };
+  const vars = { name: first, age: ageYearsOf(childProfile), lang: childProfile.languages?.[1] };
   /* R23 (Builder L) — the missions, the aimed extras and the monthly
      objectives are DATA composed in practice/journey.ts and practice/content.ts,
      and they were English-only, so #/journey printed 32 Latin lines under
@@ -126,7 +127,7 @@ export default function JourneyTab() {
   // parent's noticed count on that date and the only genuinely historical part
   // of the row — and clamped to the window it is now counted against.
   const domainCounts = useMemo(() => {
-    const chronoMonths = ageMonthsFromProfile(childProfile) ?? Math.round((childProfile.age || 0) * 12);
+    const chronoMonths = ageMonthsOf(childProfile);
     const inWindow = ageWindowMilestones(milestones, comparisonAgeMonths(chronoMonths, childProfile.preterm?.gestationalWeeks));
     return domainMilestoneCounts(inWindow);
   }, [milestones, childProfile]);

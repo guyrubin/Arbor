@@ -4,6 +4,7 @@ import { usePracticeData } from "../../practice/usePracticeData";
 import MemoryMatch from "./MemoryMatch";
 import { GameShell } from "../kidmode/game/GameShell";
 import { useLanguage } from "../../context/LanguageContext";
+import { ageYearsOf } from "../../lib/age/forChild";
 
 /* Mind Vault world — the memory-match game, given its own Hero Arcade entry.
    Supplies the practice data + child age that MemoryMatch needs (it was
@@ -23,7 +24,7 @@ export default function MindVaultWorld() {
       mood="think"
       eyebrow={t("elev.kids.mission")}
     >
-      <MemoryMatch data={data} childAge={childProfile.age} embedded />
+      <MemoryMatch data={data} childAge={ageYearsOf(childProfile)} embedded />
     </GameShell>
   );
 }

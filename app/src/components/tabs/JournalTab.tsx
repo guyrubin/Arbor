@@ -32,6 +32,7 @@ import { exportBehaviorPdf } from "../../lib/behaviorExport";
 import { journalStoryState, lastKeptMoment } from "../../lib/journalLastKept";
 import { fmtDay } from "../../lib/formatDate";
 import { isIncidentType } from "../../content/behaviorTaxonomy";
+import { ageYearsOf } from "../../lib/age/forChild";
 
 /**
  * UC-1 Journal (wireframe-reconciled) — a single calm column of logged moments.
@@ -353,13 +354,13 @@ export default function JournalTab({ primaryMoveProps, densityToggle }: { primar
   // card — NEVER injected into the draft body (the sanctioned W1 pattern:
   // the answer belongs in the log, not the question). Toggle-off on re-tap.
   const promptKeys = useMemo(
-    () => dailyPromptKeys({ ageYears: childProfile.age, childId: childProfile.id, date: new Date() }),
-    [childProfile.age, childProfile.id],
+    () => dailyPromptKeys({ ageYears: ageYearsOf(childProfile), childId: childProfile.id, date: new Date() }),
+    [ageYearsOf(childProfile), childProfile.id],
   );
   const [activePromptKey, setActivePromptKey] = useState<string | null>(null);
   const onPromptTap = (key: string) => {
     setActivePromptKey((cur) => (cur === key ? null : key));
-    try { track("journal_prompt_tap", { band: bandForAge(childProfile.age) }); } catch { /* noop */ }
+    try { track("journal_prompt_tap", { band: bandForAge(ageYearsOf(childProfile)) }); } catch { /* noop */ }
   };
 
   // TJB-13: the tapped row. Journal rows were inert — a saved moment could be

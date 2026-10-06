@@ -9,7 +9,7 @@ import { PageHeader, SectionCard, cardCls, TrustSafetyBar } from "../ui/kit";
 import { AGE_BANDS, bandForAgeMonths, scoreScreening, type ScreenAnswer, type ScreeningResult } from "../../lib/screening";
 import { domainLabel } from "../../lib/domains/registry";
 import { comparisonAgeMonths, correctedAge } from "../../lib/milestoneData";
-import { ageLabel, ageMonthsFromProfile } from "../../lib/childAge";
+import { ageLabel } from "../../lib/childAge";
 import { computeRecheckDueAt, isRecheckDue } from "../../lib/screeningRecheck";
 import { buildMonitoringReportDoc, type DomainSignal } from "../../lib/monitoring";
 import { useMonitoring } from "../../hooks/useMonitoring";
@@ -21,6 +21,7 @@ import { fmtDay } from "../../lib/formatDate";
 import { clearScreeningDraft, readScreeningDraft, writeScreeningDraft } from "../../lib/screeningDraft";
 import { watchOffersForScreening, writeWatchFocus } from "../../lib/screeningWatch";
 import { tGCare } from "../../lib/growthCareText";
+import { ageMonthsOf, ageYearsOf } from "../../lib/age/forChild";
 
 /** W0.3 — module-local string resolution for the calm-result reframe.
  *  i18nElevation/index.ts registration is that file's own recipe (one line per
@@ -48,7 +49,7 @@ export default function Screening() {
   // Passive developmental-monitoring layer (Mission M8): derived from the child's
   // own milestones + behavior logs, surfaced as calm, non-diagnostic watch notes.
   // The ONE shared derivation (hooks/useMonitoring) — this surface previously
-  // passed the coarse childProfile.age while the noticed card and the bell fed a
+  // passed the coarse ageYearsOf(childProfile) while the noticed card and the bell fed a
   // months-precise age, so the same child could get different watch answers.
   const monitoring = useMonitoring();
 
@@ -188,7 +189,7 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
   // so a preemie is never screened against the uncorrected band one click away
   // from the corrected milestone view. Term children: comparisonAgeMonths is
   // the chronological months, so band selection is unchanged.
-  const chronoMonths = ageMonthsFromProfile(childProfile) ?? Math.round((childProfile.age || 0) * 12);
+  const chronoMonths = ageMonthsOf(childProfile);
   const gestationalWeeks = childProfile.preterm?.gestationalWeeks;
   const corrected = correctedAge(chronoMonths, gestationalWeeks);
   const comparisonMonths = comparisonAgeMonths(chronoMonths, gestationalWeeks);

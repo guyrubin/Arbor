@@ -21,9 +21,12 @@ const LS_PROFILES = "arbor.children";
 const LS_ACTIVE = "arbor.activeChildId";
 
 type StorageLike = Pick<Storage, "getItem" | "setItem">;
+type BundleChild = { id?: unknown; demo?: unknown } & Record<string, unknown>;
 type BundleBody = {
-  child?: { id?: unknown; demo?: unknown } & Record<string, unknown>;
+  child?: BundleChild;
   collections?: Record<string, unknown>;
+  /** P2A AGES: the family's other children, each with her own collections. */
+  siblings?: { child?: BundleChild; collections?: Record<string, unknown> }[];
 };
 type Bundle = BundleBody & {
   version?: unknown;
@@ -66,10 +69,19 @@ export async function hydrateDemoFamily({
     : `${String(bundle.version)}@${String(bundle.seededAt)}`;
   if (storage.getItem(DEMO_FAMILY_MARKER) === marker) return "current";
 
-  for (const [name, docs] of Object.entries(body.collections)) {
-    if (!CHILD_SUBCOLLECTIONS.includes(name) || !Array.isArray(docs)) continue;
-    storage.setItem(`arbor.${name}.${childId}`, JSON.stringify(docs));
-  }
+  const writeCollections = (id: string, collections: Record<string, unknown>) => {
+    for (const [name, docs] of Object.entries(collections)) {
+      if (!CHILD_SUBCOLLECTIONS.includes(name) || !Array.isArray(docs)) continue;
+      storage.setItem(`arbor.${name}.${id}`, JSON.stringify(docs));
+    }
+  };
+  writeCollections(childId, body.collections);
+  // P2A AGES: a sibling is written only when she is a demo child with her own id.
+  const siblings = (Array.isArray(body.siblings) ? body.siblings : []).filter(
+    (s) => typeof s?.child?.id === "string" && s.child.id !== childId && s.child.demo === true && !!s.collections && typeof s.collections === "object",
+  );
+  for (const sib of siblings) writeCollections(String(sib.child!.id), sib.collections!);
+  const seededIds = new Set([childId, ...siblings.map((s) => String(s.child!.id))]);
   let profiles: Record<string, unknown>[] = [];
   try {
     const raw = storage.getItem(LS_PROFILES);
@@ -78,7 +90,7 @@ export async function hydrateDemoFamily({
   } catch {
     profiles = [];
   }
-  storage.setItem(LS_PROFILES, JSON.stringify([child, ...profiles.filter((p) => p?.id !== childId)]));
+  storage.setItem(LS_PROFILES, JSON.stringify([child, ...siblings.map((s) => s.child), ...profiles.filter((p) => !seededIds.has(String(p?.id)))]));
   storage.setItem(LS_ACTIVE, childId);
   storage.setItem(DEMO_FAMILY_MARKER, marker);
   return "seeded";

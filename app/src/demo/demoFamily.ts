@@ -7,6 +7,11 @@
  * name is the sandbox demo profile's (initialData.ts), the age is 3y2m, the
  * languages are Hebrew + English.
  *
+ * P2A AGES (B-INF-10): a second child, Leni (22 months, a girl), with a small
+ * toddler record of her own (`siblings[0]`: three word-moments, one bedtime
+ * note, one noticed milestone, three words) — so every chooser can be driven
+ * on two children of different bands and on the switch between them.
+ *
  * What six weeks of an ordinary family record holds (counts are the item's):
  *   14 moments (2 with photos) · 3 hard moments (one "hard morning" that
  *   matches a pilot guide) · 5 milestones noticed · 4 words written down
@@ -28,10 +33,12 @@ import type { LangObservation } from "../growth/vocabAgg";
 import { defaultChildProfile, initialMilestones } from "../initialData";
 import { hardMomentCards } from "../content/hardMomentCards";
 
-export const DEMO_FAMILY_VERSION = "2026-10-06.2";
+export const DEMO_FAMILY_VERSION = "2026-10-06.3";
 export const DEMO_FAMILY_LABEL = { en: "Demo family", he: "משפחת הדגמה" } as const;
 /** The demo child IS the sandbox's synthetic child, so `npm run seed:demo` populates it. */
 export const DEMO_CHILD_ID = defaultChildProfile.id;
+/** P2A AGES (B-INF-10): the second demo child — a toddler, 22 months, "getting to two". */
+export const DEMO_SIBLING_ID = "leni-demo";
 
 export type DemoLang = "en" | "he";
 type L = { en: string; he: string };
@@ -68,6 +75,18 @@ export type DemoFamily = {
     apptFollowUps: AppointmentFollowUp[];
   };
   memory: DemoMemorySeed;
+  /** P2A AGES: the other children of the family, each with her own small record. */
+  siblings: DemoSibling[];
+};
+
+/** A second child: her profile and her own per-child subcollections. */
+export type DemoSibling = {
+  child: ChildProfile & { demo: true };
+  collections: {
+    behaviorLogs: BehaviorLog[];
+    milestones: Milestone[];
+    langObs: LangObservation[];
+  };
 };
 
 /* ── invented record text ─────────────────────────────────────────────── */
@@ -128,6 +147,58 @@ const MEMORY: Record<DemoLang, DemoMemorySeed> = {
     ],
   },
 };
+
+/* ── the toddler (P2A AGES): Leni, 22 months, a girl ─────────────────────
+   A small toddler record, two weeks deep: three word-moments, one bedtime
+   note, one noticed milestone. Every string invented. */
+const LENI_MOMENTS: { daysAgo: number; hour: number; text: L; context: BehaviorLog["context"] }[] = [
+  { daysAgo: 1, hour: 8, text: L("Said \"more\" at breakfast and pointed to the banana", "אמרה \"עוד\" בארוחת הבוקר והצביעה על הבננה"), context: "Home" },
+  { daysAgo: 4, hour: 17, text: L("Called the dog \"woof\" at the park", "קראה לכלב \"הב הב\" בגן השעשועים"), context: "Public" },
+  { daysAgo: 9, hour: 18, text: L("Said \"aba\" when the door opened", "אמרה \"אבא\" כשהדלת נפתחה"), context: "Home" },
+  // the bedtime note
+  { daysAgo: 2, hour: 20, text: L("Fell asleep after the same two songs, no crying", "נרדמה אחרי אותם שני שירים, בלי בכי"), context: "Home" },
+];
+const LENI_WORDS: { daysAgo: number; language: string; phrase: string }[] = [
+  { daysAgo: 1, language: "English", phrase: "more" },
+  { daysAgo: 4, language: "English", phrase: "woof" },
+  { daysAgo: 9, language: "Hebrew", phrase: "אבא" },
+];
+
+function buildLeni(now: number, lang: DemoLang): DemoSibling {
+  const pick = (text: L) => text[lang];
+  const birth = new Date(now);
+  birth.setUTCMonth(birth.getUTCMonth() - 22); // 22 months
+  const child: ChildProfile & { demo: true } = {
+    ...defaultChildProfile,
+    id: DEMO_SIBLING_ID,
+    name: "Leni",
+    gender: "girl",
+    age: 1,
+    ageMonths: 22,
+    birthDate: birth.toISOString().slice(0, 10),
+    languages: ["Hebrew", "English"],
+    schoolContext: lang === "he" ? "מעון יום, בוקר" : "Daycare, mornings",
+    strengths: lang === "he" ? ["מחקה פרצופים", "אוהבת שירים"] : ["Copies faces", "Loves songs"],
+    challenges: [],
+    onboardingComplete: true,
+    demo: true,
+  };
+  const behaviorLogs: BehaviorLog[] = LENI_MOMENTS.map((m, i): BehaviorLog => ({
+    id: `demo-leni-moment-${i + 1}`,
+    timestamp: at(now, m.daysAgo, m.hour),
+    behaviorType: "Moment",
+    durationMinutes: 0,
+    trigger: pick(m.text),
+    context: m.context,
+  })).sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+  // One milestone noticed, from the real template: the first one written for 18 months.
+  const noticedId = initialMilestones.find((m) => m.ageMonths === 18)?.id;
+  const milestones: Milestone[] = initialMilestones.map((m) =>
+    m.id === noticedId ? { ...m, checked: true, observationStatus: "yes" as const, observationUpdatedAt: at(now, 6, 18) } : { ...m },
+  );
+  const langObs: LangObservation[] = LENI_WORDS.map((w, i) => ({ id: `demo-leni-word-${i + 1}`, timestamp: at(now, w.daysAgo, 18), language: w.language, phrase: w.phrase }));
+  return { child, collections: { behaviorLogs, milestones, langObs } };
+}
 
 /* ── the builder ──────────────────────────────────────────────────────── */
 
@@ -304,6 +375,7 @@ export function buildDemoFamily({
     child,
     collections: { behaviorLogs, milestones, langObs, actionLoops, practiceEvents, heroRuns, appointments, apptFollowUps },
     memory: MEMORY[lang],
+    siblings: [buildLeni(now, lang)],
   };
 }
 
@@ -316,5 +388,8 @@ export function demoFamilyCounts(family: DemoFamily): Record<string, number> {
 export const demoSandboxStorage = (family: DemoFamily): Record<string, string> => {
   const out: Record<string, string> = {};
   for (const [name, docs] of Object.entries(family.collections)) out[`arbor.${name}.${family.child.id}`] = JSON.stringify(docs);
+  for (const sib of family.siblings ?? []) {
+    for (const [name, docs] of Object.entries(sib.collections)) out[`arbor.${name}.${sib.child.id}`] = JSON.stringify(docs);
+  }
   return out;
 };

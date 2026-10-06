@@ -22,7 +22,9 @@ import os from "node:os";
 import path from "node:path";
 import express from "express";
 import type { AddressInfo } from "node:net";
-import { buildDemoFamily, DEMO_CHILD_ID, demoFamilyCounts } from "./demoFamily";
+import { buildDemoFamily, DEMO_CHILD_ID, DEMO_SIBLING_ID, demoFamilyCounts, demoSandboxStorage } from "./demoFamily";
+import { bandFor } from "../lib/age/forChild";
+import { formatChildAge } from "../lib/age/format";
 import { CHILD_SUBCOLLECTIONS } from "../lib/childData";
 import { hydrateDemoFamily, DEMO_FAMILY_MARKER } from "../lib/demoFamilyHydrate";
 import { createDemoFamilyRouter } from "../server/demoFamilyRoute";
@@ -118,6 +120,45 @@ describe("B-DIST-01 · the invented record", () => {
   });
 });
 
+/* P2A AGES (B-INF-10): the founder's second child — Leni, 22 months, a girl,
+ * "getting to two" — so every chooser runs on two bands and on the switch. */
+describe("P2A AGES · the toddler sibling", () => {
+  for (const lang of ["en", "he"] as const) {
+    it(`${lang}: Leni is 22 months, a girl, a demo child with a small toddler record`, () => {
+      const f = buildDemoFamily({ now: NOW, lang });
+      expect(f.siblings).toHaveLength(1);
+      const leni = f.siblings[0];
+      expect(leni.child.id).toBe(DEMO_SIBLING_ID);
+      expect(leni.child.name).toBe("Leni");
+      expect(leni.child.gender).toBe("girl");
+      expect(leni.child.demo).toBe(true);
+      expect(leni.child.ageMonths).toBe(22);
+      const now = new Date(NOW);
+      expect(bandFor(leni.child, now).id).toBe("18m");
+      expect(bandFor(f.child, now).id).not.toBe(bandFor(leni.child, now).id);
+      expect(formatChildAge(leni.child, undefined, now)).toBe("22 months");
+      const moments = leni.collections.behaviorLogs;
+      expect(moments.every((l) => l.behaviorType === "Moment")).toBe(true);
+      expect(moments).toHaveLength(4); // three word-moments + one bedtime note
+      expect(leni.collections.langObs).toHaveLength(3);
+      expect(leni.collections.milestones.filter((m) => m.checked)).toHaveLength(1);
+      expect(leni.collections.milestones.find((m) => m.checked)?.ageMonths).toBe(18);
+      if (lang === "he") expect(HEBREW.test(moments[0].trigger)).toBe(true);
+      for (const name of Object.keys(leni.collections)) expect(CHILD_SUBCOLLECTIONS).toContain(name);
+    });
+  }
+
+  it("the sandbox storage and the seed plan carry her own per-child keys", () => {
+    const f = buildDemoFamily({ now: NOW });
+    const keys = Object.keys(demoSandboxStorage(f));
+    expect(keys).toContain(`arbor.behaviorLogs.${DEMO_SIBLING_ID}`);
+    expect(keys).toContain(`arbor.behaviorLogs.${DEMO_CHILD_ID}`);
+    const plan = seedScript.planDemoWrites(f, { target: "sandbox", uid: null });
+    expect(plan.siblings.map((s: { childId: string }) => s.childId)).toEqual([DEMO_SIBLING_ID]);
+    expect(seedScript.renderPlan(plan, { apply: false })).toMatch(/sibling leni-demo/);
+  });
+});
+
 describe("B-DIST-01 · cohort readers exclude the demo family", () => {
   const DAY = 86_400_000;
   const day = (d: number) => new Date(NOW - d * DAY).toISOString().slice(0, 10);
@@ -165,7 +206,9 @@ describe("B-DIST-01 · the sandbox run", () => {
     expect(JSON.parse(storage.getItem(`arbor.appointments.${DEMO_CHILD_ID}`)!)).toHaveLength(2); // W2-CAREPRO c2 r1: done + one booked
     expect(storage.getItem(`arbor.notRegistered.${DEMO_CHILD_ID}`)).toBeNull();
     const profiles = JSON.parse(storage.getItem("arbor.children")!);
-    expect(profiles.map((p: { id: string }) => p.id)).toEqual([DEMO_CHILD_ID, "other-child"]);
+    // P2A AGES: the toddler sibling is seeded after the demo child, before any other profile.
+    expect(profiles.map((p: { id: string }) => p.id)).toEqual([DEMO_CHILD_ID, DEMO_SIBLING_ID, "other-child"]);
+    expect(JSON.parse(storage.getItem(`arbor.langObs.${DEMO_SIBLING_ID}`)!)).toHaveLength(3);
     expect(profiles[0].demo).toBe(true);
     expect(storage.getItem("arbor.activeChildId")).toBe(DEMO_CHILD_ID);
     expect(storage.getItem(DEMO_FAMILY_MARKER)).toContain(bundle.version);
@@ -320,7 +363,7 @@ describe("W2-CAREPRO c2 r1 · the demo memory seed renders a group at volume", (
  * change the family → this fails until the version is bumped and the pin
  * re-recorded (then `npm run seed:demo -- --apply` re-seeds the sandbox). */
 describe("W2-CAREPRO c2 r2 · the demo content is pinned to DEMO_FAMILY_VERSION", () => {
-  const PINNED = { version: "2026-10-06.2", sha256: "e7ae92e244b4b9ccb77b127be6dc349af38265f941a59dd639218b337a9ed90e" };
+  const PINNED = { version: "2026-10-06.3", sha256: "c09e92e84c78a13282f519450feb0af195cc8da80fe1a5cb2e47e2f7830a8e5e" };
   const contentHash = async () => {
     const { createHash } = await import("node:crypto");
     const body = JSON.stringify([buildDemoFamily({ now: NOW, lang: "en" }), buildDemoFamily({ now: NOW, lang: "he" })]);

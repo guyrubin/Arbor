@@ -44,7 +44,7 @@ import { matchLearnCards, type SavedLearnItem } from "../learn/learnLibrary";
 import { LEARN_CARDS } from "../learn/learnCards";
 import { isLearnPilotCard } from "../learn/learnPilotRelease";
 import { concernsForBehaviors } from "../content/selectCards";
-import { ageYearsFromProfile, ageMonthsFromProfile } from "../lib/childAge";
+import { ageYearsFromProfile } from "../lib/childAge";
 import { ageWindowMilestones, comparisonAgeMonths } from "../lib/milestoneData";
 import { activeActionFor, planAcceptedAction, sortActionLoop, todayActionId, type ChildResponse, type HeldAnswer, type PlanStepRef } from "../actionLoop/model";
 import { planStepStatusAfter } from "../lib/plans";
@@ -59,6 +59,7 @@ import type { CaptureSource } from "../components/overview/ConfirmCaptureReview"
 import { useLanguage } from "./LanguageContext";
 import type { ExportAudience } from "../consult/packet";
 import type { ProfessionalReportType } from "../lib/reportExport";
+import { ageMonthsOf } from "../lib/age/forChild";
 
 /** B-CAREPRO-13 — what a caller may hand the Consult composer. All optional;
  *  `preset` is a professional PDF type (never "teacher": the School Brief is
@@ -807,7 +808,7 @@ function useArborState() {
   // band + one earlier (Wave T, GP-08) — the same window Growth, Milestones
   // and the Full Picture use, so Today never prints an all-ages denominator.
   const windowedMilestones = useMemo(() => {
-    const chronoMonths = ageMonthsFromProfile(childProfile) ?? Math.round((childProfile.age || 0) * 12);
+    const chronoMonths = ageMonthsOf(childProfile);
     return ageWindowMilestones(milestones, comparisonAgeMonths(chronoMonths, childProfile.preterm?.gestationalWeeks));
   }, [milestones, childProfile]);
   const checkedMilestones = windowedMilestones.filter((m) => m.checked).length;

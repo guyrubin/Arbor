@@ -18,6 +18,7 @@ import type { UiLang } from "./i18n";
 import type { HubId } from "./surfaceContract";
 import { usePractice7d } from "../practice/practiceWeekCount";
 import { noticedMilestoneCounts } from "./record/counts";
+import { ageYearsOf } from "./age/forChild";
 
 // HubId comes from surfaceContract's HUB_IDS — the ten Heartwood hub ids that
 // SC-1 asserts mirror navigation.ts SECTIONS exactly. usePulses() returns a
@@ -101,7 +102,7 @@ export function usePulses(): HubPulses {
     const rhythm = predictRhythm(
       behaviorLogs.map((l) => ({ timestamp: l.timestamp, intensity: l.intensity })),
       nowMs,
-      { ageYears: childProfile.age }
+      { ageYears: ageYearsOf(childProfile) }
     );
     const nowHour = new Date(nowMs).getHours();
     const dayStartMs = new Date(nowMs).setHours(0, 0, 0, 0); // local calendar "today"
@@ -208,7 +209,7 @@ export function usePulses(): HubPulses {
     return { today, journal, behaviors, growth, practice, stories, learn, ask, care, profile };
   }, [
     childProfile.name,
-    childProfile.age,
+    ageYearsOf(childProfile),
     behaviorLogs,
     playLogs,
     milestones,

@@ -47,6 +47,7 @@ import {
   THIS_WEEK_LABEL,
   type LangModuleId,
 } from "../../practice/wordWorld";
+import { ageYearsOf } from "../../lib/age/forChild";
 
 /* ─── Icon map (module icon keys → Material Symbols ligatures) ──────────── */
 const ICON_MAP: Record<string, string> = {
@@ -113,7 +114,7 @@ export default function WordWorldTab() {
   const { t } = useLanguage();
   const data = usePracticeData(childProfile.id);
 
-  const ageBand = useMemo(() => ageBandForAge(childProfile.age), [childProfile.age]);
+  const ageBand = useMemo(() => ageBandForAge(ageYearsOf(childProfile)), [ageYearsOf(childProfile)]);
 
   // Module selection — default to first module (Serve and Return) on first visit.
   const [selectedModuleId, setSelectedModuleId] = useState<LangModuleId>("serve-and-return");

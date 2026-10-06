@@ -20,6 +20,7 @@ import { isolate } from "../../lib/i18n";
 // than trusting that the prompt held.
 import { scrubMemoryProposals } from "../../server/parentWordsScrub";
 import { track } from "../../lib/analytics";
+import { ageYearsOf } from "../../lib/age/forChild";
 
 /** Per-kind Material Symbols ligature — mirrors JournalTab's domain glyphs so the
  *  unified timeline re-skins onto the shared <Icon> system (no lucide). */
@@ -221,7 +222,7 @@ export default function StoryTimelineTab() {
   const story = useMemo(
     () => composeChildStory({
       name: childProfile.name,
-      ageYears: childProfile.age,
+      ageYears: ageYearsOf(childProfile),
       approvedFacts: memoryReviewItems
         .filter((m) => m.status === "approved")
         .map((m) => ({ fact: m.fact, source: m.source })),
@@ -238,7 +239,7 @@ export default function StoryTimelineTab() {
       // prose is the same firewall leak as a chart).
       planWins: momentum.winsThisWeek,
     }),
-    [childProfile.name, childProfile.age, memoryReviewItems, momentum, uiLang],
+    [childProfile.name, ageYearsOf(childProfile), memoryReviewItems, momentum, uiLang],
   );
 
   const saveStory = () => {

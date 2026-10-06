@@ -14,6 +14,7 @@ import { useKidSafeNav } from "../kidmode/useKidSafeNav";
 import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
 import { useKidModeEntry } from "../kidmode/useKidModeEntry";
 import { cardCls } from "../ui/kit";
+import { ageYearsOf } from "../../lib/age/forChild";
 
 /** W2-SHELLPLAY critic r1 (law 8): the skill chip is keyed (was English). */
 const SKILL_KEY: Record<string, string> = {
@@ -49,11 +50,11 @@ export default function AdventuresTab() {
   const first = childProfile.name.split(" ")[0];
   // B-PLAY-09 / B-KID-11: the parent door opens Story Quest through the ONE seam.
   const { request: requestKidMode, step: kidModeStep } = useKidModeEntry();
-  const vars = { name: first, age: childProfile.age };
+  const vars = { name: first, age: ageYearsOf(childProfile) };
   const scenarioTitle = (s: AdventureScenario) =>
     CURATED_IDS.has(s.id) ? t(`elev.practice.adventures.title.${s.id}`) : s.title;
 
-  const ageScenarios = useMemo(() => scenariosForAge(childProfile.age), [childProfile.age]);
+  const ageScenarios = useMemo(() => scenariosForAge(ageYearsOf(childProfile)), [ageYearsOf(childProfile)]);
   // B-KID-32 (KC-21): the Story Quest GENERATOR is gone from the kid register
   // (a model call behind a child's tap, a dead tap at quota and a paywall left
   // queued for the parent). The curated stories are the whole world; the

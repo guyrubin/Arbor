@@ -29,6 +29,7 @@ import {
   type LearnRankSignals,
 } from "./learnLibrary";
 import { concernsForBehaviors } from "../content/selectCards";
+import { fitsYears } from "../lib/age/forChild";
 
 /** UTC day key (YYYY-MM-DD) — the day half of the tiebreak seed. */
 export function pickDayKey(now: Date): string {
@@ -43,7 +44,7 @@ export function pickDayKey(now: Date): string {
  */
 export function ageVisibleLearnCards(cards: LearnCard[], ageYears: number | null): LearnCard[] {
   if (ageYears == null) return cards;
-  const inBand = cards.filter((c) => ageYears >= c.ageMin && ageYears <= c.ageMax);
+  const inBand = cards.filter((c) => fitsYears(ageYears, c.ageMin, c.ageMax));
   return inBand.length > 0 ? inBand : cards;
 }
 

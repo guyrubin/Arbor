@@ -46,6 +46,7 @@ import {
 import { formatHour } from "../../lib/pulse";
 import PushPrimingCard from "../nextopen/PushPrimingCard";
 import { usePushPriming } from "../../hooks/usePushPriming";
+import { ageYearsOf } from "../../lib/age/forChild";
 
 // ── Token shorthands (all via var(--arbor-*), zero raw hex) ──────────────────
 const INK         = "var(--arbor-ink)";
@@ -104,7 +105,7 @@ export default function SmartRemindersPanel() {
   const ageMonthsPrecise = ageMonthsFromProfile(childProfile);
   const ageYears = ageMonthsPrecise !== null
     ? ageMonthsPrecise / 12
-    : (childProfile.age ?? 0);
+    : (ageYearsOf(childProfile) ?? 0);
 
   const rhythm = useMemo(
     () =>

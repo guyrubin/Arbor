@@ -34,7 +34,7 @@ import { MILESTONE_AGE_BANDS, ageWindowMilestones, bandForAgeMonths, comparisonA
 // (missing reviewer/rightsRef → never renders; ships with zero media entries).
 import { isRenderableMilestoneMedia } from "../../content/governance";
 // B0 — months-precise age spine
-import { ageLabelForMonths, ageMonthsFromProfile, ageYearsFromProfile } from "../../lib/childAge";
+import { ageLabelForMonths, ageYearsFromProfile } from "../../lib/childAge";
 // GP-10 — the record keeps DATES and "first time" language; Wave G strings.
 import { tGCare } from "../../lib/growthCareText";
 import { fmtDay } from "../../lib/formatDate";
@@ -57,6 +57,7 @@ import {
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { DEVELOPMENTAL_DOMAIN_IDS, domainLabel as registryDomainLabel, primaryDomainLabel } from "../../lib/domains/registry";
 import { DevelopmentalDomainId, Milestone } from "../../types";
+import { ageMonthsOf } from "../../lib/age/forChild";
 
 /** NEXTLEVEL critic r1: "Born early?" leads the rail only while correction
  *  applies (under ~24 months, or a gestation is set); otherwise the same
@@ -194,7 +195,7 @@ export default function MilestonesTab() {
   // ── Corrected age (preterm) ──────────────────────────────────────────────
   // B0: prefer months-precise value from birthDate/ageMonths over the legacy
   // whole-year field so a 9-month-old isn't compared against the 0-month band.
-  const chronoMonths = ageMonthsFromProfile(childProfile) ?? Math.round((childProfile.age || 0) * 12);
+  const chronoMonths = ageMonthsOf(childProfile);
   const gestationalWeeks = childProfile.preterm?.gestationalWeeks;
   const corrected = correctedAge(chronoMonths, gestationalWeeks);
   const comparisonMonths = comparisonAgeMonths(chronoMonths, gestationalWeeks);

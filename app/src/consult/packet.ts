@@ -12,7 +12,9 @@ import { ClinicalLanguageError, findClinicalDiagnosisTerm, findTeacherBlockedTer
 import { isolate, translate, type UiLang } from "../lib/i18n";
 import { DOMAIN_LABEL } from "../lib/screening";
 import { milestoneAgeWindow } from "../lib/milestoneData";
-import { ageLabel, ageLabelForMonths, ageMonthsFromProfile } from "../lib/childAge";
+import { ageMonthsFromProfile } from "../lib/childAge";
+import { ageMonthsOf } from "../lib/age/forChild";
+import { formatAgeMonths, formatChildAge } from "../lib/age/format";
 import { MOMENT_BEHAVIOR_TYPE, behaviorTypeLabel, isIncidentType } from "../content/behaviorTaxonomy";
 import { factMonthLabel } from "../lib/factsAsOf";
 import { languageName } from "../lib/languageName";
@@ -157,7 +159,7 @@ function resolveVar(v: PacketVar, lang: UiLang): string | number {
     const parts = v.list.map((x) => String(resolveVar(x, lang)));
     return joinList(parts, lang, v.join);
   }
-  if ("ageMonths" in v) return ageLabelForMonths(v.ageMonths, (k, vars) => translate(lang, k, vars));
+  if ("ageMonths" in v) return formatAgeMonths(v.ageMonths, (k, vars) => translate(lang, k, vars));
   if ("momentType" in v) return behaviorTypeLabel(v.momentType, (k) => translate(lang, k), "full");
   if ("monthOf" in v) return factMonthLabel(v.monthOf, lang);
   if ("dayOf" in v) return readerDay(v.dayOf, lang);
@@ -536,9 +538,9 @@ export function milestoneInAgeWindow(milestoneAgeMonths: number | undefined, chi
   return milestoneAgeWindow(childAgeMonths).includes(milestoneAgeMonths);
 }
 
-/** Age in months the packet windows against: explicit months, else years × 12. */
+/** Age in months the packet windows against: the client-derived months, else lib/age (B-INF-10). */
 const childAgeMonthsOf = (profile: PacketInputProfile): number =>
-  typeof profile.ageMonths === "number" && Number.isFinite(profile.ageMonths) ? profile.ageMonths : Math.max(0, profile.age) * 12;
+  typeof profile.ageMonths === "number" && Number.isFinite(profile.ageMonths) ? profile.ageMonths : ageMonthsOf({ age: profile.age });
 
 /** Assemble the packet from the child's record. Empty sources yield no section. */
 export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
@@ -570,12 +572,12 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
     profile.languages.length
       ? {
           id: "about-basics",
-          text: `${profile.name}, ${ageLabel(profile)}, speaks ${profile.languages.join(" and ")}.`,
+          text: `${profile.name}, ${formatChildAge(profile)}, speaks ${profile.languages.join(" and ")}.`,
           // W2-CAREPRO r1: the gendered verb comes from the profile, never "מדבר/ת".
           textKey: profile.gender === "boy" || profile.gender === "girl" ? `elev.packet.item.basicsLangs.${profile.gender}` : "elev.packet.item.basicsLangs",
           vars: { ...basicsVars, languages: { list: profile.languages.map((l) => ({ languageName: l })), join: "and" } },
         }
-      : { id: "about-basics", text: `${profile.name}, ${ageLabel(profile)}.`, textKey: "elev.packet.item.basics", vars: basicsVars },
+      : { id: "about-basics", text: `${profile.name}, ${formatChildAge(profile)}.`, textKey: "elev.packet.item.basics", vars: basicsVars },
   ];
   // B-CAREPRO-33: a dated setting says when the parent last confirmed it.
   const settingAsOf = profile.factsAsOf?.schoolContext;

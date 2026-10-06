@@ -86,11 +86,20 @@ export function planDemoWrites(family, { target, uid, allowed = childSubcollecti
     return { name, count: docs.length, docs };
   });
   const parentUid = target === "firestore" ? uid : SANDBOX_UID;
+  // P2A AGES: the family's other children, each with her own collections.
+  const siblings = (family.siblings ?? []).map((sib) => ({
+    childId: sib.child.id,
+    collections: Object.entries(sib.collections).map(([name, docs]) => {
+      if (!allowed.includes(name)) throw new Error(`demo collection "${name}" is not in CHILD_SUBCOLLECTIONS — export/erase would miss it`);
+      return { name, count: docs.length, docs };
+    }),
+  }));
   return {
     target,
     parentUid,
     childId,
     collections,
+    siblings,
     noticedMilestones: family.collections.milestones.filter((m) => m.checked).length,
     // Sandbox: the flag rides in the bundle (child.demo); Firestore: three merges.
     flags:
@@ -114,6 +123,10 @@ export function renderPlan(plan, { apply }) {
   lines.push(`seed-demo-family · ${apply ? "APPLY" : "DRY RUN — writes nothing"} · target ${plan.target} · parent ${plan.parentUid} · child ${plan.childId}`);
   for (const c of plan.collections) lines.push(`  ${c.name.padEnd(16)} ${String(c.count).padStart(4)} docs`);
   lines.push(`  milestones noticed ${plan.noticedMilestones}`);
+  for (const sib of plan.siblings ?? []) {
+    lines.push(`  sibling ${sib.childId}`);
+    for (const c of sib.collections) lines.push(`    ${c.name.padEnd(14)} ${String(c.count).padStart(4)} docs`);
+  }
   for (const f of plan.flags) lines.push(`  flag  ${f.path} ← ${JSON.stringify(f.merge)}`);
   for (const m of plan.memory) lines.push(`  memory ${m.op}: ${m.fact}`);
   return lines.join("\n");
@@ -136,7 +149,7 @@ async function applySandbox(family, plan) {
   const locales = {};
   for (const lang of ["en", "he"]) {
     const f = lang === family.lang ? family : buildDemoFamily({ now, lang, childId: family.child.id });
-    locales[lang] = { child: f.child, collections: f.collections };
+    locales[lang] = { child: f.child, collections: f.collections, siblings: f.siblings };
   }
   await writeFile(SANDBOX_BUNDLE_PATH, JSON.stringify({ ...family, locales }, null, 2));
   const { memoryStore, familyId } = await sandboxWriters();
@@ -173,6 +186,13 @@ async function applyFirestore(family, plan, args) {
   await db.doc(base).set(family.child, { merge: true });
   for (const c of plan.collections) {
     for (const d of c.docs) await db.doc(`${base}/${c.name}/${d.id}`).set(d);
+  }
+  for (const sib of family.siblings ?? []) {
+    const sibBase = `users/${args.uid}/children/${sib.child.id}`;
+    await db.doc(sibBase).set(sib.child, { merge: true });
+    for (const [name, docs] of Object.entries(sib.collections)) {
+      for (const d of docs) await db.doc(`${sibBase}/${name}/${d.id}`).set(d);
+    }
   }
   await db.doc(`retentionRollups/${args.uid}`).set({ cohort: "demo" }, { merge: true });
   const { FirestoreMemoryStore } = await import("../src/memory/firestoreMemoryStore.ts");

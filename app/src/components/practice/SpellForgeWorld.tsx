@@ -6,6 +6,7 @@ import type { PracticeEvent } from "../../types";
 import EarlyReadingTrack from "./EarlyReadingTrack";
 import { GameShell } from "../kidmode/game/GameShell";
 import { useLanguage } from "../../context/LanguageContext";
+import { ageYearsOf } from "../../lib/age/forChild";
 
 /* Spell Forge world — the early-reading track (letter tracing + phonics), given
    its own Hero Arcade entry. Supplies the language-domain event logger that
@@ -41,7 +42,7 @@ export default function SpellForgeWorld() {
       mood="think"
       eyebrow={t("elev.kids.mission")}
     >
-      <EarlyReadingTrack age={childProfile.age} first={first} onLog={onLog} embedded />
+      <EarlyReadingTrack age={ageYearsOf(childProfile)} first={first} onLog={onLog} embedded />
     </GameShell>
   );
 }

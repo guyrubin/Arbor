@@ -6,7 +6,7 @@ import { EvidenceChip } from "../ui/EvidenceChip";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { latestRecheckDueAt } from "../../lib/screeningRecheck";
 import { comparisonAgeMonths, milestoneText, selectWeeklyFocus } from "../../lib/milestoneData";
-import { ageMonthsFromProfile } from "../../lib/childAge";
+
 import DevScoreCard from "../sections/DevScoreCard";
 import ScreeningSheet from "../sections/ScreeningSheet";
 import { en as fullPictureEn, he as fullPictureHe } from "../../lib/i18nElevation/fullpicture";
@@ -40,6 +40,7 @@ import FirstWordsLedger from "../growth/FirstWordsLedger";
 // picture of the child (the rule lives in lib/arborTree.ts).
 import ArborTreeCard from "../growth/ArborTreeCard";
 import RecordByDomain from "../growth/RecordByDomain";
+import { ageMonthsOf } from "../../lib/age/forChild";
 
 /** Masterplan 1.7 — module-local string resolution for the Full Picture entry
  *  card (same recipe as Screening.tsx × screeningcalm: i18nElevation/index.ts
@@ -84,7 +85,7 @@ export default function DevelopmentTab() {
   // in-band items exist. Corrected (preterm-adjusted) months, same spine as
   // the Milestones map.
   const comparisonMonths = useMemo(() => {
-    const chronoMonths = ageMonthsFromProfile(childProfile) ?? Math.round((childProfile.age || 0) * 12);
+    const chronoMonths = ageMonthsOf(childProfile);
     return comparisonAgeMonths(chronoMonths, childProfile.preterm?.gestationalWeeks);
   }, [childProfile]);
 

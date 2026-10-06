@@ -33,6 +33,7 @@ import { predictRhythm } from "../../rhythm/predict";
 import { formatHour } from "../../lib/pulse";
 import { buildDayWindowsSummary, type HourCount } from "../../growth/dayWindowsAgg";
 import { cardCls } from "../ui/kit";
+import { ageYearsOf } from "../../lib/age/forChild";
 
 // Token shorthands — all via var(--arbor-*), NO raw hex.
 // B-TODAY-06: ink, muted and paper only — no green/peach grading.
@@ -52,9 +53,9 @@ export default function DayWindowsPanel() {
       predictRhythm(
         behaviorLogs.map((l) => ({ timestamp: l.timestamp, intensity: l.intensity })),
         Date.now(),
-        { ageYears: childProfile.age }
+        { ageYears: ageYearsOf(childProfile) }
       ),
-    [behaviorLogs, childProfile.age]
+    [behaviorLogs, ageYearsOf(childProfile)]
   );
 
   const summary = useMemo(

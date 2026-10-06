@@ -20,6 +20,7 @@ import { heroFirstName, prewarmFirstComic } from "../../lib/firstComic";
 import { promiseText } from "../../lib/i18nElevation/promise";
 import { track } from "../../lib/analytics";
 import { trackOnboardingCompleted } from "../../lib/kpiEvents";
+import { isUnderThree } from "../../lib/age/forChild";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -226,7 +227,7 @@ export function StepChild({
     onNext();
   };
 
-  const isUnder3 = ageYears < 3;
+  const isUnder3 = isUnderThree({ age: ageYears });
 
   const handleYearsChange = (years: number) => {
     setAgeYears(years);

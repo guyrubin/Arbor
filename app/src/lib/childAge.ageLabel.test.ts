@@ -186,7 +186,8 @@ describe("GP-01 — source scan: no parent-facing .tsx renders the whole-years `
       "components/tabs/DailyPlayTab.tsx",
     ]) {
       const code = stripComments(readFileSync(path.join(SRC, rel), "utf8"));
-      expect(code, `${rel} does not render through ageLabel()`).toMatch(/\bageLabel\(/);
+      // B-INF-10: lib/age/format.formatChildAge is the switcher/Today/Profile/packet seam (months under 3).
+      expect(code, `${rel} does not render through ageLabel() or formatChildAge()`).toMatch(/\b(ageLabel|formatChildAge)\(/);
     }
     const drawer = stripComments(readFileSync(path.join(SRC, "components/profile/ProfileEditDrawer.tsx"), "utf8"));
     expect(drawer).toMatch(/\bageLabelForMonths\(/);

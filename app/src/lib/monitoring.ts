@@ -20,9 +20,9 @@
  */
 import type { BehaviorLog, ChildProfile, Milestone, DevelopmentalDomainId } from "../types";
 import { assertClinicianExportCeiling } from "../consult/packet";
-import { ageMonthsFromProfile } from "./childAge";
 import { comparisonAgeMonths } from "./milestoneData";
 import { translate } from "./domains/registry";
+import { ageMonthsOf } from "./age/forChild";
 
 /**
  * GP-04 — the age the monitoring layer compares against, in (fractional) years:
@@ -32,7 +32,7 @@ import { translate } from "./domains/registry";
  * so the preterm case is unit-tested here rather than inside the hook.
  */
 export function monitoringAgeYears(profile: ChildProfile, now?: Date): number {
-  const chronoMonths = ageMonthsFromProfile(profile, now) ?? Math.max(0, Math.round((profile.age || 0) * 12));
+  const chronoMonths = ageMonthsOf(profile, now);
   return comparisonAgeMonths(chronoMonths, profile.preterm?.gestationalWeeks) / 12;
 }
 

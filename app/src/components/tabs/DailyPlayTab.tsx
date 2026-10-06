@@ -20,6 +20,7 @@ import type { GoalObservation } from "../../practice/dailyPlan";
 import type { ChildProfile } from "../../types";
 // GP-01: the months-precise age label is THE parent-facing age render.
 import { ageLabel } from "../../lib/childAge";
+import { ageYearsOf } from "../../lib/age/forChild";
 
 /* Grow › Daily Play — the activity library. Today's top picks for this child,
    matched to their band and recently-logged concerns. The single hero pick also
@@ -76,7 +77,7 @@ export default function DailyPlayTab() {
   };
 
   // E6: the child's band — the SAME derivation selectDailyPlay applies to
-  // childProfile.age; used only to gate the age chip on course cards so the
+  // ageYearsOf(childProfile); used only to gate the age chip on course cards so the
   // chip is never rendered on a course outside the child's band (truthful fact).
   // Through the age seam: the legacy whole-year `age` field never moves for a
   // profile whose age was entered as months without a DOB, so the play band
@@ -93,7 +94,7 @@ export default function DailyPlayTab() {
 
   const picks: ScoredActivity[] = useMemo(
     () => selectDailyPlay({
-      ageYears: childProfile.age,
+      ageYears: ageYearsOf(childProfile),
       concernDomains,
       // CI-28: inject goal domains at 1.6x weight.
       goalDomains,
@@ -109,7 +110,7 @@ export default function DailyPlayTab() {
         return last?.outcome ? { recommendation: last.recommendation, outcome: last.outcome } : undefined;
       })(),
     }, 4),
-    [concernDomains, goalDomains, childProfile.age, childProfile.interests, doneIds, sessionLength, actionLoop]
+    [concernDomains, goalDomains, ageYearsOf(childProfile), childProfile.interests, doneIds, sessionLength, actionLoop]
   );
 
   // Recommended course — matched to the child's top logged concern (the moat).
@@ -312,7 +313,7 @@ export default function DailyPlayTab() {
           onObservationSubmit={handlePlanObservation}
           sessionLength={planSessionLength}
           onSessionLengthChange={handlePlanSessionLength}
-          ageYears={childProfile.age}
+          ageYears={ageYearsOf(childProfile)}
           onSetGoal={() => setGoalModalOpen(true)}
         />
       </div>
@@ -377,7 +378,7 @@ export default function DailyPlayTab() {
         <SessionLengthChips
           value={sessionLength}
           onChange={handleSessionLength}
-          ageYears={childProfile.age}
+          ageYears={ageYearsOf(childProfile)}
           tapped={true}
         />
       </div>
@@ -385,7 +386,7 @@ export default function DailyPlayTab() {
       <div data-module="play-picks" data-primary-move="log-play" className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
         {picks.map((p) => (
           <div key={p.activity.id}>
-            {/* E6: each pick was selected with childProfile.age — render the fact. */}
+            {/* E6: each pick was selected with ageYearsOf(childProfile) — render the fact. */}
             <div className="mb-1.5"><AgeChip profile={childProfile} /></div>
             <DailyPlayCard
               pick={p}

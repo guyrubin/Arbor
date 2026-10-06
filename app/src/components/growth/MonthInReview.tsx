@@ -10,9 +10,10 @@ import {
   previousMonthKey,
 } from "../../lib/growthMonth";
 import { comparisonAgeMonths, milestoneText, selectWeeklyFocus } from "../../lib/milestoneData";
-import { ageMonthsFromProfile } from "../../lib/childAge";
+
 import { writeWatchFocus } from "../../lib/screeningWatch";
 import { track } from "../../lib/analytics";
+import { ageMonthsOf } from "../../lib/age/forChild";
 
 /* ════════════════════════════════════════════════════════════════════════════
    MonthInReview — GP-32.
@@ -64,7 +65,7 @@ export default function MonthInReview() {
   );
 
   const nextToWatch = useMemo(() => {
-    const chronoMonths = ageMonthsFromProfile(childProfile) ?? Math.round((childProfile.age || 0) * 12);
+    const chronoMonths = ageMonthsOf(childProfile);
     const comparisonMonths = comparisonAgeMonths(chronoMonths, childProfile.preterm?.gestationalWeeks);
     return selectWeeklyFocus(milestones, comparisonMonths)?.milestone ?? null;
   }, [childProfile, milestones]);

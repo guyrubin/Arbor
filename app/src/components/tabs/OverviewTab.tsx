@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ageLabel, ageMonthsFromProfile, ageYearsFromProfile } from "../../lib/childAge";
+import { ageMonthsFromProfile } from "../../lib/childAge";
+import { formatChildAge } from "../../lib/age/format";
 import { availableHardMomentCards } from "../../content/selectCards";
 import { escalationText, locText } from "../../content/hardMomentSurface";
 import { acceptHardMomentStep, hardMomentStepFor } from "../overview/hardMomentStep";
@@ -56,6 +57,7 @@ import { readWeekAnchorSeen, weekAnchorRecapDue, weekOpenAnchorDue } from "../ov
 import WeekAnchorCard, { WeekAnchorLine } from "../overview/WeekAnchorCard";
 import { recapWeekId, useWeeklyRecap } from "../../hooks/useWeeklyRecap";
 import { track } from "../../lib/analytics";
+import { ageYearsOf } from "../../lib/age/forChild";
 
 const DAY = 86_400_000;
 
@@ -160,9 +162,9 @@ export default function OverviewTab() {
     () => predictRhythm(
       behaviorLogs.map((l) => ({ timestamp: l.timestamp, intensity: l.intensity })),
       Date.now(),
-      { ageYears: childProfile.age }
+      { ageYears: ageYearsOf(childProfile) }
     ),
-    [behaviorLogs, childProfile.age]
+    [behaviorLogs, ageYearsOf(childProfile)]
   );
 
   // ── B-TODAY-26: the evening door and the day's kept moments. The hour is
@@ -210,7 +212,7 @@ export default function OverviewTab() {
       Date.now()
     );
     const picks = selectDailyPlay({
-      ageYears: childProfile.age,
+      ageYears: ageYearsOf(childProfile),
       concernDomains,
       goalDomains,
       recentlyDoneIds: donePlayIds,
@@ -229,7 +231,7 @@ export default function OverviewTab() {
     // changed — the interest was captured and then visibly ignored, which is
     // worse than never asking. Joined so the identity of the array (a new one
     // per profile write) cannot re-run selection on every render.
-  }, [behaviorLogs, childProfile.age, childProfile.id, childProfile.interests?.join(" "), donePlayIds, goalDomains, sessionLength, latestCompletedAction]);
+  }, [behaviorLogs, ageYearsOf(childProfile), childProfile.id, childProfile.interests?.join(" "), donePlayIds, goalDomains, sessionLength, latestCompletedAction]);
 
   // AIX-S4: seeds go through i18n (seed.*) — HE parents see Hebrew in the chat box.
   const coachOnPlay = (p: ScoredActivity) => {
@@ -326,8 +328,8 @@ export default function OverviewTab() {
   //    in flight for a child WITH signals keeps the hero (skeleton) so the
   //    slot never flickers prompt→focus mid-load. ──
   const promptKeys = useMemo(
-    () => dailyPromptKeys({ ageYears: childProfile.age, childId: childProfile.id, date: new Date() }),
-    [childProfile.age, childProfile.id]
+    () => dailyPromptKeys({ ageYears: ageYearsOf(childProfile), childId: childProfile.id, date: new Date() }),
+    [ageYearsOf(childProfile), childProfile.id]
   );
   // ── ENG-24: the weekly ritual's Monday anchor. The week identity is the
   //    recap's own (recapWeekId is a PURE date function — importing it opens no
@@ -454,8 +456,8 @@ export default function OverviewTab() {
   const whenKey =
     hour < 12 ? "today.when.morning" : hour < 18 ? "today.when.afternoon" : "today.when.evening";
   const weekday = now0.toLocaleDateString(uiLang === "he" ? "he-IL" : "en-GB", { weekday: "long" });
-  // GP-01: the one parent-facing age path (ageLabel), never `profile.age`.
-  const ageText = ageLabel(childProfile, t);
+  // B-INF-10: the one child-age formatter (lib/age/format), never `profile.age`.
+  const ageText = formatChildAge(childProfile, t);
   // Critic r1: each segment is one unbreakable phrase (no-break spaces), so
   // "3 years 2 months" never splits as "3 שנים ו-2 / חודשים".
   const nowrap = (s: string) => s.replace(/ /g, " ");
@@ -665,7 +667,7 @@ export default function OverviewTab() {
         </div>
       </div>
       {dailyPlay ? (
-        <DailyPlayCard pick={dailyPlay} childName={firstName} done={donePlayIds.includes(dailyPlay.activity.id)} onDid={markPlayDone} onCoach={coachOnPlay} concernLabel={dailyPlay.reason === "concern-match" ? playDomainLabel(dailyPlay.activity.domain, uiLang) : undefined} goalLabel={dailyPlay.reason === "goal-match" ? activeGoals.find((g) => g.domainId === dailyPlay.activity.domain)?.label : undefined} sessionLength={sessionLength} onSessionLengthChange={handleSessionLength} ageYears={childProfile.age} sessionTapped={sessionTapped} rhythmHintTime={rhythm.calmWindow ? hourLabel(rhythm.calmWindow.startHour) : undefined} />
+        <DailyPlayCard pick={dailyPlay} childName={firstName} done={donePlayIds.includes(dailyPlay.activity.id)} onDid={markPlayDone} onCoach={coachOnPlay} concernLabel={dailyPlay.reason === "concern-match" ? playDomainLabel(dailyPlay.activity.domain, uiLang) : undefined} goalLabel={dailyPlay.reason === "goal-match" ? activeGoals.find((g) => g.domainId === dailyPlay.activity.domain)?.label : undefined} sessionLength={sessionLength} onSessionLengthChange={handleSessionLength} ageYears={ageYearsOf(childProfile)} sessionTapped={sessionTapped} rhythmHintTime={rhythm.calmWindow ? hourLabel(rhythm.calmWindow.startHour) : undefined} />
       ) : (
         <div className="flex items-center gap-3 px-1 py-3"><Icon name="auto_awesome" size={20} fill={1} style={{ color: "var(--arbor-clay)" }} /><div><div className="text-[13px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("ov.recoLoading", { name: firstName })}</div><div className="text-[11px]" style={{ color: "var(--arbor-faint)" }}>{t("ov.play.desc")}</div></div></div>
       )}
@@ -861,7 +863,7 @@ export default function OverviewTab() {
                  picked for the child's age. It names no goals, interests or
                  moments (none of them choose the question); on the bare floor
                  (no prompt) it says nothing. */
-              whyLine={todayChoice.kind === "prompt" ? t("today.intent.why.prompt", { age: ageYearsFromProfile(childProfile) }) : undefined}
+              whyLine={todayChoice.kind === "prompt" ? t("elev.ages.today.whyPrompt", { name: firstName, age: ageText }) : undefined}
             />
           )}
           {/* B-AI-06: the ONE proactive slot. Under the step it renders the

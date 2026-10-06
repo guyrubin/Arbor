@@ -21,6 +21,7 @@
 import * as accountSettings from "./accountSettings";
 import * as actionbar from "./actionbar";
 import * as agefilter from "./agefilter";
+import * as ages from "./ages";
 import * as aierrors from "./aierrors";
 import * as aiHonesty from "./aiHonesty";
 import * as arborTree from "./arborTree";
@@ -87,6 +88,7 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   accountSettings,
   actionbar,
   agefilter,
+  ages,
   aierrors,
   aiHonesty,
   arborTree,

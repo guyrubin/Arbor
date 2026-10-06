@@ -16,6 +16,7 @@
  *    deficit) float matching cards up. Nothing else is inferred.
  */
 import type { ContentConcern, LocalizedText } from "../content/governance";
+import { fitsYears } from "../lib/age/forChild";
 
 export type LearnCategoryId =
   | "minds"
@@ -235,8 +236,8 @@ export function continuesSaved(card: LearnCard, topics: LearnContinuationTopics 
 export function learnCardScore(c: LearnCard, s: LearnRankSignals): number {
   let score = 0;
   if (s.ageYears != null) {
-    if (s.ageYears >= c.ageMin && s.ageYears <= c.ageMax) score += 2;
-    else if (s.ageYears >= c.ageMin - 1 && s.ageYears <= c.ageMax + 1) score += 1;
+    if (fitsYears(s.ageYears, c.ageMin, c.ageMax)) score += 2;
+    else if (fitsYears(s.ageYears, c.ageMin, c.ageMax, 1)) score += 1;
   }
   if (s.focusDomain && c.domains.includes(s.focusDomain)) score += 3;
   if (s.recentConcerns && s.recentConcerns.length > 0) {
@@ -291,7 +292,7 @@ export function matchLearnCards(
       let score = 0;
       if (ctx.domains) score += card.domains.filter((d) => ctx.domains!.includes(d)).length * 3;
       if (ctx.concerns) score += cardConcerns(card).filter((t) => ctx.concerns!.includes(t)).length * 2;
-      if (score > 0 && ctx.ageYears != null && ctx.ageYears >= card.ageMin && ctx.ageYears <= card.ageMax) {
+      if (score > 0 && fitsYears(ctx.ageYears, card.ageMin, card.ageMax)) {
         score += 1;
       }
       return { card, index, score };

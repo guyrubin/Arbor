@@ -20,7 +20,7 @@ import { useProfile } from "../../context/ProfileContext";
 import { scrubMemoryProposals, toParentWords } from "../../server/parentWordsScrub";
 // GP-01 / GP-08 / RUN-02: months-precise age label + the shared age window and
 // the ONE "worth watching next" derivation.
-import { ageLabel, ageMonthsFromProfile } from "../../lib/childAge";
+import { formatChildAge } from "../../lib/age/format";
 import { comparisonAgeMonths, selectNextMilestones } from "../../lib/milestoneData";
 // W2-GROWTH r1 (law 1): the milestones chapter is a plain count from the ONE
 // helper the Growth pill reads — never "{checked} of {total} in the window".
@@ -36,6 +36,7 @@ import { confirmFact, factMonthLabel, isFactStale, type FactField } from "../../
 import { FreeText } from "../ui/FreeText";
 // B-GROWTH-35: a kept fact with a relative time in it carries the day it was written.
 import { writtenDateFor } from "../../lib/record/datedFact";
+import { ageMonthsOf } from "../../lib/age/forChild";
 
 /**
  * Child Intelligence › Development Profile — ONE scrolling narrative ("My Child"
@@ -86,7 +87,7 @@ export default function ChildProfile() {
   // The record inside the child's age window feeds "worth watching next" only
   // (RUN-02's ONE next-picks derivation). The count is a plain count (law 1).
   const comparisonMonths = useMemo(() => {
-    const chronoMonths = ageMonthsFromProfile(childProfile) ?? Math.round((childProfile.age || 0) * 12);
+    const chronoMonths = ageMonthsOf(childProfile);
     return comparisonAgeMonths(chronoMonths, childProfile.preterm?.gestationalWeeks);
   }, [childProfile]);
   const { noticed: noticedCount } = useMemo(() => noticedMilestoneCounts(milestones), [milestones]);
@@ -169,7 +170,7 @@ export default function ChildProfile() {
     : schoolAsOf
     ? t("elev.profile.identity.schoolAsOf", { school: childProfile.schoolContext, month: factMonthLabel(schoolAsOf, uiLang === "he" ? "he" : "en") })
     : childProfile.schoolContext;
-  const identitySegments = [ageLabel(childProfile, t), langSegment, schoolSegment].filter(Boolean) as string[];
+  const identitySegments = [formatChildAge(childProfile, t), langSegment, schoolSegment].filter(Boolean) as string[];
 
   // B-GROWTH-35: "Entering kindergarten in 3 months", kept in June, is read in
   // October as if said today. A fact whose words carry a relative time is
@@ -326,7 +327,7 @@ export default function ChildProfile() {
 
       {/* Chapter 1 — who {first} is */}
       <section data-module="profile-who" aria-label={t("elev.wave2Knowledge.profile.facts")}>
-      <SectionCard title={t("cp.ch.who", { name: first, age: ageLabel(childProfile, t) })} icon={<Icon name="person" size={20} />} tone="mint">
+      <SectionCard title={t("cp.ch.who", { name: first, age: formatChildAge(childProfile, t) })} icon={<Icon name="person" size={20} />} tone="mint">
         <p className="mb-4 text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.wave2Knowledge.profile.facts")}</p>
         <div className="grid sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
           <Field label={t("cp.f.languages")} value={langNames.join(" · ") || "—"} asOf={factLine("languages", childProfile.languages.length > 0)} />

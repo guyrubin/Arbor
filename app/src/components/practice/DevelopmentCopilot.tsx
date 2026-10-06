@@ -22,8 +22,9 @@ import { track } from "../../lib/analytics";
 import { en as fullPictureEn, he as fullPictureHe } from "../../lib/i18nElevation/fullpicture";
 import { en as growthTruthEn } from "../../lib/i18nElevation/growthTruth";
 // GP-01 / GP-08: months-precise age label + the shared age window.
-import { ageLabel, ageMonthsFromProfile } from "../../lib/childAge";
+import { ageLabel } from "../../lib/childAge";
 import { ageWindowMilestones, comparisonAgeMonths } from "../../lib/milestoneData";
+import { ageMonthsOf, ageYearsOf } from "../../lib/age/forChild";
 
 type SavedScreening = ScreeningResult & { id: string };
 
@@ -117,7 +118,7 @@ export default function DevelopmentCopilot() {
   // earlier — the shared lib/milestoneData.milestoneAgeWindow), never the whole
   // 0–6y catalogue, so "x of y noticed" is an age-appropriate denominator.
   const comparisonMonths = useMemo(() => {
-    const chronoMonths = ageMonthsFromProfile(childProfile) ?? Math.round((childProfile.age || 0) * 12);
+    const chronoMonths = ageMonthsOf(childProfile);
     return comparisonAgeMonths(chronoMonths, childProfile.preterm?.gestationalWeeks);
   }, [childProfile]);
   const windowMilestones = useMemo(() => ageWindowMilestones(milestones, comparisonMonths), [milestones, comparisonMonths]);
@@ -145,7 +146,7 @@ export default function DevelopmentCopilot() {
   );
   const watch = useMemo(
     () => watchSignals({
-      age: childProfile.age,
+      age: ageYearsOf(childProfile),
       screeningWatchLabels,
       logs: behaviorLogs,
       stats: data.stats,
@@ -153,7 +154,7 @@ export default function DevelopmentCopilot() {
       missions: data.missions.items,
       adventureScenes: advCount,
     }),
-    [childProfile.age, screeningWatchLabels, behaviorLogs, data.stats, bands, data.missions.items, advCount]
+    [ageYearsOf(childProfile), screeningWatchLabels, behaviorLogs, data.stats, bands, data.missions.items, advCount]
   );
 
   // Masterplan 1.7: the old graded dashboard-risk value is gone. What remains

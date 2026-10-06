@@ -13,7 +13,7 @@ import { useProfile } from "../../context/ProfileContext";
 import { useFamilyGlance } from "../../hooks/useFamilyGlance";
 import { Avatar } from "../ui/Avatar";
 // GP-01: the months-precise age label is THE parent-facing age render.
-import { ageLabel } from "../../lib/childAge";
+import { formatChildAge } from "../../lib/age/format";
 
 const INK = "var(--arbor-ink)";
 const MUTED = "var(--arbor-muted)";
@@ -29,7 +29,7 @@ export default function FamilyGlanceCard() {
   // full profile (birthDate / ageMonths) so an infant is "7 months", not "Age 0".
   const ageLine = (id: string): string => {
     const p = profiles.find((c) => c.id === id);
-    return p ? ageLabel(p, t) : "";
+    return p ? formatChildAge(p, t) : "";
   };
 
   if (rows.length === 0) return null;

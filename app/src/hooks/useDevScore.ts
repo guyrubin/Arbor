@@ -1,8 +1,9 @@
 import { useMemo } from "react";
 import { useArbor } from "../context/ArborContext";
 import { computeDevScore, type DevScore } from "../growth/devScore";
-import { ageMonthsFromProfile } from "../lib/childAge";
+
 import { ageWindowMilestones, comparisonAgeMonths } from "../lib/milestoneData";
+import { ageMonthsOf } from "../lib/age/forChild";
 
 /**
  * The ONE development-picture computation.
@@ -29,7 +30,7 @@ import { ageWindowMilestones, comparisonAgeMonths } from "../lib/milestoneData";
 export function useDevScore(): DevScore {
   const { milestones, childProfile } = useArbor();
   const comparisonMonths = useMemo(() => {
-    const chronoMonths = ageMonthsFromProfile(childProfile) ?? Math.round((childProfile.age || 0) * 12);
+    const chronoMonths = ageMonthsOf(childProfile);
     return comparisonAgeMonths(chronoMonths, childProfile.preterm?.gestationalWeeks);
   }, [childProfile]);
   return useMemo(

@@ -4,9 +4,10 @@ import { useProfile } from "../../context/ProfileContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { Avatar } from "../ui/Avatar";
 import AddChildModal from "../profile/AddChildModal";
-// GP-01: the months-precise age label is THE parent-facing age render.
-import { ageLabel } from "../../lib/childAge";
+// B-INF-10: the ONE child-age formatter (months under 3, years from 3).
+import { formatChildAge } from "../../lib/age/format";
 import { childPicture } from "../../lib/childPicture";
+import type { ChildProfile } from "../../types";
 
 /**
  * B-DIST-01: the quiet "Demo" tag beside the demo family's child (invented
@@ -19,8 +20,8 @@ function DemoChip({ t }: { t: (key: string) => string }) {
       aria-label={t("elev.demo.chipAria")}
       style={{
         flexShrink: 0,
-        fontSize: "10px",
-        fontWeight: 700,
+        fontSize: "12px",
+        fontWeight: 600,
         lineHeight: "16px",
         paddingInline: "6px",
         borderRadius: "999px",
@@ -31,6 +32,73 @@ function DemoChip({ t }: { t: (key: string) => string }) {
     >
       {t("elev.demo.chip")}
     </span>
+  );
+}
+
+/**
+ * B-INF-10 — one child in the switcher list: picture · name · her own age
+ * ("22 months" under three, "5 years" from three — lib/age/format, the one
+ * formatter). Exported so the age line renders in a static test.
+ */
+export function SwitcherChildOption({
+  p,
+  active,
+  t,
+  onPick,
+}: {
+  p: ChildProfile;
+  active: boolean;
+  t: (key: string, vars?: Record<string, string | number>) => string;
+  onPick: () => void;
+}) {
+  return (
+    <button
+      role="option"
+      aria-selected={active}
+      onClick={onPick}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "10px",
+        width: "100%",
+        padding: "8px 10px",
+        borderRadius: "10px",
+        textAlign: "start",
+        background: active ? "var(--arbor-paper-deep)" : "transparent",
+        border: "none",
+        cursor: "pointer",
+        minHeight: "44px",
+      }}
+    >
+      <Avatar name={p.name} photoURL={childPicture(p).url} size={28} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <span
+          dir="auto"
+          style={{
+            display: "block",
+            fontSize: "var(--t-sm)",
+            fontWeight: 700,
+            color: "var(--arbor-ink)",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {p.name}
+        </span>
+        {p.demo === true && <DemoChip t={t} />}
+        <span data-switcher-age dir="auto" style={{ display: "block", fontSize: "12px", color: "var(--arbor-muted)" }}>
+          {formatChildAge(p, t)}
+        </span>
+      </div>
+      {active && (
+        <Icon
+          name="check"
+          size={16}
+          style={{ color: "var(--arbor-clay)", flexShrink: 0 }}
+        />
+      )}
+    </button>
   );
 }
 
@@ -159,57 +227,16 @@ export default function TopbarKidSwitcher({ maxWidth = "180px" }: { maxWidth?: s
           >
             {/* Child list */}
             {profiles.map((p) => (
-              <button
+              <SwitcherChildOption
                 key={p.id}
-                role="option"
-                aria-selected={p.id === activeChild.id}
-                onClick={() => {
+                p={p}
+                active={p.id === activeChild.id}
+                t={t}
+                onPick={() => {
                   setActiveChild(p.id);   // ← ProfileContext.setActiveChild (no data write)
                   setOpen(false);
                 }}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  width: "100%",
-                  padding: "8px 10px",
-                  borderRadius: "10px",
-                  textAlign: "start",
-                  background: p.id === activeChild.id ? "var(--arbor-paper-deep)" : "transparent",
-                  border: "none",
-                  cursor: "pointer",
-                  minHeight: "44px",
-                }}
-              >
-                <Avatar name={p.name} photoURL={childPicture(p).url} size={28} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <span
-                    dir="auto"
-                    style={{
-                      display: "block",
-                      fontSize: "var(--t-sm)",
-                      fontWeight: 700,
-                      color: "var(--arbor-ink)",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {p.name}
-                  </span>
-                  {p.demo === true && <DemoChip t={t} />}
-                  <span style={{ fontSize: "10px", color: "var(--arbor-muted)" }}>
-                    {t("profile.ageLine", { age: ageLabel(p, t) })}
-                  </span>
-                </div>
-                {p.id === activeChild.id && (
-                  <Icon
-                    name="check"
-                    size={16}
-                    style={{ color: "var(--arbor-clay)", flexShrink: 0 }}
-                  />
-                )}
-              </button>
+              />
             ))}
 
             {/* Add child — opens the existing AddChildModal (uses ProfileContext.addChild internally) */}

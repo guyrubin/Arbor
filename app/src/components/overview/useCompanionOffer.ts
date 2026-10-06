@@ -25,6 +25,7 @@ import {
 } from "../../lib/companionOffer";
 import { trackOfferShown, trackOfferSuppressed } from "../../lib/kpiEvents";
 import { reasonForThisOpen } from "../../lib/tomorrowReason";
+import { ageYearsOf } from "../../lib/age/forChild";
 
 /** day|surface|kind(|reason) already emitted — one event per day, not per render. */
 const SEEN = new Set<string>();
@@ -54,9 +55,9 @@ export function useCompanionOffer(surface: OfferSurface, opts: { whatChanged?: {
   useEffect(() => setLedger(readOfferLedger(childId)), [childId]);
 
   const rhythm = useMemo(
-    () => predictRhythm(behaviorLogs.map((l) => ({ timestamp: l.timestamp, intensity: l.intensity })), Date.now(), { ageYears: childProfile.age }),
+    () => predictRhythm(behaviorLogs.map((l) => ({ timestamp: l.timestamp, intensity: l.intensity })), Date.now(), { ageYears: ageYearsOf(childProfile) }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [behaviorLogs.length, childProfile.age],
+    [behaviorLogs.length, ageYearsOf(childProfile)],
   );
 
   const now = Date.now();

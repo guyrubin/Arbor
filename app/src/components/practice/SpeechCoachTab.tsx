@@ -21,6 +21,7 @@ import { mediaAlreadyGranted, mediaControlHidden, resolveMediaPermission, type M
 import { platformAsrAllowed, speechScoringAllowed, voiceConsentState, VOICE_CONSENT_PURPOSE, type VoiceConsentState } from "./speechConsentGate";
 import EarlyReadingTrack from "./EarlyReadingTrack";
 import { useKidModeEntry } from "../kidmode/useKidModeEntry";
+import { ageYearsOf } from "../../lib/age/forChild";
 
 /* Minimal typing for the (vendor-prefixed) Web Speech API. */
 interface SpeechRecognitionLike {
@@ -65,7 +66,7 @@ export default function SpeechCoachTab() {
   // attempt count (ties keep library order). No accuracy read steers it — the
   // parent is the listener, not a grader (FU#30/31 override recorded).
   const defaultSound = useMemo(() => {
-    const appropriate = new Set(ageAppropriateSoundIds(SOUND_LIBRARY, childProfile.age));
+    const appropriate = new Set(ageAppropriateSoundIds(SOUND_LIBRARY, ageYearsOf(childProfile)));
     const tries = new Map(data.stats.map((s) => [s.sound, s.attempts]));
     const candidates = SOUND_LIBRARY.filter((s) => appropriate.has(s.id));
     const leastPractised = candidates.reduce<SoundEntry | null>(
@@ -74,7 +75,7 @@ export default function SpeechCoachTab() {
     );
     return (leastPractised ?? SOUND_LIBRARY[0]).id;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [childProfile.age]);
+  }, [ageYearsOf(childProfile)]);
 
 
   const [soundId, setSoundId] = useState<string>(defaultSound);
@@ -316,11 +317,11 @@ export default function SpeechCoachTab() {
   // The open loop for tomorrow: the next least-practised age-appropriate sound
   // (attempt counts only — no accuracy read), never the one just practised.
   const nextSound = useMemo(() => {
-    const appropriate = new Set(ageAppropriateSoundIds(SOUND_LIBRARY, childProfile.age));
+    const appropriate = new Set(ageAppropriateSoundIds(SOUND_LIBRARY, ageYearsOf(childProfile)));
     const tries = new Map(data.stats.map((s) => [s.sound, s.attempts]));
     const pool = SOUND_LIBRARY.filter((s) => appropriate.has(s.id) && s.id !== sound.id);
     return pool.reduce<SoundEntry | null>((best, s) => (best === null || (tries.get(s.id) ?? 0) < (tries.get(best.id) ?? 0) ? s : best), null);
-  }, [childProfile.age, data.stats, sound.id]);
+  }, [ageYearsOf(childProfile), data.stats, sound.id]);
   const anotherRound = () => { setItemIdx(0); setRoundSaid(0); setRoundDone(false); setLastSaved(null); };
 
   const savePracticeEvent = (kind: PracticeEvent["kind"], correct?: boolean, meta?: string, score?: number) => {
@@ -632,7 +633,7 @@ export default function SpeechCoachTab() {
                 {SOUND_LIBRARY.filter((s) => s.band === band).map((s) => {
                   const on = s.id === soundId;
                   const st = data.stats.find((x) => x.sound === s.id);
-                  const appropriate = isSoundAgeAppropriate(s.band, childProfile.age);
+                  const appropriate = isSoundAgeAppropriate(s.band, ageYearsOf(childProfile));
                   return (
                     <button
                       key={s.id}
@@ -788,7 +789,7 @@ export default function SpeechCoachTab() {
 
       {/* Early reading + letter tracing (Mission M7) — articulation → phonics →
           sight words → reading, age-gated, plus the finger letter-trace game. */}
-      <EarlyReadingTrack age={childProfile.age} first={first} onLog={savePracticeEvent} />
+      <EarlyReadingTrack age={ageYearsOf(childProfile)} first={first} onLog={savePracticeEvent} />
 
       {/* Sound Progress Tracking (feature 3) */}
       <SectionCard title={t("prac.speech.progress.title", { name: first })} icon={<Icon name="insights" size={20} />} tone="lav"
@@ -846,7 +847,7 @@ export default function SpeechCoachTab() {
   // the word, says it, and hears themselves (local playback only); nothing is
   // graded and no speechAttempt row is written from the kid register. No dose
   // bar, no per-sound progress, no coach hand-off, no consent card.
-  const kidSounds = SOUND_LIBRARY.filter((s) => isSoundAgeAppropriate(s.band, childProfile.age));
+  const kidSounds = SOUND_LIBRARY.filter((s) => isSoundAgeAppropriate(s.band, ageYearsOf(childProfile)));
   // B-KID-74: Sound Lab on the one kid game shell — the bar names the game and
   // its hear-it replays the line the child is asked to act on (KID-09's
   // read-aloud moved to the bar); the instruction is spoken once on arrival.

@@ -6,7 +6,7 @@ import ProfileEditDrawer from "./ProfileEditDrawer";
 import { Avatar } from "../ui/Avatar";
 import FamilyGlanceCard from "./FamilyGlanceCard";
 // GP-01: the months-precise age label is THE parent-facing age render.
-import { ageLabel } from "../../lib/childAge";
+import { formatChildAge } from "../../lib/age/format";
 import { childPicture } from "../../lib/childPicture";
 
 /**
@@ -36,7 +36,7 @@ export default function ProfileSwitcher() {
           <span className="flex-shrink-0"><Avatar name={activeChild.name} photoURL={childPicture(activeChild).url} size={36} ring /></span>
           <div className="min-w-0">
             <h4 className="text-sm font-bold leading-tight truncate" dir="auto" style={{ color: "var(--arbor-ink)" }}>{activeChild.name}</h4>
-            <p className="text-[11px] whitespace-nowrap" dir="auto" style={{ color: "var(--arbor-muted)" }}>{t("profile.ageLine", { age: ageLabel(activeChild, t) })}</p>
+            <p className="text-[12px] whitespace-nowrap" dir="auto" style={{ color: "var(--arbor-muted)" }}>{formatChildAge(activeChild, t)}</p>
           </div>
         </div>
         {/* VIS-2/VIS-3: icon-only → min 44×44 hit area + explicit aria-label */}
@@ -53,8 +53,8 @@ export default function ProfileSwitcher() {
 
       {/* E6 (age-tuning visibility): quiet factual line — everything shown is
           selected for this child's age. A fact, never a clinical claim. */}
-      <p className="mt-1.5 ps-1 text-[11px] text-start" style={{ color: "var(--arbor-muted)" }}>
-        {t("elev.growthTruth.agechip.switcher", { age: ageLabel(activeChild, t) })}
+      <p className="mt-1.5 ps-1 text-[12px] text-start" style={{ color: "var(--arbor-muted)" }}>
+        {t("elev.growthTruth.agechip.switcher", { age: formatChildAge(activeChild, t) })}
       </p>
 
       {/* C3 — Family glance: shown below the switcher for 2+ child households.
