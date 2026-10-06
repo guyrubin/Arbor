@@ -4,7 +4,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { computeContentHash, isPublishableContent, type ContentLocale } from "./governance";
 import { hardMomentCards, publishedHardMomentCards, type HardMomentCard } from "./hardMomentCards";
 import { availableHardMomentCards, byCategory, byConcern, matchToRecentBehaviors } from "./selectCards";
-import { buildHardMomentSeedPrompt, todayHardMomentOffer } from "./hardMomentSurface";
+import { buildHardMomentSeedPrompt, HARD_MOMENT_SEED_ESCALATION_NOTE, todayHardMomentOffer } from "./hardMomentSurface";
+import { seededEscalationLine } from "../safety/seededEscalation";
 import { HARD_MOMENT_PILOT, computePilotDigest, hardMomentPublication, type HardMomentContext } from "./pilotRelease";
 import { hardMomentPilotText } from "./hardMomentPilotText";
 import { getSearchIndex, searchCatalog } from "../lib/searchIndex";
@@ -81,7 +82,12 @@ describe("arbor-pilot-2026-09-04 — separate, bounded editorial release", () =>
       expect(html).toContain(hardMomentPilotText(locale).explanation);
       expect(html).not.toContain("{{childName}}");
       const seed = buildHardMomentSeedPrompt(card, locale, "Noa", ctx);
-      expect(seed).toContain(card.escalation[locale]);
+      // B-AI-14 (reopened 6 Oct): the seed no longer carries the sentence; its
+      // title resolves the governed card on the server, which sets
+      // contract.governedEscalation byte-identical.
+      expect(seed).not.toContain(card.escalation[locale]);
+      expect(seededEscalationLine(seed, undefined)).toBe(card.escalation[locale]);
+      expect(seed).toContain(HARD_MOMENT_SEED_ESCALATION_NOTE);
       expect(seed).toContain("has not had individual clinical review");
       expect(seed).not.toContain("Here is the reviewed Arbor guide");
     });

@@ -39,6 +39,9 @@ function contract(over: Partial<CoachContract> = {}): CoachContract {
     avoid: ["Do not add a new rule tonight."],
     observe: ["Whether the 6pm wobble lands earlier or later this week."],
     escalateIf: ["It happens every night for two weeks."],
+    // B-AI-14: a seeded hard-moment answer carries the governed card sentence
+    // in its own server-set field — present here so the exclusion is not vacuous.
+    governedEscalation: "If it keeps happening for several weeks, talk with your pediatrician.",
     frameRouting: { aim: "", twoAxes: "", story: "", shadow: "", marriage: "", shepherd: "" },
     memoryProposals: [],
     handoffNotes: { teacher: "", professional: "" },
@@ -98,11 +101,13 @@ describe("CLINICAL FIREWALL — only the allow-listed fields can become a kept r
     expect(c.nonDiagnosticHypotheses.length).toBeGreaterThan(0);
     expect(c.escalateIf.length).toBeGreaterThan(0);
     expect(c.avoid.length).toBeGreaterThan(0);
+    expect(c.governedEscalation).toBeTruthy();
     // …and none of it reaches a proposal.
     expect(lines).not.toContain(c.riskLevel);
     expect(lines.join(" ")).not.toContain(c.nonDiagnosticHypotheses[0].rationale);
     expect(lines).not.toContain(c.escalateIf[0]);
     expect(lines).not.toContain(c.avoid[0]);
+    expect(lines).not.toContain(c.governedEscalation);
     expect(lines.join(" ")).not.toContain("language_communication");
   });
 
