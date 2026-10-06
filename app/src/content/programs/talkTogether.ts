@@ -141,7 +141,7 @@ export const TALK_TOGETHER: Program = {
         "Share a book: take turns on each page instead of reading every word.",
         "ספר ביחד: לקחת תורות בכל דף במקום לקרוא כל מילה.",
       ),
-      practices: ["pr-cdc-24m-4", "pr-cdc-30m-5", "pr-cdc-60m-4", "pr-cdc-15m-4", "pr-cdc-24m-5"],
+      practices: ["pr-cdc-24m-4", "pr-cdc-30m-5", "pr-words-01", "pr-words-02", "pr-cdc-15m-4"],
       coachScripts: [
         { id: "tt-w6-s1", text: L("Let them hold the book and turn the pages. Talk about the page they stop on.", "תנו לו/לה להחזיק את הספר ולהפוך דפים. דברו על הדף שבו הוא/היא עוצר/ת.") },
         { id: "tt-w6-s2", text: L("Skip the words on the page if you like. Point, name one picture, and wait for their turn.", "אפשר לדלג על הטקסט. הצביעו, תנו שם לתמונה אחת, וחכו לתור שלו/שלה.") },
@@ -155,7 +155,7 @@ export const TALK_TOGETHER: Program = {
         "Book prompts (PEER): prompt, respond, add a word, invite them to say it again.",
         "שאלות על הספר: להזמין, להגיב, להוסיף מילה, ולהזמין לומר שוב.",
       ),
-      practices: ["pr-cdc-30m-5", "pr-cdc-24m-4", "pr-cdc-60m-5", "pr-cdc-60m-4", "pr-cdc-24m-3"],
+      practices: ["pr-words-03", "pr-words-04", "pr-words-06", "pr-cdc-30m-5", "pr-cdc-24m-4", "pr-cdc-24m-3"],
       coachScripts: [
         { id: "tt-w7-s1", text: L("Prompt: ask about one picture, 'What's that?' Then wait for their answer before you add anything.", "הזמינו: שאלו על תמונה אחת, „מה זה?” ואז חכו לתשובה לפני שאתם מוסיפים משהו.") },
         { id: "tt-w7-s2", text: L("Respond warmly to any answer, then expand it by one word, and invite them to say it with you.", "הגיבו בחום לכל תשובה, הרחיבו במילה אחת, והזמינו אותו/אותה להגיד את זה איתכם.") },
@@ -169,7 +169,7 @@ export const TALK_TOGETHER: Program = {
         "Leave a gap: pause in songs, rhymes and routines so they can fill in the word.",
         "להשאיר רווח: לעצור בשירים, בחרוזים ובשגרה כדי שהילד/ה ישלים/תשלים את המילה.",
       ),
-      practices: ["pr-cdc-48m-7", "pr-cdc-36m-5", "pr-cdc-24m-5", "pr-cdc-30m-3", "pr-cdc-36m-6"],
+      practices: ["pr-cdc-48m-7", "pr-cdc-36m-5", "pr-cdc-24m-5", "pr-cdc-30m-3", "pr-cdc-36m-6", "pr-words-05"],
       coachScripts: [
         { id: "tt-w8-s1", text: L("In a song you sing together, stop just before a familiar word and wait, smiling.", "בשיר שאתם שרים ביחד, עצרו רגע לפני מילה מוכרת וחכו בחיוך.") },
         { id: "tt-w8-s2", text: L("Leave a gap in daily routines: 'Ready, steady…' and let them say 'go'.", "השאירו רווח בשגרה: „היכון, הכון...” ותנו לו/לה להגיד „צא!”") },

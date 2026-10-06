@@ -173,7 +173,7 @@ describe("B-LOOP-08 — practices export", () => {
     expect(body.filter((r) => r[1] !== "—")).toHaveLength(ALL_MILESTONES.length);
     const shelfLevel = body.filter((r) => r[1] === "—");
     expect(shelfLevel.map((r) => r[0])).toEqual(PRACTICES.filter((p) => p.milestoneId === null).map((p) => p.id));
-    expect(new Set(shelfLevel.map((r) => r[2]))).toEqual(new Set(["sleep", "family"]));
+    expect(new Set(shelfLevel.map((r) => r[2]))).toEqual(new Set(["sleep", "family", "words"]));
     for (const r of body) {
       expect(r, r[0]).toHaveLength(11);
       for (let i = 0; i < 8; i += 1) expect(r[i].trim().length, `${r[0]} ${PRACTICE_COLUMNS[i]}`).toBeGreaterThan(0);

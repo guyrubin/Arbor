@@ -69,6 +69,19 @@ describe("B-LOOP-08 — coverage", () => {
     for (const p of practicesForShelf("family")) expect([PRACTICE_SOURCES.whoUnicefCcd, PRACTICE_SOURCES.aapBrightFutures], p.id).toContain(p.evidence.source);
   });
 
+  it("follow-up 2: Words carries six shelf-level book practices for 18–36 months (book sharing in turns; never the PEER acronym to the parent)", () => {
+    const books = PRACTICES.filter((p) => p.shelf === "words" && p.milestoneId === null);
+    expect(books.map((p) => p.id)).toEqual(["pr-words-01", "pr-words-02", "pr-words-03", "pr-words-04", "pr-words-05", "pr-words-06"]);
+    expect(books.map((p) => p.ageMonths)).toEqual([18, 18, 24, 30, 30, 36]);
+    for (const p of books) {
+      expect(["dialogic_reading", "serve_and_return", "responsive_interaction"], p.id).toContain(p.evidence.technique);
+      expect([PRACTICE_SOURCES.aapLiteracy, PRACTICE_SOURCES.ashaActivities, PRACTICE_SOURCES.whitehurstDialogicReading], p.id).toContain(p.evidence.source);
+      expect(p.materials, p.id).toBeTruthy();
+      for (const t of texts(p)) expect(/\bPEER\b|\bCROWD\b|dialogic/i.test(t.text), `${p.id}.${t.field}.${t.locale}`).toBe(false);
+    }
+    expect(PRACTICES.filter((p) => p.milestoneId === null)).toHaveLength(16);
+  });
+
   it("the count table adds up to the library (counts only, per shelf × band)", () => {
     const table = practiceCountTable();
     expect(table.reduce((n, c) => n + c.count, 0)).toBe(PRACTICES.length);

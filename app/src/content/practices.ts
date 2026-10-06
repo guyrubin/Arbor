@@ -33,7 +33,9 @@
  * bound to the SHELF, not to a milestone: `milestoneId: null`, `shelf` set by
  * hand, `ageMonths` the practice's own anchor (the band it suits). Same rules
  * as every practice; sleep practices are routine, light, timing and
- * wind-down only (no sleep method, no amounts, no restriction). A shelf can
+ * wind-down only (no sleep method, no amounts, no restriction). Follow-up 2
+ * (6 Oct): six Words book practices for 18–36 months (`pr-words-nn`) — the
+ * book-sharing gap Talk Together weeks 6–7 found. A shelf can
  * still be empty at runtime for a given age (B-LOOP-09's chooser must allow
  * it); `milestoneId: null` is legal everywhere a practice is read.
  *
@@ -115,6 +117,8 @@ export const PRACTICE_SOURCES = {
   aapSafeSleep: { org: "AAP", title: "Sleep-Related Infant Deaths: Updated 2022 Recommendations for Reducing Infant Deaths in the Sleep Environment (policy statement, Pediatrics)", year: 2022 },
   aapHealthyChildrenSleep: { org: "AAP", title: "HealthyChildren.org — sleep pages for babies, toddlers and preschoolers (web pages, undated; cited 2026)", year: 2026 },
   nhsStartForLifeSleep: { org: "NHS", title: "Start for Life — helping your baby to sleep and bedtime routines (web pages, undated; cited 2026)", year: 2026 },
+  // B-LOOP-08 follow-up 2 — the shelf-level Words book set (18–36 months).
+  whitehurstDialogicReading: { org: "Whitehurst (Reading Rockets, public article)", title: "Dialogic Reading: An Effective Way to Read to Preschoolers", year: 1992 },
 } as const satisfies Record<string, PracticeSource>;
 
 const S = PRACTICE_SOURCES;
@@ -790,6 +794,41 @@ export const PRACTICES: readonly Practice[] = [
   SP("pr-family-04", "family", 48, "serve_and_return", 10, S.aapBrightFutures, {
     do: L("At a family meal, let each person share one good thing from their day; listen to your child's turn and ask one more question.", "בארוחה משפחתית, כל אחד מספר על דבר טוב אחד מהיום; הקשיבו לתור של הילד/ה ושאלו עוד שאלה."),
     say: L("What was one good thing today? Tell me more!", "מה היה דבר טוב אחד היום? ספר/י לי עוד!"),
+  }),
+
+  /* ── shelf-level (B-LOOP-08 follow-up 2) · Words · books · 18–36 months ── */
+  /* Book sharing in turns (dialogic reading described as what the parent    */
+  /* does — never the acronym to the parent), pointing and naming, "what      */
+  /* happens next", the child turning the pages, the same book again.         */
+  SP("pr-words-01", "words", 18, "responsive_interaction", 5, S.aapLiteracy, {
+    do: L("Let your child choose a book, hold it and turn the pages, even backwards. Talk about whichever page they stop on.", "תנו לילד/ה לבחור ספר, להחזיק אותו ולהפוך דפים, גם מהסוף להתחלה. דברו על הדף שבו הוא/היא עוצר/ת."),
+    say: L("You picked the duck book! Which page now?", "בחרת את הספר של הברווז! איזה דף עכשיו?"),
+    materials: L("A picture book from home", "ספר תמונות מהבית"),
+  }),
+  SP("pr-words-02", "words", 18, "dialogic_reading", 5, S.aapLiteracy, {
+    do: L("Look at one page together. Point to a picture and name it, then wait for your child to point, and name that one too.", "הסתכלו יחד על דף אחד. הצביעו על תמונה ואמרו את השם שלה, ואז חכו שהילד/ה יצביע/תצביע, ותנו שם גם לתמונה הזאת."),
+    say: L("A ball! Your turn. Oh, a cat! Meow.", "כדור! תורך. אוי, חתול! מיאו."),
+    materials: L("A picture book from home", "ספר תמונות מהבית"),
+  }),
+  SP("pr-words-03", "words", 24, "dialogic_reading", 10, S.whitehurstDialogicReading, {
+    do: L("On each page, ask about one picture, welcome any answer, say it back with a word added, then invite your child to say it again.", "בכל דף, שאלו על תמונה אחת, קבלו בשמחה כל תשובה, החזירו אותה עם עוד מילה, והזמינו את הילד/ה להגיד אותה שוב."),
+    say: L("What's this? A truck! A red truck. Can you say it?", "מה זה? משאית! משאית אדומה. רוצה להגיד גם?"),
+    materials: L("A picture book from home", "ספר תמונות מהבית"),
+  }),
+  SP("pr-words-04", "words", 30, "dialogic_reading", 10, S.whitehurstDialogicReading, {
+    do: L("Before turning a page in a familiar book, pause and ask what comes next. Enjoy any guess, then turn the page together to see.", "לפני שהופכים דף בספר מוכר, עצרו ושאלו מה יקרה עכשיו. תיהנו מכל ניחוש, ואז הפכו את הדף יחד ותראו."),
+    say: L("Uh-oh, what happens next? Let's look!", "אוי, מה יקרה עכשיו? בוא/י נראה!"),
+    materials: L("A favourite picture book", "ספר תמונות אהוב"),
+  }),
+  SP("pr-words-05", "words", 30, "serve_and_return", 5, S.ashaActivities, {
+    do: L("When your child asks for the same book again, read it again. Pause before a word they know and let them fill it in.", "כשהילד/ה מבקש/ת שוב את אותו ספר, קראו אותו שוב. עצרו לפני מילה מוכרת ותנו לו/לה להשלים אותה."),
+    say: L("Again? Okay! The cat sat on the…", "שוב? בסדר! החתול ישב על ה…"),
+    materials: L("A favourite picture book", "ספר תמונות אהוב"),
+  }),
+  SP("pr-words-06", "words", 36, "dialogic_reading", 10, S.whitehurstDialogicReading, {
+    do: L("Let your child tell the story from the pictures. Listen, ask one 'what' or 'where' question, and add a little to what they say.", "תנו לילד/ה לספר את הסיפור מתוך התמונות. הקשיבו, שאלו שאלה אחת של 'מה' או 'איפה', והוסיפו קצת למה שהוא/היא אומר/ת."),
+    say: L("You tell me the story. Where is the bunny going?", "את/ה מספר/ת לי את הסיפור. לאן הארנב הולך?"),
+    materials: L("A picture book from home", "ספר תמונות מהבית"),
   }),
 ];
 
