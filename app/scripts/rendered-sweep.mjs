@@ -28,8 +28,12 @@
  * weight {tappableAboveFold, tappable, textSizes, under12, uppercase, gradients, screens}
  * (B-INF-06: measured in <main>, visible elements only, icon-font spans excluded; ratchet =
  * scripts/weightLimits.test.ts against scripts/weight-baseline.json).
+ * primaryMoveOccluded (+ primaryMoveFoldY) — P5 design r1 P0-1: the stamp's rect vs every
+ *   FIXED bottom element (the capture dock, the tab bar) that overlaps it horizontally, plus an
+ *   elementFromPoint probe at each control's centre inside the stamp; true = a control of the
+ *   primary move is covered (at 375 EN "Did it" sat under the dock while the fold gate read true).
  * totals = routes · cells · mounted · consoleErrorCells · pctCells · latinHECells · sub44Cells ·
- * overflowCells. Stdout: one `SWEEP …` line; `--diff` adds `DIFF changed=<n> cells` + one line
+ * overflowCells · occludedCells. Stdout: one `SWEEP …` line; `--diff` adds `DIFF changed=<n> cells` + one line
  * per changed field; `--runs 2` re-runs (run2/ subdir, no shots) and prints STABLE | UNSTABLE <n>.
  *
  * How the critics use it: the validator diffs the wave's sweep against the previous baseline
@@ -57,8 +61,9 @@
  *     "shell" (`--routes` accepts "shell"). States never leave lasting data: see each entry's
  *     `writes` (recorded per cell) — the one local write (capture) is undone in-page and
  *     verified, and server-writing taps (memory approve, share grant, checkout) are never made.
- *   Fold gate: primaryMove.aboveFold = y + min(h, 56) <= viewport height; stampHeight =
- *     primaryMove.h (critics assert the stamp sits on one control: h <= 120).
+ *   Fold gate: primaryMove.aboveFold = y + min(h, 56) <= the EFFECTIVE fold (min of the
+ *     viewport height and the top of any fixed bottom element over the stamp's columns);
+ *     stampHeight = primaryMove.h (critics assert the stamp sits on one control: h <= 120).
  *   Totals: cells/mounted count BASE cells (backward compatible); the law totals (consoleErr,
  *     pct, latinHE, sub44, overflow) count base + reached state cells; + stateCells,
  *     statesUnreached. `--runs 2` prints STABLE | UNSTABLE <n> for base cells and
@@ -364,8 +369,36 @@ function collect({ lang, allowLatin }) {
       id: pmEl.getAttribute("data-primary-move"),
       x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height),
     };
+    // P5 design r1 P0-1: the effective fold is the top of any fixed element
+    // docked in the lower part of the viewport over the stamp's columns (the
+    // capture dock, the tab bar) — not the viewport's bottom edge.
+    const docks = [...document.querySelectorAll("body *")].filter((el) => {
+      if (el === pmEl || el.contains(pmEl) || pmEl.contains(el)) return false;
+      const cs = getComputedStyle(el);
+      if (cs.position !== "fixed" || cs.visibility === "hidden" || cs.display === "none" || Number(cs.opacity) === 0) return false;
+      const d = rectOf(el);
+      return d.width > 0 && d.height > 0 && d.top >= vh * 0.4 && d.top < vh && d.left < r.right && d.right > r.left;
+    });
+    const foldY = Math.round(Math.min(vh, ...docks.map((el) => rectOf(el).top)));
+    primaryMove.foldY = foldY;
     // v2 fold gate: the stamp's first 56 px (one control's height) must be on screen.
-    primaryMove.aboveFold = primaryMove.y + Math.min(primaryMove.h, 56) <= vh;
+    primaryMove.aboveFold = primaryMove.y + Math.min(primaryMove.h, 56) <= foldY;
+    // Occlusion: the stamp overlaps a dock, or a control's centre resolves to
+    // something outside the stamp (only probed when the centre is in the viewport).
+    const overlapsDock = docks.some((el) => {
+      const d = rectOf(el);
+      return d.top < r.bottom && d.bottom > r.top;
+    });
+    const controls = [...pmEl.querySelectorAll("button, a[href], [role=button], input")];
+    const probes = (controls.length ? controls : [pmEl]).map((el) => rectOf(el));
+    const probeHidden = probes.some((p) => {
+      const cx = p.left + p.width / 2;
+      const cy = p.top + p.height / 2;
+      if (cy < 0 || cy > vh || cx < 0 || cx > innerWidth) return false;
+      const hit = document.elementFromPoint(cx, cy);
+      return !!hit && !pmEl.contains(hit);
+    });
+    primaryMove.occluded = overlapsDock || probeHidden;
   }
 
   const pctStrings = deepest((t) => /\d\s?%/.test(t));
@@ -471,6 +504,8 @@ function collect({ lang, allowLatin }) {
     demotedModules,
     primaryMove,
     stampHeight: primaryMove ? primaryMove.h : null,
+    primaryMoveOccluded: primaryMove ? primaryMove.occluded === true : null,
+    primaryMoveFoldY: primaryMove ? primaryMove.foldY : null,
     pctStrings: pctStrings.slice(0, 50),
     pctCount: pctStrings.length,
     latinChromeHE: latinChromeHE ? latinChromeHE.slice(0, 20) : null,
@@ -1274,6 +1309,7 @@ async function sweep(browser, opts, routes, outDir, withShots, allowLatin, tr) {
       pctCells: count(reached, (c) => (c.pctCount ?? 0) > 0),
       latinHECells: count(reached, (c) => (c.latinChromeHECount ?? 0) > 0),
       sub44Cells: count(reached, (c) => (c.sub44Count ?? 0) > 0),
+      occludedCells: count(reached, (c) => c.primaryMoveOccluded === true),
       overflowCells: count(reached, (c) => c.overflow && c.overflow.scrollWidth > c.overflow.clientWidth),
       rateLimitedCells: count(cells, (c) => (c.rateLimited ?? 0) > 0),
       retriedCells: count(cells, (c) => !!c.firstAttempt),
@@ -1299,7 +1335,7 @@ function summaryLine(doc, outDir) {
   const mountedRoutes = [...byRoute.values()].filter(Boolean).length;
   return (
     `SWEEP sha=${doc.sha.slice(0, 7)} routes=${mountedRoutes}/${t.routes} cells=${t.cells} ` +
-    `consoleErr=${t.consoleErrorCells} pct=${t.pctCells} latinHE=${t.latinHECells} sub44=${t.sub44Cells} ` +
+    `consoleErr=${t.consoleErrorCells} pct=${t.pctCells} latinHE=${t.latinHECells} sub44=${t.sub44Cells} occluded=${t.occludedCells ?? 0} ` +
     `overflow=${t.overflowCells} seed=${doc.seed ?? "day0"} stateCells=${t.stateCells ?? 0} ` +
     `statesUnreached=${t.statesUnreached ?? 0} out=${outDir}`
   );
@@ -1327,6 +1363,7 @@ function diffSweeps(prev, next, scope = "all") {
     ["pctStrings", (c) => c.pctCount ?? (c.pctStrings ?? []).length],
     ["latinChromeHE", (c) => c.latinChromeHECount ?? (c.latinChromeHE ? c.latinChromeHE.length : null)],
     ["sub44AboveFold", (c) => c.sub44Count ?? (c.sub44AboveFold ?? []).length],
+    ["primaryMoveOccluded", (c) => c.primaryMoveOccluded ?? null],
     ["consoleErrors", (c) => (c.consoleErrors ?? []).length],
   ];
   for (const k of new Set([...prevMap.keys(), ...nextMap.keys()])) {

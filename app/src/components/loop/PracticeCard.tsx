@@ -9,6 +9,7 @@ import { resolveHebrewSlash } from "../../lib/hebrewSlashGender";
 import { shelfLabel, type ShelfId } from "../../lib/shelves/registry";
 import type { PracticeAnswer } from "../../lib/practice/choosePractice";
 import { ShelfGlyph } from "./ShelfGlyph";
+import { practiceTitle, titleIsWholeDo } from "../../lib/practice/practiceTitle";
 
 /** The page-language text of a practice field, Hebrew slash forms resolved
  *  from the child's gender (Law 8). */
@@ -36,14 +37,19 @@ export interface PracticeCardProps {
   quotes?: ReadonlyArray<{ text: string; date?: string }>;
   /** B-LOOP-07: a lifecycle line (birthday, first week) inside the header, never a sibling. */
   headerNote?: string | null;
-  /** Law 7: the answers ARE the surface's primary move. */
+  /** Law 7: the answers ARE the surface's primary move (P5 design r1 P0-1:
+   *  the stamp sits on the "Did it" / "Not today" group, h ≈ 48, never on the
+   *  card; after an answer the route moves it to the next unanswered
+   *  control — Today: the first Notice row). */
   stampMove?: string;
 }
 
 /**
  * B-LOOP-09 / B-LOOP-07 — Today's practice, the design of record
  * (art/mockups/today-option-1.html): a caption row with the shelf mark,
- * the "do" as the display title, the "say" as the one editorial sentence
+ * a short title (≤ 8 words, the do's first clause — lib/practice/
+ * practiceTitle; P5 r1 P0-1) at --t-lg, the full do at body size, the "say"
+ * as the one --t-xl editorial sentence
  * behind a 2 px navy start rule, one muted meta line, one why-line, and
  * the two answers — solid sapphire "Did it" + pale "Not today". After an
  * answer: ONE line ("Noted. Tonight Arbor asks how it went." / "Tomorrow is
@@ -67,6 +73,8 @@ export default function PracticeCard({
   const lang: "en" | "he" = uiLang === "he" ? "he" : "en";
   const shelfName = shelfLabel(shelf, t);
   const doText = practiceText(practice, "do", lang, gender);
+  const titleText = practiceTitle(doText, lang);
+  const stamp = stampMove ? { "data-primary-move": stampMove } : {};
   const sayText = practiceText(practice, "say", lang, gender);
   const materials = practiceText(practice, "materials", lang, gender);
   const title = milestone ? milestoneText(milestone, "title", t, { gender: gender ?? null }) : "";
@@ -93,11 +101,11 @@ export default function PracticeCard({
       </div>
       <div className="px-4 pb-4 sm:px-5">
         <h2
-          data-testid="practice-do"
-          className="mt-3 font-semibold leading-tight"
-          style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)", fontSize: "var(--t-xl)" }}
+          data-testid="practice-title"
+          className="mt-3 font-semibold leading-snug"
+          style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)", fontSize: "var(--t-lg)" }}
         >
-          {doText}
+          {titleText}
         </h2>
         <blockquote
           data-testid="practice-say"
@@ -106,6 +114,11 @@ export default function PracticeCard({
         >
           {t("elev.loop.practice.say")} <FreeText text={`“${sayText}”`} />
         </blockquote>
+        {!titleIsWholeDo(titleText, doText) && (
+          <p data-testid="practice-do" className="mt-2 leading-snug" style={{ color: "var(--arbor-ink)", fontSize: "var(--t-base)" }}>
+            {doText}
+          </p>
+        )}
         {quotes && quotes.length > 0 && (
           <div data-testid="practice-quotes" className="mt-3 space-y-2">
             {quotes.map((q, i) => (
@@ -149,7 +162,7 @@ export default function PracticeCard({
             role="group"
             aria-label={t("elev.loop.practice.caption")}
             data-testid="practice-answers"
-            {...(stampMove ? { "data-primary-move": stampMove } : {})}
+            {...stamp}
             className="mt-4 flex gap-2.5"
           >
             <button

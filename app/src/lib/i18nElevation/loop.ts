@@ -96,6 +96,10 @@ export const en: Record<string, string> = {
   // ── B-LOOP-07 · Today in three blocks ───────────────────────────────────
   "elev.loop.today.caption": "One small thing for {name} today",
   "elev.loop.today.captionEvening": "Three quick questions about {name}'s day",
+  // P5 design r1 P0-1: ONE line above a one-line H1 — the day + the caption.
+  "elev.loop.today.eyebrow": "{when} · one small thing for {name}",
+  "elev.loop.today.eyebrowEvening": "{when} · three quick questions about {name}'s day",
+  "elev.loop.today.identity": "{name} · {age}",
   "elev.loop.today.notice.title": "Notice today",
   "elev.loop.today.notice.sub": "Two things to watch for, if they happen",
   "elev.loop.today.tonight": "Tonight · 3 quick questions",
@@ -192,6 +196,9 @@ export const he: Record<string, string> = {
   // ── B-LOOP-07 · Today in three blocks ───────────────────────────────────
   "elev.loop.today.caption": "דבר קטן אחד בשביל {name} היום",
   "elev.loop.today.captionEvening": "שלוש שאלות קצרות על היום של {name}",
+  "elev.loop.today.eyebrow": "{when} · דבר קטן אחד בשביל {name}",
+  "elev.loop.today.eyebrowEvening": "{when} · שלוש שאלות קצרות על היום של {name}",
+  "elev.loop.today.identity": "{name} · {age}",
   "elev.loop.today.notice.title": "לשים לב היום",
   "elev.loop.today.notice.sub": "שני דברים לשים לב אליהם, אם יקרו",
   "elev.loop.today.tonight": "הערב · 3 שאלות קצרות",

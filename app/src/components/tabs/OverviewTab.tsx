@@ -322,9 +322,19 @@ export default function OverviewTab() {
   const weekday = now.toLocaleDateString(lang === "he" ? "he-IL" : "en-GB", { weekday: "long" });
   const ageText = formatChildAge(childProfile, t);
   const nowrap = (s: string) => s.replace(/ /g, " ");
-  const identityLine = ageText
-    ? t("today.identity", { name: firstName, age: nowrap(ageText), when: t(whenKey, { weekday }) })
-    : t("today.identity.noAge", { name: firstName, when: t(whenKey, { weekday }) });
+  // P5 design r1 P0-1 (6 Oct): the H1 carries name · age on ONE line; the
+  // weekday moves into the one eyebrow line ("Tuesday morning · one small
+  // thing for Dylan"), and the shell's hub line is quiet on this route
+  // (Shell HUB_LINE_QUIET_TABS) — together ≈ 50 px back above the fold.
+  const identityLine = ageText ? t("elev.loop.today.identity", { name: firstName, age: nowrap(ageText) }) : firstName;
+  const eyebrowLine = t(evening ? "elev.loop.today.eyebrowEvening" : "elev.loop.today.eyebrow", { when: t(whenKey, { weekday }), name: firstName });
+  // Law 7 (P5 design r1 P0-1): ONE stamp literal on this route, placed on the
+  // first block's ANSWER group (h ≈ 48) — never on a whole card, whose height
+  // let the fold gate pass while "Did it" sat under the capture dock.
+  const primaryStamp = { "data-primary-move": "do-practice" } as const;
+  // the same id for the components that take it as a prop (no second literal)
+  const [primaryMoveId] = Object.values(primaryStamp);
+  const firstBlock = plan.order[0];
 
   const doorLine = (testId: string, icon: string, label: string, onClick: () => void) => (
     <button
@@ -354,9 +364,10 @@ export default function OverviewTab() {
       onAnswer={answerPractice}
       onUndo={dose ? () => removeTodayAction(dose.id) : undefined}
       quotes={quotes}
+      stampMove={firstBlock === "practice" ? primaryMoveId : undefined}
     />
   ) : slotNotice ? (
-    <NoticeCard key={slotNotice.milestone.id} milestone={slotNotice.milestone} shelf={slotNotice.shelf} gender={childProfile.gender} childName={firstName} variant="card" {...noticeHandlers(slotNotice.milestone, slotNotice.shelf)} />
+    <NoticeCard key={slotNotice.milestone.id} milestone={slotNotice.milestone} shelf={slotNotice.shelf} gender={childProfile.gender} childName={firstName} variant="card" answersAttrs={firstBlock === "practice" ? primaryStamp : undefined} {...noticeHandlers(slotNotice.milestone, slotNotice.shelf)} />
   ) : null;
 
   const noticeBlock = (
@@ -368,7 +379,8 @@ export default function OverviewTab() {
       <div className="mt-1">
         {blockNotices.map((c, i) => (
           <div key={c.milestone.id} style={i > 0 ? { borderTop: "1px solid var(--arbor-rule)" } : undefined}>
-            <NoticeCard milestone={c.milestone} shelf={c.shelf} gender={childProfile.gender} childName={firstName} variant="row" {...noticeHandlers(c.milestone, c.shelf)} />
+            {/* Practice answered: the move passes to the first Notice row's answers. */}
+            <NoticeCard milestone={c.milestone} shelf={c.shelf} gender={childProfile.gender} childName={firstName} variant="row" answersAttrs={i === 0 && firstBlock === "practice" && pick && doseAnswer ? primaryStamp : undefined} {...noticeHandlers(c.milestone, c.shelf)} />
           </div>
         ))}
       </div>
@@ -400,6 +412,7 @@ export default function OverviewTab() {
       onNoticeWhen={(when) => tonightNotice && setMilestoneObservation(tonightNotice.milestone.id, "yes", { when })}
       onNoticeUndo={() => tonightNotice && noticeHandlers(tonightNotice.milestone, tonightNotice.shelf).onUndo()}
       onStory={storyFits ? () => setActiveTab("bedtime-stories") : undefined}
+      stampMove={firstBlock === "tonight" ? primaryMoveId : undefined}
     />
   );
 
@@ -414,17 +427,18 @@ export default function OverviewTab() {
       className="flex flex-col gap-4 md:gap-5 relative max-w-[1180px] mx-auto max-md:pb-20"
     >
       <header className="px-1">
+        {/* P5 design r1 P0-1: ONE caption line (the day folded in) above a one-line H1. */}
+        <p data-testid="today-caption" className="font-semibold" style={{ color: "var(--arbor-muted)", fontSize: "var(--t-sm)" }}>
+          {eyebrowLine}
+        </p>
         {/* B-SHELL-27: the same face as the sidebar/switcher, a 28 px circle in the identity line only. */}
-        <div className="flex items-center gap-2.5">
+        <div className="mt-1 flex items-center gap-2.5">
           <Avatar name={childProfile.name} photoURL={childPicture(childProfile).url} size={28} />
           {/* Critic r1 (P0, Law 8): no dir="auto", no outer bdi — the h1 inherits the page direction. */}
-          <h1 data-testid="today-identity" className="font-semibold leading-tight text-start" style={{ color: "var(--arbor-ink)", fontSize: "var(--t-lg)" }}>
+          <h1 data-testid="today-identity" className="min-w-0 truncate font-semibold leading-tight text-start" style={{ color: "var(--arbor-ink)", fontSize: "var(--t-lg)" }}>
             {identityLine}
           </h1>
         </div>
-        <p data-testid="today-caption" className="mt-1 text-[13px] font-semibold" style={{ color: "var(--arbor-muted)" }}>
-          {t(evening ? "elev.loop.today.captionEvening" : "elev.loop.today.caption", { name: firstName })}
-        </p>
       </header>
 
       <div data-today-tracks="" className="flex flex-col gap-4 md:gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start lg:gap-5">
@@ -445,9 +459,9 @@ export default function OverviewTab() {
           {/* The three blocks, in planToday's order — ≤ 3 modules, the first is
               the day's ONE primary move (morning: the practice; evening:
               Tonight's first answer). */}
-          {plan.order.map((id, i) => (
+          {plan.order.map((id) => (
             <div key={id} data-module={`today-${id}`} className="min-w-0">
-              {i === 0 ? <div data-primary-move="do-practice" className="min-w-0">{blocks[id]}</div> : blocks[id]}
+              {blocks[id]}
             </div>
           ))}
 
