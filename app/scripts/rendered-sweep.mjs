@@ -24,7 +24,10 @@
  * (+latinChromeHECount; HE only; allow-list "Arbor" + seeded child name; icon ligatures out) ·
  * sub44AboveFold {tag,text,w,h,y,inMain} (+sub44Count; inMain=false = shell chrome) ·
  * consoleErrors (429s counted apart as rateLimited) · overflow {scrollWidth,clientWidth} ·
- * apiRequests (/api calls, "(cache)" marked — the model-spend evidence) · loadMs · shot.
+ * apiRequests (/api calls, "(cache)" marked — the model-spend evidence) · loadMs · shot ·
+ * weight {tappableAboveFold, tappable, textSizes, under12, uppercase, gradients, screens}
+ * (B-INF-06: measured in <main>, visible elements only, icon-font spans excluded; ratchet =
+ * scripts/weightLimits.test.ts against scripts/weight-baseline.json).
  * totals = routes · cells · mounted · consoleErrorCells · pctCells · latinHECells · sub44Cells ·
  * overflowCells. Stdout: one `SWEEP …` line; `--diff` adds `DIFF changed=<n> cells` + one line
  * per changed field; `--runs 2` re-runs (run2/ subdir, no shots) and prints STABLE | UNSTABLE <n>.
@@ -404,6 +407,57 @@ function collect({ lang, allowLatin }) {
     });
   }
 
+  // B-INF-06 — the weight of the screen, measured in <main> (the surface, not the shell):
+  // visible elements only, icon-font spans (Material Symbols ligatures) excluded.
+  //   tappable          a, button, [role=button], input, select, textarea, [tabindex] (a
+  //                     tabindex="-1" focus target that is not itself a control is not tappable)
+  //   tappableAboveFold the tappables whose box intersects the first viewport
+  //   textSizes         distinct computed font-size values on elements holding visible text
+  //   under12           elements holding visible text with a computed font-size < 12 px
+  //   uppercase         elements holding visible text with text-transform: uppercase
+  //   gradients         elements whose computed background-image contains "gradient"
+  //   screens           main's height / viewport height, one decimal
+  const weight = (() => {
+    const region = main || root;
+    const iconFontEl = (el) => /material (symbols|icons)/i.test(getComputedStyle(el).fontFamily);
+    const hasBox = (el) => {
+      const r = el.getBoundingClientRect();
+      return r.width > 1 && r.height > 1;
+    };
+    const holdsText = (el) => {
+      for (const n of el.childNodes) if (n.nodeType === 3 && n.textContent.trim()) return true;
+      return false;
+    };
+    const CONTROL = 'a, button, [role="button"], input:not([type="hidden"]), select, textarea';
+    let tappable = 0, tappableAboveFold = 0, under12 = 0, uppercase = 0, gradients = 0;
+    for (const el of region.querySelectorAll(`${CONTROL}, [tabindex]`)) {
+      if (el.getAttribute("tabindex") === "-1" && !el.matches(CONTROL)) continue;
+      if (el.closest('[aria-hidden="true"], [inert]')) continue;
+      if (!visible(el) || !hasBox(el)) continue;
+      tappable++;
+      const r = el.getBoundingClientRect();
+      if (r.top < vh && r.bottom > 0) tappableAboveFold++;
+    }
+    const sizes = new Set();
+    for (const el of region.querySelectorAll("*")) {
+      if (SKIP.has(el.tagName)) continue;
+      const cs = getComputedStyle(el);
+      if ((cs.backgroundImage || "").includes("gradient") && visible(el) && hasBox(el)) gradients++;
+      if (!holdsText(el) || iconFontEl(el) || !visible(el) || !hasBox(el)) continue;
+      const px = parseFloat(cs.fontSize);
+      if (Number.isFinite(px)) {
+        sizes.add(cs.fontSize);
+        if (px < 12) under12++;
+      }
+      if (cs.textTransform === "uppercase") uppercase++;
+    }
+    const height = Math.max(region.scrollHeight || 0, region.getBoundingClientRect().height || 0);
+    return {
+      tappableAboveFold, tappable, textSizes: sizes.size, under12, uppercase, gradients,
+      screens: Math.round((height / vh) * 10) / 10,
+    };
+  })();
+
   const de = document.documentElement;
   return {
     finalHash: location.hash,
@@ -423,6 +477,7 @@ function collect({ lang, allowLatin }) {
     latinChromeHECount: latinChromeHE ? latinChromeHE.length : null,
     sub44AboveFold: sub44,
     sub44Count: sub44.length,
+    weight,
     overflow: { scrollWidth: de.scrollWidth, clientWidth: de.clientWidth },
   };
 }

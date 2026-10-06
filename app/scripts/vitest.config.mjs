@@ -4,7 +4,8 @@ export default defineConfig({
   esbuild: { jsx: "automatic" },
   test: {
     environment: "node",
-    include: ["src/**/*.test.{ts,tsx}"],
+    // B-INF-06: + the weight ratchet beside the sweep it reads (scripts/weightLimits.test.ts).
+    include: ["src/**/*.test.{ts,tsx}", "scripts/**/*.test.{ts,tsx}"],
     coverage: {
       provider: "v8",
       include: [
