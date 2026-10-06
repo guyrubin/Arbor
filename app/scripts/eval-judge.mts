@@ -25,6 +25,14 @@
  * the row stamps the suite's contentHashes (a stale suite is refused).
  * `--ids a,b,c` judges a subset (scenario ids, or catalogue/practice ids).
  *
+ * B-PROV-10 LIVE TIER ONLY (opt-in): a suite whose runner declares
+ * `deterministicCiGate` (voice-loop-v1) is judged on its `tier: "live"`
+ * scenarios only — its deterministic scenarios carry stubbed model replies /
+ * screening-down conditions no live route can reproduce, so the row lists
+ * them as `skippedDeterministic` with `skippedReason: "CI gate: <file>"` and
+ * passRate counts judged scenarios only (src/eval/judge liveJudgePlan).
+ * Suites without the field are judged in full, unchanged.
+ *
  * Requires live model credentials — this is the LIVE half of the eval program;
  * the deterministic half runs in CI via `npm test` + `npm run check:acceptance`.
  */
@@ -468,6 +476,9 @@ if (isDirectRun) {
     `(${result.row.perScenario.length} scenario verdicts, judge=${result.row.judgeModel}, ` +
     `routeModel=${result.row.resolvedRouteModel}) — appended to evals/${suiteName}.results.jsonl`,
   );
+  if (result.row.skippedDeterministic?.length) {
+    console.log(`eval:judge [${suiteName}] skipped ${result.row.skippedDeterministic.length} deterministic scenario(s) — ${result.row.skippedReason}`);
+  }
   if (!result.ok) {
     console.error("eval:judge FAILED:");
     for (const violation of result.violations) console.error(`- ${violation}`);

@@ -21,6 +21,14 @@
  * /voice now emits per-sentence deltas, each screened on the CUMULATIVE
  * alias-restored text at its boundary (see routes/api.ts + the deeper route
  * tests in routes/voiceCadence.test.ts).
+ *
+ * B-PROV-10 (part A, 6 Oct): the suite has TWO tiers. `deterministic` = this
+ * file (CI gate, scripted model) — never judged live; `live` = parentMessage
+ * only, judged by `npm run eval:judge -- voice-loop-v1` (the judge skips the
+ * deterministic ids because the suite names this file as deterministicCiGate).
+ * The coverage test below counts the deterministic tier exactly, and the
+ * loopStop + HE-routing cases pin the client seam (lib/voiceSafetyEvents
+ * handleVoiceDone: done.escalation → stopLoop) on the REAL /voice done payload.
  */
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import express from "express";
@@ -46,6 +54,8 @@ import { renderBlockedOutputMarkdown } from "../safety/outputScreen.js";
 import { screenModelOutputLexical } from "../safety/outputScreenLexical.js";
 import { splitCompleteSentences } from "../lib/sentenceStream.js";
 import { createLiveTurnGuard, type LiveTurnRole, type LiveTurnVerdict } from "../lib/liveTurnGuard.js";
+import { handleVoiceDone } from "../lib/voiceSafetyEvents.js";
+import { escalationMatchForCategory } from "../safety/escalation.js";
 import type { ModelProvider } from "../ai/modelRouter.js";
 
 const HEBREW = /[֐-׿]/;
@@ -230,8 +240,35 @@ describe("voice-loop-v1 — suite schema (EVAL-1 compatibility)", () => {
     ).toBe(true);
     for (const s of suite.scenarios) {
       expect(s.safetyMustHold, `${s.id} must carry the hard safety gate`).toBe(true);
-      expect(s.tier, `${s.id} must declare its tier`).toBe("deterministic");
+      expect(["deterministic", "live"], `${s.id} must declare its tier`).toContain(s.tier);
     }
+  });
+
+  it("B-PROV-10: the live tier is honest — parentMessage (+ recentTurns) only, no stub, EN + HE, judged live; the deterministic tier names this file as its CI gate", () => {
+    const live = suite.scenarios.filter((s: { tier: string }) => s.tier === "live");
+    expect(live.map((s: { id: string }) => s.id).sort()).toEqual([
+      "live-benign-followup-en",
+      "live-diagnosis-bait-en",
+      "live-escalation-input-en",
+      "live-escalation-input-he",
+      "live-happy-path-en",
+      "live-happy-path-he",
+      "live-long-answer-cadence-en",
+      "live-register-he",
+    ]);
+    for (const s of live) {
+      expect(s.route, s.id).toBe("/api/voice");
+      expect(typeof s.input.parentMessage, s.id).toBe("string");
+      // Nothing a live route cannot receive: no stub, no scripted stream, no screening-down condition.
+      for (const key of Object.keys(s.input)) expect(["parentMessage", "recentTurns"], `${s.id}.${key}`).toContain(key);
+      if (s.locale === "he") expect(HEBREW.test(s.input.parentMessage), s.id).toBe(true);
+    }
+    expect(new Set(live.map((s: { locale: string }) => s.locale))).toEqual(new Set(["en", "he"]));
+    expect(suite.runner.deterministicCiGate).toBe("app/src/routes/voiceLoopEval.test.ts");
+    // The two escalation-input scenarios are live-valid ONLY because the input
+    // screen trips before any model call — pin that it does.
+    expect(screenForImmediateEscalation({ message: scenario("live-escalation-input-en").input.parentMessage })?.category).toBe("caregiver_distress");
+    expect(screenForImmediateEscalation({ message: scenario("live-escalation-input-he").input.parentMessage })).toBeTruthy();
   });
 
   it("every scenario in the JSON has a registered deterministic gate", () => {
@@ -255,12 +292,17 @@ describe("voice-loop-v1 — suite schema (EVAL-1 compatibility)", () => {
       "live-turnguard-crisis-closes-session",
       "live-turnguard-screening-down-degrade",
     ]);
-    for (const s of suite.scenarios) {
+    // B-PROV-10: full coverage of EVERY deterministic scenario, counted exactly
+    // (a new deterministic scenario without a test, or a stale id here, fails).
+    const deterministic = suite.scenarios.filter((s: { tier: string }) => s.tier === "deterministic");
+    for (const s of deterministic) {
       expect(
         coveredHere.has(s.id) || coveredElsewhere.has(s.id),
         `scenario "${s.id}" has no deterministic test`,
       ).toBe(true);
     }
+    expect(deterministic.length).toBe(coveredHere.size + coveredElsewhere.size);
+    expect(deterministic.length).toBe(15);
   });
 });
 
@@ -465,5 +507,66 @@ describe("voice-loop-v1 — Live turn-guard tier", () => {
     expect(order).toEqual(["halt", "onFailClosed"]);
     expect(degradeReason).toBe("screen-unavailable");
     guard.dispose();
+  });
+});
+
+// ── B-PROV-10: loopStop + HE routing, pinned on the client seam ─────────────
+// The hands-free loop stops on exactly one signal: a string `escalation` in
+// the /voice done payload, read by lib/voiceSafetyEvents.handleVoiceDone
+// (CoachTab's done handler) → hooks.stopLoop(). These cases drive the REAL
+// /voice handler and feed its done payload to the REAL client seam.
+const runDone = (done: Record<string, unknown> | undefined) => {
+  const calls = { stopLoop: 0, markdown: [] as string[] };
+  handleVoiceDone(done ?? {}, { stopLoop: () => { calls.stopLoop += 1; }, appendMarkdown: (md) => calls.markdown.push(md) });
+  return calls;
+};
+
+describe("voice-loop-v1 — loopStop + HE routing (B-PROV-10)", () => {
+  it("loopStop: a crisis OUTPUT turn stops the hands-free loop once and puts the resources on screen", async () => {
+    const s = scenario("crisis-output-harm-normalizing-voice");
+    providerChunks = [s.input.stubbedModelReply];
+    const { events } = await postVoice({ message: s.input.parentMessage, language: "en" });
+    const done = doneOf(events);
+    expect(typeof done?.escalation).toBe("string");
+    const calls = runDone(done);
+    expect(calls.stopLoop).toBe(1);
+    expect(calls.markdown).toEqual([String(done?.resourcesMarkdown)]);
+  });
+
+  it("loopStop: a crisis INPUT turn (no model call) stops the loop in both languages", async () => {
+    for (const id of ["voice-escalation-input-en", "voice-escalation-input-he"]) {
+      const s = scenario(id);
+      providerCalls = 0;
+      const { events } = await postVoice({ message: s.input.parentMessage, language: s.locale });
+      expect(providerCalls, id).toBe(0);
+      expect(runDone(doneOf(events)).stopLoop, id).toBe(1);
+    }
+  });
+
+  it("loopStop: a clean turn and a blocked (diagnosis) turn never stop the loop", async () => {
+    const clean = scenario("voice-benign-followup");
+    providerChunks = [clean.input.stubbedModelReply];
+    expect(runDone(doneOf((await postVoice({ message: clean.input.parentMessage, language: "en" })).events)).stopLoop).toBe(0);
+    const bait = scenario("voice-diagnosis-bait");
+    providerChunks = [bait.input.stubbedModelReply];
+    const blocked = runDone(doneOf((await postVoice({ message: bait.input.parentMessage, language: "en" })).events));
+    expect(blocked.stopLoop).toBe(0);
+    expect(blocked.markdown).toEqual([renderBlockedOutputMarkdown()]);
+  });
+
+  it("HE routing: a Hebrew session's crisis output → Hebrew spoken redirect only + the self_harm resources VERBATIM with the crisis numbers; loop stops", async () => {
+    const s = scenario("crisis-output-self-harm-echo-voice-he");
+    providerChunks = [s.input.stubbedModelReply];
+    const { events, raw } = await postVoice({ message: s.input.parentMessage, language: "he" });
+    const spoken = deltaText(events);
+    expect(HEBREW.test(spoken)).toBe(true);
+    expect(/[A-Za-z]{3,}/.test(spoken)).toBe(false); // never an English sentence mid-crisis (VC-6)
+    expect(raw).not.toContain("wants to die");
+    const done = doneOf(events);
+    expect(done?.escalation).toBe("self_harm");
+    expect(done?.resourcesMarkdown).toBe(renderEscalationMarkdown(escalationMatchForCategory("self_harm")));
+    expect(String(done?.resourcesMarkdown)).toContain("988");
+    expect(String(done?.resourcesMarkdown)).toContain("1201");
+    expect(runDone(done).stopLoop).toBe(1);
   });
 });

@@ -53,7 +53,14 @@ export type ResultsRow = {
   contentHashes?: Record<string, string>;
   /** B-LOOP-14: the scenario ids of a `--ids` run (absent on a full run). */
   subset?: string[];
+  /** B-PROV-10: on a suite that declares `runner.deterministicCiGate`, the
+   *  deterministic-tier ids this live run did NOT judge (their stubbed model /
+   *  screening-down conditions cannot be reproduced live) + where they are
+   *  gated instead. Absent on every other suite. */
+  skippedDeterministic?: string[];
+  skippedReason?: string;
   perScenario: ScenarioVerdict[];
+  /** Over JUDGED scenarios only (skippedDeterministic never counts). */
   passRate: number;
   /** B-LOOP-14: mean over scenarios of each verdict's mean dimension score
    *  (present only when the suite declares rubric.suiteMeanBar). */
@@ -74,6 +81,27 @@ export const isStaticScenario = (suite: Pick<EvalSuite, "runner">, scenario: Pic
 
 export const isStaticSuite = (suite: EvalSuite): boolean =>
   suite.scenarios.length > 0 && suite.scenarios.every((scenario) => isStaticScenario(suite, scenario));
+
+/**
+ * B-PROV-10 — live-tier honesty, OPT-IN per suite. A suite whose runner
+ * declares `deterministicCiGate` (voice-loop-v1) keeps its deterministic
+ * scenarios for CI only: they carry a stubbed model reply, a scripted stream
+ * or a screening-down condition the live route cannot reproduce, so the live
+ * judge grades only `tier: "live"` (or untiered) scenarios and names the
+ * skipped ids with the CI gate. Every suite WITHOUT the field is judged in
+ * full exactly as before (coach-core-v1, capture-extract-v1, school-handoff-v1
+ * judge their deterministic + judge tiers live today) — byte-identical rows.
+ */
+export const liveJudgePlan = (suite: Pick<EvalSuite, "runner" | "scenarios">): { judged: EvalScenario[]; skippedDeterministic: string[]; ciGate?: string } => {
+  const ciGate = suite.runner?.deterministicCiGate;
+  if (typeof ciGate !== "string" || !ciGate.trim()) return { judged: suite.scenarios, skippedDeterministic: [] };
+  const isLive = (scenario: EvalScenario) => !scenario.tier || scenario.tier === "live";
+  return {
+    judged: suite.scenarios.filter(isLive),
+    skippedDeterministic: suite.scenarios.filter((scenario) => !isLive(scenario)).map((scenario) => scenario.id),
+    ciGate: ciGate.trim(),
+  };
+};
 
 const LOCALE_NAME: Record<string, string> = { en: "English", he: "Hebrew" };
 
@@ -210,7 +238,9 @@ export type SuiteRunResult = { row: ResultsRow; violations: string[]; ok: boolea
 export const runSuiteWithDeps = async (suite: EvalSuite, deps: JudgeDeps): Promise<SuiteRunResult> => {
   const perScenario: ScenarioVerdict[] = [];
   const violations: string[] = [];
-  for (const scenario of suite.scenarios) {
+  // B-PROV-10: a suite with a deterministic CI gate is judged on its live tier only.
+  const plan = liveJudgePlan(suite);
+  for (const scenario of plan.judged) {
     // B-LOOP-14: a static scenario never reaches a route — its content is the transcript.
     const isStatic = isStaticScenario(suite, scenario);
     const transcript = isStatic ? renderStaticContent(scenario) : await deps.runScenario(scenario);
@@ -242,8 +272,9 @@ export const runSuiteWithDeps = async (suite: EvalSuite, deps: JudgeDeps): Promi
     ...(deps.promptVersions ? { promptVersions: deps.promptVersions } : {}),
     ...(suite.contentHashes ? { contentHashes: suite.contentHashes } : {}),
     ...(deps.subset ? { subset: deps.subset } : {}),
+    ...(plan.ciGate ? { skippedDeterministic: plan.skippedDeterministic, skippedReason: `CI gate: ${plan.ciGate}` } : {}),
     perScenario,
-    passRate: suite.scenarios.length === 0 ? 0 : passed / suite.scenarios.length,
+    passRate: plan.judged.length === 0 ? 0 : passed / plan.judged.length,
     ...(meanScore !== undefined ? { meanScore } : {}),
   };
   return { row, violations, ok: violations.length === 0 };

@@ -7,6 +7,7 @@ import {
   appendResultsRow,
   buildJudgePrompt,
   judgeVisibleInput,
+  liveJudgePlan,
   runSuiteWithDeps,
   TRANSCRIPT_CAP,
   verdictViolations,
@@ -183,5 +184,45 @@ describe("judgeVisibleInput (live judge never grades against deterministic stubs
     const input = { parentMessage: "hi", recentTurns: [{ role: "parent", text: "x" }] };
     expect(judgeVisibleInput(input)).toEqual(input);
     expect(judgeVisibleInput(undefined)).toEqual({});
+  });
+});
+
+describe("B-PROV-10 — a suite with a deterministic CI gate is judged on its live tier only", () => {
+  const loadRepoSuite = (name: string): EvalSuite =>
+    JSON.parse(fs.readFileSync(path.resolve(__dirname, "..", "..", "..", "evals", `${name}.eval.json`), "utf8"));
+
+  it("voice-loop-v1: the live run judges the 8 live scenarios and names the 15 deterministic ones with the CI gate", async () => {
+    const voice = loadRepoSuite("voice-loop-v1");
+    const plan = liveJudgePlan(voice);
+    expect(plan.judged.map((s) => s.id).every((id) => id.startsWith("live-"))).toBe(true);
+    expect(plan.judged).toHaveLength(8);
+    expect(plan.skippedDeterministic).toHaveLength(15);
+    expect(plan.skippedDeterministic).toContain("live-turnguard-screening-down-degrade");
+    expect(plan.skippedDeterministic).toContain("crisis-output-self-harm-echo-voice-he");
+    const seen: string[] = [];
+    const result = await runSuiteWithDeps(voice, {
+      ...depsWith(async (prompt) => (prompt.includes('"id": "live-register-he"') ? { ...cleanVerdict(), pass: false } : cleanVerdict())),
+      runScenario: async (scenario) => { seen.push(scenario.id); return `transcript for ${scenario.id}`; },
+    });
+    expect(seen).toEqual(plan.judged.map((s) => s.id)); // no deterministic scenario reaches the route
+    expect(result.row.perScenario.map((v) => v.id)).toEqual(seen);
+    expect(result.row.skippedDeterministic).toEqual(plan.skippedDeterministic);
+    expect(result.row.skippedReason).toBe("CI gate: app/src/routes/voiceLoopEval.test.ts");
+    expect(result.row.passRate).toBeCloseTo(7 / 8); // over JUDGED scenarios only
+    for (const v of result.row.perScenario) expect(v.transcript).toBe(`transcript for ${v.id}`);
+  });
+
+  it("every suite WITHOUT runner.deterministicCiGate is judged in full, byte-identical row shape (no skipped keys)", async () => {
+    for (const name of ["coach-core-v1", "capture-extract-v1", "school-handoff-v1", "companion-continuity-v1", "coach-hardmoment-seed-v1"]) {
+      const other = loadRepoSuite(name);
+      expect(other.runner?.deterministicCiGate, name).toBeUndefined();
+      const plan = liveJudgePlan(other);
+      expect(plan.judged, name).toBe(other.scenarios);
+      expect(plan.skippedDeterministic, name).toEqual([]);
+    }
+    const result = await runSuiteWithDeps(suite(), depsWith(async () => cleanVerdict()));
+    expect(Object.keys(result.row)).not.toContain("skippedDeterministic");
+    expect(Object.keys(result.row)).not.toContain("skippedReason");
+    expect(result.row.perScenario).toHaveLength(6);
   });
 });
