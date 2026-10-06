@@ -78,6 +78,7 @@ describe("resolveHebrewSlash", () => {
 const IRREGULAR_ROWS: readonly (readonly [string, string, string])[] = [
   ["את/ה", "אתה", "את"],
   ["ואת/ה", "ואתה", "ואת"],
+  ["שאת/ה", "שאתה", "שאת"],
   ["אחד/ת", "אחד", "אחת"],
   ["תראה/י", "תראה", "תראי"],
   ["תרצה/י", "תרצה", "תרצי"],
@@ -94,6 +95,7 @@ const IRREGULAR_ROWS: readonly (readonly [string, string, string])[] = [
 ];
 /** [form, masculine, feminine] — every form in use on 6 Oct (generated once, read by the builder row by row). */
 const SLASH_TABLE: readonly (readonly [string, string, string])[] = [
+  ["שאת/ה", "שאתה", "שאת"],
   ["אוהב/ת", "אוהב", "אוהבת"],
   ["אוכל/ת", "אוכל", "אוכלת"],
   ["אומר/ת", "אומר", "אומרת"],

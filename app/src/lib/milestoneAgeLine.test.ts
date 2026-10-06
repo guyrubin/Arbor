@@ -69,7 +69,7 @@ describe("B-LOOP-01 — 'usually between {from} and {to}' only over a range the 
   const PRINTED = { org: "ASHA" as const, title: "Communication Milestones (2023)", url: "https://www.asha.org/public/developmental-milestones/", year: 2023, ageSemantics: "range" as const };
 
   it("a cited printed bracket renders in both languages (native Hebrew prefix join)", () => {
-    withSource("asha-comm-36m", { ...PRINTED, rangeMonths: [36, 48], printedRange: "3 to 4 years" }, (m) => {
+    withSource("asha-comm-48m", { ...PRINTED, rangeMonths: [36, 48], printedRange: "3 to 4 years" }, (m) => {
       expect(milestoneAgeLine(m, tEn)).toBe("Usually between 3 years and 4 years");
       expect(milestoneAgeLine(m, tHe)).toBe("בדרך כלל בין 3 שנים ל-4 שנים");
     });
@@ -82,10 +82,10 @@ describe("B-LOOP-01 — 'usually between {from} and {to}' only over a range the 
   });
 
   it("GUARD: a range without the printed bracket or without the cited page renders nothing", () => {
-    withSource("asha-comm-36m", { ...PRINTED, rangeMonths: [36, 48] }, (m) => {
+    withSource("asha-comm-48m", { ...PRINTED, rangeMonths: [36, 48] }, (m) => {
       expect(milestoneAgeLine(m, tEn)).toBeNull();
     });
-    withSource("asha-comm-36m", { ...PRINTED, url: undefined, rangeMonths: [36, 48], printedRange: "3 to 4 years" }, (m) => {
+    withSource("asha-comm-48m", { ...PRINTED, url: undefined, rangeMonths: [36, 48], printedRange: "3 to 4 years" }, (m) => {
       expect(milestoneAgeLine(m, tEn)).toBeNull();
     });
   });

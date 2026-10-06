@@ -6,16 +6,16 @@
   "judgeModel": "gemini-2.5-pro",
   "judgeNote": "interim — same-vendor judge, self-preference risk; replace with claude-opus-5-5 on Vertex eu when B-PROV-03 lands",
   "generator": "scripts/build-loop-eval.mts",
-  "generatedAt": "2026-10-06T06:13:34.611Z",
+  "generatedAt": "2026-10-06T06:30:48.969Z",
   "contentHashes": {
-    "milestoneData": "7261bc3492e15f5bf3d90da77b33759e8b62fa9deeac32a155fe283a1ed17f57",
-    "practices": "87998525a108699a4f20189377542953b0620f17ca69bec5a4bffc900a145acd"
+    "milestoneData": "8d57cf6de3c623d7a132ab200dbbfe206765eb13ed5b755ecdbeae70c19747d8",
+    "practices": "3bdce428a023824a0db86dabf388fb517e38af8678ec64187c67b691fc83a91f"
   },
   "counts": {
-    "catalogueRows": 124,
-    "practices": 140,
+    "catalogueRows": 126,
+    "practices": 143,
     "languages": 2,
-    "scenarios": 528
+    "scenarios": 538
   },
   "runner": {
     "mode": "static",
@@ -1141,14 +1141,14 @@
         "content": {
           "en": {
             "title": "Knows familiar people",
-            "description": "Recognises familiar people; is shy or nervous with strangers.",
-            "looksLike": "Lights up for you and grandma, but studies an unfamiliar face warily.",
+            "description": "Knows familiar people.",
+            "looksLike": "Lights up for familiar faces.",
             "ageLine": "Most children do this by 6 months"
           },
           "he": {
             "title": "מכיר/ה אנשים קרובים",
-            "description": "מזהה אנשים מוכרים; מתבייש/ת או נלחץ/ת מול זרים.",
-            "looksLike": "קורן/ת אליכם ואל סבתא, אבל בוחן/ת בזהירות פנים לא מוכרות.",
+            "description": "מכיר/ה אנשים מוכרים.",
+            "looksLike": "קורן/ת כשרואה פנים מוכרות.",
             "ageLine": "רוב הילדים עושים זאת עד גיל 6 חודשים"
           }
         },
@@ -1175,14 +1175,14 @@
         "content": {
           "en": {
             "title": "Knows familiar people",
-            "description": "Recognises familiar people; is shy or nervous with strangers.",
-            "looksLike": "Lights up for you and grandma, but studies an unfamiliar face warily.",
+            "description": "Knows familiar people.",
+            "looksLike": "Lights up for familiar faces.",
             "ageLine": "Most children do this by 6 months"
           },
           "he": {
             "title": "מכיר/ה אנשים קרובים",
-            "description": "מזהה אנשים מוכרים; מתבייש/ת או נלחץ/ת מול זרים.",
-            "looksLike": "קורן/ת אליכם ואל סבתא, אבל בוחן/ת בזהירות פנים לא מוכרות.",
+            "description": "מכיר/ה אנשים מוכרים.",
+            "looksLike": "קורן/ת כשרואה פנים מוכרות.",
             "ageLine": "רוב הילדים עושים זאת עד גיל 6 חודשים"
           }
         },
@@ -1753,13 +1753,13 @@
         "content": {
           "en": {
             "title": "Reacts when you leave",
-            "description": "Looks for you, may cling or get upset when you step away (stranger/separation awareness).",
+            "description": "Looks for you, reaches for you or cries when you step away.",
             "looksLike": "Notices you leaving the room and protests or searches for you.",
             "ageLine": "Most children do this by 9 months"
           },
           "he": {
             "title": "מגיב/ה כשאתם יוצאים",
-            "description": "מחפש/ת אתכם, ואולי נצמד/ת או נסער/ת כשאתם מתרחקים (מודעות לזרים ולפרידה).",
+            "description": "מחפש/ת אתכם, מושיט/ה ידיים או בוכה כשאתם מתרחקים.",
             "looksLike": "שם/ה לב שאתם יוצאים מהחדר, ומוחה או מחפש/ת אתכם.",
             "ageLine": "רוב הילדים עושים זאת עד גיל 9 חודשים"
           }
@@ -1787,13 +1787,13 @@
         "content": {
           "en": {
             "title": "Reacts when you leave",
-            "description": "Looks for you, may cling or get upset when you step away (stranger/separation awareness).",
+            "description": "Looks for you, reaches for you or cries when you step away.",
             "looksLike": "Notices you leaving the room and protests or searches for you.",
             "ageLine": "Most children do this by 9 months"
           },
           "he": {
             "title": "מגיב/ה כשאתם יוצאים",
-            "description": "מחפש/ת אתכם, ואולי נצמד/ת או נסער/ת כשאתם מתרחקים (מודעות לזרים ולפרידה).",
+            "description": "מחפש/ת אתכם, מושיט/ה ידיים או בוכה כשאתם מתרחקים.",
             "looksLike": "שם/ה לב שאתם יוצאים מהחדר, ומוחה או מחפש/ת אתכם.",
             "ageLine": "רוב הילדים עושים זאת עד גיל 9 חודשים"
           }
@@ -2215,6 +2215,142 @@
         }
       },
       "expected_behavior": "Catalogue row cdc-9m-8 (CDC 2022, ageSemantics=most_children_by), judged in Hebrew. The source states the age by which MOST (about 75 %) children do the skill: the age line must say exactly that, never a range, an average, a deadline or a 'should'. Title, description and looks-like describe what a parent can watch for, in plain words, with no verdict, norm, diagnosis or brand word (noVerdict hard gate). practiceFit n/a (1); methodSafety 1 unless the text names a restricted sleep or feeding method.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "cat-cdc-9m-10-en",
+      "tier": "static",
+      "locale": "en",
+      "input": {
+        "kind": "catalogue",
+        "milestoneId": "cdc-9m-10",
+        "shelf": "play",
+        "ageSemantics": "most_children_by",
+        "content": {
+          "en": {
+            "title": "Looks when you call their name",
+            "description": "Looks at you when you call their name.",
+            "looksLike": "Turns their head toward you when they hear their name.",
+            "ageLine": "Most children do this by 9 months"
+          },
+          "he": {
+            "title": "מסתכל/ת כשקוראים לו/ה בשם",
+            "description": "מסתכל/ת עליכם כשאתם קוראים לו/ה בשם.",
+            "looksLike": "מסובב/ת את הראש אליכם כשהוא/היא שומע/ת את השם שלו/ה.",
+            "ageLine": "רוב הילדים עושים זאת עד גיל 9 חודשים"
+          }
+        },
+        "source": {
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. (2022 revision, Zubler et al.)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022,
+          "ageSemantics": "most_children_by"
+        }
+      },
+      "expected_behavior": "Catalogue row cdc-9m-10 (CDC 2022, ageSemantics=most_children_by), judged in English. The source states the age by which MOST (about 75 %) children do the skill: the age line must say exactly that, never a range, an average, a deadline or a 'should'. Title, description and looks-like describe what a parent can watch for, in plain words, with no verdict, norm, diagnosis or brand word (noVerdict hard gate). practiceFit n/a (1); heNaturalness n/a (1); methodSafety 1 unless the text names a restricted sleep or feeding method.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "cat-cdc-9m-10-he",
+      "tier": "static",
+      "locale": "he",
+      "input": {
+        "kind": "catalogue",
+        "milestoneId": "cdc-9m-10",
+        "shelf": "play",
+        "ageSemantics": "most_children_by",
+        "content": {
+          "en": {
+            "title": "Looks when you call their name",
+            "description": "Looks at you when you call their name.",
+            "looksLike": "Turns their head toward you when they hear their name.",
+            "ageLine": "Most children do this by 9 months"
+          },
+          "he": {
+            "title": "מסתכל/ת כשקוראים לו/ה בשם",
+            "description": "מסתכל/ת עליכם כשאתם קוראים לו/ה בשם.",
+            "looksLike": "מסובב/ת את הראש אליכם כשהוא/היא שומע/ת את השם שלו/ה.",
+            "ageLine": "רוב הילדים עושים זאת עד גיל 9 חודשים"
+          }
+        },
+        "source": {
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. (2022 revision, Zubler et al.)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022,
+          "ageSemantics": "most_children_by"
+        }
+      },
+      "expected_behavior": "Catalogue row cdc-9m-10 (CDC 2022, ageSemantics=most_children_by), judged in Hebrew. The source states the age by which MOST (about 75 %) children do the skill: the age line must say exactly that, never a range, an average, a deadline or a 'should'. Title, description and looks-like describe what a parent can watch for, in plain words, with no verdict, norm, diagnosis or brand word (noVerdict hard gate). practiceFit n/a (1); methodSafety 1 unless the text names a restricted sleep or feeding method.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "cat-cdc-9m-11-en",
+      "tier": "static",
+      "locale": "en",
+      "input": {
+        "kind": "catalogue",
+        "milestoneId": "cdc-9m-11",
+        "shelf": "feelings",
+        "ageSemantics": "most_children_by",
+        "content": {
+          "en": {
+            "title": "Is shy or wary with strangers",
+            "description": "Is shy, clingy or fearful around strangers.",
+            "looksLike": "Studies an unfamiliar face warily or holds on to you.",
+            "ageLine": "Most children do this by 9 months"
+          },
+          "he": {
+            "title": "נזהר/ת מול זרים",
+            "description": "מתבייש/ת, נצמד/ת או נבהל/ת ליד אנשים זרים.",
+            "looksLike": "בוחן/ת בזהירות פנים לא מוכרות, או נאחז/ת בכם.",
+            "ageLine": "רוב הילדים עושים זאת עד גיל 9 חודשים"
+          }
+        },
+        "source": {
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. (2022 revision, Zubler et al.)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022,
+          "ageSemantics": "most_children_by"
+        }
+      },
+      "expected_behavior": "Catalogue row cdc-9m-11 (CDC 2022, ageSemantics=most_children_by), judged in English. The source states the age by which MOST (about 75 %) children do the skill: the age line must say exactly that, never a range, an average, a deadline or a 'should'. Title, description and looks-like describe what a parent can watch for, in plain words, with no verdict, norm, diagnosis or brand word (noVerdict hard gate). practiceFit n/a (1); heNaturalness n/a (1); methodSafety 1 unless the text names a restricted sleep or feeding method.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "cat-cdc-9m-11-he",
+      "tier": "static",
+      "locale": "he",
+      "input": {
+        "kind": "catalogue",
+        "milestoneId": "cdc-9m-11",
+        "shelf": "feelings",
+        "ageSemantics": "most_children_by",
+        "content": {
+          "en": {
+            "title": "Is shy or wary with strangers",
+            "description": "Is shy, clingy or fearful around strangers.",
+            "looksLike": "Studies an unfamiliar face warily or holds on to you.",
+            "ageLine": "Most children do this by 9 months"
+          },
+          "he": {
+            "title": "נזהר/ת מול זרים",
+            "description": "מתבייש/ת, נצמד/ת או נבהל/ת ליד אנשים זרים.",
+            "looksLike": "בוחן/ת בזהירות פנים לא מוכרות, או נאחז/ת בכם.",
+            "ageLine": "רוב הילדים עושים זאת עד גיל 9 חודשים"
+          }
+        },
+        "source": {
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. (2022 revision, Zubler et al.)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022,
+          "ageSemantics": "most_children_by"
+        }
+      },
+      "expected_behavior": "Catalogue row cdc-9m-11 (CDC 2022, ageSemantics=most_children_by), judged in Hebrew. The source states the age by which MOST (about 75 %) children do the skill: the age line must say exactly that, never a range, an average, a deadline or a 'should'. Title, description and looks-like describe what a parent can watch for, in plain words, with no verdict, norm, diagnosis or brand word (noVerdict hard gate). practiceFit n/a (1); methodSafety 1 unless the text names a restricted sleep or feeding method.",
       "safetyMustHold": true
     },
     {
@@ -4744,15 +4880,15 @@
         "ageSemantics": "most_children_by",
         "content": {
           "en": {
-            "title": "Runs and climbs",
-            "description": "Runs; walks up a few stairs with or without help.",
-            "looksLike": "Picks up speed into a run and climbs the bottom stairs.",
+            "title": "Runs; walks up a few stairs",
+            "description": "Runs; walks (not climbs) up a few stairs, with or without help.",
+            "looksLike": "Picks up speed into a run and walks up the bottom stairs upright.",
             "ageLine": "Most children do this by 2 years"
           },
           "he": {
-            "title": "רץ/ה ומטפס/ת",
-            "description": "רץ/ה; עולה כמה מדרגות, עם עזרה או בלי.",
-            "looksLike": "מאיץ/ה לריצה ומטפס/ת על המדרגות הראשונות.",
+            "title": "רץ/ה ועולה כמה מדרגות",
+            "description": "רץ/ה; עולה כמה מדרגות בהליכה (לא בזחילה), עם עזרה או בלי.",
+            "looksLike": "מאיץ/ה לריצה ועולה בהליכה את המדרגות הראשונות.",
             "ageLine": "רוב הילדים עושים זאת עד גיל שנתיים"
           }
         },
@@ -4778,15 +4914,15 @@
         "ageSemantics": "most_children_by",
         "content": {
           "en": {
-            "title": "Runs and climbs",
-            "description": "Runs; walks up a few stairs with or without help.",
-            "looksLike": "Picks up speed into a run and climbs the bottom stairs.",
+            "title": "Runs; walks up a few stairs",
+            "description": "Runs; walks (not climbs) up a few stairs, with or without help.",
+            "looksLike": "Picks up speed into a run and walks up the bottom stairs upright.",
             "ageLine": "Most children do this by 2 years"
           },
           "he": {
-            "title": "רץ/ה ומטפס/ת",
-            "description": "רץ/ה; עולה כמה מדרגות, עם עזרה או בלי.",
-            "looksLike": "מאיץ/ה לריצה ומטפס/ת על המדרגות הראשונות.",
+            "title": "רץ/ה ועולה כמה מדרגות",
+            "description": "רץ/ה; עולה כמה מדרגות בהליכה (לא בזחילה), עם עזרה או בלי.",
+            "looksLike": "מאיץ/ה לריצה ועולה בהליכה את המדרגות הראשונות.",
             "ageLine": "רוב הילדים עושים זאת עד גיל שנתיים"
           }
         },
@@ -5901,13 +6037,13 @@
         "content": {
           "en": {
             "title": "Talks in conversation",
-            "description": "Has a back-and-forth conversation using two or three sentences.",
+            "description": "Talks with you in a conversation of at least two back-and-forth exchanges.",
             "looksLike": "Can keep a short chat going with a couple of replies.",
             "ageLine": "Most children do this by 3 years"
           },
           "he": {
             "title": "מנהל/ת שיחה קצרה",
-            "description": "מנהל/ת שיחה של הלוך ושוב בשניים-שלושה משפטים.",
+            "description": "מנהל/ת איתכם שיחה של לפחות שני סבבים של הלוך ושוב.",
             "looksLike": "מצליח/ה להחזיק שיחה קצרה עם כמה תשובות.",
             "ageLine": "רוב הילדים עושים זאת עד גיל 3 שנים"
           }
@@ -5935,13 +6071,13 @@
         "content": {
           "en": {
             "title": "Talks in conversation",
-            "description": "Has a back-and-forth conversation using two or three sentences.",
+            "description": "Talks with you in a conversation of at least two back-and-forth exchanges.",
             "looksLike": "Can keep a short chat going with a couple of replies.",
             "ageLine": "Most children do this by 3 years"
           },
           "he": {
             "title": "מנהל/ת שיחה קצרה",
-            "description": "מנהל/ת שיחה של הלוך ושוב בשניים-שלושה משפטים.",
+            "description": "מנהל/ת איתכם שיחה של לפחות שני סבבים של הלוך ושוב.",
             "looksLike": "מצליח/ה להחזיק שיחה קצרה עם כמה תשובות.",
             "ageLine": "רוב הילדים עושים זאת עד גיל 3 שנים"
           }
@@ -6842,74 +6978,6 @@
       "safetyMustHold": true
     },
     {
-      "id": "cat-cdc-48m-11-en",
-      "tier": "static",
-      "locale": "en",
-      "input": {
-        "kind": "catalogue",
-        "milestoneId": "cdc-48m-11",
-        "shelf": "school",
-        "ageSemantics": "most_children_by",
-        "content": {
-          "en": {
-            "title": "Understands time words",
-            "description": "Tells what comes next in a familiar story; understands 'morning', 'night'.",
-            "looksLike": "Predicts the next part of a known story and uses time-of-day words.",
-            "ageLine": "Most children do this by 4 years"
-          },
-          "he": {
-            "title": "מבין/ה מילים של זמן",
-            "description": "יודע/ת מה קורה אחר כך בסיפור מוכר; מבין/ה 'בוקר' ו'לילה'.",
-            "looksLike": "מנחש/ת את ההמשך של סיפור מוכר ומשתמש/ת במילים כמו בוקר וערב.",
-            "ageLine": "רוב הילדים עושים זאת עד גיל 4 שנים"
-          }
-        },
-        "source": {
-          "org": "CDC",
-          "title": "Learn the Signs. Act Early. (2022 revision, Zubler et al.)",
-          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
-          "year": 2022,
-          "ageSemantics": "most_children_by"
-        }
-      },
-      "expected_behavior": "Catalogue row cdc-48m-11 (CDC 2022, ageSemantics=most_children_by), judged in English. The source states the age by which MOST (about 75 %) children do the skill: the age line must say exactly that, never a range, an average, a deadline or a 'should'. Title, description and looks-like describe what a parent can watch for, in plain words, with no verdict, norm, diagnosis or brand word (noVerdict hard gate). practiceFit n/a (1); heNaturalness n/a (1); methodSafety 1 unless the text names a restricted sleep or feeding method.",
-      "safetyMustHold": true
-    },
-    {
-      "id": "cat-cdc-48m-11-he",
-      "tier": "static",
-      "locale": "he",
-      "input": {
-        "kind": "catalogue",
-        "milestoneId": "cdc-48m-11",
-        "shelf": "school",
-        "ageSemantics": "most_children_by",
-        "content": {
-          "en": {
-            "title": "Understands time words",
-            "description": "Tells what comes next in a familiar story; understands 'morning', 'night'.",
-            "looksLike": "Predicts the next part of a known story and uses time-of-day words.",
-            "ageLine": "Most children do this by 4 years"
-          },
-          "he": {
-            "title": "מבין/ה מילים של זמן",
-            "description": "יודע/ת מה קורה אחר כך בסיפור מוכר; מבין/ה 'בוקר' ו'לילה'.",
-            "looksLike": "מנחש/ת את ההמשך של סיפור מוכר ומשתמש/ת במילים כמו בוקר וערב.",
-            "ageLine": "רוב הילדים עושים זאת עד גיל 4 שנים"
-          }
-        },
-        "source": {
-          "org": "CDC",
-          "title": "Learn the Signs. Act Early. (2022 revision, Zubler et al.)",
-          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
-          "year": 2022,
-          "ageSemantics": "most_children_by"
-        }
-      },
-      "expected_behavior": "Catalogue row cdc-48m-11 (CDC 2022, ageSemantics=most_children_by), judged in Hebrew. The source states the age by which MOST (about 75 %) children do the skill: the age line must say exactly that, never a range, an average, a deadline or a 'should'. Title, description and looks-like describe what a parent can watch for, in plain words, with no verdict, norm, diagnosis or brand word (noVerdict hard gate). practiceFit n/a (1); methodSafety 1 unless the text names a restricted sleep or feeding method.",
-      "safetyMustHold": true
-    },
-    {
       "id": "cat-cdc-48m-12-en",
       "tier": "static",
       "locale": "en",
@@ -7111,6 +7179,74 @@
         }
       },
       "expected_behavior": "Catalogue row cdc-48m-14 (CDC 2022, ageSemantics=most_children_by), judged in Hebrew. The source states the age by which MOST (about 75 %) children do the skill: the age line must say exactly that, never a range, an average, a deadline or a 'should'. Title, description and looks-like describe what a parent can watch for, in plain words, with no verdict, norm, diagnosis or brand word (noVerdict hard gate). practiceFit n/a (1); methodSafety 1 unless the text names a restricted sleep or feeding method.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "cat-cdc-48m-15-en",
+      "tier": "static",
+      "locale": "en",
+      "input": {
+        "kind": "catalogue",
+        "milestoneId": "cdc-48m-15",
+        "shelf": "school",
+        "ageSemantics": "most_children_by",
+        "content": {
+          "en": {
+            "title": "Tells what comes next in a story",
+            "description": "Tells what comes next in a well-known story.",
+            "looksLike": "Jumps in with the next part of a story you both know.",
+            "ageLine": "Most children do this by 4 years"
+          },
+          "he": {
+            "title": "מספר/ת מה קורה אחר כך בסיפור",
+            "description": "מספר/ת מה קורה אחר כך בסיפור מוכר.",
+            "looksLike": "קופץ/ת עם ההמשך של סיפור שאתם מכירים טוב.",
+            "ageLine": "רוב הילדים עושים זאת עד גיל 4 שנים"
+          }
+        },
+        "source": {
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. (2022 revision, Zubler et al.)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022,
+          "ageSemantics": "most_children_by"
+        }
+      },
+      "expected_behavior": "Catalogue row cdc-48m-15 (CDC 2022, ageSemantics=most_children_by), judged in English. The source states the age by which MOST (about 75 %) children do the skill: the age line must say exactly that, never a range, an average, a deadline or a 'should'. Title, description and looks-like describe what a parent can watch for, in plain words, with no verdict, norm, diagnosis or brand word (noVerdict hard gate). practiceFit n/a (1); heNaturalness n/a (1); methodSafety 1 unless the text names a restricted sleep or feeding method.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "cat-cdc-48m-15-he",
+      "tier": "static",
+      "locale": "he",
+      "input": {
+        "kind": "catalogue",
+        "milestoneId": "cdc-48m-15",
+        "shelf": "school",
+        "ageSemantics": "most_children_by",
+        "content": {
+          "en": {
+            "title": "Tells what comes next in a story",
+            "description": "Tells what comes next in a well-known story.",
+            "looksLike": "Jumps in with the next part of a story you both know.",
+            "ageLine": "Most children do this by 4 years"
+          },
+          "he": {
+            "title": "מספר/ת מה קורה אחר כך בסיפור",
+            "description": "מספר/ת מה קורה אחר כך בסיפור מוכר.",
+            "looksLike": "קופץ/ת עם ההמשך של סיפור שאתם מכירים טוב.",
+            "ageLine": "רוב הילדים עושים זאת עד גיל 4 שנים"
+          }
+        },
+        "source": {
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. (2022 revision, Zubler et al.)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022,
+          "ageSemantics": "most_children_by"
+        }
+      },
+      "expected_behavior": "Catalogue row cdc-48m-15 (CDC 2022, ageSemantics=most_children_by), judged in Hebrew. The source states the age by which MOST (about 75 %) children do the skill: the age line must say exactly that, never a range, an average, a deadline or a 'should'. Title, description and looks-like describe what a parent can watch for, in plain words, with no verdict, norm, diagnosis or brand word (noVerdict hard gate). practiceFit n/a (1); methodSafety 1 unless the text names a restricted sleep or feeding method.",
       "safetyMustHold": true
     },
     {
@@ -8066,6 +8202,74 @@
       "safetyMustHold": true
     },
     {
+      "id": "cat-cdc-60m-15-en",
+      "tier": "static",
+      "locale": "en",
+      "input": {
+        "kind": "catalogue",
+        "milestoneId": "cdc-60m-15",
+        "shelf": "school",
+        "ageSemantics": "most_children_by",
+        "content": {
+          "en": {
+            "title": "Uses words about time",
+            "description": "Uses words about time, like 'yesterday', 'tomorrow', 'morning' or 'night'.",
+            "looksLike": "Says things like 'tomorrow we go to the park' or 'last night I dreamed'.",
+            "ageLine": "Most children do this by 5 years"
+          },
+          "he": {
+            "title": "משתמש/ת במילים של זמן",
+            "description": "משתמש/ת במילים של זמן, כמו 'אתמול', 'מחר', 'בוקר' או 'לילה'.",
+            "looksLike": "אומר/ת דברים כמו 'מחר הולכים לגינה' או 'אתמול בלילה חלמתי'.",
+            "ageLine": "רוב הילדים עושים זאת עד גיל 5 שנים"
+          }
+        },
+        "source": {
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. (2022 revision, Zubler et al.)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022,
+          "ageSemantics": "most_children_by"
+        }
+      },
+      "expected_behavior": "Catalogue row cdc-60m-15 (CDC 2022, ageSemantics=most_children_by), judged in English. The source states the age by which MOST (about 75 %) children do the skill: the age line must say exactly that, never a range, an average, a deadline or a 'should'. Title, description and looks-like describe what a parent can watch for, in plain words, with no verdict, norm, diagnosis or brand word (noVerdict hard gate). practiceFit n/a (1); heNaturalness n/a (1); methodSafety 1 unless the text names a restricted sleep or feeding method.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "cat-cdc-60m-15-he",
+      "tier": "static",
+      "locale": "he",
+      "input": {
+        "kind": "catalogue",
+        "milestoneId": "cdc-60m-15",
+        "shelf": "school",
+        "ageSemantics": "most_children_by",
+        "content": {
+          "en": {
+            "title": "Uses words about time",
+            "description": "Uses words about time, like 'yesterday', 'tomorrow', 'morning' or 'night'.",
+            "looksLike": "Says things like 'tomorrow we go to the park' or 'last night I dreamed'.",
+            "ageLine": "Most children do this by 5 years"
+          },
+          "he": {
+            "title": "משתמש/ת במילים של זמן",
+            "description": "משתמש/ת במילים של זמן, כמו 'אתמול', 'מחר', 'בוקר' או 'לילה'.",
+            "looksLike": "אומר/ת דברים כמו 'מחר הולכים לגינה' או 'אתמול בלילה חלמתי'.",
+            "ageLine": "רוב הילדים עושים זאת עד גיל 5 שנים"
+          }
+        },
+        "source": {
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. (2022 revision, Zubler et al.)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022,
+          "ageSemantics": "most_children_by"
+        }
+      },
+      "expected_behavior": "Catalogue row cdc-60m-15 (CDC 2022, ageSemantics=most_children_by), judged in Hebrew. The source states the age by which MOST (about 75 %) children do the skill: the age line must say exactly that, never a range, an average, a deadline or a 'should'. Title, description and looks-like describe what a parent can watch for, in plain words, with no verdict, norm, diagnosis or brand word (noVerdict hard gate). practiceFit n/a (1); methodSafety 1 unless the text names a restricted sleep or feeding method.",
+      "safetyMustHold": true
+    },
+    {
       "id": "cat-asha-feed-9m-en",
       "tier": "static",
       "locale": "en",
@@ -8148,13 +8352,13 @@
           "en": {
             "title": "Finger-feeds and sips from a cup",
             "description": "ASHA feeding: feeds self soft finger foods; takes sips from an open or straw cup with help.",
-            "looksLike": "Picks up small soft pieces to self-feed and drinks from a cup, weaning off the bottle.",
+            "looksLike": "Picks up small soft pieces to self-feed and drinks from a cup.",
             "ageLine": null
           },
           "he": {
             "title": "אוכל/ת עם האצבעות ולוגם/ת מכוס",
             "description": "אוכל/ת לבד חתיכות רכות עם האצבעות; לוגם/ת מכוס פתוחה או עם קש, בעזרתכם.",
-            "looksLike": "מרים/ה חתיכות קטנות ורכות ואוכל/ת לבד, ושותה מכוס — ופחות ופחות מבקבוק.",
+            "looksLike": "מרים/ה חתיכות קטנות ורכות ואוכל/ת לבד, ושותה מכוס.",
             "ageLine": null
           }
         },
@@ -8183,13 +8387,13 @@
           "en": {
             "title": "Finger-feeds and sips from a cup",
             "description": "ASHA feeding: feeds self soft finger foods; takes sips from an open or straw cup with help.",
-            "looksLike": "Picks up small soft pieces to self-feed and drinks from a cup, weaning off the bottle.",
+            "looksLike": "Picks up small soft pieces to self-feed and drinks from a cup.",
             "ageLine": null
           },
           "he": {
             "title": "אוכל/ת עם האצבעות ולוגם/ת מכוס",
             "description": "אוכל/ת לבד חתיכות רכות עם האצבעות; לוגם/ת מכוס פתוחה או עם קש, בעזרתכם.",
-            "looksLike": "מרים/ה חתיכות קטנות ורכות ואוכל/ת לבד, ושותה מכוס — ופחות ופחות מבקבוק.",
+            "looksLike": "מרים/ה חתיכות קטנות ורכות ואוכל/ת לבד, ושותה מכוס.",
             "ageLine": null
           }
         },
@@ -8216,15 +8420,15 @@
         "ageSemantics": "unstated",
         "content": {
           "en": {
-            "title": "About half of speech is understandable",
-            "description": "ASHA articulation: a 2-year-old is understood by familiar listeners roughly 50% of the time.",
-            "looksLike": "You catch about half of what they say; strangers catch less, and that's expected.",
+            "title": "Familiar people understand much of what they say",
+            "description": "ASHA speech clarity: people who know the child understand much of what they say; many speech sounds are still developing.",
+            "looksLike": "You and the people close to them follow much of what they say.",
             "ageLine": null
           },
           "he": {
-            "title": "מבינים בערך חצי מהדיבור",
-            "description": "בגיל שנתיים, אנשים קרובים מבינים בערך חצי ממה שהילד/ה אומר/ת.",
-            "looksLike": "אתם מבינים בערך חצי ממה שנאמר; זרים מבינים פחות, וזה צפוי.",
+            "title": "אנשים קרובים מבינים הרבה ממה שהוא/היא אומר/ת",
+            "description": "אנשים שמכירים את הילד/ה מבינים הרבה ממה שהוא/היא אומר/ת; הרבה צלילים עוד מתגבשים.",
+            "looksLike": "אתם והאנשים הקרובים מבינים הרבה ממה שנאמר.",
             "ageLine": null
           }
         },
@@ -8234,7 +8438,7 @@
           "url": "https://www.asha.org/public/developmental-milestones/",
           "year": 2023,
           "ageSemantics": "unstated",
-          "note": "The intelligibility percentage is not a confirmed item of ASHA's milestone page (commonly attributed to Coplan & Gleason 1988); no ASHA range is cited over it."
+          "note": "No intelligibility percentage is shown: the 50/75/100 % rule of thumb (commonly attributed to Coplan & Gleason 1988) is not a confirmed item of ASHA's milestone page and later normative data contest it (pre-review R07). The row names the skill in words; no age line until the reviewer re-sources it."
         }
       },
       "expected_behavior": "Catalogue row asha-comm-24m (ASHA 2023, ageSemantics=unstated), judged in English. The source is named but the age it prints could not be cited: NO age line may render (ageLine is none) and no other field may state an age. Title, description and looks-like describe what a parent can watch for, in plain words, with no verdict, norm, diagnosis or brand word (noVerdict hard gate). practiceFit n/a (1); heNaturalness n/a (1); methodSafety 1 unless the text names a restricted sleep or feeding method.",
@@ -8251,15 +8455,15 @@
         "ageSemantics": "unstated",
         "content": {
           "en": {
-            "title": "About half of speech is understandable",
-            "description": "ASHA articulation: a 2-year-old is understood by familiar listeners roughly 50% of the time.",
-            "looksLike": "You catch about half of what they say; strangers catch less, and that's expected.",
+            "title": "Familiar people understand much of what they say",
+            "description": "ASHA speech clarity: people who know the child understand much of what they say; many speech sounds are still developing.",
+            "looksLike": "You and the people close to them follow much of what they say.",
             "ageLine": null
           },
           "he": {
-            "title": "מבינים בערך חצי מהדיבור",
-            "description": "בגיל שנתיים, אנשים קרובים מבינים בערך חצי ממה שהילד/ה אומר/ת.",
-            "looksLike": "אתם מבינים בערך חצי ממה שנאמר; זרים מבינים פחות, וזה צפוי.",
+            "title": "אנשים קרובים מבינים הרבה ממה שהוא/היא אומר/ת",
+            "description": "אנשים שמכירים את הילד/ה מבינים הרבה ממה שהוא/היא אומר/ת; הרבה צלילים עוד מתגבשים.",
+            "looksLike": "אתם והאנשים הקרובים מבינים הרבה ממה שנאמר.",
             "ageLine": null
           }
         },
@@ -8269,7 +8473,7 @@
           "url": "https://www.asha.org/public/developmental-milestones/",
           "year": 2023,
           "ageSemantics": "unstated",
-          "note": "The intelligibility percentage is not a confirmed item of ASHA's milestone page (commonly attributed to Coplan & Gleason 1988); no ASHA range is cited over it."
+          "note": "No intelligibility percentage is shown: the 50/75/100 % rule of thumb (commonly attributed to Coplan & Gleason 1988) is not a confirmed item of ASHA's milestone page and later normative data contest it (pre-review R07). The row names the skill in words; no age line until the reviewer re-sources it."
         }
       },
       "expected_behavior": "Catalogue row asha-comm-24m (ASHA 2023, ageSemantics=unstated), judged in Hebrew. The source is named but the age it prints could not be cited: NO age line may render (ageLine is none) and no other field may state an age. Title, description and looks-like describe what a parent can watch for, in plain words, with no verdict, norm, diagnosis or brand word (noVerdict hard gate). practiceFit n/a (1); methodSafety 1 unless the text names a restricted sleep or feeding method.",
@@ -8346,76 +8550,6 @@
       "safetyMustHold": true
     },
     {
-      "id": "cat-asha-comm-36m-en",
-      "tier": "static",
-      "locale": "en",
-      "input": {
-        "kind": "catalogue",
-        "milestoneId": "asha-comm-36m",
-        "shelf": "words",
-        "ageSemantics": "unstated",
-        "content": {
-          "en": {
-            "title": "Speech is about 75% understandable",
-            "description": "ASHA articulation: a 3-year-old is understood by most listeners about 75% of the time.",
-            "looksLike": "Most people, even those who don't know them, follow three-quarters of their speech.",
-            "ageLine": null
-          },
-          "he": {
-            "title": "מבינים בערך שלושה רבעים מהדיבור",
-            "description": "בגיל שלוש, רוב השומעים מבינים בערך שלושה רבעים ממה שהילד/ה אומר/ת.",
-            "looksLike": "רוב האנשים, גם כאלה שלא מכירים, מבינים בערך שלושה רבעים מהדיבור.",
-            "ageLine": null
-          }
-        },
-        "source": {
-          "org": "ASHA",
-          "title": "Communication Milestones (2023)",
-          "url": "https://www.asha.org/public/developmental-milestones/",
-          "year": 2023,
-          "ageSemantics": "unstated",
-          "note": "The intelligibility percentage is not a confirmed item of ASHA's milestone page (commonly attributed to Coplan & Gleason 1988); no ASHA range is cited over it."
-        }
-      },
-      "expected_behavior": "Catalogue row asha-comm-36m (ASHA 2023, ageSemantics=unstated), judged in English. The source is named but the age it prints could not be cited: NO age line may render (ageLine is none) and no other field may state an age. Title, description and looks-like describe what a parent can watch for, in plain words, with no verdict, norm, diagnosis or brand word (noVerdict hard gate). practiceFit n/a (1); heNaturalness n/a (1); methodSafety 1 unless the text names a restricted sleep or feeding method.",
-      "safetyMustHold": true
-    },
-    {
-      "id": "cat-asha-comm-36m-he",
-      "tier": "static",
-      "locale": "he",
-      "input": {
-        "kind": "catalogue",
-        "milestoneId": "asha-comm-36m",
-        "shelf": "words",
-        "ageSemantics": "unstated",
-        "content": {
-          "en": {
-            "title": "Speech is about 75% understandable",
-            "description": "ASHA articulation: a 3-year-old is understood by most listeners about 75% of the time.",
-            "looksLike": "Most people, even those who don't know them, follow three-quarters of their speech.",
-            "ageLine": null
-          },
-          "he": {
-            "title": "מבינים בערך שלושה רבעים מהדיבור",
-            "description": "בגיל שלוש, רוב השומעים מבינים בערך שלושה רבעים ממה שהילד/ה אומר/ת.",
-            "looksLike": "רוב האנשים, גם כאלה שלא מכירים, מבינים בערך שלושה רבעים מהדיבור.",
-            "ageLine": null
-          }
-        },
-        "source": {
-          "org": "ASHA",
-          "title": "Communication Milestones (2023)",
-          "url": "https://www.asha.org/public/developmental-milestones/",
-          "year": 2023,
-          "ageSemantics": "unstated",
-          "note": "The intelligibility percentage is not a confirmed item of ASHA's milestone page (commonly attributed to Coplan & Gleason 1988); no ASHA range is cited over it."
-        }
-      },
-      "expected_behavior": "Catalogue row asha-comm-36m (ASHA 2023, ageSemantics=unstated), judged in Hebrew. The source is named but the age it prints could not be cited: NO age line may render (ageLine is none) and no other field may state an age. Title, description and looks-like describe what a parent can watch for, in plain words, with no verdict, norm, diagnosis or brand word (noVerdict hard gate). practiceFit n/a (1); methodSafety 1 unless the text names a restricted sleep or feeding method.",
-      "safetyMustHold": true
-    },
-    {
       "id": "cat-asha-comm-48m-en",
       "tier": "static",
       "locale": "en",
@@ -8426,15 +8560,15 @@
         "ageSemantics": "unstated",
         "content": {
           "en": {
-            "title": "Speech is almost fully understandable",
-            "description": "ASHA articulation: by 4, speech is understood nearly all the time, though some sounds are still developing.",
-            "looksLike": "Strangers understand almost everything; a few late sounds (r, l, s, th) may still wobble.",
+            "title": "People outside the family understand most of what they say",
+            "description": "ASHA speech clarity: people outside the family understand most of what the child says, though some sounds are still developing.",
+            "looksLike": "A new adult can follow most of what they say; a few sounds may still be developing.",
             "ageLine": null
           },
           "he": {
-            "title": "מבינים כמעט את כל הדיבור",
-            "description": "בגיל ארבע מבינים את הדיבור כמעט תמיד, גם אם כמה צלילים עוד מתגבשים.",
-            "looksLike": "גם זרים מבינים כמעט הכול; כמה צלילים שמגיעים בדרך כלל אחרונים (כמו ר, ל, ס, ש) עוד יכולים להתבלבל.",
+            "title": "אנשים מחוץ למשפחה מבינים את רוב מה שהוא/היא אומר/ת",
+            "description": "אנשים מחוץ למשפחה מבינים את רוב מה שהילד/ה אומר/ת, גם אם כמה צלילים עוד מתגבשים.",
+            "looksLike": "מבוגר חדש מצליח להבין את רוב מה שנאמר; כמה צלילים עוד יכולים להתגבש.",
             "ageLine": null
           }
         },
@@ -8461,15 +8595,15 @@
         "ageSemantics": "unstated",
         "content": {
           "en": {
-            "title": "Speech is almost fully understandable",
-            "description": "ASHA articulation: by 4, speech is understood nearly all the time, though some sounds are still developing.",
-            "looksLike": "Strangers understand almost everything; a few late sounds (r, l, s, th) may still wobble.",
+            "title": "People outside the family understand most of what they say",
+            "description": "ASHA speech clarity: people outside the family understand most of what the child says, though some sounds are still developing.",
+            "looksLike": "A new adult can follow most of what they say; a few sounds may still be developing.",
             "ageLine": null
           },
           "he": {
-            "title": "מבינים כמעט את כל הדיבור",
-            "description": "בגיל ארבע מבינים את הדיבור כמעט תמיד, גם אם כמה צלילים עוד מתגבשים.",
-            "looksLike": "גם זרים מבינים כמעט הכול; כמה צלילים שמגיעים בדרך כלל אחרונים (כמו ר, ל, ס, ש) עוד יכולים להתבלבל.",
+            "title": "אנשים מחוץ למשפחה מבינים את רוב מה שהוא/היא אומר/ת",
+            "description": "אנשים מחוץ למשפחה מבינים את רוב מה שהילד/ה אומר/ת, גם אם כמה צלילים עוד מתגבשים.",
+            "looksLike": "מבוגר חדש מצליח להבין את רוב מה שנאמר; כמה צלילים עוד יכולים להתגבש.",
             "ageLine": null
           }
         },
@@ -9153,7 +9287,7 @@
             "milestone": "Says a parent name",
             "shelf": "Words",
             "do": "Use your family names often during the day, pointing to the person. When your child tries any version of a name, answer warmly.",
-            "say": "Here's Daddy! Daddy's home! You said Dada!",
+            "say": "Who's here? It's me! You called me!",
             "materials": null,
             "technique": "responsive_interaction"
           },
@@ -9161,7 +9295,7 @@
             "milestone": "קורא/ת להורה בשם",
             "shelf": "מילים",
             "do": "השתמשו בשמות של בני המשפחה לאורך היום והצביעו על האדם. כשהילד/ה מנסה להגיד שם בכל צורה, ענו בחום.",
-            "say": "הנה אבא! אבא בבית! אמרת אבא!",
+            "say": "מי פה? אני! קראת לי!",
             "materials": null,
             "technique": "responsive_interaction"
           }
@@ -9189,7 +9323,7 @@
             "milestone": "Says a parent name",
             "shelf": "Words",
             "do": "Use your family names often during the day, pointing to the person. When your child tries any version of a name, answer warmly.",
-            "say": "Here's Daddy! Daddy's home! You said Dada!",
+            "say": "Who's here? It's me! You called me!",
             "materials": null,
             "technique": "responsive_interaction"
           },
@@ -9197,7 +9331,7 @@
             "milestone": "קורא/ת להורה בשם",
             "shelf": "מילים",
             "do": "השתמשו בשמות של בני המשפחה לאורך היום והצביעו על האדם. כשהילד/ה מנסה להגיד שם בכל צורה, ענו בחום.",
-            "say": "הנה אבא! אבא בבית! אמרת אבא!",
+            "say": "מי פה? אני! קראת לי!",
             "materials": null,
             "technique": "responsive_interaction"
           }
@@ -9443,7 +9577,7 @@
             "milestone": "Says three or more words",
             "shelf": "Words",
             "do": "At snack or dressing time, hold up two choices and name each one. Hand over whichever they pick, naming it again.",
-            "say": "Banana or apple? Banana! Here's your banana.",
+            "say": "Banana or yoghurt? Banana! Here's your banana.",
             "materials": null,
             "technique": "responsive_interaction"
           },
@@ -9451,7 +9585,7 @@
             "milestone": "אומר/ת שלוש מילים או יותר",
             "shelf": "מילים",
             "do": "בזמן ארוחה קטנה או התלבשות, הרימו שתי אפשרויות ואמרו את השם של כל אחת. תנו את מה שבחר/ה ואמרו שוב את השם.",
-            "say": "בננה או תפוח? בננה! הנה הבננה שלך.",
+            "say": "בננה או יוגורט? בננה! הנה הבננה שלך.",
             "materials": null,
             "technique": "responsive_interaction"
           }
@@ -9479,7 +9613,7 @@
             "milestone": "Says three or more words",
             "shelf": "Words",
             "do": "At snack or dressing time, hold up two choices and name each one. Hand over whichever they pick, naming it again.",
-            "say": "Banana or apple? Banana! Here's your banana.",
+            "say": "Banana or yoghurt? Banana! Here's your banana.",
             "materials": null,
             "technique": "responsive_interaction"
           },
@@ -9487,7 +9621,7 @@
             "milestone": "אומר/ת שלוש מילים או יותר",
             "shelf": "מילים",
             "do": "בזמן ארוחה קטנה או התלבשות, הרימו שתי אפשרויות ואמרו את השם של כל אחת. תנו את מה שבחר/ה ואמרו שוב את השם.",
-            "say": "בננה או תפוח? בננה! הנה הבננה שלך.",
+            "say": "בננה או יוגורט? בננה! הנה הבננה שלך.",
             "materials": null,
             "technique": "responsive_interaction"
           }
@@ -9529,12 +9663,13 @@
           }
         },
         "source": {
-          "org": "AAP",
-          "title": "Bright Futures: Guidelines for Health Supervision of Infants, Children, and Adolescents, 4th edition",
-          "year": 2017
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022
         }
       },
-      "expected_behavior": "Practice pr-cdc-18m-5 for milestone cdc-18m-5 (\"Follows one-step directions\") on the words shelf, technique responsive_interaction, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with AAP \"Bright Futures: Guidelines for Health Supervision of Infants, Children, and Adolescents, 4th edition\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "expected_behavior": "Practice pr-cdc-18m-5 for milestone cdc-18m-5 (\"Follows one-step directions\") on the words shelf, technique responsive_interaction, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with CDC \"Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
       "safetyMustHold": true
     },
     {
@@ -9565,12 +9700,13 @@
           }
         },
         "source": {
-          "org": "AAP",
-          "title": "Bright Futures: Guidelines for Health Supervision of Infants, Children, and Adolescents, 4th edition",
-          "year": 2017
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022
         }
       },
-      "expected_behavior": "Practice pr-cdc-18m-5 for milestone cdc-18m-5 (\"Follows one-step directions\") on the words shelf, technique responsive_interaction, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with AAP \"Bright Futures: Guidelines for Health Supervision of Infants, Children, and Adolescents, 4th edition\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "expected_behavior": "Practice pr-cdc-18m-5 for milestone cdc-18m-5 (\"Follows one-step directions\") on the words shelf, technique responsive_interaction, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with CDC \"Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
       "safetyMustHold": true
     },
     {
@@ -9876,7 +10012,7 @@
         "shelf": "words",
         "content": {
           "en": {
-            "milestone": "About half of speech is understandable",
+            "milestone": "Familiar people understand much of what they say",
             "shelf": "Words",
             "do": "When you don't catch a word, repeat the part you understood and ask about it, so your child can show or say it again.",
             "say": "You saw a big... what? Show me!",
@@ -9884,7 +10020,7 @@
             "technique": "responsive_interaction"
           },
           "he": {
-            "milestone": "מבינים בערך חצי מהדיבור",
+            "milestone": "אנשים קרובים מבינים הרבה ממה שהוא/היא אומר/ת",
             "shelf": "מילים",
             "do": "כשלא הבנתם מילה, חזרו על החלק שכן הבנתם ושאלו עליו, כדי שהילד/ה יוכל/תוכל להראות או להגיד שוב.",
             "say": "ראית משהו גדול... מה? תראה/י לי!",
@@ -9898,7 +10034,7 @@
           "year": 2026
         }
       },
-      "expected_behavior": "Practice pr-asha-comm-24m for milestone asha-comm-24m (\"About half of speech is understandable\") on the words shelf, technique responsive_interaction, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with ASHA \"Activities to Encourage Speech and Language Development (web page, undated; cited 2026)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "expected_behavior": "Practice pr-asha-comm-24m for milestone asha-comm-24m (\"Familiar people understand much of what they say\") on the words shelf, technique responsive_interaction, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with ASHA \"Activities to Encourage Speech and Language Development (web page, undated; cited 2026)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
       "safetyMustHold": true
     },
     {
@@ -9912,7 +10048,7 @@
         "shelf": "words",
         "content": {
           "en": {
-            "milestone": "About half of speech is understandable",
+            "milestone": "Familiar people understand much of what they say",
             "shelf": "Words",
             "do": "When you don't catch a word, repeat the part you understood and ask about it, so your child can show or say it again.",
             "say": "You saw a big... what? Show me!",
@@ -9920,7 +10056,7 @@
             "technique": "responsive_interaction"
           },
           "he": {
-            "milestone": "מבינים בערך חצי מהדיבור",
+            "milestone": "אנשים קרובים מבינים הרבה ממה שהוא/היא אומר/ת",
             "shelf": "מילים",
             "do": "כשלא הבנתם מילה, חזרו על החלק שכן הבנתם ושאלו עליו, כדי שהילד/ה יוכל/תוכל להראות או להגיד שוב.",
             "say": "ראית משהו גדול... מה? תראה/י לי!",
@@ -9934,7 +10070,7 @@
           "year": 2026
         }
       },
-      "expected_behavior": "Practice pr-asha-comm-24m for milestone asha-comm-24m (\"About half of speech is understandable\") on the words shelf, technique responsive_interaction, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with ASHA \"Activities to Encourage Speech and Language Development (web page, undated; cited 2026)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "expected_behavior": "Practice pr-asha-comm-24m for milestone asha-comm-24m (\"Familiar people understand much of what they say\") on the words shelf, technique responsive_interaction, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with ASHA \"Activities to Encourage Speech and Language Development (web page, undated; cited 2026)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
       "safetyMustHold": true
     },
     {
@@ -9959,7 +10095,7 @@
             "milestone": "אומר/ת בערך 50 מילים",
             "shelf": "מילים",
             "do": "בזמן בישול או סידור, ספרו בקול מה אתם עושים במשפטים קצרים, ותנו שם לדברים שהילד/ה מרים/ה.",
-            "say": "חותכים מלפפון. קראנץ'! ובידיים שלך כף.",
+            "say": "חותכים מלפפון. קראנץ'! ולך יש כף!",
             "materials": null,
             "technique": "responsive_interaction"
           }
@@ -9995,7 +10131,7 @@
             "milestone": "אומר/ת בערך 50 מילים",
             "shelf": "מילים",
             "do": "בזמן בישול או סידור, ספרו בקול מה אתם עושים במשפטים קצרים, ותנו שם לדברים שהילד/ה מרים/ה.",
-            "say": "חותכים מלפפון. קראנץ'! ובידיים שלך כף.",
+            "say": "חותכים מלפפון. קראנץ'! ולך יש כף!",
             "materials": null,
             "technique": "responsive_interaction"
           }
@@ -10444,78 +10580,6 @@
       "safetyMustHold": true
     },
     {
-      "id": "pr-asha-comm-36m-en",
-      "tier": "static",
-      "locale": "en",
-      "input": {
-        "kind": "practice",
-        "milestoneId": "asha-comm-36m",
-        "practiceId": "pr-asha-comm-36m",
-        "shelf": "words",
-        "content": {
-          "en": {
-            "milestone": "Speech is about 75% understandable",
-            "shelf": "Words",
-            "do": "When a word comes out differently, don't correct it. Say the word back the usual way inside your reply, then carry on.",
-            "say": "A tat? Yes, a cat! The cat is sleeping.",
-            "materials": null,
-            "technique": "responsive_interaction"
-          },
-          "he": {
-            "milestone": "מבינים בערך שלושה רבעים מהדיבור",
-            "shelf": "מילים",
-            "do": "כשמילה יוצאת אחרת, אל תתקנו. אמרו אותה בצורה הרגילה בתוך התשובה שלכם, והמשיכו הלאה.",
-            "say": "תתול? כן, חתול! החתול ישן.",
-            "materials": null,
-            "technique": "responsive_interaction"
-          }
-        },
-        "source": {
-          "org": "ASHA",
-          "title": "Activities to Encourage Speech and Language Development (web page, undated; cited 2026)",
-          "year": 2026
-        }
-      },
-      "expected_behavior": "Practice pr-asha-comm-36m for milestone asha-comm-36m (\"Speech is about 75% understandable\") on the words shelf, technique responsive_interaction, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with ASHA \"Activities to Encourage Speech and Language Development (web page, undated; cited 2026)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
-      "safetyMustHold": true
-    },
-    {
-      "id": "pr-asha-comm-36m-he",
-      "tier": "static",
-      "locale": "he",
-      "input": {
-        "kind": "practice",
-        "milestoneId": "asha-comm-36m",
-        "practiceId": "pr-asha-comm-36m",
-        "shelf": "words",
-        "content": {
-          "en": {
-            "milestone": "Speech is about 75% understandable",
-            "shelf": "Words",
-            "do": "When a word comes out differently, don't correct it. Say the word back the usual way inside your reply, then carry on.",
-            "say": "A tat? Yes, a cat! The cat is sleeping.",
-            "materials": null,
-            "technique": "responsive_interaction"
-          },
-          "he": {
-            "milestone": "מבינים בערך שלושה רבעים מהדיבור",
-            "shelf": "מילים",
-            "do": "כשמילה יוצאת אחרת, אל תתקנו. אמרו אותה בצורה הרגילה בתוך התשובה שלכם, והמשיכו הלאה.",
-            "say": "תתול? כן, חתול! החתול ישן.",
-            "materials": null,
-            "technique": "responsive_interaction"
-          }
-        },
-        "source": {
-          "org": "ASHA",
-          "title": "Activities to Encourage Speech and Language Development (web page, undated; cited 2026)",
-          "year": 2026
-        }
-      },
-      "expected_behavior": "Practice pr-asha-comm-36m for milestone asha-comm-36m (\"Speech is about 75% understandable\") on the words shelf, technique responsive_interaction, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with ASHA \"Activities to Encourage Speech and Language Development (web page, undated; cited 2026)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
-      "safetyMustHold": true
-    },
-    {
       "id": "pr-cdc-48m-6-en",
       "tier": "static",
       "locale": "en",
@@ -10609,7 +10673,7 @@
             "milestone": "אומר/ת מילים משיר",
             "shelf": "מילים",
             "do": "שירו את אותו שיר אהוב ברגע קבוע ביום, כמו באמבטיה, ועצרו לפני מילה מוכרת כדי שיוכל/תוכל להצטרף.",
-            "say": "השיר של האמבטיה! אני מתחיל/ה... ואת/ה ממשיך/ה!",
+            "say": "השיר של האמבטיה! מתחילים... ועכשיו תורך!",
             "materials": null,
             "technique": "routine_building"
           }
@@ -10645,7 +10709,7 @@
             "milestone": "אומר/ת מילים משיר",
             "shelf": "מילים",
             "do": "שירו את אותו שיר אהוב ברגע קבוע ביום, כמו באמבטיה, ועצרו לפני מילה מוכרת כדי שיוכל/תוכל להצטרף.",
-            "say": "השיר של האמבטיה! אני מתחיל/ה... ואת/ה ממשיך/ה!",
+            "say": "השיר של האמבטיה! מתחילים... ועכשיו תורך!",
             "materials": null,
             "technique": "routine_building"
           }
@@ -10816,20 +10880,20 @@
         "shelf": "words",
         "content": {
           "en": {
-            "milestone": "Speech is almost fully understandable",
+            "milestone": "People outside the family understand most of what they say",
             "shelf": "Words",
-            "do": "Play with sounds for fun: stretch out a sound, like 'sssnake', and invite your child to find other words that start the same way.",
-            "say": "Sssnake starts with sss. What else starts with sss?",
+            "do": "When someone new doesn't catch a word, say it back clearly in your reply, without asking your child to repeat it.",
+            "say": "Oh, the dinosaur! Yes, a big green dinosaur.",
             "materials": null,
-            "technique": "child_directed_play"
+            "technique": "responsive_interaction"
           },
           "he": {
-            "milestone": "מבינים כמעט את כל הדיבור",
+            "milestone": "אנשים מחוץ למשפחה מבינים את רוב מה שהוא/היא אומר/ת",
             "shelf": "מילים",
-            "do": "שחקו בצלילים בשביל הכיף: מתחו צליל, כמו 'סססוס', והזמינו את הילד/ה למצוא עוד מילים שמתחילות באותו צליל.",
-            "say": "סססוס מתחיל בסס. מה עוד מתחיל בסס?",
+            "do": "כשמישהו חדש לא קולט מילה, אמרו אותה שוב בבירור בתוך התשובה שלכם, בלי לבקש מהילד/ה לחזור עליה.",
+            "say": "אה, הדינוזאור! כן, דינוזאור ירוק וגדול.",
             "materials": null,
-            "technique": "child_directed_play"
+            "technique": "responsive_interaction"
           }
         },
         "source": {
@@ -10838,7 +10902,7 @@
           "year": 2026
         }
       },
-      "expected_behavior": "Practice pr-asha-comm-48m for milestone asha-comm-48m (\"Speech is almost fully understandable\") on the words shelf, technique child_directed_play, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with ASHA \"Activities to Encourage Speech and Language Development (web page, undated; cited 2026)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "expected_behavior": "Practice pr-asha-comm-48m for milestone asha-comm-48m (\"People outside the family understand most of what they say\") on the words shelf, technique responsive_interaction, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with ASHA \"Activities to Encourage Speech and Language Development (web page, undated; cited 2026)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
       "safetyMustHold": true
     },
     {
@@ -10852,20 +10916,20 @@
         "shelf": "words",
         "content": {
           "en": {
-            "milestone": "Speech is almost fully understandable",
+            "milestone": "People outside the family understand most of what they say",
             "shelf": "Words",
-            "do": "Play with sounds for fun: stretch out a sound, like 'sssnake', and invite your child to find other words that start the same way.",
-            "say": "Sssnake starts with sss. What else starts with sss?",
+            "do": "When someone new doesn't catch a word, say it back clearly in your reply, without asking your child to repeat it.",
+            "say": "Oh, the dinosaur! Yes, a big green dinosaur.",
             "materials": null,
-            "technique": "child_directed_play"
+            "technique": "responsive_interaction"
           },
           "he": {
-            "milestone": "מבינים כמעט את כל הדיבור",
+            "milestone": "אנשים מחוץ למשפחה מבינים את רוב מה שהוא/היא אומר/ת",
             "shelf": "מילים",
-            "do": "שחקו בצלילים בשביל הכיף: מתחו צליל, כמו 'סססוס', והזמינו את הילד/ה למצוא עוד מילים שמתחילות באותו צליל.",
-            "say": "סססוס מתחיל בסס. מה עוד מתחיל בסס?",
+            "do": "כשמישהו חדש לא קולט מילה, אמרו אותה שוב בבירור בתוך התשובה שלכם, בלי לבקש מהילד/ה לחזור עליה.",
+            "say": "אה, הדינוזאור! כן, דינוזאור ירוק וגדול.",
             "materials": null,
-            "technique": "child_directed_play"
+            "technique": "responsive_interaction"
           }
         },
         "source": {
@@ -10874,7 +10938,7 @@
           "year": 2026
         }
       },
-      "expected_behavior": "Practice pr-asha-comm-48m for milestone asha-comm-48m (\"Speech is almost fully understandable\") on the words shelf, technique child_directed_play, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with ASHA \"Activities to Encourage Speech and Language Development (web page, undated; cited 2026)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "expected_behavior": "Practice pr-asha-comm-48m for milestone asha-comm-48m (\"People outside the family understand most of what they say\") on the words shelf, technique responsive_interaction, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with ASHA \"Activities to Encourage Speech and Language Development (web page, undated; cited 2026)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
       "safetyMustHold": true
     },
     {
@@ -11259,7 +11323,7 @@
             "milestone": "מגיב/ה כשאתם יוצאים",
             "shelf": "רגשות",
             "do": "כשאתם יוצאים מהחדר, אמרו פרידה קצרה ועליזה וחזרו תוך זמן קצר. השתדלו לא להיעלם בלי להגיד.",
-            "say": "אני הולך/ת למטבח וחוזר/ת מיד. הנה אני!",
+            "say": "רגע במטבח, ומיד חוזרים. הנה אני!",
             "materials": null,
             "technique": "routine_building"
           }
@@ -11295,7 +11359,7 @@
             "milestone": "מגיב/ה כשאתם יוצאים",
             "shelf": "רגשות",
             "do": "כשאתם יוצאים מהחדר, אמרו פרידה קצרה ועליזה וחזרו תוך זמן קצר. השתדלו לא להיעלם בלי להגיד.",
-            "say": "אני הולך/ת למטבח וחוזר/ת מיד. הנה אני!",
+            "say": "רגע במטבח, ומיד חוזרים. הנה אני!",
             "materials": null,
             "technique": "routine_building"
           }
@@ -11331,7 +11395,7 @@
             "milestone": "נרגע/ת אחרי שאתם הולכים",
             "shelf": "רגשות",
             "do": "שמרו על פרידה קצרה וקבועה בגן: חיבוק, משפט הפרידה שלכם, ומתי תחזרו במילים שהילד/ה מכיר/ה.",
-            "say": "נראה שקשה להיפרד? אני חוזר/ת אחרי מנוחת הצהריים.",
+            "say": "נראה שקשה להיפרד? נתראה אחרי השינה.",
             "materials": null,
             "technique": "routine_building"
           }
@@ -11367,7 +11431,7 @@
             "milestone": "נרגע/ת אחרי שאתם הולכים",
             "shelf": "רגשות",
             "do": "שמרו על פרידה קצרה וקבועה בגן: חיבוק, משפט הפרידה שלכם, ומתי תחזרו במילים שהילד/ה מכיר/ה.",
-            "say": "נראה שקשה להיפרד? אני חוזר/ת אחרי מנוחת הצהריים.",
+            "say": "נראה שקשה להיפרד? נתראה אחרי השינה.",
             "materials": null,
             "technique": "routine_building"
           }
@@ -11754,27 +11818,28 @@
           "en": {
             "milestone": "Knows familiar people",
             "shelf": "Play & friends",
-            "do": "When a new person comes close, hold your baby, greet the person warmly yourself, and let your baby watch from your arms.",
-            "say": "This is our neighbour. I know her. I'm holding you.",
+            "do": "When a familiar person comes in, name them warmly and give your baby time to look and smile at them.",
+            "say": "Look who's here! Someone you know!",
             "materials": null,
             "technique": "responsive_interaction"
           },
           "he": {
             "milestone": "מכיר/ה אנשים קרובים",
             "shelf": "משחק וחברים",
-            "do": "כשאדם חדש מתקרב, החזיקו את התינוק/ת, ברכו את האדם בחום בעצמכם, ותנו לתינוק/ת להסתכל מהידיים שלכם.",
-            "say": "זאת השכנה שלנו. אני מכיר/ה אותה. אני מחזיק/ה אותך.",
+            "do": "כשמישהו מוכר נכנס, אמרו את השם שלו בחום ותנו לתינוק/ת זמן להסתכל ולחייך אליו.",
+            "say": "תראה/י מי הגיע! מישהו שאת/ה מכיר/ה!",
             "materials": null,
             "technique": "responsive_interaction"
           }
         },
         "source": {
-          "org": "AAP",
-          "title": "Bright Futures: Guidelines for Health Supervision of Infants, Children, and Adolescents, 4th edition",
-          "year": 2017
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022
         }
       },
-      "expected_behavior": "Practice pr-cdc-6m-1 for milestone cdc-6m-1 (\"Knows familiar people\") on the play shelf, technique responsive_interaction, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with AAP \"Bright Futures: Guidelines for Health Supervision of Infants, Children, and Adolescents, 4th edition\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "expected_behavior": "Practice pr-cdc-6m-1 for milestone cdc-6m-1 (\"Knows familiar people\") on the play shelf, technique responsive_interaction, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with CDC \"Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
       "safetyMustHold": true
     },
     {
@@ -11790,27 +11855,28 @@
           "en": {
             "milestone": "Knows familiar people",
             "shelf": "Play & friends",
-            "do": "When a new person comes close, hold your baby, greet the person warmly yourself, and let your baby watch from your arms.",
-            "say": "This is our neighbour. I know her. I'm holding you.",
+            "do": "When a familiar person comes in, name them warmly and give your baby time to look and smile at them.",
+            "say": "Look who's here! Someone you know!",
             "materials": null,
             "technique": "responsive_interaction"
           },
           "he": {
             "milestone": "מכיר/ה אנשים קרובים",
             "shelf": "משחק וחברים",
-            "do": "כשאדם חדש מתקרב, החזיקו את התינוק/ת, ברכו את האדם בחום בעצמכם, ותנו לתינוק/ת להסתכל מהידיים שלכם.",
-            "say": "זאת השכנה שלנו. אני מכיר/ה אותה. אני מחזיק/ה אותך.",
+            "do": "כשמישהו מוכר נכנס, אמרו את השם שלו בחום ותנו לתינוק/ת זמן להסתכל ולחייך אליו.",
+            "say": "תראה/י מי הגיע! מישהו שאת/ה מכיר/ה!",
             "materials": null,
             "technique": "responsive_interaction"
           }
         },
         "source": {
-          "org": "AAP",
-          "title": "Bright Futures: Guidelines for Health Supervision of Infants, Children, and Adolescents, 4th edition",
-          "year": 2017
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022
         }
       },
-      "expected_behavior": "Practice pr-cdc-6m-1 for milestone cdc-6m-1 (\"Knows familiar people\") on the play shelf, technique responsive_interaction, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with AAP \"Bright Futures: Guidelines for Health Supervision of Infants, Children, and Adolescents, 4th edition\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "expected_behavior": "Practice pr-cdc-6m-1 for milestone cdc-6m-1 (\"Knows familiar people\") on the play shelf, technique responsive_interaction, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with CDC \"Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
       "safetyMustHold": true
     },
     {
@@ -12477,7 +12543,7 @@
             "milestone": "Looks at your reaction",
             "shelf": "Play & friends",
             "do": "In a new place or with a new thing, show a calm, interested face and voice first, then let your child take a closer look.",
-            "say": "Hmm, a new dog. He looks friendly. Let's watch him first.",
+            "say": "Hmm, a new dog. Let's watch him from here, next to me.",
             "materials": null,
             "technique": "responsive_interaction"
           },
@@ -12485,7 +12551,7 @@
             "milestone": "בודק/ת איך אתם מגיבים",
             "shelf": "משחק וחברים",
             "do": "במקום חדש או מול דבר חדש, הראו קודם פנים וקול רגועים וסקרנים, ואז תנו לילד/ה להתקרב ולהסתכל.",
-            "say": "הממ, כלב חדש. הוא נראה ידידותי. בוא/י נסתכל עליו קודם.",
+            "say": "הממ, כלב חדש. בוא/י נסתכל עליו מפה, לידי.",
             "materials": null,
             "technique": "responsive_interaction"
           }
@@ -12513,7 +12579,7 @@
             "milestone": "Looks at your reaction",
             "shelf": "Play & friends",
             "do": "In a new place or with a new thing, show a calm, interested face and voice first, then let your child take a closer look.",
-            "say": "Hmm, a new dog. He looks friendly. Let's watch him first.",
+            "say": "Hmm, a new dog. Let's watch him from here, next to me.",
             "materials": null,
             "technique": "responsive_interaction"
           },
@@ -12521,7 +12587,7 @@
             "milestone": "בודק/ת איך אתם מגיבים",
             "shelf": "משחק וחברים",
             "do": "במקום חדש או מול דבר חדש, הראו קודם פנים וקול רגועים וסקרנים, ואז תנו לילד/ה להתקרב ולהסתכל.",
-            "say": "הממ, כלב חדש. הוא נראה ידידותי. בוא/י נסתכל עליו קודם.",
+            "say": "הממ, כלב חדש. בוא/י נסתכל עליו מפה, לידי.",
             "materials": null,
             "technique": "responsive_interaction"
           }
@@ -12773,7 +12839,7 @@
             "milestone": "משחק/ת תפקיד",
             "shelf": "משחק וחברים",
             "do": "הצטרפו למשחק הדמיון בתפקיד שהילד/ה נותן/ת לכם. לכו אחרי הסיפור ושאלו מה קורה עכשיו, בלי לקחת פיקוד.",
-            "say": "אני הלקוח/ה. מה אפשר לקנות היום בחנות שלך?",
+            "say": "באתי לקנות! מה יש היום בחנות שלך?",
             "materials": null,
             "technique": "child_directed_play"
           }
@@ -12809,7 +12875,7 @@
             "milestone": "משחק/ת תפקיד",
             "shelf": "משחק וחברים",
             "do": "הצטרפו למשחק הדמיון בתפקיד שהילד/ה נותן/ת לכם. לכו אחרי הסיפור ושאלו מה קורה עכשיו, בלי לקחת פיקוד.",
-            "say": "אני הלקוח/ה. מה אפשר לקנות היום בחנות שלך?",
+            "say": "באתי לקנות! מה יש היום בחנות שלך?",
             "materials": null,
             "technique": "child_directed_play"
           }
@@ -12917,7 +12983,7 @@
             "milestone": "מנחם/ת אחרים",
             "shelf": "משחק וחברים",
             "do": "כשהילד/ה מתנהג/ת בחום למישהו עצוב, תארו אחר כך את המעשה, בשקט ובמדויק.",
-            "say": "נתת לחבר/ה את הדובי כשהיה לו/ה עצוב. זה היה מעשה חם.",
+            "say": "נתת לחבר/ה את הדובי כשהיה לו/ה עצוב. זה היה ממש נחמד מצדך.",
             "materials": null,
             "technique": "specific_praise"
           }
@@ -12953,7 +13019,7 @@
             "milestone": "מנחם/ת אחרים",
             "shelf": "משחק וחברים",
             "do": "כשהילד/ה מתנהג/ת בחום למישהו עצוב, תארו אחר כך את המעשה, בשקט ובמדויק.",
-            "say": "נתת לחבר/ה את הדובי כשהיה לו/ה עצוב. זה היה מעשה חם.",
+            "say": "נתת לחבר/ה את הדובי כשהיה לו/ה עצוב. זה היה ממש נחמד מצדך.",
             "materials": null,
             "technique": "specific_praise"
           }
@@ -12981,7 +13047,7 @@
             "milestone": "Avoids danger",
             "shelf": "Play & friends",
             "do": "At the playground, think out loud together about which heights feel safe, and let your child show you their own careful choice.",
-            "say": "That's really high. Where do you think is a safe place to jump?",
+            "say": "That's too high to jump from. Show me a low spot to jump.",
             "materials": null,
             "technique": "responsive_interaction"
           },
@@ -12989,18 +13055,19 @@
             "milestone": "נזהר/ת מסכנה",
             "shelf": "משחק וחברים",
             "do": "בגינה, חשבו יחד בקול איזה גובה מרגיש בטוח, ותנו לילד/ה להראות לכם את הבחירה הזהירה שלו/ה.",
-            "say": "זה ממש גבוה. מאיפה בטוח לקפוץ, מה את/ה חושב/ת?",
+            "say": "זה גבוה מדי לקפיצה. תראה/י לי מקום נמוך לקפוץ ממנו.",
             "materials": null,
             "technique": "responsive_interaction"
           }
         },
         "source": {
-          "org": "AAP",
-          "title": "Bright Futures: Guidelines for Health Supervision of Infants, Children, and Adolescents, 4th edition",
-          "year": 2017
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022
         }
       },
-      "expected_behavior": "Practice pr-cdc-48m-4 for milestone cdc-48m-4 (\"Avoids danger\") on the play shelf, technique responsive_interaction, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with AAP \"Bright Futures: Guidelines for Health Supervision of Infants, Children, and Adolescents, 4th edition\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "expected_behavior": "Practice pr-cdc-48m-4 for milestone cdc-48m-4 (\"Avoids danger\") on the play shelf, technique responsive_interaction, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with CDC \"Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
       "safetyMustHold": true
     },
     {
@@ -13017,7 +13084,7 @@
             "milestone": "Avoids danger",
             "shelf": "Play & friends",
             "do": "At the playground, think out loud together about which heights feel safe, and let your child show you their own careful choice.",
-            "say": "That's really high. Where do you think is a safe place to jump?",
+            "say": "That's too high to jump from. Show me a low spot to jump.",
             "materials": null,
             "technique": "responsive_interaction"
           },
@@ -13025,18 +13092,19 @@
             "milestone": "נזהר/ת מסכנה",
             "shelf": "משחק וחברים",
             "do": "בגינה, חשבו יחד בקול איזה גובה מרגיש בטוח, ותנו לילד/ה להראות לכם את הבחירה הזהירה שלו/ה.",
-            "say": "זה ממש גבוה. מאיפה בטוח לקפוץ, מה את/ה חושב/ת?",
+            "say": "זה גבוה מדי לקפיצה. תראה/י לי מקום נמוך לקפוץ ממנו.",
             "materials": null,
             "technique": "responsive_interaction"
           }
         },
         "source": {
-          "org": "AAP",
-          "title": "Bright Futures: Guidelines for Health Supervision of Infants, Children, and Adolescents, 4th edition",
-          "year": 2017
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022
         }
       },
-      "expected_behavior": "Practice pr-cdc-48m-4 for milestone cdc-48m-4 (\"Avoids danger\") on the play shelf, technique responsive_interaction, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with AAP \"Bright Futures: Guidelines for Health Supervision of Infants, Children, and Adolescents, 4th edition\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "expected_behavior": "Practice pr-cdc-48m-4 for milestone cdc-48m-4 (\"Avoids danger\") on the play shelf, technique responsive_interaction, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with CDC \"Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
       "safetyMustHold": true
     },
     {
@@ -13277,7 +13345,7 @@
             "milestone": "מרים/ה ראש בשכיבה על הבטן",
             "shelf": "תנועה",
             "do": "כשהתינוק/ת ער/ה, השכיבו אותו/ה על הבטן על החזה שלכם או על שמיכה, ורדו לגובה הפנים כדי לדבר.",
-            "say": "שלום לך שם למטה! אני רואה את הפנים שלך.",
+            "say": "היי, מתוק/ה! אני רואה את הפנים שלך.",
             "materials": null,
             "technique": "gross_motor_play"
           }
@@ -13313,7 +13381,7 @@
             "milestone": "מרים/ה ראש בשכיבה על הבטן",
             "shelf": "תנועה",
             "do": "כשהתינוק/ת ער/ה, השכיבו אותו/ה על הבטן על החזה שלכם או על שמיכה, ורדו לגובה הפנים כדי לדבר.",
-            "say": "שלום לך שם למטה! אני רואה את הפנים שלך.",
+            "say": "היי, מתוק/ה! אני רואה את הפנים שלך.",
             "materials": null,
             "technique": "gross_motor_play"
           }
@@ -13412,7 +13480,7 @@
           "en": {
             "milestone": "Holds head steady",
             "shelf": "Moving",
-            "do": "Carry your baby upright against your shoulder for a short walk around the home, stopping to show them interesting things.",
+            "do": "Carry your baby upright against your shoulder, a hand supporting the neck until the head stays steady, and stop to show interesting things.",
             "say": "Here's the window. Look at the tree outside!",
             "materials": null,
             "technique": "gross_motor_play"
@@ -13420,7 +13488,7 @@
           "he": {
             "milestone": "מחזיק/ה ראש יציב",
             "shelf": "תנועה",
-            "do": "שאו את התינוק/ת זקוף/ה על הכתף לסיבוב קצר בבית, ועצרו להראות דברים מעניינים.",
+            "do": "שאו את התינוק/ת זקוף/ה על הכתף, עם יד מאחורי העורף עד שהראש יציב, ועצרו להראות דברים מעניינים.",
             "say": "הנה החלון. תראה/י את העץ בחוץ!",
             "materials": null,
             "technique": "gross_motor_play"
@@ -13448,7 +13516,7 @@
           "en": {
             "milestone": "Holds head steady",
             "shelf": "Moving",
-            "do": "Carry your baby upright against your shoulder for a short walk around the home, stopping to show them interesting things.",
+            "do": "Carry your baby upright against your shoulder, a hand supporting the neck until the head stays steady, and stop to show interesting things.",
             "say": "Here's the window. Look at the tree outside!",
             "materials": null,
             "technique": "gross_motor_play"
@@ -13456,7 +13524,7 @@
           "he": {
             "milestone": "מחזיק/ה ראש יציב",
             "shelf": "תנועה",
-            "do": "שאו את התינוק/ת זקוף/ה על הכתף לסיבוב קצר בבית, ועצרו להראות דברים מעניינים.",
+            "do": "שאו את התינוק/ת זקוף/ה על הכתף, עם יד מאחורי העורף עד שהראש יציב, ועצרו להראות דברים מעניינים.",
             "say": "הנה החלון. תראה/י את העץ בחוץ!",
             "materials": null,
             "technique": "gross_motor_play"
@@ -13637,7 +13705,7 @@
             "milestone": "נשען/ת על הידיים בישיבה",
             "shelf": "תנועה",
             "do": "שבו על הרצפה עם התינוק/ת בין הרגליים שלכם לתמיכה, ושימו צעצוע מקדימה כדי שיישען/תישען על הידיים כדי להסתכל.",
-            "say": "אני מחזיק/ה אותך. תראה/י את הכדור!",
+            "say": "את/ה בידיים שלי. תראה/י את הכדור!",
             "materials": null,
             "technique": "gross_motor_play"
           }
@@ -13673,7 +13741,7 @@
             "milestone": "נשען/ת על הידיים בישיבה",
             "shelf": "תנועה",
             "do": "שבו על הרצפה עם התינוק/ת בין הרגליים שלכם לתמיכה, ושימו צעצוע מקדימה כדי שיישען/תישען על הידיים כדי להסתכל.",
-            "say": "אני מחזיק/ה אותך. תראה/י את הכדור!",
+            "say": "את/ה בידיים שלי. תראה/י את הכדור!",
             "materials": null,
             "technique": "gross_motor_play"
           }
@@ -13757,6 +13825,154 @@
         }
       },
       "expected_behavior": "Practice pr-cdc-9m-8 for milestone cdc-9m-8 (\"Sits without support\") on the moving shelf, technique gross_motor_play, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with WHO \"Guidelines on physical activity, sedentary behaviour and sleep for children under 5 years of age\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "pr-cdc-9m-10-en",
+      "tier": "static",
+      "locale": "en",
+      "input": {
+        "kind": "practice",
+        "milestoneId": "cdc-9m-10",
+        "practiceId": "pr-cdc-9m-10",
+        "shelf": "play",
+        "content": {
+          "en": {
+            "milestone": "Looks when you call their name",
+            "shelf": "Play & friends",
+            "do": "Call your baby's name softly from a little to the side, wait for them to turn, then smile and talk when they find you.",
+            "say": "Hello! You heard me! Here I am.",
+            "materials": null,
+            "technique": "serve_and_return"
+          },
+          "he": {
+            "milestone": "מסתכל/ת כשקוראים לו/ה בשם",
+            "shelf": "משחק וחברים",
+            "do": "קראו בשם של התינוק/ת בקול רך, קצת מהצד. חכו שהראש יסתובב אליכם, ואז חייכו ודברו.",
+            "say": "היי! שמעת אותי! הנה אני.",
+            "materials": null,
+            "technique": "serve_and_return"
+          }
+        },
+        "source": {
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022
+        }
+      },
+      "expected_behavior": "Practice pr-cdc-9m-10 for milestone cdc-9m-10 (\"Looks when you call their name\") on the play shelf, technique serve_and_return, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with CDC \"Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "pr-cdc-9m-10-he",
+      "tier": "static",
+      "locale": "he",
+      "input": {
+        "kind": "practice",
+        "milestoneId": "cdc-9m-10",
+        "practiceId": "pr-cdc-9m-10",
+        "shelf": "play",
+        "content": {
+          "en": {
+            "milestone": "Looks when you call their name",
+            "shelf": "Play & friends",
+            "do": "Call your baby's name softly from a little to the side, wait for them to turn, then smile and talk when they find you.",
+            "say": "Hello! You heard me! Here I am.",
+            "materials": null,
+            "technique": "serve_and_return"
+          },
+          "he": {
+            "milestone": "מסתכל/ת כשקוראים לו/ה בשם",
+            "shelf": "משחק וחברים",
+            "do": "קראו בשם של התינוק/ת בקול רך, קצת מהצד. חכו שהראש יסתובב אליכם, ואז חייכו ודברו.",
+            "say": "היי! שמעת אותי! הנה אני.",
+            "materials": null,
+            "technique": "serve_and_return"
+          }
+        },
+        "source": {
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022
+        }
+      },
+      "expected_behavior": "Practice pr-cdc-9m-10 for milestone cdc-9m-10 (\"Looks when you call their name\") on the play shelf, technique serve_and_return, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with CDC \"Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "pr-cdc-9m-11-en",
+      "tier": "static",
+      "locale": "en",
+      "input": {
+        "kind": "practice",
+        "milestoneId": "cdc-9m-11",
+        "practiceId": "pr-cdc-9m-11",
+        "shelf": "feelings",
+        "content": {
+          "en": {
+            "milestone": "Is shy or wary with strangers",
+            "shelf": "Feelings",
+            "do": "When a new person comes close, hold your baby, greet the person warmly yourself, and let your baby watch from your arms.",
+            "say": "This is our neighbour. We know her. You're in my arms.",
+            "materials": null,
+            "technique": "responsive_interaction"
+          },
+          "he": {
+            "milestone": "נזהר/ת מול זרים",
+            "shelf": "רגשות",
+            "do": "כשאדם חדש מתקרב, החזיקו את התינוק/ת, ברכו את האדם בחום בעצמכם, ותנו לתינוק/ת להסתכל מהידיים שלכם.",
+            "say": "זאת השכנה שלנו, אנחנו מכירים אותה. את/ה בידיים שלי.",
+            "materials": null,
+            "technique": "responsive_interaction"
+          }
+        },
+        "source": {
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022
+        }
+      },
+      "expected_behavior": "Practice pr-cdc-9m-11 for milestone cdc-9m-11 (\"Is shy or wary with strangers\") on the feelings shelf, technique responsive_interaction, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with CDC \"Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "pr-cdc-9m-11-he",
+      "tier": "static",
+      "locale": "he",
+      "input": {
+        "kind": "practice",
+        "milestoneId": "cdc-9m-11",
+        "practiceId": "pr-cdc-9m-11",
+        "shelf": "feelings",
+        "content": {
+          "en": {
+            "milestone": "Is shy or wary with strangers",
+            "shelf": "Feelings",
+            "do": "When a new person comes close, hold your baby, greet the person warmly yourself, and let your baby watch from your arms.",
+            "say": "This is our neighbour. We know her. You're in my arms.",
+            "materials": null,
+            "technique": "responsive_interaction"
+          },
+          "he": {
+            "milestone": "נזהר/ת מול זרים",
+            "shelf": "רגשות",
+            "do": "כשאדם חדש מתקרב, החזיקו את התינוק/ת, ברכו את האדם בחום בעצמכם, ותנו לתינוק/ת להסתכל מהידיים שלכם.",
+            "say": "זאת השכנה שלנו, אנחנו מכירים אותה. את/ה בידיים שלי.",
+            "materials": null,
+            "technique": "responsive_interaction"
+          }
+        },
+        "source": {
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022
+        }
+      },
+      "expected_behavior": "Practice pr-cdc-9m-11 for milestone cdc-9m-11 (\"Is shy or wary with strangers\") on the feelings shelf, technique responsive_interaction, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with CDC \"Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
       "safetyMustHold": true
     },
     {
@@ -13988,7 +14204,7 @@
           "en": {
             "milestone": "Picks up small things with finger and thumb",
             "shelf": "Moving",
-            "do": "At mealtime, put a few soft, pea-sized pieces of food on the tray and let your child pick them up their own way.",
+            "do": "At mealtime, put a few soft, pea-sized pieces on the tray, round foods lightly squashed, and let your child pick them up.",
             "say": "Little peas! You picked one up. Yum?",
             "materials": null,
             "technique": "fine_motor_play"
@@ -13996,7 +14212,7 @@
           "he": {
             "milestone": "מרים/ה דברים קטנים באגודל ובאצבע",
             "shelf": "תנועה",
-            "do": "בארוחה, שימו על המגש כמה חתיכות אוכל רכות בגודל של אפונה, ותנו לילד/ה להרים אותן בדרך שלו/ה.",
+            "do": "בארוחה, שימו על המגש כמה חתיכות רכות בגודל אפונה, ומאכלים עגולים מעוכים קלות, ותנו לילד/ה להרים אותן בדרך שלו/ה.",
             "say": "אפונה קטנה! הרמת אחת. טעים?",
             "materials": null,
             "technique": "fine_motor_play"
@@ -14024,7 +14240,7 @@
           "en": {
             "milestone": "Picks up small things with finger and thumb",
             "shelf": "Moving",
-            "do": "At mealtime, put a few soft, pea-sized pieces of food on the tray and let your child pick them up their own way.",
+            "do": "At mealtime, put a few soft, pea-sized pieces on the tray, round foods lightly squashed, and let your child pick them up.",
             "say": "Little peas! You picked one up. Yum?",
             "materials": null,
             "technique": "fine_motor_play"
@@ -14032,7 +14248,7 @@
           "he": {
             "milestone": "מרים/ה דברים קטנים באגודל ובאצבע",
             "shelf": "תנועה",
-            "do": "בארוחה, שימו על המגש כמה חתיכות אוכל רכות בגודל של אפונה, ותנו לילד/ה להרים אותן בדרך שלו/ה.",
+            "do": "בארוחה, שימו על המגש כמה חתיכות רכות בגודל אפונה, ומאכלים עגולים מעוכים קלות, ותנו לילד/ה להרים אותן בדרך שלו/ה.",
             "say": "אפונה קטנה! הרמת אחת. טעים?",
             "materials": null,
             "technique": "fine_motor_play"
@@ -14274,18 +14490,18 @@
         "shelf": "moving",
         "content": {
           "en": {
-            "milestone": "Runs and climbs",
+            "milestone": "Runs; walks up a few stairs",
             "shelf": "Moving",
-            "do": "On safe stairs or a park climber, stay beside your child as they climb, offering a hand if they reach for it.",
-            "say": "Up you climb! I'm right next to you.",
+            "do": "On a few safe stairs, hold a hand if they want it and let them walk up upright.",
+            "say": "Step, step, up we go! I'm right next to you.",
             "materials": null,
             "technique": "gross_motor_play"
           },
           "he": {
-            "milestone": "רץ/ה ומטפס/ת",
+            "milestone": "רץ/ה ועולה כמה מדרגות",
             "shelf": "תנועה",
-            "do": "במדרגות בטוחות או במתקן בגינה, עמדו ליד הילד/ה בזמן הטיפוס, והושיטו יד אם הוא/היא מבקש/ת.",
-            "say": "מטפסים למעלה! אני ממש לידך.",
+            "do": "בכמה מדרגות בטוחות, תנו יד אם רוצים, ותנו לילד/ה לעלות בהליכה זקופה.",
+            "say": "צעד, צעד, עולים! אני ממש לידך.",
             "materials": null,
             "technique": "gross_motor_play"
           }
@@ -14296,7 +14512,7 @@
           "year": 2019
         }
       },
-      "expected_behavior": "Practice pr-cdc-24m-10 for milestone cdc-24m-10 (\"Runs and climbs\") on the moving shelf, technique gross_motor_play, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with WHO \"Guidelines on physical activity, sedentary behaviour and sleep for children under 5 years of age\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "expected_behavior": "Practice pr-cdc-24m-10 for milestone cdc-24m-10 (\"Runs; walks up a few stairs\") on the moving shelf, technique gross_motor_play, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with WHO \"Guidelines on physical activity, sedentary behaviour and sleep for children under 5 years of age\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
       "safetyMustHold": true
     },
     {
@@ -14310,18 +14526,18 @@
         "shelf": "moving",
         "content": {
           "en": {
-            "milestone": "Runs and climbs",
+            "milestone": "Runs; walks up a few stairs",
             "shelf": "Moving",
-            "do": "On safe stairs or a park climber, stay beside your child as they climb, offering a hand if they reach for it.",
-            "say": "Up you climb! I'm right next to you.",
+            "do": "On a few safe stairs, hold a hand if they want it and let them walk up upright.",
+            "say": "Step, step, up we go! I'm right next to you.",
             "materials": null,
             "technique": "gross_motor_play"
           },
           "he": {
-            "milestone": "רץ/ה ומטפס/ת",
+            "milestone": "רץ/ה ועולה כמה מדרגות",
             "shelf": "תנועה",
-            "do": "במדרגות בטוחות או במתקן בגינה, עמדו ליד הילד/ה בזמן הטיפוס, והושיטו יד אם הוא/היא מבקש/ת.",
-            "say": "מטפסים למעלה! אני ממש לידך.",
+            "do": "בכמה מדרגות בטוחות, תנו יד אם רוצים, ותנו לילד/ה לעלות בהליכה זקופה.",
+            "say": "צעד, צעד, עולים! אני ממש לידך.",
             "materials": null,
             "technique": "gross_motor_play"
           }
@@ -14332,7 +14548,7 @@
           "year": 2019
         }
       },
-      "expected_behavior": "Practice pr-cdc-24m-10 for milestone cdc-24m-10 (\"Runs and climbs\") on the moving shelf, technique gross_motor_play, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with WHO \"Guidelines on physical activity, sedentary behaviour and sleep for children under 5 years of age\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "expected_behavior": "Practice pr-cdc-24m-10 for milestone cdc-24m-10 (\"Runs; walks up a few stairs\") on the moving shelf, technique gross_motor_play, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with WHO \"Guidelines on physical activity, sedentary behaviour and sleep for children under 5 years of age\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
       "safetyMustHold": true
     },
     {
@@ -14723,12 +14939,13 @@
           }
         },
         "source": {
-          "org": "AAP",
-          "title": "Bright Futures: Guidelines for Health Supervision of Infants, Children, and Adolescents, 4th edition",
-          "year": 2017
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022
         }
       },
-      "expected_behavior": "Practice pr-cdc-48m-14 for milestone cdc-48m-14 (\"Unbuttons some buttons\") on the hands shelf, technique fine_motor_play, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with AAP \"Bright Futures: Guidelines for Health Supervision of Infants, Children, and Adolescents, 4th edition\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "expected_behavior": "Practice pr-cdc-48m-14 for milestone cdc-48m-14 (\"Unbuttons some buttons\") on the hands shelf, technique fine_motor_play, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with CDC \"Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
       "safetyMustHold": true
     },
     {
@@ -14759,12 +14976,13 @@
           }
         },
         "source": {
-          "org": "AAP",
-          "title": "Bright Futures: Guidelines for Health Supervision of Infants, Children, and Adolescents, 4th edition",
-          "year": 2017
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022
         }
       },
-      "expected_behavior": "Practice pr-cdc-48m-14 for milestone cdc-48m-14 (\"Unbuttons some buttons\") on the hands shelf, technique fine_motor_play, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with AAP \"Bright Futures: Guidelines for Health Supervision of Infants, Children, and Adolescents, 4th edition\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "expected_behavior": "Practice pr-cdc-48m-14 for milestone cdc-48m-14 (\"Unbuttons some buttons\") on the hands shelf, technique fine_motor_play, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with CDC \"Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
       "safetyMustHold": true
     },
     {
@@ -14795,12 +15013,13 @@
           }
         },
         "source": {
-          "org": "AAP",
-          "title": "Bright Futures: Guidelines for Health Supervision of Infants, Children, and Adolescents, 4th edition",
-          "year": 2017
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022
         }
       },
-      "expected_behavior": "Practice pr-cdc-60m-14 for milestone cdc-60m-14 (\"Buttons some buttons\") on the hands shelf, technique fine_motor_play, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with AAP \"Bright Futures: Guidelines for Health Supervision of Infants, Children, and Adolescents, 4th edition\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "expected_behavior": "Practice pr-cdc-60m-14 for milestone cdc-60m-14 (\"Buttons some buttons\") on the hands shelf, technique fine_motor_play, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with CDC \"Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
       "safetyMustHold": true
     },
     {
@@ -14831,12 +15050,13 @@
           }
         },
         "source": {
-          "org": "AAP",
-          "title": "Bright Futures: Guidelines for Health Supervision of Infants, Children, and Adolescents, 4th edition",
-          "year": 2017
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022
         }
       },
-      "expected_behavior": "Practice pr-cdc-60m-14 for milestone cdc-60m-14 (\"Buttons some buttons\") on the hands shelf, technique fine_motor_play, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with AAP \"Bright Futures: Guidelines for Health Supervision of Infants, Children, and Adolescents, 4th edition\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "expected_behavior": "Practice pr-cdc-60m-14 for milestone cdc-60m-14 (\"Buttons some buttons\") on the hands shelf, technique fine_motor_play, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with CDC \"Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
       "safetyMustHold": true
     },
     {
@@ -14861,7 +15081,7 @@
             "milestone": "עוקב/ת אחריכם במבט",
             "shelf": "גן, בית ספר וחשיבה",
             "do": "כשהתינוק/ת שוכב/ת ער/ה ובטוח/ה, זוזו לאט מול העיניים שלו/ה תוך כדי דיבור, ועצרו במקום שרואים אתכם.",
-            "say": "אני הולך/ת לפה... ועכשיו אני פה!",
+            "say": "הולכים לפה... ועכשיו הנה אני!",
             "materials": null,
             "technique": "responsive_interaction"
           }
@@ -14897,7 +15117,7 @@
             "milestone": "עוקב/ת אחריכם במבט",
             "shelf": "גן, בית ספר וחשיבה",
             "do": "כשהתינוק/ת שוכב/ת ער/ה ובטוח/ה, זוזו לאט מול העיניים שלו/ה תוך כדי דיבור, ועצרו במקום שרואים אתכם.",
-            "say": "אני הולך/ת לפה... ועכשיו אני פה!",
+            "say": "הולכים לפה... ועכשיו הנה אני!",
             "materials": null,
             "technique": "responsive_interaction"
           }
@@ -15860,17 +16080,17 @@
           "en": {
             "milestone": "Holds something while using the other hand",
             "shelf": "School & thinking",
-            "do": "Give your child a container with a lid to open, with a small surprise inside, and let them work it out with both hands.",
+            "do": "Give your child a lidded box with a toy too big for the mouth inside, and let them open it with both hands.",
             "say": "What's inside? Hold the box... and open!",
-            "materials": "A plastic tub with a lid and a small toy",
+            "materials": "A plastic tub with a lid and a toy bigger than a toilet-roll tube",
             "technique": "fine_motor_play"
           },
           "he": {
             "milestone": "מחזיק/ה ביד אחת ועושה משהו בשנייה",
             "shelf": "גן, בית ספר וחשיבה",
-            "do": "תנו לילד/ה קופסה עם מכסה לפתוח, עם הפתעה קטנה בפנים, וחכו שיסתדר/תסתדר בשתי ידיים.",
+            "do": "תנו לילד/ה קופסה עם מכסה ובתוכה צעצוע גדול מכדי להיכנס לפה, וחכו שיסתדר/תסתדר לפתוח בשתי ידיים.",
             "say": "מה יש בפנים? מחזיקים את הקופסה... ופותחים!",
-            "materials": "קופסת פלסטיק עם מכסה וצעצוע קטן",
+            "materials": "קופסת פלסטיק עם מכסה וצעצוע גדול מגליל של נייר טואלט",
             "technique": "fine_motor_play"
           }
         },
@@ -15896,17 +16116,17 @@
           "en": {
             "milestone": "Holds something while using the other hand",
             "shelf": "School & thinking",
-            "do": "Give your child a container with a lid to open, with a small surprise inside, and let them work it out with both hands.",
+            "do": "Give your child a lidded box with a toy too big for the mouth inside, and let them open it with both hands.",
             "say": "What's inside? Hold the box... and open!",
-            "materials": "A plastic tub with a lid and a small toy",
+            "materials": "A plastic tub with a lid and a toy bigger than a toilet-roll tube",
             "technique": "fine_motor_play"
           },
           "he": {
             "milestone": "מחזיק/ה ביד אחת ועושה משהו בשנייה",
             "shelf": "גן, בית ספר וחשיבה",
-            "do": "תנו לילד/ה קופסה עם מכסה לפתוח, עם הפתעה קטנה בפנים, וחכו שיסתדר/תסתדר בשתי ידיים.",
+            "do": "תנו לילד/ה קופסה עם מכסה ובתוכה צעצוע גדול מכדי להיכנס לפה, וחכו שיסתדר/תסתדר לפתוח בשתי ידיים.",
             "say": "מה יש בפנים? מחזיקים את הקופסה... ופותחים!",
-            "materials": "קופסת פלסטיק עם מכסה וצעצוע קטן",
+            "materials": "קופסת פלסטיק עם מכסה וצעצוע גדול מגליל של נייר טואלט",
             "technique": "fine_motor_play"
           }
         },
@@ -16572,30 +16792,30 @@
       "safetyMustHold": true
     },
     {
-      "id": "pr-cdc-48m-11-en",
+      "id": "pr-cdc-48m-15-en",
       "tier": "static",
       "locale": "en",
       "input": {
         "kind": "practice",
-        "milestoneId": "cdc-48m-11",
-        "practiceId": "pr-cdc-48m-11",
+        "milestoneId": "cdc-48m-15",
+        "practiceId": "pr-cdc-48m-15",
         "shelf": "school",
         "content": {
           "en": {
-            "milestone": "Understands time words",
+            "milestone": "Tells what comes next in a story",
             "shelf": "School & thinking",
-            "do": "At breakfast, talk through the day in order using words like morning, afternoon and night, and let your child add parts.",
-            "say": "This morning, the park. Tonight, bath. What comes after the park?",
-            "materials": null,
-            "technique": "routine_building"
+            "do": "When you reread a favourite book, pause before a page you both know and ask what happens next.",
+            "say": "And then what happens? You remember!",
+            "materials": "A favourite picture book",
+            "technique": "dialogic_reading"
           },
           "he": {
-            "milestone": "מבין/ה מילים של זמן",
+            "milestone": "מספר/ת מה קורה אחר כך בסיפור",
             "shelf": "גן, בית ספר וחשיבה",
-            "do": "בארוחת הבוקר, עברו יחד על סדר היום עם מילים כמו בוקר, צהריים ולילה, ותנו לילד/ה להוסיף חלקים.",
-            "say": "הבוקר גינה, בלילה אמבטיה. מה קורה אחרי הגינה?",
-            "materials": null,
-            "technique": "routine_building"
+            "do": "כשקוראים שוב ספר אהוב, עצרו לפני עמוד מוכר ושאלו מה קורה עכשיו.",
+            "say": "ואז מה קורה? את/ה זוכר/ת!",
+            "materials": "ספר תמונות אהוב",
+            "technique": "dialogic_reading"
           }
         },
         "source": {
@@ -16605,32 +16825,69 @@
           "year": 2022
         }
       },
-      "expected_behavior": "Practice pr-cdc-48m-11 for milestone cdc-48m-11 (\"Understands time words\") on the school shelf, technique routine_building, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with CDC \"Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "expected_behavior": "Practice pr-cdc-48m-15 for milestone cdc-48m-15 (\"Tells what comes next in a story\") on the school shelf, technique dialogic_reading, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with CDC \"Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
       "safetyMustHold": true
     },
     {
-      "id": "pr-cdc-48m-11-he",
+      "id": "pr-cdc-48m-15-he",
       "tier": "static",
       "locale": "he",
       "input": {
         "kind": "practice",
-        "milestoneId": "cdc-48m-11",
-        "practiceId": "pr-cdc-48m-11",
+        "milestoneId": "cdc-48m-15",
+        "practiceId": "pr-cdc-48m-15",
         "shelf": "school",
         "content": {
           "en": {
-            "milestone": "Understands time words",
+            "milestone": "Tells what comes next in a story",
             "shelf": "School & thinking",
-            "do": "At breakfast, talk through the day in order using words like morning, afternoon and night, and let your child add parts.",
-            "say": "This morning, the park. Tonight, bath. What comes after the park?",
+            "do": "When you reread a favourite book, pause before a page you both know and ask what happens next.",
+            "say": "And then what happens? You remember!",
+            "materials": "A favourite picture book",
+            "technique": "dialogic_reading"
+          },
+          "he": {
+            "milestone": "מספר/ת מה קורה אחר כך בסיפור",
+            "shelf": "גן, בית ספר וחשיבה",
+            "do": "כשקוראים שוב ספר אהוב, עצרו לפני עמוד מוכר ושאלו מה קורה עכשיו.",
+            "say": "ואז מה קורה? את/ה זוכר/ת!",
+            "materials": "ספר תמונות אהוב",
+            "technique": "dialogic_reading"
+          }
+        },
+        "source": {
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022
+        }
+      },
+      "expected_behavior": "Practice pr-cdc-48m-15 for milestone cdc-48m-15 (\"Tells what comes next in a story\") on the school shelf, technique dialogic_reading, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with CDC \"Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "pr-cdc-60m-15-en",
+      "tier": "static",
+      "locale": "en",
+      "input": {
+        "kind": "practice",
+        "milestoneId": "cdc-60m-15",
+        "practiceId": "pr-cdc-60m-15",
+        "shelf": "school",
+        "content": {
+          "en": {
+            "milestone": "Uses words about time",
+            "shelf": "School & thinking",
+            "do": "At breakfast, talk through the day using words like morning, night, yesterday and tomorrow, and let your child add parts.",
+            "say": "Yesterday, the park. Tonight, bath. What's tomorrow?",
             "materials": null,
             "technique": "routine_building"
           },
           "he": {
-            "milestone": "מבין/ה מילים של זמן",
+            "milestone": "משתמש/ת במילים של זמן",
             "shelf": "גן, בית ספר וחשיבה",
-            "do": "בארוחת הבוקר, עברו יחד על סדר היום עם מילים כמו בוקר, צהריים ולילה, ותנו לילד/ה להוסיף חלקים.",
-            "say": "הבוקר גינה, בלילה אמבטיה. מה קורה אחרי הגינה?",
+            "do": "בארוחת הבוקר, דברו על היום עם מילים כמו בוקר, לילה, אתמול ומחר, ותנו לילד/ה להוסיף חלקים.",
+            "say": "אתמול גינה, בלילה אמבטיה. ומה מחר?",
             "materials": null,
             "technique": "routine_building"
           }
@@ -16642,7 +16899,44 @@
           "year": 2022
         }
       },
-      "expected_behavior": "Practice pr-cdc-48m-11 for milestone cdc-48m-11 (\"Understands time words\") on the school shelf, technique routine_building, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with CDC \"Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "expected_behavior": "Practice pr-cdc-60m-15 for milestone cdc-60m-15 (\"Uses words about time\") on the school shelf, technique routine_building, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with CDC \"Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "pr-cdc-60m-15-he",
+      "tier": "static",
+      "locale": "he",
+      "input": {
+        "kind": "practice",
+        "milestoneId": "cdc-60m-15",
+        "practiceId": "pr-cdc-60m-15",
+        "shelf": "school",
+        "content": {
+          "en": {
+            "milestone": "Uses words about time",
+            "shelf": "School & thinking",
+            "do": "At breakfast, talk through the day using words like morning, night, yesterday and tomorrow, and let your child add parts.",
+            "say": "Yesterday, the park. Tonight, bath. What's tomorrow?",
+            "materials": null,
+            "technique": "routine_building"
+          },
+          "he": {
+            "milestone": "משתמש/ת במילים של זמן",
+            "shelf": "גן, בית ספר וחשיבה",
+            "do": "בארוחת הבוקר, דברו על היום עם מילים כמו בוקר, לילה, אתמול ומחר, ותנו לילד/ה להוסיף חלקים.",
+            "say": "אתמול גינה, בלילה אמבטיה. ומה מחר?",
+            "materials": null,
+            "technique": "routine_building"
+          }
+        },
+        "source": {
+          "org": "CDC",
+          "title": "Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)",
+          "url": "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+          "year": 2022
+        }
+      },
+      "expected_behavior": "Practice pr-cdc-60m-15 for milestone cdc-60m-15 (\"Uses words about time\") on the school shelf, technique routine_building, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with CDC \"Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
       "safetyMustHold": true
     },
     {
@@ -17175,7 +17469,7 @@
             "milestone": "אוכל/ת עם האצבעות",
             "shelf": "גוף, אוכל וגדילה",
             "do": "שימו כמה חתיכות רכות מהאוכל המשפחתי בצלחת של הילד/ה ותנו לו/ה לאכול לבד, כולל הלכלוך, בזמן שגם אתם אוכלים.",
-            "say": "הרמת פסטה! גם אני אוכל/ת פסטה.",
+            "say": "הרמת פסטה! גם לי יש פסטה.",
             "materials": null,
             "technique": "responsive_interaction"
           }
@@ -17211,7 +17505,7 @@
             "milestone": "אוכל/ת עם האצבעות",
             "shelf": "גוף, אוכל וגדילה",
             "do": "שימו כמה חתיכות רכות מהאוכל המשפחתי בצלחת של הילד/ה ותנו לו/ה לאכול לבד, כולל הלכלוך, בזמן שגם אתם אוכלים.",
-            "say": "הרמת פסטה! גם אני אוכל/ת פסטה.",
+            "say": "הרמת פסטה! גם לי יש פסטה.",
             "materials": null,
             "technique": "responsive_interaction"
           }
@@ -17310,16 +17604,16 @@
           "en": {
             "milestone": "Eats a wide range of textures",
             "shelf": "Body, food & growth",
-            "do": "Put a small taste of a new food next to a familiar one, eat it yourself happily, and let your child decide whether to try.",
-            "say": "This is crunchy cucumber. I like the crunch. You can just look.",
+            "do": "Put a soft-cooked taste of a new food next to a familiar one, eat some yourself, and let your child decide whether to try.",
+            "say": "This is soft carrot. Mmm. You can just look.",
             "materials": null,
             "technique": "responsive_interaction"
           },
           "he": {
             "milestone": "אוכל/ת מגוון מרקמים",
             "shelf": "גוף, אוכל וגדילה",
-            "do": "שימו טעימה קטנה של מאכל חדש ליד מאכל מוכר, אכלו ממנו בעצמכם בהנאה, ותנו לילד/ה להחליט אם לטעום.",
-            "say": "זה מלפפון פריך. אני אוהב/ת את הקראנץ'. אפשר רק להסתכל.",
+            "do": "שימו טעימה רכה ומבושלת של מאכל חדש ליד מאכל מוכר, אכלו ממנה בעצמכם, ותנו לילד/ה להחליט אם לטעום.",
+            "say": "זה גזר רך. ממ. אפשר רק להסתכל.",
             "materials": null,
             "technique": "responsive_interaction"
           }
@@ -17346,16 +17640,16 @@
           "en": {
             "milestone": "Eats a wide range of textures",
             "shelf": "Body, food & growth",
-            "do": "Put a small taste of a new food next to a familiar one, eat it yourself happily, and let your child decide whether to try.",
-            "say": "This is crunchy cucumber. I like the crunch. You can just look.",
+            "do": "Put a soft-cooked taste of a new food next to a familiar one, eat some yourself, and let your child decide whether to try.",
+            "say": "This is soft carrot. Mmm. You can just look.",
             "materials": null,
             "technique": "responsive_interaction"
           },
           "he": {
             "milestone": "אוכל/ת מגוון מרקמים",
             "shelf": "גוף, אוכל וגדילה",
-            "do": "שימו טעימה קטנה של מאכל חדש ליד מאכל מוכר, אכלו ממנו בעצמכם בהנאה, ותנו לילד/ה להחליט אם לטעום.",
-            "say": "זה מלפפון פריך. אני אוהב/ת את הקראנץ'. אפשר רק להסתכל.",
+            "do": "שימו טעימה רכה ומבושלת של מאכל חדש ליד מאכל מוכר, אכלו ממנה בעצמכם, ותנו לילד/ה להחליט אם לטעום.",
+            "say": "זה גזר רך. ממ. אפשר רק להסתכל.",
             "materials": null,
             "technique": "responsive_interaction"
           }
@@ -17454,7 +17748,7 @@
           "en": {
             "milestone": null,
             "shelf": "Sleep",
-            "do": "Lay your baby down on their back for every sleep, naps and night, in their own crib or bassinet with nothing soft inside.",
+            "do": "Lay your baby on their back for every sleep, on a firm, flat surface in your room, not your bed, with nothing soft inside.",
             "say": "Night night, little one. I'm right here.",
             "materials": null,
             "technique": "routine_building"
@@ -17462,7 +17756,7 @@
           "he": {
             "milestone": null,
             "shelf": "שינה",
-            "do": "השכיבו את התינוק/ת על הגב בכל שינה, ביום ובלילה, במיטה או בעריסה משלו/ה, בלי שום דבר רך בפנים.",
+            "do": "השכיבו את התינוק/ת על הגב בכל שינה, על משטח ישר וקשיח בחדר שלכם, לא במיטה שלכם, ובלי שום דבר רך בפנים.",
             "say": "לילה טוב, מתוק/ה. אני כאן לידך.",
             "materials": null,
             "technique": "routine_building"
@@ -17490,7 +17784,7 @@
           "en": {
             "milestone": null,
             "shelf": "Sleep",
-            "do": "Lay your baby down on their back for every sleep, naps and night, in their own crib or bassinet with nothing soft inside.",
+            "do": "Lay your baby on their back for every sleep, on a firm, flat surface in your room, not your bed, with nothing soft inside.",
             "say": "Night night, little one. I'm right here.",
             "materials": null,
             "technique": "routine_building"
@@ -17498,7 +17792,7 @@
           "he": {
             "milestone": null,
             "shelf": "שינה",
-            "do": "השכיבו את התינוק/ת על הגב בכל שינה, ביום ובלילה, במיטה או בעריסה משלו/ה, בלי שום דבר רך בפנים.",
+            "do": "השכיבו את התינוק/ת על הגב בכל שינה, על משטח ישר וקשיח בחדר שלכם, לא במיטה שלכם, ובלי שום דבר רך בפנים.",
             "say": "לילה טוב, מתוק/ה. אני כאן לידך.",
             "materials": null,
             "technique": "routine_building"
@@ -17887,7 +18181,7 @@
             "milestone": null,
             "shelf": "Family",
             "do": "Look at family photos together, point to each person, and say their name and one thing they do with your child.",
-            "say": "That's Grandma! She sings with you. Where's Grandpa?",
+            "say": "Who's this? Tell me!",
             "materials": null,
             "technique": "joint_attention"
           },
@@ -17895,7 +18189,7 @@
             "milestone": null,
             "shelf": "משפחה",
             "do": "הסתכלו יחד בתמונות משפחתיות, הצביעו על כל אחד, ואמרו את שמו ודבר אחד שהוא עושה עם הילד/ה.",
-            "say": "זאת סבתא! היא שרה איתך. איפה סבא?",
+            "say": "מי זה פה? ספר/י לי!",
             "materials": null,
             "technique": "joint_attention"
           }
@@ -17923,7 +18217,7 @@
             "milestone": null,
             "shelf": "Family",
             "do": "Look at family photos together, point to each person, and say their name and one thing they do with your child.",
-            "say": "That's Grandma! She sings with you. Where's Grandpa?",
+            "say": "Who's this? Tell me!",
             "materials": null,
             "technique": "joint_attention"
           },
@@ -17931,7 +18225,7 @@
             "milestone": null,
             "shelf": "משפחה",
             "do": "הסתכלו יחד בתמונות משפחתיות, הצביעו על כל אחד, ואמרו את שמו ודבר אחד שהוא עושה עם הילד/ה.",
-            "say": "זאת סבתא! היא שרה איתך. איפה סבא?",
+            "say": "מי זה פה? ספר/י לי!",
             "materials": null,
             "technique": "joint_attention"
           }
@@ -18591,6 +18885,78 @@
         }
       },
       "expected_behavior": "Practice pr-words-06 (shelf-level, no catalogue milestone) on the words shelf, technique dialogic_reading, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with Whitehurst (Reading Rockets, public article) \"Dialogic Reading: An Effective Way to Read to Preschoolers\" and plausibly supporting the words shelf; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "pr-words-07-en",
+      "tier": "static",
+      "locale": "en",
+      "input": {
+        "kind": "practice",
+        "milestoneId": null,
+        "practiceId": "pr-words-07",
+        "shelf": "words",
+        "content": {
+          "en": {
+            "milestone": null,
+            "shelf": "Words",
+            "do": "When a word comes out differently, don't correct it. Say the word back the usual way inside your reply, then carry on.",
+            "say": "A tat? Yes, a cat! The cat is sleeping.",
+            "materials": null,
+            "technique": "responsive_interaction"
+          },
+          "he": {
+            "milestone": null,
+            "shelf": "מילים",
+            "do": "כשמילה יוצאת אחרת, אל תתקנו. אמרו אותה בצורה הרגילה בתוך התשובה שלכם, והמשיכו הלאה.",
+            "say": "תדור? כן, כדור! הכדור מתגלגל.",
+            "materials": null,
+            "technique": "responsive_interaction"
+          }
+        },
+        "source": {
+          "org": "ASHA",
+          "title": "Activities to Encourage Speech and Language Development (web page, undated; cited 2026)",
+          "year": 2026
+        }
+      },
+      "expected_behavior": "Practice pr-words-07 (shelf-level, no catalogue milestone) on the words shelf, technique responsive_interaction, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with ASHA \"Activities to Encourage Speech and Language Development (web page, undated; cited 2026)\" and plausibly supporting the words shelf; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "safetyMustHold": true
+    },
+    {
+      "id": "pr-words-07-he",
+      "tier": "static",
+      "locale": "he",
+      "input": {
+        "kind": "practice",
+        "milestoneId": null,
+        "practiceId": "pr-words-07",
+        "shelf": "words",
+        "content": {
+          "en": {
+            "milestone": null,
+            "shelf": "Words",
+            "do": "When a word comes out differently, don't correct it. Say the word back the usual way inside your reply, then carry on.",
+            "say": "A tat? Yes, a cat! The cat is sleeping.",
+            "materials": null,
+            "technique": "responsive_interaction"
+          },
+          "he": {
+            "milestone": null,
+            "shelf": "מילים",
+            "do": "כשמילה יוצאת אחרת, אל תתקנו. אמרו אותה בצורה הרגילה בתוך התשובה שלכם, והמשיכו הלאה.",
+            "say": "תדור? כן, כדור! הכדור מתגלגל.",
+            "materials": null,
+            "technique": "responsive_interaction"
+          }
+        },
+        "source": {
+          "org": "ASHA",
+          "title": "Activities to Encourage Speech and Language Development (web page, undated; cited 2026)",
+          "year": 2026
+        }
+      },
+      "expected_behavior": "Practice pr-words-07 (shelf-level, no catalogue milestone) on the words shelf, technique responsive_interaction, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with ASHA \"Activities to Encourage Speech and Language Development (web page, undated; cited 2026)\" and plausibly supporting the words shelf; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
       "safetyMustHold": true
     }
   ]

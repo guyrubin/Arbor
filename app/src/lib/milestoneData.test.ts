@@ -78,8 +78,11 @@ describe("CDC/AAP-2022 milestone dataset", () => {
     expect(ALL_MILESTONES.length).toBe(
       CDC_MILESTONES.length + ASHA_MILESTONES.length + ARBOR_EXTENDED_MILESTONES.length
     );
-    // ASHA intelligibility benchmark — 75% understandable at 3y.
-    expect(ASHA_MILESTONES.some((m) => m.ageMonths === 36 && /understandable/i.test(m.title))).toBe(true);
+    // Pre-review H7 (R07, 6 Oct): the 3-year percentage row (asha-comm-36m) is retired (cdc-36m-3 covers 3 y);
+    // the remaining ASHA clarity rows name the skill in words — no number, no percentage, in any title.
+    expect(ASHA_MILESTONES.some((m) => m.ageMonths === 36 && /understandable/i.test(m.title))).toBe(false);
+    for (const m of ASHA_MILESTONES) expect(/\d|%|half|quarter/i.test(m.title), m.id).toBe(false);
+    expect(ASHA_MILESTONES.find((m) => m.id === "asha-comm-24m")?.title).toBe("Familiar people understand much of what they say");
   });
 
   it("B-LOOP-01: the legacy Arbor ids (m-1…m-10) are listed as retired and are no catalogue row", () => {
@@ -87,7 +90,7 @@ describe("CDC/AAP-2022 milestone dataset", () => {
     // B-LOOP-01 (VETO-FIRST clinical) retired them: no public source states
     // those skills at those ages. Stored records may still carry the ids; the
     // list names them so a reader can recognise them.
-    expect([...RETIRED_MILESTONE_IDS]).toEqual(Array.from({ length: 10 }, (_, i) => `m-${i + 1}`));
+    expect([...RETIRED_MILESTONE_IDS]).toEqual([...Array.from({ length: 10 }, (_, i) => `m-${i + 1}`), "cdc-48m-11", "asha-comm-36m"]); // + pre-review H6 / H7 (6 Oct)
     for (const id of RETIRED_MILESTONE_IDS) {
       expect(ALL_MILESTONES.some((m) => m.id === id), id).toBe(false);
       expect(isCatalogueMilestone({ id }), id).toBe(false);
@@ -98,10 +101,10 @@ describe("CDC/AAP-2022 milestone dataset", () => {
 describe("B-LOOP-01 — every catalogue row carries its source and its age semantics", () => {
   const bandMonths = new Set(MILESTONE_AGE_BANDS.map((b) => b.months));
 
-  it("prints the catalogue count (133 before B-LOOP-01, 10 Arbor rows retired; +1 cdc-24m-11 on 6 Oct)", () => {
+  it("prints the catalogue count (133 before B-LOOP-01, 10 Arbor rows retired; +1 cdc-24m-11; pre-review: −cdc-48m-11 −asha-comm-36m +cdc-9m-10 +cdc-9m-11 +cdc-48m-15 +cdc-60m-15)", () => {
     // eslint-disable-next-line no-console
     console.log(`B-LOOP-01 catalogue rows: ${ALL_MILESTONES.length} (CDC ${CDC_MILESTONES.length} · ASHA ${ASHA_MILESTONES.length} · Arbor ${ARBOR_EXTENDED_MILESTONES.length})`);
-    expect(ALL_MILESTONES.length).toBe(124);
+    expect(ALL_MILESTONES.length).toBe(126);
   });
 
   it("every row has a source with org, title, year and ageSemantics", () => {

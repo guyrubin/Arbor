@@ -60,7 +60,7 @@ describe("B-LOOP-08 — coverage", () => {
     for (const p of shelfLevel) {
       expect(SHELF_IDS, p.id).toContain(p.shelf);
       expect(p.id, p.id).toMatch(new RegExp(`^pr-${p.shelf}-\\d{2}$`));
-      expect(Number.isInteger(p.ageMonths) && p.ageMonths >= 6 && p.ageMonths <= 60, p.id).toBe(true);
+      expect(Number.isInteger(p.ageMonths) && p.ageMonths >= 2 && p.ageMonths <= 60, p.id).toBe(true);
       expect(practicesForMilestone(p.id), p.id).toEqual([]);
     }
     // Sleep practices cite the sleep sources only (AAP safe sleep / HealthyChildren, NHS Start for Life, WHO 2019).
@@ -70,7 +70,7 @@ describe("B-LOOP-08 — coverage", () => {
   });
 
   it("follow-up 2: Words carries six shelf-level book practices for 18–36 months (book sharing in turns; never the PEER acronym to the parent)", () => {
-    const books = PRACTICES.filter((p) => p.shelf === "words" && p.milestoneId === null);
+    const books = PRACTICES.filter((p) => p.shelf === "words" && p.milestoneId === null && p.id !== "pr-words-07");
     expect(books.map((p) => p.id)).toEqual(["pr-words-01", "pr-words-02", "pr-words-03", "pr-words-04", "pr-words-05", "pr-words-06"]);
     expect(books.map((p) => p.ageMonths)).toEqual([18, 18, 24, 30, 30, 36]);
     for (const p of books) {
@@ -79,7 +79,25 @@ describe("B-LOOP-08 — coverage", () => {
       expect(p.materials, p.id).toBeTruthy();
       for (const t of texts(p)) expect(/\bPEER\b|\bCROWD\b|dialogic/i.test(t.text), `${p.id}.${t.field}.${t.locale}`).toBe(false);
     }
-    expect(PRACTICES.filter((p) => p.milestoneId === null)).toHaveLength(16);
+    // pre-review H7: pr-words-07 is the recast practice of the retired asha-comm-36m row
+    expect(PRACTICES.filter((p) => p.milestoneId === null)).toHaveLength(17);
+    const recast = PRACTICES.find((p) => p.id === "pr-words-07")!;
+    expect(recast.shelf).toBe("words");
+    expect(recast.evidence.source).toBe(PRACTICE_SOURCES.ashaActivities);
+    expect(PRACTICES.some((p) => p.milestoneId === "asha-comm-36m" || p.milestoneId === "cdc-48m-11")).toBe(false);
+  });
+
+  it("pre-review H4: infant safe sleep (pr-sleep-01) is anchored at 2 months and carries the three core AAP 2022 points in plain words", () => {
+    const p = PRACTICES.find((x) => x.id === "pr-sleep-01")!;
+    expect(p.ageMonths).toBe(2);
+    expect(p.evidence.source).toBe(PRACTICE_SOURCES.aapSafeSleep);
+    expect(p.do.en).toMatch(/on their back for every sleep/);
+    expect(p.do.en).toMatch(/firm, flat surface/);
+    expect(p.do.en).toMatch(/in your room, not your bed/);
+    expect(p.do.en).toMatch(/nothing soft/);
+    expect(p.do.he).toContain("על הגב בכל שינה");
+    expect(p.do.he).toContain("משטח ישר וקשיח");
+    expect(p.do.he).toContain("בחדר שלכם, לא במיטה שלכם");
   });
 
   it("the count table adds up to the library (counts only, per shelf × band)", () => {
@@ -139,6 +157,15 @@ describe("B-LOOP-08 — the firewall scans", () => {
       }
     }
     expect(hits).toEqual([]);
+  });
+
+  it("pre-review H2: no slash form inside a first-person PARENT clause — the resolver reads the CHILD's gender, so 'אני מחזיק/ה' told a father of a girl 'אני מחזיקה'", () => {
+    const FIRST_PERSON_SLASH = /אני\s+[א-ת]+\/[א-ת]+/;
+    const hits = PRACTICES.flatMap((p) => texts(p).filter((t) => t.locale === "he" && FIRST_PERSON_SLASH.test(t.text)).map((t) => `${p.id}.${t.field}: ${t.text}`));
+    expect(hits).toEqual([]);
+    // NEGATIVE CONTROL: the shapes the pre-review found
+    for (const bad of ["אני מחזיק/ה אותך.", "גם אני אוכל/ת פסטה.", "אני הלקוח/ה."]) expect(FIRST_PERSON_SLASH.test(bad), bad).toBe(true);
+    expect(FIRST_PERSON_SLASH.test("אני פה אם תרצה/י עזרה.")).toBe(false);
   });
 
   it("findClinicalDiagnosisTerm is null on every string", () => {

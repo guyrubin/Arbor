@@ -113,7 +113,7 @@ export const TALK_TOGETHER: Program = {
         "Say it back: repeat their words clearly, as a reply, never a correction.",
         "להחזיר את המילה: לחזור על המילים שלו/שלה בבהירות, כתשובה ולא כתיקון.",
       ),
-      practices: ["pr-asha-comm-36m", "pr-cdc-15m-3", "pr-cdc-12m-3", "pr-asha-comm-24m", "pr-cdc-36m-3"],
+      practices: ["pr-words-07", "pr-cdc-15m-3", "pr-cdc-12m-3", "pr-asha-comm-24m", "pr-cdc-36m-3"],
       coachScripts: [
         { id: "tt-w4-s1", text: L("When a word comes out differently, say it back clearly inside your answer, without asking them to repeat it.", "כשמילה יוצאת אחרת, אמרו אותה בצורה ברורה בתוך התשובה שלכם, בלי לבקש לחזור עליה.") },
         { id: "tt-w4-s2", text: L("Say their word back as if you are agreeing, with a smile. That is the whole move.", "חזרו על המילה שלו/שלה כאילו אתם מסכימים, עם חיוך. וזהו, זה הכול.") },
@@ -127,7 +127,7 @@ export const TALK_TOGETHER: Program = {
         "Add one word: say their words back with one word more.",
         "להוסיף מילה אחת: לחזור על המילים שלו/שלה עם עוד מילה אחת.",
       ),
-      practices: ["pr-cdc-24m-3", "pr-cdc-15m-3", "pr-cdc-30m-5", "pr-cdc-30m-3", "pr-asha-comm-36m", "pr-cdc-18m-4"],
+      practices: ["pr-cdc-24m-3", "pr-cdc-15m-3", "pr-cdc-30m-5", "pr-cdc-30m-3", "pr-words-07", "pr-cdc-18m-4"],
       coachScripts: [
         { id: "tt-w5-s1", text: L("Say their word back with one word added. 'Car' becomes 'blue car'. Just one.", "חזרו על המילה שלו/שלה והוסיפו מילה אחת. „אוטו” הופך ל„אוטו כחול”. רק אחת.") },
         { id: "tt-w5-s2", text: L("Add a word that is already in the moment: what it does, its colour, or who it belongs to.", "הוסיפו מילה מתוך הרגע עצמו: מה הוא עושה, איזה צבע, או של מי זה.") },

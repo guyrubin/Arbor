@@ -52,7 +52,7 @@ export const CDC_2022_SOURCE: MilestoneSource = { org: "CDC", title: "Learn the 
 export const ashaUnstated = (note: string): MilestoneSource => ({ org: "ASHA", title: "Communication Milestones (2023)", url: "https://www.asha.org/public/developmental-milestones/", year: 2023, ageSemantics: "unstated", note });
 
 const ASHA_FEEDING_NOTE = "Feeding item: ASHA's feeding page and the age range it prints could not be cited offline; no age line until the reviewer re-sources it.";
-const ASHA_INTELLIGIBILITY_NOTE = "The intelligibility percentage is not a confirmed item of ASHA's milestone page (commonly attributed to Coplan & Gleason 1988); no ASHA range is cited over it.";
+const ASHA_INTELLIGIBILITY_NOTE = "No intelligibility percentage is shown: the 50/75/100 % rule of thumb (commonly attributed to Coplan & Gleason 1988) is not a confirmed item of ASHA's milestone page and later normative data contest it (pre-review R07). The row names the skill in words; no age line until the reviewer re-sources it.";
 
 /** B-LOOP-03 — CDC rows whose skill is eating or drinking: tagged "feeding"
  *  so the parent finds them on the Food & growth shelf (lib/shelves). */
@@ -105,7 +105,8 @@ export const CDC_MILESTONES: Milestone[] = [
   cdc(4, "4 months", "sensory_motor_patterns", 8, "Brings hands to mouth", "Brings hands to mouth; pushes up on elbows in tummy time.", "Hands find the mouth on purpose; props up on forearms when on the tummy."),
 
   // ─────────────────────────────── 6 months ───────────────────────────────
-  cdc(6, "6 months", "social_development", 1, "Knows familiar people", "Recognises familiar people; is shy or nervous with strangers.", "Lights up for you and grandma, but studies an unfamiliar face warily."),
+  // Pre-review R21 (6 Oct): CDC 2022 places stranger wariness at 9 months (cdc-9m-11); the 6-month item is "Knows familiar people".
+  cdc(6, "6 months", "social_development", 1, "Knows familiar people", "Knows familiar people.", "Lights up for familiar faces."),
   cdc(6, "6 months", "social_development", 2, "Likes their mirror reflection", "Likes to look at themselves in a mirror.", "Leans in and reaches for the 'baby' in the mirror."),
   cdc(6, "6 months", "language_communication", 3, "Takes turns making sounds", "Takes turns making sounds with you.", "You make a sound, they answer with one — a back-and-forth of noises."),
   cdc(6, "6 months", "language_communication", 4, "Blows raspberries", "Blows 'raspberries' (sticks tongue out and blows).", "That sputtering lip-and-tongue noise, often repeated for fun."),
@@ -116,13 +117,16 @@ export const CDC_MILESTONES: Milestone[] = [
 
   // ─────────────────────────────── 9 months ───────────────────────────────
   cdc(9, "9 months", "attachment_regulation", 1, "Shows several facial expressions", "Shows several expressions — happy, sad, angry, surprised.", "Their face clearly reads as delighted, cross, or startled depending on the moment."),
-  cdc(9, "9 months", "attachment_regulation", 2, "Reacts when you leave", "Looks for you, may cling or get upset when you step away (stranger/separation awareness).", "Notices you leaving the room and protests or searches for you."),
+  cdc(9, "9 months", "attachment_regulation", 2, "Reacts when you leave", "Looks for you, reaches for you or cries when you step away.", "Notices you leaving the room and protests or searches for you."),
   cdc(9, "9 months", "social_development", 3, "Plays peek-a-boo", "Smiles or laughs during back-and-forth games like peek-a-boo.", "Anticipates the 'boo!' and giggles before it even comes."),
   cdc(9, "9 months", "language_communication", 4, "Babbles strings of sounds", "Makes different sounds like 'mamama' and 'bababa'.", "Long repeated babble chains that start to sound like talking."),
   cdc(9, "9 months", "language_communication", 5, "Lifts arms to be picked up", "Lifts arms up to be picked up.", "Reaches both arms toward you as a clear 'up, please'."),
   cdc(9, "9 months", "cognition_executive_function", 6, "Looks for hidden objects", "Looks for objects when dropped out of sight (like a spoon or toy).", "Watches where a dropped toy went and leans to find it."),
   cdc(9, "9 months", "cognition_executive_function", 7, "Bangs two things together", "Bangs two things together.", "Knocks two blocks or cups together, pleased with the noise."),
   cdc(9, "9 months", "sensory_motor_patterns", 8, "Sits without support", "Gets to a sitting position and sits without support.", "Stays upright in a sit with hands free to play."),
+  // Pre-review R22 (6 Oct): two CDC 2022 9-month items the catalogue lacked.
+  cdc(9, "9 months", "social_development", 10, "Looks when you call their name", "Looks at you when you call their name.", "Turns their head toward you when they hear their name."),
+  cdc(9, "9 months", "attachment_regulation", 11, "Is shy or wary with strangers", "Is shy, clingy or fearful around strangers.", "Studies an unfamiliar face warily or holds on to you."),
   cdc(9, "9 months", "sensory_motor_patterns", 9, "Moves things hand to hand", "Moves things from one hand to the other; uses fingers to rake food.", "Passes a toy between hands and rakes small bits toward themselves."),
 
   // ─────────────────────────────── 12 months ──────────────────────────────
@@ -171,7 +175,7 @@ export const CDC_MILESTONES: Milestone[] = [
   cdc(24, "2 years", "cognition_executive_function", 7, "Tries switches and buttons", "Tries to use switches, knobs, or buttons on a toy.", "Pokes, twists, and flips every button to see what happens."),
   cdc(24, "2 years", "cognition_executive_function", 8, "Plays with more than one toy together", "Plays with more than one toy at once, like putting toy food on a toy plate.", "Combines toys into a little scene rather than one at a time."),
   cdc(24, "2 years", "sensory_motor_patterns", 9, "Kicks a ball", "Kicks a ball.", "Swings a foot and connects with the ball, even off-balance."),
-  cdc(24, "2 years", "sensory_motor_patterns", 10, "Runs and climbs", "Runs; walks up a few stairs with or without help.", "Picks up speed into a run and climbs the bottom stairs."),
+  cdc(24, "2 years", "sensory_motor_patterns", 10, "Runs; walks up a few stairs", "Runs; walks (not climbs) up a few stairs, with or without help.", "Picks up speed into a run and walks up the bottom stairs upright."),
 
   // ─────────────────────────────── 30 months ──────────────────────────────
   cdc(30, "30 months", "social_development", 1, "Plays next to other children", "Plays next to other children and sometimes plays with them.", "Side-by-side play that occasionally turns into doing the same game together."),
@@ -192,7 +196,7 @@ export const CDC_MILESTONES: Milestone[] = [
   cdc(36, "3 years", "language_communication", 3, "Talks well enough to be understood", "Talks well enough that others can understand most of the time.", "A stranger could follow most of what they say."),
   cdc(36, "3 years", "language_communication", 4, "Asks 'who/what/where/why'", "Asks 'who', 'what', 'where', or 'why' questions, like 'where is mommy?'.", "A steady stream of wh-questions about everything."),
   cdc(36, "3 years", "language_communication", 5, "Says first name", "Says their first name when asked.", "Answers 'what's your name?' with their own name."),
-  cdc(36, "3 years", "language_communication", 6, "Talks in conversation", "Has a back-and-forth conversation using two or three sentences.", "Can keep a short chat going with a couple of replies."),
+  cdc(36, "3 years", "language_communication", 6, "Talks in conversation", "Talks with you in a conversation of at least two back-and-forth exchanges.", "Can keep a short chat going with a couple of replies."),
   cdc(36, "3 years", "cognition_executive_function", 7, "Draws a circle", "Draws a circle when you show them how.", "Copies a round shape after watching you draw one."),
   cdc(36, "3 years", "cognition_executive_function", 8, "Avoids hot things when warned", "Avoids touching hot objects, like a stove, when you warn them.", "Heeds 'hot!' and keeps their hands back."),
   cdc(36, "3 years", "sensory_motor_patterns", 9, "Strings beads / uses utensils", "Strings items together, like large beads; puts on some clothes; uses a fork.", "Threads big beads and eats with a fork without much help."),
@@ -208,10 +212,12 @@ export const CDC_MILESTONES: Milestone[] = [
   cdc(48, "4 years", "language_communication", 8, "Talks about their day", "Talks about at least one thing that happened during their day.", "Recounts a moment from earlier — 'we painted at school'."),
   cdc(48, "4 years", "language_communication", 9, "Answers simple questions", "Answers simple questions like 'what is a coat for?'.", "Explains the everyday purpose of familiar things."),
   cdc(48, "4 years", "cognition_executive_function", 10, "Names a few colours", "Names a few colours of items.", "Correctly labels several colours, not just one."),
-  cdc(48, "4 years", "cognition_executive_function", 11, "Understands time words", "Tells what comes next in a familiar story; understands 'morning', 'night'.", "Predicts the next part of a known story and uses time-of-day words."),
+  // Pre-review H6 (R06, 6 Oct): cdc-48m-11 "Understands time words" RETIRED — time words are CDC 2022's 5-year item
+  // (now cdc-60m-15); the 4-year item fused into it is its own row, cdc-48m-15.
   cdc(48, "4 years", "cognition_executive_function", 12, "Draws a person with body parts", "Draws a person with three or more body parts.", "A stick-person that has a head plus arms or legs."),
   cdc(48, "4 years", "sensory_motor_patterns", 13, "Catches a large ball", "Catches a large ball most of the time; serves food onto a plate.", "Traps a tossed ball against their body and can dish out food."),
   cdc(48, "4 years", "independence_adaptive_skills", 14, "Unbuttons some buttons", "Unbuttons some buttons.", "Works simple buttons open when undressing."),
+  cdc(48, "4 years", "cognition_executive_function", 15, "Tells what comes next in a story", "Tells what comes next in a well-known story.", "Jumps in with the next part of a story you both know."),
 
   // ─────────────────────────────── 5 years (60 months) ────────────────────
   cdc(60, "5 years", "attachment_regulation", 1, "Follows rules and takes turns", "Follows rules or takes turns when playing games with other children.", "Waits their turn in a board game and accepts the rules."),
@@ -228,6 +234,7 @@ export const CDC_MILESTONES: Milestone[] = [
   cdc(60, "5 years", "sensory_motor_patterns", 12, "Uses a fork and spoon well", "Uses a fork and spoon well; may be able to use a butter knife.", "Eats a full meal neatly with utensils."),
   cdc(60, "5 years", "sensory_motor_patterns", 13, "Hops on one foot", "Hops on one foot.", "Balances and hops on a single foot a few times."),
   cdc(60, "5 years", "independence_adaptive_skills", 14, "Buttons some buttons", "Buttons some buttons.", "Fastens simple buttons when dressing."),
+  cdc(60, "5 years", "cognition_executive_function", 15, "Uses words about time", "Uses words about time, like 'yesterday', 'tomorrow', 'morning' or 'night'.", "Says things like 'tomorrow we go to the park' or 'last night I dreamed'."),
 ];
 
 /**
@@ -261,7 +268,7 @@ export const ASHA_MILESTONES: Milestone[] = [
     ageGroup: "12 months",
     title: "Finger-feeds and sips from a cup",
     description: "ASHA feeding: feeds self soft finger foods; takes sips from an open or straw cup with help.",
-    skillLooksLike: "Picks up small soft pieces to self-feed and drinks from a cup, weaning off the bottle.",
+    skillLooksLike: "Picks up small soft pieces to self-feed and drinks from a cup.",
     checked: false,
   },
   {
@@ -270,9 +277,9 @@ export const ASHA_MILESTONES: Milestone[] = [
     domain: "language_communication",
     ageMonths: 24,
     ageGroup: "2 years",
-    title: "About half of speech is understandable",
-    description: "ASHA articulation: a 2-year-old is understood by familiar listeners roughly 50% of the time.",
-    skillLooksLike: "You catch about half of what they say; strangers catch less, and that's expected.",
+    title: "Familiar people understand much of what they say",
+    description: "ASHA speech clarity: people who know the child understand much of what they say; many speech sounds are still developing.",
+    skillLooksLike: "You and the people close to them follow much of what they say.",
     checked: false,
   },
   {
@@ -288,25 +295,14 @@ export const ASHA_MILESTONES: Milestone[] = [
     checked: false,
   },
   {
-    id: "asha-comm-36m",
-    source: ashaUnstated(ASHA_INTELLIGIBILITY_NOTE),
-    domain: "language_communication",
-    ageMonths: 36,
-    ageGroup: "3 years",
-    title: "Speech is about 75% understandable",
-    description: "ASHA articulation: a 3-year-old is understood by most listeners about 75% of the time.",
-    skillLooksLike: "Most people, even those who don't know them, follow three-quarters of their speech.",
-    checked: false,
-  },
-  {
     id: "asha-comm-48m",
     source: ashaUnstated("ASHA's 4 to 5 years bracket lists speech sounds that may still be developing, but this item's wording and bracket could not be confirmed offline; no age line until the reviewer re-sources it."),
     domain: "language_communication",
     ageMonths: 48,
     ageGroup: "4 years",
-    title: "Speech is almost fully understandable",
-    description: "ASHA articulation: by 4, speech is understood nearly all the time, though some sounds are still developing.",
-    skillLooksLike: "Strangers understand almost everything; a few late sounds (r, l, s, th) may still wobble.",
+    title: "People outside the family understand most of what they say",
+    description: "ASHA speech clarity: people outside the family understand most of what the child says, though some sounds are still developing.",
+    skillLooksLike: "A new adult can follow most of what they say; a few sounds may still be developing.",
     checked: false,
   },
 ];
@@ -324,7 +320,9 @@ export const ARBOR_EXTENDED_MILESTONES: Milestone[] = [];
 
 /** B-LOOP-01 — the retired Arbor ids. Stored child records may still carry
  *  them; they are no longer catalogue rows (no Hebrew text, no age line). */
-export const RETIRED_MILESTONE_IDS: readonly string[] = ["m-1", "m-2", "m-3", "m-4", "m-5", "m-6", "m-7", "m-8", "m-9", "m-10"];
+/** Pre-review (6 Oct): + cdc-48m-11 (time words sat a year early under CDC's name — H6/R06; replaced by
+ *  cdc-48m-15 and cdc-60m-15) and asha-comm-36m (a percentage title duplicating cdc-36m-3 — H7/R07). */
+export const RETIRED_MILESTONE_IDS: readonly string[] = ["m-1", "m-2", "m-3", "m-4", "m-5", "m-6", "m-7", "m-8", "m-9", "m-10", "cdc-48m-11", "asha-comm-36m"];
 
 /** The full, ordered milestone library Arbor seeds into a new child record. */
 export const ALL_MILESTONES: Milestone[] = [

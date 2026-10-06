@@ -249,7 +249,7 @@ export const PRACTICES: readonly Practice[] = [
   }),
   P("cdc-12m-3", "responsive_interaction", 5, S.ashaActivities, {
     do: L("Use your family names often during the day, pointing to the person. When your child tries any version of a name, answer warmly.", "השתמשו בשמות של בני המשפחה לאורך היום והצביעו על האדם. כשהילד/ה מנסה להגיד שם בכל צורה, ענו בחום."),
-    say: L("Here's Daddy! Daddy's home! You said Dada!", "הנה אבא! אבא בבית! אמרת אבא!"),
+    say: L("Who's here? It's me! You called me!", "מי פה? אני! קראת לי!"),
   }),
   P("cdc-12m-4", "responsive_interaction", 5, S.aapBrightFutures, {
     do: L("When something isn't safe, say 'no' calmly with one short reason, then offer something they can do instead.", "כשמשהו לא בטוח, אמרו 'לא' ברוגע עם סיבה קצרה אחת, ותנו מיד משהו אחר שמותר לעשות."),
@@ -265,9 +265,9 @@ export const PRACTICES: readonly Practice[] = [
   }),
   P("cdc-18m-4", "responsive_interaction", 5, S.ashaActivities, {
     do: L("At snack or dressing time, hold up two choices and name each one. Hand over whichever they pick, naming it again.", "בזמן ארוחה קטנה או התלבשות, הרימו שתי אפשרויות ואמרו את השם של כל אחת. תנו את מה שבחר/ה ואמרו שוב את השם."),
-    say: L("Banana or apple? Banana! Here's your banana.", "בננה או תפוח? בננה! הנה הבננה שלך."),
+    say: L("Banana or yoghurt? Banana! Here's your banana.", "בננה או יוגורט? בננה! הנה הבננה שלך."),
   }),
-  P("cdc-18m-5", "responsive_interaction", 5, S.aapBrightFutures, {
+  P("cdc-18m-5", "responsive_interaction", 5, S.cdcMilestones, {
     do: L("Make tidying a small game: ask for one thing at a time, without pointing, and say thank you when it arrives.", "הפכו סידור למשחק קטן: בקשו דבר אחד בכל פעם, בלי להצביע, ואמרו תודה כשהוא מגיע."),
     say: L("Can you give me the sock? Thank you! You brought the sock.", "תביא/י לי את הגרב? תודה! הבאת את הגרב."),
   }),
@@ -296,7 +296,7 @@ export const PRACTICES: readonly Practice[] = [
   }),
   P("cdc-30m-3", "responsive_interaction", 10, S.ashaActivities, {
     do: L("While you cook or tidy, describe what you are doing in short, simple sentences, and name the things your child picks up.", "בזמן בישול או סידור, ספרו בקול מה אתם עושים במשפטים קצרים, ותנו שם לדברים שהילד/ה מרים/ה."),
-    say: L("I'm cutting the cucumber. Crunch! You have the spoon.", "חותכים מלפפון. קראנץ'! ובידיים שלך כף."),
+    say: L("I'm cutting the cucumber. Crunch! You have the spoon.", "חותכים מלפפון. קראנץ'! ולך יש כף!"),
   }),
   P("cdc-30m-4", "child_directed_play", 10, S.aapPowerOfPlay, {
     do: L("Play with toy animals or cars on the floor and narrate what they do with action words, following whatever your child moves.", "שחקו על הרצפה עם חיות או מכוניות, ותארו במילות פעולה מה הן עושות, לפי מה שהילד/ה מזיז/ה."),
@@ -324,17 +324,13 @@ export const PRACTICES: readonly Practice[] = [
     do: L("At a calm moment, like the car or bath, start a chat about something they care about and keep it going with short replies.", "ברגע רגוע, כמו בנסיעה או באמבטיה, פתחו שיחה על משהו שמעניין את הילד/ה והמשיכו אותה בתשובות קצרות."),
     say: L("Tell me about the cat you saw. What was it doing?", "ספר/י לי על החתול שראית. מה הוא עשה?"),
   }),
-  P("asha-comm-36m", "responsive_interaction", 5, S.ashaActivities, {
-    do: L("When a word comes out differently, don't correct it. Say the word back the usual way inside your reply, then carry on.", "כשמילה יוצאת אחרת, אל תתקנו. אמרו אותה בצורה הרגילה בתוך התשובה שלכם, והמשיכו הלאה."),
-    say: L("A tat? Yes, a cat! The cat is sleeping.", "תתול? כן, חתול! החתול ישן."),
-  }),
   P("cdc-48m-6", "serve_and_return", 10, S.harvardServeReturn, {
     do: L("At a meal, ask one open question that has no right answer, then listen and build on what they say.", "בארוחה, שאלו שאלה פתוחה אחת בלי תשובה נכונה, הקשיבו, והמשיכו ממה שהילד/ה אומר/ת."),
     say: L("If you could be any animal, which one would you be?", "אם היית יכול/ה להיות כל חיה, איזו חיה היית?"),
   }),
   P("cdc-48m-7", "routine_building", 5, S.whoUnicefCcd, {
     do: L("Sing the same favourite song or rhyme at a daily moment, like the bath, and pause before a familiar word so they can join in.", "שירו את אותו שיר אהוב ברגע קבוע ביום, כמו באמבטיה, ועצרו לפני מילה מוכרת כדי שיוכל/תוכל להצטרף."),
-    say: L("Our bath song! I'll start... and you sing the next word!", "השיר של האמבטיה! אני מתחיל/ה... ואת/ה ממשיך/ה!"),
+    say: L("Our bath song! I'll start... and you sing the next word!", "השיר של האמבטיה! מתחילים... ועכשיו תורך!"),
   }),
   P("cdc-48m-8", "serve_and_return", 5, S.harvardServeReturn, {
     do: L("At bedtime or pickup, share one small thing from your own day first, then ask about one specific part of theirs.", "בזמן השכבה או באיסוף מהגן, ספרו קודם דבר קטן אחד מהיום שלכם, ואז שאלו על רגע מסוים מהיום שלו/ה."),
@@ -344,9 +340,9 @@ export const PRACTICES: readonly Practice[] = [
     do: L("Play a 'what is it for?' game with everyday things around the house, and give your own silly answers too.", "שחקו במשחק 'בשביל מה זה?' עם חפצים בבית, ותנו גם אתם תשובות מצחיקות."),
     say: L("What is a spoon for? For eating soup! Or... for a hat?", "בשביל מה יש כף? לאכול מרק! או... לשים על הראש?"),
   }),
-  P("asha-comm-48m", "child_directed_play", 5, S.ashaActivities, {
-    do: L("Play with sounds for fun: stretch out a sound, like 'sssnake', and invite your child to find other words that start the same way.", "שחקו בצלילים בשביל הכיף: מתחו צליל, כמו 'סססוס', והזמינו את הילד/ה למצוא עוד מילים שמתחילות באותו צליל."),
-    say: L("Sssnake starts with sss. What else starts with sss?", "סססוס מתחיל בסס. מה עוד מתחיל בסס?"),
+  P("asha-comm-48m", "responsive_interaction", 5, S.ashaActivities, {
+    do: L("When someone new doesn't catch a word, say it back clearly in your reply, without asking your child to repeat it.", "כשמישהו חדש לא קולט מילה, אמרו אותה שוב בבירור בתוך התשובה שלכם, בלי לבקש מהילד/ה לחזור עליה."),
+    say: L("Oh, the dinosaur! Yes, a big green dinosaur.", "אה, הדינוזאור! כן, דינוזאור ירוק וגדול."),
   }),
   P("cdc-60m-4", "dialogic_reading", 10, S.aapLiteracy, {
     do: L("Take turns telling a story about a family photo or a picture book page: you say one part, they add the next.", "ספרו סיפור בתורות על תמונה משפחתית או על עמוד בספר: אתם אומרים חלק אחד, והילד/ה מוסיף/ה את ההמשך."),
@@ -373,11 +369,11 @@ export const PRACTICES: readonly Practice[] = [
   }),
   P("cdc-9m-2", "routine_building", 5, S.aapBrightFutures, {
     do: L("When you step out of the room, say a short, cheerful goodbye and come back soon. Avoid slipping away unseen.", "כשאתם יוצאים מהחדר, אמרו פרידה קצרה ועליזה וחזרו תוך זמן קצר. השתדלו לא להיעלם בלי להגיד."),
-    say: L("I'm going to the kitchen. I'll be right back. Here I am!", "אני הולך/ת למטבח וחוזר/ת מיד. הנה אני!"),
+    say: L("I'm going to the kitchen. I'll be right back. Here I am!", "רגע במטבח, ומיד חוזרים. הנה אני!"),
   }),
   P("cdc-36m-1", "routine_building", 5, S.aapBrightFutures, {
     do: L("Keep drop-off short and the same each time: a hug, your goodbye phrase, and when you'll return in words they know.", "שמרו על פרידה קצרה וקבועה בגן: חיבוק, משפט הפרידה שלכם, ומתי תחזרו במילים שהילד/ה מכיר/ה."),
-    say: L("Looks like goodbyes feel hard? I'll be back after nap.", "נראה שקשה להיפרד? אני חוזר/ת אחרי מנוחת הצהריים."),
+    say: L("Looks like goodbyes feel hard? I'll be back after nap.", "נראה שקשה להיפרד? נתראה אחרי השינה."),
   }),
   P("cdc-60m-1", "executive_function_game", 15, S.harvardExecutiveFunction, {
     do: L("Play a short board or card game as a family. Say whose turn it is out loud, and when someone loses, name it calmly.", "שחקו משחק קופסה או קלפים קצר עם המשפחה. אמרו בקול של מי התור, וכשמישהו מפסיד, תנו לזה שם ברוגע."),
@@ -400,9 +396,9 @@ export const PRACTICES: readonly Practice[] = [
     do: L("Try gentle silly things, like funny noises or soft tummy kisses, and repeat whatever brings a chuckle. Stop when they look away.", "נסו דברים מצחיקים ועדינים, כמו קולות משונים או נשיקות על הבטן, וחזרו על מה שמצחיק. עצרו כשהמבט פונה הצידה."),
     say: L("Boop! Where's your tummy? Boop! You think that's funny?", "בופ! איפה הבטן? בופ! זה מצחיק אותך?"),
   }),
-  P("cdc-6m-1", "responsive_interaction", 5, S.aapBrightFutures, {
-    do: L("When a new person comes close, hold your baby, greet the person warmly yourself, and let your baby watch from your arms.", "כשאדם חדש מתקרב, החזיקו את התינוק/ת, ברכו את האדם בחום בעצמכם, ותנו לתינוק/ת להסתכל מהידיים שלכם."),
-    say: L("This is our neighbour. I know her. I'm holding you.", "זאת השכנה שלנו. אני מכיר/ה אותה. אני מחזיק/ה אותך."),
+  P("cdc-6m-1", "responsive_interaction", 5, S.cdcMilestones, {
+    do: L("When a familiar person comes in, name them warmly and give your baby time to look and smile at them.", "כשמישהו מוכר נכנס, אמרו את השם שלו בחום ותנו לתינוק/ת זמן להסתכל ולחייך אליו."),
+    say: L("Look who's here! Someone you know!", "תראה/י מי הגיע! מישהו שאת/ה מכיר/ה!"),
   }),
   P("cdc-6m-2", "child_directed_play", 5, S.aapPowerOfPlay, {
     do: L("Sit with your baby in front of a mirror. Wave, make faces, and point to their reflection, following what they look at.", "שבו עם התינוק/ת מול מראה. נפנפו, עשו פרצופים והצביעו על ההשתקפות, לפי מה שמושך את המבט שלו/ה."),
@@ -446,7 +442,7 @@ export const PRACTICES: readonly Practice[] = [
   }),
   P("cdc-24m-2", "responsive_interaction", 5, S.harvardServeReturn, {
     do: L("In a new place or with a new thing, show a calm, interested face and voice first, then let your child take a closer look.", "במקום חדש או מול דבר חדש, הראו קודם פנים וקול רגועים וסקרנים, ואז תנו לילד/ה להתקרב ולהסתכל."),
-    say: L("Hmm, a new dog. He looks friendly. Let's watch him first.", "הממ, כלב חדש. הוא נראה ידידותי. בוא/י נסתכל עליו קודם."),
+    say: L("Hmm, a new dog. Let's watch him from here, next to me.", "הממ, כלב חדש. בוא/י נסתכל עליו מפה, לידי."),
   }),
   P("cdc-30m-1", "child_directed_play", 10, S.aapPowerOfPlay, {
     do: L("Set up two of the same simple toy so your child and another child can play side by side without waiting to share.", "הכינו שני צעצועים פשוטים זהים, כך שהילד/ה וחבר/ה יוכלו לשחק זה לצד זה בלי לחכות לתור."),
@@ -463,7 +459,7 @@ export const PRACTICES: readonly Practice[] = [
   }),
   P("cdc-48m-1", "child_directed_play", 15, S.aapPowerOfPlay, {
     do: L("Join your child's pretend game in the role they give you. Follow their story and ask what happens next rather than taking over.", "הצטרפו למשחק הדמיון בתפקיד שהילד/ה נותן/ת לכם. לכו אחרי הסיפור ושאלו מה קורה עכשיו, בלי לקחת פיקוד."),
-    say: L("I'm the customer. What can I buy in your shop today?", "אני הלקוח/ה. מה אפשר לקנות היום בחנות שלך?"),
+    say: L("I'm the customer. What can I buy in your shop today?", "באתי לקנות! מה יש היום בחנות שלך?"),
   }),
   P("cdc-48m-2", "child_directed_play", 15, S.aapPowerOfPlay, {
     do: L("Invite one friend over for a short, simple playdate, with a few toys out and a snack, and stay nearby without directing.", "הזמינו חבר/ה אחד/ת למפגש משחק קצר ופשוט, עם כמה צעצועים בחוץ וחטיף, והישארו בסביבה בלי לנהל."),
@@ -471,11 +467,11 @@ export const PRACTICES: readonly Practice[] = [
   }),
   P("cdc-48m-3", "specific_praise", 5, S.cdcPositiveParenting, {
     do: L("When your child is kind to someone who is upset, describe the kind act afterwards, quietly and specifically.", "כשהילד/ה מתנהג/ת בחום למישהו עצוב, תארו אחר כך את המעשה, בשקט ובמדויק."),
-    say: L("You gave your friend your teddy when they were sad. That was kind.", "נתת לחבר/ה את הדובי כשהיה לו/ה עצוב. זה היה מעשה חם."),
+    say: L("You gave your friend your teddy when they were sad. That was kind.", "נתת לחבר/ה את הדובי כשהיה לו/ה עצוב. זה היה ממש נחמד מצדך."),
   }),
-  P("cdc-48m-4", "responsive_interaction", 5, S.aapBrightFutures, {
+  P("cdc-48m-4", "responsive_interaction", 5, S.cdcMilestones, {
     do: L("At the playground, think out loud together about which heights feel safe, and let your child show you their own careful choice.", "בגינה, חשבו יחד בקול איזה גובה מרגיש בטוח, ותנו לילד/ה להראות לכם את הבחירה הזהירה שלו/ה."),
-    say: L("That's really high. Where do you think is a safe place to jump?", "זה ממש גבוה. מאיפה בטוח לקפוץ, מה את/ה חושב/ת?"),
+    say: L("That's too high to jump from. Show me a low spot to jump.", "זה גבוה מדי לקפיצה. תראה/י לי מקום נמוך לקפוץ ממנו."),
   }),
   P("cdc-48m-5", "routine_building", 5, S.cdcPositiveParenting, {
     do: L("Give your child one real job in a daily routine, like setting the spoons, and thank them for the specific help.", "תנו לילד/ה תפקיד אמיתי אחד בשגרה היומית, כמו לשים כפיות על השולחן, והודו על העזרה המסוימת."),
@@ -492,14 +488,14 @@ export const PRACTICES: readonly Practice[] = [
   }),
   P("cdc-2m-7", "gross_motor_play", 5, S.whoMovement, {
     do: L("Place your baby on their tummy on your chest or a blanket while awake, and get down face to face to chat.", "כשהתינוק/ת ער/ה, השכיבו אותו/ה על הבטן על החזה שלכם או על שמיכה, ורדו לגובה הפנים כדי לדבר."),
-    say: L("Hello down there! I can see your face.", "שלום לך שם למטה! אני רואה את הפנים שלך."),
+    say: L("Hello down there! I can see your face.", "היי, מתוק/ה! אני רואה את הפנים שלך."),
   }),
   P("cdc-2m-8", "gross_motor_play", 5, S.whoMovement, {
     do: L("During a nappy change or after a bath, let your baby kick freely on a safe surface while you sing and gently touch each foot.", "בזמן החלפת חיתול או אחרי אמבטיה, תנו לתינוק/ת לבעוט בחופשיות על משטח בטוח, תוך כדי שירה ונגיעה עדינה בכל רגל."),
     say: L("Kick, kick, kick! Here's one foot, and here's the other.", "בעיטה, בעיטה! הנה רגל אחת, והנה השנייה."),
   }),
   P("cdc-4m-7", "gross_motor_play", 5, S.whoMovement, {
-    do: L("Carry your baby upright against your shoulder for a short walk around the home, stopping to show them interesting things.", "שאו את התינוק/ת זקוף/ה על הכתף לסיבוב קצר בבית, ועצרו להראות דברים מעניינים."),
+    do: L("Carry your baby upright against your shoulder, a hand supporting the neck until the head stays steady, and stop to show interesting things.", "שאו את התינוק/ת זקוף/ה על הכתף, עם יד מאחורי העורף עד שהראש יציב, ועצרו להראות דברים מעניינים."),
     say: L("Here's the window. Look at the tree outside!", "הנה החלון. תראה/י את העץ בחוץ!"),
   }),
   P("cdc-4m-8", "gross_motor_play", 5, S.whoMovement, {
@@ -513,11 +509,19 @@ export const PRACTICES: readonly Practice[] = [
   }),
   P("cdc-6m-8", "gross_motor_play", 5, S.whoMovement, {
     do: L("Sit on the floor with your baby supported between your legs, and place a toy just in front so they lean on their hands.", "שבו על הרצפה עם התינוק/ת בין הרגליים שלכם לתמיכה, ושימו צעצוע מקדימה כדי שיישען/תישען על הידיים כדי להסתכל."),
-    say: L("I've got you. Look at the ball!", "אני מחזיק/ה אותך. תראה/י את הכדור!"),
+    say: L("I've got you. Look at the ball!", "את/ה בידיים שלי. תראה/י את הכדור!"),
   }),
   P("cdc-9m-8", "gross_motor_play", 10, S.whoMovement, {
     do: L("Give your baby plenty of free floor time on a safe mat, with a few toys spread around to reach for while sitting.", "תנו לתינוק/ת הרבה זמן חופשי על הרצפה, על מזרן בטוח, עם כמה צעצועים מסביב להושיט אליהם יד בישיבה."),
     say: L("You're sitting up! What will you grab first?", "את/ה יושב/ת! מה תיקח/י קודם?"),
+  }),
+  P("cdc-9m-10", "serve_and_return", 5, S.cdcMilestones, {
+    do: L("Call your baby's name softly from a little to the side, wait for them to turn, then smile and talk when they find you.", "קראו בשם של התינוק/ת בקול רך, קצת מהצד. חכו שהראש יסתובב אליכם, ואז חייכו ודברו."),
+    say: L("Hello! You heard me! Here I am.", "היי! שמעת אותי! הנה אני."),
+  }),
+  P("cdc-9m-11", "responsive_interaction", 5, S.cdcMilestones, {
+    do: L("When a new person comes close, hold your baby, greet the person warmly yourself, and let your baby watch from your arms.", "כשאדם חדש מתקרב, החזיקו את התינוק/ת, ברכו את האדם בחום בעצמכם, ותנו לתינוק/ת להסתכל מהידיים שלכם."),
+    say: L("This is our neighbour. We know her. You're in my arms.", "זאת השכנה שלנו, אנחנו מכירים אותה. את/ה בידיים שלי."),
   }),
   P("cdc-9m-9", "fine_motor_play", 5, S.whoUnicefCcd, {
     do: L("Hand your baby one safe object, then offer a second one to the same hand, and watch them work out the swap.", "תנו לתינוק/ת חפץ בטוח אחד, ואז הציעו חפץ שני לאותה יד, וצפו איך הוא/היא מסתדר/ת עם ההחלפה."),
@@ -535,7 +539,7 @@ export const PRACTICES: readonly Practice[] = [
     say: L("Step, step, step! You're on your way to the ball.", "צעד, צעד, צעד! בדרך אל הכדור."),
   }),
   P("cdc-12m-9", "fine_motor_play", 5, S.whoUnicefCcd, {
-    do: L("At mealtime, put a few soft, pea-sized pieces of food on the tray and let your child pick them up their own way.", "בארוחה, שימו על המגש כמה חתיכות אוכל רכות בגודל של אפונה, ותנו לילד/ה להרים אותן בדרך שלו/ה."),
+    do: L("At mealtime, put a few soft, pea-sized pieces on the tray, round foods lightly squashed, and let your child pick them up.", "בארוחה, שימו על המגש כמה חתיכות רכות בגודל אפונה, ומאכלים עגולים מעוכים קלות, ותנו לילד/ה להרים אותן בדרך שלו/ה."),
     say: L("Little peas! You picked one up. Yum?", "אפונה קטנה! הרמת אחת. טעים?"),
   }),
   P("cdc-15m-7", "gross_motor_play", 5, S.whoMovement, {
@@ -552,8 +556,8 @@ export const PRACTICES: readonly Practice[] = [
     materials: L("A soft ball", "כדור רך"),
   }),
   P("cdc-24m-10", "gross_motor_play", 10, S.whoMovement, {
-    do: L("On safe stairs or a park climber, stay beside your child as they climb, offering a hand if they reach for it.", "במדרגות בטוחות או במתקן בגינה, עמדו ליד הילד/ה בזמן הטיפוס, והושיטו יד אם הוא/היא מבקש/ת."),
-    say: L("Up you climb! I'm right next to you.", "מטפסים למעלה! אני ממש לידך."),
+    do: L("On a few safe stairs, hold a hand if they want it and let them walk up upright.", "בכמה מדרגות בטוחות, תנו יד אם רוצים, ותנו לילד/ה לעלות בהליכה זקופה."),
+    say: L("Step, step, up we go! I'm right next to you.", "צעד, צעד, עולים! אני ממש לידך."),
   }),
   P("cdc-30m-10", "gross_motor_play", 10, S.whoMovement, {
     do: L("Play a jumping game together, like hopping over a line of tape or jumping like frogs, jumping alongside your child.", "שחקו יחד במשחק קפיצות, כמו לקפוץ מעל פס על הרצפה או לקפוץ כמו צפרדעים, וקפצו גם אתם."),
@@ -580,18 +584,18 @@ export const PRACTICES: readonly Practice[] = [
     say: L("Your turn to turn the page. What's next?", "תורך להפוך את הדף. מה יש עכשיו?"),
     materials: L("A board book", "ספר קרטון"),
   }),
-  P("cdc-48m-14", "fine_motor_play", 10, S.aapBrightFutures, {
+  P("cdc-48m-14", "fine_motor_play", 10, S.cdcMilestones, {
     do: L("Put out an old shirt with big buttons for dress-up, and let your child work on opening them while you chat.", "הוציאו חולצה ישנה עם כפתורים גדולים למשחק תחפושות, ותנו לילד/ה לפתוח אותם בזמן שאתם מדברים."),
     say: L("The button goes through the hole... pop!", "הכפתור עובר דרך החור... פופ! נפתח."),
     materials: L("An old shirt with big buttons", "חולצה ישנה עם כפתורים גדולים"),
   }),
-  P("cdc-60m-14", "fine_motor_play", 5, S.aapBrightFutures, {
+  P("cdc-60m-14", "fine_motor_play", 5, S.cdcMilestones, {
     do: L("In the morning, leave a little extra time and let your child try one button on their coat, offering help only if asked.", "בבוקר, השאירו קצת זמן נוסף ותנו לילד/ה לנסות לכפתר כפתור אחד במעיל, ועזרו רק אם מבקשים."),
     say: L("Want to try the top button? I'm here if you want help.", "רוצה לנסות את הכפתור העליון? אני פה אם תרצה/י עזרה."),
   }),
   P("cdc-2m-5", "responsive_interaction", 5, S.whoUnicefCcd, {
     do: L("While your baby lies safely awake, move slowly across their view, talking as you go, and pause where they can see you.", "כשהתינוק/ת שוכב/ת ער/ה ובטוח/ה, זוזו לאט מול העיניים שלו/ה תוך כדי דיבור, ועצרו במקום שרואים אתכם."),
-    say: L("I'm walking over here... and now I'm here!", "אני הולך/ת לפה... ועכשיו אני פה!"),
+    say: L("I'm walking over here... and now I'm here!", "הולכים לפה... ועכשיו הנה אני!"),
   }),
   P("cdc-2m-6", "joint_attention", 5, S.whoUnicefCcd, {
     do: L("Hold a bright object close to your baby's face, move it slowly from side to side, and talk about it.", "החזיקו חפץ צבעוני קרוב לפנים של התינוק/ת, הזיזו אותו לאט מצד לצד ודברו עליו."),
@@ -657,9 +661,9 @@ export const PRACTICES: readonly Practice[] = [
     say: L("Your car goes vroom! My car goes vroom too.", "המכונית שלך נוסעת ברררום! גם שלי ברררום."),
   }),
   P("cdc-24m-6", "fine_motor_play", 5, S.aapPowerOfPlay, {
-    do: L("Give your child a container with a lid to open, with a small surprise inside, and let them work it out with both hands.", "תנו לילד/ה קופסה עם מכסה לפתוח, עם הפתעה קטנה בפנים, וחכו שיסתדר/תסתדר בשתי ידיים."),
+    do: L("Give your child a lidded box with a toy too big for the mouth inside, and let them open it with both hands.", "תנו לילד/ה קופסה עם מכסה ובתוכה צעצוע גדול מכדי להיכנס לפה, וחכו שיסתדר/תסתדר לפתוח בשתי ידיים."),
     say: L("What's inside? Hold the box... and open!", "מה יש בפנים? מחזיקים את הקופסה... ופותחים!"),
-    materials: L("A plastic tub with a lid and a small toy", "קופסת פלסטיק עם מכסה וצעצוע קטן"),
+    materials: L("A plastic tub with a lid and a toy bigger than a toilet-roll tube", "קופסת פלסטיק עם מכסה וצעצוע גדול מגליל של נייר טואלט"),
   }),
   P("cdc-24m-7", "child_directed_play", 5, S.aapPowerOfPlay, {
     do: L("Let your child press safe switches with you, like the light or the lift button, and talk about what happens.", "תנו לילד/ה ללחוץ איתכם על מתגים בטוחים, כמו האור או הכפתור במעלית, ודברו על מה שקורה."),
@@ -701,9 +705,14 @@ export const PRACTICES: readonly Practice[] = [
     do: L("Play 'I spy' with colours on a walk or in the car, taking turns choosing, and give easy hints.", "שחקו 'אני רואה משהו' עם צבעים בהליכה או באוטו, בחרו בתורות ותנו רמזים קלים."),
     say: L("I spy something green... it's on a tree!", "אני רואה משהו ירוק... הוא על העץ!"),
   }),
-  P("cdc-48m-11", "routine_building", 5, S.cdcMilestones, {
-    do: L("At breakfast, talk through the day in order using words like morning, afternoon and night, and let your child add parts.", "בארוחת הבוקר, עברו יחד על סדר היום עם מילים כמו בוקר, צהריים ולילה, ותנו לילד/ה להוסיף חלקים."),
-    say: L("This morning, the park. Tonight, bath. What comes after the park?", "הבוקר גינה, בלילה אמבטיה. מה קורה אחרי הגינה?"),
+  P("cdc-48m-15", "dialogic_reading", 5, S.cdcMilestones, {
+    do: L("When you reread a favourite book, pause before a page you both know and ask what happens next.", "כשקוראים שוב ספר אהוב, עצרו לפני עמוד מוכר ושאלו מה קורה עכשיו."),
+    say: L("And then what happens? You remember!", "ואז מה קורה? את/ה זוכר/ת!"),
+    materials: L("A favourite picture book", "ספר תמונות אהוב"),
+  }),
+  P("cdc-60m-15", "routine_building", 5, S.cdcMilestones, {
+    do: L("At breakfast, talk through the day using words like morning, night, yesterday and tomorrow, and let your child add parts.", "בארוחת הבוקר, דברו על היום עם מילים כמו בוקר, לילה, אתמול ומחר, ותנו לילד/ה להוסיף חלקים."),
+    say: L("Yesterday, the park. Tonight, bath. What's tomorrow?", "אתמול גינה, בלילה אמבטיה. ומה מחר?"),
   }),
   P("cdc-48m-12", "fine_motor_play", 15, S.aapPowerOfPlay, {
     do: L("Draw a family picture together, each drawing someone, and talk about the people while you draw.", "ציירו יחד ציור משפחתי, כל אחד מצייר מישהו אחר, ודברו על האנשים תוך כדי ציור."),
@@ -737,7 +746,7 @@ export const PRACTICES: readonly Practice[] = [
   }),
   P("cdc-15m-8", "responsive_interaction", 10, S.whoFeeding, {
     do: L("Put a few soft pieces of the family food on your child's plate and let them feed themselves, mess included, while you eat too.", "שימו כמה חתיכות רכות מהאוכל המשפחתי בצלחת של הילד/ה ותנו לו/ה לאכול לבד, כולל הלכלוך, בזמן שגם אתם אוכלים."),
-    say: L("You picked up the pasta! I'm eating pasta too.", "הרמת פסטה! גם אני אוכל/ת פסטה."),
+    say: L("You picked up the pasta! I'm eating pasta too.", "הרמת פסטה! גם לי יש פסטה."),
   }),
   P("cdc-18m-9", "responsive_interaction", 10, S.whoFeeding, {
     do: L("Offer water in a small open cup at meals and let spills happen, with a cloth nearby and a calm voice.", "הציעו מים בכוס פתוחה קטנה בארוחות, ותנו לשפיכות לקרות, עם מטלית קרובה וקול רגוע."),
@@ -745,8 +754,8 @@ export const PRACTICES: readonly Practice[] = [
     materials: L("A small open cup and a cloth", "כוס פתוחה קטנה ומטלית"),
   }),
   P("asha-feed-24m", "responsive_interaction", 10, S.aapBrightFutures, {
-    do: L("Put a small taste of a new food next to a familiar one, eat it yourself happily, and let your child decide whether to try.", "שימו טעימה קטנה של מאכל חדש ליד מאכל מוכר, אכלו ממנו בעצמכם בהנאה, ותנו לילד/ה להחליט אם לטעום."),
-    say: L("This is crunchy cucumber. I like the crunch. You can just look.", "זה מלפפון פריך. אני אוהב/ת את הקראנץ'. אפשר רק להסתכל."),
+    do: L("Put a soft-cooked taste of a new food next to a familiar one, eat some yourself, and let your child decide whether to try.", "שימו טעימה רכה ומבושלת של מאכל חדש ליד מאכל מוכר, אכלו ממנה בעצמכם, ותנו לילד/ה להחליט אם לטעום."),
+    say: L("This is soft carrot. Mmm. You can just look.", "זה גזר רך. ממ. אפשר רק להסתכל."),
   }),
   P("cdc-60m-12", "routine_building", 15, S.aapBrightFutures, {
     do: L("Make a family meal a calm, shared time: real cutlery for everyone, food passed around, and your child serving themselves.", "הפכו ארוחה משפחתית לזמן רגוע ומשותף: סכו״ם אמיתי לכולם, מעבירים את האוכל, והילד/ה מגיש/ה לעצמו/ה."),
@@ -756,8 +765,12 @@ export const PRACTICES: readonly Practice[] = [
   /* ── shelf-level (B-LOOP-08 follow-up) · Sleep · 6–48 months ─────────── */
   /* Routine, light, timing and wind-down only: no sleep method, no amounts,  */
   /* no restriction.                                                          */
-  SP("pr-sleep-01", "sleep", 6, "routine_building", 5, S.aapSafeSleep, {
-    do: L("Lay your baby down on their back for every sleep, naps and night, in their own crib or bassinet with nothing soft inside.", "השכיבו את התינוק/ת על הגב בכל שינה, ביום ובלילה, במיטה או בעריסה משלו/ה, בלי שום דבר רך בפנים."),
+  // Pre-review H4 (R04): anchored at 2 months (the chooser shows the current band + one earlier, so a 6-month
+  // anchor never reached 2–5-month families — the highest-risk window); the three core AAP 2022 points in plain
+  // words: back to sleep · a firm, flat surface with nothing soft · room-sharing without bed-sharing.
+  // [AAP 2022 safe-sleep wording — verbatim wording to be pasted by the reviewer (R14)]
+  SP("pr-sleep-01", "sleep", 2, "routine_building", 5, S.aapSafeSleep, {
+    do: L("Lay your baby on their back for every sleep, on a firm, flat surface in your room, not your bed, with nothing soft inside.", "השכיבו את התינוק/ת על הגב בכל שינה, על משטח ישר וקשיח בחדר שלכם, לא במיטה שלכם, ובלי שום דבר רך בפנים."),
     say: L("Night night, little one. I'm right here.", "לילה טוב, מתוק/ה. אני כאן לידך."),
   }),
   SP("pr-sleep-02", "sleep", 9, "routine_building", 10, S.nhsStartForLifeSleep, {
@@ -785,7 +798,7 @@ export const PRACTICES: readonly Practice[] = [
   /* Routines and the people around the child.                              */
   SP("pr-family-01", "family", 12, "joint_attention", 5, S.whoUnicefCcd, {
     do: L("Look at family photos together, point to each person, and say their name and one thing they do with your child.", "הסתכלו יחד בתמונות משפחתיות, הצביעו על כל אחד, ואמרו את שמו ודבר אחד שהוא עושה עם הילד/ה."),
-    say: L("That's Grandma! She sings with you. Where's Grandpa?", "זאת סבתא! היא שרה איתך. איפה סבא?"),
+    say: L("Who's this? Tell me!", "מי זה פה? ספר/י לי!"),
   }),
   SP("pr-family-02", "family", 24, "specific_praise", 5, S.aapBrightFutures, {
     do: L("Give your child one small real job in a family routine, like carrying the napkins to the table, and thank them for it.", "תנו לילד/ה תפקיד קטן ואמיתי בשגרה המשפחתית, כמו להביא את המפיות לשולחן, ותודו לו/ה על כך."),
@@ -833,6 +846,11 @@ export const PRACTICES: readonly Practice[] = [
     do: L("Let your child tell the story from the pictures. Listen, ask one 'what' or 'where' question, and add a little to what they say.", "תנו לילד/ה לספר את הסיפור מתוך התמונות. הקשיבו, שאלו שאלה אחת של 'מה' או 'איפה', והוסיפו קצת למה שהוא/היא אומר/ת."),
     say: L("You tell me the story. Where is the bunny going?", "את/ה מספר/ת לי את הסיפור. לאן הארנב הולך?"),
     materials: L("A picture book from home", "ספר תמונות מהבית"),
+  }),
+  // Pre-review H7 (6 Oct): the recast practice of the retired asha-comm-36m row, kept as a Words shelf practice.
+  SP("pr-words-07", "words", 36, "responsive_interaction", 5, S.ashaActivities, {
+    do: L("When a word comes out differently, don't correct it. Say the word back the usual way inside your reply, then carry on.", "כשמילה יוצאת אחרת, אל תתקנו. אמרו אותה בצורה הרגילה בתוך התשובה שלכם, והמשיכו הלאה."),
+    say: L("A tat? Yes, a cat! The cat is sleeping.", "תדור? כן, כדור! הכדור מתגלגל."),
   }),
 ];
 
